@@ -1,37 +1,27 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Mani fetta 22: riserve «DA SISTEMARE» di #280, `intero()` del figlio lexbor legge «0» e «-0» come 0; secondo e terzo giro dopo bot e verifica esterna (chat Mani)
+**Sessione:** 2026-10-28 — Mani fetta 23: shadow DOM dichiarativo letto come il browser nel figlio lexbor (chat Mani)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #285 (https://github.com/Gasss23/Gas/pull/285). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5049895154","url":"https://github.com/Gasss23/Gas/pull/285"}`); `gh` nel cloud non è autenticato. Bot e verifica esterna su 162f5b1 e su 116aac3: APPROVATO CON RISERVE, niente ALTA/MEDIA; le riserve da correggere sono chiuse (l'ultima, V-1 su 116aac3, su richiesta dell'operatore «sistema V-1»). Sulla head di questo handoff il bot rigira da solo. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore. Il merge non accende niente.
+1. Merge della PR #288 (https://github.com/Gasss23/Gas/pull/288). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5055020609","url":"https://github.com/Gasss23/Gas/pull/288"}`); `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore. Il merge non accende niente.
 2. Accensione della lettura con lexbor: la chat Motore mette `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (chiude anche R-ve280-1); poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
-3. Shadow DOM dichiarativo (figli «light» di un host con `<template shadowrootmode>`): decisione dell'operatore.
-4. Poi, una alla volta: cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4); R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
+3. Poi, una alla volta: cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4, R-540-1); R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Controllo della PR #280 (fetta 21)**: `FATTA` — mergiata (b95c3f3); branch ripartito da main.
-- **Fetta 22 — riserve «DA SISTEMARE» di #280**:
-  - R-bot280-1 (`intero("0")` → None): `FATTA` — «0», «000», «-0» danno 0; senza cifre o con un negativo non zero None. Esito pratico invariato.
-  - Test diretto di `intero()` (preso dal sorgente del figlio con `ast`, gira senza selectolax): `FATTA`.
-  - R-536-1 COSMETICA (review #536: «-0» → None): `FATTA`, review #537 APPROVATO.
-  - R-ve280-2, R-ve280-3, R-bot280-2 (numeri e riga ripetuta dell'handoff di #280): `FATTA` — handoff riscritto, solo numeri misurati in sessione.
-  - R-ve280-1 (test del figlio non girano nei check required): `DEFERITA — serve la chat Motore (selectolax in requirements-dev)`.
-- **Secondo giro — bot e verifica esterna su 162f5b1, APPROVATO CON RISERVE** (commento ve: https://github.com/Gasss23/Gas/pull/285#issuecomment-6468276114):
-  - V-1 ve MEDIA (PR in conflitto con main dopo #283 e #284): `FATTA` — merge di 0cf1d67 in 1442468; tenuti handoff/ultimo_report/diff_sessione della #285, stato_progetto unito a mano, memoria con le righe di tutti e due i lati; nessun file del perimetro dal lato di main, niente review.
-  - V-2 ve / V-1 bot COSMETICA (commento di `intero()` senza il segno): `FATTA` — 20c0708, review #538 APPROVATO.
-  - V-3 ve COSMETICA (numeri dei mutanti del test intermedio): `FATTA` — rifatti sul test finale (ritorno vecchio 7 failed, `letto` tolto 8, negativo 1, solo «+» 2).
-  - V-4 ve COSMETICA (§6 sulla CI di un commit vecchio): `FATTA` — §6 riscritto qui sotto.
-- **Terzo giro — bot e verifica esterna su 116aac3, APPROVATO CON RISERVE** (commento ve: https://github.com/Gasss23/Gas/pull/285#issuecomment-6468447612):
-  - V-1 bot / V-1 ve COSMETICA (riga «Ultimo aggiornamento» di stato_progetto senza #538 e senza il secondo giro): `FATTA` — riga completata, su richiesta dell'operatore («sistema V-1»); solo reports/, niente review.
-  - V-2 ve (§6 e §0 dell'handoff fermi alla scrittura): `SALTATA — inevitabile per costruzione, nessun fix richiesto dalla verifica`.
-  - V-3 ve (numerazione parallela delle review #536/#537 tra le chat): `SALTATA — già dichiarata, righe marcate «(chat X)»`.
-- **Punti b–e della ripartenza** (accensione, shadow DOM, cosmetiche, decisioni vecchie): `DEFERITA — uno alla volta, dopo questa fetta`.
+- **Merge della PR #285 (fetta 22)**: `FATTA` — richiesta dell'operatore («mergia 285»), merge 297fc22; branch ripartito da main.
+- **Fetta 23 — shadow DOM dichiarativo (scelta 3 dell'operatore)**: `FATTA` nel figlio lexbor.
+  - Host validi (lista dello standard o custom element, esclusi i nomi riservati), primo template con shadowrootmode open/closed, slot assegnati per nome (testo solo allo slot senza nome), riserva, figli non assegnati nascosti, shadow annidati, body come host: `FATTA`.
+  - Pagine senza shadow senza costo in più (`CON_SHADOW`): `FATTA`.
+  - R-539-1 BASSA e R-539-2 COSMETICA (review #539): `FATTA`, review #540 APPROVATO.
+  - R-540-1 COSMETICA (slot dentro `foreignObject`): `DEFERITA — svg è nascosto per scelta in leggi.py`.
+  - Lettura di sempre di leggi.py: `SALTATA — resta com'è, come dichiarato nella scelta 3`.
+- **Accensione lexbor (punto b della ripartenza)**: `DEFERITA — chat Motore, selectolax non ancora in requirements su main`.
 
 ---
 
@@ -39,137 +29,102 @@
 
 ```
  .claude/agents/memoria_revisore.md |   3 +++
- modules/web/lexbor.py              |  16 +++++++++++-----
- reports/diff_sessione.md           |  15 +++++++++------
+ modules/web/lexbor.py              |  92 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ reports/diff_sessione.md           |  14 +++++++-------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   6 +++---
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  39 ++++++++++++++++++++++++++++++++++-----
- tests/test_unit_web_lexbor.py      |  16 ++++++++++++++++
+ reports/ultimo_report.md           |  43 +++++++++++++++++--------------------------
+ tests/test_unit_web_lexbor.py      |  44 ++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = 0cf1d67. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 297fc22. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-116aac3 docs(fine-task): PR #285 secondo giro — merge di main, V-1..V-4 ve e V-1 bot chiuse, review #538
-20c0708 docs(web): commento di intero() cita il segno + o - facoltativo (V-2 ve #285, V-1 bot #285)
-3704890 chore(revisore): memoria review #538 — APPROVATO
-1442468 Merge origin/main (0cf1d67, PR #283 e #284) in claude/peaceful-lovelace-0w2b7q (PR #285)
-162f5b1 docs(fine-task): Mani fetta 22 — handoff, report, stato e ripartenza (PR #285)
-bbbfbbe fix(web): intero() del figlio lexbor legge «0» e «-0» come 0 (R-bot280-1, R-536-1, fetta 22 Mani)
-ec86b45 chore(revisore): memoria review #537 — APPROVATO
-63e4137 chore(revisore): memoria review #536 — APPROVATO CON RISERVE
+16cb6a6 feat(web): shadow DOM dichiarativo letto come il browser nel figlio lexbor (fetta 23 Mani)
+484982b chore(revisore): memoria review #540 — APPROVATO
+d553ca2 chore(revisore): memoria review #539 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore bbbfbbe: review #536 sul primo diff staged, #537 dopo la chiusura di R-536-1 (diff committato in bbbfbbe). Merge 1442468: nessun file del perimetro dal lato di main (solo reports/ e memoria), niente review. Commit motore 20c0708 (solo commento): review #538. Il terzo giro (commit di fine-task dopo 116aac3) tocca solo reports/: niente review. Verdetti integrali:
+Commit motore 16cb6a6: review #539 sul primo diff staged, #540 dopo la chiusura di R-539-1 e R-539-2 (diff committato in 16cb6a6). Verdetti integrali:
 
-### Review #536 (chat Mani) — primo diff staged
+### Review #539 (chat Mani) — primo diff staged
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #536 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q: modules/web/lexbor.py (+4/-2) e tests/test_unit_web_lexbor.py (+15). Prima della review ho letto CLAUDE.md, la parte di reports/stato_progetto.md su lexbor e R-bot280 e la coda della memoria del revisore.
-
-**Elementi del diff che ho esaminato**
-- `modules/web/lexbor.py:101`: il nuovo flag `letto` diventa True alla prima cifra ASCII letta. Rischio esaminato: che una stringa senza cifre (`""`, `None`, `"+"`, `"x0"`, `"-1"`) finisca per valere 0. Esito: ok, tutte danno None e lo verifica il test parametrizzato.
-- `modules/web/lexbor.py:109`: il ritorno ora è `int(cifre or "0")` solo se `letto`, con il limite `< 1 << 31` invariato. Rischi esaminati: una regressione sul confine 2147483647/2147483648, e il costo con input lunghissimi (5000 zeri seguiti da "1" danno 1; il taglio `len(cifre) > 10` resta). Esito: ok. Il valore `int(...)` viene calcolato due volte, ma su al massimo 11 cifre: costo irrilevante.
-- `modules/web/lexbor.py:114`: è l'unico punto che chiama la funzione (`(intero(size) or 1) > 1`). Rischio esaminato: un cambio di comportamento sulla scelta tra lista e tendina. Esito: ok, il nuovo 0 si comporta come il vecchio None, quindi l'effetto pratico è identico. Il fix è di sola fedeltà al browser.
-- `tests/test_unit_web_lexbor.py:171`: il test prende `intero` dal sorgente `_FIGLIO` con `ast`, compila solo quella funzione e la esegue. Rischi esaminati: che il test dipenda da selectolax e che esegua il resto del codice del figlio. Esito: ok. Non porta il marcatore `con_lexbor`, esegue solo il nodo della funzione e non importa nulla dal figlio.
-
-**Prove rifatte da me**
-- Lexbor: 75 passed (Python 3.13); il solo test nuovo: 12 passed.
-- Mutante «tolgo `letto = True`»: 6 failed, poi file ripristinato e controllato (nessuna differenza rimasta, indice intatto).
-- Sonde a mano: `"\t0 "` → 0; `"\x0b5"` → None, corretto perché il tab verticale non è uno spazio per l'HTML; `"00000000002147483647"` → 2147483647; la cifra araba `"٣"` → None, corretto.
-
-**Riserva**
-- R-536-1 COSMETICA: `intero("-0")` restituisce None. Il browser lo legge come 0: lo standard HTML ammette "-0" perché vale 0, che non è negativo, e Chromium accetta il segno meno se il valore è 0. È lo stesso tipo di scarto di R-bot280-1, ma l'effetto pratico è nullo perché il chiamante tratta 0 come 1. Va tracciata in stato_progetto.md oppure chiusa con una riga (`"-0"` → 0 nel test).
-
-**Cosa non ho verificato**
-- Il comportamento in CI senza selectolax: qui selectolax c'è (75 passed). Che il test nuovo non dipenda da selectolax l'ho dedotto leggendo il codice (nessun marcatore `con_lexbor`, solo `ast` ed `exec`), non da un'esecuzione senza la libreria.
-- La suite web completa: ho girato solo il file lexbor. Il diff tocca una sola funzione del figlio, che ha un solo chiamante.
-
-**Memoria**: aggiunta la riga #536 a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola con lo script (commit 63e4137). I due file staged non sono stati toccati. Nessuna lezione nuova.
-
-### Review #537 (chat Mani) — diff committato in bbbfbbe
-
-## VERDETTO: APPROVATO
-
-Review #537 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q: `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`. Chiude R-536-1: `intero()` ora accetta un segno + o - in testa, e «-0» vale 0 come nel browser.
+Review #539 (chat Mani), sul diff staged di claude/peaceful-lovelace-0w2b7q partito da main 297fc22. Ho letto CLAUDE.md (sezioni 1, 5, 8, 10), reports/stato_progetto.md (per sezioni, con Grep) e .claude/agents/memoria_revisore.md.
 
 **Elementi del diff esaminati**
-- `modules/web/lexbor.py:104`: salta un solo segno + o - in testa e poi legge le cifre. Rischio esaminato: segni doppi o misti, segno seguito da spazio, segno da solo. Esito: ok. «--0», «+-1», «-+0», «- 1» e «-» danno tutti None, perché dopo il segno non c'è una cifra e `letto` resta False.
-- `modules/web/lexbor.py:112`: restituisce `numero` solo se c'è almeno una cifra, se resta sotto `1 << 31` e se non è un negativo diverso da zero. Rischi esaminati: un negativo che passa, il confine dei 2^31, input lunghissimi. Esito: ok. «-2147483648» e «-» seguito da 5000 nove danno None; «-» seguito da 5000 zeri e «\n-0x» danno 0. Le cifre restano al massimo 11, quindi `int()` è sempre economico. Il tetto `< 1 << 31` non è cambiato.
-- `tests/test_unit_web_lexbor.py:174`: 5 casi nuovi nel test parametrizzato già revisionato in #536, che legge `intero` dal sorgente `_FIGLIO` con `ast` (gira anche senza selectolax). Rischio esaminato: test che non distinguono la versione vecchia dalla nuova. Esito: ok, vedi i mutanti qui sotto.
-- Contesto: `modules/web/lexbor.py:119` è l'unico chiamante, `(intero(size) or 1) > 1`. Il caso «-0» → 0 lo porta comunque a 1, quindi nella pratica non cambia nulla: è solo fedeltà al browser.
+- `modules/web/lexbor.py:143` — HOST, la lista degli elementi che possono avere uno shadow. Rischio: lista diversa da quella dello standard («valid shadow host name»). Esito: ok. La lista coincide; il trattino con iniziale a-z vale per i custom element; `<X1>` e `<a>` vengono scartati (c'è un test).
+- `modules/web/lexbor.py:150` — `shadow()` prende il primo template figlio con open/closed, senza distinguere maiuscole. Rischio: un template con modo non valido che arriva prima, o un secondo template. Esito: ok. Prova: `a<template shadowrootmode=x>T</template>b<template shadowrootmode=closed>S<slot>…c` dà «Sabc», come il browser.
+- `modules/web/lexbor.py:160` — `template_fragments()[0]`. Rischio: lista vuota. Esito: **riserva R-539-1**, sotto.
+- `modules/web/lexbor.py:164` — primo slot per nome con `frammento.css("slot")`. Rischio: conta anche gli slot dentro template normali o shadow annidati, il che darebbe costo quadratico e assegnazioni sbagliate. Esito: ok. Prova: con uno slot dentro un `<template>` normale nello shadow vince lo slot Q successivo, e si legge «L» come nel browser. Lo slot nascosto reclama comunque il nome (test «Q»). I nomi distinguono le maiuscole: `slot=A` non va a `name=a`, come vuole lo standard.
+- `modules/web/lexbor.py:210` e `modules/web/lexbor.py:216` — uno slot dello shadow legge gli assegnati col livello fuori dall'host. Rischio: livello sbagliato con gli shadow annidati. Esito: ok. Prove: «[L]» con slot su slot, slot di riserva annidati («T» oppure «N»), `slot=''` va allo slot senza nome. Mutante mio (`giro` al posto di `fuori` alla riga 216): 1 failed. Ho rimesso il file com'era (0 differenze dall'indice).
+- `tests/test_unit_web_lexbor.py:104` e `tests/test_unit_web_lexbor.py:144` — i casi nuovi coprono: host non validi, primo template, testo solo allo slot senza nome, annidamento, body come host. Esito: ok. Risultato: 92 passed su 3.13; 20 passed e 72 skipped su 3.11 senza selectolax.
+- Costo — `modules/web/lexbor.py:148` (CON_SHADOW) più una scansione lineare dei figli per ogni host. Rischio: costo quadratico. Esito: ok, cresce in modo lineare. 50k, 100k e 200k figli di un host: 0,19 s, 0,45 s, 0,91 s. 2000, 4000 e 8000 shadow annidati: 0,07 s, 0,10 s, 0,15 s. 8000 slot con nome: 0,09 s.
+- Contesto: `modules/web/leggi.py:101` — `_TAG_NASCOSTI` contiene template, svg e math, quindi in produzione il figlio non entra mai nel contenuto svg o math.
 
-**Prove rifatte da me**
-- File lexbor: 80 passed (Python 3.13, con selectolax).
-- Mutante senza `not (meno and numero)`: 1 failed. Mutante con solo «+» tra i segni: 2 failed.
-- Dopo i mutanti ho ripristinato `modules/web/lexbor.py`: nessuna differenza rimasta e indice intatto.
+**Riserve**
+- **R-539-1 (BASSA)**: `<svg><x-a><template shadowrootmode=open>…` passato con nascosti vuoti fa fallire il figlio con `IndexError: list index out of range` (uscita 1). Gas non crasha: c'è il warning in gas_debug.log e si usa la lettura di sempre. Dal chiamante reale (leggi.py) non si può raggiungere, perché svg e math sono nascosti. È però una funzione pubblica che esce in eccezione su un input valido. Correzione proposta: `frammenti = figlio.template_fragments()` e, se la lista è vuota, `continue` o `return None`.
+- **R-539-2 (COSMETICA)**: tre casi rari in cui la lettura non segue lo standard:
+  - `css("slot")` conta anche un `<slot>` dentro un `<svg>` dello shadow, che non è uno slot HTML. Esempio: `<svg><slot></slot></svg><slot>Q</slot>` più la luce L dà «Q», il browser dà «L».
+  - I nomi riservati dei custom element (font-face, annotation-xml, color-profile, missing-glyph…) vengono presi come host. Esempio: `<font-face>` dà «S», il browser dà «L».
+  - Uno slot dentro un'opzione di un select nello shadow si legge senza il contesto dello shadow, perché `visita(o, dentro_opzione=True)` riparte da `giro=None`.
 
-**Cosa non ho verificato**
-- Non ho girato l'intera suite web (521/1) né Python 3.11 senza selectolax (20 passed / 60 skipped): riporto i tuoi numeri. Io ho girato solo il file lexbor su 3.13. Che il test nuovo non dipenda da selectolax lo deduco dal codice (non ha il marcatore `con_lexbor`, usa solo `ast` ed `exec`).
-- Nota a margine, non è una riserva: il commento a `modules/web/lexbor.py:99` descrive ancora «spazi, poi le cifre» e non cita il segno. Il commento a `modules/web/lexbor.py:111` lo copre.
+**Rischio escluso**: non ho confrontato i risultati con un browser vero (Chromium o Firefox). La fedeltà allo standard l'ho verificata sul testo delle specifiche (WHATWG, cioè lo standard HTML e DOM: «find a slot», «attach a shadow root», parser dei template con shadowrootmode) e con le sonde sul figlio lexbor. Non ho rifatto né la web suite completa né la suite vecchia con GAS_WEB_LEXBOR=1: mi baso sulle tue cifre (533/1, 11 FAIL invariati).
 
-**Memoria**: aggiunta la riga #537 a `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata da sola (commit ec86b45); i file staged non sono stati toccati. R-536-1 è chiusa. Nessuna lezione nuova.
+Il mutante «CON_SHADOW = True» che sopravvive è accettabile: cambia solo i tempi.
 
-### Review #538 (chat Mani) — diff committato in 20c0708
+Memoria: aggiunte la riga #539 (chat Mani) e una lezione (gli `[0]` sulle liste di selectolax vanno provati con nascosti vuoti e foreign content). Committate con lo script in d553ca2: solo /home/user/Gas/.claude/agents/memoria_revisore.md, l'indice staged è intatto. Le riserve vanno scritte in /home/user/Gas/reports/stato_progetto.md.
+
+### Review #540 (chat Mani) — diff committato in 16cb6a6
 
 ## VERDETTO: APPROVATO
 
-Review #538 (chat Mani). Riguarda il diff staged su claude/peaceful-lovelace-0w2b7q (PR #285): un solo file toccato, modules/web/lexbor.py, con 3 righe aggiunte e 2 tolte.
+Review #540 (chat Mani), sul diff staged di claude/peaceful-lovelace-0w2b7q: chiusura di R-539-1 e R-539-2. Ho letto CLAUDE.md, reports/stato_progetto.md (le sezioni che servivano) e .claude/agents/memoria_revisore.md (anche nella review #539 di questa stessa sessione).
 
-Letture fatte prima della review: CLAUDE.md (sez. 5), reports/stato_progetto.md (solo le voci lexbor e #285, con Grep), la coda di .claude/agents/memoria_revisore.md.
+**Elementi del diff esaminati**
+- `modules/web/lexbor.py:181` — `template_fragments()` vuoto ora porta a `continue`, non più a IndexError. Rischio: il figlio fallisce su un template svg. Esito: ok. La sonda `<svg><x-a><template shadowrootmode=open>S</template>L</x-a></svg>` dà «SL» senza errore. Il mutante `return None` passa i test, ma in pratica cambia nulla: un host svg non ha template HTML dopo quello. R-539-1 CHIUSA.
+- `modules/web/lexbor.py:149` e `modules/web/lexbor.py:159` — `primi_slot` scende dall'alto senza ricorsione e salta svg e math. Rischio: costo quadratico, oppure contare slot dentro il contenuto dei template. Esito: ok. Uno slot dentro un `<template>` normale, a sua volta dentro uno slot, non conta (sonda: dà «N»). Con 8000 slot con nome il tempo è 0,10 s.
+- `modules/web/lexbor.py:146` — l'insieme RISERVATI (annotation-xml, color-profile, font-face*, missing-glyph) esclude dagli host gli 8 nomi riservati dello standard. Esito: ok. La sonda `<font-face>` dà «L».
+- `modules/web/lexbor.py:134` e `modules/web/lexbor.py:222` — `opzioni(select, giro)` e `visita(o, True, giro)`: uno slot dentro un'opzione resta nello shadow. Esito: ok. Una sonda con slot con nome dentro un'opzione dà «AN», come il browser. Mutante mio (`giro` → `None` alla riga 134): 1 failed. Ho rimesso il file com'era (0 differenze dall'indice).
+- `tests/test_unit_web_lexbor.py:143` e `tests/test_unit_web_lexbor.py:146` — 4 casi nuovi, uno per R-539-1 e tre per le parti di R-539-2. Risultato: 96 passed su 3.13; 20 passed e 76 skipped su 3.11 senza selectolax.
+- Costo: resta lineare. 50k, 100k e 200k figli di un host: 0,21 s, 0,43 s, 0,79 s. 2000, 4000 e 8000 shadow annidati: 0,06 s, 0,10 s, 0,17 s.
 
-Elementi del diff esaminati:
-- `modules/web/lexbor.py:99` — Il commento in testa a `intero()` ora dice «spazi, un segno + o - facoltativo, poi le cifre ASCII». Rischio esaminato: che il commento descriva un comportamento diverso dal codice. Esito: ok. Il word-diff con `-w` mostra cambi solo dentro le righe `#`, l'AST del file è valido e nessuna istruzione è cambiata.
-- `modules/web/lexbor.py:105` — Il ciclo salta un solo segno, `+` oppure `-` (`testo[1:] if testo.startswith(("+", "-"))`). Rischio esaminato: che il commento prometta più segni o solo il «+». Esito: ok, «un segno + o - facoltativo» coincide con il codice.
-- `modules/web/lexbor.py:113` — Il ritorno scarta il negativo diverso da zero e i valori oltre il tetto `< 1 << 31`. Rischio esaminato: che il commento nuovo contraddica «interi non negativi». Esito: ok. Il segno meno viene letto ma il negativo non vale, e «-0» dà 0, come dice già il commento a riga 111.
-- Contesto: `tests/test_unit_web_lexbor.py:171` estrae `intero()` da `_FIGLIO` con ast, e un cambio che tocca solo i commenti non lo altera. Ho rifatto la prova: lexbor 80 passed (`python3 -m pytest tests/test_unit_web_lexbor.py`).
-- Merge precedente 1442468 (origin/main 0cf1d67): rispetto al primo genitore 162f5b1 cambia solo `.claude/agents/memoria_revisore.md`, `reports/coda_notte.md`, `reports/stato_progetto.md` e `reports/ultimo_report.md`. Nessuno di questi è nel perimetro di review (in `.claude/perimetro_review.txt` c'è solo lo script `commit_memoria_revisore.sh`, non il file della memoria). Esito: ok.
+**Nota COSMETICA (R-540-1)**: uno slot HTML dentro `<svg><foreignObject>` (o dentro `annotation-xml` di math) nello shadow, nel browser, prende comunque il nome. `primi_slot` lo salta, perché non entra mai in svg. Esempio: browser «LQ», Gas «L». Gas nasconde svg per scelta, quindi la differenza conta poco. Non blocca.
 
-Wall of Shame e guardrail: il diff non tocca la history, `_get_window`, i tetti né i provider. Non c'è alcuna simulazione di output dei tool.
+**Rischio escluso**: non ho fatto confronti con un browser vero (Chromium o Firefox); la fedeltà l'ho verificata sul testo delle specifiche e con le sonde sul figlio lexbor. Non ho rifatto né la web suite completa né la suite vecchia con GAS_WEB_LEXBOR=1: mi baso sulle tue cifre (537/1, 11 FAIL invariati).
 
-Rischio esplicitamente escluso: non ho rifatto la web suite completa (521 passed / 1 skipped con selectolax, prova dell'agente). Ho rifatto solo la suite lexbor (80 passed), perché il cambio riguarda solo un commento e non può alterare il comportamento a runtime. Non ho riletto il contenuto della memoria e di stato_progetto portati dal merge 1442468: sono fuori dal perimetro di review.
-
-Riserve: nessuna. V-2 COSMETICA della verifica esterna #285 e V-1 cosmetica del bot #285 sono chiuse.
-
-Memoria: ho aggiunto la riga `#538 (chat Mani) — 2026-10-28 — APPROVATO — …`, nessuna lezione nuova. È committata da sola con `scripts/commit_memoria_revisore.sh` (commit 3704890). Il diff staged di lexbor.py resta intatto nell'indice.
-
-File rilevanti:
-- /home/user/Gas/modules/web/lexbor.py
-- /home/user/Gas/.claude/agents/memoria_revisore.md
+Memoria: aggiunta la riga #540 (chat Mani), senza lezioni nuove. Committata con lo script in 484982b: solo /home/user/Gas/.claude/agents/memoria_revisore.md, l'indice staged è intatto. In /home/user/Gas/reports/stato_progetto.md vanno segnate R-539-1 e R-539-2 come CHIUSE e R-540-1 come COSMETICA aperta.
 
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py; toccati solo `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`.
-- Web suite (`tests/test_unit_web_*.py`, Python 3.13.16 con selectolax 1.0.2): prima 504 passed / 1 skipped (misurato su b95c3f3) → dopo 521 passed / 1 skipped (+17 casi di `test_intero_come_il_browser`), uguale prima e dopo il commento di 20c0708.
-- File lexbor su Python 3.11 senza selectolax (come la CI): 20 passed / 60 skipped.
-- Mutanti sul test finale: ritorno vecchio 7 failed, `letto` tolto 8, senza controllo del negativo 1, solo «+» come segno 2.
-- Nessun FAIL.
+- Web suite (`tests/test_unit_web_*.py`, Python 3.13.16 con selectolax 1.0.2): prima 521 passed / 1 skipped (main 297fc22) → dopo 537 passed / 1 skipped (+16: 6 casi nel test «come il browser», 10 in `test_shadow_dichiarativo_in_ordine`).
+- File lexbor su Python 3.11 senza selectolax (come la CI): 20 passed / 76 skipped.
+- Suite vecchia con `GAS_WEB_LEXBOR=1` (`tests/test_unit_web_leggi.py`): 11 failed / 430 passed / 1 skipped prima e dopo, gli stessi 11 (fuori scope: casi dove la lettura di sempre e lexbor differiscono, noti dalla fetta 19).
+- Mutanti: tutti presi tranne `CON_SHADOW = True` (cambia solo i tempi); elenco in `reports/ultimo_report.md`.
 
 ## §6 STATO CI
 
-CI NON VERIFICATA con `gh` (assente/non autenticato nel cloud). Check run lette dall'integrazione GitHub sulla PR #285:
-- Head 116aac3: run 40683892840 success (`unit-suite`, `handoff-check`); `verifica-bot` success (verdetto testuale APPROVATO CON RISERVE, V-1 cosmetica chiusa in questo giro).
-- Head 162f5b1: `unit-suite` success e `handoff-check` success (run 40682462721); `verifica-bot` success (run 40682482737, verdetto testuale APPROVATO CON RISERVE).
-- Head bbbfbbe: `unit-suite` success, `handoff-check` failure atteso (run 40682120695: l'handoff era ancora quello della #280).
+CI NON VERIFICATA con `gh` (assente/non autenticato nel cloud). Check run lette dall'integrazione GitHub sulla PR #288, head 16cb6a6, al momento della scrittura:
+- `handoff-check`: failure (run 40738191089) — atteso: su 16cb6a6 l'handoff era ancora quello della #285.
+- `unit-suite`: in corso (run 40738191089).
+- `verifica-bot` (smista/verifica/esito): skipped (run 40738230902), etichetta `verifica` non ancora messa.
 
 Mappatura commit→run:
-- 63e4137, ec86b45: nessuna run su questo SHA (pushati insieme a bbbfbbe).
-- bbbfbbe: run 40682120695.
-- 162f5b1: run 40682462721 (CI) e 40682482737 (bot).
-- 1442468, 3704890, 20c0708: nessuna run su questo SHA (pushati insieme a 116aac3, testati solo nel suo albero).
-- 116aac3: run 40683892840.
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (lo dice per costruzione: V-2 ve #285 su 116aac3).
+- d553ca2, 484982b: nessuna run su questo SHA (pushati insieme a 16cb6a6).
+- 16cb6a6: run 40738191089 (sopra).
+- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- R-540-1 COSMETICA (review #540): uno slot dentro `<svg><foreignObject>` nello shadow non reclama il nome; svg è nascosto per scelta.
 - R-ve280-1 BASSA: i test del figlio lexbor con selectolax non girano nei check required (CI su 3.11 senza selectolax). Chat Motore: `selectolax==1.0.2` in requirements-dev.
-- Dalle review e dalle verifiche di questa sessione: nessuna da correggere (R-536-1, V-1..V-4 ve e V-1 bot su 162f5b1, V-1 bot e ve su 116aac3 chiuse; V-2 e V-3 ve su 116aac3 senza fix, vedi §1).
-- Restano quelle delle fette precedenti (stato_progetto, blocchi «Mani — fetta 20/21»): shadow DOM dichiarativo (decisione dell'operatore); cosmetiche R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4.
+- Restano quelle delle fette precedenti (stato_progetto, blocchi «Mani — fetta 20/21»): cosmetiche R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4.
