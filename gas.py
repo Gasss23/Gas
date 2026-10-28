@@ -30,7 +30,7 @@ from brains.model_ids import (
     MODEL_GEMINI_LITE, MODEL_GEMINI_FLASH, MODEL_GROQ, MODEL_OPENROUTER, MODEL_OLLAMA,
     MODEL_CLAUDE_FORTE, GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
-from brains.claude_cli import ClaudeCliClient
+from brains.claude_cli import ClaudeCliClient, ErroreClaudeCli
 from brains.router import prefisso_forte  # R2: /forte (terminale, Telegram, voce)
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
@@ -325,6 +325,7 @@ OPENROUTER_FREE_MODEL = MODEL_OPENROUTER                        # tool-capable
 OLLAMA_MODEL = MODEL_OLLAMA                                      # tool-capable
 TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"                          # contabilità token per-chiamata
 CLAUDE_CLI_USO_FILENAME = ".gas_claude_cli_uso.json"              # uso del cervello forte, oggi
+PATH_TIMER_NOTTE = "/usr/bin:/bin:/usr/sbin:/sbin"  # PATH di launchd (giro di notte sul Mac)
 
 # Prezzi per milione di token (USD), approssimati — aggiornare se cambiano.
 # Fonte: pagine prezzi ufficiali (rilevate al 2025-06).
@@ -4880,8 +4881,11 @@ class GasKernel:
                     self._log_tokens(name, model, 0, 0,
                                      event="fallthrough", reason=_ft_level)
                     _sc = getattr(e, "status_code", None)
+                    # Punto 3 RIPARTENZA: l'errore del forte ha un testo fisso scritto da
+                    # brains/claude_cli.py (mai testo di Claude) → si mostra per intero.
                     _motivi.append(f"{name}: {_ft_level}"
                                    + (f" (HTTP {_sc})" if isinstance(_sc, int) else
+                                      f" ({str(e)[:300]})" if isinstance(e, ErroreClaudeCli) else
                                       f" ({type(e).__name__})"))
                     continue
             _dettaglio = "; ".join(_motivi) if _motivi else "nessun provider in cascata"
@@ -4952,6 +4956,13 @@ def doctor(root_dir: Optional[str] = None) -> int:
         binario = shutil.which(os.environ.get("GAS_CLAUDE_BIN") or "claude")
         check("Cervello forte", "comando claude", "OK" if binario else "WARN",
               "presente" if binario else "non trovato o non eseguibile: il forte non può rispondere")
+        # Notti del 27-28 ott: il timer (launchd) parte col PATH ridotto e non vede un
+        # `claude` che il terminale trova (es. ~/.local/bin).
+        if binario and not shutil.which(os.environ.get("GAS_CLAUDE_BIN") or "claude",
+                                        path=PATH_TIMER_NOTTE):
+            check("Cervello forte", "comando claude (notte)", "WARN",
+                  f"trovato solo nel PATH del terminale: il giro di notte non lo vede; "
+                  f"metti GAS_CLAUDE_BIN={binario} nel .env")
         usato = _leggi_uso_claude_cli(root)
         tetto = _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
         if usato is None:

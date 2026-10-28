@@ -166,6 +166,12 @@ def _trascrizione(messages: List[Dict[str, Any]], codice: str) -> str:
     return "\n\n".join(parti)
 
 
+class ErroreClaudeCli(RuntimeError):
+    """Errore del cervello forte con un messaggio SCRITTO QUI (testo fisso, mai testo di
+    Claude o della conversazione): run_turn lo può mostrare per intero nel motivo del
+    «Pipeline esausta», così il report della notte dice il perché e non solo il tipo."""
+
+
 _MSG_LOGIN = ("claude-cli: login dell'abbonamento scaduto, mancante o non valido (sul "
               "computer di Gas: `claude`, poi /login; nessuna ANTHROPIC_API_KEY arriva a claude)")
 
@@ -314,9 +320,10 @@ class ClaudeCliClient:
                 proc = self._runner(self.comando(model, file_sistema), stdin,
                                     vuota, _ambiente_pulito(), self.timeout)
             except FileNotFoundError as e:
-                raise RuntimeError("claude-cli: comando `claude` non trovato") from e
+                raise ErroreClaudeCli("claude-cli: comando `claude` non trovato (metti nel .env "
+                                      "GAS_CLAUDE_BIN=<percorso dato da `which claude`>)") from e
             except subprocess.TimeoutExpired as e:
-                raise _con_costo(RuntimeError(f"claude-cli: nessuna risposta entro {self.timeout}s"),
+                raise _con_costo(ErroreClaudeCli(f"claude-cli: nessuna risposta entro {self.timeout}s"),
                                  stima_minima) from e
         try:
             dati = json.loads(proc.stdout or "")
@@ -326,12 +333,12 @@ class ClaudeCliClient:
             # V-2 bot #269: anche il login scaduto in testo semplice (dopo il limite).
             limite = _prefisso_limite(proc.stdout, proc.stderr)
             if not limite and _login_scaduto(proc.stdout, proc.stderr):
-                raise _con_costo(RuntimeError(_MSG_LOGIN), stima_minima)
-            raise _con_costo(RuntimeError(limite
+                raise _con_costo(ErroreClaudeCli(_MSG_LOGIN), stima_minima)
+            raise _con_costo(ErroreClaudeCli(limite
                              + f"claude-cli: uscita non JSON (codice {proc.returncode})"),
                              stima_minima)
         if not isinstance(dati, dict):
-            raise _con_costo(RuntimeError("claude-cli: uscita JSON inattesa"), stima_minima)
+            raise _con_costo(ErroreClaudeCli("claude-cli: uscita JSON inattesa"), stima_minima)
         # R-497-1: QUALSIASI errore dopo una risposta JSON porta il costo di quella
         # risposta (chiamate o argomenti non validi su una risposta pagata compresi).
         try:
@@ -341,7 +348,7 @@ class ClaudeCliClient:
                 err.costo_equivalente_usd = _costo_dati(dati, model)
             raise
         except Exception as e:
-            raise _con_costo(RuntimeError("claude-cli: risposta non valida"),
+            raise _con_costo(ErroreClaudeCli("claude-cli: risposta non valida"),
                              _costo_dati(dati, model)) from e
 
     def _risposta(self, dati: Dict[str, Any], proc: subprocess.CompletedProcess,
@@ -354,18 +361,18 @@ class ClaudeCliClient:
             # R-511-1: il limite (QUOTA) si controlla prima del login
             if (not _prefisso_limite(dati.get("result"), proc.stderr)
                     and _login_scaduto(dati.get("result"), proc.stderr)):
-                raise RuntimeError(_MSG_LOGIN)
-            raise RuntimeError(_prefisso_limite(dati.get("result"), proc.stderr)
+                raise ErroreClaudeCli(_MSG_LOGIN)
+            raise ErroreClaudeCli(_prefisso_limite(dati.get("result"), proc.stderr)
                                + f"claude-cli: errore ({tipo or 'errore'})")
         out = dati.get("structured_output")
         if not isinstance(out, dict) or not isinstance(out.get("chiamate"), list):
-            raise RuntimeError("claude-cli: risposta senza il formato richiesto")
+            raise ErroreClaudeCli("claude-cli: risposta senza il formato richiesto")
         chiamate = []
         for c in out["chiamate"]:
             if not isinstance(c, dict) or not isinstance(c.get("nome"), str):
-                raise RuntimeError("claude-cli: chiamata a uno strumento non valida")
+                raise ErroreClaudeCli("claude-cli: chiamata a uno strumento non valida")
             if not isinstance(c.get("argomenti"), dict):  # V-4 bot #256: niente {} in silenzio
-                raise RuntimeError("claude-cli: argomenti di una chiamata non validi")
+                raise ErroreClaudeCli("claude-cli: argomenti di una chiamata non validi")
             chiamate.append(SimpleNamespace(
                 id=f"cli_{uuid.uuid4().hex[:24]}", type="function",
                 function=SimpleNamespace(name=c["nome"],

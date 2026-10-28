@@ -11116,6 +11116,29 @@ try:
             check("T99l R-496-1: errore della CLI dopo il consumo → uso registrato, nessun ripiego",
                   _k99._uso_claude_cli() == 0.5 and not [e for e in _ev99l if e["type"] == "final"],
                   str(_ev99l)[:200])
+            # Punto 3 RIPARTENZA (notti 27-28 ott): il motivo VERO del forte arriva al report
+            check("T99v errore del forte: il motivo (testo fisso) è nel «Pipeline esausta»",
+                  any(e["type"] == "error" and "claude-cli: errore (error)" in e["content"]
+                      for e in _ev99l), str(_ev99l)[:300])
+            def _cli_manca99(timeout=None):
+                def _run(cmd, stdin, cwd, env, t):
+                    raise FileNotFoundError(cmd[0])
+                return _CCC99(timeout=timeout, binario="claude", runner=_run)
+            gas.ClaudeCliClient = _cli_manca99
+            _ev99q = list(_k99.run_turn("ciao", cervello="forte"))
+            check("T99w `claude` non trovato: il motivo e il rimedio GAS_CLAUDE_BIN nel messaggio",
+                  any(e["type"] == "error" and "comando `claude` non trovato" in e["content"]
+                      and "GAS_CLAUDE_BIN" in e["content"] for e in _ev99q), str(_ev99q)[:300])
+            class _CliEstraneo99:
+                def __init__(self, timeout=None):
+                    def _create(**k):
+                        raise RuntimeError("SEGRETO99 dalla conversazione")
+                    self.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+            gas.ClaudeCliClient = _CliEstraneo99
+            _ev99s = list(_k99.run_turn("ciao", cervello="forte"))
+            check("T99x un errore NON scritto da claude_cli mostra solo il tipo, mai il testo",
+                  any(e["type"] == "error" and "(RuntimeError)" in e["content"] for e in _ev99s)
+                  and "SEGRETO99" not in str(_ev99s), str(_ev99s)[:300])
             # V-4 ve #258: un costo infinito o negativo non rende il conto illeggibile
             _uso99.unlink()
             _k99._registra_uso_claude_cli(float("inf"))
@@ -11192,6 +11215,31 @@ try:
                     os.environ["GAS_CLAUDE_BIN"] = _sbin99
             check("T99p V-1 bot #262: GAS_CLAUDE_BIN inesistente → doctor WARN, non «presente»",
                   any("comando claude" in l and "WARN" in l for l in _d99e), str(_d99e)[:300])
+            # Punto 3 RIPARTENZA: `claude` solo nel PATH del terminale → il timer non lo vede
+            import tempfile as _tf99, stat as _st99
+            _dir99 = _tf99.mkdtemp(prefix="gas_t99_bin_")
+            _fin99 = Path(_dir99) / "claude"
+            _fin99.write_text("#!/bin/sh\n", encoding="utf-8")
+            _fin99.chmod(_fin99.stat().st_mode | _st99.S_IXUSR)
+            _spath99 = os.environ.get("PATH", "")
+            os.environ.pop("GAS_CLAUDE_BIN", None)
+            os.environ["PATH"] = _dir99 + os.pathsep + _spath99
+            try:
+                _d99t = _doc99()
+                os.environ["GAS_CLAUDE_BIN"] = str(_fin99)
+                _d99u = _doc99()
+            finally:
+                os.environ["PATH"] = _spath99
+                if _sbin99 is None:
+                    os.environ.pop("GAS_CLAUDE_BIN", None)
+                else:
+                    os.environ["GAS_CLAUDE_BIN"] = _sbin99
+            check("T99y doctor: `claude` solo nel PATH del terminale → WARN notte col rimedio",
+                  any("(notte)" in l and "WARN" in l and f"GAS_CLAUDE_BIN={_fin99}" in l for l in _d99t),
+                  str(_d99t)[:400])
+            check("T99z doctor: GAS_CLAUDE_BIN col percorso intero → niente avviso notte",
+                  not any("(notte)" in l for l in _d99u)
+                  and any("comando claude" in l and "OK" in l for l in _d99u), str(_d99u)[:400])
             _uso99.write_text(json.dumps({"giorno": "2999-01-01", "usd": 0}), encoding="utf-8")
             _d99c = _doc99()
             check("T99n doctor: forte spento → OK, acceso → conto di oggi, data futura → WARN fermo",
