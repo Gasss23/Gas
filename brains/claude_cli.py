@@ -314,7 +314,11 @@ class ClaudeCliClient:
                 proc = self._runner(self.comando(model, file_sistema), stdin,
                                     vuota, _ambiente_pulito(), self.timeout)
             except FileNotFoundError as e:
-                raise RuntimeError("claude-cli: comando `claude` non trovato") from e
+                raise RuntimeError("claude-cli: comando `claude` non trovato (metti il percorso "
+                                   "completo in GAS_CLAUDE_BIN nel .env)") from e
+            except PermissionError as e:
+                raise RuntimeError("claude-cli: comando `claude` non eseguibile "
+                                   "(controlla GAS_CLAUDE_BIN nel .env)") from e
             except subprocess.TimeoutExpired as e:
                 raise _con_costo(RuntimeError(f"claude-cli: nessuna risposta entro {self.timeout}s"),
                                  stima_minima) from e

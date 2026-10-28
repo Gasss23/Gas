@@ -1,37 +1,20 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Mani fetta 22: riserve «DA SISTEMARE» di #280, `intero()` del figlio lexbor legge «0» e «-0» come 0; secondo e terzo giro dopo bot e verifica esterna (chat Mani)
+**Sessione:** 2026-10-28 — Il report della notte dice perché il forte è fallito; doctor avvisa se `claude` è solo nel PATH del terminale (chat Motore). Secondo giro: merge di main (PR #285) dopo la V-1 della verifica esterna.
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #285 (https://github.com/Gasss23/Gas/pull/285). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5049895154","url":"https://github.com/Gasss23/Gas/pull/285"}`); `gh` nel cloud non è autenticato. Bot e verifica esterna su 162f5b1 e su 116aac3: APPROVATO CON RISERVE, niente ALTA/MEDIA; le riserve da correggere sono chiuse (l'ultima, V-1 su 116aac3, su richiesta dell'operatore «sistema V-1»). Sulla head di questo handoff il bot rigira da solo. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore. Il merge non accende niente.
-2. Accensione della lettura con lexbor: la chat Motore mette `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (chiude anche R-ve280-1); poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
-3. Shadow DOM dichiarativo (figli «light» di un host con `<template shadowrootmode>`): decisione dell'operatore.
-4. Poi, una alla volta: cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4); R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
+1. Merge della PR #287 (https://github.com/Gasss23/Gas/pull/287): review #538 APPROVATO CON RISERVE, bot e verifica esterna APPROVATO CON RISERVE; serve il «sì» dell'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Controllo della PR #280 (fetta 21)**: `FATTA` — mergiata (b95c3f3); branch ripartito da main.
-- **Fetta 22 — riserve «DA SISTEMARE» di #280**:
-  - R-bot280-1 (`intero("0")` → None): `FATTA` — «0», «000», «-0» danno 0; senza cifre o con un negativo non zero None. Esito pratico invariato.
-  - Test diretto di `intero()` (preso dal sorgente del figlio con `ast`, gira senza selectolax): `FATTA`.
-  - R-536-1 COSMETICA (review #536: «-0» → None): `FATTA`, review #537 APPROVATO.
-  - R-ve280-2, R-ve280-3, R-bot280-2 (numeri e riga ripetuta dell'handoff di #280): `FATTA` — handoff riscritto, solo numeri misurati in sessione.
-  - R-ve280-1 (test del figlio non girano nei check required): `DEFERITA — serve la chat Motore (selectolax in requirements-dev)`.
-- **Secondo giro — bot e verifica esterna su 162f5b1, APPROVATO CON RISERVE** (commento ve: https://github.com/Gasss23/Gas/pull/285#issuecomment-6468276114):
-  - V-1 ve MEDIA (PR in conflitto con main dopo #283 e #284): `FATTA` — merge di 0cf1d67 in 1442468; tenuti handoff/ultimo_report/diff_sessione della #285, stato_progetto unito a mano, memoria con le righe di tutti e due i lati; nessun file del perimetro dal lato di main, niente review.
-  - V-2 ve / V-1 bot COSMETICA (commento di `intero()` senza il segno): `FATTA` — 20c0708, review #538 APPROVATO.
-  - V-3 ve COSMETICA (numeri dei mutanti del test intermedio): `FATTA` — rifatti sul test finale (ritorno vecchio 7 failed, `letto` tolto 8, negativo 1, solo «+» 2).
-  - V-4 ve COSMETICA (§6 sulla CI di un commit vecchio): `FATTA` — §6 riscritto qui sotto.
-- **Terzo giro — bot e verifica esterna su 116aac3, APPROVATO CON RISERVE** (commento ve: https://github.com/Gasss23/Gas/pull/285#issuecomment-6468447612):
-  - V-1 bot / V-1 ve COSMETICA (riga «Ultimo aggiornamento» di stato_progetto senza #538 e senza il secondo giro): `FATTA` — riga completata, su richiesta dell'operatore («sistema V-1»); solo reports/, niente review.
-  - V-2 ve (§6 e §0 dell'handoff fermi alla scrittura): `SALTATA — inevitabile per costruzione, nessun fix richiesto dalla verifica`.
-  - V-3 ve (numerazione parallela delle review #536/#537 tra le chat): `SALTATA — già dichiarata, righe marcate «(chat X)»`.
-- **Punti b–e della ripartenza** (accensione, shadow DOM, cosmetiche, decisioni vecchie): `DEFERITA — uno alla volta, dopo questa fetta`.
+- **Fetta 1 — motivo vero dell'errore del forte nel report della notte**: `FATTA` — `_motivo_forte` in `gas.py`, messaggi di `brains/claude_cli.py` con il consiglio GAS_CLAUDE_BIN e il caso «non eseguibile».
+- **Fetta 2 — doctor avvisa se `claude` è solo nel PATH del terminale**: `FATTA` — `_claude_solo_nel_terminale`, WARN con `GAS_CLAUDE_BIN=<percorso>`.
+- **Fetta 3 — conflitto con main (V-1 MEDIA verifica esterna)**: `FATTA` — merge di origin/main 297fc22 (PR #285), conflitti solo nei report e nella memoria; review #539 APPROVATO.
 
 ---
 
@@ -39,137 +22,154 @@
 
 ```
  .claude/agents/memoria_revisore.md |   3 +++
- modules/web/lexbor.py              |  16 +++++++++++-----
- reports/diff_sessione.md           |  15 +++++++++------
- reports/handoff.md                 | n/d
- reports/ripartenza_mani.md         |   6 +++---
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  39 ++++++++++++++++++++++++++++++++++-----
- tests/test_unit_web_lexbor.py      |  16 ++++++++++++++++
+ brains/claude_cli.py               |   6 +++++-
+ gas.py                             |  46 +++++++++++++++++++++++++++++++++++++++++++---
+ reports/diff_sessione.md           |  17 +++++++++--------
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  46 ++++++++++++----------------------------------
+ tests/test_unit_claude_cli.py      |   5 +++++
+ tests/test_unit_kernel.py          |  50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/handoff.md                 | n/d (commit finale)
 ```
 
-NB: base = merge-base con origin/main = 0cf1d67. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d», e la riga di totale è tolta. Conteggi presi con i report già in stage.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-116aac3 docs(fine-task): PR #285 secondo giro — merge di main, V-1..V-4 ve e V-1 bot chiuse, review #538
-20c0708 docs(web): commento di intero() cita il segno + o - facoltativo (V-2 ve #285, V-1 bot #285)
-3704890 chore(revisore): memoria review #538 — APPROVATO
-1442468 Merge origin/main (0cf1d67, PR #283 e #284) in claude/peaceful-lovelace-0w2b7q (PR #285)
-162f5b1 docs(fine-task): Mani fetta 22 — handoff, report, stato e ripartenza (PR #285)
-bbbfbbe fix(web): intero() del figlio lexbor legge «0» e «-0» come 0 (R-bot280-1, R-536-1, fetta 22 Mani)
-ec86b45 chore(revisore): memoria review #537 — APPROVATO
-63e4137 chore(revisore): memoria review #536 — APPROVATO CON RISERVE
+cfb8a3c Merge origin/main (PR #285) in feat/errore-forte-notte (PR #287) — review #539 APPROVATO
+f4878a3 docs(fine-task): PR #287 motivo vero dell'errore del forte e avviso del doctor, review #538
+7392f49 fix(forte): il report della notte dice perché il forte è fallito; doctor avvisa se `claude` è solo nel PATH del terminale
+071b292 chore(revisore): memoria review #538 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore bbbfbbe: review #536 sul primo diff staged, #537 dopo la chiusura di R-536-1 (diff committato in bbbfbbe). Merge 1442468: nessun file del perimetro dal lato di main (solo reports/ e memoria), niente review. Commit motore 20c0708 (solo commento): review #538. Il terzo giro (commit di fine-task dopo 116aac3) tocca solo reports/: niente review. Verdetti integrali:
-
-### Review #536 (chat Mani) — primo diff staged
+### Review #538 (chat Motore) — sul diff di 7392f49
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #536 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q: modules/web/lexbor.py (+4/-2) e tests/test_unit_web_lexbor.py (+15). Prima della review ho letto CLAUDE.md, la parte di reports/stato_progetto.md su lexbor e R-bot280 e la coda della memoria del revisore.
+Review #538 (chat Motore), diff staged sul branch feat/errore-forte-notte (4 file, +103/-4). Ho letto CLAUDE.md (sez. 5, 8 e 9), reports/stato_progetto.md (la parte che serve: la voce del 28 ottobre su `GAS_CLAUDE_BIN` e sul PATH di launchd) e la memoria del revisore.
 
-**Elementi del diff che ho esaminato**
-- `modules/web/lexbor.py:101`: il nuovo flag `letto` diventa True alla prima cifra ASCII letta. Rischio esaminato: che una stringa senza cifre (`""`, `None`, `"+"`, `"x0"`, `"-1"`) finisca per valere 0. Esito: ok, tutte danno None e lo verifica il test parametrizzato.
-- `modules/web/lexbor.py:109`: il ritorno ora è `int(cifre or "0")` solo se `letto`, con il limite `< 1 << 31` invariato. Rischi esaminati: una regressione sul confine 2147483647/2147483648, e il costo con input lunghissimi (5000 zeri seguiti da "1" danno 1; il taglio `len(cifre) > 10` resta). Esito: ok. Il valore `int(...)` viene calcolato due volte, ma su al massimo 11 cifre: costo irrilevante.
-- `modules/web/lexbor.py:114`: è l'unico punto che chiama la funzione (`(intero(size) or 1) > 1`). Rischio esaminato: un cambio di comportamento sulla scelta tra lista e tendina. Esito: ok, il nuovo 0 si comporta come il vecchio None, quindi l'effetto pratico è identico. Il fix è di sola fedeltà al browser.
-- `tests/test_unit_web_lexbor.py:171`: il test prende `intero` dal sorgente `_FIGLIO` con `ast`, compila solo quella funzione e la esegue. Rischi esaminati: che il test dipenda da selectolax e che esegua il resto del codice del figlio. Esito: ok. Non porta il marcatore `con_lexbor`, esegue solo il nodo della funzione e non importa nulla dal figlio.
+**Cosa ho esaminato**
+- `brains/claude_cli.py:316` — FileNotFoundError ora suggerisce GAS_CLAUDE_BIN, e c'è un nuovo ramo PermissionError che diventa RuntimeError «non eseguibile». Rischio cercato: messaggi con contenuto variabile, o eccezioni che scappano senza essere intercettate. Esito: **ok**. Il testo è fisso, la causa resta agganciata con `from e`, e il rung resta nella gestione delle eccezioni dei provider (§9).
+- `gas.py:426` — `_motivo_forte`. Rischio cercato: testo di Claude o della conversazione che finisce nella riga «Pipeline esausta» e nel report della notte. Ho controllato uno per uno tutti i punti di `brains/claude_cli.py` che sollevano RuntimeError (righe 317-372).
+  - Sono tutti testi fissi oppure contengono solo valori controllati: il timeout, il codice di uscita, un `tipo` ripulito con `[^a-z_]` e tagliato a 40 caratteri, il prefisso «429 » di `_prefisso_limite`.
+  - Il filtro accetta solo RuntimeError, solo la prima riga e solo il prefisso esatto (`re.match` con `^`).
+  - Esito: **ok**, nessuna fuga di dati. Il test T99u copre il nome nella seconda riga, il testo senza prefisso e il ValueError.
+- `gas.py:4912` — `_mf` viene calcolato solo per `name == "claude-cli"`, e HTTP status_code ha ancora la precedenza. Esito: **ok**, gli altri rung non cambiano.
+- `gas.py:443` — `_claude_solo_nel_terminale`, insieme al chiamante del doctor in `gas.py:4983`. Rischio cercato: un falso OK.
+  - Il venv conta come cartella vista dal timer, ed è giusto: `scripts/notte/com.gas.notte.plist:15` attiva `.venv`/`venv` prima di `python3 gas.py notte`, quindi la sua cartella bin è nel PATH.
+  - `/usr/local/bin` e `/opt/homebrew/bin` danno WARN, coerente col PATH predefinito di launchd.
+  - Un GAS_CLAUDE_BIN assoluto arriva qui solo se `shutil.which` lo ha già trovato ed è eseguibile (altrimenti c'è prima il WARN «non trovato»).
+  - Esito: **riserva** (R-538-1).
+- `tests/test_unit_kernel.py:11195` — T99s–T99v. Il PATH e GAS_CLAUDE_BIN vengono ripristinati in un finally, e `gas.ClaudeCliClient` viene rimesso com'era da `_orig99` (`tests/test_unit_kernel.py:11260`). Il WARN finto compare anche nell'output di T99n (nel container `claude` sta in `/opt/node22/bin`), ma nessun test esistente controlla «presente» su quella riga. Esito: **ok**.
 
-**Prove rifatte da me**
-- Lexbor: 75 passed (Python 3.13); il solo test nuovo: 12 passed.
-- Mutante «tolgo `letto = True`»: 6 failed, poi file ripristinato e controllato (nessuna differenza rimasta, indice intatto).
-- Sonde a mano: `"\t0 "` → 0; `"\x0b5"` → None, corretto perché il tab verticale non è uno spazio per l'HTML; `"00000000002147483647"` → 2147483647; la cifra araba `"٣"` → None, corretto.
+**Esecuzione diretta**: kernel 1057 PASS, 0 FAIL. `tests/test_unit_claude_cli.py` 29 passed. Intera cartella tests/ 2265 passed, 61 skipped, nessuna regressione. Nessuno slicing della history, nessuna simulazione dei tool, cap a 10 iterazioni e `_get_window` non toccati, il doctor resta senza chiamate LLM.
 
-**Riserva**
-- R-536-1 COSMETICA: `intero("-0")` restituisce None. Il browser lo legge come 0: lo standard HTML ammette "-0" perché vale 0, che non è negativo, e Chromium accetta il segno meno se il valore è 0. È lo stesso tipo di scarto di R-bot280-1, ma l'effetto pratico è nullo perché il chiamante tratta 0 come 1. Va tracciata in stato_progetto.md oppure chiusa con una riga (`"-0"` → 0 nel test).
+**Finding**
+- **R-538-1 (BASSA)**: falso OK del doctor. Se GAS_CLAUDE_BIN assoluto è esportato solo nella shell (es. `~/.zshrc`) e non nel `.env`, il doctor lanciato dal terminale dice «presente», ma il timer di launchd non vede quella variabile e ricade su `claude` cercato nel suo PATH ridotto. Oggi sul Mac la variabile sta nel `.env`, quindi il caso non è attivo. Correzione possibile: dire nel messaggio da dove arriva il valore, o controllare che sia nel `.env`. Da tracciare in stato_progetto.
+- **R-538-2 (COSMETICA)**: `_MSG_LOGIN` supera i 160 caratteri, quindi nel motivo il consiglio «/login …» arriva troncato. Il senso resta, ma conviene accorciarlo o alzare il tetto.
 
-**Cosa non ho verificato**
-- Il comportamento in CI senza selectolax: qui selectolax c'è (75 passed). Che il test nuovo non dipenda da selectolax l'ho dedotto leggendo il codice (nessun marcatore `con_lexbor`, solo `ast` ed `exec`), non da un'esecuzione senza la libreria.
-- La suite web completa: ho girato solo il file lexbor. Il diff tocca una sola funzione del figlio, che ha un solo chiamante.
+**Cosa NON ho verificato**: il comportamento reale sotto launchd sul Mac (PATH ridotto, `.env` caricato dal giro notturno), perché non si riproduce nel container Linux. La correttezza del motivo nel report del mattino l'ho verificata solo con T99v (run_turn con runner finto), non con un giro `gas notte` completo. Non ho fatto test mutanti formali: ho controllato solo che T99u catturerebbe la rimozione del filtro sul prefisso (il caso «Mario Rossi»).
 
-**Memoria**: aggiunta la riga #536 a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola con lo script (commit 63e4137). I due file staged non sono stati toccati. Nessuna lezione nuova.
+**Memoria**: aggiunta la riga #538 più una lezione (un controllo del doctor «per il timer» eseguito dal terminale eredita le variabili della shell). È già committata da sola con `commit_memoria_revisore.sh` (commit 071b292), lo staging del diff non è stato toccato.
 
-### Review #537 (chat Mani) — diff committato in bbbfbbe
+### Review #539 (chat Motore) — sul merge di origin/main (PR #285) in cfb8a3c
+
+Il verdetto originale (sotto, nel blocco di codice, testo integrale e invariato) citava come `path:riga` soprattutto file entrati da main, che non sono nel diff di sessione (base 297fc22 dopo il merge): il Gate B lo ha rifiutato (1 citazione valida su 2). Come da regola il testo non è stato ritoccato: il revisore lo ha riemesso con lo stesso esito e lo stesso finding, citando i file del diff. Fa fede il verdetto riemesso; l'originale resta qui per tracciabilità.
+
+Verdetto originale (sostituito dalla riemissione):
+
+```text
+## VERDETTO: APPROVATO
+
+Review #539 (chat Motore). Ho controllato il merge in corso di origin/main 297fc22 (PR #285) dentro feat/errore-forte-notte (HEAD f4878a3). Il diff è in stage, MERGE_HEAD = 297fc22.
+
+Elementi esaminati:
+- `modules/web/lexbor.py:98` — `intero()` portato da main (segno + o -, «0»/«-0» → 0, tetto `< 1 << 31`). Rischio: che il merge abbia cambiato qualcosa. Esito ok: `git diff --cached origin/main -- modules/web/lexbor.py` è vuoto, quindi il file è identico a main. Il codice era già stato revisionato in #536/#537/#538 della chat Mani.
+- `tests/test_unit_web_lexbor.py:171` — i test di `intero()` arrivati da main. Rischio: una divergenza dal ramo di origine. Esito ok: identico a origin/main. Vale lo stesso per reports/ripartenza_mani.md.
+- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» unita a mano. Rischio: perdere una delle due catene «prima». Esito ok: in testa c'è la voce Motore #287, poi la voce Mani fetta 22, poi la catena del ramo completa (Motore notte fallita, Notte #284, Mani fetta 21…). La lunghezza (7747 caratteri) torna con HEAD (7448) più la voce Mani. Il paragrafo «Mani — fetta 22» (riga 634) è presente. Il punto 3 della coda (fetta PR #287 fatta) resta.
+- `.claude/agents/memoria_revisore.md:926` — le righe #536/#537/#538 della chat Mani da main, poi #538 della chat Motore e la sua lezione dal ramo. Rischio: righe perse o duplicate. Esito ok: rispetto a main mancano solo le 2 righe del ramo, rispetto a HEAD solo le 3 righe Mani.
+- `gas.py:426` (contesto, `_motivo_forte`). Rischio: che il merge abbia toccato il codice della PR #287. Esito ok: gas.py, brains/claude_cli.py, tests/test_unit_claude_cli.py e tests/test_unit_kernel.py sono identici al ramo (`git diff --cached HEAD` vuoto su ciascuno).
+
+Controlli d'insieme:
+- I file di `git diff --cached origin/main` sono esattamente quelli di `origin/main...HEAD`: i 9 file della PR #287, niente in più.
+- Nessun marcatore di conflitto e `git diff --cached --check` pulito.
+- I log di sessione (handoff, ultimo_report, diff_sessione) sono la versione del ramo, come dichiarato.
+- Nessun nuovo slicing della history né simulazione di tool: il codice del motore non cambia rispetto a #538.
+
+Finding:
+- R-539-1 COSMETICA: il numero #538 compare due volte nel contatore (chat Mani e chat Motore), distinte solo dal suffisso. Il gate non si rompe, ma il contatore è meno leggibile. Non chiede interventi: questa review prosegue la numerazione con #539.
+
+Rischio escluso: non ho rilanciato io i test (kernel 1057 PASS, pytest lexbor e claude_cli). Mi fido della tua esecuzione, perché il codice è identico byte per byte a due commit già testati e revisionati (#538 Motore, #536-#538 Mani). Non ho valutato l'interazione a runtime tra lexbor e le modifiche al forte: sono moduli separati e nessun file è in comune.
+
+Memoria: ho scritto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga `#539 (chat Motore) — 2026-10-28 — APPROVATO — …`, con R-539-1 e «nessuna lezione nuova». Come mi hai chiesto non ho lanciato commit_memoria_revisore.sh: il file è modificato ma non in stage, quindi fai `git add .claude/agents/memoria_revisore.md` prima del commit di merge.
+```
+
+Verdetto riemesso:
 
 ## VERDETTO: APPROVATO
 
-Review #537 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q: `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`. Chiude R-536-1: `intero()` ora accetta un segno + o - in testa, e «-0» vale 0 come nel browser.
-
-**Elementi del diff esaminati**
-- `modules/web/lexbor.py:104`: salta un solo segno + o - in testa e poi legge le cifre. Rischio esaminato: segni doppi o misti, segno seguito da spazio, segno da solo. Esito: ok. «--0», «+-1», «-+0», «- 1» e «-» danno tutti None, perché dopo il segno non c'è una cifra e `letto` resta False.
-- `modules/web/lexbor.py:112`: restituisce `numero` solo se c'è almeno una cifra, se resta sotto `1 << 31` e se non è un negativo diverso da zero. Rischi esaminati: un negativo che passa, il confine dei 2^31, input lunghissimi. Esito: ok. «-2147483648» e «-» seguito da 5000 nove danno None; «-» seguito da 5000 zeri e «\n-0x» danno 0. Le cifre restano al massimo 11, quindi `int()` è sempre economico. Il tetto `< 1 << 31` non è cambiato.
-- `tests/test_unit_web_lexbor.py:174`: 5 casi nuovi nel test parametrizzato già revisionato in #536, che legge `intero` dal sorgente `_FIGLIO` con `ast` (gira anche senza selectolax). Rischio esaminato: test che non distinguono la versione vecchia dalla nuova. Esito: ok, vedi i mutanti qui sotto.
-- Contesto: `modules/web/lexbor.py:119` è l'unico chiamante, `(intero(size) or 1) > 1`. Il caso «-0» → 0 lo porta comunque a 1, quindi nella pratica non cambia nulla: è solo fedeltà al browser.
-
-**Prove rifatte da me**
-- File lexbor: 80 passed (Python 3.13, con selectolax).
-- Mutante senza `not (meno and numero)`: 1 failed. Mutante con solo «+» tra i segni: 2 failed.
-- Dopo i mutanti ho ripristinato `modules/web/lexbor.py`: nessuna differenza rimasta e indice intatto.
-
-**Cosa non ho verificato**
-- Non ho girato l'intera suite web (521/1) né Python 3.11 senza selectolax (20 passed / 60 skipped): riporto i tuoi numeri. Io ho girato solo il file lexbor su 3.13. Che il test nuovo non dipenda da selectolax lo deduco dal codice (non ha il marcatore `con_lexbor`, usa solo `ast` ed `exec`).
-- Nota a margine, non è una riserva: il commento a `modules/web/lexbor.py:99` descrive ancora «spazi, poi le cifre» e non cita il segno. Il commento a `modules/web/lexbor.py:111` lo copre.
-
-**Memoria**: aggiunta la riga #537 a `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata da sola (commit ec86b45); i file staged non sono stati toccati. R-536-1 è chiusa. Nessuna lezione nuova.
-
-### Review #538 (chat Mani) — diff committato in 20c0708
-
-## VERDETTO: APPROVATO
-
-Review #538 (chat Mani). Riguarda il diff staged su claude/peaceful-lovelace-0w2b7q (PR #285): un solo file toccato, modules/web/lexbor.py, con 3 righe aggiunte e 2 tolte.
-
-Letture fatte prima della review: CLAUDE.md (sez. 5), reports/stato_progetto.md (solo le voci lexbor e #285, con Grep), la coda di .claude/agents/memoria_revisore.md.
+Review #539 (chat Motore): merge di origin/main 297fc22 (PR #285) dentro feat/errore-forte-notte (PR #287). Base della sessione: 297fc22.
 
 Elementi del diff esaminati:
-- `modules/web/lexbor.py:99` — Il commento in testa a `intero()` ora dice «spazi, un segno + o - facoltativo, poi le cifre ASCII». Rischio esaminato: che il commento descriva un comportamento diverso dal codice. Esito: ok. Il word-diff con `-w` mostra cambi solo dentro le righe `#`, l'AST del file è valido e nessuna istruzione è cambiata.
-- `modules/web/lexbor.py:105` — Il ciclo salta un solo segno, `+` oppure `-` (`testo[1:] if testo.startswith(("+", "-"))`). Rischio esaminato: che il commento prometta più segni o solo il «+». Esito: ok, «un segno + o - facoltativo» coincide con il codice.
-- `modules/web/lexbor.py:113` — Il ritorno scarta il negativo diverso da zero e i valori oltre il tetto `< 1 << 31`. Rischio esaminato: che il commento nuovo contraddica «interi non negativi». Esito: ok. Il segno meno viene letto ma il negativo non vale, e «-0» dà 0, come dice già il commento a riga 111.
-- Contesto: `tests/test_unit_web_lexbor.py:171` estrae `intero()` da `_FIGLIO` con ast, e un cambio che tocca solo i commenti non lo altera. Ho rifatto la prova: lexbor 80 passed (`python3 -m pytest tests/test_unit_web_lexbor.py`).
-- Merge precedente 1442468 (origin/main 0cf1d67): rispetto al primo genitore 162f5b1 cambia solo `.claude/agents/memoria_revisore.md`, `reports/coda_notte.md`, `reports/stato_progetto.md` e `reports/ultimo_report.md`. Nessuno di questi è nel perimetro di review (in `.claude/perimetro_review.txt` c'è solo lo script `commit_memoria_revisore.sh`, non il file della memoria). Esito: ok.
+- `gas.py:426` — `_motivo_forte` legge il motivo vero solo da RuntimeError con prefisso fisso «claude-cli: », prende la prima riga e la tronca. Rischio: che il merge abbia alterato il codice già revisionato in #538 o che il testo esponga dati non fidati. Esito: ok, il codice è identico a f4878a3 (dove `git diff --cached HEAD -- gas.py` era vuoto) e i testi sorgente sono fissi.
+- `gas.py:4912` — `_motivo_forte(e)` viene chiamata solo per `name == "claude-cli"` e il motivo va nella riga «Pipeline esausta», dopo l'eventuale HTTP. Rischio: motivo applicato ad altri provider, o eccezione dentro il fallback. Esito: ok, l'ambito è ristretto al forte e la cascata §9 resta intatta.
+- `gas.py:4983` — il doctor legge `GAS_CLAUDE_BIN`, usa `shutil.which`, e se `_claude_solo_nel_terminale` è vero dà WARN invece di OK. Rischio: un falso OK quando la variabile arriva dalla shell del terminale invece che dal .env. Esito: ok, il caso è coperto ed è registrato come lezione in #538.
+- `brains/claude_cli.py:317` — FileNotFoundError e PermissionError diventano RuntimeError con testo fisso «claude-cli: …» che indica GAS_CLAUDE_BIN nel .env. Rischio: un'eccezione propagata fino al crash. Esito: ok, il messaggio è catturato e loggato dal kernel e il fallback scatta.
+- `tests/test_unit_claude_cli.py:282` — test del runner che solleva PermissionError e attende RuntimeError «non eseguibile.*GAS_CLAUDE_BIN». Esito: ok.
+- `tests/test_unit_kernel.py:11195` — test del doctor con un `claude` finto solo nel PATH del terminale, che deve dare WARN. Esito: ok.
 
-Wall of Shame e guardrail: il diff non tocca la history, `_get_window`, i tetti né i provider. Non c'è alcuna simulazione di output dei tool.
+Controlli sul merge (cfb8a3c):
+- I file arrivati da main sono identici a origin/main, verificato prima del commit con `git diff --cached origin/main` vuoto: modules/web/lexbor.py, tests/test_unit_web_lexbor.py e reports/ripartenza_mani.md.
+- I file di `git diff 297fc22..HEAD` sono esattamente i 9 della PR #287.
+- Nessun marcatore di conflitto; `--check` pulito.
+- `reports/stato_progetto.md:4` unisce le due catene «prima» senza perdite.
+- La memoria contiene #536, #537 e #538 della chat Mani più #538 della chat Motore.
+- Nessuno slicing della history e nessuna simulazione di tool.
 
-Rischio esplicitamente escluso: non ho rifatto la web suite completa (521 passed / 1 skipped con selectolax, prova dell'agente). Ho rifatto solo la suite lexbor (80 passed), perché il cambio riguarda solo un commento e non può alterare il comportamento a runtime. Non ho riletto il contenuto della memoria e di stato_progetto portati dal merge 1442468: sono fuori dal perimetro di review.
+Finding:
+- R-539-1 COSMETICA: il numero #538 compare due volte nel contatore (chat Mani e chat Motore), distinte solo dal suffisso. Il gate non si rompe; la numerazione prosegue con #539.
 
-Riserve: nessuna. V-2 COSMETICA della verifica esterna #285 e V-1 cosmetica del bot #285 sono chiuse.
-
-Memoria: ho aggiunto la riga `#538 (chat Mani) — 2026-10-28 — APPROVATO — …`, nessuna lezione nuova. È committata da sola con `scripts/commit_memoria_revisore.sh` (commit 3704890). Il diff staged di lexbor.py resta intatto nell'indice.
-
-File rilevanti:
-- /home/user/Gas/modules/web/lexbor.py
-- /home/user/Gas/.claude/agents/memoria_revisore.md
+Rischio escluso: non ho rilanciato i test, mi baso sulla tua esecuzione (kernel 1057 PASS 0 FAIL, pytest di lexbor e claude_cli verdi). È accettabile perché il codice è identico byte per byte a commit già testati e revisionati. Non ho verificato il comportamento reale del timer notturno sul Mac: non si riproduce in dev e resta da controllare al giro del 29.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py; toccati solo `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`.
-- Web suite (`tests/test_unit_web_*.py`, Python 3.13.16 con selectolax 1.0.2): prima 504 passed / 1 skipped (misurato su b95c3f3) → dopo 521 passed / 1 skipped (+17 casi di `test_intero_come_il_browser`), uguale prima e dopo il commento di 20c0708.
-- File lexbor su Python 3.11 senza selectolax (come la CI): 20 passed / 60 skipped.
-- Mutanti sul test finale: ritorno vecchio 7 failed, `letto` tolto 8, senza controllo del negativo 1, solo «+» come segno 2.
-- Nessun FAIL.
+Kernel: 1053 → 1057 PASS (T99s, T99t, T99u, T99v nuovi).
+
+```
+=== RIEPILOGO: 1057 PASS, 0 FAIL ===
+```
+
+pytest (`python3 -m pytest -q tests`): `2265 passed, 61 skipped in 196.34s (0:03:16)`. Nessun FAIL.
+
+Dopo il merge di main (cfb8a3c): kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; `python3 -m pytest -q tests/test_unit_web_lexbor.py tests/test_unit_claude_cli.py` → `49 passed, 60 skipped in 0.20s`.
 
 ## §6 STATO CI
 
-CI NON VERIFICATA con `gh` (assente/non autenticato nel cloud). Check run lette dall'integrazione GitHub sulla PR #285:
-- Head 116aac3: run 40683892840 success (`unit-suite`, `handoff-check`); `verifica-bot` success (verdetto testuale APPROVATO CON RISERVE, V-1 cosmetica chiusa in questo giro).
-- Head 162f5b1: `unit-suite` success e `handoff-check` success (run 40682462721); `verifica-bot` success (run 40682482737, verdetto testuale APPROVATO CON RISERVE).
-- Head bbbfbbe: `unit-suite` success, `handoff-check` failure atteso (run 40682120695: l'handoff era ancora quello della #280).
+`gh` nel container non è autenticato: run lette con lo strumento GitHub della sessione (`actions_list`, workflow ci.yml, branch feat/errore-forte-notte):
+
+```
+CI  run 40736463154  push  head f4878a3  completed  success
+CI  run 40736220989  push  head 7392f49  completed  failure (unit-suite success; handoff-check failure: handoff.md non ancora nel diff, atteso prima del fine-task)
+verifica-bot  run 40736485838  pull_request_target  head f4878a3  completed  success
+```
 
 Mappatura commit→run:
-- 63e4137, ec86b45: nessuna run su questo SHA (pushati insieme a bbbfbbe).
-- bbbfbbe: run 40682120695.
-- 162f5b1: run 40682462721 (CI) e 40682482737 (bot).
-- 1442468, 3704890, 20c0708: nessuna run su questo SHA (pushati insieme a 116aac3, testati solo nel suo albero).
-- 116aac3: run 40683892840.
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (lo dice per costruzione: V-2 ve #285 su 116aac3).
+- 071b292 → nessuna run su questo SHA (pushato insieme a 7392f49).
+- 7392f49 → CI run 40736220989: unit-suite success, handoff-check failure (atteso: l'handoff è arrivato col commit dopo).
+- f4878a3 → CI run 40736463154 success.
+- cfb8a3c (merge di main) → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
+- commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-ve280-1 BASSA: i test del figlio lexbor con selectolax non girano nei check required (CI su 3.11 senza selectolax). Chat Motore: `selectolax==1.0.2` in requirements-dev.
-- Dalle review e dalle verifiche di questa sessione: nessuna da correggere (R-536-1, V-1..V-4 ve e V-1 bot su 162f5b1, V-1 bot e ve su 116aac3 chiuse; V-2 e V-3 ve su 116aac3 senza fix, vedi §1).
-- Restano quelle delle fette precedenti (stato_progetto, blocchi «Mani — fetta 20/21»): shadow DOM dichiarativo (decisione dell'operatore); cosmetiche R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4.
+- **R-538-1** (BASSA, review #538): doctor dà OK se GAS_CLAUDE_BIN assoluto sta solo nella shell e non nel `.env`.
+- **R-538-2** (COSMETICA, review #538): `_MSG_LOGIN` oltre 160 caratteri, troncato nel motivo.
+- **V-1 bot #287** (BASSA): falsi WARN del doctor (verso prudente): non considera `~/.zshenv` letto da `/bin/zsh -c`, `/usr/local/bin` nel PATH predefinito di systemd, i collegamenti simbolici (manca realpath).
+- **V-2 bot #287** (COSMETICA): prefisso ripetuto «claude-cli: KO (claude-cli: …)».
+- **Verifica esterna #287** ([commento](https://github.com/Gasss23/Gas/pull/287#issuecomment-6476088252)): V-1 MEDIA conflitto con main CHIUSA da cfb8a3c (review #539); V-2 = R-538-1; V-3 = R-538-2; V-4 BASSA WARN anche nel container per `claude` in /opt/node22/bin (rumore nei test).
+- **R-539-1** (COSMETICA, review #539): numero #538 usato sia dalla chat Mani che dalla chat Motore.
