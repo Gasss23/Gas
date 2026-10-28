@@ -146,6 +146,14 @@ def test_lettura_come_il_browser(acceso, pagina, visibili, nascosti):
     # un'opzione resta nello shadow (R-539-2)
     ("<div><template shadowrootmode=open><svg><slot></slot></svg><slot>Q</slot></template>L</div>", "L"),
     ("<font-face><template shadowrootmode=open>S</template>L</font-face>", "L"),
+    # per lo standard di oggi anche «x-a!» e «x-a:b» sono host («valid element local name» di DOM,
+    # V-2 ve #288 riletta alla fonte); validi anche «.» e lettere non ASCII
+    ("<x-a!><template shadowrootmode=open>S</template>L</x-a!><x-a:b><template shadowrootmode=open>T"
+     "</template>M</x-a:b>", "ST"),
+    ("<x.y-é><template shadowrootmode=open>S</template>L</x.y-é>", "S"),
+    # il template dello shadow non è un figlio dell'host: col nome di uno slot non gli toglie
+    # la riserva (V-3 ve #288)
+    ("<div><template shadowrootmode=open slot=n><slot name=n>R</slot></template>L</div>", "R"),
     ("<div><template shadowrootmode=open><select><option><slot></slot></option></select></template>L</div>",
      "\nL\n"),
 ])

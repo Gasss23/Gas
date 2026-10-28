@@ -140,7 +140,10 @@ def primo_summary(details):
             return
 
 # Gli elementi che possono avere uno shadow, oltre ai nomi con il trattino (custom element),
-# tranne quelli riservati di svg e math (R-539-2).
+# tranne quelli riservati di svg e math (R-539-2). Per lo standard di oggi («valid custom
+# element name» di HTML, «valid element local name» di DOM) basta iniziale a-z, trattino e
+# niente maiuscole, spazi, NUL, «/» o «>»: il tag che dà lexbor è già così, anche «x-a!»
+# (V-2 ve #288 riletta alla fonte dal revisore #542).
 HOST = frozenset({"article", "aside", "blockquote", "body", "div", "footer", "h1", "h2", "h3",
                   "h4", "h5", "h6", "header", "main", "nav", "p", "section", "span"})
 RISERVATI = frozenset({"annotation-xml", "color-profile", "font-face", "font-face-src",
@@ -182,7 +185,8 @@ def shadow(nodo):
             frammento = frammenti[0]
             primi = primi_slot(frammento)
             # I figli dell'host vanno allo slot col loro nome (attributo «slot»); il testo
-            # solo allo slot senza nome. Il template dello shadow non è un figlio.
+            # solo allo slot senza nome. Il template dello shadow non è un figlio: con un
+            # attributo «slot» toglierebbe la riserva a quello slot (V-3 ve #288).
             assegnati = {}
             for luce in nodo.iter(include_text=True):
                 if luce.is_text_node:
