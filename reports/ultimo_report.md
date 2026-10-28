@@ -1,11 +1,16 @@
-# ULTIMO REPORT — 2026-10-28 — chat Motore: `claude` del Mac provato col PATH del timer, PR #286 chiusa
+# ULTIMO REPORT — 2026-10-28 — chat Motore: riserve del punto 3 (cervello forte e doctor)
 
 ## DECISIONI UMANE RICHIESTE
-1. Nessuna: questa PR tocca solo i documenti. La mergio io con CI verde e verdetto pulito del bot; con riserve chiedo prima.
+1. Merge della PR #290 (https://github.com/Gasss23/Gas/pull/290): la review #540 è APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10).
 
 ## Esito
-- **Prova di `claude` col PATH del timer**: FATTA dall'operatore sul Mac. `env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME=$HOME /Users/gas/.local/bin/claude --version` ha risposto `2.1.310 (Claude Code)`. È il binario nativo, che non ha bisogno di `node`, quindi il rischio V-1 (verifica esterna e bot sulla #286) non vale sul Mac. Scritto nel punto 3 della RIPARTENZA.
-- **PR #286**: chiusa senza merge, perché era un doppione della #287 (stessa fetta, già su main).
+- **R-538-1 (GAS_CLAUDE_BIN solo nella shell)**: FATTA. Il doctor dà un WARN se la variabile manca nel `.env`. La nuova `_chiavi_dotenv` legge solo i nomi delle variabili, mai i valori.
+- **R-538-2 (motivo troncato)**: FATTA. Il tetto passa da 160 a 300 caratteri, quindi il messaggio del login arriva intero.
+- **V-2 bot #287 (prefisso ripetuto)**: FATTA. Il motivo è senza «claude-cli: »; «429 » resta.
+- **V-1 bot #287 (falsi WARN)**: FATTA in parte.
+  - FATTI: `/usr/local/bin` e `/usr/local/sbin` contano su Linux (systemd); il confronto vale anche coi collegamenti risolti.
+  - DEFERITO: il PATH di `~/.zshenv`, perché sbaglia nel verso prudente (dà un WARN in più, mai un OK sbagliato).
+- **Test**: suite kernel da 1061 a 1064 PASS, 0 FAIL (main misurato in un worktree a `094eb57`); pytest 2282 passati, 61 saltati.
 
 ## Anomalie
-- La stessa fetta è stata fatta in due sessioni in parallelo: la #286 di questa sessione e la #287 di un'altra.
+- Nessuna.
