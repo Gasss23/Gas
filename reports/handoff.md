@@ -1,34 +1,34 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Il report della notte dice perché il forte è fallito; doctor avvisa se `claude` è solo nel PATH del terminale (chat Motore). Secondo giro: merge di main (PR #285) dopo la V-1 della verifica esterna.
+**Sessione:** 2026-10-28 — Note basse della PR #287 sul cervello forte: doctor più preciso sul PATH del timer, motivo senza prefisso doppio (chat Motore)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #287 (https://github.com/Gasss23/Gas/pull/287): review #538 APPROVATO CON RISERVE, bot e verifica esterna APPROVATO CON RISERVE; serve il «sì» dell'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
+1. Merge della PR #291 (https://github.com/Gasss23/Gas/pull/291): con verdetto pulito del bot la mergia l'agente (CLAUDE.md §10); con riserve serve il «sì» dell'operatore. Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — motivo vero dell'errore del forte nel report della notte**: `FATTA` — `_motivo_forte` in `gas.py`, messaggi di `brains/claude_cli.py` con il consiglio GAS_CLAUDE_BIN e il caso «non eseguibile».
-- **Fetta 2 — doctor avvisa se `claude` è solo nel PATH del terminale**: `FATTA` — `_claude_solo_nel_terminale`, WARN con `GAS_CLAUDE_BIN=<percorso>`.
-- **Fetta 3 — conflitto con main (V-1 MEDIA verifica esterna)**: `FATTA` — merge di origin/main 297fc22 (PR #285), conflitti solo nei report e nella memoria; review #539 APPROVATO.
+- **Fetta 1 — R-538-1 (GAS_CLAUDE_BIN dalla shell)**: `FATTA` — `_DOTENV_CARICATE` + WARN del doctor.
+- **Fetta 2 — R-538-2 + V-2 bot #287 (motivo)**: `FATTA` — niente prefisso doppio, tetto 240.
+- **Fetta 3 — V-1 bot #287 (due giri) + V-3 ve #287**: `FATTA` — `_avviso_claude_timer`.
+- **Fetta 4 — R-540-1 e R-540-2 (test)**: `FATTA` — review #541 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- brains/claude_cli.py               |   6 +++++-
- gas.py                             |  46 +++++++++++++++++++++++++++++++++++++++++++---
- reports/diff_sessione.md           |  17 +++++++++--------
- reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  46 ++++++++++++----------------------------------
- tests/test_unit_claude_cli.py      |   5 +++++
- tests/test_unit_kernel.py          |  50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |  3 +++
+ gas.py                             | 58 ++++++++++++++++++++++++++++++++++++++++------------------
+ reports/diff_sessione.md           | 14 ++++++--------
+ reports/stato_progetto.md          |  4 ++--
+ reports/ultimo_report.md           | 20 ++++++++++----------
+ tests/test_unit_dotenv.py          |  9 +++++++++
+ tests/test_unit_kernel.py          | 54 ++++++++++++++++++++++++++++++++++++++++--------------
  reports/handoff.md                 | n/d (commit finale)
 ```
 
@@ -37,139 +37,104 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-cfb8a3c Merge origin/main (PR #285) in feat/errore-forte-notte (PR #287) — review #539 APPROVATO
-f4878a3 docs(fine-task): PR #287 motivo vero dell'errore del forte e avviso del doctor, review #538
-7392f49 fix(forte): il report della notte dice perché il forte è fallito; doctor avvisa se `claude` è solo nel PATH del terminale
-071b292 chore(revisore): memoria review #538 — APPROVATO CON RISERVE
+ed2c430 fix(forte): note basse della #287 — doctor più preciso sul PATH del timer, motivo senza prefisso doppio
+4b6538e chore(revisore): memoria review #541 — APPROVATO
+de5cf2b chore(revisore): memoria review #540 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #538 (chat Motore) — sul diff di 7392f49
+### Review #540 (chat Motore) — sul diff di ed2c430 (prima dei test aggiunti per R-540-1/R-540-2)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #538 (chat Motore), diff staged sul branch feat/errore-forte-notte (4 file, +103/-4). Ho letto CLAUDE.md (sez. 5, 8 e 9), reports/stato_progetto.md (la parte che serve: la voce del 28 ottobre su `GAS_CLAUDE_BIN` e sul PATH di launchd) e la memoria del revisore.
+Review #540 (chat Motore) del diff già pronto per il commit sul branch fix/note-forte-doctor. File toccati: gas.py e tests/test_unit_kernel.py. Prima ho letto CLAUDE.md, la parte di stato_progetto che serviva e la mia memoria.
 
-**Cosa ho esaminato**
-- `brains/claude_cli.py:316` — FileNotFoundError ora suggerisce GAS_CLAUDE_BIN, e c'è un nuovo ramo PermissionError che diventa RuntimeError «non eseguibile». Rischio cercato: messaggi con contenuto variabile, o eccezioni che scappano senza essere intercettate. Esito: **ok**. Il testo è fisso, la causa resta agganciata con `from e`, e il rung resta nella gestione delle eccezioni dei provider (§9).
-- `gas.py:426` — `_motivo_forte`. Rischio cercato: testo di Claude o della conversazione che finisce nella riga «Pipeline esausta» e nel report della notte. Ho controllato uno per uno tutti i punti di `brains/claude_cli.py` che sollevano RuntimeError (righe 317-372).
-  - Sono tutti testi fissi oppure contengono solo valori controllati: il timeout, il codice di uscita, un `tipo` ripulito con `[^a-z_]` e tagliato a 40 caratteri, il prefisso «429 » di `_prefisso_limite`.
-  - Il filtro accetta solo RuntimeError, solo la prima riga e solo il prefisso esatto (`re.match` con `^`).
-  - Esito: **ok**, nessuna fuga di dati. Il test T99u copre il nome nella seconda riga, il testo senza prefisso e il ValueError.
-- `gas.py:4912` — `_mf` viene calcolato solo per `name == "claude-cli"`, e HTTP status_code ha ancora la precedenza. Esito: **ok**, gli altri rung non cambiano.
-- `gas.py:443` — `_claude_solo_nel_terminale`, insieme al chiamante del doctor in `gas.py:4983`. Rischio cercato: un falso OK.
-  - Il venv conta come cartella vista dal timer, ed è giusto: `scripts/notte/com.gas.notte.plist:15` attiva `.venv`/`venv` prima di `python3 gas.py notte`, quindi la sua cartella bin è nel PATH.
-  - `/usr/local/bin` e `/opt/homebrew/bin` danno WARN, coerente col PATH predefinito di launchd.
-  - Un GAS_CLAUDE_BIN assoluto arriva qui solo se `shutil.which` lo ha già trovato ed è eseguibile (altrimenti c'è prima il WARN «non trovato»).
-  - Esito: **riserva** (R-538-1).
-- `tests/test_unit_kernel.py:11195` — T99s–T99v. Il PATH e GAS_CLAUDE_BIN vengono ripristinati in un finally, e `gas.ClaudeCliClient` viene rimesso com'era da `_orig99` (`tests/test_unit_kernel.py:11260`). Il WARN finto compare anche nell'output di T99n (nel container `claude` sta in `/opt/node22/bin`), ma nessun test esistente controlla «presente» su quella riga. Esito: **ok**.
+**Cosa ho esaminato nel diff**
+- `gas.py:449` — `_avviso_claude_timer` restituisce un motivo, oppure None se il timer trova `claude`. Ho cercato falsi OK nuovi: non ce ne sono.
+  - GAS_CLAUDE_BIN relativo → WARN.
+  - GAS_CLAUDE_BIN assoluto ma non preso dal .env → WARN.
+  - Conta solo il primo venv che ha `bin/activate`, come fa scripts/notte/com.gas.notte.plist:15.
+  - /usr/local/bin conta solo su Linux, quindi niente falso OK sul Mac con Homebrew Intel.
+  - Se il percorso indicato non esiste, `shutil.which` dà None e il doctor dà già WARN prima di arrivare qui.
+  - Esito: ok.
+- `gas.py:627` — `_DOTENV_CARICATE.update(caricate)` contiene solo i nomi scritti davvero dal .env. Se la variabile c'è sia nella shell sia nel .env, vince la shell, il nome non entra nell'insieme e il doctor dà WARN: falso allarme, nel verso prudente.
+  - Effetti collaterali: la variabile globale si aggiorna solo all'avvio della CLI (`gas.py:6066`). In pytest c'è GAS_NO_DOTENV, quindi l'insieme resta vuoto. tests/test_unit_dotenv.py ci lascia dentro nomi GAS_T_*, che non danno fastidio.
+  - Il test fa add e discard dentro un `finally` (`tests/test_unit_kernel.py:11210`).
+  - Esito: ok, con la riserva R-540-1.
+- `gas.py:439` — `_motivo_forte` toglie il prefisso «claude-cli: », tiene «429 » e taglia a 240 caratteri.
+  - Fughe di dati: tutti i raise di brains/claude_cli.py sono testi fissi. L'unica parte variabile è il timeout (un numero). `_prefisso_limite` restituisce solo «429 » oppure "". Il messaggio del login entra intero.
+  - Esito: ok.
+- `gas.py:466` — il confronto con realpath: vedi la riserva R-540-2.
+- `tests/test_unit_kernel.py:11209` — T99s copre tre casi: solo PATH → WARN, assoluto dalla shell → WARN, assoluto dal .env → OK. Esito: ok.
+- `tests/test_unit_kernel.py:11233` — T99t: col secondo venv dà l'avviso, col link simbolico no, /usr/local/bin vale solo con linux=True. Esito: ok.
 
-**Esecuzione diretta**: kernel 1057 PASS, 0 FAIL. `tests/test_unit_claude_cli.py` 29 passed. Intera cartella tests/ 2265 passed, 61 skipped, nessuna regressione. Nessuno slicing della history, nessuna simulazione dei tool, cap a 10 iterazioni e `_get_window` non toccati, il doctor resta senza chiamate LLM.
+**Prove eseguite**
+- Suite del kernel rifatta: 1057 PASS, 0 FAIL.
+- Mutanti (gas.py ripristinato, zero differenze):
+  - con «da_dotenv» ignorato → T99s e T99t FAIL;
+  - con «qualsiasi venv» invece del primo → T99t FAIL;
+  - senza realpath sul binario → T99t FAIL;
+  - senza realpath sulle cartelle → il mutante sopravvive.
 
 **Finding**
-- **R-538-1 (BASSA)**: falso OK del doctor. Se GAS_CLAUDE_BIN assoluto è esportato solo nella shell (es. `~/.zshrc`) e non nel `.env`, il doctor lanciato dal terminale dice «presente», ma il timer di launchd non vede quella variabile e ricade su `claude` cercato nel suo PATH ridotto. Oggi sul Mac la variabile sta nel `.env`, quindi il caso non è attivo. Correzione possibile: dire nel messaggio da dove arriva il valore, o controllare che sia nel `.env`. Da tracciare in stato_progetto.
-- **R-538-2 (COSMETICA)**: `_MSG_LOGIN` supera i 160 caratteri, quindi nel motivo il consiglio «/login …» arriva troncato. Il senso resta, ma conviene accorciarlo o alzare il tetto.
+- **R-540-1 BASSA**: nessun test collega `_carica_dotenv` a `_DOTENV_CARICATE`. T99s aggiunge il nome a mano, quindi togliendo `gas.py:627` non fallisce nulla e potrebbe tornare il WARN sempre acceso o la regressione inversa senza che nessun test se ne accorga. Rimedio: in tests/test_unit_dotenv.py controllare che il nome caricato finisca in `gas._DOTENV_CARICATE`, e che non ci finisca quando la shell vince.
+- **R-540-2 BASSA**: il mutante con realpath tolto alle cartelle (`gas.py:466`) sopravvive. L'effetto sarebbe solo un falso WARN, per esempio con la radice del repo sotto un collegamento simbolico come /tmp → /private/tmp sul Mac.
+- **R-540-3 BASSA (c'era già prima)**: su Linux il venv è contato come «visto dal timer» per analogia col plist, ma nel repo non c'è un'unità systemd che lo attivi. Lanciare `venv/bin/python` non mette `venv/bin` nel PATH, quindi potrebbe esserci un falso OK sulla VPS.
 
-**Cosa NON ho verificato**: il comportamento reale sotto launchd sul Mac (PATH ridotto, `.env` caricato dal giro notturno), perché non si riproduce nel container Linux. La correttezza del motivo nel report del mattino l'ho verificata solo con T99v (run_turn con runner finto), non con un giro `gas notte` completo. Non ho fatto test mutanti formali: ho controllato solo che T99u catturerebbe la rimozione del filtro sul prefisso (il caso «Mario Rossi»).
+**Cosa non ho verificato**: il comportamento reale di launchd e systemd e del PATH di ~/.zshenv sul Mac e sulla VPS, perché qui non si possono riprodurre. Non ho rifatto pytest completo (2282 passed è un dato dichiarato dall'agente); ho rifatto solo la suite del kernel.
 
-**Memoria**: aggiunta la riga #538 più una lezione (un controllo del doctor «per il timer» eseguito dal terminale eredita le variabili della shell). È già committata da sola con `commit_memoria_revisore.sh` (commit 071b292), lo staging del diff non è stato toccato.
+**Memoria**: riga #540 (chat Motore) e una lezione nuova (uno stato simulato a mano nel test va collegato da un altro test alla funzione vera) aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, commit de5cf2b. Il diff in revisione resta intatto e pronto per il commit.
 
-### Review #539 (chat Motore) — sul merge di origin/main (PR #285) in cfb8a3c
-
-Il verdetto originale (sotto, nel blocco di codice, testo integrale e invariato) citava come `path:riga` soprattutto file entrati da main, che non sono nel diff di sessione (base 297fc22 dopo il merge): il Gate B lo ha rifiutato (1 citazione valida su 2). Come da regola il testo non è stato ritoccato: il revisore lo ha riemesso con lo stesso esito e lo stesso finding, citando i file del diff. Fa fede il verdetto riemesso; l'originale resta qui per tracciabilità.
-
-Verdetto originale (sostituito dalla riemissione):
-
-```text
-## VERDETTO: APPROVATO
-
-Review #539 (chat Motore). Ho controllato il merge in corso di origin/main 297fc22 (PR #285) dentro feat/errore-forte-notte (HEAD f4878a3). Il diff è in stage, MERGE_HEAD = 297fc22.
-
-Elementi esaminati:
-- `modules/web/lexbor.py:98` — `intero()` portato da main (segno + o -, «0»/«-0» → 0, tetto `< 1 << 31`). Rischio: che il merge abbia cambiato qualcosa. Esito ok: `git diff --cached origin/main -- modules/web/lexbor.py` è vuoto, quindi il file è identico a main. Il codice era già stato revisionato in #536/#537/#538 della chat Mani.
-- `tests/test_unit_web_lexbor.py:171` — i test di `intero()` arrivati da main. Rischio: una divergenza dal ramo di origine. Esito ok: identico a origin/main. Vale lo stesso per reports/ripartenza_mani.md.
-- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» unita a mano. Rischio: perdere una delle due catene «prima». Esito ok: in testa c'è la voce Motore #287, poi la voce Mani fetta 22, poi la catena del ramo completa (Motore notte fallita, Notte #284, Mani fetta 21…). La lunghezza (7747 caratteri) torna con HEAD (7448) più la voce Mani. Il paragrafo «Mani — fetta 22» (riga 634) è presente. Il punto 3 della coda (fetta PR #287 fatta) resta.
-- `.claude/agents/memoria_revisore.md:926` — le righe #536/#537/#538 della chat Mani da main, poi #538 della chat Motore e la sua lezione dal ramo. Rischio: righe perse o duplicate. Esito ok: rispetto a main mancano solo le 2 righe del ramo, rispetto a HEAD solo le 3 righe Mani.
-- `gas.py:426` (contesto, `_motivo_forte`). Rischio: che il merge abbia toccato il codice della PR #287. Esito ok: gas.py, brains/claude_cli.py, tests/test_unit_claude_cli.py e tests/test_unit_kernel.py sono identici al ramo (`git diff --cached HEAD` vuoto su ciascuno).
-
-Controlli d'insieme:
-- I file di `git diff --cached origin/main` sono esattamente quelli di `origin/main...HEAD`: i 9 file della PR #287, niente in più.
-- Nessun marcatore di conflitto e `git diff --cached --check` pulito.
-- I log di sessione (handoff, ultimo_report, diff_sessione) sono la versione del ramo, come dichiarato.
-- Nessun nuovo slicing della history né simulazione di tool: il codice del motore non cambia rispetto a #538.
-
-Finding:
-- R-539-1 COSMETICA: il numero #538 compare due volte nel contatore (chat Mani e chat Motore), distinte solo dal suffisso. Il gate non si rompe, ma il contatore è meno leggibile. Non chiede interventi: questa review prosegue la numerazione con #539.
-
-Rischio escluso: non ho rilanciato io i test (kernel 1057 PASS, pytest lexbor e claude_cli). Mi fido della tua esecuzione, perché il codice è identico byte per byte a due commit già testati e revisionati (#538 Motore, #536-#538 Mani). Non ho valutato l'interazione a runtime tra lexbor e le modifiche al forte: sono moduli separati e nessun file è in comune.
-
-Memoria: ho scritto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga `#539 (chat Motore) — 2026-10-28 — APPROVATO — …`, con R-539-1 e «nessuna lezione nuova». Come mi hai chiesto non ho lanciato commit_memoria_revisore.sh: il file è modificato ma non in stage, quindi fai `git add .claude/agents/memoria_revisore.md` prima del commit di merge.
-```
-
-Verdetto riemesso:
+### Review #541 (chat Motore) — sul diff finale di ed2c430
 
 ## VERDETTO: APPROVATO
 
-Review #539 (chat Motore): merge di origin/main 297fc22 (PR #285) dentro feat/errore-forte-notte (PR #287). Base della sessione: 297fc22.
+Review #541 (chat Motore): rifatta la review sul diff pronto per il commit (gas.py, tests/test_unit_dotenv.py, tests/test_unit_kernel.py). gas.py è identico, byte per byte, a quello approvato con riserve nella #540.
 
-Elementi del diff esaminati:
-- `gas.py:426` — `_motivo_forte` legge il motivo vero solo da RuntimeError con prefisso fisso «claude-cli: », prende la prima riga e la tronca. Rischio: che il merge abbia alterato il codice già revisionato in #538 o che il testo esponga dati non fidati. Esito: ok, il codice è identico a f4878a3 (dove `git diff --cached HEAD -- gas.py` era vuoto) e i testi sorgente sono fissi.
-- `gas.py:4912` — `_motivo_forte(e)` viene chiamata solo per `name == "claude-cli"` e il motivo va nella riga «Pipeline esausta», dopo l'eventuale HTTP. Rischio: motivo applicato ad altri provider, o eccezione dentro il fallback. Esito: ok, l'ambito è ristretto al forte e la cascata §9 resta intatta.
-- `gas.py:4983` — il doctor legge `GAS_CLAUDE_BIN`, usa `shutil.which`, e se `_claude_solo_nel_terminale` è vero dà WARN invece di OK. Rischio: un falso OK quando la variabile arriva dalla shell del terminale invece che dal .env. Esito: ok, il caso è coperto ed è registrato come lezione in #538.
-- `brains/claude_cli.py:317` — FileNotFoundError e PermissionError diventano RuntimeError con testo fisso «claude-cli: …» che indica GAS_CLAUDE_BIN nel .env. Rischio: un'eccezione propagata fino al crash. Esito: ok, il messaggio è catturato e loggato dal kernel e il fallback scatta.
-- `tests/test_unit_claude_cli.py:282` — test del runner che solleva PermissionError e attende RuntimeError «non eseguibile.*GAS_CLAUDE_BIN». Esito: ok.
-- `tests/test_unit_kernel.py:11195` — test del doctor con un `claude` finto solo nel PATH del terminale, che deve dare WARN. Esito: ok.
+**Cosa ho esaminato**
+- `tests/test_unit_dotenv.py:127` — il nuovo test collega `_carica_dotenv` a `_DOTENV_CARICATE`. Il nome letto dal file entra, quello già impostato nella shell no. Ho controllato due rischi:
+  - lo stato globale sporcato tra un test e l'altro: no, il test sostituisce l'insieme con `monkeypatch.setattr` e lo ripristina da solo;
+  - il caricamento del .env spento da GAS_NO_DOTENV: no, la fixture `env` toglie quella variabile.
+  - Esito: ok, R-540-1 chiusa.
+- `tests/test_unit_kernel.py:11236` — T99t ora prova anche una radice raggiunta da un collegamento simbolico (`linkroot99`). Esito: ok, R-540-2 chiusa.
+- `gas.py:627` e `gas.py:466` — le due righe di codice che i test nuovi proteggono. Esito: ok.
 
-Controlli sul merge (cfb8a3c):
-- I file arrivati da main sono identici a origin/main, verificato prima del commit con `git diff --cached origin/main` vuoto: modules/web/lexbor.py, tests/test_unit_web_lexbor.py e reports/ripartenza_mani.md.
-- I file di `git diff 297fc22..HEAD` sono esattamente i 9 della PR #287.
-- Nessun marcatore di conflitto; `--check` pulito.
-- `reports/stato_progetto.md:4` unisce le due catene «prima» senza perdite.
-- La memoria contiene #536, #537 e #538 della chat Mani più #538 della chat Motore.
-- Nessuno slicing della history e nessuna simulazione di tool.
+**Prove rifatte da me** (gas.py ripristinato, zero differenze)
+- `gas.py:627` tolta (il loader non registra più i nomi caricati) → il test dotenv nuovo FALLISCE.
+- `gas.py:466` con `vedute = set(cartelle)`, cioè senza risolvere i collegamenti simbolici delle cartelle → T99t FALLISCE.
+- Suite senza modifiche: kernel 1057 PASS, 0 FAIL; test_unit_dotenv 11 passed.
 
-Finding:
-- R-539-1 COSMETICA: il numero #538 compare due volte nel contatore (chat Mani e chat Motore), distinte solo dal suffisso. Il gate non si rompe; la numerazione prosegue con #539.
+**Finding**
+- **R-541-1 COSMETICA**: `linkroot99` punta alla radice stessa, quindi crea un ciclo, e resta nella cartella temporanea del test. Oggi non fa danni (la suite passa e la pulizia non segue i collegamenti). Un futuro test che scorre quella cartella seguendo i collegamenti ci girerebbe dentro all'infinito: meglio cancellarlo subito dopo l'uso.
+- R-540-3 (venv su Linux senza unità systemd) l'agente dichiara di tracciarla in stato_progetto come aperta. Non è nel diff e non l'ho verificata.
 
-Rischio escluso: non ho rilanciato i test, mi baso sulla tua esecuzione (kernel 1057 PASS 0 FAIL, pytest di lexbor e claude_cli verdi). È accettabile perché il codice è identico byte per byte a commit già testati e revisionati. Non ho verificato il comportamento reale del timer notturno sul Mac: non si riproduce in dev e resta da controllare al giro del 29.
+**Cosa non ho verificato**: il comportamento reale di launchd e systemd, perché qui non si può riprodurre. Non ho rifatto pytest completo, solo test_unit_dotenv e la suite del kernel.
+
+**Memoria**: riga #541 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md, commit 4b6538e. Nella #540 c'era già il commit de5cf2b con la riga #540 e la lezione. Il diff in revisione resta intatto e pronto per il commit.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel: 1053 → 1057 PASS (T99s, T99t, T99u, T99v nuovi).
+Kernel: 1057 → 1057 PASS (nessun check nuovo: T99s, T99t, T99u e T99v hanno più casi dentro). Conteggi del container locale: la CI ne conta di più (es. 1063 su #287, V-2 bot #287).
 
 ```
 === RIEPILOGO: 1057 PASS, 0 FAIL ===
 ```
 
-pytest (`python3 -m pytest -q tests`): `2265 passed, 61 skipped in 196.34s (0:03:16)`. Nessun FAIL.
-
-Dopo il merge di main (cfb8a3c): kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; `python3 -m pytest -q tests/test_unit_web_lexbor.py tests/test_unit_claude_cli.py` → `49 passed, 60 skipped in 0.20s`.
+pytest (`python3 -m pytest -q tests`, prima dei test aggiunti per la #541): `2282 passed, 61 skipped in 192.48s (0:03:12)`. Dopo: `python3 -m pytest -q tests/test_unit_dotenv.py` → `11 passed in 6.00s`. Nessun FAIL.
 
 ## §6 STATO CI
 
-`gh` nel container non è autenticato: run lette con lo strumento GitHub della sessione (`actions_list`, workflow ci.yml, branch feat/errore-forte-notte):
-
-```
-CI  run 40736463154  push  head f4878a3  completed  success
-CI  run 40736220989  push  head 7392f49  completed  failure (unit-suite success; handoff-check failure: handoff.md non ancora nel diff, atteso prima del fine-task)
-verifica-bot  run 40736485838  pull_request_target  head f4878a3  completed  success
-```
+`gh` nel container non è autenticato: run lette con lo strumento GitHub della sessione (`actions_list`, branch fix/note-forte-doctor).
 
 Mappatura commit→run:
-- 071b292 → nessuna run su questo SHA (pushato insieme a 7392f49).
-- 7392f49 → CI run 40736220989: unit-suite success, handoff-check failure (atteso: l'handoff è arrivato col commit dopo).
-- f4878a3 → CI run 40736463154 success.
-- cfb8a3c (merge di main) → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
+- de5cf2b, 4b6538e → nessuna run su questi SHA (pushati insieme a ed2c430).
+- ed2c430 → run non ancora disponibile alla scrittura dell'handoff (handoff-check rosso atteso: l'handoff arriva col commit dopo).
 - commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-538-1** (BASSA, review #538): doctor dà OK se GAS_CLAUDE_BIN assoluto sta solo nella shell e non nel `.env`.
-- **R-538-2** (COSMETICA, review #538): `_MSG_LOGIN` oltre 160 caratteri, troncato nel motivo.
-- **V-1 bot #287** (BASSA): falsi WARN del doctor (verso prudente): non considera `~/.zshenv` letto da `/bin/zsh -c`, `/usr/local/bin` nel PATH predefinito di systemd, i collegamenti simbolici (manca realpath).
-- **V-2 bot #287** (COSMETICA): prefisso ripetuto «claude-cli: KO (claude-cli: …)».
-- **Verifica esterna #287** ([commento](https://github.com/Gasss23/Gas/pull/287#issuecomment-6476088252)): V-1 MEDIA conflitto con main CHIUSA da cfb8a3c (review #539); V-2 = R-538-1; V-3 = R-538-2; V-4 BASSA WARN anche nel container per `claude` in /opt/node22/bin (rumore nei test).
-- **R-539-1** (COSMETICA, review #539): numero #538 usato sia dalla chat Mani che dalla chat Motore.
+- **R-540-3** (BASSA, review #540): su Linux il venv conta come visto dal timer, ma nessuna unità systemd lo attiva (falso OK possibile sulla VPS).
+- **R-541-1** (COSMETICA, review #541): `linkroot99` in T99t è un collegamento ciclico lasciato nella cartella temporanea.
