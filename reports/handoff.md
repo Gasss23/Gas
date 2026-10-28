@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Mani fetta 23: shadow DOM dichiarativo letto come il browser nel figlio lexbor ; secondo giro dopo il bot (merge di main) (chat Mani)
+**Sessione:** 2026-10-28 — Mani fetta 23: shadow DOM dichiarativo letto come il browser nel figlio lexbor ; secondo giro (merge di main) e terzo giro (verifica esterna) (chat Mani)
 
 ---
 
@@ -22,6 +22,12 @@
   - R-540-1 COSMETICA (slot dentro `foreignObject`): `DEFERITA — svg è nascosto per scelta in leggi.py`.
   - Lettura di sempre di leggi.py: `SALTATA — resta com'è, come dichiarato nella scelta 3`.
 - **Secondo giro — bot su af8f8ec NON approvata per V-1 MEDIA** (PR in conflitto con main dopo la #287): `FATTA` — merge di origin/main 0a9ce70 in 5ff6ad7; da main entrano gas.py, brains/claude_cli.py, tests/test_unit_kernel.py e tests/test_unit_claude_cli.py identici a main; tenuti handoff/ultimo_report/diff_sessione della #288, stato_progetto unito a mano, memoria con le righe di tutti e due i lati; review #541 APPROVATO.
+- **Terzo giro — verifica esterna su af8f8ec APPROVATO CON RISERVE** (commento: https://github.com/Gasss23/Gas/pull/288#issuecomment-6476568410); bot su a735e46 APPROVATO CON RISERVE (V-1 cosmetica: §6 vecchio):
+  - V-1 ve MEDIA (conflitto con main): `FATTA` col merge 5ff6ad7 (secondo giro).
+  - V-2 ve BASSA (`x-a!`, `x-a:b` presi per host): `SALTATA — non accolta`: riletta alla fonte (whatwg/html «valid custom element name», whatwg/dom «valid element local name» e «valid shadow host name»), per lo standard di oggi sono host validi. Il primo fix con la regola vecchia PotentialCustomElementName è stato BOCCIATO (review #542) e tolto; in fe1c9b0 test «ST» e commento con la fonte, review #543 APPROVATO.
+  - V-3 ve BASSA (mutante del template dello shadow tra gli assegnati): `FATTA` — non equivalente (con `slot=n` toglieva la riserva); test «R» in fe1c9b0. Parte R-ve280-1: `DEFERITA — chat Motore`.
+  - V-4 ve e V-1 bot COSMETICHE (§6 vecchio): `FATTA` — §6 riscritto qui sotto.
+  - R-543-1 COSMETICA (commento su HOST: «niente maiuscole» vale solo per A-Z): `DEFERITA — cosmetica`.
 - **Accensione lexbor (punto b della ripartenza)**: `DEFERITA — chat Motore, selectolax non ancora in requirements su main`.
 
 ---
@@ -29,21 +35,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/web/lexbor.py              |  92 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ .claude/agents/memoria_revisore.md |   7 +++++++
+ modules/web/lexbor.py              |  96 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  reports/diff_sessione.md           |  17 ++++++++---------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   6 +++---
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  39 +++++++++++++++++++++++++++------------
- tests/test_unit_web_lexbor.py      |  44 ++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  45 +++++++++++++++++++++++++++++++++------------
+ tests/test_unit_web_lexbor.py      |  52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = 0a9ce70 (dopo il merge di main). Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 0a9ce70. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fe1c9b0 fix(web): template dello shadow fuori dagli assegnati fissato da un test; host secondo lo standard di oggi (V-2, V-3 ve #288)
+e272522 chore(revisore): memoria review #543 — APPROVATO
+212ab4f chore(revisore): memoria review #542 — BOCCIATO
+a735e46 docs(fine-task): verdetto #541 riemesso dal revisore per il Gate B (PR #288)
 4021d67 docs(fine-task): PR #288 dopo il merge di main 0a9ce70 — handoff e report, review #541
 5ff6ad7 Merge origin/main (0a9ce70, PR #287) in claude/peaceful-lovelace-0w2b7q (PR #288)
 af8f8ec docs(fine-task): Mani fetta 23 — shadow DOM dichiarativo, handoff e report (PR #288)
@@ -56,7 +66,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 16cb6a6: review #539 sul primo diff staged, #540 dopo la chiusura di R-539-1 e R-539-2 (diff committato in 16cb6a6). Merge 5ff6ad7 (da main entrano gas.py, brains/claude_cli.py e i loro test): review #541. Verdetti integrali:
+Commit motore 16cb6a6: review #539 sul primo diff staged, #540 dopo la chiusura di R-539-1 e R-539-2 (diff committato in 16cb6a6). Merge 5ff6ad7 (da main entrano gas.py, brains/claude_cli.py e i loro test): review #541. Commit motore fe1c9b0: review #542 BOCCIATO sul primo diff (V-2 con la regola vecchia), #543 APPROVATO sul diff corretto. Verdetti integrali:
 
 ### Review #539 (chat Mani) — primo diff staged
 
@@ -167,6 +177,68 @@ L'oggetto è il merge di origin/main 0a9ce70 (PR #287) in claude/peaceful-lovela
 
 Nessuna lezione nuova.
 
+### Review #542 (chat Mani) — primo diff staged per V-2/V-3 ve #288
+
+## VERDETTO: BOCCIATO
+
+Review #542 (chat Mani) sul diff staged del branch claude/peaceful-lovelace-0w2b7q (PR #288, HEAD a735e46). Ho letto CLAUDE.md (sezioni 5, 8 e 10), reports/stato_progetto.md (in modo selettivo) e la mia memoria. Il diff non tocca la history, non simula tool e non indebolisce nessun guardrail. Il blocco riguarda la correttezza rispetto allo standard.
+
+**Motivo bloccante (V-2): il fix applica una regola dello standard che non esiste più.**
+- Ho riletto alla fonte lo standard HTML (sorgente di whatwg/html su main, scaricato oggi da raw.githubusercontent.com) e lo standard DOM (whatwg/dom main, dom.bs). La produzione PotentialCustomElementName non c'è più. Oggi un nome è un «valid custom element name» se:
+  - è un «valid element local name» del DOM: se inizia con una lettera ASCII, non deve contenere spazi ASCII, NUL, «/» o «>»;
+  - inizia con una lettera da a a z;
+  - non contiene lettere maiuscole A-Z;
+  - contiene un trattino;
+  - non è uno degli 8 nomi riservati.
+- Lo standard DOM definisce «valid shadow host name» come un valid custom element name oppure uno dei 18 tag della lista. Quindi `x-a!`, `x-a:b` e `x-a😍` oggi sono host validi.
+- Il controllo di prima (trattino + iniziale a-z, con il tag che il tokenizer consegna già in minuscolo, senza spazi, «/» o «>» e con NUL sostituito da U+FFFD) coincideva con lo standard attuale. L'ho provato con selectolax 1.0.2: `<x-A>` diventa `x-a`, NUL diventa U+FFFD, `x-a!` e `x-a:b` restano così.
+- La verifica esterna #288 aveva scritto nel suo «NON VERIFICATO» di aver citato il nome valido a memoria, senza rileggerlo dalla fonte.
+- Correzione da fare: togliere `CUSTOM` e `import re` e tornare al controllo di prima. Il caso `x-a!`/`x-a:b` va tenuto come test con l'esito dello standard attuale («ST», non «LM»), con un commento che rimandi a «valid element local name». Su V-2 della verifica esterna va risposto citando la fonte.
+
+**Elementi del diff esaminati**
+- `modules/web/lexbor.py:150` — la regex `CUSTOM` dei caratteri ammessi nel nome. Rischio: intervalli sbagliati. Ho confrontato tutti i code point da 0 a 0x10FFFF con la vecchia lista PCENChar: 0 differenze, quindi gli intervalli sono esatti. Contro lo standard attuale invece divergono 142.472 code point (tutta la punteggiatura ASCII, i controlli, U+F0000 e oltre). — **blocco**
+- `modules/web/lexbor.py:179` — la condizione di host, ora `"-" in tag and CUSTOM.fullmatch(tag)`. Rischio: divergere dal browser. Con lo standard attuale, sulla pagina `<x-a!><template shadowrootmode=open>S</template>L</x-a!>` il browser mostra «S» e Gas ora legge «L»: è proprio il verso che la verifica esterna voleva evitare (testo che l'utente non vede dato all'agente, testo visibile tolto all'agente). — **blocco**
+- `tests/test_unit_web_lexbor.py:151` — il test che si aspetta «LM» per `x-a!` e `x-a:b`. Rischio: fissare come «browser» un comportamento obsoleto. Per lo standard attuale l'esito giusto è «ST». — **blocco**
+- `tests/test_unit_web_lexbor.py:153` — `x.y-é` letto come host («S»). Valido con entrambe le regole. — ok
+- `modules/web/lexbor.py:196` con `tests/test_unit_web_lexbor.py:156` — V-3: il template dello shadow non conta tra i figli assegnati agli slot. Per lo standard il template dichiarativo va solo sulla pila del parser («insert a foreign element» con only-add-to-element-stack), non nel DOM, quindi «R» è corretto. Mutante `luce.mem_id != figlio.mem_id` → `True`: 1 failed, poi file ripristinato (nessuna modifica rimasta fuori dallo staging). Commento aggiornato e corretto. — ok
+- Prove mie (Python 3.13, selectolax 1.0.2): tests/test_unit_web_lexbor.py dà 99 passed.
+
+**Rischi esplicitamente esclusi**
+- Cosa fanno oggi i browser veri (Chromium, Firefox, Safari) con i nomi «larghi»: non l'ho verificato. Non c'è un browser in questo ambiente, html.spec.whatwg.org risponde 403 dal proxy e l'API di ricerca GitHub è limitata al repo, quindi non ho trovato la data del cambio dello standard né lo stato di implementazione. Il giudizio si basa sullo standard vivo letto alla fonte. Se l'operatore preferisce seguire un browser che implementa ancora PCEN, è una decisione sua, ma allora il commento e il test non possono dire «dello standard».
+- Non ho rieseguito la suite web completa, la suite vecchia con GAS_WEB_LEXBOR=1, il caso Python 3.11 senza selectolax e la misura dei 50k host: il diff non tocca quei percorsi oltre la riga 179.
+
+**Memoria**: aggiunte la riga #542 e una lezione (rileggere alla fonte un finding che cita lo standard «a memoria»; whatwg/html e whatwg/dom su raw.githubusercontent.com sono raggiungibili dal proxy). Commit 212ab4f fatto con scripts/commit_memoria_revisore.sh; lo staging del diff sotto review non è stato toccato.
+
+File: /home/user/Gas/modules/web/lexbor.py, /home/user/Gas/tests/test_unit_web_lexbor.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #543 (chat Mani) — diff committato in fe1c9b0
+
+## VERDETTO: APPROVATO
+
+Review #543 (chat Mani): la correzione della bocciatura #542 chiude il motivo bloccante. Il controllo del nome host torna a seguire lo standard di oggi e V-3 resta fissato da un test. Il diff non tocca la history, non simula tool e non indebolisce nessun guardrail.
+
+**Elementi del diff esaminati**
+- `modules/web/lexbor.py:62` — `import re` tolto insieme a `CUSTOM`. Rischio: un uso di `CUSTOM` rimasto. Grep: nessuna occorrenza. — ok
+- `modules/web/lexbor.py:177` — di nuovo trattino + iniziale a-z. Rischio: divergere dal browser. Coincide con lo standard attuale: «valid custom element name» di HTML più «valid element local name» di DOM, riletti alla fonte nella #542. Il tokenizer consegna il tag in minuscolo, senza spazi, «/» o «>», e con NUL già sostituito da U+FFFD. Mutante che ammette nel nome solo lettere, cifre, punto e trattino: 1 failed, poi file ripristinato (nessuna modifica rimasta fuori dallo staging). — ok
+- `modules/web/lexbor.py:143` — commento su HOST con la fonte. Rischio: commento impreciso. Dice «niente maiuscole» senza precisare che vale solo per A-Z (le maiuscole non ASCII sono ammesse). — riserva cosmetica, non blocca (R-543-1)
+- `tests/test_unit_web_lexbor.py:151` — `x-a!` e `x-a:b` ora si aspettano «ST», l'esito dello standard di oggi. — ok
+- `tests/test_unit_web_lexbor.py:156` — V-3: template dello shadow con `slot=n` → «R». Il template dichiarativo non entra nel DOM; il mutante l'avevo già verificato nella #542 (1 failed). — ok
+
+**Prove mie**
+- tests/test_unit_web_lexbor.py: 99 passed su Python 3.13 con selectolax; 20 passed / 79 skipped su 3.11 senza selectolax.
+- Test web (`-k web`): 541 passed / 1 skipped.
+
+**Rischi esplicitamente esclusi**
+- Come si comportano i browser veri con i nomi «larghi»: non verificabile qui (nessun browser, html.spec.whatwg.org risponde 403 dal proxy). Il giudizio si basa sullo standard vivo letto alla fonte.
+- Non ho rieseguito la suite vecchia con GAS_WEB_LEXBOR=1 né la misura dei 50k host: rispetto a main il codice di quei percorsi torna identico, salvo i commenti.
+
+**Riserva da tracciare in stato_progetto.md**
+- R-543-1 COSMETICA: precisare nel commento su HOST che «niente maiuscole» vale solo per A-Z.
+
+**Memoria**: aggiunta la riga #543 (nessuna lezione nuova), commit e272522 fatto con scripts/commit_memoria_revisore.sh; lo staging del diff sotto review non è stato toccato.
+
+File: /home/user/Gas/modules/web/lexbor.py, /home/user/Gas/tests/test_unit_web_lexbor.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py; toccati solo `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`.
@@ -174,22 +246,28 @@ Nessuna modifica a gas.py; toccati solo `modules/web/lexbor.py` e `tests/test_un
 - File lexbor su Python 3.11 senza selectolax (come la CI): 20 passed / 76 skipped.
 - Suite vecchia con `GAS_WEB_LEXBOR=1` (`tests/test_unit_web_leggi.py`): 11 failed / 430 passed / 1 skipped prima e dopo, gli stessi 11 (fuori scope: casi dove la lettura di sempre e lexbor differiscono, noti dalla fetta 19).
 - Dopo il merge di main 0a9ce70: web + claude_cli 566 passed / 1 skipped; kernel (`tests/test_unit_kernel.py`) 1056 PASS, 1 FAIL — T31g (sqlite_vec assente in questo ambiente, fuori scope, noto).
+- Dopo V-2/V-3 (fe1c9b0): web suite 540 passed / 1 skipped (+3 casi); lexbor su 3.11 senza selectolax 20 passed / 79 skipped; suite vecchia con `GAS_WEB_LEXBOR=1` sempre 11 failed / 430 passed; mutante «template tra gli assegnati» ora preso (1 failed).
 - Mutanti: tutti presi tranne `CON_SHADOW = True` (cambia solo i tempi); elenco in `reports/ultimo_report.md`.
 
 ## §6 STATO CI
 
 CI NON VERIFICATA con `gh` (assente/non autenticato nel cloud). Check run lette dall'integrazione GitHub sulla PR #288:
-- Head af8f8ec: `handoff-check` success; `verifica-bot` failure (V-1 MEDIA: conflitto con main, chiusa col merge 5ff6ad7); `unit-suite` in corso alla lettura.
-- Head 16cb6a6: `handoff-check` failure atteso (run 40738191089: l'handoff era ancora quello della #285).
+- Head a735e46: run 40739978887 con `unit-suite` e `handoff-check` success; `verifica-bot` success (verdetto testuale APPROVATO CON RISERVE, V-1 cosmetica = questo §6, riscritto).
+- Head af8f8ec: run 40738586125 con `unit-suite` success, `handoff-check` success; `verifica-bot` failure (V-1 MEDIA conflitto, chiusa col merge 5ff6ad7).
+- Head 16cb6a6: run 40738191089, `handoff-check` failure atteso (handoff ancora della #285).
 
 Mappatura commit→run:
 - d553ca2, 484982b: nessuna run su questo SHA (pushati insieme a 16cb6a6).
 - 16cb6a6: run 40738191089.
-- af8f8ec: run del push del fine-task (check sopra).
-- 5ff6ad7, 4021d67 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
+- af8f8ec: run 40738586125.
+- 5ff6ad7, 4021d67: nessuna run su questo SHA (pushati insieme a a735e46).
+- a735e46: run 40739978887.
+- 212ab4f, e272522, fe1c9b0 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
 
 ## §7 RISERVE APERTE
 
+- R-543-1 COSMETICA (review #543): nel commento su HOST «niente maiuscole» vale solo per A-Z.
 - R-540-1 COSMETICA (review #540): uno slot dentro `<svg><foreignObject>` nello shadow non reclama il nome; svg è nascosto per scelta.
-- R-ve280-1 BASSA: i test del figlio lexbor con selectolax non girano nei check required (CI su 3.11 senza selectolax). Chat Motore: `selectolax==1.0.2` in requirements-dev.
+- R-ve280-1 BASSA (anche V-3 ve #288): i test del figlio lexbor con selectolax non girano nei check required (CI su 3.11 senza selectolax). Chat Motore: `selectolax==1.0.2` in requirements-dev.
+- V-2 ve #288: non accolta (standard di oggi riletto alla fonte, vedi §1); da confermare all'operatore.
 - Restano quelle delle fette precedenti (stato_progetto, blocchi «Mani — fetta 20/21»): cosmetiche R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4.
