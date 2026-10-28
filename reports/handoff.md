@@ -48,7 +48,7 @@ NB: base = merge-base con origin/main = 297fc22. Regola «n/d»: il conteggio di
 d553ca2 chore(revisore): memoria review #539 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
