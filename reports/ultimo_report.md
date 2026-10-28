@@ -1,11 +1,11 @@
-# ULTIMO REPORT — 2026-10-28 — Coda notte: esito della firma con la cronologia persa
+# ULTIMO REPORT — 2026-10-28 — Coda notte: note del bot su #281 nella voce 9
 
 ## DECISIONI UMANE RICHIESTE
 1. Merge della PR di questa sessione (solo documenti), numero nell'handoff §0.
 
 ## Esito
-- **Voce 9 in `coda_notte.md`**: FATTA — esito di una firma con la cronologia persa, ripristinata o sostituita (V-1 verifica esterna #281, comprende R-531-3), richiesta dall'operatore dopo il merge di #281.
-- `stato_progetto.md`: R-531-3 rimanda alla voce 9.
+- **Voce 9 in `coda_notte.md`**: FATTA — aggiunte V-1 bot #281 (test mancanti) e V-2 bot #281 (doppia lettura del DB); riferimento alla verifica esterna dell'agente reso univoco col link al commento (note V-1/V-2 bot #282).
+- `stato_progetto.md`: stesso riferimento univoco.
 
 ## Anomalie
 - Nessuna.
