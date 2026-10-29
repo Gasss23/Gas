@@ -533,6 +533,8 @@ def test_v1_run_server_carica_il_dotenv(monkeypatch, capsys):
         assert run_server() == 0
         out = capsys.readouterr().out
         assert "in ascolto" in out and "GAS_VOCE_FORTE acceso" in out
+        # V2 (V-3 ve #304): la riga d'attesa esce per prima, prima del caricamento
+        assert out.index("avvio in corso") < out.index("in ascolto")
     finally:
         os.environ.pop("GAS_VOICE_TOKEN", None)
         os.environ.pop("GAS_VOCE_FORTE", None)
@@ -550,3 +552,116 @@ def test_v1_run_server_dotenv_rotto_non_crasha(monkeypatch, capsys):
     monkeypatch.setattr(sys, "path", list(sys.path))  # V-1 bot #304
     assert run_server(root_dir="/tmp") == 1
     assert "GAS_VOICE_TOKEN" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# V2 (chat M2): proxy del browser — attesa lunga per il forte, messaggio chiaro se scade
+# ---------------------------------------------------------------------------
+
+def _browser_server_module():
+    import importlib.util
+    percorso = Path(__file__).parent.parent / "clients" / "voice" / "browser_server.py"
+    spec = importlib.util.spec_from_file_location("gas_browser_server_test", percorso)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_v2_browser_proxy_tempo_scaduto_messaggio_chiaro():
+    """Se Gas non risponde entro il tetto, il proxy dice 504 «può essere ancora in corso»,
+    non «Voice server non raggiungibile» (prima: tetto fisso di 90 s)."""
+    import time
+    from http.server import BaseHTTPRequestHandler
+
+    class _Lento(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+            time.sleep(2)
+            try:
+                self.send_response(200)
+                self.end_headers()
+            except OSError:
+                pass
+
+    lento = HTTPServer(("127.0.0.1", 0), _Lento)
+    threading.Thread(target=lento.serve_forever, daemon=True).start()
+    bs = _browser_server_module()
+
+    class _Proxy(bs.BrowserProxyHandler):
+        pass
+
+    _Proxy.token = "tok"
+    _Proxy.voice_host = "127.0.0.1"
+    _Proxy.voice_port = lento.server_address[1]
+    _Proxy.voice_timeout = 1
+    proxy = HTTPServer(("127.0.0.1", 0), _Proxy)
+    threading.Thread(target=proxy.serve_forever, daemon=True).start()
+    try:
+        st, body = _post(proxy.server_address[1], {"prompt": "ciao"})
+    finally:
+        proxy.shutdown()
+        lento.shutdown()
+    assert st == 504
+    assert "entro 1 s" in body["error"] and "ancora in corso" in body["error"]
+
+
+def test_v2_browser_proxy_attesa_di_default_e_valore_sbagliato(monkeypatch, capsys):
+    bs = _browser_server_module()
+    assert bs.BrowserProxyHandler.voice_timeout == 600
+    # R-568-1-M2: il timeout del socket del browser (socketserver) resta quello di sempre
+    assert bs.BrowserProxyHandler.timeout is None
+    monkeypatch.setattr(bs, "_load_dotenv", lambda root: None)
+
+    class _NonDevePartire:
+        def __init__(self, *a):
+            raise AssertionError("valore sbagliato accettato: il server stava per partire")
+
+    # R-568-2-M2: se il controllo sparisce il test fallisce, non resta appeso
+    monkeypatch.setattr(bs, "HTTPServer", _NonDevePartire)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "tok")
+    for sbagliato in ("abc", "0", "-5"):
+        monkeypatch.setenv("GAS_VOICE_TIMEOUT", sbagliato)
+        assert bs.run_browser_server() == 1
+        assert "GAS_VOICE_TIMEOUT" in capsys.readouterr().out
+
+
+def test_v2_browser_proxy_connessione_appesa_502_subito(monkeypatch):
+    """R-568-3-M2 / R-569-1-M2: se la CONNESSIONE al voice server resta appesa (server
+    irraggiungibile), il proxy risponde 502 «non raggiungibile» dopo il tetto corto di
+    connessione, non il 504 «ancora in corso» dopo l'attesa lunga della risposta."""
+    import socket
+    import time
+    pieno = socket.socket()
+    pieno.bind(("127.0.0.1", 0))
+    pieno.listen(0)
+    riempitivi = []
+    for _ in range(8):  # coda di accettazione piena: i connect successivi restano appesi
+        c = socket.socket()
+        c.setblocking(False)
+        c.connect_ex(pieno.getsockname())
+        riempitivi.append(c)
+    bs = _browser_server_module()
+    monkeypatch.setattr(bs, "_CONNECT_TIMEOUT", 1)
+
+    class _Proxy(bs.BrowserProxyHandler):
+        pass
+
+    _Proxy.token = "tok"
+    _Proxy.voice_host = "127.0.0.1"
+    _Proxy.voice_port = pieno.getsockname()[1]
+    _Proxy.voice_timeout = 30
+    proxy = HTTPServer(("127.0.0.1", 0), _Proxy)
+    threading.Thread(target=proxy.serve_forever, daemon=True).start()
+    t0 = time.monotonic()
+    try:
+        st, body = _post(proxy.server_address[1], {"prompt": "ciao"})
+    finally:
+        proxy.shutdown()
+        for c in riempitivi:
+            c.close()
+        pieno.close()
+    assert st == 502 and "non raggiungibile" in body["error"]
+    assert time.monotonic() - t0 < 10

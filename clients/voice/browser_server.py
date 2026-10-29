@@ -14,6 +14,8 @@ Variabili d'ambiente (lette da .env nella root Gas se presenti):
     GAS_VOICE_TOKEN    — token bearer  OBBLIGATORIO
     GAS_VOICE_URL      — URL base voice server  (default: http://127.0.0.1:8765)
     GAS_BROWSER_PORT   — porta questo server    (default: 9000)
+    GAS_VOICE_TIMEOUT  — secondi di attesa della risposta di Gas (default: 600; una
+                         chiamata del cervello forte può durare fino a 300 s)
 """
 from __future__ import annotations
 
@@ -31,6 +33,7 @@ log = logging.getLogger(__name__)
 _HERE = Path(__file__).parent
 _GAS_ROOT = _HERE.parent.parent
 _HTML_FILE = _HERE / "browser_client.html"
+_CONNECT_TIMEOUT = 10  # secondi per collegarsi al voice server (non per la risposta)
 
 
 def _load_dotenv(root: Path) -> None:
@@ -54,6 +57,9 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
     token: str = ""
     voice_host: str = "127.0.0.1"
     voice_port: int = 8765
+    # V2: il forte (`claude -p`) può metterci minuti; prima era 90 s. Non chiamarlo
+    # `timeout`: è un attributo di socketserver (socket del browser, R-568-1-M2).
+    voice_timeout: int = 600
 
     def log_message(self, fmt: str, *args: object) -> None:
         log.info(fmt, *args)
@@ -87,7 +93,17 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
     def _proxy_voice(self, body: bytes) -> None:
         content_type = self.headers.get("Content-Type", "application/json")
         accept = self.headers.get("Accept", "audio/mpeg")
-        conn = http.client.HTTPConnection(self.voice_host, self.voice_port, timeout=90)
+        conn = http.client.HTTPConnection(self.voice_host, self.voice_port,
+                                          timeout=_CONNECT_TIMEOUT)
+        try:
+            # R-568-3-M2: la connessione ha un tetto corto (server spento o irraggiungibile
+            # → 502 subito); solo l'attesa della risposta usa il tetto lungo.
+            conn.connect()
+            conn.sock.settimeout(self.voice_timeout)
+        except OSError as exc:
+            conn.close()
+            self._send_error_json(502, f"Voice server non raggiungibile: {exc}")
+            return
         try:
             conn.request(
                 "POST",
@@ -104,13 +120,13 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
             resp_body = resp.read()
             resp_ct = resp.getheader("Content-Type", "application/octet-stream")
             resp_status = resp.status
+        except TimeoutError:
+            # V2: scaduto il tempo, Gas può star ancora lavorando: dirlo, non «non raggiungibile»
+            self._send_error_json(504, f"Gas non ha risposto entro {self.voice_timeout} s: il lavoro "
+                                       "può essere ancora in corso, guarda il terminale del server voce.")
+            return
         except (ConnectionRefusedError, OSError) as exc:
-            err = json.dumps({"error": f"Voice server non raggiungibile: {exc}"}).encode()
-            self.send_response(502)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(err)))
-            self.end_headers()
-            self.wfile.write(err)
+            self._send_error_json(502, f"Voice server non raggiungibile: {exc}")
             return
         finally:
             conn.close()
@@ -120,6 +136,14 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(resp_body)))
         self.end_headers()
         self.wfile.write(resp_body)
+
+    def _send_error_json(self, code: int, msg: str) -> None:
+        err = json.dumps({"error": msg}).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(err)))
+        self.end_headers()
+        self.wfile.write(err)
 
     def _not_found(self) -> None:
         body = b"Not Found"
@@ -150,6 +174,14 @@ def run_browser_server() -> int:
         print("✗ GAS_BROWSER_PORT non è un intero valido.")
         return 1
 
+    try:
+        timeout = int(os.environ.get("GAS_VOICE_TIMEOUT") or "600")
+        if timeout <= 0:
+            raise ValueError
+    except ValueError:
+        print("✗ GAS_VOICE_TIMEOUT non è un intero positivo (secondi).")
+        return 1
+
     if not _HTML_FILE.exists():
         print(f"✗ browser_client.html non trovato in {_HERE}")
         return 1
@@ -157,10 +189,11 @@ def run_browser_server() -> int:
     BrowserProxyHandler.token = token
     BrowserProxyHandler.voice_host = voice_host
     BrowserProxyHandler.voice_port = voice_port
+    BrowserProxyHandler.voice_timeout = timeout
 
     server = HTTPServer(("127.0.0.1", browser_port), BrowserProxyHandler)
     print(f"✓ Gas browser client: http://127.0.0.1:{browser_port}/")
-    print(f"  → proxy verso voice server: {voice_url}")
+    print(f"  → proxy verso voice server: {voice_url} (attesa massima {timeout} s)")
     print("  Ctrl-C per uscire.")
 
     try:

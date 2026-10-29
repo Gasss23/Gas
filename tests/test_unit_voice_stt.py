@@ -66,6 +66,8 @@ def _post_raw(port: int, body: bytes, headers: dict) -> tuple[int, dict]:
     try:
         # R-384-1 (chat Voce): niente proxy verso 127.0.0.1, qualunque sia l'ambiente
         with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=5) as r:
+            if r.headers.get("Content-Type", "").startswith("audio/"):
+                return r.status, {"_raw_audio": True}  # V2: risposta sintetizzata
             return r.status, json.loads(r.read())
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read())
@@ -299,8 +301,7 @@ class TestVoiceHandlerRouting:
         assert status == 200
         assert visti == [("analizza i lead", {"cervello": "forte"})]
 
-    def test_v1_parola_forte_parlata_senza_richiesta_400(self):
-        """V1: «Forte.» trascritto senza richiesta → 400 d'uso, nessun turno (mai ai gratuiti)."""
+    def _uso_parlato(self, trascritto: str, extra_env: dict | None = None, accept: str | None = None):
         visti = []
 
         def _run_turn(prompt, **kw):
@@ -310,10 +311,39 @@ class TestVoiceHandlerRouting:
         self.kernel.run_turn = _run_turn
         wav = _fake_wav()
         hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
-        with patch("modules.voice.server.transcribe_audio", return_value="Forte."):
-            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
+        if accept:
+            hdrs["Accept"] = accept
+        env = {"GROQ_API_KEY": "fake-key", **(extra_env or {})}
+        with patch("modules.voice.server.transcribe_audio", return_value=trascritto):
+            with patch.dict(os.environ, env):
+                if "GAS_VOCE_FORTE" not in (extra_env or {}):
+                    os.environ.pop("GAS_VOCE_FORTE", None)
                 status, resp = _post_raw(self.port, wav, hdrs)
-        assert status == 400 and "«forte <richiesta>»" in resp["error"]
+        return status, resp, visti
+
+    def test_v1_parola_forte_parlata_senza_richiesta_istruzione_d_uso(self):
+        """V2 (V-2 ve #304): «Forte.» trascritto senza richiesta → risposta d'uso da
+        ascoltare (200, non un errore), nessun turno (mai ai gratuiti)."""
+        status, resp, visti = self._uso_parlato("Forte.")
+        assert status == 200 and resp.get("uso") is True
+        assert "Dopo «forte» dimmi cosa fare" in resp["content"]
+        assert "Non ho avviato nessun lavoro" in resp["content"]
+        assert visti == []
+
+    def test_v2_gas_forte_da_solo_con_interruttore_acceso(self):
+        """V2: con GAS_VOCE_FORTE=1 «Gas, forte.» da solo dà la stessa istruzione d'uso,
+        nessun turno vuoto al forte."""
+        status, resp, visti = self._uso_parlato("Gas, forte.", {"GAS_VOCE_FORTE": "1"})
+        assert status == 200 and "Dopo «forte» dimmi cosa fare" in resp["content"]
+        assert visti == []
+
+    def test_v2_istruzione_d_uso_sintetizzata_a_voce(self):
+        """V2: col client che chiede audio l'istruzione d'uso arriva come MP3 (sintesi)."""
+        with patch("modules.voice.server.synthesize_speech", return_value=b"ID3mp3") as tts:
+            status, resp, visti = self._uso_parlato(
+                "Forte!", {"ELEVENLABS_API_KEY": "fake-el"}, accept="audio/mpeg")
+        assert status == 200 and resp == {"_raw_audio": True}
+        assert "Dopo «forte» dimmi cosa fare" in tts.call_args[0][0]
         assert visti == []
 
     def test_multipart_routes_to_stt(self):
