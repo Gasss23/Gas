@@ -128,6 +128,14 @@ def test_spento_per_default(monkeypatch):
      "</math><title>W5</title><p>W0</p>", ("W0", "Titolo: W5"), ("W1", "W2", "W3", "W4")),
     # svg dentro mi è svg (R-548-1)
     ("<math><mi><svg><title>W1</title></svg></mi></math><title>W2</title><p>W0</p>", ("W0", "Titolo: W2"), ("W1",)),
+    # ogni punto d'integrazione nel suo namespace porta a HTML (V-1 ve #294)
+    *[(f"{dentro}<title>W1</title>{fuori}<title>W2</title><p>W0</p>", ("W0", "Titolo: W1"), ("W2",)) for dentro, fuori in (
+        ("<svg><desc>", "</desc></svg>"), ("<svg><title>", "</title></svg>"), ("<math><mo>", "</mo></math>"),
+        ("<math><mn>", "</mn></math>"), ("<math><ms>", "</ms></math>"), ("<math><mtext>", "</mtext></math>"),
+        ("<math><annotation-xml encoding=application/xhtml+xml>", "</annotation-xml></math>"),
+        ("<math><annotation-xml><mi>", "</mi></annotation-xml></math>"))],
+    ("<math><mi><malignmark><title>W1</title></malignmark></mi></math><title>W2</title><p>W0</p>",
+     ("W0", "Titolo: W2"), ("W1",)),
     # mglyph dentro mi resta math; svg dentro annotation-xml è svg, col suo foreignObject
     ("<math><mi><mglyph><title>W1</title></mglyph></mi></math><math><annotation-xml><svg><foreignObject>"
      "<title>W2</title></foreignObject></svg></annotation-xml></math><p>W0</p>", ("W0", "Titolo: W2"), ("W1",)),

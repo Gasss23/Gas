@@ -49,10 +49,12 @@ import threading
 import time
 import unicodedata
 from html import escape as html_escape
+from html.entities import html5 as _ENTITA_HTML5
 from html import unescape as html_unescape
 from html.parser import HTMLParser
 from typing import Callable, Optional
 from urllib.parse import quote, urljoin, urlsplit
+from xml.parsers import expat
 
 from modules.web import lexbor as _lexbor
 
@@ -1322,6 +1324,90 @@ def _fine_doctype(testo: str, da: int) -> int:
 _DOPO_DOCTYPE = re.compile(r"[ \t\r\n]*(?:(<[A-Za-z])|$)")
 
 
+# DOCTYPE con cui i browser leggono le entità di HTML (&nbsp;…): per lo standard i loro
+# identificativi pubblici puntano a un DTD con i riferimenti con nome di HTML.
+_PUBBLICI_XHTML = frozenset({
+    "-//W3C//DTD XHTML 1.0 Transitional//EN", "-//W3C//DTD XHTML 1.1//EN",
+    "-//W3C//DTD XHTML 1.0 Strict//EN", "-//W3C//DTD XHTML 1.0 Frameset//EN",
+    "-//W3C//DTD XHTML Basic 1.0//EN", "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN",
+    "-//W3C//DTD XHTML 1.1 plus MathML 2.0 plus SVG 1.1//EN", "-//W3C//DTD MathML 2.0//EN",
+    "-//WAPFORUM//DTD XHTML Mobile 1.0//EN", "-//WAPFORUM//DTD XHTML Mobile 1.1//EN",
+    "-//WAPFORUM//DTD XHTML Mobile 1.2//EN"})
+_DTD_ENTITA: Optional[bytes] = None
+
+
+def _dtd_entita() -> bytes:
+    """Il DTD delle entità di HTML per expat: ogni carattere come riferimento numerico, e
+    «<» e «&» doppiamente, perché il testo di sostituzione si rilegge come XML. Le cinque
+    entità dell'XML ci sono già."""
+    global _DTD_ENTITA
+    if _DTD_ENTITA is None:
+        righe = []
+        for nome, valore in _ENTITA_HTML5.items():
+            if nome.endswith(";") and nome[:-1] not in ("amp", "lt", "gt", "quot", "apos"):
+                testo = "".join(f"&#38;#{ord(c)};" if c in "<&" else f"&#{ord(c)};" for c in valore)
+                righe.append(f'<!ENTITY {nome[:-1]} "{testo}">')
+        _DTD_ENTITA = "\n".join(righe).encode()
+    return _DTD_ENTITA
+
+
+class _ErroreXml(Exception):
+    pass
+
+
+def _taglio_xml(testo: str, completo: bool) -> int:
+    """Per application/xhtml+xml: quanti caratteri tenere. Il browser legge una pagina XML
+    malformata solo fino al primo errore (Chrome mostra quello che viene prima, Firefox
+    nemmeno quello); Gas la legge fino allo stesso punto e il resto se ne va: testo prima
+    della radice, «</html>CODA», due radici, «<!doctype» minuscolo, tag non chiusi bene
+    (R-ve252-2, R-ve255-1). L'errore lo trova expat: le entità di HTML valgono solo coi
+    DOCTYPE XHTML noti, un DTD esterno non si scarica mai e un'entità che non conosce è un
+    errore. Si taglia alla fine dell'ultimo pezzo intero (una seconda lettura senza
+    controlli), così non resta mezzo tag; senza un elemento radice prima dell'errore non
+    resta niente. Con la pagina troncata da Gas la fine non è un errore."""
+    if expat.version_info < (2, 4, 0):
+        # Senza il freno all'amplificazione delle entità (expat 2.4) una pagina da pochi MB
+        # costerebbe minuti: niente taglio, come prima (R-550-2).
+        return len(testo)
+    dati = testo.encode("utf-8", "surrogatepass")
+    # Coi namespace un prefisso non dichiarato è un errore, come nel browser (R-550-1).
+    lettore = expat.ParserCreate(encoding="utf-8", namespace_separator=" ")
+    lettore.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE)
+
+    def esterna(contesto: str, base: Optional[str], sistema: Optional[str], pubblico: Optional[str]) -> int:
+        if pubblico in _PUBBLICI_XHTML:
+            lettore.ExternalEntityParserCreate(contesto).Parse(_dtd_entita(), True)
+        return 1
+
+    def saltata(nome: str, di_parametro: bool) -> None:
+        if not di_parametro:
+            raise _ErroreXml
+    lettore.ExternalEntityRefHandler = esterna
+    lettore.SkippedEntityHandler = saltata
+    try:
+        lettore.Parse(dati, completo)
+        return len(testo)
+    except _ErroreXml:
+        errore = lettore.CurrentByteIndex
+    except expat.ExpatError:
+        errore = lettore.ErrorByteIndex
+    # Seconda lettura, grezza: i pezzi interi prima dell'errore; uno a metà resta indietro.
+    pezzi: list[str] = []
+    grezzo = expat.ParserCreate(encoding="utf-8")
+    grezzo.DefaultHandler = pezzi.append
+    try:
+        grezzo.Parse(dati[:max(errore, 0)], False)
+    except expat.ExpatError:
+        return 0
+    tenuto = "".join(pezzi)
+    # Il BOM in testa expat non lo restituisce: si conta a parte (R-550-3).
+    bom = 1 if testo.startswith("\ufeff") and not tenuto.startswith("\ufeff") else 0
+    if not testo.startswith(tenuto, bom) or not any(p[:1] == "<" and p[1:2] not in ("!", "?", "/", "")
+                                                    for p in pezzi):
+        return 0
+    return bom + len(tenuto)
+
+
 def _commenti_e_cdata_xml(testo: str) -> str:
     """Per application/xhtml+xml: nell'XML i commenti non sono mai testo e il contenuto di un
     CDATA è testo letterale, anche dentro script e style. html.parser invece chiude uno
@@ -1426,6 +1512,11 @@ def _componi(url_finale: str, pagina: dict) -> dict:
     else:
         xhtml = pagina["tipo"] == "application/xhtml+xml"
         if xhtml:
+            tenuto = _taglio_xml(grezzo, not pagina["troncato"])
+            if tenuto < len(grezzo):
+                logger.warning("leggi_pagina: XHTML malformato, resto della pagina nascosto su %r",
+                               url_finale[:200])
+                grezzo = grezzo[:tenuto]
             grezzo = _commenti_e_cdata_xml(grezzo)
         grezzo = _RIF_ZERI_HEX.sub(r"&#\1", _RIF_ZERI_DEC.sub("&#", grezzo))
         grezzo = _RIF_ENORME.sub("&#65533;", grezzo)
