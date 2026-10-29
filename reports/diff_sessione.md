@@ -1,10 +1,15 @@
-# DIFF SESSIONE — 2026-10-28 (chat Motore: interruttore del forte tra shell e .env, PR #293)
+# Diff della sessione — 2026-10-28 (chat Motore, PR #292)
 
-- `gas.py`: `_DOTENV_SCAVALCATE` (nomi delle variabili del `.env` scavalcate dalla shell con un valore diverso); con lo stesso valore il nome va in `_DOTENV_CARICATE` (V-1 bot #293); due WARN del doctor su `GAS_CLAUDE_CLI`.
-- `tests/test_unit_kernel.py`: T99w e T99x.
-- `tests/test_unit_dotenv.py`: test di `_DOTENV_SCAVALCATE`.
-- `.claude/agents/memoria_revisore.md`: righe delle review #547 (già #543 nel ramo), #548 (merge di main con la PR #288), #549 e #550 (merge di main con la PR #294).
-- `reports/stato_progetto.md`: punto 3 della RIPARTENZA (PR #290 chiusa, PR #293, R-543-1 e R-543-2) e «Ultimo aggiornamento».
+- `gas.py`: `_DOTENV_NEL_FILE: Dict[str, str]` al posto di `_DOTENV_CARICATE` (registrato con `setdefault` per ogni riga valida del `.env`); `_avviso_claude_timer` prende `valore_file` al posto di `da_dotenv` (WARN «altro valore», nome nudo → cartelle, eccezione «claude» solo senza variabile nel `.env`); il doctor passa `_DOTENV_NEL_FILE.get("GAS_CLAUDE_BIN")`.
+- `tests/test_unit_kernel.py`: T99s (caso «altro valore»), T99t (nuovi casi, chiamate con `valore_file`, collegamenti tolti dopo l'uso).
+- `tests/test_unit_dotenv.py`: test sul dizionario e sulla riga doppia.
+- `gas.py` (secondo giro): `_DOTENV_VALORI_DA_TENERE`, il registro tiene solo `GAS_CLAUDE_BIN`; `tests/test_unit_dotenv.py`: lista bianca e chiave segreta fuori lista; `tests/test_unit_kernel.py`: T99s rimette il registro.
+- `gas.py` (terzo giro): vuoto e «claude» uguali nel confronto col `.env`, messaggio col comando che userà il timer; `tests/test_unit_kernel.py`: tre casi in T99t.
+- `.claude/agents/memoria_revisore.md`: review #543, #544 (due righe), #545, #547, #548, #549, #550, #551.
+- Merge di origin/main (PR #294, chat Mani): conflitti nei report e nella memoria risolti, codice di main identico.
+- Merge di origin/main (PR #293, altra sessione chat Motore): conflitto in `gas.py` e nei test risolto tenendo i due registri; `_DOTENV_CARICATE.update` rimessa; review #551.
+- Merge di origin/main (PR #288, chat Mani): conflitti nei report e nella memoria risolti, codice di main identico (fuori dal diff della sessione).
+- `reports/stato_progetto.md`: «Ultimo aggiornamento» e punto 3 della ripartenza Motore.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

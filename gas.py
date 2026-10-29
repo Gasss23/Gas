@@ -447,18 +447,29 @@ _PATH_TIMER_LINUX = ("/usr/local/bin",)
 
 
 def _avviso_claude_timer(valore_env: str, binario: str, root: Path,
-                         da_dotenv: bool, linux: bool = False) -> Optional[str]:
+                         valore_file: Optional[str], linux: bool = False) -> Optional[str]:
     """Perché il giro notturno potrebbe non trovare `claude` (None = lo trova). Pura,
-    per il doctor (notti del 27 e 28 ottobre). Casi: GAS_CLAUDE_BIN non assoluto (V-3
-    ve #287), assoluto ma non dal `.env` (R-538-1: il timer legge solo il `.env`), o
+    per il doctor (notti del 27 e 28 ottobre). `valore_file`: GAS_CLAUDE_BIN scritto nel
+    `.env` (None se non c'è). Casi: il `.env` ha un altro valore, che il timer userà
+    (R-543-1, R-544-1, anche con la shell vuota o «claude»); relativo con «/» (V-3 ve
+    #287); valore che il `.env` non ha (R-538-1: il timer legge solo il `.env`), salvo il
+    nome nudo «claude», che il timer cerca comunque; un nome nudo lo cerca il PATH del
+    timer, quindi passa al controllo delle cartelle (V-2 bot #291); altrimenti
     comando trovato fuori dalle cartelle del timer e dal venv che il plist attiva (solo
     il primo fra .venv e venv con bin/activate, V-1 bot #287). Cartelle confrontate con
     realpath (collegamenti simbolici). Un PATH messo in ~/.zshenv lo vede anche il timer
     (`zsh -c`): lì l'avviso è un falso allarme, nel verso prudente."""
+    # Vuoto e «claude» sono lo stesso comando per claude_cli (V-1 bot #292, R-545-1)
+    if valore_file is not None and (valore_file or "claude") != (valore_env or "claude"):
+        return ("nel .env GAS_CLAUDE_BIN ha un altro valore: il giro notturno userà "
+                f"«{valore_file or 'claude'}»")
     if valore_env:
-        if not os.path.isabs(valore_env):
+        if "/" in valore_env and not os.path.isabs(valore_env):
             return "GAS_CLAUDE_BIN non è un percorso assoluto"
-        return None if da_dotenv else "GAS_CLAUDE_BIN non viene dal .env (il giro notturno legge solo quello)"
+        if valore_file is None and valore_env != "claude":
+            return "questo GAS_CLAUDE_BIN non è nel .env (il giro notturno legge solo quello)"
+        if os.path.isabs(valore_env):
+            return None
     cartelle = list(_PATH_TIMER) + (list(_PATH_TIMER_LINUX) if linux else [])
     venv = next((root / v for v in (".venv", "venv") if (root / v / "bin" / "activate").is_file()), None)
     if venv is not None:
@@ -567,9 +578,17 @@ def _env_flag(name: str) -> bool:
 
 
 _DOTENV_CHIAVE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+# Variabili scritte nel `.env` col loro valore, anche quando la shell le sovrascrive: il
+# doctor le usa per dire se il giro notturno, che legge solo il `.env`, vedrà lo stesso
+# GAS_CLAUDE_BIN (R-538-1; V-1 bot #291; R-543-1: conta il valore, non solo il nome).
+_DOTENV_NEL_FILE: Dict[str, str] = {}
+# Solo queste chiavi finiscono nel registro col loro valore: niente segreti in un
+# globale che non serve (V-2 ve #292, V-4 bot #292).
+_DOTENV_VALORI_DA_TENERE = frozenset({"GAS_CLAUDE_BIN"})
 # Nomi delle variabili arrivate dal `.env` (non dalla shell), o già nella shell con lo
 # STESSO valore del `.env` (V-1 bot #293): il doctor le usa per dire se il giro
-# notturno, che legge solo il `.env`, vedrà GAS_CLAUDE_BIN e GAS_CLAUDE_CLI (R-538-1).
+# notturno, che legge solo il `.env`, vedrà GAS_CLAUDE_CLI (R-538-1; GAS_CLAUDE_BIN usa il
+# registro dei valori qui sopra).
 _DOTENV_CARICATE: set = set()
 # Nomi delle variabili del `.env` NON caricate perché la shell ne ha già un valore
 # DIVERSO: di notte (solo `.env`) vale l'altro valore. Solo i nomi, mai i valori.
@@ -624,6 +643,8 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
             continue
         else:
             valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
+        if chiave in _DOTENV_VALORI_DA_TENERE:
+            _DOTENV_NEL_FILE.setdefault(chiave, valore)  # R-544-2: vince la prima riga, come qui sotto
         if chiave in os.environ:
             if os.environ[chiave] != valore:
                 _DOTENV_SCAVALCATE.add(chiave)
@@ -5027,7 +5048,7 @@ def doctor(root_dir: Optional[str] = None) -> int:
             check("Cervello forte", "comando claude", "WARN",
                   "non trovato o non eseguibile: il forte non può rispondere")
         elif (_avviso := _avviso_claude_timer(_bin_env, binario, root,
-                                              "GAS_CLAUDE_BIN" in _DOTENV_CARICATE,
+                                              _DOTENV_NEL_FILE.get("GAS_CLAUDE_BIN"),
                                               sys.platform.startswith("linux"))):
             check("Cervello forte", "comando claude", "WARN",
                   f"{_avviso} (metti GAS_CLAUDE_BIN={os.path.abspath(binario)} nel .env)")

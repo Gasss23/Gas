@@ -1,21 +1,25 @@
-# ULTIMO REPORT — 2026-10-28 — chat Motore: interruttore del forte tra shell e .env (PR #293)
+# Ultimo report — 2026-10-28 (chat Motore)
+
+**Task:** (operatore: «sistema anche questa e poi mergia») merge della PR #291 (autorizzato dall'operatore: «mergia e sistema») e correzione delle note del bot su #291 (PR #292).
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #293 (https://github.com/Gasss23/Gas/pull/293): la review #547 (già #543 nel ramo) è APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10).
+1. Merge della PR #292 (https://github.com/Gasss23/Gas/pull/292): review #545 APPROVATO CON RISERVE, verifica esterna APPROVATO CON RISERVE (BASSE): serve il «sì» dell'operatore (CLAUDE.md §10), salvo verdetto pulito del bot.
 
 ## Esito
-- **PR #290**: chiusa senza merge, su «ok» dell'operatore. Era un doppione della #291 (stessa fetta fatta da un'altra sessione, già su main).
-- **WARN del doctor su GAS_CLAUDE_CLI della shell e del .env non coincidenti**: FATTA, in tutti e due i versi.
-  - Forte acceso nella shell ma non dal `.env` (V-3 del bot su #290).
-  - Forte spento nella shell ma il `.env` ha un altro valore (V-1 della verifica esterna su #290).
-  - Il nuovo `_DOTENV_SCAVALCATE` contiene solo i nomi delle variabili, mai i valori.
-- **Test**: suite kernel da 1061 a 1063 PASS, 0 FAIL (main misurato in un worktree a `2f35bc6`). pytest `test_unit_dotenv`: 12 passati.
-
-- **Merge di main (PR #288)**: FATTA — conflitti solo nei report e nella memoria; review #548 APPROVATO; la review del ramo #543 è rinumerata #547 (V-2 della verifica esterna su #293).
-
-- **V-1 bot #293 (stesso valore in shell e .env → falso WARN)**: FATTA — il nome conta come arrivato dal `.env`; vale anche per `GAS_CLAUDE_BIN` (V-1 bot #291); review #549 APPROVATO.
-
-- **Merge di main (PR #294)**: FATTA — conflitti solo in report e memoria; review #550 APPROVATO.
+- **Merge della PR #291**: FATTO (autorizzazione dell'operatore).
+- **Fetta 1 — V-1 bot #291 + R-543-1 + R-544-1**: FATTA. `_DOTENV_NEL_FILE: Dict[str, str]` (nome → valore del `.env`, anche se vince la shell); il doctor dà WARN se il `.env` ha un altro valore o non ha quello in uso.
+- **Fetta 2 — V-2 bot #291 + R-543-2**: FATTA. Nome nudo → controllo delle cartelle; eccezione per «claude» solo senza la variabile nel `.env`.
+- **Fetta 3 — R-544-2**: FATTA. Registro con `setdefault` (vince la prima riga, come il loader).
+- **Fetta 4 — V-3 (R-541-1) e V-4 bot #291**: FATTE. T99t toglie i collegamenti; tipo `Dict[str, str]`.
+- Test: kernel 1057 PASS, 0 FAIL; pytest 2284 passed, 61 skipped.
+- **Fetta 5 — conflitto con main (V-1 MEDIA verifica esterna #292)**: FATTA. Merge di origin/main d4b39ca (PR #288, chat Mani), conflitti solo nei report e nella memoria; review #547 APPROVATO; kernel 1057 PASS, pytest dotenv + web_lexbor 32 passed dopo il merge.
+- **Fetta 6 — bot #292 (BOCCIATO su a0872d2 per il conflitto, check rosso su f94c4a0)**: FATTA. Registro del `.env` solo per `GAS_CLAUDE_BIN` (`_DOTENV_VALORI_DA_TENERE`, V-4 bot / V-2 ve #292), T99s rimette il registro (V-3), BOCCIATO registrato nei report (V-1); review #548 APPROVATO CON RISERVE; kernel 1057 PASS, pytest dotenv + claude_cli 42 passed.
+- **Fetta 7 — V-1 bot #292 su 67c2bca + R-545-1 + R-548-1**: FATTA. Vuoto e «claude» sono lo stesso comando nel confronto col `.env`; il messaggio dice il comando che userà il timer; review #549 APPROVATO.
+- **Fetta 8 — merge di main (PR #294, chat Mani)**: FATTA. Conflitti solo nei report e nella memoria; review #550 APPROVATO; kernel 1057 PASS, pytest dotenv + web_lexbor 35 passed.
+- **Fetta 9 — merge di main con la PR #293 (altra sessione chat Motore, conflitto anche nel codice)**: FATTA. Tenuti i due registri del `.env`, rimessa la riga persa dal merge automatico; review #551 APPROVATO CON RISERVE; kernel 1059 PASS, pytest completo 2289 passed, 104 skipped.
+- Aperte: V-3 ve #292 BASSA (secondo caricamento), R-540-3 BASSA (VPS), R-547-1 COSMETICA, R-551-1 COSMETICA.
+- Anomalia: due sessioni chat Motore hanno lavorato in parallelo sulla stessa fetta del doctor (PR #290/#293 e PR #291/#292), con numeri di review doppi (#543–#550).
 
 ## Anomalie
-- Due sessioni «chat Motore» lavorano sulla stessa RIPARTENZA: oggi ci sono stati due doppioni (#286 e #287, #290 e #291). L'ho segnalato all'operatore.
+- La review #544 è stata fatta due volte (il primo revisore è rimasto fermo per ore e ne è stato lanciato un secondo): due righe #544 nella memoria, stessi finding.
+- `gh` nel container non è autenticato: PR e CI con gli strumenti GitHub della sessione. L'iscrizione alla PR #291 non si è potuta togliere (serve un dispositivo di fiducia): non serve più, la PR è mergiata.
