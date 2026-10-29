@@ -17,6 +17,10 @@
 - **Bot su e4559ef (PR #305)**: NO, check verifica-bot failure. V-1 MEDIA (togliere un invisibile tra due parole le incollava e la gravità non si vedeva, «BASSA<U+200B>MEDIA»: regressione del mio 57e927d, riprodotta in locale): `FATTA` in 95249a8 — un invisibile attaccato a una parola di gravità dà NO. V-2 BASSA (categorie del gate mancanti): `FATTA`. V-3 COSMETICA (tetto prima dell'escape): `FATTA`.
 - **Verifica esterna su e4559ef (https://github.com/Gasss23/Gas/pull/305#issuecomment-6506076785)**: BOCCIATO. V-1 MEDIA (la stessa, con «ALTA<U+2800>x»): `FATTA` in 95249a8. V-2 BASSA («più severo di prima» non vale per un Cf lontano dalle gravità): `FATTA` — descrizione della PR corretta, il comportamento è voluto. V-3 BASSA (numero del mutante «senza escape»): `SALTATA — osservazione sul numero, nessun difetto`. V-4 COSMETICA: `FATTA` con la V-3 del bot.
 - **Review #571 (chat Mani)**: BOCCIATO (due letture fisse non coprivano le combinazioni di invisibili). **Review #572**: APPROVATO CON RISERVE (R-572-1 e R-572-2, BASSE preesistenti, registrate in stato_progetto).
+- **Bot su 95249a8 (PR #305)**: NO, failure dato in automatico dal bot_esito.py di main perché il bot ha scritto un Cf nel verdetto (lo stesso difetto che questa PR corregge). Finding veri, riprodotti: V-1 MEDIA (credenziali spezzate da un controllo C0: json.dumps le scrive come «\u001b» e lo strip non le vedeva): `FATTA` in aec5c39 — ricerca anche su ogni stringa ripulita, chiavi comprese. V-2 BASSA (togliere un invisibile toglieva un confine di parola fuori dalle gravità, «V-1<U+200B>x (alta)»): `FATTA` in aec5c39 — gravità anche sul testo grezzo. V-3 MEDIA (handoff fermo a 57e927d): `FATTA` — vera solo su 95249a8, superata da d672021.
+- **Bot su d672021 (PR #305)**: BOCCIATO. V-1 MEDIA («R-9-1<inv>V-1 (ALTA)»: tolto l'invisibile diventava la citazione di una riserva registrata e l'ALTA spariva): `FATTA` in aec5c39 (lettura grezza), test in ca222c6.
+- **Verifica esterna su d672021 (https://github.com/Gasss23/Gas/pull/305#issuecomment-6506619129)**: BOCCIATO. V-1 MEDIA (la stessa del bot, più «V-1<U+200B>b — grave», «è<U+2800>F-1(media)»): `FATTA` in aec5c39, provata su ca222c6 (tutti NO). V-2 MEDIA (credenziali C0): `FATTA` in aec5c39. V-3 BASSA (falsi NO prudenti): `SALTATA — voluti, verso sicuro`. V-4 BASSA (§6 non diceva il failure su 95249a8): `FATTA` — qui. V-5 COSMETICA (tempo su 1 MB di invisibili; «<U+200B>» scritto a mano dal bot si confonde con un vero U+200B): `SALTATA — irrilevante per verdetti normali`.
+- **Review #573 (chat Mani)**: BOCCIATO (ricostruendo il dict, due chiavi ripulite si fondevano e la credenziale spariva). **#574**: APPROVATO CON RISERVE (R-574-1 BASSA ricorsione → `FATTA` in ca222c6; R-574-2 COSMETICA: il mutante «senza stringa per stringa» dà 6 failed, non 5 → `FATTA`, corretto qui). **#575**: APPROVATO CON RISERVE (R-575-1 BASSA preesistente, R-575-2 COSMETICA: registrate in stato_progetto).
 - **(b) libexpat ≥ 2.4 nel doctor**: `DEFERITA — resta a M1 finché il suo ponte voce non è mergiato`.
 
 ---
@@ -24,14 +28,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
+ .claude/agents/memoria_revisore.md |  13 +++++++++++++
  reports/diff_sessione.md           |  14 +++++++-------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  36 ++++++++++++++++--------------------
- scripts/bot_esito.py               |  82 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- tests/test_unit_verifica_bot.py    |  93 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/ultimo_report.md           |  40 ++++++++++++++++++++--------------------
+ scripts/bot_esito.py               | 106 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ tests/test_unit_verifica_bot.py    | 147 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: base = merge-base con origin/main = 8424698. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -39,6 +43,12 @@ NB: base = merge-base con origin/main = 8424698. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ca222c6 fix(bot): annidamento profondo nel dubbio NO e test per «R-9-1<inv>V-1 (ALTA)» (R-574-1, bot #305 su d672021, chat Mani)
+1bc5671 chore(revisore): memoria review #575 — APPROVATO CON RISERVE
+aec5c39 fix(bot): credenziali spezzate da controlli e confini di parola persi (V-1/V-2 bot #305 su 95249a8, chat Mani)
+cb887ae chore(revisore): memoria review #574 — APPROVATO CON RISERVE
+be45e43 chore(revisore): memoria review #573 — BOCCIATO
+d672021 docs(fine-task): PR #305 dopo le note del bot e della verifica esterna su e4559ef, review #571/#572
 95249a8 fix(bot): un invisibile attaccato a una gravità dà NO (V-1/V-2/V-3 bot #305 e verifica esterna #305, chat Mani)
 1b3a7a6 chore(revisore): memoria review #572 — APPROVATO CON RISERVE
 0ffffd1 chore(revisore): memoria review #571 — BOCCIATO
@@ -203,16 +213,124 @@ Non ho verificato il comportamento reale del workflow su GitHub: la pubblicazion
 - Sonde: /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p572.py e /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p572b.py
 ```
 
+Commit aec5c39 (scripts/bot_esito.py, tests/test_unit_verifica_bot.py: note del bot su 95249a8). Verdetto integrale della review #573 (chat Mani), sul primo tentativo, poi corretto:
+
+```
+## VERDETTO: BOCCIATO
+
+Review #573 (chat Mani). Ho esaminato il diff STAGED su PR #305 (head d672021): `scripts/bot_esito.py` e `tests/test_unit_verifica_bot.py`. Prima ho letto CLAUDE.md (sez. 5, 8, 10), `reports/stato_progetto.md` (voce fetta 28) e la memoria del revisore (#571 e #572 con le loro lezioni).
+
+Elementi del diff esaminati:
+
+1. `scripts/bot_esito.py:310` — Cosa fa: `_togli_invisibili_ovunque` ricostruisce il dict con le chiavi ripulite. Rischio: due chiavi che dopo lo strip diventano uguali si fondono e resta solo l'ultima. Esito: **blocco**. Ho provato `{"testo": "<verdetto canonico con «gh<U+200B>p_Zz9»>", ..., "tes<U+200B>to": "ok"}`:
+   - con il diff staged: `contiene_segreti` dà False e `decidi` dà APPROVE;
+   - a HEAD: True e COMMENT.
+
+   C'è anche il caso gemello sul finding: `"descrizione": "x gh<U+2060>p_Zz9"` più una chiave `"descri<U+200B>zione": "ok"`. Dà APPROVE e la review pubblica la riga `- V-1 (BASSA): x gh<U+2060>p_Zz9`, da cui la credenziale si ricostruisce. È una regressione rispetto a HEAD proprio nel punto che il delta dichiara chiuso («chiavi comprese»). Il modello che scrive il verdetto conta come avversario, e `json.loads` accetta chiavi così.
+   - Correzione minima: tenere anche il vecchio controllo `_SEGRETO.search(_senza_invisibili(grezzo))` in unione, che aggiunge solo NO. In alternativa, appiattire chiavi e valori in una lista di stringhe invece di ricostruire il dict.
+   - Test da aggiungere: la coppia `k` / `k<invisibile>` su `testo` e su `descrizione`, sia con un Cf sia con un carattere di controllo come \x1b.
+2. `scripts/bot_esito.py:298` — Cosa fa: per i caratteri di controllo cerca sul JSON delle stringhe già ripulite. Rischio: credenziali spezzate da caratteri che `json.dumps` scrive come escape. Esito: **ok**, a parte il punto 1.
+   - Presi: \x1b, \x0b, \x1f, U+0085, U+2028, credenziale annidata in list/dict, credenziale dentro una chiave.
+   - \n, \r e \t non sono invisibili e non vengono presi. Spezzano la parola a vista come uno spazio: per me non è un buco.
+3. `scripts/bot_esito.py:373` e `scripts/bot_esito.py:393` — Cosa fa: le gravità sono l'unione di strutturate, testo pulito e testo grezzo. Rischio: falsi NO su verdetti normali. Esito: **ok**.
+   - Senza invisibili, testo grezzo e pulito coincidono, quindi su un verdetto normale l'esito non cambia.
+   - Un invisibile vicino a una gravità è già bloccato prima, da `_invisibili_su_gravita`.
+   - Ho provato un'intestazione «NON VERI<U+200B>FICATO:» seguita da «T-1 (alta …)»: dà COMMENT sia staged sia a HEAD, quindi nessun NO nuovo.
+   - Con U+200B, U+2800, \x0b, U+00AD e U+FEFF, sia dopo l'id («V-1<car>x (alta)») sia prima («x<U+200B>V-1 (alta)»), l'esito è COMMENT.
+   - Ho visto anche «V-1 (bassa) — media di 3 ms» dare COMMENT MEDIA, uguale a HEAD: viene da `_FINDING_GRAVE_A_PAROLE`, che è voluto e non c'entra con questo diff.
+4. `tests/test_unit_verifica_bot.py:180` e `tests/test_unit_verifica_bot.py:258` — Cosa fa: aggiunge i test per l'invisibile che toglie un confine di parola e per le credenziali spezzate da caratteri di controllo. Rischio: copertura. Esito: **riserva**, perché manca il caso della collisione di chiavi. Suite del bot: 481 passed (rilanciata da me).
+
+Rischi esclusi:
+- Non ho rifatto i mutanti dichiarati («3 failed» e «4 failed»): mi fido del report, perché il punto bloccante è un'altra cosa.
+- Non ho verificato come GitHub mostra davvero la review pubblicata con l'escape «<U+XXXX>»: ho controllato solo la stringa prodotta da `componi_corpo`.
+- Fuori dal perimetro degli invisibili e già noti, non verificati: credenziali spezzate con markup Markdown/HTML (entità, tag vuoti), omoglifi e segni combinanti (R-572-2).
+
+V-3 MEDIA (handoff fermo a 57e927d): non l'ho rivalutata, perché è fuori dal diff staged.
+
+Memoria: riga #573 e una lezione nuova (collisioni di chiavi quando si ricostruisce un dict per un controllo che cerca) scritte in /home/user/Gas/.claude/agents/memoria_revisore.md e committate (be45e43).
+
+Sonde in /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p573.py, /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p2.py (collisione: staged contro HEAD) e /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p3.py.
+```
+
+Verdetto integrale della review #574 (chat Mani), sul diff finale del commit aec5c39:
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #574 (chat Mani). Ho riesaminato il diff in staging di `scripts/bot_esito.py` e `tests/test_unit_verifica_bot.py` (PR #305, che tocca la macchina del bot: il merge lo decide l'operatore). Ho letto CLAUDE.md (sez. 5), la sezione su fetta 28 / PR #305 di `reports/stato_progetto.md` e la memoria del revisore. Nel diff non c'è slicing della history né simulazione di tool.
+
+**Elementi del diff esaminati**
+1. `scripts/bot_esito.py:301` — `contiene_segreti` ora unisce tre controlli: il JSON grezzo, il JSON grezzo senza invisibili (quello di HEAD, tenuto) e ogni stringa ripulita una per una. Rischio esaminato: la fusione delle chiavi gemelle trovata nella #573 e una regressione rispetto a HEAD. Esito: **ok**. Ho provato «testo» insieme a «tes<inv>to» e il gemello su «descrizione», con 10 invisibili diversi (U+200B, U+2060, \x1b, U+00AD, U+FEFF, U+2028, \x0b, U+E0041, U+2800, U+3164): tutti danno True e decidi COMMENT. A HEAD \x1b e \x0b davano APPROVE, quindi il cambio è solo più severo.
+2. `scripts/bot_esito.py:305` — `_stringhe` mette in una lista tutte le stringhe, chiavi comprese. Rischio esaminato: input molto annidati. Esito: **riserva** (R-574-1, sotto). Chiavi non stringa e tuple restano ignorate, ed è innocuo: un numero non contiene credenziali e json.loads non produce tuple. Una credenziale spezzata tra chiave e valore, o tra due elementi di una lista, non viene trovata né qui né a HEAD. Non è un buco: nel corpo pubblicato quei pezzi non risultano attaccati.
+3. `scripts/bot_esito.py:394` — le gravità bloccanti si cercano anche sul testo con gli invisibili (`grezzo`). È lo stesso delta della #573. Rischio esaminato: falsi NO su verdetti normali. Esito: **ok**. Un caso «normale, media di 3 ms» dà APPROVE uguale a HEAD.
+4. `tests/test_unit_verifica_bot.py:194` — `test_credenziale_con_chiave_gemella`. Rischio esaminato: che il test sia davvero discriminante. Esito: **ok**, ma solo il caso con \x1b cade se si toglie il controllo stringa per stringa. Con U+200B e U+2060 il controllo di HEAD basta già.
+5. `tests/test_unit_verifica_bot.py:206` — `test_credenziale_spezzata_in_una_chiave`. Esito: **ok**: è l'unico test che cade se dalla lista si tolgono le chiavi.
+6. Contesto: `.github/workflows/verifica-bot.yml:106` — lo schema del verdetto ha `additionalProperties:false` e una profondità fissa. Per questo sia la collisione delle chiavi sia R-574-1 sono difesa in profondità: in pratica non si raggiungono.
+
+**Prove eseguite**
+- Suite del bot: 485 passed.
+- Mutanti rifatti su una copia:
+  - senza il controllo stringa per stringa: **6 failed**, non 5 come dichiarato;
+  - senza le chiavi in `_stringhe`: 1 failed, come dichiarato.
+- Annidamento, confrontato con HEAD:
+  - 900 livelli: APPROVE in entrambi;
+  - 1500 e 9000 livelli: **RecursionError in `decidi` e `componi_corpo`**, mentre HEAD dà APPROVE.
+
+**Riserve**
+- **R-574-1 (chat Mani) BASSA, regressione**: `_stringhe` è ricorsivo in Python e va in RecursionError da circa 1000 livelli di annidamento. A HEAD json.loads e json.dumps (che sono in C) reggevano fino a circa 10000. Sopra quella soglia `cmd_esito` crasha senza pubblicare il check. È fail-closed (la PR resta non mergeabile) e non si raggiunge con lo schema del workflow, ma va contro «zero crash». Fix: in `contiene_segreti` intercettare `RecursionError` e restituire True, come già si fa per TypeError e ValueError, con un test a 1500 livelli.
+- **R-574-2 (chat Mani) COSMETICA**: il report dichiara 5 failed per il mutante senza controllo stringa per stringa; io ne misuro 6. Da correggere nell'handoff.
+
+**Rischio escluso**: non ho verificato il comportamento reale del workflow su GitHub Actions, cioè che il runner applichi davvero lo schema `--json-schema` all'output strutturato del modello. Non si riproduce in sviluppo. Ho anche dato per buono che il json.loads del runner abbia lo stesso tetto C del Python 3.13 locale.
+
+Ho scritto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #574 e una lezione nuova: una ricorsione Python abbassa il tetto di profondità rispetto a json in C. È committata a parte in cb887ae. Il diff in staging resta intatto.
+```
+
+Commit ca222c6 (scripts/bot_esito.py, tests/test_unit_verifica_bot.py: R-574-1 e test per la nota del bot su d672021). Verdetto integrale della review #575 (chat Mani):
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #575 (chat Mani). Ho controllato il diff staged in /home/user/Gas sul branch claude/peaceful-lovelace-0w2b7q, PR #305. È la macchina del bot, quindi il merge lo decide l'operatore. Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), le parti utili di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+1. `scripts/bot_esito.py:302` — ora tutto il calcolo di `contiene_segreti` sta dentro il try, e `RecursionError` finisce nello stesso except di TypeError e ValueError, che risponde True. Rischio esaminato: altri punti che crashano con un annidamento profondo. L'ho provato su una copia:
+   - 900 livelli: True/APPROVE come prima, nessun falso NO;
+   - da 1500 fino a 1.000.000 livelli (lista, dict e dentro un finding): `contiene_segreti` dà True, `decidi` dà COMMENT, e `componi_corpo` scrive «NON pubblicato» senza crash.
+
+   Esito: ok.
+2. `scripts/bot_esito.py:300` — è il return che prima stava fuori dal try: la logica non cambia, cambia solo la posizione. Anche `json.dumps`, che da circa 20000 livelli dà RecursionError, adesso viene intercettato. Esito: ok.
+3. `tests/test_unit_verifica_bot.py:206` — `test_annidamento_profondo`. Il test è discriminante: senza RecursionError ottengo 1 failed (rifatto su una copia). Riserva COSMETICA (R-575-2): non controlla il motivo, quindi un futuro COMMENT arrivato da un'altra strada lo farebbe passare lo stesso. Oggi il motivo è «il verdetto contiene forme di credenziali», un'etichetta fuorviante per un verdetto che è solo troppo profondo (stessa semantica dei casi TypeError/ValueError già esistenti). Esito: riserva.
+4. `tests/test_unit_verifica_bot.py:216` — `test_invisibile_che_crea_una_riserva_registrata` sui 14 `_SEPARATORI`. Il test è discriminante: tolta la lettura `_gravita_nel_testo(grezzo)` a `scripts/bot_esito.py:399`, ottengo 17 failed in tutto, di cui 14 sul test nuovo. Il conteggio di 14 dichiarato è esatto. L'assert `"ALTA" in motivo` esclude che passi per la strada `_invisibili_su_gravita`, il cui motivo non contiene «ALTA». Esito: ok.
+
+**Altri punti di RecursionError richiesti (contesto)**
+- `decidi` e `_decidi_verdetto` non fanno ricorsione: usano `.get` e scorrono `finding` senza scendere dentro. L'unico punto ricorsivo è `contiene_segreti`, chiamato in `scripts/bot_esito.py:367`. Esito: ok.
+- `componi_corpo` passa da `contiene_segreti` (`scripts/bot_esito.py:418`). Se trova True non tocca il verdetto, e i `json.dumps` di `check` e `richiesta` in `cmd_esito` serializzano solo stringhe. Esito: ok.
+- **R-575-1 BASSA, preesistente, non introdotta dal delta**: `scripts/bot_esito.py:496` — `cmd_esito` intercetta solo `json.JSONDecodeError`. Il `json.loads` in C di Python 3.13 dà `RecursionError` (che non è sottoclasse di JSONDecodeError) da circa 20000 livelli di annidamento; l'ho provato. Lì lo script crasha prima di `decidi`. È fail-closed (nessun check pubblicato, la PR resta immergeabile) ed è irraggiungibile con lo schema `additionalProperties:false` di `.github/workflows/verifica-bot.yml:106`. Correzione proposta: `except (json.JSONDecodeError, RecursionError): verdetto = None`, che porta a RIPROVA, più un test.
+
+**Suite**: 500 passed su una copia con il diff staged applicato.
+
+**Rischi esplicitamente esclusi**
+- Non ho verificato il comportamento nel workflow vero su GitHub Actions (output strutturato dell'SDK, limite di dimensione delle variabili d'ambiente con un verdetto profondo): non si riproduce in dev.
+- Non ho rilanciato la suite completa del motore, perché il diff tocca solo lo script del bot e il suo test.
+- Non ho controllato i limiti di ricorsione su versioni di Python diverse dalla 3.13.16: i tetti in C cambiano tra versioni, ma il verso sicuro resta perché RecursionError è intercettato.
+
+Riserve da tracciare in reports/stato_progetto.md: R-575-1 (BASSA) e R-575-2 (COSMETICA).
+
+Memoria: riga contatore #575 e una lezione aggiunte in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, committate con `scripts/commit_memoria_revisore.sh` (commit 1bc5671). Il diff staged sotto review non è stato toccato.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_verifica_bot.py`: da 325 (CI su main) a 474 passed in locale; test cambiato `test_caratteri_invisibili` (ora vuole COMMENT per «MEDIA», non per «invisibili»), nuovi `test_invisibili_tra_e_dentro_le_parole` (14 separatori × 3 invisibili dentro la parola × 3 forme), `test_invisibile_lontano_dalle_gravita`, `test_altri_invisibili_mostrati`, `test_tetto_dopo_escape`, `test_controlli_bidi`, `test_invisibili_nel_titolo`, `test_invisibile_citato_dal_bot`, `test_invisibili_nelle_riserve_pubblicate`, `test_credenziali_spezzate_da_invisibili`. Suite completa in locale (Python 3.13): `2639 passed, 2 skipped in 223.01s`. Mutanti presi su 95249a8: senza il controllo «invisibili su gravità» 136 failed, con i soli tagli interni 14, senza le categorie del gate 3; su 57e927d: senza lo strip in decidi 10 failed, senza l'escape 2, senza lo strip nei segreti 3, senza il blocco bidi 4, senza gli intervalli non Cf 6.
+Nessuna modifica a gas.py. `tests/test_unit_verifica_bot.py`: da 325 (CI su main) a 500 passed in locale; test cambiato `test_caratteri_invisibili` (ora vuole COMMENT per «MEDIA», non per «invisibili»), nuovi `test_invisibile_che_toglie_un_confine`, `test_credenziale_spezzata_in_un_finding`, `test_credenziale_con_chiave_gemella`, `test_annidamento_profondo`, `test_invisibile_che_crea_una_riserva_registrata`, `test_credenziale_spezzata_in_una_chiave`, `test_invisibili_tra_e_dentro_le_parole` (14 separatori × 3 invisibili dentro la parola × 3 forme), `test_invisibile_lontano_dalle_gravita`, `test_altri_invisibili_mostrati`, `test_tetto_dopo_escape`, `test_controlli_bidi`, `test_invisibili_nel_titolo`, `test_invisibile_citato_dal_bot`, `test_invisibili_nelle_riserve_pubblicate`, `test_credenziali_spezzate_da_invisibili`. Suite completa in locale (Python 3.13): `2665 passed, 2 skipped in 225.41s`. Mutanti presi su ca222c6: senza RecursionError 1 failed, senza la lettura grezza 14 sul test nuovo; su aec5c39: senza il controllo stringa per stringa 6 (misura della review #574), senza le chiavi 1; su 95249a8: senza il controllo «invisibili su gravità» 136 failed, con i soli tagli interni 14, senza le categorie del gate 3; su 57e927d: senza lo strip in decidi 10 failed, senza l'escape 2, senza lo strip nei segreti 3, senza il blocco bidi 4, senza gli intervalli non Cf 6.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 301e16e, a056b4c (memoria del revisore) e 57e927d: pushati insieme prima dell'apertura della PR #305; nessuna run sulla PR per questi SHA.
 - e4559ef (fine-task): run CI 40937383734; check `verifica-bot` failure (V-1 MEDIA del bot, vedi §1), definitivo su questo SHA.
-- 0ffffd1, 1b3a7a6 (memoria del revisore) e 95249a8: pushati insieme; run CI non letta alla scrittura dell'handoff.
+- 0ffffd1, 1b3a7a6 (memoria del revisore) e 95249a8: pushati insieme. Check `verifica-bot` su 95249a8: failure, dato in automatico dal bot_esito.py di main per un Cf scritto dal bot (finding veri, vedi §1).
+- d672021 (fine-task): check `verifica-bot` failure, verdetto BOCCIATO (V-1 MEDIA, vedi §1); `unit-suite` success secondo la verifica esterna.
+- be45e43, cb887ae, 1bc5671 (memoria del revisore), aec5c39 e ca222c6: pushati insieme; run CI non letta alla scrittura dell'handoff.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -222,6 +340,9 @@ Nessuna modifica a gas.py. `tests/test_unit_verifica_bot.py`: da 325 (CI su main
 - R-572-1 (chat Mani) BASSA preesistente: i separatori di riga Unicode (U+2028/2029, NEL, \x0b) si tolgono invece di diventare un a capo: una riga V- incollata alla precedente non conta come riga di finding.
 - R-572-2 (chat Mani) BASSA preesistente: segni combinanti visibili e omoglifi cirillici dentro una gravità passano.
 - Review #571, nota preesistente: un \r singolo prima di un secondo titolo «VERIFICA ESTERNA — BOCCIATO» dà APPROVE anche su main (resa su GitHub da verificare).
+- R-575-1 (chat Mani) BASSA preesistente: `cmd_esito` intercetta solo JSONDecodeError; oltre ~20000 livelli json.loads dà RecursionError e lo script crasha senza check (fail-closed).
+- R-575-2 (chat Mani) COSMETICA: `test_annidamento_profondo` non controlla il motivo, che dice «credenziali» per un verdetto solo troppo profondo.
+- Blocco: finché questa PR non è su main, il bot boccia in automatico ogni verdetto in cui cita un Cf, e `verifica-bot` è required.
 - (b) libexpat ≥ 2.4 nel doctor: con M1.
 - V-3 ve #303 BASSA: selectolax 1.0.2 uscita il 2026-10-22, da decidere dall'operatore prima del `pip install` sul VPS.
 - R-518-1 (chat Mani) BASSA: guardia `_nascosti_html` nelle chiusure in scope; per canvas fa perdere testo che il browser mostra (da decidere con l'oracolo).
