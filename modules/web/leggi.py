@@ -1451,7 +1451,10 @@ def _taglio_xml(testo: str, completo: bool) -> int:
     try:
         grezzo.Parse(dati[:max(errore, 0)], False)
     except expat.ExpatError:
-        return 0
+        # La seconda lettura può trovare un errore prima della prima: «</html>CODA<p>», dove
+        # expat segna l'errore solo al «<» dopo il testo. Valgono i pezzi interi letti fin lì
+        # (R-561-3).
+        pass
     tenuto = "".join(pezzi)
     # Il BOM in testa expat non lo restituisce: si conta a parte (R-550-3).
     bom = 1 if testo.startswith(chr(0xFEFF)) and not tenuto.startswith(chr(0xFEFF)) else 0

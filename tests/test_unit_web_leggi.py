@@ -2011,6 +2011,7 @@ def test_xhtml_malformato_fino_al_primo_errore(pagina, visibili, nascosti):
     ("<html><p>A</p>", '<p a="1" a="2">B</p></html>'),
     ("<html><p>A", "&ignota;B</p></html>"),
     ("<html>\r\n<p>A</p>\r\n</html>\r\n", "CODA"),  # gli spazi dopo la radice sono ammessi
+    ("<html><p>A</p></html>", "CODA<p>B</p>"),  # expat segna l'errore al «<» dopo CODA (R-561-3)
     (_BOM + "<html><p>A</p></html>", "CODA"),
     # le entità che html.parser non sa espandere fermano la lettura prima del riferimento:
     # della pagina (anche ridichiarando una di HTML), esterne, sconosciute col DTD XHTML
@@ -2058,7 +2059,8 @@ def test_xhtml_avviso_nel_testo_quando_si_taglia():
 
 
 def test_xhtml_token_enorme_non_perde_il_resto():
-    """Un attributo o un commento di qualche MB non ferma la seconda lettura (V-3 ve #296)."""
+    """Un attributo o un commento di qualche MB non ferma nessuna delle due letture (V-3 ve #296,
+    V-1 ve #298)."""
     for grosso in ('<i a="' + "x" * 3_000_000 + '"/>', "<!--" + "x" * 3_000_000 + "-->"):
         pagina = "<html><p>A</p>" + grosso + "<p>B</p></html>"
         assert web._taglio_xml(pagina + "CODA", True) == len(pagina)
