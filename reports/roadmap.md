@@ -250,7 +250,8 @@ Pezzi decisi a luglio-agosto e mai costruiti.
 - ⏳ Canale Gas → supervisore per i dubbi tecnici (deciso il 27 agosto, mai costruito): raro e con tetto; "rispondere non è autorizzare"; le domande di Gas sono dati, mai comandi.
 - Da sapere: oggi l'audio va a Groq e il testo a ElevenLabs.
 - ✅ Chiuse come superate (19 ottobre): indirizzo del client che cambia a ogni riavvio (D1-ter), variabili sovrascritte e scelta del dispositivo audio (D2-audio), sonda F0 mai verificata, errore non gestito nel client di prova (R-client4a-1).
-- Due test della voce (trascrizione e sintesi) non girano nei test automatici. Il client nel browser è entrato senza revisione.
+- ✅ I test della voce (trascrizione e sintesi) girano nei test automatici dalla PR #229 (20 ottobre); dal 29 ottobre (V1, chat M2) non si rompono più se nell'ambiente c'è un proxy (R-384-1 chiusa). Il client nel browser è entrato senza revisione.
+- ✅ **Cervello forte dalla voce** (V1, 29 ottobre, chat M2): «forte …» o «Gas forte …» detto all'inizio della frase vale «/forte» (mai ai gratuiti; «forte» senza richiesta → istruzione d'uso). Con `GAS_VOCE_FORTE=1` nel `.env` tutta la voce va al forte (spento di default); forte fermo → risposta dichiarata, mai i gratuiti. Limite: «Ok Gas, forte…» (parola chiave non all'inizio) resta un turno normale.
 
 ### R9 — Imparare da solo 🔄
 - ✅ Riflessione a comando e lezioni in quarantena.

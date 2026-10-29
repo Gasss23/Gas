@@ -28,6 +28,11 @@ Configurazione tramite variabili d'ambiente (da .env o export):
   GROQ_API_KEY        — chiave Groq        OBBLIGATORIO per STT audio; assente → 503
   ELEVENLABS_API_KEY  — chiave ElevenLabs  OBBLIGATORIO per output audio; assente → 503
   ELEVENLABS_VOICE_ID — voice id           (default: JBFqnCBsd6RMkjVDRZzb, George premade)
+  GAS_VOCE_FORTE      — 1/true/on/yes/si: ogni richiesta della voce va al solo cervello
+                        forte (default spento; forte fermo → errore dichiarato, mai i gratuiti)
+
+Cervello forte dalla voce (V1, chat M2): «/forte <richiesta>» (testo) oppure, nel parlato
+trascritto, «forte <richiesta>» / «Gas forte <richiesta>» all'inizio della frase.
 
 Sicurezza:
   - Nasce chiuso su 127.0.0.1. Aprire all'esterno SOLO settando GAS_VOICE_BIND.
@@ -47,6 +52,7 @@ import hmac
 import json
 import logging
 import os
+import re
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -58,6 +64,36 @@ from modules.voice.tts import ElevenLabsTTSError, synthesize_speech
 log = logging.getLogger(__name__)
 
 _ENDPOINT = "/voice"
+
+# V1 (chat M2): la barra di «/forte» non si detta e Whisper scrive «Forte, …»: la parola
+# «forte» all'inizio del parlato (anche dopo «Gas», o «Gus» come lo trascrive Whisper)
+# vale «/forte». Parola intera: «fortemente…» o «forte» a metà frase restano testo normale.
+_PAROLA_FORTE = re.compile(r"^[^\w/]*(?:(?:gas|gus)\b\W*)?forte(?!\w)(.*)$",
+                           re.IGNORECASE | re.DOTALL)
+_USO_FORTE = "Uso: /forte <richiesta> (a voce: «forte <richiesta>»)"
+
+
+def _voce_tutta_forte() -> bool:
+    """GAS_VOCE_FORTE acceso (stesse regole di _env_flag in gas.py: 1/true/on/yes/si)."""
+    return os.environ.get("GAS_VOCE_FORTE", "").strip().lower() in ("1", "true", "on", "yes", "si")
+
+
+def cervello_voce(prompt: str, parlato: bool) -> tuple[Optional[str], str]:
+    """(cervello, richiesta) per una richiesta della voce: «forte» solo cervello forte,
+    «uso» prefisso senza richiesta (fail-closed: mai ai gratuiti), None turno normale.
+    «/forte» vale sempre; la parola parlata solo se `parlato` (testo trascritto)."""
+    from brains.router import prefisso_forte
+    cervello, prompt = prefisso_forte(prompt)
+    if cervello is None and parlato:
+        m = _PAROLA_FORTE.match(prompt)
+        if m:
+            richiesta = re.sub(r"^\W+", "", m.group(1)).strip()
+            if not richiesta:
+                return "uso", ""
+            cervello, prompt = "forte", richiesta
+    if cervello is None and _voce_tutta_forte():
+        cervello = "forte"
+    return cervello, prompt
 
 
 def _token_ok(received: str, expected: str) -> bool:
@@ -145,11 +181,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._send_json(400, {"error": "Campo 'prompt' mancante o vuoto"})
                 return
 
-        # R-ve269-2: «/forte <richiesta>» anche dalla voce (testo o trascrizione), mai ai gratuiti
-        from brains.router import prefisso_forte
-        cervello, prompt = prefisso_forte(prompt)
+        # R-ve269-2 + V1: «/forte», «forte …» parlato o GAS_VOCE_FORTE → solo forte, mai ai gratuiti
+        cervello, prompt = cervello_voce(prompt, parlato=is_audio)
         if cervello == "uso":
-            self._send_json(400, {"error": "Uso: /forte <richiesta>"})
+            self._send_json(400, {"error": _USO_FORTE})
             return
 
         try:

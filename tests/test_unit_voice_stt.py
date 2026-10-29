@@ -64,7 +64,8 @@ def _post_raw(port: int, body: bytes, headers: dict) -> tuple[int, dict]:
     url = f"http://127.0.0.1:{port}/voice"
     req = urllib.request.Request(url, data=body, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=5) as r:
+        # R-384-1 (chat Voce): niente proxy verso 127.0.0.1, qualunque sia l'ambiente
+        with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=5) as r:
             return r.status, json.loads(r.read())
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read())
@@ -279,6 +280,41 @@ class TestVoiceHandlerRouting:
                 status, resp = _post_raw(self.port, wav, hdrs)
         mock_stt.assert_called_once()
         assert status == 200
+
+    def test_v1_parola_forte_parlata_va_al_forte(self):
+        """V1 (chat M2): «Gas, forte: …» trascritto → run_turn col solo cervello forte."""
+        visti = []
+
+        def _run_turn(prompt, **kw):
+            visti.append((prompt, kw))
+            yield {"type": "final", "content": "ok forte"}
+
+        self.kernel.run_turn = _run_turn
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        with patch("modules.voice.server.transcribe_audio", return_value="Gas, forte: analizza i lead"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                status, resp = _post_raw(self.port, wav, hdrs)
+        assert status == 200
+        assert visti == [("analizza i lead", {"cervello": "forte"})]
+
+    def test_v1_parola_forte_parlata_senza_richiesta_400(self):
+        """V1: «Forte.» trascritto senza richiesta → 400 d'uso, nessun turno (mai ai gratuiti)."""
+        visti = []
+
+        def _run_turn(prompt, **kw):
+            visti.append(prompt)
+            yield {"type": "final", "content": "no"}
+
+        self.kernel.run_turn = _run_turn
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        with patch("modules.voice.server.transcribe_audio", return_value="Forte."):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
+                status, resp = _post_raw(self.port, wav, hdrs)
+        assert status == 400 and "«forte <richiesta>»" in resp["error"]
+        assert visti == []
 
     def test_multipart_routes_to_stt(self):
         """Content-Type multipart/form-data → transcribe_audio invocata."""
