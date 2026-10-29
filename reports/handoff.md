@@ -14,36 +14,43 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge della PR #294 (fetta 24)**: `FATTA` — richiesta dell'operatore («mergia 294»), merge 03dc898. Verifica esterna #294 arrivata dopo il merge: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/294#issuecomment-6484098213); V-1 (test dei punti d'integrazione): `FATTA` qui; V-2 (stato CI nell'handoff): `FATTA` (§6 qui sotto con le run reali); V-3 (commit doppio della memoria): `SALTATA — storia già pubblicata, niente riscritture`; V-4 (merge con riserve): autorizzato dall'operatore.
-- **Fetta 25 — XHTML malformato (decisione dell'operatore: «vai con XHTML malformato», «sistema anche l'altro»)**: `FATTA`.
+- **Merge della PR #294 (fetta 24)**: `FATTA` — richiesta dell'operatore («mergia 294»), merge 03dc898. Verifica esterna #294 arrivata dopo: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/294#issuecomment-6484098213); V-1: `FATTA` qui; V-2: `FATTA` (§6); V-3 (commit doppio della memoria): `SALTATA — storia già pubblicata`; V-4: merge autorizzato dall'operatore.
+- **Fetta 25 — XHTML malformato (decisione dell'operatore)**: `FATTA`.
   - R-ve252-2 e R-ve255-1: `FATTA` — `_taglio_xml` in leggi.py.
-  - R-550-1 (namespace), R-550-2 (expat < 2.4), R-550-3 (BOM), R-550-4 (test): `FATTA`, review #551.
-  - R-551-1 e R-551-2 COSMETICHE: `DEFERITA — cosmetiche`.
-  - Merge di main dc43ad6 (PR #292): `FATTA`, review #552.
+  - R-550-1..4: `FATTA` (review #551). R-551-1: `FATTA` (review #553). R-551-2 COSMETICA: `DEFERITA — cosmetica`.
+  - Bot su e9606d8 (caratteri invisibili nei verdetti incollati): `FATTA` — verdetti #550/#551 riemessi dal revisore.
+  - Bot su 9837d0d: V-1 (test dei commenti senza taglio) e V-2 (DTD letto una volta): `FATTA`, review #553 → R-553-1 `FATTA`, review #554; V-3 (numeri): `FATTA`.
+  - Verifica esterna su e9606d8 (https://github.com/Gasss23/Gas/pull/296#issuecomment-6484866647): V-1 MEDIA (i BOM): `FATTA`; V-2 BASSA (lunghezza esatta del taglio): `FATTA`; V-3/V-4/V-5: `SALTATA — informative o già dichiarate`.
+  - Merge di main dc43ad6 (PR #292, review #552) e 4e8eb9f (PR #295, review #555): `FATTA`.
 - **Accensione lexbor (punto b)**: `DEFERITA — chat Motore`.
-- **Tempo di rete 12 s, R-ve235-7 (punto e)**: `DEFERITA — una alla volta`.
+- **Tempo di rete 12 s, R-ve235-7**: `DEFERITA — una alla volta`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/web/leggi.py               |  91 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  21 ++++++++-----------
+ .claude/agents/memoria_revisore.md |   8 ++++++++
+ modules/web/leggi.py               |  99 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  18 ++++++++++--------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   6 +++---
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  45 +++++++++++++++++++++++-----------------
- tests/test_unit_web_leggi.py       |  98 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ reports/ultimo_report.md           |  40 ++++++++++++++++++++++++++++------------
+ tests/test_unit_web_leggi.py       | 137 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
  tests/test_unit_web_lexbor.py      |   8 ++++++++
 ```
 
-NB: base = merge-base con origin/main = dc43ad6 (dopo il merge di main). Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 4e8eb9f (dopo il merge di main). Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7cf7f19 Merge origin/main (4e8eb9f, PR #295) in claude/peaceful-lovelace-0w2b7q (PR #296)
+0d5c258 fix(web): DTD delle entità letto una volta per pagina, taglio al carattere giusto (V-1/V-2 bot e V-2 ve #296)
+e1fa7c1 chore(revisore): memoria review #554 — APPROVATO
+e5f4a62 chore(revisore): memoria review #553 — APPROVATO CON RISERVE
+9837d0d docs(fine-task): handoff §3 e §6 aggiornati dopo la riemissione dei verdetti (PR #296)
 54fc5da docs(fine-task): verdetti #550 e #551 riemessi senza caratteri invisibili (bot #296)
 e9606d8 docs(fine-task): Mani fetta 25 — XHTML malformato, handoff e report (PR #296)
 eaa0642 Merge origin/main (dc43ad6, PR #292) in claude/peaceful-lovelace-0w2b7q (fetta 25 Mani)
@@ -56,9 +63,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore f7bb599: review #550 sul primo diff, #551 dopo la chiusura di R-550-1..4 (diff committato in f7bb599). Merge eaa0642 (da main entrano gas.py e i test del kernel e di dotenv): review #552. Verdetti integrali:
-
-Nota: i verdetti #550 e #551 incollati nel commit e9606d8 contenevano un BOM invisibile (U+FEFF) nelle citazioni, che fa bocciare il bot per «caratteri invisibili». Il revisore li ha riemessi con lo stesso esito e la stessa sostanza, il BOM scritto in chiaro; fanno fede questi. Gli originali restano nella storia del commit e9606d8.
+Commit motore f7bb599: review #550 e #551. Merge eaa0642: review #552. Commit motore 0d5c258: review #553 e #554. Merge 7cf7f19: review #555. Nota: i verdetti #550 e #551 incollati nel commit e9606d8 contenevano un BOM invisibile (U+FEFF), che fa bocciare il bot; il revisore li ha riemessi con lo stesso esito e la stessa sostanza, il BOM scritto in chiaro: fanno fede questi, gli originali restano nella storia di e9606d8. Verdetti integrali:
 
 ### Review #550 (chat Mani) — primo diff staged (verdetto riemesso)
 
@@ -174,31 +179,114 @@ Memoria:
 - `bash scripts/commit_memoria_revisore.sh` è FALLITO, come previsto durante un merge: `fatal: cannot do a partial commit during a merge.` (rc=128). Lo script è uscito con codice 0 e ha scritto il WARN in /home/user/Gas/gas_debug.log; l'index degli altri file è intatto.
 - La riga #552 resta nel working tree, non in staging (il file risulta `MM`). Va aggiunta con `git add` prima di chiudere il merge, oppure committata subito dopo.
 
+### Review #553 (chat Mani) — primo diff per le riserve del bot #296
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #553 (chat Mani). Ho esaminato il diff staged su claude/peaceful-lovelace-0w2b7q (PR #296, HEAD 9837d0d). Prima ho letto CLAUDE.md, la parte che serviva di reports/stato_progetto.md e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- modules/web/leggi.py:1383 — il DTD delle entità si legge una sola volta per pagina (`letto_dtd`). Rischio esaminato: costo del «%p;» ripetuto e mutante «DTD riletto ogni volta». Il mutante fa fallire 1 test (test_xhtml_dtd_letto_una_volta); 300 000 «%p;» passano in 0,13 s. Esito: **riserva** (R-553-1, sotto).
+- modules/web/leggi.py:1379 — `contesto: Optional[str]` (chiude R-551-1). Rischio esaminato: nessun cambio di comportamento. Esito: ok.
+- tests/test_unit_web_leggi.py:1916 — test parametrizzato con `expat.version_info` finto a (2,3,0). Rischio esaminato: che il caso «vecchio» provi davvero `_commenti_e_cdata_xml`. Mutante mio (la funzione restituisce il testo senza toccarlo): falliscono entrambi i parametri. Il monkeypatch viene ripristinato. Esito: ok.
+- tests/test_unit_web_leggi.py:2024 — test_xhtml_dtd_letto_una_volta: conta le letture, controlla che le entità restino valide e che la CODA sia tagliata. Esito: ok.
+- tests/test_unit_web_leggi.py:2038 — caso «%p;» × 300 000 dentro `_entro`. Esito: ok. Da solo però non prende il mutante, perché expat ferma comunque l'amplificazione: il controllo vero è il test che conta le letture.
+
+**R-553-1 BASSA (regressione introdotta da questo diff, nel verso sicuro)**
+- Alla seconda «%p;» `esterna` restituisce 1 senza creare né far girare il parser esterno.
+- Per expat questo vuol dire «entità di parametro non letta». In un documento non standalone expat smette quindi di elaborare le dichiarazioni che seguono nel sottoinsieme interno.
+- Prova: `<!DOCTYPE html [<!ENTITY % p PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "x.dtd">%p;%p;<!ENTITY foo "bar">]><html><p>A&foo;B</p></html>`. Prima del diff la pagina veniva tenuta intera; ora viene tagliata a «…<p>A&foo;».
+- È una perdita di contenuto, non una fuga, e riguarda pagine rare.
+- Con una sola «%p;», o con «%p;» insieme al sottoinsieme esterno PUBLIC XHTML, il comportamento resta corretto (sondato).
+- Correzione provata, una riga: a ogni riferimento XHTML fare `lettore.ExternalEntityParserCreate(contesto).Parse(b"" if letto_dtd[0] else _dtd_entita(), True)` e poi `letto_dtd[0] = True`. Con questa le entità successive restano valide (`&foo;&nbsp;` tenuti, CODA tagliata) e 300 000 «%p;» passano in 0,39 s.
+- Consiglio di applicarla in questa fetta, con un test su `%p;%p;<!ENTITY foo …>`. Il codice cambia, quindi serve una nuova review prima del commit.
+
+**Prove mie**
+- tests/test_unit_web_leggi.py: 467 passed / 1 skipped (3.13).
+- Sottoinsieme xhtml: 81 passed.
+- Nessun carattere Cf nel diff.
+- Worktree ripristinato dopo ogni mutante (diff non staged vuoto, staged invariato).
+
+**Rischio escluso**
+- Non ho rilanciato la suite su Python 3.11 senza selectolax né la suite lexbor: mi fido delle prove dell'agente (489p/113s).
+- Non ho confrontato Chrome/libxml2 su «%p;» non letto seguito da dichiarazioni: non c'è un browser in questo ambiente.
+- Il mutante «commento senza fine tiene il resto» l'ho accettato come equivalente sulla parola dell'agente, senza riprodurlo.
+
+Memoria aggiornata: riga #553 più una lezione su ExternalEntityRefHandler (tornare 1 senza far girare un parser esterno non vale come «letto»). Committata da sola con scripts/commit_memoria_revisore.sh: commit e5f4a62. L'index del diff sotto review è intatto.
+
+File di riferimento: /home/user/Gas/modules/web/leggi.py, /home/user/Gas/tests/test_unit_web_leggi.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #554 (chat Mani) — diff committato in 0d5c258
+
+## VERDETTO: APPROVATO
+
+Review #554 (chat Mani), sul diff staged di claude/peaceful-lovelace-0w2b7q (PR #296). La correzione di R-553-1 funziona e il test nuovo sul taglio coglie davvero l'errore di un carattere. Ho letto prima CLAUDE.md, reports/stato_progetto.md e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- modules/web/leggi.py:1386 — a ogni riferimento XHTML crea un parser esterno e gli fa leggere `b""` dalla seconda volta in poi (l'intero DTD solo la prima). Rischio esaminato: che dopo un secondo «%p;» le dichiarazioni successive vengano ignorate (R-553-1), e il costo di 300 000 riferimenti. Ho fatto due prove: «%p;%p;<!ENTITY foo "bar">» con `&foo;&nbsp;` nel corpo, e sottoinsieme esterno PUBLIC XHTML 1.1 più «%p;» con un'entità dichiarata dopo. In entrambe il taglio cade esattamente sulla CODA. 300 000 «%p;» passano in 0,33 s. Esito: ok.
+- modules/web/leggi.py:1387 — `letto_dtd[0] = True` dopo la lettura. Rischio esaminato: che una lettura saltata o ripetuta resti senza test. Mutante «dalla seconda non letto» (la versione di #553): 1 failed. Mutante «DTD riletto ogni volta»: 1 failed. Esito: ok.
+- tests/test_unit_web_leggi.py:2024 — test_xhtml_dtd_letto_una_volta, ora con un `<!ENTITY foo "W2">` dichiarato dopo 50 «%p;». Controlla che W1 e W3 restino e che la CODA sia tagliata. È questo test a cogliere entrambi i mutanti qui sopra. Esito: ok.
+- tests/test_unit_web_leggi.py:2005 — test_xhtml_taglio_al_carattere_giusto, 5 casi con la lunghezza esatta (chiude V-2 della verifica esterna #296). Il BOM è scritto come escape nel sorgente: il controllo sui caratteri invisibili (categoria Cf) del diff è vuoto. Mutante «return bom + len(tenuto) + 1»: 5 failed. Esito: ok.
+
+**Prove mie**
+- tests/test_unit_web_leggi.py: 472 passed / 1 skipped (Python 3.13).
+- Dopo ogni mutante ho ripristinato il file dall'index: diff non staged vuoto, staged invariato.
+
+**Rischio escluso**
+- Non ho rilanciato la suite su Python 3.11 senza selectolax né la suite lexbor: mi fido delle prove dell'agente (494 passed / 113 skipped).
+- Non ho confrontato con Chrome/libxml2 il caso «dichiarazioni dopo un riferimento ripetuto»: qui non c'è un browser. La correzione riporta comunque il comportamento di prima del diff #553.
+
+Memoria aggiornata con la riga #554 (nessuna lezione nuova), committata da sola con scripts/commit_memoria_revisore.sh nel commit e1fa7c1. L'index del diff sotto review non è stato toccato.
+
+File: /home/user/Gas/modules/web/leggi.py, /home/user/Gas/tests/test_unit_web_leggi.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #555 (chat Mani) — merge 7cf7f19
+
+## VERDETTO: APPROVATO
+
+Review #555 (chat Mani). Ho esaminato il merge non ancora committato di origin/main 4e8eb9f (PR #295, chat Motore) in claude/peaceful-lovelace-0w2b7q (PR #296). HEAD è 0d5c258, la base comune è dc43ad6. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (riga 4 e blocco «Mani — fetta 25») e .claude/agents/memoria_revisore.md.
+
+**Elementi esaminati:**
+- `modules/web/leggi.py:1386` — riferimento a un DTD XHTML: crea un parser esterno a ogni riferimento e passa b"" dalla seconda volta. Rischio esaminato: che il merge alteri il codice rivisto in #554 (il caso R-553-1). Esito: ok. `git diff --cached HEAD` sui tre file web dà 0 righe e `git diff --cached origin/main` sul codice mostra solo modules/web/leggi.py, tests/test_unit_web_leggi.py e tests/test_unit_web_lexbor.py.
+- `modules/web/leggi.py:1368` — senza taglio con expat < 2.4. Rischio esaminato: accoppiamento con le modifiche al loader del .env che arrivano da main. Esito: ok. modules/web non importa gas.py e le modifiche di main (contesto: `gas.py:629` insieme `visti`, `gas.py:654` confronto degli interruttori) toccano solo i registri del doctor e il salto delle chiavi ripetute, non il caricamento delle variabili lette dal modulo web.
+- `tests/test_unit_web_leggi.py:2036` — test_xhtml_dtd_letto_una_volta. Rischio esaminato: un test perso o duplicato nel merge. Esito: ok. Il file è identico a HEAD e la suite web, dotenv e claude_cli rilanciata dà 652 passed, 1 skipped.
+- `tests/test_unit_kernel.py:11206` (contesto, file identico a main) — kernel rilanciato sull'albero unito: 1058 PASS, 1 FAIL (T31g, sqlite_vec assente: problema noto, non è una regressione). Esito: ok.
+- `.claude/agents/memoria_revisore.md:965` (contesto) — unione della memoria. Rischio esaminato: righe perse. Esito: ok. Il file ha 974 righe e non manca nessuna riga né di HEAD né di main. Le 4 righe aggiunte sono esattamente quelle che main ha aggiunto dalla base (#551, la lezione, #552, #553 della chat Motore). Nessuna riga duplicata.
+- `reports/stato_progetto.md:4` (contesto) — riga «Ultimo aggiornamento». Esito: ok. Contiene la voce Mani (review #550–#555), poi «— prima:» e la riga 4 di main intera (verificato per stringa); la coda di HEAD è inclusa. La riga 589 è quella di main (il ramo non la toccava dalla base). Il blocco «Mani — fetta 25» è presente.
+- Pulizia del merge: nessun marcatore di conflitto, `git diff --cached --check` pulito, 0 caratteri Unicode Cf nelle righe aggiunte del diff.
+
+**Rischi esclusi:**
+- Non ho rivisto nel merito le modifiche a gas.py e ai test dotenv/kernel della PR #295: sono già rivisti dalla chat Motore (#551–#553), e qui ho verificato solo che entrino identici a main.
+- Non ho verificato il comportamento con selectolax o lexbor accesi su Python 3.11, né sul Mac o su una VPS: non riproducibile in questo ambiente.
+- Ho controllato i report rigenerati al fine-task (handoff, ultimo_report, diff_sessione) solo come presenza, non come contenuto.
+
+**Nota per il fine-task (non è una riserva sul merge):** il blocco «Mani — fetta 25» in reports/stato_progetto.md dice ancora «aperte R-551-1 (chat Mani)», ma è stata chiusa in #553. Vanno aggiunte anche R-553-1 (chiusa in #554) e le review #553–#555.
+
+**Memoria:** ho aggiunto la riga «#555 (chat Mani) — 2026-10-29 — APPROVATO — … Nessuna lezione nuova.» in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Lo script /home/user/Gas/scripts/commit_memoria_revisore.sh è uscito con 0, ma **non ha committato**: in gas_debug.log c'è «fatal: cannot do a partial commit during a merge», e l'index degli altri file è rimasto intatto. La riga resta nel working tree e non è in staging (stato MM): va messa in staging (`git add .claude/agents/memoria_revisore.md`) prima di chiudere il merge, così entra nel commit di merge o nel fine-task.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py; toccati `modules/web/leggi.py`, `tests/test_unit_web_leggi.py`, `tests/test_unit_web_lexbor.py`.
-- Web suite (`tests/test_unit_web_*.py`, Python 3.13.16 con selectolax 1.0.2): prima 566 passed / 1 skipped (main 03dc898) → dopo 599 passed / 1 skipped (+33).
-- Su Python 3.11 senza selectolax: 487 passed / 113 skipped in locale (la CI su e9606d8 dà 488 / 112: ambiente diverso, V-1 bot #296).
-- Suite vecchia con `GAS_WEB_LEXBOR=1` (`tests/test_unit_web_leggi.py`): gli stessi 11 FAIL di main, confrontati per nome (fuori scope: differenze note tra lettura di sempre e lexbor).
-- Dopo il merge di main dc43ad6: web + dotenv + claude_cli 643 passed / 1 skipped; kernel 1058 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto).
+- Web suite (`tests/test_unit_web_*.py`, Python 3.13.16 con selectolax 1.0.2): prima 566 passed / 1 skipped (main 03dc898) → dopo 606 passed / 1 skipped (+40).
+- Su Python 3.11 senza selectolax: 494 passed / 113 skipped in locale; in CI un test in più (`test_parser_aggiornato_rilevato` gira solo con CI=true).
+- Suite vecchia con `GAS_WEB_LEXBOR=1`: gli stessi 11 FAIL di main, confrontati per nome.
+- Dopo il merge di main 4e8eb9f: web + dotenv + claude_cli 652 passed / 1 skipped; kernel 1058 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto; in CI 0 FAIL).
 - Mutanti: elenco in `reports/ultimo_report.md`; difese equivalenti dichiarate.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub sulla PR #296.
-- Head f7bb599: run 40794722150 con `unit-suite` success e `handoff-check` failure (atteso: l'handoff era ancora quello di main); `verifica-bot` skipped (run 40795130002, etichetta non ancora messa).
+- f7bb599: run 40794722150, `unit-suite` success, `handoff-check` failure (atteso: handoff di main).
+- e9606d8: run 40795325706, `unit-suite` success (kernel 1065 PASS / 0 FAIL, web 488 / 112), `handoff-check` success; `verifica-bot` failure (caratteri invisibili nei verdetti incollati: corretto in 54fc5da/9837d0d).
+- 9837d0d: `unit-suite` success, `handoff-check` success (run 40796099462); `verifica-bot` success, APPROVATO CON RISERVE (riserve chiuse in 0d5c258).
 
 Mappatura commit→run:
-- 78de08e, fa715d8: nessuna run su questo SHA (pushati insieme a f7bb599).
-- f7bb599: run 40794722150 (sopra).
-- eaa0642: nessuna run su questo SHA (pushato con e9606d8).
-- e9606d8: run 40795325706, `unit-suite` success (kernel 1065 PASS / 0 FAIL, web 488 passed / 112 skipped in CI) e `handoff-check` success; `verifica-bot` failure per i caratteri invisibili nei verdetti (corretto in questo commit).
-- 54fc5da e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
+- 78de08e, fa715d8: nessuna run (pushati con f7bb599). eaa0642: nessuna run (pushato con e9606d8). 54fc5da: nessuna run (pushato con 9837d0d).
+- e5f4a62, e1fa7c1, 0d5c258, 7cf7f19 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
 
 ## §7 RISERVE APERTE
 
-- R-551-1 COSMETICA: in `esterna` il tipo di `contesto` dovrebbe essere `Optional[str]`.
 - R-551-2 COSMETICA: con DTD XHTML un'entità sconosciuta resta come testo «&Unknown;» prima del taglio (niente contenuto nascosto).
 - R-ve280-1 BASSA: i test lexbor con selectolax non girano nei check required. Chat Motore.
-- R-546-1 BASSA: numeri delle review doppi tra le chat (anche #547–#551).
-- Sul VPS serve libexpat ≥ 2.4 perché il taglio dell'XHTML sia attivo (sotto si legge come prima, R-550-2).
+- R-546-1 BASSA: numeri delle review doppi tra le chat (anche #547–#553).
+- Sul VPS serve libexpat ≥ 2.4 perché il taglio dell'XHTML sia attivo (sotto si legge come prima, R-550-2); nessun controllo nel doctor (V-5 ve #296).
