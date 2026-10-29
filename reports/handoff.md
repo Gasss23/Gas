@@ -29,18 +29,20 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md   | 10 ++++++----
+ reports/diff_sessione.md   |  9 +++++----
  reports/handoff.md         | n/d
  reports/ripartenza_mani.md |  3 ++-
  reports/stato_progetto.md  |  4 ++--
- reports/ultimo_report.md   | 25 +++++++++++++++++++------
+ reports/ultimo_report.md   | 31 +++++++++++++++++++++----------
 ```
 
-NB: base = merge-base con origin/main = baa4b8d. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 5d64c13. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d7fdd25 Merge origin/main (5d64c13, PR #302) in claude/peaceful-lovelace-0w2b7q (PR #301): solo report
+08a8943 docs(fine-task): PR #301 dopo il merge di main (#299) e le note del bot su 91edc28
 f7c6047 Merge origin/main (baa4b8d, PR #299) in claude/peaceful-lovelace-0w2b7q (PR #301): solo report
 91edc28 docs(fine-task): Mani, lista completa delle riserve aperte (V-2 bot #301 su 604edcb)
 604edcb docs(fine-task): Mani, riserve ancora aperte e proposta di coordinamento nel repo (V-1/V-2 bot #301)
@@ -65,7 +67,9 @@ Nessuna modifica a gas.py/tests/.
 - 251b0c2: run CI 40914680818 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
 - 604edcb: run CI 40915228383 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
 - 91edc28: run CI 40915687912 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
-- f7c6047 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
+- f7c6047: nessuna run (pushato con 08a8943).
+- 08a8943: run CI 40916582010 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1 cosmetica saltata, vedi §1).
+- d7fdd25 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
