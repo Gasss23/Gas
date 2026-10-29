@@ -603,7 +603,9 @@ def test_v2_browser_proxy_tempo_scaduto_messaggio_chiaro():
         st, body = _post(proxy.server_address[1], {"prompt": "ciao"})
     finally:
         proxy.shutdown()
+        proxy.server_close()  # R-570-1-M2
         lento.shutdown()
+        lento.server_close()
     assert st == 504
     assert "entro 1 s" in body["error"] and "ancora in corso" in body["error"]
 
@@ -620,7 +622,7 @@ def test_v2_browser_proxy_attesa_di_default_e_valore_sbagliato(monkeypatch, caps
             raise AssertionError("valore sbagliato accettato: il server stava per partire")
 
     # R-568-2-M2: se il controllo sparisce il test fallisce, non resta appeso
-    monkeypatch.setattr(bs, "HTTPServer", _NonDevePartire)
+    monkeypatch.setattr(bs, "ThreadingHTTPServer", _NonDevePartire)
     monkeypatch.setenv("GAS_VOICE_TOKEN", "tok")
     for sbagliato in ("abc", "0", "-5"):
         monkeypatch.setenv("GAS_VOICE_TIMEOUT", sbagliato)
@@ -635,33 +637,106 @@ def test_v2_browser_proxy_connessione_appesa_502_subito(monkeypatch):
     import socket
     import time
     pieno = socket.socket()
-    pieno.bind(("127.0.0.1", 0))
-    pieno.listen(0)
     riempitivi = []
-    for _ in range(8):  # coda di accettazione piena: i connect successivi restano appesi
-        c = socket.socket()
-        c.setblocking(False)
-        c.connect_ex(pieno.getsockname())
-        riempitivi.append(c)
+    proxy = None
+    try:  # R-570-1-M2: ogni socket si chiude anche se il setup fallisce
+        pieno.bind(("127.0.0.1", 0))
+        pieno.listen(0)
+        for _ in range(8):  # coda di accettazione piena: i connect successivi restano appesi
+            c = socket.socket()
+            riempitivi.append(c)
+            c.setblocking(False)
+            c.connect_ex(pieno.getsockname())
+        bs = _browser_server_module()
+        monkeypatch.setattr(bs, "_CONNECT_TIMEOUT", 1)
+
+        class _Proxy(bs.BrowserProxyHandler):
+            pass
+
+        _Proxy.token = "tok"
+        _Proxy.voice_host = "127.0.0.1"
+        _Proxy.voice_port = pieno.getsockname()[1]
+        _Proxy.voice_timeout = 30
+        proxy = HTTPServer(("127.0.0.1", 0), _Proxy)
+        threading.Thread(target=proxy.serve_forever, daemon=True).start()
+        t0 = time.monotonic()
+        st, body = _post(proxy.server_address[1], {"prompt": "ciao"})
+    finally:
+        if proxy is not None:
+            proxy.shutdown()
+            proxy.server_close()
+        for c in riempitivi:
+            c.close()
+        pieno.close()
+    assert st == 502 and "non raggiungibile" in body["error"]
+    assert time.monotonic() - t0 < 10
+
+
+def test_v2_browser_proxy_a_thread(monkeypatch, capsys):
+    """V-1 bot #308: il proxy del browser parte su ThreadingHTTPServer, così mentre il forte
+    lavora (fino a GAS_VOICE_TIMEOUT) la pagina si ricarica lo stesso."""
     bs = _browser_server_module()
-    monkeypatch.setattr(bs, "_CONNECT_TIMEOUT", 1)
+    monkeypatch.setattr(bs, "_load_dotenv", lambda root: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "tok")
+    monkeypatch.delenv("GAS_VOICE_TIMEOUT", raising=False)
+    creati = []
+
+    class _Finto:
+        def __init__(self, indirizzo, handler):
+            creati.append(handler)
+
+        def serve_forever(self):
+            raise KeyboardInterrupt
+
+        def server_close(self):
+            pass
+
+    monkeypatch.setattr(bs, "ThreadingHTTPServer", _Finto)
+
+    class _Vecchio:
+        def __init__(self, *a):
+            raise AssertionError("proxy tornato a HTTPServer a thread singolo")
+
+    # R-571-1-M2: se il codice tornasse a HTTPServer il test fallisce, non resta appeso
+    monkeypatch.setattr(bs, "HTTPServer", _Vecchio, raising=False)
+    monkeypatch.setattr(bs.BrowserProxyHandler, "voice_timeout", 600)
+    monkeypatch.setattr(bs.BrowserProxyHandler, "token", "")
+    assert bs.run_browser_server() == 0
+    assert creati == [bs.BrowserProxyHandler]
+    assert "attesa massima 600 s" in capsys.readouterr().out
+
+
+def test_v2_browser_proxy_risposta_rotta_502_json():
+    """V-2 ve #308: una risposta HTTP rotta dal voice server diventa un 502 JSON chiaro,
+    non una connessione chiusa («errore di rete» nel browser)."""
+    import socket
+
+    rotto = socket.socket()
+    rotto.bind(("127.0.0.1", 0))
+    rotto.listen(1)
+
+    def _risponde_male():
+        conn, _ = rotto.accept()
+        with conn:
+            conn.recv(65536)
+            conn.sendall(b"NON-HTTP spazzatura\r\n\r\n")
+
+    threading.Thread(target=_risponde_male, daemon=True).start()
+    bs = _browser_server_module()
 
     class _Proxy(bs.BrowserProxyHandler):
         pass
 
     _Proxy.token = "tok"
     _Proxy.voice_host = "127.0.0.1"
-    _Proxy.voice_port = pieno.getsockname()[1]
-    _Proxy.voice_timeout = 30
+    _Proxy.voice_port = rotto.getsockname()[1]
+    _Proxy.voice_timeout = 5
     proxy = HTTPServer(("127.0.0.1", 0), _Proxy)
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
-    t0 = time.monotonic()
     try:
         st, body = _post(proxy.server_address[1], {"prompt": "ciao"})
     finally:
         proxy.shutdown()
-        for c in riempitivi:
-            c.close()
-        pieno.close()
-    assert st == 502 and "non raggiungibile" in body["error"]
-    assert time.monotonic() - t0 < 10
+        proxy.server_close()
+        rotto.close()
+    assert st == 502 and "Risposta non valida" in body["error"]

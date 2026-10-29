@@ -24,7 +24,7 @@ import json
 import logging
 import os
 import urllib.parse
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
@@ -122,11 +122,19 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
             resp_status = resp.status
         except TimeoutError:
             # V2: scaduto il tempo, Gas può star ancora lavorando: dirlo, non «non raggiungibile»
+            # R-571-2-M2: il tetto conta anche l'attesa in coda dietro un'altra richiesta
+            # (il server voce fa un turno alla volta): quel turno può partire più tardi.
             self._send_error_json(504, f"Gas non ha risposto entro {self.voice_timeout} s: il lavoro "
-                                       "può essere ancora in corso, guarda il terminale del server voce.")
+                                       "può essere ancora in corso (o in coda dietro un'altra "
+                                       "richiesta), guarda il terminale del server voce.")
             return
         except (ConnectionRefusedError, OSError) as exc:
             self._send_error_json(502, f"Voice server non raggiungibile: {exc}")
+            return
+        except http.client.HTTPException as exc:
+            # V-2 ve #308: risposta rotta (BadStatusLine, IncompleteRead) → JSON, non un
+            # socket chiuso che il browser mostra come «errore di rete»
+            self._send_error_json(502, f"Risposta non valida dal voice server: {type(exc).__name__}")
             return
         finally:
             conn.close()
@@ -191,7 +199,9 @@ def run_browser_server() -> int:
     BrowserProxyHandler.voice_port = voice_port
     BrowserProxyHandler.voice_timeout = timeout
 
-    server = HTTPServer(("127.0.0.1", browser_port), BrowserProxyHandler)
+    # V-1 bot #308: a thread, così mentre il forte lavora (fino a GAS_VOICE_TIMEOUT) la
+    # pagina si ricarica lo stesso; il server voce dietro resta a un turno alla volta.
+    server = ThreadingHTTPServer(("127.0.0.1", browser_port), BrowserProxyHandler)
     print(f"✓ Gas browser client: http://127.0.0.1:{browser_port}/")
     print(f"  → proxy verso voice server: {voice_url} (attesa massima {timeout} s)")
     print("  Ctrl-C per uscire.")
