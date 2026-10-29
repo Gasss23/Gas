@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -149,12 +150,63 @@ class TestDecidi:
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
         assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
 
-    @pytest.mark.parametrize("car", ["\u200b", "\u200d", "\u2060", "\ufeff", "\u202e"])
+    @pytest.mark.parametrize("car", ["\u200b", "\u200d", "\u2060", "\ufeff", "\u00ad",
+                                     # R-569-2: invisibili che non sono Cf
+                                     "\u3164", "\u115f", "\u2800", "\u034f", "\ufe0f"])
     def test_caratteri_invisibili(self, car):
+        # V-2 seconda verifica #130: la gravità nascosta da un Cf torna visibile e blocca.
         testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nV-1 (ME{car}DIA) — x"
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
         evento, motivo = be.decidi(v, SHA, SHA)
-        assert evento == "COMMENT" and "invisibili" in motivo
+        assert evento == "COMMENT" and "MEDIA" in motivo
+
+    @pytest.mark.parametrize("car", ["\u202a", "\u202e", "\u2066", "\u2069"])
+    def test_controlli_bidi(self, car):
+        # R-569-1: «(\u202eATLA\u202c)» si legge «(ALTA)» ma la regex vede «ATLA».
+        testo = (f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 f"V-1 ({car}ATLA\u202c) — x")
+        evento, motivo = be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                                   SHA, SHA)
+        assert evento == "COMMENT" and "bidi" in motivo
+
+    @pytest.mark.parametrize("car", ["\u200b", "\u202e", "\u3164"])
+    def test_invisibili_nel_titolo(self, car):
+        # Un Cf nella riga del verdetto non la rende diversa da quella che si legge.
+        titolo = f"VERIFICA ESTERNA #1 — NON{car}-APPROVATO\nFINDING: nessuno"
+        assert be.decidi(_verdetto("APPROVATO", [], titolo), SHA, SHA)[0] == "COMMENT"
+        titolo = f"VERIFICA ESTERNA #1 — BOCCI{car}ATO\nFINDING: nessuno"
+        assert be.decidi(_verdetto("APPROVATO", [], titolo), SHA, SHA)[0] == "COMMENT"
+
+    def test_invisibile_citato_dal_bot(self):
+        # Bot #297 (0d45b8b): il bot citava un caso di prova con U+200B e il verdetto pulito
+        # finiva in failure definitivo. Ora decide sul testo; nella review il Cf si vede.
+        testo = ("VERIFICA ESTERNA #297 — APPROVATO\nCLAIM VERIFICATI:\n- «/forte@GasBot\u200b»"
+                 " resta «uso»: VERO\nFINDING: nessuno\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO", [], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "APPROVE", motivo
+        corpo = be.componi_corpo(evento, motivo, v, "m", "")
+        assert "«/forte@GasBot<U+200B>»" in corpo
+        assert not any(unicodedata.category(c) == "Cf" for c in corpo)
+
+    def test_invisibili_nelle_riserve_pubblicate(self):
+        f = _f("V-1", "BASSA")
+        f["descrizione"] = "a\u202eb\u3164c"
+        # Il testo è pulito: la descrizione strutturata finisce solo tra le riserve pubblicate.
+        testo = "VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nV-1 (BASSA) — d"
+        v = _verdetto("APPROVATO CON RISERVE", [f], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        corpo = be.componi_corpo(evento, motivo, v, "m", "")
+        assert evento == "APPROVE" and "a<U+202E>b<U+3164>c" in corpo
+        assert not any(unicodedata.category(c) == "Cf" for c in corpo)
+
+    @pytest.mark.parametrize("segreto", ["gh\u200bp_Zz9", "sk-\u2060ant-oat01", "-----BEG\u00adIN RSA"])
+    def test_credenziali_spezzate_da_invisibili(self, segreto):
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO\nMetodo: {segreto}\nFINDING: nessuno"
+        v = _verdetto("APPROVATO", [], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "COMMENT" and "credenziali" in motivo
+        assert "Zz9" not in be.componi_corpo(evento, motivo, v, "m", "")
 
 
 # ---------------------------------------------------------------------------

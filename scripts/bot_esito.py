@@ -209,10 +209,35 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     return trovate
 
 
-def _caratteri_invisibili(testo: str) -> bool:
-    """V-2 seconda verifica #130: "ME\u200bDIA" sfuggiva a ogni regex. Un carattere di
-    formato (categoria Unicode Cf: spazi a larghezza zero, controlli bidi) = ambiguo."""
-    return any(unicodedata.category(c) == "Cf" for c in testo)
+# R-569-2: caratteri che si vedono vuoti ma non sono Cf (copia di
+# modules/gate/gate.py `_INVISIBILI_NON_CF`: questo script gira da solo nel workflow).
+_INVISIBILI_NON_CF: tuple[tuple[int, int], ...] = (
+    (0x034F, 0x034F), (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
+    (0x2800, 0x2800), (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFFA0, 0xFFA0),
+    (0xE0100, 0xE01EF),
+)
+# R-569-1: override e isolamento bidi riordinano quello che l'operatore legge rispetto
+# a quello che le regex vedono («(\u202eATLA\u202c)» si legge «(ALTA)»): restano un NO.
+_BIDI = frozenset(range(0x202A, 0x202F)) | frozenset(range(0x2066, 0x206A))
+
+
+def _invisibile(c: str) -> bool:
+    o = ord(c)
+    return unicodedata.category(c) == "Cf" or any(a <= o <= b for a, b in _INVISIBILI_NON_CF)
+
+
+def _senza_invisibili(testo: str) -> str:
+    """V-2 seconda verifica #130: "ME\u200bDIA" sfuggiva a ogni regex. I caratteri
+    invisibili (categoria Unicode Cf e `_INVISIBILI_NON_CF`) si tolgono prima di
+    decidere, così la gravità nascosta torna visibile. Bot #297: bocciare ogni Cf faceva
+    fallire anche il bot che citava un caso di prova con U+200B."""
+    return "".join(c for c in testo if not _invisibile(c))
+
+
+def _mostra_invisibili(testo: str) -> str:
+    """Nella review pubblica ogni carattere invisibile diventa «<U+XXXX>»: niente testo
+    nascosto o riordinato davanti all'operatore."""
+    return "".join(f"<U+{ord(c):04X}>" if _invisibile(c) else c for c in testo)
 
 
 def con_storico(evento: str, motivo: str, precedenti: list[str] | None) -> tuple[str, str]:
@@ -237,7 +262,8 @@ def contiene_segreti(verdetto: object) -> bool:
         grezzo = json.dumps(verdetto, ensure_ascii=False)
     except (TypeError, ValueError):
         return True
-    return bool(_SEGRETO.search(grezzo))
+    # Anche con i Cf tolti: "gh\u200bp_..." non deve passare.
+    return bool(_SEGRETO.search(grezzo) or _SEGRETO.search(_senza_invisibili(grezzo)))
 
 
 def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
@@ -292,8 +318,9 @@ def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: 
         return "COMMENT", "verdetto strutturato incompleto"
     if contiene_segreti(verdetto):
         return "COMMENT", "il verdetto contiene forme di credenziali: non pubblicato"
-    if _caratteri_invisibili(testo):
-        return "COMMENT", "caratteri invisibili (Unicode Cf) nel testo: verdetto ambiguo"
+    if any(ord(c) in _BIDI for c in testo):
+        return "COMMENT", "controlli bidi nel testo: verdetto ambiguo"
+    testo = _senza_invisibili(testo)
     righe = []
     for riga in _RIGA_TITOLO.findall(testo):
         m = _TITOLO_CANONICO.fullmatch(riga.strip().strip("*_>`# ").strip())
@@ -341,14 +368,14 @@ def componi_corpo(evento: str, motivo: str, verdetto: dict | None, modello: str,
                   if isinstance(f, dict) and f.get("gravita") in ("BASSA", "COSMETICA")]
         if evento == "APPROVE" and minori:
             righe += ["", "**Riserve minori da aggiustare dopo il merge:**"]
-            righe += [f"- {f.get('id', '?')} ({f.get('gravita')}): {f.get('descrizione', '')}"
-                      for f in minori]
+            righe += [_mostra_invisibili(f"- {f.get('id', '?')} ({f.get('gravita')}):"
+                                         f" {f.get('descrizione', '')}") for f in minori]
         testo = verdetto.get("testo")
         if isinstance(testo, str) and testo.strip():
             if len(testo) > MAX_TESTO:
                 testo = testo[:MAX_TESTO] + "\n…[TRONCATO: verdetto oltre il limite di GitHub]"
             righe += ["", "<details><summary>Verdetto integrale</summary>", "", "```",
-                      testo.replace("```", "ʼʼʼ"), "```", "</details>"]
+                      _mostra_invisibili(testo).replace("```", "ʼʼʼ"), "```", "</details>"]
     corpo = "\n".join(righe)
     if len(corpo) > MAX_CORPO:
         corpo = corpo[:MAX_CORPO] + "\n…[TRONCATO: corpo oltre il limite di GitHub]"
