@@ -1,31 +1,22 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Mani fetta 24: riserve cosmetiche di lexbor con i namespace come il parser (chat Mani)
+**Sessione:** 2026-10-28 — chat Motore: interruttore del forte tra shell e `.env` (PR #293), dopo la chiusura della PR #290 come doppione della #291
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #294 (https://github.com/Gasss23/Gas/pull/294). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5059595040","url":"https://github.com/Gasss23/Gas/pull/294"}`); `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore. Il merge non accende niente.
-2. Accensione della lettura con lexbor: la chat Motore mette `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (chiude R-ve280-1); poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
-3. Poi, una alla volta: R-ve252-2 e R-ve255-1 (XHTML malformato), tempo di rete 12 s, R-ve235-7.
+1. Merge della PR #293 (https://github.com/Gasss23/Gas/pull/293): review #547 (già #543 nel ramo) APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` non autenticato in questo ambiente).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge della PR #288 (fetta 23)**: `FATTA` — richiesta dell'operatore («mergia 288»), merge d4b39ca, dopo il merge di main 2f35bc6; branch ripartito da main.
-- **Fetta 24 — riserve cosmetiche di lexbor (punto d della ripartenza)**: `FATTA`.
-  - R-ve277-3 e R-529-1 (scelta della tendina, «list of options» dello standard, optgroup disabled più vicino, solo opzioni HTML): `FATTA`.
-  - R-520-4 (title HTML in foreignObject, discesa lineare): `FATTA`.
-  - R-540-1 (slot HTML in foreignObject): `FATTA`.
-  - R-ve277-4 (`attivo()` spenta fuori da Linux): `FATTA`.
-  - R-526-1 e R-528-3 (test): `FATTA`. R-543-1 (commento): `FATTA`.
-  - Shadow vuoto (bot #288 su 759edea): `FATTA` (test).
-  - V-1 bot e ve #288 su 6627250 (adoption agency): `FATTA` come limite dichiarato (commento e test dell'esito di oggi); comportamento del browser non riprodotto.
-  - B-547-1 MEDIA (review #547: punti d'integrazione dal solo nome) → namespace come il parser: `FATTA`, review #548; R-548-1/2: `FATTA`, review #549.
-- **Accensione lexbor (punto b)**: `DEFERITA — chat Motore`.
-- **Decisioni vecchie (punto e)**: `DEFERITA — una alla volta dopo questa fetta`.
+- **Fetta 1 — PR #290**: `FATTA` — chiusa senza merge (doppione della #291) su «ok» dell'operatore; il merge `6e19169` riporta il ramo all'albero di main.
+- **Fetta 3 — Merge di main (PR #288) e rinumerazione della review #543 → #547**: `FATTA` — V-1 MEDIA e V-2 BASSA della verifica esterna su #293; review #548 APPROVATO.
+- **Fetta 4 — V-1 bot #293, stesso valore in shell e .env**: `FATTA` — il nome conta come dal `.env` (vale anche per `GAS_CLAUDE_BIN`); review #549 APPROVATO.
+- **Fetta 5 — Merge di main (PR #294)**: `FATTA` — conflitti solo in report e memoria (numeri #547–#549 usati anche dalla chat Mani, righe distinte dalla sigla); review #550 APPROVATO.
+- **Fetta 2 — WARN su GAS_CLAUDE_CLI tra shell e .env, in tutti e due i versi**: `FATTA` — V-3 bot #290 e V-1 ve #290; `_DOTENV_SCAVALCATE` con i soli nomi.
 
 ---
 
@@ -33,164 +24,221 @@
 
 ```
  .claude/agents/memoria_revisore.md |   4 ++++
- modules/web/lexbor.py              | 130 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------
- reports/diff_sessione.md           |  14 ++++++-------
- reports/handoff.md                 | n/d
- reports/ripartenza_mani.md         |   6 +++---
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  53 +++++++++++++++++++++----------------------------
- tests/test_unit_web_lexbor.py      |  92 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ gas.py                             |  25 ++++++++++++++++++++++---
+ reports/diff_sessione.md           |  17 ++++++++---------
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  42 +++++++++++++-----------------------------
+ tests/test_unit_dotenv.py          |  14 ++++++++++++++
+ tests/test_unit_kernel.py          |  28 ++++++++++++++++++++++++++++
+ reports/handoff.md                 | n/d (commit finale)
 ```
 
-NB: base = merge-base con origin/main = d4b39ca. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d» e niente riga di totale. Conteggi presi con i report in stage.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-ca6f289 fix(web): riserve cosmetiche di lexbor con i namespace come il parser (fetta 24 Mani)
-0254e80 chore(revisore): memoria review #549 — APPROVATO
-3b8c150 chore(revisore): memoria review #549 — APPROVATO
-c1289e7 chore(revisore): memoria review #548 — APPROVATO CON RISERVE
-12affec chore(revisore): memoria review #547 — BOCCIATO
+aab79b0 Merge origin/main (PR #294) in feat/merge-automatico-z1xjx2 (PR #293) — review #550 chat Motore APPROVATO
+5912bd5 docs(fine-task): PR #293 — §3 dell'handoff sulla testa
+3a5d686 docs(fine-task): verdetto #548 originale in blocco di codice, riemissione per il Gate B (PR #293)
+f28c390 docs(fine-task): PR #293 — review #548 riemesso per il Gate B, #549 (V-1 bot #293)
+28e74a6 fix(doctor): stessa variabile con lo stesso valore in shell e .env conta come dal .env (V-1 bot #293)
+c651c26 chore(revisore): memoria review #549 — APPROVATO
+fbe5f62 docs(fine-task): PR #293 dopo il merge di main (#288), review #547 (già #543) e #548
+6393dd8 Merge origin/main (PR #288) in feat/merge-automatico-z1xjx2 (PR #293) — review #548 APPROVATO; review #543 del ramo rinumerata #547 (V-2 ve #293)
+6b23e1b docs(fine-task): PR #293 — interruttore del forte tra shell e .env, review #543; PR #290 chiusa
+b24bd9f fix(doctor): GAS_CLAUDE_CLI della shell e del .env discordi → WARN in tutti e due i versi (V-3 bot #290, V-1 ve #290)
+5a1c9e7 chore(revisore): memoria review #543 — APPROVATO CON RISERVE
+6e19169 Merge di main nel ramo dopo la chiusura della PR #290 (doppione della #291): si tiene l'albero di main
+a04dd49 docs(fine-task): PR #290 — riserve del punto 3, review #540-#542, V-1..V-3 bot #290
+a8cde14 fix(doctor): .env di Gas (DOTENV_PATH), valore diverso nel .env e GAS_CLAUDE_CLI solo nella shell → WARN (V-1..V-3 bot #290)
+f530158 chore(revisore): memoria review #542 — APPROVATO CON RISERVE
+6771320 fix(doctor): .env con GAS_CLAUDE_BIN vuota o virgolette aperte non conta (V-1 ve #290), test .venv collegato (V-2 ve #290)
+ae576f9 chore(revisore): memoria review #541 — APPROVATO
+ae66740 docs(fine-task): PR #290 — riserve del punto 3, review #540
+cceadcc fix(forte): riserve del punto 3 — WARN se GAS_CLAUDE_BIN sta solo nella shell, motivo senza prefisso ripetuto e non troncato, /usr/local su Linux
+e6604cb chore(revisore): memoria review #540 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: base `03dc898` (main con le PR #288 e #294). I commit da `e6604cb` a `a04dd49` sono quelli della PR #290, chiusa senza merge. Il merge `6e19169` ne annulla il contenuto, perché tiene l'albero di main (`2f35bc6`): il diff della sessione rispetto a main è solo quello del §2, cioè il commit `b24bd9f` e i report. I loro verdetti (#540, #541, #542) sono nell'handoff della #290 (`a04dd49`). Il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore ca6f289: review #547 BOCCIATO sul primo diff (B-547-1), #548 APPROVATO CON RISERVE sul diff corretto, #549 APPROVATO dopo i test di R-548-1/2 (diff committato in ca6f289). Verdetti integrali:
-
-### Review #547 (chat Mani) — primo diff staged
-
-## VERDETTO: BOCCIATO
-
-Review #547 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q (base d4b39ca): modules/web/lexbor.py e tests/test_unit_web_lexbor.py.
-
-Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 10), reports/stato_progetto.md (riga 4 e paragrafi Mani 627-650), .claude/agents/memoria_revisore.md (lezioni lexbor #525-#546, in particolare: rileggere lo standard alla fonte, #938).
-
-**Motivo bloccante, B-547-1 (MEDIA): regressione con fuga nel titolo.** Il diff riconosce i punti d'integrazione dal solo nome del tag. Lo standard però li lega al namespace (whatwg/html main, sorgente righe 145897-145922):
-- punti d'integrazione HTML: SVG foreignObject, desc, title e MathML annotation-xml con encoding;
-- punti d'integrazione di testo MathML: mi, mo, mn, ms, mtext.
-
-selectolax non espone il namespace. Ho controllato i namespace con html5lib, che fa da oracolo indipendente. Queste quattro pagine ora danno titolo «X», mentre HEAD dava «Y», che è quello del browser:
-- `<math><desc><title>X</title></desc></math><title>Y</title>`
-- `<svg><mi><title>X</title></mi></svg><title>Y</title>`
-- `<svg><math><mi><title>X…` (il math dentro svg è un elemento SVG)
-- `<math><mrow><svg><foreignObject><title>X…` (l'svg dentro mrow è un elemento MathML)
-
-In tutti e quattro il title è straniero e il browser non lo usa come titolo. Il testo nascosto entra quindi nella riga «Titolo:». È la stessa classe di V-1 ve #246 bis (annotation-xml preso sempre come punto d'integrazione), allora valutata ALTA. Qui la tengo MEDIA perché lexbor è spenta e le pagine sono costruite apposta. Il rimedio costa poco.
-
-**Elementi del diff esaminati:**
-1. `modules/web/lexbor.py:74` — INTEGRAZIONE elenca nomi senza namespace — rischio: punto d'integrazione falso dentro svg o math — **blocco** (B-547-1).
-2. `modules/web/lexbor.py:88` — il title vale se la risalita trova `integrazione(sopra)` — rischio: fuga e costo — **blocco** per la regressione sopra. Sul costo: la risalita era già quadratica, ora è circa 2 volte più lenta. Con svg + 1000 `<g>` + 10000 title (163 KB) si passa da 1,68 s a 4,01 s: oltre TEMPO_MAX, quindi si usa la lettura di sempre, nessun crash.
-3. `modules/web/lexbor.py:192` — primi_slot esce dallo straniero con `integrazione(nodo)` — stessa causa — **riserva**. `<div><template shadowrootmode=open><svg><mi><slot></slot></mi></svg><slot>Q</slot></template>L</div>` dà «LQ» invece di «L». In produzione svg è nascosto, quindi L si perde.
-4. `modules/web/lexbor.py:112` — opzioni_visibili salta tutto svg e math — **riserva** (BASSA/COSMETICA). Lo standard non salta lo straniero. Un'opzione HTML dentro foreignObject o mi è nella list of options (l'albero di lexbor la tiene: `<select><svg><foreignObject><option selected>W1` → oggi W2). Il commento la presenta come regola dello standard, invece è una scelta in più.
-5. `modules/web/lexbor.py:112` — sul resto della list of options, riletto alla fonte (sorgente riga 57728): select, hr, option, datalist e optgroup annidato coincidono. «concept-option-disabled» (sorgente riga 58659, antenati dal più vicino) coincide con gruppo_spento. Ultima «selected» poi prima non disabilitata (sorgente righe 57800-57840) coincide. Esito **ok**. Sonde: optgroup disabled con selected → W1; hr, div disabled, optgroup hidden nella lista: tutte giuste.
-6. `modules/web/lexbor.py:296` — attivo() spenta fuori da Linux prima delle sonde — **ok**. `tests/test_unit_web_lexbor.py:294` la prova vietando `_esegui`.
-7. `tests/test_unit_web_lexbor.py:305` — lock finto che fa finire la sonda «all'altro» — rischio: test che non morde — **ok**. Senza il doppio controllo si chiama `_esegui` e scatta l'AssertionError.
-8. `tests/test_unit_web_lexbor.py:106` e `tests/test_unit_web_lexbor.py:185` — allineamento allo standard (opzione in un div hidden scelta dalla tendina) e limite dell'adoption agency fissato a «LX» — **ok**.
-9. `tests/test_unit_web_lexbor.py:112`, `tests/test_unit_web_lexbor.py:115` e `tests/test_unit_web_lexbor.py:163` — coprono solo i casi positivi (foreignObject, mi, encoding maiuscolo) — **riserva**: manca un caso negativo per ogni namespace sbagliato.
-
-**Rimedio proposto:**
-- Una sola discesa lineare dall'alto (pila di iter, come primi_slot) che porta il namespace corrente:
-  - da HTML, `svg` apre SVG e `math` apre MathML;
-  - dentro lo straniero ogni elemento resta nel namespace del padre, tranne `svg` figlio di annotation-xml, che è SVG (confermato con html5lib);
-  - i figli di un punto d'integrazione del namespace giusto tornano HTML.
-- La stessa discesa serve per il primo title HTML (chiude anche il costo quadratico), per primi_slot e per opzioni_visibili (opzione contata solo in HTML).
-- Test negativi da aggiungere: le quattro pagine sopra → titolo «Y»; lo slot in `svg mi` → «L»; un test di tempo con 1000 `<g>` e 10000 title entro TEMPO_MAX.
-
-**Prove rifatte:** test lexbor 118 passed, suite web (`-k web`) 560 passed / 1 skipped (3.13 + selectolax 1.0.2). Confronto HEAD/staged eseguendo il modulo di HEAD copiato nello scratchpad.
-
-**Rischi esclusi:**
-- Non ho rifatto la suite su 3.11 senza selectolax né la suite vecchia con GAS_WEB_LEXBOR=1 (11 failed / 430 passed): il diff non tocca leggi.py e il dato era già dichiarato.
-- Non ho rifatto i mutanti dichiarati dall'agente: il blocco nasce da pagine che nessun test copre, non dalla forza dei test esistenti.
-- Il comportamento dei browser reali (Chrome, Firefox) non è verificato: ho usato lo standard e html5lib come oracolo.
-
-Wall of Shame: nessuno slicing di history (`scelte[-1:]` e `libere[:1]` sono liste di opzioni, preesistenti), nessuna simulazione di tool. Fail-safe §9 intatto: un errore o il tempo oltre il tetto nel figlio portano alla lettura di sempre.
-
-Memoria: riga `#547 (chat Mani)` e una lezione nuova (punti d'integrazione per namespace, con le sonde da usare) aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate con lo script (12affec). Il diff staged sotto review è rimasto intatto.
-
-### Review #548 (chat Mani) — diff corretto dopo B-547-1
+### Review #547 (chat Motore; nel ramo numerata #543, rinumerata per V-2 della verifica esterna su #293: #543 c'è già su main, chat Mani) — sul diff di b24bd9f
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #548 (chat Mani): correzione della bocciatura B-547-1 (#547), diff staged su claude/peaceful-lovelace-0w2b7q (modules/web/lexbor.py, tests/test_unit_web_lexbor.py). La review #547 era BOCCIATO e resta nel report: punti d'integrazione riconosciuti dal solo nome, con fuga di un title svg o math nel titolo della pagina.
+Review #543 (chat Motore) sul diff STAGED di feat/merge-automatico-z1xjx2 (gas.py, tests/test_unit_dotenv.py, tests/test_unit_kernel.py; +57/-1). Ho letto CLAUDE.md, le voci di stato_progetto.md su GAS_CLAUDE_CLI e la coda della memoria del revisore.
 
-**B-547-1 è chiusa.** Restano due riserve piccole, che non bloccano il commit:
-- **R-548-1 (BASSA, test)**: due mutanti miei sopravvivono, ma il codice è giusto. Bastano due righe parametriche.
-  - Se si toglie `"testo"` dalla prima tupla di `ns_di`, un svg dentro mi verrebbe preso come HTML. Test da aggiungere: `<math><mi><svg><title>X</title></svg></mi></math><title>Y</title>` → titolo «Y».
-  - Se si toglie `html and` dal salto di select/hr/datalist, un datalist svg verrebbe saltato. Test da aggiungere: `<select><svg><datalist><foreignObject><option selected>W1</option></foreignObject></datalist></svg><option>W2</select>` → «W1».
-  - Sonde sul codice: «Y» e «W1», giusti. File ripristinato, nessuna modifica residua.
-- **R-548-2 (COSMETICA)**: il commento in `tests/test_unit_web_lexbor.py:76` dice «fuori dalla list of options solo datalist e svg». Ora svg non si salta più: solo le sue opzioni non sono HTML.
+**Elementi del diff che ho esaminato**
+- `gas.py:627` — in `_carica_dotenv`, se la variabile esiste già nella shell, il nome va in `_DOTENV_SCAVALCATE` solo quando il valore del `.env` è DIVERSO, poi `continue` come prima. Rischi controllati: sovrascrittura, fuga di valori, comportamento con stesso valore. Il comportamento resta lo stesso (non sovrascrive mai). Il set contiene solo nomi, nessun valore finisce nei log. Con lo stesso valore il nome non viene registrato. Con `GAS_NO_DOTENV` si esce prima (`gas.py:595`), quindi niente viene registrato. — ok
+- `gas.py:575` — dichiarazione del set globale, accanto a `_DOTENV_CARICATE`. Rischio controllato: stato globale che resta da un test all'altro. Nel processo vero viene popolato una sola volta da `main()` (`gas.py:6081`). — ok
+- `gas.py:5008` — doctor con il forte spento: se il nome è in `_DOTENV_SCAVALCATE` dà WARN «spento nella shell ma il .env ha un altro valore», altrimenti OK come prima. Rischio controllato: un falso OK nel verso che conta. — ok, salvo la riserva R-543-2
+- `gas.py:5015` — doctor con il forte acceso ma `GAS_CLAUDE_CLI` non in `_DOTENV_CARICATE`: dà WARN e poi continua con i controlli del comando e del conto, senza ritorno anticipato. Un WARN non cambia il codice di uscita. — ok, salvo la riserva R-543-1
+- `tests/test_unit_dotenv.py:136` — collega la funzione vera al set: monkeypatch di entrambi i set, valore diverso → nel set, valore uguale → fuori, variabile nuova → in CARICATE, valore della shell intatto. Applica la lezione di #540. — ok
+- `tests/test_unit_kernel.py:11227` — T99w/T99x: tutti e quattro i casi del doctor. Il `finally` toglie `GAS_CLAUDE_CLI` da entrambi i set e rimette il valore precedente di `GAS_CLAUDE_CLI` (lo toglie se prima non c'era). — ok
 
-**Elementi del diff esaminati:**
-1. `modules/web/lexbor.py:78` — `ns_figli`: punti d'integrazione solo nel namespace giusto (foreignObject, desc e title in svg; mi, mo, mn, ms, mtext e annotation-xml con encoding HTML in math). Rischio: fuga nel titolo. Confrontato col dispatcher dello standard (whatwg/html main, sorgente righe 145897-145922, già riletto in #547). **ok**
-2. `modules/web/lexbor.py:89` — `ns_di`: da HTML, svg e math aprono il loro namespace; dentro mi, mglyph e malignmark restano math e il resto torna HTML; un svg dentro annotation-xml senza encoding diventa svg; nello straniero si resta nel namespace del padre (svg in mrow resta math). Coincide coi namespace di html5lib, provati in #547. **ok**, con R-548-1 sui test.
-3. `modules/web/lexbor.py:98` e `modules/web/lexbor.py:114` — discesa lineare per il titolo, più una scorciatoia `css_first("title")` per le pagine senza svg e math. Rischio: costo. Svg con 1000 `<g>` e 10000 title: 4,01 s → 0,06 s. Altre forme: 0,04-0,07 s. **ok**
-4. `modules/web/lexbor.py:144` — `opzioni_visibili` conta solo le opzioni HTML ed entra in svg e math. Sonde: opzione in foreignObject o in mi → scelta W1, come lo standard (list of options, sorgente riga 57728); optgroup disabled annidati, hr, div disabled: tutti giusti. Costo: select con 50k opzioni sotto 2000 div, 0,98 s. **ok**
-5. `modules/web/lexbor.py:214` — `primi_slot` conta solo gli slot HTML. Sonde: slot in svg>mi → «L»; in svg>desc e math>mi → «LQ» (punti d'integrazione veri). **ok**
-6. `tests/test_unit_web_lexbor.py:122`, `tests/test_unit_web_lexbor.py:174` e `tests/test_unit_web_lexbor.py:308` — test negativi coi quattro casi di #547, slot svg>mi, test di tempo. **ok**
+**Prove che ho rifatto**
+- Suite del kernel: 1063 PASS, 0 FAIL.
+- `tests/test_unit_dotenv.py`: 12 passed.
+- Mutante 1: confronto `!=` sostituito con `if True` → il test pytest fallisce (1 failed).
+- Mutante 2: ramo `_DOTENV_SCAVALCATE` del doctor disattivato → T99x FAIL.
+- `gas.py` rimesso com'era (git diff del working tree vuoto) e indice intatto.
 
-**Prove rifatte:**
-- Le sonde di #547 ora danno tutte l'esito dello standard (titolo «Y» nei quattro casi).
-- Fuzz mio contro html5lib: 1500 pagine casuali di soli tag di apertura (svg, math, foreignObject, desc, mi, mtext, mglyph, malignmark, mrow, annotation-xml con e senza encoding, custom element), 0 differenze sul titolo.
-- Test lexbor 123 passed (3.13); su 3.11 senza selectolax 22 passed / 101 skipped.
-- Suite web: 565 passed / 1 skipped. L'agente dichiarava 564, un test in più nel mio filtro `-k web`.
+**Riserve**
+- R-543-1 (BASSA): il confronto è tra stringhe, non tra significati. Shell «1» con `.env` «true» dà un falso WARN «acceso nella shell ma non dal .env… metti GAS_CLAUDE_CLI=1», un consiglio fuorviante perché il `.env` lo accende già. Shell «0» con `.env` «false» dà un falso WARN «altro valore». È il verso prudente, quindi accettabile. Il rimedio sarebbe confrontare con la stessa regola di `_env_flag`.
+- R-543-2 (BASSA): con `GAS_NO_DOTENV=1` nella shell e il forte spento, il doctor dà OK anche se il `.env` lo accende per il giro notturno, che non ha `GAS_NO_DOTENV`. Non fa danni: `GAS_NO_DOTENV` si usa solo nella suite, e un forte acceso di notte resta sotto il tetto giornaliero. Va comunque dichiarato.
 
-Wall of Shame: nessuno slicing di history, nessuna simulazione di tool. Fail-safe intatto: un errore nel processo figlio fa usare la lettura di sempre.
+**Cosa non ho verificato e perché**
+- Il comportamento vero del timer launchd sul Mac (il `.env` del Mac, il giro notturno reale): non si può riprodurre in questo container.
+- La suite pytest completa: ho eseguito solo `tests/test_unit_dotenv.py` e la suite del kernel.
 
-**Rischi esclusi:**
-- Fuzz con tag di chiusura e opzioni nei select non rifatto. html5lib usa ancora il parser vecchio dei select, quindi non fa da oracolo. Per i tag di chiusura vale la forma diversa dell'albero tra lexbor e html5lib, già dichiarata dall'agente: sul suo esempio non ho verificato quale albero abbia ragione.
-- Suite vecchia con GAS_WEB_LEXBOR=1 (11 failed / 430 passed) non rifatta: leggi.py non è nel diff.
-- I mutanti dichiarati dall'agente non li ho rifatti, solo i miei due.
+Il diff non contiene slicing della history né simulazione dell'output dei tool. Non tocca il tetto di 10 iterazioni, il tetto di 8k in uscita, `_get_window` né i provider.
 
-Memoria: riga `#548 (chat Mani)` aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (c1289e7). Nessuna lezione nuova: quella sui namespace è già in #547 (12affec). Il diff staged è intatto.
+- Riga contatore #543 aggiunta e committata (5a1c9e7) in /home/user/Gas/.claude/agents/memoria_revisore.md. Nessuna lezione nuova: quella su «da dove arriva la variabile» c'è già, da #538.
 
-### Review #549 (chat Mani) — diff committato in ca6f289
+Riserve da tracciare in /home/user/Gas/reports/stato_progetto.md prima del commit: R-543-1 e R-543-2.
+
+### Review #548 (chat Motore) — sul merge di origin/main (PR #288) in 6393dd8
+
+Il verdetto originale (sotto, nel blocco di codice, testo integrale e invariato) citava come `path:riga` soprattutto file entrati da main o documenti, che non sono file di codice del diff di sessione (base d4b39ca): il Gate B lo dava rosso. Il revisore l'ha riemesso con lo stesso esito; la riemissione è subito dopo.
+
+Verdetto originale (sostituito dalla riemissione):
+
+```text
+## VERDETTO: APPROVATO
+
+Il merge è corretto: non si perde nessuna riga da nessuno dei due lati, non resta nessun marcatore di conflitto e il codice è identico ai due lati come deve essere.
+
+Elementi del diff esaminati:
+- `modules/web/lexbor.py:172` — figlio lexbor con lo shadow DOM dichiarativo, portato da main. Rischio esaminato: che la risoluzione del merge lo abbia alterato. `git diff --cached origin/main` è vuoto per questo file, per `tests/test_unit_web_lexbor.py` e per `reports/ripartenza_mani.md`. Esito: ok.
+- `.claude/agents/memoria_revisore.md:943` — riga #547, cioè la #543 del ramo rinumerata. Rischi esaminati: righe perse o testo cambiato. Verso main il diff è una sola riga aggiunta (la #547), quindi le #539–#546 della chat Mani ci sono tutte. Verso HEAD sparisce solo la riga #543 della chat Motore: tolta l'intestazione, il suo testo coincide byte per byte con quello della #547 (controllato con `diff`). Esito: ok.
+- `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento». Rischio esaminato: frasi perse da uno dei lati. Il word-diff verso HEAD toglie solo `#543)` (che diventa `#547)`) e per il resto aggiunge soltanto. Verso main ci sono solo aggiunte. Esito: ok.
+- `reports/stato_progetto.md:634` — voce «Mani — fetta 23». Rischio esaminato: voce duplicata. Compare una volta sola nell'indice, come su main. Esito: ok.
+- `reports/ultimo_report.md:4` — il riferimento «review #543» diventa «#547 (già #543 nel ramo)». È l'unica modifica rispetto a HEAD. Esito: ok.
+- Contesto, file non toccati dal merge: `gas.py`, `brains/`, `tests/test_unit_kernel.py`, `tests/test_unit_dotenv.py`, `reports/handoff.md` e `reports/diff_sessione.md` sono identici a HEAD (`git diff --cached --quiet HEAD` restituisce 0). Il codice della PR #293 resta quello revisionato.
+
+Altre verifiche: nessun marcatore `<<<<<<<` o `>>>>>>>` nei file dell'indice né in handoff e diff_sessione. `pytest tests/test_unit_web_lexbor.py` dà 20 passed e 85 skipped.
+
+Rischio escluso: il comportamento vero di lexbor non è stato verificato, perché 85 test vengono saltati: selectolax non è installato in questo ambiente. È accettabile, dato che quei file sono identici a origin/main, già revisionati e passati in CI con la PR #288.
+
+**Problema operativo da sistemare prima di chiudere il merge:** la riga contatore #548 è scritta nel file `/home/user/Gas/.claude/agents/memoria_revisore.md` ma NON è committata e non è nell'indice. `scripts/commit_memoria_revisore.sh` è fallito senza danni: «fatal: cannot do a partial commit during a merge», con avviso in `/home/user/Gas/gas_debug.log`. L'agente principale deve fare `git add .claude/agents/memoria_revisore.md` prima di `git commit`.
+
+La memoria è cambiata dopo questa review: lo SHA-256 del diff staged non corrisponderà a quello revisionato. Va ricalcolato dopo l'add, con `scripts/segna_review_ok.sh`. L'unica differenza in più è la riga #548.
+
+Riga in memoria: #548 — APPROVATO — nessuna lezione nuova.
+```
+
+### Review #548 — verdetto RIEMESSO dal revisore per il Gate B (stesso esito, citazioni nella forma del gate; l'originale è qui sopra, non ritoccato)
 
 ## VERDETTO: APPROVATO
 
-Review #549 (chat Mani): R-548-1 e R-548-2 sono chiuse. Il diff staged su claude/peaceful-lovelace-0w2b7q cambia, rispetto alla #548, solo tests/test_unit_web_lexbor.py. Il codice del processo figlio in modules/web/lexbor.py è identico a quello revisionato in #548: l'ho confrontato con `cmp` sulla versione staged.
+Verdetto della review #548 riemesso: stesso esito e stesso contenuto, ora con citazioni dei file di codice del diff di sessione (base d4b39ca). Le righe le ho riverificate sul file attuale, HEAD fbe5f62. Il repo e la memoria non li ho toccati.
 
-**Elementi del diff esaminati:**
-1. `tests/test_unit_web_lexbor.py:130`: la pagina `<math><mi><svg><title>W1</title></svg></mi></math><title>W2</title>` deve dare il titolo W2. Rischio verificato: test che non morde. Rifatto il mio mutante su `modules/web/lexbor.py:89` (`"testo"` tolto dalla prima tupla di `ns_di`): 1 failed. **ok**
-2. `tests/test_unit_web_lexbor.py:85`: un datalist svg dentro un select, con un'opzione HTML nel suo foreignObject, deve dare W1. Rifatto il mio mutante su `modules/web/lexbor.py:146` (`html and` tolto dal salto di select/hr/datalist): 1 failed. **ok**
-3. `tests/test_unit_web_lexbor.py:76`: il commento ora dice che dalla list of options restano fuori le opzioni dentro datalist e quelle non HTML, mentre object e canvas restano dentro. È coerente con lo standard (list of options, sorgente whatwg/html riga 57728). **ok**
+Il merge di origin/main d4b39ca (PR #288) dentro feat/merge-automatico-z1xjx2 (PR #293) è corretto: nessuna riga persa da nessuno dei due lati, nessun marcatore di conflitto, e il codice della PR #293 è rimasto quello revisionato.
 
-Dopo ogni mutante il file è stato ripristinato: working tree uguale allo staged, `git diff` vuoto.
+Elementi del diff esaminati:
+- `gas.py:575` — dichiarazione del registro `_DOTENV_SCAVALCATE` (set dei nomi che il `.env` ha ma la shell sovrascrive). Rischio esaminato: che risolvendo il merge si sia perso o spostato il codice della PR #293. `git diff 6b23e1b HEAD -- gas.py` è vuoto: il codice è identico a quello del ramo prima del merge, già revisionato in #547 (che nel ramo era la #543). Esito: ok.
+- `gas.py:627` — dentro `_carica_dotenv`, il confronto `os.environ[chiave] != valore` decide se un nome entra in `_DOTENV_SCAVALCATE`. Rischio esaminato: che il codice di main abbia toccato `_carica_dotenv`. Non l'ha fatto: dal merge-base main ha cambiato solo il figlio lexbor e reports/. Esito: ok.
+- `gas.py:5008` — doctor, ramo «forte spento». Dà WARN se `GAS_CLAUDE_CLI` è in `_DOTENV_SCAVALCATE`, altrimenti OK. Alla `gas.py:5015` c'è il ramo «acceso nella shell ma non dal .env». Rischio esaminato: corpo della funzione alterato. È invariato rispetto a 6b23e1b. Esito: ok.
+- `tests/test_unit_kernel.py:11227` — test del doctor che salva e ripristina `GAS_CLAUDE_CLI` (`_scli99`). Rischio esaminato: test perso nel merge. Il file è identico a 6b23e1b. Esito: ok.
+- `tests/test_unit_dotenv.py:136` — `test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate`, che lega `_carica_dotenv` a `_DOTENV_SCAVALCATE`. Rischio esaminato: test perso nel merge. Il file è identico a 6b23e1b. Esito: ok.
+- Contesto, file non nel diff di sessione: `modules/web/lexbor.py:172`, `tests/test_unit_web_lexbor.py` e `reports/ripartenza_mani.md` sono identici a origin/main (`git diff --cached origin/main` vuoto). `pytest tests/test_unit_web_lexbor.py` dà 20 passed e 85 skipped.
+- Risoluzione dei conflitti nei documenti:
+  - `.claude/agents/memoria_revisore.md:943`: la riga #547 ha lo stesso testo della #543 del ramo e cambia solo l'intestazione. Le righe #539–#546 della chat Mani ci sono tutte.
+  - `reports/stato_progetto.md:4`: il word-diff verso HEAD cambia solo #543 in #547 e per il resto aggiunge. Verso main ci sono solo aggiunte.
+  - Nessun marcatore `<<<<<<<` o `>>>>>>>`.
 
-**Prove rifatte:**
-- Test lexbor: 125 passed su 3.13; 22 passed / 103 skipped su 3.11 senza selectolax.
-- Suite web (`-k web`): 567 passed / 1 skipped. L'agente dichiarava 566: il mio filtro conta un test in più, come già in #548.
+Rischio escluso: il comportamento vero di lexbor non è stato verificato, perché 85 test vengono saltati: selectolax non è installato in questo ambiente. È accettabile, dato che quei file sono identici a origin/main e sono già passati in CI con la PR #288. Il comportamento del doctor sul Mac dell'operatore non l'ho verificato: il Mac non è raggiungibile da qui.
 
-Wall of Shame: nessuna violazione, e il codice del motore non cambia rispetto alla #548.
+### Review #549 (chat Motore) — sul diff di 28e74a6
 
-**Rischi esclusi:**
-- La suite vecchia con GAS_WEB_LEXBOR=1 non l'ho rifatta: in questo giro il diff tocca solo i test.
-- Restano escluse le verifiche dichiarate in #548: fuzz con tag di chiusura e opzioni nei select, per cui html5lib non fa da oracolo.
+## VERDETTO: APPROVATO
 
-**Memoria:** riga `#549 (chat Mani)` aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (3b8c150), nessuna lezione nuova. Nella riga avevo citato una riga sbagliata (145 invece di 146) e l'ho corretta in un secondo commit (0254e80). Il diff staged sotto review è intatto.
+Review #549 (chat Motore). Diff staged su feat/merge-automatico-z1xjx2 (PR #293): gas.py (+6/−2), tests/test_unit_dotenv.py (+2/−1). Prima della review ho letto CLAUDE.md, la parte di reports/stato_progetto.md che riguarda #293 e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `gas.py:630` — nel ramo `else` (stesso valore nella shell e nel .env) aggiunge a `_DOTENV_CARICATE` solo la chiave. Rischi esaminati: registrazione di valori e cambio del valore di ritorno. Esito **ok**:
+  - si salva solo il nome, mai il valore;
+  - il `continue` resta prima di `caricate.append`, quindi `caricate` non cambia.
+- `gas.py:5030` — il doctor passa `"GAS_CLAUDE_BIN" in _DOTENV_CARICATE` come `da_dotenv` a `_avviso_claude_timer`. Rischio esaminato: la nuova regola poteva nascondere un avviso vero. Esito **ok**: con lo stesso valore, il giro notturno (che legge solo il .env) vede lo stesso percorso, quindi in `gas.py:461` il risultato `None` è corretto. Prova diretta con GAS_CLAUDE_BIN=/opt/x/claude e GAS_CLAUDE_CLI=1, uguali nella shell e nel .env:
+  - valore di ritorno `[]`;
+  - CARICATE = {GAS_CLAUDE_BIN, GAS_CLAUDE_CLI}, SCAVALCATE vuoto;
+  - avviso `None`, quindi niente più falso WARN «acceso nella shell ma non dal .env».
+- `gas.py:5019` (contesto, non toccato) — il WARN «acceso nella shell ma non dal .env» ora non scatta più quando il valore è uguale: è quello che chiedeva V-1 bot #293. Esito **ok**.
+- `tests/test_unit_dotenv.py:146` — ora si aspetta GAS_T_UGUALE in CARICATE. Rischio esaminato: un test che non morde. Esito **ok**:
+  - ho sostituito l'`add` con `pass` → questo test FALLISCE (1 failed, 11 passed);
+  - ho ripristinato gas.py, `git diff` non staged è vuoto e il diff staged è intatto.
+- `tests/test_unit_dotenv.py:126` (`test_nomi_caricati_finiscono_in_dotenv_caricate`) — non cambiato e verde: con valore diverso il nome resta fuori da CARICATE. Esito **ok**.
+- Risultato dei test: tests/test_unit_dotenv.py 12 passed. La suite kernel (1063 PASS secondo l'agente) non l'ho rifatta.
+
+**Note (non bloccanti)**
+- BASSA, difetto che c'era già prima: una chiave scritta due volte nel .env con valori diversi finisce sia in CARICATE sia in SCAVALCATE. Il doctor dà un falso WARN, nel verso prudente. Il diff non lo peggiora.
+- COSMETICA: la docstring del test a `tests/test_unit_dotenv.py:136` («Stesso valore → niente») ora vale solo per SCAVALCATE. Si può precisare se capita.
+
+**Rischi esclusi (cosa non ho verificato)**
+- Il comportamento sul Mac con il timer notturno vero (launchd/plist): non si può riprodurre in dev.
+- Il caso già noto R-543-1 (confronto sulla stringa, per esempio «1» contro «true»): resta com'era, fuori da questo diff.
+
+Riga contatore #549 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (c651c26). Il diff staged è intatto. Nessuna lezione nuova.
+
+### Review #550 (chat Motore) — sul merge di origin/main (PR #294) in aab79b0
+
+## VERDETTO: APPROVATO
+
+Ho fatto le letture obbligatorie: CLAUDE.md (sezioni 5, 8 e 10), la coda della memoria del revisore, e la parte di stato_progetto.md toccata dal merge (riga 4 e riga 589).
+
+**Elementi del diff esaminati**
+- `gas.py:627` — se una chiave del `.env` esiste già nella shell, il codice controlla se i due valori coincidono. Valore diverso: la chiave va in `_DOTENV_SCAVALCATE`. Valore uguale: va in `_DOTENV_CARICATE` (riga 632, V-1 bot #293). Rischio esaminato: che il merge abbia alterato la logica della PR. `git diff --cached HEAD -- gas.py` è vuoto, quindi il file è identico a HEAD — ok.
+- `gas.py:5012` — il doctor dà WARN se il forte è spento nella shell ma il `.env` ha un altro valore, e dà OK se è spento e basta. Rischio esaminato: che il WARN non sia più fail-safe o che ci sia una regressione. Il codice è invariato rispetto a HEAD e la logica va verso la prudenza — ok.
+- `tests/test_unit_kernel.py:11226` — il blocco V-3 bot #290 prova i 4 casi dell'interruttore (acceso solo nella shell, acceso dal `.env`, spento con `.env` diverso, spento e basta) e ripristina l'ambiente nel `finally`. Rischio esaminato: test perso nel merge. Il file è identico a HEAD. Suite kernel eseguita: **1063 PASS, 0 FAIL** — ok.
+- `tests/test_unit_dotenv.py:136` — il test `test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate` è presente e il file è identico a HEAD. Con pytest: 34 passati, 103 saltati (insieme a test_unit_web_lexbor) — ok.
+- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» unita a mano. Lo script dice che la riga di main è un suffisso intero della riga unita (True). Anche la parte «prima: …» di HEAD è un suffisso della riga di main (True), quindi nessuna voce si perde. In testa c'è la voce del ramo (chat Motore) — ok.
+- `reports/stato_progetto.md:589` — è l'unica altra riga diversa da main. Main la ha uguale alla base d4b39ca, il ramo la estende (PR #290 e #293). Git ha preso correttamente la versione del ramo, che è più ricca: non è una perdita — ok.
+- `.claude/agents/memoria_revisore.md` — rispetto a HEAD il diff ha solo righe aggiunte: le righe #547–#549 della chat Mani e la lezione sul namespace del 2026-10-28. Il confronto riga per riga (`comm`) non trova righe mancanti né rispetto a HEAD né rispetto a origin/main. Le righe #547–#549 della chat Motore sono in fondo, con il testo invariato — ok. Le numerazioni doppie restano distinte grazie alla sigla della chat, come già nel caso R-539-1.
+
+**Identità dei file**
+- Uguali a origin/main 03dc898 (`git diff --cached origin/main` vuoto): `modules/web/lexbor.py`, `tests/test_unit_web_lexbor.py`, `reports/ripartenza_mani.md`.
+- Uguali a HEAD 5912bd5: `gas.py`, `tests/test_unit_kernel.py`, `tests/test_unit_dotenv.py`.
+- Uguali a HEAD, quindi versione del ramo: `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md` (non compaiono tra i file in staging).
+- Nessun marcatore di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`) nei file uniti. `git diff --cached --check HEAD` è pulito.
+
+**Rischio escluso**
+- I test di lexbor sono quasi tutti saltati in questo ambiente, probabilmente perché manca il binding lexbor. Il comportamento di `modules/web/lexbor.py` non l'ho verificato con un'esecuzione; mi fido del fatto che il file è identico a origin/main, già revisionato dalla chat Mani (#547–#549). Il file non è nel diff di sessione.
+- Non ho verificato il comportamento sul Mac o sul timer notturno: non si riproduce in questo ambiente.
+
+**Memoria del revisore**
+- Ho scritto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga `#550 (chat Motore) — 2026-10-29 — APPROVATO — …`.
+- `scripts/commit_memoria_revisore.sh` è fallito, come previsto durante un merge: «fatal: cannot do a partial commit during a merge». L'ha scritto come warning in gas_debug.log e ha chiuso con exit 0.
+- La riga c'è nel file ma **non è in staging**. Prima di chiudere il merge devi lanciare `git add .claude/agents/memoria_revisore.md`. Di conseguenza lo SHA del diff staged cambia: rigenera il marcatore con `bash scripts/segna_review_ok.sh` dopo l'add.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py; toccati solo `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`.
-- Web suite (`tests/test_unit_web_*.py`, Python 3.13.16 con selectolax 1.0.2): prima 546 passed / 1 skipped (main d4b39ca, misurato dalla verifica esterna #288 e dal revisore) → dopo 566 passed / 1 skipped (+20 casi).
-- File lexbor su Python 3.11 senza selectolax (come la CI): 22 passed / 103 skipped.
-- Suite vecchia con `GAS_WEB_LEXBOR=1` (`tests/test_unit_web_leggi.py`): 11 failed / 430 passed / 1 skipped, gli stessi 11 di sempre (fuori scope: differenze note tra lettura di sempre e lexbor).
-- Mutanti presi; equivalente noto `continue` → `return None` su `template_fragments()` vuoto. Elenco in `reports/ultimo_report.md`.
+Suite kernel: 1061 → 1063 PASS (T99w, T99x nuovi), 0 FAIL. Il valore di main è misurato in un worktree a `2f35bc6`; il merge di main (PR #288) non tocca il kernel.
+
+```
+=== RIEPILOGO: 1063 PASS, 0 FAIL ===
+```
+
+pytest (tutti i file tranne la suite kernel), sulla testa `28e74a6` (dopo il merge di main con i test lexbor della #288): `2284 passed, 86 skipped in 191.21s (0:03:11)`. Kernel sulla stessa testa: 1063 PASS, 0 FAIL.
 
 ## §6 STATO CI
 
-CI NON VERIFICATA con `gh` (assente/non autenticato nel cloud). La PR #288 era verde sull'ultima head (run 40787359499: `unit-suite`, `handoff-check` success; `verifica-bot` success).
+CI letta con lo strumento GitHub della sessione: `gh run list` non è disponibile (`gh` non autenticato).
 
 Mappatura commit→run:
-- 12affec, c1289e7, 3b8c150, 0254e80: nessuna run su questo SHA (pushati insieme a ca6f289).
-- ca6f289: run del push del codice (non letta alla scrittura).
+- `6e19169`, `5a1c9e7`: nessuna run su questi SHA (pushati insieme a `b24bd9f`).
+- `b24bd9f`: pushato prima dell'apertura della PR #293; la run del push non l'ho letta.
+- `6b23e1b`: `handoff-check` success; `unit-suite` e `verifica-bot` in corso alla lettura della verifica esterna, poi superati dal merge (conflitto con main).
+- `5912bd5`: `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE: V-1 BASSA consiglio di GAS_CLAUDE_BIN quando shell e `.env` divergono, V-2 COSMETICA docstring e test dall'inizio alla fine; da chiudere in una PR successiva su richiesta dell'operatore); verifica esterna APPROVATO CON RISERVE (commento 6483741111).
+- `aab79b0`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
+- `6393dd8`, `fbe5f62`, `c651c26`, `28e74a6` e i due commit di fine-task che seguono: nessuna run su questi SHA (pushati insieme al commit di fine-task; `fbe5f62` aveva il Gate B rosso in locale, mai pushato da solo).
+- `6b23e1b`: `verifica-bot` success (APPROVATO CON RISERVE, V-1 BASSA chiusa in `28e74a6`).
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- V-1 bot e ve #288 BASSA: adoption agency che sposta il template dichiarativo (l'host perde lo shadow); dichiarata, test dell'esito di oggi.
-- R-ve280-1 BASSA: i test del figlio lexbor con selectolax non girano nei check required (CI su 3.11 senza selectolax). Chat Motore.
-- R-546-1 BASSA: numerazione doppia delle review tra le chat (#540–#542); dalla #547 numeri nuovi.
-- Fuzz con end tag nello straniero: 3 differenze su 1500 tra lexbor e html5lib nella forma dell'albero (non nella deduzione del namespace); non verificato quale dei due segua lo standard di oggi.
+- R-543-1 BASSA: confronto tra stringhe (`1` contro `true` → WARN in più, verso prudente).
+- R-543-2 BASSA: con `GAS_NO_DOTENV=1` nella shell il doctor non vede il `.env`.
+- nota BASSA #549: chiave scritta due volte nel `.env` con valori diversi → falso WARN (verso prudente, preesistente).
+- V-3 BASSA ve #293: T99n stampa un WARN in più (dipende dal set globale), nessun fallimento.

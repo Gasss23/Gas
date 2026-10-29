@@ -11223,6 +11223,34 @@ try:
                   and any("comando claude" in l and "WARN" in l and "non viene dal .env" in l for l in _d99s3)
                   and any("comando claude" in l and "OK" in l and "presente" in l for l in _d99s2),
                   str(_d99s + _d99s3 + _d99s2)[:500])
+            # V-3 bot #290 / V-1 ve #290: l'interruttore del forte deve venire dal .env
+            _scli99 = os.environ.get("GAS_CLAUDE_CLI")
+            try:
+                os.environ["GAS_CLAUDE_CLI"] = "1"
+                gas._DOTENV_CARICATE.discard("GAS_CLAUDE_CLI")
+                _d99w = _doc99()  # acceso solo nella shell
+                gas._DOTENV_CARICATE.add("GAS_CLAUDE_CLI")
+                _d99w2 = _doc99()  # acceso dal .env
+                os.environ["GAS_CLAUDE_CLI"] = "0"
+                gas._DOTENV_SCAVALCATE.add("GAS_CLAUDE_CLI")
+                _d99w3 = _doc99()  # spento nella shell, il .env dice altro
+                gas._DOTENV_SCAVALCATE.discard("GAS_CLAUDE_CLI")
+                _d99w4 = _doc99()  # spento e basta
+            finally:
+                gas._DOTENV_CARICATE.discard("GAS_CLAUDE_CLI")
+                gas._DOTENV_SCAVALCATE.discard("GAS_CLAUDE_CLI")
+                if _scli99 is None:
+                    os.environ.pop("GAS_CLAUDE_CLI", None)
+                else:
+                    os.environ["GAS_CLAUDE_CLI"] = _scli99
+            _w99 = lambda ls: [l for l in ls if "claude-cli" in l]
+            check("T99w doctor: GAS_CLAUDE_CLI acceso solo nella shell → WARN; dal .env → niente WARN",
+                  any("WARN" in l and "non dal .env" in l and "GAS_CLAUDE_CLI=1" in l for l in _w99(_d99w))
+                  and not any("WARN" in l for l in _w99(_d99w2)), str(_d99w + _d99w2)[:400])
+            check("T99x doctor: spento nella shell ma il .env dice altro → WARN; spento e basta → OK",
+                  any("WARN" in l and "di notte vale quello del .env" in l for l in _w99(_d99w3))
+                  and any("OK" in l and "spento" in l for l in _w99(_d99w4))
+                  and not any("WARN" in l for l in _w99(_d99w4)), str(_d99w3 + _d99w4)[:400])
             _r99t = Path(_k99.root)
             _av99 = gas._avviso_claude_timer
             for _v99 in (".venv", "venv"):

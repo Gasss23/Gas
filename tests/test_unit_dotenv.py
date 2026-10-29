@@ -131,3 +131,17 @@ def test_nomi_caricati_finiscono_in_dotenv_caricate(env, tmp_path, monkeypatch):
     env["GAS_T_SHELL"] = "dalla-shell"
     gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_FILE=1\nGAS_T_SHELL=dal-file\n"))
     assert gas._DOTENV_CARICATE == {"GAS_T_FILE"}
+
+
+def test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate(env, tmp_path, monkeypatch):
+    """V-1 ve #290: il doctor sa che la shell scavalca un valore DIVERSO del `.env`
+    (di notte vale quello del `.env`). Stesso valore → niente; solo i nomi, mai i valori."""
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    env["GAS_T_DIVERSA"] = "0"
+    env["GAS_T_UGUALE"] = "1"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_DIVERSA=1\nGAS_T_UGUALE=1\nGAS_T_NUOVA=x\n"))
+    assert gas._DOTENV_SCAVALCATE == {"GAS_T_DIVERSA"}
+    # V-1 bot #293: stesso valore nella shell e nel .env → di notte vale uguale, conta
+    assert gas._DOTENV_CARICATE == {"GAS_T_NUOVA", "GAS_T_UGUALE"}
+    assert env["GAS_T_DIVERSA"] == "0"

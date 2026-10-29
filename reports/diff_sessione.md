@@ -1,11 +1,10 @@
-# DIFF SESSIONE — 2026-10-28 — Mani fetta 24 (PR #294)
+# DIFF SESSIONE — 2026-10-28 (chat Motore: interruttore del forte tra shell e .env, PR #293)
 
-File toccati rispetto a main d4b39ca (merge della PR #288):
-- `modules/web/lexbor.py` — nel figlio: `ns_figli`, `ns_di`, `elementi` (namespace come il parser); titolo = primo title HTML; `opzioni_visibili` con la «list of options» dello standard e solo opzioni HTML; `primi_slot` con gli slot HTML; limite dell'adoption agency nel commento di `shadow()`; `attivo()` spenta fuori da Linux.
-- `tests/test_unit_web_lexbor.py` — casi su select, titolo, namespace, slot, shadow vuoto, adoption agency; test fuori da Linux, doppio controllo sotto lock, tempo coi title in svg.
-- `.claude/agents/memoria_revisore.md` — righe delle review #547–#549 (chat Mani).
-- `reports/stato_progetto.md` — blocco «Mani — fetta 24» e riga «Ultimo aggiornamento».
-- `reports/ripartenza_mani.md` — PR #294, punto d) fatto.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+- `gas.py`: `_DOTENV_SCAVALCATE` (nomi delle variabili del `.env` scavalcate dalla shell con un valore diverso); con lo stesso valore il nome va in `_DOTENV_CARICATE` (V-1 bot #293); due WARN del doctor su `GAS_CLAUDE_CLI`.
+- `tests/test_unit_kernel.py`: T99w e T99x.
+- `tests/test_unit_dotenv.py`: test di `_DOTENV_SCAVALCATE`.
+- `.claude/agents/memoria_revisore.md`: righe delle review #547 (già #543 nel ramo), #548 (merge di main con la PR #288), #549 e #550 (merge di main con la PR #294).
+- `reports/stato_progetto.md`: punto 3 della RIPARTENZA (PR #290 chiusa, PR #293, R-543-1 e R-543-2) e «Ultimo aggiornamento».
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+Si riscrive a ogni sessione; la storia completa sta in git.

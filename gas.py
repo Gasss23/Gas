@@ -567,9 +567,13 @@ def _env_flag(name: str) -> bool:
 
 
 _DOTENV_CHIAVE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-# Nomi delle variabili arrivate dal `.env` (non dalla shell): il doctor le usa per dire
-# se il giro notturno, che legge solo il `.env`, vedrà GAS_CLAUDE_BIN (R-538-1).
+# Nomi delle variabili arrivate dal `.env` (non dalla shell), o già nella shell con lo
+# STESSO valore del `.env` (V-1 bot #293): il doctor le usa per dire se il giro
+# notturno, che legge solo il `.env`, vedrà GAS_CLAUDE_BIN e GAS_CLAUDE_CLI (R-538-1).
 _DOTENV_CARICATE: set = set()
+# Nomi delle variabili del `.env` NON caricate perché la shell ne ha già un valore
+# DIVERSO: di notte (solo `.env`) vale l'altro valore. Solo i nomi, mai i valori.
+_DOTENV_SCAVALCATE: set = set()
 # R-260-1: `"valore" # commento` come in zsh; dentro le virgolette il # è testo.
 _DOTENV_VIRGOLETTE = re.compile(r"""(['"])(.*?)\1(?:\s+#.*)?""")
 
@@ -621,6 +625,11 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
         else:
             valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
         if chiave in os.environ:
+            if os.environ[chiave] != valore:
+                _DOTENV_SCAVALCATE.add(chiave)
+            else:
+                # V-1 bot #293: stesso valore nella shell e nel .env → di notte è uguale
+                _DOTENV_CARICATE.add(chiave)
             continue
         os.environ[chiave] = valore
         caricate.append(chiave)
@@ -4998,9 +5007,19 @@ def doctor(root_dir: Optional[str] = None) -> int:
     # 2a. Cervello forte (R2 via B): MAI una chiamata vera (consumerebbe l'abbonamento),
     # solo interruttore, comando presente e conto di oggi contro il tetto (R-497-2: un
     # conto illeggibile o con data futura tiene il forte fermo, e qui si vede).
+    # Il giro notturno legge solo il `.env` (V-3 bot #290 e V-1 ve #290): l'interruttore
+    # del forte deve venire da lì, in tutti e due i versi.
     if not _env_flag("GAS_CLAUDE_CLI"):
-        check("Cervello forte", "claude-cli", "OK", "spento (GAS_CLAUDE_CLI non attivo)")
+        if "GAS_CLAUDE_CLI" in _DOTENV_SCAVALCATE:
+            check("Cervello forte", "claude-cli", "WARN",
+                  "spento nella shell ma il .env ha un altro valore: di notte vale quello del .env")
+        else:
+            check("Cervello forte", "claude-cli", "OK", "spento (GAS_CLAUDE_CLI non attivo)")
     else:
+        if "GAS_CLAUDE_CLI" not in _DOTENV_CARICATE:
+            check("Cervello forte", "claude-cli", "WARN",
+                  "acceso nella shell ma non dal .env: di notte il forte può essere spento "
+                  "(metti GAS_CLAUDE_CLI=1 nel .env)")
         # V-1 bot #262: un GAS_CLAUDE_BIN che non esiste o non è eseguibile non è «presente»
         _bin_env = os.environ.get("GAS_CLAUDE_BIN") or ""
         binario = shutil.which(_bin_env or "claude")
