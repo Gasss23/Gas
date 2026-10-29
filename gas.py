@@ -2013,6 +2013,7 @@ class GasKernel:
         ".gas_memory", ".gas_history", ".gas_vectors",
         ".gas_tokens", ".gas_knowledge",
         ".gas_claude_cli_uso",  # V-1 bot #258: il conto del tetto del forte
+        ".gas_richieste_uso",  # V-1 bot #307: il conto del tetto delle richieste
         "gas_history",  # undotted: LLM hallucination variants
     )
 

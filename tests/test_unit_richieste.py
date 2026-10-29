@@ -30,7 +30,8 @@ class Finto:
         self.chiamate.append((metodo, url, token, corpo))
         if metodo == "GET":
             return self.codice_get, {"private": self.privato}
-        return self.codice_post, ({"number": 7} if self.codice_post == 201 else None)
+        return self.codice_post, ({"number": 7, "labels": [{"name": "da-gas"}]}
+                                  if self.codice_post == 201 else None)
 
 
 def test_crea_issue_con_etichetta_su_repo_privato(env):
@@ -158,3 +159,13 @@ def test_token_predefinito_dedicato(monkeypatch):
     monkeypatch.delenv("GAS_RICHIESTE_TOKEN_FILE", raising=False)
     assert r._TOKEN_FILE_DEFAULT.endswith("richieste_token")
     assert "agente_token" not in r._TOKEN_FILE_DEFAULT
+
+
+def test_issue_senza_etichetta_dichiarata(env):
+    """V-2 bot #307: se GitHub scarta l'etichetta, Gas lo dice (la chat non la vedrebbe)."""
+    class SenzaEtichetta(Finto):
+        def __call__(self, metodo, url, token, corpo):
+            self.chiamate.append((metodo, url, token, corpo))
+            return (200, {"private": True}) if metodo == "GET" else (201, {"number": 8, "labels": []})
+    out = r.crea_richiesta("t", "d", env, http=SenzaEtichetta())
+    assert out.startswith("Successo parziale") and "#8" in out and "da-gas" in out

@@ -4440,6 +4440,8 @@ _TARGETS_68s = [
     ".gas_claude_cli_uso.json",  # V-1 bot #258: il modello non azzera il proprio tetto
     ".gas_claude_cli_uso.json.123.tmp",
     ".gas_claude_cli_uso.json.lock",  # R-502-3
+    ".gas_richieste_uso.json",  # V-1 bot #307: il modello non azzera il tetto delle richieste
+    ".gas_richieste_uso.json.123.tmp",
 ]
 _failures_68s = []
 for _fname in _TARGETS_68s:
@@ -11351,7 +11353,8 @@ try:
     _chiamate100 = []
     def _http100(metodo, url, token, corpo):
         _chiamate100.append((metodo, url))
-        return (200, {"private": True}) if metodo == "GET" else (201, {"number": 42})
+        return ((200, {"private": True}) if metodo == "GET"
+                else (201, {"number": 42, "labels": [{"name": "da-gas"}]}))
     _orig100 = _r100._http
     _saved100 = {kk: os.environ.get(kk) for kk in ("GAS_RICHIESTE_REPO", "GAS_RICHIESTE_TOKEN")}
     _r100._http = _http100
@@ -11364,7 +11367,7 @@ try:
                                     [[("richiedi_sviluppo", _a100)], "Fatto, richiesta #42."])
         _o100 = [e["output"] for e in _ev100 if e["type"] == "tool_res"]
         check("T100a round-trip: richiedi_sviluppo crea la richiesta e il turno arriva alla risposta",
-              len(_o100) == 1 and _o100[0].startswith("Successo") and "#42" in _o100[0]
+              len(_o100) == 1 and _o100[0].startswith("Successo: ") and "#42" in _o100[0]
               and [e["content"] for e in _ev100 if e["type"] == "final"] == ["Fatto, richiesta #42."]
               and [c[0] for c in _chiamate100] == ["GET", "POST"], str(_ev100)[:300])
         # Finestra contaminata (file letto prima): niente richiesta senza firma

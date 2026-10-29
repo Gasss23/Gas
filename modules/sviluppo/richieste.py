@@ -70,6 +70,7 @@ def _http(metodo: str, url: str, token: str,
         with _OPENER.open(req, timeout=TIMEOUT_SEC) as r:
             return r.status, json.load(r)
     except urllib.error.HTTPError as e:
+        e.close()  # V-3 bot #307
         return e.code, None
     except Exception as e:  # rete, JSON, timeout
         log.warning("richieste: chiamata GitHub fallita (%s)", type(e).__name__)
@@ -102,8 +103,10 @@ def _uso_oggi(p: Path) -> Optional[int]:
         return 0
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(d, dict):
+            return None
         n = d.get("n")
-        if not isinstance(d, dict) or not isinstance(n, int) or isinstance(n, bool) or n < 0:
+        if not isinstance(n, int) or isinstance(n, bool) or n < 0:
             return None
         return n if d.get("giorno") == date.today().isoformat() else 0
     except Exception:
@@ -169,6 +172,12 @@ def crea_richiesta(titolo: Any, descrizione: Any, root: Path,
         codice, info = http("POST", f"{API}/repos/{repo}/issues", token, corpo)
         if codice != 201 or not isinstance(info, dict) or not isinstance(info.get("number"), int):
             return f"Operazione negata: richiesta non creata (HTTP {codice})."
+        etichette = [e.get("name") for e in info.get("labels") or [] if isinstance(e, dict)]
+        if ETICHETTA not in etichette:  # V-2 bot #307: senza etichetta la chat non la vede
+            log.warning("richieste: #%s creata senza l'etichetta %s", info["number"], ETICHETTA)
+            return (f"Successo parziale: richiesta #{info['number']} creata ma SENZA l'etichetta "
+                    f"«{ETICHETTA}» (permessi del token?): avvisa l'operatore, la chat di "
+                    "sviluppo potrebbe non vederla.")
         return (f"Successo: richiesta di sviluppo #{info['number']} registrata "
                 f"(«{titolo}»). La chat di sviluppo la prende in carico.")
     except Exception as e:
