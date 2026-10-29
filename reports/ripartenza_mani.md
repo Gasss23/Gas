@@ -29,7 +29,7 @@ Poi portami UNA alla volta le cose aperte, nell'ordine:
    b) accensione della lettura con lexbor: la fa la chat Motore (selectolax==1.0.2 in requirements-dev.txt e requirements.txt, GAS_WEB_LEXBOR=1 sul VPS); controlla se è già fatta e, se sì, verifica che in CI i test lexbor non siano più saltati;
    c) FATTA in fetta 23 (scelta 3 dell'operatore) — shadow DOM dichiarativo (figli «light» di un host con <template shadowrootmode>): decisione mia;
    d) FATTA in fetta 24 — cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4 controllo di sys.platform in attivo(), R-528-3, R-526-1, R-520-4);
-   e) decisioni vecchie: R-ve252-2 e R-ve255-1 (XHTML malformato) FATTE in fetta 25, le riserve rimaste in fetta 26. Restano due DECISIONI DELL'OPERATORE, non lavoro da fare da solo: «tempo di rete 12 s» (oggi la rete si ferma a 12 s e 3 s restano per la pulizia, stima e non tetto rigido) e R-ve235-7 (il DNS di sistema non si interrompe: proposta, chiuderla come accettata). Chiedile all'operatore, una alla volta.
+   e) FATTE: R-ve252-2 e R-ve255-1 (XHTML malformato) in fetta 25, le riserve rimaste in fetta 26; R-ve235-7 chiusa come accettata e tempo di rete 12 s confermato (decisioni dell'operatore del 2026-10-29). Nessun lavoro aperto della chat Mani: chiedi all'operatore i prossimi argomenti.
 
 Note per chi riparte:
 - La lettura con lexbor è nel codice (modules/web/lexbor.py) ma SPENTA: si accende solo con `GAS_WEB_LEXBOR=1`, selectolax installato e su Linux.
