@@ -251,11 +251,12 @@ class TestDecidi:
         corpo = be.componi_corpo("APPROVE", "m", v, "m", "")
         assert len(corpo) <= 65536 and corpo.endswith("```\n</details>")
 
-    @pytest.mark.parametrize("car", ["\u202a", "\u202e", "\u2066", "\u2069"])
+    @pytest.mark.parametrize("car", [chr(c) for c in (*range(0x202A, 0x202F), *range(0x2066, 0x206A))])
     def test_controlli_bidi(self, car):
         # R-569-1: «(\u202eATLA\u202c)» si legge «(ALTA)» ma la regex vede «ATLA».
+        # V-1 ve #305 (terza): ogni controllo da solo, senza un U+202C che lo copra.
         testo = (f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
-                 f"V-1 ({car}ATLA\u202c) — x")
+                 f"V-1 ({car}ATLA) — x")
         evento, motivo = be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
                                    SHA, SHA)
         assert evento == "COMMENT" and "bidi" in motivo
@@ -267,6 +268,20 @@ class TestDecidi:
         assert be.decidi(_verdetto("APPROVATO", [], titolo), SHA, SHA)[0] == "COMMENT"
         titolo = f"VERIFICA ESTERNA #1 — BOCCI{car}ATO\nFINDING: nessuno"
         assert be.decidi(_verdetto("APPROVATO", [], titolo), SHA, SHA)[0] == "COMMENT"
+
+    # R-576-1: niente separatori di riga qui (R-572-1 potrà leggerli come a capo).
+    @pytest.mark.parametrize("car", ["\u200b", "\u3164", "\u2060", "\x1b"])
+    def test_invisibile_nel_titolo_che_si_legge_uguale(self, car):
+        # V-1 ve #305 (terza): il titolo si confronta col campo dopo aver tolto gli
+        # invisibili, quindi «APPRO<inv>VATO» vale APPROVATO (come si legge).
+        titolo = f"VERIFICA ESTERNA #1 — APPRO{car}VATO\nFINDING: nessuno"
+        evento, motivo = be.decidi(_verdetto("APPROVATO", [], titolo), SHA, SHA)
+        assert evento == "APPROVE", motivo
+
+    def test_invisibili_come_nel_gate(self):
+        # V-3 ve #305 (terza): la copia degli intervalli non deve divergere dal gate.
+        from modules.gate import gate
+        assert be._INVISIBILI_NON_CF == gate._INVISIBILI_NON_CF
 
     def test_invisibile_citato_dal_bot(self):
         # Bot #297 (0d45b8b): il bot citava un caso di prova con U+200B e il verdetto pulito
