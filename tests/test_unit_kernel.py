@@ -11203,14 +11203,20 @@ try:
             _spath99 = os.environ.get("PATH", "")
             os.environ["PATH"] = f"{_dir99}{os.pathsep}{_spath99}"
             os.environ.pop("GAS_CLAUDE_BIN", None)
+            _reg99 = gas._DOTENV_NEL_FILE.get("GAS_CLAUDE_BIN")  # V-3 ve #292: si rimette com'era
             try:
                 _d99s = _doc99()
                 os.environ["GAS_CLAUDE_BIN"] = str(_fake99)
                 _d99s3 = _doc99()  # R-538-1: assoluto ma dalla shell, non dal .env → WARN
-                gas._DOTENV_CARICATE.add("GAS_CLAUDE_BIN")
+                gas._DOTENV_NEL_FILE["GAS_CLAUDE_BIN"] = "/vecchio/claude"
+                _d99s4 = _doc99()  # R-543-1: nel .env c'è un valore diverso da quello in uso → WARN
+                gas._DOTENV_NEL_FILE["GAS_CLAUDE_BIN"] = str(_fake99)
                 _d99s2 = _doc99()
             finally:
-                gas._DOTENV_CARICATE.discard("GAS_CLAUDE_BIN")
+                if _reg99 is None:
+                    gas._DOTENV_NEL_FILE.pop("GAS_CLAUDE_BIN", None)
+                else:
+                    gas._DOTENV_NEL_FILE["GAS_CLAUDE_BIN"] = _reg99
                 os.environ["PATH"] = _spath99
                 if _sbin99 is None:
                     os.environ.pop("GAS_CLAUDE_BIN", None)
@@ -11220,9 +11226,10 @@ try:
                   "assoluto dalla shell → WARN (R-538-1); assoluto dal .env → OK",
                   any("comando claude" in l and "WARN" in l and "solo nel PATH del terminale" in l
                       and f"GAS_CLAUDE_BIN={_fake99}" in l for l in _d99s)
-                  and any("comando claude" in l and "WARN" in l and "non viene dal .env" in l for l in _d99s3)
+                  and any("comando claude" in l and "WARN" in l and "non è nel .env" in l for l in _d99s3)
+                  and any("comando claude" in l and "WARN" in l and "altro valore" in l for l in _d99s4)
                   and any("comando claude" in l and "OK" in l and "presente" in l for l in _d99s2),
-                  str(_d99s + _d99s3 + _d99s2)[:500])
+                  str(_d99s + _d99s3 + _d99s4 + _d99s2)[:500])
             # V-3 bot #290 / V-1 ve #290: l'interruttore del forte deve venire dal .env
             _scli99 = os.environ.get("GAS_CLAUDE_CLI")
             # V-4 bot #293: si rimette l'appartenenza ai due insiemi com'era prima
@@ -11259,26 +11266,41 @@ try:
             for _v99 in (".venv", "venv"):
                 (_r99t / _v99 / "bin").mkdir(parents=True, exist_ok=True)
             (_r99t / "venv" / "bin" / "activate").write_text("", encoding="utf-8")
-            _solo_venv99 = _av99("", str(_r99t / "venv" / "bin" / "claude"), _r99t, False) is None
+            _solo_venv99 = _av99("", str(_r99t / "venv" / "bin" / "claude"), _r99t, None) is None
             (_r99t / ".venv" / "bin" / "activate").write_text("", encoding="utf-8")
-            _due_venv99 = _av99("", str(_r99t / "venv" / "bin" / "claude"), _r99t, False)  # V-1 bot #287
+            _due_venv99 = _av99("", str(_r99t / "venv" / "bin" / "claude"), _r99t, None)  # V-1 bot #287
             _link99 = _r99t / "link99"
             _link99.symlink_to(_r99t / ".venv")
             (_r99t / "linkroot99").symlink_to(_r99t)
             check("T99t _avviso_claude_timer: assoluto dal .env, cartelle del timer, primo venv attivo e "
                   "symlink no; shell, relativo, ~/.local/bin, secondo venv sì; /usr/local/bin solo su Linux",
-                  _av99("/opt/x/claude", "/opt/x/claude", _r99t, True) is None
-                  and "non viene dal .env" in (_av99("/opt/x/claude", "/opt/x/claude", _r99t, False) or "")
-                  and "non è un percorso assoluto" in (_av99("./claude", "/usr/bin/claude", _r99t, True) or "")
-                  and _av99("", "/usr/bin/claude", _r99t, False) is None
-                  and _av99("", str(_r99t / ".venv" / "bin" / "claude"), _r99t, False) is None
-                  and _av99("", str(_link99 / "bin" / "claude"), _r99t, False) is None
+                  _av99("/opt/x/claude", "/opt/x/claude", _r99t, "/opt/x/claude") is None
+                  and "non è nel .env" in (_av99("/opt/x/claude", "/opt/x/claude", _r99t, None) or "")
+                  # V-2 bot #291: un nome nudo lo cerca il PATH del timer → controllo delle cartelle
+                  and _av99("claude", "/usr/bin/claude", _r99t, None) is None
+                  and _av99("claude", "/Users/u/.local/bin/claude", _r99t, None) is not None
+                  # R-543-2: un altro nome nudo solo nella shell: il timer cercherebbe «claude»
+                  and "non è nel .env" in (_av99("claude-beta", "/usr/bin/claude-beta", _r99t, None) or "")
+                  and _av99("claude-beta", "/usr/bin/claude-beta", _r99t, "claude-beta") is None
+                  # R-544-1: il .env ha un altro valore (anche con la shell «claude» o vuota) → WARN
+                  and "altro valore" in (_av99("claude", "/usr/bin/claude", _r99t, "/vecchio/claude") or "")
+                  and "altro valore" in (_av99("", "/usr/bin/claude", _r99t, "/vecchio/claude") or "")
+                  # V-1 bot #292 / R-545-1: vuoto e «claude» sono lo stesso comando
+                  and _av99("", "/usr/bin/claude", _r99t, "claude") is None
+                  and _av99("claude", "/usr/bin/claude", _r99t, "") is None
+                  and "«claude»" in (_av99("/opt/x/claude", "/opt/x/claude", _r99t, "") or "")
+                  and "non è un percorso assoluto" in (_av99("./claude", "/usr/bin/claude", _r99t, "./claude") or "")
+                  and _av99("", "/usr/bin/claude", _r99t, None) is None
+                  and _av99("", str(_r99t / ".venv" / "bin" / "claude"), _r99t, None) is None
+                  and _av99("", str(_link99 / "bin" / "claude"), _r99t, None) is None
                   # R-540-2: radice raggiunta da un collegamento simbolico (/tmp → /private/tmp)
-                  and _av99("", str(_r99t / ".venv" / "bin" / "claude"), _link99.parent / "linkroot99", False) is None
+                  and _av99("", str(_r99t / ".venv" / "bin" / "claude"), _link99.parent / "linkroot99", None) is None
                   and _solo_venv99 and _due_venv99 is not None
-                  and _av99("", "/Users/u/.local/bin/claude", _r99t, False) is not None
-                  and _av99("", "/usr/local/bin/claude", _r99t, False, linux=True) is None
-                  and _av99("", "/usr/local/bin/claude", _r99t, False, linux=False) is not None)
+                  and _av99("", "/Users/u/.local/bin/claude", _r99t, None) is not None
+                  and _av99("", "/usr/local/bin/claude", _r99t, None, linux=True) is None
+                  and _av99("", "/usr/local/bin/claude", _r99t, None, linux=False) is not None)
+            for _l99 in (_link99, _r99t / "linkroot99"):  # R-541-1: niente collegamenti ciclici lasciati
+                _l99.unlink()
             check("T99u _motivo_forte: solo i messaggi di claude_cli, senza prefisso, prima riga, ≤240 caratteri",
                   gas._motivo_forte(RuntimeError("claude-cli: comando `claude` non trovato"))
                   == "comando `claude` non trovato"
