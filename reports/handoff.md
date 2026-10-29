@@ -50,6 +50,7 @@ NB: base = merge-base con origin/main = e106883 (dopo il merge di main). Regola 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1739759 docs(fine-task): PR #296 dopo il merge di main e106883 (PR #297), review #559, verdetti su 6a3ef69
 bd71498 Merge origin/main (e106883, PR #297) in claude/peaceful-lovelace-0w2b7q (PR #296)
 6a3ef69 docs(fine-task): PR #296 dopo il rifiuto del bot per caratteri invisibili e la verifica esterna su 336e67c, review #556–#558
 c6b73cf fix(web): niente caratteri invisibili scritti nei test e nel codice, nota su Chrome nel taglio XHTML (bot e ve #296)
@@ -72,7 +73,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore f7bb599: review #550 e #551. Merge eaa0642: review #552. Commit motore 0d5c258: review #553 e #554. Merge 7cf7f19: review #555. Commit motore c6b73cf (caratteri invisibili e V-1 bot): review #556 (riemessa), #557 e #558. Merge bd71498: review #559. Nota: i verdetti #550 e #551 incollati nel commit e9606d8 contenevano un BOM invisibile (U+FEFF), che fa bocciare il bot; il revisore li ha riemessi con lo stesso esito e la stessa sostanza, il BOM scritto in chiaro: fanno fede questi, gli originali restano nella storia di e9606d8. Verdetti integrali:
+Commit motore f7bb599: review #550 e #551. Merge eaa0642: review #552. Commit motore 0d5c258: review #553 e #554. Merge 7cf7f19: review #555. Commit motore c6b73cf (caratteri invisibili e V-1 bot): review #556 (riemessa), #557 e #558. Merge bd71498: review #559 (riemessa per il gate B). Nota: i verdetti #550 e #551 incollati nel commit e9606d8 contenevano un BOM invisibile (U+FEFF), che fa bocciare il bot; il revisore li ha riemessi con lo stesso esito e la stessa sostanza, il BOM scritto in chiaro: fanno fede questi, gli originali restano nella storia di e9606d8. Verdetti integrali:
 
 ### Review #550 (chat Mani) — primo diff staged (verdetto riemesso)
 
@@ -348,8 +349,48 @@ Prove rilanciate da me: leggi + lexbor 606 passed / 1 skipped. Nessuno slicing d
 
 Il testo sopra non contiene caratteri Cf né escape di invisibili. Nella memoria ho aggiunto la riga #558, senza lezioni nuove. Il file /home/user/Gas/.claude/agents/memoria_revisore.md è modificato e NON committato: contiene la correzione U+FEFF della riga #556 e le righe #557 e #558, che vanno nel tuo commit. Ora ha 980 righe e 0 caratteri Cf.
 
-### Review #559 (chat Mani) — merge bd71498 di origin/main e106883 (PR #297)
+### Review #559 (chat Mani) — merge bd71498 di origin/main e106883 (PR #297) (verdetto riemesso)
 
+Il primo verdetto #559 citava solo file arrivati da main, che con la base nuova e106883 non sono nel diff di sessione: gate B rosso. Il revisore l'ha riemesso con lo stesso esito e la stessa sostanza e le citazioni del codice del diff; fa fede questo. L'originale resta qui sotto in un blocco di codice.
+
+## VERDETTO: APPROVATO
+
+Review #559 (chat Mani), riemessa per il gate B dopo il commit del merge bd71498. L'esito e la sostanza sono quelli di prima; ho solo aggiunto citazioni dei file di codice del diff di sessione, che ora ha base e106883. Il merge riguarda origin/main e106883 (PR #297, chat Motore) dentro claude/peaceful-lovelace-0w2b7q (PR #296, prima del merge HEAD 6a3ef69, base comune 4e8eb9f).
+
+Letture fatte: CLAUDE.md (sezione 5 e regole di gate), reports/stato_progetto.md (righe toccate dal merge), .claude/agents/memoria_revisore.md (coda e lezioni sui caratteri Cf di #556 e #557, applicate).
+
+Elementi del diff di sessione esaminati (codice web, verificato identico al ramo prima e dopo il merge):
+- modules/web/leggi.py:1358 — `_taglio_xml`, il taglio dell'XHTML malformato al primo errore XML (fetta 25). Rischio: il merge cambia il codice web del ramo. Prova: `git diff 6a3ef69 HEAD -- modules tests` tocca solo bot.py e i test notte/dotenv di main, quindi `modules/web/leggi.py` è byte per byte uguale al ramo già rivisto in #558. Esito: ok.
+- modules/web/leggi.py:1415 — il BOM in testa contato a parte, scritto come chr(0xFEFF) senza carattere U+FEFF letterale. Rischio: un Cf letterale reintrodotto dalla risoluzione del merge, che il bot rifiuterebbe. Scansione con unicodedata dei file in stage: zero Cf. Esito: ok.
+- tests/test_unit_web_leggi.py:65 — pagina di prova con il carattere a larghezza zero costruito come chr(0x200B), non letterale. Rischio: un Cf letterale nel test dopo il merge. Il file è identico a 6a3ef69 e l'ho rieseguito: passa. Esito: ok.
+- tests/test_unit_web_lexbor.py:131 — casi parametrizzati, uno per ogni punto d'integrazione (V-1 ve #294). Rischio: righe perse o duplicate nella risoluzione. Il file è identico a 6a3ef69 (nessun diff in `git diff 6a3ef69 HEAD`). Esito: ok.
+
+Elementi del merge controllati (contesto, file arrivati da main):
+- modules/telegram/bot.py:589 e modules/telegram/bot.py:604 — la regex ancorata per «/forte@NomeBot» e il fail-closed quando il nome di Gas è ignoto. Prima del commit `git diff --cached origin/main` era vuoto su bot.py, tests/test_unit_dotenv.py e tests/test_unit_notte.py: sono identici a main e già rivisti dalla chat Motore in #554–#556. Esito: ok.
+- .claude/agents/memoria_revisore.md:980-982 — le righe Motore #554–#556 vengono dopo le righe Mani #550–#558. Confronto con un Counter tra le righe dei due genitori e il risultato: nessuna riga persa. Esito: ok.
+- reports/stato_progetto.md:4 — la riga «Ultimo aggiornamento» ha la voce Mani seguita, dopo «— prima:», dalla riga 4 di main intera. Le voci 3 e 4 della ripartenza Motore (reports/stato_progetto.md:589-590) sono uguali a main. Nessun marcatore di conflitto. Esito: ok.
+
+Controlli complessivi:
+- Antipattern della sezione 5 (slicing della history, output dei tool simulati): niente di nuovo, il merge non introduce logica.
+- Prova eseguita da me: pytest su tests/test_unit_dotenv.py, tests/test_unit_notte.py e tests/test_unit_web_leggi.py, 685 passed / 1 skipped.
+
+Rischi esclusi esplicitamente:
+- Non ho rieseguito la suite del kernel (1058 PASS / 1 FAIL T31g). Mi fido dell'esito dichiarato: T31g dipende da sqlite_vec, che manca in questo ambiente, quindi qui non si può riprodurre.
+- Non ho eseguito tests/test_unit_web_lexbor.py né provato il bot Telegram dal vivo in un gruppo, che in dev non si può riprodurre.
+- Non ho valutato reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md, che si riscrivono al fine-task.
+- Non ho eseguito scripts/check_verdetto.py, come mi hai indicato.
+
+Memoria: non l'ho toccata. La riga #559 scritta nel primo giro resta com'è. Non ho fatto commit.
+
+File rilevanti:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /home/user/Gas/tests/test_unit_web_lexbor.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
+Originale (non conta per il gate):
+
+```
 ## VERDETTO: APPROVATO
 
 Review #559 (chat Mani): merge non ancora committato di origin/main e106883 (PR #297, chat Motore) in claude/peaceful-lovelace-0w2b7q (PR #296, HEAD 6a3ef69, base comune 4e8eb9f).
@@ -383,6 +424,7 @@ File rilevanti:
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 - /home/user/Gas/reports/stato_progetto.md
 - /home/user/Gas/modules/telegram/bot.py
+```
 
 ## §5 DELTA TEST DEL MOTORE
 
@@ -406,7 +448,7 @@ Mappatura commit→run:
 - 78de08e, fa715d8: nessuna run (pushati con f7bb599). eaa0642: nessuna run (pushato con e9606d8). 54fc5da: nessuna run (pushato con 9837d0d).
 - e5f4a62, e1fa7c1, 0d5c258, 7cf7f19: nessuna run (pushati con 336e67c).
 - 54dea9d, c6b73cf: nessuna run (pushati con 6a3ef69).
-- bd71498 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
+- bd71498, 1739759 (fine-task fermato dal gate B prima del push) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
 
 ## §7 RISERVE APERTE
 
