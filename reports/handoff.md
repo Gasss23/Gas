@@ -20,6 +20,8 @@
 - **V1.5 — bot #304 su 274f131 NON approvata, V-1 MEDIA (il server voce non caricava il `.env`)**: `FATTA` — `run_server` carica il `.env` come la CLI prima di leggere la configurazione, riga a schermo con l'interruttore acceso, avvio `python -m modules.voice.server`; provato con un `.env` vero temporaneo (poi cancellato).
 - **V1.6 — verifica esterna #304 (APPROVATO CON RISERVE, [commento](https://github.com/Gasss23/Gas/pull/304#issuecomment-6504683688))**: V-2 BASSA (saluto prima di «Gas») `FATTA`; V-3 COSMETICA (richiesta vuota → «uso») `FATTA`; V-1 BASSA (falsi positivi «forte-forte», «forte: …») `FATTA` come limite dichiarato (commento della regex e roadmap); V-4 COSMETICA (26 vs 25 falliti sul codice vecchio) `SALTATA — numero dipendente dall'ambiente (qui 26 con http_proxy e no_proxy vuoti), il fatto R-384-1 è confermato dalla verifica`.
 - **Review #565-M2 APPROVATO CON RISERVE**: R-565-1-M2 BASSA e nota «sì» `FATTA`, rivisto in #566-M2 APPROVATO.
+- **V1.7 — bot #304 su 06cd1ed: APPROVATA (APPROVATO CON RISERVE)**: V-1 BASSA (un test lasciava «/» in testa a `sys.path` per il resto di pytest) `FATTA` — i tre test che chiamano `run_server` ripristinano `sys.path` (review #567-M2, commit 1b02e72); V-2 COSMETICA `FATTA` — chiarito: la prova col `.env` vero è MANUALE, non in CI (in CI il test sostituisce `_carica_dotenv` e prova l'ordine: prima il `.env`, poi il token).
+- **V1.8 — verifica esterna #304 su 06cd1ed (APPROVATO CON RISERVE, [commento](https://github.com/Gasss23/Gas/pull/304#issuecomment-6505016808))**: V-1/V-2 BASSE (falsi positivi di «forte»; 400 d'uso a voce) e V-3/V-4 COSMETICHE («sì»; 26 vs 25) già dichiarate o accettate, nessun fix richiesto.
 - **gas.py / brains/ / doctor**: `SALTATA — fuori dal mandato di M1`.
 
 ---
@@ -27,14 +29,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
+ .claude/agents/memoria_revisore.md |   4 ++++
  modules/voice/server.py            |  80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  reports/diff_sessione.md           |  11 +++++++----
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   3 ++-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  38 +++++++++++++++++---------------------
- tests/test_unit_voice_server.py    | 163 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/ultimo_report.md           |  40 +++++++++++++++++++---------------------
+ tests/test_unit_voice_server.py    | 166 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
  tests/test_unit_voice_stt.py       |  38 +++++++++++++++++++++++++++++++++++++-
 ```
 
@@ -43,6 +45,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1b02e72 test(voce): sys.path ripristinato nei test che chiamano run_server (V-1 bot #304 su 06cd1ed)
+1f6735a chore(revisore): memoria review #567 — APPROVATO
+06cd1ed docs(voce-v1): report dopo il bot #304 (V-1 chiusa) e la verifica esterna, review #565/#566-M2
 e0f3f01 fix(voce): il server voce carica il .env e si avvia con python -m (V-1 bot #304)
 4b086c9 chore(revisore): memoria review #566 — APPROVATO
 e6c913a chore(revisore): memoria review #565 — APPROVATO CON RISERVE
@@ -171,9 +176,35 @@ Note (nessuna bloccante):
 Memoria: aggiunta la riga #566-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola dallo script (commit 4b086c9). Nessuna lezione nuova. L'index del diff sotto review è intatto (2 file staged). Per committare il diff devi ancora eseguire `bash scripts/segna_review_ok.sh` (marcatore della review).
 
 
+Commit 1b02e72 — review #567-M2, verdetto integrale:
+
+VERDETTO: APPROVATO
+
+Review #567-M2 su feat/voce-v1-m2 (PR #304). Diff staged dopo `git add tests/test_unit_voice_server.py`: 1 file, 3 righe aggiunte, solo test. Prima della review ho letto CLAUDE.md (sez. 5), lo stato del progetto (in modo mirato) e la memoria del revisore.
+
+Elementi del diff esaminati:
+- `tests/test_unit_voice_server.py:86` — `monkeypatch.setattr(sys, "path", list(sys.path))` prima di `run_server(root_dir="/tmp")` in test_tv1_no_token_refuses_start. Rischio esaminato: `run_server` modifica `sys.path` prima di controllare il token (vedi contesto sotto), quindi nel ramo che restituisce 1 restava `/` in cima a `sys.path` per il resto del processo pytest. Esito: ok. L'ho provato in-process con pytest.main sui 3 test: col file di HEAD, dopo i test `sys.path[0] == "/"`; col file staged `/` non c'è più (`sys.path[0]` è la radice del repo, che aggiunge pytest stesso).
+- `tests/test_unit_voice_server.py:528` — stessa riga in test_v1_run_server_carica_il_dotenv. È messa prima di `run_server()` e accanto ai monkeypatch di R-565-1-M2 su VoiceHandler.kernel/token. Rischio esaminato: ordine dei monkeypatch e copertura del ramo che restituisce 0. Esito: ok. Si annulla a fine test, prima delle altre fixture.
+- `tests/test_unit_voice_server.py:550` — stessa riga in test_v1_run_server_dotenv_rotto_non_crasha, prima di `run_server(root_dir="/tmp") == 1`. Esito: ok.
+- Contesto, file non toccato: `modules/voice/server.py:317` — `_sys.path.insert(0, ...)` viene prima della lettura di GAS_VOICE_TOKEN (`modules/voice/server.py:320`). Conferma che la causa indicata dal bot è reale.
+- `sys` è già importato in cima al file del test (riga 13).
+
+Prove eseguite:
+- `pytest tests/test_unit_voice_server.py`: 59 passed.
+- Controllo in-process di `sys.path`: con HEAD sporco, con il diff staged pulito.
+- Il working tree del file di test, dopo lo scambio temporaneo, coincide di nuovo con l'index (verificato con `git diff --stat`).
+
+Antipattern: nessuno. Non c'è slicing della history, non c'è simulazione di tool e i guardrail non sono toccati.
+
+Rischio escluso: non ho rilanciato tutta la suite voce da 113 test (ho eseguito solo questo file, 59 passed). Non ho verificato nemmeno l'isolamento di `sys.modules` o di altro stato globale che `run_server` potrebbe toccare oltre a `sys.path`, perché non fa parte del finding V-1.
+
+Memoria del revisore: aggiunta la riga contatore #567-M2 con una lezione (isolare lo stato globale del processo anche nei rami d'errore precoci). Committata con lo script: commit 1f6735a, «chore(revisore): memoria review #567 — APPROVATO». L'index resta col solo diff del test staged. Nel working tree c'è anche una modifica non staged a `reports/ultimo_report.md`, che non ho toccato.
+
+File: /home/user/Gas/tests/test_unit_voice_server.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-gas.py non toccato. Voice suite (pytest, servizi finti): 73 → 113 test (+40, tutti V1), `113 passed in 21.98s` sulla cartella finale; con `http_proxy=http://127.0.0.1:9` e `no_proxy` vuoto 112/112 prima dell'ultimo caso «sì». Prima del diff, con quel proxy, qui: `26 failed, 47 passed` (R-384-1; la verifica esterna ne misura 25). Nessun FAIL.
+gas.py non toccato. Voice suite (pytest, servizi finti): 73 → 113 test (+40, tutti V1), `113 passed in 22.79s` sulla cartella finale; con `http_proxy=http://127.0.0.1:9` e `no_proxy` vuoto 112/112 prima dell'ultimo caso «sì». Prima del diff, con quel proxy, qui: `26 failed, 47 passed` (R-384-1; la verifica esterna ne misura 25). Nessun FAIL.
 
 ## §6 STATO CI
 
@@ -181,7 +212,9 @@ gas.py non toccato. Voice suite (pytest, servizi finti): 73 → 113 test (+40, t
 - f2e68c7: nessuna run su questo SHA (pushato insieme ad aa7c3b1).
 - aa7c3b1: pushato prima dell'apertura della PR #304; `handoff-check` failure (handoff non ancora aggiornato, atteso), nessuna run della PR.
 - 274f131: run CI 40927897667 (`unit-suite` e `handoff-check` success); check `verifica-bot` failure — bot NON approvata (V-1 MEDIA, chiusa in e0f3f01).
-- e6c913a, 4b086c9, e0f3f01 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testa solo la testa).
+- e6c913a, 4b086c9, e0f3f01: nessuna run su questi SHA (pushati insieme a 06cd1ed).
+- 06cd1ed (fine-task): run CI 40930420811 (`unit-suite` e `handoff-check` success); check `verifica-bot` success — bot APPROVATA, verdetto APPROVATO CON RISERVE (V-1 BASSA chiusa in 1b02e72, V-2 COSMETICA chiarita).
+- 1f6735a, 1b02e72 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testa solo la testa).
 
 ## §7 RISERVE APERTE
 
@@ -190,4 +223,5 @@ gas.py non toccato. Voice suite (pytest, servizi finti): 73 → 113 test (+40, t
 - **V-4 ve #304** COSMETICA — 26 vs 25 test falliti prima del fix: dipende dall'ambiente.
 - **Nota #566-M2** COSMETICA — `GAS_VOCE_FORTE` accetta «sì», `_env_flag` di gas.py no (asimmetria dichiarata).
 - **R-384-2 (chat Voce)** COSMETICA — commento in `ci.yml`: fuori da questa fetta.
+- **V-2 ve #304 (06cd1ed)** BASSA — «Gas, forte» senza richiesta dà 400 d'uso a chi parla: fail-closed accettato.
 - Prova dal vero col microfono sul Mac non fatta.
