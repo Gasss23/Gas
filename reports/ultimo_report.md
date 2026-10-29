@@ -16,10 +16,13 @@
 - **Review**: #550 APPROVATO CON RISERVE (R-550-1..4 → FATTE), #551 APPROVATO CON RISERVE (R-551-1 COSMETICA → FATTA in #553; R-551-2 COSMETICA → DEFERITA), #552 APPROVATO (merge di main dc43ad6, PR #292), #553 APPROVATO CON RISERVE (R-553-1 BASSA → FATTA), #554 APPROVATO, #555 APPROVATO (merge di main 4e8eb9f, PR #295).
 - **Bot su e9606d8**: NON approvata per caratteri invisibili (U+FEFF) nei verdetti incollati nell'handoff → verdetti #550/#551 riemessi dal revisore: FATTA.
 - **Bot su 9837d0d**: APPROVATO CON RISERVE. V-1 BASSA (test dei commenti nascosti dal taglio) → test anche senza taglio: FATTA. V-2 BASSA (DTD riletto a ogni «%p;») → letto una volta per pagina: FATTA. V-3 COSMETICA (numeri): FATTA.
+- **Bot su 336e67c**: NON approvata per un carattere invisibile (BOM, Unicode Cf) scritto dal bot stesso citando i casi di test; merito APPROVATO CON RISERVE. Fix: BOM e U+200B nei test e nel codice scritti come `chr(...)`, mai come carattere: FATTA. V-1 BASSA (entità sconosciuta con DTD esterno = errore, come Firefox; Chrome dà solo un avviso) → dichiarata nella docstring di `_taglio_xml`: FATTA.
+- **Review #556** APPROVATO CON RISERVE (R-556-1 COSMETICA, R-556-2 BASSA → FATTE; verdetto riemesso senza BOM), **#557** APPROVATO CON RISERVE (R-557-1 COSMETICA a capo della docstring → FATTA), **#558** APPROVATO (diff committato in c6b73cf).
+- **Verifica esterna su 336e67c**: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/296#issuecomment-6485248441). V-1 MEDIA (check del bot rosso) → stesso fix: FATTA. V-2 BASSA (= V-1 bot, Chrome tiene il resto) → dichiarata, resta aperta come scelta. V-3 COSMETICA (token singolo oltre ~2 MB, verso sicuro) → DEFERITA. V-4/V-5 informative.
 - **Verifica esterna su e9606d8**: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/296#issuecomment-6484866647). V-1 MEDIA (i BOM nell'handoff, check rosso) → FATTA. V-2 BASSA (lunghezza esatta del taglio senza test) → FATTA. V-3 COSMETICA (3.11: in CI 1 test in più che gira solo con CI=true) → spiegata. V-4/V-5 informative (R-ve280-1, libexpat sul VPS) → nelle richieste alla chat Motore.
 
 ## Prove
-- Web suite 606 passed / 1 skipped (Python 3.13.16 con selectolax 1.0.2; su main 03dc898: 566 / 1).
+- Web suite 606 passed / 1 skipped anche dopo il fix dei caratteri invisibili (Python 3.13.16 con selectolax 1.0.2; su main 03dc898: 566 / 1).
 - Su Python 3.11 senza selectolax: 494 passed / 113 skipped (in CI un test in più gira con CI=true).
 - Suite vecchia con `GAS_WEB_LEXBOR=1`: gli stessi 11 FAIL di main (confrontati per nome).
 - Kernel dopo il merge di main 4e8eb9f: 1058 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto); web + dotenv + claude_cli 652 passed / 1 skipped.
@@ -29,7 +32,8 @@
 ## RICHIESTE ALLA CHAT MOTORE
 1. `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (R-ve280-1), poi `GAS_WEB_LEXBOR=1` sul VPS.
 2. R-546-1: numeri delle review doppi tra le chat (anche #547–#551).
-3. Sul VPS serve libexpat ≥ 2.4 perché il taglio dell'XHTML sia attivo (sotto si legge come prima).
+3. `scripts/bot_esito.py` boccia il verdetto del bot quando il bot stesso scrive un carattere Cf citando il codice (successo due volte sulla #296): valutare di sostituirli invece di respingere.
+4. Sul VPS serve libexpat ≥ 2.4 perché il taglio dell'XHTML sia attivo (sotto si legge come prima).
 
 ## Anomalie
 - `gh` non autenticato nel cloud: PR, etichetta e stato CI passano dall'integrazione GitHub.

@@ -22,6 +22,8 @@
   - Bot su 9837d0d: V-1 (test dei commenti senza taglio) e V-2 (DTD letto una volta): `FATTA`, review #553 → R-553-1 `FATTA`, review #554; V-3 (numeri): `FATTA`.
   - Verifica esterna su e9606d8 (https://github.com/Gasss23/Gas/pull/296#issuecomment-6484866647): V-1 MEDIA (i BOM): `FATTA`; V-2 BASSA (lunghezza esatta del taglio): `FATTA`; V-3/V-4/V-5: `SALTATA — informative o già dichiarate`.
   - Merge di main dc43ad6 (PR #292, review #552) e 4e8eb9f (PR #295, review #555): `FATTA`.
+  - Bot su 336e67c NON approvata per un BOM letterale scritto dal bot stesso citando i casi di test (merito APPROVATO CON RISERVE): `FATTA` — BOM e U+200B nei test e nel codice scritti come `chr(...)`; V-1 BASSA (entità sconosciuta con DTD esterno = errore, come Firefox; Chrome dà solo un avviso): `FATTA` — dichiarata nella docstring di `_taglio_xml`. Review #556 (riemessa senza caratteri invisibili), #557, #558.
+  - Verifica esterna su 336e67c (https://github.com/Gasss23/Gas/pull/296#issuecomment-6485248441): V-1 MEDIA (check `verifica-bot` rosso): `FATTA` (stesso fix, nuovo SHA); V-2 BASSA (= V-1 bot): `FATTA` come scelta dichiarata, tenuta aperta in §7; V-3 COSMETICA (token singolo oltre ~2 MB): `DEFERITA — verso sicuro`; V-4/V-5: `SALTATA — informative`.
 - **Accensione lexbor (punto b)**: `DEFERITA — chat Motore`.
 - **Tempo di rete 12 s, R-ve235-7**: `DEFERITA — una alla volta`.
 
@@ -30,14 +32,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 ++++++++
- modules/web/leggi.py               |  99 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  18 ++++++++++--------
+ .claude/agents/memoria_revisore.md |  13 ++++++++++++
+ modules/web/leggi.py               | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  18 +++++++++--------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   6 +++---
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  40 ++++++++++++++++++++++++++++------------
- tests/test_unit_web_leggi.py       | 137 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ reports/ultimo_report.md           |  44 +++++++++++++++++++++++++++++-----------
+ tests/test_unit_web_leggi.py       | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
  tests/test_unit_web_lexbor.py      |   8 ++++++++
 ```
 
@@ -46,6 +48,9 @@ NB: base = merge-base con origin/main = 4e8eb9f (dopo il merge di main). Regola 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c6b73cf fix(web): niente caratteri invisibili scritti nei test e nel codice, nota su Chrome nel taglio XHTML (bot e ve #296)
+54dea9d chore(revisore): memoria review #556 — APPROVATO CON RISERVE
+336e67c docs(fine-task): PR #296 dopo le riserve di bot e verifica esterna e il merge di main 4e8eb9f, review #553–#555
 7cf7f19 Merge origin/main (4e8eb9f, PR #295) in claude/peaceful-lovelace-0w2b7q (PR #296)
 0d5c258 fix(web): DTD delle entità letto una volta per pagina, taglio al carattere giusto (V-1/V-2 bot e V-2 ve #296)
 e1fa7c1 chore(revisore): memoria review #554 — APPROVATO
@@ -63,7 +68,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore f7bb599: review #550 e #551. Merge eaa0642: review #552. Commit motore 0d5c258: review #553 e #554. Merge 7cf7f19: review #555. Nota: i verdetti #550 e #551 incollati nel commit e9606d8 contenevano un BOM invisibile (U+FEFF), che fa bocciare il bot; il revisore li ha riemessi con lo stesso esito e la stessa sostanza, il BOM scritto in chiaro: fanno fede questi, gli originali restano nella storia di e9606d8. Verdetti integrali:
+Commit motore f7bb599: review #550 e #551. Merge eaa0642: review #552. Commit motore 0d5c258: review #553 e #554. Merge 7cf7f19: review #555. Commit motore c6b73cf (caratteri invisibili e V-1 bot): review #556 (riemessa), #557 e #558. Nota: i verdetti #550 e #551 incollati nel commit e9606d8 contenevano un BOM invisibile (U+FEFF), che fa bocciare il bot; il revisore li ha riemessi con lo stesso esito e la stessa sostanza, il BOM scritto in chiaro: fanno fede questi, gli originali restano nella storia di e9606d8. Verdetti integrali:
 
 ### Review #550 (chat Mani) — primo diff staged (verdetto riemesso)
 
@@ -264,6 +269,81 @@ Review #555 (chat Mani). Ho esaminato il merge non ancora committato di origin/m
 
 **Memoria:** ho aggiunto la riga «#555 (chat Mani) — 2026-10-29 — APPROVATO — … Nessuna lezione nuova.» in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Lo script /home/user/Gas/scripts/commit_memoria_revisore.sh è uscito con 0, ma **non ha committato**: in gas_debug.log c'è «fatal: cannot do a partial commit during a merge», e l'index degli altri file è rimasto intatto. La riga resta nel working tree e non è in staging (stato MM): va messa in staging (`git add .claude/agents/memoria_revisore.md`) prima di chiudere il merge, così entra nel commit di merge o nel fine-task.
 
+### Review #556 (chat Mani) — primo diff di questo giro (verdetto riemesso)
+
+Il primo testo del #556 conteneva un BOM letterale (U+FEFF) e non si incolla qui: fa fede la riemissione, stesso esito e stessa sostanza.
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #556 (chat Mani), riemessa senza caratteri Cf su richiesta del coordinatore. L'esito e la sostanza sono quelli originali. PR #296, branch claude/peaceful-lovelace-0w2b7q, diff staged di allora: 2 file, +14/-7.
+
+**Cosa ho esaminato nel diff**
+1. `modules/web/leggi.py:1414` — cambia il controllo del BOM: prima l'escape ASCII di U+FEFF (6 caratteri, già escape a HEAD e non un BOM letterale, verificato con od), ora `chr(0xFEFF)`. Rischio esaminato: un cambio di comportamento. Esito: **ok**, il valore è identico. Il carattere vero lo produceva il bot quando citava il codice: la difesa è sensata.
+2. `tests/test_unit_web_leggi.py:1965` — aggiunge la costante `_BOM = chr(0xFEFF)`, usata in `tests/test_unit_web_leggi.py:1989`, `tests/test_unit_web_leggi.py:1990` e `tests/test_unit_web_leggi.py:2008`. Rischio esaminato: che i casi parametrizzati cambino. Esito: **ok**, stesse stringhe. Prove: XHTML 86 passed; leggi + lexbor 606 passed / 1 skipped.
+3. `modules/web/leggi.py:1364` — docstring con la V-1 BASSA del bot (entità sconosciuta con DTD esterno = errore). Esito: **riserva** R-556-1. Il comportamento descritto corrisponde al codice: `saltata` solleva `_ErroreXml`; una sonda con DOCTYPE SYSTEM non standard e «&ignota;» dà un taglio a 57 caratteri su 69. Ma la frase «così fanno Firefox ed expat» è imprecisa: provato, expat da solo con un DTD esterno non dà errore, salta l'entità e chiama SkippedEntityHandler.
+4. Caratteri Cf: 0 nel diff e 0 nell'intero modules/web/leggi.py. Esito: **ok**.
+
+**Riserve**
+- **R-556-1 (chat Mani), COSMETICA**: docstring da precisare con «come Firefox (expat con le entità saltate trattate come errore, qui `saltata`)».
+- **R-556-2 (chat Mani), BASSA, preesistente, fuori dal diff**: `tests/test_unit_web_leggi.py:65` e `tests/test_unit_web_leggi.py:232` contenevano U+200B letterali: se citati dal bot, il check torna failure; scriverli come `chr(0x200B)`.
+
+**Cosa NON ho verificato**
+- Il comportamento di Chrome/libxml2: nessun browser in dev.
+- Che il bot non scriva più caratteri Cf: non si riproduce in dev.
+- La suite del kernel: il diff non tocca gas.py.
+
+### Review #557 (chat Mani) — diff dopo R-556-1 e R-556-2
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #557 (chat Mani), PR #296, branch claude/peaceful-lovelace-0w2b7q. Diff staged completo: 2 file, +16/-9 (modules/web/leggi.py, tests/test_unit_web_leggi.py). Contiene anche le correzioni R-556-1 e R-556-2.
+
+**Cosa ho esaminato nel diff**
+1. `modules/web/leggi.py:1365` — la docstring di `_taglio_xml` dice ora «come Firefox (expat con le entità saltate trattate come errore, qui `saltata`)». Rischio esaminato: che la docstring descriva male il codice. Esito: **ok**. È coerente con la sonda di #556: expat da solo con un DTD esterno salta l'entità, ed è il gestore `saltata` di Gas a sollevare `_ErroreXml`. **R-556-1 chiusa.**
+2. `modules/web/leggi.py:1368` — è la stessa modifica, ma la riga risulta lunga 144 caratteri: l'a capo della docstring si è rotto, mentre le righe vicine stanno tra 48 e 92. Rischio esaminato: la leggibilità, non il comportamento (nel repo non c'è un linter della lunghezza; il file ha già 39 righe oltre i 100). Esito: **riserva** R-557-1, COSMETICA.
+3. `tests/test_unit_web_leggi.py:65` e `tests/test_unit_web_leggi.py:232` — i due U+200B letterali ora sono `chr(0x200B)`: una concatenazione nel corpo della pagina di prova e una voce della tupla dei vietati. Rischio esaminato: che il test perda il caso del carattere invisibile tolto dal testo. Esito: **ok**. La stringa risultante è identica e test_pagina_html_testo_pulito_e_marcato passa. **R-556-2 chiusa.**
+4. `modules/web/leggi.py:1414` e `tests/test_unit_web_leggi.py:1965` — `chr(0xFEFF)` e la costante `_BOM`, già esaminati in #556. Nessun cambio di comportamento. Esito: **ok**.
+5. Scansione Cf con unicodedata: 0 caratteri in tutti e due i file del diff. Le righe TOLTE del diff testuale contengono ancora due U+200B (il contenuto vecchio). Va bene in git, ma il diff testuale non va incollato in handoff o report: va bene solo `--stat`.
+
+Prove rilanciate da me: leggi + lexbor 606 passed / 1 skipped. Nessuno slicing della history, nessuna simulazione di tool, nessun guardrail toccato.
+
+**Riserve**
+- **R-557-1 (chat Mani), COSMETICA**: rimettere a capo `modules/web/leggi.py:1368` a circa 90 caratteri, come le righe vicine.
+
+**Nota sulla mia memoria**
+La riga #556 di `.claude/agents/memoria_revisore.md` (commit 54dea9d) conteneva un U+FEFF letterale. L'ho sostituito con il testo «U+FEFF» e la modifica NON è committata: va inclusa nel tuo commit, altrimenti il bot lo trova nel diff della PR. Ora la memoria ha 0 caratteri Cf.
+
+**Cosa NON ho verificato**
+- Il comportamento di Chrome/libxml2 citato nella docstring: non ho un browser in dev.
+- Che il bot, sul nuovo head, non introduca da sé caratteri Cf citando altro codice: non si riproduce qui.
+- La suite del kernel: il diff non tocca gas.py.
+
+Ho controllato i due testi con unicodedata prima di consegnarli (copia in /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/verdetti.md): 0 caratteri Cf, 0 escape con backslash. Nella memoria ho aggiunto la riga #557 e una lezione: il revisore non deve mai scrivere escape di caratteri invisibili, ma «U+XXXX». Il file /home/user/Gas/.claude/agents/memoria_revisore.md è modificato e NON committato, come richiesto: 979 righe, 0 Cf.
+
+### Review #558 (chat Mani) — diff committato in c6b73cf
+
+## VERDETTO: APPROVATO
+
+Review #558 (chat Mani), PR #296, branch claude/peaceful-lovelace-0w2b7q. Diff staged completo: 2 file, +17/-9 (modules/web/leggi.py, tests/test_unit_web_leggi.py).
+
+**Cosa ho esaminato nel diff**
+1. `modules/web/leggi.py:1365` — docstring di `_taglio_xml` (righe 1365-1370) rimessa a capo. Rischio esaminato: che nel rifare gli a capo cambi il testo o resti una riga lunga. Esito: **ok**. Le parole sono le stesse di #557 e tutte le righe stanno tra 17 e 92 caratteri, come le vicine. **R-557-1 chiusa.**
+2. `modules/web/leggi.py:1415` — il controllo del BOM con `chr(0xFEFF)`, spostato di una riga dalla docstring. Rischio esaminato: un cambio di comportamento. Esito: **ok**, il codice è identico a #557.
+3. `tests/test_unit_web_leggi.py:65` e `tests/test_unit_web_leggi.py:232` — U+200B scritto come `chr(0x200B)`. Esito: **ok**, nessun cambio rispetto a #557 (la parte dei test del diff è invariata, +10/-5).
+4. `tests/test_unit_web_leggi.py:1965` — la costante `_BOM` usata nei tre casi XHTML. Esito: **ok**, invariata.
+5. Scansione Cf con unicodedata: 0 caratteri in modules/web/leggi.py, in tests/test_unit_web_leggi.py e nella memoria del revisore. Resta vera la nota di #557: le righe TOLTE del diff testuale contengono ancora i vecchi U+200B, quindi nei report va solo `--stat`, mai il diff testuale.
+
+Prove rilanciate da me: leggi + lexbor 606 passed / 1 skipped. Nessuno slicing della history, nessuna simulazione di tool, nessun guardrail toccato.
+
+**Cosa NON ho verificato**
+- Il comportamento di Chrome/libxml2 citato nella docstring: nessun browser in dev.
+- Che il bot, sul nuovo head, non introduca da sé caratteri Cf citando altro codice: non si riproduce qui.
+- La suite del kernel: il diff non tocca gas.py.
+
+---
+
+Il testo sopra non contiene caratteri Cf né escape di invisibili. Nella memoria ho aggiunto la riga #558, senza lezioni nuove. Il file /home/user/Gas/.claude/agents/memoria_revisore.md è modificato e NON committato: contiene la correzione U+FEFF della riga #556 e le righe #557 e #558, che vanno nel tuo commit. Ora ha 980 righe e 0 caratteri Cf.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py; toccati `modules/web/leggi.py`, `tests/test_unit_web_leggi.py`, `tests/test_unit_web_lexbor.py`.
@@ -279,14 +359,19 @@ Nessuna modifica a gas.py; toccati `modules/web/leggi.py`, `tests/test_unit_web_
 - f7bb599: run 40794722150, `unit-suite` success, `handoff-check` failure (atteso: handoff di main).
 - e9606d8: run 40795325706, `unit-suite` success (kernel 1065 PASS / 0 FAIL, web 488 / 112), `handoff-check` success; `verifica-bot` failure (caratteri invisibili nei verdetti incollati: corretto in 54fc5da/9837d0d).
 - 9837d0d: `unit-suite` success, `handoff-check` success (run 40796099462); `verifica-bot` success, APPROVATO CON RISERVE (riserve chiuse in 0d5c258).
+- 336e67c: `unit-suite` success, `handoff-check` success (run 40798502957); `verifica-bot` failure (BOM letterale nel testo del bot: corretto in questo giro).
 
 Mappatura commit→run:
 - 78de08e, fa715d8: nessuna run (pushati con f7bb599). eaa0642: nessuna run (pushato con e9606d8). 54fc5da: nessuna run (pushato con 9837d0d).
-- e5f4a62, e1fa7c1, 0d5c258, 7cf7f19 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
+- e5f4a62, e1fa7c1, 0d5c258, 7cf7f19: nessuna run (pushati con 336e67c).
+- 54dea9d, c6b73cf e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
 
 ## §7 RISERVE APERTE
 
+- V-2 ve #296 / V-1 bot #296 BASSA: con un DOCTYPE a identificativo esterno non XHTML un'entità non dichiarata taglia (come Firefox); Chrome (libxml2) la tratta come avviso e mostra il resto. Verso sicuro, scelta dichiarata in docstring; da decidere insieme a R-551-2.
+- V-3 ve #296 COSMETICA: un singolo token oltre ~2 MB fa perdere il resto di una pagina ben formata (solo charset non UTF-8 a 2 byte; verso sicuro, causa da indagare).
+- Per la chat Motore: `scripts/bot_esito.py` boccia ogni verdetto del bot che contiene caratteri Cf, anche quando il bot li scrive da sé citando il codice (fuori dal mio perimetro).
 - R-551-2 COSMETICA: con DTD XHTML un'entità sconosciuta resta come testo «&Unknown;» prima del taglio (niente contenuto nascosto).
 - R-ve280-1 BASSA: i test lexbor con selectolax non girano nei check required. Chat Motore.
-- R-546-1 BASSA: numeri delle review doppi tra le chat (anche #547–#553).
+- R-546-1 BASSA: numeri delle review doppi tra le chat (anche #547–#558).
 - Sul VPS serve libexpat ≥ 2.4 perché il taglio dell'XHTML sia attivo (sotto si legge come prima, R-550-2); nessun controllo nel doctor (V-5 ve #296).
