@@ -83,6 +83,7 @@ def _post(port: int, body: dict | None, headers: dict | None = None) -> tuple[in
 
 def test_tv1_no_token_refuses_start(monkeypatch, capsys):
     monkeypatch.delenv("GAS_VOICE_TOKEN", raising=False)
+    monkeypatch.setattr(sys, "path", list(sys.path))  # V-1 bot #304: run_server tocca sys.path
     code = run_server(root_dir="/tmp")
     assert code == 1, "run_server deve ritornare 1 se GAS_VOICE_TOKEN manca"
     captured = capsys.readouterr()
@@ -524,6 +525,7 @@ def test_v1_run_server_carica_il_dotenv(monkeypatch, capsys):
     monkeypatch.setattr(gas, "_carica_dotenv", _finto_dotenv)
     monkeypatch.setattr(gas, "GasKernel", lambda root_dir: object())
     monkeypatch.setattr(srv, "HTTPServer", _FintoServer)
+    monkeypatch.setattr(sys, "path", list(sys.path))  # V-1 bot #304
     # R-565-1-M2: run_server scrive kernel e token sulla classe base: ripristinati a fine test
     monkeypatch.setattr(srv.VoiceHandler, "kernel", None)
     monkeypatch.setattr(srv.VoiceHandler, "token", "")
@@ -545,5 +547,6 @@ def test_v1_run_server_dotenv_rotto_non_crasha(monkeypatch, capsys):
         raise OSError("disco")
 
     monkeypatch.setattr(gas, "_carica_dotenv", _rotto)
+    monkeypatch.setattr(sys, "path", list(sys.path))  # V-1 bot #304
     assert run_server(root_dir="/tmp") == 1
     assert "GAS_VOICE_TOKEN" in capsys.readouterr().out
