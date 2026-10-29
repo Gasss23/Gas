@@ -1,13 +1,16 @@
-# ULTIMO REPORT — 2026-10-29 — chat Motore 1: giro notturno del 29 col cervello forte OK
+# Ultimo report — 2026-10-29 (chat Motore 2)
+
+**Task:** salvare lo stato della chat Motore 2 prima del `clear` (richiesta dell'operatore). Solo documenti, PR #302.
 
 ## DECISIONI UMANE RICHIESTE
-1. Approvare o rifiutare le lezioni in attesa: il numero vero si legge con `python3 gas.py lezioni lista`; il giro del 29 ne ha proposta 1 nuova.
+1. Merge della PR #302 (https://github.com/Gasss23/Gas/pull/302): solo documenti.
+2. Voce 9 della coda notte: (a) con un backup più vecchio di un `clear`, vince il `clear`? (proposta: sì); (b) la fa la chat Motore 2 di giorno o il turno di notte?
 
 ## Esito
-- **Verifica del giro del 29**: FATTA. L'operatore ha incollato `~/Gas/.gas_notte/ultimo_giro.md`: giro delle 03:13, `punto_lead` OK (1 tool, 12.2s), spesa $0.00. Il compito usa solo il cervello forte, quindi il problema «`claude` non trovato» del 27 e 28 è risolto. Punto 3 della RIPARTENZA chiuso in `reports/stato_progetto.md`.
-
-- **Bot su `223ffbc`**: APPROVATO CON RISERVE. V-1: il punto 3 è segnato chiuso ma contiene ancora riserve aperte, ora indicate in modo esplicito. V-2: il conteggio delle lezioni era incoerente, ora rimanda a `lezioni lista`. Corrette entrambe.
+- **Fetta 1 — stato della chat Motore 2**: FATTA. Blocco «RIPARTENZA chat Motore 2» in `reports/stato_progetto.md`: PR #287/#291/#292 mergiate, giro del 29 OK, lezioni #14–#20 rifiutate, accesso al Mac via Remote Control, riserve aperte, regole fra le chat.
+- **Fetta 2 — proposta per la voce 9**: FATTA. Scritta nella voce 9 di `reports/coda_notte.md`, da confermare.
+- **Fetta 3 — note del bot su #302**: FATTA. Sigla «(M2)» negli id delle riserve aperte (V-1 su 6c3352a); su 55b3391 lezioni allineate nel punto 5 della ripartenza Motore (V-1), §3 dell'handoff e questo report completati (V-2, V-3).
+- **Fetta 4 — merge di main (PR #299 della chat 1)**: FATTA. Solo report, riga «Ultimo aggiornamento» unita.
 
 ## Anomalie
-- `gh` non è autenticato nel cloud: PR e CI passano dallo strumento GitHub (V-1 COSMETICA bot #299).
-- Merge di main (PR #300 della chat Mani) nel ramo: solo report, riga «Ultimo aggiornamento» unita.
+- Nessuna. `gh` nel container non è autenticato: PR con gli strumenti GitHub della sessione.

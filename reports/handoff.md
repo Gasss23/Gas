@@ -1,44 +1,48 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-29 — chat Motore 1: giro notturno del 29 col cervello forte OK (PR #299)
+**Sessione:** 2026-10-29 — Salvataggio dello stato della chat Motore 2 prima del `clear` (solo documenti)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #299 (https://github.com/Gasss23/Gas/pull/299): solo documenti; l'operatore ha detto «mergia 299», la mergio con CI verde. Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` non autenticato in questo ambiente).
-2. Approvare o rifiutare le lezioni in attesa (`python3 gas.py lezioni lista`; il giro del 29 ne ha proposta 1 nuova).
+1. Merge della PR #302 (https://github.com/Gasss23/Gas/pull/302): solo documenti. Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
+2. Voce 9 della coda notte: (a) con un backup più vecchio di un `clear` vince il `clear`? (proposta: sì); (b) la fa la chat Motore 2 di giorno o il turno di notte?
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Verifica del giro del 29**: `FATTA` — `punto_lead` OK col forte; punto 3 della RIPARTENZA chiuso, ma le sue riserve BASSE restano aperte (V-1 bot #299).
-- **Fetta 2 — V-1/V-2 bot #299**: `FATTA` — riserve aperte del punto 3 esplicitate, conteggio delle lezioni allineato.
+- **Fetta 1 — stato della chat Motore 2 in stato_progetto**: `FATTA`.
+- **Fetta 2 — proposta per la voce 9 in coda_notte**: `FATTA` (da confermare dall'operatore).
+- **Fetta 3 — V-1 bot #302 (sigla M2 negli id)**: `FATTA`.
+- **Fetta 4 — note del bot su 55b3391 (V-1 lezioni, V-2 §3, V-3 ultimo_report) e merge di main con la PR #299**: `FATTA`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  | 10 ++++------
- reports/stato_progetto.md |  6 +++---
- reports/ultimo_report.md  | 22 ++++++----------------
+ reports/coda_notte.md     |  2 +-
+ reports/diff_sessione.md  |  7 ++++---
+ reports/stato_progetto.md | 12 ++++++++++--
+ reports/ultimo_report.md  | 17 ++++++++++-------
  reports/handoff.md        | n/d (commit finale)
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d» e niente riga di totale.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d», e la riga di totale è tolta. Conteggi presi con i report già in stage.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-f9e44ba Merge origin/main (PR #300 chat Mani) in feat/merge-automatico-z1xjx2 (PR #299): solo report, riga «Ultimo aggiornamento» unita
-8790eb9 docs(stato): V-1/V-2 bot #299 — riserve aperte del punto 3 esplicite, conteggio lezioni allineato
-223ffbc docs(fine-task): PR #299 — giro del 29 col forte OK
-b1aa06e docs(stato): giro notturno del 29 col cervello forte OK, punto 3 della RIPARTENZA chiuso
+87912ef Merge origin/main (PR #299) in docs/m2-salvataggio-voce9 (PR #302): solo report; note del bot su 55b3391
+55b3391 docs(fine-task): PR #302 secondo giro — V-1 bot #302
+d1db968 docs(stato): sigla M2 negli id delle riserve aperte della chat Motore 2 (V-1 bot #302)
+6c3352a docs(fine-task): PR #302 salvataggio della chat Motore 2 prima del clear
+090c11d docs(stato): salvataggio della chat Motore 2 prima del clear — PR #287/#291/#292, giro del 29, accesso al Mac, regole fra le chat, proposta voce 9
 ```
 
-NB: base `ed777ef` (main con la PR #300 della chat Mani). Il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -46,19 +50,24 @@ nessun diff motore, revisore non richiesto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/ rispetto a main.
+Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-CI letta con lo strumento GitHub della sessione (`gh` non autenticato).
+`gh` nel container non è autenticato.
 
 Mappatura commit→run:
-- `b1aa06e`: pushato prima dell'apertura della PR #299; run non letta.
-- `8790eb9`: `verifica-bot` success (APPROVATO CON RISERVE: V-1 COSMETICA anomalia `gh` mancante in ultimo_report, corretta qui).
-- `f9e44ba`: merge di main (PR #300), nessuna run (pushato insieme al commit di fine-task).
-- `223ffbc`: `verifica-bot` success (APPROVATO CON RISERVE: V-1/V-2 BASSE, corrette nel commit successivo).
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 090c11d → CI completata (notifica check_suite.completed delle 16:50).
+- 6c3352a → handoff-check success, verifica-bot success (APPROVATO CON RISERVE, V-1 BASSA chiusa nel commit dopo).
+- d1db968 → nessuna run su questo SHA (pushato insieme a 55b3391).
+- 55b3391 → unit-suite, handoff-check, verifica-bot success (APPROVATO CON RISERVE: V-1 BASSA, V-2/V-3 COSMETICHE chiuse in 87912ef).
+- 87912ef (merge di main con la PR #299) → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
+- commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-Nessuna nuova.
+- **V-1 bot #302** (BASSA): id R-551-1 ambiguo fra le chat nel blocco M2: CHIUSA con la sigla «(M2)» negli id del punto 4.
+
+- **Bot #302 su 55b3391**: V-1 BASSA (lezioni in attesa contraddittorie nello stato), V-2 COSMETICA (§3 senza 6c3352a), V-3 COSMETICA (fetta 3 assente da ultimo_report): CHIUSE in 87912ef.
+
+Nessun'altra nuova. Quelle aperte della linea M2 sono elencate in `reports/stato_progetto.md` (RIPARTENZA chat Motore 2, punto 4).
