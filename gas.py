@@ -459,8 +459,10 @@ def _avviso_claude_timer(valore_env: str, binario: str, root: Path,
     il primo fra .venv e venv con bin/activate, V-1 bot #287). Cartelle confrontate con
     realpath (collegamenti simbolici). Un PATH messo in ~/.zshenv lo vede anche il timer
     (`zsh -c`): lì l'avviso è un falso allarme, nel verso prudente."""
-    if valore_file is not None and valore_file != valore_env:
-        return "nel .env GAS_CLAUDE_BIN ha un altro valore: il giro notturno userà quello"
+    # Vuoto e «claude» sono lo stesso comando per claude_cli (V-1 bot #292, R-545-1)
+    if valore_file is not None and (valore_file or "claude") != (valore_env or "claude"):
+        return ("nel .env GAS_CLAUDE_BIN ha un altro valore: il giro notturno userà "
+                f"«{valore_file or 'claude'}»")
     if valore_env:
         if "/" in valore_env and not os.path.isabs(valore_env):
             return "GAS_CLAUDE_BIN non è un percorso assoluto"
@@ -633,8 +635,8 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
             continue
         else:
             valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
-        if chiave in _DOTENV_VALORI_DA_TENERE:  # R-544-2: vince la prima riga, come qui sotto
-            _DOTENV_NEL_FILE.setdefault(chiave, valore)
+        if chiave in _DOTENV_VALORI_DA_TENERE:
+            _DOTENV_NEL_FILE.setdefault(chiave, valore)  # R-544-2: vince la prima riga, come qui sotto
         if chiave in os.environ:
             continue
         os.environ[chiave] = valore

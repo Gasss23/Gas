@@ -11254,6 +11254,10 @@ try:
                   # R-544-1: il .env ha un altro valore (anche con la shell «claude» o vuota) → WARN
                   and "altro valore" in (_av99("claude", "/usr/bin/claude", _r99t, "/vecchio/claude") or "")
                   and "altro valore" in (_av99("", "/usr/bin/claude", _r99t, "/vecchio/claude") or "")
+                  # V-1 bot #292 / R-545-1: vuoto e «claude» sono lo stesso comando
+                  and _av99("", "/usr/bin/claude", _r99t, "claude") is None
+                  and _av99("claude", "/usr/bin/claude", _r99t, "") is None
+                  and "«claude»" in (_av99("/opt/x/claude", "/opt/x/claude", _r99t, "") or "")
                   and "non è un percorso assoluto" in (_av99("./claude", "/usr/bin/claude", _r99t, "./claude") or "")
                   and _av99("", "/usr/bin/claude", _r99t, None) is None
                   and _av99("", str(_r99t / ".venv" / "bin" / "claude"), _r99t, None) is None
