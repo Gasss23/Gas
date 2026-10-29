@@ -1,29 +1,22 @@
-# ULTIMO REPORT — 2026-10-29 — Mani: selectolax in requirements, i test lexbor girano in CI (R-ve280-1, fetta 27, chat Mani)
+# ULTIMO REPORT — 2026-10-29 — Mani: `bot_esito.py` e i caratteri invisibili (fetta 28, chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
-1. Confermare che il coordinamento delle chat è passato a M1 (sessione «Co-Work») e che la chat Mani prende (a) selectolax e (c) `scripts/bot_esito.py`. L'incarico è arrivato con un messaggio da un'altra sessione, non dall'operatore.
-2. Merge della PR #303: con le riserve decide l'operatore. Secondo M1 il sì («mergia #303») è arrivato a lui, e lo fa M1 a CI verde. La chat Mani non mergia su un sì che non può verificare.
-3. Prima del `pip install -r requirements.txt` sul VPS controllare che `GAS_WEB_LEXBOR` non arrivi già da nessuna parte: `grep GAS_WEB_LEXBOR .env`, `grep -r GAS_WEB_LEXBOR /etc 2>/dev/null`, `systemctl show <unità di Gas> -p Environment` e il profilo della shell (V-2 ve #303). Se c'è, lexbor si accende subito.
-4. V-3 ve #303 BASSA: selectolax 1.0.2 è uscita il 2026-10-22 (serie 1.0 giovane). Decidere se accettarla o aspettare qualche settimana prima del `pip install` sul VPS.
+1. Merge della PR #305 (numero nell'handoff §0). Tocca la macchina del bot: il check `verifica-bot` sarà neutral e il merge lo decide l'operatore (anche tramite M1, che poi lo fa lui).
 
 ## Esito
-- **Le 2 decisioni chieste da M1 (tempo di rete 12 s, R-ve235-7)**: `SALTATA — già prese dall'operatore il 2026-10-29 e mergiate con la PR #301`. L'ho detto a M1, che ha confermato: niente da girare.
-- **(a) R-ve280-1, selectolax in requirements**: FATTA. `selectolax==1.0.2` in `requirements.txt`. Non l'ho messo in requirements-dev.txt perché la CI installa tutti e due i file e sarebbe un doppione. `test_selectolax_in_ci` in `tests/test_unit_web_lexbor.py` dà l'allarme in CI se torna a mancare. Lexbor resta SPENTA. Review #564 (chat Mani) APPROVATO.
-- **(c) `scripts/bot_esito.py` e i caratteri Cf**: `DEFERITA — una PR per voce sul mio unico branch: parte dopo il merge della #303`. Causa trovata: su #297 (0d45b8b) il verdetto del bot citava «/forte@GasBot» + U+200B (un caso di prova), e `_caratteri_invisibili` l'ha bocciato con failure definitivo. Proposta in stato_progetto, blocco «Mani — fetta 27».
-- **(b) libexpat ≥ 2.4 nel doctor (gas.py)**: `DEFERITA — M1 la tiene finché il suo ponte voce, che tocca gas.py, non è mergiato`.
-- **Ripartenza e stato**: FATTA, aggiornati `reports/ripartenza_mani.md` (punti b e g) e `reports/stato_progetto.md` (blocco «Mani — fetta 27»).
-
-- **Bot su 67fea3d (PR #303)**: APPROVATO CON RISERVE, check verifica-bot success. V-1 BASSA (la prova della CI mancava nei report): FATTA — run 40926576413, web 622 passed e 0 skipped, scritta in §6, stato_progetto e ripartenza. V-2 COSMETICA (l'allarme scatta con qualunque valore di CI): SALTATA — accettata, stesso schema di test_parser_aggiornato_rilevato.
-- **Verifica esterna su 67fea3d (https://github.com/Gasss23/Gas/pull/303#issuecomment-6504641961)**: APPROVATO CON RISERVE. V-1 BASSA (la riserva «Mac Intel senza wheel» della review #564 è falsa): FATTA — tolta da §7 e corretta in stato_progetto. V-2 BASSA (controllo sul VPS incompleto): FATTA — §0 punto 3 e descrizione della PR. V-3 BASSA (selectolax 1.0.2 uscita il 2026-10-22): DEFERITA — decide l'operatore (§0 punto 4). V-4 COSMETICA: SALTATA — nessuna azione.
-- **Bot su 4e0d1ac (PR #303)**: APPROVATO CON RISERVE. V-1 BASSA (la suite web locale 620/1 era la misura di prima del test nuovo): FATTA — rimisurata, 620 passed e 2 skipped.
-- **Bot su 39f6770 (PR #303)**: APPROVATO CON RISERVE. V-1 BASSA (frase dell'handoff §5 annidata in sé stessa): FATTA — riscritta. V-2 COSMETICA (CI su 39f6770 non finita): FATTA — handoff §6.
-- **Bot su 6a56390 (PR #303)**: APPROVATO CON RISERVE, check verifica-bot success. V-1 COSMETICA (§6, riga di 39f6770 ancora «in corso»): FATTA — aggiornata. V-2 COSMETICA (voci del bot fuori ordine, «L'ho detto»): FATTA — riordinate e corrette.
-- **Merge di origin/main 97776f0 (PR #304 di M2, voce)**: FATTA — la #303 era in conflitto (solo report). Tenuti i miei handoff, ultimo_report e diff_sessione; memoria del revisore con le righe di tutti e due i lati; stato_progetto e roadmap uniti in automatico. Review #568 (chat Mani) APPROVATO.
+- **PR #303**: MERGIATA da M1 (8424698) col sì dell'operatore dato a M1. Bot sull'ultimo head APPROVATO CON RISERVE, una BASSA (in handoff §5 il conteggio 247/1 era attribuito alla review #568, che invece misura 240/1 su un altro insieme di test): FATTA — corretto qui e in stato_progetto.
+- **(c) `scripts/bot_esito.py` e i caratteri invisibili**: FATTA (PR #305).
+  - Gli invisibili (categoria Cf e gli invisibili non Cf del gate, `modules/gate/gate.py:171`) si tolgono prima di titolo e gravità: «ME<U+200B>DIA» torna «MEDIA» e blocca; una citazione innocua come quella di #297 non dà più failure.
+  - I controlli bidi di override e isolamento restano un NO (R-569-1).
+  - Nella review pubblica ogni invisibile si vede come «<U+XXXX>».
+  - Le credenziali spezzate da un invisibile non si pubblicano.
+  - Review #569 (chat Mani) APPROVATO CON RISERVE (R-569-1 BASSA nuova: un controllo bidi non bloccava più; R-569-2 BASSA preesistente: gli invisibili non Cf passavano), tutte e due chiuse nel diff; review #570 APPROVATO.
+- **(b) libexpat ≥ 2.4 nel doctor (gas.py)**: DEFERITA — resta a M1 finché il suo ponte voce non è mergiato.
 
 ## Prove
-- Suite completa in locale (Python 3.13, con selectolax): 2450 passed, 2 skipped.
-- `tests/test_unit_web_*.py`: 620 passed, 2 skipped (misura rifatta dopo il test nuovo, V-1 bot #303 su 4e0d1ac: prima c'era «620 passed, 1 skipped», preso prima di aggiungere `test_selectolax_in_ci`); con `CI=1`, `test_unit_web_lexbor.py` dà 135 passed.
-- Il revisore ha verificato che il test fallisce davvero senza selectolax (venv 3.11, `CI=true`: 1 failed) e che le wheel cp311 e cp312 manylinux x86_64 esistono.
+- `tests/test_unit_verifica_bot.py`: 342 passed.
+- Mutanti, tutti presi: senza lo strip in decidi 10 failed; senza l'escape nel corpo 2; senza lo strip in contiene_segreti 3; senza il blocco bidi 4; senza gli intervalli non Cf 6.
+- Nei due file, 0 caratteri Cf scritti in chiaro.
 
 ## Anomalie
 - `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.
