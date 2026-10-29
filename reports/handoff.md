@@ -1,37 +1,39 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-29 — chat Motore: riserve della PR #293 (PR #295), dopo il merge della #293
+**Sessione:** 2026-10-29 — chat Motore: riserve della PR #293 (PR #295), dopo il merge di main con la PR #292
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #295 (https://github.com/Gasss23/Gas/pull/295): revisore #552 APPROVATO. Se il bot approva senza finding la mergio io (CLAUDE.md §10), altrimenti decide l'operatore. Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` non autenticato in questo ambiente).
+1. Merge della PR #295 (https://github.com/Gasss23/Gas/pull/295): l'operatore ha già detto «mergia #295». La mergio io appena CI e bot sono verdi sul nuovo head. Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` non autenticato in questo ambiente).
+2. Due sessioni «chat Motore» lavorano sullo stesso codice (#292 e #295): conviene tenerne una sola.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — PR #293**: `FATTA` — mergiata su «mergia #293 e sistema» dell'operatore (merge automatico dopo CI e bot verdi).
-- **Fetta 2 — V-1 bot #293, GAS_CLAUDE_BIN scavalcato**: `FATTA` — WARN dedicato.
+- **Fetta 1 — PR #293**: `FATTA` — mergiata.
+- **Fetta 2 — V-1 bot #293, GAS_CLAUDE_BIN scavalcato**: `FATTA` dalla PR #292 (confronto col valore del `.env`); il mio WARN dedicato è stato tolto nel merge perché doppione.
 - **Fetta 3 — V-1 bot #293 secondo giro, messaggi sul giro del timer**: `FATTA`.
 - **Fetta 4 — R-543-1, interruttore come flag**: `FATTA` — `_DOTENV_INTERRUTTORI`.
-- **Fetta 5 — R-543-2, GAS_NO_DOTENV dichiarato**: `FATTA`.
-- **Fetta 6 — nota #549 e R-551-1, chiavi ripetute**: `FATTA` — `visti`, vale la prima riga.
+- **Fetta 5 — R-543-2, GAS_NO_DOTENV dichiarato**: `FATTA` (solo dichiarato: V-1 bot #295 la considera mitigata, non chiusa).
+- **Fetta 6 — nota #549 e R-551-1, chiavi ripetute**: `FATTA` — `visti`, combinato col registro dei valori della #292.
 - **Fetta 7 — V-4 e V-2 bot #293, test**: `FATTA`.
+- **Fetta 8 — Merge di main (PR #292)**: `FATTA` — review #553 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  3 +++
- gas.py                             | 31 ++++++++++++++++++++++++++-----
- reports/diff_sessione.md           | 12 ++++++------
- reports/stato_progetto.md          |  4 ++--
- reports/ultimo_report.md           | 26 +++++++++++---------------
- tests/test_unit_dotenv.py          | 59 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_kernel.py          |  9 ++++++---
+ .claude/agents/memoria_revisore.md |   4 ++++
+ gas.py                             |  26 +++++++++++++++++++-----
+ reports/diff_sessione.md           |  19 +++++++-----------
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  32 ++++++++++++-----------------
+ tests/test_unit_dotenv.py          |  64 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_kernel.py          |   9 ++++++---
  reports/handoff.md                 | n/d (commit finale)
 ```
 
@@ -40,6 +42,8 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5867d54 Merge origin/main (PR #292) in feat/merge-automatico-z1xjx2 (PR #295) — tenuti registro dei valori e visti; GAS_CLAUDE_BIN diverso coperto da _avviso_claude_timer — review #553 APPROVATO
+b83e8d2 docs(fine-task): PR #295 — riserve della #293, review #551/#552
 d915ec5 fix(doctor): riserve della #293 — GAS_CLAUDE_BIN scavalcato, interruttore come flag, chiavi ripetute, GAS_NO_DOTENV dichiarato, messaggi sul giro del timer
 0be9d5a chore(revisore): memoria review #552 — APPROVATO
 dbbafe9 chore(revisore): memoria review #551 — APPROVATO CON RISERVE
@@ -104,25 +108,56 @@ Rischio escluso: non ho verificato il comportamento reale del giro launchd sul M
 
 Riga contatore #552 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (0be9d5a, solo quel file; lo staging resta intatto). Nessuna lezione nuova.
 
+### Review #553 (chat Motore, sessione PR #295) — sul merge di origin/main (PR #292) in 5867d54
+
+## VERDETTO: APPROVATO
+
+Review #553 (chat Motore, sessione PR #295): merge di origin/main dc43ad6 (PR #292) in feat/merge-automatico-z1xjx2. Ho esaminato `git diff --cached HEAD` e `git diff --cached origin/main`.
+
+**Parti del diff controllate**
+- `gas.py:651` — `_DOTENV_NEL_FILE.setdefault` è scritto prima del salto con `visti`. Rischio: che il registro del doctor e il loader leggano righe diverse quando una chiave è ripetuta. Il registro tiene la prima riga grazie a `setdefault`. `visti` fa saltare la seconda comparsa prima di toccare `os.environ`, `CARICATE` e `SCAVALCATE`. Quindi l'ordine fra le due righe non conta: la prima riga vince in tutti e due i registri. Le righe malformate vengono scartate prima di entrambe. Esito: ok.
+- `gas.py:653` — `visti.add` sta dopo la validazione della riga e dopo il registro, come era nel ramo (#552). Il confronto come interruttore per `_DOTENV_INTERRUTTORI` è rimasto intatto (`gas.py:656`), e così `_DOTENV_CARICATE.update` (`gas.py:666`). Rischio: che una riga della #293 sia andata persa nel merge. Il diff verso main contiene solo le aggiunte del ramo, il diff verso HEAD solo quelle di main. Esito: ok.
+- `gas.py:5067` — nel doctor non c'è più il ramo `elif "GAS_CLAUDE_BIN" in _DOTENV_SCAVALCATE`. Al suo posto `_avviso_claude_timer` riceve `_DOTENV_NEL_FILE.get("GAS_CLAUDE_BIN")`. Rischio: un caso non più coperto, oppure rami morti. Il caso «shell diversa dal .env» è coperto da `gas.py:463` («ha un altro valore», col valore del file). Se il valore è uguale non c'è WARN, ed è giusto. `_DOTENV_SCAVALCATE` ora la legge solo GAS_CLAUDE_CLI (`gas.py:5047`, `gas.py:5056`), e il commento di `gas.py:588-591` è aggiornato. Non ci sono rami doppi né morti. Unico caso limite, che c'è già in main: se `which` non trova il binario esce solo il WARN «non trovato», senza «altro valore». Esito: ok.
+- `tests/test_unit_dotenv.py:236` — il test dal `.env` al doctor si aspetta «ha un altro valore» e «/vecchio/claude». Rischio: un test che passa per caso, con registri sporchi da un test precedente. Ogni scenario azzera `_DOTENV_NEL_FILE` con monkeypatch (`tests/test_unit_dotenv.py:185`, `tests/test_unit_dotenv.py:197`, `tests/test_unit_dotenv.py:216`). Esito: ok.
+- `tests/test_unit_kernel.py:11206` — T99s salva e rimette `_DOTENV_NEL_FILE`, che arriva da main ed è identico. Esito: ok.
+
+**Memoria e stato**
+- `.claude/agents/memoria_revisore.md`: non perde nessuna riga di nessuno dei due genitori e non ne ha di inventate.
+- `reports/stato_progetto.md`: cambiano solo 2 righe, ed è previsto. La riga 4 è la voce del ramo seguita dalla riga 4 intera di main (verificato confrontando le stringhe). Il punto 3 (riga 589) è il testo di main con aggiunte tre frasi del ramo prima di «Storia:» («PR #293 mergiata…», la voce PR #295 col nuovo testo su V-1 bot #293, «Aperto: ~/.zshenv»).
+- Nessun marcatore di conflitto; `git diff --cached --check` è pulito.
+
+**Test rilanciati da me**: suite del kernel 1063 PASS, 0 FAIL; `tests/test_unit_dotenv.py` 17 passed.
+
+**Nota COSMETICA** (non blocca): a `tests/test_unit_dotenv.py:155` c'è una sola riga vuota prima di `def test_nomi_caricati…` (è l'R-551-1 cosmetica dell'altra chat, arrivata da main). La sigla R-551-1 ha due significati nelle due chat: una è chiusa (`visti`), l'altra è aperta (la spaziatura).
+
+**Cosa non ho verificato**: non ho fatto test mutanti in questo merge, perché il codice è identico a quello già passato da mutanti nelle review #548 e #552. Non ho verificato il comportamento reale del timer sul Mac: dal container non si può riprodurre. Non ho rivisto handoff, ultimo_report e diff_sessione: sono la versione del ramo e li riscrive il fine-task.
+
+**Memoria del revisore: il commit è FALLITO per il merge in corso.** La riga #553 è scritta in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` (working tree), ma NON è in staging e NON è committata. `scripts/commit_memoria_revisore.sh` ha restituito exit 0 e ha registrato in gas_debug.log «git commit -o … fallito (rc=128): fatal: cannot do a partial commit during a merge». Prima di chiudere il merge serve `git add .claude/agents/memoria_revisore.md`, così la riga entra nel commit di merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Suite kernel: 1063 → 1063 PASS, 0 FAIL (nessun check nuovo nel kernel; T99w e T99x aggiornati). Main a `a418887` ha 1063 (la #293 portava 1061 → 1063).
+Suite kernel sulla testa `5867d54`: 1063 PASS, 0 FAIL (nessun check nuovo nel kernel in questa PR; il valore di main `dc43ad6` non l'ho rimisurato).
 
 ```
 === RIEPILOGO: 1063 PASS, 0 FAIL ===
 ```
 
-pytest (tutti i file tranne la suite kernel), sulla testa `d915ec5`: `2288 passed, 104 skipped in 193.86s (0:03:13)`; `tests/test_unit_dotenv.py` 14 passed (2 nuovi).
+pytest (tutti i file tranne la suite kernel), sulla testa `5867d54`: `2291 passed, 104 skipped in 197.76s (0:03:17)`; `tests/test_unit_dotenv.py` 17 passed.
 
 ## §6 STATO CI
 
 CI letta con lo strumento GitHub della sessione: `gh run list` non è disponibile (`gh` non autenticato).
 
 Mappatura commit→run:
-- `dbbafe9`, `0be9d5a`: nessuna run su questi SHA (pushati insieme a `d915ec5`).
-- `d915ec5`: pushato prima dell'apertura della PR #295; la run del push non l'ho letta.
+- `d915ec5`: nessuna run letta (pushato prima dell'apertura della PR #295).
+- `b83e8d2`: `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE: V-1 R-543-2 solo dichiarata, V-2 percorso del `.env` non controllato — ora coperto dalla #292, V-3 COSMETICA lista dei valori veri duplicata); verifica esterna APPROVATO CON RISERVE (commento 6484390024).
+- `5867d54`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Il PATH e le variabili di `~/.zshenv` (letto da `zsh -c` nel plist) non sono considerati dal doctor: falso WARN, verso prudente.
+- V-1 bot #295 BASSA: con `GAS_NO_DOTENV` e forte spento il doctor dà OK con la sola nota (R-543-2 mitigata, non chiusa).
+- V-3 bot #295 / V-1 ve #295 BASSA: la lista dei valori veri è copiata da `_env_flag` invece di stare in una costante comune.
+- V-2 ve #295 BASSA: il confronto «come flag» vale solo per GAS_CLAUDE_CLI, e il commento non lo dice.
+- `~/.zshenv` non considerato (falso WARN, verso prudente).
+- Sigle R-543-1 e R-551-1 con significati diversi nelle due sessioni «chat Motore» (COSMETICA).
