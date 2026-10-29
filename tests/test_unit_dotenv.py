@@ -124,10 +124,53 @@ def test_suite_pytest_spegne_il_dotenv():
     assert os.environ.get("GAS_NO_DOTENV") == "1"
 
 
+def test_nomi_del_file_finiscono_in_dotenv_nel_file(env, tmp_path, monkeypatch):
+    """R-540-1: il doctor sa che GAS_CLAUDE_BIN sta nel `.env` solo se il loader lo
+    registra. V-1 bot #291: anche quando la shell lo sovrascrive (il timer, senza la
+    shell, lo legge dal file); un nome solo nella shell non entra."""
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    monkeypatch.setattr(gas, "_DOTENV_VALORI_DA_TENERE",
+                        frozenset({"GAS_T_FILE", "GAS_T_SHELL", "GAS_T_SOLO_SHELL"}))
+    env["GAS_T_SHELL"] = "dalla-shell"
+    env["GAS_T_SOLO_SHELL"] = "x"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_FILE=1\nGAS_T_SHELL=dal-file\nGAS_T_API_KEY=segreto\n"))
+    # V-2 ve #292: una chiave fuori dalla lista (es. un segreto) non entra nel registro
+    assert gas._DOTENV_NEL_FILE == {"GAS_T_FILE": "1", "GAS_T_SHELL": "dal-file"}
+
+
+def test_registro_di_default_tiene_solo_gas_claude_bin(env, tmp_path, monkeypatch):
+    """V-2 ve #292: senza lista modificata, solo GAS_CLAUDE_BIN col suo valore."""
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    env.pop("GAS_CLAUDE_BIN", None)
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_ALTRA=1\nGAS_CLAUDE_BIN=/x/claude\n"))
+    assert gas._DOTENV_NEL_FILE == {"GAS_CLAUDE_BIN": "/x/claude"}
+
+
+def test_riga_doppia_vince_la_prima_anche_nel_registro(env, tmp_path, monkeypatch):
+    """R-544-2: con una chiave ripetuta il registro tiene lo stesso valore del loader."""
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    monkeypatch.setattr(gas, "_DOTENV_VALORI_DA_TENERE", frozenset({"GAS_T_DUP"}))
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_DUP=/a\nGAS_T_DUP=/b\n"))
+    assert env["GAS_T_DUP"] == "/a" and gas._DOTENV_NEL_FILE["GAS_T_DUP"] == "/a"
+
 def test_nomi_caricati_finiscono_in_dotenv_caricate(env, tmp_path, monkeypatch):
-    """R-540-1: il doctor sa che GAS_CLAUDE_BIN viene dal `.env` solo se il loader lo
-    registra; se vince la shell il nome non entra (il timer non lo vedrebbe)."""
+    """R-540-1: il doctor sa che GAS_CLAUDE_CLI viene dal `.env` solo se il loader lo
+    registra; se vince la shell con un altro valore il nome non entra."""
     monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
     env["GAS_T_SHELL"] = "dalla-shell"
     gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_FILE=1\nGAS_T_SHELL=dal-file\n"))
     assert gas._DOTENV_CARICATE == {"GAS_T_FILE"}
+
+
+def test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate(env, tmp_path, monkeypatch):
+    """V-1 ve #290: il doctor sa che la shell scavalca un valore DIVERSO del `.env`
+    (di notte vale quello del `.env`). Stesso valore → niente; solo i nomi, mai i valori."""
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    env["GAS_T_DIVERSA"] = "0"
+    env["GAS_T_UGUALE"] = "1"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_DIVERSA=1\nGAS_T_UGUALE=1\nGAS_T_NUOVA=x\n"))
+    assert gas._DOTENV_SCAVALCATE == {"GAS_T_DIVERSA"}
+    # V-1 bot #293: stesso valore nella shell e nel .env → di notte vale uguale, conta
+    assert gas._DOTENV_CARICATE == {"GAS_T_NUOVA", "GAS_T_UGUALE"}
+    assert env["GAS_T_DIVERSA"] == "0"

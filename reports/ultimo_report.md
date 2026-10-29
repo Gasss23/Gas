@@ -1,37 +1,25 @@
-# ULTIMO REPORT — 2026-10-28 — Mani fetta 24: riserve cosmetiche di lexbor con i namespace come il parser (R6, chat Mani, PR #294)
+# Ultimo report — 2026-10-28 (chat Motore)
+
+**Task:** (operatore: «sistema anche questa e poi mergia») merge della PR #291 (autorizzato dall'operatore: «mergia e sistema») e correzione delle note del bot su #291 (PR #292).
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #294 (https://github.com/Gasss23/Gas/pull/294): lo faccio io solo con verdetto del bot APPROVATO pulito; con riserve aspetto il tuo OK. Il merge non accende niente.
-2. Accensione della lettura con lexbor: serve la chat Motore (`selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt`), poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
-3. Poi, una alla volta: R-ve252-2 e R-ve255-1 (XHTML malformato), tempo di rete 12 s, R-ve235-7.
+1. Merge della PR #292 (https://github.com/Gasss23/Gas/pull/292): review #545 APPROVATO CON RISERVE, verifica esterna APPROVATO CON RISERVE (BASSE): serve il «sì» dell'operatore (CLAUDE.md §10), salvo verdetto pulito del bot.
 
 ## Esito
-- **PR #288 (fetta 23)**: MERGIATA su richiesta dell'operatore («mergia 288», d4b39ca). Branch ripartito da main.
-- **Fetta 24 — riserve cosmetiche di lexbor**:
-  - R-ve277-3 e R-529-1 (scelta della tendina): FATTA — «list of options» dello standard, optgroup disabled più vicino, solo opzioni HTML.
-  - R-520-4 (title HTML in foreignObject): FATTA — primo title HTML con una discesa lineare.
-  - R-540-1 (slot in foreignObject): FATTA.
-  - R-ve277-4 (sonde fuori da Linux): FATTA — `attivo()` spenta subito.
-  - R-526-1 (doppio controllo sotto lock) e R-528-3 (option in option): FATTA — test.
-  - R-543-1 (commento su HOST): FATTA.
-  - Bot #288 su 759edea (shadow vuoto): FATTA — test (testo vuoto).
-  - V-1 bot e ve #288 su 6627250 (adoption agency): FATTA come limite dichiarato (commento di `shadow()` e test che fissa l'esito di oggi); il comportamento del browser non è riprodotto.
-- **Review**: #547 BOCCIATO (B-547-1 MEDIA: punti d'integrazione dal solo nome, un title di svg o math poteva finire nel titolo) → namespace dedotto come il parser; #548 APPROVATO CON RISERVE (R-548-1 test, R-548-2 commento → FATTE); #549 APPROVATO.
-- **Accensione lexbor (punto b)**: DEFERITA — chat Motore.
-
-## Prove
-- Web suite 566 passed / 1 skipped (Python 3.13.16 con selectolax 1.0.2; su main d4b39ca: 546 / 1).
-- File lexbor su Python 3.11 senza selectolax: 22 passed / 103 skipped.
-- Suite vecchia con `GAS_WEB_LEXBOR=1` (`tests/test_unit_web_leggi.py`): 11 failed / 430 passed / 1 skipped (stessi 11 di sempre).
-- Mutanti presi (1 o più failed ciascuno): nascosti fuori dalla lista, optgroup disabled ignorato, optgroup annidati, lista senza visibile, linux non controllato, senza doppio controllo, integrazione senza namespace, mi anche in svg, mglyph html, svg in annotation-xml math, annotation-xml sempre html, ns ignorato nello straniero, opzione straniera contata, slot straniero contato, scorciatoia senza svg sempre, «testo» tolto, salto senza html. Equivalente noto: `continue` → `return None` su `template_fragments()` vuoto.
-- Fuzz del titolo contro html5lib (1500 pagine con svg/math e punti d'integrazione, senza select e template): 3 differenze, tutte da forma diversa dell'albero tra lexbor e html5lib sugli end tag nello straniero.
-- Tempi: svg con 1000 g e 10000 title 0,08 s (prima oltre 4 s, ripiego); select con 50k opzioni sotto 2000 div 1,1 s; 200k span 0,67 s.
-
-## RICHIESTE ALLA CHAT MOTORE
-1. Per accendere la lettura con lexbor e chiudere R-ve280-1:
-   - `selectolax==1.0.2` in `requirements-dev.txt` (in CI girano i test lexbor oggi saltati) e in `requirements.txt` del VPS;
-   - `GAS_WEB_LEXBOR=1` nell'ambiente di Gas sul VPS (Linux).
-2. R-546-1: le review hanno numeri doppi tra le chat (#540–#542); dalla #547 la chat Mani usa numeri nuovi.
+- **Merge della PR #291**: FATTO (autorizzazione dell'operatore).
+- **Fetta 1 — V-1 bot #291 + R-543-1 + R-544-1**: FATTA. `_DOTENV_NEL_FILE: Dict[str, str]` (nome → valore del `.env`, anche se vince la shell); il doctor dà WARN se il `.env` ha un altro valore o non ha quello in uso.
+- **Fetta 2 — V-2 bot #291 + R-543-2**: FATTA. Nome nudo → controllo delle cartelle; eccezione per «claude» solo senza la variabile nel `.env`.
+- **Fetta 3 — R-544-2**: FATTA. Registro con `setdefault` (vince la prima riga, come il loader).
+- **Fetta 4 — V-3 (R-541-1) e V-4 bot #291**: FATTE. T99t toglie i collegamenti; tipo `Dict[str, str]`.
+- Test: kernel 1057 PASS, 0 FAIL; pytest 2284 passed, 61 skipped.
+- **Fetta 5 — conflitto con main (V-1 MEDIA verifica esterna #292)**: FATTA. Merge di origin/main d4b39ca (PR #288, chat Mani), conflitti solo nei report e nella memoria; review #547 APPROVATO; kernel 1057 PASS, pytest dotenv + web_lexbor 32 passed dopo il merge.
+- **Fetta 6 — bot #292 (BOCCIATO su a0872d2 per il conflitto, check rosso su f94c4a0)**: FATTA. Registro del `.env` solo per `GAS_CLAUDE_BIN` (`_DOTENV_VALORI_DA_TENERE`, V-4 bot / V-2 ve #292), T99s rimette il registro (V-3), BOCCIATO registrato nei report (V-1); review #548 APPROVATO CON RISERVE; kernel 1057 PASS, pytest dotenv + claude_cli 42 passed.
+- **Fetta 7 — V-1 bot #292 su 67c2bca + R-545-1 + R-548-1**: FATTA. Vuoto e «claude» sono lo stesso comando nel confronto col `.env`; il messaggio dice il comando che userà il timer; review #549 APPROVATO.
+- **Fetta 8 — merge di main (PR #294, chat Mani)**: FATTA. Conflitti solo nei report e nella memoria; review #550 APPROVATO; kernel 1057 PASS, pytest dotenv + web_lexbor 35 passed.
+- **Fetta 9 — merge di main con la PR #293 (altra sessione chat Motore, conflitto anche nel codice)**: FATTA. Tenuti i due registri del `.env`, rimessa la riga persa dal merge automatico; review #551 APPROVATO CON RISERVE; kernel 1059 PASS, pytest completo 2289 passed, 104 skipped.
+- Aperte: V-3 ve #292 BASSA (secondo caricamento), R-540-3 BASSA (VPS), R-547-1 COSMETICA, R-551-1 COSMETICA.
+- Anomalia: due sessioni chat Motore hanno lavorato in parallelo sulla stessa fetta del doctor (PR #290/#293 e PR #291/#292), con numeri di review doppi (#543–#550).
 
 ## Anomalie
-- `gh` non autenticato nel cloud: PR, etichetta e stato CI passano dall'integrazione GitHub.
+- La review #544 è stata fatta due volte (il primo revisore è rimasto fermo per ore e ne è stato lanciato un secondo): due righe #544 nella memoria, stessi finding.
+- `gh` nel container non è autenticato: PR e CI con gli strumenti GitHub della sessione. L'iscrizione alla PR #291 non si è potuta togliere (serve un dispositivo di fiducia): non serve più, la PR è mergiata.

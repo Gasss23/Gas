@@ -1,11 +1,15 @@
-# DIFF SESSIONE — 2026-10-28 — Mani fetta 24 (PR #294)
+# Diff della sessione — 2026-10-28 (chat Motore, PR #292)
 
-File toccati rispetto a main d4b39ca (merge della PR #288):
-- `modules/web/lexbor.py` — nel figlio: `ns_figli`, `ns_di`, `elementi` (namespace come il parser); titolo = primo title HTML; `opzioni_visibili` con la «list of options» dello standard e solo opzioni HTML; `primi_slot` con gli slot HTML; limite dell'adoption agency nel commento di `shadow()`; `attivo()` spenta fuori da Linux.
-- `tests/test_unit_web_lexbor.py` — casi su select, titolo, namespace, slot, shadow vuoto, adoption agency; test fuori da Linux, doppio controllo sotto lock, tempo coi title in svg.
-- `.claude/agents/memoria_revisore.md` — righe delle review #547–#549 (chat Mani).
-- `reports/stato_progetto.md` — blocco «Mani — fetta 24» e riga «Ultimo aggiornamento».
-- `reports/ripartenza_mani.md` — PR #294, punto d) fatto.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+- `gas.py`: `_DOTENV_NEL_FILE: Dict[str, str]` al posto di `_DOTENV_CARICATE` (registrato con `setdefault` per ogni riga valida del `.env`); `_avviso_claude_timer` prende `valore_file` al posto di `da_dotenv` (WARN «altro valore», nome nudo → cartelle, eccezione «claude» solo senza variabile nel `.env`); il doctor passa `_DOTENV_NEL_FILE.get("GAS_CLAUDE_BIN")`.
+- `tests/test_unit_kernel.py`: T99s (caso «altro valore»), T99t (nuovi casi, chiamate con `valore_file`, collegamenti tolti dopo l'uso).
+- `tests/test_unit_dotenv.py`: test sul dizionario e sulla riga doppia.
+- `gas.py` (secondo giro): `_DOTENV_VALORI_DA_TENERE`, il registro tiene solo `GAS_CLAUDE_BIN`; `tests/test_unit_dotenv.py`: lista bianca e chiave segreta fuori lista; `tests/test_unit_kernel.py`: T99s rimette il registro.
+- `gas.py` (terzo giro): vuoto e «claude» uguali nel confronto col `.env`, messaggio col comando che userà il timer; `tests/test_unit_kernel.py`: tre casi in T99t.
+- `.claude/agents/memoria_revisore.md`: review #543, #544 (due righe), #545, #547, #548, #549, #550, #551.
+- Merge di origin/main (PR #294, chat Mani): conflitti nei report e nella memoria risolti, codice di main identico.
+- Merge di origin/main (PR #293, altra sessione chat Motore): conflitto in `gas.py` e nei test risolto tenendo i due registri; `_DOTENV_CARICATE.update` rimessa; review #551.
+- Merge di origin/main (PR #288, chat Mani): conflitti nei report e nella memoria risolti, codice di main identico (fuori dal diff della sessione).
+- `reports/stato_progetto.md`: «Ultimo aggiornamento» e punto 3 della ripartenza Motore.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
