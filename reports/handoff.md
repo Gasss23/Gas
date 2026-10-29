@@ -1,227 +1,183 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-29 — Voce V1: cervello forte dalla voce (chat M2, coordinata da M1)
+**Sessione:** 2026-10-29 — Mani, fetta 27: selectolax in requirements, i test lexbor girano in CI (R-ve280-1, chat Mani)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #304 (https://github.com/Gasss23/Gas/pull/304). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5073160064","url":"https://github.com/Gasss23/Gas/pull/304"}`); `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve decide l'operatore (tramite M1).
-2. Facoltativo: `GAS_VOCE_FORTE=1` nel `.env` del Mac per mandare tutta la voce al cervello forte (spento di default); server voce avviato con `python -m modules.voice.server` dalla cartella di Gas, lo conferma a schermo.
+1. Merge della PR #303 (https://github.com/Gasss23/Gas/pull/303). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5073049841","url":"https://github.com/Gasss23/Gas/pull/303"}`), perché `gh` nel cloud non è autenticato. Con le riserve il merge lo decide l'operatore: secondo M1 l'operatore ha detto «mergia #303» nella chat di M1, e lo fa M1 a CI verde (la chat Mani non mergia su un sì che non può verificare).
+2. Confermare che il coordinamento delle chat è passato a M1 (sessione «Co-Work») e che la chat Mani prende (a) e (c). L'incarico è arrivato con un messaggio da un'altra sessione, non dall'operatore.
+3. Prima del `pip install -r requirements.txt` sul VPS controllare che `GAS_WEB_LEXBOR` non arrivi già da nessuna parte: `grep GAS_WEB_LEXBOR .env`, `grep -r GAS_WEB_LEXBOR /etc 2>/dev/null`, `systemctl show <unità di Gas> -p Environment` e il profilo della shell (V-2 ve #303). Se c'è, lexbor si accende subito.
+4. V-3 ve #303 BASSA: selectolax 1.0.2 è uscita il 2026-10-22 (serie 1.0 giovane). Decidere se accettarla o aspettare qualche settimana prima del `pip install` sul VPS.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **V1.1 — verifica del giro vocale e proposta a M1**: `FATTA` — il forte passava solo con «/forte», che a voce non si detta; M1 ha scelto parola chiave + interruttore.
-- **V1.2 — parola chiave parlata «forte …» / «Gas forte …»**: `FATTA` — `cervello_voce()` in `modules/voice/server.py`, solo sul testo trascritto, fail-closed («uso» → 400).
-- **V1.3 — `GAS_VOCE_FORTE`**: `FATTA` — tutta la voce al forte; forte fermo → errore dichiarato, mai i gratuiti.
-- **V1.4 — test di trascrizione e sintesi nei test automatici**: `FATTA` — già in CI dalla PR #229 (riga R8 corretta); chiusa R-384-1 (test indipendenti dal proxy).
-- **V1.5 — bot #304 su 274f131 NON approvata, V-1 MEDIA (il server voce non caricava il `.env`)**: `FATTA` — `run_server` carica il `.env` come la CLI prima di leggere la configurazione, riga a schermo con l'interruttore acceso, avvio `python -m modules.voice.server`; provato con un `.env` vero temporaneo (poi cancellato).
-- **V1.6 — verifica esterna #304 (APPROVATO CON RISERVE, [commento](https://github.com/Gasss23/Gas/pull/304#issuecomment-6504683688))**: V-2 BASSA (saluto prima di «Gas») `FATTA`; V-3 COSMETICA (richiesta vuota → «uso») `FATTA`; V-1 BASSA (falsi positivi «forte-forte», «forte: …») `FATTA` come limite dichiarato (commento della regex e roadmap); V-4 COSMETICA (26 vs 25 falliti sul codice vecchio) `SALTATA — numero dipendente dall'ambiente (qui 26 con http_proxy e no_proxy vuoti), il fatto R-384-1 è confermato dalla verifica`.
-- **Review #565-M2 APPROVATO CON RISERVE**: R-565-1-M2 BASSA e nota «sì» `FATTA`, rivisto in #566-M2 APPROVATO.
-- **V1.7 — bot #304 su 06cd1ed: APPROVATA (APPROVATO CON RISERVE)**: V-1 BASSA (un test lasciava «/» in testa a `sys.path` per il resto di pytest) `FATTA` — i tre test che chiamano `run_server` ripristinano `sys.path` (review #567-M2, commit 1b02e72); V-2 COSMETICA `FATTA` — chiarito: la prova col `.env` vero è MANUALE, non in CI (in CI il test sostituisce `_carica_dotenv` e prova l'ordine: prima il `.env`, poi il token).
-- **V1.8 — verifica esterna #304 su 06cd1ed (APPROVATO CON RISERVE, [commento](https://github.com/Gasss23/Gas/pull/304#issuecomment-6505016808))**: V-1/V-2 BASSE (falsi positivi di «forte»; 400 d'uso a voce) e V-3/V-4 COSMETICHE («sì»; 26 vs 25) già dichiarate o accettate, nessun fix richiesto.
-- **gas.py / brains/ / doctor**: `SALTATA — fuori dal mandato di M1`.
+- **Le 2 decisioni chieste da M1 (tempo di rete 12 s, R-ve235-7)**: `SALTATA — già prese dall'operatore il 2026-10-29 e mergiate con la PR #301`; M1 ha confermato.
+- **(a) R-ve280-1, selectolax in requirements**: `FATTA` — `selectolax==1.0.2` in `requirements.txt`, allarme in CI `test_selectolax_in_ci`. Lexbor resta SPENTA. Review #564 (chat Mani) APPROVATO.
+- **(c) `scripts/bot_esito.py` e i caratteri Cf**: `DEFERITA — una PR per voce sul mio unico branch: parte dopo il merge della #303`. Causa trovata su #297 (0d45b8b): il verdetto del bot citava «/forte@GasBot» + U+200B.
+- **(b) libexpat ≥ 2.4 nel doctor (gas.py)**: `DEFERITA — M1 la tiene finché il suo ponte voce, che tocca gas.py, non è mergiato`.
+- **Ripartenza e stato**: `FATTA`.
+- **Bot su 67fea3d (PR #303)**: APPROVATO CON RISERVE, check verifica-bot success. V-1 BASSA (la prova della CI mancava nei report): `FATTA` — run 40926576413, web 622 passed e 0 skipped, scritta in §6, stato_progetto e ripartenza. V-2 COSMETICA (l'allarme scatta con qualunque valore di CI): `SALTATA — accettata, stesso schema di test_parser_aggiornato_rilevato`.
+- **Verifica esterna su 67fea3d (https://github.com/Gasss23/Gas/pull/303#issuecomment-6504641961)**: APPROVATO CON RISERVE. V-1 BASSA (la riserva «Mac Intel senza wheel» della review #564 è falsa): `FATTA` — tolta da §7 e corretta in stato_progetto. V-2 BASSA (controllo sul VPS incompleto): `FATTA` — §0 punto 3 e descrizione della PR. V-3 BASSA (selectolax 1.0.2 uscita il 2026-10-22): `DEFERITA — decide l'operatore` (§0 punto 4). V-4 COSMETICA: `SALTATA — nessuna azione`.
+- **Bot su 4e0d1ac (PR #303)**: APPROVATO CON RISERVE, check verifica-bot success. V-1 BASSA (suite web locale «620 passed, 1 skipped»: era la misura di prima del test nuovo): `FATTA` — rimisurata, 620 passed e 2 skipped.
+- **Bot su 39f6770 (PR #303)**: APPROVATO CON RISERVE, check verifica-bot success. V-1 BASSA (frase di §5 annidata in sé stessa dalla correzione precedente): `FATTA` — riscritta. V-2 COSMETICA (CI su 39f6770 non finita alla verifica): `FATTA` — §6.
+- **Bot su 6a56390 (PR #303)**: APPROVATO CON RISERVE, check verifica-bot success. V-1 COSMETICA (§6, riga di 39f6770 ancora «in corso»): `FATTA` — aggiornata. V-2 COSMETICA (voci del bot fuori ordine, «L'ho detto»): `FATTA` — riordinate e corrette.
+- **Merge di origin/main 97776f0 (PR #304 di M2, voce)**: `FATTA` — la #303 era in conflitto (solo report). Tenuti i miei handoff, ultimo_report e diff_sessione; memoria del revisore con le righe di tutti e due i lati; stato_progetto e roadmap uniti in automatico. Review #568 (chat Mani) APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/voice/server.py            |  80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- reports/diff_sessione.md           |  11 +++++++----
+ .claude/agents/memoria_revisore.md |   3 +++
+ reports/diff_sessione.md           |  14 +++++++-------
  reports/handoff.md                 | n/d
- reports/roadmap.md                 |   3 ++-
+ reports/ripartenza_mani.md         |   5 +++--
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  40 +++++++++++++++++++---------------------
- tests/test_unit_voice_server.py    | 166 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- tests/test_unit_voice_stt.py       |  38 +++++++++++++++++++++++++++++++++++++-
+ reports/ultimo_report.md           |  40 ++++++++++++++++++++++------------------
+ requirements.txt                   |   2 ++
+ tests/test_unit_web_lexbor.py      |  10 +++++++++-
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
+NB: base = merge-base con origin/main = 97776f0 (PR #304 di M2, dopo il merge di main). Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-1b02e72 test(voce): sys.path ripristinato nei test che chiamano run_server (V-1 bot #304 su 06cd1ed)
-1f6735a chore(revisore): memoria review #567 — APPROVATO
-06cd1ed docs(voce-v1): report dopo il bot #304 (V-1 chiusa) e la verifica esterna, review #565/#566-M2
-e0f3f01 fix(voce): il server voce carica il .env e si avvia con python -m (V-1 bot #304)
-4b086c9 chore(revisore): memoria review #566 — APPROVATO
-e6c913a chore(revisore): memoria review #565 — APPROVATO CON RISERVE
-274f131 docs(voce-v1): report di fine task, roadmap R8 e stato (PR #304, review #564-M2)
-aa7c3b1 feat(voce): cervello forte dalla voce — «forte …» parlato e GAS_VOCE_FORTE (V1, chat M2)
-f2e68c7 chore(revisore): memoria review #564 — APPROVATO CON RISERVE
+9e85c4f Merge origin/main (97776f0, PR #304 di M2) in claude/peaceful-lovelace-0w2b7q (PR #303)
+6a56390 docs(fine-task): PR #303, frase di §5 riscritta e CI di 39f6770 (note del bot su 39f6770)
+39f6770 docs(fine-task): PR #303, conteggio locale della suite web rimisurato (V-1 bot su 4e0d1ac)
+4e0d1ac docs(fine-task): PR #303, note del bot e della verifica esterna su 67fea3d
+67fea3d docs(fine-task): Mani fetta 27, selectolax in requirements (PR #303), lavoro passato da M1
+57167e5 build(web): selectolax==1.0.2 in requirements, i test lexbor girano in CI (R-ve280-1, chat Mani)
+7c39b82 chore(revisore): memoria review #564 — APPROVATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit aa7c3b1 — review #564-M2, verdetto integrale:
+Commit 57167e5 (requirements.txt, tests/test_unit_web_lexbor.py). Verdetto integrale della review #564 (chat Mani):
 
-VERDETTO: APPROVATO CON RISERVE
+```
+## VERDETTO: APPROVATO
 
-Review #564-M2 sul diff staged di feat/voce-v1-m2 (4 file, +182/-9). Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e la regola dei modelli in sez. 2), le voci M2 e R-384-1 di reports/stato_progetto.md e la mia memoria.
+Review #564 (chat Mani). Ho controllato il diff staged (sha256 9fb84387…) su una copia dell'index (`git checkout-index`), senza toccare la tua cartella di lavoro. L'index è rimasto com'era: 2 file, +11/−1.
 
-**Elementi del diff esaminati**
-- `modules/voice/server.py:71` — regex `_PAROLA_FORTE`, ancorata all'inizio, con «gas»/«gus» opzionale seguito da `\b`, e «forte» come parola intera (il controllo `(?!\w)` vieta lettere subito dopo). Rischio esaminato: falsi positivi e negativi. Prove fatte su una copia dell'index:
-  - Restano turni normali: «fortemente…», «Fortezza», «Gasforte», «Ok Gas, forte…», «Gas, Gas forte», «forte_x», «fortè», «Fort/Forti…» (forme storpiate da Whisper: vanno ai gratuiti, stesso limite di «/frote» già dichiarato).
-  - Vanno al forte: « Forte, …» con spazio iniziale, «Gas. Forte. …», «Gas-forte x», «...forte x», «Gas forte» con spazio non separabile (NBSP).
-  - Mutante senza `(?!\w)` → 8 test falliti.
-  - Esito: ok, salvo la riserva R-564-1-M2.
-- `modules/voice/server.py:82` — `cervello_voce`. Ordine: prima `prefisso_forte` (invariato), poi la parola «forte» solo se `parlato`; se manca la richiesta → «uso»; `GAS_VOCE_FORTE` vale solo se il cervello è ancora None. Rischio esaminato: un ramo che porti un lavoro «forte» ai gratuiti. Non ce n'è nessuno: «uso» esce sempre con 400 e nessun turno, «forte» passa sempre `cervello="forte"` al kernel, e l'interruttore non trasforma mai «uso» in un turno. `_voce_tutta_forte` usa gli stessi valori di `_env_flag` in gas.py:573. Esito: ok.
-- `modules/voice/server.py:185` — il gestore chiama `cervello_voce(prompt, parlato=is_audio)`: la parola parlata vale solo per l'audio; il testo JSON richiede ancora «/forte», coperto da `test_v1_parola_forte_solo_nel_parlato`. Esito: ok.
-- `tests/test_unit_voice_server.py:29` e `tests/test_unit_voice_stt.py:68` — client urllib senza proxy (opener con `ProxyHandler({})`). Rischio esaminato: la chiusura di R-384-1 (chat Voce) è reale? Sì. Con il vecchio test stt, `http_proxy` impostato e `no_proxy` vuoto → 11 test falliti. Con il diff: 104 passed sia senza proxy sia con `http_proxy=http://127.0.0.1:9` e `no_proxy` vuoto. Esito: ok.
-- `tests/test_unit_voice_server.py:476` — test con forte fermo: il kernel finto emette un errore, il server risponde 500 con il messaggio dichiarato e c'è una sola chiamata, con `cervello="forte"`. Esito: ok.
-- Contesto, non nel diff: `gas.py:4703` — con `cervello == "forte"` il compito è forzato a «forte». È l'invariante R2 esistente; gas.py e brains/ non sono toccati, come deciso da M1.
-
-**Riserve**
-- **R-564-1-M2 BASSA**: in italiano «Forte!» a inizio frase è anche un'interiezione («che bello!»).
-  - «Forte! Che bello.» → turno al forte con richiesta «Che bello.».
-  - «Forte e chiaro, ti sento» → al forte.
-  - «Forte.» da solo → 400 con l'istruzione d'uso.
-
-  La direzione è sicura (mai ai gratuiti, rispetta la regola dei modelli), ma consuma il budget del forte e dà una risposta d'uso inattesa. Il limite non è dichiarato né nella docstring né in reports/roadmap.md, che cita solo «Ok Gas, forte…». Da dichiarare, oppure da gestire in seguito.
-
-**Rischi esplicitamente esclusi**
-- Trascrizioni reali di Whisper non verificate: nessun audio vero né chiave Groq in dev; ho usato solo stringhe simulate al posto di `transcribe_audio`.
-- Il comportamento del kernel con il forte fermo (tetto, CLI assente) non è stato riverificato: è codice di gas.py fuori dal diff, coperto dalle sue review.
-- La correttezza della riga della roadmap sulla PR #229 non è stata verificata su GitHub; si appoggia alla review #384 (chat Voce) in memoria.
-
-**Test**: `python -m pytest tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py -q` → 104 passed, sia senza proxy sia con un proxy finto nell'ambiente.
-
-**Memoria**: riga contatore #564-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, con la lezione: per una parola chiave parlata, provare anche gli usi comuni della parola come interiezione, non solo i composti. Già committata con lo script di memoria (commit f2e68c7, solo quel file); l'index staged del diff è rimasto invariato (4 file). Nota: il messaggio di commit generato dallo script dice «#564» senza il suffisso -M2.
-
-Commit e0f3f01 — review #565-M2, verdetto integrale:
-
-VERDETTO: APPROVATO CON RISERVE
-
-Review #565-M2, PR #304, branch feat/voce-v1-m2, diff staged (`modules/voice/server.py`, `tests/test_unit_voice_server.py`). Ho fatto le prove su un export dell'index (`git checkout-index`), non sulla cartella di lavoro. Ho letto: CLAUDE.md (§5, §8, §9), reports/stato_progetto.md (le parti sulla voce, con grep) e la coda di memoria_revisore.md (lezioni #562–#564-M2).
-
-**Elementi del diff esaminati**
-- `modules/voice/server.py:317`: `_carica_env()` viene chiamata in testa a `run_server`, prima di leggere GAS_VOICE_TOKEN, BIND e PORT, e dopo aver impostato sys.path (spostato da sotto a sopra).
-  - Rischio esaminato: ordine sbagliato e effetti collaterali di `import gas` prima del controllo del token.
-  - Cosa succede all'import: `import gas` apre gas_debug.log accanto a gas.py e chiama `logging.basicConfig`. Prima succedeva solo con il token presente, ora anche quando manca. È un effetto innocuo: il RotatingFileHandler è già protetto da OSError.
-  - test_tv1 con root_dir=/tmp: `gas` è già in sys.modules, e `tests/conftest.py:11` imposta GAS_NO_DOTENV=1, quindi il `.env` reale dell'operatore non entra mai nella suite.
-  - Mutanti: chiamata tolta → 1 failed; chiamata spostata dopo il controllo del token → 1 failed.
-  - Esito: ok.
-- `modules/voice/server.py:306`: `except Exception` con log.warning (solo il nome del tipo di errore, mai valori) e si prosegue con l'ambiente così com'è. Rispetta il fail-safe §9.
-  - Mutante `except ImportError` → 1 failed su `tests/test_unit_voice_server.py:536`.
-  - Esito: ok.
-- `modules/voice/server.py:77`: `_PAROLA_FORTE` accetta un saluto (ehi/ehy/hey/ok/okay/ciao/senti) solo davanti a «gas/gus».
-  - Rischio esaminato: un lavoro «forte» che finisce ai modelli gratuiti, e falsi positivi.
-  - Sonde:
-    - «Ehi, Gas, forte analizza», «Hey Gas! Forte: analizza», «Okay Gas forte x» e la variante con spazi NBSP → forte.
-    - «Senti Gas forte» → uso.
-    - «Ehi Gas fortemente x», «Ehi forte x», «Ehi Gas, parla forte» → normale.
-    - «Ehi ehi Gas forte x» → normale: è il limite dichiarato «saluto non in elenco».
-  - Nessun ramo che riconosce «forte» porta ai gratuiti. I mancati riconoscimenti restano limiti dichiarati nel commento e sono coperti da GAS_VOCE_FORTE=1.
-  - Mutante senza il gruppo del saluto → 2 failed.
-  - Esito: ok.
-- `modules/voice/server.py:93`: prompt vuoto o di soli spazi → «uso», anche con GAS_VOCE_FORTE=1 (verificato con parlato True e False). Il gestore filtra già prima il vuoto, sia JSON che trascrizione, quindi i messaggi 400 esistenti non cambiano.
-  - Mutante → 2 failed.
-  - Esito: ok.
-- `modules/voice/server.py:342`: riga d'avvio quando GAS_VOCE_FORTE è acceso.
-  - Mutante → 1 failed.
-  - Esito: ok.
-- `modules/voice/server.py:355`: avvio con `python -m`. Prima del merge non c'era nessun percorso di avvio documentato. `modules/voice/__init__.py` non importa server, quindi il modulo non viene caricato due volte.
-  - Esito: ok.
-- `tests/test_unit_voice_server.py:525`: GasKernel e `_carica_dotenv` sostituiti con `monkeypatch.setattr`, quindi ripristinati a fine test: nessuna perdita verso altri test. Le variabili d'ambiente scritte dal finto dotenv sono tolte nel `finally`.
-  - Riserva: il test fa partire il `run_server` vero, che imposta `VoiceHandler.kernel = object()` e `VoiceHandler.token = "tok-dal-dotenv-123"` sulla classe base (`modules/voice/server.py:337`), e nessuno li ripristina. Oggi è innocuo: tutti gli altri test usano sottoclassi con attributi propri.
-  - Esito: riserva.
-
-**Prove eseguite**
-- `tests/test_unit_voice_server.py`: 58 passed.
-- Suite voce + dotenv (`tests/test_unit_voice_*.py` e `tests/test_unit_dotenv.py`): 129 passed.
-- 6 mutanti, tutti uccisi.
-- gas.py e brains/ non sono toccati. Cap delle iterazioni, `_get_window` e cronologia non toccati. Nessuno slicing della history e nessuna simulazione di tool.
-
-**Riserve**
-- R-565-1-M2 BASSA: `tests/test_unit_voice_server.py:500` lascia impostati VoiceHandler.kernel e VoiceHandler.token dopo il test. Correzione: aggiungere `monkeypatch.setattr(srv.VoiceHandler, "kernel", None)` e `monkeypatch.setattr(srv.VoiceHandler, "token", "")` prima di chiamare `run_server()`.
-- Nota COSMETICA: GAS_VOCE_FORTE=«sì» con l'accento non viene riconosciuto (`_voce_tutta_forte` accetta «si»). È un comportamento che c'era già prima e oggi la riga d'avvio non segnala nulla in quel caso. Basta dichiararlo, oppure aggiungere «sì».
-
-**Rischi esclusi (non verificati)**
-- Avvio vero sul Mac con launchd o systemd e cartella di lavoro diversa da quella di Gas: non riproducibile qui. Mi fido della prova manuale dichiarata dall'agente (`.env` temporaneo con la stampa «GAS_VOCE_FORTE acceso»).
-- Trascrizioni reali di Whisper con saluti diversi da quelli in elenco: senza audio non si possono provare.
-- Il totale di 112 della suite, dichiarato dall'agente, non l'ho rifatto per intero: ho rifatto solo il sottoinsieme voce + dotenv (129).
-
-**Memoria**: riga #565-M2 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md, con una lezione nuova (gli attributi di classe del gestore scritti da `run_server` vanno ripristinati con monkeypatch), e committata da sola dallo script in e6c913a.
-
-NB: le citazioni di #565-M2 si riferiscono al diff staged prima della correzione di R-565-1-M2 (due righe in più nel test e la docstring di `_voce_tutta_forte`): alcune righe di `tests/test_unit_voice_server.py` e di `modules/voice/server.py` a HEAD sono spostate di poche righe. Il diff committato (e0f3f01) è quello rivisto in #566-M2, qui sotto.
-
-Commit e0f3f01 — review #566-M2 (diff finale committato), verdetto integrale:
-
-VERDETTO: APPROVATO
-
-Review #566-M2 sul diff staged di feat/voce-v1-m2 (PR #304). Ho letto prima, in quest'ordine, CLAUDE.md, reports/stato_progetto.md (solo le parti che servivano) e .claude/agents/memoria_revisore.md, dove ci sono le righe di #564-M2 e #565-M2.
+Letture fatte prima della review: CLAUDE.md (sez. 1, 5, 8, 10), reports/stato_progetto.md (letto per parti: fette lexbor 19-26, hardware del VPS, setup dei Mac) e la memoria del revisore (lezioni su selectolax, export dell'index).
 
 Elementi del diff esaminati:
 
-- `tests/test_unit_voice_server.py:528` — Cosa fa: `monkeypatch.setattr(srv.VoiceHandler, "kernel", None)` e, alla riga dopo, `(..., "token", "")`, prima di `run_server()`. Rischio esaminato: che la riserva R-565-1-M2 sia chiusa davvero, cioè che gli attributi di CLASSE scritti da `modules/voice/server.py:337` (`VoiceHandler.kernel = kernel`) non restino sporchi dopo il test. `setattr` non fallisce perché i due attributi esistono sulla classe (`modules/voice/server.py:119`, `kernel: Any = None`, e la riga 120, `token: str = ""`). Prova: ho lanciato solo questo test e poi letto la classe. Risultato: `kernel` vale `None` e `token` vale `''`. Con il mutante senza le due righe il test passa lo stesso, ma la classe resta sporca (`kernel=<object ...>`, `token='tok-dal-dotenv-123'`). Quindi le due righe sono proprio quelle che fanno il ripristino. — ok
-- `modules/voice/server.py:86` — Cosa fa: `_voce_tutta_forte` accetta anche «sì» con l'accento, dopo `strip().lower()`. Rischio esaminato: maiuscole e spazi, e la coerenza della docstring. Prova diretta: `GAS_VOCE_FORTE='Sì '` dà True. La docstring (riga 84) e la docstring del modulo (riga 33, «1/true/on/yes/si/sì») sono aggiornate. — ok
-- `tests/test_unit_voice_server.py:448` — Cosa fa: aggiunge il caso parametrico `("sì", True)` a `test_v1_gas_voce_forte`. Rischio esaminato: che il caso esista e venga eseguito. Esito: incluso nella suite voce, che passa. — ok
-- `modules/voice/server.py:318` — Cosa fa: chiama `_carica_env()` prima di leggere GAS_VOICE_TOKEN (riga 320). L'avevo già approvato in #565-M2 e l'ho ricontrollato solo per vedere che non fosse cambiato: ordine invariato, e l'eccezione è intercettata e loggata alla riga 307 (fail-safe §9). — ok
-- Contesto (file fuori dal diff): nessuno slicing della history e nessuna simulazione di output dei tool nel diff. Cap delle iterazioni e `_get_window` non toccati.
+1. `requirements.txt:9` — aggiunge `selectolax==1.0.2` alle dipendenze di deploy del VPS.
+   - Rischio esaminato: la catena di fornitura (dipendenza nativa nuova, dipendenze indirette, wheel mancanti che costringerebbero a compilare dal sorgente).
+   - Il pin è esatto. `pip show` riporta `Requires:` vuoto, quindi selectolax non porta dentro altre librerie.
+   - `pip download --only-binary=:all:` trova le wheel per cp311, cp312 e cp314 manylinux x86_64 (CI e VPS CX33 x86_64), cp313 aarch64, cp314 mac arm64 e cp312 win_amd64.
+   - Installare una wheel non esegue codice.
+   - Hai fatto bene a non metterlo anche in requirements-dev.txt: la CI installa entrambi i file (`.github/workflows/ci.yml:52`).
+   - Esito: ok.
 
-Suite voce (`-k "voice or voce"`): 116 passed, 2375 deselected. Il chiamante dice 113: la differenza dipende da un filtro più largo, non è un segnale di rottura.
+2. `modules/web/lexbor.py:319` (contesto, file non toccato) — `attivo()` controlla `_DISPONIBILE`, Linux e `GAS_WEB_LEXBOR == "1"`.
+   - Rischio esaminato: che lexbor si accenda da sola sul VPS ora che selectolax è installato.
+   - Provato su Python 3.11 con la wheel installata:
+     - senza `GAS_WEB_LEXBOR`, `attivo()` dà False, nessuna sonda parte e `_FIGLIO_OK` resta None;
+     - con «0» dà False;
+     - con « 1 » (spazi intorno) dà True: comportamento già esistente e voluto.
+   - Il processo di Gas non carica mai la libreria nativa. Fa solo `find_spec` (`modules/web/lexbor.py:37`) e l'import vero sta nel figlio (`modules/web/lexbor.py:67`), con limite di memoria e `-I`.
+   - Il punto di chiamata, `modules/web/leggi.py:1582`, è ancora protetto da `attivo()`.
+   - Esito: ok.
 
-Rischio escluso: non ho potuto confrontare byte per byte con il diff approvato in #565-M2, perché quel diff era solo nell'index e nessuno lo ha salvato (HEAD è ancora aa7c3b1 più i commit di doc e memoria). Ho controllato che il resto del diff (saluto davanti a «gas/gus», prompt vuoto → «uso», `_carica_env`, `__main__`, messaggio a schermo di GAS_VOCE_FORTE) corrisponda alla descrizione di #565-M2 nella memoria. Che non sia cambiato altro, quindi, è verificato rispetto a quella descrizione, non al byte. Non ho verificato nemmeno un «sì» scritto in forma Unicode decomposta (NFD, accento come carattere separato): sarebbe ancora letto come spento, ma da tastiera è improbabile.
+3. `tests/test_unit_web_lexbor.py:17` — `test_selectolax_in_ci`: si salta fuori dalla CI e in CI fallisce se selectolax manca. Segue lo stesso schema di `tests/test_unit_web_leggi.py:1281`.
+   - Rischio esaminato: un allarme che non scatta mai.
+   - Prova del guasto: venv 3.11 senza selectolax con `CI=true` → 1 failed (`assert False`, `lexbor._DISPONIBILE`), 22 passed, 112 skipped.
+   - Lo step web della CI (`.github/workflows/ci.yml:118`) non ridefinisce l'ambiente, quindi la variabile CI di GitHub Actions arriva al test.
+   - Esito: ok.
 
-Note (nessuna bloccante):
-- COSMETICA: adesso `GAS_VOCE_FORTE` accetta «sì» mentre `_env_flag` in gas.py, per quanto dice la docstring, no. È un'asimmetria voluta e dichiarata nella docstring. Allineare gas.py è una fetta a parte, se serve.
+4. Test che davano per scontata l'assenza di selectolax: nessuno.
+   - Nei test, `GAS_WEB_LEXBOR` compare solo in `tests/test_unit_web_lexbor.py`, sempre tramite monkeypatch.
+   - `tests/test_unit_web_lexbor.py:477` forza `_DISPONIBILE=False` di proposito.
+   - Il kernel e il doctor non nominano selectolax.
+   - Risultati:
+     - venv 3.11 con la wheel e `CI=true`: `tests/test_unit_web_*.py` → 622 passed, cioè anche i due allarmi girano e passano;
+     - 3.13 in locale: test_unit_web_lexbor.py → 134 passed, 1 skipped senza CI e 135 passed con `CI=true`.
+   - Esito: ok.
 
-Memoria: aggiunta la riga #566-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola dallo script (commit 4b086c9). Nessuna lezione nuova. L'index del diff sotto review è intatto (2 file staged). Per committare il diff devi ancora eseguire `bash scripts/segna_review_ok.sh` (marcatore della review).
+Coerenza col progetto: rispetta "robustezza > potenza". La funzione resta spenta per default e, se selectolax mancasse, Gas usa la lettura di sempre senza crash. Non tocca `_get_window`, il tetto di 10 iterazioni, il tetto di 8k sull'output né i provider. Nessuno slicing della history e nessun output dei tool simulato.
 
+Rischi esplicitamente esclusi:
+- **VPS non verificato**: non lo raggiungo da qui. Non so se il `.env` del VPS contiene già `GAS_WEB_LEXBOR=1`: se sì, dopo il `pip install` lexbor si accenderebbe. Basta controllarlo con un `grep GAS_WEB_LEXBOR` sul `.env` del VPS. Il `pip install -r requirements.txt` sul VPS resta un passo manuale dell'operatore.
+- **Mac Intel**: per macosx_10_13_x86_64 con Python 3.14 pip non ha trovato wheel, quindi un Mac Intel dovrebbe compilare dal sorgente. Non l'ho approfondito: il Mac dell'operatore usa Homebrew con Python 3.14 e quasi certamente è arm64, dove la wheel c'è (non confermato in sessione).
+- **Hash della wheel**: non l'ho verificato a mano (gli altri pin non hanno hash; pip controlla quello che pubblica l'indice).
 
-Commit 1b02e72 — review #567-M2, verdetto integrale:
+## Memoria del revisore
+Riga #564 scritta in `/home/user/Gas/.claude/agents/memoria_revisore.md`, più una lezione: per una dipendenza nativa nuova si controllano `find_spec` nel processo principale, `pip show` per le dipendenze indirette e `pip download --platform` per le wheel. Committata con `scripts/commit_memoria_revisore.sh` (commit 7c39b82, solo quel file).
+```
 
-VERDETTO: APPROVATO
+Commit 9e85c4f (merge di origin/main 97776f0: da main entrano modules/voice/server.py, tests/test_unit_voice_server.py e tests/test_unit_voice_stt.py). Verdetto integrale della review #568 (chat Mani):
 
-Review #567-M2 su feat/voce-v1-m2 (PR #304). Diff staged dopo `git add tests/test_unit_voice_server.py`: 1 file, 3 righe aggiunte, solo test. Prima della review ho letto CLAUDE.md (sez. 5), lo stato del progetto (in modo mirato) e la memoria del revisore.
+```
+## VERDETTO: APPROVATO
+
+Review #568 (chat Mani): il merge di origin/main 97776f0 (PR #304 di M2, voce) nel branch claude/peaceful-lovelace-0w2b7q (PR #303, HEAD 6a56390, base comune acd083f). Ho fatto le prove su un export dell'index (`git checkout-index`), non sulla cartella di lavoro.
+
+Prima ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md (solo le parti che servivano) e la coda di .claude/agents/memoria_revisore.md.
 
 Elementi del diff esaminati:
-- `tests/test_unit_voice_server.py:86` — `monkeypatch.setattr(sys, "path", list(sys.path))` prima di `run_server(root_dir="/tmp")` in test_tv1_no_token_refuses_start. Rischio esaminato: `run_server` modifica `sys.path` prima di controllare il token (vedi contesto sotto), quindi nel ramo che restituisce 1 restava `/` in cima a `sys.path` per il resto del processo pytest. Esito: ok. L'ho provato in-process con pytest.main sui 3 test: col file di HEAD, dopo i test `sys.path[0] == "/"`; col file staged `/` non c'è più (`sys.path[0]` è la radice del repo, che aggiunge pytest stesso).
-- `tests/test_unit_voice_server.py:528` — stessa riga in test_v1_run_server_carica_il_dotenv. È messa prima di `run_server()` e accanto ai monkeypatch di R-565-1-M2 su VoiceHandler.kernel/token. Rischio esaminato: ordine dei monkeypatch e copertura del ramo che restituisce 0. Esito: ok. Si annulla a fine test, prima delle altre fixture.
-- `tests/test_unit_voice_server.py:550` — stessa riga in test_v1_run_server_dotenv_rotto_non_crasha, prima di `run_server(root_dir="/tmp") == 1`. Esito: ok.
-- Contesto, file non toccato: `modules/voice/server.py:317` — `_sys.path.insert(0, ...)` viene prima della lettura di GAS_VOICE_TOKEN (`modules/voice/server.py:320`). Conferma che la causa indicata dal bot è reale.
-- `sys` è già importato in cima al file del test (riga 13).
+- `modules/voice/server.py:77` — la regex `_PAROLA_FORTE` della voce forte, che entra da main. Rischio: che il merge l'abbia alterata rispetto a quanto revisionato da M2 (#564-M2…#567-M2). `git diff origin/main --cached` su questo file è vuoto, quindi il file è identico a main. Esito: ok.
+- `modules/voice/server.py:318` — `_carica_env()` chiamato da `run_server` prima che venga letto GAS_VOICE_TOKEN (V-1 bot #304). Rischio: un hunk perso o duplicato nell'auto-merge. Il file è identico a main. Esito: ok.
+- `tests/test_unit_voice_server.py:86` — `monkeypatch.setattr(sys, "path", …)`; lo stesso c'è anche a `tests/test_unit_voice_server.py:528` e `tests/test_unit_voice_server.py:550`. Rischio: che l'isolamento di #567-M2 sia stato perso. Il file è identico a main, e lo è anche `tests/test_unit_voice_stt.py:1`. Esito: ok.
+- `requirements.txt:9` — `selectolax==1.0.2`, mia modifica (#564 chat Mani). Rischio: che il merge l'abbia toccata. Verso HEAD il diff è vuoto, così come per `tests/test_unit_web_lexbor.py:17` (l'allarme in CI). Esito: ok.
+- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento», unico punto in cui l'auto-merge ha dovuto unire i due lati. Rischio: perdere la cronologia di main. Questa riga è uguale a quella di HEAD e contiene per intero la riga 4 di main. La voce «Voce V1» di M2 e il punto 13 corretto («python -m modules.voice.server») ci sono. Esito: ok.
+- `.claude/agents/memoria_revisore.md:991` — conflitto risolto a mano: prima la #564 della chat Mani e la sua lezione, poi #564-M2…#567-M2. Rischio: perdere una riga. Verso main e verso HEAD il diff ha zero righe tolte. Esito: ok.
 
-Prove eseguite:
-- `pytest tests/test_unit_voice_server.py`: 59 passed.
-- Controllo in-process di `sys.path`: con HEAD sporco, con il diff staged pulito.
-- Il working tree del file di test, dopo lo scambio temporaneo, coincide di nuovo con l'index (verificato con `git diff --stat`).
+Controlli strutturali:
+- I file cambiati dall'una e dall'altra parte tornano. Il risultato differisce da main solo nei file cambiati da HEAD (memoria, diff_sessione, handoff, ripartenza_mani, stato_progetto, ultimo_report, requirements.txt, test_unit_web_lexbor.py). Differisce da HEAD solo nei file cambiati da main (memoria, modules/voice/server.py, roadmap, stato_progetto, i due test della voce). Quindi nessun file è stato perso o alterato da nessuno dei due lati.
+- handoff.md, ultimo_report.md, diff_sessione.md e ripartenza_mani.md sono identici a HEAD, come da regola della chat Mani.
+- Nella roadmap ci sono solo le aggiunte di main (riga R8 corretta e voce «Cervello forte dalla voce»), nessuna riga tolta.
+- Nessun marcatore di conflitto, 0 caratteri Cf nel diff, nessuno slicing della history, nessun output di tool simulato.
+- Test sull'export: voice_server + voice_stt + web_lexbor + dotenv, 240 passed e 1 skipped. Con l'insieme diverso dal mio, il tuo conteggio di 247/1 è compatibile.
 
-Antipattern: nessuno. Non c'è slicing della history, non c'è simulazione di tool e i guardrail non sono toccati.
+Rischio escluso: non ho rifatto i mutanti sul codice della voce. Il contenuto è byte per byte uguale a quello già revisionato e mergiato da M2 (#564-M2…#567-M2), e questa review riguarda solo il merge. Non ho fatto girare nemmeno la suite completa, perché il diff verso HEAD tocca solo voce e report. Il comportamento reale del server voce sul Mac o sulla VPS non è verificato: non si può riprodurre qui.
 
-Rischio escluso: non ho rilanciato tutta la suite voce da 113 test (ho eseguito solo questo file, 59 passed). Non ho verificato nemmeno l'isolamento di `sys.modules` o di altro stato globale che `run_server` potrebbe toccare oltre a `sys.path`, perché non fa parte del finding V-1.
+Memoria del revisore: ho aggiunto la riga #568 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, ma non l'ho committata. L'hook review_gate ha bloccato il comando con `scripts/commit_memoria_revisore.sh`, perché `.claude/.review_ok` non corrisponde al diff staged. In ogni caso durante un merge `git commit -o` non è possibile.
 
-Memoria del revisore: aggiunta la riga contatore #567-M2 con una lezione (isolare lo stato globale del processo anche nei rami d'errore precoci). Committata con lo script: commit 1f6735a, «chore(revisore): memoria review #567 — APPROVATO». L'index resta col solo diff del test staged. Nel working tree c'è anche una modifica non staged a `reports/ultimo_report.md`, che non ho toccato.
+Cosa devi fare:
+1. `git add .claude/agents/memoria_revisore.md`, così la riga #568 entra nel merge.
+2. `bash scripts/segna_review_ok.sh` DOPO quell'add, altrimenti il marcatore non corrisponde al diff staged.
+3. Concludi il merge con `git commit`.
 
-File: /home/user/Gas/tests/test_unit_voice_server.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+Lezioni nuove: nessuna.
+```
 
 ## §5 DELTA TEST DEL MOTORE
 
-gas.py non toccato. Voice suite (pytest, servizi finti): 73 → 113 test (+40, tutti V1), `113 passed in 22.79s` sulla cartella finale; con `http_proxy=http://127.0.0.1:9` e `no_proxy` vuoto 112/112 prima dell'ultimo caso «sì». Prima del diff, con quel proxy, qui: `26 failed, 47 passed` (R-384-1; la verifica esterna ne misura 25). Nessun FAIL.
+Nessuna modifica a gas.py. Dal merge di main entrano i test della voce di M2, invariati (review #568: voice + lexbor 247 passed, 1 skipped in locale). In tests/ un test nuovo, `test_selectolax_in_ci`, che si salta fuori dalla CI. Locale (Python 3.13, con selectolax): suite completa `2450 passed, 2 skipped in 249.15s`; `tests/test_unit_web_*.py` `620 passed, 2 skipped` (rimisurata dopo il test nuovo, V-1 bot #303 su 4e0d1ac: prima c'era «620 passed, 1 skipped», misura presa prima del test nuovo); `CI=1 pytest tests/test_unit_web_lexbor.py` `135 passed`. In CI (run 40926576413 su 67fea3d) web `622 passed`, 0 skipped. Nessun FAIL.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- f2e68c7: nessuna run su questo SHA (pushato insieme ad aa7c3b1).
-- aa7c3b1: pushato prima dell'apertura della PR #304; `handoff-check` failure (handoff non ancora aggiornato, atteso), nessuna run della PR.
-- 274f131: run CI 40927897667 (`unit-suite` e `handoff-check` success); check `verifica-bot` failure — bot NON approvata (V-1 MEDIA, chiusa in e0f3f01).
-- e6c913a, 4b086c9, e0f3f01: nessuna run su questi SHA (pushati insieme a 06cd1ed).
-- 06cd1ed (fine-task): run CI 40930420811 (`unit-suite` e `handoff-check` success); check `verifica-bot` success — bot APPROVATA, verdetto APPROVATO CON RISERVE (V-1 BASSA chiusa in 1b02e72, V-2 COSMETICA chiarita).
-- 1f6735a, 1b02e72 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testa solo la testa).
+- 7c39b82: nessuna run su questo SHA (pushato insieme a 57167e5).
+- 57167e5: run CI 40926263056. `handoff-check` failure (atteso: l'handoff era ancora quello della PR #301, riscritto in questo commit di fine-task); `unit-suite` in corso alla scrittura dell'handoff. Run 40926358823 del bot: skipped (manca ancora l'etichetta `verifica`).
+- 67fea3d (fine-task): run CI 40926576413, `handoff-check` e `unit-suite` success; suite web 622 passed, 0 skipped, `test_selectolax_in_ci` PASSED (letto dalla verifica esterna e dal bot nel log della run). Check `verifica-bot` success, review del bot APPROVATO CON RISERVE (vedi §1).
+- 4e0d1ac (fine-task): run CI 40928379166; check `verifica-bot` success, review del bot APPROVATO CON RISERVE (vedi §1). `handoff-check` e `unit-suite` success.
+- 39f6770 (fine-task): run CI 40929013013, `handoff-check` e `unit-suite` success. Run del bot 40929017955: check `verifica-bot` success, review APPROVATO CON RISERVE (vedi §1).
+- 6a56390 (fine-task): CI verde (check suite completata senza fallimenti); check `verifica-bot` success, review APPROVATO CON RISERVE con 2 COSMETICHE (vedi §1).
+- 9e85c4f (merge di origin/main 97776f0): nessuna run su questo SHA (pushato insieme al commit di fine-task che contiene questo file).
+- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-564-1-M2** BASSA — «Forte!» esclamazione a inizio frase va al forte (direzione sicura, consuma budget): dichiarata in `reports/roadmap.md` (R8), nel commento della regex e in stato_progetto.
-- **V-1 ve #304** BASSA — altri falsi positivi («forte-forte», «forte: …», «Forte e chiaro»): dichiarati come sopra.
-- **V-4 ve #304** COSMETICA — 26 vs 25 test falliti prima del fix: dipende dall'ambiente.
-- **Nota #566-M2** COSMETICA — `GAS_VOCE_FORTE` accetta «sì», `_env_flag` di gas.py no (asimmetria dichiarata).
-- **R-384-2 (chat Voce)** COSMETICA — commento in `ci.yml`: fuori da questa fetta.
-- **V-2 ve #304 (06cd1ed)** BASSA — «Gas, forte» senza richiesta dà 400 d'uso a chi parla: fail-closed accettato.
-- Prova dal vero col microfono sul Mac non fatta.
+- Rischio escluso dalla review #564, allargato da V-2 ve #303: `GAS_WEB_LEXBOR` già nell'ambiente del VPS (`.env`, systemd, /etc, shell): da controllare prima del `pip install`. La riserva «Mac Intel senza wheel» era falsa (V-1 ve #303).
+- V-3 ve #303 BASSA: selectolax 1.0.2 uscita il 2026-10-22, da decidere dall'operatore.
+- V-2 bot / V-4 ve #303 COSMETICHE accettate: l'allarme scatta con qualunque valore di CI e controlla l'installazione, non l'import.
+- (c) `scripts/bot_esito.py` boccia ogni carattere Cf, anche quando il bot cita un caso di prova (failure definitivo su #297, 0d45b8b): dopo la #303.
+- (b) libexpat ≥ 2.4 nel doctor: con M1.
+- R-518-1 (chat Mani) BASSA: guardia `_nascosti_html` nelle chiusure in scope; per canvas fa perdere testo che il browser mostra (da decidere con l'oracolo).
+- R-516-1 (chat Mani) BASSA: titolo perso sulle pagine a frame (verso sicuro).
+- R-ve277-5 BASSA PREESISTENTE, parte leggi.py: con la lettura di sempre escono riserva di video/audio, testo di meter/progress, figli «light» di un host shadow.
+- V-1 ve/bot #288 BASSA: adoption agency che sposta il template dichiarativo (dichiarata in `shadow()`).
+- V-2 BASSA della verifica esterna #296 su 336e67c (https://github.com/Gasss23/Gas/pull/296#issuecomment-6485248441), scelta: entità non dichiarata con DOCTYPE esterno non XHTML, Gas taglia come Firefox.
+- V-3 BASSA della verifica esterna #296 su 06bc98e (https://github.com/Gasss23/Gas/pull/296#issuecomment-6498712956), scelta: entità HTML5 fuori dal DTD XHTML 1.0 accettate, come whatwg.
+- R-546-1 BASSA: numeri delle review doppi tra le chat.

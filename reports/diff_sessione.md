@@ -1,11 +1,11 @@
-# Diff della sessione — 2026-10-29 — Voce V1 (chat M2, PR #304)
+# DIFF SESSIONE — 2026-10-29 — Mani, fetta 27: selectolax in requirements
 
-- `modules/voice/server.py` — `cervello_voce()`: «forte …» parlato (anche dopo un saluto prima di «Gas») e `GAS_VOCE_FORTE` → solo cervello forte; richiesta vuota → uso; `run_server` carica il `.env` (V-1 bot #304) e si avvia con `python -m`.
-- `tests/test_unit_voice_server.py` — test V1 (parola chiave, saluti, falsi positivi, interruttore, forte fermo, `.env` caricato all'avvio); opener senza proxy (R-384-1).
-- `tests/test_unit_voice_stt.py` — test dal parlato trascritto al forte; opener senza proxy (R-384-1).
-- `reports/roadmap.md` — R8: test stt/tts in CI dalla #229, V1 fatta, limiti dichiarati (R-564-1-M2).
-- `reports/stato_progetto.md` — blocco «Voce V1».
-- `.claude/agents/memoria_revisore.md` — lezioni delle review #564-M2, #565-M2, #566-M2.
+File toccati rispetto a main 97776f0 (PR #301 e #304 di M2 mergiate; main portato nel branch con un merge, solo conflitti nei report):
+- `requirements.txt` — aggiunto `selectolax==1.0.2`, perché i test lexbor girino in CI e la libreria ci sia sul VPS (R-ve280-1). Lexbor resta spenta.
+- `tests/test_unit_web_lexbor.py` — nuovo `test_selectolax_in_ci`, che in CI dà l'allarme se selectolax manca; docstring aggiornata.
+- `.claude/agents/memoria_revisore.md` — righe delle review #564 (con una lezione sulle dipendenze native) e #568 (il merge di main).
+- `reports/stato_progetto.md` — blocco «Mani — fetta 27» e riga «Ultimo aggiornamento».
+- `reports/ripartenza_mani.md` — punto b) fatto per la parte selectolax; nuovo punto g) con il lavoro passato da M1.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

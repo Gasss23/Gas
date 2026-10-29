@@ -5,3 +5,5 @@ numpy==2.4.6
 onnxruntime==1.27.0
 fastembed==0.8.0
 pyyaml>=6.0
+# lettura del web con lexbor (modules/web/lexbor.py): resta SPENTA senza GAS_WEB_LEXBOR=1
+selectolax==1.0.2
