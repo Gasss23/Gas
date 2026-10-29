@@ -2372,9 +2372,14 @@ def test_forte_con_destinatario_nei_gruppi(monkeypatch):
     assert _tg.togli_destinatario_forte("ciao /forte@GasBot") == "ciao /forte@GasBot"
     assert _tg.togli_destinatario_forte("/forte@GasBotX ciao") is None
     assert _tg.togli_destinatario_forte(None) is None
+    # V-2 bot #297: il lookahead tiene «/forte@GasBot-x» fuori (resta invariato → «Uso»)
+    assert _tg.togli_destinatario_forte("/forte@GasBot-x ciao") == "/forte@GasBot-x ciao"
+    # V-1 bot #297: nome di Gas ignoto → testo invariato, quindi «Uso» e nessun turno
     monkeypatch.setattr(_tg, "_BOT_USERNAME", None)
-    assert _tg.togli_destinatario_forte("/forte@QualsiasiBot ciao") == "/forte ciao"
+    assert _tg.togli_destinatario_forte("/forte@QualsiasiBot ciao") == "/forte@QualsiasiBot ciao"
     from brains.router import prefisso_forte
+    assert prefisso_forte(_tg.togli_destinatario_forte("/forte@QualsiasiBot ciao")) == ("uso", "")
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", "GasBot")
     assert prefisso_forte(_tg.togli_destinatario_forte("/forte@GasBot  analizza")) == ("forte", "analizza")
 
 
@@ -2398,4 +2403,8 @@ def test_handle_update_forte_con_destinatario(monkeypatch):
     _tg._handle_update("http://finto", upd("/forte@AltroBot analizza"), {7}, _K())
     assert visti == [("analizza i lead", {"cervello": "forte"})]
     _tg._handle_update("http://finto", upd("/forte@GasBot"), {7}, _K())
+    assert len(visti) == 1 and "Uso: /forte" in inviati[-1]
+    # V-1 bot #297: senza il nome di Gas la forma con «@» non apre turni a pagamento
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", None)
+    _tg._handle_update("http://finto", upd("/forte@AltroBot analizza"), {7}, _K())
     assert len(visti) == 1 and "Uso: /forte" in inviati[-1]

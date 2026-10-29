@@ -592,16 +592,19 @@ _FORTE_DESTINATARIO_RE = re.compile(r"/forte@(\w+)(?=\s|$)", re.I)
 
 
 def togli_destinatario_forte(text: Any) -> Optional[str]:
-    """«/forte@NomeBot …» → «/forte …» se il destinatario è Gas (o il nome di Gas non è
-    noto, come per /notte e /clear); None se è per un altro bot del gruppo; il testo
-    invariato in tutti gli altri casi. Mai eccezioni."""
+    """«/forte@NomeBot …» → «/forte …» se il destinatario è Gas; None se è per un altro
+    bot del gruppo; il testo invariato in tutti gli altri casi, compreso il nome di Gas
+    non noto (V-1 bot #297: a differenza di /notte e /clear, un turno del forte costa,
+    quindi senza nome il testo resta com'è e prefisso_forte risponde «Uso»). Mai eccezioni."""
     try:
         if not isinstance(text, str):
             return text
         m = _FORTE_DESTINATARIO_RE.match(text)
         if not m:
             return text
-        if _BOT_USERNAME and m.group(1).casefold() != _BOT_USERNAME.casefold():
+        if not _BOT_USERNAME:
+            return text  # nome di Gas ignoto: fail-closed, niente turno a pagamento
+        if m.group(1).casefold() != _BOT_USERNAME.casefold():
             return None  # comando per un altro bot del gruppo
         return "/forte" + text[m.end():]
     except Exception:

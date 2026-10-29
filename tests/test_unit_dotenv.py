@@ -236,6 +236,13 @@ def test_dal_dotenv_al_doctor(env, tmp_path, monkeypatch, capsys):
     env.pop("GAS_NO_DOTENV")
     assert any("claude-cli" in r and "OK" in r and ".env non letto: GAS_NO_DOTENV attivo" in r
                for r in righe), righe
+    # V-2 bot #297: anche il ramo acceso porta la nota
+    env["GAS_NO_DOTENV"] = "1"
+    env["GAS_CLAUDE_CLI"] = "1"
+    righe = _righe_forte(capsys, tmp_path)
+    env.pop("GAS_NO_DOTENV")
+    assert any("claude-cli" in r and "WARN" in r and ".env non letto: GAS_NO_DOTENV attivo" in r
+               for r in righe), righe
     # shell e .env con lo stesso valore (anche scritto diverso) → nessun WARN sull'interruttore
     monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
     monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
