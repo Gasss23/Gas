@@ -22,7 +22,11 @@ from typing import Any, Generator, List
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from modules.voice.server import VoiceHandler, _token_ok, run_server
+from modules.voice.server import VoiceHandler, _token_ok, cervello_voce, run_server
+
+# R-384-1 (chat Voce): urllib segue http_proxy anche verso 127.0.0.1 se no_proxy non lo
+# copre; un opener senza proxy tiene i test indipendenti dall'ambiente.
+_SENZA_PROXY = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 # ────────────────────────────────── helpers ──────────────────────────────────
@@ -68,7 +72,7 @@ def _post(port: int, body: dict | None, headers: dict | None = None) -> tuple[in
         hdrs.update(headers)
     req = urllib.request.Request(url, data=raw, headers=hdrs, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=5) as r:
+        with _SENZA_PROXY.open(req, timeout=5) as r:
             return r.status, json.loads(r.read())
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read())
@@ -79,6 +83,7 @@ def _post(port: int, body: dict | None, headers: dict | None = None) -> tuple[in
 
 def test_tv1_no_token_refuses_start(monkeypatch, capsys):
     monkeypatch.delenv("GAS_VOICE_TOKEN", raising=False)
+    monkeypatch.setattr(sys, "path", list(sys.path))  # V-1 bot #304: run_server tocca sys.path
     code = run_server(root_dir="/tmp")
     assert code == 1, "run_server deve ritornare 1 se GAS_VOICE_TOKEN manca"
     captured = capsys.readouterr()
@@ -303,7 +308,7 @@ class TestTVExtra:
         url = f"http://127.0.0.1:{self.port}/voice"
         req = urllib.request.Request(url, method="GET")
         try:
-            urllib.request.urlopen(req, timeout=5)
+            _SENZA_PROXY.open(req, timeout=5)
             assert False, "GET deve ritornare 4xx"
         except urllib.error.HTTPError as e:
             assert e.code in (404, 405)
@@ -390,3 +395,158 @@ def test_forte_dalla_voce(monkeypatch):
     finally:
         server.shutdown()
     assert visti == [("analizza", {"cervello": "forte"}), ("ciao", {})]
+
+
+# ---------------------------------------------------------------------------
+# V1 (chat M2): «forte» parlato e GAS_VOCE_FORTE → solo cervello forte, mai ai gratuiti
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("parlato,atteso", [
+    ("Forte, analizza i lead", ("forte", "analizza i lead")),
+    ("forte analizza", ("forte", "analizza")),
+    ("Gas, forte: scrivi la mail", ("forte", "scrivi la mail")),
+    ("Gas forte. Fai il punto", ("forte", "Fai il punto")),
+    ("Gus forte, fai il punto", ("forte", "fai il punto")),   # come lo trascrive Whisper
+    ("«Forte» analizza", ("forte", "analizza")),
+    ("FORTE\nanalizza", ("forte", "analizza")),
+    ("/forte analizza", ("forte", "analizza")),
+    ("Ehi Gas, forte: analizza", ("forte", "analizza")),       # V-2 ve #304
+    ("Ok Gas forte analizza", ("forte", "analizza")),
+])
+def test_v1_parola_forte_parlata(monkeypatch, parlato, atteso):
+    monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
+    assert cervello_voce(parlato, parlato=True) == atteso
+
+
+@pytest.mark.parametrize("parlato", ["", "   ", "forte", "Forte.", "Gas forte", "Gas, forte!", "forte …", "/forte"])
+def test_v1_parola_forte_senza_richiesta_e_uso(monkeypatch, parlato):
+    """Fail-closed: prefisso senza richiesta → «uso», mai un turno ai gratuiti."""
+    monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
+    assert cervello_voce(parlato, parlato=True) == ("uso", "")
+
+
+@pytest.mark.parametrize("parlato", [
+    "fortemente consiglio di aspettare",
+    "Fortezza da visitare",
+    "Mi piace forte",
+    "Gas, parla più forte",
+    "Gasforte analizza",
+    "Ciao Gas",
+    "Ok, forte questo film",          # saluto senza «Gas»: resta normale
+    "Gas e forte analizza",           # limite dichiarato
+])
+def test_v1_falsi_positivi_restano_normali(monkeypatch, parlato):
+    monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
+    assert cervello_voce(parlato, parlato=True) == (None, parlato)
+
+
+def test_v1_parola_forte_solo_nel_parlato(monkeypatch):
+    """Il testo scritto usa «/forte»: «forte …» scritto resta un turno normale."""
+    monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
+    assert cervello_voce("forte analizza", parlato=False) == (None, "forte analizza")
+
+
+@pytest.mark.parametrize("valore,acceso", [("1", True), ("true", True), (" SI ", True), ("sì", True),
+                                           ("0", False), ("", False), ("no", False)])
+def test_v1_gas_voce_forte(monkeypatch, valore, acceso):
+    """GAS_VOCE_FORTE acceso: tutto al forte, testo e parlato; «uso» resta «uso»."""
+    monkeypatch.setenv("GAS_VOCE_FORTE", valore)
+    atteso = "forte" if acceso else None
+    assert cervello_voce("ciao", parlato=False) == (atteso, "ciao")
+    assert cervello_voce("fortemente sì", parlato=True) == (atteso, "fortemente sì")
+    assert cervello_voce("/forte", parlato=False) == ("uso", "")
+
+
+def test_v1_server_gas_voce_forte_e_uso(monkeypatch):
+    """Dal server: GAS_VOCE_FORTE=1 manda il turno col cervello forte; «/forte» nudo → 400
+    con l'istruzione d'uso, nessun turno."""
+    monkeypatch.setenv("GAS_VOCE_FORTE", "1")
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            visti.append((prompt, kw))
+            yield {"type": "final", "content": "ok"}
+
+    server, port = _make_server(_K(), "tok-v1-forte-123")
+    try:
+        auth = {"Authorization": "Bearer tok-v1-forte-123"}
+        assert _post(port, {"prompt": "ciao"}, auth)[0] == 200
+        st, body = _post(port, {"prompt": "/forte"}, auth)
+        assert st == 400 and "«forte <richiesta>»" in body["error"]
+    finally:
+        server.shutdown()
+    assert visti == [("ciao", {"cervello": "forte"})]
+
+
+def test_v1_server_forte_fermo_errore_dichiarato(monkeypatch):
+    """Forte fermo (il kernel emette un errore): il server lo riporta, nessun altro turno."""
+    monkeypatch.setenv("GAS_VOCE_FORTE", "1")
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            visti.append(kw)
+            yield {"type": "error", "content": "Cervello forte fermo: tetto. I lavori importanti restano in attesa"}
+
+    server, port = _make_server(_K(), "tok-v1-fermo-123")
+    try:
+        st, body = _post(port, {"prompt": "analizza"}, {"Authorization": "Bearer tok-v1-fermo-123"})
+    finally:
+        server.shutdown()
+    assert st == 500 and "Cervello forte fermo" in body["error"]
+    assert visti == [{"cervello": "forte"}]
+
+
+def test_v1_run_server_carica_il_dotenv(monkeypatch, capsys):
+    """V-1 bot #304: il server voce carica il .env (come la CLI) PRIMA di leggere la
+    configurazione: GAS_VOICE_TOKEN dal .env lo fa partire, GAS_VOCE_FORTE si vede a schermo."""
+    import gas
+    import modules.voice.server as srv
+    monkeypatch.delenv("GAS_VOICE_TOKEN", raising=False)
+    monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
+    monkeypatch.setenv("GAS_VOICE_PORT", "0")
+
+    def _finto_dotenv():
+        os.environ["GAS_VOICE_TOKEN"] = "tok-dal-dotenv-123"
+        os.environ["GAS_VOCE_FORTE"] = "1"
+        return ["GAS_VOICE_TOKEN", "GAS_VOCE_FORTE"]
+
+    class _FintoServer:
+        def __init__(self, *a):
+            pass
+
+        def serve_forever(self):
+            raise KeyboardInterrupt
+
+        def server_close(self):
+            pass
+
+    monkeypatch.setattr(gas, "_carica_dotenv", _finto_dotenv)
+    monkeypatch.setattr(gas, "GasKernel", lambda root_dir: object())
+    monkeypatch.setattr(srv, "HTTPServer", _FintoServer)
+    monkeypatch.setattr(sys, "path", list(sys.path))  # V-1 bot #304
+    # R-565-1-M2: run_server scrive kernel e token sulla classe base: ripristinati a fine test
+    monkeypatch.setattr(srv.VoiceHandler, "kernel", None)
+    monkeypatch.setattr(srv.VoiceHandler, "token", "")
+    try:
+        assert run_server() == 0
+        out = capsys.readouterr().out
+        assert "in ascolto" in out and "GAS_VOCE_FORTE acceso" in out
+    finally:
+        os.environ.pop("GAS_VOICE_TOKEN", None)
+        os.environ.pop("GAS_VOCE_FORTE", None)
+
+
+def test_v1_run_server_dotenv_rotto_non_crasha(monkeypatch, capsys):
+    """Fail-safe §9: un errore nel caricare il .env non fa crashare l'avvio."""
+    import gas
+    monkeypatch.delenv("GAS_VOICE_TOKEN", raising=False)
+
+    def _rotto():
+        raise OSError("disco")
+
+    monkeypatch.setattr(gas, "_carica_dotenv", _rotto)
+    monkeypatch.setattr(sys, "path", list(sys.path))  # V-1 bot #304
+    assert run_server(root_dir="/tmp") == 1
+    assert "GAS_VOICE_TOKEN" in capsys.readouterr().out
