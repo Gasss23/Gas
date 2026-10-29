@@ -44,6 +44,8 @@ NB: base = merge-base con origin/main = dc43ad6 (dopo il merge di main). Regola 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+54fc5da docs(fine-task): verdetti #550 e #551 riemessi senza caratteri invisibili (bot #296)
+e9606d8 docs(fine-task): Mani fetta 25 — XHTML malformato, handoff e report (PR #296)
 eaa0642 Merge origin/main (dc43ad6, PR #292) in claude/peaceful-lovelace-0w2b7q (fetta 25 Mani)
 f7bb599 fix(web): XHTML malformato letto fino al primo errore XML, come il browser (fetta 25 Mani)
 fa715d8 chore(revisore): memoria review #551 — APPROVATO CON RISERVE
@@ -191,7 +193,7 @@ Mappatura commit→run:
 - f7bb599: run 40794722150 (sopra).
 - eaa0642: nessuna run su questo SHA (pushato con e9606d8).
 - e9606d8: run 40795325706, `unit-suite` success (kernel 1065 PASS / 0 FAIL, web 488 passed / 112 skipped in CI) e `handoff-check` success; `verifica-bot` failure per i caratteri invisibili nei verdetti (corretto in questo commit).
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 54fc5da e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
