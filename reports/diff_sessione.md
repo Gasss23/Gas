@@ -1,11 +1,11 @@
-# DIFF SESSIONE — 2026-10-29 — Mani, fetta 27: selectolax in requirements
+# DIFF SESSIONE — 2026-10-29 — Mani, fetta 28: `bot_esito.py` e i caratteri invisibili
 
-File toccati rispetto a main 97776f0 (PR #301 e #304 di M2 mergiate; main portato nel branch con un merge, solo conflitti nei report):
-- `requirements.txt` — aggiunto `selectolax==1.0.2`, perché i test lexbor girino in CI e la libreria ci sia sul VPS (R-ve280-1). Lexbor resta spenta.
-- `tests/test_unit_web_lexbor.py` — nuovo `test_selectolax_in_ci`, che in CI dà l'allarme se selectolax manca; docstring aggiornata.
-- `.claude/agents/memoria_revisore.md` — righe delle review #564 (con una lezione sulle dipendenze native) e #568 (il merge di main).
-- `reports/stato_progetto.md` — blocco «Mani — fetta 27» e riga «Ultimo aggiornamento».
-- `reports/ripartenza_mani.md` — punto b) fatto per la parte selectolax; nuovo punto g) con il lavoro passato da M1.
+File toccati rispetto a main 8424698 (PR #303 mergiata da M1):
+- `scripts/bot_esito.py` — i caratteri invisibili si tolgono prima di decidere (la gravità nascosta blocca), i controlli bidi restano un NO, nella review pubblica ogni invisibile si vede come «<U+XXXX>», credenziali spezzate da un invisibile non pubblicate; un invisibile attaccato a una parola di gravità dà NO (V-1 bot e verifica esterna #305); credenziali spezzate da controlli e gravità anche sul testo grezzo (note del bot su 95249a8 e d672021); annidamento profondo nel dubbio NO. Motivo: falso NO definitivo su #297.
+- `tests/test_unit_verifica_bot.py` — test per gli invisibili Cf e non Cf, i controlli bidi, il caso #297, le riserve pubblicate, le credenziali spezzate e gli incroci separatore × invisibile dentro la parola.
+- `.claude/agents/memoria_revisore.md` — righe delle review dalla #569 alla #575.
+- `reports/stato_progetto.md` — blocco «Mani — fetta 28» e riga «Ultimo aggiornamento».
+- `reports/ripartenza_mani.md` — punto g): fatta la (c).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

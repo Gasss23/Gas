@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -149,12 +150,156 @@ class TestDecidi:
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
         assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
 
-    @pytest.mark.parametrize("car", ["\u200b", "\u200d", "\u2060", "\ufeff", "\u202e"])
+    @pytest.mark.parametrize("car", ["\u200b", "\u200d", "\u2060", "\ufeff", "\u00ad",
+                                     # R-569-2: invisibili che non sono Cf
+                                     "\u3164", "\u115f", "\u2800", "\u034f", "\ufe0f"])
     def test_caratteri_invisibili(self, car):
+        # V-2 seconda verifica #130: la gravità nascosta da un Cf torna visibile e blocca.
         testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nV-1 (ME{car}DIA) — x"
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
         evento, motivo = be.decidi(v, SHA, SHA)
         assert evento == "COMMENT" and "invisibili" in motivo
+
+    # V-1 bot #305 e review #571: un invisibile tra due parole le incollava («BASSA» e
+    # «MEDIA»), anche combinato con un secondo invisibile dentro la parola.
+    _SEPARATORI = ["\u200b", "\u2800", "\u034f", "\ufe0f", "\u3164", "\U000e0080", "\ue000",
+                   "\u2028", "\u2029", "\x0b", "\x0c", "\x1f", "\x85", "\x1b"]
+
+    @pytest.mark.parametrize("sep", _SEPARATORI)
+    @pytest.mark.parametrize("dentro", ["", "\u200b", "\u2800"])
+    @pytest.mark.parametrize("modello", ["V-1 (BASSA{sep}ME{dentro}DIA) — x", "V-1 — AL{dentro}TA{sep}x — d",
+                                         "V-1 — x{sep}gra{dentro}ve: y"])
+    def test_invisibili_tra_e_dentro_le_parole(self, sep, dentro, modello):
+        riga = modello.format(sep=sep, dentro=dentro)
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n{riga}\nNON VERIFICATO: -"
+        evento, motivo = be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                                   SHA, SHA)
+        assert evento == "COMMENT", (riga, motivo)
+
+    @pytest.mark.parametrize("car", ["\u200b", "\u2800", "\x0b"])
+    def test_invisibile_che_toglie_un_confine(self, car):
+        # V-2 bot #305: «V-1<U+200B>x (alta)» col solo testo ripulito diventava «V-1x (alta)».
+        testo = (f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nV-1{car}x (alta) — bug"
+                 "\nNON VERIFICATO: -")
+        evento, motivo = be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                                   SHA, SHA)
+        assert evento == "COMMENT" and "MEDIA" in motivo
+
+    def test_credenziale_spezzata_in_un_finding(self):
+        f = _f("V-1", "BASSA")
+        f["descrizione"] = "x gh\x1bp_Zz9 y"
+        assert be.contiene_segreti(_verdetto("APPROVATO CON RISERVE", [f]))
+
+    @pytest.mark.parametrize("car", ["\u200b", "\u2060", "\x1b"])
+    def test_credenziale_con_chiave_gemella(self, car):
+        # Review #573: con le chiavi ripulite «tes<inv>to» copriva «testo» e la credenziale.
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO\nMetodo: gh{car}p_Zz9\nFINDING: nessuno"
+        v = _verdetto("APPROVATO", [], testo)
+        v[f"tes{car}to"] = "ok"
+        assert be.contiene_segreti(v)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+        f = _f("V-1", "BASSA")
+        f["descrizione"] = f"x gh{car}p_Zz9"
+        f[f"descri{car}zione"] = "ok"
+        assert be.contiene_segreti(_verdetto("APPROVATO CON RISERVE", [f]))
+
+    def test_annidamento_profondo(self):
+        # R-574-1: oltre il tetto di ricorsione di Python, niente crash: nel dubbio NO.
+        v = _verdetto("APPROVATO", [])
+        profondo: list = []
+        for _ in range(1500):
+            profondo = [profondo]
+        v["extra"] = profondo
+        assert be.contiene_segreti(v)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
+    @pytest.mark.parametrize("sep", _SEPARATORI)
+    def test_invisibile_che_crea_una_riserva_registrata(self, sep):
+        # Bot #305 su d672021: tolto l'invisibile, «R-9-1<inv>V-1 (ALTA)» diventava la
+        # citazione di una riserva già registrata e l'ALTA spariva.
+        testo = (f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nR-9-1{sep}V-1 (ALTA) — difetto"
+                 "\nNON VERIFICATO: -")
+        evento, motivo = be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                                   SHA, SHA)
+        assert evento == "COMMENT" and "ALTA" in motivo
+
+    def test_credenziale_spezzata_in_una_chiave(self):
+        v = _verdetto("APPROVATO", [])
+        v["gh\x1bp_Zz9"] = "x"
+        assert be.contiene_segreti(v)
+
+    def test_invisibile_lontano_dalle_gravita(self):
+        # Un invisibile che non tocca nessuna gravità non cambia l'esito (caso #297).
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nCLAIM: «/forte@GasBot\u200b» resta «uso»"
+                 "\nFINDING:\nV-1 (BASSA) — x\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("car", ["\U000e0080", "\ue000", "\u2029", "\x1b"])
+    def test_altri_invisibili_mostrati(self, car):
+        # V-2 bot #305: anche non assegnati, uso privato, separatori e controlli si vedono.
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO\nCLAIM: a{car}b\nFINDING: nessuno"
+        v = _verdetto("APPROVATO", [], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "APPROVE", motivo
+        assert f"a<U+{ord(car):04X}>b" in be.componi_corpo(evento, motivo, v, "m", "")
+
+    def test_tetto_dopo_escape(self):
+        # V-3 bot #305: con molti invisibili il recinto del codice resta chiuso.
+        testo = "VERIFICA ESTERNA #1 — APPROVATO\nFINDING: nessuno\n" + "\u200b" * 20000
+        v = _verdetto("APPROVATO", [], testo)
+        corpo = be.componi_corpo("APPROVE", "m", v, "m", "")
+        assert len(corpo) <= 65536 and corpo.endswith("```\n</details>")
+
+    @pytest.mark.parametrize("car", ["\u202a", "\u202e", "\u2066", "\u2069"])
+    def test_controlli_bidi(self, car):
+        # R-569-1: «(\u202eATLA\u202c)» si legge «(ALTA)» ma la regex vede «ATLA».
+        testo = (f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 f"V-1 ({car}ATLA\u202c) — x")
+        evento, motivo = be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                                   SHA, SHA)
+        assert evento == "COMMENT" and "bidi" in motivo
+
+    @pytest.mark.parametrize("car", ["\u200b", "\u202e", "\u3164"])
+    def test_invisibili_nel_titolo(self, car):
+        # Un Cf nella riga del verdetto non la rende diversa da quella che si legge.
+        titolo = f"VERIFICA ESTERNA #1 — NON{car}-APPROVATO\nFINDING: nessuno"
+        assert be.decidi(_verdetto("APPROVATO", [], titolo), SHA, SHA)[0] == "COMMENT"
+        titolo = f"VERIFICA ESTERNA #1 — BOCCI{car}ATO\nFINDING: nessuno"
+        assert be.decidi(_verdetto("APPROVATO", [], titolo), SHA, SHA)[0] == "COMMENT"
+
+    def test_invisibile_citato_dal_bot(self):
+        # Bot #297 (0d45b8b): il bot citava un caso di prova con U+200B e il verdetto pulito
+        # finiva in failure definitivo. Ora decide sul testo; nella review il Cf si vede.
+        testo = ("VERIFICA ESTERNA #297 — APPROVATO\nCLAIM VERIFICATI:\n- «/forte@GasBot\u200b»"
+                 " resta «uso»: VERO\nFINDING: nessuno\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO", [], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "APPROVE", motivo
+        corpo = be.componi_corpo(evento, motivo, v, "m", "")
+        assert "«/forte@GasBot<U+200B>»" in corpo
+        assert not any(unicodedata.category(c) == "Cf" for c in corpo)
+
+    def test_invisibili_nelle_riserve_pubblicate(self):
+        f = _f("V-1", "BASSA")
+        f["descrizione"] = "a\u202eb\u3164c"
+        # Il testo è pulito: la descrizione strutturata finisce solo tra le riserve pubblicate.
+        testo = "VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nV-1 (BASSA) — d"
+        v = _verdetto("APPROVATO CON RISERVE", [f], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        corpo = be.componi_corpo(evento, motivo, v, "m", "")
+        assert evento == "APPROVE" and "a<U+202E>b<U+3164>c" in corpo
+        assert not any(unicodedata.category(c) == "Cf" for c in corpo)
+
+    @pytest.mark.parametrize("segreto", ["gh\u200bp_Zz9", "sk-\u2060ant-oat01", "-----BEG\u00adIN RSA",
+                                         # V-1 bot #305: i controlli, che json.dumps scrive come «\u001b»
+                                         "gh\x1bp_Zz9", "-----BEG\x0bIN RSA", "github\x1f_pat_Zz9"])
+    def test_credenziali_spezzate_da_invisibili(self, segreto):
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO\nMetodo: {segreto}\nFINDING: nessuno"
+        v = _verdetto("APPROVATO", [], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "COMMENT" and "credenziali" in motivo
+        assert "Zz9" not in be.componi_corpo(evento, motivo, v, "m", "")
 
 
 # ---------------------------------------------------------------------------

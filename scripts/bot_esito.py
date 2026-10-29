@@ -27,6 +27,7 @@ decide. Esiti (evento → conclusione del check):
 """
 from __future__ import annotations
 
+import bisect
 import json
 import os
 import re
@@ -209,10 +210,67 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     return trovate
 
 
-def _caratteri_invisibili(testo: str) -> bool:
-    """V-2 seconda verifica #130: "ME\u200bDIA" sfuggiva a ogni regex. Un carattere di
-    formato (categoria Unicode Cf: spazi a larghezza zero, controlli bidi) = ambiguo."""
-    return any(unicodedata.category(c) == "Cf" for c in testo)
+# R-569-2: caratteri che si vedono vuoti ma non sono Cf (stessi intervalli di
+# modules/gate/gate.py `_INVISIBILI_NON_CF`: questo script gira da solo nel workflow).
+_INVISIBILI_NON_CF: tuple[tuple[int, int], ...] = (
+    (0x034F, 0x034F), (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
+    (0x2800, 0x2800), (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFFA0, 0xFFA0),
+    (0xE0100, 0xE01EF),
+)
+# R-569-1: override e isolamento bidi riordinano quello che l'operatore legge rispetto
+# a quello che le regex vedono («(\u202eATLA\u202c)» si legge «(ALTA)»): restano un NO.
+_BIDI = frozenset(range(0x202A, 0x202F)) | frozenset(range(0x2066, 0x206A))
+
+
+# V-2 bot #305: come nel gate (gate.py `_CATEGORIE_INVISIBILI`) anche non assegnati,
+# uso privato, surrogati e separatori di riga/paragrafo; dei controlli Cc restano fuori
+# solo a capo, ritorno e tab, che servono alle regex sulle righe.
+_CATEGORIE_INVISIBILI = frozenset({"Cf", "Cn", "Co", "Cs", "Zl", "Zp"})
+
+
+def _invisibile(c: str) -> bool:
+    o = ord(c)
+    categoria = unicodedata.category(c)
+    return (categoria in _CATEGORIE_INVISIBILI or (categoria == "Cc" and c not in "\n\r\t")
+            or any(a <= o <= b for a, b in _INVISIBILI_NON_CF))
+
+
+def _senza_invisibili(testo: str) -> str:
+    """V-2 seconda verifica #130: "ME\u200bDIA" sfuggiva a ogni regex. I caratteri
+    invisibili (`_invisibile`) si tolgono prima di decidere. Bot #297: bocciare ogni Cf
+    faceva fallire anche il bot che citava un caso di prova con U+200B."""
+    return "".join(c for c in testo if not _invisibile(c))
+
+
+# Parole di gravità SENZA confini di parola: servono solo vicino a un invisibile tolto.
+_GRAVITA_NUDA = re.compile(_GRAVI, re.I)
+
+
+def _invisibili_su_gravita(testo: str) -> bool:
+    """V-1 bot #305 e review #571: togliere un invisibile può incollare la gravità alla
+    parola vicina («BASSA<U+200B>MEDIA», «ALTA<U+2800>x») e nessuna lettura fissa copre
+    tutte le combinazioni. Se un invisibile tolto tocca o spezza una parola di gravità
+    (anche dentro un'altra parola), il verdetto è ambiguo: nel dubbio NO."""
+    pulito: list[str] = []
+    tagli: list[int] = []  # posizioni nel testo pulito dove è stato tolto un invisibile
+    for c in testo:
+        if _invisibile(c):
+            tagli.append(len(pulito))
+        else:
+            pulito.append(c)
+    if not tagli:
+        return False
+    for m in _GRAVITA_NUDA.finditer("".join(pulito)):
+        i = bisect.bisect_left(tagli, m.start())
+        if i < len(tagli) and tagli[i] <= m.end():
+            return True
+    return False
+
+
+def _mostra_invisibili(testo: str) -> str:
+    """Nella review pubblica ogni carattere invisibile diventa «<U+XXXX>»: niente testo
+    nascosto o riordinato davanti all'operatore."""
+    return "".join(f"<U+{ord(c):04X}>" if _invisibile(c) else c for c in testo)
 
 
 def con_storico(evento: str, motivo: str, precedenti: list[str] | None) -> tuple[str, str]:
@@ -235,9 +293,25 @@ def contiene_segreti(verdetto: object) -> bool:
     descrizioni dei finding finiscono tutti nella review pubblica)."""
     try:
         grezzo = json.dumps(verdetto, ensure_ascii=False)
-    except (TypeError, ValueError):
+        # Anche con gli invisibili tolti: "gh\u200bp_..." non deve passare. V-1 bot #305:
+        # anche stringa per stringa, perché json.dumps scrive i controlli come «\u001b»;
+        # review #573: in una lista e non in un dict ricostruito, dove due chiavi ripulite
+        # si fonderebbero. R-574-1: un annidamento oltre il tetto di Python non è un crash.
+        return bool(_SEGRETO.search(grezzo) or _SEGRETO.search(_senza_invisibili(grezzo))
+                    or any(_SEGRETO.search(_senza_invisibili(s)) for s in _stringhe(verdetto)))
+    except (TypeError, ValueError, RecursionError):
         return True
-    return bool(_SEGRETO.search(grezzo))
+
+
+def _stringhe(valore: object) -> list[str]:
+    """Tutte le stringhe di un valore JSON, chiavi comprese."""
+    if isinstance(valore, str):
+        return [valore]
+    if isinstance(valore, list):
+        return [s for v in valore for s in _stringhe(v)]
+    if isinstance(valore, dict):
+        return [s for k, v in valore.items() for s in _stringhe(k) + _stringhe(v)]
+    return []
 
 
 def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
@@ -292,8 +366,15 @@ def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: 
         return "COMMENT", "verdetto strutturato incompleto"
     if contiene_segreti(verdetto):
         return "COMMENT", "il verdetto contiene forme di credenziali: non pubblicato"
-    if _caratteri_invisibili(testo):
-        return "COMMENT", "caratteri invisibili (Unicode Cf) nel testo: verdetto ambiguo"
+    if any(ord(c) in _BIDI for c in testo):
+        return "COMMENT", "controlli bidi nel testo: verdetto ambiguo"
+    if _invisibili_su_gravita(testo):
+        return "COMMENT", "caratteri invisibili attaccati a una gravità: verdetto ambiguo"
+    # V-2 bot #305: togliere un invisibile può togliere anche un confine di parola fuori
+    # dalle gravità («V-1<U+200B>x (alta)» → «V-1x (alta)»): le gravità si cercano anche
+    # sul testo così com'è.
+    grezzo = testo
+    testo = _senza_invisibili(testo)
     righe = []
     for riga in _RIGA_TITOLO.findall(testo):
         m = _TITOLO_CANONICO.fullmatch(riga.strip().strip("*_>`# ").strip())
@@ -311,7 +392,8 @@ def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: 
         return "COMMENT", "verdetto BOCCIATO"
     if esito == "APPROVATO CON RISERVE" and not finding:
         return "COMMENT", "APPROVATO CON RISERVE senza finding elencati: verdetto incoerente"
-    bloccanti = (gravita_strutturate | _gravita_nel_testo(testo)) & set(GRAVITA_BLOCCANTI)
+    bloccanti = (gravita_strutturate | _gravita_nel_testo(testo)
+                 | _gravita_nel_testo(grezzo)) & set(GRAVITA_BLOCCANTI)
     if bloccanti:
         return "COMMENT", ("finding " + "/".join(sorted(bloccanti))
                            + ": da aggiustare (con test) prima del merge")
@@ -341,10 +423,12 @@ def componi_corpo(evento: str, motivo: str, verdetto: dict | None, modello: str,
                   if isinstance(f, dict) and f.get("gravita") in ("BASSA", "COSMETICA")]
         if evento == "APPROVE" and minori:
             righe += ["", "**Riserve minori da aggiustare dopo il merge:**"]
-            righe += [f"- {f.get('id', '?')} ({f.get('gravita')}): {f.get('descrizione', '')}"
-                      for f in minori]
+            righe += [_mostra_invisibili(f"- {f.get('id', '?')} ({f.get('gravita')}):"
+                                         f" {f.get('descrizione', '')}") for f in minori]
         testo = verdetto.get("testo")
         if isinstance(testo, str) and testo.strip():
+            # V-3 bot #305: il tetto dopo l'escape, che allunga il testo.
+            testo = _mostra_invisibili(testo)
             if len(testo) > MAX_TESTO:
                 testo = testo[:MAX_TESTO] + "\n…[TRONCATO: verdetto oltre il limite di GitHub]"
             righe += ["", "<details><summary>Verdetto integrale</summary>", "", "```",
