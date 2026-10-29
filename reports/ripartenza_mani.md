@@ -22,13 +22,13 @@ Regole:
 - Guidami passo passo: una cosa alla volta, risposte corte.
 
 Prima di tutto:
-1. Controlla lo stato della PR #288 (fetta 23): se è aperta portami il verdetto del bot e della verifica esterna; se è mergiata riparti il branch da main.
-2. Leggi in reports/stato_progetto.md i blocchi «Mani — fetta 22» e «Mani — fetta 23» (Grep, non tutto il file) e reports/ultimo_report.md.
+1. Controlla lo stato della PR #294 (fetta 24): se è aperta portami il verdetto del bot e della verifica esterna; se è mergiata riparti il branch da main.
+2. Leggi in reports/stato_progetto.md i blocchi «Mani — fetta 23» e «Mani — fetta 24» (Grep, non tutto il file) e reports/ultimo_report.md.
 Poi portami UNA alla volta le cose aperte, nell'ordine:
    a) FATTA in fetta 22 (riserve «DA SISTEMARE» di #280; R-ve280-1 è della chat Motore, vedi b);
    b) accensione della lettura con lexbor: la fa la chat Motore (selectolax==1.0.2 in requirements-dev.txt e requirements.txt, GAS_WEB_LEXBOR=1 sul VPS); controlla se è già fatta e, se sì, verifica che in CI i test lexbor non siano più saltati;
    c) FATTA in fetta 23 (scelta 3 dell'operatore) — shadow DOM dichiarativo (figli «light» di un host con <template shadowrootmode>): decisione mia;
-   d) cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4 controllo di sys.platform in attivo(), R-528-3, R-526-1, R-520-4);
+   d) FATTA in fetta 24 — cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4 controllo di sys.platform in attivo(), R-528-3, R-526-1, R-520-4);
    e) decisioni vecchie: R-ve252-2 e R-ve255-1 (XHTML malformato), tempo di rete 12 s, R-ve235-7.
 
 Note per chi riparte:

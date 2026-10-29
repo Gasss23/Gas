@@ -70,33 +70,86 @@ from selectolax.lexbor import LexborHTMLParser
 nascosti = frozenset(json.loads(sys.argv[2])) | {"title", "datalist", "rp", "video", "audio", "meter", "progress"}
 blocchi = frozenset(json.loads(sys.argv[3]))
 albero = LexborHTMLParser(sys.stdin.buffer.read().decode("utf-8"), scripting=True)
+# Namespace come nel parser del browser (lexbor non lo dice): da HTML «svg» e «math» aprono il
+# loro; nello straniero si resta nel namespace del padre, tranne dentro i punti d'integrazione
+# del namespace giusto (foreignObject, desc, title di svg; mi, mo, mn, ms, mtext di math, dove
+# mglyph e malignmark restano math; annotation-xml con encoding HTML), dove si torna a HTML; un
+# svg dentro annotation-xml è svg (R-520-4, R-540-1, B-547-1).
+def ns_figli(padre, ns):
+    tag = padre.tag.lower()
+    if ns == "svg" and tag in ("foreignobject", "desc", "title"):
+        return "html"
+    if ns == "math" and tag in ("mi", "mo", "mn", "ms", "mtext"):
+        return "testo"
+    if ns == "math" and tag == "annotation-xml":
+        codifica = (padre.attrs.get("encoding") or "").lower()
+        return "html" if codifica in ("text/html", "application/xhtml+xml") else "annotazione"
+    return ns
+
+def ns_di(nodo, ns):
+    # Namespace di un elemento i cui fratelli stanno in `ns` (risultato di ns_figli).
+    tag = nodo.tag.lower()
+    if ns in ("html", "testo", "annotazione") and tag in ("svg", "math"):
+        return tag
+    if ns == "testo":
+        return "math" if tag in ("mglyph", "malignmark") else "html"
+    return "math" if ns == "annotazione" else ns
+
+def elementi(radice, ns="html"):
+    # (elemento, namespace) sotto radice, in ordine d'albero, scendendo una volta sola.
+    pila = [(radice.iter(include_text=False), ns)]
+    while pila:
+        figli, ns = pila[-1]
+        nodo = next(figli, None)
+        if nodo is None:
+            pila.pop()
+        elif nodo.is_element_node:
+            proprio = ns_di(nodo, ns)
+            yield nodo, proprio
+            pila.append((nodo.iter(include_text=False), ns_figli(nodo, proprio)))
+
+# Il titolo è il primo title HTML in ordine d'albero (un title in foreignObject vale, quello di
+# svg no). Senza svg né math basta il primo title.
 titolo = ""
-for nodo in albero.css("title"):
-    sopra = nodo.parent
-    while sopra is not None and sopra.tag not in ("svg", "math"):
-        sopra = sopra.parent
-    if sopra is None:
-        titolo = nodo.text(deep=True)
-        break
+if albero.css_first("svg, math") is None:
+    primo = albero.css_first("title")
+    titolo = primo.text(deep=True) if primo is not None else ""
+elif albero.root is not None:
+    for nodo, ns in elementi(albero.root):
+        if nodo.tag == "title" and ns == "html":
+            titolo = nodo.text(deep=True)
+            break
 def nascosto(nodo):
     attributi = nodo.attrs
     return "hidden" in attributi or (nodo.tag == "dialog" and "open" not in attributi)
 
 def opzioni_visibili(select):
-    # Le opzioni del select scendendo dall'alto, una volta sola (lineare, R-527-2): si salta
-    # ogni sotto-albero nascosto e non si scende dentro le opzioni né dentro altri select.
+    # La «list of options» dello standard, scendendo dall'alto una volta sola (lineare,
+    # R-527-2): solo le opzioni HTML (anche dentro un foreignObject); non si entra in select,
+    # hr, option, datalist né in un optgroup dentro un altro optgroup. Per ogni opzione
+    # (opzione, visibile, disabilitata): visibile se fuori dai sotto-alberi nascosti;
+    # disabilitata con «disabled» o con l'optgroup più vicino «disabled» (R-ve277-3, R-529-1).
     trovate = []
-    pila = [select.iter(include_text=False)]
+    pila = [(select.iter(include_text=False), "html", True, False, False)]
     while pila:
-        nodo = next(pila[-1], None)
+        figli, ns, visibile, in_gruppo, gruppo_spento = pila[-1]
+        nodo = next(figli, None)
         if nodo is None:
             pila.pop()
-        elif not nodo.is_element_node:
+            continue
+        if not nodo.is_element_node:
             continue  # commenti: iter(include_text=False) li restituisce lo stesso
-        elif nodo.tag == "option":
-            trovate.append(nodo)
-        elif nodo.tag not in nascosti and nodo.tag != "select" and not nascosto(nodo):
-            pila.append(nodo.iter(include_text=False))
+        proprio = ns_di(nodo, ns)
+        html = proprio == "html"
+        if html and nodo.tag == "option":
+            trovate.append((nodo, visibile and not nascosto(nodo), gruppo_spento or "disabled" in nodo.attrs))
+        elif html and (nodo.tag in ("select", "hr", "datalist") or (nodo.tag == "optgroup" and in_gruppo)):
+            continue
+        else:
+            sotto = visibile and nodo.tag not in nascosti and not nascosto(nodo)
+            gruppo = html and nodo.tag == "optgroup"
+            pila.append((nodo.iter(include_text=False), ns_figli(nodo, proprio), sotto, in_gruppo or gruppo,
+                         ("disabled" in nodo.attrs) if gruppo else gruppo_spento))
     return trovate
 
 def intero(valore):
@@ -120,14 +173,14 @@ def opzioni(select):
     attributi = select.attrs
     tutte = opzioni_visibili(select)
     if "multiple" in attributi or (intero(attributi.get("size")) or 1) > 1:
-        # Lista aperta: si vedono tutte le opzioni, tranne quelle con «hidden».
-        tutte = [o for o in tutte if not nascosto(o)]
+        # Lista aperta: si vedono le opzioni fuori dai sotto-alberi nascosti e senza «hidden».
+        tutte = [o for o, visibile, _ in tutte if visibile]
     else:
-        # Tendina chiusa: si vede l'opzione scelta, l'ultima con «selected» (anche se ha
-        # «hidden», come il segnaposto «Scegli»), se no la prima non disabilitata, anche se
-        # ha «hidden»: è la selezione automatica dello standard (R-527-3, R-528-2).
-        scelte = [o for o in tutte if "selected" in o.attrs]
-        libere = [o for o in tutte if "disabled" not in o.attrs]
+        # Tendina chiusa: si vede l'opzione scelta, l'ultima con «selected» (anche se è
+        # nascosta, come il segnaposto «Scegli»), se no la prima non disabilitata, anche se
+        # nascosta: è la selezione automatica dello standard (R-527-3, R-528-2, R-ve277-3).
+        scelte = [o for o, _, _ in tutte if "selected" in o.attrs]
+        libere = [o for o, _, spenta in tutte if not spenta]
         tutte = scelte[-1:] or libere[:1]
     # Il testo dell'opzione passa dalla stessa visita del body: nel select nuovo un'opzione
     # può contenere altri tag, anche script o elementi nascosti (V-1 ve #277 bis).
@@ -144,8 +197,8 @@ def primo_summary(details):
 # Gli elementi che possono avere uno shadow, oltre ai nomi con il trattino (custom element),
 # tranne quelli riservati di svg e math (R-539-2). Per lo standard di oggi («valid custom
 # element name» di HTML, «valid element local name» di DOM) basta iniziale a-z, trattino e
-# niente maiuscole, spazi, NUL, «/» o «>»: il tag che dà lexbor è già così, anche «x-a!»
-# (V-2 ve #288 riletta alla fonte dal revisore #542).
+# niente maiuscole A-Z, spazi, NUL, «/» o «>» (R-543-1): il tag che dà lexbor è già così,
+# anche «x-a!» (V-2 ve #288 riletta alla fonte dal revisore #542).
 HOST = frozenset({"article", "aside", "blockquote", "body", "div", "footer", "h1", "h2", "h3",
                   "h4", "h5", "h6", "header", "main", "nav", "p", "section", "span"})
 RISERVATI = frozenset({"annotation-xml", "color-profile", "font-face", "font-face-src",
@@ -153,18 +206,13 @@ RISERVATI = frozenset({"annotation-xml", "color-profile", "font-face", "font-fac
 
 def primi_slot(frammento):
     # Ogni nome va al primo slot che lo porta, nell'ordine dello shadow, anche se quello slot
-    # è nascosto; non contano gli slot dentro svg e math (non sono slot HTML, R-539-2). iter()
-    # non entra nel contenuto dei template: gli shadow annidati hanno i loro. Discesa lineare.
+    # è nascosto; contano solo gli slot HTML: non quelli di svg e math (R-539-2), sì quelli in
+    # un punto d'integrazione come foreignObject (R-540-1, B-547-1). iter() non entra nel
+    # contenuto dei template: gli shadow annidati hanno i loro. Discesa lineare.
     primi = {}
-    pila = [frammento.iter(include_text=False)]
-    while pila:
-        nodo = next(pila[-1], None)
-        if nodo is None:
-            pila.pop()
-        elif nodo.is_element_node and nodo.tag not in ("svg", "math"):
-            if nodo.tag == "slot":
-                primi.setdefault(nodo.attrs.get("name") or "", nodo.mem_id)
-            pila.append(nodo.iter(include_text=False))
+    for nodo, ns in elementi(frammento):
+        if nodo.tag == "slot" and ns == "html":
+            primi.setdefault(nodo.attrs.get("name") or "", nodo.mem_id)
     return primi
 
 # Senza template shadowrootmode fuori dai template non ce ne sono nemmeno dentro: le pagine
@@ -174,7 +222,10 @@ CON_SHADOW = albero.css_first("template[shadowrootmode]") is not None
 def shadow(nodo):
     # (frammento, slot) dello shadow dichiarativo dell'host, o None. Vale il primo template
     # figlio con shadowrootmode open o closed, come nel parser del browser; gli altri restano
-    # template normali, cioè nascosti.
+    # template normali, cioè nascosti. Limite: lo shadow si cerca sull'albero finale. Il
+    # browser lo attacca mentre legge la pagina; se poi l'adoption agency sposta il template
+    # (tag di formattazione chiusi in ordine sbagliato) qui l'host non ha più lo shadow e si
+    # leggono i suoi figli (V-1 bot e ve #288 su 6627250).
     tag = nodo.tag
     if not CON_SHADOW or tag in RISERVATI or tag not in HOST and not ("-" in tag and "a" <= tag[:1] <= "z"):
         return None
@@ -262,9 +313,10 @@ def attivo() -> bool:
     può mancargli; lo dice una sonda (R-520-3). Una sonda alla volta: chi arriva mentre gira
     usa la lettura di sempre (R-521-1). Una sonda fallita (oltre il tempo all'avvio a freddo,
     un fork negato con poca memoria…) si riprova dopo RIPROVA_SONDA secondi; dopo MAX_SONDE
-    sonde fallite la lettura con lexbor si spegne (R-521-2, V-3 bot e ve #277)."""
+    sonde fallite la lettura con lexbor si spegne (R-521-2, V-3 bot e ve #277). Fuori da
+    Linux è spenta subito, senza sonde: il figlio lì si rifiuta (R-ve277-4)."""
     global _FIGLIO_OK, _RIPROVA_DOPO, _SONDE_FALLITE
-    if not _DISPONIBILE or os.environ.get("GAS_WEB_LEXBOR", "").strip() != "1":
+    if not _DISPONIBILE or sys.platform != "linux" or os.environ.get("GAS_WEB_LEXBOR", "").strip() != "1":
         return False
     if _FIGLIO_OK is not None:
         return _FIGLIO_OK
