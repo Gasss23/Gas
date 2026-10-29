@@ -158,7 +158,46 @@ class TestDecidi:
         testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nV-1 (ME{car}DIA) — x"
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
         evento, motivo = be.decidi(v, SHA, SHA)
-        assert evento == "COMMENT" and "MEDIA" in motivo
+        assert evento == "COMMENT" and "invisibili" in motivo
+
+    # V-1 bot #305 e review #571: un invisibile tra due parole le incollava («BASSA» e
+    # «MEDIA»), anche combinato con un secondo invisibile dentro la parola.
+    _SEPARATORI = ["\u200b", "\u2800", "\u034f", "\ufe0f", "\u3164", "\U000e0080", "\ue000",
+                   "\u2028", "\u2029", "\x0b", "\x0c", "\x1f", "\x85", "\x1b"]
+
+    @pytest.mark.parametrize("sep", _SEPARATORI)
+    @pytest.mark.parametrize("dentro", ["", "\u200b", "\u2800"])
+    @pytest.mark.parametrize("modello", ["V-1 (BASSA{sep}ME{dentro}DIA) — x", "V-1 — AL{dentro}TA{sep}x — d",
+                                         "V-1 — x{sep}gra{dentro}ve: y"])
+    def test_invisibili_tra_e_dentro_le_parole(self, sep, dentro, modello):
+        riga = modello.format(sep=sep, dentro=dentro)
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n{riga}\nNON VERIFICATO: -"
+        evento, motivo = be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                                   SHA, SHA)
+        assert evento == "COMMENT", (riga, motivo)
+
+    def test_invisibile_lontano_dalle_gravita(self):
+        # Un invisibile che non tocca nessuna gravità non cambia l'esito (caso #297).
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nCLAIM: «/forte@GasBot\u200b» resta «uso»"
+                 "\nFINDING:\nV-1 (BASSA) — x\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("car", ["\U000e0080", "\ue000", "\u2029", "\x1b"])
+    def test_altri_invisibili_mostrati(self, car):
+        # V-2 bot #305: anche non assegnati, uso privato, separatori e controlli si vedono.
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO\nCLAIM: a{car}b\nFINDING: nessuno"
+        v = _verdetto("APPROVATO", [], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "APPROVE", motivo
+        assert f"a<U+{ord(car):04X}>b" in be.componi_corpo(evento, motivo, v, "m", "")
+
+    def test_tetto_dopo_escape(self):
+        # V-3 bot #305: con molti invisibili il recinto del codice resta chiuso.
+        testo = "VERIFICA ESTERNA #1 — APPROVATO\nFINDING: nessuno\n" + "\u200b" * 20000
+        v = _verdetto("APPROVATO", [], testo)
+        corpo = be.componi_corpo("APPROVE", "m", v, "m", "")
+        assert len(corpo) <= 65536 and corpo.endswith("```\n</details>")
 
     @pytest.mark.parametrize("car", ["\u202a", "\u202e", "\u2066", "\u2069"])
     def test_controlli_bidi(self, car):

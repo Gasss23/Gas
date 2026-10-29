@@ -27,6 +27,7 @@ decide. Esiti (evento → conclusione del check):
 """
 from __future__ import annotations
 
+import bisect
 import json
 import os
 import re
@@ -209,7 +210,7 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     return trovate
 
 
-# R-569-2: caratteri che si vedono vuoti ma non sono Cf (copia di
+# R-569-2: caratteri che si vedono vuoti ma non sono Cf (stessi intervalli di
 # modules/gate/gate.py `_INVISIBILI_NON_CF`: questo script gira da solo nel workflow).
 _INVISIBILI_NON_CF: tuple[tuple[int, int], ...] = (
     (0x034F, 0x034F), (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
@@ -221,17 +222,49 @@ _INVISIBILI_NON_CF: tuple[tuple[int, int], ...] = (
 _BIDI = frozenset(range(0x202A, 0x202F)) | frozenset(range(0x2066, 0x206A))
 
 
+# V-2 bot #305: come nel gate (gate.py `_CATEGORIE_INVISIBILI`) anche non assegnati,
+# uso privato, surrogati e separatori di riga/paragrafo; dei controlli Cc restano fuori
+# solo a capo, ritorno e tab, che servono alle regex sulle righe.
+_CATEGORIE_INVISIBILI = frozenset({"Cf", "Cn", "Co", "Cs", "Zl", "Zp"})
+
+
 def _invisibile(c: str) -> bool:
     o = ord(c)
-    return unicodedata.category(c) == "Cf" or any(a <= o <= b for a, b in _INVISIBILI_NON_CF)
+    categoria = unicodedata.category(c)
+    return (categoria in _CATEGORIE_INVISIBILI or (categoria == "Cc" and c not in "\n\r\t")
+            or any(a <= o <= b for a, b in _INVISIBILI_NON_CF))
 
 
 def _senza_invisibili(testo: str) -> str:
     """V-2 seconda verifica #130: "ME\u200bDIA" sfuggiva a ogni regex. I caratteri
-    invisibili (categoria Unicode Cf e `_INVISIBILI_NON_CF`) si tolgono prima di
-    decidere, così la gravità nascosta torna visibile. Bot #297: bocciare ogni Cf faceva
-    fallire anche il bot che citava un caso di prova con U+200B."""
+    invisibili (`_invisibile`) si tolgono prima di decidere. Bot #297: bocciare ogni Cf
+    faceva fallire anche il bot che citava un caso di prova con U+200B."""
     return "".join(c for c in testo if not _invisibile(c))
+
+
+# Parole di gravità SENZA confini di parola: servono solo vicino a un invisibile tolto.
+_GRAVITA_NUDA = re.compile(_GRAVI, re.I)
+
+
+def _invisibili_su_gravita(testo: str) -> bool:
+    """V-1 bot #305 e review #571: togliere un invisibile può incollare la gravità alla
+    parola vicina («BASSA<U+200B>MEDIA», «ALTA<U+2800>x») e nessuna lettura fissa copre
+    tutte le combinazioni. Se un invisibile tolto tocca o spezza una parola di gravità
+    (anche dentro un'altra parola), il verdetto è ambiguo: nel dubbio NO."""
+    pulito: list[str] = []
+    tagli: list[int] = []  # posizioni nel testo pulito dove è stato tolto un invisibile
+    for c in testo:
+        if _invisibile(c):
+            tagli.append(len(pulito))
+        else:
+            pulito.append(c)
+    if not tagli:
+        return False
+    for m in _GRAVITA_NUDA.finditer("".join(pulito)):
+        i = bisect.bisect_left(tagli, m.start())
+        if i < len(tagli) and tagli[i] <= m.end():
+            return True
+    return False
 
 
 def _mostra_invisibili(testo: str) -> str:
@@ -320,6 +353,8 @@ def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: 
         return "COMMENT", "il verdetto contiene forme di credenziali: non pubblicato"
     if any(ord(c) in _BIDI for c in testo):
         return "COMMENT", "controlli bidi nel testo: verdetto ambiguo"
+    if _invisibili_su_gravita(testo):
+        return "COMMENT", "caratteri invisibili attaccati a una gravità: verdetto ambiguo"
     testo = _senza_invisibili(testo)
     righe = []
     for riga in _RIGA_TITOLO.findall(testo):
@@ -372,10 +407,12 @@ def componi_corpo(evento: str, motivo: str, verdetto: dict | None, modello: str,
                                          f" {f.get('descrizione', '')}") for f in minori]
         testo = verdetto.get("testo")
         if isinstance(testo, str) and testo.strip():
+            # V-3 bot #305: il tetto dopo l'escape, che allunga il testo.
+            testo = _mostra_invisibili(testo)
             if len(testo) > MAX_TESTO:
                 testo = testo[:MAX_TESTO] + "\n…[TRONCATO: verdetto oltre il limite di GitHub]"
             righe += ["", "<details><summary>Verdetto integrale</summary>", "", "```",
-                      _mostra_invisibili(testo).replace("```", "ʼʼʼ"), "```", "</details>"]
+                      testo.replace("```", "ʼʼʼ"), "```", "</details>"]
     corpo = "\n".join(righe)
     if len(corpo) > MAX_CORPO:
         corpo = corpo[:MAX_CORPO] + "\n…[TRONCATO: corpo oltre il limite di GitHub]"
