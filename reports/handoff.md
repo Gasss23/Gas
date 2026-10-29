@@ -56,11 +56,13 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 Commit motore f7bb599: review #550 sul primo diff, #551 dopo la chiusura di R-550-1..4 (diff committato in f7bb599). Merge eaa0642 (da main entrano gas.py e i test del kernel e di dotenv): review #552. Verdetti integrali:
 
-### Review #550 (chat Mani) — primo diff staged
+Nota: i verdetti #550 e #551 incollati nel commit e9606d8 contenevano un BOM invisibile (U+FEFF) nelle citazioni, che fa bocciare il bot per «caratteri invisibili». Il revisore li ha riemessi con lo stesso esito e la stessa sostanza, il BOM scritto in chiaro; fanno fede questi. Gli originali restano nella storia del commit e9606d8.
+
+### Review #550 (chat Mani) — primo diff staged (verdetto riemesso)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #550 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q, base main 03dc898, fetta 25 Mani (XHTML malformato, R-ve252-2, R-ve255-1, più V-1 ve #294). Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (in modo mirato) e la memoria. Nessun antipattern del Wall of Shame: il motore (gas.py, la history) non è toccato.
+Review #550 (chat Mani), riemessa senza caratteri invisibili. Diff staged su claude/peaceful-lovelace-0w2b7q, base main 03dc898, fetta 25 Mani (XHTML malformato, R-ve252-2, R-ve255-1, più V-1 ve #294). Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (in modo mirato) e la memoria. Nessun antipattern del Wall of Shame: il motore (gas.py, la history) non è toccato.
 
 **Elementi esaminati**
 - modules/web/leggi.py:1329 — insieme dei pubblici XHTML. Rischio: fedeltà allo standard. Ho scaricato la sorgente whatwg/html da raw.githubusercontent.com: le 11 voci coincidono esattamente con source:152092-152102. Esito: ok.
@@ -72,7 +74,7 @@ Review #550 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q, base ma
 - tests/test_unit_web_leggi.py:1518 — `_radice` avvolge i frammenti dei vecchi test. Rischio: test indeboliti. Le asserzioni non cambiano, cambia solo l'input. Esito: ok.
 - tests/test_unit_web_lexbor.py:131 — tabella degli 8 punti d'integrazione più malignmark. Esito: ok, passano.
 
-Rifatte da me: tests/test_unit_web_leggi.py più tests/test_unit_web_lexbor.py danno 595 passed e 1 skipped su 3.13, 483 passed e 113 skipped su 3.11 (expat 2.6.1 su entrambi). I tuoi numeri (586/1 e 483/104) vengono da un insieme di 587 test, il mio ne ha 596: va solo allineato il conteggio nel report.
+Rifatte da me: tests/test_unit_web_leggi.py più tests/test_unit_web_lexbor.py danno 595 passed e 1 skipped su 3.13, 483 passed e 113 skipped su 3.11 (expat 2.6.1 su entrambi). I numeri dell'agente (586/1 e 483/104) vengono da un insieme di 587 test, il mio ne ha 596: va solo allineato il conteggio nel report.
 
 Mutanti miei (poi ripristinato il file, cmp uguale):
 - «entità saltata senza errore»: 1 failed, preso.
@@ -83,7 +85,7 @@ Mutanti miei (poi ripristinato il file, cmp uguale):
 **Riserve (da tracciare in stato_progetto.md)**
 - **R-550-1 BASSA** (testo in più rispetto al browser, non regressione): modules/web/leggi.py:1369 crea expat senza `namespace_separator`, quindi non vede gli errori di namespace. Per lo standard (source:152321) e per Chrome sono fatali. Esempio: `<r><p>A</p><h:script>S</h:script><p>VIS</p></r>` (prefisso h non dichiarato) viene tenuto intero, mentre Chrome si ferma prima di h:script. Con `namespace_separator=" "` expat dà «unbound prefix». Rimedio: un parametro nella prima lettura, compatibile con tests/test_unit_web_leggi.py:1902 (lì i prefissi sono dichiarati).
 - **R-550-2 BASSA** (robustezza su VPS): la difesa contro la bomba e contro il DTD ripetuto si appoggia alla protezione da amplificazione di expat, che esiste da 2.4.0. Su Linux CPython usa la libexpat di sistema. Con una versione vecchia, `%p;` ripetuto costa circa 0,5 ms l'uno (misurato: 100 ripetizioni = 0,05 s), quindi una pagina da 2 MB richiede minuti. Rimedio: se `expat.version_info < (2, 4, 0)` niente taglio (comportamento di main), con un test.
-- **R-550-3 BASSA** (perdita di testo, verso sicuro): con BOM UTF-8 più un errore la pagina sparisce tutta. `_decodifica` lascia il BOM nella stringa, la seconda lettura non lo riporta, startswith a modules/web/leggi.py:1398 fallisce e il risultato è 0. Esempio: `﻿<html><p>W1</p></html>CODA` diventa testo vuoto, mentre Chrome mostra W1. Il caso BOM in tests/test_unit_web_leggi.py:1979 non ha errore, quindi non lo prende.
+- **R-550-3 BASSA** (perdita di testo, verso sicuro): con il BOM UTF-8 (U+FEFF) più un errore la pagina sparisce tutta. `_decodifica` lascia il BOM nella stringa, la seconda lettura non lo riporta, startswith a modules/web/leggi.py:1398 fallisce e il risultato è 0. Esempio: «<U+FEFF><html><p>W1</p></html>CODA» diventa testo vuoto, mentre Chrome mostra W1. Il caso BOM in tests/test_unit_web_leggi.py:1979 non ha errore, quindi non lo prende.
 - **R-550-4 BASSA** (test): sopravvivono «senza startswith» e «senza doppio escape». Manca un test con `&LT;`/`&AMP;` sotto DOCTYPE XHTML e uno sul ramo di mancata coincidenza (per esempio BOM più errore, dopo R-550-3).
 - COSMETICA: le funzioni annidate `esterna`/`saltata` (modules/web/leggi.py:1372 e modules/web/leggi.py:1377) non hanno type hints (CLAUDE.md §4).
 
@@ -91,17 +93,15 @@ Mutanti miei (poi ripristinato il file, cmp uguale):
 - Il comportamento reale di Chrome e Firefox non l'ho provato su un browser (non disponibile qui). Mi baso sullo standard e sulla descrizione «rendering up to the first error».
 - Il comportamento con una libexpat < 2.4 non l'ho verificato direttamente (qui c'è solo la 2.6.1). Il costo è stimato dalla misura per singola ripetizione.
 - Nessun fuzz differenziale contro un parser XML di riferimento (per esempio libxml2): le sonde sono puntuali.
-- Il percorso con GAS_WEB_LEXBOR=1 sulla suite vecchia (i tuoi 11 FAIL uguali a main) non l'ho rifatto.
+- Il percorso con GAS_WEB_LEXBOR=1 sulla suite vecchia (gli 11 FAIL dichiarati uguali a main) non l'ho rifatto.
 
-Memoria aggiornata: riga #550 più una lezione (controllo dei namespace; versione di expat). Committata da scripts/commit_memoria_revisore.sh nel commit 78de08e (solo /home/user/Gas/.claude/agents/memoria_revisore.md, l'indice staged è intatto: 3 file, 171 righe aggiunte e 8 tolte).
+Memoria: riga #550 più una lezione (controllo dei namespace; versione di expat), commit 78de08e.
 
-File rilevanti: /home/user/Gas/modules/web/leggi.py, /home/user/Gas/tests/test_unit_web_leggi.py, /home/user/Gas/tests/test_unit_web_lexbor.py, /home/user/Gas/.claude/agents/memoria_revisore.md
-
-### Review #551 (chat Mani) — diff committato in f7bb599
+### Review #551 (chat Mani) — diff committato in f7bb599 (verdetto riemesso)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #551 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q (3 file, 189 righe aggiunte e 8 tolte). Chiude le riserve R-550-1, R-550-2, R-550-3 e R-550-4 della #550. Le riserve rimaste sono solo COSMETICHE.
+Review #551 (chat Mani), riemessa senza caratteri invisibili. Diff staged su claude/peaceful-lovelace-0w2b7q (3 file, 189 righe aggiunte e 8 tolte). Chiude le riserve R-550-1, R-550-2, R-550-3 e R-550-4 della #550. Le riserve rimaste sono solo COSMETICHE.
 
 **Elementi esaminati**
 - modules/web/leggi.py:1374 — la prima lettura usa `namespace_separator=" "` (chiude R-550-1). Rischio: falsi errori su XHTML valido, oppure errori di namespace ancora non visti. Prove:
@@ -115,8 +115,8 @@ Review #551 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q (3 file,
 
   Esito: ok.
 - modules/web/leggi.py:1368 — sotto expat 2.4.0 niente taglio (chiude R-550-2). Rischio: soglia sbagliata o test che non morde. La 2.4.0 è la versione che ha introdotto la protezione dall'amplificazione. Il mutante `if False` dà 1 failed. Anche il mio mutante a soglia 2.3.0 dà 1 failed, perché il test a tests/test_unit_web_leggi.py:2015 forza 2.3.0. Sulla 2.6.1 reale la bomba e `%p;`×1000 col pubblico XHTML si fermano ancora (0,06 s). Esito: ok.
-- modules/web/leggi.py:1404 — il BOM in testa si conta a parte (chiude R-550-3). Rischio: un carattere di troppo o di meno. Prove:
-  - BOM più CODA tiene `﻿<html><p>W1</p></html>`, cioè 23 caratteri su 27.
+- modules/web/leggi.py:1404 — il BOM (U+FEFF) in testa si conta a parte (chiude R-550-3). Rischio: un carattere di troppo o di meno. Prove:
+  - BOM più CODA tiene «<U+FEFF><html><p>W1</p></html>», cioè 23 caratteri su 27.
   - BOM da solo, BOM più testo prima della radice e doppio BOM danno 0 (verso sicuro).
   - BOM più DOCTYPE XHTML più `&nbsp;` taglia giusto.
   - Il caso a tests/test_unit_web_leggi.py:1980 prende il mutante `bom = 0` (1 failed).
@@ -127,7 +127,7 @@ Review #551 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q (3 file,
 
 Il mutante «senza startswith» sopravvive ancora. Lo accetto come difesa verso il sicuro: nelle mie sonde (CRLF, CR da solo, surrogati, caratteri non-BMP, BOM) i pezzi coincidono sempre col testo.
 
-Suite rifatte da me: tests/test_unit_web_leggi.py più tests/test_unit_web_lexbor.py danno 599 passed e 1 skipped su 3.13, 487 passed e 113 skipped su 3.11, uguali ai tuoi numeri. Il file del modulo è stato ripristinato dopo i mutanti (cmp uguale, indice intatto).
+Suite rifatte da me: tests/test_unit_web_leggi.py più tests/test_unit_web_lexbor.py danno 599 passed e 1 skipped su 3.13, 487 passed e 113 skipped su 3.11, uguali ai numeri dell'agente. Il file del modulo è stato ripristinato dopo i mutanti (cmp uguale, indice intatto).
 
 **Riserve**
 - **R-551-1 COSMETICA**: modules/web/leggi.py:1377 dichiara `contesto: str`, ma per il sottoinsieme esterno del DTD expat passa None. Il tipo giusto è `Optional[str]`.
@@ -138,9 +138,7 @@ Suite rifatte da me: tests/test_unit_web_leggi.py più tests/test_unit_web_lexbo
 - Non ho confrontato il risultato con Chrome reale (non disponibile) né con libxml2 tramite fuzz differenziale: le sonde sono puntuali.
 - Non ho rifatto il percorso con GAS_WEB_LEXBOR=1 sulla suite vecchia.
 
-Memoria aggiornata con la riga #551 (nessuna lezione nuova), committata da scripts/commit_memoria_revisore.sh nel commit fa715d8. Il report della #550 era già stato consegnato prima; questo è quello della #551.
-
-File rilevanti: /home/user/Gas/modules/web/leggi.py, /home/user/Gas/tests/test_unit_web_leggi.py, /home/user/Gas/tests/test_unit_web_lexbor.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+Memoria: riga #551 (nessuna lezione nuova), commit fa715d8.
 
 ### Review #552 (chat Mani) — merge eaa0642
 
@@ -178,7 +176,7 @@ Memoria:
 
 Nessuna modifica a gas.py; toccati `modules/web/leggi.py`, `tests/test_unit_web_leggi.py`, `tests/test_unit_web_lexbor.py`.
 - Web suite (`tests/test_unit_web_*.py`, Python 3.13.16 con selectolax 1.0.2): prima 566 passed / 1 skipped (main 03dc898) → dopo 599 passed / 1 skipped (+33).
-- Su Python 3.11 senza selectolax (come la CI): 487 passed / 113 skipped.
+- Su Python 3.11 senza selectolax: 487 passed / 113 skipped in locale (la CI su e9606d8 dà 488 / 112: ambiente diverso, V-1 bot #296).
 - Suite vecchia con `GAS_WEB_LEXBOR=1` (`tests/test_unit_web_leggi.py`): gli stessi 11 FAIL di main, confrontati per nome (fuori scope: differenze note tra lettura di sempre e lexbor).
 - Dopo il merge di main dc43ad6: web + dotenv + claude_cli 643 passed / 1 skipped; kernel 1058 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto).
 - Mutanti: elenco in `reports/ultimo_report.md`; difese equivalenti dichiarate.
@@ -191,7 +189,9 @@ Nessuna modifica a gas.py; toccati `modules/web/leggi.py`, `tests/test_unit_web_
 Mappatura commit→run:
 - 78de08e, fa715d8: nessuna run su questo SHA (pushati insieme a f7bb599).
 - f7bb599: run 40794722150 (sopra).
-- eaa0642 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
+- eaa0642: nessuna run su questo SHA (pushato con e9606d8).
+- e9606d8: run 40795325706, `unit-suite` success (kernel 1065 PASS / 0 FAIL, web 488 passed / 112 skipped in CI) e `handoff-check` success; `verifica-bot` failure per i caratteri invisibili nei verdetti (corretto in questo commit).
+- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
