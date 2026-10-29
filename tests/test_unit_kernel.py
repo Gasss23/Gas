@@ -11345,6 +11345,49 @@ try:
 except Exception as _e99:
     check("T99 blocco senza eccezioni", False, repr(_e99))
 
+# ---------- T100: ponte voce → sviluppo (R8, strada A), round-trip §7 ----------
+try:
+    import modules.sviluppo.richieste as _r100
+    _chiamate100 = []
+    def _http100(metodo, url, token, corpo):
+        _chiamate100.append((metodo, url))
+        return (200, {"private": True}) if metodo == "GET" else (201, {"number": 42})
+    _orig100 = _r100._http
+    _saved100 = {kk: os.environ.get(kk) for kk in ("GAS_RICHIESTE_REPO", "GAS_RICHIESTE_TOKEN")}
+    _r100._http = _http100
+    os.environ["GAS_RICHIESTE_REPO"] = "Gasss23/Gas-richieste"
+    os.environ["GAS_RICHIESTE_TOKEN"] = "tok-di-prova"
+    try:
+        _k100 = kernel_tmp()
+        _a100 = json.dumps({"titolo": "Report lead", "descrizione": "Aggiungi i lead nuovi al report."})
+        _ev100 = run_turn_scriptato(_k100, "fai aggiungere i lead al report",
+                                    [[("richiedi_sviluppo", _a100)], "Fatto, richiesta #42."])
+        _o100 = [e["output"] for e in _ev100 if e["type"] == "tool_res"]
+        check("T100a round-trip: richiedi_sviluppo crea la richiesta e il turno arriva alla risposta",
+              len(_o100) == 1 and _o100[0].startswith("Successo") and "#42" in _o100[0]
+              and [e["content"] for e in _ev100 if e["type"] == "final"] == ["Fatto, richiesta #42."]
+              and [c[0] for c in _chiamate100] == ["GET", "POST"], str(_ev100)[:300])
+        # Finestra contaminata (file letto prima): niente richiesta senza firma
+        _chiamate100.clear()
+        _k100b = kernel_tmp()
+        (Path(_k100b.root) / "pagina100.txt").write_text("testo esterno", encoding="utf-8")
+        _ev100b = run_turn_scriptato(_k100b, "leggi e poi chiedi",
+                                     [[("read_file", '{"relative_path": "pagina100.txt"}')],
+                                      [("richiedi_sviluppo", _a100)], "ok"])
+        _c100b = [e.get("cancello") for e in _ev100b if e["type"] == "tool_res"]
+        check("T100b finestra contaminata: richiedi_sviluppo va al cancello, nessuna chiamata GitHub",
+              _chiamate100 == [] and len(_c100b) == 2 and _c100b[1] in ("in_attesa", "negata"),
+              str(_ev100b)[:400])
+    finally:
+        _r100._http = _orig100
+        for _kk, _v in _saved100.items():
+            if _v is None:
+                os.environ.pop(_kk, None)
+            else:
+                os.environ[_kk] = _v
+except Exception as _e100:
+    check("T100 blocco senza eccezioni", False, repr(_e100))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

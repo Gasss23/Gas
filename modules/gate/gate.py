@@ -63,6 +63,9 @@ GATE_ALLOWLIST: dict[str, GateClass] = {
     "write_file":             GateClass.UNCERTAIN,
     "salva_contatto":         GateClass.UNCERTAIN,
     "imposta_stato_contatto": GateClass.UNCERTAIN,
+    # Ponte voce → sviluppo (R8, 2026-10-29): libero a finestra pulita, alla firma se
+    # la finestra contiene input esterno (una pagina non può chiedere sviluppo).
+    "richiedi_sviluppo":      GateClass.UNCERTAIN,
     "run_command":            GateClass.UNCERTAIN,   # see §8e override below
     "browser_scrape":         GateClass.UNCERTAIN,
     "send_email":             GateClass.IRREVERSIBLE,
