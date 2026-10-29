@@ -24,9 +24,9 @@
 
 ```
  reports/coda_notte.md     |  2 +-
- reports/diff_sessione.md  |  9 ++++-----
- reports/stato_progetto.md | 10 +++++++++-
- reports/ultimo_report.md  | 25 ++++++++-----------------
+ reports/diff_sessione.md  |  7 ++++---
+ reports/stato_progetto.md | 12 ++++++++++--
+ reports/ultimo_report.md  | 17 ++++++++++-------
  reports/handoff.md        | n/d (commit finale)
 ```
 
@@ -35,7 +35,10 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+87912ef Merge origin/main (PR #299) in docs/m2-salvataggio-voce9 (PR #302): solo report; note del bot su 55b3391
+55b3391 docs(fine-task): PR #302 secondo giro — V-1 bot #302
 d1db968 docs(stato): sigla M2 negli id delle riserve aperte della chat Motore 2 (V-1 bot #302)
+6c3352a docs(fine-task): PR #302 salvataggio della chat Motore 2 prima del clear
 090c11d docs(stato): salvataggio della chat Motore 2 prima del clear — PR #287/#291/#292, giro del 29, accesso al Mac, regole fra le chat, proposta voce 9
 ```
 
@@ -56,11 +59,15 @@ Nessuna modifica a gas.py/tests/.
 Mappatura commit→run:
 - 090c11d → CI completata (notifica check_suite.completed delle 16:50).
 - 6c3352a → handoff-check success, verifica-bot success (APPROVATO CON RISERVE, V-1 BASSA chiusa nel commit dopo).
-- commit della sigla M2 → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
+- d1db968 → nessuna run su questo SHA (pushato insieme a 55b3391).
+- 55b3391 → unit-suite, handoff-check, verifica-bot success (APPROVATO CON RISERVE: V-1 BASSA, V-2/V-3 COSMETICHE chiuse in 87912ef).
+- 87912ef (merge di main con la PR #299) → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
 - commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **V-1 bot #302** (BASSA): id R-551-1 ambiguo fra le chat nel blocco M2: CHIUSA con la sigla «(M2)» negli id del punto 4.
+
+- **Bot #302 su 55b3391**: V-1 BASSA (lezioni in attesa contraddittorie nello stato), V-2 COSMETICA (§3 senza 6c3352a), V-3 COSMETICA (fetta 3 assente da ultimo_report): CHIUSE in 87912ef.
 
 Nessun'altra nuova. Quelle aperte della linea M2 sono elencate in `reports/stato_progetto.md` (RIPARTENZA chat Motore 2, punto 4).
