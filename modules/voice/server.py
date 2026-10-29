@@ -21,6 +21,8 @@ Endpoint: POST /voice
     503:   JSON {"error": "<msg>"}  — STT/TTS non disponibile (chiave assente)
     500:   JSON {"error": "<msg>"}  — errore pipeline o kernel
 
+Avvio: `python -m modules.voice.server` dalla cartella di Gas (carica il `.env` come la CLI).
+
 Configurazione tramite variabili d'ambiente (da .env o export):
   GAS_VOICE_BIND      — bind address       (default: 127.0.0.1)
   GAS_VOICE_PORT      — porta TCP          (default: 8765)
@@ -28,6 +30,11 @@ Configurazione tramite variabili d'ambiente (da .env o export):
   GROQ_API_KEY        — chiave Groq        OBBLIGATORIO per STT audio; assente → 503
   ELEVENLABS_API_KEY  — chiave ElevenLabs  OBBLIGATORIO per output audio; assente → 503
   ELEVENLABS_VOICE_ID — voice id           (default: JBFqnCBsd6RMkjVDRZzb, George premade)
+  GAS_VOCE_FORTE      — 1/true/on/yes/si/sì: ogni richiesta della voce va al solo cervello
+                        forte (default spento; forte fermo → errore dichiarato, mai i gratuiti)
+
+Cervello forte dalla voce (V1, chat M2): «/forte <richiesta>» (testo) oppure, nel parlato
+trascritto, «forte <richiesta>» / «Gas forte <richiesta>» all'inizio della frase.
 
 Sicurezza:
   - Nasce chiuso su 127.0.0.1. Aprire all'esterno SOLO settando GAS_VOICE_BIND.
@@ -47,6 +54,7 @@ import hmac
 import json
 import logging
 import os
+import re
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -58,6 +66,44 @@ from modules.voice.tts import ElevenLabsTTSError, synthesize_speech
 log = logging.getLogger(__name__)
 
 _ENDPOINT = "/voice"
+
+# V1 (chat M2): la barra di «/forte» non si detta e Whisper scrive «Forte, …»: la parola
+# «forte» all'inizio del parlato (anche dopo «Gas», o «Gus» come lo trascrive Whisper)
+# vale «/forte», anche dopo un saluto prima di «Gas» («Ehi Gas, forte …», V-2 ve #304).
+# Parola intera: «fortemente…» o «forte» a metà frase restano testo normale. Limiti
+# dichiarati: «Forte!» esclamazione, «forte-forte», «forte: …» vanno al forte (direzione
+# sicura, costa budget: R-564-1-M2, V-1 ve #304); «Gas e forte …» o un saluto non in
+# elenco restano normali (con GAS_VOCE_FORTE=1 vanno comunque al forte).
+_PAROLA_FORTE = re.compile(
+    r"^[^\w/]*(?:(?:(?:ehi|ehy|hey|ok|okay|ciao|senti)\W+)?(?:gas|gus)\b\W*)?forte(?!\w)(.*)$",
+    re.IGNORECASE | re.DOTALL)
+_USO_FORTE = "Uso: /forte <richiesta> (a voce: «forte <richiesta>»)"
+
+
+def _voce_tutta_forte() -> bool:
+    """GAS_VOCE_FORTE acceso: regole di _env_flag in gas.py (1/true/on/yes/si) più «sì»
+    con l'accento (nota #565-M2: scritto in italiano, non deve restare spento in silenzio)."""
+    return os.environ.get("GAS_VOCE_FORTE", "").strip().lower() in ("1", "true", "on", "yes", "si", "sì")
+
+
+def cervello_voce(prompt: str, parlato: bool) -> tuple[Optional[str], str]:
+    """(cervello, richiesta) per una richiesta della voce: «forte» solo cervello forte,
+    «uso» prefisso senza richiesta (fail-closed: mai ai gratuiti), None turno normale.
+    «/forte» vale sempre; la parola parlata solo se `parlato` (testo trascritto)."""
+    from brains.router import prefisso_forte
+    if not prompt.strip():
+        return "uso", ""  # V-3 ve #304: fail-closed anche fuori dal gestore
+    cervello, prompt = prefisso_forte(prompt)
+    if cervello is None and parlato:
+        m = _PAROLA_FORTE.match(prompt)
+        if m:
+            richiesta = re.sub(r"^\W+", "", m.group(1)).strip()
+            if not richiesta:
+                return "uso", ""
+            cervello, prompt = "forte", richiesta
+    if cervello is None and _voce_tutta_forte():
+        cervello = "forte"
+    return cervello, prompt
 
 
 def _token_ok(received: str, expected: str) -> bool:
@@ -145,11 +191,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._send_json(400, {"error": "Campo 'prompt' mancante o vuoto"})
                 return
 
-        # R-ve269-2: «/forte <richiesta>» anche dalla voce (testo o trascrizione), mai ai gratuiti
-        from brains.router import prefisso_forte
-        cervello, prompt = prefisso_forte(prompt)
+        # R-ve269-2 + V1: «/forte», «forte …» parlato o GAS_VOCE_FORTE → solo forte, mai ai gratuiti
+        cervello, prompt = cervello_voce(prompt, parlato=is_audio)
         if cervello == "uso":
-            self._send_json(400, {"error": "Uso: /forte <richiesta>"})
+            self._send_json(400, {"error": _USO_FORTE})
             return
 
         try:
@@ -252,9 +297,25 @@ class VoiceHandler(BaseHTTPRequestHandler):
     do_PATCH = _method_not_allowed
 
 
+def _carica_env() -> None:
+    """Carica il `.env` accanto a gas.py come fa la CLI di Gas (V-1 bot #304: senza,
+    GAS_VOCE_FORTE scritto nel `.env` restava spento senza segnale). Stesse regole di
+    gas._carica_dotenv (la shell vince, GAS_NO_DOTENV=1 lo spegne). Fail-safe §9."""
+    try:
+        from gas import _carica_dotenv
+        _carica_dotenv()
+    except Exception as exc:  # gas.py assente o rotto: si prosegue con l'ambiente
+        log.warning(".env non caricato dal server voce: %s", type(exc).__name__)
+
+
 def run_server(root_dir: Optional[str] = None) -> int:
     """Avvia il server HTTP voice. Blocca fino a KeyboardInterrupt.
     Exit code: 0 = uscita pulita, 1 = configurazione mancante."""
+
+    root = Path(root_dir or os.getcwd()).resolve()
+    import sys as _sys
+    _sys.path.insert(0, str(root if (root / "gas.py").exists() else root.parent))
+    _carica_env()
 
     token = os.environ.get("GAS_VOICE_TOKEN", "").strip()
     if not token:
@@ -269,10 +330,6 @@ def run_server(root_dir: Optional[str] = None) -> int:
         print("✗ gas voice: GAS_VOICE_PORT non è un numero intero valido.")
         return 1
 
-    root = Path(root_dir or os.getcwd()).resolve()
-
-    import sys as _sys
-    _sys.path.insert(0, str(root if (root / "gas.py").exists() else root.parent))
     from gas import GasKernel  # import pigro: non richiede gas.py al semplice import del modulo
 
     kernel = GasKernel(root_dir=str(root))
@@ -282,6 +339,8 @@ def run_server(root_dir: Optional[str] = None) -> int:
 
     server = HTTPServer((bind, port), VoiceHandler)
     print(f"✓ gas voice: in ascolto su http://{bind}:{port}{_ENDPOINT}")
+    if _voce_tutta_forte():
+        print("  GAS_VOCE_FORTE acceso: ogni richiesta va al solo cervello forte.")
     print("  Ctrl-C per uscire.")
 
     try:
@@ -292,3 +351,8 @@ def run_server(root_dir: Optional[str] = None) -> int:
         server.server_close()
 
     return 0
+
+
+if __name__ == "__main__":  # avvio: python -m modules.voice.server (dalla cartella di Gas)
+    import sys as _sys
+    _sys.exit(run_server())
