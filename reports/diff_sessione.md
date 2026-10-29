@@ -1,12 +1,11 @@
-# DIFF SESSIONE — 2026-10-29 — Mani fetta 25 (PR #296)
+# DIFF SESSIONE — 2026-10-29 — Mani fetta 26
 
-File toccati rispetto a main e106883 (dopo i merge di main con le PR #292, #295 e #297):
-- `modules/web/leggi.py` — `_PUBBLICI_XHTML`, `_dtd_entita()`, `_taglio_xml()` (XHTML letto fino al primo errore XML, DTD delle entità letto una volta per pagina); in `_componi` il taglio prima di `_commenti_e_cdata_xml`, con warning nella scatola nera; BOM come `chr(0xFEFF)` e nota su Chrome/Firefox nella docstring (bot e ve #296).
-- `tests/test_unit_web_leggi.py` — helper `_radice` per i frammenti dei test XHTML vecchi; test nuovi sull'XHTML malformato, troncato, bomba di entità, expat vecchio, DTD letto una volta, lunghezza esatta del taglio, tempi; commenti e CDATA provati anche senza taglio; BOM e U+200B scritti come `chr(...)`, mai come carattere (il bot li citava e il suo verdetto veniva respinto).
-- `tests/test_unit_web_lexbor.py` — tabella dei punti d'integrazione e malignmark (V-1 ve #294).
-- `.claude/agents/memoria_revisore.md` — righe delle review #550–#559 (chat Mani).
-- `reports/stato_progetto.md` — blocco «Mani — fetta 25» (con le riserve aperte, libexpat e accensione lexbor) e riga «Ultimo aggiornamento».
-- `reports/ripartenza_mani.md` — PR #296, punto e) in parte fatto.
+File toccati rispetto a main f8b35ae (PR #296 mergiata):
+- `modules/web/leggi.py` — `_taglio_xml`: le entità che html.parser non sa espandere (della pagina, esterne, sconosciute col DTD XHTML) fermano la lettura prima del riferimento, posizione presa nel gestore; seconda lettura senza rinvio dei token grandi; `_componi`: riga di avviso quando l'XHTML si taglia.
+- `tests/test_unit_web_leggi.py` — casi di taglio sulle entità, entità di parametro non lette, avviso nel testo, token di 3 MB, test R-553-1 riscritto con un ATTLIST.
+- `.claude/agents/memoria_revisore.md` — riga della review #560 (chat Mani).
+- `reports/stato_progetto.md` — blocco «Mani — fetta 26» e riga «Ultimo aggiornamento».
+- `reports/ripartenza_mani.md` — PR #296 mergiata, fetta 26.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
