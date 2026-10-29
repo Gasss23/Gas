@@ -1993,6 +1993,10 @@ _BOM = chr(0xFEFF)
     # le entità di HTML che valgono «<» e «&» danno testo, mai markup (R-550-4)
     (_XHTML_STRICT + "<html><p>W1&LT;b&GT;W2&AMP;</p></html>", ("W1<b>W2&",), ()),
     ("<html><p>W1</p><p>W2", ("W1", "W2"), ()),
+    # un'entità della pagina con lo stesso testo di HTML vale come quella di HTML, anche
+    # senza il DTD XHTML (V-1 bot #298)
+    ('<!DOCTYPE html [<!ENTITY nbsp "&#160;"><!ENTITY eacute "&#xE9;">]><html><p>W1&nbsp;&eacute;</p>'
+     "<p>W2</p></html>", ("W1 é", "W2"), ()),
     # un'entità di parametro non letta non ferma niente: il DOCTYPE non è testo
     ('<!DOCTYPE html SYSTEM "q.dtd" [%q;]><html><p>W1</p><p>W2</p></html>', ("W1", "W2"), ()),
 ])
@@ -2014,6 +2018,10 @@ def test_xhtml_malformato_fino_al_primo_errore(pagina, visibili, nascosti):
     ('<!DOCTYPE html [<!ENTITY foo "W2">]><html><p>W1 ', "&foo; W3</p></html>"),
     (_XHTML_STRICT[:-1] + ' [<!ENTITY foo "W2">]><html><p>W1&nbsp;', "&foo; W3</p></html>"),
     (_XHTML_STRICT[:-1] + ' [<!ENTITY nbsp "W2">]><html><p>W1 ', "&nbsp; W3</p></html>"),
+    # con «<» nel testo di sostituzione il browser lo rilegge come markup: mai come di HTML
+    ('<!DOCTYPE html [<!ENTITY nvlt "&#60;&#x20D2;">]><html><p>W1 ', "&nvlt; W3</p></html>"),
+    # e con «&»: AMP vale «&» in HTML ma non è predefinita nell'XML (R-561-1)
+    ('<!DOCTYPE html [<!ENTITY AMP "&#38;">]><html><p>W1 ', "&AMP; W3</p></html>"),
     (_XHTML_STRICT + "<html><p>W1&eacute;", "&Unknown; W3</p></html>"),
     ('<!DOCTYPE html [<!ENTITY e SYSTEM "y.txt">]><html><p>W1 ', "&e; W3</p></html>"),
     ('<!DOCTYPE html [<!ENTITY e PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "x">]><html><p>W1 ',
@@ -2038,7 +2046,8 @@ def test_xhtml_troncato_da_gas_non_e_un_errore(caplog):
 def test_xhtml_avviso_nel_testo_quando_si_taglia():
     """Quando il resto se ne va il testo lo dice, come l'errore XML del browser (V-2 bot #296
     ter); una pagina buona, o troncata da Gas, non ha l'avviso."""
-    avviso = "[pagina XHTML malformata: il resto non si legge, come nel browser]"
+    avviso = ("[pagina XHTML: il resto non si legge (XML malformato, come nel browser, "
+              "o entità che Gas non sa espandere)]")
     t = _xhtml("<html><p>W1</p></html>W2")
     assert avviso in t and t.index("W1") < t.index(avviso) < t.index("[FINE CONTENUTO"), t
     assert avviso not in _xhtml("<html><p>W1</p></html>")
@@ -2053,6 +2062,8 @@ def test_xhtml_token_enorme_non_perde_il_resto():
     for grosso in ('<i a="' + "x" * 3_000_000 + '"/>', "<!--" + "x" * 3_000_000 + "-->"):
         pagina = "<html><p>A</p>" + grosso + "<p>B</p></html>"
         assert web._taglio_xml(pagina + "CODA", True) == len(pagina)
+        # anche nella prima lettura, non finale con la pagina troncata da Gas (V-1 ve #298)
+        assert web._taglio_xml(pagina + "&foo;<p>C</p>", False) == len(pagina)
 
 
 def test_xhtml_bomba_di_entita_si_ferma():

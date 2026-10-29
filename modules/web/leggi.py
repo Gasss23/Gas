@@ -1379,11 +1379,17 @@ def _taglio_xml(testo: str, completo: bool) -> int:
     # Coi namespace un prefisso non dichiarato è un errore, come nel browser (R-550-1).
     lettore = expat.ParserCreate(encoding="utf-8", namespace_separator=" ")
     lettore.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE)
+    if hasattr(lettore, "SetReparseDeferralEnabled"):
+        # Con la pagina troncata da Gas la lettura non è finale: senza questo un token di
+        # qualche MB rinviato nasconde l'errore che viene dopo (V-1 ve #298).
+        lettore.SetReparseDeferralEnabled(False)
 
     letto_dtd = [False]
     dentro_dtd = [False]
     # Le entità dichiarate dal DTD di HTML, che html.parser espande da sé, e quelle della
-    # pagina, che non espande. Una dichiarata due volte vale la prima (la pagina vince).
+    # pagina, che non espande. Una dichiarata due volte vale la prima (la pagina vince); una
+    # della pagina con lo stesso testo di HTML (`<!ENTITY nbsp "&#160;">`, dell'XHTML
+    # generato) conta come di HTML (V-1 bot #298).
     di_html: set[str] = set()
     della_pagina: set[str] = set()
     # Dopo un'eccezione nata in un gestore expat va avanti fino alla fine del riferimento:
@@ -1412,9 +1418,12 @@ def _taglio_xml(testo: str, completo: bool) -> int:
             letto_dtd[0] = True
         return 1
 
-    def dichiarata(nome: str, di_parametro: bool, *_: object) -> None:
+    def dichiarata(nome: str, di_parametro: bool, valore: Optional[str], *_: object) -> None:
         if not di_parametro and nome not in di_html and nome not in della_pagina:
-            (di_html if dentro_dtd[0] else della_pagina).add(nome)
+            # «<» e «&» nel testo di sostituzione si rileggono come XML: mai come di HTML.
+            come_html = (valore is not None and "<" not in valore and "&" not in valore
+                         and _ENTITA_HTML5.get(nome + ";") == valore)
+            (di_html if dentro_dtd[0] or come_html else della_pagina).add(nome)
 
     def saltata(nome: str, di_parametro: bool) -> None:
         # Col DefaultHandler expat non espande le entità interne: arrivano tutte qui.
@@ -1583,9 +1592,10 @@ def _componi(url_finale: str, pagina: dict) -> dict:
         righe.append(f"Titolo: {titolo}")
     righe += ["", corpo]
     if tagliato:
-        # Il browser mostra un errore XML: anche il modello deve sapere che manca il resto
-        # (V-2 bot #296 ter).
-        righe.append("[pagina XHTML malformata: il resto non si legge, come nel browser]")
+        # Il browser mostra un errore XML, oppure è Gas che non sa espandere un'entità: anche
+        # il modello deve sapere che manca il resto (V-2 bot #296 ter, V-1 bot #298).
+        righe.append("[pagina XHTML: il resto non si legge (XML malformato, come nel browser, "
+                     "o entità che Gas non sa espandere)]")
     if troncato:
         righe.append("[… testo troncato]")
     righe.append(FINE_NON_FIDATO.format(codice=codice))
