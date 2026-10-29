@@ -15,6 +15,7 @@
 
 - **Fetta 1 — stato della chat Motore 2 in stato_progetto**: `FATTA`.
 - **Fetta 2 — proposta per la voce 9 in coda_notte**: `FATTA` (da confermare dall'operatore).
+- **Fetta 3 — V-1 bot #302 (sigla M2 negli id)**: `FATTA`.
 
 ---
 
@@ -33,6 +34,7 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d1db968 docs(stato): sigla M2 negli id delle riserve aperte della chat Motore 2 (V-1 bot #302)
 090c11d docs(stato): salvataggio della chat Motore 2 prima del clear — PR #287/#291/#292, giro del 29, accesso al Mac, regole fra le chat, proposta voce 9
 ```
 
@@ -51,9 +53,13 @@ Nessuna modifica a gas.py/tests/.
 `gh` nel container non è autenticato.
 
 Mappatura commit→run:
-- 090c11d → run non ancora disponibile alla scrittura dell'handoff (handoff-check rosso atteso: l'handoff arriva col commit dopo).
+- 090c11d → CI completata (notifica check_suite.completed delle 16:50).
+- 6c3352a → handoff-check success, verifica-bot success (APPROVATO CON RISERVE, V-1 BASSA chiusa nel commit dopo).
+- commit della sigla M2 → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
 - commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-Nessuna nuova. Quelle aperte della linea M2 sono elencate in `reports/stato_progetto.md` (RIPARTENZA chat Motore 2, punto 4).
+- **V-1 bot #302** (BASSA): id R-551-1 ambiguo fra le chat nel blocco M2: CHIUSA con la sigla «(M2)» negli id del punto 4.
+
+Nessun'altra nuova. Quelle aperte della linea M2 sono elencate in `reports/stato_progetto.md` (RIPARTENZA chat Motore 2, punto 4).
