@@ -1912,9 +1912,14 @@ def test_xhtml_nomi_con_prefisso(pagina):
     assert "SEGRETO" not in r and "PRIMA" in r and "VIS" in r, r
 
 
-def test_xhtml_commenti_e_cdata():
+@pytest.mark.parametrize("expat_vecchio", [False, True])
+def test_xhtml_commenti_e_cdata(monkeypatch, expat_vecchio):
     """In XHTML commenti e CDATA seguono l'XML anche dentro script e style: «</script>» lì
-    dentro non chiude lo script (V-2 bot #243); il CDATA fuori da uno script è testo."""
+    dentro non chiude lo script (V-2 bot #243); il CDATA fuori da uno script è testo. Anche
+    senza il taglio al primo errore XML (expat vecchio): così questi casi provano ancora
+    _commenti_e_cdata_xml e non solo _taglio_xml (V-1 bot #296)."""
+    if expat_vecchio:
+        monkeypatch.setattr(web.expat, "version_info", (2, 3, 0))
     for corpo, visibili in ((b"<p>a</p><script><!--</script>-->SEGRETO</script>VIS", ("a", "VIS")),
                             (b"<p>a</p><style><![CDATA[</style>]]>SEGRETO</style>VIS", ("a", "VIS")),
                             (b"<p>a</p><![CDATA[<b>x</b> & y]]>VIS<!-- SEGRETO -->Z", ("<b>x</b> & y", "VIS", "Z")),
@@ -1990,6 +1995,18 @@ def test_xhtml_malformato_fino_al_primo_errore(pagina, visibili, nascosti):
     assert all(v in t for v in visibili) and not any(n in t for n in nascosti), t
 
 
+@pytest.mark.parametrize("tenuto, resto", [
+    ("<html><p>A</p></html>", "CODA"),
+    ("<html><p>A</p>", '<p a="1" a="2">B</p></html>'),
+    ("<html><p>A", "&ignota;B</p></html>"),
+    ("<html>\r\n<p>A</p>\r\n</html>\r\n", "CODA"),  # gli spazi dopo la radice sono ammessi
+    ("\ufeff<html><p>A</p></html>", "CODA"),
+])
+def test_xhtml_taglio_al_carattere_giusto(tenuto, resto):
+    """Il taglio cade esattamente alla fine dell'ultimo pezzo intero, né prima né dopo (V-2 ve #296)."""
+    assert web._taglio_xml(tenuto + resto, True) == len(tenuto)
+
+
 def test_xhtml_troncato_da_gas_non_e_un_errore(caplog):
     """Una pagina tagliata da Gas al tetto di byte non è malformata: niente taglio e niente
     avviso nella scatola nera; un errore vero prima del taglio vale lo stesso."""
@@ -2016,9 +2033,27 @@ def test_xhtml_con_expat_vecchio_niente_taglio(monkeypatch):
     assert web._taglio_xml("<html><p>W1</p></html>W2", True) == len("<html><p>W1</p></html>W2")
 
 
+def test_xhtml_dtd_letto_una_volta(monkeypatch):
+    """Il DTD delle entità si legge una volta per pagina anche con «%p;» ripetuto (V-2 bot #296)."""
+    letture = []
+    originale = web._dtd_entita
+    monkeypatch.setattr(web, "_dtd_entita", lambda: letture.append(1) or originale())
+    rimando = '<!ENTITY % p PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "x.dtd">' + "%p;" * 50
+    pagina = f"<!DOCTYPE html [{rimando}]><html><p>W1&nbsp;</p></html>CODA"
+    t = _xhtml(pagina)
+    assert len(letture) == 1 and "W1" in t and "CODA" not in t, (len(letture), t)
+    # le dichiarazioni dopo il secondo «%p;» valgono ancora: &foo; non è un errore e il taglio
+    # cade solo sulla CODA (R-553-1; le entità del sottoinsieme interno html.parser non le espande)
+    pagina = f'<!DOCTYPE html [{rimando}<!ENTITY foo "W2">]><html><p>W1&foo;W3&nbsp;</p></html>CODA'
+    t = _xhtml(pagina)
+    assert "W1" in t and "W3" in t and "CODA" not in t, t
+
+
 def test_xhtml_malformato_lineare():
     assert _entro(10.0, "_taglio_xml", '"<html>" + "<p>x</p>" * 400_000 + "</html>CODA", True')
     assert _entro(10.0, "_taglio_xml", '"<html>" + "<b>" * 100_000 + "</i>", True')
+    rimando = """'<!DOCTYPE html [<!ENTITY % p PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "x.dtd">' + "%p;" * 300_000 + ']><html/>'"""
+    assert _entro(10.0, "_taglio_xml", rimando + ", True")
 
 
 def test_xhtml_commenti_e_cdata_lineare():

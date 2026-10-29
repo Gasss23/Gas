@@ -1374,9 +1374,17 @@ def _taglio_xml(testo: str, completo: bool) -> int:
     lettore = expat.ParserCreate(encoding="utf-8", namespace_separator=" ")
     lettore.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE)
 
-    def esterna(contesto: str, base: Optional[str], sistema: Optional[str], pubblico: Optional[str]) -> int:
+    letto_dtd = [False]
+
+    def esterna(contesto: Optional[str], base: Optional[str], sistema: Optional[str],
+                pubblico: Optional[str]) -> int:
+        # Il DTD delle entità si legge una volta per pagina: un «%p;» ripetuto lo farebbe
+        # rileggere a ogni riferimento (V-2 bot #296). Dalla seconda volta un DTD vuoto, ma
+        # letto: un riferimento non letto fermerebbe le dichiarazioni dopo (R-553-1). Il
+        # contesto può essere None (R-551-1).
         if pubblico in _PUBBLICI_XHTML:
-            lettore.ExternalEntityParserCreate(contesto).Parse(_dtd_entita(), True)
+            lettore.ExternalEntityParserCreate(contesto).Parse(b"" if letto_dtd[0] else _dtd_entita(), True)
+            letto_dtd[0] = True
         return 1
 
     def saltata(nome: str, di_parametro: bool) -> None:
