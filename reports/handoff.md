@@ -20,6 +20,8 @@
 - **Ripartenza e stato della chat Mani**: `FATTA`.
 - **Bot su 251b0c2 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (riserve aperte non elencate): `FATTA` — in ripartenza_mani, stato_progetto e §7. V-2 COSMETICA (proposta di coordinamento fuori dal repo): `FATTA` — scritta in stato_progetto.
 - **Bot su 604edcb (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (descrizione della PR vecchia): `FATTA` — descrizione aggiornata. V-2 COSMETICA (lista delle aperte incompleta): `FATTA` — aggiunte V-1 ve/bot #288 e R-546-1.
+- **Bot su 91edc28 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA («tre riserve» in ultimo_report): `FATTA`. V-2 COSMETICA (id delle run CI scambiati per run del bot in §6): `FATTA`.
+- **Merge di main baa4b8d (PR #299, chat Motore 1, solo report)**: `FATTA` — tenuti i miei report, riga «Ultimo aggiornamento» unita a mano.
 
 ---
 
@@ -57,8 +59,9 @@ Nessuna modifica a gas.py/tests/.
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 3430de8: pushato prima dell'apertura della PR #301; nessuna run su questo SHA come PR.
-- 251b0c2: run 40914680818, `handoff-check` success; `verifica-bot` success, APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
-- 604edcb: run 40915228383; `verifica-bot` success, APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
+- 251b0c2: run CI 40914680818 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
+- 604edcb: run CI 40915228383 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
+- 91edc28: run CI 40915687912 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
 - Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
