@@ -1,10 +1,12 @@
-# DIFF SESSIONE — 2026-10-29 (chat Motore: «/forte@NomeBot» e test del doctor, PR #297)
+# DIFF SESSIONE — 2026-10-29 — Mani fetta 25 (PR #296)
 
-- `modules/telegram/bot.py`: `togli_destinatario_forte` e chiamata nel gestore prima di `prefisso_forte` (bot #269); con il nome di Gas ignoto il testo resta invariato e va a «Uso» (V-1 bot #297).
-- `tests/test_unit_notte.py`: `test_forte_con_destinatario_nei_gruppi` e `test_handle_update_forte_con_destinatario`.
-- `tests/test_unit_dotenv.py`: casi «il .env lo spegne» e «.env non letto» in `test_dal_dotenv_al_doctor` (V-1 bot #295).
-- `.claude/agents/memoria_revisore.md`: righe delle review #554, #555 e #556.
-- `reports/stato_progetto.md`: punto 3 (riserve della #295) e punto 4 (bot #269 chiusa) della RIPARTENZA, «Ultimo aggiornamento».
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+File toccati rispetto a main e106883 (dopo i merge di main con le PR #292, #295 e #297):
+- `modules/web/leggi.py` — `_PUBBLICI_XHTML`, `_dtd_entita()`, `_taglio_xml()` (XHTML letto fino al primo errore XML, DTD delle entità letto una volta per pagina); in `_componi` il taglio prima di `_commenti_e_cdata_xml`, con warning nella scatola nera; BOM come `chr(0xFEFF)` e nota su Chrome/Firefox nella docstring (bot e ve #296).
+- `tests/test_unit_web_leggi.py` — helper `_radice` per i frammenti dei test XHTML vecchi; test nuovi sull'XHTML malformato, troncato, bomba di entità, expat vecchio, DTD letto una volta, lunghezza esatta del taglio, tempi; commenti e CDATA provati anche senza taglio; BOM e U+200B scritti come `chr(...)`, mai come carattere (il bot li citava e il suo verdetto veniva respinto).
+- `tests/test_unit_web_lexbor.py` — tabella dei punti d'integrazione e malignmark (V-1 ve #294).
+- `.claude/agents/memoria_revisore.md` — righe delle review #550–#559 (chat Mani).
+- `reports/stato_progetto.md` — blocco «Mani — fetta 25» (con le riserve aperte, libexpat e accensione lexbor) e riga «Ultimo aggiornamento».
+- `reports/ripartenza_mani.md` — PR #296, punto e) in parte fatto.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

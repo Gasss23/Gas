@@ -8,6 +8,7 @@ mai saltato nei test, si cambia solo dove arriva il socket.
 """
 from __future__ import annotations
 
+import logging
 import os
 import random
 import re
@@ -61,7 +62,7 @@ class _Gestore(BaseHTTPRequestHandler):
             corpo = (
                 "<html><head><title>Titolo &amp; prova</title><style>body{x:1}</style>"
                 "<script>alert('js')</script></head><body><h1>Ciao</h1>"
-                "<p>Primo   paragrafo​ con <b>grassetto</b>.</p><noscript>nascosto</noscript>"
+                "<p>Primo   paragrafo" + chr(0x200B) + " con <b>grassetto</b>.</p><noscript>nascosto</noscript>"
                 "<svg><text>disegno</text></svg><p>Secondo</p></body></html>"
             ).encode()
             self._rispondi(200, corpo, html)
@@ -228,7 +229,7 @@ def test_pagina_html_testo_pulito_e_marcato(rete):
     assert t.startswith(web.INIZIO_NON_FIDATO.format(codice=r["codice"]))
     assert t.endswith(web.FINE_NON_FIDATO.format(codice=r["codice"]))
     assert "Ciao" in t and "Primo paragrafo con grassetto." in t and "Secondo" in t
-    for vietato in ("alert", "body{x:1}", "nascosto", "disegno", "<p>", "​"):
+    for vietato in ("alert", "body{x:1}", "nascosto", "disegno", "<p>", chr(0x200B)):
         assert vietato not in t
     assert r["troncato"] is False
     assert rete.connessi == [(IP_PUBBLICO, 80)]
@@ -1123,7 +1124,7 @@ def test_noscript_e_testo_grezzo(pagina, visibili, nascosti):
         assert all(v in testo for v in visibili) and not any(n in testo for n in nascosti), testo
     # in XHTML noscript è un elemento come gli altri: il contenuto resta nascosto, i tag contano
     x = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8", "troncato": False,
-                                         "corpo": b"<p>A</p><noscript><b>W1</b></noscript>W2"})["testo"]
+                                         "corpo": b"<r><p>A</p><noscript><b>W1</b></noscript>W2</r>"})["testo"]
     assert "W1" not in x and "W2" in x, x
 
 
@@ -1514,6 +1515,12 @@ def test_cdata_in_html_come_i_browser(pagina):
     assert "SEGRETO" not in r and "PRIMA" in r and "VIS" in r, r
 
 
+def _radice(pagina: str) -> bytes:
+    """Una pagina application/xhtml+xml ha una sola radice: senza, il browser mostra l'errore
+    XML e Gas taglia al primo errore (R-ve252-2). I frammenti dei test XHTML vanno dentro una."""
+    return f"<r>{pagina}</r>".encode()
+
+
 @pytest.mark.parametrize("pagina", [
     "<p>PRIMA</p><script><script></script>SEGRETO</script>VIS",
     "<p>PRIMA</p><style><style></style>SEGRETO</style>VIS",
@@ -1523,7 +1530,7 @@ def test_xhtml_grezzi_annidati(pagina):
     """In XHTML script e style non sono testo grezzo: un «<script>» annidato si conta per nome
     e il primo «</script>» non chiude tutto (R-ve244-2). Nel parser e nel ripiego."""
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
-                                         "corpo": pagina.encode(), "troncato": False})["testo"]
+                                         "corpo": _radice(pagina), "troncato": False})["testo"]
     assert "SEGRETO" not in t and "PRIMA" in t and "VIS" in t, t
     r = web._testo_senza_parser(pagina, xhtml=True)
     assert "SEGRETO" not in r and "PRIMA" in r and "VIS" in r, r
@@ -1533,7 +1540,7 @@ def test_xhtml_grezzi_annidati(pagina):
 def test_xhtml_titolo_con_tag():
     """In XHTML il titolo non è testo grezzo: i tag dentro non finiscono nel titolo come testo."""
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
-                                         "corpo": b"<title>T<b>U</b></title><p>VIS</p>", "troncato": False})["testo"]
+                                         "corpo": b"<r><title>T<b>U</b></title><p>VIS</p></r>", "troncato": False})["testo"]
     assert "Titolo: T U" in t and "<b>" not in t and "VIS" in t, t
 
 
@@ -1556,7 +1563,7 @@ def test_xhtml_titolo_annidato_come_nel_ripiego():
     nel titolo, nel parser come nel ripiego (R-ve245-5)."""
     pagina = "<title>T<title></title>X</title><p>VIS</p>"
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
-                                         "corpo": pagina.encode(), "troncato": False})["testo"]
+                                         "corpo": _radice(pagina), "troncato": False})["testo"]
     corpo = t.split("\n\n", 1)[1]
     assert "Titolo: T X" in t and "X" not in corpo and "VIS" in corpo, t
     r = web._testo_senza_parser(web._commenti_e_cdata_xml(pagina), True)
@@ -1899,15 +1906,20 @@ def test_uscita_e_autochiusi_in_svg(pagina, visibili):
 def test_xhtml_nomi_con_prefisso(pagina):
     """In XHTML conta il nome locale: «<h:script>» è uno script (V-1 ve #245)."""
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
-                                         "corpo": pagina.encode(), "troncato": False})["testo"]
+                                         "corpo": _radice(pagina), "troncato": False})["testo"]
     assert "SEGRETO" not in t and "PRIMA" in t and "VIS" in t, t
     r = web._testo_senza_parser(pagina, xhtml=True)
     assert "SEGRETO" not in r and "PRIMA" in r and "VIS" in r, r
 
 
-def test_xhtml_commenti_e_cdata():
+@pytest.mark.parametrize("expat_vecchio", [False, True])
+def test_xhtml_commenti_e_cdata(monkeypatch, expat_vecchio):
     """In XHTML commenti e CDATA seguono l'XML anche dentro script e style: «</script>» lì
-    dentro non chiude lo script (V-2 bot #243); il CDATA fuori da uno script è testo."""
+    dentro non chiude lo script (V-2 bot #243); il CDATA fuori da uno script è testo. Anche
+    senza il taglio al primo errore XML (expat vecchio): così questi casi provano ancora
+    _commenti_e_cdata_xml e non solo _taglio_xml (V-1 bot #296)."""
+    if expat_vecchio:
+        monkeypatch.setattr(web.expat, "version_info", (2, 3, 0))
     for corpo, visibili in ((b"<p>a</p><script><!--</script>-->SEGRETO</script>VIS", ("a", "VIS")),
                             (b"<p>a</p><style><![CDATA[</style>]]>SEGRETO</style>VIS", ("a", "VIS")),
                             (b"<p>a</p><![CDATA[<b>x</b> & y]]>VIS<!-- SEGRETO -->Z", ("<b>x</b> & y", "VIS", "Z")),
@@ -1918,7 +1930,7 @@ def test_xhtml_commenti_e_cdata():
                             (b"<p>PRIMA</p><script>x</scr<![CDATA[ipt]]>>SEGRETO</script>VIS", ("PRIMA",)),
                             (b"<p>PRIMA</p><b>x</b><!-- c -->VIS<i>y</i><![CDATA[z]]>VIS2", ("PRIMA", "VIS", "VIS2"))):
         t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
-                                             "corpo": corpo, "troncato": False})["testo"]
+                                             "corpo": _radice(corpo.decode()), "troncato": False})["testo"]
         assert "SEGRETO" not in t and all(v in t for v in visibili), (corpo, t)
     # In HTML resta il comportamento dei browser: lo script finisce al primo «</script>».
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8",
@@ -1933,10 +1945,120 @@ def test_xhtml_anche_nel_ripiego_di_componi(monkeypatch):
         raise ValueError("parser rotto")
 
     monkeypatch.setattr(web._Estrattore, "feed", esplode)
-    corpo = b"<p>a</p><script/>VIS2<script><!--</script>-->SEGRETO</script>VIS3"
+    corpo = b"<r><p>a</p><script/>VIS2<script><!--</script>-->SEGRETO</script>VIS3</r>"
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8", "corpo": corpo,
                                          "troncato": False})["testo"]
     assert "VIS2" in t and "VIS3" in t and "SEGRETO" not in t, t
+
+
+def _xhtml(pagina, troncato: bool = False) -> str:
+    corpo = pagina if isinstance(pagina, bytes) else pagina.encode()
+    return web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
+                                           "corpo": corpo, "troncato": troncato})["testo"]
+
+
+_XHTML_STRICT = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/x.dtd">'
+
+
+# Il BOM scritto come codice, non come carattere: un BOM letterale citato in un verdetto lo
+# rende ambiguo per il bot (Unicode Cf, bot #296 su 336e67c).
+_BOM = chr(0xFEFF)
+
+
+@pytest.mark.parametrize("pagina, visibili, nascosti", [
+    # il browser legge l'XHTML malformato fino al primo errore XML; il resto se ne va (R-ve252-2)
+    ("W1<html><p>W2</p></html>", (), ("W1", "W2")),
+    ("<html><p>W1</p></html>W2", ("W1",), ("W2",)),
+    ("<html><p>W1</p></html><html><p>W2</p></html>", ("W1",), ("W2",)),
+    ("<!doctype html><html><p>W1</p></html>", (), ("W1",)),
+    ("<html><p>W1</p><p>W2</div><p>W3</p></html>", ("W1", "W2"), ("W3",)),
+    # un title dentro un title di svg non porta il corpo nella riga del titolo (R-ve255-1)
+    ("<html><svg><title><title>x</title></svg><p>W1</p></html>", (), ("W1", "Titolo:")),
+    # taglio a un confine: niente mezzo tag, nemmeno con «>» in un attributo
+    ('<html><p>W1</p><p title="W2<y">W3</p></html>', ("W1",), ("W2", "W3")),
+    ('<html><p>W1</p><p title="a>W2" c="1" c="2">W3</p></html>', ("W1",), ("W2", "W3")),
+    ("<html><p>W1</p>\x01<p>W2</p></html>", ("W1",), ("W2",)),
+    # entità di HTML solo coi DOCTYPE XHTML noti; altrimenti un'entità sconosciuta è un errore
+    (_XHTML_STRICT + "<html><p>W1&nbsp;&eacute;</p><p>W2</p></html>", ("W1 é", "W2"), ()),
+    ("<!DOCTYPE html><html><p>W1</p><p>&nbsp;W2</p></html>", ("W1",), ("W2",)),
+    ('<!DOCTYPE html PUBLIC "-//X//Y//EN" "y.dtd"><html><p>W1</p><p>&nbsp;W2</p></html>', ("W1",), ("W2",)),
+    ("<html><p>W1&amp;&#233;</p><p>W2</p></html>", ("W1&é", "W2"), ()),
+    # dichiarazione d'encoding diversa, BOM, pagina che finisce senza chiudere: niente taglio
+    ('<?xml version="1.0" encoding="ISO-8859-1"?><html><p>W1è</p></html>', ("W1è",), ()),
+    ('<?xml version="1.0" encoding="US-ASCII"?><html><p>W1è</p></html>', ("W1è",), ()),
+    (_BOM + "<html><p>W1</p></html>", ("W1",), ()),
+    (_BOM + "<html><p>W1</p></html>W2", ("W1",), ("W2",)),  # BOM più un errore (R-550-3)
+    # un prefisso non dichiarato è un errore di namespace (R-550-1)
+    ("<r><p>W1</p><h:script>W2</h:script><p>W3</p></r>", ("W1",), ("W2", "W3")),
+    # le entità di HTML che valgono «<» e «&» danno testo, mai markup (R-550-4)
+    (_XHTML_STRICT + "<html><p>W1&LT;b&GT;W2&AMP;</p></html>", ("W1<b>W2&",), ()),
+    ("<html><p>W1</p><p>W2", ("W1", "W2"), ()),
+])
+def test_xhtml_malformato_fino_al_primo_errore(pagina, visibili, nascosti):
+    """XHTML malformato letto come il browser: fino al primo errore XML (R-ve252-2, R-ve255-1)."""
+    t = _xhtml(pagina)
+    assert all(v in t for v in visibili) and not any(n in t for n in nascosti), t
+
+
+@pytest.mark.parametrize("tenuto, resto", [
+    ("<html><p>A</p></html>", "CODA"),
+    ("<html><p>A</p>", '<p a="1" a="2">B</p></html>'),
+    ("<html><p>A", "&ignota;B</p></html>"),
+    ("<html>\r\n<p>A</p>\r\n</html>\r\n", "CODA"),  # gli spazi dopo la radice sono ammessi
+    (_BOM + "<html><p>A</p></html>", "CODA"),
+])
+def test_xhtml_taglio_al_carattere_giusto(tenuto, resto):
+    """Il taglio cade esattamente alla fine dell'ultimo pezzo intero, né prima né dopo (V-2 ve #296)."""
+    assert web._taglio_xml(tenuto + resto, True) == len(tenuto)
+
+
+def test_xhtml_troncato_da_gas_non_e_un_errore(caplog):
+    """Una pagina tagliata da Gas al tetto di byte non è malformata: niente taglio e niente
+    avviso nella scatola nera; un errore vero prima del taglio vale lo stesso."""
+    caplog.set_level(logging.WARNING, logger="gas.web")
+    assert "W2" in _xhtml("<html><p>W1</p><p>W2</p><p", troncato=True)
+    assert "XHTML malformato" not in caplog.text
+    assert "W2" not in _xhtml("<html><p>W1</p></html>W2", troncato=True)
+    assert "XHTML malformato" in caplog.text
+
+
+def test_xhtml_bomba_di_entita_si_ferma():
+    """Le entità annidate a miliardi non esplodono: expat le ferma e il resto se ne va."""
+    entita = '<!ENTITY a "aaaaaaaaaa">' + "".join(
+        f'<!ENTITY {b} "{("&" + a + ";") * 10}">' for a, b in zip("abcdefg", "bcdefgh"))
+    pagina = f"<!DOCTYPE l [{entita}]><html><p>W1</p><p>&h;</p><p>W2</p></html>"
+    inizio = time.monotonic()
+    t = _xhtml(pagina)
+    assert time.monotonic() - inizio < 5 and "W1" in t and "W2" not in t and len(t) < 1000, t[:300]
+
+
+def test_xhtml_con_expat_vecchio_niente_taglio(monkeypatch):
+    """Con expat senza freno all'amplificazione (prima della 2.4) non si taglia (R-550-2)."""
+    monkeypatch.setattr(web.expat, "version_info", (2, 3, 0))
+    assert web._taglio_xml("<html><p>W1</p></html>W2", True) == len("<html><p>W1</p></html>W2")
+
+
+def test_xhtml_dtd_letto_una_volta(monkeypatch):
+    """Il DTD delle entità si legge una volta per pagina anche con «%p;» ripetuto (V-2 bot #296)."""
+    letture = []
+    originale = web._dtd_entita
+    monkeypatch.setattr(web, "_dtd_entita", lambda: letture.append(1) or originale())
+    rimando = '<!ENTITY % p PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "x.dtd">' + "%p;" * 50
+    pagina = f"<!DOCTYPE html [{rimando}]><html><p>W1&nbsp;</p></html>CODA"
+    t = _xhtml(pagina)
+    assert len(letture) == 1 and "W1" in t and "CODA" not in t, (len(letture), t)
+    # le dichiarazioni dopo il secondo «%p;» valgono ancora: &foo; non è un errore e il taglio
+    # cade solo sulla CODA (R-553-1; le entità del sottoinsieme interno html.parser non le espande)
+    pagina = f'<!DOCTYPE html [{rimando}<!ENTITY foo "W2">]><html><p>W1&foo;W3&nbsp;</p></html>CODA'
+    t = _xhtml(pagina)
+    assert "W1" in t and "W3" in t and "CODA" not in t, t
+
+
+def test_xhtml_malformato_lineare():
+    assert _entro(10.0, "_taglio_xml", '"<html>" + "<p>x</p>" * 400_000 + "</html>CODA", True')
+    assert _entro(10.0, "_taglio_xml", '"<html>" + "<b>" * 100_000 + "</i>", True')
+    rimando = """'<!DOCTYPE html [<!ENTITY % p PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "x.dtd">' + "%p;" * 300_000 + ']><html/>'"""
+    assert _entro(10.0, "_taglio_xml", rimando + ", True")
 
 
 def test_xhtml_commenti_e_cdata_lineare():
@@ -1949,7 +2071,7 @@ def test_xhtml_commenti_e_cdata_lineare():
 def test_xhtml_autochiusi_vuoti():
     """In application/xhtml+xml vale l'XML: «<title/>», «<script/>», «<noscript/>» sono vuoti e
     il testo dopo resta nel corpo, sul percorso normale e nel ripiego (V-1 verifica esterna #243)."""
-    corpo = b"<p>a</p><title/>VIS1<script/>VIS2<noscript/>VIS3<iframe/>VIS4"
+    corpo = b"<r><p>a</p><title/>VIS1<script/>VIS2<noscript/>VIS3<iframe/>VIS4</r>"
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8", "corpo": corpo,
                                          "troncato": False})["testo"]
     assert "Titolo:" not in t and all(v in t for v in ("VIS1", "VIS2", "VIS3", "VIS4")), t
