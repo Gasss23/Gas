@@ -1,11 +1,10 @@
-# DIFF SESSIONE — 2026-10-29 — Mani, fetta 28: `bot_esito.py` e i caratteri invisibili
+# Diff della sessione — 2026-10-29 — Voce V2 (chat M2)
 
-File toccati rispetto a main 8424698 (PR #303 mergiata da M1):
-- `scripts/bot_esito.py` — i caratteri invisibili si tolgono prima di decidere (la gravità nascosta blocca), i controlli bidi restano un NO, nella review pubblica ogni invisibile si vede come «<U+XXXX>», credenziali spezzate da un invisibile non pubblicate; un invisibile attaccato a una parola di gravità dà NO (V-1 bot e verifica esterna #305); credenziali spezzate da controlli e gravità anche sul testo grezzo (note del bot su 95249a8 e d672021); annidamento profondo nel dubbio NO. Motivo: falso NO definitivo su #297.
-- `tests/test_unit_verifica_bot.py` — test per gli invisibili Cf e non Cf, i controlli bidi, il caso #297, le riserve pubblicate, le credenziali spezzate e gli incroci separatore × invisibile dentro la parola.
-- `.claude/agents/memoria_revisore.md` — righe delle review dalla #569 alla #575.
-- `reports/stato_progetto.md` — blocco «Mani — fetta 28» e riga «Ultimo aggiornamento».
-- `reports/ripartenza_mani.md` — punto g): fatta la (c).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+- `modules/voice/server.py` — «forte» parlato senza richiesta → istruzione d'uso da ascoltare (200, nessun turno); riga «avvio in corso» prima del caricamento.
+- `clients/voice/browser_server.py` — attesa della risposta 600 s (`GAS_VOICE_TIMEOUT`), connessione 10 s, 504 chiaro a tempo scaduto, errori in `_send_error_json`.
+- `tests/test_unit_voice_server.py` — ordine della riga d'avvio; tre test del proxy del browser (tempo scaduto, valori dell'attesa, server spento).
+- `tests/test_unit_voice_stt.py` — istruzione d'uso a voce (JSON, con l'interruttore, audio sintetizzato); `_post_raw` accetta risposte audio.
+- `.claude/agents/memoria_revisore.md` — lezioni delle review #568-M2 e #569-M2.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/roadmap.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
