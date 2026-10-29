@@ -11,6 +11,7 @@
 - **Tempo di rete 12 s**: CONFERMATO (decisione dell'operatore: «tempo di rete 12 s va bene»).
 - **Ripartenza e stato**: FATTA — `reports/ripartenza_mani.md` e `reports/stato_progetto.md` aggiornati.
 - **Bot su 251b0c2 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA («nessun lavoro aperto» falso: restano R-518-1, R-516-1, R-ve277-5 parte leggi.py e il punto b della ripartenza) → FATTA: elencate in ripartenza_mani, stato_progetto e handoff §7. V-2 COSMETICA (la proposta di coordinamento non stava nel repo) → FATTA: scritta in stato_progetto.
+- **Bot su 604edcb (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (descrizione della PR vecchia) → FATTA, descrizione aggiornata. V-2 COSMETICA (mancavano V-1 ve/bot #288 e R-546-1 nella lista delle aperte) → FATTA.
 - **Codice**: nessuna modifica.
 
 ## RICHIESTE ALLA CHAT MOTORE
