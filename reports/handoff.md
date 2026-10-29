@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #307 (https://github.com/Gasss23/Gas/pull/307): review #558-M1 APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` non autenticato in questo ambiente).
+1. Merge della PR #307 (https://github.com/Gasss23/Gas/pull/307): review #559-M1 APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` non autenticato in questo ambiente).
 2. Token dedicato per il ponte (solo Issues su `Gas-richieste`) in `~/.config/gas/richieste_token` e `GAS_RICHIESTE_REPO=Gasss23/Gas-richieste` nel `.env` del Mac.
 3. `GAS_VOCE_FORTE`: sì o no.
 4. Permesso Remote Control per M1 (richiesta in sospeso).
@@ -17,6 +17,7 @@
 
 - **Fetta 1 — Ponte voce → sviluppo, strada A**: `FATTA` — `richiedi_sviluppo`, review #557-M1 → #558-M1.
 - **Fetta 2 — Coordinamento delle chat**: `FATTA` — regole in `reports/stato_progetto.md`.
+- **Fetta 4 — V-1/V-2/V-3 bot #307**: `FATTA` — conto protetto dal cancello, etichetta controllata; review #559-M1.
 - **Fetta 3 — Strada B del ponte**: `DEFERITA — scelta dell'operatore (prima A, poi B)`.
 
 ---
@@ -24,20 +25,21 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
+ .claude/agents/memoria_revisore.md |   6 ++++++
  .github/workflows/ci.yml           |   7 +++++++
  .gitignore                         |   2 ++
- gas.py                             |  12 ++++++++++--
+ gas.py                             |  13 +++++++++++--
  gas_identity.md                    |   3 ++-
- modules/gate/gate.py               |   3 +++
+ modules/gate/gate.py               |   6 +++++-
  modules/sviluppo/__init__.py       |   5 +++++
- modules/sviluppo/richieste.py      | 176 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  19 ++++++++++---------
+ modules/sviluppo/richieste.py      | 185 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  20 ++++++++++---------
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   6 +++++-
- reports/ultimo_report.md           |  39 +++++++++++++++++----------------------
- tests/test_unit_kernel.py          |  43 +++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_richieste.py       | 160 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  46 +++++++++++++++++++++++---------------------
+ tests/test_unit_gate.py            |   1 +
+ tests/test_unit_kernel.py          |  46 ++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_richieste.py       | 171 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/handoff.md                 | n/d (commit finale)
 ```
 
@@ -46,6 +48,9 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a4d239a fix(sviluppo): conto delle richieste protetto dal cancello (V-1 bot #307), etichetta controllata (V-2), pulizie (V-3)
+29529b6 chore(revisore): memoria review #559 — APPROVATO CON RISERVE
+abdf334 docs(fine-task): PR #307 — ponte voce → sviluppo, coordinamento delle chat, review #557-M1/#558-M1
 3f84962 feat(sviluppo): ponte voce → sviluppo, strumento richiedi_sviluppo (issue in repo privato, R8 strada A)
 b8af5d1 chore(revisore): memoria review #558 — APPROVATO CON RISERVE
 5935c16 chore(revisore): memoria review #557 — APPROVATO CON RISERVE
@@ -125,6 +130,33 @@ Review #558-M1. Riguarda il diff STAGED del ponte voce → sviluppo (`richiedi_s
 
 Riga contatore #558-M1 e una lezione aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md e committate (b8af5d1, solo quel file: l'index staged non è toccato). Il marcatore review va creato da te con `bash scripts/segna_review_ok.sh`.
 
+### Review #559-M1 — sul diff di a4d239a (V-1/V-2/V-3 bot #307)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #559-M1: diff staged della PR #307, che chiude i finding V-1, V-2 e V-3 del bot. Ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md (solo le parti utili) e .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+- `modules/gate/gate.py:108` — aggiunge `.gas_richieste_uso` a `_DENY_PREFIXES`, cioè le scritture negate. Rischio esaminato: varianti che sfuggono al blocco. Le ho provate a mano con `_check_path_arg`: `.GAS_RICHIESTE_USO.json`, `.Gas_Richieste_Uso.JSON`, `.gas_richieste_uso.json.1.tmp`, `./…` e `sub/../…` danno tutte DENY, sia in scrittura sia in lettura. — **ok**
+- `modules/gate/gate.py:305` — aggiunge il file a `_LIVELLO3_PREFISSI`. Questa lista è anche la lista della lettura negata (`modules/gate/gate.py:327`), quindi Gas non può più nemmeno leggere il conto. `livello_scrittura` restituisce 3 per tutte le varianti. — **ok**
+- `gas.py:2016` — aggiunge il file a `_SAFE_PATH_DENY_PREFIXES`. Il controllo ignora maiuscole e minuscole su ogni componente, dopo il confinamento nella cartella del progetto. Prova diretta di `_safe_path`: restituisce None per il nome normale, le MAIUSCOLE, `.9.tmp` e `a/../`. Le protezioni sono le stesse del file fratello `.gas_claude_cli_uso` (grep su tutto il codice); il `.gitignore` copre già `.json` e `.*.tmp`. — **ok**
+- `modules/sviluppo/richieste.py:106` — il controllo `isinstance(d, dict)` ora viene prima di `d.get`, e su un dato non valido restituisce None (cioè «conto illeggibile», che blocca). Corretto. — **ok**
+- `modules/sviluppo/richieste.py:73` — chiude l'errore HTTP con `e.close()`. È sicuro: l'errore viene restituito come codice e nient'altro lo usa. — **ok**
+- `modules/sviluppo/richieste.py:175` — controlla le etichette dopo la creazione della issue; se manca `da-gas` risponde «Successo parziale» e scrive un warning nel log. — **riserva R-559-1 (BASSA)**: se GitHub restituisse in "labels" un valore non iterabile (per esempio un numero), l'errore finirebbe nell'`except` generale (`modules/sviluppo/richieste.py:183`) e Gas direbbe «richiesta non creata» per una issue già creata, con rischio di doppione. Il posto nel tetto resta comunque prenotato, quindi il tetto regge. GitHub restituisce sempre una lista, quindi il rischio è teorico. Rimedio possibile: `labels = info.get("labels"); if not isinstance(labels, list): labels = []`.
+- `tests/test_unit_richieste.py:164` — test nuovo sull'etichetta scartata. Il finto di T100 in `tests/test_unit_kernel.py:11356` ora restituisce le etichette, e T100a controlla `"Successo: "` con i due punti, così un «Successo parziale» non passerebbe per successo pieno. — **ok**
+
+**Test rilanciati da me**
+- Suite kernel: 1065 PASS, 0 FAIL (T68s, T100a e T100b PASS).
+- pytest su `tests/test_unit_richieste.py` e `tests/test_unit_gate.py`: 846 passed.
+- Nessuna regressione.
+- Wall of Shame: nessun taglio diretto della cronologia, nessuna simulazione dell'output dei tool. La cascata dei provider e i tetti (10 iterazioni, `_get_window`) non sono toccati.
+
+**Rischio escluso**: non ho verificato se `run_command` dentro la sandbox bwrap possa sovrascrivere il file del conto, per esempio con un redirect della shell. Il diff non tocca la sandbox e il file fratello `.gas_claude_cli_uso` è esposto nello stesso modo, quindi il rischio è condiviso e non nasce da questa modifica. Non ho verificato nemmeno il comportamento reale di GitHub quando scarta un'etichetta per mancanza di permessi: senza un token reale non si può riprodurre in sviluppo.
+
+Riserva da tracciare in stato_progetto.md: R-559-1 BASSA (sopra).
+
+La memoria del revisore è aggiornata con la riga #559-M1 e una lezione (una nuova lista di file protetti va confrontata con quelle del file-contatore fratello), ed è già committata (29529b6) in /home/user/Gas/.claude/agents/memoria_revisore.md.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Suite kernel: 1063 → 1065 PASS (T100a, T100b nuovi), 0 FAIL.
@@ -140,11 +172,14 @@ pytest: `tests/test_unit_richieste.py` 24 passed (nuovo); pytest completo sul di
 CI letta con lo strumento GitHub della sessione (`gh` non autenticato).
 
 Mappatura commit→run:
-- `5935c16`, `b8af5d1`, `3f84962`: pushati prima dell'apertura della PR #307; run non letta alla scrittura dell'handoff.
+- `5935c16`, `b8af5d1`, `3f84962`: pushati prima dell'apertura della PR #307; run non letta.
+- `abdf334`: `verifica-bot` failure (MEDIA V-1: conto non protetto, chiusa in `a4d239a`); unit-suite in corso alla lettura del bot.
+- `29529b6`, `a4d239a`: nessuna run su questi SHA (pushati insieme al commit di fine-task).
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-558-1 BASSA: il conto delle richieste non ha lucchetto (race fra processi concorrenti).
 - R-558-2 COSMETICA: il test del redirect prova la classe, non l'opener montato.
+- R-559-1 BASSA: `labels` non lista → «non creata» su una issue già creata (teorico).
 - Le chiamate vere a GitHub vanno provate una volta col token dedicato.

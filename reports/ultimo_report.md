@@ -19,6 +19,13 @@
 - **PR delle altre chat**, mergiate da M1 col sì dell'operatore: #303 e #305 (Mani), #304 (M2).
 - **Test**: kernel da 1063 a 1065 PASS, 0 FAIL. pytest completo: 2577 passed.
 
+- **Finding del bot su `abdf334`**:
+  - V-1 MEDIA: il conto delle richieste era scrivibile da Gas, ora è protetto dal cancello;
+  - V-2 BASSA: l'etichetta della issue viene controllata;
+  - V-3 COSMETICA: corretta.
+
+  FATTA, review #559-M1 APPROVATO CON RISERVE (resta R-559-1 BASSA).
+
 ## Anomalie
 - `gh` non è autenticato nel cloud: PR e CI passano dallo strumento GitHub.
 - Strada B del ponte (Gas avvia Claude Code da solo) rimandata, come deciso dall'operatore.
