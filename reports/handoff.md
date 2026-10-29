@@ -28,18 +28,20 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md   | 10 +++++-----
+ reports/diff_sessione.md   | 10 ++++++----
  reports/handoff.md         | n/d
  reports/ripartenza_mani.md |  3 ++-
  reports/stato_progetto.md  |  4 ++--
- reports/ultimo_report.md   | 19 ++++++++++---------
+ reports/ultimo_report.md   | 25 +++++++++++++++++++------
 ```
 
-NB: base = merge-base con origin/main = ed777ef. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = baa4b8d. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f7c6047 Merge origin/main (baa4b8d, PR #299) in claude/peaceful-lovelace-0w2b7q (PR #301): solo report
+91edc28 docs(fine-task): Mani, lista completa delle riserve aperte (V-2 bot #301 su 604edcb)
 604edcb docs(fine-task): Mani, riserve ancora aperte e proposta di coordinamento nel repo (V-1/V-2 bot #301)
 251b0c2 docs(fine-task): Mani, decisioni su R-ve235-7 e tempo di rete, handoff (PR #301)
 3430de8 docs(mani): R-ve235-7 chiusa come accettata, tempo di rete 12 s confermato (decisioni dell'operatore)
@@ -62,7 +64,7 @@ Nessuna modifica a gas.py/tests/.
 - 251b0c2: run CI 40914680818 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
 - 604edcb: run CI 40915228383 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
 - 91edc28: run CI 40915687912 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
-- Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- f7c6047 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
