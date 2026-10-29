@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Note del bot su #291: il doctor confronta il valore di GAS_CLAUDE_BIN nel .env, nome nudo, collegamenti dei test (chat Motore). Secondo giro: merge di main (PR #288) dopo la V-1 della verifica esterna #292. Terzo giro: note del bot su f94c4a0 (registro del .env solo per GAS_CLAUDE_BIN). Quarto giro: V-1 bot #292 su 67c2bca (vuoto = «claude») e merge di main (PR #294).
+**Sessione:** 2026-10-28 — Note del bot su #291: il doctor confronta il valore di GAS_CLAUDE_BIN nel .env, nome nudo, collegamenti dei test (chat Motore). Secondo giro: merge di main (PR #288) dopo la V-1 della verifica esterna #292. Terzo giro: note del bot su f94c4a0 (registro del .env solo per GAS_CLAUDE_BIN). Quarto giro: V-1 bot #292 su 67c2bca (vuoto = «claude») e merge di main (PR #294). Quinto giro: merge di main con la PR #293 (altra sessione chat Motore, conflitto nel codice del doctor).
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #292 (https://github.com/Gasss23/Gas/pull/292): già autorizzato dall'operatore il 2026-10-29 («sistema anche questa e poi mergia»), dopo CI verde e bot senza finding ALTA/MEDIA sul nuovo head. Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
+1. Merge della PR #292 (https://github.com/Gasss23/Gas/pull/292): già autorizzato dall'operatore il 2026-10-29 («sistema anche questa e poi mergia»), dopo CI verde e bot senza finding ALTA/MEDIA sul nuovo head. Numero e URL dalla risposta JSON di `mcp__github__create_pull_request`. Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
 
 ---
 
@@ -20,19 +20,20 @@
 - **Fetta 6 — note del bot su a0872d2 (BOCCIATO per il conflitto) e su f94c4a0 (check rosso)**: `FATTA` — `_DOTENV_VALORI_DA_TENERE`, T99s rimette il registro, BOCCIATO registrato nei report; review #548 APPROVATO CON RISERVE.
 - **Fetta 7 — V-1 bot #292 su 67c2bca + R-545-1 + R-548-1**: `FATTA` — vuoto e «claude» uguali nel confronto col `.env`; review #549 APPROVATO.
 - **Fetta 8 — merge di main (PR #294)**: `FATTA` — review #550 APPROVATO.
+- **Fetta 9 — merge di main con la PR #293 (conflitto in gas.py e nei test)**: `FATTA` — tenuti i due registri del `.env`, rimessa `_DOTENV_CARICATE.update` persa dal merge automatico; review #551 APPROVATO CON RISERVE.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 +++++++++++
- gas.py                             |  36 ++++++++++++++++++++++++++----------
- reports/diff_sessione.md           |  19 +++++++++++--------
+ .claude/agents/memoria_revisore.md |  12 ++++++++++
+ gas.py                             |  35 +++++++++++++++++++++++------
+ reports/diff_sessione.md           |  19 ++++++++++------
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  48 +++++++++++++++++-------------------------------
- tests/test_unit_dotenv.py          |  33 +++++++++++++++++++++++++++------
- tests/test_unit_kernel.py          |  54 ++++++++++++++++++++++++++++++++++++++----------------
+ reports/ultimo_report.md           |  34 +++++++++++++++-------------
+ tests/test_unit_dotenv.py          |  33 +++++++++++++++++++++++++--
+ tests/test_unit_kernel.py          |  54 ++++++++++++++++++++++++++++++--------------
  reports/handoff.md                 | n/d (commit finale)
 ```
 
@@ -41,6 +42,8 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4cf9d4c Merge origin/main (PR #293) in fix/note-forte-doctor-2 (PR #292): tenuti i due registri del .env — review #551 APPROVATO CON RISERVE
+bd6336c docs(fine-task): PR #292 quarto giro — vuoto = «claude», merge di main (PR #294), review #549/#550
 b9c1dcd Merge origin/main (PR #294) in fix/note-forte-doctor-2 (PR #292) — review #550 APPROVATO
 d03936c fix(forte): vuoto e «claude» sono lo stesso comando nel confronto col .env (V-1 bot #292, R-545-1); commento R-544-2 al posto giusto (R-548-1)
 ab985e5 chore(revisore): memoria review #549 — APPROVATO
@@ -320,6 +323,35 @@ Review #550 (chat Motore). Ho controllato il merge in corso di origin/main 03dc8
 
 La riga contatore #550 è in memoria (/home/user/Gas/.claude/agents/memoria_revisore.md). Come chiesto, non ho lanciato `commit_memoria_revisore.sh`.
 
+### Review #551 (chat Motore) — sul merge di origin/main (PR #293) in 4cf9d4c
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #551 (chat Motore). Oggetto: il merge di origin/main a418887 (PR #293) dentro fix/note-forte-doctor-2 (PR #292, HEAD bd6336c). I file sono già unificati e il merge non è ancora committato.
+
+Ho letto prima CLAUDE.md (sez. 5, 8, 9 e 10), poi `reports/stato_progetto.md` (righe 589 e 634-635) e infine la mia memoria (#543–#550 delle due chat Motore). Ho confrontato il diff staged con tutti e due i genitori del merge.
+
+**Elementi del diff esaminati**
+
+- `gas.py:592` e `gas.py:595`: tornano `_DOTENV_CARICATE` e `_DOTENV_SCAVALCATE` di main. Il commento ora dice che servono solo per GAS_CLAUDE_CLI. Ho cercato se qualche logica di uno dei due rami andasse persa. Verso HEAD il diff di gas.py contiene solo le aggiunte di main, verso main solo quelle del ramo, quindi nessuna riga persa da nessuna parte. Esito: ok.
+- `gas.py:647-653`: nel loader, per le chiavi in lista bianca, viene prima il `setdefault` del registro dei valori, poi il blocco shell/.env di main (valore diverso → SCAVALCATE, valore uguale → CARICATE, poi `continue`). Ho controllato che la precedenza e il valore di ritorno non cambino. Il `continue` resta dopo tutte e due le scritture, `caricate` è invariato e la lista bianca limita ancora il registro dei valori a GAS_CLAUDE_BIN. Esito: ok.
+- `gas.py:657`: `_DOTENV_CARICATE.update(caricate)` ripristinata a mano. Il merge automatico l'aveva persa senza segnalare conflitto, perché il ramo l'aveva tolta e main la usava. Ho provato un mutante (`pass` al posto della riga): pytest dà 2 failed (`test_nomi_caricati_…` e `test_valori_scavalcati_…`). Poi ho rimesso gas.py com'è nell'index e il diff è vuoto. Esito: ok.
+- `gas.py:5034` e `gas.py:5040` (WARN su GAS_CLAUDE_CLI da main) e `gas.py:5051` (`_DOTENV_NEL_FILE.get("GAS_CLAUDE_BIN")` del ramo, al posto di `"GAS_CLAUDE_BIN" in _DOTENV_CARICATE`). Ho verificato che non ci sia un falso OK nuovo e che i due registri siano coerenti. Sono gli unici lettori in tutto il repo (controllato con grep). I due registri non si sovrappongono: CARICATE e SCAVALCATE servono solo per CLI, NEL_FILE solo per BIN. Con lo stesso BIN nella shell e nel `.env`, il confronto di valori dà None, come vuole V-1 bot #293. Esito: ok.
+- `tests/test_unit_kernel.py:11206-11260` (T99s/T99t del ramo) e `tests/test_unit_kernel.py:11233-11260` (T99w/T99x di main): ho guardato se lo stato globale resta sporco fra un test e l'altro. Ogni blocco rimette a posto il proprio registro nel `finally`. Esito: ok.
+- `tests/test_unit_dotenv.py:155-176`: ci sono tutti e due i test di main e i tre del ramo. Esito: riserva cosmetica (R-551-1).
+
+**Prove che ho rilanciato io**: kernel 1059 PASS 0 FAIL (T99s, T99t, T99w e T99x PASS); `tests/test_unit_dotenv.py` 15 passed. Nessun marcatore di conflitto nei 5 file. In memoria e in stato_progetto nessuna riga persa da nessuno dei due genitori: le uniche righe diverse sono la 4 e la 589, unite di proposito, e contengono le voci di entrambe le chat.
+
+**Riserve**
+- R-551-1 COSMETICA: in `tests/test_unit_dotenv.py:155` c'è una sola riga vuota prima del `def test_nomi_caricati_…`, PEP 8 ne vuole due. Viene dalla giunzione del merge.
+
+**Cosa non ho verificato**
+- Non ho guardato `reports/handoff.md`, `ultimo_report.md` e `diff_sessione.md` riga per riga: sono log di sessione del ramo, fuori dal codice, e il merge li prende dal ramo per scelta dichiarata.
+- Non ho verificato il comportamento reale del doctor sul Mac con `.env` e shell veri: in questo ambiente non si può riprodurre, l'ho provato solo coi registri messi a mano nei test.
+- Non ho rilanciato il pytest completo: ho fatto solo dotenv e kernel.
+
+Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #551, con la lezione: quando un ramo toglie una riga che l'altro usa, il merge automatico la perde senza conflitto. Bisogna confrontare il diff con tutti e due i genitori. Come richiesto non ho lanciato `commit_memoria_revisore.sh`, perché il merge è in corso.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Kernel: 1057 → 1057 PASS (nessun check nuovo, più casi dentro T99s e T99t). Conteggi del container locale (la CI ne conta di più).
@@ -334,7 +366,7 @@ Dopo il merge di main (77be957): kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; 
 
 Dopo 7bf0071: kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; `python3 -m pytest -q tests/test_unit_dotenv.py tests/test_unit_claude_cli.py` → `42 passed in 0.92s`.
 
-Dopo d03936c: kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; pytest dotenv + claude_cli `42 passed in 8.47s`. Dopo il merge di main (b9c1dcd): kernel 1057 PASS, 0 FAIL; `python3 -m pytest -q tests/test_unit_dotenv.py tests/test_unit_web_lexbor.py` → `35 passed, 103 skipped in 0.97s`.
+Dopo d03936c: kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; pytest dotenv + claude_cli `42 passed in 8.47s`. Dopo il merge di main (b9c1dcd): kernel 1057 PASS, 0 FAIL; `python3 -m pytest -q tests/test_unit_dotenv.py tests/test_unit_web_lexbor.py` → `35 passed, 103 skipped in 0.97s`. Dopo il merge con la PR #293 (4cf9d4c): kernel `=== RIEPILOGO: 1059 PASS, 0 FAIL ===` (T99w e T99x arrivano da main); `python3 -m pytest -q tests` → `2289 passed, 104 skipped in 201.64s (0:03:21)`.
 
 ## §6 STATO CI
 
@@ -349,13 +381,14 @@ Mappatura commit→run:
 - 68efe8c → nessuna run su questo SHA (pushato insieme a 7bf0071).
 - 7bf0071 → nessuna run su questo SHA (pushato insieme a 67c2bca).
 - 67c2bca → CI completata senza fallimenti (notifica check_suite.completed delle 23:51), verifica-bot success (APPROVATO CON RISERVE, V-1 BASSA chiusa in d03936c).
-- ab985e5, d03936c, b9c1dcd → nessuna run su questi SHA (pushati insieme al commit di fine-task).
-- commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
+- ab985e5, d03936c, b9c1dcd → nessuna run su questi SHA (pushati insieme a bd6336c).
+- bd6336c → unit-suite, handoff-check, verifica-bot success (APPROVATO CON RISERVE, una COSMETICA sul §7); il merge è fallito per il conflitto con la PR #293.
+- 4cf9d4c → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
 - commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-545-1** (COSMETICA, review #545): con `GAS_CLAUDE_BIN=` vuoto nel `.env` e un percorso nella shell, il WARN dice «userà quello» ma il timer cerca `claude`.
+- **R-545-1** (COSMETICA, review #545): CHIUSA in d03936c.
 - **R-540-3** (BASSA, review #540, già aperta): su Linux il venv conta come visto dal timer senza un'unità systemd che lo attivi.
 - **Verifica esterna #292** ([commento](https://github.com/Gasss23/Gas/pull/292#issuecomment-6483546190)): V-1 MEDIA conflitto con main CHIUSA da 77be957 (review #547); V-2 = R-545-1; **V-3** BASSA `_DOTENV_NEL_FILE` globale con `setdefault`: un secondo `_carica_dotenv` nello stesso processo terrebbe il valore vecchio (oggi una sola chiamata).
 - **R-547-1** (COSMETICA, review #547): numeri di review #543–#546 doppi fra chat Mani e chat Motore.
@@ -363,4 +396,6 @@ Mappatura commit→run:
 - **R-548-1** (COSMETICA, review #548): CHIUSA in d03936c.
 - **Bot #292 su 67c2bca**: APPROVATO CON RISERVE; V-1 BASSA (vuoto e «claude») CHIUSA in d03936c insieme a R-545-1; V-2 COSMETICA (conteggi nella descrizione della PR) corretta nella descrizione.
 - **R-550-1** (COSMETICA, review #550): solo procedura (memoria rimessa in stage prima del commit di merge), fatto.
-- Restano aperte: V-3 ve #292 BASSA, R-540-3 BASSA, R-547-1 COSMETICA.
+- **Bot #292 su bd6336c**: APPROVATO CON RISERVE; V-1 COSMETICA (R-545-1 elencata ancora aperta in una riga di questo §7 e riga doppia nel §6): corretta qui, R-545-1 è CHIUSA in d03936c.
+- **R-551-1** (COSMETICA, review #551): una riga vuota in meno prima di un test in tests/test_unit_dotenv.py.
+- Restano aperte: V-3 ve #292 BASSA, R-540-3 BASSA, R-547-1 COSMETICA, R-551-1 COSMETICA.

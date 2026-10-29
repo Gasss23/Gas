@@ -16,7 +16,9 @@
 - **Fetta 6 — bot #292 (BOCCIATO su a0872d2 per il conflitto, check rosso su f94c4a0)**: FATTA. Registro del `.env` solo per `GAS_CLAUDE_BIN` (`_DOTENV_VALORI_DA_TENERE`, V-4 bot / V-2 ve #292), T99s rimette il registro (V-3), BOCCIATO registrato nei report (V-1); review #548 APPROVATO CON RISERVE; kernel 1057 PASS, pytest dotenv + claude_cli 42 passed.
 - **Fetta 7 — V-1 bot #292 su 67c2bca + R-545-1 + R-548-1**: FATTA. Vuoto e «claude» sono lo stesso comando nel confronto col `.env`; il messaggio dice il comando che userà il timer; review #549 APPROVATO.
 - **Fetta 8 — merge di main (PR #294, chat Mani)**: FATTA. Conflitti solo nei report e nella memoria; review #550 APPROVATO; kernel 1057 PASS, pytest dotenv + web_lexbor 35 passed.
-- Aperte: V-3 ve #292 BASSA (secondo caricamento), R-540-3 BASSA (VPS), R-547-1 COSMETICA.
+- **Fetta 9 — merge di main con la PR #293 (altra sessione chat Motore, conflitto anche nel codice)**: FATTA. Tenuti i due registri del `.env`, rimessa la riga persa dal merge automatico; review #551 APPROVATO CON RISERVE; kernel 1059 PASS, pytest completo 2289 passed, 104 skipped.
+- Aperte: V-3 ve #292 BASSA (secondo caricamento), R-540-3 BASSA (VPS), R-547-1 COSMETICA, R-551-1 COSMETICA.
+- Anomalia: due sessioni chat Motore hanno lavorato in parallelo sulla stessa fetta del doctor (PR #290/#293 e PR #291/#292), con numeri di review doppi (#543–#550).
 
 ## Anomalie
 - La review #544 è stata fatta due volte (il primo revisore è rimasto fermo per ore e ne è stato lanciato un secondo): due righe #544 nella memoria, stessi finding.
