@@ -409,13 +409,15 @@ def test_forte_dalla_voce(monkeypatch):
     ("«Forte» analizza", ("forte", "analizza")),
     ("FORTE\nanalizza", ("forte", "analizza")),
     ("/forte analizza", ("forte", "analizza")),
+    ("Ehi Gas, forte: analizza", ("forte", "analizza")),       # V-2 ve #304
+    ("Ok Gas forte analizza", ("forte", "analizza")),
 ])
 def test_v1_parola_forte_parlata(monkeypatch, parlato, atteso):
     monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
     assert cervello_voce(parlato, parlato=True) == atteso
 
 
-@pytest.mark.parametrize("parlato", ["forte", "Forte.", "Gas forte", "Gas, forte!", "forte …", "/forte"])
+@pytest.mark.parametrize("parlato", ["", "   ", "forte", "Forte.", "Gas forte", "Gas, forte!", "forte …", "/forte"])
 def test_v1_parola_forte_senza_richiesta_e_uso(monkeypatch, parlato):
     """Fail-closed: prefisso senza richiesta → «uso», mai un turno ai gratuiti."""
     monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
@@ -429,6 +431,8 @@ def test_v1_parola_forte_senza_richiesta_e_uso(monkeypatch, parlato):
     "Gas, parla più forte",
     "Gasforte analizza",
     "Ciao Gas",
+    "Ok, forte questo film",          # saluto senza «Gas»: resta normale
+    "Gas e forte analizza",           # limite dichiarato
 ])
 def test_v1_falsi_positivi_restano_normali(monkeypatch, parlato):
     monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
@@ -441,7 +445,7 @@ def test_v1_parola_forte_solo_nel_parlato(monkeypatch):
     assert cervello_voce("forte analizza", parlato=False) == (None, "forte analizza")
 
 
-@pytest.mark.parametrize("valore,acceso", [("1", True), ("true", True), (" SI ", True),
+@pytest.mark.parametrize("valore,acceso", [("1", True), ("true", True), (" SI ", True), ("sì", True),
                                            ("0", False), ("", False), ("no", False)])
 def test_v1_gas_voce_forte(monkeypatch, valore, acceso):
     """GAS_VOCE_FORTE acceso: tutto al forte, testo e parlato; «uso» resta «uso»."""
@@ -491,3 +495,55 @@ def test_v1_server_forte_fermo_errore_dichiarato(monkeypatch):
         server.shutdown()
     assert st == 500 and "Cervello forte fermo" in body["error"]
     assert visti == [{"cervello": "forte"}]
+
+
+def test_v1_run_server_carica_il_dotenv(monkeypatch, capsys):
+    """V-1 bot #304: il server voce carica il .env (come la CLI) PRIMA di leggere la
+    configurazione: GAS_VOICE_TOKEN dal .env lo fa partire, GAS_VOCE_FORTE si vede a schermo."""
+    import gas
+    import modules.voice.server as srv
+    monkeypatch.delenv("GAS_VOICE_TOKEN", raising=False)
+    monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
+    monkeypatch.setenv("GAS_VOICE_PORT", "0")
+
+    def _finto_dotenv():
+        os.environ["GAS_VOICE_TOKEN"] = "tok-dal-dotenv-123"
+        os.environ["GAS_VOCE_FORTE"] = "1"
+        return ["GAS_VOICE_TOKEN", "GAS_VOCE_FORTE"]
+
+    class _FintoServer:
+        def __init__(self, *a):
+            pass
+
+        def serve_forever(self):
+            raise KeyboardInterrupt
+
+        def server_close(self):
+            pass
+
+    monkeypatch.setattr(gas, "_carica_dotenv", _finto_dotenv)
+    monkeypatch.setattr(gas, "GasKernel", lambda root_dir: object())
+    monkeypatch.setattr(srv, "HTTPServer", _FintoServer)
+    # R-565-1-M2: run_server scrive kernel e token sulla classe base: ripristinati a fine test
+    monkeypatch.setattr(srv.VoiceHandler, "kernel", None)
+    monkeypatch.setattr(srv.VoiceHandler, "token", "")
+    try:
+        assert run_server() == 0
+        out = capsys.readouterr().out
+        assert "in ascolto" in out and "GAS_VOCE_FORTE acceso" in out
+    finally:
+        os.environ.pop("GAS_VOICE_TOKEN", None)
+        os.environ.pop("GAS_VOCE_FORTE", None)
+
+
+def test_v1_run_server_dotenv_rotto_non_crasha(monkeypatch, capsys):
+    """Fail-safe §9: un errore nel caricare il .env non fa crashare l'avvio."""
+    import gas
+    monkeypatch.delenv("GAS_VOICE_TOKEN", raising=False)
+
+    def _rotto():
+        raise OSError("disco")
+
+    monkeypatch.setattr(gas, "_carica_dotenv", _rotto)
+    assert run_server(root_dir="/tmp") == 1
+    assert "GAS_VOICE_TOKEN" in capsys.readouterr().out
