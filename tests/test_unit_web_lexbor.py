@@ -73,12 +73,21 @@ def test_spento_per_default(monkeypatch):
     ("<select><option label=W5>W4</select>", ("W5",), ("W4",)),
     # il testo dell'opzione passa dalla stessa visita: niente script né elementi nascosti dentro
     ("<select><option>W1<script>W2</script><span hidden>W3</span></select>", ("W1",), ("W2", "W3")),
-    ("<select><div hidden><option selected>W1</option></div><option>W2</select>", ("W2",), ("W1",)),
-    # opzioni dentro contenitori nascosti fra il select e l'opzione (R-527-1)
+    # opzioni dentro contenitori fra il select e l'opzione: fuori dalla «list of options» quelle
+    # dentro datalist e quelle non HTML (in svg); object e canvas ci restano e la tendina mostra
+    # la scelta (R-527-1, R-ve277-3, R-548-2)
     ("<select><datalist><option selected>W1</datalist><option>W2</select>", ("W2",), ("W1",)),
     ("<select><svg><option selected>W1</svg><option>W2</select>", ("W2",), ("W1",)),
-    ("<select><object><option selected>W1</object><option>W2</select>", ("W2",), ("W1",)),
-    ("<select><canvas><option selected>W1</canvas><option>W2</select>", ("W2",), ("W1",)),
+    # un'opzione HTML dentro foreignObject è nella lista, anche sotto un datalist di svg, che non è
+    # il datalist HTML (B-547-1, R-548-1)
+    ("<select><svg><foreignObject><option selected>W1</option></foreignObject></svg><option>W2</select>",
+     ("W1",), ("W2",)),
+    ("<select><svg><datalist><foreignObject><option selected>W1</option></foreignObject></datalist></svg>"
+     "<option>W2</select>", ("W1",), ("W2",)),
+    ("<select><object><option selected>W1</object><option>W2</select>", ("W1",), ("W2",)),
+    ("<select><canvas><option selected>W1</canvas><option>W2</select>", ("W1",), ("W2",)),
+    ("<select multiple><object><option>W1</object><canvas><option>W2</canvas><option>W3</select>",
+     ("W3",), ("W1", "W2")),
     ("<select><!--W1--><div><!--W2--><option>W3</option></div></select>", ("W3",), ("W1", "W2")),
     # hidden e disabled sull'opzione, come il browser (R-527-1, R-527-3): nella lista aperta le
     # nascoste non si vedono; nella tendina si vede la scelta anche se nascosta (segnaposto),
@@ -99,6 +108,29 @@ def test_spento_per_default(monkeypatch):
     ("<select size=21474836470><option>W1<option>W2</select>", ("W1",), ("W2",)),
     ("<select size=2147483647><option>W1<option>W2</select>", ("W1", "W2"), ()),
     ("<select size=2147483648><option>W1<option>W2</select>", ("W1",), ("W2",)),
+    # la scelta della tendina sulla «list of options» dello standard: conta anche l'opzione in un
+    # sotto-albero nascosto, l'optgroup disabled più vicino la disabilita (R-ve277-3, R-529-1)
+    ("<select><div hidden><option selected>W1</option></div><option>W2</select>", ("W1",), ("W2",)),
+    ("<select><optgroup disabled><div><option>W1</div></optgroup><option>W2</select>", ("W2",), ("W1",)),
+    ("<select multiple><div hidden><option>W1</div><option>W2</select>", ("W2",), ("W1",)),
+    # un optgroup dentro un altro non dà opzioni
+    ("<select><optgroup><div><optgroup><option>W1</optgroup></div></optgroup><option>W2</select>", ("W2",), ("W1",)),
+    # un title HTML dentro foreignObject o mi vale come titolo; quello di svg no (R-520-4)
+    ("<svg><foreignObject><title>W1</title></foreignObject></svg><title>W2</title><p>W0</p>",
+     ("W0", "Titolo: W1"), ("W2",)),
+    ("<math><mi><title>W1</title></mi></math><p>W0</p>", ("W0", "Titolo: W1"), ()),
+    ("<math><annotation-xml><title>W1</title></annotation-xml></math><math><annotation-xml encoding=TEXT/html>"
+     "<title>W2</title></annotation-xml></math><p>W0</p>", ("W0", "Titolo: W2"), ("W1",)),
+    # il punto d'integrazione vale solo nel suo namespace: desc in math, mi in svg, math dentro
+    # svg, svg dentro mrow non riportano a HTML (B-547-1)
+    ("<math><desc><title>W1</title></desc></math><svg><mi><title>W2</title></mi></svg><svg><math><mi><title>W3"
+     "</title></mi></math></svg><math><mrow><svg><foreignObject><title>W4</title></foreignObject></svg></mrow>"
+     "</math><title>W5</title><p>W0</p>", ("W0", "Titolo: W5"), ("W1", "W2", "W3", "W4")),
+    # svg dentro mi è svg (R-548-1)
+    ("<math><mi><svg><title>W1</title></svg></mi></math><title>W2</title><p>W0</p>", ("W0", "Titolo: W2"), ("W1",)),
+    # mglyph dentro mi resta math; svg dentro annotation-xml è svg, col suo foreignObject
+    ("<math><mi><mglyph><title>W1</title></mglyph></mi></math><math><annotation-xml><svg><foreignObject>"
+     "<title>W2</title></foreignObject></svg></annotation-xml></math><p>W0</p>", ("W0", "Titolo: W2"), ("W1",)),
     ("<select multiple><option>W1<optgroup><option>W2</optgroup></select><select size=3><option>W3"
      "<option>W4</select><select size=x><option>W5<option>W6</select>", ("W1", "W2", "W3", "W4", "W5"), ("W6",)),
     # shadow DOM dichiarativo come il browser (scelta 3 dell'operatore, 2026-10-28): si vede lo
@@ -144,6 +176,14 @@ def test_lettura_come_il_browser(acceso, pagina, visibili, nascosti):
     ("<svg><x-a><template shadowrootmode=open>S</template>L</x-a></svg><p>P</p>", "SLP"),
     # uno slot dentro svg non è uno slot; i nomi riservati non sono host (R-539-2)
     ("<div><template shadowrootmode=open><svg><slot></slot></svg><slot>Q</slot></template>L</div>", "L"),
+    # uno slot in mi dentro svg resta svg: non prende il nome (B-547-1)
+    ("<div><template shadowrootmode=open><svg><mi><slot></slot></mi></svg><slot>Q</slot></template>L</div>", "L"),
+    # in foreignObject lo slot torna HTML e prende il nome (R-540-1)
+    ("<div><template shadowrootmode=open><svg><foreignObject><slot></slot></foreignObject></svg><slot>Q</slot>"
+     "</template>L</div>", "LQ"),
+    # option dentro option (lexbor e lo standard le annidano): la seconda non è nella lista, si
+    # legge la prima col suo testo intero (R-528-3)
+    ("<select><option>A<div><option selected>B</select>", "\nAB\n"),
     ("<font-face><template shadowrootmode=open>S</template>L</font-face>", "L"),
     # per lo standard di oggi anche «x-a!» e «x-a:b» sono host («valid element local name» di DOM,
     # V-2 ve #288 riletta alla fonte); validi anche «.» e lettere non ASCII
@@ -157,6 +197,11 @@ def test_lettura_come_il_browser(acceso, pagina, visibili, nascosti):
     # non i figli dell'host (V-1 bot #288)
     ("<div><template shadowrootmode=open><select><option><slot>F</slot></option></select></template>L</div>",
      "\nF\n"),
+    # shadow vuoto: niente testo, nemmeno i figli dell'host (bot #288 su 759edea)
+    ("<div><template shadowrootmode=open></template>L</div>", ""),
+    # limite dichiarato: se l'adoption agency sposta il template, l'host perde lo shadow (il
+    # browser mostrerebbe «S»; V-1 bot e ve #288 su 6627250)
+    ("<b><div><template shadowrootmode=open>S</template>L</b>X</div>", "LX"),
     # nemmeno uno shadow dentro un'opzione: il suo template non è un discendente (R-544-1)
     ("<select><option><x-a><template shadowrootmode=open>S<slot></slot></template>L</x-a></option></select>",
      "\nL\n"),
@@ -263,6 +308,45 @@ def test_sonda_riuscita_non_aspetta_il_lock(acceso):
         assert lexbor.attivo()
     finally:
         lexbor._SONDA.release()
+
+
+@con_lexbor
+def test_titolo_con_molti_title_in_svg_entro_il_tempo():
+    """Il titolo si cerca scendendo una volta sola: migliaia di title in svg sotto mille g non
+    superano TEMPO_MAX (prima la risalita da ogni title era quadratica, B-547-1)."""
+    pagina = "<svg>" + "<g>" * 1000 + "<title>t</title>" * 10000 + "</svg><title>Y</title><p>x"
+    assert lexbor.testo_visibile(pagina, frozenset({"svg"}), frozenset()) == ("x", "Y")
+
+
+def test_spento_fuori_da_linux_senza_sonde(acceso, monkeypatch):
+    """Fuori da Linux la lettura con lexbor è spenta subito, senza sonde (R-ve277-4)."""
+    monkeypatch.setattr(lexbor, "_DISPONIBILE", True)
+    monkeypatch.setattr(lexbor.sys, "platform", "darwin")
+
+    def vietato(*a, **k):
+        raise AssertionError("sonda fuori da Linux")
+    monkeypatch.setattr(lexbor, "_esegui", vietato)
+    assert not lexbor.attivo() and lexbor._SONDE_FALLITE == 0
+
+
+def test_sonda_gia_fatta_da_chi_teneva_il_lock(acceso, monkeypatch):
+    """Chi prende il lock dopo una sonda riuscita di un altro non ne fa una seconda: il controllo
+    si ripete sotto il lock (R-526-1)."""
+    monkeypatch.setattr(lexbor, "_DISPONIBILE", True)
+
+    class Lock:
+        def acquire(self, blocking=True):
+            lexbor._FIGLIO_OK = True  # l'altro ha finito la sonda mentre si aspettava il lock
+            return True
+
+        def release(self):
+            pass
+    monkeypatch.setattr(lexbor, "_SONDA", Lock())
+
+    def vietato(*a, **k):
+        raise AssertionError("seconda sonda")
+    monkeypatch.setattr(lexbor, "_esegui", vietato)
+    assert lexbor.attivo()
 
 
 def test_ultima_riga_dello_stderr_pulita():
