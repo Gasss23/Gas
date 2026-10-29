@@ -1362,9 +1362,12 @@ def _taglio_xml(testo: str, completo: bool) -> int:
     della radice, «</html>CODA», due radici, «<!doctype» minuscolo, tag non chiusi bene
     (R-ve252-2, R-ve255-1). L'errore lo trova expat: le entità di HTML valgono solo coi
     DOCTYPE XHTML noti, un DTD esterno non si scarica mai e un'entità che non conosce è un
-    errore. Si taglia alla fine dell'ultimo pezzo intero (una seconda lettura senza
-    controlli), così non resta mezzo tag; senza un elemento radice prima dell'errore non
-    resta niente. Con la pagina troncata da Gas la fine non è un errore."""
+    errore, anche con un DTD esterno non letto: come Firefox (expat con le entità saltate
+    trattate come errore, qui `saltata`); Chrome (libxml2) dà solo un avviso e mostra il
+    resto (V-1 bot #296, scelta più prudente). Si taglia alla fine dell'ultimo pezzo intero
+    (una seconda lettura senza controlli), così non resta mezzo tag; senza un elemento
+    radice prima dell'errore non resta niente. Con la pagina troncata da Gas la fine non è
+    un errore."""
     if expat.version_info < (2, 4, 0):
         # Senza il freno all'amplificazione delle entità (expat 2.4) una pagina da pochi MB
         # costerebbe minuti: niente taglio, come prima (R-550-2).
@@ -1409,7 +1412,7 @@ def _taglio_xml(testo: str, completo: bool) -> int:
         return 0
     tenuto = "".join(pezzi)
     # Il BOM in testa expat non lo restituisce: si conta a parte (R-550-3).
-    bom = 1 if testo.startswith("\ufeff") and not tenuto.startswith("\ufeff") else 0
+    bom = 1 if testo.startswith(chr(0xFEFF)) and not tenuto.startswith(chr(0xFEFF)) else 0
     if not testo.startswith(tenuto, bom) or not any(p[:1] == "<" and p[1:2] not in ("!", "?", "/", "")
                                                     for p in pezzi):
         return 0

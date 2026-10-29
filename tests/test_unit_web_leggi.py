@@ -62,7 +62,7 @@ class _Gestore(BaseHTTPRequestHandler):
             corpo = (
                 "<html><head><title>Titolo &amp; prova</title><style>body{x:1}</style>"
                 "<script>alert('js')</script></head><body><h1>Ciao</h1>"
-                "<p>Primo   paragrafo​ con <b>grassetto</b>.</p><noscript>nascosto</noscript>"
+                "<p>Primo   paragrafo" + chr(0x200B) + " con <b>grassetto</b>.</p><noscript>nascosto</noscript>"
                 "<svg><text>disegno</text></svg><p>Secondo</p></body></html>"
             ).encode()
             self._rispondi(200, corpo, html)
@@ -229,7 +229,7 @@ def test_pagina_html_testo_pulito_e_marcato(rete):
     assert t.startswith(web.INIZIO_NON_FIDATO.format(codice=r["codice"]))
     assert t.endswith(web.FINE_NON_FIDATO.format(codice=r["codice"]))
     assert "Ciao" in t and "Primo paragrafo con grassetto." in t and "Secondo" in t
-    for vietato in ("alert", "body{x:1}", "nascosto", "disegno", "<p>", "​"):
+    for vietato in ("alert", "body{x:1}", "nascosto", "disegno", "<p>", chr(0x200B)):
         assert vietato not in t
     assert r["troncato"] is False
     assert rete.connessi == [(IP_PUBBLICO, 80)]
@@ -1960,6 +1960,11 @@ def _xhtml(pagina, troncato: bool = False) -> str:
 _XHTML_STRICT = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/x.dtd">'
 
 
+# Il BOM scritto come codice, non come carattere: un BOM letterale citato in un verdetto lo
+# rende ambiguo per il bot (Unicode Cf, bot #296 su 336e67c).
+_BOM = chr(0xFEFF)
+
+
 @pytest.mark.parametrize("pagina, visibili, nascosti", [
     # il browser legge l'XHTML malformato fino al primo errore XML; il resto se ne va (R-ve252-2)
     ("W1<html><p>W2</p></html>", (), ("W1", "W2")),
@@ -1981,8 +1986,8 @@ _XHTML_STRICT = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http:
     # dichiarazione d'encoding diversa, BOM, pagina che finisce senza chiudere: niente taglio
     ('<?xml version="1.0" encoding="ISO-8859-1"?><html><p>W1è</p></html>', ("W1è",), ()),
     ('<?xml version="1.0" encoding="US-ASCII"?><html><p>W1è</p></html>', ("W1è",), ()),
-    ("\ufeff<html><p>W1</p></html>", ("W1",), ()),
-    ("\ufeff<html><p>W1</p></html>W2", ("W1",), ("W2",)),  # BOM più un errore (R-550-3)
+    (_BOM + "<html><p>W1</p></html>", ("W1",), ()),
+    (_BOM + "<html><p>W1</p></html>W2", ("W1",), ("W2",)),  # BOM più un errore (R-550-3)
     # un prefisso non dichiarato è un errore di namespace (R-550-1)
     ("<r><p>W1</p><h:script>W2</h:script><p>W3</p></r>", ("W1",), ("W2", "W3")),
     # le entità di HTML che valgono «<» e «&» danno testo, mai markup (R-550-4)
@@ -2000,7 +2005,7 @@ def test_xhtml_malformato_fino_al_primo_errore(pagina, visibili, nascosti):
     ("<html><p>A</p>", '<p a="1" a="2">B</p></html>'),
     ("<html><p>A", "&ignota;B</p></html>"),
     ("<html>\r\n<p>A</p>\r\n</html>\r\n", "CODA"),  # gli spazi dopo la radice sono ammessi
-    ("\ufeff<html><p>A</p></html>", "CODA"),
+    (_BOM + "<html><p>A</p></html>", "CODA"),
 ])
 def test_xhtml_taglio_al_carattere_giusto(tenuto, resto):
     """Il taglio cade esattamente alla fine dell'ultimo pezzo intero, né prima né dopo (V-2 ve #296)."""
