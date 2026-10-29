@@ -1,48 +1,56 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-29 — Salvataggio dello stato della chat Motore 2 prima del `clear` (solo documenti)
+**Sessione:** 2026-10-29 — Mani: decisioni dell'operatore su R-ve235-7 e tempo di rete 12 s (chat Mani)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #302 (https://github.com/Gasss23/Gas/pull/302): solo documenti. Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
-2. Voce 9 della coda notte: (a) con un backup più vecchio di un `clear` vince il `clear`? (proposta: sì); (b) la fa la chat Motore 2 di giorno o il turno di notte?
+1. Merge della PR #301 (https://github.com/Gasss23/Gas/pull/301). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5072015865","url":"https://github.com/Gasss23/Gas/pull/301"}`); `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore.
+2. Prossimi argomenti della chat Mani: da scegliere.
+3. Proposta di coordinamento della chat Motore 1 (scritta in stato_progetto, blocco «Mani — fetta 26»): da confermare.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — stato della chat Motore 2 in stato_progetto**: `FATTA`.
-- **Fetta 2 — proposta per la voce 9 in coda_notte**: `FATTA` (da confermare dall'operatore).
-- **Fetta 3 — V-1 bot #302 (sigla M2 negli id)**: `FATTA`.
-- **Fetta 4 — note del bot su 55b3391 (V-1 lezioni, V-2 §3, V-3 ultimo_report) e merge di main con la PR #299**: `FATTA`.
+- **Merge della PR #300**: `FATTA` — richiesta dell'operatore («mergia 300»), merge ed777ef. Bot su 69fd75e APPROVATO CON RISERVE: V-1 COSMETICA (la correzione dei «sei casi» della verifica esterna #298 stava solo in `reports/ultimo_report.md`, non anche in stato_progetto come diceva l'handoff della #300): `FATTA` — corretta qui.
+- **R-ve235-7**: `FATTA` — chiusa come accettata (decisione dell'operatore).
+- **Tempo di rete 12 s**: `FATTA` — confermato (decisione dell'operatore).
+- **Ripartenza e stato della chat Mani**: `FATTA`.
+- **Bot su 251b0c2 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (riserve aperte non elencate): `FATTA` — in ripartenza_mani, stato_progetto e §7. V-2 COSMETICA (proposta di coordinamento fuori dal repo): `FATTA` — scritta in stato_progetto.
+- **Bot su 604edcb (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (descrizione della PR vecchia): `FATTA` — descrizione aggiornata. V-2 COSMETICA (lista delle aperte incompleta): `FATTA` — aggiunte V-1 ve/bot #288 e R-546-1.
+- **Bot su 91edc28 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA («tre riserve» in ultimo_report): `FATTA`. V-2 COSMETICA (id delle run CI scambiati per run del bot in §6): `FATTA`.
+- **Merge di main baa4b8d (PR #299, chat Motore 1) e 5d64c13 (PR #302, chat Motore 2), solo report**: `FATTA` — tenuti i miei report, riga «Ultimo aggiornamento» unita a mano.
+- **Bot su 08a8943**: APPROVATO CON RISERVE. V-1 COSMETICA (blocchi storici con R-ve235-7 ancora da decidere): `SALTATA — blocchi storici, fa fede il blocco «Mani — fetta 26»`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/coda_notte.md     |  2 +-
- reports/diff_sessione.md  |  7 ++++---
- reports/stato_progetto.md | 12 ++++++++++--
- reports/ultimo_report.md  | 17 ++++++++++-------
- reports/handoff.md        | n/d (commit finale)
+ reports/diff_sessione.md   |  9 +++++----
+ reports/handoff.md         | n/d
+ reports/ripartenza_mani.md |  3 ++-
+ reports/stato_progetto.md  |  4 ++--
+ reports/ultimo_report.md   | 31 +++++++++++++++++++++----------
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d», e la riga di totale è tolta. Conteggi presi con i report già in stage.
+NB: base = merge-base con origin/main = 5d64c13. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-87912ef Merge origin/main (PR #299) in docs/m2-salvataggio-voce9 (PR #302): solo report; note del bot su 55b3391
-55b3391 docs(fine-task): PR #302 secondo giro — V-1 bot #302
-d1db968 docs(stato): sigla M2 negli id delle riserve aperte della chat Motore 2 (V-1 bot #302)
-6c3352a docs(fine-task): PR #302 salvataggio della chat Motore 2 prima del clear
-090c11d docs(stato): salvataggio della chat Motore 2 prima del clear — PR #287/#291/#292, giro del 29, accesso al Mac, regole fra le chat, proposta voce 9
+d7fdd25 Merge origin/main (5d64c13, PR #302) in claude/peaceful-lovelace-0w2b7q (PR #301): solo report
+08a8943 docs(fine-task): PR #301 dopo il merge di main (#299) e le note del bot su 91edc28
+f7c6047 Merge origin/main (baa4b8d, PR #299) in claude/peaceful-lovelace-0w2b7q (PR #301): solo report
+91edc28 docs(fine-task): Mani, lista completa delle riserve aperte (V-2 bot #301 su 604edcb)
+604edcb docs(fine-task): Mani, riserve ancora aperte e proposta di coordinamento nel repo (V-1/V-2 bot #301)
+251b0c2 docs(fine-task): Mani, decisioni su R-ve235-7 e tempo di rete, handoff (PR #301)
+3430de8 docs(mani): R-ve235-7 chiusa come accettata, tempo di rete 12 s confermato (decisioni dell'operatore)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -54,20 +62,24 @@ Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-`gh` nel container non è autenticato.
-
-Mappatura commit→run:
-- 090c11d → CI completata (notifica check_suite.completed delle 16:50).
-- 6c3352a → handoff-check success, verifica-bot success (APPROVATO CON RISERVE, V-1 BASSA chiusa nel commit dopo).
-- d1db968 → nessuna run su questo SHA (pushato insieme a 55b3391).
-- 55b3391 → unit-suite, handoff-check, verifica-bot success (APPROVATO CON RISERVE: V-1 BASSA, V-2/V-3 COSMETICHE chiuse in 87912ef).
-- 87912ef (merge di main con la PR #299) → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
-- commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
+- 3430de8: pushato prima dell'apertura della PR #301; nessuna run su questo SHA come PR.
+- 251b0c2: run CI 40914680818 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
+- 604edcb: run CI 40915228383 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
+- 91edc28: run CI 40915687912 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
+- f7c6047: nessuna run (pushato con 08a8943).
+- 08a8943: run CI 40916582010 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1 cosmetica saltata, vedi §1).
+- d7fdd25 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
-- **V-1 bot #302** (BASSA): id R-551-1 ambiguo fra le chat nel blocco M2: CHIUSA con la sigla «(M2)» negli id del punto 4.
-
-- **Bot #302 su 55b3391**: V-1 BASSA (lezioni in attesa contraddittorie nello stato), V-2 COSMETICA (§3 senza 6c3352a), V-3 COSMETICA (fetta 3 assente da ultimo_report): CHIUSE in 87912ef.
-
-Nessun'altra nuova. Quelle aperte della linea M2 sono elencate in `reports/stato_progetto.md` (RIPARTENZA chat Motore 2, punto 4).
+- R-518-1 (chat Mani) BASSA: guardia `_nascosti_html` nelle chiusure in scope; per canvas fa perdere testo che il browser mostra (da decidere con l'oracolo).
+- R-516-1 (chat Mani) BASSA: titolo perso sulle pagine a frame (verso sicuro).
+- R-ve277-5 BASSA PREESISTENTE, parte leggi.py: con la lettura di sempre escono riserva di video/audio, testo di meter/progress, figli «light» di un host shadow.
+- V-1 ve/bot #288 BASSA: adoption agency che sposta il template dichiarativo (dichiarata in `shadow()`).
+- Ripartenza b): dopo l'accensione di lexbor, controllare che in CI i test lexbor non siano più saltati.
+- V-2 BASSA della verifica esterna #296 su 336e67c (https://github.com/Gasss23/Gas/pull/296#issuecomment-6485248441), scelta: entità non dichiarata con DOCTYPE esterno non XHTML, Gas taglia come Firefox.
+- V-3 BASSA della verifica esterna #296 su 06bc98e (https://github.com/Gasss23/Gas/pull/296#issuecomment-6498712956), scelta: entità HTML5 fuori dal DTD XHTML 1.0 accettate, come whatwg.
+- R-ve280-1 BASSA: i test lexbor con selectolax non girano nei check required. Chat Motore.
+- R-546-1 BASSA: numeri delle review doppi tra le chat.
+- Chat Motore: libexpat ≥ 2.4 sul VPS e controllo nel doctor; `scripts/bot_esito.py` boccia i verdetti del bot con caratteri Cf scritti dal bot stesso.
