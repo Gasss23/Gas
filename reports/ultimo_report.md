@@ -11,11 +11,14 @@
   - Nella review pubblica ogni invisibile si vede come «<U+XXXX>».
   - Le credenziali spezzate da un invisibile non si pubblicano.
   - Review #569 (chat Mani) APPROVATO CON RISERVE (R-569-1 BASSA nuova: un controllo bidi non bloccava più; R-569-2 BASSA preesistente: gli invisibili non Cf passavano), tutte e due chiuse nel diff; review #570 APPROVATO.
+- **Bot su e4559ef (PR #305)**: NO, check verifica-bot failure. V-1 MEDIA (togliere un invisibile tra due parole le incollava e la gravità non si vedeva: regressione del mio 57e927d, riprodotta): FATTA in 95249a8 — un invisibile attaccato a una parola di gravità dà NO. V-2 BASSA (le categorie del gate non c'erano): FATTA. V-3 COSMETICA (tetto prima dell'escape): FATTA.
+- **Verifica esterna su e4559ef (https://github.com/Gasss23/Gas/pull/305#issuecomment-6506076785)**: BOCCIATO. V-1 MEDIA (la stessa del bot, con «ALTA<U+2800>x»): FATTA in 95249a8. V-2 BASSA («più severo di prima» non è vero per un Cf lontano dalle gravità): FATTA — descrizione corretta, il comportamento è voluto. V-3 BASSA (il mutante «senza escape» dipende da come si muta): SALTATA — solo un'osservazione sul numero. V-4 COSMETICA: FATTA con la V-3 del bot.
+- **Review #571 (chat Mani)**: BOCCIATO — due letture fisse (invisibili tolti / come spazio) non coprivano due invisibili insieme, e togliere più categorie incollava nuovi separatori. **Review #572**: APPROVATO CON RISERVE con R-572-1 e R-572-2, BASSE preesistenti (vedi stato_progetto).
 - **(b) libexpat ≥ 2.4 nel doctor (gas.py)**: DEFERITA — resta a M1 finché il suo ponte voce non è mergiato.
 
 ## Prove
-- `tests/test_unit_verifica_bot.py`: 342 passed.
-- Mutanti, tutti presi: senza lo strip in decidi 10 failed; senza l'escape nel corpo 2; senza lo strip in contiene_segreti 3; senza il blocco bidi 4; senza gli intervalli non Cf 6.
+- `tests/test_unit_verifica_bot.py`: 474 passed; suite completa 2639 passed, 2 skipped.
+- Mutanti, tutti presi: senza il controllo «invisibili su gravità» 136 failed; con i soli tagli interni 14; senza le categorie del gate 3; e quelli di 57e927d (senza lo strip in decidi 10; senza l'escape 2; senza lo strip in contiene_segreti 3; senza il blocco bidi 4; senza gli intervalli non Cf 6).
 - Nei due file, 0 caratteri Cf scritti in chiaro.
 
 ## Anomalie
