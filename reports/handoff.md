@@ -15,6 +15,7 @@
 - **Fetta 1 — PR #290**: `FATTA` — chiusa senza merge (doppione della #291) su «ok» dell'operatore; il merge `6e19169` riporta il ramo all'albero di main.
 - **Fetta 3 — Merge di main (PR #288) e rinumerazione della review #543 → #547**: `FATTA` — V-1 MEDIA e V-2 BASSA della verifica esterna su #293; review #548 APPROVATO.
 - **Fetta 4 — V-1 bot #293, stesso valore in shell e .env**: `FATTA` — il nome conta come dal `.env` (vale anche per `GAS_CLAUDE_BIN`); review #549 APPROVATO.
+- **Fetta 5 — Merge di main (PR #294)**: `FATTA` — conflitti solo in report e memoria (numeri #547–#549 usati anche dalla chat Mani, righe distinte dalla sigla); review #550 APPROVATO.
 - **Fetta 2 — WARN su GAS_CLAUDE_CLI tra shell e .env, in tutti e due i versi**: `FATTA` — V-3 bot #290 e V-1 ve #290; `_DOTENV_SCAVALCATE` con i soli nomi.
 
 ---
@@ -22,13 +23,13 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- gas.py                             |  25 ++++++++++++++++++---
- reports/diff_sessione.md           |  17 +++++++-------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ gas.py                             |  25 ++++++++++++++++++++++---
+ reports/diff_sessione.md           |  17 ++++++++---------
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  49 +++++++++-------------------------------
- tests/test_unit_dotenv.py          |  14 ++++++++++++
- tests/test_unit_kernel.py          |  28 +++++++++++++++++++++++
+ reports/ultimo_report.md           |  42 +++++++++++++-----------------------------
+ tests/test_unit_dotenv.py          |  14 ++++++++++++++
+ tests/test_unit_kernel.py          |  28 ++++++++++++++++++++++++++++
  reports/handoff.md                 | n/d (commit finale)
 ```
 
@@ -37,6 +38,8 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+aab79b0 Merge origin/main (PR #294) in feat/merge-automatico-z1xjx2 (PR #293) — review #550 chat Motore APPROVATO
+5912bd5 docs(fine-task): PR #293 — §3 dell'handoff sulla testa
 3a5d686 docs(fine-task): verdetto #548 originale in blocco di codice, riemissione per il Gate B (PR #293)
 f28c390 docs(fine-task): PR #293 — review #548 riemesso per il Gate B, #549 (V-1 bot #293)
 28e74a6 fix(doctor): stessa variabile con lo stesso valore in shell e .env conta come dal .env (V-1 bot #293)
@@ -57,7 +60,7 @@ cceadcc fix(forte): riserve del punto 3 — WARN se GAS_CLAUDE_BIN sta solo nell
 e6604cb chore(revisore): memoria review #540 — APPROVATO CON RISERVE
 ```
 
-NB: base `d4b39ca` (main con la PR #288). I commit da `e6604cb` a `a04dd49` sono quelli della PR #290, chiusa senza merge. Il merge `6e19169` ne annulla il contenuto, perché tiene l'albero di main (`2f35bc6`): il diff della sessione rispetto a main è solo quello del §2, cioè il commit `b24bd9f` e i report. I loro verdetti (#540, #541, #542) sono nell'handoff della #290 (`a04dd49`). Il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: base `03dc898` (main con le PR #288 e #294). I commit da `e6604cb` a `a04dd49` sono quelli della PR #290, chiusa senza merge. Il merge `6e19169` ne annulla il contenuto, perché tiene l'albero di main (`2f35bc6`): il diff della sessione rispetto a main è solo quello del §2, cioè il commit `b24bd9f` e i report. I loro verdetti (#540, #541, #542) sono nell'handoff della #290 (`a04dd49`). Il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -179,6 +182,36 @@ Review #549 (chat Motore). Diff staged su feat/merge-automatico-z1xjx2 (PR #293)
 
 Riga contatore #549 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (c651c26). Il diff staged è intatto. Nessuna lezione nuova.
 
+### Review #550 (chat Motore) — sul merge di origin/main (PR #294) in aab79b0
+
+## VERDETTO: APPROVATO
+
+Ho fatto le letture obbligatorie: CLAUDE.md (sezioni 5, 8 e 10), la coda della memoria del revisore, e la parte di stato_progetto.md toccata dal merge (riga 4 e riga 589).
+
+**Elementi del diff esaminati**
+- `gas.py:627` — se una chiave del `.env` esiste già nella shell, il codice controlla se i due valori coincidono. Valore diverso: la chiave va in `_DOTENV_SCAVALCATE`. Valore uguale: va in `_DOTENV_CARICATE` (riga 632, V-1 bot #293). Rischio esaminato: che il merge abbia alterato la logica della PR. `git diff --cached HEAD -- gas.py` è vuoto, quindi il file è identico a HEAD — ok.
+- `gas.py:5012` — il doctor dà WARN se il forte è spento nella shell ma il `.env` ha un altro valore, e dà OK se è spento e basta. Rischio esaminato: che il WARN non sia più fail-safe o che ci sia una regressione. Il codice è invariato rispetto a HEAD e la logica va verso la prudenza — ok.
+- `tests/test_unit_kernel.py:11226` — il blocco V-3 bot #290 prova i 4 casi dell'interruttore (acceso solo nella shell, acceso dal `.env`, spento con `.env` diverso, spento e basta) e ripristina l'ambiente nel `finally`. Rischio esaminato: test perso nel merge. Il file è identico a HEAD. Suite kernel eseguita: **1063 PASS, 0 FAIL** — ok.
+- `tests/test_unit_dotenv.py:136` — il test `test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate` è presente e il file è identico a HEAD. Con pytest: 34 passati, 103 saltati (insieme a test_unit_web_lexbor) — ok.
+- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» unita a mano. Lo script dice che la riga di main è un suffisso intero della riga unita (True). Anche la parte «prima: …» di HEAD è un suffisso della riga di main (True), quindi nessuna voce si perde. In testa c'è la voce del ramo (chat Motore) — ok.
+- `reports/stato_progetto.md:589` — è l'unica altra riga diversa da main. Main la ha uguale alla base d4b39ca, il ramo la estende (PR #290 e #293). Git ha preso correttamente la versione del ramo, che è più ricca: non è una perdita — ok.
+- `.claude/agents/memoria_revisore.md` — rispetto a HEAD il diff ha solo righe aggiunte: le righe #547–#549 della chat Mani e la lezione sul namespace del 2026-10-28. Il confronto riga per riga (`comm`) non trova righe mancanti né rispetto a HEAD né rispetto a origin/main. Le righe #547–#549 della chat Motore sono in fondo, con il testo invariato — ok. Le numerazioni doppie restano distinte grazie alla sigla della chat, come già nel caso R-539-1.
+
+**Identità dei file**
+- Uguali a origin/main 03dc898 (`git diff --cached origin/main` vuoto): `modules/web/lexbor.py`, `tests/test_unit_web_lexbor.py`, `reports/ripartenza_mani.md`.
+- Uguali a HEAD 5912bd5: `gas.py`, `tests/test_unit_kernel.py`, `tests/test_unit_dotenv.py`.
+- Uguali a HEAD, quindi versione del ramo: `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md` (non compaiono tra i file in staging).
+- Nessun marcatore di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`) nei file uniti. `git diff --cached --check HEAD` è pulito.
+
+**Rischio escluso**
+- I test di lexbor sono quasi tutti saltati in questo ambiente, probabilmente perché manca il binding lexbor. Il comportamento di `modules/web/lexbor.py` non l'ho verificato con un'esecuzione; mi fido del fatto che il file è identico a origin/main, già revisionato dalla chat Mani (#547–#549). Il file non è nel diff di sessione.
+- Non ho verificato il comportamento sul Mac o sul timer notturno: non si riproduce in questo ambiente.
+
+**Memoria del revisore**
+- Ho scritto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga `#550 (chat Motore) — 2026-10-29 — APPROVATO — …`.
+- `scripts/commit_memoria_revisore.sh` è fallito, come previsto durante un merge: «fatal: cannot do a partial commit during a merge». L'ha scritto come warning in gas_debug.log e ha chiuso con exit 0.
+- La riga c'è nel file ma **non è in staging**. Prima di chiudere il merge devi lanciare `git add .claude/agents/memoria_revisore.md`. Di conseguenza lo SHA del diff staged cambia: rigenera il marcatore con `bash scripts/segna_review_ok.sh` dopo l'add.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Suite kernel: 1061 → 1063 PASS (T99w, T99x nuovi), 0 FAIL. Il valore di main è misurato in un worktree a `2f35bc6`; il merge di main (PR #288) non tocca il kernel.
@@ -197,6 +230,8 @@ Mappatura commit→run:
 - `6e19169`, `5a1c9e7`: nessuna run su questi SHA (pushati insieme a `b24bd9f`).
 - `b24bd9f`: pushato prima dell'apertura della PR #293; la run del push non l'ho letta.
 - `6b23e1b`: `handoff-check` success; `unit-suite` e `verifica-bot` in corso alla lettura della verifica esterna, poi superati dal merge (conflitto con main).
+- `5912bd5`: `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE: V-1 BASSA consiglio di GAS_CLAUDE_BIN quando shell e `.env` divergono, V-2 COSMETICA docstring e test dall'inizio alla fine; da chiudere in una PR successiva su richiesta dell'operatore); verifica esterna APPROVATO CON RISERVE (commento 6483741111).
+- `aab79b0`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
 - `6393dd8`, `fbe5f62`, `c651c26`, `28e74a6` e i due commit di fine-task che seguono: nessuna run su questi SHA (pushati insieme al commit di fine-task; `fbe5f62` aveva il Gate B rosso in locale, mai pushato da solo).
 - `6b23e1b`: `verifica-bot` success (APPROVATO CON RISERVE, V-1 BASSA chiusa in `28e74a6`).
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
