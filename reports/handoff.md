@@ -26,6 +26,7 @@
 ```
  .claude/agents/memoria_revisore.md |  4 ++++
  reports/diff_sessione.md           | 13 ++++++-------
+ reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |  2 +-
  reports/stato_progetto.md          |  3 ++-
  reports/ultimo_report.md           | 30 ++++++++++--------------------
