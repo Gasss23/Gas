@@ -16,6 +16,7 @@
 - **Fetta 1 — stato della chat Motore 2 in stato_progetto**: `FATTA`.
 - **Fetta 2 — proposta per la voce 9 in coda_notte**: `FATTA` (da confermare dall'operatore).
 - **Fetta 3 — V-1 bot #302 (sigla M2 negli id)**: `FATTA`.
+- **Fetta 4 — note del bot su 55b3391 (V-1 lezioni, V-2 §3, V-3 ultimo_report) e merge di main con la PR #299**: `FATTA`.
 
 ---
 
