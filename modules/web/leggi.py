@@ -1364,7 +1364,10 @@ def _taglio_xml(testo: str, completo: bool) -> int:
     DOCTYPE XHTML noti, un DTD esterno non si scarica mai e un'entità che non conosce è un
     errore, anche con un DTD esterno non letto: come Firefox (expat con le entità saltate
     trattate come errore, qui `saltata`); Chrome (libxml2) dà solo un avviso e mostra il
-    resto (V-1 bot #296, scelta più prudente). Si taglia alla fine dell'ultimo pezzo intero
+    resto (V-1 bot #296, scelta più prudente). Anche un'entità che html.parser non sa
+    espandere ferma la lettura: dichiarata nel DOCTYPE della pagina, esterna, o sconosciuta
+    col DTD XHTML letto (si vedrebbe il nome «&foo;» scelto da chi scrive la pagina al posto
+    del suo testo; V-1 bot #296 bis, R-551-2). Si taglia alla fine dell'ultimo pezzo intero
     (una seconda lettura senza controlli), così non resta mezzo tag; senza un elemento
     radice prima dell'errore non resta niente. Con la pagina troncata da Gas la fine non è
     un errore."""
@@ -1378,33 +1381,63 @@ def _taglio_xml(testo: str, completo: bool) -> int:
     lettore.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE)
 
     letto_dtd = [False]
+    dentro_dtd = [False]
+    # Le entità dichiarate dal DTD di HTML, che html.parser espande da sé, e quelle della
+    # pagina, che non espande. Una dichiarata due volte vale la prima (la pagina vince).
+    di_html: set[str] = set()
+    della_pagina: set[str] = set()
+    # Dopo un'eccezione nata in un gestore expat va avanti fino alla fine del riferimento:
+    # la posizione si prende nel gestore (R-551-2).
+    fermo = [-1]
+
+    def ferma() -> None:
+        fermo[0] = lettore.CurrentByteIndex
+        raise _ErroreXml
 
     def esterna(contesto: Optional[str], base: Optional[str], sistema: Optional[str],
                 pubblico: Optional[str]) -> int:
-        # Il DTD delle entità si legge una volta per pagina: un «%p;» ripetuto lo farebbe
+        # Il contesto è None per il DTD e le entità di parametro (R-551-1); un'entità
+        # generale esterna non si legge mai e ferma la lettura (V-1 bot #296 ter). Il DTD
+        # delle entità si legge una volta per pagina: un «%p;» ripetuto lo farebbe
         # rileggere a ogni riferimento (V-2 bot #296). Dalla seconda volta un DTD vuoto, ma
-        # letto: un riferimento non letto fermerebbe le dichiarazioni dopo (R-553-1). Il
-        # contesto può essere None (R-551-1).
+        # letto: un riferimento non letto fermerebbe le dichiarazioni dopo (R-553-1).
+        if contesto is not None:
+            ferma()
         if pubblico in _PUBBLICI_XHTML:
-            lettore.ExternalEntityParserCreate(contesto).Parse(b"" if letto_dtd[0] else _dtd_entita(), True)
+            dentro_dtd[0] = True
+            try:
+                lettore.ExternalEntityParserCreate(contesto).Parse(b"" if letto_dtd[0] else _dtd_entita(), True)
+            finally:
+                dentro_dtd[0] = False
             letto_dtd[0] = True
         return 1
 
+    def dichiarata(nome: str, di_parametro: bool, *_: object) -> None:
+        if not di_parametro and nome not in di_html and nome not in della_pagina:
+            (di_html if dentro_dtd[0] else della_pagina).add(nome)
+
     def saltata(nome: str, di_parametro: bool) -> None:
-        if not di_parametro:
-            raise _ErroreXml
+        # Col DefaultHandler expat non espande le entità interne: arrivano tutte qui.
+        if not di_parametro and nome not in di_html:
+            ferma()
     lettore.ExternalEntityRefHandler = esterna
+    lettore.EntityDeclHandler = dichiarata
     lettore.SkippedEntityHandler = saltata
+    lettore.DefaultHandler = lambda _: None
     try:
         lettore.Parse(dati, completo)
         return len(testo)
     except _ErroreXml:
-        errore = lettore.CurrentByteIndex
+        errore = fermo[0]
     except expat.ExpatError:
         errore = lettore.ErrorByteIndex
     # Seconda lettura, grezza: i pezzi interi prima dell'errore; uno a metà resta indietro.
     pezzi: list[str] = []
     grezzo = expat.ParserCreate(encoding="utf-8")
+    if hasattr(grezzo, "SetReparseDeferralEnabled"):
+        # Con il rinvio (expat 2.6) un token di qualche MB in una lettura non finale non
+        # arriva, e si perdeva il resto di una pagina buona (V-3 ve #296).
+        grezzo.SetReparseDeferralEnabled(False)
     grezzo.DefaultHandler = pezzi.append
     try:
         grezzo.Parse(dati[:max(errore, 0)], False)
@@ -1518,6 +1551,7 @@ def _componi(url_finale: str, pagina: dict) -> dict:
     codice = secrets.token_hex(6)
     grezzo = _decodifica(pagina["corpo"], pagina["charset"])
     titolo = ""
+    tagliato = False
     if pagina["tipo"] == "text/plain":
         corpo = _pulisci(grezzo)
     else:
@@ -1528,6 +1562,7 @@ def _componi(url_finale: str, pagina: dict) -> dict:
                 logger.warning("leggi_pagina: XHTML malformato, resto della pagina nascosto su %r",
                                url_finale[:200])
                 grezzo = grezzo[:tenuto]
+                tagliato = True
             grezzo = _commenti_e_cdata_xml(grezzo)
         grezzo = _RIF_ZERI_HEX.sub(r"&#\1", _RIF_ZERI_DEC.sub("&#", grezzo))
         grezzo = _RIF_ENORME.sub("&#65533;", grezzo)
@@ -1547,6 +1582,10 @@ def _componi(url_finale: str, pagina: dict) -> dict:
     if titolo:
         righe.append(f"Titolo: {titolo}")
     righe += ["", corpo]
+    if tagliato:
+        # Il browser mostra un errore XML: anche il modello deve sapere che manca il resto
+        # (V-2 bot #296 ter).
+        righe.append("[pagina XHTML malformata: il resto non si legge, come nel browser]")
     if troncato:
         righe.append("[… testo troncato]")
     righe.append(FINE_NON_FIDATO.format(codice=codice))
