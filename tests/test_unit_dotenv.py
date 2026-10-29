@@ -219,6 +219,23 @@ def test_dal_dotenv_al_doctor(env, tmp_path, monkeypatch, capsys):
     gas._carica_dotenv(_scrivi(tmp_path, "GAS_CLAUDE_CLI=1\n"))
     righe = _righe_forte(capsys, tmp_path)
     assert any("WARN" in r and "il .env lo accende" in r for r in righe), righe
+    # V-1 bot #295: acceso nella shell, spento nel .env → WARN «lo spegne»
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    env["GAS_CLAUDE_CLI"] = "1"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_CLAUDE_CLI=0\n"))
+    righe = _righe_forte(capsys, tmp_path)
+    assert any("claude-cli" in r and "WARN" in r and "il .env lo spegne" in r for r in righe), righe
+    # V-1 bot #295: con GAS_NO_DOTENV il doctor lo dichiara (forte spento → OK con la nota)
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    env.pop("GAS_CLAUDE_CLI", None)
+    env["GAS_NO_DOTENV"] = "1"
+    righe = _righe_forte(capsys, tmp_path)
+    env.pop("GAS_NO_DOTENV")
+    assert any("claude-cli" in r and "OK" in r and ".env non letto: GAS_NO_DOTENV attivo" in r
+               for r in righe), righe
     # shell e .env con lo stesso valore (anche scritto diverso) → nessun WARN sull'interruttore
     monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
     monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
