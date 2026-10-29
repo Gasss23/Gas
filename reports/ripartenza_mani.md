@@ -22,14 +22,14 @@ Regole:
 - Guidami passo passo: una cosa alla volta, risposte corte.
 
 Prima di tutto:
-1. Controlla lo stato della PR della fetta 26 (XHTML, riserve rimaste della #296; numero in reports/handoff.md §0): se è aperta portami il verdetto del bot e della verifica esterna; se è mergiata riparti il branch da main.
+1. Controlla lo stato della PR aperta della chat Mani (numero in reports/handoff.md §0): se è aperta portami il verdetto del bot; se è mergiata riparti il branch da main. Le PR #296 (fetta 25) e #298 (fetta 26) sono mergiate.
 2. Leggi in reports/stato_progetto.md i blocchi «Mani — fetta 25» e «Mani — fetta 26» (Grep, non tutto il file) e reports/ultimo_report.md.
 Poi portami UNA alla volta le cose aperte, nell'ordine:
    a) FATTA in fetta 22 (riserve «DA SISTEMARE» di #280; R-ve280-1 è della chat Motore, vedi b);
    b) accensione della lettura con lexbor: la fa la chat Motore (selectolax==1.0.2 in requirements-dev.txt e requirements.txt, GAS_WEB_LEXBOR=1 sul VPS); controlla se è già fatta e, se sì, verifica che in CI i test lexbor non siano più saltati;
    c) FATTA in fetta 23 (scelta 3 dell'operatore) — shadow DOM dichiarativo (figli «light» di un host con <template shadowrootmode>): decisione mia;
    d) FATTA in fetta 24 — cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4 controllo di sys.platform in attivo(), R-528-3, R-526-1, R-520-4);
-   e) decisioni vecchie: R-ve252-2 e R-ve255-1 (XHTML malformato) FATTE in fetta 25, le riserve rimaste in fetta 26; restano tempo di rete 12 s e R-ve235-7.
+   e) decisioni vecchie: R-ve252-2 e R-ve255-1 (XHTML malformato) FATTE in fetta 25, le riserve rimaste in fetta 26. Restano due DECISIONI DELL'OPERATORE, non lavoro da fare da solo: «tempo di rete 12 s» (oggi la rete si ferma a 12 s e 3 s restano per la pulizia, stima e non tetto rigido) e R-ve235-7 (il DNS di sistema non si interrompe: proposta, chiuderla come accettata). Chiedile all'operatore, una alla volta.
 
 Note per chi riparte:
 - La lettura con lexbor è nel codice (modules/web/lexbor.py) ma SPENTA: si accende solo con `GAS_WEB_LEXBOR=1`, selectolax installato e su Linux.
