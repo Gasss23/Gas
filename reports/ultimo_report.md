@@ -1,25 +1,32 @@
-# Ultimo report — 2026-10-28 (chat Motore)
-
-**Task:** (operatore: «sistema anche questa e poi mergia») merge della PR #291 (autorizzato dall'operatore: «mergia e sistema») e correzione delle note del bot su #291 (PR #292).
+# ULTIMO REPORT — 2026-10-29 — Mani fetta 25: XHTML malformato letto fino al primo errore XML (R6, chat Mani, PR #296)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #292 (https://github.com/Gasss23/Gas/pull/292): review #545 APPROVATO CON RISERVE, verifica esterna APPROVATO CON RISERVE (BASSE): serve il «sì» dell'operatore (CLAUDE.md §10), salvo verdetto pulito del bot.
+1. Merge della PR #296 (https://github.com/Gasss23/Gas/pull/296): lo faccio io solo con verdetto del bot APPROVATO pulito; con riserve aspetto il tuo OK.
+2. Accensione della lettura con lexbor: serve la chat Motore (`selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt`), poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
+3. Poi, una alla volta: tempo di rete 12 s, R-ve235-7.
 
 ## Esito
-- **Merge della PR #291**: FATTO (autorizzazione dell'operatore).
-- **Fetta 1 — V-1 bot #291 + R-543-1 + R-544-1**: FATTA. `_DOTENV_NEL_FILE: Dict[str, str]` (nome → valore del `.env`, anche se vince la shell); il doctor dà WARN se il `.env` ha un altro valore o non ha quello in uso.
-- **Fetta 2 — V-2 bot #291 + R-543-2**: FATTA. Nome nudo → controllo delle cartelle; eccezione per «claude» solo senza la variabile nel `.env`.
-- **Fetta 3 — R-544-2**: FATTA. Registro con `setdefault` (vince la prima riga, come il loader).
-- **Fetta 4 — V-3 (R-541-1) e V-4 bot #291**: FATTE. T99t toglie i collegamenti; tipo `Dict[str, str]`.
-- Test: kernel 1057 PASS, 0 FAIL; pytest 2284 passed, 61 skipped.
-- **Fetta 5 — conflitto con main (V-1 MEDIA verifica esterna #292)**: FATTA. Merge di origin/main d4b39ca (PR #288, chat Mani), conflitti solo nei report e nella memoria; review #547 APPROVATO; kernel 1057 PASS, pytest dotenv + web_lexbor 32 passed dopo il merge.
-- **Fetta 6 — bot #292 (BOCCIATO su a0872d2 per il conflitto, check rosso su f94c4a0)**: FATTA. Registro del `.env` solo per `GAS_CLAUDE_BIN` (`_DOTENV_VALORI_DA_TENERE`, V-4 bot / V-2 ve #292), T99s rimette il registro (V-3), BOCCIATO registrato nei report (V-1); review #548 APPROVATO CON RISERVE; kernel 1057 PASS, pytest dotenv + claude_cli 42 passed.
-- **Fetta 7 — V-1 bot #292 su 67c2bca + R-545-1 + R-548-1**: FATTA. Vuoto e «claude» sono lo stesso comando nel confronto col `.env`; il messaggio dice il comando che userà il timer; review #549 APPROVATO.
-- **Fetta 8 — merge di main (PR #294, chat Mani)**: FATTA. Conflitti solo nei report e nella memoria; review #550 APPROVATO; kernel 1057 PASS, pytest dotenv + web_lexbor 35 passed.
-- **Fetta 9 — merge di main con la PR #293 (altra sessione chat Motore, conflitto anche nel codice)**: FATTA. Tenuti i due registri del `.env`, rimessa la riga persa dal merge automatico; review #551 APPROVATO CON RISERVE; kernel 1059 PASS, pytest completo 2289 passed, 104 skipped.
-- Aperte: V-3 ve #292 BASSA (secondo caricamento), R-540-3 BASSA (VPS), R-547-1 COSMETICA, R-551-1 COSMETICA.
-- Anomalia: due sessioni chat Motore hanno lavorato in parallelo sulla stessa fetta del doctor (PR #290/#293 e PR #291/#292), con numeri di review doppi (#543–#550).
+- **PR #294 (fetta 24)**: MERGIATA su richiesta dell'operatore («mergia 294», 03dc898). Verifica esterna #294 arrivata dopo: APPROVATO CON RISERVE (commento: https://github.com/Gasss23/Gas/pull/294#issuecomment-6484098213); V-1 BASSA (test dei punti d'integrazione) → FATTA qui; V-2 BASSA e V-3 COSMETICA (stato CI nell'handoff, commit doppio della memoria) → FATTA qui (CI riportata), V-4 (merge con riserve): autorizzato dall'operatore.
+- **Fetta 25 — XHTML malformato (decisione dell'operatore)**:
+  - R-ve252-2 (testo prima della radice, `</html>CODA`, due radici, `<!doctype` minuscolo): FATTA — `_taglio_xml` legge fino al primo errore XML, come il browser.
+  - R-ve255-1 (`<svg><title><title>` porta il corpo nella riga del titolo): FATTA — stesso taglio.
+  - Entità di HTML solo coi DOCTYPE XHTML dello standard, nessun DTD scaricato, entità sconosciuta = errore; namespace controllati; BOM; pagina troncata da Gas; expat < 2.4: FATTA.
+  - Test XHTML vecchi con frammenti senza radice: FATTA — input dentro `<r>…</r>`, asserzioni invariate.
+  - Lettura con lexbor: SALTATA — non riguarda l'XHTML (usa sempre la lettura di sempre).
+- **Review**: #550 APPROVATO CON RISERVE (R-550-1..4 → FATTE), #551 APPROVATO CON RISERVE (R-551-1/2 COSMETICHE → DEFERITE), #552 APPROVATO (merge di main dc43ad6, PR #292).
+
+## Prove
+- Web suite 599 passed / 1 skipped (Python 3.13.16 con selectolax 1.0.2; su main 03dc898: 566 / 1).
+- Su Python 3.11 senza selectolax: 487 passed / 113 skipped.
+- Suite vecchia con `GAS_WEB_LEXBOR=1`: gli stessi 11 FAIL di main (confrontati per nome).
+- Kernel dopo il merge di main dc43ad6: 1058 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto).
+- Mutanti presi: niente taglio, taglio all'errore senza confine, DTD mai caricato, entità saltate ok, troncato ignorato, encoding del documento, senza namespace, senza controllo versione, senza BOM, senza doppio escape; i 9 della verifica esterna #294 sul figlio lexbor. Difese equivalenti: «nessuna radice → 0» e «pezzi che coincidono col testo».
+- Tempi: `_taglio_xml` su 1,6 MB 0,09 s; DTD delle entità costruito una volta (59 KB, 2 ms); bomba di entità fermata da expat 2.6.1.
+
+## RICHIESTE ALLA CHAT MOTORE
+1. `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (R-ve280-1), poi `GAS_WEB_LEXBOR=1` sul VPS.
+2. R-546-1: numeri delle review doppi tra le chat (anche #547–#551).
+3. Sul VPS serve libexpat ≥ 2.4 perché il taglio dell'XHTML sia attivo (sotto si legge come prima).
 
 ## Anomalie
-- La review #544 è stata fatta due volte (il primo revisore è rimasto fermo per ore e ne è stato lanciato un secondo): due righe #544 nella memoria, stessi finding.
-- `gh` nel container non è autenticato: PR e CI con gli strumenti GitHub della sessione. L'iscrizione alla PR #291 non si è potuta togliere (serve un dispositivo di fiducia): non serve più, la PR è mergiata.
+- `gh` non autenticato nel cloud: PR, etichetta e stato CI passano dall'integrazione GitHub.
