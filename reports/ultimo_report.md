@@ -1,27 +1,21 @@
-# ULTIMO REPORT — 2026-10-29 — Mani: decisioni dell'operatore su R-ve235-7 e tempo di rete 12 s (R6, chat Mani)
+# ULTIMO REPORT — 2026-10-29 — Mani: selectolax in requirements, i test lexbor girano in CI (R-ve280-1, fetta 27, chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione (numero nell'handoff §0): solo report; lo faccio io con verdetto del bot APPROVATO pulito, con riserve aspetto il tuo OK.
-2. Prossimi argomenti della chat Mani: da scegliere. Restano riserve BASSE aperte: R-518-1, R-516-1, R-ve277-5 parte leggi.py, V-1 ve/bot #288, R-546-1, più il punto b) della ripartenza (elenco in handoff §7, stato_progetto e ripartenza_mani).
-3. Proposta di coordinamento della chat Motore 1 (scritta in stato_progetto, blocco «Mani — fetta 26»): da confermare.
+1. Confermare che il coordinamento delle chat è passato a M1 (sessione «Co-Work») e che la chat Mani prende (a) selectolax e (c) `scripts/bot_esito.py`. L'incarico è arrivato con un messaggio da un'altra sessione, non dall'operatore.
+2. Merge della PR di questa sessione (numero nell'handoff §0): la faccio io solo se il verdetto del bot è APPROVATO pulito; con riserve aspetto il tuo OK, che può arrivare anche tramite M1.
+3. Prima del `pip install -r requirements.txt` sul VPS: `grep GAS_WEB_LEXBOR .env`. Se la variabile c'è già, lexbor si accende subito.
 
 ## Esito
-- **PR #300**: MERGIATA su richiesta dell'operatore («mergia 300», ed777ef). Bot su 69fd75e APPROVATO CON RISERVE: V-1 COSMETICA (l'handoff della #300 diceva la V-1 della verifica esterna #298 corretta «in ultimo_report e in stato_progetto», ma in stato_progetto non c'era niente da correggere): FATTA — la correzione dei «sei casi» sta solo in `reports/ultimo_report.md` della #300.
-- **R-ve235-7**: CHIUSA come accettata (decisione dell'operatore: «chiudi R-ve235-7 come accettata»). Il DNS di sistema non si interrompe: compromesso dichiarato.
-- **Tempo di rete 12 s**: CONFERMATO (decisione dell'operatore: «tempo di rete 12 s va bene»).
-- **Ripartenza e stato**: FATTA — `reports/ripartenza_mani.md` e `reports/stato_progetto.md` aggiornati.
-- **Bot su 251b0c2 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA («nessun lavoro aperto» falso: restano R-518-1, R-516-1, R-ve277-5 parte leggi.py e il punto b della ripartenza) → FATTA: elencate in ripartenza_mani, stato_progetto e handoff §7. V-2 COSMETICA (la proposta di coordinamento non stava nel repo) → FATTA: scritta in stato_progetto.
-- **Bot su 604edcb (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (descrizione della PR vecchia) → FATTA, descrizione aggiornata. V-2 COSMETICA (mancavano V-1 ve/bot #288 e R-546-1 nella lista delle aperte) → FATTA.
-- **Bot su 91edc28 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (qui sopra c'era ancora «tre riserve») → FATTA. V-2 COSMETICA (in handoff §6 gli id delle run CI presentati come run del bot) → FATTA.
-- **Merge di main baa4b8d (PR #299, chat Motore 1) e 5d64c13 (PR #302, chat Motore 2), solo report**: FATTA — tenuti i miei report, riga «Ultimo aggiornamento» di stato_progetto unita a mano.
-- **Bot su 08a8943**: APPROVATO CON RISERVE, V-1 COSMETICA (blocchi storici di stato_progetto citano ancora R-ve235-7 da decidere): SALTATA — sono blocchi storici, fa fede il blocco «Mani — fetta 26».
-- **Codice**: nessuna modifica.
+- **Le 2 decisioni chieste da M1 (tempo di rete 12 s, R-ve235-7)**: `SALTATA — già prese dall'operatore il 2026-10-29 e mergiate con la PR #301`. Lo ho detto a M1, che ha confermato: niente da girare.
+- **(a) R-ve280-1, selectolax in requirements**: FATTA. `selectolax==1.0.2` in `requirements.txt`. Non l'ho messo in requirements-dev.txt perché la CI installa tutti e due i file e sarebbe un doppione. `test_selectolax_in_ci` in `tests/test_unit_web_lexbor.py` dà l'allarme in CI se torna a mancare. Lexbor resta SPENTA. Review #564 (chat Mani) APPROVATO.
+- **(c) `scripts/bot_esito.py` e i caratteri Cf**: `DEFERITA — una PR per voce sul mio unico branch: parte dopo il merge della #303`. Causa trovata: su #297 (0d45b8b) il verdetto del bot citava «/forte@GasBot» + U+200B (un caso di prova), e `_caratteri_invisibili` l'ha bocciato con failure definitivo. Proposta in stato_progetto, blocco «Mani — fetta 27».
+- **(b) libexpat ≥ 2.4 nel doctor (gas.py)**: `DEFERITA — M1 la tiene finché il suo ponte voce, che tocca gas.py, non è mergiato`.
+- **Ripartenza e stato**: FATTA, aggiornati `reports/ripartenza_mani.md` (punti b e g) e `reports/stato_progetto.md` (blocco «Mani — fetta 27»).
 
-## RICHIESTE ALLA CHAT MOTORE
-1. `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (R-ve280-1), poi `GAS_WEB_LEXBOR=1` sul VPS.
-2. R-546-1: numeri delle review doppi tra le chat.
-3. `scripts/bot_esito.py` boccia il verdetto quando il bot stesso scrive un carattere Cf citando il codice.
-4. Sul VPS serve libexpat ≥ 2.4 perché il taglio dell'XHTML sia attivo; un controllo nel doctor.
+## Prove
+- Suite completa in locale (Python 3.13, con selectolax): 2450 passed, 2 skipped.
+- `tests/test_unit_web_*.py`: 620 passed, 1 skipped; con `CI=1`, `test_unit_web_lexbor.py` dà 135 passed.
+- Il revisore ha verificato che il test fallisce davvero senza selectolax (venv 3.11, `CI=true`: 1 failed) e che le wheel cp311 e cp312 manylinux x86_64 esistono.
 
 ## Anomalie
-- `gh` non autenticato nel cloud: PR, etichetta e stato CI passano dall'integrazione GitHub.
+- `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.

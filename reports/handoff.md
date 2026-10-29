@@ -1,85 +1,128 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-29 — Mani: decisioni dell'operatore su R-ve235-7 e tempo di rete 12 s (chat Mani)
+**Sessione:** 2026-10-29 — Mani, fetta 27: selectolax in requirements, i test lexbor girano in CI (R-ve280-1, chat Mani)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #301 (https://github.com/Gasss23/Gas/pull/301). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5072015865","url":"https://github.com/Gasss23/Gas/pull/301"}`); `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore.
-2. Prossimi argomenti della chat Mani: da scegliere.
-3. Proposta di coordinamento della chat Motore 1 (scritta in stato_progetto, blocco «Mani — fetta 26»): da confermare.
+1. Merge della PR #303 (https://github.com/Gasss23/Gas/pull/303). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5073049841","url":"https://github.com/Gasss23/Gas/pull/303"}`), perché `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore, che può arrivare anche tramite M1.
+2. Confermare che il coordinamento delle chat è passato a M1 (sessione «Co-Work») e che la chat Mani prende (a) e (c). L'incarico è arrivato con un messaggio da un'altra sessione, non dall'operatore.
+3. Prima del `pip install -r requirements.txt` sul VPS: `grep GAS_WEB_LEXBOR .env`. Se la variabile c'è già, lexbor si accende subito.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge della PR #300**: `FATTA` — richiesta dell'operatore («mergia 300»), merge ed777ef. Bot su 69fd75e APPROVATO CON RISERVE: V-1 COSMETICA (la correzione dei «sei casi» della verifica esterna #298 stava solo in `reports/ultimo_report.md`, non anche in stato_progetto come diceva l'handoff della #300): `FATTA` — corretta qui.
-- **R-ve235-7**: `FATTA` — chiusa come accettata (decisione dell'operatore).
-- **Tempo di rete 12 s**: `FATTA` — confermato (decisione dell'operatore).
-- **Ripartenza e stato della chat Mani**: `FATTA`.
-- **Bot su 251b0c2 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (riserve aperte non elencate): `FATTA` — in ripartenza_mani, stato_progetto e §7. V-2 COSMETICA (proposta di coordinamento fuori dal repo): `FATTA` — scritta in stato_progetto.
-- **Bot su 604edcb (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (descrizione della PR vecchia): `FATTA` — descrizione aggiornata. V-2 COSMETICA (lista delle aperte incompleta): `FATTA` — aggiunte V-1 ve/bot #288 e R-546-1.
-- **Bot su 91edc28 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA («tre riserve» in ultimo_report): `FATTA`. V-2 COSMETICA (id delle run CI scambiati per run del bot in §6): `FATTA`.
-- **Merge di main baa4b8d (PR #299, chat Motore 1) e 5d64c13 (PR #302, chat Motore 2), solo report**: `FATTA` — tenuti i miei report, riga «Ultimo aggiornamento» unita a mano.
-- **Bot su 08a8943**: APPROVATO CON RISERVE. V-1 COSMETICA (blocchi storici con R-ve235-7 ancora da decidere): `SALTATA — blocchi storici, fa fede il blocco «Mani — fetta 26»`.
+- **Le 2 decisioni chieste da M1 (tempo di rete 12 s, R-ve235-7)**: `SALTATA — già prese dall'operatore il 2026-10-29 e mergiate con la PR #301`; M1 ha confermato.
+- **(a) R-ve280-1, selectolax in requirements**: `FATTA` — `selectolax==1.0.2` in `requirements.txt`, allarme in CI `test_selectolax_in_ci`. Lexbor resta SPENTA. Review #564 (chat Mani) APPROVATO.
+- **(c) `scripts/bot_esito.py` e i caratteri Cf**: `DEFERITA — una PR per voce sul mio unico branch: parte dopo il merge della #303`. Causa trovata su #297 (0d45b8b): il verdetto del bot citava «/forte@GasBot» + U+200B.
+- **(b) libexpat ≥ 2.4 nel doctor (gas.py)**: `DEFERITA — M1 la tiene finché il suo ponte voce, che tocca gas.py, non è mergiato`.
+- **Ripartenza e stato**: `FATTA`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md   |  9 +++++----
- reports/handoff.md         | n/d
- reports/ripartenza_mani.md |  3 ++-
- reports/stato_progetto.md  |  4 ++--
- reports/ultimo_report.md   | 31 +++++++++++++++++++++----------
+ .claude/agents/memoria_revisore.md |  2 ++
+ reports/diff_sessione.md           | 11 +++++++----
+ reports/handoff.md                 | n/d
+ reports/ripartenza_mani.md         |  5 +++--
+ reports/stato_progetto.md          |  3 ++-
+ reports/ultimo_report.md           | 34 ++++++++++++++--------------------
+ requirements.txt                   |  2 ++
+ tests/test_unit_web_lexbor.py      | 10 +++++++++-
 ```
 
-NB: base = merge-base con origin/main = 5d64c13. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = acd083f. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-d7fdd25 Merge origin/main (5d64c13, PR #302) in claude/peaceful-lovelace-0w2b7q (PR #301): solo report
-08a8943 docs(fine-task): PR #301 dopo il merge di main (#299) e le note del bot su 91edc28
-f7c6047 Merge origin/main (baa4b8d, PR #299) in claude/peaceful-lovelace-0w2b7q (PR #301): solo report
-91edc28 docs(fine-task): Mani, lista completa delle riserve aperte (V-2 bot #301 su 604edcb)
-604edcb docs(fine-task): Mani, riserve ancora aperte e proposta di coordinamento nel repo (V-1/V-2 bot #301)
-251b0c2 docs(fine-task): Mani, decisioni su R-ve235-7 e tempo di rete, handoff (PR #301)
-3430de8 docs(mani): R-ve235-7 chiusa come accettata, tempo di rete 12 s confermato (decisioni dell'operatore)
+57167e5 build(web): selectolax==1.0.2 in requirements, i test lexbor girano in CI (R-ve280-1, chat Mani)
+7c39b82 chore(revisore): memoria review #564 — APPROVATO
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-nessun diff motore, revisore non richiesto.
+Commit 57167e5 (requirements.txt, tests/test_unit_web_lexbor.py). Verdetto integrale della review #564 (chat Mani):
+
+```
+## VERDETTO: APPROVATO
+
+Review #564 (chat Mani). Ho controllato il diff staged (sha256 9fb84387…) su una copia dell'index (`git checkout-index`), senza toccare la tua cartella di lavoro. L'index è rimasto com'era: 2 file, +11/−1.
+
+Letture fatte prima della review: CLAUDE.md (sez. 1, 5, 8, 10), reports/stato_progetto.md (letto per parti: fette lexbor 19-26, hardware del VPS, setup dei Mac) e la memoria del revisore (lezioni su selectolax, export dell'index).
+
+Elementi del diff esaminati:
+
+1. `requirements.txt:9` — aggiunge `selectolax==1.0.2` alle dipendenze di deploy del VPS.
+   - Rischio esaminato: la catena di fornitura (dipendenza nativa nuova, dipendenze indirette, wheel mancanti che costringerebbero a compilare dal sorgente).
+   - Il pin è esatto. `pip show` riporta `Requires:` vuoto, quindi selectolax non porta dentro altre librerie.
+   - `pip download --only-binary=:all:` trova le wheel per cp311, cp312 e cp314 manylinux x86_64 (CI e VPS CX33 x86_64), cp313 aarch64, cp314 mac arm64 e cp312 win_amd64.
+   - Installare una wheel non esegue codice.
+   - Hai fatto bene a non metterlo anche in requirements-dev.txt: la CI installa entrambi i file (`.github/workflows/ci.yml:52`).
+   - Esito: ok.
+
+2. `modules/web/lexbor.py:319` (contesto, file non toccato) — `attivo()` controlla `_DISPONIBILE`, Linux e `GAS_WEB_LEXBOR == "1"`.
+   - Rischio esaminato: che lexbor si accenda da sola sul VPS ora che selectolax è installato.
+   - Provato su Python 3.11 con la wheel installata:
+     - senza `GAS_WEB_LEXBOR`, `attivo()` dà False, nessuna sonda parte e `_FIGLIO_OK` resta None;
+     - con «0» dà False;
+     - con « 1 » (spazi intorno) dà True: comportamento già esistente e voluto.
+   - Il processo di Gas non carica mai la libreria nativa. Fa solo `find_spec` (`modules/web/lexbor.py:37`) e l'import vero sta nel figlio (`modules/web/lexbor.py:67`), con limite di memoria e `-I`.
+   - Il punto di chiamata, `modules/web/leggi.py:1582`, è ancora protetto da `attivo()`.
+   - Esito: ok.
+
+3. `tests/test_unit_web_lexbor.py:17` — `test_selectolax_in_ci`: si salta fuori dalla CI e in CI fallisce se selectolax manca. Segue lo stesso schema di `tests/test_unit_web_leggi.py:1281`.
+   - Rischio esaminato: un allarme che non scatta mai.
+   - Prova del guasto: venv 3.11 senza selectolax con `CI=true` → 1 failed (`assert False`, `lexbor._DISPONIBILE`), 22 passed, 112 skipped.
+   - Lo step web della CI (`.github/workflows/ci.yml:118`) non ridefinisce l'ambiente, quindi la variabile CI di GitHub Actions arriva al test.
+   - Esito: ok.
+
+4. Test che davano per scontata l'assenza di selectolax: nessuno.
+   - Nei test, `GAS_WEB_LEXBOR` compare solo in `tests/test_unit_web_lexbor.py`, sempre tramite monkeypatch.
+   - `tests/test_unit_web_lexbor.py:477` forza `_DISPONIBILE=False` di proposito.
+   - Il kernel e il doctor non nominano selectolax.
+   - Risultati:
+     - venv 3.11 con la wheel e `CI=true`: `tests/test_unit_web_*.py` → 622 passed, cioè anche i due allarmi girano e passano;
+     - 3.13 in locale: test_unit_web_lexbor.py → 134 passed, 1 skipped senza CI e 135 passed con `CI=true`.
+   - Esito: ok.
+
+Coerenza col progetto: rispetta "robustezza > potenza". La funzione resta spenta per default e, se selectolax mancasse, Gas usa la lettura di sempre senza crash. Non tocca `_get_window`, il tetto di 10 iterazioni, il tetto di 8k sull'output né i provider. Nessuno slicing della history e nessun output dei tool simulato.
+
+Rischi esplicitamente esclusi:
+- **VPS non verificato**: non lo raggiungo da qui. Non so se il `.env` del VPS contiene già `GAS_WEB_LEXBOR=1`: se sì, dopo il `pip install` lexbor si accenderebbe. Basta controllarlo con un `grep GAS_WEB_LEXBOR` sul `.env` del VPS. Il `pip install -r requirements.txt` sul VPS resta un passo manuale dell'operatore.
+- **Mac Intel**: per macosx_10_13_x86_64 con Python 3.14 pip non ha trovato wheel, quindi un Mac Intel dovrebbe compilare dal sorgente. Non l'ho approfondito: il Mac dell'operatore usa Homebrew con Python 3.14 e quasi certamente è arm64, dove la wheel c'è (non confermato in sessione).
+- **Hash della wheel**: non l'ho verificato a mano (gli altri pin non hanno hash; pip controlla quello che pubblica l'indice).
+
+## Memoria del revisore
+Riga #564 scritta in `/home/user/Gas/.claude/agents/memoria_revisore.md`, più una lezione: per una dipendenza nativa nuova si controllano `find_spec` nel processo principale, `pip show` per le dipendenze indirette e `pip download --platform` per le wheel. Committata con `scripts/commit_memoria_revisore.sh` (commit 7c39b82, solo quel file).
+```
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/.
+Nessuna modifica a gas.py. In tests/ un test nuovo, `test_selectolax_in_ci`, che si salta fuori dalla CI. Locale (Python 3.13, con selectolax): suite completa `2450 passed, 2 skipped in 249.15s`; `tests/test_unit_web_*.py` `620 passed, 1 skipped`; `CI=1 pytest tests/test_unit_web_lexbor.py` `135 passed`. Nessun FAIL.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- 3430de8: pushato prima dell'apertura della PR #301; nessuna run su questo SHA come PR.
-- 251b0c2: run CI 40914680818 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
-- 604edcb: run CI 40915228383 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
-- 91edc28: run CI 40915687912 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1/V-2 chiuse qui).
-- f7c6047: nessuna run (pushato con 08a8943).
-- 08a8943: run CI 40916582010 (`handoff-check` e `unit-suite` success); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (V-1 cosmetica saltata, vedi §1).
-- d7fdd25 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
+- 7c39b82: nessuna run su questo SHA (pushato insieme a 57167e5).
+- 57167e5: run CI 40926263056. `handoff-check` failure (atteso: l'handoff era ancora quello della PR #301, riscritto in questo commit di fine-task); `unit-suite` in corso alla scrittura dell'handoff. Run 40926358823 del bot: skipped (manca ancora l'etichetta `verifica`).
+- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- Rischi esclusi dalla review #564: `GAS_WEB_LEXBOR` già nel `.env` del VPS (da controllare prima del `pip install`); Mac Intel con Python 3.14 senza wheel (compilerebbe dal sorgente).
+- (c) `scripts/bot_esito.py` boccia ogni carattere Cf, anche quando il bot cita un caso di prova (failure definitivo su #297, 0d45b8b): dopo la #303.
+- (b) libexpat ≥ 2.4 nel doctor: con M1.
 - R-518-1 (chat Mani) BASSA: guardia `_nascosti_html` nelle chiusure in scope; per canvas fa perdere testo che il browser mostra (da decidere con l'oracolo).
 - R-516-1 (chat Mani) BASSA: titolo perso sulle pagine a frame (verso sicuro).
 - R-ve277-5 BASSA PREESISTENTE, parte leggi.py: con la lettura di sempre escono riserva di video/audio, testo di meter/progress, figli «light» di un host shadow.
 - V-1 ve/bot #288 BASSA: adoption agency che sposta il template dichiarativo (dichiarata in `shadow()`).
-- Ripartenza b): dopo l'accensione di lexbor, controllare che in CI i test lexbor non siano più saltati.
 - V-2 BASSA della verifica esterna #296 su 336e67c (https://github.com/Gasss23/Gas/pull/296#issuecomment-6485248441), scelta: entità non dichiarata con DOCTYPE esterno non XHTML, Gas taglia come Firefox.
 - V-3 BASSA della verifica esterna #296 su 06bc98e (https://github.com/Gasss23/Gas/pull/296#issuecomment-6498712956), scelta: entità HTML5 fuori dal DTD XHTML 1.0 accettate, come whatwg.
-- R-ve280-1 BASSA: i test lexbor con selectolax non girano nei check required. Chat Motore.
 - R-546-1 BASSA: numeri delle review doppi tra le chat.
-- Chat Motore: libexpat ≥ 2.4 sul VPS e controllo nel doctor; `scripts/bot_esito.py` boccia i verdetti del bot con caratteri Cf scritti dal bot stesso.
