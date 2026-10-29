@@ -13,7 +13,8 @@
 - **Bot su 251b0c2 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA («nessun lavoro aperto» falso: restano R-518-1, R-516-1, R-ve277-5 parte leggi.py e il punto b della ripartenza) → FATTA: elencate in ripartenza_mani, stato_progetto e handoff §7. V-2 COSMETICA (la proposta di coordinamento non stava nel repo) → FATTA: scritta in stato_progetto.
 - **Bot su 604edcb (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (descrizione della PR vecchia) → FATTA, descrizione aggiornata. V-2 COSMETICA (mancavano V-1 ve/bot #288 e R-546-1 nella lista delle aperte) → FATTA.
 - **Bot su 91edc28 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (qui sopra c'era ancora «tre riserve») → FATTA. V-2 COSMETICA (in handoff §6 gli id delle run CI presentati come run del bot) → FATTA.
-- **Merge di main baa4b8d (PR #299, chat Motore 1, solo report)**: FATTA — tenuti i miei report, riga «Ultimo aggiornamento» di stato_progetto unita a mano.
+- **Merge di main baa4b8d (PR #299, chat Motore 1) e 5d64c13 (PR #302, chat Motore 2), solo report**: FATTA — tenuti i miei report, riga «Ultimo aggiornamento» di stato_progetto unita a mano.
+- **Bot su 08a8943**: APPROVATO CON RISERVE, V-1 COSMETICA (blocchi storici di stato_progetto citano ancora R-ve235-7 da decidere): SALTATA — sono blocchi storici, fa fede il blocco «Mani — fetta 26».
 - **Codice**: nessuna modifica.
 
 ## RICHIESTE ALLA CHAT MOTORE

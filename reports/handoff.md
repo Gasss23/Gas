@@ -21,7 +21,8 @@
 - **Bot su 251b0c2 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (riserve aperte non elencate): `FATTA` — in ripartenza_mani, stato_progetto e §7. V-2 COSMETICA (proposta di coordinamento fuori dal repo): `FATTA` — scritta in stato_progetto.
 - **Bot su 604edcb (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (descrizione della PR vecchia): `FATTA` — descrizione aggiornata. V-2 COSMETICA (lista delle aperte incompleta): `FATTA` — aggiunte V-1 ve/bot #288 e R-546-1.
 - **Bot su 91edc28 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA («tre riserve» in ultimo_report): `FATTA`. V-2 COSMETICA (id delle run CI scambiati per run del bot in §6): `FATTA`.
-- **Merge di main baa4b8d (PR #299, chat Motore 1, solo report)**: `FATTA` — tenuti i miei report, riga «Ultimo aggiornamento» unita a mano.
+- **Merge di main baa4b8d (PR #299, chat Motore 1) e 5d64c13 (PR #302, chat Motore 2), solo report**: `FATTA` — tenuti i miei report, riga «Ultimo aggiornamento» unita a mano.
+- **Bot su 08a8943**: APPROVATO CON RISERVE. V-1 COSMETICA (blocchi storici con R-ve235-7 ancora da decidere): `SALTATA — blocchi storici, fa fede il blocco «Mani — fetta 26»`.
 
 ---
 
