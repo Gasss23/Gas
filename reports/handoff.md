@@ -23,6 +23,8 @@
   - Verifica esterna su e9606d8 (https://github.com/Gasss23/Gas/pull/296#issuecomment-6484866647): V-1 MEDIA (i BOM): `FATTA`; V-2 BASSA (lunghezza esatta del taglio): `FATTA`; V-3/V-4/V-5: `SALTATA — informative o già dichiarate`.
   - Merge di main dc43ad6 (PR #292, review #552) e 4e8eb9f (PR #295, review #555): `FATTA`.
   - Bot su 336e67c NON approvata per un BOM letterale scritto dal bot stesso citando i casi di test (merito APPROVATO CON RISERVE): `FATTA` — BOM e U+200B nei test e nel codice scritti come `chr(...)`; V-1 BASSA (entità sconosciuta con DTD esterno = errore, come Firefox; Chrome dà solo un avviso): `FATTA` — dichiarata nella docstring di `_taglio_xml`. Review #556 (riemessa senza caratteri invisibili), #557, #558.
+  - Bot su 6a3ef69: `verifica-bot` success, APPROVATO CON RISERVE (V-1 BASSA: entità dichiarate nel sottoinsieme interno del DOCTYPE accettate, html.parser mostra «&foo;» letterale; preesistente): `DEFERITA — prossima fetta, con R-551-2`. Verifica esterna su 6a3ef69 APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/296#issuecomment-6485358590): V-1 BASSA (il bot può ricopiare i Cf delle righe tolte): `SALTATA — bot verde su 6a3ef69`; V-2 BASSA (libexpat ≥ 2.4 e accensione lexbor nei documenti durevoli): `FATTA` in stato_progetto; V-3 COSMETICA: `DEFERITA`; V-4: informativa.
+  - «mergia 296» dell'operatore: merge rifiutato da GitHub perché main era andato avanti (PR #297) → merge di main e106883, review #559: `FATTA`; merge della PR dopo i check sul nuovo head.
   - Verifica esterna su 336e67c (https://github.com/Gasss23/Gas/pull/296#issuecomment-6485248441): V-1 MEDIA (check `verifica-bot` rosso): `FATTA` (stesso fix, nuovo SHA); V-2 BASSA (= V-1 bot): `FATTA` come scelta dichiarata, tenuta aperta in §7; V-3 COSMETICA (token singolo oltre ~2 MB): `DEFERITA — verso sicuro`; V-4/V-5: `SALTATA — informative`.
 - **Accensione lexbor (punto b)**: `DEFERITA — chat Motore`.
 - **Tempo di rete 12 s, R-ve235-7**: `DEFERITA — una alla volta`.
@@ -32,22 +34,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  13 ++++++++++++
- modules/web/leggi.py               | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  18 +++++++++--------
+ .claude/agents/memoria_revisore.md |  14 ++++++++++++
+ modules/web/leggi.py               | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  18 ++++++++-------
  reports/handoff.md                 | n/d
- reports/ripartenza_mani.md         |   6 +++---
+ reports/ripartenza_mani.md         |   6 ++---
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  44 +++++++++++++++++++++++++++++-----------
- tests/test_unit_web_leggi.py       | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
- tests/test_unit_web_lexbor.py      |   8 ++++++++
+ reports/ultimo_report.md           |  48 ++++++++++++++++++++++++++++-----------
+ tests/test_unit_web_leggi.py       | 146 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ tests/test_unit_web_lexbor.py      |   8 +++++++
 ```
 
-NB: base = merge-base con origin/main = 4e8eb9f (dopo il merge di main). Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = e106883 (dopo il merge di main). Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bd71498 Merge origin/main (e106883, PR #297) in claude/peaceful-lovelace-0w2b7q (PR #296)
+6a3ef69 docs(fine-task): PR #296 dopo il rifiuto del bot per caratteri invisibili e la verifica esterna su 336e67c, review #556–#558
 c6b73cf fix(web): niente caratteri invisibili scritti nei test e nel codice, nota su Chrome nel taglio XHTML (bot e ve #296)
 54dea9d chore(revisore): memoria review #556 — APPROVATO CON RISERVE
 336e67c docs(fine-task): PR #296 dopo le riserve di bot e verifica esterna e il merge di main 4e8eb9f, review #553–#555
@@ -68,7 +72,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore f7bb599: review #550 e #551. Merge eaa0642: review #552. Commit motore 0d5c258: review #553 e #554. Merge 7cf7f19: review #555. Commit motore c6b73cf (caratteri invisibili e V-1 bot): review #556 (riemessa), #557 e #558. Nota: i verdetti #550 e #551 incollati nel commit e9606d8 contenevano un BOM invisibile (U+FEFF), che fa bocciare il bot; il revisore li ha riemessi con lo stesso esito e la stessa sostanza, il BOM scritto in chiaro: fanno fede questi, gli originali restano nella storia di e9606d8. Verdetti integrali:
+Commit motore f7bb599: review #550 e #551. Merge eaa0642: review #552. Commit motore 0d5c258: review #553 e #554. Merge 7cf7f19: review #555. Commit motore c6b73cf (caratteri invisibili e V-1 bot): review #556 (riemessa), #557 e #558. Merge bd71498: review #559. Nota: i verdetti #550 e #551 incollati nel commit e9606d8 contenevano un BOM invisibile (U+FEFF), che fa bocciare il bot; il revisore li ha riemessi con lo stesso esito e la stessa sostanza, il BOM scritto in chiaro: fanno fede questi, gli originali restano nella storia di e9606d8. Verdetti integrali:
 
 ### Review #550 (chat Mani) — primo diff staged (verdetto riemesso)
 
@@ -344,13 +348,49 @@ Prove rilanciate da me: leggi + lexbor 606 passed / 1 skipped. Nessuno slicing d
 
 Il testo sopra non contiene caratteri Cf né escape di invisibili. Nella memoria ho aggiunto la riga #558, senza lezioni nuove. Il file /home/user/Gas/.claude/agents/memoria_revisore.md è modificato e NON committato: contiene la correzione U+FEFF della riga #556 e le righe #557 e #558, che vanno nel tuo commit. Ora ha 980 righe e 0 caratteri Cf.
 
+### Review #559 (chat Mani) — merge bd71498 di origin/main e106883 (PR #297)
+
+## VERDETTO: APPROVATO
+
+Review #559 (chat Mani): merge non ancora committato di origin/main e106883 (PR #297, chat Motore) in claude/peaceful-lovelace-0w2b7q (PR #296, HEAD 6a3ef69, base comune 4e8eb9f).
+
+Letture fatte: CLAUDE.md (sez. 5 e regole di gate), reports/stato_progetto.md (righe toccate dal merge), .claude/agents/memoria_revisore.md (coda, lezioni Cf di #556 e #557 applicate).
+
+Elementi del diff esaminati:
+- modules/telegram/bot.py:589 — regex ancorata `_FORTE_DESTINATARIO_RE` portata da main. Rischio: il merge altera il codice di main. Prova: `git diff --cached origin/main -- modules/telegram/bot.py` è vuoto. Esito: ok.
+- modules/telegram/bot.py:604 — con `_BOT_USERNAME` ignoto il testo resta invariato (fail-closed, nessun turno del forte a pagamento). Rischio: guardrail perso nel merge. Il codice è identico a main, già rivisto dalla chat Motore in #556. Esito: ok.
+- tests/test_unit_notte.py:2363 — test `/forte@GasBot`, `/forte@AltroBot` e nome ignoto, preso da main. Rischio: test perso o duplicato. Diff contro origin/main vuoto, il test gira. Esito: ok.
+- tests/test_unit_dotenv.py:229 — test WARN «il .env lo spegne», preso da main. Diff contro origin/main vuoto. Esito: ok.
+- .claude/agents/memoria_revisore.md:980-982 — righe Motore #554–#556 messe dopo le righe Mani #550–#558. Rischio: righe perse da uno dei due genitori. Ho confrontato con un Counter le righe di HEAD e di origin/main con l'index: nessuna riga manca da nessuno dei due. Nessun marcatore di conflitto. Esito: ok.
+- reports/stato_progetto.md:4 — riga «Ultimo aggiornamento». Contiene prima la voce Mani e poi, dopo «— prima:», la riga 4 di main intera. Ho controllato con un test di inclusione: l'unica riga «persa» rispetto a main è la vecchia riga 4, che però è contenuta tutta nella nuova. Esito: ok.
+- reports/stato_progetto.md:589-590 — voci 3 e 4 della ripartenza Motore. Mancano rispetto a HEAD perché il ramo non le toccava e il merge a 3 vie ha preso la versione di main, come atteso. Sono identiche a main. Esito: ok.
+
+Controlli complessivi:
+- Codice web e test web (modules/web/leggi.py, tests/test_unit_web_leggi.py, tests/test_unit_web_lexbor.py) e reports/ripartenza_mani.md contro HEAD: diff vuoto, quindi identici al ramo.
+- `git diff --cached HEAD` tocca solo i 5 file attesi.
+- Caratteri Unicode Cf: zero nei 5 file staged, controllati con unicodedata.
+- Antipattern della sezione 5 (slicing della history, output dei tool simulati): niente di nuovo, il merge non introduce logica.
+- Prova eseguita da me: pytest su tests/test_unit_dotenv.py, tests/test_unit_notte.py e tests/test_unit_web_leggi.py, 685 passed / 1 skipped.
+
+Rischi esclusi esplicitamente:
+- Non ho rieseguito la suite del kernel (1058 PASS / 1 FAIL T31g). Mi fido dell'esito dichiarato: T31g dipende da sqlite_vec, che manca in questo ambiente, quindi lì non si può riprodurre.
+- Non ho verificato tests/test_unit_web_lexbor.py né il comportamento reale del bot Telegram in un gruppo, che in dev non si può riprodurre.
+- reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md tenuti dal ramo non li ho valutati: si riscrivono al fine-task.
+
+Memoria: aggiunta in coda la riga #559 (chat Mani, APPROVATO, nessuna lezione nuova; zero Cf controllati). File messo in stage con `git add .claude/agents/memoria_revisore.md`, senza commit, come richiesto. Non ho eseguito commit_memoria_revisore.sh perché è incompatibile con l'indicazione «senza committare» su un merge in corso.
+
+File rilevanti:
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+- /home/user/Gas/reports/stato_progetto.md
+- /home/user/Gas/modules/telegram/bot.py
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py; toccati `modules/web/leggi.py`, `tests/test_unit_web_leggi.py`, `tests/test_unit_web_lexbor.py`.
 - Web suite (`tests/test_unit_web_*.py`, Python 3.13.16 con selectolax 1.0.2): prima 566 passed / 1 skipped (main 03dc898) → dopo 606 passed / 1 skipped (+40).
 - Su Python 3.11 senza selectolax: 494 passed / 113 skipped in locale; in CI un test in più (`test_parser_aggiornato_rilevato` gira solo con CI=true).
 - Suite vecchia con `GAS_WEB_LEXBOR=1`: gli stessi 11 FAIL di main, confrontati per nome.
-- Dopo il merge di main 4e8eb9f: web + dotenv + claude_cli 652 passed / 1 skipped; kernel 1058 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto; in CI 0 FAIL).
+- Dopo il merge di main e106883: web + dotenv + notte 819 passed / 1 skipped; kernel 1058 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto; in CI 0 FAIL).
 - Mutanti: elenco in `reports/ultimo_report.md`; difese equivalenti dichiarate.
 
 ## §6 STATO CI
@@ -359,19 +399,22 @@ Nessuna modifica a gas.py; toccati `modules/web/leggi.py`, `tests/test_unit_web_
 - f7bb599: run 40794722150, `unit-suite` success, `handoff-check` failure (atteso: handoff di main).
 - e9606d8: run 40795325706, `unit-suite` success (kernel 1065 PASS / 0 FAIL, web 488 / 112), `handoff-check` success; `verifica-bot` failure (caratteri invisibili nei verdetti incollati: corretto in 54fc5da/9837d0d).
 - 9837d0d: `unit-suite` success, `handoff-check` success (run 40796099462); `verifica-bot` success, APPROVATO CON RISERVE (riserve chiuse in 0d5c258).
-- 336e67c: `unit-suite` success, `handoff-check` success (run 40798502957); `verifica-bot` failure (BOM letterale nel testo del bot: corretto in questo giro).
+- 336e67c: `unit-suite` success, `handoff-check` success (run 40798502957); `verifica-bot` failure (BOM letterale nel testo del bot: corretto in c6b73cf).
+- 6a3ef69: `unit-suite` success, `handoff-check` success (run 40800286577); `verifica-bot` success, APPROVATO CON RISERVE.
 
 Mappatura commit→run:
 - 78de08e, fa715d8: nessuna run (pushati con f7bb599). eaa0642: nessuna run (pushato con e9606d8). 54fc5da: nessuna run (pushato con 9837d0d).
 - e5f4a62, e1fa7c1, 0d5c258, 7cf7f19: nessuna run (pushati con 336e67c).
-- 54dea9d, c6b73cf e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
+- 54dea9d, c6b73cf: nessuna run (pushati con 6a3ef69).
+- bd71498 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
 
 ## §7 RISERVE APERTE
 
 - V-2 ve #296 / V-1 bot #296 BASSA: con un DOCTYPE a identificativo esterno non XHTML un'entità non dichiarata taglia (come Firefox); Chrome (libxml2) la tratta come avviso e mostra il resto. Verso sicuro, scelta dichiarata in docstring; da decidere insieme a R-551-2.
 - V-3 ve #296 COSMETICA: un singolo token oltre ~2 MB fa perdere il resto di una pagina ben formata (solo charset non UTF-8 a 2 byte; verso sicuro, causa da indagare).
 - Per la chat Motore: `scripts/bot_esito.py` boccia ogni verdetto del bot che contiene caratteri Cf, anche quando il bot li scrive da sé citando il codice (fuori dal mio perimetro).
+- V-1 bot #296 su 6a3ef69 BASSA: entità generali dichiarate nel sottoinsieme interno del DOCTYPE non tagliano; html.parser non le espande e mostra il nome letterale (testo scelto dall'autore della pagina). Preesistente, stessa classe di R-551-2: prossima fetta.
 - R-551-2 COSMETICA: con DTD XHTML un'entità sconosciuta resta come testo «&Unknown;» prima del taglio (niente contenuto nascosto).
 - R-ve280-1 BASSA: i test lexbor con selectolax non girano nei check required. Chat Motore.
-- R-546-1 BASSA: numeri delle review doppi tra le chat (anche #547–#558).
+- R-546-1 BASSA: numeri delle review doppi tra le chat (anche #547–#559).
 - Sul VPS serve libexpat ≥ 2.4 perché il taglio dell'XHTML sia attivo (sotto si legge come prima, R-550-2); nessun controllo nel doctor (V-5 ve #296).
