@@ -21,6 +21,7 @@
 - **(b) libexpat ≥ 2.4 nel doctor (gas.py)**: `DEFERITA — M1 la tiene finché il suo ponte voce, che tocca gas.py, non è mergiato`.
 - **Ripartenza e stato**: `FATTA`.
 - **Bot su 67fea3d (PR #303)**: APPROVATO CON RISERVE, check verifica-bot success. V-1 BASSA (la prova della CI mancava nei report): `FATTA` — run 40926576413, web 622 passed e 0 skipped, scritta in §6, stato_progetto e ripartenza. V-2 COSMETICA (l'allarme scatta con qualunque valore di CI): `SALTATA — accettata, stesso schema di test_parser_aggiornato_rilevato`.
+- **Bot su 4e0d1ac (PR #303)**: APPROVATO CON RISERVE, check verifica-bot success. V-1 BASSA (suite web locale «620 passed, 1 skipped»: era la misura di prima del test nuovo): `FATTA` — rimisurata, 620 passed e 2 skipped.
 - **Verifica esterna su 67fea3d (https://github.com/Gasss23/Gas/pull/303#issuecomment-6504641961)**: APPROVATO CON RISERVE. V-1 BASSA (la riserva «Mac Intel senza wheel» della review #564 è falsa): `FATTA` — tolta da §7 e corretta in stato_progetto. V-2 BASSA (controllo sul VPS incompleto): `FATTA` — §0 punto 3 e descrizione della PR. V-3 BASSA (selectolax 1.0.2 uscita il 2026-10-22): `DEFERITA — decide l'operatore` (§0 punto 4). V-4 COSMETICA: `SALTATA — nessuna azione`.
 
 ---
@@ -33,7 +34,7 @@
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |  5 +++--
  reports/stato_progetto.md          |  3 ++-
- reports/ultimo_report.md           | 38 ++++++++++++++++++--------------------
+ reports/ultimo_report.md           | 39 +++++++++++++++++++--------------------
  requirements.txt                   |  2 ++
  tests/test_unit_web_lexbor.py      | 10 +++++++++-
 ```
@@ -43,6 +44,7 @@ NB: base = merge-base con origin/main = acd083f. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4e0d1ac docs(fine-task): PR #303, note del bot e della verifica esterna su 67fea3d
 67fea3d docs(fine-task): Mani fetta 27, selectolax in requirements (PR #303), lavoro passato da M1
 57167e5 build(web): selectolax==1.0.2 in requirements, i test lexbor girano in CI (R-ve280-1, chat Mani)
 7c39b82 chore(revisore): memoria review #564 — APPROVATO
@@ -109,7 +111,7 @@ Riga #564 scritta in `/home/user/Gas/.claude/agents/memoria_revisore.md`, più u
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. In tests/ un test nuovo, `test_selectolax_in_ci`, che si salta fuori dalla CI. Locale (Python 3.13, con selectolax): suite completa `2450 passed, 2 skipped in 249.15s`; `tests/test_unit_web_*.py` `620 passed, 1 skipped`; `CI=1 pytest tests/test_unit_web_lexbor.py` `135 passed`. Nessun FAIL.
+Nessuna modifica a gas.py. In tests/ un test nuovo, `test_selectolax_in_ci`, che si salta fuori dalla CI. Locale (Python 3.13, con selectolax): suite completa `2450 passed, 2 skipped in 249.15s`; `tests/test_unit_web_*.py` `620 passed, 2 skipped` (misura rifatta dopo il test nuovo, V-1 bot #303 su 4e0d1ac: prima c'era «620 passed, 2 skipped (misura rifatta dopo il test nuovo, V-1 bot #303 su 4e0d1ac: prima c'era «620 passed, 1 skipped», preso prima di aggiungere `test_selectolax_in_ci`)», preso prima di aggiungere `test_selectolax_in_ci`); `CI=1 pytest tests/test_unit_web_lexbor.py` `135 passed`. Nessun FAIL.
 
 ## §6 STATO CI
 
@@ -117,6 +119,7 @@ Nessuna modifica a gas.py. In tests/ un test nuovo, `test_selectolax_in_ci`, che
 - 7c39b82: nessuna run su questo SHA (pushato insieme a 57167e5).
 - 57167e5: run CI 40926263056. `handoff-check` failure (atteso: l'handoff era ancora quello della PR #301, riscritto in questo commit di fine-task); `unit-suite` in corso alla scrittura dell'handoff. Run 40926358823 del bot: skipped (manca ancora l'etichetta `verifica`).
 - 67fea3d (fine-task): run CI 40926576413, `handoff-check` e `unit-suite` success; suite web 622 passed, 0 skipped, `test_selectolax_in_ci` PASSED (letto dalla verifica esterna e dal bot nel log della run). Check `verifica-bot` success, review del bot APPROVATO CON RISERVE (vedi §1).
+- 4e0d1ac (fine-task): run CI 40928379166; check `verifica-bot` success, review del bot APPROVATO CON RISERVE (vedi §1). `handoff-check` e `unit-suite` success.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

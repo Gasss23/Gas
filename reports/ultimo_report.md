@@ -14,11 +14,12 @@
 - **Ripartenza e stato**: FATTA, aggiornati `reports/ripartenza_mani.md` (punti b e g) e `reports/stato_progetto.md` (blocco «Mani — fetta 27»).
 
 - **Bot su 67fea3d (PR #303)**: APPROVATO CON RISERVE, check verifica-bot success. V-1 BASSA (la prova della CI mancava nei report): FATTA — run 40926576413, web 622 passed e 0 skipped, scritta in §6, stato_progetto e ripartenza. V-2 COSMETICA (l'allarme scatta con qualunque valore di CI): SALTATA — accettata, stesso schema di test_parser_aggiornato_rilevato.
+- **Bot su 4e0d1ac (PR #303)**: APPROVATO CON RISERVE. V-1 BASSA (la suite web locale 620/1 era la misura di prima del test nuovo): FATTA — rimisurata, 620 passed e 2 skipped.
 - **Verifica esterna su 67fea3d (https://github.com/Gasss23/Gas/pull/303#issuecomment-6504641961)**: APPROVATO CON RISERVE. V-1 BASSA (la riserva «Mac Intel senza wheel» della review #564 è falsa): FATTA — tolta da §7 e corretta in stato_progetto. V-2 BASSA (controllo sul VPS incompleto): FATTA — §0 punto 3 e descrizione della PR. V-3 BASSA (selectolax 1.0.2 uscita il 2026-10-22): DEFERITA — decide l'operatore (§0 punto 4). V-4 COSMETICA: SALTATA — nessuna azione.
 
 ## Prove
 - Suite completa in locale (Python 3.13, con selectolax): 2450 passed, 2 skipped.
-- `tests/test_unit_web_*.py`: 620 passed, 1 skipped; con `CI=1`, `test_unit_web_lexbor.py` dà 135 passed.
+- `tests/test_unit_web_*.py`: 620 passed, 2 skipped (misura rifatta dopo il test nuovo, V-1 bot #303 su 4e0d1ac: prima c'era «620 passed, 1 skipped», preso prima di aggiungere `test_selectolax_in_ci`); con `CI=1`, `test_unit_web_lexbor.py` dà 135 passed.
 - Il revisore ha verificato che il test fallisce davvero senza selectolax (venv 3.11, `CI=true`: 1 failed) e che le wheel cp311 e cp312 manylinux x86_64 esistono.
 
 ## Anomalie
