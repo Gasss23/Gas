@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Note del bot su #291: il doctor confronta il valore di GAS_CLAUDE_BIN nel .env, nome nudo, collegamenti dei test (chat Motore). Secondo giro: merge di main (PR #288) dopo la V-1 della verifica esterna #292. Terzo giro: note del bot su f94c4a0 (registro del .env solo per GAS_CLAUDE_BIN).
+**Sessione:** 2026-10-28 — Note del bot su #291: il doctor confronta il valore di GAS_CLAUDE_BIN nel .env, nome nudo, collegamenti dei test (chat Motore). Secondo giro: merge di main (PR #288) dopo la V-1 della verifica esterna #292. Terzo giro: note del bot su f94c4a0 (registro del .env solo per GAS_CLAUDE_BIN). Quarto giro: V-1 bot #292 su 67c2bca (vuoto = «claude») e merge di main (PR #294).
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #292 (https://github.com/Gasss23/Gas/pull/292): review #545 APPROVATO CON RISERVE, verifica esterna APPROVATO CON RISERVE (BASSE): serve il «sì» dell'operatore (CLAUDE.md §10), salvo verdetto pulito del bot. Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
+1. Merge della PR #292 (https://github.com/Gasss23/Gas/pull/292): già autorizzato dall'operatore il 2026-10-29 («sistema anche questa e poi mergia»), dopo CI verde e bot senza finding ALTA/MEDIA sul nuovo head. Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
 
 ---
 
@@ -18,19 +18,21 @@
 - **Fetta 4 — V-3 (R-541-1) e V-4 bot #291**: `FATTA`.
 - **Fetta 5 — conflitto con main (V-1 MEDIA verifica esterna #292)**: `FATTA` — merge di origin/main d4b39ca (PR #288), review #547 APPROVATO.
 - **Fetta 6 — note del bot su a0872d2 (BOCCIATO per il conflitto) e su f94c4a0 (check rosso)**: `FATTA` — `_DOTENV_VALORI_DA_TENERE`, T99s rimette il registro, BOCCIATO registrato nei report; review #548 APPROVATO CON RISERVE.
+- **Fetta 7 — V-1 bot #292 su 67c2bca + R-545-1 + R-548-1**: `FATTA` — vuoto e «claude» uguali nel confronto col `.env`; review #549 APPROVATO.
+- **Fetta 8 — merge di main (PR #294)**: `FATTA` — review #550 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 ++++++++
- gas.py                             |  34 +++++++++++++++++++--------
- reports/diff_sessione.md           |  17 +++++++-------
+ .claude/agents/memoria_revisore.md |  11 +++++++++++
+ gas.py                             |  36 ++++++++++++++++++++++++++----------
+ reports/diff_sessione.md           |  19 +++++++++++--------
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  55 ++++++++++++--------------------------------
- tests/test_unit_dotenv.py          |  33 +++++++++++++++++++++-----
- tests/test_unit_kernel.py          |  50 +++++++++++++++++++++++++++-------------
+ reports/ultimo_report.md           |  48 +++++++++++++++++-------------------------------
+ tests/test_unit_dotenv.py          |  33 +++++++++++++++++++++++++++------
+ tests/test_unit_kernel.py          |  54 ++++++++++++++++++++++++++++++++++++++----------------
  reports/handoff.md                 | n/d (commit finale)
 ```
 
@@ -39,6 +41,10 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b9c1dcd Merge origin/main (PR #294) in fix/note-forte-doctor-2 (PR #292) — review #550 APPROVATO
+d03936c fix(forte): vuoto e «claude» sono lo stesso comando nel confronto col .env (V-1 bot #292, R-545-1); commento R-544-2 al posto giusto (R-548-1)
+ab985e5 chore(revisore): memoria review #549 — APPROVATO
+67c2bca docs(fine-task): PR #292 terzo giro — registro del .env solo per GAS_CLAUDE_BIN, review #548, verdetti del bot registrati
 7bf0071 fix(forte): registro del .env solo per GAS_CLAUDE_BIN, niente segreti (V-2 ve #292, V-4 bot #292); T99s rimette il registro
 68efe8c chore(revisore): memoria review #548 — APPROVATO CON RISERVE
 f94c4a0 docs(fine-task): PR #292 secondo giro — merge di main (PR #288), review #547, verifica esterna
@@ -258,6 +264,62 @@ Ho letto le fonti obbligatorie: CLAUDE.md (sezioni 5, 8 e 9), la memoria del rev
 
 **Memoria**: ho aggiunto la riga #548, con la lezione «un registro diagnostico di un loader di segreti va limitato con una lista bianca nel punto in cui si scrive», in /home/user/Gas/.claude/agents/memoria_revisore.md. È committata con lo script dedicato (commit 68efe8c). Il diff staged sotto review non è stato toccato.
 
+### Review #549 (chat Motore) — sul diff di d03936c
+
+## VERDETTO: APPROVATO
+
+Ho letto CLAUDE.md, stato_progetto.md (la riga 589 per le note aperte di #292) e memoria_revisore.md. Ho esaminato il diff staged su fix/note-forte-doctor-2 (HEAD 67c2bca): sono 2 file, 10 righe aggiunte e 4 tolte.
+
+**Elementi del diff esaminati**
+
+1. `gas.py:463`: nel confronto fra il valore del `.env` e quello in uso, un valore vuoto e «claude» ora contano come lo stesso comando. Il rischio era un falso OK nuovo, cioè due valori che sembrano uguali ma che `claude_cli` tratta in modo diverso. Esito ok. In `brains/claude_cli.py:284` (contesto) il comando è `binario or GAS_CLAUDE_BIN or which("claude") or "claude"`: con un valore vuoto e con «claude» il comando si cerca comunque nel PATH, quindi i due casi sono davvero equivalenti. R-544-1 resta chiusa: un `.env` con un percorso diverso dà ancora WARN, sia con la shell vuota sia con «claude» (i test a `tests/test_unit_kernel.py:11255-11256` sono invariati e passano).
+2. `gas.py:464-465`: il messaggio ora dice il comando che userà il timer (`«{valore_file or 'claude'}»`). Il rischio era un testo che descrive male il caso «`.env` vuoto e shell con un percorso». Esito ok: in quel caso esce «userà «claude»», che è proprio quello che fa `which`. R-545-1 è chiusa. Il valore del `.env` finisce nel messaggio, ma vale solo per GAS_CLAUDE_BIN, che è nella lista bianca (non è un segreto).
+3. `gas.py:639`: il commento «R-544-2» è stato spostato sulla riga del `setdefault`. La riga resta di 103 caratteri, sotto le righe più lunghe già presenti nel file. Esito ok, R-548-1 è chiusa.
+4. `tests/test_unit_kernel.py:11258-11260`: tre casi nuovi (shell vuota e `.env` «claude» → None; shell «claude» e `.env` vuoto → None; `.env` vuoto e percorso assoluto nella shell → WARN con «claude»). Il rischio era un test che passa anche col codice vecchio. Esito ok: ho rimesso il vecchio confronto `valore_file != valore_env` e T99t è FAIL; poi ho ripristinato il file e controllato che non restassero differenze.
+5. `gas.py:5026` (contesto, chiamante): passa `_DOTENV_NEL_FILE.get("GAS_CLAUDE_BIN")` senza modifiche. Il consiglio «metti GAS_CLAUDE_BIN=… nel .env» resta coerente col nuovo messaggio. Esito ok.
+
+**Test rifatti da me:** kernel 1057 PASS, 0 FAIL; pytest su `test_unit_dotenv.py` e `test_unit_claude_cli.py` 42 passed.
+
+**Wall of Shame:** nel diff non c'è slicing della history né simulazione di output dei tool. I limiti di sicurezza (10 iterazioni, 8k di output, `_get_window`) non sono toccati.
+
+**Finding:** nessuno nuovo (nessun R-549-N). Con questo diff si chiudono V-1 bot #292, R-545-1 e R-548-1. Resta aperta V-3 ve #292 (BASSA, registro non riletto se `_carica_dotenv` gira due volte), che questo diff non tocca.
+
+**Rischio escluso:** non ho verificato il comportamento reale sul Mac. Se `claude`, cercato nel PATH ridotto del timer, sia davvero lo stesso binario che trova la shell non è riproducibile in questo container: lo dirà il giro notturno del 29.
+
+**Memoria:** ho aggiunto la riga contatore #549 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata da sola con `commit_memoria_revisore.sh` (commit ab985e5). Il diff staged sotto review è rimasto intatto. Un primo tentativo, che univa scrittura della riga e commit in un solo comando, è stato bloccato dall'hook del gate perché `.review_ok` non corrisponde al diff staged; non è stato eseguito nulla e l'ho rifatto in due passi. Il marcatore va rigenerato dall'agente principale con `bash scripts/segna_review_ok.sh` prima del commit.
+
+### Review #550 (chat Motore) — sul merge di origin/main (PR #294) in b9c1dcd
+
+## VERDETTO: APPROVATO
+
+Review #550 (chat Motore). Ho controllato il merge in corso di origin/main 03dc898 (PR #294) dentro fix/note-forte-doctor-2 (PR #292, HEAD d03936c). Prima di iniziare ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md e la mia memoria.
+
+**Elementi del diff esaminati**
+- `gas.py:463`: confronta il valore di GAS_CLAUDE_BIN nel .env con quello della shell, trattando vuoto e «claude» come lo stesso comando. Rischio esaminato: il merge poteva alterare il codice del ramo già rivisto. `git diff --cached --stat HEAD` non elenca gas.py, quindi il codice è identico a quello rivisto alla #549. Esito: ok.
+- `gas.py:639`: con `setdefault` il registro tiene la prima riga del .env, come fa il caricatore. Rischio esaminato: la versione di main poteva rientrare nel codice durante la risoluzione. Le differenze rispetto a origin/main sono solo i blocchi della #292 (righe 447, 567, 620, 5008). Esito: ok.
+- `tests/test_unit_dotenv.py:150`: con una chiave ripetuta, registro e caricatore tengono lo stesso valore. Rischio esaminato: test perso o duplicato nel merge. Il file è identico a HEAD e il test passa. Esito: ok.
+- `tests/test_unit_kernel.py:11246`: casi del controllo sul .env (stesso valore, valore assente dal .env, nome nudo cercato nel PATH del timer). Rischio esaminato: righe perse. Il file è identico a HEAD. Esito: ok.
+- `modules/web/lexbor.py:78`: codice della chat Mani. Rischio esaminato: una modifica del ramo poteva finire dentro il codice di main. `git diff --cached origin/main -- modules/web tests/test_unit_web_lexbor.py` dà 0 righe, quindi è identico a main. Esito: ok.
+- `reports/stato_progetto.md:4`: le due voci in testa sono unite. Ho controllato via script che la riga sia esattamente «voce Motore» + « — prima: » + la riga 4 di main intera. Esito: ok.
+
+**Altri controlli**
+- `git diff --cached origin/main` contiene solo la PR #292: gas.py, i due test, i tre report di sessione, stato_progetto e memoria.
+- Ho confrontato i file riga per riga, a ordine ignorato, con entrambi i genitori:
+  - In stato_progetto mancano rispetto ai genitori solo la riga 4 (unita) e, rispetto a main, il punto 3 della ripartenza Motore. Quel punto l'ha cambiato il ramo e su main è uguale al punto di partenza comune, quindi la versione del ramo è corretta.
+  - Nella memoria non manca nessuna riga di nessuno dei due genitori.
+- handoff.md, ultimo_report.md e diff_sessione.md sono la versione del ramo, come dichiarato.
+- Non ci sono marcatori di conflitto e `git diff --cached --check` è pulito.
+- Ho rilanciato pytest su dotenv e web_lexbor: 35 passed, 103 skipped.
+
+**Finding**
+- R-550-1 (cosmetico, solo procedura): ho aggiunto la riga #550 a `.claude/agents/memoria_revisore.md` dopo il tuo staging, quindi ora è una modifica non in staging. Devi fare `git add .claude/agents/memoria_revisore.md` prima del `git commit` che chiude il merge. Inoltre il marcatore del review gate va rigenerato con `bash scripts/segna_review_ok.sh` sul diff staged finale, che ora include questa riga.
+
+**Rischi esclusi**
+- La suite kernel (1057 PASS, 0 FAIL) non l'ho rilanciata: mi fido del tuo dato, perché né gas.py né i test del kernel cambiano rispetto a HEAD, già verificato alla #549.
+- La CI del commit di merge non è verificabile prima del commit e del push.
+
+La riga contatore #550 è in memoria (/home/user/Gas/.claude/agents/memoria_revisore.md). Come chiesto, non ho lanciato `commit_memoria_revisore.sh`.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Kernel: 1057 → 1057 PASS (nessun check nuovo, più casi dentro T99s e T99t). Conteggi del container locale (la CI ne conta di più).
@@ -272,6 +334,8 @@ Dopo il merge di main (77be957): kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; 
 
 Dopo 7bf0071: kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; `python3 -m pytest -q tests/test_unit_dotenv.py tests/test_unit_claude_cli.py` → `42 passed in 0.92s`.
 
+Dopo d03936c: kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; pytest dotenv + claude_cli `42 passed in 8.47s`. Dopo il merge di main (b9c1dcd): kernel 1057 PASS, 0 FAIL; `python3 -m pytest -q tests/test_unit_dotenv.py tests/test_unit_web_lexbor.py` → `35 passed, 103 skipped in 0.97s`.
+
 ## §6 STATO CI
 
 `gh` nel container non è autenticato: stato letto con gli strumenti GitHub della sessione e con la verifica esterna #292.
@@ -283,7 +347,10 @@ Mappatura commit→run:
 - 77be957 (merge di main) → nessuna run su questo SHA (pushato insieme a f94c4a0).
 - f94c4a0 → handoff-check success; verifica-bot failure (APPROVATO CON RISERVE con le note chiuse in 7bf0071); unit-suite in corso alla lettura del bot.
 - 68efe8c → nessuna run su questo SHA (pushato insieme a 7bf0071).
-- 7bf0071 → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
+- 7bf0071 → nessuna run su questo SHA (pushato insieme a 67c2bca).
+- 67c2bca → CI completata senza fallimenti (notifica check_suite.completed delle 23:51), verifica-bot success (APPROVATO CON RISERVE, V-1 BASSA chiusa in d03936c).
+- ab985e5, d03936c, b9c1dcd → nessuna run su questi SHA (pushati insieme al commit di fine-task).
+- commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 - commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -293,4 +360,7 @@ Mappatura commit→run:
 - **Verifica esterna #292** ([commento](https://github.com/Gasss23/Gas/pull/292#issuecomment-6483546190)): V-1 MEDIA conflitto con main CHIUSA da 77be957 (review #547); V-2 = R-545-1; **V-3** BASSA `_DOTENV_NEL_FILE` globale con `setdefault`: un secondo `_carica_dotenv` nello stesso processo terrebbe il valore vecchio (oggi una sola chiamata).
 - **R-547-1** (COSMETICA, review #547): numeri di review #543–#546 doppi fra chat Mani e chat Motore.
 - **Bot #292**: su a0872d2 BOCCIATO per V-1 MEDIA (conflitto con main, chiusa da 77be957); V-3 bot = R-547-1; V-4 bot BASSA (segreti nel registro) CHIUSA in 7bf0071. Su f94c4a0 check rosso: V-1 BASSA (BOCCIATO non registrato) chiusa qui, V-2 BASSA (= V-4 bot) e V-3 COSMETICA (T99s) chiuse in 7bf0071.
-- **R-548-1** (COSMETICA, review #548): commento «R-544-2» sulla riga dell'`if` invece che sul `setdefault`.
+- **R-548-1** (COSMETICA, review #548): CHIUSA in d03936c.
+- **Bot #292 su 67c2bca**: APPROVATO CON RISERVE; V-1 BASSA (vuoto e «claude») CHIUSA in d03936c insieme a R-545-1; V-2 COSMETICA (conteggi nella descrizione della PR) corretta nella descrizione.
+- **R-550-1** (COSMETICA, review #550): solo procedura (memoria rimessa in stage prima del commit di merge), fatto.
+- Restano aperte: V-3 ve #292 BASSA, R-540-3 BASSA, R-547-1 COSMETICA.
