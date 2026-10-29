@@ -2358,3 +2358,53 @@ def test_resoconto_nel_giro_con_contatti_illeggibili(monkeypatch, dirs):
     assert "- Lead attivi: non letti" in riepilogo and "Lead attivi: 0" not in riepilogo
     assert "- Firme in attesa: 1" in riepilogo
     assert "Lead attivi: non letti" in inviati[0][1]["text"]
+
+
+def test_forte_con_destinatario_nei_gruppi(monkeypatch):
+    """Bot #269: «/forte@NomeBot richiesta» nei gruppi Telegram arriva al forte."""
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", "GasBot")
+    assert _tg.togli_destinatario_forte("/forte@GasBot ciao") == "/forte ciao"
+    assert _tg.togli_destinatario_forte("/FORTE@gasbot\tciao") == "/forte\tciao"
+    assert _tg.togli_destinatario_forte("/forte@GasBot") == "/forte"
+    assert _tg.togli_destinatario_forte("/forte@AltroBot ciao") is None
+    # niente «@» o testo qualunque: invariato; «/forte@GasBotX» non è Gas
+    assert _tg.togli_destinatario_forte("/forte ciao") == "/forte ciao"
+    assert _tg.togli_destinatario_forte("ciao /forte@GasBot") == "ciao /forte@GasBot"
+    assert _tg.togli_destinatario_forte("/forte@GasBotX ciao") is None
+    assert _tg.togli_destinatario_forte(None) is None
+    # V-2 bot #297: il lookahead tiene «/forte@GasBot-x» fuori (resta invariato → «Uso»)
+    assert _tg.togli_destinatario_forte("/forte@GasBot-x ciao") == "/forte@GasBot-x ciao"
+    # V-1 bot #297: nome di Gas ignoto → testo invariato, quindi «Uso» e nessun turno
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", None)
+    assert _tg.togli_destinatario_forte("/forte@QualsiasiBot ciao") == "/forte@QualsiasiBot ciao"
+    from brains.router import prefisso_forte
+    assert prefisso_forte(_tg.togli_destinatario_forte("/forte@QualsiasiBot ciao")) == ("uso", "")
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", "GasBot")
+    assert prefisso_forte(_tg.togli_destinatario_forte("/forte@GasBot  analizza")) == ("forte", "analizza")
+
+
+def test_handle_update_forte_con_destinatario(monkeypatch):
+    """Bot #269: «/forte@Gas richiesta» va al solo forte; «/forte@AltroBot» non apre turni."""
+    inviati = []
+    monkeypatch.setattr(_tg, "_send_text", lambda b, c, t: inviati.append(t))
+    monkeypatch.setattr(_tg, "_send_typing", lambda b, c: None)
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", "GasBot")
+    visti = []
+
+    class _K:
+        def run_turn(self, t, **kw):
+            visti.append((t, kw))
+            yield {"type": "final", "content": "ok"}
+
+    def upd(testo):
+        return {"update_id": 1, "message": {"chat": {"id": 7}, "text": testo}}
+
+    _tg._handle_update("http://finto", upd("/forte@GasBot analizza i lead"), {7}, _K())
+    _tg._handle_update("http://finto", upd("/forte@AltroBot analizza"), {7}, _K())
+    assert visti == [("analizza i lead", {"cervello": "forte"})]
+    _tg._handle_update("http://finto", upd("/forte@GasBot"), {7}, _K())
+    assert len(visti) == 1 and "Uso: /forte" in inviati[-1]
+    # V-1 bot #297: senza il nome di Gas la forma con «@» non apre turni a pagamento
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", None)
+    _tg._handle_update("http://finto", upd("/forte@AltroBot analizza"), {7}, _K())
+    assert len(visti) == 1 and "Uso: /forte" in inviati[-1]

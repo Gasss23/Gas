@@ -587,6 +587,30 @@ _CLEAR_LEZIONE_MAX = 300
 _CLEAR_SCARTATE_MAX = 5  # R-502-3
 
 
+# Bot #269: nei gruppi Telegram scrive «/forte@NomeBot richiesta».
+_FORTE_DESTINATARIO_RE = re.compile(r"/forte@(\w+)(?=\s|$)", re.I)
+
+
+def togli_destinatario_forte(text: Any) -> Optional[str]:
+    """«/forte@NomeBot …» → «/forte …» se il destinatario è Gas; None se è per un altro
+    bot del gruppo; il testo invariato in tutti gli altri casi, compreso il nome di Gas
+    non noto (V-1 bot #297: a differenza di /notte e /clear, un turno del forte costa,
+    quindi senza nome il testo resta com'è e prefisso_forte risponde «Uso»). Mai eccezioni."""
+    try:
+        if not isinstance(text, str):
+            return text
+        m = _FORTE_DESTINATARIO_RE.match(text)
+        if not m:
+            return text
+        if not _BOT_USERNAME:
+            return text  # nome di Gas ignoto: fail-closed, niente turno a pagamento
+        if m.group(1).casefold() != _BOT_USERNAME.casefold():
+            return None  # comando per un altro bot del gruppo
+        return "/forte" + text[m.end():]
+    except Exception:
+        return text
+
+
 def comando_clear(text: Any) -> Optional[Tuple[str, Optional[str]]]:
     """None se il testo non è /clear; altrimenti ('clear', None) o ('errore',
     messaggio per l'operatore). Mai eccezioni."""
@@ -750,6 +774,9 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
 
         # R-ve269-2: «/forte <richiesta>» anche da Telegram, mai ai gratuiti
         from brains.router import prefisso_forte
+        text = togli_destinatario_forte(text)
+        if text is None:
+            return  # «/forte@AltroBot»: non è per Gas
         cervello, text = prefisso_forte(text)
         if cervello == "uso":
             _send_text(base_url, chat_id, "Uso: /forte <richiesta>")
