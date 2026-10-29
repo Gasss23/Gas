@@ -1,6 +1,8 @@
 """Lettura con lexbor, spenta per default (modules/web/lexbor.py, R-ve246-5, fette 19-21 chat Mani).
-Senza selectolax (oggi in CI) i test che lo usano si saltano; quelli del ripiego girano sempre."""
+Senza selectolax i test che lo usano si saltano; quelli del ripiego girano sempre. In CI selectolax
+c'è (requirements.txt, R-ve280-1): test_selectolax_in_ci fa da allarme se torna a mancare."""
 import logging
+import os
 import threading
 import time
 
@@ -10,6 +12,12 @@ import modules.web.leggi as web
 from modules.web import lexbor
 
 con_lexbor = pytest.mark.skipif(not lexbor._DISPONIBILE, reason="selectolax non installato")
+
+
+@pytest.mark.skipif(not os.environ.get("CI"), reason="allarme solo in CI: in locale selectolax può mancare")
+def test_selectolax_in_ci():
+    """In CI selectolax è installato (R-ve280-1): i test con lexbor girano, non si saltano."""
+    assert lexbor._DISPONIBILE
 
 
 def _testo(pagina: str) -> str:
