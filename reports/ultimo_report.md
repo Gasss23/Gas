@@ -9,4 +9,5 @@
 - **Bot su `223ffbc`**: APPROVATO CON RISERVE. V-1: il punto 3 è segnato chiuso ma contiene ancora riserve aperte, ora indicate in modo esplicito. V-2: il conteggio delle lezioni era incoerente, ora rimanda a `lezioni lista`. Corrette entrambe.
 
 ## Anomalie
-- Nessuna.
+- `gh` non è autenticato nel cloud: PR e CI passano dallo strumento GitHub (V-1 COSMETICA bot #299).
+- Merge di main (PR #300 della chat Mani) nel ramo: solo report, riga «Ultimo aggiornamento» unita.
