@@ -176,6 +176,38 @@ class TestDecidi:
                                    SHA, SHA)
         assert evento == "COMMENT", (riga, motivo)
 
+    @pytest.mark.parametrize("car", ["\u200b", "\u2800", "\x0b"])
+    def test_invisibile_che_toglie_un_confine(self, car):
+        # V-2 bot #305: «V-1<U+200B>x (alta)» col solo testo ripulito diventava «V-1x (alta)».
+        testo = (f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nV-1{car}x (alta) — bug"
+                 "\nNON VERIFICATO: -")
+        evento, motivo = be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                                   SHA, SHA)
+        assert evento == "COMMENT" and "MEDIA" in motivo
+
+    def test_credenziale_spezzata_in_un_finding(self):
+        f = _f("V-1", "BASSA")
+        f["descrizione"] = "x gh\x1bp_Zz9 y"
+        assert be.contiene_segreti(_verdetto("APPROVATO CON RISERVE", [f]))
+
+    @pytest.mark.parametrize("car", ["\u200b", "\u2060", "\x1b"])
+    def test_credenziale_con_chiave_gemella(self, car):
+        # Review #573: con le chiavi ripulite «tes<inv>to» copriva «testo» e la credenziale.
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO\nMetodo: gh{car}p_Zz9\nFINDING: nessuno"
+        v = _verdetto("APPROVATO", [], testo)
+        v[f"tes{car}to"] = "ok"
+        assert be.contiene_segreti(v)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+        f = _f("V-1", "BASSA")
+        f["descrizione"] = f"x gh{car}p_Zz9"
+        f[f"descri{car}zione"] = "ok"
+        assert be.contiene_segreti(_verdetto("APPROVATO CON RISERVE", [f]))
+
+    def test_credenziale_spezzata_in_una_chiave(self):
+        v = _verdetto("APPROVATO", [])
+        v["gh\x1bp_Zz9"] = "x"
+        assert be.contiene_segreti(v)
+
     def test_invisibile_lontano_dalle_gravita(self):
         # Un invisibile che non tocca nessuna gravità non cambia l'esito (caso #297).
         testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nCLAIM: «/forte@GasBot\u200b» resta «uso»"
@@ -239,7 +271,9 @@ class TestDecidi:
         assert evento == "APPROVE" and "a<U+202E>b<U+3164>c" in corpo
         assert not any(unicodedata.category(c) == "Cf" for c in corpo)
 
-    @pytest.mark.parametrize("segreto", ["gh\u200bp_Zz9", "sk-\u2060ant-oat01", "-----BEG\u00adIN RSA"])
+    @pytest.mark.parametrize("segreto", ["gh\u200bp_Zz9", "sk-\u2060ant-oat01", "-----BEG\u00adIN RSA",
+                                         # V-1 bot #305: i controlli, che json.dumps scrive come «\u001b»
+                                         "gh\x1bp_Zz9", "-----BEG\x0bIN RSA", "github\x1f_pat_Zz9"])
     def test_credenziali_spezzate_da_invisibili(self, segreto):
         testo = f"VERIFICA ESTERNA #1 — APPROVATO\nMetodo: {segreto}\nFINDING: nessuno"
         v = _verdetto("APPROVATO", [], testo)

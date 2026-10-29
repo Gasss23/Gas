@@ -295,8 +295,22 @@ def contiene_segreti(verdetto: object) -> bool:
         grezzo = json.dumps(verdetto, ensure_ascii=False)
     except (TypeError, ValueError):
         return True
-    # Anche con i Cf tolti: "gh\u200bp_..." non deve passare.
-    return bool(_SEGRETO.search(grezzo) or _SEGRETO.search(_senza_invisibili(grezzo)))
+    # Anche con gli invisibili tolti: "gh\u200bp_..." non deve passare. V-1 bot #305: anche
+    # stringa per stringa, perché json.dumps scrive i controlli come «\u001b»; review #573:
+    # in una lista e non in un dict ricostruito, dove due chiavi ripulite si fonderebbero.
+    return bool(_SEGRETO.search(grezzo) or _SEGRETO.search(_senza_invisibili(grezzo))
+                or any(_SEGRETO.search(_senza_invisibili(s)) for s in _stringhe(verdetto)))
+
+
+def _stringhe(valore: object) -> list[str]:
+    """Tutte le stringhe di un valore JSON, chiavi comprese."""
+    if isinstance(valore, str):
+        return [valore]
+    if isinstance(valore, list):
+        return [s for v in valore for s in _stringhe(v)]
+    if isinstance(valore, dict):
+        return [s for k, v in valore.items() for s in _stringhe(k) + _stringhe(v)]
+    return []
 
 
 def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
@@ -355,6 +369,10 @@ def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: 
         return "COMMENT", "controlli bidi nel testo: verdetto ambiguo"
     if _invisibili_su_gravita(testo):
         return "COMMENT", "caratteri invisibili attaccati a una gravità: verdetto ambiguo"
+    # V-2 bot #305: togliere un invisibile può togliere anche un confine di parola fuori
+    # dalle gravità («V-1<U+200B>x (alta)» → «V-1x (alta)»): le gravità si cercano anche
+    # sul testo così com'è.
+    grezzo = testo
     testo = _senza_invisibili(testo)
     righe = []
     for riga in _RIGA_TITOLO.findall(testo):
@@ -373,7 +391,8 @@ def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: 
         return "COMMENT", "verdetto BOCCIATO"
     if esito == "APPROVATO CON RISERVE" and not finding:
         return "COMMENT", "APPROVATO CON RISERVE senza finding elencati: verdetto incoerente"
-    bloccanti = (gravita_strutturate | _gravita_nel_testo(testo)) & set(GRAVITA_BLOCCANTI)
+    bloccanti = (gravita_strutturate | _gravita_nel_testo(testo)
+                 | _gravita_nel_testo(grezzo)) & set(GRAVITA_BLOCCANTI)
     if bloccanti:
         return "COMMENT", ("finding " + "/".join(sorted(bloccanti))
                            + ": da aggiustare (con test) prima del merge")
