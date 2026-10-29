@@ -1,35 +1,37 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — chat Motore: interruttore del forte tra shell e `.env` (PR #293), dopo la chiusura della PR #290 come doppione della #291
+**Sessione:** 2026-10-29 — chat Motore: riserve della PR #293 (PR #295), dopo il merge della #293
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #293 (https://github.com/Gasss23/Gas/pull/293): review #547 (già #543 nel ramo) APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` non autenticato in questo ambiente).
+1. Merge della PR #295 (https://github.com/Gasss23/Gas/pull/295): revisore #552 APPROVATO. Se il bot approva senza finding la mergio io (CLAUDE.md §10), altrimenti decide l'operatore. Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` non autenticato in questo ambiente).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — PR #290**: `FATTA` — chiusa senza merge (doppione della #291) su «ok» dell'operatore; il merge `6e19169` riporta il ramo all'albero di main.
-- **Fetta 3 — Merge di main (PR #288) e rinumerazione della review #543 → #547**: `FATTA` — V-1 MEDIA e V-2 BASSA della verifica esterna su #293; review #548 APPROVATO.
-- **Fetta 4 — V-1 bot #293, stesso valore in shell e .env**: `FATTA` — il nome conta come dal `.env` (vale anche per `GAS_CLAUDE_BIN`); review #549 APPROVATO.
-- **Fetta 5 — Merge di main (PR #294)**: `FATTA` — conflitti solo in report e memoria (numeri #547–#549 usati anche dalla chat Mani, righe distinte dalla sigla); review #550 APPROVATO.
-- **Fetta 2 — WARN su GAS_CLAUDE_CLI tra shell e .env, in tutti e due i versi**: `FATTA` — V-3 bot #290 e V-1 ve #290; `_DOTENV_SCAVALCATE` con i soli nomi.
+- **Fetta 1 — PR #293**: `FATTA` — mergiata su «mergia #293 e sistema» dell'operatore (merge automatico dopo CI e bot verdi).
+- **Fetta 2 — V-1 bot #293, GAS_CLAUDE_BIN scavalcato**: `FATTA` — WARN dedicato.
+- **Fetta 3 — V-1 bot #293 secondo giro, messaggi sul giro del timer**: `FATTA`.
+- **Fetta 4 — R-543-1, interruttore come flag**: `FATTA` — `_DOTENV_INTERRUTTORI`.
+- **Fetta 5 — R-543-2, GAS_NO_DOTENV dichiarato**: `FATTA`.
+- **Fetta 6 — nota #549 e R-551-1, chiavi ripetute**: `FATTA` — `visti`, vale la prima riga.
+- **Fetta 7 — V-4 e V-2 bot #293, test**: `FATTA`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- gas.py                             |  25 ++++++++++++++++++++++---
- reports/diff_sessione.md           |  17 ++++++++---------
- reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  42 +++++++++++++-----------------------------
- tests/test_unit_dotenv.py          |  14 ++++++++++++++
- tests/test_unit_kernel.py          |  28 ++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |  3 +++
+ gas.py                             | 31 ++++++++++++++++++++++++++-----
+ reports/diff_sessione.md           | 12 ++++++------
+ reports/stato_progetto.md          |  4 ++--
+ reports/ultimo_report.md           | 26 +++++++++++---------------
+ tests/test_unit_dotenv.py          | 59 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_kernel.py          |  9 ++++++---
  reports/handoff.md                 | n/d (commit finale)
 ```
 
@@ -38,207 +40,89 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-aab79b0 Merge origin/main (PR #294) in feat/merge-automatico-z1xjx2 (PR #293) — review #550 chat Motore APPROVATO
-5912bd5 docs(fine-task): PR #293 — §3 dell'handoff sulla testa
-3a5d686 docs(fine-task): verdetto #548 originale in blocco di codice, riemissione per il Gate B (PR #293)
-f28c390 docs(fine-task): PR #293 — review #548 riemesso per il Gate B, #549 (V-1 bot #293)
-28e74a6 fix(doctor): stessa variabile con lo stesso valore in shell e .env conta come dal .env (V-1 bot #293)
-c651c26 chore(revisore): memoria review #549 — APPROVATO
-fbe5f62 docs(fine-task): PR #293 dopo il merge di main (#288), review #547 (già #543) e #548
-6393dd8 Merge origin/main (PR #288) in feat/merge-automatico-z1xjx2 (PR #293) — review #548 APPROVATO; review #543 del ramo rinumerata #547 (V-2 ve #293)
-6b23e1b docs(fine-task): PR #293 — interruttore del forte tra shell e .env, review #543; PR #290 chiusa
-b24bd9f fix(doctor): GAS_CLAUDE_CLI della shell e del .env discordi → WARN in tutti e due i versi (V-3 bot #290, V-1 ve #290)
-5a1c9e7 chore(revisore): memoria review #543 — APPROVATO CON RISERVE
-6e19169 Merge di main nel ramo dopo la chiusura della PR #290 (doppione della #291): si tiene l'albero di main
-a04dd49 docs(fine-task): PR #290 — riserve del punto 3, review #540-#542, V-1..V-3 bot #290
-a8cde14 fix(doctor): .env di Gas (DOTENV_PATH), valore diverso nel .env e GAS_CLAUDE_CLI solo nella shell → WARN (V-1..V-3 bot #290)
-f530158 chore(revisore): memoria review #542 — APPROVATO CON RISERVE
-6771320 fix(doctor): .env con GAS_CLAUDE_BIN vuota o virgolette aperte non conta (V-1 ve #290), test .venv collegato (V-2 ve #290)
-ae576f9 chore(revisore): memoria review #541 — APPROVATO
-ae66740 docs(fine-task): PR #290 — riserve del punto 3, review #540
-cceadcc fix(forte): riserve del punto 3 — WARN se GAS_CLAUDE_BIN sta solo nella shell, motivo senza prefisso ripetuto e non troncato, /usr/local su Linux
-e6604cb chore(revisore): memoria review #540 — APPROVATO CON RISERVE
+d915ec5 fix(doctor): riserve della #293 — GAS_CLAUDE_BIN scavalcato, interruttore come flag, chiavi ripetute, GAS_NO_DOTENV dichiarato, messaggi sul giro del timer
+0be9d5a chore(revisore): memoria review #552 — APPROVATO
+dbbafe9 chore(revisore): memoria review #551 — APPROVATO CON RISERVE
 ```
 
-NB: base `03dc898` (main con le PR #288 e #294). I commit da `e6604cb` a `a04dd49` sono quelli della PR #290, chiusa senza merge. Il merge `6e19169` ne annulla il contenuto, perché tiene l'albero di main (`2f35bc6`): il diff della sessione rispetto a main è solo quello del §2, cioè il commit `b24bd9f` e i report. I loro verdetti (#540, #541, #542) sono nell'handoff della #290 (`a04dd49`). Il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #547 (chat Motore; nel ramo numerata #543, rinumerata per V-2 della verifica esterna su #293: #543 c'è già su main, chat Mani) — sul diff di b24bd9f
+### Review #551 (chat Motore) — sul diff di d915ec5 (prima della correzione di R-551-1)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #543 (chat Motore) sul diff STAGED di feat/merge-automatico-z1xjx2 (gas.py, tests/test_unit_dotenv.py, tests/test_unit_kernel.py; +57/-1). Ho letto CLAUDE.md, le voci di stato_progetto.md su GAS_CLAUDE_CLI e la coda della memoria del revisore.
+Review #551 (chat Motore). Diff staged su feat/merge-automatico-z1xjx2: gas.py, tests/test_unit_dotenv.py, tests/test_unit_kernel.py. Prima della review ho letto CLAUDE.md (§5), reports/stato_progetto.md (riga 589: R-543-1, R-543-2, nota #549) e la memoria.
 
-**Elementi del diff che ho esaminato**
-- `gas.py:627` — in `_carica_dotenv`, se la variabile esiste già nella shell, il nome va in `_DOTENV_SCAVALCATE` solo quando il valore del `.env` è DIVERSO, poi `continue` come prima. Rischi controllati: sovrascrittura, fuga di valori, comportamento con stesso valore. Il comportamento resta lo stesso (non sovrascrive mai). Il set contiene solo nomi, nessun valore finisce nei log. Con lo stesso valore il nome non viene registrato. Con `GAS_NO_DOTENV` si esce prima (`gas.py:595`), quindi niente viene registrato. — ok
-- `gas.py:575` — dichiarazione del set globale, accanto a `_DOTENV_CARICATE`. Rischio controllato: stato globale che resta da un test all'altro. Nel processo vero viene popolato una sola volta da `main()` (`gas.py:6081`). — ok
-- `gas.py:5008` — doctor con il forte spento: se il nome è in `_DOTENV_SCAVALCATE` dà WARN «spento nella shell ma il .env ha un altro valore», altrimenti OK come prima. Rischio controllato: un falso OK nel verso che conta. — ok, salvo la riserva R-543-2
-- `gas.py:5015` — doctor con il forte acceso ma `GAS_CLAUDE_CLI` non in `_DOTENV_CARICATE`: dà WARN e poi continua con i controlli del comando e del conto, senza ritorno anticipato. Un WARN non cambia il codice di uscita. — ok, salvo la riserva R-543-1
-- `tests/test_unit_dotenv.py:136` — collega la funzione vera al set: monkeypatch di entrambi i set, valore diverso → nel set, valore uguale → fuori, variabile nuova → in CARICATE, valore della shell intatto. Applica la lezione di #540. — ok
-- `tests/test_unit_kernel.py:11227` — T99w/T99x: tutti e quattro i casi del doctor. Il `finally` toglie `GAS_CLAUDE_CLI` da entrambi i set e rimette il valore precedente di `GAS_CLAUDE_CLI` (lo toglie se prima non c'era). — ok
+**Cosa ho controllato nel diff**
+- `gas.py:631`: se una chiave ripetuta è già in `caricate`, viene saltata. Rischio: cambia il caricamento? No. Il ramo era già un `continue` che non toccava né `caricate` né `os.environ`. Il caricamento non sovrascrive mai, il valore di ritorno è lo stesso, nessun valore viene salvato. Esito: ok. Il salto copre però solo le chiavi che non stavano nella shell (vedi R-551-1).
+- `gas.py:633`: confronto con le regole di `_env_flag`, attivo solo se la chiave è in `gas.py:579` `_DOTENV_INTERRUTTORI = frozenset({"GAS_CLAUDE_CLI"})`. Tutte le altre chiavi, compresa GAS_CLAUDE_BIN, restano confrontate come testo. Prove: «1» contro «yes» va in CARICATE; «» contro «0» va in CARICATE; «x» contro «no» va in CARICATE (sono tutti spenti, quindi è corretto). Esito: ok, R-543-1 chiusa.
+- `gas.py:5022`: con GAS_NO_DOTENV il doctor aggiunge «(.env non letto: GAS_NO_DOTENV attivo)» sia all'OK «spento» sia al WARN «acceso». Esito: ok, R-543-2 chiusa: l'OK ora dichiara il suo limite.
+- `gas.py:5033`: il WARN del ramo «acceso» dice «il .env lo spegne» quando la chiave è in SCAVALCATE. Esito: ok.
+- `gas.py:5043`: WARN dedicato per GAS_CLAUDE_BIN scavalcato. Viene prima di `_avviso_claude_timer`, quindi sparisce il consiglio sbagliato «metti … nel .env». Esito: ok, V-1 bot #293 chiusa.
+- `tests/test_unit_kernel.py:11229`: T99w/T99x salvano e poi rimettono com'era l'appartenenza ai due insiemi. Esito: ok, V-4 chiusa.
+- `tests/test_unit_dotenv.py:151` e `tests/test_unit_dotenv.py:171`: test nuovi, il secondo fa `_carica_dotenv` e poi il doctor sullo stesso `.env`, senza scrivere i set a mano. Mutanti miei:
+  - confronto da flag tolto: 2 failed;
+  - salto delle chiavi ripetute tolto: 1 failed;
+  - gas.py ripristinato in entrambi i casi (nessuna differenza nel working tree).
 
-**Prove che ho rifatto**
-- Suite del kernel: 1063 PASS, 0 FAIL.
-- `tests/test_unit_dotenv.py`: 12 passed.
-- Mutante 1: confronto `!=` sostituito con `if True` → il test pytest fallisce (1 failed).
-- Mutante 2: ramo `_DOTENV_SCAVALCATE` del doctor disattivato → T99x FAIL.
-- `gas.py` rimesso com'era (git diff del working tree vuoto) e indice intatto.
+  Esito: ok.
 
-**Riserve**
-- R-543-1 (BASSA): il confronto è tra stringhe, non tra significati. Shell «1» con `.env` «true» dà un falso WARN «acceso nella shell ma non dal .env… metti GAS_CLAUDE_CLI=1», un consiglio fuorviante perché il `.env` lo accende già. Shell «0» con `.env` «false» dà un falso WARN «altro valore». È il verso prudente, quindi accettabile. Il rimedio sarebbe confrontare con la stessa regola di `_env_flag`.
-- R-543-2 (BASSA): con `GAS_NO_DOTENV=1` nella shell e il forte spento, il doctor dà OK anche se il `.env` lo accende per il giro notturno, che non ha `GAS_NO_DOTENV`. Non fa danni: `GAS_NO_DOTENV` si usa solo nella suite, e un forte acceso di notte resta sotto il tetto giornaliero. Va comunque dichiarato.
+**Test rifatti da me:** kernel 1063 PASS, 0 FAIL (T99w e T99x PASS); tests/test_unit_dotenv.py 14 passed.
 
-**Cosa non ho verificato e perché**
-- Il comportamento vero del timer launchd sul Mac (il `.env` del Mac, il giro notturno reale): non si può riprodurre in questo container.
-- La suite pytest completa: ho eseguito solo `tests/test_unit_dotenv.py` e la suite del kernel.
+**Riserva**
+- **R-551-1 BASSA**: falso OK nel verso NON prudente, che hai chiesto di cercare. Il problema esisteva già prima, ma il fix della nota #549 lo chiude solo in parte. `caricate` contiene solo le chiavi che il `.env` ha messo in `os.environ`. Se la chiave è già nella shell, la seconda riga del `.env` viene confrontata di nuovo. Prova eseguita: shell `GAS_CLAUDE_CLI=1`, `.env` con `GAS_CLAUDE_CLI=0` e poi `GAS_CLAUDE_CLI=1`. Risultato: la chiave finisce sia in CARICATE sia in SCAVALCATE. Il ramo «acceso» guarda solo CARICATE, quindi il doctor non dà nessun WARN. Il giro del timer invece prende la prima riga (0) e il forte resta spento. Nel verso opposto (shell 0, `.env` 1 poi 0) il WARN c'è.
+  - Rimedio: un insieme `visti` con le chiavi di questo `.env`, saltate alla seconda comparsa a prescindere dalla shell.
+  - Il commento di `gas.py:632` («la shell non c'entra») va corretto di conseguenza.
+  - Per GAS_CLAUDE_BIN non succede: il controllo su SCAVALCATE a `gas.py:5043` viene prima.
 
-Il diff non contiene slicing della history né simulazione dell'output dei tool. Non tocca il tetto di 10 iterazioni, il tetto di 8k in uscita, `_get_window` né i provider.
+**Cosa non ho verificato**
+- Il comportamento reale di launchd sul Mac con `~/.zshenv`, e del giro lanciato da Telegram che eredita la shell: non si può riprodurre in dev. Ho controllato solo che i messaggi siano coerenti col commento.
+- Il doctor con le chiavi vere dei provider: nei test sono tolte.
 
-- Riga contatore #543 aggiunta e committata (5a1c9e7) in /home/user/Gas/.claude/agents/memoria_revisore.md. Nessuna lezione nuova: quella su «da dove arriva la variabile» c'è già, da #538.
+Wall of Shame: nessuno slicing della history, nessuna simulazione di tool. Le eccezioni dei provider non sono toccate.
 
-Riserve da tracciare in /home/user/Gas/reports/stato_progetto.md prima del commit: R-543-1 e R-543-2.
+Memoria aggiornata: riga #551 più una lezione (sondare la chiave ripetuta con la shell uguale alla seconda riga). Committata con lo script in dbbafe9 (/home/user/Gas/.claude/agents/memoria_revisore.md). Il diff staged è intatto.
 
-### Review #548 (chat Motore) — sul merge di origin/main (PR #288) in 6393dd8
+### Review #552 (chat Motore) — sul diff finale di d915ec5 (con la correzione di R-551-1)
 
-Il verdetto originale (sotto, nel blocco di codice, testo integrale e invariato) citava come `path:riga` soprattutto file entrati da main o documenti, che non sono file di codice del diff di sessione (base d4b39ca): il Gate B lo dava rosso. Il revisore l'ha riemesso con lo stesso esito; la riemissione è subito dopo.
-
-Verdetto originale (sostituito dalla riemissione):
-
-```text
 ## VERDETTO: APPROVATO
 
-Il merge è corretto: non si perde nessuna riga da nessuno dei due lati, non resta nessun marcatore di conflitto e il codice è identico ai due lati come deve essere.
+Review #552 (chat Motore). Ho esaminato il diff staged su feat/merge-automatico-z1xjx2 (3 file: gas.py, tests/test_unit_dotenv.py, tests/test_unit_kernel.py). Prima ho letto CLAUDE.md §5, stato_progetto e la memoria (#551 e la lezione R-551-1).
 
 Elementi del diff esaminati:
-- `modules/web/lexbor.py:172` — figlio lexbor con lo shadow DOM dichiarativo, portato da main. Rischio esaminato: che la risoluzione del merge lo abbia alterato. `git diff --cached origin/main` è vuoto per questo file, per `tests/test_unit_web_lexbor.py` e per `reports/ripartenza_mani.md`. Esito: ok.
-- `.claude/agents/memoria_revisore.md:943` — riga #547, cioè la #543 del ramo rinumerata. Rischi esaminati: righe perse o testo cambiato. Verso main il diff è una sola riga aggiunta (la #547), quindi le #539–#546 della chat Mani ci sono tutte. Verso HEAD sparisce solo la riga #543 della chat Motore: tolta l'intestazione, il suo testo coincide byte per byte con quello della #547 (controllato con `diff`). Esito: ok.
-- `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento». Rischio esaminato: frasi perse da uno dei lati. Il word-diff verso HEAD toglie solo `#543)` (che diventa `#547)`) e per il resto aggiunge soltanto. Verso main ci sono solo aggiunte. Esito: ok.
-- `reports/stato_progetto.md:634` — voce «Mani — fetta 23». Rischio esaminato: voce duplicata. Compare una volta sola nell'indice, come su main. Esito: ok.
-- `reports/ultimo_report.md:4` — il riferimento «review #543» diventa «#547 (già #543 nel ramo)». È l'unica modifica rispetto a HEAD. Esito: ok.
-- Contesto, file non toccati dal merge: `gas.py`, `brains/`, `tests/test_unit_kernel.py`, `tests/test_unit_dotenv.py`, `reports/handoff.md` e `reports/diff_sessione.md` sono identici a HEAD (`git diff --cached --quiet HEAD` restituisce 0). Il codice della PR #293 resta quello revisionato.
+- `gas.py:610`: crea l'insieme `visti` dentro `_carica_dotenv`, quindi uno nuovo a ogni chiamata. Rischio esaminato: stato che resta tra una chiamata e l'altra. Esito: ok.
+- `gas.py:631`: con `if chiave in visti: continue` si salta la seconda comparsa di una chiave, che sia nella shell o no. Il controllo sta DOPO la validazione della riga: se la prima riga è malformata o ha virgolette non chiuse, non conta come chiave vista e vale la riga valida successiva. Rischio esaminato: un cambio nel caricamento. Esito: ok. Il vecchio `if chiave in caricate` saltava solo le chiavi non presenti nella shell. Per quelle `os.environ` viene scritto solo alla prima comparsa, come prima. `caricate` non riceve mai una chiave due volte, quindi il valore di ritorno non cambia. Nessun valore viene salvato in nessun insieme. L'unico comportamento che cambia è quello voluto: con la chiave nella shell, la seconda riga non viene più confrontata. Il commento («per il timer vale la prima») è corretto.
+- `gas.py:635`: il confronto come flag per `_DOTENV_INTERRUTTORI` usa lo stesso insieme di valori di `_env_flag` (`gas.py:566`: 1/true/on/yes/si). Rischio esaminato: le due regole potrebbero divergere. Esito: ok. Parte invariata rispetto a #551.
+- `tests/test_unit_dotenv.py:164`: nuovo caso R-551-1. Shell `GAS_CLAUDE_CLI=1`, `.env` con «=0» e poi «=1»: SCAVALCATE vale {GAS_CLAUDE_CLI} e la chiave non è in CARICATE. Rischio esaminato: test che non morde. Esito: ok. Mutante (salto con `visti` disattivato) → `test_interruttori_confrontati_come_flag_e_chiavi_ripetute` FAIL (1 failed, 13 passed). Poi gas.py ripristinato; l'index è invariato e non ci sono modifiche non in staging.
+- Resto del diff (WARN del doctor `gas.py:5021-5050`, ripristino degli insiemi in `tests/test_unit_kernel.py:11228`): identico a quanto approvato in #551. Esito: ok.
 
-Altre verifiche: nessun marcatore `<<<<<<<` o `>>>>>>>` nei file dell'indice né in handoff e diff_sessione. `pytest tests/test_unit_web_lexbor.py` dà 20 passed e 85 skipped.
+Esecuzione: tests/test_unit_dotenv.py 14 passed; kernel 1063 PASS, 0 FAIL (rilanciato da me). Wall of Shame: nessuno slicing della history, nessuna simulazione dei tool.
 
-Rischio escluso: il comportamento vero di lexbor non è stato verificato, perché 85 test vengono saltati: selectolax non è installato in questo ambiente. È accettabile, dato che quei file sono identici a origin/main, già revisionati e passati in CI con la PR #288.
+Rischio escluso: non ho verificato il comportamento reale del giro launchd sul Mac (solo `.env` più ~/.zshenv), perché in dev non si riproduce. La frase «per il timer vale la prima» si regge sul fatto che il timer usa lo stesso `_carica_dotenv` senza la variabile nella shell: l'ho dedotto dal codice, non l'ho osservato.
 
-**Problema operativo da sistemare prima di chiudere il merge:** la riga contatore #548 è scritta nel file `/home/user/Gas/.claude/agents/memoria_revisore.md` ma NON è committata e non è nell'indice. `scripts/commit_memoria_revisore.sh` è fallito senza danni: «fatal: cannot do a partial commit during a merge», con avviso in `/home/user/Gas/gas_debug.log`. L'agente principale deve fare `git add .claude/agents/memoria_revisore.md` prima di `git commit`.
-
-La memoria è cambiata dopo questa review: lo SHA-256 del diff staged non corrisponderà a quello revisionato. Va ricalcolato dopo l'add, con `scripts/segna_review_ok.sh`. L'unica differenza in più è la riga #548.
-
-Riga in memoria: #548 — APPROVATO — nessuna lezione nuova.
-```
-
-### Review #548 — verdetto RIEMESSO dal revisore per il Gate B (stesso esito, citazioni nella forma del gate; l'originale è qui sopra, non ritoccato)
-
-## VERDETTO: APPROVATO
-
-Verdetto della review #548 riemesso: stesso esito e stesso contenuto, ora con citazioni dei file di codice del diff di sessione (base d4b39ca). Le righe le ho riverificate sul file attuale, HEAD fbe5f62. Il repo e la memoria non li ho toccati.
-
-Il merge di origin/main d4b39ca (PR #288) dentro feat/merge-automatico-z1xjx2 (PR #293) è corretto: nessuna riga persa da nessuno dei due lati, nessun marcatore di conflitto, e il codice della PR #293 è rimasto quello revisionato.
-
-Elementi del diff esaminati:
-- `gas.py:575` — dichiarazione del registro `_DOTENV_SCAVALCATE` (set dei nomi che il `.env` ha ma la shell sovrascrive). Rischio esaminato: che risolvendo il merge si sia perso o spostato il codice della PR #293. `git diff 6b23e1b HEAD -- gas.py` è vuoto: il codice è identico a quello del ramo prima del merge, già revisionato in #547 (che nel ramo era la #543). Esito: ok.
-- `gas.py:627` — dentro `_carica_dotenv`, il confronto `os.environ[chiave] != valore` decide se un nome entra in `_DOTENV_SCAVALCATE`. Rischio esaminato: che il codice di main abbia toccato `_carica_dotenv`. Non l'ha fatto: dal merge-base main ha cambiato solo il figlio lexbor e reports/. Esito: ok.
-- `gas.py:5008` — doctor, ramo «forte spento». Dà WARN se `GAS_CLAUDE_CLI` è in `_DOTENV_SCAVALCATE`, altrimenti OK. Alla `gas.py:5015` c'è il ramo «acceso nella shell ma non dal .env». Rischio esaminato: corpo della funzione alterato. È invariato rispetto a 6b23e1b. Esito: ok.
-- `tests/test_unit_kernel.py:11227` — test del doctor che salva e ripristina `GAS_CLAUDE_CLI` (`_scli99`). Rischio esaminato: test perso nel merge. Il file è identico a 6b23e1b. Esito: ok.
-- `tests/test_unit_dotenv.py:136` — `test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate`, che lega `_carica_dotenv` a `_DOTENV_SCAVALCATE`. Rischio esaminato: test perso nel merge. Il file è identico a 6b23e1b. Esito: ok.
-- Contesto, file non nel diff di sessione: `modules/web/lexbor.py:172`, `tests/test_unit_web_lexbor.py` e `reports/ripartenza_mani.md` sono identici a origin/main (`git diff --cached origin/main` vuoto). `pytest tests/test_unit_web_lexbor.py` dà 20 passed e 85 skipped.
-- Risoluzione dei conflitti nei documenti:
-  - `.claude/agents/memoria_revisore.md:943`: la riga #547 ha lo stesso testo della #543 del ramo e cambia solo l'intestazione. Le righe #539–#546 della chat Mani ci sono tutte.
-  - `reports/stato_progetto.md:4`: il word-diff verso HEAD cambia solo #543 in #547 e per il resto aggiunge. Verso main ci sono solo aggiunte.
-  - Nessun marcatore `<<<<<<<` o `>>>>>>>`.
-
-Rischio escluso: il comportamento vero di lexbor non è stato verificato, perché 85 test vengono saltati: selectolax non è installato in questo ambiente. È accettabile, dato che quei file sono identici a origin/main e sono già passati in CI con la PR #288. Il comportamento del doctor sul Mac dell'operatore non l'ho verificato: il Mac non è raggiungibile da qui.
-
-### Review #549 (chat Motore) — sul diff di 28e74a6
-
-## VERDETTO: APPROVATO
-
-Review #549 (chat Motore). Diff staged su feat/merge-automatico-z1xjx2 (PR #293): gas.py (+6/−2), tests/test_unit_dotenv.py (+2/−1). Prima della review ho letto CLAUDE.md, la parte di reports/stato_progetto.md che riguarda #293 e la memoria del revisore.
-
-**Elementi del diff esaminati**
-- `gas.py:630` — nel ramo `else` (stesso valore nella shell e nel .env) aggiunge a `_DOTENV_CARICATE` solo la chiave. Rischi esaminati: registrazione di valori e cambio del valore di ritorno. Esito **ok**:
-  - si salva solo il nome, mai il valore;
-  - il `continue` resta prima di `caricate.append`, quindi `caricate` non cambia.
-- `gas.py:5030` — il doctor passa `"GAS_CLAUDE_BIN" in _DOTENV_CARICATE` come `da_dotenv` a `_avviso_claude_timer`. Rischio esaminato: la nuova regola poteva nascondere un avviso vero. Esito **ok**: con lo stesso valore, il giro notturno (che legge solo il .env) vede lo stesso percorso, quindi in `gas.py:461` il risultato `None` è corretto. Prova diretta con GAS_CLAUDE_BIN=/opt/x/claude e GAS_CLAUDE_CLI=1, uguali nella shell e nel .env:
-  - valore di ritorno `[]`;
-  - CARICATE = {GAS_CLAUDE_BIN, GAS_CLAUDE_CLI}, SCAVALCATE vuoto;
-  - avviso `None`, quindi niente più falso WARN «acceso nella shell ma non dal .env».
-- `gas.py:5019` (contesto, non toccato) — il WARN «acceso nella shell ma non dal .env» ora non scatta più quando il valore è uguale: è quello che chiedeva V-1 bot #293. Esito **ok**.
-- `tests/test_unit_dotenv.py:146` — ora si aspetta GAS_T_UGUALE in CARICATE. Rischio esaminato: un test che non morde. Esito **ok**:
-  - ho sostituito l'`add` con `pass` → questo test FALLISCE (1 failed, 11 passed);
-  - ho ripristinato gas.py, `git diff` non staged è vuoto e il diff staged è intatto.
-- `tests/test_unit_dotenv.py:126` (`test_nomi_caricati_finiscono_in_dotenv_caricate`) — non cambiato e verde: con valore diverso il nome resta fuori da CARICATE. Esito **ok**.
-- Risultato dei test: tests/test_unit_dotenv.py 12 passed. La suite kernel (1063 PASS secondo l'agente) non l'ho rifatta.
-
-**Note (non bloccanti)**
-- BASSA, difetto che c'era già prima: una chiave scritta due volte nel .env con valori diversi finisce sia in CARICATE sia in SCAVALCATE. Il doctor dà un falso WARN, nel verso prudente. Il diff non lo peggiora.
-- COSMETICA: la docstring del test a `tests/test_unit_dotenv.py:136` («Stesso valore → niente») ora vale solo per SCAVALCATE. Si può precisare se capita.
-
-**Rischi esclusi (cosa non ho verificato)**
-- Il comportamento sul Mac con il timer notturno vero (launchd/plist): non si può riprodurre in dev.
-- Il caso già noto R-543-1 (confronto sulla stringa, per esempio «1» contro «true»): resta com'era, fuori da questo diff.
-
-Riga contatore #549 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (c651c26). Il diff staged è intatto. Nessuna lezione nuova.
-
-### Review #550 (chat Motore) — sul merge di origin/main (PR #294) in aab79b0
-
-## VERDETTO: APPROVATO
-
-Ho fatto le letture obbligatorie: CLAUDE.md (sezioni 5, 8 e 10), la coda della memoria del revisore, e la parte di stato_progetto.md toccata dal merge (riga 4 e riga 589).
-
-**Elementi del diff esaminati**
-- `gas.py:627` — se una chiave del `.env` esiste già nella shell, il codice controlla se i due valori coincidono. Valore diverso: la chiave va in `_DOTENV_SCAVALCATE`. Valore uguale: va in `_DOTENV_CARICATE` (riga 632, V-1 bot #293). Rischio esaminato: che il merge abbia alterato la logica della PR. `git diff --cached HEAD -- gas.py` è vuoto, quindi il file è identico a HEAD — ok.
-- `gas.py:5012` — il doctor dà WARN se il forte è spento nella shell ma il `.env` ha un altro valore, e dà OK se è spento e basta. Rischio esaminato: che il WARN non sia più fail-safe o che ci sia una regressione. Il codice è invariato rispetto a HEAD e la logica va verso la prudenza — ok.
-- `tests/test_unit_kernel.py:11226` — il blocco V-3 bot #290 prova i 4 casi dell'interruttore (acceso solo nella shell, acceso dal `.env`, spento con `.env` diverso, spento e basta) e ripristina l'ambiente nel `finally`. Rischio esaminato: test perso nel merge. Il file è identico a HEAD. Suite kernel eseguita: **1063 PASS, 0 FAIL** — ok.
-- `tests/test_unit_dotenv.py:136` — il test `test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate` è presente e il file è identico a HEAD. Con pytest: 34 passati, 103 saltati (insieme a test_unit_web_lexbor) — ok.
-- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» unita a mano. Lo script dice che la riga di main è un suffisso intero della riga unita (True). Anche la parte «prima: …» di HEAD è un suffisso della riga di main (True), quindi nessuna voce si perde. In testa c'è la voce del ramo (chat Motore) — ok.
-- `reports/stato_progetto.md:589` — è l'unica altra riga diversa da main. Main la ha uguale alla base d4b39ca, il ramo la estende (PR #290 e #293). Git ha preso correttamente la versione del ramo, che è più ricca: non è una perdita — ok.
-- `.claude/agents/memoria_revisore.md` — rispetto a HEAD il diff ha solo righe aggiunte: le righe #547–#549 della chat Mani e la lezione sul namespace del 2026-10-28. Il confronto riga per riga (`comm`) non trova righe mancanti né rispetto a HEAD né rispetto a origin/main. Le righe #547–#549 della chat Motore sono in fondo, con il testo invariato — ok. Le numerazioni doppie restano distinte grazie alla sigla della chat, come già nel caso R-539-1.
-
-**Identità dei file**
-- Uguali a origin/main 03dc898 (`git diff --cached origin/main` vuoto): `modules/web/lexbor.py`, `tests/test_unit_web_lexbor.py`, `reports/ripartenza_mani.md`.
-- Uguali a HEAD 5912bd5: `gas.py`, `tests/test_unit_kernel.py`, `tests/test_unit_dotenv.py`.
-- Uguali a HEAD, quindi versione del ramo: `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md` (non compaiono tra i file in staging).
-- Nessun marcatore di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`) nei file uniti. `git diff --cached --check HEAD` è pulito.
-
-**Rischio escluso**
-- I test di lexbor sono quasi tutti saltati in questo ambiente, probabilmente perché manca il binding lexbor. Il comportamento di `modules/web/lexbor.py` non l'ho verificato con un'esecuzione; mi fido del fatto che il file è identico a origin/main, già revisionato dalla chat Mani (#547–#549). Il file non è nel diff di sessione.
-- Non ho verificato il comportamento sul Mac o sul timer notturno: non si riproduce in questo ambiente.
-
-**Memoria del revisore**
-- Ho scritto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga `#550 (chat Motore) — 2026-10-29 — APPROVATO — …`.
-- `scripts/commit_memoria_revisore.sh` è fallito, come previsto durante un merge: «fatal: cannot do a partial commit during a merge». L'ha scritto come warning in gas_debug.log e ha chiuso con exit 0.
-- La riga c'è nel file ma **non è in staging**. Prima di chiudere il merge devi lanciare `git add .claude/agents/memoria_revisore.md`. Di conseguenza lo SHA del diff staged cambia: rigenera il marcatore con `bash scripts/segna_review_ok.sh` dopo l'add.
+Riga contatore #552 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (0be9d5a, solo quel file; lo staging resta intatto). Nessuna lezione nuova.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Suite kernel: 1061 → 1063 PASS (T99w, T99x nuovi), 0 FAIL. Il valore di main è misurato in un worktree a `2f35bc6`; il merge di main (PR #288) non tocca il kernel.
+Suite kernel: 1063 → 1063 PASS, 0 FAIL (nessun check nuovo nel kernel; T99w e T99x aggiornati). Main a `a418887` ha 1063 (la #293 portava 1061 → 1063).
 
 ```
 === RIEPILOGO: 1063 PASS, 0 FAIL ===
 ```
 
-pytest (tutti i file tranne la suite kernel), sulla testa `28e74a6` (dopo il merge di main con i test lexbor della #288): `2284 passed, 86 skipped in 191.21s (0:03:11)`. Kernel sulla stessa testa: 1063 PASS, 0 FAIL.
+pytest (tutti i file tranne la suite kernel), sulla testa `d915ec5`: `2288 passed, 104 skipped in 193.86s (0:03:13)`; `tests/test_unit_dotenv.py` 14 passed (2 nuovi).
 
 ## §6 STATO CI
 
 CI letta con lo strumento GitHub della sessione: `gh run list` non è disponibile (`gh` non autenticato).
 
 Mappatura commit→run:
-- `6e19169`, `5a1c9e7`: nessuna run su questi SHA (pushati insieme a `b24bd9f`).
-- `b24bd9f`: pushato prima dell'apertura della PR #293; la run del push non l'ho letta.
-- `6b23e1b`: `handoff-check` success; `unit-suite` e `verifica-bot` in corso alla lettura della verifica esterna, poi superati dal merge (conflitto con main).
-- `5912bd5`: `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE: V-1 BASSA consiglio di GAS_CLAUDE_BIN quando shell e `.env` divergono, V-2 COSMETICA docstring e test dall'inizio alla fine; da chiudere in una PR successiva su richiesta dell'operatore); verifica esterna APPROVATO CON RISERVE (commento 6483741111).
-- `aab79b0`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
-- `6393dd8`, `fbe5f62`, `c651c26`, `28e74a6` e i due commit di fine-task che seguono: nessuna run su questi SHA (pushati insieme al commit di fine-task; `fbe5f62` aveva il Gate B rosso in locale, mai pushato da solo).
-- `6b23e1b`: `verifica-bot` success (APPROVATO CON RISERVE, V-1 BASSA chiusa in `28e74a6`).
+- `dbbafe9`, `0be9d5a`: nessuna run su questi SHA (pushati insieme a `d915ec5`).
+- `d915ec5`: pushato prima dell'apertura della PR #295; la run del push non l'ho letta.
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-543-1 BASSA: confronto tra stringhe (`1` contro `true` → WARN in più, verso prudente).
-- R-543-2 BASSA: con `GAS_NO_DOTENV=1` nella shell il doctor non vede il `.env`.
-- nota BASSA #549: chiave scritta due volte nel `.env` con valori diversi → falso WARN (verso prudente, preesistente).
-- V-3 BASSA ve #293: T99n stampa un WARN in più (dipende dal set globale), nessun fallimento.
+- Il PATH e le variabili di `~/.zshenv` (letto da `zsh -c` nel plist) non sono considerati dal doctor: falso WARN, verso prudente.

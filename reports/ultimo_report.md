@@ -1,21 +1,17 @@
-# ULTIMO REPORT — 2026-10-28 — chat Motore: interruttore del forte tra shell e .env (PR #293)
+# ULTIMO REPORT — 2026-10-29 — chat Motore: riserve della PR #293 (PR #295)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #293 (https://github.com/Gasss23/Gas/pull/293): la review #547 (già #543 nel ramo) è APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10).
+1. Merge della PR #295 (https://github.com/Gasss23/Gas/pull/295). Il revisore ha approvato (#552 APPROVATO; la #551 aveva una riserva, chiusa in questa stessa PR). Il merge segue la regola di CLAUDE.md §10: senza note dal bot la mergio io, altrimenti chiedo prima all'operatore.
 
 ## Esito
-- **PR #290**: chiusa senza merge, su «ok» dell'operatore. Era un doppione della #291 (stessa fetta fatta da un'altra sessione, già su main).
-- **WARN del doctor su GAS_CLAUDE_CLI della shell e del .env non coincidenti**: FATTA, in tutti e due i versi.
-  - Forte acceso nella shell ma non dal `.env` (V-3 del bot su #290).
-  - Forte spento nella shell ma il `.env` ha un altro valore (V-1 della verifica esterna su #290).
-  - Il nuovo `_DOTENV_SCAVALCATE` contiene solo i nomi delle variabili, mai i valori.
-- **Test**: suite kernel da 1061 a 1063 PASS, 0 FAIL (main misurato in un worktree a `2f35bc6`). pytest `test_unit_dotenv`: 12 passati.
-
-- **Merge di main (PR #288)**: FATTA — conflitti solo nei report e nella memoria; review #548 APPROVATO; la review del ramo #543 è rinumerata #547 (V-2 della verifica esterna su #293).
-
-- **V-1 bot #293 (stesso valore in shell e .env → falso WARN)**: FATTA — il nome conta come arrivato dal `.env`; vale anche per `GAS_CLAUDE_BIN` (V-1 bot #291); review #549 APPROVATO.
-
-- **Merge di main (PR #294)**: FATTA — conflitti solo in report e memoria; review #550 APPROVATO.
+- **PR #293**: mergiata con «mergia #293 e sistema» dell'operatore, dopo un nuovo merge di main (PR #294) e la review #550.
+- **V-1 bot #293 (GAS_CLAUDE_BIN diverso tra shell e .env)**: FATTA. Il doctor dà un WARN dedicato al posto del consiglio sbagliato.
+- **V-1 bot #293, secondo giro (messaggi troppo sicuri)**: FATTA. I messaggi ora parlano del «giro del timer».
+- **R-543-1 («1» e «true» confrontati come testo)**: FATTA. L'interruttore si confronta come flag.
+- **R-543-2 (GAS_NO_DOTENV)**: FATTA. Il doctor lo dichiara nel messaggio.
+- **Nota #549 e R-551-1 (chiave ripetuta nel .env)**: FATTA. Vale la prima riga; il falso OK nel verso non prudente è chiuso.
+- **V-4 e V-2 bot #293 (test)**: FATTA.
+- **Test**: kernel 1063 PASS, 0 FAIL (stesso numero di main: nessun test nuovo nel kernel, solo T99w e T99x aggiornati). pytest `test_unit_dotenv`: 14 passati (2 nuovi).
 
 ## Anomalie
-- Due sessioni «chat Motore» lavorano sulla stessa RIPARTENZA: oggi ci sono stati due doppioni (#286 e #287, #290 e #291). L'ho segnalato all'operatore.
+- La chat Mani e questa chat hanno usato gli stessi numeri di review (#547–#549). Le righe nella memoria restano distinte grazie alla sigla della chat.
