@@ -1,25 +1,19 @@
-# Ultimo report — 2026-10-28 (chat Motore)
-
-**Task:** (operatore: «sistema anche questa e poi mergia») merge della PR #291 (autorizzato dall'operatore: «mergia e sistema») e correzione delle note del bot su #291 (PR #292).
+# ULTIMO REPORT — 2026-10-29 — chat Motore: riserve della PR #293 (PR #295)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #292 (https://github.com/Gasss23/Gas/pull/292): review #545 APPROVATO CON RISERVE, verifica esterna APPROVATO CON RISERVE (BASSE): serve il «sì» dell'operatore (CLAUDE.md §10), salvo verdetto pulito del bot.
+1. Merge della PR #295 (https://github.com/Gasss23/Gas/pull/295). Il revisore ha approvato (#552 APPROVATO; la #551 aveva una riserva, chiusa in questa stessa PR). Il merge segue la regola di CLAUDE.md §10: senza note dal bot la mergio io, altrimenti chiedo prima all'operatore.
 
 ## Esito
-- **Merge della PR #291**: FATTO (autorizzazione dell'operatore).
-- **Fetta 1 — V-1 bot #291 + R-543-1 + R-544-1**: FATTA. `_DOTENV_NEL_FILE: Dict[str, str]` (nome → valore del `.env`, anche se vince la shell); il doctor dà WARN se il `.env` ha un altro valore o non ha quello in uso.
-- **Fetta 2 — V-2 bot #291 + R-543-2**: FATTA. Nome nudo → controllo delle cartelle; eccezione per «claude» solo senza la variabile nel `.env`.
-- **Fetta 3 — R-544-2**: FATTA. Registro con `setdefault` (vince la prima riga, come il loader).
-- **Fetta 4 — V-3 (R-541-1) e V-4 bot #291**: FATTE. T99t toglie i collegamenti; tipo `Dict[str, str]`.
-- Test: kernel 1057 PASS, 0 FAIL; pytest 2284 passed, 61 skipped.
-- **Fetta 5 — conflitto con main (V-1 MEDIA verifica esterna #292)**: FATTA. Merge di origin/main d4b39ca (PR #288, chat Mani), conflitti solo nei report e nella memoria; review #547 APPROVATO; kernel 1057 PASS, pytest dotenv + web_lexbor 32 passed dopo il merge.
-- **Fetta 6 — bot #292 (BOCCIATO su a0872d2 per il conflitto, check rosso su f94c4a0)**: FATTA. Registro del `.env` solo per `GAS_CLAUDE_BIN` (`_DOTENV_VALORI_DA_TENERE`, V-4 bot / V-2 ve #292), T99s rimette il registro (V-3), BOCCIATO registrato nei report (V-1); review #548 APPROVATO CON RISERVE; kernel 1057 PASS, pytest dotenv + claude_cli 42 passed.
-- **Fetta 7 — V-1 bot #292 su 67c2bca + R-545-1 + R-548-1**: FATTA. Vuoto e «claude» sono lo stesso comando nel confronto col `.env`; il messaggio dice il comando che userà il timer; review #549 APPROVATO.
-- **Fetta 8 — merge di main (PR #294, chat Mani)**: FATTA. Conflitti solo nei report e nella memoria; review #550 APPROVATO; kernel 1057 PASS, pytest dotenv + web_lexbor 35 passed.
-- **Fetta 9 — merge di main con la PR #293 (altra sessione chat Motore, conflitto anche nel codice)**: FATTA. Tenuti i due registri del `.env`, rimessa la riga persa dal merge automatico; review #551 APPROVATO CON RISERVE; kernel 1059 PASS, pytest completo 2289 passed, 104 skipped.
-- Aperte: V-3 ve #292 BASSA (secondo caricamento), R-540-3 BASSA (VPS), R-547-1 COSMETICA, R-551-1 COSMETICA.
-- Anomalia: due sessioni chat Motore hanno lavorato in parallelo sulla stessa fetta del doctor (PR #290/#293 e PR #291/#292), con numeri di review doppi (#543–#550).
+- **PR #293**: mergiata con «mergia #293 e sistema» dell'operatore, dopo un nuovo merge di main (PR #294) e la review #550.
+- **V-1 bot #293 (GAS_CLAUDE_BIN diverso tra shell e .env)**: FATTA, ma dalla PR #292 dell'altra sessione (già su main). Lì il doctor confronta il valore del `.env` e dice quale userà il timer. Il mio WARN dedicato è stato tolto nel merge (review #553), perché era un doppione.
+- **V-1 bot #293, secondo giro (messaggi troppo sicuri)**: FATTA. I messaggi ora parlano del «giro del timer».
+- **R-543-1 («1» e «true» confrontati come testo)**: FATTA. L'interruttore si confronta come flag.
+- **R-543-2 (GAS_NO_DOTENV)**: FATTA. Il doctor lo dichiara nel messaggio.
+- **Nota #549 e R-551-1 (chiave ripetuta nel .env)**: FATTA. Vale la prima riga; il falso OK nel verso non prudente è chiuso.
+- **V-4 e V-2 bot #293 (test)**: FATTA.
+- **Test**: kernel 1063 PASS, 0 FAIL (stesso numero di main: nessun test nuovo nel kernel, solo T99w e T99x aggiornati). pytest `test_unit_dotenv`: 14 passati (2 nuovi).
+
+- **Merge di main (PR #292)**: FATTA. Conflitto in `_carica_dotenv`, risolto tenendo sia il registro dei valori (main) sia `visti` (ramo); review #553 APPROVATO.
 
 ## Anomalie
-- La review #544 è stata fatta due volte (il primo revisore è rimasto fermo per ore e ne è stato lanciato un secondo): due righe #544 nella memoria, stessi finding.
-- `gh` nel container non è autenticato: PR e CI con gli strumenti GitHub della sessione. L'iscrizione alla PR #291 non si è potuta togliere (serve un dispositivo di fiducia): non serve più, la PR è mergiata.
+- Le due sessioni «chat Motore» hanno lavorato di nuovo sullo stesso codice (#292 e #295), e anche i numeri di review e di riserva si sovrappongono (es. R-543-1 e R-551-1 hanno un significato diverso nelle due sessioni). Conviene che l'operatore tenga una sola sessione sul motore.

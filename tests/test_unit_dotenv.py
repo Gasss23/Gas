@@ -164,7 +164,8 @@ def test_nomi_caricati_finiscono_in_dotenv_caricate(env, tmp_path, monkeypatch):
 
 def test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate(env, tmp_path, monkeypatch):
     """V-1 ve #290: il doctor sa che la shell scavalca un valore DIVERSO del `.env`
-    (di notte vale quello del `.env`). Stesso valore → niente; solo i nomi, mai i valori."""
+    (il giro del timer usa quello del `.env`). Stesso valore → niente in SCAVALCATE, il
+    nome va in CARICATE (V-1 bot #293); solo i nomi, mai i valori."""
     monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
     monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
     env["GAS_T_DIVERSA"] = "0"
@@ -174,3 +175,64 @@ def test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate(env, tmp_p
     # V-1 bot #293: stesso valore nella shell e nel .env → di notte vale uguale, conta
     assert gas._DOTENV_CARICATE == {"GAS_T_NUOVA", "GAS_T_UGUALE"}
     assert env["GAS_T_DIVERSA"] == "0"
+
+
+def test_interruttori_confrontati_come_flag_e_chiavi_ripetute(env, tmp_path, monkeypatch):
+    """R-543-1: per GAS_CLAUDE_CLI «1» e «true» sono lo stesso valore. Nota #549 / V-1 ve
+    #293: una chiave ripetuta nel .env non diventa «scavalcata» (vale la prima)."""
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    env["GAS_CLAUDE_CLI"] = "1"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_CLAUDE_CLI=true\nGAS_T_DOPPIA=a\nGAS_T_DOPPIA=b\n"))
+    assert gas._DOTENV_SCAVALCATE == set()
+    assert gas._DOTENV_CARICATE == {"GAS_CLAUDE_CLI", "GAS_T_DOPPIA"}
+    assert env["GAS_T_DOPPIA"] == "a"
+    env["GAS_CLAUDE_CLI"] = "0"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_CLAUDE_CLI=on\n"))
+    assert gas._DOTENV_SCAVALCATE == {"GAS_CLAUDE_CLI"}
+    # R-551-1: shell accesa, .env «0» poi «1» → per il timer vale la prima (0): scavalcata
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    env["GAS_CLAUDE_CLI"] = "1"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_CLAUDE_CLI=0\nGAS_CLAUDE_CLI=1\n"))
+    assert gas._DOTENV_SCAVALCATE == {"GAS_CLAUDE_CLI"}
+    assert "GAS_CLAUDE_CLI" not in gas._DOTENV_CARICATE
+
+
+def _righe_forte(capsys, root) -> list:
+    gas.doctor(str(root))
+    return [l for l in capsys.readouterr().out.splitlines() if "Cervello forte" in l]
+
+
+def test_dal_dotenv_al_doctor(env, tmp_path, monkeypatch, capsys):
+    """V-2 bot #293: _carica_dotenv e doctor sullo stesso .env, senza scrivere i set a mano."""
+    for k in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
+              "GAS_CLAUDE_BIN", "GAS_CLAUDE_CLI"):
+        env.pop(k, None)
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    # spento nella shell, acceso nel .env → WARN
+    env["GAS_CLAUDE_CLI"] = "0"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_CLAUDE_CLI=1\n"))
+    righe = _righe_forte(capsys, tmp_path)
+    assert any("WARN" in r and "il .env lo accende" in r for r in righe), righe
+    # shell e .env con lo stesso valore (anche scritto diverso) → nessun WARN sull'interruttore
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    env["GAS_CLAUDE_CLI"] = "1"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_CLAUDE_CLI=true\n"))
+    righe = _righe_forte(capsys, tmp_path)
+    assert not any("claude-cli" in r and "WARN" in r for r in righe), righe
+    # GAS_CLAUDE_BIN diverso tra shell e .env → WARN col valore che userà il timer (PR #292)
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    env["GAS_CLAUDE_BIN"] = "/bin/sh"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_CLAUDE_CLI=1\nGAS_CLAUDE_BIN=/vecchio/claude\n"))
+    righe = _righe_forte(capsys, tmp_path)
+    assert any("comando claude" in r and "WARN" in r and "ha un altro valore" in r
+               and "/vecchio/claude" in r for r in righe), righe

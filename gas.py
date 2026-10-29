@@ -593,6 +593,9 @@ _DOTENV_CARICATE: set = set()
 # Nomi delle variabili del `.env` NON caricate perché la shell ne ha già un valore
 # DIVERSO: di notte (solo `.env`) vale l'altro valore. Solo i nomi, mai i valori.
 _DOTENV_SCAVALCATE: set = set()
+# Interruttori: shell e `.env` si confrontano con le regole di _env_flag, non come
+# testo («1» e «true» sono lo stesso valore: R-543-1).
+_DOTENV_INTERRUTTORI = frozenset({"GAS_CLAUDE_CLI"})
 # R-260-1: `"valore" # commento` come in zsh; dentro le virgolette il # è testo.
 _DOTENV_VIRGOLETTE = re.compile(r"""(['"])(.*?)\1(?:\s+#.*)?""")
 
@@ -623,6 +626,7 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
         logging.warning(f".env non leggibile ({type(e).__name__}): variabili non caricate")
         return []
     caricate: List[str] = []
+    visti: set = set()  # chiavi già lette da questo .env
     for n, riga in enumerate(testo.splitlines(), 1):
         riga = riga.strip()
         if not riga or riga.startswith("#"):
@@ -645,8 +649,13 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
             valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
         if chiave in _DOTENV_VALORI_DA_TENERE:
             _DOTENV_NEL_FILE.setdefault(chiave, valore)  # R-544-2: vince la prima riga, come qui sotto
+        if chiave in visti:
+            continue  # chiave ripetuta nel .env: per il timer vale la prima (R-551-1)
+        visti.add(chiave)
         if chiave in os.environ:
-            if os.environ[chiave] != valore:
+            uguali = (_env_flag(chiave) == (valore.strip().lower() in ("1", "true", "on", "yes", "si"))
+                      if chiave in _DOTENV_INTERRUTTORI else os.environ[chiave] == valore)
+            if not uguali:
                 _DOTENV_SCAVALCATE.add(chiave)
             else:
                 # V-1 bot #293: stesso valore nella shell e nel .env → di notte è uguale
@@ -5030,17 +5039,24 @@ def doctor(root_dir: Optional[str] = None) -> int:
     # conto illeggibile o con data futura tiene il forte fermo, e qui si vede).
     # Il giro notturno legge solo il `.env` (V-3 bot #290 e V-1 ve #290): l'interruttore
     # del forte deve venire da lì, in tutti e due i versi.
+    # Il giro del timer (launchd) parte senza le variabili della shell e legge il `.env`
+    # (più ~/.zshenv, se c'è); il giro lanciato da Telegram eredita invece la shell del
+    # bot (V-1 bot #293, secondo giro): i messaggi parlano del timer.
+    _no_dotenv = " (.env non letto: GAS_NO_DOTENV attivo)" if _env_flag("GAS_NO_DOTENV") else ""
     if not _env_flag("GAS_CLAUDE_CLI"):
         if "GAS_CLAUDE_CLI" in _DOTENV_SCAVALCATE:
             check("Cervello forte", "claude-cli", "WARN",
-                  "spento nella shell ma il .env ha un altro valore: di notte vale quello del .env")
+                  "spento nella shell ma il .env lo accende: il giro del timer usa il .env")
         else:
-            check("Cervello forte", "claude-cli", "OK", "spento (GAS_CLAUDE_CLI non attivo)")
+            # R-543-2: con GAS_NO_DOTENV il .env non è stato letto, quindi non si può dire
+            check("Cervello forte", "claude-cli", "OK", "spento (GAS_CLAUDE_CLI non attivo)" + _no_dotenv)
     else:
         if "GAS_CLAUDE_CLI" not in _DOTENV_CARICATE:
             check("Cervello forte", "claude-cli", "WARN",
-                  "acceso nella shell ma non dal .env: di notte il forte può essere spento "
-                  "(metti GAS_CLAUDE_CLI=1 nel .env)")
+                  ("acceso nella shell ma il .env lo spegne" if "GAS_CLAUDE_CLI" in _DOTENV_SCAVALCATE
+                   else "acceso nella shell ma non dal .env")
+                  + ": il giro del timer può avere il forte spento (metti GAS_CLAUDE_CLI=1 nel .env)"
+                  + _no_dotenv)
         # V-1 bot #262: un GAS_CLAUDE_BIN che non esiste o non è eseguibile non è «presente»
         _bin_env = os.environ.get("GAS_CLAUDE_BIN") or ""
         binario = shutil.which(_bin_env or "claude")
