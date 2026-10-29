@@ -203,6 +203,26 @@ class TestDecidi:
         f[f"descri{car}zione"] = "ok"
         assert be.contiene_segreti(_verdetto("APPROVATO CON RISERVE", [f]))
 
+    def test_annidamento_profondo(self):
+        # R-574-1: oltre il tetto di ricorsione di Python, niente crash: nel dubbio NO.
+        v = _verdetto("APPROVATO", [])
+        profondo: list = []
+        for _ in range(1500):
+            profondo = [profondo]
+        v["extra"] = profondo
+        assert be.contiene_segreti(v)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
+    @pytest.mark.parametrize("sep", _SEPARATORI)
+    def test_invisibile_che_crea_una_riserva_registrata(self, sep):
+        # Bot #305 su d672021: tolto l'invisibile, «R-9-1<inv>V-1 (ALTA)» diventava la
+        # citazione di una riserva già registrata e l'ALTA spariva.
+        testo = (f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nR-9-1{sep}V-1 (ALTA) — difetto"
+                 "\nNON VERIFICATO: -")
+        evento, motivo = be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                                   SHA, SHA)
+        assert evento == "COMMENT" and "ALTA" in motivo
+
     def test_credenziale_spezzata_in_una_chiave(self):
         v = _verdetto("APPROVATO", [])
         v["gh\x1bp_Zz9"] = "x"

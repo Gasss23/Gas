@@ -293,13 +293,14 @@ def contiene_segreti(verdetto: object) -> bool:
     descrizioni dei finding finiscono tutti nella review pubblica)."""
     try:
         grezzo = json.dumps(verdetto, ensure_ascii=False)
-    except (TypeError, ValueError):
+        # Anche con gli invisibili tolti: "gh\u200bp_..." non deve passare. V-1 bot #305:
+        # anche stringa per stringa, perché json.dumps scrive i controlli come «\u001b»;
+        # review #573: in una lista e non in un dict ricostruito, dove due chiavi ripulite
+        # si fonderebbero. R-574-1: un annidamento oltre il tetto di Python non è un crash.
+        return bool(_SEGRETO.search(grezzo) or _SEGRETO.search(_senza_invisibili(grezzo))
+                    or any(_SEGRETO.search(_senza_invisibili(s)) for s in _stringhe(verdetto)))
+    except (TypeError, ValueError, RecursionError):
         return True
-    # Anche con gli invisibili tolti: "gh\u200bp_..." non deve passare. V-1 bot #305: anche
-    # stringa per stringa, perché json.dumps scrive i controlli come «\u001b»; review #573:
-    # in una lista e non in un dict ricostruito, dove due chiavi ripulite si fonderebbero.
-    return bool(_SEGRETO.search(grezzo) or _SEGRETO.search(_senza_invisibili(grezzo))
-                or any(_SEGRETO.search(_senza_invisibili(s)) for s in _stringhe(verdetto)))
 
 
 def _stringhe(valore: object) -> list[str]:
