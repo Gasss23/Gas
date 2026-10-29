@@ -26,7 +26,7 @@
  modules/telegram/bot.py            |  27 +++++++++++++++++++++++++++
  reports/diff_sessione.md           |  12 ++++++------
  reports/stato_progetto.md          |   6 +++---
- reports/ultimo_report.md           |  24 ++++++++++++------------
+ reports/ultimo_report.md           |  25 +++++++++++++------------
  tests/test_unit_dotenv.py          |  24 ++++++++++++++++++++++++
  tests/test_unit_notte.py           |  50 ++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/handoff.md                 | n/d (commit finale)
@@ -37,6 +37,7 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+df1c6a3 docs(fine-task): PR #297 — V-1/V-2 bot #297, review #556
 72cc832 fix(telegram): con il nome di Gas ignoto «/forte@X» non apre turni a pagamento (V-1 bot #297); test su lookahead e GAS_NO_DOTENV acceso (V-2)
 fc0eb3f chore(revisore): memoria review #556 — APPROVATO
 0d45b8b docs(fine-task): PR #297 — /forte@NomeBot e test del doctor, review #554/#555
@@ -150,10 +151,12 @@ CI letta con lo strumento GitHub della sessione: `gh run list` non è disponibil
 Mappatura commit→run:
 - `a5f97fc`, `0ec71b3`, `a46b442`, `4d89901`, `cc6da69`: nessuna run letta (pushati prima dell'apertura della PR #297).
 - `0d45b8b`: CI run 40798167796 success (unit-suite, handoff-check); `verifica-bot` failure tecnica (caratteri invisibili nel testo del bot stesso, verdetto testuale APPROVATO CON RISERVE; commento sulla PR 6485039210). Verifica esterna APPROVATO CON RISERVE (commento 6485056875).
-- `fc0eb3f`, `72cc832`: nessuna run su questi SHA (pushati insieme al commit di fine-task).
+- `fc0eb3f`, `72cc832`: nessuna run su questi SHA (pushati insieme a `df1c6a3`).
+- `df1c6a3`: handoff-check success; `verifica-bot` success (APPROVATO CON RISERVE: V-1/V-2 frasi nei report e stato non aggiornato, corrette nel commit successivo; V-3 CI da confermare; V-4 COSMETICA registrata); unit-suite in corso alla lettura del bot.
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - Riserve BASSE rimaste dalla #295 (registrate nel punto 3 della RIPARTENZA): R-543-2 solo dichiarata; lista dei valori veri duplicata da `_env_flag`; commento che non dice «come flag solo per GAS_CLAUDE_CLI».
 - Il ramo `edited_message` che apre un /forte esisteva già prima (fuori da questo diff).
+- COSMETICA #556 / V-4 bot #297: col nome di Gas ignoto anche «/forte@GasBot» legittimo riceve «Uso» (verso sicuro).

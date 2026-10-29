@@ -5,7 +5,7 @@
 
 ## Esito
 - **PR #295**: mergiata (l'operatore aveva detto «mergia #295»), dopo il merge di main con la PR #292 dell'altra sessione e la review #553.
-- **Bot #269, «/forte@NomeBot» su Telegram**: FATTA. Nei gruppi il comando arriva al forte; «/forte@AltroBot» viene ignorato. La regola è la stessa di /notte e /clear.
+- **Bot #269, «/forte@NomeBot» su Telegram**: FATTA. Nei gruppi il comando arriva al forte; «/forte@AltroBot» viene ignorato. Col nome di Gas noto la regola è la stessa di /notte e /clear; col nome ignoto (getMe fallito) /forte@X risponde «Uso», a differenza di /notte e /clear, perché un turno del forte costa (V-1 bot #297).
 - **V-1 bot #295, test mancanti**: FATTA. Ora sono coperti il WARN «il .env lo spegne» e la nota «.env non letto».
 - **Test**:
   - kernel: 1063 PASS, 0 FAIL;
@@ -13,6 +13,7 @@
   - pytest completo: vedi l'handoff §5.
 
 - **V-1 bot #297 (nome di Gas ignoto)**: FATTA. Con il nome sconosciuto, «/forte@X» risponde «Uso» e non apre un turno a pagamento. V-2 (test sul lookahead e su GAS_NO_DOTENV con il forte acceso) fatta; review #556 APPROVATO.
+- **Bot su `df1c6a3`**: APPROVATO CON RISERVE; V-1 e V-2 (frase sulla regola, stato_progetto non aggiornato) corrette in questo giro, solo documenti; V-4 COSMETICA registrata (col nome ignoto anche «/forte@GasBot» legittimo riceve «Uso»).
 - **Bot su `0d45b8b`**: bocciatura tecnica. Il bot ha messo un carattere invisibile nel proprio testo; il suo verdetto era APPROVATO CON RISERVE. Spiegato con un commento sulla PR.
 
 ## Anomalie
