@@ -1,27 +1,20 @@
-# ULTIMO REPORT — 2026-10-29 — Mani: decisioni dell'operatore su R-ve235-7 e tempo di rete 12 s (R6, chat Mani)
+# Ultimo report — 2026-10-29 — Voce V1: cervello forte dalla voce (chat M2, PR #304)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione (numero nell'handoff §0): solo report; lo faccio io con verdetto del bot APPROVATO pulito, con riserve aspetto il tuo OK.
-2. Prossimi argomenti della chat Mani: da scegliere. Restano riserve BASSE aperte: R-518-1, R-516-1, R-ve277-5 parte leggi.py, V-1 ve/bot #288, R-546-1, più il punto b) della ripartenza (elenco in handoff §7, stato_progetto e ripartenza_mani).
-3. Proposta di coordinamento della chat Motore 1 (scritta in stato_progetto, blocco «Mani — fetta 26»): da confermare.
 
-## Esito
-- **PR #300**: MERGIATA su richiesta dell'operatore («mergia 300», ed777ef). Bot su 69fd75e APPROVATO CON RISERVE: V-1 COSMETICA (l'handoff della #300 diceva la V-1 della verifica esterna #298 corretta «in ultimo_report e in stato_progetto», ma in stato_progetto non c'era niente da correggere): FATTA — la correzione dei «sei casi» sta solo in `reports/ultimo_report.md` della #300.
-- **R-ve235-7**: CHIUSA come accettata (decisione dell'operatore: «chiudi R-ve235-7 come accettata»). Il DNS di sistema non si interrompe: compromesso dichiarato.
-- **Tempo di rete 12 s**: CONFERMATO (decisione dell'operatore: «tempo di rete 12 s va bene»).
-- **Ripartenza e stato**: FATTA — `reports/ripartenza_mani.md` e `reports/stato_progetto.md` aggiornati.
-- **Bot su 251b0c2 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA («nessun lavoro aperto» falso: restano R-518-1, R-516-1, R-ve277-5 parte leggi.py e il punto b della ripartenza) → FATTA: elencate in ripartenza_mani, stato_progetto e handoff §7. V-2 COSMETICA (la proposta di coordinamento non stava nel repo) → FATTA: scritta in stato_progetto.
-- **Bot su 604edcb (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (descrizione della PR vecchia) → FATTA, descrizione aggiornata. V-2 COSMETICA (mancavano V-1 ve/bot #288 e R-546-1 nella lista delle aperte) → FATTA.
-- **Bot su 91edc28 (PR #301)**: APPROVATO CON RISERVE. V-1 BASSA (qui sopra c'era ancora «tre riserve») → FATTA. V-2 COSMETICA (in handoff §6 gli id delle run CI presentati come run del bot) → FATTA.
-- **Merge di main baa4b8d (PR #299, chat Motore 1) e 5d64c13 (PR #302, chat Motore 2), solo report**: FATTA — tenuti i miei report, riga «Ultimo aggiornamento» di stato_progetto unita a mano.
-- **Bot su 08a8943**: APPROVATO CON RISERVE, V-1 COSMETICA (blocchi storici di stato_progetto citano ancora R-ve235-7 da decidere): SALTATA — sono blocchi storici, fa fede il blocco «Mani — fetta 26».
-- **Codice**: nessuna modifica.
+1. Merge della PR #304 (https://github.com/Gasss23/Gas/pull/304): solo se il bot dà APPROVATO pulito; con riserve decide l'operatore (via M1).
+2. Se vuoi tutta la voce sul cervello forte: `GAS_VOCE_FORTE=1` nel `.env` del Mac (spento di default).
 
-## RICHIESTE ALLA CHAT MOTORE
-1. `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (R-ve280-1), poi `GAS_WEB_LEXBOR=1` sul VPS.
-2. R-546-1: numeri delle review doppi tra le chat.
-3. `scripts/bot_esito.py` boccia il verdetto quando il bot stesso scrive un carattere Cf citando il codice.
-4. Sul VPS serve libexpat ≥ 2.4 perché il taglio dell'XHTML sia attivo; un controllo nel doctor.
+## Esito delle fette
+
+- **V1.1 — giro vocale verificato e proposta a M1**: `FATTA` — microfono → Groq Whisper (`modules/voice/stt.py`) → `kernel.run_turn` → ElevenLabs (`tts.py`); il forte passava solo con «/forte», che a voce non si detta. M1 ha scelto «entrambe» (parola chiave + interruttore).
+- **V1.2 — parola chiave parlata**: `FATTA` — `cervello_voce()` in `modules/voice/server.py`: «forte …»/«Gas forte …» (anche «Gus», come trascrive Whisper) all'inizio del parlato vale «/forte»; senza richiesta → 400 d'uso; «fortemente», «forte» a metà frase, «Gasforte» → turno normale. Solo sul testo trascritto: lo scritto usa «/forte».
+- **V1.3 — `GAS_VOCE_FORTE`**: `FATTA` — 1/true/on/yes/si (come `_env_flag`): ogni richiesta al server voce va al forte; forte fermo → errore dichiarato del kernel (500), mai i gratuiti. Documentato nella docstring del server (posto naturale delle variabili della voce); doctor non toccato (è in gas.py).
+- **V1.4 — test della voce nei test automatici**: `FATTA` — già in CI dalla PR #229 (la riga R8 era vecchia, corretta). Chiusa R-384-1 (chat Voce): opener urllib senza proxy; prima 26 test fallivano con `http_proxy` impostato e `no_proxy` vuoto, ora 104/104 in entrambi i casi.
+- **gas.py / brains/**: `SALTATA — fuori dal mandato di M1`, non toccati.
 
 ## Anomalie
-- `gh` non autenticato nel cloud: PR, etichetta e stato CI passano dall'integrazione GitHub.
+
+- `gh` non autenticato nel cloud: PR creata con l'integrazione GitHub.
+- Il commit di memoria del revisore (f2e68c7) dice «#564» senza il suffisso «-M2» (messaggio generato dallo script).
+- Non provato con audio vero (niente microfono né chiave Groq nel cloud): prova dal vivo sul Mac da fare.

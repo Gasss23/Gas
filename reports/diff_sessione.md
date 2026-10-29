@@ -1,8 +1,11 @@
-# DIFF SESSIONE — 2026-10-29 — Mani, decisioni dell'operatore
+# Diff della sessione — 2026-10-29 — Voce V1 (chat M2, PR #304)
 
-File toccati rispetto a main 5d64c13 (PR #300 della chat Mani, #299 della chat Motore 1 e #302 della chat Motore 2 mergiate):
-- `reports/stato_progetto.md` — blocco «Mani — fetta 26»: R-ve235-7 chiusa come accettata, tempo di rete 12 s confermato, riserve ancora aperte, proposta di coordinamento tra le chat; riga «Ultimo aggiornamento».
-- `reports/ripartenza_mani.md` — punto e) chiuso; punto f) con le riserve BASSE ancora aperte.
+- `modules/voice/server.py` — `cervello_voce()`: «forte …» parlato e `GAS_VOCE_FORTE` → solo cervello forte; messaggio d'uso nuovo.
+- `tests/test_unit_voice_server.py` — test V1 (parola chiave, falsi positivi, interruttore, forte fermo); opener senza proxy (R-384-1).
+- `tests/test_unit_voice_stt.py` — test dal parlato trascritto al forte; opener senza proxy (R-384-1).
+- `reports/roadmap.md` — R8: test stt/tts in CI dalla #229, V1 fatta, limiti dichiarati (R-564-1-M2).
+- `reports/stato_progetto.md` — blocco «Voce V1».
+- `.claude/agents/memoria_revisore.md` — lezione della review #564-M2.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
