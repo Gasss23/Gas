@@ -1,24 +1,25 @@
-# ULTIMO REPORT — 2026-10-30 — Mani: gli invisibili citati dal bot come <U+XXXX> (fetta 30, chat Mani)
+# Ultimo report — 2026-10-30 — Voce V3: conversazione filata (chat M2) — PR #311
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #309 (numero nell'handoff §0). Tocca la macchina del bot (workflow, `scripts/bot_esito.py` e il suo test): il check `verifica-bot` sarà neutral e il merge lo decide l'operatore (anche tramite M1).
 
-## Esito
-- **PR #306**: MERGIATA (95be7b1) dopo due merge di main (#307 di M1, #308 di M2), review #578 e #579 APPROVATO.
-- **Invisibili citati dal bot come <U+XXXX>** (via libera dell'operatore tramite M1): FATTA (PR #309). Nuova regola nel PROMPT di `.github/workflows/verifica-bot.yml`; il controllo di `bot_esito.py` resta severo.
-- **Review #580 (chat Mani)**: APPROVATO CON RISERVE. R-580-1 BASSA (nessun test sulla regola): FATTA — assert in `test_schema_coerente_con_lo_script`. R-580-2 BASSA (una gravità maiuscola nuda citata nella sezione FINDING dà ancora NO): DEFERITA — limite dichiarato. **Review #581**: APPROVATO.
+1. Merge della PR #311 (https://github.com/Gasss23/Gas/pull/311): la mergia M1 se il bot dà APPROVATO pulito; con riserve M1 chiede il sì all'operatore.
+2. Prova dal vero sul Mac (microfono e casse veri): soglia del volume, eco, voce di sistema italiana per la frase d'attesa. In headless non si possono provare.
 
-- **Bot su 7d57b26 (PR #309)**: APPROVATO CON RISERVE, check neutral. V-1 BASSA (l'assert non fissava «in qualunque campo»): FATTA in 0b7782a. V-2 COSMETICA («di controllo» comprende a capo e tab): FATTA — «a capo e tab restano normali».
-- **Verifica esterna su 7d57b26 (https://github.com/Gasss23/Gas/pull/309#issuecomment-6523271160)**: APPROVATO CON RISERVE. V-1 BASSA (una credenziale spezzata da una citazione «<U+200B>» non era riconosciuta, e il PROMPT spinge proprio verso quella forma): FATTA in 0b7782a — _senza_citazioni in contiene_segreti. V-2 COSMETICA (R-580-2 senza test): SALTATA — limite dichiarato. V-3 COSMETICA (test del gate con -I): SALTATA — già registrata (V-2 #306).
-- **Review #582 (chat Mani)**: APPROVATO CON RISERVE (R-582-1 BASSA: citazione annidata o lettera visibile citata non riconosciute; R-582-2 COSMETICA: l'assert del PROMPT a pezzi separati). Registrate in stato_progetto.
+## Esito delle fette
 
-- **Bot su 1eb83e4 (PR #309)**: APPROVATO CON RISERVE, check neutral. V-1 / V-2 COSMETICHE (ultimo_report e descrizione della PR non aggiornati): FATTA — descrizione aggiornata, ultimo_report corretto qui.
-- **Seconda verifica esterna su 1eb83e4 (https://github.com/Gasss23/Gas/pull/309#issuecomment-6523471996)**: APPROVATO CON RISERVE, nessun blocco tecnico. V-1 BASSA (ultimo_report e stato_progetto fermi a prima di 0b7782a): FATTA. V-2 COSMETICA (§6 incompleto su 0b7782a): FATTA. V-3 BASSA (= R-582-1, riprodotta, non regressione) e V-4 COSMETICA (= R-582-2): restano registrate.
+- **V3.1 — modalità conversazione nel browser**: `FATTA` — `clients/voice/browser_client.html`: un clic e poi si parla; la frase parte da sola a fine voce (silenzio di 1,2 s); dopo la risposta il microfono resta aperto `GAS_VOICE_FINESTRA` s (default 12, letta da `GET /config` del proxy); se resti zitto la conversazione si chiude con bip e scritta. Spuntando via «conversazione continua» resta il vecchio premi-e-parla.
+- **V3.2 — «due secondi o ci sto ragionando»**: `FATTA` — dopo 2 s senza risposta il browser dice una frase d'attesa con la voce di sistema (gratis, immediata), interrotta quando arriva la risposta.
+- **V3.3 — risposte a voce brevi**: `FATTA` — `gas.py`: `run_turn(..., istruzione_turno=...)` (ok di M1), un'istruzione che vale solo per quel turno, nel messaggio system, fuori dalla cronologia; il server voce la passa solo ai turni parlati («1-3 frasi, parere subito, domanda secca»). In più, con la pagina del browser, a voce va solo l'inizio corto (≤3 frasi, ≤400 caratteri, «Il resto è a schermo») e il testo intero si legge a schermo; senza chiave ElevenLabs il testo arriva lo stesso.
+- **V-1 bot #308 (su 2507621)**: `FATTA` — il 504 del proxy dice di NON ripetere la richiesta.
+- **V3.4 — interruzione mentre Gas parla**: `SALTATA — va tolta dal parcheggio: serve prima l'ok di M1/operatore`.
+- **Review #574-M2 BOCCIATO** (R-574-1-M2 MEDIA: un riascolto dal player faceva partire un turno non chiesto; più R-574-2/3/4/5-M2): `FATTA` — rivisto in #575-M2 (APPROVATO CON RISERVE: R-575-1-M2 pausa dal player, R-575-2-M2 permesso del microfono → `FATTA`), poi #576-M2 APPROVATO CON RISERVE.
+- **R-576-1-M2 BASSA** (guardia del permesso senza test), **R-576-2-M2 BASSA** (errore di decodifica a metà riproduzione lascia il tasto occupato), **R-576-3-M2 COSMETICA** (la pausa senza conversazione dice «conversazione chiusa»): `DEFERITA — fuori dal giro, una fetta piccola dopo la prova sul Mac`.
 
 ## Prove
-- YAML del workflow valido, 0 caratteri Cf nel file.
-- `tests/test_unit_verifica_bot.py`: 514 passed. Mutanti: regola cambiata in <U+YYYY> 1 failed; senza `_senza_citazioni` 4 failed.
-- Suite completa non rilanciata in locale: il diff tocca solo il bot (PROMPT, `contiene_segreti` in `scripts/bot_esito.py`) e il suo test; in CI `unit-suite` è success su 1eb83e4.
+
+- Test della pagina vera in Chromium headless con microfono finto (WAV): giro normale, riascolto a metà finestra e pausa dal player, 1 sola richiesta, 0 errori nella pagina. Il caso riascolto fallisce sulla pagina di #574 e passa sulla nuova. In CI si salta (niente Node/Playwright).
+- Suite kernel 1063 PASS (T101 round-trip di `istruzione_turno`); voce + notte 322 passed.
 
 ## Anomalie
-- `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.
+
+- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.

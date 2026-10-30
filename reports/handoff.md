@@ -1,171 +1,226 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-30 — Mani, fetta 30: gli invisibili citati dal bot come <U+XXXX> (chat Mani)
+**Sessione:** 2026-10-30 — Voce V3: conversazione filata (chat M2, coordinata da M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #309 (https://github.com/Gasss23/Gas/pull/309). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5084571647","url":"https://github.com/Gasss23/Gas/pull/309"}`), perché `gh` nel cloud non è autenticato. Tocca la macchina del bot: il check `verifica-bot` sarà neutral e il merge lo decide l'operatore.
+1. Merge della PR #311 (https://github.com/Gasss23/Gas/pull/311). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5087256865","url":"https://github.com/Gasss23/Gas/pull/311"}`); `gh` nel cloud non è autenticato. La mergia M1 se il bot dà APPROVATO pulito; con riserve M1 chiede il sì all'operatore.
+2. Prova col microfono vero sul Mac (soglia del volume, eco, voce italiana della frase d'attesa): non riproducibile in headless.
+3. Interruzione mentre Gas parla (punto 4 della fetta): parcheggiata, serve l'ok per toglierla dal parcheggio.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #306**: `FATTA` — mergiata (95be7b1) dopo due merge di main (#307, #308), review #578 e #579 APPROVATO.
-- **Invisibili citati dal bot come <U+XXXX>** (via libera dell'operatore tramite M1): `FATTA` — regola nel PROMPT di `.github/workflows/verifica-bot.yml`, assert nel test.
-- **Review #580 (chat Mani)**: APPROVATO CON RISERVE. R-580-1 BASSA (nessun test sulla regola): `FATTA`. R-580-2 BASSA (gravità maiuscola nuda citata nella sezione FINDING dà ancora NO): `DEFERITA — limite dichiarato`. **Review #581**: APPROVATO.
-- **Bot su 7d57b26 (PR #309)**: APPROVATO CON RISERVE, check neutral. V-1 BASSA (l'assert non fissava «in qualunque campo»): `FATTA` in 0b7782a. V-2 COSMETICA («di controllo» comprende a capo e tab): `FATTA` — «a capo e tab restano normali».
-- **Verifica esterna su 7d57b26 (https://github.com/Gasss23/Gas/pull/309#issuecomment-6523271160)**: APPROVATO CON RISERVE. V-1 BASSA (una credenziale spezzata da una citazione «<U+200B>» non era riconosciuta, e il PROMPT spinge proprio verso quella forma): `FATTA` in 0b7782a — `_senza_citazioni` in `contiene_segreti`. V-2 COSMETICA (R-580-2 senza test): `SALTATA — limite dichiarato`. V-3 COSMETICA (test del gate con `-I`): `SALTATA — già registrata (V-2 #306)`.
-- **Review #582 (chat Mani)**: APPROVATO CON RISERVE (R-582-1 BASSA: citazione annidata o lettera visibile citata non riconosciute; R-582-2 COSMETICA: l'assert del PROMPT a pezzi separati). Registrate in stato_progetto.
+- **V3.1 — modalità conversazione nel browser**: `FATTA` — finestra `GAS_VOICE_FINESTRA` (12 s), fine frase dal silenzio, bip di chiusura.
+- **V3.2 — «due secondi o ci sto ragionando»**: `FATTA` — frase d'attesa con la voce di sistema del browser.
+- **V3.3 — risposte a voce brevi**: `FATTA` — `run_turn(istruzione_turno=...)` in gas.py (ok di M1), `ISTRUZIONE_VOCE` ai soli turni parlati, a voce solo la parte corta e il testo intero a schermo.
+- **V-1 bot #308 (su 2507621, 504 «non ripetere»)**: `FATTA`.
+- **V3.4 — interruzione mentre Gas parla**: `SALTATA — parcheggiata, serve l'ok`.
+- **Review #574-M2 BOCCIATO → R-574-1..5-M2**: `FATTA`. **#575-M2 → R-575-1/2-M2**: `FATTA`. **#576-M2 → R-576-1/2/3-M2**: `DEFERITA — una fetta piccola dopo la prova sul Mac`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- .github/workflows/verifica-bot.yml |   4 ++++
- reports/diff_sessione.md           |  12 +++++++-----
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ clients/voice/browser_client.html  | 408 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------
+ clients/voice/browser_server.py    |  27 +++++++++++++++++++++++-
+ gas.py                             |   8 +++++--
+ modules/voice/server.py            |  86 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/diff_sessione.md           |  18 ++++++++--------
  reports/handoff.md                 | n/d
- reports/ripartenza_mani.md         |   2 +-
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md | 29 ++++++++++++++---------------
- scripts/bot_esito.py               |  12 +++++++++++-
- tests/test_unit_verifica_bot.py    |  16 ++++++++++++++++
+ reports/roadmap.md                 |   4 ++--
+ reports/stato_progetto.md          |   1 +
+ reports/ultimo_report.md           |  31 ++++++++++++++--------------
+ tests/test_unit_kernel.py          |  54 ++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_server.py    | 246 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_stt.py       |  24 ++++++++++++++++++---
 ```
 
-NB: base = merge-base con origin/main = 95be7b1. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-1eb83e4 docs(fine-task): PR #309 dopo le note di bot e verifica esterna su 7d57b26, review #582
-0b7782a fix(bot): credenziali spezzate da una citazione <U+XXXX>, regola del PROMPT precisata (V-1 ve #309, V-1/V-2 bot #309, chat Mani)
-c98edfd chore(revisore): memoria review #582 — APPROVATO CON RISERVE
-7d57b26 docs(fine-task): Mani fetta 30, invisibili citati dal bot come <U+XXXX> (PR #309)
-4799155 chore(bot): nel PROMPT del bot gli invisibili citati si scrivono come <U+XXXX> (V-2 ve #305, chat Mani)
-9c8a880 chore(revisore): memoria review #581 — APPROVATO
-bfb487a chore(revisore): memoria review #580 — APPROVATO CON RISERVE
+d7730de feat(voce): conversazione filata — finestra d'ascolto, frase d'attesa, risposte parlate corte (V3, chat M2)
+82e9703 chore(revisore): memoria review #576 — APPROVATO CON RISERVE
+4f3cfe2 chore(revisore): memoria review #575 — APPROVATO CON RISERVE
+db70c18 chore(revisore): memoria review #574 — BOCCIATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 4799155 (.github/workflows/verifica-bot.yml, tests/test_unit_verifica_bot.py). NB: i caratteri invisibili citati nei verdetti sono trascritti come «<U+XXXX>». Verdetto integrale della review #580 (chat Mani), sul diff prima della correzione di R-580-1:
+Il commit d7730de è stato rivisto in tre passaggi sullo stesso diff staged (ogni passaggio dopo le correzioni del precedente; le citazioni dei primi due si riferiscono al diff di quel momento e alcune righe a HEAD sono spostate). Verdetti integrali:
 
-```
-## VERDETTO: APPROVATO CON RISERVE
+Review #574-M2 (primo passaggio):
 
-Review #580 (chat Mani). Ho esaminato il diff staged: 1 file, `.github/workflows/verifica-bot.yml`, +4 righe, solo il PROMPT del bot. `git diff --cached --check` è pulito. Ho letto CLAUDE.md (sez. 5, 8, 10), le parti di reports/stato_progetto.md che riguardano i casi #297/#305 e la memoria del revisore.
+## VERDETTO: BOCCIATO
 
-**Elementi esaminati**
-- `.github/workflows/verifica-bot.yml:150` — è la nuova regola (righe 150-153): citare gli invisibili come `<U+XXXX>`, mai col carattere vero. Rischio esaminato: rompere il blocco `|` o l'interpolazione di GitHub Actions. Le 4 righe hanno lo stesso rientro di 8 spazi del blocco iniziato a `.github/workflows/verifica-bot.yml:120`. Non contengono `${{`, `$` o backtick. Il file ha 0 caratteri Cf. `yaml.safe_load` restituisce il PROMPT con il testo atteso. Esito: ok.
-- `.github/workflows/verifica-bot.yml:210` — il PROMPT entra come input dell'action (`prompt: ${{ env.PROMPT }}`, uguale alle righe 226 e 242), non in una shell, quindi `<` e `>` non hanno effetti. Rischio esaminato: iniezione o rottura dell'interpolazione. Esito: ok.
-- `scripts/bot_esito.py:103` (`_PAROLA_BLOCCANTE`), `scripts/bot_esito.py:98` (`_FINDING_GRAVITA`), `scripts/bot_esito.py:172` (`_RISERVA_REGISTRATA`) e `scripts/bot_esito.py:86` (`_SEGRETO`) — citazioni di contesto. Rischio esaminato: che il testo `<U+XXXX>` scritto dal bot inneschi una regola. Non ne innesca nessuna: dopo `U` viene `+` e non `-`, quindi non sembra un id di finding né una riserva R-; le cifre esadecimali non formano nessuna parola di gravità; non c'è nessuna forma di credenziale; non nasce nessuna riga di titolo. L'ho provato chiamando davvero `_decidi_verdetto`: un verdetto con «<U+200B>», «<U+202E>», «<U+FEFF>», «<U+00A0>» e «ME<U+200B>DIA» nella sezione FINDING risulta APPROVE. Esito: ok.
-- `scripts/bot_esito.py:249` (`_invisibili_su_gravita`) e `scripts/bot_esito.py:270` (`_mostra_invisibili`) — citazioni di contesto. Il controllo severo resta com'è, come rete di sicurezza. La notazione chiesta al bot è la stessa che `_mostra_invisibili` usa già nella review pubblica, quindi è coerente. Esito: ok.
-- Protocollo `.claude/verifica_esterna.md`: non dice nulla su invisibili, Unicode o citazioni letterali, quindi la regola non lo contraddice. Esito: ok.
-- Suite del bot riprodotta: `tests/test_unit_verifica_bot.py` 510 passed.
+Review #574-M2. Ho revisionato il diff staged di feat/voce-v3-m2 (4 file). Ho fatto le tre letture obbligatorie (CLAUDE.md, stato_progetto per la voce, memoria con le lezioni M2 #568–#573).
 
-**Riserve (da tracciare in stato_progetto.md)**
-- R-580-1 (BASSA): nessun test fissa la nuova riga nel PROMPT. Le regole vicine sono fissate da assert in `tests/test_unit_verifica_bot.py:1283` (righe 1283-1285). Se un ritocco futuro toglie la regola, nessun test se ne accorge. Rimedio: un assert tipo `"<U+XXXX>" in prompt`.
-- R-580-2 (BASSA): se il bot cita un caso di prova che contiene una gravità maiuscola nuda, per esempio «BASSA<U+200B>MEDIA», nella sezione FINDING, il risultato è ancora NO: la sonda dà `COMMENT, finding MEDIA`. Non lo causa l'invisibile ma `_PAROLA_BLOCCANTE` (MEDIA maiuscola). La regola nuova toglie solo il NO dovuto a un invisibile vero, non questo. Il PROMPT dice già di usare ALTA/MEDIA solo per le gravità reali. Il limite resta e va dichiarato.
+**Motivo bloccante: R-574-1-M2 (MEDIA, riprodotto)**
 
-**Rischio escluso esplicitamente**: non ho verificato che il modello del bot rispetti davvero la regola in una run reale. Si vede solo con un giro del bot su una PR con l'etichetta `verifica`, che non si può riprodurre in locale. Non ho nemmeno verificato la run della CI su GitHub.
+Se l'operatore riascolta la risposta dai controlli del player mentre la finestra del microfono è aperta, la pagina parte per un turno che lui non ha chiesto, e da quel momento continua a dare errori senza fine.
 
-Wall of Shame: non riguarda questo diff (nessun motore, nessuna history, nessuna simulazione di tool). I guardrail non sono toccati.
-
-**Memoria**: ho aggiunto la riga contatore #580 e una lezione nuova in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata con `scripts/commit_memoria_revisore.sh` (bfb487a). Il diff staged del workflow resta intatto nell'index.
-
-Promemoria: il file è nella macchina del bot, quindi il merge lo decide l'operatore. Il marcatore va creato con `bash scripts/segna_review_ok.sh` solo dopo questo verdetto.
-```
-
-Verdetto integrale della review #581 (chat Mani), sul diff finale del commit 4799155:
-
-```
-## VERDETTO: APPROVATO
-
-Review #581 (chat Mani) è la ri-review del diff staged dopo la #580. Il diff staged ora tocca 2 file, +6 righe, e `git diff --cached --check` è pulito. La R-580-1 è chiusa. Il verdetto #580 (APPROVATO CON RISERVE, consegnato prima) è superato da questo per quanto riguarda la R-580-1.
-
-**Elementi esaminati**
-- `tests/test_unit_verifica_bot.py:1287` — è il nuovo assert in `test_schema_coerente_con_lo_script`. Controlla che il PROMPT, letto con yaml, contenga «SEMPRE come <U+XXXX>» e «mai il carattere vero». Rischio esaminato: un test che non morde. Ho riprodotto io il mutante: con `<U+XXXX>` cambiato in `<U+YYYY>` nel workflow ottengo 1 failed e 509 passed; poi ho rimesso il file com'era e il working tree è pulito. Le due frasi controllate stanno ciascuna su una sola riga fisica del workflow, quindi gli a capo del blocco `|` non le spezzano. Il commento rimanda a R-580-1, come fanno le regole vicine. Esito: ok.
-- `.github/workflows/verifica-bot.yml:151` — la regola nel PROMPT (righe 150-153). Rischio esaminato: un cambiamento rispetto a quanto revisionato nella #580. Il diff del file è sempre di 4 righe, con lo stesso testo e lo stesso rientro. Valgono quindi le verifiche della #580: blocco `|` valido, nessun `${{`, 0 caratteri Cf, PROMPT passato come input `with: prompt` e non a una shell, nessuna regola di `scripts/bot_esito.py:103` o `scripts/bot_esito.py:98` innescata da `<U+XXXX>`. Esito: ok.
-- Suite del bot riprodotta: 510 passed.
-
-**Rischio escluso esplicitamente**: non ho verificato che il modello del bot rispetti davvero la regola in una run reale. Si vede solo con un giro del bot su una PR con l'etichetta `verifica`, che non si può riprodurre in locale.
-
-**Riserva rimasta**: R-580-2 (BASSA) resta un limite dichiarato, come hai deciso. Se il bot cita un caso di prova con una gravità maiuscola nuda nella sezione FINDING, per esempio «BASSA<U+200B>MEDIA», `_PAROLA_BLOCCANTE` dà ancora NO.
-
-**Memoria**: ho aggiunto la riga contatore #581 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, senza lezioni nuove, e l'ho committata con lo script (9c8a880). I 2 file staged restano intatti nell'index.
-
-Promemoria: il marcatore va creato con `bash scripts/segna_review_ok.sh` su questo diff staged. Il file è nella macchina del bot, quindi il merge lo decide l'operatore.
-```
-
-Commit 0b7782a (scripts/bot_esito.py, tests/test_unit_verifica_bot.py, .github/workflows/verifica-bot.yml: note di bot e verifica esterna su 7d57b26). Verdetto integrale della review #582 (chat Mani):
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #582 (chat Mani), PR #309. Ho esaminato il diff in stage (3 file, +29/−5). Nessun antipattern del Wall of Shame: il diff non tocca la history né simula l'output dei tool. Nessun guardrail del motore indebolito.
+- Come l'ho riprodotto: con lo stesso schema del test e la pagina vera in Chromium headless, ho chiamato `player.play()` mentre lo stato era «ti ascolto».
+- Cosa succede:
+  - `ascolta()` riparte una seconda volta. Il timer del primo ascolto resta attivo e non si ferma più: 100 `TypeError: Cannot read properties of null (reading 'fftSize')` in 8 s, e continua.
+  - `chunks` e `recorder` vengono sovrascritti.
+  - Parte un **secondo POST /voice** dopo «conversazione chiusa (silenzio)». È un turno del kernel su audio muto, e Whisper sul silenzio inventa frasi: Gas eseguirebbe un turno non chiesto.
+- Il caso è raggiungibile nell'uso normale: `<audio id="player" controls>` è visibile.
+- Correzione stretta proposta:
+  1. `player.onended` monouso, cioè rimetterlo a `null` dentro il gestore, e associato al turno che l'ha impostato.
+  2. Una guardia di rientro all'inizio di `ascolta()`: niente nuovo ascolto se `ascolto` è attivo, se `recorder.state === "recording"` o se `occupato`.
+  3. Un test nel browser col riascolto a metà finestra, che controlli 1 solo POST e 0 `pageerror`.
 
 **Elementi del diff esaminati**
-1. `scripts/bot_esito.py:302` — il controllo stringa per stringa ora usa `_senza_citazioni` invece di `_senza_invisibili`. Ho cercato una credenziale che prima veniva fermata e ora passerebbe: non c'è (ok). Le due condizioni su `grezzo` restano uguali. Poi `_senza_citazioni` applica prima `_senza_invisibili` e solo dopo toglie le citazioni, quindi trova tutto quello che trovava la vecchia pulizia. Un testo riconosciuto da `_SEGRETO` contiene solo lettere, cifre, `_` e `-`, mai `<`, `+` o `>`, quindi non può accavallarsi con una citazione. Togliere le citazioni non spezza nessun caso trovato prima. L'eccezione resta intercettata (fail-closed, cioè `True`).
-2. `scripts/bot_esito.py:307` — la regex `<U\+[0-9A-F]{4,6}>` con `re.I`. Rischio esaminato: falsi NO. Sonda: `ligh<U+00A0>s_On` e `high<U+200B>s_A` danno True. È la stessa classe di falso NO che già esiste (anche `highs_A` senza citazione dà True), solo estesa al punto in cui sta la citazione. Nel testo italiano normale è improbabile (riserva accettabile).
-3. `scripts/bot_esito.py:307` — sonde sui casi limite, tutte con risultato False:
-   - citazione annidata `gh<U+2<U+200B>00B>p_Zz9`: `sub` fa una sola passata e lascia una `<U+200B>` valida;
-   - lettera visibile citata `gh<U+0070>_Zz9`;
-   - 7 cifre `<U+0000200B>`;
-   - citazione con spazio `<U+200B >`.
 
-   Il testo pubblicato non contiene la credenziale leggibile, ma una persona la ricostruisce facilmente. Questo è R-582-1 (riserva).
-4. `tests/test_unit_verifica_bot.py:226` — 4 casi (minuscolo `<u+feff>`, 5 cifre `<U+E0041>`), sia su `decidi` (testo) sia su `contiene_segreti` (descrizione di un finding) (ok). Mutante riprodotto da me, cioè la riga 302 riportata a `_senza_invisibili`: 4 failed. File ripristinato, nessuna differenza tra working tree e stage.
-5. `tests/test_unit_verifica_bot.py:1300` — l'assert ora cerca «SEMPRE come» e «<U+XXXX>» separati, perché la riga del PROMPT è andata a capo. È più debole: non prova che i due pezzi siano vicini. Questo è R-582-2 (cosmetica). Ho verificato che il nuovo assert alla riga 1301 regge: «in qualunque campo» e «a capo e tab restano normali» stanno sulla stessa riga fisica, `.github/workflows/verifica-bot.yml:151` (ok).
-6. `.github/workflows/verifica-bot.yml:150` — regola del PROMPT riformulata. `yaml.safe_load` ok, indentazione invariata (ok).
+- `clients/voice/browser_client.html:517` — `player.onended = () => { occupato = false; dopoRisposta("pronto"); }` — si attiva a ogni `ended`, quindi anche dopo un riascolto, e rimette `occupato` a false anche con un invio in corso. **BLOCCO** (R-574-1-M2).
+- `clients/voice/browser_client.html:405` — `ascolta()` — manca una guardia contro il rientro: alla riga 433 il nuovo `setInterval` prende il posto di `ascolto` senza fermare il timer vecchio, che resta senza riferimento. **BLOCCO** (stessa causa).
+- `clients/voice/browser_client.html:457` (`chiudiConversazione`) — se c'è una registrazione in corso sostituisce `onstop` e quindi non invia nulla; i timer vengono fermati e il microfono chiuso. Nel caso «fine frase già decisa» (`recorder.stop()` alla riga 447 e clic prima che arrivi `onstop`) la frase parte lo stesso, perché lo stato è già `inactive`. Effetto accettabile, la risposta poi non riapre il microfono. **ok**
+- `clients/voice/browser_client.html:497` — `await resp.json()` e `atob(j.audio)` senza try nel ramo 200: se il corpo è troncato o il base64 non è valido, `occupato` resta true per sempre, il timer della frase d'attesa non viene fermato e la pagina va ricaricata. **riserva R-574-2-M2 BASSA**
+- `clients/voice/browser_client.html:519` — se `player.play()` viene rifiutato, `occupato` torna false ma il microfono (`stream`) resta aperto: in conversazione e anche in push-to-talk. **riserva R-574-3-M2 BASSA.** Stesso tipo di problema: un doppio clic o uno spazio durante la richiesta di permesso del microfono (riga 377, `apriMicrofono` senza lucchetto) può aprire due flussi e il primo non viene mai chiuso. Non l'ho riprodotto: con la UI finta il permesso è istantaneo.
+- `modules/voice/server.py:233` — «uso» con audio+testo restituisce `_USO_FORTE_PARLATO` e poi `return`. L'ho provato con una sonda (`transcribe_audio` sostituito per restituire «forte»): 200, audio presente, `run_turn` chiamato 0 volte. **ok**
+- `modules/voice/server.py:273` — `_do_audio_testo_response`. Sonde:
+  - senza chiave: 200 con `errore_voce`;
+  - con `ElevenLabsTTSError(401)`: 200 con `{"content":"ok","errore_voce":"Errore TTS ElevenLabs: chiave"}`;
+  - intestazione `Audio+Testo ` (maiuscole e spazio finale): accettata.
+  
+  Le eccezioni gestite sono le stesse di `_do_tts_response` e vengono registrate nel log. **ok**
+- `modules/voice/server.py:114` — `parte_parlata`: con `"Ciao.\nCome stai?"` restituisce `"Ciao. Come stai? Il resto è a schermo."`, cioè dice «il resto è a schermo» quando il testo è già stato detto tutto (le frasi vengono riunite con lo spazio e il confronto con l'originale fallisce). Inoltre «Dott.» spezza la frase. **riserva R-574-4-M2 BASSA**
+- `clients/voice/browser_server.py:71` — `GET /config` restituisce solo `{"finestra": N}`; nessun segreto, server legato a 127.0.0.1. La validazione alla riga 211 rifiuta anche `nan` e `inf` (il confronto con `nan` è falso). **ok**
+- `clients/voice/browser_server.py:130` — `X-Gas-Formato` viene inoltrato solo se presente, e il test nel browser lo verifica (`tests/test_unit_voice_server.py:955`). Il 504 alla riga 144 dice «NON ripetere la richiesta». **ok**
+- `tests/test_unit_voice_server.py:888` — test di tutto il giro nella pagina vera. Gira qui (7 V3 passed in circa 14 s). Mutante VAD `sogliaMin: 0.9` riprodotto da me: 1 failed, file ripristinato con `git checkout`. Il test è solido sul giro felice ma non copre riascolto, chiusura durante l'invio e risposte rotte. **ok**, con il test chiesto sopra.
+- `tests/test_unit_voice_server.py:830` — il test del 504 controlla solo che la stringa sia nel sorgente, non la risposta HTTP. **riserva R-574-5-M2 COSMETICA**
 
-Suite del bot: 514 passed, riprodotti da me.
+**Risultati**
 
-**Risposte alle domande**
-- **Falsi NO?** Solo quando la citazione unisce «gh» a «[pousr]_» seguito da una lettera o cifra (`high<U+200B>s_A`). È la stessa classe di falsi NO che la regex produce già senza citazioni. C'è anche un caso noto: se il bot cita alla lettera il nuovo test (`gh<U+200B>p_Zz9abc`) dà NO. Anche questo esisteva già, perché lo stesso file di test contiene «sk-ant-oat01-abcdef», «ghp_Zz9» e «-----BEGIN» in chiaro (righe 506 e 521).
-- **Pubblica una credenziale che prima non pubblicava?** No, per il ragionamento del punto 1. Restano non visti i casi di offuscamento (R-582-1), che però non venivano visti nemmeno prima.
-- **Applicarlo anche al JSON grezzo?** Non serve. Il controllo stringa per stringa copre tutti i valori e tutte le chiavi (`_stringhe`). Nel JSON grezzo una corrispondenza a cavallo di due stringhe è impossibile, perché le virgolette e `": "` non fanno parte di `_SEGRETO`. Il grezzo aggiungerebbe solo il rischio di riunire pezzi di stringhe diverse.
+- Voce server + stt: 101 passed (prima che comparissero le modifiche non staged, vedi sotto).
+- V3: 7 passed.
+- Sonde «uso» ed errore TTS: passate.
+- Riascolto in Chromium: 2 POST e 100 pageerror (difetto confermato).
+- Nel diff non ci sono slicing della history né simulazione dell'output dei tool; `gas.py`, `brains/` e `ci.yml` non sono nel diff staged.
+
+**Cosa NON ho verificato e perché**
+
+- Comportamento con microfono e altoparlanti reali (eco, cancellazione dell'eco, soglia VAD in una stanza vera): non si riproduce in headless.
+- Voce `speechSynthesis` it-IT: dipende dal sistema operativo.
+- Safari e Firefox (MediaRecorder `audio/mp4`, `getFloatTimeDomainData`): ho provato solo Chromium.
+- Chiamata vera a ElevenLabs: sostituita con un finto.
+
+**Nota per l'agente principale**
+
+Durante la review sono comparse nel working tree modifiche NON staged a `gas.py`, `modules/voice/server.py`, `tests/test_unit_kernel.py` e `tests/test_unit_voice_stt.py`. Non sono mie: ho fatto `git checkout` solo di `clients/voice/browser_client.html`, che coincideva con l'index. Questa review copre solo il contenuto staged (le citazioni sono sulle righe di `git show :file`). Quelle modifiche richiedono una review a parte prima di andare in stage.
+
+Memoria: aggiunta la riga `#574-M2 — 2026-10-30 — BOCCIATO`, più una lezione sui callback degli elementi con controlli visibili che si possono riattivare. È committata col commit db70c18 tramite `scripts/commit_memoria_revisore.sh`.
+
+File:
+- /home/user/Gas/clients/voice/browser_client.html
+- /home/user/Gas/modules/voice/server.py
+- /home/user/Gas/clients/voice/browser_server.py
+- /home/user/Gas/tests/test_unit_voice_server.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+- Sonda di riproduzione: /tmp/claude-0/-home-user-Gas/363006d5-ae75-5e2f-8a8d-a34502419f69/scratchpad/test_sonda_replay.py
+- Sonde «uso» ed errore TTS: /tmp/claude-0/-home-user-Gas/363006d5-ae75-5e2f-8a8d-a34502419f69/scratchpad/test_sonda_v3.py
+
+NB (agente): le modifiche non staged citate sopra erano il punto 3 della fetta (gas.py, ok di M1), messe in stage dopo e riviste in #575-M2.
+
+Review #575-M2 (secondo passaggio, con gas.py):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #575-M2 sul diff staged di feat/voce-v3-m2: 7 file, +686/−137. Prima ho letto CLAUDE.md (§5, §6, §8), stato_progetto e la mia memoria.
+
+**Cosa ho controllato nel diff**
+- `clients/voice/browser_client.html:532` — `player.onended` ora vale una volta sola ed è legato a `numTurno`. Rischio: un riascolto riapre l'ascolto (R-574-1-M2). Esito: ok.
+  - Ho rifatto la prova. Ho tolto le due guardie e la riga «una volta sola» su una copia: il test nel browser in modalità «riascolto» fallisce (1 failed, 7 passed). Ho rimesso il file com'era: 8 passed, il file è identico alla versione staged.
+- `clients/voice/browser_client.html:413` — la guardia di rientro in `ascolta()`, ripetuta alla riga `clients/voice/browser_client.html:415` dopo che il microfono si è aperto. Rischio: due ascolti insieme, oppure un ascolto durante un invio o una riproduzione. Esito: ok.
+- `clients/voice/browser_client.html:443` — il timer si ferma da solo se l'analyser non c'è più. Rischio: i 100 TypeError su `fftSize` visti in #574. Esito: ok.
+- `clients/voice/browser_client.html:506` — lettura del JSON e decodifica `atob` dentro un try, con `fineTurno` e un errore dichiarato (R-574-2-M2). Esito: ok.
+- `clients/voice/browser_client.html:381` — il lucchetto `apertura` evita due richieste del microfono durante la richiesta del permesso (R-574-3-M2). Esito: ok, ma vedi la riserva R-575-2-M2.
+- `modules/voice/server.py:112` — `parte_parlata` (R-574-4-M2). Rischio: falsi «Il resto è a schermo.» e tagli dopo le abbreviazioni. Esito: ok.
+  - Provato a mano: «Uno.\nDue.» resta intero, senza aggiunta. «Il Dott. Rossi…» non viene tagliato dopo «Dott.». «Vedi n. 3. Fatto.» e «3.5 euro» restano interi.
+- `modules/voice/server.py:265` — `ISTRUZIONE_VOCE` viene passata solo quando la richiesta è audio (`is_audio`). Rischio: che cambi anche le risposte scritte. Esito: ok, è coperto dal test `test_v3_turno_parlato_ha_istruzione_voce_e_lo_scritto_no`.
+- `gas.py:4726` — `turno_pin` viene calcolato una volta per turno. Se l'istruzione è vuota o fatta di soli spazi, il pin resta vuoto. Esito: ok.
+- `gas.py:4791` — `turno_pin` va in coda al messaggio system, insieme agli altri pin. È l'unico punto in cui si costruisce quel messaggio. Rischio: violare §5/§6 (taglio della cronologia, `_get_window`) o §8 (tetto di 10 giri). Esito: ok.
+  - `_get_window()` è invariato (`gas.py:4787`) e il tetto `for _ in range(10)` è intatto (`gas.py:4783`).
+  - Nessun taglio diretto della cronologia, e l'istruzione non entra nella cronologia.
+  - Gli altri punti che chiamano `run_turn` restano compatibili: il nuovo parametro ha valore predefinito `None`.
+- `tests/test_unit_kernel.py:11394` — test T101: un turno con una chiamata a uno strumento. Controlla che l'istruzione stia nel messaggio system di entrambe le chiamate del turno, che non finisca nella cronologia e che sparisca al turno dopo. Esito: ok, T101a/b PASS.
+- `tests/test_unit_voice_server.py:611` — il test del 504 ora controlla «NON ripetere la richiesta» nella risposta HTTP vera (R-574-5-M2). Esito: ok.
+
+**Test rieseguiti da me**
+- Suite del kernel: 1063 PASS, 0 FAIL.
+- Test voce (server + stt): 102 passed, compresi i test V3 nel browser in modalità normale e riascolto (girano davvero, non vengono saltati).
 
 **Riserve (da tracciare in stato_progetto.md)**
-- **R-582-1 (BASSA):** la citazione annidata e la lettera visibile citata non vengono riconosciute. Si chiude con poco:
-  - ripetere `_CITAZIONE_INVISIBILE.sub` fino a quando il testo non cambia più (o finché non resta nessuna citazione);
-  - e/o controllare anche una versione con le citazioni decodificate (`chr(int(hex,16))`, poi `_senza_invisibili`).
+- **R-575-1-M2 (BASSA)**: se l'operatore mette in pausa la risposta dai controlli del player, l'evento di fine riproduzione non arriva mai. `occupato` resta vero e il tasto non fa niente (`clients/voice/browser_client.html:569`) finché la riproduzione non arriva in fondo; un clic durante una conversazione la chiude soltanto. Correzione: sulla pausa (`player.onpause`) liberare `occupato` e chiudere la conversazione.
+- **R-575-2-M2 (BASSA)**: se si chiude la conversazione mentre il browser chiede il permesso del microfono, dopo l'apertura `ascolta()` controlla solo gli stati di rientro e non `conversazione`. Così parte una registrazione manuale: microfono acceso contro l'intenzione dell'operatore, anche se non invia niente senza un altro clic. Correzione: dopo l'apertura, se la conversazione è stata chiusa nel frattempo, uscire e chiudere il microfono.
 
-  L'offuscamento in generale (base64, lettere separate da spazi) resta un limite di qualunque filtro a regex.
-- **R-582-2 (COSMETICA):** l'assert del PROMPT a `tests/test_unit_verifica_bot.py:1300` è a pezzi separati. Si può normalizzare gli spazi (`" ".join(prompt.split())`) e cercare «SEMPRE come <U+XXXX>» intero.
+**Cosa NON ho verificato**
+- Il comportamento con un microfono vero e un audio di ElevenLabs vero, sul Mac dell'operatore: non riproducibile qui, la prova nel browser usa Chromium headless con un microfono finto da file WAV.
+- Le due riserve sono emerse leggendo il codice, non le ho riprodotte nel browser.
+- Non ho controllato se il ramo «forte» (`claude -p`) mette davvero nel prompt il messaggio system così com'è: ho verificato solo che il messaggio venga costruito in un punto solo.
 
-**Rischio escluso:** non ho verificato come si comporta davvero il bot (il modello nel workflow GitHub). Non so se rispetta «a capo e tab restano normali» né se usa `<U+XXXX>` in tutti i campi: in questo ambiente non si può riprodurre senza un run reale su PR con etichetta `verifica`. Per lo stesso motivo non ho provato la pubblicazione reale della review.
+Memoria aggiornata con la riga #575-M2 e una lezione nuova, già committata (4f3cfe2) in `/home/user/Gas/.claude/agents/memoria_revisore.md`. Il diff staged è rimasto intatto (7 file).
 
-Memoria: riga #582 e una lezione aggiunte in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate da sole con `scripts/commit_memoria_revisore.sh` (commit c98edfd). Il diff in stage è rimasto intatto.
-```
+NB (agente): il ramo «forte» passa il messaggio system a `claude -p`: `brains/claude_cli.py` legge i messaggi `role: system` (righe 147-148 e 301).
+
+Review #576-M2 (diff finale committato in d7730de):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #576-M2: ricontrollo del diff staged su feat/voce-v3-m2, cioè la #575-M2 più le correzioni delle sue due riserve. Ho letto prima CLAUDE.md (sez. 5), le voci #575 di reports/stato_progetto.md e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `clients/voice/browser_client.html:544` — il gestore `player.onpause` vale una volta sola, è legato a `numTurno` e non fa nulla se `player.ended` è vero. Libera `occupato`, chiude la conversazione e mostra «risposta in pausa · conversazione chiusa».
+  - Rischi esaminati: (1) una fine normale letta come pausa: esclusa dalla guardia su `ended`; (2) un rientro dopo un riascolto: escluso, perché entrambi i gestori vengono azzerati; (3) una pausa finta quando cambia `src` per il turno nuovo mentre suona ancora la risposta vecchia: provato con una sonda Playwright/Chromium, cambiare `src` mentre suona non emette `pause` dopo il nuovo gestore, e `play()` va a buon fine.
+  - Esito: ok. R-575-1-M2 chiusa.
+- `clients/voice/browser_client.html:555` — nel catch di `play()`, `if (turno !== numTurno || !occupato) return;` evita che l'AbortError di una pausa subito dopo `play()` sovrascriva lo stato con «premi play».
+  - Rischio: che il ritorno anticipato salti la chiusura nel caso dell'autoplay negato. Non succede: lì non arriva nessun evento `pause`, quindi `occupato` è ancora true e il ramo R-574-3 resta valido.
+  - Mutante senza questa guardia: il test «pausa» fallisce. File ripristinato dall'index (cmp identico).
+  - Esito: ok.
+- `clients/voice/browser_client.html:414` e `clients/voice/browser_client.html:419` — `ascolta()` ricorda se è partita dentro una conversazione; se la conversazione è stata chiusa mentre si attendeva il permesso, spegne il microfono e non registra.
+  - Rischio: che chiudere e riaprire durante il permesso generi due ascolti. Non succede: la seconda chiamata riceve la stessa promessa `apertura` e trova il recorder già in registrazione.
+  - Esito: riserva R-576-1-M2 (sotto). Il codice è corretto ma nessun test lo prova: senza la guardia i test del browser passano tutti e 3.
+- `tests/test_unit_voice_server.py:886` — nuova modalità «pausa» con audio di risposta da 2 s e `pause()` durante «Gas parla». Le asserzioni a `tests/test_unit_voice_server.py:984` controllano lo stato «risposta in pausa», nessun «ti ascolto» dopo, 1 solo POST e nessun errore di pagina. Esito: ok.
+- `tests/test_unit_voice_server.py:902` — se lo script Node fallisce, stampa a stderr gli stati della pagina (try/catch interno, poi `exit(1)`). Serve solo alla diagnosi e non cambia l'esito. Esito: ok.
+- Contesto: in `gas.py:4726` il diff staged di gas.py è uguale a quello approvato nella #575: `istruzione_turno` solo in coda al messaggio system (`turno_pin`), `_get_window` e il tetto di 10 giri non toccati. Esito: ok.
+
+**Prove riprodotte**
+- Suite voce (voice_server + voice_stt): 103 passed.
+- Test `-k browser`: 9 passed (comprende normale, riascolto e pausa).
+- Due mutanti, file ripristinato dopo ciascuno.
+
+**Riserve**
+- **R-576-1-M2 (BASSA):** la correzione di R-575-2-M2 non ha un test (il mutante sopravvive). Basta un test che sostituisca `getUserMedia` con una promessa lenta e chiuda la conversazione nel frattempo.
+- **R-576-2-M2 (BASSA, c'era già):** un errore di decodifica a metà riproduzione (evento `error`, nessun `pause` né `ended`, dopo che `play()` è andato a buon fine) lascia `occupato` bloccato. Manca un `player.onerror` che chiuda il turno come fa `onpause`.
+- **R-576-3-M2 (COSMETICA):** senza conversazione attiva, la pausa mostra comunque «conversazione chiusa».
+
+**Rischio escluso:** non ho verificato il comportamento su Safari e Firefox, né col microfono vero sul Mac. La sonda sul cambio di `src` e i test girano solo su Chromium headless con microfono finto. Il comportamento degli eventi `pause` su WebKit non è riproducibile qui.
+
+**Memoria:** ho aggiunto la riga contatore #576-M2 e una lezione (togliere con un mutante le guardie messe dopo un await) in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata come 82e9703.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_verifica_bot.py`: da 510 (main) a 514 passed (assert sul PROMPT, `test_credenziale_spezzata_da_una_citazione` con 4 casi). Mutanti: regola cambiata in <U+YYYY> 1 failed; `contiene_segreti` senza `_senza_citazioni` 4 failed. Suite completa non rilanciata: il diff tocca solo il bot (PROMPT, `contiene_segreti`) e il suo test.
+Suite kernel (tests/test_unit_kernel.py): 1061 → 1063 PASS, 0 FAIL (+T101a/b, round-trip di `istruzione_turno` con tool). Voice suite (server+stt+tts): 120 → 127 passed, compresi i test della pagina vera in Chromium headless (normale, riascolto, pausa), che in CI si saltano (niente Node/Playwright). Mutanti: soglia del volume a 0,9 → il giro fallisce; pagina di #574 → «riascolto» fallisce; pagina di #575 → «pausa» fallisce. Nessun FAIL.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- bfb487a, 9c8a880 (memoria del revisore) e 4799155: pushati insieme prima dell'apertura della PR #309; nessuna run sulla PR per questi SHA.
-- 7d57b26 (fine-task): check `verifica-bot` neutral, review del bot APPROVATO CON RISERVE (vedi §1); `handoff-check` success.
-- c98edfd (memoria del revisore) e 0b7782a: pushati insieme. Run CI 41058960891 su 0b7782a: `handoff-check` failure (intermedio: l'handoff era ancora quello di 7d57b26), check `verifica-bot` cancelled (head cambiata durante la verifica).
-- 1eb83e4 (fine-task): run CI 41059057483, `unit-suite` e `handoff-check` success; check `verifica-bot` neutral, review del bot APPROVATO CON RISERVE (solo COSMETICHE). Seconda verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/309#issuecomment-6523471996).
+- db70c18, 4f3cfe2, 82e9703, d7730de: pushati insieme prima dell'apertura della PR #311; nessuna run della PR su questi SHA.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-582-1 (chat Mani) BASSA: una citazione annidata («gh<U+2<U+200B>00B>p_…») o una lettera visibile citata («gh<U+0070>_…») non vengono riconosciute da `contiene_segreti`.
-- R-582-2 (chat Mani) COSMETICA: l'assert del PROMPT cerca i pezzi della regola separati.
-- R-580-2 (chat Mani) BASSA, limite dichiarato: una gravità maiuscola nuda citata nella sezione FINDING dà ancora NO (`_PAROLA_BLOCCANTE`).
-- Rischio escluso (#580/#581): che il modello rispetti davvero la regola si vede solo al primo giro reale del bot.
-- V-1 bot / V-1 ve #306 BASSA: `test_invisibili_come_nel_gate` lega solo gli intervalli, non `_CATEGORIE_INVISIBILI`.
-- V-2 bot / V-2 ve #306: l'import di modules.gate nel test funziona solo dalla radice del repo.
-- V-2 COSMETICA del bot su 586b888 (#305): righe delle riserve minori senza tetto dopo l'escape.
-- R-572-1, R-572-2, R-575-1 BASSE e R-575-2 COSMETICA (chat Mani), preesistenti.
-- (b) libexpat ≥ 2.4 nel doctor: con M1.
-- V-3 ve #303 BASSA: selectolax 1.0.2 uscita il 2026-10-22, da decidere dall'operatore prima del `pip install` sul VPS.
-- R-518-1, R-516-1, R-ve277-5, V-1 ve/bot #288, V-2/V-3 ve #296, R-546-1: BASSE della chat Mani, invariate (vedi stato_progetto).
+- **R-576-1-M2** BASSA — la guardia del permesso del microfono (R-575-2-M2) non ha un test.
+- **R-576-2-M2** BASSA — errore di decodifica a metà riproduzione: il tasto resta occupato (manca `player.onerror`).
+- **R-576-3-M2** COSMETICA — la pausa senza conversazione dice «conversazione chiusa».
+- Prova col microfono vero sul Mac (soglia, eco, voce italiana della frase d'attesa) e su Safari: da fare.
+- Ereditate e dichiarate: R-564-1-M2 («Forte!» esclamazione va al forte), V-1 ve #304, R-384-2 (chat Voce).

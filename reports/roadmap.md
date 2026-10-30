@@ -237,8 +237,8 @@ Oggi ogni compito notturno parte da zero e non può riprendere. Nessuna decision
 Documento: [`reports/briefing_architettura_voce.md`](briefing_architettura_voce.md).
 Pezzi decisi a luglio-agosto e mai costruiti.
 - ⏳ Parola di attivazione "Hey Gas" sul dispositivo (openWakeWord; prima il modello pronto, poi la parola nostra).
-- ⏳ Finestra di ascolto di circa 12 secondi dopo la risposta, senza ripetere la parola.
-- ⏳ "Due secondi o ci sto ragionando": timer nel client e frase di attesa già pronta.
+- ✅ Finestra di ascolto di circa 12 secondi dopo la risposta, senza ripetere la parola (V3, 30 ottobre, chat M2: nella pagina del browser, `GAS_VOICE_FINESTRA`; la parola di attivazione resta da fare).
+- ✅ "Due secondi o ci sto ragionando": timer nel client e frase di attesa già pronta (V3, 30 ottobre: detta dal browser con la voce di sistema). Risposte a voce di 1-3 frasi col parere subito (istruzione del solo turno parlato), il testo lungo a schermo.
 - ⏳ **Firme a voce** (19 ottobre): Gas rilegge l'azione esatta, poi le parole "Procedi" / "Annulla" (da rivedere in sviluppo). Sicurezza, codice madre e azioni irreversibili: **solo coi bottoni**.
 - ⏳ 👤 **Voce da scegliere all'ascolto** tra: Piper italiano (gratis, in locale); modello "Jarvis" per Piper (inglese, **solo uso privato**, mai coi clienti); clone della voce di Gas-operatore (es. Chatterbox, in locale, file custodito come una chiave). Niente imitazioni di persone famose verso l'esterno. ElevenLabs a pagamento: non scelto, si resta sul gratis.
 - ⏳ Server voce esposto in modo sicuro: connessione cifrata, token che scadono, limite di richieste.
