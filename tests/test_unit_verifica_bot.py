@@ -1283,3 +1283,5 @@ class TestWorkflow:
         assert '"strumenti_ok": true SOLO se' in prompt and "gh pr diff" in prompt
         # R-161-1: le riserve già registrate si citano come "R-203-1 (ALTA, preesistente)".
         assert '"R-203-1 (ALTA,' in prompt and "non blocca" in prompt
+        # R-580-1: gli invisibili citati si scrivono come <U+XXXX>, mai col carattere vero.
+        assert "SEMPRE come <U+XXXX>" in prompt and "mai il carattere vero" in prompt
