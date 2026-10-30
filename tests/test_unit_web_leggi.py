@@ -86,6 +86,8 @@ class _Gestore(BaseHTTPRequestHandler):
             self._rispondi(307, b"", {"Location": "http://169.254.169.254/latest/meta-data/"})  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
         elif p == "/redir-file":
             self._rispondi(302, b"", {"Location": "file:///etc/passwd"})
+        elif p == "/redir-porta":
+            self._rispondi(302, b"", {"Location": "http://sito.test:8080/ok"})
         elif p == "/redir-vuoto":
             self._rispondi(302, b"", {})
         elif p.startswith("/loop"):
@@ -268,7 +270,7 @@ def test_redirect_esterno_e_relativo(rete):
 # ───────────────────────────── indirizzi interni ─────────────────────────────
 
 @pytest.mark.parametrize("url", [
-    "http://127.0.0.1/", "http://127.1.2.3:8080/", "http://10.0.0.1/", "http://172.16.0.1/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
+    "http://127.0.0.1/", "http://127.1.2.3/", "http://10.0.0.1/", "http://172.16.0.1/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
     "http://172.31.255.255/", "http://192.168.1.1/", "http://169.254.169.254/latest/meta-data/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
     "http://100.64.0.1/", "http://0.0.0.0/", "http://[::1]/", "http://[fe80::1]/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
     "http://[fc00::1]/", "http://[fd12:3456::1]/", "http://[::ffff:127.0.0.1]/",
@@ -280,6 +282,14 @@ def test_indirizzi_interni_rifiutati_senza_connessione(rete, url):
     r = rete.leggi(url)
     assert r == {"ok": False, "motivo": "indirizzo interno non permesso"}
     assert rete.connessi == []
+
+
+@pytest.mark.parametrize("url", ["http://127.1.2.3:8080/", "http://[::1]:8000/", "http://10.0.0.1:6379/"])  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
+def test_indirizzo_interno_su_altra_porta(rete, url):
+    """Un IP interno scritto a mano con una porta non permessa: rifiutato prima di risolvere
+    o connettere (il motivo è la porta, controllata prima dell'IP)."""
+    assert rete.leggi(url) == {"ok": False, "motivo": "porta non permessa: solo 80 e 443"}
+    assert rete.connessi == [] and rete.risolti == []
 
 
 @pytest.mark.parametrize("host", ["interno.test", "misto.test", "v6locale.test"])
@@ -327,6 +337,14 @@ def test_connessione_va_all_ip_controllato(server):
     ("http:///solo-percorso", "url senza nome host"),
     ("http://sito.test:99999/", "url non valido"),
     ("http://sito.test:0/", "porta non valida"),
+    # Decisione dell'operatore del 2026-10-22: solo 80 e 443.
+    ("http://sito.test:8080/", "porta non permessa: solo 80 e 443"),
+    ("https://sito.test:8443/", "porta non permessa: solo 80 e 443"),
+    ("http://sito.test:22/", "porta non permessa: solo 80 e 443"),
+    ("http://sito.test:25/", "porta non permessa: solo 80 e 443"),
+    ("http://sito.test:6379/", "porta non permessa: solo 80 e 443"),
+    ("http://sito.test:65535/", "porta non permessa: solo 80 e 443"),
+    ("http://sito.test:1/", "porta non permessa: solo 80 e 443"),
     ("http://sito..test/", "nome host non valido"),
     ("http://sito_test/", "nome host non valido"),
     ("", "url vuoto o troppo lungo"),
@@ -338,6 +356,22 @@ def test_connessione_va_all_ip_controllato(server):
 def test_url_non_validi(rete, url, motivo):
     assert rete.leggi(url) == {"ok": False, "motivo": motivo}
     assert rete.connessi == []
+
+
+def test_redirect_verso_altra_porta_rifiutato(rete):
+    assert rete.leggi("http://sito.test/redir-porta") == {
+        "ok": False, "motivo": "porta non permessa: solo 80 e 443"}
+    assert rete.connessi == [(IP_PUBBLICO, 80)]  # la porta 8080 non viene mai aperta
+
+
+def test_porte_permesse_anche_incrociate(rete):
+    """80 e 443 valgono per tutti e due gli schemi: la porta di default non va nell'url."""
+    r = rete.leggi("http://sito.test:80/ok")
+    assert r["ok"] is True and r["url"] == "http://sito.test/ok"
+    r = rete.leggi("http://sito.test:443/ok")
+    assert r["ok"] is True and r["url"] == "http://sito.test:443/ok"
+    assert rete.connessi[-1] == (IP_PUBBLICO, 443)
+    assert _Gestore.richieste[-1]["headers"]["Host"] == "sito.test:443"
 
 
 def test_redirect_verso_altro_schema_rifiutato(rete):
@@ -556,11 +590,11 @@ def test_https_usa_tls_col_nome_giusto(server):
             return sock
 
     rete = _Rete(server)
-    r = rete.leggi("https://sito.test:8443/ok", _tls=_TlsFinto())
-    assert r["ok"] is True and r["url"] == "https://sito.test:8443/ok"
+    r = rete.leggi("https://sito.test:443/ok", _tls=_TlsFinto())
+    assert r["ok"] is True and r["url"] == "https://sito.test/ok"
     assert visti == ["sito.test"]
-    assert rete.connessi == [(IP_PUBBLICO, 8443)]
-    assert _Gestore.richieste[-1]["headers"]["Host"] == "sito.test:8443"
+    assert rete.connessi == [(IP_PUBBLICO, 443)]
+    assert _Gestore.richieste[-1]["headers"]["Host"] == "sito.test"
 
 
 def test_tls_rifiutato_non_esplode(server):
