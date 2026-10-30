@@ -3,7 +3,7 @@
 File toccati rispetto a main 4ffcd80 (PR #309 mergiata):
 - `modules/web/leggi.py` — `_PORTE_PERMESSE = {80, 443}` controllate in `_valida_url` (anche a ogni redirect); docstring aggiornata. Motivo: decisione dell'operatore del 2026-10-22.
 - `tests/test_unit_web_leggi.py` — porte rifiutate, redirect verso un'altra porta, porte incrociate, test TLS su 443, IP interno su altra porta.
-- `.claude/agents/memoria_revisore.md` — riga della review #583.
+- `.claude/agents/memoria_revisore.md` — righe delle review #583 e #584.
 - `reports/roadmap.md` — decisione delle porte segnata come fatta nel codice.
 - `reports/stato_progetto.md` — blocco «Mani — fetta 31» (con V-1 bot #309 registrata come limite) e riga «Ultimo aggiornamento».
 - `reports/ripartenza_mani.md` — punto g).

@@ -15,25 +15,26 @@
 
 - **PR #309**: `FATTA` — mergiata da M1 (4ffcd80). V-1 bot #309 BASSA (un verdetto che cita alla lettera un caso di prova di credenziale spezzata da una citazione non viene pubblicato): `FATTA` — registrata come limite in stato_progetto.
 - **Porte 80 e 443 in `leggi_pagina`** (decisione dell'operatore del 2026-10-22): `FATTA` (PR #310).
-- **Review #583 (chat Mani)**: APPROVATO CON RISERVE. R-583-1 COSMETICA (a capo nel docstring): `DEFERITA — prossima fetta su leggi.py`.
-- **Piano del browser senza schermo**: `FATTA` — mandato a M1, nessun codice; via libera dell'operatore tramite M1.
-- **Bot su 59f3a63 (PR #310)**: APPROVATO CON RISERVE, check success. V-1 BASSA (R6 #391 ancora «da implementare» in stato_progetto): `FATTA` — segnata CHIUSA. V-2 COSMETICA (= R-583-1): `DEFERITA`.
-- **Verifica esterna su 59f3a63 (https://github.com/Gasss23/Gas/pull/310#issuecomment-6527013374)**: APPROVATO. V-1 e V-2 COSMETICHE (docstring; caso di test IP interno su 80/443): `DEFERITA — prossima fetta su leggi.py`.
+- **Review #583 (chat Mani)**: APPROVATO CON RISERVE. R-583-1 COSMETICA (a capo nel docstring): `FATTA` (review #584).
+- **Piano del browser senza schermo**: `FATTA` — mandato a M1, nessun codice; via libera dell'operatore tramite M1, prima fetta il proxy filtrante.
+- **Bot su 59f3a63 (PR #310)**: APPROVATO CON RISERVE, check success. V-1 BASSA (R6 #391 ancora «da implementare» in stato_progetto): `FATTA` — segnata CHIUSA in 2c4034e. V-2 COSMETICA (= R-583-1): `FATTA` — vedi sotto.
+- **Verifica esterna su 59f3a63 (https://github.com/Gasss23/Gas/pull/310#issuecomment-6527013374)**: APPROVATO. V-1 COSMETICA (= R-583-1) e V-2 COSMETICA (caso di test per un IP interno scritto a mano su 80/443): `FATTA` — review #584.
+- **Bot su 2c4034e (PR #310)**: APPROVATO CON RISERVE, check success; le stesse due COSMETICHE: `FATTA` — docstring riformattato e 3 casi nel parametrize degli IP interni. Review #584 (chat Mani) APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- modules/web/leggi.py               |   7 ++++++-
+ .claude/agents/memoria_revisore.md |   2 ++
+ modules/web/leggi.py               |   9 +++++++--
  reports/diff_sessione.md           |  14 +++++++-------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  25 ++++++++++---------------
- tests/test_unit_web_leggi.py       |  44 +++++++++++++++++++++++++++++++++++++++-----
+ reports/ultimo_report.md           |  26 +++++++++++---------------
+ tests/test_unit_web_leggi.py       |  46 +++++++++++++++++++++++++++++++++++++++++-----
 ```
 
 NB: base = merge-base con origin/main = 4ffcd80. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -41,6 +42,9 @@ NB: base = merge-base con origin/main = 4ffcd80. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+136597b test(web): IP interno su porta permessa, docstring delle regole riformattato (V-1/V-2 bot e verifica esterna #310, R-583-1, chat Mani)
+bee6180 chore(revisore): memoria review #584 — APPROVATO
+2c4034e docs(fine-task): PR #310, R6 #391 segnata chiusa (V-1 bot su 59f3a63) e verifica esterna
 59f3a63 docs(fine-task): Mani fetta 31, leggi_pagina solo porte 80 e 443 (PR #310)
 0ca7e49 feat(web): leggi_pagina solo verso le porte 80 e 443, anche dopo un redirect (R6, decisione dell'operatore del 2026-10-22, chat Mani)
 b0c157a chore(revisore): memoria review #583 — APPROVATO CON RISERVE
@@ -125,20 +129,46 @@ Review #583 (chat Mani). Ho esaminato il diff staged su claude/peaceful-lovelace
 - Nessuna lezione nuova oltre alla riga.
 ```
 
+Commit con le cosmetiche di bot e verifica esterna (modules/web/leggi.py solo docstring, tests/test_unit_web_leggi.py +3 casi). Verdetto integrale della review #584 (chat Mani):
+
+```
+## VERDETTO: APPROVATO
+
+Review #584 (chat Mani): delta sulla PR #310 (head 2c4034e), diff STAGED di 2 file (+4/-2). Ho letto CLAUDE.md (sez. 5, 8, 9, 10), le voci di reports/stato_progetto.md che riguardano #310 e R-583 (lettura mirata) e la coda di .claude/agents/memoria_revisore.md, comprese la #583 e le sue lezioni.
+
+Elementi del diff esaminati:
+- `modules/web/leggi.py:8` — rifà gli a capo del docstring nel punto «dopo un salto in https niente redirect verso http (la pagina non finisce letta in chiaro)». Rischio esaminato: che sia cambiato il testo o il codice. Il testo è identico parola per parola, solo con gli a capo spostati, e il diff tocca solo righe del docstring. Esito: ok, R-583-1 / V-1 chiusa.
+- `tests/test_unit_web_leggi.py:281` — aggiunge tre casi al parametrize di `test_indirizzi_interni_rifiutati_senza_connessione`: `http://127.0.0.1:80/`, `https://127.0.0.1:443/` e `http://[::1]:443/`. Rischio esaminato: il test potrebbe passare per il motivo sbagliato, cioè per il rifiuto della porta invece che dell'IP. Non succede, perché l'assert controlla l'intero dict, con motivo esatto «indirizzo interno non permesso», e in più `connessi == []`. Ho seguito il percorso nel codice: la porta 80 o 443 supera il controllo delle porte in `_valida_url` (`modules/web/leggi.py:656`), e il rifiuto arriva dal controllo sull'IP letterale prima di `connetti` (`modules/web/leggi.py:739`). Quindi il caso copre davvero la combinazione «IP interno su porta permessa» che V-2 chiedeva. Esito: ok, V-2 chiusa.
+- `tests/test_unit_web_leggi.py:280` — riga di commento dentro la lista del parametrize. Rischio esaminato: sintassi e gate IP. Il commento in una lista è Python valido e la riga non contiene IP. La riga 281 con gli IP ha il token `gasmerge-ip-ok` richiesto dal gate IP di `scripts/fine_task_finale.sh:100`. Esito: ok.
+
+Verifiche eseguite da me:
+- Il filtro `-k indirizzi_interni` dà 27 passed.
+- Tutta la suite web (`tests/test_unit_web*.py`) dà **635 passed, 2 skipped**, come dichiarato (+3).
+- Nessun antipattern del Wall of Shame: niente slicing della history, niente simulazione dell'output dei tool. Nessun guardrail toccato (cap a 10 iterazioni, `_get_window`, §9).
+
+Cosa NON ho verificato:
+- Non ho fatto un test mutante per i nuovi casi, per esempio togliendo il controllo IP a `modules/web/leggi.py:739`. Il delta è solo test più docstring, e il percorso del rifiuto l'ho seguito a mano nel codice.
+- Il comportamento con DNS e rete reali non è verificato: la suite usa la rete finta (`rete`) e in dev non è riproducibile.
+
+Riserve aperte: nessuna. Resta valida la nota della #583: chiudere R6 #391 in reports/stato_progetto.md e in reports/roadmap.md:214 («oggi accetta 1-65535»). È documentazione, non blocca.
+
+Memoria: ho aggiunto la riga contatore #584 (APPROVATO, nessuna lezione nuova) a /home/user/Gas/.claude/agents/memoria_revisore.md. È già committata con `scripts/commit_memoria_revisore.sh` (commit bee6180). Il diff staged sotto review è rimasto intatto nell'index.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_web_*.py`: 632 passed, 2 skipped (test nuovi: 7 porte rifiutate, redirect verso un'altra porta, porte incrociate, 3 IP interni su altra porta; test TLS spostato su 443). Mutante senza il controllo: 11 failed. Suite completa in locale (Python 3.13): `2725 passed, 2 skipped in 232.79s`.
+Nessuna modifica a gas.py. `tests/test_unit_web_*.py`: 635 passed, 2 skipped (test nuovi: 7 porte rifiutate, redirect verso un'altra porta, porte incrociate, 3 IP interni su altra porta, 3 IP interni su porta permessa; test TLS spostato su 443). Mutante senza il controllo: 11 failed. Suite completa in locale (Python 3.13), prima delle cosmetiche: `2725 passed, 2 skipped in 232.79s`.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - b0c157a (memoria del revisore) e 0ca7e49: pushati insieme prima dell'apertura della PR #310; nessuna run sulla PR per questi SHA.
-- 59f3a63 (fine-task): run CI 41083039423, `unit-suite` e `handoff-check` success; check `verifica-bot` success, review del bot APPROVATO CON RISERVE (vedi §1).
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 59f3a63 (fine-task): run CI 41083039423, `unit-suite` e `handoff-check` success; check `verifica-bot` success (APPROVATO CON RISERVE).
+- 2c4034e (fine-task): `handoff-check` success; check `verifica-bot` success (APPROVATO CON RISERVE, 2 COSMETICHE chiuse qui).
+- bee6180 (memoria del revisore), commit delle cosmetiche e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-583-1 (chat Mani) COSMETICA: a capo nel docstring di modules/web/leggi.py.
 - V-1 bot #309 BASSA, limite registrato: un verdetto che cita alla lettera un caso di prova di credenziale spezzata da una citazione <U+XXXX> non viene pubblicato.
 - R-582-1 (chat Mani) BASSA, R-582-2 COSMETICA, R-580-2 BASSA (limiti del bot).
 - V-1/V-2 bot e ve #306 (test «uguali al gate», import di modules.gate).
