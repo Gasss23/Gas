@@ -1,7 +1,7 @@
 # Diff della sessione — 2026-10-30 — Voce V3, conversazione filata (chat M2)
 
-- `clients/voice/browser_client.html` — modalità conversazione (ascolto a finestra, inizio/fine frase dal volume, bip di chiusura), frase d'attesa dopo 2 s, testo a schermo, guardie contro turni doppi (riascolto, doppio clic).
-- `clients/voice/browser_server.py` — `GET /config` con `GAS_VOICE_FINESTRA`, inoltro di `X-Gas-Formato`, 504 «NON ripetere la richiesta».
+- `clients/voice/browser_client.html` — modalità conversazione (ascolto a finestra, inizio/fine frase dal volume, bip di chiusura), frase d'attesa dopo 2 s, testo a schermo, guardie contro turni doppi (riascolto, doppio clic, pausa, audio rotto) e tetto dei turni di fila.
+- `clients/voice/browser_server.py` — `GET /config` con `GAS_VOICE_FINESTRA` e `GAS_VOICE_MAX_TURNI`, inoltro di `X-Gas-Formato`, 504 «NON ripetere la richiesta».
 - `modules/voice/server.py` — risposta «audio+testo» (testo intero + audio della parte parlata corta), `ISTRUZIONE_VOCE` ai soli turni parlati.
 - `gas.py` — `run_turn(istruzione_turno=...)`: istruzione del solo turno nel messaggio system.
 - `tests/test_unit_kernel.py` — T101 (round-trip di `istruzione_turno`).

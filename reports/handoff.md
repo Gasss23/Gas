@@ -19,26 +19,27 @@
 - **V3.3 — risposte a voce brevi**: `FATTA` — `run_turn(istruzione_turno=...)` in gas.py (ok di M1), `ISTRUZIONE_VOCE` ai soli turni parlati, a voce solo la parte corta e il testo intero a schermo.
 - **V-1 bot #308 (su 2507621, 504 «non ripetere»)**: `FATTA`.
 - **V3.4 — interruzione mentre Gas parla**: `SALTATA — parcheggiata, serve l'ok`.
-- **Review #574-M2 BOCCIATO → R-574-1..5-M2**: `FATTA`. **#575-M2 → R-575-1/2-M2**: `FATTA`. **#576-M2 → R-576-1/2/3-M2**: `DEFERITA — una fetta piccola dopo la prova sul Mac`.
+- **Secondo giro — bot #311 su 17beb97 NON approvata (V-1 MEDIA, nessun tetto ai turni automatici)**: `FATTA` — `GAS_VOICE_MAX_TURNI` (5, contando il turno del clic), voce minima 250 ms; R-576-2-M2 `FATTA` (`player.onerror`); V-2 bot (test del browser saltati in CI) `DEFERITA — riserva aperta, ci.yml fuori fetta`. Verifica esterna #311 su 17beb97 APPROVATO CON RISERVE ([copia](https://github.com/Gasss23/Gas/pull/311#issuecomment-6527391973)). Review #577-M2 e #578-M2 APPROVATO CON RISERVE.
+- **Review #574-M2 BOCCIATO → R-574-1..5-M2**: `FATTA`. **#575-M2 → R-575-1/2-M2**: `FATTA`. **#576-M2 → R-576-2-M2** `FATTA` (secondo giro); **R-576-1/3-M2** `DEFERITA — una fetta piccola dopo la prova sul Mac`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- clients/voice/browser_client.html  | 408 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------
- clients/voice/browser_server.py    |  27 +++++++++++++++++++++++-
+ .claude/agents/memoria_revisore.md |   9 ++++++++
+ clients/voice/browser_client.html  | 430 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------
+ clients/voice/browser_server.py    |  40 +++++++++++++++++++++++++++++++++-
  gas.py                             |   8 +++++--
- modules/voice/server.py            |  86 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/diff_sessione.md           |  18 ++++++++--------
+ modules/voice/server.py            |  86 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/diff_sessione.md           |  18 +++++++--------
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   4 ++--
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  31 ++++++++++++++--------------
- tests/test_unit_kernel.py          |  54 ++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voice_server.py    | 246 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voice_stt.py       |  24 ++++++++++++++++++---
+ reports/ultimo_report.md           |  32 ++++++++++++++-------------
+ tests/test_unit_kernel.py          |  54 +++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_server.py    | 264 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_stt.py       |  24 +++++++++++++++++---
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -46,6 +47,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3d7a095 fix(voce): tetto ai turni di fila, voce minima 250 ms, audio rotto gestito (bot #311)
+797fb5d chore(revisore): memoria review #578 — APPROVATO CON RISERVE
+3e57cfc chore(revisore): memoria review #577 — APPROVATO CON RISERVE
+17beb97 docs(voce-v3): report di fine task (PR #311, review #574-#576-M2)
 d7730de feat(voce): conversazione filata — finestra d'ascolto, frase d'attesa, risposte parlate corte (V3, chat M2)
 82e9703 chore(revisore): memoria review #576 — APPROVATO CON RISERVE
 4f3cfe2 chore(revisore): memoria review #575 — APPROVATO CON RISERVE
@@ -56,7 +61,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Il commit d7730de è stato rivisto in tre passaggi sullo stesso diff staged (ogni passaggio dopo le correzioni del precedente; le citazioni dei primi due si riferiscono al diff di quel momento e alcune righe a HEAD sono spostate). Verdetti integrali:
+Il commit d7730de è stato rivisto in tre passaggi (#574-#576-M2) e il commit 3d7a095 in due (#577-#578-M2) sullo stesso diff staged (ogni passaggio dopo le correzioni del precedente; le citazioni dei primi due si riferiscono al diff di quel momento e alcune righe a HEAD sono spostate). Verdetti integrali:
 
 Review #574-M2 (primo passaggio):
 
@@ -207,20 +212,83 @@ Review #576-M2: ricontrollo del diff staged su feat/voce-v3-m2, cioè la #575-M2
 
 **Memoria:** ho aggiunto la riga contatore #576-M2 e una lezione (togliere con un mutante le guardie messe dopo un await) in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata come 82e9703.
 
+Commit 3d7a095 — review #577-M2 (secondo giro, dopo il bot su 17beb97; poi corrette R-577-1/2-M2, alcune righe a HEAD sono spostate di 2), verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #577-M2 del diff staged su feat/voce-v3-m2 (PR #311): fix del V-1 MEDIA del bot su 17beb97 e della riserva R-576-2-M2.
+
+Letture fatte: CLAUDE.md (sezioni 5, 8, 10), reports/stato_progetto.md (in modo mirato), .claude/agents/memoria_revisore.md (lezioni #574–#576). Il diff tocca solo clients/voice/ e tests/. Non tocca gas.py, `_get_window`, il tetto di 10 iterazioni né il tetto di 8k sull'output. Nessuno slicing diretto della history e nessuna simulazione dei tool.
+
+**Elementi del diff esaminati**
+
+- `clients/voice/browser_client.html:591` — il tetto sui turni di fila sta in `dopoRisposta`. Rischio esaminato: che lo si possa aggirare passando da un'altra strada. Ho cercato tutte le chiamate ad `ascolta()`: l'ascolto si riapre da solo SOLO alla riga 596, che si raggiunge solo passando dal controllo della 591. Gli errori di rete, HTTP e di lettura passano da `fineTurno` (`clients/voice/browser_client.html:579`), che chiude la conversazione e non riapre niente. Una frase scartata per silenzio non viene inviata e chiude la conversazione. Esito: ok, nessun aggiramento.
+- `clients/voice/browser_client.html:438` — `turniDiFila += 1` in `recorder.onstop`, dopo `if (scarta) return`. Rischio esaminato: cosa viene contato. Conta solo le frasi davvero inviate, che la risposta vada bene o no. Chiudere la conversazione sostituisce `onstop` (`clients/voice/browser_client.html:479`), quindi nessun incremento spurio. Mutante senza l'incremento: il test «tetto» fallisce; codice ripristinato, la copia di lavoro torna identica allo staged. Esito: ok.
+- `clients/voice/browser_client.html:606` — il contatore torna a 0 solo col clic di avvio. Rischio esaminato: la semantica. Il turno avviato dal clic conta come 1, quindi con maxTurni=5 ci sono 1 turno col clic più 4 riaperture automatiche: è la scelta più prudente. Un clic che ferma la registrazione (riga 604) esce prima dell'azzeramento: anche questo è prudente. Un clic durante la conversazione la chiude (riga 603); per ripartire serve un nuovo clic, che azzera. Esito: ok.
+- `clients/voice/browser_client.html:568` — nel catch di `play()`, se `player.error` è valorizzato si chiama `player.onerror()`. Rischio esaminato: un TypeError se `onerror` è già stato annullato. Tutti i punti che annullano i gestori, quando il turno è quello corrente, mettono `occupato=false`, quindi la guardia della riga 567 (`turno !== numTurno || !occupato`) esce prima. `onerror` è monouso e legato a numTurno (`clients/voice/browser_client.html:547`), e viene annullato insieme a onended e onpause. Esito: ok.
+- `clients/voice/browser_server.py:220` — `GAS_VOICE_MAX_TURNI` è un intero da 1 a 50, altrimenti esce con 1. La pagina accetta solo un intero positivo (`clients/voice/browser_client.html:621`); se /config non risponde resta il default 5. Il test (`tests/test_unit_voice_server.py:834`) prova abc, 0, 51 e 2.5. Esito: ok.
+- `clients/voice/browser_client.html:459` — la voce continua minima passa da 150 a 400 ms. Rischio esaminato: le risposte brevissime. Esito: riserva R-577-1-M2.
+- `tests/test_unit_voice_server.py:989` — modalità «errore» (audio non valido): lo stato finale è «non riproducibile» e non c'è nessun «ti ascolto» dopo «ragionando». Il test non distingue se è scattato l'evento error o il rifiuto di `play()`, ma entrambe le strade finiscono nello stesso gestore. Esito: ok.
+
+**Esecuzione:** test browser più /config: 11 passed. Mutante sul contatore: «tetto» FAILED, poi ripristinato.
+
+**Riserve**
+- R-577-1-M2 BASSA — con `voceMinMs` a 400 ms un «sì» o un «no» secco (circa 250–350 ms) può non contare come frase. La finestra scade e la conversazione si chiude «per silenzio», proprio dopo domande come «Procedo?». È un compromesso contro il rumore: va provato sul Mac con la voce vera ed eventualmente reso configurabile.
+- R-577-2-M2 COSMETICA — docstring di `clients/voice/browser_server.py:21` e commento del CFG: «turni di fila senza un clic», ma il primo turno è quello del clic. Il messaggio a schermo «dopo N turni di fila» invece è esatto.
+- V-2 bot (i test browser vengono saltati in CI perché nel job mancano Node e Playwright): resta una riserva da tracciare in stato_progetto.md, come dichiarato.
+
+**Rischio escluso:** non ho verificato il comportamento con un microfono reale, rumore ambientale vero e la politica di autoplay di Safari/Chrome sul Mac. In questo ambiente non si riproduce: c'è solo Chromium headless con un microfono finto da file. Non ho rifatto il mutante sul ramo `player.error` del catch: mi fido della prova dichiarata, secondo cui «errore» fallisce sulla pagina di HEAD.
+
+**Memoria:** riga #577-M2 e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate con 3e57cfc tramite `scripts/commit_memoria_revisore.sh`. Lo staging del diff sotto review è intatto.
+
+Commit 3d7a095 — review #578-M2 (diff finale committato), verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ri-review #578-M2. Diff staged su feat/voce-v3-m2, PR #311. I file sono 3: clients/voice/browser_client.html, clients/voice/browser_server.py, tests/test_unit_voice_server.py. Nessuna modifica a gas.py, brains/ o modules/: `git diff --cached` su quei percorsi è vuoto.
+
+Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9, 10), la parte di reports/stato_progetto.md che riguarda la voce, la coda di .claude/agents/memoria_revisore.md (#576-M2, #577-M2 e le lezioni sul tetto anti-loop).
+
+**Elementi del diff esaminati**
+1. `clients/voice/browser_client.html:316` — `CFG.voceMinMs: 250`, con un commento di due righe che rimanda a V-1 bot #311 e R-577-1-M2. Il rischio esaminato: con 400 ms un «sì» secco non contava. Con 250 ms passa la maggior parte delle risposte brevi, e contro il rumore di fondo resta il tetto dei turni. Esito: ok, R-577-1-M2 chiusa nel codice.
+2. `clients/voice/browser_client.html:461` — la soglia usata è `CFG.voceMinMs`, non un numero scritto nel codice. Il rischio esaminato: un valore duplicato che va fuori sync. Esito: ok, la fonte è una sola.
+3. `clients/voice/browser_server.py:21` — la docstring di GAS_VOICE_MAX_TURNI ora dice «contando quello avviato dal clic». Il rischio esaminato: un testo diverso dal comportamento (il contatore viene azzerato dal clic e incrementato all'invio, quindi il turno del clic conta 1). Esito: ok, R-577-2-M2 chiusa.
+4. `clients/voice/browser_client.html:317` — il commento di `maxTurni` dice «il primo è quello del clic». Il rischio esaminato: coerenza con la docstring del server. Esito: ok.
+5. Ho verificato che non ci sia altro di nuovo rispetto a #577:
+   - `clients/voice/browser_client.html:440`: incremento all'invio.
+   - `clients/voice/browser_client.html:593`: controllo del tetto in `dopoRisposta`.
+   - `clients/voice/browser_client.html:608`: azzeramento al clic.
+   
+   Il contenuto è identico a quanto approvato in #577. Le righe sono scese di 2 rispetto alle citazioni di #577 (:438, :591, :606), coerente con il commento più lungo di `voceMinMs`. Esito: ok.
+
+**Test eseguiti**
+- Test browser e config (normale, riascolto, pausa, tetto, errore, config): 11 passati.
+- Resto di tests/test_unit_voice_server.py: 61 passati.
+
+**Riserve**
+- R-578-1-M2 (BASSA): 250 ms è comunque più dei 150 ms originali. Un «sì» brevissimo dopo «Procedo?» va provato davvero sul Mac con il microfono reale. Il test headless usa una voce finta di 1,5 s e non copre questo caso.
+- La riserva V-2 del bot resta aperta: i test browser vengono saltati in CI. Va tracciata in reports/stato_progetto.md.
+
+**Rischio escluso**: non ho verificato il comportamento con un microfono reale e il rumore di una stanza vera (TV, voci). Non si può riprodurre in un container headless: il microfono finto è un file WAV pulito.
+
+**Memoria**: riga contatore #578-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e già committata con `scripts/commit_memoria_revisore.sh` (commit 797fb5d). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Suite kernel (tests/test_unit_kernel.py): 1061 → 1063 PASS, 0 FAIL (+T101a/b, round-trip di `istruzione_turno` con tool). Voice suite (server+stt+tts): 120 → 127 passed, compresi i test della pagina vera in Chromium headless (normale, riascolto, pausa), che in CI si saltano (niente Node/Playwright). Mutanti: soglia del volume a 0,9 → il giro fallisce; pagina di #574 → «riascolto» fallisce; pagina di #575 → «pausa» fallisce. Nessun FAIL.
+Suite kernel (tests/test_unit_kernel.py), in locale: 1061 → 1063 PASS, 0 FAIL (+T101a/b, round-trip di `istruzione_turno` con tool); in CI su 17beb97 il conteggio è 1069 PASS, 0 FAIL (ambiente diverso, sandbox bwrap). Voice suite (server+stt+tts): 120 → 129 passed in locale, compresi i 5 giri della pagina vera in Chromium headless (normale, riascolto, pausa, tetto, errore); in CI quei 5 si saltano (niente Node/Playwright: V-2 bot #311, riserva aperta). Mutanti: soglia del volume a 0,9 → il giro fallisce; pagina di #574 → «riascolto» fallisce; pagina di #575 → «pausa» fallisce; pagina di 17beb97 → «tetto» ed «errore» falliscono. Nessun FAIL.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - db70c18, 4f3cfe2, 82e9703, d7730de: pushati insieme prima dell'apertura della PR #311; nessuna run della PR su questi SHA.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 17beb97 (fine-task del primo giro): run CI 41086377142 (`unit-suite` e `handoff-check` success); check `verifica-bot` failure — bot NON approvata (V-1 MEDIA, chiusa in 3d7a095).
+- 3e57cfc, 797fb5d, 3d7a095 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
+- **V-2 bot #311** BASSA — i test della pagina nel browser in CI si saltano (il job non ha Node/Playwright): una regressione del client passa con la CI verde.
 - **R-576-1-M2** BASSA — la guardia del permesso del microfono (R-575-2-M2) non ha un test.
-- **R-576-2-M2** BASSA — errore di decodifica a metà riproduzione: il tasto resta occupato (manca `player.onerror`).
 - **R-576-3-M2** COSMETICA — la pausa senza conversazione dice «conversazione chiusa».
+- **R-578-1-M2** BASSA — la voce minima di 250 ms va provata col microfono vero (un «sì» brevissimo).
 - Prova col microfono vero sul Mac (soglia, eco, voce italiana della frase d'attesa) e su Safari: da fare.
 - Ereditate e dichiarate: R-564-1-M2 («Forte!» esclamazione va al forte), V-1 ve #304, R-384-2 (chat Voce).

@@ -13,7 +13,8 @@
 - **V-1 bot #308 (su 2507621)**: `FATTA` — il 504 del proxy dice di NON ripetere la richiesta.
 - **V3.4 — interruzione mentre Gas parla**: `SALTATA — va tolta dal parcheggio: serve prima l'ok di M1/operatore`.
 - **Review #574-M2 BOCCIATO** (R-574-1-M2 MEDIA: un riascolto dal player faceva partire un turno non chiesto; più R-574-2/3/4/5-M2): `FATTA` — rivisto in #575-M2 (APPROVATO CON RISERVE: R-575-1-M2 pausa dal player, R-575-2-M2 permesso del microfono → `FATTA`), poi #576-M2 APPROVATO CON RISERVE.
-- **R-576-1-M2 BASSA** (guardia del permesso senza test), **R-576-2-M2 BASSA** (errore di decodifica a metà riproduzione lascia il tasto occupato), **R-576-3-M2 COSMETICA** (la pausa senza conversazione dice «conversazione chiusa»): `DEFERITA — fuori dal giro, una fetta piccola dopo la prova sul Mac`.
+- **Secondo giro — bot #311 su 17beb97: NON approvata (V-1 MEDIA)**: la modalità conversazione, attiva di default, non aveva un tetto: un rumore continuo (TV, altre persone) poteva far partire turni veri senza fine, anche a operatore assente. `FATTA` — dopo `GAS_VOICE_MAX_TURNI` turni di fila (default 5, contando quello del clic) la conversazione si chiude e serve un clic; voce minima 250 ms (un «sì» secco passa: R-577-1-M2). V-2 BASSA (i test del browser in CI si saltano: niente Node/Playwright nel job) `DEFERITA — riserva aperta, cambiare ci.yml è fuori da questa fetta`. R-576-2-M2 (audio rotto a metà) `FATTA` col secondo giro (`player.onerror`). Verifica esterna #311 su 17beb97: APPROVATO CON RISERVE, solo BASSE/COSMETICHE ([copia del verdetto](https://github.com/Gasss23/Gas/pull/311#issuecomment-6527391973)). Review #577-M2 APPROVATO CON RISERVE (R-577-1/2-M2 chiuse), #578-M2.
+- **R-576-1-M2 BASSA** (guardia del permesso senza test), **R-576-3-M2 COSMETICA** (la pausa senza conversazione dice «conversazione chiusa»): `DEFERITA — fuori dal giro, una fetta piccola dopo la prova sul Mac`.
 
 ## Prove
 
