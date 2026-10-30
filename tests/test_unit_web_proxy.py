@@ -292,6 +292,19 @@ def test_testa_lenta_ha_un_tempo_massimo(rete, monkeypatch):
     assert durata < 1.5  # il tempo è per tutta la testa, non per ogni byte
 
 
+def test_client_muto_chiuso_alla_scadenza_del_proxy(rete):
+    """V-3 ve #312: con la durata del proxy a 1 s, un client che non manda nulla viene
+    chiuso a quella scadenza, non dopo i 10 s di inattività."""
+    with _proxy(rete, durata=1.0) as p:
+        with socket.create_connection(("127.0.0.1", p.porta), timeout=5) as s:
+            s.settimeout(3)
+            inizio = time.monotonic()
+            r = s.recv(4096)
+            durata = time.monotonic() - inizio
+    assert r.startswith(b"HTTP/1.1 403") and r.endswith(b"tempo massimo del proxy superato")
+    assert durata < 2.5
+
+
 def test_timeout_della_testa_non_resta_sul_tunnel(rete, monkeypatch):
     """R-586-1: dopo la testa il socket del browser torna a TIMEOUT_INATTIVITA."""
     visti = []
