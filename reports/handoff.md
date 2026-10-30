@@ -21,26 +21,29 @@
 - **Bot su 204a6c1 (PR #306)**: APPROVATO CON RISERVE, check verifica-bot neutral («decide l'operatore»). V-1 BASSA (il test «uguali al gate» lega solo gli intervalli, non `_CATEGORIE_INVISIBILI`): `DEFERITA — riserva, alla prossima fetta sui test del bot`. V-2 COSMETICA (import di modules.gate solo dalla radice del repo): `DEFERITA — come tests/test_unit_gate.py, va bene in CI`.
 - **Verifica esterna su 204a6c1 (https://github.com/Gasss23/Gas/pull/306#issuecomment-6510340226)**: APPROVATO CON RISERVE. V-1 BASSA (la stessa V-1 del bot): `DEFERITA`. V-2 BASSA (import da radice): `DEFERITA`. V-3 BASSA (§6 diceva «nessuna run» per b692e27, che ha la run 40966074777 con handoff-check failure intermedio): `FATTA` — §6 corretto qui. V-4 COSMETICA (§3 senza 14c4983): `FATTA` — §3 rigenerato dalla nuova base. V-5 COSMETICA (invisibili del titolo solo a metà parola): `SALTATA — nessun rischio`. Nota: chiede che l'operatore confermi lui il via libera di M1 su V-2 ve #305 come compromesso.
 - **Merge di origin/main 52c113b (PR #307 di M1)**: `FATTA` — la #306 era in conflitto (solo report). Review #578 (chat Mani) APPROVATO. Il sì dell'operatore al merge della #306 («mergia #306») è arrivato a M1, che la mergia.
+- **Merge di origin/main 7ab6fc4 (PR #308 di M2, voce)**: `FATTA` — nuovo conflitto, solo report e memoria. Review #579 (chat Mani) APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- reports/diff_sessione.md           |  19 ++++++++-----------
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ reports/diff_sessione.md           |  14 +++++++-------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  39 ++++++++++++++++-----------------------
+ reports/ultimo_report.md           |  35 ++++++++++++++++++-----------------
  tests/test_unit_verifica_bot.py    |  19 +++++++++++++++++--
 ```
 
-NB: base = merge-base con origin/main = 52c113b. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 7ab6fc4. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a6976f2 Merge origin/main (7ab6fc4, PR #308 di M2) in claude/peaceful-lovelace-0w2b7q (PR #306)
+88427e8 docs(fine-task): PR #306 dopo il merge di main (#307), note del bot e della verifica esterna su 204a6c1
 9ceea27 Merge origin/main (52c113b, PR #307 di M1) in claude/peaceful-lovelace-0w2b7q (PR #306)
 204a6c1 docs(fine-task): PR #306, riga di reports/handoff.md in §2
 14c4983 docs(fine-task): Mani fetta 29, test del bot dopo la terza verifica esterna su #305 (PR #306)
@@ -143,9 +146,45 @@ Review #578 (chat Mani). Oggetto: il merge non ancora committato di origin/main 
 - Cosa devi fare: `git add .claude/agents/memoria_revisore.md`, poi `bash scripts/segna_review_ok.sh` (l'add cambia lo SHA del diff staged), poi il commit di merge. La riga aggiunta è solo memoria e non cambia niente del diff revisionato.
 ```
 
+Commit del merge di origin/main 7ab6fc4 (PR #308 di M2: da main entrano clients/voice/browser_server.py, modules/voice/server.py, tests/test_unit_voice_server.py, tests/test_unit_voice_stt.py, già revisionati da M2). Verdetto integrale della review #579 (chat Mani):
+
+```
+## VERDETTO: APPROVATO
+
+Review #579 (chat Mani): merge di origin/main 7ab6fc4 (PR #308 M2, voce V2) nel branch claude/peaceful-lovelace-0w2b7q (PR #306). Ho controllato lo stage, che non è ancora stato committato.
+
+Prima della review ho letto CLAUDE.md §5, la struttura di reports/stato_progetto.md (le sezioni Finding aperti e Prossimi passi) e la coda di .claude/agents/memoria_revisore.md.
+
+**Citazioni (file del diff sotto review):**
+1. `clients/voice/browser_server.py:93` — `_proxy_voice` del proxy browser, uno dei punti su cui interviene la V2 di main. Rischio esaminato: che la risoluzione del merge alteri il codice di M2. Esito: **ok**. Il delta staged-vs-HEAD è identico al delta merge-base 52c113b → origin/main, e `git diff --cached origin/main` su questo file è vuoto.
+2. `modules/voice/server.py:1` — server voce di M2, entrato da main. Stesso rischio. Esito: **ok**. Delta identico a quello di main e nessuna differenza con origin/main. Ho fatto lo stesso controllo su tests/test_unit_voice_server.py, tests/test_unit_voice_stt.py e reports/roadmap.md: tutti identici a main.
+3. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento». Rischio: che si perda la voce di main. Esito: **ok**. La riga 4 nello stage è identica a HEAD. Main non aveva toccato la riga 4: il suo unico contributo è la voce «Voce V2 (PR #308)» intorno alla riga 598, che è presente. Contro HEAD e contro origin/main non manca nessuna riga.
+4. `.claude/agents/memoria_revisore.md:1031` — fusione della memoria. Rischio: che si perdano righe di un lato. Esito: **ok**. Contro HEAD ci sono solo aggiunte (da #568-M2 a #573-M2, con le loro lezioni). Contro origin/main ci sono solo aggiunte (#576, #577, #578 e le loro lezioni). Nessuna riga tolta.
+5. `tests/test_unit_verifica_bot.py:281` — il tuo test del bot. Rischio: che venga alterato dal merge. Esito: **ok**, identico a HEAD. Lo stesso vale per reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md.
+
+**Altri controlli:**
+- Nessun marcatore di conflitto nei file in stage.
+- `git diff --cached HEAD --check` è pulito.
+- `git diff origin/main --cached --stat` mostra solo i tuoi 7 file: memoria, diff_sessione, handoff, ripartenza_mani, stato_progetto, ultimo_report e tests/test_unit_verifica_bot.py.
+- Ho rieseguito io i test voice_server, voice_stt e verifica_bot: **606 passed**, lo stesso numero dichiarato da te.
+- Nessun antipattern del Wall of Shame introdotto: il merge non aggiunge codice nuovo rispetto a quello già revisionato da M2.
+
+**Nota (non è una riserva):** con la risoluzione «tengo la mia versione» il branch scarta i report di sessione di main (handoff, ultimo_report, diff_sessione di M2). È la convenzione del progetto, perché sono fotografie dell'ultima sessione e lo storico resta in git. Non si perde niente del motore né dello stato vivo.
+
+**Rischi esplicitamente esclusi:**
+- Non ho eseguito la suite completa né il kernel (`gas.py`). Il merge non tocca gas.py, brains/ né modules/ fuori da voice, e la #578 aveva già girato il completo sul merge precedente. Restano da verificare con la CI (`unit-suite`, `handoff-check`).
+- Non ho provato il comportamento reale del server voce o del browser con un microfono: in questo ambiente non si può riprodurre, ed è coperto dalle review M2 fino a #573-M2.
+
+**Memoria:**
+- Ho aggiunto la riga `#579 (chat Mani) — 2026-10-30 — APPROVATO — … Nessuna lezione nuova.` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, dopo #573-M2.
+- Come chiesto non l'ho committata né messa in stage: va messa in stage prima del commit di merge.
+- Inciampo: il mio primo tentativo di aggiungere la riga via Bash è stato bloccato dal PreToolUse `review_gate.sh` («.review_ok non corrisponde al diff staged»). Probabilmente il gate scatta sulla parola «commit» nel testo del comando. Ho scritto la riga con Edit: il file è cambiato solo nella working tree, lo stage è intatto.
+- Ricorda di rigenerare il marcatore con `bash scripts/segna_review_ok.sh` dopo aver messo in stage la memoria, altrimenti il gate bloccherà il commit di merge.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py né a scripts/. `tests/test_unit_verifica_bot.py`: da 500 (main) a 510 passed in locale. Nuovi `test_invisibile_nel_titolo_che_si_legge_uguale` (4 parametri) e `test_invisibili_come_nel_gate`; `test_controlli_bidi` da 4 a 9 parametri, senza U+202C. Suite completa in locale (Python 3.13) dopo il merge di main: `2702 passed, 2 skipped in 204.23s` (review #578: kernel 1060 PASS / 1 FAIL, T31g, identico su main pulito: dipende dall'ambiente). Mutanti ora presi: senza lo strip prima del titolo 4 failed; ognuno dei 9 controlli bidi tolto da `_BIDI` 1 failed; un intervallo diverso dal gate 1 failed.
+Nessuna modifica a gas.py né a scripts/. `tests/test_unit_verifica_bot.py`: da 500 (main) a 510 passed in locale. Nuovi `test_invisibile_nel_titolo_che_si_legge_uguale` (4 parametri) e `test_invisibili_come_nel_gate`; `test_controlli_bidi` da 4 a 9 parametri, senza U+202C. Suite completa in locale (Python 3.13) dopo il merge di main: `2702 passed, 2 skipped in 204.23s (prima del merge della #308; dopo: voice + bot 606 passed)` (review #578: kernel 1060 PASS / 1 FAIL, T31g, identico su main pulito: dipende dall'ambiente). Mutanti ora presi: senza lo strip prima del titolo 4 failed; ognuno dei 9 controlli bidi tolto da `_BIDI` 1 failed; un intervallo diverso dal gate 1 failed.
 
 ## §6 STATO CI
 
@@ -154,7 +193,9 @@ Nessuna modifica a gas.py né a scripts/. `tests/test_unit_verifica_bot.py`: da 
 - b692e27: run push 40966074777, `unit-suite` success e `handoff-check` failure (l'handoff era ancora quello della #305; V-3 ve #306), superata dai commit di fine-task.
 - 14c4983 (fine-task, §2 senza la riga dell'handoff): nessuna run letta (pushato insieme a 204a6c1).
 - 204a6c1 (fine-task): run CI 40966602638, `unit-suite` e `handoff-check` success; check `verifica-bot` neutral, review del bot APPROVATO CON RISERVE (vedi §1).
-- 9ceea27 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 9ceea27 (merge di main #307): nessuna run (pushato insieme a 88427e8).
+- 88427e8 (fine-task): run non letta alla scrittura dell'handoff (superata dal merge della #308).
+- Merge di main #308 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
