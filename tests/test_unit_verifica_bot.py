@@ -223,6 +223,19 @@ class TestDecidi:
                                    SHA, SHA)
         assert evento == "COMMENT" and "ALTA" in motivo
 
+    @pytest.mark.parametrize("segreto", ["gh<U+200B>p_Zz9abc", "sk-<U+2060>ant-oat01", "github<u+feff>_pat_11AA",
+                                         "-----BEG<U+E0041>IN RSA"])
+    def test_credenziale_spezzata_da_una_citazione(self, segreto):
+        # V-1 ve #309: il PROMPT chiede di citare gli invisibili come <U+XXXX>; spezzata
+        # così, una credenziale non deve finire nella review pubblica.
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO\nMetodo: {segreto}\nFINDING: nessuno"
+        v = _verdetto("APPROVATO", [], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "COMMENT" and "credenziali" in motivo
+        f = _f("V-1", "BASSA")
+        f["descrizione"] = segreto
+        assert be.contiene_segreti(_verdetto("APPROVATO CON RISERVE", [f]))
+
     def test_credenziale_spezzata_in_una_chiave(self):
         v = _verdetto("APPROVATO", [])
         v["gh\x1bp_Zz9"] = "x"
@@ -1283,3 +1296,6 @@ class TestWorkflow:
         assert '"strumenti_ok": true SOLO se' in prompt and "gh pr diff" in prompt
         # R-161-1: le riserve già registrate si citano come "R-203-1 (ALTA, preesistente)".
         assert '"R-203-1 (ALTA,' in prompt and "non blocca" in prompt
+        # R-580-1: gli invisibili citati si scrivono come <U+XXXX>, mai col carattere vero.
+        assert "SEMPRE come" in prompt and "<U+XXXX>" in prompt and "mai il carattere vero" in prompt
+        assert "in qualunque campo" in prompt and "a capo e tab restano normali" in prompt  # V-1/V-2 bot #309

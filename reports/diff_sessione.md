@@ -1,9 +1,11 @@
-# DIFF SESSIONE — 2026-10-29 — Mani, fetta 29: test del bot dopo la terza verifica esterna su #305
+# DIFF SESSIONE — 2026-10-30 — Mani, fetta 30: gli invisibili citati dal bot come <U+XXXX>
 
-File toccati rispetto a main 7ab6fc4 (PR #305, #307 e #308 mergiate; main portato nel branch con un merge, solo conflitti nei report):
-- `tests/test_unit_verifica_bot.py` — test positivo sul titolo con un invisibile, ogni controllo bidi provato da solo, uguaglianza degli intervalli invisibili col gate. Motivo: V-1 e V-3 della terza verifica esterna su #305 (due mutanti sopravvivevano).
-- `.claude/agents/memoria_revisore.md` — righe delle review #576, #577, #578 e #579 (i merge di main).
-- `reports/stato_progetto.md` — blocco «Mani — fetta 29» (con V-2 registrata come compromesso) e riga «Ultimo aggiornamento».
+File toccati rispetto a main 95be7b1 (PR #306 mergiata):
+- `.github/workflows/verifica-bot.yml` — nel PROMPT del bot, nuova regola: ogni carattere invisibile o di controllo citato si scrive come <U+XXXX>, mai il carattere vero. Motivo: falso NO di #297 e compromesso V-2 della terza verifica esterna su #305.
+- `scripts/bot_esito.py` — `contiene_segreti` cerca anche senza le citazioni <U+XXXX> (V-1 verifica esterna #309).
+- `tests/test_unit_verifica_bot.py` — assert che fissa la regola nel PROMPT (R-580-1, V-1 bot #309) e test sulle credenziali spezzate da una citazione.
+- `.claude/agents/memoria_revisore.md` — righe delle review #580, #581 e #582.
+- `reports/stato_progetto.md` — blocco «Mani — fetta 30» e riga «Ultimo aggiornamento».
 - `reports/ripartenza_mani.md` — punto g).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 

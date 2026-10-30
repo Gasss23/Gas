@@ -297,10 +297,20 @@ def contiene_segreti(verdetto: object) -> bool:
         # anche stringa per stringa, perché json.dumps scrive i controlli come «\u001b»;
         # review #573: in una lista e non in un dict ricostruito, dove due chiavi ripulite
         # si fonderebbero. R-574-1: un annidamento oltre il tetto di Python non è un crash.
+        # V-1 ve #309: anche senza le citazioni «<U+XXXX>» che il PROMPT chiede al bot.
         return bool(_SEGRETO.search(grezzo) or _SEGRETO.search(_senza_invisibili(grezzo))
-                    or any(_SEGRETO.search(_senza_invisibili(s)) for s in _stringhe(verdetto)))
+                    or any(_SEGRETO.search(_senza_citazioni(s)) for s in _stringhe(verdetto)))
     except (TypeError, ValueError, RecursionError):
         return True
+
+
+_CITAZIONE_INVISIBILE = re.compile(r"<U\+[0-9A-F]{4,6}>", re.I)
+
+
+def _senza_citazioni(testo: str) -> str:
+    """Testo senza invisibili veri né citazioni «<U+XXXX>»: «gh<U+200B>p_...» è una
+    credenziale come «gh\u200bp_...»."""
+    return _CITAZIONE_INVISIBILE.sub("", _senza_invisibili(testo))
 
 
 def _stringhe(valore: object) -> list[str]:
