@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #313 (https://github.com/Gasss23/Gas/pull/313). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5088931155","url":"https://github.com/Gasss23/Gas/pull/313"}`); `gh` nel cloud non è autenticato. La mergia M1 se il bot dà APPROVATO pulito; con riserve M1 chiede il sì all'operatore.
-2. Prova col microfono vero sul Mac: che la voce di Gas dalle casse NON lo interrompa da sola (eco), un «sì» brevissimo, la TV accesa.
+2. Prova col microfono vero sul Mac, PRIMA cosa: che la voce di Gas dalle casse NON lo interrompa da sola (eco); se succede, `GAS_VOICE_INTERRUZIONE=0` nel `.env` (interruzione accesa di default per scelta dell'operatore). Poi un «sì» a voce normale detto subito, la TV accesa (R-584-1-M2).
 
 ---
 
@@ -19,6 +19,7 @@
 - **V4.4 — bip e microfono** (V-2 bot #311 su a1a6a25): `FATTA`.
 - **V4.5 — tetto lato server** (V-2 ve #311 su a1a6a25): `FATTA`.
 - **V4.6 — test della pagina obbligatori in CI** (V-2 bot #311, ok di M1 a ci.yml): `FATTA`.
+- **Secondo giro — bot #313 su 2e8a125 NON approvata, V-1 MEDIA («sì» a volume medio detto subito)**: `FATTA` (a6de670, review #584-M2). V-2 BASSA (interruzione accesa, eco non provata): `SALTATA — accesa per scelta dell'operatore (M1), istruzione GAS_VOICE_INTERRUZIONE=0 nel §0`. Verifica esterna su 2e8a125 APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/313#issuecomment-6530181510).
 - **V-5 bot #311 su c3079f4** (riserve non tracciate): `FATTA` (stato_progetto).
 - **Review**: #580-M2 → R-580-1/2/3-M2 `FATTA`; #581-M2 → R-581-1-M2 `FATTA`, R-581-2-M2 `DEFERITA — BASSA, dichiarata`; #582-M2 BOCCIATO → R-582-1-M2 `FATTA`; #583-M2 → R-583-1-M2 `DEFERITA — COSMETICA`.
 
@@ -27,18 +28,18 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
- .github/workflows/ci.yml           |  14 ++++++++++++++
- clients/voice/browser_client.html  | 130 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------
- clients/voice/browser_server.py    |   8 +++++++-
- modules/voice/server.py            |  60 ++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- reports/diff_sessione.md           |  15 +++++++--------
+ .claude/agents/memoria_revisore.md |   9 ++++++++
+ .github/workflows/ci.yml           |  14 ++++++++++++
+ clients/voice/browser_client.html  | 135 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------
+ clients/voice/browser_server.py    |   8 ++++++-
+ modules/voice/server.py            |  60 +++++++++++++++++++++++++++++++++++++++++++++------
+ reports/diff_sessione.md           |  15 ++++++-------
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   3 ++-
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  27 ++++++++++++++-------------
- tests/test_unit_voice_server.py    |  63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- tests/test_unit_voice_stt.py       |  41 +++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  28 +++++++++++++-----------
+ tests/test_unit_voice_server.py    |  76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ tests/test_unit_voice_stt.py       |  41 +++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -46,6 +47,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a6de670 fix(voce): soglia del «sì» detto subito anche a volume medio (V-1 bot #313)
+44df1db chore(revisore): memoria review #584 — APPROVATO CON RISERVE
+2e8a125 docs(voce-v4): report di fine task (PR #313, review #580-#583-M2)
 b7169f6 feat(voce): interruzione mentre Gas parla, «sì» subito, riassunto + dettaglio, tetto lato server, test pagina in CI (V4, chat M2)
 74bc2f9 chore(revisore): memoria review #583 — APPROVATO CON RISERVE
 1f015b7 chore(revisore): memoria review #582 — BOCCIATO
@@ -57,7 +61,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Il commit b7169f6 è stato rivisto in quattro passaggi sullo stesso diff staged (ogni passaggio dopo le correzioni del precedente; le citazioni dei primi tre si riferiscono al diff di quel momento e alcune righe a HEAD sono spostate). Verdetti integrali:
+Il commit b7169f6 è stato rivisto in quattro passaggi (#580-#583-M2) e il commit a6de670 in uno (#584-M2, in fondo) sullo stesso diff staged (ogni passaggio dopo le correzioni del precedente; le citazioni dei primi tre si riferiscono al diff di quel momento e alcune righe a HEAD sono spostate). Verdetti integrali:
 
 Review #580-M2 (primo passaggio):
 
@@ -217,6 +221,36 @@ File rilevanti:
 - sonda: /tmp/claude-0/-home-user-Gas/363006d5-ae75-5e2f-8a8d-a34502419f69/scratchpad/p582/t583.py
 - secondo clip catturato: /tmp/claude-0/-home-user-Gas/363006d5-ae75-5e2f-8a8d-a34502419f69/scratchpad/p582/c2.webm
 
+Commit a6de670 — review #584-M2 (secondo giro, dopo il bot su 2e8a125), verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #584-M2, diff staged su feat/voce-v4-m2 (PR #313), correzione per V-1 MEDIA del bot su 2e8a125. Letture fatte prima della review: CLAUDE.md sez. 5, reports/stato_progetto.md, .claude/agents/memoria_revisore.md. Il diff tocca solo il client vocale e il test: non tocca gli antipattern del Wall of Shame (né history né `_get_window`, nessuna simulazione di tool) né i guardrail del motore.
+
+**Elementi del diff esaminati**
+- `clients/voice/browser_client.html:433` — nuova funzione pura `sogliaDaCampioni`: senza campioni restituisce sogliaMin, altrimenti max(sogliaMin, 3 × min(mediana bassa, sogliaMin)). Rischio esaminato: che il tetto non chiuda davvero V-1. Ho controllato in node: con 6 campioni a 0,07 dà 0,045, con 0,03 e con 0,06 dà sempre 0,045, con 0,004 dà 0,015, con un array vuoto dà 0,015. La soglia resta quindi ≤ 0,045, sotto una voce media (0,07) e sotto la soglia di interruzione (`sogliaInterruzione` 0,06, `clients/voice/browser_client.html:321`). Esito: ok.
+- `clients/voice/browser_client.html:489` — `ascolta()` raccoglie i campioni solo se `ora - t0 < 300 && !giaInVoce`, e a `clients/voice/browser_client.html:490` calcola la soglia a ogni tick. Rischio esaminato: che il refactor cambi il comportamento di prima. Ho confrontato i due percorsi:
+  - con `giaInVoce`: prima `pavimento` restava 0, quindi soglia = sogliaMin; ora non ci sono campioni, quindi sogliaMin. Uguale.
+  - dopo 300 ms: prima `pavimento` restava fermo; ora l'array smette di crescere e la soglia resta costante. Uguale.
+  - al primo tick: il campione viene inserito prima del calcolo, come prima.
+  - costo: ordinare circa 6 elementi ogni 50 ms è trascurabile. La funzione è dichiarata al livello più alto di uno `<script>` classico, quindi è globale e `page.evaluate` la raggiunge.
+
+  Esito: ok.
+- `clients/voice/browser_client.html:436` — tetto del pavimento abbassato da 2×sogliaMin a sogliaMin. Rischio esaminato: rigetto del rumore. Un rumore costante fino a circa 0,044 RMS (ventola, stanza normale: tipicamente 0,001–0,03) resta sotto la soglia. Sopra 0,045 invece il rumore viene preso per voce: la frase parte e si chiude solo a `maxFraseS` (`clients/voice/browser_client.html:499`), e una clip di rumore arriva a Whisper. Prima il rumore era tollerato fino a 0,09. È lo scambio inevitabile per chiudere V-1. Esito: riserva BASSA (R-584-1).
+- `tests/test_unit_voice_server.py:910` — il test calcola la soglia dentro la pagina vera (voce media, rumore, vuoto); le asserzioni sono a `tests/test_unit_voice_server.py:1029` e `tests/test_unit_voice_server.py:1030`. Rischio esaminato: che il test non discrimini. Con il tetto riportato a 2×sogliaMin la soglia per la voce media sarebbe 0,09 ≥ 0,07 e il test fallirebbe: la mutazione dichiarata è coerente. L'uguaglianza esatta con 0,015 regge perché la funzione restituisce direttamente il letterale `CFG.sogliaMin` (max(0,015; 0,012)). Esito: ok.
+- `tests/test_unit_voice_server.py:964` — il commento della modalità «sisubito» rimanda al controllo diretto. Hai dichiarato che il caso end-to-end «sì a voce media» non discrimina in headless: va bene come dichiarazione. Il test prova la funzione, non il collegamento con il ciclo di ascolto, che però ho verificato leggendo il codice qui sopra. Esito: ok.
+
+**Riserve**
+- **R-584-1 (BASSA)**: in una stanza con rumore costante ≥ 0,045 RMS l'ascolto tratta il rumore come voce. Ogni ascolto produce allora una frase lunga `maxFraseS`, che viene inviata e trascritta, con rischio che Whisper inventi testo. Da tracciare in stato_progetto.md e da verificare nella prova sul Mac (se Gas «sente» frasi da sole, il colpevole è la soglia).
+- **Nota COSMETICA**: il commento a `clients/voice/browser_client.html:479` parla ancora di «un tetto» senza dire quale; ora il valore sta nel commento della funzione, quindi è accettabile.
+- **V-2 bot (interruzione attiva di default)**: mantenuta per scelta dell'operatore, con l'istruzione GAS_VOICE_INTERRUZIONE=0 nelle istruzioni per il Mac. Nessuna obiezione.
+
+**Rischi esplicitamente esclusi**
+- Livelli RMS reali del microfono del Mac (voce media e rumore di stanza) non verificati: non riproducibili in dev, perché il dispositivo finto di Chromium non è un microfono vero. I valori 0,07 e 0,03 sono stime.
+- Non ho rilanciato la suite vocale con GAS_TEST_BROWSER_OBBLIGATORIO=1. Mi fido dei 136 passed dichiarati; ho verificato solo l'aritmetica della funzione in node.
+
+La riga contatore #584-M2 e una lezione nuova sono state aggiunte in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committate a parte (commit 44df1db, solo quel file; l'index del diff sotto review non è stato toccato).
+
 ## §5 DELTA TEST DEL MOTORE
 
 gas.py non toccato. Voice suite (server+stt+tts) con `GAS_TEST_BROWSER_OBBLIGATORIO=1`: 129 → 136 passed in locale (il revisore #583-M2 ne conta 138 con `-k voice` su tutta tests/). Giri della pagina vera in Chromium headless: 5 → 10 (nuovi: interruzione, interruzione media, colpo, colpo + voce, sì subito); ogni clip webm inviato deve cominciare con l'header EBML. Mutanti: ogni giro nuovo fallisce sulla pagina precedente (main per interruzione e sì subito; #580 per interruzione media; #581 per colpo; #582 per colpo + voce). In CI questi giri diventano obbligatori (step nuovo con Playwright 1.63.0). Nessun FAIL.
@@ -225,10 +259,12 @@ gas.py non toccato. Voice suite (server+stt+tts) con `GAS_TEST_BROWSER_OBBLIGATO
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 264dbe4, 270a1eb, 1f015b7, 74bc2f9, b7169f6: pushati insieme prima dell'apertura della PR #313; nessuna run della PR su questi SHA.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (è la prima run con lo step nuovo di Playwright).
+- 2e8a125 (fine-task del primo giro): run CI 41104451129 (`unit-suite` e `handoff-check` success; step Playwright eseguito, voice suite 136 passed con i giri della pagina); check `verifica-bot` failure — bot NON approvata (V-1 MEDIA, chiusa in a6de670).
+- 44df1db, a6de670 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
+- **R-584-1-M2** BASSA — rumore costante ≥ 0,045 RMS preso per voce (frase lunga inviata): da provare sul Mac.
 - **R-581-2-M2** BASSA — le richieste «uso» (forte senza richiesta) spendono una trascrizione Groq senza contare per il tetto orario.
 - **R-583-1-M2** COSMETICA — il controllo dell'header vale solo per i clip webm (in Chromium lo sono).
 - **R-576-1-M2** BASSA (da #311) — la guardia del permesso del microfono non ha un test.
