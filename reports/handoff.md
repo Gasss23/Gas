@@ -19,6 +19,7 @@
 - **Secondo giro — bot #308 su 2dff07f (APPROVATA, APPROVATO CON RISERVE)**: V-1 BASSA (proxy a thread singolo fermo fino a 600 s) `FATTA` — `ThreadingHTTPServer`; V-2 COSMETICA (riga «avvio in corso» anche quando poi l'avvio si ferma) `SALTATA — la parte lenta è l'import di gas, che deve girare prima di leggere il token (può stare nel .env); il revisore #571-M2 è d'accordo`.
 - **Secondo giro — verifica esterna #308 su 2dff07f (APPROVATO CON RISERVE, [commento](https://github.com/Gasss23/Gas/pull/308#issuecomment-6510176231))**: V-2 BASSA (risposta HTTP rotta → socket chiuso) `FATTA` — 502 JSON; V-1 BASSA (§6 superato) `FATTA`; V-3/V-4 BASSE accettate (503 senza chiave ElevenLabs come sul percorso normale; attese del browser da vedere sul Mac).
 - **R-570-1-M2 COSMETICA**: `FATTA` nel secondo giro. **R-571-1/2-M2**: `FATTA` (review #572-M2 APPROVATO).
+- **Merge di origin/main (PR #307 della chat M1) per il conflitto segnalato da M1**: `FATTA` — conflitti solo in `reports/diff_sessione.md`, `reports/handoff.md`, `reports/ultimo_report.md` (tenuta la nostra versione, riscritta qui) e `.claude/agents/memoria_revisore.md` (tenuti entrambi i blocchi); review #573-M2 APPROVATO; voce + richieste + gate 966 passed sul codice unito.
 - **gas.py / brains/ / ci.yml**: `SALTATA — fuori dal mandato di M1`.
 
 ---
@@ -26,23 +27,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
- clients/voice/browser_server.py    |  63 +++++++++++++++++++++++++++++++++++++++++++++++++----------
- modules/voice/server.py            |  15 +++++++++++++-
- reports/diff_sessione.md           |  15 +++++++-------
+ .claude/agents/memoria_revisore.md |  10 ++++++++++
+ clients/voice/browser_server.py    |  63 +++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ modules/voice/server.py            |  15 ++++++++++++++-
+ reports/diff_sessione.md           |  19 ++++++++-----------
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   1 +
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  39 +++++++++++++++----------------------
- tests/test_unit_voice_server.py    | 190 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voice_stt.py       |  40 +++++++++++++++++++++++++++++++++-----
+ reports/ultimo_report.md           |  39 +++++++++++++++------------------------
+ tests/test_unit_voice_server.py    | 190 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_stt.py       |  40 +++++++++++++++++++++++++++++++++++-----
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. BASE = 52c113b (main dopo la #307, merge-base dopo il merge 168a848).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+168a848 Merge origin/main (PR #307) in feat/voce-v2-m2: conflitti solo nei report e nella memoria del revisore
+2f223ab docs(voce-v2): report dopo il secondo giro di bot e verifica esterna #308, review #571/#572-M2
 691e8c0 fix(voce): proxy del browser a thread, risposta rotta → 502 JSON, 504 che cita la coda (bot e ve #308)
 5bf8eaa chore(revisore): memoria review #572 — APPROVATO
 d8c8041 chore(revisore): memoria review #571 — APPROVATO CON RISERVE
@@ -215,6 +218,34 @@ Rischio escluso: non ho rifatto a mano la prova con due schede reali in contempo
 
 Memoria: riga contatore `#572-M2 — 2026-10-29 — APPROVATO — …` aggiunta in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata da sola (5bf8eaa). Nessuna lezione nuova. Il diff staged del motore non è stato toccato.
 
+Commit 168a848 (merge di origin/main, PR #307 della chat M1) — review #573-M2, verdetto integrale:
+
+VERDETTO: APPROVATO
+
+Review #573-M2: merge in staging di origin/main (PR #307, ponte M1) dentro feat/voce-v2-m2 (PR #308). MERGE_HEAD coincide con origin/main (52c113b).
+
+Elementi del diff che ho esaminato:
+- `.claude/agents/memoria_revisore.md:1020`: le righe #557-M1, #558-M1 e #559-M1 di main, ognuna con la sua lezione, sono in coda subito dopo il blocco #568-#572-M2. Ho controllato se qualcosa era stato perso o duplicato: il diff staged rispetto a HEAD è solo +6 righe (nessuna riga rimossa, a parte l'intestazione `---`), e i conti tornano: HEAD 1017 + 6 = 1023. Esito: ok.
+- `gas.py:4625`: il ramo `richiedi_sviluppo` e lo schema dello strumento in `gas.py:1232` arrivano da #307. Ho controllato se il merge altera il motore oltre l'unione: il diff staged su gas.py, modules/sviluppo, modules/gate, .github, i test gate/kernel/richieste, gas_identity.md e .gitignore è identico byte per byte a `git diff merge-base..origin/main`. La nostra parte non tocca nessuno di questi file (stat vuoto). Esito: ok.
+- `modules/sviluppo/richieste.py:58`: `_http` con l'handler anti-redirect, file nuovo che arriva da main. Già revisionato in #557-#559-M1; qui ho solo controllato che sia arrivato identico. Esito: ok.
+- `.github/workflows/ci.yml:105`: lo step «Run voice suite» lancia ancora test_unit_voice_server, stt e tts. `.github/workflows/ci.yml:166` aggiunge la suite richieste. Il rischio era che il merge facesse sparire la suite voce dalla CI: non è successo. Esito: ok.
+- `reports/stato_progetto.md:4`: con l'auto-merge l'intestazione «Ultimo aggiornamento» ha preso la versione M1. È coerente perché la nostra parte non aveva cambiato quella riga, e /fine-task la riscriverà. La sezione «Coordinamento delle chat» (righe 586-589) è stata aggiunta senza duplicati. Esito: ok.
+- `reports/roadmap.md:282`: la voce «Ponte Gas → sviluppo, strada A» sostituisce quella vecchia sul ponte con firma, un solo hunk e pulito. Esito: ok.
+
+Altri controlli:
+- Marcatori di conflitto: `git grep` sui marcatori di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`) e `git diff --cached --check` non trovano nulla.
+- Codice voce: `git diff origin/main` su modules/voice, clients/voice e test_unit_voice_*.py è identico al diff proprio della PR (merge-base..HEAD). Stesso stat: 4 file, +292/-16.
+- handoff.md, ultimo_report.md e diff_sessione.md: risolti con la nostra versione, quindi nessuna differenza staged rispetto a HEAD.
+- Test, rilanciati da me: suite voce (server, stt, tts) + richieste + gate = 966 passed in 27,97 s.
+
+Rischi che NON ho verificato:
+- Non ho rilanciato `tests/test_unit_kernel.py`. Il diff di gas.py è identico a quello di #307, già revisionato e verde sulla CI di main, ma l'unione col codice voce non l'ho provata a runtime: lo farà la CI della PR.
+- Non ho controllato il comportamento reale del ponte verso `Gasss23/Gas-richieste`: serve la rete e un token, ed è fuori dallo scopo di un merge.
+
+Riga contatore: ho scritto #573-M2 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`. `scripts/commit_memoria_revisore.sh` però non ha committato: con un merge in corso `git commit -o` fallisce, lo script se ne accorge e prosegue senza bloccare. Quindi la riga è solo nel working tree (stato `MM`). **Prima di committare il merge devi fare `git add .claude/agents/memoria_revisore.md`**, altrimenti la riga #573-M2 resta fuori dal commit. Dopo l'add il diff staged cambia, quindi `segna_review_ok.sh` va lanciato dopo l'add.
+
+NB (agente): fatto così — `git add` della memoria, poi `segna_review_ok.sh`, poi il commit 168a848.
+
 ## §5 DELTA TEST DEL MOTORE
 
 gas.py non toccato. Voice suite (pytest, servizi finti): 113 → 120 test, `120 passed in 25.76s`; il file del server anche con `http_proxy=http://127.0.0.1:9` e `no_proxy` vuoto. Mutanti: tetto di connessione (test fallisce dopo 30 s col codice vecchio), ramo HTTPException (1 failed), ritorno a HTTPServer (1 failed in 0,15 s, nessun blocco). `-W always::ResourceWarning` sui test del proxy: 0 «unclosed». Nessun FAIL.
@@ -224,11 +255,14 @@ gas.py non toccato. Voice suite (pytest, servizi finti): 113 → 120 test, `120 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 5d95951, 8b33bf3, a6c97fb, 591730e: pushati insieme prima dell'apertura della PR #308; nessuna run della PR su questi SHA.
 - 2dff07f (fine-task del primo giro): run CI 40967502095 (`unit-suite` e `handoff-check` success); check `verifica-bot` success — bot APPROVATA, verdetto APPROVATO CON RISERVE (V-1 BASSA chiusa in 691e8c0, V-2 COSMETICA lasciata com'è, vedi §1).
-- d8c8041, 5bf8eaa, 691e8c0 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testa solo la testa).
+- d8c8041, 5bf8eaa, 691e8c0: nessuna run su questi SHA (pushati insieme a 2f223ab).
+- 2f223ab (fine-task del secondo giro): run CI 40969002250 (`unit-suite` e `handoff-check` success); check `verifica-bot` success — bot APPROVATA, verdetto APPROVATO CON RISERVE (solo V-1 COSMETICA: «attesa massima N s» approssimata, vedi §7).
+- 168a848 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
 - **V-2 bot #308** COSMETICA — la riga «avvio in corso» esce anche quando poi l'avvio si ferma per configurazione: lasciata di proposito (motivo in §1).
+- **V-1 bot #308 su 2f223ab** COSMETICA — «attesa massima N s» e il 504 «entro N s» sono approssimati: il tetto vale per ogni operazione sul socket, più fino a 10 s di connessione.
 - **V-3 ve #308** BASSA — istruzione d'uso a voce senza ELEVENLABS_API_KEY → 503 (come ogni risposta audio).
 - **V-4 ve #308** BASSA — attese da 600 s nel browser (Safari/Chrome) non verificate: da vedere nella prova sul Mac.
 - Ereditate dalla V1 (dichiarate): R-564-1-M2 («Forte!» esclamazione va al forte), V-1 ve #304 (altri falsi positivi), R-384-2 (chat Voce, commento in ci.yml).

@@ -14,6 +14,8 @@
 - **Secondo giro — bot #308 su 2dff07f (APPROVATA, APPROVATO CON RISERVE)**: V-1 BASSA (proxy a thread singolo bloccato fino a 600 s) `FATTA` — `ThreadingHTTPServer`; V-2 COSMETICA (riga «avvio in corso» anche quando poi l'avvio si ferma) `SALTATA — la parte lenta è l'import di gas, che deve girare prima di leggere il token (può stare nel .env): spostarla lascerebbe muti proprio i secondi lenti; il revisore #571-M2 è d'accordo`.
 - **Secondo giro — verifica esterna #308 su 2dff07f (APPROVATO CON RISERVE, [commento](https://github.com/Gasss23/Gas/pull/308#issuecomment-6510176231))**: V-2 BASSA (risposta HTTP rotta → socket chiuso) `FATTA` — 502 JSON «Risposta non valida»; V-1 BASSA (§6 dell'handoff superato) `FATTA` (riscritto); V-3 BASSA (istruzione d'uso senza chiave ElevenLabs → 503) e V-4 BASSA (browser con attese da 600 s) accettate, la seconda da vedere sul Mac.
 - **Review #571-M2 APPROVATO CON RISERVE**: R-571-1-M2 (test che si sarebbe bloccato tornando a HTTPServer) e R-571-2-M2 (504 che non diceva della coda) `FATTA` — rivista in #572-M2.
+- **Merge di origin/main (PR #307 della chat M1)**: `FATTA` — conflitti solo nei report e nella memoria del revisore; review #573-M2 APPROVATO; voce + richieste + gate 966 passed.
+- **Bot e verifica esterna #308 su 2f223ab**: APPROVATO CON RISERVE, solo BASSE/COSMETICHE (V-1 bot: «attesa massima» approssimata; ve: [commento](https://github.com/Gasss23/Gas/pull/308#issuecomment-6510411393)). Merge autorizzato dall'operatore («mergia #308», via M1), lo fa M1.
 - **gas.py / brains/ / ci.yml**: `SALTATA — fuori dal mandato di M1`, non toccati.
 
 ## Anomalie
