@@ -35,6 +35,8 @@ Configurazione tramite variabili d'ambiente (da .env o export):
 
 Cervello forte dalla voce (V1, chat M2): «/forte <richiesta>» (testo) oppure, nel parlato
 trascritto, «forte <richiesta>» / «Gas forte <richiesta>» all'inizio della frase.
+«forte» parlato senza richiesta → 200 con l'istruzione d'uso da ascoltare (nessun turno);
+«/forte» scritto senza richiesta → 400.
 
 Sicurezza:
   - Nasce chiuso su 127.0.0.1. Aprire all'esterno SOLO settando GAS_VOICE_BIND.
@@ -78,6 +80,10 @@ _PAROLA_FORTE = re.compile(
     r"^[^\w/]*(?:(?:(?:ehi|ehy|hey|ok|okay|ciao|senti)\W+)?(?:gas|gus)\b\W*)?forte(?!\w)(.*)$",
     re.IGNORECASE | re.DOTALL)
 _USO_FORTE = "Uso: /forte <richiesta> (a voce: «forte <richiesta>»)"
+# V2 (V-2 ve #304): a chi PARLA l'istruzione d'uso arriva come risposta da ascoltare
+# (200, sintetizzata se il client vuole audio), non come errore 400. Nessun turno parte.
+_USO_FORTE_PARLATO = ("Dopo «forte» dimmi cosa fare, per esempio: «Gas, forte: riassumi i lead "
+                      "di oggi». Non ho avviato nessun lavoro.")
 
 
 def _voce_tutta_forte() -> bool:
@@ -194,7 +200,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
         # R-ve269-2 + V1: «/forte», «forte …» parlato o GAS_VOCE_FORTE → solo forte, mai ai gratuiti
         cervello, prompt = cervello_voce(prompt, parlato=is_audio)
         if cervello == "uso":
-            self._send_json(400, {"error": _USO_FORTE})
+            if not is_audio:
+                self._send_json(400, {"error": _USO_FORTE})
+            elif self._wants_audio():
+                self._do_tts_response(_USO_FORTE_PARLATO)
+            else:
+                self._send_json(200, {"content": _USO_FORTE_PARLATO, "uso": True})
             return
 
         try:
@@ -312,6 +323,8 @@ def run_server(root_dir: Optional[str] = None) -> int:
     """Avvia il server HTTP voice. Blocca fino a KeyboardInterrupt.
     Exit code: 0 = uscita pulita, 1 = configurazione mancante."""
 
+    # V2 (V-3 ve #304): import e kernel richiedono qualche secondo, prima di ogni altra riga
+    print("… gas voice: avvio in corso (carico Gas, qualche secondo)…", flush=True)
     root = Path(root_dir or os.getcwd()).resolve()
     import sys as _sys
     _sys.path.insert(0, str(root if (root / "gas.py").exists() else root.parent))
