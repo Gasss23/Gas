@@ -277,6 +277,8 @@ def test_redirect_esterno_e_relativo(rete):
     "http://[::ffff:10.0.0.1]/", "http://[64:ff9b::7f00:1]/", "http://[2002:7f00:1::]/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
     "http://[2001::1]/", "http://[ff02::1]/", "http://[::]/", "http://224.0.0.1/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
     "http://localhost/", "http://LOCALHOST:8000/", "http://foo.localhost/",
+    # V-2 ve/bot #310: IP interno scritto a mano su una porta permessa.
+    "http://127.0.0.1:80/", "https://127.0.0.1:443/", "http://[::1]:443/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
 ])
 def test_indirizzi_interni_rifiutati_senza_connessione(rete, url):
     r = rete.leggi(url)

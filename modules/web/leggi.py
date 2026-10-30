@@ -5,8 +5,8 @@ Funzione pubblica: leggi_pagina(url) -> dict
 
 Regole (fail-safe, CLAUDE.md §9):
   - solo http e https, solo le porte 80 e 443 (anche dopo un redirect), niente credenziali
-    nell'URL; dopo un salto in https niente
-    redirect verso http (la pagina non finisce letta in chiaro);
+    nell'URL; dopo un salto in https niente redirect verso http (la pagina non finisce
+    letta in chiaro);
   - niente indirizzi interni (loopback, reti private, link-local, CGNAT, multicast,
     IPv6 locali, IPv4 nascosti in IPv6): controllati sull'URL, su TUTTI gli indirizzi
     dati dal DNS e a ogni redirect; la connessione va all'indirizzo controllato
