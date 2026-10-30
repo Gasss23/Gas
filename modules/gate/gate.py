@@ -63,6 +63,9 @@ GATE_ALLOWLIST: dict[str, GateClass] = {
     "write_file":             GateClass.UNCERTAIN,
     "salva_contatto":         GateClass.UNCERTAIN,
     "imposta_stato_contatto": GateClass.UNCERTAIN,
+    # Ponte voce → sviluppo (R8, 2026-10-29): libero a finestra pulita, alla firma se
+    # la finestra contiene input esterno (una pagina non può chiedere sviluppo).
+    "richiedi_sviluppo":      GateClass.UNCERTAIN,
     "run_command":            GateClass.UNCERTAIN,   # see §8e override below
     "browser_scrape":         GateClass.UNCERTAIN,
     "send_email":             GateClass.IRREVERSIBLE,
@@ -102,6 +105,7 @@ _DENY_PREFIXES: tuple[str, ...] = (
     ".gas_vectors",
     ".gas_tokens",
     ".gas_claude_cli_uso",  # V-1 bot #258: il conto del tetto del cervello forte
+    ".gas_richieste_uso",  # V-1 bot #307: il conto del tetto delle richieste di sviluppo
     ".env",
     "gas.py",
     "brains",
@@ -298,7 +302,7 @@ def _check_path_forma(raw: str, write: bool) -> "GateClass | None":
 _LIVELLO3_PREFISSI: tuple[str, ...] = (
     ".env", ".git", ".claude",
     ".gas_memory", ".gas_history", ".gas_knowledge", ".gas_vectors", ".gas_tokens",
-    ".gas_claude_cli_uso", ".gas_notte", "gate_config", "venv", ".venv",
+    ".gas_claude_cli_uso", ".gas_richieste_uso", ".gas_notte", "gate_config", "venv", ".venv",
 )
 # Il cancello: "modules/gate" come prefisso (copre anche modules/gate.py e simili).
 _LIVELLO3_CANCELLO: tuple[str, str] = ("modules", "gate")
