@@ -1,12 +1,12 @@
-# DIFF SESSIONE — 2026-10-30 — Mani, fetta 31: leggi_pagina solo porte 80 e 443
+# Diff della sessione — 2026-10-30 — Voce V3, conversazione filata (chat M2)
 
-File toccati rispetto a main 4ffcd80 (PR #309 mergiata):
-- `modules/web/leggi.py` — `_PORTE_PERMESSE = {80, 443}` controllate in `_valida_url` (anche a ogni redirect); docstring aggiornata. Motivo: decisione dell'operatore del 2026-10-22.
-- `tests/test_unit_web_leggi.py` — porte rifiutate, redirect verso un'altra porta, porte incrociate, test TLS su 443, IP interno su altra porta.
-- `.claude/agents/memoria_revisore.md` — righe delle review #583 e #584.
-- `reports/roadmap.md` — decisione delle porte segnata come fatta nel codice.
-- `reports/stato_progetto.md` — blocco «Mani — fetta 31» (con V-1 bot #309 registrata come limite) e riga «Ultimo aggiornamento».
-- `reports/ripartenza_mani.md` — punto g).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+- `clients/voice/browser_client.html` — modalità conversazione (ascolto a finestra, inizio/fine frase dal volume, bip di chiusura), frase d'attesa dopo 2 s, testo a schermo, guardie contro turni doppi (riascolto, doppio clic, pausa, audio rotto) e tetto dei turni di fila.
+- `clients/voice/browser_server.py` — `GET /config` con `GAS_VOICE_FINESTRA` e `GAS_VOICE_MAX_TURNI`, inoltro di `X-Gas-Formato`, 504 «NON ripetere la richiesta».
+- `modules/voice/server.py` — risposta «audio+testo» (testo intero + audio della parte parlata corta), `ISTRUZIONE_VOCE` ai soli turni parlati.
+- `gas.py` — `run_turn(istruzione_turno=...)`: istruzione del solo turno nel messaggio system.
+- `tests/test_unit_kernel.py` — T101 (round-trip di `istruzione_turno`).
+- `tests/test_unit_voice_server.py`, `tests/test_unit_voice_stt.py` — parte parlata, audio+testo, /config, 504, istruzione voce, giro nel browser headless (normale e riascolto).
+- `.claude/agents/memoria_revisore.md` — lezioni delle review #574-M2 e #575-M2.
+- `reports/*` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

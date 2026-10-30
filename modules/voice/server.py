@@ -52,6 +52,7 @@ Sicurezza:
 """
 from __future__ import annotations
 
+import base64
 import hmac
 import json
 import logging
@@ -84,6 +85,51 @@ _USO_FORTE = "Uso: /forte <richiesta> (a voce: «forte <richiesta>»)"
 # (200, sintetizzata se il client vuole audio), non come errore 400. Nessun turno parte.
 _USO_FORTE_PARLATO = ("Dopo «forte» dimmi cosa fare, per esempio: «Gas, forte: riassumi i lead "
                       "di oggi». Non ho avviato nessun lavoro.")
+
+
+# V3 (chat M2): con «X-Gas-Formato: audio+testo» (pagina del browser) la risposta è JSON
+# con il testo intero (a schermo) e l'audio della sola parte parlata, corta: le prime
+# frasi, entro _PARLATO_MAX_CHAR. Il resto si legge.
+_FORMATO_AUDIO_TESTO = "audio+testo"
+_PARLATO_MAX_FRASI = 3
+_PARLATO_MAX_CHAR = 400
+_PARLATO_RESTO = " Il resto è a schermo."
+_FINE_FRASE = re.compile(r"(?<=[.!?…])\s+")
+_ABBREVIAZIONE = re.compile(r"(?:^|\s)(?:dott|dr|sig|sigg|sig\.ra|ing|avv|prof|arch|geom|"
+                            r"rag|ecc|es|pag|n|nr|tel|art|cap|vs)\.$", re.IGNORECASE)
+
+
+# V3: istruzione per i soli turni PARLATI (gas.py `run_turn(istruzione_turno=...)`: vale per
+# quel turno, nel messaggio system, fuori dalla cronologia). Il testo scritto resta com'è.
+ISTRUZIONE_VOCE = (
+    "Stai parlando a voce con l'operatore, in una conversazione rapida. Rispondi in 1-3 "
+    "frasi brevi, senza elenchi né formattazione. Dai subito un parere o una proposta "
+    "concreta (anche «no, meglio così»). Se serve una decisione chiudi con una domanda "
+    "secca a cui si risponde sì o no. Se il risultato è lungo, dillo in una frase: il "
+    "testo completo l'operatore lo legge a schermo.")
+
+
+def parte_parlata(testo: str) -> str:
+    """Le prime frasi di `testo` da dire a voce (≤ _PARLATO_MAX_FRASI frasi e
+    ≤ _PARLATO_MAX_CHAR caratteri); se il testo è più lungo aggiunge «Il resto è a
+    schermo.». Testo corto → identico."""
+    testo = " ".join(testo.split())  # R-574-4-M2: a capo e spazi doppi non contano
+    frasi: list[str] = []
+    for pezzo in (f for f in _FINE_FRASE.split(testo) if f):
+        # R-574-4-M2: «Dott. Rossi» non è una fine frase
+        if frasi and _ABBREVIAZIONE.search(frasi[-1]):
+            frasi[-1] = f"{frasi[-1]} {pezzo}"
+        else:
+            frasi.append(pezzo)
+    parlato = ""
+    for f in frasi[:_PARLATO_MAX_FRASI]:
+        prova = f"{parlato} {f}".strip()
+        if len(prova) > _PARLATO_MAX_CHAR:
+            break
+        parlato = prova
+    if not parlato:  # prima frase già troppo lunga: taglio all'ultimo spazio
+        parlato = testo[:_PARLATO_MAX_CHAR].rsplit(" ", 1)[0] if len(testo) > _PARLATO_MAX_CHAR else testo
+    return parlato if parlato == testo else parlato + _PARLATO_RESTO
 
 
 def _voce_tutta_forte() -> bool:
@@ -202,6 +248,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if cervello == "uso":
             if not is_audio:
                 self._send_json(400, {"error": _USO_FORTE})
+            elif self._vuole_audio_testo():
+                self._do_audio_testo_response(_USO_FORTE_PARLATO)
             elif self._wants_audio():
                 self._do_tts_response(_USO_FORTE_PARLATO)
             else:
@@ -210,8 +258,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
         try:
             result_content: Optional[str] = None
-            turno = (self.kernel.run_turn(prompt, cervello="forte") if cervello == "forte"
-                     else self.kernel.run_turn(prompt))
+            kw: Dict[str, Any] = {}
+            if cervello == "forte":
+                kw["cervello"] = "forte"
+            if is_audio:
+                kw["istruzione_turno"] = ISTRUZIONE_VOCE  # V3: risposte a voce corte
+            turno = self.kernel.run_turn(prompt, **kw)
             for event in turno:
                 etype = event.get("type")
                 if etype == "final":
@@ -230,10 +282,38 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
 
-        if self._wants_audio():
+        if self._vuole_audio_testo():
+            self._do_audio_testo_response(result_content)
+        elif self._wants_audio():
             self._do_tts_response(result_content)
         else:
             self._send_json(200, {"content": result_content})
+
+    def _vuole_audio_testo(self) -> bool:
+        return self.headers.get("X-Gas-Formato", "").strip().lower() == _FORMATO_AUDIO_TESTO
+
+    def _do_audio_testo_response(self, text: str) -> None:
+        """V3: JSON {"content": testo intero, "audio": base64 MP3 della parte parlata}.
+        Senza chiave ElevenLabs o con errore TTS la risposta arriva lo stesso, solo testo
+        (+ "errore_voce"): a schermo si legge, mai un 503 al posto della risposta."""
+        out: Dict[str, Any] = {"content": text}
+        api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        if not text.strip():
+            pass
+        elif not api_key:
+            out["errore_voce"] = "TTS non disponibile: ELEVENLABS_API_KEY non configurata"
+        else:
+            voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+            try:
+                out["audio"] = base64.b64encode(
+                    synthesize_speech(parte_parlata(text), api_key, voice_id)).decode("ascii")
+            except ElevenLabsTTSError as exc:
+                log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
+                out["errore_voce"] = f"Errore TTS ElevenLabs: {exc.message}"
+            except OSError as exc:
+                log.warning("ElevenLabs TTS network error: %s", exc)
+                out["errore_voce"] = "Errore di rete verso ElevenLabs TTS"
+        self._send_json(200, out)
 
     def _do_tts_response(self, text: str) -> None:
         """Sintetizza text via ElevenLabs e invia i byte MP3. Invia l'errore HTTP se fallisce.
