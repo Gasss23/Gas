@@ -20,6 +20,7 @@
 - **V-1 bot #308 (su 2507621, 504 «non ripetere»)**: `FATTA`.
 - **V3.4 — interruzione mentre Gas parla**: `SALTATA — parcheggiata, serve l'ok`.
 - **Secondo giro — bot #311 su 17beb97 NON approvata (V-1 MEDIA, nessun tetto ai turni automatici)**: `FATTA` — `GAS_VOICE_MAX_TURNI` (5, contando il turno del clic), voce minima 250 ms; R-576-2-M2 `FATTA` (`player.onerror`); V-2 bot (test del browser saltati in CI) `DEFERITA — riserva aperta, ci.yml fuori fetta`. Verifica esterna #311 su 17beb97 APPROVATO CON RISERVE ([copia](https://github.com/Gasss23/Gas/pull/311#issuecomment-6527391973)). Review #577-M2 e #578-M2 APPROVATO CON RISERVE.
+- **Merge di origin/main (PR #310 della chat Mani) per il conflitto segnalato da M1**: `FATTA` — conflitti solo nei report e nella memoria del revisore; review #579-M2 APPROVATO; voce 129 passed, web leggi 501 passed. Merge di #311 autorizzato dall'operatore («sì a #311», via M1), lo fa M1.
 - **Review #574-M2 BOCCIATO → R-574-1..5-M2**: `FATTA`. **#575-M2 → R-575-1/2-M2**: `FATTA`. **#576-M2 → R-576-2-M2** `FATTA` (secondo giro); **R-576-1/3-M2** `DEFERITA — una fetta piccola dopo la prova sul Mac`.
 
 ---
@@ -27,7 +28,7 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 ++++++++
+ .claude/agents/memoria_revisore.md |  10 +++++++++
  clients/voice/browser_client.html  | 430 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------
  clients/voice/browser_server.py    |  40 +++++++++++++++++++++++++++++++++-
  gas.py                             |   8 +++++--
@@ -36,17 +37,19 @@
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   4 ++--
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  32 ++++++++++++++-------------
+ reports/ultimo_report.md           |  34 +++++++++++++++++------------
  tests/test_unit_kernel.py          |  54 +++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_voice_server.py    | 264 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_voice_stt.py       |  24 +++++++++++++++++---
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. BASE = 15c4da8 (main dopo la #310).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b72809b Merge origin/main (PR #310) in feat/voce-v3-m2: conflitti solo nei report e nella memoria del revisore
+a1a6a25 docs(voce-v3): report dopo il bot #311 (V-1 chiusa), review #577/#578-M2
 3d7a095 fix(voce): tetto ai turni di fila, voce minima 250 ms, audio rotto gestito (bot #311)
 797fb5d chore(revisore): memoria review #578 — APPROVATO CON RISERVE
 3e57cfc chore(revisore): memoria review #577 — APPROVATO CON RISERVE
@@ -273,6 +276,33 @@ Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9, 10), la parte di reports/st
 
 **Memoria**: riga contatore #578-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e già committata con `scripts/commit_memoria_revisore.sh` (commit 797fb5d). Nessuna lezione nuova.
 
+Commit b72809b (merge di origin/main, PR #310 della chat Mani) — review #579-M2, verdetto integrale:
+
+## VERDETTO: APPROVATO
+
+Review #579-M2: merge in stage, non ancora committato, di origin/main a1a6a25 (PR #310 della chat Mani) in feat/voce-v3-m2 (PR #311). HEAD 15c4da8, MERGE_HEAD a1a6a25, merge-base 4ffcd80.
+
+Ho letto prima CLAUDE.md §5, reports/stato_progetto.md e .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati (path:riga — cosa fa — rischio — esito)**
+- `gas.py:4726` — `turno_pin` aggiunge `istruzione_turno` solo in coda al system. Rischio: che il merge abbia alterato il nostro codice del kernel o toccato `_get_window`. Esito: ok. `git diff --cached HEAD --quiet -- gas.py clients modules/voice tests/test_unit_voice_*.py tests/test_unit_kernel.py` non trova differenze: il codice voce e kernel è identico a HEAD. Nel diff contro origin/main non c'è nessuno slicing della history e nessun riferimento nuovo a `_get_window`.
+- `clients/voice/browser_client.html:316-317` — `voceMinMs: 250` e `maxTurni: 5`, il tetto anti-loop della conversazione. Rischio: perdere i fix di #577/#578-M2 nella risoluzione dei conflitti. Esito: ok, invariati rispetto a HEAD. Lo stesso vale per `clients/voice/browser_client.html:461` (soglia di voce) e `clients/voice/browser_client.html:592` (commento del tetto).
+- `modules/web/leggi.py:656` (contesto, codice portato da main) — controllo delle porte 80/443 in `_valida_url`. Rischio: che il merge lo modifichi rispetto a quanto già revisionato in #583/#584. Esito: ok. Contro origin/main il diff di `modules/web/leggi.py`, `tests/test_unit_web_leggi.py` e `reports/ripartenza_mani.md` è vuoto, quindi è un'unione semplice.
+- `.claude/agents/memoria_revisore.md` — file in sola aggiunta. Rischio: perdere uno dei due blocchi. Esito: ok. Non manca nessuna riga né rispetto a HEAD né rispetto a origin/main: ci sono sia #573-M2…#578-M2 sia #583/#584 della chat Mani, e non ci sono marcatori.
+- `reports/stato_progetto.md` e `reports/roadmap.md` (unione automatica) — Rischio: perdere righe di uno dei due lati. Esito: ok. Contro origin/main non manca nessuna riga: stato_progetto ha solo +1 riga (Voce V3) e roadmap solo le 2 righe V3 al posto dei ⏳. Le 2 righe di stato_progetto che cambiano rispetto a HEAD sono quelle aggiornate da main (data di ultimo aggiornamento e fetta 1), riprese uguali a main.
+
+**Controlli eseguiti**
+- Nessun marcatore di conflitto nei file in stage.
+- `git diff --cached --check` è pulito.
+- I test web leggi (`tests/test_unit_web_leggi.py`): 501 passed, 1 skipped.
+- La suite voce (`tests/test_unit_voice_*.py`): 129 passed, rieseguita da me.
+
+**Rischio escluso:** non ho rieseguito la suite completa del kernel né la CI. Il codice di gas.py e dei test del kernel è identico a HEAD, che è già stato revisionato (#575/#576-M2). Non ho verificato neanche reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md, risolti con la nostra versione: li rigenera /fine-task.
+
+**Memoria del revisore:** ho aggiunto la riga `#579-M2 — 2026-10-30 — APPROVATO — … Nessuna lezione nuova` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. È rimasta **fuori dallo stage**: lo stato del file è `MM`. Lo script `commit_memoria_revisore.sh` non ha creato nessun commit, coerente col caso già visto di un merge in corso. Tocca a te metterla in stage prima del commit di merge, come per #579 (chat Mani).
+
+NB (agente): fatto — `git add` della memoria, poi `segna_review_ok.sh`, poi il commit b72809b. Il revisore ha scambiato i nomi HEAD/MERGE_HEAD (HEAD era a1a6a25, MERGE_HEAD 15c4da8 = origin/main): non cambia l'esito.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Suite kernel (tests/test_unit_kernel.py), in locale: 1061 → 1063 PASS, 0 FAIL (+T101a/b, round-trip di `istruzione_turno` con tool); in CI su 17beb97 il conteggio è 1069 PASS, 0 FAIL (ambiente diverso, sandbox bwrap). Voice suite (server+stt+tts): 120 → 129 passed in locale, compresi i 5 giri della pagina vera in Chromium headless (normale, riascolto, pausa, tetto, errore); in CI quei 5 si saltano (niente Node/Playwright: V-2 bot #311, riserva aperta). Mutanti: soglia del volume a 0,9 → il giro fallisce; pagina di #574 → «riascolto» fallisce; pagina di #575 → «pausa» fallisce; pagina di 17beb97 → «tetto» ed «errore» falliscono. Nessun FAIL.
@@ -282,7 +312,9 @@ Suite kernel (tests/test_unit_kernel.py), in locale: 1061 → 1063 PASS, 0 FAIL 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - db70c18, 4f3cfe2, 82e9703, d7730de: pushati insieme prima dell'apertura della PR #311; nessuna run della PR su questi SHA.
 - 17beb97 (fine-task del primo giro): run CI 41086377142 (`unit-suite` e `handoff-check` success); check `verifica-bot` failure — bot NON approvata (V-1 MEDIA, chiusa in 3d7a095).
-- 3e57cfc, 797fb5d, 3d7a095 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
+- 3e57cfc, 797fb5d, 3d7a095: nessuna run su questi SHA (pushati insieme ad a1a6a25).
+- a1a6a25 (fine-task del secondo giro): run CI 41088904254 (`unit-suite` e `handoff-check` success); check `verifica-bot` success — bot APPROVATA, verdetto APPROVATO CON RISERVE (V-1 BASSA istruzione voce «riassunto + dettaglio», V-2 BASSA bip/microfono: nella fetta V4). Verifica esterna su a1a6a25 APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/311#issuecomment-6527791803).
+- b72809b (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
@@ -291,4 +323,5 @@ Suite kernel (tests/test_unit_kernel.py), in locale: 1061 → 1063 PASS, 0 FAIL 
 - **R-576-3-M2** COSMETICA — la pausa senza conversazione dice «conversazione chiusa».
 - **R-578-1-M2** BASSA — la voce minima di 250 ms va provata col microfono vero (un «sì» brevissimo).
 - Prova col microfono vero sul Mac (soglia, eco, voce italiana della frase d'attesa) e su Safari: da fare.
+- **V-1/V-2 bot #311 su a1a6a25** BASSE (istruzione voce senza «dettaglio», bip/microfono) e **V-2 ve #311 su a1a6a25** BASSA (tetto dei turni solo nella pagina): nella fetta V4, già assegnata da M1.
 - Ereditate e dichiarate: R-564-1-M2 («Forte!» esclamazione va al forte), V-1 ve #304, R-384-2 (chat Voce).
