@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #312 (https://github.com/Gasss23/Gas/pull/312). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5088535610","url":"https://github.com/Gasss23/Gas/pull/312"}`), perché `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore, anche tramite M1.
+1. La PR era in conflitto con main dopo la #311: main portato nel branch (eb6c01c), quindi CI, bot e verifica esterna ripartono su questo commit. Merge della PR #312 (https://github.com/Gasss23/Gas/pull/312). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5088535610","url":"https://github.com/Gasss23/Gas/pull/312"}`), perché `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore, anche tramite M1.
 2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR.
 
 ---
@@ -17,28 +17,35 @@
 - **Proxy filtrante** (`modules/web/proxy.py`, prima fetta del browser senza schermo, piano approvato dall'operatore tramite M1): `FATTA` (PR #312).
 - **Review #585 (chat Mani)**: BOCCIATO. B-585-1 MEDIA (tunnel verso la 80 con «:80/:443»): `FATTA`. R-585-2, R-585-3, R-585-6: `FATTA`. R-585-4 e R-585-5: `DEFERITA — fetta del browser`.
 - **Review #586**: APPROVATO CON RISERVE. R-586-1 BASSA (timeout della testa rimasto sul tunnel): `FATTA`. **Review #587**: APPROVATO.
+- **Verifica esterna su 6ebecba (https://github.com/Gasss23/Gas/pull/312#issuecomment-6529640125)**: APPROVATO CON RISERVE, nessun bypass dei filtri. V-1 BASSA (§6 diceva «nessuna run»: c'era la run 41100200600 su 07ea587, con handoff-check rosso intermedio): `FATTA` — §6 corretto qui. V-2 BASSA (PR in conflitto con main dopo #311): `FATTA` — merge di main 1e8aff8, review #588. V-3 BASSA (client muto tenuto 10 s invece della scadenza del proxy, mutante sopravvissuto): `FATTA` — test nuovo, review #589. V-4 COSMETICA (controllo `porta != 443` irraggiungibile, difesa in profondità): `SALTATA — voluto`.
+- **Check `smista` del bot su 6ebecba**: failure, con la PR in conflitto con main; superato dal merge di main.
+- **Merge di origin/main 1e8aff8 (PR #311 di M2, voce V3)**: `FATTA` — conflitti solo nei report e nella memoria. Review #588 (chat Mani) APPROVATO CON RISERVE (R-588-1: conteggi dell'handoff, rifatti qui). Review #589 APPROVATO (test V-3).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
+ .claude/agents/memoria_revisore.md |   7 +++++++
  modules/web/proxy.py               | 308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  14 +++++++-------
+ reports/diff_sessione.md           |  18 +++++++++---------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  20 +++++++++-----------
+ reports/ultimo_report.md           |  30 ++++++++++++------------------
  tests/test_unit_web_leggi.py       |  13 +++++++++++++
- tests/test_unit_web_proxy.py       | 330 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_web_proxy.py       | 343 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = 15c4da8. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 1e8aff8. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d2a10d5 test(web): client muto chiuso alla scadenza del proxy (V-3 verifica esterna #312, chat Mani)
+3fe0c43 chore(revisore): memoria review #589 — APPROVATO
+eb6c01c Merge origin/main (1e8aff8, PR #311 di M2) in claude/peaceful-lovelace-0w2b7q (PR #312)
+6ebecba docs(fine-task): Mani fetta 32, proxy filtrante (PR #312), review #585–#587
 07ea587 feat(web): proxy filtrante per il browser senza schermo (R6, fetta 32, chat Mani)
 1b0cce6 chore(revisore): memoria review #587 — APPROVATO
 87d0777 chore(revisore): memoria review #586 — APPROVATO CON RISERVE
@@ -145,15 +152,102 @@ Confronto con la #586: fra i due export cambiano solo le due aggiunte qui sopra;
 **Memoria**: riga #587 («nessuna lezione nuova») aggiunta a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (1b0cce6). Lo staging del proxy è intatto.
 ```
 
+Commit eb6c01c (merge di origin/main 1e8aff8: entrano gas.py, clients/voice/*, modules/voice/server.py e i test della voce e del kernel di M2). Verdetto integrale della review #588 (chat Mani):
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #588 (chat Mani): è il merge di origin/main 1e8aff8 (PR #311, M2, voce V3) nel branch claude/peaceful-lovelace-0w2b7q (PR #312). Il merge è in corso e non è ancora committato.
+
+Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (solo le parti che servivano) e le lezioni sui merge in .claude/agents/memoria_revisore.md (#497, #502, #514, #531, #715).
+
+**Il merge non perde niente**
+- L'indice confrontato con MERGE_HEAD (cioè main) differisce solo nei file della fetta 32: proxy.py, i due test web, ripartenza_mani, i report e la memoria.
+- L'indice confrontato con HEAD (il tuo branch) differisce solo nei file di main: gas.py, clients/voice/*, modules/voice/server.py, i test della voce e del kernel, roadmap e stato. Le due direzioni sono complementari.
+- `git diff --cached --quiet` conferma che modules/web, test_unit_web_proxy e test_unit_web_leggi sono identici a HEAD.
+- Con lo stesso controllo, gas.py, clients, modules/voice, i test della voce e del kernel e roadmap.md sono identici a main.
+- Memoria: 0 righe tolte rispetto a HEAD e 0 rispetto a main. Le righe #574-M2…#578-M2 stanno fra #582 e #583, la #579-M2 in coda: le righe di entrambi i lati ci sono tutte.
+- stato_progetto: 0 righe tolte. Dal lato di main entra solo la riga «Voce V3», che non dice aperto niente di quello che chiude la fetta 32.
+- handoff, ultimo_report e diff_sessione sono identici a HEAD.
+- Nessun marcatore di conflitto, `git diff --cached --check` pulito.
+
+**Test su una copia esportata dell'indice**
+- Web + voce (inclusi lexbor e tts): 815 passed, 2 skipped. Il tuo 791 non comprendeva probabilmente tutti i file.
+- Kernel (`python tests/test_unit_kernel.py`): 1062 PASS, 1 FAIL (T31g, GAS_VECTORS). Lo stesso FAIL c'è su una copia di origin/main, quindi esisteva già e il merge non lo introduce.
+
+**Citazioni**
+- `modules/web/proxy.py:186` — ricontrolla che la porta del tunnel letta da urlsplit sia 443 — rischio: il merge altera la correzione B-585-1 — ok, identico a HEAD (file uguale per `diff --quiet`).
+- `modules/web/proxy.py:219` — rimette `client.settimeout(TIMEOUT_INATTIVITA)` dopo la lettura della testa — rischio: R-586-1 che si riapre col merge — ok, la riga c'è nell'indice.
+- `tests/test_unit_web_proxy.py:295` — test con spia su _tunnel per R-586-1 — rischio: test perso o cambiato — ok, presente, e la suite web passa sull'export dell'indice.
+- Contesto, file non più nel diff di sessione dopo il merge: in gas.py, riga 4726, `istruzione_turno` di V3 è identico a main.
+
+**Riserve**
+- **R-588-1 BASSA (solo report):** il §2 di reports/handoff.md conta ancora le righe sulla base vecchia.
+  - Contro origin/main oggi: diff_sessione 14 → 18, ultimo_report 20 → 30, memoria 5 → 6 con la mia riga.
+  - La nota «base = merge-base con origin/main = 15c4da8» diventa falsa con il commit di merge: la nuova base sarà 1e8aff8.
+  - Il gate check_handoff controlla solo i path, che sono giusti, quindi non blocca niente. Va però corretto prima di chiudere (lezione #502).
+  - Nell'handoff non c'è nessuna menzione dell'arrivo di #311 nel branch: conviene una riga.
+
+**Cosa non ho verificato**
+- Il comportamento reale della voce V3 nel browser e del proxy con un browser vero: in questa sessione non posso riprodurli. Mi affido alle review M2 #574–#579 e alla mia #587.
+- La CI su GitHub non l'ho guardata: il merge non è ancora committato né pushato.
+
+**Memoria**
+Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#588 (chat Mani) — 2026-10-30 — APPROVATO CON RISERVE — …», con R-588-1 e «Nessuna lezione nuova».
+- Prima ho controllato che il numero #588 non sia usato in nessun ref remoto.
+- Non l'ho committata né messa in stage: lo stato del file è MM, mettila in stage tu.
+- Dopo che l'hai messa in stage, nel §2 la memoria va contata +6.
+```
+
+Commit d2a10d5 (tests/test_unit_web_proxy.py: V-3 verifica esterna #312). Verdetto integrale della review #589 (chat Mani):
+
+```
+## VERDETTO: APPROVATO
+
+Review #589 (chat Mani): il nuovo test chiude la V-3 della verifica esterna su PR #312 (il caso del client muto che non manda niente). La modifica è solo un test, il motore non cambia, e non ho riserve. Era in stage soltanto tests/test_unit_web_proxy.py (+13 righe) sopra eb6c01c. `git diff --cached --check` è pulito.
+
+Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (solo le parti che servivano) e la memoria del revisore.
+
+**Citazioni**
+- `tests/test_unit_web_proxy.py:295` — `test_client_muto_chiuso_alla_scadenza_del_proxy`: proxy con durata=1, il client si connette e resta zitto, e il test chiede un 403 «tempo massimo del proxy superato» entro 2,5 s.
+  - Rischio esaminato: un test che non morde, oppure instabile sui tempi.
+  - Esito: ok.
+  - Ho controllato che il corpo del 403 sia esattamente il motivo (`_rifiuta` a `modules/web/proxy.py:300` scrive `corpo = motivo`), quindi `endswith` è corretto.
+  - Il proxy manda una sola risposta di circa 150 byte su loopback, quindi un solo `recv(4096)` basta.
+- `modules/web/proxy.py:211` — `client.settimeout(rimasto)` nel ciclo di `_leggi_richiesta`.
+  - Rischio esaminato: un mutante che sopravvive.
+  - Esito: ok.
+  - Su una copia esportata dell'indice ho sostituito la riga con `pass`: 1 failed, 50 passed. Fallisce proprio il test nuovo.
+  - Il motivo: senza quella riga il `recv` eredita i 10 s di `TIMEOUT_INATTIVITA` (fissati in `_gestisci`, `modules/web/proxy.py:127`) e il client va in timeout a 3 s.
+- `modules/web/proxy.py:202` (contesto) — il motivo «tempo massimo del proxy superato» viene scelto solo quando la scadenza del proxy viene prima dei 10 s di inattività.
+  - Con durata=1 è così, quindi il test controlla il ramo giusto e non il ramo «connessione inattiva».
+  - Esito: ok.
+
+**Test**
+- tests/test_unit_web_proxy.py: 51 passed, 3 volte su 3.
+- Il test nuovo da solo: 10 su 10, circa 1,55 s.
+- Lo stesso test 5 volte in parallelo con 8 processi che occupano la CPU su 4 core: 5 su 5, circa 1,7 s. Resta un margine di circa 0,8 s sotto il tetto di 2,5 s.
+
+**Cosa non ho verificato**
+- La scadenza del proxy parte da `avvia()`, non dalla connessione: il test regge solo perché si connette subito dopo l'avvio. Su un runner CI molto lento il margine si riduce. Non ho provato la CI su GitHub.
+- La suite web completa e quella del kernel non le ho rilanciate su questo delta: tocca solo un file di test, e le ho già passate sull'export della #588.
+
+**Memoria**
+- Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#589 (chat Mani) — 2026-10-30 — APPROVATO — … Nessuna lezione nuova».
+- L'ho committata da sola con scripts/commit_memoria_revisore.sh nel commit 3fe0c43.
+- Il test resta in stage e non l'ho toccato, quindi lo SHA del diff revisionato non cambia.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_proxy.py`: 50 test. `tests/test_unit_web_leggi.py`: `test_https_sulla_porta_80`. Web 687 passed, 2 skipped. Suite completa in locale (Python 3.13): `2779 passed, 2 skipped in 220.09s`. Mutanti presi: IP interni, tunnel su ogni porta e «:80/:443», upgrade, metodi, tetto dei byte, https in chiaro, Proxy-*, tempo della testa, `ferma()`, timeout rimasto.
+Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_proxy.py`: 51 test. `tests/test_unit_web_leggi.py`: `test_https_sulla_porta_80`. Web 687 passed, 2 skipped. Suite completa in locale (Python 3.13), prima del merge di main: `2779 passed, 2 skipped in 220.09s`; dopo il merge (review #588): web e voce 815 passed, 2 skipped; kernel 1062 PASS / 1 FAIL (T31g, GAS_VECTORS, identico su main: dipende dall'ambiente). Mutanti presi: IP interni, tunnel su ogni porta e «:80/:443», upgrade, metodi, tetto dei byte, https in chiaro, Proxy-*, tempo della testa, `ferma()`, timeout rimasto.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- 8339cf0, 87d0777, 1b0cce6 (memoria del revisore) e 07ea587: pushati insieme prima dell'apertura della PR #312; nessuna run sulla PR per questi SHA.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 8339cf0, 87d0777, 1b0cce6 (memoria del revisore) e 07ea587: pushati insieme prima dell'apertura della PR #312. Run push 41100200600 su 07ea587: `handoff-check` failure (intermedio: l'handoff non era ancora nel diff), superato dal commit di fine-task.
+- 6ebecba (fine-task): run 41100831063 ancora in coda alla verifica esterna; check `smista` del bot failure con la PR in conflitto con main.
+- eb6c01c (merge di main), 3fe0c43 (memoria del revisore), d2a10d5 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
