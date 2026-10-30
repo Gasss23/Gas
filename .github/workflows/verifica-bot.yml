@@ -148,9 +148,9 @@ jobs:
           senza altre parole; nessun'altra riga inizia con "VERIFICA ESTERNA". Una riga fuori
           formato vale come NO definitivo su questo commit.
         - Quando citi un carattere invisibile o di controllo (zero-width, BOM, NBSP, controlli
-          bidi e simili), in qualunque campo, scrivilo SEMPRE come <U+XXXX> (per esempio
-          <U+200B>), mai il carattere vero: un carattere invisibile vero nel verdetto lo rende
-          ambiguo e può valere come NO (caso #297).
+          bidi e simili; a capo e tab restano normali), in qualunque campo, scrivilo SEMPRE come
+          <U+XXXX> (per esempio <U+200B>), mai il carattere vero: un carattere invisibile vero
+          nel verdetto lo rende ambiguo e può valere come NO (caso #297).
     steps:
       - name: Checkout di main (protocollo fidato nella root)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
