@@ -1,11 +1,11 @@
-# DIFF SESSIONE — 2026-10-30 — Mani, fetta 30: gli invisibili citati dal bot come <U+XXXX>
+# DIFF SESSIONE — 2026-10-30 — Mani, fetta 31: leggi_pagina solo porte 80 e 443
 
-File toccati rispetto a main 95be7b1 (PR #306 mergiata):
-- `.github/workflows/verifica-bot.yml` — nel PROMPT del bot, nuova regola: ogni carattere invisibile o di controllo citato si scrive come <U+XXXX>, mai il carattere vero. Motivo: falso NO di #297 e compromesso V-2 della terza verifica esterna su #305.
-- `scripts/bot_esito.py` — `contiene_segreti` cerca anche senza le citazioni <U+XXXX> (V-1 verifica esterna #309).
-- `tests/test_unit_verifica_bot.py` — assert che fissa la regola nel PROMPT (R-580-1, V-1 bot #309) e test sulle credenziali spezzate da una citazione.
-- `.claude/agents/memoria_revisore.md` — righe delle review #580, #581 e #582.
-- `reports/stato_progetto.md` — blocco «Mani — fetta 30» e riga «Ultimo aggiornamento».
+File toccati rispetto a main 4ffcd80 (PR #309 mergiata):
+- `modules/web/leggi.py` — `_PORTE_PERMESSE = {80, 443}` controllate in `_valida_url` (anche a ogni redirect); docstring aggiornata. Motivo: decisione dell'operatore del 2026-10-22.
+- `tests/test_unit_web_leggi.py` — porte rifiutate, redirect verso un'altra porta, porte incrociate, test TLS su 443, IP interno su altra porta.
+- `.claude/agents/memoria_revisore.md` — righe delle review #583 e #584.
+- `reports/roadmap.md` — decisione delle porte segnata come fatta nel codice.
+- `reports/stato_progetto.md` — blocco «Mani — fetta 31» (con V-1 bot #309 registrata come limite) e riga «Ultimo aggiornamento».
 - `reports/ripartenza_mani.md` — punto g).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
