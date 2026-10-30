@@ -1,24 +1,25 @@
-# Ultimo report — 2026-10-29 — Voce V2: istruzione d'uso a voce, avvio parlante, attesa del forte nel browser (chat M2) — PR #308
+# ULTIMO REPORT — 2026-10-29 — Mani: test del bot dopo la terza verifica esterna su #305 (fetta 29, chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
+1. Merge della PR #306: secondo M1 l'operatore ha detto «mergia #306» e la mergia M1 a CI verde (macchina del bot, check neutral).
+2. Confermare il via libera di M1 ad accettare V-2 ve #305 come compromesso (la verifica esterna #306 non può provarlo dal repo), e decidere il rimedio proposto: istruire il bot a scrivere gli invisibili come «<U+XXXX>» (PROMPT in .github/workflows/verifica-bot.yml).
 
-1. Merge della PR #308 (https://github.com/Gasss23/Gas/pull/308): solo se il bot dà APPROVATO pulito; con riserve decide l'operatore (via M1).
+## Esito
+- **PR #305**: MERGIATA (a5b1c62). Terza verifica esterna su 586b888 (https://github.com/Gasss23/Gas/pull/305#issuecomment-6506958440): APPROVATO CON RISERVE, nessun difetto del bot.
+- **V-1 ve #305 (terza) BASSA** (due mutanti sopravvivevano a test verdi): FATTA — test positivo sul titolo con un invisibile (U+200B, U+3164, U+2060, \x1b; niente separatori di riga, R-576-1) e `test_controlli_bidi` con ogni controllo da solo.
+- **V-2 ve #305 (terza) BASSA** (falso NO prudente quando il bot cita un invisibile attaccato a parole come «multimedia»): FATTA — registrata come compromesso accettato in stato_progetto, codice invariato (via libera di M1).
+- **V-3 ve #305 (terza) COSMETICA** (copia degli intervalli non legata al gate): FATTA — `test_invisibili_come_nel_gate`.
+- **V-4 / V-5 ve #305 (terza) COSMETICHE** (report e taglio della review): SALTATE — report superati, resa solo estetica.
+- **Review #576 (chat Mani)**: APPROVATO CON RISERVE (R-576-1 BASSA: il test positivo usava \x0b, un separatore di riga, che avrebbe bloccato R-572-1): FATTA, parametro sostituito. **Review #577**: APPROVATO.
 
-## Esito delle fette
+- **Bot su 204a6c1 (PR #306)**: APPROVATO CON RISERVE, check verifica-bot neutral («decide l'operatore»). V-1 BASSA (il test «uguali al gate» lega solo gli intervalli, non _CATEGORIE_INVISIBILI): DEFERITA — riserva, alla prossima fetta sui test del bot. V-2 COSMETICA (import di modules.gate solo dalla radice del repo): DEFERITA — come tests/test_unit_gate.py, va bene in CI.
+- **Verifica esterna su 204a6c1 (https://github.com/Gasss23/Gas/pull/306#issuecomment-6510340226)**: APPROVATO CON RISERVE. V-1 BASSA (la stessa V-1 del bot): DEFERITA. V-2 BASSA (import da radice): DEFERITA. V-3 BASSA (§6 diceva «nessuna run» per b692e27, che ha la run 40966074777 con handoff-check failure intermedio): FATTA — §6 corretto qui. V-4 COSMETICA (§3 senza 14c4983): FATTA — §3 rigenerato dalla nuova base. V-5 COSMETICA (invisibili del titolo solo a metà parola): SALTATA — nessun rischio. Nota: chiede che l'operatore confermi lui il via libera di M1 su V-2 ve #305 come compromesso.
+- **Merge di origin/main 52c113b (PR #307 di M1)**: FATTA — la #306 era in conflitto (solo report). Review #578 (chat Mani) APPROVATO. Il sì dell'operatore al merge della #306 («mergia #306») è arrivato a M1, che la mergia.
+- **Merge di origin/main 7ab6fc4 (PR #308 di M2, voce)**: FATTA — nuovo conflitto, solo report e memoria. Review #579 (chat Mani) APPROVATO.
 
-- **V2.1 — V-2 verifica esterna #304 («Gas, forte.» da solo dava un 400 confuso, anche con GAS_VOCE_FORTE=1)**: `FATTA` — `modules/voice/server.py`: «forte» PARLATO senza richiesta → risposta 200 da ascoltare (sintetizzata se il client vuole audio, come il browser): «Dopo "forte" dimmi cosa fare, per esempio: "Gas, forte: riassumi i lead di oggi". Non ho avviato nessun lavoro.» Nessun turno, mai ai gratuiti. «/forte» scritto senza richiesta resta 400.
-- **V2.2 — V-3 verifica esterna #304 (server muto ~8 s all'avvio)**: `FATTA` — riga «… gas voice: avvio in corso…» stampata subito, prima di caricare Gas. Provata con un `.env` vero temporaneo.
-- **V2.3 — in più, per la prova col microfono (detto a M1)**: `FATTA` — `clients/voice/browser_server.py` aspettava il server voce 90 s fissi, ma una chiamata del forte può durare fino a 300 s: il browser avrebbe detto «Voice server non raggiungibile» mentre Gas lavorava. Ora attesa 600 s (`GAS_VOICE_TIMEOUT` per cambiarla), connessione con tetto corto di 10 s (server spento → 502 subito), e a tempo scaduto 504 «Gas non ha risposto entro N s: il lavoro può essere ancora in corso…».
-- **Review #568-M2 APPROVATO CON RISERVE**: R-568-1-M2 (nome `timeout` in conflitto con socketserver), R-568-2-M2 (test che poteva restare appeso), R-568-3-M2 (server irraggiungibile scambiato per «ancora in corso») `FATTA` — riviste in #569-M2 (APPROVATO CON RISERVE: R-569-1-M2, test che non distingueva il fix, `FATTA` — rivista in #570-M2, APPROVATO CON RISERVE).
-- **R-570-1-M2 COSMETICA** (test del proxy senza `server_close()`): `FATTA` nel secondo giro (0 «unclosed» con `-W always::ResourceWarning`).
-- **Secondo giro — bot #308 su 2dff07f (APPROVATA, APPROVATO CON RISERVE)**: V-1 BASSA (proxy a thread singolo bloccato fino a 600 s) `FATTA` — `ThreadingHTTPServer`; V-2 COSMETICA (riga «avvio in corso» anche quando poi l'avvio si ferma) `SALTATA — la parte lenta è l'import di gas, che deve girare prima di leggere il token (può stare nel .env): spostarla lascerebbe muti proprio i secondi lenti; il revisore #571-M2 è d'accordo`.
-- **Secondo giro — verifica esterna #308 su 2dff07f (APPROVATO CON RISERVE, [commento](https://github.com/Gasss23/Gas/pull/308#issuecomment-6510176231))**: V-2 BASSA (risposta HTTP rotta → socket chiuso) `FATTA` — 502 JSON «Risposta non valida»; V-1 BASSA (§6 dell'handoff superato) `FATTA` (riscritto); V-3 BASSA (istruzione d'uso senza chiave ElevenLabs → 503) e V-4 BASSA (browser con attese da 600 s) accettate, la seconda da vedere sul Mac.
-- **Review #571-M2 APPROVATO CON RISERVE**: R-571-1-M2 (test che si sarebbe bloccato tornando a HTTPServer) e R-571-2-M2 (504 che non diceva della coda) `FATTA` — rivista in #572-M2.
-- **Merge di origin/main (PR #307 della chat M1)**: `FATTA` — conflitti solo nei report e nella memoria del revisore; review #573-M2 APPROVATO; voce + richieste + gate 966 passed.
-- **Bot e verifica esterna #308 su 2f223ab**: APPROVATO CON RISERVE, solo BASSE/COSMETICHE (V-1 bot: «attesa massima» approssimata; ve: [commento](https://github.com/Gasss23/Gas/pull/308#issuecomment-6510411393)). Merge autorizzato dall'operatore («mergia #308», via M1), lo fa M1.
-- **gas.py / brains/ / ci.yml**: `SALTATA — fuori dal mandato di M1`, non toccati.
+## Prove
+- `tests/test_unit_verifica_bot.py`: 510 passed.
+- Mutanti ora presi: senza lo strip prima del titolo 4 failed; ognuno dei 9 controlli bidi tolto da `_BIDI` 1 failed; un intervallo diverso dal gate 1 failed.
 
 ## Anomalie
-
-- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
-- Non provato con audio vero né col browser vero (Safari/Chrome potrebbero chiudere una richiesta lunga prima dei 600 s): da vedere nella prova sul Mac.
+- `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.

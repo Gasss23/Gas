@@ -1,10 +1,10 @@
-# Diff della sessione — 2026-10-29 — Voce V2 (chat M2)
+# DIFF SESSIONE — 2026-10-29 — Mani, fetta 29: test del bot dopo la terza verifica esterna su #305
 
-- `modules/voice/server.py` — «forte» parlato senza richiesta → istruzione d'uso da ascoltare (200, nessun turno); riga «avvio in corso» prima del caricamento.
-- `clients/voice/browser_server.py` — attesa della risposta 600 s (`GAS_VOICE_TIMEOUT`), connessione 10 s, 504 chiaro a tempo scaduto (anche in coda), risposta rotta → 502 JSON, proxy a thread (`ThreadingHTTPServer`), errori in `_send_error_json`.
-- `tests/test_unit_voice_server.py` — ordine della riga d'avvio; test del proxy del browser (tempo scaduto, valori dell'attesa, connessione appesa, a thread, risposta rotta), socket chiusi.
-- `tests/test_unit_voice_stt.py` — istruzione d'uso a voce (JSON, con l'interruttore, audio sintetizzato); `_post_raw` accetta risposte audio.
-- `.claude/agents/memoria_revisore.md` — lezioni delle review #568-M2 … #572-M2.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/roadmap.md` — report di fine task.
+File toccati rispetto a main 7ab6fc4 (PR #305, #307 e #308 mergiate; main portato nel branch con un merge, solo conflitti nei report):
+- `tests/test_unit_verifica_bot.py` — test positivo sul titolo con un invisibile, ogni controllo bidi provato da solo, uguaglianza degli intervalli invisibili col gate. Motivo: V-1 e V-3 della terza verifica esterna su #305 (due mutanti sopravvivevano).
+- `.claude/agents/memoria_revisore.md` — righe delle review #576, #577, #578 e #579 (i merge di main).
+- `reports/stato_progetto.md` — blocco «Mani — fetta 29» (con V-2 registrata come compromesso) e riga «Ultimo aggiornamento».
+- `reports/ripartenza_mani.md` — punto g).
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
