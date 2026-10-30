@@ -158,16 +158,19 @@ class ProxyFiltrante:
         schema, host, porta, percorso, _ = _leggi._valida_url(bersaglio)
         if schema != "http":
             raise _leggi._Rifiuto("https solo attraverso CONNECT")
+        host_header = f"[{host}]" if ":" in host else host
+        if porta != 80:
+            host_header += f":{porta}"
+        righe = [f"{metodo} {percorso} HTTP/1.1", f"Host: {host_header}"]
+        righe += [f"{nome}: {valore}" for nome, valore in intestazioni
+                  if nome.lower() not in _SALTO and not nome.lower().startswith("proxy-")]
+        righe.append("Connection: close")
+        testa = ("\r\n".join(righe) + "\r\n\r\n").encode("latin-1")
+        # V-1 bot #312: anche la testa inoltrata conta; R-590-2: contata prima di aprire.
+        self._conta_byte(len(testa))
         remoto = self._apri(host, porta)
         try:
-            host_header = f"[{host}]" if ":" in host else host
-            if porta != 80:
-                host_header += f":{porta}"
-            righe = [f"{metodo} {percorso} HTTP/1.1", f"Host: {host_header}"]
-            righe += [f"{nome}: {valore}" for nome, valore in intestazioni
-                      if nome.lower() not in _SALTO and not nome.lower().startswith("proxy-")]
-            righe.append("Connection: close")
-            remoto.sendall(("\r\n".join(righe) + "\r\n\r\n").encode("latin-1"))
+            self._invia(remoto, testa)
             risposto[0] = True  # da qui la risposta al browser è quella del server
             self._pompa(remoto, client)
         finally:
@@ -267,7 +270,19 @@ class ProxyFiltrante:
                 if not dati:
                     return
                 self._conta_byte(len(dati))
-                coppie[sorgente].sendall(dati)
+                self._invia(coppie[sorgente], dati)
+
+    def _invia(self, s: socket.socket, dati: bytes) -> None:
+        """V-2 bot #312: anche un invio verso chi non legge si ferma alla scadenza del proxy."""
+        rimasto = self._scadenza - time.monotonic()
+        if rimasto <= 0:
+            raise _leggi._Rifiuto("tempo massimo del proxy superato")
+        s.settimeout(min(TIMEOUT_INATTIVITA, rimasto))
+        try:
+            s.sendall(dati)
+        except socket.timeout:  # R-590-1: il motivo dice chi ha chiuso
+            raise _leggi._Rifiuto("tempo massimo del proxy superato" if rimasto < TIMEOUT_INATTIVITA
+                                  else "connessione inattiva") from None
 
     def _registra(self, s: socket.socket) -> None:
         with self._lock:
@@ -283,6 +298,9 @@ class ProxyFiltrante:
                 raise _leggi._Rifiuto("tempo massimo del proxy superato")
             if self.richieste >= self.max_richieste:
                 raise _leggi._Rifiuto("troppe richieste")
+            # V-1 bot #312: a tetto superato nessuna richiesta nuova esce (URL e intestazioni).
+            if self.byte >= self.max_byte:
+                raise _leggi._Rifiuto("troppi byte")
             self.richieste += 1
 
     def _conta_byte(self, n: int) -> None:

@@ -243,7 +243,18 @@ def test_tetto_di_byte(rete):
         assert len(r) < 10_000 and b"x" * 10_000 not in r  # nulla oltre il tetto arriva al browser
         assert p.rifiuti == ["troppi byte"]
         r = _get(p.porta, "http://sito.test/ok")  # il tetto è per tutta la vita del proxy
-    assert r == b"" and p.rifiuti == ["troppi byte", "troppi byte"]
+    # V-1 bot #312: la seconda richiesta non esce nemmeno, e il browser riceve il motivo.
+    assert r.startswith(b"HTTP/1.1 403") and r.endswith(b"troppi byte")
+    assert len(rete.connessi) == 1 and p.rifiuti == ["troppi byte", "troppi byte"]
+
+
+def test_la_testa_inoltrata_conta_nei_byte(rete):
+    """V-1 bot #312: i byte della richiesta inoltrata entrano nel tetto."""
+    with _proxy(rete) as p:
+        r = _get(p.porta, "http://sito.test/ok")
+        assert r.endswith(b"pagina ok")
+        testa = b"GET /ok HTTP/1.1\r\nHost: sito.test\r\nConnection: close\r\n\r\n"
+        assert p.byte == len(r) + len(testa)
 
 
 def test_durata_scaduta(rete):
@@ -334,6 +345,63 @@ def test_ferma_chiude_i_tunnel_aperti(rete):
         p.ferma()
         s.settimeout(2)
         assert s.recv(4096) == b""  # chiuso dal proxy, prima dei 10 s di inattività
+
+
+def test_testa_che_sfora_il_tetto_non_apre_connessioni(rete):
+    """R-590-2: se la testa da inoltrare fa superare il tetto, il proxy non apre nemmeno
+    la connessione verso l'host."""
+    with _proxy(rete, max_byte=40) as p:
+        r = _get(p.porta, "http://sito.test/ok")
+    assert r.startswith(b"HTTP/1.1 403") and r.endswith(b"troppi byte")
+    assert rete.connessi == []
+
+
+def test_invio_bloccato_inattivo(rete, monkeypatch):
+    """R-590-1: con la scadenza lontana, a chiudere è l'inattività."""
+    monkeypatch.setattr(px, "TIMEOUT_INATTIVITA", 0.3)
+    p = _proxy(rete)
+    p.avvia()
+    try:
+        class _Muto:
+            def settimeout(self, t):
+                self.t = t
+
+            def sendall(self, dati):
+                time.sleep(self.t)
+                raise socket.timeout()
+
+        with pytest.raises(px._leggi._Rifiuto) as e:
+            p._invia(_Muto(), b"x")
+        assert e.value.motivo == "connessione inattiva"
+    finally:
+        p.ferma()
+
+
+def test_invio_bloccato_si_ferma_alla_scadenza(rete, monkeypatch):
+    """V-2 bot #312: un invio verso chi non legge non va oltre la scadenza del proxy."""
+    p = _proxy(rete, durata=1.0)
+    p.avvia()
+    try:
+        ferma = threading.Event()
+
+        class _Muto:
+            def settimeout(self, t):
+                self.t = t
+
+            def sendall(self, dati):
+                ferma.wait(self.t)
+                raise socket.timeout()
+
+        inizio = time.monotonic()
+        with pytest.raises(px._leggi._Rifiuto) as e:
+            p._invia(_Muto(), b"x")
+        assert time.monotonic() - inizio < 2 and e.value.motivo == "tempo massimo del proxy superato"
+        time.sleep(1.1)
+        with pytest.raises(px._leggi._Rifiuto) as e:
+            p._invia(_Muto(), b"x")
+        assert e.value.motivo == "tempo massimo del proxy superato"
+    finally:
+        p.ferma()
 
 
 def test_ferma_due_volte(rete):
