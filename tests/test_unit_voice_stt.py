@@ -42,7 +42,8 @@ class _MockKernel:
     def __init__(self, events=None):
         self._events = events or [{"type": "final", "content": "ok kernel"}]
 
-    def run_turn(self, prompt: str) -> Generator[dict, None, None]:
+    def run_turn(self, prompt: str, **kw) -> Generator[dict, None, None]:
+        self.kw = kw  # V3: istruzione_turno per i turni parlati
         yield from self._events
 
 
@@ -299,7 +300,8 @@ class TestVoiceHandlerRouting:
                 os.environ.pop("GAS_VOCE_FORTE", None)
                 status, resp = _post_raw(self.port, wav, hdrs)
         assert status == 200
-        assert visti == [("analizza i lead", {"cervello": "forte"})]
+        from modules.voice.server import ISTRUZIONE_VOCE
+        assert visti == [("analizza i lead", {"cervello": "forte", "istruzione_turno": ISTRUZIONE_VOCE})]
 
     def _uso_parlato(self, trascritto: str, extra_env: dict | None = None, accept: str | None = None):
         visti = []
@@ -345,6 +347,22 @@ class TestVoiceHandlerRouting:
         assert status == 200 and resp == {"_raw_audio": True}
         assert "Dopo «forte» dimmi cosa fare" in tts.call_args[0][0]
         assert visti == []
+
+    def test_v3_turno_parlato_ha_istruzione_voce_e_lo_scritto_no(self):
+        """V3: il turno PARLATO passa istruzione_turno (risposte corte); quello scritto no."""
+        from modules.voice.server import ISTRUZIONE_VOCE
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        with patch("modules.voice.server.transcribe_audio", return_value="che ne pensi?"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                status, _ = _post_raw(self.port, wav, hdrs)
+        assert status == 200 and self.kernel.kw == {"istruzione_turno": ISTRUZIONE_VOCE}
+        body = json.dumps({"prompt": "ciao"}).encode()
+        with patch.dict(os.environ, {}):
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            status, _ = _post_raw(self.port, body, {**_AUTH, "Content-Type": "application/json"})
+        assert status == 200 and self.kernel.kw == {}
 
     def test_multipart_routes_to_stt(self):
         """Content-Type multipart/form-data → transcribe_audio invocata."""
@@ -434,7 +452,7 @@ class TestVoiceHandlerRouting:
         hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
         received_prompts: List[str] = []
         original = self.kernel.run_turn
-        self.kernel.run_turn = lambda p: received_prompts.append(p) or original(p)
+        self.kernel.run_turn = lambda p, **kw: received_prompts.append(p) or original(p, **kw)
         with patch("modules.voice.server.transcribe_audio", return_value="prompt trascritto"):
             with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
                 status, resp = _post_raw(self.port, wav, hdrs)

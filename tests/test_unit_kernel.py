@@ -11391,6 +11391,60 @@ try:
 except Exception as _e100:
     check("T100 blocco senza eccezioni", False, repr(_e100))
 
+# ---------- T101: istruzione_turno (V3 voce, chat M2) ----------
+# Round-trip con tool: l'istruzione del turno arriva nel messaggio system di OGNI chiamata
+# del turno, NON entra nella cronologia, e il turno dopo (senza istruzione) non la vede.
+try:
+    _visti101 = []
+
+    class _Rec101(ScriptedCompletions):
+        def create(self, model=None, messages=None, tools=None, tool_choice=None):
+            _visti101.append(messages)
+            return super().create(model=model, messages=messages, tools=tools, tool_choice=tool_choice)
+
+    _k101 = kernel_tmp()
+    _ist101 = "VOCE-101: rispondi in 1-3 frasi."
+    _saved101 = {kk: os.environ.get(kk) for kk in
+                 ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
+    for _kk in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+        os.environ.pop(_kk, None)
+    os.environ["GEMINI_API_KEY"] = "dummy-for-test"
+    _script101 = [[("write_file", '{"relative_path": "v101.txt", "content": "x"}')], "Fatto. Va bene?",
+                  "Secondo turno."]
+    _comp101 = _Rec101(_script101)
+
+    class _Fake101:
+        def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
+            self.chat = SimpleNamespace(completions=_comp101)
+
+    _orig101 = gas.OpenAI
+    gas.OpenAI = _Fake101
+    try:
+        _ev101 = list(_k101.run_turn("scrivi il file", istruzione_turno=_ist101))
+        _n_primo = len(_visti101)
+        _ev101b = list(_k101.run_turn("e adesso?"))
+    finally:
+        gas.OpenAI = _orig101
+        for _kk, _v in _saved101.items():
+            if _v is None:
+                os.environ.pop(_kk, None)
+            else:
+                os.environ[_kk] = _v
+    _sys_primo = [m[0]["content"] for m in _visti101[:_n_primo]]
+    _sys_dopo = [m[0]["content"] for m in _visti101[_n_primo:]]
+    _storia101 = json.dumps(_k101.history, ensure_ascii=False)
+    check("T101a round-trip con tool: istruzione_turno nel system di ogni chiamata del turno",
+          _n_primo == 2 and all(c.endswith(_ist101) for c in _sys_primo)
+          and [e["content"] for e in _ev101 if e["type"] == "final"] == ["Fatto. Va bene?"]
+          and any(e["type"] == "tool_res" for e in _ev101), str(_sys_primo)[-300:])
+    check("T101b istruzione_turno fuori dalla cronologia e assente nel turno dopo",
+          "VOCE-101" not in _storia101 and _sys_dopo and all("VOCE-101" not in c for c in _sys_dopo)
+          and all("VOCE-101" not in m.get("content", "") or m["role"] == "system"
+                  for chiamata in _visti101 for m in chiamata if isinstance(m.get("content"), str)),
+          _storia101[:300])
+except Exception as _e101:
+    check("T101 blocco senza eccezioni", False, repr(_e101))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

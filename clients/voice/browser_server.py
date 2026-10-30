@@ -16,6 +16,11 @@ Variabili d'ambiente (lette da .env nella root Gas se presenti):
     GAS_BROWSER_PORT   — porta questo server    (default: 9000)
     GAS_VOICE_TIMEOUT  — secondi di attesa della risposta di Gas (default: 600; una
                          chiamata del cervello forte può durare fino a 300 s)
+    GAS_VOICE_FINESTRA — secondi di microfono aperto dopo la risposta, in modalità
+                         conversazione (default: 12)
+    GAS_VOICE_MAX_TURNI — turni di fila in modalità conversazione, contando quello
+                         avviato dal clic; poi serve un clic (default: 5; argine
+                         a rumori di fondo)
 """
 from __future__ import annotations
 
@@ -60,11 +65,22 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
     # V2: il forte (`claude -p`) può metterci minuti; prima era 90 s. Non chiamarlo
     # `timeout`: è un attributo di socketserver (socket del browser, R-568-1-M2).
     voice_timeout: int = 600
+    finestra: float = 12.0  # V3: GAS_VOICE_FINESTRA, letta dalla pagina su GET /config
+    max_turni: int = 5      # V-1 bot #311: GAS_VOICE_MAX_TURNI
 
     def log_message(self, fmt: str, *args: object) -> None:
         log.info(fmt, *args)
 
     def do_GET(self) -> None:
+        if self.path == "/config":
+            # V3: la pagina legge qui la finestra della conversazione (nessun segreto)
+            cfg = json.dumps({"finestra": self.finestra, "max_turni": self.max_turni}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(cfg)))
+            self.end_headers()
+            self.wfile.write(cfg)
+            return
         if self.path not in ("/", "/index.html"):
             self._not_found()
             return
@@ -93,6 +109,7 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
     def _proxy_voice(self, body: bytes) -> None:
         content_type = self.headers.get("Content-Type", "application/json")
         accept = self.headers.get("Accept", "audio/mpeg")
+        formato = self.headers.get("X-Gas-Formato", "")  # V3: «audio+testo»
         conn = http.client.HTTPConnection(self.voice_host, self.voice_port,
                                           timeout=_CONNECT_TIMEOUT)
         try:
@@ -114,6 +131,7 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
                     "Content-Type": content_type,
                     "Content-Length": str(len(body)),
                     "Accept": accept,
+                    **({"X-Gas-Formato": formato} if formato else {}),
                 },
             )
             resp = conn.getresponse()
@@ -124,9 +142,11 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
             # V2: scaduto il tempo, Gas può star ancora lavorando: dirlo, non «non raggiungibile»
             # R-571-2-M2: il tetto conta anche l'attesa in coda dietro un'altra richiesta
             # (il server voce fa un turno alla volta): quel turno può partire più tardi.
+            # V-1 bot #308 (su 2507621): il turno continua dietro; ripeterlo ne fa partire un altro
             self._send_error_json(504, f"Gas non ha risposto entro {self.voice_timeout} s: il lavoro "
                                        "può essere ancora in corso (o in coda dietro un'altra "
-                                       "richiesta), guarda il terminale del server voce.")
+                                       "richiesta). NON ripetere la richiesta: ne partirebbe una "
+                                       "seconda. Guarda il terminale del server voce.")
             return
         except (ConnectionRefusedError, OSError) as exc:
             self._send_error_json(502, f"Voice server non raggiungibile: {exc}")
@@ -190,6 +210,22 @@ def run_browser_server() -> int:
         print("✗ GAS_VOICE_TIMEOUT non è un intero positivo (secondi).")
         return 1
 
+    try:
+        finestra = float(os.environ.get("GAS_VOICE_FINESTRA") or "12")
+        if not 0 < finestra <= 120:
+            raise ValueError
+    except ValueError:
+        print("✗ GAS_VOICE_FINESTRA non è un numero di secondi tra 0 e 120.")
+        return 1
+
+    try:
+        max_turni = int(os.environ.get("GAS_VOICE_MAX_TURNI") or "5")
+        if not 1 <= max_turni <= 50:
+            raise ValueError
+    except ValueError:
+        print("✗ GAS_VOICE_MAX_TURNI non è un intero tra 1 e 50.")
+        return 1
+
     if not _HTML_FILE.exists():
         print(f"✗ browser_client.html non trovato in {_HERE}")
         return 1
@@ -198,6 +234,8 @@ def run_browser_server() -> int:
     BrowserProxyHandler.voice_host = voice_host
     BrowserProxyHandler.voice_port = voice_port
     BrowserProxyHandler.voice_timeout = timeout
+    BrowserProxyHandler.finestra = finestra
+    BrowserProxyHandler.max_turni = max_turni
 
     # V-1 bot #308: a thread, così mentre il forte lavora (fino a GAS_VOICE_TIMEOUT) la
     # pagina si ricarica lo stesso; il server voce dietro resta a un turno alla volta.
