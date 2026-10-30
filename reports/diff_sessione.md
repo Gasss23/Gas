@@ -1,12 +1,11 @@
-# Diff della sessione — 2026-10-30 — Voce V3, conversazione filata (chat M2)
+# Diff della sessione — 2026-10-30 — Voce V4 (chat M2)
 
-- `clients/voice/browser_client.html` — modalità conversazione (ascolto a finestra, inizio/fine frase dal volume, bip di chiusura), frase d'attesa dopo 2 s, testo a schermo, guardie contro turni doppi (riascolto, doppio clic, pausa, audio rotto) e tetto dei turni di fila.
-- `clients/voice/browser_server.py` — `GET /config` con `GAS_VOICE_FINESTRA` e `GAS_VOICE_MAX_TURNI`, inoltro di `X-Gas-Formato`, 504 «NON ripetere la richiesta».
-- `modules/voice/server.py` — risposta «audio+testo» (testo intero + audio della parte parlata corta), `ISTRUZIONE_VOCE` ai soli turni parlati.
-- `gas.py` — `run_turn(istruzione_turno=...)`: istruzione del solo turno nel messaggio system.
-- `tests/test_unit_kernel.py` — T101 (round-trip di `istruzione_turno`).
-- `tests/test_unit_voice_server.py`, `tests/test_unit_voice_stt.py` — parte parlata, audio+testo, /config, 504, istruzione voce, giro nel browser headless (normale e riascolto).
-- `.claude/agents/memoria_revisore.md` — lezioni delle review #574-M2 e #575-M2.
+- `clients/voice/browser_client.html` — interruzione mentre Gas parla (`vigila`), rumore di fondo a mediana con tetto, un solo contesto per i bip, microfono chiuso se l'audio fallisce, `riapri()` col tetto dei turni.
+- `clients/voice/browser_server.py` — `GAS_VOICE_INTERRUZIONE` in `/config`.
+- `modules/voice/server.py` — `ISTRUZIONE_VOCE_SCHERMO` (riassunto + dettaglio), parte parlata = primo paragrafo, tetto orario dei turni parlati (`GAS_VOICE_MAX_TURNI_ORA`, 429).
+- `.github/workflows/ci.yml` — Node + Playwright 1.63.0 + Chromium; test della pagina obbligatori nella voice suite.
+- `tests/test_unit_voice_server.py`, `tests/test_unit_voice_stt.py` — giri «interruzione» e «sì subito», paragrafi, istruzione con schermo, tetto orario, /config, browser obbligatorio.
+- `.claude/agents/memoria_revisore.md` — lezioni delle review della fetta.
 - `reports/*` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
