@@ -30,7 +30,7 @@
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  26 +++++++++++---------------
+ reports/ultimo_report.md | 29 ++++++++++++++---------------
  scripts/bot_esito.py               |  12 +++++++++++-
  tests/test_unit_verifica_bot.py    |  16 ++++++++++++++++
 ```
@@ -40,6 +40,7 @@ NB: base = merge-base con origin/main = 95be7b1. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1eb83e4 docs(fine-task): PR #309 dopo le note di bot e verifica esterna su 7d57b26, review #582
 0b7782a fix(bot): credenziali spezzate da una citazione <U+XXXX>, regola del PROMPT precisata (V-1 ve #309, V-1/V-2 bot #309, chat Mani)
 c98edfd chore(revisore): memoria review #582 — APPROVATO CON RISERVE
 7d57b26 docs(fine-task): Mani fetta 30, invisibili citati dal bot come <U+XXXX> (PR #309)
@@ -151,7 +152,8 @@ Nessuna modifica a gas.py. `tests/test_unit_verifica_bot.py`: da 510 (main) a 51
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - bfb487a, 9c8a880 (memoria del revisore) e 4799155: pushati insieme prima dell'apertura della PR #309; nessuna run sulla PR per questi SHA.
 - 7d57b26 (fine-task): check `verifica-bot` neutral, review del bot APPROVATO CON RISERVE (vedi §1); `handoff-check` success.
-- c98edfd (memoria del revisore) e 0b7782a: pushati insieme; run non letta alla scrittura dell'handoff.
+- c98edfd (memoria del revisore) e 0b7782a: pushati insieme. Run CI 41058960891 su 0b7782a: `handoff-check` failure (intermedio: l'handoff era ancora quello di 7d57b26), check `verifica-bot` cancelled (head cambiata durante la verifica).
+- 1eb83e4 (fine-task): run CI 41059057483, `unit-suite` e `handoff-check` success; check `verifica-bot` neutral, review del bot APPROVATO CON RISERVE (solo COSMETICHE). Seconda verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/309#issuecomment-6523471996).
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

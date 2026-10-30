@@ -1,7 +1,7 @@
 # ULTIMO REPORT — 2026-10-30 — Mani: gli invisibili citati dal bot come <U+XXXX> (fetta 30, chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #309 (numero nell'handoff §0). Tocca la macchina del bot (workflow e suo test): il check `verifica-bot` sarà neutral e il merge lo decide l'operatore (anche tramite M1).
+1. Merge della PR #309 (numero nell'handoff §0). Tocca la macchina del bot (workflow, `scripts/bot_esito.py` e il suo test): il check `verifica-bot` sarà neutral e il merge lo decide l'operatore (anche tramite M1).
 
 ## Esito
 - **PR #306**: MERGIATA (95be7b1) dopo due merge di main (#307 di M1, #308 di M2), review #578 e #579 APPROVATO.
@@ -12,10 +12,13 @@
 - **Verifica esterna su 7d57b26 (https://github.com/Gasss23/Gas/pull/309#issuecomment-6523271160)**: APPROVATO CON RISERVE. V-1 BASSA (una credenziale spezzata da una citazione «<U+200B>» non era riconosciuta, e il PROMPT spinge proprio verso quella forma): FATTA in 0b7782a — _senza_citazioni in contiene_segreti. V-2 COSMETICA (R-580-2 senza test): SALTATA — limite dichiarato. V-3 COSMETICA (test del gate con -I): SALTATA — già registrata (V-2 #306).
 - **Review #582 (chat Mani)**: APPROVATO CON RISERVE (R-582-1 BASSA: citazione annidata o lettera visibile citata non riconosciute; R-582-2 COSMETICA: l'assert del PROMPT a pezzi separati). Registrate in stato_progetto.
 
+- **Bot su 1eb83e4 (PR #309)**: APPROVATO CON RISERVE, check neutral. V-1 / V-2 COSMETICHE (ultimo_report e descrizione della PR non aggiornati): FATTA — descrizione aggiornata, ultimo_report corretto qui.
+- **Seconda verifica esterna su 1eb83e4 (https://github.com/Gasss23/Gas/pull/309#issuecomment-6523471996)**: APPROVATO CON RISERVE, nessun blocco tecnico. V-1 BASSA (ultimo_report e stato_progetto fermi a prima di 0b7782a): FATTA. V-2 COSMETICA (§6 incompleto su 0b7782a): FATTA. V-3 BASSA (= R-582-1, riprodotta, non regressione) e V-4 COSMETICA (= R-582-2): restano registrate.
+
 ## Prove
 - YAML del workflow valido, 0 caratteri Cf nel file.
 - `tests/test_unit_verifica_bot.py`: 514 passed. Mutanti: regola cambiata in <U+YYYY> 1 failed; senza `_senza_citazioni` 4 failed.
-- Suite completa non rilanciata: il diff tocca solo il PROMPT e un assert del test del bot.
+- Suite completa non rilanciata in locale: il diff tocca solo il bot (PROMPT, `contiene_segreti` in `scripts/bot_esito.py`) e il suo test; in CI `unit-suite` è success su 1eb83e4.
 
 ## Anomalie
 - `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.
