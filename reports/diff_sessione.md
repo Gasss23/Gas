@@ -1,11 +1,13 @@
-# DIFF SESSIONE — 2026-10-29 — Mani, fetta 28: `bot_esito.py` e i caratteri invisibili
+# DIFF SESSIONE — 2026-10-29 (chat M1: ponte voce → sviluppo, PR #307)
 
-File toccati rispetto a main 8424698 (PR #303 mergiata da M1):
-- `scripts/bot_esito.py` — i caratteri invisibili si tolgono prima di decidere (la gravità nascosta blocca), i controlli bidi restano un NO, nella review pubblica ogni invisibile si vede come «<U+XXXX>», credenziali spezzate da un invisibile non pubblicate; un invisibile attaccato a una parola di gravità dà NO (V-1 bot e verifica esterna #305); credenziali spezzate da controlli e gravità anche sul testo grezzo (note del bot su 95249a8 e d672021); annidamento profondo nel dubbio NO. Motivo: falso NO definitivo su #297.
-- `tests/test_unit_verifica_bot.py` — test per gli invisibili Cf e non Cf, i controlli bidi, il caso #297, le riserve pubblicate, le credenziali spezzate e gli incroci separatore × invisibile dentro la parola.
-- `.claude/agents/memoria_revisore.md` — righe delle review dalla #569 alla #575.
-- `reports/stato_progetto.md` — blocco «Mani — fetta 28» e riga «Ultimo aggiornamento».
-- `reports/ripartenza_mani.md` — punto g): fatta la (c).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+- `modules/sviluppo/__init__.py`, `modules/sviluppo/richieste.py`: nuovo modulo del ponte (issue in repo privato, token dedicato, tetto, niente redirect).
+- `gas.py`: strumento `richiedi_sviluppo` (schema + dispatch); prompt di riserva con 12 strumenti.
+- `modules/gate/gate.py`: `richiedi_sviluppo` UNCERTAIN.
+- `gas_identity.md`: 12 strumenti, riga del nuovo strumento.
+- `tests/test_unit_richieste.py` (nuovo), `tests/test_unit_kernel.py` (T100a/T100b), `.github/workflows/ci.yml` (step richieste), `.gitignore` (conto).
+- `modules/gate/gate.py`, `gas.py`: `.gas_richieste_uso` protetto come `.gas_claude_cli_uso` (V-1 bot #307); `tests/test_unit_gate.py` e T68s.
+- `.claude/agents/memoria_revisore.md`: righe #557-M1, #558-M1 e #559-M1.
+- `reports/stato_progetto.md`: blocco «COORDINAMENTO DELLE CHAT» e «Ultimo aggiornamento»; `reports/roadmap.md`: voce «Ponte» (strada A).
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+Si riscrive a ogni sessione; la storia completa sta in git.

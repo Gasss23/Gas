@@ -53,3 +53,5 @@ AGENTS.md
 .gas_claude_cli_uso.json
 .gas_claude_cli_uso.json.*.tmp
 .gas_claude_cli_uso.json.lock
+.gas_richieste_uso.json
+.gas_richieste_uso.json.*.tmp
