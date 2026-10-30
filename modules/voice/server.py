@@ -30,6 +30,7 @@ Configurazione tramite variabili d'ambiente (da .env o export):
   GROQ_API_KEY        — chiave Groq        OBBLIGATORIO per STT audio; assente → 503
   ELEVENLABS_API_KEY  — chiave ElevenLabs  OBBLIGATORIO per output audio; assente → 503
   ELEVENLABS_VOICE_ID — voice id           (default: JBFqnCBsd6RMkjVDRZzb, George premade)
+  GAS_VOICE_MAX_TURNI_ORA — turni PARLATI al massimo nell'ultima ora (default 60), poi 429
   GAS_VOCE_FORTE      — 1/true/on/yes/si/sì: ogni richiesta della voce va al solo cervello
                         forte (default spento; forte fermo → errore dichiarato, mai i gratuiti)
 
@@ -58,9 +59,10 @@ import json
 import logging
 import os
 import re
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from modules.voice.stt import GroqSTTError, parse_audio_body, transcribe_audio
 from modules.voice.tts import DEFAULT_VOICE_ID as _TTS_DEFAULT_VOICE_ID
@@ -105,14 +107,28 @@ ISTRUZIONE_VOCE = (
     "Stai parlando a voce con l'operatore, in una conversazione rapida. Rispondi in 1-3 "
     "frasi brevi, senza elenchi né formattazione. Dai subito un parere o una proposta "
     "concreta (anche «no, meglio così»). Se serve una decisione chiudi con una domanda "
-    "secca a cui si risponde sì o no. Se il risultato è lungo, dillo in una frase: il "
-    "testo completo l'operatore lo legge a schermo.")
+    "secca a cui si risponde sì o no. Se il risultato è lungo, riassumilo in una frase.")
+# V4 (V-1 bot #311): con la pagina del browser c'è uno schermo: prima le frasi da dire,
+# poi, dopo una riga vuota, il dettaglio da leggere (non viene detto a voce).
+ISTRUZIONE_VOCE_SCHERMO = (
+    "Stai parlando a voce con l'operatore, in una conversazione rapida, e lui ha anche uno "
+    "schermo. Apri con 1-3 frasi brevi da dire a voce, senza elenchi né formattazione: "
+    "dai subito un parere o una proposta concreta (anche «no, meglio così») e, se serve "
+    "una decisione, chiudi con una domanda secca a cui si risponde sì o no. Se servono "
+    "dettagli (dati, elenchi, analisi, testo lungo), scrivili DOPO una riga vuota: quella "
+    "parte non viene letta a voce, l'operatore la legge a schermo.")
+_PARAGRAFO = re.compile(r"\n[ \t]*\n")
 
 
 def parte_parlata(testo: str) -> str:
     """Le prime frasi di `testo` da dire a voce (≤ _PARLATO_MAX_FRASI frasi e
     ≤ _PARLATO_MAX_CHAR caratteri); se il testo è più lungo aggiunge «Il resto è a
-    schermo.». Testo corto → identico."""
+    schermo.». Testo corto → identico. V4: si dice solo il primo paragrafo (il dettaglio
+    dopo la riga vuota, chiesto da ISTRUZIONE_VOCE_SCHERMO, si legge a schermo)."""
+    pezzi = _PARAGRAFO.split(testo.strip(), maxsplit=1)
+    if len(pezzi) == 2 and pezzi[1].strip():
+        primo = parte_parlata(pezzi[0])
+        return primo if primo.endswith(_PARLATO_RESTO) else primo + _PARLATO_RESTO
     testo = " ".join(testo.split())  # R-574-4-M2: a capo e spazi doppi non contano
     frasi: list[str] = []
     for pezzo in (f for f in _FINE_FRASE.split(testo) if f):
@@ -130,6 +146,21 @@ def parte_parlata(testo: str) -> str:
     if not parlato:  # prima frase già troppo lunga: taglio all'ultimo spazio
         parlato = testo[:_PARLATO_MAX_CHAR].rsplit(" ", 1)[0] if len(testo) > _PARLATO_MAX_CHAR else testo
     return parlato if parlato == testo else parlato + _PARLATO_RESTO
+
+
+# V4 (V-2 ve #311): tetto LATO SERVER ai turni parlati, oltre a quello della pagina: un
+# client diverso o rotto non fa partire turni senza fine. GAS_VOICE_MAX_TURNI_ORA (default
+# 60) turni parlati nell'ultima ora, poi 429 finché la finestra non scorre.
+_MAX_TURNI_ORA_DEFAULT = 60
+
+
+def _max_turni_ora() -> int:
+    try:
+        n = int(os.environ.get("GAS_VOICE_MAX_TURNI_ORA") or _MAX_TURNI_ORA_DEFAULT)
+    except ValueError:
+        log.warning("GAS_VOICE_MAX_TURNI_ORA non numerica: uso %d", _MAX_TURNI_ORA_DEFAULT)
+        return _MAX_TURNI_ORA_DEFAULT
+    return n if n > 0 else _MAX_TURNI_ORA_DEFAULT
 
 
 def _voce_tutta_forte() -> bool:
@@ -170,6 +201,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
     kernel: Any = None
     token: str = ""
+    turni_parlati: List[float] = []  # V4: istanti dei turni parlati (tetto orario)
 
     def log_message(self, fmt: str, *args: Any) -> None:
         log.info(fmt, *args)
@@ -228,6 +260,14 @@ class VoiceHandler(BaseHTTPRequestHandler):
         is_audio = ct_base.startswith("audio/") or ct_base == "multipart/form-data"
 
         if is_audio:
+            # V4 (V-2 ve #311, R-580-2-M2): tetto orario dei turni parlati controllato PRIMA
+            # della trascrizione, così oltre il tetto non si spende nemmeno Groq
+            tetto = _max_turni_ora()
+            if len(self._turni_recenti()) >= tetto:
+                self._send_json(429, {"error": (
+                    f"Troppi turni a voce nell'ultima ora ({tetto}, GAS_VOICE_MAX_TURNI_ORA): "
+                    "nessun lavoro avviato. Riprova più tardi o scrivi.")})
+                return
             prompt = self._do_stt(raw, content_type)
             if prompt is None:
                 return  # risposta errore già inviata
@@ -259,10 +299,13 @@ class VoiceHandler(BaseHTTPRequestHandler):
         try:
             result_content: Optional[str] = None
             kw: Dict[str, Any] = {}
+            if is_audio:  # V4: il turno parlato conta per il tetto orario
+                type(self).turni_parlati = self._turni_recenti() + [time.monotonic()]
             if cervello == "forte":
                 kw["cervello"] = "forte"
-            if is_audio:
-                kw["istruzione_turno"] = ISTRUZIONE_VOCE  # V3: risposte a voce corte
+            if is_audio:  # V3/V4: risposte a voce corte, col dettaglio a schermo se c'è
+                kw["istruzione_turno"] = (ISTRUZIONE_VOCE_SCHERMO if self._vuole_audio_testo()
+                                          else ISTRUZIONE_VOCE)
             turno = self.kernel.run_turn(prompt, **kw)
             for event in turno:
                 etype = event.get("type")
@@ -288,6 +331,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._do_tts_response(result_content)
         else:
             self._send_json(200, {"content": result_content})
+
+    def _turni_recenti(self) -> List[float]:
+        """Istanti dei turni parlati dell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
+        adesso = time.monotonic()
+        return [t for t in self.turni_parlati if adesso - t < 3600]
 
     def _vuole_audio_testo(self) -> bool:
         return self.headers.get("X-Gas-Formato", "").strip().lower() == _FORMATO_AUDIO_TESTO

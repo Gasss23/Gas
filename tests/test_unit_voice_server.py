@@ -753,6 +753,11 @@ def test_v3_parte_parlata_corta():
     assert parte_parlata("Sì, meglio così. Procedo?") == "Sì, meglio così. Procedo?"
     lungo = "Uno. Due. Tre. Quattro. Cinque."
     assert parte_parlata(lungo) == "Uno. Due. Tre. Il resto è a schermo."
+    # V4: si dice solo il primo paragrafo, il dettaglio dopo la riga vuota è a schermo
+    assert (parte_parlata("Sì, procedo. Va bene?\n\nDettaglio:\n- a\n- b")
+            == "Sì, procedo. Va bene? Il resto è a schermo.")
+    assert parte_parlata("Uno. Due. Tre. Quattro.\n\nAltro.") == "Uno. Due. Tre. Il resto è a schermo."
+    assert parte_parlata("Solo questo.\n\n   ") == "Solo questo."
     # R-574-4-M2: un a capo non è un taglio; «Dott.» non chiude la frase
     assert parte_parlata("Ciao.\nCome stai?") == "Ciao. Come stai?"
     assert (parte_parlata("Ho sentito il Dott. Rossi. Dice sì. Va bene? Poi altro.")
@@ -813,7 +818,7 @@ def test_v3_browser_proxy_config_e_finestra(monkeypatch, capsys):
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
     try:
         with _SENZA_PROXY.open(f"http://127.0.0.1:{proxy.server_address[1]}/config", timeout=5) as r:
-            assert json.loads(r.read()) == {"finestra": 7.5, "max_turni": 5}
+            assert json.loads(r.read()) == {"finestra": 7.5, "max_turni": 5, "interruzione": True}
     finally:
         proxy.shutdown()
         proxy.server_close()
@@ -911,7 +916,9 @@ const { chromium } = require('playwright');
 """
 
 
-@pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa", "tetto", "errore"])
+@pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa", "tetto", "errore",
+                                  "interruzione", "interruzione_media", "colpo", "colpo_voce",
+                                  "sisubito"])
 def test_v3_conversazione_nel_browser(tmp_path, modo):
     """Giro completo nella pagina vera (Chromium headless, microfono finto da file):
     clic → la frase parte da sola alla fine della voce (nessun secondo clic) → «ci sto
@@ -921,14 +928,39 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     import shutil
     import subprocess
     import time
+    # V4 (V-2 bot #311): in CI (GAS_TEST_BROWSER_OBBLIGATORIO=1) il browser è installato
+    # e il test non può essere saltato; in locale senza Node/Playwright si salta.
+    obbligatorio = os.environ.get("GAS_TEST_BROWSER_OBBLIGATORIO") == "1"
     if not shutil.which("node") or subprocess.run(
             ["node", "-e", "require('playwright')"], capture_output=True).returncode != 0:
+        if obbligatorio:
+            pytest.fail("node + playwright richiesti (GAS_TEST_BROWSER_OBBLIGATORIO=1) ma assenti")
         pytest.skip("node + playwright non disponibili")
 
     microfono = tmp_path / "mic.wav"
-    _wav(microfono, [(0.8, 0), (1.5, 0.4), (6, 0)])
+    if modo in ("interruzione", "interruzione_media"):
+        # V4: seconda voce mentre Gas parla (risposta di 4 s da ~6,2 s) → interruzione.
+        # R-580-1-M2: a volume medio (0,1: RMS ~0,07, appena sopra la soglia d'interruzione)
+        # la frase dopo l'interruzione va registrata, non persa.
+        amp = 0.1 if modo == "interruzione_media" else 0.4
+        _wav(microfono, [(0.8, 0), (1.5, 0.4), (4.5, 0), (1.2, amp), (8, 0)])
+    elif modo == "colpo":
+        # R-581-1-M2: un rumore breve (400 ms) mentre Gas parla lo zittisce, ma il clip
+        # quasi muto che segue NON deve partire come frase
+        _wav(microfono, [(0.8, 0), (1.5, 0.4), (4.5, 0), (0.4, 0.4), (10, 0)])
+    elif modo == "colpo_voce":
+        # R-582-1-M2: colpo breve (scartato), poi una frase vera: deve arrivare un webm
+        # valido, senza la coda del clip scartato in testa
+        _wav(microfono, [(0.8, 0), (1.5, 0.4), (4.5, 0), (0.4, 0.4), (1.6, 0), (1.2, 0.4), (8, 0)])
+    elif modo == "sisubito":
+        # V-1 bot #311 su c3079f4: voce già nei primi 300 ms dell'ascolto (un «sì» detto
+        # subito) → deve contare come frase, non come rumore di fondo
+        _wav(microfono, [(0.5, 0.4), (6, 0)])
+    else:
+        _wav(microfono, [(0.8, 0), (1.5, 0.4), (6, 0)])
     risposta = tmp_path / "risposta.wav"
-    _wav(risposta, [(2.0 if modo == "pausa" else 0.4, 0.2)])
+    _wav(risposta, [({"pausa": 2.0, "interruzione": 4.0, "interruzione_media": 4.0,
+                      "colpo": 4.0, "colpo_voce": 4.0}.get(modo, 0.4), 0.2)])
     audio_b64 = base64.b64encode(
         b"non-audio" * 50 if modo == "errore" else risposta.read_bytes()).decode()
     ricevute = []
@@ -941,8 +973,9 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
 
         def do_POST(self):
             n = int(self.headers.get("Content-Length", 0) or 0)
+            corpo = self.rfile.read(n)
             ricevute.append((self.headers.get("X-Gas-Formato"), self.headers.get("Content-Type"),
-                             len(self.rfile.read(n))))
+                             len(corpo), corpo[:4]))
             time.sleep(2.6)  # oltre i 2 s: deve partire la frase d'attesa
             out = json.dumps({"content": "Sì, meglio così. Procedo?", "audio": audio_b64}).encode()
             self.send_response(200)
@@ -976,12 +1009,16 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         voce.shutdown()
         voce.server_close()
     if "BROWSER_NON_DISPONIBILE" in r.stdout:
+        if obbligatorio:
+            pytest.fail("Chromium richiesto (GAS_TEST_BROWSER_OBBLIGATORIO=1) ma non avviabile: "
+                        + r.stdout[-500:])
         pytest.skip("Chromium non disponibile")
     assert r.returncode == 0, (r.stdout[-2000:], r.stderr[-2000:])
     esito = json.loads(r.stdout.strip().splitlines()[-1])
     stati, testo = esito["stati"], esito["testo"]
     assert esito["errori"] == [], esito["errori"][:3]
-    assert len(ricevute) == 1, (ricevute, stati)
+    if modo not in ("interruzione", "interruzione_media", "colpo", "colpo_voce"):
+        assert len(ricevute) == 1, (ricevute, stati)
     assert ricevute[0][0] == "audio+testo" and ricevute[0][2] > 0
     assert testo == "Sì, meglio così. Procedo?"
     assert any("parli" in s for s in stati), stati
@@ -994,6 +1031,20 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     assert any("Gas parla" in s for s in stati), stati
     # dopo la risposta la finestra si riapre da sola, poi si chiude per silenzio
     i_parla = max(i for i, s in enumerate(stati) if "Gas parla" in s)
+    # ogni clip inviato è un file audio intero: webm comincia con l'header EBML
+    assert all(r[3] == b"\x1a\x45\xdf\xa3" for r in ricevute if "webm" in (r[1] or "")), ricevute
+    if modo == "colpo_voce":
+        assert len(ricevute) == 2, (ricevute, stati)   # il colpo no, la frase vera sì
+        return
+    if modo == "colpo":
+        assert len(ricevute) == 1, (ricevute, stati)   # nessun clip muto inviato
+        assert any("mi hai interrotto" in s for s in stati), stati
+        return
+    if modo in ("interruzione", "interruzione_media"):
+        # Gas zittito dalla voce, la frase successiva parte da sola: 2 richieste
+        assert len(ricevute) == 2, (ricevute, stati)
+        assert any("mi hai interrotto" in s for s in stati), stati
+        return
     if modo == "tetto":
         # V-1 bot #311: col tetto a 1 la finestra non si riapre dopo la risposta
         assert "turni di fila" in stati[-1], stati
