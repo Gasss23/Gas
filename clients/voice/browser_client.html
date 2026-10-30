@@ -426,6 +426,17 @@ function fermaAscolto() {
 
 // Ascolta: in conversazione la frase parte e finisce da sola; senza conversazione
 // registra finché non clicchi (comportamento di prima).
+// Soglia della voce dai campioni dei primi 300 ms (rumore di fondo). Mediana BASSA
+// (R-580-3-M2) con tetto a sogliaMin (V-1 bot #313): la soglia resta ≤ 3×sogliaMin
+// (0,045), così anche un «sì» a volume medio (RMS ~0,07) detto appena si riapre
+// l'ascolto la supera, anche se riempie tutti i 300 ms. Senza campioni: sogliaMin.
+function sogliaDaCampioni(campioni) {
+  if (!campioni.length) return CFG.sogliaMin;
+  const ord = [...campioni].sort((a, b) => a - b);
+  const pavimento = Math.min(ord[Math.floor((ord.length - 1) / 2)], CFG.sogliaMin);
+  return Math.max(CFG.sogliaMin, pavimento * 3);
+}
+
 // giaInVoce: l'ascolto riparte da un'interruzione, cioè mentre l'operatore sta già
 // parlando (R-580-1-M2): niente stima del rumore (sarebbe la sua voce) e frase già iniziata.
 async function ascolta(giaInVoce = false) {
@@ -469,20 +480,14 @@ async function ascolta(giaInVoce = false) {
   // un tetto: se rispondi subito («sì») la tua voce non diventa il «rumore» che alza la
   // soglia sopra la tua voce stessa.
   const campioni = [];
-  let pavimento = 0;
   let voceDa = null, ultimaVoce = null, parlando = false, voceDopoMs = 0;
   if (giaInVoce) { voceDa = ultimaVoce = t0; parlando = true; setStatus("● parli…", false, true); }
   ascolto = { timer: setInterval(() => {
     if (!analyser) { fermaAscolto(); return; }   // microfono già chiuso
     const ora = performance.now();
     const v = volume();
-    if (ora - t0 < 300 && !giaInVoce) {
-      campioni.push(v);
-      const ord = [...campioni].sort((a, b) => a - b);
-      // R-580-3-M2: mediana BASSA, più tollerante con la voce che parte a metà finestra
-      pavimento = Math.min(ord[Math.floor((ord.length - 1) / 2)], CFG.sogliaMin * 2);
-    }
-    const soglia = Math.max(CFG.sogliaMin, pavimento * 3);
+    if (ora - t0 < 300 && !giaInVoce) campioni.push(v);
+    const soglia = sogliaDaCampioni(campioni);
     if (v > soglia) {
       voceDopoMs += 50;   // R-581-1-M2: voce vera sentita in QUESTO ascolto
       ultimaVoce = ora;

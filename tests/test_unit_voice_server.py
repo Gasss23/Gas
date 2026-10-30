@@ -904,10 +904,16 @@ const { chromium } = require('playwright');
     return t.includes('conversazione chiusa') || t.includes('non riproducibile');
   }, null, { timeout: 25000 });
   await page.waitForTimeout(3000);   // niente turni né errori dopo la chiusura
+  // V-1 bot #313: la soglia calcolata dalla pagina stessa, con 300 ms tutti di voce media
+  // (RMS 0,07, un «sì» detto appena si riapre l'ascolto) e con solo rumore di fondo
+  const soglie = await page.evaluate(() => ({
+    voceMedia: sogliaDaCampioni(Array(6).fill(0.07)),
+    rumore: sogliaDaCampioni(Array(6).fill(0.004)),
+    vuoto: sogliaDaCampioni([]) }));
   const stati = await page.evaluate(() => window.__stati);
   const testo = await page.textContent('#testo');
   await browser.close();
-  console.log(JSON.stringify({ stati, testo, errori }));
+  console.log(JSON.stringify({ stati, testo, errori, soglie }));
 })().catch(async e => {
   console.error(e);
   try { console.error('STATI', JSON.stringify(await globalThis.__pagina.evaluate(() => window.__stati))); } catch (_) {}
@@ -954,7 +960,8 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         _wav(microfono, [(0.8, 0), (1.5, 0.4), (4.5, 0), (0.4, 0.4), (1.6, 0), (1.2, 0.4), (8, 0)])
     elif modo == "sisubito":
         # V-1 bot #311 su c3079f4: voce già nei primi 300 ms dell'ascolto (un «sì» detto
-        # subito) → deve contare come frase, non come rumore di fondo
+        # subito) → deve contare come frase, non come rumore di fondo. (A volume medio lo
+        # prova la soglia calcolata dalla pagina, «soglie» qui sotto: V-1 bot #313.)
         _wav(microfono, [(0.5, 0.4), (6, 0)])
     else:
         _wav(microfono, [(0.8, 0), (1.5, 0.4), (6, 0)])
@@ -1017,6 +1024,10 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     esito = json.loads(r.stdout.strip().splitlines()[-1])
     stati, testo = esito["stati"], esito["testo"]
     assert esito["errori"] == [], esito["errori"][:3]
+    # V-1 bot #313: un «sì» a voce media che riempie i primi 300 ms supera la soglia
+    soglie = esito["soglie"]
+    assert soglie["voceMedia"] < 0.07, soglie
+    assert soglie["rumore"] == soglie["vuoto"] == 0.015, soglie
     if modo not in ("interruzione", "interruzione_media", "colpo", "colpo_voce"):
         assert len(ricevute) == 1, (ricevute, stati)
     assert ricevute[0][0] == "audio+testo" and ricevute[0][2] > 0
