@@ -16,7 +16,9 @@
 - **PR #309**: `FATTA` — mergiata da M1 (4ffcd80). V-1 bot #309 BASSA (un verdetto che cita alla lettera un caso di prova di credenziale spezzata da una citazione non viene pubblicato): `FATTA` — registrata come limite in stato_progetto.
 - **Porte 80 e 443 in `leggi_pagina`** (decisione dell'operatore del 2026-10-22): `FATTA` (PR #310).
 - **Review #583 (chat Mani)**: APPROVATO CON RISERVE. R-583-1 COSMETICA (a capo nel docstring): `DEFERITA — prossima fetta su leggi.py`.
-- **Piano del browser senza schermo**: `FATTA` — mandato a M1, nessun codice.
+- **Piano del browser senza schermo**: `FATTA` — mandato a M1, nessun codice; via libera dell'operatore tramite M1.
+- **Bot su 59f3a63 (PR #310)**: APPROVATO CON RISERVE, check success. V-1 BASSA (R6 #391 ancora «da implementare» in stato_progetto): `FATTA` — segnata CHIUSA. V-2 COSMETICA (= R-583-1): `DEFERITA`.
+- **Verifica esterna su 59f3a63 (https://github.com/Gasss23/Gas/pull/310#issuecomment-6527013374)**: APPROVATO. V-1 e V-2 COSMETICHE (docstring; caso di test IP interno su 80/443): `DEFERITA — prossima fetta su leggi.py`.
 
 ---
 
@@ -29,8 +31,8 @@
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  23 ++++++++---------------
+ reports/stato_progetto.md          |   5 +++--
+ reports/ultimo_report.md           |  25 ++++++++++---------------
  tests/test_unit_web_leggi.py       |  44 +++++++++++++++++++++++++++++++++++++++-----
 ```
 
@@ -39,6 +41,7 @@ NB: base = merge-base con origin/main = 4ffcd80. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+59f3a63 docs(fine-task): Mani fetta 31, leggi_pagina solo porte 80 e 443 (PR #310)
 0ca7e49 feat(web): leggi_pagina solo verso le porte 80 e 443, anche dopo un redirect (R6, decisione dell'operatore del 2026-10-22, chat Mani)
 b0c157a chore(revisore): memoria review #583 — APPROVATO CON RISERVE
 ```
@@ -130,6 +133,7 @@ Nessuna modifica a gas.py. `tests/test_unit_web_*.py`: 632 passed, 2 skipped (te
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - b0c157a (memoria del revisore) e 0ca7e49: pushati insieme prima dell'apertura della PR #310; nessuna run sulla PR per questi SHA.
+- 59f3a63 (fine-task): run CI 41083039423, `unit-suite` e `handoff-check` success; check `verifica-bot` success, review del bot APPROVATO CON RISERVE (vedi §1).
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
