@@ -44,6 +44,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+278cb98 docs(voce-v2): report dopo il merge di main (#307), review #573-M2
 168a848 Merge origin/main (PR #307) in feat/voce-v2-m2: conflitti solo nei report e nella memoria del revisore
 2f223ab docs(voce-v2): report dopo il secondo giro di bot e verifica esterna #308, review #571/#572-M2
 691e8c0 fix(voce): proxy del browser a thread, risposta rotta → 502 JSON, 504 che cita la coda (bot e ve #308)
@@ -218,33 +219,34 @@ Rischio escluso: non ho rifatto a mano la prova con due schede reali in contempo
 
 Memoria: riga contatore `#572-M2 — 2026-10-29 — APPROVATO — …` aggiunta in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata da sola (5bf8eaa). Nessuna lezione nuova. Il diff staged del motore non è stato toccato.
 
-Commit 168a848 (merge di origin/main, PR #307 della chat M1) — review #573-M2, verdetto integrale:
+Commit 168a848 (merge di origin/main, PR #307 della chat M1) — review #573-M2, verdetto RIEMESSO dal revisore (stesso esito e stessa sostanza) perché il gate B rifiutava l'originale: dopo il merge la BASE è 52c113b e le citazioni dell'originale erano tutte di file di main (contesto), non del diff di sessione. L'originale non è stato ritoccato: è sostituito per intero dalla riemissione qui sotto, incollata senza modifiche.
 
-VERDETTO: APPROVATO
+## VERDETTO: APPROVATO
 
-Review #573-M2: merge in staging di origin/main (PR #307, ponte M1) dentro feat/voce-v2-m2 (PR #308). MERGE_HEAD coincide con origin/main (52c113b).
+Riemissione di #573-M2: le citazioni del diff ora puntano al codice voce. Il verdetto riguarda il merge in staging di origin/main (PR #307, ponte M1) dentro feat/voce-v2-m2 (PR #308), commit 168a848. MERGE_HEAD coincide con origin/main (52c113b). Dopo il merge la BASE di sessione è 52c113b, quindi il diff di sessione è solo il codice voce della PR. Il controllo centrale è che il merge non abbia alterato quel codice: `git diff 2f223ab 168a848` su modules/voice, clients/voice, tests/test_unit_voice_server.py e tests/test_unit_voice_stt.py dà 0 righe. Il primo genitore del merge è 2f223ab. Lo stat di `git diff 52c113b HEAD` sugli stessi file è 4 file, +292/-16, identico al diff proprio della PR.
 
 Elementi del diff che ho esaminato:
-- `.claude/agents/memoria_revisore.md:1020`: le righe #557-M1, #558-M1 e #559-M1 di main, ognuna con la sua lezione, sono in coda subito dopo il blocco #568-#572-M2. Ho controllato se qualcosa era stato perso o duplicato: il diff staged rispetto a HEAD è solo +6 righe (nessuna riga rimossa, a parte l'intestazione `---`), e i conti tornano: HEAD 1017 + 6 = 1023. Esito: ok.
-- `gas.py:4625`: il ramo `richiedi_sviluppo` e lo schema dello strumento in `gas.py:1232` arrivano da #307. Ho controllato se il merge altera il motore oltre l'unione: il diff staged su gas.py, modules/sviluppo, modules/gate, .github, i test gate/kernel/richieste, gas_identity.md e .gitignore è identico byte per byte a `git diff merge-base..origin/main`. La nostra parte non tocca nessuno di questi file (stat vuoto). Esito: ok.
-- `modules/sviluppo/richieste.py:58`: `_http` con l'handler anti-redirect, file nuovo che arriva da main. Già revisionato in #557-#559-M1; qui ho solo controllato che sia arrivato identico. Esito: ok.
-- `.github/workflows/ci.yml:105`: lo step «Run voice suite» lancia ancora test_unit_voice_server, stt e tts. `.github/workflows/ci.yml:166` aggiunge la suite richieste. Il rischio era che il merge facesse sparire la suite voce dalla CI: non è successo. Esito: ok.
-- `reports/stato_progetto.md:4`: con l'auto-merge l'intestazione «Ultimo aggiornamento» ha preso la versione M1. È coerente perché la nostra parte non aveva cambiato quella riga, e /fine-task la riscriverà. La sezione «Coordinamento delle chat» (righe 586-589) è stata aggiunta senza duplicati. Esito: ok.
-- `reports/roadmap.md:282`: la voce «Ponte Gas → sviluppo, strada A» sostituisce quella vecchia sul ponte con firma, un solo hunk e pulito. Esito: ok.
+- `modules/voice/server.py:203`: il ramo `cervello == "uso"` dà 400 solo al testo scritto. Al parlato risponde con l'istruzione d'uso da ascoltare (TTS se il client chiede audio, altrimenti 200 JSON con `"uso": True`), senza far partire un turno. Rischio esaminato: che la risoluzione del merge abbia toccato o duplicato questo ramo, o lo abbia sovrapposto a codice di main. Il file non compare nel diff 2f223ab..168a848 e main non lo tocca. Esito: ok.
+- `modules/voice/server.py:85`: la costante `_USO_FORTE_PARLATO` arriva intatta accanto a `_USO_FORTE`. Rischio esaminato: perdita o duplicazione della costante nell'unione. Esito: ok.
+- `clients/voice/browser_server.py:93`: `_proxy_voice` ha un tetto corto sulla connessione (`_CONNECT_TIMEOUT`, poi `settimeout(self.voice_timeout)` solo per l'attesa) e dà 502 JSON se il server non è raggiungibile. Rischio esaminato: che il merge abbia riportato la versione precedente del proxy (HTTPServer non a thread o il vecchio timeout unico). Il codice a HEAD è quello di 691e8c0 e il diff rispetto al genitore pre-merge è vuoto. Esito: ok.
+- `tests/test_unit_voice_server.py:709`: `test_v2_browser_proxy_risposta_rotta_502_json` e i test vicini (`tests/test_unit_voice_server.py:633` connessione appesa → 502 subito, `tests/test_unit_voice_server.py:675` proxy a thread) sono presenti a HEAD e sono gli stessi della PR. Rischio esaminato: test della voce persi nell'unione. Esito: ok.
+- `tests/test_unit_voice_stt.py:311`: i test di instradamento di «forte» senza richiesta, parlato contro scritto, sono invariati dal merge. Esito: ok.
+
+Contesto (file non nel diff di sessione, verificati a HEAD):
+- `gas.py:4625`: il ramo `richiedi_sviluppo` e il suo schema in `gas.py:1232` arrivano da #307. Il diff staged su gas.py, modules/sviluppo, modules/gate, .github, i test gate/kernel/richieste, gas_identity.md e .gitignore è identico byte per byte a `git diff merge-base..origin/main`. La nostra parte non tocca nessuno di questi file. Esito: ok.
+- `modules/sviluppo/richieste.py:58`: `_http` con l'handler anti-redirect, file nuovo da main già revisionato in #557-#559-M1. È arrivato identico. Esito: ok.
+- `.github/workflows/ci.yml:105`: lo step «Run voice suite» lancia ancora test_unit_voice_server, stt e tts, e `.github/workflows/ci.yml:166` aggiunge la suite richieste. La suite voce non è sparita dalla CI. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1020`: le righe #557-M1, #558-M1 e #559-M1 di main sono in coda dopo il blocco #568-#572-M2. Il diff staged rispetto a HEAD era solo +6 righe, senza righe perse né duplicate (1017 + 6 = 1023). Esito: ok.
+- `reports/stato_progetto.md:4` e `reports/roadmap.md:282`: l'intestazione ha preso la versione M1 e /fine-task la riscriverà. La voce «Ponte Gas → sviluppo, strada A» è un solo hunk pulito. Esito: ok.
 
 Altri controlli:
-- Marcatori di conflitto: `git grep` sui marcatori di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`) e `git diff --cached --check` non trovano nulla.
-- Codice voce: `git diff origin/main` su modules/voice, clients/voice e test_unit_voice_*.py è identico al diff proprio della PR (merge-base..HEAD). Stesso stat: 4 file, +292/-16.
-- handoff.md, ultimo_report.md e diff_sessione.md: risolti con la nostra versione, quindi nessuna differenza staged rispetto a HEAD.
-- Test, rilanciati da me: suite voce (server, stt, tts) + richieste + gate = 966 passed in 27,97 s.
+- `git grep` sui marcatori di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`) e `git diff --cached --check` non trovano nulla.
+- handoff.md, ultimo_report.md e diff_sessione.md sono stati risolti con la nostra versione, quindi non c'è differenza staged rispetto a HEAD.
+- Ho rilanciato io le suite voce (server, stt, tts), richieste e gate: 966 passed in 27,97 s.
 
 Rischi che NON ho verificato:
-- Non ho rilanciato `tests/test_unit_kernel.py`. Il diff di gas.py è identico a quello di #307, già revisionato e verde sulla CI di main, ma l'unione col codice voce non l'ho provata a runtime: lo farà la CI della PR.
+- Non ho rilanciato `tests/test_unit_kernel.py`. Il diff di gas.py è identico a quello di #307, già verde sulla CI di main, ma l'unione col codice voce non l'ho provata a runtime: lo farà la CI della PR.
 - Non ho controllato il comportamento reale del ponte verso `Gasss23/Gas-richieste`: serve la rete e un token, ed è fuori dallo scopo di un merge.
-
-Riga contatore: ho scritto #573-M2 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`. `scripts/commit_memoria_revisore.sh` però non ha committato: con un merge in corso `git commit -o` fallisce, lo script se ne accorge e prosegue senza bloccare. Quindi la riga è solo nel working tree (stato `MM`). **Prima di committare il merge devi fare `git add .claude/agents/memoria_revisore.md`**, altrimenti la riga #573-M2 resta fuori dal commit. Dopo l'add il diff staged cambia, quindi `segna_review_ok.sh` va lanciato dopo l'add.
-
-NB (agente): fatto così — `git add` della memoria, poi `segna_review_ok.sh`, poi il commit 168a848.
 
 ## §5 DELTA TEST DEL MOTORE
 
@@ -257,7 +259,7 @@ gas.py non toccato. Voice suite (pytest, servizi finti): 113 → 120 test, `120 
 - 2dff07f (fine-task del primo giro): run CI 40967502095 (`unit-suite` e `handoff-check` success); check `verifica-bot` success — bot APPROVATA, verdetto APPROVATO CON RISERVE (V-1 BASSA chiusa in 691e8c0, V-2 COSMETICA lasciata com'è, vedi §1).
 - d8c8041, 5bf8eaa, 691e8c0: nessuna run su questi SHA (pushati insieme a 2f223ab).
 - 2f223ab (fine-task del secondo giro): run CI 40969002250 (`unit-suite` e `handoff-check` success); check `verifica-bot` success — bot APPROVATA, verdetto APPROVATO CON RISERVE (solo V-1 COSMETICA: «attesa massima N s» approssimata, vedi §7).
-- 168a848 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
+- 168a848 (merge di main), 278cb98 (report, prima versione col verdetto #573-M2 non accettato dal gate B, mai pushato da solo) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
