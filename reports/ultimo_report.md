@@ -1,24 +1,17 @@
-# ULTIMO REPORT — 2026-10-30 — Mani: gli invisibili citati dal bot come <U+XXXX> (fetta 30, chat Mani)
+# ULTIMO REPORT — 2026-10-30 — Mani: leggi_pagina solo verso le porte 80 e 443 (R6, fetta 31, chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #309 (numero nell'handoff §0). Tocca la macchina del bot (workflow, `scripts/bot_esito.py` e il suo test): il check `verifica-bot` sarà neutral e il merge lo decide l'operatore (anche tramite M1).
+1. Merge della PR #310 (numero nell'handoff §0): la faccio io solo con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore (anche tramite M1).
+2. Piano per il browser senza schermo («leggere il web in un ambiente chiuso», 8 punti) mandato a M1: aspetta il via dell'operatore prima di scrivere codice.
 
 ## Esito
-- **PR #306**: MERGIATA (95be7b1) dopo due merge di main (#307 di M1, #308 di M2), review #578 e #579 APPROVATO.
-- **Invisibili citati dal bot come <U+XXXX>** (via libera dell'operatore tramite M1): FATTA (PR #309). Nuova regola nel PROMPT di `.github/workflows/verifica-bot.yml`; il controllo di `bot_esito.py` resta severo.
-- **Review #580 (chat Mani)**: APPROVATO CON RISERVE. R-580-1 BASSA (nessun test sulla regola): FATTA — assert in `test_schema_coerente_con_lo_script`. R-580-2 BASSA (una gravità maiuscola nuda citata nella sezione FINDING dà ancora NO): DEFERITA — limite dichiarato. **Review #581**: APPROVATO.
-
-- **Bot su 7d57b26 (PR #309)**: APPROVATO CON RISERVE, check neutral. V-1 BASSA (l'assert non fissava «in qualunque campo»): FATTA in 0b7782a. V-2 COSMETICA («di controllo» comprende a capo e tab): FATTA — «a capo e tab restano normali».
-- **Verifica esterna su 7d57b26 (https://github.com/Gasss23/Gas/pull/309#issuecomment-6523271160)**: APPROVATO CON RISERVE. V-1 BASSA (una credenziale spezzata da una citazione «<U+200B>» non era riconosciuta, e il PROMPT spinge proprio verso quella forma): FATTA in 0b7782a — _senza_citazioni in contiene_segreti. V-2 COSMETICA (R-580-2 senza test): SALTATA — limite dichiarato. V-3 COSMETICA (test del gate con -I): SALTATA — già registrata (V-2 #306).
-- **Review #582 (chat Mani)**: APPROVATO CON RISERVE (R-582-1 BASSA: citazione annidata o lettera visibile citata non riconosciute; R-582-2 COSMETICA: l'assert del PROMPT a pezzi separati). Registrate in stato_progetto.
-
-- **Bot su 1eb83e4 (PR #309)**: APPROVATO CON RISERVE, check neutral. V-1 / V-2 COSMETICHE (ultimo_report e descrizione della PR non aggiornati): FATTA — descrizione aggiornata, ultimo_report corretto qui.
-- **Seconda verifica esterna su 1eb83e4 (https://github.com/Gasss23/Gas/pull/309#issuecomment-6523471996)**: APPROVATO CON RISERVE, nessun blocco tecnico. V-1 BASSA (ultimo_report e stato_progetto fermi a prima di 0b7782a): FATTA. V-2 COSMETICA (§6 incompleto su 0b7782a): FATTA. V-3 BASSA (= R-582-1, riprodotta, non regressione) e V-4 COSMETICA (= R-582-2): restano registrate.
+- **PR #309**: MERGIATA da M1 (4ffcd80). V-1 bot #309 BASSA (un verdetto che riporta alla lettera un caso di prova di credenziale spezzata da una citazione non viene pubblicato): FATTA — registrata come limite in stato_progetto.
+- **Porte 80 e 443** (decisione dell'operatore del 2026-10-22): FATTA (PR #310). `_valida_url` rifiuta ogni altra porta, anche dopo un redirect, prima di DNS e connessione.
+- **Review #583 (chat Mani)**: APPROVATO CON RISERVE. R-583-1 COSMETICA (a capo nel docstring): DEFERITA — da correggere alla prossima fetta su leggi.py.
+- **Piano del browser senza schermo**: FATTA — mandato a M1, nessun codice.
 
 ## Prove
-- YAML del workflow valido, 0 caratteri Cf nel file.
-- `tests/test_unit_verifica_bot.py`: 514 passed. Mutanti: regola cambiata in <U+YYYY> 1 failed; senza `_senza_citazioni` 4 failed.
-- Suite completa non rilanciata in locale: il diff tocca solo il bot (PROMPT, `contiene_segreti` in `scripts/bot_esito.py`) e il suo test; in CI `unit-suite` è success su 1eb83e4.
+- `tests/test_unit_web_*.py`: 632 passed, 2 skipped. Mutante senza il controllo: 11 failed.
 
 ## Anomalie
 - `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.
