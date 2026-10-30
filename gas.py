@@ -119,8 +119,9 @@ def _campo_pin(text: Any) -> str:
 
 _GAS_SYSTEM_PROMPT_BASE = (
     "REGOLE TASSATIVE:\n"
-    "- Hai 11 tool nativi: read_file, elenca_cartella, leggi_righe, cerca_testo, conta_file, "
-    "data_ora, write_file, calcola, ricorda, salva_contatto, imposta_stato_contatto. "
+    "- Hai 12 tool nativi: read_file, elenca_cartella, leggi_righe, cerca_testo, conta_file, "
+    "data_ora, write_file, calcola, ricorda, salva_contatto, imposta_stato_contatto, "
+    "richiedi_sviluppo. "
     "Invocali davvero e aspetta il risultato reale: non inventare, descrivere o simulare mai l'output.\n"
     "- Se un tool fallisce o viene negato dal kernel, DICHIARA esplicitamente che non puoi eseguire "
     "quell'operazione. Non simulare né inventare mai un output alternativo, qualunque sia il contesto.\n"
@@ -1228,6 +1229,7 @@ class GasKernel:
             {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate, le schede dei lead/contatti e la knowledge base di nozioni apprese. Usalo per ricordare cosa è già successo con un lead, cosa hai già fatto in passato, o per cercare conoscenze deliberatamente acquisite. Non scrive nulla. Per la cultura generale non è obbligatorio: se non trova nulla, rispondi con le tue conoscenze.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "parole da cercare nel diario e nella knowledge base; la ricerca è per parole/radici e ordinata per pertinenza (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}, "fermi": {"type": "boolean", "description": "true = elenca i lead attivi fermi da più tempo (dal più vecchio aggiornamento), con i giorni passati (opzionale)"}}, "required": []}}},
             {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
             {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}},
+            {"type": "function", "function": {"name": "richiedi_sviluppo", "description": "Passa alla squadra di sviluppo (Claude Code) una richiesta di modifica a Gas: nuove funzioni, correzioni, migliorie. Usalo solo quando l'operatore lo chiede esplicitamente. PRIMA chiarisci con lui cosa vuole: se la richiesta è vaga o ha più letture, fai domande e usa lo strumento solo quando è chiara. Scrivi un titolo breve e una descrizione completa: obiettivo, cosa deve succedere, esempi, cosa NON fare. Non mettere segreti (chiavi, password). Non tocca il codice: la squadra lavora con revisore, test e le firme dell'operatore.", "parameters": {"type": "object", "properties": {"titolo": {"type": "string", "description": "titolo breve (max 120 caratteri)"}, "descrizione": {"type": "string", "description": "richiesta completa e chiara (max 4000 caratteri)"}}, "required": ["titolo", "descrizione"]}}},
             {"type": "function", "function": {"name": "calcola", "description": "Valuta un'espressione aritmetica pura (+ - * / // % **) e funzioni math (sqrt, floor, ceil, log, log2, log10, sin, cos, tan, fabs, factorial) e costanti (math.pi, math.e). ZERO accesso a shell o file. Usalo per qualsiasi calcolo numerico preciso.", "parameters": {"type": "object", "properties": {"expr": {"type": "string", "description": "espressione aritmetica, es. '7*8', 'math.sqrt(144)', '(3+5)*2'"}}, "required": ["expr"]}}}
         ]
         # FETTA 1 PR B: allowlist vuota → run_command non offerto al modello.
@@ -2011,6 +2013,7 @@ class GasKernel:
         ".gas_memory", ".gas_history", ".gas_vectors",
         ".gas_tokens", ".gas_knowledge",
         ".gas_claude_cli_uso",  # V-1 bot #258: il conto del tetto del forte
+        ".gas_richieste_uso",  # V-1 bot #307: il conto del tetto delle richieste
         "gas_history",  # undotted: LLM hallucination variants
     )
 
@@ -4619,6 +4622,12 @@ class GasKernel:
             elif name == "calcola":
                 expr = args.get("expr", "") if isinstance(args, dict) else str(args)
                 out = _calcola(expr)
+            elif name == "richiedi_sviluppo":
+                # Ponte voce → sviluppo (R8, strada A): issue in un repo PRIVATO,
+                # codice fidato del kernel; niente FS fuori dal conto, niente shell.
+                from modules.sviluppo import crea_richiesta
+                a = args if isinstance(args, dict) else {}
+                out = crea_richiesta(a.get("titolo"), a.get("descrizione"), self.root)
             else:
                 # unisci_contatti NON è più un tool autopilot: il merge di lead è
                 # mutante e irreversibile (lossy), quindi è MANUTENZIONE UMANA e non

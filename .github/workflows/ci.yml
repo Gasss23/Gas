@@ -163,6 +163,13 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_dotenv.py -v 2>&1 | tee "$RUNNER_TEMP/dotenv_output.txt"
 
+      - name: Run richieste suite (pytest, zero token LLM)
+        # Ponte voce → sviluppo (R8, strada A, 2026-10-29): issue in un repo privato, HTTP finto.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_richieste.py -v 2>&1 | tee "$RUNNER_TEMP/richieste_output.txt"
+
       - name: Run claude-cli suite (pytest, zero token LLM)
         # R2 via B (2026-10-23): adattatore `claude -p` con runner finto, nessun processo vero.
         if: always()
