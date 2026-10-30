@@ -813,7 +813,7 @@ def test_v3_browser_proxy_config_e_finestra(monkeypatch, capsys):
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
     try:
         with _SENZA_PROXY.open(f"http://127.0.0.1:{proxy.server_address[1]}/config", timeout=5) as r:
-            assert json.loads(r.read()) == {"finestra": 7.5}
+            assert json.loads(r.read()) == {"finestra": 7.5, "max_turni": 5}
     finally:
         proxy.shutdown()
         proxy.server_close()
@@ -830,6 +830,11 @@ def test_v3_browser_proxy_config_e_finestra(monkeypatch, capsys):
         monkeypatch.setenv("GAS_VOICE_FINESTRA", sbagliata)
         assert bs.run_browser_server() == 1
         assert "GAS_VOICE_FINESTRA" in capsys.readouterr().out
+    monkeypatch.delenv("GAS_VOICE_FINESTRA")
+    for sbagliato in ("abc", "0", "51", "2.5"):   # V-1 bot #311
+        monkeypatch.setenv("GAS_VOICE_MAX_TURNI", sbagliato)
+        assert bs.run_browser_server() == 1
+        assert "GAS_VOICE_MAX_TURNI" in capsys.readouterr().out
 
 
 def _wav(percorso, pezzi, rate=16000):
@@ -889,9 +894,10 @@ const { chromium } = require('playwright');
                                null, { timeout: 25000 });
     await page.evaluate(() => document.getElementById('player').pause());
   }
-  await page.waitForFunction(
-    () => document.getElementById('status').textContent.includes('conversazione chiusa'),
-    null, { timeout: 25000 });
+  await page.waitForFunction(() => {
+    const t = document.getElementById('status').textContent;
+    return t.includes('conversazione chiusa') || t.includes('non riproducibile');
+  }, null, { timeout: 25000 });
   await page.waitForTimeout(3000);   // niente turni né errori dopo la chiusura
   const stati = await page.evaluate(() => window.__stati);
   const testo = await page.textContent('#testo');
@@ -905,7 +911,7 @@ const { chromium } = require('playwright');
 """
 
 
-@pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa"])
+@pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa", "tetto", "errore"])
 def test_v3_conversazione_nel_browser(tmp_path, modo):
     """Giro completo nella pagina vera (Chromium headless, microfono finto da file):
     clic → la frase parte da sola alla fine della voce (nessun secondo clic) → «ci sto
@@ -923,7 +929,8 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     _wav(microfono, [(0.8, 0), (1.5, 0.4), (6, 0)])
     risposta = tmp_path / "risposta.wav"
     _wav(risposta, [(2.0 if modo == "pausa" else 0.4, 0.2)])
-    audio_b64 = base64.b64encode(risposta.read_bytes()).decode()
+    audio_b64 = base64.b64encode(
+        b"non-audio" * 50 if modo == "errore" else risposta.read_bytes()).decode()
     ricevute = []
 
     from http.server import BaseHTTPRequestHandler
@@ -955,6 +962,7 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     _Proxy.voice_host = "127.0.0.1"
     _Proxy.voice_port = voce.server_address[1]
     _Proxy.finestra = 2
+    _Proxy.max_turni = 1 if modo == "tetto" else 5
     proxy = bs.ThreadingHTTPServer(("127.0.0.1", 0), _Proxy)
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
     guida = tmp_path / "guida.js"
@@ -978,9 +986,19 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     assert testo == "Sì, meglio così. Procedo?"
     assert any("parli" in s for s in stati), stati
     assert any("ci sto ragionando" in s for s in stati), stati
+    if modo == "errore":
+        # R-576-2-M2: audio rotto → turno chiuso, testo a schermo, niente riapertura
+        assert "non riproducibile" in stati[-1], stati
+        assert not any("ti ascolto" in s for s in stati[stati.index(next(s for s in stati if "ragionando" in s)):]), stati
+        return
     assert any("Gas parla" in s for s in stati), stati
     # dopo la risposta la finestra si riapre da sola, poi si chiude per silenzio
     i_parla = max(i for i, s in enumerate(stati) if "Gas parla" in s)
+    if modo == "tetto":
+        # V-1 bot #311: col tetto a 1 la finestra non si riapre dopo la risposta
+        assert "turni di fila" in stati[-1], stati
+        assert not any("ti ascolto" in s for s in stati[i_parla:]), stati
+        return
     if modo == "pausa":
         assert any("risposta in pausa" in s for s in stati[i_parla:]), stati
         assert not any("ti ascolto" in s for s in stati[i_parla:]), stati

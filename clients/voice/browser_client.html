@@ -311,6 +311,10 @@ const CFG = {
   maxFraseS: 60,        // tetto di una frase
   sogliaMin: 0.015,     // volume minimo (RMS) che conta come voce
   attesaMs: 2000,       // dopo quanto Gas dice la frase d'attesa
+  // V-1 bot #311 / R-577-1-M2: voce continua minima per contare come frase. 250 ms
+  // fa passare un «sì» secco; contro il rumore di fondo c'è il tetto dei turni.
+  voceMinMs: 250,
+  maxTurni: 5,          // turni di fila (il primo è quello del clic), poi serve un clic
 };
 const FRASI_ATTESA = ["Ci sto ragionando.", "Un attimo.", "Fammi pensare un secondo."];
 
@@ -329,6 +333,7 @@ let ascolto = null;      // stato dell'ascolto in corso (timer, fasi)
 let occupato = false;    // invio o riproduzione in corso
 let numTurno = 0;        // R-574-1-M2: solo la riproduzione del turno corrente riapre l'ascolto
 let apertura = null;     // R-574-3-M2: una sola richiesta del microfono alla volta
+let turniDiFila = 0;     // V-1 bot #311: turni partiti senza un nuovo clic
 
 function setStatus(msg, isError = false, isLive = false) {
   statusEl.textContent = msg;
@@ -432,6 +437,7 @@ async function ascolta() {
   recorder.onstop = () => {
     setRecordingUI(false);
     if (scarta) return;
+    turniDiFila += 1;
     invia(new Blob(chunks, { type: tipo }), tipo.split(";")[0]);
   };
   recorder.start(250);
@@ -452,7 +458,7 @@ async function ascolta() {
     if (v > soglia) {
       ultimaVoce = ora;
       if (voceDa === null) voceDa = ora;
-      if (!parlando && ora - voceDa > 150) { parlando = true; setStatus("● parli…", false, true); }
+      if (!parlando && ora - voceDa > CFG.voceMinMs) { parlando = true; setStatus("● parli…", false, true); }
     } else if (!parlando) {
       voceDa = null;
     }
@@ -534,16 +540,24 @@ async function invia(blob, contentType) {
   setStatus(`Gas parla · ${secondi}s`, false, true);
   const turno = ++numTurno;
   player.onended = () => {          // una volta sola: un riascolto non riapre niente
-    player.onended = player.onpause = null;
+    player.onended = player.onpause = player.onerror = null;
     if (turno !== numTurno) return;
     occupato = false;
     dopoRisposta("pronto");
+  };
+  // R-576-2-M2: audio rotto a metà (nessun «ended» né «pause») → turno chiuso, tasto libero
+  player.onerror = () => {
+    player.onended = player.onpause = player.onerror = null;
+    if (turno !== numTurno) return;
+    occupato = false;
+    chiudiConversazione(false);
+    setStatus("audio della risposta non riproducibile · il testo è a schermo", true);
   };
   // R-575-1-M2: pausa dai controlli del player → turno finito, conversazione chiusa
   // (un riascolto dopo non riapre niente: i gestori valgono una volta sola)
   player.onpause = () => {
     if (player.ended) return;       // la fine arriva anche come pausa: ci pensa onended
-    player.onended = player.onpause = null;
+    player.onended = player.onpause = player.onerror = null;
     if (turno !== numTurno) return;
     occupato = false;
     chiudiConversazione(false);
@@ -553,9 +567,10 @@ async function invia(blob, contentType) {
     await player.play();
   } catch (_) {
     if (turno !== numTurno || !occupato) return;   // turno già chiuso (es. pausa subito)
+    if (player.error) { player.onerror(); return; }   // audio rotto, non autoplay negato
     // R-574-3-M2: senza riproduzione automatica la conversazione si chiude e il
     // microfono si spegne; la risposta resta da ascoltare col tasto play.
-    player.onended = player.onpause = null;
+    player.onended = player.onpause = player.onerror = null;
     occupato = false;
     chiudiConversazione(false);
     chiudiMicrofono();
@@ -573,6 +588,13 @@ function fineTurno(timerAttesa, errore) {
 }
 
 function dopoRisposta(msg) {
+  // V-1 bot #311: un rumore continuo (TV, altre persone) non può far partire turni
+  // all'infinito: dopo maxTurni di fila senza un clic la conversazione si chiude.
+  if (conversazione && turniDiFila >= CFG.maxTurni) {
+    chiudiConversazione(false);
+    setStatus(`conversazione chiusa dopo ${CFG.maxTurni} turni di fila · space per continuare`);
+    return;
+  }
   if (conversazione) { ascolta(); return; }   // la finestra si riapre da sola
   chiudiMicrofono();
   setStatus(msg);
@@ -583,6 +605,7 @@ btn.addEventListener("click", async () => {
   if (recorder && recorder.state === "recording") { recorder.stop(); setStatus("elaborazione…"); return; }
   if (occupato) return;
   conversazione = convEl.checked;
+  turniDiFila = 0;   // un clic è il «sì, continua» dell'operatore
   if (conversazione) { btnWrap.classList.add("conv"); bip(880, 0.08); }
   await ascolta();
 });
@@ -597,5 +620,6 @@ document.addEventListener("keydown", e => {
 // Configurazione dal proxy (GAS_VOICE_FINESTRA): se manca restano i valori di default.
 fetch("/config").then(r => r.ok ? r.json() : {}).then(c => {
   if (Number.isFinite(c.finestra) && c.finestra > 0) CFG.finestraS = c.finestra;
+  if (Number.isInteger(c.max_turni) && c.max_turni > 0) CFG.maxTurni = c.max_turni;
 }).catch(() => {});
 </script>
