@@ -20,21 +20,23 @@
 - **Verifica esterna su 6ebecba (https://github.com/Gasss23/Gas/pull/312#issuecomment-6529640125)**: APPROVATO CON RISERVE, nessun bypass dei filtri. V-1 BASSA (§6 diceva «nessuna run»: c'era la run 41100200600 su 07ea587, con handoff-check rosso intermedio): `FATTA` — §6 corretto qui. V-2 BASSA (PR in conflitto con main dopo #311): `FATTA` — merge di main 1e8aff8, review #588. V-3 BASSA (client muto tenuto 10 s invece della scadenza del proxy, mutante sopravvissuto): `FATTA` — test nuovo, review #589. V-4 COSMETICA (controllo `porta != 443` irraggiungibile, difesa in profondità): `SALTATA — voluto`.
 - **Check `smista` del bot su 6ebecba**: failure, con la PR in conflitto con main; superato dal merge di main.
 - **Merge di origin/main 1e8aff8 (PR #311 di M2, voce V3)**: `FATTA` — conflitti solo nei report e nella memoria. Review #588 (chat Mani) APPROVATO CON RISERVE (R-588-1: conteggi dell'handoff, rifatti qui). Review #589 APPROVATO (test V-3).
+- **Bot su eea0ea0 (PR #312)**: APPROVATO CON RISERVE, check success. V-1 BASSA (a tetto dei byte superato, una richiesta nuova usciva ancora con URL e intestazioni): `FATTA` in b838f4d. V-2 BASSA (invii con timeout propri, oltre la scadenza del proxy): `FATTA` in b838f4d. V-3 COSMETICA (conteggi dei test nella descrizione): `FATTA` — descrizione e §5 aggiornati. V-4 COSMETICA (hop-by-hop nominati in «Connection» non tolti; non è un bypass): `DEFERITA — registrata`.
+- **Review #590 (chat Mani)**: APPROVATO CON RISERVE (R-590-1 COSMETICA motivo del timeout, R-590-2 BASSA testa contata dopo l'apertura): `FATTA` tutte e due. **Review #591**: APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
- modules/web/proxy.py               | 308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  18 +++++++++---------
+ .claude/agents/memoria_revisore.md |  10 +++++++++
+ modules/web/proxy.py               | 326 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  18 ++++++++--------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  30 ++++++++++++------------------
- tests/test_unit_web_leggi.py       |  13 +++++++++++++
- tests/test_unit_web_proxy.py       | 343 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  31 +++++++++++++--------------
+ tests/test_unit_web_leggi.py       |  13 ++++++++++++
+ tests/test_unit_web_proxy.py       | 411 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: base = merge-base con origin/main = 1e8aff8. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -42,6 +44,10 @@ NB: base = merge-base con origin/main = 1e8aff8. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b838f4d fix(web): proxy, a tetto dei byte superato nessuna richiesta esce; invii fino alla scadenza (V-1/V-2 bot #312, chat Mani)
+2f84376 chore(revisore): memoria review #591 — APPROVATO
+a5c92e4 chore(revisore): memoria review #590 — APPROVATO CON RISERVE
+eea0ea0 docs(fine-task): PR #312 dopo la verifica esterna su 6ebecba, merge di main (#311), review #588/#589
 d2a10d5 test(web): client muto chiuso alla scadenza del proxy (V-3 verifica esterna #312, chat Mani)
 3fe0c43 chore(revisore): memoria review #589 — APPROVATO
 eb6c01c Merge origin/main (1e8aff8, PR #311 di M2) in claude/peaceful-lovelace-0w2b7q (PR #312)
@@ -238,19 +244,101 @@ Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (solo le parti 
 - Il test resta in stage e non l'ho toccato, quindi lo SHA del diff revisionato non cambia.
 ```
 
+Commit b838f4d (modules/web/proxy.py, tests/test_unit_web_proxy.py: V-1/V-2 bot su eea0ea0). Verdetto integrale della review #590 (chat Mani), sul primo giro:
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #590 (chat Mani). Riguarda il diff staged nel branch claude/peaceful-lovelace-0w2b7q (PR #312, base eea0ea0), con sha256 ab2570af. L'ho provato su un export dell'index in /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/exp. Le letture obbligatorie sono fatte: CLAUDE.md §5/§8/§9, stato_progetto.md (testa e parte proxy), memoria_revisore.md (lezioni sul proxy #585–#589, compresa quella sul settimeout che resta sul socket).
+
+**Elementi del diff esaminati**
+
+- `modules/web/proxy.py:300` — Se `self.byte >= self.max_byte`, `_conta_richiesta` rifiuta «troppi byte» prima di `_apri`.
+  - Rischio esaminato: la richiesta nuova esce lo stesso quando il tetto è già pieno.
+  - Esito: ok. Il test `tests/test_unit_web_proxy.py:240` (`connessi == 1`, 403 «troppi byte») fallisce se tolgo il controllo: 1 failed.
+- `modules/web/proxy.py:171` — La testa inoltrata entra nel conteggio dei byte prima di `_invia`.
+  - Rischio esaminato: un falso «troppi byte» nel caso normale.
+  - Esito: ok. La testa al massimo è circa 16 KB contro un tetto di 20 MB, e scatta solo vicino al tetto. Il test esatto `tests/test_unit_web_proxy.py:251` fallisce se la testa non viene contata: 1 failed.
+  - Sonda «testa al limite»: con byte < tetto < byte+testa l'origine non riceve la seconda testa (1 richiesta all'origine). A HEAD la riceveva (2).
+- `modules/web/proxy.py:274` — `_invia` usa `settimeout(min(TIMEOUT_INATTIVITA, rimasto))` e trasforma il timeout in «connessione inattiva». Se la scadenza è già passata, rifiuta subito.
+  - Rischio esaminato (la tua domanda): un client lento ma legittimo. Il timeout impostato sul client resta anche per il recv di `_pompa`, ma lì il recv parte solo dopo che `select` dice che ci sono dati (`modules/web/proxy.py:264`), quindi non blocca. `sendall`, da Python 3.5, ha un tempo totale: lo stesso valore che aveva prima (10 s), ora solo ridotto alla scadenza.
+  - Sonda con socket veri, client lento nel tunnel (100 ms fra un pezzo e l'altro): 120000/120000 byte in 3,01 s, 0 rifiuti → ok.
+  - Sonda con un client che non legge nel tunnel e durata 2,5 s: chiuso a 2,51 s. A HEAD: 10,23 s, poi ConnectionResetError → la correzione funziona.
+  - Il mutante senza `min(…, rimasto)` fa fallire `tests/test_unit_web_proxy.py:350` (1 failed).
+- `tests/test_unit_web_proxy.py:350` — Il test usa un socket finto che non legge. È un sostituto di test, non una simulazione di output di tool (§5) → ok.
+
+**Riserve (da tracciare in stato_progetto.md)**
+
+- **R-590-1 (COSMETICA)**: `_invia` (`modules/web/proxy.py:282`) scrive «connessione inattiva» anche quando a chiudere è la scadenza del proxy. Nella sonda del tunnel risultava `rifiuti == ['connessione inattiva']` a 2,51 s con durata 2,5 s. Il test `tests/test_unit_web_proxy.py:368` lo rende definitivo.
+  - Rimedio: scegliere il motivo come fa `_leggi_richiesta` (`modules/web/proxy.py:204`), cioè «tempo massimo del proxy superato» quando ha vinto `rimasto`.
+- **R-590-2 (BASSA)**: la testa viene contata DOPO `_apri` (`modules/web/proxy.py:161`). Nel caso byte < tetto < byte+testa il proxy risolve il DNS e apre la connessione TCP verso l'host (sonda: `connessi == 2`), senza mandare URL né intestazioni.
+  - Rimedio: host e porta sono già noti prima di `_apri`, quindi si possono costruire e contare la testa prima di aprire. URL e intestazioni non escono più: V-1 è chiusa nella sostanza.
+
+**Altre verifiche**
+
+- §9: OSError e BrokenPipe in `_invia` arrivano all'`except Exception` di `_gestisci` (`modules/web/proxy.py:135`), che logga e risponde 502 se non ha ancora risposto. Il proxy non va mai in crash.
+- Wall of Shame: nessuno slicing della history, nessuna simulazione di tool. Il motore (gas.py, brains/) non è toccato.
+
+**Prove**
+
+- Proxy: 53 passed, ripetuto 3 volte.
+- Web (`-k web`): 690 passed, 2 skipped.
+- I 3 mutanti dichiarati (tetto senza min, testa non contata, niente controllo in `_conta_richiesta`) danno 1 failed ciascuno.
+
+**Rischio escluso**: non ho verificato il comportamento con un browser vero senza schermo e un sito reale in TLS (la fetta del browser non esiste ancora e qui non c'è rete vera). Ho provato solo con i server finti locali dei test, il fake DNS e il connettore finto. Non ho nemmeno verificato le note V-3 e V-4 del bot, che dichiari di sistemare nei report.
+
+**Memoria**: riga #590 e una lezione nuova (motivo di un timeout min(inattività, scadenza); contare i costi prima di aprire la connessione) aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md e committate da sole (a5c92e4). Il diff staged sotto review è rimasto intatto.
+
+File: /home/user/Gas/modules/web/proxy.py, /home/user/Gas/tests/test_unit_web_proxy.py, sonda /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/sonde/test_sonda590.py
+```
+
+Verdetto integrale della review #591 (chat Mani), sul diff finale del commit b838f4d:
+
+```
+## VERDETTO: APPROVATO
+
+Review #591 (chat Mani), ri-review della #590 sul diff staged (sha256 13326b37), PR #312, branch claude/peaceful-lovelace-0w2b7q. Ho fatto le prove su un export dell'index; il diff staged non l'ho toccato.
+
+**Elementi del diff esaminati**
+
+- `modules/web/proxy.py:170` — Il proxy costruisce la testa e la conta prima di `_apri` (`modules/web/proxy.py:171`). Rischio esaminato: con un tetto sforato si apre lo stesso la connessione verso l'host. Esito: ok.
+  - Nella sonda «testa al limite» (byte < tetto < byte+testa) ora `connessi == 1` e l'origine riceve 1 richiesta. Nella #590 erano 2 connessioni.
+  - Il mutante con il conteggio rimesso dopo `_apri` dà 1 failed. Lo cattura `tests/test_unit_web_proxy.py:350` (`max_byte=40`, 403 «troppi byte», `connessi == []`).
+- `modules/web/proxy.py:284` — Il motivo del rifiuto ora dice chi ha chiuso: «tempo massimo del proxy superato» se `rimasto < TIMEOUT_INATTIVITA`, altrimenti «connessione inattiva». Rischio esaminato: il registro dei rifiuti dice il falso, come in R-590-1. Esito: ok.
+  - Nella sonda con socket veri, un client che non legge nel tunnel con durata 2,5 s viene chiuso a 2,51 s con `rifiuti == ['tempo massimo del proxy superato']`.
+  - Ho provato il mutante del motivo in tutti e due i sensi: 1 failed ciascuno. I test che li prendono sono `test_invio_bloccato_si_ferma_alla_scadenza` e `test_invio_bloccato_inattivo`, che usa `TIMEOUT_INATTIVITA` = 0,3 con monkeypatch. `_invia` legge il valore globale del modulo, quindi la patch ha effetto.
+- `modules/web/proxy.py:280` — `settimeout(min(…))` è invariato rispetto alla #590. Ho rifatto la sonda del client lento ma legittimo nel tunnel: 120000/120000 byte in 3,01 s, 0 rifiuti. Il recv di `_pompa` parte solo dopo `select`. Esito: ok.
+- §9: un rifiuto per «troppi byte» prima di `_apri` arriva a `_gestisci` con `risposto` ancora False, quindi il browser riceve un 403 col motivo. Nessuna eccezione esce dal proxy.
+
+**Prove**
+
+- Proxy: 55 passed, ripetuto 3 volte.
+- Web (`-k web`): 692 passed, 2 skipped. Tu riporti 691: la differenza viene dal filtro `-k`.
+
+**Nota non bloccante**: ora la testa si conta prima di `_apri`, quindi consuma budget anche quando `_apri` poi rifiuta (DNS fallito, indirizzo interno). Si tratta al massimo di circa 16 KB per richiesta. Va nella direzione prudente, quindi non apro una riserva.
+
+**Rischio escluso**: non ho verificato il comportamento con un browser senza schermo vero e un sito TLS reale. Qui non c'è rete vera e la fetta del browser non esiste ancora: ho provato solo con i server finti locali dei test.
+
+**Memoria**: ho aggiunto la riga #591 (nessuna lezione nuova) a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (2f84376).
+
+File: /home/user/Gas/modules/web/proxy.py, /home/user/Gas/tests/test_unit_web_proxy.py, sonda /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/sonde/test_sonda590.py
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_proxy.py`: 51 test. `tests/test_unit_web_leggi.py`: `test_https_sulla_porta_80`. Web 687 passed, 2 skipped. Suite completa in locale (Python 3.13), prima del merge di main: `2779 passed, 2 skipped in 220.09s`; dopo il merge (review #588): web e voce 815 passed, 2 skipped; kernel 1062 PASS / 1 FAIL (T31g, GAS_VECTORS, identico su main: dipende dall'ambiente). Mutanti presi: IP interni, tunnel su ogni porta e «:80/:443», upgrade, metodi, tetto dei byte, https in chiaro, Proxy-*, tempo della testa, `ferma()`, timeout rimasto.
+Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_proxy.py`: 55 test. Web 691 passed, 2 skipped (692 con `-k web`). `tests/test_unit_web_leggi.py`: `test_https_sulla_porta_80`. Web 687 passed, 2 skipped. Suite completa in locale (Python 3.13), prima del merge di main: `2779 passed, 2 skipped in 220.09s`; dopo il merge (review #588): web e voce 815 passed, 2 skipped; kernel 1062 PASS / 1 FAIL (T31g, GAS_VECTORS, identico su main: dipende dall'ambiente). Mutanti presi: IP interni, tunnel su ogni porta e «:80/:443», upgrade, metodi, tetto dei byte, https in chiaro, Proxy-*, tempo della testa, `ferma()`, timeout rimasto.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 8339cf0, 87d0777, 1b0cce6 (memoria del revisore) e 07ea587: pushati insieme prima dell'apertura della PR #312. Run push 41100200600 su 07ea587: `handoff-check` failure (intermedio: l'handoff non era ancora nel diff), superato dal commit di fine-task.
 - 6ebecba (fine-task): run 41100831063 ancora in coda alla verifica esterna; check `smista` del bot failure con la PR in conflitto con main.
-- eb6c01c (merge di main), 3fe0c43 (memoria del revisore), d2a10d5 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- eb6c01c (merge di main), 3fe0c43 (memoria del revisore), d2a10d5 ed eea0ea0 (fine-task): CI verde su eea0ea0 (check suite completata senza fallimenti); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (vedi §1).
+- a5c92e4, 2f84376 (memoria del revisore), b838f4d e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- V-4 bot #312 COSMETICA: le intestazioni hop-by-hop nominate dentro «Connection» non vengono tolte (non è un bypass: Upgrade è rifiutato a parte e la testa è ricostruita).
 - R-585-4 (chat Mani) BASSA, per la fetta del browser: i confini della risposta non sono controllati (riuso della connessione da verificare con Chromium).
 - R-585-5 (chat Mani) BASSA, per la fetta del browser: Chromium salta il proxy per il loopback; servono `--proxy-bypass-list=<-loopback>` e QUIC, WebRTC e prefetch spenti.
 - Limiti dichiarati del proxy: filtra le destinazioni, non i dati; niente autenticazione per gli altri processi locali.

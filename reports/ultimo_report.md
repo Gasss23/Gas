@@ -12,8 +12,11 @@
 
 - **Verifica esterna su 6ebecba (https://github.com/Gasss23/Gas/pull/312#issuecomment-6529640125)**: APPROVATO CON RISERVE, nessun bypass dei filtri. V-1 BASSA (§6 dell'handoff inesatto): FATTA. V-2 BASSA (PR in conflitto con main): FATTA — merge di main 1e8aff8, review #588 APPROVATO CON RISERVE. V-3 BASSA (client muto tenuto 10 s): FATTA — test nuovo, review #589 APPROVATO. V-4 COSMETICA (controllo irraggiungibile, difesa in profondità): SALTATA — voluto.
 
+- **Bot su eea0ea0 (PR #312)**: APPROVATO CON RISERVE, check success. V-1 BASSA (a tetto dei byte superato, una richiesta nuova usciva ancora con URL e intestazioni): FATTA in b838f4d. V-2 BASSA (invii con timeout propri, oltre la scadenza del proxy): FATTA in b838f4d. V-3 COSMETICA (conteggi dei test nella descrizione): FATTA — descrizione e §5 aggiornati. V-4 COSMETICA (hop-by-hop nominati in «Connection» non tolti; non è un bypass): DEFERITA — registrata.
+- **Review #590 (chat Mani)**: APPROVATO CON RISERVE (R-590-1 COSMETICA motivo del timeout, R-590-2 BASSA testa contata dopo l'apertura): FATTA tutte e due. **Review #591**: APPROVATO.
+
 ## Prove
-- `tests/test_unit_web_proxy.py`: 51 passed (più run di fila). Web e voce dopo il merge di main: 815 passed, 2 skipped (review #588).
+- `tests/test_unit_web_proxy.py`: 55 passed (più run di fila); web 691 passed, 2 skipped. Web e voce dopo il merge di main: 815 passed, 2 skipped (review #588).
 - Mutanti presi: IP interni, tunnel su ogni porta e «:80/:443», upgrade, metodi, tetto dei byte, https in chiaro, Proxy-*, tempo della testa, `ferma()`, timeout rimasto.
 
 ## Anomalie
