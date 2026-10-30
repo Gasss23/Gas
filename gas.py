@@ -4648,7 +4648,10 @@ class GasKernel:
             return f"Errore eseguendo {name}: {str(e)}"
 
     def run_turn(self, user_prompt: str,
-                 cervello: Optional[str] = None) -> Generator[Dict[str, Any], None, None]:
+                 cervello: Optional[str] = None,
+                 istruzione_turno: Optional[str] = None) -> Generator[Dict[str, Any], None, None]:
+        # V3 voce (chat M2): `istruzione_turno` vale SOLO per questo turno: va in coda al
+        # messaggio system (come i pin), fuori dalla finestra e dalla cronologia.
         # --- Fetta 1 auto-apprendimento: tracking per turno_fine ---
         _turno_id = str(uuid.uuid4())
         _turno_tool_n = 0
@@ -4720,6 +4723,7 @@ class GasKernel:
             mem_pin = self._memoria_pin()
             lezioni_pin = self._lezioni_pin()
             recap_pin = self._recap_pin(user_prompt)  # FASE 2.6: recap fidato pertinente, come DATO
+            turno_pin = f"\n\n{istruzione_turno.strip()}" if (istruzione_turno or "").strip() else ""
 
             # Backup automatico THROTTLED del DB di memoria (anti auto-corruzione):
             # una volta per turno valuta se è ora di una copia coerente; il throttling
@@ -4784,7 +4788,7 @@ class GasKernel:
                         # V-1 bot #222: conta anche il pin che mostra dati non fidati.
                         _finestra_contaminata = (self._finestra_e_contaminata(_window)
                                                  or getattr(self, "_pin_non_fidato", False))
-                        payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin + recap_pin}] + _window
+                        payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin + recap_pin + turno_pin}] + _window
                         # FETTA 1 (chiude F2): budget ricontrollato prima di OGNI chiamata,
                         # non solo a inizio turno. Superato a metà turno → il turno si
                         # ferma DICHIARATO (niente fallback: il tetto vale per tutti i

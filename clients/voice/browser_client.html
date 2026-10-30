@@ -196,7 +196,7 @@ body {
 /* ─── Audio player ─── */
 #player-wrap {
   width: 100%;
-  max-width: 300px;
+  max-width: 520px;
   border-top: 1px solid var(--border);
   padding-top: 20px;
   display: flex;
@@ -229,6 +229,26 @@ audio {
   opacity: 0.6;
   user-select: none;
 }
+
+/* ─── V3: conversazione ─── */
+.conv-toggle {
+  font-size: 0.7rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 28px;
+  user-select: none;
+}
+.conv-toggle input { accent-color: var(--accent); }
+#testo {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+#testo:empty { display: none; }
 </style>
 
 <div class="wordmark">
@@ -255,32 +275,60 @@ audio {
 
 <p id="status" role="status" aria-live="polite">pronto</p>
 
+<label class="conv-toggle">
+  <input type="checkbox" id="conv" checked>
+  conversazione continua
+</label>
+
 <div id="player-wrap" hidden>
   <p class="player-label">risposta</p>
+  <p id="testo" aria-live="polite"></p>
   <audio id="player" controls></audio>
 </div>
 
-<p class="hint" id="hint">space per registrare</p>
+<p class="hint" id="hint">space per parlare</p>
 
 <script>
 "use strict";
 
-const btnWrap  = document.getElementById("btn-wrap");
-const btn      = document.getElementById("btn-record");
-const statusEl = document.getElementById("status");
-const playerWrap = document.getElementById("player-wrap");
-const player   = document.getElementById("player");
-const hint     = document.getElementById("hint");
+// V3 (chat M2) — «conversazione filata»: dopo la risposta il microfono resta aperto
+// per FINESTRA secondi; se parli il turno parte da solo (fine frase = silenzio), se
+// resti zitto la conversazione si chiude con un bip. Dopo ~2 s senza risposta il
+// browser dice una frase d'attesa con la voce di sistema (gratis, immediata).
 
-// Feature check
+const btnWrap    = document.getElementById("btn-wrap");
+const btn        = document.getElementById("btn-record");
+const statusEl   = document.getElementById("status");
+const playerWrap = document.getElementById("player-wrap");
+const player     = document.getElementById("player");
+const testoEl    = document.getElementById("testo");
+const hint       = document.getElementById("hint");
+const convEl     = document.getElementById("conv");
+
+const CFG = {
+  finestraS: 12,        // secondi di microfono aperto aspettando che tu parli
+  silenzioMs: 1200,     // silenzio che chiude la frase
+  maxFraseS: 60,        // tetto di una frase
+  sogliaMin: 0.015,     // volume minimo (RMS) che conta come voce
+  attesaMs: 2000,       // dopo quanto Gas dice la frase d'attesa
+};
+const FRASI_ATTESA = ["Ci sto ragionando.", "Un attimo.", "Fammi pensare un secondo."];
+
 if (!window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) {
   setStatus("browser non supportato: serve getUserMedia + MediaRecorder", true);
   btn.disabled = true;
 }
 
+let stream = null;       // un solo flusso del microfono per tutta la conversazione
+let audioCtx = null;
+let analyser = null;
 let recorder = null;
-let chunks   = [];
-let stream   = null;
+let chunks = [];
+let conversazione = false;
+let ascolto = null;      // stato dell'ascolto in corso (timer, fasi)
+let occupato = false;    // invio o riproduzione in corso
+let numTurno = 0;        // R-574-1-M2: solo la riproduzione del turno corrente riapre l'ascolto
+let apertura = null;     // R-574-3-M2: una sola richiesta del microfono alla volta
 
 function setStatus(msg, isError = false, isLive = false) {
   statusEl.textContent = msg;
@@ -288,162 +336,266 @@ function setStatus(msg, isError = false, isLive = false) {
 }
 
 function setRecordingUI(active) {
-  if (active) {
-    btnWrap.classList.add("recording");
-    btn.setAttribute("aria-pressed", "true");
-    btn.setAttribute("aria-label", "Stop e invia");
-    hint.textContent = "clicca per fermare";
-  } else {
-    btnWrap.classList.remove("recording");
-    btn.setAttribute("aria-pressed", "false");
-    btn.setAttribute("aria-label", "Registra");
-    hint.textContent = "space per registrare";
-  }
+  btnWrap.classList.toggle("recording", active);
+  btn.setAttribute("aria-pressed", active ? "true" : "false");
+  btn.setAttribute("aria-label", active ? "Ferma" : "Parla");
+  hint.textContent = active
+    ? (conversazione ? "parla pure · clicca per chiudere" : "clicca per fermare e inviare")
+    : "space per parlare";
 }
 
 function setSendingUI(active) {
-  if (active) {
-    btnWrap.classList.add("sending");
-    btn.disabled = true;
-  } else {
-    btnWrap.classList.remove("sending");
-    btn.disabled = false;
-  }
+  btnWrap.classList.toggle("sending", active);
+  btn.disabled = active && !conversazione;
 }
 
-// Pick the best supported MIME type
 function pickMimeType() {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/ogg;codecs=opus",
-    "audio/ogg",
-    "audio/mp4",
-    "",
-  ];
+  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus",
+                      "audio/ogg", "audio/mp4", ""];
   return candidates.find(t => !t || MediaRecorder.isTypeSupported(t)) || "";
 }
 
-async function startRecording() {
+function bip(freq = 660, durata = 0.15) {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-  } catch (e) {
-    const msg = e.name === "NotAllowedError"
-      ? "permesso microfono negato"
-      : "errore microfono: " + e.message;
-    setStatus(msg, true);
-    return;
-  }
-
-  chunks = [];
-  const mimeType = pickMimeType();
-  const opts = mimeType ? { mimeType } : {};
-
-  try {
-    recorder = new MediaRecorder(stream, opts);
-  } catch (e) {
-    setStatus("errore MediaRecorder: " + e.message, true);
-    stream.getTracks().forEach(t => t.stop());
-    stream = null;
-    return;
-  }
-
-  const actualType = recorder.mimeType || "audio/webm";
-
-  recorder.ondataavailable = e => {
-    if (e.data && e.data.size > 0) chunks.push(e.data);
-  };
-
-  recorder.onstop = async () => {
-    // Stop mic track
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-    setRecordingUI(false);
-    setSendingUI(true);
-    setStatus("invio…");
-
-    const audioBlob = new Blob(chunks, { type: actualType });
-    const ct = actualType.split(";")[0]; // strip codecs for Content-Type header
-
-    const t0 = performance.now();
-    let resp;
-
-    try {
-      resp = await fetch("/voice", {
-        method: "POST",
-        headers: {
-          "Content-Type": ct,
-          "Accept": "audio/mpeg",
-        },
-        body: audioBlob,
-      });
-    } catch (e) {
-      setSendingUI(false);
-      setStatus("errore di rete: " + e.message, true);
-      return;
-    }
-
-    if (!resp.ok) {
-      let errMsg = `${resp.status} ${resp.statusText}`;
-      try {
-        const j = await resp.json();
-        errMsg = j.error || errMsg;
-      } catch (_) {}
-      setSendingUI(false);
-      setStatus("errore: " + errMsg, true);
-      return;
-    }
-
-    const mp3Blob = await resp.blob();
-    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-    const bytes = mp3Blob.size;
-
-    // Revoke previous object URL to free memory
-    if (player.dataset.prevUrl) {
-      URL.revokeObjectURL(player.dataset.prevUrl);
-    }
-    const url = URL.createObjectURL(mp3Blob);
-    player.dataset.prevUrl = url;
-    player.src = url;
-    playerWrap.hidden = false;
-
-    setSendingUI(false);
-    setStatus(`${bytes.toLocaleString("it")} B · ${elapsed}s`);
-
-    player.onended = () => setStatus("pronto");
-
-    try {
-      await player.play();
-    } catch (_) {
-      // Autoplay may be blocked — user can press play manually
-      setStatus(`${bytes.toLocaleString("it")} B · ${elapsed}s · premi play ↑`);
-    }
-  };
-
-  recorder.start();
-  setRecordingUI(true);
-  setStatus("● in ascolto…", false, true);
+    const ctx = audioCtx || new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.08;
+    osc.frequency.value = freq;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + durata);
+  } catch (_) { /* senza audio niente bip: resta il segnale a schermo */ }
 }
 
-function stopRecording() {
-  if (recorder && recorder.state === "recording") {
-    recorder.stop();
-    setStatus("elaborazione…");
+function volume() {
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  let somma = 0;
+  for (const v of buf) somma += v * v;
+  return Math.sqrt(somma / buf.length);
+}
+
+async function apriMicrofono() {
+  if (stream) return true;
+  if (apertura) return apertura;   // doppio clic durante la richiesta del permesso
+  apertura = (async () => {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+    } catch (e) {
+      setStatus(e.name === "NotAllowedError" ? "permesso microfono negato"
+                                             : "errore microfono: " + e.message, true);
+      return false;
+    }
+    audioCtx = new AudioContext();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    audioCtx.createMediaStreamSource(stream).connect(analyser);
+    return true;
+  })();
+  try { return await apertura; } finally { apertura = null; }
+}
+
+function chiudiMicrofono() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; analyser = null; }
+}
+
+function fermaAscolto() {
+  if (ascolto) { clearInterval(ascolto.timer); ascolto = null; }
+}
+
+// Ascolta: in conversazione la frase parte e finisce da sola; senza conversazione
+// registra finché non clicchi (comportamento di prima).
+async function ascolta() {
+  // R-574-1-M2: mai due ascolti insieme, né durante un invio o una riproduzione
+  if (ascolto || occupato || (recorder && recorder.state === "recording")) return;
+  const inConversazione = conversazione;
+  if (!(await apriMicrofono())) { chiudiConversazione(false); return; }
+  if (ascolto || occupato || (recorder && recorder.state === "recording")) return;
+  // R-575-2-M2: conversazione chiusa mentre il browser chiedeva il permesso → niente
+  // registrazione, microfono spento
+  if (inConversazione && !conversazione) { chiudiMicrofono(); return; }
+  chunks = [];
+  const mimeType = pickMimeType();
+  try {
+    recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+  } catch (e) {
+    setStatus("errore MediaRecorder: " + e.message, true);
+    chiudiConversazione(false);
+    return;
   }
+  const tipo = recorder.mimeType || "audio/webm";
+  let scarta = false;
+  recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+  recorder.onstop = () => {
+    setRecordingUI(false);
+    if (scarta) return;
+    invia(new Blob(chunks, { type: tipo }), tipo.split(";")[0]);
+  };
+  recorder.start(250);
+  setRecordingUI(true);
+
+  if (!conversazione) { setStatus("● in ascolto…", false, true); return; }
+
+  setStatus(`● ti ascolto (${CFG.finestraS} s)…`, false, true);
+  const t0 = performance.now();
+  let pavimento = null;      // rumore di fondo dei primi 300 ms
+  let voceDa = null, ultimaVoce = null, parlando = false;
+  ascolto = { timer: setInterval(() => {
+    if (!analyser) { fermaAscolto(); return; }   // microfono già chiuso
+    const ora = performance.now();
+    const v = volume();
+    if (ora - t0 < 300) { pavimento = Math.max(pavimento || 0, v); return; }
+    const soglia = Math.max(CFG.sogliaMin, (pavimento || 0) * 3);
+    if (v > soglia) {
+      ultimaVoce = ora;
+      if (voceDa === null) voceDa = ora;
+      if (!parlando && ora - voceDa > 150) { parlando = true; setStatus("● parli…", false, true); }
+    } else if (!parlando) {
+      voceDa = null;
+    }
+    if (parlando && (ora - ultimaVoce > CFG.silenzioMs || ora - t0 > CFG.maxFraseS * 1000)) {
+      fermaAscolto();
+      recorder.stop();          // fine frase: onstop invia
+    } else if (!parlando && ora - t0 > CFG.finestraS * 1000) {
+      fermaAscolto();
+      scarta = true;
+      recorder.stop();
+      chiudiConversazione(true);
+    }
+  }, 50) };
+}
+
+function chiudiConversazione(perSilenzio) {
+  fermaAscolto();
+  const stavaParlando = conversazione;
+  conversazione = false;
+  if (recorder && recorder.state === "recording") { recorder.onstop = () => setRecordingUI(false); recorder.stop(); }
+  chiudiMicrofono();
+  setRecordingUI(false);
+  btnWrap.classList.remove("conv");
+  if (stavaParlando) bip(440, 0.2);
+  if (perSilenzio) setStatus("conversazione chiusa (silenzio) · space per riaprire");
+}
+
+async function invia(blob, contentType) {
+  occupato = true;
+  setSendingUI(true);
+  setStatus("invio…");
+  let frase = null;
+  const timerAttesa = setTimeout(() => {
+    if (!window.speechSynthesis) return;
+    frase = new SpeechSynthesisUtterance(FRASI_ATTESA[Math.floor(Math.random() * FRASI_ATTESA.length)]);
+    frase.lang = "it-IT";
+    speechSynthesis.speak(frase);
+    setStatus("ci sto ragionando…", false, true);
+  }, CFG.attesaMs);
+  const t0 = performance.now();
+  let resp;
+  try {
+    resp = await fetch("/voice", { method: "POST", body: blob, headers: {
+      "Content-Type": contentType, "Accept": "audio/mpeg", "X-Gas-Formato": "audio+testo" } });
+  } catch (e) {
+    return fineTurno(timerAttesa, "errore di rete: " + e.message);
+  }
+  if (!resp.ok) {
+    let msg = `${resp.status} ${resp.statusText}`;
+    try { msg = (await resp.json()).error || msg; } catch (_) {}
+    return fineTurno(timerAttesa, "errore: " + msg);
+  }
+  let audio, testo = "", voceErr = "";
+  const ct = resp.headers.get("Content-Type") || "";
+  try {   // R-574-2-M2: risposta rotta → errore dichiarato, la pagina non resta bloccata
+    if (ct.startsWith("application/json")) {
+      const j = await resp.json();
+      testo = j.content || "";
+      voceErr = j.errore_voce || "";
+      if (j.audio) audio = new Blob([Uint8Array.from(atob(j.audio), c => c.charCodeAt(0))], { type: "audio/mpeg" });
+    } else {
+      audio = await resp.blob();
+    }
+  } catch (e) {
+    return fineTurno(timerAttesa, "risposta non leggibile: " + e.message);
+  }
+  clearTimeout(timerAttesa);
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  const secondi = ((performance.now() - t0) / 1000).toFixed(1);
+  testoEl.textContent = testo;
+  playerWrap.hidden = false;
+  setSendingUI(false);
+  if (!audio) {
+    occupato = false;
+    return dopoRisposta(`risposta solo testo · ${secondi}s` + (voceErr ? ` (${voceErr})` : ""));
+  }
+  if (player.dataset.prevUrl) URL.revokeObjectURL(player.dataset.prevUrl);
+  player.src = player.dataset.prevUrl = URL.createObjectURL(audio);
+  setStatus(`Gas parla · ${secondi}s`, false, true);
+  const turno = ++numTurno;
+  player.onended = () => {          // una volta sola: un riascolto non riapre niente
+    player.onended = player.onpause = null;
+    if (turno !== numTurno) return;
+    occupato = false;
+    dopoRisposta("pronto");
+  };
+  // R-575-1-M2: pausa dai controlli del player → turno finito, conversazione chiusa
+  // (un riascolto dopo non riapre niente: i gestori valgono una volta sola)
+  player.onpause = () => {
+    if (player.ended) return;       // la fine arriva anche come pausa: ci pensa onended
+    player.onended = player.onpause = null;
+    if (turno !== numTurno) return;
+    occupato = false;
+    chiudiConversazione(false);
+    setStatus("risposta in pausa · conversazione chiusa");
+  };
+  try {
+    await player.play();
+  } catch (_) {
+    if (turno !== numTurno || !occupato) return;   // turno già chiuso (es. pausa subito)
+    // R-574-3-M2: senza riproduzione automatica la conversazione si chiude e il
+    // microfono si spegne; la risposta resta da ascoltare col tasto play.
+    player.onended = player.onpause = null;
+    occupato = false;
+    chiudiConversazione(false);
+    chiudiMicrofono();
+    setStatus(`${secondi}s · premi play ↑`);
+  }
+}
+
+function fineTurno(timerAttesa, errore) {
+  clearTimeout(timerAttesa);
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  occupato = false;
+  setSendingUI(false);
+  chiudiConversazione(false);
+  setStatus(errore, true);
+}
+
+function dopoRisposta(msg) {
+  if (conversazione) { ascolta(); return; }   // la finestra si riapre da sola
+  chiudiMicrofono();
+  setStatus(msg);
 }
 
 btn.addEventListener("click", async () => {
-  if (recorder && recorder.state === "recording") {
-    stopRecording();
-  } else {
-    await startRecording();
-  }
+  if (conversazione) { chiudiConversazione(false); setStatus("conversazione chiusa"); return; }
+  if (recorder && recorder.state === "recording") { recorder.stop(); setStatus("elaborazione…"); return; }
+  if (occupato) return;
+  conversazione = convEl.checked;
+  if (conversazione) { btnWrap.classList.add("conv"); bip(880, 0.08); }
+  await ascolta();
 });
 
-// Spacebar shortcut (only when body/document is focused, not inside another control)
 document.addEventListener("keydown", e => {
   if (e.code !== "Space") return;
   if (["INPUT", "TEXTAREA", "BUTTON", "SELECT"].includes(document.activeElement?.tagName)) return;
   e.preventDefault();
   btn.click();
 });
+
+// Configurazione dal proxy (GAS_VOICE_FINESTRA): se manca restano i valori di default.
+fetch("/config").then(r => r.ok ? r.json() : {}).then(c => {
+  if (Number.isFinite(c.finestra) && c.finestra > 0) CFG.finestraS = c.finestra;
+}).catch(() => {});
 </script>

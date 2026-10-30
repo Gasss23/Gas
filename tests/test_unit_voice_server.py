@@ -608,6 +608,7 @@ def test_v2_browser_proxy_tempo_scaduto_messaggio_chiaro():
         lento.server_close()
     assert st == 504
     assert "entro 1 s" in body["error"] and "ancora in corso" in body["error"]
+    assert "NON ripetere la richiesta" in body["error"]  # V-1 bot #308 su 2507621
 
 
 def test_v2_browser_proxy_attesa_di_default_e_valore_sbagliato(monkeypatch, capsys):
@@ -740,3 +741,248 @@ def test_v2_browser_proxy_risposta_rotta_502_json():
         proxy.server_close()
         rotto.close()
     assert st == 502 and "Risposta non valida" in body["error"]
+
+
+# ---------------------------------------------------------------------------
+# V3 (chat M2): conversazione filata — parte parlata corta, risposta audio+testo,
+# /config del proxy, e il giro completo nel browser con microfono finto
+# ---------------------------------------------------------------------------
+
+def test_v3_parte_parlata_corta():
+    from modules.voice.server import parte_parlata
+    assert parte_parlata("Sì, meglio così. Procedo?") == "Sì, meglio così. Procedo?"
+    lungo = "Uno. Due. Tre. Quattro. Cinque."
+    assert parte_parlata(lungo) == "Uno. Due. Tre. Il resto è a schermo."
+    # R-574-4-M2: un a capo non è un taglio; «Dott.» non chiude la frase
+    assert parte_parlata("Ciao.\nCome stai?") == "Ciao. Come stai?"
+    assert (parte_parlata("Ho sentito il Dott. Rossi. Dice sì. Va bene? Poi altro.")
+            == "Ho sentito il Dott. Rossi. Dice sì. Va bene? Il resto è a schermo.")
+    enorme = "parola " * 200
+    detto = parte_parlata(enorme)
+    assert len(detto) <= 400 + len(" Il resto è a schermo.") and detto.endswith("schermo.")
+
+
+def _post_formato(port, body, token):
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/voice", data=json.dumps(body).encode(), method="POST",
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}",
+                 "X-Gas-Formato": "audio+testo"})
+    try:
+        with _SENZA_PROXY.open(req, timeout=5) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read())
+
+
+def test_v3_risposta_audio_testo(monkeypatch):
+    """Con X-Gas-Formato: audio+testo → JSON col testo intero e l'audio (base64) della
+    sola parte parlata; senza chiave ElevenLabs il testo arriva lo stesso (non 503)."""
+    import base64
+    from unittest.mock import patch
+    lungo = "Prima. Seconda. Terza. Quarta da leggere."
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            yield {"type": "final", "content": lungo}
+
+    server, port = _make_server(_K(), "tok-v3-1234567")
+    try:
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "fake")
+        with patch("modules.voice.server.synthesize_speech", return_value=b"ID3x") as tts:
+            st, body = _post_formato(port, {"prompt": "ciao"}, "tok-v3-1234567")
+        assert st == 200 and body["content"] == lungo
+        assert base64.b64decode(body["audio"]) == b"ID3x"
+        assert tts.call_args[0][0] == "Prima. Seconda. Terza. Il resto è a schermo."
+        monkeypatch.delenv("ELEVENLABS_API_KEY")
+        st, body = _post_formato(port, {"prompt": "ciao"}, "tok-v3-1234567")
+        assert st == 200 and body["content"] == lungo and "audio" not in body
+        assert "ELEVENLABS_API_KEY" in body["errore_voce"]
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_v3_browser_proxy_config_e_finestra(monkeypatch, capsys):
+    bs = _browser_server_module()
+
+    class _Proxy(bs.BrowserProxyHandler):
+        pass
+
+    _Proxy.finestra = 7.5
+    proxy = HTTPServer(("127.0.0.1", 0), _Proxy)
+    threading.Thread(target=proxy.serve_forever, daemon=True).start()
+    try:
+        with _SENZA_PROXY.open(f"http://127.0.0.1:{proxy.server_address[1]}/config", timeout=5) as r:
+            assert json.loads(r.read()) == {"finestra": 7.5}
+    finally:
+        proxy.shutdown()
+        proxy.server_close()
+    monkeypatch.setattr(bs, "_load_dotenv", lambda root: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "tok")
+    monkeypatch.delenv("GAS_VOICE_TIMEOUT", raising=False)
+
+    class _NonDevePartire:
+        def __init__(self, *a):
+            raise AssertionError("finestra sbagliata accettata")
+
+    monkeypatch.setattr(bs, "ThreadingHTTPServer", _NonDevePartire)
+    for sbagliata in ("abc", "0", "-1", "500"):
+        monkeypatch.setenv("GAS_VOICE_FINESTRA", sbagliata)
+        assert bs.run_browser_server() == 1
+        assert "GAS_VOICE_FINESTRA" in capsys.readouterr().out
+
+
+def _wav(percorso, pezzi, rate=16000):
+    """WAV mono 16 bit: pezzi = [(secondi, ampiezza)], ampiezza 0 = silenzio."""
+    import math
+    import struct
+    import wave
+    with wave.open(str(percorso), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        frames = bytearray()
+        for secondi, amp in pezzi:
+            for i in range(int(secondi * rate)):
+                v = amp * math.sin(2 * math.pi * 220 * i / rate) if amp else 0.0
+                frames += struct.pack("<h", int(v * 32767))
+        w.writeframes(bytes(frames))
+
+
+_GUIDA_BROWSER_JS = r"""
+const { chromium } = require('playwright');
+(async () => {
+  const [url, mic, modo] = process.argv.slice(2);
+  let browser;
+  try {
+    browser = await chromium.launch({ args: [
+      '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+      `--use-file-for-fake-audio-capture=${mic}%noloop`,
+      '--autoplay-policy=no-user-gesture-required'] });
+  } catch (e) { console.log('BROWSER_NON_DISPONIBILE ' + e.message); return; }
+  const page = await browser.newPage();
+  globalThis.__pagina = page;
+  const errori = [];
+  page.on('pageerror', e => errori.push(String(e)));
+  await page.addInitScript(() => {
+    window.__stati = [];
+    new MutationObserver(() => {
+      const s = document.getElementById('status');
+      if (s && window.__stati[window.__stati.length - 1] !== s.textContent)
+        window.__stati.push(s.textContent);
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
+  await page.goto(url);
+  await page.waitForTimeout(500);
+  await page.click('#btn-record');
+  if (modo === 'riascolto') {
+    // R-574-1-M2: riascolto dal player mentre la finestra è riaperta
+    await page.waitForFunction(() => {
+      const st = window.__stati, i = st.findLastIndex(x => x.includes('Gas parla'));
+      return i >= 0 && st.slice(i).some(x => x.includes('ti ascolto'));
+    }, null, { timeout: 25000 });
+    await page.evaluate(() => document.getElementById('player').play());
+  }
+  if (modo === 'pausa') {
+    // R-575-1-M2: pausa dai controlli mentre Gas parla → conversazione chiusa, tasto libero
+    await page.waitForFunction(() => document.getElementById('status').textContent.includes('Gas parla'),
+                               null, { timeout: 25000 });
+    await page.evaluate(() => document.getElementById('player').pause());
+  }
+  await page.waitForFunction(
+    () => document.getElementById('status').textContent.includes('conversazione chiusa'),
+    null, { timeout: 25000 });
+  await page.waitForTimeout(3000);   // niente turni né errori dopo la chiusura
+  const stati = await page.evaluate(() => window.__stati);
+  const testo = await page.textContent('#testo');
+  await browser.close();
+  console.log(JSON.stringify({ stati, testo, errori }));
+})().catch(async e => {
+  console.error(e);
+  try { console.error('STATI', JSON.stringify(await globalThis.__pagina.evaluate(() => window.__stati))); } catch (_) {}
+  process.exit(1);
+});
+"""
+
+
+@pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa"])
+def test_v3_conversazione_nel_browser(tmp_path, modo):
+    """Giro completo nella pagina vera (Chromium headless, microfono finto da file):
+    clic → la frase parte da sola alla fine della voce (nessun secondo clic) → «ci sto
+    ragionando» dopo 2 s → risposta a schermo e a voce → la finestra si riapre → resta
+    zitto → conversazione chiusa. Saltato se Playwright/Chromium non ci sono (CI)."""
+    import base64
+    import shutil
+    import subprocess
+    import time
+    if not shutil.which("node") or subprocess.run(
+            ["node", "-e", "require('playwright')"], capture_output=True).returncode != 0:
+        pytest.skip("node + playwright non disponibili")
+
+    microfono = tmp_path / "mic.wav"
+    _wav(microfono, [(0.8, 0), (1.5, 0.4), (6, 0)])
+    risposta = tmp_path / "risposta.wav"
+    _wav(risposta, [(2.0 if modo == "pausa" else 0.4, 0.2)])
+    audio_b64 = base64.b64encode(risposta.read_bytes()).decode()
+    ricevute = []
+
+    from http.server import BaseHTTPRequestHandler
+
+    class _VoceFinta(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length", 0) or 0)
+            ricevute.append((self.headers.get("X-Gas-Formato"), self.headers.get("Content-Type"),
+                             len(self.rfile.read(n))))
+            time.sleep(2.6)  # oltre i 2 s: deve partire la frase d'attesa
+            out = json.dumps({"content": "Sì, meglio così. Procedo?", "audio": audio_b64}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(out)))
+            self.end_headers()
+            self.wfile.write(out)
+
+    voce = HTTPServer(("127.0.0.1", 0), _VoceFinta)
+    threading.Thread(target=voce.serve_forever, daemon=True).start()
+    bs = _browser_server_module()
+
+    class _Proxy(bs.BrowserProxyHandler):
+        pass
+
+    _Proxy.token = "tok"
+    _Proxy.voice_host = "127.0.0.1"
+    _Proxy.voice_port = voce.server_address[1]
+    _Proxy.finestra = 2
+    proxy = bs.ThreadingHTTPServer(("127.0.0.1", 0), _Proxy)
+    threading.Thread(target=proxy.serve_forever, daemon=True).start()
+    guida = tmp_path / "guida.js"
+    guida.write_text(_GUIDA_BROWSER_JS)
+    try:
+        r = subprocess.run(["node", str(guida), f"http://127.0.0.1:{proxy.server_address[1]}/",
+                            str(microfono), modo], capture_output=True, text=True, timeout=60)
+    finally:
+        proxy.shutdown()
+        proxy.server_close()
+        voce.shutdown()
+        voce.server_close()
+    if "BROWSER_NON_DISPONIBILE" in r.stdout:
+        pytest.skip("Chromium non disponibile")
+    assert r.returncode == 0, (r.stdout[-2000:], r.stderr[-2000:])
+    esito = json.loads(r.stdout.strip().splitlines()[-1])
+    stati, testo = esito["stati"], esito["testo"]
+    assert esito["errori"] == [], esito["errori"][:3]
+    assert len(ricevute) == 1, (ricevute, stati)
+    assert ricevute[0][0] == "audio+testo" and ricevute[0][2] > 0
+    assert testo == "Sì, meglio così. Procedo?"
+    assert any("parli" in s for s in stati), stati
+    assert any("ci sto ragionando" in s for s in stati), stati
+    assert any("Gas parla" in s for s in stati), stati
+    # dopo la risposta la finestra si riapre da sola, poi si chiude per silenzio
+    i_parla = max(i for i, s in enumerate(stati) if "Gas parla" in s)
+    if modo == "pausa":
+        assert any("risposta in pausa" in s for s in stati[i_parla:]), stati
+        assert not any("ti ascolto" in s for s in stati[i_parla:]), stati
+        return
+    assert any("ti ascolto" in s for s in stati[i_parla:]), stati
