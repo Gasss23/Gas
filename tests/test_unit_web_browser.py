@@ -219,7 +219,8 @@ def test_fughe_bloccate(rete):
     r = _leggi(rete, "http://sito.test/fughe")
     assert r["ok"] and "Titolo: Fughe ws-no" in r["testo"]  # niente WebSocket, RTC, popup, SW
     # All'origine arriva solo la pagina: niente 127.0.0.1, ::1, porta 8080, IP privati,
-    # WebSocket (anche da un worker) né popup.
+    # WebSocket né popup. Il ws:// del worker lo ferma il proxy (porta 80, Upgrade): un wss://
+    # da un worker verso la 443 invece passa dal tunnel (V-1 ve #315, limite dichiarato).
     assert _Origine.colpi == ["/fughe"]
     assert rete.connessi == [(IP_PUBBLICO, 80)]
 

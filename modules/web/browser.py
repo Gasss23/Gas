@@ -8,8 +8,10 @@ default: si accende con GAS_WEB_BROWSER=1 (servono node, il pacchetto playwright
 Regole (fail-safe, CLAUDE.md §9):
   - rete solo dal proxy, anche per il loopback (`--proxy-bypass-list=<-loopback>`, R-585-5);
     QUIC spento, WebRTC senza UDP fuori dal proxy, niente prefetch né rete di sfondo;
-  - spenti WebSocket (anche chiusi dal browser), RTCPeerConnection, notifiche, service worker,
-    download, permessi e popup; JavaScript acceso, perché è lo scopo;
+  - spenti nelle pagine e nei frame WebSocket, RTCPeerConnection, notifiche, service worker,
+    download, permessi e popup; JavaScript acceso, perché è lo scopo. NON nei Dedicated Worker
+    (lo script iniettato lì non vale, e routeWebSocket non li copre): da un worker un wss://
+    verso un host pubblico passa dal tunnel 443, come già un fetch https (V-1 ve #315);
   - profilo temporaneo cancellato a ogni lettura, ambiente minimo (niente chiavi di Gas);
   - tempo massimo; alla fine (anche in errore) si uccidono node e tutti i processi di Chromium
     della lettura, riconosciuti da un segno nel loro ambiente (Playwright mette Chromium in una
