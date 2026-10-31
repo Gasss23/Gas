@@ -21,6 +21,8 @@ Variabili d'ambiente (lette da .env nella root Gas se presenti):
     GAS_VOICE_MAX_TURNI — turni di fila in modalità conversazione, contando quello
                          avviato dal clic; poi serve un clic (default: 5; argine
                          a rumori di fondo)
+    GAS_VOICE_INTERRUZIONE — 0/false/no/off: mentre Gas parla la tua voce NON lo
+                         interrompe (default: acceso)
 """
 from __future__ import annotations
 
@@ -67,6 +69,7 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
     voice_timeout: int = 600
     finestra: float = 12.0  # V3: GAS_VOICE_FINESTRA, letta dalla pagina su GET /config
     max_turni: int = 5      # V-1 bot #311: GAS_VOICE_MAX_TURNI
+    interruzione: bool = True  # V4: GAS_VOICE_INTERRUZIONE
 
     def log_message(self, fmt: str, *args: object) -> None:
         log.info(fmt, *args)
@@ -74,7 +77,8 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if self.path == "/config":
             # V3: la pagina legge qui la finestra della conversazione (nessun segreto)
-            cfg = json.dumps({"finestra": self.finestra, "max_turni": self.max_turni}).encode()
+            cfg = json.dumps({"finestra": self.finestra, "max_turni": self.max_turni,
+                              "interruzione": self.interruzione}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(cfg)))
@@ -236,6 +240,8 @@ def run_browser_server() -> int:
     BrowserProxyHandler.voice_timeout = timeout
     BrowserProxyHandler.finestra = finestra
     BrowserProxyHandler.max_turni = max_turni
+    BrowserProxyHandler.interruzione = (os.environ.get("GAS_VOICE_INTERRUZIONE", "").strip().lower()
+                                        not in ("0", "false", "no", "off"))
 
     # V-1 bot #308: a thread, così mentre il forte lavora (fino a GAS_VOICE_TIMEOUT) la
     # pagina si ricarica lo stesso; il server voce dietro resta a un turno alla volta.

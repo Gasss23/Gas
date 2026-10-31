@@ -102,10 +102,24 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_hooks.py -v 2>&1 | tee "$RUNNER_TEMP/hooks_output.txt"
 
+      - name: Prepare browser for the voice page tests (Node + Playwright + Chromium)
+        # V4 voce (V-2 bot #311): i giri della pagina vera (clients/voice/browser_client.html)
+        # in Chromium headless con microfono finto. Versione fissata, uguale a quella provata.
+        if: always()
+        run: |
+          set -o pipefail
+          npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/pw" playwright@1.63.0
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+
       - name: Run voice suite (pytest, zero token LLM)
         # Server, trascrizione (stt) e sintesi (tts): Groq ed ElevenLabs sono sempre
         # servizi finti iniettati nei test, zero rete. Prima girava solo il server (R8).
+        # V4: i test della pagina nel browser sono OBBLIGATORI qui (se manca il browser
+        # falliscono invece di essere saltati).
         if: always()
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+          GAS_TEST_BROWSER_OBBLIGATORIO: "1"
         run: |
           set -o pipefail
           python -m pytest tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"

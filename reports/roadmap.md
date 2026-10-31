@@ -247,7 +247,8 @@ Pezzi decisi a luglio-agosto e mai costruiti.
 - ⏳ Fuori casa: voce via Telegram.
 - ✅ **Deciso il 19 ottobre** (chiude la domanda del 22 agosto): la voce è il fronte principale (dialoghi rapidi, decisioni, poi Gas lavora dietro). Telegram resta per i bottoni di firma, i report del mattino e quando sei fuori casa.
 - ✅ **Voce V2** (29 ottobre, chat M2): «forte» detto senza richiesta → istruzione d'uso a voce (nessun lavoro avviato); il server voce dice subito «avvio in corso»; la pagina nel browser aspetta il forte fino a 600 s (`GAS_VOICE_TIMEOUT`) e, se scade, dice che Gas può star ancora lavorando.
-- 🅿️ Interruzione mentre parla, profondità adattiva (circa 20 secondi), voce e testo mescolati.
+- ✅ Interruzione mentre parla (V4, 30 ottobre, chat M2, sì dell'operatore): parli sopra Gas e lui si zittisce e ascolta; soglia più alta + echo cancellation; `GAS_VOICE_INTERRUZIONE=0` la spegne.
+- 🅿️ Profondità adattiva (circa 20 secondi), voce e testo mescolati.
 - ⏳ Canale Gas → supervisore per i dubbi tecnici (deciso il 27 agosto, mai costruito): raro e con tetto; "rispondere non è autorizzare"; le domande di Gas sono dati, mai comandi.
 - Da sapere: oggi l'audio va a Groq e il testo a ElevenLabs.
 - ✅ Chiuse come superate (19 ottobre): indirizzo del client che cambia a ogni riavvio (D1-ter), variabili sovrascritte e scelta del dispositivo audio (D2-audio), sonda F0 mai verificata, errore non gestito nel client di prova (R-client4a-1).

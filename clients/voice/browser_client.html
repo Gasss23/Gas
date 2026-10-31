@@ -315,6 +315,11 @@ const CFG = {
   // fa passare un «sì» secco; contro il rumore di fondo c'è il tetto dei turni.
   voceMinMs: 250,
   maxTurni: 5,          // turni di fila (il primo è quello del clic), poi serve un clic
+  // V4: interruzione mentre Gas parla. Soglia più alta di quella normale e voce continua
+  // più lunga, così l'eco della voce di Gas (già ridotta dall'echoCancellation) non basta.
+  interruzione: true,
+  sogliaInterruzione: 0.06,
+  interruzioneMs: 300,
 };
 const FRASI_ATTESA = ["Ci sto ragionando.", "Un attimo.", "Fammi pensare un secondo."];
 
@@ -327,7 +332,6 @@ let stream = null;       // un solo flusso del microfono per tutta la conversazi
 let audioCtx = null;
 let analyser = null;
 let recorder = null;
-let chunks = [];
 let conversazione = false;
 let ascolto = null;      // stato dell'ascolto in corso (timer, fasi)
 let occupato = false;    // invio o riproduzione in corso
@@ -360,9 +364,11 @@ function pickMimeType() {
   return candidates.find(t => !t || MediaRecorder.isTypeSupported(t)) || "";
 }
 
+let bipCtx = null;   // V4 (V-2 bot #311): un solo contesto audio per tutti i bip
+
 function bip(freq = 660, durata = 0.15) {
   try {
-    const ctx = audioCtx || new AudioContext();
+    const ctx = bipCtx || (bipCtx = new AudioContext());
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     gain.gain.value = 0.08;
@@ -393,10 +399,17 @@ async function apriMicrofono() {
                                              : "errore microfono: " + e.message, true);
       return false;
     }
-    audioCtx = new AudioContext();
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-    audioCtx.createMediaStreamSource(stream).connect(analyser);
+    try {
+      audioCtx = new AudioContext();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      audioCtx.createMediaStreamSource(stream).connect(analyser);
+    } catch (e) {
+      // V4 (V-2 bot #311): senza analisi del volume il microfono non resta acceso
+      chiudiMicrofono();
+      setStatus("errore audio del browser: " + e.message, true);
+      return false;
+    }
     return true;
   })();
   try { return await apertura; } finally { apertura = null; }
@@ -413,7 +426,20 @@ function fermaAscolto() {
 
 // Ascolta: in conversazione la frase parte e finisce da sola; senza conversazione
 // registra finché non clicchi (comportamento di prima).
-async function ascolta() {
+// Soglia della voce dai campioni dei primi 300 ms (rumore di fondo). Mediana BASSA
+// (R-580-3-M2) con tetto a sogliaMin (V-1 bot #313): la soglia resta ≤ 3×sogliaMin
+// (0,045), così anche un «sì» a volume medio (RMS ~0,07) detto appena si riapre
+// l'ascolto la supera, anche se riempie tutti i 300 ms. Senza campioni: sogliaMin.
+function sogliaDaCampioni(campioni) {
+  if (!campioni.length) return CFG.sogliaMin;
+  const ord = [...campioni].sort((a, b) => a - b);
+  const pavimento = Math.min(ord[Math.floor((ord.length - 1) / 2)], CFG.sogliaMin);
+  return Math.max(CFG.sogliaMin, pavimento * 3);
+}
+
+// giaInVoce: l'ascolto riparte da un'interruzione, cioè mentre l'operatore sta già
+// parlando (R-580-1-M2): niente stima del rumore (sarebbe la sua voce) e frase già iniziata.
+async function ascolta(giaInVoce = false) {
   // R-574-1-M2: mai due ascolti insieme, né durante un invio o una riproduzione
   if (ascolto || occupato || (recorder && recorder.state === "recording")) return;
   const inConversazione = conversazione;
@@ -422,7 +448,10 @@ async function ascolta() {
   // R-575-2-M2: conversazione chiusa mentre il browser chiedeva il permesso → niente
   // registrazione, microfono spento
   if (inConversazione && !conversazione) { chiudiMicrofono(); return; }
-  chunks = [];
+  // R-582-1-M2: ogni registrazione ha i suoi pezzi. Con un array condiviso l'ultimo
+  // pezzo di un clip scartato (arriva DOPO il riavvio) finiva in testa al clip nuovo,
+  // rendendolo un webm indecodificabile.
+  const pezzi = [];
   const mimeType = pickMimeType();
   try {
     recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
@@ -433,12 +462,12 @@ async function ascolta() {
   }
   const tipo = recorder.mimeType || "audio/webm";
   let scarta = false;
-  recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+  recorder.ondataavailable = e => { if (e.data && e.data.size > 0) pezzi.push(e.data); };
   recorder.onstop = () => {
-    setRecordingUI(false);
+    if (!(recorder && recorder.state === "recording")) setRecordingUI(false);  // non il nuovo
     if (scarta) return;
     turniDiFila += 1;
-    invia(new Blob(chunks, { type: tipo }), tipo.split(";")[0]);
+    invia(new Blob(pezzi, { type: tipo }), tipo.split(";")[0]);
   };
   recorder.start(250);
   setRecordingUI(true);
@@ -447,15 +476,20 @@ async function ascolta() {
 
   setStatus(`● ti ascolto (${CFG.finestraS} s)…`, false, true);
   const t0 = performance.now();
-  let pavimento = null;      // rumore di fondo dei primi 300 ms
-  let voceDa = null, ultimaVoce = null, parlando = false;
+  // V4 (V-1 bot #311 su c3079f4): il rumore di fondo è la MEDIANA dei primi 300 ms, con
+  // un tetto: se rispondi subito («sì») la tua voce non diventa il «rumore» che alza la
+  // soglia sopra la tua voce stessa.
+  const campioni = [];
+  let voceDa = null, ultimaVoce = null, parlando = false, voceDopoMs = 0;
+  if (giaInVoce) { voceDa = ultimaVoce = t0; parlando = true; setStatus("● parli…", false, true); }
   ascolto = { timer: setInterval(() => {
     if (!analyser) { fermaAscolto(); return; }   // microfono già chiuso
     const ora = performance.now();
     const v = volume();
-    if (ora - t0 < 300) { pavimento = Math.max(pavimento || 0, v); return; }
-    const soglia = Math.max(CFG.sogliaMin, (pavimento || 0) * 3);
+    if (ora - t0 < 300 && !giaInVoce) campioni.push(v);
+    const soglia = sogliaDaCampioni(campioni);
     if (v > soglia) {
+      voceDopoMs += 50;   // R-581-1-M2: voce vera sentita in QUESTO ascolto
       ultimaVoce = ora;
       if (voceDa === null) voceDa = ora;
       if (!parlando && ora - voceDa > CFG.voceMinMs) { parlando = true; setStatus("● parli…", false, true); }
@@ -464,6 +498,14 @@ async function ascolta() {
     }
     if (parlando && (ora - ultimaVoce > CFG.silenzioMs || ora - t0 > CFG.maxFraseS * 1000)) {
       fermaAscolto();
+      if (giaInVoce && voceDopoMs < CFG.voceMinMs) {
+        // R-581-1-M2: l'interruzione era un rumore breve (tosse, porta): il clip quasi
+        // muto non parte (Whisper inventerebbe una frase), si torna ad ascoltare.
+        scarta = true;
+        recorder.stop();
+        ascolta();
+        return;
+      }
       recorder.stop();          // fine frase: onstop invia
     } else if (!parlando && ora - t0 > CFG.finestraS * 1000) {
       fermaAscolto();
@@ -474,8 +516,53 @@ async function ascolta() {
   }, 50) };
 }
 
+// V4: mentre Gas parla, in conversazione, il microfono ascolta: se parli sopra la soglia
+// di interruzione per interruzioneMs Gas si zittisce e la frase parte subito.
+let vigilanza = null;
+
+function fermaVigilanza() {
+  if (vigilanza) { clearInterval(vigilanza); vigilanza = null; }
+}
+
+function vigila(turno) {
+  fermaVigilanza();
+  if (!conversazione || !CFG.interruzione || !analyser) return;
+  let sopraDa = null;
+  vigilanza = setInterval(() => {
+    if (!analyser || turno !== numTurno || !conversazione) { fermaVigilanza(); return; }
+    const v = volume();
+    if (v > CFG.sogliaInterruzione) {
+      if (sopraDa === null) sopraDa = performance.now();
+      if (performance.now() - sopraDa > CFG.interruzioneMs) {
+        fermaVigilanza();
+        player.onended = player.onpause = player.onerror = null;
+        player.pause();
+        occupato = false;
+        riapri("mi hai interrotto · ti ascolto…", true);
+      }
+    } else {
+      sopraDa = null;
+    }
+  }, 50);
+}
+
+// Riapre l'ascolto dopo una risposta (o un'interruzione), rispettando il tetto dei turni.
+function riapri(msg, giaInVoce = false) {
+  // V-1 bot #311: un rumore continuo (TV, altre persone) non può far partire turni
+  // all'infinito: dopo maxTurni di fila senza un clic la conversazione si chiude.
+  if (conversazione && turniDiFila >= CFG.maxTurni) {
+    chiudiConversazione(false);
+    setStatus(`conversazione chiusa dopo ${CFG.maxTurni} turni di fila · space per continuare`);
+    return;
+  }
+  if (conversazione) { ascolta(giaInVoce).then(() => { if (ascolto) setStatus(msg, false, true); }); return; }
+  chiudiMicrofono();
+  setStatus(msg);
+}
+
 function chiudiConversazione(perSilenzio) {
   fermaAscolto();
+  fermaVigilanza();
   const stavaParlando = conversazione;
   conversazione = false;
   if (recorder && recorder.state === "recording") { recorder.onstop = () => setRecordingUI(false); recorder.stop(); }
@@ -541,6 +628,7 @@ async function invia(blob, contentType) {
   const turno = ++numTurno;
   player.onended = () => {          // una volta sola: un riascolto non riapre niente
     player.onended = player.onpause = player.onerror = null;
+    fermaVigilanza();
     if (turno !== numTurno) return;
     occupato = false;
     dopoRisposta("pronto");
@@ -548,6 +636,7 @@ async function invia(blob, contentType) {
   // R-576-2-M2: audio rotto a metà (nessun «ended» né «pause») → turno chiuso, tasto libero
   player.onerror = () => {
     player.onended = player.onpause = player.onerror = null;
+    fermaVigilanza();
     if (turno !== numTurno) return;
     occupato = false;
     chiudiConversazione(false);
@@ -558,6 +647,7 @@ async function invia(blob, contentType) {
   player.onpause = () => {
     if (player.ended) return;       // la fine arriva anche come pausa: ci pensa onended
     player.onended = player.onpause = player.onerror = null;
+    fermaVigilanza();
     if (turno !== numTurno) return;
     occupato = false;
     chiudiConversazione(false);
@@ -565,6 +655,7 @@ async function invia(blob, contentType) {
   };
   try {
     await player.play();
+    if (turno === numTurno && occupato) vigila(turno);   // V4: interruzione possibile
   } catch (_) {
     if (turno !== numTurno || !occupato) return;   // turno già chiuso (es. pausa subito)
     if (player.error) { player.onerror(); return; }   // audio rotto, non autoplay negato
@@ -588,16 +679,9 @@ function fineTurno(timerAttesa, errore) {
 }
 
 function dopoRisposta(msg) {
-  // V-1 bot #311: un rumore continuo (TV, altre persone) non può far partire turni
-  // all'infinito: dopo maxTurni di fila senza un clic la conversazione si chiude.
-  if (conversazione && turniDiFila >= CFG.maxTurni) {
-    chiudiConversazione(false);
-    setStatus(`conversazione chiusa dopo ${CFG.maxTurni} turni di fila · space per continuare`);
-    return;
-  }
-  if (conversazione) { ascolta(); return; }   // la finestra si riapre da sola
-  chiudiMicrofono();
-  setStatus(msg);
+  fermaVigilanza();
+  if (conversazione && turniDiFila < CFG.maxTurni) { ascolta(); return; }   // si riapre da sola
+  riapri(msg);
 }
 
 btn.addEventListener("click", async () => {
@@ -621,5 +705,6 @@ document.addEventListener("keydown", e => {
 fetch("/config").then(r => r.ok ? r.json() : {}).then(c => {
   if (Number.isFinite(c.finestra) && c.finestra > 0) CFG.finestraS = c.finestra;
   if (Number.isInteger(c.max_turni) && c.max_turni > 0) CFG.maxTurni = c.max_turni;
+  if (typeof c.interruzione === "boolean") CFG.interruzione = c.interruzione;
 }).catch(() => {});
 </script>
