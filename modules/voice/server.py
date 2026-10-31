@@ -30,7 +30,8 @@ Configurazione tramite variabili d'ambiente (da .env o export):
   GROQ_API_KEY        — chiave Groq        OBBLIGATORIO per STT audio; assente → 503
   ELEVENLABS_API_KEY  — chiave ElevenLabs  OBBLIGATORIO per output audio; assente → 503
   ELEVENLABS_VOICE_ID — voice id           (default: JBFqnCBsd6RMkjVDRZzb, George premade)
-  GAS_VOICE_MAX_TURNI_ORA — turni PARLATI al massimo nell'ultima ora (default 60), poi 429
+  GAS_VOICE_MAX_TURNI_ORA — richieste PARLATE al massimo nell'ultima ora (default 60), poi
+                        429; conta ogni chiamata alla trascrizione (Groq)
   GAS_VOCE_FORTE      — 1/true/on/yes/si/sì: ogni richiesta della voce va al solo cervello
                         forte (default spento; forte fermo → errore dichiarato, mai i gratuiti)
 
@@ -148,9 +149,9 @@ def parte_parlata(testo: str) -> str:
     return parlato if parlato == testo else parlato + _PARLATO_RESTO
 
 
-# V4 (V-2 ve #311): tetto LATO SERVER ai turni parlati, oltre a quello della pagina: un
+# V4 (V-2 ve #311): tetto LATO SERVER alle richieste a voce, oltre a quello della pagina: un
 # client diverso o rotto non fa partire turni senza fine. GAS_VOICE_MAX_TURNI_ORA (default
-# 60) turni parlati nell'ultima ora, poi 429 finché la finestra non scorre.
+# 60) richieste a voce (chiamate a Groq, V5) nell'ultima ora, poi 429 finché la finestra non scorre.
 _MAX_TURNI_ORA_DEFAULT = 60
 
 
@@ -201,7 +202,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
     kernel: Any = None
     token: str = ""
-    turni_parlati: List[float] = []  # V4: istanti dei turni parlati (tetto orario)
+    turni_parlati: List[float] = []  # V4/V5: istanti delle chiamate a Groq (tetto orario)
 
     def log_message(self, fmt: str, *args: Any) -> None:
         log.info(fmt, *args)
@@ -260,12 +261,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
         is_audio = ct_base.startswith("audio/") or ct_base == "multipart/form-data"
 
         if is_audio:
-            # V4 (V-2 ve #311, R-580-2-M2): tetto orario dei turni parlati controllato PRIMA
+            # V4 (V-2 ve #311, R-580-2-M2): tetto orario delle richieste a voce controllato PRIMA
             # della trascrizione, così oltre il tetto non si spende nemmeno Groq
             tetto = _max_turni_ora()
             if len(self._turni_recenti()) >= tetto:
                 self._send_json(429, {"error": (
-                    f"Troppi turni a voce nell'ultima ora ({tetto}, GAS_VOICE_MAX_TURNI_ORA): "
+                    f"Troppe richieste a voce nell'ultima ora ({tetto}, GAS_VOICE_MAX_TURNI_ORA): "
                     "nessun lavoro avviato. Riprova più tardi o scrivi.")})
                 return
             prompt = self._do_stt(raw, content_type)
@@ -299,8 +300,6 @@ class VoiceHandler(BaseHTTPRequestHandler):
         try:
             result_content: Optional[str] = None
             kw: Dict[str, Any] = {}
-            if is_audio:  # V4: il turno parlato conta per il tetto orario
-                type(self).turni_parlati = self._turni_recenti() + [time.monotonic()]
             if cervello == "forte":
                 kw["cervello"] = "forte"
             if is_audio:  # V3/V4: risposte a voce corte, col dettaglio a schermo se c'è
@@ -333,7 +332,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"content": result_content})
 
     def _turni_recenti(self) -> List[float]:
-        """Istanti dei turni parlati dell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
+        """Istanti delle richieste a voce (chiamate a Groq) dell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
         adesso = time.monotonic()
         return [t for t in self.turni_parlati if adesso - t < 3600]
 
@@ -408,6 +407,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": f"Audio non valido: {exc}"})
             return None
 
+        # V5 (R-581-2-M2, R-585-1-M2): conta per GAS_VOICE_MAX_TURNI_ORA ogni chiamata a Groq,
+        # subito prima di farla: anche «forte» senza richiesta e le trascrizioni vuote o
+        # fallite spendono, quindi contano; i rifiuti locali (chiave assente, audio vuoto o
+        # non valido) no, così l'errore utile (503/400) resta visibile.
+        type(self).turni_parlati = self._turni_recenti() + [time.monotonic()]
         try:
             text = transcribe_audio(audio_bytes, filename, api_key)
         except GroqSTTError as exc:
