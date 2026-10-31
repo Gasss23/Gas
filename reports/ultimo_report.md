@@ -19,6 +19,8 @@
 
 - **Gate IP al primo fine-task**: fermo su IP di esempio; FATTA — marcatore nel test (review #597 APPROVATO) e nella memoria, <IP-redatto> nei verdetti incollati nell'handoff.
 
+- **Bot e verifica esterna su fc91022**: APPROVATO CON RISERVE (verifica-bot neutral: la PR tocca ci.yml, decide l'operatore). V-1 BASSA (WebSocket dai worker passano dal tunnel 443; il report diceva il contrario): FATTA la dichiarazione corretta (review #598); DEFERITA — fetta bwrap il fix vero. R-598-1 COSMETICA: DEFERITA — fetta bwrap.
+
 ## Prove
 - Browser 25 test, proxy 71 test. Web (`python -m pytest tests/test_unit_web_*.py`): 732 passed, 2 skipped. Web + voce dopo il merge: 870 passed, 2 skipped.
 - Mutanti presi: senza `<-loopback>`, senza lo script che spegne WebSocket/RTC, senza il controllo X-Gas-Proxy, senza lo split su «\n», senza i gruppi col segno. Non preso dal test con Chromium: senza la riscrittura della risposta (lo prende il test unitario del proxy).

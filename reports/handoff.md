@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #315 (https://github.com/Gasss23/Gas/pull/315). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5099784756","url":"https://github.com/Gasss23/Gas/pull/315"}`), perché `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore, anche tramite M1.
-2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR.
+2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR. Bot e verifica esterna: APPROVATO CON RISERVE (solo V-1 BASSA); `verifica-bot` è neutral perché la PR tocca ci.yml: il merge lo decide l'operatore.
 3. Il browser resta SPENTO (`GAS_WEB_BROWSER` non impostato). Accenderlo sul VPS è una decisione dell'operatore, da prendere solo dopo l'isolamento bwrap (punto 4 del piano), perché oggi Chromium gira senza sandbox.
 
 ---
@@ -19,7 +19,7 @@
 - **Punto 3 (spegnimenti)**: `FATTA` — WebRTC, WebSocket, service worker, notifiche, permessi, popup spenti; JavaScript acceso.
 - **Punto 5 (uscita)**: `FATTA` — solo innerText e titolo, con la pulizia di leggi.py e i marcatori NON FIDATO (`_incornicia`, la stessa di leggi_pagina).
 - **Punto 6 (spento per default)**: `FATTA` — `GAS_WEB_BROWSER=1`; leggi_pagina lo usa solo per una pagina vuota senza JS. «Lo chiede Gas» (parametro dello strumento in gas.py): `DEFERITA — gas.py lasciato a dopo, decisione di M1`.
-- **Punto 7 (test)**: `FATTA` — `tests/test_unit_web_browser.py` (25 test) con origine finta: JS, 127.0.0.1, ::1, porta 8080, IP privati, WebSocket anche da un worker, popup, redirect vietati, tempo massimo, processi, env.
+- **Punto 7 (test)**: `FATTA` — `tests/test_unit_web_browser.py` (25 test) con origine finta: JS, 127.0.0.1, ::1, porta 8080, IP privati, ws:// (anche da un worker, fermato dal proxy sulla porta 80), popup, redirect vietati, tempo massimo, processi, env.
 - **Punto 4 (bwrap)**: `DEFERITA — fuori scope (M1 ha dato i punti 1, 3, 5, 6, 7)`: dichiarato come limite, da fare prima di accendere il browser sul VPS.
 - **Riserve del proxy**: R-585-4 (testa della risposta riscritta con `Connection: close`) `FATTA`; R-585-5 (`--proxy-bypass-list=<-loopback>`, QUIC, WebRTC, prefetch) `FATTA`; V-4 bot #312 (intestazioni nominate in Connection) `FATTA`; V-2 bot #312 su 805b4d8 (il «200» del tunnel nel tetto dei byte) `FATTA`; V-2 bot #312 su 3a31a99 (numero vecchio nell'handoff §5) `FATTA` — l'handoff è riscritto da zero.
 - **ci.yml**: `FATTA` — solo l'env NODE_PATH e GAS_TEST_BROWSER_OBBLIGATORIO nel passo web, autorizzato da M1.
@@ -27,6 +27,9 @@
 - **Review #594**: APPROVATO CON RISERVE. R-594-1 BASSA (test end-to-end debole sul mutante): `FATTA` — test diretto; R-594-2 BASSA: `DEFERITA — dichiarata`; R-594-3 COSMETICA: `FATTA`.
 - **Review #595**: APPROVATO CON RISERVE. R-595-1 e R-595-2 BASSE: `DEFERITA — registrate`.
 - **Merge di origin/main 9fdbd2b (PR #314 di M2, voce V5)**: `FATTA` — conflitto solo nella memoria del revisore. Review #596 APPROVATO CON RISERVE (R-596-1: riserve nello stato, `FATTA` nei report).
+- **Bot su fc91022 (https://github.com/Gasss23/Gas/pull/315#pullrequestreview-5724040424)**: APPROVATO CON RISERVE, check `verifica-bot` neutral (la PR tocca ci.yml, macchina del bot: decide l'operatore). V-1 BASSA (WebSocket dai worker non provati): vedi sotto.
+- **Verifica esterna su fc91022 (https://github.com/Gasss23/Gas/pull/315#issuecomment-6546815822)**: APPROVATO CON RISERVE. V-1 BASSA (riprodotta: un Dedicated Worker apre wss:// verso la 443 dal tunnel; lo script iniettato e routeWebSocket non coprono i worker; il report diceva il contrario): `FATTA` la dichiarazione corretta in 7363702 (docstring e commento del test, review #598); `DEFERITA — fetta bwrap` il fix vero (WebSocket spento nei worker, test con wss sulla 443, figlio che fallisce se routeWebSocket manca). V-2 COSMETICA (§6 superato dai fatti): `FATTA` — §6 aggiornato. Nota: R-593-1 non riprodotta con Playwright 1.56.1, il fix resta difensivo.
+- **Review #598 (chat Mani)**: APPROVATO CON RISERVE. R-598-1 COSMETICA (il commento del test dice «Upgrade», ma il ws:// lo ferma il controllo CONNECT): `DEFERITA — fetta bwrap`.
 - **Gate IP al primo fine-task (6ed1741, non pushato)**: fermo su IP di esempio. `FATTA` — marcatore gasmerge-ip-ok nel test (b64a54e, review #597 APPROVATO) e nella riga #593 della memoria (1db489f); nell'handoff l'indirizzo «tutti zeri» citato nei verdetti #593 e #597 è scritto <IP-redatto>.
 
 ---
@@ -34,9 +37,9 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 ++++++++
+ .claude/agents/memoria_revisore.md |  10 ++++++++++
  .github/workflows/ci.yml           |   5 +++++
- modules/web/browser.py             | 271 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/web/browser.py             | 273 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/web/leggi.py               |  40 +++++++++++++++++++++++++++++++++++++---
  modules/web/proxy.py               | 114 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------
  reports/diff_sessione.md           |  22 ++++++++++++++--------
@@ -44,8 +47,8 @@
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  31 +++++++++++++++++++++----------
- tests/test_unit_web_browser.py     | 363 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  33 +++++++++++++++++++++++----------
+ tests/test_unit_web_browser.py     | 364 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_web_leggi.py       |   4 ++--
  tests/test_unit_web_proxy.py       | 124 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
@@ -55,6 +58,9 @@ NB: base = merge-base con origin/main = 9fdbd2b. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7363702 docs(web): WebSocket spenti solo in pagine e frame, non nei worker (V-1 ve/bot #315, review #598)
+a196b6b chore(revisore): memoria review #598 — APPROVATO CON RISERVE
+fc91022 docs(fine-task): fetta 33, PR #315, IP di esempio redatti nell'handoff
 598aa4e docs(fine-task): fetta 33, PR #315, gate IP e review #597
 b64a54e test(web): IP di esempio segnato per il gate IP (review #597)
 1db489f chore(revisore): memoria review #597 — APPROVATO
@@ -300,6 +306,30 @@ Nota operativa: lo script ha già committato la memoria (`1db489f`, riga #597, c
 File rilevanti: /home/user/Gas/tests/test_unit_web_browser.py, /home/user/Gas/.claude/agents/memoria_revisore.md, /home/user/Gas/reports/handoff.md
 ```
 
+Commit 7363702 (modules/web/browser.py, tests/test_unit_web_browser.py: solo docstring e commento, V-1 ve/bot #315). Verdetto integrale della review #598 (chat Mani):
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #598 (chat Mani), delta di soli commenti sulla fetta 33 (PR #315), diff staged.
+
+Ho letto prima: CLAUDE.md (sezione 5 e guardrail), reports/stato_progetto.md (in modo mirato), la mia memoria.
+
+**Cosa ho controllato nel diff**
+- `modules/web/browser.py:11` — il docstring adesso dice che WebSocket e il resto sono spenti «nelle pagine e nei frame» e NON nei Dedicated Worker, e che un wss:// partito da un worker passa dal tunnel 443. Rischio: che la frase sia falsa. Esito: ok. `addInitScript` (`modules/web/browser.py:105`) vale per pagine e frame, non per i worker. `routeWebSocket` (`modules/web/browser.py:106`) è nel contesto e i worker non li copre. SharedWorker e service worker sono spenti a parte (`modules/web/browser.py:86` e `modules/web/browser.py:103`). Il tunnel verso la 443 che lascia passare tutto è già un limite dichiarato in `modules/web/proxy.py:25`. Le righe cambiate stanno dentro il docstring del modulo, che si apre alla riga 1: il comportamento non cambia.
+- `tests/test_unit_web_browser.py:222` — il commento dice che il ws:// del worker lo ferma il proxy «(porta 80, Upgrade)». Rischio: che il commento indichi il meccanismo sbagliato. Esito: riserva. Ho lanciato il test col log del proxy (`pytest -k fughe -o log_cli=true --log-cli-level=DEBUG`): il ws:// del worker viene rifiutato con «tunnel solo verso la porta 443». Chromium manda i WebSocket attraverso il proxy sempre con CONNECT (qui `sito.test:80`), quindi a fermarlo è il controllo CONNECT di `modules/web/proxy.py:216`, non il controllo Upgrade di `modules/web/proxy.py:179`. «Porta 80» è giusto, «Upgrade» no.
+- `tests/test_unit_web_browser.py:225` — le asserzioni non sono cambiate. Ho controllato con grep che il diff abbia solo righe di docstring e di commento. `test_fughe_bloccate`: 1 passed, rilanciato da me.
+
+**Riserve**
+- R-598-1 COSMETICA: in `tests/test_unit_web_browser.py:222` sostituire «(porta 80, Upgrade)» con, per esempio, «(CONNECT verso la porta 80: tunnel solo verso la 443)». Si può fare insieme alla fetta bwrap, va tracciata in reports/stato_progetto.md.
+
+**Cosa non ho verificato**
+- Non ho rifatto la prova del wss:// da un worker verso la 443. La parte del docstring che lo dichiara si basa sulla riproduzione della verifica esterna (V-1 #315) e sul limite del tunnel già scritto nel proxy. Anche il comportamento con altre versioni di Chromium e Playwright non l'ho verificato: in questo ambiente ce n'è una sola.
+
+**Memoria**
+- Ho scritto la riga #598 e una lezione: per capire quale controllo ferma una richiesta, leggere il motivo del rifiuto nel log del proxy, perché i WebSocket passano sempre in CONNECT. È committata in a196b6b (`/home/user/Gas/.claude/agents/memoria_revisore.md`) da sola. Lo stage resta intatto: `modules/web/browser.py` e `tests/test_unit_web_browser.py`.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_browser.py`: 25 test (saltati senza node+playwright, obbligatori in CI). `tests/test_unit_web_proxy.py`: da 55 a 71 test. `tests/test_unit_web_leggi.py`: il patch di un test passa da `_componi` a `_estrai`. Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), node e playwright presenti: 732 passed, 2 skipped. Web + voce sull'albero unito con main 9fdbd2b: 870 passed, 2 skipped. Mutanti presi: senza `<-loopback>`, senza lo script che spegne WebSocket/RTC, senza il controllo X-Gas-Proxy, senza `.split("\n")`, senza i gruppi col segno (test diretto, 3 su 3). Mutante NON preso dal test con Chromium: senza la riscrittura della risposta (Chromium qui non riusa la connessione); lo prende il test unitario del proxy.
@@ -309,10 +339,14 @@ Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_browser.py`: 25 test (salt
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - bf07949, 7649991, ce68d35 (memoria del revisore), 1895d7c (fetta 33): pushati insieme; nessuna run su questi SHA prima dell'apertura della PR (push di un branch senza PR aperta: la CI parte sulla PR).
 - d313fad (merge di main 9fdbd2b), 713f59f (memoria #596): pushati prima dell'apertura della PR #315; run non ancora disponibile alla scrittura dell'handoff.
-- 6ed1741 (primo fine-task, fermato dal gate IP), 1db489f (memoria #597), b64a54e (test) e il commit di fine-task che contiene questo file: pushati insieme; run non ancora disponibile alla scrittura dell'handoff.
+- 6ed1741 (primo fine-task, fermato dal gate IP), 1db489f (memoria #597), b64a54e (test), fc91022 (fine-task): pushati insieme; run 41223882452 su fc91022 success (unit-suite con il passo web a browser obbligatorio, handoff-check); `verifica-bot` neutral. I commit intermedi non hanno una run propria.
+- d313fad e 713f59f: nessuna run su questi SHA (pushati prima dell'apertura della PR; l'albero è contenuto in fc91022).
+- a196b6b (memoria #598), 7363702 (docstring V-1) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- V-1 ve/bot #315 BASSA (fetta bwrap): WebSocket non spenti nei Dedicated Worker; wss:// verso un host pubblico passa dal tunnel 443 (dentro il limite «filtra le destinazioni, non i dati»); routeWebSocket non provato da nessun test e saltato in silenzio se manca.
+- R-598-1 (chat Mani) COSMETICA (fetta bwrap): commento di `test_fughe_bloccate` dice «Upgrade», a fermare il ws:// è il controllo CONNECT.
 - R-594-2 (chat Mani) BASSA: l'uccisione non trova un processo che cambia sia gruppo sia ambiente (per esempio un renderer compromesso; rientra nel limite «senza sandbox»).
 - R-595-1 (chat Mani) BASSA: se `test_uccidi_tutti_prende_chi_cambia_sessione` fallisce, resta un `sleep 30` orfano fino a 30 s.
 - R-595-2 (chat Mani) BASSA: nel caso patologico le due chiamate di `_uccidi_tutti` (except e finally) arrivano a circa 8 s.
