@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #314 (https://github.com/Gasss23/Gas/pull/314). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5099188668","url":"https://github.com/Gasss23/Gas/pull/314"}`); `gh` nel cloud non è autenticato. La mergia M1 se il bot dà APPROVATO pulito; con riserve M1 chiede il sì all'operatore.
+1. Merge della PR #314 (https://github.com/Gasss23/Gas/pull/314). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5099188668","url":"https://github.com/Gasss23/Gas/pull/314"}`); `gh` nel cloud non è autenticato. L'operatore ha detto «mergia #314» (via M1), ma la PR era in conflitto con main dopo la #312: unito main con un merge (832092d, review #587-M2); il merge automatico lo attiva M1.
 2. Prova sul Mac seguendo `reports/prova_voce_mac.md`: PRIMA l'eco (se Gas si zittisce da solo, `GAS_VOICE_INTERRUZIONE=0`), poi «sì» a voce normale, poi TV accesa.
 
 ---
@@ -16,6 +16,7 @@
 - **V5.1 — R-581-2-M2** («uso» e trascrizioni vuote spendevano Groq senza contare): `FATTA` — registrazione dentro `_do_stt` subito prima di `transcribe_audio`.
 - **R-585-1-M2** (i rifiuti locali consumavano il tetto e nascondevano il 503/400 utile): `FATTA` (review #586-M2).
 - **V5.2 — guida di prova sul Mac** (`reports/prova_voce_mac.md`): `FATTA`.
+- **Merge di main (01eba0d, PR #312) + V-2 COSMETICA bot/verifica esterna #314** («turni» → «richieste a voce» nel 429, nei commenti, nella docstring e nella guida): `FATTA` (832092d, review #587-M2 APPROVATO).
 - **gas.py / brains/ / ci.yml**: non toccati.
 
 ---
@@ -23,14 +24,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  3 +++
- modules/voice/server.py            | 12 ++++++++----
- reports/diff_sessione.md           | 14 ++++++--------
+ .claude/agents/memoria_revisore.md |   4 +
+ modules/voice/server.py            |  22 +-
+ reports/diff_sessione.md           |  15 +-
  reports/handoff.md                 | n/d
- reports/prova_voce_mac.md          | 58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/stato_progetto.md          |  3 ++-
- reports/ultimo_report.md           | 24 ++++++------------------
- tests/test_unit_voice_stt.py       | 34 ++++++++++++++++++++++++++++++++++
+ reports/prova_voce_mac.md          |  58 ++++++
+ reports/stato_progetto.md          |   3 +-
+ reports/ultimo_report.md           |  27 +--
+ tests/test_unit_voice_stt.py       |  34 ++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -38,6 +39,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+832092d Merge origin/main (01eba0d, PR #312) in feat/voce-v5-m2 (PR #314) + V-2: «richieste a voce»
+2c50122 docs(voce-v5): report di fine task e guida di prova sul Mac (PR #314, review #585/#586-M2)
 8487fd7 fix(voce): il tetto orario conta ogni chiamata a Groq, anche «uso» e trascrizioni vuote (V5, chat M2)
 ae46fc3 chore(revisore): memoria review #586 — APPROVATO
 e0dc6c7 chore(revisore): memoria review #585 — APPROVATO CON RISERVE
@@ -105,14 +108,44 @@ R-585-1-M2: chiusa.
 
 Memoria: aggiunta la riga #586-M2 a /home/user/Gas/.claude/agents/memoria_revisore.md (nessuna lezione nuova) e committata con commit_memoria_revisore.sh (ae46fc3). L'index del diff sotto review è rimasto intatto. Ora va eseguito `bash scripts/segna_review_ok.sh` prima del commit.
 
+Review #587-M2 (merge di main 01eba0d + V-2 «richieste a voce», commit 832092d):
+
+## VERDETTO: APPROVATO
+
+Review #587-M2. Ho controllato il merge di origin/main 01eba0d (PR #312) dentro feat/voce-v5-m2 (HEAD 2c50122), con il diff staged e la correzione V-2 COSMETICA.
+
+Elementi del diff esaminati:
+- `modules/voice/server.py:152` — il commento della costante ora dice «richieste a voce (chiamate a Groq, V5)». Ho controllato che corrisponda a quello che il codice conta davvero: la registrazione nel tetto sta dentro `_do_stt` subito prima di `transcribe_audio` (`modules/voice/server.py:414`). Il commento ora è vero. Esito: ok.
+- `modules/voice/server.py:269` — il messaggio 429 diventa «Troppe richieste a voce nell'ultima ora (…)». Ho cercato se qualche test o client legge il vecchio testo: `grep` su tests/, modules/ e clients/ non trova «Troppi turni» da nessuna parte. Il ramo 429 (`modules/voice/server.py:264-271`) non cambia nella logica e resta prima dello STT. Esito: ok.
+- `modules/voice/server.py:335` — docstring di `_turni_recenti`. Cambia solo il testo, il filtro a 3600 s è lo stesso. Esito: ok. Nota cosmetica: questa riga e la `:154` superano i 100 caratteri, ma il file ne ha già altre 8 sopra quella soglia e non c'è un linter che la imponga.
+- `reports/prova_voce_mac.md:54` — riga della guida allineata al nuovo messaggio. Esito: ok.
+- `.claude/agents/memoria_revisore.md` (conflitto) — 0 righe tolte sia rispetto a HEAD sia rispetto a MERGE_HEAD. Rispetto a main aggiunge 3 righe (#585-M2, la lezione, #586-M2), messe dopo la #592 di main. Esito: ok.
+- `reports/stato_progetto.md:4` — l'auto-merge toglie 1 riga rispetto a HEAD: è l'intestazione, sostituita da quella più recente di main. Il resto rispetto a main sono solo le righe V4/V5 del branch. Esito: ok.
+
+Controlli strutturali:
+- Rispetto a MERGE_HEAD differiscono solo i file V5: server.py, test stt, prova_voce_mac, i tre log di sessione, stato e memoria. `modules/web`, i test web e `reports/ripartenza_mani.md` sono identici a main (diff di 0 righe).
+- Rispetto a HEAD cambiano solo i file di main più le 4 modifiche di testo. In gas.py, brains, clients, modules/voice e nei test voce ci sono solo 10 righe ± di testo, tutte in server.py.
+- Nessun marcatore di conflitto, `git diff --cached --check HEAD` è pulito.
+- Nessuno slicing della history e nessuna simulazione di tool: il kernel e il percorso `_get_window` non sono toccati.
+
+Test, su un export dell'indice in /tmp/rv587:
+- voce: `test_unit_voice_stt.py` + `test_unit_voice_server.py` → 114 passed
+- web: leggi + lexbor + proxy → 579 passed, 114 skipped
+
+Rischio escluso: non ho rieseguito la suite del kernel (gas.py), i test della pagina nel browser con Playwright obbligatorio e gli hook. Il merge non tocca né gas.py né clients/, e le modifiche a modules/voice sono solo testo. Non ho verificato perché i test web risultano skipped: nel #592 erano 557 passed e 1 skipped, quindi probabilmente in questo ambiente manca una dipendenza opzionale (lexbor o un browser). Non dipende da questo diff, perché i file web sono identici a main.
+
+Memoria: ho aggiunto la riga contatore #587-M2 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza metterla in stage. Non ho lanciato `commit_memoria_revisore.sh`, perché con il merge in corso `git commit -o` non può fare un commit parziale. Va messa in stage e committata insieme al commit di merge (o subito dopo). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-gas.py non toccato. Voice suite parte non-browser (server + stt): 96 → 98 passed (+2: tetto con «uso» e vuota; rifiuto locale che non consuma il tetto). Mutanti: il primo test fallisce sul server.py di main, il secondo sulla variante #585. I test della pagina nel browser non sono toccati da questa fetta (girano obbligatori in CI). Nessun FAIL.
+gas.py non toccato. Voice suite parte non-browser (server + stt): 96 → 98 passed (+2: tetto con «uso» e vuota; rifiuto locale che non consuma il tetto). Mutanti: il primo test fallisce sul server.py di main, il secondo sulla variante #585. I test della pagina nel browser non sono toccati da questa fetta (girano obbligatori in CI). Nessun FAIL. Dopo il merge di main (832092d): voce stt+server 114 passed (mia run e review #587-M2).
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - e0dc6c7, ae46fc3, 8487fd7: pushati insieme prima dell'apertura della PR #314; nessuna run della PR su questi SHA.
+- 2c50122 (head prima del merge di main): unit-suite, handoff-check, verifica-bot success (bot APPROVATO CON RISERVE; verifica esterna APPROVATO CON RISERVE, https://github.com/Gasss23/Gas/pull/314#issuecomment-6545842665).
+- 832092d (merge di main): pushato insieme al commit di fine-task; run non ancora disponibile alla scrittura.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
