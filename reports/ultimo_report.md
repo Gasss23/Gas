@@ -1,7 +1,7 @@
 # ULTIMO REPORT — 2026-10-30 — Mani: proxy filtrante per il browser senza schermo (R6, fetta 32, chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #312 (numero nell'handoff §0): solo con verdetto del bot APPROVATO pulito la faccio io; con riserve serve il sì dell'operatore (anche tramite M1).
+1. Merge della PR #312 (numero nell'handoff §0): l'operatore ha detto «mergia #312» (riferito da M1); la PR era in conflitto con main dopo la #313, ora unita (826a9b1). M1 fa il merge appena la CI è verde.
 2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR.
 
 ## Esito
@@ -14,9 +14,11 @@
 
 - **Bot su eea0ea0 (PR #312)**: APPROVATO CON RISERVE, check success. V-1 BASSA (a tetto dei byte superato, una richiesta nuova usciva ancora con URL e intestazioni): FATTA in b838f4d. V-2 BASSA (invii con timeout propri, oltre la scadenza del proxy): FATTA in b838f4d. V-3 COSMETICA (conteggi dei test nella descrizione): FATTA — descrizione e §5 aggiornati. V-4 COSMETICA (hop-by-hop nominati in «Connection» non tolti; non è un bypass): DEFERITA — registrata.
 - **Review #590 (chat Mani)**: APPROVATO CON RISERVE (R-590-1 COSMETICA motivo del timeout, R-590-2 BASSA testa contata dopo l'apertura): FATTA tutte e due. **Review #591**: APPROVATO.
+- **Bot su 805b4d8 (PR #312)**: APPROVATO CON RISERVE, check success, CI verde. V-1 BASSA (CI in corso alla verifica): FATTA — poi verde. V-2 COSMETICA (testa del CONNECT e risposta 200 fuori dal tetto dei byte, docstring «nei due versi»): DEFERITA — registrata.
+- **Merge di origin/main 3a38e75 (PR #313 di M2, voce V4)**: FATTA in 826a9b1 — conflitti solo nei log di sessione e nella memoria. Review #592 (chat Mani) APPROVATO.
 
 ## Prove
-- `tests/test_unit_web_proxy.py`: 55 passed (più run di fila); web 691 passed, 2 skipped. Web e voce dopo il merge di main: 815 passed, 2 skipped (review #588).
+- `tests/test_unit_web_proxy.py`: 55 passed (più run di fila); web 691 passed, 2 skipped. Web e voce dopo il merge di main: 815 passed, 2 skipped (review #588). Dopo il merge di main 3a38e75 (review #592): web 557 passed 1 skipped, voce 138 passed, browser 16 passed, hook 211 passed, kernel 1062 PASS / 1 FAIL (T31g, come su main).
 - Mutanti presi: IP interni, tunnel su ogni porta e «:80/:443», upgrade, metodi, tetto dei byte, https in chiaro, Proxy-*, tempo della testa, `ferma()`, timeout rimasto.
 
 ## Anomalie

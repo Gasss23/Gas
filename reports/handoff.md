@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-30 — Mani, fetta 32 (R6): proxy filtrante per il browser senza schermo (chat Mani)
+**Sessione:** 2026-10-30/31 — Mani, fetta 32 (R6): proxy filtrante per il browser senza schermo (chat Mani)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. La PR era in conflitto con main dopo la #311: main portato nel branch (eb6c01c), quindi CI, bot e verifica esterna ripartono su questo commit. Merge della PR #312 (https://github.com/Gasss23/Gas/pull/312). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5088535610","url":"https://github.com/Gasss23/Gas/pull/312"}`), perché `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore, anche tramite M1.
+1. La PR era in conflitto con main dopo la #313 (voce V4): main portato nel branch (826a9b1, review #592 APPROVATO), quindi CI e bot ripartono su questo commit. L'operatore ha detto «mergia #312» (riferito da M1, che fa il merge appena la CI è verde). Merge della PR #312 (https://github.com/Gasss23/Gas/pull/312). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5088535610","url":"https://github.com/Gasss23/Gas/pull/312"}`), perché `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore, anche tramite M1.
 2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR.
 
 ---
@@ -22,28 +22,33 @@
 - **Merge di origin/main 1e8aff8 (PR #311 di M2, voce V3)**: `FATTA` — conflitti solo nei report e nella memoria. Review #588 (chat Mani) APPROVATO CON RISERVE (R-588-1: conteggi dell'handoff, rifatti qui). Review #589 APPROVATO (test V-3).
 - **Bot su eea0ea0 (PR #312)**: APPROVATO CON RISERVE, check success. V-1 BASSA (a tetto dei byte superato, una richiesta nuova usciva ancora con URL e intestazioni): `FATTA` in b838f4d. V-2 BASSA (invii con timeout propri, oltre la scadenza del proxy): `FATTA` in b838f4d. V-3 COSMETICA (conteggi dei test nella descrizione): `FATTA` — descrizione e §5 aggiornati. V-4 COSMETICA (hop-by-hop nominati in «Connection» non tolti; non è un bypass): `DEFERITA — registrata`.
 - **Review #590 (chat Mani)**: APPROVATO CON RISERVE (R-590-1 COSMETICA motivo del timeout, R-590-2 BASSA testa contata dopo l'apertura): `FATTA` tutte e due. **Review #591**: APPROVATO.
+- **Bot su 805b4d8 (PR #312)**: APPROVATO CON RISERVE, check success; CI verde su 805b4d8. V-1 BASSA (CI ancora in corso alla verifica): `FATTA` — poi verde. V-2 COSMETICA (testa del CONNECT e risposta 200 non contate nel tetto dei byte, mentre il docstring dice «nei due versi»): `DEFERITA — registrata`.
+- **Merge di origin/main 3a38e75 (PR #313 di M2, voce V4)**: `FATTA` in 826a9b1 — conflitti solo nei log di sessione (tenuta la versione del branch) e nella memoria (unione). Review #592 (chat Mani) APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  10 +++++++++
+ .claude/agents/memoria_revisore.md |  11 ++++++++++
  modules/web/proxy.py               | 326 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  18 ++++++++--------
+ reports/diff_sessione.md           |  17 ++++++++-------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  31 +++++++++++++--------------
+ reports/ultimo_report.md           |  35 ++++++++++++++-----------------
  tests/test_unit_web_leggi.py       |  13 ++++++++++++
  tests/test_unit_web_proxy.py       | 411 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = 1e8aff8. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 3a38e75. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f5f3380 chore(revisore): memoria review #592 — APPROVATO
+826a9b1 Merge origin/main (3a38e75, PR #313 di M2) in claude/peaceful-lovelace-0w2b7q (PR #312)
+805b4d8 docs(fine-task): PR #312 dopo le note del bot su eea0ea0, review #590/#591
 b838f4d fix(web): proxy, a tetto dei byte superato nessuna richiesta esce; invii fino alla scadenza (V-1/V-2 bot #312, chat Mani)
 2f84376 chore(revisore): memoria review #591 — APPROVATO
 a5c92e4 chore(revisore): memoria review #590 — APPROVATO CON RISERVE
@@ -324,6 +329,43 @@ Review #591 (chat Mani), ri-review della #590 sul diff staged (sha256 13326b37),
 File: /home/user/Gas/modules/web/proxy.py, /home/user/Gas/tests/test_unit_web_proxy.py, sonda /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/sonde/test_sonda590.py
 ```
 
+Commit 826a9b1 (merge di origin/main 3a38e75: entrano .github/workflows/ci.yml, clients/voice/*, modules/voice/server.py, i test della voce e la roadmap di M2). Verdetto integrale della review #592 (chat Mani):
+
+```
+## VERDETTO: APPROVATO
+
+Review #592 (chat Mani), 2026-10-31. Oggetto: merge in corso di origin/main 3a38e75 (PR #313 di M2, voce V4) nel branch claude/peaceful-lovelace-0w2b7q (PR #312, proxy filtrante). Ho controllato il diff staged in /home/user/Gas, con MERGE_HEAD uguale a origin/main 3a38e75 e base comune 1e8aff8. Prima della review ho letto CLAUDE.md (sezioni 5, 8, 10), le sezioni di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+- `.github/workflows/ci.yml:122` — imposta `GAS_TEST_BROWSER_OBBLIGATORIO: "1"` nella suite voce e fissa `playwright@1.63.0` a `.github/workflows/ci.yml:111`. Rischio esaminato: che il merge perda o alteri il lato main della CI, oppure che compaia un `paths-ignore`. Esito: ok. Il file è identico a MERGE_HEAD, i passi della suite web restano e non c'è nessun `paths-ignore`.
+- `modules/voice/server.py:265` — controlla il tetto orario dei turni a voce prima della trascrizione (STT) e risponde 429 senza spendere Groq. Rischio esaminato: una risoluzione dei conflitti che mescoli il codice voce col branch. Esito: ok. Il file è identico a MERGE_HEAD, e lo sono anche `clients/voice/browser_client.html:433` (`sogliaDaCampioni`), `clients/voice/browser_server.py`, `tests/test_unit_voice_server.py`, `tests/test_unit_voice_stt.py`, `reports/roadmap.md` e `gas.py`.
+- `modules/web/proxy.py:185` — rifiuta i tunnel CONNECT diretti a una porta diversa da 443 (ricontrollo a `modules/web/proxy.py:189`). Rischio esaminato: che il merge annulli la fetta 32. Esito: ok. Sono identici a HEAD anche `tests/test_unit_web_proxy.py`, `tests/test_unit_web_leggi.py`, `reports/ripartenza_mani.md` e i tre log di sessione tenuti dal lato branch.
+- Insiemi di file. Indice confrontato con MERGE_HEAD: ci sono solo i 9 file della fetta 32 (proxy, test web, ripartenza_mani, diff_sessione, handoff, ultimo_report, stato, memoria). Indice confrontato con HEAD: ci sono solo i 9 file di main (ci.yml, i due file di clients/voice, modules/voice/server.py, i due test voce, roadmap, stato con 1 riga in più, memoria con 9 righe in più). I file toccati da main coincidono con l'elenco del confronto con HEAD, tranne i tre log di sessione: lì tieni la versione del branch, come dichiari e come nel merge della #588. Esito: ok.
+- Righe perse. Nella memoria nessuna riga tolta, né rispetto a HEAD né rispetto a MERGE_HEAD. Ordine: #588–#591 della chat Mani, poi #580-M2–#584-M2. In `reports/stato_progetto.md` manca 1 sola riga di main: è l'intestazione «Ultimo aggiornamento» (riga 4), aggiornata dal branch. Main non l'aveva toccata (identica alla base), quindi non si perde contenuto. La riga V4 di main c'è. Esito: ok.
+- Pulizia. `git diff --cached --check` è pulito e nell'indice non ci sono marcatori di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`). Esito: ok.
+
+**Test sull'indice esportato (checkout-index in /tmp/rev592)**
+- Web (proxy più leggi): 557 passed, 1 skipped.
+- `pytest -k voice tests/`: 138 passed.
+- Test del browser con `GAS_TEST_BROWSER_OBBLIGATORIO=1`: 16 passed (Chromium presente, nessuno saltato).
+- Hook: 211 passed.
+- Kernel (`tests/test_unit_kernel.py`): 1062 PASS, 1 FAIL. Il FAIL è T31g (`GAS_VECTORS=1`), lo stesso già annotato in #588 come presente anche su origin/main. T101a/b passano: istruzione_turno resta nel system e fuori dalla cronologia.
+
+Questo merge non tocca `_get_window` né il tetto delle 10 iterazioni (gas.py identico a main). Non c'è slicing della history e non c'è simulazione di tool.
+
+**Rischi esclusi (non verificati)**
+- Non ho rifatto il FAIL di T31g su un export di origin/main. Mi baso su #588, perché il merge non tocca né gas.py né modules/memory. Va confermato dalla CI.
+- Non ho verificato che la CI su GitHub installi davvero Playwright 1.63.0 e Chromium col passo nuovo. In locale Chromium c'era già (`NODE_PATH` globale), quindi l'ambiente del runner non si riproduce qui.
+
+**Note (non riserve)**
+- Dopo il commit di merge, handoff, diff_sessione e ultimo_report vanno riscritti sulla base nuova 3a38e75, come dichiari: conteggi del §2 e nota «base = …». È lo stesso tipo di problema di R-588-1.
+- Memoria: la riga contatore #592 è aggiunta in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` e lasciata fuori dallo stage (lo stage resta 9 file, come richiesto). `scripts/commit_memoria_revisore.sh` non è partito: l'hook `review_gate.sh` ha bloccato il comando perché `.claude/.review_ok` non corrisponde al diff staged, e durante un merge un commit della sola memoria non va comunque fatto. La riga entra col tuo flusso dopo il merge.
+- Per committare il merge devi rigenerare il marcatore con `bash scripts/segna_review_ok.sh`.
+
+Riga contatore scritta:
+`#592 (chat Mani) — 2026-10-31 — APPROVATO — merge di origin/main 3a38e75 (PR #313 M2, V4 voce) in claude/peaceful-lovelace-0w2b7q (PR #312) … Nessuna lezione nuova.`
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_proxy.py`: 55 test. Web 691 passed, 2 skipped (692 con `-k web`). `tests/test_unit_web_leggi.py`: `test_https_sulla_porta_80`. Web 687 passed, 2 skipped. Suite completa in locale (Python 3.13), prima del merge di main: `2779 passed, 2 skipped in 220.09s`; dopo il merge (review #588): web e voce 815 passed, 2 skipped; kernel 1062 PASS / 1 FAIL (T31g, GAS_VECTORS, identico su main: dipende dall'ambiente). Mutanti presi: IP interni, tunnel su ogni porta e «:80/:443», upgrade, metodi, tetto dei byte, https in chiaro, Proxy-*, tempo della testa, `ferma()`, timeout rimasto.
@@ -334,10 +376,12 @@ Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_proxy.py`: 55 test. Web 69
 - 8339cf0, 87d0777, 1b0cce6 (memoria del revisore) e 07ea587: pushati insieme prima dell'apertura della PR #312. Run push 41100200600 su 07ea587: `handoff-check` failure (intermedio: l'handoff non era ancora nel diff), superato dal commit di fine-task.
 - 6ebecba (fine-task): run 41100831063 ancora in coda alla verifica esterna; check `smista` del bot failure con la PR in conflitto con main.
 - eb6c01c (merge di main), 3fe0c43 (memoria del revisore), d2a10d5 ed eea0ea0 (fine-task): CI verde su eea0ea0 (check suite completata senza fallimenti); check `verifica-bot` success, review del bot APPROVATO CON RISERVE (vedi §1).
-- a5c92e4, 2f84376 (memoria del revisore), b838f4d e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- a5c92e4, 2f84376 (memoria del revisore), b838f4d, 805b4d8 (fine-task): CI verde su 805b4d8 (unit-suite, handoff-check success); check `verifica-bot` success, bot APPROVATO CON RISERVE (vedi §1).
+- 826a9b1 (merge di main 3a38e75), il commit della memoria #592 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- V-2 bot #312 su 805b4d8 COSMETICA: la testa del CONNECT e la risposta 200 non entrano in `MAX_BYTE_TOTALI`; allineare docstring o conteggio.
 - V-4 bot #312 COSMETICA: le intestazioni hop-by-hop nominate dentro «Connection» non vengono tolte (non è un bypass: Upgrade è rifiutato a parte e la testa è ricostruita).
 - R-585-4 (chat Mani) BASSA, per la fetta del browser: i confini della risposta non sono controllati (riuso della connessione da verificare con Chromium).
 - R-585-5 (chat Mani) BASSA, per la fetta del browser: Chromium salta il proxy per il loopback; servono `--proxy-bypass-list=<-loopback>` e QUIC, WebRTC e prefetch spenti.
