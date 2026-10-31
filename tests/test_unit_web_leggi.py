@@ -376,6 +376,19 @@ def test_porte_permesse_anche_incrociate(rete):
     assert _Gestore.richieste[-1]["headers"]["Host"] == "sito.test:443"
 
 
+def test_https_sulla_porta_80(server):
+    """V-1 bot #310: anche https su 80 è permesso; url e Host portano «:80»."""
+    class _TlsFinto:
+        def wrap_socket(self, sock: socket.socket, server_hostname: str) -> socket.socket:
+            return sock
+
+    rete = _Rete(server)
+    r = rete.leggi("https://sito.test:80/ok", _tls=_TlsFinto())
+    assert r["ok"] is True and r["url"] == "https://sito.test:80/ok"
+    assert rete.connessi == [(IP_PUBBLICO, 80)]
+    assert _Gestore.richieste[-1]["headers"]["Host"] == "sito.test:80"
+
+
 def test_redirect_verso_altro_schema_rifiutato(rete):
     assert rete.leggi("http://sito.test/redir-file") == {
         "ok": False, "motivo": "schema non permesso: solo http e https"}

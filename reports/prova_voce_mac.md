@@ -51,7 +51,7 @@ Come funziona: quando smetti di parlare la frase parte da sola; Gas risponde a v
 - **Test 3 non va (sente frasi dalla TV):** dillo a M1. Intanto, dopo 5 turni di fila Gas si ferma da solo e chiede un clic, e oltre 60 richieste all'ora il server rifiuta: non può andare avanti all'infinito.
 - **«Voice server non raggiungibile»:** la prima finestra non è partita o si è chiusa. Riavviala e aspetta «in ascolto».
 - **«Gas non ha risposto entro 600 s»:** il cervello forte ci sta mettendo tanto. NON ripetere la richiesta: guarda la prima finestra, il lavoro può essere ancora in corso.
-- **«Troppi turni a voce nell'ultima ora»:** hai superato il tetto di 60 richieste a voce in un'ora. Aspetta o scrivi.
+- **«Troppe richieste a voce nell'ultima ora»:** hai superato il tetto di 60 richieste a voce in un'ora. Aspetta o scrivi.
 - **Nessun audio, solo testo:** controlla `ELEVENLABS_API_KEY` nel `.env`.
 - **«permesso microfono negato»:** consenti il microfono per 127.0.0.1 nelle impostazioni del browser e ricarica.
 

@@ -149,9 +149,9 @@ def parte_parlata(testo: str) -> str:
     return parlato if parlato == testo else parlato + _PARLATO_RESTO
 
 
-# V4 (V-2 ve #311): tetto LATO SERVER ai turni parlati, oltre a quello della pagina: un
+# V4 (V-2 ve #311): tetto LATO SERVER alle richieste a voce, oltre a quello della pagina: un
 # client diverso o rotto non fa partire turni senza fine. GAS_VOICE_MAX_TURNI_ORA (default
-# 60) turni parlati nell'ultima ora, poi 429 finché la finestra non scorre.
+# 60) richieste a voce (chiamate a Groq, V5) nell'ultima ora, poi 429 finché la finestra non scorre.
 _MAX_TURNI_ORA_DEFAULT = 60
 
 
@@ -261,12 +261,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
         is_audio = ct_base.startswith("audio/") or ct_base == "multipart/form-data"
 
         if is_audio:
-            # V4 (V-2 ve #311, R-580-2-M2): tetto orario dei turni parlati controllato PRIMA
+            # V4 (V-2 ve #311, R-580-2-M2): tetto orario delle richieste a voce controllato PRIMA
             # della trascrizione, così oltre il tetto non si spende nemmeno Groq
             tetto = _max_turni_ora()
             if len(self._turni_recenti()) >= tetto:
                 self._send_json(429, {"error": (
-                    f"Troppi turni a voce nell'ultima ora ({tetto}, GAS_VOICE_MAX_TURNI_ORA): "
+                    f"Troppe richieste a voce nell'ultima ora ({tetto}, GAS_VOICE_MAX_TURNI_ORA): "
                     "nessun lavoro avviato. Riprova più tardi o scrivi.")})
                 return
             prompt = self._do_stt(raw, content_type)
@@ -332,7 +332,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"content": result_content})
 
     def _turni_recenti(self) -> List[float]:
-        """Istanti dei turni parlati dell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
+        """Istanti delle richieste a voce (chiamate a Groq) dell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
         adesso = time.monotonic()
         return [t for t in self.turni_parlati if adesso - t < 3600]
 
