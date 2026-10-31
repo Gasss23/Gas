@@ -1,7 +1,7 @@
 """Proxy filtrante per il browser senza schermo (R6, fetta 32, chat Mani).
 
-Il browser (fetta successiva) esce in rete SOLO da qui: ogni richiesta della pagina
-(documento, immagini, script, redirect) passa le stesse regole di leggi_pagina.
+Il browser (modules/web/browser.py, fetta 33) esce in rete SOLO da qui: ogni richiesta
+della pagina (documento, immagini, script, redirect) passa le stesse regole di leggi_pagina.
 
 Regole (fail-safe, CLAUDE.md §9):
   - ascolta solo su 127.0.0.1, porta scelta dal sistema;
@@ -10,12 +10,16 @@ Regole (fail-safe, CLAUDE.md §9):
   - host, schema e porta validati da leggi._valida_url (solo 80 e 443, niente
     credenziali, niente localhost); il nome si risolve QUI e ci si collega all'IP
     controllato (niente indirizzi interni, niente DNS rebinding);
-  - niente «Upgrade» (WebSocket in chiaro); le intestazioni hop-by-hop e Proxy-* non
-    passano, l'Host lo scrive il proxy;
+  - niente «Upgrade» (WebSocket in chiaro); le intestazioni hop-by-hop, Proxy-* e quelle
+    nominate in «Connection» non passano, l'Host lo scrive il proxy;
+  - la testa della risposta http si riscrive con «Connection: close» (R-585-4): il browser
+    non riusa la connessione, quindi un server non può far arrivare una seconda risposta
+    come se fosse quella della richiesta successiva (anche verso un altro sito);
   - tetti: richieste, byte in tutto, durata, connessioni contemporanee, testa della
     richiesta; superato un tetto la connessione si chiude;
-  - un rifiuto è una risposta 403 col motivo scritto qui (mai preso dalla pagina) e una
-    riga in `rifiuti`; un errore di rete è un 502; mai un'eccezione verso chi chiama.
+  - un rifiuto è una risposta 403 col motivo scritto qui (mai preso dalla pagina), con
+    «X-Gas-Proxy: rifiuto» perché il browser la riconosca, e una riga in `rifiuti`; un
+    errore di rete è un 502; mai un'eccezione verso chi chiama.
 
 Limiti dichiarati (review #585): il proxy filtra le DESTINAZIONI, non i dati. Dentro un
 tunnel verso 443 passa qualunque cosa (anche un POST cifrato) verso un host pubblico. È
@@ -39,20 +43,48 @@ from typing import Optional
 from modules.web import leggi as _leggi
 
 MAX_RICHIESTE = 200          # richieste (e tunnel) per ogni avvio del proxy
-MAX_BYTE_TOTALI = 20_000_000  # byte passati in tutto, nei due versi
+MAX_BYTE_TOTALI = 20_000_000  # byte inoltrati in tutto, nei due versi (teste e «200» comprese)
 DURATA = 60.0                # secondi di vita del proxy dopo avvia()
 MAX_CONNESSIONI = 16         # connessioni contemporanee dal browser
 MAX_TESTA = 16_384           # byte della testa di una richiesta
+MAX_TESTA_RISPOSTA = 65_536  # byte della testa di una risposta http
+MAX_INTERMEDIE = 5           # risposte 1xx prima di quella vera
 TIMEOUT_INATTIVITA = 10.0    # secondi senza dati su una connessione
 MAX_RIFIUTI = 100            # motivi tenuti in memoria
 
 _METODI = frozenset({"GET", "HEAD"})
 _SALTO = frozenset({"connection", "keep-alive", "proxy-connection", "proxy-authorization",
                     "proxy-authenticate", "te", "trailer", "transfer-encoding", "upgrade", "host"})
+_SALTO_RISPOSTA = frozenset({"connection", "keep-alive", "proxy-connection", "upgrade", "te",
+                             "trailer", "x-gas-proxy"})  # R-593-3: il segno è solo del proxy
+_OK_TUNNEL = b"HTTP/1.1 200 Connection established\r\n\r\n"
+_FINE_TESTA = re.compile(rb"\r?\n\r?\n")
+_RIGA_STATO = re.compile(r"HTTP/1\.[01] ([1-5][0-9]{2})(?: [^\x00-\x08\x0a-\x1f\x7f]*)?")
 _PORTA_TUNNEL = re.compile(r"[0-9]{1,5}")
 _NOME_INTESTAZIONE = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+")
 
 log = logging.getLogger("gas.web.proxy")
+
+
+def _intestazioni(righe: list, motivo: str) -> list:
+    """Coppie (nome, valore); una riga malformata o con caratteri di controllo è un rifiuto."""
+    intestazioni = []
+    for riga in righe:
+        nome, sep, valore = riga.partition(":")
+        if not sep or not _NOME_INTESTAZIONE.fullmatch(nome) or any(
+                ord(c) < 0x20 and c != "\t" or ord(c) == 0x7F for c in valore):
+            raise _leggi._Rifiuto(motivo)
+        intestazioni.append((nome, valore.strip()))
+    return intestazioni
+
+
+def _senza_salto(intestazioni: list, salto: frozenset) -> list:
+    """Toglie le hop-by-hop, le Proxy-* e quelle nominate in «Connection» (V-4 bot #312)."""
+    nominate = {t.strip().lower() for nome, valore in intestazioni
+                if nome.lower() in ("connection", "proxy-connection") for t in valore.split(",")}
+    return [(n, v) for n, v in intestazioni
+            if n.lower() not in salto and n.lower() not in nominate
+            and not n.lower().startswith("proxy-")]
 
 
 class ProxyFiltrante:
@@ -162,8 +194,7 @@ class ProxyFiltrante:
         if porta != 80:
             host_header += f":{porta}"
         righe = [f"{metodo} {percorso} HTTP/1.1", f"Host: {host_header}"]
-        righe += [f"{nome}: {valore}" for nome, valore in intestazioni
-                  if nome.lower() not in _SALTO and not nome.lower().startswith("proxy-")]
+        righe += [f"{nome}: {valore}" for nome, valore in _senza_salto(intestazioni, _SALTO)]
         righe.append("Connection: close")
         testa = ("\r\n".join(righe) + "\r\n\r\n").encode("latin-1")
         # V-1 bot #312: anche la testa inoltrata conta; R-590-2: contata prima di aprire.
@@ -171,7 +202,7 @@ class ProxyFiltrante:
         remoto = self._apri(host, porta)
         try:
             self._invia(remoto, testa)
-            risposto[0] = True  # da qui la risposta al browser è quella del server
+            self._risposta(remoto, client, risposto)
             self._pompa(remoto, client)
         finally:
             self._togli(remoto)
@@ -190,8 +221,9 @@ class ProxyFiltrante:
             raise _leggi._Rifiuto("tunnel solo verso la porta 443")
         remoto = self._apri(host_valido, porta)
         try:
-            client.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
+            self._conta_byte(len(_OK_TUNNEL))  # V-2 bot #312 su 805b4d8: anche il «200» conta
             risposto[0] = True
+            self._invia(client, _OK_TUNNEL)
             self._pompa(remoto, client, client_a_remoto=True)
         finally:
             self._togli(remoto)
@@ -229,14 +261,55 @@ class ProxyFiltrante:
         parti = righe[0].split(" ")
         if len(parti) != 3 or not parti[2].startswith("HTTP/1."):
             raise _leggi._Rifiuto("richiesta non valida")
-        intestazioni = []
-        for riga in righe[1:]:
-            nome, sep, valore = riga.partition(":")
-            if not sep or not _NOME_INTESTAZIONE.fullmatch(nome) or any(
-                    ord(c) < 0x20 and c != "\t" or ord(c) == 0x7F for c in valore):
-                raise _leggi._Rifiuto("richiesta non valida")
-            intestazioni.append((nome, valore.strip()))
-        return parti[0], parti[1], intestazioni
+        return parti[0], parti[1], _intestazioni(righe[1:], "richiesta non valida")
+
+    def _risposta(self, remoto: socket.socket, client: socket.socket, risposto: list) -> None:
+        """R-585-4: inoltra la testa della risposta riscritta, con «Connection: close»; poi il
+        corpo passa così com'è fino alla chiusura del server. Le 1xx (non 101) passano prima."""
+        dati = b""
+        for _ in range(MAX_INTERMEDIE + 1):
+            testa, dati = self._testa_risposta(remoto, dati)
+            righe = [r.removesuffix("\r") for r in testa.decode("latin-1").split("\n")]
+            stato = _RIGA_STATO.fullmatch(righe[0])
+            if not stato:
+                raise _leggi._Rifiuto("risposta del server non valida")
+            codice = int(stato.group(1))
+            if codice == 101:
+                raise _leggi._Rifiuto("upgrade non permesso (WebSocket)")
+            intestazioni = _intestazioni(righe[1:], "risposta del server non valida")
+            uscita = [righe[0]] + [f"{n}: {v}" for n, v in _senza_salto(intestazioni, _SALTO_RISPOSTA)]
+            if codice >= 200:
+                uscita.append("Connection: close")
+            pezzo = ("\r\n".join(uscita) + "\r\n\r\n").encode("latin-1")
+            self._conta_byte(len(pezzo) + (len(dati) if codice >= 200 else 0))
+            risposto[0] = True  # da qui la risposta al browser è quella del server
+            self._invia(client, pezzo)
+            if codice >= 200:
+                if dati:
+                    self._invia(client, dati)
+                return
+        raise _leggi._Rifiuto("troppe risposte intermedie dal server")
+
+    def _testa_risposta(self, remoto: socket.socket, dati: bytes) -> tuple[bytes, bytes]:
+        """Legge una testa di risposta (righe chiuse da CRLF o LF, come accetta il browser)."""
+        while True:
+            fine = _FINE_TESTA.search(dati)
+            if fine:
+                return dati[:fine.start()], dati[fine.end():]
+            if len(dati) > MAX_TESTA_RISPOSTA:
+                raise _leggi._Rifiuto("risposta del server troppo grande")
+            attesa = min(TIMEOUT_INATTIVITA, self._scadenza - time.monotonic())
+            if attesa <= 0:
+                raise _leggi._Rifiuto("tempo massimo del proxy superato")
+            remoto.settimeout(attesa)
+            try:
+                pezzo = remoto.recv(65536)
+            except socket.timeout:
+                raise _leggi._Rifiuto("tempo massimo del proxy superato" if attesa < TIMEOUT_INATTIVITA
+                                      else "connessione inattiva") from None
+            if not pezzo:
+                raise _leggi._Rifiuto("risposta del server non valida")
+            dati += pezzo
 
     def _apri(self, host: str, porta: int) -> socket.socket:
         scadenza = min(self._scadenza, time.monotonic() + 2 * _leggi.TIMEOUT_CONNESSIONE)
@@ -321,6 +394,7 @@ class ProxyFiltrante:
         frase = {403: "Forbidden", 502: "Bad Gateway", 503: "Service Unavailable"}[codice]
         try:
             client.sendall(f"HTTP/1.1 {codice} {frase}\r\nContent-Type: text/plain; charset=utf-8\r\n"
-                           f"Content-Length: {len(corpo)}\r\nConnection: close\r\n\r\n".encode() + corpo)
+                           f"Content-Length: {len(corpo)}\r\nX-Gas-Proxy: rifiuto\r\nConnection: close\r\n\r\n".encode()
+                           + corpo)
         except OSError:
             pass

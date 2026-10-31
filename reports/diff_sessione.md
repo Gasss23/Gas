@@ -1,11 +1,17 @@
-# Diff della sessione — 2026-10-31 — Voce V5 (chat M2)
+# DIFF SESSIONE — 2026-10-31 — Mani, fetta 33: browser senza schermo dietro il proxy filtrante
 
-- `modules/voice/server.py` — ogni richiesta parlata che passa il tetto orario viene contata prima della trascrizione (R-581-2-M2).
-- `tests/test_unit_voice_stt.py` — test del tetto con «uso» e trascrizione vuota.
-- `reports/prova_voce_mac.md` — nuova: guida di prova della voce sul Mac.
-- Merge di main (01eba0d, PR #312): portati i file della chat Mani (proxy web e test), senza cambi da parte di questa sessione.
-- `modules/voice/server.py`, `reports/prova_voce_mac.md` — V-2: il tetto parla di «richieste a voce» (conta le chiamate a Groq).
-- `.claude/agents/memoria_revisore.md` — riga della review della fetta.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
+File toccati rispetto a main 9fdbd2b (PR #312 e #314 mergiate; main portato nel branch con un merge, conflitto solo nella memoria):
+- `modules/web/browser.py` — nuovo: `leggi_con_browser`, Chromium senza schermo in un processo figlio con la rete solo dal proxy. Motivo: R6, piano approvato dall'operatore.
+- `modules/web/leggi.py` — cornice NON FIDATO in `_incornicia` ed estrazione in `_estrai`; pagina vuota riprovata nel browser se acceso.
+- `modules/web/proxy.py` — testa della risposta riscritta con Connection: close, intestazioni nominate in Connection tolte, «200» del tunnel nel tetto, segno X-Gas-Proxy, stati 100–599.
+- `tests/test_unit_web_browser.py` — nuovo: 25 test con origine finta e Chromium vero.
+- `tests/test_unit_web_proxy.py` — 16 test nuovi per le risposte, Connection e il tunnel.
+- `tests/test_unit_web_leggi.py` — un patch da `_componi` a `_estrai`.
+- `.github/workflows/ci.yml` — env NODE_PATH e browser obbligatorio nel passo web.
+- `.claude/agents/memoria_revisore.md` — righe delle review dalla #593 alla #596.
+- `reports/stato_progetto.md` — blocco «Mani — fetta 33» e riga «Ultimo aggiornamento».
+- `reports/roadmap.md` — R6: proxy e browser fatti, manca bwrap.
+- `reports/ripartenza_mani.md` — punto g).
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
