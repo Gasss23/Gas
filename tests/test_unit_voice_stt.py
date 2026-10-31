@@ -405,6 +405,40 @@ class TestVoiceHandlerRouting:
         assert chiamate == ["ciao", "ciao", "ciao"]  # 2 parlati + 1 scritto
         assert stt.call_count == 2  # R-580-2-M2: oltre il tetto niente trascrizione (Groq)
 
+    def test_v5_tetto_conta_uso_e_trascrizioni_vuote(self):
+        """V5 (R-581-2-M2): anche «forte» senza richiesta e la trascrizione vuota spendono
+        Groq, quindi contano per GAS_VOICE_MAX_TURNI_ORA; la terza richiesta → 429 senza STT,
+        e nessun turno del kernel parte in tutto il giro."""
+        chiamate = []
+
+        def _run_turn(prompt, **kw):
+            chiamate.append(prompt)
+            yield {"type": "final", "content": "ok"}
+
+        self.kernel.run_turn = _run_turn
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        with patch("modules.voice.server.transcribe_audio", side_effect=["Forte.", "", "ciao"]) as stt:
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key", "GAS_VOICE_MAX_TURNI_ORA": "2"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                stati = [_post_raw(self.port, wav, hdrs)[0] for _ in range(3)]
+        assert stati == [200, 400, 429], stati   # uso (istruzione), vuota (400), tetto
+        assert stt.call_count == 2
+        assert chiamate == []
+
+    def test_v5_rifiuti_locali_non_consumano_il_tetto(self):
+        """R-585-1-M2: un audio vuoto (400, nessuna chiamata a Groq) non conta: con tetto 1
+        la richiesta valida dopo passa ancora."""
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav"}
+        with patch("modules.voice.server.transcribe_audio", return_value="ciao") as stt:
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key", "GAS_VOICE_MAX_TURNI_ORA": "1"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                vuoto = _post_raw(self.port, b"", {**hdrs, "Content-Length": "0"})
+                buono = _post_raw(self.port, wav, {**hdrs, "Content-Length": str(len(wav))})
+        assert vuoto[0] == 400 and buono[0] == 200
+        assert stt.call_count == 1
+
     def test_multipart_routes_to_stt(self):
         """Content-Type multipart/form-data → transcribe_audio invocata."""
         wav = _fake_wav()
