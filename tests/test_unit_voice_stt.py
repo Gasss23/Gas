@@ -364,6 +364,47 @@ class TestVoiceHandlerRouting:
             status, _ = _post_raw(self.port, body, {**_AUTH, "Content-Type": "application/json"})
         assert status == 200 and self.kernel.kw == {}
 
+    def test_v4_con_schermo_istruzione_riassunto_e_dettaglio(self):
+        """V4 (V-1 bot #311): con la pagina del browser (X-Gas-Formato: audio+testo) il turno
+        parlato chiede «frasi da dire, poi il dettaglio dopo una riga vuota»."""
+        from modules.voice.server import ISTRUZIONE_VOCE_SCHERMO
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": "audio+testo"}
+        with patch("modules.voice.server.transcribe_audio", return_value="analizza i lead"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                status, _ = _post_raw(self.port, wav, hdrs)
+        assert status == 200 and self.kernel.kw == {"istruzione_turno": ISTRUZIONE_VOCE_SCHERMO}
+        assert "riga vuota" in ISTRUZIONE_VOCE_SCHERMO
+
+    def test_v4_tetto_orario_dei_turni_parlati(self):
+        """V4 (V-2 ve #311): oltre GAS_VOICE_MAX_TURNI_ORA turni parlati nell'ultima ora →
+        429 chiaro, nessun turno del kernel; il testo scritto non conta."""
+        chiamate = []
+
+        def _run_turn(prompt, **kw):
+            chiamate.append(prompt)
+            yield {"type": "final", "content": "ok"}
+
+        self.kernel.run_turn = _run_turn
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        risultati = []
+        with patch("modules.voice.server.transcribe_audio", return_value="ciao") as stt:
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key", "GAS_VOICE_MAX_TURNI_ORA": "2"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                for _ in range(3):
+                    risultati.append(_post_raw(self.port, wav, hdrs))
+                scritto = _post_raw(self.port, json.dumps({"prompt": "ciao"}).encode(),
+                                    {**_AUTH, "Content-Type": "application/json"})
+        assert [r[0] for r in risultati] == [200, 200, 429]
+        assert "GAS_VOICE_MAX_TURNI_ORA" in risultati[2][1]["error"]
+        assert scritto[0] == 200
+        assert chiamate == ["ciao", "ciao", "ciao"]  # 2 parlati + 1 scritto
+        assert stt.call_count == 2  # R-580-2-M2: oltre il tetto niente trascrizione (Groq)
+
     def test_multipart_routes_to_stt(self):
         """Content-Type multipart/form-data → transcribe_audio invocata."""
         wav = _fake_wav()
