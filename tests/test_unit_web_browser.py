@@ -45,7 +45,7 @@ document.body.append('Solo dal JavaScript');</script></body></html>""",
 fetch('http://127.0.0.1:PORTA/interno').catch(() => {});
 fetch('http://[::1]:PORTA/interno6').catch(() => {});
 fetch('http://sito.test:8080/porta').catch(() => {});
-fetch('http://10.0.0.1/privato').catch(() => {});
+fetch('http://10.0.0.1/privato').catch(() => {});  // gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
 let ws = 'ws-no';
 try { new WebSocket('ws://sito.test/ws'); ws = 'WS-ESISTE'; } catch (e) {}
 try { new RTCPeerConnection(); ws += ' RTC-ESISTE'; } catch (e) {}
