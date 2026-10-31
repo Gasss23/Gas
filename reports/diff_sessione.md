@@ -1,11 +1,12 @@
-# Diff della sessione — 2026-10-30 — Voce V4 (chat M2)
+# DIFF SESSIONE — 2026-10-30/31 — Mani, fetta 32: proxy filtrante per il browser senza schermo
 
-- `clients/voice/browser_client.html` — interruzione mentre Gas parla (`vigila`), rumore di fondo a mediana bassa con tetto (`sogliaDaCampioni`, soglia ≤ 0,045), un solo contesto per i bip, microfono chiuso se l'audio fallisce, `riapri()` col tetto dei turni.
-- `clients/voice/browser_server.py` — `GAS_VOICE_INTERRUZIONE` in `/config`.
-- `modules/voice/server.py` — `ISTRUZIONE_VOCE_SCHERMO` (riassunto + dettaglio), parte parlata = primo paragrafo, tetto orario dei turni parlati (`GAS_VOICE_MAX_TURNI_ORA`, 429).
-- `.github/workflows/ci.yml` — Node + Playwright 1.63.0 + Chromium; test della pagina obbligatori nella voice suite.
-- `tests/test_unit_voice_server.py`, `tests/test_unit_voice_stt.py` — giri «interruzione» e «sì subito», paragrafi, istruzione con schermo, tetto orario, /config, browser obbligatorio.
-- `.claude/agents/memoria_revisore.md` — lezioni delle review della fetta.
-- `reports/*` — report di fine task.
+File toccati rispetto a main 3a38e75 (PR #310, #311 e #313 mergiate; main portato nel branch con due merge, solo conflitti nei report e nella memoria):
+- `modules/web/proxy.py` — nuovo: `ProxyFiltrante`, da cui il futuro browser senza schermo uscirà in rete con le stesse regole di leggi_pagina. Motivo: R6, piano approvato dall'operatore.
+- `tests/test_unit_web_proxy.py` — nuovo: 55 test con server d'origine, eco locale, DNS e connettore finti.
+- `tests/test_unit_web_leggi.py` — test https sulla porta 80 (V-1 bot #310).
+- `.claude/agents/memoria_revisore.md` — righe delle review dalla #585 alla #592.
+- `reports/stato_progetto.md` — blocco «Mani — fetta 32» e riga «Ultimo aggiornamento».
+- `reports/ripartenza_mani.md` — punto g).
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
