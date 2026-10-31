@@ -1,27 +1,15 @@
-# Ultimo report — 2026-10-30 — Voce V4: interruzione, «sì» detto subito, riassunto + dettaglio, tetto lato server, test della pagina in CI (chat M2) — PR #313
+# Ultimo report — 2026-10-31 — Voce V5: tetto che conta ogni richiesta parlata, guida di prova sul Mac (chat M2) — PR #314
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #313 (https://github.com/Gasss23/Gas/pull/313): la mergia M1 se il bot dà APPROVATO pulito; con riserve M1 chiede il sì all'operatore.
-2. Prova col microfono vero sul Mac, PRIMA cosa: che la voce di Gas dalle casse NON lo interrompa da sola. Se Gas si zittisce da solo a ogni risposta, mettere `GAS_VOICE_INTERRUZIONE=0` nel `.env` e riavviare la pagina (interruzione accesa di default per scelta dell'operatore, confermata da M1). Poi: un «sì» a voce normale detto subito dopo la risposta, la TV accesa.
+1. Merge della PR #314 (https://github.com/Gasss23/Gas/pull/314): la mergia M1 se il bot dà APPROVATO pulito; con riserve M1 chiede il sì all'operatore.
+2. Prova sul Mac seguendo `reports/prova_voce_mac.md` (eco, «sì» a voce normale, TV accesa).
 
 ## Esito delle fette
 
-- **V4.1 — interruzione mentre Gas parla** (sì dell'operatore): `FATTA` — in conversazione, mentre Gas parla il microfono resta in ascolto (echo cancellation del browser); sopra la soglia 0,06 per 300 ms Gas si zittisce e la frase parte. `GAS_VOICE_INTERRUZIONE=0` la spegne. Limite dichiarato: i primi ~300 ms della frase che interrompe non vengono registrati. Dopo un'interruzione l'ascolto riparte già «in voce» (una voce media non va persa: R-580-1-M2); un colpo breve (tosse) zittisce Gas ma il clip quasi muto non parte (R-581-1-M2); ogni registrazione ha il suo buffer, così il clip dopo un colpo è un webm valido (R-582-1-M2).
-- **V4.2 — «sì» detto subito** (V-1 bot #311 su c3079f4): `FATTA` — rumore di fondo = mediana dei primi 300 ms con un tetto; la voce conta fin dall'inizio.
-- **V4.3 — riassunto + dettaglio** (V-1 bot #311 su a1a6a25): `FATTA` — con la pagina del browser l'istruzione chiede 1-3 frasi da dire e il dettaglio dopo una riga vuota; a voce solo il primo paragrafo, il resto a schermo. Senza schermo l'istruzione non parla più dello schermo.
-- **V4.4 — bip e microfono** (V-2 bot #311 su a1a6a25): `FATTA` — un solo contesto audio per i bip; microfono chiuso se l'audio del browser fallisce.
-- **V4.5 — tetto lato server** (V-2 ve #311 su a1a6a25): `FATTA` — `GAS_VOICE_MAX_TURNI_ORA` (60 turni parlati/ora), oltre → 429, nessun turno.
-- **V4.6 — test della pagina in CI** (V-2 bot #311, ok di M1 a ci.yml): `FATTA` — Node + Playwright 1.63.0 + Chromium nel job; i giri della pagina in CI sono obbligatori (`GAS_TEST_BROWSER_OBBLIGATORIO=1`).
-- **V-5 bot #311 su c3079f4** (riserve non tracciate): `FATTA` — in stato_progetto.
-- **Review**: #580-M2 APPROVATO CON RISERVE (R-580-1-M2 MEDIA soglie in cascata, R-580-2/3-M2) → `FATTA`; #581-M2 APPROVATO CON RISERVE (R-581-1-M2 clip muto dopo un colpo) → `FATTA`; #582-M2 BOCCIATO (R-582-1-M2 MEDIA: clip corrotto dopo un colpo) → `FATTA`; #583-M2 APPROVATO CON RISERVE. Aperte: R-581-2-M2 BASSA («uso» spende Groq senza contare per il tetto), R-583-1-M2 COSMETICA (il controllo dell'header vale solo per webm).
-- **Secondo giro — bot #313 su 2e8a125: NON approvata (V-1 MEDIA)**: `FATTA` — un «sì» a volume medio detto appena si riapre l'ascolto poteva restare sotto la soglia (fino a 0,09): ora `sogliaDaCampioni` la tiene ≤ 0,045; test sulla soglia calcolata dalla pagina vera (fallisce col tetto di prima). V-2 BASSA (interruzione accesa, eco non provata): accesa per scelta dell'operatore, istruzione `GAS_VOICE_INTERRUZIONE=0` qui sopra. CI su 2e8a125 tutta verde, compreso lo step nuovo con Playwright (136 passed, i giri della pagina girano davvero). Verifica esterna su 2e8a125 APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/313#issuecomment-6530181510)). Review #584-M2 APPROVATO CON RISERVE (R-584-1-M2 BASSA: rumore costante ≥ 0,045 preso per voce, da provare sul Mac).
-- **gas.py / brains/**: non toccati.
-
-## Prove
-
-- Pagina vera in Chromium headless con microfono finto: 10 giri (normale, riascolto, pausa, tetto, errore, interruzione, interruzione media, colpo, colpo + voce, sì subito); ogni clip inviato deve cominciare con l'header webm. I giri nuovi falliscono sulla pagina precedente e passano sulla nuova.
-- Voice suite con browser obbligatorio: 136 passed.
+- **V5.1 — R-581-2-M2** («uso» e trascrizioni vuote spendevano Groq senza contare per il tetto orario): `FATTA` — `modules/voice/server.py`: il tetto conta ogni chiamata a Groq (registrata subito prima della trascrizione); i rifiuti locali (chiave assente, audio vuoto o non valido) non contano (R-585-1-M2); oltre `GAS_VOICE_MAX_TURNI_ORA` → 429 senza Groq. Review #585-M2 APPROVATO CON RISERVE, #586-M2 APPROVATO. Test: «Forte.» → 200, trascrizione vuota → 400, terza → 429, Groq chiamato 2 volte, nessun turno; fallisce sul codice di main.
+- **V5.2 — guida di prova sul Mac**: `FATTA` — `reports/prova_voce_mac.md`, una pagina in parole semplici: `.env`, avvio di server e pagina, i 3 test, cosa fare se qualcosa va storto.
+- **gas.py / brains/ / ci.yml**: non toccati.
 
 ## Anomalie
 
