@@ -26,14 +26,15 @@
 - **Review #593 (chat Mani)**: APPROVATO CON RISERVE. R-593-1 MEDIA (Chromium vivo dopo il kill del gruppo di node): `FATTA`; R-593-2/3/4/5/6 BASSE: `FATTA` (la 3 su https e la 6 dichiarate come limiti).
 - **Review #594**: APPROVATO CON RISERVE. R-594-1 BASSA (test end-to-end debole sul mutante): `FATTA` — test diretto; R-594-2 BASSA: `DEFERITA — dichiarata`; R-594-3 COSMETICA: `FATTA`.
 - **Review #595**: APPROVATO CON RISERVE. R-595-1 e R-595-2 BASSE: `DEFERITA — registrate`.
-- **Merge di origin/main 9fdbd2b (PR #314 di M2, voce V5)**: `FATTA` — conflitto solo nella memoria del revisore. Review #596 (vedi §4).
+- **Merge di origin/main 9fdbd2b (PR #314 di M2, voce V5)**: `FATTA` — conflitto solo nella memoria del revisore. Review #596 APPROVATO CON RISERVE (R-596-1: riserve nello stato, `FATTA` nei report).
+- **Gate IP al primo fine-task (6ed1741, non pushato)**: fermo su IP di esempio. `FATTA` — marcatore gasmerge-ip-ok nel test (b64a54e, review #597 APPROVATO) e nella riga #593 della memoria (1db489f); nell'handoff l'indirizzo «tutti zeri» citato nei verdetti #593 e #597 è scritto <IP-redatto>.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
+ .claude/agents/memoria_revisore.md |   8 ++++++++
  .github/workflows/ci.yml           |   5 +++++
  modules/web/browser.py             | 271 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/web/leggi.py               |  40 +++++++++++++++++++++++++++++++++++++---
@@ -54,6 +55,9 @@ NB: base = merge-base con origin/main = 9fdbd2b. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b64a54e test(web): IP di esempio segnato per il gate IP (review #597)
+1db489f chore(revisore): memoria review #597 — APPROVATO
+6ed1741 docs(fine-task): fetta 33 browser senza schermo, PR #315, review #593-#596
 713f59f chore(revisore): memoria review #596 — APPROVATO CON RISERVE
 d313fad Merge origin/main (9fdbd2b, PR #314 di M2) in claude/peaceful-lovelace-0w2b7q (fetta 33)
 1895d7c feat(web): browser senza schermo dietro il proxy filtrante (R6, fetta 33, chat Mani)
@@ -66,7 +70,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 1895d7c (modules/web/browser.py, modules/web/leggi.py, modules/web/proxy.py, test web, .github/workflows/ci.yml). Verdetto integrale della review #593 (chat Mani), sulla prima versione:
+Commit 1895d7c (modules/web/browser.py, modules/web/leggi.py, modules/web/proxy.py, test web, .github/workflows/ci.yml). Verdetto integrale della review #593 (chat Mani), sulla prima versione. Unico ritocco, per il gate IP: l'indirizzo «tutti zeri» della lista delle sonde è scritto <IP-redatto>; il resto è identico:
 
 ```
 ## VERDETTO: APPROVATO CON RISERVE
@@ -75,7 +79,7 @@ Review #593 (chat Mani). R6 fetta 33, browser senza schermo. Diff staged sha256 
 
 **Elementi del diff esaminati**
 
-- `modules/web/browser.py:55` — `--proxy-bypass-list=<-loopback>` insieme a `--proxy-server` — rischio: uscite in rete che non passano dal proxy — **ok**. Ho caricato una pagina che chiama 127.0.0.1, [::1], localhost, foo.localhost, 0.0.0.0, 127.1, [::ffff:127.0.0.1], 2130706433, più img, sendBeacon, link prefetch, fetch e WebSocket da un Worker: all'origine è arrivata solo «/». Nessun pacchetto UDP verso uno STUN su 127.0.0.1.
+- `modules/web/browser.py:55` — `--proxy-bypass-list=<-loopback>` insieme a `--proxy-server` — rischio: uscite in rete che non passano dal proxy — **ok**. Ho caricato una pagina che chiama 127.0.0.1, [::1], localhost, foo.localhost, <IP-redatto>, 127.1, [::ffff:127.0.0.1], 2130706433, più img, sendBeacon, link prefetch, fetch e WebSocket da un Worker: all'origine è arrivata solo «/». Nessun pacchetto UDP verso uno STUN su 127.0.0.1.
 - `modules/web/browser.py:99` — script iniettato e routeWebSocket — rischio: aggirarli con un iframe creato al volo — **ok**. Ho provato `iframe.contentWindow.RTCPeerConnection` e `.WebSocket`: entrambi `undefined`, quindi lo script vale anche nell'iframe. Una navigazione JS verso file:///etc/hostname è bloccata da Chromium (il testo resta quello della pagina, Fonte quella di partenza).
 - `modules/web/browser.py:144` e `modules/web/browser.py:172` — `_uccidi` con killpg sul gruppo di node — rischio: processi orfani — **riserva (R-593-1, MEDIA)**. Vedi sotto.
 - `modules/web/browser.py:173` — `splitlines()` sull'uscita del figlio — rischio: la pagina rompe l'uscita JSON — **riserva (R-593-2, BASSA)**. Una contraffazione dell'esito non è possibile: JSON.stringify fa l'escape delle virgolette, quindi l'ultimo pezzo non diventa mai un oggetto valido. Resta però un rifiuto ingiustificato, riprodotto.
@@ -276,6 +280,25 @@ Review **#596 (chat Mani)**: merge di origin/main 9fdbd2b (PR #314 M2, voce V5) 
 La riga #596 è in coda a /home/user/Gas/.claude/agents/memoria_revisore.md ma è FUORI dallo stage: ho controllato che l'indice sia rimasto a 8 file, +216/-362. Non ho eseguito `commit_memoria_revisore.sh`, perché con il merge in corso un `commit -o` lo concluderebbe con un indice parziale. Va aggiunta allo stage o committata dopo il commit di merge. Nessuna lezione nuova.
 ```
 
+Commit b64a54e (tests/test_unit_web_browser.py: marcatore del gate IP). Verdetto integrale della review #597 (chat Mani); unico ritocco, per il gate IP: l'indirizzo «tutti zeri» è scritto <IP-redatto>:
+
+```
+## VERDETTO: APPROVATO
+
+Review #597 (chat Mani). Delta minimo sulla fetta 33 (PR #315, branch claude/peaceful-lovelace-0w2b7q). Il diff staged contiene solo marcatori gasmerge-ip-ok.
+
+Elementi esaminati:
+- `tests/test_unit_web_browser.py:48`. Cosa fa: aggiunge un commento JS `//` in coda a `fetch('http://10.0.0.1/privato').catch(() => {});`, dentro la pagina finta `/fughe` del dizionario `PAGINE`. Rischio esaminato: che il comportamento del test cambi o che il literal `b"""..."""` si rompa. Il commento sta dopo il `;` e arriva fino a fine riga, quindi la fetch resta eseguita com'era. Il testo aggiunto è solo ASCII, quindi il bytes literal resta valido. Nessun test cerca «privato» o il testo della pagina (grep: l'unica occorrenza è la riga 48). È lo stesso marcatore già usato in `tests/test_unit_web_browser.py:20` e `tests/test_unit_web_browser.py:139`. Rilanciato tutto il file: 25 passed. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1070`. Cosa fa: aggiunge una nota tra parentesi in coda alla riga #593. Rischio esaminato: che il registro storico venga alterato. Il testo della review resta identico, la riga inizia ancora con `#593` e il contatore non cambia. Esito: ok.
+- Contesto, `scripts/fine_task_finale.sh:73`. Ho simulato il gate IP (passi 73-110: regex, `--not -e gasmerge-ip-ok`, filtro loopback per riga) sul tree dell'indice (`git write-tree`). La riga 48 del test e la riga #593 non risultano più. Restano solo 3 righe di `reports/handoff.md` (versione nell'indice, che è quella di HEAD) con <IP-redatto>. È la redazione `<IP-redatto>` che hai dichiarato e che va fatta prima del commit, altrimenti il gate si ferma di nuovo. Esito: ok, con questo passo ancora da fare.
+
+Rischio escluso: non ho verificato la redazione nell'handoff né la dichiarazione nel §4, perché non sono nel diff staged (reports/ è fuori dal perimetro di review). Non ho rilanciato il resto della suite web: il delta tocca solo un commento.
+
+Nota operativa: lo script ha già committato la memoria (`1db489f`, riga #597, che include anche la nota sulla #593). Ora nello stage resta solo `tests/test_unit_web_browser.py`, quindi lo SHA del diff staged è cambiato. Prima del commit devi rilanciare `bash scripts/segna_review_ok.sh`.
+
+File rilevanti: /home/user/Gas/tests/test_unit_web_browser.py, /home/user/Gas/.claude/agents/memoria_revisore.md, /home/user/Gas/reports/handoff.md
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_browser.py`: 25 test (saltati senza node+playwright, obbligatori in CI). `tests/test_unit_web_proxy.py`: da 55 a 71 test. `tests/test_unit_web_leggi.py`: il patch di un test passa da `_componi` a `_estrai`. Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), node e playwright presenti: 732 passed, 2 skipped. Web + voce sull'albero unito con main 9fdbd2b: 870 passed, 2 skipped. Mutanti presi: senza `<-loopback>`, senza lo script che spegne WebSocket/RTC, senza il controllo X-Gas-Proxy, senza `.split("\n")`, senza i gruppi col segno (test diretto, 3 su 3). Mutante NON preso dal test con Chromium: senza la riscrittura della risposta (Chromium qui non riusa la connessione); lo prende il test unitario del proxy.
@@ -284,7 +307,8 @@ Nessuna modifica a gas.py. Nuovo `tests/test_unit_web_browser.py`: 25 test (salt
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - bf07949, 7649991, ce68d35 (memoria del revisore), 1895d7c (fetta 33): pushati insieme; nessuna run su questi SHA prima dell'apertura della PR (push di un branch senza PR aperta: la CI parte sulla PR).
-- Il commit di merge di main 9fdbd2b, il commit della memoria #596 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- d313fad (merge di main 9fdbd2b), 713f59f (memoria #596): pushati prima dell'apertura della PR #315; run non ancora disponibile alla scrittura dell'handoff.
+- 6ed1741 (primo fine-task, fermato dal gate IP), 1db489f (memoria #597), b64a54e (test) e il commit di fine-task che contiene questo file: pushati insieme; run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

@@ -17,6 +17,8 @@
 - **Review #595**: APPROVATO CON RISERVE. R-595-1 e R-595-2 BASSE: DEFERITA — registrate.
 - **Merge di origin/main 9fdbd2b (PR #314 di M2)**: FATTA — conflitto solo nella memoria. Review #596 APPROVATO CON RISERVE (R-596-1: riserve nello stato, FATTA qui).
 
+- **Gate IP al primo fine-task**: fermo su IP di esempio; FATTA — marcatore nel test (review #597 APPROVATO) e nella memoria, <IP-redatto> nei verdetti incollati nell'handoff.
+
 ## Prove
 - Browser 25 test, proxy 71 test. Web (`python -m pytest tests/test_unit_web_*.py`): 732 passed, 2 skipped. Web + voce dopo il merge: 870 passed, 2 skipped.
 - Mutanti presi: senza `<-loopback>`, senza lo script che spegne WebSocket/RTC, senza il controllo X-Gas-Proxy, senza lo split su «\n», senza i gruppi col segno. Non preso dal test con Chromium: senza la riscrittura della risposta (lo prende il test unitario del proxy).
