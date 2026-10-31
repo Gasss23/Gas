@@ -44,7 +44,7 @@
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  31 ++++++++++++++++++++-----------
+ reports/ultimo_report.md           |  31 +++++++++++++++++++++----------
  tests/test_unit_web_browser.py     | 363 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_web_leggi.py       |   4 ++--
  tests/test_unit_web_proxy.py       | 124 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -55,6 +55,7 @@ NB: base = merge-base con origin/main = 9fdbd2b. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+598aa4e docs(fine-task): fetta 33, PR #315, gate IP e review #597
 b64a54e test(web): IP di esempio segnato per il gate IP (review #597)
 1db489f chore(revisore): memoria review #597 — APPROVATO
 6ed1741 docs(fine-task): fetta 33 browser senza schermo, PR #315, review #593-#596
@@ -280,7 +281,7 @@ Review **#596 (chat Mani)**: merge di origin/main 9fdbd2b (PR #314 M2, voce V5) 
 La riga #596 è in coda a /home/user/Gas/.claude/agents/memoria_revisore.md ma è FUORI dallo stage: ho controllato che l'indice sia rimasto a 8 file, +216/-362. Non ho eseguito `commit_memoria_revisore.sh`, perché con il merge in corso un `commit -o` lo concluderebbe con un indice parziale. Va aggiunta allo stage o committata dopo il commit di merge. Nessuna lezione nuova.
 ```
 
-Commit b64a54e (tests/test_unit_web_browser.py: marcatore del gate IP). Verdetto integrale della review #597 (chat Mani); unico ritocco, per il gate IP: l'indirizzo «tutti zeri» è scritto <IP-redatto>:
+Commit b64a54e (tests/test_unit_web_browser.py: marcatore del gate IP). Verdetto integrale della review #597 (chat Mani); unico ritocco, per il gate IP: l'indirizzo «tutti zeri» e l'IP privato di esempio del test sono scritti <IP-redatto>:
 
 ```
 ## VERDETTO: APPROVATO
@@ -288,7 +289,7 @@ Commit b64a54e (tests/test_unit_web_browser.py: marcatore del gate IP). Verdetto
 Review #597 (chat Mani). Delta minimo sulla fetta 33 (PR #315, branch claude/peaceful-lovelace-0w2b7q). Il diff staged contiene solo marcatori gasmerge-ip-ok.
 
 Elementi esaminati:
-- `tests/test_unit_web_browser.py:48`. Cosa fa: aggiunge un commento JS `//` in coda a `fetch('http://10.0.0.1/privato').catch(() => {});`, dentro la pagina finta `/fughe` del dizionario `PAGINE`. Rischio esaminato: che il comportamento del test cambi o che il literal `b"""..."""` si rompa. Il commento sta dopo il `;` e arriva fino a fine riga, quindi la fetch resta eseguita com'era. Il testo aggiunto è solo ASCII, quindi il bytes literal resta valido. Nessun test cerca «privato» o il testo della pagina (grep: l'unica occorrenza è la riga 48). È lo stesso marcatore già usato in `tests/test_unit_web_browser.py:20` e `tests/test_unit_web_browser.py:139`. Rilanciato tutto il file: 25 passed. Esito: ok.
+- `tests/test_unit_web_browser.py:48`. Cosa fa: aggiunge un commento JS `//` in coda a `fetch('http://<IP-redatto>/privato').catch(() => {});`, dentro la pagina finta `/fughe` del dizionario `PAGINE`. Rischio esaminato: che il comportamento del test cambi o che il literal `b"""..."""` si rompa. Il commento sta dopo il `;` e arriva fino a fine riga, quindi la fetch resta eseguita com'era. Il testo aggiunto è solo ASCII, quindi il bytes literal resta valido. Nessun test cerca «privato» o il testo della pagina (grep: l'unica occorrenza è la riga 48). È lo stesso marcatore già usato in `tests/test_unit_web_browser.py:20` e `tests/test_unit_web_browser.py:139`. Rilanciato tutto il file: 25 passed. Esito: ok.
 - `.claude/agents/memoria_revisore.md:1070`. Cosa fa: aggiunge una nota tra parentesi in coda alla riga #593. Rischio esaminato: che il registro storico venga alterato. Il testo della review resta identico, la riga inizia ancora con `#593` e il contatore non cambia. Esito: ok.
 - Contesto, `scripts/fine_task_finale.sh:73`. Ho simulato il gate IP (passi 73-110: regex, `--not -e gasmerge-ip-ok`, filtro loopback per riga) sul tree dell'indice (`git write-tree`). La riga 48 del test e la riga #593 non risultano più. Restano solo 3 righe di `reports/handoff.md` (versione nell'indice, che è quella di HEAD) con <IP-redatto>. È la redazione `<IP-redatto>` che hai dichiarato e che va fatta prima del commit, altrimenti il gate si ferma di nuovo. Esito: ok, con questo passo ancora da fare.
 
