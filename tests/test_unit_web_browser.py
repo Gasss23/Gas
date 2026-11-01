@@ -53,6 +53,9 @@ try { new WebSocket('ws://sito.test/ws'); ws = 'WS-ESISTE'; } catch (e) {}
 try { new RTCPeerConnection(); ws += ' RTC-ESISTE'; } catch (e) {}
 try { if (window.open('http://sito.test/popup')) ws += ' POPUP'; } catch (e) {}
 if (navigator.serviceWorker) ws += ' SW-ESISTE';
+for (const n of ['WebSocketStream', 'RTCDataChannel', 'SharedWorker', 'Notification', 'webkitRTCPeerConnection']) {
+  if (window[n]) ws += ' ' + n;  // V-3 ve #316: ognuno ha la sua prova
+}
 try {
   new Worker(URL.createObjectURL(new Blob(
     ["try { new WebSocket('wss://sito.test/ws-worker'); new WebSocket('ws://sito.test/ws-worker'); } catch (e) {}"])));
@@ -245,7 +248,7 @@ def test_fughe_bloccate(rete):
     r = _leggi(rete, "http://sito.test/fughe")
     # Niente WebSocket, RTC, popup, service worker, Worker (V-1 ve #315: da un worker un
     # wss:// passava dal tunnel 443), anche in un iframe about:blank creato da script.
-    assert r["ok"] and "Titolo: Fughe ws-no" in r["testo"], r
+    assert r["ok"] and "Titolo: Fughe ws-no" in r["testo"].split("\n"), r  # titolo esatto
     # All'origine arriva solo la pagina, e nessun tunnel verso la 443: niente 127.0.0.1, ::1,
     # porta 8080, IP privati, WebSocket (ws:// o wss://, anche da un worker) né popup. Un ws://
     # lo fermerebbe comunque il controllo CONNECT del proxy (tunnel solo verso la 443, R-598-1).
@@ -343,7 +346,8 @@ def _pid_con(pezzo: bytes, file: str) -> list:
 
 def _nel_sandbox(casa: str, comando: str, **env: str) -> subprocess.CompletedProcess:
     base = {k: os.environ[k] for k in br._AMBIENTE if k in os.environ}
-    base.update(HOME=casa, TMPDIR=casa, **env)
+    profilo = os.path.join(casa, "profilo")
+    base.update(HOME=profilo, TMPDIR=profilo, **env)
     return subprocess.run(br._comando_bwrap(casa, base) + ["sh", "-c", comando],
                           capture_output=True, text=True, timeout=30)
 
@@ -362,12 +366,14 @@ def test_il_sandbox_nasconde_gas_e_le_home_e_non_ha_rete():
             r = _nel_sandbox(casa, (
                 # Restano solo le cartelle vuote dei punti di montaggio (es. /home/user per Gas).
                 f"ls -A {br._GAS} | wc -l; ls {segno_casa} 2>/dev/null | wc -l; "
-                "touch /usr/x 2>/dev/null && echo SCRIVE-FUORI; touch \"$HOME/ok\" && echo CASA; "
+                "touch /usr/x 2>/dev/null && echo SCRIVE-FUORI; touch \"$HOME/ok\" && echo PROFILO; "
+                f"touch {casa}/x 2>/dev/null && echo SCRIVE-CASA; "
                 f"node -e \"require('net').connect({porta}, '127.0.0.1')"
                 ".on('connect', () => console.log('RETE')).on('error', () => console.log('NORETE'))\""))
             assert r.returncode == 0, r.stderr
-            assert r.stdout.split() == ["0", "0", "CASA", "NORETE"], r.stdout
-            assert os.path.exists(os.path.join(casa, "ok"))
+            assert r.stdout.split() == ["0", "0", "PROFILO", "NORETE"], r.stdout
+            # V-4 ve #316: il profilo è un tmpfs del sandbox, sul disco dell'host non resta niente.
+            assert os.listdir(os.path.join(casa, "profilo")) == [] and os.listdir(casa) == ["profilo"]
             # Review #602: ogni cartella nascosta (nel percorso vero) e Gas hanno un tmpfs sopra,
             # qualunque cosa contengano sulla macchina dei test.
             montati = _nel_sandbox(casa, "cat /proc/self/mountinfo").stdout.splitlines()
@@ -471,6 +477,68 @@ def test_la_sonda_di_bwrap(monkeypatch, tmp_path):
     monkeypatch.setattr(br.shutil, "which", lambda nome: None)
     monkeypatch.setattr(br, "_BWRAP_OK", None)
     assert br._bwrap_funziona() is False  # bwrap non c'è
+
+
+def test_le_cartelle_ri_esposte_e_la_casa_sono_in_sola_lettura():
+    """V-3 ve #316: un renderer compromesso non lascia codice nei moduli di Node dell'host."""
+    import shutil
+    node = os.path.realpath(shutil.which("node"))
+    prefisso = os.path.dirname(os.path.dirname(node))
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, (
+            f"touch {prefisso}/gas-prova 2>/dev/null && echo SCRIVE-NODE; "
+            f"touch {os.path.dirname(node)}/gas-prova 2>/dev/null && echo SCRIVE-BIN; echo FINE"))
+    assert r.stdout.split() == ["FINE"], r.stdout
+
+
+def test_ipc_e_processi_dell_host_non_si_vedono():
+    """V-3 ve #316: IPC namespace nuovo, e /proc del sandbox mostra solo i suoi processi."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, f"readlink /proc/self/ns/ipc; ls /proc | grep -c '^[0-9]'; "
+                               f"test -e /proc/{os.getpid()}/cmdline && echo VEDE-PYTEST; echo FINE")
+    righe = r.stdout.split()
+    assert righe[0] != os.readlink("/proc/self/ns/ipc"), righe
+    assert int(righe[1]) < 10 and righe[2:] == ["FINE"], righe
+
+
+def _sleep_vivi(durata: str) -> list:
+    """PID dei processi vivi che sono proprio «sleep <durata>» (comm sleep, non bwrap né sh)."""
+    trovati = []
+    for pid in _pid_con(b"\0sleep\0" + durata.encode() + b"\0", "cmdline"):
+        try:
+            with open(f"/proc/{pid}/comm") as f:
+                if f.read().strip() == "sleep":
+                    trovati.append(pid)
+        except OSError:
+            pass
+    return trovati
+
+
+def test_morto_bwrap_muore_il_sandbox():
+    """V-3 ve #316: --die-with-parent. Ucciso solo il processo bwrap esterno (non il gruppo),
+    quello che gira dentro muore lo stesso. Si aspetta il vero «sleep» (review #604: il cmdline
+    del bwrap esterno contiene già «sleep 33.271», e ucciderlo subito era una corsa)."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        base = {k: os.environ[k] for k in br._AMBIENTE if k in os.environ}
+        proc = subprocess.Popen(br._comando_bwrap(casa, base) + ["sleep", "33.271"],
+                                start_new_session=True)
+        try:
+            for _ in range(50):
+                if _sleep_vivi("33.271"):
+                    break
+                time.sleep(0.05)
+            assert _sleep_vivi("33.271"), "il figlio non è partito"
+            os.kill(proc.pid, signal.SIGKILL)
+            proc.wait(timeout=5)
+            for _ in range(50):
+                if not _sleep_vivi("33.271"):
+                    break
+                time.sleep(0.05)
+            assert _sleep_vivi("33.271") == []
+        finally:
+            for pid in _sleep_vivi("33.271"):
+                os.kill(pid, signal.SIGKILL)
+            proc.kill()
 
 
 def test_l_ambiente_del_sandbox_e_solo_quello_dato(monkeypatch):

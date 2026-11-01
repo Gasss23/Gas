@@ -16,8 +16,11 @@ Regole (fail-safe, CLAUDE.md §9):
     rifiutati se coprirebbero Gas, la home o una cartella nascosta (R-599-2); Gas e la home
     nascoste anche nel loro percorso vero, se ci si arriva da un collegamento (R-600-1); i
     tmpfs che nascondono sono da 1 MB (R-600-3: scriverci non riempie la RAM), /dev/shm da
-    256 MB; scrivibile senza tetto solo la cartella della lettura; --die-with-parent e PID
+    256 MB; --die-with-parent e PID
     namespace: morto bwrap, muore tutto;
+  - la cartella della lettura è in sola lettura nel sandbox (contiene il socket del proxy);
+    profilo e file temporanei di Chromium stanno in un tmpfs da 256 MB dentro il sandbox
+    (V-4 ve #316: niente scrittura senza tetto sul disco dell'host);
   - il proxy ascolta su un socket Unix nella cartella della lettura; dentro bwrap node apre un
     ponte da 127.0.0.1 a quel socket, l'unica uscita prevista del sandbox;
   - rete solo dal proxy, anche per il loopback (`--proxy-bypass-list=<-loopback>`, R-585-5);
@@ -41,7 +44,7 @@ niente browser). Chromium gira senza la sua sandbox (Playwright la toglie per de
 difetto di Chromium sfruttato da una pagina resta dentro bwrap (niente rete fuori dal proxy,
 niente file di Gas né home); vede però in sola lettura /usr, /etc e il resto del sistema non
 nascosto, e un socket Unix lasciato lì da un altro programma resterebbe raggiungibile.
-Una pagina senza Worker può non funzionare (si legge il testo che c'è). Il proxy filtra le
+Una pagina che usa i Worker può non funzionare (si legge il testo che c'è). Il proxy filtra le
 destinazioni, non i dati: la pagina può mandare dati a un host pubblico.
 Il proxy giudica ogni richiesta da sola: la regola di leggi_pagina «niente redirect da https a
 http» qui non vale, e il browser riscarica la pagina, che il server può servire diversa (R-593-6).
@@ -73,6 +76,7 @@ MEMORIA_PROCESSO = 2 << 30    # byte di dati per ogni processo (RLIMIT_DATA)
 MEMORIA_JS_MB = 256           # heap di V8 per pagina
 MEMORIA_SHM = 256 << 20       # byte del /dev/shm del sandbox (memoria condivisa di Chromium)
 TETTO_NASCOSTE = 1 << 20      # byte di ogni tmpfs che nasconde una cartella (R-600-3)
+MEMORIA_PROFILO = 256 << 20   # byte del profilo di Chromium, tmpfs dentro il sandbox (V-4 ve #316)
 MAX_USCITA = 4 * _leggi.MAX_CARATTERI  # caratteri di testo che il figlio può mandare
 
 # Variabili d'ambiente passate al figlio: nient'altro (le chiavi di Gas restano fuori).
@@ -231,7 +235,8 @@ def _copre(percorso: str, protetto: str) -> bool:
 def _comando_bwrap(casa: str, env: dict) -> list:
     """Prefisso bwrap (fino a «--»): tutti i namespace nuovi, nessuna capability, sistema in sola
     lettura, nascoste le cartelle di _NASCOSTE e quella di Gas; poi di nuovo visibili (in sola
-    lettura) solo node, i moduli di Node e Chromium, e scrivibile la cartella della lettura."""
+    lettura) solo node, i moduli di Node e Chromium e la cartella della lettura; scrivibile solo
+    il profilo, un tmpfs con tetto dentro la cartella della lettura."""
     cmd = ["bwrap", "--unshare-all", "--cap-drop", "ALL", "--die-with-parent", "--new-session",
            "--ro-bind", "/", "/", "--dev", "/dev", "--size", str(MEMORIA_SHM), "--tmpfs", "/dev/shm",
            "--proc", "/proc"]
@@ -254,7 +259,12 @@ def _comando_bwrap(casa: str, env: dict) -> list:
                 raise _leggi._Rifiuto("browser non isolabile: node, Playwright o i moduli di Node "
                                       "stanno in una cartella che scoprirebbe Gas o la home")
             cmd += ["--ro-bind", vero, vero]
-    cmd += ["--bind", casa, casa, "--chdir", casa, "--clearenv"]
+    # V-4 ve #316: la cartella della lettura (sul disco dell'host) è in sola lettura; si scrive
+    # solo nel profilo, un tmpfs con tetto dentro il sandbox, che sparisce con lui.
+    profilo = os.path.join(casa, "profilo")
+    os.makedirs(profilo, exist_ok=True)  # punto di montaggio: dentro, la casa è in sola lettura
+    cmd += ["--ro-bind", casa, casa, "--size", str(MEMORIA_PROFILO), "--tmpfs", profilo,
+            "--chdir", profilo, "--clearenv"]
     for k, v in env.items():
         cmd += ["--setenv", k, v]
     return cmd + ["--"]
@@ -324,7 +334,8 @@ def _esegui(url: str, casa: str, presa: str, scadenza: float) -> dict:
         env["PLAYWRIGHT_BROWSERS_PATH"] = cache
     if env.get("PLAYWRIGHT_BROWSERS_PATH", "0") != "0":  # «0» per Playwright è un valore speciale
         env["PLAYWRIGHT_BROWSERS_PATH"] = os.path.realpath(env["PLAYWRIGHT_BROWSERS_PATH"])
-    env.update(HOME=casa, TMPDIR=casa, XDG_CONFIG_HOME=casa, XDG_CACHE_HOME=casa)
+    profilo = os.path.join(casa, "profilo")
+    env.update(HOME=profilo, TMPDIR=profilo, XDG_CONFIG_HOME=profilo, XDG_CACHE_HOME=profilo)
     env[_SEGNO] = casa
     segno = f"{_SEGNO}={casa}".encode()
     ms_pagina = int(1000 * min(TEMPO_PAGINA, max(0.1, scadenza - time.monotonic() - ATTESA_JS)))
