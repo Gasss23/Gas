@@ -199,21 +199,23 @@ _BWRAP_OK: Optional[bool] = None
 
 
 def _bwrap_funziona() -> bool:
-    """Sonda una volta sola che bwrap riesca a creare i namespace (come in gas.py)."""
+    """Sonda una volta sola che bwrap riesca a creare il sandbox. V-1 bot #317 (R-601-2): la
+    sonda è il comando VERO di _comando_bwrap, con «true» al posto di node; se node o Playwright
+    mancano, _comando_bwrap rifiuta col suo motivo (non va in cache: si riprova la volta dopo)."""
     global _BWRAP_OK
     if _BWRAP_OK is None:
         bwrap = shutil.which("bwrap")
-        try:
-            # R-601-2: le stesse opzioni del comando vero (--cap-drop, --size, --remount-ro).
-            _BWRAP_OK = bwrap is not None and subprocess.run(
-                [bwrap, "--unshare-all", "--cap-drop", "ALL", "--die-with-parent", "--new-session",
-                 *[x for d in _PERMESSE if os.path.exists(d) for x in ("--ro-bind", d, d)],
-                 *_radice(), "--proc", "/proc", "--dev", "/dev",
-                 "--size", str(TETTO_TMP), "--tmpfs", "/tmp", "--remount-ro", "/", "true"],
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                timeout=10).returncode == 0
-        except (OSError, subprocess.TimeoutExpired):
-            _BWRAP_OK = False
+        ok = False
+        if bwrap is not None:
+            try:
+                with tempfile.TemporaryDirectory(prefix="gas-browser-sonda-") as casa:
+                    cmd = _comando_bwrap(casa, _ambiente(casa))
+                    ok = subprocess.run(
+                        [bwrap] + cmd[1:] + ["true"], stdin=subprocess.DEVNULL,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10).returncode == 0
+            except (OSError, subprocess.TimeoutExpired):
+                ok = False
+        _BWRAP_OK = ok
         if not _BWRAP_OK:
             logger.warning("leggi_con_browser: bwrap non funziona, il browser resta spento")
     return _BWRAP_OK
@@ -380,7 +382,9 @@ def _uccidi_tutti(proc: subprocess.Popen, segno: bytes) -> None:
     logger.warning("leggi_con_browser: processi del browser ancora vivi dopo l'uccisione")
 
 
-def _esegui(url: str, casa: str, presa: str, scadenza: float) -> dict:
+def _ambiente(casa: str) -> dict:
+    """L'ambiente del figlio: solo _AMBIENTE (niente chiavi), Chromium al percorso vero, casa,
+    configurazione e cache nel profilo, e il segno della lettura."""
     env = {k: os.environ[k] for k in _AMBIENTE if k in os.environ}
     # Con HOME cambiato (e nascosto) Playwright non troverebbe più Chromium nella cache.
     cache = os.path.expanduser("~/.cache/ms-playwright")
@@ -391,6 +395,11 @@ def _esegui(url: str, casa: str, presa: str, scadenza: float) -> dict:
     profilo = os.path.join(casa, "profilo")
     env.update(HOME=profilo, TMPDIR=profilo, XDG_CONFIG_HOME=profilo, XDG_CACHE_HOME=profilo)
     env[_SEGNO] = casa
+    return env
+
+
+def _esegui(url: str, casa: str, presa: str, scadenza: float) -> dict:
+    env = _ambiente(casa)
     segno = f"{_SEGNO}={casa}".encode()
     ms_pagina = int(1000 * min(TEMPO_PAGINA, max(0.1, scadenza - time.monotonic() - ATTESA_JS)))
     proc = subprocess.Popen(

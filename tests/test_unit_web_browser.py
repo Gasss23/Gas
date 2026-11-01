@@ -537,14 +537,27 @@ def test_un_fallimento_della_sonda_di_playwright_non_resta_in_cache(monkeypatch)
     assert br._MODULI == {}
 
 
+def test_la_sonda_di_bwrap_usa_il_comando_vero(monkeypatch):
+    """V-1 bot #317 (R-601-2): un'opzione che bwrap rifiuta nel comando vero fa fallire anche la
+    sonda, invece di far passare la sonda e fallire ogni lettura."""
+    vero = br._comando_bwrap
+    monkeypatch.setattr(br, "_comando_bwrap", lambda casa, env: vero(casa, env)[:-1] + ["--opzione-che-non-esiste", "--"])
+    monkeypatch.setattr(br, "_BWRAP_OK", None)
+    assert br._bwrap_funziona() is False
+    monkeypatch.setattr(br, "_comando_bwrap", vero)
+    monkeypatch.setattr(br, "_BWRAP_OK", None)
+    assert br._bwrap_funziona() is True
+
+
 def test_la_sonda_di_bwrap(monkeypatch, tmp_path):
     finto = tmp_path / "bwrap"
     finto.write_text("#!/bin/sh\nexit 1\n")
     finto.chmod(0o755)
-    monkeypatch.setattr(br.shutil, "which", lambda nome: str(finto) if nome == "bwrap" else None)
+    vero_which = br.shutil.which
+    monkeypatch.setattr(br.shutil, "which", lambda nome: str(finto) if nome == "bwrap" else vero_which(nome))
     monkeypatch.setattr(br, "_BWRAP_OK", None)
     assert br._bwrap_funziona() is False  # bwrap c'è ma non crea i namespace
-    monkeypatch.setattr(br.shutil, "which", lambda nome: None)
+    monkeypatch.setattr(br.shutil, "which", lambda nome: None if nome == "bwrap" else vero_which(nome))
     monkeypatch.setattr(br, "_BWRAP_OK", None)
     assert br._bwrap_funziona() is False  # bwrap non c'è
 
