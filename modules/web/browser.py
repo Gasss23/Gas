@@ -237,7 +237,9 @@ def _comando_bwrap(casa: str, env: dict) -> list:
            "--proc", "/proc"]
     casa_utente = os.path.expanduser("~")
     nascoste = list(_NASCOSTE) + [_GAS, os.path.realpath(_GAS), os.path.realpath(casa_utente)]
-    for nascosta in dict.fromkeys(nascoste):  # R-600-1: anche il percorso vero, senza doppioni
+    # R-600-1 e review #602: si nasconde il percorso VERO di ogni voce (bwrap non monta sopra
+    # un collegamento, e saltarlo scoprirebbe la cartella vera, es. /home → /data/home).
+    for nascosta in dict.fromkeys(os.path.realpath(n) for n in nascoste):
         cmd += ["--size", str(TETTO_NASCOSTE), "--tmpfs", nascosta]
     node = os.path.realpath(shutil.which("node") or "node")
     servono = [os.path.dirname(os.path.dirname(node)), env.get("PLAYWRIGHT_BROWSERS_PATH", "")]

@@ -185,9 +185,27 @@ def _processi_del_browser() -> list:
             continue
         nome = testa.partition(b"(")[2]
         if coda.split()[0] not in (b"Z", b"X") and (
-                segnato or nome.startswith((b"headless_shell", b"chrome"))):
+                segnato or nome.startswith((b"headless_shell", b"chrome"))) \
+                and not _di_un_altro_pytest(int(pid)):
             trovati.append((pid, nome))
     return trovati
+
+
+def _di_un_altro_pytest(pid: int) -> bool:
+    """Vero se il processo discende da un ALTRO pytest vivo (una suite in parallelo sulla stessa
+    macchina): i suoi browser non sono nostri. Un orfano nostro risale a 1 e resta contato."""
+    for _ in range(64):
+        try:
+            with open(f"/proc/{pid}/stat", "rb") as f:
+                pid = int(f.read().rpartition(b")")[2].split()[1])
+            if pid <= 1 or pid == os.getpid():  # review #602: risalendo arriviamo a noi
+                return False
+            with open(f"/proc/{pid}/cmdline", "rb") as f:
+                if b"pytest" in f.read():
+                    return True
+        except (OSError, ValueError, IndexError):
+            return False
+    return False
 
 
 # ───────────────────────────── caso buono ─────────────────────────────
@@ -331,6 +349,10 @@ def _nel_sandbox(casa: str, comando: str, **env: str) -> subprocess.CompletedPro
 
 
 def test_il_sandbox_nasconde_gas_e_le_home_e_non_ha_rete():
+    """Gas vuota, la home senza i suoi file (un segno messo lì non si vede: in CI la home
+    contiene anche Chromium e i moduli di Node, ri-esposti apposta), niente rete."""
+    segno_casa = os.path.join(os.path.expanduser("~"), f".gas-prova-{os.getpid()}")
+    open(segno_casa, "w").close()
     fuori = socket.socket()
     fuori.bind(("127.0.0.1", 0))
     fuori.listen()
@@ -339,22 +361,32 @@ def test_il_sandbox_nasconde_gas_e_le_home_e_non_ha_rete():
         with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
             r = _nel_sandbox(casa, (
                 # Restano solo le cartelle vuote dei punti di montaggio (es. /home/user per Gas).
-                f"ls -A {br._GAS} | wc -l; find /root -type f | wc -l; find /home -type f | wc -l; "
+                f"ls -A {br._GAS} | wc -l; ls {segno_casa} 2>/dev/null | wc -l; "
                 "touch /usr/x 2>/dev/null && echo SCRIVE-FUORI; touch \"$HOME/ok\" && echo CASA; "
                 f"node -e \"require('net').connect({porta}, '127.0.0.1')"
                 ".on('connect', () => console.log('RETE')).on('error', () => console.log('NORETE'))\""))
             assert r.returncode == 0, r.stderr
-            assert r.stdout.split() == ["0", "0", "0", "CASA", "NORETE"], r.stdout
+            assert r.stdout.split() == ["0", "0", "CASA", "NORETE"], r.stdout
             assert os.path.exists(os.path.join(casa, "ok"))
+            # Review #602: ogni cartella nascosta (nel percorso vero) e Gas hanno un tmpfs sopra,
+            # qualunque cosa contengano sulla macchina dei test.
+            montati = _nel_sandbox(casa, "cat /proc/self/mountinfo").stdout.splitlines()
+            tmpfs = {r.split()[4] for r in montati if " - tmpfs " in r}
+            # La lista attesa è scritta qui, non presa dal codice (un mutante la accorcerebbe).
+            for nascosta in ["/home", "/root", "/run", "/tmp", "/var", "/srv", "/mnt", "/media",
+                             "/opt", br._GAS, os.path.expanduser("~")]:
+                assert os.path.realpath(nascosta) in tmpfs, nascosta
     finally:
         fuori.close()
+        os.unlink(segno_casa)
 
 
 def test_nel_sandbox_non_ci_sono_socket_ne_fifo_di_altri():
     """R-599-1: una sola lettura non ferma connect() su un socket Unix né una FIFO."""
     with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
         r = _nel_sandbox(casa, (
-            "find / \\( -path /proc -o -path /sys -o -path /dev -o -path \"$HOME\" \\) -prune "
+            # /usr si salta: è enorme sui runner della CI e non ci stanno socket.
+            "find / \\( -path /proc -o -path /sys -o -path /dev -o -path /usr -o -path \"$HOME\" \\) -prune "
             "-o \\( -type s -o -type p \\) -print 2>/dev/null; echo FINE"))
     assert r.stdout.split() == ["FINE"], r.stdout
 
@@ -366,9 +398,29 @@ def test_le_cartelle_nascoste_hanno_un_tetto(tmp_path):
     assert int(r.stdout.split()[0]) <= br.TETTO_NASCOSTE, r.stdout
 
 
+def test_una_cartella_nascosta_che_e_un_collegamento_resta_nascosta(monkeypatch):
+    """Review #602: se una voce di _NASCOSTE è un collegamento (es. /home → /data/home sul VPS),
+    si nasconde la cartella vera, non si salta la voce."""
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-veroh-") as vero, \
+            tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        with open(os.path.join(vero, "chiave"), "w") as f:
+            f.write("SEGRETO")
+        link = os.path.join("/var/tmp", "gas-linkh-" + os.path.basename(vero))
+        os.symlink(vero, link)
+        try:
+            monkeypatch.setattr(br, "_NASCOSTE",
+                                tuple(n for n in br._NASCOSTE if n != "/var") + (link,))
+            r = _nel_sandbox(casa, f"cat {vero}/chiave 2>/dev/null; echo FINE")
+        finally:
+            os.unlink(link)
+    assert r.returncode == 0 and r.stdout.split() == ["FINE"], (r.stdout, r.stderr)
+
+
 def test_gas_raggiunta_da_un_collegamento_e_nascosta_anche_nel_percorso_vero(monkeypatch):
-    """R-600-1: il tmpfs sul percorso del collegamento non nasconde la cartella vera."""
-    with tempfile.TemporaryDirectory(dir="/usr/local", prefix="gas-vero-") as vero, \
+    """R-600-1: il tmpfs sul percorso del collegamento non nasconde la cartella vera. Per
+    avere una cartella vera fuori dalle nascoste senza essere root, /var qui non si nasconde."""
+    monkeypatch.setattr(br, "_NASCOSTE", tuple(n for n in br._NASCOSTE if n != "/var"))
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-vero-") as vero, \
             tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
         with open(os.path.join(vero, ".env"), "w") as f:
             f.write("SEGRETO")
