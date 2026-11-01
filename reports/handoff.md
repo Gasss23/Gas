@@ -21,21 +21,24 @@
 - **R-603-1** (mountinfo non provava il montaggio in cima) e **R-603-3** (/usr fuori dal find): `FATTA` — un test elenca OGNI file visibile nel sandbox contro un elenco scritto nel test, senza escludere /usr, e vuole zero socket e FIFO. **R-603-2** (rilevatore di pytest): `FATTA` — argv.
 - **V-1 d ve #316** (routeWebSocket senza test): `FATTA`. **V-1 c ve #316** (serviceWorkers 'block' senza test): `SALTATA — nella prova la pagina non diventa sicura (navigator.serviceWorker assente anche con --unsafely-treat-insecure-origin-as-secure), il test passerebbe a vuoto; resta dichiarata`.
 - **Review #607 (chat Mani)**: APPROVATO CON RISERVE. R-607-1 MEDIA (il test accettava tutto /gas/: due mutanti sopravvivevano), R-607-2 BASSA (fallimento della sonda in cache), R-607-3 BASSA (aarch64 e /usr non unito): `FATTA`. **Review #608**: APPROVATO.
+- **Bot su 427e57d (https://github.com/Gasss23/Gas/pull/317#pullrequestreview-5730697074)**: APPROVATO CON RISERVE, check success, CI verde. V-1 BASSA (permessa che è un collegamento: la copertura di Gas finiva sul percorso vero, non dove la cartella si vede): `FATTA` in 505479f.
+- **Verifica esterna su 427e57d (https://github.com/Gasss23/Gas/pull/317#issuecomment-6565285968)**: APPROVATO CON RISERVE. V-1 MEDIA (/dev del sandbox scrivibile senza tetto): `FATTA` in 505479f — --remount-ro /dev più test. V-2 BASSA (lo stesso punto del bot): `FATTA`. V-3 BASSA (in CI il test «ogni file» non monta Chromium: PLAYWRIGHT_BROWSERS_PATH non impostata): `SALTATA — dichiarata` (lo coprono i test end-to-end). V-4 COSMETICA (prefisso senza «/» nel test): `FATTA`.
+- **Review #609 (chat Mani)**: APPROVATO CON RISERVE. R-609-1 BASSA (il ramo dei collegamenti guarda solo l'ultimo pezzo del percorso) e R-609-2 COSMETICA (la sonda non porta --remount-ro /dev): `DEFERITA — registrate`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- modules/web/browser.py             | 149 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ modules/web/browser.py             | 159 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------
  reports/diff_sessione.md           |  16 +++++++--------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  33 +++++++++++-------------------
- tests/test_unit_web_browser.py     | 241 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------
+ reports/ultimo_report.md           |  34 ++++++++++++-------------------
+ tests/test_unit_web_browser.py     | 252 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------
 ```
 
 NB: base = merge-base con origin/main = 87f576c. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -43,6 +46,9 @@ NB: base = merge-base con origin/main = 87f576c. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+505479f fix(web): /dev del sandbox in sola lettura, permesse-collegamento rifatte come collegamenti (V-1/V-2 ve e V-1 bot #317, review #609)
+d3c3d22 chore(revisore): memoria review #609 — APPROVATO CON RISERVE
+427e57d docs(fine-task): fetta 35 sandbox con elenco di cartelle permesse, PR #317, review #607/#608
 a26a8a9 feat(web): sandbox del browser con radice vuota ed elenco di cartelle permesse (R6, fetta 35, chat Mani)
 fb8b0c0 chore(revisore): memoria review #608 — APPROVATO
 9494a95 chore(revisore): memoria review #607 — APPROVATO CON RISERVE
@@ -142,19 +148,57 @@ Rischi esclusi (non verificati):
 Memoria: riga #608 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (fb8b0c0). Nessuna lezione nuova.
 ```
 
+Commit 505479f (modules/web/browser.py, tests/test_unit_web_browser.py: V-1/V-2 ve e V-1 bot su 427e57d). Verdetto integrale della review #609 (chat Mani):
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #609 (chat Mani). È il delta sulla PR #317, fetta 35, sopra 427e57d. Il diff staged ha sha256 17cfa0a8…, rimasto uguale dopo i mutanti.
+
+Letture fatte: CLAUDE.md (sez. 5, 8, 9, 10), stato_progetto.md (solo la parte sul sandbox) e la memoria fino alla #608.
+
+**Elementi esaminati**
+- `modules/web/browser.py:289`: `--remount-ro /dev` sta subito dopo `--dev /dev` e prima del tmpfs `/dev/shm`, che ha il tetto. Rischio esaminato: Chromium che si rompe e /dev/null non scrivibile. Su un fs in sola lettura i device a caratteri restano scrivibili, e i test end-to-end col Chromium vero passano. Mutante senza remount: 1 failed, con l'uscita `SCRIVE-DEV`. Esito: ok.
+- `modules/web/browser.py:277`: una permessa che è un collegamento a una cartella diventa `--ro-bind vero vero` più `--symlink readlink permessa`. Così il tmpfs messo su realpath(Gas) e realpath(home) copre anche quello che si vede dal collegamento. Rischi esaminati:
+  - un `readlink` relativo (es. `lib`) si risolve bene dentro il sandbox;
+  - quanto si vede non aumenta: prima la cartella vera era già visibile intera, sotto il nome del collegamento.
+
+  Mutante con il ramo nuovo tolto: 1 failed, con l'uscita `VISIBILESEGRETO`. Esito: ok, con la riserva R-609-1.
+- `tests/test_unit_web_browser.py:382`: il test controlla che `touch /dev/x` fallisca e che `echo > /dev/null` funzioni. Rischio esaminato: un test troppo largo. Pretende la sequenza esatta `DEVNULL PROFILO TMP NORETE`. Esito: ok.
+- `tests/test_unit_web_browser.py:467`: il test nuovo legge `.env` da tre strade: il collegamento, il percorso vero e un file libero. Rischi esaminati: la pulizia (unlink nel finally, nessun residuo `gas-perm*` in /var/tmp) e la ragione per cui fallisce col mutante. Esito: ok.
+- `tests/test_unit_web_browser.py:413`: il prefisso `/usr/lib/ld-linux` senza «/» è sostituito dal glob negli esatti, lo stesso di `modules/web/browser.py:96`. Esito: ok, V-4 chiusa.
+
+**Prove riprodotte**
+- browser: 43 passed da root e 43 passed da nobody.
+- web (`-k web`): 752 passed, 2 skipped. Voi ne dichiarate 751: probabilmente la selezione è diversa, non è un problema.
+
+**Riserve**
+- **R-609-1 BASSA**: il ramo nuovo guarda solo l'ultimo pezzo del percorso (`islink(permessa)`). Se è un collegamento una cartella più in alto (vero diverso da permessa ma permessa non è un link), si monta ancora vero→permessa e il tmpfs sul percorso vero non copre. È teorico sulle distribuzioni note. La correzione possibile: condizione `vero != permessa and isdir(vero)` con `--symlink vero permessa` assoluto.
+- **R-609-2 COSMETICA**: la sonda `_bwrap_funziona` non porta `--remount-ro /dev`. L'opzione `--remount-ro` è comunque già provata nella sonda su «/».
+
+**Rischi esplicitamente esclusi**
+- Arch e aarch64 veri, dove `/usr/lib64` è un collegamento: non provati, perché qui `/usr/lib64` è una cartella vera. Il ramo nuovo l'ha provato solo il test con il collegamento finto.
+- V-3 BASSA (in CI il test «ogni file» non monta Chromium): presa come dichiarata, non l'ho verificata in CI.
+
+Memoria: riga #609 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (d3c3d22).
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 43 a 42 test (test di isolamento riscritti per il modello nuovo; tolti quelli legati a `_NASCOSTE`, aggiunti l'elenco di ogni file visibile, i tetti di /tmp e /dev/shm, Gas e home dentro una permessa, rifiuti, sonde, routeWebSocket, cache). Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), da root: 750 passed, 2 skipped; browser da utente nobody: 42 passed. Mutanti presi (1 failed ciascuno): /etc intera, radice scrivibile, Gas dentro una permessa non coperta, prefisso di node ri-esposto, tutta node_modules, cartella bin di node, /tmp senza tetto, /dev/shm senza tetto, sonda senza cwd, fallimento in cache, routeWebSocket→connectToServer, rifiuto degli esposti tolto. Non preso: `--new-session` (serve un TTY).
+Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 43 a 43 test (test di isolamento riscritti per il modello nuovo; tolti quelli legati a `_NASCOSTE`, aggiunti l'elenco di ogni file visibile, i tetti di /tmp e /dev/shm, Gas e home dentro una permessa, rifiuti, sonde, routeWebSocket, cache). Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), da root: 751 passed, 2 skipped; browser da utente nobody: 43 passed. Mutanti presi (1 failed ciascuno): /etc intera, radice scrivibile, Gas dentro una permessa non coperta, prefisso di node ri-esposto, tutta node_modules, cartella bin di node, /tmp senza tetto, /dev/shm senza tetto, sonda senza cwd, fallimento in cache, routeWebSocket→connectToServer, rifiuto degli esposti tolto, /dev scrivibile, permessa-collegamento montata come prima. Non preso: `--new-session` (serve un TTY).
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 9494a95, fb8b0c0 (memoria del revisore), a26a8a9 (fetta 35): pushati insieme prima dell'apertura della PR #317; nessuna run su questi SHA prima della PR.
-- Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 427e57d (fine-task): run su 427e57d success (unit-suite, handoff-check); verifica-bot success (bot APPROVATO CON RISERVE).
+- d3c3d22 (memoria #609), 505479f (correzioni) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - V-1 c ve #316 BASSA: `serviceWorkers: 'block'` senza test (nella prova la pagina non diventa sicura); `--new-session` senza test (serve un TTY).
+- R-609-1 (chat Mani) BASSA: il ramo delle permesse-collegamento guarda solo l'ultimo pezzo del percorso (un collegamento più in alto non è coperto; teorico sulle distribuzioni note). R-609-2 (chat Mani) COSMETICA: la sonda di bwrap non porta --remount-ro /dev.
+- V-3 ve #317 BASSA: in CI il test «ogni file visibile» non monta Chromium (PLAYWRIGHT_BROWSERS_PATH non impostata); lo coprono i test end-to-end.
 - aarch64 e /usr non unito: analizzati sul codice, non provati (fail-closed: il browser resta spento).
 - HTTPS reale di Chromium senza /etc/ssl, bwrap con --size e AppArmor sul VPS: da provare sul VPS (seconda condizione della roadmap per accendere il browser).
 - Limiti dichiarati del browser: Chromium senza la sua sandbox; il proxy filtra le destinazioni, non i dati; niente regola https→http e pagina riscaricata (R-593-6); X-Gas-Proxy dentro i tunnel https non si toglie (R-593-3); una pagina che usa i Worker può non funzionare.
