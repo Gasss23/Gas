@@ -6,8 +6,10 @@ le richieste verso 127.0.0.1, porte strane, WebSocket e popup non devono arrivar
 Servono node, il pacchetto playwright e Chromium; senza, i test si saltano, salvo con
 GAS_TEST_BROWSER_OBBLIGATORIO=1 (CI), dove falliscono."""
 import os
+import signal
 import socket
 import subprocess
+import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -51,8 +53,17 @@ try { new WebSocket('ws://sito.test/ws'); ws = 'WS-ESISTE'; } catch (e) {}
 try { new RTCPeerConnection(); ws += ' RTC-ESISTE'; } catch (e) {}
 try { if (window.open('http://sito.test/popup')) ws += ' POPUP'; } catch (e) {}
 if (navigator.serviceWorker) ws += ' SW-ESISTE';
-const w = new Worker(URL.createObjectURL(new Blob(
-  ["try { new WebSocket('ws://sito.test/ws-worker'); } catch (e) {}"])));
+for (const n of ['WebSocketStream', 'RTCDataChannel', 'SharedWorker', 'Notification', 'webkitRTCPeerConnection']) {
+  if (window[n]) ws += ' ' + n;  // V-3 ve #316: ognuno ha la sua prova
+}
+try {
+  new Worker(URL.createObjectURL(new Blob(
+    ["try { new WebSocket('wss://sito.test/ws-worker'); new WebSocket('ws://sito.test/ws-worker'); } catch (e) {}"])));
+  ws += ' WORKER-ESISTE';
+} catch (e) {}
+const f = document.createElement('iframe');
+document.body.appendChild(f);
+if (f.contentWindow.WebSocket || f.contentWindow.Worker) ws += ' IFRAME-ESCE';
 document.title += ' ' + ws;
 </script></body></html>""",
     "/separatori": "<html><head><title>a\u2028b</title></head><body>c\u2028d\u0085e\u2029f</body></html>".encode(),
@@ -177,9 +188,27 @@ def _processi_del_browser() -> list:
             continue
         nome = testa.partition(b"(")[2]
         if coda.split()[0] not in (b"Z", b"X") and (
-                segnato or nome.startswith((b"headless_shell", b"chrome"))):
+                segnato or nome.startswith((b"headless_shell", b"chrome"))) \
+                and not _di_un_altro_pytest(int(pid)):
             trovati.append((pid, nome))
     return trovati
+
+
+def _di_un_altro_pytest(pid: int) -> bool:
+    """Vero se il processo discende da un ALTRO pytest vivo (una suite in parallelo sulla stessa
+    macchina): i suoi browser non sono nostri. Un orfano nostro risale a 1 e resta contato."""
+    for _ in range(64):
+        try:
+            with open(f"/proc/{pid}/stat", "rb") as f:
+                pid = int(f.read().rpartition(b")")[2].split()[1])
+            if pid <= 1 or pid == os.getpid():  # review #602: risalendo arriviamo a noi
+                return False
+            with open(f"/proc/{pid}/cmdline", "rb") as f:
+                if b"pytest" in f.read():
+                    return True
+        except (OSError, ValueError, IndexError):
+            return False
+    return False
 
 
 # ───────────────────────────── caso buono ─────────────────────────────
@@ -217,10 +246,12 @@ def test_pagina_finita_fuori_dal_web_ha_la_fonte_di_partenza(rete):
 
 def test_fughe_bloccate(rete):
     r = _leggi(rete, "http://sito.test/fughe")
-    assert r["ok"] and "Titolo: Fughe ws-no" in r["testo"]  # niente WebSocket, RTC, popup, SW
-    # All'origine arriva solo la pagina: niente 127.0.0.1, ::1, porta 8080, IP privati,
-    # WebSocket né popup. Il ws:// del worker lo ferma il proxy (porta 80, Upgrade): un wss://
-    # da un worker verso la 443 invece passa dal tunnel (V-1 ve #315, limite dichiarato).
+    # Niente WebSocket, RTC, popup, service worker, Worker (V-1 ve #315: da un worker un
+    # wss:// passava dal tunnel 443), anche in un iframe about:blank creato da script.
+    assert r["ok"] and "Titolo: Fughe ws-no" in r["testo"].split("\n"), r  # titolo esatto
+    # All'origine arriva solo la pagina, e nessun tunnel verso la 443: niente 127.0.0.1, ::1,
+    # porta 8080, IP privati, WebSocket (ws:// o wss://, anche da un worker) né popup. Un ws://
+    # lo fermerebbe comunque il controllo CONNECT del proxy (tunnel solo verso la 443, R-598-1).
     assert _Origine.colpi == ["/fughe"]
     assert rete.connessi == [(IP_PUBBLICO, 80)]
 
@@ -286,8 +317,294 @@ def test_uccidi_tutti_prende_chi_cambia_sessione():
         br._uccidi_tutti(proc, segno.encode())
         assert [pid for pid, _ in br._vivi().items() if br._col_segno(pid, segno.encode())] == []
     finally:
+        # R-595-1: la pulizia del test non si affida alla funzione sotto prova.
+        for pid in _pid_con(b"\0" + segno.encode() + b"\0", "environ"):
+            os.kill(pid, signal.SIGKILL)
         proc.kill()
         proc.wait()
+
+
+def _pid_con(pezzo: bytes, file: str) -> list:
+    """PID dei processi vivi il cui /proc/<pid>/<file> (cmdline o environ) contiene il pezzo."""
+    trovati = []
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
+            continue
+        try:
+            with open(f"/proc/{pid}/stat", "rb") as f:
+                stato = f.read().rpartition(b")")[2].split()[0]
+            with open(f"/proc/{pid}/{file}", "rb") as f:
+                dentro = pezzo in b"\0" + f.read() + b"\0"
+        except OSError:
+            continue
+        if dentro and stato not in (b"Z", b"X"):
+            trovati.append(int(pid))
+    return trovati
+
+
+# ───────────────────────────── isolamento (bwrap, fetta 34) ─────────────────────────────
+
+def _nel_sandbox(casa: str, comando: str, **env: str) -> subprocess.CompletedProcess:
+    base = {k: os.environ[k] for k in br._AMBIENTE if k in os.environ}
+    profilo = os.path.join(casa, "profilo")
+    base.update(HOME=profilo, TMPDIR=profilo, **env)
+    return subprocess.run(br._comando_bwrap(casa, base) + ["sh", "-c", comando],
+                          capture_output=True, text=True, timeout=30)
+
+
+def test_il_sandbox_nasconde_gas_e_le_home_e_non_ha_rete():
+    """Gas vuota, la home senza i suoi file (un segno messo lì non si vede: in CI la home
+    contiene anche Chromium e i moduli di Node, ri-esposti apposta), niente rete."""
+    segno_casa = os.path.join(os.path.expanduser("~"), f".gas-prova-{os.getpid()}")
+    open(segno_casa, "w").close()
+    fuori = socket.socket()
+    fuori.bind(("127.0.0.1", 0))
+    fuori.listen()
+    porta = fuori.getsockname()[1]
+    try:
+        with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+            r = _nel_sandbox(casa, (
+                # Restano solo le cartelle vuote dei punti di montaggio (es. /home/user per Gas).
+                f"ls -A {br._GAS} | wc -l; ls {segno_casa} 2>/dev/null | wc -l; "
+                "touch /usr/x 2>/dev/null && echo SCRIVE-FUORI; touch \"$HOME/ok\" && echo PROFILO; "
+                f"touch {casa}/x 2>/dev/null && echo SCRIVE-CASA; "
+                f"node -e \"require('net').connect({porta}, '127.0.0.1')"
+                ".on('connect', () => console.log('RETE')).on('error', () => console.log('NORETE'))\""))
+            assert r.returncode == 0, r.stderr
+            assert r.stdout.split() == ["0", "0", "PROFILO", "NORETE"], r.stdout
+            # V-4 ve #316: il profilo è un tmpfs del sandbox, sul disco dell'host non resta niente.
+            assert os.listdir(os.path.join(casa, "profilo")) == [] and os.listdir(casa) == ["profilo"]
+            # Review #602: ogni cartella nascosta (nel percorso vero) e Gas hanno un tmpfs sopra,
+            # qualunque cosa contengano sulla macchina dei test.
+            montati = _nel_sandbox(casa, "cat /proc/self/mountinfo").stdout.splitlines()
+            tmpfs = {r.split()[4] for r in montati if " - tmpfs " in r}
+            # La lista attesa è scritta qui, non presa dal codice (un mutante la accorcerebbe).
+            for nascosta in ["/home", "/root", "/run", "/tmp", "/var", "/srv", "/mnt", "/media",
+                             "/opt", br._GAS, os.path.expanduser("~")]:
+                assert os.path.realpath(nascosta) in tmpfs, nascosta
+    finally:
+        fuori.close()
+        os.unlink(segno_casa)
+
+
+def test_nel_sandbox_non_ci_sono_socket_ne_fifo_di_altri():
+    """R-599-1: una sola lettura non ferma connect() su un socket Unix né una FIFO."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, (
+            # /usr si salta: è enorme sui runner della CI e non ci stanno socket.
+            "find / \\( -path /proc -o -path /sys -o -path /dev -o -path /usr -o -path \"$HOME\" \\) -prune "
+            "-o \\( -type s -o -type p \\) -print 2>/dev/null; echo FINE"))
+    assert r.stdout.split() == ["FINE"], r.stdout
+
+
+def test_le_cartelle_nascoste_hanno_un_tetto(tmp_path):
+    """R-600-3: scrivere nei tmpfs che nascondono non riempie la RAM."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, "head -c 3000000 /dev/zero > /var/x 2>/dev/null; wc -c < /var/x")
+    assert int(r.stdout.split()[0]) <= br.TETTO_NASCOSTE, r.stdout
+
+
+def test_una_cartella_nascosta_che_e_un_collegamento_resta_nascosta(monkeypatch):
+    """Review #602: se una voce di _NASCOSTE è un collegamento (es. /home → /data/home sul VPS),
+    si nasconde la cartella vera, non si salta la voce."""
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-veroh-") as vero, \
+            tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        with open(os.path.join(vero, "chiave"), "w") as f:
+            f.write("SEGRETO")
+        link = os.path.join("/var/tmp", "gas-linkh-" + os.path.basename(vero))
+        os.symlink(vero, link)
+        try:
+            monkeypatch.setattr(br, "_NASCOSTE",
+                                tuple(n for n in br._NASCOSTE if n != "/var") + (link,))
+            r = _nel_sandbox(casa, f"cat {vero}/chiave 2>/dev/null; echo FINE")
+        finally:
+            os.unlink(link)
+    assert r.returncode == 0 and r.stdout.split() == ["FINE"], (r.stdout, r.stderr)
+
+
+def test_gas_raggiunta_da_un_collegamento_e_nascosta_anche_nel_percorso_vero(monkeypatch):
+    """R-600-1: il tmpfs sul percorso del collegamento non nasconde la cartella vera. Per
+    avere una cartella vera fuori dalle nascoste senza essere root, /var qui non si nasconde."""
+    monkeypatch.setattr(br, "_NASCOSTE", tuple(n for n in br._NASCOSTE if n != "/var"))
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-vero-") as vero, \
+            tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        with open(os.path.join(vero, ".env"), "w") as f:
+            f.write("SEGRETO")
+        link = os.path.join("/var/tmp", "gas-link-" + os.path.basename(vero))
+        os.symlink(vero, link)
+        try:
+            monkeypatch.setattr(br, "_GAS", link)
+            r = _nel_sandbox(casa, f"cat {vero}/.env 2>/dev/null; echo FINE")
+        finally:
+            os.unlink(link)
+    assert r.stdout.split() == ["FINE"], r.stdout
+
+
+def test_la_home_fuori_dalle_cartelle_nascoste_resta_nascosta(monkeypatch):
+    """V-1 a) ve #316 su 30cd0a8: una home fuori da _NASCOSTE (es. /data/gas) si nasconde lo
+    stesso (R-600-1 per la home): qui la home sta in /var/tmp e /var non si nasconde."""
+    monkeypatch.setattr(br, "_NASCOSTE", tuple(n for n in br._NASCOSTE if n != "/var"))
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-home-") as home, \
+            tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        with open(os.path.join(home, ".env"), "w") as f:
+            f.write("SEGRETO")
+        monkeypatch.setenv("HOME", home)
+        r = _nel_sandbox(casa, f"cat {home}/.env 2>/dev/null; echo FINE")
+    assert r.returncode == 0 and r.stdout.split() == ["FINE"], (r.stdout, r.stderr)
+
+
+def test_il_profilo_ha_un_tetto():
+    """V-1 b) ve #316 su 30cd0a8 (e V-4): scrivere nel profilo si ferma a MEMORIA_PROFILO."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, f"head -c {br.MEMORIA_PROFILO + (8 << 20)} /dev/zero > \"$HOME/x\" "
+                               "2>/dev/null; wc -c < \"$HOME/x\"")
+    assert 0 < int(r.stdout.split()[0]) <= br.MEMORIA_PROFILO, r.stdout
+
+
+def test_nel_sandbox_niente_capability():
+    """R-599-3: anche da root, dentro il sandbox non si smonta niente."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, "grep CapEff /proc/self/status")
+    assert r.stdout.split() == ["CapEff:", "0000000000000000"], r.stdout
+
+
+@pytest.mark.parametrize("variabile", ["PLAYWRIGHT_BROWSERS_PATH", "NODE_PATH"])
+def test_un_percorso_che_scoprirebbe_gas_o_la_home_ferma_il_browser(variabile):
+    """R-599-2: node in ~/bin farebbe ri-esporre la home intera, Gas compreso."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        for scopre in (os.path.dirname(br._GAS), os.path.expanduser("~"), "/"):
+            with pytest.raises(leggi._Rifiuto) as e:
+                br._comando_bwrap(casa, {variabile: scopre})
+            assert e.value.motivo.startswith("browser non isolabile")
+
+
+def test_la_cartella_di_gas_e_nascosta_anche_fuori_dalle_home(monkeypatch):
+    """Qui Gas sta sotto /home (già nascosta): con Gas altrove serve il tmpfs suo."""
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-finto-") as finto, \
+            tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        open(os.path.join(finto, ".env"), "w").close()
+        monkeypatch.setattr(br, "_GAS", finto)
+        r = _nel_sandbox(casa, f"ls -A {finto} | wc -l")
+    assert r.stdout.split() == ["0"], r
+
+
+def test_la_sonda_di_bwrap(monkeypatch, tmp_path):
+    finto = tmp_path / "bwrap"
+    finto.write_text("#!/bin/sh\nexit 1\n")
+    finto.chmod(0o755)
+    monkeypatch.setattr(br.shutil, "which", lambda nome: str(finto) if nome == "bwrap" else None)
+    monkeypatch.setattr(br, "_BWRAP_OK", None)
+    assert br._bwrap_funziona() is False  # bwrap c'è ma non crea i namespace
+    monkeypatch.setattr(br.shutil, "which", lambda nome: None)
+    monkeypatch.setattr(br, "_BWRAP_OK", None)
+    assert br._bwrap_funziona() is False  # bwrap non c'è
+
+
+def test_le_cartelle_ri_esposte_e_la_casa_sono_in_sola_lettura():
+    """V-3 ve #316: un renderer compromesso non lascia codice nei moduli di Node dell'host."""
+    import shutil
+    node = os.path.realpath(shutil.which("node"))
+    prefisso = os.path.dirname(os.path.dirname(node))
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, (
+            f"touch {prefisso}/gas-prova 2>/dev/null && echo SCRIVE-NODE; "
+            f"touch {os.path.dirname(node)}/gas-prova 2>/dev/null && echo SCRIVE-BIN; echo FINE"))
+    assert r.stdout.split() == ["FINE"], r.stdout
+
+
+def test_ipc_e_processi_dell_host_non_si_vedono():
+    """V-3 ve #316: IPC namespace nuovo, e /proc del sandbox mostra solo i suoi processi."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, f"readlink /proc/self/ns/ipc; ls /proc | grep -c '^[0-9]'; "
+                               f"test -e /proc/{os.getpid()}/cmdline && echo VEDE-PYTEST; echo FINE")
+    righe = r.stdout.split()
+    assert righe[0] != os.readlink("/proc/self/ns/ipc"), righe
+    assert int(righe[1]) < 10 and righe[2:] == ["FINE"], righe
+
+
+def _sleep_vivi(durata: str) -> list:
+    """PID dei processi vivi che sono proprio «sleep <durata>» (comm sleep, non bwrap né sh)."""
+    trovati = []
+    for pid in _pid_con(b"\0sleep\0" + durata.encode() + b"\0", "cmdline"):
+        try:
+            with open(f"/proc/{pid}/comm") as f:
+                if f.read().strip() == "sleep":
+                    trovati.append(pid)
+        except OSError:
+            pass
+    return trovati
+
+
+def test_morto_bwrap_muore_il_sandbox():
+    """V-3 ve #316: --die-with-parent. Ucciso solo il processo bwrap esterno (non il gruppo),
+    quello che gira dentro muore lo stesso. Si aspetta il vero «sleep» (review #604: il cmdline
+    del bwrap esterno contiene già «sleep 33.271», e ucciderlo subito era una corsa)."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        base = {k: os.environ[k] for k in br._AMBIENTE if k in os.environ}
+        proc = subprocess.Popen(br._comando_bwrap(casa, base) + ["sleep", "33.271"],
+                                start_new_session=True)
+        try:
+            for _ in range(50):
+                if _sleep_vivi("33.271"):
+                    break
+                time.sleep(0.05)
+            assert _sleep_vivi("33.271"), "il figlio non è partito"
+            os.kill(proc.pid, signal.SIGKILL)
+            proc.wait(timeout=5)
+            for _ in range(50):
+                if not _sleep_vivi("33.271"):
+                    break
+                time.sleep(0.05)
+            assert _sleep_vivi("33.271") == []
+        finally:
+            for pid in _sleep_vivi("33.271"):
+                try:  # R-605-2: può morire tra la lista e il kill
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            proc.kill()
+
+
+def test_l_ambiente_del_sandbox_e_solo_quello_dato(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "chiave-segreta")
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, "env")
+    assert "GROQ_API_KEY" not in r.stdout and "chiave-segreta" not in r.stdout
+
+
+def test_ucciso_bwrap_muore_anche_chi_cambia_gruppo_e_ambiente():
+    """R-594-2: un processo che cambia sia gruppo sia ambiente non ha il segno né il gruppo,
+    ma sta nel PID namespace del sandbox: morto bwrap, muore anche lui."""
+    segno = f"{br._SEGNO}=/tmp/gas-browser-prova-{os.getpid()}"
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        base = {k: os.environ[k] for k in br._AMBIENTE if k in os.environ}
+        base.update(HOME=casa, **{br._SEGNO: segno.split("=", 1)[1]})
+        proc = subprocess.Popen(br._comando_bwrap(casa, base) + [
+            "sh", "-c", "env -i setsid sleep 31.4159 & exec sleep 30"], start_new_session=True)
+        try:
+            for _ in range(50):
+                if _pid_con(b"\0sleep\x0031.4159\0", "cmdline"):
+                    break
+                time.sleep(0.05)
+            assert _pid_con(b"\0sleep\x0031.4159\0", "cmdline"), "il fuggitivo non è partito"
+            br._uccidi_tutti(proc, segno.encode())
+            proc.wait(timeout=5)
+            for _ in range(50):
+                if not _pid_con(b"\0sleep\x0031.4159\0", "cmdline"):
+                    break
+                time.sleep(0.05)
+            assert _pid_con(b"\0sleep\x0031.4159\0", "cmdline") == []
+        finally:
+            for pid in _pid_con(b"\0sleep\x0031.4159\0", "cmdline"):
+                os.kill(pid, signal.SIGKILL)
+            proc.kill()
+
+
+def test_senza_bwrap_il_browser_non_parte(rete, monkeypatch):
+    monkeypatch.setattr(br, "_BWRAP_OK", False)
+    monkeypatch.setattr(br.subprocess, "Popen", lambda *a, **k: pytest.fail("browser avviato"))
+    assert _leggi(rete, "http://sito.test/") == {
+        "ok": False, "motivo": "browser senza isolamento (bwrap) non permesso"}
 
 
 # ───────────────────────────── figlio e ambiente ─────────────────────────────
@@ -329,6 +646,8 @@ def test_attivo_solo_con_la_variabile(monkeypatch):
     assert br.attivo() is False
     monkeypatch.setenv("GAS_WEB_BROWSER", "1")
     assert br.attivo() is True
+    monkeypatch.setattr(br.shutil, "which", lambda nome: None if nome == "bwrap" else "/bin/" + nome)
+    assert br.attivo() is False  # senza bwrap non si accende
     monkeypatch.setattr(br.shutil, "which", lambda _: None)
     assert br.attivo() is False
 

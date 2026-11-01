@@ -1,30 +1,31 @@
-# ULTIMO REPORT — 2026-10-31 — Mani: browser senza schermo dietro il proxy filtrante (R6, fetta 33, chat Mani)
+# ULTIMO REPORT — 2026-11-01 — Mani: browser senza schermo dentro bwrap (R6, fetta 34, chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #315 (numero nell'handoff §0): solo con verdetto del bot APPROVATO pulito la faccio io; con riserve serve il sì dell'operatore (anche tramite M1).
+1. Merge della PR #316 (numero nell'handoff §0): solo con verdetto del bot APPROVATO pulito la faccio io; con riserve serve il sì dell'operatore (anche tramite M1).
 2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR.
-3. Il browser resta SPENTO: accenderlo sul VPS (`GAS_WEB_BROWSER=1`) solo dopo l'isolamento bwrap (punto 4 del piano), perché Chromium gira senza sandbox.
+3. Il browser resta SPENTO (`GAS_WEB_BROWSER` non impostato). Accenderlo sul VPS è una decisione dell'operatore, dopo una prova dal vero (bwrap e AppArmor del VPS, node, Playwright). Sul Mac non si accende comunque: bwrap non c'è.
 
 ## Esito
-- **PR #312 (proxy filtrante)**: MERGIATA (01eba0d), auto-merge col sì dell'operatore tramite M1; prima unito main 3a38e75, review #592 APPROVATO.
-- **Browser senza schermo** (`modules/web/browser.py`, punti 1, 3, 5, 6, 7 del piano): FATTA (PR #315). Spento per default (`GAS_WEB_BROWSER=1`).
-- **Punto 4 (bwrap)**: DEFERITA — fuori scope, dichiarato come limite.
-- **«Lo chiede Gas» (parametro dello strumento in gas.py)**: DEFERITA — gas.py lasciato a dopo, decisione di M1.
-- **Riserve del proxy**: R-585-4, R-585-5, V-4 bot #312, V-2 bot #312 su 805b4d8 FATTE; V-2 bot #312 su 3a31a99 (numero vecchio nell'handoff) FATTA, l'handoff è riscritto.
-- **ci.yml**: FATTA — solo env del passo web, autorizzato da M1.
-- **Review #593 (chat Mani)**: APPROVATO CON RISERVE. R-593-1 MEDIA (Chromium vivo dopo il kill del gruppo di node): FATTA. R-593-2..6 BASSE: FATTE (la 3 su https e la 6 dichiarate come limiti).
-- **Review #594**: APPROVATO CON RISERVE. R-594-1 (test diretto dell'uccisione) FATTA; R-594-2 DEFERITA — dichiarata; R-594-3 FATTA.
-- **Review #595**: APPROVATO CON RISERVE. R-595-1 e R-595-2 BASSE: DEFERITA — registrate.
-- **Merge di origin/main 9fdbd2b (PR #314 di M2)**: FATTA — conflitto solo nella memoria. Review #596 APPROVATO CON RISERVE (R-596-1: riserve nello stato, FATTA qui).
-
-- **Gate IP al primo fine-task**: fermo su IP di esempio; FATTA — marcatore nel test (review #597 APPROVATO) e nella memoria, <IP-redatto> nei verdetti incollati nell'handoff.
-
-- **Bot e verifica esterna su fc91022**: APPROVATO CON RISERVE (verifica-bot neutral: la PR tocca ci.yml, decide l'operatore). V-1 BASSA (WebSocket dai worker passano dal tunnel 443; il report diceva il contrario): FATTA la dichiarazione corretta (review #598); DEFERITA — fetta bwrap il fix vero. R-598-1 COSMETICA: DEFERITA — fetta bwrap.
+- **PR #315 (browser senza schermo)**: MERGIATA (0f02868) col sì dell'operatore.
+- **Punto 4 del piano (bwrap)**: FATTA (PR #316) — namespace nuovi, nessuna capability, cartelle sensibili nascoste, proxy su socket Unix con ponte dentro il sandbox, fail-closed senza bwrap.
+- **V-1 ve/bot #315 (WebSocket nei worker)**: FATTA — Worker spenti, routeWebSocket obbligatorio, test con wss sulla 443 da un worker.
+- **R-594-2, R-595-1, R-595-2, R-598-1**: FATTE.
+- **iframe about:blank (bot su 25ce2ef)**: FATTA — non riprodotto, ora fissato da un test.
+- **Review #599 (chat Mani)**: APPROVATO CON RISERVE. R-599-1 MEDIA (socket Unix di altri raggiungibili), R-599-2 MEDIA (node in ~/bin scopriva la home), R-599-3 e R-599-4 BASSE: FATTE.
+- **Review #600**: APPROVATO CON RISERVE. R-600-1/2/3 BASSE: FATTE.
+- **Review #601**: APPROVATO CON RISERVE. R-601-1 e R-601-2 BASSE: DEFERITA — registrate.
+- **CI su fc318cf**: ROSSA (3 test del sandbox validi solo da root); **bot**: BOCCIATO per la CI rossa. FATTA la correzione (9b6b83e). **Review #602**: BOCCIATO (saltare i collegamenti riapriva R-600-1): FATTA. **Review #603**: APPROVATO CON RISERVE; R-603-1/2/3 BASSE: DEFERITA — registrate.
+- **Bot su e3a59ee**: APPROVATO CON RISERVE, CI verde. V-1 BASSA (discendenti della home ri-esposti interi): DEFERITA — prossima fetta. V-2/V-3 COSMETICHE: FATTE.
+- **Verifica esterna su fc318cf**: BOCCIATO. V-1 ALTA e V-2 MEDIA (CI rossa): FATTE. V-3 MEDIA (mutanti del sandbox senza test) e V-4 BASSA (scrittura senza tetto sul disco): FATTE in 366a0d5. V-6 BASSA (/etc e /usr leggibili): DEFERITA — limite dichiarato. **Review #604**: BOCCIATO (corsa in un test): FATTA. **Review #605**: APPROVATO CON RISERVE; R-605-1/2: DEFERITA — registrate.
+- **Bot su 30cd0a8**: APPROVATO CON RISERVE (V-1 descrizione: FATTA; V-2 cartelle fuori dall'elenco: DEFERITA — prossima fetta, condizione in roadmap). **Verifica esterna su 30cd0a8**: APPROVATO CON RISERVE; V-1 MEDIA a/b: FATTA (test, review #606); c/d: SALTATA — dichiarati. R-605-2: FATTA.
+- **ci.yml**: SALTATA — non serviva (bwrap è già abilitato in CI prima del passo web).
 
 ## Prove
-- Browser 25 test, proxy 71 test. Web (`python -m pytest tests/test_unit_web_*.py`): 732 passed, 2 skipped. Web + voce dopo il merge: 870 passed, 2 skipped.
-- Mutanti presi: senza `<-loopback>`, senza lo script che spegne WebSocket/RTC, senza il controllo X-Gas-Proxy, senza lo split su «\n», senza i gruppi col segno. Non preso dal test con Chromium: senza la riscrittura della risposta (lo prende il test unitario del proxy).
+- Browser 43 test (anche da utente nobody, come il runner), proxy 72 test. Web (`python -m pytest tests/test_unit_web_*.py`): 751 passed, 2 skipped.
+- Mutanti presi: 21 (vedi handoff §5).
 
 ## Anomalie
+- La verifica esterna ha lasciato due cartelle di prova fuori dalla scratchpad (/home/runnerx, /data/gashome) nel container di sviluppo; la rimozione l'ha bloccata un controllo di sicurezza: restano nel container, che è temporaneo.
+- Le prime prove erano da root: in CI (non root) tre test del sandbox fallivano. D'ora in poi i test del sandbox si provano anche da utente nobody.
+- bwrap non era installato in questo container: installato con apt (bubblewrap 0.9.0) per le prove.
 - `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.
-- Chromium qui non riusa la connessione del proxy nemmeno senza la riscrittura: il test end-to-end di R-585-4 da solo non morde.

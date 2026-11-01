@@ -2,7 +2,9 @@
 
 Zero rete vera: un server d'origine e un'eco TCP su 127.0.0.1, DNS e connettore finti che
 portano gli IP pubblici finti a quei server locali."""
+import os
 import socket
+import stat
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -533,3 +535,27 @@ def test_il_200_del_tunnel_oltre_il_tetto_non_parte(rete):
     with _proxy(rete, max_byte=10) as p:
         r = _manda(p.porta, b"CONNECT sito.test:443 HTTP/1.1\r\n\r\n")
     assert r.startswith(b"HTTP/1.1 403") and r.endswith(b"troppi byte")
+
+
+# ───────────────────── fetta 34: socket Unix per il browser in bwrap ─────────────────────
+
+def test_socket_unix_0600_serve_e_sparisce(rete, tmp_path):
+    presa = str(tmp_path / "proxy.sock")
+    p = _proxy(rete, percorso=presa)
+    p.avvia()
+    try:
+        assert p.porta == 0 and stat.S_IMODE(os.stat(presa).st_mode) == 0o600
+        with socket.socket(socket.AF_UNIX) as s:
+            s.settimeout(5)
+            s.connect(presa)
+            s.sendall(b"GET http://sito.test/ok HTTP/1.1\r\nHost: sito.test\r\n\r\n")
+            dati = b""
+            while True:
+                pezzo = s.recv(65536)
+                if not pezzo:
+                    break
+                dati += pezzo
+        assert dati.endswith(b"pagina ok") and rete.connessi == [(IP_PUBBLICO, 80)]
+    finally:
+        p.ferma()
+    assert not os.path.exists(presa)

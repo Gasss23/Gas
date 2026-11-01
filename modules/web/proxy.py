@@ -4,7 +4,8 @@ Il browser (modules/web/browser.py, fetta 33) esce in rete SOLO da qui: ogni ric
 della pagina (documento, immagini, script, redirect) passa le stesse regole di leggi_pagina.
 
 Regole (fail-safe, CLAUDE.md §9):
-  - ascolta solo su 127.0.0.1, porta scelta dal sistema;
+  - ascolta solo su 127.0.0.1, porta scelta dal sistema, oppure (fetta 34) su un socket Unix
+    con permessi 0600: così lo raggiunge il browser chiuso in bwrap senza rete;
   - http in chiaro: solo GET e HEAD in forma assoluta («GET http://host/... HTTP/1.1»),
     niente corpo; https: solo CONNECT verso la porta 443;
   - host, schema e porta validati da leggi._valida_url (solo 80 e 443, niente
@@ -32,6 +33,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
+import os
 import re
 import select
 import socket
@@ -91,11 +93,13 @@ class ProxyFiltrante:
     """Uso: `with ProxyFiltrante() as p: porta = p.porta` (o avvia()/ferma())."""
 
     def __init__(self, *, max_richieste: int = MAX_RICHIESTE, max_byte: int = MAX_BYTE_TOTALI,
-                 durata: float = DURATA, _risolvi: Optional[_leggi.Risolutore] = None,
+                 durata: float = DURATA, percorso: Optional[str] = None,
+                 _risolvi: Optional[_leggi.Risolutore] = None,
                  _connetti: Optional[_leggi.Connettore] = None) -> None:
         self.max_richieste = max_richieste
         self.max_byte = max_byte
         self.durata = durata
+        self.percorso = percorso  # socket Unix al posto di 127.0.0.1 (fetta 34)
         self._risolvi = _risolvi or _leggi._risolvi_dns
         self._connetti = _connetti or _leggi._connetti_tcp
         self._lock = threading.Lock()
@@ -117,11 +121,18 @@ class ProxyFiltrante:
             def handle(self) -> None:
                 proxy._gestisci(self.request)
 
-        srv = socketserver.ThreadingTCPServer(("127.0.0.1", 0), _Gestore)
+        if self.percorso is not None:
+            # Niente umask (vale per tutto il processo, coi thread vivi): chmod subito dopo.
+            # Nel frattempo connettersi chiede comunque il permesso di scrittura, che gli
+            # altri utenti con l'umask normale non hanno; il browser lo mette in una cartella 0700.
+            srv = socketserver.ThreadingUnixStreamServer(self.percorso, _Gestore)
+            os.chmod(self.percorso, 0o600)
+        else:
+            srv = socketserver.ThreadingTCPServer(("127.0.0.1", 0), _Gestore)
+            self.porta = srv.server_address[1]
         srv.daemon_threads = True
         self._server = srv
         self._scadenza = time.monotonic() + self.durata
-        self.porta = srv.server_address[1]
         threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.05},
                          name="gas-web-proxy", daemon=True).start()
         return self.porta
@@ -132,6 +143,11 @@ class ProxyFiltrante:
         if srv is not None:
             srv.shutdown()
             srv.server_close()
+            if self.percorso is not None:
+                try:
+                    os.unlink(self.percorso)
+                except OSError:
+                    pass
         with self._lock:
             self._scadenza = 0.0
             aperte, self._aperte = list(self._aperte), set()
