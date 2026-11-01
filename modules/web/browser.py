@@ -1,4 +1,4 @@
-"""Lettura di una pagina con un browser senza schermo (R6, fette 33-34, chat Mani).
+"""Lettura di una pagina con un browser senza schermo (R6, fette 33-35, chat Mani).
 
 Per le pagine che senza JavaScript sono vuote: Chromium senza schermo (Playwright per Node,
 come i test della voce) in un processo figlio, che esce in rete SOLO dal proxy filtrante
@@ -7,20 +7,19 @@ default: si accende con GAS_WEB_BROWSER=1 (servono node, il pacchetto playwright
 bwrap funzionante: senza isolamento il browser non parte).
 
 Regole (fail-safe, CLAUDE.md §9):
-  - isolamento (fetta 34, punto 4 del piano): node e Chromium girano in bwrap con tutti i
+  - isolamento (fette 34-35, punto 4 del piano): node e Chromium girano in bwrap con tutti i
     namespace nuovi (anche la rete: dentro c'è solo il loopback) e senza capability
-    (--cap-drop ALL: anche da root non si smonta niente, R-599-3); filesystem in sola lettura,
-    nascosti /home, /root, /run, /tmp, /var, /srv, /mnt, /media, /opt e la cartella di Gas
-    (lì stanno chiavi, dati e i socket Unix degli altri programmi, che una sola lettura non
-    ferma: R-599-1); di nuovo visibili in sola lettura solo node, i moduli di Node e Chromium,
-    rifiutati se coprirebbero Gas, la home o una cartella nascosta (R-599-2); Gas e la home
-    nascoste anche nel loro percorso vero, se ci si arriva da un collegamento (R-600-1); i
-    tmpfs che nascondono sono da 1 MB (R-600-3: scriverci non riempie la RAM), /dev/shm da
-    256 MB; --die-with-parent e PID
-    namespace: morto bwrap, muore tutto;
-  - la cartella della lettura è in sola lettura nel sandbox (contiene il socket del proxy);
-    profilo e file temporanei di Chromium stanno in un tmpfs da 256 MB dentro il sandbox
-    (V-4 ve #316: niente scrittura senza tetto sul disco dell'host);
+    (--cap-drop ALL: anche da root non si smonta niente, R-599-3). La radice è un tmpfs vuoto,
+    rimontato in sola lettura: del sistema si vedono SOLO, in sola lettura, le cartelle di
+    _PERMESSE (programmi, librerie dell'architettura, font, cache del linker, fuso orario), il
+    solo file di node, i soli pacchetti playwright e playwright-core (non tutto node_modules
+    né il prefisso di node, V-1 bot #316) e Chromium. Niente home, /root, /run, /var, /opt,
+    /etc intera, niente socket Unix di altri programmi (R-599-1, V-6 ve e V-2 bot #316); Gas e
+    la home, se stanno dentro una cartella permessa, coperte da un tmpfs (anche nel percorso
+    vero, R-600-1); rifiutato ri-esporre una cartella che le contenga (R-599-2);
+  - sul disco dell'host non si scrive: la cartella della lettura è in sola lettura; scrivibili
+    solo tmpfs con tetto: /tmp (1 MB), /dev/shm (256 MB) e il profilo di Chromium (256 MB,
+    V-4 ve #316). --die-with-parent e PID namespace: morto bwrap, muore tutto;
   - il proxy ascolta su un socket Unix nella cartella della lettura; dentro bwrap node apre un
     ponte da 127.0.0.1 a quel socket, l'unica uscita prevista del sandbox;
   - rete solo dal proxy, anche per il loopback (`--proxy-bypass-list=<-loopback>`, R-585-5);
@@ -42,8 +41,9 @@ Regole (fail-safe, CLAUDE.md §9):
 Limiti dichiarati: sul Mac il browser resta SPENTO (bwrap non esiste: niente isolamento,
 niente browser). Chromium gira senza la sua sandbox (Playwright la toglie per default): un
 difetto di Chromium sfruttato da una pagina resta dentro bwrap (niente rete fuori dal proxy,
-niente file di Gas né home); vede però in sola lettura /usr, /etc e il resto del sistema non
-nascosto, e un socket Unix lasciato lì da un altro programma resterebbe raggiungibile.
+niente file di Gas né home né altro fuori dall'elenco); vede in sola lettura i programmi e le
+librerie di sistema dell'elenco. `--new-session` (contro l'iniezione nel terminale) non ha un
+test: servirebbe un TTY.
 Una pagina che usa i Worker può non funzionare (si legge il testo che c'è). Il proxy filtra le
 destinazioni, non i dati: la pagina può mandare dati a un host pubblico.
 Il proxy giudica ogni richiesta da sola: la regola di leggi_pagina «niente redirect da https a
@@ -56,10 +56,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import glob
 import shutil
 import signal
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import time
 from typing import Optional
@@ -75,16 +77,26 @@ ATTESA_JS = 2.0               # secondi al più, dopo il caricamento, per la ret
 MEMORIA_PROCESSO = 2 << 30    # byte di dati per ogni processo (RLIMIT_DATA)
 MEMORIA_JS_MB = 256           # heap di V8 per pagina
 MEMORIA_SHM = 256 << 20       # byte del /dev/shm del sandbox (memoria condivisa di Chromium)
-TETTO_NASCOSTE = 1 << 20      # byte di ogni tmpfs che nasconde una cartella (R-600-3)
+TETTO_TMP = 1 << 20           # byte del /tmp del sandbox
 MEMORIA_PROFILO = 256 << 20   # byte del profilo di Chromium, tmpfs dentro il sandbox (V-4 ve #316)
 MAX_USCITA = 4 * _leggi.MAX_CARATTERI  # caratteri di testo che il figlio può mandare
 
 # Variabili d'ambiente passate al figlio: nient'altro (le chiavi di Gas restano fuori).
 _AMBIENTE = ("PATH", "NODE_PATH", "PLAYWRIGHT_BROWSERS_PATH", "LANG")
-# Nascoste nel sandbox (tmpfs sopra): le chiavi e i dati stanno lì. La cartella di Gas si
-# aggiunge in _comando_bwrap.
-_NASCOSTE = ("/home", "/root", "/run", "/tmp", "/var", "/srv", "/mnt", "/media", "/opt")
 _GAS = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Fetta 35 (V-6 ve e V-2 bot #316): la radice del sandbox è un tmpfs vuoto, rimontato in sola
+# lettura; del sistema si vede SOLO questo elenco (in sola lettura), quello che serve a sh, node
+# e Chromium: programmi, librerie dell'architettura, font, cache del linker, fuso orario.
+_ARCH = sysconfig.get_config_var("MULTIARCH") or ""
+_PERMESSE = ("/usr/bin", f"/usr/lib/{_ARCH}" if _ARCH and os.path.isdir(f"/usr/lib/{_ARCH}")
+             else "/usr/lib", "/usr/lib64", "/usr/share/fonts", "/usr/share/fontconfig",
+             "/etc/fonts", "/etc/ld.so.cache", "/etc/localtime",
+             # R-607-3: il caricatore dei programmi, dove l'architettura lo mette fuori da
+             # /usr/lib/<arch> (es. /lib/ld-linux-aarch64.so.1 → /usr/lib/…).
+             *sorted(glob.glob("/usr/lib/ld-linux*")))
+_RADICE = ("/bin", "/sbin", "/lib", "/lib32", "/lib64")  # collegamenti (o cartelle) da rifare
+_NODE = "/gas/bin/node"         # il solo file di node, dentro il sandbox
+_MODULI_DENTRO = "/gas/node"    # NODE_PATH dentro: solo playwright e playwright-core
 
 _ARGOMENTI = (
     "--proxy-bypass-list=<-loopback>",  # R-585-5: anche 127.0.0.1 passa dal proxy
@@ -192,9 +204,12 @@ def _bwrap_funziona() -> bool:
     if _BWRAP_OK is None:
         bwrap = shutil.which("bwrap")
         try:
+            # R-601-2: le stesse opzioni del comando vero (--cap-drop, --size, --remount-ro).
             _BWRAP_OK = bwrap is not None and subprocess.run(
-                [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/",
-                 "--proc", "/proc", "--dev", "/dev", "true"],
+                [bwrap, "--unshare-all", "--cap-drop", "ALL", "--die-with-parent", "--new-session",
+                 *[x for d in _PERMESSE if os.path.exists(d) for x in ("--ro-bind", d, d)],
+                 *_radice(), "--proc", "/proc", "--dev", "/dev",
+                 "--size", str(TETTO_TMP), "--tmpfs", "/tmp", "--remount-ro", "/", "true"],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 timeout=10).returncode == 0
         except (OSError, subprocess.TimeoutExpired):
@@ -209,7 +224,8 @@ _MODULI: dict = {}
 
 def _cartelle_di_playwright(node: str, env: dict) -> list:
     """Dove stanno davvero i pacchetti playwright e playwright-core (spesso sono collegamenti
-    fuori da NODE_PATH): le loro cartelle node_modules vanno ri-esposte nel sandbox."""
+    fuori da NODE_PATH): [cartella di playwright, cartella di playwright-core], o [] se non ci
+    sono. Si ri-espongono solo questi due pacchetti, non tutto node_modules (V-1 bot #316)."""
     chiave = (node, env.get("NODE_PATH", ""))
     if chiave not in _MODULI:
         trovate = []
@@ -217,12 +233,15 @@ def _cartelle_di_playwright(node: str, env: dict) -> list:
             uscita = subprocess.run(
                 [node, "-e", "const p = require('path'); const a = require.resolve('playwright/package.json');"
                  "const b = require.resolve('playwright-core/package.json', { paths: [a] });"
-                 "console.log(p.dirname(p.dirname(a))); console.log(p.dirname(p.dirname(b)));"],
+                 "console.log(p.dirname(a)); console.log(p.dirname(b));"],
                 env={k: v for k, v in env.items() if k in ("PATH", "NODE_PATH")}, cwd="/",  # R-600-2
                 stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=10).stdout
-            trovate = [r for r in uscita.splitlines() if r.startswith("/")]
+            trovate = [os.path.realpath(r) for r in uscita.splitlines() if r.startswith("/")]
+            trovate = trovate if len(trovate) == 2 else []
         except (OSError, subprocess.TimeoutExpired):
             pass
+        if not trovate:
+            return []  # R-607-2: un fallimento (anche un timeout passeggero) non resta in cache
         _MODULI[chiave] = trovate
     return _MODULI[chiave]
 
@@ -232,40 +251,65 @@ def _copre(percorso: str, protetto: str) -> bool:
     return protetto == percorso or protetto.startswith(percorso.rstrip("/") + "/")
 
 
+def _radice() -> list:
+    """/bin, /lib… come sull'host: collegamenti rifatti (sistemi con /usr unito) o cartelle in
+    sola lettura (sistemi vecchi)."""
+    cmd = []
+    for voce in _RADICE:
+        if os.path.islink(voce):
+            cmd += ["--symlink", os.readlink(voce), voce]
+        elif os.path.isdir(voce):
+            cmd += ["--ro-bind", voce, voce]
+    return cmd
+
+
 def _comando_bwrap(casa: str, env: dict) -> list:
-    """Prefisso bwrap (fino a «--»): tutti i namespace nuovi, nessuna capability, sistema in sola
-    lettura, nascoste le cartelle di _NASCOSTE e quella di Gas; poi di nuovo visibili (in sola
-    lettura) solo node, i moduli di Node e Chromium e la cartella della lettura; scrivibile solo
-    il profilo, un tmpfs con tetto dentro la cartella della lettura."""
-    cmd = ["bwrap", "--unshare-all", "--cap-drop", "ALL", "--die-with-parent", "--new-session",
-           "--ro-bind", "/", "/", "--dev", "/dev", "--size", str(MEMORIA_SHM), "--tmpfs", "/dev/shm",
-           "--proc", "/proc"]
+    """Prefisso bwrap (fino a «--»). Fetta 35: tutti i namespace nuovi, nessuna capability, la
+    radice è un tmpfs vuoto rimontato in sola lettura alla fine; si vedono in sola lettura solo
+    le cartelle di _PERMESSE, il file di node, i due pacchetti di Playwright, Chromium e la
+    cartella della lettura. Scrivibili solo tmpfs con tetto: /tmp, /dev/shm e il profilo. Gas e
+    la home, se stanno dentro una cartella permessa, si coprono con un tmpfs vuoto."""
+    cmd = ["bwrap", "--unshare-all", "--cap-drop", "ALL", "--die-with-parent", "--new-session"]
+    montate = []
+    for permessa in _PERMESSE:
+        if os.path.exists(permessa):
+            vero = os.path.realpath(permessa)
+            cmd += ["--ro-bind", vero, permessa]
+            montate.append(vero)
+    cmd += _radice()
+    cmd += ["--dev", "/dev", "--size", str(MEMORIA_SHM), "--tmpfs", "/dev/shm", "--proc", "/proc",
+            "--size", str(TETTO_TMP), "--tmpfs", "/tmp"]
     casa_utente = os.path.expanduser("~")
-    nascoste = list(_NASCOSTE) + [_GAS, os.path.realpath(_GAS), os.path.realpath(casa_utente)]
-    # R-600-1 e review #602: si nasconde il percorso VERO di ogni voce (bwrap non monta sopra
-    # un collegamento, e saltarlo scoprirebbe la cartella vera, es. /home → /data/home).
-    for nascosta in dict.fromkeys(os.path.realpath(n) for n in nascoste):
-        cmd += ["--size", str(TETTO_NASCOSTE), "--tmpfs", nascosta]
+    protetti = list(dict.fromkeys([os.path.realpath(_GAS), os.path.realpath(casa_utente)]))
     node = os.path.realpath(shutil.which("node") or "node")
-    servono = [os.path.dirname(os.path.dirname(node)), env.get("PLAYWRIGHT_BROWSERS_PATH", "")]
-    servono += env.get("NODE_PATH", "").split(os.pathsep) + _cartelle_di_playwright(node, env)
-    protetti = [os.path.realpath(_GAS), os.path.realpath(casa_utente)]
-    protetti += [os.path.realpath(n) for n in _NASCOSTE]
-    for percorso in servono:
-        if percorso and os.path.isdir(percorso):
-            vero = os.path.realpath(percorso)
-            if any(_copre(vero, p) for p in protetti):
-                # R-599-2 (es. node in ~/bin: il prefisso sarebbe la home intera, Gas compreso).
-                raise _leggi._Rifiuto("browser non isolabile: node, Playwright o i moduli di Node "
-                                      "stanno in una cartella che scoprirebbe Gas o la home")
-            cmd += ["--ro-bind", vero, vero]
+    pacchetti = _cartelle_di_playwright(node, env)
+    if not os.path.isfile(node) or not pacchetti:
+        raise _leggi._Rifiuto("browser non isolabile: node o Playwright non trovati")
+    browser = env.get("PLAYWRIGHT_BROWSERS_PATH", "")
+    esposti = [(node, _NODE), (pacchetti[0], f"{_MODULI_DENTRO}/playwright"),
+               (pacchetti[1], f"{_MODULI_DENTRO}/playwright-core")]
+    if browser and browser != "0" and os.path.isdir(browser):
+        # Chromium al suo percorso vero: i suoi script di avvio lo chiamano per percorso assoluto.
+        esposti.append((os.path.realpath(browser), os.path.realpath(browser)))
+    for fuori, dentro in esposti:
+        if any(_copre(fuori, p) for p in protetti):
+            # R-599-2 (es. un pacchetto che fosse la home intera, Gas compreso).
+            raise _leggi._Rifiuto("browser non isolabile: node, Playwright o Chromium stanno in "
+                                  "una cartella che scoprirebbe Gas o la home")
+        cmd += ["--ro-bind", fuori, dentro]
+        montate.append(fuori)
+    # Gas o la home dentro una cartella permessa (es. Gas in /usr/lib/…): coperti da un tmpfs.
+    for protetto in protetti:
+        if any(_copre(m, protetto) for m in montate):
+            cmd += ["--size", str(TETTO_TMP), "--tmpfs", protetto]
     # V-4 ve #316: la cartella della lettura (sul disco dell'host) è in sola lettura; si scrive
     # solo nel profilo, un tmpfs con tetto dentro il sandbox, che sparisce con lui.
     profilo = os.path.join(casa, "profilo")
     os.makedirs(profilo, exist_ok=True)  # punto di montaggio: dentro, la casa è in sola lettura
     cmd += ["--ro-bind", casa, casa, "--size", str(MEMORIA_PROFILO), "--tmpfs", profilo,
-            "--chdir", profilo, "--clearenv"]
-    for k, v in env.items():
+            "--remount-ro", "/", "--chdir", profilo, "--clearenv"]
+    dentro = dict(env, PATH="/usr/bin:/bin", NODE_PATH=_MODULI_DENTRO)  # /bin: /usr non unito
+    for k, v in dentro.items():
         cmd += ["--setenv", k, v]
     return cmd + ["--"]
 
@@ -339,11 +383,10 @@ def _esegui(url: str, casa: str, presa: str, scadenza: float) -> dict:
     env[_SEGNO] = casa
     segno = f"{_SEGNO}={casa}".encode()
     ms_pagina = int(1000 * min(TEMPO_PAGINA, max(0.1, scadenza - time.monotonic() - ATTESA_JS)))
-    node = os.path.realpath(shutil.which("node") or "node")
     proc = subprocess.Popen(
         _comando_bwrap(casa, env) + [
             "sh", "-c", _AVVIO, "sh", str(MEMORIA_PROCESSO // 1024),
-            node, "-e", _FIGLIO, url, presa, str(ms_pagina), str(int(1000 * ATTESA_JS)),
+            _NODE, "-e", _FIGLIO, url, presa, str(ms_pagina), str(int(1000 * ATTESA_JS)),
             str(MAX_USCITA), json.dumps(_ARGOMENTI)],
         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         env=env, cwd=casa, start_new_session=True)
