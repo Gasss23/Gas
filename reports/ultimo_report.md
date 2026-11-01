@@ -17,13 +17,15 @@
 - **CI su fc318cf**: ROSSA (3 test del sandbox validi solo da root); **bot**: BOCCIATO per la CI rossa. FATTA la correzione (9b6b83e). **Review #602**: BOCCIATO (saltare i collegamenti riapriva R-600-1): FATTA. **Review #603**: APPROVATO CON RISERVE; R-603-1/2/3 BASSE: DEFERITA — registrate.
 - **Bot su e3a59ee**: APPROVATO CON RISERVE, CI verde. V-1 BASSA (discendenti della home ri-esposti interi): DEFERITA — prossima fetta. V-2/V-3 COSMETICHE: FATTE.
 - **Verifica esterna su fc318cf**: BOCCIATO. V-1 ALTA e V-2 MEDIA (CI rossa): FATTE. V-3 MEDIA (mutanti del sandbox senza test) e V-4 BASSA (scrittura senza tetto sul disco): FATTE in 366a0d5. V-6 BASSA (/etc e /usr leggibili): DEFERITA — limite dichiarato. **Review #604**: BOCCIATO (corsa in un test): FATTA. **Review #605**: APPROVATO CON RISERVE; R-605-1/2: DEFERITA — registrate.
+- **Bot su 30cd0a8**: APPROVATO CON RISERVE (V-1 descrizione: FATTA; V-2 cartelle fuori dall'elenco: DEFERITA — prossima fetta, condizione in roadmap). **Verifica esterna su 30cd0a8**: APPROVATO CON RISERVE; V-1 MEDIA a/b: FATTA (test, review #606); c/d: SALTATA — dichiarati. R-605-2: FATTA.
 - **ci.yml**: SALTATA — non serviva (bwrap è già abilitato in CI prima del passo web).
 
 ## Prove
-- Browser 41 test (anche da utente nobody, come il runner), proxy 72 test. Web (`python -m pytest tests/test_unit_web_*.py`): 749 passed, 2 skipped.
-- Mutanti presi: 19 (vedi handoff §5).
+- Browser 43 test (anche da utente nobody, come il runner), proxy 72 test. Web (`python -m pytest tests/test_unit_web_*.py`): 751 passed, 2 skipped.
+- Mutanti presi: 21 (vedi handoff §5).
 
 ## Anomalie
+- La verifica esterna ha lasciato due cartelle di prova fuori dalla scratchpad (/home/runnerx, /data/gashome) nel container di sviluppo; la rimozione l'ha bloccata un controllo di sicurezza: restano nel container, che è temporaneo.
 - Le prime prove erano da root: in CI (non root) tre test del sandbox fallivano. D'ora in poi i test del sandbox si provano anche da utente nobody.
 - bwrap non era installato in questo container: installato con apt (bubblewrap 0.9.0) per le prove.
 - `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.

@@ -30,6 +30,9 @@
 - **Review #603**: APPROVATO CON RISERVE. R-603-1/2/3 BASSE: `DEFERITA — registrate`.
 - **Bot su e3a59ee (https://github.com/Gasss23/Gas/pull/316#pullrequestreview-5726200713)**: APPROVATO CON RISERVE, check success, CI verde. V-1 BASSA (i discendenti della home sono ri-esposti per intero, es. node in ~/.local/bin ri-espone ~/.local): `DEFERITA — prossima fetta`. V-2 COSMETICA (frase sui Worker invertita): `FATTA` in 366a0d5. V-3 COSMETICA (descrizione della PR): `FATTA` — descrizione aggiornata.
 - **Verifica esterna su fc318cf (https://github.com/Gasss23/Gas/pull/316#issuecomment-6552825234)**: BOCCIATO. V-1 ALTA (CI rossa) e V-2 MEDIA (report contro la CI): `FATTA` in 9b6b83e (CI verde su e3a59ee). V-3 MEDIA (mutanti del sandbox senza test: ri-esposte scrivibili, IPC, /proc, --die-with-parent, SPEGNI ridotto): `FATTA` in 366a0d5 — test nuovi, mutanti presi; `--new-session` senza test (serve un TTY): `SALTATA — dichiarata`. V-4 BASSA (scrittura senza tetto sul disco): `FATTA` in 366a0d5 — casa in sola lettura, profilo in un tmpfs da 256 MB. V-5 BASSA (processi di un altro pytest): `FATTA` in 9b6b83e. V-6 BASSA (/etc e /usr leggibili): `DEFERITA — limite dichiarato`. V-7 COSMETICA (R-601-1/2 confermate): `DEFERITA`.
+- **Bot su 30cd0a8 (https://github.com/Gasss23/Gas/pull/316#pullrequestreview-5726280373)**: APPROVATO CON RISERVE, check success, CI verde. V-1 BASSA (descrizione della PR non allineata): `FATTA` — riscritta. V-2 BASSA (cartelle fuori dall'elenco delle nascoste leggibili, es. /data): `DEFERITA — fetta «tmpfs su / con elenco di cartelle permesse»`, condizione per accendere il browser scritta in reports/roadmap.md (M1).
+- **Verifica esterna su 30cd0a8 (https://github.com/Gasss23/Gas/pull/316#issuecomment-6553120584)**: APPROVATO CON RISERVE, test riprodotti anche da nobody. V-1 MEDIA (comportamenti senza test): a) home fuori dalle nascoste e b) tetto del profilo `FATTA` (test nuovi, review #606); c) serviceWorkers 'block' e d) routeWebSocket → connectToServer `SALTATA — dichiarati in §7` (il netns e il proxy fermano comunque il traffico); XDG_* sulla casa `SALTATA — dichiarato`. V-2 BASSA (descrizione al commit pinnato): `FATTA` — riscritta dopo. V-3 BASSA e V-4 COSMETICA: già registrate (riserve #604, R-605-1). Nota: la verifica ha lasciato due cartelle di prova fuori dalla scratchpad (/home/runnerx, /data/gashome) nel container di sviluppo; la rimozione l'ha bloccata un controllo di sicurezza.
+- **R-605-2**: `FATTA` (ProcessLookupError nel finally del test).
 - **Review #604 (chat Mani)**: BOCCIATO. Il test di --die-with-parent uccideva il bwrap esterno prima che partisse il figlio (corsa): `FATTA` — si aspetta il vero «sleep»; docstring corretto. **Review #605**: APPROVATO CON RISERVE. R-605-1 COSMETICA e R-605-2 BASSA: `DEFERITA — registrate`.
 
 ---
@@ -37,7 +40,7 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  17 +++++++++++++++++
+ .claude/agents/memoria_revisore.md |  18 ++++++++++++++++++
  modules/web/browser.py             | 225 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------
  modules/web/proxy.py               |  24 ++++++++++++++++++++----
  reports/diff_sessione.md           |  21 +++++++++------------
@@ -45,8 +48,8 @@
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  39 +++++++++++++++++++--------------------
- tests/test_unit_web_browser.py     | 309 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ reports/ultimo_report.md           |  41 +++++++++++++++++++++--------------------
+ tests/test_unit_web_browser.py     | 333 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  tests/test_unit_web_proxy.py       |  26 ++++++++++++++++++++++++++
 ```
 
@@ -55,6 +58,9 @@ NB: base = merge-base con origin/main = 0f02868. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+636b5cb test(web): home fuori dalle nascoste e tetto del profilo tenuti da test (V-1 ve #316 su 30cd0a8, review #606)
+175c0ba chore(revisore): memoria review #606 — APPROVATO
+30cd0a8 docs(fine-task): handoff con il verdetto #604 riemesso per il gate B
 77bdc2a docs(fine-task): fetta 34, PR #316, V-3/V-4 della verifica esterna, review #604/#605
 366a0d5 fix(web): profilo del browser in un tmpfs con tetto, casa in sola lettura, test dei mutanti del sandbox (V-3/V-4 ve #316, review #604/#605)
 a3cd94b chore(revisore): memoria review #605 — APPROVATO CON RISERVE
@@ -326,9 +332,35 @@ Riga contatore #605 scritta in `/home/user/Gas/.claude/agents/memoria_revisore.m
 Da tracciare in `stato_progetto.md`: R-605-1 COSMETICA (docstring alla riga 238) e R-605-2 BASSA (`ProcessLookupError` nel `finally` del test).
 ```
 
+Commit (solo tests/test_unit_web_browser.py: V-1 a/b della verifica esterna su 30cd0a8, R-605-2). Verdetto integrale della review #606 (chat Mani):
+
+```
+## VERDETTO: APPROVATO
+
+Review #606 (chat Mani). Delta di soli test sulla PR #316: il diff staged sopra 30cd0a8 tocca solo `tests/test_unit_web_browser.py` (+25/-1).
+
+Elementi esaminati:
+- `tests/test_unit_web_browser.py:443` — test V-1 a): mette la home in /var/tmp e toglie /var da `_NASCOSTE` con monkeypatch. Rischio esaminato: un test che passa per un altro motivo, cioè bwrap che non parte o un `HOME` che altera `_nel_sandbox`. Non succede: `returncode == 0` è richiesto e `_nel_sandbox` sovrascrive `HOME` col profilo, quindi il monkeypatch agisce solo su `expanduser` dentro `_comando_bwrap`. Ho provato il mutante senza `realpath(casa_utente)` fra le nascoste (`modules/web/browser.py:244`): 1 failed. Le cartelle temporanee si puliscono (nessuna gas-home rimasta in /var/tmp). Esito: ok.
+- `tests/test_unit_web_browser.py:456` — test V-1 b): scrive `MEMORIA_PROFILO` + 8 MB nel profilo. Rischio esaminato: un falso verde se non si scrive niente. È escluso: c'è `0 <` e uno stdout vuoto dà errore. Ho provato il mutante con il tmpfs del profilo a 64 GiB e `MEMORIA_PROFILO` a 300 MB (`modules/web/browser.py:266`): 1 failed per asserzione, in 1 s. Esito: ok.
+- `tests/test_unit_web_browser.py:561` — R-605-2: `ProcessLookupError` ignorato nel `finally`. `proc.kill()` su un processo già morto non solleva. Esito: ok, R-605-2 chiusa.
+
+Prove riprodotte da root: file browser 43 passed; i due test nuovi passano 3 volte su 3 da soli (-k). Il modulo è stato ripristinato dopo i mutanti (`git status` pulito, a parte il file staged).
+
+RAM in CI: 256 MB accettabili. È tmpfs in memoria per circa 1 s, liberato quando esce il namespace di bwrap. I runner GitHub hanno 7–16 GB; qui 16 GB, 15 GB disponibili.
+
+Non verificato:
+- La prova da nobody: mi fido dei vostri 43 passed.
+- La prova sul runner CI vero: il delta non ha ancora girato in CI. La differenza di layout (Chromium sotto ~/.cache della home vera mentre `HOME` è spostata) l'ho ragionata, non provata: la home vera resta nascosta da /home e `_copre` non scatta.
+- La suite web completa (751): non rilanciata.
+
+Nota BASSA, non bloccante: se /var/tmp non esiste, il test a) dà errore invece di essere saltato. Va bene così, è un fallimento rumoroso.
+
+Nessuna lezione nuova. La riga contatore #606 è committata (175c0ba, `.claude/agents/memoria_revisore.md`).
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 25 a 41 test (obbligatori in CI). `tests/test_unit_web_proxy.py`: da 71 a 72. Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), con node, playwright e bwrap, da root: 749 passed, 2 skipped; browser da utente nobody (come il runner): 41 passed. ATTENZIONE: su fc318cf la CI era ROSSA (3 test del sandbox, vedi §1 e §6); i numeri locali di allora erano da root e non coprivano il runner non root. Mutanti presi (1 o 2 failed ciascuno): senza Worker spento, senza `--unshare-all`, Gas visibile fuori da /home, senza PID namespace, senza `process.exit`, sonda sempre vera, senza `--cap-drop`, solo home/root/tmp nascoste, senza controllo degli antenati, senza percorso vero, senza tetto dei tmpfs. Dopo la #602 presi anche: lo skip dei collegamenti, `_NASCOSTE` senza /home e /root. Dopo la verifica esterna (366a0d5): ri-esposte scrivibili, casa scrivibile senza tmpfs del profilo, senza --proc, senza --die-with-parent (6 su 6), SPEGNI ridotto, senza unshare-ipc. Non presi (R-601-1): senza cwd="/" nella sonda di Playwright, /dev/shm senza `--size`.
+Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 25 a 43 test (obbligatori in CI). `tests/test_unit_web_proxy.py`: da 71 a 72. Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), con node, playwright e bwrap, da root: 751 passed, 2 skipped; browser da utente nobody (come il runner): 43 passed. ATTENZIONE: su fc318cf la CI era ROSSA (3 test del sandbox, vedi §1 e §6); i numeri locali di allora erano da root e non coprivano il runner non root. Mutanti presi (1 o 2 failed ciascuno): senza Worker spento, senza `--unshare-all`, Gas visibile fuori da /home, senza PID namespace, senza `process.exit`, sonda sempre vera, senza `--cap-drop`, solo home/root/tmp nascoste, senza controllo degli antenati, senza percorso vero, senza tetto dei tmpfs. Dopo la #602 presi anche: lo skip dei collegamenti, `_NASCOSTE` senza /home e /root. Dopo la verifica esterna (366a0d5): ri-esposte scrivibili, casa scrivibile senza tmpfs del profilo, senza --proc, senza --die-with-parent (6 su 6), SPEGNI ridotto, senza unshare-ipc; poi home non nascosta, profilo senza tetto vero. Non presi (R-601-1): senza cwd="/" nella sonda di Playwright, /dev/shm senza `--size`.
 
 ## §6 STATO CI
 
@@ -336,13 +368,16 @@ Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 25 a 41 test (ob
 - 7860381, 1d5fc27, ea763c8 (memoria del revisore), a8d4b52 (fetta 34): pushati insieme; run su a8d4b52 (job 124726382253): unit-suite FAILURE (3 test del sandbox).
 - fc318cf (fine-task): run 41265278907, unit-suite FAILURE (stessi 3 test); handoff-check success; verifica-bot failure (bot BOCCIATO per la CI rossa).
 - 5d7a8c1, fee8985 (memoria del revisore), 9b6b83e (correzione), e3a59ee (fine-task): pushati insieme; run 41267528825 su e3a59ee success (unit-suite, handoff-check); verifica-bot success (bot APPROVATO CON RISERVE). I commit intermedi non hanno una run propria.
-- a6d5288, a3cd94b (memoria del revisore), 366a0d5 (V-3/V-4) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- a6d5288, a3cd94b (memoria del revisore), 366a0d5 (V-3/V-4), 77bdc2a e 30cd0a8 (fine-task): pushati insieme; run 41270078918 su 30cd0a8 success (unit-suite, handoff-check); verifica-bot success (bot APPROVATO CON RISERVE). I commit intermedi non hanno una run propria.
+- I commit della review #606 (memoria e test) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - V-1 bot #316 su e3a59ee BASSA: i discendenti della home sono ri-esposti per intero (es. node in ~/.local/bin ri-espone ~/.local); Gas resta coperto.
 - V-6 ve #316 BASSA (limite): /etc, /usr e il resto non nascosto restano leggibili; un file d'ambiente di Gas sotto /etc sarebbe leggibile da un renderer compromesso.
 - `--new-session` senza test (serve un TTY).
+- V-1 c/d ve #316 su 30cd0a8 (BASSE, dichiarate): `serviceWorkers: 'block'` e `routeWebSocket(…ws.close())` non hanno un test che li tenga (difesa in profondità: il netns e il proxy fermano comunque il traffico); XDG_* puntati alla casa invece che al profilo passerebbero i test.
+- V-2 bot #316 su 30cd0a8 BASSA: le cartelle in cima al disco fuori dall'elenco (es. /data, /backup) restano leggibili; prossima fetta «tmpfs su / con elenco di cartelle permesse», condizione per accendere il browser (reports/roadmap.md).
 - R-605-1 (chat Mani) COSMETICA: il docstring di `_comando_bwrap` dice «scrivibile solo il profilo»; sono scrivibili anche /tmp, /var e /dev/shm del sandbox (tmpfs con tetto).
 - R-605-2 (chat Mani) BASSA: nel `finally` di `test_morto_bwrap_muore_il_sandbox` un `os.kill` può dare ProcessLookupError se lo sleep muore nel frattempo.
 - Riserve BASSE della #604: la sola lettura delle ri-esposte non si prova da un utente che non può scriverci; con un pid basso di pytest il controllo VEDE-PYTEST darebbe un falso positivo (lo copre il conteggio sotto 10).

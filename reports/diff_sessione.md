@@ -5,9 +5,9 @@ File toccati rispetto a main 0f02868 (PR #315 mergiata):
 - `modules/web/proxy.py` — modalità con socket Unix 0600 (`percorso=`).
 - `tests/test_unit_web_browser.py` — test del sandbox (rete, file, socket, capability, tetti, collegamenti, PID namespace, sonda), Worker e iframe, pulizia indipendente.
 - `tests/test_unit_web_proxy.py` — test del socket Unix.
-- `.claude/agents/memoria_revisore.md` — righe delle review dalla #599 alla #605.
+- `.claude/agents/memoria_revisore.md` — righe delle review dalla #599 alla #606.
 - `reports/stato_progetto.md` — blocco «Mani — fetta 34» e riga «Ultimo aggiornamento».
-- `reports/roadmap.md` — R6: bwrap fatto.
+- `reports/roadmap.md` — R6: bwrap fatto; condizioni per accendere il browser (fetta «tmpfs su /» e prova sul VPS).
 - `reports/ripartenza_mani.md` — punto g).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
