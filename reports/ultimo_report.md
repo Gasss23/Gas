@@ -15,11 +15,13 @@
 - **Review #600**: APPROVATO CON RISERVE. R-600-1/2/3 BASSE: FATTE.
 - **Review #601**: APPROVATO CON RISERVE. R-601-1 e R-601-2 BASSE: DEFERITA — registrate.
 - **CI su fc318cf**: ROSSA (3 test del sandbox validi solo da root); **bot**: BOCCIATO per la CI rossa. FATTA la correzione (9b6b83e). **Review #602**: BOCCIATO (saltare i collegamenti riapriva R-600-1): FATTA. **Review #603**: APPROVATO CON RISERVE; R-603-1/2/3 BASSE: DEFERITA — registrate.
+- **Bot su e3a59ee**: APPROVATO CON RISERVE, CI verde. V-1 BASSA (discendenti della home ri-esposti interi): DEFERITA — prossima fetta. V-2/V-3 COSMETICHE: FATTE.
+- **Verifica esterna su fc318cf**: BOCCIATO. V-1 ALTA e V-2 MEDIA (CI rossa): FATTE. V-3 MEDIA (mutanti del sandbox senza test) e V-4 BASSA (scrittura senza tetto sul disco): FATTE in 366a0d5. V-6 BASSA (/etc e /usr leggibili): DEFERITA — limite dichiarato. **Review #604**: BOCCIATO (corsa in un test): FATTA. **Review #605**: APPROVATO CON RISERVE; R-605-1/2: DEFERITA — registrate.
 - **ci.yml**: SALTATA — non serviva (bwrap è già abilitato in CI prima del passo web).
 
 ## Prove
-- Browser 38 test (anche da utente nobody, come il runner), proxy 72 test. Web (`python -m pytest tests/test_unit_web_*.py`): 746 passed, 2 skipped.
-- Mutanti presi: 13 (vedi handoff §5).
+- Browser 41 test (anche da utente nobody, come il runner), proxy 72 test. Web (`python -m pytest tests/test_unit_web_*.py`): 749 passed, 2 skipped.
+- Mutanti presi: 19 (vedi handoff §5).
 
 ## Anomalie
 - Le prime prove erano da root: in CI (non root) tre test del sandbox fallivano. D'ora in poi i test del sandbox si provano anche da utente nobody.

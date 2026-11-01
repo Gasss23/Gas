@@ -28,22 +28,25 @@
 - **Bot su fc318cf (https://github.com/Gasss23/Gas/pull/316#pullrequestreview-5726127323)**: BOCCIATO. V-1 ALTA (unit-suite rossa, i test di isolamento non provavano nulla in CI): `FATTA` in 9b6b83e. V-2 MEDIA (report «745 passed» contro la CI rossa): `FATTA` — questo handoff dichiara la CI rossa su fc318cf.
 - **Review #602 (chat Mani)**: BOCCIATO. ALTA: saltare i collegamenti riapriva R-600-1 per le voci di `_NASCOSTE` (es. /home → /data/home): `FATTA` — si nasconde il percorso vero di ogni voce, test con una voce collegamento. MEDIA: test della home indebolito: `FATTA` — mountinfo con lista scritta nel test. MEDIA: `_di_un_altro_pytest` non si fermava al proprio pid: `FATTA`.
 - **Review #603**: APPROVATO CON RISERVE. R-603-1/2/3 BASSE: `DEFERITA — registrate`.
+- **Bot su e3a59ee (https://github.com/Gasss23/Gas/pull/316#pullrequestreview-5726200713)**: APPROVATO CON RISERVE, check success, CI verde. V-1 BASSA (i discendenti della home sono ri-esposti per intero, es. node in ~/.local/bin ri-espone ~/.local): `DEFERITA — prossima fetta`. V-2 COSMETICA (frase sui Worker invertita): `FATTA` in 366a0d5. V-3 COSMETICA (descrizione della PR): `FATTA` — descrizione aggiornata.
+- **Verifica esterna su fc318cf (https://github.com/Gasss23/Gas/pull/316#issuecomment-6552825234)**: BOCCIATO. V-1 ALTA (CI rossa) e V-2 MEDIA (report contro la CI): `FATTA` in 9b6b83e (CI verde su e3a59ee). V-3 MEDIA (mutanti del sandbox senza test: ri-esposte scrivibili, IPC, /proc, --die-with-parent, SPEGNI ridotto): `FATTA` in 366a0d5 — test nuovi, mutanti presi; `--new-session` senza test (serve un TTY): `SALTATA — dichiarata`. V-4 BASSA (scrittura senza tetto sul disco): `FATTA` in 366a0d5 — casa in sola lettura, profilo in un tmpfs da 256 MB. V-5 BASSA (processi di un altro pytest): `FATTA` in 9b6b83e. V-6 BASSA (/etc e /usr leggibili): `DEFERITA — limite dichiarato`. V-7 COSMETICA (R-601-1/2 confermate): `DEFERITA`.
+- **Review #604 (chat Mani)**: BOCCIATO. Il test di --die-with-parent uccideva il bwrap esterno prima che partisse il figlio (corsa): `FATTA` — si aspetta il vero «sleep»; docstring corretto. **Review #605**: APPROVATO CON RISERVE. R-605-1 COSMETICA e R-605-2 BASSA: `DEFERITA — registrate`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  14 ++++++++++++++
- modules/web/browser.py             | 214 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------
+ .claude/agents/memoria_revisore.md |  17 +++++++++++++++++
+ modules/web/browser.py             | 225 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------
  modules/web/proxy.py               |  24 ++++++++++++++++++++----
  reports/diff_sessione.md           |  21 +++++++++------------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  37 +++++++++++++++++--------------------
- tests/test_unit_web_browser.py     | 241 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ reports/ultimo_report.md           |  39 +++++++++++++++++++--------------------
+ tests/test_unit_web_browser.py     | 309 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  tests/test_unit_web_proxy.py       |  26 ++++++++++++++++++++++++++
 ```
 
@@ -52,6 +55,10 @@ NB: base = merge-base con origin/main = 0f02868. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+366a0d5 fix(web): profilo del browser in un tmpfs con tetto, casa in sola lettura, test dei mutanti del sandbox (V-3/V-4 ve #316, review #604/#605)
+a3cd94b chore(revisore): memoria review #605 — APPROVATO CON RISERVE
+a6d5288 chore(revisore): memoria review #604 — BOCCIATO
+e3a59ee docs(fine-task): fetta 34, PR #316, CI rossa corretta, review #602/#603
 9b6b83e fix(web): test del sandbox validi anche sul runner non root, percorso vero di ogni cartella nascosta (CI #316, review #602/#603)
 fee8985 chore(revisore): memoria review #603 — APPROVATO CON RISERVE
 5d7a8c1 chore(revisore): memoria review #602 — BOCCIATO
@@ -236,19 +243,105 @@ Cosa NON ho verificato:
 Memoria: aggiunte la riga #603 e una lezione su mountinfo in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate in fee8985. Il diff staged è intatto e il working tree è tornato com'era dopo i mutanti.
 ```
 
+Commit 366a0d5 (modules/web/browser.py, tests/test_unit_web_browser.py: V-3/V-4 della verifica esterna). Verdetto integrale della review #604 (chat Mani), sulla prima versione:
+
+```
+## VERDETTO: BOCCIATO
+
+Review #604 (chat Mani). È il delta sulla PR #316 (fetta 34, browser dentro bwrap), cioè il diff staged sopra e3a59ee: modules/web/browser.py e tests/test_unit_web_browser.py. Prima ho letto CLAUDE.md (sez. 5, 8, 9), reports/stato_progetto.md e la memoria del revisore. La riga #604 è committata con lo script, commit a6d5288. Il resto dell'index è intatto.
+
+**Motivo bloccante, uno solo.** `test_morto_bwrap_muore_il_sandbox` non è deterministico. Fallisce sul codice giusto e qualche volta lascia passare il mutante.
+- Causa: l'attesa «il figlio è partito» cerca `\0sleep\x0033.271\0` nel cmdline. Lo trova subito nel processo bwrap ESTERNO, perché nel suo cmdline c'è già `-- sleep 33.271`. La sonda lo conferma: al primo riscontro c'è un solo pid, con comm `bwrap`, ed è proprio `proc.pid`. Così il SIGKILL arriva prima che il bwrap interno abbia messo il segnale di morte col padre (PDEATHSIG). Il bwrap interno e `sleep` sopravvivono.
+- Prova sul codice giusto: il test da solo (`-k morto`, da root) dà 5 failed su 5, con `assert [21688, 21689] == []`. Nel file intero passa (41 passed): dipende dai tempi.
+- Prova sul mutante senza `--die-with-parent`: il test passa 1 volta su 15. Quindi il «mutante preso» di V-3 per `--die-with-parent` è fortuna, non una prova.
+- Correzione provata, da rimettere al revisore: prima del kill aspettare un pid dei `_pid_con(...)` con `/proc/<pid>/comm == "sleep"`. Risultato: codice giusto 8 pass su 8, mutante 8 fail su 8.
+
+Elementi del diff esaminati:
+1. modules/web/browser.py:263-266 — la casa è montata `--ro-bind` e il profilo è un tmpfs `--size MEMORIA_PROFILO` (256 MB), con la chdir dentro. Il punto di montaggio lo crea `os.makedirs` sull'host. Rischi esaminati:
+   - Il socket del proxy dentro una casa in sola lettura: connect funziona, perché il kernel non applica la sola lettura del montaggio ai socket. Lo confermano i test che passano.
+   - Il punto di montaggio deve esistere prima di bwrap: lo crea `os.makedirs`.
+   - `os.makedirs` che fallisce: lo prende l'`except Exception` di leggi_con_browser (modules/web/browser.py:416), quindi nessun crash (§9).
+   - L'ordine dei montaggi è come prima: l'ex `--bind` era nella stessa posizione.
+   - Il disco dell'host non si riempie più. Al suo posto si usa al massimo 256 MB di RAM in più, sopra i 256 di /dev/shm: compromesso accettabile.
+   — ok.
+2. modules/web/browser.py:336-337 — HOME, TMPDIR, XDG_CONFIG_HOME e XDG_CACHE_HOME puntano al profilo. Il segno resta sulla casa. Rischio esaminato: Playwright o Chromium che scrivono fuori dal profilo. Il programma figlio è passato inline con `-e`, quindi non c'è nessun file nella casa — ok.
+3. modules/web/browser.py:236-238 — la docstring di `_comando_bwrap` dice ancora «e scrivibile la cartella della lettura», che dopo V-4 è falso — riserva COSMETICA.
+4. tests/test_unit_web_browser.py:370-376 — controlla SCRIVE-CASA e che `os.listdir(casa) == ["profilo"]` con il profilo vuoto. Rischio esaminato: un mutante con la casa scrivibile. Il controllo è strutturale e sul contenuto — ok.
+5. tests/test_unit_web_browser.py:251 — il titolo è confrontato riga per riga in modo esatto, e i 5 nomi nuovi si trovano in SPEGNI (modules/web/browser.py:120-121). Rischio esaminato: un marcatore aggiunto che passa come sottostringa. Ora fa fallire il test — ok.
+6. tests/test_unit_web_browser.py:482 — sola lettura delle cartelle ri-esposte (prefisso di node e la sua bin). Il test è valido solo se l'utente che lo lancia può scrivere in quelle cartelle sull'host. Da utente nobody o su un runner senza permessi il `touch` fallisce comunque, quindi il test passa a vuoto. Il nome dice «e la casa», ma la casa la controlla il test alla riga 370 — riserva BASSA.
+7. tests/test_unit_web_browser.py:494-498 — IPC namespace e `/proc` con meno di 10 processi. Rischio esaminato: `test -e /proc/<pid di pytest>` dentro un PID namespace nuovo. Se pytest ha un pid basso (container in cui pytest è il processo 1 o uno dei primi) quel percorso esiste anche nel sandbox: falso VEDE-PYTEST. Il conteggio sotto 10 copre già il caso — riserva BASSA.
+8. tests/test_unit_web_browser.py:504-527 — `--die-with-parent`: è il blocco descritto sopra.
+
+Rischi esplicitamente esclusi:
+- Il comportamento sul runner CI non root non l'ho riprodotto: qui gira solo da root. La corsa dipende dai tempi, e sul runner potrebbe uscire rossa o verde a caso.
+- Non ho rifatto i 6 mutanti dichiarati, salvo `--die-with-parent`. Non ho lanciato l'intera suite web (749 test): ho lanciato solo il file del browser (41 passed).
+- `--new-session` senza test (serve un TTY): dichiarato dall'agente, d'accordo.
+- Restano fuori da questo delta, come dichiarato: V-1 bot e3a59ee, V-6 ve, R-601-1/2, R-603-1/2/3.
+- Nota a margine, non da correggere qui: la stessa corsa vale anche in produzione. Se Gas muore nei primi millisecondi dopo l'avvio di bwrap, il sandbox sopravvive orfano.
+
+V-2 COSMETICA del bot («Una pagina che usa i Worker…», modules/web/browser.py:47): chiusa.
+
+Cosa serve per l'approvazione: la correzione dell'attesa sul comm `sleep` nel test alla riga 504 (più, se vuoi, la docstring alla riga 236), poi di nuovo il revisore sul nuovo diff staged. Il resto del delta è approvabile.
+
+File:
+- /home/user/Gas/modules/web/browser.py
+- /home/user/Gas/tests/test_unit_web_browser.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
+Le sonde che ho usato sono in /tmp/sonda_rev604*.py.
+```
+
+Verdetto integrale della review #605 (chat Mani), sul diff finale del commit 366a0d5:
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #605 (chat Mani). Ri-review della #604 sul delta V-3/V-4 della verifica esterna di #316. Base e3a59ee, diff staged con sha256 08f9e2d1.
+
+**Elementi del diff esaminati**
+- `tests/test_unit_web_browser.py:504` — `_sleep_vivi` prende i pid da `_pid_con`, che cerca nel cmdline il pezzo `\0sleep\033.271\0`, e tiene solo quelli con `comm == "sleep"`. Rischio esaminato: che trovi di nuovo il bwrap esterno, il cui cmdline contiene anche lui «sleep 33.271». Esito: ok, il bwrap ha `comm` bwrap e viene scartato.
+- `tests/test_unit_web_browser.py:517` — `test_morto_bwrap_muore_il_sandbox`: aspetta che parta lo sleep vero, poi `os.kill(proc.pid)` (riga 531), poi controlla di nuovo con lo stesso helper. Rischio esaminato: il test non deterministico della #604. Esito: ok. L'ho riprodotto io, da root:
+  - test da solo (`-k`): 5 su 5 passati;
+  - mutante senza `--die-with-parent`: 6 su 6 falliti;
+  - dopo i mutanti non resta nessuno sleep orfano (`pgrep`).
+  R-604 è chiusa.
+- `tests/test_unit_web_browser.py:517` (blocco `finally`) — `os.kill(pid)` sugli sleep ancora vivi. Rischio esaminato: `ProcessLookupError` se lo sleep muore tra la lista e il kill. Esito: **riserva R-605-2 BASSA**. È una corsa rara, solo nel test, e trasformerebbe una pulizia in un errore. Basta un `try/except ProcessLookupError`.
+- `modules/web/browser.py:238` — docstring di `_comando_bwrap`: «scrivibile solo il profilo». Rischio esaminato: è una promessa falsa, come già R-600-3. Esito: **riserva R-605-1 COSMETICA**. Riprodotto: nel sandbox `touch /tmp/x`, `/var/x` e `/dev/shm/x` riescono. Hanno un tetto (1 MB per le cartelle nascoste, 256 MB per /dev/shm), quindi non è una fuga. Ma la frase va corretta, per esempio: «sul disco dell'host non si scrive; nel sandbox solo tmpfs con tetto (profilo, /dev/shm, nascoste)».
+- `modules/web/browser.py:262` — la casa è montata in sola lettura con `--ro-bind`, il profilo è un tmpfs da 256 MB. È invariato dalla #604, dove era già stato provato. Esito: ok.
+
+**Prove riprodotte**: web `python -m pytest tests/test_unit_web_*.py` 749 passed, 2 skipped (root). Browser 41 passed da nobody.
+
+**Rischi esclusi (non verificati)**
+- Comportamento sul runner della CI e sul VPS: qui c'è bwrap 0.9.0 da root, quindi non è riproducibile in questo ambiente.
+- Le riserve BASSE della #604 restano come le hai registrate tu: sola lettura delle cartelle ri-esposte non provabile da nobody, pid basso di pytest. Non le ho riesaminate.
+
+**Wall of Shame**: niente slicing della history e niente output di tool simulati. Il diff tocca solo il browser e i suoi test. Nessun guardrail indebolito: `--die-with-parent` ora ha un test che fallisce davvero se lo si toglie.
+
+Riga contatore #605 scritta in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata (a3cd94b). Nessuna lezione nuova.
+
+Da tracciare in `stato_progetto.md`: R-605-1 COSMETICA (docstring alla riga 238) e R-605-2 BASSA (`ProcessLookupError` nel `finally` del test).
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 25 a 38 test (obbligatori in CI). `tests/test_unit_web_proxy.py`: da 71 a 72. Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), con node, playwright e bwrap, da root: 746 passed, 2 skipped; browser da utente nobody (come il runner): 38 passed. ATTENZIONE: su fc318cf la CI era ROSSA (3 test del sandbox, vedi §1 e §6); i numeri locali di allora erano da root e non coprivano il runner non root. Mutanti presi (1 o 2 failed ciascuno): senza Worker spento, senza `--unshare-all`, Gas visibile fuori da /home, senza PID namespace, senza `process.exit`, sonda sempre vera, senza `--cap-drop`, solo home/root/tmp nascoste, senza controllo degli antenati, senza percorso vero, senza tetto dei tmpfs. Dopo la #602 presi anche: lo skip dei collegamenti, `_NASCOSTE` senza /home e /root. Non presi (R-601-1): senza cwd="/" nella sonda di Playwright, /dev/shm senza `--size`.
+Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 25 a 41 test (obbligatori in CI). `tests/test_unit_web_proxy.py`: da 71 a 72. Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), con node, playwright e bwrap, da root: 749 passed, 2 skipped; browser da utente nobody (come il runner): 41 passed. ATTENZIONE: su fc318cf la CI era ROSSA (3 test del sandbox, vedi §1 e §6); i numeri locali di allora erano da root e non coprivano il runner non root. Mutanti presi (1 o 2 failed ciascuno): senza Worker spento, senza `--unshare-all`, Gas visibile fuori da /home, senza PID namespace, senza `process.exit`, sonda sempre vera, senza `--cap-drop`, solo home/root/tmp nascoste, senza controllo degli antenati, senza percorso vero, senza tetto dei tmpfs. Dopo la #602 presi anche: lo skip dei collegamenti, `_NASCOSTE` senza /home e /root. Dopo la verifica esterna (366a0d5): ri-esposte scrivibili, casa scrivibile senza tmpfs del profilo, senza --proc, senza --die-with-parent (6 su 6), SPEGNI ridotto, senza unshare-ipc. Non presi (R-601-1): senza cwd="/" nella sonda di Playwright, /dev/shm senza `--size`.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 7860381, 1d5fc27, ea763c8 (memoria del revisore), a8d4b52 (fetta 34): pushati insieme; run su a8d4b52 (job 124726382253): unit-suite FAILURE (3 test del sandbox).
 - fc318cf (fine-task): run 41265278907, unit-suite FAILURE (stessi 3 test); handoff-check success; verifica-bot failure (bot BOCCIATO per la CI rossa).
-- 5d7a8c1, fee8985 (memoria del revisore), 9b6b83e (correzione) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 5d7a8c1, fee8985 (memoria del revisore), 9b6b83e (correzione), e3a59ee (fine-task): pushati insieme; run 41267528825 su e3a59ee success (unit-suite, handoff-check); verifica-bot success (bot APPROVATO CON RISERVE). I commit intermedi non hanno una run propria.
+- a6d5288, a3cd94b (memoria del revisore), 366a0d5 (V-3/V-4) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- V-1 bot #316 su e3a59ee BASSA: i discendenti della home sono ri-esposti per intero (es. node in ~/.local/bin ri-espone ~/.local); Gas resta coperto.
+- V-6 ve #316 BASSA (limite): /etc, /usr e il resto non nascosto restano leggibili; un file d'ambiente di Gas sotto /etc sarebbe leggibile da un renderer compromesso.
+- `--new-session` senza test (serve un TTY).
+- R-605-1 (chat Mani) COSMETICA: il docstring di `_comando_bwrap` dice «scrivibile solo il profilo»; sono scrivibili anche /tmp, /var e /dev/shm del sandbox (tmpfs con tetto).
+- R-605-2 (chat Mani) BASSA: nel `finally` di `test_morto_bwrap_muore_il_sandbox` un `os.kill` può dare ProcessLookupError se lo sleep muore nel frattempo.
+- Riserve BASSE della #604: la sola lettura delle ri-esposte non si prova da un utente che non può scriverci; con un pid basso di pytest il controllo VEDE-PYTEST darebbe un falso positivo (lo copre il conteggio sotto 10).
 - R-603-1 (chat Mani) BASSA: il controllo su mountinfo prova che il tmpfs c'è, non che sia il montaggio in cima (oggi lo coprono `_copre` e il segno nella home).
 - R-603-2 (chat Mani) BASSA: `_di_un_altro_pytest` cerca «pytest» come testo nel cmdline: con TMPDIR sotto /tmp/pytest-of-… ignorerebbe i browser della propria suite.
 - R-603-3 (chat Mani) BASSA: /usr fuori dal find di socket e FIFO (sola lettura, nessun socket atteso).
