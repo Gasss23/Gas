@@ -24,21 +24,22 @@
 - **Bot su 427e57d (https://github.com/Gasss23/Gas/pull/317#pullrequestreview-5730697074)**: APPROVATO CON RISERVE, check success, CI verde. V-1 BASSA (permessa che è un collegamento: la copertura di Gas finiva sul percorso vero, non dove la cartella si vede): `FATTA` in 505479f.
 - **Verifica esterna su 427e57d (https://github.com/Gasss23/Gas/pull/317#issuecomment-6565285968)**: APPROVATO CON RISERVE. V-1 MEDIA (/dev del sandbox scrivibile senza tetto): `FATTA` in 505479f — --remount-ro /dev più test. V-2 BASSA (lo stesso punto del bot): `FATTA`. V-3 BASSA (in CI il test «ogni file» non monta Chromium: PLAYWRIGHT_BROWSERS_PATH non impostata): `SALTATA — dichiarata` (lo coprono i test end-to-end). V-4 COSMETICA (prefisso senza «/» nel test): `FATTA`.
 - **Review #609 (chat Mani)**: APPROVATO CON RISERVE. R-609-1 BASSA (il ramo dei collegamenti guarda solo l'ultimo pezzo del percorso) e R-609-2 COSMETICA (la sonda non porta --remount-ro /dev): `DEFERITA — registrate`.
+- **Bot su 6729b2c (https://github.com/Gasss23/Gas/pull/317#pullrequestreview-5730762451)**: APPROVATO CON RISERVE ma check verifica-bot failure per «verdetto incoerente» (riserve senza finding nuovi); rilanciato una volta: di nuovo failure (G-2: un rilancio non ritira il verdetto, serve un commit nuovo), con V-1 BASSA (la sonda di bwrap diverge dal comando vero): `FATTA` in 2a96a14 — la sonda è il comando vero di `_comando_bwrap` con «true» al posto di node; chiude anche R-609-2. **Review #610**: APPROVATO CON RISERVE (R-610-1 BASSA: nessun test fissa che un rifiuto della sonda non vada in cache): `DEFERITA — registrata`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/web/browser.py             | 159 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------
+ .claude/agents/memoria_revisore.md |   5 +++++
+ modules/web/browser.py             | 184 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------
  reports/diff_sessione.md           |  16 +++++++--------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  34 ++++++++++++-------------------
- tests/test_unit_web_browser.py     | 252 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------
+ reports/ultimo_report.md           |  35 +++++++++++++-------------------
+ tests/test_unit_web_browser.py     | 269 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------
 ```
 
 NB: base = merge-base con origin/main = 87f576c. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -46,6 +47,9 @@ NB: base = merge-base con origin/main = 87f576c. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2a96a14 fix(web): la sonda di bwrap è il comando vero del sandbox (V-1 bot #317 su 6729b2c, R-609-2, review #610)
+cdc18c2 chore(revisore): memoria review #610 — APPROVATO CON RISERVE
+6729b2c docs(fine-task): fetta 35, PR #317, esiti di bot e verifica esterna, review #609
 505479f fix(web): /dev del sandbox in sola lettura, permesse-collegamento rifatte come collegamenti (V-1/V-2 ve e V-1 bot #317, review #609)
 d3c3d22 chore(revisore): memoria review #609 — APPROVATO CON RISERVE
 427e57d docs(fine-task): fetta 35 sandbox con elenco di cartelle permesse, PR #317, review #607/#608
@@ -183,21 +187,51 @@ Letture fatte: CLAUDE.md (sez. 5, 8, 9, 10), stato_progetto.md (solo la parte su
 Memoria: riga #609 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (d3c3d22).
 ```
 
+Commit 2a96a14 (modules/web/browser.py, tests/test_unit_web_browser.py: V-1 bot su 6729b2c). Verdetto integrale della review #610 (chat Mani):
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #610 (chat Mani). Riguarda il delta sulla PR #317 (fetta 35), base 6729b2c, diff staged con sha256 b1fd31e9cc89…6859. Prima della review ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md (fetta 35, R-609-2) e la memoria del revisore.
+
+**Cosa ho esaminato**
+- `modules/web/browser.py:201-221` — `_bwrap_funziona` ora lancia `[bwrap] + _comando_bwrap(casa, _ambiente(casa))[1:] + ["true"]`, dentro una cartella temporanea.
+  - Rischio controllato: che la sonda diverga ancora dal comando vero. Il comando finisce con «--» (`modules/web/browser.py:323`) e `cmd[0]` è il "bwrap" nudo (`modules/web/browser.py:274`). Quindi la sonda porta tutto il comando vero: `--remount-ro /dev`, /dev/shm col tetto, i collegamenti, node, i pacchetti e la casa.
+  - Un `_Rifiuto` di `_comando_bwrap` non è preso dall'`except (OSError, TimeoutExpired)`: sale a `leggi_con_browser`, che lo restituisce col suo motivo (`modules/web/browser.py:470`). L'ho provato direttamente: esce `{'ok': False, 'motivo': 'browser non isolabile: node o Playwright non trovati'}` e `_BWRAP_OK` resta None.
+  - Il comportamento è lo stesso di prima: lo stesso rifiuto arrivava comunque da `_esegui`. Esito: ok. R-609-2 chiusa.
+- `modules/web/browser.py:385-402` — `_ambiente` è estratto da `_esegui`.
+  - Rischio controllato: un cambio dell'ambiente del figlio. Il corpo è lo stesso, solo spostato, e `_esegui` lo chiama per primo. Esito: ok.
+- `tests/test_unit_web_browser.py:540-550` — test nuovo `test_la_sonda_di_bwrap_usa_il_comando_vero`.
+  - Rischio controllato: che il test non morda. Mutante = la sonda di HEAD (comando a parte) con i test nuovi, in un worktree separato: 1 failed sul test nuovo, per la ragione giusta. Esito: ok.
+- `tests/test_unit_web_browser.py:553-562` — nel test vecchio `which` è falsificato solo per "bwrap".
+  - Rischio controllato: che questo test si rompa ora che la sonda risolve node. Il modulo si salta da solo senza node e Playwright (`tests/test_unit_web_browser.py:33`), e in CI ci sono node, Playwright e bwrap (`.github/workflows/ci.yml:111`, poi nella suite web la variabile che rende obbligatorio il browser). Esito: ok.
+
+**Prove riprodotte (da root):** browser 44 passed; web 752 passed, 2 skipped. Non ci sono antipattern della sezione 5: niente storia toccata, niente output dei tool simulato. Nessuna eccezione può arrivare fino al crash.
+
+**Riserva**
+- R-610-1 BASSA: nessun test fissa che un `_Rifiuto` della sonda non vada in cache, come dice la docstring. Un mutante con `except _Rifiuto: ok = False` (cioè messo in cache) sopravviverebbe. Il comportamento vero l'ho controllato a mano ed è giusto.
+
+**Cosa NON ho verificato:** l'esecuzione da utente nobody (la riporti tu, non l'ho rifatta). Non ho verificato aarch64 né /usr non unito, perché non si riproducono in questo ambiente. Non ho provato un OSError passeggero nella sonda, che resta in cache come False: è il comportamento di prima, non introdotto da questo diff.
+
+La riga contatore #610 è in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata (cdc18c2). Nessuna lezione nuova.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 43 a 43 test (test di isolamento riscritti per il modello nuovo; tolti quelli legati a `_NASCOSTE`, aggiunti l'elenco di ogni file visibile, i tetti di /tmp e /dev/shm, Gas e home dentro una permessa, rifiuti, sonde, routeWebSocket, cache). Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), da root: 751 passed, 2 skipped; browser da utente nobody: 43 passed. Mutanti presi (1 failed ciascuno): /etc intera, radice scrivibile, Gas dentro una permessa non coperta, prefisso di node ri-esposto, tutta node_modules, cartella bin di node, /tmp senza tetto, /dev/shm senza tetto, sonda senza cwd, fallimento in cache, routeWebSocket→connectToServer, rifiuto degli esposti tolto, /dev scrivibile, permessa-collegamento montata come prima. Non preso: `--new-session` (serve un TTY).
+Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 43 a 44 test (test di isolamento riscritti per il modello nuovo; tolti quelli legati a `_NASCOSTE`, aggiunti l'elenco di ogni file visibile, i tetti di /tmp e /dev/shm, Gas e home dentro una permessa, rifiuti, sonde, routeWebSocket, cache). Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), da root: 752 passed, 2 skipped; browser da utente nobody: 44 passed. Mutanti presi (1 failed ciascuno): /etc intera, radice scrivibile, Gas dentro una permessa non coperta, prefisso di node ri-esposto, tutta node_modules, cartella bin di node, /tmp senza tetto, /dev/shm senza tetto, sonda senza cwd, fallimento in cache, routeWebSocket→connectToServer, rifiuto degli esposti tolto, /dev scrivibile, permessa-collegamento montata come prima, sonda a comando a parte. Non preso: `--new-session` (serve un TTY).
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 9494a95, fb8b0c0 (memoria del revisore), a26a8a9 (fetta 35): pushati insieme prima dell'apertura della PR #317; nessuna run su questi SHA prima della PR.
 - 427e57d (fine-task): run su 427e57d success (unit-suite, handoff-check); verifica-bot success (bot APPROVATO CON RISERVE).
-- d3c3d22 (memoria #609), 505479f (correzioni) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- d3c3d22 (memoria #609), 505479f (correzioni), 6729b2c (fine-task): pushati insieme; run 41361521792 su 6729b2c success (unit-suite, handoff-check); verifica-bot failure (verdetto «incoerente», poi G-2 dopo il rilancio: vedi §1).
+- cdc18c2 (memoria #610), 2a96a14 (sonda) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - V-1 c ve #316 BASSA: `serviceWorkers: 'block'` senza test (nella prova la pagina non diventa sicura); `--new-session` senza test (serve un TTY).
-- R-609-1 (chat Mani) BASSA: il ramo delle permesse-collegamento guarda solo l'ultimo pezzo del percorso (un collegamento più in alto non è coperto; teorico sulle distribuzioni note). R-609-2 (chat Mani) COSMETICA: la sonda di bwrap non porta --remount-ro /dev.
+- R-609-1 (chat Mani) BASSA: il ramo delle permesse-collegamento guarda solo l'ultimo pezzo del percorso (un collegamento più in alto non è coperto; teorico sulle distribuzioni note). R-609-2: chiusa in 2a96a14 (la sonda è il comando vero). R-610-1 (chat Mani) BASSA: nessun test fissa che un rifiuto della sonda (node o Playwright mancanti) non vada in cache.
 - V-3 ve #317 BASSA: in CI il test «ogni file visibile» non monta Chromium (PLAYWRIGHT_BROWSERS_PATH non impostata); lo coprono i test end-to-end.
 - aarch64 e /usr non unito: analizzati sul codice, non provati (fail-closed: il browser resta spento).
 - HTTPS reale di Chromium senza /etc/ssl, bwrap con --size e AppArmor sul VPS: da provare sul VPS (seconda condizione della roadmap per accendere il browser).
