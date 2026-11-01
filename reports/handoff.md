@@ -55,6 +55,7 @@ NB: base = merge-base con origin/main = 0f02868. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+77bdc2a docs(fine-task): fetta 34, PR #316, V-3/V-4 della verifica esterna, review #604/#605
 366a0d5 fix(web): profilo del browser in un tmpfs con tetto, casa in sola lettura, test dei mutanti del sandbox (V-3/V-4 ve #316, review #604/#605)
 a3cd94b chore(revisore): memoria review #605 — APPROVATO CON RISERVE
 a6d5288 chore(revisore): memoria review #604 — BOCCIATO
@@ -243,34 +244,39 @@ Cosa NON ho verificato:
 Memoria: aggiunte la riga #603 e una lezione su mountinfo in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate in fee8985. Il diff staged è intatto e il working tree è tornato com'era dopo i mutanti.
 ```
 
-Commit 366a0d5 (modules/web/browser.py, tests/test_unit_web_browser.py: V-3/V-4 della verifica esterna). Verdetto integrale della review #604 (chat Mani), sulla prima versione:
+Commit 366a0d5 (modules/web/browser.py, tests/test_unit_web_browser.py: V-3/V-4 della verifica esterna). Verdetto integrale della review #604 (chat Mani), sulla prima versione — RIEMESSO dal revisore per il gate B (l'originale citava modules/web/browser.py alla riga 416, oltre la fine del file a HEAD; esito e contenuto invariati, cambiano solo i numeri di riga; l'originale è nel transcript della review):
 
 ```
+Riemesso per il gate B: citazioni allineate a HEAD 366a0d5, esito e contenuto invariati.
+(HEAD oggi è 77bdc2a, un commit di soli report sopra 366a0d5. Tra i due commit modules/web/browser.py e tests/test_unit_web_browser.py sono identici, quindi i numeri di riga valgono su entrambi. Non ho toccato né il repo né la memoria.)
+
 ## VERDETTO: BOCCIATO
 
-Review #604 (chat Mani). È il delta sulla PR #316 (fetta 34, browser dentro bwrap), cioè il diff staged sopra e3a59ee: modules/web/browser.py e tests/test_unit_web_browser.py. Prima ho letto CLAUDE.md (sez. 5, 8, 9), reports/stato_progetto.md e la memoria del revisore. La riga #604 è committata con lo script, commit a6d5288. Il resto dell'index è intatto.
+Review #604 (chat Mani). È il delta sulla PR #316 (fetta 34, browser dentro bwrap), cioè il diff che allora era staged sopra e3a59ee: modules/web/browser.py e tests/test_unit_web_browser.py. Prima ho letto CLAUDE.md (sez. 5, 8, 9), reports/stato_progetto.md e la memoria del revisore. La riga #604 è committata con lo script, commit a6d5288.
+
+Questa riemissione cambia solo i numeri di riga. I punti 3 e 8 descrivono il codice com'era al momento della review. Dopo, la correzione in 366a0d5 ha cambiato quelle righe (docstring corretta, attesa con `_sleep_vivi`). L'esito di questa review non cambia.
 
 **Motivo bloccante, uno solo.** `test_morto_bwrap_muore_il_sandbox` non è deterministico. Fallisce sul codice giusto e qualche volta lascia passare il mutante.
-- Causa: l'attesa «il figlio è partito» cerca `\0sleep\x0033.271\0` nel cmdline. Lo trova subito nel processo bwrap ESTERNO, perché nel suo cmdline c'è già `-- sleep 33.271`. La sonda lo conferma: al primo riscontro c'è un solo pid, con comm `bwrap`, ed è proprio `proc.pid`. Così il SIGKILL arriva prima che il bwrap interno abbia messo il segnale di morte col padre (PDEATHSIG). Il bwrap interno e `sleep` sopravvivono.
-- Prova sul codice giusto: il test da solo (`-k morto`, da root) dà 5 failed su 5, con `assert [21688, 21689] == []`. Nel file intero passa (41 passed): dipende dai tempi.
-- Prova sul mutante senza `--die-with-parent`: il test passa 1 volta su 15. Quindi il «mutante preso» di V-3 per `--die-with-parent` è fortuna, non una prova.
+- Causa: l'attesa «il figlio è partito» cercava `\0sleep\x0033.271\0` nel cmdline. Lo trovava subito nel processo bwrap ESTERNO, perché nel suo cmdline c'è già `-- sleep 33.271`. La sonda lo conferma: al primo riscontro c'era un solo pid, con comm `bwrap`, ed era proprio `proc.pid`. Così il SIGKILL arrivava prima che il bwrap interno avesse messo il segnale di morte col padre (PDEATHSIG). Il bwrap interno e `sleep` sopravvivevano.
+- Prova sul codice giusto: il test da solo (`-k morto`, da root) dava 5 failed su 5, con `assert [21688, 21689] == []`. Nel file intero passava (41 passed): dipendeva dai tempi.
+- Prova sul mutante senza `--die-with-parent`: il test passava 1 volta su 15. Quindi il «mutante preso» di V-3 per `--die-with-parent` era fortuna, non una prova.
 - Correzione provata, da rimettere al revisore: prima del kill aspettare un pid dei `_pid_con(...)` con `/proc/<pid>/comm == "sleep"`. Risultato: codice giusto 8 pass su 8, mutante 8 fail su 8.
 
 Elementi del diff esaminati:
-1. modules/web/browser.py:263-266 — la casa è montata `--ro-bind` e il profilo è un tmpfs `--size MEMORIA_PROFILO` (256 MB), con la chdir dentro. Il punto di montaggio lo crea `os.makedirs` sull'host. Rischi esaminati:
+1. modules/web/browser.py:264-266 — la casa è montata `--ro-bind` e il profilo è un tmpfs `--size MEMORIA_PROFILO` (256 MB), con la chdir dentro. Il punto di montaggio lo crea `os.makedirs` sull'host. Rischi esaminati:
    - Il socket del proxy dentro una casa in sola lettura: connect funziona, perché il kernel non applica la sola lettura del montaggio ai socket. Lo confermano i test che passano.
    - Il punto di montaggio deve esistere prima di bwrap: lo crea `os.makedirs`.
-   - `os.makedirs` che fallisce: lo prende l'`except Exception` di leggi_con_browser (modules/web/browser.py:416), quindi nessun crash (§9).
+   - `os.makedirs` che fallisce: lo prende l'`except Exception` di leggi_con_browser (modules/web/browser.py:410), quindi nessun crash (§9).
    - L'ordine dei montaggi è come prima: l'ex `--bind` era nella stessa posizione.
    - Il disco dell'host non si riempie più. Al suo posto si usa al massimo 256 MB di RAM in più, sopra i 256 di /dev/shm: compromesso accettabile.
    — ok.
-2. modules/web/browser.py:336-337 — HOME, TMPDIR, XDG_CONFIG_HOME e XDG_CACHE_HOME puntano al profilo. Il segno resta sulla casa. Rischio esaminato: Playwright o Chromium che scrivono fuori dal profilo. Il programma figlio è passato inline con `-e`, quindi non c'è nessun file nella casa — ok.
-3. modules/web/browser.py:236-238 — la docstring di `_comando_bwrap` dice ancora «e scrivibile la cartella della lettura», che dopo V-4 è falso — riserva COSMETICA.
+2. modules/web/browser.py:337-338 — HOME, TMPDIR, XDG_CONFIG_HOME e XDG_CACHE_HOME puntano al profilo. Il segno resta sulla casa. Rischio esaminato: Playwright o Chromium che scrivono fuori dal profilo. Il programma figlio è passato inline con `-e`, quindi non c'è nessun file nella casa — ok.
+3. modules/web/browser.py:236-238 — la docstring di `_comando_bwrap` diceva ancora «e scrivibile la cartella della lettura», che dopo V-4 è falso — riserva COSMETICA.
 4. tests/test_unit_web_browser.py:370-376 — controlla SCRIVE-CASA e che `os.listdir(casa) == ["profilo"]` con il profilo vuoto. Rischio esaminato: un mutante con la casa scrivibile. Il controllo è strutturale e sul contenuto — ok.
 5. tests/test_unit_web_browser.py:251 — il titolo è confrontato riga per riga in modo esatto, e i 5 nomi nuovi si trovano in SPEGNI (modules/web/browser.py:120-121). Rischio esaminato: un marcatore aggiunto che passa come sottostringa. Ora fa fallire il test — ok.
-6. tests/test_unit_web_browser.py:482 — sola lettura delle cartelle ri-esposte (prefisso di node e la sua bin). Il test è valido solo se l'utente che lo lancia può scrivere in quelle cartelle sull'host. Da utente nobody o su un runner senza permessi il `touch` fallisce comunque, quindi il test passa a vuoto. Il nome dice «e la casa», ma la casa la controlla il test alla riga 370 — riserva BASSA.
+6. tests/test_unit_web_browser.py:482 — sola lettura delle cartelle ri-esposte (prefisso di node e la sua bin). Il test è valido solo se l'utente che lo lancia può scrivere in quelle cartelle sull'host. Da utente nobody o su un runner senza permessi il `touch` fallisce comunque, quindi il test passa a vuoto. Il nome dice «e la casa», ma la casa la controlla il test di tests/test_unit_web_browser.py:370 — riserva BASSA.
 7. tests/test_unit_web_browser.py:494-498 — IPC namespace e `/proc` con meno di 10 processi. Rischio esaminato: `test -e /proc/<pid di pytest>` dentro un PID namespace nuovo. Se pytest ha un pid basso (container in cui pytest è il processo 1 o uno dei primi) quel percorso esiste anche nel sandbox: falso VEDE-PYTEST. Il conteggio sotto 10 copre già il caso — riserva BASSA.
-8. tests/test_unit_web_browser.py:504-527 — `--die-with-parent`: è il blocco descritto sopra.
+8. tests/test_unit_web_browser.py:517-537 — `--die-with-parent`: è il blocco descritto sopra.
 
 Rischi esplicitamente esclusi:
 - Il comportamento sul runner CI non root non l'ho riprodotto: qui gira solo da root. La corsa dipende dai tempi, e sul runner potrebbe uscire rossa o verde a caso.
@@ -281,14 +287,12 @@ Rischi esplicitamente esclusi:
 
 V-2 COSMETICA del bot («Una pagina che usa i Worker…», modules/web/browser.py:47): chiusa.
 
-Cosa serve per l'approvazione: la correzione dell'attesa sul comm `sleep` nel test alla riga 504 (più, se vuoi, la docstring alla riga 236), poi di nuovo il revisore sul nuovo diff staged. Il resto del delta è approvabile.
+Cosa serviva per l'approvazione: la correzione dell'attesa sul comm `sleep` nel test di tests/test_unit_web_browser.py:517 (più, se vuoi, la docstring di modules/web/browser.py:236), poi di nuovo il revisore sul nuovo diff staged. Il resto del delta è approvabile.
 
 File:
 - /home/user/Gas/modules/web/browser.py
 - /home/user/Gas/tests/test_unit_web_browser.py
 - /home/user/Gas/.claude/agents/memoria_revisore.md
-
-Le sonde che ho usato sono in /tmp/sonda_rev604*.py.
 ```
 
 Verdetto integrale della review #605 (chat Mani), sul diff finale del commit 366a0d5:
