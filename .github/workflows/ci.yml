@@ -126,7 +126,12 @@ jobs:
 
       - name: Run web suite (pytest, zero token LLM)
         # modules/web (R6, chat Mani): server finto su 127.0.0.1 e DNS finto, zero rete vera.
+        # Fetta 33: i test del browser senza schermo usano il Chromium del passo della voce e
+        # qui sono OBBLIGATORI (se manca il browser falliscono invece di essere saltati).
         if: always()
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+          GAS_TEST_BROWSER_OBBLIGATORIO: "1"
         run: |
           set -o pipefail
           python -m pytest tests/test_unit_web_*.py -v 2>&1 | tee "$RUNNER_TEMP/web_output.txt"

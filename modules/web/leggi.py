@@ -33,6 +33,10 @@ che ha i suoi TEMPO_MAX s: da accesa il caso peggiore diventa circa 12 s di rete
 + fino a 3 s della lettura di sempre, se il figlio non ce la fa (R-520-2), più fino a 4 s della
 sonda del figlio sulla lettura che la fa partire: alla prima pagina e, se fallisce, al più
 altre 2 volte a 600 s l'una dall'altra (circa 23 s).
+Altra eccezione, spenta per default (fetta 33): con GAS_WEB_BROWSER=1 una pagina html che senza
+JavaScript non dà testo si riprova nel browser senza schermo (modules/web/browser.py, rete solo
+dal proxy filtrante), con i suoi TEMPO_MAX s in più (più l'uccisione dei processi, di solito
+decine di millisecondi, al più circa 4 s); se il browser fallisce resta la pagina vuota.
 """
 from __future__ import annotations
 
@@ -1565,7 +1569,12 @@ def _testo_e_titolo(grezzo: str, xhtml: bool, url_finale: str) -> tuple[str, str
 
 
 def _componi(url_finale: str, pagina: dict) -> dict:
-    codice = secrets.token_hex(6)
+    corpo, titolo, tagliato = _estrai(url_finale, pagina)
+    return _incornicia(url_finale, titolo, corpo, pagina["troncato"], tagliato)
+
+
+def _estrai(url_finale: str, pagina: dict) -> tuple[str, str, bool]:
+    """Testo pulito, titolo e «XHTML tagliato» della pagina scaricata."""
     grezzo = _decodifica(pagina["corpo"], pagina["charset"])
     titolo = ""
     tagliato = False
@@ -1591,7 +1600,13 @@ def _componi(url_finale: str, pagina: dict) -> dict:
             titolo = _pulisci(letto[1]).replace("\n", " ")[:MAX_TITOLO]
         else:
             corpo, titolo = _testo_e_titolo(grezzo, xhtml, url_finale)
-    troncato = pagina["troncato"]
+    return corpo, titolo, tagliato
+
+
+def _incornicia(url_finale: str, titolo: str, corpo: str, troncato: bool,
+                tagliato: bool = False) -> dict:
+    """Il testo già pulito tra i marcatori NON FIDATO (anche per il browser, fetta 33)."""
+    codice = secrets.token_hex(6)
     if len(corpo) > MAX_CARATTERI:
         corpo = corpo[:MAX_CARATTERI]
         troncato = True
@@ -1615,6 +1630,20 @@ def _componi(url_finale: str, pagina: dict) -> dict:
         "fidato": False,
         "codice": codice,
     }
+
+
+def _con_browser(url: str, risolvi: Optional[Risolutore],
+                 connetti: Optional[Connettore]) -> Optional[dict]:
+    """Fetta 33: una pagina vuota senza JavaScript si riprova nel browser senza schermo, se
+    acceso (GAS_WEB_BROWSER=1). Se il browser fallisce resta la pagina vuota (§9)."""
+    from modules.web import browser as _browser  # qui: browser.py importa leggi.py
+    if not _browser.attivo():
+        return None
+    letto = _browser.leggi_con_browser(url, _risolvi=risolvi, _connetti=connetti)
+    if not letto["ok"]:
+        logger.warning("leggi_pagina: browser senza schermo fallito (%s) su %r", letto["motivo"], url[:200])
+        return None
+    return letto
 
 
 # ───────────────────────────── funzione pubblica ─────────────────────────────
@@ -1651,7 +1680,12 @@ def leggi_pagina(
             pagina = _scarica(schema, host, porta, percorso, scadenza, risolvi, connetti, _tls)
             if "redirect" not in pagina:
                 in_rete = False
-                return _componi(normalizzato, pagina)
+                corpo, titolo, tagliato = _estrai(normalizzato, pagina)
+                if not corpo and pagina["tipo"] != "text/plain":
+                    letto = _con_browser(normalizzato, _risolvi, _connetti)
+                    if letto is not None:
+                        return letto
+                return _incornicia(normalizzato, titolo, corpo, pagina["troncato"], tagliato)
             if salto == MAX_REDIRECT:
                 raise _Rifiuto("troppi redirect")
             if not pagina["redirect"]:

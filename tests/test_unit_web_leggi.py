@@ -469,7 +469,7 @@ def test_rete_lascia_tempo_per_pulire_la_pagina(monkeypatch):
 
 
 def test_errore_nella_pulizia_non_e_un_tempo_superato(monkeypatch):
-    """Un errore di _componi dopo la scadenza della rete si chiama col suo nome (R-496-2)."""
+    """Un errore della pulizia (_estrai) dopo la scadenza della rete si chiama col suo nome (R-496-2)."""
     monkeypatch.setattr(web, "TIMEOUT_TOTALE", 0.2)
 
     def scarica(*argomenti: object) -> dict:
@@ -480,7 +480,7 @@ def test_errore_nella_pulizia_non_e_un_tempo_superato(monkeypatch):
         raise RuntimeError("rotto")
 
     monkeypatch.setattr(web, "_scarica", scarica)
-    monkeypatch.setattr(web, "_componi", componi)
+    monkeypatch.setattr(web, "_estrai", componi)
     assert web.leggi_pagina("http://sito.test/") == {"ok": False,
                                                        "motivo": "errore nella pulizia della pagina (RuntimeError)"}
 

@@ -212,7 +212,7 @@ Tutto da zero. Lista completa al capitolo 8.
 ### R6 — Le mani: web, mail, social, notifiche ⏳
 **Ordine (19 ottobre):** web → mail → social → notifiche Telegram.
 - ✅ **Decisione porte del lettore web** (operatore, 22 ottobre): `leggi_pagina` solo verso le porte 80 e 443, anche dopo un redirect. ✅ Nel codice dal 2026-10-30 (chat Mani, PR #310, review #583).
-- ⏳ Leggere il web in un ambiente chiuso (browser senza schermo), per cercare clienti e leggere siti. Ogni testo letto è "non fidato".
+- ⏳ Leggere il web in un ambiente chiuso (browser senza schermo), per cercare clienti e leggere siti. Ogni testo letto è "non fidato". Fatti: proxy filtrante (PR #312) e browser senza schermo spento per default (PR #315, `GAS_WEB_BROWSER=1`); manca l'isolamento bwrap (punto 4 del piano) prima di accenderlo sul VPS.
 - ⏳ Mail: leggere, preparare bozze, inviare **solo con firma**.
 - ⏳ Messaggi diretti, post pubblici sui social e invio di moduli: sempre con firma.
 - ⏳ Notifica su Telegram come strumento di Gas.

@@ -409,3 +409,127 @@ def test_ferma_due_volte(rete):
     p.avvia()
     p.ferma()
     p.ferma()
+
+
+# ───────────────────── fetta 33: teste, Connection e risposte ─────────────────────
+
+class _Grezzo:
+    """Origine che legge la testa della richiesta e risponde con i byte dati, poi chiude."""
+
+    def __init__(self) -> None:
+        self.risposta = b""
+        self.s = socket.socket()
+        self.s.bind(("127.0.0.1", 0))
+        self.s.listen()
+        self.porta = self.s.getsockname()[1]
+        threading.Thread(target=self._servi, daemon=True).start()
+
+    def _servi(self) -> None:
+        while True:
+            try:
+                c, _ = self.s.accept()
+            except OSError:
+                return
+            with c:
+                dati = b""
+                while b"\r\n\r\n" not in dati:
+                    pezzo = c.recv(4096)
+                    if not pezzo:
+                        break
+                    dati += pezzo
+                c.sendall(self.risposta)
+
+
+@pytest.fixture
+def grezzo(rete):
+    g = _Grezzo()
+    rete.porte[80] = g.porta
+    yield g
+    g.s.close()
+
+
+def test_intestazioni_nominate_in_connection_tolte(rete):
+    """V-4 bot #312: le hop-by-hop nominate in «Connection» non arrivano al server."""
+    with _proxy(rete) as p:
+        r = _get(p.porta, "http://sito.test/ok",
+                 "Connection: X-Segreta, keep-alive\r\nX-Segreta: 1\r\nX-Altra: 2\r\n")
+    assert r.endswith(b"pagina ok")
+    h = _Origine.richieste[-1]["headers"]
+    assert "X-Segreta" not in h and h["X-Altra"] == "2" and h["Connection"] == "close"
+
+
+def test_risposta_riscritta_con_connection_close(rete, grezzo):
+    """R-585-4: il browser non riusa la connessione, la seconda risposta non ha padrone."""
+    grezzo.risposta = (b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive, X-Tolta\r\n"
+                       b"Keep-Alive: timeout=60\r\nProxy-Connection: keep-alive\r\nX-Tolta: 1\r\n"
+                       b"X-Resta: 2\r\n\r\nokHTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nfalso")
+    with _proxy(rete) as p:
+        r = _get(p.porta, "http://sito.test/a")
+    testa, _, corpo = r.partition(b"\r\n\r\n")
+    assert testa.split(b"\r\n") == [b"HTTP/1.1 200 OK", b"Content-Length: 2", b"X-Resta: 2",
+                                    b"Connection: close"]
+    assert corpo.startswith(b"ok")
+    assert p.byte == len(b"GET /a HTTP/1.1\r\nHost: sito.test\r\nConnection: close\r\n\r\n") + len(r)
+
+
+def test_il_segno_del_proxy_non_viene_dai_server(rete, grezzo):
+    """R-593-3: «X-Gas-Proxy» lo scrive solo il proxy."""
+    grezzo.risposta = b"HTTP/1.1 200 OK\r\nX-Gas-Proxy: rifiuto\r\nContent-Length: 2\r\n\r\nok"
+    with _proxy(rete) as p:
+        r = _get(p.porta, "http://sito.test/a")
+    assert r == b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
+
+
+def test_risposta_con_righe_lf_e_intermedia(rete, grezzo):
+    grezzo.risposta = (b"HTTP/1.1 103 Early Hints\nLink: </a.css>\n\n"
+                       b"HTTP/1.1 200 OK\nContent-Length: 2\n\nok")
+    with _proxy(rete) as p:
+        r = _get(p.porta, "http://sito.test/a")
+    assert r == (b"HTTP/1.1 103 Early Hints\r\nLink: </a.css>\r\n\r\n"
+                 b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+
+
+@pytest.mark.parametrize("risposta,motivo", [
+    (b"<html>niente testa", "risposta del server non valida"),
+    (b"HTTP/1.1 200 OK\r\nRiga senza due punti\r\n\r\nok", "risposta del server non valida"),
+    (b"HTTP/1.1 200 OK\r\nX: a\x01b\r\n\r\nok", "risposta del server non valida"),
+    (b"HTTP/1.1 200 OK\r\n continua\r\n\r\nok", "risposta del server non valida"),
+    (b"HTTP/2 200\r\n\r\nok", "risposta del server non valida"),
+    (b"HTTP/1.1 099 Strana\r\n\r\nHTTP/1.1 200 OK\r\n\r\nok", "risposta del server non valida"),  # R-593-4
+    (b"HTTP/1.1 600 Strana\r\n\r\nok", "risposta del server non valida"),
+    (b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n", "upgrade non permesso (WebSocket)"),
+    (b"HTTP/1.1 200 OK\r\nX: " + b"a" * 70_000, "risposta del server troppo grande"),
+])
+def test_risposte_rifiutate(rete, grezzo, risposta, motivo):
+    grezzo.risposta = risposta
+    with _proxy(rete) as p:
+        r = _get(p.porta, "http://sito.test/a")
+    assert r.startswith(b"HTTP/1.1 403") and r.endswith(motivo.encode())
+    assert b"X-Gas-Proxy: rifiuto\r\n" in r and p.rifiuti == [motivo]
+
+
+def test_troppe_risposte_intermedie(rete, grezzo):
+    grezzo.risposta = b"HTTP/1.1 100 Continue\r\n\r\n" * 6 + b"HTTP/1.1 200 OK\r\n\r\nok"
+    with _proxy(rete) as p:
+        r = _get(p.porta, "http://sito.test/a")
+    # Le intermedie sono già passate: la connessione si chiude senza la risposta vera.
+    assert r == b"HTTP/1.1 100 Continue\r\n\r\n" * 6
+    assert p.rifiuti == ["troppe risposte intermedie dal server"]
+
+
+def test_il_200_del_tunnel_conta_nei_byte(rete):
+    """V-2 bot #312 su 805b4d8: nei due versi, «200» compreso."""
+    with _proxy(rete) as p:
+        with socket.create_connection(("127.0.0.1", p.porta), timeout=5) as s:
+            s.sendall(b"CONNECT sito.test:443 HTTP/1.1\r\n\r\n")
+            assert s.recv(4096) == px._OK_TUNNEL
+            s.sendall(b"ciao tls")
+            assert s.recv(4096) == b"ciao tls"
+        time.sleep(0.2)
+        assert p.byte == len(px._OK_TUNNEL) + 2 * len(b"ciao tls")
+
+
+def test_il_200_del_tunnel_oltre_il_tetto_non_parte(rete):
+    with _proxy(rete, max_byte=10) as p:
+        r = _manda(p.porta, b"CONNECT sito.test:443 HTTP/1.1\r\n\r\n")
+    assert r.startswith(b"HTTP/1.1 403") and r.endswith(b"troppi byte")
