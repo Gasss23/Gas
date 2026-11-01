@@ -24,22 +24,26 @@
 - **Review #599 (chat Mani)**: APPROVATO CON RISERVE. R-599-1 MEDIA (socket Unix di altri raggiungibili: una sola lettura non ferma connect): `FATTA`; R-599-2 MEDIA (node in ~/bin ri-esponeva la home, Gas compreso): `FATTA`; R-599-3 BASSA (da root il sandbox teneva le capability e poteva smontare): `FATTA`; R-599-4 BASSA («0» di Playwright): `FATTA`.
 - **Review #600**: APPROVATO CON RISERVE. R-600-1 (Gas da un collegamento), R-600-2 (cwd della sonda), R-600-3 (tmpfs senza tetto): `FATTA`.
 - **Review #601**: APPROVATO CON RISERVE. R-601-1 e R-601-2 BASSE: `DEFERITA — registrate`.
+- **CI su fc318cf**: unit-suite ROSSA — sul runner (non root) tre test del sandbox fallivano per l'ambiente, non per una fuga: la home del runner contiene Chromium e i moduli di Node (ri-esposti apposta), `find /` sul disco del runner superava i 30 s, da non root non si crea una cartella in /usr/local. `FATTA` in 9b6b83e: test riscritti (segno nella home + mountinfo con lista scritta nel test, /usr fuori dal find, cartella vera in /var/tmp) e un caso vero emerso: una voce nascosta che è un collegamento.
+- **Bot su fc318cf (https://github.com/Gasss23/Gas/pull/316#pullrequestreview-5726127323)**: BOCCIATO. V-1 ALTA (unit-suite rossa, i test di isolamento non provavano nulla in CI): `FATTA` in 9b6b83e. V-2 MEDIA (report «745 passed» contro la CI rossa): `FATTA` — questo handoff dichiara la CI rossa su fc318cf.
+- **Review #602 (chat Mani)**: BOCCIATO. ALTA: saltare i collegamenti riapriva R-600-1 per le voci di `_NASCOSTE` (es. /home → /data/home): `FATTA` — si nasconde il percorso vero di ogni voce, test con una voce collegamento. MEDIA: test della home indebolito: `FATTA` — mountinfo con lista scritta nel test. MEDIA: `_di_un_altro_pytest` non si fermava al proprio pid: `FATTA`.
+- **Review #603**: APPROVATO CON RISERVE. R-603-1/2/3 BASSE: `DEFERITA — registrate`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 ++++++++
- modules/web/browser.py             | 212 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------
+ .claude/agents/memoria_revisore.md |  14 ++++++++++++++
+ modules/web/browser.py             | 214 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------
  modules/web/proxy.py               |  24 ++++++++++++++++++++----
  reports/diff_sessione.md           |  21 +++++++++------------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  35 +++++++++++++++--------------------
- tests/test_unit_web_browser.py     | 187 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ reports/ultimo_report.md           |  37 +++++++++++++++++--------------------
+ tests/test_unit_web_browser.py     | 241 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  tests/test_unit_web_proxy.py       |  26 ++++++++++++++++++++++++++
 ```
 
@@ -48,6 +52,10 @@ NB: base = merge-base con origin/main = 0f02868. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9b6b83e fix(web): test del sandbox validi anche sul runner non root, percorso vero di ogni cartella nascosta (CI #316, review #602/#603)
+fee8985 chore(revisore): memoria review #603 — APPROVATO CON RISERVE
+5d7a8c1 chore(revisore): memoria review #602 — BOCCIATO
+fc318cf docs(fine-task): fetta 34 browser dentro bwrap, PR #316, review #599-#601
 a8d4b52 feat(web): browser senza schermo dentro bwrap (R6, fetta 34, chat Mani)
 ea763c8 chore(revisore): memoria review #601 — APPROVATO CON RISERVE
 1d5fc27 chore(revisore): memoria review #600 — APPROVATO CON RISERVE
@@ -165,18 +173,85 @@ Letture fatte: CLAUDE.md, reports/stato_progetto.md (per grep, sulle parti che s
 File: /home/user/Gas/modules/web/browser.py, /home/user/Gas/tests/test_unit_web_browser.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 ```
 
+Commit 9b6b83e (modules/web/browser.py, tests/test_unit_web_browser.py: CI rossa su fc318cf). Verdetto integrale della review #602 (chat Mani), sulla prima correzione:
+
+```
+## VERDETTO: BOCCIATO
+
+Review #602 (chat Mani). Oggetto: la correzione della CI rossa sulla PR #316, cioè il diff staged sopra fc318cf, che tocca modules/web/browser.py e tests/test_unit_web_browser.py.
+
+Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), la voce «fetta 34» di reports/stato_progetto.md e la memoria del revisore (lezioni R-600-1: un percorso da nascondere si risolve con realpath). Nel diff non ci sono antipattern del Wall of Shame (nessuno slicing della history, nessun output di tool simulato). Il kernel non è toccato.
+
+**Motivi bloccanti**
+
+- modules/web/browser.py:242 — Il codice salta le voci da nascondere che sono collegamenti (`os.path.islink`). Il rischio è che un caso prima chiuso diventi una fuga. **Esito: blocco (ALTA, fetta di sicurezza).** Lo skip va bene per `_GAS` e per la home, di cui si aggiunge anche il percorso vero. Ma la stessa riga filtra anche le voci di `_NASCOSTE`, e lì il percorso vero NON viene aggiunto: oggi solo la riga modules/web/browser.py:248, che costruisce `protetti`, applica realpath alle voci di `_NASCOSTE`. Se una voce di `_NASCOSTE` è un collegamento (caso realistico sul VPS: `/home → /data/home` su un volume aggiunto), a HEAD bwrap falliva e il browser restava spento. Col diff la voce viene saltata e la cartella vera diventa leggibile. Riprodotto da root (con `_NASCOSTE` modificato a mano, `/var` tolto e un collegamento sotto /var/tmp verso una cartella in /usr/local): HEAD dà `rc 1 … Can't mount tmpfs on /newroot/var/tmp/rev602-home`, il diff dà `rc 0 out ['SEGRETO-ALTRO', 'FINE']`. È una variante di R-600-1 riaperta. Correzione provata su una copia: `for nascosta in dict.fromkeys(os.path.realpath(n) for n in nascoste):`. Così il caso del collegamento resta nascosto (`out ['FINE']`) e i 7 test di isolamento passano. Serve un test con una voce di `_NASCOSTE` che sia un collegamento.
+
+- tests/test_unit_web_browser.py:355 (dentro tests/test_unit_web_browser.py:352) — Il test ora controlla un solo file segno nella home dell'utente al posto di `find /home` e `find /root`. Il rischio è che il test sia più debole del necessario. **Esito: riserva MEDIA** (rientra nel bocciato perché la stessa fetta va comunque rifatta). Il mutante che toglie `"/home"` e `"/root"` da `_NASCOSTE` sopravvive al test nuovo: 7 passed sui test di isolamento. Il test di HEAD lo prendeva (1 failed: in /home ci sono anche claude e ubuntu). Le home degli altri utenti e /root, quando non si è root, non le controlla più nessuno. Proposta che non dipende dal contenuto della home del runner: dentro il sandbox leggere `/proc/self/mountinfo` e pretendere `tmpfs` su ogni voce di `_NASCOSTE` (risolta con realpath) e su `_GAS`. L'ho provato qui e dà tmpfs su tutte e 10. Questo controllo va aggiunto al file segno, non al suo posto.
+
+- tests/test_unit_web_browser.py:203 (dentro tests/test_unit_web_browser.py:194) — `_di_un_altro_pytest` risale i genitori e, arrivato al proprio pid, invece di fermarsi prosegue. Il rischio è che il controllo sugli orfani dei test smetta di contare qualcosa. **Esito: riserva MEDIA.** Se pytest parte da una shell che ha «pytest» nel cmdline, tutti i browser della suite vengono scartati come «di un altro pytest». È il caso del Bash di Claude Code (`bash -c '… python -m pytest …'`), di `timeout 600 python -m pytest` e quindi anche delle verifiche esterne. A quel punto gli `assert _processi_del_browser() == []` (righe 223, 294, 303) non controllano niente. Sonda con un `sleep` figlio della suite e col segno: lanciata da `bash -c` dà 1 failed (processo nostro non contato), lanciata da uno script dà 1 passed. In CI non succede, perché il passo `run:` gira da un file temporaneo. Ma le prove locali dichiarate («browser 37 passed») avevano questa guardia vuota. Correzione: `if pid == os.getpid(): return False` prima del controllo sul cmdline.
+
+**Note non bloccanti**
+
+- tests/test_unit_web_browser.py:382 — Saltare /usr nel `find` dei socket. Rischio: un socket o una FIFO sotto /usr resterebbe invisibile al test. **Esito: ok, nota BASSA.** Qui `find /usr -type s -o -type p` trova zero voci; /run, /tmp, /var e la home restano coperti dal test. La scelta è da dichiarare come limite nel report.
+- tests/test_unit_web_browser.py:397 — Il test toglie `/var` dalle nascoste con monkeypatch per stare in /var/tmp senza essere root. **Esito: ok.** Il monkeypatch ha effetto solo in questo test e il caso reale emerso è giusto. Ma proprio questo test ha portato al filtro sui collegamenti, che va cambiato come detto sopra.
+
+**Prove fatte**: la suite del browser da script (senza la guardia vuota) dà 37 passed. Ho provato 3 mutanti su una copia del repo (l'uccisione dei processi ridotta, `_NASCOSTE` senza /home e /root, lo skip dei collegamenti contro realpath) e la sonda dei processi. Lo staging non è stato toccato.
+
+**Rischio escluso**: non ho rifatto la prova da utente non root (nobody) né le prove sul runner GitHub, perché non avevo tempo e la CI non è riproducibile qui. Il fallimento della #316 in CI e l'esito «browser 37 passed da nobody» li prendo dal mandato senza averli verificati. Non ho verificato nemmeno la versione di bwrap sul VPS (R-601-2 resta aperta).
+
+**Cosa serve per approvare**:
+1. In modules/web/browser.py:242, realpath su ogni voce al posto dello skip dei collegamenti, con un test su una voce di `_NASCOSTE` che sia un collegamento.
+2. Il controllo su mountinfo nel test della home.
+3. Lo stop al proprio pid in `_di_un_altro_pytest`.
+
+Riga contatore #602 aggiunta a /home/user/Gas/.claude/agents/memoria_revisore.md insieme a 3 lezioni, e committata (5d7a8c1).
+```
+
+Verdetto integrale della review #603 (chat Mani), sul diff finale del commit 9b6b83e:
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #603 (chat Mani). Ri-review della #602 (che era BOCCIATO), PR #316, fetta 34. Diff staged sopra fc318cf. I tre punti bloccanti o di peso MEDIA della #602 sono chiusi e li ho provati da me.
+
+Elementi del diff esaminati:
+- `modules/web/browser.py:242`: ora nasconde il percorso vero (realpath) di ogni voce, senza doppioni, invece di saltare i collegamenti. Rischio esaminato: la fuga della #602 e l'ordine dei montaggi annidati. Mutante che salta i collegamenti: 1 failed. Codice a HEAD contro i test nuovi: 2 failed, perché bwrap rifiuta il collegamento (fail-closed, cioè si blocca invece di lasciar passare). Ho provato anche una voce annidata: `/var` nascosta prima e poi un collegamento verso `/var/tmp/…`. Risultato: rc 0, chiave non letta. Esito: ok.
+- `tests/test_unit_web_browser.py:401`: nuovo test con una voce di `_NASCOSTE` che è un collegamento verso `/var/tmp/gas-veroh-…` (con `/var` tolto). Rischio esaminato: un test che passerebbe anche col mutante. Esito: ok, perché fallisce col mutante e anche a HEAD.
+- `tests/test_unit_web_browser.py:374`: il test controlla in `/proc/self/mountinfo` che ci sia un tmpfs su una lista scritta nel test stesso, oltre al file segno nella home. Rischio esaminato: una lista presa dal codice, che un mutante accorcerebbe. Mutante senza `/home` e `/root` in `_NASCOSTE`: 1 failed. Esito: ok, con una riserva (R1).
+- `tests/test_unit_web_browser.py:198`: `_di_un_altro_pytest` si ferma quando arriva al proprio pid. Sonda lanciata da `bash -c '…; echo pytest'`: False. Lo stesso col mutante senza lo stop: True. Esito: ok, con una riserva (R2).
+- Contesto, `modules/web/browser.py:248`: la guardia `protetti`/`_copre` impedisce di rendere di nuovo visibili Gas, la home e le cartelle nascoste. Esito: ok, è lei a coprire R1.
+
+Wall of Shame: nessun taglio della cronologia, nessun output dei tool simulato. Provider e guardrail non toccati. Suite del browser: 38 passed (lanciata da me, come root).
+
+Riserve, tutte BASSE (da tracciare in `stato_progetto.md`):
+- R-603-1: il controllo su mountinfo prova che il tmpfs c'è, non che sia il montaggio in cima. Un bind successivo sullo stesso percorso lo coprirebbe e il test passerebbe lo stesso. Oggi lo coprono la guardia `_copre` e il file segno, ma solo per la home: per `/home` di altri utenti non c'è più un controllo sul contenuto.
+- R-603-2: `_di_un_altro_pytest` cerca "pytest" come pezzo di testo nel cmdline dei processi intermedi (bwrap, sh). Se `TMPDIR` sta sotto `/tmp/pytest-of-…`, il cmdline di bwrap contiene "pytest" e il rilevatore ignora i browser della propria suite. Basterebbe confrontare argv[0] o il modulo invece del testo libero.
+- R-603-3: `/usr` è stato tolto dal `find` dei socket e delle FIFO (`tests/test_unit_web_browser.py:389`): lì la copertura si perde. È accettabile, perché `/usr` è montato in sola lettura dal sistema e non ci dovrebbero stare socket.
+
+Cosa NON ho verificato:
+- La corsa da utente nobody (38 passed) e la suite web completa (746 passed): le ho prese dalla tua dichiarazione, non le ho rilanciate.
+- Il comportamento sul VPS con un `/home` che è davvero un collegamento: non è riproducibile qui, l'ho solo simulato con un collegamento sotto `/var/tmp`.
+- La CI di GitHub su PR #316: non l'ho controllata.
+
+Memoria: aggiunte la riga #603 e una lezione su mountinfo in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate in fee8985. Il diff staged è intatto e il working tree è tornato com'era dopo i mutanti.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 25 a 37 test (obbligatori in CI). `tests/test_unit_web_proxy.py`: da 71 a 72. Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), con node, playwright e bwrap: 745 passed, 2 skipped. Mutanti presi (1 o 2 failed ciascuno): senza Worker spento, senza `--unshare-all`, Gas visibile fuori da /home, senza PID namespace, senza `process.exit`, sonda sempre vera, senza `--cap-drop`, solo home/root/tmp nascoste, senza controllo degli antenati, senza percorso vero, senza tetto dei tmpfs. Non presi (R-601-1): senza cwd="/" nella sonda di Playwright, /dev/shm senza `--size`.
+Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 25 a 38 test (obbligatori in CI). `tests/test_unit_web_proxy.py`: da 71 a 72. Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), con node, playwright e bwrap, da root: 746 passed, 2 skipped; browser da utente nobody (come il runner): 38 passed. ATTENZIONE: su fc318cf la CI era ROSSA (3 test del sandbox, vedi §1 e §6); i numeri locali di allora erano da root e non coprivano il runner non root. Mutanti presi (1 o 2 failed ciascuno): senza Worker spento, senza `--unshare-all`, Gas visibile fuori da /home, senza PID namespace, senza `process.exit`, sonda sempre vera, senza `--cap-drop`, solo home/root/tmp nascoste, senza controllo degli antenati, senza percorso vero, senza tetto dei tmpfs. Dopo la #602 presi anche: lo skip dei collegamenti, `_NASCOSTE` senza /home e /root. Non presi (R-601-1): senza cwd="/" nella sonda di Playwright, /dev/shm senza `--size`.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- 7860381, 1d5fc27, ea763c8 (memoria del revisore), a8d4b52 (fetta 34): pushati insieme prima dell'apertura della PR #316; nessuna run su questi SHA (la CI parte sulla PR).
-- Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 7860381, 1d5fc27, ea763c8 (memoria del revisore), a8d4b52 (fetta 34): pushati insieme; run su a8d4b52 (job 124726382253): unit-suite FAILURE (3 test del sandbox).
+- fc318cf (fine-task): run 41265278907, unit-suite FAILURE (stessi 3 test); handoff-check success; verifica-bot failure (bot BOCCIATO per la CI rossa).
+- 5d7a8c1, fee8985 (memoria del revisore), 9b6b83e (correzione) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- R-603-1 (chat Mani) BASSA: il controllo su mountinfo prova che il tmpfs c'è, non che sia il montaggio in cima (oggi lo coprono `_copre` e il segno nella home).
+- R-603-2 (chat Mani) BASSA: `_di_un_altro_pytest` cerca «pytest» come testo nel cmdline: con TMPDIR sotto /tmp/pytest-of-… ignorerebbe i browser della propria suite.
+- R-603-3 (chat Mani) BASSA: /usr fuori dal find di socket e FIFO (sola lettura, nessun socket atteso).
 - R-601-1 (chat Mani) BASSA: cwd="/" della sonda di Playwright e `--size` di /dev/shm senza un test che li tenga.
 - R-601-2 (chat Mani) BASSA: la sonda `_bwrap_funziona` non usa `--size` e `--cap-drop`; con un bwrap vecchio dice OK e ogni lettura fallisce (fail-safe, non una fuga).
 - Limiti dichiarati del browser: Chromium senza la sua sandbox; dentro bwrap vede in sola lettura /usr, /etc e il resto non nascosto; il proxy filtra le destinazioni, non i dati; niente regola https→http e pagina riscaricata (R-593-6); X-Gas-Proxy dentro i tunnel https non si toglie (R-593-3); una pagina che usa i Worker può non funzionare; sul Mac il browser resta spento.
