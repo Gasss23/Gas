@@ -5,6 +5,7 @@ che portano «sito.test» (un IP pubblico finto) a quell'origine. Chromium esce 
 le richieste verso 127.0.0.1, porte strane, WebSocket e popup non devono arrivare all'origine.
 Servono node, il pacchetto playwright e Chromium; senza, i test si saltano, salvo con
 GAS_TEST_BROWSER_OBBLIGATORIO=1 (CI), dove falliscono."""
+import glob
 import os
 import signal
 import socket
@@ -378,12 +379,13 @@ def test_il_sandbox_non_ha_rete_e_scrive_solo_nei_tmpfs():
         with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
             r = _nel_sandbox(casa, (
                 "touch /x 2>/dev/null && echo SCRIVE-RADICE; touch /usr/bin/x 2>/dev/null && echo SCRIVE-USR; "
+                "touch /dev/x 2>/dev/null && echo SCRIVE-DEV; echo x > /dev/null && echo DEVNULL; "
                 "touch \"$HOME/ok\" && echo PROFILO; touch /tmp/ok && echo TMP; "
                 f"touch {casa}/x 2>/dev/null && echo SCRIVE-CASA; "
                 f"{br._NODE} -e \"require('net').connect({porta}, '127.0.0.1')"
                 ".on('connect', () => console.log('RETE')).on('error', () => console.log('NORETE'))\""))
             assert r.returncode == 0, r.stderr
-            assert r.stdout.split() == ["PROFILO", "TMP", "NORETE"], r.stdout
+            assert r.stdout.split() == ["DEVNULL", "PROFILO", "TMP", "NORETE"], r.stdout
             # V-4 ve #316: il profilo è un tmpfs del sandbox, sul disco dell'host non resta niente.
             assert os.listdir(os.path.join(casa, "profilo")) == [] and os.listdir(casa) == ["profilo"]
     finally:
@@ -406,9 +408,9 @@ def test_nel_sandbox_si_vedono_solo_i_file_permessi():
             # V-1 bot #316, né la cartella bin di node).
             permessi = ("/usr/bin/", lib, "/usr/lib64/", "/usr/share/fonts/", "/usr/share/fontconfig/",
                         "/etc/fonts/", "/gas/node/playwright/", "/gas/node/playwright-core/",
-                        os.path.realpath(browser) + "/", casa + "/", "/usr/lib/ld-linux")
+                        os.path.realpath(browser) + "/", casa + "/")
             esatti = {"/etc/ld.so.cache", "/etc/localtime", "/bin", "/sbin", "/lib", "/lib32", "/lib64",
-                      "/gas/bin/node"}
+                      "/gas/bin/node", *glob.glob("/usr/lib/ld-linux*")}
             r = _nel_sandbox(casa, "find / \\( -path /proc -o -path /sys -o -path /dev \\) -prune "
                                    "-o ! -type d -printf '%y %p\\n'", timeout=180)
         righe = [x.split(" ", 1) for x in r.stdout.splitlines()]
@@ -457,6 +459,27 @@ def test_gas_e_la_home_dentro_una_cartella_permessa_sono_coperte(monkeypatch):
             monkeypatch.setattr(br, "_GAS", link)
             monkeypatch.setenv("HOME", os.path.join(perm, "home"))
             r = _nel_sandbox(casa, f"cat {perm}/libero {perm}/gas/.env {perm}/home/.env 2>/dev/null; echo")
+        finally:
+            os.unlink(link)
+    assert r.returncode == 0 and r.stdout.split() == ["VISIBILE"], (r.stdout, r.stderr)
+
+
+def test_una_permessa_che_e_un_collegamento_non_scopre_gas(monkeypatch):
+    """V-1 bot e V-2 ve #317: con una cartella permessa che è un collegamento (es. /usr/lib64 →
+    /usr/lib) e Gas dentro la cartella vera, Gas resta coperta anche vista dal collegamento."""
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-permvera-") as vera, \
+            tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        os.mkdir(os.path.join(vera, "gas"))
+        with open(os.path.join(vera, "gas", ".env"), "w") as f:
+            f.write("SEGRETO")
+        with open(os.path.join(vera, "libero"), "w") as f:
+            f.write("VISIBILE")
+        link = os.path.join("/var/tmp", "gas-permlink-" + os.path.basename(vera))
+        os.symlink(vera, link)
+        try:
+            monkeypatch.setattr(br, "_PERMESSE", br._PERMESSE + (link,))
+            monkeypatch.setattr(br, "_GAS", os.path.join(vera, "gas"))
+            r = _nel_sandbox(casa, f"cat {link}/libero {link}/gas/.env {vera}/gas/.env 2>/dev/null; echo")
         finally:
             os.unlink(link)
     assert r.returncode == 0 and r.stdout.split() == ["VISIBILE"], (r.stdout, r.stderr)

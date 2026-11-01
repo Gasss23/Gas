@@ -274,10 +274,20 @@ def _comando_bwrap(casa: str, env: dict) -> list:
     for permessa in _PERMESSE:
         if os.path.exists(permessa):
             vero = os.path.realpath(permessa)
-            cmd += ["--ro-bind", vero, permessa]
+            if os.path.islink(permessa) and os.path.isdir(vero):
+                # V-1 bot e V-2 ve #317: una cartella permessa che è un collegamento (es.
+                # /usr/lib64 → /usr/lib su Arch) si rifà come collegamento e la cartella vera si
+                # monta al suo posto: così la copertura di Gas e della home (sul percorso vero)
+                # cade proprio dove la cartella si vede.
+                cmd += ["--ro-bind", vero, vero, "--symlink", os.readlink(permessa), permessa]
+            else:
+                cmd += ["--ro-bind", vero, permessa]
             montate.append(vero)
     cmd += _radice()
-    cmd += ["--dev", "/dev", "--size", str(MEMORIA_SHM), "--tmpfs", "/dev/shm", "--proc", "/proc",
+    # V-1 ve #317: /dev è un tmpfs senza tetto; in sola lettura (resta scrivibile /dev/shm, a
+    # parte e con tetto; /dev/null e simili funzionano lo stesso).
+    cmd += ["--dev", "/dev", "--remount-ro", "/dev", "--size", str(MEMORIA_SHM), "--tmpfs", "/dev/shm",
+            "--proc", "/proc",
             "--size", str(TETTO_TMP), "--tmpfs", "/tmp"]
     casa_utente = os.path.expanduser("~")
     protetti = list(dict.fromkeys([os.path.realpath(_GAS), os.path.realpath(casa_utente)]))
