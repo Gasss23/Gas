@@ -440,6 +440,27 @@ def test_gas_raggiunta_da_un_collegamento_e_nascosta_anche_nel_percorso_vero(mon
     assert r.stdout.split() == ["FINE"], r.stdout
 
 
+def test_la_home_fuori_dalle_cartelle_nascoste_resta_nascosta(monkeypatch):
+    """V-1 a) ve #316 su 30cd0a8: una home fuori da _NASCOSTE (es. /data/gas) si nasconde lo
+    stesso (R-600-1 per la home): qui la home sta in /var/tmp e /var non si nasconde."""
+    monkeypatch.setattr(br, "_NASCOSTE", tuple(n for n in br._NASCOSTE if n != "/var"))
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-home-") as home, \
+            tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        with open(os.path.join(home, ".env"), "w") as f:
+            f.write("SEGRETO")
+        monkeypatch.setenv("HOME", home)
+        r = _nel_sandbox(casa, f"cat {home}/.env 2>/dev/null; echo FINE")
+    assert r.returncode == 0 and r.stdout.split() == ["FINE"], (r.stdout, r.stderr)
+
+
+def test_il_profilo_ha_un_tetto():
+    """V-1 b) ve #316 su 30cd0a8 (e V-4): scrivere nel profilo si ferma a MEMORIA_PROFILO."""
+    with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        r = _nel_sandbox(casa, f"head -c {br.MEMORIA_PROFILO + (8 << 20)} /dev/zero > \"$HOME/x\" "
+                               "2>/dev/null; wc -c < \"$HOME/x\"")
+    assert 0 < int(r.stdout.split()[0]) <= br.MEMORIA_PROFILO, r.stdout
+
+
 def test_nel_sandbox_niente_capability():
     """R-599-3: anche da root, dentro il sandbox non si smonta niente."""
     with tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
@@ -537,7 +558,10 @@ def test_morto_bwrap_muore_il_sandbox():
             assert _sleep_vivi("33.271") == []
         finally:
             for pid in _sleep_vivi("33.271"):
-                os.kill(pid, signal.SIGKILL)
+                try:  # R-605-2: può morire tra la lista e il kill
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
             proc.kill()
 
 
