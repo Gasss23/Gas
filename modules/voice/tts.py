@@ -124,3 +124,155 @@ def synthesize_speech(
         raise ElevenLabsTTSError(resp.status, f"ElevenLabs {resp.status}: {msg}")
     finally:
         conn.close()
+
+
+# ── V8 (chat M2): elenco delle voci dell'account, per la pagina «prova voci» ──
+
+_ELEVENLABS_VOICES_PATH = "/v1/voices"
+
+
+def list_voices(
+    api_key: str,
+    *,
+    _conn_factory: Optional[Callable[[], http.client.HTTPSConnection]] = None,
+) -> list:
+    """Voci disponibili sull'account ElevenLabs (GET /v1/voices), ridotte ai campi utili:
+    [{"id", "nome", "categoria", "genere", "accento", "eta", "descrizione"}].
+
+    Raises:
+        ElevenLabsTTSError: risposta non 200 o non leggibile
+        OSError:            errore di rete/timeout
+    Non logga la chiave API."""
+    conn = (
+        _conn_factory()
+        if _conn_factory is not None
+        else http.client.HTTPSConnection(_ELEVENLABS_HOST, timeout=_TIMEOUT)
+    )
+    try:
+        conn.request("GET", _ELEVENLABS_VOICES_PATH, headers={"xi-api-key": api_key})
+        resp = conn.getresponse()
+        corpo = resp.read()
+        if resp.status != 200:
+            raise ElevenLabsTTSError(resp.status, f"ElevenLabs {resp.status}: "
+                                                  f"{corpo.decode(errors='replace')[:300]}")
+        try:
+            voci = json.loads(corpo).get("voices") or []
+        except (ValueError, AttributeError):
+            raise ElevenLabsTTSError(resp.status, "elenco voci ElevenLabs non leggibile")
+        if not isinstance(voci, list):  # R-624-2-M2: forma inattesa → errore dichiarato
+            raise ElevenLabsTTSError(resp.status, "elenco voci ElevenLabs non leggibile")
+    finally:
+        conn.close()
+    out = []
+    for v in voci:
+        if not isinstance(v, dict) or not isinstance(v.get("voice_id"), str):
+            continue
+        etichette = v.get("labels") if isinstance(v.get("labels"), dict) else {}
+        out.append({
+            "id": v["voice_id"],
+            "nome": str(v.get("name") or "")[:80],
+            "categoria": str(v.get("category") or "")[:40],
+            "genere": str(etichette.get("gender") or "")[:40],
+            "accento": str(etichette.get("accent") or "")[:40],
+            "eta": str(etichette.get("age") or "")[:40],
+            "descrizione": str(etichette.get("description") or v.get("description") or "")[:200],
+        })
+    return out
+
+
+# ── V8b (chat M2): libreria condivisa di ElevenLabs (voci di altri, da aggiungere) ──
+# ATTENZIONE: percorsi, filtri e campi scritti senza poter leggere la documentazione
+# ufficiale (rete del cloud bloccata il 2026-11-02): DA VERIFICARE sul Mac. Qualunque
+# risposta diversa diventa un errore dichiarato, mai un crash.
+
+_SHARED_VOICES_PATH = "/v1/shared-voices"
+_ADD_SHARED_PATH = "/v1/voices/add/{owner}/{voice_id}"
+
+
+def list_shared_voices(
+    api_key: str,
+    filtri: Optional[dict] = None,
+    *,
+    _conn_factory: Optional[Callable[[], http.client.HTTPSConnection]] = None,
+) -> list:
+    """Voci della libreria condivisa (GET /v1/shared-voices con i filtri dati), ridotte a
+    [{"id", "proprietario", "nome", "categoria", "genere", "accento", "eta",
+      "descrizione", "anteprima"}]. Raises ElevenLabsTTSError / OSError."""
+    import urllib.parse
+    query = urllib.parse.urlencode({k: v for k, v in (filtri or {}).items() if v})
+    conn = (
+        _conn_factory()
+        if _conn_factory is not None
+        else http.client.HTTPSConnection(_ELEVENLABS_HOST, timeout=_TIMEOUT)
+    )
+    try:
+        conn.request("GET", _SHARED_VOICES_PATH + (f"?{query}" if query else ""),
+                     headers={"xi-api-key": api_key})
+        resp = conn.getresponse()
+        corpo = resp.read()
+        if resp.status != 200:
+            raise ElevenLabsTTSError(resp.status, f"ElevenLabs {resp.status}: "
+                                                  f"{corpo.decode(errors='replace')[:300]}")
+        try:
+            voci = json.loads(corpo).get("voices")
+        except (ValueError, AttributeError):
+            raise ElevenLabsTTSError(resp.status, "libreria ElevenLabs non leggibile")
+        if not isinstance(voci, list):
+            raise ElevenLabsTTSError(resp.status, "libreria ElevenLabs non leggibile")
+    finally:
+        conn.close()
+    out = []
+    for v in voci:
+        if not isinstance(v, dict) or not isinstance(v.get("voice_id"), str) \
+                or not isinstance(v.get("public_owner_id"), str):
+            continue
+        anteprima = v.get("preview_url")
+        out.append({
+            "id": v["voice_id"],
+            "proprietario": v["public_owner_id"],
+            "nome": str(v.get("name") or "")[:80],
+            "categoria": str(v.get("category") or "")[:40],
+            "genere": str(v.get("gender") or "")[:40],
+            "accento": str(v.get("accent") or "")[:40],
+            "eta": str(v.get("age") or "")[:40],
+            "descrizione": str(v.get("descriptive") or v.get("description") or "")[:200],
+            "anteprima": anteprima if isinstance(anteprima, str) and anteprima.startswith("https://") else "",
+        })
+    return out
+
+
+def add_shared_voice(
+    api_key: str,
+    owner: str,
+    voice_id: str,
+    new_name: str,
+    *,
+    _conn_factory: Optional[Callable[[], http.client.HTTPSConnection]] = None,
+) -> str:
+    """Aggiunge una voce della libreria all'account (POST /v1/voices/add/{owner}/{id}).
+    Ritorna l'id della voce nell'account. Raises ElevenLabsTTSError / OSError.
+    I parametri vanno validati dal chiamante (finiscono nel percorso)."""
+    body = json.dumps({"new_name": new_name[:80]}).encode("utf-8")
+    conn = (
+        _conn_factory()
+        if _conn_factory is not None
+        else http.client.HTTPSConnection(_ELEVENLABS_HOST, timeout=_TIMEOUT)
+    )
+    try:
+        conn.request("POST", _ADD_SHARED_PATH.format(owner=owner, voice_id=voice_id), body=body,
+                     headers={"xi-api-key": api_key, "Content-Type": "application/json",
+                              "Content-Length": str(len(body))})
+        resp = conn.getresponse()
+        corpo = resp.read()
+        if resp.status != 200:
+            raise ElevenLabsTTSError(resp.status, f"ElevenLabs {resp.status}: "
+                                                  f"{corpo.decode(errors='replace')[:300]}")
+        try:
+            nuovo = json.loads(corpo).get("voice_id")
+        except (ValueError, AttributeError):
+            nuovo = None
+        if not isinstance(nuovo, str):
+            raise ElevenLabsTTSError(resp.status, "risposta all'aggiunta della voce non leggibile")
+        return nuovo
+    finally:
+        conn.close()

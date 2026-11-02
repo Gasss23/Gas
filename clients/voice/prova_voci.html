@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prova voci</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* V8 (chat M2): stessi colori della pagina della voce */
+:root {
+  --bg: #f8f6f2; --surface: #ffffff; --fg: #1c1a16; --muted: #948e85;
+  --accent: #b45309; --border: #e8e3db; --ok: #15803d;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c0b09; --surface: #141310; --fg: #ede9e1; --muted: #6b6760;
+    --accent: #f59e0b; --border: #252219; --ok: #4ade80;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c0b09; --surface: #141310; --fg: #ede9e1; --muted: #6b6760;
+  --accent: #f59e0b; --border: #252219; --ok: #4ade80;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font-family: "Figtree", system-ui, sans-serif; font-size: 15px; line-height: 1.5;
+}
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 1.4rem; font-weight: 600; margin: 0 0 4px; }
+h2 { font-size: 1.1rem; font-weight: 600; margin: 32px 0 4px; }
+#statoLib { color: var(--muted); margin: 8px 0; }
+#statoLib.errore { color: #dc2626; }
+p.sotto { color: var(--muted); margin: 0 0 24px; }
+label.frase { display: block; font-weight: 500; margin-bottom: 6px; }
+select {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--fg); font: inherit;
+}
+#stato { color: var(--muted); margin: 16px 0; min-height: 1.5em; }
+#stato.errore { color: #dc2626; }
+ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+li {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+li.candidata { border-color: var(--accent); }
+.nome { font-weight: 600; }
+.dettagli { color: var(--muted); font-size: 0.85rem; flex: 1 1 260px; min-width: 0; }
+.segno { font-size: 0.75rem; color: var(--accent); font-weight: 600; margin-left: 6px; }
+.segno.attuale { color: var(--ok); }
+button {
+  border: 1px solid var(--border); background: var(--bg); color: var(--fg); font: inherit;
+  padding: 6px 12px; border-radius: 8px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: 0.5; cursor: default; }
+#scelta {
+  margin-top: 24px; padding: 14px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface);
+}
+code {
+  font-family: "JetBrains Mono", monospace; font-size: 0.85rem; word-break: break-all;
+  background: var(--bg); padding: 2px 6px; border-radius: 4px;
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Prova voci</h1>
+  <p class="sotto">Ascolta la stessa frase con voci diverse e scegli quella di Gas.
+    In cima le candidate: voci maschili, calme, con accento britannico.</p>
+
+  <label class="frase" for="frase">Frase di prova</label>
+  <select id="frase"></select>
+
+  <p id="stato" role="status" aria-live="polite">carico le voci…</p>
+  <ul id="voci"></ul>
+
+  <h2>Dalla libreria di ElevenLabs</h2>
+  <p class="sotto" id="avvisoLib"></p>
+  <p id="statoLib" role="status" aria-live="polite">cerco nella libreria…</p>
+  <ul id="libreria"></ul>
+
+  <div id="scelta" hidden>
+    <div>Per usare questa voce metti nel file <code>~/Gas/.env</code> questa riga, poi riavvia il server della voce:</div>
+    <p><code id="riga"></code> <button id="copia" type="button">copia</button></p>
+  </div>
+  <audio id="player"></audio>
+</main>
+<script>
+"use strict";
+const statoEl = document.getElementById("stato");
+const vociEl = document.getElementById("voci");
+const fraseEl = document.getElementById("frase");
+const player = document.getElementById("player");
+const sceltaEl = document.getElementById("scelta");
+const rigaEl = document.getElementById("riga");
+
+function stato(msg, errore = false) {
+  statoEl.textContent = msg;
+  statoEl.className = errore ? "errore" : "";
+}
+
+function scegli(voce) {
+  if (voce.id === "piper") {
+    rigaEl.textContent = "La voce locale (Piper) per ora si può solo ascoltare: usarla in Gas è una fetta a parte.";
+  } else {
+    rigaEl.textContent = "ELEVENLABS_VOICE_ID=" + voce.id;
+  }
+  sceltaEl.hidden = false;
+}
+
+async function prova(voce, bottone) {
+  bottone.disabled = true;
+  stato(`preparo la voce «${voce.nome}»…`);
+  try {
+    const resp = await fetch("/voci/prova", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ voce: voce.id, frase: Number(fraseEl.value) }) });
+    if (!resp.ok) {
+      let msg = `${resp.status}`;
+      try { msg = (await resp.json()).error || msg; } catch (_) {}
+      stato("errore: " + msg, true);
+      return;
+    }
+    const audio = await resp.blob();
+    if (player.dataset.url) URL.revokeObjectURL(player.dataset.url);
+    player.src = player.dataset.url = URL.createObjectURL(audio);
+    stato(`parla «${voce.nome}»`);
+    await player.play().catch(() => stato("premi di nuovo «ascolta» (il browser ha bloccato l'audio)", true));
+  } catch (e) {
+    stato("errore di rete: " + e.message, true);
+  } finally {
+    bottone.disabled = false;
+  }
+}
+
+function riga(voce) {
+  const li = document.createElement("li");
+  if (voce.candidata) li.className = "candidata";
+  const testa = document.createElement("div");
+  const nome = document.createElement("span");
+  nome.className = "nome";
+  nome.textContent = voce.nome || voce.id;
+  testa.appendChild(nome);
+  if (voce.candidata) {
+    const s = document.createElement("span");
+    s.className = "segno"; s.textContent = "candidata";
+    testa.appendChild(s);
+  }
+  if (voce.attuale) {
+    const s = document.createElement("span");
+    s.className = "segno attuale"; s.textContent = "in uso";
+    testa.appendChild(s);
+  }
+  const det = document.createElement("div");
+  det.className = "dettagli";
+  det.textContent = [voce.genere, voce.accento, voce.eta, voce.descrizione, voce.categoria]
+    .filter(Boolean).join(" · ");
+  const ascolta = document.createElement("button");
+  ascolta.type = "button"; ascolta.textContent = "ascolta";
+  ascolta.addEventListener("click", () => prova(voce, ascolta));
+  const usa = document.createElement("button");
+  usa.type = "button"; usa.textContent = "scelgo questa";
+  usa.addEventListener("click", () => scegli(voce));
+  li.append(testa, det, ascolta, usa);
+  return li;
+}
+
+document.getElementById("copia").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(rigaEl.textContent); stato("riga copiata"); }
+  catch (_) { stato("copia a mano la riga qui sopra", true); }
+});
+
+// V8b: libreria condivisa — anteprima pubblica (esempio del proprietario) e aggiunta all'account (conferma)
+const libEl = document.getElementById("libreria");
+const statoLibEl = document.getElementById("statoLib");
+const avvisoLibEl = document.getElementById("avvisoLib");
+let avvisoLib = "";
+
+function statoLib(msg, errore = false) {
+  statoLibEl.textContent = msg;
+  statoLibEl.className = errore ? "errore" : "";
+}
+
+async function aggiungi(voce, bottone) {
+  if (!confirm(`Aggiungere «${voce.nome}» al tuo account ElevenLabs?\n\n${avvisoLib}`)) return;
+  bottone.disabled = true;
+  statoLib(`aggiungo «${voce.nome}»…`);
+  try {
+    const resp = await fetch("/voci/aggiungi", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ voce: voce.id }) });
+    const j = await resp.json().catch(() => ({}));
+    if (!resp.ok) { statoLib("errore: " + (j.error || resp.status), true); bottone.disabled = false; return; }
+    const frase = fraseEl.value;   // R-627-3-M2: la frase scelta resta
+    vociEl.textContent = "";
+    fraseEl.textContent = "";
+    const elenco = await caricaElenco();
+    if (frase) fraseEl.value = frase;
+    // R-627-1-M2: si dice che è nell'elenco solo se c'è davvero
+    if (elenco === null) {
+      statoLib(`«${voce.nome}» aggiunta all'account, ma l'elenco non si è ricaricato: ricarica la pagina`, true);
+    } else if (elenco.some(v => v.id === j.id)) {
+      statoLib(`«${voce.nome}» aggiunta: ora è nell'elenco qui sopra, provala in italiano`);
+    } else {
+      statoLib(`«${voce.nome}» aggiunta all'account, ma non compare nell'elenco qui sopra (ElevenLabs l'ha messa in una categoria che Gas non mostra): toglila dall'account se non ti serve`, true);
+    }
+  } catch (e) {
+    statoLib("errore di rete: " + e.message, true);
+    bottone.disabled = false;
+  }
+}
+
+function rigaLibreria(voce) {
+  const li = document.createElement("li");
+  if (voce.candidata) li.className = "candidata";
+  const testa = document.createElement("div");
+  const nome = document.createElement("span");
+  nome.className = "nome";
+  nome.textContent = voce.nome || voce.id;
+  testa.appendChild(nome);
+  const det = document.createElement("div");
+  det.className = "dettagli";
+  det.textContent = [voce.genere, voce.accento, voce.eta, voce.descrizione, voce.categoria]
+    .filter(Boolean).join(" · ");
+  li.append(testa, det);
+  if (voce.anteprima) {
+    const ant = document.createElement("button");
+    ant.type = "button"; ant.textContent = "anteprima";
+    ant.title = "registrazione d'esempio del proprietario (non la frase italiana)";
+    ant.addEventListener("click", () => {
+      player.src = voce.anteprima;
+      player.play().catch(() => statoLib("anteprima non riproducibile", true));
+      statoLib(`anteprima di «${voce.nome}» (esempio del proprietario, può non essere in italiano)`);
+    });
+    li.appendChild(ant);
+  }
+  const agg = document.createElement("button");
+  agg.type = "button"; agg.textContent = "aggiungi al mio account";
+  agg.addEventListener("click", () => aggiungi(voce, agg));
+  li.appendChild(agg);
+  return li;
+}
+
+async function caricaLibreria() {
+  try {
+    const resp = await fetch("/voci/libreria", { headers: { "X-Gas-Pagina": "1" } });   // V-4 bot #326
+    const dati = await resp.json();
+    if (!resp.ok) throw new Error(dati.error || resp.status);
+    avvisoLib = dati.avviso || "";
+    avvisoLibEl.textContent = avvisoLib;
+    if (dati.errore) { statoLib(dati.errore, true); return; }
+    const voci = Array.isArray(dati.voci) ? dati.voci : [];
+    voci.forEach(v => libEl.appendChild(rigaLibreria(v)));
+    statoLib(voci.length ? `${voci.length} voci dalla libreria` : "nessuna voce adatta nella libreria", !voci.length);
+  } catch (e) {
+    statoLib("non riesco a leggere la libreria: " + e.message, true);
+  }
+}
+
+async function caricaElenco() {   // ritorna le voci mostrate (null se l'elenco non si legge)
+  let dati;
+  try {
+    const resp = await fetch("/voci/elenco", { headers: { "X-Gas-Pagina": "1" } });   // V-4 bot #326
+    dati = await resp.json();
+    if (!resp.ok) throw new Error(dati.error || resp.status);
+  } catch (e) {
+    stato("non riesco a leggere le voci: " + e.message + " (il server della voce è acceso?)", true);
+    return null;   // R-628-1-M2: «elenco non letto» non è «voce assente»
+  }
+  (dati.frasi || []).forEach((f, i) => {
+    const o = document.createElement("option");
+    o.value = String(i); o.textContent = f;
+    fraseEl.appendChild(o);
+  });
+  const voci = Array.isArray(dati.voci) ? dati.voci.slice() : [];
+  if (dati.piper) voci.push({ id: "piper", nome: "Piper (locale, gratis)", descrizione: "gira sul computer, senza internet" });
+  voci.forEach(v => vociEl.appendChild(riga(v)));
+  if (dati.errore) stato(dati.errore, true);
+  else stato(voci.length ? `${voci.length} voci · in uso: ${dati.attuale}` : "nessuna voce trovata", !voci.length);
+  return voci;
+}
+
+caricaElenco();
+caricaLibreria();
+</script>
+</body>
+</html>

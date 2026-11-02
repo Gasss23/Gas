@@ -123,7 +123,7 @@ jobs:
           GAS_TEST_BROWSER_OBBLIGATORIO: "1"
         run: |
           set -o pipefail
-          python -m pytest tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voice_contesto.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"
+          python -m pytest tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voice_contesto.py tests/test_unit_voice_prova_voci.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"
 
       - name: Run voce H24 suite (pytest, zero token LLM)
         # Ascolto sempre attivo sul Mac (R8, chat Mani): microfono, parola di attivazione e
