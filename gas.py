@@ -4467,16 +4467,18 @@ class GasKernel:
                                "partita o alla firma. Scrivi il resto nella risposta.")
 
     def _rifiuto_avviso_al_cancello(self, args_str: Any) -> Optional[str]:
-        """avvisa_operatore diretta alla firma: una per turno (V-1 bot/ve #319) e i
-        controlli che non costano niente (R-613-1: testo sbagliato, strumento spento),
-        così non nasce una richiesta di firma inutile. None = si parcheggia.
+        """avvisa_operatore diretta alla firma: una per turno (V-1 bot/ve #319), i
+        controlli che non costano niente (R-613-1: testo sbagliato, strumento spento) e
+        il tetto del giorno (V-1 bot/ve #319 su 1e4bc90), così non nasce una richiesta
+        di firma inutile. None = si parcheggia.
         Mai eccezioni: nel dubbio si parcheggia (la firma resta il cancello)."""
         try:
             if self._avvisi_turno >= 1:
                 return self._UNA_NOTIFICA_PER_TURNO
-            from modules.telegram.avviso import rifiuto_senza_costi
+            from modules.telegram.avviso import rifiuto_al_cancello
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
-            return rifiuto_senza_costi(args.get("testo") if isinstance(args, dict) else None)
+            return rifiuto_al_cancello(args.get("testo") if isinstance(args, dict) else None,
+                                       self.root)
         except Exception as e:
             logging.warning("[GATE] controllo di avvisa_operatore fallito (%s)",
                             type(e).__name__)

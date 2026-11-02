@@ -130,13 +130,32 @@ def test_testo_non_stringa(env, testo):
     assert f.testi == [] and prenotato is False and not (env / av.USO_FILENAME).exists()
 
 
-@pytest.mark.parametrize("valore", ["0", "-3"])
+@pytest.mark.parametrize("valore", ["0", "-3", "off", "0.0", "cinque"])
 def test_zero_al_giorno_spegne(env, monkeypatch, valore):
     """V-3 ve #319: GAS_NOTIFICHE_GIORNO=0 spegne lo strumento (prima diventava 1)."""
     monkeypatch.setenv("GAS_NOTIFICHE_GIORNO", valore)
     f = Finto()
     out = av.avvisa_operatore("x", env, invia=f)
     assert out.startswith("Operazione negata: notifiche spente") and f.testi == []
+
+
+@pytest.mark.parametrize("valore", ["", "   "])
+def test_valore_vuoto_vale_il_default(env, monkeypatch, valore):
+    monkeypatch.setenv("GAS_NOTIFICHE_GIORNO", valore)
+    assert av._max_giorno() == av.MAX_GIORNO_DEFAULT
+
+
+def test_al_cancello_il_tetto_del_giorno_si_legge_e_non_si_scrive(env):
+    """V-1 bot/ve #319 su 1e4bc90: con il tetto pieno nessuna richiesta di firma; il
+    controllo legge il conto e non prenota posti."""
+    assert av.rifiuto_al_cancello("x", env) is None and not (env / av.USO_FILENAME).exists()
+    (env / av.USO_FILENAME).write_text(
+        json.dumps({"giorno": date.today().isoformat(), "n": 5}), encoding="utf-8")
+    assert av.rifiuto_al_cancello("x", env).startswith("Operazione negata: tetto di 5")
+    assert _uso(env)["n"] == 5
+    (env / av.USO_FILENAME).write_text("{rotto", encoding="utf-8")
+    assert "illeggibile" in av.rifiuto_al_cancello("x", env)
+    assert "deve essere una stringa" in av.rifiuto_al_cancello(["x"], env)
 
 
 def test_testo_troppo_lungo_non_si_tronca(env):

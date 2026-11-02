@@ -40,11 +40,18 @@ Invia = Callable[[str], Tuple[bool, str]]
 
 
 def _max_giorno() -> int:
-    """Tetto al giorno; 0 (o negativo) = notifiche spente (V-3 ve #319)."""
-    try:
-        return max(0, int(os.environ.get("GAS_NOTIFICHE_GIORNO", str(MAX_GIORNO_DEFAULT))))
-    except ValueError:
+    """Tetto al giorno; 0 (o negativo) = notifiche spente (V-3 ve #319). Un valore che
+    non è un intero («off», «0.0») spegne lo strumento: chi lo scrive vuole fermarlo
+    (V-3 ve #319, secondo giro). Vuoto o assente = default."""
+    grezzo = os.environ.get("GAS_NOTIFICHE_GIORNO", "").strip()
+    if not grezzo:
         return MAX_GIORNO_DEFAULT
+    try:
+        return max(0, int(grezzo))
+    except ValueError:
+        log.warning("avviso: GAS_NOTIFICHE_GIORNO=%r non è un intero: notifiche spente",
+                    grezzo[:20])
+        return 0
 
 
 def _uso_oggi(p: Path) -> Optional[int]:
@@ -119,6 +126,24 @@ def rifiuto_senza_costi(testo: Any) -> Optional[str]:
         return f"Operazione negata: testo oltre {TESTO_MAX} caratteri, riassumilo."
     if _max_giorno() == 0:
         return "Operazione negata: notifiche spente (GAS_NOTIFICHE_GIORNO a 0 o meno)."
+    return None
+
+
+def rifiuto_al_cancello(testo: Any, root: Path) -> Optional[str]:
+    """Prima di mandare la notifica alla firma (V-1 bot/ve #319 su 1e4bc90): i controlli
+    senza costi più il tetto del giorno, letto e MAI scritto (la firma non prenota un
+    posto). Conto illeggibile → rifiuto, come all'esecuzione. None = si chiede la firma."""
+    rifiuto = rifiuto_senza_costi(testo)
+    if rifiuto:
+        return rifiuto
+    fatte = _uso_oggi(Path(root) / USO_FILENAME)
+    if fatte is None:
+        return (f"Operazione negata: conto delle notifiche ({USO_FILENAME}) "
+                "illeggibile: controllalo o cancellalo.")
+    tetto = _max_giorno()
+    if fatte >= tetto:
+        return (f"Operazione negata: tetto di {tetto} notifiche al giorno "
+                "raggiunto (GAS_NOTIFICHE_GIORNO). Riprova domani.")
     return None
 
 

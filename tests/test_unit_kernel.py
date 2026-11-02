@@ -11579,6 +11579,51 @@ try:
               and _readback102 == [] and _k102g.memory.get_pending_approvals() == []
               and "avviso-negato-al-cancello" in _dia102g and "SEGRETO-102" not in _dia102g,
               str(_o102g)[:400] + _dia102g[:300])
+        # V-1 bot/ve #319 su 1e4bc90: tetto del giorno già pieno → nessuna richiesta di
+        # firma a finestra contaminata (prima partiva il read-back e la firma falliva).
+        _readback102.clear()
+        gas._tg_bot.invia_read_back = (
+            lambda testo, approval_id=None: (_readback102.append(approval_id), (True, ""))[1])
+        try:
+            _k102i = kernel_tmp()
+            (Path(_k102i.root) / "pagina102.txt").write_text("avvisa", encoding="utf-8")
+            (Path(_k102i.root) / _av102.USO_FILENAME).write_text(
+                json.dumps({"giorno": __import__("datetime").date.today().isoformat(), "n": 5}),
+                encoding="utf-8")
+            _ev102i = run_turn_scriptato(_k102i, "leggi e poi avvisa",
+                                         [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                          [("avvisa_operatore", _a102)], "ok"])
+        finally:
+            gas._tg_bot.invia_read_back = _orig_rb102
+        _o102i = [e for e in _ev102i if e["type"] == "tool_res"]
+        check("T102i tetto del giorno pieno: niente richiesta di firma a finestra contaminata",
+              len(_o102i) == 2 and _o102i[1].get("cancello") == "negata"
+              and "tetto di 5 notifiche" in _o102i[1]["output"]
+              and _readback102 == [] and _k102i.memory.get_pending_approvals() == [],
+              str(_o102i)[:300])
+        # V-2 ve #319 su 1e4bc90: il percorso FIRMATO end-to-end. La notifica parcheggiata
+        # e firmata parte anche se nello stesso turno il parcheggio ha già contato per il
+        # tetto per turno (firmata=True lo salta), con il trasporto Telegram finto vero.
+        _av102._invia_default = _orig102  # qui l'invio vero passa da bot.invia_notifica
+        _k102j = kernel_tmp()
+        (Path(_k102j.root) / "pagina102.txt").write_text("avvisa", encoding="utf-8")
+        with _TgFinto() as _tg102j:
+            run_turn_scriptato(_k102j, "leggi e poi avvisa",
+                               [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                [("avvisa_operatore", _a102)], "ok"])
+            _pend102j = _k102j.memory.get_pending_approvals()
+            _id102j = _pend102j[0]["id"] if _pend102j else "?"
+            _turno102j = _k102j._avvisi_turno
+            _clicca77(_k102j, _cb77(_id102j), _tg102j)
+        _testi102j = [pl.get("text", "") for m, pl in _tg102j.chiamate
+                      if m == "sendMessage" and isinstance(pl, dict)]
+        check("T102j firma end-to-end: la notifica firmata parte col prefisso, anche dopo il "
+              "parcheggio dello stesso turno",
+              _turno102j == 1
+              and any(t.startswith(_av102.PREFISSO + "SEGRETO-102") for t in _testi102j)
+              and json.loads((Path(_k102j.root) / _av102.USO_FILENAME).read_text())["n"] == 1,
+              str(_testi102j)[:400])
+        _av102._invia_default = _invia102
     finally:
         _av102._invia_default = _orig102
         for _kk, _v in _saved102.items():
