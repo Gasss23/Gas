@@ -648,6 +648,7 @@ async function invia(blob, contentType) {
   } catch (e) {
     tempiEl.hidden = true;   // V-2 bot #322 su 8dc872e: niente tempi di un turno precedente
     capitoEl.hidden = true;   // V-2 bot #322 su 3a88f78: niente «Ho capito» del turno prima
+    if (righe) righe.chiudi();   // V-2 bot #325: il server smette di sintetizzare le altre frasi
     return fineTurno(timerAttesa, "risposta non leggibile: " + e.message);
   }
   clearTimeout(timerAttesa);
@@ -713,6 +714,8 @@ async function leggiResto(rip, righe, mostraTempi) {
       const j = await righe.prossima();
       if (!j) break;
       if (j.tempi && typeof j.tempi === "object") mostraTempi(j.tempi);
+      // V-4 bot #325: voce guasta a metà: resta il testo a schermo, l'errore va nella console
+      if (typeof j.errore_voce === "string" && j.errore_voce) console.warn("voce interrotta: " + j.errore_voce);
       if (typeof j.audio === "string") daSuonare(rip, bloboAudio(j.audio));
       if (j.fine) break;
     }

@@ -1313,7 +1313,8 @@ def test_v7b_proxy_inoltra_le_righe_appena_arrivano():
 def test_v7b_pagina_chiusa_ferma_la_sintesi():
     """R-618-2-M2: se la pagina chiude la connessione dopo la prima riga, il server smette
     di sintetizzare (con al più una frase di ritardo: la prima scrittura dopo la chiusura
-    del client riesce ancora)."""
+    del client riesce ancora). V-1 bot #325: tetto delle frasi alzato a 6, così senza lo
+    stop le sintesi sarebbero 6 e il margine col codice giusto (≤ 3) è netto."""
     import socket
     import time
     from unittest.mock import patch
@@ -1338,6 +1339,7 @@ def test_v7b_pagina_chiusa_ferma_la_sintesi():
     try:
         with patch("modules.voice.server.transcribe_audio", return_value="Gas, dimmi"), \
              patch("modules.voice.server.synthesize_speech", side_effect=_lenta) as tts, \
+             patch("modules.voice.server._PARLATO_MAX_FRASI", 6), \
              patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
             os.environ.pop("GAS_VOCE_FORTE", None)
             s = socket.create_connection(("127.0.0.1", srv.server_address[1]), timeout=10)
@@ -1354,6 +1356,26 @@ def test_v7b_pagina_chiusa_ferma_la_sintesi():
         srv.shutdown()
         srv.server_close()
     assert sintesi <= 3, sintesi   # su 6 frasi: la prima, al più una di ritardo (+1 in volo)
+
+
+def test_v7b_pagina_chiusa_prima_degli_header():
+    """V-3 bot #325: se la pagina è già chiusa quando il proxy scrive gli header della
+    risposta a pezzi, _copia_righe si ferma (niente eccezione, quindi niente 502 su un
+    socket morto né «Voice server non raggiungibile» falso)."""
+    bs = _browser_server_module()
+    h = bs.BrowserProxyHandler.__new__(bs.BrowserProxyHandler)
+
+    def _rotto(*a, **k):
+        raise BrokenPipeError("pagina chiusa")
+    h.send_response = _rotto
+
+    class _Resp:
+        status = 200
+        def getheader(self, *a):
+            return "application/x-ndjson"
+        def read1(self, n):
+            raise AssertionError("non deve leggere: la pagina è chiusa")
+    h._copia_righe(_Resp())   # non solleva
 
 
 @pytest.mark.parametrize("evento, chiude", [("vuoto", True), ("errore", True),
