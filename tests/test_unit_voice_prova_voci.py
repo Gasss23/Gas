@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -150,6 +151,7 @@ def server():
     _H.voci_ammesse = frozenset({"George00000000001"})   # come dopo aver aperto l'elenco
     _H.libreria_ammesse = {}
     _H.aggiunte_voci = []
+    server.classe = _H   # i test che cambiano tetti e liste toccano questa classe
     srv = HTTPServer(("127.0.0.1", 0), _H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     try:
@@ -401,6 +403,50 @@ def test_proxy_solo_host_locale(proxy_e_voce, host, atteso):
         assert viste == []
 
 
+@pytest.mark.parametrize("intestazioni", [{}, {"X-Gas-Pagina": "1", "Sec-Fetch-Site": "cross-site"},
+                                          {"Sec-Fetch-Site": "same-origin"}])
+def test_proxy_elenchi_solo_dalla_pagina(proxy_e_voce, intestazioni):
+    """V-4 bot #326: una GET agli elenchi che non viene dalla pagina «prova voci» (un <img>
+    o un link di un altro sito) non arriva al server voce: niente chiamate a ElevenLabs e
+    voci ammesse intatte."""
+    port, viste = proxy_e_voce
+    for percorso in ("/voci/elenco", "/voci/libreria"):
+        req = urllib.request.Request(f"http://127.0.0.1:{port}{percorso}", headers=intestazioni)
+        try:
+            with _SENZA_PROXY.open(req, timeout=5) as r:
+                st = r.status
+        except urllib.error.HTTPError as e:
+            st = e.code
+        assert st == 403, (percorso, intestazioni, st)
+    assert viste == []
+
+
+def test_tetto_delle_prove_non_ferma_piper(server, monkeypatch):
+    """V-3 bot #326: col tetto delle prove ElevenLabs raggiunto, la voce locale Piper
+    (gratis) si prova ancora."""
+    monkeypatch.setenv("GAS_VOICE_MAX_PROVE_ORA", "1")
+    server_cls = globals()["server"].classe
+    monkeypatch.setattr(server_cls, "prove_voci", [time.monotonic()])
+    with patch("modules.voice.prova_voci.piper_disponibile", return_value="/m.onnx"), \
+         patch("modules.voice.prova_voci.sintetizza_piper", return_value=b"RIFF" + bytes(40)):
+        st, ct, corpo = _chiama(server, "POST", "/voci/prova",
+                                body={"voce": "piper", "frase": 0})
+    assert st == 200 and corpo[:4] == b"RIFF", (st, corpo[:200])
+
+
+def test_aggiunta_con_esito_incerto(server, monkeypatch):
+    """V-2 bot #326: 200 senza id leggibile → «esito incerto», non «non aggiunta»."""
+    from modules.voice.tts import ElevenLabsTTSError
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    server_cls = globals()["server"].classe
+    monkeypatch.setattr(server_cls, "libreria_ammesse", {"Libro000000000001": ("Prop00000000001", "Libro")})
+    with patch("modules.voice.server.add_shared_voice",
+               side_effect=ElevenLabsTTSError(200, "risposta all'aggiunta della voce non leggibile")):
+        st, _, corpo = _chiama(server, "POST", "/voci/aggiungi",
+                               body={"voce": "Libro000000000001"})
+    assert st == 502 and "Esito incerto" in json.loads(corpo)["error"], corpo
+
+
 def test_elenco_fallito_azzera_le_voci_ammesse(server, monkeypatch):
     """R-625-2-M2: se l'elenco fallisce non resta valido quello vecchio."""
     monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
@@ -431,7 +477,9 @@ def test_proxy_pagina_elenco_e_prova(proxy_e_voce):
     port, viste = proxy_e_voce
     with _SENZA_PROXY.open(f"http://127.0.0.1:{port}/voci", timeout=5) as r:
         assert r.status == 200 and b"Prova voci" in r.read()
-    with _SENZA_PROXY.open(f"http://127.0.0.1:{port}/voci/elenco", timeout=5) as r:
+    req_el = urllib.request.Request(f"http://127.0.0.1:{port}/voci/elenco",
+                                    headers={"X-Gas-Pagina": "1"})
+    with _SENZA_PROXY.open(req_el, timeout=5) as r:
         assert json.loads(r.read())["attuale"] == "Brian000000000001"
     req = urllib.request.Request(f"http://127.0.0.1:{port}/voci/prova", method="POST",
                                  data=b'{"voce": "George00000000001", "frase": 1}',

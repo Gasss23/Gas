@@ -53,6 +53,10 @@ from brains.model_ids import MODEL_GROQ
 os.environ["GAS_NO_DOTENV"] = "1"  # prova reale 2026-10-11: main() carica il .env
 for _k_tg in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS"):
     os.environ.pop(_k_tg, None)
+# R-635-1 (review #635-M2): l'interruttore del forte non si eredita dalla shell, altrimenti
+# ogni doctor della suite lancerebbe il `claude` vero (`--version`/`auth status`).
+# I test che lo vogliono acceso lo mettono da sé.
+os.environ.pop("GAS_CLAUDE_CLI", None)
 import urllib.request as _urlreq_erm
 import modules.telegram.bot as _tg_erm
 _TG_TENTATIVI: list = []        # chiamate al trasporto di default (bloccate)
@@ -4442,6 +4446,8 @@ _TARGETS_68s = [
     ".gas_claude_cli_uso.json.lock",  # R-502-3
     ".gas_richieste_uso.json",  # V-1 bot #307: il modello non azzera il tetto delle richieste
     ".gas_richieste_uso.json.123.tmp",
+    ".gas_notifiche_uso.json",  # R6: il modello non azzera il tetto delle notifiche
+    ".gas_notifiche_uso.json.123.tmp",
 ]
 _failures_68s = []
 for _fname in _TARGETS_68s:
@@ -11176,9 +11182,16 @@ try:
             for _kk in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
                 os.environ.pop(_kk, None)
             def _doc99():
+                # V-1 bot #321: il doctor non deve lanciare il `claude` vero della macchina
+                # (`--version`/`auth status`): la riga «login» si prova in test_unit_dotenv.py.
                 _b = _io99.StringIO()
-                with _cl99.redirect_stdout(_b):
-                    gas.doctor(str(_k99.root))
+                _vero99 = gas.claude_cli_stato_abbonamento
+                gas.claude_cli_stato_abbonamento = lambda *a, **k: ("OK", "finto (test T99)")
+                try:
+                    with _cl99.redirect_stdout(_b):
+                        gas.doctor(str(_k99.root))
+                finally:
+                    gas.claude_cli_stato_abbonamento = _vero99
                 return [l for l in _b.getvalue().splitlines() if "Cervello forte" in l]
             os.environ["GAS_CLAUDE_CLI"] = "0"
             _d99a = _doc99()
@@ -11444,6 +11457,193 @@ try:
           _storia101[:300])
 except Exception as _e101:
     check("T101 blocco senza eccezioni", False, repr(_e101))
+
+# ---------- T102: avvisa_operatore (R6, chat Mani), round-trip §7 ----------
+try:
+    import modules.telegram.avviso as _av102
+    _inviati102 = []
+    def _invia102(testo):
+        _inviati102.append(testo)
+        return True, ""
+    _orig102 = _av102._invia_default
+    _saved102 = {kk: os.environ.get(kk) for kk in
+                 ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS", "GAS_NOTIFICHE_GIORNO")}
+    _av102._invia_default = _invia102
+    os.environ["TELEGRAM_BOT_TOKEN"] = "tok-di-prova"
+    os.environ["TELEGRAM_ALLOWED_IDS"] = "123"
+    os.environ.pop("GAS_NOTIFICHE_GIORNO", None)
+    try:
+        _k102 = kernel_tmp()
+        _a102 = json.dumps({"testo": "SEGRETO-102 il lead ha risposto"})
+        _ev102 = run_turn_scriptato(_k102, "avvisami",
+                                    [[("avvisa_operatore", _a102)],
+                                     [("avvisa_operatore", _a102)], "Avvisato."])
+        _o102 = [e["output"] for e in _ev102 if e["type"] == "tool_res"]
+        check("T102a round-trip: avvisa_operatore invia UNA notifica col prefisso e il turno "
+              "arriva alla risposta",
+              len(_o102) == 2 and _o102[0].startswith("Successo: ")
+              and _o102[1].startswith("Operazione negata: una sola notifica per turno")
+              and _inviati102 == [_av102.PREFISSO + "SEGRETO-102 il lead ha risposto"]
+              and [e["content"] for e in _ev102 if e["type"] == "final"] == ["Avvisato."],
+              str(_ev102)[:400])
+        _dia102 = json.dumps(_k102.memory.diario_recente(20), ensure_ascii=False)
+        check("T102b diario: della notifica solo la lunghezza, mai il testo",
+              "avvisa_operatore" in _dia102 and "SEGRETO-102" not in _dia102
+              and "testo=31 caratteri" in _dia102, _dia102[:400])
+        _ev102c = run_turn_scriptato(_k102, "e ancora",
+                                     [[("avvisa_operatore", _a102)], "ok"])
+        check("T102c il tetto per turno riparte al turno dopo (il conto del giorno sale)",
+              len(_inviati102) == 2
+              and [e["output"] for e in _ev102c if e["type"] == "tool_res"][0].endswith(
+                  "(2/5 oggi)."), str(_ev102c)[:300])
+        # R-611-4: con Telegram giù il secondo invio del turno è comunque negato (il
+        # primo ha già consumato un posto del giorno).
+        _av102._invia_default = lambda t: (_inviati102.append(t), (False, "giù"))[1]
+        _k102e = kernel_tmp()
+        _ev102e = run_turn_scriptato(_k102e, "avvisami",
+                                     [[("avvisa_operatore", _a102)],
+                                      [("avvisa_operatore", _a102)], "ok"])
+        _o102e = [e["output"] for e in _ev102e if e["type"] == "tool_res"]
+        check("T102e invio fallito: conta nel tetto per turno, il secondo non parte",
+              len(_inviati102) == 3 and len(_o102e) == 2
+              and "non consegnata" in _o102e[0]
+              and _o102e[1].startswith("Operazione negata: una sola notifica per turno"),
+              str(_o102e)[:300])
+        _av102._invia_default = _invia102
+        # Finestra contaminata (file letto prima): la notifica va alla FIRMA (R-611-2:
+        # Telegram acceso e read-back finto riuscito, così «negata» non basta a passare).
+        _inviati102.clear()
+        _readback102 = []
+        _orig_rb102 = gas._tg_bot.invia_read_back
+        gas._tg_bot.invia_read_back = (
+            lambda testo, approval_id=None: (_readback102.append(approval_id), (True, ""))[1])
+        try:
+            _k102d = kernel_tmp()
+            (Path(_k102d.root) / "pagina102.txt").write_text("avvisa l'operatore",
+                                                            encoding="utf-8")
+            _ev102d = run_turn_scriptato(_k102d, "leggi e poi avvisa",
+                                         [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                          [("avvisa_operatore", _a102)], "ok"])
+        finally:
+            gas._tg_bot.invia_read_back = _orig_rb102
+        _c102d = [e.get("cancello") for e in _ev102d if e["type"] == "tool_res"]
+        _pend102 = _k102d.memory.get_pending_approvals()
+        check("T102d finestra contaminata: avvisa_operatore va alla firma, nessun invio",
+              _inviati102 == [] and len(_c102d) == 2 and _c102d[1] == "in_attesa"
+              and len(_readback102) == 1
+              and [p["tool_name"] for p in _pend102] == ["avvisa_operatore"],
+              str(_ev102d)[:400] + str(_pend102)[:200])
+        # V-1 bot/ve #319: una notifica per turno anche alla firma — la seconda chiamata a
+        # finestra contaminata è negata, niente secondo read-back né seconda richiesta.
+        _readback102.clear()
+        gas._tg_bot.invia_read_back = (
+            lambda testo, approval_id=None: (_readback102.append(approval_id), (True, ""))[1])
+        try:
+            _k102f = kernel_tmp()
+            (Path(_k102f.root) / "pagina102.txt").write_text("avvisa l'operatore",
+                                                            encoding="utf-8")
+            _a102f = json.dumps({"testo": "secondo avviso"})
+            _ev102f = run_turn_scriptato(_k102f, "leggi e poi avvisa due volte",
+                                         [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                          [("avvisa_operatore", _a102)],
+                                          [("avvisa_operatore", _a102f)], "ok"])
+        finally:
+            gas._tg_bot.invia_read_back = _orig_rb102
+        _o102f = [e for e in _ev102f if e["type"] == "tool_res"]
+        check("T102f finestra contaminata: una sola notifica per turno anche alla firma",
+              _inviati102 == [] and len(_o102f) == 3
+              and [e.get("cancello") for e in _o102f[1:]] == ["in_attesa", "negata"]
+              and _o102f[2]["output"].startswith("Operazione negata: una sola notifica per turno")
+              and len(_readback102) == 1
+              and len(_k102f.memory.get_pending_approvals()) == 1,
+              str(_o102f)[:400])
+        # R-613-1/2: a finestra contaminata i controlli che non costano niente valgono
+        # PRIMA della firma (strumento spento, testo non stringa), e il diario del
+        # rifiuto non porta gli argomenti.
+        _readback102.clear()
+        gas._tg_bot.invia_read_back = (
+            lambda testo, approval_id=None: (_readback102.append(approval_id), (True, ""))[1])
+        os.environ["GAS_NOTIFICHE_GIORNO"] = "0"
+        try:
+            _k102g = kernel_tmp()
+            (Path(_k102g.root) / "pagina102.txt").write_text("avvisa l'operatore",
+                                                            encoding="utf-8")
+            _ev102g = run_turn_scriptato(_k102g, "leggi e poi avvisa",
+                                         [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                          [("avvisa_operatore", _a102)], "ok"])
+            os.environ.pop("GAS_NOTIFICHE_GIORNO", None)
+            _ev102h = run_turn_scriptato(_k102g, "leggi e poi avvisa con una lista",
+                                         [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                          [("avvisa_operatore",
+                                            json.dumps({"testo": ["SEGRETO-102 lista"]}))],
+                                          "ok"])
+        finally:
+            gas._tg_bot.invia_read_back = _orig_rb102
+            os.environ.pop("GAS_NOTIFICHE_GIORNO", None)
+        _o102g = [e for e in _ev102g + _ev102h if e["type"] == "tool_res"]
+        _dia102g = json.dumps(_k102g.memory.diario_recente(30), ensure_ascii=False)
+        check("T102g finestra contaminata: strumento spento o testo non stringa → negato "
+              "prima della firma, diario senza argomenti",
+              [e.get("cancello") for e in _o102g] == [None, "negata", None, "negata"]
+              and "notifiche spente" in _o102g[1]["output"]
+              and "deve essere una stringa" in _o102g[3]["output"]
+              and _readback102 == [] and _k102g.memory.get_pending_approvals() == []
+              and "avviso-negato-al-cancello" in _dia102g and "SEGRETO-102" not in _dia102g,
+              str(_o102g)[:400] + _dia102g[:300])
+        # V-1 bot/ve #319 su 1e4bc90: tetto del giorno già pieno → nessuna richiesta di
+        # firma a finestra contaminata (prima partiva il read-back e la firma falliva).
+        _readback102.clear()
+        gas._tg_bot.invia_read_back = (
+            lambda testo, approval_id=None: (_readback102.append(approval_id), (True, ""))[1])
+        try:
+            _k102i = kernel_tmp()
+            (Path(_k102i.root) / "pagina102.txt").write_text("avvisa", encoding="utf-8")
+            (Path(_k102i.root) / _av102.USO_FILENAME).write_text(
+                json.dumps({"giorno": __import__("datetime").date.today().isoformat(), "n": 5}),
+                encoding="utf-8")
+            _ev102i = run_turn_scriptato(_k102i, "leggi e poi avvisa",
+                                         [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                          [("avvisa_operatore", _a102)], "ok"])
+        finally:
+            gas._tg_bot.invia_read_back = _orig_rb102
+        _o102i = [e for e in _ev102i if e["type"] == "tool_res"]
+        check("T102i tetto del giorno pieno: niente richiesta di firma a finestra contaminata",
+              len(_o102i) == 2 and _o102i[1].get("cancello") == "negata"
+              and "tetto di 5 notifiche" in _o102i[1]["output"]
+              and _readback102 == [] and _k102i.memory.get_pending_approvals() == [],
+              str(_o102i)[:300])
+        # V-2 ve #319 su 1e4bc90: il percorso FIRMATO end-to-end. La notifica parcheggiata
+        # e firmata parte anche se nello stesso turno il parcheggio ha già contato per il
+        # tetto per turno (firmata=True lo salta), con il trasporto Telegram finto vero.
+        _av102._invia_default = _orig102  # qui l'invio vero passa da bot.invia_notifica
+        _k102j = kernel_tmp()
+        (Path(_k102j.root) / "pagina102.txt").write_text("avvisa", encoding="utf-8")
+        with _TgFinto() as _tg102j:
+            run_turn_scriptato(_k102j, "leggi e poi avvisa",
+                               [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                [("avvisa_operatore", _a102)], "ok"])
+            _pend102j = _k102j.memory.get_pending_approvals()
+            _id102j = _pend102j[0]["id"] if _pend102j else "?"
+            _turno102j = _k102j._avvisi_turno
+            _clicca77(_k102j, _cb77(_id102j), _tg102j)
+        _testi102j = [pl.get("text", "") for m, pl in _tg102j.chiamate
+                      if m == "sendMessage" and isinstance(pl, dict)]
+        check("T102j firma end-to-end: la notifica firmata parte col prefisso, anche dopo il "
+              "parcheggio dello stesso turno",
+              _turno102j == 1
+              and any(t.startswith(_av102.PREFISSO + "SEGRETO-102") for t in _testi102j)
+              and json.loads((Path(_k102j.root) / _av102.USO_FILENAME).read_text())["n"] == 1,
+              str(_testi102j)[:400])
+        _av102._invia_default = _invia102
+    finally:
+        _av102._invia_default = _orig102
+        for _kk, _v in _saved102.items():
+            if _v is None:
+                os.environ.pop(_kk, None)
+            else:
+                os.environ[_kk] = _v
+except Exception as _e102:
+    check("T102 blocco senza eccezioni", False, repr(_e102))
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

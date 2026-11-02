@@ -11,7 +11,7 @@ import json
 import math
 import os
 import re
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 _GROQ_HOST = "api.groq.com"
 _GROQ_PATH = "/openai/v1/audio/transcriptions"
@@ -39,6 +39,12 @@ _LOGPROB_SILENZIO = -0.5
 # l'operatore che parla. Le parole del prompt in un ordine diverso («Gas, forte, firma
 # la bozza») sono un comando vero e passano.
 _PROMPT_ECO_MIN_PAROLE = 4
+# V-1 bot #318: un'eco CORTA del prompt (2-3 parole contigue, es. «Gas, forte, lead.») può
+# essere anche un comando vero: si scarta solo se i segmenti dicono «quasi certo silenzio».
+# R-614-1-M2: soglia sopra quella di un «Sì.» chiaro su large-v3 (no_speech ~0,85),
+# tarabile con GAS_VOICE_STT_ECO_NO_SPEECH.
+_PROMPT_ECO_CORTA_MIN_PAROLE = 2
+_ECO_CORTA_NO_SPEECH_DEFAULT = 0.9
 # Frasi che Whisper inventa sul silenzio o sul rumore (sottotitoli dei video su cui è
 # stato addestrato): se la trascrizione le contiene, non è l'operatore che parla.
 _ALLUCINAZIONI_PARTI = ("amara.org", "qtss", "sottotitoli creati", "sottotitoli a cura",
@@ -60,7 +66,7 @@ _PAROLA = re.compile(r"[a-zàèéìòù0-9]+")
 _PAROLE_PROMPT = tuple(_PAROLA.findall(_PROMPT_GAS.lower()))
 
 
-def _pezzo_del_prompt(parole: list) -> bool:
+def _pezzo_del_prompt(parole: List[str]) -> bool:
     """True se `parole` compare tale e quale, contigua, dentro le parole del prompt."""
     n = len(parole)
     return any(list(_PAROLE_PROMPT[i:i + n]) == parole
@@ -99,18 +105,26 @@ def _motivo_incerta(testo: str, segmenti: Any) -> Optional[str]:
     peso = logprob = no_speech = 0.0
     for seg in segmenti:
         if not isinstance(seg, dict):
-            return None
+            continue  # V-1 ve #318 (2ª verifica): segmento malformato saltato, contano gli altri
         try:
             durata = max(float(seg.get("end", 0)) - float(seg.get("start", 0)), 0.01)
             lp = float(seg["avg_logprob"])
             ns = float(seg["no_speech_prob"])
         except (KeyError, TypeError, ValueError):
-            return None  # risposta senza i campi attesi: non si scarta a caso
+            continue  # segmento senza i campi attesi: saltato (nessun segmento valido → None)
+        if not all(math.isfinite(x) for x in (durata, lp, ns)):
+            continue  # V-1 ve #318 / R-614-2-M2: segmento NaN/inf inutile, contano gli altri
         peso += durata
         logprob += lp * durata
         no_speech += ns * durata
+    if peso <= 0:
+        return None  # nessun segmento con dati validi: non si scarta a caso
     logprob /= peso
     no_speech /= peso
+    if (_PROMPT_ECO_CORTA_MIN_PAROLE <= len(parole) < _PROMPT_ECO_MIN_PAROLE
+            and _pezzo_del_prompt(parole)
+            and no_speech > _soglia_env("GAS_VOICE_STT_ECO_NO_SPEECH", _ECO_CORTA_NO_SPEECH_DEFAULT)):
+        return f"eco corta del prompt di Whisper (no_speech={no_speech:.2f})"
     if (no_speech > _soglia_env("GAS_VOICE_STT_NO_SPEECH_MAX", _NO_SPEECH_MAX_DEFAULT)
             and logprob < _LOGPROB_SILENZIO):
         return f"probabilmente silenzio o rumore (no_speech={no_speech:.2f})"

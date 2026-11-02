@@ -16,6 +16,7 @@ import http.client
 import json
 import os
 import struct
+import time
 import sys
 import threading
 from http.server import HTTPServer
@@ -269,6 +270,15 @@ class TestV6Trascrizione:
         with pytest.raises(TrascrizioneIncerta):
             self._trascrivi(_verbose(frase, [_seg(-0.2, 0.1)]))
 
+    @pytest.mark.parametrize("malformato", ["x", {"start": 0, "end": 1}, {"avg_logprob": "boh",
+                                                                    "no_speech_prob": 0.1}])
+    def test_v6_segmento_malformato_non_spegne_gli_altri(self, malformato):
+        """V-1 ve #318 (2ª verifica): un segmento rotto si salta, il segmento cattivo accanto
+        fa ancora scartare la trascrizione (come per i NaN, R-614-2-M2)."""
+        corpo = json.dumps({"text": "ciao", "segments": [malformato, _seg(-2.0, 0.99, 1.0, 2.0)]})
+        with pytest.raises(TrascrizioneIncerta):
+            self._trascrivi(corpo)
+
     def test_v6_segmenti_senza_campi_non_scartano(self):
         """Risposta senza i dettagli attesi: si tiene il testo (non si scarta a caso)."""
         assert self._trascrivi(_verbose("ciao", [{"start": 0, "end": 1}])) == "ciao"
@@ -286,6 +296,44 @@ class TestV6Trascrizione:
         with patch.dict(os.environ, {"GAS_VOICE_STT_LOGPROB_MIN": "nan"}):
             with pytest.raises(TrascrizioneIncerta):   # nan → default, il controllo resta acceso
                 self._trascrivi(_verbose("ciao", [_seg(-1.5, 0.1)]))
+
+    def test_v6_eco_corta_del_prompt_sul_silenzio_scartata(self):
+        """V-1 bot #318: «Gas, forte, lead.» con no_speech alto è un'eco, non un comando."""
+        with pytest.raises(TrascrizioneIncerta) as e:
+            self._trascrivi(_verbose("Gas, forte, lead.", [_seg(-0.3, 0.95)]))
+        assert "eco corta" in e.value.motivo
+
+    @pytest.mark.parametrize("frase", ["Gas, forte, lead.", "Gas forte", "PR merge.",
+                                       "Report PR.", "Firma contatto."])
+    @pytest.mark.parametrize("ns", [0.2, 0.85])
+    def test_v6_eco_corta_con_voce_vera_passa(self, frase, ns):
+        """V-1 bot #318 / R-614-1-M2: le stesse parole dette davvero passano, anche con il
+        no_speech di un «Sì.» chiaro su large-v3 (0,85, vedi test del «sì» breve)."""
+        assert self._trascrivi(_verbose(frase, [_seg(-0.2, ns)])) == frase
+
+    def test_v6_eco_corta_soglia_da_env(self):
+        corpo = _verbose("PR merge.", [_seg(-0.2, 0.85)])
+        with patch.dict(os.environ, {"GAS_VOICE_STT_ECO_NO_SPEECH": "0.8"}):
+            with pytest.raises(TrascrizioneIncerta):
+                self._trascrivi(corpo)
+
+    @pytest.mark.parametrize("campo", ["avg_logprob", "no_speech_prob", "end"])
+    def test_v6_valori_nan_dei_segmenti_non_scartano_a_caso(self, campo):
+        """V-1 ve #318: NaN in un segmento (json.loads lo accetta) non aggira i controlli
+        dando un esito a caso: il dato è inutile, il testo si tiene come senza dettagli;
+        e un testo sicuramente cattivo resta scartato dall'elenco delle frasi inventate."""
+        seg = _seg(-1.5, 0.95)
+        seg[campo] = float("nan")
+        corpo = json.dumps({"text": "ciao", "segments": [seg]})
+        assert "NaN" in corpo
+        assert self._trascrivi(corpo) == "ciao"
+        seg2 = dict(seg, avg_logprob=-0.2, no_speech_prob=0.1)
+        with pytest.raises(TrascrizioneIncerta):
+            self._trascrivi(json.dumps({"text": "Grazie per la visione", "segments": [seg2]}))
+        # R-614-2-M2: un segmento NaN non spegne il controllo sugli altri
+        cattivo = _seg(-2.0, 0.99, 1.0, 2.0)
+        with pytest.raises(TrascrizioneIncerta):
+            self._trascrivi(json.dumps({"text": "ciao", "segments": [seg, cattivo]}))
 
     def test_v6_json_non_oggetto_errore_groq(self):
         with pytest.raises(GroqSTTError):
@@ -576,6 +624,29 @@ class TestVoiceHandlerRouting:
         assert kw_parlato.get("cervello") == "forte"  # «forte» tolto dalla richiesta, non dal «capito»
         assert "capito" not in scritto[1]  # testo scritto: niente da mostrare
 
+    def test_v6_non_capito_solo_audio_senza_tts_resta_testo(self):
+        """V-2 bot #318: client solo audio senza ElevenLabs → 200 JSON con il messaggio,
+        non un 503 «TTS non disponibile» che nasconde la causa."""
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "Accept": "audio/mpeg"}
+        with patch("modules.voice.server.transcribe_audio",
+                   side_effect=TrascrizioneIncerta("boh", "poco sicura")):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                status, resp = _post_raw(self.port, wav, hdrs)
+        assert status == 200 and resp["non_capito"] is True and resp["capito"] == "boh"
+
+    def test_v6_capito_azzerato_a_ogni_richiesta(self):
+        """V-3 bot #318: anche riusando lo stesso oggetto handler (come farebbe un
+        keep-alive), una richiesta scritta non eredita il «capito» della precedente."""
+        h = VoiceHandler.__new__(VoiceHandler)
+        h._capito = "vecchio"
+        h.path = "/altro"
+        h._send_json = lambda code, payload: None
+        h.do_POST()
+        assert h._capito is None
+
     def test_v6_formato_pagina_porta_capito(self):
         """V6: col formato della pagina (audio+testo) il JSON ha «capito», anche quando
         chiede di ripetere (con il segno non_capito)."""
@@ -680,6 +751,33 @@ class TestVoiceHandlerRouting:
         status, resp = _post_raw(self.port, json.dumps({"prompt": "ciao"}).encode(),
                                  {**_AUTH, "Content-Type": "application/json"})
         assert status == 500 and set(resp["tempi"]) == {"cervello", "server"}, resp
+
+    def test_v7_tempo_del_cervello_anche_senza_risposta(self):
+        """V-2 ve #322: un turno che finisce senza final né error (500) ha il tempo del cervello."""
+        def _muto(prompt, **kw):
+            yield {"type": "tool_res", "content": "x"}
+
+        self.kernel.run_turn = _muto
+        status, resp = _post_raw(self.port, json.dumps({"prompt": "ciao"}).encode(),
+                                 {**_AUTH, "Content-Type": "application/json"})
+        assert status == 500 and set(resp["tempi"]) == {"cervello", "server"}, resp
+
+    def test_v7_caricamento_lento_non_conta_come_server(self):
+        """V-2 bot #322: il tempo «server» parte dopo aver ricevuto il corpo: un caricamento
+        lento dalla pagina resta nella «rete» (totale della pagina meno il server)."""
+        import socket
+        corpo = json.dumps({"prompt": "ciao"}).encode()
+        testa = (f"POST /voice HTTP/1.0\r\nHost: 127.0.0.1\r\nAuthorization: {_AUTH['Authorization']}\r\n"
+                 f"Content-Type: application/json\r\nContent-Length: {len(corpo)}\r\n\r\n").encode()
+        with socket.create_connection(("127.0.0.1", self.port), timeout=10) as sk:
+            sk.sendall(testa + corpo[:3])
+            time.sleep(0.6)  # la pagina carica piano
+            sk.sendall(corpo[3:])
+            dati = b""
+            while chunk := sk.recv(65536):
+                dati += chunk
+        tempi = json.loads(dati.split(b"\r\n\r\n", 1)[1])["tempi"]
+        assert tempi["server"] < 0.5, tempi
 
     def test_v7_rifiuto_prima_di_spendere_senza_tempi(self):
         """V7: il 429 del tetto arriva prima di ogni lavoro: niente tempi né riga di log."""

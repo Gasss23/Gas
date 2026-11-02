@@ -203,6 +203,9 @@ body {
   flex-direction: column;
   gap: 10px;
 }
+/* V-1 bot #322 su 8dc872e: senza questa regola il display:flex vinceva su «hidden» e il
+   riquadro della risposta si vedeva (vuoto) anche prima della prima risposta */
+#player-wrap[hidden] { display: none; }
 
 /* V6: quello che Whisper ha sentito, per capire se l'errore è d'ascolto o di ragionamento */
 .capito {
@@ -288,9 +291,12 @@ audio {
   conversazione continua
 </label>
 
+<!-- V-1 bot #322 su 8dc872e: i tempi stanno fuori dal riquadro della risposta, così si
+     vedono anche quando un guasto non porta nessuna risposta -->
+<p id="tempi" class="capito" hidden></p>
+
 <div id="player-wrap" hidden>
   <p id="capito" class="capito" hidden></p>
-  <p id="tempi" class="capito" hidden></p>
   <p class="player-label">risposta</p>
   <p id="testo" aria-live="polite"></p>
   <audio id="player" controls></audio>
@@ -643,11 +649,21 @@ async function invia(blob, contentType) {
       "Content-Type": contentType, "Accept": "audio/mpeg",
       "X-Gas-Formato": "audio+testo+pezzi" } });   // V7b: voce frase per frase
   } catch (e) {
+    tempiEl.hidden = true;   // R-644-1-M2: niente tempi di un turno precedente
+    capitoEl.hidden = true;   // V-2 bot #322 su 3a88f78: niente «Ho capito» del turno prima
     return fineTurno(timerAttesa, "errore di rete: " + e.message);
   }
   if (!resp.ok) {
-    let msg = `${resp.status} ${resp.statusText}`;
-    try { msg = (await resp.json()).error || msg; } catch (_) {}
+    let msg = `${resp.status} ${resp.statusText}`, tempiErr = null;
+    try {
+      const j = await resp.json();
+      msg = j.error || msg;
+      tempiErr = j.tempi && typeof j.tempi === "object" ? j.tempi : null;
+    } catch (_) {}
+    // V-1 bot #322: anche un guasto lento (Groq, voce, cervello) dice dove è andato il tempo
+    tempiEl.textContent = descriviTempi(tempiErr, (performance.now() - t0) / 1000);
+    tempiEl.hidden = !tempiEl.textContent;
+    capitoEl.hidden = true;   // R-646-1-M2: il «Ho capito» del turno prima non è di questo guasto
     return fineTurno(timerAttesa, "errore: " + msg);
   }
   let audio, testo = "", voceErr = "", capito = "", tempi = null, righe = null;
@@ -667,6 +683,9 @@ async function invia(blob, contentType) {
       audio = await resp.blob();
     }
   } catch (e) {
+    tempiEl.hidden = true;   // V-2 bot #322 su 8dc872e: niente tempi di un turno precedente
+    capitoEl.hidden = true;   // V-2 bot #322 su 3a88f78: niente «Ho capito» del turno prima
+    if (righe) righe.chiudi();   // V-2 bot #325: il server smette di sintetizzare le altre frasi
     return fineTurno(timerAttesa, "risposta non leggibile: " + e.message);
   }
   clearTimeout(timerAttesa);
@@ -732,6 +751,8 @@ async function leggiResto(rip, righe, mostraTempi) {
       const j = await righe.prossima();
       if (!j) break;
       if (j.tempi && typeof j.tempi === "object") mostraTempi(j.tempi);
+      // V-4 bot #325: voce guasta a metà: resta il testo a schermo, l'errore va nella console
+      if (typeof j.errore_voce === "string" && j.errore_voce) console.warn("voce interrotta: " + j.errore_voce);
       if (typeof j.audio === "string") daSuonare(rip, bloboAudio(j.audio));
       if (j.fine) break;
     }
@@ -740,7 +761,12 @@ async function leggiResto(rip, righe, mostraTempi) {
   // R-619-2-M2: solo se è ancora l'ultimo turno e il player è fermo (non si taglia la
   // prima frase che l'operatore sta ascoltando col tasto play)
   if (rip.soloRaccogli) {
-    if (rip.turno === numTurno && player.paused) mettiRiascolto(rip);
+    if (rip.turno !== numTurno) return;
+    if (player.paused) mettiRiascolto(rip);
+    // V-1 bot #325: l'operatore sta ascoltando la prima frase col tasto play: il riascolto
+    // completo si mette quando quella frase finisce (una volta sola)
+    else player.addEventListener("ended", () => { if (rip.turno === numTurno) mettiRiascolto(rip); },
+                                 { once: true });
     return;
   }
   if (rip.attende) { const f = rip.attende; rip.attende = null; f(null); }

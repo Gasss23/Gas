@@ -391,3 +391,97 @@ def test_limite_in_testo_semplice_resta_quota():
     with pytest.raises(RuntimeError) as e:
         c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
     assert str(e.value).startswith("429")
+
+
+# ── Chat M2 (2 novembre): futuro default --bare di `claude -p` ──
+
+def test_figlio_senza_chiavi_api_ne_modalita_bare(monkeypatch):
+    """Se un giorno `claude -p` diventa bare, deve FALLIRE (niente login dell'abbonamento,
+    niente chiave) invece di addebitare a consumo: il figlio vero non riceve mai chiavi
+    API né variabili che attivano la modalità bare, anche se sono nella shell di Gas."""
+    for k, v in {"ANTHROPIC_API_KEY": "sk-x", "ANTHROPIC_AUTH_TOKEN": "t", "OPENAI_API_KEY": "o",
+                 "GROQ_API_KEY": "g", "CLAUDE_CODE_SIMPLE": "1", "CLAUDE_CODE_USE_BEDROCK": "1",
+                 "CLAUDE_CODE_OAUTH_TOKEN": "login"}.items():
+        monkeypatch.setenv(k, v)
+    reg = {}
+    c = ClaudeCliClient(binario="claude", runner=_runner(_ok({"testo": "ok", "chiamate": []}), reg))
+    c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs(), tools=_TOOLS)
+    env = reg["env"]
+    assert not [k for k in env if "API_KEY" in k or k.startswith("ANTHROPIC") or k == "CLAUDE_CODE_SIMPLE"
+                or "BEDROCK" in k], sorted(env)
+    assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "login"   # il login dell'abbonamento sì
+    assert "--bare" not in reg["cmd"] and "--settings" not in reg["cmd"]   # niente apiKeyHelper
+
+
+def _cli_finta(versione, stato, rc=0):
+    chiamate = []
+
+    def run(cmd, timeout):
+        chiamate.append(cmd)
+        if cmd[1:] == ["--version"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout=versione, stderr="")
+        return subprocess.CompletedProcess(cmd, rc, stdout=stato, stderr="")
+    return run, chiamate
+
+
+@pytest.mark.parametrize("stato, rc, esito, pezzo", [
+    ('{"loggedIn": true, "authMethod": "claude.ai"}', 0, "OK", "abbonamento (claude.ai)"),
+    ('{"authMethod": "oauth_token"}', 0, "OK", "abbonamento (oauth_token)"),
+    ('{"authMethod": "api_key"}', 0, "WARN", "NON dell'abbonamento (api_key)"),
+    ('{"authMethod": "api_key_helper"}', 0, "WARN", "NON dell'abbonamento"),
+    ('{"authMethod": "none"}', 1, "WARN", "nessun login"),
+    ('{"authMethod": "claude.ai"}', 1, "WARN", "nessun login"),          # V-1 ve #321
+    ('{"loggedIn": false, "authMethod": "claude.ai"}', 0, "WARN", "nessun login"),
+    ('{"loggedIn": "false", "authMethod": "claude.ai"}', 0, "WARN", "nessun login"),
+    ('{"authMethod": "claude.ai"}', 0, "OK", "abbonamento (claude.ai)"),
+    ("error: unknown command 'auth'", 1, "WARN", "non verificabile"),
+    ('[1, 2]', 0, "WARN", "non verificabile"),
+])
+def test_stato_abbonamento(stato, rc, esito, pezzo):
+    from brains.claude_cli import stato_abbonamento
+    run, chiamate = _cli_finta("2.1.300 (Claude Code)\n", stato, rc)
+    e, dettaglio = stato_abbonamento(binario="claude", runner=run)
+    assert (e, pezzo in dettaglio) == (esito, True), dettaglio
+    assert "2.1.300 (Claude Code)" in dettaglio
+    assert chiamate == [["claude", "--version"], ["claude", "auth", "status"]]   # mai `-p`: zero token
+
+
+@pytest.mark.parametrize("versione", ["\n", "   ", ""])
+def test_stato_abbonamento_versione_vuota(versione):
+    """#632-M2: `--version` con output vuoto o di soli spazi non fa crashare il doctor."""
+    from brains.claude_cli import stato_abbonamento
+    run, _ = _cli_finta(versione, '{"authMethod": "claude.ai"}')
+    e, dettaglio = stato_abbonamento(binario="claude", runner=run)
+    assert e == "OK" and "versione ?" in dettaglio, dettaglio
+
+
+def test_stato_abbonamento_byte_non_utf8_e_errori_inattesi(tmp_path):
+    """#632-M2: byte non UTF-8 dalla CLI vera (runner vero) e un errore qualunque del runner
+    danno WARN, mai un'eccezione."""
+    from brains.claude_cli import stato_abbonamento
+    finto = tmp_path / "claude"
+    finto.write_text("#!/bin/sh\nprintf '\\377\\376'\n")
+    finto.chmod(0o755)
+    e, dettaglio = stato_abbonamento(binario=str(finto))
+    assert e == "WARN" and "non verificabile" in dettaglio, dettaglio
+
+    def strano(cmd, timeout):
+        raise KeyError("boh")
+    assert stato_abbonamento(binario="claude", runner=strano)[0] == "WARN"
+
+
+def test_stato_abbonamento_cli_assente_e_ambiente(monkeypatch, tmp_path):
+    from brains.claude_cli import stato_abbonamento
+
+    def rotto(cmd, timeout):
+        raise FileNotFoundError("claude")
+    assert stato_abbonamento(binario="claude", runner=rotto)[0] == "WARN"
+    # con il runner vero: stesso ambiente filtrato del figlio (niente chiave API che
+    # farebbe dire «api_key» al posto del login dell'abbonamento)
+    finto = tmp_path / "claude"
+    finto.write_text("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 2.1.300; exit 0; fi\n"
+                     "if [ -n \"$ANTHROPIC_API_KEY\" ]; then echo '{\"authMethod\": \"api_key\"}';"
+                     " else echo '{\"authMethod\": \"claude.ai\"}'; fi\n")
+    finto.chmod(0o755)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-x")
+    assert stato_abbonamento(binario=str(finto))[0] == "OK"

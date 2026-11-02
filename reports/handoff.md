@@ -1,44 +1,43 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V6 «capire meglio» (chat M2, coordinata da M1)
+**Sessione:** 2026-11-02 — Voce V8: pagina «prova voci» e libreria condivisa (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su b95c95e
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #318 (https://github.com/Gasss23/Gas/pull/318). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5113212832","url":"https://github.com/Gasss23/Gas/pull/318"}`); `gh` nel cloud non è autenticato. La mergia M1 se il bot dà APPROVATO pulito; con riserve aspetta il sì dell'operatore.
-2. Dopo il merge, prova sul Mac (`reports/prova_voce_mac.md`): riga «Ho capito: …»; se Gas dice spesso «Non ho capito bene» parlando chiaro, `GAS_VOICE_STT_LOGPROB_MIN=-1.3` nel `.env`.
+1. Merge della PR #326 (https://github.com/Gasss23/Gas/pull/326). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5127333334","url":"https://github.com/Gasss23/Gas/pull/326"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
+2. Sul Mac, dopo il merge: scegliere la voce dalla pagina «prova voci»; verificare percorsi e costi della libreria condivisa.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **V6.1 — trascrizione** (lingua, prompt, modello, scarto delle trascrizioni incerte): `FATTA` — il modello era già whisper-large-v3.
-- **V6.2 — «Ho capito: …» nella pagina**: `FATTA`.
-- **V6.3 — risposte e contesto**: `FATTA` — la storia c'era già; ora la prova `tests/test_unit_voice_contesto.py`; istruzione voce che tiene il filo.
-- **V6.4 — tasto «non hai capito» con modello più grande**: `SALTATA — usiamo già il modello più grande di Groq`.
-- **Riserve bot #314** V-1 (Groq 500 conta nel tetto) e V-2 (conteggi §2): `FATTA`.
-- **Prova sul Mac della V5 passata** registrata in stato_progetto: `FATTA`.
-- gas.py / brains/: non toccati.
+- **V8 — pagina «prova voci»**: `FATTA` (review #624–#626-M2).
+- **V8b — libreria condivisa di ElevenLabs**: `FATTA` (review #627–#629-M2).
+- **Merge di main (V6, V7a, V7b, #319–#323)**: `FATTA` (review #655-M2).
+- **Bot su b95c95e** (neutral: tocca ci.yml, decide l'operatore; verdetto APPROVATO CON RISERVE): un solo giro deciso da M1 per V-1..V-4 `FATTE` — V-4 gli elenchi delle voci passano dal proxy solo se vengono dalla pagina «prova voci» (una pagina esterna non fa più spendere crediti ElevenLabs), V-3 Piper fuori dal tetto, V-2 «esito incerto» sull'aggiunta, V-1 guida senza fatti non verificati; review #656-M2 CON RISERVE (basse/cosmetiche, in §7). V-5 cosmetica: lasciata.
+- **Verifica esterna su b95c95e** (https://github.com/Gasss23/Gas/pull/326#issuecomment-6588472379): APPROVATO CON RISERVE, solo BASSE (guida Mac = V-1 bot, chiusa; §6 senza CI; server a thread singolo con Piper fino a 60 s; aggiunta all'account su API non verificata).
+- **V9**: `DEFERITA` — PR dopo il merge di questa.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- .github/workflows/ci.yml           |   5 +++--
- clients/voice/browser_client.html  |  15 ++++++++++++++-
- modules/voice/server.py            |  63 +++++++++++++++++++++++++++++++++++++++++++++++++++------------
- modules/voice/stt.py               | 112 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- reports/diff_sessione.md           |  20 +++++++++++---------
- reports/handoff.md                 | n/d
- reports/prova_voce_mac.md          |   5 ++++-
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  34 ++++++++++++++++------------------
- tests/test_unit_voice_contesto.py  | 143 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voice_server.py    |  12 ++++++++++--
- tests/test_unit_voice_stt.py       | 166 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md  |  13 +++++++
+ .github/workflows/ci.yml            |   2 +-
+ clients/voice/browser_server.py     |  79 +++++++++++++++++++++++++++++++++++++++--
+ clients/voice/prova_voci.html       | 291 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/voice/prova_voci.py         | 126 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/voice/server.py             | 198 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ modules/voice/tts.py                | 152 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md            |  16 +++++----
+ reports/handoff.md                  | n/d
+ reports/prova_voce_mac.md           |   6 ++++
+ reports/stato_progetto.md           |   3 +-
+ reports/ultimo_report.md            |  21 ++++++-----
+ tests/test_unit_voice_prova_voci.py | 685 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -46,115 +45,270 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-62803f7 feat(voce): V6 «capire meglio» — Whisper in italiano col vocabolario di Gas, «non ho capito» invece di rispondere a caso, «Ho capito: …» nella pagina (chat M2)
-9e8b69e chore(revisore): memoria review #613 — APPROVATO
-2fc86cf chore(revisore): memoria review #612 — APPROVATO CON RISERVE
-fa188bc chore(revisore): memoria review #611 — APPROVATO CON RISERVE
+3b9cb36 docs(voce-v8): report dopo bot e verifica esterna su b95c95e (PR #326, review #656-M2)
+ad71c4e fix(voce): elenchi delle voci solo dalla pagina, Piper fuori dal tetto, aggiunta con esito incerto, guida Mac senza fatti non verificati (V-1..V-4 bot #326 su b95c95e; review #656-M2)
+0f037d3 chore(revisore): memoria review #656 — APPROVATO CON RISERVE
+b95c95e docs(voce-v8): numero della PR #326 nei report
+d093871 docs(voce-v8): report di fine task (review #624–#629-M2, #655-M2)
+8e88e78 Merge remote-tracking branch 'origin/main' into feat/voce-v8-m2
+87007ff docs(voce-v8): guida Mac per la libreria delle voci
+bb1fd62 feat(voce): V8b — «prova voci» cerca anche nella libreria condivisa di ElevenLabs (chat M2)
+d5edc3d chore(revisore): memoria review #629 — APPROVATO
+5f52963 chore(revisore): memoria review #628 — APPROVATO CON RISERVE
+4fdf4dd chore(revisore): memoria review #627 — APPROVATO CON RISERVE
+f6ef710 docs(voce-v8): guida Mac per la pagina «prova voci», memoria review #626
+2116699 feat(voce): V8 — pagina «prova voci»: scegliere la voce di Gas all'ascolto (chat M2)
+83d1c3b chore(revisore): memoria review #625 — APPROVATO CON RISERVE
+ba7432c chore(revisore): memoria review #624 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Il commit 62803f7 è stato rivisto in tre passaggi sullo stesso diff staged (tra un passaggio e l'altro cambiano solo `modules/voice/stt.py` e `tests/test_unit_voice_stt.py`, per chiudere le riserve; le righe citate dai primi due verdetti si riferiscono alla copia di allora). Verdetti integrali:
+Commit della V8 (2116699): tre passaggi del revisore.
 
-Review #611-M2 (primo passaggio):
+Review #624-M2:
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #611-M2 (il contatore della memoria era a #610). Ho esaminato il diff staged di feat/voce-v6-m2 (7 file, +441/−22, base b472fe1). Ho letto CLAUDE.md, la memoria del revisore (le lezioni sulla voce M2 da #581 a #587) e la parte di stato_progetto che riguarda la voce.
+Review #624-M2. Branch feat/voce-v8-m2, solo il diff staged (7 file). Prima ho letto CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (letto in parte) e la mia memoria.
+
+**Cosa ho controllato nel diff:**
+- `modules/voice/prova_voci.py:30`: `voce_valida` accetta solo id di 8-40 caratteri tra lettere e cifre, con `^…$`. Rischio: un id costruito per cambiare il percorso dell'API ElevenLabs (path injection). Esito: ok. `../../v1/user` viene rifiutato sia nel server sia in `ordina_voci`, e un test lo prova.
+- `modules/voice/prova_voci.py:84`: Piper viene lanciato come lista di argomenti, senza shell. Il testo passa su stdin, il file temporaneo sta in una TemporaryDirectory, c'è timeout 60 e check=True. Rischio: comandi iniettati o processi appesi. Esito: ok. Il testo è sempre una delle frasi fisse e il modello viene da env (fidato). TimeoutExpired e un file di uscita mancante vengono intercettati in `modules/voice/server.py:678` (OSError e SubprocessError).
+- `modules/voice/server.py:309`: su POST /voci/prova l'autenticazione viene controllata prima di leggere il corpo, e Content-Length deve stare tra 0 e 4096. Un valore non numerico vale -1 e porta a 400. Esito: ok. Il server è HTTP/1.0, quindi un corpo non letto dopo un 401 non contamina la richiesta successiva.
+- `modules/voice/server.py:684`: la prova viene contata nel tetto prima della sintesi, solo per ElevenLabs e solo se la chiave c'è. Esito: ok, ed è prudente (anche le prove fallite contano). Il test riproduce [200, 200, 429] e il fixture azzera `prove_voci`. Il controllo di `frase` (int, non bool, nell'intervallo) è corretto.
+- `modules/voice/server.py:612`: il nuovo `do_GET` risponde 405 su tutti i percorsi tranne /voci/elenco, che richiede autenticazione. Il vecchio comportamento è conservato, e il test verifica 405 su `/altro`. I GET su /voice restano 405.
+- `clients/voice/browser_server.py:114`: il proxy taglia il corpo a 4096 byte e lo inoltra col token. Un corpo più lungo arriva troncato e il server risponde 400. Gli errori di rete diventano 502 in `clients/voice/browser_server.py:237`. Esito: ok.
+- `clients/voice/prova_voci.html`: tutti i dati arrivano nella pagina con textContent, nessun innerHTML. URL.revokeObjectURL viene chiamato prima di ogni nuovo audio. Esito: ok, e c'è il test con `<b>` nel nome.
+- `.github/workflows/ci.yml:126`: il nuovo file di test è aggiunto alla voice suite. Esito: ok. Non tocca paths-ignore né i check obbligatori.
+
+Test: `tests/test_unit_voice_prova_voci.py` dà 27 passed. Ho riprodotto a mano il caso della riserva 2.
+
+**Riserve (da tracciare in stato_progetto.md):**
+- **R-624-1-M2 (MEDIA-BASSA), regola «niente cloni».** `modules/voice/prova_voci.py:62` esclude solo la categoria `cloned`, cioè un elenco di categorie vietate. L'API di ElevenLabs ha anche la categoria `famous`, che oggi passerebbe in silenzio. Proposta:
+  - usare un elenco di categorie ammesse (es. premade, generated, professional) invece di un elenco di vietate;
+  - dichiarare che il filtro vale solo nell'elenco mostrato: il POST di `modules/voice/server.py:638` accetta qualunque id valido, compresa una voce clonata indicata a mano.
+- **R-624-2-M2 (BASSA).** In `modules/voice/tts.py:159`, se ElevenLabs risponde con `{"voices": 5}` il ciclo a `modules/voice/tts.py:165` solleva TypeError. Riprodotto. `do_GET` non lo intercetta: il server resta vivo grazie a socketserver, ma la pagina non riceve nessun JSON con «errore». Correzione: `if not isinstance(voci, list): raise ElevenLabsTTSError(...)`.
+- **R-624-3-M2 (COSMETICA).** A `modules/voice/server.py:244`, `turni_parlati` ha perso il suo commento. A `modules/voice/server.py:245` `prove_voci` ha due commenti, e il secondo («V4/V5 … Groq») è quello vecchio finito lì per sbaglio.
+- **R-624-4-M2 (BASSA, preesistente).** Il proxy del browser non controlla Origin né Host. Una qualunque pagina aperta nel browser dell'operatore può mandare un POST a 127.0.0.1:9000/voci/prova e spendere caratteri ElevenLabs. La spesa è limitata dal tetto di 40 prove all'ora. Lo stesso problema esiste già, ed è più grave, su /voice.
+- **Nota (BASSA, nessuna azione obbligatoria).** Le prove con Piper non contano nel tetto (corretto: è gratis). Però il server voce gestisce una richiesta alla volta e una prova Piper può tenerlo occupato fino a 60 secondi.
+
+**Cosa non ho verificato:**
+- Comportamento reale di Piper e della vera API /v1/voices di ElevenLabs (nomi effettivi delle categorie ed etichette): qui non ci sono rete né il comando piper, e nei test sono finti.
+- Esito della suite voce completa con browser (i 213 passed dichiarati): l'ho lanciata, ma non era finita entro il tempo della review, quindi non lo confermo.
+- La qualità delle candidate «stile maggiordomo» all'ascolto: è un giudizio umano.
+
+**Contatore e memoria:**
+- Ho aggiunto la riga #624-M2 e una lezione nuova (i filtri etici sulle categorie di un'API esterna vanno fatti con un elenco di ammesse; dichiarare se valgono anche lato server).
+- La memoria è committata da sola in ba7432c; il diff staged (7 file) è rimasto com'era.
+- Non ho committato nient'altro.
+
+File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
+Review #625-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ri-review #625-M2 del branch feat/voce-v8-m2: diff staged, 7 file, nessun commit fatto da me sul codice. Prima della review ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md e .claude/agents/memoria_revisore.md.
 
 **Cosa ho esaminato nel diff**
-- modules/voice/stt.py:223 — controlla che il JSON di Groq sia un oggetto e chiama `_motivo_incerta` solo se il testo non è vuoto. Rischio esaminato: una risposta che è una lista manderebbe in crash `data.get`. Esito: ok, ora diventa GroqSTTError, che il server trasforma in 502, e c'è il test.
-- modules/voice/stt.py:66 — `_motivo_incerta` fa la media dei segmenti pesata per durata (minimo 0,01 s, quindi niente divisione per zero). Se un segmento non è un dizionario o mancano i campi, la trascrizione non viene scartata. Rischio esaminato: scarti a caso se Groq cambia formato. Esito: ok, cade dal lato sicuro.
-- modules/voice/stt.py:89 — scarta se la probabilità di silenzio (`no_speech`) supera 0,8, oppure se la confidenza media (`logprob`) è sotto −1,0. Esito: **riserva R-611-1-M2 (MEDIA)**. Whisper considera un pezzo «silenzio» solo se la probabilità di silenzio è alta E la confidenza è bassa. Qui basta la prima. Su whisper-large-v3 la probabilità di silenzio è nota per essere poco affidabile e alta anche su parlato vero, soprattutto sulle parole singole. Quindi un «sì» breve e chiaro può finire in «Non ho capito bene», proprio il caso d'uso che l'operatore ha provato. Nessun test copre un «sì» con silenzio 0,85 e confidenza −0,2. Proposta: scartare per silenzio solo se c'è anche confidenza bassa (per esempio sotto −0,5), oppure tarare sul Mac con la variabile d'ambiente. In ogni caso aggiungere un test che fissi il comportamento scelto.
-- modules/voice/stt.py:24 — prompt col vocabolario di Gas. Esito: **riserva R-611-2-M2 (BASSA)**. Sul silenzio Whisper a volte ripete il testo del prompt («Gas, forte, lead, bozza…»). Questo caso non è nell'elenco delle frasi inventate, quindi arriverebbe al kernel come richiesta. In parte lo copre già la soglia di silenzio. Suggerimento: considerare incerta una trascrizione che contiene un pezzo lungo del prompt.
-- modules/voice/server.py:292 — salva la trascrizione in `self._capito` prima di togliere «forte». Rischio esaminato: con connessioni HTTP/1.1 che restano aperte, una richiesta scritta potrebbe ricevere il «capito» di una richiesta precedente. Esito: ok. `HTTPServer` usa HTTP/1.0 (nessun `protocol_version` nel repo), quindi ogni richiesta ha la sua istanza. Il test `test_v6_risposta_dice_cosa_ha_capito` controlla che la risposta scritta non abbia «capito».
-- modules/voice/server.py:351 — `_rispondi_senza_turno`, usato sia per «uso» sia per «non ho capito». Ha 3 formati: audio+testo, solo audio, JSON. Rischio esaminato: il refactor di «uso» cambia il comportamento? Esito: ok, stessi rami di prima, solo i campi `uso`/`non_capito` e «capito» in più.
-- modules/voice/server.py:452 — nel log va solo `exc.motivo`, cioè numeri o la frase fissa, mai il parlato. La registrazione nel tetto orario resta prima di `transcribe_audio`. Esito: ok per la privacy e per la regola sulla gestione degli errori (sez. 9 di CLAUDE.md).
-- clients/voice/browser_client.html:630 — mostra «Ho capito» con `textContent` e accetta solo stringhe. Esito: ok. Il test nel browser verifica che `<b>` resti testo e non diventi HTML. Qui la suite browser è stata saltata: mi baso sui vostri 10 passed.
-- modules/voice/server.py:113 — `_CONTESTO_VOCE` aggiunto a entrambe le istruzioni vocali. Resta un'istruzione del singolo turno: non entra nella cronologia e non tocca `_get_window`. Esito: ok.
-- tests/test_unit_voice_contesto.py:75 — usa il kernel vero, con finto solo il runner di `claude -p` e finto solo il client OpenAI. Esito: ok. Non simula l'output dei tool (nessun antipattern della sez. 5: niente slicing della cronologia, niente tool simulati). Il mutante su `_get_window` riportato da voi è credibile per come sono scritte le asserzioni.
-- tests/test_unit_voice_stt.py:538 — **R-611-3-M2 (COSMETICA)**: la docstring dice «anche con forte davanti», ma il test usa «Gas, dimmi i lead» senza «forte».
+- `modules/voice/prova_voci.py:34` — `CATEGORIE_AMMESSE` è ora un elenco di categorie ammesse (premade, generated, professional). Rischio esaminato: che una voce famous, clonata o di una categoria nuova arrivi nell'elenco. Il filtro in `ordina_voci` scarta tutto ciò che non è nell'elenco e il test copre famous, categoria nuova e professional. Esito: ok, R-624-1-M2 (prima parte) chiusa.
+- `modules/voice/server.py:659` — POST /voci/prova accetta solo id presenti in `voci_ammesse`, oppure «piper»; altrimenti risponde 409 prima di toccare il tetto orario e prima di qualunque chiamata a ElevenLabs. Rischio esaminato: che un id valido scritto a mano (per esempio un clone) venga sintetizzato. Il test `test_prova_voce_non_elencata_rifiutata` verifica 409 e zero chiamate al TTS. Esito: ok, R-624-1-M2 chiusa.
+- `modules/voice/server.py:633` — `voci_ammesse` viene riempito solo quando l'elenco riesce. Rischio esaminato: un elenco vecchio che resta valido. Se l'elenco fallisce, o se la chiave ElevenLabs manca, resta in vigore quello precedente. Era comunque già filtrato, quindi non lascia passare cloni. Esito: riserva BASSA (R-625-2-M2).
+- `modules/voice/tts.py:162` — se `voices` non è una lista, ora viene sollevato `ElevenLabsTTSError`. Un JSON che è una lista al primo livello finisce in AttributeError, che viene intercettato e diventa lo stesso errore. Rischio esaminato: un TypeError che non viene intercettato in do_GET. Testato con `{"voices": 5}` e `[1, 2]`. Esito: ok, R-624-2-M2 chiusa.
+- `modules/voice/server.py:244` — i commenti di `turni_parlati` (V4/V5) e `prove_voci` (V8) sono ora corretti e separati. Esito: ok, R-624-3-M2 chiusa.
+- `clients/voice/browser_server.py:108` — `_stessa_origine()` gira in testa a tutte le POST (riga 119), quindi anche su /voice. Rischio esaminato: un sito esterno che fa parlare Gas o spende prove di voce. Con Origin diverso risponde 403 e il server voce non riceve niente (lo verifica il test, `viste == []`). Origin «null» viene rifiutato perché il suo netloc è vuoto. Esito: ok per il caso cross-site, R-624-4-M2 chiusa. Resta però un limite, vedi R-625-1-M2.
+- `clients/voice/browser_server.py:352` (contesto, file nel diff) — il proxy ascolta solo su 127.0.0.1. È il presupposto della riserva qui sotto.
 
-**Test eseguiti da me**
-- test_unit_voice_stt + test_unit_voice_contesto: 54 passed.
-- test_unit_voice_server + test_unit_voice_tts: 101 passed (i test nel browser sono stati saltati qui perché non obbligatori in questo ambiente).
+**Riserve (BASSE, da tracciare in stato_progetto.md)**
+- R-625-1-M2: il confronto Origin==Host non regge un DNS rebinding. Esempio: una pagina su evil.example:9000 viene fatta risolvere a 127.0.0.1; Origin e Host valgono entrambi «evil.example:9000», quindi la richiesta passa. Lo stesso vale per GET /config. Correzione: aggiungere una lista di Host ammessi (127.0.0.1:porta, localhost:porta). Il problema esisteva già prima di questa fetta, che anzi lo riduce.
+- R-625-2-M2: `voci_ammesse` non si azzera quando l'elenco fallisce (vedi sopra). Impatto trascurabile.
 
-**Rischi esplicitamente esclusi**
-- Taratura reale delle soglie (−1,0 / 0,8) su audio vero dal Mac, sia per il «sì» brevissimo sia per il rumore della TV: non riproducibile qui senza microfono né Groq vero. Per questo R-611-1-M2 è una riserva e non un blocco.
-- Suite browser obbligatoria (Playwright): non eseguita, saltata in questo ambiente.
-- Mutanti: non li ho rieseguiti, ho controllato solo che le asserzioni li prenderebbero.
-- `_soglia_env` accetta «nan»/«inf» (con nan non scarterebbe mai): impatto trascurabile, non verificato oltre.
+**Cose verificate eseguendo**
+- `tests/test_unit_voice_prova_voci.py`: 33 passed.
+- Suite voce completa, quella di CI, con `GAS_TEST_BROWSER_OBBLIGATORIO=1`: 219 passed in 262 s. Il numero coincide con quello dichiarato.
+- `.github/workflows/ci.yml:126`: il nuovo file di test è aggiunto al passo della suite voce, senza `paths-ignore`. Ok.
 
-**Coerenza col progetto**
-- gas.py e brains non sono toccati.
-- Fail-safe: le eccezioni sono tutte intercettate e la risposta resta 200 o un errore dichiarato.
-- Il tetto orario resta coerente con V-1 bot #314.
-- Le riserve vanno tracciate in reports/stato_progetto.md prima del commit.
+**Rischio escluso**
+- Non ho verificato il comportamento reale di Piper né la risposta vera di ElevenLabs su /v1/voices (categorie effettive dell'account): servirebbero un binario, un modello e una rete veri, non disponibili in dev; i test usano sostituti finti.
+- Non ho riprodotto un vero DNS rebinding con il browser: R-625-1-M2 è ricavata leggendo il codice.
+- La nota su Piper, che occupa il server single-thread fino a 60 s, è accettata come dichiarata (prova manuale e rara).
+
+Non ho trovato antipattern del Wall of Shame: niente slicing della history, niente simulazione di tool, `_get_window` e i tetti non sono toccati. Le eccezioni dei provider (ElevenLabsTTSError, OSError, SubprocessError) vengono intercettate, loggate con warning e trasformate in 502/503, senza crash.
 
 **Memoria**
-Ho scritto la riga #611-M2 e una lezione (confrontare le soglie di scarto con la regola AND di Whisper) in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con commit_memoria_revisore.sh (fa188bc). Il diff staged è intatto (7 file). Non ho fatto altri commit.
+Ho aggiunto la riga contatore #625-M2 e una lezione (Origin==Host non basta contro il DNS rebinding) a /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con lo script (83d1c3b).
 
-Review #612-M2 (dopo le correzioni di R-611-1/2/3-M2):
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Ri-review #612-M2 sulle modifiche fatte dopo la #611-M2 (branch feat/voce-v6-m2, diff staged di 7 file, non committato da me). Ho letto CLAUDE.md, lo stato del progetto (solo con ricerche mirate) e la mia memoria. Ho rifatto i test: stt + contesto **59 passed**. Ho provato tre mutanti e ogni volta ho rimesso stt.py com'era (nessuna modifica non in staging su stt.py).
-
-**Elementi del diff esaminati**
-- `modules/voice/stt.py:107` — il silenzio scatta solo se `no_speech > soglia` E `logprob < _LOGPROB_SILENZIO` (-0,5). Rischio: un «sì» breve e chiaro viene scartato. Mutante senza la condizione AND → 1 failed (`test_v6_si_breve_e_chiaro_passa_anche_con_no_speech_alto`). Esito: ok, **R-611-1-M2 chiusa**. Nota: -0,5 è più severo del -1 di Whisper. Va bene, perché sotto -1 scarta comunque la regola della confidenza.
-- `modules/voice/stt.py:76` — `_soglia_env` con `math.isfinite`. Rischio: «nan» o «inf» spengono il controllo. Mutante senza isfinite → 1 failed (`test_v6_soglie_da_env`). Esito: ok.
-- `modules/voice/stt.py:87` — controllo dell'eco del prompt (almeno 4 parole, almeno l'80% del prompt). Rischio: le richieste vere e brevi vengono scartate. Mutante → 2 failed, come mi hai detto. Esito: **riserva** (vedi R-612-1-M2).
-- `tests/test_unit_voice_stt.py:560` — il test del «capito» ora usa «Gas, forte: dimmi i lead», controlla il testo intero e `cervello == "forte"` sui kw salvati prima della richiesta scritta (il kernel finto li registra a `tests/test_unit_voice_stt.py:47`). Esito: ok, **R-611-3-M2 chiusa**.
-
-**Caso limite che mi hai chiesto: il rischio NON è accettabile così com'è**
-- **R-612-1-M2 MEDIA**: il controllo dell'eco (`modules/voice/stt.py:87`) guarda le parole come un insieme, non come una sequenza. Il prefisso «Gas, forte» porta già 2 parole del prompt in ogni comando parlato al cervello forte. L'ho verificato con `_motivo_incerta` e confidenza buona: vengono scartate «Gas forte report merge», «Gas forte memoria lead», «firma bozza lead forte» e soprattutto **«Gas, forte, firma la bozza»** (4 parole su 5 = 0,8, proprio sulla soglia).
-  - Lo scarto è deterministico: ripetere la frase non serve, bisogna riformularla o scriverla.
-  - Passano invece «Claude merge PR» (3 parole), «Gas, forte: dimmi i lead» e «manda il report in Telegram con Claude».
-  - Niente crash, e l'operatore vede cosa è stato sentito: per questo resta riserva e non blocco.
-  - Correzione proposta: considerarla eco solo se la sequenza di parole è un pezzo contiguo del prompt. Le due eco del test lo sono, i comandi veri no. In alternativa: solo con no_speech non basso.
-  - Va aggiunto un test in cui «Gas, forte, firma la bozza» passa.
-- R-611-2-M2 (l'eco del prompt) è quindi chiusa nel merito, ma lascia questa riserva nuova.
-
-**Cosa non ho verificato**
-- Il comportamento reale di whisper-large-v3 su Groq: no_speech e logprob veri su un «sì» o sul silenzio, e se l'eco reale del prompt è sempre contigua. Serve l'audio vero sul Mac, che qui non è riproducibile. Le soglie restano da tarare con la prova sul Mac.
-- Non ho rifatto i test di server, tts e browser: rispetto alla #611 quei file non sono cambiati.
-
-**Memoria**: ho aggiunto la riga #612-M2 e una lezione (provare i filtri per parole chiave con i comandi veri più corti, prefisso «Gas, forte» compreso) in /home/user/Gas/.claude/agents/memoria_revisore.md. Commit 2fc86cf, solo quel file; lo staging del diff resta com'era (7 file).
-
-Review #613-M2 (diff finale committato in 62803f7):
+Review #626-M2 (diff finale committato in 2116699):
 
 ## VERDETTO: APPROVATO
 
-Ho controllato la ri-review #612-M2 sul branch feat/voce-v6-m2: il diff staged ha 7 file e il delta riguarda solo stt.py e il suo test. Ho letto CLAUDE.md (sez. 5), stato_progetto.md (con grep) e memoria_revisore.md, dove le righe #611-M2 e #612-M2 riportano le riserve R-611-* e R-612-1-M2.
+Ri-review #626-M2 di #625-M2. Branch feat/voce-v8-m2, diff staged di 7 file. Prima della review ho letto CLAUDE.md (in contesto), la sezione voce di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
 
-Elementi del diff esaminati:
-- `modules/voice/stt.py:60` — `_PAROLE_PROMPT` ora è una tupla ordinata delle parole del prompt, 30 in tutto. «l'assistente» si spezza in «l» e «assistente», allo stesso modo per prompt e trascrizione. Rischio esaminato: un ordine non stabile o una tokenizzazione diversa tra i due lati. Esito: ok.
-- `modules/voice/stt.py:63` — `_pezzo_del_prompt` cerca la sequenza come finestra contigua. Rischio esaminato: falsi positivi e casi limite (n più lungo del prompt dà un range vuoto, quindi False). Esito: ok. Nota COSMETICA: il tipo è `parole: list` e non `list[str]`.
-- `modules/voice/stt.py:95` — l'eco scatta solo se la frase ha almeno 4 parole ed è un pezzo contiguo del prompt; il filtro a insieme con quota 80% è sparito. Le sonde che ho lanciato io: passano «Gas, forte, firma la bozza», «Gas forte report merge», «Gas forte bozza firma contatto», «report PR merge», «con Gas» e «memoria»; vengono scartate «Gas forte lead bozza» e «lead bozza firma contatto». Esito: ok, **R-612-1-M2 chiusa**. Il rischio residuo che hai indicato è reale ma stretto: la frase deve essere solo parole del prompt, nel suo stesso ordine e senza parole in mezzo, e l'operatore vede «Ho capito».
-- `tests/test_unit_voice_stt.py:247` e `tests/test_unit_voice_stt.py:258` — i test parametrici scartano le eco e fanno passare le richieste vere con parole del prompt. Ho riprodotto il mutante con la vecchia regola a insieme 80%: 4 failed, 57 passed. Ho poi rimesso il file com'era; l'index staged non è stato toccato. Ho riprodotto anche stt + contesto: 63 passed. Esito: ok.
+**Elementi del diff esaminati**
+- `clients/voice/browser_server.py:111` — `_host_locale()` accetta solo `127.0.0.1:<porta>`, `localhost:<porta>` e `[::1]:<porta>`, con la porta presa da `server_address[1]` (quella vera anche quando il proxy parte con la porta 0). Rischio esaminato: DNS rebinding, cioè un sito esterno che si fa risolvere a 127.0.0.1. In quel caso il browser manda il nome del sito in Host e la richiesta viene rifiutata. Il confronto non distingue maiuscole e minuscole. Una richiesta senza Host passa, ma un browser lo manda sempre, quindi il caso riguarda solo client locali. — **ok**
+- `clients/voice/browser_server.py:81` — la guardia sta in testa a do_GET, quindi copre la pagina, /config e /voci/elenco. Prova: ho tolto la guardia e `test_proxy_solo_host_locale[evil.example-403]` è fallito; poi ho ripristinato dall'index. — **ok**
+- `clients/voice/browser_server.py:133` — in do_POST la guardia viene prima di `_stessa_origine`. Il test usa apposta Origin uguale a Host (`evil.example`), cioè il caso che il solo controllo Origin==Host lasciava passare, e verifica che il server voce non riceva niente (`viste == []`). — **ok**
+- `modules/voice/server.py:628` — `voci_ammesse` viene azzerato a ogni GET /voci/elenco e riempito solo se l'elenco riesce. Rischio esaminato: resta valido un elenco vecchio. Prova: ho tolto l'azzeramento e `test_elenco_fallito_azzera_le_voci_ammesse` è fallito; poi ho ripristinato dall'index. Il server voce è un `HTTPServer` a thread singolo (`modules/voice/server.py:753`), quindi non c'è corsa tra l'azzeramento e il nuovo riempimento. — **ok**
+- Contesto: `clients/voice/browser_server.py:369` — il proxy ascolta solo su `("127.0.0.1", browser_port)`.
 
-Nessun antipattern del Wall of Shame: il delta non tocca né slicing della storia né output simulato dei tool. Il fail-safe resta: `TrascrizioneIncerta` viene alzata solo dentro `transcribe_audio`.
+**La tua domanda (Host non locale e uso legittimo):** non rompe niente. Il proxy ascolta solo su 127.0.0.1, quindi da un altro computer della rete non era raggiungibile nemmeno prima. Un uso dalla rete locale richiederebbe di cambiare l'indirizzo su cui ascolta, e sarebbe una scelta di sicurezza da riesaminare a parte. Nota minore e innocua: `[::1]` non arriva mai, perché il proxy non ascolta su IPv6.
 
-Non ho verificato:
-- il comportamento reale di Whisper large-v3 su Groq (frequenza delle eco del prompt sul silenzio, quanto sono tarate le soglie). Non si riproduce qui senza audio e chiave; va provato sul Mac (reports/prova_voce_mac.md).
-- le suite server e browser: il delta di questa ri-review non le tocca.
+**Test:** `tests/test_unit_voice_prova_voci.py` 37 passed. Dopo le due prove, il motore nel working tree coincide di nuovo con l'index.
 
-Riga contatore `#613-M2` scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (commit 9e8b69e, messaggio `chore(revisore): memoria review #613 — APPROVATO`). Nessuna lezione nuova. Il diff della fetta non l'ho committato.
+**Rischio escluso:** non ho verificato il comportamento con un browser vero e un DNS rebinding reale. Il test simula l'header Host con http.client. Non ho rilanciato la suite voce completa con browser (223 passed): mi fido del tuo dato.
+
+**Memoria:** la riga contatore #626-M2 è in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Ma `bash scripts/commit_memoria_revisore.sh` è stato **bloccato dal sistema dei permessi** (motivo dato: commit non richiesto, coerente col tuo «Non committare»). Quindi la riga **non è committata**: va inclusa nel commit di fine task.
+
+Commit della V8b (bb1fd62): tre passaggi del revisore.
+
+Review #627-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #627-M2: fetta V8b, branch feat/voce-v8-m2, diff staged di 6 file sopra 2116699. Ho letto, come richiesto, CLAUDE.md (sez. 5), stato_progetto e memoria_revisore (lezioni #624-626-M2 applicate).
+
+**Elementi del diff esaminati**
+- `modules/voice/prova_voci.py:103`: regex alfanumerica 8-80 per il proprietario; insieme a `voce_valida` filtra in `ordina_libreria` prima che owner e id entrino in `libreria_ammesse`. Rischio esaminato: iniezione nel percorso (`/`, `?`, `..`). **ok**
+- `modules/voice/server.py:689`: l'aggiunta accetta solo un id presente nella mappa dell'ultima ricerca; owner e nome vengono dal server, non dal client; un id assente dà 409. Un JSON non-dict o non UTF-8 finisce nel ramo 400, catturato. Rischio esaminato: id o owner arbitrari e path injection in `modules/voice/tts.py:262`. **ok**
+- `modules/voice/server.py:699`: tetto di 5 aggiunte all'ora, contato prima della chiamata (anche un tentativo fallito consuma lo slot, scelta prudente). Server single-thread, quindi niente gara. Mutante riprodotto (`if False:`): test_server_aggiunta_tetto_ed_errore fallisce; file ripristinato dall'index. Rischio esaminato: spesa e slot illimitati. **ok**
+- `modules/voice/tts.py:239`: l'anteprima passa solo se è una stringa che inizia con `https://`, altrimenti resta vuota. In `clients/voice/prova_voci.html:226` va in `player.src`, cioè un media element che non esegue script; tutto il resto è inserito via textContent. Ho verificato che nessuna CSP blocchi l'anteprima. Rischio esaminato: schema `javascript:`/`data:` e XSS. **ok**
+- `modules/voice/server.py:652`: `_libreria` azzera `libreria_ammesse` in testa (lezione R-625-2), e gli errori ElevenLabs e di rete tornano nel JSON con 200, mai un crash. Il caso «voices non è una lista» è coperto. **ok**
+- `clients/voice/browser_server.py:94` e `clients/voice/browser_server.py:139`: inoltro dei due nuovi percorsi dopo le guardie Host/Origin già approvate, con il corpo cappato a 4096 byte. **ok**
+
+**Riserve**
+- **R-627-1-M2 (MEDIA)**: `modules/voice/prova_voci.py:101` ammette la categoria `high_quality` della libreria, che a mia memoria sono cloni istantanei, DA VERIFICARE. Se una voce così, una volta aggiunta, compare nell'account come `cloned`, la lista bianca dell'account la scarta (`modules/voice/prova_voci.py:34`). La pagina però dice «ora è nell'elenco qui sopra» (`clients/voice/prova_voci.html:198`): l'operatore spende uno slot e la voce non appare. Soluzioni: o si toglie `high_quality`, o la si verifica sul Mac e si scrive l'esito nella pagina.
+- **R-627-2-M2 (BASSA)**: ci sono affermazioni su limiti e costi non verificate, contro la richiesta di M1:
+  - «occupano uno spazio voce» (`modules/voice/prova_voci.py:107` e la docstring di `_aggiungi_voce`);
+  - «gratis» sull'anteprima (`clients/voice/prova_voci.html:224` e `:178`).
+  Vanno marcate «da verificare» oppure tolte.
+- **R-627-3-M2 (COSMETICA)**: dopo l'aggiunta `fraseEl.textContent = ""` ricostruisce il select delle frasi e perde la frase scelta.
+
+«Niente cloni di attori»: rispettato. La lista bianca esclude `famous` e le categorie nuove, e vale anche lato server tramite `libreria_ammesse`. Si prova solo con le frasi fisse.
+
+Test: tests/test_unit_voice_prova_voci.py dà 45 passed.
+
+**Rischio escluso**: forma reale dell'API (percorsi, nomi dei filtri, campi, categoria che una voce aggiunta prende nell'account, costi e limiti del piano). Non è verificabile: la rete del cloud blocca elevenlabs.io e il codice è dichiarato «DA VERIFICARE». Non ho rilanciato la suite voce completa (231 dichiarati dall'agente), ma solo il file di test della fetta. Non ho revisionato reports/prova_voce_mac.md, che non è staged.
+
+Memoria: riga #627-M2 più una lezione (le liste bianche di categorie libreria → account vanno verificate in coppia) aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md e committate con scripts/commit_memoria_revisore.sh. L'index della fetta è intatto; non ho committato altro.
+
+Review #628-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ri-review #628-M2 dopo la #627-M2 (branch feat/voce-v8-m2, diff staged di 6 file). Le tre riserve della #627 sono chiuse. Restano due riserve minori.
+
+Cose del diff che ho esaminato:
+- `modules/voice/prova_voci.py:104` — Ora le categorie ammesse dalla libreria sono solo `professional` e `generated`. Rischio controllato: un clone istantaneo che nell'account diventa «cloned» e non si vede. Il test `test_ordina_libreria` lo esclude. Esito: ok, R-627-1-M2 chiusa lato server.
+- `clients/voice/prova_voci.html:204` — La pagina dice «ora è nell'elenco» solo se `j.id`, l'id nuovo che il server riceve da ElevenLabs (`modules/voice/server.py:714`), compare nell'elenco ricaricato. Rischio controllato: un messaggio di successo falso. Ho fatto un mutante che rende la condizione sempre vera: il test nel browser `[True]` fallisce. Esito: ok.
+- `clients/voice/prova_voci.html:198` — La pagina salva la frase scelta prima di ricaricare e la rimette dopo (riga 202). Ho tolto il ripristino con un mutante: il test nel browser `[False]` fallisce. Ho rimesso il file come nell'index con `git checkout`: il working tree coincide di nuovo con lo staged. Esito: ok, R-627-3-M2 chiusa.
+- `modules/voice/prova_voci.py:110` — Avviso: «probabilmente occupano uno spazio voce: DA VERIFICARE», e la gratuità dell'anteprima viene dichiarata non verificata. La docstring di `modules/voice/server.py:683` è allineata. Ho cercato «gratis» in tutto il codice: resta solo per Piper, che è locale (`clients/voice/prova_voci.html:276`), e in un commento di `browser_client.html` sulla voce di sistema. Esito: ok, R-627-2-M2 chiusa.
+- `clients/voice/prova_voci.html:260` — Contesto: `caricaElenco` restituisce `[]` anche quando la lettura fallisce. Esito: riserva, vedi R-628-1-M2.
+
+Test: `tests/test_unit_voice_prova_voci.py` dà 46 passed, compresi i 2 casi nel browser.
+
+Riserve:
+- **R-628-1-M2 BASSA**: se `/voci/elenco` fallisce subito dopo un'aggiunta riuscita, `caricaElenco` restituisce `[]`. La pagina allora dice «ElevenLabs l'ha messa in una categoria che Gas non mostra: toglila dall'account», ma la causa vera è l'errore di rete. Bisogna distinguere «elenco non letto» da «letto, ma la voce non c'è», ad esempio restituendo `null` in caso di errore.
+- **R-628-2-M2 COSMETICA**: `statoLib(..., true)` alla riga 204 colora come errore anche il messaggio di successo, perché il `true` vale per tutti e due i rami del ternario.
+
+Cosa NON ho verificato: il comportamento reale di ElevenLabs. Non so se una voce `professional` o `generated` aggiunta all'account mantenga la sua categoria, né se l'id restituito coincida con quello che compare poi nell'elenco dell'account. La rete verso ElevenLabs non è disponibile in dev e i test usano dati finti. La pagina però ora lo gestisce in modo onesto, con il ramo «non compare».
+
+Memoria: ho aggiunto la riga #628-M2 e una lezione in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate da sole nel commit 5f52963. Il diff staged dei 6 file è intatto e non l'ho committato.
+
+Review #629-M2 (diff finale committato in bb1fd62):
+
+## VERDETTO: APPROVATO
+
+Ho riguardato le modifiche dopo la review #628-M2. Questa è la review #629-M2, sul branch feat/voce-v8-m2, con 6 file in staging. Prima ho fatto le letture obbligatorie: CLAUDE.md (sezioni 5 e 8, che ho nel contesto), le righe sulla voce in reports/stato_progetto.md e la fine di .claude/agents/memoria_revisore.md (lezione di #628-M2: distinguere «elenco non letto» da «elenco letto, voce assente»).
+
+**Cosa ho controllato nel diff**
+1. `clients/voice/prova_voci.html:264` — `caricaElenco` ora restituisce `null` quando la lettura fallisce per un errore di rete, una risposta non ok o un JSON rotto (il ritorno è alla riga 269). Prima restituiva `[]`. Rischio: un errore di rete scambiato per «voce assente», cioè la diagnosi falsa di R-628-1-M2. — ok. L'ho provato con un mutante: rimesso `return []` alla riga 269, il test nel browser `[rompi]` fallisce (1 failed, 2 passed). Poi ho ripristinato il file dall'index: nessuna modifica rimasta fuori dallo staging, il diff in staging è invariato (6 file, +484/-15).
+2. `clients/voice/prova_voci.html:204` — dopo l'aggiunta ci sono tre casi distinti: `null` dà «non si è ricaricato: ricarica la pagina» (errore), voce presente dà «ora è nell'elenco», voce assente dà «non compare» (errore). Rischio: la promessa falsa di R-627-1-M2 e la causa sbagliata di R-628-1-M2. — ok. Il controllo `elenco === null` viene prima di `.some` (riga 206), quindi non può esserci un TypeError su `null`. Il messaggio contiene «aggiunta», quindi l'attesa del test (`includes('aggiunta')`) si risolve anche nel caso rotto.
+3. `clients/voice/prova_voci.html:207` — il messaggio di successo chiama `statoLib` senza `true`, quindi non è più colorato come errore. Era R-628-2-M2. — ok. Nota a margine: nessun test controlla la classe CSS. È solo estetica, non la apro come riserva.
+4. `tests/test_unit_voice_prova_voci.py:309` — il server finto risponde 502 sul GET dell'elenco quando l'aggiunta è già avvenuta e `rompi` è attivo. La libreria non è toccata, perché ha un ramo suo prima (riga 299). Rischio: che il test non riproduca davvero il fallimento dopo l'aggiunta. — ok. Il conteggio dei GET dell'elenco resta 2 (riga 522) anche nel caso rotto.
+5. `tests/test_unit_voice_prova_voci.py:523` — nel caso `rompi` il test controlla «non si è ricaricato» e poi esce con `return`, quindi salta il controllo `fraseDopo`. È corretto: con l'elenco non riletto il menu delle frasi resta vuoto e la pagina chiede di ricaricare. — ok.
+6. `tests/test_unit_voice_prova_voci.py:486` — il test ora ha tre casi: `False`, `True` e `"rompi"`. Le opzioni vengono azzerate in ogni fixture (righe 286-287), quindi un caso non contamina il successivo. — ok.
+
+**Prove eseguite**: con `GAS_TEST_BROWSER_OBBLIGATORIO=1` passano 47 test su 47. Il mutante descritto al punto 1 fa fallire il caso `[rompi]`.
+
+**Cosa NON ho verificato**
+- Il comportamento sul Mac con l'API ElevenLabs vera: non si può riprodurre in sviluppo, ci sono solo server finti.
+- Nessun test copre la colorazione CSS del messaggio di successo.
+- Non ho riletto per intero `modules/voice/server.py`, `modules/voice/tts.py` e `modules/voice/prova_voci.py`: sono già stati coperti da #627-M2 e #628-M2 e questo giro non li tocca.
+
+Antipattern della sezione 5: nessuno slicing della cronologia e nessuna simulazione di output dei tool. Cervelli e `_get_window` non sono toccati.
+
+**Memoria**: aggiunta la riga #629-M2 («nessuna lezione nuova») in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (commit d5edc3d, solo quel file). Il diff in staging non l'ho toccato e non l'ho committato.
+
+Merge di origin/main (8e88e78). Review #655-M2:
+
+## VERDETTO: APPROVATO
+
+Review #655-M2: merge di origin/main (70e2f05) in feat/voce-v8-m2, con tutto in staging.
+
+**Cosa ho guardato nel diff**
+- `git diff --cached origin/main --stat`: tocca solo i 9 file attesi (prova_voci.html, prova_voci.py, server.py, tts.py, browser_server.py, ci.yml, test prova_voci, memoria, prova_voce_mac.md). Nel conflitto della memoria la parte di main viene prima e quella del branch dopo (#624–#629-M2), senza marcatori residui.
+- modules/voice/server.py:320 — l'azzeramento `self._capito = None` (V-3 bot #318) sta dopo `_t0` e `_tempi`, prima dei rami `/voci/*`. Rischio esaminato: con la connessione tenuta aperta resta il «capito» di un'altra richiesta. Ho tolto la riga a mano e il test `test_v6_capito_azzerato_a_ogni_richiesta` è fallito; ho ripristinato il file dall'index. — ok
+- modules/voice/server.py:332 — il ramo voci mette `_tempi = None` solo dopo i controlli di token e di dimensione, e ritorna prima del flusso `/voice`. Rischio esaminato: rompere i tempi V7a o il formato a pezzi V7b. Le risposte 401/400 hanno i tempi vuoti, quindi `_chiudi_tempi` non scrive nulla. `_t0` e i tempi del ramo `/voice` restano quelli di main. — ok
+- modules/voice/server.py:629 — il `do_GET` della V8 prende il posto dell'alias 405 che main usava per tutti i GET. Rischio esaminato: perdere il 405 sugli altri percorsi. `_method_not_allowed` è conservato e PUT/DELETE/PATCH restano su main. — ok
+- clients/voice/browser_server.py:133 — nel proxy della pagina, il `do_POST` controlla prima l'host locale e poi la stessa origine. `/voci/prova` e `/voci/aggiungi` passano da `_inoltra_semplice` (corpo massimo 4096 byte), mentre `/voice` resta su `_inoltra_a_pezzi` di V7b (NDJSON). Il `do_GET` mette la guardia sull'host in testa e inoltra `/voci/elenco` e `/voci/libreria`. — ok
+- .github/workflows/ci.yml:126 — prova_voci è aggiunta nello stesso passo della CI che rende il browser obbligatorio. — ok
+
+**Prove:** prova_voci, voice_server, voice_stt, voice_tts, voice_contesto e voce_ascolto: 330 passed con `GAS_TEST_BROWSER_OBBLIGATORIO=1`. Ho riprodotto il numero comunicato dal chiamante.
+
+**Rischio escluso:** non ho verificato la pagina reale sul Mac con ElevenLabs e i limiti dell'API vera, perché qui non si possono riprodurre. Non ho riletto da capo la logica V8/V8b già vista nelle review #624–#629-M2: ho controllato solo che il merge non la alteri.
+
+**Memoria:** ho aggiunto la riga #655-M2 in fondo a /home/user/Gas/.claude/agents/memoria_revisore.md. `scripts/commit_memoria_revisore.sh` non ha creato nessun commit: con il merge in corso esce senza errore, come previsto. La riga è nel file ma non ancora in staging: aggiungila allo staging e falla entrare nel commit di merge. Nessuna lezione nuova.
+
+Correzione delle note del bot su b95c95e (ad71c4e). Review #656-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #656-M2: branch feat/voce-v8-m2, PR #326, 5 file in staging. Ho letto CLAUDE.md (sezione 5), stato_progetto e la mia memoria. Nel diff non ci sono né tagli diretti della cronologia né output dei tool simulati, e i limiti di sicurezza (guardrail) del kernel non vengono toccati. Ho rilanciato `tests/test_unit_voice_prova_voci.py`: 52 passed.
+
+**Elementi del diff esaminati**
+- `clients/voice/browser_server.py:99` — le GET /voci/elenco e /voci/libreria passano solo con `X-Gas-Pagina: 1` e con `Sec-Fetch-Site` uguale a same-origin o none (se l'intestazione manca vale come same-origin). Rischio esaminato: un sito esterno che aggira il controllo. Un `<img>` o un `fetch` no-cors non possono aggiungere l'intestazione. Un `fetch` cross-origin con l'intestazione richiede un preflight, e il proxy non ha `do_OPTIONS`, quindi fallisce. Il controllo dell'Host locale (`clients/voice/browser_server.py:81`) resta prima e chiude anche il DNS rebinding. Esito: ok, V-4 chiusa.
+- `clients/voice/prova_voci.html:250` e `clients/voice/prova_voci.html:267` — le due fetch mandano l'intestazione. Rischio esaminato: la pagina che si blocca da sola. Il test aggiornato `tests/test_unit_voice_prova_voci.py:480` lo copre. Esito: ok.
+- `modules/voice/server.py:764` — il tetto orario delle prove ora sta dopo il ramo Piper. Rischio esaminato: prove ElevenLabs che non vengono più contate. L'aggiunta del timestamp a `prove_voci` resta dopo il controllo della chiave e prima di `synthesize_speech`, invariata. Piper non consumava il tetto nemmeno prima. Esito: ok, V-3 chiusa.
+- `modules/voice/server.py:716` — un `ElevenLabsTTSError` con status 200 dà «Esito incerto…». Rischio esaminato: falsi positivi. Lo status 200 nasce solo da `modules/voice/tts.py:275` (risposta ok ma senza un id leggibile), quindi la distinzione è corretta. Esito: ok, V-2 chiusa.
+- `tests/test_unit_voice_prova_voci.py:406` — test parametrico con tre casi (senza intestazione, cross-site con intestazione, solo Sec-Fetch-Site): 403 sui due percorsi e nessuna richiesta che arriva al server voce. Esito: ok.
+- `tests/test_unit_voice_prova_voci.py:154` — `server.classe = _H` scrive un attributo sull'oggetto globale della fixture, e i test lo rileggono con `globals()["server"]`. Funziona perché il nome globale e quello usato dentro il corpo della fixture sono lo stesso oggetto, ma è fragile: dipende da come pytest incapsula le fixture ed è stato globale condiviso. Esito: riserva.
+- `reports/prova_voce_mac.md:53` — «gratis» e «spazio voce» ora sono detti come cose da verificare. Esito: ok, V-1 chiusa.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- R-656-1-M2 COSMETICA: il modo di esporre la classe nei test (`server.classe` letto con `globals()`) è accettabile ma fragile. Meglio una fixture che restituisca sia la porta sia la classe, o una fixture separata `server_cls`. Non blocca.
+- R-656-2-M2 BASSA: `modules/voice/tts.py:267` (fuori dal diff) tratta ogni 2xx diverso da 200 come «non aggiunta». Sarebbe lo stesso falso negativo di V-2, oggi solo teorico.
+
+**Rischi esclusi**
+- Non ho fatto mutanti in proprio: mi affido a quelli dichiarati (proxy vecchio → 3 failed; server vecchio → 2 failed).
+- Non ho verificato il comportamento reale di `Sec-Fetch-Site` sui browser del Mac (Safari): in questo ambiente non si riproduce. Il controllo regge comunque grazie all'intestazione custom.
+- Non ho rilanciato la suite voice_server da 144 test.
+- Non ho verificato le chiamate reali a ElevenLabs: nei test sono tutte simulate.
+
+**Memoria**
+- Ho scritto la riga #656-M2 più una lezione: l'intestazione custom protegge solo finché il proxy non risponde ai preflight (se un giorno si aggiunge CORS, il controllo cade in silenzio).
+- Commit 0f037d3, fatto con `scripts/commit_memoria_revisore.sh`; il diff in staging (5 file) è rimasto intatto.
+
+File: /home/user/Gas/.claude/agents/memoria_revisore.md
 
 ## §5 DELTA TEST DEL MOTORE
 
-gas.py non toccato. Voce: `tests/test_unit_voice_stt.py` 37 → 61 test (V6: parametri a Groq, soglie, media pesata, frasi inventate, eco del prompt, «sì» breve con no_speech alto, comandi veri con parole del prompt, env non numeriche/nan/inf, JSON non oggetto, «non ho capito» senza turno, «capito» nelle risposte, V-1 bot #314); nuovo `tests/test_unit_voice_contesto.py` 2 test (kernel vero, forte e normale ricevono la conversazione); test della pagina nel browser con la riga «Ho capito». Run misurate in sessione: stt + contesto 63 passed; stt+server+tts non-browser 122 passed (prima delle correzioni finali a stt); pagina nel browser con GAS_TEST_BROWSER_OBBLIGATORIO=1: 10 passed. Mutanti presi: `_motivo_incerta` spento → 6 failed; `_get_window` ridotto all'ultimo messaggio → 2 failed; senza AND del silenzio → 1 failed; vecchia regola dell'eco a insieme → 4 failed. Nessun FAIL.
+Dopo il merge di main: `tests/test_unit_voice_prova_voci.py` + `test_unit_voice_server.py` + `test_unit_voice_stt.py` + `test_unit_voice_tts.py` + `test_unit_voice_contesto.py` + `test_unit_voce_ascolto.py`: 330 passed (`GAS_TEST_BROWSER_OBBLIGATORIO=1`). I test nuovi stanno in `tests/test_unit_voice_prova_voci.py` (aggiunto anche al passo della suite voce in `.github/workflows/ci.yml`). Dopo la #656-M2: test_unit_voice_prova_voci 52 passed; prova_voci + voice_server 144 passed (browser obbligatorio); mutanti: proxy vecchio → 3 failed, server vecchio → 2 failed. Kernel non toccato (`gas.py` identico a main).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- fa188bc, 2fc86cf, 9e8b69e, 62803f7: pushati insieme prima dell'apertura della PR #318; nessuna run della PR su questi SHA.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nel cloud: check lette dall'integrazione GitHub e dalle verifiche.
+- b95c95e: handoff-check success; verifica-bot neutral (tocca ci.yml); unit-suite in corso alla lettura della verifica esterna.
+- 3b9cb36: commit di report col testo non aggiornato (lo script di aggiornamento era fallito prima del commit); corretto da questo commit.
+- ad71c4e (correzione), 0f037d3 (memoria), 3b9cb36 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
-- Riserve di questa sessione (R-611-1/2/3-M2, R-612-1-M2): tutte chiuse (review #613-M2). Nota COSMETICA #613: tipo `parole: list` invece di `list[str]`.
-- Da provare sul Mac: le soglie della trascrizione incerta (-1,0 / 0,8) su audio vero.
-- **R-584-1-M2** BASSA (rumore costante ≥ 0,045 RMS preso per voce), **R-583-1-M2** COSMETICA, **R-576-1-M2** BASSA, **R-576-3-M2** COSMETICA (fette precedenti).
+- R-656-1-M2 COSMETICA: nei test la classe dell'handler è esposta come attributo della fixture (`server.classe`, letto con `globals()`): funziona ma è fragile.
+- R-656-2-M2 BASSA: `add_shared_voice` tratta ogni 2xx diverso da 200 come «non aggiunta» (falso negativo teorico).
+- Server voce a thread singolo: una prova Piper (fino a 60 s) blocca le altre richieste.
+
+- Percorsi, campi e costi della libreria condivisa di ElevenLabs DA VERIFICARE sul Mac (documentazione non leggibile dal cloud).
+- Pagina e proxy provati solo in locale col browser dei test; la resa vera delle voci si sente solo sul Mac.
