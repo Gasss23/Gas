@@ -1,23 +1,17 @@
-# Ultimo report — 2026-11-02 — Mani, fetta 36 (R6): strumento avvisa_operatore
+# Ultimo report — 2026-11-02 — Mani, fetta 37 (R8): voce H24, Gas sempre in ascolto sul Mac
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #319 (https://github.com/Gasss23/Gas/pull/319): l'operatore ha detto sì (tramite M1); main unita col merge bc46a27 (review #619), M1 attiva il merge automatico.
-2. Per usare lo strumento sul VPS: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_IDS` (già usati dal bot) e, se si vuole un tetto diverso da 5, `GAS_NOTIFICHE_GIORNO` (0 = spento).
+1. Merge della PR #323 (https://github.com/Gasss23/Gas/pull/323): tocca `.github/workflows/ci.yml` (macchina del bot), quindi decide l'operatore.
+2. Licenza dei modelli pronti di openWakeWord («hey_jarvis»): CC BY-NC-SA, non commerciale. Va bene per le prove, oppure si aspetta «Ehi Gas» addestrata da noi?
+3. Prova sul Mac: `bash scripts/voce/installa.sh`, poi «Hey Jarvis». Se il log `.gas_voce/ascolto.log` dice «solo silenzio assoluto», il permesso del microfono sotto launchd non è passato (vedi `scripts/voce/LEGGIMI.md`).
 
 ## Esito
-- **PR #317 (fetta 35)**: `FATTA` — mergiata (b472fe1) col sì dell'operatore.
-- **Piano a M1** (max 10 righe): `FATTA` — approvato, con le aggiunte di M1 (UNCERTAIN nel cancello, test del cancello, gas_identity.md e prompt di riserva, conto in tutti gli elenchi e in .gitignore, passo CI).
-- **Strumento `avvisa_operatore`**: `FATTA` — `modules/telegram/avviso.py` + gas.py + cancello; solo la chat dell'operatore, prefisso fisso, max 1000 caratteri, invisibili resi visibili, una per turno, tetto al giorno su file prenotato prima dell'invio, fail-closed.
-- **Conto sul diario** (punto 3 del primo piano): `SALTATA — il diario in degrado restituisce [] (= zero notifiche, tetto aperto): si usa un file come per le richieste di sviluppo, con l'ok di M1`.
-- **Review #611**: APPROVATO CON RISERVE; R-611-1..5 `FATTA`. **Review #612**: APPROVATO CON RISERVE; R-612-1 COSMETICA e R-612-2 BASSA `DEFERITA — registrate`.
-- **Bot e verifica esterna su 3db59c2**: APPROVATO CON RISERVE (bot neutral per ci.yml). V-1 (una per turno anche alla firma), V-2 ve (testo non stringa), V-3 ve (0 = spento): `FATTA` in b1d1e45. V-2 bot COSMETICA (emoji espanse) e V-5 ve BASSA (righe finte dopo il prefisso): `DEFERITA — registrate`.
-- **Review #613**: APPROVATO CON RISERVE; R-613-1..3 `FATTA`. **Review #614**: APPROVATO CON RISERVE; R-614-1 COSMETICA e R-614-2 BASSA (preesistente) `DEFERITA — registrate`.
-- **Bot e verifica esterna su 1e4bc90**: APPROVATO CON RISERVE. V-1 (tetto del giorno al cancello), V-2 ve (test della firma end-to-end), V-3 ve (valore non intero = spento): `FATTA` in 20031e4. **Review #617**: APPROVATO CON RISERVE; R-617-1/2 COSMETICHE e R-617-3 BASSA `DEFERITA — registrate`.
-- **Merge di main (PR #318, voce V6 di M2) nella #319**: `FATTA` in bc46a27, con merge e non rebase; conflitti solo nei report (tenuti i miei) e nella memoria del revisore (tenuti tutti e due i lati). Review #619 APPROVATO CON RISERVE.
-- **Secondo merge di main (PR #321, forte e `--bare` di M2) nella #319**: `FATTA` in 5331f14; conflitti nei report (tenuti i miei), nella memoria (tutti e due i lati) e nella riga «Ultimo aggiornamento» di stato_progetto (unite). Review #620 APPROVATO.
-- **Terzo merge di main (PR #320 di M2, solo documenti) nella #319**: `FATTA` in abdb3e8; conflitti solo nella memoria del revisore (tutti e due i lati) e nella riga «Ultimo aggiornamento» (unite). Nessun file del perimetro: revisore non richiesto.
-- **Voce H24 (R8)**: commit locale 8e69ab6 sul branch voce-h24 (57 test; review #615 BOCCIATO, #616 APPROVATO CON RISERVE); `DEFERITA — revisione e PR dopo il merge della #319, per non mescolare le fette`.
-- **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (indicazione di M1)`.
+- **PR #319 (fetta 36, avvisa_operatore)**: `FATTA` — mergiata (ceaa4aa) col sì dell'operatore, dopo tre merge di main (PR #318, #321, #320; review #619 e #620).
+- **Voce H24**: `FATTA` — `clients/voice/ascolto.py`, `scripts/voce/` (plist launchd, installa.sh, spegni.sh, LEGGIMI.md), dipendenze solo Mac, passo CI, 62 test.
+- **Review #615**: BOCCIATO (installa.sh si fermava in silenzio); R-615-1/2/3/6/7 `FATTA`. **#616**: R-616-1/2/3 `FATTA`. **#618**: R-618-1/2 `FATTA` in questa PR. **#621**: APPROVATO CON RISERVE (R-621-1: memoria #615/#616/#618 portata dal branch locale, `FATTA` in 5876b7e).
+- **Riserve di #319 in stato_progetto**: `FATTA` (V-1 bot e V-1/V-2 ve su 9c44686).
+- **R-615-4** (microfono sotto launchd) e **R-615-5** (licenza): `DEFERITA — da provare sul Mac / decide l'operatore`.
+- **Piano mail**: `DEFERITA — PR doc-only subito dopo la #323 (un solo branch remoto)`.
 
 ## Anomalie
-- T31g (vector store con GAS_VECTORS=1) fallisce in questo container anche su main pulito (1066 PASS, 1 FAIL): ambiente, non questa fetta.
+- T31g (vector store con GAS_VECTORS=1) fallisce in questo container anche su main: ambiente, non questa fetta (la suite kernel non è toccata).

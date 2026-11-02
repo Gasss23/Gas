@@ -1,388 +1,219 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Mani, fetta 36 (R6): strumento avvisa_operatore, notifica su Telegram all'operatore (chat Mani)
+**Sessione:** 2026-11-02 — Mani, fetta 37 (R8): voce H24, Gas sempre in ascolto sul Mac (chat Mani)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #319 (https://github.com/Gasss23/Gas/pull/319). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5113242002","url":"https://github.com/Gasss23/Gas/pull/319"}`), perché `gh` nel cloud non è autenticato. La PR tocca `.github/workflows/ci.yml` (macchina del bot): il merge lo decide l'operatore, che ha detto sì (tramite M1); M1 attiva il merge automatico.
-2. Sul VPS lo strumento usa `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_IDS` (già del bot); tetto al giorno con `GAS_NOTIFICHE_GIORNO` (default 5).
+1. Merge della PR #323 (https://github.com/Gasss23/Gas/pull/323). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5123976401","url":"https://github.com/Gasss23/Gas/pull/323"}`), perché `gh` nel cloud non è autenticato. La PR tocca `.github/workflows/ci.yml` (macchina del bot): il merge lo decide l'operatore.
+2. Licenza dei modelli pronti di openWakeWord («hey_jarvis», CC BY-NC-SA, non commerciale): va bene per le prove, oppure si aspetta «Ehi Gas» nostra? (R-615-5)
+3. Prova sul Mac: `bash scripts/voce/installa.sh`, poi «Hey Jarvis»; se `.gas_voce/ascolto.log` dice «solo silenzio assoluto», il permesso del microfono sotto launchd non è passato (R-615-4, `scripts/voce/LEGGIMI.md`).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #317 (fetta 35)**: `FATTA` — mergiata (b472fe1) col sì dell'operatore.
-- **Piano a M1**: `FATTA` — approvato, con le aggiunte di M1: avvisa_operatore UNCERTAIN nel cancello come richiedi_sviluppo, test del cancello, gas_identity.md e prompt di riserva, conto negli stessi elenchi di `.gas_richieste_uso` e in .gitignore, solo il passo in ci.yml.
-- **Strumento avvisa_operatore**: `FATTA` — `modules/telegram/avviso.py` (solo `TELEGRAM_ALLOWED_IDS` via `invia_notifica`, prefisso fisso, max 1000 caratteri, invisibili resi `<U+XXXX>`, tetto al giorno su `.gas_notifiche_uso.json` prenotato prima dell'invio, fail-closed, config controllata prima di prenotare); gas.py (una per turno, diario con la sola lunghezza, conto vietato); cancello (UNCERTAIN, conto in livello 3).
-- **Conto sul diario** (primo piano, punto 3): `SALTATA — `diario_per_tipo_dal` in degrado restituisce [] (zero notifiche = tetto aperto); file come le richieste di sviluppo, con l'ok di M1`.
-- **Review #611 (chat Mani)**: APPROVATO CON RISERVE. R-611-1 MEDIA (Cf letterali nei test), R-611-2 MEDIA (T102d vacuo), R-611-3 BASSA (standard degli invisibili), R-611-4 BASSA (invio fallito non contato per turno), R-611-5 BASSA (.gitignore): `FATTA`, tutte prima del commit.
-- **Review #612 (chat Mani)**: APPROVATO CON RISERVE. R-612-1 COSMETICA e R-612-2 BASSA: `DEFERITA — registrate`; R-612-3 (riserve in stato_progetto): `FATTA` in questo commit di fine-task.
-- **Bot su 3db59c2 (https://github.com/Gasss23/Gas/pull/319#pullrequestreview-5731093296)**: APPROVATO CON RISERVE, check verifica-bot neutral (la PR tocca ci.yml), CI verde. V-1 BASSA (il tetto di una per turno non copriva i parcheggi alla firma): `FATTA` in b1d1e45. V-2 COSMETICA (ZWJ e FE0F delle emoji espansi in <U+XXXX>): `DEFERITA — registrata`.
-- **Verifica esterna su 3db59c2 (https://github.com/Gasss23/Gas/pull/319#issuecomment-6566521136)**: APPROVATO CON RISERVE. V-1 BASSA (lo stesso del bot): `FATTA`. V-2 BASSA (testo non stringa spedito come repr): `FATTA`. V-3 BASSA (GAS_NOTIFICHE_GIORNO=0 diventava 1): `FATTA` — 0 o meno = spento. V-4 COSMETICA (= R-612-1): `DEFERITA`. V-5 BASSA (righe finte dopo il prefisso, non una firma): `DEFERITA — registrata`.
-- **Review #613 (chat Mani)**: APPROVATO CON RISERVE. R-613-1 BASSA (i controlli senza costi valevano solo dopo la firma), R-613-2 BASSA (diario del rifiuto al cancello), R-613-3 COSMETICA (messaggio con valori negativi): `FATTA` in b1d1e45. **Review #614**: APPROVATO CON RISERVE. R-614-1 COSMETICA (un controllo di T102g non prova niente da solo) e R-614-2 BASSA (preesistente: argomenti non dizionario → DENY con `_riassumi_args` grezzo nel diario, per ogni strumento): `DEFERITA — registrate`; R-614-3 (riserve in stato_progetto): `FATTA` in questo commit.
-- **Bot su 1e4bc90 (https://github.com/Gasss23/Gas/pull/319#pullrequestreview-5731250289)** e **verifica esterna su 1e4bc90 (https://github.com/Gasss23/Gas/pull/319#issuecomment-6566914211)**: APPROVATO CON RISERVE, CI verde (kernel in CI 1076 PASS, 0 FAIL). V-1 BASSA (bot e ve: col tetto del giorno pieno partiva comunque la richiesta di firma): `FATTA` in 20031e4 — `rifiuto_al_cancello` legge il conto senza scriverlo. V-2 BASSA ve (nessun test sul percorso firmato): `FATTA` — T102j end-to-end col trasporto finto. V-3 COSMETICA ve («off» o «0.0» tornavano a 5): `FATTA` — non intero = spento con warning.
-- **Review #617 (chat Mani)**: APPROVATO CON RISERVE. R-617-1 COSMETICA (messaggio «a 0 o meno» anche per un valore non intero), R-617-2 COSMETICA (controlli del conto duplicati), R-617-3 BASSA (`rifiuto_al_cancello` senza try suo, retto da quello del kernel): `DEFERITA — registrate`.
-- **Merge di main (PR #318, voce V6 di M2)**: `FATTA` in bc46a27 (merge, non rebase) — conflitti solo in handoff/ultimo_report/diff_sessione (tenuti i miei) e nella memoria del revisore (tenuti tutti e due i lati). **Review #619 (chat Mani)**: APPROVATO CON RISERVE. R-619-1 BASSA (report senza il merge) e R-619-2 COSMETICA («Ultimo aggiornamento» di stato_progetto): `FATTA` in questo commit; R-619-3 BASSA (memoria del revisore da committare dopo il merge): `FATTA` in 22a8a5b.
-- **Secondo merge di main (PR #321, forte e `--bare` di M2)**: `FATTA` in 5331f14 — conflitti nei report (tenuti i miei), nella memoria (tutti e due i lati) e nella riga «Ultimo aggiornamento» (unite). **Review #620 (chat Mani)**: APPROVATO, nessun finding.
-- **Terzo merge di main (PR #320 di M2, solo documenti)**: `FATTA` in abdb3e8 — conflitti solo nella memoria del revisore e nella riga «Ultimo aggiornamento»; nessun file del perimetro, revisore non richiesto.
-- **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (M1)`.
-- **Voce H24 (R8)**: `DEFERITA — prossima fetta, piano a M1 prima del codice`.
+- **PR #319 (fetta 36, avvisa_operatore)**: `FATTA` — mergiata (ceaa4aa) col sì dell'operatore, dopo i merge di main delle PR #318, #321 e #320 (review #619, #620).
+- **Voce H24 (piano approvato da M1, con installa.sh, spegni.sh e LEGGIMI.md chiesti da M1)**: `FATTA` — `clients/voice/ascolto.py`, `scripts/voce/`, `clients/voice/requirements-ascolto.txt`, `.gitignore`, un passo in ci.yml (ok di M1), 62 test. Scritta su un branch locale mentre la #319 aspettava, poi portata su main come un unico diff (review #621).
+- **Review #615 (chat Mani)**: BOCCIATO. R-615-1 MEDIA (installa.sh usciva in silenzio senza GAS_VOICE_PORT), R-615-2 BASSA (redirect e proxy di sistema col Bearer), R-615-3 BASSA (cartella con `$()`), R-615-6 BASSA (un clic apriva la richiesta; privacy dichiarata incompleta), R-615-7 BASSA (grep -q con pipefail, reset ridondante, log senza rotazione): `FATTA`. R-615-4 MEDIA (microfono sotto launchd) e R-615-5 BASSA (licenza): `DEFERITA — da provare sul Mac / decide l'operatore`.
+- **Review #616**: APPROVATO CON RISERVE. R-616-1 BASSA (porta del client), R-616-2 BASSA (attesa dopo la parola), R-616-3 COSMETICA (log): `FATTA`.
+- **Review #618**: APPROVATO CON RISERVE. R-618-1 BASSA (`main` senza test sull'URL) e R-618-2 COSMETICA: `FATTA` in questa PR.
+- **Review #621**: APPROVATO CON RISERVE. R-621-1 BASSA (memoria #615/#616/#618 dal branch locale): `FATTA` in 5876b7e.
+- **Riserve aperte di #319 in stato_progetto (richiesta di M1)**: `FATTA` — V-1 bot e V-1/V-2 ve su 9c44686.
+- **Piano mail**: `DEFERITA — PR doc-only subito dopo questa (un solo branch remoto)`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  11 +++++++++++
- .github/workflows/ci.yml            |   7 +++++++
- .gitignore                          |   2 ++
- gas.py                              |  72 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- gas_identity.md                     |   3 ++-
- modules/gate/gate.py                |   7 ++++++-
- modules/telegram/avviso.py          | 186 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md            |  25 +++++++++++++++---------
- reports/handoff.md                  | n/d
- reports/ripartenza_mani.md          |   2 +-
- reports/roadmap.md                  |   2 +-
- reports/stato_progetto.md           |   3 ++-
- reports/ultimo_report.md            |  37 +++++++++++++++++------------------
- tests/test_unit_avvisa_operatore.py | 218 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_gate.py             |   1 +
- tests/test_unit_kernel.py           | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md     |   8 ++++++
+ .github/workflows/ci.yml               |   8 ++++++
+ .gitignore                             |   1 +
+ clients/voice/ascolto.py               | 488 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ clients/voice/requirements-ascolto.txt |   4 +++
+ reports/diff_sessione.md               |  24 +++++++---------
+ reports/handoff.md                     | n/d
+ reports/ripartenza_mani.md             |   2 +-
+ reports/roadmap.md                     |   4 +--
+ reports/stato_progetto.md              |   5 ++--
+ reports/ultimo_report.md               |  28 ++++++++-----------
+ scripts/voce/LEGGIMI.md                |  94 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ scripts/voce/com.gas.ascolto.plist     |  28 +++++++++++++++++++
+ scripts/voce/com.gas.voce.server.plist |  28 +++++++++++++++++++
+ scripts/voce/installa.sh               |  88 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ scripts/voce/spegni.sh                 |  13 +++++++++
+ tests/test_unit_voce_ascolto.py        | 540 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = f8dfc5c. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = ceaa4aa. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-abdb3e8 Merge origin/main (PR #320, solo documenti) nella PR #319
-c4545d3 docs(fine-task): fetta 36, PR #319, secondo merge di main (PR #321), review #620
-d51eaf1 chore(revisore): memoria review #620 — APPROVATO
-5331f14 Merge origin/main (PR #321, forte e --bare) nella PR #319 (review #620)
-c945f46 docs(fine-task): fetta 36, PR #319, merge di main (PR #318), review #619
-22a8a5b chore(revisore): memoria review #619 — APPROVATO CON RISERVE
-bc46a27 Merge origin/main (PR #318, voce V6) nella PR #319 (review #619)
-9c44686 docs(fine-task): fetta 36, PR #319, correzioni bot/ve su 1e4bc90, review #617
-20031e4 fix(telegram): al cancello anche il tetto del giorno, test della firma end-to-end, valore non intero = spento (bot/ve #319 su 1e4bc90, review #617)
-1a13c53 chore(revisore): memoria review #617 — APPROVATO CON RISERVE
-1e4bc90 docs(fine-task): fetta 36, PR #319, correzioni bot/ve su 3db59c2, review #613-#614
-b1d1e45 fix(telegram): una notifica per turno anche alla firma, testo solo stringa, 0 = spento (bot/ve #319, review #613-#614)
-6600af1 chore(revisore): memoria review #614 — APPROVATO CON RISERVE
-30aff74 chore(revisore): memoria review #613 — APPROVATO CON RISERVE
-3db59c2 docs(fine-task): fetta 36, PR #319, strumento avvisa_operatore, review #611-#612
-c67a2d5 feat(telegram): strumento avvisa_operatore — notifica all'operatore con tetto (R6, chat Mani)
-4bd1564 chore(revisore): memoria review #612 — APPROVATO CON RISERVE
-beb0feb chore(revisore): memoria review #611 — APPROVATO CON RISERVE
+5876b7e chore(revisore): memoria review #615, #616, #618 (voce H24, dal branch locale)
+234f41c feat(voce): Gas sempre in ascolto sul Mac — parola di attivazione locale, launchd, installa in un colpo (R8, fetta 37, chat Mani)
+31b8ec1 chore(revisore): memoria review #621 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit c67a2d5 (gas.py, modules/gate/gate.py, modules/telegram/avviso.py, tests/, gas_identity.md, .github/workflows/ci.yml, .gitignore). Verdetto integrale della review #611 (chat Mani), sulla prima versione del diff:
+Commit 234f41c (clients/voice/ascolto.py, scripts/voce/, tests/test_unit_voce_ascolto.py, .github/workflows/ci.yml, .gitignore). È il diff del branch locale voce-h24 (commit 8e69ab6 e 52c26bf, rivisti in #615/#616/#618) portato su main con le correzioni di R-618-1/2 (rivisto in #621). Verdetto integrale della review #615 (chat Mani), sulla prima versione:
+
+```
+## VERDETTO: BOCCIATO
+
+Review #615 (chat Mani), R8 «voce H24». Ho rivisto il diff staged (sha256 7839f0f01edadc59..., verificato), sul branch voce-h24 con base b472fe1. Prima ho letto CLAUDE.md, reports/stato_progetto.md e la mia memoria. Il blocco è uno solo (R-615-1): è un bug vero, l'ho riprodotto e si corregge con una riga. Il resto sono riserve.
+
+**Elementi del diff esaminati**
+
+1. `scripts/voce/installa.sh:76` — legge la porta dal `.env` con `PORTA="$(grep … | tail -1 | sed …)"`, sotto `set -euo pipefail`. Rischio: un'assegnazione la cui sostituzione fallisce ferma lo script. — **BLOCCO (R-615-1, MEDIA)**. Riprodotto nella cartella di lavoro: con un `.env` senza `GAS_VOICE_PORT` (il caso normale, porta di default 8765) lo script esce con 1 senza nessun messaggio, subito dopo «5/6 servizi caricati: OK». Il controllo della porta e il messaggio finale non arrivano mai: l'operatore pensa che sia fallito, mentre i servizi girano. Con `GAS_VOICE_PORT=9000` invece arriva in fondo.
+   - Correzione: `PORTA="$( { grep -E '…' .env || true; } | tail -1 | sed …)"`.
+   - Va aggiunto un test che esegue installa.sh con comandi finti nel PATH (uname che risponde Darwin, launchctl, plutil, nc, python). Deve fallire sul codice di oggi. Oggi lo script è provato solo con `bash -n` e col rifiuto fuori dal Mac.
+2. `clients/voice/ascolto.py:333` — POST /voice con urllib, header Bearer. Rischio: il token esce verso un host diverso. — **riserva R-615-2 BASSA**. Riprodotto: se il server risponde 302 verso un altro host, urllib rifà la richiesta in GET, ricopia `Authorization: Bearer SEGRETO-TOKEN` e il client accetta come buona la risposta audio. Il controllo di `clients/voice/ascolto.py:115` (`url_valido`, «fuori dal Mac solo https») si aggira così, anche verso http. In più su macOS urllib usa i proxy di sistema anche per 127.0.0.1: le eccezioni di default sono «*.local, 169.254/16» e il codice di urllib non salta di suo gli indirizzi locali. Correzione: un opener con `ProxyHandler({})` e un gestore che rifiuta i redirect.
+3. `scripts/voce/installa.sh:24` — il `case` che rifiuta i caratteri pericolosi nella cartella di Gas. Rischio: iniezione dalla cartella dentro il sed (riga 55) e dentro la shell del plist (`scripts/voce/com.gas.ascolto.plist:15`, `cd "CARTELLA_GAS"` tra virgolette doppie). — **riserva R-615-3 BASSA**. Riprodotto: una cartella chiamata `Gas$(touch PWNED)` passa il controllo e la shell esegue il comando. Rifiuta & < > " # ma non `$`, il backtick, `\` e l'a capo. La cartella è dell'operatore, quindi il rischio reale è basso, ma la riga si presenta come una protezione. Meglio una lista bianca `[A-Za-z0-9/._ -]`.
+4. `clients/voice/ascolto.py:356` — `riproduci_afplay`: cartella da mkdtemp (0700), file con O_EXCL 0600, `rmtree` nel finally, timeout di 600 s. Il timeout è intercettato da `turno`. — **ok**. Sulla privacy prima della parola: `aspetta_parola` passa i blocchi solo al rilevatore e non li tiene in memoria. Fino alla parola non c'è niente su disco né in rete — **ok**.
+5. `clients/voice/ascolto.py:302` — l'ordine azzera → bip → svuota, e lo svuotamento dopo la risposta in `turno`. Rischio: Gas che si attiva da solo con la sua voce. — **ok**. Durante afplay il microfono non viene letto e poi si butta il buffer. Il rilevatore non gira né nella conversazione né nella finestra. Tre mutanti miei, ciascuno preso con 1 failed (test_parola_bip_registrazione_e_risposta): senza svuota dopo il bip, senza svuota dopo la risposta, senza azzera finale. Nota BASSA dentro R-615-7: il reset iniziale misurato costa 0,21 s, ed è ridondante perché c'è già quello finale. Con bip e svuota butta circa mezzo secondo di parlato, quindi chi non aspetta il bip perde le prime parole.
+6. `clients/voice/ascolto.py:221` — `registra`, e la soglia a numeri interi (`blocchi_per`). — **ok**: 0,8 s = 10 blocchi, 12 s = 150, 30 s = 375, 0,24 s = 3. Il minimo di 0,2 s diventa 0,16 s, trascurabile. Riserva in R-615-6: dopo la parola basta un solo blocco da 80 ms sopra la soglia (un clic) per aprire la richiesta, mentre nella finestra ne servono 3. È incoerente, e un clic produce una clip di rumore mandata a Whisper.
+7. `scripts/voce/installa.sh:73` — `launchctl print … | grep -q` con pipefail. — **riserva BASSA (R-615-7)**: se launchctl scrive dopo che grep ha già chiuso, arriva un SIGPIPE (codice 141) e lo script dice per sbaglio «non gira». Meglio salvare prima l'output in una variabile.
+8. Contesto, file non toccato: `modules/voice/server.py:220` — risponde audio/mpeg solo se l'header Accept lo chiede. Con testo vuoto risponde 200 in JSON e con un errore TTS 502: il client fa il bip di errore — ok. Nota: dopo un 502 l'azione del kernel può essere già avvenuta. Il bip non lo distingue e l'operatore potrebbe ripetere la richiesta (dentro R-615-6).
+
+**Altre riserve**
+
+- **R-615-4 MEDIA, da provare sul Mac**: il permesso del microfono sotto launchd. Python avviato da launchd, senza un'app che lo «possieda», potrebbe essere negato in silenzio senza nessuna richiesta. Il pannello Microfono non ha il «+», quindi l'istruzione del LEGGIMI («accendi Python», `scripts/voce/LEGGIMI.md:28`) potrebbe non essere eseguibile. L'avviso sul microfono che dà solo zeri dà il segnale giusto. R8 non va dichiarata funzionante prima della prova sul Mac. Va tracciata in stato_progetto.md.
+- **R-615-5 BASSA, decide l'operatore**: i modelli pronti di openWakeWord sono sotto licenza CC BY-NC-SA 4.0, cioè non commerciale. Verificato nel METADATA del wheel 0.6.0. Usare «hey_jarvis» in Gas, che è un partner di business, è una zona grigia. Va scritto nel LEGGIMI; il modello «Ehi Gas» addestrato chiude la questione.
+- **R-615-6 BASSA, privacy dichiarata incompleta**: una falsa attivazione (TV, un'altra persona) o qualsiasi voce di almeno 240 ms nella finestra di 12 s manda a Groq l'audio della stanza e fa partire un turno del kernel. Nel caso peggiore 5 turni da 30 s: è limitato, ma va detto nel LEGGIMI accanto a `scripts/voce/LEGGIMI.md:46`.
+- **R-615-7 BASSA, varie**: oltre al grep -q e al reset iniziale, i log in `.gas_voce/` non hanno rotazione (con il microfono staccato si aggiunge una riga ogni 5 s). Con KeepAlive, un'uscita 1 per configurazione mancante riparte ogni 10 s: costa poco perché il token si controlla prima di importare openWakeWord, quindi è accettabile. Se un passo fallisce restano a metà dei plist in ~/Library/LaunchAgents: `spegni.sh` li toglie.
+
+**Coerenza col progetto**: va nella direzione di D-voce-3 del briefing (parola di attivazione in locale sul dispositivo, prima il giro, poi l'orecchio) e della voce R8 della roadmap («openWakeWord; prima il modello pronto, poi la parola nostra»). La roadmap segna R8 «🔒 R5»: questa parte gira sul Mac e non dipende dal server, con il piano approvato da M1. Va aggiornata `reports/roadmap.md`, che non è nel diff. Il server voce e la pagina del browser non sono toccati. Il passo nuovo in ci.yml non aggiunge `paths-ignore`. Il motore (gas.py, `_get_window`, tetti) non è toccato.
+
+**Prove riprodotte**: 43 passed da root. Ho installato openWakeWord 0.6.0 vero (con `--no-deps`, perché tflite-runtime manca su Linux con Python 3.13; sul Mac non serve), con numpy 2.4.6 e onnxruntime 1.27.0. `download_models(["hey_jarvis_v0.1"])` scarica anche la versione onnx, `Model(wakeword_models=["hey_jarvis"], inference_framework="onnx")` carica, `predict` su un blocco da 1280 (anche ricavato da una colonna come in `Microfono.blocchi`) dà 0.0, `reset` azzera anche i buffer interni dell'audio, 10 s di audio si elaborano in 0,31 s. `source .venv/bin/activate` sotto `set -u` funziona.
+
+**Cosa NON ho verificato**: il comportamento vero sul Mac: permessi del microfono sotto launchd, launchctl bootstrap/print, plutil, afplay, sounddevice con CoreAudio, quanto PortAudio tiene nel buffer durante una risposta lunga, bash 3.2 di macOS. Qui non si può riprodurre: ambiente Linux, senza audio e senza launchd. Non ho misurato quante false attivazioni dà hey_jarvis con la voce italiana o con la TV, né quanto è adatta la soglia di volume 500 con il microfono vero.
+
+**Per la ri-review**: correggere R-615-1 con il test sugli script (che deve fallire sul codice di oggi). R-615-2 e R-615-3 sono correzioni da poche righe, consigliate nello stesso giro. Le altre riserve vanno in reports/stato_progetto.md.
+
+Memoria aggiornata: riga #615 più 2 lezioni (le assegnazioni con pipefail; urllib che ricopia il Bearer sui redirect e usa i proxy di sistema). Commit 3900afb, poi 6213ea4 (corretto un numero di riga). Il diff staged è intatto (sha256 sempre 7839f0f01edadc59...).
+```
+
+Verdetto integrale della review #616 (chat Mani), sul diff del commit locale 8e69ab6:
 
 ```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #611 (chat Mani). Fetta R6, `avvisa_operatore`. Diff staged sha256 4579be04d4420b21 (l'ho ricalcolato prima e dopo, è invariato), base b472fe1. Letture obbligatorie fatte: CLAUDE.md (sezioni 5, 8, 9, 10), le sezioni di reports/stato_progetto.md e la memoria del revisore. Ho applicato in particolare le lezioni #1025 e #1029 (file-contatore in tutte le liste sorelle), #976 e #978 (caratteri invisibili Cf) e #408 (privilegio legato al tipo di firma).
+Review #616 (chat Mani), ri-review della #615. Fetta R8, voce H24 sul Mac. Diff staged con sha256 che inizia per 350d51c7f4af73e0: l'ho verificato prima e dopo la review, è invariato. Branch locale voce-h24, base b472fe1.
+
+Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9, 10), stato_progetto.md (letto con Grep), memoria del revisore.
 
 **Elementi del diff esaminati**
-- `modules/telegram/avviso.py:108` — controlla la configurazione di Telegram PRIMA di prenotare il posto. Rischio: un posto del giorno consumato senza poter inviare, o un tetto pieno che nasconde l'errore vero (lezione 2026-10-31). Esito: ok. `invia_notifica` ripete comunque il controllo, e un test verifica che il conto non venga creato.
-- `modules/telegram/avviso.py:120` — prenota il posto prima dell'invio; se la scrittura fallisce, nessun invio. Rischio: tetto aperto quando la scrittura del conto fallisce (lezione #1025). Esito: ok. Un conto rotto o di tipo sbagliato (bool, negativo, lista) dà diniego. I motivi di `invia_notifica` (modules/telegram/bot.py:300) sono stringhe fisse, quindi il token non arriva al modello.
-- `modules/telegram/avviso.py:75` — `pulisci` toglie Cc tranne l'a-capo e i Cf. Rischio: testo iniettato che imita una richiesta di firma. Esito: riserva R-611-3. Un testo non può comunque diventare una firma: le firme passano SOLO dai bottoni con callback `ok:<uuid>` (modules/telegram/bot.py:229) e `invia_notifica` non manda bottoni. Il testo semplice al massimo imita a parole «GAS chiede la tua firma», sotto il prefisso fisso.
-- `gas.py:4639` — tetto di 1 notifica per turno, saltato solo con `firmata`. Rischio: aggirare il tetto con la firma o con chiamate parallele. Esito: ok. Le chiamate parallele passano una alla volta, quindi la seconda viene negata. Un'azione firmata la decide l'operatore e paga comunque il tetto del giorno. Dopo un riavvio il conto resta sul file. Riserva R-611-4: il tetto conta solo i «Successo».
-- `gas.py:4688` — il contatore si azzera all'inizio di run_turn. L'unico altro chiamante di execute_tool_call è applica_firma (`gas.py:3567`, sempre `firmata=True`). Esito: ok.
-- `gas.py:2466` — nel diario va solo la lunghezza del testo (F-diario-eco). Esito: ok, T102b lo prova.
-- `modules/gate/gate.py:71` — avvisa_operatore è UNCERTAIN, come richiedi_sviluppo. Non sta in `_LIBERI_DOPO_LETTURA`, quindi a finestra contaminata va alla firma (`gas.py:4918`). La contaminazione si aggiorna anche fra chiamate parallele. Esito: ok.
-- `modules/gate/gate.py:112` e `gas.py:2021` — il conto è nelle liste di diniego. Ho provato `.GAS_NOTIFICHE_USO.json`, `./`, `x/../`, `.1.tmp` e il nome senza estensione: tutti danno denylist, livello 3 e lettura negata. Nemmeno `firmata` apre il livello 3. Esito: ok, quindi il conto non si può riscrivere. Manca solo `.gitignore` (R-611-5).
-- `tests/test_unit_kernel.py:11492` — T102d, «finestra contaminata → cancello, nessun invio». Esito: riserva R-611-2. Il test è vacuo e l'ho provato con un mutante (sotto).
+- `scripts/voce/installa.sh:84` — legge la porta con `{ grep … .env || true; }`. Rischio esaminato: con `set -euo pipefail` lo script usciva in silenzio quando la porta non è nel `.env` (era R-615-1). Esito: ok. I test portano lo script fino in fondo con i comandi del Mac finti: «6/6» e `nc -z 127.0.0.1 8765`; con la porta 9001 nel `.env`, `nc` va sulla 9001. Il mutante «grep senza `|| true`» dà 1 failed.
+- `scripts/voce/installa.sh:26` — lista bianca `^[A-Za-z0-9/._ -]+$` controllata con `[[ =~ ]]`. Rischio esaminato: caratteri che finiscono nel sed e nella shell zsh del plist (`$( )`, backtick, `\`, `&`, `"`, `#`, `;`). Esito: ok. I 7 casi del test vengono rifiutati con STOP prima di toccare qualcosa. Il mutante con la lista bianca `.*` dà 7 failed.
+- `clients/voice/ascolto.py:344` — l'opener usa `ProxyHandler({})` e `_NienteRedirect`. Rischio esaminato: il token Bearer che segue un redirect o passa da un proxy di sistema (era R-615-2). Esito: ok. `build_opener` scarta i gestori predefiniti quando gli si passa una loro sottoclasse, quindi un 302 diventa un errore «HTTP 302» con una sola richiesta. Mutanti: senza `_NienteRedirect` 1 failed, senza `ProxyHandler({})` 1 failed.
+- `clients/voice/ascolto.py:234` — dopo la parola la voce comincia solo con 3 blocchi forti di fila (era R-615-6). Rischio esaminato: un clic che apre una richiesta, oppure l'inizio della voce che si perde. Esito: ok. Il mutante «blocchi forti tenuti anche non di fila» dà 2 failed. Lo stesso punto produce però la riserva R-616-2.
+- `clients/voice/ascolto.py:323` — l'azzeramento del rilevatore resta solo a fine conversazione (era R-615-7). Esito: ok, il test pretende 1 azzeramento. Anche le eccezioni nel ciclo restano intercettate (§9).
+- `scripts/voce/installa.sh:76` — l'output di `launchctl print` è salvato in una variabile, con `|| true` e un `case`. Esito: ok, non c'è più il falso «non gira» da SIGPIPE.
+- Contesto: `modules/voice/server.py:473` — il server legge `GAS_VOICE_PORT` dal `.env`. Da qui nasce la riserva R-616-1.
 
-**Finding**
-- **R-611-1 MEDIA**: in `tests/test_unit_avvisa_operatore.py:116` e `tests/test_unit_avvisa_operatore.py:135` ci sono U+200B e U+202E LETTERALI. È l'unico file Python del repo con caratteri Cf (scansione con unicodedata su tests/, modules/ e gas.py). Il U+202E rigira la riga 135 in chi la legge (schema Trojan Source). Se il bot li cita come caratteri veri, `scripts/bot_esito.py` dà COMMENT («controlli bidi nel testo», lezione #976). Correzione: costruire le stringhe con `chr(0x200B)` / `chr(0x202E)`.
-- **R-611-2 MEDIA**: T102d non prova il cancello. Mutante «`_libero_dopo_lettura` restituisce True per avvisa_operatore» nel kernel: 1070 PASS e 1 FAIL, lo stesso numero della baseline dichiarata (non ho verificato che il FAIL sia T31g). T102d passa con l'output «Operazione negata: Telegram non configurato», cioè l'azione è stata ESEGUITA libera. Il test passa lo stesso perché, a token spento, anche l'esecuzione libera è «negata» e non invia nulla. I test sul cancello in test_unit_avvisa_operatore coprono `gate_classify` e `libero_dopo_lettura`, ma non come il kernel li collega. Correzione: tenere il token, sostituire il read-back con un finto riuscito e pretendere `cancello == "in_attesa"` più una riga pending con tool avvisa_operatore; poi rilanciare il mutante.
-- **R-611-3 BASSA**: `pulisci` lascia passare U+2028/U+2029 (Zl/Zp), NBSP, il riempitivo Hangul U+3164 e i selettori di variante, verificato. `rendi_visibili` del bot è più severa. Il rischio in più è piccolo, visto che l'a-capo è comunque ammesso, ma lo standard non è coerente.
-- **R-611-4 BASSA**: il tetto per turno conta solo i «Successo», mentre un invio fallito consuma il posto del giorno. Con Telegram giù il modello può bruciare tutti e 5 i posti in un turno, e l'avviso importante successivo resta bloccato fino a domani. Correzione: contare ogni chiamata che ha prenotato un posto.
-- **R-611-5 BASSA**: `.gas_notifiche_uso.json` e `.gas_notifiche_uso.json.*.tmp` mancano dal diff staged (lezione #1029). Nel working tree c'è già una modifica NON staged di `.gitignore` che le aggiunge: va messa nello stage. Lo stage cambia lo sha del diff, quindi servono ri-review e nuovo marcatore.
+**Prove riprodotte**
+- `tests/test_unit_voce_ascolto.py`: 57 passed.
+- Mutanti provati su una copia dell'indice in scratch, senza toccare il working tree: risultati come sopra (1, 1, 1, 7 e 2 failed).
+- Nessun antipattern della sez. 5 (né slicing della history né output dei tool simulato). `gas.py`, cap di 10 iterazioni e `_get_window` non sono toccati.
+- `ci.yml`: il nuovo passo ha `if: always()` e `pipefail` come gli altri, e nessun `paths-ignore`.
 
-Consiglio di chiudere R-611-1, R-611-2 e R-611-5 in questa stessa fetta prima della PR: sono correzioni da poche righe. Il codice di produzione non ha difetti che bloccano: zero eccezioni che escono (tutto in try, ogni errore va in log.warning), i guardrail (10 iterazioni, `_get_window`) non sono toccati e nel diff non ci sono slicing della storia né output di tool simulati. Il diff tocca ci.yml (macchina del bot), quindi il merge spetta all'operatore.
-
-**Prove riprodotte da me**
-- avvisa + gate: 850 passed.
-- Mutante R-611-2 su una copia in `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/m1`: T102d PASS col mutante.
-
-**Rischi esclusi**
-- Invio reale a Telegram e resa di U+2028/U+3164 nel client: non verificati, mi mancano token e client.
-- Corsa fra due processi (bot e CLI) sul conto: lettura-modifica-scrittura senza lucchetto, come in richieste.py. Non provata. Il superamento è limitato al numero di processi contemporanei.
-- Le altre suite (kernel completo senza mutante, richieste, hooks, notte): non rilanciate, mi fido delle prove riferite (1282 passed e 1070/1). Anche la baseline del FAIL T31g su main non l'ho verificata.
-
-**Memoria**: riga #611 e lezione nuova (test del cancello vacuo a canale spento) aggiunte e committate con `scripts/commit_memoria_revisore.sh` (beb0feb, solo /home/user/Gas/.claude/agents/memoria_revisore.md). L'index del diff sotto review è intatto.
-```
-
-Verdetto integrale della review #612 (chat Mani), sul diff finale del commit c67a2d5:
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #612 (chat Mani). È la ri-review della #611 sulla fetta R6 avvisa_operatore. Ho revisionato il diff staged: sha256 57c067730a569ff1…, che coincide col tuo e resta invariato dopo il mio commit. Base b472fe1, branch claude/peaceful-lovelace-0w2b7q.
-
-Letture fatte: CLAUDE.md (sezioni 5, 8, 9 e 10), reports/stato_progetto.md (Grep mirato), .claude/agents/memoria_revisore.md.
-
-**Elementi del diff esaminati**
-- `tests/test_unit_avvisa_operatore.py:118` — parametri di test_testo_vuoto e test_invisibili_e_controlli_resi_visibili costruiti con chr(). Rischio esaminato: caratteri Cf/bidi letterali, cioè il problema Trojan Source di R-611-1. Ho scansionato tutti i caratteri dei due file nuovi: zero Cf, Cc (escluso l'a-capo), Zl, Zp e Zs diversi dallo spazio. **ok**
-- `tests/test_unit_kernel.py:11501` — T102d, a Telegram acceso, sostituisce `invia_read_back` con un finto riuscito e lo ripristina nel finally. Pretende `cancello == "in_attesa"`, 1 read-back e una riga pending col tool avvisa_operatore. Rischio esaminato: test vacuo (R-611-2). Mutante in `gas.py:3118` (`_libero_dopo_lettura` → True per avvisa_operatore) su una copia dell'indice: 1070 PASS, 2 FAIL (T31g, **T102d**). Il patch su `gas._tg_bot` colpisce lo stesso oggetto modulo usato in `gas.py:3409`. **ok**
-- `gas.py:4643` e `gas.py:4651` — tetto per turno: si nega se `_avvisi_turno >= 1` e si conta a ogni `prenotato`, solo se l'azione non è firmata. Il contatore si azzera in `gas.py:4690`. L'unico chiamante non firmato è run_turn (`gas.py:4941`); quello firmato è applica_firma (`gas.py:3567`). Rischio esaminato: un Telegram giù che brucia in un turno tutti i posti del giorno (R-611-4). Mutante «conta solo Successo» (`out.startswith("Successo")`): 1070 PASS, 2 FAIL (T31g, **T102e**). **ok**
-- `modules/telegram/avviso.py:76` — `pulisci` passa da `rendi_visibili` (vedi `modules/telegram/bot.py:136`). Un testo che non ha nessun carattere che resta uguale a sé stesso dopo `rendi_visibili` diventa vuoto e viene negato. Provato: solo selettori di variante o tag (U+FE0F, U+E0041) → vuoto; solo tab e a-capo → vuoto. Il controllo `avvisa_operatore_esito` (`modules/telegram/avviso.py:107`) rende `prenotato=True` anche dall'except se l'eccezione arriva dopo la prenotazione. Nessuna eccezione esce (§9). **ok**
-- `.gitignore:58` — `.gas_notifiche_uso.json` e `.gas_notifiche_uso.json.*.tmp`, verificati con `git check-ignore -v` (R-611-5). **ok**
-- Wall of Shame: nessuno slicing della history nelle righe aggiunte; i `[:400]` sono tagli dei messaggi dei check. Nessuna simulazione di tool: il finto invio vive solo nei test. Cap di 10 iterazioni e `_get_window` non toccati. **ok**
-
-**Prove riprodotte** (su un export dell'indice nella cartella di lavoro temporanea)
-- avvisa + gate + richieste: 877 passed.
-- kernel: 1071 PASS, 1 FAIL (T31g, come dichiarato). T102a–e tutti PASS.
-
-**Finding**
-- **R-612-1 COSMETICA**: il limite di 1000 caratteri si misura sul testo già espanso, quindi 200 U+200B più una «a» contano 1601. Il modello riceve «testo oltre 1000 caratteri» per un testo di 201. È fail-closed, ma il messaggio inganna. Correzione possibile: misurare `s` prima di `rendi_visibili`, oppure dire «oltre 1000 caratteri visibili/espansi».
-- **R-612-2 BASSA (da dichiarare)**: il conto del giorno (`modules/telegram/avviso.py:64`) è un leggi-poi-scrivi senza lock fra processi, come `.gas_richieste_uso`. Due kernel sulla stessa root (bot e voce) possono superare il tetto di uno con una corsa. Basso rischio per delle notifiche.
-- **R-612-3 BASSA**: le riserve R-611-x e R-612-x non sono ancora in reports/stato_progetto.md (Grep su «avvisa_operatore»: nessuna riga). Vanno tracciate prima del commit o della PR, come chiede il gate.
+**Riserve (da mettere in stato_progetto.md al fine-task, insieme a R-615-4 e R-615-5 che restano aperte: microfono da provare sul Mac, licenza da decidere per l'operatore)**
+- **R-616-1 BASSA**: con `GAS_VOICE_PORT` nel `.env`, il server e il controllo finale di installa.sh usano quella porta. `clients/voice/ascolto.py:440` invece, se manca `GAS_VOICE_URL`, resta su `http://127.0.0.1:8765`. Risultato: installa.sh dice «tutto acceso» e poi ogni turno finisce col bip di errore. L'ho provato: con `GAS_VOICE_PORT=9001` l'URL resta `:8765`. Correzione suggerita: costruire l'URL di default da `GAS_VOICE_PORT`, oppure far controllare a installa.sh la stessa porta che usa il client.
+- **R-616-2 BASSA**: `clients/voice/ascolto.py:238` conta l'attesa dopo la parola solo sui blocchi deboli. Con un rumore forte-forte-debole l'attesa dura 14,9 s invece dei 5 dichiarati (misurato: 186 blocchi). Non viene inviato niente, quindi la privacy è salva, ma il docstring di `registra` non è esatto.
+- **R-616-3 COSMETICA**: alla riga 92 il LEGGIMI dice «cancellali (i servizi li ricreano)». In realtà launchd apre il file di log solo quando avvia il servizio: dopo un `rm` il processo continua a scrivere sul file cancellato, che non si ricrea e non libera spazio fino al riavvio. Meglio consigliare di svuotarlo con `: > .gas_voce/ascolto.log`.
 
 **Rischi esplicitamente esclusi**
-- Invio reale su Telegram e formato del messaggio sul client: non provati, nessun token né rete verso Telegram in dev. Ho visto solo che `invia_notifica` viene chiamata (test_invio_vero_usa_invia_notifica).
-- Esecuzione firmata (applica_firma → avvisa_operatore con `firmata=True`) end-to-end: non provata con un mutante. Ho verificato solo leggendo il codice che il tetto per turno viene saltato e quello del giorno resta.
-- La CI non l'ho guardata: ho controllato solo che il passo nuovo in `.github/workflows/ci.yml` lanci il file di test giusto.
+- Comportamento reale sul Mac non verificato perché qui non si riproduce: bash 3.2 di `/bin/bash`, sed/grep BSD, `launchctl bootstrap`/`print` veri, permesso del microfono sotto launchd, `activate` di un venv vero con `set -u`. Ho controllato solo per lettura che i costrutti usati esistano in bash 3.2 e in BSD.
+- openWakeWord vero non rieseguito: era stato provato nella #615 e quella parte non è cambiata.
+- Le suite voce di M2 (server/stt/tts) non le ho rilanciate: quei file non sono nel diff.
 
-**Nota di processo**: il primo giro di mutanti è girato per errore sulle cartelle m1/m2 rimaste dalla review #611 (`cp -r` ha annidato la copia, quindi la suite girava sul diff vecchio). L'ho scartato e rifatto in cartelle nuove; i risultati sopra sono quelli giusti. La lezione è in memoria.
-
-**Memoria**: aggiunta la riga #612 più una lezione in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da `scripts/commit_memoria_revisore.sh` (commit 4bd1564). L'indice staged non è cambiato (sha256 ancora 57c067730a569ff1…).
+**Memoria**: riga #616 più una lezione, committate con `scripts/commit_memoria_revisore.sh` (commit cc6f953, solo `.claude/agents/memoria_revisore.md`). Il diff staged sotto review è intatto.
 ```
 
-Commit b1d1e45 (gas.py, modules/telegram/avviso.py, tests/: V-1 bot/ve, V-2 e V-3 ve su 3db59c2). Verdetto integrale della review #613 (chat Mani), sulla prima versione:
+Verdetto integrale della review #618 (chat Mani), sul diff del commit locale 52c26bf:
 
 ```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #613 (chat Mani). Ho esaminato il diff staged: lo sha256 inizia per de9968aef5807fae, combacia ed è rimasto uguale anche dopo il commit della memoria. La base è 3db59c2, sul branch claude/peaceful-lovelace-0w2b7q. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (solo le parti che servivano) e .claude/agents/memoria_revisore.md. Ho ignorato il `git stash` (voce H24), come richiesto.
+Review #618 (chat Mani). Diff staged con sha256 c5fdc9c85c13e5b4… (l'ho ricalcolato e coincide), su voce-h24 sopra 8e69ab6. File: clients/voice/ascolto.py, scripts/voce/LEGGIMI.md, tests/test_unit_voce_ascolto.py. Letture obbligatorie fatte: CLAUDE.md (sezione 5), reports/stato_progetto.md (letto per Grep sulla sezione voce), la coda di .claude/agents/memoria_revisore.md con le review #615 e #616.
 
 **Elementi del diff esaminati**
-- `gas.py:4466`: la costante di classe `_UNA_NOTIFICA_PER_TURNO`, usata sia in `execute_tool_call` (`gas.py:4648`) sia nel ramo del cancello. Rischio esaminato: due messaggi diversi per lo stesso rifiuto, oppure un prefisso che non comincia più con «Operazione negata». Esito: ok, il testo comincia con «Operazione negata».
-- `gas.py:4934`: nel ramo del cancello di `run_turn`, `avvisa_operatore` con `_avvisi_turno >= 1` viene negata prima di `_parcheggia_e_notifica`, con `_cancello="negata"`. Rischi esaminati:
-  - `self._avvisi_turno` letto senza `getattr`: è sicuro, perché viene azzerato all'inizio di `run_turn` (`gas.py:4693`);
-  - un doppione «Azione già in attesa» non conta: non manda niente di nuovo, quindi va bene;
-  - due chiamate parallele nella stessa risposta: la seconda viene negata.
-  - Esito: ok. Mutante che toglie il controllo (`if False:`): T102f FAIL.
-- `gas.py:4944`: un parcheggio riuscito (`in_attesa`) fa salire di 1 il conto del turno. Rischio esaminato: un parcheggio fallito («Operazione negata», per esempio Telegram spento) non conta, e questo è coerente con «niente è partito». Esito: ok. Mutante che toglie l'incremento: T102f FAIL.
-- `gas.py:4934` (lato diario): nel ramo «negata» nuovo `_gate_diario` resta None, quindi il diario passa da `_riassumi_args`. Esito: **riserva R-613-2**, vedi sotto.
-- `modules/telegram/avviso.py:116`: un testo non stringa viene negato prima di `pulisci` e senza prenotare posti; None continua a dare «serve un 'testo' non vuoto». Ho sondato 0, False, b"", [] (danno «deve essere una stringa») e None, "", "  " (danno «serve un testo»). Esito: ok. Mutante: 5 failed.
-- `modules/telegram/avviso.py:45` e `modules/telegram/avviso.py:133`: con `max(0, …)` il valore 0 o negativo significa «spento», con un rifiuto dichiarato e senza invio né file del conto. Ho sondato "0", "-3" e " 0 " (spento); "abc" e "" tornano al default 5, come prima. Con il conto rotto e tetto 0 prevale «conto illeggibile», che resta fail-closed. Esito: ok. Mutanti `max(1)` e «tolto `tetto==0`»: 2 failed ciascuno.
-- `tests/test_unit_kernel.py:11542` (T102f): fa read_file, poi due `avvisa_operatore`, e pretende `in_attesa` poi `negata`, 1 read-back, 1 riga in attesa e 0 invii. È una prova positiva del parcheggio, non vuota (lezione della #611). Esito: ok.
-- `tests/test_unit_avvisa_operatore.py:125` e `tests/test_unit_avvisa_operatore.py:134`: test con parametri per i testi non stringa (pretendono anche niente posto prenotato e niente file del conto) e per il tetto 0/-3. Esito: ok.
+- `clients/voice/ascolto.py:116` — `url_del_server()`: usa GAS_VOICE_URL se c'è (senza la `/` finale), altrimenti `http://127.0.0.1:<cifre di GAS_VOICE_PORT o 8765>`. Rischio: che il client e il server leggano la porta in modi diversi. Il filtro «solo cifre» è lo stesso di scripts/voce/installa.sh:84. Il server (modules/voice/server.py:473) e il client caricano lo stesso .env. Se il valore è sporco (es. «9001 # nota»), il server non parte e il controllo finale di installa.sh si ferma, quindi niente falso «tutto acceso». Esito: ok.
+- `clients/voice/ascolto.py:249` — in `registra`, prima della voce, l'attesa conta ogni blocco, anche i rumori. Quando la voce si apre si passa oltre con `continue`, come faceva il codice vecchio. Rischio: tagliare una voce vera vicino alla scadenza. L'ho provato direttamente: con voce che parte dopo 55 o 59 blocchi di silenzio la richiesta passa (22 blocchi), dopo 60 blocchi (4,8 s) no. Quindi la scadenza vera è 5 s meno l'inizio della voce (0,24 s), ed è accettabile. Il caso «riprendi a parlare dopo la risposta» non cambia, perché lì la voce è già aperta. Esito: ok.
+- `clients/voice/ascolto.py:451` — `main` ora chiama `url_del_server()`. Rischio: che il collegamento non sia coperto da nessun test. Ho rimesso la vecchia espressione `GAS_VOICE_URL or 8765` e i test restano verdi (61 passed). Esito: riserva (R-618-1).
+- `tests/test_unit_voce_ascolto.py:108` — test forte-forte-debole ripetuto oltre i 5 s, poi voce vera: non si invia niente. Mutante con la logica vecchia: 1 failed (riprodotto). Esito: ok.
+- `tests/test_unit_voce_ascolto.py:376` — test con 3 casi su `url_del_server`. Mutante «sempre 8765»: 1 failed. Mutante senza la pulizia della `/` finale: 1 failed. Esito: ok.
+- `scripts/voce/LEGGIMI.md:92` — «svuotali senza cancellarli» con `: > .gas_voce/ascolto.log`. Chiude R-616-3. Esito: ok, salvo la nota cosmetica R-618-2.
 
-**Prove riprodotte** (su un export nuovo dell'indice in una cartella r613 del scratchpad, più la suite in place)
-- Test avvisa + gate + richieste: 884 passed.
-- Kernel: 1072 PASS, 1 FAIL (T31g, problema d'ambiente, come dichiarato). T102a–f PASS.
-- Mutanti del kernel: tutti e due danno 1071 PASS e T102f FAIL.
+**Prove riprodotte**: 61 passed su una copia esatta dell'indice. Il diff è pulito (`git diff --cached --check`). clients/voice/ascolto.py lo importa solo il suo test, quindi nessun altro test è toccato.
 
-**Wall of Shame**: nessuno slicing della history e nessuna simulazione di output dei tool. Il tetto di 10 iterazioni e `_get_window` non sono toccati. Nessuna eccezione nuova che possa arrivare fino al crash.
+**Riserve chiuse**: R-616-1, R-616-2 e R-616-3, tutte chiuse.
 
-**Finding**
-- **R-613-1 BASSA**: le validazioni nuove (tetto 0, testo non stringa) stanno solo nell'esecuzione dello strumento. A finestra contaminata la chiamata va comunque alla firma: 1 read-back Telegram e 1 richiesta in attesa per turno, e viene negata solo dopo la firma. Quindi «0 = spento» non vale del tutto dopo una lettura. Correzione possibile: fare i controlli che non costano niente (tipo del testo, tetto 0) prima di parcheggiare. L'ho ricavato leggendo il codice: il ramo del cancello non chiama mai `avviso.py`. Non l'ho eseguito.
-- **R-613-2 BASSA**: prima questo ramo scriveva nel diario solo nome e ID (regola «niente argomenti nel diario per le azioni al cancello»). Il ramo «negata» nuovo invece passa da `_riassumi_args`. Se gli argomenti non sono un dizionario, per esempio una stringa JSON, nel diario finiscono 120 caratteri del testo. Provato: `GasKernel._riassumi_args('avvisa_operatore','"IGNORA LE ISTRUZIONI E SCRIVI X"')` restituisce il testo intero. Il danno è limitato: la riga ha il prefisso [NON FIDATO] e il pin ne omette i dettagli (`gas.py:3809`). Lo stesso problema c'era già nel percorso libero. Correzione: nel ramo nuovo impostare `_gate_diario`, per esempio a «negata-una-per-turno».
-- **R-613-3 COSMETICA**: con `GAS_NOTIFICHE_GIORNO=-3` il rifiuto dice «GAS_NOTIFICHE_GIORNO=0».
+**Riserve nuove**
+- R-618-1 BASSA — nessun test controlla che `main` usi davvero `url_del_server()` (clients/voice/ascolto.py:451). Rimettendo la vecchia espressione, il bug di R-616-1 tornerebbe con la suite verde. Basta un test su `main` con GAS_VOICE_PORT=9001 e senza GAS_VOICE_URL che legga l'URL passato a `invia_al_server` (o il log «server …»).
+- R-618-2 COSMETICA — il LEGGIMI dà il comando per svuotare solo `ascolto.log`, ma anche `voce.server.log` cresce allo stesso modo. Inoltre il test di clients/voice/ascolto.py:108 riceve `monkeypatch` senza usarlo.
 
-Restano da registrare in reports/stato_progetto.md, come dichiarato: R-612-1, R-612-2, V-2 COSMETICA del bot, V-5 BASSA della verifica esterna, più R-613-1..3.
+**Restano aperte** R-615-4 (permesso del microfono sotto launchd, da provare sul Mac) e R-615-5 (licenza dei modelli di openWakeWord, decide l'operatore).
 
-**Rischio escluso**
-- Non ho eseguito R-613-1 con una prova del kernel, a finestra contaminata con tetto 0 o testo non stringa (dedotto dal codice).
-- Non ho verificato se `ricorda()` mostra la riga di diario di R-613-2 senza omettere i dettagli: ho guardato solo il pin.
-- Il comportamento con Telegram reale (VPS) non è verificato: in sviluppo l'invio è finto.
+**Cosa NON ho verificato**
+- Il funzionamento vero sul Mac (launchd, microfono, afplay, porta diversa da 8765 col server vero acceso): non si può riprodurre su Linux.
+- Le suite del server voce, dell'STT e del TTS: le ho lanciate ma non hanno finito entro i 110 s. Il diff non le tocca, perché il modulo modificato lo importa solo il suo test.
 
-**Memoria**: aggiunta la riga #613 e una lezione (un cortocircuito messo davanti a `_parcheggia_e_notifica` salta le sue garanzie sul diario; le validazioni fatte solo nell'esecuzione non valgono al cancello). Commit 30aff74 con `scripts/commit_memoria_revisore.sh`. L'indice del diff sotto review è intatto (sha de9968ae…).
+**Memoria**: aggiunte la riga contatore #618 e una lezione (dopo aver estratto una funzione, provare anche il mutante che lascia il chiamante sulla vecchia espressione). Committate da sole con scripts/commit_memoria_revisore.sh (commit 158a61d). Il diff staged sotto review non è stato toccato (sempre 3 file).
 ```
 
-Verdetto integrale della review #614 (chat Mani), sul diff finale del commit b1d1e45:
+Verdetto integrale della review #621 (chat Mani), sul diff finale del commit 234f41c su main:
 
 ```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #614 (chat Mani). Ho ricontrollato le correzioni alle riserve R-613-1..3 della review #613. Diff staged con sha256 e19a25db3282566d…, lo stesso prima e dopo la review. Base: 3db59c2 più il commit di memoria 30aff74. Branch claude/peaceful-lovelace-0w2b7q.
+Review #621 (chat Mani): R8 voce H24 portata su main. Diff staged: sha256 63b0523b90b704c1, che corrisponde a quello dichiarato e non è cambiato dopo il commit della memoria. Base ceaa4aa.
 
-Ho letto CLAUDE.md (sezione 5, sezioni 8-9), reports/stato_progetto.md (in modo mirato) e la mia memoria (lezioni #611-#613).
+Letture fatte: CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (le parti sulla voce), la memoria del revisore. In questo branch la memoria non contiene le righe #615, #616 e #618: le ho lette nella copia del commit 52c26bf.
 
-**Elementi del diff esaminati**
+**Elementi esaminati**
+- `clients/voice/ascolto.py:451` — `main` prende l'URL da `url_del_server()` (`clients/voice/ascolto.py:116`). Rischio: che il collegamento che chiude R-616-1 non sia fissato da nessun test (era R-618-1). Esito: ok. Il mutante con la vecchia espressione (`GAS_VOICE_URL or "http://127.0.0.1:8765"`) dà 1 failed su 62, cioè `test_main_usa_la_porta_del_server`.
+- `tests/test_unit_voce_ascolto.py:386` — il test nuovo. Rilevatore, invio e Microfono sono finti, `_GAS_ROOT` punta a tmp_path (quindi nessun .env vero), e pretende `["http://127.0.0.1:9001"]`. Rischi: che dipenda dall'ambiente della shell e che tocchi hardware o rete. Esito: ok. Resta verde anche con `GAS_VOICE_URL=http://example.com GAS_VOICE_PORT=1` esportati, perché delenv e setenv li coprono. Non apre il microfono: KeyboardInterrupt fa `return 0` e `mic` resta None. Il parametro monkeypatch inutilizzato è stato tolto dalla riga `tests/test_unit_voce_ascolto.py:108`, quindi R-618-2 è chiusa per la parte del test.
+- `.github/workflows/ci.yml:128` — passo «voce H24» subito dopo il passo voce di main, che ha già `test_unit_voice_contesto.py`. Rischio: un'unione che perda o raddoppi passi di main. Esito: ok. Il diff verso main è di sole +8 righe, lo YAML si carica e il passo avvisa_operatore di main è intatto. Il test usa solo la libreria standard (numpy si importa solo dentro il rilevatore vero), quindi in CI non mancano dipendenze.
+- `.gitignore:23` — `.gas_voce/`. Esito: ok, `git check-ignore -v` sui log lo conferma.
+- `scripts/voce/LEGGIMI.md:93` — dice di svuotare anche `voce.server.log`. Esito: ok, R-618-2 chiusa.
+- Confronto completo con 52c26bf: `ascolto.py`, i due plist, `installa.sh`, `spegni.sh` e `requirements-ascolto.txt` sono identici byte per byte. Le uniche differenze sono le novità dichiarate e il contenuto già presente in main.
+- Antipattern: il diff non tocca gas.py, brains/ né la history, quindi niente slicing né output dei tool simulati.
 
-- `gas.py:4469` — `_rifiuto_avviso_al_cancello`: applica il limite di una notifica per turno e poi `rifiuto_senza_costi`. Rischio esaminato: un'eccezione che esce dal kernel, oppure un rifiuto che salta la firma per sbaglio. Prove dirette: senza `_avvisi_turno` (AttributeError), con `rendi_visibili` rotto (RuntimeError) e con JSON rotto, il metodo restituisce None, scrive un warning `[GATE]` e la chiamata si parcheggia. Nel dubbio quindi resta la firma. Con `GAS_NOTIFICHE_GIORNO=abc` vale il default 5 (non è spento); con -3 lo strumento risulta spento. — ok
-- `gas.py:4954` — ramo del cancello che rifiuta prima di `_parcheggia_e_notifica`. Imposta `_gate_diario="avviso-negato-al-cancello"` e `_cancello="negata"`. Rischio esaminato (lezione #613): un cortocircuito che salta le garanzie del parcheggio. Il diario non porta argomenti e prende comunque il prefisso NON FIDATO. Il controllo "una per turno" ora finisce anch'esso sotto l'etichetta. — ok
-- `gas.py:4963` — `self._avvisi_turno += 1` solo per i parcheggi in_attesa. Sta fuori da un try, ma `run_turn` lo inizializza sempre (`gas.py:4709`). Non può crashare. — ok
-- `modules/telegram/avviso.py:109` — `rifiuto_senza_costi`: tipo, vuoto, lunghezza, spento. `modules/telegram/avviso.py:132` la richiama dentro il try di `avvisa_operatore_esito`, quindi vale anche dopo la firma. «Spento» ora viene prima della configurazione e del conto. Il messaggio dice «a 0 o meno» (R-613-3 chiusa). — ok
-- `modules/telegram/avviso.py:42` — `_max_giorno` con `max(0, …)`. Un valore negativo diventa 0, cioè spento. — ok
-- `tests/test_unit_kernel.py:11574` — T102g, ho provato i mutanti in cartelle con nome nuovo:
-  - etichetta del diario tolta → T102g FAIL;
-  - `rifiuto_senza_costi` tolta dal cancello → T102g FAIL;
-  - controllo «spento» tolto → T102g FAIL, più 2 failed in `tests/test_unit_avvisa_operatore.py:134`.
-  — ok, ma vedi R-614-1
-- Prove rifatte su un export dell'indice:
-  - avvisa + gate + richieste: 884 passed;
-  - kernel: 1073 PASS, 1 FAIL (T31g, dipende dall'ambiente: fastembed assente).
-- Wall of Shame: nessuno slicing della history, nessun output di tool simulato. Il tetto di 10 iterazioni e `_get_window` non sono toccati.
+**Prove riprodotte** (su una copia dell'indice): `tests/test_unit_voce_ascolto.py` → 62 passed.
 
 **Riserve**
+- R-621-1 BASSA (processo): le righe #615, #616 e #618 vanno ancora riportate nella memoria, come avete previsto. Finiranno dopo la #621, fuori dall'ordine dei numeri; va bene, ma va fatto prima di chiudere la fetta.
+- Restano aperte, e vanno in stato_progetto.md:
+  - R-615-4 MEDIA: permesso del microfono sotto launchd, da provare sul Mac.
+  - R-615-5 BASSA: licenza CC BY-NC-SA di hey_jarvis, decide l'operatore.
 
-- **R-614-1 COSMETICA**: in T102g il controllo «SEGRETO-102 assente dal diario» non prova niente. `_riassumi_args` su `{"testo": [...]}` scrive già solo «testo=17 caratteri», quindi il testo non entrerebbe comunque. Il mutante cade solo sul controllo dell'etichetta. Si può lasciare così o aggiungere un caso in cui `_riassumi_args` farebbe davvero uscire il testo.
-- **R-614-2 BASSA, problema già esistente e fuori dal diff**: con argomenti che non sono un dizionario, `gate_classify` dà DENY e il diario passa da `_riassumi_args`, che scrive la stringa grezza. L'ho verificato: `_riassumi_args('avvisa_operatore', '"SEGRETO stringa json"')` restituisce il testo intero. Vale per qualunque strumento. Da segnare in stato_progetto.md come finding aperto.
-- **R-614-3 BASSA**: le riserve R-611..R-614 non sono ancora in reports/stato_progetto.md (riprende R-612-3). Vanno riportate a fine task.
+**Rischio escluso**: non ho rieseguito `installa.sh` coi comandi finti, né il resto della CI (suite kernel, voice server/stt/tts/contesto, avvisa_operatore). Quei file sono identici a quelli già provati in #616 e #618, o sono quelli di main senza modifiche. Il comportamento vero sul Mac (launchd, permesso del microfono, openWakeWord con audio reale) non è verificabile qui.
 
-**Cosa NON ho verificato**: l'invio reale su Telegram e il read-back reale verso il telefono, perché in dev non c'è token. Ho visto solo il canale finto dei test. Non ho controllato nemmeno il comportamento con due kernel sulla stessa root (R-612-2, nessun lock fra processi), perché non è toccato da questo diff.
+Il merge spetta all'operatore perché la PR tocca ci.yml.
 
-Riga contatore #614 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata da sola con `scripts/commit_memoria_revisore.sh` (commit 6600af1, nessuna lezione nuova). L'indice staged è intatto (sha256 ancora e19a25db…). Dopo questo verdetto puoi lanciare `bash scripts/segna_review_ok.sh`.
-```
-
-Commit 20031e4 (gas.py, modules/telegram/avviso.py, tests/: V-1 bot/ve, V-2 e V-3 ve su 1e4bc90). Verdetto integrale della review #617 (chat Mani):
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #617 (chat Mani). Ho esaminato il diff staged su claude/peaceful-lovelace-0w2b7q, sopra 1e4bc90. Lo sha256 inizia per 8b2934ec280632f1 ed era identico prima e dopo il commit della memoria. Prima della review ho letto CLAUDE.md, la parte di reports/stato_progetto.md sulla fetta 36 e la coda di .claude/agents/memoria_revisore.md (review #611-#614).
-
-### Elementi del diff esaminati
-- `modules/telegram/avviso.py:132` — `rifiuto_al_cancello(testo, root)` ripete i controlli senza costi, poi legge il conto con `_uso_oggi`. Rischi esaminati: che il cancello prenoti un posto; che un conto rotto lasci passare la richiesta; che il conto scritto al cancello e quello letto all'esecuzione non coincidano. — **ok**. Il conto non viene mai scritto. Conto illeggibile → rifiuto. Il tetto viene ricontrollato anche all'esecuzione firmata, quindi un giorno che si riempie fra parcheggio e firma resta bloccato lì. Il mutante «il cancello prenota il posto» fa fallire T102j (n=2) e il test del modulo (1 failed).
-- `gas.py:4469` — `_rifiuto_avviso_al_cancello` ora chiama `rifiuto_al_cancello(..., self.root)`. È la stessa root dell'esecuzione (`gas.py:4669`). Rischio esaminato: un'eccezione nel controllo. — **ok**. Il try esistente la trasforma in un warning e la chiamata va comunque al parcheggio, dove la firma resta il cancello. Il mutante «al cancello solo rifiuto_senza_costi» fa fallire T102i.
-- `modules/telegram/avviso.py:42` — `_max_giorno`: con un valore non intero ora restituisce 0 (spento) e scrive un warning; vuoto o di soli spazi → default 5. Rischio esaminato: tool spento per errore. — **riserva cosmetica (R-617-1)**. Ho provato i valori: «off» → 0, «5.0» → 0, « 3 » → 3, «+2» → 2, «1_0» → 10.
-- `tests/test_unit_kernel.py:11605` — T102j copre il percorso firmato completo: _TgFinto vero, parcheggio che conta 1 per turno, click con `_clicca77`, sendMessage con PREFISSO, conto a 1. Rischio esaminato: un test vuoto, che passa anche col codice sbagliato. — **ok**. Il mutante «tolto `not firmata and`» (`gas.py:4665`) fa fallire T102j. Un'eccezione dentro il blocco finisce nel check «T102 blocco senza eccezioni», e `_invia_default` e `invia_read_back` vengono ripristinati nei finally.
-- `tests/test_unit_kernel.py:11582` — T102i: conto 5/5 e finestra contaminata → negata, 0 read-back, 0 richieste in attesa. Ha senso perché il mutante m1 lo fa cadere. — **ok**.
-- `tests/test_unit_avvisa_operatore.py:148` — test del modulo: il conto resta 5, conto rotto → «illeggibile», testo non stringa → rifiuto. — **ok**.
-
-### Prove riprodotte (su una copia dell'indice nel scratchpad, cartelle nuove)
-- avvisa + gate + richieste: **890 passed**. Kernel: **1075 PASS, 1 FAIL (T31g, problema d'ambiente)**. Coincide con quanto dichiarato.
-- 3 modifiche apposta sbagliate al codice (mutanti), tutte prese (il codice di base fallisce solo T31g):
-  - m1: al cancello solo `rifiuto_senza_costi` → T102i FAIL.
-  - m2: tolto `not firmata and` → T102j FAIL.
-  - m3: il cancello prenota il posto → T102j FAIL + 1 failed pytest.
-- Nel diff non ci sono caratteri invisibili Cf/Zl/Zp (lezione R-611-1) né tagli diretti della cronologia.
-
-### Riserve
-- **R-617-1 COSMETICA**: con un valore non intero («off», «5.0») il rifiuto dice «GAS_NOTIFICHE_GIORNO a 0 o meno» (`modules/telegram/avviso.py:128`), che è falso. Chi scrive «5.0» intendendo 5 si ritrova lo strumento spento. Resta un blocco sicuro (fail-closed), ma l'unica traccia è il warning nel log.
-- **R-617-2 COSMETICA**: i messaggi e la logica di «conto illeggibile» e «tetto raggiunto» sono duplicati fra `rifiuto_al_cancello` (`modules/telegram/avviso.py:139`) e `avvisa_operatore_esito` (`modules/telegram/avviso.py:165`). Rischio: che col tempo divergano.
-- **R-617-3 BASSA, da dichiarare**: `rifiuto_al_cancello` non ha un try suo. Può sollevare (Path.exists su EACCES, import fallito). La regge il try del kernel e la chiamata va al parcheggio, quindi niente crash né invio. Però il docstring del modulo, «nessuna eccezione esce», per questa funzione non vale.
-
-### Rischio escluso
-Non ho verificato l'invio vero su Telegram, né che il messaggio col prefisso arrivi davvero alla chat di TELEGRAM_ALLOWED_IDS: T102j controlla testo e conto, non il chat_id. Serve un bot reale, non disponibile in dev. Non ho rifatto nemmeno la corsa fra processi sul conto (R-612-2, già aperta).
-
-### Memoria
-Riga contatore #617 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con `scripts/commit_memoria_revisore.sh` (commit 1a13c53, solo quel file). Il resto dell'index è intatto. Nessuna lezione nuova.
-```
-
-Commit bc46a27 (merge di origin/main f37316f, PR #318: entrano modules/voice/, i test voce e .github/workflows/ci.yml di M2). Verdetto integrale della review #619 (chat Mani):
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #619 (chat Mani). È il merge di origin/main f37316f (PR #318, voce V6) dentro claude/peaceful-lovelace-0w2b7q (PR #319, head 9c44686), base b472fe1. Ho ricontrollato lo sha256 del diff staged: 48877690b567403f…, coincide con quello che mi hai dato. Ho letto CLAUDE.md, reports/stato_progetto.md e la mia memoria.
-
-**Il merge non perde e non duplica righe.**
-- I due lati hanno toccato file diversi, tranne sei: ci.yml, stato_progetto.md, la memoria e i 3 report.
-- I 7 file voce (server.py, stt.py, browser_client.html, prova_voce_mac.md, i 3 test voce) sono identici a main byte per byte (`git diff --cached MERGE_HEAD`).
-- gas.py, modules/telegram/avviso.py, modules/gate/gate.py e i 3 report sono identici a HEAD.
-- Nei file comuni non resta nessun marcatore di conflitto.
-
-**Elementi esaminati:**
-- `.github/workflows/ci.yml:126` — il passo voce di main ora lancia anche test_unit_voice_contesto.py. Rischio: perdere il passo voce nell'unione. Il delta merge→HEAD coincide esattamente col delta base→main. YAML valido. Esito: ok.
-- `.github/workflows/ci.yml:193` — il passo «Run avvisa_operatore suite» del branch. Rischio: sparito o doppio. Il delta merge→main coincide esattamente col delta base→HEAD (7 righe), c'è una volta sola. Esito: ok.
-- `modules/voice/server.py:326` — il server voce chiama `self.kernel.run_turn(prompt, cervello=..., istruzione_turno=...)`. Rischio: il branch ha cambiato la firma di run_turn. La firma a `gas.py:4693` è ancora `(user_prompt, cervello, istruzione_turno)`: il branch aggiunge solo `_rifiuto_avviso_al_cancello` a `gas.py:4469` e non tocca l'interfaccia. Esito: ok.
-- `tests/test_unit_voice_contesto.py:88` — crea un GasKernel vero con cervelli finti, quindi ora con lo strumento avvisa_operatore registrato. Rischio: interferenza tra le due fette. Nei file voce e nei test voce `grep avvis` non trova nulla, e la suite passa sul tree unito. Esito: ok.
-- `.claude/agents/memoria_revisore.md:1114` e `reports/stato_progetto.md:653` (contesto) — memoria e stato sono l'unione dei due lati: 8 righe chat Mani più 9 righe M2 nella memoria, la voce «fetta 36» più le 2 voci V5/V6 di M2 nello stato. Nessuna riga duplicata nuova (`uniq -d` dà le stesse 3 righe generiche già presenti a HEAD). Esito: ok.
-
-**Prove rifatte da me sul tree unito:**
-- `python tests/test_unit_kernel.py`: 1075 PASS, 1 FAIL (T31g, ambiente, come dichiarato).
-- Suite voce server/stt/tts/contesto + avvisa_operatore + gate: 1049 passed.
-
-**Riserve (da tracciare in stato_progetto.md):**
-- **R-619-1 BASSA**: handoff.md, ultimo_report.md e diff_sessione.md sono quelli del branch e non citano il merge di f37316f. Al fine-task vanno aggiunti il commit di merge al git log della sessione e la riga «main portata dentro (PR #318)».
-- **R-619-2 COSMETICA**: la riga «Ultimo aggiornamento» di stato_progetto.md ora è quella di main (chat M2, V6) e non cita la fetta 36. Il problema c'era già sul branch, che non l'aveva aggiornata. Da sistemare al fine-task.
-- **R-619-3 BASSA (procedura)**: la mia riga #619 e la lezione sono nella memoria del working tree ma NON nel merge staged. `scripts/commit_memoria_revisore.sh` è uscito con exit 0 e ha scritto in gas_debug.log il warning «cannot do a partial commit during a merge»: comportamento atteso, l'index è intatto, lo sha resta 48877690. Ordine giusto:
-  1. `bash scripts/segna_review_ok.sh` sul diff staged attuale;
-  2. commit del merge;
-  3. di nuovo `bash scripts/commit_memoria_revisore.sh`, che a merge chiuso funziona.
-
-  Non fare `git add` della memoria prima del commit del merge: cambierebbe lo sha e il marcatore non varrebbe più.
-
-**Cosa NON ho verificato:**
-- Non ho rifatto il merito tecnico dei file voce entrati da main: sono byte per byte quelli già revisionati da M2 in #611-M2..#623-M2.
-- Non ho eseguito i test della pagina nel browser con GAS_TEST_BROWSER_OBBLIGATORIO=1, né la suite degli hook: non c'è Chromium/Playwright nell'ambiente. Li copre la CI.
-- La numerazione salta da #617 a #619: ho usato il numero che mi hai dato, ma in questa memoria #618 non esiste.
-
-Riga di memoria aggiunta: «#619 (chat Mani) — 2026-11-02 — APPROVATO CON RISERVE — …», più una lezione sulla review dei merge.
-```
-
-Commit 5331f14 (secondo merge di origin/main 3cd550f, PR #321: entrano brains/claude_cli.py, gas.py del doctor e i test di M2). Verdetto integrale della review #620 (chat Mani):
-
-```
-## VERDETTO: APPROVATO
-
-Review #620 (chat Mani). È il secondo merge di origin/main 3cd550f (PR #321) dentro claude/peaceful-lovelace-0w2b7q (PR #319). Ho controllato il diff staged: sha256 8b3a724822e0b333, uguale a quello che mi hai dato. Base del merge f37316f.
-
-Elementi del diff esaminati:
-- `gas.py:35` — aggiunge l'import di `stato_abbonamento` come `claude_cli_stato_abbonamento`. Rischio: che nell'auto-merge degli import si perdesse una riga di uno dei due lati. Ho confrontato il delta contro HEAD con quello di main dalla base, e il delta contro MERGE_HEAD con quello di avvisa_operatore dalla base: sono identici. Esito: ok.
-- `gas.py:5143` — riga «Cervello forte · login» del doctor, dentro `if binario`, col suffisso «CLI della shell» quando `_avviso` è vero. Rischio: che la riga finisse fuori dal ramo dove `_avviso` è definita. Il codice è identico a quello di M2, nello stesso ramo. Esito: ok.
-- `tests/test_unit_kernel.py:59` — `os.environ.pop("GAS_CLAUDE_CLI")` in testa alla suite (R-635-1). Rischio: che un test di avvisa_operatore contasse sull'interruttore preso dalla shell. Ho cercato GAS_CLAUDE_CLI nei test di avvisa e nel lato Mani del kernel: nessun uso. Esito: ok.
-- `tests/test_unit_kernel.py:11188` — stub di `gas.claude_cli_stato_abbonamento` in `_doc99`, rimesso a posto nel `finally`. Rischio: che con l'auto-merge si perdesse uno dei due lati di T99 o T102. Delta identico su tutti e due i lati, e la suite è verde. Esito: ok.
-- `brains/claude_cli.py:305` — il file intero, come `tests/test_unit_claude_cli.py` e `tests/test_unit_dotenv.py`: tutti e tre hanno 0 righe di differenza contro MERGE_HEAD. Il lato M2 è arrivato tale e quale. Esito: ok.
-- `.claude/agents/memoria_revisore.md:1126` — unione della memoria: 1138 righe, cioè le 1125 di HEAD più le 13 di main (#632-M2…#641-M2, più le lezioni). Ho cercato con `comm` le righe di HEAD o di main che mancano nell'indice: nessuna. Nessuna riga doppia e nessun marcatore di conflitto. Esito: ok.
-- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» finisce con la riga 4 di main intera. Davanti c'è la testa Mani («…bc46a27 e quello della PR #321, review #611–#620»). La catena «prima:» di HEAD, da «voce V6» in poi, è identica a quella di main, e la voce M2 sul forte compare una volta sola. L'altro pezzo di main, la voce R2/`--bare` a :604, è presente e la fetta 36 di HEAD c'è. Esito: ok.
-
-Prove riprodotte da me sull'export dell'indice (`git checkout-index` nello scratchpad):
-- kernel 1075 PASS, 1 FAIL: è T31g, dovuto all'ambiente (lo stesso di #619);
-- avvisa + gate + richieste + claude_cli + dotenv: 955 passed;
-- `py_compile` di gas.py e brains/claude_cli.py: ok.
-
-Rischi esclusi:
-- Doctor e `claude auth status` su un Mac vero: non verificati, qui non c'è la CLI dell'operatore. Sono già coperti dalle review #632–#640-M2 e il codice di M2 non è cambiato nel merge.
-- handoff.md, ultimo_report.md e diff_sessione.md: non li ho rivisti nel contenuto. Sono identici a HEAD (lato Mani), e dopo il commit del merge vanno aggiornati con questo secondo merge, come R-619-1.
-
-Finding R-620-x: nessuno.
-
-Memoria:
-- La riga contatore #620 è scritta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree: l'indice non l'ho toccato e lo sha del diff staged è ancora 8b3a724822e0b333.
-- Lo script `bash scripts/commit_memoria_revisore.sh` NON l'ho lanciato, come mi hai chiesto: va eseguito dopo il commit del merge (lezione #619).
-- Nessuna lezione nuova.
+Memoria: riga #621 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (31b8ec1).
 ```
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_kernel.py` (comando della CI `python tests/test_unit_kernel.py`, da root): su main pulito 1066 PASS, 1 FAIL; col diff 1075 PASS, 1 FAIL (+9: T102a-j senza h; T68s ha due voci in più nello stesso check). Il FAIL è T31g («gate env GAS_VECTORS=1 costruisce il vector store»), identico su main in questo container: dipende dall'ambiente, fuori scope. Riepilogo reale:
-
-```
-=== RIEPILOGO: 1075 PASS, 1 FAIL ===
-  FAIL: T31g gate env GAS_VECTORS=1 costruisce il vector store (lazy, no download)
-```
-
-`tests/test_unit_avvisa_operatore.py` (nuovo): 42 passed. Con gate e richieste (`python -m pytest tests/test_unit_avvisa_operatore.py tests/test_unit_gate.py tests/test_unit_richieste.py`): 890 passed. In CI su 1e4bc90 il kernel dà 1076 PASS, 0 FAIL (T31g passa lì). Mutanti presi: niente prenotazione, tetto off-by-one, Cf non tolti, cancello SAFE, giorno ignorato (test del modulo); niente tetto per turno, testo nel diario, avvisa_operatore libero a finestra contaminata, tetto per turno solo sui «Successo», niente tetto per turno al cancello, niente controlli senza costi al cancello, diario del rifiuto senza etichetta (kernel); testo non stringa accettato, «spento» tolto (modulo); al cancello senza il tetto del giorno, tetto per turno anche sulla firma (kernel).
+Nessuna modifica a gas.py, brains/ o modules/. Test nuovi: `tests/test_unit_voce_ascolto.py` (`python -m pytest tests/test_unit_voce_ascolto.py`, da root): 62 passed. Con le suite voce di M2 (server/stt/tts), prima delle ultime correzioni: 181 passed. Mutanti presi (1 failed o più ciascuno): soglia ignorata, niente svuotamento dopo la risposta, file temporaneo non cancellato, http remoto accettato, massimo dei turni ignorato, silenzio prima della voce incluso, file 0644, senza `_NienteRedirect`, senza `ProxyHandler({})`, blocchi forti non di fila, attesa sulla logica vecchia, URL sempre 8765, `main` con la vecchia espressione; per gli script: `grep` senza `|| true` (installa fermo dopo «5/6», riprodotto sul codice vecchio), lista bianca `.*`.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- beb0feb, 4bd1564 (memoria del revisore), c67a2d5 (fetta 36): pushati insieme prima dell'apertura della PR #319; run 41368996140 su c67a2d5: handoff-check failure (l'handoff era ancora quello della fetta 35, atteso), unit-suite success.
-- 3db59c2 (fine-task): run 41369132632 su 3db59c2 success (unit-suite, handoff-check); verifica-bot neutral (la PR tocca ci.yml, bot APPROVATO CON RISERVE).
-- 30aff74, 6600af1 (memoria #613, #614), b1d1e45 (correzioni), 1e4bc90 (fine-task): run 41371890790 su 1e4bc90 success (unit-suite, handoff-check); verifica-bot neutral (bot APPROVATO CON RISERVE).
-- 1a13c53 (memoria #617), 20031e4 (correzioni), 9c44686 (fine-task): run 41374118977 su 9c44686 success (unit-suite, handoff-check); verifica-bot neutral (bot APPROVATO CON RISERVE).
-- I commit di main entrati col merge (fino a f37316f, PR #318) hanno le run della PR #318, non di questa PR.
-- bc46a27 (merge), 22a8a5b (memoria #619), c945f46 (fine-task): run su c945f46 non letta (la #321 è entrata in main prima della fine; il conflitto l'ha superata).
-- I commit di main entrati col secondo merge (fino a 3cd550f, PR #321) hanno le run della PR #321.
-- 5331f14 (merge), d51eaf1 (memoria #620), c4545d3 (fine-task): run su c4545d3 non letta (la #320 è entrata in main prima della fine).
-- abdb3e8 (terzo merge, PR #320) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 31b8ec1 (memoria #621), 234f41c (fetta 37), 5876b7e (memoria #615/#616/#618): pushati insieme prima dell'apertura della PR #323. Run non ancora disponibile alla scrittura dell’handoff.
+- Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-612-1 (chat Mani) COSMETICA: il limite di 1000 caratteri si misura sul testo già espanso (<U+XXXX>): messaggio fuorviante, fail-closed.
-- R-612-2 (chat Mani) BASSA: il conto del giorno è leggi-poi-scrivi senza lock fra processi (come `.gas_richieste_uso`): due kernel insieme possono superare il tetto di uno.
-- V-2 bot su 3db59c2 COSMETICA: ZWJ e FE0F delle emoji legittime arrivano come <U+XXXX> e consumano il limite.
-- V-5 ve #319 BASSA: il testo può contenere righe finte dopo il prefisso (non è una firma: le firme passano solo dai bottoni).
-- R-614-1 (chat Mani) COSMETICA: in T102g il controllo «testo assente dal diario» non prova niente da solo (cade il controllo dell'etichetta).
-- R-614-2 (chat Mani) BASSA, preesistente: argomenti non dizionario → DENY del cancello con `_riassumi_args` grezzo nel diario, per ogni strumento.
-- R-617-1 (chat Mani) COSMETICA: con un valore non intero il rifiuto dice «a 0 o meno».
-- R-617-2 (chat Mani) COSMETICA: controlli del conto duplicati fra `rifiuto_al_cancello` e `avvisa_operatore_esito`.
-- R-617-3 (chat Mani) BASSA: `rifiuto_al_cancello` senza try suo (lo regge quello del kernel: la chiamata va alla firma).
-- V-1 bot su 9c44686 BASSA: il messaggio di firma porta all'operatore il testo integrale voluto dalla pagina (§4c) e un parcheggio non conta nel tetto del giorno: limite dichiarato, il comportamento a finestra contaminata resta «alla firma» (decisione dell'operatore tramite M1).
-- V-1/V-2 ve su 9c44686 COSMETICHE: voce del conto in `_SAFE_PATH_DENY_PREFIXES` senza test (il cancello la nega comunque); .tmp del conto non cancellato se `os.replace` fallisce.
-- Invio vero su Telegram non provato (nessun token in sviluppo).
-- Del browser (fetta 35, PR #317 mergiata): R-609-1, R-610-1, V-3 ve #317, V-1 c ve #316, V-1 bot su 384bb3a (sonda di node rilanciata a ogni lettura con Playwright rotto), tutte BASSE; prova dal vero sul VPS prima di accendere il browser.
+- R-615-4 (chat Mani) MEDIA: permesso del microfono sotto launchd, da provare sul Mac; la voce H24 non è dichiarata funzionante prima.
+- R-615-5 (chat Mani) BASSA: licenza CC BY-NC-SA dei modelli pronti di openWakeWord, decide l'operatore.
+- Log in `.gas_voce/` senza rotazione (dichiarato nel LEGGIMI).
+- Da #319 (mergiata): V-1 bot su 9c44686 BASSA (limite dichiarato), V-1/V-2 ve su 9c44686 COSMETICHE, R-612-1/2, R-614-1/2, R-617-1/2/3, V-2 bot, V-5 ve.
