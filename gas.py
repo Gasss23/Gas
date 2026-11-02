@@ -120,9 +120,9 @@ def _campo_pin(text: Any) -> str:
 
 _GAS_SYSTEM_PROMPT_BASE = (
     "REGOLE TASSATIVE:\n"
-    "- Hai 12 tool nativi: read_file, elenca_cartella, leggi_righe, cerca_testo, conta_file, "
+    "- Hai 13 tool nativi: read_file, elenca_cartella, leggi_righe, cerca_testo, conta_file, "
     "data_ora, write_file, calcola, ricorda, salva_contatto, imposta_stato_contatto, "
-    "richiedi_sviluppo. "
+    "richiedi_sviluppo, avvisa_operatore. "
     "Invocali davvero e aspetta il risultato reale: non inventare, descrivere o simulare mai l'output.\n"
     "- Se un tool fallisce o viene negato dal kernel, DICHIARA esplicitamente che non puoi eseguire "
     "quell'operazione. Non simulare né inventare mai un output alternativo, qualunque sia il contesto.\n"
@@ -136,6 +136,9 @@ _GAS_SYSTEM_PROMPT_BASE = (
     "Per creare o modificare file usa SEMPRE write_file.\n"
     "- Non scrivere MAI file di memoria o cronologia (gas_history e simili): "
     "la memoria è gestita automaticamente dal kernel.\n"
+    "- avvisa_operatore manda un messaggio su Telegram all'operatore: usalo SOLO per cose "
+    "che deve sapere subito, mai per rispondere in chat (la risposta la vede già). "
+    "Massimo una notifica per turno e poche al giorno.\n"
     "- Per domande di cultura generale, definizioni e spiegazioni (es. «cos'è la "
     "fotosintesi») rispondi con le tue conoscenze. Usa ricorda per le cose dell'utente "
     "(lead, azioni passate) e per le conoscenze che l'operatore ha caricato: se l'argomento "
@@ -1231,6 +1234,7 @@ class GasKernel:
             {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
             {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}},
             {"type": "function", "function": {"name": "richiedi_sviluppo", "description": "Passa alla squadra di sviluppo (Claude Code) una richiesta di modifica a Gas: nuove funzioni, correzioni, migliorie. Usalo solo quando l'operatore lo chiede esplicitamente. PRIMA chiarisci con lui cosa vuole: se la richiesta è vaga o ha più letture, fai domande e usa lo strumento solo quando è chiara. Scrivi un titolo breve e una descrizione completa: obiettivo, cosa deve succedere, esempi, cosa NON fare. Non mettere segreti (chiavi, password). Non tocca il codice: la squadra lavora con revisore, test e le firme dell'operatore.", "parameters": {"type": "object", "properties": {"titolo": {"type": "string", "description": "titolo breve (max 120 caratteri)"}, "descrizione": {"type": "string", "description": "richiesta completa e chiara (max 4000 caratteri)"}}, "required": ["titolo", "descrizione"]}}},
+            {"type": "function", "function": {"name": "avvisa_operatore", "description": "Manda un messaggio su Telegram all'operatore (solo a lui: il destinatario non si sceglie). Usalo SOLO per cose che l'operatore deve sapere subito, mai per rispondere in chat. Testo semplice, massimo 1000 caratteri; una notifica per turno e un tetto al giorno. Dopo aver letto contenuti esterni (pagine, file, mail) la notifica va prima alla firma dell'operatore.", "parameters": {"type": "object", "properties": {"testo": {"type": "string", "description": "il messaggio per l'operatore (max 1000 caratteri)"}}, "required": ["testo"]}}},
             {"type": "function", "function": {"name": "calcola", "description": "Valuta un'espressione aritmetica pura (+ - * / // % **) e funzioni math (sqrt, floor, ceil, log, log2, log10, sin, cos, tan, fabs, factorial) e costanti (math.pi, math.e). ZERO accesso a shell o file. Usalo per qualsiasi calcolo numerico preciso.", "parameters": {"type": "object", "properties": {"expr": {"type": "string", "description": "espressione aritmetica, es. '7*8', 'math.sqrt(144)', '(3+5)*2'"}}, "required": ["expr"]}}}
         ]
         # FETTA 1 PR B: allowlist vuota → run_command non offerto al modello.
@@ -2015,6 +2019,7 @@ class GasKernel:
         ".gas_tokens", ".gas_knowledge",
         ".gas_claude_cli_uso",  # V-1 bot #258: il conto del tetto del forte
         ".gas_richieste_uso",  # V-1 bot #307: il conto del tetto delle richieste
+        ".gas_notifiche_uso",  # il conto del tetto delle notifiche all'operatore (R6)
         "gas_history",  # undotted: LLM hallucination variants
     )
 
@@ -2459,6 +2464,9 @@ class GasKernel:
                     f"testo={len(str(args.get('testo', '')))} caratteri")
         if name == "salva_contatto":
             return f"contatto chiave={str(args.get('chiave', ''))[:80]!r}"
+        if name == "avvisa_operatore":
+            # Il testo può venire da input non fidato (F-diario-eco): solo la lunghezza.
+            return f"testo={len(str(args.get('testo', '') or ''))} caratteri"
         if name == "imposta_stato_contatto":
             return (f"chiave={str(args.get('chiave', ''))[:80]!r} "
                     f"stato={str(args.get('stato', ''))[:40]!r}")
@@ -4455,6 +4463,28 @@ class GasKernel:
         return (f"Successo: lead '{da}' unito in '{verso}' "
                 f"(lead canonico id={cid}). La storia è stata preservata.")
 
+    # avvisa_operatore: una notifica per turno, partita o alla firma (V-1 bot/ve #319).
+    _UNA_NOTIFICA_PER_TURNO = ("Operazione negata: una sola notifica per turno, già "
+                               "partita o alla firma. Scrivi il resto nella risposta.")
+
+    def _rifiuto_avviso_al_cancello(self, args_str: Any) -> Optional[str]:
+        """avvisa_operatore diretta alla firma: una per turno (V-1 bot/ve #319), i
+        controlli che non costano niente (R-613-1: testo sbagliato, strumento spento) e
+        il tetto del giorno (V-1 bot/ve #319 su 1e4bc90), così non nasce una richiesta
+        di firma inutile. None = si parcheggia.
+        Mai eccezioni: nel dubbio si parcheggia (la firma resta il cancello)."""
+        try:
+            if self._avvisi_turno >= 1:
+                return self._UNA_NOTIFICA_PER_TURNO
+            from modules.telegram.avviso import rifiuto_al_cancello
+            args = json.loads(args_str) if isinstance(args_str, str) else args_str
+            return rifiuto_al_cancello(args.get("testo") if isinstance(args, dict) else None,
+                                       self.root)
+        except Exception as e:
+            logging.warning("[GATE] controllo di avvisa_operatore fallito (%s)",
+                            type(e).__name__)
+            return None
+
     def execute_tool_call(self, name: str, args_str: Any, firmata: bool = False) -> str:
         """Esegue un tool. `firmata=True` SOLO da applica_firma (firma umana valida):
         abilita write_file di livello 2 (1A), mai il livello 3."""
@@ -4629,6 +4659,19 @@ class GasKernel:
                 from modules.sviluppo import crea_richiesta
                 a = args if isinstance(args, dict) else {}
                 out = crea_richiesta(a.get("titolo"), a.get("descrizione"), self.root)
+            elif name == "avvisa_operatore":
+                # Notifica all'operatore (R6): solo TELEGRAM_ALLOWED_IDS, tetto al giorno
+                # in modules/telegram/avviso.py; qui il tetto di UNA per turno (non per
+                # l'azione firmata: è un'altra azione, decisa dall'operatore).
+                if not firmata and getattr(self, "_avvisi_turno", 0) >= 1:
+                    return self._UNA_NOTIFICA_PER_TURNO
+                from modules.telegram.avviso import avvisa_operatore_esito
+                a = args if isinstance(args, dict) else {}
+                out, prenotato = avvisa_operatore_esito(a.get("testo"), self.root)
+                # R-611-4: conta ogni invio partito (anche fallito), così un Telegram
+                # giù non brucia in un turno tutti i posti del giorno.
+                if not firmata and prenotato:
+                    self._avvisi_turno = getattr(self, "_avvisi_turno", 0) + 1
             else:
                 # unisci_contatti NON è più un tool autopilot: il merge di lead è
                 # mutante e irreversibile (lossy), quindi è MANUTENZIONE UMANA e non
@@ -4666,6 +4709,7 @@ class GasKernel:
         _avvisi_lead: List[str] = []  # V-1 bot #225: un solo avviso Telegram a fine turno
         _lead_nuovi = 0  # V-1 bot #225 (2° giro): lead creati dopo una lettura
         self._file_delicati_turno = []  # R-223-2: file nuovi delicati, avviso a fine turno
+        self._avvisi_turno = 0  # avvisa_operatore: una notifica per turno
 
         def _chiudi_turno() -> None:
             nonlocal _turno_fine_scritto
@@ -4903,13 +4947,25 @@ class GasKernel:
                                         "[GATE] %s → %s (contaminato=%s) — al cancello",
                                         tc.function.name, _gc.value, _finestra_contaminata,
                                     )
-                                    out, _gate_diario = self._parcheggia_e_notifica(
-                                        tc.function.name, tc.function.arguments, _turno_id,
-                                    )
-                                    if out.startswith("Azione in attesa di approvazione umana"):
-                                        _cancello = "in_attesa"
-                                    elif out.startswith("Operazione negata"):
+                                    # V-1 bot/ve #319: una notifica per turno anche alla firma
+                                    # (una pagina letta non riempie la coda delle firme).
+                                    _avviso = tc.function.name == "avvisa_operatore"
+                                    _no_avviso = (self._rifiuto_avviso_al_cancello(
+                                        tc.function.arguments) if _avviso else None)
+                                    if _no_avviso:
+                                        # R-613-2: diario senza argomenti, come i parcheggi
+                                        out, _gate_diario = _no_avviso, "avviso-negato-al-cancello"
                                         _cancello = "negata"
+                                    else:
+                                        out, _gate_diario = self._parcheggia_e_notifica(
+                                            tc.function.name, tc.function.arguments, _turno_id,
+                                        )
+                                        if out.startswith("Azione in attesa di approvazione umana"):
+                                            _cancello = "in_attesa"
+                                            if _avviso:
+                                                self._avvisi_turno += 1
+                                        elif out.startswith("Operazione negata"):
+                                            _cancello = "negata"
                                 else:
                                     _lead_contaminato = (
                                         _finestra_contaminata and tc.function.name in
