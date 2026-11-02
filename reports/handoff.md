@@ -26,15 +26,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 ++++++++
- clients/voice/browser_client.html  |  39 +++++++++++++++++++++++++++++---
- modules/voice/server.py            |  51 ++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  13 +++++------
+ .claude/agents/memoria_revisore.md |  11 ++++++++
+ clients/voice/browser_client.html  |  41 ++++++++++++++++++++++++++---
+ modules/voice/server.py            |  52 +++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  24 ++++++-----------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  24 +++++++++-----------
- tests/test_unit_voice_server.py    |  32 ++++++++++++++++++++++----
- tests/test_unit_voice_stt.py       | 118 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  33 +++++++++++-------------
+ tests/test_unit_voice_server.py    |  32 ++++++++++++++++++++---
+ tests/test_unit_voice_stt.py       | 128 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -42,6 +42,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1907320 chore(revisore): memoria review #649 — APPROVATO
+6be61f2 fix(voce): «Ho capito» nascosto su ogni guasto, tempo del cervello anche senza risposta (V-2 bot e V-2 ve #322 su 3a88f78; review #649-M2)
+ccf5e07 Merge remote-tracking branch 'origin/main' into feat/voce-v7-m2
+3a88f78 docs(voce-v7a): report dopo bot e verifica esterna su 8dc872e (PR #322, review #646/#647-M2)
 18d626e fix(voce): tempi visibili anche su un guasto al primo turno, riquadro della risposta davvero nascosto prima della prima risposta (V-1/V-2 bot #322 su 8dc872e; review #646/#647-M2)
 0621126 chore(revisore): memoria review #647 — APPROVATO
 c3338e6 chore(revisore): memoria review #646 — APPROVATO CON RISERVE
