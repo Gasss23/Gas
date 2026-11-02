@@ -4462,6 +4462,26 @@ class GasKernel:
         return (f"Successo: lead '{da}' unito in '{verso}' "
                 f"(lead canonico id={cid}). La storia è stata preservata.")
 
+    # avvisa_operatore: una notifica per turno, partita o alla firma (V-1 bot/ve #319).
+    _UNA_NOTIFICA_PER_TURNO = ("Operazione negata: una sola notifica per turno, già "
+                               "partita o alla firma. Scrivi il resto nella risposta.")
+
+    def _rifiuto_avviso_al_cancello(self, args_str: Any) -> Optional[str]:
+        """avvisa_operatore diretta alla firma: una per turno (V-1 bot/ve #319) e i
+        controlli che non costano niente (R-613-1: testo sbagliato, strumento spento),
+        così non nasce una richiesta di firma inutile. None = si parcheggia.
+        Mai eccezioni: nel dubbio si parcheggia (la firma resta il cancello)."""
+        try:
+            if self._avvisi_turno >= 1:
+                return self._UNA_NOTIFICA_PER_TURNO
+            from modules.telegram.avviso import rifiuto_senza_costi
+            args = json.loads(args_str) if isinstance(args_str, str) else args_str
+            return rifiuto_senza_costi(args.get("testo") if isinstance(args, dict) else None)
+        except Exception as e:
+            logging.warning("[GATE] controllo di avvisa_operatore fallito (%s)",
+                            type(e).__name__)
+            return None
+
     def execute_tool_call(self, name: str, args_str: Any, firmata: bool = False) -> str:
         """Esegue un tool. `firmata=True` SOLO da applica_firma (firma umana valida):
         abilita write_file di livello 2 (1A), mai il livello 3."""
@@ -4641,8 +4661,7 @@ class GasKernel:
                 # in modules/telegram/avviso.py; qui il tetto di UNA per turno (non per
                 # l'azione firmata: è un'altra azione, decisa dall'operatore).
                 if not firmata and getattr(self, "_avvisi_turno", 0) >= 1:
-                    return ("Operazione negata: una sola notifica per turno, già "
-                            "partita. Scrivi il resto nella risposta.")
+                    return self._UNA_NOTIFICA_PER_TURNO
                 from modules.telegram.avviso import avvisa_operatore_esito
                 a = args if isinstance(args, dict) else {}
                 out, prenotato = avvisa_operatore_esito(a.get("testo"), self.root)
@@ -4925,13 +4944,25 @@ class GasKernel:
                                         "[GATE] %s → %s (contaminato=%s) — al cancello",
                                         tc.function.name, _gc.value, _finestra_contaminata,
                                     )
-                                    out, _gate_diario = self._parcheggia_e_notifica(
-                                        tc.function.name, tc.function.arguments, _turno_id,
-                                    )
-                                    if out.startswith("Azione in attesa di approvazione umana"):
-                                        _cancello = "in_attesa"
-                                    elif out.startswith("Operazione negata"):
+                                    # V-1 bot/ve #319: una notifica per turno anche alla firma
+                                    # (una pagina letta non riempie la coda delle firme).
+                                    _avviso = tc.function.name == "avvisa_operatore"
+                                    _no_avviso = (self._rifiuto_avviso_al_cancello(
+                                        tc.function.arguments) if _avviso else None)
+                                    if _no_avviso:
+                                        # R-613-2: diario senza argomenti, come i parcheggi
+                                        out, _gate_diario = _no_avviso, "avviso-negato-al-cancello"
                                         _cancello = "negata"
+                                    else:
+                                        out, _gate_diario = self._parcheggia_e_notifica(
+                                            tc.function.name, tc.function.arguments, _turno_id,
+                                        )
+                                        if out.startswith("Azione in attesa di approvazione umana"):
+                                            _cancello = "in_attesa"
+                                            if _avviso:
+                                                self._avvisi_turno += 1
+                                        elif out.startswith("Operazione negata"):
+                                            _cancello = "negata"
                                 else:
                                     _lead_contaminato = (
                                         _finestra_contaminata and tc.function.name in

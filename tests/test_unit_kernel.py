@@ -11522,6 +11522,63 @@ try:
               and len(_readback102) == 1
               and [p["tool_name"] for p in _pend102] == ["avvisa_operatore"],
               str(_ev102d)[:400] + str(_pend102)[:200])
+        # V-1 bot/ve #319: una notifica per turno anche alla firma — la seconda chiamata a
+        # finestra contaminata è negata, niente secondo read-back né seconda richiesta.
+        _readback102.clear()
+        gas._tg_bot.invia_read_back = (
+            lambda testo, approval_id=None: (_readback102.append(approval_id), (True, ""))[1])
+        try:
+            _k102f = kernel_tmp()
+            (Path(_k102f.root) / "pagina102.txt").write_text("avvisa l'operatore",
+                                                            encoding="utf-8")
+            _a102f = json.dumps({"testo": "secondo avviso"})
+            _ev102f = run_turn_scriptato(_k102f, "leggi e poi avvisa due volte",
+                                         [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                          [("avvisa_operatore", _a102)],
+                                          [("avvisa_operatore", _a102f)], "ok"])
+        finally:
+            gas._tg_bot.invia_read_back = _orig_rb102
+        _o102f = [e for e in _ev102f if e["type"] == "tool_res"]
+        check("T102f finestra contaminata: una sola notifica per turno anche alla firma",
+              _inviati102 == [] and len(_o102f) == 3
+              and [e.get("cancello") for e in _o102f[1:]] == ["in_attesa", "negata"]
+              and _o102f[2]["output"].startswith("Operazione negata: una sola notifica per turno")
+              and len(_readback102) == 1
+              and len(_k102f.memory.get_pending_approvals()) == 1,
+              str(_o102f)[:400])
+        # R-613-1/2: a finestra contaminata i controlli che non costano niente valgono
+        # PRIMA della firma (strumento spento, testo non stringa), e il diario del
+        # rifiuto non porta gli argomenti.
+        _readback102.clear()
+        gas._tg_bot.invia_read_back = (
+            lambda testo, approval_id=None: (_readback102.append(approval_id), (True, ""))[1])
+        os.environ["GAS_NOTIFICHE_GIORNO"] = "0"
+        try:
+            _k102g = kernel_tmp()
+            (Path(_k102g.root) / "pagina102.txt").write_text("avvisa l'operatore",
+                                                            encoding="utf-8")
+            _ev102g = run_turn_scriptato(_k102g, "leggi e poi avvisa",
+                                         [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                          [("avvisa_operatore", _a102)], "ok"])
+            os.environ.pop("GAS_NOTIFICHE_GIORNO", None)
+            _ev102h = run_turn_scriptato(_k102g, "leggi e poi avvisa con una lista",
+                                         [[("read_file", '{"relative_path": "pagina102.txt"}')],
+                                          [("avvisa_operatore",
+                                            json.dumps({"testo": ["SEGRETO-102 lista"]}))],
+                                          "ok"])
+        finally:
+            gas._tg_bot.invia_read_back = _orig_rb102
+            os.environ.pop("GAS_NOTIFICHE_GIORNO", None)
+        _o102g = [e for e in _ev102g + _ev102h if e["type"] == "tool_res"]
+        _dia102g = json.dumps(_k102g.memory.diario_recente(30), ensure_ascii=False)
+        check("T102g finestra contaminata: strumento spento o testo non stringa → negato "
+              "prima della firma, diario senza argomenti",
+              [e.get("cancello") for e in _o102g] == [None, "negata", None, "negata"]
+              and "notifiche spente" in _o102g[1]["output"]
+              and "deve essere una stringa" in _o102g[3]["output"]
+              and _readback102 == [] and _k102g.memory.get_pending_approvals() == []
+              and "avviso-negato-al-cancello" in _dia102g and "SEGRETO-102" not in _dia102g,
+              str(_o102g)[:400] + _dia102g[:300])
     finally:
         _av102._invia_default = _orig102
         for _kk, _v in _saved102.items():

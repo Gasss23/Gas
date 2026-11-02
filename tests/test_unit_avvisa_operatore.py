@@ -121,6 +121,24 @@ def test_testo_vuoto(env, testo):
     assert out.startswith("Operazione negata: serve un 'testo'") and f.testi == []
 
 
+@pytest.mark.parametrize("testo", [["x"], {"a": 1}, 5, True, b"x"])
+def test_testo_non_stringa(env, testo):
+    """V-2 ve #319: una lista o un numero non partono come repr e non consumano posti."""
+    f = Finto()
+    out, prenotato = av.avvisa_operatore_esito(testo, env, invia=f)
+    assert out.startswith("Operazione negata: 'testo' deve essere una stringa")
+    assert f.testi == [] and prenotato is False and not (env / av.USO_FILENAME).exists()
+
+
+@pytest.mark.parametrize("valore", ["0", "-3"])
+def test_zero_al_giorno_spegne(env, monkeypatch, valore):
+    """V-3 ve #319: GAS_NOTIFICHE_GIORNO=0 spegne lo strumento (prima diventava 1)."""
+    monkeypatch.setenv("GAS_NOTIFICHE_GIORNO", valore)
+    f = Finto()
+    out = av.avvisa_operatore("x", env, invia=f)
+    assert out.startswith("Operazione negata: notifiche spente") and f.testi == []
+
+
 def test_testo_troppo_lungo_non_si_tronca(env):
     f = Finto()
     assert av.avvisa_operatore("a" * av.TESTO_MAX, env, invia=f).startswith("Successo")

@@ -9,7 +9,8 @@ Regole:
 - Testo al massimo `TESTO_MAX` caratteri. I caratteri invisibili o di controllo (bidi,
   larghezza zero, separatori di riga Unicode, NBSP, riempitivi…) si mostrano come
   <U+XXXX> con `rendi_visibili` del bot, lo stesso standard dei read-back (R-611-3).
-- Tetto giornaliero `GAS_NOTIFICHE_GIORNO` (default 5) in `.gas_notifiche_uso.json`
+- Tetto giornaliero `GAS_NOTIFICHE_GIORNO` (default 5; 0 = strumento spento) in
+  `.gas_notifiche_uso.json`
   (il cancello vieta al modello di scriverlo). Il posto si PRENOTA prima dell'invio,
   come per le richieste di sviluppo (R-557-2): conto illeggibile o non scrivibile →
   niente invio (fail-closed). Un invio fallito consuma comunque il posto.
@@ -39,8 +40,9 @@ Invia = Callable[[str], Tuple[bool, str]]
 
 
 def _max_giorno() -> int:
+    """Tetto al giorno; 0 (o negativo) = notifiche spente (V-3 ve #319)."""
     try:
-        return max(1, int(os.environ.get("GAS_NOTIFICHE_GIORNO", str(MAX_GIORNO_DEFAULT))))
+        return max(0, int(os.environ.get("GAS_NOTIFICHE_GIORNO", str(MAX_GIORNO_DEFAULT))))
     except ValueError:
         return MAX_GIORNO_DEFAULT
 
@@ -104,6 +106,22 @@ def avvisa_operatore(testo: Any, root: Path, invia: Optional[Invia] = None) -> s
     return avvisa_operatore_esito(testo, root, invia)[0]
 
 
+def rifiuto_senza_costi(testo: Any) -> Optional[str]:
+    """I controlli che non costano niente (tipo e lunghezza del testo, strumento spento):
+    il kernel li ripete PRIMA di mandare la notifica alla firma (R-613-1), così un testo
+    sbagliato o lo strumento spento non producono una richiesta di firma. None = ok."""
+    if testo is not None and not isinstance(testo, str):  # V-2 ve #319: niente repr
+        return "Operazione negata: 'testo' deve essere una stringa."
+    corpo = pulisci(testo)
+    if not corpo:
+        return "Operazione negata: serve un 'testo' non vuoto."
+    if len(corpo) > TESTO_MAX:
+        return f"Operazione negata: testo oltre {TESTO_MAX} caratteri, riassumilo."
+    if _max_giorno() == 0:
+        return "Operazione negata: notifiche spente (GAS_NOTIFICHE_GIORNO a 0 o meno)."
+    return None
+
+
 def avvisa_operatore_esito(testo: Any, root: Path,
                            invia: Optional[Invia] = None) -> Tuple[str, bool]:
     """Come avvisa_operatore, più True se è stato prenotato un posto del giorno
@@ -111,12 +129,10 @@ def avvisa_operatore_esito(testo: Any, root: Path,
     invia = invia or _invia_default
     prenotato = False
     try:
+        rifiuto = rifiuto_senza_costi(testo)
+        if rifiuto:
+            return rifiuto, False
         corpo = pulisci(testo)
-        if not corpo:
-            return "Operazione negata: serve un 'testo' non vuoto.", False
-        if len(corpo) > TESTO_MAX:
-            return (f"Operazione negata: testo oltre {TESTO_MAX} caratteri, "
-                    "riassumilo."), False
         manca = _manca_configurazione()
         if manca:
             return f"Operazione negata: Telegram non configurato ({manca}).", False
