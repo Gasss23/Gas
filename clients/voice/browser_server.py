@@ -30,6 +30,8 @@ import http.client
 import json
 import logging
 import os
+import socket
+import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -138,7 +140,11 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
                     **({"X-Gas-Formato": formato} if formato else {}),
                 },
             )
+            verso_voce = conn.sock  # V7b: getresponse() lo stacca da conn se la risposta chiude
             resp = conn.getresponse()
+            if resp.getheader("Content-Type", "").startswith("application/x-ndjson"):
+                self._inoltra_a_pezzi(resp, verso_voce)  # V7b: riga per riga, appena arriva
+                return
             resp_body = resp.read()
             resp_ct = resp.getheader("Content-Type", "application/octet-stream")
             resp_status = resp.status
@@ -168,6 +174,59 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(resp_body)))
         self.end_headers()
         self.wfile.write(resp_body)
+
+    def _guarda_pagina(self, verso_voce: socket.socket) -> None:
+        """V7b (R-619-1-M2): mentre si aspetta la frase dopo, la pagina può chiudere (Gas
+        interrotto). Dalla pagina non arriva più niente dopo la richiesta, quindi una
+        lettura che torna vuota vuol dire «chiusa»: si chiude subito anche la connessione
+        verso il server voce, che smette di sintetizzare. Thread daemon, uno per risposta:
+        se la pagina non chiudesse mai il TCP resterebbe fermo qui, senza altro danno."""
+        try:
+            if self.connection.recv(1, socket.MSG_PEEK):
+                return  # dati inattesi dalla pagina: non è una chiusura
+        except TimeoutError:
+            return  # R-620-1-M2: un tempo scaduto non è una pagina chiusa
+        except OSError:
+            pass
+        try:
+            verso_voce.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+
+    def _inoltra_a_pezzi(self, resp: http.client.HTTPResponse, verso_voce: socket.socket) -> None:
+        """V7b: inoltra la risposta a righe (voce frase per frase) senza aspettarne la
+        fine, così la pagina comincia a parlare dopo la prima frase. Se la pagina chiude,
+        si chiude anche la connessione col server voce (che smette di sintetizzare)."""
+        threading.Thread(target=self._guarda_pagina, args=(verso_voce,), daemon=True).start()
+        try:
+            self._copia_righe(resp)
+        finally:
+            resp.close()  # la connessione col server voce non resta appesa
+
+    def _copia_righe(self, resp: http.client.HTTPResponse) -> None:
+        try:
+            self.send_response(resp.status)
+            self.send_header("Content-Type", resp.getheader("Content-Type", "application/x-ndjson"))
+            self.end_headers()
+        except OSError:
+            # V-3 bot #325: pagina già chiusa prima degli header: niente 502 su un socket morto
+            log.warning("pagina chiusa prima della risposta a pezzi")
+            return
+        while True:
+            try:
+                pezzo = resp.read1(65536)
+            except (OSError, http.client.HTTPException) as exc:
+                # a metà risposta non si può più mandare un errore JSON: la pagina vede
+                # le righe arrivate e la fine senza «fine» (voce interrotta, testo a schermo)
+                log.warning("risposta a pezzi interrotta (%s)", type(exc).__name__)
+                return
+            if not pezzo:
+                return
+            try:
+                self.wfile.write(pezzo)
+                self.wfile.flush()
+            except OSError:
+                return  # pagina chiusa: il finally di _inoltra_a_pezzi chiude anche il server voce
 
     def _send_error_json(self, code: int, msg: str) -> None:
         err = json.dumps({"error": msg}).encode()

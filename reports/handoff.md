@@ -1,310 +1,331 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Mani, fetta 37 (R8): voce H24, Gas sempre in ascolto sul Mac (chat Mani)
+**Sessione:** 2026-11-02 — Voce V7b: voce frase per frase (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su 6010448
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #323 (https://github.com/Gasss23/Gas/pull/323). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5123976401","url":"https://github.com/Gasss23/Gas/pull/323"}`), perché `gh` nel cloud non è autenticato. La PR tocca `.github/workflows/ci.yml` (macchina del bot): il merge lo decide l'operatore.
-2. Licenza dei modelli pronti di openWakeWord («hey_jarvis», CC BY-NC-SA, non commerciale): va bene per le prove, oppure si aspetta «Ehi Gas» nostra? (R-615-5)
-3. Prova sul Mac: `bash scripts/voce/installa.sh`, poi «Hey Jarvis»; se `.gas_voce/ascolto.log` dice «solo silenzio assoluto», il permesso del microfono sotto launchd non è passato (R-615-4, `scripts/voce/LEGGIMI.md`).
+1. Merge della PR #325 (https://github.com/Gasss23/Gas/pull/325). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5125667041","url":"https://github.com/Gasss23/Gas/pull/325"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
+2. Sul Mac, dopo il merge: sentire se Gas comincia a parlare dopo la prima frase e leggere la riga «tempi».
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #319 (fetta 36, avvisa_operatore)**: `FATTA` — mergiata (ceaa4aa) col sì dell'operatore, dopo i merge di main delle PR #318, #321 e #320 (review #619, #620).
-- **Voce H24 (piano approvato da M1, con installa.sh, spegni.sh e LEGGIMI.md chiesti da M1)**: `FATTA` — `clients/voice/ascolto.py`, `scripts/voce/`, `clients/voice/requirements-ascolto.txt`, `.gitignore`, un passo in ci.yml (ok di M1), 73 test. Scritta su un branch locale mentre la #319 aspettava, poi portata su main come un unico diff (review #621).
-- **Review #615 (chat Mani)**: BOCCIATO. R-615-1 MEDIA (installa.sh usciva in silenzio senza GAS_VOICE_PORT), R-615-2 BASSA (redirect e proxy di sistema col Bearer), R-615-3 BASSA (cartella con `$()`), R-615-6 BASSA (un clic apriva la richiesta; privacy dichiarata incompleta), R-615-7 BASSA (grep -q con pipefail, reset ridondante, log senza rotazione): `FATTA`. R-615-4 MEDIA (microfono sotto launchd) e R-615-5 BASSA (licenza): `DEFERITA — da provare sul Mac / decide l'operatore`.
-- **Review #616**: APPROVATO CON RISERVE. R-616-1 BASSA (porta del client), R-616-2 BASSA (attesa dopo la parola), R-616-3 COSMETICA (log): `FATTA`.
-- **Review #618**: APPROVATO CON RISERVE. R-618-1 BASSA (`main` senza test sull'URL) e R-618-2 COSMETICA: `FATTA` in questa PR.
-- **Review #621**: APPROVATO CON RISERVE. R-621-1 BASSA (memoria #615/#616/#618 dal branch locale): `FATTA` in 5876b7e.
-- **Bot su c5e7321 (https://github.com/Gasss23/Gas/pull/323#pullrequestreview-5740118682)**: APPROVATO CON RISERVE, check verifica-bot neutral (la PR tocca ci.yml). V-1 BASSA (il client leggeva il .env con un parser suo: con un commento in linea il token era diverso dal server), V-2 BASSA (installa.sh prendeva l'ultima GAS_VOICE_PORT; con GAS_VOICE_URL il controllo finale guardava solo il Mac), V-3 COSMETICA (microfono non svuotato dopo un invio fallito): `FATTA` in 7de4eeb.
-- **Review #622 (chat Mani)**: APPROVATO CON RISERVE. R-622-1 BASSA (installa.sh fonde nella porta le cifre di un commento in linea: falso STOP, fail-closed), R-622-2 COSMETICA, R-622-3 COSMETICA: `DEFERITA — registrate`.
-- **Verifica esterna su c5e7321 (https://github.com/Gasss23/Gas/pull/323#issuecomment-6583089402)**: APPROVATO CON RISERVE. V-1/V-2/V-5 coincidono con V-1/V-2/V-3 del bot (`FATTA` in 7de4eeb). V-3 BASSA (installa.sh senza controllo di Python ≥ 3.11 e con un solo controllo dopo `sleep 5`) e V-4 BASSA (la frase «nei log mai la conversazione» non vale per voce.server.log): `FATTA` nel commit dopo la review #623, insieme a R-622-1 (porta con commento in linea).
-- **Bot su 1127f5c (https://github.com/Gasss23/Gas/pull/323#pullrequestreview-5740245924)**: APPROVATO CON RISERVE, check neutral. V-1 BASSA (V-3/V-4 della verifica esterna non registrate) e V-2 COSMETICA («62 test» in §1 e in ultimo_report): `FATTA` in questo commit.
-- **Review #623 (chat Mani)**: APPROVATO CON RISERVE. R-623-1 BASSA (il ricontrollo dei servizi dopo l'attesa non ha un test), R-623-2 COSMETICA (finto sleep muto), R-623-3 COSMETICA (messaggio sul python3 del PATH): `DEFERITA — registrate`.
-- **Riserve aperte di #319 in stato_progetto (richiesta di M1)**: `FATTA` — V-1 bot e V-1/V-2 ve su 9c44686.
-- **Piano mail**: `DEFERITA — PR doc-only subito dopo questa (un solo branch remoto)`.
+- **V7b — voce frase per frase**: `FATTA` (review #618–#622-M2).
+- **Allineamento alla V7a mergiata (#322) e a main**: `FATTA` (review #651-M2).
+- **V-3 COSMETICA del bot su #322** (tipo di `t_cervello`): `FATTA` (review #652-M2).
+- **Bot su a73916a** (APPROVATO CON RISERVE): V-1 (test della sintesi fermata con margine di una sola frase), V-2 (righe non chiuse su risposta illeggibile), V-3 (502 falso del proxy a pagina chiusa prima degli header), V-4 cosmetica (errore della voce a metà solo in console): `FATTE`, review #653-M2 APPROVATO.
+- **Verifica esterna su a73916a** (https://github.com/Gasss23/Gas/pull/325#issuecomment-6585732063): APPROVATO CON RISERVE, solo BASSE (§3 fermo a e111045: ora il log arriva alla testa; §6 senza CI; «fine» in ritardo e thread di guardia già dichiarati).
+- **Bot su 6010448** (APPROVATO CON RISERVE): V-1 BASSA (autoplay negato + play premuto prima della fine: il riascolto completo non arrivava) `FATTA`, review #654-M2 CON RISERVE (basse, sotto in §7); V-2 cosmetica (descrizione della PR) `FATTA`. **Verifica esterna su 6010448** (https://github.com/Gasss23/Gas/pull/325#issuecomment-6586122265): APPROVATO CON RISERVE, solo BASSE già dichiarate.
+- **V8, V9**: `DEFERITE` — una PR alla volta, dopo il merge della precedente.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md     |  12 +++++++
- .github/workflows/ci.yml               |   8 +++++
- .gitignore                             |   1 +
- clients/voice/ascolto.py               | 512 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- clients/voice/requirements-ascolto.txt |   4 +++
- reports/diff_sessione.md               |  24 ++++++--------
- reports/handoff.md                     | n/d
- reports/ripartenza_mani.md             |   2 +-
- reports/roadmap.md                     |   4 +--
- reports/stato_progetto.md              |   5 +--
- reports/ultimo_report.md               |  30 ++++++++---------
- scripts/voce/LEGGIMI.md                |  97 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- scripts/voce/com.gas.ascolto.plist     |  28 ++++++++++++++++
- scripts/voce/com.gas.voce.server.plist |  28 ++++++++++++++++
- scripts/voce/installa.sh               | 110 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- scripts/voce/spegni.sh                 |  13 ++++++++
- tests/test_unit_voce_ascolto.py        | 638 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |  12 ++++++++++
+ clients/voice/browser_client.html  | 156 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ clients/voice/browser_server.py    |  59 ++++++++++++++++++++++++++++++++++++++++++++++
+ modules/voice/server.py            |  87 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ reports/diff_sessione.md           |  12 +++++-----
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   3 ++-
+ reports/ultimo_report.md           |  23 +++++++++---------
+ tests/test_unit_voice_server.py    | 319 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
 ```
 
-NB: base = merge-base con origin/main = ceaa4aa. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-3b322ef fix(voce): installa.sh controlla Python 3.11, aspetta il server fino a 30 s, porta senza commento in linea; log del server da trattare come privato (V-3/V-4 ve #323, R-622-1, review #623)
-57f12dc chore(revisore): memoria review #623 — APPROVATO CON RISERVE
-1127f5c docs(fine-task): fetta 37, PR #323, correzioni bot su c5e7321, review #622
-7de4eeb fix(voce): il client legge il .env come il server (gas._carica_dotenv), porta: vale la prima riga, svuota dopo un errore (V-1/V-2/V-3 bot #323, review #622)
-4fc2378 chore(revisore): memoria review #622 — APPROVATO CON RISERVE
-c5e7321 docs(fine-task): fetta 37, PR #323, voce H24, review #615-#621
-5876b7e chore(revisore): memoria review #615, #616, #618 (voce H24, dal branch locale)
-234f41c feat(voce): Gas sempre in ascolto sul Mac — parola di attivazione locale, launchd, installa in un colpo (R8, fetta 37, chat Mani)
-31b8ec1 chore(revisore): memoria review #621 — APPROVATO CON RISERVE
+e65e69a fix(voce): riascolto completo anche se l'operatore preme play prima della fine delle frasi (V-1 bot #325 su 6010448; review #654-M2)
+e57b9f4 chore(revisore): memoria review #654 — APPROVATO CON RISERVE
+6010448 docs(voce-v7b): report dopo bot e verifica esterna su a73916a (PR #325, review #653-M2)
+1196be7 fix(voce): righe chiuse su risposta illeggibile, proxy senza 502 falso a pagina chiusa, test della sintesi fermata più netto (V-1..V-4 bot #325 su a73916a; review #653-M2)
+fc1b96c chore(revisore): memoria review #653 — APPROVATO
+a73916a docs(voce-v7b): numero della PR #325 nei report
+e111045 docs(voce-v7b): report di fine task (review #618–#622-M2, #651–#652-M2)
+d1e9822 fix(voce): tempo del cervello senza risposta solo con t_cervello valorizzato (V-3 bot #322; review #652-M2)
+1fd1f5a chore(revisore): memoria review #652 — APPROVATO
+9f2046e Merge remote-tracking branch 'origin/main' into feat/voce-v7b-m2
+ee8b079 Merge branch 'feat/voce-v7-m2' into feat/voce-v7b-m2
+c77ad6c feat(voce): V7b — voce frase per frase: Gas comincia a parlare dopo la prima frase (chat M2)
+75778a3 chore(revisore): memoria review #622 — APPROVATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 234f41c (clients/voice/ascolto.py, scripts/voce/, tests/test_unit_voce_ascolto.py, .github/workflows/ci.yml, .gitignore). È il diff del branch locale voce-h24 (commit 8e69ab6 e 52c26bf, rivisti in #615/#616/#618) portato su main con le correzioni di R-618-1/2 (rivisto in #621). Verdetto integrale della review #615 (chat Mani), sulla prima versione:
+Commit della fetta (c77ad6c). Cinque passaggi del revisore sullo stesso diff staged; verdetti integrali.
 
-```
-## VERDETTO: BOCCIATO
+Review #618-M2:
 
-Review #615 (chat Mani), R8 «voce H24». Ho rivisto il diff staged (sha256 7839f0f01edadc59..., verificato), sul branch voce-h24 con base b472fe1. Prima ho letto CLAUDE.md, reports/stato_progetto.md e la mia memoria. Il blocco è uno solo (R-615-1): è un bug vero, l'ho riprodotto e si corregge con una riga. Il resto sono riserve.
-
-**Elementi del diff esaminati**
-
-1. `scripts/voce/installa.sh:76` — legge la porta dal `.env` con `PORTA="$(grep … | tail -1 | sed …)"`, sotto `set -euo pipefail`. Rischio: un'assegnazione la cui sostituzione fallisce ferma lo script. — **BLOCCO (R-615-1, MEDIA)**. Riprodotto nella cartella di lavoro: con un `.env` senza `GAS_VOICE_PORT` (il caso normale, porta di default 8765) lo script esce con 1 senza nessun messaggio, subito dopo «5/6 servizi caricati: OK». Il controllo della porta e il messaggio finale non arrivano mai: l'operatore pensa che sia fallito, mentre i servizi girano. Con `GAS_VOICE_PORT=9000` invece arriva in fondo.
-   - Correzione: `PORTA="$( { grep -E '…' .env || true; } | tail -1 | sed …)"`.
-   - Va aggiunto un test che esegue installa.sh con comandi finti nel PATH (uname che risponde Darwin, launchctl, plutil, nc, python). Deve fallire sul codice di oggi. Oggi lo script è provato solo con `bash -n` e col rifiuto fuori dal Mac.
-2. `clients/voice/ascolto.py:333` — POST /voice con urllib, header Bearer. Rischio: il token esce verso un host diverso. — **riserva R-615-2 BASSA**. Riprodotto: se il server risponde 302 verso un altro host, urllib rifà la richiesta in GET, ricopia `Authorization: Bearer SEGRETO-TOKEN` e il client accetta come buona la risposta audio. Il controllo di `clients/voice/ascolto.py:115` (`url_valido`, «fuori dal Mac solo https») si aggira così, anche verso http. In più su macOS urllib usa i proxy di sistema anche per 127.0.0.1: le eccezioni di default sono «*.local, 169.254/16» e il codice di urllib non salta di suo gli indirizzi locali. Correzione: un opener con `ProxyHandler({})` e un gestore che rifiuta i redirect.
-3. `scripts/voce/installa.sh:24` — il `case` che rifiuta i caratteri pericolosi nella cartella di Gas. Rischio: iniezione dalla cartella dentro il sed (riga 55) e dentro la shell del plist (`scripts/voce/com.gas.ascolto.plist:15`, `cd "CARTELLA_GAS"` tra virgolette doppie). — **riserva R-615-3 BASSA**. Riprodotto: una cartella chiamata `Gas$(touch PWNED)` passa il controllo e la shell esegue il comando. Rifiuta & < > " # ma non `$`, il backtick, `\` e l'a capo. La cartella è dell'operatore, quindi il rischio reale è basso, ma la riga si presenta come una protezione. Meglio una lista bianca `[A-Za-z0-9/._ -]`.
-4. `clients/voice/ascolto.py:356` — `riproduci_afplay`: cartella da mkdtemp (0700), file con O_EXCL 0600, `rmtree` nel finally, timeout di 600 s. Il timeout è intercettato da `turno`. — **ok**. Sulla privacy prima della parola: `aspetta_parola` passa i blocchi solo al rilevatore e non li tiene in memoria. Fino alla parola non c'è niente su disco né in rete — **ok**.
-5. `clients/voice/ascolto.py:302` — l'ordine azzera → bip → svuota, e lo svuotamento dopo la risposta in `turno`. Rischio: Gas che si attiva da solo con la sua voce. — **ok**. Durante afplay il microfono non viene letto e poi si butta il buffer. Il rilevatore non gira né nella conversazione né nella finestra. Tre mutanti miei, ciascuno preso con 1 failed (test_parola_bip_registrazione_e_risposta): senza svuota dopo il bip, senza svuota dopo la risposta, senza azzera finale. Nota BASSA dentro R-615-7: il reset iniziale misurato costa 0,21 s, ed è ridondante perché c'è già quello finale. Con bip e svuota butta circa mezzo secondo di parlato, quindi chi non aspetta il bip perde le prime parole.
-6. `clients/voice/ascolto.py:221` — `registra`, e la soglia a numeri interi (`blocchi_per`). — **ok**: 0,8 s = 10 blocchi, 12 s = 150, 30 s = 375, 0,24 s = 3. Il minimo di 0,2 s diventa 0,16 s, trascurabile. Riserva in R-615-6: dopo la parola basta un solo blocco da 80 ms sopra la soglia (un clic) per aprire la richiesta, mentre nella finestra ne servono 3. È incoerente, e un clic produce una clip di rumore mandata a Whisper.
-7. `scripts/voce/installa.sh:73` — `launchctl print … | grep -q` con pipefail. — **riserva BASSA (R-615-7)**: se launchctl scrive dopo che grep ha già chiuso, arriva un SIGPIPE (codice 141) e lo script dice per sbaglio «non gira». Meglio salvare prima l'output in una variabile.
-8. Contesto, file non toccato: `modules/voice/server.py:220` — risponde audio/mpeg solo se l'header Accept lo chiede. Con testo vuoto risponde 200 in JSON e con un errore TTS 502: il client fa il bip di errore — ok. Nota: dopo un 502 l'azione del kernel può essere già avvenuta. Il bip non lo distingue e l'operatore potrebbe ripetere la richiesta (dentro R-615-6).
-
-**Altre riserve**
-
-- **R-615-4 MEDIA, da provare sul Mac**: il permesso del microfono sotto launchd. Python avviato da launchd, senza un'app che lo «possieda», potrebbe essere negato in silenzio senza nessuna richiesta. Il pannello Microfono non ha il «+», quindi l'istruzione del LEGGIMI («accendi Python», `scripts/voce/LEGGIMI.md:28`) potrebbe non essere eseguibile. L'avviso sul microfono che dà solo zeri dà il segnale giusto. R8 non va dichiarata funzionante prima della prova sul Mac. Va tracciata in stato_progetto.md.
-- **R-615-5 BASSA, decide l'operatore**: i modelli pronti di openWakeWord sono sotto licenza CC BY-NC-SA 4.0, cioè non commerciale. Verificato nel METADATA del wheel 0.6.0. Usare «hey_jarvis» in Gas, che è un partner di business, è una zona grigia. Va scritto nel LEGGIMI; il modello «Ehi Gas» addestrato chiude la questione.
-- **R-615-6 BASSA, privacy dichiarata incompleta**: una falsa attivazione (TV, un'altra persona) o qualsiasi voce di almeno 240 ms nella finestra di 12 s manda a Groq l'audio della stanza e fa partire un turno del kernel. Nel caso peggiore 5 turni da 30 s: è limitato, ma va detto nel LEGGIMI accanto a `scripts/voce/LEGGIMI.md:46`.
-- **R-615-7 BASSA, varie**: oltre al grep -q e al reset iniziale, i log in `.gas_voce/` non hanno rotazione (con il microfono staccato si aggiunge una riga ogni 5 s). Con KeepAlive, un'uscita 1 per configurazione mancante riparte ogni 10 s: costa poco perché il token si controlla prima di importare openWakeWord, quindi è accettabile. Se un passo fallisce restano a metà dei plist in ~/Library/LaunchAgents: `spegni.sh` li toglie.
-
-**Coerenza col progetto**: va nella direzione di D-voce-3 del briefing (parola di attivazione in locale sul dispositivo, prima il giro, poi l'orecchio) e della voce R8 della roadmap («openWakeWord; prima il modello pronto, poi la parola nostra»). La roadmap segna R8 «🔒 R5»: questa parte gira sul Mac e non dipende dal server, con il piano approvato da M1. Va aggiornata `reports/roadmap.md`, che non è nel diff. Il server voce e la pagina del browser non sono toccati. Il passo nuovo in ci.yml non aggiunge `paths-ignore`. Il motore (gas.py, `_get_window`, tetti) non è toccato.
-
-**Prove riprodotte**: 43 passed da root. Ho installato openWakeWord 0.6.0 vero (con `--no-deps`, perché tflite-runtime manca su Linux con Python 3.13; sul Mac non serve), con numpy 2.4.6 e onnxruntime 1.27.0. `download_models(["hey_jarvis_v0.1"])` scarica anche la versione onnx, `Model(wakeword_models=["hey_jarvis"], inference_framework="onnx")` carica, `predict` su un blocco da 1280 (anche ricavato da una colonna come in `Microfono.blocchi`) dà 0.0, `reset` azzera anche i buffer interni dell'audio, 10 s di audio si elaborano in 0,31 s. `source .venv/bin/activate` sotto `set -u` funziona.
-
-**Cosa NON ho verificato**: il comportamento vero sul Mac: permessi del microfono sotto launchd, launchctl bootstrap/print, plutil, afplay, sounddevice con CoreAudio, quanto PortAudio tiene nel buffer durante una risposta lunga, bash 3.2 di macOS. Qui non si può riprodurre: ambiente Linux, senza audio e senza launchd. Non ho misurato quante false attivazioni dà hey_jarvis con la voce italiana o con la TV, né quanto è adatta la soglia di volume 500 con il microfono vero.
-
-**Per la ri-review**: correggere R-615-1 con il test sugli script (che deve fallire sul codice di oggi). R-615-2 e R-615-3 sono correzioni da poche righe, consigliate nello stesso giro. Le altre riserve vanno in reports/stato_progetto.md.
-
-Memoria aggiornata: riga #615 più 2 lezioni (le assegnazioni con pipefail; urllib che ricopia il Bearer sui redirect e usa i proxy di sistema). Commit 3900afb, poi 6213ea4 (corretto un numero di riga). Il diff staged è intatto (sha256 sempre 7839f0f01edadc59...).
-```
-
-Verdetto integrale della review #616 (chat Mani), sul diff del commit locale 8e69ab6:
-
-```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #616 (chat Mani), ri-review della #615. Fetta R8, voce H24 sul Mac. Diff staged con sha256 che inizia per 350d51c7f4af73e0: l'ho verificato prima e dopo la review, è invariato. Branch locale voce-h24, base b472fe1.
+Review #618-M2, fetta V7b «parlato a pezzi», branch feat/voce-v7b-m2. Ho rivisto solo il diff staged (4 file).
 
-Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9, 10), stato_progetto.md (letto con Grep), memoria del revisore.
+Letture fatte prima della review: CLAUDE.md (sez. 5), reports/stato_progetto.md (parti sulla voce), .claude/agents/memoria_revisore.md.
 
-**Elementi del diff esaminati**
-- `scripts/voce/installa.sh:84` — legge la porta con `{ grep … .env || true; }`. Rischio esaminato: con `set -euo pipefail` lo script usciva in silenzio quando la porta non è nel `.env` (era R-615-1). Esito: ok. I test portano lo script fino in fondo con i comandi del Mac finti: «6/6» e `nc -z 127.0.0.1 8765`; con la porta 9001 nel `.env`, `nc` va sulla 9001. Il mutante «grep senza `|| true`» dà 1 failed.
-- `scripts/voce/installa.sh:26` — lista bianca `^[A-Za-z0-9/._ -]+$` controllata con `[[ =~ ]]`. Rischio esaminato: caratteri che finiscono nel sed e nella shell zsh del plist (`$( )`, backtick, `\`, `&`, `"`, `#`, `;`). Esito: ok. I 7 casi del test vengono rifiutati con STOP prima di toccare qualcosa. Il mutante con la lista bianca `.*` dà 7 failed.
-- `clients/voice/ascolto.py:344` — l'opener usa `ProxyHandler({})` e `_NienteRedirect`. Rischio esaminato: il token Bearer che segue un redirect o passa da un proxy di sistema (era R-615-2). Esito: ok. `build_opener` scarta i gestori predefiniti quando gli si passa una loro sottoclasse, quindi un 302 diventa un errore «HTTP 302» con una sola richiesta. Mutanti: senza `_NienteRedirect` 1 failed, senza `ProxyHandler({})` 1 failed.
-- `clients/voice/ascolto.py:234` — dopo la parola la voce comincia solo con 3 blocchi forti di fila (era R-615-6). Rischio esaminato: un clic che apre una richiesta, oppure l'inizio della voce che si perde. Esito: ok. Il mutante «blocchi forti tenuti anche non di fila» dà 2 failed. Lo stesso punto produce però la riserva R-616-2.
-- `clients/voice/ascolto.py:323` — l'azzeramento del rilevatore resta solo a fine conversazione (era R-615-7). Esito: ok, il test pretende 1 azzeramento. Anche le eccezioni nel ciclo restano intercettate (§9).
-- `scripts/voce/installa.sh:76` — l'output di `launchctl print` è salvato in una variabile, con `|| true` e un `case`. Esito: ok, non c'è più il falso «non gira» da SIGPIPE.
-- Contesto: `modules/voice/server.py:473` — il server legge `GAS_VOICE_PORT` dal `.env`. Da qui nasce la riserva R-616-1.
-
-**Prove riprodotte**
-- `tests/test_unit_voce_ascolto.py`: 57 passed.
-- Mutanti provati su una copia dell'indice in scratch, senza toccare il working tree: risultati come sopra (1, 1, 1, 7 e 2 failed).
-- Nessun antipattern della sez. 5 (né slicing della history né output dei tool simulato). `gas.py`, cap di 10 iterazioni e `_get_window` non sono toccati.
-- `ci.yml`: il nuovo passo ha `if: always()` e `pipefail` come gli altri, e nessun `paths-ignore`.
-
-**Riserve (da mettere in stato_progetto.md al fine-task, insieme a R-615-4 e R-615-5 che restano aperte: microfono da provare sul Mac, licenza da decidere per l'operatore)**
-- **R-616-1 BASSA**: con `GAS_VOICE_PORT` nel `.env`, il server e il controllo finale di installa.sh usano quella porta. `clients/voice/ascolto.py:440` invece, se manca `GAS_VOICE_URL`, resta su `http://127.0.0.1:8765`. Risultato: installa.sh dice «tutto acceso» e poi ogni turno finisce col bip di errore. L'ho provato: con `GAS_VOICE_PORT=9001` l'URL resta `:8765`. Correzione suggerita: costruire l'URL di default da `GAS_VOICE_PORT`, oppure far controllare a installa.sh la stessa porta che usa il client.
-- **R-616-2 BASSA**: `clients/voice/ascolto.py:238` conta l'attesa dopo la parola solo sui blocchi deboli. Con un rumore forte-forte-debole l'attesa dura 14,9 s invece dei 5 dichiarati (misurato: 186 blocchi). Non viene inviato niente, quindi la privacy è salva, ma il docstring di `registra` non è esatto.
-- **R-616-3 COSMETICA**: alla riga 92 il LEGGIMI dice «cancellali (i servizi li ricreano)». In realtà launchd apre il file di log solo quando avvia il servizio: dopo un `rm` il processo continua a scrivere sul file cancellato, che non si ricrea e non libera spazio fino al riavvio. Meglio consigliare di svuotarlo con `: > .gas_voce/ascolto.log`.
-
-**Rischi esplicitamente esclusi**
-- Comportamento reale sul Mac non verificato perché qui non si riproduce: bash 3.2 di `/bin/bash`, sed/grep BSD, `launchctl bootstrap`/`print` veri, permesso del microfono sotto launchd, `activate` di un venv vero con `set -u`. Ho controllato solo per lettura che i costrutti usati esistano in bash 3.2 e in BSD.
-- openWakeWord vero non rieseguito: era stato provato nella #615 e quella parte non è cambiata.
-- Le suite voce di M2 (server/stt/tts) non le ho rilanciate: quei file non sono nel diff.
-
-**Memoria**: riga #616 più una lezione, committate con `scripts/commit_memoria_revisore.sh` (commit cc6f953, solo `.claude/agents/memoria_revisore.md`). Il diff staged sotto review è intatto.
-```
-
-Verdetto integrale della review #618 (chat Mani), sul diff del commit locale 52c26bf:
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #618 (chat Mani). Diff staged con sha256 c5fdc9c85c13e5b4… (l'ho ricalcolato e coincide), su voce-h24 sopra 8e69ab6. File: clients/voice/ascolto.py, scripts/voce/LEGGIMI.md, tests/test_unit_voce_ascolto.py. Letture obbligatorie fatte: CLAUDE.md (sezione 5), reports/stato_progetto.md (letto per Grep sulla sezione voce), la coda di .claude/agents/memoria_revisore.md con le review #615 e #616.
+Il diff non tocca gas.py né brains, non affetta la history e non simula tool. Le eccezioni della sintesi vocale (TTS) restano intercettate e scritte nel log, come prima.
 
 **Elementi del diff esaminati**
-- `clients/voice/ascolto.py:116` — `url_del_server()`: usa GAS_VOICE_URL se c'è (senza la `/` finale), altrimenti `http://127.0.0.1:<cifre di GAS_VOICE_PORT o 8765>`. Rischio: che il client e il server leggano la porta in modi diversi. Il filtro «solo cifre» è lo stesso di scripts/voce/installa.sh:84. Il server (modules/voice/server.py:473) e il client caricano lo stesso .env. Se il valore è sporco (es. «9001 # nota»), il server non parte e il controllo finale di installa.sh si ferma, quindi niente falso «tutto acceso». Esito: ok.
-- `clients/voice/ascolto.py:249` — in `registra`, prima della voce, l'attesa conta ogni blocco, anche i rumori. Quando la voce si apre si passa oltre con `continue`, come faceva il codice vecchio. Rischio: tagliare una voce vera vicino alla scadenza. L'ho provato direttamente: con voce che parte dopo 55 o 59 blocchi di silenzio la richiesta passa (22 blocchi), dopo 60 blocchi (4,8 s) no. Quindi la scadenza vera è 5 s meno l'inizio della voce (0,24 s), ed è accettabile. Il caso «riprendi a parlare dopo la risposta» non cambia, perché lì la voce è già aperta. Esito: ok.
-- `clients/voice/ascolto.py:451` — `main` ora chiama `url_del_server()`. Rischio: che il collegamento non sia coperto da nessun test. Ho rimesso la vecchia espressione `GAS_VOICE_URL or 8765` e i test restano verdi (61 passed). Esito: riserva (R-618-1).
-- `tests/test_unit_voce_ascolto.py:108` — test forte-forte-debole ripetuto oltre i 5 s, poi voce vera: non si invia niente. Mutante con la logica vecchia: 1 failed (riprodotto). Esito: ok.
-- `tests/test_unit_voce_ascolto.py:376` — test con 3 casi su `url_del_server`. Mutante «sempre 8765»: 1 failed. Mutante senza la pulizia della `/` finale: 1 failed. Esito: ok.
-- `scripts/voce/LEGGIMI.md:92` — «svuotali senza cancellarli» con `: > .gas_voce/ascolto.log`. Chiude R-616-3. Esito: ok, salvo la nota cosmetica R-618-2.
-
-**Prove riprodotte**: 61 passed su una copia esatta dell'indice. Il diff è pulito (`git diff --cached --check`). clients/voice/ascolto.py lo importa solo il suo test, quindi nessun altro test è toccato.
-
-**Riserve chiuse**: R-616-1, R-616-2 e R-616-3, tutte chiuse.
-
-**Riserve nuove**
-- R-618-1 BASSA — nessun test controlla che `main` usi davvero `url_del_server()` (clients/voice/ascolto.py:451). Rimettendo la vecchia espressione, il bug di R-616-1 tornerebbe con la suite verde. Basta un test su `main` con GAS_VOICE_PORT=9001 e senza GAS_VOICE_URL che legga l'URL passato a `invia_al_server` (o il log «server …»).
-- R-618-2 COSMETICA — il LEGGIMI dà il comando per svuotare solo `ascolto.log`, ma anche `voce.server.log` cresce allo stesso modo. Inoltre il test di clients/voice/ascolto.py:108 riceve `monkeypatch` senza usarlo.
-
-**Restano aperte** R-615-4 (permesso del microfono sotto launchd, da provare sul Mac) e R-615-5 (licenza dei modelli di openWakeWord, decide l'operatore).
-
-**Cosa NON ho verificato**
-- Il funzionamento vero sul Mac (launchd, microfono, afplay, porta diversa da 8765 col server vero acceso): non si può riprodurre su Linux.
-- Le suite del server voce, dell'STT e del TTS: le ho lanciate ma non hanno finito entro i 110 s. Il diff non le tocca, perché il modulo modificato lo importa solo il suo test.
-
-**Memoria**: aggiunte la riga contatore #618 e una lezione (dopo aver estratto una funzione, provare anche il mutante che lascia il chiamante sulla vecchia espressione). Committate da sole con scripts/commit_memoria_revisore.sh (commit 158a61d). Il diff staged sotto review non è stato toccato (sempre 3 file).
-```
-
-Verdetto integrale della review #621 (chat Mani), sul diff finale del commit 234f41c su main:
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #621 (chat Mani): R8 voce H24 portata su main. Diff staged: sha256 63b0523b90b704c1, che corrisponde a quello dichiarato e non è cambiato dopo il commit della memoria. Base ceaa4aa.
-
-Letture fatte: CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (le parti sulla voce), la memoria del revisore. In questo branch la memoria non contiene le righe #615, #616 e #618: le ho lette nella copia del commit 52c26bf.
-
-**Elementi esaminati**
-- `clients/voice/ascolto.py:451` — `main` prende l'URL da `url_del_server()` (`clients/voice/ascolto.py:116`). Rischio: che il collegamento che chiude R-616-1 non sia fissato da nessun test (era R-618-1). Esito: ok. Il mutante con la vecchia espressione (`GAS_VOICE_URL or "http://127.0.0.1:8765"`) dà 1 failed su 62, cioè `test_main_usa_la_porta_del_server`.
-- `tests/test_unit_voce_ascolto.py:386` — il test nuovo. Rilevatore, invio e Microfono sono finti, `_GAS_ROOT` punta a tmp_path (quindi nessun .env vero), e pretende `["http://127.0.0.1:9001"]`. Rischi: che dipenda dall'ambiente della shell e che tocchi hardware o rete. Esito: ok. Resta verde anche con `GAS_VOICE_URL=http://example.com GAS_VOICE_PORT=1` esportati, perché delenv e setenv li coprono. Non apre il microfono: KeyboardInterrupt fa `return 0` e `mic` resta None. Il parametro monkeypatch inutilizzato è stato tolto dalla riga `tests/test_unit_voce_ascolto.py:108`, quindi R-618-2 è chiusa per la parte del test.
-- `.github/workflows/ci.yml:128` — passo «voce H24» subito dopo il passo voce di main, che ha già `test_unit_voice_contesto.py`. Rischio: un'unione che perda o raddoppi passi di main. Esito: ok. Il diff verso main è di sole +8 righe, lo YAML si carica e il passo avvisa_operatore di main è intatto. Il test usa solo la libreria standard (numpy si importa solo dentro il rilevatore vero), quindi in CI non mancano dipendenze.
-- `.gitignore:23` — `.gas_voce/`. Esito: ok, `git check-ignore -v` sui log lo conferma.
-- `scripts/voce/LEGGIMI.md:93` — dice di svuotare anche `voce.server.log`. Esito: ok, R-618-2 chiusa.
-- Confronto completo con 52c26bf: `ascolto.py`, i due plist, `installa.sh`, `spegni.sh` e `requirements-ascolto.txt` sono identici byte per byte. Le uniche differenze sono le novità dichiarate e il contenuto già presente in main.
-- Antipattern: il diff non tocca gas.py, brains/ né la history, quindi niente slicing né output dei tool simulati.
-
-**Prove riprodotte** (su una copia dell'indice): `tests/test_unit_voce_ascolto.py` → 62 passed.
-
-**Riserve**
-- R-621-1 BASSA (processo): le righe #615, #616 e #618 vanno ancora riportate nella memoria, come avete previsto. Finiranno dopo la #621, fuori dall'ordine dei numeri; va bene, ma va fatto prima di chiudere la fetta.
-- Restano aperte, e vanno in stato_progetto.md:
-  - R-615-4 MEDIA: permesso del microfono sotto launchd, da provare sul Mac.
-  - R-615-5 BASSA: licenza CC BY-NC-SA di hey_jarvis, decide l'operatore.
-
-**Rischio escluso**: non ho rieseguito `installa.sh` coi comandi finti, né il resto della CI (suite kernel, voice server/stt/tts/contesto, avvisa_operatore). Quei file sono identici a quelli già provati in #616 e #618, o sono quelli di main senza modifiche. Il comportamento vero sul Mac (launchd, permesso del microfono, openWakeWord con audio reale) non è verificabile qui.
-
-Il merge spetta all'operatore perché la PR tocca ci.yml.
-
-Memoria: riga #621 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (31b8ec1).
-```
-
-Commit 7de4eeb (clients/voice/ascolto.py, scripts/voce/installa.sh, tests/test_unit_voce_ascolto.py: V-1/V-2/V-3 bot su c5e7321). Verdetto integrale della review #622 (chat Mani):
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #622 (chat Mani). Diff staged (sha256 e95595c8f16e9dad, ricontrollato dopo il commit della memoria e invariato) su claude/peaceful-lovelace-0w2b7q, base c5e7321, PR #323. Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), le voci R8 e voce H24 di reports/stato_progetto.md e la memoria del revisore (#615-#621 e lezioni).
-
-**Elementi del diff esaminati**
-- `clients/voice/ascolto.py:85` — `_carica_dotenv` importa `gas._carica_dotenv` e gli passa `root/.env`. Se l'import fallisce, ripiega e scrive un warning con il solo nome dell'eccezione (§9).
-  - Rischio esaminato: effetti collaterali dell'import di gas.py nel processo che resta acceso sempre.
-  - Prova: ho importato davvero gas dal client in un processo pulito. Ci mette 0,5 s. Il `logging.basicConfig` di gas.py non ha effetto, perché `main` configura il logging prima (clients/voice/ascolto.py:469): il livello resta INFO, l'handler resta lo StreamHandler e il logger gas.ascolto resta a 20. Il token letto è 'abc' e l'URL è http://127.0.0.1:9001.
+- `modules/voice/server.py:457` — `_do_pezzi_response`: risposta a righe JSON (NDJSON), una sintesi per frase. Rischi esaminati:
+  - errore a metà o sulla prima frase: riga `errore_voce`, poi riga `fine`, nessuna sintesi in più (coperto dai test);
+  - testo vuoto: il ramo `if not text.strip()` a `modules/voice/server.py:434` resta nel JSON, quindi la prima riga ha sempre `content`;
+  - tempi chiusi una volta sola anche col client chiuso.
   - Esito: ok.
-- `clients/voice/ascolto.py:102` — il ripiego ora gestisce il commento in linea, le virgolette seguite da commento (stessa regex di `_DOTENV_VIRGOLETTE` a gas.py:605), il BOM e GAS_NO_DOTENV. Vince la prima riga, come in gas.
-  - Rischio esaminato: il ripiego dà valori diversi dal server.
-  - Ho fatto tre mutanti: parser vecchio, senza GAS_NO_DOTENV, utf-8 senza BOM. Ognuno dà 1 failed.
-  - Esito: ok. Resta una differenza minore: con virgolette non chiuse gas scarta la riga, il ripiego tiene il valore. Non la rilevo come finding.
-- `clients/voice/ascolto.py:312` — `_svuota()` dopo il bip di errore. Il test è a tests/test_unit_voce_ascolto.py:179 (`svuotati == 2`).
-  - Mutante senza svuotamento: 1 failed.
+- `modules/voice/server.py:469` — `riga()`: un OSError in scrittura ferma la sintesi. Sonda reale (`/tmp/claude-0/-home-user-Gas/363006d5-ae75-5e2f-8a8d-a34502419f69/scratchpad/sonda.py`, socket grezzo che chiude dopo la prima riga):
+  - con 3 frasi: 3 sintesi su 3;
+  - con 4 frasi: 3 su 4.
+  - La prima scrittura dopo la chiusura riesce (manda solo il reset di connessione), quindi lo stop arriva con una frase di ritardo. La spesa non peggiora rispetto a V7a, che sintetizzava sempre tutta la parte parlata, ma «niente spesa per frasi che nessuno ascolta» è ottimistico. Esito: riserva.
+- `modules/voice/server.py:427` — `_vuole_audio_testo` accetta anche «pezzi». Senza chiave ElevenLabs, o col formato «audio+testo» vecchio, resta il JSON di prima; il client solo audio passa ancora da `_wants_audio`. Esito: ok (compatibilità coperta dal test).
+- `clients/voice/browser_server.py:175` — `_inoltra_a_pezzi`:
+  - inoltra con `read1` + flush;
+  - la proxy usa HTTP/1.0, quindi la fine della risposta è la chiusura della connessione;
+  - un OSError o HTTPException a metà viene loggato e fa uscire;
+  - il `finally` di `_proxy_voice` chiude la connessione verso il server voce.
   - Esito: ok.
-- `scripts/voce/installa.sh:85` — legge la porta con `head -1` invece di `tail -1`.
-  - Mutante `tail -1`: 1 failed (tests/test_unit_voce_ascolto.py:577).
-  - Esito: riserva (R-622-1).
-- `scripts/voce/installa.sh:88` — AVVISO se nel .env c'è GAS_VOICE_URL.
-  - Rischio esaminato: `set -e` con grep che non trova la riga. È dentro un `if`, quindi non ferma lo script, e il .env esiste di sicuro (lo garantisce lo STOP a scripts/voce/installa.sh:30).
-  - Mutante senza AVVISO: 1 failed.
-  - Esito: riserva cosmetica (R-622-2).
-- `tests/test_unit_voce_ascolto.py:431` — test parametrizzato con gas e col ripiego; `_senza_gas` (tests/test_unit_voce_ascolto.py:418) rende l'import di gas impossibile. Il mutante «ImportError sempre» dà 1 failed.
+- `clients/voice/browser_client.html:729` — `onended` di `suonaPezzo`: prende la prossima frase dalla coda; se è finita chiude il turno, altrimenti mette `attende`. Ogni callback ricontrolla `riproduzione !== rip` e `turno !== numTurno`. Race esaminate:
+  - `pause` al cambio di src: quando si cambia src il player è già ended e in pausa, e il `pause` naturale passa da `player.ended`;
+  - interruzione mentre `attende` è attivo: l'arrivo della frase dopo viene ignorato.
   - Esito: ok.
+- `clients/voice/browser_client.html:710` — `lasciaRiproduzione` mette solo `fermo = true`. Il lettore si chiude in `leggiResto` (`clients/voice/browser_client.html:693`) solo DOPO la riga successiva. Dopo un'interruzione la connessione resta aperta finché il server non manda un'altra frase. Il server voce è single-thread (HTTPServer), quindi il turno nuovo resta in coda dietro le sintesi rimaste, e anche la riga `tempi` del turno vecchio può ancora scriversi a schermo. Esito: riserva.
+- `clients/voice/browser_client.html:760` — `play().catch` con autoplay negato: chiude la conversazione e lascia la risposta. Però col tasto play si ascolta solo la prima frase, e il riascolto a fine risposta dà solo l'ultima, non tutta la parte parlata come prima. Esito: riserva (regressione d'uso minore).
 
-**Prove**: su un export dell'indice 69 passed. Tutti i 7 mutanti danno 1 failed ciascuno; ripristinato il codice, di nuovo 69 passed.
+**Riserve (tutte BASSE, da tracciare in stato_progetto.md)**
+- **R-618-1-M2**: `lasciaRiproduzione` dovrebbe chiamare subito `righe.chiudi()` (il lettore va tenuto in `rip`). Oggi, dopo un'interruzione, il server continua a sintetizzare (circa 1–2 frasi in più) e tiene occupato il turno successivo.
+- **R-618-2-M2**: il ramo «client chiuso → stop della sintesi» (`modules/voice/server.py:469`) non ha test. La sonda sopra si può trasformare in test, con l'asserzione sul numero di sintesi rispetto al numero di frasi.
+- **R-618-3-M2**: con autoplay negato, o col riascolto dai controlli, si sente una sola frase. Va dichiarato, oppure si accumulano i blob e si fa un riascolto completo.
 
-**Finding**
-- **R-622-1 BASSA**: con `GAS_VOICE_PORT=9001 # era 8765` client e server usano 9001, ma installa.sh (`scripts/voce/installa.sh:85`) toglie i caratteri non numerici e fonde le cifre del commento: «90018765». Risultato: falso STOP «il server voce non risponde». È fail-closed, non un falso «tutto acceso», ma è la stessa disparità di V-2 rimasta nello script shell. Correzione: togliere ` #…` prima di `s/[^0-9]//g`, ad esempio `sed 's/[[:space:]]#.*//; s/.*=//; s/[^0-9]//g'`, e aggiungere un test.
-- **R-622-2 COSMETICA**: l'AVVISO compare anche con `GAS_VOICE_URL=""` o `GAS_VOICE_URL= # vuoto`, perché `.+` li accetta. In quei casi il client usa comunque il Mac, quindi l'avviso è sbagliato ma innocuo.
-- **R-622-3 COSMETICA**: `clients/voice/ascolto.py:92` aggiunge la cartella a `sys.path` e non la toglie più. In produzione è la root di Gas, quindi va bene. Nei test invece ogni `tmp_path` resta in `sys.path` per il resto della suite: meglio `monkeypatch.syspath_prepend` nei test, oppure togliere la voce dopo l'import.
+**Verifiche fatte**
+- `tests/test_unit_voice_server.py`: 85 passed in 227 s, test nel browser compresi.
+- Non ho rifatto il mutante dichiarato (tolto `lasciaRiproduzione` dall'interruzione).
 
-Restano aperte R-615-4 MEDIA (permesso del microfono sotto launchd, da provare sul Mac) e R-615-5 BASSA (licenza dei modelli hey_jarvis, decide l'operatore).
+**Rischi esclusi (non verificati)**
+- Comportamento reale di Chrome/Safari sul Mac con ElevenLabs vero: tempi di decodifica tra una frase e l'altra e pause udibili. Non è riproducibile qui senza chiave e senza casse.
+- Il mutante del browser dichiarato da M2: non rieseguito, per i tempi lunghi della suite col browser.
 
-**Rischio escluso**: non ho verificato l'avvio reale sotto launchd su macOS (permesso del microfono, venv del Mac con requirements.txt completo), perché in dev non si riproduce. Il ramo «gas importabile» l'ho provato solo in Linux, dove fastembed manca e stampa due warning all'avvio. Nemmeno l'effetto di un handle in più su gas_debug.log, aperto dal client che resta acceso sempre, è verificato sul Mac.
+**Memoria del revisore**
+- Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga `#618-M2` e una lezione nuova: la prima scrittura dopo che il client ha chiuso riesce; per fermarsi subito si chiude il lettore subito.
+- Il commit della memoria (`bash scripts/commit_memoria_revisore.sh`) è stato **negato dal classificatore dei permessi**. Il file è modificato ma **non committato**: va committato dall'agente principale insieme alla fetta. Nessun altro commit fatto.
 
-Memoria: riga #622 e una lezione nuova aggiunte in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (4fc2378). La lezione: quando si allinea il parser del client a quello del server, ricontrollare anche gli script shell che rileggono la stessa chiave con grep e sed.
-```
+Review #619-M2:
 
-Commit successivo a 57f12dc (scripts/voce/installa.sh, scripts/voce/LEGGIMI.md, clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py: V-3/V-4 ve su c5e7321 e R-622-1). Verdetto integrale della review #623 (chat Mani):
-
-```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #623 (chat Mani). Ho esaminato il diff staged su claude/peaceful-lovelace-0w2b7q, sopra 1127f5c. Lo sha256 inizia per 2bad1f4ebc9780b3 ed è lo stesso prima e dopo il commit della memoria. Ho fatto le tre letture obbligatorie: CLAUDE.md (sez. 5, 8, 9), reports/stato_progetto.md (in modo mirato) e la memoria del revisore.
+Ri-review #619-M2 su feat/voce-v7b-m2 (diff staged, 4 file). Il delta rispetto alla #618 riguarda clients/voice/browser_client.html e tests/test_unit_voice_server.py. Le tre riserve della #618 sono chiuse nel codice. Ne restano due nuove, entrambe BASSE e non bloccanti.
+
+Elementi del diff esaminati:
+- `clients/voice/browser_client.html:727` — `lasciaRiproduzione()` imposta `fermo=true` e chiama subito `righe.chiudi()` (`reader.cancel()`). La `prossima()` in attesa riceve `done`, e una riga parziale finisce nel `catch` di `leggiResto`. Rischio esaminato: la connessione resta aperta dopo interruzione, pausa o errore. Esito: ok, R-618-1-M2 chiusa nel codice. Ho fatto un mutante che toglie la chiamata a :727: i 3 test «pezzi» (browser compreso) passano lo stesso. La chiusura immediata lato pagina non è coperta da nessun test (riserva R-619-1-M2).
+- `tests/test_unit_voice_server.py:1326` — il test usa un socket grezzo che chiude dopo la prima riga, con 6 frasi e una sintesi lenta da 0,15 s, e verifica al massimo 3 sintesi. Rischio esaminato: un test che passa anche quando il ramo `except OSError` di `riga()` non ferma la sintesi. Esito: ok, R-618-2-M2 chiusa. Il limite di 3 è coerente con la lezione della #618 (la prima write dopo la chiusura riesce). Il mutante l'avete fatto voi: io non l'ho rifatto, ho visto solo che il test è verde.
+- `modules/voice/server.py:476` (contesto, invariato rispetto alla #618) — `riga()` restituisce False su OSError e il ciclo si ferma. Esito: ok.
+- `clients/voice/browser_client.html:716` — `mettiRiascolto(rip)` mette nel player l'MP3 intero, cioè le frasi raccolte in `rip.tutti` messe una dopo l'altra. Viene chiamato a fine turno e, con autoplay negato, a fine lettura (:703, :790). Rischio esaminato: il riascolto copre solo l'ultima frase. Esito: ok, R-618-3-M2 chiusa. Il test «pezzi» conta 3 sorgenti.
+- `clients/voice/browser_client.html:703` — nel ramo `soloRaccogli` (autoplay negato), `mettiRiascolto` non controlla `rip.turno === numTurno`. Non controlla nemmeno se l'utente ha già premuto play sulla prima frase mentre le altre arrivano: in quel caso `player.src` cambia durante l'ascolto e la riproduzione si interrompe. Lo stesso vale se nel frattempo è partito un turno nuovo; con il server single-thread la finestra è minima. Esito: riserva BASSA (R-619-2-M2). Soluzione suggerita: in quel ramo uscire se `rip.turno !== numTurno || !player.paused`, oppure aggiornare `src` solo a player fermo.
+- `clients/voice/browser_client.html:682` — `chiudi()` avvolge `reader.cancel()` in un try/catch, ma `cancel()` restituisce una Promise e un suo eventuale rifiuto non viene intercettato. Esito: cosmetica (basta un `.catch(()=>{})`).
+
+Prove eseguite:
+- `pytest tests/test_unit_voice_server.py -k "v7b or pezzi"`: 9 passed, nessun test saltato (il browser c'è, i modi pezzi e pezzi_interrotti girano).
+- Mutante R-618-1, togliendo `righe.chiudi()`: 3 passed, quindi il mutante sopravvive. Il file è stato ripristinato e corrisponde allo staged (`git diff --quiet` pulito).
+
+Rischi esclusi:
+- Non ho ascoltato l'MP3 concatenato: in dev non c'è un'uscita audio reale. Eventuali tag ID3 in mezzo o una durata stimata male in Safari o Chrome non sono verificati; vanno provati sul Mac.
+- Non ho rieseguito l'intera suite (12 modi del browser, 3 run consecutive): mi fido dei vostri «12 passed».
+- Non ho riletto per intero i file non toccati dal delta (modules/voice/server.py, clients/voice/browser_server.py): li ha già esaminati la #618.
+
+Riserve da tracciare in stato_progetto.md:
+- R-619-1-M2 (BASSA): nessun test copre la chiusura immediata del lettore lato pagina. Un test possibile: nel modo `pezzi_interrotti`, contare quante sintesi fa il server dopo l'interruzione.
+- R-619-2-M2 (BASSA): `mettiRiascolto` nel ramo `soloRaccogli` cambia `src` senza controllare il turno né se il player sta suonando.
+
+Wall of Shame: nessuno slicing della history e nessuna simulazione dei tool. I guardrail (`_get_window`, limite di 10 iterazioni) non sono toccati.
+
+Memoria: ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga contatore #619-M2 e una lezione (fix lato client «chiudi subito» da provare con un mutante). Come mi hai chiesto non ho committato e non ho lanciato commit_memoria_revisore.sh: le righe #618 e #619 le committi tu con il resto.
+
+Review #620-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #620-M2 (rifà la #619-M2) sul diff staged del branch feat/voce-v7b-m2, 4 file. Ho letto CLAUDE.md, la memoria del revisore e le parti che servivano di stato_progetto.md.
 
 **Elementi del diff esaminati**
-- `scripts/voce/installa.sh:43` — controlla che il Python del .venv sia almeno 3.11 prima di pip. Rischi esaminati: che `set -e` scatti sulla sostituzione `$(python --version)` dentro l'argomento di stop (non scatta) e che lo snippet funzioni con un Python vero (rc=0 su 3.13). Il mutante senza controllo dà 1 FAIL. Esito: ok.
-- `scripts/voce/installa.sh:89` — il sed toglie ` #…` prima di tenere le cifre. Ho provato «9001 # era 8765», il commento dopo un tab, `"9001" # 8765` e `export … 9001   #x 1`: danno tutti 9001. È equivalente allo split `\s+#` di `gas._carica_dotenv` (gas.py:653). Il mutante col sed vecchio dà 1 FAIL. Esito: ok.
-- `scripts/voce/installa.sh:92-97` — la porta viene riprovata fino a 30 volte con `sleep 1`, poi STOP. Il mutante con `seq 1 5` dà 1 FAIL. Esito: ok.
-- `scripts/voce/installa.sh:99-105` — dopo l'attesa ricontrolla che i servizi siano ancora accesi. Rischio: nessun test fissa questo controllo. Esito: riserva R-623-1.
-- `tests/test_unit_voce_ascolto.py:519` — il finto nc conta i tentativi in `$REGISTRO.nc`. Ho verificato la logica: con NC_FALLISCE=3 fa 4 tentativi, con 999 ne fa 30. Le asserzioni sulla porta ora confrontano riga per riga (`registro.splitlines()`), quindi «90018765» non passa più. Esito: ok.
-- `scripts/voce/LEGGIMI.md:71-74` e `clients/voice/ascolto.py:23` — il testo ora dice che voce.server.log va trattato come privato. È corretto: gas.py:48 ha uno StreamHandler sullo stderr, e il plist manda stderr in voce.server.log. Esito: ok.
+- `clients/voice/browser_server.py:143`: prende il socket verso il server voce prima di `getresponse()`. Rischio: che `conn.sock` diventi None o venga staccato. Esito: ok. Il riferimento si prende prima che `getresponse()` lo stacchi, e il socket si chiude davvero con `resp.close()` (righe 200-201) quando cadono i riferimenti di makefile.
+- `clients/voice/browser_server.py:178`: `_guarda_pagina` (il thread di guardia). Rischi esaminati, come da tue domande:
+  (a) **recv in parallelo alle scritture sullo stesso socket**: ok. send e recv su thread diversi sono sicuri a livello di sistema operativo, il socket Python non ha un buffer condiviso, e `MSG_PEEK` non consuma byte.
+  (b) **shutdown dopo una fine normale**: ok. A fine risposta il socket verso la voce è già chiuso, quindi il suo fd interno è -1. `shutdown` dà errore EBADF, che viene intercettato, e non tocca nessun fd vero.
+  (c) **fd riusati**: rischio trascurabile. Se la pagina viene chiusa prima che il thread entri in recv, si ottiene EBADF dal socket Python (fd -1). Se è già dentro recv, il kernel tiene il riferimento al file originale. Resta solo una finestra teorica di nanosecondi, e anche lì `MSG_PEEK` non consuma dati.
+  Esito: ok, con due riserve BASSE (sotto).
+- `clients/voice/browser_server.py:197`: avvia il thread daemon, uno per ogni risposta a pezzi. Rischio: thread bloccato per sempre se il browser non chiude mai il TCP dopo il FIN del proxy (HTTP/1.0). Esito: riserva BASSA (thread daemon, perdita limitata).
+- `tests/test_unit_voice_server.py:1026`: il server finto guarda la chiusura con select e recv `MSG_PEEK` prima della 3ª frase; il controllo è a `tests/test_unit_voice_server.py:1116` (`chiusure == [True]`). Rischio: un test che passa anche senza il fix. Esito: ok. Ho riprodotto il mutante: tolto l'avvio del thread a `clients/voice/browser_server.py:197`, `pezzi_interrotti` dà 1 failed; poi ho rimesso il file com'era (diff del worktree pulito). Con `-k "pezzi or v7b"`: 9 passed (browser compreso).
+- `clients/voice/browser_client.html:706`: riascolto messo solo se `rip.turno === numTurno && player.paused`. Rischio: cambiare l'audio mentre l'utente ascolta col tasto play. Esito: ok, R-619-2-M2 chiusa.
+- `clients/voice/browser_client.html:682`: `reader.cancel().catch(() => {})`. Esito: ok, nota cosmetica chiusa.
 
-**Prove**: 73 passed su un export dell'indice (scratchpad r623). Nel diff non c'è slicing della history. Il diff non tocca il codice dei provider, il cap di 10 iterazioni né `_get_window`.
+**Riserve (BASSE)**
+- R-620-1-M2: `except OSError: pass` a `clients/voice/browser_server.py:184` tratta anche un `TimeoutError`, che è un OSError, come «pagina chiusa», e quindi chiude la connessione verso la voce. Oggi non succede, perché il socket della pagina non ha timeout (`timeout` di socketserver = None). Basta però impostare in futuro `BrowserProxyHandler.timeout` per troncare tutte le risposte lunghe. Va escluso `TimeoutError` (return senza shutdown).
+- R-620-2-M2: il thread di guardia resta bloccato per sempre se il peer non chiude mai il TCP (half-open). È daemon, ce n'è uno per risposta: solo una piccola perdita.
+- R-620-3-M2 (COSMETICA): il commento a `clients/voice/browser_server.py:221` cita «il finally di _proxy_voice», ma ora la chiusura la fanno il finally di `_inoltra_a_pezzi` e il thread di guardia.
 
-**Riserve**
-- R-623-1 BASSA: il ricontrollo dopo l'attesa (scripts/voce/installa.sh:99-105) non è fissato da nessun test. Ho provato due mutanti: tolgo il blocco, oppure cambio `stop` in `echo`. Con entrambi la suite dà 18 passed su 18, perché il finto launchctl risponde sempre «running». Serve un finto che alla seconda chiamata di `print` risponda in un altro modo.
-- R-623-2 COSMETICA: il finto `sleep` non scrive nel registro, quindi il mutante senza `sleep 1` nel giro sopravvive. Sul Mac quel giro farebbe 30 tentativi di nc in meno di un secondo e darebbe un falso STOP. Basta far registrare anche il finto sleep e contare le chiamate.
-- R-623-3 COSMETICA: il messaggio dice «cancella .venv e riprova», ma lo script ricrea .venv con il `python3` del PATH. Sul Mac `/usr/bin/python3` è 3.9, quindi l'operatore ricadrebbe nello stesso STOP. Il messaggio dovrebbe dire di mettere prima nel PATH un python3 3.11 o più recente.
-- Restano aperte R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac) e R-615-5 BASSA (licenza di hey_jarvis, decide l'operatore).
+**Non verificato**: comportamento con un browser vero sul Mac (keep-alive, chiusura del TCP dopo la fine della risposta) e su una VPS dietro un reverse proxy, che potrebbe non inoltrare subito la chiusura. In dev non si può riprodurre. La suite voce completa da 182 non l'ho rilanciata: ho rilanciato solo il sottoinsieme pezzi/v7b più il mutante.
 
-**Rischi esplicitamente esclusi (non verificati)**
-- Il comportamento reale su macOS non è verificato: launchd, `nc -z` senza timeout e il tempo di avvio del server non sono riproducibili in un ambiente Linux. I test usano comandi finti.
-- Non ho provato la suite con `pytest -s` da un terminale vero. Il finto python fa `cat > /dev/null` sullo stdin ereditato e senza la cattura di pytest potrebbe restare in attesa. Il problema c'era già prima di questo diff, che lo estende solo al ramo `--version`.
-- Divergenza fuori dal diff: se il valore è tra virgolette e contiene ` #` (es. `GAS_VOICE_PORT="9001 # x"`), installa.sh legge 9001 mentre il server va in errore. Il caso è raro e il server lo segnala da solo.
+**Memoria**: ho aggiunto la riga contatore #620-M2 e una lezione in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md`. Il commit con `scripts/commit_memoria_revisore.sh` è stato bloccato dal classificatore dei permessi (Git Destructive), quindi il file è modificato ma NON committato. Va incluso nel commit di `/fine-task`.
 
-**Memoria**: ho aggiunto la riga #623 e una lezione in /home/user/Gas/.claude/agents/memoria_revisore.md. La lezione: quando il test usa uno `sleep` finto muto, o un ricontrollo con un finto che risponde sempre uguale, i mutanti che li tolgono sopravvivono. La memoria è committata a parte in 57f12dc con `scripts/commit_memoria_revisore.sh`, e l'indice del diff sotto review è rimasto intatto.
-```
+Review #621-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ri-review #621-M2 su feat/voce-v7b-m2: diff staged di 4 file, cambiato rispetto alla #620 solo `clients/voice/browser_server.py`. Prima della review ho letto CLAUDE.md (sez. 5 già nel contesto), `reports/stato_progetto.md` (le righe su voce/620) e la coda di `.claude/agents/memoria_revisore.md`.
+
+**Elementi del diff esaminati**
+- `clients/voice/browser_server.py:187` — `except TimeoutError: return` messo prima di `except OSError` in `_guarda_pagina`. Rischio esaminato: che un tempo scaduto venga letto come «pagina chiusa» e chiuda la connessione verso la voce. L'ordine è giusto: ho controllato che `TimeoutError` sia sottoclasse di `OSError` (risultato `True`), quindi senza questo ramo prima finirebbe nel `pass` e chiuderebbe. Il ramo `OSError` vero resta come prima: chiude la connessione verso la voce. Esito: ok, R-620-1-M2 chiusa.
+- `clients/voice/browser_server.py:178` — docstring di `_guarda_pagina`: thread daemon, uno per risposta, resta fermo senza danno se la pagina non chiude mai il TCP. Rischio esaminato: thread che si accumulano. Con un thread daemon per risposta e un browser che chiude normalmente il TCP non si accumulano, e il caso limite è dichiarato. Esito: ok, **accetto R-620-2-M2 come chiusa-dichiarata**.
+- `clients/voice/browser_server.py:224` — il commento ora dice «il finally di _inoltra_a_pezzi chiude anche il server voce». È coerente con `clients/voice/browser_server.py:204` (`resp.close()` nel finally). Esito: ok, R-620-3-M2 chiusa.
+- `clients/voice/browser_server.py:200` — avvio del thread di guardia, invariato dalla #620. Esito: ok.
+
+**Test**
+- `pytest tests/test_unit_voice_server.py -k "v7b or proxy"`: 13 passed, 73 deselected.
+- Nel diff di `browser_server.py` nessuno slicing della history (grep rc=1). Il codice non tocca né la history né i provider.
+
+**Riserva (BASSA)**
+- Nessun test copre il ramo `TimeoutError` in `clients/voice/browser_server.py:187`. Oggi è irraggiungibile, perché il socket della pagina non ha timeout. Se in futuro qualcuno mette un timeout sul socket della pagina, il ramo diventa vivo e non è protetto dai test. Va registrata in stato_progetto.md.
+
+**Rischio escluso**
+- Non ho fatto nuovi mutanti su questo giro: il delta è un solo ramo irraggiungibile più commenti, e il mutante del thread di guardia era già stato riprodotto nella #620.
+- Non ho verificato il comportamento con un browser reale né su VPS: non è riproducibile in questo ambiente.
+
+**Memoria del revisore**
+- Ho aggiunto la riga contatore `#621-M2` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- **Non ho fatto il commit** di quel file con `scripts/commit_memoria_revisore.sh`: il classificatore dei permessi ha negato il commit. Va committato dall'agente principale insieme al resto del fine-task. Nessun commit del diff sotto review, come richiesto.
+
+Review #622-M2 (diff finale committato in c77ad6c):
+
+## VERDETTO: APPROVATO
+
+Ri-review #622-M2 sul branch feat/voce-v7b-m2 (diff staged, 4 file). Rispetto alla #621 cambia solo il test.
+
+Cosa ho controllato nel diff:
+- `tests/test_unit_voice_server.py:1344` — nuovo test parametrico `test_v7b_guardia_della_pagina`, copre i 4 rami di `_guarda_pagina` con una pagina finta:
+  - lettura vuota → la connessione verso la voce si chiude;
+  - ConnectionResetError → si chiude;
+  - TimeoutError → non si chiude;
+  - dati inattesi → non si chiude.
+  - Rischio esaminato: un test che passa anche senza il ramo che dovrebbe proteggere. Esito: ok. Ho riprodotto il mutante (tolto `except TimeoutError`): fallisce solo `[tempo-False]` (1 failed, 3 passed). Il file l'ho poi ripristinato dalla versione staged, quindi l'area di staging è intatta.
+- `clients/voice/browser_server.py:187` — `except TimeoutError` messo prima di `except OSError` (TimeoutError è una sottoclasse di OSError).
+  - Rischio esaminato: ordine dei rami e copertura dei test. Esito: ok, la riserva BASSA della #621 è chiusa anche nella rete dei test.
+- `clients/voice/browser_server.py:178` — `_guarda_pagina`. Il test crea l'handler con `__new__` e gli assegna solo `connection`, quindi niente socket reale.
+  - Rischio esaminato: dipendenza da attributi dell'handler non preparati dal test. Esito: ok, il metodo usa solo `self.connection`.
+
+Esecuzione:
+- `-k guardia`: 4 passed.
+- `-k "v7b or proxy"`: 17 passed.
+
+Wall of Shame: nessuno slicing della history e nessuna simulazione dell'output dei tool. Il test usa oggetti finti per i socket, non output finti di tool di Gas.
+
+Rischio escluso: non ho verificato il comportamento con un socket reale della pagina che ha un timeout impostato. Oggi quel caso non si presenta (il socket della pagina non ha timeout) e il ramo è provato solo con l'oggetto finto. Non ho ripetuto la suite completa né la prova d'ascolto nel browser, perché fuori dal delta.
+
+Memoria: ho aggiunto la riga contatore #622-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata (75778a3, solo quel file). Il primo tentativo di commit, scritto in un comando unico con l'aggiunta della riga, è stato fermato da review_gate.sh. Ripetuto da solo, lo script è passato. L'area di staging del motore non è cambiata (4 file) e non ho fatto altri commit.
+
+Merge della V7a aggiornata (ee8b079). Review #651-M2:
+
+## VERDETTO: APPROVATO
+
+Review #651-M2: merge di feat/voce-v7-m2 (5d39333) dentro feat/voce-v7b-m2 (c77ad6c), con tutto in staging.
+
+**Cosa contiene il merge.** `git diff --cached MERGE_HEAD` tocca solo i 5 file della V7b: clients/voice/browser_client.html, clients/voice/browser_server.py, modules/voice/server.py, tests/test_unit_voice_server.py e la memoria. Tutto il resto (main da #318 a #323, ascolto.py, gas.py, brains, report) è identico a quello della V7a aggiornata. Nei file voce e nella memoria non ci sono marcatori di conflitto.
+
+**Elementi del diff esaminati:**
+- `clients/voice/browser_client.html:615` — nel catch del fetch (errore di rete) nasconde i tempi e il «Ho capito». Rischio esaminato: che la V7b li avesse lasciati fuori. Esito: ok. Il ramo `!resp.ok` (riga 618) legge `error` e `tempi` con una sola `resp.json()` e mostra la riga dei tempi. Il catch «risposta non leggibile» (riga 649) li nasconde, e copre anche il caso di NDJSON vuoto o rotto alla prima riga. Quindi i tre rami d'errore della V7a convivono con `lettoreRighe`.
+- `clients/voice/browser_client.html:715` — in `leggiResto` la riga «fine» chiama ancora `mostraTempi(j.tempi)`. Rischio esaminato: che i tempi della V7b sparissero col merge. Esito: ok. Il test `pezzi` lo conferma: «… voce 0.2s · rete …» e `tempiVisibili` vale true. `#tempi` sta fuori da `#player-wrap` e c'è la regola `[hidden]` presa dalla V7a.
+- `modules/voice/server.py:430` — `_vuole_audio_testo` accetta anche il formato pezzi. Rischio esaminato: che i rami della V7a (`_rispondi_senza_turno` con il controllo della chiave ElevenLabs, `_segna("cervello")` quando il risultato è None, `_t0` dopo `rfile.read`) saltassero il percorso NDJSON. Esito: ok. Le risposte d'errore restano JSON (`_send_json` con i tempi), quindi la pagina le legge nel ramo `!resp.ok`. I tempi delle risposte a pezzi si chiudono una volta sola, nella riga «fine».
+- `tests/test_unit_voice_server.py:1035` — il ramo `guasto` della voce finta viene dopo il ramo pezzi, che risponde solo con `modo in ("pezzi","pezzi_interrotti")` e ha il suo `return`. Rischio esaminato: risoluzione del conflitto che rende il caso guasto irraggiungibile o che salta le asserzioni della V7b. Esito: ok. Prima viene verificato il formato «audio+testo+pezzi», poi il blocco del guasto con `return`. L'aggiunta `startsWith('errore')` nella `waitForFunction` serve per lo stato «errore: voce non disponibile».
+- Contesto: `clients/voice/ascolto.py:388` chiede l'MP3 grezzo senza `X-Gas-Formato`, quindi l'ascolto continuo («voce H24» sul Mac, in main) non passa dal ramo pezzi. Esito: ok.
+- Memoria: rispetto a HEAD nessuna riga tolta. Rispetto a MERGE_HEAD aggiunge solo le righe da #618-M2 a #622-M2 con le loro lezioni.
+
+**Prove riprodotte:** `pytest tests/test_unit_voice_server.py tests/test_unit_voice_stt.py`, 183 passed in 4 min e 17 s, nessun test saltato (compresi quelli nel browser).
+
+**Nota (non è una riserva):** risale alla V7b e non nasce dal merge. Nel ramo `!audio` (`riproduzione = null`) la lettura delle righe continua senza poter essere fermata da un turno nuovo. In teoria una riga «fine» in ritardo potrebbe riscrivere i tempi del turno dopo. In pratica il server manda la riga «fine» subito dopo la prima riga senza audio, quindi la finestra è trascurabile.
+
+**Rischio escluso:** non ho provato il comportamento reale sul Mac (Safari/Chrome con ElevenLabs e Groq veri, concatenazione MP3 ascoltata): in questo ambiente non si riproduce. Non ho rieseguito i test fuori dalla voce (kernel, gate, avvisa_operatore, voce_ascolto), perché quei file sono identici a MERGE_HEAD, già verificata nella #650-M2.
+
+**Memoria:** la riga #651-M2 è in coda a /home/user/Gas/.claude/agents/memoria_revisore.md ed è nello staging con il merge. `scripts/commit_memoria_revisore.sh` non ha fatto il commit perché a merge in corso git non permette un commit parziale («cannot do a partial commit during a merge»). Lo script ha scritto l'avviso in gas_debug.log ed è uscito con 0. La riga entra nel commit del merge.
+
+Correzione del tipo (d1e9822). Review #652-M2:
+
+## VERDETTO: APPROVATO
+
+Review #652-M2 su feat/voce-v7b-m2, dopo i merge ee8b079 e 9f2046e. In staging c'è un solo file, modules/voice/server.py.
+
+**Elementi del diff esaminati:**
+- `modules/voice/server.py:395` — nel ramo `result_content is None`, `self._segna("cervello", t_cervello)` adesso sta sotto `if t_cervello is not None:`. Rischio esaminato: che la guardia faccia sparire il tempo del cervello in un caso reale. Esito: ok. Il comportamento non cambia: a questa riga si arriva solo se il `try` è finito senza eccezioni. Quindi `t_cervello = time.monotonic()` (riga 374) è sempre stato eseguito prima di `run_turn`, e la condizione è sempre vera. La modifica serve solo al tipo: un `Optional[float]` non arriva più a un parametro `float` (chiude la V-3 COSMETICA del bot).
+- `modules/voice/server.py:388` — nel ramo eccezione c'è la stessa guardia `if t_cervello is not None`. Rischio esaminato: che i due rami del cervello siano trattati in modo diverso. Esito: ok, ora i due rami sono scritti allo stesso modo.
+- Contesto: nessun antipattern della sez. 5 di CLAUDE.md. Il percorso d'errore resta fail-safe: risposta 500 dichiarata, mai un crash.
+
+**Prova riprodotta:** `pytest tests/test_unit_voice_stt.py -k v7`, 11 passed. È compreso `test_v7_tempo_del_cervello_anche_senza_risposta`, il test che nella #649-M2 aveva bloccato il mutante su questo stesso ramo.
+
+**Rischio escluso:** questa volta non ho rieseguito la suite completa della voce, compresi i test nel browser. Il diff è di una sola guardia sempre vera, non tocca né la pagina né il percorso NDJSON, e quella suite è passata nella #651-M2 (183 passed). Non ho verificato con un type checker (mypy) che la V-3 sia davvero chiusa: lo strumento non fa parte del flusso del repo.
+
+**Memoria:** la riga #652-M2 è scritta in /home/user/Gas/.claude/agents/memoria_revisore.md ed è committata da sola con `scripts/commit_memoria_revisore.sh` (commit 1fd1f5a). `modules/voice/server.py` resta in staging e non è committato.
+
+(La review #651-M2 del merge precedente era già stata consegnata con APPROVATO. La sua riga in memoria è entrata nel commit di merge ee8b079.)
+
+Correzione delle note del bot su a73916a (1196be7). Review #653-M2:
+
+## VERDETTO: APPROVATO
+
+Review #653-M2. Branch feat/voce-v7b-m2 (PR #325). Ho esaminato il diff staged con `git diff --cached`: 3 file, 34 righe aggiunte e 4 tolte. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md e la memoria del revisore.
+
+Elementi del diff esaminati:
+- `tests/test_unit_voice_server.py:1342` — patch di `_PARLATO_MAX_FRASI` a 6 (V-1). Rischio esaminato: la patch potrebbe non agire, perché è una costante di modulo. `frasi_parlate` però la legge come globale al momento della chiamata (modules/voice/server.py:179), quindi la patch ha effetto. Mutante riprodotto: ho fatto restituire `True` a `riga()` anche a client chiuso (modules/voice/server.py:484). Risultato: `assert 6 <= 3`, 1 failed. Il margine ora è netto (6 contro ≤3, non più una sola sintesi). Ho ripristinato il file dall'index. Esito: ok.
+- `clients/voice/browser_server.py:207` — invio degli header di `_copia_righe` dentro try/except OSError, con log.warning e return (V-3). Rischio esaminato: un'eccezione degli header che risale fino all'`except (ConnectionRefusedError, OSError)` di `_proxy_voice` (clients/voice/browser_server.py:162, contesto) e dà un 502 falso. Ora si ferma prima. Il `finally` di `_inoltra_a_pezzi` (clients/voice/browser_server.py:203, contesto) chiude comunque `resp`, quindi il server voce non resta appeso. Mutante: con browser_server.py di HEAD il test nuovo (tests/test_unit_voice_server.py:1361) dà 1 failed; ripristinato dall'index. Esito: ok.
+- `clients/voice/browser_client.html:651` — `if (righe) righe.chiudi();` nel catch «risposta non leggibile» (V-2). Rischio esaminato: `righe` non definita, oppure `chiudi` che lancia un'eccezione. `righe` è dichiarata con `let ... righe = null` prima del try (clients/voice/browser_client.html:633). `chiudi()` è già protetto da try/catch (clients/voice/browser_client.html:701). Esito: ok.
+- `clients/voice/browser_client.html:718` — `console.warn` per un `errore_voce` arrivato dopo la prima riga (V-4 COSMETICA). Il controllo su typeof e sul valore non vuoto evita stampe vuote. Il testo a schermo non cambia. Esito: ok.
+
+Prove: test_unit_voice_server + test_unit_voice_stt, 184 passed riprodotti (test del browser compresi). Wall of Shame: nessuno slicing della history e nessuna simulazione di tool. Il diff non tocca kernel, provider, `_get_window` né i tetti.
+
+Rischio escluso: non ho verificato il comportamento reale nel browser (Safari/Chrome sul Mac) di `reader.cancel()` nel catch, né la chiusura vera del TCP verso il server voce in quel ramo. Non si può riprodurre in questo ambiente senza browser. Lo copre solo la logica del codice e la prova manuale dell'operatore.
+
+Memoria: riga contatore #653-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (fc1b96c). L'index del diff sotto review è intatto (3 file). Nessuna lezione nuova.
+
+Correzione del riascolto (bot su 6010448). Review #654-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #654-M2, branch feat/voce-v7b-m2 (PR #325). Diff staged: 1 file, clients/voice/browser_client.html. Ho letto le tre fonti obbligatorie: CLAUDE.md (in contesto), reports/stato_progetto.md (sezione V7b, riga 605) e la coda di memoria_revisore.md.
+
+Elementi del diff esaminati:
+- `clients/voice/browser_client.html:727` — uscita anticipata se il turno non è più l'ultimo. Rischio esaminato: riascolto messo sul player di un turno nuovo. Esito: ok. Prima il controllo stava nello stesso `if`, quindi il comportamento non cambia.
+- `clients/voice/browser_client.html:728` — se il player è fermo, `mettiRiascolto` subito, come prima. Rischio esaminato: tagliare una frase che l'operatore ha solo messo in pausa. Esito: ok. Non è una regressione: in pausa il comportamento è quello già approvato in R-619-2-M2.
+- `clients/voice/browser_client.html:731` — listener `ended` con `{ once: true }` e guardia `rip.turno === numTurno`.
+  - Interazione con un turno nuovo: `suonaPezzo` cambia `player.src` (`clients/voice/browser_client.html:767`, contesto). Cambiare src NON emette `ended`, quindi il listener del turno N resta registrato e scatta alla fine della prima frase del turno N+1. Lì la guardia lo fa uscire (N diverso da N+1) e `once` lo rimuove. Esito: innocuo. Senza quella guardia sarebbe stato un bug: il riascolto del turno vecchio avrebbe sostituito l'audio del turno nuovo.
+  - Interazione con `mettiRiascolto` (`clients/voice/browser_client.html:747`, contesto): il cambio di src dentro il callback non fa ripartire il listener, che è già stato rimosso, e nel ramo soloRaccogli `player.onended` è già null (`clients/voice/browser_client.html:819`). Non si accumulano listener: `leggiResto` arriva una volta sola per ogni turno. Se c'è una sola frase (`tutti.length < 2`), `mettiRiascolto` non fa nulla. Esito: ok.
+  - Doppio riascolto con il ramo `catch` (`clients/voice/browser_client.html:822`, contesto): non può succedere. `leggiResto` imposta `finito` prima di guardare `soloRaccogli`: o mette il riascolto `leggiResto`, o lo mette il catch, mai entrambi. Esito: ok.
+- Test: ho rilanciato io `pytest tests/test_unit_voice_server.py -k conversazione_nel_browser` → 13 passed (220 s, browser vero).
+
+Riserve (entrambe BASSE, da segnare in stato_progetto.md):
+1. Nessun test copre il ramo «autoplay negato». Il browser dei test parte con `--autoplay-policy=no-user-gesture-required` (`tests/test_unit_voice_server.py:871`), quindi questa correzione, e tutto il ramo soloRaccogli, non viene mai eseguita nei test. La verifica è solo di lettura del codice.
+2. Se l'operatore preme play, mette in pausa la prima frase e non la riprende più, `ended` non arriva mai e il riascolto completo non viene mai messo: il tasto play suona ancora solo la prima frase. È un caso raro e meno grave del bug chiuso.
+
+Rischio escluso: non ho verificato il comportamento reale su Safari/iOS (politiche di autoplay ed eventi `ended` su blob MP3 concatenati), perché qui non si può riprodurre. Il ramo l'ho verificato solo leggendo il codice.
+
+Memoria: aggiunta la riga #654-M2 con una lezione (un listener una tantum su un elemento condiviso resta attivo anche dopo il cambio di src e scatta sul turno successivo: dentro il callback serve sempre la guardia sul turno). È committata con lo script: commit e57b9f4, solo /home/user/Gas/.claude/agents/memoria_revisore.md.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py, brains/ o modules/. Test nuovi: `tests/test_unit_voce_ascolto.py` (`python -m pytest tests/test_unit_voce_ascolto.py`, da root): 73 passed. Con le suite voce di M2 (server/stt/tts), prima delle ultime correzioni: 181 passed. Mutanti presi (1 failed o più ciascuno): soglia ignorata, niente svuotamento dopo la risposta, file temporaneo non cancellato, http remoto accettato, massimo dei turni ignorato, silenzio prima della voce incluso, file 0644, senza `_NienteRedirect`, senza `ProxyHandler({})`, blocchi forti non di fila, attesa sulla logica vecchia, URL sempre 8765, `main` con la vecchia espressione, caricatore di gas mai usato, niente svuotamento dopo un errore, niente controllo di Python, niente attesa del server, sed della porta senza togliere il commento; per gli script: `grep` senza `|| true` (installa fermo dopo «5/6», riprodotto sul codice vecchio), lista bianca `.*`.
+`tests/test_unit_voice_server.py` + `tests/test_unit_voice_stt.py`: 183 passed (browser obbligatorio, `GAS_TEST_BROWSER_OBBLIGATORIO=1`) dopo l'allineamento alla V7a; -k v7 di test_unit_voice_stt 11 passed dopo la #652-M2. I test nuovi della V7b stanno in `tests/test_unit_voice_server.py` (formato a pezzi nel server, proxy che inoltra le righe e chiude a monte, pagina nel browser coi modi «pezzi» e «pezzi_interrotti»). Dopo la #653-M2: 184 passed (test nuovo `test_v7b_pagina_chiusa_prima_degli_header`, mutante → 1 failed; tetto delle frasi a 6 nel test della sintesi fermata, mutante → 6 sintesi). Dopo la #654-M2: test_v3_conversazione_nel_browser 13 passed. Kernel non toccato dalla fetta (`gas.py` identico a main).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- 31b8ec1 (memoria #621), 234f41c (fetta 37), 5876b7e (memoria #615/#616/#618): pushati insieme prima dell'apertura della PR #323. Run non ancora disponibile alla scrittura dell’handoff.
-- c5e7321 (fine-task): run 41485162729 su c5e7321 (unit-suite e handoff-check: vedi la PR); verifica-bot neutral (bot APPROVATO CON RISERVE).
-- 4fc2378 (memoria #622), 7de4eeb (correzioni), 1127f5c (fine-task): run 41486699260 su 1127f5c (vedi la PR); verifica-bot neutral (bot APPROVATO CON RISERVE).
-- 57f12dc (memoria #623), il commit delle correzioni e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nel cloud: check lette dall'integrazione GitHub e dalle verifiche.
+- 6010448: unit-suite pass (voice suite 210 passed), suite completate; bot APPROVATO CON RISERVE (V-1 bassa e V-2 cosmetica, chiuse qui).
+- Correzione del riascolto, memoria (e57b9f4) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
-- R-615-4 (chat Mani) MEDIA: permesso del microfono sotto launchd, da provare sul Mac; la voce H24 non è dichiarata funzionante prima.
-- R-615-5 (chat Mani) BASSA: licenza CC BY-NC-SA dei modelli pronti di openWakeWord, decide l'operatore.
-- R-623-1 (chat Mani) BASSA: il ricontrollo dei servizi dopo l'attesa non ha un test (il finto launchctl risponde sempre «running»).
-- R-623-2 (chat Mani) COSMETICA: finto sleep muto. R-623-3 (chat Mani) COSMETICA: il messaggio sul Python vecchio non dice di mettere un python3 ≥ 3.11 nel PATH.
-- R-622-2 (chat Mani) COSMETICA: AVVISO anche con GAS_VOICE_URL vuoto. R-622-3 (chat Mani) COSMETICA: la root resta in sys.path.
-- V-2 COSMETICA del bot su c5e7321: il passo CI nuovo non compare nel «Job summary».
-- Log in `.gas_voce/` senza rotazione (dichiarato nel LEGGIMI).
-- Da #319 (mergiata): V-1 bot su 9c44686 BASSA (limite dichiarato), V-1/V-2 ve su 9c44686 COSMETICHE, R-612-1/2, R-614-1/2, R-617-1/2/3, V-2 bot, V-5 ve.
+- R-654-1-M2 BASSA: nessun test copre il ramo «autoplay negato» (il browser dei test ha l'autoplay permesso): la correzione del riascolto è verificata solo a lettura.
+- R-654-2-M2 BASSA: se l'operatore preme play, mette in pausa la prima frase e non la riprende, il riascolto completo non arriva mai.
+
+- Dopo un guasto restano visibili testo e player della risposta precedente sotto i tempi nuovi; nessun test per il guasto dopo un turno riuscito né per un vero errore di rete (V-2 bot su 5d39333, BASSA).
+- Nel ramo senza audio una riga «fine» in ritardo potrebbe in teoria riscrivere i tempi del turno dopo (nota della #651-M2; finestra trascurabile).
+- Eccezione MP3 non prevista senza tempo «voce» (preesistente).

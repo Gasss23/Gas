@@ -95,9 +95,10 @@ Dopo una modifica: `bash scripts/voce/installa.sh` (riavvia i servizi).
   percorso non dipende dalla cartella di avvio): la scatola nera di Gas. Qui finiscono
   anche i **tempi della voce**, una riga INFO per richiesta. La riga non contiene il
   nome del logger (`gas.voce.tempi`): si cerca col testo,
-  `grep "tempi voce" gas_debug.log` (es. `tempi voce (200): stt=0.81s cervello=2.40s …`).
+  `grep "tempi voce" gas_debug.log` (es. `tempi voce (200): trascrizione=0.81s cervello=2.40s server=3.30s`;
+  le altre voci possibili sono `voce` e `voce_tutta`).
 
-I log non ruotano da soli: con il microfono staccato si aggiunge una riga ogni 5 secondi.
+I due log in `.gas_voce/` non ruotano da soli (`gas_debug.log` invece ruota a 5 MB): con il microfono staccato si aggiunge una riga ogni 5 secondi.
 Se crescono troppo, svuotali senza cancellarli: `: > .gas_voce/ascolto.log` e
 `: > .gas_voce/voce.server.log` (cancellati,
 i servizi continuerebbero a scrivere sul file tolto fino al riavvio).

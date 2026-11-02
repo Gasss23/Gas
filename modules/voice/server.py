@@ -77,6 +77,10 @@ from modules.voice.tts import DEFAULT_VOICE_ID as _TTS_DEFAULT_VOICE_ID
 from modules.voice.tts import ElevenLabsTTSError, synthesize_speech
 
 log = logging.getLogger(__name__)
+# V7 (R-614-3-M2): i tempi sono informazione, non un problema: logger dedicato a INFO, che
+# finisce nel file gas_debug.log (il terminale resta a WARNING; i tempi sono già nella pagina).
+_log_tempi = logging.getLogger("gas.voce.tempi")
+_log_tempi.setLevel(logging.INFO)
 
 _ENDPOINT = "/voice"
 
@@ -103,6 +107,9 @@ _NON_HO_CAPITO = "Non ho capito bene, puoi ripetere?"
 # con il testo intero (a schermo) e l'audio della sola parte parlata, corta: le prime
 # frasi, entro _PARLATO_MAX_CHAR. Il resto si legge.
 _FORMATO_AUDIO_TESTO = "audio+testo"
+# V7b (chat M2): come «audio+testo», ma la risposta arriva a righe JSON (NDJSON) mentre la
+# voce viene sintetizzata frase per frase: la pagina comincia a parlare dopo la prima frase.
+_FORMATO_PEZZI = "audio+testo+pezzi"
 _PARLATO_MAX_FRASI = 3
 _PARLATO_MAX_CHAR = 400
 _PARLATO_RESTO = " Il resto è a schermo."
@@ -140,6 +147,23 @@ ISTRUZIONE_VOCE_SCHERMO = (
 _PARAGRAFO = re.compile(r"\n[ \t]*\n")
 
 
+def _dividi_frasi(testo: str) -> List[str]:
+    """Frasi di un testo già su una riga; «Dott. Rossi» non è una fine frase (R-574-4-M2)."""
+    frasi: List[str] = []
+    for pezzo in (f for f in _FINE_FRASE.split(testo) if f):
+        if frasi and _ABBREVIAZIONE.search(frasi[-1]):
+            frasi[-1] = f"{frasi[-1]} {pezzo}"
+        else:
+            frasi.append(pezzo)
+    return frasi
+
+
+def frasi_parlate(testo: str) -> List[str]:
+    """V7b: la parte parlata (vedi parte_parlata) divisa in frasi, da sintetizzare una alla
+    volta. Unite di nuovo con uno spazio danno esattamente parte_parlata(testo)."""
+    return _dividi_frasi(parte_parlata(testo))
+
+
 def parte_parlata(testo: str) -> str:
     """Le prime frasi di `testo` da dire a voce (≤ _PARLATO_MAX_FRASI frasi e
     ≤ _PARLATO_MAX_CHAR caratteri); se il testo è più lungo aggiunge «Il resto è a
@@ -150,13 +174,7 @@ def parte_parlata(testo: str) -> str:
         primo = parte_parlata(pezzi[0])
         return primo if primo.endswith(_PARLATO_RESTO) else primo + _PARLATO_RESTO
     testo = " ".join(testo.split())  # R-574-4-M2: a capo e spazi doppi non contano
-    frasi: list[str] = []
-    for pezzo in (f for f in _FINE_FRASE.split(testo) if f):
-        # R-574-4-M2: «Dott. Rossi» non è una fine frase
-        if frasi and _ABBREVIAZIONE.search(frasi[-1]):
-            frasi[-1] = f"{frasi[-1]} {pezzo}"
-        else:
-            frasi.append(pezzo)
+    frasi = _dividi_frasi(testo)
     parlato = ""
     for f in frasi[:_PARLATO_MAX_FRASI]:
         prova = f"{parlato} {f}".strip()
@@ -222,12 +240,34 @@ class VoiceHandler(BaseHTTPRequestHandler):
     kernel: Any = None
     token: str = ""
     _capito: Optional[str] = None  # V6: trascrizione della richiesta in corso (per istanza)
+    _tempi: Optional[Dict[str, float]] = None  # V7: secondi per pezzo della richiesta in corso
+    _t0: float = 0.0
     turni_parlati: List[float] = []  # V4/V5: istanti delle chiamate a Groq (tetto orario)
 
     def log_message(self, fmt: str, *args: Any) -> None:
         log.info(fmt, *args)
 
+    def _segna(self, pezzo: str, inizio: float) -> None:
+        """V7: secondi spesi in un pezzo della richiesta (trascrizione, cervello, voce)."""
+        if self._tempi is not None:
+            self._tempi[pezzo] = round(time.monotonic() - inizio, 2)
+
+    def _chiudi_tempi(self, code: int) -> Optional[Dict[str, float]]:
+        """V7: tempi della richiesta + totale nel server; una riga INFO nel solo
+        gas_debug.log (logger gas.voce.tempi) per ogni richiesta che ha speso qualcosa.
+        Solo numeri."""
+        if self._tempi is None or not self._tempi:
+            return None
+        tempi = dict(self._tempi, server=round(time.monotonic() - self._t0, 2))
+        self._tempi = None  # una sola volta per richiesta
+        _log_tempi.info("tempi voce (%s): %s", code,
+                        " ".join(f"{k}={v:.2f}s" for k, v in tempi.items()))
+        return tempi
+
     def _send_json(self, code: int, payload: Dict[str, Any]) -> None:
+        tempi = self._chiudi_tempi(code)
+        if tempi is not None:
+            payload = dict(payload, tempi=tempi)
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -236,8 +276,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _send_audio(self, data: bytes) -> None:
+        tempi = self._chiudi_tempi(200)
         self.send_response(200)
         self.send_header("Content-Type", "audio/mpeg")
+        if tempi is not None:  # V7: con l'MP3 grezzo i tempi viaggiano in un'intestazione
+            self.send_header("X-Gas-Tempi", ";".join(f"{k}={v}" for k, v in tempi.items()))
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -261,6 +304,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
         return True
 
     def do_POST(self) -> None:
+        self._t0 = time.monotonic()
+        self._tempi = {}
         self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
         if self.path != _ENDPOINT:
             self._send_json(404, {"error": "Not Found"})
@@ -276,6 +321,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "Content-Length non valido"})
             return
         raw = self.rfile.read(length) if length > 0 else b""
+        # V-2 bot #322: il caricamento dell'audio dalla pagina è «rete», non tempo del server
+        self._t0 = time.monotonic()
 
         content_type = self.headers.get("Content-Type", "")
         ct_base = content_type.split(";")[0].strip().lower()
@@ -315,6 +362,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._rispondi_senza_turno(_USO_FORTE_PARLATO, "uso")
             return
 
+        t_cervello: Optional[float] = None
         try:
             result_content: Optional[str] = None
             kw: Dict[str, Any] = {}
@@ -323,22 +371,29 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if is_audio:  # V3/V4: risposte a voce corte, col dettaglio a schermo se c'è
                 kw["istruzione_turno"] = (ISTRUZIONE_VOCE_SCHERMO if self._vuole_audio_testo()
                                           else ISTRUZIONE_VOCE)
+            t_cervello = time.monotonic()
             turno = self.kernel.run_turn(prompt, **kw)
             for event in turno:
                 etype = event.get("type")
                 if etype == "final":
                     result_content = event.get("content", "")
+                    self._segna("cervello", t_cervello)
                     break
                 elif etype == "error":
+                    self._segna("cervello", t_cervello)
                     self._send_json(500, {"error": event.get("content", "Errore pipeline")})
                     return
                 # type="tool_res": consumato in silenzio
         except Exception as exc:
+            if t_cervello is not None:  # R-614-1-M2: anche un cervello che si rompe ha un tempo
+                self._segna("cervello", t_cervello)
             log.warning("run_turn eccezione: %s", exc)
             self._send_json(500, {"error": "Errore interno del kernel"})
             return
 
         if result_content is None:
+            if t_cervello is not None:  # V-2 ve #322: turno finito senza final né error (V-3 bot: tipo)
+                self._segna("cervello", t_cervello)
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
 
@@ -370,8 +425,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
         adesso = time.monotonic()
         return [t for t in self.turni_parlati if adesso - t < 3600]
 
+    def _formato(self) -> str:
+        return self.headers.get("X-Gas-Formato", "").strip().lower()
+
     def _vuole_audio_testo(self) -> bool:
-        return self.headers.get("X-Gas-Formato", "").strip().lower() == _FORMATO_AUDIO_TESTO
+        return self._formato() in (_FORMATO_AUDIO_TESTO, _FORMATO_PEZZI)
 
     def _do_audio_testo_response(self, text: str, extra: Optional[Dict[str, Any]] = None) -> None:
         """V3: JSON {"content": testo intero, "audio": base64 MP3 della parte parlata}.
@@ -387,6 +445,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
             out["errore_voce"] = "TTS non disponibile: ELEVENLABS_API_KEY non configurata"
         else:
             voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+            if self._formato() == _FORMATO_PEZZI:
+                self._do_pezzi_response(out, frasi_parlate(text), api_key, voice_id)
+                return
+            t = time.monotonic()
             try:
                 out["audio"] = base64.b64encode(
                     synthesize_speech(parte_parlata(text), api_key, voice_id)).decode("ascii")
@@ -396,7 +458,57 @@ class VoiceHandler(BaseHTTPRequestHandler):
             except OSError as exc:
                 log.warning("ElevenLabs TTS network error: %s", exc)
                 out["errore_voce"] = "Errore di rete verso ElevenLabs TTS"
+            finally:  # R-614-1-M2: anche un TTS fallito o in timeout ha il suo tempo
+                self._segna("voce", t)
         self._send_json(200, out)
+
+    def _do_pezzi_response(self, primo: Dict[str, Any], frasi: List[str], api_key: str,
+                           voice_id: str) -> None:
+        """V7b: risposta a righe JSON (NDJSON), una sintesi per frase.
+        Riga 1: `primo` (content, capito, …) + "audio" della prima frase + "pezzi" (frasi
+        totali). Poi una riga {"audio": …} per ogni frase successiva, appena pronta. Ultima
+        riga {"fine": true, "tempi": …}. Un errore TTS a metà → riga {"errore_voce": …} e
+        stop (il testo è già a schermo). Il client che chiude la connessione ferma la
+        sintesi (niente spesa per frasi che nessuno ascolta)."""
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+        self.end_headers()  # HTTP/1.0: niente Content-Length, la fine è la chiusura
+
+        def riga(obj: Dict[str, Any]) -> bool:
+            try:
+                self.wfile.write(json.dumps(obj, ensure_ascii=False).encode("utf-8") + b"\n")
+                self.wfile.flush()
+                return True
+            except OSError as exc:  # pagina chiusa o interrotta: si smette di sintetizzare
+                log.warning("voce a pezzi: client chiuso (%s)", type(exc).__name__)
+                return False
+
+        t_tutta = time.monotonic()
+        aperto = True
+        for i, frase in enumerate(frasi):
+            uscita: Dict[str, Any] = dict(primo, pezzi=len(frasi)) if i == 0 else {}
+            t = time.monotonic()
+            errore: Optional[str] = None
+            try:
+                uscita["audio"] = base64.b64encode(
+                    synthesize_speech(frase, api_key, voice_id)).decode("ascii")
+            except ElevenLabsTTSError as exc:
+                log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
+                errore = f"Errore TTS ElevenLabs: {exc.message}"
+            except OSError as exc:
+                log.warning("ElevenLabs TTS network error: %s", exc)
+                errore = "Errore di rete verso ElevenLabs TTS"
+            if i == 0:
+                self._segna("voce", t)  # tempo fino alla prima frase: quello che si sente
+            if errore is not None:
+                uscita["errore_voce"] = errore
+            aperto = riga(uscita)
+            if errore is not None or not aperto:
+                break
+        self._segna("voce_tutta", t_tutta)
+        tempi = self._chiudi_tempi(200)
+        if aperto:
+            riga({"fine": True, **({"tempi": tempi} if tempi else {})})
 
     def _do_tts_response(self, text: str) -> None:
         """Sintetizza text via ElevenLabs e invia i byte MP3. Invia l'errore HTTP se fallisce.
@@ -412,13 +524,17 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
         voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
 
+        t = time.monotonic()
         try:
             audio = synthesize_speech(text, api_key, voice_id)
+            self._segna("voce", t)
         except ElevenLabsTTSError as exc:
+            self._segna("voce", t)  # R-614-1-M2
             log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
             self._send_json(502, {"error": f"Errore TTS ElevenLabs: {exc.message}"})
             return
         except OSError as exc:
+            self._segna("voce", t)  # R-614-1-M2
             log.warning("ElevenLabs TTS network error: %s", exc)
             self._send_json(502, {"error": "Errore di rete verso ElevenLabs TTS"})
             return
@@ -448,9 +564,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
         # fallite spendono, quindi contano; i rifiuti locali (chiave assente, audio vuoto o
         # non valido) no, così l'errore utile (503/400) resta visibile.
         type(self).turni_parlati = self._turni_recenti() + [time.monotonic()]
+        t = time.monotonic()
         try:
             text = transcribe_audio(audio_bytes, filename, api_key)
         except TrascrizioneIncerta as exc:
+            self._segna("trascrizione", t)
             # V6: Groq ha risposto ma il testo è probabilmente sbagliato: si chiede di
             # ripetere invece di rispondere a caso. Nel log solo il motivo, mai il parlato.
             log.info("trascrizione scartata: %s", exc.motivo)
@@ -458,16 +576,19 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._rispondi_senza_turno(_NON_HO_CAPITO, "non_capito")
             return None
         except GroqSTTError as exc:
+            self._segna("trascrizione", t)
             if exc.status == 400:
                 self._send_json(400, {"error": f"Formato audio non accettato da Groq: {exc.message}"})
             else:
                 self._send_json(502, {"error": f"Errore Groq STT: {exc.message}"})
             return None
         except OSError as exc:
+            self._segna("trascrizione", t)
             log.warning("Groq STT network error: %s", exc)
             self._send_json(502, {"error": "Errore di rete verso Groq STT"})
             return None
 
+        self._segna("trascrizione", t)
         if not text:
             self._send_json(400, {"error": "Trascrizione vuota (silenzio o formato non supportato)"})
             return None

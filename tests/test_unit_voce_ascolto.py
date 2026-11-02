@@ -733,6 +733,7 @@ def test_installa_bootstrap_riprova(tmp_path):
     r, registro = _installa(gas, finti, casa, tmp_path, BOOTSTRAP_FALLISCE="2")
     assert r.returncode == 0, r.stdout + r.stderr
     assert registro.count("launchctl bootstrap") == 4  # 2 falliti + 2 servizi
+    assert r.stdout.count("riprovo tra 1 s") == 2  # R-628-3: si dice che riprova
 
 
 def test_installa_bootstrap_sempre_rotto_si_ferma(tmp_path):
@@ -740,6 +741,7 @@ def test_installa_bootstrap_sempre_rotto_si_ferma(tmp_path):
     r, registro = _installa(gas, finti, casa, tmp_path, BOOTSTRAP_FALLISCE="99")
     assert r.returncode == 1 and "3 tentativi" in r.stderr
     assert registro.count("launchctl bootstrap") == 3 and "nc -z" not in registro
+    assert r.stdout.count("riprovo tra 1 s") == 2  # niente attesa dopo il terzo
 
 
 def test_installa_aspetta_il_server_lento(tmp_path):

@@ -105,9 +105,12 @@ done
 # …poi bootstrap, con due tentativi in più a distanza di un secondo.
 for s in "${SERVIZI[@]}"; do
   CARICATO=no
-  for _ in 1 2 3; do
+  for tentativo in 1 2 3; do
     if launchctl bootstrap "$DOMINIO" "$AGENTI/$s.plist"; then CARICATO=si; break; fi
-    sleep 1
+    if [ "$tentativo" -lt 3 ]; then
+      echo "   $s non ancora caricato: riprovo tra 1 s (tentativo $((tentativo + 1)) di 3)."
+      sleep 1
+    fi
   done
   [ "$CARICATO" = si ] || stop "launchctl non carica $s (3 tentativi)."
 done
