@@ -105,13 +105,13 @@ def _motivo_incerta(testo: str, segmenti: Any) -> Optional[str]:
     peso = logprob = no_speech = 0.0
     for seg in segmenti:
         if not isinstance(seg, dict):
-            return None
+            continue  # V-1 ve #318 (2ª verifica): segmento malformato saltato, contano gli altri
         try:
             durata = max(float(seg.get("end", 0)) - float(seg.get("start", 0)), 0.01)
             lp = float(seg["avg_logprob"])
             ns = float(seg["no_speech_prob"])
         except (KeyError, TypeError, ValueError):
-            return None  # risposta senza i campi attesi: non si scarta a caso
+            continue  # segmento senza i campi attesi: saltato (nessun segmento valido → None)
         if not all(math.isfinite(x) for x in (durata, lp, ns)):
             continue  # V-1 ve #318 / R-614-2-M2: segmento NaN/inf inutile, contano gli altri
         peso += durata

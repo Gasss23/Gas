@@ -269,6 +269,15 @@ class TestV6Trascrizione:
         with pytest.raises(TrascrizioneIncerta):
             self._trascrivi(_verbose(frase, [_seg(-0.2, 0.1)]))
 
+    @pytest.mark.parametrize("malformato", ["x", {"start": 0, "end": 1}, {"avg_logprob": "boh",
+                                                                    "no_speech_prob": 0.1}])
+    def test_v6_segmento_malformato_non_spegne_gli_altri(self, malformato):
+        """V-1 ve #318 (2ª verifica): un segmento rotto si salta, il segmento cattivo accanto
+        fa ancora scartare la trascrizione (come per i NaN, R-614-2-M2)."""
+        corpo = json.dumps({"text": "ciao", "segments": [malformato, _seg(-2.0, 0.99, 1.0, 2.0)]})
+        with pytest.raises(TrascrizioneIncerta):
+            self._trascrivi(corpo)
+
     def test_v6_segmenti_senza_campi_non_scartano(self):
         """Risposta senza i dettagli attesi: si tiene il testo (non si scarta a caso)."""
         assert self._trascrivi(_verbose("ciao", [{"start": 0, "end": 1}])) == "ciao"

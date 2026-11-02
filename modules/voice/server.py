@@ -38,6 +38,9 @@ Configurazione tramite variabili d'ambiente (da .env o export):
                         incerta (default -1.0 / 0.8): sotto/sopra → «Non ho capito bene, puoi
                         ripetere?» senza turno (V6). Risposte 200 della voce con il campo
                         "capito" = testo trascritto, mostrato dalla pagina.
+  GAS_VOICE_STT_ECO_NO_SPEECH — soglia (default 0.9) oltre la quale un'eco corta del
+                        prompt di Whisper (2-3 parole contigue, es. «Gas, forte, lead.») è
+                        scartata come silenzio; i comandi brevi detti davvero stanno sotto.
 
 Cervello forte dalla voce (V1, chat M2): «/forte <richiesta>» (testo) oppure, nel parlato
 trascritto, «forte <richiesta>» / «Gas forte <richiesta>» all'inizio della frase.
