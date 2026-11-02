@@ -23,19 +23,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  11 +++++++
+ .claude/agents/memoria_revisore.md  |  13 +++++++
  .github/workflows/ci.yml            |   2 +-
- clients/voice/browser_server.py     |  71 ++++++++++++++++++++++++++++++++++++++--
- clients/voice/prova_voci.html       | 291 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/voice/prova_voci.py         | 126 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/voice/server.py             | 193 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- modules/voice/tts.py                | 152 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ clients/voice/browser_server.py     |  79 +++++++++++++++++++++++++++++++++++++++--
+ clients/voice/prova_voci.html       | 291 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/voice/prova_voci.py         | 126 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/voice/server.py             | 198 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ modules/voice/tts.py                | 152 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md            |  16 +++++----
  reports/handoff.md                  | n/d
  reports/prova_voce_mac.md           |   6 ++++
  reports/stato_progetto.md           |   3 +-
- reports/ultimo_report.md            |  20 ++++++------
- tests/test_unit_voice_prova_voci.py | 637 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md            |  20 +++++------
+ tests/test_unit_voice_prova_voci.py | 685 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -43,6 +43,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ad71c4e fix(voce): elenchi delle voci solo dalla pagina, Piper fuori dal tetto, aggiunta con esito incerto, guida Mac senza fatti non verificati (V-1..V-4 bot #326 su b95c95e; review #656-M2)
+0f037d3 chore(revisore): memoria review #656 — APPROVATO CON RISERVE
+b95c95e docs(voce-v8): numero della PR #326 nei report
 d093871 docs(voce-v8): report di fine task (review #624–#629-M2, #655-M2)
 8e88e78 Merge remote-tracking branch 'origin/main' into feat/voce-v8-m2
 87007ff docs(voce-v8): guida Mac per la libreria delle voci
