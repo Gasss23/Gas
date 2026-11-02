@@ -40,7 +40,7 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
 6. **Regola dei modelli e GDPR**: le mail contengono dati di persone. Gli strumenti mail
    si offrono **solo nei turni sul cervello forte**. Se il forte non c'è, il lavoro
    aspetta in coda e non passa mai ai modelli gratuiti. Nel diario vanno solo conteggi
-   (F-diario-eco), mai il testo né gli indirizzi. Il testo letto non si conserva oltre il
+   (F-diario-eco), mai il testo né gli indirizzi. Il testo letto dovrà non conservarsi oltre il
    turno, salvo ciò che finisce in un contatto (già marcato «non fidato» dopo una
    lettura). Base giuridica e conservazione dei dati dei contatti: capitolo 6, decisione
    7 della roadmap, ancora aperta.
@@ -54,6 +54,11 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    oppure quel turno si toglie o si maschera dalla storia a fine turno. Lo stesso vale
    per le bozze salvate in Gas: si leggono solo nei turni sul forte. Senza questo, testo
    e indirizzi letti in un turno forte arriverebbero ai gratuiti.
+   I percorsi da coprire sono tre (R-626-1): i turni dopo (`run_turn` con `_get_window`),
+   la riflessione di fine task (cascata «complesso» su una finestra di `_get_window`) e
+   il riepilogo di compressione, dove il testo degli strumenti diventa un messaggio user e
+   il nome dello strumento sparisce: il segno «turno mail» deve sopravvivere alla
+   compressione.
 7. **Fail-safe §9**: provider giù, token scaduto o risposta strana → messaggio
    «Operazione negata: …» e il turno va avanti, mai un crash.
 
