@@ -1,24 +1,18 @@
-# Ultimo report — 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2) — PR #321
+# Ultimo report — 2026-11-02 — Voce V7a: misura dei tempi (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #321 (https://github.com/Gasss23/Gas/pull/321): sì dell'operatore (riferito da M1); merge di main con la PR #318 fatto (review #641-M2).
-2. Sul Mac: `python3 gas.py doctor` e controllare la riga «Cervello forte · login» (deve dire «login dell'abbonamento»).
+1. Merge della PR della V7a (numero nell'handoff §0), secondo la regola di merge di CLAUDE.md §10.
+2. Sul Mac, dopo il merge: parlare a Gas dalla pagina del browser e leggere la riga «tempi: ascolto · cervello · voce · rete» (e in `gas_debug.log` le righe `gas.voce.tempi`): dicono dove si perde il tempo prima di scegliere V7b o il cervello «caldo».
 
 ## Esito delle fette
 
-- **1. Figlio senza chiavi API (fail-closed)**: `FATTA` — già vero con la lista di variabili permesse; ora un test lo fissa (niente ANTHROPIC_*, *_API_KEY, CLAUDE_CODE_SIMPLE, BEDROCK; sì CLAUDE_CODE_OAUTH_TOKEN; niente `--bare` né `--settings`). Se `claude -p` diventa bare, fallisce col login invece di addebitare.
-- **2. Flag per restare non-bare**: `FATTA (nessuno)` — lette headless, cli-reference, authentication: nessun flag o variabile documentata. Scritto nel docstring di `brains/claude_cli.py`.
-- **3. Riga «login» nel doctor**: `FATTA` — `stato_abbonamento()` in `brains/claude_cli.py` (`claude --version` + `claude auth status`, stesso ambiente del figlio ma senza i suoi flag: è un'indicazione, WARN in più possibili, mai un OK falso; zero token, mai eccezioni); in `gas.py` 3 righe autorizzate da M1.
-- Review #632-M2 BOCCIATO (crash del doctor con output vuoto o non UTF-8 della CLI) → corretto → #633-M2 APPROVATO CON RISERVE (BASSE: nipote che tiene le pipe/attesa max ~30 s; `errors="replace"` senza test dedicato, coperto dal ramo ValueError).
-- **V-1 verifica esterna su d0a0035** («abbonamento» anche con CLI non loggata): `FATTA` — OK solo con exit 0 (regola poi stretta a «loggedIn booleano vero o assente», vedi sotto); review #634-M2 APPROVATO.
-- **V-1 bot su 5e784c3** (i test T99 della suite kernel lanciavano il `claude` vero della macchina dal doctor): `FATTA` — in `_doc99` la riga «login» usa un finto; review #635-M2 APPROVATO CON RISERVE. **R-635-1** (con `GAS_CLAUDE_CLI=1` esportato nella shell altri doctor della suite lo lanciavano ancora): `FATTA` — la suite toglie l'interruttore in testa; review #636-M2 APPROVATO. V-2 bot (handoff e stato_progetto non allineati): `FATTA` in questo giro di report.
-- **V-1 verifica esterna su c83032f** (`loggedIn` come stringa "false" dava OK): `FATTA` — «loggato» solo col booleano vero o col campo assente; review #637-M2 CON RISERVE (commento, chiusa) → #638-M2 APPROVATO. V-2 ve / V-1 bot (conteggio 42 → 44 nell'handoff): `FATTA`.
-- **V-1 bot su 6c0cf68** (riga «login» sulla CLI della shell anche col WARN del timer): `FATTA` — il dettaglio lo dice. **V-1 ve su 36f790f** (test di dotenv che lanciavano il `claude` vero): `FATTA`. Review #639-M2 APPROVATO. V-2 ve (maiuscolo CLAUDE.AI, resta WARN): COSMETICA, nessun fix.
-- **Bot su 36f790f**: V-2 (il controllo «login» non usa i flag del figlio) `FATTA` correggendo l'affermazione nel commento, review #640-M2 APPROVATO; V-3 (formulazione nei report) `FATTA`.
-- Test: claude_cli + dotenv 65 passed; anche con GAS_CLAUDE_CLI=1 e un `claude` spia (mai chiamata); kernel 1063 PASS 0 FAIL, anche con `GAS_CLAUDE_CLI=1` e un `claude` spia nel PATH (spia mai chiamata).
+- **V7a — tempi della voce**: `FATTA` — ogni richiesta parlata misura trascrizione (Groq), cervello (`run_turn`) e voce (TTS), anche quando falliscono; il totale del server va nel JSON (`tempi`) o nell'intestazione `X-Gas-Tempi` (MP3); una riga INFO di soli numeri in `gas_debug.log` (logger `gas.voce.tempi`, non in console); la pagina mostra «tempi: ascolto · cervello · voce · rete». Review #614-M2 e #615-M2 CON RISERVE (chiuse), #616-M2 APPROVATO.
+- **Merge di main** (PR #318 V6 e #321): `FATTA` — conflitto in `do_POST` risolto tenendo i tempi della V7a e il reset di `_capito` della V6; review #643-M2 APPROVATO.
+- Test: voce + claude_cli + dotenv 258 passed (browser compresi); kernel 1063 PASS, 0 FAIL.
+- **V7b, V8, V9**: `DEFERITE` — PR in ordine dopo il merge della precedente (decisione dell'operatore riferita da M1).
 
 ## Anomalie
 
 - `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
-- Non verificato con una CLI `claude` vera e loggata (qui non c'è): il campo `authMethod` viene dalla documentazione.
+- La latenza vera si misura solo sul Mac.
