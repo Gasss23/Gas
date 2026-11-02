@@ -917,8 +917,9 @@ const { chromium } = require('playwright');
     return { testo: c.textContent, visibile: !c.hidden, html: c.innerHTML };
   });
   const tempi = await page.textContent('#tempi');   // V7
+  const tempiVisibili = await page.isVisible('#tempi');   // V-1 bot #322 su 8dc872e
   await browser.close();
-  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi }));
+  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi, tempiVisibili }));
 })().catch(async e => {
   console.error(e);
   try { console.error('STATI', JSON.stringify(await globalThis.__pagina.evaluate(() => window.__stati))); } catch (_) {}
@@ -1051,6 +1052,7 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         # V-1 bot #322: errore dichiarato e tempi a schermo anche sul guasto
         assert stati[-1] == "errore: voce non disponibile", stati
         assert esito["tempi"].startswith("tempi: ascolto 0.5s · cervello 1.3s · rete "), esito["tempi"]
+        assert esito["tempiVisibili"] is True  # visibili davvero, non solo nel testo
         return
     assert testo == "Sì, meglio così. Procedo?"
     # V6: la pagina mostra cosa ha sentito, come testo (l'HTML nel parlato non diventa markup)
@@ -1060,6 +1062,7 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     # (la voce finta risponde dopo 2,6 s, quindi la rete risulta ≥ 0,5 s)
     t = esito["tempi"]
     assert t.startswith("tempi: ascolto 0.5s · cervello 1.3s · rete "), t
+    assert esito["tempiVisibili"] is True
     assert float(t.rsplit("rete ", 1)[1].rstrip("s")) >= 0.5, t
     assert any("parli" in s for s in stati), stati
     assert any("ci sto ragionando" in s for s in stati), stati

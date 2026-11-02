@@ -203,6 +203,9 @@ body {
   flex-direction: column;
   gap: 10px;
 }
+/* V-1 bot #322 su 8dc872e: senza questa regola il display:flex vinceva su «hidden» e il
+   riquadro della risposta si vedeva (vuoto) anche prima della prima risposta */
+#player-wrap[hidden] { display: none; }
 
 /* V6: quello che Whisper ha sentito, per capire se l'errore è d'ascolto o di ragionamento */
 .capito {
@@ -288,9 +291,12 @@ audio {
   conversazione continua
 </label>
 
+<!-- V-1 bot #322 su 8dc872e: i tempi stanno fuori dal riquadro della risposta, così si
+     vedono anche quando un guasto non porta nessuna risposta -->
+<p id="tempi" class="capito" hidden></p>
+
 <div id="player-wrap" hidden>
   <p id="capito" class="capito" hidden></p>
-  <p id="tempi" class="capito" hidden></p>
   <p class="player-label">risposta</p>
   <p id="testo" aria-live="polite"></p>
   <audio id="player" controls></audio>
@@ -616,6 +622,7 @@ async function invia(blob, contentType) {
     // V-1 bot #322: anche un guasto lento (Groq, voce, cervello) dice dove è andato il tempo
     tempiEl.textContent = descriviTempi(tempiErr, (performance.now() - t0) / 1000);
     tempiEl.hidden = !tempiEl.textContent;
+    capitoEl.hidden = true;   // R-646-1-M2: il «Ho capito» del turno prima non è di questo guasto
     return fineTurno(timerAttesa, "errore: " + msg);
   }
   let audio, testo = "", voceErr = "", capito = "", tempi = null;
@@ -632,6 +639,7 @@ async function invia(blob, contentType) {
       audio = await resp.blob();
     }
   } catch (e) {
+    tempiEl.hidden = true;   // V-2 bot #322 su 8dc872e: niente tempi di un turno precedente
     return fineTurno(timerAttesa, "risposta non leggibile: " + e.message);
   }
   clearTimeout(timerAttesa);
