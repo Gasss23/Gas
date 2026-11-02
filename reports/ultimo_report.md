@@ -12,6 +12,7 @@
 - **V-3 COSMETICA del bot su #322** (tipo di `t_cervello`): `FATTA`, review #652-M2 APPROVATO.
 - Test: test_unit_voice_server + test_unit_voice_stt 183 passed (browser obbligatorio); 184 dopo la #653-M2.
 - **Bot e verifica esterna su a73916a**: APPROVATO CON RISERVE (solo basse/cosmetiche); note del bot `FATTE` (righe chiuse su risposta illeggibile, proxy senza 502 falso, test più netto, errore della voce in console), review #653-M2.
+- **Bot su 6010448**: riascolto completo anche col play premuto prima della fine delle frasi `FATTA` (review #654-M2, riserve basse R-654-1/2 in stato_progetto); descrizione della PR aggiornata.
 - **V8, V9**: `DEFERITE` — PR in ordine dopo il merge della precedente.
 
 ## Anomalie

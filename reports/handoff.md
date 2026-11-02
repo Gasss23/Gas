@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V7b: voce frase per frase (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su a73916a
+**Sessione:** 2026-11-02 — Voce V7b: voce frase per frase (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su 6010448
 
 ---
 
@@ -18,6 +18,7 @@
 - **V-3 COSMETICA del bot su #322** (tipo di `t_cervello`): `FATTA` (review #652-M2).
 - **Bot su a73916a** (APPROVATO CON RISERVE): V-1 (test della sintesi fermata con margine di una sola frase), V-2 (righe non chiuse su risposta illeggibile), V-3 (502 falso del proxy a pagina chiusa prima degli header), V-4 cosmetica (errore della voce a metà solo in console): `FATTE`, review #653-M2 APPROVATO.
 - **Verifica esterna su a73916a** (https://github.com/Gasss23/Gas/pull/325#issuecomment-6585732063): APPROVATO CON RISERVE, solo BASSE (§3 fermo a e111045: ora il log arriva alla testa; §6 senza CI; «fine» in ritardo e thread di guardia già dichiarati).
+- **Bot su 6010448** (APPROVATO CON RISERVE): V-1 BASSA (autoplay negato + play premuto prima della fine: il riascolto completo non arrivava) `FATTA`, review #654-M2 CON RISERVE (basse, sotto in §7); V-2 cosmetica (descrizione della PR) `FATTA`. **Verifica esterna su 6010448** (https://github.com/Gasss23/Gas/pull/325#issuecomment-6586122265): APPROVATO CON RISERVE, solo BASSE già dichiarate.
 - **V8, V9**: `DEFERITE` — una PR alla volta, dopo il merge della precedente.
 
 ---
@@ -25,15 +26,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 +++++++++
- clients/voice/browser_client.html  | 151 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
- clients/voice/browser_server.py    |  59 ++++++++++++++++++++++++++++++++++++++++++++++++
- modules/voice/server.py            |  87 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ .claude/agents/memoria_revisore.md |  12 ++++++++++
+ clients/voice/browser_client.html  | 156 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ clients/voice/browser_server.py    |  59 ++++++++++++++++++++++++++++++++++++++++++++++
+ modules/voice/server.py            |  87 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  reports/diff_sessione.md           |  12 +++++-----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  22 ++++++++----------
- tests/test_unit_voice_server.py    | 319 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ reports/ultimo_report.md           |  23 +++++++++---------
+ tests/test_unit_voice_server.py    | 319 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -41,6 +42,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e65e69a fix(voce): riascolto completo anche se l'operatore preme play prima della fine delle frasi (V-1 bot #325 su 6010448; review #654-M2)
+e57b9f4 chore(revisore): memoria review #654 — APPROVATO CON RISERVE
+6010448 docs(voce-v7b): report dopo bot e verifica esterna su a73916a (PR #325, review #653-M2)
 1196be7 fix(voce): righe chiuse su risposta illeggibile, proxy senza 502 falso a pagina chiusa, test della sintesi fermata più netto (V-1..V-4 bot #325 su a73916a; review #653-M2)
 fc1b96c chore(revisore): memoria review #653 — APPROVATO
 a73916a docs(voce-v7b): numero della PR #325 nei report
@@ -284,17 +288,43 @@ Rischio escluso: non ho verificato il comportamento reale nel browser (Safari/Ch
 
 Memoria: riga contatore #653-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (fc1b96c). L'index del diff sotto review è intatto (3 file). Nessuna lezione nuova.
 
+Correzione del riascolto (bot su 6010448). Review #654-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #654-M2, branch feat/voce-v7b-m2 (PR #325). Diff staged: 1 file, clients/voice/browser_client.html. Ho letto le tre fonti obbligatorie: CLAUDE.md (in contesto), reports/stato_progetto.md (sezione V7b, riga 605) e la coda di memoria_revisore.md.
+
+Elementi del diff esaminati:
+- `clients/voice/browser_client.html:727` — uscita anticipata se il turno non è più l'ultimo. Rischio esaminato: riascolto messo sul player di un turno nuovo. Esito: ok. Prima il controllo stava nello stesso `if`, quindi il comportamento non cambia.
+- `clients/voice/browser_client.html:728` — se il player è fermo, `mettiRiascolto` subito, come prima. Rischio esaminato: tagliare una frase che l'operatore ha solo messo in pausa. Esito: ok. Non è una regressione: in pausa il comportamento è quello già approvato in R-619-2-M2.
+- `clients/voice/browser_client.html:731` — listener `ended` con `{ once: true }` e guardia `rip.turno === numTurno`.
+  - Interazione con un turno nuovo: `suonaPezzo` cambia `player.src` (`clients/voice/browser_client.html:767`, contesto). Cambiare src NON emette `ended`, quindi il listener del turno N resta registrato e scatta alla fine della prima frase del turno N+1. Lì la guardia lo fa uscire (N diverso da N+1) e `once` lo rimuove. Esito: innocuo. Senza quella guardia sarebbe stato un bug: il riascolto del turno vecchio avrebbe sostituito l'audio del turno nuovo.
+  - Interazione con `mettiRiascolto` (`clients/voice/browser_client.html:747`, contesto): il cambio di src dentro il callback non fa ripartire il listener, che è già stato rimosso, e nel ramo soloRaccogli `player.onended` è già null (`clients/voice/browser_client.html:819`). Non si accumulano listener: `leggiResto` arriva una volta sola per ogni turno. Se c'è una sola frase (`tutti.length < 2`), `mettiRiascolto` non fa nulla. Esito: ok.
+  - Doppio riascolto con il ramo `catch` (`clients/voice/browser_client.html:822`, contesto): non può succedere. `leggiResto` imposta `finito` prima di guardare `soloRaccogli`: o mette il riascolto `leggiResto`, o lo mette il catch, mai entrambi. Esito: ok.
+- Test: ho rilanciato io `pytest tests/test_unit_voice_server.py -k conversazione_nel_browser` → 13 passed (220 s, browser vero).
+
+Riserve (entrambe BASSE, da segnare in stato_progetto.md):
+1. Nessun test copre il ramo «autoplay negato». Il browser dei test parte con `--autoplay-policy=no-user-gesture-required` (`tests/test_unit_voice_server.py:871`), quindi questa correzione, e tutto il ramo soloRaccogli, non viene mai eseguita nei test. La verifica è solo di lettura del codice.
+2. Se l'operatore preme play, mette in pausa la prima frase e non la riprende più, `ended` non arriva mai e il riascolto completo non viene mai messo: il tasto play suona ancora solo la prima frase. È un caso raro e meno grave del bug chiuso.
+
+Rischio escluso: non ho verificato il comportamento reale su Safari/iOS (politiche di autoplay ed eventi `ended` su blob MP3 concatenati), perché qui non si può riprodurre. Il ramo l'ho verificato solo leggendo il codice.
+
+Memoria: aggiunta la riga #654-M2 con una lezione (un listener una tantum su un elemento condiviso resta attivo anche dopo il cambio di src e scatta sul turno successivo: dentro il callback serve sempre la guardia sul turno). È committata con lo script: commit e57b9f4, solo /home/user/Gas/.claude/agents/memoria_revisore.md.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py` + `tests/test_unit_voice_stt.py`: 183 passed (browser obbligatorio, `GAS_TEST_BROWSER_OBBLIGATORIO=1`) dopo l'allineamento alla V7a; -k v7 di test_unit_voice_stt 11 passed dopo la #652-M2. I test nuovi della V7b stanno in `tests/test_unit_voice_server.py` (formato a pezzi nel server, proxy che inoltra le righe e chiude a monte, pagina nel browser coi modi «pezzi» e «pezzi_interrotti»). Dopo la #653-M2: 184 passed (test nuovo `test_v7b_pagina_chiusa_prima_degli_header`, mutante → 1 failed; tetto delle frasi a 6 nel test della sintesi fermata, mutante → 6 sintesi). Kernel non toccato dalla fetta (`gas.py` identico a main).
+`tests/test_unit_voice_server.py` + `tests/test_unit_voice_stt.py`: 183 passed (browser obbligatorio, `GAS_TEST_BROWSER_OBBLIGATORIO=1`) dopo l'allineamento alla V7a; -k v7 di test_unit_voice_stt 11 passed dopo la #652-M2. I test nuovi della V7b stanno in `tests/test_unit_voice_server.py` (formato a pezzi nel server, proxy che inoltra le righe e chiude a monte, pagina nel browser coi modi «pezzi» e «pezzi_interrotti»). Dopo la #653-M2: 184 passed (test nuovo `test_v7b_pagina_chiusa_prima_degli_header`, mutante → 1 failed; tetto delle frasi a 6 nel test della sintesi fermata, mutante → 6 sintesi). Dopo la #654-M2: test_v3_conversazione_nel_browser 13 passed. Kernel non toccato dalla fetta (`gas.py` identico a main).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud: check lette dall'integrazione GitHub.
-- a73916a: handoff-check e smista success; suite completate (notifica check_suite.completed); verifica-bot: primo avvio annullato, secondo APPROVATO CON RISERVE.
-- 1196be7 (correzione), fc1b96c (memoria) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud: check lette dall'integrazione GitHub e dalle verifiche.
+- 6010448: unit-suite pass (voice suite 210 passed), suite completate; bot APPROVATO CON RISERVE (V-1 bassa e V-2 cosmetica, chiuse qui).
+- Correzione del riascolto, memoria (e57b9f4) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
+
+- R-654-1-M2 BASSA: nessun test copre il ramo «autoplay negato» (il browser dei test ha l'autoplay permesso): la correzione del riascolto è verificata solo a lettura.
+- R-654-2-M2 BASSA: se l'operatore preme play, mette in pausa la prima frase e non la riprende, il riascolto completo non arriva mai.
 
 - Dopo un guasto restano visibili testo e player della risposta precedente sotto i tempi nuovi; nessun test per il guasto dopo un turno riuscito né per un vero errore di rete (V-2 bot su 5d39333, BASSA).
 - Nel ramo senza audio una riga «fine» in ritardo potrebbe in teoria riscrivere i tempi del turno dopo (nota della #651-M2; finestra trascurabile).
