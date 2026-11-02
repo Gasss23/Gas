@@ -5,6 +5,7 @@
 #
 # Cosa fa, nell'ordine (si FERMA al primo errore, senza toccare niente dopo):
 #   1. controlla che sia un Mac e che GAS_VOICE_TOKEN sia nel .env (senza stamparlo);
+#      se manca GAS_CLAUDE_BIN e `claude` c'è, lo AGGIUNGE in coda al .env;
 #   2. usa .venv (lo crea se manca) e installa requirements.txt + requirements-ascolto.txt;
 #   3. scarica il modello pronto della parola di attivazione (hey_jarvis) di openWakeWord;
 #   4. scrive i due plist in ~/Library/LaunchAgents con la cartella vera di Gas;
@@ -28,8 +29,30 @@ CONSENTITI='^[A-Za-z0-9/._ -]+$'
   || stop "la cartella di Gas ($GAS) ha caratteri non ammessi: usa solo lettere, cifre, / . _ - e spazi."
 [ -f "$GAS/gas.py" ] || stop "non trovo gas.py in $GAS."
 [ -f "$GAS/.env" ] || stop "manca $GAS/.env."
-grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_TOKEN=.+' "$GAS/.env" \
+# V-4 bot #323 su 3672964: un token vuoto o col solo commento non vale.
+grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_TOKEN=["'"'"']?[^[:space:]#"'"'"']' "$GAS/.env" \
   || stop "GAS_VOICE_TOKEN non è nel .env: aggiungilo (il server voce non parte senza)."
+# V-1 bot #323: sotto launchd il PATH è minimo e il server voce non troverebbe `claude`
+# (cervello forte dalla voce: mai i gratuiti, ma il forte non partirebbe). Se nel .env
+# manca GAS_CLAUDE_BIN e `claude` c'è, si aggiunge col suo percorso assoluto.
+# R-624-3: «valido» = primo carattere non spazio, # o virgoletta, come per il token; una
+# riga vuota non si raddoppia (gas._carica_dotenv terrebbe la prima, vuota): si avvisa.
+if grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_CLAUDE_BIN=["'"'"']?[^[:space:]#"'"'"']' "$GAS/.env"; then
+  :
+elif grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_CLAUDE_BIN=' "$GAS/.env"; then
+  echo "AVVISO: nel .env GAS_CLAUDE_BIN è vuoto: dalla voce il cervello forte non partirà (mai i gratuiti). Scrivi il percorso di \`claude\` (\`which claude\`)."
+else
+  CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
+  if [[ "$CLAUDE_BIN" == /* && "$CLAUDE_BIN" =~ $CONSENTITI ]]; then
+    printf '\n# Aggiunto da scripts/voce/installa.sh: sotto launchd il PATH non trova claude.\nGAS_CLAUDE_BIN=%s\n' \
+      "$CLAUDE_BIN" >> "$GAS/.env"
+    echo "     GAS_CLAUDE_BIN=$CLAUDE_BIN aggiunto al .env (cervello forte dalla voce)."
+  elif [ -n "$CLAUDE_BIN" ]; then
+    echo "AVVISO: \`claude\` è in un percorso con caratteri non ammessi ($CLAUDE_BIN): scrivi tu GAS_CLAUDE_BIN nel .env, se no dalla voce il cervello forte non partirà."
+  else
+    echo "AVVISO: \`claude\` non trovato: dalla voce il cervello forte non partirà (mai i gratuiti). Scrivi GAS_CLAUDE_BIN=<percorso> nel .env."
+  fi
+fi
 echo "1/6 controlli: OK"
 
 # 2. venv e dipendenze
@@ -67,8 +90,29 @@ DOMINIO="gui/$(id -u)"
 for s in "${SERVIZI[@]}"; do
   launchctl bootout "$DOMINIO/$s" 2>/dev/null || true
 done
+# Prova dal vero di M1 (2026-11-02): bootout è asincrono. Alla seconda esecuzione il
+# servizio vecchio c'è ancora e bootstrap dà «Bootstrap failed: 5: Input/output error».
+# Si aspetta che sparisca (launchctl print fallisce), al massimo 5 s per servizio…
 for s in "${SERVIZI[@]}"; do
-  launchctl bootstrap "$DOMINIO" "$AGENTI/$s.plist" || stop "launchctl non carica $s."
+  ANDATO=no
+  for _ in $(seq 1 50); do
+    if ! launchctl print "$DOMINIO/$s" >/dev/null 2>&1; then ANDATO=si; break; fi
+    sleep 0.1
+  done
+  [ "$ANDATO" = si ] \
+    || stop "$s non si spegne (launchctl bootout): aspetta qualche secondo e rilancia lo script."
+done
+# …poi bootstrap, con due tentativi in più a distanza di un secondo.
+for s in "${SERVIZI[@]}"; do
+  CARICATO=no
+  for tentativo in 1 2 3; do
+    if launchctl bootstrap "$DOMINIO" "$AGENTI/$s.plist"; then CARICATO=si; break; fi
+    if [ "$tentativo" -lt 3 ]; then
+      echo "   $s non ancora caricato: riprovo tra 1 s (tentativo $((tentativo + 1)) di 3)."
+      sleep 1
+    fi
+  done
+  [ "$CARICATO" = si ] || stop "launchctl non carica $s (3 tentativi)."
 done
 echo "5/6 servizi caricati: OK"
 
