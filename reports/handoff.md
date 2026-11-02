@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V6 «capire meglio» (chat M2, coordinata da M1)
+**Sessione:** 2026-11-02 — Voce V6 «capire meglio» (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su e1f0131
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #318 (https://github.com/Gasss23/Gas/pull/318). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5113212832","url":"https://github.com/Gasss23/Gas/pull/318"}`); `gh` nel cloud non è autenticato. La mergia M1 se il bot dà APPROVATO pulito; con riserve aspetta il sì dell'operatore.
+1. Merge della PR #318 (https://github.com/Gasss23/Gas/pull/318). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5113212832","url":"https://github.com/Gasss23/Gas/pull/318"}`); `gh` nel cloud non è autenticato. Il check verifica-bot è neutral (la PR tocca ci.yml, macchina del bot): il merge lo decide l'operatore. Bot e verifica esterna su e1f0131: APPROVATO CON RISERVE senza ALTA/MEDIA; riserve chiuse in 254c4a5.
 2. Dopo il merge, prova sul Mac (`reports/prova_voce_mac.md`): riga «Ho capito: …»; se Gas dice spesso «Non ho capito bene» parlando chiaro, `GAS_VOICE_STT_LOGPROB_MIN=-1.3` nel `.env`.
 
 ---
@@ -19,6 +19,7 @@
 - **V6.4 — tasto «non hai capito» con modello più grande**: `SALTATA — usiamo già il modello più grande di Groq`.
 - **Riserve bot #314** V-1 (Groq 500 conta nel tetto) e V-2 (conteggi §2): `FATTA`.
 - **Prova sul Mac della V5 passata** registrata in stato_progetto: `FATTA`.
+- **Riserve di bot e verifica esterna su e1f0131** (V-1/V-2/V-3/V-4 bot, V-1/V-3 ve): `FATTA` (254c4a5, review #614-M2 di questo branch e #617-M2). V-2 ve («Grazie.» isolato sul silenzio con logprob buono): `DEFERITA — limite di design, da tarare sul Mac`. V-4 ve (neutral del bot): nota, nessun fix.
 - gas.py / brains/: non toccati.
 
 ---
@@ -26,19 +27,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
+ .claude/agents/memoria_revisore.md |   7 +++++++
  .github/workflows/ci.yml           |   5 +++--
  clients/voice/browser_client.html  |  15 ++++++++++++++-
- modules/voice/server.py            |  63 +++++++++++++++++++++++++++++++++++++++++++++++++++------------
- modules/voice/stt.py               | 112 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ modules/voice/server.py            |  64 ++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ modules/voice/stt.py               | 126 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
  reports/diff_sessione.md           |  20 +++++++++++---------
  reports/handoff.md                 | n/d
  reports/prova_voce_mac.md          |   5 ++++-
  reports/stato_progetto.md          |   4 +++-
  reports/ultimo_report.md           |  34 ++++++++++++++++------------------
- tests/test_unit_voice_contesto.py  | 143 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_contesto.py  | 142 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_voice_server.py    |  12 ++++++++++--
- tests/test_unit_voice_stt.py       | 166 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_stt.py       | 227 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -46,6 +47,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+254c4a5 fix(voce): riserve di bot e verifica esterna su #318 — eco corta del prompt, NaN nei segmenti, «capito» azzerato, «non ho capito» senza TTS (chat M2)
+9ed10db chore(revisore): memoria review #614 — APPROVATO CON RISERVE
+e1f0131 docs(voce-v6): report di fine task (PR #318, review #611–#613-M2, prova Mac V5 passata)
 62803f7 feat(voce): V6 «capire meglio» — Whisper in italiano col vocabolario di Gas, «non ho capito» invece di rispondere a caso, «Ho capito: …» nella pagina (chat M2)
 9e8b69e chore(revisore): memoria review #613 — APPROVATO
 2fc86cf chore(revisore): memoria review #612 — APPROVATO CON RISERVE
@@ -143,18 +147,81 @@ Non ho verificato:
 
 Riga contatore `#613-M2` scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (commit 9e8b69e, messaggio `chore(revisore): memoria review #613 — APPROVATO`). Nessuna lezione nuova. Il diff della fetta non l'ho committato.
 
+Commit 254c4a5 (riserve di bot e verifica esterna su e1f0131), due passaggi. NB numerazione: la review «#614-M2» qui sotto è del branch V6; sul branch della V7 (feat/voce-v7-m2, non in questa PR) esiste un'altra #614-M2; il passaggio finale è numerato #617-M2 per non creare doppioni.
+
+Review #614-M2 (branch V6, primo passaggio):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #614-M2. Branch feat/voce-v6-m2 (PR #318), 4 file nel diff staged. Ho letto CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md (le parti sulla voce, cercate con Grep) e la mia memoria (lezioni #611–#613-M2). Non ho committato il diff. Ho committato solo la mia memoria (9ed10db, solo .claude/agents/memoria_revisore.md); i file staged non sono stati toccati.
+
+**Cosa ho riprodotto**
+- I test di voce (stt e contesto) passano: 71 passed.
+- I 4 mutanti danno 1 failed ciascuno: isfinite tolto, eco corta tolta, reset di `_capito` tolto, controllo della chiave ElevenLabs tolto.
+- Dopo i mutanti i file sono stati ripristinati (nessun diff fuori dallo staging).
+
+**Elementi del diff esaminati**
+- modules/voice/stt.py:113 — `math.isfinite` su durata, logprob e no_speech porta a `return None`. Rischio esaminato: un NaN che aggira i controlli dando un esito a caso, oppure un valore inf/NaN in start o end. Ho verificato che `max(nan, 0.01)` restituisce nan e che end meno (-inf) dà inf: entrambi presi. L'elenco delle frasi inventate e l'eco lunga girano prima dei segmenti, quindi valgono anche con NaN. Esito: ok.
+- modules/voice/stt.py:120 — eco corta: 2-3 parole contigue del prompt, scartate se no_speech pesato > 0,5. Rischio esaminato: la stessa trappola di R-611-1 (no_speech da solo, senza logprob basso). Esito: **riserva R-614-1-M2 (MEDIA)**. La sonda usa la taratura già scritta in tests/test_unit_voice_stt.py:243 per un «Sì.» chiaro (logprob -0,2, no_speech 0,85). Con quei valori «PR merge.», «Report PR.», «Firma contatto.» e «Gas, forte.» detti chiaramente finiscono tutti come «eco corta» e Gas risponde «non ho capito». La soglia 0,5 è fissa nel codice, mentre le altre si possono tarare con una variabile d'ambiente (`_soglia_env`).
+  - Proposta: soglia tarabile via env (es. `GAS_VOICE_STT_ECO_NO_SPEECH`) e un default sopra la taratura del «Sì.» (es. > 0,9). L'alternativa è non scartare l'eco corta e accettare il residuo BASSO del bot.
+  - Test da aggiungere: «PR merge.» con `_seg(-0.2, 0.85)` deve passare.
+- modules/voice/stt.py:66 — `List[str]`. Esito: ok (V-3 ve chiusa).
+- modules/voice/server.py:357 — un client che vuole solo audio, senza ELEVENLABS_API_KEY, riceve 200 JSON col messaggio. Rischio esaminato: il ramo audio+testo resta prioritario, e il ramo TTS con la chiave presente non cambia. Il test con la chiave tolta dall'ambiente è dentro `patch.dict`, che rimette l'ambiente com'era. Esito: ok.
+- modules/voice/server.py:261 — `self._capito = None` in testa a do_POST, prima del 404. Rischio esaminato: un «capito» rimasto da una richiesta precedente sulla stessa connessione (keep-alive). Esito: ok.
+- tests/test_unit_voice_contesto.py:38 — `tmp_path` al posto di mkdtemp. Rischio esaminato: `git init` dentro la cartella temporanea di pytest. Esito: ok.
+- Contesto: gli antipattern di CLAUDE.md sezione 5 (taglio diretto della storia, output dei tool simulati) non compaiono. Il kernel non è toccato. La regola di sicurezza della sezione 9 non è indebolita: nessuna eccezione nuova esce dai provider.
+
+**Risposta alla domanda «NaN → non si scarta»: sì, è il verso giusto.**
+- È coerente con «campi mancanti → None» (modules/voice/stt.py:111).
+- Un NaN non contiene informazione. «NaN → incerta» renderebbe la voce sorda in modo fisso se Groq mandasse NaN di continuo, e non ci sarebbe una soglia da tarare.
+- Il caso di `_soglia_env` (NaN → default, controllo acceso) è diverso: lì il NaN sta nella configurazione dell'operatore, qui nei dati della singola risposta.
+- **Riserva R-614-2-M2 (BASSA)**: un solo segmento NaN annulla il controllo su tutta la risposta. Sonda: un segmento con logprob -2 e no_speech 0,99 accanto a un segmento NaN dà None. Meglio saltare solo il segmento non finito e fare la media sugli altri (None solo se non resta nulla).
+
+**Cosa NON ho verificato**
+- Il comportamento reale di Whisper large-v3 su Groq (no_speech sull'eco vera del prompt e su comandi brevi detti al Mac): non si può riprodurre qui senza audio. Le soglie restano da tarare sul Mac.
+- I test della voce nel browser e il giro completo dalla voce del client (non-browser): non li ho lanciati.
+- La V-2 ve («Grazie.» isolato) non è in questo diff.
+
+**Memoria**
+- Riga contatore #614-M2 e una lezione nuova aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate con scripts/commit_memoria_revisore.sh (9ed10db).
+- La lezione: quando si aggiunge un nuovo filtro sulla confidenza di Whisper, va riprovato con la taratura già documentata nei test.
+
+Review #617-M2 (diff finale committato in 254c4a5):
+
+## VERDETTO: APPROVATO
+
+Ho riletto la ri-review (#617-M2) di persona. Branch feat/voce-v6-m2, diff staged di 4 file. Ho controllato il delta dopo la #614-M2 in modules/voice/stt.py e tests/test_unit_voice_stt.py.
+
+Elementi del diff esaminati:
+1. `modules/voice/stt.py:124` — l'eco corta (2-3 parole contigue del prompt) viene scartata solo se no_speech è sopra la soglia letta da `_soglia_env("GAS_VOICE_STT_ECO_NO_SPEECH", 0.9)`. Rischio esaminato: un comando corto detto davvero, con la taratura del «Sì.» (logprob -0,2, no_speech 0,85), finiva scartato. Esito: ok, **R-614-1-M2 chiusa**. Le mie sonde: «Gas, forte.», «Lead, bozza.» e «PR merge.» passano con no_speech 0,88 e 0,90 e vengono scartati con 0,92. Ho rifatto il mutante col default a 0,5: 5 failed.
+2. `modules/voice/stt.py:115` — un segmento con durata, logprob o no_speech non finito viene saltato (`continue`). Rischio esaminato: con `max(nan, 0.01)` il risultato resta nan, quindi un end NaN deve essere preso comunque. È preso: `math.isfinite` agisce dopo il calcolo della durata. Anche end=inf e logprob=-inf vengono saltati. Esito: ok, **R-614-2-M2 chiusa**. Ho rifatto il mutante con `return None`: 3 failed.
+3. `modules/voice/stt.py:120` — se non resta nessun segmento valido (`peso <= 0`) la funzione restituisce None. Rischio esaminato: divisione per zero. Esito: ok. Il caso col solo segmento NaN torna «ciao», come nel test.
+4. `tests/test_unit_voice_stt.py:296` — i test parametrizzati (5 frasi × no_speech 0,2/0,85) e il test della soglia da env (0,8 → «PR merge.» scartato). Esito: ok. Anche il caso «NaN + segmento cattivo → incerta» in `tests/test_unit_voice_stt.py:324` è coperto.
+
+Risultati riprodotti: stt + contesto 80 passed. Dopo i mutanti il file è stato ripristinato e il working tree coincide con lo staged.
+
+Rischio residuo (nota, non riserva): il filtro dell'eco corta non guarda il logprob. Un comando corto e chiaro fatto di parole contigue del prompt, con no_speech sopra 0,9, viene quindi scartato sempre, anche se l'operatore lo ripete. Va tarato sul Mac con GAS_VOICE_STT_ECO_NO_SPEECH. Se succede si vede subito («Non ho capito bene, puoi ripetere?»).
+
+Rischio escluso: non ho verificato i valori veri di no_speech e logprob di Groq large-v3 sull'eco del prompt in silenzio. Non si riproduce senza audio e senza chiamata a Groq: la soglia 0,9 è una stima da confermare sul Mac.
+
+Nessun antipattern del Wall of Shame (né slicing della history né tool simulati). Il diff non tocca i guardrail del kernel.
+
+Memoria: ho aggiunto la riga contatore `#617-M2 — 2026-11-02 — APPROVATO — …` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Ho usato #617 e non #615 per non creare doppioni con il branch V7, come mi hai chiesto, e l'ho scritto nella riga. Non l'ho committata: il classificatore dei permessi ha negato `scripts/commit_memoria_revisore.sh` e tu avevi chiesto di non committare. Il file è solo modificato e va incluso nel commit di fine task (passo 4 di /fine-task).
+
 ## §5 DELTA TEST DEL MOTORE
 
-gas.py non toccato. Voce: `tests/test_unit_voice_stt.py` 37 → 61 test (V6: parametri a Groq, soglie, media pesata, frasi inventate, eco del prompt, «sì» breve con no_speech alto, comandi veri con parole del prompt, env non numeriche/nan/inf, JSON non oggetto, «non ho capito» senza turno, «capito» nelle risposte, V-1 bot #314); nuovo `tests/test_unit_voice_contesto.py` 2 test (kernel vero, forte e normale ricevono la conversazione); test della pagina nel browser con la riga «Ho capito». Run misurate in sessione: stt + contesto 63 passed; stt+server+tts non-browser 122 passed (prima delle correzioni finali a stt); pagina nel browser con GAS_TEST_BROWSER_OBBLIGATORIO=1: 10 passed. Mutanti presi: `_motivo_incerta` spento → 6 failed; `_get_window` ridotto all'ultimo messaggio → 2 failed; senza AND del silenzio → 1 failed; vecchia regola dell'eco a insieme → 4 failed. Nessun FAIL.
+gas.py non toccato. Voce: `tests/test_unit_voice_stt.py` 37 → 61 test (V6: parametri a Groq, soglie, media pesata, frasi inventate, eco del prompt, «sì» breve con no_speech alto, comandi veri con parole del prompt, env non numeriche/nan/inf, JSON non oggetto, «non ho capito» senza turno, «capito» nelle risposte, V-1 bot #314); nuovo `tests/test_unit_voice_contesto.py` 2 test (kernel vero, forte e normale ricevono la conversazione); test della pagina nel browser con la riga «Ho capito». Run misurate in sessione: stt + contesto 63 passed; stt+server+tts non-browser 122 passed (prima delle correzioni finali a stt); pagina nel browser con GAS_TEST_BROWSER_OBBLIGATORIO=1: 10 passed. Mutanti presi: `_motivo_incerta` spento → 6 failed; `_get_window` ridotto all'ultimo messaggio → 2 failed; senza AND del silenzio → 1 failed; vecchia regola dell'eco a insieme → 4 failed. Nessun FAIL. Dopo 254c4a5: stt + contesto 80 passed; voce non-browser 156 passed (prima della seconda correzione); mutanti: isfinite/eco corta/reset di _capito/controllo chiave → 1 failed ciascuno, soglia eco 0,5 → 5 failed, `return None` sui NaN → 3 failed.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - fa188bc, 2fc86cf, 9e8b69e, 62803f7: pushati insieme prima dell'apertura della PR #318; nessuna run della PR su questi SHA.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- e1f0131 (fine-task precedente, head allora): unit-suite success, handoff-check success, verifica-bot neutral (macchina del bot toccata: ci.yml). Bot: APPROVATO CON RISERVE senza ALTA/MEDIA; verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/318#issuecomment-6566503944).
+- 9ed10db, 254c4a5 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
-- Riserve di questa sessione (R-611-1/2/3-M2, R-612-1-M2): tutte chiuse (review #613-M2). Nota COSMETICA #613: tipo `parole: list` invece di `list[str]`.
+- Riserve di questa sessione (R-611-1/2/3-M2, R-612-1-M2, R-614-1/2-M2 del branch V6): tutte chiuse (review #613-M2, #617-M2). Riserve di bot e verifica esterna su e1f0131 chiuse in 254c4a5, tranne V-2 ve («Grazie.» isolato sul silenzio con logprob buono passa: da tarare sul Mac).
+- Nota #617-M2: l'eco corta non guarda il logprob; soglia GAS_VOICE_STT_ECO_NO_SPEECH (0,9) da tarare sul Mac.
 - Da provare sul Mac: le soglie della trascrizione incerta (-1,0 / 0,8) su audio vero.
 - **R-584-1-M2** BASSA (rumore costante ≥ 0,045 RMS preso per voce), **R-583-1-M2** COSMETICA, **R-576-1-M2** BASSA, **R-576-3-M2** COSMETICA (fette precedenti).

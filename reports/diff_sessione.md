@@ -7,7 +7,8 @@
 - `tests/test_unit_voice_server.py` — la pagina nel browser mostra «Ho capito» come testo.
 - `tests/test_unit_voice_contesto.py` — nuovo: i turni a voce vedono la conversazione (kernel vero, forte e normale).
 - `.github/workflows/ci.yml` — il nuovo test nella voice suite.
-- `.claude/agents/memoria_revisore.md` — righe delle review #611–#613-M2.
+- `.claude/agents/memoria_revisore.md` — righe delle review #611–#614-M2 e #617-M2.
+- Dopo bot e verifica esterna: `stt.py` (eco corta, NaN), `server.py` (`capito` azzerato, «non ho capito» senza TTS), test (`tmp_path`, nuovi casi).
 - `reports/prova_voce_mac.md` — «Ho capito», «Non ho capito», come tarare la soglia.
 - `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
