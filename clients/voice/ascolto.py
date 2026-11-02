@@ -46,6 +46,7 @@ import io
 import logging
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -82,10 +83,29 @@ Invia = Callable[[bytes], Tuple[bool, Optional[bytes], str]]
 # ─────────────────────────────────────────── configurazione ──
 
 def _carica_dotenv(root: Path) -> None:
-    """Carica .env dalla root senza sovrascrivere le variabili già presenti."""
+    """Carica il .env con le STESSE regole del server voce e della CLI
+    (gas._carica_dotenv: commenti in linea, virgolette, BOM, GAS_NO_DOTENV, la shell
+    vince), così client e server leggono lo stesso token e la stessa porta (V-1 bot
+    #323). Se gas.py non si importa, ripiego su un parser semplice."""
+    try:
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from gas import _carica_dotenv as carica_come_gas
+        carica_come_gas(root / ".env")
+        return
+    except Exception as e:  # §9: si prosegue col ripiego
+        log.warning(".env: caricamento di gas.py non riuscito (%s), uso il ripiego",
+                    type(e).__name__)
+    _carica_dotenv_ripiego(root)
+
+
+def _carica_dotenv_ripiego(root: Path) -> None:
+    """Ripiego: .env dalla root senza sovrascrivere le variabili già presenti."""
+    if os.environ.get("GAS_NO_DOTENV", "").strip().lower() in ("1", "true", "yes", "on"):
+        return
     p = root / ".env"
     try:
-        righe = p.read_text(encoding="utf-8").splitlines()
+        righe = p.read_text(encoding="utf-8-sig").splitlines()
     except OSError:
         return
     for riga in righe:
@@ -97,8 +117,11 @@ def _carica_dotenv(root: Path) -> None:
         if k.startswith("export "):
             k = k[len("export "):].strip()
         v = v.strip()
-        if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
-            v = v[1:-1]
+        tra_virgolette = re.fullmatch(r"""(['"])(.*?)\1(?:\s+#.*)?""", v)
+        if tra_virgolette:
+            v = tra_virgolette.group(2)
+        else:
+            v = re.split(r"\s+#", v, maxsplit=1)[0].rstrip()
         if k and k not in os.environ:
             os.environ[k] = v
 
@@ -286,6 +309,7 @@ class Ascolto:
         if not ok or not audio:
             log.warning("turno non riuscito: %s", motivo)
             self._bip("errore")
+            self._svuota()  # V-3 bot #323: il bip e l'audio rimasto non vanno al rilevatore
             return False
         try:
             self.riproduci(audio)

@@ -176,6 +176,7 @@ def test_invio_fallito_bip_di_errore_e_niente_finestra():
     f.ascolto(_blocchi(PAROLA, (VOCE, 10), (SILENZIO, 10), (VOCE, 10), (SILENZIO, 10)),
               finestra_s=12).gira()
     assert f.bip == ["ok", "errore"] and f.riprodotti == [] and len(f.inviati) == 1
+    assert f.svuotati == 2  # dopo il bip iniziale e dopo il bip di errore (V-3 bot #323)
 
 
 def test_eccezioni_delle_parti_non_fermano_l_ascolto():
@@ -400,14 +401,65 @@ def test_main_usa_la_porta_del_server(monkeypatch, tmp_path):
     assert a.main() == 0 and visti == ["http://127.0.0.1:9001"]
 
 
-def test_dotenv_non_sovrascrive(monkeypatch, tmp_path):
+@pytest.mark.parametrize("ripiego", [False, True])
+def test_dotenv_non_sovrascrive(monkeypatch, tmp_path, ripiego):
     (tmp_path / ".env").write_text('GAS_VOICE_TOKEN="dal-file"\nexport GAS_PROVA_ASCOLTO=x\n',
                                    encoding="utf-8")
+    monkeypatch.delenv("GAS_NO_DOTENV", raising=False)  # conftest lo accende per la suite
+    if ripiego:
+        _senza_gas(monkeypatch)
     monkeypatch.setenv("GAS_VOICE_TOKEN", "dall-ambiente")
     monkeypatch.delenv("GAS_PROVA_ASCOLTO", raising=False)
     a._carica_dotenv(tmp_path)
     assert os.environ["GAS_VOICE_TOKEN"] == "dall-ambiente"
     assert os.environ["GAS_PROVA_ASCOLTO"] == "x"
+
+
+def _senza_gas(monkeypatch):
+    """gas.py non importabile: il client usa il ripiego."""
+    import builtins
+    vero_import = builtins.__import__
+
+    def finto(nome, *args, **kw):
+        if nome == "gas":
+            raise ImportError("gas assente")
+        return vero_import(nome, *args, **kw)
+    monkeypatch.setattr(builtins, "__import__", finto)
+
+
+@pytest.mark.parametrize("ripiego", [False, True])
+def test_dotenv_come_il_server(monkeypatch, tmp_path, ripiego):
+    """V-1 bot #323: commento in linea, virgolette con commento e BOM letti come li legge
+    il server voce (gas._carica_dotenv), così il token del client è lo stesso."""
+    (tmp_path / ".env").write_bytes(
+        "\ufeffGAS_VOICE_TOKEN=abc # voce\nGAS_VOICE_PORT=\"9001\" # porta\n".encode())
+    monkeypatch.delenv("GAS_NO_DOTENV", raising=False)
+    monkeypatch.delenv("GAS_VOICE_TOKEN", raising=False)
+    monkeypatch.delenv("GAS_VOICE_PORT", raising=False)
+    if ripiego:
+        _senza_gas(monkeypatch)
+    a._carica_dotenv(tmp_path)
+    assert os.environ["GAS_VOICE_TOKEN"] == "abc" and os.environ["GAS_VOICE_PORT"] == "9001"
+
+
+def test_dotenv_usa_il_caricatore_di_gas(monkeypatch, tmp_path):
+    """V-1 bot #323: la strada principale è proprio gas._carica_dotenv (lo stesso del
+    server voce), con il .env della cartella di Gas."""
+    import gas
+    visti = []
+    monkeypatch.setattr(gas, "_carica_dotenv", lambda path=None: visti.append(path) or [])
+    a._carica_dotenv(tmp_path)
+    assert visti == [tmp_path / ".env"]
+
+
+def test_dotenv_spento_dalla_suite(monkeypatch, tmp_path):
+    """GAS_NO_DOTENV=1 vale anche per il client (come per server e CLI)."""
+    (tmp_path / ".env").write_text("GAS_PROVA_SPENTO=1\n", encoding="utf-8")
+    monkeypatch.setenv("GAS_NO_DOTENV", "1")
+    monkeypatch.delenv("GAS_PROVA_SPENTO", raising=False)
+    a._carica_dotenv(tmp_path)
+    a._carica_dotenv_ripiego(tmp_path)
+    assert "GAS_PROVA_SPENTO" not in os.environ
 
 
 @pytest.mark.parametrize("valore,atteso", [("abc", 12.0), ("nan", 12.0), ("inf", 12.0),
@@ -520,6 +572,21 @@ def test_installa_usa_la_porta_del_env(tmp_path):
     gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_VOICE_PORT=9001\n")
     r, registro = _installa(gas, finti, casa, tmp_path)
     assert r.returncode == 0 and "nc -z 127.0.0.1 9001" in registro
+
+
+def test_installa_porta_ripetuta_vale_la_prima(tmp_path):
+    """V-2 bot #323: come server e ascolto, vale la PRIMA GAS_VOICE_PORT del .env."""
+    gas, finti, casa = _gas_finto(
+        tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_VOICE_PORT=9001\nGAS_VOICE_PORT=9002\n")
+    r, registro = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and "nc -z 127.0.0.1 9001" in registro
+
+
+def test_installa_avvisa_se_c_e_un_url_remoto(tmp_path):
+    gas, finti, casa = _gas_finto(
+        tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_VOICE_URL=https://gas.example.org\n")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and "AVVISO: nel .env c'è GAS_VOICE_URL" in r.stdout
 
 
 def test_installa_senza_token_si_ferma_prima_di_tutto(tmp_path):

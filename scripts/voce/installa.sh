@@ -80,9 +80,13 @@ for s in "${SERVIZI[@]}"; do
   esac
 done
 # R-615-1: senza GAS_VOICE_PORT nel .env grep esce con 1: `|| true`, se no set -e ferma
-# lo script in silenzio (porta di default 8765).
-PORTA="$( { grep -E '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_PORT=' .env || true; } | tail -1 | sed 's/.*=//; s/[^0-9]//g')"
+# lo script in silenzio (porta di default 8765). V-2 bot #323: vale la PRIMA riga, come
+# per il server e per l'ascolto (gas._carica_dotenv).
+PORTA="$( { grep -E '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_PORT=' .env || true; } | head -1 | sed 's/.*=//; s/[^0-9]//g')"
 nc -z 127.0.0.1 "${PORTA:-8765}" 2>/dev/null \
   || stop "il server voce non risponde su 127.0.0.1:${PORTA:-8765}: guarda $GAS/.gas_voce/voce.server.log"
+if grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_URL=.+' .env; then
+  echo "AVVISO: nel .env c'è GAS_VOICE_URL: l'ascolto manda le richieste lì, ma questo controllo ha guardato solo il server sul Mac."
+fi
 echo "6/6 tutto acceso: dì «Hey Jarvis» e aspetta il bip."
 echo "La prima volta macOS chiede il permesso del microfono: rispondi «Consenti»."
