@@ -392,7 +392,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return
 
         if result_content is None:
-            self._segna("cervello", t_cervello)  # V-2 ve #322: turno finito senza final né error
+            if t_cervello is not None:  # V-2 ve #322: turno finito senza final né error (V-3 bot: tipo)
+                self._segna("cervello", t_cervello)
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
 
