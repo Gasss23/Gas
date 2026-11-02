@@ -10,6 +10,7 @@
 - **V7a — tempi della voce**: `FATTA` — ogni richiesta parlata misura trascrizione (Groq), cervello (`run_turn`) e voce (TTS), anche quando falliscono; il totale del server va nel JSON (`tempi`) o nell'intestazione `X-Gas-Tempi` (MP3); una riga INFO di soli numeri in `gas_debug.log` (logger `gas.voce.tempi`, non in console); la pagina mostra «tempi: ascolto · cervello · voce · rete». Review #614-M2 e #615-M2 CON RISERVE (chiuse), #616-M2 APPROVATO.
 - **Merge di main** (PR #318 V6 e #321): `FATTA` — conflitto in `do_POST` risolto tenendo i tempi della V7a e il reset di `_capito` della V6; review #643-M2 APPROVATO.
 - **Bot e verifica esterna su 33a0346**: V-1 bot (tempi a schermo anche sui guasti) e V-2 bot (il caricamento dell'audio è «rete», non server) `FATTE`, review #644/#645-M2; V-1 MEDIA ve (conflitto con main dopo la #320) `FATTA` col merge di main.
+- **Bot su 8dc872e** (MEDIA: tempi di un guasto invisibili al primo turno): `FATTA` — tempi fuori dal riquadro della risposta, riquadro davvero nascosto prima della prima risposta, «Ho capito» vecchio nascosto sul guasto; review #646/#647-M2.
 - Test: voce + claude_cli + dotenv 258 passed (browser compresi); kernel 1063 PASS, 0 FAIL.
 - **V7b, V8, V9**: `DEFERITE` — PR in ordine dopo il merge della precedente (decisione dell'operatore riferita da M1).
 

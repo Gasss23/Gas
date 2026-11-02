@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V7a: misura dei tempi (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su 33a0346
+**Sessione:** 2026-11-02 — Voce V7a: misura dei tempi (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su 8dc872e
 
 ---
 
@@ -17,6 +17,8 @@
 - **Merge di main (PR #318, #321)**: `FATTA` (review #643-M2).
 - **Bot su 33a0346**: V-1 (tempi a schermo anche sui guasti) e V-2 (caricamento dell'audio contato come «rete», `_t0` dopo la lettura del corpo): `FATTE`, review #644-M2 CON RISERVE (R-644-1-M2: tempi vecchi dopo un errore di rete, chiusa) → #645-M2 APPROVATO. V-3 bot (X-Gas-Tempi non letta da nessun client: serve ai client futuri) COSMETICA, nessun fix.
 - **Verifica esterna su 33a0346** (https://github.com/Gasss23/Gas/pull/322#issuecomment-6582445935): V-1 MEDIA (PR in conflitto con main dopo la #320) `FATTA` col merge di main (solo documenti e memoria); V-2 (§6 senza run) aggiornata qui; V-3/V-4 basse, già dichiarate.
+- **Bot su 8dc872e** (verifica-bot failure, finding MEDIA): V-1 (i tempi di un guasto al primo turno stavano nel riquadro nascosto) `FATTA` — `#tempi` fuori dal riquadro, e `#player-wrap[hidden]` ora nasconde davvero (il `display:flex` vinceva su `hidden`); test nel browser con `isVisible`, mutante → 1 failed. V-2 (tempi vecchi su «risposta non leggibile») `FATTA`. Review #646-M2 CON RISERVE (R-646-1-M2: «Ho capito» del turno prima accanto ai tempi del guasto, chiusa) → #647-M2 APPROVATO.
+- **Verifica esterna su 8dc872e** (https://github.com/Gasss23/Gas/pull/322#issuecomment-6582719572): APPROVATO CON RISERVE, solo BASSE/COSMETICHE (check da attendere, X-Gas-Tempi senza client, `tempi` anche nel JSON solo-testo, test mancanti già in §7).
 - **V7b, V8, V9**: `DEFERITE` — una PR alla volta, dopo il merge della precedente.
 
 ---
@@ -24,15 +26,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 ++++++
- clients/voice/browser_client.html  |  31 +++++++++++++++++++++++---
- modules/voice/server.py            |  51 +++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  13 ++++++-----
+ .claude/agents/memoria_revisore.md |   9 ++++++++
+ clients/voice/browser_client.html  |  39 +++++++++++++++++++++++++++++---
+ modules/voice/server.py            |  51 ++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  13 +++++------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  23 ++++++++------------
- tests/test_unit_voice_server.py    |  29 +++++++++++++++++++++----
- tests/test_unit_voice_stt.py       | 118 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  24 +++++++++-----------
+ tests/test_unit_voice_server.py    |  32 ++++++++++++++++++++++----
+ tests/test_unit_voice_stt.py       | 118 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -40,6 +42,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+18d626e fix(voce): tempi visibili anche su un guasto al primo turno, riquadro della risposta davvero nascosto prima della prima risposta (V-1/V-2 bot #322 su 8dc872e; review #646/#647-M2)
+0621126 chore(revisore): memoria review #647 — APPROVATO
+c3338e6 chore(revisore): memoria review #646 — APPROVATO CON RISERVE
+8dc872e docs(voce-v7a): report dopo bot e verifica esterna su 33a0346 (PR #322, review #644/#645-M2)
 60499a4 Merge remote-tracking branch 'origin/main' into feat/voce-v7-m2
 685c9bb fix(voce): tempi a schermo anche sui guasti, caricamento dell'audio contato come rete (V-1/V-2 bot #322 su 33a0346; review #644/#645-M2)
 d58208d chore(revisore): memoria review #645 — APPROVATO
@@ -215,18 +221,63 @@ Cosa non ho verificato:
 
 Memoria: ho aggiunto la riga #645-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con d58208d. Nessuna lezione nuova.
 
+Commit della correzione (bot su 8dc872e, 18d626e). Review #646-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #646-M2: diff staged della PR #322 (V7a), branch feat/voce-v7-m2.
+
+Letture fatte: CLAUDE.md (sezione 5), reports/stato_progetto.md (la voce V7a, riga 604) e la memoria del revisore (ultime voci, #641–#645-M2).
+
+Elementi del diff esaminati:
+- `clients/voice/browser_client.html:208`: la regola `#player-wrap[hidden] { display: none; }`. Il rischio era che il riquadro della risposta, ora nascosto finché non arriva la prima risposta, rompesse il riascolto, la pausa o la conversazione. Il riquadro viene mostrato in un solo punto (`clients/voice/browser_client.html:652`, `playerWrap.hidden = false`) e nessun punto lo rinasconde. Un `<audio>` dentro un contenitore nascosto si può comunque avviare con `play()` e i gestori `onended`/`onpause` funzionano lo stesso. Prima della prima risposta il riquadro è vuoto, quindi non serve a niente. I modi riascolto, pausa e conversazione del test nel browser passano. Esito: ok.
+- `clients/voice/browser_client.html:296`: `#tempi` è stato spostato fuori da `#player-wrap`. Il rischio era che sul guasto i tempi restassero invisibili. Il ramo `!resp.ok` (`clients/voice/browser_client.html:623-624`) scrive il testo e toglie `hidden` direttamente su `#tempi`, che adesso non dipende più dal riquadro. Esito: ok.
+- `clients/voice/browser_client.html:641`: `tempiEl.hidden = true` prima di `fineTurno` nel ramo «risposta non leggibile». Il rischio era che restassero a schermo i tempi del turno precedente. Il ramo ora è uguale a quello dell'errore di rete (`clients/voice/browser_client.html:612`). Esito: ok.
+- `tests/test_unit_voice_server.py:920` e le asserzioni alle righe 1055 e 1065: `page.isVisible('#tempi')` controlla la visibilità vera, non solo l'attributo. Il rischio era un test che non sa distinguere. Il mutante dichiarato (tempi rimessi dentro il riquadro) fa fallire il test del guasto; senza la regola CSS il riquadro era sempre visibile e il test non poteva accorgersene. Esito: ok.
+
+Riserve:
+- R-646-1-M2 BASSA: se un turno va in guasto dopo un turno riuscito, i tempi nuovi compaiono sopra «Ho capito: …», il testo e il player del turno precedente, che restano visibili. Lettura ambigua: si può pensare che quel «Ho capito» appartenga al turno fallito. Correzione possibile: sul guasto nascondere anche `capitoEl`, oppure segnare il riquadro come «risposta precedente». Da tracciare in reports/stato_progetto.md.
+
+Prove riprodotte: `tests/test_unit_voice_server.py` intero, 78 passed in 199 s, browser compreso.
+
+Wall of Shame: nessuno slicing della history e nessuna simulazione di output dei tool. Il diff tocca solo il client nel browser e un test; motore, provider e guardrail (cap delle iterazioni, `_get_window`) non sono toccati.
+
+Rischio escluso: non ho verificato la resa visiva vera (spaziature, allineamento di `#tempi` fuori dal riquadro, che non ha `max-width` né il bordo del riquadro) né il comportamento su Safari o sul Mac. Ho solo un Chromium headless nell'ambiente di sviluppo. Il mutante del test l'ho preso dalla dichiarazione dell'agente, non l'ho rieseguito.
+
+Memoria: riga #646-M2 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (c3338e6). Lezione nuova: se il CSS imposta `display` su un elemento, l'attributo `hidden` non lo nasconde senza una regola `[hidden]`; un test che controlla solo `.hidden` o `textContent` non prova la visibilità, serve `isVisible`.
+
+Review #647-M2 (diff finale committato in 18d626e):
+
+## VERDETTO: APPROVATO
+
+Review #647-M2: stesso diff staged della #646-M2 (PR #322, branch feat/voce-v7-m2), più la correzione di R-646-1-M2, la riserva bassa della review precedente. R-646-1-M2 è chiusa.
+
+Elementi del diff esaminati:
+- `clients/voice/browser_client.html:625`: `capitoEl.hidden = true` nel ramo `!resp.ok`, subito dopo i tempi e prima di `fineTurno`. Il rischio era che il «Ho capito» del turno precedente restasse accanto ai tempi del guasto e sembrasse di questo turno. La riga è nel posto giusto e si attiva solo sul guasto. Al turno riuscito successivo la visibilità viene ricalcolata (`clients/voice/browser_client.html:650`, `capitoEl.hidden = !capito`), quindi non resta nascosto per sempre. Esito: ok.
+- `clients/voice/browser_client.html:641` e `clients/voice/browser_client.html:612`: i rami «risposta non leggibile» ed «errore di rete» non nascondono `capitoEl`. Lì però si nascondono anche i tempi, quindi non c'è più l'accostamento ambiguo «tempi nuovi accanto a Ho capito vecchio». Esito: ok.
+- `tests/test_unit_voice_server.py:920`: la lettura `isVisible('#tempi')` della #646-M2 è invariata. Esito: ok.
+
+Prove riprodotte: test nel browser dei modi guasto, normale ed errore, 3 passed.
+
+Wall of Shame: il diff tocca solo il client nel browser e un test. Nessuno slicing della history e nessuna simulazione di tool; motore e guardrail non sono toccati.
+
+Rischio escluso: il testo e il player della risposta precedente restano visibili dopo un guasto. Lo accetto come «ultima risposta» e non l'ho valutato come difetto. Non ho verificato la resa visiva né il comportamento su Safari o sul Mac, perché qui ho solo Chromium headless. Nessun test controlla che `#capito` sia nascosto sul guasto: la correzione l'ho verificata solo leggendo il codice.
+
+Memoria: riga #647-M2 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (0621126). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Test della voce (tutti i `tests/test_unit_voice*.py`, browser compresi) + claude_cli + dotenv: 258 passed dopo il merge di main. Kernel (`tests/test_unit_kernel.py`): RIEPILOGO 1063 PASS, 0 FAIL. Dopo la correzione del bot: test_unit_voice_stt + test_unit_voice_server 169 passed (revisore #644-M2); test nuovi `test_v7_caricamento_lento_non_conta_come_server` e il modo «guasto» del test nel browser, ognuno col suo mutante → 1 failed. I test V7 nuovi stanno in `tests/test_unit_voice_stt.py` (tempi nel JSON/log, MP3 con X-Gas-Tempi, TTS fallito, kernel che si rompe, 429 senza tempi) e `tests/test_unit_voice_server.py` (pagina).
+Test della voce (tutti i `tests/test_unit_voice*.py`, browser compresi) + claude_cli + dotenv: 258 passed dopo il merge di main. Kernel (`tests/test_unit_kernel.py`): RIEPILOGO 1063 PASS, 0 FAIL. Dopo la correzione del bot: test_unit_voice_stt + test_unit_voice_server 169 passed (revisore #644-M2); test nuovi `test_v7_caricamento_lento_non_conta_come_server` e il modo «guasto» del test nel browser, ognuno col suo mutante → 1 failed. Dopo il bot su 8dc872e: tests/test_unit_voice_server.py intero 78 passed (browser obbligatorio); mutante «tempi dentro il riquadro» → 1 failed. I test V7 nuovi stanno in `tests/test_unit_voice_stt.py` (tempi nel JSON/log, MP3 con X-Gas-Tempi, TTS fallito, kernel che si rompe, 429 senza tempi) e `tests/test_unit_voice_server.py` (pagina).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud: check lette dall'integrazione GitHub.
-- f3a3cc4 e 33a0346 (fine-task precedenti, pushati in due momenti): suite completate (notifiche check_suite.completed); su 33a0346 handoff-check e verifica-bot success alla lettura della verifica esterna, bot APPROVATO CON RISERVE.
-- Correzione, memoria (34ff97f, d58208d), merge di main 60499a4 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud: check lette dalle notifiche e dalle verifiche.
+- 8dc872e (fine-task precedente): verifica-bot failure (finding MEDIA, chiuso qui); unit-suite e handoff-check in corso alla lettura della verifica esterna.
+- 18d626e (correzione), memoria (c3338e6, 0621126) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
+- Nessun test controlla che «Ho capito» si nasconda su un guasto dopo un turno riuscito (R-646-1-M2 chiusa a lettura).
 - Nessun test provoca un vero errore di rete nella pagina per vedere la riga tempi nascosta (R-644-1-M2 chiusa solo a lettura).
 - Nessun test controlla esplicitamente il campo `tempi` nella risposta «non ho capito» (V6): convivenza verificata leggendo il codice (review #643-M2), stesso `_send_json` già coperto.
 - La latenza reale si misura solo sul Mac.
