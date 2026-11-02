@@ -32,6 +32,7 @@ from brains.model_ids import (
     MODEL_CLAUDE_FORTE, GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
 from brains.claude_cli import ClaudeCliClient
+from brains.claude_cli import stato_abbonamento as claude_cli_stato_abbonamento
 from brains.router import prefisso_forte  # R2: /forte (terminale, Telegram, voce)
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
@@ -5083,6 +5084,9 @@ def doctor(root_dir: Optional[str] = None) -> int:
                   f"{_avviso} (metti GAS_CLAUDE_BIN={os.path.abspath(binario)} nel .env)")
         else:
             check("Cervello forte", "comando claude", "OK", "presente")
+        if binario:  # chat M2: quale login usa la CLI (abbonamento?), con `claude auth status`: zero token
+            _esito, _det = claude_cli_stato_abbonamento(binario)  # V-1 bot #321: col WARN del timer si dice quale CLI
+            check("Cervello forte", "login", _esito, _det + (" · CLI della shell, il timer può usarne un'altra" if _avviso else ""))
         usato = _leggi_uso_claude_cli(root)
         tetto = _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
         if usato is None:
