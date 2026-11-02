@@ -42,6 +42,7 @@ log = logging.getLogger(__name__)
 _HERE = Path(__file__).parent
 _GAS_ROOT = _HERE.parent.parent
 _HTML_FILE = _HERE / "browser_client.html"
+_HTML_VOCI = _HERE / "prova_voci.html"   # V8: pagina «prova voci»
 _CONNECT_TIMEOUT = 10  # secondi per collegarsi al voice server (non per la risposta)
 
 
@@ -77,6 +78,9 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
         log.info(fmt, *args)
 
     def do_GET(self) -> None:
+        if not self._host_locale():   # R-625-1-M2: anche pagina, /config ed elenco voci
+            self._send_error_json(403, "Host non locale: rifiutato")
+            return
         if self.path == "/config":
             # V3: la pagina legge qui la finestra della conversazione (nessun segreto)
             cfg = json.dumps({"finestra": self.finestra, "max_turni": self.max_turni,
@@ -87,11 +91,22 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(cfg)
             return
-        if self.path not in ("/", "/index.html"):
+        if self.path in ("/voci/elenco", "/voci/libreria"):   # V8/V8b: elenchi dal server voce
+            # V-4 bot #326: un'altra pagina (anche un semplice <img>) non deve far partire
+            # chiamate a ElevenLabs né azzerare le voci ammesse. La pagina «prova voci»
+            # manda X-Gas-Pagina: un sito esterno non può aggiungerla senza CORS, che qui
+            # non c'è; in più si rifiuta ogni richiesta che il browser segna cross-site.
+            if (self.headers.get("X-Gas-Pagina") != "1"
+                    or self.headers.get("Sec-Fetch-Site", "same-origin") not in ("same-origin", "none")):
+                self._send_error_json(403, "Richiesta non dalla pagina «prova voci»: rifiutata")
+                return
+            self._inoltra_semplice("GET", self.path, b"")
+            return
+        if self.path not in ("/", "/index.html", "/voci"):
             self._not_found()
             return
         try:
-            html = _HTML_FILE.read_bytes()
+            html = (_HTML_VOCI if self.path == "/voci" else _HTML_FILE).read_bytes()
         except FileNotFoundError:
             self._not_found()
             return
@@ -101,7 +116,41 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(html)
 
+    def _host_locale(self) -> bool:
+        """R-625-1-M2 (DNS rebinding): la pagina gira solo su questo computer, quindi la
+        richiesta deve nominare 127.0.0.1, localhost o ::1 con la porta di questo proxy.
+        Un sito esterno fatto risolvere a 127.0.0.1 manda il SUO nome in Host: rifiutato.
+        Senza Host (client HTTP/1.0 locali) si lascia passare."""
+        host = self.headers.get("Host")
+        if not host:
+            return True
+        porta = self.server.server_address[1]
+        return host.lower() in {f"127.0.0.1:{porta}", f"localhost:{porta}", f"[::1]:{porta}"}
+
+    def _stessa_origine(self) -> bool:
+        """R-624-4-M2: un'altra pagina aperta nel browser non può far parlare Gas né
+        spendere prove di voce. Il browser manda Origin sulle POST: deve essere questa
+        pagina (stesso host:porta della richiesta). Senza Origin (curl, client non
+        browser) si lascia passare: lì c'è chi ha già accesso al computer."""
+        origine = self.headers.get("Origin")
+        if not origine:
+            return True
+        return urllib.parse.urlsplit(origine).netloc == (self.headers.get("Host") or "")
+
     def do_POST(self) -> None:
+        if not self._host_locale():
+            self._send_error_json(403, "Host non locale: rifiutato")
+            return
+        if not self._stessa_origine():
+            self._send_error_json(403, "Richiesta da un'altra pagina: rifiutata")
+            return
+        if self.path in ("/voci/prova", "/voci/aggiungi"):   # V8/V8b: prova o aggiunta di una voce
+            try:
+                n = int(self.headers.get("Content-Length", 0) or 0)
+            except ValueError:
+                n = 0
+            self._inoltra_semplice("POST", self.path, self.rfile.read(min(max(n, 0), 4096)))
+            return
         if self.path != "/voice":
             self._not_found()
             return
@@ -227,6 +276,32 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
                 self.wfile.flush()
             except OSError:
                 return  # pagina chiusa: il finally di _inoltra_a_pezzi chiude anche il server voce
+
+    def _inoltra_semplice(self, metodo: str, percorso: str, body: bytes) -> None:
+        """V8: inoltra una richiesta breve (elenco voci, prova di una voce) al server voce
+        col token, e rimanda la risposta così com'è."""
+        conn = http.client.HTTPConnection(self.voice_host, self.voice_port, timeout=_CONNECT_TIMEOUT)
+        try:
+            conn.connect()
+            conn.sock.settimeout(120)   # una sintesi o l'elenco: mai minuti
+            conn.request(metodo, percorso, body=body if metodo == "POST" else None, headers={
+                "Authorization": f"Bearer {self.token}",
+                **({"Content-Type": "application/json", "Content-Length": str(len(body))}
+                   if metodo == "POST" else {})})
+            resp = conn.getresponse()
+            corpo = resp.read()
+            tipo = resp.getheader("Content-Type", "application/octet-stream")
+            stato = resp.status
+        except (OSError, http.client.HTTPException) as exc:
+            self._send_error_json(502, f"Voice server non raggiungibile: {type(exc).__name__}")
+            return
+        finally:
+            conn.close()
+        self.send_response(stato)
+        self.send_header("Content-Type", tipo)
+        self.send_header("Content-Length", str(len(corpo)))
+        self.end_headers()
+        self.wfile.write(corpo)
 
     def _send_error_json(self, code: int, msg: str) -> None:
         err = json.dumps({"error": msg}).encode()
