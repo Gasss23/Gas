@@ -41,6 +41,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c83032f docs(forte-non-bare): report dopo il bot su 5e784c3 (PR #321, review #635/#636-M2)
 5e2fd43 test(forte): la suite kernel non lancia mai il claude vero dal doctor (V-1 bot #321 su 5e784c3, R-635-1; review #635/#636-M2)
 f6a6d9e chore(revisore): memoria review #636 — APPROVATO
 e59a4f5 chore(revisore): memoria review #635 — APPROVATO CON RISERVE
@@ -197,13 +198,14 @@ Memoria: ho aggiunto la riga contatore #636-M2 (nessuna lezione nuova) e l'ho co
 
 ## §5 DELTA TEST DEL MOTORE
 
-Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 42 test raccolti, `tests/test_unit_dotenv.py` 17 → 19 (in tutto 61 passed dopo la correzione di #632, 63 dopo la V-1 ve: 2 casi in più nel parametrico; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Dopo la V-1 bot: kernel 1063 PASS, 0 FAIL, anche con `GAS_CLAUDE_CLI=1` esportato e un `claude` spia in testa al PATH (spia mai chiamata). Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
+Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 44 test raccolti (V-1 bot su c83032f: prima qui c’era «42», numero rimasto da prima della V-1 ve), `tests/test_unit_dotenv.py` 17 → 19 (in tutto 61 passed dopo la correzione di #632, 63 dopo la V-1 ve: 2 casi in più nel parametrico; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Dopo la V-1 bot: kernel 1063 PASS, 0 FAIL, anche con `GAS_CLAUDE_CLI=1` esportato e un `claude` spia in testa al PATH (spia mai chiamata). Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 5e784c3 (fine-task precedente, head allora): check completati (notifica check_suite.completed); bot APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA), chiuse in questo giro.
-- 5e2fd43 (correzione V-1 bot), f6a6d9e/e59a4f5/735a0b2 (memoria) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+- c83032f (fine-task precedente, con 5e2fd43, f6a6d9e, e59a4f5, 735a0b2 pushati insieme: la run ha testato solo questa testa): handoff-check e smista success, suite kernel verde, le altre suite in corso alla lettura della verifica esterna; bot APPROVATO CON RISERVE (V-1 COSMETICA «29 → 42», corretta qui).
+- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
