@@ -290,6 +290,7 @@ audio {
 
 <div id="player-wrap" hidden>
   <p id="capito" class="capito" hidden></p>
+  <p id="tempi" class="capito" hidden></p>
   <p class="player-label">risposta</p>
   <p id="testo" aria-live="polite"></p>
   <audio id="player" controls></audio>
@@ -312,6 +313,7 @@ const playerWrap = document.getElementById("player-wrap");
 const player     = document.getElementById("player");
 const testoEl    = document.getElementById("testo");
 const capitoEl   = document.getElementById("capito");
+const tempiEl    = document.getElementById("tempi");
 const hint       = document.getElementById("hint");
 const convEl     = document.getElementById("conv");
 
@@ -608,7 +610,7 @@ async function invia(blob, contentType) {
     try { msg = (await resp.json()).error || msg; } catch (_) {}
     return fineTurno(timerAttesa, "errore: " + msg);
   }
-  let audio, testo = "", voceErr = "", capito = "";
+  let audio, testo = "", voceErr = "", capito = "", tempi = null;
   const ct = resp.headers.get("Content-Type") || "";
   try {   // R-574-2-M2: risposta rotta → errore dichiarato, la pagina non resta bloccata
     if (ct.startsWith("application/json")) {
@@ -616,6 +618,7 @@ async function invia(blob, contentType) {
       testo = j.content || "";
       voceErr = j.errore_voce || "";
       capito = typeof j.capito === "string" ? j.capito : "";
+      tempi = j.tempi && typeof j.tempi === "object" ? j.tempi : null;
       if (j.audio) audio = new Blob([Uint8Array.from(atob(j.audio), c => c.charCodeAt(0))], { type: "audio/mpeg" });
     } else {
       audio = await resp.blob();
@@ -629,6 +632,8 @@ async function invia(blob, contentType) {
   testoEl.textContent = testo;
   capitoEl.textContent = capito ? `Ho capito: «${capito}»` : "";   // V6, solo testo (mai HTML)
   capitoEl.hidden = !capito;
+  tempiEl.textContent = descriviTempi(tempi, (performance.now() - t0) / 1000);   // V7
+  tempiEl.hidden = !tempiEl.textContent;
   playerWrap.hidden = false;
   setSendingUI(false);
   if (!audio) {
@@ -689,6 +694,18 @@ function fineTurno(timerAttesa, errore) {
   setSendingUI(false);
   chiudiConversazione(false);
   setStatus(errore, true);
+}
+
+// V7: dove va il tempo di una risposta: pezzi misurati dal server + il resto (rete,
+// proxy, pagina) = totale visto dalla pagina meno il tempo nel server.
+function descriviTempi(t, totale) {
+  if (!t) return "";
+  const n = x => (typeof x === "number" && isFinite(x)) ? x : null;
+  const pezzi = [["ascolto", n(t.trascrizione)], ["cervello", n(t.cervello)], ["voce", n(t.voce)]]
+    .filter(p => p[1] !== null).map(p => `${p[0]} ${p[1].toFixed(1)}s`);
+  const server = n(t.server);
+  if (server !== null) pezzi.push(`rete ${Math.max(totale - server, 0).toFixed(1)}s`);
+  return pezzi.length ? "tempi: " + pezzi.join(" · ") : "";
 }
 
 function dopoRisposta(msg) {
