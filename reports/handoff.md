@@ -21,6 +21,8 @@
 - **Tempi della voce nel log (M1: `grep gas.voce.tempi` non trova niente)**: `FATTA` — la riga c'è, in gas_debug.log accanto a gas.py anche sotto launchd, ma il formato non stampa il nome del logger: si cerca `grep "tempi voce"`. Scritto nella LEGGIMI.
 - **Review**: #624 BOCCIATO (overflow della pausa, R-624-1 MEDIA, corretto); #625, #628, #629 APPROVATO CON RISERVE; riserve R-628-1/2/3/4 e R-629-1/2 corrette; #631 sul merge in main.
 - **Riserve della PR #324 (bot su 84b1422 e su 922aac9)**: `FATTA` — registrate in stato_progetto; punto 0 di ultimo_report riscritto.
+- **Bot su 1d6d14f (https://github.com/Gasss23/Gas/pull/328)**: APPROVATO CON RISERVE, check verifica-bot neutral (la PR tocca la macchina del bot: decide l'operatore). V-1 BASSA (installa.sh guarda il token e GAS_CLAUDE_BIN su qualsiasi riga del .env, mentre `_carica_dotenv` tiene la prima) e V-2 BASSA (regex diverse dal parser): `REGISTRATE` in stato_progetto, senza altri giri (decisione di M1).
+- **Verifica esterna (https://github.com/Gasss23/Gas/pull/328#issuecomment-6590448861)**: APPROVATO CON RISERVE, suite intera 3143 passed. V-1 BASSA (log limitato solo per errori consecutivi), V-2 BASSA (= R-625-1), V-3 e V-4 COSMETICHE: `REGISTRATE` in stato_progetto.
 
 ---
 
@@ -34,7 +36,7 @@
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  32 +++++++++++---------------------
+ reports/ultimo_report.md           |  33 ++++++++++++---------------------
  scripts/voce/LEGGIMI.md            |  14 +++++++++++---
  scripts/voce/installa.sh           |  48 ++++++++++++++++++++++++++++++++++++++++++++++--
  tests/test_unit_voce_ascolto.py    | 204 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
@@ -45,6 +47,7 @@ NB: base = merge-base con origin/main = c6206d2. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1d6d14f docs(fine-task): fetta 38, voce H24 dopo la prova sul Mac, PR #328
 2c7d842 docs(voce): report della fetta 38 (installazione dopo la prova sul Mac), riserve della PR #324 registrate
 a316409 chore(revisore): memoria review #631 — APPROVATO CON RISERVE
 6d2fe79 Merge voce-fix: rilevatore in errore, GAS_CLAUDE_BIN, token vuoto, attesa dopo bootout e tentativi di bootstrap, tempi voce nella LEGGIMI; R-629-1/2 (review #624-#631)
@@ -287,12 +290,16 @@ Review #631 (chat Mani). Ho fatto le tre letture obbligatorie: CLAUDE.md, le par
 
 `gh` non autenticato nel cloud.
 - I commit di voce-fix (bc369ed, ac425b8, 2e1fdea e le memorie) sono stati solo in locale fino a questa PR.
-- Il merge in main e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- 2c7d842 (report): handoff-check failure (handoff non ancora riscritto: corretto nel commit dopo).
+- 1d6d14f (fine-task): unit-suite success, handoff-check success; verifica-bot prima cancelled (cambio di head durante la verifica), poi neutral (bot APPROVATO CON RISERVE, PR sulla macchina del bot).
+- Il commit che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - Da #324 (bot su 84b1422): V-1 BASSA (il controllo all'uscita non copre fornitori che non sono modelli, come ElevenLabs), V-2 BASSA (strumenti mail nei rami di default del diario): per la fetta 1 della mail.
 - Da #324 (bot su 7346994): V-2 COSMETICA (`test_notify_telegram_safe`): per la fetta 1 della mail.
 - R-625-1 BASSA (lista bianca di GAS_CLAUDE_BIN senza test), R-625-2 COSMETICA (messaggio per un nome non assoluto).
+- R-631-1 COSMETICA (= R-623-2: lo `sleep 1` del giro `nc` senza test), R-631-2 COSMETICA (LEGGIMI: «ha speso qualcosa» → «ha misurato dei tempi»).
+- Da #328: V-1/V-2 bot BASSE (prima riga del .env; regex diverse dal parser), V-1 ve BASSA (log limitato solo per errori consecutivi), V-2 ve BASSA (= R-625-1), V-3/V-4 ve COSMETICHE.
 - R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac); R-615-5 BASSA (licenza di hey_jarvis).
 - Il comportamento vero di launchctl sul Mac (bootout asincrono) si prova solo sul Mac.

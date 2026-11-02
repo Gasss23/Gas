@@ -12,4 +12,5 @@
 - **Seconda esecuzione di installa.sh (M1 sul Mac)**: `FATTA` — attesa dopo bootout e bootstrap con 3 tentativi, con 4 test.
 - **Tempi della voce nel log (M1)**: `FATTA` — `grep "tempi voce" gas_debug.log`, scritto nella LEGGIMI.
 - **scripts/voce/ nel perimetro di review (V-4 ve #323)**: `FATTA`.
+- **Bot su 1d6d14f e verifica esterna (PR #328)**: APPROVATO CON RISERVE tutti e due, solo BASSE e COSMETICHE (bot V-1/V-2: prima riga del .env e regex diverse dal parser; ve V-1: log limitato solo per errori consecutivi; ve V-2 = R-625-1): `REGISTRATE` in stato_progetto, senza altri giri.
 - **Review**: #624 BOCCIATO (corretto), #625, #628, #629, #631 APPROVATO CON RISERVE; aperte solo R-625-1 BASSA e tre COSMETICHE (stato_progetto, fetta 38).
