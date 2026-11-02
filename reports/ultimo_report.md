@@ -14,7 +14,8 @@
 - **V-1 verifica esterna su d0a0035** («abbonamento» anche con CLI non loggata): `FATTA` — OK solo con exit 0 e loggedIn non falso; review #634-M2 APPROVATO.
 - **V-1 bot su 5e784c3** (i test T99 della suite kernel lanciavano il `claude` vero della macchina dal doctor): `FATTA` — in `_doc99` la riga «login» usa un finto; review #635-M2 APPROVATO CON RISERVE. **R-635-1** (con `GAS_CLAUDE_CLI=1` esportato nella shell altri doctor della suite lo lanciavano ancora): `FATTA` — la suite toglie l'interruttore in testa; review #636-M2 APPROVATO. V-2 bot (handoff e stato_progetto non allineati): `FATTA` in questo giro di report.
 - **V-1 verifica esterna su c83032f** (`loggedIn` come stringa "false" dava OK): `FATTA` — «loggato» solo col booleano vero o col campo assente; review #637-M2 CON RISERVE (commento, chiusa) → #638-M2 APPROVATO. V-2 ve / V-1 bot (conteggio 42 → 44 nell'handoff): `FATTA`.
-- Test: claude_cli + dotenv 65 passed; kernel 1063 PASS 0 FAIL, anche con `GAS_CLAUDE_CLI=1` e un `claude` spia nel PATH (spia mai chiamata).
+- **V-1 bot su 6c0cf68** (riga «login» sulla CLI della shell anche col WARN del timer): `FATTA` — il dettaglio lo dice. **V-1 ve su 36f790f** (test di dotenv che lanciavano il `claude` vero): `FATTA`. Review #639-M2 APPROVATO. V-2 ve (maiuscolo CLAUDE.AI, resta WARN): COSMETICA, nessun fix.
+- Test: claude_cli + dotenv 65 passed; anche con GAS_CLAUDE_CLI=1 e un `claude` spia (mai chiamata); kernel 1063 PASS 0 FAIL, anche con `GAS_CLAUDE_CLI=1` e un `claude` spia nel PATH (spia mai chiamata).
 
 ## Anomalie
 
