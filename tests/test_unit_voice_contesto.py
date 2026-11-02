@@ -12,7 +12,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 import threading
 from http.server import HTTPServer
 from pathlib import Path
@@ -36,11 +35,11 @@ _ENV_PULITO = ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLA
 
 
 @pytest.fixture
-def ambiente():
+def ambiente(tmp_path):
     salvate = {k: os.environ.get(k) for k in _ENV_PULITO}
     for k in _ENV_PULITO:
         os.environ.pop(k, None)
-    tmp = tempfile.mkdtemp(prefix="gas_test_voce_ctx_")
+    tmp = str(tmp_path)  # V-4 bot #318: pytest pulisce la cartella da sé
     subprocess.run(["git", "init", "-q", tmp], check=True, capture_output=True)
     os.environ["GAS_CWD"] = tmp
     try:

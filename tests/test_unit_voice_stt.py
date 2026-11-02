@@ -287,6 +287,44 @@ class TestV6Trascrizione:
             with pytest.raises(TrascrizioneIncerta):   # nan → default, il controllo resta acceso
                 self._trascrivi(_verbose("ciao", [_seg(-1.5, 0.1)]))
 
+    def test_v6_eco_corta_del_prompt_sul_silenzio_scartata(self):
+        """V-1 bot #318: «Gas, forte, lead.» con no_speech alto è un'eco, non un comando."""
+        with pytest.raises(TrascrizioneIncerta) as e:
+            self._trascrivi(_verbose("Gas, forte, lead.", [_seg(-0.3, 0.95)]))
+        assert "eco corta" in e.value.motivo
+
+    @pytest.mark.parametrize("frase", ["Gas, forte, lead.", "Gas forte", "PR merge.",
+                                       "Report PR.", "Firma contatto."])
+    @pytest.mark.parametrize("ns", [0.2, 0.85])
+    def test_v6_eco_corta_con_voce_vera_passa(self, frase, ns):
+        """V-1 bot #318 / R-614-1-M2: le stesse parole dette davvero passano, anche con il
+        no_speech di un «Sì.» chiaro su large-v3 (0,85, vedi test del «sì» breve)."""
+        assert self._trascrivi(_verbose(frase, [_seg(-0.2, ns)])) == frase
+
+    def test_v6_eco_corta_soglia_da_env(self):
+        corpo = _verbose("PR merge.", [_seg(-0.2, 0.85)])
+        with patch.dict(os.environ, {"GAS_VOICE_STT_ECO_NO_SPEECH": "0.8"}):
+            with pytest.raises(TrascrizioneIncerta):
+                self._trascrivi(corpo)
+
+    @pytest.mark.parametrize("campo", ["avg_logprob", "no_speech_prob", "end"])
+    def test_v6_valori_nan_dei_segmenti_non_scartano_a_caso(self, campo):
+        """V-1 ve #318: NaN in un segmento (json.loads lo accetta) non aggira i controlli
+        dando un esito a caso: il dato è inutile, il testo si tiene come senza dettagli;
+        e un testo sicuramente cattivo resta scartato dall'elenco delle frasi inventate."""
+        seg = _seg(-1.5, 0.95)
+        seg[campo] = float("nan")
+        corpo = json.dumps({"text": "ciao", "segments": [seg]})
+        assert "NaN" in corpo
+        assert self._trascrivi(corpo) == "ciao"
+        seg2 = dict(seg, avg_logprob=-0.2, no_speech_prob=0.1)
+        with pytest.raises(TrascrizioneIncerta):
+            self._trascrivi(json.dumps({"text": "Grazie per la visione", "segments": [seg2]}))
+        # R-614-2-M2: un segmento NaN non spegne il controllo sugli altri
+        cattivo = _seg(-2.0, 0.99, 1.0, 2.0)
+        with pytest.raises(TrascrizioneIncerta):
+            self._trascrivi(json.dumps({"text": "ciao", "segments": [seg, cattivo]}))
+
     def test_v6_json_non_oggetto_errore_groq(self):
         with pytest.raises(GroqSTTError):
             self._trascrivi("[1, 2]")
@@ -575,6 +613,29 @@ class TestVoiceHandlerRouting:
         assert status == 200 and resp["capito"] == "Gas, forte: dimmi i lead"
         assert kw_parlato.get("cervello") == "forte"  # «forte» tolto dalla richiesta, non dal «capito»
         assert "capito" not in scritto[1]  # testo scritto: niente da mostrare
+
+    def test_v6_non_capito_solo_audio_senza_tts_resta_testo(self):
+        """V-2 bot #318: client solo audio senza ElevenLabs → 200 JSON con il messaggio,
+        non un 503 «TTS non disponibile» che nasconde la causa."""
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "Accept": "audio/mpeg"}
+        with patch("modules.voice.server.transcribe_audio",
+                   side_effect=TrascrizioneIncerta("boh", "poco sicura")):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                status, resp = _post_raw(self.port, wav, hdrs)
+        assert status == 200 and resp["non_capito"] is True and resp["capito"] == "boh"
+
+    def test_v6_capito_azzerato_a_ogni_richiesta(self):
+        """V-3 bot #318: anche riusando lo stesso oggetto handler (come farebbe un
+        keep-alive), una richiesta scritta non eredita il «capito» della precedente."""
+        h = VoiceHandler.__new__(VoiceHandler)
+        h._capito = "vecchio"
+        h.path = "/altro"
+        h._send_json = lambda code, payload: None
+        h.do_POST()
+        assert h._capito is None
 
     def test_v6_formato_pagina_porta_capito(self):
         """V6: col formato della pagina (audio+testo) il JSON ha «capito», anche quando

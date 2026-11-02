@@ -258,6 +258,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         return True
 
     def do_POST(self) -> None:
+        self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
         if self.path != _ENDPOINT:
             self._send_json(404, {"error": "Not Found"})
             return
@@ -353,9 +354,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
         formato chiesto dal client; `segno` è il campo JSON che la distingue."""
         if self._vuole_audio_testo():
             self._do_audio_testo_response(testo, {segno: True})
-        elif self._wants_audio():
+        elif self._wants_audio() and os.environ.get("ELEVENLABS_API_KEY", "").strip():
             self._do_tts_response(testo)
-        else:
+        else:  # V-2 bot #318: senza TTS il messaggio arriva lo stesso, come testo (mai un 503)
             out: Dict[str, Any] = {"content": testo, segno: True}
             if self._capito is not None:
                 out["capito"] = self._capito
