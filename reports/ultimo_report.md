@@ -9,4 +9,5 @@
 - **Riserve di #323 in stato_progetto**: `FATTA` — V-1 del bot e V-1…V-6 della seconda verifica esterna su 3672964, registrate senza altri giri (decisione di M1).
 - **Bot su 0c0081f (PR #324)**: APPROVATO CON RISERVE (check success). V-1 BASSA (requisito del kernel: output delle mail fuori dalla storia o mai ai gratuiti), V-2 BASSA (V-4 bot #323 registrata), V-3 COSMETICA (numero della PR): `FATTA`.
 - **Bot su 9718c6a (PR #324)**: APPROVATO CON RISERVE (check success). V-1 BASSA (nomi degli strumenti come nel cancello: `fetch_email`/`send_email`), V-2 BASSA (handoff riallineato): `FATTA`.
+- **Bot su cb84cc0 (PR #324)**: APPROVATO CON RISERVE (check success). V-1 BASSA (`fetch_email` da aggiungere a GATE_ALLOWLIST nella fetta 1), V-2 COSMETICA (V-3 bot #323 registrata): `FATTA`.
 - **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); `DEFERITA — PR subito dopo questa (un solo branch remoto)`.

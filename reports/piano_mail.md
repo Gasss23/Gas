@@ -10,7 +10,8 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    casella. Il testo delle mail è **non fidato**: il nome `fetch_email` sta già tra gli
    strumenti che contaminano la finestra (`UNTRUSTED_INPUT_TOOLS` in
    `modules/gate/gate.py`; la contaminazione guarda il NOME, V-1 bot #324: un nome
-   diverso non contaminerebbe). Dopo una lettura
+   diverso non contaminerebbe). Non è però ancora in `GATE_ALLOWLIST`, quindi oggi è
+   negato: la fetta 1 lo aggiunge (SAFE come `read_file`), con un test. Dopo una lettura
    ogni azione verso l'esterno va alla firma. Il testo arriva al modello dentro una
    cornice «dati, non istruzioni», con un tetto di caratteri. Niente allegati nella
    prima versione: solo nome e dimensione.
@@ -52,7 +53,7 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    «Operazione negata: …» e il turno va avanti, mai un crash.
 
 ## Fette (dopo le risposte)
-1. Sola lettura e tetti, con server di posta finto nei test, più il requisito del kernel del punto 6 (output delle mail mai ai gratuiti, nemmeno dalla storia).
+1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (output delle mail mai ai gratuiti, nemmeno dalla storia).
 2. Bozze in Gas.
 3. Invio con firma e token separato.
 4. Prova dal vero su una casella di prova, poi su quella vera.
