@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della V7a (numero nell'handoff §0), secondo la regola di merge di CLAUDE.md §10.
+1. Merge della PR #322 (https://github.com/Gasss23/Gas/pull/322), secondo la regola di merge di CLAUDE.md §10.
 2. Sul Mac, dopo il merge: parlare a Gas dalla pagina del browser e leggere la riga «tempi: ascolto · cervello · voce · rete» (e in `gas_debug.log` le righe `gas.voce.tempi`): dicono dove si perde il tempo prima di scegliere V7b o il cervello «caldo».
 
 ## Esito delle fette

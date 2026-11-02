@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. PR della V7a: da aprire (numero dopo la creazione).
+1. Merge della PR #322 (https://github.com/Gasss23/Gas/pull/322). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5123668093","url":"https://github.com/Gasss23/Gas/pull/322"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
 2. Sul Mac, dopo il merge: leggere la riga «tempi» della pagina e le righe `gas.voce.tempi` di `gas_debug.log`.
 
 ---
@@ -38,6 +38,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f3a3cc4 docs(voce-v7a): report di fine task (review #614–#616-M2, merge di main #643-M2)
 7ced8a2 Merge origin/main (PR #318 V6, #321) in feat/voce-v7-m2 (review #643-M2)
 3156c6a chore(revisore): memoria review #616 — APPROVATO
 190d3fc feat(voce): V7a — tempi di trascrizione, cervello e voce nella risposta, nel log e nella pagina (chat M2)
@@ -171,7 +172,7 @@ Test della voce (tutti i `tests/test_unit_voice*.py`, browser compresi) + claude
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione (190d3fc, memoria, merge 7ced8a2) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud. Commit della sessione (190d3fc, memoria, merge 7ced8a2, report f3a3cc4: pushati insieme, run sulla sola testa f3a3cc4 non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
