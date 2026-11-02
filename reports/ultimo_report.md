@@ -1,24 +1,22 @@
-# ULTIMO REPORT — 2026-11-01 — Mani: sandbox del browser con radice vuota ed elenco di cartelle permesse (R6, fetta 35, chat Mani)
+# Ultimo report — 2026-11-02 — Voce V6 «capire meglio» (chat M2) — PR #318
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #317 (numero nell'handoff §0): solo con verdetto del bot APPROVATO pulito la faccio io; con riserve serve il sì dell'operatore (anche tramite M1).
-2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR.
-3. Il browser resta SPENTO. Per accenderlo sul VPS manca la seconda condizione della roadmap: una prova dal vero sul VPS (bwrap con --size, AppArmor, node, Playwright, HTTPS).
 
-## Esito
-- **PR #316 (bwrap per il browser)**: MERGIATA (87f576c) col sì dell'operatore.
-- **Radice vuota ed elenco di cartelle permesse** (prima condizione della roadmap): FATTA (PR #317).
-- **V-6 ve e V-2 bot #316** (cartelle non nascoste leggibili): FATTA. **V-1 bot #316** (~/.local): FATTA. **R-605-1**: FATTA. **R-601-1/2**: FATTA. **R-603-1/2/3**: FATTA. **V-1 d ve #316** (routeWebSocket): FATTA.
-- **V-1 c ve #316** (serviceWorkers 'block' senza test): SALTATA — nella prova la pagina non diventa sicura (navigator.serviceWorker non c'è), il test passerebbe a vuoto; resta dichiarata.
-- **Review #607 (chat Mani)**: APPROVATO CON RISERVE. R-607-1 MEDIA (il test accettava tutto /gas/), R-607-2 e R-607-3 BASSE: FATTE. **Review #608**: APPROVATO.
-- **Bot e verifica esterna su 427e57d**: APPROVATO CON RISERVE. V-1 MEDIA ve (/dev scrivibile senza tetto) e V-2 ve / V-1 bot (permessa-collegamento): FATTE (505479f, review #609 APPROVATO CON RISERVE). V-3 BASSA ve: SALTATA — dichiarata. R-609-1: DEFERITA — registrata.
-- **Bot su 6729b2c**: failure per «verdetto incoerente», poi G-2 dopo un rilancio; V-1 BASSA (sonda diversa dal comando vero): FATTA (2a96a14, review #610 APPROVATO CON RISERVE; chiude R-609-2). R-610-1 BASSA: DEFERITA — registrata.
+1. Merge della PR #318 (https://github.com/Gasss23/Gas/pull/318): la mergia M1 se il bot dà APPROVATO pulito; con riserve aspetta il sì dell'operatore.
+2. Dopo il merge, prova sul Mac (`reports/prova_voce_mac.md`): guardare la riga «Ho capito: …»; se Gas dice spesso «Non ho capito bene» parlando chiaro, `GAS_VOICE_STT_LOGPROB_MIN=-1.3` nel `.env`.
 
-## Prove
-- Prototipo provato prima del codice: Chromium parte con l'elenco.
-- Browser 44 test (anche da utente nobody), web (`python -m pytest tests/test_unit_web_*.py`): 752 passed, 2 skipped.
-- Mutanti presi: 15 (vedi handoff §5).
+## Esito delle fette
+
+- **V6.1 — trascrizione**: `FATTA` — `modules/voice/stt.py`: Whisper era già `whisper-large-v3`; ora `language=it`, `temperature=0`, `verbose_json`, prompt col vocabolario di Gas. Trascrizioni incerte (confidenza media pesata < -1,0; silenzio = no_speech > 0,8 E confidenza < -0,5; frasi inventate da Whisper sul silenzio; eco contigua del prompt di ≥4 parole) → «Non ho capito bene, puoi ripetere?» senza turno del kernel (conta nel tetto orario). Soglie via env.
+- **V6.2 — trasparenza**: `FATTA` — campo `capito` nelle risposte parlate del server; la pagina mostra «Ho capito: «…»» (solo testo).
+- **V6.3 — risposte e contesto**: `FATTA` — la storia c'era già (kernel unico della voce, il forte riceve la finestra degli ultimi messaggi). Nuovo `tests/test_unit_voice_contesto.py` (server + GasKernel vero, cervelli finti) lo prova per forte e normale; mutante su `_get_window` → 2 failed. ISTRUZIONE_VOCE / _SCHERMO: frasi brevi senza perdere il filo, parole storpiate dalla trascrizione, una sola domanda se ambiguo.
+- **V6.4 — tasto «non hai capito» con modello più grande**: `SALTATA` — usiamo già il modello più grande di Groq.
+- **Riserva V-1 bot #314** (Groq 500 conta nel tetto): `FATTA` (test). **V-2 bot #314** (conteggi §2 dell'handoff): `FATTA` (handoff riscritto con i conteggi della sessione).
+- **stato_progetto**: prova sul Mac della V5 passata, registrata.
+- gas.py / brains/: non toccati. ci.yml: solo il nuovo file di test nella voice suite.
+
+Review: #611-M2 APPROVATO CON RISERVE, #612-M2 APPROVATO CON RISERVE (riserve chiuse), #613-M2 APPROVATO. Test: voce stt + contesto 63 passed; stt+server+tts non-browser 122 passed (prima delle ultime correzioni a stt); pagina nel browser (obbligatoria) 10 passed.
 
 ## Anomalie
-- Nel container restano due cartelle di prova di una verifica esterna precedente (/home/runnerx, /data/gashome), la cui rimozione è stata bloccata da un controllo di sicurezza; il nuovo test le copre: fuori dall'elenco non si vedono.
-- `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.
+
+- `gh` non autenticato nel cloud: PR aperta con l'integrazione GitHub.

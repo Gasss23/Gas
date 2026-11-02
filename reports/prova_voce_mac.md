@@ -1,6 +1,6 @@
 # Prova della voce sul Mac — guida di una pagina
 
-Aggiornata al 31 ottobre (voce V4 mergiata con la PR #313; V5 con la PR di questa fetta).
+Aggiornata al 2 novembre (V5 provata sul Mac dall'operatore, esito riferito da M1 il 2 novembre: eco, «sì» e TV ok; V6 «capire meglio»).
 Serve per provare la conversazione a voce con Gas: tu parli, Gas risponde a voce, e puoi interromperlo.
 
 ## Prima volta: cosa deve esserci nel `.env` di Gas
@@ -25,6 +25,8 @@ Nel file `~/Gas/.env` servono queste righe (i valori li hai già, non scriverli 
    ```
 3. Apri **http://127.0.0.1:9000** nel browser (Chrome va bene) e consenti il microfono.
 4. Lascia spuntato «conversazione continua», clicca il tasto rotondo (o premi spazio) e parla.
+
+Sopra la risposta c'è la riga «Ho capito: …» con la frase come l'ha sentita Gas: se è sbagliata, l'errore è d'ascolto (non di ragionamento). Se la trascrizione è poco sicura, Gas dice «Non ho capito bene, puoi ripetere?» invece di rispondere a caso.
 
 Come funziona: quando smetti di parlare la frase parte da sola; Gas risponde a voce (la risposta intera è scritta sotto); poi il microfono resta aperto 12 secondi per la tua risposta. Se stai zitto senti un bip e la conversazione si chiude.
 
@@ -52,6 +54,7 @@ Come funziona: quando smetti di parlare la frase parte da sola; Gas risponde a v
 - **«Voice server non raggiungibile»:** la prima finestra non è partita o si è chiusa. Riavviala e aspetta «in ascolto».
 - **«Gas non ha risposto entro 600 s»:** il cervello forte ci sta mettendo tanto. NON ripetere la richiesta: guarda la prima finestra, il lavoro può essere ancora in corso.
 - **«Troppe richieste a voce nell'ultima ora»:** hai superato il tetto di 60 richieste a voce in un'ora. Aspetta o scrivi.
+- **Gas dice spesso «Non ho capito bene» anche quando parli chiaro:** aggiungi `GAS_VOICE_STT_LOGPROB_MIN=-1.3` nel `.env` e riavvia la prima finestra (il server). Se invece risponde a frasi sentite male (la riga «Ho capito» è sbagliata), prova `-0.8`. Dillo a M1.
 - **Nessun audio, solo testo:** controlla `ELEVENLABS_API_KEY` nel `.env`.
 - **«permesso microfono negato»:** consenti il microfono per 127.0.0.1 nelle impostazioni del browser e ricarica.
 
