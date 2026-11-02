@@ -905,7 +905,7 @@ const { chromium } = require('playwright');
   }
   await page.waitForFunction(() => {
     const t = document.getElementById('status').textContent;
-    return t.includes('conversazione chiusa') || t.includes('non riproducibile');
+    return t.includes('conversazione chiusa') || t.includes('non riproducibile') || t.startsWith('errore');
   }, null, { timeout: 25000 });
   await page.waitForTimeout(3000);   // niente turni né errori dopo la chiusura
   // V-1 bot #313: la soglia calcolata dalla pagina stessa, con 300 ms tutti di voce media
@@ -922,8 +922,9 @@ const { chromium } = require('playwright');
   });
   const tempi = await page.textContent('#tempi');   // V7
   const sorgenti = await page.evaluate(() => window.__sorgenti);
+  const tempiVisibili = await page.isVisible('#tempi');   // V-1 bot #322 su 8dc872e
   await browser.close();
-  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi, sorgenti }));
+  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi, sorgenti, tempiVisibili }));
 })().catch(async e => {
   console.error(e);
   try { console.error('STATI', JSON.stringify(await globalThis.__pagina.evaluate(() => window.__stati))); } catch (_) {}
@@ -934,7 +935,7 @@ const { chromium } = require('playwright');
 
 @pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa", "tetto", "errore",
                                   "interruzione", "interruzione_media", "colpo", "colpo_voce",
-                                  "sisubito", "pezzi", "pezzi_interrotti"])
+                                  "sisubito", "pezzi", "pezzi_interrotti", "guasto"])
 def test_v3_conversazione_nel_browser(tmp_path, modo):
     """Giro completo nella pagina vera (Chromium headless, microfono finto da file):
     clic → la frase parte da sola alla fine della voce (nessun secondo clic) → «ci sto
@@ -1031,6 +1032,15 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
                 except OSError:
                     pass
                 return
+            if modo == "guasto":  # V-1 bot #322: guasto lento, i tempi arrivano col 502
+                out = json.dumps({"error": "voce non disponibile",
+                                  "tempi": {"trascrizione": 0.5, "cervello": 1.25, "server": 2.0}}).encode()
+                self.send_response(502)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(out)))
+                self.end_headers()
+                self.wfile.write(out)
+                return
             out = json.dumps({"content": "Sì, meglio così. Procedo?", "audio": audio_b64,
                               "capito": "Gas, <b>meglio</b> così?",
                               "tempi": {"trascrizione": 0.5, "cervello": 1.25, "server": 2.0}}).encode()
@@ -1080,6 +1090,12 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     if modo not in ("interruzione", "interruzione_media", "colpo", "colpo_voce", "pezzi_interrotti"):
         assert len(ricevute) == 1, (ricevute, stati)
     assert ricevute[0][0] == "audio+testo+pezzi" and ricevute[0][2] > 0   # V7b
+    if modo == "guasto":
+        # V-1 bot #322: errore dichiarato e tempi a schermo anche sul guasto
+        assert stati[-1] == "errore: voce non disponibile", stati
+        assert esito["tempi"].startswith("tempi: ascolto 0.5s · cervello 1.3s · rete "), esito["tempi"]
+        assert esito["tempiVisibili"] is True  # visibili davvero, non solo nel testo
+        return
     assert testo == "Sì, meglio così. Procedo?"
     # V6: la pagina mostra cosa ha sentito, come testo (l'HTML nel parlato non diventa markup)
     assert esito["capito"]["testo"] == "Ho capito: «Gas, <b>meglio</b> così?»", esito["capito"]
@@ -1090,6 +1106,7 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     atteso = ("tempi: ascolto 0.5s · cervello 1.3s · voce 0.2s · rete " if modo == "pezzi"
               else "tempi: ascolto 0.5s · cervello 1.3s · rete ")   # V7b: a fine righe (interrotti: conta la 2ª risposta, JSON)
     assert t.startswith(atteso), t
+    assert esito["tempiVisibili"] is True
     assert float(t.rsplit("rete ", 1)[1].rstrip("s")) >= 0.5, t
     assert any("parli" in s for s in stati), stati
     assert any("ci sto ragionando" in s for s in stati), stati
@@ -1296,7 +1313,8 @@ def test_v7b_proxy_inoltra_le_righe_appena_arrivano():
 def test_v7b_pagina_chiusa_ferma_la_sintesi():
     """R-618-2-M2: se la pagina chiude la connessione dopo la prima riga, il server smette
     di sintetizzare (con al più una frase di ritardo: la prima scrittura dopo la chiusura
-    del client riesce ancora)."""
+    del client riesce ancora). V-1 bot #325: tetto delle frasi alzato a 6, così senza lo
+    stop le sintesi sarebbero 6 e il margine col codice giusto (≤ 3) è netto."""
     import socket
     import time
     from unittest.mock import patch
@@ -1321,6 +1339,7 @@ def test_v7b_pagina_chiusa_ferma_la_sintesi():
     try:
         with patch("modules.voice.server.transcribe_audio", return_value="Gas, dimmi"), \
              patch("modules.voice.server.synthesize_speech", side_effect=_lenta) as tts, \
+             patch("modules.voice.server._PARLATO_MAX_FRASI", 6), \
              patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
             os.environ.pop("GAS_VOCE_FORTE", None)
             s = socket.create_connection(("127.0.0.1", srv.server_address[1]), timeout=10)
@@ -1337,6 +1356,26 @@ def test_v7b_pagina_chiusa_ferma_la_sintesi():
         srv.shutdown()
         srv.server_close()
     assert sintesi <= 3, sintesi   # su 6 frasi: la prima, al più una di ritardo (+1 in volo)
+
+
+def test_v7b_pagina_chiusa_prima_degli_header():
+    """V-3 bot #325: se la pagina è già chiusa quando il proxy scrive gli header della
+    risposta a pezzi, _copia_righe si ferma (niente eccezione, quindi niente 502 su un
+    socket morto né «Voice server non raggiungibile» falso)."""
+    bs = _browser_server_module()
+    h = bs.BrowserProxyHandler.__new__(bs.BrowserProxyHandler)
+
+    def _rotto(*a, **k):
+        raise BrokenPipeError("pagina chiusa")
+    h.send_response = _rotto
+
+    class _Resp:
+        status = 200
+        def getheader(self, *a):
+            return "application/x-ndjson"
+        def read1(self, n):
+            raise AssertionError("non deve leggere: la pagina è chiusa")
+    h._copia_righe(_Resp())   # non solleva
 
 
 @pytest.mark.parametrize("evento, chiude", [("vuoto", True), ("errore", True),

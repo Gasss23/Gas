@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- R8 voce H24 — ascolto sempre attivo di Gas sul Mac (launchd). NON modificare a mano la copia in
+     ~/Library/LaunchAgents: la scrive scripts/voce/installa.sh (CARTELLA_GAS sostituita).
+     Avvia clients/voice/ascolto.py: parola di attivazione in locale, poi il server voce.
+     KeepAlive: se cade, launchd lo riavvia (al massimo una volta ogni 10 s). -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.gas.ascolto</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>cd "CARTELLA_GAS" &amp;&amp; source .venv/bin/activate &amp;&amp; exec python clients/voice/ascolto.py</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>CARTELLA_GAS/.gas_voce/ascolto.log</string>
+  <key>StandardErrorPath</key>
+  <string>CARTELLA_GAS/.gas_voce/ascolto.log</string>
+</dict>
+</plist>

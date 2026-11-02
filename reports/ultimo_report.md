@@ -1,22 +1,21 @@
-# Ultimo report — 2026-11-02 — Voce V6 «capire meglio» (chat M2) — PR #318
+# Ultimo report — 2026-11-02 — Voce V7b: voce frase per frase (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #318 (https://github.com/Gasss23/Gas/pull/318): la mergia M1 se il bot dà APPROVATO pulito; con riserve aspetta il sì dell'operatore.
-2. Dopo il merge, prova sul Mac (`reports/prova_voce_mac.md`): guardare la riga «Ho capito: …»; se Gas dice spesso «Non ho capito bene» parlando chiaro, `GAS_VOICE_STT_LOGPROB_MIN=-1.3` nel `.env`.
+1. Merge della PR #325 (https://github.com/Gasss23/Gas/pull/325), secondo la regola di merge di CLAUDE.md §10.
+2. Sul Mac, dopo il merge: parlare a Gas dalla pagina del browser e sentire se comincia a rispondere dopo la prima frase; confrontare la riga «tempi» con quella della V7a.
 
 ## Esito delle fette
 
-- **V6.1 — trascrizione**: `FATTA` — `modules/voice/stt.py`: Whisper era già `whisper-large-v3`; ora `language=it`, `temperature=0`, `verbose_json`, prompt col vocabolario di Gas. Trascrizioni incerte (confidenza media pesata < -1,0; silenzio = no_speech > 0,8 E confidenza < -0,5; frasi inventate da Whisper sul silenzio; eco contigua del prompt di ≥4 parole) → «Non ho capito bene, puoi ripetere?» senza turno del kernel (conta nel tetto orario). Soglie via env.
-- **V6.2 — trasparenza**: `FATTA` — campo `capito` nelle risposte parlate del server; la pagina mostra «Ho capito: «…»» (solo testo).
-- **V6.3 — risposte e contesto**: `FATTA` — la storia c'era già (kernel unico della voce, il forte riceve la finestra degli ultimi messaggi). Nuovo `tests/test_unit_voice_contesto.py` (server + GasKernel vero, cervelli finti) lo prova per forte e normale; mutante su `_get_window` → 2 failed. ISTRUZIONE_VOCE / _SCHERMO: frasi brevi senza perdere il filo, parole storpiate dalla trascrizione, una sola domanda se ambiguo.
-- **V6.4 — tasto «non hai capito» con modello più grande**: `SALTATA` — usiamo già il modello più grande di Groq.
-- **Riserva V-1 bot #314** (Groq 500 conta nel tetto): `FATTA` (test). **V-2 bot #314** (conteggi §2 dell'handoff): `FATTA` (handoff riscritto con i conteggi della sessione).
-- **stato_progetto**: prova sul Mac della V5 passata, registrata.
-- gas.py / brains/: non toccati. ci.yml: solo il nuovo file di test nella voice suite.
-
-Review: #611-M2 APPROVATO CON RISERVE, #612-M2 APPROVATO CON RISERVE (riserve chiuse), #613-M2 APPROVATO. Test: voce stt + contesto 63 passed; stt+server+tts non-browser 122 passed (prima delle ultime correzioni a stt); pagina nel browser (obbligatoria) 10 passed.
+- **V7b — voce frase per frase**: `FATTA` — formato «audio+testo+pezzi»: il server manda righe NDJSON (testo + prima frase, poi le altre frasi, poi «fine» coi tempi), una sintesi per frase; errore della voce → stop; pagina chiusa → stop della sintesi. Il proxy della pagina inoltra le righe appena arrivano e chiude la connessione verso il server se la pagina se ne va. La pagina suona le frasi in fila; interruzione, pausa ed errore fermano le frasi in arrivo; riascolto di tutta la parte parlata. Review #618–#621-M2 (riserve chiuse), #622-M2 APPROVATO.
+- **Allineamento alla V7a mergiata (PR #322) e a main**: `FATTA` — test nel browser con i modi «pezzi», «pezzi_interrotti» e «guasto» insieme; review #651-M2 APPROVATO.
+- **V-3 COSMETICA del bot su #322** (tipo di `t_cervello`): `FATTA`, review #652-M2 APPROVATO.
+- Test: test_unit_voice_server + test_unit_voice_stt 183 passed (browser obbligatorio); 184 dopo la #653-M2.
+- **Bot e verifica esterna su a73916a**: APPROVATO CON RISERVE (solo basse/cosmetiche); note del bot `FATTE` (righe chiuse su risposta illeggibile, proxy senza 502 falso, test più netto, errore della voce in console), review #653-M2.
+- **Bot su 6010448**: riascolto completo anche col play premuto prima della fine delle frasi `FATTA` (review #654-M2, riserve basse R-654-1/2 in stato_progetto); descrizione della PR aggiornata.
+- **V8, V9**: `DEFERITE` — PR in ordine dopo il merge della precedente.
 
 ## Anomalie
 
-- `gh` non autenticato nel cloud: PR aperta con l'integrazione GitHub.
+- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
+- La resa vera (MP3 frase per frase con ElevenLabs, Safari/Chrome sul Mac) si prova solo sul Mac.

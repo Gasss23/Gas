@@ -245,9 +245,14 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
             resp.close()  # la connessione col server voce non resta appesa
 
     def _copia_righe(self, resp: http.client.HTTPResponse) -> None:
-        self.send_response(resp.status)
-        self.send_header("Content-Type", resp.getheader("Content-Type", "application/x-ndjson"))
-        self.end_headers()
+        try:
+            self.send_response(resp.status)
+            self.send_header("Content-Type", resp.getheader("Content-Type", "application/x-ndjson"))
+            self.end_headers()
+        except OSError:
+            # V-3 bot #325: pagina già chiusa prima degli header: niente 502 su un socket morto
+            log.warning("pagina chiusa prima della risposta a pezzi")
+            return
         while True:
             try:
                 pezzo = resp.read1(65536)

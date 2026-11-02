@@ -1,14 +1,10 @@
-# Diff della sessione — 2026-11-02 — Voce V6 «capire meglio» (chat M2)
+# Diff della sessione — 2026-11-02 — Voce V7b, voce frase per frase (chat M2)
 
-- `modules/voice/stt.py` — Whisper con lingua italiana, temperatura 0, prompt col vocabolario di Gas, verbose_json; `TrascrizioneIncerta` per le trascrizioni da non usare.
-- `modules/voice/server.py` — «Non ho capito bene, puoi ripetere?» senza turno; campo «capito»; istruzione voce che tiene il filo.
-- `clients/voice/browser_client.html` — riga «Ho capito: …» sopra la risposta.
-- `tests/test_unit_voice_stt.py` — test di soglie, eco del prompt, «non ho capito», «capito», Groq 500 nel tetto (V-1 bot #314).
-- `tests/test_unit_voice_server.py` — la pagina nel browser mostra «Ho capito» come testo.
-- `tests/test_unit_voice_contesto.py` — nuovo: i turni a voce vedono la conversazione (kernel vero, forte e normale).
-- `.github/workflows/ci.yml` — il nuovo test nella voice suite.
-- `.claude/agents/memoria_revisore.md` — righe delle review #611–#613-M2.
-- `reports/prova_voce_mac.md` — «Ho capito», «Non ho capito», come tarare la soglia.
-- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+- `modules/voice/server.py` — formato «audio+testo+pezzi»: risposta NDJSON con una sintesi per frase e riga «fine» coi tempi; stop su errore della voce o pagina chiusa; guardia sul tipo di `t_cervello`.
+- `clients/voice/browser_server.py` — il proxy inoltra le righe appena arrivano; thread di guardia che chiude la connessione verso il server se la pagina chiude.
+- `clients/voice/browser_client.html` — lettore di righe, frasi suonate in fila, interruzione/pausa/errore fermano le frasi in arrivo, riascolto di tutta la parte parlata.
+- `tests/test_unit_voice_server.py` — test del formato a pezzi (server, proxy, pagina nel browser con «pezzi», «pezzi_interrotti» e «guasto»).
+- `.claude/agents/memoria_revisore.md` — review #618–#622-M2, #651–#654-M2.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
