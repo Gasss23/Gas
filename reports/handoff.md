@@ -16,7 +16,9 @@
 - **PR #323 (fetta 37, voce H24)**: `FATTA` — mergiata (9718e0c) col sì dell'operatore; la parola resta «hey_jarvis» per ora («Hey Gas» in una fetta a parte, decisione di M1).
 - **Piano mail (chiesto da M1)**: `FATTA` — `reports/piano_mail.md`: lettura non fidata, bozze in Gas, invio solo con firma, credenziali separate, tetti, solo cervello forte, 7 domande per l'operatore.
 - **Riserve di #323 in stato_progetto (richiesta di M1)**: `FATTA` — V-1 del bot su 3672964 e V-1…V-6 della seconda verifica esterna (https://github.com/Gasss23/Gas/pull/323#issuecomment-6583621078), registrate senza altri giri.
-- **Fetta piccola sulla voce (V-1 ve, V-1 bot, V-4 ve di #323)**: `DEFERITA — subito dopo questa PR (un solo branch remoto)`.
+- **Bot su 0c0081f (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741499541)**: APPROVATO CON RISERVE, check success. V-1 BASSA (il piano prometteva «mail solo al forte» senza dire che l'output degli strumenti resta nella storia e va ai gratuiti al turno dopo): `FATTA` in 9718c6a — requisito del kernel nel punto 6 e nella fetta 1. V-2 BASSA (V-4 COSMETICA del bot su #323 non registrata): `FATTA`. V-3 COSMETICA (numero della PR): `FATTA`.
+- **Bot su 9718c6a (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741654147)**: APPROVATO CON RISERVE, check success. V-1 BASSA (il piano usava i nomi `leggi_mail`/`invia_mail`, ma il cancello contamina e mette alla firma per NOME): `FATTA` — ora `fetch_email`/`send_email`, già nel cancello, e `prepara_bozza` da aggiungere con un test. V-2 BASSA (handoff non riallineato all'head): `FATTA` in questo commit.
+- **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: `DEFERITA — commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); PR subito dopo questa (un solo branch remoto)`.
 
 ---
 
@@ -25,11 +27,11 @@
 ```
  reports/diff_sessione.md   |  17 ++++++-----------
  reports/handoff.md         | n/d
- reports/piano_mail.md      |  80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/piano_mail.md      |  84 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/ripartenza_mani.md |   2 +-
  reports/roadmap.md         |   4 ++--
  reports/stato_progetto.md  |   5 +++--
- reports/ultimo_report.md   |  22 +++++++---------------
+ reports/ultimo_report.md   |  23 ++++++++---------------
 ```
 
 NB: base = merge-base con origin/main = 9718e0c. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -37,6 +39,7 @@ NB: base = merge-base con origin/main = 9718e0c. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9718c6a docs(mail): requisito del kernel per le mail (output mai ai gratuiti), V-4 bot #323 registrata, numero della PR (V-1/V-2/V-3 bot #324)
 0c0081f docs(fine-task): piano mail, PR #324
 ec1fdbb docs(mail): stato, roadmap e ripartenza col piano mail; riserve di #323 registrate
 6af999b docs(mail): piano della mail di Gas (R6) con le domande per l'operatore, senza codice
@@ -55,10 +58,12 @@ Nessuna modifica a gas.py/tests/.
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud.
-- 6af999b (piano mail), ec1fdbb (report): pushati insieme prima dell'apertura della PR #324; run non ancora disponibile alla scrittura dell'handoff.
+- 6af999b (piano mail), ec1fdbb (report): pushati insieme prima dell'apertura della PR #324.
+- 0c0081f (fine-task): CI success (handoff-check, unit-suite); verifica-bot success (bot APPROVATO CON RISERVE).
+- 9718c6a (correzioni dopo il bot): CI success; verifica-bot success (bot APPROVATO CON RISERVE).
 - Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Da #323 (mergiata): V-1 bot su 3672964 BASSA (GAS_CLAUDE_BIN sotto launchd); V-1 ve BASSA (rilevatore sempre in errore); V-2/V-3 ve BASSE (igiene dei test); V-4 ve BASSA (scripts/voce/ fuori dal perimetro); V-5 ve BASSA (spegni.sh e due garanzie senza test); V-6 ve COSMETICA; R-623-1/2/3; R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac); R-615-5 BASSA (licenza).
+- Da #323 (mergiata): V-1 bot su 3672964 BASSA (GAS_CLAUDE_BIN sotto launchd); V-4 bot COSMETICA (token vuoto accettato da installa.sh); V-1 ve BASSA (rilevatore sempre in errore); V-2/V-3 ve BASSE (igiene dei test); V-4 ve BASSA (scripts/voce/ fuori dal perimetro); V-5 ve BASSA (spegni.sh e due garanzie senza test); V-6 ve COSMETICA; R-623-1/2/3; R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac); R-615-5 BASSA (licenza).
 - Da #319: V-1 bot su 9c44686 BASSA (limite dichiarato) e le altre registrate in stato_progetto.

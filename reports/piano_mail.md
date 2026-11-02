@@ -6,18 +6,22 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
 
 ## Come funzionerebbe
 
-1. **Leggere** — strumento `leggi_mail` (sola lettura): elenca e apre i messaggi di una
-   casella. Il testo delle mail è **non fidato**: sta già tra gli strumenti che
-   contaminano la finestra (`fetch_email` in `modules/gate/gate.py`). Dopo una lettura
+1. **Leggere** — strumento `fetch_email` (sola lettura): elenca e apre i messaggi di una
+   casella. Il testo delle mail è **non fidato**: il nome `fetch_email` sta già tra gli
+   strumenti che contaminano la finestra (`UNTRUSTED_INPUT_TOOLS` in
+   `modules/gate/gate.py`; la contaminazione guarda il NOME, V-1 bot #324: un nome
+   diverso non contaminerebbe). Dopo una lettura
    ogni azione verso l'esterno va alla firma. Il testo arriva al modello dentro una
    cornice «dati, non istruzioni», con un tetto di caratteri. Niente allegati nella
    prima versione: solo nome e dimensione.
-2. **Bozze** — strumento `prepara_bozza`: è interna e reversibile, quindi **libera**
+2. **Bozze** — strumento `prepara_bozza` (da aggiungere al cancello come UNCERTAIN e
+   libero dopo una lettura, con un test: un nome che non c'è è negato): è interna e
+   reversibile, quindi **libera**
    anche dopo una lettura (principio del 19 ottobre). La bozza resta in Gas (memoria) e
    l'operatore la vede quando vuole. Proposta: nella prima versione la bozza non va
    nemmeno nella casella, così il token di lettura non scrive niente.
-3. **Inviare** — strumento `invia_mail(bozza)`: **sempre alla firma** su Telegram
-   (`send_email` è già IRREVERSIBLE nel cancello). Il messaggio di firma mostra il
+3. **Inviare** — strumento `send_email(bozza)`: **sempre alla firma** su Telegram
+   (il nome `send_email` è già IRREVERSIBLE nel cancello). Il messaggio di firma mostra il
    destinatario, l'oggetto e il testo integrale. Si manda solo la bozza firmata, mai un
    testo rigenerato. Un invio per firma.
 4. **Credenziali separate** (proposta). Con Gmail i permessi si possono dividere:
@@ -41,7 +45,7 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    **Requisito del kernel (V-1 bot #324):** oggi l'output degli strumenti resta nella
    cronologia (`.gas_history.json`, blocchi role «tool») e `_get_window` lo rimanda ai
    turni dopo, che di default vanno alla cascata gratuita. Quindi la fetta 1 deve anche
-   cambiare il kernel: a fine turno l'output di `leggi_mail` si toglie o si maschera
+   cambiare il kernel: a fine turno l'output di `fetch_email` si toglie o si maschera
    nella storia, oppure una finestra che lo contiene non va mai ai gratuiti. Senza
    questo, testo e indirizzi letti in un turno forte arriverebbero ai gratuiti.
 7. **Fail-safe §9**: provider giù, token scaduto o risposta strana → messaggio
