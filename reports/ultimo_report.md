@@ -14,6 +14,7 @@
 - **Riserva V-1 bot #314** (Groq 500 conta nel tetto): `FATTA` (test). **V-2 bot #314** (conteggi §2 dell'handoff): `FATTA` (handoff riscritto con i conteggi della sessione).
 - **stato_progetto**: prova sul Mac della V5 passata, registrata.
 - **Riserve di bot e verifica esterna su e1f0131**: `FATTA` (254c4a5) — eco corta del prompt scartata solo con no_speech > 0,9 (`GAS_VOICE_STT_ECO_NO_SPEECH`), segmenti NaN/inf saltati, `capito` azzerato a ogni richiesta, «non ho capito» come testo se manca ElevenLabs, `List[str]`, tmp_path nel test. Review #614-M2 (branch V6) con riserve, #617-M2 APPROVATO. V-2 ve («Grazie.» isolato) `DEFERITA — da tarare sul Mac`.
+- **Riserve di bot e verifica esterna su ded8469**: `FATTA` (17c9352) — segmento malformato saltato come i NaN, `GAS_VOICE_STT_ECO_NO_SPEECH` documentata, conteggio dei test nell'handoff corretto. Review #623-M2 APPROVATO.
 - gas.py / brains/: non toccati. ci.yml: solo il nuovo file di test nella voice suite.
 
 Review: #611-M2 APPROVATO CON RISERVE, #612-M2 APPROVATO CON RISERVE (riserve chiuse), #613-M2 APPROVATO. Test: voce stt + contesto 63 passed; stt+server+tts non-browser 122 passed (prima delle ultime correzioni a stt); pagina nel browser (obbligatoria) 10 passed.
