@@ -955,7 +955,8 @@ const { chromium } = require('playwright');
 
 @pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa", "tetto", "errore",
                                   "interruzione", "interruzione_media", "colpo", "colpo_voce",
-                                  "sisubito", "pezzi", "pezzi_interrotti", "guasto", "rumore_costante"])
+                                  "sisubito", "pezzi", "pezzi_interrotti", "guasto", "rumore_costante",
+                                  "rumore_forte"])
 def test_v3_conversazione_nel_browser(tmp_path, modo):
     """Giro completo nella pagina vera (Chromium headless, microfono finto da file):
     clic → la frase parte da sola alla fine della voce (nessun secondo clic) → «ci sto
@@ -995,11 +996,16 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         # arriva NON deve suonare
         _wav(microfono, [(0.8, 0), (1.5, 0.4), (7.3, 0), (1.2, 0.4), (8, 0)])
     elif modo == "rumore_costante":
-        # V9 (R-584-1-M2): TV sempre accesa (rumore RMS ~0,06, sopra la vecchia soglia
-        # massima 0,045) e una frase a ~0,8 s. Prima il rumore contava come voce e la
-        # frase non finiva mai (fino a 60 s); ora: una sola frase, poi la finestra si
-        # chiude per silenzio nonostante la TV.
+        # V9 (R-584-1-M2): TV sempre accesa (ronzio di ampiezza 0,3 prima dei filtri del
+        # browser; il livello dopo i filtri non è misurato qui) e una frase a ~0,8 s: una
+        # sola frase, Gas non si zittisce da solo (la grazia di 500 ms) e la finestra si
+        # chiude per silenzio. La soglia d'ascolto dal fondo la prova «rumore_forte».
         _wav(microfono, [(0.8, 0), (1.5, 0.5), (14, 0)], rumore=0.3)
+    elif modo == "rumore_forte":
+        # V-1 ve #327: ronzio più forte (sopra la vecchia soglia massima di ascolto, 0,045,
+        # anche dopo i filtri del browser) già prima e durante l'ascolto: senza la soglia
+        # dal fondo la frase non si chiuderebbe mai per silenzio
+        _wav(microfono, [(3, 0), (1.5, 0.6), (14, 0)], rumore=0.6)
     elif modo == "sisubito":
         # V-1 bot #311 su c3079f4: voce già nei primi 300 ms dell'ascolto (un «sì» detto
         # subito) → deve contare come frase, non come rumore di fondo. (A volume medio lo
@@ -1089,7 +1095,7 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     _Proxy.finestra = 2
     _Proxy.max_turni = 1 if modo == "tetto" else 5
     # V9: con un ronzio costante si spegne l'AGC (GAS_VOICE_AGC=0, il rimedio della guida)
-    _Proxy.agc = modo != "rumore_costante"
+    _Proxy.agc = modo not in ("rumore_costante", "rumore_forte")
     proxy = bs.ThreadingHTTPServer(("127.0.0.1", 0), _Proxy)
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
     guida = tmp_path / "guida.js"
@@ -1163,6 +1169,11 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         assert fondo["parole"] < 0.05 and fondo["forte"] == 0.2, fondo
         # e la soglia per zittire Gas sale col rumore (0,06 → 1,5 × 0,12)
         assert fondo["interrVuoto"] == 0.06 and abs(fondo["interrRumore"] - 0.18) < 1e-9, fondo
+    if modo == "rumore_forte":
+        # V-1 ve #327: col ronzio sopra la vecchia soglia la frase si chiude per silenzio
+        # solo grazie alla soglia che segue il fondo (mutante senza → la frase non finisce)
+        assert len(ricevute) == 1 and not any("mi hai interrotto" in s for s in stati), stati
+        assert "conversazione chiusa" in stati[-1], stati
     if modo == "pezzi":
         # V7b: le due frasi suonano una dopo l'altra, poi il giro continua come sempre;
         # R-618-3-M2: a fine risposta il player riceve tutta la parte parlata (3ª sorgente)
