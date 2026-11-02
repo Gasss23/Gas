@@ -1,10 +1,10 @@
-# Diff della sessione — 2026-11-02 — Voce V7a, misura dei tempi (chat M2)
+# Diff della sessione — 2026-11-02 — Voce V7b, voce frase per frase (chat M2)
 
-- `modules/voice/server.py` — `_segna`/`_chiudi_tempi` per richiesta; tempi nel JSON e in `X-Gas-Tempi`; riga `gas.voce.tempi` a INFO; convivenza col reset di `_capito` della V6; il tempo del server parte dopo la ricezione dell'audio.
-- `clients/voice/browser_client.html` — riga «tempi: ascolto · cervello · voce · rete» (textContent, solo numeri finiti), anche sui guasti, fuori dal riquadro della risposta; il riquadro resta nascosto fino alla prima risposta.
-- `tests/test_unit_voice_stt.py` — test V7: tempi nel JSON e nel log, MP3 con intestazione, TTS fallito, kernel che si rompe, 429 senza tempi.
-- `tests/test_unit_voice_server.py` — la pagina mostra i tempi.
-- `.claude/agents/memoria_revisore.md` — review #614–#616-M2, #643–#650-M2.
+- `modules/voice/server.py` — formato «audio+testo+pezzi»: risposta NDJSON con una sintesi per frase e riga «fine» coi tempi; stop su errore della voce o pagina chiusa; guardia sul tipo di `t_cervello`.
+- `clients/voice/browser_server.py` — il proxy inoltra le righe appena arrivano; thread di guardia che chiude la connessione verso il server se la pagina chiude.
+- `clients/voice/browser_client.html` — lettore di righe, frasi suonate in fila, interruzione/pausa/errore fermano le frasi in arrivo, riascolto di tutta la parte parlata.
+- `tests/test_unit_voice_server.py` — test del formato a pezzi (server, proxy, pagina nel browser con «pezzi», «pezzi_interrotti» e «guasto»).
+- `.claude/agents/memoria_revisore.md` — review #618–#622-M2, #651–#652-M2.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
