@@ -8,3 +8,4 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 - `reports/ripartenza_mani.md`: punto g aggiornato.
 - `reports/ultimo_report.md`, `reports/diff_sessione.md`, `reports/handoff.md`: report di fine task.
 - Merge di origin/main (PR #322 di M2, voce V7a): entrano modules/voice/server.py, clients/voice/browser_client.html, i test voce e la memoria del revisore, invariati.
+- Merge di origin/main (PR #325 di M2, voce V7b): entrano modules/voice/server.py, clients/voice/browser_server.py, browser_client.html, tests/test_unit_voice_server.py e la memoria del revisore, invariati (review #627).

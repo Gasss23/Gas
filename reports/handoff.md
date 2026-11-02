@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #324 (https://github.com/Gasss23/Gas/pull/324). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5125431345","url":"https://github.com/Gasss23/Gas/pull/324"}`), perché `gh` nel cloud non è autenticato. Solo documenti: il merge segue la regola di CLAUDE.md §10 (verdetto del bot).
+1. Merge della PR #324 (https://github.com/Gasss23/Gas/pull/324). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5125431345","url":"https://github.com/Gasss23/Gas/pull/324"}`), perché `gh` nel cloud non è autenticato. Solo documenti, con riserve BASSE/COSMETICHE: l'operatore ha già detto sì; M1 attiva il merge automatico sull'head.
 2. Rispondere alle 7 domande in fondo a `reports/piano_mail.md`: niente codice della mail prima delle risposte.
 
 ---
@@ -21,7 +21,9 @@
 - **Bot su cb84cc0 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741711721)**: APPROVATO CON RISERVE, check success. V-1 BASSA (`fetch_email` è tra gli strumenti che contaminano ma non in GATE_ALLOWLIST, quindi oggi negato: «già nel cancello» era impreciso): `FATTA` — requisito della fetta 1 con un test. V-2 COSMETICA (V-3 bot #323 non registrata): `FATTA`.
 - **Bot su 18f2621 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741750870)**: APPROVATO CON RISERVE, check success. V-1 BASSA (il requisito del kernel copriva solo l'output di fetch_email, non le risposte e gli argomenti dello stesso turno): `FATTA` — «una finestra con un turno mail non va mai ai gratuiti». V-2 BASSA (conflitto con main dopo la #322): `FATTA` — main unita con un merge, blocchi M2 tenuti (review del merge #626). V-3 COSMETICA (`_LIBERI_DOPO_LETTURA` per prepara_bozza): `FATTA`.
 - **Merge di main (PR #322 di M2, voce V7a)**: `FATTA` in b66ac40 — conflitti solo nei report (tenuti i miei) e nella riga «Ultimo aggiornamento» (unite); file del perimetro entrati da main identici a MERGE_HEAD. **Review #626 (chat Mani)**: APPROVATO CON RISERVE. R-626-1 BASSA (il requisito del kernel nominava solo i turni dopo: ora anche riflessione di fine task e compressione) e R-626-2 BASSA (handoff non riallineato al merge): `FATTA` in questo commit.
-- **Bot su 970beca (https://github.com/Gasss23/Gas/pull/324)**: NON approvato, check verifica-bot failure. V-1 MEDIA (il requisito del kernel non copriva la memoria: `_memoria_pin` mette i contatti attivi nel system di ogni turno, anche sui gratuiti, e `ricorda` li rende leggibili): `FATTA` — quarto percorso nel punto 6, contatti dalle mail con origine «mail» esclusi fuori dal forte, e finché non c'è nessun contatto salvato dalle mail. V-2 BASSA (`notify_telegram` è SAFE, quindi dopo una lettura partirebbe senza firma): `FATTA` — nel piano e nella fetta 1.
+- **Bot su 970beca (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741914149)**: NON approvato, check verifica-bot failure. V-1 MEDIA (il requisito del kernel non copriva la memoria: `_memoria_pin` mette i contatti attivi nel system di ogni turno, anche sui gratuiti, e `ricorda` li rende leggibili): `FATTA` — quarto percorso nel punto 6, contatti dalle mail con origine «mail» esclusi fuori dal forte, e finché non c'è nessun contatto salvato dalle mail. V-2 BASSA (`notify_telegram` è SAFE, quindi dopo una lettura partirebbe senza firma): `FATTA` — nel piano e nella fetta 1 (commit 7346994).
+- **Bot su 7346994 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741952991)**: APPROVATO CON RISERVE, check success; sì dell'operatore al merge. V-1 BASSA (gli snapshot `refs/gas/snapshots/` fotografano `.gas_history.json` per 7 giorni) e V-2 COSMETICA (`test_notify_telegram_safe` da aggiornare nella fetta 1): `REGISTRATE` in stato_progetto, senza altri giri (decisione di M1).
+- **Merge di main (PR #325 di M2, voce V7b)**: `FATTA` in 9174640 — conflitti solo nei report (tenuti i miei), nella memoria (tenute le righe di tutti e due) e nella riga «Ultimo aggiornamento» (unite); file del perimetro entrati da main identici a MERGE_HEAD. **Review #627 (chat Mani)**: APPROVATO.
 - **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: `DEFERITA — commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); PR subito dopo questa (un solo branch remoto)`.
 
 ---
@@ -29,21 +31,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- reports/diff_sessione.md           |  16 ++++++++--------
+ .claude/agents/memoria_revisore.md |   2 ++
+ reports/diff_sessione.md           |  17 +++++++++--------
  reports/handoff.md                 | n/d
- reports/piano_mail.md              | 104 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/piano_mail.md              | 104 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   4 ++--
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  32 +++++++++++++------------------
+ reports/ultimo_report.md           |  33 +++++++++++++++------------------
 ```
 
-NB: base = merge-base con origin/main = c2f2a68. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 70e2f05. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a0f71c7 chore(revisore): memoria review #627 — APPROVATO
+9174640 Merge origin/main (PR #325, voce V7b) in PR #324
+7346994 docs(mail): quarto percorso verso i gratuiti (pin della memoria e ricorda), niente contatti dalle mail finché non c'è; notify_telegram non più SAFE nella fetta 1 (V-1 MEDIA, V-2 bot #324 su 970beca)
 970beca docs(mail): tre percorsi verso i gratuiti nel requisito del kernel, handoff col merge di main (R-626-1/2)
 ffff127 chore(revisore): memoria review #626 — APPROVATO CON RISERVE
 b66ac40 Merge origin/main (PR #322, voce V7a) nella PR #324; piano mail: requisito del kernel su tutto il turno mail (review #626)
@@ -87,6 +92,31 @@ Review #626 (chat Mani). È il merge di origin/main c2f2a68 (PR #322 di M2, voce
 **Memoria**: ho aggiunto la riga #626 in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md`, solo nel working tree. L'indice non è toccato: lo sha256 dello staged resta f005872104445eb3. Come chiede la lezione #619, non ho lanciato `scripts/commit_memoria_revisore.sh`: lancialo tu dopo aver committato il merge.
 ```
 
+Merge di origin/main (PR #325 di M2, voce V7b) in 9174640: verdetto integrale della review #627 (chat Mani):
+
+```
+## VERDETTO: APPROVATO
+
+Review #627 (chat Mani). Ho esaminato il merge di origin/main 70e2f05 (PR #325, voce V7b di M2) dentro claude/peaceful-lovelace-0w2b7q (PR #324, head 7346994). Il diff staged ha sha256 089125fea1ec536ad5b3254c93037070bfeb673265d935777dd40d1fbdee9cdd, uguale a quello dichiarato (089125fea1ec536a). La base del merge è c2f2a68. Prima della review ho letto CLAUDE.md, stato_progetto.md (solo le parti che servivano) e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `modules/voice/server.py:394` — guardia `if t_cervello is not None` prima di `_segna("cervello")` (codice di M2, già revisionato nella #652-M2). Rischio: che il merge abbia alterato il file. Il blob nell'index (075d83f3…) è identico a MERGE_HEAD. Esito: ok.
+- `clients/voice/browser_server.py:205-209` — `_copia_righe`, con gli header dentro `try` (codice di M2, #653-M2). Rischio: che sia entrata una versione mescolata. Il blob (ce5c37af…) è identico a MERGE_HEAD. Esito: ok.
+- `tests/test_unit_voice_server.py:1342` — test con `_PARLATO_MAX_FRASI=6`. Il blob (6612529c…) è identico a MERGE_HEAD, e anche `clients/voice/browser_client.html` (85f553aa…). Ho lanciato `tests/test_unit_voice_server.py`: **92 passed** (4 minuti, browser compreso). Esito: ok.
+- `.claude/agents/memoria_revisore.md:1165` — riga #626 del ramo, che si trova tra le righe di main. Rischio: righe perse o doppie. Rispetto a HEAD ci sono +12 righe da main (#618…#622-M2 con le loro lezioni, #651…#654-M2). Rispetto a MERGE_HEAD c'è +1 riga (#626). In tutti e due i casi non manca nessuna riga. Ci sono 0 righe doppie e 0 marcatori di conflitto, e `git diff --cached --check` è pulito. Esito: ok.
+- `reports/stato_progetto.md:4` — controllato a programma. La riga è il tuo pezzo, poi « — prima: », poi la riga 4 di main intera, senza il prefisso. La coda di main coincide con quella della base, quindi nessun pezzo è perso o doppio. Esito: ok.
+- `reports/stato_progetto.md:657` — riga «piano mail» del ramo. La riga «fetta 37» resta quella del ramo, ed è corretto: main non l'aveva toccata dalla base, perché il suo hash è uguale a c2f2a68. La riga «Voce V7b» di main c'è. Gli unici doppioni nel file («Riserve aperte:» ×5 e i separatori di tabella ×3) c'erano già identici in tutti e due i genitori. Esito: ok.
+- Controllo d'insieme: `git diff --cached MERGE_HEAD` tocca solo reports/ e la memoria, nessun file del motore. Quindi il codice dopo il merge è identico a quello di main. Esito: ok.
+
+**Finding**: nessuno ALTA, MEDIA o BASSA.
+- Nota di contesto, non è un finding: nel tuo pezzo della riga 4 di stato_progetto hai aggiunto «col sì dell'operatore» rispetto a HEAD. È una modifica di contenuto fatta durante la risoluzione, non un'unione pura. È una sola frase, coerente con il sì dell'operatore che mi hai riferito, quindi va bene.
+- Nota di contesto, non è un finding: nella memoria mancano #624 e #625. Questo merge però non c'entra: mancano in tutti e due i genitori. Esistono nei commit ec34430 e 5c4cc46, che secondo l'handoff stanno sul ramo locale voce-fix. Arriveranno con quel ramo.
+
+**Rischio escluso**: non ho lanciato le altre suite (kernel, gate, stt). Il codice dopo il merge è byte per byte quello di main, e la CI di main e la CI della PR lo coprono. Non ho controllato nel merito i documenti del ramo (piano_mail, handoff, roadmap): sono fuori dal perimetro di review e li ha approvati l'operatore.
+
+**Memoria**: ho aggiunto la riga `#627 (chat Mani) — 2026-11-02 — APPROVATO — … Nessuna lezione nuova.` solo nel worktree di /home/user/Gas/.claude/agents/memoria_revisore.md. Non ho toccato l'index: l'hash staged è ancora 089125fea1ec536a. Non ho lanciato `commit_memoria_revisore.sh`, perché durante un merge il commit parziale fallirebbe. Committala tu dopo il commit del merge.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py/tests/.
@@ -100,10 +130,14 @@ Nessuna modifica a gas.py/tests/.
 - cb84cc0 (correzioni dopo il bot): CI success; verifica-bot success (bot APPROVATO CON RISERVE).
 - 18f2621 (correzioni dopo il bot): verifica-bot success (bot APPROVATO CON RISERVE); poi conflitto con main (PR #322).
 - I commit di main entrati col merge (fino a c2f2a68, PR #322) hanno le run della PR #322.
-- b66ac40 (merge), ffff127 (memoria #626), 970beca (fine-task): verifica-bot failure su 970beca (V-1 MEDIA, chiusa in questo commit); unit-suite non ancora conclusa alla scrittura dell'handoff.
+- b66ac40 (merge), ffff127 (memoria #626), 970beca (fine-task): verifica-bot failure su 970beca (V-1 MEDIA, chiusa in 7346994).
+- 7346994 (correzioni dopo il bot): CI success; verifica-bot success (bot APPROVATO CON RISERVE); poi conflitto con main (PR #325).
+- I commit di main entrati col merge (fino a 70e2f05, PR #325) hanno le run della PR #325.
+- 9174640 (merge), a0f71c7 (memoria #627): pushati insieme al commit di fine-task.
 - Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- Da #324 (bot su 7346994): V-1 BASSA (snapshot di `.gas_history.json`), V-2 COSMETICA (`test_notify_telegram_safe`): per la fetta 1 della mail.
 - Da #323 (mergiata): V-1 bot su 3672964 BASSA (GAS_CLAUDE_BIN sotto launchd); V-4 bot COSMETICA (token vuoto accettato da installa.sh); V-3 bot COSMETICA superata dal merge; V-1 ve BASSA (rilevatore sempre in errore); V-2/V-3 ve BASSE (igiene dei test); V-4 ve BASSA (scripts/voce/ fuori dal perimetro); V-5 ve BASSA (spegni.sh e due garanzie senza test); V-6 ve COSMETICA; R-623-1/2/3; R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac); R-615-5 BASSA (licenza).
 - Da #319: V-1 bot su 9c44686 BASSA (limite dichiarato) e le altre registrate in stato_progetto.

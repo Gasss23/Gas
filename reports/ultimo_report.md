@@ -13,4 +13,6 @@
 - **Bot su 18f2621 (PR #324)**: APPROVATO CON RISERVE. V-1 BASSA (requisito del kernel esteso a tutto il turno mail), V-2 BASSA (main unita dopo la #322, con merge), V-3 COSMETICA (`_LIBERI_DOPO_LETTURA`): `FATTA`.
 - **Merge di main (PR #322) nella #324**: `FATTA` in b66ac40, review #626 APPROVATO CON RISERVE; R-626-1 BASSA (tre percorsi verso i gratuiti nel piano) e R-626-2 BASSA (handoff) `FATTA`.
 - **Bot su 970beca (PR #324)**: NON approvato (check failure). V-1 MEDIA (quarto percorso verso i gratuiti: pin della memoria e `ricorda`) e V-2 BASSA (`notify_telegram` SAFE): `FATTA` nel piano.
+- **Bot su 7346994 (PR #324)**: APPROVATO CON RISERVE (check success), sì dell'operatore. V-1 BASSA (snapshot di `.gas_history.json` per 7 giorni) e V-2 COSMETICA (`test_notify_telegram_safe` da aggiornare nella fetta 1): `REGISTRATE` in stato_progetto, senza altri giri (decisione di M1).
+- **Merge di main (PR #325, voce V7b) nella #324**: `FATTA` in 9174640, review #627 APPROVATO; file del perimetro identici a main.
 - **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); `DEFERITA — PR subito dopo questa (un solo branch remoto)`.
