@@ -25,6 +25,7 @@
 - **Bot su 1e4bc90 (https://github.com/Gasss23/Gas/pull/319#pullrequestreview-5731250289)** e **verifica esterna su 1e4bc90 (https://github.com/Gasss23/Gas/pull/319#issuecomment-6566914211)**: APPROVATO CON RISERVE, CI verde (kernel in CI 1076 PASS, 0 FAIL). V-1 BASSA (bot e ve: col tetto del giorno pieno partiva comunque la richiesta di firma): `FATTA` in 20031e4 — `rifiuto_al_cancello` legge il conto senza scriverlo. V-2 BASSA ve (nessun test sul percorso firmato): `FATTA` — T102j end-to-end col trasporto finto. V-3 COSMETICA ve («off» o «0.0» tornavano a 5): `FATTA` — non intero = spento con warning.
 - **Review #617 (chat Mani)**: APPROVATO CON RISERVE. R-617-1 COSMETICA (messaggio «a 0 o meno» anche per un valore non intero), R-617-2 COSMETICA (controlli del conto duplicati), R-617-3 BASSA (`rifiuto_al_cancello` senza try suo, retto da quello del kernel): `DEFERITA — registrate`.
 - **Merge di main (PR #318, voce V6 di M2)**: `FATTA` in bc46a27 (merge, non rebase) — conflitti solo in handoff/ultimo_report/diff_sessione (tenuti i miei) e nella memoria del revisore (tenuti tutti e due i lati). **Review #619 (chat Mani)**: APPROVATO CON RISERVE. R-619-1 BASSA (report senza il merge) e R-619-2 COSMETICA («Ultimo aggiornamento» di stato_progetto): `FATTA` in questo commit; R-619-3 BASSA (memoria del revisore da committare dopo il merge): `FATTA` in 22a8a5b.
+- **Secondo merge di main (PR #321, forte e `--bare` di M2)**: `FATTA` in 5331f14 — conflitti nei report (tenuti i miei), nella memoria (tutti e due i lati) e nella riga «Ultimo aggiornamento» (unite). **Review #620 (chat Mani)**: APPROVATO, nessun finding.
 - **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (M1)`.
 - **Voce H24 (R8)**: `DEFERITA — prossima fetta, piano a M1 prima del codice`.
 
@@ -33,29 +34,32 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  10 ++++++++++
+ .claude/agents/memoria_revisore.md  |  11 +++++++++++
  .github/workflows/ci.yml            |   7 +++++++
  .gitignore                          |   2 ++
- gas.py                              |  72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ gas.py                              |  72 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  gas_identity.md                     |   3 ++-
  modules/gate/gate.py                |   7 ++++++-
- modules/telegram/avviso.py          | 186 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md            |  27 ++++++++++++++-------------
+ modules/telegram/avviso.py          | 186 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md            |  24 ++++++++++++++---------
  reports/handoff.md                  | n/d
  reports/ripartenza_mani.md          |   2 +-
  reports/roadmap.md                  |   2 +-
  reports/stato_progetto.md           |   3 ++-
- reports/ultimo_report.md            |  35 ++++++++++++++++-------------------
- tests/test_unit_avvisa_operatore.py | 218 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md            |  36 ++++++++++++++++------------------
+ tests/test_unit_avvisa_operatore.py | 218 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_gate.py             |   1 +
- tests/test_unit_kernel.py           | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py           | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = f37316f. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 3cd550f. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d51eaf1 chore(revisore): memoria review #620 — APPROVATO
+5331f14 Merge origin/main (PR #321, forte e --bare) nella PR #319 (review #620)
+c945f46 docs(fine-task): fetta 36, PR #319, merge di main (PR #318), review #619
 22a8a5b chore(revisore): memoria review #619 — APPROVATO CON RISERVE
 bc46a27 Merge origin/main (PR #318, voce V6) nella PR #319 (review #619)
 9c44686 docs(fine-task): fetta 36, PR #319, correzioni bot/ve su 1e4bc90, review #617
@@ -307,6 +311,39 @@ Review #619 (chat Mani). È il merge di origin/main f37316f (PR #318, voce V6) d
 Riga di memoria aggiunta: «#619 (chat Mani) — 2026-11-02 — APPROVATO CON RISERVE — …», più una lezione sulla review dei merge.
 ```
 
+Commit 5331f14 (secondo merge di origin/main 3cd550f, PR #321: entrano brains/claude_cli.py, gas.py del doctor e i test di M2). Verdetto integrale della review #620 (chat Mani):
+
+```
+## VERDETTO: APPROVATO
+
+Review #620 (chat Mani). È il secondo merge di origin/main 3cd550f (PR #321) dentro claude/peaceful-lovelace-0w2b7q (PR #319). Ho controllato il diff staged: sha256 8b3a724822e0b333, uguale a quello che mi hai dato. Base del merge f37316f.
+
+Elementi del diff esaminati:
+- `gas.py:35` — aggiunge l'import di `stato_abbonamento` come `claude_cli_stato_abbonamento`. Rischio: che nell'auto-merge degli import si perdesse una riga di uno dei due lati. Ho confrontato il delta contro HEAD con quello di main dalla base, e il delta contro MERGE_HEAD con quello di avvisa_operatore dalla base: sono identici. Esito: ok.
+- `gas.py:5143` — riga «Cervello forte · login» del doctor, dentro `if binario`, col suffisso «CLI della shell» quando `_avviso` è vero. Rischio: che la riga finisse fuori dal ramo dove `_avviso` è definita. Il codice è identico a quello di M2, nello stesso ramo. Esito: ok.
+- `tests/test_unit_kernel.py:59` — `os.environ.pop("GAS_CLAUDE_CLI")` in testa alla suite (R-635-1). Rischio: che un test di avvisa_operatore contasse sull'interruttore preso dalla shell. Ho cercato GAS_CLAUDE_CLI nei test di avvisa e nel lato Mani del kernel: nessun uso. Esito: ok.
+- `tests/test_unit_kernel.py:11188` — stub di `gas.claude_cli_stato_abbonamento` in `_doc99`, rimesso a posto nel `finally`. Rischio: che con l'auto-merge si perdesse uno dei due lati di T99 o T102. Delta identico su tutti e due i lati, e la suite è verde. Esito: ok.
+- `brains/claude_cli.py:305` — il file intero, come `tests/test_unit_claude_cli.py` e `tests/test_unit_dotenv.py`: tutti e tre hanno 0 righe di differenza contro MERGE_HEAD. Il lato M2 è arrivato tale e quale. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1126` — unione della memoria: 1138 righe, cioè le 1125 di HEAD più le 13 di main (#632-M2…#641-M2, più le lezioni). Ho cercato con `comm` le righe di HEAD o di main che mancano nell'indice: nessuna. Nessuna riga doppia e nessun marcatore di conflitto. Esito: ok.
+- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» finisce con la riga 4 di main intera. Davanti c'è la testa Mani («…bc46a27 e quello della PR #321, review #611–#620»). La catena «prima:» di HEAD, da «voce V6» in poi, è identica a quella di main, e la voce M2 sul forte compare una volta sola. L'altro pezzo di main, la voce R2/`--bare` a :604, è presente e la fetta 36 di HEAD c'è. Esito: ok.
+
+Prove riprodotte da me sull'export dell'indice (`git checkout-index` nello scratchpad):
+- kernel 1075 PASS, 1 FAIL: è T31g, dovuto all'ambiente (lo stesso di #619);
+- avvisa + gate + richieste + claude_cli + dotenv: 955 passed;
+- `py_compile` di gas.py e brains/claude_cli.py: ok.
+
+Rischi esclusi:
+- Doctor e `claude auth status` su un Mac vero: non verificati, qui non c'è la CLI dell'operatore. Sono già coperti dalle review #632–#640-M2 e il codice di M2 non è cambiato nel merge.
+- handoff.md, ultimo_report.md e diff_sessione.md: non li ho rivisti nel contenuto. Sono identici a HEAD (lato Mani), e dopo il commit del merge vanno aggiornati con questo secondo merge, come R-619-1.
+
+Finding R-620-x: nessuno.
+
+Memoria:
+- La riga contatore #620 è scritta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree: l'indice non l'ho toccato e lo sha del diff staged è ancora 8b3a724822e0b333.
+- Lo script `bash scripts/commit_memoria_revisore.sh` NON l'ho lanciato, come mi hai chiesto: va eseguito dopo il commit del merge (lezione #619).
+- Nessuna lezione nuova.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_kernel.py` (comando della CI `python tests/test_unit_kernel.py`, da root): su main pulito 1066 PASS, 1 FAIL; col diff 1075 PASS, 1 FAIL (+9: T102a-j senza h; T68s ha due voci in più nello stesso check). Il FAIL è T31g («gate env GAS_VECTORS=1 costruisce il vector store»), identico su main in questo container: dipende dall'ambiente, fuori scope. Riepilogo reale:
@@ -326,7 +363,9 @@ Riga di memoria aggiunta: «#619 (chat Mani) — 2026-11-02 — APPROVATO CON RI
 - 30aff74, 6600af1 (memoria #613, #614), b1d1e45 (correzioni), 1e4bc90 (fine-task): run 41371890790 su 1e4bc90 success (unit-suite, handoff-check); verifica-bot neutral (bot APPROVATO CON RISERVE).
 - 1a13c53 (memoria #617), 20031e4 (correzioni), 9c44686 (fine-task): run 41374118977 su 9c44686 success (unit-suite, handoff-check); verifica-bot neutral (bot APPROVATO CON RISERVE).
 - I commit di main entrati col merge (fino a f37316f, PR #318) hanno le run della PR #318, non di questa PR.
-- bc46a27 (merge), 22a8a5b (memoria #619) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- bc46a27 (merge), 22a8a5b (memoria #619), c945f46 (fine-task): run su c945f46 non letta (la #321 è entrata in main prima della fine; il conflitto l'ha superata).
+- I commit di main entrati col secondo merge (fino a 3cd550f, PR #321) hanno le run della PR #321.
+- 5331f14 (merge), d51eaf1 (memoria #620) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

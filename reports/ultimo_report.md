@@ -14,6 +14,7 @@
 - **Review #613**: APPROVATO CON RISERVE; R-613-1..3 `FATTA`. **Review #614**: APPROVATO CON RISERVE; R-614-1 COSMETICA e R-614-2 BASSA (preesistente) `DEFERITA — registrate`.
 - **Bot e verifica esterna su 1e4bc90**: APPROVATO CON RISERVE. V-1 (tetto del giorno al cancello), V-2 ve (test della firma end-to-end), V-3 ve (valore non intero = spento): `FATTA` in 20031e4. **Review #617**: APPROVATO CON RISERVE; R-617-1/2 COSMETICHE e R-617-3 BASSA `DEFERITA — registrate`.
 - **Merge di main (PR #318, voce V6 di M2) nella #319**: `FATTA` in bc46a27, con merge e non rebase; conflitti solo nei report (tenuti i miei) e nella memoria del revisore (tenuti tutti e due i lati). Review #619 APPROVATO CON RISERVE.
+- **Secondo merge di main (PR #321, forte e `--bare` di M2) nella #319**: `FATTA` in 5331f14; conflitti nei report (tenuti i miei), nella memoria (tutti e due i lati) e nella riga «Ultimo aggiornamento» di stato_progetto (unite). Review #620 APPROVATO.
 - **Voce H24 (R8)**: commit locale 8e69ab6 sul branch voce-h24 (57 test; review #615 BOCCIATO, #616 APPROVATO CON RISERVE); `DEFERITA — revisione e PR dopo il merge della #319, per non mescolare le fette`.
 - **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (indicazione di M1)`.
 
