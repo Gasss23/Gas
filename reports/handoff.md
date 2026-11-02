@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2, coordinata da M1)
+**Sessione:** 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2, coordinata da M1) — aggiornato dopo la verifica esterna su d0a0035
 
 ---
 
@@ -16,21 +16,22 @@
 - **1. Figlio `claude -p` senza chiavi API (fail-closed se diventa bare)**: `FATTA` — test che lo fissa.
 - **2. Flag o variabile per restare non-bare**: `FATTA (nessuno documentato)` — scritto nel docstring.
 - **3. Riga «login» nel doctor, con versione, zero token**: `FATTA` — `stato_abbonamento()` in brains, 3 righe in gas.py autorizzate da M1.
+- **V-1 della verifica esterna su d0a0035** («abbonamento» anche con CLI non loggata): `FATTA` (review #634-M2). V-2 ve (il doctor non vede in anticipo il cambio di default): dichiarata nel docstring.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  3 +++
- brains/claude_cli.py               | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- gas.py                             |  3 +++
- reports/diff_sessione.md           | 16 +++++++---------
+ .claude/agents/memoria_revisore.md |   3 +++
+ brains/claude_cli.py               |  57 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ gas.py                             |   3 +++
+ reports/diff_sessione.md           |  16 +++++++---------
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |  3 ++-
- reports/ultimo_report.md           | 31 +++++++++++++------------------
- tests/test_unit_claude_cli.py      | 90 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_dotenv.py          | 20 ++++++++++++++++++++
+ reports/stato_progetto.md          |   3 ++-
+ reports/ultimo_report.md           |  31 +++++++++++++------------------
+ tests/test_unit_claude_cli.py      |  92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_dotenv.py          |  20 ++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -38,6 +39,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+612369a fix(forte): «login dell'abbonamento» solo se la CLI dice anche di essere loggata (V-1 ve #321, review #634-M2)
+d0a0035 docs(forte-non-bare): report di fine task (PR #321, review #632/#633-M2)
 2f5d53d fix(forte): difesa contro il futuro default --bare di claude -p; riga «login» nel doctor (chat M2)
 26ecd7a chore(revisore): memoria review #632 — BOCCIATO
 ```
@@ -116,15 +119,37 @@ Non ho provato una CLI `claude` vera con login reale, né il comportamento con `
 - Il file è modificato ma non in staging e non committato. Va committato dopo aver eseguito `bash scripts/segna_review_ok.sh`, oppure con `/fine-task`.
 - Come richiesto, non ho committato nulla.
 
+Commit della correzione V-1 ve (dopo d0a0035). Review #634-M2:
+
+## VERDETTO: APPROVATO
+
+Review #634-M2 (chat M2). Diff staged su fix/forte-non-bare-m2 (PR #321), 2 file, sha256 del diff c9f58d4c. Chiude la V-1 BASSA della verifica esterna #321.
+
+Elementi del diff esaminati:
+- `brains/claude_cli.py:424`: calcola `loggato` dentro il try, come `returncode == 0` e `loggedIn` non uguale a `False`. Ho controllato due rischi. (1) Un'eccezione fuori dal try: non può succedere, perché `isinstance` e `.get` girano solo su un dict e sono comunque coperti dall'`except Exception`. (2) Un JSON senza `loggedIn` (CLI vecchia): non viene penalizzato, perché il controllo `is False` è stretto e la chiave mancante dà None. Il caso della stringa `"false"` diventa truthy, ma con `rc != 0` cade comunque in WARN. Esito: ok.
+- `brains/claude_cli.py:437-440`: OK solo se il metodo è dell'abbonamento E la CLI è loggata; altrimenti, con `metodo == "none"` o non loggato, «nessun login» (WARN). Rischio esaminato: il cambio di comportamento sui metodi diversi dall'abbonamento. Un `api_key` con `loggedIn:false` ora riceve «nessun login» invece di «NON dell'abbonamento». Prima con rc diverso da 0 era già così. Resta comunque WARN, quindi non c'è nessun falso OK. È una scelta di messaggio, non un difetto. Esito: ok.
+- `brains/claude_cli.py:35-37`: il docstring del modulo dichiara il limite V-2: il doctor non vede in anticipo il cambio di default a `--bare`. È coerente con la difesa che chiude in caso di errore: il figlio non riceve chiavi API. Esito: ok.
+- `tests/test_unit_claude_cli.py:433-434`: due casi nuovi nel test parametrico (claude.ai con rc 1; `loggedIn` false con rc 0), entrambi WARN «nessun login». Rischio esaminato: che i test siano solo di forma. Non lo sono: con il codice precedente il caso alla riga 434 dava OK, quindi il test cattura davvero la regressione. Esito: ok.
+
+Contesto: `tests/test_unit_claude_cli.py:428` copre ancora il caso positivo (`loggedIn` true, rc 0, OK).
+
+Ho eseguito `pytest tests/test_unit_claude_cli.py`: 44 passed. La suite dotenv non l'ho rilanciata: fa fede il dato del chiamante, 63 passed.
+
+Antipattern (Wall of Shame): il diff non tocca la history; niente slicing, niente simulazione di tool. La funzione resta senza eccezioni e non chiama il modello. Il cap a 10 iterazioni e `_get_window` non vengono toccati.
+
+Rischio escluso: non ho verificato `claude auth status` con la CLI vera; l'esempio di `rc` e `loggedIn` viene dalla doc, non da un'esecuzione. Non è riproducibile qui perché la CLI loggata con l'abbonamento sta sul computer di Gas.
+
+Memoria del revisore: ho aggiunto la riga contatore `#634-M2 (chat M2) — 2026-11-02 — APPROVATO — …; nessuna lezione nuova` in /home/user/Gas/.claude/agents/memoria_revisore.md. Il commit atomico non è partito: `bash scripts/commit_memoria_revisore.sh` è stato negato dal classificatore dei permessi, e comunque avevi chiesto «Non committare». Il file è modificato ma non committato e va incluso nel commit di fine task.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 42 test raccolti, `tests/test_unit_dotenv.py` 17 → 19 (in tutto 61 passed dopo la correzione di #632; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
+Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 42 test raccolti, `tests/test_unit_dotenv.py` 17 → 19 (in tutto 61 passed dopo la correzione di #632, 63 dopo la V-1 ve: 2 casi in più nel parametrico; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- 26ecd7a, 2f5d53d: pushati insieme all'apertura della PR #321; run non ancora disponibile alla scrittura dell'handoff.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- d0a0035 (fine-task precedente, head allora): handoff-check success; unit-suite in corso alla lettura della verifica esterna (APPROVATO CON RISERVE, https://github.com/Gasss23/Gas/pull/321#issuecomment-6568584082).
+- Commit della correzione V-1 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
