@@ -53,6 +53,10 @@ from brains.model_ids import MODEL_GROQ
 os.environ["GAS_NO_DOTENV"] = "1"  # prova reale 2026-10-11: main() carica il .env
 for _k_tg in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS"):
     os.environ.pop(_k_tg, None)
+# R-635-1 (review #635-M2): l'interruttore del forte non si eredita dalla shell, altrimenti
+# ogni doctor della suite lancerebbe il `claude` vero (`--version`/`auth status`).
+# I test che lo vogliono acceso lo mettono da sé.
+os.environ.pop("GAS_CLAUDE_CLI", None)
 import urllib.request as _urlreq_erm
 import modules.telegram.bot as _tg_erm
 _TG_TENTATIVI: list = []        # chiamate al trasporto di default (bloccate)
@@ -11178,9 +11182,16 @@ try:
             for _kk in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
                 os.environ.pop(_kk, None)
             def _doc99():
+                # V-1 bot #321: il doctor non deve lanciare il `claude` vero della macchina
+                # (`--version`/`auth status`): la riga «login» si prova in test_unit_dotenv.py.
                 _b = _io99.StringIO()
-                with _cl99.redirect_stdout(_b):
-                    gas.doctor(str(_k99.root))
+                _vero99 = gas.claude_cli_stato_abbonamento
+                gas.claude_cli_stato_abbonamento = lambda *a, **k: ("OK", "finto (test T99)")
+                try:
+                    with _cl99.redirect_stdout(_b):
+                        gas.doctor(str(_k99.root))
+                finally:
+                    gas.claude_cli_stato_abbonamento = _vero99
                 return [l for l in _b.getvalue().splitlines() if "Cervello forte" in l]
             os.environ["GAS_CLAUDE_CLI"] = "0"
             _d99a = _doc99()

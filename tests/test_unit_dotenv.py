@@ -9,6 +9,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import gas
+from brains.claude_cli import stato_abbonamento as _stato_abbonamento_vero
+
+
+@pytest.fixture(autouse=True)
+def _niente_claude_vero(monkeypatch):
+    """V-1 ve #321 su 36f790f: i doctor di questi test non lanciano mai il `claude` vero
+    della macchina (`--version`/`auth status`); il test della riga «login» rimette la
+    funzione vera e usa una CLI finta."""
+    monkeypatch.setattr(gas, "claude_cli_stato_abbonamento", lambda *a, **k: ("OK", "finto (test)"))
 
 
 @pytest.fixture
@@ -260,3 +269,33 @@ def test_dal_dotenv_al_doctor(env, tmp_path, monkeypatch, capsys):
     righe = _righe_forte(capsys, tmp_path)
     assert any("comando claude" in r and "WARN" in r and "ha un altro valore" in r
                and "/vecchio/claude" in r for r in righe), righe
+
+
+@pytest.mark.parametrize("metodo, esito", [("claude.ai", "OK"), ("api_key", "WARN")])
+def test_doctor_dice_quale_login_usa_il_forte(env, tmp_path, monkeypatch, capsys, metodo, esito):
+    """Chat M2 (futuro default --bare): il doctor dice se il forte userebbe il login
+    dell'abbonamento, con `claude auth status` (zero token), con la versione della CLI."""
+    monkeypatch.setattr(gas, "claude_cli_stato_abbonamento", _stato_abbonamento_vero)
+    for k in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+        env.pop(k, None)
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", {"GAS_CLAUDE_CLI", "GAS_CLAUDE_BIN"})
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    finto = tmp_path / "claude"
+    finto.write_text("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 2.1.300; exit 0; fi\n"
+                     f"if [ \"$1 $2\" = 'auth status' ]; then echo '{{\"authMethod\": \"{metodo}\"}}'; exit 0; fi\n"
+                     "echo NON-DEVE-PARTIRE >&2; exit 9\n")
+    finto.chmod(0o755)
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {"GAS_CLAUDE_BIN": str(finto)})
+    env["GAS_CLAUDE_CLI"] = "1"
+    env["GAS_CLAUDE_BIN"] = str(finto)
+    righe = [r for r in _righe_forte(capsys, tmp_path) if "login" in r]
+    assert len(righe) == 1 and esito in righe[0] and "2.1.300" in righe[0], righe
+    assert "CLI della shell" not in righe[0], righe
+    # V-1 bot #321: se il timer può usare un altro `claude` (GAS_CLAUDE_BIN solo nella shell),
+    # la riga «login» dice che riguarda la CLI della shell
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    gas._DOTENV_CARICATE.discard("GAS_CLAUDE_BIN")
+    righe = _righe_forte(capsys, tmp_path)
+    assert any("comando claude" in r and "WARN" in r for r in righe), righe
+    login = [r for r in righe if "Cervello forte login" in " ".join(r.split())]
+    assert len(login) == 1 and esito in login[0] and "CLI della shell" in login[0], righe
