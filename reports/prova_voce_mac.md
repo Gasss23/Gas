@@ -46,6 +46,10 @@ Come funziona: quando smetti di parlare la frase parte da sola; Gas risponde a v
 
 (Facoltativo: mentre Gas parla, parlagli sopra. Deve zittirsi e ascoltarti.)
 
+## Scegliere la voce di Gas (pagina «prova voci»)
+
+Con le due finestre accese, apri **http://127.0.0.1:9000/voci**. In cima ci sono le candidate: voci maschili, calme, con accento britannico, prese dall'elenco del tuo account ElevenLabs. Scegli una frase, premi «ascolta» su ogni voce, poi «scelgo questa»: la pagina ti dà la riga da mettere nel `.env` (`ELEVENLABS_VOICE_ID=…`). Riavvia la prima finestra e Gas parla con la voce nuova. Ogni ascolto spende un po' di caratteri ElevenLabs (al massimo 40 prove all'ora). Se sul Mac c'è Piper (`GAS_PIPER_MODEL` nel `.env`), compare anche una voce locale gratis, per ora solo da ascoltare.
+
 ## Se qualcosa va storto
 
 - **Test 1 non va (Gas si zittisce da solo):** aggiungi `GAS_VOICE_INTERRUZIONE=0` nel `.env`, chiudi e riavvia la seconda finestra (la pagina), ricarica il browser. Così non puoi più interrompere Gas, ma lui non si zittisce più da solo. Dillo a M1.
