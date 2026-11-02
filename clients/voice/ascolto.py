@@ -72,6 +72,7 @@ ATTESA_VOCE_S = 5.0          # dopo la parola, se non parli entro questo tempo s
 INIZIO_VOCE_S = 0.24         # voce continua che apre un turno nella finestra (3 blocchi)
 MICROFONO_MUTO_S = 10.0      # tutto a zero per così tanto → avviso (permesso del microfono?)
 RIPROVA_MICROFONO_S = 5.0
+PAUSA_ERRORI_MAX_S = 60.0    # pausa massima fra due tentativi col rilevatore in errore
 _BIP_OK = "/System/Library/Sounds/Tink.aiff"
 _BIP_ERRORE = "/System/Library/Sounds/Basso.aiff"
 _HOST_LOCALI = ("127.0.0.1", "localhost", "::1")
@@ -201,7 +202,8 @@ class Ascolto:
                  svuota: Callable[[], None] = lambda: None,
                  azzera_rilevatore: Callable[[], None] = lambda: None,
                  soglia: float = 0.5, voce_rms: float = 500.0, silenzio_s: float = 0.8,
-                 finestra_s: float = 12.0, max_turni: int = 5) -> None:
+                 finestra_s: float = 12.0, max_turni: int = 5,
+                 dorme: Callable[[float], None] = time.sleep) -> None:
         self.blocchi = blocchi
         self.rilevatore = rilevatore
         self.invia = invia
@@ -214,6 +216,8 @@ class Ascolto:
         self.silenzio_s = silenzio_s
         self.finestra_s = finestra_s
         self.max_turni = max(1, int(max_turni))
+        self.dorme = dorme
+        self._errori_rilevatore = 0
         self._muti = 0
 
     def _prossimo(self) -> Optional[Blocco]:
@@ -241,10 +245,31 @@ class Ascolto:
             try:
                 punteggio = float(self.rilevatore(b))
             except Exception as e:  # §9: un errore del modello non ferma l'ascolto
-                log.warning("rilevatore: errore (%s)", type(e).__name__)
+                self._errore_rilevatore(e)
                 continue
+            if self._errori_rilevatore:
+                log.warning("rilevatore: di nuovo a posto dopo %d errori di fila",
+                            self._errori_rilevatore)
+                self._errori_rilevatore = 0
             if punteggio >= self.soglia:
                 return True
+
+    def _errore_rilevatore(self, e: Exception) -> None:
+        """V-1 ve #323: un rilevatore che fallisce sempre non deve scrivere una riga per
+        blocco (12,5 al secondo, log senza rotazione). Si scrive al 1°, 2°, 4°, 8°…
+        errore di fila, e dal 3° si fa una pausa crescente (0,5 s, 1 s, 2 s… fino a
+        PAUSA_ERRORI_MAX_S) prima di riprovare, buttando l'audio arrivato nel frattempo."""
+        self._errori_rilevatore += 1
+        n = self._errori_rilevatore
+        if n & (n - 1) == 0:  # potenza di 2
+            log.warning("rilevatore: errore (%s), %d di fila", type(e).__name__, n)
+        if n >= 3:
+            try:
+                # R-624-1: esponente limitato (2**1024 non entra in un float)
+                self.dorme(min(PAUSA_ERRORI_MAX_S, 0.5 * 2 ** min(n - 3, 7)))
+            except Exception as e2:  # §9
+                log.warning("pausa del rilevatore fallita (%s)", type(e2).__name__)
+            self._svuota()
 
     def registra(self, iniziali: Optional[List[Blocco]] = None,
                  attesa_s: float = ATTESA_VOCE_S) -> Optional[List[Blocco]]:

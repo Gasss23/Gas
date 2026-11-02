@@ -205,6 +205,83 @@ def test_eccezioni_delle_parti_non_fermano_l_ascolto():
     assert len(f.inviati) == 2 and f.bip == ["ok", "errore", "ok", "errore"]
 
 
+def test_rilevatore_sempre_in_errore_log_limitato_e_pausa_crescente(caplog):
+    """V-1 ve #323: un rilevatore rotto non scrive una riga per blocco e non gira a vuoto:
+    log al 1°, 2°, 4°, 8°… errore, pausa crescente fino a 60 s, microfono svuotato."""
+    pause = []
+
+    class Rotto(Finti):
+        def rilevatore(self, b):
+            raise RuntimeError("modello")
+
+    f = Rotto()
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        a.Ascolto(iter(_blocchi((SILENZIO, 1000))), f.rilevatore, f.invia, f.riproduci,
+                  f.suona, svuota=f.svuota, dorme=pause.append).gira()
+    righe = [r for r in caplog.records if "rilevatore: errore" in r.getMessage()]
+    assert len(righe) == 10  # 1, 2, 4, …, 512
+    assert pause[:4] == [0.5, 1.0, 2.0, 4.0] and max(pause) == a.PAUSA_ERRORI_MAX_S
+    assert len(pause) == 998 and f.svuotati == 998 and f.inviati == []
+
+
+def test_rilevatore_in_errore_per_giorni_resta_a_60_secondi(caplog):
+    """R-624-1: oltre i 1027 errori di fila `2 ** (n - 3)` non entra in un float: la
+    pausa deve restare 60 s e il log logaritmico, senza «pausa fallita» a ogni blocco."""
+    pause = []
+
+    def rotto(b):
+        raise RuntimeError("modello")
+
+    f = Finti()
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        a.Ascolto(iter(_blocchi((SILENZIO, 1200))), rotto, f.invia, f.riproduci, f.suona,
+                  svuota=f.svuota, dorme=pause.append).gira()
+    testo = [r.getMessage() for r in caplog.records]
+    assert not any("pausa del rilevatore fallita" in t for t in testo)
+    assert len(pause) == 1198 and pause[-1] == a.PAUSA_ERRORI_MAX_S
+    assert sum("rilevatore: errore" in t for t in testo) == 11  # 1, 2, 4, …, 1024
+
+
+def test_rilevatore_che_torna_azzera_il_conto(caplog):
+    class Ballerino(Finti):
+        def __init__(self):
+            super().__init__()
+            self.n = 0
+
+        def rilevatore(self, b):
+            self.n += 1
+            if self.n <= 5:
+                raise RuntimeError("x")
+            return super().rilevatore(b)
+
+    f = Ballerino()
+    pause = []
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        a.Ascolto(iter(_blocchi((SILENZIO, 5), SILENZIO, PAROLA, (VOCE, 5), (SILENZIO, 10))),
+                  f.rilevatore, f.invia, f.riproduci, f.suona, svuota=f.svuota,
+                  dorme=pause.append, finestra_s=0).gira()
+    righe = [r.getMessage() for r in caplog.records]
+    assert sum("di nuovo a posto" in t for t in righe) == 1  # R-624-2: una volta sola
+    assert "di nuovo a posto dopo 5 errori" in " ".join(righe) and len(f.inviati) == 1
+    assert pause == [0.5, 1.0, 2.0]
+
+
+def test_dopo_il_ritorno_le_pause_ripartono_da_mezzo_secondo():
+    """R-624-2: il conto si azzera davvero quando il rilevatore torna."""
+    errori = iter([True] * 4 + [False] * 3 + [True] * 4 + [False] * 10)
+    pause = []
+
+    def ballerino(b):
+        if next(errori, False):
+            raise RuntimeError("x")
+        return 0.0
+
+    f = Finti()
+    a.Ascolto(iter(_blocchi((SILENZIO, 21))), ballerino, f.invia, f.riproduci, f.suona,
+              svuota=f.svuota, dorme=pause.append).gira()
+    assert pause == [0.5, 1.0, 0.5, 1.0]
+
+
 def test_avviso_se_il_microfono_e_muto(caplog):
     f = Finti()
     with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
@@ -618,6 +695,61 @@ def test_installa_python_vecchio_si_ferma_prima_delle_dipendenze(tmp_path):
     gas, finti, casa = _gas_finto(tmp_path)
     r, registro = _installa(gas, finti, casa, tmp_path, PYTHON_VECCHIO="1")
     assert r.returncode == 1 and "Python 3.11" in r.stderr and "pip install" not in registro
+
+
+def test_installa_scrive_gas_claude_bin(tmp_path):
+    """V-1 bot #323: con `claude` nel PATH e senza GAS_CLAUDE_BIN nel .env, installa.sh
+    lo aggiunge col percorso assoluto (sotto launchd il PATH non lo troverebbe)."""
+    gas, finti, casa = _gas_finto(tmp_path)
+    (finti / "claude").write_text("#!/bin/bash\nexit 0\n")
+    (finti / "claude").chmod(0o755)
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    env = (gas / ".env").read_text()
+    assert r.returncode == 0 and f"GAS_CLAUDE_BIN={finti}/claude" in env.splitlines()
+    assert env.startswith("GAS_VOICE_TOKEN=segreto-di-prova\n")
+
+
+def test_installa_non_tocca_un_gas_claude_bin_esistente(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_CLAUDE_BIN=/opt/c\n")
+    (finti / "claude").write_text("#!/bin/bash\nexit 0\n")
+    (finti / "claude").chmod(0o755)
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and (gas / ".env").read_text() == "GAS_VOICE_TOKEN=x\nGAS_CLAUDE_BIN=/opt/c\n"
+
+
+@pytest.mark.parametrize("riga", ["GAS_CLAUDE_BIN=", "GAS_CLAUDE_BIN= # da mettere"])
+def test_installa_gas_claude_bin_vuoto_avvisa_e_non_raddoppia(tmp_path, riga):
+    """R-624-3: una riga vuota non si raddoppia (vale la prima) e si avvisa."""
+    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\n" + riga + "\n")
+    (finti / "claude").write_text("#!/bin/bash\nexit 0\n")
+    (finti / "claude").chmod(0o755)
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and "GAS_CLAUDE_BIN è vuoto" in r.stdout
+    assert (gas / ".env").read_text() == "GAS_VOICE_TOKEN=x\n" + riga + "\n"
+
+
+def test_installa_avvisa_se_claude_manca(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and "claude` non trovato" in r.stdout
+    assert "GAS_CLAUDE_BIN" not in (gas / ".env").read_text()
+
+
+@pytest.mark.parametrize("riga", ["GAS_VOICE_TOKEN=", "GAS_VOICE_TOKEN= # da mettere",
+                                  "GAS_VOICE_TOKEN=\"\"", "GAS_VOICE_TOKEN=   "])
+def test_installa_token_vuoto_si_ferma(tmp_path, riga):
+    """V-4 bot #323: un token vuoto o col solo commento non passa il controllo."""
+    gas, finti, casa = _gas_finto(tmp_path, env=riga + "\n")
+    r, registro = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and "GAS_VOICE_TOKEN" in r.stderr and registro == ""
+
+
+@pytest.mark.parametrize("riga", ["GAS_VOICE_TOKEN=abc", "export GAS_VOICE_TOKEN=\"abc\"",
+                                  "GAS_VOICE_TOKEN='abc' # x"])
+def test_installa_token_buono_passa(tmp_path, riga):
+    gas, finti, casa = _gas_finto(tmp_path, env=riga + "\n")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stderr
 
 
 def test_installa_senza_token_si_ferma_prima_di_tutto(tmp_path):
