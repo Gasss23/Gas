@@ -14,7 +14,7 @@ Va misurato col comando VERO di Gas, preso dal codice stesso (`ClaudeCliClient.c
 cd ~/Gas && python3 - <<'PY'
 import json, os, subprocess, tempfile, time
 from gas import _carica_dotenv
-_carica_dotenv()   # come la CLI di Gas: il .env (binario, login) prima di tutto
+_carica_dotenv()   # come la CLI di Gas: il .env (binario, login) prima del client
 from brains.claude_cli import ClaudeCliClient, _ambiente_pulito
 from brains.model_ids import MODEL_CLAUDE_FORTE
 modello = MODEL_CLAUDE_FORTE   # lo stesso valore di Gas (fissato all'import, come in gas.py)
@@ -36,6 +36,8 @@ with tempfile.TemporaryDirectory() as d:
 PY
 ```
 
+Limite dichiarato (V-2 bot #320): argomenti, ambiente e cartella sono quelli veri; il system prompt e la domanda invece sono corti e semplici (Gas manda identità, pin dei lead, istruzioni del formato e la trascrizione coi tag). Pesa poco sull'avvio; il tempo del «modello» può differire da un turno vero.
+
 Il numero da confrontare con la soglia è **«avvio e resto»** (totale meno il tempo del modello). Il campo `duration_api_ms` nella risposta JSON di `claude -p` è **da verificare**: se manca, «modello» esce 0 e allora si confronta con `time claude --version` (solo l'avvio del programma, che sottostima l'avvio vero).
 
 Se «avvio e resto» vale meno di 1–2 s su un turno a voce di 8–15 s, il processo caldo serve a poco. In quel caso conviene altro: risposte più corte, la voce frase per frase della V7b, il cervello normale per le domande semplici.
@@ -55,7 +57,7 @@ Se «avvio e resto» vale meno di 1–2 s su un turno a voce di 8–15 s, il pro
 Pagine lette: `code.claude.com/docs/en/agent-sdk/overview`, `.../quickstart`, `.../authentication`, `.../headless`.
 - Agent SDK, frase identica in overview e quickstart: «Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK. Use the API key authentication methods described in the Quickstart instead.» Il quickstart usa `ANTHROPIC_API_KEY`. La doc **non dice** in modo esplicito se un uso personale dell'SDK col login dell'abbonamento sia permesso: **da verificare** con il supporto o le pagine di supporto (non lette).
 - `claude -p` senza `--bare` usa la stessa catena di credenziali della CLI: «Subscription OAuth credentials from `/login`. This is the default for Claude Pro, Max, Ultra, Team, and Enterprise users». Con `--bare` invece no: «bare mode doesn't use your subscription login». Quindi `--bare`, che accorcia l'avvio, **non** si può usare con l'abbonamento.
-- **Rischio nuovo, vale anche per il cervello forte di oggi (strade A e C; V-1 bot #320)**: la pagina headless dice che `--bare` «is the recommended mode for scripted and SDK calls, and will become the default for -p in a future release». In modalità bare il login dell'abbonamento non viene mai letto: il giorno in cui cambierà il default, `claude -p` come lo lancia Gas smetterà di usare il login Max (errore di login, o un'altra via se c'è una chiave). Da fare, a parte da questa proposta: controllare a ogni avvio o nel `doctor` la versione della CLI, e verificare se esiste un flag esplicito per restare non-bare (**da verificare**). Lo segnalo a M1 come rischio per R2.
+- **Rischio nuovo, vale anche per il cervello forte di oggi (strade A e C; V-1 bot #320)**: la pagina headless dice che `--bare` «is the recommended mode for scripted and SDK calls, and will become the default for -p in a future release». In modalità bare il login dell'abbonamento non viene mai letto: il giorno in cui cambierà il default, `claude -p` come lo lancia Gas smetterà di usare il login Max (errore di login, o un'altra via se c'è una chiave). Da fare, a parte da questa proposta: controllare a ogni avvio o nel `doctor` la versione della CLI, e verificare se esiste un flag esplicito per restare non-bare (**da verificare**). Tracciato in `reports/stato_progetto.md` (V-1 bot #320); la difesa è nella PR #321.
 - Resta valida l'ambiguità già scritta in `reports/r2_regole_abbonamento.md`: Consumer Terms §3.7 sull'uso automatico, rischio accettato dall'operatore il 23 ottobre per `claude -p`. Passare all'SDK è un uso diverso da quello deciso allora: **va rideciso**.
 
 ## Proposta
