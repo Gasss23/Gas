@@ -32,7 +32,9 @@ rung entra nella cascata senza toccare il ciclo agentico. Invarianti:
   per restare non-bare (lette headless, cli-reference, authentication). Difesa: il
   figlio non riceve MAI chiavi API (lista di variabili permesse, test), quindi in bare
   fallisce col login invece di addebitare a consumo (fail-closed, forte fermo);
-  `stato_abbonamento()` per il doctor dice quale login vede la CLI, senza token.
+  `stato_abbonamento()` per il doctor dice quale login vede la CLI, senza token. Limite
+  (V-2 ve #321): il doctor guarda la CLI di oggi, non-bare; non vede in anticipo il cambio
+  di default. Quel giorno la difesa è il fallimento chiuso (forte fermo, errore di login).
 """
 from __future__ import annotations
 
@@ -419,6 +421,7 @@ def stato_abbonamento(binario: Optional[str] = None,
         st = esegui([exe, "auth", "status"], timeout=timeout)
         dati = json.loads(st.stdout or "")
         metodo = dati.get("authMethod") if isinstance(dati, dict) else None
+        loggato = st.returncode == 0 and not (isinstance(dati, dict) and dati.get("loggedIn") is False)
     except (OSError, subprocess.SubprocessError) as e:
         return "WARN", f"non verificabile: comando claude non eseguibile ({type(e).__name__})"
     except ValueError:   # JSON illeggibile (anche testo non UTF-8 con un runner diverso)
@@ -429,9 +432,11 @@ def stato_abbonamento(binario: Optional[str] = None,
     if not isinstance(metodo, str):
         return "WARN", (f"non verificabile (versione {versione}): `claude auth status` non ha dato "
                         "il metodo di login (CLI vecchia?)")
-    if metodo in _LOGIN_ABBONAMENTO:
+    # V-1 ve #321: «abbonamento» solo se la CLI dice anche di essere loggata (exit 0 e
+    # loggedIn non falso); la doc: «Exits with code 0 if logged in, 1 if not»
+    if metodo in _LOGIN_ABBONAMENTO and loggato:
         return "OK", f"login dell'abbonamento ({metodo}) · versione {versione}"
-    if metodo == "none" or st.returncode != 0:
+    if metodo == "none" or not loggato:
         return "WARN", f"nessun login (versione {versione}): sul computer di Gas `claude`, poi /login"
     return "WARN", (f"login NON dell'abbonamento ({metodo}) · versione {versione}: il forte "
                     "consumerebbe a pagamento o fallirebbe")
