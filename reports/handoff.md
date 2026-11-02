@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #324 (https://github.com/Gasss23/Gas/pull/324). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5125431345","url":"https://github.com/Gasss23/Gas/pull/324"}`), perché `gh` nel cloud non è autenticato. Solo documenti, con riserve BASSE/COSMETICHE: l'operatore ha già detto sì; M1 attiva il merge automatico sull'head.
+1. Merge della PR #324 (https://github.com/Gasss23/Gas/pull/324). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5125431345","url":"https://github.com/Gasss23/Gas/pull/324"}`), perché `gh` nel cloud non è autenticato. Solo documenti. Il sì dell'operatore era sull'head 7346994; dopo, due giri del bot BOCCIATO (finding MEDIA, chiusi) hanno cambiato il piano aggiungendo protezioni: **serve di nuovo il sì sull'head attuale** (V-2 bot #324 su a48caa0). Il merge automatico attivato da M1 va confermato o tolto.
 2. Rispondere alle 7 domande in fondo a `reports/piano_mail.md`: niente codice della mail prima delle risposte.
 
 ---
@@ -25,6 +25,7 @@
 - **Bot su 7346994 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741952991)**: APPROVATO CON RISERVE, check success; sì dell'operatore al merge. V-1 BASSA (gli snapshot `refs/gas/snapshots/` fotografano `.gas_history.json` per 7 giorni) e V-2 COSMETICA (`test_notify_telegram_safe` da aggiornare nella fetta 1): `REGISTRATE` in stato_progetto, senza altri giri (decisione di M1).
 - **Merge di main (PR #325 di M2, voce V7b)**: `FATTA` in 9174640 — conflitti solo nei report (tenuti i miei), nella memoria (tenute le righe di tutti e due) e nella riga «Ultimo aggiornamento» (unite); file del perimetro entrati da main identici a MERGE_HEAD. **Review #627 (chat Mani)**: APPROVATO.
 - **Bot su d783938 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743253066)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA (quinto percorso verso i gratuiti: `write_file` è in `_LIBERI_DOPO_LETTURA`, quindi a finestra contaminata scrive senza firma un .md con i dati della mail, e `read_file` lo rilegge in un turno dopo sui gratuiti): `FATTA` — quinto percorso nel punto 6 e nella fetta 1 (`write_file` alla firma con `fetch_email` nella finestra, con un test). V-2 BASSA (la frase «non conservarsi oltre il turno» contraddiceva l'opzione di tenere il turno nella storia): `FATTA` — proposta: turno mail tolto o mascherato dalla storia a fine turno, quindi anche dagli snapshot (chiude anche V-1 bot su 7346994); se l'operatore preferisce tenerlo, la conservazione va dichiarata nella domanda 7.
+- **Bot su a48caa0 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743310696)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA (mascherare a fine turno non basta: `_save_history` gira anche a metà turno, gas.py:5011, e `_snapshot` copia `.gas_history.json` prima di write_file e run_command; la conservazione degli snapshot è «ultimi 100 o meno di 7 giorni», poi fino a `git gc`): `FATTA` — mascheramento in ogni salvataggio, snapshot con un turno mail nella finestra senza la storia (o mascherata), tempi corretti, domanda 7 estesa. V-2 BASSA (il sì dell'operatore era su 7346994): `FATTA` — §0 lo chiede di nuovo. V-3 COSMETICA (nota del §3 sull'head mancante): `FATTA`.
 - **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: `DEFERITA — commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); PR subito dopo questa (un solo branch remoto)`.
 
 ---
@@ -35,11 +36,11 @@
  .claude/agents/memoria_revisore.md |   2 ++
  reports/diff_sessione.md           |  17 +++++++++--------
  reports/handoff.md                 | n/d
- reports/piano_mail.md              | 113 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/piano_mail.md              | 121 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   4 ++--
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  34 ++++++++++++++++------------------
+ reports/ultimo_report.md           |  36 ++++++++++++++++++------------------
 ```
 
 NB: base = merge-base con origin/main = 70e2f05. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -47,6 +48,7 @@ NB: base = merge-base con origin/main = 70e2f05. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a48caa0 docs(mail): quinto percorso verso i gratuiti (write_file in un turno mail), turno mail tolto o mascherato dalla storia anche negli snapshot (V-1 MEDIA, V-2 bot #324 su d783938)
 d783938 docs(fine-task): merge di main (PR #325) nella PR #324, riserve del bot su 7346994 registrate (review #627)
 a0f71c7 chore(revisore): memoria review #627 — APPROVATO
 9174640 Merge origin/main (PR #325, voce V7b) in PR #324
@@ -62,7 +64,7 @@ ec1fdbb docs(mail): stato, roadmap e ripartenza col piano mail; riserve di #323 
 6af999b docs(mail): piano della mail di Gas (R6) con le domande per l'operatore, senza codice
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: l'head della PR, cioè il commit che contiene questo file (fine-task, a volte insieme alle correzioni del giro), non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -135,7 +137,8 @@ Nessuna modifica a gas.py/tests/.
 - b66ac40 (merge), ffff127 (memoria #626), 970beca (fine-task): verifica-bot failure su 970beca (V-1 MEDIA, chiusa in 7346994).
 - 7346994 (correzioni dopo il bot): CI success; verifica-bot success (bot APPROVATO CON RISERVE); poi conflitto con main (PR #325).
 - I commit di main entrati col merge (fino a 70e2f05, PR #325) hanno le run della PR #325.
-- 9174640 (merge), a0f71c7 (memoria #627), d783938 (fine-task): handoff-check success; verifica-bot failure su d783938 (bot BOCCIATO, V-1 MEDIA, chiusa in questo commit).
+- 9174640 (merge), a0f71c7 (memoria #627), d783938 (fine-task): handoff-check success; verifica-bot failure su d783938 (bot BOCCIATO, V-1 MEDIA, chiusa in a48caa0).
+- a48caa0 (correzioni e fine-task): handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA, chiusa in questo commit).
 - Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

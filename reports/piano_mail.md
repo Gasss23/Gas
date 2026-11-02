@@ -52,13 +52,18 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    blocchi role «tool» di `fetch_email`, ma anche le risposte dell'assistente che
    riassumono la mail e gli argomenti delle chiamate `prepara_bozza`/`send_email`
    (destinatari e testo). `_get_window` rimanda tutto ai turni dopo, che di default vanno
-   alla cascata gratuita. Quindi la fetta 1 deve cambiare il kernel. **Proposta: a fine
-   turno il turno mail si toglie o si maschera dalla storia**, prima di salvarla, così il
-   testo non resta in `.gas_history.json` né negli snapshot `refs/gas/snapshots/` (tenuti
-   7 giorni: V-1 bot #324 su 7346994). In più, finché il turno è in corso, **una finestra
+   alla cascata gratuita. Quindi la fetta 1 deve cambiare il kernel. **Proposta: il
+   turno mail si maschera in OGNI salvataggio della storia** (`_save_history` gira
+   anche a metà turno, dopo ogni gruppo di strumenti, e un turno interrotto non arriva
+   mai alla fine), così il testo non arriva mai in `.gas_history.json`; e **gli snapshot
+   `refs/gas/snapshots/` fatti con un turno mail nella finestra escludono o mascherano
+   `.gas_history.json`** (oggi `_snapshot` lo aggiunge sempre prima di `write_file` e
+   `run_command`). Gli snapshot restano finché sono tra gli ultimi 100 o hanno meno di 7
+   giorni, e gli oggetti restano fino a un `git gc`, che non parte mai da solo (V-1 bot
+   #324 su 7346994 e su a48caa0). In più, finché il turno è in corso, **una finestra
    che contiene strumenti mail non va mai ai gratuiti** (aspetta il forte). Se invece
    l'operatore preferisce tenere il turno nella storia, la conservazione (storia e
-   snapshot) va dichiarata nella domanda 7 (V-2 bot #324 su d783938). Lo stesso vale
+   snapshot, con quei tempi) va dichiarata nella domanda 7 (V-2 bot #324 su d783938). Lo stesso vale
    per le bozze salvate in Gas: si leggono solo nei turni sul forte. Senza questo, testo
    e indirizzi letti in un turno forte arriverebbero ai gratuiti.
    I percorsi da coprire sono cinque (R-626-1, V-1 bot #324 su 970beca e su d783938):
@@ -81,7 +86,7 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    «Operazione negata: …» e il turno va avanti, mai un crash.
 
 ## Fette (dopo le risposte)
-1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, per nessuno dei cinque percorsi: storia, riflessione, compressione, memoria, file scritti con `write_file`; turno mail tolto o mascherato dalla storia, quindi anche dagli snapshot) e `notify_telegram` non più SAFE (aggiornando `test_notify_telegram_safe` in `tests/test_unit_gate.py`, V-2 bot #324 su 7346994).
+1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, per nessuno dei cinque percorsi: storia, riflessione, compressione, memoria, file scritti con `write_file`; turno mail mascherato in ogni salvataggio della storia, anche a metà turno, e `.gas_history.json` escluso o mascherato negli snapshot fatti con un turno mail nella finestra, con un test per ciascuno) e `notify_telegram` non più SAFE (aggiornando `test_notify_telegram_safe` in `tests/test_unit_gate.py`, V-2 bot #324 su 7346994).
 2. Bozze in Gas.
 3. Invio con firma e token separato.
 4. Prova dal vero su una casella di prova, poi su quella vera.
@@ -111,3 +116,6 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    - confermi «mail solo col cervello forte, altrimenti si aspetta»?
    - per quanto tempo si conservano i dati dei contatti presi dalle mail, e chi li può
      cancellare?
+   - va bene la proposta del punto 6 (testo delle mail mai salvato nella storia né negli
+     snapshot)? Se no, la storia lo terrebbe, e gli snapshot fino agli ultimi 100 o 7
+     giorni, più fino a un `git gc` manuale.
