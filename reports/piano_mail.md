@@ -38,11 +38,17 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    turno, salvo ciò che finisce in un contatto (già marcato «non fidato» dopo una
    lettura). Base giuridica e conservazione dei dati dei contatti: capitolo 6, decisione
    7 della roadmap, ancora aperta.
+   **Requisito del kernel (V-1 bot #324):** oggi l'output degli strumenti resta nella
+   cronologia (`.gas_history.json`, blocchi role «tool») e `_get_window` lo rimanda ai
+   turni dopo, che di default vanno alla cascata gratuita. Quindi la fetta 1 deve anche
+   cambiare il kernel: a fine turno l'output di `leggi_mail` si toglie o si maschera
+   nella storia, oppure una finestra che lo contiene non va mai ai gratuiti. Senza
+   questo, testo e indirizzi letti in un turno forte arriverebbero ai gratuiti.
 7. **Fail-safe §9**: provider giù, token scaduto o risposta strana → messaggio
    «Operazione negata: …» e il turno va avanti, mai un crash.
 
 ## Fette (dopo le risposte)
-1. Sola lettura e tetti, con server di posta finto nei test.
+1. Sola lettura e tetti, con server di posta finto nei test, più il requisito del kernel del punto 6 (output delle mail mai ai gratuiti, nemmeno dalla storia).
 2. Bozze in Gas.
 3. Invio con firma e token separato.
 4. Prova dal vero su una casella di prova, poi su quella vera.

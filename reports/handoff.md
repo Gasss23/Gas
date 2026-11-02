@@ -25,11 +25,11 @@
 ```
  reports/diff_sessione.md   |  17 ++++++-----------
  reports/handoff.md         | n/d
- reports/piano_mail.md      |  74 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/piano_mail.md      |  80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/ripartenza_mani.md |   2 +-
  reports/roadmap.md         |   4 ++--
  reports/stato_progetto.md  |   5 +++--
- reports/ultimo_report.md   |  21 ++++++---------------
+ reports/ultimo_report.md   |  22 +++++++---------------
 ```
 
 NB: base = merge-base con origin/main = 9718e0c. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -37,6 +37,7 @@ NB: base = merge-base con origin/main = 9718e0c. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0c0081f docs(fine-task): piano mail, PR #324
 ec1fdbb docs(mail): stato, roadmap e ripartenza col piano mail; riserve di #323 registrate
 6af999b docs(mail): piano della mail di Gas (R6) con le domande per l'operatore, senza codice
 ```
