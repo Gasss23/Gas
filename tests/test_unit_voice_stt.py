@@ -16,6 +16,7 @@ import http.client
 import json
 import os
 import struct
+import time
 import sys
 import threading
 from http.server import HTTPServer
@@ -661,6 +662,133 @@ class TestVoiceHandlerRouting:
                 incerto = _post_raw(self.port, wav, hdrs)
         assert buono[0] == 200 and buono[1]["capito"] == "Gas, ciao" and "non_capito" not in buono[1]
         assert incerto[0] == 200 and incerto[1]["capito"] == "boh" and incerto[1]["non_capito"] is True
+
+    def test_v7_tempi_nella_risposta_e_nel_log(self, caplog):
+        """V7: la risposta dice quanto sono durati trascrizione, cervello e server, e il log
+        ne ha una riga (solo numeri); senza trascrizione (testo scritto) niente «trascrizione»."""
+        import logging as _logging
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": "audio+testo"}
+        with patch("modules.voice.server.transcribe_audio", return_value="Gas, ciao"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                with caplog.at_level(_logging.INFO, logger="gas.voce.tempi"):
+                    status, resp = _post_raw(self.port, wav, hdrs)
+                    scritto = _post_raw(self.port, json.dumps({"prompt": "ciao"}).encode(),
+                                        {**_AUTH, "Content-Type": "application/json"})
+        assert status == 200
+        tempi = resp["tempi"]
+        assert set(tempi) == {"trascrizione", "cervello", "server"}, tempi
+        assert all(isinstance(v, (int, float)) and v >= 0 for v in tempi.values())
+        assert tempi["server"] >= tempi["trascrizione"] and tempi["server"] >= tempi["cervello"]
+        assert set(scritto[1]["tempi"]) == {"cervello", "server"}
+        righe = [r for r in caplog.records if "tempi voce" in r.getMessage()]
+        assert len(righe) == 2 and "trascrizione=" in righe[0].getMessage()
+        assert "Gas, ciao" not in righe[0].getMessage()
+        assert all(r.levelno == _logging.INFO and r.name == "gas.voce.tempi" for r in righe)  # R-614-3-M2
+
+    def test_v7_tempi_della_voce_e_intestazione_con_mp3(self):
+        """V7: con l'MP3 grezzo i tempi (voce compresa) arrivano nell'intestazione X-Gas-Tempi."""
+        import urllib.request
+        wav = _fake_wav()
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/voice", data=wav, method="POST",
+            headers={**_AUTH, "Content-Type": "audio/wav", "Accept": "audio/mpeg"})
+        with patch("modules.voice.server.transcribe_audio", return_value="Gas, ciao"), \
+             patch("modules.voice.server.synthesize_speech", return_value=b"ID3mp3"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=5) as r:
+                    intestazione = r.headers.get("X-Gas-Tempi", "")
+                    corpo = r.read()
+        assert corpo == b"ID3mp3"
+        chiavi = {p.split("=")[0] for p in intestazione.split(";")}
+        assert chiavi == {"trascrizione", "cervello", "voce", "server"}, intestazione
+
+    @pytest.mark.parametrize("tts", ["ok", "errore", "rete"])
+    def test_v7_tempo_della_voce_nella_pagina_anche_se_fallisce(self, tts):
+        """R-614-2-M2 / R-614-1-M2: col formato della pagina c'è anche il tempo della voce,
+        pure quando ElevenLabs risponde errore o la rete cade (il caso lento da vedere)."""
+        from modules.voice.tts import ElevenLabsTTSError
+        effetto = {"ok": [b"ID3mp3"], "errore": ElevenLabsTTSError(500, "guasto"),
+                   "rete": OSError("timeout")}[tts]
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": "audio+testo"}
+        with patch("modules.voice.server.transcribe_audio", return_value="Gas, ciao"), \
+             patch("modules.voice.server.synthesize_speech", side_effect=effetto):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                status, resp = _post_raw(self.port, wav, hdrs)
+        assert status == 200 and ("audio" in resp) == (tts == "ok")
+        assert set(resp["tempi"]) == {"trascrizione", "cervello", "voce", "server"}, resp["tempi"]
+
+    @pytest.mark.parametrize("guasto", ["errore", "rete"])
+    def test_v7_tempo_della_voce_con_mp3_anche_se_fallisce(self, guasto):
+        """R-615-1-M2: col formato MP3 un TTS fallito dà 502 JSON, con il tempo della voce."""
+        from modules.voice.tts import ElevenLabsTTSError
+        effetto = ElevenLabsTTSError(500, "guasto") if guasto == "errore" else OSError("timeout")
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "Accept": "audio/mpeg"}
+        with patch("modules.voice.server.transcribe_audio", return_value="Gas, ciao"), \
+             patch("modules.voice.server.synthesize_speech", side_effect=effetto):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                status, resp = _post_raw(self.port, wav, hdrs)
+        assert status == 502
+        assert set(resp["tempi"]) == {"trascrizione", "cervello", "voce", "server"}, resp
+
+    def test_v7_tempo_del_cervello_anche_se_si_rompe(self):
+        """R-614-1-M2: un'eccezione del kernel (500) ha comunque il tempo del cervello."""
+        def _rotto(prompt, **kw):
+            raise RuntimeError("guasto")
+            yield  # pragma: no cover
+
+        self.kernel.run_turn = _rotto
+        status, resp = _post_raw(self.port, json.dumps({"prompt": "ciao"}).encode(),
+                                 {**_AUTH, "Content-Type": "application/json"})
+        assert status == 500 and set(resp["tempi"]) == {"cervello", "server"}, resp
+
+    def test_v7_tempo_del_cervello_anche_senza_risposta(self):
+        """V-2 ve #322: un turno che finisce senza final né error (500) ha il tempo del cervello."""
+        def _muto(prompt, **kw):
+            yield {"type": "tool_res", "content": "x"}
+
+        self.kernel.run_turn = _muto
+        status, resp = _post_raw(self.port, json.dumps({"prompt": "ciao"}).encode(),
+                                 {**_AUTH, "Content-Type": "application/json"})
+        assert status == 500 and set(resp["tempi"]) == {"cervello", "server"}, resp
+
+    def test_v7_caricamento_lento_non_conta_come_server(self):
+        """V-2 bot #322: il tempo «server» parte dopo aver ricevuto il corpo: un caricamento
+        lento dalla pagina resta nella «rete» (totale della pagina meno il server)."""
+        import socket
+        corpo = json.dumps({"prompt": "ciao"}).encode()
+        testa = (f"POST /voice HTTP/1.0\r\nHost: 127.0.0.1\r\nAuthorization: {_AUTH['Authorization']}\r\n"
+                 f"Content-Type: application/json\r\nContent-Length: {len(corpo)}\r\n\r\n").encode()
+        with socket.create_connection(("127.0.0.1", self.port), timeout=10) as sk:
+            sk.sendall(testa + corpo[:3])
+            time.sleep(0.6)  # la pagina carica piano
+            sk.sendall(corpo[3:])
+            dati = b""
+            while chunk := sk.recv(65536):
+                dati += chunk
+        tempi = json.loads(dati.split(b"\r\n\r\n", 1)[1])["tempi"]
+        assert tempi["server"] < 0.5, tempi
+
+    def test_v7_rifiuto_prima_di_spendere_senza_tempi(self):
+        """V7: il 429 del tetto arriva prima di ogni lavoro: niente tempi né riga di log."""
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        with patch("modules.voice.server.transcribe_audio", return_value="ciao"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k", "GAS_VOICE_MAX_TURNI_ORA": "1"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                primo = _post_raw(self.port, wav, hdrs)
+                secondo = _post_raw(self.port, wav, hdrs)
+        assert "tempi" in primo[1] and secondo[0] == 429 and "tempi" not in secondo[1]
 
     def test_v5_rifiuti_locali_non_consumano_il_tetto(self):
         """R-585-1-M2: un audio vuoto (400, nessuna chiamata a Groq) non conta: con tetto 1

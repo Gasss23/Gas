@@ -15,8 +15,9 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    ogni azione verso l'esterno va alla firma. Il testo arriva al modello dentro una
    cornice «dati, non istruzioni», con un tetto di caratteri. Niente allegati nella
    prima versione: solo nome e dimensione.
-2. **Bozze** — strumento `prepara_bozza` (da aggiungere al cancello come UNCERTAIN e
-   libero dopo una lettura, con un test: un nome che non c'è è negato): è interna e
+2. **Bozze** — strumento `prepara_bozza` (da aggiungere al cancello come UNCERTAIN e in
+   `_LIBERI_DOPO_LETTURA`, se no a finestra contaminata andrebbe alla firma, con un
+   test: un nome che non c'è è negato): è interna e
    reversibile, quindi **libera**
    anche dopo una lettura (principio del 19 ottobre). La bozza resta in Gas (memoria) e
    l'operatore la vede quando vuole. Proposta: nella prima versione la bozza non va
@@ -43,17 +44,21 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    turno, salvo ciò che finisce in un contatto (già marcato «non fidato» dopo una
    lettura). Base giuridica e conservazione dei dati dei contatti: capitolo 6, decisione
    7 della roadmap, ancora aperta.
-   **Requisito del kernel (V-1 bot #324):** oggi l'output degli strumenti resta nella
-   cronologia (`.gas_history.json`, blocchi role «tool») e `_get_window` lo rimanda ai
-   turni dopo, che di default vanno alla cascata gratuita. Quindi la fetta 1 deve anche
-   cambiare il kernel: a fine turno l'output di `fetch_email` si toglie o si maschera
-   nella storia, oppure una finestra che lo contiene non va mai ai gratuiti. Senza
-   questo, testo e indirizzi letti in un turno forte arriverebbero ai gratuiti.
+   **Requisito del kernel (V-1 bot #324, due giri):** oggi la cronologia
+   (`.gas_history.json`) tiene TUTTO il turno, non solo l'output degli strumenti: i
+   blocchi role «tool» di `fetch_email`, ma anche le risposte dell'assistente che
+   riassumono la mail e gli argomenti delle chiamate `prepara_bozza`/`send_email`
+   (destinatari e testo). `_get_window` rimanda tutto ai turni dopo, che di default vanno
+   alla cascata gratuita. Quindi la fetta 1 deve cambiare il kernel: **una finestra che
+   contiene un turno con strumenti mail non va mai ai gratuiti** (aspetta il forte),
+   oppure quel turno si toglie o si maschera dalla storia a fine turno. Lo stesso vale
+   per le bozze salvate in Gas: si leggono solo nei turni sul forte. Senza questo, testo
+   e indirizzi letti in un turno forte arriverebbero ai gratuiti.
 7. **Fail-safe §9**: provider giù, token scaduto o risposta strana → messaggio
    «Operazione negata: …» e il turno va avanti, mai un crash.
 
 ## Fette (dopo le risposte)
-1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (output delle mail mai ai gratuiti, nemmeno dalla storia).
+1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, nemmeno dalla storia).
 2. Bozze in Gas.
 3. Invio con firma e token separato.
 4. Prova dal vero su una casella di prova, poi su quella vera.

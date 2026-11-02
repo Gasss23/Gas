@@ -7,3 +7,4 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 - `reports/roadmap.md`: riga della mail (piano scritto) e di R8 (#323 mergiata).
 - `reports/ripartenza_mani.md`: punto g aggiornato.
 - `reports/ultimo_report.md`, `reports/diff_sessione.md`, `reports/handoff.md`: report di fine task.
+- Merge di origin/main (PR #322 di M2, voce V7a): entrano modules/voice/server.py, clients/voice/browser_client.html, i test voce e la memoria del revisore, invariati.
