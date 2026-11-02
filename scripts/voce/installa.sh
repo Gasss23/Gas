@@ -90,8 +90,26 @@ DOMINIO="gui/$(id -u)"
 for s in "${SERVIZI[@]}"; do
   launchctl bootout "$DOMINIO/$s" 2>/dev/null || true
 done
+# Prova dal vero di M1 (2026-11-02): bootout è asincrono. Alla seconda esecuzione il
+# servizio vecchio c'è ancora e bootstrap dà «Bootstrap failed: 5: Input/output error».
+# Si aspetta che sparisca (launchctl print fallisce), al massimo 5 s per servizio…
 for s in "${SERVIZI[@]}"; do
-  launchctl bootstrap "$DOMINIO" "$AGENTI/$s.plist" || stop "launchctl non carica $s."
+  ANDATO=no
+  for _ in $(seq 1 50); do
+    if ! launchctl print "$DOMINIO/$s" >/dev/null 2>&1; then ANDATO=si; break; fi
+    sleep 0.1
+  done
+  [ "$ANDATO" = si ] \
+    || stop "$s non si spegne (launchctl bootout): aspetta qualche secondo e rilancia lo script."
+done
+# …poi bootstrap, con due tentativi in più a distanza di un secondo.
+for s in "${SERVIZI[@]}"; do
+  CARICATO=no
+  for _ in 1 2 3; do
+    if launchctl bootstrap "$DOMINIO" "$AGENTI/$s.plist"; then CARICATO=si; break; fi
+    sleep 1
+  done
+  [ "$CARICATO" = si ] || stop "launchctl non carica $s (3 tentativi)."
 done
 echo "5/6 servizi caricati: OK"
 

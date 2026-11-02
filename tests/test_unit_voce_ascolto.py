@@ -591,8 +591,28 @@ def test_dipendenze_del_mac_fissate():
 _FINTI = {
     "uname": 'echo Darwin',
     "plutil": 'exit 0',
+    # launchctl con lo stato dei servizi (prova dal vero di M1): «$REGISTRO.su.<servizio>»
+    # = caricato. Dopo bootout il servizio resta visibile per BOOTOUT_LENTO letture di
+    # print (bootout asincrono) e in quel tempo bootstrap fallisce con l'errore 5 vero;
+    # BOOTSTRAP_FALLISCE = quanti bootstrap falliscono comunque prima di riuscire.
     "launchctl": ('echo "launchctl $*" >> "$REGISTRO"\n'
-                  '[ "$1" = print ] && echo "	state = running"\nexit 0'),
+                  'case "$1" in\n'
+                  '  print) s="${2##*/}"\n'
+                  '    if [ -f "$REGISTRO.su.$s" ]; then echo "	state = running"; exit 0; fi\n'
+                  '    n=$(cat "$REGISTRO.giu.$s" 2>/dev/null || echo 0)\n'
+                  '    if [ "$n" -gt 0 ]; then echo $((n-1)) > "$REGISTRO.giu.$s"\n'
+                  '      echo "	state = running"; exit 0; fi\n'
+                  '    echo "Could not find service" >&2; exit 113;;\n'
+                  '  bootout) s="${2##*/}"; [ -f "$REGISTRO.su.$s" ] || exit 3\n'
+                  '    rm -f "$REGISTRO.su.$s"; echo "${BOOTOUT_LENTO:-0}" > "$REGISTRO.giu.$s";;\n'
+                  '  bootstrap) s="$(basename "$3" .plist)"\n'
+                  '    n=$(cat "$REGISTRO.giu.$s" 2>/dev/null || echo 0)\n'
+                  '    f=$(cat "$REGISTRO.bs" 2>/dev/null || echo 0); echo $((f+1)) > "$REGISTRO.bs"\n'
+                  '    if [ -f "$REGISTRO.su.$s" ] || [ "$n" -gt 0 ] \\\n'
+                  '       || [ "$f" -lt "${BOOTSTRAP_FALLISCE:-0}" ]; then\n'
+                  '      echo "Bootstrap failed: 5: Input/output error" >&2; exit 5; fi\n'
+                  '    touch "$REGISTRO.su.$s";;\n'
+                  'esac\nexit 0'),
     "nc": ('echo "nc $*" >> "$REGISTRO"\n'
            'n=$(cat "$REGISTRO.nc" 2>/dev/null || echo 0); echo $((n+1)) > "$REGISTRO.nc"\n'
            '[ "$((n+1))" -gt "${NC_FALLISCE:-0}" ]'),
@@ -675,6 +695,51 @@ def test_installa_porta_con_commento_in_linea(tmp_path):
     gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_VOICE_PORT=9001 # era 8765\n")
     r, registro = _installa(gas, finti, casa, tmp_path)
     assert r.returncode == 0 and "nc -z 127.0.0.1 9001" in registro.splitlines()
+
+
+def _gia_caricati(tmp_path):
+    for s in ("com.gas.voce.server", "com.gas.ascolto"):
+        (tmp_path / f"registro.txt.su.{s}").touch()
+
+
+def test_installa_seconda_volta_aspetta_che_il_vecchio_sparisca(tmp_path):
+    """Prova dal vero di M1: alla seconda esecuzione bootout è asincrono e un bootstrap
+    subito dopo dà «Bootstrap failed: 5». Lo script aspetta che print fallisca."""
+    gas, finti, casa = _gas_finto(tmp_path)
+    _gia_caricati(tmp_path)
+    r, registro = _installa(gas, finti, casa, tmp_path, BOOTOUT_LENTO="4")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "Bootstrap failed" not in r.stderr
+    righe = registro.splitlines()
+    for s in ("com.gas.voce.server", "com.gas.ascolto"):
+        fuori = righe.index(f"launchctl bootout gui/{os.getuid()}/{s}")
+        dentro = next(i for i, x in enumerate(righe) if x.startswith("launchctl bootstrap")
+                      and x.endswith(f"/{s}.plist"))
+        letture = [x for x in righe[fuori:dentro] if x == f"launchctl print gui/{os.getuid()}/{s}"]
+        assert len(letture) == 5  # 4 ancora visibile + 1 sparito
+
+
+def test_installa_servizio_che_non_si_spegne_si_ferma(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path)
+    _gia_caricati(tmp_path)
+    r, registro = _installa(gas, finti, casa, tmp_path, BOOTOUT_LENTO="999")
+    assert r.returncode == 1 and "non si spegne" in r.stderr
+    assert "launchctl bootstrap" not in registro
+    assert registro.count("launchctl print gui/") == 50  # al massimo 5 s (50 × 0,1 s)
+
+
+def test_installa_bootstrap_riprova(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, registro = _installa(gas, finti, casa, tmp_path, BOOTSTRAP_FALLISCE="2")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert registro.count("launchctl bootstrap") == 4  # 2 falliti + 2 servizi
+
+
+def test_installa_bootstrap_sempre_rotto_si_ferma(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, registro = _installa(gas, finti, casa, tmp_path, BOOTSTRAP_FALLISCE="99")
+    assert r.returncode == 1 and "3 tentativi" in r.stderr
+    assert registro.count("launchctl bootstrap") == 3 and "nc -z" not in registro
 
 
 def test_installa_aspetta_il_server_lento(tmp_path):

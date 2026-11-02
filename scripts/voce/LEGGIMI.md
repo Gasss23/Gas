@@ -89,7 +89,13 @@ Dopo una modifica: `bash scripts/voce/installa.sh` (riavvia i servizi).
 ## Log
 
 - `.gas_voce/ascolto.log`: attivazioni, invii, errori dell'ascolto.
-- `.gas_voce/voce.server.log`: il server voce.
+- `.gas_voce/voce.server.log`: il server voce, cioè quello che stampa e gli avvisi
+  (da WARNING in su) di tutto Gas.
+- `gas_debug.log`, nella cartella di Gas accanto a `gas.py` (anche sotto launchd: il
+  percorso non dipende dalla cartella di avvio): la scatola nera di Gas. Qui finiscono
+  anche i **tempi della voce**, una riga INFO per richiesta. La riga non contiene il
+  nome del logger (`gas.voce.tempi`): si cerca col testo,
+  `grep "tempi voce" gas_debug.log` (es. `tempi voce (200): stt=0.81s cervello=2.40s …`).
 
 I log non ruotano da soli: con il microfono staccato si aggiunge una riga ogni 5 secondi.
 Se crescono troppo, svuotali senza cancellarli: `: > .gas_voce/ascolto.log` e
