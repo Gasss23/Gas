@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #319 (https://github.com/Gasss23/Gas/pull/319). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5113242002","url":"https://github.com/Gasss23/Gas/pull/319"}`), perché `gh` nel cloud non è autenticato. La PR tocca `.github/workflows/ci.yml` (macchina del bot): il merge lo decide l'operatore.
+1. Merge della PR #319 (https://github.com/Gasss23/Gas/pull/319). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5113242002","url":"https://github.com/Gasss23/Gas/pull/319"}`), perché `gh` nel cloud non è autenticato. La PR tocca `.github/workflows/ci.yml` (macchina del bot): il merge lo decide l'operatore, che ha detto sì (tramite M1); M1 attiva il merge automatico.
 2. Sul VPS lo strumento usa `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_IDS` (già del bot); tetto al giorno con `GAS_NOTIFICHE_GIORNO` (default 5).
 
 ---
@@ -24,6 +24,7 @@
 - **Review #613 (chat Mani)**: APPROVATO CON RISERVE. R-613-1 BASSA (i controlli senza costi valevano solo dopo la firma), R-613-2 BASSA (diario del rifiuto al cancello), R-613-3 COSMETICA (messaggio con valori negativi): `FATTA` in b1d1e45. **Review #614**: APPROVATO CON RISERVE. R-614-1 COSMETICA (un controllo di T102g non prova niente da solo) e R-614-2 BASSA (preesistente: argomenti non dizionario → DENY con `_riassumi_args` grezzo nel diario, per ogni strumento): `DEFERITA — registrate`; R-614-3 (riserve in stato_progetto): `FATTA` in questo commit.
 - **Bot su 1e4bc90 (https://github.com/Gasss23/Gas/pull/319#pullrequestreview-5731250289)** e **verifica esterna su 1e4bc90 (https://github.com/Gasss23/Gas/pull/319#issuecomment-6566914211)**: APPROVATO CON RISERVE, CI verde (kernel in CI 1076 PASS, 0 FAIL). V-1 BASSA (bot e ve: col tetto del giorno pieno partiva comunque la richiesta di firma): `FATTA` in 20031e4 — `rifiuto_al_cancello` legge il conto senza scriverlo. V-2 BASSA ve (nessun test sul percorso firmato): `FATTA` — T102j end-to-end col trasporto finto. V-3 COSMETICA ve («off» o «0.0» tornavano a 5): `FATTA` — non intero = spento con warning.
 - **Review #617 (chat Mani)**: APPROVATO CON RISERVE. R-617-1 COSMETICA (messaggio «a 0 o meno» anche per un valore non intero), R-617-2 COSMETICA (controlli del conto duplicati), R-617-3 BASSA (`rifiuto_al_cancello` senza try suo, retto da quello del kernel): `DEFERITA — registrate`.
+- **Merge di main (PR #318, voce V6 di M2)**: `FATTA` in bc46a27 (merge, non rebase) — conflitti solo in handoff/ultimo_report/diff_sessione (tenuti i miei) e nella memoria del revisore (tenuti tutti e due i lati). **Review #619 (chat Mani)**: APPROVATO CON RISERVE. R-619-1 BASSA (report senza il merge) e R-619-2 COSMETICA («Ultimo aggiornamento» di stato_progetto): `FATTA` in questo commit; R-619-3 BASSA (memoria del revisore da committare dopo il merge): `FATTA` in 22a8a5b.
 - **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (M1)`.
 - **Voce H24 (R8)**: `DEFERITA — prossima fetta, piano a M1 prima del codice`.
 
@@ -32,29 +33,32 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   8 ++++++++
+ .claude/agents/memoria_revisore.md  |  10 ++++++++++
  .github/workflows/ci.yml            |   7 +++++++
  .gitignore                          |   2 ++
  gas.py                              |  72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  gas_identity.md                     |   3 ++-
  modules/gate/gate.py                |   7 ++++++-
  modules/telegram/avviso.py          | 186 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md            |  23 +++++++++++++----------
+ reports/diff_sessione.md            |  27 ++++++++++++++-------------
  reports/handoff.md                  | n/d
  reports/ripartenza_mani.md          |   2 +-
  reports/roadmap.md                  |   2 +-
- reports/stato_progetto.md           |   1 +
- reports/ultimo_report.md            |  32 ++++++++++++++------------------
+ reports/stato_progetto.md           |   3 ++-
+ reports/ultimo_report.md            |  35 ++++++++++++++++-------------------
  tests/test_unit_avvisa_operatore.py | 218 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_gate.py             |   1 +
  tests/test_unit_kernel.py           | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = b472fe1. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = f37316f. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+22a8a5b chore(revisore): memoria review #619 — APPROVATO CON RISERVE
+bc46a27 Merge origin/main (PR #318, voce V6) nella PR #319 (review #619)
+9c44686 docs(fine-task): fetta 36, PR #319, correzioni bot/ve su 1e4bc90, review #617
 20031e4 fix(telegram): al cancello anche il tetto del giorno, test della firma end-to-end, valore non intero = spento (bot/ve #319 su 1e4bc90, review #617)
 1a13c53 chore(revisore): memoria review #617 — APPROVATO CON RISERVE
 1e4bc90 docs(fine-task): fetta 36, PR #319, correzioni bot/ve su 3db59c2, review #613-#614
@@ -261,6 +265,48 @@ Non ho verificato l'invio vero su Telegram, né che il messaggio col prefisso ar
 Riga contatore #617 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con `scripts/commit_memoria_revisore.sh` (commit 1a13c53, solo quel file). Il resto dell'index è intatto. Nessuna lezione nuova.
 ```
 
+Commit bc46a27 (merge di origin/main f37316f, PR #318: entrano modules/voice/, i test voce e .github/workflows/ci.yml di M2). Verdetto integrale della review #619 (chat Mani):
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #619 (chat Mani). È il merge di origin/main f37316f (PR #318, voce V6) dentro claude/peaceful-lovelace-0w2b7q (PR #319, head 9c44686), base b472fe1. Ho ricontrollato lo sha256 del diff staged: 48877690b567403f…, coincide con quello che mi hai dato. Ho letto CLAUDE.md, reports/stato_progetto.md e la mia memoria.
+
+**Il merge non perde e non duplica righe.**
+- I due lati hanno toccato file diversi, tranne sei: ci.yml, stato_progetto.md, la memoria e i 3 report.
+- I 7 file voce (server.py, stt.py, browser_client.html, prova_voce_mac.md, i 3 test voce) sono identici a main byte per byte (`git diff --cached MERGE_HEAD`).
+- gas.py, modules/telegram/avviso.py, modules/gate/gate.py e i 3 report sono identici a HEAD.
+- Nei file comuni non resta nessun marcatore di conflitto.
+
+**Elementi esaminati:**
+- `.github/workflows/ci.yml:126` — il passo voce di main ora lancia anche test_unit_voice_contesto.py. Rischio: perdere il passo voce nell'unione. Il delta merge→HEAD coincide esattamente col delta base→main. YAML valido. Esito: ok.
+- `.github/workflows/ci.yml:193` — il passo «Run avvisa_operatore suite» del branch. Rischio: sparito o doppio. Il delta merge→main coincide esattamente col delta base→HEAD (7 righe), c'è una volta sola. Esito: ok.
+- `modules/voice/server.py:326` — il server voce chiama `self.kernel.run_turn(prompt, cervello=..., istruzione_turno=...)`. Rischio: il branch ha cambiato la firma di run_turn. La firma a `gas.py:4693` è ancora `(user_prompt, cervello, istruzione_turno)`: il branch aggiunge solo `_rifiuto_avviso_al_cancello` a `gas.py:4469` e non tocca l'interfaccia. Esito: ok.
+- `tests/test_unit_voice_contesto.py:88` — crea un GasKernel vero con cervelli finti, quindi ora con lo strumento avvisa_operatore registrato. Rischio: interferenza tra le due fette. Nei file voce e nei test voce `grep avvis` non trova nulla, e la suite passa sul tree unito. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1114` e `reports/stato_progetto.md:653` (contesto) — memoria e stato sono l'unione dei due lati: 8 righe chat Mani più 9 righe M2 nella memoria, la voce «fetta 36» più le 2 voci V5/V6 di M2 nello stato. Nessuna riga duplicata nuova (`uniq -d` dà le stesse 3 righe generiche già presenti a HEAD). Esito: ok.
+
+**Prove rifatte da me sul tree unito:**
+- `python tests/test_unit_kernel.py`: 1075 PASS, 1 FAIL (T31g, ambiente, come dichiarato).
+- Suite voce server/stt/tts/contesto + avvisa_operatore + gate: 1049 passed.
+
+**Riserve (da tracciare in stato_progetto.md):**
+- **R-619-1 BASSA**: handoff.md, ultimo_report.md e diff_sessione.md sono quelli del branch e non citano il merge di f37316f. Al fine-task vanno aggiunti il commit di merge al git log della sessione e la riga «main portata dentro (PR #318)».
+- **R-619-2 COSMETICA**: la riga «Ultimo aggiornamento» di stato_progetto.md ora è quella di main (chat M2, V6) e non cita la fetta 36. Il problema c'era già sul branch, che non l'aveva aggiornata. Da sistemare al fine-task.
+- **R-619-3 BASSA (procedura)**: la mia riga #619 e la lezione sono nella memoria del working tree ma NON nel merge staged. `scripts/commit_memoria_revisore.sh` è uscito con exit 0 e ha scritto in gas_debug.log il warning «cannot do a partial commit during a merge»: comportamento atteso, l'index è intatto, lo sha resta 48877690. Ordine giusto:
+  1. `bash scripts/segna_review_ok.sh` sul diff staged attuale;
+  2. commit del merge;
+  3. di nuovo `bash scripts/commit_memoria_revisore.sh`, che a merge chiuso funziona.
+
+  Non fare `git add` della memoria prima del commit del merge: cambierebbe lo sha e il marcatore non varrebbe più.
+
+**Cosa NON ho verificato:**
+- Non ho rifatto il merito tecnico dei file voce entrati da main: sono byte per byte quelli già revisionati da M2 in #611-M2..#623-M2.
+- Non ho eseguito i test della pagina nel browser con GAS_TEST_BROWSER_OBBLIGATORIO=1, né la suite degli hook: non c'è Chromium/Playwright nell'ambiente. Li copre la CI.
+- La numerazione salta da #617 a #619: ho usato il numero che mi hai dato, ma in questa memoria #618 non esiste.
+
+Riga di memoria aggiunta: «#619 (chat Mani) — 2026-11-02 — APPROVATO CON RISERVE — …», più una lezione sulla review dei merge.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_kernel.py` (comando della CI `python tests/test_unit_kernel.py`, da root): su main pulito 1066 PASS, 1 FAIL; col diff 1075 PASS, 1 FAIL (+9: T102a-j senza h; T68s ha due voci in più nello stesso check). Il FAIL è T31g («gate env GAS_VECTORS=1 costruisce il vector store»), identico su main in questo container: dipende dall'ambiente, fuori scope. Riepilogo reale:
@@ -278,7 +324,9 @@ Riga contatore #617 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.m
 - beb0feb, 4bd1564 (memoria del revisore), c67a2d5 (fetta 36): pushati insieme prima dell'apertura della PR #319; run 41368996140 su c67a2d5: handoff-check failure (l'handoff era ancora quello della fetta 35, atteso), unit-suite success.
 - 3db59c2 (fine-task): run 41369132632 su 3db59c2 success (unit-suite, handoff-check); verifica-bot neutral (la PR tocca ci.yml, bot APPROVATO CON RISERVE).
 - 30aff74, 6600af1 (memoria #613, #614), b1d1e45 (correzioni), 1e4bc90 (fine-task): run 41371890790 su 1e4bc90 success (unit-suite, handoff-check); verifica-bot neutral (bot APPROVATO CON RISERVE).
-- 1a13c53 (memoria #617), 20031e4 (correzioni) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 1a13c53 (memoria #617), 20031e4 (correzioni), 9c44686 (fine-task): run 41374118977 su 9c44686 success (unit-suite, handoff-check); verifica-bot neutral (bot APPROVATO CON RISERVE).
+- I commit di main entrati col merge (fino a f37316f, PR #318) hanno le run della PR #318, non di questa PR.
+- bc46a27 (merge), 22a8a5b (memoria #619) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -291,5 +339,7 @@ Riga contatore #617 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.m
 - R-617-1 (chat Mani) COSMETICA: con un valore non intero il rifiuto dice «a 0 o meno».
 - R-617-2 (chat Mani) COSMETICA: controlli del conto duplicati fra `rifiuto_al_cancello` e `avvisa_operatore_esito`.
 - R-617-3 (chat Mani) BASSA: `rifiuto_al_cancello` senza try suo (lo regge quello del kernel: la chiamata va alla firma).
+- V-1 bot su 9c44686 BASSA: il messaggio di firma porta all'operatore il testo integrale voluto dalla pagina (§4c) e un parcheggio non conta nel tetto del giorno: limite dichiarato, il comportamento a finestra contaminata resta «alla firma» (decisione dell'operatore tramite M1).
+- V-1/V-2 ve su 9c44686 COSMETICHE: voce del conto in `_SAFE_PATH_DENY_PREFIXES` senza test (il cancello la nega comunque); .tmp del conto non cancellato se `os.replace` fallisce.
 - Invio vero su Telegram non provato (nessun token in sviluppo).
 - Del browser (fetta 35, PR #317 mergiata): R-609-1, R-610-1, V-3 ve #317, V-1 c ve #316, V-1 bot su 384bb3a (sonda di node rilanciata a ogni lettura con Playwright rotto), tutte BASSE; prova dal vero sul VPS prima di accendere il browser.

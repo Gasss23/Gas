@@ -13,3 +13,4 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 - `tests/test_unit_gate.py`: il conto è livello 3.
 - `.claude/agents/memoria_revisore.md`: righe #611-#614 e #617 (commit del revisore).
 - `reports/`: report di fine task, stato_progetto (blocco fetta 36), roadmap (riga della notifica), ripartenza_mani (punto g).
+- Merge di origin/main (PR #318, voce V6 di M2) in bc46a27: entrano i file voce di M2 (modules/voice/, clients/voice/browser_client.html, test voce, reports/prova_voce_mac.md), invariati.

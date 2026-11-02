@@ -1,7 +1,7 @@
 # Ultimo report — 2026-11-02 — Mani, fetta 36 (R6): strumento avvisa_operatore
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #319 (https://github.com/Gasss23/Gas/pull/319): tocca `.github/workflows/ci.yml` (macchina del bot), quindi decide l'operatore anche con un verdetto pulito.
+1. Merge della PR #319 (https://github.com/Gasss23/Gas/pull/319): l'operatore ha detto sì (tramite M1); main unita col merge bc46a27 (review #619), M1 attiva il merge automatico.
 2. Per usare lo strumento sul VPS: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_IDS` (già usati dal bot) e, se si vuole un tetto diverso da 5, `GAS_NOTIFICHE_GIORNO` (0 = spento).
 
 ## Esito
@@ -13,6 +13,7 @@
 - **Bot e verifica esterna su 3db59c2**: APPROVATO CON RISERVE (bot neutral per ci.yml). V-1 (una per turno anche alla firma), V-2 ve (testo non stringa), V-3 ve (0 = spento): `FATTA` in b1d1e45. V-2 bot COSMETICA (emoji espanse) e V-5 ve BASSA (righe finte dopo il prefisso): `DEFERITA — registrate`.
 - **Review #613**: APPROVATO CON RISERVE; R-613-1..3 `FATTA`. **Review #614**: APPROVATO CON RISERVE; R-614-1 COSMETICA e R-614-2 BASSA (preesistente) `DEFERITA — registrate`.
 - **Bot e verifica esterna su 1e4bc90**: APPROVATO CON RISERVE. V-1 (tetto del giorno al cancello), V-2 ve (test della firma end-to-end), V-3 ve (valore non intero = spento): `FATTA` in 20031e4. **Review #617**: APPROVATO CON RISERVE; R-617-1/2 COSMETICHE e R-617-3 BASSA `DEFERITA — registrate`.
+- **Merge di main (PR #318, voce V6 di M2) nella #319**: `FATTA` in bc46a27, con merge e non rebase; conflitti solo nei report (tenuti i miei) e nella memoria del revisore (tenuti tutti e due i lati). Review #619 APPROVATO CON RISERVE.
 - **Voce H24 (R8)**: commit locale 8e69ab6 sul branch voce-h24 (57 test; review #615 BOCCIATO, #616 APPROVATO CON RISERVE); `DEFERITA — revisione e PR dopo il merge della #319, per non mescolare le fette`.
 - **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (indicazione di M1)`.
 
