@@ -1,241 +1,256 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-01 — Mani, fetta 35 (R6): sandbox del browser con radice vuota ed elenco di cartelle permesse (chat Mani)
+**Sessione:** 2026-11-02 — Voce V6 «capire meglio» (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su e1f0131 e su ded8469
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #317 (https://github.com/Gasss23/Gas/pull/317). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5112440398","url":"https://github.com/Gasss23/Gas/pull/317"}`), perché `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore, anche tramite M1.
-2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR.
-3. Il browser resta SPENTO. Per accenderlo sul VPS manca la seconda condizione della roadmap: una prova dal vero sul VPS (bwrap con --size, AppArmor, node, Playwright, HTTPS senza /etc/ssl).
+1. Merge della PR #318 (https://github.com/Gasss23/Gas/pull/318). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5113212832","url":"https://github.com/Gasss23/Gas/pull/318"}`); `gh` nel cloud non è autenticato. Il check verifica-bot è neutral (la PR tocca ci.yml, macchina del bot): il merge lo decide l'operatore. Bot e verifica esterna su e1f0131: APPROVATO CON RISERVE senza ALTA/MEDIA; riserve chiuse in 254c4a5. Bot e verifica esterna su ded8469: APPROVATO CON RISERVE senza ALTA/MEDIA; riserve chiuse in 17c9352.
+2. Dopo il merge, prova sul Mac (`reports/prova_voce_mac.md`): riga «Ho capito: …»; se Gas dice spesso «Non ho capito bene» parlando chiaro, `GAS_VOICE_STT_LOGPROB_MIN=-1.3` nel `.env`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #316 (bwrap per il browser)**: `FATTA` — mergiata (87f576c) col sì dell'operatore.
-- **Radice vuota ed elenco di cartelle permesse** (prima condizione della roadmap, assegnata da M1): `FATTA` — `_comando_bwrap`: radice = tmpfs vuoto rimontato in sola lettura; visibili solo `_PERMESSE` (/usr/bin, /usr/lib/<arch>, /usr/lib64, caricatore, font, /etc/fonts, /etc/ld.so.cache, /etc/localtime), /bin /lib… rifatti, il solo file di node, i soli pacchetti playwright e playwright-core, Chromium al percorso vero, la casa; scrivibili solo /tmp, /dev/shm e il profilo, con tetto; Gas e home coperte se dentro una permessa; rifiuti se node/Playwright mancano o se un ri-esposto scoprirebbe Gas o la home. Prototipo provato prima del codice.
-- **V-6 ve e V-2 bot #316** (cartelle non nascoste leggibili): `FATTA`. **V-1 bot #316** (~/.local): `FATTA` — non si ri-espone più il prefisso di node.
-- **R-605-1** (docstring): `FATTA`. **R-601-1** (cwd della sonda e tetto di /dev/shm senza test): `FATTA`. **R-601-2** (sonda senza le opzioni vere): `FATTA`.
-- **R-603-1** (mountinfo non provava il montaggio in cima) e **R-603-3** (/usr fuori dal find): `FATTA` — un test elenca OGNI file visibile nel sandbox contro un elenco scritto nel test, senza escludere /usr, e vuole zero socket e FIFO. **R-603-2** (rilevatore di pytest): `FATTA` — argv.
-- **V-1 d ve #316** (routeWebSocket senza test): `FATTA`. **V-1 c ve #316** (serviceWorkers 'block' senza test): `SALTATA — nella prova la pagina non diventa sicura (navigator.serviceWorker assente anche con --unsafely-treat-insecure-origin-as-secure), il test passerebbe a vuoto; resta dichiarata`.
-- **Review #607 (chat Mani)**: APPROVATO CON RISERVE. R-607-1 MEDIA (il test accettava tutto /gas/: due mutanti sopravvivevano), R-607-2 BASSA (fallimento della sonda in cache), R-607-3 BASSA (aarch64 e /usr non unito): `FATTA`. **Review #608**: APPROVATO.
-- **Bot su 427e57d (https://github.com/Gasss23/Gas/pull/317#pullrequestreview-5730697074)**: APPROVATO CON RISERVE, check success, CI verde. V-1 BASSA (permessa che è un collegamento: la copertura di Gas finiva sul percorso vero, non dove la cartella si vede): `FATTA` in 505479f.
-- **Verifica esterna su 427e57d (https://github.com/Gasss23/Gas/pull/317#issuecomment-6565285968)**: APPROVATO CON RISERVE. V-1 MEDIA (/dev del sandbox scrivibile senza tetto): `FATTA` in 505479f — --remount-ro /dev più test. V-2 BASSA (lo stesso punto del bot): `FATTA`. V-3 BASSA (in CI il test «ogni file» non monta Chromium: PLAYWRIGHT_BROWSERS_PATH non impostata): `SALTATA — dichiarata` (lo coprono i test end-to-end). V-4 COSMETICA (prefisso senza «/» nel test): `FATTA`.
-- **Review #609 (chat Mani)**: APPROVATO CON RISERVE. R-609-1 BASSA (il ramo dei collegamenti guarda solo l'ultimo pezzo del percorso) e R-609-2 COSMETICA (la sonda non porta --remount-ro /dev): `DEFERITA — registrate`.
-- **Bot su 6729b2c (https://github.com/Gasss23/Gas/pull/317#pullrequestreview-5730762451)**: APPROVATO CON RISERVE ma check verifica-bot failure per «verdetto incoerente» (riserve senza finding nuovi); rilanciato una volta: di nuovo failure (G-2: un rilancio non ritira il verdetto, serve un commit nuovo), con V-1 BASSA (la sonda di bwrap diverge dal comando vero): `FATTA` in 2a96a14 — la sonda è il comando vero di `_comando_bwrap` con «true» al posto di node; chiude anche R-609-2. **Review #610**: APPROVATO CON RISERVE (R-610-1 BASSA: nessun test fissa che un rifiuto della sonda non vada in cache): `DEFERITA — registrata`.
+- **V6.1 — trascrizione** (lingua, prompt, modello, scarto delle trascrizioni incerte): `FATTA` — il modello era già whisper-large-v3.
+- **V6.2 — «Ho capito: …» nella pagina**: `FATTA`.
+- **V6.3 — risposte e contesto**: `FATTA` — la storia c'era già; ora la prova `tests/test_unit_voice_contesto.py`; istruzione voce che tiene il filo.
+- **V6.4 — tasto «non hai capito» con modello più grande**: `SALTATA — usiamo già il modello più grande di Groq`.
+- **Riserve bot #314** V-1 (Groq 500 conta nel tetto) e V-2 (conteggi §2): `FATTA`.
+- **Prova sul Mac della V5 passata** registrata in stato_progetto: `FATTA`.
+- **Riserve di bot e verifica esterna su ded8469** (V-1 ve: segmento malformato saltato come i NaN; V-1 bot: `GAS_VOICE_STT_ECO_NO_SPEECH` nella docstring del server; V-3 ve: conteggio del §5): `FATTA` (17c9352, review #623-M2). V-2 ve/bot (un «Grazie.» o una parola sola del prompt sul silenzio; eco corta che non guarda il logprob): `DEFERITA — taratura sul Mac`.
+- **Riserve di bot e verifica esterna su e1f0131** (V-1/V-2/V-3/V-4 bot, V-1/V-3 ve): `FATTA` (254c4a5, review #614-M2 di questo branch e #617-M2). V-2 ve («Grazie.» isolato sul silenzio con logprob buono): `DEFERITA — limite di design, da tarare sul Mac`. V-4 ve (neutral del bot): nota, nessun fix.
+- gas.py / brains/: non toccati.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- modules/web/browser.py             | 184 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------
- reports/diff_sessione.md           |  16 +++++++--------
+ .claude/agents/memoria_revisore.md |   8 ++++++++
+ .github/workflows/ci.yml           |   5 +++--
+ clients/voice/browser_client.html  |  15 ++++++++++++++-
+ modules/voice/server.py            |  67 +++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ modules/voice/stt.py               | 126 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ reports/diff_sessione.md           |  21 ++++++++++++---------
  reports/handoff.md                 | n/d
- reports/ripartenza_mani.md         |   2 +-
- reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  35 +++++++++++++-------------------
- tests/test_unit_web_browser.py     | 269 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------
+ reports/prova_voce_mac.md          |   5 ++++-
+ reports/stato_progetto.md          |   4 +++-
+ reports/ultimo_report.md           |  35 +++++++++++++++++------------------
+ tests/test_unit_voice_contesto.py  | 142 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_server.py    |  12 ++++++++++--
+ tests/test_unit_voice_stt.py       | 236 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = 87f576c. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-2a96a14 fix(web): la sonda di bwrap è il comando vero del sandbox (V-1 bot #317 su 6729b2c, R-609-2, review #610)
-cdc18c2 chore(revisore): memoria review #610 — APPROVATO CON RISERVE
-6729b2c docs(fine-task): fetta 35, PR #317, esiti di bot e verifica esterna, review #609
-505479f fix(web): /dev del sandbox in sola lettura, permesse-collegamento rifatte come collegamenti (V-1/V-2 ve e V-1 bot #317, review #609)
-d3c3d22 chore(revisore): memoria review #609 — APPROVATO CON RISERVE
-427e57d docs(fine-task): fetta 35 sandbox con elenco di cartelle permesse, PR #317, review #607/#608
-a26a8a9 feat(web): sandbox del browser con radice vuota ed elenco di cartelle permesse (R6, fetta 35, chat Mani)
-fb8b0c0 chore(revisore): memoria review #608 — APPROVATO
-9494a95 chore(revisore): memoria review #607 — APPROVATO CON RISERVE
+17c9352 fix(voce): segmento malformato saltato come i NaN, GAS_VOICE_STT_ECO_NO_SPEECH documentata (V-1 ve e V-1 bot su ded8469, PR #318, review #623-M2)
+ded8469 docs(voce-v6): report dopo bot e verifica esterna su e1f0131, riserve chiuse in 254c4a5 (PR #318, review #614/#617-M2)
+254c4a5 fix(voce): riserve di bot e verifica esterna su #318 — eco corta del prompt, NaN nei segmenti, «capito» azzerato, «non ho capito» senza TTS (chat M2)
+9ed10db chore(revisore): memoria review #614 — APPROVATO CON RISERVE
+e1f0131 docs(voce-v6): report di fine task (PR #318, review #611–#613-M2, prova Mac V5 passata)
+62803f7 feat(voce): V6 «capire meglio» — Whisper in italiano col vocabolario di Gas, «non ho capito» invece di rispondere a caso, «Ho capito: …» nella pagina (chat M2)
+9e8b69e chore(revisore): memoria review #613 — APPROVATO
+2fc86cf chore(revisore): memoria review #612 — APPROVATO CON RISERVE
+fa188bc chore(revisore): memoria review #611 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit a26a8a9 (modules/web/browser.py, tests/test_unit_web_browser.py). Verdetto integrale della review #607 (chat Mani), sulla prima versione:
+Il commit 62803f7 è stato rivisto in tre passaggi sullo stesso diff staged (tra un passaggio e l'altro cambiano solo `modules/voice/stt.py` e `tests/test_unit_voice_stt.py`, per chiudere le riserve; le righe citate dai primi due verdetti si riferiscono alla copia di allora). Verdetti integrali:
 
-```
+Review #611-M2 (primo passaggio):
+
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #607 (chat Mani). Fetta 35, R6, SICUREZZA: il sandbox del browser ora parte da una radice tmpfs vuota e mostra solo l'elenco `_PERMESSE`. Ho revisionato il diff staged (sha256 `ba9ca8a5…`, base 87f576c, branch claude/peaceful-lovelace-0w2b7q). Tutte le prove le ho fatte su un export dell'index, non sulla cartella di lavoro.
+Review #611-M2 (il contatore della memoria era a #610). Ho esaminato il diff staged di feat/voce-v6-m2 (7 file, +441/−22, base b472fe1). Ho letto CLAUDE.md, la memoria del revisore (le lezioni sulla voce M2 da #581 a #587) e la parte di stato_progetto che riguarda la voce.
 
-Letture fatte prima della review: CLAUDE.md (sez. 1, 5, 8, 9, 10), reports/stato_progetto.md (voce fetta 34 e riserve aperte), reports/roadmap.md (la condizione per accendere il browser sul VPS), memoria_revisore.md (le lezioni su bwrap e mutanti, #599–#606). Wall of Shame: nessuno slicing della history e nessuna simulazione di tool (non c'entrano con questo diff). gas.py e ci.yml non sono toccati.
+**Cosa ho esaminato nel diff**
+- modules/voice/stt.py:223 — controlla che il JSON di Groq sia un oggetto e chiama `_motivo_incerta` solo se il testo non è vuoto. Rischio esaminato: una risposta che è una lista manderebbe in crash `data.get`. Esito: ok, ora diventa GroqSTTError, che il server trasforma in 502, e c'è il test.
+- modules/voice/stt.py:66 — `_motivo_incerta` fa la media dei segmenti pesata per durata (minimo 0,01 s, quindi niente divisione per zero). Se un segmento non è un dizionario o mancano i campi, la trascrizione non viene scartata. Rischio esaminato: scarti a caso se Groq cambia formato. Esito: ok, cade dal lato sicuro.
+- modules/voice/stt.py:89 — scarta se la probabilità di silenzio (`no_speech`) supera 0,8, oppure se la confidenza media (`logprob`) è sotto −1,0. Esito: **riserva R-611-1-M2 (MEDIA)**. Whisper considera un pezzo «silenzio» solo se la probabilità di silenzio è alta E la confidenza è bassa. Qui basta la prima. Su whisper-large-v3 la probabilità di silenzio è nota per essere poco affidabile e alta anche su parlato vero, soprattutto sulle parole singole. Quindi un «sì» breve e chiaro può finire in «Non ho capito bene», proprio il caso d'uso che l'operatore ha provato. Nessun test copre un «sì» con silenzio 0,85 e confidenza −0,2. Proposta: scartare per silenzio solo se c'è anche confidenza bassa (per esempio sotto −0,5), oppure tarare sul Mac con la variabile d'ambiente. In ogni caso aggiungere un test che fissi il comportamento scelto.
+- modules/voice/stt.py:24 — prompt col vocabolario di Gas. Esito: **riserva R-611-2-M2 (BASSA)**. Sul silenzio Whisper a volte ripete il testo del prompt («Gas, forte, lead, bozza…»). Questo caso non è nell'elenco delle frasi inventate, quindi arriverebbe al kernel come richiesta. In parte lo copre già la soglia di silenzio. Suggerimento: considerare incerta una trascrizione che contiene un pezzo lungo del prompt.
+- modules/voice/server.py:292 — salva la trascrizione in `self._capito` prima di togliere «forte». Rischio esaminato: con connessioni HTTP/1.1 che restano aperte, una richiesta scritta potrebbe ricevere il «capito» di una richiesta precedente. Esito: ok. `HTTPServer` usa HTTP/1.0 (nessun `protocol_version` nel repo), quindi ogni richiesta ha la sua istanza. Il test `test_v6_risposta_dice_cosa_ha_capito` controlla che la risposta scritta non abbia «capito».
+- modules/voice/server.py:351 — `_rispondi_senza_turno`, usato sia per «uso» sia per «non ho capito». Ha 3 formati: audio+testo, solo audio, JSON. Rischio esaminato: il refactor di «uso» cambia il comportamento? Esito: ok, stessi rami di prima, solo i campi `uso`/`non_capito` e «capito» in più.
+- modules/voice/server.py:452 — nel log va solo `exc.motivo`, cioè numeri o la frase fissa, mai il parlato. La registrazione nel tetto orario resta prima di `transcribe_audio`. Esito: ok per la privacy e per la regola sulla gestione degli errori (sez. 9 di CLAUDE.md).
+- clients/voice/browser_client.html:630 — mostra «Ho capito» con `textContent` e accetta solo stringhe. Esito: ok. Il test nel browser verifica che `<b>` resti testo e non diventi HTML. Qui la suite browser è stata saltata: mi baso sui vostri 10 passed.
+- modules/voice/server.py:113 — `_CONTESTO_VOCE` aggiunto a entrambe le istruzioni vocali. Resta un'istruzione del singolo turno: non entra nella cronologia e non tocca `_get_window`. Esito: ok.
+- tests/test_unit_voice_contesto.py:75 — usa il kernel vero, con finto solo il runner di `claude -p` e finto solo il client OpenAI. Esito: ok. Non simula l'output dei tool (nessun antipattern della sez. 5: niente slicing della cronologia, niente tool simulati). Il mutante su `_get_window` riportato da voi è credibile per come sono scritte le asserzioni.
+- tests/test_unit_voice_stt.py:538 — **R-611-3-M2 (COSMETICA)**: la docstring dice «anche con forte davanti», ma il test usa «Gas, dimmi i lead» senza «forte».
 
-### Elementi del diff esaminati
-
-- `modules/web/browser.py:90` — `_PERMESSE`, l'elenco in sola lettura. Rischio esaminato: espone segreti o sblocca privilegi? Ho controllato `/usr/bin`, `/usr/lib/x86_64-linux-gnu`, `/usr/lib64`, i font e `/etc/fonts`: nessun file di chiavi, token o .env. Ci sono binari setuid (sudo, su, mount), ma dentro il montaggio è nosuid e `NoNewPrivs: 1`, quindi non servono a niente. — **ok**
-- `modules/web/browser.py:304` — `--remount-ro /` alla fine. Rischio: radice scrivibile o tmpfs scrivibili senza tetto. Visto da dentro con mountinfo: `/` è tmpfs ro; scrivibili solo `/tmp` (1 MB), `/dev/shm` (256 MB) e il profilo (256 MB); CapEff tutto a 0. — **ok**
-- `modules/web/browser.py:283` — `esposti`: node in `/gas/bin/node`, i due pacchetti in `/gas/node/...`. Rischio: si ri-espone di più di quanto dichiarato. Il codice è giusto: dentro `/gas/node` ci sono solo playwright e playwright-core. Però nessun test lo tiene, vedi R-607-1. — **riserva**
-- `modules/web/browser.py:296` — copertura di Gas e della home dentro una cartella permessa. Mutante «protetti senza realpath» → 1 failed. — **ok**
-- `modules/web/browser.py:239` — la cache di `_cartelle_di_playwright` salva anche il fallimento (`[]`). Un timeout passeggero della sonda node (10 s) spegne il browser fino al riavvio di Gas. — **riserva BASSA (R-607-2)**
-- `modules/web/browser.py:204` — la sonda `_bwrap_funziona` ora usa --cap-drop, --size, --remount-ro e le permesse (R-601-2 chiusa). — **ok**
-- `modules/web/browser.py:305` — `PATH=/usr/bin` dentro. Sui sistemi con `/usr` non unito (/bin/sh fuori da /usr/bin) il comando fallisce. È fail-closed: niente fuga. — **riserva BASSA (in R-607-3)**
-- `tests/test_unit_web_browser.py:406` — l'elenco del test «ogni file visibile» accetta `"/gas/"` per prefisso intero. — **riserva MEDIA (R-607-1)**
-- `tests/test_unit_web_browser.py:415` — come il test legge gli errori di find (virgolette ASCII). Rischio: in CI con LANG=C.UTF-8 find userebbe le virgolette ‘ ’ e il test cadrebbe. Verificato: nel sandbox il locale C.UTF-8 non si carica, find torna alle virgolette ASCII, e il test passa da nobody anche con LANG=C.UTF-8. — **ok**
-- `tests/test_unit_web_browser.py:266` — `test_routewebsocket_chiude_anche_senza_lo_script`. Esercita il ramo giusto: senza routeWebSocket ci sarebbe un CONNECT sulla 443. — **ok**
-- `tests/test_unit_web_browser.py:468` — test dei rifiuti. Mutante «senza rifiuto degli esposti» → 1 failed. Nota COSMETICA: il test controlla solo il prefisso «browser non isolabile», quindi in un ambiente senza Playwright passerebbe a vuoto per il rifiuto sbagliato. In CI Playwright c'è.
-
-### Riprodotto
-
-- browser: 41 passed da root; 41 passed da nobody, sia senza LANG sia con LANG=C.UTF-8;
-- web: `tests/test_unit_web_*.py` 749 passed, 2 skipped;
-- mutanti presi (1 failed ciascuno): senza rifiuto degli esposti, protetti senza realpath, `/usr/lib` intera al posto di `/usr/lib/<arch>`.
-
-### Riserve
-
-- **R-607-1 MEDIA** — il test di `tests/test_unit_web_browser.py:406` non tiene la chiusura di V-1 bot #316.
-  - Due mutanti sopravvivono (41 passed):
-    - «tutta la node_modules in /gas/node», cioè proprio la regressione di V-1 bot #316 (nell'ambiente di prova espone eslint, claude, npm, …);
-    - «la cartella bin di node in /gas/bin», che con node in ~/bin riaprirebbe un caso alla R-599-2.
-  - Correzione provata: in `permessi` sostituire `"/gas/"` con `"/gas/node/playwright/", "/gas/node/playwright-core/"` e aggiungere `"/gas/bin/node"` a `esatti`. Con questa il test passa sul codice giusto e prende entrambi i mutanti (1 failed ciascuno).
-  - Consiglio di chiuderla in questa fetta, prima del commit, con una ri-review: la verifica esterna la segnalerebbe come V-3 ve.
-- **R-607-2 BASSA** — `modules/web/browser.py:239`: non mettere in cache il risultato vuoto.
-- **R-607-3 BASSA (portabilità, fail-closed)** — due casi in cui il browser resta spento senza un motivo chiaro:
-  - su aarch64 l'interprete `/lib/ld-linux-aarch64.so.1` sta in `/usr/lib/`, che non è montata: ogni programma dinamico fallisce, la sonda dice «bwrap non funziona» e il browser resta spento con un motivo fuorviante;
-  - su `/usr` non unito vale lo stesso per PATH=/usr/bin.
-  - Il VPS scelto (Netcup, x86, Ubuntu probabile) non ne è toccato. Volta e asdf (node come «shim») cadono anche loro chiusi; nvm funziona, perché node è un file binario vero.
-
-Valuto **V-1 c ve** (serviceWorkers 'block' senza test) giustamente lasciata aperta e dichiarata: un test che passa a vuoto è peggio di nessun test.
-
-### Rischi esplicitamente esclusi
-
-- HTTPS reale di Chromium nel sandbox, senza /etc/ssl: non l'ho verificato perché qui non c'è uscita diretta verso internet. Il rischio è basso (Chromium ha la Chrome Root Store compilata dentro), ma va coperto dalla prova dal vero sul VPS già prevista in roadmap, insieme a bwrap con --size, AppArmor e node.
-- aarch64 e `/usr` non unito: analizzati sul codice, non eseguiti (questo host è x86_64 con `/usr` unito).
-- CI GitHub: non ho lanciato i test lì. La prova da nobody è l'approssimazione più vicina.
-
-### Memoria
-
-- Riga contatore #607 e una lezione nuova scritte in /home/user/Gas/.claude/agents/memoria_revisore.md;
-- committate da sole con `scripts/commit_memoria_revisore.sh` (commit 9494a95). Il diff staged sotto review è rimasto intatto.
-```
-
-Verdetto integrale della review #608 (chat Mani), sul diff finale del commit a26a8a9:
-
-```
-## VERDETTO: APPROVATO
-
-Review #608 (chat Mani). È la ri-review della #607 sulla fetta 35. Il diff staged ha sha256 25eec683…, base 87f576c, e dopo i mutanti è intatto (sha rimasto uguale, working tree pulito).
-
-Elementi esaminati:
-- `modules/web/browser.py:243` — se la sonda non trova i due pacchetti restituisce [] e non mette niente in cache (R-607-2). Rischio esaminato: un timeout passeggero che spegne il browser fino al riavvio di Gas. Ho provato il mutante che rimette in cache il fallimento: 1 failed. **Esito: ok.**
-- `modules/web/browser.py:91` — in `_PERMESSE` ora c'è anche `glob("/usr/lib/ld-linux*")`, cioè il caricatore dei programmi (R-607-3). Rischi esaminati:
-  - il caricatore aarch64 mancante: su /usr unito, /lib è un collegamento rifatto verso usr/lib, quindi /lib/ld-linux-aarch64.so.1 arriva al file montato;
-  - il caso con `_ARCH` vuota: le voci sono doppioni dentro /usr/lib, innocui;
-  - l'esposizione di Gas o della home: la voce è un file, `_copre` resta corretto.
-
-  Qui la lista è vuota (verificato con `ls`). **Esito: ok.**
-- `modules/web/browser.py:311` — dentro il sandbox PATH vale /usr/bin:/bin. Rischio esaminato: /bin/sh mancante su /usr non unito. /bin arriva da `_radice()`, come collegamento rifatto o come cartella in sola lettura, quindi il doppione su /usr unito è innocuo. **Esito: ok.**
-- `tests/test_unit_web_browser.py:406` — l'elenco permesso non contiene più «/gas/» intero: restano solo /gas/node/playwright/ e /gas/node/playwright-core/, e /gas/bin/node è fra gli esatti (R-607-1). Ho riprovato i due mutanti, e ciascuno dà 1 failed per la ragione giusta:
-  - cartella bin di node intera in /gas/bin: 41 file fuori elenco (`/gas/bin/ts-script`…);
-  - node_modules intero in /gas/node: 6003 file fuori elenco (`/gas/node/.bin/…`).
-
-  Senza mutanti il test passa. **Esito: ok.**
-- `tests/test_unit_web_browser.py:509` — test nuovo: con NODE_PATH=/nessuno la sonda restituisce [] e `_MODULI` resta vuoto. **Esito: ok.**
-
-Riprodotto: `tests/test_unit_web_browser.py` dà 42 passed da root.
-
-Rischi esclusi (non verificati):
-- **aarch64 e /usr non unito non provati davvero**: qui non posso riprodurli (host x86_64 con /usr unito); il ragionamento è solo sul codice. Se lì manca qualcosa, il sandbox fallisce chiuso: il browser resta spento, Gas non crasha.
-- **Il test di :509 dipende dall'host**: se Playwright fosse installato in una cartella globale di node (es. ~/.node_modules) darebbe un falso rosso. Sarebbe visibile, non un falso verde.
-- **Non ho rilanciato** la suite web completa né le prove da nobody: mi fido dei vostri 750 passed / 2 skipped e dei 42 passed da nobody.
-
-Memoria: riga #608 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (fb8b0c0). Nessuna lezione nuova.
-```
-
-Commit 505479f (modules/web/browser.py, tests/test_unit_web_browser.py: V-1/V-2 ve e V-1 bot su 427e57d). Verdetto integrale della review #609 (chat Mani):
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #609 (chat Mani). È il delta sulla PR #317, fetta 35, sopra 427e57d. Il diff staged ha sha256 17cfa0a8…, rimasto uguale dopo i mutanti.
-
-Letture fatte: CLAUDE.md (sez. 5, 8, 9, 10), stato_progetto.md (solo la parte sul sandbox) e la memoria fino alla #608.
-
-**Elementi esaminati**
-- `modules/web/browser.py:289`: `--remount-ro /dev` sta subito dopo `--dev /dev` e prima del tmpfs `/dev/shm`, che ha il tetto. Rischio esaminato: Chromium che si rompe e /dev/null non scrivibile. Su un fs in sola lettura i device a caratteri restano scrivibili, e i test end-to-end col Chromium vero passano. Mutante senza remount: 1 failed, con l'uscita `SCRIVE-DEV`. Esito: ok.
-- `modules/web/browser.py:277`: una permessa che è un collegamento a una cartella diventa `--ro-bind vero vero` più `--symlink readlink permessa`. Così il tmpfs messo su realpath(Gas) e realpath(home) copre anche quello che si vede dal collegamento. Rischi esaminati:
-  - un `readlink` relativo (es. `lib`) si risolve bene dentro il sandbox;
-  - quanto si vede non aumenta: prima la cartella vera era già visibile intera, sotto il nome del collegamento.
-
-  Mutante con il ramo nuovo tolto: 1 failed, con l'uscita `VISIBILESEGRETO`. Esito: ok, con la riserva R-609-1.
-- `tests/test_unit_web_browser.py:382`: il test controlla che `touch /dev/x` fallisca e che `echo > /dev/null` funzioni. Rischio esaminato: un test troppo largo. Pretende la sequenza esatta `DEVNULL PROFILO TMP NORETE`. Esito: ok.
-- `tests/test_unit_web_browser.py:467`: il test nuovo legge `.env` da tre strade: il collegamento, il percorso vero e un file libero. Rischi esaminati: la pulizia (unlink nel finally, nessun residuo `gas-perm*` in /var/tmp) e la ragione per cui fallisce col mutante. Esito: ok.
-- `tests/test_unit_web_browser.py:413`: il prefisso `/usr/lib/ld-linux` senza «/» è sostituito dal glob negli esatti, lo stesso di `modules/web/browser.py:96`. Esito: ok, V-4 chiusa.
-
-**Prove riprodotte**
-- browser: 43 passed da root e 43 passed da nobody.
-- web (`-k web`): 752 passed, 2 skipped. Voi ne dichiarate 751: probabilmente la selezione è diversa, non è un problema.
-
-**Riserve**
-- **R-609-1 BASSA**: il ramo nuovo guarda solo l'ultimo pezzo del percorso (`islink(permessa)`). Se è un collegamento una cartella più in alto (vero diverso da permessa ma permessa non è un link), si monta ancora vero→permessa e il tmpfs sul percorso vero non copre. È teorico sulle distribuzioni note. La correzione possibile: condizione `vero != permessa and isdir(vero)` con `--symlink vero permessa` assoluto.
-- **R-609-2 COSMETICA**: la sonda `_bwrap_funziona` non porta `--remount-ro /dev`. L'opzione `--remount-ro` è comunque già provata nella sonda su «/».
+**Test eseguiti da me**
+- test_unit_voice_stt + test_unit_voice_contesto: 54 passed.
+- test_unit_voice_server + test_unit_voice_tts: 101 passed (i test nel browser sono stati saltati qui perché non obbligatori in questo ambiente).
 
 **Rischi esplicitamente esclusi**
-- Arch e aarch64 veri, dove `/usr/lib64` è un collegamento: non provati, perché qui `/usr/lib64` è una cartella vera. Il ramo nuovo l'ha provato solo il test con il collegamento finto.
-- V-3 BASSA (in CI il test «ogni file» non monta Chromium): presa come dichiarata, non l'ho verificata in CI.
+- Taratura reale delle soglie (−1,0 / 0,8) su audio vero dal Mac, sia per il «sì» brevissimo sia per il rumore della TV: non riproducibile qui senza microfono né Groq vero. Per questo R-611-1-M2 è una riserva e non un blocco.
+- Suite browser obbligatoria (Playwright): non eseguita, saltata in questo ambiente.
+- Mutanti: non li ho rieseguiti, ho controllato solo che le asserzioni li prenderebbero.
+- `_soglia_env` accetta «nan»/«inf» (con nan non scarterebbe mai): impatto trascurabile, non verificato oltre.
 
-Memoria: riga #609 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (d3c3d22).
-```
+**Coerenza col progetto**
+- gas.py e brains non sono toccati.
+- Fail-safe: le eccezioni sono tutte intercettate e la risposta resta 200 o un errore dichiarato.
+- Il tetto orario resta coerente con V-1 bot #314.
+- Le riserve vanno tracciate in reports/stato_progetto.md prima del commit.
 
-Commit 2a96a14 (modules/web/browser.py, tests/test_unit_web_browser.py: V-1 bot su 6729b2c). Verdetto integrale della review #610 (chat Mani):
+**Memoria**
+Ho scritto la riga #611-M2 e una lezione (confrontare le soglie di scarto con la regola AND di Whisper) in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con commit_memoria_revisore.sh (fa188bc). Il diff staged è intatto (7 file). Non ho fatto altri commit.
 
-```
+Review #612-M2 (dopo le correzioni di R-611-1/2/3-M2):
+
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #610 (chat Mani). Riguarda il delta sulla PR #317 (fetta 35), base 6729b2c, diff staged con sha256 b1fd31e9cc89…6859. Prima della review ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md (fetta 35, R-609-2) e la memoria del revisore.
+Ri-review #612-M2 sulle modifiche fatte dopo la #611-M2 (branch feat/voce-v6-m2, diff staged di 7 file, non committato da me). Ho letto CLAUDE.md, lo stato del progetto (solo con ricerche mirate) e la mia memoria. Ho rifatto i test: stt + contesto **59 passed**. Ho provato tre mutanti e ogni volta ho rimesso stt.py com'era (nessuna modifica non in staging su stt.py).
 
-**Cosa ho esaminato**
-- `modules/web/browser.py:201-221` — `_bwrap_funziona` ora lancia `[bwrap] + _comando_bwrap(casa, _ambiente(casa))[1:] + ["true"]`, dentro una cartella temporanea.
-  - Rischio controllato: che la sonda diverga ancora dal comando vero. Il comando finisce con «--» (`modules/web/browser.py:323`) e `cmd[0]` è il "bwrap" nudo (`modules/web/browser.py:274`). Quindi la sonda porta tutto il comando vero: `--remount-ro /dev`, /dev/shm col tetto, i collegamenti, node, i pacchetti e la casa.
-  - Un `_Rifiuto` di `_comando_bwrap` non è preso dall'`except (OSError, TimeoutExpired)`: sale a `leggi_con_browser`, che lo restituisce col suo motivo (`modules/web/browser.py:470`). L'ho provato direttamente: esce `{'ok': False, 'motivo': 'browser non isolabile: node o Playwright non trovati'}` e `_BWRAP_OK` resta None.
-  - Il comportamento è lo stesso di prima: lo stesso rifiuto arrivava comunque da `_esegui`. Esito: ok. R-609-2 chiusa.
-- `modules/web/browser.py:385-402` — `_ambiente` è estratto da `_esegui`.
-  - Rischio controllato: un cambio dell'ambiente del figlio. Il corpo è lo stesso, solo spostato, e `_esegui` lo chiama per primo. Esito: ok.
-- `tests/test_unit_web_browser.py:540-550` — test nuovo `test_la_sonda_di_bwrap_usa_il_comando_vero`.
-  - Rischio controllato: che il test non morda. Mutante = la sonda di HEAD (comando a parte) con i test nuovi, in un worktree separato: 1 failed sul test nuovo, per la ragione giusta. Esito: ok.
-- `tests/test_unit_web_browser.py:553-562` — nel test vecchio `which` è falsificato solo per "bwrap".
-  - Rischio controllato: che questo test si rompa ora che la sonda risolve node. Il modulo si salta da solo senza node e Playwright (`tests/test_unit_web_browser.py:33`), e in CI ci sono node, Playwright e bwrap (`.github/workflows/ci.yml:111`, poi nella suite web la variabile che rende obbligatorio il browser). Esito: ok.
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:107` — il silenzio scatta solo se `no_speech > soglia` E `logprob < _LOGPROB_SILENZIO` (-0,5). Rischio: un «sì» breve e chiaro viene scartato. Mutante senza la condizione AND → 1 failed (`test_v6_si_breve_e_chiaro_passa_anche_con_no_speech_alto`). Esito: ok, **R-611-1-M2 chiusa**. Nota: -0,5 è più severo del -1 di Whisper. Va bene, perché sotto -1 scarta comunque la regola della confidenza.
+- `modules/voice/stt.py:76` — `_soglia_env` con `math.isfinite`. Rischio: «nan» o «inf» spengono il controllo. Mutante senza isfinite → 1 failed (`test_v6_soglie_da_env`). Esito: ok.
+- `modules/voice/stt.py:87` — controllo dell'eco del prompt (almeno 4 parole, almeno l'80% del prompt). Rischio: le richieste vere e brevi vengono scartate. Mutante → 2 failed, come mi hai detto. Esito: **riserva** (vedi R-612-1-M2).
+- `tests/test_unit_voice_stt.py:560` — il test del «capito» ora usa «Gas, forte: dimmi i lead», controlla il testo intero e `cervello == "forte"` sui kw salvati prima della richiesta scritta (il kernel finto li registra a `tests/test_unit_voice_stt.py:47`). Esito: ok, **R-611-3-M2 chiusa**.
 
-**Prove riprodotte (da root):** browser 44 passed; web 752 passed, 2 skipped. Non ci sono antipattern della sezione 5: niente storia toccata, niente output dei tool simulato. Nessuna eccezione può arrivare fino al crash.
+**Caso limite che mi hai chiesto: il rischio NON è accettabile così com'è**
+- **R-612-1-M2 MEDIA**: il controllo dell'eco (`modules/voice/stt.py:87`) guarda le parole come un insieme, non come una sequenza. Il prefisso «Gas, forte» porta già 2 parole del prompt in ogni comando parlato al cervello forte. L'ho verificato con `_motivo_incerta` e confidenza buona: vengono scartate «Gas forte report merge», «Gas forte memoria lead», «firma bozza lead forte» e soprattutto **«Gas, forte, firma la bozza»** (4 parole su 5 = 0,8, proprio sulla soglia).
+  - Lo scarto è deterministico: ripetere la frase non serve, bisogna riformularla o scriverla.
+  - Passano invece «Claude merge PR» (3 parole), «Gas, forte: dimmi i lead» e «manda il report in Telegram con Claude».
+  - Niente crash, e l'operatore vede cosa è stato sentito: per questo resta riserva e non blocco.
+  - Correzione proposta: considerarla eco solo se la sequenza di parole è un pezzo contiguo del prompt. Le due eco del test lo sono, i comandi veri no. In alternativa: solo con no_speech non basso.
+  - Va aggiunto un test in cui «Gas, forte, firma la bozza» passa.
+- R-611-2-M2 (l'eco del prompt) è quindi chiusa nel merito, ma lascia questa riserva nuova.
 
-**Riserva**
-- R-610-1 BASSA: nessun test fissa che un `_Rifiuto` della sonda non vada in cache, come dice la docstring. Un mutante con `except _Rifiuto: ok = False` (cioè messo in cache) sopravviverebbe. Il comportamento vero l'ho controllato a mano ed è giusto.
+**Cosa non ho verificato**
+- Il comportamento reale di whisper-large-v3 su Groq: no_speech e logprob veri su un «sì» o sul silenzio, e se l'eco reale del prompt è sempre contigua. Serve l'audio vero sul Mac, che qui non è riproducibile. Le soglie restano da tarare con la prova sul Mac.
+- Non ho rifatto i test di server, tts e browser: rispetto alla #611 quei file non sono cambiati.
 
-**Cosa NON ho verificato:** l'esecuzione da utente nobody (la riporti tu, non l'ho rifatta). Non ho verificato aarch64 né /usr non unito, perché non si riproducono in questo ambiente. Non ho provato un OSError passeggero nella sonda, che resta in cache come False: è il comportamento di prima, non introdotto da questo diff.
+**Memoria**: ho aggiunto la riga #612-M2 e una lezione (provare i filtri per parole chiave con i comandi veri più corti, prefisso «Gas, forte» compreso) in /home/user/Gas/.claude/agents/memoria_revisore.md. Commit 2fc86cf, solo quel file; lo staging del diff resta com'era (7 file).
 
-La riga contatore #610 è in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata (cdc18c2). Nessuna lezione nuova.
-```
+Review #613-M2 (diff finale committato in 62803f7):
+
+## VERDETTO: APPROVATO
+
+Ho controllato la ri-review #612-M2 sul branch feat/voce-v6-m2: il diff staged ha 7 file e il delta riguarda solo stt.py e il suo test. Ho letto CLAUDE.md (sez. 5), stato_progetto.md (con grep) e memoria_revisore.md, dove le righe #611-M2 e #612-M2 riportano le riserve R-611-* e R-612-1-M2.
+
+Elementi del diff esaminati:
+- `modules/voice/stt.py:60` — `_PAROLE_PROMPT` ora è una tupla ordinata delle parole del prompt, 30 in tutto. «l'assistente» si spezza in «l» e «assistente», allo stesso modo per prompt e trascrizione. Rischio esaminato: un ordine non stabile o una tokenizzazione diversa tra i due lati. Esito: ok.
+- `modules/voice/stt.py:63` — `_pezzo_del_prompt` cerca la sequenza come finestra contigua. Rischio esaminato: falsi positivi e casi limite (n più lungo del prompt dà un range vuoto, quindi False). Esito: ok. Nota COSMETICA: il tipo è `parole: list` e non `list[str]`.
+- `modules/voice/stt.py:95` — l'eco scatta solo se la frase ha almeno 4 parole ed è un pezzo contiguo del prompt; il filtro a insieme con quota 80% è sparito. Le sonde che ho lanciato io: passano «Gas, forte, firma la bozza», «Gas forte report merge», «Gas forte bozza firma contatto», «report PR merge», «con Gas» e «memoria»; vengono scartate «Gas forte lead bozza» e «lead bozza firma contatto». Esito: ok, **R-612-1-M2 chiusa**. Il rischio residuo che hai indicato è reale ma stretto: la frase deve essere solo parole del prompt, nel suo stesso ordine e senza parole in mezzo, e l'operatore vede «Ho capito».
+- `tests/test_unit_voice_stt.py:247` e `tests/test_unit_voice_stt.py:258` — i test parametrici scartano le eco e fanno passare le richieste vere con parole del prompt. Ho riprodotto il mutante con la vecchia regola a insieme 80%: 4 failed, 57 passed. Ho poi rimesso il file com'era; l'index staged non è stato toccato. Ho riprodotto anche stt + contesto: 63 passed. Esito: ok.
+
+Nessun antipattern del Wall of Shame: il delta non tocca né slicing della storia né output simulato dei tool. Il fail-safe resta: `TrascrizioneIncerta` viene alzata solo dentro `transcribe_audio`.
+
+Non ho verificato:
+- il comportamento reale di Whisper large-v3 su Groq (frequenza delle eco del prompt sul silenzio, quanto sono tarate le soglie). Non si riproduce qui senza audio e chiave; va provato sul Mac (reports/prova_voce_mac.md).
+- le suite server e browser: il delta di questa ri-review non le tocca.
+
+Riga contatore `#613-M2` scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (commit 9e8b69e, messaggio `chore(revisore): memoria review #613 — APPROVATO`). Nessuna lezione nuova. Il diff della fetta non l'ho committato.
+
+Commit 254c4a5 (riserve di bot e verifica esterna su e1f0131), due passaggi. NB numerazione: la review «#614-M2» qui sotto è del branch V6; sul branch della V7 (feat/voce-v7-m2, non in questa PR) esiste un'altra #614-M2; il passaggio finale è numerato #617-M2 per non creare doppioni.
+
+Review #614-M2 (branch V6, primo passaggio):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #614-M2. Branch feat/voce-v6-m2 (PR #318), 4 file nel diff staged. Ho letto CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md (le parti sulla voce, cercate con Grep) e la mia memoria (lezioni #611–#613-M2). Non ho committato il diff. Ho committato solo la mia memoria (9ed10db, solo .claude/agents/memoria_revisore.md); i file staged non sono stati toccati.
+
+**Cosa ho riprodotto**
+- I test di voce (stt e contesto) passano: 71 passed.
+- I 4 mutanti danno 1 failed ciascuno: isfinite tolto, eco corta tolta, reset di `_capito` tolto, controllo della chiave ElevenLabs tolto.
+- Dopo i mutanti i file sono stati ripristinati (nessun diff fuori dallo staging).
+
+**Elementi del diff esaminati**
+- modules/voice/stt.py:113 — `math.isfinite` su durata, logprob e no_speech porta a `return None`. Rischio esaminato: un NaN che aggira i controlli dando un esito a caso, oppure un valore inf/NaN in start o end. Ho verificato che `max(nan, 0.01)` restituisce nan e che end meno (-inf) dà inf: entrambi presi. L'elenco delle frasi inventate e l'eco lunga girano prima dei segmenti, quindi valgono anche con NaN. Esito: ok.
+- modules/voice/stt.py:120 — eco corta: 2-3 parole contigue del prompt, scartate se no_speech pesato > 0,5. Rischio esaminato: la stessa trappola di R-611-1 (no_speech da solo, senza logprob basso). Esito: **riserva R-614-1-M2 (MEDIA)**. La sonda usa la taratura già scritta in tests/test_unit_voice_stt.py:243 per un «Sì.» chiaro (logprob -0,2, no_speech 0,85). Con quei valori «PR merge.», «Report PR.», «Firma contatto.» e «Gas, forte.» detti chiaramente finiscono tutti come «eco corta» e Gas risponde «non ho capito». La soglia 0,5 è fissa nel codice, mentre le altre si possono tarare con una variabile d'ambiente (`_soglia_env`).
+  - Proposta: soglia tarabile via env (es. `GAS_VOICE_STT_ECO_NO_SPEECH`) e un default sopra la taratura del «Sì.» (es. > 0,9). L'alternativa è non scartare l'eco corta e accettare il residuo BASSO del bot.
+  - Test da aggiungere: «PR merge.» con `_seg(-0.2, 0.85)` deve passare.
+- modules/voice/stt.py:66 — `List[str]`. Esito: ok (V-3 ve chiusa).
+- modules/voice/server.py:357 — un client che vuole solo audio, senza ELEVENLABS_API_KEY, riceve 200 JSON col messaggio. Rischio esaminato: il ramo audio+testo resta prioritario, e il ramo TTS con la chiave presente non cambia. Il test con la chiave tolta dall'ambiente è dentro `patch.dict`, che rimette l'ambiente com'era. Esito: ok.
+- modules/voice/server.py:261 — `self._capito = None` in testa a do_POST, prima del 404. Rischio esaminato: un «capito» rimasto da una richiesta precedente sulla stessa connessione (keep-alive). Esito: ok.
+- tests/test_unit_voice_contesto.py:38 — `tmp_path` al posto di mkdtemp. Rischio esaminato: `git init` dentro la cartella temporanea di pytest. Esito: ok.
+- Contesto: gli antipattern di CLAUDE.md sezione 5 (taglio diretto della storia, output dei tool simulati) non compaiono. Il kernel non è toccato. La regola di sicurezza della sezione 9 non è indebolita: nessuna eccezione nuova esce dai provider.
+
+**Risposta alla domanda «NaN → non si scarta»: sì, è il verso giusto.**
+- È coerente con «campi mancanti → None» (modules/voice/stt.py:111).
+- Un NaN non contiene informazione. «NaN → incerta» renderebbe la voce sorda in modo fisso se Groq mandasse NaN di continuo, e non ci sarebbe una soglia da tarare.
+- Il caso di `_soglia_env` (NaN → default, controllo acceso) è diverso: lì il NaN sta nella configurazione dell'operatore, qui nei dati della singola risposta.
+- **Riserva R-614-2-M2 (BASSA)**: un solo segmento NaN annulla il controllo su tutta la risposta. Sonda: un segmento con logprob -2 e no_speech 0,99 accanto a un segmento NaN dà None. Meglio saltare solo il segmento non finito e fare la media sugli altri (None solo se non resta nulla).
+
+**Cosa NON ho verificato**
+- Il comportamento reale di Whisper large-v3 su Groq (no_speech sull'eco vera del prompt e su comandi brevi detti al Mac): non si può riprodurre qui senza audio. Le soglie restano da tarare sul Mac.
+- I test della voce nel browser e il giro completo dalla voce del client (non-browser): non li ho lanciati.
+- La V-2 ve («Grazie.» isolato) non è in questo diff.
+
+**Memoria**
+- Riga contatore #614-M2 e una lezione nuova aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate con scripts/commit_memoria_revisore.sh (9ed10db).
+- La lezione: quando si aggiunge un nuovo filtro sulla confidenza di Whisper, va riprovato con la taratura già documentata nei test.
+
+Review #617-M2 (diff finale committato in 254c4a5):
+
+## VERDETTO: APPROVATO
+
+Ho riletto la ri-review (#617-M2) di persona. Branch feat/voce-v6-m2, diff staged di 4 file. Ho controllato il delta dopo la #614-M2 in modules/voice/stt.py e tests/test_unit_voice_stt.py.
+
+Elementi del diff esaminati:
+1. `modules/voice/stt.py:124` — l'eco corta (2-3 parole contigue del prompt) viene scartata solo se no_speech è sopra la soglia letta da `_soglia_env("GAS_VOICE_STT_ECO_NO_SPEECH", 0.9)`. Rischio esaminato: un comando corto detto davvero, con la taratura del «Sì.» (logprob -0,2, no_speech 0,85), finiva scartato. Esito: ok, **R-614-1-M2 chiusa**. Le mie sonde: «Gas, forte.», «Lead, bozza.» e «PR merge.» passano con no_speech 0,88 e 0,90 e vengono scartati con 0,92. Ho rifatto il mutante col default a 0,5: 5 failed.
+2. `modules/voice/stt.py:115` — un segmento con durata, logprob o no_speech non finito viene saltato (`continue`). Rischio esaminato: con `max(nan, 0.01)` il risultato resta nan, quindi un end NaN deve essere preso comunque. È preso: `math.isfinite` agisce dopo il calcolo della durata. Anche end=inf e logprob=-inf vengono saltati. Esito: ok, **R-614-2-M2 chiusa**. Ho rifatto il mutante con `return None`: 3 failed.
+3. `modules/voice/stt.py:120` — se non resta nessun segmento valido (`peso <= 0`) la funzione restituisce None. Rischio esaminato: divisione per zero. Esito: ok. Il caso col solo segmento NaN torna «ciao», come nel test.
+4. `tests/test_unit_voice_stt.py:296` — i test parametrizzati (5 frasi × no_speech 0,2/0,85) e il test della soglia da env (0,8 → «PR merge.» scartato). Esito: ok. Anche il caso «NaN + segmento cattivo → incerta» in `tests/test_unit_voice_stt.py:324` è coperto.
+
+Risultati riprodotti: stt + contesto 80 passed. Dopo i mutanti il file è stato ripristinato e il working tree coincide con lo staged.
+
+Rischio residuo (nota, non riserva): il filtro dell'eco corta non guarda il logprob. Un comando corto e chiaro fatto di parole contigue del prompt, con no_speech sopra 0,9, viene quindi scartato sempre, anche se l'operatore lo ripete. Va tarato sul Mac con GAS_VOICE_STT_ECO_NO_SPEECH. Se succede si vede subito («Non ho capito bene, puoi ripetere?»).
+
+Rischio escluso: non ho verificato i valori veri di no_speech e logprob di Groq large-v3 sull'eco del prompt in silenzio. Non si riproduce senza audio e senza chiamata a Groq: la soglia 0,9 è una stima da confermare sul Mac.
+
+Nessun antipattern del Wall of Shame (né slicing della history né tool simulati). Il diff non tocca i guardrail del kernel.
+
+Memoria: ho aggiunto la riga contatore `#617-M2 — 2026-11-02 — APPROVATO — …` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Ho usato #617 e non #615 per non creare doppioni con il branch V7, come mi hai chiesto, e l'ho scritto nella riga. Non l'ho committata: il classificatore dei permessi ha negato `scripts/commit_memoria_revisore.sh` e tu avevi chiesto di non committare. Il file è solo modificato e va incluso nel commit di fine task (passo 4 di /fine-task).
+
+Commit 17c9352 (riserve di bot e verifica esterna su ded8469). Review #623-M2 (numero preso dopo la #622-M2 del branch V7b, per evitare doppioni):
+
+## VERDETTO: APPROVATO
+
+Review #623-M2. Branch feat/voce-v6-m2, PR #318, diff staged di 3 file. Questa memoria del branch arriva fino a #617-M2; il numero #623 è quello che mi hai dato tu.
+
+Letture fatte prima della review: CLAUDE.md (sez. 5, 8, 9 e 10), reports/stato_progetto.md (voce V6 alla riga 603), le ultime righe di .claude/agents/memoria_revisore.md (#614-M2 e #617-M2).
+
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:108`: un segmento che non è un dict ora viene saltato con `continue` invece di far uscire `_motivo_incerta` con `return None`. Ho controllato che un segmento rotto non spenga più il controllo sugli altri segmenti e che non ci sia nessun crash. **ok**. Con il mutante `return None` il caso `"x"` fallisce (1 failed, riprodotto).
+- `modules/voice/stt.py:114`: un segmento senza i campi attesi, o con valori che non sono numeri (KeyError, TypeError, ValueError), ora viene saltato. Ho controllato il caso in cui non resta nessun segmento valido: `peso` resta a 0 e il guardiano già presente in `modules/voice/stt.py:119` restituisce None, quindi il testo viene tenuto e niente viene scartato a caso. **ok**. Con il mutante `return None` falliscono 2 test (riprodotto). Insieme al mutante sopra fanno i 3 failed che hai dichiarato.
+- `tests/test_unit_voice_stt.py:272-279`: test parametrico con 3 segmenti malformati più un segmento cattivo (lp -2.0, ns 0.99), che deve dare TrascrizioneIncerta. Ho controllato che il test colga davvero la regressione: i mutanti lo fanno fallire. **ok**. `tests/test_unit_voice_stt.py:281` (solo segmenti malformati, testo tenuto) passa ancora. Il caso «tutti malformati → None» è quindi fissato da un test.
+- `modules/voice/server.py:41`: aggiunta alla docstring di `GAS_VOICE_STT_ECO_NO_SPEECH`, con default 0.9 coerente con quello del codice. Solo documentazione, **ok**.
+
+**Esecuzione**: `tests/test_unit_voice_stt.py` dà 81 passed. Dopo i mutanti ho ripristinato il file: `git diff` non staged è vuoto.
+
+**Antipattern e guardrail**: nessuno slicing della history, nessuna simulazione di tool. Il cap delle iterazioni e `_get_window` non sono toccati. Fail-safe rispettato: un input malformato porta a non scartare, mai a un crash.
+
+**Rischio escluso**: non ho verificato il comportamento sul Mac con un vero Whisper large-v3. In dev non si può riprodurre. Resta aperto il caso di risposte miste, dove l'unico segmento valido decide da solo l'esito. È il comportamento voluto (come per i NaN), ma la taratura delle soglie resta da fare sul Mac.
+
+**Memoria**
+- Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore `#623-M2 — 2026-11-02 — APPROVATO — …`, senza lezioni nuove.
+- **Non l'ho committata**: `bash scripts/commit_memoria_revisore.sh` è stato bloccato dall'hook `review_gate.sh` perché il diff staged tocca il perimetro e il marcatore `.review_ok` non c'è ancora. Il file resta modificato e non in staging: va incluso nel commit di fine task, dopo `bash scripts/segna_review_ok.sh`.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 43 a 44 test (test di isolamento riscritti per il modello nuovo; tolti quelli legati a `_NASCOSTE`, aggiunti l'elenco di ogni file visibile, i tetti di /tmp e /dev/shm, Gas e home dentro una permessa, rifiuti, sonde, routeWebSocket, cache). Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), da root: 752 passed, 2 skipped; browser da utente nobody: 44 passed. Mutanti presi (1 failed ciascuno): /etc intera, radice scrivibile, Gas dentro una permessa non coperta, prefisso di node ri-esposto, tutta node_modules, cartella bin di node, /tmp senza tetto, /dev/shm senza tetto, sonda senza cwd, fallimento in cache, routeWebSocket→connectToServer, rifiuto degli esposti tolto, /dev scrivibile, permessa-collegamento montata come prima, sonda a comando a parte. Non preso: `--new-session` (serve un TTY).
+gas.py non toccato. Voce: `tests/test_unit_voice_stt.py` 37 → 81 test raccolti (pytest --collect-only alla base b472fe1 e a 17c9352; il «61» di prima era fermo a e1f0131, V-3 ve) (V6: parametri a Groq, soglie, media pesata, frasi inventate, eco del prompt, «sì» breve con no_speech alto, comandi veri con parole del prompt, env non numeriche/nan/inf, JSON non oggetto, «non ho capito» senza turno, «capito» nelle risposte, V-1 bot #314); nuovo `tests/test_unit_voice_contesto.py` 2 test (kernel vero, forte e normale ricevono la conversazione); test della pagina nel browser con la riga «Ho capito». Run misurate in sessione: stt + contesto 63 passed; stt+server+tts non-browser 122 passed (prima delle correzioni finali a stt); pagina nel browser con GAS_TEST_BROWSER_OBBLIGATORIO=1: 10 passed. Mutanti presi: `_motivo_incerta` spento → 6 failed; `_get_window` ridotto all'ultimo messaggio → 2 failed; senza AND del silenzio → 1 failed; vecchia regola dell'eco a insieme → 4 failed. Nessun FAIL. Dopo 254c4a5: stt + contesto 80 passed; voce non-browser 156 passed (prima della seconda correzione); mutanti: isfinite/eco corta/reset di _capito/controllo chiave → 1 failed ciascuno, soglia eco 0,5 → 5 failed, `return None` sui NaN → 3 failed.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- 9494a95, fb8b0c0 (memoria del revisore), a26a8a9 (fetta 35): pushati insieme prima dell'apertura della PR #317; nessuna run su questi SHA prima della PR.
-- 427e57d (fine-task): run su 427e57d success (unit-suite, handoff-check); verifica-bot success (bot APPROVATO CON RISERVE).
-- d3c3d22 (memoria #609), 505479f (correzioni), 6729b2c (fine-task): pushati insieme; run 41361521792 su 6729b2c success (unit-suite, handoff-check); verifica-bot failure (verdetto «incoerente», poi G-2 dopo il rilancio: vedi §1).
-- cdc18c2 (memoria #610), 2a96a14 (sonda) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- fa188bc, 2fc86cf, 9e8b69e, 62803f7: pushati insieme prima dell'apertura della PR #318; nessuna run della PR su questi SHA.
+- e1f0131 (fine-task precedente, head allora): unit-suite success, handoff-check success, verifica-bot neutral (macchina del bot toccata: ci.yml). Bot: APPROVATO CON RISERVE senza ALTA/MEDIA; verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/318#issuecomment-6566503944).
+- ded8469 (fine-task precedente, head allora): unit-suite success, handoff-check success, verifica-bot neutral. Bot: APPROVATO CON RISERVE senza ALTA/MEDIA; verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/318#issuecomment-6566796686).
+- 17c9352 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
 
 ## §7 RISERVE APERTE
 
-- V-1 c ve #316 BASSA: `serviceWorkers: 'block'` senza test (nella prova la pagina non diventa sicura); `--new-session` senza test (serve un TTY).
-- R-609-1 (chat Mani) BASSA: il ramo delle permesse-collegamento guarda solo l'ultimo pezzo del percorso (un collegamento più in alto non è coperto; teorico sulle distribuzioni note). R-609-2: chiusa in 2a96a14 (la sonda è il comando vero). R-610-1 (chat Mani) BASSA: nessun test fissa che un rifiuto della sonda (node o Playwright mancanti) non vada in cache.
-- V-3 ve #317 BASSA: in CI il test «ogni file visibile» non monta Chromium (PLAYWRIGHT_BROWSERS_PATH non impostata); lo coprono i test end-to-end.
-- aarch64 e /usr non unito: analizzati sul codice, non provati (fail-closed: il browser resta spento).
-- HTTPS reale di Chromium senza /etc/ssl, bwrap con --size e AppArmor sul VPS: da provare sul VPS (seconda condizione della roadmap per accendere il browser).
-- Limiti dichiarati del browser: Chromium senza la sua sandbox; il proxy filtra le destinazioni, non i dati; niente regola https→http e pagina riscaricata (R-593-6); X-Gas-Proxy dentro i tunnel https non si toglie (R-593-3); una pagina che usa i Worker può non funzionare.
-- Riserve BASSE della #604: la sola lettura dei ri-esposti non si prova da un utente che non può scriverci; pid basso di pytest.
-- Nota BASSA (review #593): un'intestazione «Nome : valore» fa rifiutare la pagina dal proxy.
-- V-1 bot #309 BASSA (limite); R-582-1 BASSA, R-582-2 COSMETICA, R-580-2 BASSA (limiti del bot); V-1/V-2 bot e ve #306; R-572-1, R-572-2, R-575-1 BASSE e R-575-2 COSMETICA; (b) libexpat ≥ 2.4 nel doctor con M1; V-3 ve #303 (selectolax 1.0.2, decisione dell'operatore); R-518-1, R-516-1, R-ve277-5, V-1 ve/bot #288, V-2/V-3 ve #296, R-546-1: invariate.
+- Riserve di questa sessione (R-611-1/2/3-M2, R-612-1-M2, R-614-1/2-M2 del branch V6): tutte chiuse (review #613-M2, #617-M2). Riserve di bot e verifica esterna su e1f0131 chiuse in 254c4a5, tranne V-2 ve («Grazie.» isolato sul silenzio con logprob buono passa: da tarare sul Mac).
+- Riserve su ded8469 chiuse in 17c9352 (review #623-M2), tranne la taratura (sotto).
+- Nota #617-M2 (anche V-2 bot su ded8469): l'eco corta non guarda il logprob; soglia GAS_VOICE_STT_ECO_NO_SPEECH (0,9) da tarare sul Mac.
+- Da provare sul Mac: le soglie della trascrizione incerta (-1,0 / 0,8) su audio vero.
+- **R-584-1-M2** BASSA (rumore costante ≥ 0,045 RMS preso per voce), **R-583-1-M2** COSMETICA, **R-576-1-M2** BASSA, **R-576-3-M2** COSMETICA (fette precedenti).
