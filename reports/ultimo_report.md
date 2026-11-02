@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della V9 (numero nell'handoff §0), secondo la regola di merge di CLAUDE.md §10.
+1. Merge della PR #327 (https://github.com/Gasss23/Gas/pull/327), secondo la regola di merge di CLAUDE.md §10.
 2. Sul Mac, dopo il merge: parlare a Gas con ventola o TV accesa. Se Gas si zittisce da solo mentre parla, mettere `GAS_VOICE_AGC=0` nel `.env` (guida in `reports/prova_voce_mac.md`).
 
 ## Esito delle fette

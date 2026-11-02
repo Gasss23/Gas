@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. PR della V9: da aprire (numero dopo la creazione).
+1. Merge della PR #327 (https://github.com/Gasss23/Gas/pull/327). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5128485283","url":"https://github.com/Gasss23/Gas/pull/327"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
 2. Sul Mac, dopo il merge: prova con ventola o TV; se Gas si zittisce da solo, `GAS_VOICE_AGC=0`.
 
 ---
@@ -37,6 +37,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8819f4d docs(voce-v9): report di fine task (review #630–#631-M2, #657-M2)
 69a03d2 Merge remote-tracking branch 'origin/main' into feat/voce-v9-m2
 8484950 docs(voce): stato delle fette V7–V9 della chat M2 (rami a pila, riserve aperte)
 31f1ee4 docs(voce-v9): guida Mac, rimedio GAS_VOICE_AGC=0 con ventola o TV
@@ -136,7 +137,7 @@ Dopo il merge di main: `tests/test_unit_voice_server.py` + `test_unit_voice_stt.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud. Commit della sessione (fino a 8819f4d, pushati insieme: run sulla sola testa, non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
