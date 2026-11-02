@@ -1,186 +1,305 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Mani: piano della mail di Gas (R6), PR doc-only; riserve di #323 registrate (chat Mani)
+**Sessione:** 2026-11-02 — Mani: voce H24, installazione sistemata dopo la prova dal vero sul Mac (fetta voce-fix) (chat Mani)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #324 (https://github.com/Gasss23/Gas/pull/324). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5125431345","url":"https://github.com/Gasss23/Gas/pull/324"}`), perché `gh` nel cloud non è autenticato. Solo documenti. **Sì dell'operatore sull'head 84b1422** (via M1, dopo il bot APPROVATO CON RISERVE); dopo c'è solo il merge di main (PR #326) e questi report. M1 riattiva il merge automatico.
-2. Rispondere alle 7 domande in fondo a `reports/piano_mail.md`: niente codice della mail prima delle risposte.
+1. Merge della PR #328 (https://github.com/Gasss23/Gas/pull/328). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5128550561","url":"https://github.com/Gasss23/Gas/pull/328"}`), perché `gh` nel cloud non è autenticato. **Il merge lo decide l'operatore**: il diff tocca `.claude/perimetro_review.txt` (aggiunge `scripts/voce/`).
+2. Sul Mac, dopo il merge: `bash scripts/voce/installa.sh` due volte di fila (la seconda non deve fermarsi con «Bootstrap failed: 5»), poi una richiesta a voce e `grep "tempi voce" gas_debug.log`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #323 (fetta 37, voce H24)**: `FATTA` — mergiata (9718e0c) col sì dell'operatore; la parola resta «hey_jarvis» per ora («Hey Gas» in una fetta a parte, decisione di M1).
-- **Piano mail (chiesto da M1)**: `FATTA` — `reports/piano_mail.md`: lettura non fidata, bozze in Gas, invio solo con firma, credenziali separate, tetti, solo cervello forte, 7 domande per l'operatore.
-- **Riserve di #323 in stato_progetto (richiesta di M1)**: `FATTA` — V-1 del bot su 3672964 e V-1…V-6 della seconda verifica esterna (https://github.com/Gasss23/Gas/pull/323#issuecomment-6583621078), registrate senza altri giri.
-- **Bot su 0c0081f (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741499541)**: APPROVATO CON RISERVE, check success. V-1 BASSA (il piano prometteva «mail solo al forte» senza dire che l'output degli strumenti resta nella storia e va ai gratuiti al turno dopo): `FATTA` in 9718c6a — requisito del kernel nel punto 6 e nella fetta 1. V-2 BASSA (V-4 COSMETICA del bot su #323 non registrata): `FATTA`. V-3 COSMETICA (numero della PR): `FATTA`.
-- **Bot su 9718c6a (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741654147)**: APPROVATO CON RISERVE, check success. V-1 BASSA (il piano usava i nomi `leggi_mail`/`invia_mail`, ma il cancello contamina e mette alla firma per NOME): `FATTA` — ora `fetch_email`/`send_email`, con `fetch_email` già tra gli strumenti che contaminano e `send_email` già IRREVERSIBLE; `prepara_bozza` da aggiungere con un test. V-2 BASSA (handoff non riallineato all'head): `FATTA` in questo commit.
-- **Bot su cb84cc0 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741711721)**: APPROVATO CON RISERVE, check success. V-1 BASSA (`fetch_email` è tra gli strumenti che contaminano ma non in GATE_ALLOWLIST, quindi oggi negato: «già nel cancello» era impreciso): `FATTA` — requisito della fetta 1 con un test. V-2 COSMETICA (V-3 bot #323 non registrata): `FATTA`.
-- **Bot su 18f2621 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741750870)**: APPROVATO CON RISERVE, check success. V-1 BASSA (il requisito del kernel copriva solo l'output di fetch_email, non le risposte e gli argomenti dello stesso turno): `FATTA` — «una finestra con un turno mail non va mai ai gratuiti». V-2 BASSA (conflitto con main dopo la #322): `FATTA` — main unita con un merge, blocchi M2 tenuti (review del merge #626). V-3 COSMETICA (`_LIBERI_DOPO_LETTURA` per prepara_bozza): `FATTA`.
-- **Merge di main (PR #322 di M2, voce V7a)**: `FATTA` in b66ac40 — conflitti solo nei report (tenuti i miei) e nella riga «Ultimo aggiornamento» (unite); file del perimetro entrati da main identici a MERGE_HEAD. **Review #626 (chat Mani)**: APPROVATO CON RISERVE. R-626-1 BASSA (il requisito del kernel nominava solo i turni dopo: ora anche riflessione di fine task e compressione) e R-626-2 BASSA (handoff non riallineato al merge): `FATTA` in questo commit.
-- **Bot su 970beca (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741914149)**: NON approvato, check verifica-bot failure. V-1 MEDIA (il requisito del kernel non copriva la memoria: `_memoria_pin` mette i contatti attivi nel system di ogni turno, anche sui gratuiti, e `ricorda` li rende leggibili): `FATTA` — quarto percorso nel punto 6, contatti dalle mail con origine «mail» esclusi fuori dal forte, e finché non c'è nessun contatto salvato dalle mail. V-2 BASSA (`notify_telegram` è SAFE, quindi dopo una lettura partirebbe senza firma): `FATTA` — nel piano e nella fetta 1 (commit 7346994).
-- **Bot su 7346994 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741952991)**: APPROVATO CON RISERVE, check success; sì dell'operatore al merge. V-1 BASSA (gli snapshot `refs/gas/snapshots/` fotografano `.gas_history.json` per 7 giorni) e V-2 COSMETICA (`test_notify_telegram_safe` da aggiornare nella fetta 1): `REGISTRATE` in stato_progetto, senza altri giri (decisione di M1).
-- **Merge di main (PR #325 di M2, voce V7b)**: `FATTA` in 9174640 — conflitti solo nei report (tenuti i miei), nella memoria (tenute le righe di tutti e due) e nella riga «Ultimo aggiornamento» (unite); file del perimetro entrati da main identici a MERGE_HEAD. **Review #627 (chat Mani)**: APPROVATO.
-- **Bot su d783938 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743253066)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA (quinto percorso verso i gratuiti: `write_file` è in `_LIBERI_DOPO_LETTURA`, quindi a finestra contaminata scrive senza firma un .md con i dati della mail, e `read_file` lo rilegge in un turno dopo sui gratuiti): `FATTA` — quinto percorso nel punto 6 e nella fetta 1 (`write_file` alla firma con `fetch_email` nella finestra, con un test). V-2 BASSA (la frase «non conservarsi oltre il turno» contraddiceva l'opzione di tenere il turno nella storia): `FATTA` — proposta: turno mail tolto o mascherato dalla storia a fine turno, quindi anche dagli snapshot (chiude anche V-1 bot su 7346994); se l'operatore preferisce tenerlo, la conservazione va dichiarata nella domanda 7.
-- **Bot su a48caa0 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743310696)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA (mascherare a fine turno non basta: `_save_history` gira anche a metà turno, gas.py:5011, e `_snapshot` copia `.gas_history.json` prima di write_file e run_command; la conservazione degli snapshot è «ultimi 100 o meno di 7 giorni», poi fino a `git gc`): `FATTA` — mascheramento in ogni salvataggio, snapshot con un turno mail nella finestra senza la storia (o mascherata), tempi corretti, domanda 7 estesa. V-2 BASSA (il sì dell'operatore era su 7346994): `FATTA` — §0 lo chiede di nuovo. V-3 COSMETICA (nota del §3 sull'head mancante): `FATTA`.
-- **Bot su bd38966 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743366214)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA («dalle mail non si salvano contatti» senza meccanismo: `salva_contatto` e `imposta_stato_contatto` stanno in `_LIBERI_DOPO_LETTURA` e restano liberi dopo una lettura): `FATTA` — regola unica nel punto 6 e nella fetta 1: con `fetch_email` nella finestra resta libero solo `prepara_bozza`, tutti gli altri reversibili alla firma, con i test. V-2 BASSA (nei processi accesi la storia in memoria non è mascherata e `_get_window` la porta al turno dopo): `FATTA` — maschera anche su `self.history` e guardia su ogni finestra con un turno mail, test su due turni nello stesso kernel. V-3 COSMETICA (`_snapshot` aggiunge la storia solo se attiva): `FATTA`.
-- **Bot su 754480d (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743483719)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA (sesto percorso: `applica_firma` scrive nella storia argomenti e output dell'azione firmata, in un turno di sblocco anche giorni dopo, senza maschera) e V-2 BASSA (`rifletti()` scrive recap e lezioni che possono riassumere la mail): `FATTA` — dopo quattro giri con un percorso nuovo ogni volta, il punto 6 ora ha un principio strutturale: segno «mail» alla fonte su tutto ciò che nasce da un turno mail, e un solo controllo all'uscita prima di ogni chiamata a un modello non forte; i percorsi noti (sei, più la riflessione) sono esempi e test, non una lista chiusa. Domanda 4: la firma decide se l'azione parte, non dove vanno i dati.
-- **Bot su 84b1422 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743532402)**: APPROVATO CON RISERVE, check success; **sì dell'operatore su questo head** (via M1). V-1 BASSA (il controllo all'uscita non copre fornitori che non sono modelli, come ElevenLabs per la voce) e V-2 BASSA (i tre strumenti mail finirebbero nei rami di default del diario): `DA REGISTRARE` in stato_progetto nella PR voce-fix, senza altri giri sulla #324 (decisione di M1).
-- **Merge di main (PR #326 di M2, voce V8)**: `FATTA` in 54a26db — conflitti solo nei report (tenuti i miei), nella memoria (tenute le righe di tutti e due) e nella riga «Ultimo aggiornamento» (unite); file del perimetro entrati da main identici a MERGE_HEAD. **Review #630 (chat Mani)**: APPROVATO.
-- **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: `DEFERITA — commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); PR subito dopo questa (un solo branch remoto)`.
+- **Rilevatore sempre in errore (V-1 ve #323)**: `FATTA` — log a 1, 2, 4, 8… errori e pausa crescente dal terzo, con l'esponente limitato (R-624-1); il conto si azzera quando torna a posto.
+- **GAS_CLAUDE_BIN sotto launchd (V-1 bot #323)**: `FATTA` — installa.sh lo scrive nel .env se manca, solo con percorso assoluto e caratteri ammessi.
+- **Token vuoto accettato (V-4 bot #323)**: `FATTA` — la regex rifiuta il token vuoto o col solo commento.
+- **scripts/voce/ nel perimetro di review (V-4 ve #323)**: `FATTA`.
+- **Seconda esecuzione di installa.sh (prova dal vero di M1: «Bootstrap failed: 5»)**: `FATTA` — dopo bootout si aspetta che `launchctl print` fallisca (al massimo 5 s per servizio), poi bootstrap con 3 tentativi a 1 s; launchctl finto con stato e 4 test che falliscono col vecchio script.
+- **Tempi della voce nel log (M1: `grep gas.voce.tempi` non trova niente)**: `FATTA` — la riga c'è, in gas_debug.log accanto a gas.py anche sotto launchd, ma il formato non stampa il nome del logger: si cerca `grep "tempi voce"`. Scritto nella LEGGIMI.
+- **Review**: #624 BOCCIATO (overflow della pausa, R-624-1 MEDIA, corretto); #625, #628, #629 APPROVATO CON RISERVE; riserve R-628-1/2/3/4 e R-629-1/2 corrette; #631 sul merge in main.
+- **Riserve della PR #324 (bot su 84b1422 e su 922aac9)**: `FATTA` — registrate in stato_progetto; punto 0 di ultimo_report riscritto.
+- **Bot su 1d6d14f (https://github.com/Gasss23/Gas/pull/328)**: APPROVATO CON RISERVE, check verifica-bot neutral (la PR tocca la macchina del bot: decide l'operatore). V-1 BASSA (installa.sh guarda il token e GAS_CLAUDE_BIN su qualsiasi riga del .env, mentre `_carica_dotenv` tiene la prima) e V-2 BASSA (regex diverse dal parser): `REGISTRATE` in stato_progetto, senza altri giri (decisione di M1).
+- **Verifica esterna (https://github.com/Gasss23/Gas/pull/328#issuecomment-6590448861)**: APPROVATO CON RISERVE, suite intera 3143 passed. V-1 BASSA (log limitato solo per errori consecutivi), V-2 BASSA (= R-625-1), V-3 e V-4 COSMETICHE: `REGISTRATE` in stato_progetto.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- reports/diff_sessione.md           |  22 ++++++++++------------
+ .claude/agents/memoria_revisore.md |   8 ++++++++
+ .claude/perimetro_review.txt       |   3 +++
+ clients/voice/ascolto.py           |  29 +++++++++++++++++++++++++++--
+ reports/diff_sessione.md           |  16 ++++++++--------
  reports/handoff.md                 | n/d
- reports/piano_mail.md              | 155 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/ripartenza_mani.md         |   2 +-
- reports/roadmap.md                 |   4 ++--
+ reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  39 ++++++++++++++++++++++-----------------
+ reports/ultimo_report.md           |  33 ++++++++++++---------------------
+ scripts/voce/LEGGIMI.md            |  14 +++++++++++---
+ scripts/voce/installa.sh           |  48 ++++++++++++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_voce_ascolto.py    | 204 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
 ```
 
-NB: base = merge-base con origin/main = 29c7cee. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = c6206d2. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-aa29e7c chore(revisore): memoria review #630 — APPROVATO
-54a26db Merge origin/main (PR #326, voce V8) in PR #324
-84b1422 docs(mail): principio strutturale nel piano — segno «mail» alla fonte e un solo controllo all'uscita verso i non forti; esito della firma e prodotti della riflessione tra i percorsi noti (V-1 MEDIA, V-2 bot #324 su 754480d)
-754480d docs(mail): con una mail nella finestra liberi solo prepara_bozza (rubrica e write_file alla firma), maschera anche sulla storia in memoria (V-1 MEDIA, V-2, V-3 bot #324 su bd38966)
-bd38966 docs(mail): storia mascherata a ogni salvataggio e snapshot senza storia mail, conservazione corretta, sì da richiedere sull'head nuovo (V-1 MEDIA, V-2, V-3 bot #324 su a48caa0)
-a48caa0 docs(mail): quinto percorso verso i gratuiti (write_file in un turno mail), turno mail tolto o mascherato dalla storia anche negli snapshot (V-1 MEDIA, V-2 bot #324 su d783938)
-d783938 docs(fine-task): merge di main (PR #325) nella PR #324, riserve del bot su 7346994 registrate (review #627)
-a0f71c7 chore(revisore): memoria review #627 — APPROVATO
-9174640 Merge origin/main (PR #325, voce V7b) in PR #324
-7346994 docs(mail): quarto percorso verso i gratuiti (pin della memoria e ricorda), niente contatti dalle mail finché non c'è; notify_telegram non più SAFE nella fetta 1 (V-1 MEDIA, V-2 bot #324 su 970beca)
-970beca docs(mail): tre percorsi verso i gratuiti nel requisito del kernel, handoff col merge di main (R-626-1/2)
-ffff127 chore(revisore): memoria review #626 — APPROVATO CON RISERVE
-b66ac40 Merge origin/main (PR #322, voce V7a) nella PR #324; piano mail: requisito del kernel su tutto il turno mail (review #626)
-18f2621 docs(mail): fetch_email da aggiungere a GATE_ALLOWLIST nella fetta 1, V-3 bot #323 registrata (V-1/V-2 bot #324 su cb84cc0)
-cb84cc0 docs(mail): nomi degli strumenti come nel cancello (fetch_email/send_email), handoff riallineato (V-1/V-2 bot #324 su 9718c6a)
-9718c6a docs(mail): requisito del kernel per le mail (output mai ai gratuiti), V-4 bot #323 registrata, numero della PR (V-1/V-2/V-3 bot #324)
-0c0081f docs(fine-task): piano mail, PR #324
-ec1fdbb docs(mail): stato, roadmap e ripartenza col piano mail; riserve di #323 registrate
-6af999b docs(mail): piano della mail di Gas (R6) con le domande per l'operatore, senza codice
+1d6d14f docs(fine-task): fetta 38, voce H24 dopo la prova sul Mac, PR #328
+2c7d842 docs(voce): report della fetta 38 (installazione dopo la prova sul Mac), riserve della PR #324 registrate
+a316409 chore(revisore): memoria review #631 — APPROVATO CON RISERVE
+6d2fe79 Merge voce-fix: rilevatore in errore, GAS_CLAUDE_BIN, token vuoto, attesa dopo bootout e tentativi di bootstrap, tempi voce nella LEGGIMI; R-629-1/2 (review #624-#631)
+0793476 chore(revisore): memoria review #629 — APPROVATO CON RISERVE
+2e1fdea Merge origin/main (PR #322, #325) in voce-fix; riserve R-628-1/3/4 corrette (review #629)
+e57305e chore(revisore): memoria review #628 — APPROVATO CON RISERVE
+ac425b8 fix(voce): installa.sh aspetta che il servizio vecchio sparisca dopo bootout e riprova bootstrap; tempi voce in gas_debug.log nella LEGGIMI (prova dal vero di M1; review #628)
+bc369ed fix(voce): rilevatore in errore con log limitato e pausa crescente, GAS_CLAUDE_BIN scritto da installa.sh, token vuoto rifiutato, scripts/voce/ nel perimetro (V-1 ve, V-1/V-4 bot, V-4 ve #323; review #624-#625)
+5c4cc46 chore(revisore): memoria review #625 — APPROVATO CON RISERVE
+ec34430 chore(revisore): memoria review #624 — BOCCIATO
 ```
 
-NB: l'head della PR, cioè il commit che contiene questo file (fine-task, a volte insieme alle correzioni del giro), non compare in questo log, per costruzione.
+NB: l'head della PR, cioè il commit che contiene questo file, non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-I commit di documenti della PR non toccano il motore. Il merge di origin/main (PR #322 di M2) porta file del perimetro di main, invariati: verdetto integrale della review #626 (chat Mani) sul merge:
+Verdetti integrali, in ordine.
+
+Review #624 (chat Mani), su bc369ed prima della correzione:
+
+```
+## VERDETTO: BOCCIATO
+
+Review #624 (chat Mani). Il diff staged sul branch voce-fix, base 9718e0c, ha sha256 che inizia per 2cf1b7dd230c735d. Prima di cominciare ho letto CLAUDE.md, l'inizio di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md (review #615-#623). Ho esportato l'indice con `git checkout-index` in una cartella a parte e lì ho rifatto le prove: 85 passed su tests/test_unit_voce_ascolto.py, come dichiarato.
+
+**Elementi del diff esaminati**
+
+- `clients/voice/ascolto.py:268` — calcola la pausa con `self.dorme(min(PAUSA_ERRORI_MAX_S, 0.5 * 2 ** (n - 3)))` — rischio: il contatore cresce senza limite in un servizio acceso giorno e notte — **blocco (R-624-1)**.
+- `clients/voice/ascolto.py:250` — azzera il conto quando il rilevatore torna a funzionare e lo scrive nel log — rischio: nessun test fissa l'azzeramento — **riserva (R-624-2)**.
+- `scripts/voce/installa.sh:32` — nuova regex del token (primo carattere che non sia spazio, # o virgoletta) — rischio: token vuoti accettati — **ok**. Ho provato il mutante con la regex vecchia `.+`: 3 failed. Le 4 righe vuote vengono rifiutate e le 3 buone passano.
+- `scripts/voce/installa.sh:37` — controlla se GAS_CLAUDE_BIN c'è nel .env, poi fa `command -v`, controlla la lista bianca e aggiunge la riga in coda con `>>` — rischio: falso «aggiunto» — **riserva (R-624-3)**. Mutanti: senza scrittura 1 failed, `>` al posto di `>>` 1 failed, senza AVVISO 1 failed.
+- `tests/test_unit_voce_ascolto.py:208` — test con 1000 blocchi sempre in errore — si ferma prima di n=1027, quindi non vede R-624-1 — **riserva**.
+- `.claude/perimetro_review.txt:31` — aggiunge `scripts/voce/` — ha la stessa forma delle altre cartelle (`brains/`, `clients/`); ho controllato che installa.sh, LEGGIMI.md e il plist risultino nel perimetro — **ok**. Tocca la macchina di controllo, quindi il merge lo decide l'operatore.
+- Contesto: `gas.py:608` (`_carica_dotenv`), dove vale la PRIMA riga di una chiave. Serve a provare R-624-3.
+
+**Finding**
+
+- **R-624-1 MEDIA (blocco)**: `0.5 * 2 ** (n - 3)` dà OverflowError da n=1027 in poi, cioè dopo circa 17 ore di pause da 60 s, perché un intero da 2**1024 non si converte in float.
+  - L'errore finisce nell'`except` del §9: la pausa salta e a ogni blocco esce una riga «pausa del rilevatore fallita (OverflowError)», circa 12,5 al secondo.
+  - È lo stesso diluvio di log che la fetta voleva chiudere, e torna proprio nel caso H24 (il servizio acceso giorno e notte).
+  - Riprodotto sull'export dell'indice: con 1200 blocchi sempre in errore le pause si fermano a 1024 (16,97 ore) e le righe «pausa fallita» sono 174.
+  - Correzione: limitare l'esponente, per esempio `0.5 * 2 ** min(n - 3, 7)`, oppure il contatore. Serve anche un test oltre i 1030 blocchi che verifichi che la pausa resta 60 e che le righe di log restano logaritmiche.
+- **R-624-2 BASSA**: il mutante che toglie `self._errori_rilevatore = 0` (`clients/voice/ascolto.py:250`) sopravvive con 85 passed, ma scrive «di nuovo a posto» a OGNI blocco buono: 495 righe su 495 blocchi. Nel test del ritorno basta contare che quella riga compaia esattamente una volta e aggiungere un secondo giro di errori che riparta da una pausa di 0,5 s.
+- **R-624-3 BASSA**: `scripts/voce/installa.sh:37` usa `.+`, quindi:
+  - con `GAS_CLAUDE_BIN=` vuoto nel .env lo script aggiunge una seconda riga e stampa «aggiunto», ma `_carica_dotenv` tiene la prima, vuota (provato: valore `''`), e il forte sotto launchd resta senza `claude`;
+  - con `GAS_CLAUDE_BIN= # x` non aggiunge la riga e non dà nemmeno l'AVVISO.
+  - Conviene usare lo stesso criterio stretto del token alla riga 32.
+- **R-624-4 COSMETICA**: l'intestazione `scripts/voce/installa.sh:7` dice ancora che il passo 1 fa solo controlli, mentre ora scrive anche il .env. Inoltre l'AVVISO dice «`claude` non trovato» anche quando claude c'è ma il suo percorso esce dalla lista bianca.
+
+Restano aperte, senza cambiamenti: R-615-4 MEDIA (permesso del microfono sotto launchd, da provare sul Mac) e R-615-5 BASSA (licenza di hey_jarvis, decide l'operatore).
+
+**Rischi esclusi**
+
+- Non ho provato il comportamento vero sul Mac: sounddevice in overflow durante una pausa di 60 s e `command -v claude` col PATH dell'operatore. Non si può riprodurre qui.
+- Non ho verificato il caso di un `claude` installato con npm (`#!/usr/bin/env node`), che sotto launchd non troverebbe node. Sul Mac GAS_CLAUDE_BIN è già nel .env dal 28 ottobre e il giro notturno funziona, quindi lì il blocco nuovo non fa nulla.
+- Non ho rifatto la suite da 444 test (hooks, handoff_check, gasmerge): ho rifatto solo i test della voce.
+
+**Memoria**: riga #624 e una lezione nuova sul backoff esponenziale che va in overflow, committate con `scripts/commit_memoria_revisore.sh` (commit ec34430, solo la memoria). Dopo il commit il diff staged è intatto (sha256 2cf1b7dd230c735d).
+
+File: /home/user/Gas/clients/voice/ascolto.py, /home/user/Gas/scripts/voce/installa.sh, /home/user/Gas/tests/test_unit_voce_ascolto.py, /home/user/Gas/.claude/perimetro_review.txt, /home/user/Gas/.claude/agents/memoria_revisore.md
+```
+
+Review #625 (chat Mani), sulla correzione (commit bc369ed):
 
 ```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #626 (chat Mani). È il merge di origin/main c2f2a68 (PR #322 di M2, voce V7a) dentro claude/peaceful-lovelace-0w2b7q (PR #324). Il diff staged ha sha256 f005872104445eb3…, la base del merge è 9718e0c. Prima della review ho letto CLAUDE.md (sez. 1, 5, 8, 10), le parti di reports/stato_progetto.md che servivano e la memoria del revisore (lezioni #619 e #620 sui merge).
+Review #625 (chat Mani), ri-review della #624. Ho esaminato il diff staged sul branch voce-fix (sha256 7a39e900684e241c, invariato anche dopo il mio commit di memoria). Base: 9718e0c più ec34430. Ho letto CLAUDE.md, reports/stato_progetto.md e .claude/agents/memoria_revisore.md, dove ci sono il verdetto #624 e la lezione sul backoff.
+
+**Prove riprodotte.** Ho esportato l'indice con `git checkout-index` e lanciato tests/test_unit_voce_ascolto.py: **89 passed**.
+
+Mutanti su clients/voice/ascolto.py (falliti / totale 89):
+
+| Mutante | Esito |
+|---|---|
+| esponente senza limite | 1 failed |
+| senza azzeramento del conto | 2 failed |
+| pausa dal 1° errore | 4 failed |
+| log a ogni errore | 2 failed |
+| senza svuota dopo la pausa | 2 failed |
+| tetto dell'esponente a 6 (pausa max 32 s) | 2 failed |
+| tetto dell'esponente a 20 | sopravvive, ma è innocuo: 2**17 entra in un float |
+
+Mutanti su scripts/voce/installa.sh (falliti / totale 30 test di installa):
+
+| Mutante | Esito |
+|---|---|
+| regex `.+` vecchia per GAS_CLAUDE_BIN | 1 failed |
+| senza il ramo «riga vuota» | 2 failed |
+| messaggi AVVISO fusi in uno solo | **sopravvive** |
+| senza lista bianca sul percorso di claude | **sopravvive** |
 
 **Elementi del diff esaminati**
-- `modules/voice/server.py:381`: entra da main con la misura dei tempi della V7a. Rischio: che il merge l'abbia modificato. Ho confrontato i blob dell'indice con MERGE_HEAD e sono identici, come per `clients/voice/browser_client.html`, `tests/test_unit_voice_server.py`, `tests/test_unit_voice_stt.py` e `.claude/agents/memoria_revisore.md`. `git diff --cached MERGE_HEAD` tocca solo reports/. Ho rilanciato i test della voce (server e trascrizione): 170 passed. Esito: ok.
-- `.claude/agents/memoria_revisore.md:1164`: memoria entrata da main (12 righe, dalla #614-M2 alla #650-M2). Rischio: righe perse o un'unione sbagliata. Rispetto a HEAD non ci sono righe rimosse e il blob è identico a MERGE_HEAD. Esito: ok.
-- `reports/stato_progetto.md:4`: la riga «Ultimo aggiornamento» è il tuo pezzo «piano mail» seguito dalla riga intera di main. Il blocco V7a, il blocco «piano mail» e la fetta 37 compaiono una volta sola ciascuno: niente doppioni, niente mancanti, nessun marcatore di conflitto. Il file passa da 899 a 900 righe, cioè solo il blocco V7a in più. Esito: ok.
-- `reports/piano_mail.md:18`, punto 2: dice che `prepara_bozza` va messo in `_LIBERI_DOPO_LETTURA`, altrimenti a finestra contaminata andrebbe alla firma. Coerente col codice: `modules/gate/gate.py:544` (insieme oggi = rubrica + write_file) e `modules/gate/gate.py:650` (un nome diverso da write_file che sta nell'insieme è libero senza altri controlli). Il kernel ripete il controllo in `gas.py:3119`, senza casi speciali oltre a write_file. Esito: ok.
-- `reports/piano_mail.md:47`, punto 6: la frase «`_get_window` rimanda tutto ai turni dopo, che di default vanno alla cascata gratuita» è vera. `gas.py:1805` tiene anche i messaggi tool e le risposte dell'assistente. `gas.py:911` manda al forte solo se compito == "forte", gli altri compiti finiscono nella cascata gratuita. Esito: ok, con la riserva R-626-1.
+- clients/voice/ascolto.py:269 — pausa `min(PAUSA_ERRORI_MAX_S, 0.5 * 2 ** min(n - 3, 7))`. Rischio: OverflowError da n=1027 (R-624-1). L'esponente è limitato, quindi la pausa vale al massimo min(60, 64) = 60 s; con 1200 blocchi non c'è nessuna «pausa fallita». Esito: **ok, R-624-1 chiusa**.
+- clients/voice/ascolto.py:250 — riga «di nuovo a posto» e azzeramento del conto. Rischio: una riga a ogni blocco buono (R-624-2). La riga esce solo se il conto è sopra zero, e il conto viene azzerato; il test tests/test_unit_voce_ascolto.py:271 pretende le pause [0.5, 1, 0.5, 1]. Esito: **ok, R-624-2 chiusa**.
+- clients/voice/ascolto.py:265 — log solo quando n è una potenza di 2. Rischio: un log che tace per molto. A 60 s di pausa, il 1024° errore arriva dopo circa 17 ore e il 2048° dopo circa 34: accettabile per un servizio H24. Esito: ok.
+- scripts/voce/installa.sh:40 — criterio stretto per GAS_CLAUDE_BIN, con un elif per la riga vuota o col solo commento. Rischio: riga doppia che gas._carica_dotenv ignora (R-624-3). Una riga commentata `# GAS_CLAUDE_BIN=…` non viene presa per valida e si aggiunge la riga vera (corretto, il parser salta i commenti). Il printf comincia con `\n`, quindi va bene anche un .env senza a-capo finale. Esito: **ok, R-624-3 chiusa**.
+- scripts/voce/installa.sh:46 — riga scritta solo se il percorso è assoluto e passa la lista bianca CONSENTITI. Rischio: un percorso non filtrato scritto nel .env, per esempio con un a-capo che inietta altre righe. Il codice è giusto, ma nessun test lo fissa. Esito: **riserva (R-625-1)**.
+- scripts/voce/installa.sh:8 — l'intestazione ora dice che il passo 1 può aggiungere GAS_CLAUDE_BIN. Esito: **ok, R-624-4 chiusa nel testo**.
+- .claude/perimetro_review.txt:31 — `scripts/voce/` entra nel perimetro di review. Le voci-cartella sono già usate (brains/, modules/), e brains/claude_cli.py:293 conferma che un valore vuoto ricade su `shutil.which`, cioè l'AVVISO dice il vero. Esito: ok.
+
+**Finding**
+- **R-625-1 BASSA**: la lista bianca di CLAUDE_BIN (scripts/voce/installa.sh:46) e l'AVVISO distinto «percorso con caratteri non ammessi» non hanno test. Se li tolgo o fondo i due messaggi, la suite resta verde (30 passed). Serve un test con un `claude` finto in una cartella con un carattere vietato (es. `$`): .env invariato e AVVISO specifico. Non blocca, perché chi controlla le cartelle del PATH ha già vinto.
+- **R-625-2 COSMETICA**: `command -v claude` può dare un nome non assoluto (es. una funzione bash esportata). In quel caso esce l'AVVISO «caratteri non ammessi», che è fuorviante: meglio un messaggio come «non è un percorso assoluto».
+
+Restano aperte R-615-4 MEDIA (microfono sotto launchd, Mac) e R-615-5 BASSA (licenza hey_jarvis, decide l'operatore).
+
+**Rischio escluso:** non ho verificato il comportamento reale sul Mac, cioè `command -v claude` sotto la zsh dell'operatore, dove claude può essere un alias che bash non vede, né l'ascolto sotto launchd con un rilevatore che fallisce davvero. Non si riproduce qui su Linux: i test usano un `dorme` e un `claude` finti.
+
+**Coerenza col progetto:** la correzione va nella direzione «robustezza > potenza» (niente diluvio di log in H24, l'eccezione nella pausa resta intercettata e non fa crashare). Nessuno slicing della history, nessuna simulazione di output dei tool, nessun guardrail del kernel toccato.
+
+Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga contatore #625 e una lezione nuova (mutante che fonde i messaggi o toglie il filtro). È committata con scripts/commit_memoria_revisore.sh nel commit 5c4cc46; il diff staged non è cambiato.
+
+Il merge spetta all'operatore, perché il diff tocca .claude/perimetro_review.txt. R-625-1 e R-625-2 vanno annotate in reports/stato_progetto.md.
+```
+
+Review #628 (chat Mani), attesa dopo bootout e tempi voce (commit ac425b8):
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #628 (chat Mani). Ho revisionato il diff staged nel worktree `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/vf`, branch voce-fix sopra bc369ed. Sono 3 file e lo sha256 del diff è 5c5ef2e9070cdf645adfa742bec4cd7fbe7b62eb6a77bc145b502337800512e5, quello atteso. Prima ho letto CLAUDE.md, le parti voce di stato_progetto.md e la memoria.
+
+**Elementi del diff esaminati**
+
+- `scripts/voce/installa.sh:98` — dopo i bootout, per ogni servizio fino a 50 letture di `launchctl print`, con `if !` e `sleep 0.1`.
+  - Rischi esaminati: `set -e` dentro `if !`, `set -u` sulle variabili, `seq` e `sleep` con decimali su macOS.
+  - Esito: **ok**. `if !` è una condizione e non fa scattare `set -e`; ANDATO è sempre assegnato; `seq` sta in /usr/bin su macOS e il `sleep` di macOS accetta i decimali. L'ordine è giusto: tutti i bootout, poi l'attesa per ciascun servizio, poi i bootstrap. Il tetto vero è 5 s per servizio, quindi al massimo circa 10 s in tutto: va bene, perché i due bootout partono insieme.
+- `scripts/voce/installa.sh:102` — STOP «non si spegne» prima di qualunque bootstrap.
+  - Esito: **ok**. Il messaggio è chiaro e nessun bootstrap parte se il servizio vecchio è ancora visibile.
+- `scripts/voce/installa.sh:108` — bootstrap ripetuto fino a 3 volte, a 1 s di distanza, poi STOP «3 tentativi» (`scripts/voce/installa.sh:112`).
+  - Esito: **ok, con nota cosmetica** (R-628-3). Lo stderr di bootstrap non è nascosto, cosa utile per capire i guasti.
+- `tests/test_unit_voce_ascolto.py:600` e `tests/test_unit_voce_ascolto.py:608` — il launchctl finto ora ha uno stato: i file su/giu e un contatore dei bootstrap.
+  - Rischio esaminato: rompere i test già esistenti.
+  - Esito: **ok**. Con un'installazione da zero il bootout esce con 3 (assorbito da `|| true`), print risponde «not found», bootstrap crea il file «su», e i print finali dicono «running». Il file intero passa: **93 passed riprodotti**.
+- `tests/test_unit_voce_ascolto.py:719`, `tests/test_unit_voce_ascolto.py:728`, `tests/test_unit_voce_ascolto.py:735` — controllo che i test non passino a vuoto, con mutanti miei (installa.sh ripristinato ogni volta, sha256 del diff staged rimasto identico).
+  - Esito: **ok**, ogni mutante fa fallire i test giusti:
+
+| Mutante | Test falliti |
+|---|---|
+| un solo tentativo di bootstrap | 2 (riprova e sempre_rotto) |
+| attesa tolta | 2 (seconda_volta e non_si_spegne) |
+| `seq 1 10` al posto di 50 | 1 (non_si_spegne) |
+| installa.sh di HEAD | 4 |
+
+- `scripts/voce/LEGGIMI.md:95` — dice che i tempi della voce finiscono in gas_debug.log accanto a gas.py, anche sotto launchd, e si cercano col testo.
+  - Esito: **vero, con riserva** (R-628-1 e R-628-2). L'ho verificato con un'esecuzione su un worktree di origin/main 70e2f05, avviata con cwd /tmp: la riga INFO finisce nel gas_debug.log accanto a gas.py, senza il nome del logger.
+  - Il contesto che lo conferma, letto su origin/main: il percorso del log non dipende dalla cartella di avvio (Path(__file__)); il logger `gas.voce.tempi` è a INFO e passa per il file handler; la console resta a WARNING su stderr, cioè voce.server.log come da plist; `_carica_env` importa gas, e quindi configura il log, prima di ogni richiesta.
+  - In modules/voice non c'è nessuna chiamata `logging.warning()` a livello di modulo prima dell'import di gas, che svuoterebbe il basicConfig: quelle di tts.py stanno dentro funzioni chiamate solo durante una richiesta.
+
+**Finding**
+
+- **R-628-1 — BASSA.** L'esempio in `scripts/voce/LEGGIMI.md:98` scrive `stt=0.81s`, ma la chiave vera è `trascrizione`. La riga riprodotta è: `tempi voce (200): trascrizione=0.81s cervello=2.40s server=0.00s`. Le altre chiavi sono voce, voce_tutta e server. Il grep funziona lo stesso. Correzione: copiare l'esempio dalla riga vera.
+- **R-628-2 — BASSA.** La base bc369ed NON contiene V7a: in quel branch il logger `gas.voce.tempi` non esiste, c'è solo su main (PR #322). Il LEGGIMI sarà vero dopo il merge con main; prima di mergiare conviene allineare il branch a main. Io ho verificato il comportamento su main, non sulla base.
+- **R-628-3 — COSMETICA.**
+  - Dopo il terzo bootstrap fallito c'è un `sleep 1` inutile.
+  - I «Bootstrap failed: 5» dei tentativi poi riusciti restano a schermo senza un «riprovo»: possono far credere che sia andato male.
+- **R-628-4 — COSMETICA.** `scripts/voce/LEGGIMI.md:100` dice «I log non ruotano da soli» subito dopo la voce su gas_debug.log, che invece ruota a 5 MB (RotatingFileHandler, backupCount=3). Precisare che la frase vale per i due log in .gas_voce.
+
+**Coerenza col progetto:** nessun impatto sul motore, sui guardrail o su `_get_window`. Il fix va nella direzione «zero crash» e «STOP chiaro», con test realistici del caso di M1.
+
+**Rischi esplicitamente esclusi**
+- Il comportamento vero di launchd su macOS non è verificato: qui siamo su Linux e il launchctl è finto. In particolare non so se `launchctl print` sparisca davvero prima che bootstrap smetta di dare l'errore 5; i 3 tentativi coprono la finestra che resta. La prova va rifatta da M1 sul Mac: seconda esecuzione con i servizi già caricati.
+- Il `sleep` è finto nei test, quindi i tempi reali (5 s di attesa, 1 s fra i tentativi) non sono misurati.
+- Il caso di un servizio messo a «disabled» con `launchctl disable` non è coperto (spegni.sh usa solo bootout).
+
+**Memoria:** ho aggiunto la riga #628 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, solo nel working tree. Indici non toccati e `commit_memoria_revisore.sh` non eseguito, come chiedevi tu; il commit resta da fare a te. Lezione registrata: un esempio di riga di log in un documento si copia da un'esecuzione vera, non si ricostruisce a memoria.
+```
+
+Review #629 (chat Mani), merge di main in voce-fix e riserve della #628 (commit 2e1fdea):
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #629 (chat Mani). Worktree /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/vf, branch voce-fix (HEAD e57305e), con un merge di origin/main 70e2f05 in corso. Lo SHA-256 del diff staged coincide: 88738b391e64108c04d7718d9151336a0d0a4ca4e6a8c63f388f355040868f7d.
+
+**Merge (R-628-2)**
+- Ho confrontato con MERGE_HEAD i 9 file che vengono da main: hanno tutti il blob identico. Sono modules/voice/server.py, clients/voice/browser_client.html, clients/voice/browser_server.py, tests/test_unit_voice_server.py, tests/test_unit_voice_stt.py e i 4 file di reports/.
+- `git diff --cached MERGE_HEAD --stat` mostra solo i 6 file di voce-fix: memoria, perimetro_review, ascolto.py, LEGGIMI, installa.sh, test_unit_voce_ascolto.py.
+- Memoria del revisore: base 1152 righe, HEAD 1157, MERGE_HEAD 1176, staged 1181 (cioè 1157+24). Nessuna riga tolta, nessuna doppia, nessun marcatore di conflitto.
+
+**Elementi esaminati**
+- `scripts/voce/installa.sh:110` — ora il messaggio «riprovo tra 1 s (tentativo N di 3)» e lo `sleep 1` partono solo se tentativo < 3. Rischio guardato: attesa inutile dopo il terzo fallimento, numero del tentativo sbagliato, messaggio sul canale sbagliato. Con 2 fallimenti escono i messaggi «2 di 3» e «3 di 3». Con fallimenti continui escono gli stessi due e poi stop su stderr. Il messaggio va su stdout. Esito: ok.
+- `scripts/voce/installa.sh:108` — la variabile del ciclo passa da `_` a `tentativo`, il resto del ciclo non cambia. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:736` — nuova asserzione: 2 messaggi «riprovo» quando falliscono 2 bootstrap. Rischio guardato: conteggio che passerebbe anche col codice vecchio. Col codice vecchio il messaggio non esisteva, quindi il conteggio sarebbe 0 e il test fallirebbe. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:744` — nuova asserzione: 2 messaggi anche con il bootstrap sempre rotto. Il commento dice «niente attesa dopo il terzo», ma il finto `sleep` (`tests/test_unit_voce_ascolto.py:619`, `exit 0`) non lascia traccia nel registro. Ho provato un mutante su una copia: messaggio ancora con la guardia, `sleep 1` fuori dalla guardia. I 2 test bootstrap passano lo stesso. Esito: riserva (R-629-1).
+- `scripts/voce/LEGGIMI.md:98` (R-628-1) — controllato sull'albero con V7a, dove le chiavi vengono da `_segna`/`_chiudi_tempi` (`modules/voice/server.py:261`, contesto). Le chiavi sono trascrizione, cervello, voce, voce_tutta, più server aggiunto per ultimo. L'esempio «trascrizione=… cervello=… server=…» ha un ordine possibile, perché il dict tiene l'ordine di inserimento. Anche «la riga non contiene il nome del logger» è vero: il formato è `%(asctime)s - %(levelname)s - %(message)s` (`gas.py:70`, contesto). Esito: ok.
+- `scripts/voce/LEGGIMI.md:101` (R-628-4) — la frase «gas_debug.log invece ruota a 5 MB» è vera: RotatingFileHandler con `_LOG_MAX_BYTES = 5 * 1024 * 1024` (`gas.py:50`, contesto). I due log in .gas_voce/ sono lo stdout/stderr di launchd (scripts/voce/com.gas.voce.server.plist), quindi non ruotano. Esito: ok.
+
+**Test**: tests/test_unit_voce_ascolto.py + tests/test_unit_voice_stt.py = 185 passed, rifatti da me.
+
+**Finding**
+- **R-629-1 (BASSA)**: «niente sleep dopo il terzo tentativo» non è provato da nessun test, perché il finto `sleep` esce e basta. Il codice è giusto, ma il commento a `tests/test_unit_voce_ascolto.py:744` dice più di quello che il test prova. Correzione: far scrivere al finto `sleep` una riga nel registro (es. `echo "sleep $*" >> "$REGISTRO"`), poi verificare che `sleep 1` ci sia 2 volte. Altrimenti togliere il commento.
+- **R-629-2 (COSMETICA)**: in `scripts/voce/LEGGIMI.md:96` «una riga INFO per richiesta» vale solo per le richieste che hanno speso qualcosa: se `_tempi` è vuoto, `_chiudi_tempi` non scrive niente (per esempio con un 401).
+
+**Rischio escluso**: non ho verificato `installa.sh` con il vero launchctl del Mac (bootout asincrono, errore 5 di bootstrap): qui non si può riprodurre, ho visto solo il comportamento con i finti del test. Non ho rifatto tests/test_unit_voice_server.py: il blob è identico a MERGE_HEAD, già revisionato in #651–#654-M2 e #627.
+
+**Memoria**: aggiunta la riga #629 (più una lezione) in /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree, indice non toccato (git status: ` M`, +1 riga). Come mi hai chiesto, NON ho lanciato `scripts/commit_memoria_revisore.sh`: il commit di quel file resta da fare a te.
+```
+
+Review #631 (chat Mani), voce-fix su main e riserve della #629:
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #631 (chat Mani). Ho fatto le tre letture obbligatorie: CLAUDE.md, le parti utili di reports/stato_progetto.md (la fetta 37, dove risulta ancora aperta R-623-2) e la memoria del revisore. Diff staged verificato: sha256 c454dc5b42e5f408…, HEAD c6206d2, MERGE_HEAD 0793476, merge-base 70e2f05.
+
+**Fedeltà del merge (punto 1)**
+- Dei file che ha toccato solo main dopo il merge-base, tutti e 15 (ci.yml, browser_server.py, prova_voci.html/.py, server.py, tts.py, test_unit_voice_prova_voci.py e reports/) hanno il blob dell'indice uguale a quello di HEAD.
+- `.claude/perimetro_review.txt`, `clients/voice/ascolto.py` e `scripts/voce/installa.sh` hanno il blob uguale a quello di MERGE_HEAD.
+- `git diff --cached MERGE_HEAD` sui file di voce-fix mostra solo LEGGIMI (R-629-2) e il test (R-629-1).
+- Memoria: è l'unione esatta dei due lati. HEAD 1192 righe + 6 = MERGE_HEAD 1182 righe + 16 = 1198. Nessuna riga persa, nessuna doppia, nessun marcatore di conflitto, nessuna riga estranea. Rispetto a tutti e due i lati ci sono solo aggiunte.
+
+**Elementi del diff esaminati**
+1. `tests/test_unit_voce_ascolto.py:619` — il finto `sleep` ora scrive `sleep $*` nel registro. Rischio: che la riga non si possa osservare o che conti anche `sleep 0.1`. Esito: ok, perché il test usa `splitlines().count("sleep 1")`, cioè il confronto esatto della riga.
+2. `tests/test_unit_voce_ascolto.py:745` — controlla che con il bootstrap sempre rotto ci siano esattamente 2 `sleep 1`. Rischio: un mutante che sopravvive. Esito: ok. Ho rifatto il mutante (sleep fuori dalla guardia `tentativo -lt 3`, in `scripts/voce/installa.sh:110`): il test fallisce. Ho ripristinato il file dall'indice e la suite dà 93 passed. Lo `sleep 1` di `scripts/voce/installa.sh:138` non entra nel conteggio, perché lo script si ferma prima di `nc`.
+3. `scripts/voce/LEGGIMI.md:96` — «una riga INFO per ogni richiesta che ha speso qualcosa (niente riga … 401)». Rischio: affermazione falsa. Esito: vera. `do_POST` mette `_tempi = {}` (`modules/voice/server.py:319`). Il 401 passa da `_send_json` a `_chiudi_tempi`, che con il dizionario vuoto ritorna None senza scrivere (`modules/voice/server.py:270`). Per i GET, `_tempi = None` è prima del 401 (`modules/voice/server.py:631`).
+4. `.claude/perimetro_review.txt:31` — aggiunge `scripts/voce/`. Esito: ok, il perimetro si allarga e non si indebolisce. Il merge spetta all'operatore, come già detto.
 
 **Riserve**
-- **R-626-1 BASSA**: il requisito del kernel («una finestra con un turno mail non va mai ai gratuiti») nomina solo `_get_window` e i turni successivi. Ci sono altri due percorsi che portano la storia ai gratuiti:
-  - la riflessione di fine task: `gas.py:4004` usa `_cascata_provider("complesso")` su una finestra presa da `_get_window`;
-  - il riepilogo di compressione: in `gas.py:1543` il testo degli strumenti diventa un messaggio user e il messaggio tool sparisce. Se la fetta 1 riconosce il «turno mail» dal nome dello strumento, dopo una compressione non lo trova più.
+- **R-631-1 COSMETICA**: R-623-2 resta aperta in stato_progetto. Se tolgo lo `sleep 1` del giro `nc` (`scripts/voce/installa.sh:138`), la suite dà ancora 93 passed: mutante vivo, ripristinato dall'indice. Ora che il finto sleep registra, la chiusura è una riga: in `test_installa_aspetta_il_server_lento` controllare che `registro.splitlines().count("sleep 1") == 3`.
+- **R-631-2 COSMETICA**: «ha speso qualcosa» si può leggere come «ha speso soldi». Però `/voci/prova` spende crediti ElevenLabs e non scrive la riga dei tempi (`_tempi = None`, `modules/voice/server.py:332`). Meglio «che ha misurato dei tempi (trascrizione/cervello/voce)».
 
-  Correzione: aggiungere al punto 6 una riga che nomini run_turn, riflessione e compressione.
-- **R-626-2 BASSA**: `reports/handoff.md` è ancora identico a HEAD, quindi non è stato aggiornato col merge, anche se tu dici «tenuti i miei, poi aggiornati». Va riallineato prima del commit finale, con questo verdetto integrale nel §4.
-- Nota cosmetica, senza numero: al punto 6, «Il testo letto non si conserva oltre il turno» sembra un fatto di oggi, mentre più sotto il requisito spiega che oggi la storia tiene tutto. Meglio scrivere «dovrà non conservarsi».
+**Cosa non ho verificato**
+- Non ho provato `installa.sh` sul Mac vero (launchctl reale, attesa dopo bootout): non si riproduce in dev, i test usano comandi finti.
+- Non ho rieseguito la suite completa del repo: ho eseguito solo tests/test_unit_voce_ascolto.py (93 passed). Il codice di main entra con blob identici a HEAD, quindi la sua suite non cambia.
 
-**Cosa NON ho verificato**: la suite del kernel e i test del cancello (gate). Il motivo è che gas.py, modules/gate/ e brains/ non stanno nel diff di questo merge (i due lati toccano file diversi, a parte i report). Non ho verificato nemmeno la CI di main su c2f2a68, perché non è riproducibile da qui.
-
-**Memoria**: ho aggiunto la riga #626 in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md`, solo nel working tree. L'indice non è toccato: lo sha256 dello staged resta f005872104445eb3. Come chiede la lezione #619, non ho lanciato `scripts/commit_memoria_revisore.sh`: lancialo tu dopo aver committato il merge.
-```
-
-Merge di origin/main (PR #325 di M2, voce V7b) in 9174640: verdetto integrale della review #627 (chat Mani):
-
-```
-## VERDETTO: APPROVATO
-
-Review #627 (chat Mani). Ho esaminato il merge di origin/main 70e2f05 (PR #325, voce V7b di M2) dentro claude/peaceful-lovelace-0w2b7q (PR #324, head 7346994). Il diff staged ha sha256 089125fea1ec536ad5b3254c93037070bfeb673265d935777dd40d1fbdee9cdd, uguale a quello dichiarato (089125fea1ec536a). La base del merge è c2f2a68. Prima della review ho letto CLAUDE.md, stato_progetto.md (solo le parti che servivano) e la memoria del revisore.
-
-**Elementi del diff esaminati**
-- `modules/voice/server.py:394` — guardia `if t_cervello is not None` prima di `_segna("cervello")` (codice di M2, già revisionato nella #652-M2). Rischio: che il merge abbia alterato il file. Il blob nell'index (075d83f3…) è identico a MERGE_HEAD. Esito: ok.
-- `clients/voice/browser_server.py:205-209` — `_copia_righe`, con gli header dentro `try` (codice di M2, #653-M2). Rischio: che sia entrata una versione mescolata. Il blob (ce5c37af…) è identico a MERGE_HEAD. Esito: ok.
-- `tests/test_unit_voice_server.py:1342` — test con `_PARLATO_MAX_FRASI=6`. Il blob (6612529c…) è identico a MERGE_HEAD, e anche `clients/voice/browser_client.html` (85f553aa…). Ho lanciato `tests/test_unit_voice_server.py`: **92 passed** (4 minuti, browser compreso). Esito: ok.
-- `.claude/agents/memoria_revisore.md:1165` — riga #626 del ramo, che si trova tra le righe di main. Rischio: righe perse o doppie. Rispetto a HEAD ci sono +12 righe da main (#618…#622-M2 con le loro lezioni, #651…#654-M2). Rispetto a MERGE_HEAD c'è +1 riga (#626). In tutti e due i casi non manca nessuna riga. Ci sono 0 righe doppie e 0 marcatori di conflitto, e `git diff --cached --check` è pulito. Esito: ok.
-- `reports/stato_progetto.md:4` — controllato a programma. La riga è il tuo pezzo, poi « — prima: », poi la riga 4 di main intera, senza il prefisso. La coda di main coincide con quella della base, quindi nessun pezzo è perso o doppio. Esito: ok.
-- `reports/stato_progetto.md:657` — riga «piano mail» del ramo. La riga «fetta 37» resta quella del ramo, ed è corretto: main non l'aveva toccata dalla base, perché il suo hash è uguale a c2f2a68. La riga «Voce V7b» di main c'è. Gli unici doppioni nel file («Riserve aperte:» ×5 e i separatori di tabella ×3) c'erano già identici in tutti e due i genitori. Esito: ok.
-- Controllo d'insieme: `git diff --cached MERGE_HEAD` tocca solo reports/ e la memoria, nessun file del motore. Quindi il codice dopo il merge è identico a quello di main. Esito: ok.
-
-**Finding**: nessuno ALTA, MEDIA o BASSA.
-- Nota di contesto, non è un finding: nel tuo pezzo della riga 4 di stato_progetto hai aggiunto «col sì dell'operatore» rispetto a HEAD. È una modifica di contenuto fatta durante la risoluzione, non un'unione pura. È una sola frase, coerente con il sì dell'operatore che mi hai riferito, quindi va bene.
-- Nota di contesto, non è un finding: nella memoria mancano #624 e #625. Questo merge però non c'entra: mancano in tutti e due i genitori. Esistono nei commit ec34430 e 5c4cc46, che secondo l'handoff stanno sul ramo locale voce-fix. Arriveranno con quel ramo.
-
-**Rischio escluso**: non ho lanciato le altre suite (kernel, gate, stt). Il codice dopo il merge è byte per byte quello di main, e la CI di main e la CI della PR lo coprono. Non ho controllato nel merito i documenti del ramo (piano_mail, handoff, roadmap): sono fuori dal perimetro di review e li ha approvati l'operatore.
-
-**Memoria**: ho aggiunto la riga `#627 (chat Mani) — 2026-11-02 — APPROVATO — … Nessuna lezione nuova.` solo nel worktree di /home/user/Gas/.claude/agents/memoria_revisore.md. Non ho toccato l'index: l'hash staged è ancora 089125fea1ec536a. Non ho lanciato `commit_memoria_revisore.sh`, perché durante un merge il commit parziale fallirebbe. Committala tu dopo il commit del merge.
-```
-
-Merge di origin/main (PR #326 di M2, voce V8) in 54a26db: verdetto integrale della review #630 (chat Mani):
-
-```
-## VERDETTO: APPROVATO
-
-Review #630 (chat Mani): merge in corso di origin/main 29c7cee (PR #326, voce V8 di M2) dentro claude/peaceful-lovelace-0w2b7q (PR #324, head 84b1422). L'ho fatta sullo staged, che ha sha256 480ce7a630abc814…: corrisponde a quello che mi hai dato ed è rimasto uguale fino alla fine.
-
-Elementi esaminati:
-1. `modules/voice/server.py:320` — è il `_capito = None` che arriva da main, insieme agli altri 7 file del perimetro: `.github/workflows/ci.yml`, `clients/voice/browser_server.py`, `clients/voice/prova_voci.html`, `modules/voice/prova_voci.py`, `modules/voice/tts.py`, `tests/test_unit_voice_prova_voci.py`, `reports/prova_voce_mac.md`. Rischio esaminato: che la risoluzione del merge abbia alterato il codice di M2. Ho confrontato i blob con `git rev-parse :<f>` e `MERGE_HEAD:<f>`: tutti e 8 sono identici. `git diff --cached MERGE_HEAD --stat` tocca solo reports/ (diff_sessione, handoff, piano_mail, ripartenza_mani, roadmap, stato_progetto, ultimo_report) e la memoria: 8 file, cioè esattamente il lavoro della PR #324. Ho anche confrontato le due parti del merge rispetto alla base 70e2f05: la diff HEAD → indice è uguale ai file di codice e test che main ha toccato rispetto alla base, e i report di sessione non c'entrano. — ok
-2. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» in conflitto. Rischio esaminato: righe perse o doppie. L'ho verificata con uno script: la riga dell'indice è uguale al tuo prefisso «(chat Mani: piano della mail di Gas, …) — prima: » più la riga 4 di main intera (tolto «> Ultimo aggiornamento: »). Il resto del file è uguale a main, con in più due righe di HEAD: il blocco «Mani — piano mail» (`reports/stato_progetto.md:658`) e la fetta 37 nella tua versione, che riporta il merge 9718e0c e le riserve di #323. Main non aveva toccato quella riga (base = main), quindi tenere la versione di HEAD è corretto. Il blocco «Voce V8 «prova voci»» e il blocco «Mani — piano mail» compaiono una volta sola ciascuno. Nessun marcatore di conflitto. — ok
-3. `.claude/agents/memoria_revisore.md:1178` — riga #627 (chat Mani), una delle due righe di HEAD tenute nell'unione. Rischio esaminato: righe perse o doppie nell'unione dei due lati. I conti tornano: HEAD 1178 righe + 13 righe di M2 (#624–#629-M2, #655–#656-M2 e le loro lezioni) = main 1189 + 2 righe tue (#626 e #627 chat Mani) = 1191 righe nell'indice. Nessuna riga non vuota duplicata, nessun marcatore. — ok
-4. handoff, ultimo_report, diff_sessione — non compaiono in `git diff --cached HEAD`, quindi nell'indice sono uguali a HEAD: tenuti dal tuo lato come avevi detto. Vanno aggiornati prima della chiusura. — ok
-5. Test: `tests/test_unit_voice_prova_voci.py` → 52 passed in 34 secondi. — ok
-
-Finding: nessun R-630-N, la review non ha trovato problemi.
-
-Cosa NON ho verificato:
-- Non ho rifatto la review semantica del codice V8: è già stata coperta da #624–#629-M2 e #655–#656-M2, e i blob sono identici a quelli già revisionati.
-- Non ho lanciato la suite intera: il merge non cambia codice rispetto a MERGE_HEAD.
-- Non ho verificato la CI sulla PR: il merge non è ancora committato.
-
-Memoria: ho aggiunto la riga #630 (chat Mani) in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` SOLO nel working tree (`git diff` = 1 riga in più; lo staged resta 480ce7a630abc814). Non ho lanciato `scripts/commit_memoria_revisore.sh`, perché il suo `git commit -o` concluderebbe o sporcherebbe il merge in corso. Va aggiunta con `git add` prima del commit di merge, oppure in un commit successivo. Se la aggiungi allo staged lo sha cambia: rigenera il marcatore con `bash scripts/segna_review_ok.sh` sullo staged definitivo.
+**Memoria**
+- Ho scritto la riga `#631 (chat Mani)` e una lezione in `/home/user/Gas/.claude/agents/memoria_revisore.md`, solo nel working tree. L'indice è intatto: lo sha256 dello staged è ancora c454dc5b42e5f408….
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`: con il merge in corso, il commit del solo file di memoria chiuderebbe il merge.
+- Per portare la riga nel commit di merge va fatto `git add` della memoria. Questo cambia lo sha dello staged, quindi `segna_review_ok.sh` va lanciato dopo l'add, oppure serve una nuova review del diff con la memoria.
+- Nota: il mio primo tentativo di scrivere la riga è stato bloccato dall'hook review_gate, perché il testo conteneva la stringa del comando di commit. L'ho riformulato.
 ```
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/.
+`tests/test_unit_voce_ascolto.py`: da 73 a 93 test (rilevatore in errore, GAS_CLAUDE_BIN, token vuoto, attesa dopo bootout, tentativi di bootstrap, attese contate). Nessuna modifica a gas.py.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud.
-- 6af999b (piano mail), ec1fdbb (report): pushati insieme prima dell'apertura della PR #324.
-- 0c0081f (fine-task): CI success (handoff-check, unit-suite); verifica-bot success (bot APPROVATO CON RISERVE).
-- 9718c6a (correzioni dopo il bot): CI success; verifica-bot success (bot APPROVATO CON RISERVE).
-- cb84cc0 (correzioni dopo il bot): CI success; verifica-bot success (bot APPROVATO CON RISERVE).
-- 18f2621 (correzioni dopo il bot): verifica-bot success (bot APPROVATO CON RISERVE); poi conflitto con main (PR #322).
-- I commit di main entrati col merge (fino a c2f2a68, PR #322) hanno le run della PR #322.
-- b66ac40 (merge), ffff127 (memoria #626), 970beca (fine-task): verifica-bot failure su 970beca (V-1 MEDIA, chiusa in 7346994).
-- 7346994 (correzioni dopo il bot): CI success; verifica-bot success (bot APPROVATO CON RISERVE); poi conflitto con main (PR #325).
-- I commit di main entrati col merge (fino a 70e2f05, PR #325) hanno le run della PR #325.
-- 9174640 (merge), a0f71c7 (memoria #627), d783938 (fine-task): handoff-check success; verifica-bot failure su d783938 (bot BOCCIATO, V-1 MEDIA, chiusa in a48caa0).
-- a48caa0 (correzioni e fine-task): handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA, chiusa in bd38966).
-- bd38966 (correzioni e fine-task): handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA, chiusa in 754480d); merge automatico tolto per V-2 su a48caa0.
-- 754480d (correzioni e fine-task): handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA, chiusa in 84b1422).
-- 84b1422 (correzioni e fine-task): CI success; verifica-bot success (bot APPROVATO CON RISERVE); poi conflitto con main (PR #326).
-- I commit di main entrati col merge (fino a 29c7cee, PR #326) hanno le run della PR #326.
-- 54a26db (merge), aa29e7c (memoria #630): pushati insieme al commit di fine-task.
-- Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- I commit di voce-fix (bc369ed, ac425b8, 2e1fdea e le memorie) sono stati solo in locale fino a questa PR.
+- 2c7d842 (report): handoff-check failure (handoff non ancora riscritto: corretto nel commit dopo).
+- 1d6d14f (fine-task): unit-suite success, handoff-check success; verifica-bot prima cancelled (cambio di head durante la verifica), poi neutral (bot APPROVATO CON RISERVE, PR sulla macchina del bot).
+- Il commit che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Da #324 (bot su 7346994): V-1 BASSA (snapshot di `.gas_history.json`) ora coperta dalla proposta del punto 6; V-2 COSMETICA (`test_notify_telegram_safe`) ora scritta nella fetta 1: da fare nel codice della fetta 1 della mail.
-- Da #323 (mergiata): V-1 bot su 3672964 BASSA (GAS_CLAUDE_BIN sotto launchd); V-4 bot COSMETICA (token vuoto accettato da installa.sh); V-3 bot COSMETICA superata dal merge; V-1 ve BASSA (rilevatore sempre in errore); V-2/V-3 ve BASSE (igiene dei test); V-4 ve BASSA (scripts/voce/ fuori dal perimetro); V-5 ve BASSA (spegni.sh e due garanzie senza test); V-6 ve COSMETICA; R-623-1/2/3; R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac); R-615-5 BASSA (licenza).
-- Da #319: V-1 bot su 9c44686 BASSA (limite dichiarato) e le altre registrate in stato_progetto.
+- Da #324 (bot su 84b1422): V-1 BASSA (il controllo all'uscita non copre fornitori che non sono modelli, come ElevenLabs), V-2 BASSA (strumenti mail nei rami di default del diario): per la fetta 1 della mail.
+- Da #324 (bot su 7346994): V-2 COSMETICA (`test_notify_telegram_safe`): per la fetta 1 della mail.
+- R-625-1 BASSA (lista bianca di GAS_CLAUDE_BIN senza test), R-625-2 COSMETICA (messaggio per un nome non assoluto).
+- R-631-1 COSMETICA (= R-623-2: lo `sleep 1` del giro `nc` senza test), R-631-2 COSMETICA (LEGGIMI: «ha speso qualcosa» → «ha misurato dei tempi»).
+- Da #328: V-1/V-2 bot BASSE (prima riga del .env; regex diverse dal parser), V-1 ve BASSA (log limitato solo per errori consecutivi), V-2 ve BASSA (= R-625-1), V-3/V-4 ve COSMETICHE.
+- R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac); R-615-5 BASSA (licenza di hey_jarvis).
+- Il comportamento vero di launchctl sul Mac (bootout asincrono) si prova solo sul Mac.
