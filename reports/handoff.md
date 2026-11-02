@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V7a: misura dei tempi (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su 3a88f78
+**Sessione:** 2026-11-02 — Voce V7a: misura dei tempi (chat M2, coordinata da M1) — aggiornato dopo il sì dell'operatore e il merge di main con la PR #323
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #322 (https://github.com/Gasss23/Gas/pull/322). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5123668093","url":"https://github.com/Gasss23/Gas/pull/322"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
+1. Merge della PR #322 (https://github.com/Gasss23/Gas/pull/322). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5123668093","url":"https://github.com/Gasss23/Gas/pull/322"}`); `gh` nel cloud non è autenticato. Sì dell'operatore (riferito da M1); merge automatico attivato da M1.
 2. Sul Mac, dopo il merge: leggere la riga «tempi» della pagina e le righe `gas.voce.tempi` di `gas_debug.log`.
 
 ---
@@ -20,6 +20,7 @@
 - **Bot su 8dc872e** (verifica-bot failure, finding MEDIA): V-1 (i tempi di un guasto al primo turno stavano nel riquadro nascosto) `FATTA` — `#tempi` fuori dal riquadro, e `#player-wrap[hidden]` ora nasconde davvero (il `display:flex` vinceva su `hidden`); test nel browser con `isVisible`, mutante → 1 failed. V-2 (tempi vecchi su «risposta non leggibile») `FATTA`. Review #646-M2 CON RISERVE (R-646-1-M2: «Ho capito» del turno prima accanto ai tempi del guasto, chiusa) → #647-M2 APPROVATO.
 - **Verifica esterna su 8dc872e** (https://github.com/Gasss23/Gas/pull/322#issuecomment-6582719572): APPROVATO CON RISERVE, solo BASSE/COSMETICHE (check da attendere, X-Gas-Tempi senza client, `tempi` anche nel JSON solo-testo, test mancanti già in §7).
 - **Bot e verifica esterna su 3a88f78** (https://github.com/Gasss23/Gas/pull/322#issuecomment-6583075582): V-1 MEDIA di entrambi (PR di nuovo in conflitto con main dopo la #319) `FATTA` col merge di main ceaa4aa (solo report in conflitto, review #648-M2 APPROVATO); V-2 bot («Ho capito» vecchio sugli altri due rami di errore) e V-2 ve (tempo del cervello quando il turno finisce senza risposta) `FATTE`, review #649-M2 APPROVATO; V-3 ve (eccezione MP3 non prevista senza tempo «voce», comportamento preesistente) e V-4 cosmetica: lasciate.
+- **Bot e verifica esterna su 68d1584**: APPROVATO CON RISERVE, solo COSMETICHE/BASSE (descrizione della PR aggiornata; `t_cervello` Optional passato a float, sicuro a runtime, nella V7b). Sì dell'operatore al merge (riferito da M1). **Merge di main con la PR #323** (voce H24 sul Mac): `FATTA`, conflitti solo in report e memoria, review #650-M2 APPROVATO.
 - **V7b, V8, V9**: `DEFERITE` — una PR alla volta, dopo il merge della precedente.
 
 ---
@@ -27,15 +28,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 +++++++
- clients/voice/browser_client.html  |  41 ++++++++++++++++++++++++--
- modules/voice/server.py            |  52 +++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  24 ++++++----------
+ .claude/agents/memoria_revisore.md |  12 +++++++++
+ clients/voice/browser_client.html  |  41 ++++++++++++++++++++++++++---
+ modules/voice/server.py            |  52 +++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  20 ++++++---------
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           |  34 +++++++++++-----------
- tests/test_unit_voice_server.py    |  32 ++++++++++++++++++---
- tests/test_unit_voice_stt.py       | 128 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   3 ++-
+ reports/ultimo_report.md           |  31 ++++++++++++----------
+ tests/test_unit_voice_server.py    |  32 ++++++++++++++++++++---
+ tests/test_unit_voice_stt.py       | 128 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -43,6 +44,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1487dec Merge remote-tracking branch 'origin/main' into feat/voce-v7-m2
+68d1584 docs(voce-v7a): report dopo bot e verifica esterna su 3a88f78, testo aggiornato (PR #322, review #648/#649-M2)
 5670d00 docs(voce-v7a): report dopo bot e verifica esterna su 3a88f78 (PR #322, review #648/#649-M2)
 1907320 chore(revisore): memoria review #649 — APPROVATO
 6be61f2 fix(voce): «Ho capito» nascosto su ogni guasto, tempo del cervello anche senza risposta (V-2 bot e V-2 ve #322 su 3a88f78; review #649-M2)
@@ -325,18 +328,48 @@ La riga «#649-M2 — 2026-11-02 — APPROVATO — … Nessuna lezione nuova.» 
 
 Nota laterale: la memoria del merge (#648) contava 956 passed per voice_stt + avvisa + gate, non 981: è un dato mio, i file di test sono diversi da quelli che hai elencato tu.
 
+Merge di origin/main con la PR #323 (1487dec). Review #650-M2:
+
+## VERDETTO: APPROVATO
+
+Review #650-M2: merge di origin/main 9718e0c, cioè la PR #323 (voce H24 sul Mac, chat Mani), nel branch feat/voce-v7-m2 (PR #322, V7a tempi della voce). Il merge è tutto in area di preparazione (staged).
+
+Elementi del diff esaminati:
+- `modules/voice/server.py:293`: `_t0` e `_tempi = {}` all'inizio di do_POST, più il nuovo azzeramento di `_t0` dopo la lettura del corpo della richiesta (`modules/voice/server.py:311`). Rischio: che il merge abbia perso o duplicato il codice della V7a. Esito: ok, il file è identico a HEAD del branch (`git diff --cached HEAD` vuoto).
+- `clients/voice/browser_client.html:296`: il paragrafo `#tempi` sta fuori dal riquadro della risposta, e `tempiEl.hidden = true` è presente sia nel ramo errore sia nel catch (`clients/voice/browser_client.html:612`). Rischio: una regressione delle correzioni #644–#649-M2 arrivata col merge. Esito: ok, il file è identico a HEAD.
+- `clients/voice/ascolto.py:116` (url_del_server, file di contesto arrivato da main). Rischio: che il merge abbia alterato il codice di main. Esito: ok. Sono identici a origin/main anche requirements-ascolto.txt, scripts/voce/, tests/test_unit_voce_ascolto.py, .github/workflows/ci.yml, .gitignore, reports/roadmap.md, reports/ripartenza_mani.md, gas.py, brains/, modules/memory/ e modules/telegram/.
+- `.claude/agents/memoria_revisore.md`: rispetto a origin/main ci sono 11 righe in più (le #614–#649-M2), rispetto a HEAD 12 in più (#615–#623 della chat Mani più le loro lezioni). Rischio: righe perse o doppie nell'unione. Esito: ok, 0 righe rimosse in entrambi i confronti. I numeri di review ripetuti sono gli stessi di prima del merge (92 su main, 93 su HEAD e nello staged). Il doppione in più su HEAD è #614-M2, che era già doppio prima del merge: non lo introduce questo merge.
+- `reports/stato_progetto.md`: è cambiata solo la riga «Ultimo aggiornamento», con la V7a in testa e la voce H24 dopo, più il punto V7a. Esito: ok.
+
+Altre verifiche:
+- `git diff --cached origin/main --stat` contiene solo la V7a: browser_client.html, server.py, test_unit_voice_server.py, test_unit_voice_stt.py, più memoria e report.
+- handoff.md, ultimo_report.md e diff_sessione.md sono identici a HEAD.
+- Nessun marcatore di conflitto in memoria, reports/ e file voce.
+- MERGE_HEAD coincide con origin/main (9718e0c).
+
+Prove rifatte da me:
+- voice_stt + voce_ascolto + voice_server: 243 passed.
+- voce_ascolto da solo: 73 passed.
+
+Rischi esclusi:
+- Non ho rilanciato la suite del kernel: prendo per buono il vostro 1072 PASS. gas.py e il kernel sono identici a origin/main, che ha già la sua CI verde.
+- Non ho verificato il comportamento reale sul Mac di ascolto.py e degli script launchd: non si può riprodurre qui, e la PR #323 è già stata rivista nelle review #615–#623.
+
+Riga contatore #650-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, nessuna lezione nuova. Come mi avete chiesto, non l'ho committata e non ho lanciato commit_memoria_revisore.sh: la mettete voi nel commit di merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Test della voce (tutti i `tests/test_unit_voice*.py`, browser compresi) + claude_cli + dotenv: 258 passed dopo il merge di main. Kernel (`tests/test_unit_kernel.py`): RIEPILOGO 1063 PASS, 0 FAIL prima della #319; 1072 PASS, 0 FAIL dopo il merge di main con la #319. Dopo la correzione del bot: test_unit_voice_stt + test_unit_voice_server 169 passed (revisore #644-M2); test nuovi `test_v7_caricamento_lento_non_conta_come_server` e il modo «guasto» del test nel browser, ognuno col suo mutante → 1 failed. Dopo il bot su 8dc872e: tests/test_unit_voice_server.py intero 78 passed (browser obbligatorio); mutante «tempi dentro il riquadro» → 1 failed. Dopo il bot su 3a88f78: -k v7 di test_unit_voice_stt 11 passed (test nuovo `test_v7_tempo_del_cervello_anche_senza_risposta`, mutante → 1 failed); browser guasto/normale/errore 3 passed. I test V7 nuovi stanno in `tests/test_unit_voice_stt.py` (tempi nel JSON/log, MP3 con X-Gas-Tempi, TTS fallito, kernel che si rompe, 429 senza tempi) e `tests/test_unit_voice_server.py` (pagina).
+Test della voce (tutti i `tests/test_unit_voice*.py`, browser compresi) + claude_cli + dotenv: 258 passed dopo il merge di main. Kernel (`tests/test_unit_kernel.py`): RIEPILOGO 1063 PASS, 0 FAIL prima della #319; 1072 PASS, 0 FAIL dopo il merge di main con la #319. Dopo il merge della #323: kernel 1072 PASS, 0 FAIL; voice_stt + voce_ascolto + voice_contesto 167 passed. Dopo la correzione del bot: test_unit_voice_stt + test_unit_voice_server 169 passed (revisore #644-M2); test nuovi `test_v7_caricamento_lento_non_conta_come_server` e il modo «guasto» del test nel browser, ognuno col suo mutante → 1 failed. Dopo il bot su 8dc872e: tests/test_unit_voice_server.py intero 78 passed (browser obbligatorio); mutante «tempi dentro il riquadro» → 1 failed. Dopo il bot su 3a88f78: -k v7 di test_unit_voice_stt 11 passed (test nuovo `test_v7_tempo_del_cervello_anche_senza_risposta`, mutante → 1 failed); browser guasto/normale/errore 3 passed. I test V7 nuovi stanno in `tests/test_unit_voice_stt.py` (tempi nel JSON/log, MP3 con X-Gas-Tempi, TTS fallito, kernel che si rompe, 429 senza tempi) e `tests/test_unit_voice_server.py` (pagina).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud: check lette dalle notifiche e dalle verifiche.
-- 3a88f78: verifica-bot failure (finding MEDIA: conflitto con main dopo la #319, chiuso qui), «esito» failure di conseguenza; handoff-check success, unit-suite in corso alla lettura.
-- 5670d00: commit di report con il testo non aggiornato (lo script di aggiornamento era fallito prima del commit); corretto da questo commit.
-- ccf5e07 (merge di main), 6be61f2 (correzione), 1907320 (memoria), 5670d00 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (la run testerà solo la testa).
+`gh` non autenticato nel cloud: check lette dall'integrazione GitHub.
+- 68d1584: unit-suite, handoff-check, verifica-bot, verifica, smista, esito tutti success; bot APPROVATO CON RISERVE (solo cosmetiche).
+- 1487dec (merge di main con la PR #323) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
+
+- V-2 COSMETICA bot su 68d1584: `self._segna("cervello", t_cervello)` a `modules/voice/server.py:381` passa un Optional[float]; sicuro a runtime, da chiudere nella V7b.
 
 - V-3 ve su 3a88f78: un'eccezione MP3 diversa da ElevenLabsTTSError/OSError non segna «voce» (comportamento preesistente).
 - Nessun test controlla che «Ho capito» si nasconda su un guasto dopo un turno riuscito (R-646-1-M2 chiusa a lettura).
