@@ -912,8 +912,12 @@ const { chromium } = require('playwright');
     vuoto: sogliaDaCampioni([]) }));
   const stati = await page.evaluate(() => window.__stati);
   const testo = await page.textContent('#testo');
+  const capito = await page.evaluate(() => {   // V6: «Ho capito: …» visibile, solo testo
+    const c = document.getElementById('capito');
+    return { testo: c.textContent, visibile: !c.hidden, html: c.innerHTML };
+  });
   await browser.close();
-  console.log(JSON.stringify({ stati, testo, errori, soglie }));
+  console.log(JSON.stringify({ stati, testo, errori, soglie, capito }));
 })().catch(async e => {
   console.error(e);
   try { console.error('STATI', JSON.stringify(await globalThis.__pagina.evaluate(() => window.__stati))); } catch (_) {}
@@ -984,7 +988,8 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
             ricevute.append((self.headers.get("X-Gas-Formato"), self.headers.get("Content-Type"),
                              len(corpo), corpo[:4]))
             time.sleep(2.6)  # oltre i 2 s: deve partire la frase d'attesa
-            out = json.dumps({"content": "Sì, meglio così. Procedo?", "audio": audio_b64}).encode()
+            out = json.dumps({"content": "Sì, meglio così. Procedo?", "audio": audio_b64,
+                              "capito": "Gas, <b>meglio</b> così?"}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(out)))
@@ -1032,6 +1037,9 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         assert len(ricevute) == 1, (ricevute, stati)
     assert ricevute[0][0] == "audio+testo" and ricevute[0][2] > 0
     assert testo == "Sì, meglio così. Procedo?"
+    # V6: la pagina mostra cosa ha sentito, come testo (l'HTML nel parlato non diventa markup)
+    assert esito["capito"]["testo"] == "Ho capito: «Gas, <b>meglio</b> così?»", esito["capito"]
+    assert esito["capito"]["visibile"] and "<b>" not in esito["capito"]["html"]
     assert any("parli" in s for s in stati), stati
     assert any("ci sto ragionando" in s for s in stati), stati
     if modo == "errore":

@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from modules.voice.server import VoiceHandler, _token_ok
 from modules.voice.stt import (
     GroqSTTError,
+    TrascrizioneIncerta,
     _parse_multipart_file,
     parse_audio_body,
     transcribe_audio,
@@ -190,6 +191,105 @@ class TestTranscribeAudio:
             transcribe_audio(_fake_wav(), "audio.wav", "key-test", _conn_factory=_factory(conn))
         assert exc_info.value.status == 200
         assert "non JSON" in exc_info.value.message
+
+
+# ── V6 (chat M2, «capire meglio»): parametri di Whisper e trascrizioni incerte ──
+
+def _verbose(testo: str, segmenti: list) -> str:
+    return json.dumps({"text": testo, "segments": segmenti})
+
+
+def _seg(lp: float, ns: float, start: float = 0.0, end: float = 1.0) -> dict:
+    return {"start": start, "end": end, "avg_logprob": lp, "no_speech_prob": ns}
+
+
+class TestV6Trascrizione:
+
+    def _trascrivi(self, body: str) -> str:
+        return transcribe_audio(_fake_wav(), "audio.wav", "k", _conn_factory=_factory(_FakeConn(200, body)))
+
+    def test_v6_parametri_inviati_a_groq(self):
+        """Lingua italiana, temperatura 0, verbose_json e prompt con le parole di Gas."""
+        conn = _FakeConn()
+        transcribe_audio(_fake_wav(), "audio.wav", "k", _conn_factory=_factory(conn))
+        corpo = conn.last_kwargs["body"]
+
+        def campo(nome: str) -> bytes:
+            return corpo.split(f'name="{nome}"\r\n\r\n'.encode(), 1)[1].split(b"\r\n", 1)[0]
+
+        assert campo("model") == b"whisper-large-v3"
+        assert campo("language") == b"it"
+        assert campo("temperature") == b"0"
+        assert campo("response_format") == b"verbose_json"
+        prompt = campo("prompt").decode()
+        assert all(p in prompt for p in ("Gas", "lead", "forte", "bozza", "firma"))
+
+    def test_v6_trascrizione_sicura_passa(self):
+        assert self._trascrivi(_verbose(" sì, mandala ", [_seg(-0.25, 0.05)])) == "sì, mandala"
+
+    def test_v6_bassa_confidenza_scartata(self):
+        with pytest.raises(TrascrizioneIncerta) as e:
+            self._trascrivi(_verbose("gas fatti la lista", [_seg(-1.4, 0.2)]))
+        assert e.value.testo == "gas fatti la lista" and "avg_logprob" in e.value.motivo
+
+    def test_v6_silenzio_scartato(self):
+        with pytest.raises(TrascrizioneIncerta) as e:
+            self._trascrivi(_verbose("Ciao.", [_seg(-0.7, 0.95)]))
+        assert "no_speech" in e.value.motivo
+
+    def test_v6_si_breve_e_chiaro_passa_anche_con_no_speech_alto(self):
+        """R-611-1-M2: su large-v3 no_speech_prob è alto anche su un «sì» vero: senza
+        confidenza bassa non è silenzio (regola AND di Whisper)."""
+        assert self._trascrivi(_verbose("Sì.", [_seg(-0.2, 0.85, 0.0, 0.4)])) == "Sì."
+
+    @pytest.mark.parametrize("eco", ["Gas, forte, lead, bozza, firma.",
+                                     "Conversazione in italiano con Gas."])
+    def test_v6_eco_del_prompt_scartata(self, eco):
+        """R-611-2-M2: sul silenzio Whisper ripete il prompt: non è una richiesta."""
+        with pytest.raises(TrascrizioneIncerta) as e:
+            self._trascrivi(_verbose(eco, [_seg(-0.3, 0.3)]))
+        assert "prompt" in e.value.motivo
+
+    @pytest.mark.parametrize("frase", ["Gas, prepara la bozza per il lead di oggi",
+                                       "manda il report su Telegram",
+                                       "Gas, forte, firma la bozza",       # R-612-1-M2
+                                       "Gas forte report merge", "Gas forte memoria lead",
+                                       "firma bozza lead forte"])
+    def test_v6_richieste_vere_con_parole_del_prompt_passano(self, frase):
+        assert self._trascrivi(_verbose(frase, [_seg(-0.3, 0.1)])) == frase
+
+    def test_v6_media_pesata_per_durata(self):
+        """Un pezzetto incerto in una frase lunga e sicura non la fa scartare."""
+        segs = [_seg(-0.2, 0.05, 0.0, 4.0), _seg(-2.5, 0.3, 4.0, 4.4)]
+        assert self._trascrivi(_verbose("frase lunga e chiara", segs)) == "frase lunga e chiara"
+
+    @pytest.mark.parametrize("frase", ["Sottotitoli creati dalla comunità Amara.org",
+                                       "Grazie per la visione!", "Sottotitoli e revisione a cura di QTSS"])
+    def test_v6_frasi_inventate_da_whisper_scartate(self, frase):
+        with pytest.raises(TrascrizioneIncerta):
+            self._trascrivi(_verbose(frase, [_seg(-0.2, 0.1)]))
+
+    def test_v6_segmenti_senza_campi_non_scartano(self):
+        """Risposta senza i dettagli attesi: si tiene il testo (non si scarta a caso)."""
+        assert self._trascrivi(_verbose("ciao", [{"start": 0, "end": 1}])) == "ciao"
+        assert self._trascrivi('{"text": "ciao"}') == "ciao"
+
+    def test_v6_soglie_da_env(self):
+        corpo = _verbose("ciao", [_seg(-0.9, 0.1)])
+        assert self._trascrivi(corpo) == "ciao"
+        with patch.dict(os.environ, {"GAS_VOICE_STT_LOGPROB_MIN": "-0.5"}):
+            with pytest.raises(TrascrizioneIncerta):
+                self._trascrivi(corpo)
+        for sbagliato in ("non-numero", "nan", "-inf"):
+            with patch.dict(os.environ, {"GAS_VOICE_STT_LOGPROB_MIN": sbagliato}):
+                assert self._trascrivi(corpo) == "ciao"
+        with patch.dict(os.environ, {"GAS_VOICE_STT_LOGPROB_MIN": "nan"}):
+            with pytest.raises(TrascrizioneIncerta):   # nan → default, il controllo resta acceso
+                self._trascrivi(_verbose("ciao", [_seg(-1.5, 0.1)]))
+
+    def test_v6_json_non_oggetto_errore_groq(self):
+        with pytest.raises(GroqSTTError):
+            self._trascrivi("[1, 2]")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -425,6 +525,72 @@ class TestVoiceHandlerRouting:
         assert stati == [200, 400, 429], stati   # uso (istruzione), vuota (400), tetto
         assert stt.call_count == 2
         assert chiamate == []
+
+    def test_v6_chiamata_groq_fallita_conta_nel_tetto(self):
+        """V-1 bot #314: anche una chiamata a Groq che fallisce (500 → 502) spende e conta:
+        con tetto 1 la richiesta dopo → 429 senza una seconda trascrizione."""
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        with patch("modules.voice.server.transcribe_audio",
+                   side_effect=[GroqSTTError(500, "Groq 500: guasto"), "ciao"]) as stt:
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key", "GAS_VOICE_MAX_TURNI_ORA": "1"}):
+                stati = [_post_raw(self.port, wav, hdrs)[0] for _ in range(2)]
+        assert stati == [502, 429], stati
+        assert stt.call_count == 1
+
+    def test_v6_trascrizione_incerta_chiede_di_ripetere(self):
+        """V6: testo incerto → «non ho capito, ripeti?», nessun turno, conta nel tetto, e la
+        risposta dice cosa è stato sentito («capito»)."""
+        chiamate = []
+
+        def _run_turn(prompt, **kw):
+            chiamate.append(prompt)
+            yield {"type": "final", "content": "ok"}
+
+        self.kernel.run_turn = _run_turn
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        with patch("modules.voice.server.transcribe_audio",
+                   side_effect=[TrascrizioneIncerta("gas fatti", "poco sicura"), "ciao"]):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key", "GAS_VOICE_MAX_TURNI_ORA": "1"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                primo = _post_raw(self.port, wav, hdrs)
+                secondo = _post_raw(self.port, wav, hdrs)
+        assert primo[0] == 200 and primo[1]["non_capito"] is True
+        assert primo[1]["capito"] == "gas fatti" and "ripetere" in primo[1]["content"]
+        assert chiamate == [] and secondo[0] == 429
+
+    def test_v6_risposta_dice_cosa_ha_capito(self):
+        """V6: la risposta del turno porta il testo trascritto, anche con «forte» davanti
+        (si mostra quello che è stato sentito, non la richiesta ripulita)."""
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        with patch("modules.voice.server.transcribe_audio", return_value="Gas, forte: dimmi i lead"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                status, resp = _post_raw(self.port, wav, hdrs)
+                kw_parlato = dict(self.kernel.kw)
+                scritto = _post_raw(self.port, json.dumps({"prompt": "ciao"}).encode(),
+                                    {**_AUTH, "Content-Type": "application/json"})
+        assert status == 200 and resp["capito"] == "Gas, forte: dimmi i lead"
+        assert kw_parlato.get("cervello") == "forte"  # «forte» tolto dalla richiesta, non dal «capito»
+        assert "capito" not in scritto[1]  # testo scritto: niente da mostrare
+
+    def test_v6_formato_pagina_porta_capito(self):
+        """V6: col formato della pagina (audio+testo) il JSON ha «capito», anche quando
+        chiede di ripetere (con il segno non_capito)."""
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": "audio+testo"}
+        with patch("modules.voice.server.transcribe_audio",
+                   side_effect=["Gas, ciao", TrascrizioneIncerta("boh", "poco sicura")]):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                buono = _post_raw(self.port, wav, hdrs)
+                incerto = _post_raw(self.port, wav, hdrs)
+        assert buono[0] == 200 and buono[1]["capito"] == "Gas, ciao" and "non_capito" not in buono[1]
+        assert incerto[0] == 200 and incerto[1]["capito"] == "boh" and incerto[1]["non_capito"] is True
 
     def test_v5_rifiuti_locali_non_consumano_il_tetto(self):
         """R-585-1-M2: un audio vuoto (400, nessuna chiamata a Groq) non conta: con tetto 1
