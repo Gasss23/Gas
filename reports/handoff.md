@@ -27,6 +27,7 @@
 - **Bot su d783938 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743253066)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA (quinto percorso verso i gratuiti: `write_file` è in `_LIBERI_DOPO_LETTURA`, quindi a finestra contaminata scrive senza firma un .md con i dati della mail, e `read_file` lo rilegge in un turno dopo sui gratuiti): `FATTA` — quinto percorso nel punto 6 e nella fetta 1 (`write_file` alla firma con `fetch_email` nella finestra, con un test). V-2 BASSA (la frase «non conservarsi oltre il turno» contraddiceva l'opzione di tenere il turno nella storia): `FATTA` — proposta: turno mail tolto o mascherato dalla storia a fine turno, quindi anche dagli snapshot (chiude anche V-1 bot su 7346994); se l'operatore preferisce tenerlo, la conservazione va dichiarata nella domanda 7.
 - **Bot su a48caa0 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743310696)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA (mascherare a fine turno non basta: `_save_history` gira anche a metà turno, gas.py:5011, e `_snapshot` copia `.gas_history.json` prima di write_file e run_command; la conservazione degli snapshot è «ultimi 100 o meno di 7 giorni», poi fino a `git gc`): `FATTA` — mascheramento in ogni salvataggio, snapshot con un turno mail nella finestra senza la storia (o mascherata), tempi corretti, domanda 7 estesa. V-2 BASSA (il sì dell'operatore era su 7346994): `FATTA` — §0 lo chiede di nuovo. V-3 COSMETICA (nota del §3 sull'head mancante): `FATTA`.
 - **Bot su bd38966 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743366214)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA («dalle mail non si salvano contatti» senza meccanismo: `salva_contatto` e `imposta_stato_contatto` stanno in `_LIBERI_DOPO_LETTURA` e restano liberi dopo una lettura): `FATTA` — regola unica nel punto 6 e nella fetta 1: con `fetch_email` nella finestra resta libero solo `prepara_bozza`, tutti gli altri reversibili alla firma, con i test. V-2 BASSA (nei processi accesi la storia in memoria non è mascherata e `_get_window` la porta al turno dopo): `FATTA` — maschera anche su `self.history` e guardia su ogni finestra con un turno mail, test su due turni nello stesso kernel. V-3 COSMETICA (`_snapshot` aggiunge la storia solo se attiva): `FATTA`.
+- **Bot su 754480d (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743483719)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA (sesto percorso: `applica_firma` scrive nella storia argomenti e output dell'azione firmata, in un turno di sblocco anche giorni dopo, senza maschera) e V-2 BASSA (`rifletti()` scrive recap e lezioni che possono riassumere la mail): `FATTA` — dopo quattro giri con un percorso nuovo ogni volta, il punto 6 ora ha un principio strutturale: segno «mail» alla fonte su tutto ciò che nasce da un turno mail, e un solo controllo all'uscita prima di ogni chiamata a un modello non forte; i percorsi noti (sei, più la riflessione) sono esempi e test, non una lista chiusa. Domanda 4: la firma decide se l'azione parte, non dove vanno i dati.
 - **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: `DEFERITA — commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); PR subito dopo questa (un solo branch remoto)`.
 
 ---
@@ -37,11 +38,11 @@
  .claude/agents/memoria_revisore.md |   2 ++
  reports/diff_sessione.md           |  17 +++++++++--------
  reports/handoff.md                 | n/d
- reports/piano_mail.md              | 132 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/piano_mail.md              | 155 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   4 ++--
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  37 +++++++++++++++++++------------------
+ reports/ultimo_report.md           |  38 ++++++++++++++++++++------------------
 ```
 
 NB: base = merge-base con origin/main = 70e2f05. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -49,6 +50,7 @@ NB: base = merge-base con origin/main = 70e2f05. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+754480d docs(mail): con una mail nella finestra liberi solo prepara_bozza (rubrica e write_file alla firma), maschera anche sulla storia in memoria (V-1 MEDIA, V-2, V-3 bot #324 su bd38966)
 bd38966 docs(mail): storia mascherata a ogni salvataggio e snapshot senza storia mail, conservazione corretta, sì da richiedere sull'head nuovo (V-1 MEDIA, V-2, V-3 bot #324 su a48caa0)
 a48caa0 docs(mail): quinto percorso verso i gratuiti (write_file in un turno mail), turno mail tolto o mascherato dalla storia anche negli snapshot (V-1 MEDIA, V-2 bot #324 su d783938)
 d783938 docs(fine-task): merge di main (PR #325) nella PR #324, riserve del bot su 7346994 registrate (review #627)
@@ -141,7 +143,8 @@ Nessuna modifica a gas.py/tests/.
 - I commit di main entrati col merge (fino a 70e2f05, PR #325) hanno le run della PR #325.
 - 9174640 (merge), a0f71c7 (memoria #627), d783938 (fine-task): handoff-check success; verifica-bot failure su d783938 (bot BOCCIATO, V-1 MEDIA, chiusa in a48caa0).
 - a48caa0 (correzioni e fine-task): handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA, chiusa in bd38966).
-- bd38966 (correzioni e fine-task): handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA, chiusa in questo commit); merge automatico tolto per V-2 su a48caa0.
+- bd38966 (correzioni e fine-task): handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA, chiusa in 754480d); merge automatico tolto per V-2 su a48caa0.
+- 754480d (correzioni e fine-task): handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA, chiusa in questo commit).
 - Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

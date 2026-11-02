@@ -70,7 +70,20 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    snapshot, con quei tempi) va dichiarata nella domanda 7 (V-2 bot #324 su d783938). Lo stesso vale
    per le bozze salvate in Gas: si leggono solo nei turni sul forte. Senza questo, testo
    e indirizzi letti in un turno forte arriverebbero ai gratuiti.
-   I percorsi da coprire sono cinque (R-626-1, V-1 bot #324 su 970beca e su d783938):
+   **Principio che regge tutto (proposta, dopo quattro giri del bot che trovavano ogni
+   volta un percorso nuovo):** non si chiude un percorso alla volta, ma
+   - **alla fonte, un segno «mail»** su tutto ciò che nasce da un turno mail: blocchi
+     della storia (in memoria e su file), esito di un'azione firmata nata da quel turno
+     (anche se la firma arriva giorni dopo), contatti, righe di diario, file scritti,
+     recap e lezioni della riflessione, bozze;
+   - **all'uscita, un solo controllo**: prima di OGNI chiamata a un modello che non è il
+     forte, il kernel guarda messaggi e system che sta per mandare; se c'è qualcosa col
+     segno «mail», la chiamata non parte (il lavoro aspetta il forte). Il pin della
+     memoria e `ricorda` tolgono da sé le voci col segno fuori dal forte, così i turni
+     normali non si bloccano; il controllo all'uscita è la rete se qualcosa sfugge.
+
+   I percorsi qui sotto sono gli esempi noti, non una lista chiusa, e ognuno diventa un
+   test del controllo all'uscita (R-626-1, V-1 bot #324 su 970beca, d783938 e 754480d):
    - i turni dopo (`run_turn` con `_get_window`);
    - la riflessione di fine task (cascata «complesso» su una finestra di `_get_window`);
    - il riepilogo di compressione, dove il testo degli strumenti diventa un messaggio user
@@ -87,6 +100,15 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
      scrive senza firma i .md/.txt/.csv nelle cartelle di lavoro, e `read_file` (SAFE) li
      rilegge in un turno dopo sui gratuiti.
 
+   - **l'esito della firma**: `applica_firma` scrive nella storia gli argomenti salvati
+     (per `send_email` destinatario, oggetto e testo) e l'output, in un turno di sblocco
+     separato, anche giorni dopo: quel blocco porta il segno «mail» se l'azione è nata
+     in un turno mail (V-1 bot #324 su 754480d). La firma decide SE l'azione parte, non
+     dove vanno poi i dati;
+   - **i prodotti della riflessione**: `rifletti()` scrive il recap nel diario e propone
+     lezioni per il catalogo, e il loro testo può riassumere la mail. Proposta: nessuna
+     lezione da un turno mail, recap col segno «mail» (V-2 bot #324 su 754480d).
+
    **Regola unica per la memoria e i file (proposta):** con `fetch_email` nella finestra
    `_LIBERI_DOPO_LETTURA` si riduce al solo `prepara_bozza`. Quindi `write_file`,
    `salva_contatto` e `imposta_stato_contatto` vanno alla firma, e così ogni strumento
@@ -97,7 +119,7 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    «Operazione negata: …» e il turno va avanti, mai un crash.
 
 ## Fette (dopo le risposte)
-1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, per nessuno dei cinque percorsi: storia, riflessione, compressione, memoria, file scritti con `write_file`; con una mail nella finestra liberi solo `prepara_bozza`, quindi `write_file`, `salva_contatto` e `imposta_stato_contatto` alla firma; turno mail mascherato in ogni salvataggio della storia, anche a metà turno, e nella storia in memoria (test su due turni nello stesso kernel), e `.gas_history.json` escluso o mascherato negli snapshot fatti con un turno mail nella finestra, con un test per ciascuno) e `notify_telegram` non più SAFE (aggiornando `test_notify_telegram_safe` in `tests/test_unit_gate.py`, V-2 bot #324 su 7346994).
+1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, con il segno «mail» alla fonte e il controllo unico all'uscita prima di ogni chiamata a un modello non forte, e un test per ciascun percorso noto: storia, riflessione e suoi prodotti, compressione, memoria, file scritti con `write_file`, esito della firma; con una mail nella finestra liberi solo `prepara_bozza`, quindi `write_file`, `salva_contatto` e `imposta_stato_contatto` alla firma; turno mail mascherato in ogni salvataggio della storia, anche a metà turno, e nella storia in memoria (test su due turni nello stesso kernel), e `.gas_history.json` escluso o mascherato negli snapshot fatti con un turno mail nella finestra, con un test per ciascuno) e `notify_telegram` non più SAFE (aggiornando `test_notify_telegram_safe` in `tests/test_unit_gate.py`, V-2 bot #324 su 7346994).
 2. Bozze in Gas.
 3. Invio con firma e token separato.
 4. Prova dal vero su una casella di prova, poi su quella vera.
@@ -117,7 +139,8 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    `mail_lettura_token` e `mail_invio_token`, permessi 0600), mai nel repo né nel `.env`
    versionato. Va bene? Sul VPS lo stesso percorso.
 4. **Cosa senza firma**: solo leggere e preparare bozze? O preferisci che anche la
-   lettura chieda il tuo ok, almeno all'inizio?
+   lettura chieda il tuo ok, almeno all'inizio? Nota: la firma decide se un'azione
+   parte, non dove vanno poi i dati; a quello pensa il segno «mail» del punto 6.
 5. **Tetti**: vanno bene i numeri del punto 5 (100 letti, 20 bozze, 10 invii al giorno,
    5 destinatari)?
 6. **Testo delle mail non fidato**: confermi che dopo una lettura ogni azione verso
