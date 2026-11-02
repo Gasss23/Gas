@@ -92,6 +92,14 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
             self.wfile.write(cfg)
             return
         if self.path in ("/voci/elenco", "/voci/libreria"):   # V8/V8b: elenchi dal server voce
+            # V-4 bot #326: un'altra pagina (anche un semplice <img>) non deve far partire
+            # chiamate a ElevenLabs né azzerare le voci ammesse. La pagina «prova voci»
+            # manda X-Gas-Pagina: un sito esterno non può aggiungerla senza CORS, che qui
+            # non c'è; in più si rifiuta ogni richiesta che il browser segna cross-site.
+            if (self.headers.get("X-Gas-Pagina") != "1"
+                    or self.headers.get("Sec-Fetch-Site", "same-origin") not in ("same-origin", "none")):
+                self._send_error_json(403, "Richiesta non dalla pagina «prova voci»: rifiutata")
+                return
             self._inoltra_semplice("GET", self.path, b"")
             return
         if self.path not in ("/", "/index.html", "/voci"):

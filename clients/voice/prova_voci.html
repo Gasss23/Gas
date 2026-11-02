@@ -247,7 +247,7 @@ function rigaLibreria(voce) {
 
 async function caricaLibreria() {
   try {
-    const resp = await fetch("/voci/libreria");
+    const resp = await fetch("/voci/libreria", { headers: { "X-Gas-Pagina": "1" } });   // V-4 bot #326
     const dati = await resp.json();
     if (!resp.ok) throw new Error(dati.error || resp.status);
     avvisoLib = dati.avviso || "";
@@ -264,7 +264,7 @@ async function caricaLibreria() {
 async function caricaElenco() {   // ritorna le voci mostrate (null se l'elenco non si legge)
   let dati;
   try {
-    const resp = await fetch("/voci/elenco");
+    const resp = await fetch("/voci/elenco", { headers: { "X-Gas-Pagina": "1" } });   // V-4 bot #326
     dati = await resp.json();
     if (!resp.ok) throw new Error(dati.error || resp.status);
   } catch (e) {

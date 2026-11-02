@@ -713,6 +713,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
             nuovo = add_shared_voice(api_key, proprietario, voce, f"Gas - {nome}")
         except ElevenLabsTTSError as exc:
             log.warning("ElevenLabs aggiunta voce status=%s: %s", exc.status, exc.message)
+            if exc.status == 200:   # V-2 bot #326: ha risposto «ok» senza un id leggibile
+                self._send_json(502, {"error": "Esito incerto: ElevenLabs ha risposto ma senza l'id "
+                                               "della voce. Controlla l'account prima di riprovare."})
+                return
             self._send_json(502, {"error": f"ElevenLabs non ha aggiunto la voce: {exc.message}"})
             return
         except OSError as exc:
@@ -742,16 +746,6 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(409, {"error": "Voce non nell'elenco: ricarica la pagina «prova voci» "
                                            "(si provano solo le voci elencate, mai cloni)"})
             return
-        adesso = time.monotonic()
-        recenti = [t for t in type(self).prove_voci if adesso - t < 3600]
-        try:
-            tetto = max(1, int(os.environ.get("GAS_VOICE_MAX_PROVE_ORA", "") or 40))
-        except ValueError:
-            tetto = 40
-        if len(recenti) >= tetto:
-            self._send_json(429, {"error": f"Troppe prove di voce nell'ultima ora ({tetto}, "
-                                           "GAS_VOICE_MAX_PROVE_ORA). Riprova più tardi."})
-            return
         testo = prova_voci.FRASI_PROVA[frase]
         if voce == prova_voci.PIPER:
             modello = prova_voci.piper_disponibile()
@@ -766,6 +760,17 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._send_json(502, {"error": "Piper non è riuscito a parlare"})
                 return
             self._send_audio(audio, "audio/wav")
+            return
+        # V-3 bot #326: il tetto conta solo le prove con ElevenLabs; Piper (locale e gratis) no
+        adesso = time.monotonic()
+        recenti = [t for t in type(self).prove_voci if adesso - t < 3600]
+        try:
+            tetto = max(1, int(os.environ.get("GAS_VOICE_MAX_PROVE_ORA", "") or 40))
+        except ValueError:
+            tetto = 40
+        if len(recenti) >= tetto:
+            self._send_json(429, {"error": f"Troppe prove di voce nell'ultima ora ({tetto}, "
+                                           "GAS_VOICE_MAX_PROVE_ORA). Riprova più tardi."})
             return
         api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
         if not api_key:
