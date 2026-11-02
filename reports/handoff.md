@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V7a: misura dei tempi (chat M2, coordinata da M1)
+**Sessione:** 2026-11-02 — Voce V7a: misura dei tempi (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su 33a0346
 
 ---
 
@@ -15,6 +15,8 @@
 
 - **V7a — tempi di trascrizione, cervello e voce**: `FATTA` (review #614–#616-M2).
 - **Merge di main (PR #318, #321)**: `FATTA` (review #643-M2).
+- **Bot su 33a0346**: V-1 (tempi a schermo anche sui guasti) e V-2 (caricamento dell'audio contato come «rete», `_t0` dopo la lettura del corpo): `FATTE`, review #644-M2 CON RISERVE (R-644-1-M2: tempi vecchi dopo un errore di rete, chiusa) → #645-M2 APPROVATO. V-3 bot (X-Gas-Tempi non letta da nessun client: serve ai client futuri) COSMETICA, nessun fix.
+- **Verifica esterna su 33a0346** (https://github.com/Gasss23/Gas/pull/322#issuecomment-6582445935): V-1 MEDIA (PR in conflitto con main dopo la #320) `FATTA` col merge di main (solo documenti e memoria); V-2 (§6 senza run) aggiornata qui; V-3/V-4 basse, già dichiarate.
 - **V7b, V8, V9**: `DEFERITE` — una PR alla volta, dopo il merge della precedente.
 
 ---
@@ -22,15 +24,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- clients/voice/browser_client.html  |  19 ++++++++++++++++-
- modules/voice/server.py            |  49 ++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  13 ++++++------
+ .claude/agents/memoria_revisore.md |   7 ++++++
+ clients/voice/browser_client.html  |  31 +++++++++++++++++++++++---
+ modules/voice/server.py            |  51 +++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  13 ++++++-----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  22 ++++++++------------
- tests/test_unit_voice_server.py    |  11 ++++++++--
- tests/test_unit_voice_stt.py       | 100 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  23 ++++++++------------
+ tests/test_unit_voice_server.py    |  29 +++++++++++++++++++++----
+ tests/test_unit_voice_stt.py       | 118 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -38,6 +40,11 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+60499a4 Merge remote-tracking branch 'origin/main' into feat/voce-v7-m2
+685c9bb fix(voce): tempi a schermo anche sui guasti, caricamento dell'audio contato come rete (V-1/V-2 bot #322 su 33a0346; review #644/#645-M2)
+d58208d chore(revisore): memoria review #645 — APPROVATO
+34ff97f chore(revisore): memoria review #644 — APPROVATO CON RISERVE
+33a0346 docs(voce-v7a): numero della PR #322 nei report
 f3a3cc4 docs(voce-v7a): report di fine task (review #614–#616-M2, merge di main #643-M2)
 7ced8a2 Merge origin/main (PR #318 V6, #321) in feat/voce-v7-m2 (review #643-M2)
 3156c6a chore(revisore): memoria review #616 — APPROVATO
@@ -166,15 +173,60 @@ Letture obbligatorie fatte: CLAUDE.md (sez. 5), reports/stato_progetto.md (la pa
 - Nella memoria non esiste un #642: ho usato il numero #643 che mi hai indicato.
 - Ricorda che nella memoria #614-M2 compare due volte; la numerazione parallela è già dichiarata in #617-M2.
 
+Commit della correzione (bot su 33a0346). Review #644-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #644-M2: diff staged di 4 file su feat/voce-v7-m2 (PR #322). Chiude V-1 e V-2 del bot su 33a0346. Ho fatto le tre letture obbligatorie: CLAUDE.md è nel contesto; di stato_progetto e della memoria ho letto le parti utili.
+
+Cosa ho esaminato nel diff:
+- `clients/voice/browser_client.html:609`: con una risposta non 2xx la pagina ora legge il JSON una volta sola e ne prende sia `error` sia `tempi` (questi solo se sono un oggetto). Tutto sta dentro un try/catch: un corpo che non è JSON lascia `tempiErr=null` e la pagina non va in errore. La riga dei tempi si scrive con `textContent`, non con innerHTML, quindi niente rischio di HTML iniettato; inoltre `descriviTempi` accetta solo numeri finiti. Esito: ok.
+- `modules/voice/server.py:311`: `_t0` riparte dopo `rfile.read(length)`. Il primo `_t0` alla riga 293 resta per le risposte 404/401/400 date prima della lettura del corpo, quindi `_send_json` non usa mai un `_t0` lasciato da una richiesta precedente sulla stessa connessione. Il «server» adesso misura solo il lavoro fatto dopo aver ricevuto il corpo; la pagina calcola la rete come totale meno server, e il totale parte prima del fetch, quindi il caricamento finisce nella «rete», com'è giusto. `time` era già importato (riga 70). Esito: ok.
+- `tests/test_unit_voice_stt.py:755`: il test usa un socket grezzo con HTTP/1.0, manda il corpo in due pezzi con 0,6 s di pausa e controlla `server < 0.5`. Il margine è ragionevole: il prompt «ciao» con il kernel finto del fixture è veloce. Esito: ok.
+- `tests/test_unit_voice_server.py:904`: il `waitForFunction` ora accetta anche uno stato che comincia con «errore». Questo non indebolisce le altre modalità del test, perché dopo restano le asserzioni sul testo, sull'audio e sui turni, che fallirebbero comunque. Il nuovo modo «guasto» (riga 992) risponde 502 con i tempi, e il test controlla lo stato finale e il prefisso della riga tempi (riga 1051). `1.25.toFixed(1)` dà "1.3", come si aspetta l'asserzione. Esito: ok.
+
+Riserva (BASSA, da tracciare in stato_progetto.md): nel ramo «errore di rete» (il catch del fetch, `clients/voice/browser_client.html:605`) la riga tempi non viene azzerata, quindi può restare a schermo quella del turno precedente. Il problema c'era già prima di questo diff, che però lo rende più visibile, perché adesso anche i guasti mostrano i tempi. La correzione è una riga: `tempiEl.hidden = true` in quel ramo.
+
+Wall of Shame: nessun taglio della cronologia, nessun output dei tool simulato. Cap di 10 iterazioni e `_get_window` non toccati.
+
+Prove: ho rilanciato `tests/test_unit_voice_stt.py` e `tests/test_unit_voice_server.py` per intero: 169 passed in 220 s.
+
+Cosa non ho verificato:
+- Non ho rifatto i due test mutanti (pagina vecchia e server vecchio) e mi fido del tuo «1 failed» per ciascuno.
+- Non ho controllato come si comporta su Safari/iOS reale né con un 502 vero di un proxy davanti al server, che può mandare un corpo HTML senza tempi. Il codice in quel caso degrada a riga tempi vuota, ma l'ho visto solo leggendolo, non provandolo.
+
+Memoria: ho aggiunto la riga #644-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con 34ff97f. Nessuna lezione nuova.
+
+Review #645-M2 (diff finale committato):
+
+## VERDETTO: APPROVATO
+
+Review #645-M2: stesso diff staged della #644-M2 (4 file, 46+/4-), con in più la riga che chiude la riserva R-644-1-M2 (la riga dei tempi di un turno precedente che restava a schermo dopo un errore di rete). La riserva è chiusa; il resto del diff non è cambiato.
+
+- `clients/voice/browser_client.html:606`: nel catch del fetch c'è ora `tempiEl.hidden = true` prima di `fineTurno`. Rischio esaminato: tempi vecchi visibili dopo un errore di rete. La riga li nasconde; il testo resta nell'elemento ma non si vede, e il turno successivo lo riscrive comunque (righe 616 e 642). Esito: ok.
+- `clients/voice/browser_client.html:609`: il ramo `!resp.ok` è invariato rispetto alla #644: legge error e tempi in un solo `resp.json()` e scrive con `textContent`, quindi niente HTML iniettato. Esito: ok.
+- `modules/voice/server.py:311`: `_t0` riparte dopo `rfile.read` ed è invariato rispetto alla #644. Il tempo di caricamento resta nella «rete». Esito: ok.
+
+Prove: ho rilanciato `tests/test_unit_voice_server.py -k "guasto or normale or errore"`: 4 passed. La suite voce completa (169 passed) l'ho fatta girare nella #644, prima di questa riga in più.
+
+Cosa non ho verificato:
+- Non c'è un test che provochi un vero errore di rete (fetch rifiutato) per controllare che la riga tempi si nasconda: la modifica è di una riga e l'ho verificata solo leggendola.
+- Non ho controllato il comportamento su Safari/iOS reale.
+
+Memoria: ho aggiunto la riga #645-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con d58208d. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Test della voce (tutti i `tests/test_unit_voice*.py`, browser compresi) + claude_cli + dotenv: 258 passed dopo il merge di main. Kernel (`tests/test_unit_kernel.py`): RIEPILOGO 1063 PASS, 0 FAIL. I test V7 nuovi stanno in `tests/test_unit_voice_stt.py` (tempi nel JSON/log, MP3 con X-Gas-Tempi, TTS fallito, kernel che si rompe, 429 senza tempi) e `tests/test_unit_voice_server.py` (pagina).
+Test della voce (tutti i `tests/test_unit_voice*.py`, browser compresi) + claude_cli + dotenv: 258 passed dopo il merge di main. Kernel (`tests/test_unit_kernel.py`): RIEPILOGO 1063 PASS, 0 FAIL. Dopo la correzione del bot: test_unit_voice_stt + test_unit_voice_server 169 passed (revisore #644-M2); test nuovi `test_v7_caricamento_lento_non_conta_come_server` e il modo «guasto» del test nel browser, ognuno col suo mutante → 1 failed. I test V7 nuovi stanno in `tests/test_unit_voice_stt.py` (tempi nel JSON/log, MP3 con X-Gas-Tempi, TTS fallito, kernel che si rompe, 429 senza tempi) e `tests/test_unit_voice_server.py` (pagina).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione (190d3fc, memoria, merge 7ced8a2, report f3a3cc4: pushati insieme, run sulla sola testa f3a3cc4 non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud: check lette dall'integrazione GitHub.
+- f3a3cc4 e 33a0346 (fine-task precedenti, pushati in due momenti): suite completate (notifiche check_suite.completed); su 33a0346 handoff-check e verifica-bot success alla lettura della verifica esterna, bot APPROVATO CON RISERVE.
+- Correzione, memoria (34ff97f, d58208d), merge di main 60499a4 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
+- Nessun test provoca un vero errore di rete nella pagina per vedere la riga tempi nascosta (R-644-1-M2 chiusa solo a lettura).
 - Nessun test controlla esplicitamente il campo `tempi` nella risposta «non ho capito» (V6): convivenza verificata leggendo il codice (review #643-M2), stesso `_send_json` già coperto.
 - La latenza reale si misura solo sul Mac.
