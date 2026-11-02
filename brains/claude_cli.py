@@ -399,7 +399,11 @@ class ClaudeCliClient:
 # `claude auth status` (cli-reference: «Show authentication status as JSON … Exits with
 # code 0 if logged in, 1 if not … `authMethod` field is one of `none`, `claude.ai`,
 # `oauth_token`, `api_key`, `api_key_helper`, or `third_party`») non apre una sessione.
-# Si lancia con lo STESSO ambiente filtrato del figlio vero: dice quale login userebbe.
+# Si lancia con lo STESSO ambiente filtrato del figlio vero, ma NON con gli stessi flag: il
+# figlio usa `--setting-sources ""`, che per `auth status` non è documentato (V-2 bot #321
+# su 36f790f). Le impostazioni utente (blocco env, apiKeyHelper) possono quindi far dire
+# «api_key» al controllo mentre il figlio userebbe l'abbonamento: l'errore va nel verso
+# sicuro (WARN in più, mai un OK falso). È un'indicazione, non la prova del login del figlio.
 _LOGIN_ABBONAMENTO = frozenset({"claude.ai", "oauth_token"})
 
 
