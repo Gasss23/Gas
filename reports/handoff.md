@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2, coordinata da M1) — aggiornato dopo bot su 36f790f
+**Sessione:** 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2, coordinata da M1) — aggiornato dopo il merge di main (PR #318) e i sì dell'operatore
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #321 (https://github.com/Gasss23/Gas/pull/321). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5114638285","url":"https://github.com/Gasss23/Gas/pull/321"}`); `gh` nel cloud non è autenticato. Stanotte niente merge (M1): decide l'operatore.
+1. Merge della PR #321 (https://github.com/Gasss23/Gas/pull/321). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5114638285","url":"https://github.com/Gasss23/Gas/pull/321"}`); `gh` nel cloud non è autenticato. L'operatore ha detto sì (riferito da M1 il 2 novembre pomeriggio): merge automatico attivato da M1.
 2. Sul Mac: `python3 gas.py doctor` → la riga «Cervello forte · login» deve dire «login dell'abbonamento».
 
 ---
@@ -27,14 +27,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  12 +++++++++++
- brains/claude_cli.py               |  63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |  13 ++++++++++++
+ brains/claude_cli.py               |  63 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  gas.py                             |   4 ++++
- reports/diff_sessione.md           |  17 ++++++++--------
+ reports/diff_sessione.md           |  20 ++++++++----------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  36 ++++++++++++++++-----------------
- tests/test_unit_claude_cli.py      |  94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  30 +++++++++++++--------------
+ tests/test_unit_claude_cli.py      |  94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_dotenv.py          |  39 +++++++++++++++++++++++++++++++++++
  tests/test_unit_kernel.py          |  15 ++++++++++++--
 ```
@@ -44,6 +44,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bbe0c3b Merge remote-tracking branch 'origin/main' into fix/forte-non-bare-m2
+e79cf07 docs(forte-non-bare): report dopo il bot su 36f790f (PR #321, review #640-M2)
 6e33a8c docs(forte): il controllo «login» non usa i flag del figlio, è un'indicazione (V-2 bot #321 su 36f790f; review #640-M2)
 265fa40 chore(revisore): memoria review #640 — APPROVATO
 493684b docs(forte-non-bare): report dopo bot su 6c0cf68 e verifica esterna su 36f790f (PR #321, review #639-M2)
@@ -309,18 +311,72 @@ Rischio escluso: non ho verificato che il «mai un OK falso» del commento valga
 
 Memoria: riga contatore #640-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (265fa40) con scripts/commit_memoria_revisore.sh. Il diff staged del motore non è stato toccato. Nessuna lezione nuova.
 
+Merge di origin/main (PR #318) nel branch (bbe0c3b). Review #641-M2, verdetto integrale: Prima emissione (integrale, in un blocco perché il gate B la sostituisce con la riemissione qui sotto):
+
+```
+## VERDETTO: APPROVATO
+
+Review #641-M2: merge di origin/main (f37316f, PR #318 V6 voce) nel branch fix/forte-non-bare-m2 (PR #321), con tutto in staging.
+
+Elementi del diff che ho esaminato:
+- `.github/workflows/ci.yml:126` — aggiunge `tests/test_unit_voice_contesto.py` al passo della suite voce. Rischio: che il merge abbia alterato un file del perimetro arrivato da main. `git diff --cached origin/main -- modules/voice clients .github tests/test_unit_voice*` dà 0 righe, quindi è identico a main. Esito: ok.
+- `reports/stato_progetto.md:604` — riga R2 / `--bare` del branch, preceduta dalle righe di main «Prova sul Mac della V5 PASSATA» e «Voce V6». Rischio: perdere voci nella risoluzione del conflitto. Rispetto a origin/main restano solo la riga «Ultimo aggiornamento» (#321 in testa, V6 come «prima») e la riga R2. Rispetto a HEAD entrano le due righe di main. Unione corretta. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1127` — fine della parte del branch (#632–#640-M2) messa dopo la parte di main (#611–#623-M2). Rischio: righe contatore perse o duplicate. Le righe da #611 a #640 sono tutte presenti, una volta sola, in ordine. Esito: ok.
+- Contesto: `brains/claude_cli.py:410` (`stato_abbonamento`, codice della #321). `git diff --cached HEAD -- brains gas.py tests/test_unit_claude_cli.py tests/test_unit_dotenv.py tests/test_unit_kernel.py` dà 0 righe: il merge non tocca il codice della #321. Esito: ok.
+
+Altri controlli:
+- Nessun marcatore di conflitto: ho cercato `<<<<<<<`, `>>>>>>>` e `=======` sia nell'index (`git grep --cached`) sia in reports/*.md e nella memoria.
+- La cartella di lavoro è uguale all'index.
+- `reports/prova_voce_mac.md` è identico a origin/main.
+- Nel diff non c'è codice nuovo del motore, quindi niente slicing della history né simulazione dei tool.
+- Test rifatti: claude_cli + dotenv + voice_stt + voice_contesto + voice_server, **225 passed** (201 s).
+
+Rischio escluso: non ho rifatto la suite kernel (1063 PASS dichiarati dal chiamante). Il merge non tocca né gas.py né test_unit_kernel.py (diff a 0 righe rispetto a HEAD), quindi per il kernel la HEAD della #321 è già coperta dalle review #639/#640-M2. Non ho verificato nemmeno i test voce del browser obbligatori in CI (`GAS_TEST_BROWSER_OBBLIGATORIO`): li coprirà la CI.
+
+Riga contatore: aggiunta in fondo a /home/user/Gas/.claude/agents/memoria_revisore.md
+`#641-M2 (chat M2) — 2026-11-02 — APPROVATO — merge di origin/main f37316f ... Nessuna lezione nuova.`
+**Il commit atomico della memoria NON è avvenuto.** `scripts/commit_memoria_revisore.sh` è uscito senza errore, ma il commit è fallito: «cannot do a partial commit during a merge» (warning in gas_debug.log). La riga per ora è solo nella cartella di lavoro (stato `MM`): rimetti in staging `.claude/agents/memoria_revisore.md` (`git add`) prima di chiudere il merge, così entra nel commit di merge. Poi, se serve, rifai `bash scripts/segna_review_ok.sh` sul diff staged finale.
+
+(Fatto: memoria rimessa in staging ed entrata nel commit di merge bbe0c3b, marcatore rifatto sul diff finale.)
+```
+
+Verdetto #641-M2 RIEMESSO dal revisore su richiesta (gate B: le citazioni della prima emissione, sopra, erano quasi tutte di file non più nel diff di sessione o di soli .md). Stesso esito, citazioni di codice del diff:
+
+## VERDETTO: APPROVATO
+
+Rimetto il verdetto della review #641-M2 con lo stesso esito e la stessa sostanza. Cambiano solo le citazioni, ora tutte su file di codice del diff di sessione, con righe che esistono a HEAD bbe0c3b. Riguarda il merge di origin/main (f37316f, PR #318 V6 voce) in fix/forte-non-bare-m2 (PR #321).
+
+Elementi del diff che ho esaminato:
+- `brains/claude_cli.py:410` — `stato_abbonamento`, codice della #321. Rischio: che il merge l'abbia alterato. `git diff --cached HEAD -- brains gas.py tests/...` dà 0 righe prima del commit di merge, quindi il codice è identico a quello già approvato in #637–#640-M2. Esito: ok.
+- `brains/claude_cli.py:407` — `_LOGIN_ABBONAMENTO` (lista bianca dei metodi di login dell'abbonamento). Rischio: che la regola fail-closed si sia indebolita nel merge. Valore invariato. Esito: ok.
+- `gas.py:5088` — il doctor chiama `claude_cli_stato_abbonamento(binario)`. Rischio: che la risoluzione del conflitto abbia toccato il kernel. Il merge non tocca gas.py (diff a 0 righe). Esito: ok.
+- `tests/test_unit_dotenv.py:20` — fixture che sostituisce `claude_cli_stato_abbonamento` con un finto. Rischio: che i test lancino la CLI `claude` vera. Invariata; claude_cli + dotenv rifatti dentro i 225 passed. Esito: ok.
+- `tests/test_unit_kernel.py:59` — toglie `GAS_CLAUDE_CLI` dall'ambiente in testa alla suite. Rischio: che il test erediti l'interruttore dalla shell. Invariato rispetto a HEAD della #321. Esito: ok.
+
+Altri controlli (gli stessi della prima emissione):
+- I file del perimetro arrivati da main (ci.yml, modules/voice, clients, test voce) sono identici a origin/main: diff di 0 righe.
+- Nessun marcatore di conflitto.
+- reports/stato_progetto.md e la memoria sono unite correttamente: righe V5/V6 di main più la riga R2 del branch; contatore da #611 a #640 completo, nessuna riga doppia.
+- Nessun codice nuovo del motore, quindi niente slicing della history né simulazione dei tool.
+- Test rifatti: claude_cli + dotenv + voice_stt + voice_contesto + voice_server, **225 passed**.
+
+Rischio escluso: non ho rifatto la suite kernel (1063 PASS dichiarati dal chiamante), perché il merge non tocca né gas.py né test_unit_kernel.py. Non ho verificato nemmeno i test voce del browser obbligatori in CI (`GAS_TEST_BROWSER_OBBLIGATORIO`): li coprirà la CI.
+
+Memoria: non l'ho toccata in questo giro. La riga #641-M2 è già nel file /home/user/Gas/.claude/agents/memoria_revisore.md. Il commit atomico della memoria era fallito durante il merge («partial commit during a merge»): controlla che la riga sia entrata nel commit di merge bbe0c3b.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 46 test raccolti (44 prima della V-1 ve su c83032f, che aggiunge 2 casi) (V-1 bot su c83032f: prima qui c’era «42», numero rimasto da prima della V-1 ve), `tests/test_unit_dotenv.py` 17 → 19 (stessi 19 dopo la #639: il test della riga login si allunga) (in tutto 61 passed dopo la correzione di #632, 63 dopo la V-1 ve su d0a0035, 65 dopo la V-1 ve su c83032f; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Dopo la V-1 bot su 5e784c3: kernel 1063 PASS, 0 FAIL, anche con `GAS_CLAUDE_CLI=1` esportato e un `claude` spia in testa al PATH (spia mai chiamata). Dopo la #639-M2: dotenv + claude_cli 65 passed anche con GAS_CLAUDE_CLI=1 e un `claude` spia nel PATH (spia mai chiamata); kernel 1063 PASS, 0 FAIL. Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud: check run lette dall'integrazione GitHub e dalle verifiche.
-- 36f790f: bot APPROVATO CON RISERVE (V-1 già chiusa in 73c91c9, V-2 e V-3 chiuse qui); verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/321#issuecomment-6568897503).
-- 493684b (fine-task precedente, con 73c91c9 e 8b35108 pushati insieme: la run ha testato solo questa testa): verifica esterna in corso alla scrittura; esito della run non letto.
-- 6e33a8c (commento), 265fa40 (memoria) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
+- e79cf07 (fine-task precedente): unit-suite, handoff-check, verifica-bot, verifica, smista, esito tutti success; bot APPROVATO CON RISERVE (V-1 BASSA: «mai un OK falso» troppo forte, registrata, non inseguita per decisione di M1).
+- bbe0c3b (merge di main con la PR #318, review #641-M2) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
+
+- **V-1 bot su e79cf07** BASSA: il commento e i report dicono «mai un OK falso»; con un CLAUDE_CODE_OAUTH_TOKEN dato dalle impostazioni utente o solo dalla shell il doctor può dare OK mentre il figlio resta senza login (verso sicuro: nessun addebito). Da riscrivere come «mai un OK con login a pagamento».
 
 - **R-633-1-M2** BASSA: un processo nipote che tiene aperte le pipe può far durare oltre il timeout; attesa massima normale ~30 s (2 × 15 s).
 - **R-633-2-M2** BASSA: `errors="replace"` senza un test dedicato (il ramo `except ValueError` lo copre comunque).

@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #321 (https://github.com/Gasss23/Gas/pull/321): stanotte niente merge (M1); decide l'operatore.
+1. Merge della PR #321 (https://github.com/Gasss23/Gas/pull/321): sì dell'operatore (riferito da M1); merge di main con la PR #318 fatto (review #641-M2).
 2. Sul Mac: `python3 gas.py doctor` e controllare la riga «Cervello forte · login» (deve dire «login dell'abbonamento»).
 
 ## Esito delle fette
