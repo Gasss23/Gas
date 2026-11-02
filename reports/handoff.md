@@ -1,241 +1,383 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-01 — Mani, fetta 35 (R6): sandbox del browser con radice vuota ed elenco di cartelle permesse (chat Mani)
+**Sessione:** 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2, coordinata da M1) — aggiornato dopo il merge di main (PR #318) e i sì dell'operatore
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #317 (https://github.com/Gasss23/Gas/pull/317). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5112440398","url":"https://github.com/Gasss23/Gas/pull/317"}`), perché `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore, anche tramite M1.
-2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR.
-3. Il browser resta SPENTO. Per accenderlo sul VPS manca la seconda condizione della roadmap: una prova dal vero sul VPS (bwrap con --size, AppArmor, node, Playwright, HTTPS senza /etc/ssl).
+1. Merge della PR #321 (https://github.com/Gasss23/Gas/pull/321). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5114638285","url":"https://github.com/Gasss23/Gas/pull/321"}`); `gh` nel cloud non è autenticato. L'operatore ha detto sì (riferito da M1 il 2 novembre pomeriggio): merge automatico attivato da M1.
+2. Sul Mac: `python3 gas.py doctor` → la riga «Cervello forte · login» deve dire «login dell'abbonamento».
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #316 (bwrap per il browser)**: `FATTA` — mergiata (87f576c) col sì dell'operatore.
-- **Radice vuota ed elenco di cartelle permesse** (prima condizione della roadmap, assegnata da M1): `FATTA` — `_comando_bwrap`: radice = tmpfs vuoto rimontato in sola lettura; visibili solo `_PERMESSE` (/usr/bin, /usr/lib/<arch>, /usr/lib64, caricatore, font, /etc/fonts, /etc/ld.so.cache, /etc/localtime), /bin /lib… rifatti, il solo file di node, i soli pacchetti playwright e playwright-core, Chromium al percorso vero, la casa; scrivibili solo /tmp, /dev/shm e il profilo, con tetto; Gas e home coperte se dentro una permessa; rifiuti se node/Playwright mancano o se un ri-esposto scoprirebbe Gas o la home. Prototipo provato prima del codice.
-- **V-6 ve e V-2 bot #316** (cartelle non nascoste leggibili): `FATTA`. **V-1 bot #316** (~/.local): `FATTA` — non si ri-espone più il prefisso di node.
-- **R-605-1** (docstring): `FATTA`. **R-601-1** (cwd della sonda e tetto di /dev/shm senza test): `FATTA`. **R-601-2** (sonda senza le opzioni vere): `FATTA`.
-- **R-603-1** (mountinfo non provava il montaggio in cima) e **R-603-3** (/usr fuori dal find): `FATTA` — un test elenca OGNI file visibile nel sandbox contro un elenco scritto nel test, senza escludere /usr, e vuole zero socket e FIFO. **R-603-2** (rilevatore di pytest): `FATTA` — argv.
-- **V-1 d ve #316** (routeWebSocket senza test): `FATTA`. **V-1 c ve #316** (serviceWorkers 'block' senza test): `SALTATA — nella prova la pagina non diventa sicura (navigator.serviceWorker assente anche con --unsafely-treat-insecure-origin-as-secure), il test passerebbe a vuoto; resta dichiarata`.
-- **Review #607 (chat Mani)**: APPROVATO CON RISERVE. R-607-1 MEDIA (il test accettava tutto /gas/: due mutanti sopravvivevano), R-607-2 BASSA (fallimento della sonda in cache), R-607-3 BASSA (aarch64 e /usr non unito): `FATTA`. **Review #608**: APPROVATO.
-- **Bot su 427e57d (https://github.com/Gasss23/Gas/pull/317#pullrequestreview-5730697074)**: APPROVATO CON RISERVE, check success, CI verde. V-1 BASSA (permessa che è un collegamento: la copertura di Gas finiva sul percorso vero, non dove la cartella si vede): `FATTA` in 505479f.
-- **Verifica esterna su 427e57d (https://github.com/Gasss23/Gas/pull/317#issuecomment-6565285968)**: APPROVATO CON RISERVE. V-1 MEDIA (/dev del sandbox scrivibile senza tetto): `FATTA` in 505479f — --remount-ro /dev più test. V-2 BASSA (lo stesso punto del bot): `FATTA`. V-3 BASSA (in CI il test «ogni file» non monta Chromium: PLAYWRIGHT_BROWSERS_PATH non impostata): `SALTATA — dichiarata` (lo coprono i test end-to-end). V-4 COSMETICA (prefisso senza «/» nel test): `FATTA`.
-- **Review #609 (chat Mani)**: APPROVATO CON RISERVE. R-609-1 BASSA (il ramo dei collegamenti guarda solo l'ultimo pezzo del percorso) e R-609-2 COSMETICA (la sonda non porta --remount-ro /dev): `DEFERITA — registrate`.
-- **Bot su 6729b2c (https://github.com/Gasss23/Gas/pull/317#pullrequestreview-5730762451)**: APPROVATO CON RISERVE ma check verifica-bot failure per «verdetto incoerente» (riserve senza finding nuovi); rilanciato una volta: di nuovo failure (G-2: un rilancio non ritira il verdetto, serve un commit nuovo), con V-1 BASSA (la sonda di bwrap diverge dal comando vero): `FATTA` in 2a96a14 — la sonda è il comando vero di `_comando_bwrap` con «true» al posto di node; chiude anche R-609-2. **Review #610**: APPROVATO CON RISERVE (R-610-1 BASSA: nessun test fissa che un rifiuto della sonda non vada in cache): `DEFERITA — registrata`.
+- **1. Figlio `claude -p` senza chiavi API (fail-closed se diventa bare)**: `FATTA` — test che lo fissa.
+- **2. Flag o variabile per restare non-bare**: `FATTA (nessuno documentato)` — scritto nel docstring.
+- **3. Riga «login» nel doctor, con versione, zero token**: `FATTA` — `stato_abbonamento()` in brains, 3 righe in gas.py autorizzate da M1.
+- **V-1 della verifica esterna su d0a0035** («abbonamento» anche con CLI non loggata): `FATTA` (review #634-M2). V-2 ve (il doctor non vede in anticipo il cambio di default): dichiarata nel docstring.
+- **V-1 bot su 5e784c3** (test T99 della suite kernel che lanciavano il `claude` vero dal doctor): `FATTA` (review #635-M2); **R-635-1** (interruttore ereditato dalla shell): `FATTA` (review #636-M2). **V-2 bot** (handoff e stato_progetto non allineati): `FATTA` in questo giro di report.
+- **V-1 verifica esterna su c83032f** (`"loggedIn": "false"` come stringa dava OK): `FATTA` — «loggato» solo col booleano vero o col campo assente (review #637-M2 CON RISERVE, #638-M2 APPROVATO). V-2 ve (conteggio 42 nel §5) già corretta in 6c0cf68; V-3 ve = limite già dichiarato.
+- **V-1 bot su 6c0cf68** (riga «login» sulla CLI della shell anche quando il timer ne usa un'altra): `FATTA` — il dettaglio lo dice (« · CLI della shell, il timer può usarne un'altra»), nelle righe del doctor autorizzate. **V-1 verifica esterna su 36f790f** (test_unit_dotenv lanciava il `claude` vero con GAS_CLAUDE_CLI=1 nella shell): `FATTA` — fixture che sostituisce la funzione. Review #639-M2 APPROVATO. V-2 ve (CLAUDE.AI maiuscolo → «NON dell'abbonamento» invece di «non verificabile»): COSMETICA, resta WARN, nessun fix.
+- **Bot su 36f790f**: V-1 (test di dotenv col `claude` vero) già chiusa in 73c91c9; **V-2** (il controllo «login» non usa `--setting-sources ""` come il figlio): `FATTA` correggendo l'affermazione nel commento (il flag non è documentato per `auth status`), review #640-M2 APPROVATO; **V-3** (formulazione «loggedIn non falso» nei report): `FATTA`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- modules/web/browser.py             | 184 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------
- reports/diff_sessione.md           |  16 +++++++--------
+ .claude/agents/memoria_revisore.md |  13 ++++++++++++
+ brains/claude_cli.py               |  63 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ gas.py                             |   4 ++++
+ reports/diff_sessione.md           |  20 ++++++++----------
  reports/handoff.md                 | n/d
- reports/ripartenza_mani.md         |   2 +-
- reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  35 +++++++++++++-------------------
- tests/test_unit_web_browser.py     | 269 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------
+ reports/ultimo_report.md           |  30 +++++++++++++--------------
+ tests/test_unit_claude_cli.py      |  94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_dotenv.py          |  39 +++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          |  15 ++++++++++++--
 ```
 
-NB: base = merge-base con origin/main = 87f576c. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-2a96a14 fix(web): la sonda di bwrap è il comando vero del sandbox (V-1 bot #317 su 6729b2c, R-609-2, review #610)
-cdc18c2 chore(revisore): memoria review #610 — APPROVATO CON RISERVE
-6729b2c docs(fine-task): fetta 35, PR #317, esiti di bot e verifica esterna, review #609
-505479f fix(web): /dev del sandbox in sola lettura, permesse-collegamento rifatte come collegamenti (V-1/V-2 ve e V-1 bot #317, review #609)
-d3c3d22 chore(revisore): memoria review #609 — APPROVATO CON RISERVE
-427e57d docs(fine-task): fetta 35 sandbox con elenco di cartelle permesse, PR #317, review #607/#608
-a26a8a9 feat(web): sandbox del browser con radice vuota ed elenco di cartelle permesse (R6, fetta 35, chat Mani)
-fb8b0c0 chore(revisore): memoria review #608 — APPROVATO
-9494a95 chore(revisore): memoria review #607 — APPROVATO CON RISERVE
+bbe0c3b Merge remote-tracking branch 'origin/main' into fix/forte-non-bare-m2
+e79cf07 docs(forte-non-bare): report dopo il bot su 36f790f (PR #321, review #640-M2)
+6e33a8c docs(forte): il controllo «login» non usa i flag del figlio, è un'indicazione (V-2 bot #321 su 36f790f; review #640-M2)
+265fa40 chore(revisore): memoria review #640 — APPROVATO
+493684b docs(forte-non-bare): report dopo bot su 6c0cf68 e verifica esterna su 36f790f (PR #321, review #639-M2)
+73c91c9 fix(forte): la riga «login» del doctor dice se è la CLI della shell; test di dotenv senza claude vero (V-1 bot #321 su 6c0cf68, V-1 ve su 36f790f; review #639-M2)
+8b35108 chore(revisore): memoria review #639 — APPROVATO
+36f790f docs(forte-non-bare): report dopo la verifica esterna su c83032f (PR #321, review #637/#638-M2)
+005aba0 fix(forte): «loggato» solo con loggedIn booleano vero o assente (V-1 ve #321 su c83032f; review #637/#638-M2)
+925319f chore(revisore): memoria review #638 — APPROVATO
+cd4c372 chore(revisore): memoria review #637 — APPROVATO CON RISERVE
+6c0cf68 docs(forte-non-bare): conteggio dei test di claude_cli 29 → 44 nell'handoff (V-1 bot #321 su c83032f)
+c83032f docs(forte-non-bare): report dopo il bot su 5e784c3 (PR #321, review #635/#636-M2)
+5e2fd43 test(forte): la suite kernel non lancia mai il claude vero dal doctor (V-1 bot #321 su 5e784c3, R-635-1; review #635/#636-M2)
+f6a6d9e chore(revisore): memoria review #636 — APPROVATO
+e59a4f5 chore(revisore): memoria review #635 — APPROVATO CON RISERVE
+735a0b2 chore(revisore): memoria review #635 — APPROVATO CON RISERVE
+5e784c3 docs(forte-non-bare): report dopo la verifica esterna su d0a0035 (PR #321, review #634-M2)
+612369a fix(forte): «login dell'abbonamento» solo se la CLI dice anche di essere loggata (V-1 ve #321, review #634-M2)
+d0a0035 docs(forte-non-bare): report di fine task (PR #321, review #632/#633-M2)
+2f5d53d fix(forte): difesa contro il futuro default --bare di claude -p; riga «login» nel doctor (chat M2)
+26ecd7a chore(revisore): memoria review #632 — BOCCIATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit a26a8a9 (modules/web/browser.py, tests/test_unit_web_browser.py). Verdetto integrale della review #607 (chat Mani), sulla prima versione:
+Il commit 2f5d53d è stato rivisto in due passaggi sullo stesso diff staged (tra i due cambia solo `stato_abbonamento` e i suoi test). Verdetti integrali:
 
-```
+Review #632-M2 (primo passaggio):
+
+## VERDETTO: BOCCIATO
+
+Diff controllato: diff staged con sha256 009335ee, base b472fe1, branch fix/forte-non-bare-m2, 4 file e 137 righe aggiunte. Ho rilanciato i test: test_unit_claude_cli più test_unit_dotenv danno 57 passed. Non ho rilanciato la suite del kernel.
+
+**Motivo del blocco**
+- `brains/claude_cli.py:416` (la riga `versione = (ver.stdout or "").strip().splitlines()[0][:60] ...`): ricava la versione dall'output di `claude --version`. Ho cercato le eccezioni che sfuggono al blocco `except (OSError, subprocess.SubprocessError)`. Esito: **blocco**. Ci sono due casi, entrambi riprodotti.
+  1. Se `--version` stampa solo spazi o un a capo, `ver.stdout` non è vuoto, ma dopo `strip()` diventa `""` e `splitlines()[0]` dà IndexError. Ho lanciato `gas.py doctor` con `GAS_CLAUDE_BIN` puntato a una CLI finta che fa solo `echo`: il doctor si ferma con un traceback (`IndexError: list index out of range`).
+  2. Se la CLI stampa byte non UTF-8 (prova con `printf "\377\376"` e LANG=C.UTF-8), `subprocess.run(text=True)` alza UnicodeDecodeError. È un ValueError, non un SubprocessError, quindi sfugge allo stesso modo.
+  - Il docstring promette «Mai un'eccezione» e il progetto chiede «zero crash»: il doctor è proprio lo strumento di diagnosi e non deve morire per un output strano della CLI.
+  - Correzione minima:
+    - `errors="replace"` nella `subprocess.run`;
+    - versione presa con `next(iter(stdout.strip().splitlines()), "?")`;
+    - un `except Exception` finale che ritorna `("WARN", "non verificabile …")`;
+    - due casi di test in più (stdout `"\n"` e byte non UTF-8 con il runner vero).
+
+**Elementi esaminati che vanno bene**
+- `brains/claude_cli.py:406` (`stato_abbonamento`): lancia solo `--version` e `auth status`, mai `-p`. Rischio cercato: spendere token. Esito: ok. Il test parametrico fissa la sequenza esatta dei comandi e la CLI finta del test del doctor esce con 9 su qualunque altro comando. Il timeout di 15 s per comando arriva come TimeoutExpired, che è un SubprocessError, quindi viene preso.
+- `brains/claude_cli.py:430`: smista i casi none, rc≠0, api_key e simili. Rischio cercato: dare OK quando il login non è l'abbonamento. Esito: ok. OK arriva solo per claude.ai e oauth_token; JSON illeggibile o metodo mancante danno WARN. Nota cosmetica: con rc≠0 e `api_key` il messaggio dice «nessun login», ma l'esito resta WARN, che è corretto.
+- `gas.py:5087`: chiama `stato_abbonamento` solo se `binario` è stato trovato. Rischio cercato: modifiche fuori dal perimetro autorizzato da M1. Esito: ok. In gas.py ci sono 3 righe in tutto (import a `gas.py:35` e la chiamata nel doctor), dentro le 3-4 autorizzate. Il crash descritto sopra, però, si propaga fin qui.
+- `brains/claude_cli.py:53` (contesto, `_ENV_PERMESSE`): elenco esatto delle variabili che il figlio riceve. Rischio cercato: il comportamento fail-closed, cioè che una chiave API arrivi al figlio. Esito: ok. Nessuna ANTHROPIC_*, *_API_KEY, CLAUDE_CODE_SIMPLE o BEDROCK passa; CLAUDE_CODE_OAUTH_TOKEN sì. Lo verificano `tests/test_unit_claude_cli.py:398` e, con il runner vero, `tests/test_unit_claude_cli.py:446`.
+- `tests/test_unit_dotenv.py:265`: riga «login» del doctor con CLI finta, OK per claude.ai e WARN per api_key, con la versione. Esito: ok.
+- Nessuno slicing della history e nessun output dei tool simulato: il diff non tocca `run_turn` né la finestra dei messaggi.
+
+**Riserve da annotare (non bloccanti)**
+- BASSA: alla scadenza del timeout, `subprocess.run` uccide solo il processo figlio diretto. Se un processo nipote tiene aperte le pipe, la seconda `communicate()` può restare bloccata, quindi il limite di 15 s non è garantito in assoluto. Caso teorico.
+- BASSA: nel caso peggiore il doctor aspetta circa 30 s (due comandi da 15 s).
+
+**Cosa non ho verificato**
+Non ho provato il comportamento della CLI `claude` vera: qui non c'è login, e non so se `auth status` stampi davvero il campo `authMethod`, né se in una versione futura possa aprire una sessione. Mi baso sulla documentazione cli-reference citata da M1. Non ho rilanciato la suite del kernel (1063 PASS), che resta un'affermazione della chat.
+
+**Memoria del revisore**
+Ho scritto la riga #632-M2 con la lezione nuova in `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata da sola (commit 26ecd7a, solo quel file). Il diff staged del motore è rimasto com'era. Dopo la correzione serve una nuova review.
+
+Review #633-M2 (diff finale committato in 2f5d53d):
+
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #607 (chat Mani). Fetta 35, R6, SICUREZZA: il sandbox del browser ora parte da una radice tmpfs vuota e mostra solo l'elenco `_PERMESSE`. Ho revisionato il diff staged (sha256 `ba9ca8a5…`, base 87f576c, branch claude/peaceful-lovelace-0w2b7q). Tutte le prove le ho fatte su un export dell'index, non sulla cartella di lavoro.
+Ri-review dopo la bocciatura #632-M2. Branch fix/forte-non-bare-m2, diff staged di 4 file. Il motivo del blocco è chiuso: con le uscite strane della CLI che ho provato il doctor non va più in traceback.
 
-Letture fatte prima della review: CLAUDE.md (sez. 1, 5, 8, 9, 10), reports/stato_progetto.md (voce fetta 34 e riserve aperte), reports/roadmap.md (la condizione per accendere il browser sul VPS), memoria_revisore.md (le lezioni su bwrap e mutanti, #599–#606). Wall of Shame: nessuno slicing della history e nessuna simulazione di tool (non c'entrano con questo diff). gas.py e ci.yml non sono toccati.
+**Cosa ho esaminato nel diff**
+- `brains/claude_cli.py:409` — `subprocess.run` ora ha `errors="replace"`. Rischio esaminato: `UnicodeDecodeError` con byte non UTF-8. Esito: ok. Anche senza `errors=`, quell'errore è un `ValueError` e verrebbe comunque preso da `except ValueError` (`brains/claude_cli.py:421`): la difesa è doppia.
+- `brains/claude_cli.py:414` — `next(iter(righe), "?")[:60]`. Rischio esaminato: `IndexError` con stdout vuoto, di soli spazi o di soli a capo, e con returncode diverso da 0. Esito: ok, la versione diventa «?».
+- `brains/claude_cli.py:415-416` — `json.loads` è dentro lo stesso try. Con un runner che restituisce bytes, quelli non UTF-8 danno un `ValueError`, che viene preso. Esito: ok.
+- `brains/claude_cli.py:424` — `except Exception` finale, che risponde «non verificabile (Tipo)». Esito: ok. È coerente con «robustezza > potenza» e con la regola della sez. 9 (eccezioni intercettate, fallback, mai crash), applicata qui al doctor. Il codice dopo il try (`brains/claude_cli.py:426-437`) usa `st` solo quando `metodo` è una stringa, quindi `st` esiste sempre.
+- `gas.py:5088` — chiamata dal doctor solo se `binario` è valorizzato. Non cambia rispetto a #632. Esito: ok.
+- `tests/test_unit_claude_cli.py:61` e `tests/test_unit_claude_cli.py:69` — test nuovi: versione «\n», «   » e «»; CLI finta col runner vero che stampa \377\376; runner che solleva `KeyError`. Esito: ok.
 
-### Elementi del diff esaminati
+**Prove che ho rifatto io**
+- Test di `claude_cli` e `dotenv`: **61 passed**.
+- `GAS_CLAUDE_CLI=1 GAS_CLAUDE_BIN=<CLI finta> python3 gas.py doctor`, con due CLI finte: una che stampa `\377\376` e una che stampa `"   "`. In entrambi i casi esce la riga `[WARN ] Cervello forte login … non verificabile (versione …)` e nessun traceback.
+- Mutante: tolto `errors="replace"` e ristretto l'`except` finale a `ZeroDivisionError` → **1 failed** (`test_stato_abbonamento_byte_non_utf8_e_errori_inattesi`). Il file è stato ripristinato; `git diff` non staged è vuoto.
+- Antipattern della sez. 5: niente slicing della history (`[:60]` taglia una stringa di versione, non i messaggi) e niente simulazione dell'output dei tool.
 
-- `modules/web/browser.py:90` — `_PERMESSE`, l'elenco in sola lettura. Rischio esaminato: espone segreti o sblocca privilegi? Ho controllato `/usr/bin`, `/usr/lib/x86_64-linux-gnu`, `/usr/lib64`, i font e `/etc/fonts`: nessun file di chiavi, token o .env. Ci sono binari setuid (sudo, su, mount), ma dentro il montaggio è nosuid e `NoNewPrivs: 1`, quindi non servono a niente. — **ok**
-- `modules/web/browser.py:304` — `--remount-ro /` alla fine. Rischio: radice scrivibile o tmpfs scrivibili senza tetto. Visto da dentro con mountinfo: `/` è tmpfs ro; scrivibili solo `/tmp` (1 MB), `/dev/shm` (256 MB) e il profilo (256 MB); CapEff tutto a 0. — **ok**
-- `modules/web/browser.py:283` — `esposti`: node in `/gas/bin/node`, i due pacchetti in `/gas/node/...`. Rischio: si ri-espone di più di quanto dichiarato. Il codice è giusto: dentro `/gas/node` ci sono solo playwright e playwright-core. Però nessun test lo tiene, vedi R-607-1. — **riserva**
-- `modules/web/browser.py:296` — copertura di Gas e della home dentro una cartella permessa. Mutante «protetti senza realpath» → 1 failed. — **ok**
-- `modules/web/browser.py:239` — la cache di `_cartelle_di_playwright` salva anche il fallimento (`[]`). Un timeout passeggero della sonda node (10 s) spegne il browser fino al riavvio di Gas. — **riserva BASSA (R-607-2)**
-- `modules/web/browser.py:204` — la sonda `_bwrap_funziona` ora usa --cap-drop, --size, --remount-ro e le permesse (R-601-2 chiusa). — **ok**
-- `modules/web/browser.py:305` — `PATH=/usr/bin` dentro. Sui sistemi con `/usr` non unito (/bin/sh fuori da /usr/bin) il comando fallisce. È fail-closed: niente fuga. — **riserva BASSA (in R-607-3)**
-- `tests/test_unit_web_browser.py:406` — l'elenco del test «ogni file visibile» accetta `"/gas/"` per prefisso intero. — **riserva MEDIA (R-607-1)**
-- `tests/test_unit_web_browser.py:415` — come il test legge gli errori di find (virgolette ASCII). Rischio: in CI con LANG=C.UTF-8 find userebbe le virgolette ‘ ’ e il test cadrebbe. Verificato: nel sandbox il locale C.UTF-8 non si carica, find torna alle virgolette ASCII, e il test passa da nobody anche con LANG=C.UTF-8. — **ok**
-- `tests/test_unit_web_browser.py:266` — `test_routewebsocket_chiude_anche_senza_lo_script`. Esercita il ramo giusto: senza routeWebSocket ci sarebbe un CONNECT sulla 443. — **ok**
-- `tests/test_unit_web_browser.py:468` — test dei rifiuti. Mutante «senza rifiuto degli esposti» → 1 failed. Nota COSMETICA: il test controlla solo il prefisso «browser non isolabile», quindi in un ambiente senza Playwright passerebbe a vuoto per il rifiuto sbagliato. In CI Playwright c'è.
+**Riserve**
+- R-633-1 BASSA (riportata dalla #632): un processo nipote che tiene aperte le pipe e l'attesa massima di circa 30 s (2 × timeout di 15 s). Sono già annotate nei report.
+- R-633-2 BASSA: nessun test fissa da solo il ruolo di `errors="replace"`. Il ramo `except ValueError` lo copre comunque, quindi un mutante che toglie solo `errors=` probabilmente sopravvive. Il comportamento resta corretto.
 
-### Riprodotto
+**Cosa non ho verificato**
+Non ho provato una CLI `claude` vera con login reale, né il comportamento con `--bare` di default. Qui non c'è un binario `claude` autenticato e quel default è un rilascio futuro, non riproducibile oggi.
 
-- browser: 41 passed da root; 41 passed da nobody, sia senza LANG sia con LANG=C.UTF-8;
-- web: `tests/test_unit_web_*.py` 749 passed, 2 skipped;
-- mutanti presi (1 failed ciascuno): senza rifiuto degli esposti, protetti senza realpath, `/usr/lib` intera al posto di `/usr/lib/<arch>`.
+**Memoria del revisore**
+- Ho scritto la riga contatore `#633-M2 … APPROVATO CON RISERVE … Nessuna lezione nuova` in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- `scripts/commit_memoria_revisore.sh` **non è partito**: l'hook `review_gate.sh` ha bloccato tutto il comando, perché `.claude/.review_ok` non corrisponde ancora al diff staged. La riga, che contiene anche lo SHA del diff, è stata scritta in un secondo comando senza lo script.
+- Il file è modificato ma non in staging e non committato. Va committato dopo aver eseguito `bash scripts/segna_review_ok.sh`, oppure con `/fine-task`.
+- Come richiesto, non ho committato nulla.
 
-### Riserve
+Commit della correzione V-1 ve (dopo d0a0035). Review #634-M2:
 
-- **R-607-1 MEDIA** — il test di `tests/test_unit_web_browser.py:406` non tiene la chiusura di V-1 bot #316.
-  - Due mutanti sopravvivono (41 passed):
-    - «tutta la node_modules in /gas/node», cioè proprio la regressione di V-1 bot #316 (nell'ambiente di prova espone eslint, claude, npm, …);
-    - «la cartella bin di node in /gas/bin», che con node in ~/bin riaprirebbe un caso alla R-599-2.
-  - Correzione provata: in `permessi` sostituire `"/gas/"` con `"/gas/node/playwright/", "/gas/node/playwright-core/"` e aggiungere `"/gas/bin/node"` a `esatti`. Con questa il test passa sul codice giusto e prende entrambi i mutanti (1 failed ciascuno).
-  - Consiglio di chiuderla in questa fetta, prima del commit, con una ri-review: la verifica esterna la segnalerebbe come V-3 ve.
-- **R-607-2 BASSA** — `modules/web/browser.py:239`: non mettere in cache il risultato vuoto.
-- **R-607-3 BASSA (portabilità, fail-closed)** — due casi in cui il browser resta spento senza un motivo chiaro:
-  - su aarch64 l'interprete `/lib/ld-linux-aarch64.so.1` sta in `/usr/lib/`, che non è montata: ogni programma dinamico fallisce, la sonda dice «bwrap non funziona» e il browser resta spento con un motivo fuorviante;
-  - su `/usr` non unito vale lo stesso per PATH=/usr/bin.
-  - Il VPS scelto (Netcup, x86, Ubuntu probabile) non ne è toccato. Volta e asdf (node come «shim») cadono anche loro chiusi; nvm funziona, perché node è un file binario vero.
+## VERDETTO: APPROVATO
 
-Valuto **V-1 c ve** (serviceWorkers 'block' senza test) giustamente lasciata aperta e dichiarata: un test che passa a vuoto è peggio di nessun test.
+Review #634-M2 (chat M2). Diff staged su fix/forte-non-bare-m2 (PR #321), 2 file, sha256 del diff c9f58d4c. Chiude la V-1 BASSA della verifica esterna #321.
 
-### Rischi esplicitamente esclusi
+Elementi del diff esaminati:
+- `brains/claude_cli.py:424`: calcola `loggato` dentro il try, come `returncode == 0` e `loggedIn` non uguale a `False`. Ho controllato due rischi. (1) Un'eccezione fuori dal try: non può succedere, perché `isinstance` e `.get` girano solo su un dict e sono comunque coperti dall'`except Exception`. (2) Un JSON senza `loggedIn` (CLI vecchia): non viene penalizzato, perché il controllo `is False` è stretto e la chiave mancante dà None. Il caso della stringa `"false"` diventa truthy, ma con `rc != 0` cade comunque in WARN. Esito: ok.
+- `brains/claude_cli.py:437-440`: OK solo se il metodo è dell'abbonamento E la CLI è loggata; altrimenti, con `metodo == "none"` o non loggato, «nessun login» (WARN). Rischio esaminato: il cambio di comportamento sui metodi diversi dall'abbonamento. Un `api_key` con `loggedIn:false` ora riceve «nessun login» invece di «NON dell'abbonamento». Prima con rc diverso da 0 era già così. Resta comunque WARN, quindi non c'è nessun falso OK. È una scelta di messaggio, non un difetto. Esito: ok.
+- `brains/claude_cli.py:35-37`: il docstring del modulo dichiara il limite V-2: il doctor non vede in anticipo il cambio di default a `--bare`. È coerente con la difesa che chiude in caso di errore: il figlio non riceve chiavi API. Esito: ok.
+- `tests/test_unit_claude_cli.py:433-434`: due casi nuovi nel test parametrico (claude.ai con rc 1; `loggedIn` false con rc 0), entrambi WARN «nessun login». Rischio esaminato: che i test siano solo di forma. Non lo sono: con il codice precedente il caso alla riga 434 dava OK, quindi il test cattura davvero la regressione. Esito: ok.
 
-- HTTPS reale di Chromium nel sandbox, senza /etc/ssl: non l'ho verificato perché qui non c'è uscita diretta verso internet. Il rischio è basso (Chromium ha la Chrome Root Store compilata dentro), ma va coperto dalla prova dal vero sul VPS già prevista in roadmap, insieme a bwrap con --size, AppArmor e node.
-- aarch64 e `/usr` non unito: analizzati sul codice, non eseguiti (questo host è x86_64 con `/usr` unito).
-- CI GitHub: non ho lanciato i test lì. La prova da nobody è l'approssimazione più vicina.
+Contesto: `tests/test_unit_claude_cli.py:428` copre ancora il caso positivo (`loggedIn` true, rc 0, OK).
 
-### Memoria
+Ho eseguito `pytest tests/test_unit_claude_cli.py`: 44 passed. La suite dotenv non l'ho rilanciata: fa fede il dato del chiamante, 63 passed.
 
-- Riga contatore #607 e una lezione nuova scritte in /home/user/Gas/.claude/agents/memoria_revisore.md;
-- committate da sole con `scripts/commit_memoria_revisore.sh` (commit 9494a95). Il diff staged sotto review è rimasto intatto.
-```
+Antipattern (Wall of Shame): il diff non tocca la history; niente slicing, niente simulazione di tool. La funzione resta senza eccezioni e non chiama il modello. Il cap a 10 iterazioni e `_get_window` non vengono toccati.
 
-Verdetto integrale della review #608 (chat Mani), sul diff finale del commit a26a8a9:
+Rischio escluso: non ho verificato `claude auth status` con la CLI vera; l'esempio di `rc` e `loggedIn` viene dalla doc, non da un'esecuzione. Non è riproducibile qui perché la CLI loggata con l'abbonamento sta sul computer di Gas.
+
+Memoria del revisore: ho aggiunto la riga contatore `#634-M2 (chat M2) — 2026-11-02 — APPROVATO — …; nessuna lezione nuova` in /home/user/Gas/.claude/agents/memoria_revisore.md. Il commit atomico non è partito: `bash scripts/commit_memoria_revisore.sh` è stato negato dal classificatore dei permessi, e comunque avevi chiesto «Non committare». Il file è modificato ma non committato e va incluso nel commit di fine task.
+
+Commit della correzione V-1 bot su 5e784c3 (5e2fd43). Il diff è stato rivisto in due passaggi: #635-M2 sul finto in `_doc99`, #636-M2 sullo stesso diff più la chiusura di R-635-1. Verdetti integrali:
+
+Review #635-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #635-M2: PR #321, branch fix/forte-non-bare-m2. Lo SHA-256 del diff staged comincia con bd3d6e00 e il diff tocca solo tests/test_unit_kernel.py. Ho letto CLAUDE.md (sez. 1, 5, 8, 10), reports/stato_progetto.md (voce «R2 e futuro default --bare», intorno alla riga 602) e la mia memoria.
+
+**Elementi del diff esaminati**
+- `tests/test_unit_kernel.py:11178` — dentro `_doc99()` sostituisce `gas.claude_cli_stato_abbonamento` con un finto che risponde ("OK", "finto (test T99)") e lo rimette com'era nel `finally`. Rischio esaminato: il finto non agisce perché il doctor potrebbe leggere la funzione per altra via, oppure non viene tolto se il doctor solleva un errore. Esito: **ok**. Il doctor la legge come nome globale del modulo al momento della chiamata, quindi la sostituzione funziona. Il ripristino nel `finally` copre anche il caso di errore. Il finto accetta qualunque argomento (`*a, **k`).
+- `tests/test_unit_kernel.py:11186` — `gas.doctor(...)` ora gira dentro il `try`, con l'output catturato come prima. Rischio esaminato: le righe «Cervello forte» controllate da T99p, T99s, T99w e T99x cambiano. Esito: **ok**. La riga «login» non è tra quelle che quei test cercano («comando claude», «claude-cli»).
+- Contesto: `gas.py:35` importa la funzione come `claude_cli_stato_abbonamento`. `gas.py:5088` la chiama solo se `binario` è stato trovato. Il punto del finto è quello giusto. Esito: **ok**.
+
+**Prove riprodotte**
+- Ho messo in testa al PATH un `claude` spia che registra gli argomenti. Suite kernel: 1063 PASS, 0 FAIL, registro vuoto. Il fix chiude la V-1 BASSA del bot.
+- Stessa prova con `GAS_CLAUDE_CLI=1` esportato nella shell: 1063 PASS, ma il registro ha 24 righe, cioè 12 coppie `--version` / `auth status`.
+
+**Riserva**
+- **R-635-1 BASSA**: se la shell ha `GAS_CLAUDE_CLI=1` esportato, la suite kernel lancia ancora 12 volte il `claude` vero della macchina. Lo fanno gli altri helper che chiamano il doctor: `_doctor_inproc` a `tests/test_unit_kernel.py:2214`, `_doctor_inproc_61` a `tests/test_unit_kernel.py:3647` e le chiamate dirette a `tests/test_unit_kernel.py:7250` e `tests/test_unit_kernel.py:10166`. Ereditano l'interruttore dalla shell e non lo ripuliscono. Il `.env` non c'entra, perché la riga 53 imposta `GAS_NO_DOTENV=1`. Prima di questa PR il doctor non eseguiva mai `claude`, quindi il problema nasce con la riga «login». Impatto basso: sono comandi a zero token e non distruttivi. Correzione proposta: mettere il finto (o togliere `GAS_CLAUDE_CLI`) una volta sola in cima al modulo, accanto a `GAS_NO_DOTENV`, invece che solo in `_doc99`.
+
+**Coerenza col progetto**: la modifica tocca solo un test. Non tocca `_get_window`, il tetto di 10 iterazioni, il tetto di output né i fallback §9. Nessuno slicing della cronologia. Il finto sta nel test e non simula l'output di un tool del modello, quindi non rientra nel divieto della sez. 5. La riga «login» vera resta provata in tests/test_unit_dotenv.py e tests/test_unit_claude_cli.py.
+
+**Cosa non ho verificato**
+- Il mutante «finto tolto → la spia viene chiamata» non l'ho rieseguito. Basta la logica: con `GAS_CLAUDE_CLI=1` e la spia nel PATH, `shutil.which` la trova e `gas.py:5088` la chiama.
+- Non ho rieseguito tests/test_unit_dotenv.py e tests/test_unit_claude_cli.py, che il diff non tocca.
+- Comportamento sul Mac non verificato: non riproducibile qui.
+
+**Memoria**: aggiunta la riga #635-M2 e una lezione nuova (riprovare i fix «non lancia il binario vero» anche con l'interruttore acceso nella shell). Committata con scripts/commit_memoria_revisore.sh, ultimo commit e59a4f5. Il diff staged del test è rimasto com'era.
+
+File: /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/gas.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+Review #636-M2 (diff finale committato in 5e2fd43):
+
+## VERDETTO: APPROVATO
+
+Review #636-M2, PR #321, branch fix/forte-non-bare-m2. Diff esaminato: `git diff --cached`, solo `tests/test_unit_kernel.py`, sha256 fd182467.
+
+Cosa ho esaminato nel diff:
+- `tests/test_unit_kernel.py:59`: toglie `GAS_CLAUDE_CLI` dall'ambiente in testa al modulo, accanto a GAS_NO_DOTENV e alla pulizia delle variabili Telegram. Rischio esaminato: qualche test potrebbe contare sul valore ereditato dalla shell. Ho controllato tutti i punti che usano la variabile: `tests/test_unit_kernel.py:11019` e `tests/test_unit_kernel.py:11076` (la mettono a «1» da soli), `tests/test_unit_kernel.py:11056` (la mettono a None o «0» da soli), `tests/test_unit_kernel.py:11194` («0» e «1» espliciti), `tests/test_unit_kernel.py:11252` (salvata e ripristinata in finally). Il salvataggio `_saved99` adesso parte da None, e il ripristino resta corretto. La suite gira come script (CI: `python tests/test_unit_kernel.py`), quindi la rimozione vale solo per quel processo e per i suoi figli. Esito: ok, la riserva R-635-1 è chiusa.
+- `tests/test_unit_kernel.py:11182`: in `_doc99` sostituisce `gas.claude_cli_stato_abbonamento` con una versione finta e rimette quella vera in `finally`. Rischio esaminato: la versione finta potrebbe restare attiva se il doctor solleva un'eccezione. Il `finally` la rimette sempre. Esito: ok (già approvato nella #635).
+
+Riprodotto da me: `GAS_CLAUDE_CLI=1` esportato e un `claude` spia in testa al PATH che registra gli argomenti → 1063 PASS, 0 FAIL, file di registro della spia mai creato.
+
+Rischio escluso: `tests/test_unit_dotenv.py` non l'ho rieseguito con la variabile esportata. È fuori dal diff e gestisce `GAS_CLAUDE_CLI` da sé con le sue fixture. Non ho verificato nemmeno l'ambiente della CI: lì la variabile non è impostata, quindi il caso non si presenta.
+
+Memoria: ho aggiunto la riga contatore #636-M2 (nessuna lezione nuova) e l'ho committata con lo script (commit f6a6d9e). File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
+Commit della correzione V-1 della verifica esterna su c83032f (005aba0). Rivisto in due passaggi: #637-M2 sul controllo stretto di `loggedIn`, #638-M2 sullo stesso diff più il commento aggiornato (R-637-1-M2). Verdetti integrali:
+
+Review #637-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #637-M2: diff staged con sha256 89f6d6d3…, branch fix/forte-non-bare-m2, PR #321. Chiude la V-1 BASSA della verifica esterna su c83032f.
+
+**Punti del diff controllati**
+- `brains/claude_cli.py:426` — ora l'abbonamento risulta «loggato» solo se il codice di uscita è 0 e `loggedIn` è il booleano True, oppure il campo manca (CLI vecchia).
+  - Rischio controllato: un valore di tipo strano che dia un OK falso.
+  - Prova: ho lanciato la funzione con un runner finto.
+    - `"false"`, `"true"`, `1`, `null` → WARN «nessun login».
+    - `true` + claude.ai → OK.
+    - `true` + api_key → WARN «login NON dell'abbonamento».
+    - JSON che non è un oggetto → WARN «non verificabile», perché il metodo è None. Quindi il ramo `not isinstance(dati, dict)` non fa danni.
+  - Esito: ok. Se il dato è strano, il doctor dà WARN e non un OK falso.
+- `tests/test_unit_claude_cli.py:435` — caso nuovo `"loggedIn": "false"` con codice 0 → WARN; c'è anche il caso del campo assente → OK.
+  - Rischio controllato: il test potrebbe non distinguere il codice vecchio dal nuovo.
+  - Esito: ok. Il mutante dichiarato fallisce, e i 46 test del file passano qui.
+- `brains/claude_cli.py:438` — il commento accanto al controllo dice ancora «loggedIn non falso».
+  - Esito: riserva **R-637-1-M2 COSMETICA**. La regola ora è «loggedIn vero o assente»; il commento va aggiornato.
+- Contesto, file non toccato: `brains/claude_cli.py:407` — la firma di `stato_abbonamento` non cambia. Restano valide le garanzie su versione vuota e byte non UTF-8 (review #633-M2).
+
+**Cosa non ho verificato**
+- L'output reale di `claude auth status` sul Mac non l'ho visto: la CLI con login non si può riprodurre qui. Non so se una versione futura userà valori non booleani; in quel caso il codice sbaglia per prudenza (WARN), quindi il danno è solo un avviso in più.
+- La suite kernel (1063 PASS) non l'ho rilanciata: mi fido della prova dichiarata, perché il diff non tocca gas.py.
+
+**Memoria del revisore**
+- Ho aggiunto la riga #637-M2 e la lezione «confrontare in positivo (`is True`) i campi JSON di una CLI esterna che decidono un OK» in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- `bash scripts/commit_memoria_revisore.sh` ha restituito exit 0 ma non ha stampato nulla, e non ho controllato con `git log` che il commit della memoria ci sia davvero: va verificato. Lo script registra i propri errori in gas_debug.log ed esce comunque con 0.
+
+Review #638-M2 (diff finale committato in 005aba0):
+
+## VERDETTO: APPROVATO
+
+Review #638-M2: diff staged con sha256 3131dcef…, branch fix/forte-non-bare-m2, PR #321. È la ri-review della #637-M2 e chiude la sua unica riserva.
+
+**Punti del diff controllati**
+- `brains/claude_cli.py:438` — il commento ora dice «loggedIn booleano vero o assente».
+  - Rischio controllato: un commento che descrive il codice in modo diverso da come funziona.
+  - Esito: ok. Il commento corrisponde al controllo della riga 426, quindi R-637-1-M2 COSMETICA è chiusa.
+- `brains/claude_cli.py:426` — il controllo che dice se il login è attivo è identico a quello della #637-M2: `loggedIn` deve essere `is True` oppure mancare.
+  - Rischio controllato: una modifica di logica infilata insieme al commento.
+  - Prova: il diff staged è cambiato solo nella riga del commento.
+  - Esito: ok.
+- `tests/test_unit_claude_cli.py:435` — il caso `"loggedIn": "false"` con codice 0 → WARN non è cambiato.
+  - Esito: ok. Rilanciati qui: 46 passed.
+
+**Cosa non ho verificato**
+- L'output reale di `claude auth status` sul Mac: qui non si può riprodurre (come nella #637-M2).
+- La suite kernel non l'ho rilanciata: il diff non tocca gas.py e cambia solo un commento rispetto alla #637.
+
+**Storico**
+- #637-M2: APPROVATO CON RISERVE, con R-637-1-M2 COSMETICA (commento non aggiornato); ora chiusa.
+
+**Memoria del revisore**
+- Riga #638-M2 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- Commit 925319f: questa volta ho controllato con `git log` che ci sia.
+- Il commit della #637 (cd4c372) c'è anch'esso.
+
+Commit della correzione V-1 bot su 6c0cf68 e V-1 ve su 36f790f (73c91c9). Review #639-M2, verdetto integrale:
+
+## VERDETTO: APPROVATO
+
+Review #639-M2 (chat M2), PR #321, branch fix/forte-non-bare-m2. Diff staged esaminato con sha256 79e7dcd8…: gas.py e tests/test_unit_dotenv.py.
+
+Elementi del diff esaminati:
+- `gas.py:5088` — divide il risultato di `claude_cli_stato_abbonamento(binario)` in esito e dettaglio, poi aggiunge « · CLI della shell, il timer può usarne un'altra» quando `_avviso` è vero. Rischio esaminato: `_avviso` non definita (NameError, cioè crash del doctor). Nel ramo `if binario` l'`elif` col walrus a gas.py:5080 viene valutato sempre, quindi `_avviso` è sempre assegnata. Il tipo di ritorno di `stato_abbonamento` è `Tuple[str, str]` e la funzione non lancia mai eccezioni (brains/claude_cli.py:406), quindi la concatenazione di stringhe è sicura. La modifica resta nelle righe che M1 ha autorizzato. Esito: ok.
+- `tests/test_unit_dotenv.py:15` — fixture autouse che sostituisce `gas.claude_cli_stato_abbonamento` con un finto. Rischio esaminato: che un doctor di questi test lanci ancora il `claude` vero. Prova: con GAS_CLAUDE_CLI=1 esportato e un `claude` spia in testa al PATH, 19 passed e il registro della spia non è stato creato. Il ripristino è affidato a monkeypatch, quindi il finto non resta attivo negli altri moduli. Esito: ok.
+- `tests/test_unit_dotenv.py:278` e `tests/test_unit_dotenv.py:293-301` — il test della riga «login» rimette la funzione vera, che lavora sulla CLI finta. Poi svuota `_DOTENV_NEL_FILE` e toglie GAS_CLAUDE_BIN da `_DOTENV_CARICATE`, e controlla: WARN su «comando claude» e suffisso «CLI della shell» presente; col .env giusto il suffisso è assente. Rischio esaminato: che lo stato globale resti modificato tra un test e l'altro. Il `discard` agisce sul set nuovo creato da monkeypatch.setattr, che viene ripristinato a fine test. Il filtro per etichetta (`"Cervello forte login"`) evita il falso match col percorso tmp che contiene «login». Mutante: gas.py di HEAD con i test nuovi dà 2 failed. Esito: ok.
+
+Esecuzioni riprodotte: dotenv + claude_cli 65 passed; kernel 1063 PASS, 0 FAIL.
+
+Antipattern: nessuno. Niente slicing della history, niente simulazione di tool fuori dai test (il finto è un test double dichiarato). Guardrail invariati.
+
+Rischio escluso: non ho verificato il comportamento sul Mac con un timer launchd reale, dove il `claude` del PATH del timer è diverso da quello della shell, perché non si riproduce qui. Ho verificato solo la logica del doctor con l'ambiente simulato dal test.
+
+Nota di processo: durante il mutante ho fatto un `git stash --keep-index` per errore. Lo stash conteneva solo una copia dei cambi già in staging. L'ho eliminato dopo aver controllato che l'index fosse intatto: il diff staged è invariato e il working tree non ha differenze rispetto all'index.
+
+Memoria: riga contatore #639-M2 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (8b35108). Nessuna lezione nuova.
+
+Commit della correzione V-2 bot su 36f790f (6e33a8c, solo un commento). Review #640-M2, verdetto integrale:
+
+## VERDETTO: APPROVATO
+
+Review #640-M2. Branch fix/forte-non-bare-m2 (PR #321). Diff staged: sha256 1df2cd41, 1 file, +5/-1, cambia solo un commento.
+
+Elementi del diff esaminati:
+- `brains/claude_cli.py:402`: il commento sopra `_LOGIN_ABBONAMENTO` ora dice che `auth status` gira con lo stesso ambiente filtrato del figlio ma non con gli stessi flag. Ho controllato se è vero: `stato_abbonamento` lancia `[exe, "auth", "status"]` senza `--setting-sources ""` (`brains/claude_cli.py:425`), con `env=_ambiente_pulito()`. Esito: ok, il commento ora corrisponde al codice. La frase sbagliata («dice quale login userebbe») è stata tolta.
+- `brains/claude_cli.py:404`: dice che le impostazioni utente (blocco env, apiKeyHelper) possono far rispondere «api_key» mentre il figlio userebbe l'abbonamento, e che l'errore va nel verso sicuro. Ho controllato se può venirne un OK falso: `_LOGIN_ABBONAMENTO` porta all'OK solo con `metodo in {"claude.ai","oauth_token"} and loggato`; ogni altro metodo dà WARN. Esito: ok, il caso descritto dal bot produce al massimo un WARN in più.
+- Contesto: `brains/claude_cli.py:305`, cioè `comando()`, passa davvero `"--setting-sources", ""` al figlio, quindi la differenza dichiarata esiste. Esito: ok.
+- La scelta di non passare il flag ad `auth status`, perché non è documentato per quel sottocomando ed esiste il rischio che il doctor dia sempre «non verificabile», è prudente e coerente con «robustezza > potenza».
+
+Altri controlli: codice invariato (nel diff solo righe di commento), `tests/test_unit_claude_cli.py` 46 passed (rieseguito da me). Nessuno slicing della history, nessun output di tool simulato, nessun guardrail toccato.
+
+Rischio escluso: non ho verificato che il «mai un OK falso» del commento valga anche nel caso opposto. Cioè impostazioni utente che fanno dire «claude.ai» ad `auth status` mentre il figlio, senza impostazioni, non avrebbe login. Penso che le credenziali OAuth stiano nel portachiavi o nel file delle credenziali e non nelle impostazioni, quindi il caso non dovrebbe esistere. Però non è riproducibile qui: serve la CLI `claude` vera, col login, sul Mac. Ci pensa `python3 gas.py doctor` sul Mac, già in programma.
+
+Memoria: riga contatore #640-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (265fa40) con scripts/commit_memoria_revisore.sh. Il diff staged del motore non è stato toccato. Nessuna lezione nuova.
+
+Merge di origin/main (PR #318) nel branch (bbe0c3b). Review #641-M2, verdetto integrale: Prima emissione (integrale, in un blocco perché il gate B la sostituisce con la riemissione qui sotto):
 
 ```
 ## VERDETTO: APPROVATO
 
-Review #608 (chat Mani). È la ri-review della #607 sulla fetta 35. Il diff staged ha sha256 25eec683…, base 87f576c, e dopo i mutanti è intatto (sha rimasto uguale, working tree pulito).
+Review #641-M2: merge di origin/main (f37316f, PR #318 V6 voce) nel branch fix/forte-non-bare-m2 (PR #321), con tutto in staging.
 
-Elementi esaminati:
-- `modules/web/browser.py:243` — se la sonda non trova i due pacchetti restituisce [] e non mette niente in cache (R-607-2). Rischio esaminato: un timeout passeggero che spegne il browser fino al riavvio di Gas. Ho provato il mutante che rimette in cache il fallimento: 1 failed. **Esito: ok.**
-- `modules/web/browser.py:91` — in `_PERMESSE` ora c'è anche `glob("/usr/lib/ld-linux*")`, cioè il caricatore dei programmi (R-607-3). Rischi esaminati:
-  - il caricatore aarch64 mancante: su /usr unito, /lib è un collegamento rifatto verso usr/lib, quindi /lib/ld-linux-aarch64.so.1 arriva al file montato;
-  - il caso con `_ARCH` vuota: le voci sono doppioni dentro /usr/lib, innocui;
-  - l'esposizione di Gas o della home: la voce è un file, `_copre` resta corretto.
+Elementi del diff che ho esaminato:
+- `.github/workflows/ci.yml:126` — aggiunge `tests/test_unit_voice_contesto.py` al passo della suite voce. Rischio: che il merge abbia alterato un file del perimetro arrivato da main. `git diff --cached origin/main -- modules/voice clients .github tests/test_unit_voice*` dà 0 righe, quindi è identico a main. Esito: ok.
+- `reports/stato_progetto.md:604` — riga R2 / `--bare` del branch, preceduta dalle righe di main «Prova sul Mac della V5 PASSATA» e «Voce V6». Rischio: perdere voci nella risoluzione del conflitto. Rispetto a origin/main restano solo la riga «Ultimo aggiornamento» (#321 in testa, V6 come «prima») e la riga R2. Rispetto a HEAD entrano le due righe di main. Unione corretta. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1127` — fine della parte del branch (#632–#640-M2) messa dopo la parte di main (#611–#623-M2). Rischio: righe contatore perse o duplicate. Le righe da #611 a #640 sono tutte presenti, una volta sola, in ordine. Esito: ok.
+- Contesto: `brains/claude_cli.py:410` (`stato_abbonamento`, codice della #321). `git diff --cached HEAD -- brains gas.py tests/test_unit_claude_cli.py tests/test_unit_dotenv.py tests/test_unit_kernel.py` dà 0 righe: il merge non tocca il codice della #321. Esito: ok.
 
-  Qui la lista è vuota (verificato con `ls`). **Esito: ok.**
-- `modules/web/browser.py:311` — dentro il sandbox PATH vale /usr/bin:/bin. Rischio esaminato: /bin/sh mancante su /usr non unito. /bin arriva da `_radice()`, come collegamento rifatto o come cartella in sola lettura, quindi il doppione su /usr unito è innocuo. **Esito: ok.**
-- `tests/test_unit_web_browser.py:406` — l'elenco permesso non contiene più «/gas/» intero: restano solo /gas/node/playwright/ e /gas/node/playwright-core/, e /gas/bin/node è fra gli esatti (R-607-1). Ho riprovato i due mutanti, e ciascuno dà 1 failed per la ragione giusta:
-  - cartella bin di node intera in /gas/bin: 41 file fuori elenco (`/gas/bin/ts-script`…);
-  - node_modules intero in /gas/node: 6003 file fuori elenco (`/gas/node/.bin/…`).
+Altri controlli:
+- Nessun marcatore di conflitto: ho cercato `<<<<<<<`, `>>>>>>>` e `=======` sia nell'index (`git grep --cached`) sia in reports/*.md e nella memoria.
+- La cartella di lavoro è uguale all'index.
+- `reports/prova_voce_mac.md` è identico a origin/main.
+- Nel diff non c'è codice nuovo del motore, quindi niente slicing della history né simulazione dei tool.
+- Test rifatti: claude_cli + dotenv + voice_stt + voice_contesto + voice_server, **225 passed** (201 s).
 
-  Senza mutanti il test passa. **Esito: ok.**
-- `tests/test_unit_web_browser.py:509` — test nuovo: con NODE_PATH=/nessuno la sonda restituisce [] e `_MODULI` resta vuoto. **Esito: ok.**
+Rischio escluso: non ho rifatto la suite kernel (1063 PASS dichiarati dal chiamante). Il merge non tocca né gas.py né test_unit_kernel.py (diff a 0 righe rispetto a HEAD), quindi per il kernel la HEAD della #321 è già coperta dalle review #639/#640-M2. Non ho verificato nemmeno i test voce del browser obbligatori in CI (`GAS_TEST_BROWSER_OBBLIGATORIO`): li coprirà la CI.
 
-Riprodotto: `tests/test_unit_web_browser.py` dà 42 passed da root.
+Riga contatore: aggiunta in fondo a /home/user/Gas/.claude/agents/memoria_revisore.md
+`#641-M2 (chat M2) — 2026-11-02 — APPROVATO — merge di origin/main f37316f ... Nessuna lezione nuova.`
+**Il commit atomico della memoria NON è avvenuto.** `scripts/commit_memoria_revisore.sh` è uscito senza errore, ma il commit è fallito: «cannot do a partial commit during a merge» (warning in gas_debug.log). La riga per ora è solo nella cartella di lavoro (stato `MM`): rimetti in staging `.claude/agents/memoria_revisore.md` (`git add`) prima di chiudere il merge, così entra nel commit di merge. Poi, se serve, rifai `bash scripts/segna_review_ok.sh` sul diff staged finale.
 
-Rischi esclusi (non verificati):
-- **aarch64 e /usr non unito non provati davvero**: qui non posso riprodurli (host x86_64 con /usr unito); il ragionamento è solo sul codice. Se lì manca qualcosa, il sandbox fallisce chiuso: il browser resta spento, Gas non crasha.
-- **Il test di :509 dipende dall'host**: se Playwright fosse installato in una cartella globale di node (es. ~/.node_modules) darebbe un falso rosso. Sarebbe visibile, non un falso verde.
-- **Non ho rilanciato** la suite web completa né le prove da nobody: mi fido dei vostri 750 passed / 2 skipped e dei 42 passed da nobody.
-
-Memoria: riga #608 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (fb8b0c0). Nessuna lezione nuova.
+(Fatto: memoria rimessa in staging ed entrata nel commit di merge bbe0c3b, marcatore rifatto sul diff finale.)
 ```
 
-Commit 505479f (modules/web/browser.py, tests/test_unit_web_browser.py: V-1/V-2 ve e V-1 bot su 427e57d). Verdetto integrale della review #609 (chat Mani):
+Verdetto #641-M2 RIEMESSO dal revisore su richiesta (gate B: le citazioni della prima emissione, sopra, erano quasi tutte di file non più nel diff di sessione o di soli .md). Stesso esito, citazioni di codice del diff:
 
-```
-## VERDETTO: APPROVATO CON RISERVE
+## VERDETTO: APPROVATO
 
-Review #609 (chat Mani). È il delta sulla PR #317, fetta 35, sopra 427e57d. Il diff staged ha sha256 17cfa0a8…, rimasto uguale dopo i mutanti.
+Rimetto il verdetto della review #641-M2 con lo stesso esito e la stessa sostanza. Cambiano solo le citazioni, ora tutte su file di codice del diff di sessione, con righe che esistono a HEAD bbe0c3b. Riguarda il merge di origin/main (f37316f, PR #318 V6 voce) in fix/forte-non-bare-m2 (PR #321).
 
-Letture fatte: CLAUDE.md (sez. 5, 8, 9, 10), stato_progetto.md (solo la parte sul sandbox) e la memoria fino alla #608.
+Elementi del diff che ho esaminato:
+- `brains/claude_cli.py:410` — `stato_abbonamento`, codice della #321. Rischio: che il merge l'abbia alterato. `git diff --cached HEAD -- brains gas.py tests/...` dà 0 righe prima del commit di merge, quindi il codice è identico a quello già approvato in #637–#640-M2. Esito: ok.
+- `brains/claude_cli.py:407` — `_LOGIN_ABBONAMENTO` (lista bianca dei metodi di login dell'abbonamento). Rischio: che la regola fail-closed si sia indebolita nel merge. Valore invariato. Esito: ok.
+- `gas.py:5088` — il doctor chiama `claude_cli_stato_abbonamento(binario)`. Rischio: che la risoluzione del conflitto abbia toccato il kernel. Il merge non tocca gas.py (diff a 0 righe). Esito: ok.
+- `tests/test_unit_dotenv.py:20` — fixture che sostituisce `claude_cli_stato_abbonamento` con un finto. Rischio: che i test lancino la CLI `claude` vera. Invariata; claude_cli + dotenv rifatti dentro i 225 passed. Esito: ok.
+- `tests/test_unit_kernel.py:59` — toglie `GAS_CLAUDE_CLI` dall'ambiente in testa alla suite. Rischio: che il test erediti l'interruttore dalla shell. Invariato rispetto a HEAD della #321. Esito: ok.
 
-**Elementi esaminati**
-- `modules/web/browser.py:289`: `--remount-ro /dev` sta subito dopo `--dev /dev` e prima del tmpfs `/dev/shm`, che ha il tetto. Rischio esaminato: Chromium che si rompe e /dev/null non scrivibile. Su un fs in sola lettura i device a caratteri restano scrivibili, e i test end-to-end col Chromium vero passano. Mutante senza remount: 1 failed, con l'uscita `SCRIVE-DEV`. Esito: ok.
-- `modules/web/browser.py:277`: una permessa che è un collegamento a una cartella diventa `--ro-bind vero vero` più `--symlink readlink permessa`. Così il tmpfs messo su realpath(Gas) e realpath(home) copre anche quello che si vede dal collegamento. Rischi esaminati:
-  - un `readlink` relativo (es. `lib`) si risolve bene dentro il sandbox;
-  - quanto si vede non aumenta: prima la cartella vera era già visibile intera, sotto il nome del collegamento.
+Altri controlli (gli stessi della prima emissione):
+- I file del perimetro arrivati da main (ci.yml, modules/voice, clients, test voce) sono identici a origin/main: diff di 0 righe.
+- Nessun marcatore di conflitto.
+- reports/stato_progetto.md e la memoria sono unite correttamente: righe V5/V6 di main più la riga R2 del branch; contatore da #611 a #640 completo, nessuna riga doppia.
+- Nessun codice nuovo del motore, quindi niente slicing della history né simulazione dei tool.
+- Test rifatti: claude_cli + dotenv + voice_stt + voice_contesto + voice_server, **225 passed**.
 
-  Mutante con il ramo nuovo tolto: 1 failed, con l'uscita `VISIBILESEGRETO`. Esito: ok, con la riserva R-609-1.
-- `tests/test_unit_web_browser.py:382`: il test controlla che `touch /dev/x` fallisca e che `echo > /dev/null` funzioni. Rischio esaminato: un test troppo largo. Pretende la sequenza esatta `DEVNULL PROFILO TMP NORETE`. Esito: ok.
-- `tests/test_unit_web_browser.py:467`: il test nuovo legge `.env` da tre strade: il collegamento, il percorso vero e un file libero. Rischi esaminati: la pulizia (unlink nel finally, nessun residuo `gas-perm*` in /var/tmp) e la ragione per cui fallisce col mutante. Esito: ok.
-- `tests/test_unit_web_browser.py:413`: il prefisso `/usr/lib/ld-linux` senza «/» è sostituito dal glob negli esatti, lo stesso di `modules/web/browser.py:96`. Esito: ok, V-4 chiusa.
+Rischio escluso: non ho rifatto la suite kernel (1063 PASS dichiarati dal chiamante), perché il merge non tocca né gas.py né test_unit_kernel.py. Non ho verificato nemmeno i test voce del browser obbligatori in CI (`GAS_TEST_BROWSER_OBBLIGATORIO`): li coprirà la CI.
 
-**Prove riprodotte**
-- browser: 43 passed da root e 43 passed da nobody.
-- web (`-k web`): 752 passed, 2 skipped. Voi ne dichiarate 751: probabilmente la selezione è diversa, non è un problema.
-
-**Riserve**
-- **R-609-1 BASSA**: il ramo nuovo guarda solo l'ultimo pezzo del percorso (`islink(permessa)`). Se è un collegamento una cartella più in alto (vero diverso da permessa ma permessa non è un link), si monta ancora vero→permessa e il tmpfs sul percorso vero non copre. È teorico sulle distribuzioni note. La correzione possibile: condizione `vero != permessa and isdir(vero)` con `--symlink vero permessa` assoluto.
-- **R-609-2 COSMETICA**: la sonda `_bwrap_funziona` non porta `--remount-ro /dev`. L'opzione `--remount-ro` è comunque già provata nella sonda su «/».
-
-**Rischi esplicitamente esclusi**
-- Arch e aarch64 veri, dove `/usr/lib64` è un collegamento: non provati, perché qui `/usr/lib64` è una cartella vera. Il ramo nuovo l'ha provato solo il test con il collegamento finto.
-- V-3 BASSA (in CI il test «ogni file» non monta Chromium): presa come dichiarata, non l'ho verificata in CI.
-
-Memoria: riga #609 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (d3c3d22).
-```
-
-Commit 2a96a14 (modules/web/browser.py, tests/test_unit_web_browser.py: V-1 bot su 6729b2c). Verdetto integrale della review #610 (chat Mani):
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #610 (chat Mani). Riguarda il delta sulla PR #317 (fetta 35), base 6729b2c, diff staged con sha256 b1fd31e9cc89…6859. Prima della review ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md (fetta 35, R-609-2) e la memoria del revisore.
-
-**Cosa ho esaminato**
-- `modules/web/browser.py:201-221` — `_bwrap_funziona` ora lancia `[bwrap] + _comando_bwrap(casa, _ambiente(casa))[1:] + ["true"]`, dentro una cartella temporanea.
-  - Rischio controllato: che la sonda diverga ancora dal comando vero. Il comando finisce con «--» (`modules/web/browser.py:323`) e `cmd[0]` è il "bwrap" nudo (`modules/web/browser.py:274`). Quindi la sonda porta tutto il comando vero: `--remount-ro /dev`, /dev/shm col tetto, i collegamenti, node, i pacchetti e la casa.
-  - Un `_Rifiuto` di `_comando_bwrap` non è preso dall'`except (OSError, TimeoutExpired)`: sale a `leggi_con_browser`, che lo restituisce col suo motivo (`modules/web/browser.py:470`). L'ho provato direttamente: esce `{'ok': False, 'motivo': 'browser non isolabile: node o Playwright non trovati'}` e `_BWRAP_OK` resta None.
-  - Il comportamento è lo stesso di prima: lo stesso rifiuto arrivava comunque da `_esegui`. Esito: ok. R-609-2 chiusa.
-- `modules/web/browser.py:385-402` — `_ambiente` è estratto da `_esegui`.
-  - Rischio controllato: un cambio dell'ambiente del figlio. Il corpo è lo stesso, solo spostato, e `_esegui` lo chiama per primo. Esito: ok.
-- `tests/test_unit_web_browser.py:540-550` — test nuovo `test_la_sonda_di_bwrap_usa_il_comando_vero`.
-  - Rischio controllato: che il test non morda. Mutante = la sonda di HEAD (comando a parte) con i test nuovi, in un worktree separato: 1 failed sul test nuovo, per la ragione giusta. Esito: ok.
-- `tests/test_unit_web_browser.py:553-562` — nel test vecchio `which` è falsificato solo per "bwrap".
-  - Rischio controllato: che questo test si rompa ora che la sonda risolve node. Il modulo si salta da solo senza node e Playwright (`tests/test_unit_web_browser.py:33`), e in CI ci sono node, Playwright e bwrap (`.github/workflows/ci.yml:111`, poi nella suite web la variabile che rende obbligatorio il browser). Esito: ok.
-
-**Prove riprodotte (da root):** browser 44 passed; web 752 passed, 2 skipped. Non ci sono antipattern della sezione 5: niente storia toccata, niente output dei tool simulato. Nessuna eccezione può arrivare fino al crash.
-
-**Riserva**
-- R-610-1 BASSA: nessun test fissa che un `_Rifiuto` della sonda non vada in cache, come dice la docstring. Un mutante con `except _Rifiuto: ok = False` (cioè messo in cache) sopravviverebbe. Il comportamento vero l'ho controllato a mano ed è giusto.
-
-**Cosa NON ho verificato:** l'esecuzione da utente nobody (la riporti tu, non l'ho rifatta). Non ho verificato aarch64 né /usr non unito, perché non si riproducono in questo ambiente. Non ho provato un OSError passeggero nella sonda, che resta in cache come False: è il comportamento di prima, non introdotto da questo diff.
-
-La riga contatore #610 è in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata (cdc18c2). Nessuna lezione nuova.
-```
+Memoria: non l'ho toccata in questo giro. La riga #641-M2 è già nel file /home/user/Gas/.claude/agents/memoria_revisore.md. Il commit atomico della memoria era fallito durante il merge («partial commit during a merge»): controlla che la riga sia entrata nel commit di merge bbe0c3b.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. `tests/test_unit_web_browser.py`: da 43 a 44 test (test di isolamento riscritti per il modello nuovo; tolti quelli legati a `_NASCOSTE`, aggiunti l'elenco di ogni file visibile, i tetti di /tmp e /dev/shm, Gas e home dentro una permessa, rifiuti, sonde, routeWebSocket, cache). Web con il comando della CI (`python -m pytest tests/test_unit_web_*.py`), da root: 752 passed, 2 skipped; browser da utente nobody: 44 passed. Mutanti presi (1 failed ciascuno): /etc intera, radice scrivibile, Gas dentro una permessa non coperta, prefisso di node ri-esposto, tutta node_modules, cartella bin di node, /tmp senza tetto, /dev/shm senza tetto, sonda senza cwd, fallimento in cache, routeWebSocket→connectToServer, rifiuto degli esposti tolto, /dev scrivibile, permessa-collegamento montata come prima, sonda a comando a parte. Non preso: `--new-session` (serve un TTY).
+Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 46 test raccolti (44 prima della V-1 ve su c83032f, che aggiunge 2 casi) (V-1 bot su c83032f: prima qui c’era «42», numero rimasto da prima della V-1 ve), `tests/test_unit_dotenv.py` 17 → 19 (stessi 19 dopo la #639: il test della riga login si allunga) (in tutto 61 passed dopo la correzione di #632, 63 dopo la V-1 ve su d0a0035, 65 dopo la V-1 ve su c83032f; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Dopo la V-1 bot su 5e784c3: kernel 1063 PASS, 0 FAIL, anche con `GAS_CLAUDE_CLI=1` esportato e un `claude` spia in testa al PATH (spia mai chiamata). Dopo la #639-M2: dotenv + claude_cli 65 passed anche con GAS_CLAUDE_CLI=1 e un `claude` spia nel PATH (spia mai chiamata); kernel 1063 PASS, 0 FAIL. Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- 9494a95, fb8b0c0 (memoria del revisore), a26a8a9 (fetta 35): pushati insieme prima dell'apertura della PR #317; nessuna run su questi SHA prima della PR.
-- 427e57d (fine-task): run su 427e57d success (unit-suite, handoff-check); verifica-bot success (bot APPROVATO CON RISERVE).
-- d3c3d22 (memoria #609), 505479f (correzioni), 6729b2c (fine-task): pushati insieme; run 41361521792 su 6729b2c success (unit-suite, handoff-check); verifica-bot failure (verdetto «incoerente», poi G-2 dopo il rilancio: vedi §1).
-- cdc18c2 (memoria #610), 2a96a14 (sonda) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- e79cf07 (fine-task precedente): unit-suite, handoff-check, verifica-bot, verifica, smista, esito tutti success; bot APPROVATO CON RISERVE (V-1 BASSA: «mai un OK falso» troppo forte, registrata, non inseguita per decisione di M1).
+- bbe0c3b (merge di main con la PR #318, review #641-M2) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
-- V-1 c ve #316 BASSA: `serviceWorkers: 'block'` senza test (nella prova la pagina non diventa sicura); `--new-session` senza test (serve un TTY).
-- R-609-1 (chat Mani) BASSA: il ramo delle permesse-collegamento guarda solo l'ultimo pezzo del percorso (un collegamento più in alto non è coperto; teorico sulle distribuzioni note). R-609-2: chiusa in 2a96a14 (la sonda è il comando vero). R-610-1 (chat Mani) BASSA: nessun test fissa che un rifiuto della sonda (node o Playwright mancanti) non vada in cache.
-- V-3 ve #317 BASSA: in CI il test «ogni file visibile» non monta Chromium (PLAYWRIGHT_BROWSERS_PATH non impostata); lo coprono i test end-to-end.
-- aarch64 e /usr non unito: analizzati sul codice, non provati (fail-closed: il browser resta spento).
-- HTTPS reale di Chromium senza /etc/ssl, bwrap con --size e AppArmor sul VPS: da provare sul VPS (seconda condizione della roadmap per accendere il browser).
-- Limiti dichiarati del browser: Chromium senza la sua sandbox; il proxy filtra le destinazioni, non i dati; niente regola https→http e pagina riscaricata (R-593-6); X-Gas-Proxy dentro i tunnel https non si toglie (R-593-3); una pagina che usa i Worker può non funzionare.
-- Riserve BASSE della #604: la sola lettura dei ri-esposti non si prova da un utente che non può scriverci; pid basso di pytest.
-- Nota BASSA (review #593): un'intestazione «Nome : valore» fa rifiutare la pagina dal proxy.
-- V-1 bot #309 BASSA (limite); R-582-1 BASSA, R-582-2 COSMETICA, R-580-2 BASSA (limiti del bot); V-1/V-2 bot e ve #306; R-572-1, R-572-2, R-575-1 BASSE e R-575-2 COSMETICA; (b) libexpat ≥ 2.4 nel doctor con M1; V-3 ve #303 (selectolax 1.0.2, decisione dell'operatore); R-518-1, R-516-1, R-ve277-5, V-1 ve/bot #288, V-2/V-3 ve #296, R-546-1: invariate.
+- **V-1 bot su e79cf07** BASSA: il commento e i report dicono «mai un OK falso»; con un CLAUDE_CODE_OAUTH_TOKEN dato dalle impostazioni utente o solo dalla shell il doctor può dare OK mentre il figlio resta senza login (verso sicuro: nessun addebito). Da riscrivere come «mai un OK con login a pagamento».
+
+- **R-633-1-M2** BASSA: un processo nipote che tiene aperte le pipe può far durare oltre il timeout; attesa massima normale ~30 s (2 × 15 s).
+- **R-633-2-M2** BASSA: `errors="replace"` senza un test dedicato (il ramo `except ValueError` lo copre comunque).
+- Non verificato con una CLI `claude` vera e loggata: il campo `authMethod` viene dalla documentazione (cli-reference). Da provare sul Mac.
