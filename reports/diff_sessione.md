@@ -1,12 +1,15 @@
-# DIFF SESSIONE — 2026-11-01 — Mani, fetta 35: sandbox del browser con radice vuota ed elenco di cartelle permesse
+# Diff della sessione — 2026-11-02 — Mani, fetta 36 (PR #319)
 
-File toccati rispetto a main 87f576c (PR #316 mergiata):
-- `modules/web/browser.py` — `_comando_bwrap` con radice vuota rimontata in sola lettura ed elenco `_PERMESSE`; ri-esposti solo il file di node, i due pacchetti di Playwright e Chromium; sonda = il comando vero con «true»; nessuna cache dei fallimenti; /dev in sola lettura; permesse-collegamento rifatte come collegamenti. Motivo: prima condizione della roadmap per accendere il browser.
-- `tests/test_unit_web_browser.py` — test di isolamento riscritti (ogni file visibile contro un elenco, tetti dei tmpfs, Gas e home dentro una permessa, rifiuti, sonde), test di routeWebSocket, rilevatore di pytest su argv.
-- `.claude/agents/memoria_revisore.md` — righe delle review dalla #607 alla #610.
-- `reports/stato_progetto.md` — blocco «Mani — fetta 35» e riga «Ultimo aggiornamento».
-- `reports/roadmap.md` — prima condizione fatta, resta la prova sul VPS.
-- `reports/ripartenza_mani.md` — punto g).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+Si riscrive a ogni sessione; la storia completa sta in git.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+- `modules/telegram/avviso.py` (nuovo): strumento avvisa_operatore — testo pulito, tetto al giorno su file con prenotazione, invio con `invia_notifica`.
+- `gas.py`: spec dello strumento, prompt di riserva, ramo in execute_tool_call (una per turno), diario con la sola lunghezza, conto in `_SAFE_PATH_DENY_PREFIXES`.
+- `modules/gate/gate.py`: avvisa_operatore UNCERTAIN; `.gas_notifiche_uso` in `_DENY_PREFIXES` e `_LIVELLO3_PREFISSI`.
+- `gas_identity.md`: 13 strumenti, riga di avvisa_operatore.
+- `.gitignore`: il conto e i suoi temporanei.
+- `.github/workflows/ci.yml`: passo che lancia i test nuovi.
+- `tests/test_unit_avvisa_operatore.py` (nuovo): 29 test (tetto, riavvio, fail-closed, invisibili, cancello).
+- `tests/test_unit_kernel.py`: T102a-e (round-trip, diario, tetto per turno, invio fallito, firma a finestra contaminata), due voci in T68s.
+- `tests/test_unit_gate.py`: il conto è livello 3.
+- `.claude/agents/memoria_revisore.md`: righe #611 e #612 (commit del revisore).
+- `reports/`: report di fine task, stato_progetto (blocco fetta 36), roadmap (riga della notifica), ripartenza_mani (punto g).

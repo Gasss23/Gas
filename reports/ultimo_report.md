@@ -1,24 +1,17 @@
-# ULTIMO REPORT — 2026-11-01 — Mani: sandbox del browser con radice vuota ed elenco di cartelle permesse (R6, fetta 35, chat Mani)
+# Ultimo report — 2026-11-02 — Mani, fetta 36 (R6): strumento avvisa_operatore
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #317 (numero nell'handoff §0): solo con verdetto del bot APPROVATO pulito la faccio io; con riserve serve il sì dell'operatore (anche tramite M1).
-2. Fetta di SICUREZZA: secondo passaggio indipendente nella chat claude.ai col link della PR.
-3. Il browser resta SPENTO. Per accenderlo sul VPS manca la seconda condizione della roadmap: una prova dal vero sul VPS (bwrap con --size, AppArmor, node, Playwright, HTTPS).
+1. Merge della PR #319 (https://github.com/Gasss23/Gas/pull/319): tocca `.github/workflows/ci.yml` (macchina del bot), quindi decide l'operatore anche con un verdetto pulito.
+2. Per usare lo strumento sul VPS: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_IDS` (già usati dal bot) e, se si vuole un tetto diverso da 5, `GAS_NOTIFICHE_GIORNO`.
 
 ## Esito
-- **PR #316 (bwrap per il browser)**: MERGIATA (87f576c) col sì dell'operatore.
-- **Radice vuota ed elenco di cartelle permesse** (prima condizione della roadmap): FATTA (PR #317).
-- **V-6 ve e V-2 bot #316** (cartelle non nascoste leggibili): FATTA. **V-1 bot #316** (~/.local): FATTA. **R-605-1**: FATTA. **R-601-1/2**: FATTA. **R-603-1/2/3**: FATTA. **V-1 d ve #316** (routeWebSocket): FATTA.
-- **V-1 c ve #316** (serviceWorkers 'block' senza test): SALTATA — nella prova la pagina non diventa sicura (navigator.serviceWorker non c'è), il test passerebbe a vuoto; resta dichiarata.
-- **Review #607 (chat Mani)**: APPROVATO CON RISERVE. R-607-1 MEDIA (il test accettava tutto /gas/), R-607-2 e R-607-3 BASSE: FATTE. **Review #608**: APPROVATO.
-- **Bot e verifica esterna su 427e57d**: APPROVATO CON RISERVE. V-1 MEDIA ve (/dev scrivibile senza tetto) e V-2 ve / V-1 bot (permessa-collegamento): FATTE (505479f, review #609 APPROVATO CON RISERVE). V-3 BASSA ve: SALTATA — dichiarata. R-609-1: DEFERITA — registrata.
-- **Bot su 6729b2c**: failure per «verdetto incoerente», poi G-2 dopo un rilancio; V-1 BASSA (sonda diversa dal comando vero): FATTA (2a96a14, review #610 APPROVATO CON RISERVE; chiude R-609-2). R-610-1 BASSA: DEFERITA — registrata.
-
-## Prove
-- Prototipo provato prima del codice: Chromium parte con l'elenco.
-- Browser 44 test (anche da utente nobody), web (`python -m pytest tests/test_unit_web_*.py`): 752 passed, 2 skipped.
-- Mutanti presi: 15 (vedi handoff §5).
+- **PR #317 (fetta 35)**: `FATTA` — mergiata (b472fe1) col sì dell'operatore.
+- **Piano a M1** (max 10 righe): `FATTA` — approvato, con le aggiunte di M1 (UNCERTAIN nel cancello, test del cancello, gas_identity.md e prompt di riserva, conto in tutti gli elenchi e in .gitignore, passo CI).
+- **Strumento `avvisa_operatore`**: `FATTA` — `modules/telegram/avviso.py` + gas.py + cancello; solo la chat dell'operatore, prefisso fisso, max 1000 caratteri, invisibili resi visibili, una per turno, tetto al giorno su file prenotato prima dell'invio, fail-closed.
+- **Conto sul diario** (punto 3 del primo piano): `SALTATA — il diario in degrado restituisce [] (= zero notifiche, tetto aperto): si usa un file come per le richieste di sviluppo, con l'ok di M1`.
+- **Review #611**: APPROVATO CON RISERVE; R-611-1..5 `FATTA`. **Review #612**: APPROVATO CON RISERVE; R-612-1 COSMETICA e R-612-2 BASSA `DEFERITA — registrate`.
+- **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (indicazione di M1)`.
+- **Voce H24 (R8)**: `DEFERITA — prossima fetta: piano da mandare a M1 prima del codice`.
 
 ## Anomalie
-- Nel container restano due cartelle di prova di una verifica esterna precedente (/home/runnerx, /data/gashome), la cui rimozione è stata bloccata da un controllo di sicurezza; il nuovo test le copre: fuori dall'elenco non si vedono.
-- `gh` nel cloud non è autenticato: PR, etichetta e stato della CI passano dall'integrazione GitHub.
+- T31g (vector store con GAS_VECTORS=1) fallisce in questo container anche su main pulito (1066 PASS, 1 FAIL): ambiente, non questa fetta.

@@ -215,7 +215,7 @@ Tutto da zero. Lista completa al capitolo 8.
 - ⏳ Leggere il web in un ambiente chiuso (browser senza schermo), per cercare clienti e leggere siti. Ogni testo letto è "non fidato". Fatti: proxy filtrante (PR #312), browser senza schermo spento per default (PR #315, `GAS_WEB_BROWSER=1`) e isolamento bwrap (PR #316; sul Mac il browser resta spento). Accenderlo sul VPS è una decisione dell'operatore, a due condizioni (M1, 2026-11-01): la fetta «tmpfs su / con un elenco di cartelle permesse» (fatta in PR #317, fetta 35) e una prova dal vero sul VPS (bwrap con --size, AppArmor, node, Playwright, HTTPS senza /etc/ssl): da fare.
 - ⏳ Mail: leggere, preparare bozze, inviare **solo con firma**.
 - ⏳ Messaggi diretti, post pubblici sui social e invio di moduli: sempre con firma.
-- ⏳ Notifica su Telegram come strumento di Gas.
+- ⏳ Notifica su Telegram come strumento di Gas: fatta in PR #319 (fetta 36, chat Mani, in attesa di merge). `avvisa_operatore`: solo la chat dell'operatore, una per turno, `GAS_NOTIFICHE_GIORNO` al giorno (default 5), alla firma dopo aver letto contenuti esterni.
 - ⏳ **Allarme urgente sul telefono** (nuovo, 19 ottobre): **solo gratuito** (es. ntfy a priorità massima, che suona anche in silenzioso). Twilio scartato perché a pagamento. 👤 Motivi dell'allarme e tetto al giorno: da decidere insieme.
 - ⏳ Le prove M1, M2 e M4 scritte come test veri nel repo.
 - ❌ Bottone "Modifica" e firme a gruppi (fetta C6 del cancello): l'operatore ha scelto «lasciamo così» il 21 ottobre (una firma per azione).
