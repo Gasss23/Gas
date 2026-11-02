@@ -350,6 +350,7 @@ let occupato = false;    // invio o riproduzione in corso
 let numTurno = 0;        // R-574-1-M2: solo la riproduzione del turno corrente riapre l'ascolto
 let apertura = null;     // R-574-3-M2: una sola richiesta del microfono alla volta
 let turniDiFila = 0;     // V-1 bot #311: turni partiti senza un nuovo clic
+let riproduzione = null; // V7b: frasi della risposta in corso (coda); null = niente da suonare
 
 function setStatus(msg, isError = false, isLive = false) {
   statusEl.textContent = msg;
@@ -549,6 +550,7 @@ function vigila(turno) {
         fermaVigilanza();
         player.onended = player.onpause = player.onerror = null;
         player.pause();
+        lasciaRiproduzione();   // V7b: le frasi che arrivano dopo non si suonano più
         occupato = false;
         riapri("mi hai interrotto · ti ascolto…", true);
       }
@@ -601,7 +603,8 @@ async function invia(blob, contentType) {
   let resp;
   try {
     resp = await fetch("/voice", { method: "POST", body: blob, headers: {
-      "Content-Type": contentType, "Accept": "audio/mpeg", "X-Gas-Formato": "audio+testo" } });
+      "Content-Type": contentType, "Accept": "audio/mpeg",
+      "X-Gas-Formato": "audio+testo+pezzi" } });   // V7b: voce frase per frase
   } catch (e) {
     return fineTurno(timerAttesa, "errore di rete: " + e.message);
   }
@@ -610,11 +613,14 @@ async function invia(blob, contentType) {
     try { msg = (await resp.json()).error || msg; } catch (_) {}
     return fineTurno(timerAttesa, "errore: " + msg);
   }
-  let audio, testo = "", voceErr = "", capito = "", tempi = null;
+  let audio, testo = "", voceErr = "", capito = "", tempi = null, righe = null;
   const ct = resp.headers.get("Content-Type") || "";
   try {   // R-574-2-M2: risposta rotta → errore dichiarato, la pagina non resta bloccata
-    if (ct.startsWith("application/json")) {
-      const j = await resp.json();
+    if (ct.startsWith("application/x-ndjson") || ct.startsWith("application/json")) {
+      // V7b: a righe la prima porta testo e prima frase; le altre arrivano mentre parla
+      righe = ct.startsWith("application/x-ndjson") ? lettoreRighe(resp) : null;
+      const j = righe ? await righe.prossima() : await resp.json();
+      if (!j) throw new Error("risposta vuota");
       testo = j.content || "";
       voceErr = j.errore_voce || "";
       capito = typeof j.capito === "string" ? j.capito : "";
@@ -632,28 +638,130 @@ async function invia(blob, contentType) {
   testoEl.textContent = testo;
   capitoEl.textContent = capito ? `Ho capito: «${capito}»` : "";   // V6, solo testo (mai HTML)
   capitoEl.hidden = !capito;
-  tempiEl.textContent = descriviTempi(tempi, (performance.now() - t0) / 1000);   // V7
-  tempiEl.hidden = !tempiEl.textContent;
+  const mostraTempi = t => {
+    tempiEl.textContent = descriviTempi(t, (performance.now() - t0) / 1000);   // V7
+    tempiEl.hidden = !tempiEl.textContent;
+  };
+  mostraTempi(tempi);
   playerWrap.hidden = false;
   setSendingUI(false);
+  const turno = ++numTurno;
+  const rip = { turno, coda: [], finito: !righe, attende: null, fermo: false,
+                righe, tutti: audio ? [audio] : [], soloRaccogli: false };
+  riproduzione = rip;
+  if (righe) leggiResto(rip, righe, mostraTempi);
   if (!audio) {
+    riproduzione = null;   // niente da suonare; le righe si leggono ancora per i tempi
     occupato = false;
     return dopoRisposta(`risposta solo testo · ${secondi}s` + (voceErr ? ` (${voceErr})` : ""));
   }
+  setStatus(`Gas parla · ${secondi}s`, false, true);
+  suonaPezzo(rip, audio, secondi, true);
+}
+
+// V7b: legge una risposta a righe JSON (NDJSON) una riga alla volta, mentre arriva.
+function lettoreRighe(resp) {
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buffer = "", chiuso = false;
+  return {
+    async prossima() {
+      for (;;) {
+        const i = buffer.indexOf("\n");
+        if (i >= 0) {
+          const riga = buffer.slice(0, i).trim();
+          buffer = buffer.slice(i + 1);
+          if (riga) return JSON.parse(riga);
+          continue;
+        }
+        if (chiuso) { const r = buffer.trim(); buffer = ""; return r ? JSON.parse(r) : null; }
+        const { value, done } = await reader.read();
+        if (done) chiuso = true; else buffer += dec.decode(value, { stream: true });
+      }
+    },
+    chiudi() { try { reader.cancel().catch(() => {}); } catch (_) {} },
+  };
+}
+
+function bloboAudio(b64) {
+  return new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], { type: "audio/mpeg" });
+}
+
+// V7b: le frasi dopo la prima entrano in coda appena arrivano; i tempi a fine risposta.
+async function leggiResto(rip, righe, mostraTempi) {
+  try {
+    for (;;) {
+      if (rip.fermo) { righe.chiudi(); return; }   // interrotto o chiuso: smetti di leggere
+      const j = await righe.prossima();
+      if (!j) break;
+      if (j.tempi && typeof j.tempi === "object") mostraTempi(j.tempi);
+      if (typeof j.audio === "string") daSuonare(rip, bloboAudio(j.audio));
+      if (j.fine) break;
+    }
+  } catch (_) { /* riga rotta o rete caduta: si suona quello che è arrivato */ }
+  rip.finito = true;
+  // R-619-2-M2: solo se è ancora l'ultimo turno e il player è fermo (non si taglia la
+  // prima frase che l'operatore sta ascoltando col tasto play)
+  if (rip.soloRaccogli) {
+    if (rip.turno === numTurno && player.paused) mettiRiascolto(rip);
+    return;
+  }
+  if (rip.attende) { const f = rip.attende; rip.attende = null; f(null); }
+}
+
+function daSuonare(rip, audio) {
+  rip.tutti.push(audio);
+  if (rip.soloRaccogli) return;   // autoplay negato: si raccoglie per il tasto play
+  if (rip.attende) { const f = rip.attende; rip.attende = null; f(audio); }
+  else rip.coda.push(audio);
+}
+
+// R-618-3-M2: a risposta finita il player tiene TUTTA la parte parlata (le frasi MP3
+// una dopo l'altra), così il tasto play la fa riascoltare intera, non solo l'ultima frase.
+function mettiRiascolto(rip) {
+  if (rip.tutti.length < 2) return;
+  if (player.dataset.prevUrl) URL.revokeObjectURL(player.dataset.prevUrl);
+  player.src = player.dataset.prevUrl = URL.createObjectURL(new Blob(rip.tutti, { type: "audio/mpeg" }));
+}
+
+function lasciaRiproduzione() {   // la risposta in corso non si suona più (e non si legge più)
+  if (riproduzione) {
+    riproduzione.fermo = true;
+    // R-618-1-M2: chiudere SUBITO la lettura chiude la connessione: il server smette di
+    // sintetizzare frasi che nessuno ascolterà e il turno nuovo non resta in coda
+    if (riproduzione.righe) riproduzione.righe.chiudi();
+  }
+  riproduzione = null;
+}
+
+// Suona una frase; alla fine passa alla prossima (in coda o in arrivo) o chiude il turno.
+function suonaPezzo(rip, audio, secondi, primo) {
+  const turno = rip.turno;
   if (player.dataset.prevUrl) URL.revokeObjectURL(player.dataset.prevUrl);
   player.src = player.dataset.prevUrl = URL.createObjectURL(audio);
-  setStatus(`Gas parla · ${secondi}s`, false, true);
-  const turno = ++numTurno;
-  player.onended = () => {          // una volta sola: un riascolto non riapre niente
-    player.onended = player.onpause = player.onerror = null;
+  const fineTurnoParlato = () => {
+    lasciaRiproduzione();
+    mettiRiascolto(rip);
     fermaVigilanza();
     if (turno !== numTurno) return;
     occupato = false;
     dopoRisposta("pronto");
   };
+  player.onended = () => {          // una volta sola: un riascolto non riapre niente
+    player.onended = player.onpause = player.onerror = null;
+    if (riproduzione !== rip || turno !== numTurno) { fermaVigilanza(); return; }
+    const prossimo = rip.coda.shift();
+    if (prossimo) { suonaPezzo(rip, prossimo, secondi, false); return; }
+    if (rip.finito) { fineTurnoParlato(); return; }
+    rip.attende = a => {            // la prossima frase non è ancora arrivata: aspettala
+      if (riproduzione !== rip || turno !== numTurno) return;
+      if (a) suonaPezzo(rip, a, secondi, false); else fineTurnoParlato();
+    };
+  };
   // R-576-2-M2: audio rotto a metà (nessun «ended» né «pause») → turno chiuso, tasto libero
   player.onerror = () => {
     player.onended = player.onpause = player.onerror = null;
+    lasciaRiproduzione();
     fermaVigilanza();
     if (turno !== numTurno) return;
     occupato = false;
@@ -665,26 +773,32 @@ async function invia(blob, contentType) {
   player.onpause = () => {
     if (player.ended) return;       // la fine arriva anche come pausa: ci pensa onended
     player.onended = player.onpause = player.onerror = null;
+    lasciaRiproduzione();
     fermaVigilanza();
     if (turno !== numTurno) return;
     occupato = false;
     chiudiConversazione(false);
     setStatus("risposta in pausa · conversazione chiusa");
   };
-  try {
-    await player.play();
-    if (turno === numTurno && occupato) vigila(turno);   // V4: interruzione possibile
-  } catch (_) {
-    if (turno !== numTurno || !occupato) return;   // turno già chiuso (es. pausa subito)
-    if (player.error) { player.onerror(); return; }   // audio rotto, non autoplay negato
+  player.play().then(() => {
+    // V4: interruzione possibile (una sola vigilanza per tutta la risposta)
+    if (primo && turno === numTurno && occupato) vigila(turno);
+  }).catch(() => {
+    if (turno !== numTurno || !occupato || riproduzione !== rip) return;   // turno già chiuso
+    if (player.error) { if (player.onerror) player.onerror(); return; }   // audio rotto
     // R-574-3-M2: senza riproduzione automatica la conversazione si chiude e il
     // microfono si spegne; la risposta resta da ascoltare col tasto play.
     player.onended = player.onpause = player.onerror = null;
+    // R-618-3-M2: le frasi che mancano si raccolgono ancora; a fine lettura il tasto
+    // play suona tutta la parte parlata
+    riproduzione = null;
+    rip.soloRaccogli = true;
+    if (rip.finito) mettiRiascolto(rip);
     occupato = false;
     chiudiConversazione(false);
     chiudiMicrofono();
     setStatus(`${secondi}s · premi play ↑`);
-  }
+  });
 }
 
 function fineTurno(timerAttesa, errore) {
