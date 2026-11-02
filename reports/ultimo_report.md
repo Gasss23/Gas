@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della V8 (numero nell'handoff §0), secondo la regola di merge di CLAUDE.md §10.
+1. Merge della PR #326 (https://github.com/Gasss23/Gas/pull/326), secondo la regola di merge di CLAUDE.md §10.
 2. Sul Mac, dopo il merge: aprire la pagina «prova voci» (guida in `reports/prova_voce_mac.md`), ascoltare le voci con le frasi fisse e scegliere quella di Gas (`ELEVENLABS_VOICE_ID` nel `.env`). Percorsi e costi della libreria condivisa di ElevenLabs sono DA VERIFICARE sul Mac (dal cloud elevenlabs.io è bloccato).
 
 ## Esito delle fette

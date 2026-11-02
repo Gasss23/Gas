@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. PR della V8: da aprire (numero dopo la creazione).
+1. Merge della PR #326 (https://github.com/Gasss23/Gas/pull/326). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5127333334","url":"https://github.com/Gasss23/Gas/pull/326"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
 2. Sul Mac, dopo il merge: scegliere la voce dalla pagina «prova voci»; verificare percorsi e costi della libreria condivisa.
 
 ---
@@ -43,6 +43,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d093871 docs(voce-v8): report di fine task (review #624–#629-M2, #655-M2)
 8e88e78 Merge remote-tracking branch 'origin/main' into feat/voce-v8-m2
 87007ff docs(voce-v8): guida Mac per la libreria delle voci
 bb1fd62 feat(voce): V8b — «prova voci» cerca anche nella libreria condivisa di ElevenLabs (chat M2)
@@ -261,7 +262,7 @@ Dopo il merge di main: `tests/test_unit_voice_prova_voci.py` + `test_unit_voice_
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud. Commit della sessione (fino a d093871, pushati insieme: run sulla sola testa, non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
