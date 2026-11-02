@@ -20,7 +20,8 @@ from brains.model_ids import MODEL_CLAUDE_FORTE
 modello = MODEL_CLAUDE_FORTE   # lo stesso valore di Gas (fissato all'import, come in gas.py)
 with tempfile.TemporaryDirectory() as d:
     sistema = os.path.join(d, "sistema.txt")
-    open(sistema, "w").write("Rispondi in una frase.")
+    with open(sistema, "w", encoding="utf-8") as f:
+        f.write("Rispondi in una frase.")
     cmd = ClaudeCliClient().comando(modello, sistema)
     print("binario:", cmd[0], "· modello:", modello)
     for domanda in ["rispondi solo: ok"] * 2 + ["riassumi: " + "parola " * 2000] * 2:
@@ -64,7 +65,7 @@ Se «avvio e resto» vale meno di 1–2 s su un turno a voce di 8–15 s, il pro
 Pagine lette: `code.claude.com/docs/en/agent-sdk/overview`, `.../quickstart`, `.../authentication`, `.../headless`.
 - Agent SDK, frase identica in overview e quickstart: «Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK. Use the API key authentication methods described in the Quickstart instead.» Il quickstart usa `ANTHROPIC_API_KEY`. La doc **non dice** in modo esplicito se un uso personale dell'SDK col login dell'abbonamento sia permesso: **da verificare** con il supporto o le pagine di supporto (non lette).
 - `claude -p` senza `--bare` usa la stessa catena di credenziali della CLI: «Subscription OAuth credentials from `/login`. This is the default for Claude Pro, Max, Ultra, Team, and Enterprise users». Con `--bare` invece no: «bare mode doesn't use your subscription login». Quindi `--bare`, che accorcia l'avvio, **non** si può usare con l'abbonamento.
-- **Rischio nuovo, vale anche per il cervello forte di oggi (strade A e C; V-1 bot #320)**: la pagina headless dice che `--bare` «is the recommended mode for scripted and SDK calls, and will become the default for -p in a future release». In modalità bare il login dell'abbonamento non viene mai letto: il giorno in cui cambierà il default, `claude -p` come lo lancia Gas smetterà di usare il login Max (errore di login, o un'altra via se c'è una chiave). Da fare, a parte da questa proposta: controllare a ogni avvio o nel `doctor` la versione della CLI, e verificare se esiste un flag esplicito per restare non-bare (**da verificare**). Tracciato in `reports/stato_progetto.md` (V-1 bot #320); la difesa è nella PR #321.
+- **Rischio nuovo, vale anche per il cervello forte di oggi (strade A e C; V-1 bot #320)**: la pagina headless dice che `--bare` «is the recommended mode for scripted and SDK calls, and will become the default for -p in a future release». In modalità bare il login dell'abbonamento non viene mai letto: il giorno in cui cambierà il default, `claude -p` come lo lancia Gas smetterà di usare il login Max (errore di login, o un'altra via se c'è una chiave). Da fare, a parte da questa proposta: controllare a ogni avvio o nel `doctor` la versione della CLI, e verificare se esiste un flag esplicito per restare non-bare (**da verificare**). Tracciato in `reports/stato_progetto.md` come **R-bare-1** (V-1 bot #320); la difesa è nella PR #321.
 - Resta valida l'ambiguità già scritta in `reports/r2_regole_abbonamento.md`: Consumer Terms §3.7 sull'uso automatico, rischio accettato dall'operatore il 23 ottobre per `claude -p`. Passare all'SDK è un uso diverso da quello deciso allora: **va rideciso**.
 
 ## Proposta
