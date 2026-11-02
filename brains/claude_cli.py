@@ -26,6 +26,13 @@ rung entra nella cascata senza toccare il ciclo agentico. Invarianti:
 - Rischio dichiarato (reports/r2_regole_abbonamento.md): per le Consumer Terms §3.7
   l'uso automatico col login dell'abbonamento è ambiguo; scelta consapevole
   dell'operatore.
+- Futuro default `--bare` (chat M2, 2 novembre; doc headless: «--bare … will become the
+  default for -p in a future release»; in bare «Claude Code never reads OAuth
+  credentials» e non legge CLAUDE_CODE_OAUTH_TOKEN). Nessun flag o variabile documentata
+  per restare non-bare (lette headless, cli-reference, authentication). Difesa: il
+  figlio non riceve MAI chiavi API (lista di variabili permesse, test), quindi in bare
+  fallisce col login invece di addebitare a consumo (fail-closed, forte fermo);
+  `stato_abbonamento()` per il doctor dice quale login vede la CLI, senza token.
 """
 from __future__ import annotations
 
@@ -383,3 +390,48 @@ class ClaudeCliClient:
                                      finish_reason="tool_calls" if chiamate else "stop")],
             usage=SimpleNamespace(prompt_tokens=entrata, completion_tokens=uscita,
                                   costo_equivalente_usd=_costo_equivalente(dati, entrata, uscita, model)))
+
+
+
+# ── Chat M2 (2 novembre): stato dell'abbonamento per il doctor, ZERO token ──
+# `claude auth status` (cli-reference: «Show authentication status as JSON … Exits with
+# code 0 if logged in, 1 if not … `authMethod` field is one of `none`, `claude.ai`,
+# `oauth_token`, `api_key`, `api_key_helper`, or `third_party`») non apre una sessione.
+# Si lancia con lo STESSO ambiente filtrato del figlio vero: dice quale login userebbe.
+_LOGIN_ABBONAMENTO = frozenset({"claude.ai", "oauth_token"})
+
+
+def stato_abbonamento(binario: Optional[str] = None,
+                      runner: Optional[Callable[..., subprocess.CompletedProcess]] = None,
+                      timeout: float = 15) -> Tuple[str, str]:
+    """(esito, dettaglio) per il doctor: «OK» se la CLI usa il login dell'abbonamento,
+    «WARN» altrimenti (chiave API, nessun login, CLI vecchia o risposta illeggibile:
+    «non verificabile»). Mai un'eccezione, mai una chiamata al modello."""
+    exe = binario or os.environ.get("GAS_CLAUDE_BIN") or shutil.which("claude") or "claude"
+    esegui = runner or (lambda cmd, timeout: subprocess.run(
+        cmd, capture_output=True, text=True, errors="replace", timeout=timeout,
+        env=_ambiente_pulito(), cwd=tempfile.gettempdir(), check=False))
+    versione = "?"
+    try:
+        ver = esegui([exe, "--version"], timeout=timeout)
+        righe = str(ver.stdout or "").strip().splitlines() if ver.returncode == 0 else []
+        versione = next(iter(righe), "?")[:60]   # #632-M2: output vuoto o di soli spazi → «?»
+        st = esegui([exe, "auth", "status"], timeout=timeout)
+        dati = json.loads(st.stdout or "")
+        metodo = dati.get("authMethod") if isinstance(dati, dict) else None
+    except (OSError, subprocess.SubprocessError) as e:
+        return "WARN", f"non verificabile: comando claude non eseguibile ({type(e).__name__})"
+    except ValueError:   # JSON illeggibile (anche testo non UTF-8 con un runner diverso)
+        return "WARN", (f"non verificabile (versione {versione}): `claude auth status` non ha dato "
+                        "il metodo di login (CLI vecchia?)")
+    except Exception as e:  # #632-M2: il doctor non muore mai per un output strano della CLI
+        return "WARN", f"non verificabile ({type(e).__name__})"
+    if not isinstance(metodo, str):
+        return "WARN", (f"non verificabile (versione {versione}): `claude auth status` non ha dato "
+                        "il metodo di login (CLI vecchia?)")
+    if metodo in _LOGIN_ABBONAMENTO:
+        return "OK", f"login dell'abbonamento ({metodo}) · versione {versione}"
+    if metodo == "none" or st.returncode != 0:
+        return "WARN", f"nessun login (versione {versione}): sul computer di Gas `claude`, poi /login"
+    return "WARN", (f"login NON dell'abbonamento ({metodo}) · versione {versione}: il forte "
+                    "consumerebbe a pagamento o fallirebbe")

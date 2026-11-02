@@ -260,3 +260,23 @@ def test_dal_dotenv_al_doctor(env, tmp_path, monkeypatch, capsys):
     righe = _righe_forte(capsys, tmp_path)
     assert any("comando claude" in r and "WARN" in r and "ha un altro valore" in r
                and "/vecchio/claude" in r for r in righe), righe
+
+
+@pytest.mark.parametrize("metodo, esito", [("claude.ai", "OK"), ("api_key", "WARN")])
+def test_doctor_dice_quale_login_usa_il_forte(env, tmp_path, monkeypatch, capsys, metodo, esito):
+    """Chat M2 (futuro default --bare): il doctor dice se il forte userebbe il login
+    dell'abbonamento, con `claude auth status` (zero token), con la versione della CLI."""
+    for k in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+        env.pop(k, None)
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", {"GAS_CLAUDE_CLI", "GAS_CLAUDE_BIN"})
+    monkeypatch.setattr(gas, "_DOTENV_SCAVALCATE", set())
+    finto = tmp_path / "claude"
+    finto.write_text("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 2.1.300; exit 0; fi\n"
+                     f"if [ \"$1 $2\" = 'auth status' ]; then echo '{{\"authMethod\": \"{metodo}\"}}'; exit 0; fi\n"
+                     "echo NON-DEVE-PARTIRE >&2; exit 9\n")
+    finto.chmod(0o755)
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {"GAS_CLAUDE_BIN": str(finto)})
+    env["GAS_CLAUDE_CLI"] = "1"
+    env["GAS_CLAUDE_BIN"] = str(finto)
+    righe = [r for r in _righe_forte(capsys, tmp_path) if "login" in r]
+    assert len(righe) == 1 and esito in righe[0] and "2.1.300" in righe[0], righe
