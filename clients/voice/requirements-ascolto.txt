@@ -1,0 +1,4 @@
+# Solo per il Mac: l'ascolto sempre attivo (clients/voice/ascolto.py). NON va sul VPS.
+# Le installa scripts/voce/installa.sh, insieme a requirements.txt (numpy, onnxruntime).
+openwakeword==0.6.0
+sounddevice==0.5.2
