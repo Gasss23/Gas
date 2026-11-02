@@ -18,4 +18,5 @@
 - **Merge di main (PR #325, voce V7b) nella #324**: `FATTA` in 9174640, review #627 APPROVATO; file del perimetro identici a main.
 - **Bot su d783938 (PR #324)**: BOCCIATO (check failure). V-1 MEDIA (quinto percorso: file scritti con `write_file` in un turno mail e riletti sui gratuiti) e V-2 BASSA (conservazione del testo contraddittoria; proposta: turno mail tolto o mascherato dalla storia, anche dagli snapshot): `FATTA` nel piano.
 - **Bot su a48caa0 (PR #324)**: BOCCIATO. V-1 MEDIA (storia salvata anche a metà turno e copiata negli snapshot: mascheramento a ogni salvataggio, snapshot senza storia mail), V-2 BASSA (sì dell'operatore da richiedere sull'head nuovo), V-3 COSMETICA (nota del §3): `FATTA`.
+- **Bot su bd38966 (PR #324)**: BOCCIATO. V-1 MEDIA (rubrica libera dopo una mail: ora con una mail nella finestra resta libero solo `prepara_bozza`), V-2 BASSA (maschera anche sulla storia in memoria), V-3 COSMETICA: `FATTA`.
 - **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); `DEFERITA — PR subito dopo questa (un solo branch remoto)`.

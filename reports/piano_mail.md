@@ -55,13 +55,17 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    alla cascata gratuita. Quindi la fetta 1 deve cambiare il kernel. **Proposta: il
    turno mail si maschera in OGNI salvataggio della storia** (`_save_history` gira
    anche a metà turno, dopo ogni gruppo di strumenti, e un turno interrotto non arriva
-   mai alla fine), così il testo non arriva mai in `.gas_history.json`; e **gli snapshot
+   mai alla fine), così il testo non arriva mai in `.gas_history.json`; **la stessa
+   maschera vale per la storia in memoria** (`self.history`), perché nei processi accesi
+   (Telegram, voce) il kernel resta lo stesso da un turno all'altro e `_get_window`
+   porterebbe il turno non mascherato al turno dopo (V-2 bot #324 su bd38966); e **gli snapshot
    `refs/gas/snapshots/` fatti con un turno mail nella finestra escludono o mascherano
-   `.gas_history.json`** (oggi `_snapshot` lo aggiunge sempre prima di `write_file` e
-   `run_command`). Gli snapshot restano finché sono tra gli ultimi 100 o hanno meno di 7
+   `.gas_history.json`** (oggi `_snapshot` lo aggiunge prima di `write_file` e
+   `run_command` quando la storia è attiva e il file c'è, V-3 bot #324 su bd38966). Gli snapshot restano finché sono tra gli ultimi 100 o hanno meno di 7
    giorni, e gli oggetti restano fino a un `git gc`, che non parte mai da solo (V-1 bot
-   #324 su 7346994 e su a48caa0). In più, finché il turno è in corso, **una finestra
-   che contiene strumenti mail non va mai ai gratuiti** (aspetta il forte). Se invece
+   #324 su 7346994 e su a48caa0). In più **ogni finestra che contiene un turno mail
+   non va mai ai gratuiti** (aspetta il forte), durante il turno e dopo, con un test su
+   due turni nello stesso kernel. Se invece
    l'operatore preferisce tenere il turno nella storia, la conservazione (storia e
    snapshot, con quei tempi) va dichiarata nella domanda 7 (V-2 bot #324 su d783938). Lo stesso vale
    per le bozze salvate in Gas: si leggono solo nei turni sul forte. Senza questo, testo
@@ -76,17 +80,24 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
      Un contatto o una riga di diario nati da un turno mail vanno segnati con l'origine
      «mail» ed esclusi dal pin e da `ricorda` fuori dal forte. Finché questo non c'è (e
      finché la decisione 7 della roadmap sul GDPR non è presa), dalle mail **non si
-     salvano contatti**;
+     salvano contatti**: il meccanismo è la regola qui sotto (`salva_contatto` e
+     `imposta_stato_contatto` alla firma con una mail nella finestra, V-1 bot #324 su
+     bd38966);
    - **i file**: `write_file` sta in `_LIBERI_DOPO_LETTURA`, quindi a finestra contaminata
      scrive senza firma i .md/.txt/.csv nelle cartelle di lavoro, e `read_file` (SAFE) li
-     rilegge in un turno dopo sui gratuiti. Proposta: con `fetch_email` nella finestra,
-     `write_file` esce da `_LIBERI_DOPO_LETTURA` e va alla firma (oppure i file scritti
-     in un turno mail si segnano e non si leggono fuori dal forte), con un test.
+     rilegge in un turno dopo sui gratuiti.
+
+   **Regola unica per la memoria e i file (proposta):** con `fetch_email` nella finestra
+   `_LIBERI_DOPO_LETTURA` si riduce al solo `prepara_bozza`. Quindi `write_file`,
+   `salva_contatto` e `imposta_stato_contatto` vanno alla firma, e così ogni strumento
+   reversibile aggiunto in futuro, senza doverlo ricordare caso per caso. Un test per
+   ciascuno dei tre nomi, più uno che controlla che la lista dei liberi dopo una mail sia
+   esattamente {`prepara_bozza`}.
 7. **Fail-safe §9**: provider giù, token scaduto o risposta strana → messaggio
    «Operazione negata: …» e il turno va avanti, mai un crash.
 
 ## Fette (dopo le risposte)
-1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, per nessuno dei cinque percorsi: storia, riflessione, compressione, memoria, file scritti con `write_file`; turno mail mascherato in ogni salvataggio della storia, anche a metà turno, e `.gas_history.json` escluso o mascherato negli snapshot fatti con un turno mail nella finestra, con un test per ciascuno) e `notify_telegram` non più SAFE (aggiornando `test_notify_telegram_safe` in `tests/test_unit_gate.py`, V-2 bot #324 su 7346994).
+1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, per nessuno dei cinque percorsi: storia, riflessione, compressione, memoria, file scritti con `write_file`; con una mail nella finestra liberi solo `prepara_bozza`, quindi `write_file`, `salva_contatto` e `imposta_stato_contatto` alla firma; turno mail mascherato in ogni salvataggio della storia, anche a metà turno, e nella storia in memoria (test su due turni nello stesso kernel), e `.gas_history.json` escluso o mascherato negli snapshot fatti con un turno mail nella finestra, con un test per ciascuno) e `notify_telegram` non più SAFE (aggiornando `test_notify_telegram_safe` in `tests/test_unit_gate.py`, V-2 bot #324 su 7346994).
 2. Bozze in Gas.
 3. Invio con firma e token separato.
 4. Prova dal vero su una casella di prova, poi su quella vera.
