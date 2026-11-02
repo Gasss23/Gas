@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V7b: voce frase per frase (chat M2, coordinata da M1)
+**Sessione:** 2026-11-02 — Voce V7b: voce frase per frase (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su a73916a
 
 ---
 
@@ -16,6 +16,8 @@
 - **V7b — voce frase per frase**: `FATTA` (review #618–#622-M2).
 - **Allineamento alla V7a mergiata (#322) e a main**: `FATTA` (review #651-M2).
 - **V-3 COSMETICA del bot su #322** (tipo di `t_cervello`): `FATTA` (review #652-M2).
+- **Bot su a73916a** (APPROVATO CON RISERVE): V-1 (test della sintesi fermata con margine di una sola frase), V-2 (righe non chiuse su risposta illeggibile), V-3 (502 falso del proxy a pagina chiusa prima degli header), V-4 cosmetica (errore della voce a metà solo in console): `FATTE`, review #653-M2 APPROVATO.
+- **Verifica esterna su a73916a** (https://github.com/Gasss23/Gas/pull/325#issuecomment-6585732063): APPROVATO CON RISERVE, solo BASSE (§3 fermo a e111045: ora il log arriva alla testa; §6 senza CI; «fine» in ritardo e thread di guardia già dichiarati).
 - **V8, V9**: `DEFERITE` — una PR alla volta, dopo il merge della precedente.
 
 ---
@@ -23,15 +25,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  10 +++++++++
- clients/voice/browser_client.html  | 148 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
- clients/voice/browser_server.py    |  54 +++++++++++++++++++++++++++++++++++++++++++++
- modules/voice/server.py            |  87 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ .claude/agents/memoria_revisore.md |  11 +++++++++
+ clients/voice/browser_client.html  | 151 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ clients/voice/browser_server.py    |  59 ++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/voice/server.py            |  87 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  reports/diff_sessione.md           |  12 +++++-----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  21 ++++++++----------
- tests/test_unit_voice_server.py    | 297 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ reports/ultimo_report.md           |  22 ++++++++----------
+ tests/test_unit_voice_server.py    | 319 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -39,6 +41,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1196be7 fix(voce): righe chiuse su risposta illeggibile, proxy senza 502 falso a pagina chiusa, test della sintesi fermata più netto (V-1..V-4 bot #325 su a73916a; review #653-M2)
+fc1b96c chore(revisore): memoria review #653 — APPROVATO
+a73916a docs(voce-v7b): numero della PR #325 nei report
 e111045 docs(voce-v7b): report di fine task (review #618–#622-M2, #651–#652-M2)
 d1e9822 fix(voce): tempo del cervello senza risposta solo con t_cervello valorizzato (V-3 bot #322; review #652-M2)
 1fd1f5a chore(revisore): memoria review #652 — APPROVATO
@@ -261,13 +266,33 @@ Review #652-M2 su feat/voce-v7b-m2, dopo i merge ee8b079 e 9f2046e. In staging c
 
 (La review #651-M2 del merge precedente era già stata consegnata con APPROVATO. La sua riga in memoria è entrata nel commit di merge ee8b079.)
 
+Correzione delle note del bot su a73916a (1196be7). Review #653-M2:
+
+## VERDETTO: APPROVATO
+
+Review #653-M2. Branch feat/voce-v7b-m2 (PR #325). Ho esaminato il diff staged con `git diff --cached`: 3 file, 34 righe aggiunte e 4 tolte. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md e la memoria del revisore.
+
+Elementi del diff esaminati:
+- `tests/test_unit_voice_server.py:1342` — patch di `_PARLATO_MAX_FRASI` a 6 (V-1). Rischio esaminato: la patch potrebbe non agire, perché è una costante di modulo. `frasi_parlate` però la legge come globale al momento della chiamata (modules/voice/server.py:179), quindi la patch ha effetto. Mutante riprodotto: ho fatto restituire `True` a `riga()` anche a client chiuso (modules/voice/server.py:484). Risultato: `assert 6 <= 3`, 1 failed. Il margine ora è netto (6 contro ≤3, non più una sola sintesi). Ho ripristinato il file dall'index. Esito: ok.
+- `clients/voice/browser_server.py:207` — invio degli header di `_copia_righe` dentro try/except OSError, con log.warning e return (V-3). Rischio esaminato: un'eccezione degli header che risale fino all'`except (ConnectionRefusedError, OSError)` di `_proxy_voice` (clients/voice/browser_server.py:162, contesto) e dà un 502 falso. Ora si ferma prima. Il `finally` di `_inoltra_a_pezzi` (clients/voice/browser_server.py:203, contesto) chiude comunque `resp`, quindi il server voce non resta appeso. Mutante: con browser_server.py di HEAD il test nuovo (tests/test_unit_voice_server.py:1361) dà 1 failed; ripristinato dall'index. Esito: ok.
+- `clients/voice/browser_client.html:651` — `if (righe) righe.chiudi();` nel catch «risposta non leggibile» (V-2). Rischio esaminato: `righe` non definita, oppure `chiudi` che lancia un'eccezione. `righe` è dichiarata con `let ... righe = null` prima del try (clients/voice/browser_client.html:633). `chiudi()` è già protetto da try/catch (clients/voice/browser_client.html:701). Esito: ok.
+- `clients/voice/browser_client.html:718` — `console.warn` per un `errore_voce` arrivato dopo la prima riga (V-4 COSMETICA). Il controllo su typeof e sul valore non vuoto evita stampe vuote. Il testo a schermo non cambia. Esito: ok.
+
+Prove: test_unit_voice_server + test_unit_voice_stt, 184 passed riprodotti (test del browser compresi). Wall of Shame: nessuno slicing della history e nessuna simulazione di tool. Il diff non tocca kernel, provider, `_get_window` né i tetti.
+
+Rischio escluso: non ho verificato il comportamento reale nel browser (Safari/Chrome sul Mac) di `reader.cancel()` nel catch, né la chiusura vera del TCP verso il server voce in quel ramo. Non si può riprodurre in questo ambiente senza browser. Lo copre solo la logica del codice e la prova manuale dell'operatore.
+
+Memoria: riga contatore #653-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (fc1b96c). L'index del diff sotto review è intatto (3 file). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py` + `tests/test_unit_voice_stt.py`: 183 passed (browser obbligatorio, `GAS_TEST_BROWSER_OBBLIGATORIO=1`) dopo l'allineamento alla V7a; -k v7 di test_unit_voice_stt 11 passed dopo la #652-M2. I test nuovi della V7b stanno in `tests/test_unit_voice_server.py` (formato a pezzi nel server, proxy che inoltra le righe e chiude a monte, pagina nel browser coi modi «pezzi» e «pezzi_interrotti»). Kernel non toccato dalla fetta (`gas.py` identico a main).
+`tests/test_unit_voice_server.py` + `tests/test_unit_voice_stt.py`: 183 passed (browser obbligatorio, `GAS_TEST_BROWSER_OBBLIGATORIO=1`) dopo l'allineamento alla V7a; -k v7 di test_unit_voice_stt 11 passed dopo la #652-M2. I test nuovi della V7b stanno in `tests/test_unit_voice_server.py` (formato a pezzi nel server, proxy che inoltra le righe e chiude a monte, pagina nel browser coi modi «pezzi» e «pezzi_interrotti»). Dopo la #653-M2: 184 passed (test nuovo `test_v7b_pagina_chiusa_prima_degli_header`, mutante → 1 failed; tetto delle frasi a 6 nel test della sintesi fermata, mutante → 6 sintesi). Kernel non toccato dalla fetta (`gas.py` identico a main).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione (fino a e111045, pushati insieme: run sulla sola testa e111045, non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud: check lette dall'integrazione GitHub.
+- a73916a: handoff-check e smista success; suite completate (notifica check_suite.completed); verifica-bot: primo avvio annullato, secondo APPROVATO CON RISERVE.
+- 1196be7 (correzione), fc1b96c (memoria) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
