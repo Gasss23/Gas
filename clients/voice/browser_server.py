@@ -91,8 +91,8 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(cfg)
             return
-        if self.path == "/voci/elenco":   # V8: elenco delle voci dal server voce
-            self._inoltra_semplice("GET", "/voci/elenco", b"")
+        if self.path in ("/voci/elenco", "/voci/libreria"):   # V8/V8b: elenchi dal server voce
+            self._inoltra_semplice("GET", self.path, b"")
             return
         if self.path not in ("/", "/index.html", "/voci"):
             self._not_found()
@@ -136,12 +136,12 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
         if not self._stessa_origine():
             self._send_error_json(403, "Richiesta da un'altra pagina: rifiutata")
             return
-        if self.path == "/voci/prova":   # V8: prova di una voce (frase fissa)
+        if self.path in ("/voci/prova", "/voci/aggiungi"):   # V8/V8b: prova o aggiunta di una voce
             try:
                 n = int(self.headers.get("Content-Length", 0) or 0)
             except ValueError:
                 n = 0
-            self._inoltra_semplice("POST", "/voci/prova", self.rfile.read(min(max(n, 0), 4096)))
+            self._inoltra_semplice("POST", self.path, self.rfile.read(min(max(n, 0), 4096)))
             return
         if self.path != "/voice":
             self._not_found()

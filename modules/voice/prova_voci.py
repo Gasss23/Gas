@@ -90,3 +90,37 @@ def sintetizza_piper(testo: str, modello: str, timeout: float = 60) -> bytes:
                        check=True)
         with open(uscita, "rb") as f:
             return f.read()
+
+
+# ── V8b: libreria condivisa di ElevenLabs ──
+# Filtri della ricerca (nomi dei parametri DA VERIFICARE sulla documentazione ufficiale:
+# rete del cloud bloccata il 2026-11-02; se ElevenLabs li ignora, l'ordinamento qui sotto
+# rimette comunque in cima le voci maschili, britanniche e calme).
+FILTRI_LIBRERIA = {"gender": "male", "accent": "british", "page_size": "30"}
+# Categorie della libreria ammesse (elenco di ammesse: fuori «famous» e ogni categoria nuova).
+# R-627-1-M2: niente «high_quality» (potrebbero essere cloni istantanei, che nell'account
+# diventano «cloned» e la pagina non mostrerebbe): restano le voci professionali con
+# licenza e quelle create da descrizione.
+CATEGORIE_LIBRERIA_AMMESSE = frozenset({"professional", "generated"})
+MAX_LIBRERIA = 8
+_ID_PROPRIETARIO = re.compile(r"^[A-Za-z0-9]{8,80}$")
+DOC_LIBRERIA = "https://elevenlabs.io/docs/api-reference/voice-library/get-shared"
+AVVISO_LIBRERIA = (
+    "Le voci della libreria sono di altri utenti: per farle parlare in italiano vanno prima "
+    "aggiunte al tuo account (probabilmente occupano uno spazio voce: DA VERIFICARE). Costi e "
+    "limiti del tuo piano, e se l'anteprima è gratis, NON sono stati verificati da Gas (la "
+    "documentazione non era raggiungibile): controllali qui prima di aggiungere: " + DOC_LIBRERIA)
+
+
+def proprietario_valido(owner: Any) -> bool:
+    return isinstance(owner, str) and bool(_ID_PROPRIETARIO.match(owner))
+
+
+def ordina_libreria(voci: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+    """Le migliori MAX_LIBRERIA voci della libreria: categorie ammesse, id puliti,
+    candidate (maschili, britanniche, calme) prima."""
+    buone = [v for v in voci
+             if voce_valida(v.get("id")) and proprietario_valido(v.get("proprietario"))
+             and v.get("categoria", "").lower() in CATEGORIE_LIBRERIA_AMMESSE]
+    buone.sort(key=lambda v: (-_punteggio(v), v.get("nome", "")))
+    return [dict(v, candidata=_punteggio(v) >= 6) for v in buone[:MAX_LIBRERIA]]

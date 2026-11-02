@@ -72,7 +72,8 @@ from typing import Any, Dict, List, Optional
 
 from modules.voice.stt import GroqSTTError, TrascrizioneIncerta, parse_audio_body, transcribe_audio
 from modules.voice.tts import DEFAULT_VOICE_ID as _TTS_DEFAULT_VOICE_ID
-from modules.voice.tts import ElevenLabsTTSError, list_voices, synthesize_speech
+from modules.voice.tts import (ElevenLabsTTSError, add_shared_voice, list_shared_voices,
+                               list_voices, synthesize_speech)
 from modules.voice import prova_voci
 
 log = logging.getLogger(__name__)
@@ -246,6 +247,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
     # V8 (R-624-1-M2): id delle voci mostrate dall'ultimo elenco (già filtrate: niente
     # cloni); la prova accetta solo queste, non un id qualunque scritto a mano
     voci_ammesse: frozenset = frozenset()
+    # V8b: voci della libreria mostrate dall'ultima ricerca {id: (proprietario, nome)};
+    # si aggiungono all'account solo queste
+    libreria_ammesse: Dict[str, Any] = {}
+    aggiunte_voci: List[float] = []  # V8b: istanti delle aggiunte all'account (tetto orario)
 
     def log_message(self, fmt: str, *args: Any) -> None:
         log.info(fmt, *args)
@@ -309,7 +314,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         self._t0 = time.monotonic()
         self._tempi = {}
-        if self.path == "/voci/prova":  # V8: prova di una voce (frase fissa)
+        if self.path in ("/voci/prova", "/voci/aggiungi"):  # V8/V8b: prova o aggiunta di una voce
             if not self._check_auth():
                 self._send_json(401, {"error": "Unauthorized"})
                 return
@@ -321,7 +326,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._send_json(400, {"error": "Content-Length non valido"})
                 return
             self._tempi = None
-            self._prova_voce(self.rfile.read(n) if n else b"")
+            corpo = self.rfile.read(n) if n else b""
+            (self._prova_voce if self.path == "/voci/prova" else self._aggiungi_voce)(corpo)
             return
         if self.path != _ENDPOINT:
             self._send_json(404, {"error": "Not Found"})
@@ -615,11 +621,14 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         self._t0 = time.monotonic()
         self._tempi = None
-        if self.path != "/voci/elenco":
+        if self.path not in ("/voci/elenco", "/voci/libreria"):
             self._method_not_allowed()
             return
         if not self._check_auth():
             self._send_json(401, {"error": "Unauthorized"})
+            return
+        if self.path == "/voci/libreria":
+            self._libreria()
             return
         api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
         attuale = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
@@ -639,6 +648,70 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 log.warning("ElevenLabs elenco voci rete: %s", exc)
                 out["errore"] = "Errore di rete verso ElevenLabs"
         self._send_json(200, out)
+
+    def _libreria(self) -> None:
+        """V8b: GET /voci/libreria — le migliori voci della libreria condivisa (da aggiungere
+        all'account per provarle in italiano), con l'anteprima pubblica e l'avviso su costi e
+        limiti. Un errore (piano senza libreria, API diversa) torna nel JSON, mai un crash."""
+        type(self).libreria_ammesse = {}
+        out: Dict[str, Any] = {"voci": [], "avviso": prova_voci.AVVISO_LIBRERIA}
+        api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        if not api_key:
+            out["errore"] = "ELEVENLABS_API_KEY non configurata"
+            self._send_json(200, out)
+            return
+        try:
+            voci = prova_voci.ordina_libreria(list_shared_voices(api_key, prova_voci.FILTRI_LIBRERIA))
+        except ElevenLabsTTSError as exc:
+            log.warning("ElevenLabs libreria status=%s: %s", exc.status, exc.message)
+            out["errore"] = (f"Libreria ElevenLabs non disponibile ({exc.message}). Se il messaggio "
+                             "parla di piano o permessi, il tuo piano non la include.")
+            self._send_json(200, out)
+            return
+        except OSError as exc:
+            log.warning("ElevenLabs libreria rete: %s", exc)
+            out["errore"] = "Errore di rete verso ElevenLabs"
+            self._send_json(200, out)
+            return
+        type(self).libreria_ammesse = {v["id"]: (v["proprietario"], v["nome"]) for v in voci}
+        out["voci"] = voci
+        self._send_json(200, out)
+
+    def _aggiungi_voce(self, raw: bytes) -> None:
+        """V8b: POST /voci/aggiungi {"voce": id} — aggiunge all'account una voce della
+        libreria appena mostrata (mai un id qualunque). Tetto 5 aggiunte/ora: ogni aggiunta
+        cambia l'account (e probabilmente occupa uno spazio voce: da verificare)."""
+        try:
+            voce = (json.loads(raw) if raw else {}).get("voce")
+        except (ValueError, AttributeError):
+            self._send_json(400, {"error": "Body JSON non valido"})
+            return
+        voce_info = type(self).libreria_ammesse.get(voce) if isinstance(voce, str) else None
+        if voce_info is None:
+            self._send_json(409, {"error": "Voce non nella libreria mostrata: ricarica la pagina"})
+            return
+        api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        if not api_key:
+            self._send_json(503, {"error": "ELEVENLABS_API_KEY non configurata"})
+            return
+        adesso = time.monotonic()
+        recenti = [t for t in type(self).aggiunte_voci if adesso - t < 3600]
+        if len(recenti) >= 5:
+            self._send_json(429, {"error": "Troppe voci aggiunte nell'ultima ora (5): riprova più tardi."})
+            return
+        type(self).aggiunte_voci = recenti + [adesso]
+        proprietario, nome = voce_info
+        try:
+            nuovo = add_shared_voice(api_key, proprietario, voce, f"Gas - {nome}")
+        except ElevenLabsTTSError as exc:
+            log.warning("ElevenLabs aggiunta voce status=%s: %s", exc.status, exc.message)
+            self._send_json(502, {"error": f"ElevenLabs non ha aggiunto la voce: {exc.message}"})
+            return
+        except OSError as exc:
+            log.warning("ElevenLabs aggiunta voce rete: %s", exc)
+            self._send_json(502, {"error": "Errore di rete verso ElevenLabs"})
+            return
+        self._send_json(200, {"id": nuovo, "nome": nome})
 
     def _prova_voce(self, raw: bytes) -> None:
         """POST /voci/prova {"voce": id | "piper", "frase": 0..N-1} → audio della frase

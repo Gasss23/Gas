@@ -148,6 +148,8 @@ def server():
     _H.token = _TOKEN
     _H.prove_voci = []
     _H.voci_ammesse = frozenset({"George00000000001"})   # come dopo aver aperto l'elenco
+    _H.libreria_ammesse = {}
+    _H.aggiunte_voci = []
     srv = HTTPServer(("127.0.0.1", 0), _H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     try:
@@ -280,6 +282,9 @@ def _browser_server_module():
 def proxy_e_voce():
     """Proxy vero + server voce finto che registra le richieste (col token)."""
     viste = []
+    aggiunta = []   # V8b: dopo l'aggiunta l'elenco dell'account mostra la voce nuova
+    _OPZIONI["nascondi"] = False
+    _OPZIONI["rompi"] = False
 
     class _Voce(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -294,17 +299,38 @@ def proxy_e_voce():
 
         def do_GET(self):
             viste.append(("GET", self.path, self.headers.get("Authorization"), b""))
+            if self.path == "/voci/libreria":   # V8b
+                self._rispondi("application/json", json.dumps({
+                    "avviso": "AVVISO-COSTI", "voci": [
+                        {"id": "Libro000000000001", "proprietario": "Owner0000000001",
+                         "nome": "Maggiordomo", "genere": "male", "accento": "british",
+                         "anteprima": "https://esempio.invalid/a.mp3", "candidata": True}]}).encode())
+                return
+            if aggiunta and _OPZIONI.get("rompi"):
+                self.send_response(502)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", "15")
+                self.end_headers()
+                self.wfile.write(b'{"error": "ko"}')
+                return
             self._rispondi("application/json", json.dumps({
                 "voci": [{"id": "George00000000001", "nome": "George <b>x</b>", "genere": "male",
                           "accento": "british", "candidata": True, "attuale": False},
                          {"id": "Brian000000000001", "nome": "Brian", "candidata": False,
-                          "attuale": True}],
+                          "attuale": True}]
+                        + ([{"id": "Nuova000000000001", "nome": "Gas - Maggiordomo"}]
+                           if aggiunta and not _OPZIONI["nascondi"] else []),
                 "attuale": "Brian000000000001", "frasi": list(prova_voci.FRASI_PROVA),
                 "piper": True}).encode())
 
         def do_POST(self):
             corpo = self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
             viste.append(("POST", self.path, self.headers.get("Authorization"), corpo))
+            if self.path == "/voci/aggiungi":   # V8b
+                aggiunta.append(True)
+                self._rispondi("application/json", json.dumps({"id": "Nuova000000000001",
+                                                               "nome": "Maggiordomo"}).encode())
+                return
             self._rispondi("audio/wav", _wav_breve())
 
     voce = HTTPServer(("127.0.0.1", 0), _Voce)
@@ -385,6 +411,10 @@ def test_elenco_fallito_azzera_le_voci_ammesse(server, monkeypatch):
     assert tts.call_count == 0
 
 
+_OPZIONI = {"nascondi": False}   # V8b: la voce aggiunta non compare nell'elenco (R-627-1-M2)
+# o, con «rompi», l'elenco ricaricato dopo l'aggiunta fallisce (R-628-1-M2)
+
+
 def _wav_breve():
     import io
     import wave
@@ -436,13 +466,25 @@ const { chromium } = require('playwright');
   const visibile = await page.isVisible('#scelta');
   await page.click('#voci li:last-child button:has-text("scelgo questa")');
   const sceltaPiper = await page.textContent('#riga');
+  // V8b: libreria — avviso, anteprima presente, aggiunta con conferma
+  await page.waitForSelector('#libreria li');
+  const avviso = await page.textContent('#avvisoLib');
+  const libreria = await page.$$eval('#libreria li', ls => ls.map(l => l.textContent));
+  let dialogo = '';
+  page.once('dialog', d => { dialogo = d.message(); d.accept(); });
+  await page.click('#libreria li:first-child button:has-text("aggiungi al mio account")');
+  await page.waitForFunction(() => document.getElementById('statoLib').textContent.includes('aggiunta'));
+  const statoAggiunta = await page.textContent('#statoLib');
+  const fraseDopo = await page.inputValue('#frase');
   await browser.close();
-  console.log(JSON.stringify({ righe, scelta, visibile, sceltaPiper, errori }));
+  console.log(JSON.stringify({ righe, scelta, visibile, sceltaPiper, errori, avviso, libreria, dialogo,
+                               statoAggiunta, fraseDopo }));
 })().catch(e => { console.error(e); process.exit(1); });
 """
 
 
-def test_pagina_prova_voci_nel_browser(proxy_e_voce, tmp_path):
+@pytest.mark.parametrize("nascondi", [False, True, "rompi"])
+def test_pagina_prova_voci_nel_browser(proxy_e_voce, tmp_path, nascondi):
     obbligatorio = os.environ.get("GAS_TEST_BROWSER_OBBLIGATORIO") == "1"
     if not shutil.which("node") or subprocess.run(
             ["node", "-e", "require('playwright')"], capture_output=True).returncode != 0:
@@ -450,6 +492,8 @@ def test_pagina_prova_voci_nel_browser(proxy_e_voce, tmp_path):
             pytest.fail("node + playwright richiesti (GAS_TEST_BROWSER_OBBLIGATORIO=1) ma assenti")
         pytest.skip("node + playwright non disponibili")
     port, viste = proxy_e_voce
+    _OPZIONI["nascondi"] = nascondi is True
+    _OPZIONI["rompi"] = nascondi == "rompi"
     guida = tmp_path / "guida_voci.js"
     guida.write_text(_GUIDA_VOCI_JS)
     r = subprocess.run(["node", str(guida), f"http://127.0.0.1:{port}/voci"],
@@ -467,5 +511,127 @@ def test_pagina_prova_voci_nel_browser(proxy_e_voce, tmp_path):
     assert "in uso" in righe[1]["testo"]
     assert esito["visibile"] and esito["scelta"] == "ELEVENLABS_VOICE_ID=George00000000001"
     assert "Piper" in esito["sceltaPiper"] and "ELEVENLABS_VOICE_ID" not in esito["sceltaPiper"]
-    prova = [json.loads(c) for m, p, a, c in viste if m == "POST"]
+    prova = [json.loads(c) for m, p, a, c in viste if m == "POST" and p == "/voci/prova"]
     assert prova == [{"voce": "George00000000001", "frase": 1}]
+    # V8b: la libreria si vede con l'avviso sui costi; aggiungere chiede conferma (con
+    # l'avviso) e poi ricarica l'elenco dell'account
+    assert esito["avviso"] == "AVVISO-COSTI" and "Maggiordomo" in esito["libreria"][0]
+    assert "anteprima" in esito["libreria"][0] and "AVVISO-COSTI" in esito["dialogo"]
+    aggiunte = [json.loads(c) for m, p, a, c in viste if p == "/voci/aggiungi"]
+    assert aggiunte == [{"voce": "Libro000000000001"}]
+    assert [p for m, p, a, c in viste if m == "GET"].count("/voci/elenco") == 2
+    if nascondi == "rompi":   # R-628-1-M2: elenco non letto ≠ voce assente
+        assert "non si è ricaricato" in esito["statoAggiunta"], esito["statoAggiunta"]
+        return
+    if nascondi:   # R-627-1-M2: non si dice «è nell'elenco» se non c'è
+        assert "non compare" in esito["statoAggiunta"], esito["statoAggiunta"]
+    else:
+        assert "ora è nell'elenco" in esito["statoAggiunta"], esito["statoAggiunta"]
+    assert esito["fraseDopo"] == "1"   # R-627-3-M2: la frase scelta resta
+
+
+
+# ── V8b: libreria condivisa ──
+
+_LIB = {"voices": [
+    {"voice_id": "Libro000000000001", "public_owner_id": "Owner0000000001", "name": "Butler",
+     "category": "professional", "gender": "male", "accent": "british", "age": "middle_aged",
+     "descriptive": "calm", "preview_url": "https://storage.example/p.mp3"},
+    {"voice_id": "Famoso00000000001", "public_owner_id": "Owner0000000002", "name": "Star",
+     "category": "famous", "gender": "male", "accent": "british", "age": "old",
+     "descriptive": "calm", "preview_url": "https://storage.example/f.mp3"},
+    {"voice_id": "Libro000000000002", "public_owner_id": "../x", "name": "Strano",
+     "category": "professional", "gender": "male", "accent": "british"},
+    {"voice_id": "Libro000000000003", "public_owner_id": "Owner0000000003", "name": "Giovane",
+     "category": "high_quality", "gender": "male", "accent": "american", "age": "young",
+     "descriptive": "", "preview_url": "javascript:alert(1)"},
+]}
+
+
+def test_list_shared_voices_e_filtri():
+    from modules.voice.tts import list_shared_voices
+    conn = _Conn(200, json.dumps(_LIB).encode())
+    voci = list_shared_voices("k", {"gender": "male", "accent": "british", "vuoto": ""},
+                              _conn_factory=lambda: conn)
+    assert conn.richiesta[0] == "GET" and conn.richiesta[1] == "/v1/shared-voices?gender=male&accent=british"
+    assert voci[0] == {"id": "Libro000000000001", "proprietario": "Owner0000000001", "nome": "Butler",
+                       "categoria": "professional", "genere": "male", "accento": "british",
+                       "eta": "middle_aged", "descrizione": "calm",
+                       "anteprima": "https://storage.example/p.mp3"}
+    assert voci[3]["anteprima"] == ""   # solo https
+
+
+@pytest.mark.parametrize("status, corpo", [(403, b'{"detail": "piano"}'), (200, b'{"voices": 1}')])
+def test_list_shared_voices_errori(status, corpo):
+    from modules.voice.tts import list_shared_voices
+    with pytest.raises(ElevenLabsTTSError):
+        list_shared_voices("k", _conn_factory=lambda: _Conn(status, corpo))
+
+
+def test_add_shared_voice():
+    from modules.voice.tts import add_shared_voice
+
+    class _C(_Conn):
+        def request(self, metodo, percorso, headers=None, body=None):
+            self.richiesta = (metodo, percorso, headers, body)
+    conn = _C(200, b'{"voice_id": "Nuova000000000001"}')
+    assert add_shared_voice("k", "Owner0000000001", "Libro000000000001", "Gas - Butler",
+                            _conn_factory=lambda: conn) == "Nuova000000000001"
+    assert conn.richiesta[1] == "/v1/voices/add/Owner0000000001/Libro000000000001"
+    assert json.loads(conn.richiesta[3]) == {"new_name": "Gas - Butler"}
+    with pytest.raises(ElevenLabsTTSError):
+        add_shared_voice("k", "o", "v", "n", _conn_factory=lambda: _C(422, b'{"detail": "limite voci"}'))
+
+
+def test_ordina_libreria():
+    from modules.voice.tts import list_shared_voices
+    voci = list_shared_voices("k", _conn_factory=lambda: _Conn(200, json.dumps(_LIB).encode()))
+    out = prova_voci.ordina_libreria(voci)
+    # fuori famous, high_quality (R-627-1-M2) e proprietario strano
+    assert [v["nome"] for v in out] == ["Butler"] and out[0]["candidata"]
+
+
+def test_server_libreria_e_aggiunta(server, monkeypatch):
+    from modules.voice.tts import list_shared_voices
+    voci = list_shared_voices("k", _conn_factory=lambda: _Conn(200, json.dumps(_LIB).encode()))
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    with patch("modules.voice.server.add_shared_voice", return_value="Nuova000000000001") as add:
+        # prima della ricerca non si aggiunge niente
+        assert _chiama(server, "POST", "/voci/aggiungi", {"voce": "Libro000000000001"})[0] == 409
+        with patch("modules.voice.server.list_shared_voices", return_value=voci) as lib:
+            st, _, corpo = _chiama(server, "GET", "/voci/libreria")
+        dati = json.loads(corpo)
+        assert st == 200 and [v["nome"] for v in dati["voci"]] == ["Butler"]
+        assert "costi" in dati["avviso"].lower() and prova_voci.DOC_LIBRERIA in dati["avviso"]
+        assert lib.call_args.args[1] == prova_voci.FILTRI_LIBRERIA
+        assert _chiama(server, "POST", "/voci/aggiungi", {"voce": "Famoso00000000001"})[0] == 409
+        st, _, corpo = _chiama(server, "POST", "/voci/aggiungi", {"voce": "Libro000000000001"})
+    assert st == 200 and json.loads(corpo)["id"] == "Nuova000000000001"
+    assert add.call_args.args == ("k", "Owner0000000001", "Libro000000000001", "Gas - Butler")
+
+
+def test_server_libreria_non_disponibile(server, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    with patch("modules.voice.server.list_shared_voices",
+               side_effect=ElevenLabsTTSError(403, "ElevenLabs 403: plan does not include")):
+        st, _, corpo = _chiama(server, "GET", "/voci/libreria")
+    dati = json.loads(corpo)
+    assert st == 200 and dati["voci"] == [] and "piano" in dati["errore"] and "403" in dati["errore"]
+    monkeypatch.delenv("ELEVENLABS_API_KEY")
+    assert "ELEVENLABS_API_KEY" in json.loads(_chiama(server, "GET", "/voci/libreria")[2])["errore"]
+
+
+def test_server_aggiunta_tetto_ed_errore(server, monkeypatch):
+    from modules.voice.tts import list_shared_voices
+    voci = list_shared_voices("k", _conn_factory=lambda: _Conn(200, json.dumps(_LIB).encode()))
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    with patch("modules.voice.server.list_shared_voices", return_value=voci):
+        _chiama(server, "GET", "/voci/libreria")
+    with patch("modules.voice.server.add_shared_voice",
+               side_effect=ElevenLabsTTSError(422, "voice limit reached")):
+        st, _, corpo = _chiama(server, "POST", "/voci/aggiungi", {"voce": "Libro000000000001"})
+    assert st == 502 and "voice limit reached" in json.loads(corpo)["error"]
+    with patch("modules.voice.server.add_shared_voice", return_value="Nuova000000000001") as add:
+        stati = [_chiama(server, "POST", "/voci/aggiungi", {"voce": "Libro000000000001"})[0]
+                 for _ in range(5)]
+    assert stati == [200, 200, 200, 200, 429] and add.call_count == 4   # 5 all'ora, errore compreso
