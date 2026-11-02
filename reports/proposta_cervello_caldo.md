@@ -8,17 +8,21 @@ A ogni turno col cervello forte `brains/claude_cli.py` lancia da zero `claude -p
 
 ## Prima cosa da fare: misurare (5 minuti sul Mac, nessun codice)
 
-Va misurato col comando VERO di Gas, preso dal codice stesso (`ClaudeCliClient.comando`, stesse variabili d'ambiente filtrate da `_ambiente_pulito`: niente `ANTHROPIC_API_KEY`, quindi login dell'abbonamento come in Gas; stesso modello forte e stesso schema), lanciato da una cartella vuota (V-1/V-2 bot #320). Dal Terminale, nella cartella di Gas:
+Va misurato col comando VERO di Gas, preso dal codice stesso (`ClaudeCliClient.comando`, `.env` di Gas caricato prima come fa la CLI, stesse variabili d'ambiente filtrate da `_ambiente_pulito`: niente `ANTHROPIC_API_KEY`, quindi login dell'abbonamento come in Gas; stesso modello forte e stesso schema), lanciato da una cartella vuota (V-1/V-2 bot #320). Lo script stampa binario e modello: devono essere quelli di `python3 gas.py doctor`. Dal Terminale, nella cartella di Gas:
 
 ```
 cd ~/Gas && python3 - <<'PY'
 import json, os, subprocess, tempfile, time
+from gas import _carica_dotenv
+_carica_dotenv()   # come la CLI di Gas: il .env (modello, binario, login) prima di tutto
 from brains.claude_cli import ClaudeCliClient, _ambiente_pulito
 from brains.model_ids import MODEL_CLAUDE_FORTE
+modello = os.environ.get("GAS_MODEL_CLAUDE_FORTE") or MODEL_CLAUDE_FORTE
 with tempfile.TemporaryDirectory() as d:
     sistema = os.path.join(d, "sistema.txt")
     open(sistema, "w").write("Rispondi in una frase.")
-    cmd = ClaudeCliClient().comando(MODEL_CLAUDE_FORTE, sistema)
+    cmd = ClaudeCliClient().comando(modello, sistema)
+    print("binario:", cmd[0], "· modello:", modello, "(confronta con python3 gas.py doctor)")
     for domanda in ["rispondi solo: ok"] * 2 + ["riassumi: " + "parola " * 2000] * 2:
         t = time.monotonic()
         p = subprocess.run(cmd, input=domanda, capture_output=True, text=True, cwd=d,
