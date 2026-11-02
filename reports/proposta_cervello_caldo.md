@@ -36,7 +36,8 @@ with tempfile.TemporaryDirectory() as d:
             dati = json.loads(p.stdout)
         except ValueError:
             dati = None
-        if not isinstance(dati, dict) or dati.get("is_error") or p.returncode != 0:
+        if (not isinstance(dati, dict) or dati.get("is_error") or p.returncode != 0
+                or dati.get("subtype") != "success"):  # come Gas (V-1 bot #320)
             # una risposta d'errore (login scaduto, limite…) NON è una misura valida
             print("giro saltato, errore:", (p.stderr or p.stdout)[:200]); continue
         api = (dati.get("duration_api_ms") or 0) / 1000
