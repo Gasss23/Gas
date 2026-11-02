@@ -1,22 +1,22 @@
-# Ultimo report — 2026-11-02 — Voce V6 «capire meglio» (chat M2) — PR #318
+# Ultimo report — 2026-11-02 — Voce V7a: misura dei tempi (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #318 (https://github.com/Gasss23/Gas/pull/318): la mergia M1 se il bot dà APPROVATO pulito; con riserve aspetta il sì dell'operatore.
-2. Dopo il merge, prova sul Mac (`reports/prova_voce_mac.md`): guardare la riga «Ho capito: …»; se Gas dice spesso «Non ho capito bene» parlando chiaro, `GAS_VOICE_STT_LOGPROB_MIN=-1.3` nel `.env`.
+1. Merge della PR #322 (https://github.com/Gasss23/Gas/pull/322), secondo la regola di merge di CLAUDE.md §10.
+2. Sul Mac, dopo il merge: parlare a Gas dalla pagina del browser e leggere la riga «tempi: ascolto · cervello · voce · rete» (e in `gas_debug.log` le righe `gas.voce.tempi`): dicono dove si perde il tempo prima di scegliere V7b o il cervello «caldo».
 
 ## Esito delle fette
 
-- **V6.1 — trascrizione**: `FATTA` — `modules/voice/stt.py`: Whisper era già `whisper-large-v3`; ora `language=it`, `temperature=0`, `verbose_json`, prompt col vocabolario di Gas. Trascrizioni incerte (confidenza media pesata < -1,0; silenzio = no_speech > 0,8 E confidenza < -0,5; frasi inventate da Whisper sul silenzio; eco contigua del prompt di ≥4 parole) → «Non ho capito bene, puoi ripetere?» senza turno del kernel (conta nel tetto orario). Soglie via env.
-- **V6.2 — trasparenza**: `FATTA` — campo `capito` nelle risposte parlate del server; la pagina mostra «Ho capito: «…»» (solo testo).
-- **V6.3 — risposte e contesto**: `FATTA` — la storia c'era già (kernel unico della voce, il forte riceve la finestra degli ultimi messaggi). Nuovo `tests/test_unit_voice_contesto.py` (server + GasKernel vero, cervelli finti) lo prova per forte e normale; mutante su `_get_window` → 2 failed. ISTRUZIONE_VOCE / _SCHERMO: frasi brevi senza perdere il filo, parole storpiate dalla trascrizione, una sola domanda se ambiguo.
-- **V6.4 — tasto «non hai capito» con modello più grande**: `SALTATA` — usiamo già il modello più grande di Groq.
-- **Riserva V-1 bot #314** (Groq 500 conta nel tetto): `FATTA` (test). **V-2 bot #314** (conteggi §2 dell'handoff): `FATTA` (handoff riscritto con i conteggi della sessione).
-- **stato_progetto**: prova sul Mac della V5 passata, registrata.
-- gas.py / brains/: non toccati. ci.yml: solo il nuovo file di test nella voice suite.
-
-Review: #611-M2 APPROVATO CON RISERVE, #612-M2 APPROVATO CON RISERVE (riserve chiuse), #613-M2 APPROVATO. Test: voce stt + contesto 63 passed; stt+server+tts non-browser 122 passed (prima delle ultime correzioni a stt); pagina nel browser (obbligatoria) 10 passed.
+- **V7a — tempi della voce**: `FATTA` — ogni richiesta parlata misura trascrizione (Groq), cervello (`run_turn`) e voce (TTS), anche quando falliscono; il totale del server va nel JSON (`tempi`) o nell'intestazione `X-Gas-Tempi` (MP3); una riga INFO di soli numeri in `gas_debug.log` (logger `gas.voce.tempi`, non in console); la pagina mostra «tempi: ascolto · cervello · voce · rete». Review #614-M2 e #615-M2 CON RISERVE (chiuse), #616-M2 APPROVATO.
+- **Merge di main** (PR #318 V6 e #321): `FATTA` — conflitto in `do_POST` risolto tenendo i tempi della V7a e il reset di `_capito` della V6; review #643-M2 APPROVATO.
+- **Bot e verifica esterna su 33a0346**: V-1 bot (tempi a schermo anche sui guasti) e V-2 bot (il caricamento dell'audio è «rete», non server) `FATTE`, review #644/#645-M2; V-1 MEDIA ve (conflitto con main dopo la #320) `FATTA` col merge di main.
+- **Bot su 8dc872e** (MEDIA: tempi di un guasto invisibili al primo turno): `FATTA` — tempi fuori dal riquadro della risposta, riquadro davvero nascosto prima della prima risposta, «Ho capito» vecchio nascosto sul guasto; review #646/#647-M2.
+- **Bot e verifica esterna su 3a88f78**: conflitto con main dopo la #319 (MEDIA) `FATTA` col merge di main (#648-M2); «Ho capito» nascosto su ogni guasto e tempo del cervello anche senza risposta `FATTE` (#649-M2).
+- **Bot su 68d1584**: APPROVATO CON RISERVE (solo cosmetiche); sì dell'operatore; merge di main con la PR #323 `FATTA` (review #650-M2).
+- Test: voce + claude_cli + dotenv 258 passed (browser compresi); kernel 1072 PASS, 0 FAIL (dopo il merge della #319).
+- **V7b, V8, V9**: `DEFERITE` — PR in ordine dopo il merge della precedente (decisione dell'operatore riferita da M1).
 
 ## Anomalie
 
-- `gh` non autenticato nel cloud: PR aperta con l'integrazione GitHub.
+- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
+- La latenza vera si misura solo sul Mac.

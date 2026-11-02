@@ -905,7 +905,7 @@ const { chromium } = require('playwright');
   }
   await page.waitForFunction(() => {
     const t = document.getElementById('status').textContent;
-    return t.includes('conversazione chiusa') || t.includes('non riproducibile');
+    return t.includes('conversazione chiusa') || t.includes('non riproducibile') || t.startsWith('errore');
   }, null, { timeout: 25000 });
   await page.waitForTimeout(3000);   // niente turni né errori dopo la chiusura
   // V-1 bot #313: la soglia calcolata dalla pagina stessa, con 300 ms tutti di voce media
@@ -922,8 +922,9 @@ const { chromium } = require('playwright');
   });
   const tempi = await page.textContent('#tempi');   // V7
   const sorgenti = await page.evaluate(() => window.__sorgenti);
+  const tempiVisibili = await page.isVisible('#tempi');   // V-1 bot #322 su 8dc872e
   await browser.close();
-  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi, sorgenti }));
+  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi, sorgenti, tempiVisibili }));
 })().catch(async e => {
   console.error(e);
   try { console.error('STATI', JSON.stringify(await globalThis.__pagina.evaluate(() => window.__stati))); } catch (_) {}
@@ -934,7 +935,7 @@ const { chromium } = require('playwright');
 
 @pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa", "tetto", "errore",
                                   "interruzione", "interruzione_media", "colpo", "colpo_voce",
-                                  "sisubito", "pezzi", "pezzi_interrotti"])
+                                  "sisubito", "pezzi", "pezzi_interrotti", "guasto"])
 def test_v3_conversazione_nel_browser(tmp_path, modo):
     """Giro completo nella pagina vera (Chromium headless, microfono finto da file):
     clic → la frase parte da sola alla fine della voce (nessun secondo clic) → «ci sto
@@ -1031,6 +1032,15 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
                 except OSError:
                     pass
                 return
+            if modo == "guasto":  # V-1 bot #322: guasto lento, i tempi arrivano col 502
+                out = json.dumps({"error": "voce non disponibile",
+                                  "tempi": {"trascrizione": 0.5, "cervello": 1.25, "server": 2.0}}).encode()
+                self.send_response(502)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(out)))
+                self.end_headers()
+                self.wfile.write(out)
+                return
             out = json.dumps({"content": "Sì, meglio così. Procedo?", "audio": audio_b64,
                               "capito": "Gas, <b>meglio</b> così?",
                               "tempi": {"trascrizione": 0.5, "cervello": 1.25, "server": 2.0}}).encode()
@@ -1080,6 +1090,12 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     if modo not in ("interruzione", "interruzione_media", "colpo", "colpo_voce", "pezzi_interrotti"):
         assert len(ricevute) == 1, (ricevute, stati)
     assert ricevute[0][0] == "audio+testo+pezzi" and ricevute[0][2] > 0   # V7b
+    if modo == "guasto":
+        # V-1 bot #322: errore dichiarato e tempi a schermo anche sul guasto
+        assert stati[-1] == "errore: voce non disponibile", stati
+        assert esito["tempi"].startswith("tempi: ascolto 0.5s · cervello 1.3s · rete "), esito["tempi"]
+        assert esito["tempiVisibili"] is True  # visibili davvero, non solo nel testo
+        return
     assert testo == "Sì, meglio così. Procedo?"
     # V6: la pagina mostra cosa ha sentito, come testo (l'HTML nel parlato non diventa markup)
     assert esito["capito"]["testo"] == "Ho capito: «Gas, <b>meglio</b> così?»", esito["capito"]
@@ -1090,6 +1106,7 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     atteso = ("tempi: ascolto 0.5s · cervello 1.3s · voce 0.2s · rete " if modo == "pezzi"
               else "tempi: ascolto 0.5s · cervello 1.3s · rete ")   # V7b: a fine righe (interrotti: conta la 2ª risposta, JSON)
     assert t.startswith(atteso), t
+    assert esito["tempiVisibili"] is True
     assert float(t.rsplit("rete ", 1)[1].rstrip("s")) >= 0.5, t
     assert any("parli" in s for s in stati), stati
     assert any("ci sto ragionando" in s for s in stati), stati

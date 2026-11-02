@@ -38,6 +38,9 @@ Configurazione tramite variabili d'ambiente (da .env o export):
                         incerta (default -1.0 / 0.8): sotto/sopra → «Non ho capito bene, puoi
                         ripetere?» senza turno (V6). Risposte 200 della voce con il campo
                         "capito" = testo trascritto, mostrato dalla pagina.
+  GAS_VOICE_STT_ECO_NO_SPEECH — soglia (default 0.9) oltre la quale un'eco corta del
+                        prompt di Whisper (2-3 parole contigue, es. «Gas, forte, lead.») è
+                        scartata come silenzio; i comandi brevi detti davvero stanno sotto.
 
 Cervello forte dalla voce (V1, chat M2): «/forte <richiesta>» (testo) oppure, nel parlato
 trascritto, «forte <richiesta>» / «Gas forte <richiesta>» all'inizio della frase.
@@ -303,6 +306,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         self._t0 = time.monotonic()
         self._tempi = {}
+        self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
         if self.path != _ENDPOINT:
             self._send_json(404, {"error": "Not Found"})
             return
@@ -317,6 +321,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "Content-Length non valido"})
             return
         raw = self.rfile.read(length) if length > 0 else b""
+        # V-2 bot #322: il caricamento dell'audio dalla pagina è «rete», non tempo del server
+        self._t0 = time.monotonic()
 
         content_type = self.headers.get("Content-Type", "")
         ct_base = content_type.split(";")[0].strip().lower()
@@ -386,6 +392,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return
 
         if result_content is None:
+            self._segna("cervello", t_cervello)  # V-2 ve #322: turno finito senza final né error
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
 
@@ -404,9 +411,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
         formato chiesto dal client; `segno` è il campo JSON che la distingue."""
         if self._vuole_audio_testo():
             self._do_audio_testo_response(testo, {segno: True})
-        elif self._wants_audio():
+        elif self._wants_audio() and os.environ.get("ELEVENLABS_API_KEY", "").strip():
             self._do_tts_response(testo)
-        else:
+        else:  # V-2 bot #318: senza TTS il messaggio arriva lo stesso, come testo (mai un 503)
             out: Dict[str, Any] = {"content": testo, segno: True}
             if self._capito is not None:
                 out["capito"] = self._capito
