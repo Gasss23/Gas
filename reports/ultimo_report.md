@@ -1,7 +1,7 @@
 # Ultimo report — 2026-11-02 — Mani: fetta 38, voce H24 sistemata dopo la prova dal vero sul Mac
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR della fetta 38: lo decide l'operatore, perché tocca `.claude/perimetro_review.txt` (aggiunge `scripts/voce/`).
+1. Merge della PR #328 della fetta 38: lo decide l'operatore, perché tocca `.claude/perimetro_review.txt` (aggiunge `scripts/voce/`).
 2. Sul Mac, dopo il merge: `bash scripts/voce/installa.sh` due volte di fila (la seconda non deve fermarsi con «Bootstrap failed: 5»), poi una richiesta a voce e `grep "tempi voce" gas_debug.log` dalla cartella di Gas.
 
 ## Esito
