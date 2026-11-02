@@ -20,4 +20,6 @@
 - **Bot su a48caa0 (PR #324)**: BOCCIATO. V-1 MEDIA (storia salvata anche a metà turno e copiata negli snapshot: mascheramento a ogni salvataggio, snapshot senza storia mail), V-2 BASSA (sì dell'operatore da richiedere sull'head nuovo), V-3 COSMETICA (nota del §3): `FATTA`.
 - **Bot su bd38966 (PR #324)**: BOCCIATO. V-1 MEDIA (rubrica libera dopo una mail: ora con una mail nella finestra resta libero solo `prepara_bozza`), V-2 BASSA (maschera anche sulla storia in memoria), V-3 COSMETICA: `FATTA`.
 - **Bot su 754480d (PR #324)**: BOCCIATO. V-1 MEDIA (esito della firma) e V-2 BASSA (prodotti della riflessione): `FATTA` col principio strutturale (segno «mail» alla fonte, un solo controllo all'uscita prima di ogni chiamata ai non forti).
+- **Bot su 84b1422 (PR #324)**: APPROVATO CON RISERVE (check success), sì dell'operatore. V-1 BASSA (ElevenLabs e altri fornitori non modelli) e V-2 BASSA (rami del diario per gli strumenti mail): da registrare nella PR voce-fix, senza altri giri (decisione di M1).
+- **Merge di main (PR #326, voce V8) nella #324**: `FATTA` in 54a26db, review #630 APPROVATO; file del perimetro identici a main.
 - **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); `DEFERITA — PR subito dopo questa (un solo branch remoto)`.
