@@ -8,7 +8,7 @@ A ogni turno col cervello forte `brains/claude_cli.py` lancia da zero `claude -p
 
 ## Prima cosa da fare: misurare (5 minuti sul Mac, nessun codice)
 
-Va misurato col comando VERO di Gas, preso dal codice stesso (`ClaudeCliClient.comando`, `.env` di Gas caricato prima come fa la CLI, stesse variabili d'ambiente filtrate da `_ambiente_pulito`: niente `ANTHROPIC_API_KEY`, quindi login dell'abbonamento come in Gas; stesso modello forte e stesso schema), lanciato da una cartella vuota (V-1/V-2 bot #320). Lo script stampa binario e modello: devono essere quelli di `python3 gas.py doctor`. Dal Terminale, nella cartella di Gas:
+Va misurato col comando VERO di Gas, preso dal codice stesso (`ClaudeCliClient.comando`, `.env` di Gas caricato prima come fa la CLI, stesse variabili d'ambiente filtrate da `_ambiente_pulito`: niente `ANTHROPIC_API_KEY`, quindi login dell'abbonamento come in Gas; stesso modello forte e stesso schema), lanciato da una cartella vuota (V-1/V-2 bot #320). Lo script stampa binario e modello usati, per controllo. Dal Terminale, nella cartella di Gas:
 
 ```
 cd ~/Gas && python3 - <<'PY'
@@ -17,12 +17,12 @@ from gas import _carica_dotenv
 _carica_dotenv()   # come la CLI di Gas: il .env (modello, binario, login) prima di tutto
 from brains.claude_cli import ClaudeCliClient, _ambiente_pulito
 from brains.model_ids import MODEL_CLAUDE_FORTE
-modello = os.environ.get("GAS_MODEL_CLAUDE_FORTE") or MODEL_CLAUDE_FORTE
+modello = MODEL_CLAUDE_FORTE   # lo stesso valore di Gas (fissato all'import, come in gas.py)
 with tempfile.TemporaryDirectory() as d:
     sistema = os.path.join(d, "sistema.txt")
     open(sistema, "w").write("Rispondi in una frase.")
     cmd = ClaudeCliClient().comando(modello, sistema)
-    print("binario:", cmd[0], "· modello:", modello, "(confronta con python3 gas.py doctor)")
+    print("binario:", cmd[0], "· modello:", modello)
     for domanda in ["rispondi solo: ok"] * 2 + ["riassumi: " + "parola " * 2000] * 2:
         t = time.monotonic()
         p = subprocess.run(cmd, input=domanda, capture_output=True, text=True, cwd=d,
@@ -47,7 +47,7 @@ Se «avvio e resto» vale meno di 1–2 s su un turno a voce di 8–15 s, il pro
 | Idea | Mentre l'operatore parla e Whisper trascrive, `claude -p` è già partito e aspetta la domanda sullo stdin | Un processo `ClaudeSDKClient` resta acceso fra un turno e l'altro e riceve le domande in streaming | Un processo nuovo a ogni chiamata |
 | Risparmio | L'avvio, se l'avvio avviene davvero prima di leggere lo stdin: **da verificare** | L'avvio e forse parte del contesto | — |
 | Cosa tocca | `brains/claude_cli.py`: un processo «di scorta» (Popen) per il modello forte, sostituito dopo ogni uso; il system prompt per turno va passato quando parte la domanda, non all'avvio (oggi è un file passato all'avvio, da ripensare) | Nuova dipendenza (`claude-agent-sdk`, Python asincrono) e un client nuovo in `brains/`; probabilmente anche `gas.py` per tenere vivo il processo | Niente |
-| Rischio | Medio, con un nodo aperto (V-1 bot #320): ogni turno resta senza memoria e restano niente strumenti di Claude e lista di variabili permesse, MA il system prompt di ogni turno (codice casuale dei ruoli, istruzioni sui dati non fidati, pin dei lead) oggi arriva con `--system-prompt-file` all'avvio. Se il processo parte prima, quel prompt non si può mettere nello stdin (varrebbe come testo dell'utente e la difesa R-494 si indebolirebbe): va trovato un modo sicuro, per esempio un file scritto prima che la CLI lo legga, da verificare. Memoria del processo di scorta (è un processo Node): da misurare | **Alto**: la sessione accumula la conversazione per conto suo, fuori da `_get_window` e dal tetto della finestra di Gas. Si rischiano doppioni della storia, contesto che cresce, costi che salgono e il rischio di un taglio della cronologia sbagliato (§5 di CLAUDE.md). Bisogna verificare che i tool integrati si spengano del tutto: la doc dice che `disallowed_tools` toglie i tool nominati, ma non c'è una frase su «nessun tool» (**da verificare**). Un processo lungo va poi sorvegliato (crash, login scaduto, interrupt da svuotare: la doc avverte che `interrupt()` non svuota il buffer) | Nessuno |
+| Rischio | Medio, con un nodo aperto (V-1 bot #320): ogni turno resta senza memoria e restano niente strumenti di Claude e lista di variabili permesse, MA il system prompt di ogni turno (codice casuale dei ruoli, istruzioni sui dati non fidati, pin dei lead) oggi arriva con `--system-prompt-file` all'avvio. Se il processo parte prima, quel prompt non si può mettere nello stdin (varrebbe come testo dell'utente e si indebolirebbe la difesa del codice casuale per chiamata, review #496 che chiude R-494-1/2): va trovato un modo sicuro, per esempio un file scritto prima che la CLI lo legga, da verificare. Memoria del processo di scorta (è un processo Node): da misurare | **Alto**: la sessione accumula la conversazione per conto suo, fuori da `_get_window` e dal tetto della finestra di Gas. Si rischiano doppioni della storia, contesto che cresce, costi che salgono e il rischio di un taglio della cronologia sbagliato (§5 di CLAUDE.md). Bisogna verificare che i tool integrati si spengano del tutto: la doc dice che `disallowed_tools` toglie i tool nominati, ma non c'è una frase su «nessun tool» (**da verificare**). Un processo lungo va poi sorvegliato (crash, login scaduto, interrupt da svuotare: la doc avverte che `interrupt()` non svuota il buffer) | Nessuno |
 | Regole d'uso | Come oggi (via B del 23 ottobre: `claude -p` col login dell'abbonamento) | **Da verificare**: vedi sotto | Come oggi |
 
 ## Regole d'uso dell'abbonamento (cosa dice la documentazione letta il 2 novembre)
