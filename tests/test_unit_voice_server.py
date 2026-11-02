@@ -818,7 +818,8 @@ def test_v3_browser_proxy_config_e_finestra(monkeypatch, capsys):
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
     try:
         with _SENZA_PROXY.open(f"http://127.0.0.1:{proxy.server_address[1]}/config", timeout=5) as r:
-            assert json.loads(r.read()) == {"finestra": 7.5, "max_turni": 5, "interruzione": True}
+            assert json.loads(r.read()) == {"finestra": 7.5, "max_turni": 5, "interruzione": True,
+                                            "agc": True}   # V9: acceso di default
     finally:
         proxy.shutdown()
         proxy.server_close()
@@ -842,11 +843,15 @@ def test_v3_browser_proxy_config_e_finestra(monkeypatch, capsys):
         assert "GAS_VOICE_MAX_TURNI" in capsys.readouterr().out
 
 
-def _wav(percorso, pezzi, rate=16000):
-    """WAV mono 16 bit: pezzi = [(secondi, ampiezza)], ampiezza 0 = silenzio."""
+def _wav(percorso, pezzi, rate=16000, rumore=0.0):
+    """WAV mono 16 bit: pezzi = [(secondi, ampiezza)], ampiezza 0 = silenzio.
+    V9: `rumore` = ampiezza di un ronzio costante a 150 Hz sommato a tutto (ventola, TV).
+    Un ronzio e non rumore bianco: il rumore bianco lo toglie già la noiseSuppression del
+    browser, e il test non proverebbe la soglia del fondo."""
     import math
     import struct
     import wave
+    t = 0
     with wave.open(str(percorso), "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
@@ -855,6 +860,9 @@ def _wav(percorso, pezzi, rate=16000):
         for secondi, amp in pezzi:
             for i in range(int(secondi * rate)):
                 v = amp * math.sin(2 * math.pi * 220 * i / rate) if amp else 0.0
+                if rumore:
+                    v = max(-1.0, min(1.0, v + rumore * math.sin(2 * math.pi * 150 * t / rate)))
+                t += 1
                 frames += struct.pack("<h", int(v * 32767))
         w.writeframes(bytes(frames))
 
@@ -914,6 +922,18 @@ const { chromium } = require('playwright');
     voceMedia: sogliaDaCampioni(Array(6).fill(0.07)),
     rumore: sogliaDaCampioni(Array(6).fill(0.004)),
     vuoto: sogliaDaCampioni([]) }));
+  // V9: la soglia del fondo calcolata dalla pagina: troppo pochi campioni → 0; rumore
+  // costante 0,06 → 0,12; parole con le pause → resta bassa; rumore fortissimo → tetto
+  const fondo = await page.evaluate(() => {
+    const prova = valori => { fondo.length = 0; fondo.push(...valori); return sogliaFondo(); };
+    const parole = Array.from({ length: 60 }, (_, i) => (i % 4 === 0 ? 0.01 : 0.3));
+    const interr = valori => { fondo.length = 0; fondo.push(...valori); return sogliaInterruzione(); };
+    const esito = { poco: prova(Array(10).fill(0.06)), costante: prova(Array(60).fill(0.06)),
+             parole: prova(parole), forte: prova(Array(60).fill(0.5)),
+             interrVuoto: interr([]), interrRumore: interr(Array(60).fill(0.06)) };
+    fondo.length = 0;
+    return esito;
+  });
   const stati = await page.evaluate(() => window.__stati);
   const testo = await page.textContent('#testo');
   const capito = await page.evaluate(() => {   // V6: «Ho capito: …» visibile, solo testo
@@ -923,7 +943,7 @@ const { chromium } = require('playwright');
   const tempi = await page.textContent('#tempi');   // V7
   const sorgenti = await page.evaluate(() => window.__sorgenti);
   await browser.close();
-  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi, sorgenti }));
+  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi, sorgenti, fondo }));
 })().catch(async e => {
   console.error(e);
   try { console.error('STATI', JSON.stringify(await globalThis.__pagina.evaluate(() => window.__stati))); } catch (_) {}
@@ -934,7 +954,7 @@ const { chromium } = require('playwright');
 
 @pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa", "tetto", "errore",
                                   "interruzione", "interruzione_media", "colpo", "colpo_voce",
-                                  "sisubito", "pezzi", "pezzi_interrotti"])
+                                  "sisubito", "pezzi", "pezzi_interrotti", "rumore_costante"])
 def test_v3_conversazione_nel_browser(tmp_path, modo):
     """Giro completo nella pagina vera (Chromium headless, microfono finto da file):
     clic → la frase parte da sola alla fine della voce (nessun secondo clic) → «ci sto
@@ -973,6 +993,12 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         # (~10,7 s) e la voce a ~9,6 s interrompe Gas MENTRE ASPETTA la terza: quando
         # arriva NON deve suonare
         _wav(microfono, [(0.8, 0), (1.5, 0.4), (7.3, 0), (1.2, 0.4), (8, 0)])
+    elif modo == "rumore_costante":
+        # V9 (R-584-1-M2): TV sempre accesa (rumore RMS ~0,06, sopra la vecchia soglia
+        # massima 0,045) e una frase a ~0,8 s. Prima il rumore contava come voce e la
+        # frase non finiva mai (fino a 60 s); ora: una sola frase, poi la finestra si
+        # chiude per silenzio nonostante la TV.
+        _wav(microfono, [(0.8, 0), (1.5, 0.5), (14, 0)], rumore=0.3)
     elif modo == "sisubito":
         # V-1 bot #311 su c3079f4: voce già nei primi 300 ms dell'ascolto (un «sì» detto
         # subito) → deve contare come frase, non come rumore di fondo. (A volume medio lo
@@ -1052,6 +1078,8 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     _Proxy.voice_port = voce.server_address[1]
     _Proxy.finestra = 2
     _Proxy.max_turni = 1 if modo == "tetto" else 5
+    # V9: con un ronzio costante si spegne l'AGC (GAS_VOICE_AGC=0, il rimedio della guida)
+    _Proxy.agc = modo != "rumore_costante"
     proxy = bs.ThreadingHTTPServer(("127.0.0.1", 0), _Proxy)
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
     guida = tmp_path / "guida.js"
@@ -1106,6 +1134,18 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     if modo == "colpo_voce":
         assert len(ricevute) == 2, (ricevute, stati)   # il colpo no, la frase vera sì
         return
+    if modo == "rumore_costante":
+        # V9: col ronzio sempre acceso (e AGC spento) una sola frase, Gas non si zittisce da
+        # solo e la finestra si chiude per silenzio. Qui a reggere è la grazia di 500 ms
+        # (il salto del rumore quando Gas comincia a parlare); la soglia d'interruzione che
+        # sale col fondo è provata solo come funzione qui sotto (R-630-1-M2)
+        assert not any("mi hai interrotto" in s for s in stati), stati
+        assert "conversazione chiusa" in stati[-1], stati
+        fondo = esito["fondo"]
+        assert fondo["poco"] == 0 and abs(fondo["costante"] - 0.12) < 1e-9, fondo
+        assert fondo["parole"] < 0.05 and fondo["forte"] == 0.2, fondo
+        # e la soglia per zittire Gas sale col rumore (0,06 → 1,5 × 0,12)
+        assert fondo["interrVuoto"] == 0.06 and abs(fondo["interrRumore"] - 0.18) < 1e-9, fondo
     if modo == "pezzi":
         # V7b: le due frasi suonano una dopo l'altra, poi il giro continua come sempre;
         # R-618-3-M2: a fine risposta il player riceve tutta la parte parlata (3ª sorgente)
@@ -1366,3 +1406,32 @@ def test_v7b_guardia_della_pagina(evento, chiude):
     voce = _Voce()
     h._guarda_pagina(voce)
     assert voce.chiusa is chiude
+
+
+
+@pytest.mark.parametrize("valore, atteso", [(None, True), ("0", False), ("off", False),
+                                            ("no", False), ("1", True), ("sì", True)])
+def test_v9_gas_voice_agc(monkeypatch, valore, atteso):
+    """R-630-3-M2: GAS_VOICE_AGC=0/off/no spegne il guadagno automatico del microfono
+    (arriva alla pagina via /config); assente o altro → acceso, come prima."""
+    bs = _browser_server_module()
+    monkeypatch.setattr(bs, "_load_dotenv", lambda root: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "tok")
+    for k in ("GAS_VOICE_TIMEOUT", "GAS_VOICE_FINESTRA", "GAS_VOICE_MAX_TURNI", "GAS_BROWSER_PORT"):
+        monkeypatch.delenv(k, raising=False)
+    if valore is None:
+        monkeypatch.delenv("GAS_VOICE_AGC", raising=False)
+    else:
+        monkeypatch.setenv("GAS_VOICE_AGC", valore)
+
+    class _Fermo(Exception):
+        pass
+
+    class _NonParte:
+        def __init__(self, *a):
+            raise _Fermo()
+
+    monkeypatch.setattr(bs, "ThreadingHTTPServer", _NonParte)
+    with pytest.raises(_Fermo):
+        bs.run_browser_server()
+    assert bs.BrowserProxyHandler.agc is atteso
