@@ -1,22 +1,21 @@
-# Ultimo report — 2026-11-02 — Voce V7a: misura dei tempi (chat M2)
+# Ultimo report — 2026-11-02 — Voce V7b: voce frase per frase (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #322 (https://github.com/Gasss23/Gas/pull/322), secondo la regola di merge di CLAUDE.md §10.
-2. Sul Mac, dopo il merge: parlare a Gas dalla pagina del browser e leggere la riga «tempi: ascolto · cervello · voce · rete» (e in `gas_debug.log` le righe `gas.voce.tempi`): dicono dove si perde il tempo prima di scegliere V7b o il cervello «caldo».
+1. Merge della PR #325 (https://github.com/Gasss23/Gas/pull/325), secondo la regola di merge di CLAUDE.md §10.
+2. Sul Mac, dopo il merge: parlare a Gas dalla pagina del browser e sentire se comincia a rispondere dopo la prima frase; confrontare la riga «tempi» con quella della V7a.
 
 ## Esito delle fette
 
-- **V7a — tempi della voce**: `FATTA` — ogni richiesta parlata misura trascrizione (Groq), cervello (`run_turn`) e voce (TTS), anche quando falliscono; il totale del server va nel JSON (`tempi`) o nell'intestazione `X-Gas-Tempi` (MP3); una riga INFO di soli numeri in `gas_debug.log` (logger `gas.voce.tempi`, non in console); la pagina mostra «tempi: ascolto · cervello · voce · rete». Review #614-M2 e #615-M2 CON RISERVE (chiuse), #616-M2 APPROVATO.
-- **Merge di main** (PR #318 V6 e #321): `FATTA` — conflitto in `do_POST` risolto tenendo i tempi della V7a e il reset di `_capito` della V6; review #643-M2 APPROVATO.
-- **Bot e verifica esterna su 33a0346**: V-1 bot (tempi a schermo anche sui guasti) e V-2 bot (il caricamento dell'audio è «rete», non server) `FATTE`, review #644/#645-M2; V-1 MEDIA ve (conflitto con main dopo la #320) `FATTA` col merge di main.
-- **Bot su 8dc872e** (MEDIA: tempi di un guasto invisibili al primo turno): `FATTA` — tempi fuori dal riquadro della risposta, riquadro davvero nascosto prima della prima risposta, «Ho capito» vecchio nascosto sul guasto; review #646/#647-M2.
-- **Bot e verifica esterna su 3a88f78**: conflitto con main dopo la #319 (MEDIA) `FATTA` col merge di main (#648-M2); «Ho capito» nascosto su ogni guasto e tempo del cervello anche senza risposta `FATTE` (#649-M2).
-- **Bot su 68d1584**: APPROVATO CON RISERVE (solo cosmetiche); sì dell'operatore; merge di main con la PR #323 `FATTA` (review #650-M2).
-- Test: voce + claude_cli + dotenv 258 passed (browser compresi); kernel 1072 PASS, 0 FAIL (dopo il merge della #319).
-- **V7b, V8, V9**: `DEFERITE` — PR in ordine dopo il merge della precedente (decisione dell'operatore riferita da M1).
+- **V7b — voce frase per frase**: `FATTA` — formato «audio+testo+pezzi»: il server manda righe NDJSON (testo + prima frase, poi le altre frasi, poi «fine» coi tempi), una sintesi per frase; errore della voce → stop; pagina chiusa → stop della sintesi. Il proxy della pagina inoltra le righe appena arrivano e chiude la connessione verso il server se la pagina se ne va. La pagina suona le frasi in fila; interruzione, pausa ed errore fermano le frasi in arrivo; riascolto di tutta la parte parlata. Review #618–#621-M2 (riserve chiuse), #622-M2 APPROVATO.
+- **Allineamento alla V7a mergiata (PR #322) e a main**: `FATTA` — test nel browser con i modi «pezzi», «pezzi_interrotti» e «guasto» insieme; review #651-M2 APPROVATO.
+- **V-3 COSMETICA del bot su #322** (tipo di `t_cervello`): `FATTA`, review #652-M2 APPROVATO.
+- Test: test_unit_voice_server + test_unit_voice_stt 183 passed (browser obbligatorio); 184 dopo la #653-M2.
+- **Bot e verifica esterna su a73916a**: APPROVATO CON RISERVE (solo basse/cosmetiche); note del bot `FATTE` (righe chiuse su risposta illeggibile, proxy senza 502 falso, test più netto, errore della voce in console), review #653-M2.
+- **Bot su 6010448**: riascolto completo anche col play premuto prima della fine delle frasi `FATTA` (review #654-M2, riserve basse R-654-1/2 in stato_progetto); descrizione della PR aggiornata.
+- **V8, V9**: `DEFERITE` — PR in ordine dopo il merge della precedente.
 
 ## Anomalie
 
 - `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
-- La latenza vera si misura solo sul Mac.
+- La resa vera (MP3 frase per frase con ElevenLabs, Safari/Chrome sul Mac) si prova solo sul Mac.

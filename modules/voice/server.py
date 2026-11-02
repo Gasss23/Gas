@@ -107,6 +107,9 @@ _NON_HO_CAPITO = "Non ho capito bene, puoi ripetere?"
 # con il testo intero (a schermo) e l'audio della sola parte parlata, corta: le prime
 # frasi, entro _PARLATO_MAX_CHAR. Il resto si legge.
 _FORMATO_AUDIO_TESTO = "audio+testo"
+# V7b (chat M2): come «audio+testo», ma la risposta arriva a righe JSON (NDJSON) mentre la
+# voce viene sintetizzata frase per frase: la pagina comincia a parlare dopo la prima frase.
+_FORMATO_PEZZI = "audio+testo+pezzi"
 _PARLATO_MAX_FRASI = 3
 _PARLATO_MAX_CHAR = 400
 _PARLATO_RESTO = " Il resto è a schermo."
@@ -144,6 +147,23 @@ ISTRUZIONE_VOCE_SCHERMO = (
 _PARAGRAFO = re.compile(r"\n[ \t]*\n")
 
 
+def _dividi_frasi(testo: str) -> List[str]:
+    """Frasi di un testo già su una riga; «Dott. Rossi» non è una fine frase (R-574-4-M2)."""
+    frasi: List[str] = []
+    for pezzo in (f for f in _FINE_FRASE.split(testo) if f):
+        if frasi and _ABBREVIAZIONE.search(frasi[-1]):
+            frasi[-1] = f"{frasi[-1]} {pezzo}"
+        else:
+            frasi.append(pezzo)
+    return frasi
+
+
+def frasi_parlate(testo: str) -> List[str]:
+    """V7b: la parte parlata (vedi parte_parlata) divisa in frasi, da sintetizzare una alla
+    volta. Unite di nuovo con uno spazio danno esattamente parte_parlata(testo)."""
+    return _dividi_frasi(parte_parlata(testo))
+
+
 def parte_parlata(testo: str) -> str:
     """Le prime frasi di `testo` da dire a voce (≤ _PARLATO_MAX_FRASI frasi e
     ≤ _PARLATO_MAX_CHAR caratteri); se il testo è più lungo aggiunge «Il resto è a
@@ -154,13 +174,7 @@ def parte_parlata(testo: str) -> str:
         primo = parte_parlata(pezzi[0])
         return primo if primo.endswith(_PARLATO_RESTO) else primo + _PARLATO_RESTO
     testo = " ".join(testo.split())  # R-574-4-M2: a capo e spazi doppi non contano
-    frasi: list[str] = []
-    for pezzo in (f for f in _FINE_FRASE.split(testo) if f):
-        # R-574-4-M2: «Dott. Rossi» non è una fine frase
-        if frasi and _ABBREVIAZIONE.search(frasi[-1]):
-            frasi[-1] = f"{frasi[-1]} {pezzo}"
-        else:
-            frasi.append(pezzo)
+    frasi = _dividi_frasi(testo)
     parlato = ""
     for f in frasi[:_PARLATO_MAX_FRASI]:
         prova = f"{parlato} {f}".strip()
@@ -378,7 +392,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return
 
         if result_content is None:
-            self._segna("cervello", t_cervello)  # V-2 ve #322: turno finito senza final né error
+            if t_cervello is not None:  # V-2 ve #322: turno finito senza final né error (V-3 bot: tipo)
+                self._segna("cervello", t_cervello)
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
 
@@ -410,8 +425,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
         adesso = time.monotonic()
         return [t for t in self.turni_parlati if adesso - t < 3600]
 
+    def _formato(self) -> str:
+        return self.headers.get("X-Gas-Formato", "").strip().lower()
+
     def _vuole_audio_testo(self) -> bool:
-        return self.headers.get("X-Gas-Formato", "").strip().lower() == _FORMATO_AUDIO_TESTO
+        return self._formato() in (_FORMATO_AUDIO_TESTO, _FORMATO_PEZZI)
 
     def _do_audio_testo_response(self, text: str, extra: Optional[Dict[str, Any]] = None) -> None:
         """V3: JSON {"content": testo intero, "audio": base64 MP3 della parte parlata}.
@@ -427,6 +445,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
             out["errore_voce"] = "TTS non disponibile: ELEVENLABS_API_KEY non configurata"
         else:
             voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+            if self._formato() == _FORMATO_PEZZI:
+                self._do_pezzi_response(out, frasi_parlate(text), api_key, voice_id)
+                return
             t = time.monotonic()
             try:
                 out["audio"] = base64.b64encode(
@@ -440,6 +461,54 @@ class VoiceHandler(BaseHTTPRequestHandler):
             finally:  # R-614-1-M2: anche un TTS fallito o in timeout ha il suo tempo
                 self._segna("voce", t)
         self._send_json(200, out)
+
+    def _do_pezzi_response(self, primo: Dict[str, Any], frasi: List[str], api_key: str,
+                           voice_id: str) -> None:
+        """V7b: risposta a righe JSON (NDJSON), una sintesi per frase.
+        Riga 1: `primo` (content, capito, …) + "audio" della prima frase + "pezzi" (frasi
+        totali). Poi una riga {"audio": …} per ogni frase successiva, appena pronta. Ultima
+        riga {"fine": true, "tempi": …}. Un errore TTS a metà → riga {"errore_voce": …} e
+        stop (il testo è già a schermo). Il client che chiude la connessione ferma la
+        sintesi (niente spesa per frasi che nessuno ascolta)."""
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+        self.end_headers()  # HTTP/1.0: niente Content-Length, la fine è la chiusura
+
+        def riga(obj: Dict[str, Any]) -> bool:
+            try:
+                self.wfile.write(json.dumps(obj, ensure_ascii=False).encode("utf-8") + b"\n")
+                self.wfile.flush()
+                return True
+            except OSError as exc:  # pagina chiusa o interrotta: si smette di sintetizzare
+                log.warning("voce a pezzi: client chiuso (%s)", type(exc).__name__)
+                return False
+
+        t_tutta = time.monotonic()
+        aperto = True
+        for i, frase in enumerate(frasi):
+            uscita: Dict[str, Any] = dict(primo, pezzi=len(frasi)) if i == 0 else {}
+            t = time.monotonic()
+            errore: Optional[str] = None
+            try:
+                uscita["audio"] = base64.b64encode(
+                    synthesize_speech(frase, api_key, voice_id)).decode("ascii")
+            except ElevenLabsTTSError as exc:
+                log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
+                errore = f"Errore TTS ElevenLabs: {exc.message}"
+            except OSError as exc:
+                log.warning("ElevenLabs TTS network error: %s", exc)
+                errore = "Errore di rete verso ElevenLabs TTS"
+            if i == 0:
+                self._segna("voce", t)  # tempo fino alla prima frase: quello che si sente
+            if errore is not None:
+                uscita["errore_voce"] = errore
+            aperto = riga(uscita)
+            if errore is not None or not aperto:
+                break
+        self._segna("voce_tutta", t_tutta)
+        tempi = self._chiudi_tempi(200)
+        if aperto:
+            riga({"fine": True, **({"tempi": tempi} if tempi else {})})
 
     def _do_tts_response(self, text: str) -> None:
         """Sintetizza text via ElevenLabs e invia i byte MP3. Invia l'errore HTTP se fallisce.
