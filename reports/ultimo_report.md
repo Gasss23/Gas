@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della V7b (numero nell'handoff §0), secondo la regola di merge di CLAUDE.md §10.
+1. Merge della PR #325 (https://github.com/Gasss23/Gas/pull/325), secondo la regola di merge di CLAUDE.md §10.
 2. Sul Mac, dopo il merge: parlare a Gas dalla pagina del browser e sentire se comincia a rispondere dopo la prima frase; confrontare la riga «tempi» con quella della V7a.
 
 ## Esito delle fette

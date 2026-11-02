@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. PR della V7b: da aprire (numero dopo la creazione).
+1. Merge della PR #325 (https://github.com/Gasss23/Gas/pull/325). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5125667041","url":"https://github.com/Gasss23/Gas/pull/325"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
 2. Sul Mac, dopo il merge: sentire se Gas comincia a parlare dopo la prima frase e leggere la riga «tempi».
 
 ---
@@ -39,6 +39,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e111045 docs(voce-v7b): report di fine task (review #618–#622-M2, #651–#652-M2)
 d1e9822 fix(voce): tempo del cervello senza risposta solo con t_cervello valorizzato (V-3 bot #322; review #652-M2)
 1fd1f5a chore(revisore): memoria review #652 — APPROVATO
 9f2046e Merge remote-tracking branch 'origin/main' into feat/voce-v7b-m2
@@ -266,7 +267,7 @@ Review #652-M2 su feat/voce-v7b-m2, dopo i merge ee8b079 e 9f2046e. In staging c
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud. Commit della sessione (fino a e111045, pushati insieme: run sulla sola testa e111045, non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
