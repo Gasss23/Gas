@@ -1,20 +1,17 @@
-# Ultimo report — 2026-11-02 — Voce V8: pagina «prova voci» e libreria condivisa (chat M2)
+# Ultimo report — 2026-11-02 — Voce V9: rumore (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #326 (https://github.com/Gasss23/Gas/pull/326), secondo la regola di merge di CLAUDE.md §10.
-2. Sul Mac, dopo il merge: aprire la pagina «prova voci» (guida in `reports/prova_voce_mac.md`), ascoltare le voci con le frasi fisse e scegliere quella di Gas (`ELEVENLABS_VOICE_ID` nel `.env`). Percorsi e costi della libreria condivisa di ElevenLabs sono DA VERIFICARE sul Mac (dal cloud elevenlabs.io è bloccato).
+1. Merge della PR della V9 (numero nell'handoff §0), secondo la regola di merge di CLAUDE.md §10.
+2. Sul Mac, dopo il merge: parlare a Gas con ventola o TV accesa. Se Gas si zittisce da solo mentre parla, mettere `GAS_VOICE_AGC=0` nel `.env` (guida in `reports/prova_voce_mac.md`).
 
 ## Esito delle fette
 
-- **V8 — pagina «prova voci»**: `FATTA` — `/voci` (pagina), `GET /voci/elenco`, `POST /voci/prova` con frasi fisse; solo voci premade/generated/professional; tetto 40 prove all'ora; Piper facoltativo (`GAS_PIPER_MODEL`); il proxy della pagina accetta solo host locale e stessa origine. Review #624/#625-M2 (riserve chiuse), #626-M2 APPROVATO.
-- **V8b — libreria condivisa**: `FATTA` — `GET /voci/libreria` (migliori 8, solo professional/generated) e `POST /voci/aggiungi` (solo voci dell'ultima ricerca, tetto 5 all'ora), avviso su costi e limiti non verificati. Review #627/#628-M2 (riserve chiuse), #629-M2 APPROVATO.
-- **Merge di main** (V6, V7a #322, V7b #325, #319–#323): `FATTA` — conflitto in `do_POST` risolto tenendo il reset di `_capito` prima dei rami `/voci/*`; review #655-M2 APPROVATO.
-- Test: prova_voci + voice_server + voice_stt + voice_tts + voice_contesto + voce_ascolto 330 passed (browser obbligatorio).
-- **Bot e verifica esterna su b95c95e**: APPROVATO CON RISERVE (bot neutral perché tocca ci.yml); un giro per V-1..V-4 `FATTO` (elenchi delle voci solo dalla pagina, Piper fuori dal tetto, «esito incerto» sull'aggiunta, guida corretta), review #656-M2 con riserve basse in stato_progetto.
-- **V9**: `DEFERITA` — PR dopo il merge di questa.
+- **V9 — rumore**: `FATTA` — microfono con noiseSuppression, echoCancellation e AGC (spegnibile con `GAS_VOICE_AGC=0`, letto dalla pagina in `/config`), soglia della voce che segue il rumore di fondo (non solo i primi 300 ms), grazia di 500 ms prima che Gas si lasci interrompere. R-584-1-M2 mitigata. Review #630-M2 CON RISERVE (chiuse in parte), #631-M2 APPROVATO.
+- **Merge di main** (V6, V7a #322, V7b #325, V8 #326, #319–#323): `FATTA` — test nel browser con i modi «guasto» e «rumore_costante» insieme; review #657-M2 APPROVATO.
+- Test: voice_server + voice_stt + voice_prova_voci 243 passed (browser obbligatorio).
 
 ## Anomalie
 
 - `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
-- La documentazione ElevenLabs della libreria condivisa non si legge dal cloud: percorsi, campi e costi da verificare sul Mac.
+- Il microfono dei test è finto (da file): rumore e voce veri si provano solo sul Mac.
