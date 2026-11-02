@@ -26,6 +26,7 @@
 - **Review #617 (chat Mani)**: APPROVATO CON RISERVE. R-617-1 COSMETICA (messaggio «a 0 o meno» anche per un valore non intero), R-617-2 COSMETICA (controlli del conto duplicati), R-617-3 BASSA (`rifiuto_al_cancello` senza try suo, retto da quello del kernel): `DEFERITA — registrate`.
 - **Merge di main (PR #318, voce V6 di M2)**: `FATTA` in bc46a27 (merge, non rebase) — conflitti solo in handoff/ultimo_report/diff_sessione (tenuti i miei) e nella memoria del revisore (tenuti tutti e due i lati). **Review #619 (chat Mani)**: APPROVATO CON RISERVE. R-619-1 BASSA (report senza il merge) e R-619-2 COSMETICA («Ultimo aggiornamento» di stato_progetto): `FATTA` in questo commit; R-619-3 BASSA (memoria del revisore da committare dopo il merge): `FATTA` in 22a8a5b.
 - **Secondo merge di main (PR #321, forte e `--bare` di M2)**: `FATTA` in 5331f14 — conflitti nei report (tenuti i miei), nella memoria (tutti e due i lati) e nella riga «Ultimo aggiornamento» (unite). **Review #620 (chat Mani)**: APPROVATO, nessun finding.
+- **Terzo merge di main (PR #320 di M2, solo documenti)**: `FATTA` in abdb3e8 — conflitti solo nella memoria del revisore e nella riga «Ultimo aggiornamento»; nessun file del perimetro, revisore non richiesto.
 - **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (M1)`.
 - **Voce H24 (R8)**: `DEFERITA — prossima fetta, piano a M1 prima del codice`.
 
@@ -41,22 +42,24 @@
  gas_identity.md                     |   3 ++-
  modules/gate/gate.py                |   7 ++++++-
  modules/telegram/avviso.py          | 186 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md            |  24 ++++++++++++++---------
+ reports/diff_sessione.md            |  25 +++++++++++++++---------
  reports/handoff.md                  | n/d
  reports/ripartenza_mani.md          |   2 +-
  reports/roadmap.md                  |   2 +-
  reports/stato_progetto.md           |   3 ++-
- reports/ultimo_report.md            |  36 ++++++++++++++++------------------
+ reports/ultimo_report.md            |  37 +++++++++++++++++------------------
  tests/test_unit_avvisa_operatore.py | 218 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_gate.py             |   1 +
  tests/test_unit_kernel.py           | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = 3cd550f. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = f8dfc5c. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+abdb3e8 Merge origin/main (PR #320, solo documenti) nella PR #319
+c4545d3 docs(fine-task): fetta 36, PR #319, secondo merge di main (PR #321), review #620
 d51eaf1 chore(revisore): memoria review #620 — APPROVATO
 5331f14 Merge origin/main (PR #321, forte e --bare) nella PR #319 (review #620)
 c945f46 docs(fine-task): fetta 36, PR #319, merge di main (PR #318), review #619
@@ -365,7 +368,8 @@ Memoria:
 - I commit di main entrati col merge (fino a f37316f, PR #318) hanno le run della PR #318, non di questa PR.
 - bc46a27 (merge), 22a8a5b (memoria #619), c945f46 (fine-task): run su c945f46 non letta (la #321 è entrata in main prima della fine; il conflitto l'ha superata).
 - I commit di main entrati col secondo merge (fino a 3cd550f, PR #321) hanno le run della PR #321.
-- 5331f14 (merge), d51eaf1 (memoria #620) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 5331f14 (merge), d51eaf1 (memoria #620), c4545d3 (fine-task): run su c4545d3 non letta (la #320 è entrata in main prima della fine).
+- abdb3e8 (terzo merge, PR #320) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
