@@ -1,11 +1,18 @@
-# Diff della sessione — 2026-11-02 — Cervello forte non-bare (chat M2)
+# Diff della sessione — 2026-11-02 — Mani, fetta 36 (PR #319)
 
-- `brains/claude_cli.py` — docstring sul futuro default `--bare`; nuova `stato_abbonamento()` per il doctor.
-- `gas.py` — righe nel doctor autorizzate da M1: riga «Cervello forte · login», che dice se è la CLI della shell quando il timer ne usa un’altra.
-- `tests/test_unit_claude_cli.py` — figlio senza chiavi API né modalità bare; casi di `stato_abbonamento`.
-- `tests/test_unit_dotenv.py` — doctor con CLI finta: riga «login» OK/WARN con la versione e «CLI della shell»; mai il `claude` vero.
-- `tests/test_unit_kernel.py` — la suite non lancia mai il `claude` vero dal doctor (finto in `_doc99`, interruttore tolto in testa).
-- `.claude/agents/memoria_revisore.md` — review #632–#640-M2.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
+Si riscrive a ogni sessione; la storia completa sta in git.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+- `modules/telegram/avviso.py` (nuovo): strumento avvisa_operatore — testo pulito (solo stringhe), tetto al giorno su file con prenotazione (0 = spento), `rifiuto_senza_costi` e `rifiuto_al_cancello` (tetto del giorno letto), invio con `invia_notifica`; valore non intero = spento.
+- `gas.py`: spec dello strumento, prompt di riserva, ramo in execute_tool_call (una per turno), `_rifiuto_avviso_al_cancello` nel ramo del cancello (una per turno anche alla firma), diario con la sola lunghezza, conto in `_SAFE_PATH_DENY_PREFIXES`.
+- `modules/gate/gate.py`: avvisa_operatore UNCERTAIN; `.gas_notifiche_uso` in `_DENY_PREFIXES` e `_LIVELLO3_PREFISSI`.
+- `gas_identity.md`: 13 strumenti, riga di avvisa_operatore.
+- `.gitignore`: il conto e i suoi temporanei.
+- `.github/workflows/ci.yml`: passo che lancia i test nuovi.
+- `tests/test_unit_avvisa_operatore.py` (nuovo): 42 test (tetto, riavvio, fail-closed, invisibili, non stringa, spento, valori non interi, cancello).
+- `tests/test_unit_kernel.py`: T102a-j (round-trip, diario, tetto per turno, invio fallito, firma a finestra contaminata, una per turno alla firma, controlli e tetto del giorno prima della firma, firma end-to-end), due voci in T68s.
+- `tests/test_unit_gate.py`: il conto è livello 3.
+- `.claude/agents/memoria_revisore.md`: righe #611-#614 e #617 (commit del revisore).
+- `reports/`: report di fine task, stato_progetto (blocco fetta 36), roadmap (riga della notifica), ripartenza_mani (punto g).
+- Merge di origin/main (PR #318, voce V6 di M2) in bc46a27: entrano i file voce di M2 (modules/voice/, clients/voice/browser_client.html, test voce, reports/prova_voce_mac.md), invariati.
+- Secondo merge di origin/main (PR #321 di M2) in 5331f14: entrano brains/claude_cli.py, 4 righe del doctor in gas.py e i test claude_cli/dotenv/kernel, invariati.
+- Terzo merge di origin/main (PR #320 di M2) in abdb3e8: entra reports/proposta_cervello_caldo.md, invariato.

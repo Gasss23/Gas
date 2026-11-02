@@ -1,24 +1,23 @@
-# Ultimo report — 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2) — PR #321
+# Ultimo report — 2026-11-02 — Mani, fetta 36 (R6): strumento avvisa_operatore
 
 ## DECISIONI UMANE RICHIESTE
+1. Merge della PR #319 (https://github.com/Gasss23/Gas/pull/319): l'operatore ha detto sì (tramite M1); main unita col merge bc46a27 (review #619), M1 attiva il merge automatico.
+2. Per usare lo strumento sul VPS: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_IDS` (già usati dal bot) e, se si vuole un tetto diverso da 5, `GAS_NOTIFICHE_GIORNO` (0 = spento).
 
-1. Merge della PR #321 (https://github.com/Gasss23/Gas/pull/321): sì dell'operatore (riferito da M1); merge di main con la PR #318 fatto (review #641-M2).
-2. Sul Mac: `python3 gas.py doctor` e controllare la riga «Cervello forte · login» (deve dire «login dell'abbonamento»).
-
-## Esito delle fette
-
-- **1. Figlio senza chiavi API (fail-closed)**: `FATTA` — già vero con la lista di variabili permesse; ora un test lo fissa (niente ANTHROPIC_*, *_API_KEY, CLAUDE_CODE_SIMPLE, BEDROCK; sì CLAUDE_CODE_OAUTH_TOKEN; niente `--bare` né `--settings`). Se `claude -p` diventa bare, fallisce col login invece di addebitare.
-- **2. Flag per restare non-bare**: `FATTA (nessuno)` — lette headless, cli-reference, authentication: nessun flag o variabile documentata. Scritto nel docstring di `brains/claude_cli.py`.
-- **3. Riga «login» nel doctor**: `FATTA` — `stato_abbonamento()` in `brains/claude_cli.py` (`claude --version` + `claude auth status`, stesso ambiente del figlio ma senza i suoi flag: è un'indicazione, WARN in più possibili, mai un OK falso; zero token, mai eccezioni); in `gas.py` 3 righe autorizzate da M1.
-- Review #632-M2 BOCCIATO (crash del doctor con output vuoto o non UTF-8 della CLI) → corretto → #633-M2 APPROVATO CON RISERVE (BASSE: nipote che tiene le pipe/attesa max ~30 s; `errors="replace"` senza test dedicato, coperto dal ramo ValueError).
-- **V-1 verifica esterna su d0a0035** («abbonamento» anche con CLI non loggata): `FATTA` — OK solo con exit 0 (regola poi stretta a «loggedIn booleano vero o assente», vedi sotto); review #634-M2 APPROVATO.
-- **V-1 bot su 5e784c3** (i test T99 della suite kernel lanciavano il `claude` vero della macchina dal doctor): `FATTA` — in `_doc99` la riga «login» usa un finto; review #635-M2 APPROVATO CON RISERVE. **R-635-1** (con `GAS_CLAUDE_CLI=1` esportato nella shell altri doctor della suite lo lanciavano ancora): `FATTA` — la suite toglie l'interruttore in testa; review #636-M2 APPROVATO. V-2 bot (handoff e stato_progetto non allineati): `FATTA` in questo giro di report.
-- **V-1 verifica esterna su c83032f** (`loggedIn` come stringa "false" dava OK): `FATTA` — «loggato» solo col booleano vero o col campo assente; review #637-M2 CON RISERVE (commento, chiusa) → #638-M2 APPROVATO. V-2 ve / V-1 bot (conteggio 42 → 44 nell'handoff): `FATTA`.
-- **V-1 bot su 6c0cf68** (riga «login» sulla CLI della shell anche col WARN del timer): `FATTA` — il dettaglio lo dice. **V-1 ve su 36f790f** (test di dotenv che lanciavano il `claude` vero): `FATTA`. Review #639-M2 APPROVATO. V-2 ve (maiuscolo CLAUDE.AI, resta WARN): COSMETICA, nessun fix.
-- **Bot su 36f790f**: V-2 (il controllo «login» non usa i flag del figlio) `FATTA` correggendo l'affermazione nel commento, review #640-M2 APPROVATO; V-3 (formulazione nei report) `FATTA`.
-- Test: claude_cli + dotenv 65 passed; anche con GAS_CLAUDE_CLI=1 e un `claude` spia (mai chiamata); kernel 1063 PASS 0 FAIL, anche con `GAS_CLAUDE_CLI=1` e un `claude` spia nel PATH (spia mai chiamata).
+## Esito
+- **PR #317 (fetta 35)**: `FATTA` — mergiata (b472fe1) col sì dell'operatore.
+- **Piano a M1** (max 10 righe): `FATTA` — approvato, con le aggiunte di M1 (UNCERTAIN nel cancello, test del cancello, gas_identity.md e prompt di riserva, conto in tutti gli elenchi e in .gitignore, passo CI).
+- **Strumento `avvisa_operatore`**: `FATTA` — `modules/telegram/avviso.py` + gas.py + cancello; solo la chat dell'operatore, prefisso fisso, max 1000 caratteri, invisibili resi visibili, una per turno, tetto al giorno su file prenotato prima dell'invio, fail-closed.
+- **Conto sul diario** (punto 3 del primo piano): `SALTATA — il diario in degrado restituisce [] (= zero notifiche, tetto aperto): si usa un file come per le richieste di sviluppo, con l'ok di M1`.
+- **Review #611**: APPROVATO CON RISERVE; R-611-1..5 `FATTA`. **Review #612**: APPROVATO CON RISERVE; R-612-1 COSMETICA e R-612-2 BASSA `DEFERITA — registrate`.
+- **Bot e verifica esterna su 3db59c2**: APPROVATO CON RISERVE (bot neutral per ci.yml). V-1 (una per turno anche alla firma), V-2 ve (testo non stringa), V-3 ve (0 = spento): `FATTA` in b1d1e45. V-2 bot COSMETICA (emoji espanse) e V-5 ve BASSA (righe finte dopo il prefisso): `DEFERITA — registrate`.
+- **Review #613**: APPROVATO CON RISERVE; R-613-1..3 `FATTA`. **Review #614**: APPROVATO CON RISERVE; R-614-1 COSMETICA e R-614-2 BASSA (preesistente) `DEFERITA — registrate`.
+- **Bot e verifica esterna su 1e4bc90**: APPROVATO CON RISERVE. V-1 (tetto del giorno al cancello), V-2 ve (test della firma end-to-end), V-3 ve (valore non intero = spento): `FATTA` in 20031e4. **Review #617**: APPROVATO CON RISERVE; R-617-1/2 COSMETICHE e R-617-3 BASSA `DEFERITA — registrate`.
+- **Merge di main (PR #318, voce V6 di M2) nella #319**: `FATTA` in bc46a27, con merge e non rebase; conflitti solo nei report (tenuti i miei) e nella memoria del revisore (tenuti tutti e due i lati). Review #619 APPROVATO CON RISERVE.
+- **Secondo merge di main (PR #321, forte e `--bare` di M2) nella #319**: `FATTA` in 5331f14; conflitti nei report (tenuti i miei), nella memoria (tutti e due i lati) e nella riga «Ultimo aggiornamento» di stato_progetto (unite). Review #620 APPROVATO.
+- **Terzo merge di main (PR #320 di M2, solo documenti) nella #319**: `FATTA` in abdb3e8; conflitti solo nella memoria del revisore (tutti e due i lati) e nella riga «Ultimo aggiornamento» (unite). Nessun file del perimetro: revisore non richiesto.
+- **Voce H24 (R8)**: commit locale 8e69ab6 sul branch voce-h24 (57 test; review #615 BOCCIATO, #616 APPROVATO CON RISERVE); `DEFERITA — revisione e PR dopo il merge della #319, per non mescolare le fette`.
+- **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (indicazione di M1)`.
 
 ## Anomalie
-
-- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
-- Non verificato con una CLI `claude` vera e loggata (qui non c'è): il campo `authMethod` viene dalla documentazione.
+- T31g (vector store con GAS_VECTORS=1) fallisce in questo container anche su main pulito (1066 PASS, 1 FAIL): ambiente, non questa fetta.
