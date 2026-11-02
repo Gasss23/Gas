@@ -1,20 +1,25 @@
-# Ultimo report — 2026-11-02 — Voce V8: pagina «prova voci» e libreria condivisa (chat M2)
+# Ultimo report — 2026-11-02 — Mani: piano della mail di Gas (R6), PR doc-only
 
 ## DECISIONI UMANE RICHIESTE
+0. Merge della PR #324: il sì era sull'head 7346994; dopo, due giri del bot (BOCCIATO, finding MEDIA) hanno cambiato il piano (più protezioni). Serve di nuovo il sì sull'head attuale.
+1. Rispondere alle 7 domande in fondo a `reports/piano_mail.md` (casella e provider, accesso OAuth o IMAP, dove sta la credenziale, cosa senza firma, tetti, testo non fidato, GDPR). Niente codice della mail prima delle risposte.
 
-1. Merge della PR #326 (https://github.com/Gasss23/Gas/pull/326), secondo la regola di merge di CLAUDE.md §10.
-2. Sul Mac, dopo il merge: aprire la pagina «prova voci» (guida in `reports/prova_voce_mac.md`), ascoltare le voci con le frasi fisse e scegliere quella di Gas (`ELEVENLABS_VOICE_ID` nel `.env`). Percorsi e costi della libreria condivisa di ElevenLabs sono DA VERIFICARE sul Mac (dal cloud elevenlabs.io è bloccato).
-
-## Esito delle fette
-
-- **V8 — pagina «prova voci»**: `FATTA` — `/voci` (pagina), `GET /voci/elenco`, `POST /voci/prova` con frasi fisse; solo voci premade/generated/professional; tetto 40 prove all'ora; Piper facoltativo (`GAS_PIPER_MODEL`); il proxy della pagina accetta solo host locale e stessa origine. Review #624/#625-M2 (riserve chiuse), #626-M2 APPROVATO.
-- **V8b — libreria condivisa**: `FATTA` — `GET /voci/libreria` (migliori 8, solo professional/generated) e `POST /voci/aggiungi` (solo voci dell'ultima ricerca, tetto 5 all'ora), avviso su costi e limiti non verificati. Review #627/#628-M2 (riserve chiuse), #629-M2 APPROVATO.
-- **Merge di main** (V6, V7a #322, V7b #325, #319–#323): `FATTA` — conflitto in `do_POST` risolto tenendo il reset di `_capito` prima dei rami `/voci/*`; review #655-M2 APPROVATO.
-- Test: prova_voci + voice_server + voice_stt + voice_tts + voice_contesto + voce_ascolto 330 passed (browser obbligatorio).
-- **Bot e verifica esterna su b95c95e**: APPROVATO CON RISERVE (bot neutral perché tocca ci.yml); un giro per V-1..V-4 `FATTO` (elenchi delle voci solo dalla pagina, Piper fuori dal tetto, «esito incerto» sull'aggiunta, guida corretta), review #656-M2 con riserve basse in stato_progetto.
-- **V9**: `DEFERITA` — PR dopo il merge di questa.
-
-## Anomalie
-
-- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
-- La documentazione ElevenLabs della libreria condivisa non si legge dal cloud: percorsi, campi e costi da verificare sul Mac.
+## Esito
+- **PR #323 (fetta 37, voce H24)**: `FATTA` — mergiata (9718e0c) col sì dell'operatore; la parola resta «hey_jarvis» per ora.
+- **Piano mail**: `FATTA` — `reports/piano_mail.md`, una pagina, senza codice, chiesto da M1.
+- **Riserve di #323 in stato_progetto**: `FATTA` — V-1 del bot e V-1…V-6 della seconda verifica esterna su 3672964, registrate senza altri giri (decisione di M1).
+- **Bot su 0c0081f (PR #324)**: APPROVATO CON RISERVE (check success). V-1 BASSA (requisito del kernel: output delle mail fuori dalla storia o mai ai gratuiti), V-2 BASSA (V-4 bot #323 registrata), V-3 COSMETICA (numero della PR): `FATTA`.
+- **Bot su 9718c6a (PR #324)**: APPROVATO CON RISERVE (check success). V-1 BASSA (nomi degli strumenti come nel cancello: `fetch_email`/`send_email`), V-2 BASSA (handoff riallineato): `FATTA`.
+- **Bot su cb84cc0 (PR #324)**: APPROVATO CON RISERVE (check success). V-1 BASSA (`fetch_email` da aggiungere a GATE_ALLOWLIST nella fetta 1), V-2 COSMETICA (V-3 bot #323 registrata): `FATTA`.
+- **Bot su 18f2621 (PR #324)**: APPROVATO CON RISERVE. V-1 BASSA (requisito del kernel esteso a tutto il turno mail), V-2 BASSA (main unita dopo la #322, con merge), V-3 COSMETICA (`_LIBERI_DOPO_LETTURA`): `FATTA`.
+- **Merge di main (PR #322) nella #324**: `FATTA` in b66ac40, review #626 APPROVATO CON RISERVE; R-626-1 BASSA (tre percorsi verso i gratuiti nel piano) e R-626-2 BASSA (handoff) `FATTA`.
+- **Bot su 970beca (PR #324)**: NON approvato (check failure). V-1 MEDIA (quarto percorso verso i gratuiti: pin della memoria e `ricorda`) e V-2 BASSA (`notify_telegram` SAFE): `FATTA` nel piano.
+- **Bot su 7346994 (PR #324)**: APPROVATO CON RISERVE (check success), sì dell'operatore. V-1 BASSA (snapshot di `.gas_history.json` per 7 giorni) e V-2 COSMETICA (`test_notify_telegram_safe` da aggiornare nella fetta 1): `REGISTRATE` in stato_progetto, senza altri giri (decisione di M1).
+- **Merge di main (PR #325, voce V7b) nella #324**: `FATTA` in 9174640, review #627 APPROVATO; file del perimetro identici a main.
+- **Bot su d783938 (PR #324)**: BOCCIATO (check failure). V-1 MEDIA (quinto percorso: file scritti con `write_file` in un turno mail e riletti sui gratuiti) e V-2 BASSA (conservazione del testo contraddittoria; proposta: turno mail tolto o mascherato dalla storia, anche dagli snapshot): `FATTA` nel piano.
+- **Bot su a48caa0 (PR #324)**: BOCCIATO. V-1 MEDIA (storia salvata anche a metà turno e copiata negli snapshot: mascheramento a ogni salvataggio, snapshot senza storia mail), V-2 BASSA (sì dell'operatore da richiedere sull'head nuovo), V-3 COSMETICA (nota del §3): `FATTA`.
+- **Bot su bd38966 (PR #324)**: BOCCIATO. V-1 MEDIA (rubrica libera dopo una mail: ora con una mail nella finestra resta libero solo `prepara_bozza`), V-2 BASSA (maschera anche sulla storia in memoria), V-3 COSMETICA: `FATTA`.
+- **Bot su 754480d (PR #324)**: BOCCIATO. V-1 MEDIA (esito della firma) e V-2 BASSA (prodotti della riflessione): `FATTA` col principio strutturale (segno «mail» alla fonte, un solo controllo all'uscita prima di ogni chiamata ai non forti).
+- **Bot su 84b1422 (PR #324)**: APPROVATO CON RISERVE (check success), sì dell'operatore. V-1 BASSA (ElevenLabs e altri fornitori non modelli) e V-2 BASSA (rami del diario per gli strumenti mail): da registrare nella PR voce-fix, senza altri giri (decisione di M1).
+- **Merge di main (PR #326, voce V8) nella #324**: `FATTA` in 54a26db, review #630 APPROVATO; file del perimetro identici a main.
+- **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); `DEFERITA — PR subito dopo questa (un solo branch remoto)`.

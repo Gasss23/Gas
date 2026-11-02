@@ -1,14 +1,12 @@
-# Diff della sessione — 2026-11-02 — Voce V8, «prova voci» e libreria (chat M2)
+# Diff della sessione — 2026-11-02 — Mani: piano mail (PR doc-only)
 
-- `modules/voice/prova_voci.py` — frasi fisse, categorie ammesse, tetti orari delle prove e delle aggiunte.
-- `modules/voice/tts.py` — elenco voci, voce scelta per la prova, ricerca e aggiunta dalla libreria condivisa.
-- `modules/voice/server.py` — pagina `/voci`, `GET /voci/elenco` e `/voci/libreria`, `POST /voci/prova` e `/voci/aggiungi`; convive coi tempi della V7a e col formato a pezzi della V7b.
-- `clients/voice/prova_voci.html` — pagina per ascoltare e scegliere la voce.
-- `clients/voice/browser_server.py` — il proxy inoltra `/voci/*` con le guardie host locale e stessa origine; gli elenchi solo se vengono dalla pagina.
-- `.github/workflows/ci.yml` — test di «prova voci» nel passo della suite voce.
-- `tests/test_unit_voice_prova_voci.py` — test di server, proxy e pagina.
-- `reports/prova_voce_mac.md` — guida Mac per la pagina e la libreria.
-- `.claude/agents/memoria_revisore.md` — review #624–#629-M2, #655–#656-M2.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
+Si riscrive a ogni sessione; la storia completa sta in git.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+- `reports/piano_mail.md` (nuovo): piano della mail di Gas (R6) con le domande per l'operatore, senza codice.
+- `reports/stato_progetto.md`: blocco del piano mail; riserve aperte di #323 (bot e seconda verifica esterna su 3672964).
+- `reports/roadmap.md`: riga della mail (piano scritto) e di R8 (#323 mergiata).
+- `reports/ripartenza_mani.md`: punto g aggiornato.
+- `reports/ultimo_report.md`, `reports/diff_sessione.md`, `reports/handoff.md`: report di fine task.
+- Merge di origin/main (PR #322 di M2, voce V7a): entrano modules/voice/server.py, clients/voice/browser_client.html, i test voce e la memoria del revisore, invariati.
+- Merge di origin/main (PR #325 di M2, voce V7b): entrano modules/voice/server.py, clients/voice/browser_server.py, browser_client.html, tests/test_unit_voice_server.py e la memoria del revisore, invariati (review #627).
+- Merge di origin/main (PR #326 di M2, voce V8): entrano i file della pagina «prova voci», modules/voice/, ci.yml, i test e la memoria del revisore, invariati (review #630).
