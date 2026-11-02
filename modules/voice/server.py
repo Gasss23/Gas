@@ -64,6 +64,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -71,7 +72,8 @@ from typing import Any, Dict, List, Optional
 
 from modules.voice.stt import GroqSTTError, TrascrizioneIncerta, parse_audio_body, transcribe_audio
 from modules.voice.tts import DEFAULT_VOICE_ID as _TTS_DEFAULT_VOICE_ID
-from modules.voice.tts import ElevenLabsTTSError, synthesize_speech
+from modules.voice.tts import ElevenLabsTTSError, list_voices, synthesize_speech
+from modules.voice import prova_voci
 
 log = logging.getLogger(__name__)
 # V7 (R-614-3-M2): i tempi sono informazione, non un problema: logger dedicato a INFO, che
@@ -240,6 +242,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
     _tempi: Optional[Dict[str, float]] = None  # V7: secondi per pezzo della richiesta in corso
     _t0: float = 0.0
     turni_parlati: List[float] = []  # V4/V5: istanti delle chiamate a Groq (tetto orario)
+    prove_voci: List[float] = []  # V8: istanti delle prove di voce ElevenLabs (tetto orario)
+    # V8 (R-624-1-M2): id delle voci mostrate dall'ultimo elenco (già filtrate: niente
+    # cloni); la prova accetta solo queste, non un id qualunque scritto a mano
+    voci_ammesse: frozenset = frozenset()
 
     def log_message(self, fmt: str, *args: Any) -> None:
         log.info(fmt, *args)
@@ -272,10 +278,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_audio(self, data: bytes) -> None:
+    def _send_audio(self, data: bytes, tipo: str = "audio/mpeg") -> None:
         tempi = self._chiudi_tempi(200)
         self.send_response(200)
-        self.send_header("Content-Type", "audio/mpeg")
+        self.send_header("Content-Type", tipo)
         if tempi is not None:  # V7: con l'MP3 grezzo i tempi viaggiano in un'intestazione
             self.send_header("X-Gas-Tempi", ";".join(f"{k}={v}" for k, v in tempi.items()))
         self.send_header("Content-Length", str(len(data)))
@@ -303,6 +309,20 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         self._t0 = time.monotonic()
         self._tempi = {}
+        if self.path == "/voci/prova":  # V8: prova di una voce (frase fissa)
+            if not self._check_auth():
+                self._send_json(401, {"error": "Unauthorized"})
+                return
+            try:
+                n = int(self.headers.get("Content-Length", 0) or 0)
+            except ValueError:
+                n = -1
+            if not 0 <= n <= 4096:
+                self._send_json(400, {"error": "Content-Length non valido"})
+                return
+            self._tempi = None
+            self._prova_voce(self.rfile.read(n) if n else b"")
+            return
         if self.path != _ENDPOINT:
             self._send_json(404, {"error": "Not Found"})
             return
@@ -590,7 +610,99 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def _method_not_allowed(self) -> None:
         self._send_json(405, {"error": "Method Not Allowed"})
 
-    do_GET = _method_not_allowed
+    # ── V8 (chat M2): «prova voci» — elenco delle voci e prova con una frase fissa ──
+
+    def do_GET(self) -> None:
+        self._t0 = time.monotonic()
+        self._tempi = None
+        if self.path != "/voci/elenco":
+            self._method_not_allowed()
+            return
+        if not self._check_auth():
+            self._send_json(401, {"error": "Unauthorized"})
+            return
+        api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        attuale = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+        out: Dict[str, Any] = {"voci": [], "attuale": attuale, "frasi": list(prova_voci.FRASI_PROVA),
+                               "piper": prova_voci.piper_disponibile() is not None}
+        type(self).voci_ammesse = frozenset()  # R-625-2-M2: valgono solo le voci di questo elenco
+        if not api_key:
+            out["errore"] = "ELEVENLABS_API_KEY non configurata: niente voci ElevenLabs"
+        else:
+            try:
+                out["voci"] = prova_voci.ordina_voci(list_voices(api_key), attuale)
+                type(self).voci_ammesse = frozenset(v["id"] for v in out["voci"])
+            except ElevenLabsTTSError as exc:
+                log.warning("ElevenLabs elenco voci status=%s: %s", exc.status, exc.message)
+                out["errore"] = f"Elenco voci ElevenLabs non disponibile: {exc.message}"
+            except OSError as exc:
+                log.warning("ElevenLabs elenco voci rete: %s", exc)
+                out["errore"] = "Errore di rete verso ElevenLabs"
+        self._send_json(200, out)
+
+    def _prova_voce(self, raw: bytes) -> None:
+        """POST /voci/prova {"voce": id | "piper", "frase": 0..N-1} → audio della frase
+        fissa con quella voce. Tetto proprio (GAS_VOICE_MAX_PROVE_ORA, default 40/ora):
+        ogni prova spende caratteri ElevenLabs."""
+        try:
+            data = json.loads(raw) if raw else {}
+            voce = data.get("voce")
+            frase = data.get("frase", 0)
+        except (ValueError, AttributeError):
+            self._send_json(400, {"error": "Body JSON non valido"})
+            return
+        if not isinstance(frase, int) or isinstance(frase, bool) or not 0 <= frase < len(prova_voci.FRASI_PROVA):
+            self._send_json(400, {"error": "Frase di prova non valida"})
+            return
+        if voce != prova_voci.PIPER and not prova_voci.voce_valida(voce):
+            self._send_json(400, {"error": "Voce non valida"})
+            return
+        if voce != prova_voci.PIPER and voce not in type(self).voci_ammesse:
+            self._send_json(409, {"error": "Voce non nell'elenco: ricarica la pagina «prova voci» "
+                                           "(si provano solo le voci elencate, mai cloni)"})
+            return
+        adesso = time.monotonic()
+        recenti = [t for t in type(self).prove_voci if adesso - t < 3600]
+        try:
+            tetto = max(1, int(os.environ.get("GAS_VOICE_MAX_PROVE_ORA", "") or 40))
+        except ValueError:
+            tetto = 40
+        if len(recenti) >= tetto:
+            self._send_json(429, {"error": f"Troppe prove di voce nell'ultima ora ({tetto}, "
+                                           "GAS_VOICE_MAX_PROVE_ORA). Riprova più tardi."})
+            return
+        testo = prova_voci.FRASI_PROVA[frase]
+        if voce == prova_voci.PIPER:
+            modello = prova_voci.piper_disponibile()
+            if modello is None:
+                self._send_json(503, {"error": "Piper non disponibile: servono il comando "
+                                               "«piper» e GAS_PIPER_MODEL nel .env"})
+                return
+            try:
+                audio = prova_voci.sintetizza_piper(testo, modello)
+            except (OSError, subprocess.SubprocessError) as exc:
+                log.warning("Piper errore: %s", type(exc).__name__)
+                self._send_json(502, {"error": "Piper non è riuscito a parlare"})
+                return
+            self._send_audio(audio, "audio/wav")
+            return
+        api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        if not api_key:
+            self._send_json(503, {"error": "TTS non disponibile: ELEVENLABS_API_KEY non configurata"})
+            return
+        type(self).prove_voci = recenti + [adesso]
+        try:
+            audio = synthesize_speech(testo, api_key, voce)
+        except ElevenLabsTTSError as exc:
+            log.warning("ElevenLabs prova voce status=%s: %s", exc.status, exc.message)
+            self._send_json(502, {"error": f"Errore TTS ElevenLabs: {exc.message}"})
+            return
+        except OSError as exc:
+            log.warning("ElevenLabs prova voce rete: %s", exc)
+            self._send_json(502, {"error": "Errore di rete verso ElevenLabs TTS"})
+            return
+        self._send_audio(audio)
+
     do_PUT = _method_not_allowed
     do_DELETE = _method_not_allowed
     do_PATCH = _method_not_allowed

@@ -124,3 +124,57 @@ def synthesize_speech(
         raise ElevenLabsTTSError(resp.status, f"ElevenLabs {resp.status}: {msg}")
     finally:
         conn.close()
+
+
+# ── V8 (chat M2): elenco delle voci dell'account, per la pagina «prova voci» ──
+
+_ELEVENLABS_VOICES_PATH = "/v1/voices"
+
+
+def list_voices(
+    api_key: str,
+    *,
+    _conn_factory: Optional[Callable[[], http.client.HTTPSConnection]] = None,
+) -> list:
+    """Voci disponibili sull'account ElevenLabs (GET /v1/voices), ridotte ai campi utili:
+    [{"id", "nome", "categoria", "genere", "accento", "eta", "descrizione"}].
+
+    Raises:
+        ElevenLabsTTSError: risposta non 200 o non leggibile
+        OSError:            errore di rete/timeout
+    Non logga la chiave API."""
+    conn = (
+        _conn_factory()
+        if _conn_factory is not None
+        else http.client.HTTPSConnection(_ELEVENLABS_HOST, timeout=_TIMEOUT)
+    )
+    try:
+        conn.request("GET", _ELEVENLABS_VOICES_PATH, headers={"xi-api-key": api_key})
+        resp = conn.getresponse()
+        corpo = resp.read()
+        if resp.status != 200:
+            raise ElevenLabsTTSError(resp.status, f"ElevenLabs {resp.status}: "
+                                                  f"{corpo.decode(errors='replace')[:300]}")
+        try:
+            voci = json.loads(corpo).get("voices") or []
+        except (ValueError, AttributeError):
+            raise ElevenLabsTTSError(resp.status, "elenco voci ElevenLabs non leggibile")
+        if not isinstance(voci, list):  # R-624-2-M2: forma inattesa → errore dichiarato
+            raise ElevenLabsTTSError(resp.status, "elenco voci ElevenLabs non leggibile")
+    finally:
+        conn.close()
+    out = []
+    for v in voci:
+        if not isinstance(v, dict) or not isinstance(v.get("voice_id"), str):
+            continue
+        etichette = v.get("labels") if isinstance(v.get("labels"), dict) else {}
+        out.append({
+            "id": v["voice_id"],
+            "nome": str(v.get("name") or "")[:80],
+            "categoria": str(v.get("category") or "")[:40],
+            "genere": str(etichette.get("gender") or "")[:40],
+            "accento": str(etichette.get("accent") or "")[:40],
+            "eta": str(etichette.get("age") or "")[:40],
+            "descrizione": str(etichette.get("description") or v.get("description") or "")[:200],
+        })
+    return out
