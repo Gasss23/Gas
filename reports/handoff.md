@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2, coordinata da M1) — aggiornato dopo la verifica esterna su d0a0035
+**Sessione:** 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2, coordinata da M1) — aggiornato dopo il bot su 5e784c3
 
 ---
 
@@ -17,21 +17,23 @@
 - **2. Flag o variabile per restare non-bare**: `FATTA (nessuno documentato)` — scritto nel docstring.
 - **3. Riga «login» nel doctor, con versione, zero token**: `FATTA` — `stato_abbonamento()` in brains, 3 righe in gas.py autorizzate da M1.
 - **V-1 della verifica esterna su d0a0035** («abbonamento» anche con CLI non loggata): `FATTA` (review #634-M2). V-2 ve (il doctor non vede in anticipo il cambio di default): dichiarata nel docstring.
+- **V-1 bot su 5e784c3** (test T99 della suite kernel che lanciavano il `claude` vero dal doctor): `FATTA` (review #635-M2); **R-635-1** (interruttore ereditato dalla shell): `FATTA` (review #636-M2). **V-2 bot** (handoff e stato_progetto non allineati): `FATTA` in questo giro di report.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
+ .claude/agents/memoria_revisore.md |   7 +++++++
  brains/claude_cli.py               |  57 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  gas.py                             |   3 +++
- reports/diff_sessione.md           |  16 +++++++---------
+ reports/diff_sessione.md           |  17 ++++++++---------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  31 +++++++++++++------------------
+ reports/ultimo_report.md           |  33 +++++++++++++++------------------
  tests/test_unit_claude_cli.py      |  92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_dotenv.py          |  20 ++++++++++++++++++++
+ tests/test_unit_kernel.py          |  15 +++++++++++++--
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -39,6 +41,11 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5e2fd43 test(forte): la suite kernel non lancia mai il claude vero dal doctor (V-1 bot #321 su 5e784c3, R-635-1; review #635/#636-M2)
+f6a6d9e chore(revisore): memoria review #636 — APPROVATO
+e59a4f5 chore(revisore): memoria review #635 — APPROVATO CON RISERVE
+735a0b2 chore(revisore): memoria review #635 — APPROVATO CON RISERVE
+5e784c3 docs(forte-non-bare): report dopo la verifica esterna su d0a0035 (PR #321, review #634-M2)
 612369a fix(forte): «login dell'abbonamento» solo se la CLI dice anche di essere loggata (V-1 ve #321, review #634-M2)
 d0a0035 docs(forte-non-bare): report di fine task (PR #321, review #632/#633-M2)
 2f5d53d fix(forte): difesa contro il futuro default --bare di claude -p; riga «login» nel doctor (chat M2)
@@ -141,15 +148,62 @@ Rischio escluso: non ho verificato `claude auth status` con la CLI vera; l'esemp
 
 Memoria del revisore: ho aggiunto la riga contatore `#634-M2 (chat M2) — 2026-11-02 — APPROVATO — …; nessuna lezione nuova` in /home/user/Gas/.claude/agents/memoria_revisore.md. Il commit atomico non è partito: `bash scripts/commit_memoria_revisore.sh` è stato negato dal classificatore dei permessi, e comunque avevi chiesto «Non committare». Il file è modificato ma non committato e va incluso nel commit di fine task.
 
+Commit della correzione V-1 bot su 5e784c3 (5e2fd43). Il diff è stato rivisto in due passaggi: #635-M2 sul finto in `_doc99`, #636-M2 sullo stesso diff più la chiusura di R-635-1. Verdetti integrali:
+
+Review #635-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #635-M2: PR #321, branch fix/forte-non-bare-m2. Lo SHA-256 del diff staged comincia con bd3d6e00 e il diff tocca solo tests/test_unit_kernel.py. Ho letto CLAUDE.md (sez. 1, 5, 8, 10), reports/stato_progetto.md (voce «R2 e futuro default --bare», intorno alla riga 602) e la mia memoria.
+
+**Elementi del diff esaminati**
+- `tests/test_unit_kernel.py:11178` — dentro `_doc99()` sostituisce `gas.claude_cli_stato_abbonamento` con un finto che risponde ("OK", "finto (test T99)") e lo rimette com'era nel `finally`. Rischio esaminato: il finto non agisce perché il doctor potrebbe leggere la funzione per altra via, oppure non viene tolto se il doctor solleva un errore. Esito: **ok**. Il doctor la legge come nome globale del modulo al momento della chiamata, quindi la sostituzione funziona. Il ripristino nel `finally` copre anche il caso di errore. Il finto accetta qualunque argomento (`*a, **k`).
+- `tests/test_unit_kernel.py:11186` — `gas.doctor(...)` ora gira dentro il `try`, con l'output catturato come prima. Rischio esaminato: le righe «Cervello forte» controllate da T99p, T99s, T99w e T99x cambiano. Esito: **ok**. La riga «login» non è tra quelle che quei test cercano («comando claude», «claude-cli»).
+- Contesto: `gas.py:35` importa la funzione come `claude_cli_stato_abbonamento`. `gas.py:5088` la chiama solo se `binario` è stato trovato. Il punto del finto è quello giusto. Esito: **ok**.
+
+**Prove riprodotte**
+- Ho messo in testa al PATH un `claude` spia che registra gli argomenti. Suite kernel: 1063 PASS, 0 FAIL, registro vuoto. Il fix chiude la V-1 BASSA del bot.
+- Stessa prova con `GAS_CLAUDE_CLI=1` esportato nella shell: 1063 PASS, ma il registro ha 24 righe, cioè 12 coppie `--version` / `auth status`.
+
+**Riserva**
+- **R-635-1 BASSA**: se la shell ha `GAS_CLAUDE_CLI=1` esportato, la suite kernel lancia ancora 12 volte il `claude` vero della macchina. Lo fanno gli altri helper che chiamano il doctor: `_doctor_inproc` a `tests/test_unit_kernel.py:2214`, `_doctor_inproc_61` a `tests/test_unit_kernel.py:3647` e le chiamate dirette a `tests/test_unit_kernel.py:7250` e `tests/test_unit_kernel.py:10166`. Ereditano l'interruttore dalla shell e non lo ripuliscono. Il `.env` non c'entra, perché la riga 53 imposta `GAS_NO_DOTENV=1`. Prima di questa PR il doctor non eseguiva mai `claude`, quindi il problema nasce con la riga «login». Impatto basso: sono comandi a zero token e non distruttivi. Correzione proposta: mettere il finto (o togliere `GAS_CLAUDE_CLI`) una volta sola in cima al modulo, accanto a `GAS_NO_DOTENV`, invece che solo in `_doc99`.
+
+**Coerenza col progetto**: la modifica tocca solo un test. Non tocca `_get_window`, il tetto di 10 iterazioni, il tetto di output né i fallback §9. Nessuno slicing della cronologia. Il finto sta nel test e non simula l'output di un tool del modello, quindi non rientra nel divieto della sez. 5. La riga «login» vera resta provata in tests/test_unit_dotenv.py e tests/test_unit_claude_cli.py.
+
+**Cosa non ho verificato**
+- Il mutante «finto tolto → la spia viene chiamata» non l'ho rieseguito. Basta la logica: con `GAS_CLAUDE_CLI=1` e la spia nel PATH, `shutil.which` la trova e `gas.py:5088` la chiama.
+- Non ho rieseguito tests/test_unit_dotenv.py e tests/test_unit_claude_cli.py, che il diff non tocca.
+- Comportamento sul Mac non verificato: non riproducibile qui.
+
+**Memoria**: aggiunta la riga #635-M2 e una lezione nuova (riprovare i fix «non lancia il binario vero» anche con l'interruttore acceso nella shell). Committata con scripts/commit_memoria_revisore.sh, ultimo commit e59a4f5. Il diff staged del test è rimasto com'era.
+
+File: /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/gas.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+Review #636-M2 (diff finale committato in 5e2fd43):
+
+## VERDETTO: APPROVATO
+
+Review #636-M2, PR #321, branch fix/forte-non-bare-m2. Diff esaminato: `git diff --cached`, solo `tests/test_unit_kernel.py`, sha256 fd182467.
+
+Cosa ho esaminato nel diff:
+- `tests/test_unit_kernel.py:59`: toglie `GAS_CLAUDE_CLI` dall'ambiente in testa al modulo, accanto a GAS_NO_DOTENV e alla pulizia delle variabili Telegram. Rischio esaminato: qualche test potrebbe contare sul valore ereditato dalla shell. Ho controllato tutti i punti che usano la variabile: `tests/test_unit_kernel.py:11019` e `tests/test_unit_kernel.py:11076` (la mettono a «1» da soli), `tests/test_unit_kernel.py:11056` (la mettono a None o «0» da soli), `tests/test_unit_kernel.py:11194` («0» e «1» espliciti), `tests/test_unit_kernel.py:11252` (salvata e ripristinata in finally). Il salvataggio `_saved99` adesso parte da None, e il ripristino resta corretto. La suite gira come script (CI: `python tests/test_unit_kernel.py`), quindi la rimozione vale solo per quel processo e per i suoi figli. Esito: ok, la riserva R-635-1 è chiusa.
+- `tests/test_unit_kernel.py:11182`: in `_doc99` sostituisce `gas.claude_cli_stato_abbonamento` con una versione finta e rimette quella vera in `finally`. Rischio esaminato: la versione finta potrebbe restare attiva se il doctor solleva un'eccezione. Il `finally` la rimette sempre. Esito: ok (già approvato nella #635).
+
+Riprodotto da me: `GAS_CLAUDE_CLI=1` esportato e un `claude` spia in testa al PATH che registra gli argomenti → 1063 PASS, 0 FAIL, file di registro della spia mai creato.
+
+Rischio escluso: `tests/test_unit_dotenv.py` non l'ho rieseguito con la variabile esportata. È fuori dal diff e gestisce `GAS_CLAUDE_CLI` da sé con le sue fixture. Non ho verificato nemmeno l'ambiente della CI: lì la variabile non è impostata, quindi il caso non si presenta.
+
+Memoria: ho aggiunto la riga contatore #636-M2 (nessuna lezione nuova) e l'ho committata con lo script (commit f6a6d9e). File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 42 test raccolti, `tests/test_unit_dotenv.py` 17 → 19 (in tutto 61 passed dopo la correzione di #632, 63 dopo la V-1 ve: 2 casi in più nel parametrico; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
+Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 42 test raccolti, `tests/test_unit_dotenv.py` 17 → 19 (in tutto 61 passed dopo la correzione di #632, 63 dopo la V-1 ve: 2 casi in più nel parametrico; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Dopo la V-1 bot: kernel 1063 PASS, 0 FAIL, anche con `GAS_CLAUDE_CLI=1` esportato e un `claude` spia in testa al PATH (spia mai chiamata). Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- d0a0035 (fine-task precedente, head allora): handoff-check success; unit-suite in corso alla lettura della verifica esterna (APPROVATO CON RISERVE, https://github.com/Gasss23/Gas/pull/321#issuecomment-6568584082).
-- Commit della correzione V-1 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme).
+- 5e784c3 (fine-task precedente, head allora): check completati (notifica check_suite.completed); bot APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA), chiuse in questo giro.
+- 5e2fd43 (correzione V-1 bot), f6a6d9e/e59a4f5/735a0b2 (memoria) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
