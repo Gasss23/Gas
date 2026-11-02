@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V9: rumore (chat M2, coordinata da M1)
+**Sessione:** 2026-11-02 — Voce V9: rumore (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su cc5bc6e
 
 ---
 
@@ -15,21 +15,23 @@
 
 - **V9 — rumore**: `FATTA` (review #630–#631-M2).
 - **Merge di main (V6, V7a, V7b, V8, #319–#323)**: `FATTA` (review #657-M2).
+- **Verifica esterna su cc5bc6e** (https://github.com/Gasss23/Gas/pull/327#issuecomment-6590325947): APPROVATO CON RISERVE con V-1 MEDIA (la soglia d'ascolto dal fondo non aveva un test di scenario: col mutante il test passava) `FATTA` — modo «rumore_forte» nel test nel browser, mutante → FAILED; review #658-M2 APPROVATO. Basse registrate in §7.
+- **Bot su cc5bc6e**: APPROVATO CON RISERVE, verifica-bot success; V-1 (limite di R-630-1-M2 non scritto) e V-2 (fragilità falsa in §7) sistemate in questi report; V-3 (commento RMS) corretto nel test.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
+ .claude/agents/memoria_revisore.md |   5 +++++
  clients/voice/browser_client.html  |  44 +++++++++++++++++++++++++++++++++++++++++---
  clients/voice/browser_server.py    |   5 ++++-
  reports/diff_sessione.md           |  16 ++++++----------
  reports/handoff.md                 | n/d
  reports/prova_voce_mac.md          |   1 +
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  17 +++++++----------
- tests/test_unit_voice_server.py    |  79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ reports/ultimo_report.md           |  18 ++++++++----------
+ tests/test_unit_voice_server.py    |  90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -37,6 +39,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3afa389 test(voce): scenario «rumore_forte» che prova la soglia d'ascolto dal rumore di fondo (V-1 ve #327 su cc5bc6e; review #658-M2)
+c4d680d chore(revisore): memoria review #658 — APPROVATO
+cc5bc6e docs(voce-v9): numero della PR #327 nei report
 8819f4d docs(voce-v9): report di fine task (review #630–#631-M2, #657-M2)
 69a03d2 Merge remote-tracking branch 'origin/main' into feat/voce-v9-m2
 8484950 docs(voce): stato delle fette V7–V9 della chat M2 (rami a pila, riserve aperte)
@@ -131,16 +136,41 @@ Review #657-M2: merge di origin/main (29c7cee) in feat/voce-v9-m2. Tutto è stag
 
 **Memoria**: ho aggiunto la riga `#657-M2 — 2026-11-02 — APPROVATO — …` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, senza lezioni nuove. Come richiesto l'ho lasciata nel file e non ho lanciato lo script di commit, perché il merge è in corso.
 
+Test di scenario per la soglia d'ascolto (verifica esterna su cc5bc6e). Review #658-M2:
+
+## VERDETTO: APPROVATO
+
+Review #658-M2: branch feat/voce-v9-m2, PR #327. Il diff staged tocca solo `tests/test_unit_voice_server.py`, con 17 righe aggiunte e 6 tolte. Chiude la V-1 MEDIA della verifica esterna.
+
+**Elementi del diff esaminati**
+- `tests/test_unit_voice_server.py:1003`: nuovo modo «rumore_forte». Il ronzio a 0,6 c'è prima, durante e dopo la frase, con una pausa iniziale di 3 s. Così la mediana dei primi 300 ms misura solo il ronzio, e la vecchia soglia da sola non chiude mai la frase per silenzio. Rischio esaminato: voce e ronzio sommati superano 1,0 e vengono tagliati (`_wav` limita a ±1 a `tests/test_unit_voice_server.py:864`). La voce resta comunque distinguibile dal fondo, perché la soglia del fondo ha un tetto di 0,2 e lo scenario passa. Esito: ok.
+- `tests/test_unit_voice_server.py:1098`: l'AGC (il controllo automatico del volume) è spento anche per «rumore_forte», come in «rumore_costante». Rischio esaminato: un'asimmetria che renderebbe lo scenario non confrontabile. Esito: ok. Resta valida la riserva R-630-2-M2: lo scenario con AGC acceso non è testato.
+- `tests/test_unit_voice_server.py:1172`: le asserzioni chiedono una sola richiesta, nessuna «mi hai interrotto» e «conversazione chiusa» come ultimo stato. Rischio esaminato: asserzioni che non uccidono il mutante. Esito: ok, con una nota. Rifatto il mutante, il test muore già prima, all'asserzione sul codice di uscita della guida (`tests/test_unit_voice_server.py:1116`): con la frase che non finisce, la guida non arriva alla fine. Le nuove asserzioni sono quindi una seconda rete, non il primo controllo. Va bene così, nessuna riserva.
+- `tests/test_unit_voice_server.py:999`: corretto il commento di «rumore_costante». Non parla più di un «RMS ~0,06» mai misurato e ora dichiara che quello scenario prova la grazia di 500 ms, non la soglia d'ascolto. Esito: ok, è coerente con la lezione di #630-M2.
+- Contesto, file non toccato: `clients/voice/browser_client.html:542`, la riga `const soglia = Math.max(sogliaDaCampioni(campioni), sogliaFondo());`, cioè il codice provato dal mutante.
+
+**Prove rieseguite da me**
+- Mutante: ho sostituito `clients/voice/browser_client.html:542` con `const soglia = sogliaDaCampioni(campioni);`. Con `-k rumore`, «rumore_forte» FALLISCE e «rumore_costante» passa. Ho ripristinato il file dall'index: `git status` mostra solo il test staged.
+- Suite completa: 100 passed in 271 s, nessuno saltato, quindi il browser è stato davvero usato.
+- Wall of Shame: nessuno slicing della history e nessuna simulazione di tool. Il diff è solo un test del client voce e non tocca provider né guardrail.
+
+**Rischio escluso**: non ho verificato il comportamento col microfono reale e il ronzio vero di una TV sul Mac. Il test usa un microfono finto da file con un ronzio sinusoidale, filtrato dalla noiseSuppression di Chromium headless; col microfono vero non si può riprodurre in questo ambiente.
+
+**Memoria**: riga contatore #658-M2 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata con lo script (c4d680d). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Dopo il merge di main: `tests/test_unit_voice_server.py` + `test_unit_voice_stt.py` + `test_unit_voice_prova_voci.py`: 243 passed (`GAS_TEST_BROWSER_OBBLIGATORIO=1`). I test nuovi stanno in `tests/test_unit_voice_server.py` (modo «rumore_costante» nel browser, `test_v9_gas_voice_agc`). Kernel non toccato (`gas.py` identico a main).
+Dopo il merge di main: `tests/test_unit_voice_server.py` + `test_unit_voice_stt.py` + `test_unit_voice_prova_voci.py`: 243 passed (`GAS_TEST_BROWSER_OBBLIGATORIO=1`). I test nuovi stanno in `tests/test_unit_voice_server.py` (modo «rumore_costante» nel browser, `test_v9_gas_voice_agc`). Dopo la #658-M2: test_unit_voice_server.py 100 passed (modo nuovo «rumore_forte»; mutante senza la soglia dal fondo → FAILED). Kernel non toccato (`gas.py` identico a main).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione (fino a 8819f4d, pushati insieme: run sulla sola testa, non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud: check lette dall'integrazione GitHub.
+- cc5bc6e: unit-suite, handoff-check, verifica-bot, verifica, smista, esito tutti success; bot APPROVATO CON RISERVE.
+- Commit del test (scenario «rumore_forte»), memoria (c4d680d) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
 - R-630-2-M2: lo scenario con AGC acceso e rumore non è testato (microfono finto).
 - R-630-3-M2 (resto): frasi lunghe con voce vera e rumore: da provare sul Mac.
-- `test_v9_gas_voice_agc` cambia `BrowserProxyHandler.agc` a livello di classe senza ripristinarlo (fragilità nota, stesso schema di `interruzione`).
+- R-630-1-M2 (limite aperto): la soglia d'interruzione che sale col rumore di fondo è provata solo come funzione, nessuno scenario completo la discrimina (nello scenario regge la grazia di 500 ms).
+- Il buffer del fondo non si svuota fra i turni: dopo un rumore forte (TV spenta) la soglia resta alta per ~3 s e una voce bassa può non essere sentita (V-2 ve su cc5bc6e).
