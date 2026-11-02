@@ -1,19 +1,22 @@
-# Ultimo report — 2026-11-02 — Mani, fetta 37 (R8): voce H24, Gas sempre in ascolto sul Mac
+# Ultimo report — 2026-11-02 — Voce V7a: misura dei tempi (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #323 (https://github.com/Gasss23/Gas/pull/323): tocca `.github/workflows/ci.yml` (macchina del bot), quindi decide l'operatore.
-2. Licenza dei modelli pronti di openWakeWord («hey_jarvis»): CC BY-NC-SA, non commerciale. Va bene per le prove, oppure si aspetta «Ehi Gas» addestrata da noi?
-3. Prova sul Mac: `bash scripts/voce/installa.sh`, poi «Hey Jarvis». Se il log `.gas_voce/ascolto.log` dice «solo silenzio assoluto», il permesso del microfono sotto launchd non è passato (vedi `scripts/voce/LEGGIMI.md`).
 
-## Esito
-- **PR #319 (fetta 36, avvisa_operatore)**: `FATTA` — mergiata (ceaa4aa) col sì dell'operatore, dopo tre merge di main (PR #318, #321, #320; review #619 e #620).
-- **Voce H24**: `FATTA` — `clients/voice/ascolto.py`, `scripts/voce/` (plist launchd, installa.sh, spegni.sh, LEGGIMI.md), dipendenze solo Mac, passo CI, 73 test.
-- **Review #615**: BOCCIATO (installa.sh si fermava in silenzio); R-615-1/2/3/6/7 `FATTA`. **#616**: R-616-1/2/3 `FATTA`. **#618**: R-618-1/2 `FATTA` in questa PR. **#621**: APPROVATO CON RISERVE (R-621-1: memoria #615/#616/#618 portata dal branch locale, `FATTA` in 5876b7e).
-- **Bot su c5e7321**: APPROVATO CON RISERVE (neutral per ci.yml). V-1 BASSA (parser del .env diverso dal server), V-2 BASSA (porta: ultima riga invece della prima; URL remoto non avvisato), V-3 COSMETICA (microfono non svuotato dopo un errore): `FATTA` in 7de4eeb. **Review #622**: APPROVATO CON RISERVE; R-622-1 BASSA, R-622-2/3 COSMETICHE `DEFERITA — registrate`.
-- **Verifica esterna su c5e7321**: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/323#issuecomment-6583089402). V-1/V-2/V-5 = bot (`FATTA` in 7de4eeb); V-3 BASSA (Python 3.11 e attesa del server) e V-4 BASSA (log del server): `FATTA` nel commit dopo la review #623, con R-622-1. **Bot su 1127f5c**: APPROVATO CON RISERVE (V-1 registrare V-3/V-4 ve, V-2 conteggio dei test: `FATTA`). **Review #623**: APPROVATO CON RISERVE; R-623-1 BASSA, R-623-2/3 COSMETICHE `DEFERITA — registrate`.
-- **Riserve di #319 in stato_progetto**: `FATTA` (V-1 bot e V-1/V-2 ve su 9c44686).
-- **R-615-4** (microfono sotto launchd) e **R-615-5** (licenza): `DEFERITA — da provare sul Mac / decide l'operatore`.
-- **Piano mail**: `DEFERITA — PR doc-only subito dopo la #323 (un solo branch remoto)`.
+1. Merge della PR #322 (https://github.com/Gasss23/Gas/pull/322), secondo la regola di merge di CLAUDE.md §10.
+2. Sul Mac, dopo il merge: parlare a Gas dalla pagina del browser e leggere la riga «tempi: ascolto · cervello · voce · rete» (e in `gas_debug.log` le righe `gas.voce.tempi`): dicono dove si perde il tempo prima di scegliere V7b o il cervello «caldo».
+
+## Esito delle fette
+
+- **V7a — tempi della voce**: `FATTA` — ogni richiesta parlata misura trascrizione (Groq), cervello (`run_turn`) e voce (TTS), anche quando falliscono; il totale del server va nel JSON (`tempi`) o nell'intestazione `X-Gas-Tempi` (MP3); una riga INFO di soli numeri in `gas_debug.log` (logger `gas.voce.tempi`, non in console); la pagina mostra «tempi: ascolto · cervello · voce · rete». Review #614-M2 e #615-M2 CON RISERVE (chiuse), #616-M2 APPROVATO.
+- **Merge di main** (PR #318 V6 e #321): `FATTA` — conflitto in `do_POST` risolto tenendo i tempi della V7a e il reset di `_capito` della V6; review #643-M2 APPROVATO.
+- **Bot e verifica esterna su 33a0346**: V-1 bot (tempi a schermo anche sui guasti) e V-2 bot (il caricamento dell'audio è «rete», non server) `FATTE`, review #644/#645-M2; V-1 MEDIA ve (conflitto con main dopo la #320) `FATTA` col merge di main.
+- **Bot su 8dc872e** (MEDIA: tempi di un guasto invisibili al primo turno): `FATTA` — tempi fuori dal riquadro della risposta, riquadro davvero nascosto prima della prima risposta, «Ho capito» vecchio nascosto sul guasto; review #646/#647-M2.
+- **Bot e verifica esterna su 3a88f78**: conflitto con main dopo la #319 (MEDIA) `FATTA` col merge di main (#648-M2); «Ho capito» nascosto su ogni guasto e tempo del cervello anche senza risposta `FATTE` (#649-M2).
+- **Bot su 68d1584**: APPROVATO CON RISERVE (solo cosmetiche); sì dell'operatore; merge di main con la PR #323 `FATTA` (review #650-M2).
+- Test: voce + claude_cli + dotenv 258 passed (browser compresi); kernel 1072 PASS, 0 FAIL (dopo il merge della #319).
+- **V7b, V8, V9**: `DEFERITE` — PR in ordine dopo il merge della precedente (decisione dell'operatore riferita da M1).
 
 ## Anomalie
-- T31g (vector store con GAS_VECTORS=1) fallisce in questo container anche su main: ambiente, non questa fetta (la suite kernel non è toccata).
+
+- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
+- La latenza vera si misura solo sul Mac.

@@ -1,14 +1,10 @@
-# Diff della sessione — 2026-11-02 — Mani, fetta 37 (PR #323)
+# Diff della sessione — 2026-11-02 — Voce V7a, misura dei tempi (chat M2)
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+- `modules/voice/server.py` — `_segna`/`_chiudi_tempi` per richiesta; tempi nel JSON e in `X-Gas-Tempi`; riga `gas.voce.tempi` a INFO; convivenza col reset di `_capito` della V6; il tempo del server parte dopo la ricezione dell'audio.
+- `clients/voice/browser_client.html` — riga «tempi: ascolto · cervello · voce · rete» (textContent, solo numeri finiti), anche sui guasti, fuori dal riquadro della risposta; il riquadro resta nascosto fino alla prima risposta.
+- `tests/test_unit_voice_stt.py` — test V7: tempi nel JSON e nel log, MP3 con intestazione, TTS fallito, kernel che si rompe, 429 senza tempi.
+- `tests/test_unit_voice_server.py` — la pagina mostra i tempi.
+- `.claude/agents/memoria_revisore.md` — review #614–#616-M2, #643–#650-M2.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
 
-- `clients/voice/ascolto.py` (nuovo): ascolto sempre attivo, parola di attivazione locale, .env letto come il server (gas._carica_dotenv), registrazione in memoria, invio al server voce senza proxy né redirect, risposta riprodotta e cancellata, finestra di 12 s, fail-safe.
-- `clients/voice/requirements-ascolto.txt` (nuovo): dipendenze solo per il Mac.
-- `scripts/voce/com.gas.voce.server.plist`, `scripts/voce/com.gas.ascolto.plist` (nuovi): servizi launchd con KeepAlive.
-- `scripts/voce/installa.sh`, `scripts/voce/spegni.sh` (nuovi): accendere tutto in un colpo (controllo di Python 3.11, attesa del server fino a 30 s), spegnere tutto.
-- `scripts/voce/LEGGIMI.md` (nuovo): istruzioni, privacy, licenza, permesso del microfono, regolazioni.
-- `tests/test_unit_voce_ascolto.py` (nuovo): 73 test.
-- `.github/workflows/ci.yml`: passo che lancia i test nuovi.
-- `.gitignore`: `.gas_voce/`.
-- `.claude/agents/memoria_revisore.md`: righe #615, #616, #618, #621, #622, #623.
-- `reports/`: report di fine task, stato_progetto (blocco fetta 37, riserve aperte di #319), roadmap (R8 e notifica), ripartenza_mani.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
