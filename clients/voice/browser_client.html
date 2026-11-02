@@ -204,6 +204,14 @@ body {
   gap: 10px;
 }
 
+/* V6: quello che Whisper ha sentito, per capire se l'errore è d'ascolto o di ragionamento */
+.capito {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  font-style: italic;
+  margin: 0;
+}
+
 .player-label {
   font-size: 0.625rem;
   font-weight: 600;
@@ -281,6 +289,7 @@ audio {
 </label>
 
 <div id="player-wrap" hidden>
+  <p id="capito" class="capito" hidden></p>
   <p class="player-label">risposta</p>
   <p id="testo" aria-live="polite"></p>
   <audio id="player" controls></audio>
@@ -302,6 +311,7 @@ const statusEl   = document.getElementById("status");
 const playerWrap = document.getElementById("player-wrap");
 const player     = document.getElementById("player");
 const testoEl    = document.getElementById("testo");
+const capitoEl   = document.getElementById("capito");
 const hint       = document.getElementById("hint");
 const convEl     = document.getElementById("conv");
 
@@ -598,13 +608,14 @@ async function invia(blob, contentType) {
     try { msg = (await resp.json()).error || msg; } catch (_) {}
     return fineTurno(timerAttesa, "errore: " + msg);
   }
-  let audio, testo = "", voceErr = "";
+  let audio, testo = "", voceErr = "", capito = "";
   const ct = resp.headers.get("Content-Type") || "";
   try {   // R-574-2-M2: risposta rotta → errore dichiarato, la pagina non resta bloccata
     if (ct.startsWith("application/json")) {
       const j = await resp.json();
       testo = j.content || "";
       voceErr = j.errore_voce || "";
+      capito = typeof j.capito === "string" ? j.capito : "";
       if (j.audio) audio = new Blob([Uint8Array.from(atob(j.audio), c => c.charCodeAt(0))], { type: "audio/mpeg" });
     } else {
       audio = await resp.blob();
@@ -616,6 +627,8 @@ async function invia(blob, contentType) {
   if (window.speechSynthesis) speechSynthesis.cancel();
   const secondi = ((performance.now() - t0) / 1000).toFixed(1);
   testoEl.textContent = testo;
+  capitoEl.textContent = capito ? `Ho capito: «${capito}»` : "";   // V6, solo testo (mai HTML)
+  capitoEl.hidden = !capito;
   playerWrap.hidden = false;
   setSendingUI(false);
   if (!audio) {

@@ -34,6 +34,13 @@ Configurazione tramite variabili d'ambiente (da .env o export):
                         429; conta ogni chiamata alla trascrizione (Groq)
   GAS_VOCE_FORTE      — 1/true/on/yes/si/sì: ogni richiesta della voce va al solo cervello
                         forte (default spento; forte fermo → errore dichiarato, mai i gratuiti)
+  GAS_VOICE_STT_LOGPROB_MIN / GAS_VOICE_STT_NO_SPEECH_MAX — soglie della trascrizione
+                        incerta (default -1.0 / 0.8): sotto/sopra → «Non ho capito bene, puoi
+                        ripetere?» senza turno (V6). Risposte 200 della voce con il campo
+                        "capito" = testo trascritto, mostrato dalla pagina.
+  GAS_VOICE_STT_ECO_NO_SPEECH — soglia (default 0.9) oltre la quale un'eco corta del
+                        prompt di Whisper (2-3 parole contigue, es. «Gas, forte, lead.») è
+                        scartata come silenzio; i comandi brevi detti davvero stanno sotto.
 
 Cervello forte dalla voce (V1, chat M2): «/forte <richiesta>» (testo) oppure, nel parlato
 trascritto, «forte <richiesta>» / «Gas forte <richiesta>» all'inizio della frase.
@@ -65,7 +72,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from modules.voice.stt import GroqSTTError, parse_audio_body, transcribe_audio
+from modules.voice.stt import GroqSTTError, TrascrizioneIncerta, parse_audio_body, transcribe_audio
 from modules.voice.tts import DEFAULT_VOICE_ID as _TTS_DEFAULT_VOICE_ID
 from modules.voice.tts import ElevenLabsTTSError, synthesize_speech
 
@@ -88,6 +95,8 @@ _USO_FORTE = "Uso: /forte <richiesta> (a voce: «forte <richiesta>»)"
 # (200, sintetizzata se il client vuole audio), non come errore 400. Nessun turno parte.
 _USO_FORTE_PARLATO = ("Dopo «forte» dimmi cosa fare, per esempio: «Gas, forte: riassumi i lead "
                       "di oggi». Non ho avviato nessun lavoro.")
+# V6: trascrizione incerta (stt.TrascrizioneIncerta) → si chiede di ripetere, nessun turno
+_NON_HO_CAPITO = "Non ho capito bene, puoi ripetere?"
 
 
 # V3 (chat M2): con «X-Gas-Formato: audio+testo» (pagina del browser) la risposta è JSON
@@ -102,13 +111,22 @@ _ABBREVIAZIONE = re.compile(r"(?:^|\s)(?:dott|dr|sig|sigg|sig\.ra|ing|avv|prof|a
                             r"rag|ecc|es|pag|n|nr|tel|art|cap|vs)\.$", re.IGNORECASE)
 
 
+# V6 (chat M2, «capire meglio»): le frasi brevi non devono perdere il filo, e la richiesta
+# è una trascrizione che può storpiare qualche parola.
+_CONTESTO_VOCE = (
+    "Brevità non vuol dire perdere il filo: rispondi a quello che l'operatore intende, "
+    "tenendo conto di quello che vi siete detti prima in questa conversazione. La sua "
+    "frase arriva da una trascrizione vocale e può avere parole storpiate (per esempio "
+    "«Gus» per «Gas»): se una parola non torna, interpretala dal contesto; se la "
+    "richiesta resta ambigua, fai una sola domanda per chiarire invece di indovinare.")
 # V3: istruzione per i soli turni PARLATI (gas.py `run_turn(istruzione_turno=...)`: vale per
 # quel turno, nel messaggio system, fuori dalla cronologia). Il testo scritto resta com'è.
 ISTRUZIONE_VOCE = (
     "Stai parlando a voce con l'operatore, in una conversazione rapida. Rispondi in 1-3 "
     "frasi brevi, senza elenchi né formattazione. Dai subito un parere o una proposta "
     "concreta (anche «no, meglio così»). Se serve una decisione chiudi con una domanda "
-    "secca a cui si risponde sì o no. Se il risultato è lungo, riassumilo in una frase.")
+    "secca a cui si risponde sì o no. Se il risultato è lungo, riassumilo in una frase."
+    + " " + _CONTESTO_VOCE)
 # V4 (V-1 bot #311): con la pagina del browser c'è uno schermo: prima le frasi da dire,
 # poi, dopo una riga vuota, il dettaglio da leggere (non viene detto a voce).
 ISTRUZIONE_VOCE_SCHERMO = (
@@ -117,7 +135,8 @@ ISTRUZIONE_VOCE_SCHERMO = (
     "dai subito un parere o una proposta concreta (anche «no, meglio così») e, se serve "
     "una decisione, chiudi con una domanda secca a cui si risponde sì o no. Se servono "
     "dettagli (dati, elenchi, analisi, testo lungo), scrivili DOPO una riga vuota: quella "
-    "parte non viene letta a voce, l'operatore la legge a schermo.")
+    "parte non viene letta a voce, l'operatore la legge a schermo."
+    + " " + _CONTESTO_VOCE)
 _PARAGRAFO = re.compile(r"\n[ \t]*\n")
 
 
@@ -202,6 +221,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
     kernel: Any = None
     token: str = ""
+    _capito: Optional[str] = None  # V6: trascrizione della richiesta in corso (per istanza)
     turni_parlati: List[float] = []  # V4/V5: istanti delle chiamate a Groq (tetto orario)
 
     def log_message(self, fmt: str, *args: Any) -> None:
@@ -241,6 +261,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         return True
 
     def do_POST(self) -> None:
+        self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
         if self.path != _ENDPOINT:
             self._send_json(404, {"error": "Not Found"})
             return
@@ -271,7 +292,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 return
             prompt = self._do_stt(raw, content_type)
             if prompt is None:
-                return  # risposta errore già inviata
+                return  # risposta (errore o «non ho capito») già inviata
+            self._capito = prompt  # V6: la pagina mostra «Ho capito: …»
         else:
             try:
                 data: Dict[str, Any] = json.loads(raw) if raw else {}
@@ -289,12 +311,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if cervello == "uso":
             if not is_audio:
                 self._send_json(400, {"error": _USO_FORTE})
-            elif self._vuole_audio_testo():
-                self._do_audio_testo_response(_USO_FORTE_PARLATO)
-            elif self._wants_audio():
-                self._do_tts_response(_USO_FORTE_PARLATO)
             else:
-                self._send_json(200, {"content": _USO_FORTE_PARLATO, "uso": True})
+                self._rispondi_senza_turno(_USO_FORTE_PARLATO, "uso")
             return
 
         try:
@@ -329,7 +347,23 @@ class VoiceHandler(BaseHTTPRequestHandler):
         elif self._wants_audio():
             self._do_tts_response(result_content)
         else:
-            self._send_json(200, {"content": result_content})
+            out: Dict[str, Any] = {"content": result_content}
+            if self._capito is not None:
+                out["capito"] = self._capito
+            self._send_json(200, out)
+
+    def _rispondi_senza_turno(self, testo: str, segno: str) -> None:
+        """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito»), nel
+        formato chiesto dal client; `segno` è il campo JSON che la distingue."""
+        if self._vuole_audio_testo():
+            self._do_audio_testo_response(testo, {segno: True})
+        elif self._wants_audio() and os.environ.get("ELEVENLABS_API_KEY", "").strip():
+            self._do_tts_response(testo)
+        else:  # V-2 bot #318: senza TTS il messaggio arriva lo stesso, come testo (mai un 503)
+            out: Dict[str, Any] = {"content": testo, segno: True}
+            if self._capito is not None:
+                out["capito"] = self._capito
+            self._send_json(200, out)
 
     def _turni_recenti(self) -> List[float]:
         """Istanti delle richieste a voce (chiamate a Groq) dell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
@@ -339,11 +373,13 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def _vuole_audio_testo(self) -> bool:
         return self.headers.get("X-Gas-Formato", "").strip().lower() == _FORMATO_AUDIO_TESTO
 
-    def _do_audio_testo_response(self, text: str) -> None:
+    def _do_audio_testo_response(self, text: str, extra: Optional[Dict[str, Any]] = None) -> None:
         """V3: JSON {"content": testo intero, "audio": base64 MP3 della parte parlata}.
         Senza chiave ElevenLabs o con errore TTS la risposta arriva lo stesso, solo testo
         (+ "errore_voce"): a schermo si legge, mai un 503 al posto della risposta."""
-        out: Dict[str, Any] = {"content": text}
+        out: Dict[str, Any] = {"content": text, **(extra or {})}
+        if self._capito is not None:  # V6: quello che Whisper ha sentito, per la pagina
+            out["capito"] = self._capito
         api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
         if not text.strip():
             pass
@@ -414,6 +450,13 @@ class VoiceHandler(BaseHTTPRequestHandler):
         type(self).turni_parlati = self._turni_recenti() + [time.monotonic()]
         try:
             text = transcribe_audio(audio_bytes, filename, api_key)
+        except TrascrizioneIncerta as exc:
+            # V6: Groq ha risposto ma il testo è probabilmente sbagliato: si chiede di
+            # ripetere invece di rispondere a caso. Nel log solo il motivo, mai il parlato.
+            log.info("trascrizione scartata: %s", exc.motivo)
+            self._capito = exc.testo
+            self._rispondi_senza_turno(_NON_HO_CAPITO, "non_capito")
+            return None
         except GroqSTTError as exc:
             if exc.status == 400:
                 self._send_json(400, {"error": f"Formato audio non accettato da Groq: {exc.message}"})
