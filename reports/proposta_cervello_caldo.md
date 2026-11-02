@@ -25,13 +25,20 @@ with tempfile.TemporaryDirectory() as d:
     print("binario:", cmd[0], "· modello:", modello)
     for domanda in ["rispondi solo: ok"] * 2 + ["riassumi: " + "parola " * 2000] * 2:
         t = time.monotonic()
-        p = subprocess.run(cmd, input=domanda, capture_output=True, text=True, cwd=d,
-                           env=_ambiente_pulito(), timeout=300)
+        try:
+            p = subprocess.run(cmd, input=domanda, capture_output=True, text=True, cwd=d,
+                               env=_ambiente_pulito(), timeout=300)
+        except subprocess.TimeoutExpired:
+            print("scaduto dopo 300 s: giro saltato"); continue
         tot = time.monotonic() - t
         try:
-            api = (json.loads(p.stdout).get("duration_api_ms") or 0) / 1000
+            dati = json.loads(p.stdout)
         except ValueError:
-            print("risposta non JSON:", (p.stderr or p.stdout)[:200]); continue
+            dati = None
+        if not isinstance(dati, dict) or dati.get("is_error") or p.returncode != 0:
+            # una risposta d'errore (login scaduto, limite…) NON è una misura valida
+            print("giro saltato, errore:", (p.stderr or p.stdout)[:200]); continue
+        api = (dati.get("duration_api_ms") or 0) / 1000
         print(f"totale {tot:.1f}s · modello {api:.1f}s · avvio e resto {tot - api:.1f}s")
 PY
 ```
