@@ -15,13 +15,16 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **PR #319 (fetta 36, avvisa_operatore)**: `FATTA` — mergiata (ceaa4aa) col sì dell'operatore, dopo i merge di main delle PR #318, #321 e #320 (review #619, #620).
-- **Voce H24 (piano approvato da M1, con installa.sh, spegni.sh e LEGGIMI.md chiesti da M1)**: `FATTA` — `clients/voice/ascolto.py`, `scripts/voce/`, `clients/voice/requirements-ascolto.txt`, `.gitignore`, un passo in ci.yml (ok di M1), 62 test. Scritta su un branch locale mentre la #319 aspettava, poi portata su main come un unico diff (review #621).
+- **Voce H24 (piano approvato da M1, con installa.sh, spegni.sh e LEGGIMI.md chiesti da M1)**: `FATTA` — `clients/voice/ascolto.py`, `scripts/voce/`, `clients/voice/requirements-ascolto.txt`, `.gitignore`, un passo in ci.yml (ok di M1), 73 test. Scritta su un branch locale mentre la #319 aspettava, poi portata su main come un unico diff (review #621).
 - **Review #615 (chat Mani)**: BOCCIATO. R-615-1 MEDIA (installa.sh usciva in silenzio senza GAS_VOICE_PORT), R-615-2 BASSA (redirect e proxy di sistema col Bearer), R-615-3 BASSA (cartella con `$()`), R-615-6 BASSA (un clic apriva la richiesta; privacy dichiarata incompleta), R-615-7 BASSA (grep -q con pipefail, reset ridondante, log senza rotazione): `FATTA`. R-615-4 MEDIA (microfono sotto launchd) e R-615-5 BASSA (licenza): `DEFERITA — da provare sul Mac / decide l'operatore`.
 - **Review #616**: APPROVATO CON RISERVE. R-616-1 BASSA (porta del client), R-616-2 BASSA (attesa dopo la parola), R-616-3 COSMETICA (log): `FATTA`.
 - **Review #618**: APPROVATO CON RISERVE. R-618-1 BASSA (`main` senza test sull'URL) e R-618-2 COSMETICA: `FATTA` in questa PR.
 - **Review #621**: APPROVATO CON RISERVE. R-621-1 BASSA (memoria #615/#616/#618 dal branch locale): `FATTA` in 5876b7e.
 - **Bot su c5e7321 (https://github.com/Gasss23/Gas/pull/323#pullrequestreview-5740118682)**: APPROVATO CON RISERVE, check verifica-bot neutral (la PR tocca ci.yml). V-1 BASSA (il client leggeva il .env con un parser suo: con un commento in linea il token era diverso dal server), V-2 BASSA (installa.sh prendeva l'ultima GAS_VOICE_PORT; con GAS_VOICE_URL il controllo finale guardava solo il Mac), V-3 COSMETICA (microfono non svuotato dopo un invio fallito): `FATTA` in 7de4eeb.
 - **Review #622 (chat Mani)**: APPROVATO CON RISERVE. R-622-1 BASSA (installa.sh fonde nella porta le cifre di un commento in linea: falso STOP, fail-closed), R-622-2 COSMETICA, R-622-3 COSMETICA: `DEFERITA — registrate`.
+- **Verifica esterna su c5e7321 (https://github.com/Gasss23/Gas/pull/323#issuecomment-6583089402)**: APPROVATO CON RISERVE. V-1/V-2/V-5 coincidono con V-1/V-2/V-3 del bot (`FATTA` in 7de4eeb). V-3 BASSA (installa.sh senza controllo di Python ≥ 3.11 e con un solo controllo dopo `sleep 5`) e V-4 BASSA (la frase «nei log mai la conversazione» non vale per voce.server.log): `FATTA` nel commit dopo la review #623, insieme a R-622-1 (porta con commento in linea).
+- **Bot su 1127f5c (https://github.com/Gasss23/Gas/pull/323#pullrequestreview-5740245924)**: APPROVATO CON RISERVE, check neutral. V-1 BASSA (V-3/V-4 della verifica esterna non registrate) e V-2 COSMETICA («62 test» in §1 e in ultimo_report): `FATTA` in questo commit.
+- **Review #623 (chat Mani)**: APPROVATO CON RISERVE. R-623-1 BASSA (il ricontrollo dei servizi dopo l'attesa non ha un test), R-623-2 COSMETICA (finto sleep muto), R-623-3 COSMETICA (messaggio sul python3 del PATH): `DEFERITA — registrate`.
 - **Riserve aperte di #319 in stato_progetto (richiesta di M1)**: `FATTA` — V-1 bot e V-1/V-2 ve su 9c44686.
 - **Piano mail**: `DEFERITA — PR doc-only subito dopo questa (un solo branch remoto)`.
 
@@ -30,23 +33,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md     |  10 ++++++
+ .claude/agents/memoria_revisore.md     |  12 +++++++
  .github/workflows/ci.yml               |   8 +++++
  .gitignore                             |   1 +
- clients/voice/ascolto.py               | 512 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ clients/voice/ascolto.py               | 512 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  clients/voice/requirements-ascolto.txt |   4 +++
  reports/diff_sessione.md               |  24 ++++++--------
  reports/handoff.md                     | n/d
  reports/ripartenza_mani.md             |   2 +-
  reports/roadmap.md                     |   4 +--
  reports/stato_progetto.md              |   5 +--
- reports/ultimo_report.md               |  29 +++++++----------
- scripts/voce/LEGGIMI.md                |  94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- scripts/voce/com.gas.ascolto.plist     |  28 +++++++++++++++++
- scripts/voce/com.gas.voce.server.plist |  28 +++++++++++++++++
- scripts/voce/installa.sh               |  92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md               |  30 ++++++++---------
+ scripts/voce/LEGGIMI.md                |  97 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ scripts/voce/com.gas.ascolto.plist     |  28 ++++++++++++++++
+ scripts/voce/com.gas.voce.server.plist |  28 ++++++++++++++++
+ scripts/voce/installa.sh               | 110 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  scripts/voce/spegni.sh                 |  13 ++++++++
- tests/test_unit_voce_ascolto.py        | 607 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py        | 638 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: base = merge-base con origin/main = ceaa4aa. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -54,6 +57,9 @@ NB: base = merge-base con origin/main = ceaa4aa. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3b322ef fix(voce): installa.sh controlla Python 3.11, aspetta il server fino a 30 s, porta senza commento in linea; log del server da trattare come privato (V-3/V-4 ve #323, R-622-1, review #623)
+57f12dc chore(revisore): memoria review #623 — APPROVATO CON RISERVE
+1127f5c docs(fine-task): fetta 37, PR #323, correzioni bot su c5e7321, review #622
 7de4eeb fix(voce): il client legge il .env come il server (gas._carica_dotenv), porta: vale la prima riga, svuota dopo un errore (V-1/V-2/V-3 bot #323, review #622)
 4fc2378 chore(revisore): memoria review #622 — APPROVATO CON RISERVE
 c5e7321 docs(fine-task): fetta 37, PR #323, voce H24, review #615-#621
@@ -249,22 +255,55 @@ Restano aperte R-615-4 MEDIA (permesso del microfono sotto launchd, da provare s
 Memoria: riga #622 e una lezione nuova aggiunte in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (4fc2378). La lezione: quando si allinea il parser del client a quello del server, ricontrollare anche gli script shell che rileggono la stessa chiave con grep e sed.
 ```
 
+Commit successivo a 57f12dc (scripts/voce/installa.sh, scripts/voce/LEGGIMI.md, clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py: V-3/V-4 ve su c5e7321 e R-622-1). Verdetto integrale della review #623 (chat Mani):
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #623 (chat Mani). Ho esaminato il diff staged su claude/peaceful-lovelace-0w2b7q, sopra 1127f5c. Lo sha256 inizia per 2bad1f4ebc9780b3 ed è lo stesso prima e dopo il commit della memoria. Ho fatto le tre letture obbligatorie: CLAUDE.md (sez. 5, 8, 9), reports/stato_progetto.md (in modo mirato) e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `scripts/voce/installa.sh:43` — controlla che il Python del .venv sia almeno 3.11 prima di pip. Rischi esaminati: che `set -e` scatti sulla sostituzione `$(python --version)` dentro l'argomento di stop (non scatta) e che lo snippet funzioni con un Python vero (rc=0 su 3.13). Il mutante senza controllo dà 1 FAIL. Esito: ok.
+- `scripts/voce/installa.sh:89` — il sed toglie ` #…` prima di tenere le cifre. Ho provato «9001 # era 8765», il commento dopo un tab, `"9001" # 8765` e `export … 9001   #x 1`: danno tutti 9001. È equivalente allo split `\s+#` di `gas._carica_dotenv` (gas.py:653). Il mutante col sed vecchio dà 1 FAIL. Esito: ok.
+- `scripts/voce/installa.sh:92-97` — la porta viene riprovata fino a 30 volte con `sleep 1`, poi STOP. Il mutante con `seq 1 5` dà 1 FAIL. Esito: ok.
+- `scripts/voce/installa.sh:99-105` — dopo l'attesa ricontrolla che i servizi siano ancora accesi. Rischio: nessun test fissa questo controllo. Esito: riserva R-623-1.
+- `tests/test_unit_voce_ascolto.py:519` — il finto nc conta i tentativi in `$REGISTRO.nc`. Ho verificato la logica: con NC_FALLISCE=3 fa 4 tentativi, con 999 ne fa 30. Le asserzioni sulla porta ora confrontano riga per riga (`registro.splitlines()`), quindi «90018765» non passa più. Esito: ok.
+- `scripts/voce/LEGGIMI.md:71-74` e `clients/voice/ascolto.py:23` — il testo ora dice che voce.server.log va trattato come privato. È corretto: gas.py:48 ha uno StreamHandler sullo stderr, e il plist manda stderr in voce.server.log. Esito: ok.
+
+**Prove**: 73 passed su un export dell'indice (scratchpad r623). Nel diff non c'è slicing della history. Il diff non tocca il codice dei provider, il cap di 10 iterazioni né `_get_window`.
+
+**Riserve**
+- R-623-1 BASSA: il ricontrollo dopo l'attesa (scripts/voce/installa.sh:99-105) non è fissato da nessun test. Ho provato due mutanti: tolgo il blocco, oppure cambio `stop` in `echo`. Con entrambi la suite dà 18 passed su 18, perché il finto launchctl risponde sempre «running». Serve un finto che alla seconda chiamata di `print` risponda in un altro modo.
+- R-623-2 COSMETICA: il finto `sleep` non scrive nel registro, quindi il mutante senza `sleep 1` nel giro sopravvive. Sul Mac quel giro farebbe 30 tentativi di nc in meno di un secondo e darebbe un falso STOP. Basta far registrare anche il finto sleep e contare le chiamate.
+- R-623-3 COSMETICA: il messaggio dice «cancella .venv e riprova», ma lo script ricrea .venv con il `python3` del PATH. Sul Mac `/usr/bin/python3` è 3.9, quindi l'operatore ricadrebbe nello stesso STOP. Il messaggio dovrebbe dire di mettere prima nel PATH un python3 3.11 o più recente.
+- Restano aperte R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac) e R-615-5 BASSA (licenza di hey_jarvis, decide l'operatore).
+
+**Rischi esplicitamente esclusi (non verificati)**
+- Il comportamento reale su macOS non è verificato: launchd, `nc -z` senza timeout e il tempo di avvio del server non sono riproducibili in un ambiente Linux. I test usano comandi finti.
+- Non ho provato la suite con `pytest -s` da un terminale vero. Il finto python fa `cat > /dev/null` sullo stdin ereditato e senza la cattura di pytest potrebbe restare in attesa. Il problema c'era già prima di questo diff, che lo estende solo al ramo `--version`.
+- Divergenza fuori dal diff: se il valore è tra virgolette e contiene ` #` (es. `GAS_VOICE_PORT="9001 # x"`), installa.sh legge 9001 mentre il server va in errore. Il caso è raro e il server lo segnala da solo.
+
+**Memoria**: ho aggiunto la riga #623 e una lezione in /home/user/Gas/.claude/agents/memoria_revisore.md. La lezione: quando il test usa uno `sleep` finto muto, o un ricontrollo con un finto che risponde sempre uguale, i mutanti che li tolgono sopravvivono. La memoria è committata a parte in 57f12dc con `scripts/commit_memoria_revisore.sh`, e l'indice del diff sotto review è rimasto intatto.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py, brains/ o modules/. Test nuovi: `tests/test_unit_voce_ascolto.py` (`python -m pytest tests/test_unit_voce_ascolto.py`, da root): 69 passed. Con le suite voce di M2 (server/stt/tts), prima delle ultime correzioni: 181 passed. Mutanti presi (1 failed o più ciascuno): soglia ignorata, niente svuotamento dopo la risposta, file temporaneo non cancellato, http remoto accettato, massimo dei turni ignorato, silenzio prima della voce incluso, file 0644, senza `_NienteRedirect`, senza `ProxyHandler({})`, blocchi forti non di fila, attesa sulla logica vecchia, URL sempre 8765, `main` con la vecchia espressione, caricatore di gas mai usato, niente svuotamento dopo un errore; per gli script: `grep` senza `|| true` (installa fermo dopo «5/6», riprodotto sul codice vecchio), lista bianca `.*`.
+Nessuna modifica a gas.py, brains/ o modules/. Test nuovi: `tests/test_unit_voce_ascolto.py` (`python -m pytest tests/test_unit_voce_ascolto.py`, da root): 73 passed. Con le suite voce di M2 (server/stt/tts), prima delle ultime correzioni: 181 passed. Mutanti presi (1 failed o più ciascuno): soglia ignorata, niente svuotamento dopo la risposta, file temporaneo non cancellato, http remoto accettato, massimo dei turni ignorato, silenzio prima della voce incluso, file 0644, senza `_NienteRedirect`, senza `ProxyHandler({})`, blocchi forti non di fila, attesa sulla logica vecchia, URL sempre 8765, `main` con la vecchia espressione, caricatore di gas mai usato, niente svuotamento dopo un errore, niente controllo di Python, niente attesa del server, sed della porta senza togliere il commento; per gli script: `grep` senza `|| true` (installa fermo dopo «5/6», riprodotto sul codice vecchio), lista bianca `.*`.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - 31b8ec1 (memoria #621), 234f41c (fetta 37), 5876b7e (memoria #615/#616/#618): pushati insieme prima dell'apertura della PR #323. Run non ancora disponibile alla scrittura dell’handoff.
 - c5e7321 (fine-task): run 41485162729 su c5e7321 (unit-suite e handoff-check: vedi la PR); verifica-bot neutral (bot APPROVATO CON RISERVE).
-- 4fc2378 (memoria #622), 7de4eeb (correzioni) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 4fc2378 (memoria #622), 7de4eeb (correzioni), 1127f5c (fine-task): run 41486699260 su 1127f5c (vedi la PR); verifica-bot neutral (bot APPROVATO CON RISERVE).
+- 57f12dc (memoria #623), il commit delle correzioni e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-615-4 (chat Mani) MEDIA: permesso del microfono sotto launchd, da provare sul Mac; la voce H24 non è dichiarata funzionante prima.
 - R-615-5 (chat Mani) BASSA: licenza CC BY-NC-SA dei modelli pronti di openWakeWord, decide l'operatore.
-- R-622-1 (chat Mani) BASSA: installa.sh fonde nella porta le cifre di un commento in linea (falso STOP, fail-closed).
+- R-623-1 (chat Mani) BASSA: il ricontrollo dei servizi dopo l'attesa non ha un test (il finto launchctl risponde sempre «running»).
+- R-623-2 (chat Mani) COSMETICA: finto sleep muto. R-623-3 (chat Mani) COSMETICA: il messaggio sul Python vecchio non dice di mettere un python3 ≥ 3.11 nel PATH.
 - R-622-2 (chat Mani) COSMETICA: AVVISO anche con GAS_VOICE_URL vuoto. R-622-3 (chat Mani) COSMETICA: la root resta in sys.path.
 - V-2 COSMETICA del bot su c5e7321: il passo CI nuovo non compare nel «Job summary».
 - Log in `.gas_voce/` senza rotazione (dichiarato nel LEGGIMI).
