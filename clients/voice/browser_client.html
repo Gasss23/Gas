@@ -603,11 +603,19 @@ async function invia(blob, contentType) {
     resp = await fetch("/voice", { method: "POST", body: blob, headers: {
       "Content-Type": contentType, "Accept": "audio/mpeg", "X-Gas-Formato": "audio+testo" } });
   } catch (e) {
+    tempiEl.hidden = true;   // R-644-1-M2: niente tempi di un turno precedente
     return fineTurno(timerAttesa, "errore di rete: " + e.message);
   }
   if (!resp.ok) {
-    let msg = `${resp.status} ${resp.statusText}`;
-    try { msg = (await resp.json()).error || msg; } catch (_) {}
+    let msg = `${resp.status} ${resp.statusText}`, tempiErr = null;
+    try {
+      const j = await resp.json();
+      msg = j.error || msg;
+      tempiErr = j.tempi && typeof j.tempi === "object" ? j.tempi : null;
+    } catch (_) {}
+    // V-1 bot #322: anche un guasto lento (Groq, voce, cervello) dice dove è andato il tempo
+    tempiEl.textContent = descriviTempi(tempiErr, (performance.now() - t0) / 1000);
+    tempiEl.hidden = !tempiEl.textContent;
     return fineTurno(timerAttesa, "errore: " + msg);
   }
   let audio, testo = "", voceErr = "", capito = "", tempi = null;

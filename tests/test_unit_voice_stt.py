@@ -16,6 +16,7 @@ import http.client
 import json
 import os
 import struct
+import time
 import sys
 import threading
 from http.server import HTTPServer
@@ -750,6 +751,23 @@ class TestVoiceHandlerRouting:
         status, resp = _post_raw(self.port, json.dumps({"prompt": "ciao"}).encode(),
                                  {**_AUTH, "Content-Type": "application/json"})
         assert status == 500 and set(resp["tempi"]) == {"cervello", "server"}, resp
+
+    def test_v7_caricamento_lento_non_conta_come_server(self):
+        """V-2 bot #322: il tempo «server» parte dopo aver ricevuto il corpo: un caricamento
+        lento dalla pagina resta nella «rete» (totale della pagina meno il server)."""
+        import socket
+        corpo = json.dumps({"prompt": "ciao"}).encode()
+        testa = (f"POST /voice HTTP/1.0\r\nHost: 127.0.0.1\r\nAuthorization: {_AUTH['Authorization']}\r\n"
+                 f"Content-Type: application/json\r\nContent-Length: {len(corpo)}\r\n\r\n").encode()
+        with socket.create_connection(("127.0.0.1", self.port), timeout=10) as sk:
+            sk.sendall(testa + corpo[:3])
+            time.sleep(0.6)  # la pagina carica piano
+            sk.sendall(corpo[3:])
+            dati = b""
+            while chunk := sk.recv(65536):
+                dati += chunk
+        tempi = json.loads(dati.split(b"\r\n\r\n", 1)[1])["tempi"]
+        assert tempi["server"] < 0.5, tempi
 
     def test_v7_rifiuto_prima_di_spendere_senza_tempi(self):
         """V7: il 429 del tetto arriva prima di ogni lavoro: niente tempi né riga di log."""

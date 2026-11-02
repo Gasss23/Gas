@@ -901,7 +901,7 @@ const { chromium } = require('playwright');
   }
   await page.waitForFunction(() => {
     const t = document.getElementById('status').textContent;
-    return t.includes('conversazione chiusa') || t.includes('non riproducibile');
+    return t.includes('conversazione chiusa') || t.includes('non riproducibile') || t.startsWith('errore');
   }, null, { timeout: 25000 });
   await page.waitForTimeout(3000);   // niente turni né errori dopo la chiusura
   // V-1 bot #313: la soglia calcolata dalla pagina stessa, con 300 ms tutti di voce media
@@ -929,7 +929,7 @@ const { chromium } = require('playwright');
 
 @pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa", "tetto", "errore",
                                   "interruzione", "interruzione_media", "colpo", "colpo_voce",
-                                  "sisubito"])
+                                  "sisubito", "guasto"])
 def test_v3_conversazione_nel_browser(tmp_path, modo):
     """Giro completo nella pagina vera (Chromium headless, microfono finto da file):
     clic → la frase parte da sola alla fine della voce (nessun secondo clic) → «ci sto
@@ -989,6 +989,15 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
             ricevute.append((self.headers.get("X-Gas-Formato"), self.headers.get("Content-Type"),
                              len(corpo), corpo[:4]))
             time.sleep(2.6)  # oltre i 2 s: deve partire la frase d'attesa
+            if modo == "guasto":  # V-1 bot #322: guasto lento, i tempi arrivano col 502
+                out = json.dumps({"error": "voce non disponibile",
+                                  "tempi": {"trascrizione": 0.5, "cervello": 1.25, "server": 2.0}}).encode()
+                self.send_response(502)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(out)))
+                self.end_headers()
+                self.wfile.write(out)
+                return
             out = json.dumps({"content": "Sì, meglio così. Procedo?", "audio": audio_b64,
                               "capito": "Gas, <b>meglio</b> così?",
                               "tempi": {"trascrizione": 0.5, "cervello": 1.25, "server": 2.0}}).encode()
@@ -1038,6 +1047,11 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     if modo not in ("interruzione", "interruzione_media", "colpo", "colpo_voce"):
         assert len(ricevute) == 1, (ricevute, stati)
     assert ricevute[0][0] == "audio+testo" and ricevute[0][2] > 0
+    if modo == "guasto":
+        # V-1 bot #322: errore dichiarato e tempi a schermo anche sul guasto
+        assert stati[-1] == "errore: voce non disponibile", stati
+        assert esito["tempi"].startswith("tempi: ascolto 0.5s · cervello 1.3s · rete "), esito["tempi"]
+        return
     assert testo == "Sì, meglio così. Procedo?"
     # V6: la pagina mostra cosa ha sentito, come testo (l'HTML nel parlato non diventa markup)
     assert esito["capito"]["testo"] == "Ho capito: «Gas, <b>meglio</b> così?»", esito["capito"]

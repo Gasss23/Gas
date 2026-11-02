@@ -307,6 +307,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "Content-Length non valido"})
             return
         raw = self.rfile.read(length) if length > 0 else b""
+        # V-2 bot #322: il caricamento dell'audio dalla pagina è «rete», non tempo del server
+        self._t0 = time.monotonic()
 
         content_type = self.headers.get("Content-Type", "")
         ct_base = content_type.split(";")[0].strip().lower()
