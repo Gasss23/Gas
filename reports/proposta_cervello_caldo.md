@@ -8,20 +8,33 @@ A ogni turno col cervello forte `brains/claude_cli.py` lancia da zero `claude -p
 
 ## Prima cosa da fare: misurare (5 minuti sul Mac, nessun codice)
 
-Va misurato col comando VERO di Gas (`ClaudeCliClient.comando` in `brains/claude_cli.py`), da una cartella vuota: altrimenti partono server MCP o si leggono file CLAUDE.md, e il tempo d'avvio si gonfia proprio sul numero che decide (V-2 bot #320). Nel Terminale:
+Va misurato col comando VERO di Gas, preso dal codice stesso (`ClaudeCliClient.comando`, stesse variabili d'ambiente filtrate da `_ambiente_pulito`: niente `ANTHROPIC_API_KEY`, quindi login dell'abbonamento come in Gas; stesso modello forte e stesso schema), lanciato da una cartella vuota (V-1/V-2 bot #320). Dal Terminale, nella cartella di Gas:
 
 ```
-cd "$(mktemp -d)" && echo "Rispondi in una frase." > sistema.txt
-time (echo "rispondi solo: ok" | claude -p --output-format json \
-  --json-schema '{"type":"object","properties":{"testo":{"type":"string"}},"required":["testo"]}' \
-  --tools "" --setting-sources "" --no-session-persistence --strict-mcp-config \
-  --disable-slash-commands --system-prompt-file sistema.txt)
+cd ~/Gas && python3 - <<'PY'
+import json, os, subprocess, tempfile, time
+from brains.claude_cli import ClaudeCliClient, _ambiente_pulito
+from brains.model_ids import MODEL_CLAUDE_FORTE
+with tempfile.TemporaryDirectory() as d:
+    sistema = os.path.join(d, "sistema.txt")
+    open(sistema, "w").write("Rispondi in una frase.")
+    cmd = ClaudeCliClient().comando(MODEL_CLAUDE_FORTE, sistema)
+    for domanda in ["rispondi solo: ok"] * 2 + ["riassumi: " + "parola " * 2000] * 2:
+        t = time.monotonic()
+        p = subprocess.run(cmd, input=domanda, capture_output=True, text=True, cwd=d,
+                           env=_ambiente_pulito(), timeout=300)
+        tot = time.monotonic() - t
+        try:
+            api = (json.loads(p.stdout).get("duration_api_ms") or 0) / 1000
+        except ValueError:
+            print("risposta non JSON:", (p.stderr or p.stdout)[:200]); continue
+        print(f"totale {tot:.1f}s · modello {api:.1f}s · avvio e resto {tot - api:.1f}s")
+PY
 ```
 
-1. Due volte così: avvio più una risposta minima.
-2. Due volte con una domanda lunga (~2 000 parole al posto di «rispondi solo: ok»): quanto pesa il contesto rispetto all'avvio.
+Il numero da confrontare con la soglia è **«avvio e resto»** (totale meno il tempo del modello). Il campo `duration_api_ms` nella risposta JSON di `claude -p` è **da verificare**: se manca, «modello» esce 0 e allora si confronta con `time claude --version` (solo l'avvio del programma, che sottostima l'avvio vero).
 
-Se l'avvio vale meno di 1–2 s su un turno a voce di 8–15 s, il processo caldo serve a poco. In quel caso conviene altro: risposte più corte, la voce frase per frase della V7b, il cervello normale per le domande semplici.
+Se «avvio e resto» vale meno di 1–2 s su un turno a voce di 8–15 s, il processo caldo serve a poco. In quel caso conviene altro: risposte più corte, la voce frase per frase della V7b, il cervello normale per le domande semplici.
 
 ## Le tre strade
 
@@ -43,7 +56,7 @@ Pagine lette: `code.claude.com/docs/en/agent-sdk/overview`, `.../quickstart`, `.
 ## Proposta
 
 1. **Misurare** (sezione sopra) e mandare i numeri a M1.
-2. Se l'avvio pesa più di ~2 s: **strada A**, in una fetta piccola su `brains/claude_cli.py`, con revisore, test e prova sul Mac, solo dopo aver risolto il nodo del system prompt (sopra). Regole d'uso invariate.
+2. Se «avvio e resto» pesa più di ~2 s: **strada A**, in una fetta piccola su `brains/claude_cli.py`, con revisore, test e prova sul Mac, solo dopo aver risolto il nodo del system prompt (sopra). Regole d'uso invariate.
 3. **Strada B solo dopo** che l'operatore ha chiarito le regole d'uso dell'SDK con l'abbonamento, e con un piano per tenere la storia sotto `_get_window`. Oggi non la consiglio.
 
 Decide l'operatore: misurare sì o no, poi A, B o niente.
