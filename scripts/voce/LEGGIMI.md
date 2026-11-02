@@ -68,7 +68,10 @@ o il prossimo accesso al Mac).
   voce (vedi `modules/voice/server.py`): questo vale da quando dici la parola, non prima.
 - La risposta di Gas passa da un file temporaneo leggibile solo da te, cancellato appena
   finisce di parlare.
-- I log (`.gas_voce/`) contengono solo eventi e codici di errore, mai l'audio né il token.
+- Il log dell'ascolto (`.gas_voce/ascolto.log`) contiene solo eventi e codici di errore,
+  mai l'audio né il token. Il log del server (`.gas_voce/voce.server.log`) raccoglie
+  invece gli avvisi di tutto Gas e può contenere pezzi della conversazione: trattalo
+  come privato (V-4 della verifica esterna #323).
 
 ## Regolazioni (nel `.env`)
 

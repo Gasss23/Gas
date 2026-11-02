@@ -516,9 +516,12 @@ _FINTI = {
     "plutil": 'exit 0',
     "launchctl": ('echo "launchctl $*" >> "$REGISTRO"\n'
                   '[ "$1" = print ] && echo "	state = running"\nexit 0'),
-    "nc": 'echo "nc $*" >> "$REGISTRO"; exit 0',
+    "nc": ('echo "nc $*" >> "$REGISTRO"\n'
+           'n=$(cat "$REGISTRO.nc" 2>/dev/null || echo 0); echo $((n+1)) > "$REGISTRO.nc"\n'
+           '[ "$((n+1))" -gt "${NC_FALLISCE:-0}" ]'),
     "sleep": 'exit 0',
-    "python": 'echo "python $*" >> "$REGISTRO"; cat > /dev/null; exit 0',
+    "python": ('echo "python $*" >> "$REGISTRO"\n'
+               'case "$*" in *version_info*) [ -z "$PYTHON_VECCHIO" ];; *) cat > /dev/null;; esac'),
     "python3": 'echo "python3 $*" >> "$REGISTRO"; exit 0',
 }
 
@@ -546,9 +549,10 @@ def _gas_finto(tmp_path, nome="Gas", env="GAS_VOICE_TOKEN=segreto-di-prova\n"):
     return gas, finti, casa
 
 
-def _installa(gas, finti, casa, tmp_path):
+def _installa(gas, finti, casa, tmp_path, **extra):
     registro = tmp_path / "registro.txt"
-    env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(registro)}
+    env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(registro),
+           **extra}
     r = subprocess.run(["bash", str(gas / "scripts/voce/installa.sh")], capture_output=True,
                        text=True, timeout=60, env=env)
     return r, registro.read_text() if registro.exists() else ""
@@ -571,7 +575,7 @@ def test_installa_arriva_in_fondo_senza_porta_nel_env(tmp_path):
 def test_installa_usa_la_porta_del_env(tmp_path):
     gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_VOICE_PORT=9001\n")
     r, registro = _installa(gas, finti, casa, tmp_path)
-    assert r.returncode == 0 and "nc -z 127.0.0.1 9001" in registro
+    assert r.returncode == 0 and "nc -z 127.0.0.1 9001" in registro.splitlines()
 
 
 def test_installa_porta_ripetuta_vale_la_prima(tmp_path):
@@ -579,7 +583,7 @@ def test_installa_porta_ripetuta_vale_la_prima(tmp_path):
     gas, finti, casa = _gas_finto(
         tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_VOICE_PORT=9001\nGAS_VOICE_PORT=9002\n")
     r, registro = _installa(gas, finti, casa, tmp_path)
-    assert r.returncode == 0 and "nc -z 127.0.0.1 9001" in registro
+    assert r.returncode == 0 and "nc -z 127.0.0.1 9001" in registro.splitlines()
 
 
 def test_installa_avvisa_se_c_e_un_url_remoto(tmp_path):
@@ -587,6 +591,33 @@ def test_installa_avvisa_se_c_e_un_url_remoto(tmp_path):
         tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_VOICE_URL=https://gas.example.org\n")
     r, _ = _installa(gas, finti, casa, tmp_path)
     assert r.returncode == 0 and "AVVISO: nel .env c'è GAS_VOICE_URL" in r.stdout
+
+
+def test_installa_porta_con_commento_in_linea(tmp_path):
+    """R-622-1: le cifre di un commento in linea non finiscono nella porta."""
+    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_VOICE_PORT=9001 # era 8765\n")
+    r, registro = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and "nc -z 127.0.0.1 9001" in registro.splitlines()
+
+
+def test_installa_aspetta_il_server_lento(tmp_path):
+    """V-3 ve #323: il server che ci mette qualche secondo non dà un falso STOP."""
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, registro = _installa(gas, finti, casa, tmp_path, NC_FALLISCE="3")
+    assert r.returncode == 0 and registro.count("nc -z") == 4
+
+
+def test_installa_server_che_non_risponde_si_ferma(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, registro = _installa(gas, finti, casa, tmp_path, NC_FALLISCE="999")
+    assert r.returncode == 1 and "non risponde" in r.stderr and registro.count("nc -z") == 30
+
+
+def test_installa_python_vecchio_si_ferma_prima_delle_dipendenze(tmp_path):
+    """V-3 ve #323: con Python < 3.11 nel .venv lo dice, invece di un pip che fallisce."""
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, registro = _installa(gas, finti, casa, tmp_path, PYTHON_VECCHIO="1")
+    assert r.returncode == 1 and "Python 3.11" in r.stderr and "pip install" not in registro
 
 
 def test_installa_senza_token_si_ferma_prima_di_tutto(tmp_path):

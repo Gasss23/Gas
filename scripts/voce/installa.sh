@@ -39,6 +39,9 @@ if [ ! -f .venv/bin/activate ]; then
 fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
+# V-3 ve #323: requirements.txt fissa versioni che vogliono Python 3.11 o più.
+python -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' \
+  || stop "serve Python 3.11 o più nel .venv ($(python --version 2>&1)): installane uno nuovo, cancella .venv e riprova."
 python -m pip install -q -r requirements.txt -r clients/voice/requirements-ascolto.txt \
   || stop "installazione delle dipendenze fallita."
 echo "2/6 dipendenze: OK"
@@ -82,9 +85,24 @@ done
 # R-615-1: senza GAS_VOICE_PORT nel .env grep esce con 1: `|| true`, se no set -e ferma
 # lo script in silenzio (porta di default 8765). V-2 bot #323: vale la PRIMA riga, come
 # per il server e per l'ascolto (gas._carica_dotenv).
-PORTA="$( { grep -E '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_PORT=' .env || true; } | head -1 | sed 's/.*=//; s/[^0-9]//g')"
-nc -z 127.0.0.1 "${PORTA:-8765}" 2>/dev/null \
+# R-622-1: un commento in linea («9001 # era 8765») si toglie prima di tenere le cifre.
+PORTA="$( { grep -E '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_PORT=' .env || true; } | head -1 | sed 's/[[:space:]]#.*//; s/.*=//; s/[^0-9]//g')"
+# V-3 ve #323: il server può metterci qualche secondo ad ascoltare: si riprova per 30 s.
+PRONTO=no
+for _ in $(seq 1 30); do
+  if nc -z 127.0.0.1 "${PORTA:-8765}" 2>/dev/null; then PRONTO=si; break; fi
+  sleep 1
+done
+[ "$PRONTO" = si ] \
   || stop "il server voce non risponde su 127.0.0.1:${PORTA:-8765}: guarda $GAS/.gas_voce/voce.server.log"
+# …e i servizi devono essere ancora accesi dopo l'attesa (uno che parte e cade subito).
+for s in "${SERVIZI[@]}"; do
+  STATO="$(launchctl print "$DOMINIO/$s" 2>/dev/null || true)"
+  case "$STATO" in
+    *"state = running"*) ;;
+    *) stop "$s si è fermato dopo l'avvio: guarda $GAS/.gas_voce/${s#com.gas.}.log" ;;
+  esac
+done
 if grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_URL=.+' .env; then
   echo "AVVISO: nel .env c'è GAS_VOICE_URL: l'ascolto manda le richieste lì, ma questo controllo ha guardato solo il server sul Mac."
 fi

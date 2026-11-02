@@ -20,7 +20,7 @@ Privacy:
     nessuna registrazione.
   - La risposta di Gas (la sua voce, non la tua) passa da un file temporaneo 0600 per
     afplay, cancellato subito dopo.
-  - Nei log solo gli eventi (attivazione, invio, codici di errore), mai l'audio né il
+  - Nel log dell'ascolto solo gli eventi (attivazione, invio, codici di errore), mai l'audio né il
     token.
 
 Variabili d'ambiente (lette anche da .env nella root di Gas):
