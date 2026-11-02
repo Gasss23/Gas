@@ -22,6 +22,8 @@
 - **Bot su 3db59c2 (https://github.com/Gasss23/Gas/pull/319#pullrequestreview-5731093296)**: APPROVATO CON RISERVE, check verifica-bot neutral (la PR tocca ci.yml), CI verde. V-1 BASSA (il tetto di una per turno non copriva i parcheggi alla firma): `FATTA` in b1d1e45. V-2 COSMETICA (ZWJ e FE0F delle emoji espansi in <U+XXXX>): `DEFERITA — registrata`.
 - **Verifica esterna su 3db59c2 (https://github.com/Gasss23/Gas/pull/319#issuecomment-6566521136)**: APPROVATO CON RISERVE. V-1 BASSA (lo stesso del bot): `FATTA`. V-2 BASSA (testo non stringa spedito come repr): `FATTA`. V-3 BASSA (GAS_NOTIFICHE_GIORNO=0 diventava 1): `FATTA` — 0 o meno = spento. V-4 COSMETICA (= R-612-1): `DEFERITA`. V-5 BASSA (righe finte dopo il prefisso, non una firma): `DEFERITA — registrata`.
 - **Review #613 (chat Mani)**: APPROVATO CON RISERVE. R-613-1 BASSA (i controlli senza costi valevano solo dopo la firma), R-613-2 BASSA (diario del rifiuto al cancello), R-613-3 COSMETICA (messaggio con valori negativi): `FATTA` in b1d1e45. **Review #614**: APPROVATO CON RISERVE. R-614-1 COSMETICA (un controllo di T102g non prova niente da solo) e R-614-2 BASSA (preesistente: argomenti non dizionario → DENY con `_riassumi_args` grezzo nel diario, per ogni strumento): `DEFERITA — registrate`; R-614-3 (riserve in stato_progetto): `FATTA` in questo commit.
+- **Bot su 1e4bc90 (https://github.com/Gasss23/Gas/pull/319#pullrequestreview-5731250289)** e **verifica esterna su 1e4bc90 (https://github.com/Gasss23/Gas/pull/319#issuecomment-6566914211)**: APPROVATO CON RISERVE, CI verde (kernel in CI 1076 PASS, 0 FAIL). V-1 BASSA (bot e ve: col tetto del giorno pieno partiva comunque la richiesta di firma): `FATTA` in 20031e4 — `rifiuto_al_cancello` legge il conto senza scriverlo. V-2 BASSA ve (nessun test sul percorso firmato): `FATTA` — T102j end-to-end col trasporto finto. V-3 COSMETICA ve («off» o «0.0» tornavano a 5): `FATTA` — non intero = spento con warning.
+- **Review #617 (chat Mani)**: APPROVATO CON RISERVE. R-617-1 COSMETICA (messaggio «a 0 o meno» anche per un valore non intero), R-617-2 COSMETICA (controlli del conto duplicati), R-617-3 BASSA (`rifiuto_al_cancello` senza try suo, retto da quello del kernel): `DEFERITA — registrate`.
 - **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (M1)`.
 - **Voce H24 (R8)**: `DEFERITA — prossima fetta, piano a M1 prima del codice`.
 
@@ -30,22 +32,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   7 +++++++
+ .claude/agents/memoria_revisore.md  |   8 ++++++++
  .github/workflows/ci.yml            |   7 +++++++
  .gitignore                          |   2 ++
- gas.py                              |  70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ gas.py                              |  72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  gas_identity.md                     |   3 ++-
  modules/gate/gate.py                |   7 ++++++-
- modules/telegram/avviso.py          | 161 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/telegram/avviso.py          | 186 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md            |  23 +++++++++++++----------
  reports/handoff.md                  | n/d
  reports/ripartenza_mani.md          |   2 +-
  reports/roadmap.md                  |   2 +-
  reports/stato_progetto.md           |   1 +
- reports/ultimo_report.md            |  31 +++++++++++++------------------
- tests/test_unit_avvisa_operatore.py | 199 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md            |  32 ++++++++++++++------------------
+ tests/test_unit_avvisa_operatore.py | 218 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_gate.py             |   1 +
- tests/test_unit_kernel.py           | 144 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py           | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: base = merge-base con origin/main = b472fe1. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -53,6 +55,9 @@ NB: base = merge-base con origin/main = b472fe1. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+20031e4 fix(telegram): al cancello anche il tetto del giorno, test della firma end-to-end, valore non intero = spento (bot/ve #319 su 1e4bc90, review #617)
+1a13c53 chore(revisore): memoria review #617 — APPROVATO CON RISERVE
+1e4bc90 docs(fine-task): fetta 36, PR #319, correzioni bot/ve su 3db59c2, review #613-#614
 b1d1e45 fix(telegram): una notifica per turno anche alla firma, testo solo stringa, 0 = spento (bot/ve #319, review #613-#614)
 6600af1 chore(revisore): memoria review #614 — APPROVATO CON RISERVE
 30aff74 chore(revisore): memoria review #613 — APPROVATO CON RISERVE
@@ -221,23 +226,59 @@ Ho letto CLAUDE.md (sezione 5, sezioni 8-9), reports/stato_progetto.md (in modo 
 Riga contatore #614 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata da sola con `scripts/commit_memoria_revisore.sh` (commit 6600af1, nessuna lezione nuova). L'indice staged è intatto (sha256 ancora e19a25db…). Dopo questo verdetto puoi lanciare `bash scripts/segna_review_ok.sh`.
 ```
 
-## §5 DELTA TEST DEL MOTORE
-
-`tests/test_unit_kernel.py` (comando della CI `python tests/test_unit_kernel.py`, da root): su main pulito 1066 PASS, 1 FAIL; col diff 1073 PASS, 1 FAIL (+7: T102a-g; T68s ha due voci in più nello stesso check). Il FAIL è T31g («gate env GAS_VECTORS=1 costruisce il vector store»), identico su main in questo container: dipende dall'ambiente, fuori scope. Riepilogo reale:
+Commit 20031e4 (gas.py, modules/telegram/avviso.py, tests/: V-1 bot/ve, V-2 e V-3 ve su 1e4bc90). Verdetto integrale della review #617 (chat Mani):
 
 ```
-=== RIEPILOGO: 1073 PASS, 1 FAIL ===
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #617 (chat Mani). Ho esaminato il diff staged su claude/peaceful-lovelace-0w2b7q, sopra 1e4bc90. Lo sha256 inizia per 8b2934ec280632f1 ed era identico prima e dopo il commit della memoria. Prima della review ho letto CLAUDE.md, la parte di reports/stato_progetto.md sulla fetta 36 e la coda di .claude/agents/memoria_revisore.md (review #611-#614).
+
+### Elementi del diff esaminati
+- `modules/telegram/avviso.py:132` — `rifiuto_al_cancello(testo, root)` ripete i controlli senza costi, poi legge il conto con `_uso_oggi`. Rischi esaminati: che il cancello prenoti un posto; che un conto rotto lasci passare la richiesta; che il conto scritto al cancello e quello letto all'esecuzione non coincidano. — **ok**. Il conto non viene mai scritto. Conto illeggibile → rifiuto. Il tetto viene ricontrollato anche all'esecuzione firmata, quindi un giorno che si riempie fra parcheggio e firma resta bloccato lì. Il mutante «il cancello prenota il posto» fa fallire T102j (n=2) e il test del modulo (1 failed).
+- `gas.py:4469` — `_rifiuto_avviso_al_cancello` ora chiama `rifiuto_al_cancello(..., self.root)`. È la stessa root dell'esecuzione (`gas.py:4669`). Rischio esaminato: un'eccezione nel controllo. — **ok**. Il try esistente la trasforma in un warning e la chiamata va comunque al parcheggio, dove la firma resta il cancello. Il mutante «al cancello solo rifiuto_senza_costi» fa fallire T102i.
+- `modules/telegram/avviso.py:42` — `_max_giorno`: con un valore non intero ora restituisce 0 (spento) e scrive un warning; vuoto o di soli spazi → default 5. Rischio esaminato: tool spento per errore. — **riserva cosmetica (R-617-1)**. Ho provato i valori: «off» → 0, «5.0» → 0, « 3 » → 3, «+2» → 2, «1_0» → 10.
+- `tests/test_unit_kernel.py:11605` — T102j copre il percorso firmato completo: _TgFinto vero, parcheggio che conta 1 per turno, click con `_clicca77`, sendMessage con PREFISSO, conto a 1. Rischio esaminato: un test vuoto, che passa anche col codice sbagliato. — **ok**. Il mutante «tolto `not firmata and`» (`gas.py:4665`) fa fallire T102j. Un'eccezione dentro il blocco finisce nel check «T102 blocco senza eccezioni», e `_invia_default` e `invia_read_back` vengono ripristinati nei finally.
+- `tests/test_unit_kernel.py:11582` — T102i: conto 5/5 e finestra contaminata → negata, 0 read-back, 0 richieste in attesa. Ha senso perché il mutante m1 lo fa cadere. — **ok**.
+- `tests/test_unit_avvisa_operatore.py:148` — test del modulo: il conto resta 5, conto rotto → «illeggibile», testo non stringa → rifiuto. — **ok**.
+
+### Prove riprodotte (su una copia dell'indice nel scratchpad, cartelle nuove)
+- avvisa + gate + richieste: **890 passed**. Kernel: **1075 PASS, 1 FAIL (T31g, problema d'ambiente)**. Coincide con quanto dichiarato.
+- 3 modifiche apposta sbagliate al codice (mutanti), tutte prese (il codice di base fallisce solo T31g):
+  - m1: al cancello solo `rifiuto_senza_costi` → T102i FAIL.
+  - m2: tolto `not firmata and` → T102j FAIL.
+  - m3: il cancello prenota il posto → T102j FAIL + 1 failed pytest.
+- Nel diff non ci sono caratteri invisibili Cf/Zl/Zp (lezione R-611-1) né tagli diretti della cronologia.
+
+### Riserve
+- **R-617-1 COSMETICA**: con un valore non intero («off», «5.0») il rifiuto dice «GAS_NOTIFICHE_GIORNO a 0 o meno» (`modules/telegram/avviso.py:128`), che è falso. Chi scrive «5.0» intendendo 5 si ritrova lo strumento spento. Resta un blocco sicuro (fail-closed), ma l'unica traccia è il warning nel log.
+- **R-617-2 COSMETICA**: i messaggi e la logica di «conto illeggibile» e «tetto raggiunto» sono duplicati fra `rifiuto_al_cancello` (`modules/telegram/avviso.py:139`) e `avvisa_operatore_esito` (`modules/telegram/avviso.py:165`). Rischio: che col tempo divergano.
+- **R-617-3 BASSA, da dichiarare**: `rifiuto_al_cancello` non ha un try suo. Può sollevare (Path.exists su EACCES, import fallito). La regge il try del kernel e la chiamata va al parcheggio, quindi niente crash né invio. Però il docstring del modulo, «nessuna eccezione esce», per questa funzione non vale.
+
+### Rischio escluso
+Non ho verificato l'invio vero su Telegram, né che il messaggio col prefisso arrivi davvero alla chat di TELEGRAM_ALLOWED_IDS: T102j controlla testo e conto, non il chat_id. Serve un bot reale, non disponibile in dev. Non ho rifatto nemmeno la corsa fra processi sul conto (R-612-2, già aperta).
+
+### Memoria
+Riga contatore #617 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con `scripts/commit_memoria_revisore.sh` (commit 1a13c53, solo quel file). Il resto dell'index è intatto. Nessuna lezione nuova.
+```
+
+## §5 DELTA TEST DEL MOTORE
+
+`tests/test_unit_kernel.py` (comando della CI `python tests/test_unit_kernel.py`, da root): su main pulito 1066 PASS, 1 FAIL; col diff 1075 PASS, 1 FAIL (+9: T102a-j senza h; T68s ha due voci in più nello stesso check). Il FAIL è T31g («gate env GAS_VECTORS=1 costruisce il vector store»), identico su main in questo container: dipende dall'ambiente, fuori scope. Riepilogo reale:
+
+```
+=== RIEPILOGO: 1075 PASS, 1 FAIL ===
   FAIL: T31g gate env GAS_VECTORS=1 costruisce il vector store (lazy, no download)
 ```
 
-`tests/test_unit_avvisa_operatore.py` (nuovo): 36 passed. Con gate e richieste (`python -m pytest tests/test_unit_avvisa_operatore.py tests/test_unit_gate.py tests/test_unit_richieste.py`): 884 passed. Mutanti presi: niente prenotazione, tetto off-by-one, Cf non tolti, cancello SAFE, giorno ignorato (test del modulo); niente tetto per turno, testo nel diario, avvisa_operatore libero a finestra contaminata, tetto per turno solo sui «Successo», niente tetto per turno al cancello, niente controlli senza costi al cancello, diario del rifiuto senza etichetta (kernel); testo non stringa accettato, «spento» tolto (modulo).
+`tests/test_unit_avvisa_operatore.py` (nuovo): 42 passed. Con gate e richieste (`python -m pytest tests/test_unit_avvisa_operatore.py tests/test_unit_gate.py tests/test_unit_richieste.py`): 890 passed. In CI su 1e4bc90 il kernel dà 1076 PASS, 0 FAIL (T31g passa lì). Mutanti presi: niente prenotazione, tetto off-by-one, Cf non tolti, cancello SAFE, giorno ignorato (test del modulo); niente tetto per turno, testo nel diario, avvisa_operatore libero a finestra contaminata, tetto per turno solo sui «Successo», niente tetto per turno al cancello, niente controlli senza costi al cancello, diario del rifiuto senza etichetta (kernel); testo non stringa accettato, «spento» tolto (modulo); al cancello senza il tetto del giorno, tetto per turno anche sulla firma (kernel).
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
 - beb0feb, 4bd1564 (memoria del revisore), c67a2d5 (fetta 36): pushati insieme prima dell'apertura della PR #319; run 41368996140 su c67a2d5: handoff-check failure (l'handoff era ancora quello della fetta 35, atteso), unit-suite success.
 - 3db59c2 (fine-task): run 41369132632 su 3db59c2 success (unit-suite, handoff-check); verifica-bot neutral (la PR tocca ci.yml, bot APPROVATO CON RISERVE).
-- 30aff74, 6600af1 (memoria #613, #614), b1d1e45 (correzioni) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 30aff74, 6600af1 (memoria #613, #614), b1d1e45 (correzioni), 1e4bc90 (fine-task): run 41371890790 su 1e4bc90 success (unit-suite, handoff-check); verifica-bot neutral (bot APPROVATO CON RISERVE).
+- 1a13c53 (memoria #617), 20031e4 (correzioni) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -247,5 +288,8 @@ Riga contatore #614 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.
 - V-5 ve #319 BASSA: il testo può contenere righe finte dopo il prefisso (non è una firma: le firme passano solo dai bottoni).
 - R-614-1 (chat Mani) COSMETICA: in T102g il controllo «testo assente dal diario» non prova niente da solo (cade il controllo dell'etichetta).
 - R-614-2 (chat Mani) BASSA, preesistente: argomenti non dizionario → DENY del cancello con `_riassumi_args` grezzo nel diario, per ogni strumento.
+- R-617-1 (chat Mani) COSMETICA: con un valore non intero il rifiuto dice «a 0 o meno».
+- R-617-2 (chat Mani) COSMETICA: controlli del conto duplicati fra `rifiuto_al_cancello` e `avvisa_operatore_esito`.
+- R-617-3 (chat Mani) BASSA: `rifiuto_al_cancello` senza try suo (lo regge quello del kernel: la chiamata va alla firma).
 - Invio vero su Telegram non provato (nessun token in sviluppo).
 - Del browser (fetta 35, PR #317 mergiata): R-609-1, R-610-1, V-3 ve #317, V-1 c ve #316, V-1 bot su 384bb3a (sonda di node rilanciata a ogni lettura con Playwright rotto), tutte BASSE; prova dal vero sul VPS prima di accendere il browser.

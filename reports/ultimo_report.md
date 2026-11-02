@@ -12,7 +12,8 @@
 - **Review #611**: APPROVATO CON RISERVE; R-611-1..5 `FATTA`. **Review #612**: APPROVATO CON RISERVE; R-612-1 COSMETICA e R-612-2 BASSA `DEFERITA — registrate`.
 - **Bot e verifica esterna su 3db59c2**: APPROVATO CON RISERVE (bot neutral per ci.yml). V-1 (una per turno anche alla firma), V-2 ve (testo non stringa), V-3 ve (0 = spento): `FATTA` in b1d1e45. V-2 bot COSMETICA (emoji espanse) e V-5 ve BASSA (righe finte dopo il prefisso): `DEFERITA — registrate`.
 - **Review #613**: APPROVATO CON RISERVE; R-613-1..3 `FATTA`. **Review #614**: APPROVATO CON RISERVE; R-614-1 COSMETICA e R-614-2 BASSA (preesistente) `DEFERITA — registrate`.
-- **Voce H24 (R8)**: codice e test scritti (43 test, 7 mutanti presi) in uno stash locale; `DEFERITA — revisione e PR dopo il merge della #319, per non mescolare le fette`.
+- **Bot e verifica esterna su 1e4bc90**: APPROVATO CON RISERVE. V-1 (tetto del giorno al cancello), V-2 ve (test della firma end-to-end), V-3 ve (valore non intero = spento): `FATTA` in 20031e4. **Review #617**: APPROVATO CON RISERVE; R-617-1/2 COSMETICHE e R-617-3 BASSA `DEFERITA — registrate`.
+- **Voce H24 (R8)**: commit locale 8e69ab6 sul branch voce-h24 (57 test; review #615 BOCCIATO, #616 APPROVATO CON RISERVE); `DEFERITA — revisione e PR dopo il merge della #319, per non mescolare le fette`.
 - **Riserve basse del browser**: `DEFERITA — si chiudono quando si toccano di nuovo quei file (indicazione di M1)`.
 
 ## Anomalie
