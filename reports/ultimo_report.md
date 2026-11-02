@@ -15,4 +15,5 @@
 - **Bot su 970beca (PR #324)**: NON approvato (check failure). V-1 MEDIA (quarto percorso verso i gratuiti: pin della memoria e `ricorda`) e V-2 BASSA (`notify_telegram` SAFE): `FATTA` nel piano.
 - **Bot su 7346994 (PR #324)**: APPROVATO CON RISERVE (check success), sì dell'operatore. V-1 BASSA (snapshot di `.gas_history.json` per 7 giorni) e V-2 COSMETICA (`test_notify_telegram_safe` da aggiornare nella fetta 1): `REGISTRATE` in stato_progetto, senza altri giri (decisione di M1).
 - **Merge di main (PR #325, voce V7b) nella #324**: `FATTA` in 9174640, review #627 APPROVATO; file del perimetro identici a main.
+- **Bot su d783938 (PR #324)**: BOCCIATO (check failure). V-1 MEDIA (quinto percorso: file scritti con `write_file` in un turno mail e riletti sui gratuiti) e V-2 BASSA (conservazione del testo contraddittoria; proposta: turno mail tolto o mascherato dalla storia, anche dagli snapshot): `FATTA` nel piano.
 - **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); `DEFERITA — PR subito dopo questa (un solo branch remoto)`.

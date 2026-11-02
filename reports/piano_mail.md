@@ -44,7 +44,7 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    si offrono **solo nei turni sul cervello forte**. Se il forte non c'è, il lavoro
    aspetta in coda e non passa mai ai modelli gratuiti. Nel diario vanno solo conteggi
    (F-diario-eco), mai il testo né gli indirizzi. Il testo letto dovrà non conservarsi oltre il
-   turno; i contatti presi dalle mail seguono la regola della memoria qui sotto (la
+   turno (vedi la proposta qui sotto: il turno mail si toglie o si maschera dalla storia); i contatti presi dalle mail seguono la regola della memoria qui sotto (la
    marcatura «non fidato» decide la firma, non il provider). Base giuridica e conservazione dei dati dei contatti: capitolo 6, decisione
    7 della roadmap, ancora aperta.
    **Requisito del kernel (V-1 bot #324, due giri):** oggi la cronologia
@@ -52,12 +52,16 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    blocchi role «tool» di `fetch_email`, ma anche le risposte dell'assistente che
    riassumono la mail e gli argomenti delle chiamate `prepara_bozza`/`send_email`
    (destinatari e testo). `_get_window` rimanda tutto ai turni dopo, che di default vanno
-   alla cascata gratuita. Quindi la fetta 1 deve cambiare il kernel: **una finestra che
-   contiene un turno con strumenti mail non va mai ai gratuiti** (aspetta il forte),
-   oppure quel turno si toglie o si maschera dalla storia a fine turno. Lo stesso vale
+   alla cascata gratuita. Quindi la fetta 1 deve cambiare il kernel. **Proposta: a fine
+   turno il turno mail si toglie o si maschera dalla storia**, prima di salvarla, così il
+   testo non resta in `.gas_history.json` né negli snapshot `refs/gas/snapshots/` (tenuti
+   7 giorni: V-1 bot #324 su 7346994). In più, finché il turno è in corso, **una finestra
+   che contiene strumenti mail non va mai ai gratuiti** (aspetta il forte). Se invece
+   l'operatore preferisce tenere il turno nella storia, la conservazione (storia e
+   snapshot) va dichiarata nella domanda 7 (V-2 bot #324 su d783938). Lo stesso vale
    per le bozze salvate in Gas: si leggono solo nei turni sul forte. Senza questo, testo
    e indirizzi letti in un turno forte arriverebbero ai gratuiti.
-   I percorsi da coprire sono quattro (R-626-1, V-1 bot #324 su 970beca):
+   I percorsi da coprire sono cinque (R-626-1, V-1 bot #324 su 970beca e su d783938):
    - i turni dopo (`run_turn` con `_get_window`);
    - la riflessione di fine task (cascata «complesso» su una finestra di `_get_window`);
    - il riepilogo di compressione, dove il testo degli strumenti diventa un messaggio user
@@ -67,12 +71,17 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
      Un contatto o una riga di diario nati da un turno mail vanno segnati con l'origine
      «mail» ed esclusi dal pin e da `ricorda` fuori dal forte. Finché questo non c'è (e
      finché la decisione 7 della roadmap sul GDPR non è presa), dalle mail **non si
-     salvano contatti**.
+     salvano contatti**;
+   - **i file**: `write_file` sta in `_LIBERI_DOPO_LETTURA`, quindi a finestra contaminata
+     scrive senza firma i .md/.txt/.csv nelle cartelle di lavoro, e `read_file` (SAFE) li
+     rilegge in un turno dopo sui gratuiti. Proposta: con `fetch_email` nella finestra,
+     `write_file` esce da `_LIBERI_DOPO_LETTURA` e va alla firma (oppure i file scritti
+     in un turno mail si segnano e non si leggono fuori dal forte), con un test.
 7. **Fail-safe §9**: provider giù, token scaduto o risposta strana → messaggio
    «Operazione negata: …» e il turno va avanti, mai un crash.
 
 ## Fette (dopo le risposte)
-1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, per nessuno dei quattro percorsi: storia, riflessione, compressione, memoria) e `notify_telegram` non più SAFE.
+1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, per nessuno dei cinque percorsi: storia, riflessione, compressione, memoria, file scritti con `write_file`; turno mail tolto o mascherato dalla storia, quindi anche dagli snapshot) e `notify_telegram` non più SAFE (aggiornando `test_notify_telegram_safe` in `tests/test_unit_gate.py`, V-2 bot #324 su 7346994).
 2. Bozze in Gas.
 3. Invio con firma e token separato.
 4. Prova dal vero su una casella di prova, poi su quella vera.

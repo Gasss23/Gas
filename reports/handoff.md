@@ -24,6 +24,7 @@
 - **Bot su 970beca (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741914149)**: NON approvato, check verifica-bot failure. V-1 MEDIA (il requisito del kernel non copriva la memoria: `_memoria_pin` mette i contatti attivi nel system di ogni turno, anche sui gratuiti, e `ricorda` li rende leggibili): `FATTA` — quarto percorso nel punto 6, contatti dalle mail con origine «mail» esclusi fuori dal forte, e finché non c'è nessun contatto salvato dalle mail. V-2 BASSA (`notify_telegram` è SAFE, quindi dopo una lettura partirebbe senza firma): `FATTA` — nel piano e nella fetta 1 (commit 7346994).
 - **Bot su 7346994 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5741952991)**: APPROVATO CON RISERVE, check success; sì dell'operatore al merge. V-1 BASSA (gli snapshot `refs/gas/snapshots/` fotografano `.gas_history.json` per 7 giorni) e V-2 COSMETICA (`test_notify_telegram_safe` da aggiornare nella fetta 1): `REGISTRATE` in stato_progetto, senza altri giri (decisione di M1).
 - **Merge di main (PR #325 di M2, voce V7b)**: `FATTA` in 9174640 — conflitti solo nei report (tenuti i miei), nella memoria (tenute le righe di tutti e due) e nella riga «Ultimo aggiornamento» (unite); file del perimetro entrati da main identici a MERGE_HEAD. **Review #627 (chat Mani)**: APPROVATO.
+- **Bot su d783938 (https://github.com/Gasss23/Gas/pull/324#pullrequestreview-5743253066)**: BOCCIATO, check verifica-bot failure. V-1 MEDIA (quinto percorso verso i gratuiti: `write_file` è in `_LIBERI_DOPO_LETTURA`, quindi a finestra contaminata scrive senza firma un .md con i dati della mail, e `read_file` lo rilegge in un turno dopo sui gratuiti): `FATTA` — quinto percorso nel punto 6 e nella fetta 1 (`write_file` alla firma con `fetch_email` nella finestra, con un test). V-2 BASSA (la frase «non conservarsi oltre il turno» contraddiceva l'opzione di tenere il turno nella storia): `FATTA` — proposta: turno mail tolto o mascherato dalla storia a fine turno, quindi anche dagli snapshot (chiude anche V-1 bot su 7346994); se l'operatore preferisce tenerlo, la conservazione va dichiarata nella domanda 7.
 - **Fetta piccola sulla voce (V-1 ve, V-1/V-4 bot, V-4 ve di #323)**: `DEFERITA — commit locale bc369ed sul branch voce-fix (review #624 BOCCIATO, #625 APPROVATO CON RISERVE); PR subito dopo questa (un solo branch remoto)`.
 
 ---
@@ -34,11 +35,11 @@
  .claude/agents/memoria_revisore.md |   2 ++
  reports/diff_sessione.md           |  17 +++++++++--------
  reports/handoff.md                 | n/d
- reports/piano_mail.md              | 104 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/piano_mail.md              | 113 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/ripartenza_mani.md         |   2 +-
  reports/roadmap.md                 |   4 ++--
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  33 +++++++++++++++------------------
+ reports/ultimo_report.md           |  34 ++++++++++++++++------------------
 ```
 
 NB: base = merge-base con origin/main = 70e2f05. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -46,6 +47,7 @@ NB: base = merge-base con origin/main = 70e2f05. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d783938 docs(fine-task): merge di main (PR #325) nella PR #324, riserve del bot su 7346994 registrate (review #627)
 a0f71c7 chore(revisore): memoria review #627 — APPROVATO
 9174640 Merge origin/main (PR #325, voce V7b) in PR #324
 7346994 docs(mail): quarto percorso verso i gratuiti (pin della memoria e ricorda), niente contatti dalle mail finché non c'è; notify_telegram non più SAFE nella fetta 1 (V-1 MEDIA, V-2 bot #324 su 970beca)
@@ -133,11 +135,11 @@ Nessuna modifica a gas.py/tests/.
 - b66ac40 (merge), ffff127 (memoria #626), 970beca (fine-task): verifica-bot failure su 970beca (V-1 MEDIA, chiusa in 7346994).
 - 7346994 (correzioni dopo il bot): CI success; verifica-bot success (bot APPROVATO CON RISERVE); poi conflitto con main (PR #325).
 - I commit di main entrati col merge (fino a 70e2f05, PR #325) hanno le run della PR #325.
-- 9174640 (merge), a0f71c7 (memoria #627): pushati insieme al commit di fine-task.
+- 9174640 (merge), a0f71c7 (memoria #627), d783938 (fine-task): handoff-check success; verifica-bot failure su d783938 (bot BOCCIATO, V-1 MEDIA, chiusa in questo commit).
 - Il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Da #324 (bot su 7346994): V-1 BASSA (snapshot di `.gas_history.json`), V-2 COSMETICA (`test_notify_telegram_safe`): per la fetta 1 della mail.
+- Da #324 (bot su 7346994): V-1 BASSA (snapshot di `.gas_history.json`) ora coperta dalla proposta del punto 6; V-2 COSMETICA (`test_notify_telegram_safe`) ora scritta nella fetta 1: da fare nel codice della fetta 1 della mail.
 - Da #323 (mergiata): V-1 bot su 3672964 BASSA (GAS_CLAUDE_BIN sotto launchd); V-4 bot COSMETICA (token vuoto accettato da installa.sh); V-3 bot COSMETICA superata dal merge; V-1 ve BASSA (rilevatore sempre in errore); V-2/V-3 ve BASSE (igiene dei test); V-4 ve BASSA (scripts/voce/ fuori dal perimetro); V-5 ve BASSA (spegni.sh e due garanzie senza test); V-6 ve COSMETICA; R-623-1/2/3; R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac); R-615-5 BASSA (licenza).
 - Da #319: V-1 bot su 9c44686 BASSA (limite dichiarato) e le altre registrate in stato_progetto.
