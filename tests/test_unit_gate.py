@@ -464,6 +464,7 @@ from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, 
     ".gas_vectors.db", ".gas_tokens.jsonl", "gate_config.yaml", "venv/bin/activate",
     ".gas_claude_cli_uso.json", ".gas_claude_cli_uso.json.123.tmp",  # V-1 bot #258
     ".gas_richieste_uso.json", ".gas_richieste_uso.json.123.tmp",  # V-1 bot #307
+    ".gas_notifiche_uso.json", ".gas_notifiche_uso.json.123.tmp",  # avvisa_operatore (R6)
     ".venv/lib/x.pth",
     "modules/gate/gate.py", "modules/gate/__init__.py", "modules/gate/nuovo.md",
     "modules/gate", "Modules/GATE/gate.py", "modules/./gate/gate.py",

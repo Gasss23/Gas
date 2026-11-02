@@ -189,6 +189,13 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_richieste.py -v 2>&1 | tee "$RUNNER_TEMP/richieste_output.txt"
 
+      - name: Run avvisa_operatore suite (pytest, zero token LLM)
+        # Notifica all'operatore su Telegram (R6, 2026-11-02): invio finto, tetto e cancello.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_avvisa_operatore.py -v 2>&1 | tee "$RUNNER_TEMP/avvisa_operatore_output.txt"
+
       - name: Run claude-cli suite (pytest, zero token LLM)
         # R2 via B (2026-10-23): adattatore `claude -p` con runner finto, nessun processo vero.
         if: always()
