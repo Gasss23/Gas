@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V7a: misura dei tempi (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su 8dc872e
+**Sessione:** 2026-11-02 — Voce V7a: misura dei tempi (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su 3a88f78
 
 ---
 
@@ -19,6 +19,7 @@
 - **Verifica esterna su 33a0346** (https://github.com/Gasss23/Gas/pull/322#issuecomment-6582445935): V-1 MEDIA (PR in conflitto con main dopo la #320) `FATTA` col merge di main (solo documenti e memoria); V-2 (§6 senza run) aggiornata qui; V-3/V-4 basse, già dichiarate.
 - **Bot su 8dc872e** (verifica-bot failure, finding MEDIA): V-1 (i tempi di un guasto al primo turno stavano nel riquadro nascosto) `FATTA` — `#tempi` fuori dal riquadro, e `#player-wrap[hidden]` ora nasconde davvero (il `display:flex` vinceva su `hidden`); test nel browser con `isVisible`, mutante → 1 failed. V-2 (tempi vecchi su «risposta non leggibile») `FATTA`. Review #646-M2 CON RISERVE (R-646-1-M2: «Ho capito» del turno prima accanto ai tempi del guasto, chiusa) → #647-M2 APPROVATO.
 - **Verifica esterna su 8dc872e** (https://github.com/Gasss23/Gas/pull/322#issuecomment-6582719572): APPROVATO CON RISERVE, solo BASSE/COSMETICHE (check da attendere, X-Gas-Tempi senza client, `tempi` anche nel JSON solo-testo, test mancanti già in §7).
+- **Bot e verifica esterna su 3a88f78** (https://github.com/Gasss23/Gas/pull/322#issuecomment-6583075582): V-1 MEDIA di entrambi (PR di nuovo in conflitto con main dopo la #319) `FATTA` col merge di main ceaa4aa (solo report in conflitto, review #648-M2 APPROVATO); V-2 bot («Ho capito» vecchio sugli altri due rami di errore) e V-2 ve (tempo del cervello quando il turno finisce senza risposta) `FATTE`, review #649-M2 APPROVATO; V-3 ve (eccezione MP3 non prevista senza tempo «voce», comportamento preesistente) e V-4 cosmetica: lasciate.
 - **V7b, V8, V9**: `DEFERITE` — una PR alla volta, dopo il merge della precedente.
 
 ---
@@ -26,15 +27,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 ++++++++
- clients/voice/browser_client.html  |  41 ++++++++++++++++++++++++++---
- modules/voice/server.py            |  52 +++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  24 ++++++-----------
+ .claude/agents/memoria_revisore.md |  11 +++++++
+ clients/voice/browser_client.html  |  41 ++++++++++++++++++++++++--
+ modules/voice/server.py            |  52 +++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  24 ++++++----------
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  33 +++++++++++-------------
- tests/test_unit_voice_server.py    |  32 ++++++++++++++++++++---
- tests/test_unit_voice_stt.py       | 128 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   3 +-
+ reports/ultimo_report.md           |  34 +++++++++++-----------
+ tests/test_unit_voice_server.py    |  32 ++++++++++++++++++---
+ tests/test_unit_voice_stt.py       | 128 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -42,6 +43,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5670d00 docs(voce-v7a): report dopo bot e verifica esterna su 3a88f78 (PR #322, review #648/#649-M2)
 1907320 chore(revisore): memoria review #649 — APPROVATO
 6be61f2 fix(voce): «Ho capito» nascosto su ogni guasto, tempo del cervello anche senza risposta (V-2 bot e V-2 ve #322 su 3a88f78; review #649-M2)
 ccf5e07 Merge remote-tracking branch 'origin/main' into feat/voce-v7-m2
@@ -269,18 +271,74 @@ Rischio escluso: il testo e il player della risposta precedente restano visibili
 
 Memoria: riga #647-M2 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (0621126). Nessuna lezione nuova.
 
+Merge di origin/main con la PR #319 (ccf5e07). Review #648-M2:
+
+## VERDETTO: APPROVATO
+
+Review #648-M2: merge di origin/main ceaa4aa (PR #319, `avvisa_operatore`) in feat/voce-v7-m2. Il merge è in corso e tutto è staged.
+
+**Cosa ho verificato nel diff**
+- `modules/voice/server.py:229`: qui stanno `_tempi` e `_t0` della V7a. Rischio esaminato: che il merge alterasse la V7a già rivista. Ho lanciato `git diff --cached HEAD` sui file voce (modules/voice, clients, i due test voce) e non c'è nessuna differenza rispetto al branch. Esito: ok.
+- `clients/voice/browser_client.html:296`: è il blocco `#tempi` della V7a, fuori da `#player-wrap`. Rischio esaminato: che venisse perso nel merge. È identico a HEAD del branch e compare nella `--stat` contro main come parte della V7a. Esito: ok.
+- `reports/stato_progetto.md:4`: la riga «Ultimo aggiornamento» è quella di main, con la V7a in testa. Rischio esaminato: perdere la cronologia di main. La differenza contro origin/main è di 3 righe e il resto della cronologia è conservato. Esito: ok.
+- `.claude/agents/memoria_revisore.md`: contro origin/main ci sono solo aggiunte (le righe #614–#616-M2 e #643–#647-M2, più una lezione) e nessuna riga rimossa, quindi le righe della chat Mani sono intatte. Esito: ok.
+
+**Controlli richiesti**
+- `git diff --cached origin/main --stat`: 9 file, cioè la V7a (`browser_client.html`, `server.py`, `test_unit_voice_server.py`, `test_unit_voice_stt.py`) più memoria e report. Corrisponde a quanto dichiarato.
+- `gas.py`, `tests/test_unit_kernel.py`, `tests/test_unit_gate.py` e `.github/workflows/ci.yml` sono identici a origin/main (`diff --quiet`).
+- Nessun marcatore di conflitto nei file del diff.
+- Nessuno slicing della history e nessun output dei tool simulato: gli unici file di codice in diff sono quelli voce, che non toccano `_get_window`.
+- Test riprodotti da me: voice_stt + avvisa_operatore + gate, 956 passed.
+
+**Cosa non ho verificato**
+- La suite kernel (1072 PASS) e i test voice_contesto, claude_cli e dotenv non li ho rilanciati: mi baso sul tuo dato. Il codice del kernel è identico a origin/main, già rivisto e mergiato con la PR #319.
+- Il comportamento della voce sul Mac non è riproducibile qui.
+
+**Memoria**
+Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga «#648-M2 — 2026-11-02 — APPROVATO — … Nessuna lezione nuova.». Non l'ho committata perché il merge è in corso: è nel file, ma non staged, quindi va aggiunta all'index prima di chiudere il merge.
+
+Correzione (bot e verifica esterna su 3a88f78, 6be61f2). Review #649-M2:
+
+## VERDETTO: APPROVATO
+
+Review #649-M2: diff staged di 3 file con 13 righe aggiunte, dopo il merge ccf5e07.
+
+**Cosa ho verificato nel diff**
+- `clients/voice/browser_client.html:613`: aggiunge `capitoEl.hidden = true` nel blocco catch del fetch («errore di rete»). Rischio esaminato: che dopo un guasto resti a schermo il «Ho capito» del turno precedente. Ora è coerente con il ramo `!resp.ok` e con `tempiEl.hidden`. Esito: ok.
+- `clients/voice/browser_client.html:644`: stessa riga nel blocco catch della «risposta non leggibile». Esito: ok, chiude la V-2 BASSA del bot su 3a88f78.
+- `modules/voice/server.py:381`: aggiunge `self._segna("cervello", t_cervello)` nel ramo `result_content is None`.
+  - Rischio esaminato: che `t_cervello` valga None. Non può succedere: in quel punto è sempre valorizzato, perché un'eccezione prima dell'assegnazione porta al ramo `except`, che fa `return`.
+  - Rischio esaminato: un doppio `_segna`. Anche questo non succede: i rami `final` ed `error` non arrivano a quel punto con `result_content` None, salvo un `final` con `content` None, dove la riscrittura è innocua.
+  - Esito: ok, chiude la V-2 della verifica esterna.
+- `tests/test_unit_voice_stt.py:755`: test nuovo `test_v7_tempo_del_cervello_anche_senza_risposta`, con un `run_turn` che produce solo `tool_res`; controlla che la risposta sia 500 e che i tempi siano esattamente cervello+server. Esito: ok.
+
+**Prove riprodotte da me**
+- `-k v7`: 11 passed.
+- Mutante (tolta la riga in `server.py`): il test nuovo dà 1 failed. Poi ho ripristinato `server.py` dall'index: non ci sono modifiche fuori dallo staged e lo staged è invariato (3 file, 13 righe aggiunte).
+
+**Cosa non ho verificato**
+- I test browser (guasto/normale/errore, 3 passed) non li ho rilanciati: mi baso sul tuo dato. Ho verificato le modifiche dell'HTML solo leggendole.
+- La V-3 della verifica esterna (un'eccezione MP3 non prevista non segna il tempo «voce») è lasciata aperta: concordo che sia un comportamento preesistente, fuori da questa fetta.
+
+**Memoria**
+La riga «#649-M2 — 2026-11-02 — APPROVATO — … Nessuna lezione nuova.» è in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, ma NON è committata. Il commit con `scripts/commit_memoria_revisore.sh` è stato bloccato dall'hook `review_gate.sh`: nell'index c'è il diff del motore e il marcatore `.review_ok` non corrisponde. Ho lasciato la riga nel file. Lancia `bash scripts/segna_review_ok.sh` e poi committala insieme al diff, oppure con lo script dopo il commit del diff.
+
+Nota laterale: la memoria del merge (#648) contava 956 passed per voice_stt + avvisa + gate, non 981: è un dato mio, i file di test sono diversi da quelli che hai elencato tu.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Test della voce (tutti i `tests/test_unit_voice*.py`, browser compresi) + claude_cli + dotenv: 258 passed dopo il merge di main. Kernel (`tests/test_unit_kernel.py`): RIEPILOGO 1063 PASS, 0 FAIL. Dopo la correzione del bot: test_unit_voice_stt + test_unit_voice_server 169 passed (revisore #644-M2); test nuovi `test_v7_caricamento_lento_non_conta_come_server` e il modo «guasto» del test nel browser, ognuno col suo mutante → 1 failed. Dopo il bot su 8dc872e: tests/test_unit_voice_server.py intero 78 passed (browser obbligatorio); mutante «tempi dentro il riquadro» → 1 failed. I test V7 nuovi stanno in `tests/test_unit_voice_stt.py` (tempi nel JSON/log, MP3 con X-Gas-Tempi, TTS fallito, kernel che si rompe, 429 senza tempi) e `tests/test_unit_voice_server.py` (pagina).
+Test della voce (tutti i `tests/test_unit_voice*.py`, browser compresi) + claude_cli + dotenv: 258 passed dopo il merge di main. Kernel (`tests/test_unit_kernel.py`): RIEPILOGO 1063 PASS, 0 FAIL prima della #319; 1072 PASS, 0 FAIL dopo il merge di main con la #319. Dopo la correzione del bot: test_unit_voice_stt + test_unit_voice_server 169 passed (revisore #644-M2); test nuovi `test_v7_caricamento_lento_non_conta_come_server` e il modo «guasto» del test nel browser, ognuno col suo mutante → 1 failed. Dopo il bot su 8dc872e: tests/test_unit_voice_server.py intero 78 passed (browser obbligatorio); mutante «tempi dentro il riquadro» → 1 failed. Dopo il bot su 3a88f78: -k v7 di test_unit_voice_stt 11 passed (test nuovo `test_v7_tempo_del_cervello_anche_senza_risposta`, mutante → 1 failed); browser guasto/normale/errore 3 passed. I test V7 nuovi stanno in `tests/test_unit_voice_stt.py` (tempi nel JSON/log, MP3 con X-Gas-Tempi, TTS fallito, kernel che si rompe, 429 senza tempi) e `tests/test_unit_voice_server.py` (pagina).
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check lette dalle notifiche e dalle verifiche.
-- 8dc872e (fine-task precedente): verifica-bot failure (finding MEDIA, chiuso qui); unit-suite e handoff-check in corso alla lettura della verifica esterna.
-- 18d626e (correzione), memoria (c3338e6, 0621126) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+- 3a88f78: verifica-bot failure (finding MEDIA: conflitto con main dopo la #319, chiuso qui), «esito» failure di conseguenza; handoff-check success, unit-suite in corso alla lettura.
+- 5670d00: commit di report con il testo non aggiornato (lo script di aggiornamento era fallito prima del commit); corretto da questo commit.
+- ccf5e07 (merge di main), 6be61f2 (correzione), 1907320 (memoria), 5670d00 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
+- V-3 ve su 3a88f78: un'eccezione MP3 diversa da ElevenLabsTTSError/OSError non segna «voce» (comportamento preesistente).
 - Nessun test controlla che «Ho capito» si nasconda su un guasto dopo un turno riuscito (R-646-1-M2 chiusa a lettura).
 - Nessun test provoca un vero errore di rete nella pagina per vedere la riga tempi nascosta (R-644-1-M2 chiusa solo a lettura).
 - Nessun test controlla esplicitamente il campo `tempi` nella risposta «non ho capito» (V6): convivenza verificata leggendo il codice (review #643-M2), stesso `_send_json` già coperto.
