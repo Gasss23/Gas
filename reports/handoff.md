@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2, coordinata da M1) — aggiornato dopo il bot su 5e784c3
+**Sessione:** 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2, coordinata da M1) — aggiornato dopo la verifica esterna su c83032f
 
 ---
 
@@ -18,20 +18,21 @@
 - **3. Riga «login» nel doctor, con versione, zero token**: `FATTA` — `stato_abbonamento()` in brains, 3 righe in gas.py autorizzate da M1.
 - **V-1 della verifica esterna su d0a0035** («abbonamento» anche con CLI non loggata): `FATTA` (review #634-M2). V-2 ve (il doctor non vede in anticipo il cambio di default): dichiarata nel docstring.
 - **V-1 bot su 5e784c3** (test T99 della suite kernel che lanciavano il `claude` vero dal doctor): `FATTA` (review #635-M2); **R-635-1** (interruttore ereditato dalla shell): `FATTA` (review #636-M2). **V-2 bot** (handoff e stato_progetto non allineati): `FATTA` in questo giro di report.
+- **V-1 verifica esterna su c83032f** (`"loggedIn": "false"` come stringa dava OK): `FATTA` — «loggato» solo col booleano vero o col campo assente (review #637-M2 CON RISERVE, #638-M2 APPROVATO). V-2 ve (conteggio 42 nel §5) già corretta in 6c0cf68; V-3 ve = limite già dichiarato.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
- brains/claude_cli.py               |  57 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |  10 ++++++++++
+ brains/claude_cli.py               |  59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  gas.py                             |   3 +++
  reports/diff_sessione.md           |  17 ++++++++---------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  33 +++++++++++++++------------------
- tests/test_unit_claude_cli.py      |  92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  34 ++++++++++++++++------------------
+ tests/test_unit_claude_cli.py      |  94 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_dotenv.py          |  20 ++++++++++++++++++++
  tests/test_unit_kernel.py          |  15 +++++++++++++--
 ```
@@ -41,6 +42,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+005aba0 fix(forte): «loggato» solo con loggedIn booleano vero o assente (V-1 ve #321 su c83032f; review #637/#638-M2)
+925319f chore(revisore): memoria review #638 — APPROVATO
+cd4c372 chore(revisore): memoria review #637 — APPROVATO CON RISERVE
+6c0cf68 docs(forte-non-bare): conteggio dei test di claude_cli 29 → 44 nell'handoff (V-1 bot #321 su c83032f)
 c83032f docs(forte-non-bare): report dopo il bot su 5e784c3 (PR #321, review #635/#636-M2)
 5e2fd43 test(forte): la suite kernel non lancia mai il claude vero dal doctor (V-1 bot #321 su 5e784c3, R-635-1; review #635/#636-M2)
 f6a6d9e chore(revisore): memoria review #636 — APPROVATO
@@ -196,16 +201,77 @@ Rischio escluso: `tests/test_unit_dotenv.py` non l'ho rieseguito con la variabil
 
 Memoria: ho aggiunto la riga contatore #636-M2 (nessuna lezione nuova) e l'ho committata con lo script (commit f6a6d9e). File: /home/user/Gas/.claude/agents/memoria_revisore.md
 
+Commit della correzione V-1 della verifica esterna su c83032f (005aba0). Rivisto in due passaggi: #637-M2 sul controllo stretto di `loggedIn`, #638-M2 sullo stesso diff più il commento aggiornato (R-637-1-M2). Verdetti integrali:
+
+Review #637-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #637-M2: diff staged con sha256 89f6d6d3…, branch fix/forte-non-bare-m2, PR #321. Chiude la V-1 BASSA della verifica esterna su c83032f.
+
+**Punti del diff controllati**
+- `brains/claude_cli.py:426` — ora l'abbonamento risulta «loggato» solo se il codice di uscita è 0 e `loggedIn` è il booleano True, oppure il campo manca (CLI vecchia).
+  - Rischio controllato: un valore di tipo strano che dia un OK falso.
+  - Prova: ho lanciato la funzione con un runner finto.
+    - `"false"`, `"true"`, `1`, `null` → WARN «nessun login».
+    - `true` + claude.ai → OK.
+    - `true` + api_key → WARN «login NON dell'abbonamento».
+    - JSON che non è un oggetto → WARN «non verificabile», perché il metodo è None. Quindi il ramo `not isinstance(dati, dict)` non fa danni.
+  - Esito: ok. Se il dato è strano, il doctor dà WARN e non un OK falso.
+- `tests/test_unit_claude_cli.py:435` — caso nuovo `"loggedIn": "false"` con codice 0 → WARN; c'è anche il caso del campo assente → OK.
+  - Rischio controllato: il test potrebbe non distinguere il codice vecchio dal nuovo.
+  - Esito: ok. Il mutante dichiarato fallisce, e i 46 test del file passano qui.
+- `brains/claude_cli.py:438` — il commento accanto al controllo dice ancora «loggedIn non falso».
+  - Esito: riserva **R-637-1-M2 COSMETICA**. La regola ora è «loggedIn vero o assente»; il commento va aggiornato.
+- Contesto, file non toccato: `brains/claude_cli.py:407` — la firma di `stato_abbonamento` non cambia. Restano valide le garanzie su versione vuota e byte non UTF-8 (review #633-M2).
+
+**Cosa non ho verificato**
+- L'output reale di `claude auth status` sul Mac non l'ho visto: la CLI con login non si può riprodurre qui. Non so se una versione futura userà valori non booleani; in quel caso il codice sbaglia per prudenza (WARN), quindi il danno è solo un avviso in più.
+- La suite kernel (1063 PASS) non l'ho rilanciata: mi fido della prova dichiarata, perché il diff non tocca gas.py.
+
+**Memoria del revisore**
+- Ho aggiunto la riga #637-M2 e la lezione «confrontare in positivo (`is True`) i campi JSON di una CLI esterna che decidono un OK» in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- `bash scripts/commit_memoria_revisore.sh` ha restituito exit 0 ma non ha stampato nulla, e non ho controllato con `git log` che il commit della memoria ci sia davvero: va verificato. Lo script registra i propri errori in gas_debug.log ed esce comunque con 0.
+
+Review #638-M2 (diff finale committato in 005aba0):
+
+## VERDETTO: APPROVATO
+
+Review #638-M2: diff staged con sha256 3131dcef…, branch fix/forte-non-bare-m2, PR #321. È la ri-review della #637-M2 e chiude la sua unica riserva.
+
+**Punti del diff controllati**
+- `brains/claude_cli.py:438` — il commento ora dice «loggedIn booleano vero o assente».
+  - Rischio controllato: un commento che descrive il codice in modo diverso da come funziona.
+  - Esito: ok. Il commento corrisponde al controllo della riga 426, quindi R-637-1-M2 COSMETICA è chiusa.
+- `brains/claude_cli.py:426` — il controllo che dice se il login è attivo è identico a quello della #637-M2: `loggedIn` deve essere `is True` oppure mancare.
+  - Rischio controllato: una modifica di logica infilata insieme al commento.
+  - Prova: il diff staged è cambiato solo nella riga del commento.
+  - Esito: ok.
+- `tests/test_unit_claude_cli.py:435` — il caso `"loggedIn": "false"` con codice 0 → WARN non è cambiato.
+  - Esito: ok. Rilanciati qui: 46 passed.
+
+**Cosa non ho verificato**
+- L'output reale di `claude auth status` sul Mac: qui non si può riprodurre (come nella #637-M2).
+- La suite kernel non l'ho rilanciata: il diff non tocca gas.py e cambia solo un commento rispetto alla #637.
+
+**Storico**
+- #637-M2: APPROVATO CON RISERVE, con R-637-1-M2 COSMETICA (commento non aggiornato); ora chiusa.
+
+**Memoria del revisore**
+- Riga #638-M2 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- Commit 925319f: questa volta ho controllato con `git log` che ci sia.
+- Il commit della #637 (cd4c372) c'è anch'esso.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 44 test raccolti (V-1 bot su c83032f: prima qui c’era «42», numero rimasto da prima della V-1 ve), `tests/test_unit_dotenv.py` 17 → 19 (in tutto 61 passed dopo la correzione di #632, 63 dopo la V-1 ve: 2 casi in più nel parametrico; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Dopo la V-1 bot: kernel 1063 PASS, 0 FAIL, anche con `GAS_CLAUDE_CLI=1` esportato e un `claude` spia in testa al PATH (spia mai chiamata). Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
+Test di `brains/claude_cli.py` e del doctor: `tests/test_unit_claude_cli.py` 29 → 46 test raccolti (44 prima della V-1 ve su c83032f, che aggiunge 2 casi) (V-1 bot su c83032f: prima qui c’era «42», numero rimasto da prima della V-1 ve), `tests/test_unit_dotenv.py` 17 → 19 (in tutto 61 passed dopo la correzione di #632, 63 dopo la V-1 ve su d0a0035, 65 dopo la V-1 ve su c83032f; conteggi con pytest --collect-only alla base b472fe1 e al commit). Kernel (`tests/test_unit_kernel.py`, che chiama il doctor): RIEPILOGO 1063 PASS, 0 FAIL (prima della correzione di #632, che tocca solo `stato_abbonamento` e i suoi test). Dopo la V-1 bot: kernel 1063 PASS, 0 FAIL, anche con `GAS_CLAUDE_CLI=1` esportato e un `claude` spia in testa al PATH (spia mai chiamata). Prova a mano: doctor con CLI finta che stampa una riga vuota → «[WARN ] Cervello forte login … non verificabile», nessun traceback.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check run lette dall'integrazione GitHub.
-- 5e784c3 (fine-task precedente, head allora): check completati (notifica check_suite.completed); bot APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA), chiuse in questo giro.
-- c83032f (fine-task precedente, con 5e2fd43, f6a6d9e, e59a4f5, 735a0b2 pushati insieme: la run ha testato solo questa testa): handoff-check e smista success, suite kernel verde, le altre suite in corso alla lettura della verifica esterna; bot APPROVATO CON RISERVE (V-1 COSMETICA «29 → 42», corretta qui).
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- c83032f: handoff-check e verifica-bot success; unit-suite in corso alla lettura della verifica esterna (APPROVATO CON RISERVE, https://github.com/Gasss23/Gas/pull/321#issuecomment-6568830245).
+- 6c0cf68 (correzione del conteggio, pushata da sola): bot APPROVATO CON RISERVE sul commit precedente; esito della run non letto alla scrittura.
+- 005aba0 (correzione V-1 ve), cd4c372/925319f (memoria) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
