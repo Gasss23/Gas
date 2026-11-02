@@ -421,7 +421,9 @@ def stato_abbonamento(binario: Optional[str] = None,
         st = esegui([exe, "auth", "status"], timeout=timeout)
         dati = json.loads(st.stdout or "")
         metodo = dati.get("authMethod") if isinstance(dati, dict) else None
-        loggato = st.returncode == 0 and not (isinstance(dati, dict) and dati.get("loggedIn") is False)
+        # V-1 ve su c83032f: solo un booleano vero (o il campo assente, CLI vecchia) vale «loggato»;
+        # «"false"» come stringa o altri valori strani → non loggato (WARN, mai un falso OK).
+        loggato = st.returncode == 0 and (not isinstance(dati, dict) or dati.get("loggedIn", True) is True)
     except (OSError, subprocess.SubprocessError) as e:
         return "WARN", f"non verificabile: comando claude non eseguibile ({type(e).__name__})"
     except ValueError:   # JSON illeggibile (anche testo non UTF-8 con un runner diverso)
@@ -433,7 +435,7 @@ def stato_abbonamento(binario: Optional[str] = None,
         return "WARN", (f"non verificabile (versione {versione}): `claude auth status` non ha dato "
                         "il metodo di login (CLI vecchia?)")
     # V-1 ve #321: «abbonamento» solo se la CLI dice anche di essere loggata (exit 0 e
-    # loggedIn non falso); la doc: «Exits with code 0 if logged in, 1 if not»
+    # loggedIn booleano vero o assente); la doc: «Exits with code 0 if logged in, 1 if not»
     if metodo in _LOGIN_ABBONAMENTO and loggato:
         return "OK", f"login dell'abbonamento ({metodo}) · versione {versione}"
     if metodo == "none" or not loggato:

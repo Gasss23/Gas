@@ -432,6 +432,8 @@ def _cli_finta(versione, stato, rc=0):
     ('{"authMethod": "none"}', 1, "WARN", "nessun login"),
     ('{"authMethod": "claude.ai"}', 1, "WARN", "nessun login"),          # V-1 ve #321
     ('{"loggedIn": false, "authMethod": "claude.ai"}', 0, "WARN", "nessun login"),
+    ('{"loggedIn": "false", "authMethod": "claude.ai"}', 0, "WARN", "nessun login"),
+    ('{"authMethod": "claude.ai"}', 0, "OK", "abbonamento (claude.ai)"),
     ("error: unknown command 'auth'", 1, "WARN", "non verificabile"),
     ('[1, 2]', 0, "WARN", "non verificabile"),
 ])
