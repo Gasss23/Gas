@@ -215,7 +215,7 @@ Tutto da zero. Lista completa al capitolo 8.
 - ⏳ Leggere il web in un ambiente chiuso (browser senza schermo), per cercare clienti e leggere siti. Ogni testo letto è "non fidato". Fatti: proxy filtrante (PR #312), browser senza schermo spento per default (PR #315, `GAS_WEB_BROWSER=1`) e isolamento bwrap (PR #316; sul Mac il browser resta spento). Accenderlo sul VPS è una decisione dell'operatore, a due condizioni (M1, 2026-11-01): la fetta «tmpfs su / con un elenco di cartelle permesse» (fatta in PR #317, fetta 35) e una prova dal vero sul VPS (bwrap con --size, AppArmor, node, Playwright, HTTPS senza /etc/ssl): da fare.
 - ⏳ Mail: leggere, preparare bozze, inviare **solo con firma**.
 - ⏳ Messaggi diretti, post pubblici sui social e invio di moduli: sempre con firma.
-- ⏳ Notifica su Telegram come strumento di Gas: fatta in PR #319 (fetta 36, chat Mani, in attesa di merge). `avvisa_operatore`: solo la chat dell'operatore, una per turno, `GAS_NOTIFICHE_GIORNO` al giorno (default 5), alla firma dopo aver letto contenuti esterni.
+- ✅ Notifica su Telegram come strumento di Gas: PR #319 (fetta 36, chat Mani), mergiata il 2 novembre. `avvisa_operatore`: solo la chat dell'operatore, una per turno, `GAS_NOTIFICHE_GIORNO` al giorno (default 5), alla firma dopo aver letto contenuti esterni.
 - ⏳ **Allarme urgente sul telefono** (nuovo, 19 ottobre): **solo gratuito** (es. ntfy a priorità massima, che suona anche in silenzioso). Twilio scartato perché a pagamento. 👤 Motivi dell'allarme e tetto al giorno: da decidere insieme.
 - ⏳ Le prove M1, M2 e M4 scritte come test veri nel repo.
 - ❌ Bottone "Modifica" e firme a gruppi (fetta C6 del cancello): l'operatore ha scelto «lasciamo così» il 21 ottobre (una firma per azione).
@@ -236,7 +236,7 @@ Oggi ogni compito notturno parte da zero e non può riprendere. Nessuna decision
 ### R8 — Voce "Jarvis" ⏳ 🔒 R5
 Documento: [`reports/briefing_architettura_voce.md`](briefing_architettura_voce.md).
 Pezzi decisi a luglio-agosto e mai costruiti.
-- ⏳ Parola di attivazione "Hey Gas" sul dispositivo (openWakeWord; prima il modello pronto, poi la parola nostra).
+- ⏳ Parola di attivazione "Hey Gas" sul dispositivo (openWakeWord; prima il modello pronto, poi la parola nostra). Fatta la prima parte in PR #323 (fetta 37, chat Mani): Gas sempre in ascolto sul Mac con il modello pronto «hey_jarvis», launchd e `scripts/voce/installa.sh`. Restano: la prova sul Mac (permesso del microfono sotto launchd), la licenza non commerciale dei modelli pronti (👤) e la parola «Ehi Gas» nostra.
 - ✅ Finestra di ascolto di circa 12 secondi dopo la risposta, senza ripetere la parola (V3, 30 ottobre, chat M2: nella pagina del browser, `GAS_VOICE_FINESTRA`; la parola di attivazione resta da fare).
 - ✅ "Due secondi o ci sto ragionando": timer nel client e frase di attesa già pronta (V3, 30 ottobre: detta dal browser con la voce di sistema). Risposte a voce di 1-3 frasi col parere subito (istruzione del solo turno parlato), il testo lungo a schermo.
 - ⏳ **Firme a voce** (19 ottobre): Gas rilegge l'azione esatta, poi le parole "Procedi" / "Annulla" (da rivedere in sviluppo). Sicurezza, codice madre e azioni irreversibili: **solo coi bottoni**.

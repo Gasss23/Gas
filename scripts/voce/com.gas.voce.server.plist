@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- R8 voce H24 — server voce di Gas sul Mac (launchd). NON modificare a mano la copia in
+     ~/Library/LaunchAgents: la scrive scripts/voce/installa.sh (CARTELLA_GAS sostituita).
+     Avvia `python -m modules.voice.server` (codice di M2, non toccato): resta su 127.0.0.1.
+     KeepAlive: se cade, launchd lo riavvia (al massimo una volta ogni 10 s). -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.gas.voce.server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>cd "CARTELLA_GAS" &amp;&amp; source .venv/bin/activate &amp;&amp; exec python -m modules.voice.server</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>CARTELLA_GAS/.gas_voce/voce.server.log</string>
+  <key>StandardErrorPath</key>
+  <string>CARTELLA_GAS/.gas_voce/voce.server.log</string>
+</dict>
+</plist>

@@ -20,6 +20,7 @@ reports/snapshots.log.1
 .gas_memory.db
 # FASE 4.5: storie per compito, lock e riepilogo del giro notturno (runtime)
 .gas_notte/
+.gas_voce/
 .gas_memory.db-wal
 .gas_memory.db-shm
 # Vector store: sidecar CACHE ricostruibile dal diario (NON fonte di verità, NON nel backup)

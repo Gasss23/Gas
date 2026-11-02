@@ -125,6 +125,14 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voice_contesto.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"
 
+      - name: Run voce H24 suite (pytest, zero token LLM)
+        # Ascolto sempre attivo sul Mac (R8, chat Mani): microfono, parola di attivazione e
+        # server voce finti; niente audio vero né openWakeWord in CI.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_voce_ascolto.py -v 2>&1 | tee "$RUNNER_TEMP/voce_ascolto_output.txt"
+
       - name: Run web suite (pytest, zero token LLM)
         # modules/web (R6, chat Mani): server finto su 127.0.0.1 e DNS finto, zero rete vera.
         # Fetta 33: i test del browser senza schermo usano il Chromium del passo della voce e
