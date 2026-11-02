@@ -752,6 +752,16 @@ class TestVoiceHandlerRouting:
                                  {**_AUTH, "Content-Type": "application/json"})
         assert status == 500 and set(resp["tempi"]) == {"cervello", "server"}, resp
 
+    def test_v7_tempo_del_cervello_anche_senza_risposta(self):
+        """V-2 ve #322: un turno che finisce senza final né error (500) ha il tempo del cervello."""
+        def _muto(prompt, **kw):
+            yield {"type": "tool_res", "content": "x"}
+
+        self.kernel.run_turn = _muto
+        status, resp = _post_raw(self.port, json.dumps({"prompt": "ciao"}).encode(),
+                                 {**_AUTH, "Content-Type": "application/json"})
+        assert status == 500 and set(resp["tempi"]) == {"cervello", "server"}, resp
+
     def test_v7_caricamento_lento_non_conta_come_server(self):
         """V-2 bot #322: il tempo «server» parte dopo aver ricevuto il corpo: un caricamento
         lento dalla pagina resta nella «rete» (totale della pagina meno il server)."""

@@ -610,6 +610,7 @@ async function invia(blob, contentType) {
       "Content-Type": contentType, "Accept": "audio/mpeg", "X-Gas-Formato": "audio+testo" } });
   } catch (e) {
     tempiEl.hidden = true;   // R-644-1-M2: niente tempi di un turno precedente
+    capitoEl.hidden = true;   // V-2 bot #322 su 3a88f78: niente «Ho capito» del turno prima
     return fineTurno(timerAttesa, "errore di rete: " + e.message);
   }
   if (!resp.ok) {
@@ -640,6 +641,7 @@ async function invia(blob, contentType) {
     }
   } catch (e) {
     tempiEl.hidden = true;   // V-2 bot #322 su 8dc872e: niente tempi di un turno precedente
+    capitoEl.hidden = true;   // V-2 bot #322 su 3a88f78: niente «Ho capito» del turno prima
     return fineTurno(timerAttesa, "risposta non leggibile: " + e.message);
   }
   clearTimeout(timerAttesa);
