@@ -12,7 +12,10 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    `modules/gate/gate.py`; la contaminazione guarda il NOME, V-1 bot #324: un nome
    diverso non contaminerebbe). Non è però ancora in `GATE_ALLOWLIST`, quindi oggi è
    negato: la fetta 1 lo aggiunge (SAFE come `read_file`), con un test. Dopo una lettura
-   ogni azione verso l'esterno va alla firma. Il testo arriva al modello dentro una
+   ogni azione verso l'esterno UNCERTAIN o IRREVERSIBLE va alla firma. Attenzione: nel
+   cancello `notify_telegram` è SAFE (un segnaposto che nessuno strumento usa): la fetta 1
+   lo mette a UNCERTAIN o lo toglie, così dopo una lettura nessuna notifica parte senza
+   firma (V-2 bot #324). Il testo arriva al modello dentro una
    cornice «dati, non istruzioni», con un tetto di caratteri. Niente allegati nella
    prima versione: solo nome e dimensione.
 2. **Bozze** — strumento `prepara_bozza` (da aggiungere al cancello come UNCERTAIN e in
@@ -41,8 +44,8 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    si offrono **solo nei turni sul cervello forte**. Se il forte non c'è, il lavoro
    aspetta in coda e non passa mai ai modelli gratuiti. Nel diario vanno solo conteggi
    (F-diario-eco), mai il testo né gli indirizzi. Il testo letto dovrà non conservarsi oltre il
-   turno, salvo ciò che finisce in un contatto (già marcato «non fidato» dopo una
-   lettura). Base giuridica e conservazione dei dati dei contatti: capitolo 6, decisione
+   turno; i contatti presi dalle mail seguono la regola della memoria qui sotto (la
+   marcatura «non fidato» decide la firma, non il provider). Base giuridica e conservazione dei dati dei contatti: capitolo 6, decisione
    7 della roadmap, ancora aperta.
    **Requisito del kernel (V-1 bot #324, due giri):** oggi la cronologia
    (`.gas_history.json`) tiene TUTTO il turno, non solo l'output degli strumenti: i
@@ -54,16 +57,22 @@ modelli, capitolo 0). Niente codice finché l'operatore non risponde alle domand
    oppure quel turno si toglie o si maschera dalla storia a fine turno. Lo stesso vale
    per le bozze salvate in Gas: si leggono solo nei turni sul forte. Senza questo, testo
    e indirizzi letti in un turno forte arriverebbero ai gratuiti.
-   I percorsi da coprire sono tre (R-626-1): i turni dopo (`run_turn` con `_get_window`),
-   la riflessione di fine task (cascata «complesso» su una finestra di `_get_window`) e
-   il riepilogo di compressione, dove il testo degli strumenti diventa un messaggio user e
-   il nome dello strumento sparisce: il segno «turno mail» deve sopravvivere alla
-   compressione.
+   I percorsi da coprire sono quattro (R-626-1, V-1 bot #324 su 970beca):
+   - i turni dopo (`run_turn` con `_get_window`);
+   - la riflessione di fine task (cascata «complesso» su una finestra di `_get_window`);
+   - il riepilogo di compressione, dove il testo degli strumenti diventa un messaggio user
+     e il nome dello strumento sparisce: il segno «turno mail» deve sopravvivere;
+   - **la memoria**: `_memoria_pin` mette nome e prossima azione dei contatti attivi nel
+     messaggio system di OGNI turno (anche sui gratuiti) e `ricorda` li rende leggibili.
+     Un contatto o una riga di diario nati da un turno mail vanno segnati con l'origine
+     «mail» ed esclusi dal pin e da `ricorda` fuori dal forte. Finché questo non c'è (e
+     finché la decisione 7 della roadmap sul GDPR non è presa), dalle mail **non si
+     salvano contatti**.
 7. **Fail-safe §9**: provider giù, token scaduto o risposta strana → messaggio
    «Operazione negata: …» e il turno va avanti, mai un crash.
 
 ## Fette (dopo le risposte)
-1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, nemmeno dalla storia).
+1. Sola lettura e tetti (`fetch_email` in `GATE_ALLOWLIST` con un test), con server di posta finto nei test, più il requisito del kernel del punto 6 (un turno con strumenti mail mai ai gratuiti, per nessuno dei quattro percorsi: storia, riflessione, compressione, memoria) e `notify_telegram` non più SAFE.
 2. Bozze in Gas.
 3. Invio con firma e token separato.
 4. Prova dal vero su una casella di prova, poi su quella vera.
