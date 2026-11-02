@@ -724,7 +724,12 @@ async function leggiResto(rip, righe, mostraTempi) {
   // R-619-2-M2: solo se è ancora l'ultimo turno e il player è fermo (non si taglia la
   // prima frase che l'operatore sta ascoltando col tasto play)
   if (rip.soloRaccogli) {
-    if (rip.turno === numTurno && player.paused) mettiRiascolto(rip);
+    if (rip.turno !== numTurno) return;
+    if (player.paused) mettiRiascolto(rip);
+    // V-1 bot #325: l'operatore sta ascoltando la prima frase col tasto play: il riascolto
+    // completo si mette quando quella frase finisce (una volta sola)
+    else player.addEventListener("ended", () => { if (rip.turno === numTurno) mettiRiascolto(rip); },
+                                 { once: true });
     return;
   }
   if (rip.attende) { const f = rip.attende; rip.attende = null; f(null); }
