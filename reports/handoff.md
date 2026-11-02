@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V8: pagina «prova voci» e libreria condivisa (chat M2, coordinata da M1)
+**Sessione:** 2026-11-02 — Voce V8: pagina «prova voci» e libreria condivisa (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su b95c95e
 
 ---
 
@@ -16,6 +16,8 @@
 - **V8 — pagina «prova voci»**: `FATTA` (review #624–#626-M2).
 - **V8b — libreria condivisa di ElevenLabs**: `FATTA` (review #627–#629-M2).
 - **Merge di main (V6, V7a, V7b, #319–#323)**: `FATTA` (review #655-M2).
+- **Bot su b95c95e** (neutral: tocca ci.yml, decide l'operatore; verdetto APPROVATO CON RISERVE): un solo giro deciso da M1 per V-1..V-4 `FATTE` — V-4 gli elenchi delle voci passano dal proxy solo se vengono dalla pagina «prova voci» (una pagina esterna non fa più spendere crediti ElevenLabs), V-3 Piper fuori dal tetto, V-2 «esito incerto» sull'aggiunta, V-1 guida senza fatti non verificati; review #656-M2 CON RISERVE (basse/cosmetiche, in §7). V-5 cosmetica: lasciata.
+- **Verifica esterna su b95c95e** (https://github.com/Gasss23/Gas/pull/326#issuecomment-6588472379): APPROVATO CON RISERVE, solo BASSE (guida Mac = V-1 bot, chiusa; §6 senza CI; server a thread singolo con Piper fino a 60 s; aggiunta all'account su API non verificata).
 - **V9**: `DEFERITA` — PR dopo il merge di questa.
 
 ---
@@ -34,7 +36,7 @@
  reports/handoff.md                  | n/d
  reports/prova_voce_mac.md           |   6 ++++
  reports/stato_progetto.md           |   3 +-
- reports/ultimo_report.md            |  20 +++++------
+ reports/ultimo_report.md            |  21 ++++++-----
  tests/test_unit_voice_prova_voci.py | 685 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
@@ -43,6 +45,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3b9cb36 docs(voce-v8): report dopo bot e verifica esterna su b95c95e (PR #326, review #656-M2)
 ad71c4e fix(voce): elenchi delle voci solo dalla pagina, Piper fuori dal tetto, aggiunta con esito incerto, guida Mac senza fatti non verificati (V-1..V-4 bot #326 su b95c95e; review #656-M2)
 0f037d3 chore(revisore): memoria review #656 — APPROVATO CON RISERVE
 b95c95e docs(voce-v8): numero della PR #326 nei report
@@ -259,15 +262,53 @@ Review #655-M2: merge di origin/main (70e2f05) in feat/voce-v8-m2, con tutto in 
 
 **Memoria:** ho aggiunto la riga #655-M2 in fondo a /home/user/Gas/.claude/agents/memoria_revisore.md. `scripts/commit_memoria_revisore.sh` non ha creato nessun commit: con il merge in corso esce senza errore, come previsto. La riga è nel file ma non ancora in staging: aggiungila allo staging e falla entrare nel commit di merge. Nessuna lezione nuova.
 
+Correzione delle note del bot su b95c95e (ad71c4e). Review #656-M2:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #656-M2: branch feat/voce-v8-m2, PR #326, 5 file in staging. Ho letto CLAUDE.md (sezione 5), stato_progetto e la mia memoria. Nel diff non ci sono né tagli diretti della cronologia né output dei tool simulati, e i limiti di sicurezza (guardrail) del kernel non vengono toccati. Ho rilanciato `tests/test_unit_voice_prova_voci.py`: 52 passed.
+
+**Elementi del diff esaminati**
+- `clients/voice/browser_server.py:99` — le GET /voci/elenco e /voci/libreria passano solo con `X-Gas-Pagina: 1` e con `Sec-Fetch-Site` uguale a same-origin o none (se l'intestazione manca vale come same-origin). Rischio esaminato: un sito esterno che aggira il controllo. Un `<img>` o un `fetch` no-cors non possono aggiungere l'intestazione. Un `fetch` cross-origin con l'intestazione richiede un preflight, e il proxy non ha `do_OPTIONS`, quindi fallisce. Il controllo dell'Host locale (`clients/voice/browser_server.py:81`) resta prima e chiude anche il DNS rebinding. Esito: ok, V-4 chiusa.
+- `clients/voice/prova_voci.html:250` e `clients/voice/prova_voci.html:267` — le due fetch mandano l'intestazione. Rischio esaminato: la pagina che si blocca da sola. Il test aggiornato `tests/test_unit_voice_prova_voci.py:480` lo copre. Esito: ok.
+- `modules/voice/server.py:764` — il tetto orario delle prove ora sta dopo il ramo Piper. Rischio esaminato: prove ElevenLabs che non vengono più contate. L'aggiunta del timestamp a `prove_voci` resta dopo il controllo della chiave e prima di `synthesize_speech`, invariata. Piper non consumava il tetto nemmeno prima. Esito: ok, V-3 chiusa.
+- `modules/voice/server.py:716` — un `ElevenLabsTTSError` con status 200 dà «Esito incerto…». Rischio esaminato: falsi positivi. Lo status 200 nasce solo da `modules/voice/tts.py:275` (risposta ok ma senza un id leggibile), quindi la distinzione è corretta. Esito: ok, V-2 chiusa.
+- `tests/test_unit_voice_prova_voci.py:406` — test parametrico con tre casi (senza intestazione, cross-site con intestazione, solo Sec-Fetch-Site): 403 sui due percorsi e nessuna richiesta che arriva al server voce. Esito: ok.
+- `tests/test_unit_voice_prova_voci.py:154` — `server.classe = _H` scrive un attributo sull'oggetto globale della fixture, e i test lo rileggono con `globals()["server"]`. Funziona perché il nome globale e quello usato dentro il corpo della fixture sono lo stesso oggetto, ma è fragile: dipende da come pytest incapsula le fixture ed è stato globale condiviso. Esito: riserva.
+- `reports/prova_voce_mac.md:53` — «gratis» e «spazio voce» ora sono detti come cose da verificare. Esito: ok, V-1 chiusa.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- R-656-1-M2 COSMETICA: il modo di esporre la classe nei test (`server.classe` letto con `globals()`) è accettabile ma fragile. Meglio una fixture che restituisca sia la porta sia la classe, o una fixture separata `server_cls`. Non blocca.
+- R-656-2-M2 BASSA: `modules/voice/tts.py:267` (fuori dal diff) tratta ogni 2xx diverso da 200 come «non aggiunta». Sarebbe lo stesso falso negativo di V-2, oggi solo teorico.
+
+**Rischi esclusi**
+- Non ho fatto mutanti in proprio: mi affido a quelli dichiarati (proxy vecchio → 3 failed; server vecchio → 2 failed).
+- Non ho verificato il comportamento reale di `Sec-Fetch-Site` sui browser del Mac (Safari): in questo ambiente non si riproduce. Il controllo regge comunque grazie all'intestazione custom.
+- Non ho rilanciato la suite voice_server da 144 test.
+- Non ho verificato le chiamate reali a ElevenLabs: nei test sono tutte simulate.
+
+**Memoria**
+- Ho scritto la riga #656-M2 più una lezione: l'intestazione custom protegge solo finché il proxy non risponde ai preflight (se un giorno si aggiunge CORS, il controllo cade in silenzio).
+- Commit 0f037d3, fatto con `scripts/commit_memoria_revisore.sh`; il diff in staging (5 file) è rimasto intatto.
+
+File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-Dopo il merge di main: `tests/test_unit_voice_prova_voci.py` + `test_unit_voice_server.py` + `test_unit_voice_stt.py` + `test_unit_voice_tts.py` + `test_unit_voice_contesto.py` + `test_unit_voce_ascolto.py`: 330 passed (`GAS_TEST_BROWSER_OBBLIGATORIO=1`). I test nuovi stanno in `tests/test_unit_voice_prova_voci.py` (aggiunto anche al passo della suite voce in `.github/workflows/ci.yml`). Kernel non toccato (`gas.py` identico a main).
+Dopo il merge di main: `tests/test_unit_voice_prova_voci.py` + `test_unit_voice_server.py` + `test_unit_voice_stt.py` + `test_unit_voice_tts.py` + `test_unit_voice_contesto.py` + `test_unit_voce_ascolto.py`: 330 passed (`GAS_TEST_BROWSER_OBBLIGATORIO=1`). I test nuovi stanno in `tests/test_unit_voice_prova_voci.py` (aggiunto anche al passo della suite voce in `.github/workflows/ci.yml`). Dopo la #656-M2: test_unit_voice_prova_voci 52 passed; prova_voci + voice_server 144 passed (browser obbligatorio); mutanti: proxy vecchio → 3 failed, server vecchio → 2 failed. Kernel non toccato (`gas.py` identico a main).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione (fino a d093871, pushati insieme: run sulla sola testa, non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud: check lette dall'integrazione GitHub e dalle verifiche.
+- b95c95e: handoff-check success; verifica-bot neutral (tocca ci.yml); unit-suite in corso alla lettura della verifica esterna.
+- 3b9cb36: commit di report col testo non aggiornato (lo script di aggiornamento era fallito prima del commit); corretto da questo commit.
+- ad71c4e (correzione), 0f037d3 (memoria), 3b9cb36 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
+
+- R-656-1-M2 COSMETICA: nei test la classe dell'handler è esposta come attributo della fixture (`server.classe`, letto con `globals()`): funziona ma è fragile.
+- R-656-2-M2 BASSA: `add_shared_voice` tratta ogni 2xx diverso da 200 come «non aggiunta» (falso negativo teorico).
+- Server voce a thread singolo: una prova Piper (fino a 60 s) blocca le altre richieste.
 
 - Percorsi, campi e costi della libreria condivisa di ElevenLabs DA VERIFICARE sul Mac (documentazione non leggibile dal cloud).
 - Pagina e proxy provati solo in locale col browser dei test; la resa vera delle voci si sente solo sul Mac.

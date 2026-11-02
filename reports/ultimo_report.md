@@ -11,6 +11,7 @@
 - **V8b — libreria condivisa**: `FATTA` — `GET /voci/libreria` (migliori 8, solo professional/generated) e `POST /voci/aggiungi` (solo voci dell'ultima ricerca, tetto 5 all'ora), avviso su costi e limiti non verificati. Review #627/#628-M2 (riserve chiuse), #629-M2 APPROVATO.
 - **Merge di main** (V6, V7a #322, V7b #325, #319–#323): `FATTA` — conflitto in `do_POST` risolto tenendo il reset di `_capito` prima dei rami `/voci/*`; review #655-M2 APPROVATO.
 - Test: prova_voci + voice_server + voice_stt + voice_tts + voice_contesto + voce_ascolto 330 passed (browser obbligatorio).
+- **Bot e verifica esterna su b95c95e**: APPROVATO CON RISERVE (bot neutral perché tocca ci.yml); un giro per V-1..V-4 `FATTO` (elenchi delle voci solo dalla pagina, Piper fuori dal tetto, «esito incerto» sull'aggiunta, guida corretta), review #656-M2 con riserve basse in stato_progetto.
 - **V9**: `DEFERITA` — PR dopo il merge di questa.
 
 ## Anomalie
