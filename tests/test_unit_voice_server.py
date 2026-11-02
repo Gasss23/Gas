@@ -876,6 +876,10 @@ const { chromium } = require('playwright');
   page.on('pageerror', e => errori.push(String(e)));
   await page.addInitScript(() => {
     window.__stati = [];
+    window.__sorgenti = 0;   // V7b: quante frasi sono state messe nel player
+    new MutationObserver(ms => {
+      for (const m of ms) if (m.target.id === 'player' && m.attributeName === 'src') window.__sorgenti++;
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['src'] });
     new MutationObserver(() => {
       const s = document.getElementById('status');
       if (s && window.__stati[window.__stati.length - 1] !== s.textContent)
@@ -917,9 +921,10 @@ const { chromium } = require('playwright');
     return { testo: c.textContent, visibile: !c.hidden, html: c.innerHTML };
   });
   const tempi = await page.textContent('#tempi');   // V7
+  const sorgenti = await page.evaluate(() => window.__sorgenti);
   const tempiVisibili = await page.isVisible('#tempi');   // V-1 bot #322 su 8dc872e
   await browser.close();
-  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi, tempiVisibili }));
+  console.log(JSON.stringify({ stati, testo, errori, soglie, capito, tempi, sorgenti, tempiVisibili }));
 })().catch(async e => {
   console.error(e);
   try { console.error('STATI', JSON.stringify(await globalThis.__pagina.evaluate(() => window.__stati))); } catch (_) {}
@@ -930,7 +935,7 @@ const { chromium } = require('playwright');
 
 @pytest.mark.parametrize("modo", ["normale", "riascolto", "pausa", "tetto", "errore",
                                   "interruzione", "interruzione_media", "colpo", "colpo_voce",
-                                  "sisubito", "guasto"])
+                                  "sisubito", "pezzi", "pezzi_interrotti", "guasto"])
 def test_v3_conversazione_nel_browser(tmp_path, modo):
     """Giro completo nella pagina vera (Chromium headless, microfono finto da file):
     clic → la frase parte da sola alla fine della voce (nessun secondo clic) → «ci sto
@@ -964,6 +969,11 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         # R-582-1-M2: colpo breve (scartato), poi una frase vera: deve arrivare un webm
         # valido, senza la coda del clip scartato in testa
         _wav(microfono, [(0.8, 0), (1.5, 0.4), (4.5, 0), (0.4, 0.4), (1.6, 0), (1.2, 0.4), (8, 0)])
+    elif modo == "pezzi_interrotti":
+        # V7b: tre frasi da 1,5 s (dalla risposta a ~6,2 s); la terza arriva in ritardo
+        # (~10,7 s) e la voce a ~9,6 s interrompe Gas MENTRE ASPETTA la terza: quando
+        # arriva NON deve suonare
+        _wav(microfono, [(0.8, 0), (1.5, 0.4), (7.3, 0), (1.2, 0.4), (8, 0)])
     elif modo == "sisubito":
         # V-1 bot #311 su c3079f4: voce già nei primi 300 ms dell'ascolto (un «sì» detto
         # subito) → deve contare come frase, non come rumore di fondo. (A volume medio lo
@@ -973,10 +983,13 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         _wav(microfono, [(0.8, 0), (1.5, 0.4), (6, 0)])
     risposta = tmp_path / "risposta.wav"
     _wav(risposta, [({"pausa": 2.0, "interruzione": 4.0, "interruzione_media": 4.0,
-                      "colpo": 4.0, "colpo_voce": 4.0}.get(modo, 0.4), 0.2)])
+                      "colpo": 4.0, "colpo_voce": 4.0, "pezzi_interrotti": 1.5}.get(modo, 0.4), 0.2)])
     audio_b64 = base64.b64encode(
         b"non-audio" * 50 if modo == "errore" else risposta.read_bytes()).decode()
     ricevute = []
+    chiusure = []   # V7b R-619-1-M2: connessioni chiuse dalla pagina prima della 3ª frase
+    import select
+    import socket
 
     from http.server import BaseHTTPRequestHandler
 
@@ -990,6 +1003,35 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
             ricevute.append((self.headers.get("X-Gas-Formato"), self.headers.get("Content-Type"),
                              len(corpo), corpo[:4]))
             time.sleep(2.6)  # oltre i 2 s: deve partire la frase d'attesa
+            if modo in ("pezzi", "pezzi_interrotti") and len(ricevute) == 1:
+                # V7b: risposta a righe, la seconda frase arriva dopo che la prima è partita
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+                self.end_headers()
+                frasi = 3 if modo == "pezzi_interrotti" else 2
+                righe = [{"content": "Sì, meglio così. Procedo?", "audio": audio_b64,
+                          "capito": "Gas, <b>meglio</b> così?", "pezzi": frasi}]
+                righe += [{"audio": audio_b64} for _ in range(frasi - 1)]
+                righe += [{"fine": True, "tempi": {"trascrizione": 0.5, "cervello": 1.25,
+                                                   "voce": 0.2, "server": 2.0}}]
+                try:
+                    for i, r in enumerate(righe):
+                        self.wfile.write(json.dumps(r).encode() + b"\n")
+                        self.wfile.flush()
+                        if modo == "pezzi_interrotti" and i == 1:
+                            # R-619-1-M2: la pagina interrotta deve chiudere la connessione
+                            # SUBITO, prima che arrivi la terza frase (~4,5 s dopo)
+                            fine = time.monotonic() + 4.5
+                            while time.monotonic() < fine:
+                                pronto, _, _ = select.select([self.connection], [], [], 0.1)
+                                if pronto and not self.connection.recv(1, socket.MSG_PEEK):
+                                    chiusure.append(True)
+                                    return
+                        else:
+                            time.sleep(0.25 if i == 0 else 0.05)
+                except OSError:
+                    pass
+                return
             if modo == "guasto":  # V-1 bot #322: guasto lento, i tempi arrivano col 502
                 out = json.dumps({"error": "voce non disponibile",
                                   "tempi": {"trascrizione": 0.5, "cervello": 1.25, "server": 2.0}}).encode()
@@ -1045,9 +1087,9 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     soglie = esito["soglie"]
     assert soglie["voceMedia"] < 0.07, soglie
     assert soglie["rumore"] == soglie["vuoto"] == 0.015, soglie
-    if modo not in ("interruzione", "interruzione_media", "colpo", "colpo_voce"):
+    if modo not in ("interruzione", "interruzione_media", "colpo", "colpo_voce", "pezzi_interrotti"):
         assert len(ricevute) == 1, (ricevute, stati)
-    assert ricevute[0][0] == "audio+testo" and ricevute[0][2] > 0
+    assert ricevute[0][0] == "audio+testo+pezzi" and ricevute[0][2] > 0   # V7b
     if modo == "guasto":
         # V-1 bot #322: errore dichiarato e tempi a schermo anche sul guasto
         assert stati[-1] == "errore: voce non disponibile", stati
@@ -1061,7 +1103,9 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     # V7: dove va il tempo; la rete è il totale visto dalla pagina meno i 2,0 s del server
     # (la voce finta risponde dopo 2,6 s, quindi la rete risulta ≥ 0,5 s)
     t = esito["tempi"]
-    assert t.startswith("tempi: ascolto 0.5s · cervello 1.3s · rete "), t
+    atteso = ("tempi: ascolto 0.5s · cervello 1.3s · voce 0.2s · rete " if modo == "pezzi"
+              else "tempi: ascolto 0.5s · cervello 1.3s · rete ")   # V7b: a fine righe (interrotti: conta la 2ª risposta, JSON)
+    assert t.startswith(atteso), t
     assert esito["tempiVisibili"] is True
     assert float(t.rsplit("rete ", 1)[1].rstrip("s")) >= 0.5, t
     assert any("parli" in s for s in stati), stati
@@ -1078,6 +1122,17 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
     assert all(r[3] == b"\x1a\x45\xdf\xa3" for r in ricevute if "webm" in (r[1] or "")), ricevute
     if modo == "colpo_voce":
         assert len(ricevute) == 2, (ricevute, stati)   # il colpo no, la frase vera sì
+        return
+    if modo == "pezzi":
+        # V7b: le due frasi suonano una dopo l'altra, poi il giro continua come sempre;
+        # R-618-3-M2: a fine risposta il player riceve tutta la parte parlata (3ª sorgente)
+        assert esito["sorgenti"] == 3, esito["sorgenti"]
+    if modo == "pezzi_interrotti":
+        # V7b: interrotto in attesa della terza frase: la terza non suona, la frase nuova parte
+        assert any("mi hai interrotto" in s for s in stati), stati
+        assert chiusure == [True], chiusure   # R-619-1-M2: lettura chiusa subito
+        assert esito["sorgenti"] == 2 + (len(ricevute) - 1), (esito["sorgenti"], ricevute, stati)
+        assert len(ricevute) == 2, (ricevute, stati)
         return
     if modo == "colpo":
         assert len(ricevute) == 1, (ricevute, stati)   # nessun clip muto inviato
@@ -1098,3 +1153,255 @@ def test_v3_conversazione_nel_browser(tmp_path, modo):
         assert not any("ti ascolto" in s for s in stati[i_parla:]), stati
         return
     assert any("ti ascolto" in s for s in stati[i_parla:]), stati
+
+
+# ── V7b (chat M2): voce frase per frase (risposta a righe NDJSON) ──
+
+def test_v7b_frasi_parlate_ricompongono_la_parte_parlata():
+    from modules.voice.server import frasi_parlate, parte_parlata
+    for testo in ("Ciao. Dott. Rossi arriva alle 10. Va bene? Poi altro. E altro.",
+                  "Una frase sola", "Primo.\n\nDettaglio da leggere a schermo.",
+                  "x" * 900):
+        frasi = frasi_parlate(testo)
+        assert frasi and " ".join(frasi) == parte_parlata(testo), (testo, frasi)
+    assert frasi_parlate("Ciao. Dott. Rossi arriva. Va bene?") == [
+        "Ciao.", "Dott. Rossi arriva.", "Va bene?"]
+
+
+def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"):
+    from unittest.mock import patch
+    """Server voce vero con kernel e servizi finti; ritorna (status, content-type, righe)."""
+    import urllib.request
+    from modules.voice.server import VoiceHandler
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            yield {"type": "final", "content": kernel_testo}
+
+    class _H(VoiceHandler):
+        pass
+    _H.kernel = _K()
+    _H.token = "tok"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    env = {"GROQ_API_KEY": "k", **({"ELEVENLABS_API_KEY": chiave} if chiave else {})}
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=b"RIFF" + bytes(60), method="POST",
+        headers={"Authorization": "Bearer tok", "Content-Type": "audio/wav", "X-Gas-Formato": formato})
+    try:
+        with patch("modules.voice.server.transcribe_audio", return_value="Gas, dimmi"), \
+             patch("modules.voice.server.synthesize_speech", side_effect=sintesi) as tts, \
+             patch.dict(os.environ, env):
+            if not chiave:
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=10) as r:
+                ct = r.headers.get("Content-Type", "")
+                corpo = r.read().decode("utf-8")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    righe = [json.loads(x) for x in corpo.splitlines() if x.strip()] if "ndjson" in ct else [json.loads(corpo)]
+    return ct, righe, tts
+
+
+def test_v7b_risposta_a_pezzi_una_sintesi_per_frase():
+    import base64
+    testo = "Ho trovato tre lead. Due sono caldi. Preparo le bozze?\n\nDettaglio: Rossi, Bianchi."
+    ct, righe, tts = _voce_a_pezzi(testo, lambda frase, k, v: frase.encode())
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert ct.startswith("application/x-ndjson")
+    assert frasi == ["Ho trovato tre lead.", "Due sono caldi.", "Preparo le bozze?",
+                     "Il resto è a schermo."]
+    primo = righe[0]
+    assert primo["content"] == testo and primo["capito"] == "Gas, dimmi" and primo["pezzi"] == 4
+    audio = [base64.b64decode(r["audio"]).decode() for r in righe if "audio" in r]
+    assert audio == frasi                       # ogni riga porta la sua frase, in ordine
+    assert all(set(r) == {"audio"} for r in righe[1:4])
+    fine = righe[-1]
+    assert fine["fine"] is True and len(righe) == 5
+    assert {"trascrizione", "cervello", "voce", "voce_tutta", "server"} <= set(fine["tempi"])
+    assert fine["tempi"]["voce"] <= fine["tempi"]["voce_tutta"]
+
+
+def test_v7b_errore_tts_a_meta_ferma_la_voce():
+    from modules.voice.tts import ElevenLabsTTSError
+    effetti = [b"uno", ElevenLabsTTSError(500, "guasto"), b"tre"]
+    ct, righe, tts = _voce_a_pezzi("Uno. Due. Tre.", effetti)
+    assert tts.call_count == 2                   # dopo l'errore niente altre sintesi
+    assert "audio" in righe[0] and "errore_voce" in righe[1] and "audio" not in righe[1]
+    assert righe[-1]["fine"] is True and len(righe) == 3
+
+
+def test_v7b_errore_tts_sulla_prima_frase():
+    ct, righe, tts = _voce_a_pezzi("Uno. Due.", OSError("rete"))
+    assert "audio" not in righe[0] and righe[0]["content"] == "Uno. Due."
+    assert righe[0]["errore_voce"] == "Errore di rete verso ElevenLabs TTS"
+    assert righe[-1]["fine"] is True and tts.call_count == 1
+
+
+def test_v7b_senza_chiave_o_formato_vecchio_resta_json():
+    ct, righe, tts = _voce_a_pezzi("Uno. Due.", lambda *a: b"x", chiave=None)
+    assert ct.startswith("application/json") and "errore_voce" in righe[0] and tts.call_count == 0
+    ct, righe, tts = _voce_a_pezzi("Uno. Due.", lambda *a: b"x", formato="audio+testo")
+    assert ct.startswith("application/json") and tts.call_count == 1   # una sola sintesi
+    assert "pezzi" not in righe[0]
+
+
+def test_v7b_proxy_inoltra_le_righe_appena_arrivano():
+    """Il proxy della pagina passa la prima riga subito, senza aspettare la fine della
+    risposta (che qui arriva 1,5 s dopo)."""
+    import socket
+    import time
+    from http.server import BaseHTTPRequestHandler
+
+    class _APezzi(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b'{"content": "uno", "audio": "QQ=="}\n')
+            self.wfile.flush()
+            time.sleep(1.5)
+            try:
+                self.wfile.write(b'{"fine": true}\n')
+            except OSError:
+                pass
+
+    voce = HTTPServer(("127.0.0.1", 0), _APezzi)
+    threading.Thread(target=voce.serve_forever, daemon=True).start()
+    bs = _browser_server_module()
+
+    class _Proxy(bs.BrowserProxyHandler):
+        pass
+
+    _Proxy.token = "tok"
+    _Proxy.voice_host = "127.0.0.1"
+    _Proxy.voice_port = voce.server_address[1]
+    _Proxy.voice_timeout = 10
+    proxy = HTTPServer(("127.0.0.1", 0), _Proxy)
+    threading.Thread(target=proxy.serve_forever, daemon=True).start()
+    try:
+        s = socket.create_connection(("127.0.0.1", proxy.server_address[1]), timeout=10)
+        corpo = b'{"prompt": "ciao"}'
+        s.sendall(b"POST /voice HTTP/1.0\r\nContent-Type: application/json\r\n"
+                  b"Content-Length: " + str(len(corpo)).encode() + b"\r\n\r\n" + corpo)
+        t0 = time.monotonic()
+        ricevuto = b""
+        while b'"uno"' not in ricevuto:
+            ricevuto += s.recv(4096)
+        prima = time.monotonic() - t0
+        while True:
+            pezzo = s.recv(4096)
+            if not pezzo:
+                break
+            ricevuto += pezzo
+        s.close()
+    finally:
+        proxy.shutdown()
+        proxy.server_close()
+        voce.shutdown()
+        voce.server_close()
+    assert prima < 1.0, prima                          # la prima riga non aspetta la fine
+    assert b"application/x-ndjson" in ricevuto and ricevuto.rstrip().endswith(b'{"fine": true}')
+
+
+def test_v7b_pagina_chiusa_ferma_la_sintesi():
+    """R-618-2-M2: se la pagina chiude la connessione dopo la prima riga, il server smette
+    di sintetizzare (con al più una frase di ritardo: la prima scrittura dopo la chiusura
+    del client riesce ancora). V-1 bot #325: tetto delle frasi alzato a 6, così senza lo
+    stop le sintesi sarebbero 6 e il margine col codice giusto (≤ 3) è netto."""
+    import socket
+    import time
+    from unittest.mock import patch
+    from modules.voice.server import VoiceHandler
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            yield {"type": "final", "content": "Uno. Due. Tre. Quattro. Cinque. Sei."}
+
+    class _H(VoiceHandler):
+        pass
+    _H.kernel = _K()
+    _H.token = "tok"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    corpo = b"RIFF" + bytes(60)
+
+    def _lenta(frase, k, v):
+        time.sleep(0.15)
+        return frase.encode()
+
+    try:
+        with patch("modules.voice.server.transcribe_audio", return_value="Gas, dimmi"), \
+             patch("modules.voice.server.synthesize_speech", side_effect=_lenta) as tts, \
+             patch("modules.voice.server._PARLATO_MAX_FRASI", 6), \
+             patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            s = socket.create_connection(("127.0.0.1", srv.server_address[1]), timeout=10)
+            s.sendall(b"POST /voice HTTP/1.0\r\nAuthorization: Bearer tok\r\n"
+                      b"Content-Type: audio/wav\r\nX-Gas-Formato: audio+testo+pezzi\r\n"
+                      b"Content-Length: " + str(len(corpo)).encode() + b"\r\n\r\n" + corpo)
+            ricevuto = b""
+            while b'"pezzi"' not in ricevuto:
+                ricevuto += s.recv(4096)
+            s.close()
+            time.sleep(1.5)   # il tempo di sintetizzare tutte e sei le frasi, se non si fermasse
+            sintesi = tts.call_count
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert sintesi <= 3, sintesi   # su 6 frasi: la prima, al più una di ritardo (+1 in volo)
+
+
+def test_v7b_pagina_chiusa_prima_degli_header():
+    """V-3 bot #325: se la pagina è già chiusa quando il proxy scrive gli header della
+    risposta a pezzi, _copia_righe si ferma (niente eccezione, quindi niente 502 su un
+    socket morto né «Voice server non raggiungibile» falso)."""
+    bs = _browser_server_module()
+    h = bs.BrowserProxyHandler.__new__(bs.BrowserProxyHandler)
+
+    def _rotto(*a, **k):
+        raise BrokenPipeError("pagina chiusa")
+    h.send_response = _rotto
+
+    class _Resp:
+        status = 200
+        def getheader(self, *a):
+            return "application/x-ndjson"
+        def read1(self, n):
+            raise AssertionError("non deve leggere: la pagina è chiusa")
+    h._copia_righe(_Resp())   # non solleva
+
+
+@pytest.mark.parametrize("evento, chiude", [("vuoto", True), ("errore", True),
+                                            ("tempo", False), ("dati", False)])
+def test_v7b_guardia_della_pagina(evento, chiude):
+    """R-620-1-M2 / R-621: la guardia del proxy chiude la connessione verso la voce solo
+    se la pagina ha chiuso (lettura vuota o errore di socket), non per un tempo scaduto
+    né per dati inattesi."""
+    bs = _browser_server_module()
+
+    class _Pagina:
+        def recv(self, n, flags=0):
+            if evento == "tempo":
+                raise TimeoutError("scaduto")
+            if evento == "errore":
+                raise ConnectionResetError("reset")
+            return b"" if evento == "vuoto" else b"x"
+
+    class _Voce:
+        chiusa = False
+
+        def shutdown(self, how):
+            self.chiusa = True
+
+    h = bs.BrowserProxyHandler.__new__(bs.BrowserProxyHandler)
+    h.connection = _Pagina()
+    voce = _Voce()
+    h._guarda_pagina(voce)
+    assert voce.chiusa is chiude
