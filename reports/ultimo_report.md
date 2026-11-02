@@ -1,22 +1,24 @@
-# Ultimo report — 2026-11-02 — Voce V6 «capire meglio» (chat M2) — PR #318
+# Ultimo report — 2026-11-02 — Cervello forte: difesa contro il futuro default `--bare` di `claude -p` (chat M2) — PR #321
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #318 (https://github.com/Gasss23/Gas/pull/318): la mergia M1 se il bot dà APPROVATO pulito; con riserve aspetta il sì dell'operatore.
-2. Dopo il merge, prova sul Mac (`reports/prova_voce_mac.md`): guardare la riga «Ho capito: …»; se Gas dice spesso «Non ho capito bene» parlando chiaro, `GAS_VOICE_STT_LOGPROB_MIN=-1.3` nel `.env`.
+1. Merge della PR #321 (https://github.com/Gasss23/Gas/pull/321): sì dell'operatore (riferito da M1); merge di main con la PR #318 fatto (review #641-M2).
+2. Sul Mac: `python3 gas.py doctor` e controllare la riga «Cervello forte · login» (deve dire «login dell'abbonamento»).
 
 ## Esito delle fette
 
-- **V6.1 — trascrizione**: `FATTA` — `modules/voice/stt.py`: Whisper era già `whisper-large-v3`; ora `language=it`, `temperature=0`, `verbose_json`, prompt col vocabolario di Gas. Trascrizioni incerte (confidenza media pesata < -1,0; silenzio = no_speech > 0,8 E confidenza < -0,5; frasi inventate da Whisper sul silenzio; eco contigua del prompt di ≥4 parole) → «Non ho capito bene, puoi ripetere?» senza turno del kernel (conta nel tetto orario). Soglie via env.
-- **V6.2 — trasparenza**: `FATTA` — campo `capito` nelle risposte parlate del server; la pagina mostra «Ho capito: «…»» (solo testo).
-- **V6.3 — risposte e contesto**: `FATTA` — la storia c'era già (kernel unico della voce, il forte riceve la finestra degli ultimi messaggi). Nuovo `tests/test_unit_voice_contesto.py` (server + GasKernel vero, cervelli finti) lo prova per forte e normale; mutante su `_get_window` → 2 failed. ISTRUZIONE_VOCE / _SCHERMO: frasi brevi senza perdere il filo, parole storpiate dalla trascrizione, una sola domanda se ambiguo.
-- **V6.4 — tasto «non hai capito» con modello più grande**: `SALTATA` — usiamo già il modello più grande di Groq.
-- **Riserva V-1 bot #314** (Groq 500 conta nel tetto): `FATTA` (test). **V-2 bot #314** (conteggi §2 dell'handoff): `FATTA` (handoff riscritto con i conteggi della sessione).
-- **stato_progetto**: prova sul Mac della V5 passata, registrata.
-- gas.py / brains/: non toccati. ci.yml: solo il nuovo file di test nella voice suite.
-
-Review: #611-M2 APPROVATO CON RISERVE, #612-M2 APPROVATO CON RISERVE (riserve chiuse), #613-M2 APPROVATO. Test: voce stt + contesto 63 passed; stt+server+tts non-browser 122 passed (prima delle ultime correzioni a stt); pagina nel browser (obbligatoria) 10 passed.
+- **1. Figlio senza chiavi API (fail-closed)**: `FATTA` — già vero con la lista di variabili permesse; ora un test lo fissa (niente ANTHROPIC_*, *_API_KEY, CLAUDE_CODE_SIMPLE, BEDROCK; sì CLAUDE_CODE_OAUTH_TOKEN; niente `--bare` né `--settings`). Se `claude -p` diventa bare, fallisce col login invece di addebitare.
+- **2. Flag per restare non-bare**: `FATTA (nessuno)` — lette headless, cli-reference, authentication: nessun flag o variabile documentata. Scritto nel docstring di `brains/claude_cli.py`.
+- **3. Riga «login» nel doctor**: `FATTA` — `stato_abbonamento()` in `brains/claude_cli.py` (`claude --version` + `claude auth status`, stesso ambiente del figlio ma senza i suoi flag: è un'indicazione, WARN in più possibili, mai un OK falso; zero token, mai eccezioni); in `gas.py` 3 righe autorizzate da M1.
+- Review #632-M2 BOCCIATO (crash del doctor con output vuoto o non UTF-8 della CLI) → corretto → #633-M2 APPROVATO CON RISERVE (BASSE: nipote che tiene le pipe/attesa max ~30 s; `errors="replace"` senza test dedicato, coperto dal ramo ValueError).
+- **V-1 verifica esterna su d0a0035** («abbonamento» anche con CLI non loggata): `FATTA` — OK solo con exit 0 (regola poi stretta a «loggedIn booleano vero o assente», vedi sotto); review #634-M2 APPROVATO.
+- **V-1 bot su 5e784c3** (i test T99 della suite kernel lanciavano il `claude` vero della macchina dal doctor): `FATTA` — in `_doc99` la riga «login» usa un finto; review #635-M2 APPROVATO CON RISERVE. **R-635-1** (con `GAS_CLAUDE_CLI=1` esportato nella shell altri doctor della suite lo lanciavano ancora): `FATTA` — la suite toglie l'interruttore in testa; review #636-M2 APPROVATO. V-2 bot (handoff e stato_progetto non allineati): `FATTA` in questo giro di report.
+- **V-1 verifica esterna su c83032f** (`loggedIn` come stringa "false" dava OK): `FATTA` — «loggato» solo col booleano vero o col campo assente; review #637-M2 CON RISERVE (commento, chiusa) → #638-M2 APPROVATO. V-2 ve / V-1 bot (conteggio 42 → 44 nell'handoff): `FATTA`.
+- **V-1 bot su 6c0cf68** (riga «login» sulla CLI della shell anche col WARN del timer): `FATTA` — il dettaglio lo dice. **V-1 ve su 36f790f** (test di dotenv che lanciavano il `claude` vero): `FATTA`. Review #639-M2 APPROVATO. V-2 ve (maiuscolo CLAUDE.AI, resta WARN): COSMETICA, nessun fix.
+- **Bot su 36f790f**: V-2 (il controllo «login» non usa i flag del figlio) `FATTA` correggendo l'affermazione nel commento, review #640-M2 APPROVATO; V-3 (formulazione nei report) `FATTA`.
+- Test: claude_cli + dotenv 65 passed; anche con GAS_CLAUDE_CLI=1 e un `claude` spia (mai chiamata); kernel 1063 PASS 0 FAIL, anche con `GAS_CLAUDE_CLI=1` e un `claude` spia nel PATH (spia mai chiamata).
 
 ## Anomalie
 
-- `gh` non autenticato nel cloud: PR aperta con l'integrazione GitHub.
+- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
+- Non verificato con una CLI `claude` vera e loggata (qui non c'è): il campo `authMethod` viene dalla documentazione.
