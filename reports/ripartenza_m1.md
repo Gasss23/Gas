@@ -67,3 +67,5 @@
 - **PR #331 (V11, M2)**: le richieste a testo con audio+pezzi ora ricevono solo testo, senza ElevenLabs. È in attesa del bot e del sì dell'operatore.
 - **Decisione per l'operatore (R-663-1-M2)**: le richieste a testo devono contare anche loro nel tetto orario, oppure i client a testo sono considerati fidati?
 - **ThreadingHTTPServer**: sconsigliato per ora. Servirebbe una fetta dedicata con lock e test di concorrenza.
+- **#329 mergiata da Mani (af91da0)**: «Hey Jarvis» ora suona le frasi in fila, la prima dopo circa 0,3 s. Le riserve BASSE di Mani sono in stato_progetto e aspettano la prossima fetta piccola (via di M1 dopo le prove).
+- **Possibile difetto del parser del bot**: un verdetto APPROVATO CON RISERVE che conteneva la parola «MEDIA, preesistente» è stato letto come failure. Da guardare se si ripete (si trova in scripts/bot_esito.py, il cosiddetto lato macchina del bot: decide l'operatore).
