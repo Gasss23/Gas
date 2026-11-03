@@ -6,8 +6,8 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #329 (https://github.com/Gasss23/Gas/pull/329). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5129534609","url":"https://github.com/Gasss23/Gas/pull/329"}`), perché `gh` nel cloud non è autenticato. **Il merge lo decide l'operatore** (review APPROVATO CON RISERVE, codice della voce nel perimetro).
-2. La voce veloce serve anche al formato «audio+pezzi» lato server (M2): finché non è in main, l'ascolto riceve un solo audio, come prima. Dopo tutti e due i merge, sul Mac: `git pull`, `bash scripts/voce/installa.sh`, «Hey Jarvis» e una domanda: la prima frase deve partire subito.
+1. Merge della PR #329 (https://github.com/Gasss23/Gas/pull/329). Numero e URL vengono dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5129534609","url":"https://github.com/Gasss23/Gas/pull/329"}`). **Sì dell'operatore** (via M1, 3 novembre: «mergia #329 e #330»): lo faccio io con la CI verde.
+2. La PR #330 di M2 («audio+pezzi») è in main. Dopo il merge, sul Mac: `git pull`, `bash scripts/voce/installa.sh`, «Hey Jarvis» e una domanda: la prima frase deve partire subito.
 
 ---
 
@@ -23,29 +23,34 @@
 - **Bot su 3b92254 (https://github.com/Gasss23/Gas/pull/329#pullrequestreview-5745313709)**: APPROVATO CON RISERVE, check neutral (decide l'operatore). V-1 BASSA (= R-632-2), V-2 BASSA (LEGGIMI prima della #330), V-3 BASSA (formati con lo schermo accettati): `REGISTRATE` in stato_progetto, senza altri giri.
 - **Verifica esterna (https://github.com/Gasss23/Gas/pull/329#issuecomment-6592161590)**: APPROVATO CON RISERVE (fuzz di valore_env su 5000 file: 0 differenze; 28 mutanti). V-1/V-2/V-3/V-4/V-5 BASSE, V-6/V-7 COSMETICHE: `REGISTRATE`. V-8 BASSA (conflitto con main dopo la #327): `FATTA` col merge.
 - **Merge di main (PR #327 di M2, voce V9)**: `FATTA` in 96f569e — conflitti solo nei report (tenuti i miei), nella memoria (tenute le righe di tutti e due) e nella riga «Ultimo aggiornamento» (unite); file del perimetro entrati da main identici a MERGE_HEAD. **Review #633 (chat Mani)**: APPROVATO.
+- **Bot su fc1cab7 (https://github.com/Gasss23/Gas/pull/329#pullrequestreview-5745506029)**: APPROVATO CON RISERVE, neutral. V-1 BASSA (server voce a un solo thread occupato per tutta la riproduzione, perché il client legge la riga dopo a fine frase): `REGISTRATA` in stato_progetto, rimedio nella prossima fetta (righe lette in un thread). V-2 COSMETICA (handoff §6).
+- **Merge di main (PR #330 di M2, formato «audio+pezzi»)**: `FATTA` in d32d326 — conflitti solo nei report, nella memoria e nella riga «Ultimo aggiornamento»; file di M2 identici a MERGE_HEAD; prova dal vero sull'albero unito (5 frasi in fila, la prima a 0,3 s; senza chiave bip; «non ho capito» suonato). **Review #634 (chat Mani)**: APPROVATO CON RISERVE (R-634-1/3 BASSE, R-634-2 COSMETICA, registrate).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
+ .claude/agents/memoria_revisore.md |   5 +++++
  clients/voice/ascolto.py           | 196 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------
- reports/diff_sessione.md           |  18 ++++++++++--------
+ reports/diff_sessione.md           |  18 +++++++++++-------
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  29 ++++++++++++++--------------
+ reports/ultimo_report.md           |  32 +++++++++++++++----------------
  scripts/voce/LEGGIMI.md            |  14 ++++++++------
  scripts/voce/installa.sh           |  79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
  tests/test_unit_voce_ascolto.py    | 369 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
 ```
 
-NB: base = merge-base con origin/main = b6f3750. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 805c272. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+17d8def chore(revisore): memoria review #634 — APPROVATO CON RISERVE
+d32d326 Merge origin/main (PR #330, voce V10 audio+pezzi) in PR #329
+fc1cab7 docs(fine-task): merge di main (PR #327) nella PR #329, riserve del bot e della verifica esterna registrate (review #633)
 6fd5d16 chore(revisore): memoria review #633 — APPROVATO
 96f569e Merge origin/main (PR #327, voce V9) in PR #329
 3b92254 docs(fine-task): fetta 39, ascolto a frasi in fila, PR #329
@@ -126,6 +131,48 @@ Cosa NON ho verificato:
 Memoria: la riga #633 è stata aggiunta in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, solo nel working tree come chiesto. Non ho lanciato `scripts/commit_memoria_revisore.sh`: c'è un merge in corso e non va toccato l'indice. La riga va inclusa nel commit di merge o in quello successivo. Nessuna lezione nuova.
 ```
 
+Review #634 (chat Mani), merge di origin/main (PR #330) in d32d326, verdetto integrale:
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #634 (chat Mani). Merge di origin/main 805c272 (PR #330, voce V10 di M2) dentro claude/peaceful-lovelace-0w2b7q (PR #329, head fc1cab7). Lo sha256 del diff staged è 80ccf8177e7651ec…, uguale prima e dopo la review. L'indice non l'ho toccato.
+
+**Elementi del diff esaminati**
+
+- `modules/voice/server.py:506` — con «audio+pezzi» e senza chiave ElevenLabs il server risponde 200 in JSON con `content` ed `errore_voce`, senza `audio` e non in NDJSON. Rischio esaminato: che il client lo legga come voce o vada in crash. Esito: ok. `clients/voice/ascolto.py:545` lo legge come «senza voce», il turno restituisce False e suona il bip d'errore (riprodotto).
+- `modules/voice/server.py:641` — nel caso «non ho capito» la risposta passa da `_rispondi_senza_turno`, poi da `_vuole_righe_senza_schermo`, e arriva in NDJSON. Rischio esaminato: un formato diverso da quello atteso dal client. Esito: ok. Il client suona 1 pezzo e il kernel non viene chiamato.
+- `modules/voice/server.py:423` — con «audio+pezzi» si usa `ISTRUZIONE_VOCE`, perché `_vuole_audio_testo` resta falso. Rischio esaminato: un'istruzione che parla di schermo. Esito: ok, nell'istruzione catturata dal kernel finto non c'è «schermo».
+- `clients/voice/ascolto.py:502` — su una riga con `errore_voce` il client esce e chiude la connessione. Rischio esaminato: che il server continui a sintetizzare frasi che nessuno sente. Esito: ok. Con un errore alla seconda frase le sintesi sono 2, la prima frase suona e poi si ferma. Con l'errore alla prima frase non suona niente e parte il bip.
+- `clients/voice/ascolto.py:94` — il tetto di una riga è 8 MB. Rischio esaminato: una riga più lunga del tetto, cioè la prima frase fino a 1500 caratteri in MP3 base64 più il `content` intero. Esito: ok, il margine è ampio.
+- `reports/stato_progetto.md:4` — la riga è il prefisso della fetta 39, poi « — prima: », poi la riga 4 di MERGE_HEAD identica carattere per carattere. Verso main il file ha solo 5 righe diverse: la riga 4, il blocco della fetta 39 aggiunto e la riga della fetta 38 aggiornata. I blocchi V10 e fetta 39 compaiono una volta ciascuno. Esito: ok.
+
+**Punto 1 (blob)**: ok. `modules/voice/server.py` e `tests/test_unit_voice_server.py` hanno il blob uguale a MERGE_HEAD. Hanno il blob uguale a HEAD: `clients/voice/ascolto.py`, `scripts/voce/installa.sh`, `scripts/voce/LEGGIMI.md`, `tests/test_unit_voce_ascolto.py`, `reports/roadmap.md`, e anche `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` (presi col tuo lato). `git diff --cached MERGE_HEAD --stat` mostra solo il lavoro di #329: 10 file, nessun file del server.
+
+**Punto 2 (memoria)**: unione esatta. Base 1208 righe, +3 dal tuo lato (#632, la lezione, #633) e +3 da main (#660-M2, #661-M2, #662-M2). Nessuna riga mancante da nessuno dei due lati, nessuna riga «#» doppia, nessun marcatore, nessun file non risolto.
+
+**Punto 3 (contratto)**: l'ho riprodotto da me con server vero e `ascolto.py` vero; STT, kernel ed ElevenLabs finti. Lo script è in /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/prova634.py.
+- 5 frasi: suonate tutte e 5 in fila, la prima a 0,05 s col finto.
+- Senza chiave: bip d'errore.
+- «Non ho capito»: suonato.
+- Errore a metà: suona la prima frase, poi si ferma.
+- Errore alla prima frase: bip.
+- Testo vuoto e testo di soli spazi: bip.
+- Testo oltre 1500 caratteri: taglio più l'avviso di resto, 2 pezzi.
+- Formato di default del client: «audio+pezzi».
+
+Le suite `tests/test_unit_voce_ascolto.py` e `tests/test_unit_voice_server.py` danno 252 passed, 0 skipped.
+
+**Riserve**
+- R-634-1 BASSA: se il TTS si rompe a metà, senza schermo il risultato è silenzio. Il turno risulta riuscito (True), quindi non c'è bip né avviso: l'operatore sente solo la prima frase e non sa che manca il resto. Rimedio possibile: un bip d'errore quando arriva `errore_voce` dopo che almeno un pezzo è già stato suonato.
+- R-634-2 COSMETICA: il client scarta il testo di `errore_voce` e nel log scrive «risposta inattesa (senza voce)» sia con la chiave mancante sia con testo vuoto. Sul Mac il log non dice la causa.
+- R-634-3 BASSA: nessun test automatico mette insieme il server vero e `ascolto.py`. Ogni suite usa i propri finti e i due lati li scrivono chat diverse (M2 e Mani): se il contratto cambia da una parte, le suite passano lo stesso. La prova dal vero tua e la mia non restano nel repo.
+
+**Rischi esclusi**: il comportamento con ElevenLabs e Groq veri non l'ho verificato (latenza reale, dimensione reale degli MP3, risposte d'errore reali), perché qui ci sono solo finti. Non ho verificato nemmeno l'audio e il microfono veri sul Mac (afplay, openWakeWord), che non si possono riprodurre qui. Lo spazio in coda in `reports/handoff.md:80` c'era già a HEAD; verrà riscritto con l'handoff.
+
+**Memoria**: ho aggiunto la riga #634 più una lezione in coda a .claude/agents/memoria_revisore.md, solo nel working tree. `scripts/commit_memoria_revisore.sh` non l'ho lanciato: col merge in corso concluderebbe il merge, e mi hai chiesto di non toccare l'indice. La riga va portata col commit di merge.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voce_ascolto.py`: da 93 a 149 test (risposta a pezzi con un server vero, ripieghi, chiusura della risposta, rilevatore a intermittenza, confronto di `valore_env` con `gas._carica_dotenv`, lista bianca di GAS_CLAUDE_BIN, attese del giro nc). Suite della voce (ascolto, server, trascrizione): 333 passed. Nessuna modifica a gas.py né a modules/voice/.
@@ -136,13 +183,15 @@ Memoria: la riga #633 è stata aggiunta in coda a `/home/user/Gas/.claude/agents
 - 6cb49c9 (report): pushato prima di aprire la PR, handoff non ancora riscritto; verifica-bot cancelled (cambio di head).
 - 3b92254 (fine-task): unit-suite success, handoff-check success, verifica-bot neutral (bot APPROVATO CON RISERVE); poi conflitto con main (PR #327).
 - I commit di main entrati col merge (fino a b6f3750, PR #327) hanno le run della PR #327.
-- 96f569e (merge), 6fd5d16 (memoria #633): pushati insieme al commit di fine-task.
+- 96f569e (merge), 6fd5d16 (memoria #633), fc1cab7 (fine-task): unit-suite success, handoff-check success, verifica-bot neutral (bot APPROVATO CON RISERVE); poi conflitto con main (PR #330).
+- I commit di main entrati col merge (fino a 805c272, PR #330) hanno le run della PR #330.
+- d32d326 (merge), 17d8def (memoria #634): pushati insieme al commit di fine-task.
 - Il commit che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-632-1 BASSA (`validate=True` del base64 senza test), R-632-2 BASSA (rilevatore che sbaglia più di una volta ogni 10 s: mai azzerato, da dire nel LEGGIMI), R-632-3 COSMETICA (Ctrl-C prima della prima frase: connessione chiusa dal garbage collector).
-- Da #329: bot V-2 = ve V-2 BASSA (LEGGIMI prima della #330), bot V-3 = ve V-4 BASSA (lista bianca del formato), ve V-1 BASSA (test del ramo R-625-2), ve V-3 BASSA (risposta troncata senza bip), ve V-6/V-7 COSMETICHE.
+- Da #329: bot V-1 su fc1cab7 BASSA (server a un thread occupato durante la riproduzione), R-634-1 BASSA (= ve V-3), R-634-2 COSMETICA, R-634-3 BASSA (nessun test che unisca server vero e ascolto.py), bot V-3 = ve V-4 BASSA (lista bianca del formato), ve V-1 BASSA (test del ramo R-625-2), ve V-3 BASSA (risposta troncata senza bip), ve V-6/V-7 COSMETICHE.
 - Da #324: V-1/V-2 bot su 84b1422 BASSE e V-2 su 7346994 COSMETICA, per la fetta 1 della mail.
 - R-615-4 MEDIA (microfono sotto launchd, da provare sul Mac); R-615-5 BASSA (licenza di hey_jarvis); R-623-1, R-623-3, R-622-2/3.
 - Bash 3.2 del Mac e launchctl vero: si provano solo sul Mac.
