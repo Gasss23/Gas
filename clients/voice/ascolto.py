@@ -5,7 +5,9 @@ clients/voice/ascolto.py — voce H24 sul Mac (R8, chat Mani).
 Gas sempre in ascolto: microfono aperto, parola di attivazione in LOCALE con
 openWakeWord (per ora il modello pronto «hey_jarvis»: «Ehi Gas» va addestrato in una
 fetta a parte), poi bip, registrazione fino al silenzio, invio al server voce già
-esistente (modules/voice/server.py, POST /voice) e risposta riprodotta. Dopo la risposta
+esistente (modules/voice/server.py, POST /voice) e risposta riprodotta: con la risposta
+«a pezzi» del server (righe JSON, formato audio+pezzi) la prima frase suona appena arriva e le altre in
+fila, mentre il server sintetizza le successive (fetta 39). Dopo la risposta
 resta una finestra di ascolto (GAS_VOICE_FINESTRA, 12 s) per continuare senza ripetere
 la parola, fino a GAS_VOICE_MAX_TURNI turni di fila.
 
@@ -19,7 +21,7 @@ Privacy:
   - La richiesta registrata resta in memoria e va solo al server voce. Non si salva
     nessuna registrazione.
   - La risposta di Gas (la sua voce, non la tua) passa da un file temporaneo 0600 per
-    afplay, cancellato subito dopo.
+    afplay, uno per frase, cancellato subito dopo.
   - Nel log dell'ascolto solo gli eventi (attivazione, invio, codici di errore), mai l'audio né il
     token.
 
@@ -35,6 +37,8 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.5)
     GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 500, campioni int16)
     GAS_ASCOLTO_SILENZIO   — secondi di silenzio che chiudono la richiesta (default 0.8)
+    GAS_ASCOLTO_FORMATO    — formato della risposta chiesto al server (default
+                             audio+pezzi, le frasi in fila; vuoto = un solo MP3)
 
 Fail-safe §9: server giù o errore → bip di errore e si torna in ascolto; microfono che
 cade → nuovo tentativo dopo qualche secondo; nessuna eccezione esce dal ciclo.
@@ -42,7 +46,9 @@ cade → nuovo tentativo dopo qualche secondo; nessuna eccezione esce dal ciclo.
 from __future__ import annotations
 
 import array
+import base64
 import io
+import json
 import logging
 import math
 import os
@@ -57,7 +63,7 @@ import urllib.parse
 import urllib.request
 import wave
 from pathlib import Path
-from typing import Callable, Iterator, List, Optional, Sequence, Tuple
+from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
 log = logging.getLogger("gas.ascolto")
 
@@ -73,12 +79,23 @@ INIZIO_VOCE_S = 0.24         # voce continua che apre un turno nella finestra (3
 MICROFONO_MUTO_S = 10.0      # tutto a zero per così tanto → avviso (permesso del microfono?)
 RIPROVA_MICROFONO_S = 5.0
 PAUSA_ERRORI_MAX_S = 60.0    # pausa massima fra due tentativi col rilevatore in errore
+BUONI_PER_AZZERARE = 125     # blocchi buoni di fila (10 s) prima di dire «di nuovo a posto»
 _BIP_OK = "/System/Library/Sounds/Tink.aiff"
 _BIP_ERRORE = "/System/Library/Sounds/Basso.aiff"
 _HOST_LOCALI = ("127.0.0.1", "localhost", "::1")
 
+# Fetta 39 (chat Mani, richiesta di M1): risposta «a pezzi» del server voce (righe JSON
+# della V7b): la prima frase suona appena arriva, le altre in fila mentre il server
+# sintetizza. «audio+pezzi» è il formato di M2 per chi non ha uno schermo (istruzione
+# della voce senza schermo, tutto il parlato diviso in frasi). Un server che non lo
+# conosce risponde con un solo MP3, che si suona come prima.
+# Il nome del formato si può cambiare con GAS_ASCOLTO_FORMATO (vuoto = un solo MP3, come prima).
+FORMATO_PEZZI = "audio+pezzi"   # M2: senza schermo, tutto il parlato a frasi
+RIGA_MAX = 8 * 1024 * 1024   # una riga NDJSON (una frase in MP3 base64) non supera questo
+
 Blocco = Sequence[int]       # BLOCCO campioni int16
-Invia = Callable[[bytes], Tuple[bool, Optional[bytes], str]]
+Risposta = Union[bytes, Iterable[bytes]]   # un MP3 intero, oppure gli MP3 delle frasi in fila
+Invia = Callable[[bytes], Tuple[bool, Optional[Risposta], str]]
 
 
 # ─────────────────────────────────────────── configurazione ──
@@ -145,6 +162,20 @@ def url_del_server() -> str:
         return url
     porta = "".join(c for c in os.environ.get("GAS_VOICE_PORT", "") if c.isdigit())
     return f"http://127.0.0.1:{porta or '8765'}"
+
+
+def formato_richiesto() -> str:
+    """GAS_ASCOLTO_FORMATO (default FORMATO_PEZZI). Solo lettere minuscole e «+», al
+    massimo 40 caratteri; un valore diverso torna al default. Vuoto = niente formato (un
+    solo MP3 con Accept: audio/mpeg, come prima della fetta 39)."""
+    valore = os.environ.get("GAS_ASCOLTO_FORMATO")
+    if valore is None:
+        return FORMATO_PEZZI
+    valore = valore.strip().lower()
+    if re.fullmatch(r"[a-z+]{0,40}", valore):
+        return valore
+    log.warning("GAS_ASCOLTO_FORMATO non valido: uso %s", FORMATO_PEZZI)
+    return FORMATO_PEZZI
 
 
 def url_valido(url: str) -> Optional[str]:
@@ -218,6 +249,7 @@ class Ascolto:
         self.max_turni = max(1, int(max_turni))
         self.dorme = dorme
         self._errori_rilevatore = 0
+        self._buoni_di_fila = 0
         self._muti = 0
 
     def _prossimo(self) -> Optional[Blocco]:
@@ -248,21 +280,30 @@ class Ascolto:
                 self._errore_rilevatore(e)
                 continue
             if self._errori_rilevatore:
-                log.warning("rilevatore: di nuovo a posto dopo %d errori di fila",
-                            self._errori_rilevatore)
-                self._errori_rilevatore = 0
+                # V-1 ve #328: il conto si azzera solo dopo BUONI_PER_AZZERARE blocchi buoni
+                # di fila, così un rilevatore che sbaglia a intermittenza non scrive due
+                # righe per blocco e prende comunque le pause.
+                self._buoni_di_fila += 1
+                if self._buoni_di_fila >= BUONI_PER_AZZERARE:
+                    log.warning("rilevatore: di nuovo a posto dopo %d errori",
+                                self._errori_rilevatore)
+                    self._errori_rilevatore = 0
+                    self._buoni_di_fila = 0
             if punteggio >= self.soglia:
                 return True
 
     def _errore_rilevatore(self, e: Exception) -> None:
-        """V-1 ve #323: un rilevatore che fallisce sempre non deve scrivere una riga per
-        blocco (12,5 al secondo, log senza rotazione). Si scrive al 1°, 2°, 4°, 8°…
-        errore di fila, e dal 3° si fa una pausa crescente (0,5 s, 1 s, 2 s… fino a
-        PAUSA_ERRORI_MAX_S) prima di riprovare, buttando l'audio arrivato nel frattempo."""
+        """V-1 ve #323: un rilevatore che fallisce non deve scrivere una riga per blocco
+        (12,5 al secondo, log senza rotazione). Si scrive al 1°, 2°, 4°, 8°… errore, e dal
+        3° si fa una pausa crescente (0,5 s, 1 s, 2 s… fino a PAUSA_ERRORI_MAX_S) prima di
+        riprovare, buttando l'audio arrivato nel frattempo. Gli errori si contano finché
+        non passano BUONI_PER_AZZERARE blocchi buoni di fila (V-1 ve #328: anche a
+        intermittenza)."""
         self._errori_rilevatore += 1
+        self._buoni_di_fila = 0
         n = self._errori_rilevatore
         if n & (n - 1) == 0:  # potenza di 2
-            log.warning("rilevatore: errore (%s), %d di fila", type(e).__name__, n)
+            log.warning("rilevatore: errore (%s), %d recenti", type(e).__name__, n)
         if n >= 3:
             try:
                 # R-624-1: esponente limitato (2**1024 non entra in un float)
@@ -326,24 +367,51 @@ class Ascolto:
         return None
 
     def turno(self, blocchi: List[Blocco]) -> bool:
-        """Invia la richiesta e riproduce la risposta. True se è andata bene."""
+        """Invia la richiesta e riproduce la risposta: un MP3 intero, oppure (fetta 39)
+        le frasi una dopo l'altra, ciascuna appena arriva. True se almeno un pezzo è
+        stato suonato."""
         try:
-            ok, audio, motivo = self.invia(in_wav(blocchi))
+            ok, risposta, motivo = self.invia(in_wav(blocchi))
         except Exception as e:  # §9
-            ok, audio, motivo = False, None, f"errore ({type(e).__name__})"
-        if not ok or not audio:
+            ok, risposta, motivo = False, None, f"errore ({type(e).__name__})"
+        if not ok or not risposta:
             log.warning("turno non riuscito: %s", motivo)
             self._bip("errore")
             self._svuota()  # V-3 bot #323: il bip e l'audio rimasto non vanno al rilevatore
             return False
+        pezzi = iter([risposta] if isinstance(risposta, (bytes, bytearray)) else risposta)
+        suonati = 0
         try:
-            self.riproduci(audio)
-        except Exception as e:  # §9
-            log.warning("riproduzione fallita (%s)", type(e).__name__)
+            while True:
+                try:
+                    audio = next(pezzi)
+                except StopIteration:
+                    break
+                except Exception as e:  # §9: risposta interrotta a metà
+                    log.warning("risposta interrotta (%s)", type(e).__name__)
+                    break
+                if not audio:
+                    continue
+                suonati += 1
+                try:
+                    self.riproduci(audio)
+                except Exception as e:  # §9
+                    log.warning("riproduzione fallita (%s)", type(e).__name__)
         finally:
+            chiudi = getattr(pezzi, "close", None)
+            if chiudi is not None:  # la connessione si chiude: il server smette di sintetizzare
+                try:
+                    chiudi()
+                except Exception as e:  # §9
+                    log.warning("chiusura della risposta fallita (%s)", type(e).__name__)
             # Quello che il microfono ha sentito mentre Gas parlava è la sua voce:
             # non deve aprire un turno né attivare la parola.
             self._svuota()
+        if suonati == 0:
+            log.warning("turno non riuscito: risposta senza voce")
+            self._bip("errore")
+            self._svuota()
+            return False
         return True
 
     def _bip(self, tipo: str) -> None:
@@ -404,26 +472,88 @@ class _NienteRedirect(urllib.request.HTTPRedirectHandler):
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NienteRedirect)
 
 
-def invia_al_server(url: str, token: str, timeout: float) -> Invia:
-    """POST /voice col WAV; risposta in audio/mpeg. Mai il token nei log."""
-    def _invia(wav: bytes) -> Tuple[bool, Optional[bytes], str]:
-        req = urllib.request.Request(f"{url}/voice", data=wav, method="POST", headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "audio/wav",
-            "Accept": "audio/mpeg",
-        })
+def _audio_da_base64(valore: object) -> Optional[bytes]:
+    if not isinstance(valore, str) or not valore:
+        return None
+    return base64.b64decode(valore, validate=True)
+
+
+def _frasi_ndjson(r) -> Iterator[bytes]:
+    """Fetta 39: legge le righe JSON della risposta a pezzi (V7b) e dà l'MP3 di ogni
+    frase appena la sua riga arriva. Si ferma su «fine», su «errore_voce» (il server ha
+    smesso di sintetizzare) o a fine connessione. Una riga rotta o troppo lunga alza
+    un'eccezione: il turno la prende (§9). La connessione si chiude sempre."""
+    try:
+        while True:
+            riga = r.readline(RIGA_MAX + 1)
+            if not riga:
+                return
+            if len(riga) > RIGA_MAX:
+                raise ValueError("riga troppo lunga")
+            riga = riga.strip()
+            if not riga:
+                continue
+            dati = json.loads(riga)
+            if not isinstance(dati, dict):
+                raise ValueError("riga non valida")
+            audio = _audio_da_base64(dati.get("audio"))
+            if audio:
+                yield audio
+            if dati.get("errore_voce"):
+                log.warning("voce interrotta dal server a metà risposta")
+                return
+            if dati.get("fine"):
+                return
+    finally:
+        r.close()
+
+
+def invia_al_server(url: str, token: str, timeout: float,
+                    formato: Optional[str] = None) -> Invia:
+    """POST /voice col WAV. Con un formato (default quello a pezzi, fetta 39) la
+    risposta può essere a righe JSON (le frasi in fila), JSON con un solo audio, oppure
+    audio/mpeg; senza formato solo audio/mpeg, come prima. Mai il token nei log."""
+    formato = formato_richiesto() if formato is None else formato
+    intestazioni = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "audio/wav",
+        "Accept": "audio/mpeg",
+    }
+    if formato:
+        intestazioni["X-Gas-Formato"] = formato
+
+    def _invia(wav: bytes) -> Tuple[bool, Optional[Risposta], str]:
+        req = urllib.request.Request(f"{url}/voice", data=wav, method="POST",
+                                     headers=intestazioni)
         try:
-            with _OPENER.open(req, timeout=timeout) as r:
-                tipo = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
-                corpo = r.read()
-                if r.status != 200 or not tipo.startswith("audio/"):
-                    return False, None, f"risposta inattesa (HTTP {r.status}, {tipo or '?'})"
-                return True, corpo, ""
+            r = _OPENER.open(req, timeout=timeout)
         except urllib.error.HTTPError as e:
             e.close()
             return False, None, f"HTTP {e.code}"
         except Exception as e:  # rete, timeout
             return False, None, f"server voce non raggiungibile ({type(e).__name__})"
+        a_pezzi = False
+        try:
+            tipo = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if r.status != 200:
+                return False, None, f"risposta inattesa (HTTP {r.status}, {tipo or '?'})"
+            if tipo == "application/x-ndjson" and formato:
+                a_pezzi = True  # la connessione resta aperta: la chiude _frasi_ndjson
+                return True, _frasi_ndjson(r), ""
+            if tipo.startswith("audio/"):
+                return True, r.read(), ""
+            if tipo == "application/json" and formato:
+                dati = json.loads(r.read())
+                audio = _audio_da_base64(dati.get("audio")) if isinstance(dati, dict) else None
+                if audio:
+                    return True, audio, ""
+                return False, None, "risposta inattesa (senza voce)"
+            return False, None, f"risposta inattesa (HTTP {r.status}, {tipo or '?'})"
+        except Exception as e:  # corpo rotto o connessione caduta
+            return False, None, f"risposta inattesa ({type(e).__name__})"
+        finally:
+            if not a_pezzi:
+                r.close()
     return _invia
 
 

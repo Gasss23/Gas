@@ -257,7 +257,8 @@ def test_rilevatore_che_torna_azzera_il_conto(caplog):
     f = Ballerino()
     pause = []
     with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
-        a.Ascolto(iter(_blocchi((SILENZIO, 5), SILENZIO, PAROLA, (VOCE, 5), (SILENZIO, 10))),
+        a.Ascolto(iter(_blocchi((SILENZIO, 5), (SILENZIO, a.BUONI_PER_AZZERARE), PAROLA,
+                                (VOCE, 5), (SILENZIO, 10))),
                   f.rilevatore, f.invia, f.riproduci, f.suona, svuota=f.svuota,
                   dorme=pause.append, finestra_s=0).gira()
     righe = [r.getMessage() for r in caplog.records]
@@ -266,9 +267,8 @@ def test_rilevatore_che_torna_azzera_il_conto(caplog):
     assert pause == [0.5, 1.0, 2.0]
 
 
-def test_dopo_il_ritorno_le_pause_ripartono_da_mezzo_secondo():
-    """R-624-2: il conto si azzera davvero quando il rilevatore torna."""
-    errori = iter([True] * 4 + [False] * 3 + [True] * 4 + [False] * 10)
+def _pause_con(sequenza):
+    errori = iter(sequenza)
     pause = []
 
     def ballerino(b):
@@ -277,9 +277,31 @@ def test_dopo_il_ritorno_le_pause_ripartono_da_mezzo_secondo():
         return 0.0
 
     f = Finti()
-    a.Ascolto(iter(_blocchi((SILENZIO, 21))), ballerino, f.invia, f.riproduci, f.suona,
-              svuota=f.svuota, dorme=pause.append).gira()
-    assert pause == [0.5, 1.0, 0.5, 1.0]
+    a.Ascolto(iter(_blocchi((SILENZIO, len(sequenza) + 5))), ballerino, f.invia, f.riproduci,
+              f.suona, svuota=f.svuota, dorme=pause.append).gira()
+    return pause
+
+
+def test_dopo_il_ritorno_le_pause_ripartono_da_mezzo_secondo():
+    """R-624-2: il conto si azzera davvero quando il rilevatore torna (per 10 s di fila)."""
+    buoni = [False] * a.BUONI_PER_AZZERARE
+    assert _pause_con([True] * 4 + buoni + [True] * 4) == [0.5, 1.0, 0.5, 1.0]
+
+
+def test_pochi_blocchi_buoni_non_azzerano_il_conto():
+    """V-1 ve #328: qualche blocco buono in mezzo agli errori non riazzera il conto."""
+    pochi = [False] * (a.BUONI_PER_AZZERARE - 1)
+    assert _pause_con([True] * 4 + pochi + [True] * 4) == [0.5, 1.0, 2.0, 4.0, 8.0, 16.0]
+
+
+def test_rilevatore_a_intermittenza_log_limitato(caplog):
+    """V-1 ve #328: errore e blocco buono alternati per 2000 blocchi: poche righe di log
+    (non una o due per blocco) e le pause arrivano lo stesso."""
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        pause = _pause_con([True, False] * 1000)
+    righe = [r.getMessage() for r in caplog.records if r.getMessage().startswith("rilevatore")]
+    assert len(righe) == 10  # 1, 2, 4, …, 512 errori; mai «di nuovo a posto»
+    assert len(pause) == 998 and max(pause) == a.PAUSA_ERRORI_MAX_S
 
 
 def test_avviso_se_il_microfono_e_muto(caplog):
@@ -388,6 +410,208 @@ def test_proxy_di_sistema_ignorato(monkeypatch):
 def test_server_giu():
     ok, audio, motivo = a.invia_al_server("http://127.0.0.1:9", TOKEN, 2)(b"x")
     assert not ok and "non raggiungibile" in motivo and TOKEN not in motivo
+
+
+# ── fetta 39: risposta a pezzi (NDJSON della V7b), la prima frase suona subito ──
+
+import base64 as _b64  # noqa: E402
+
+
+def _riga(**campi):
+    return (json.dumps(campi) + "\n").encode()
+
+
+def _mp3(n):
+    return _b64.b64encode(f"MP3-{n}".encode()).decode()
+
+
+class _ServerPezzi(http.server.BaseHTTPRequestHandler):
+    """Server voce finto a pezzi: manda la prima riga, poi aspetta che il client l'abbia
+    SUONATA (evento) prima di mandare le altre. Se il client leggesse tutto prima di
+    suonare, resterebbe fermo fino al timeout dell'evento."""
+    protocol_version = "HTTP/1.0"
+    righe = []
+    suonata = threading.Event()
+    atteso = []
+    visti = []
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", 0))
+        type(self).visti.append((dict(self.headers), self.rfile.read(n)))
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+        self.end_headers()
+        for i, r in enumerate(type(self).righe):
+            try:
+                self.wfile.write(r)
+                self.wfile.flush()
+            except OSError:
+                return
+            if i == 0:
+                type(self).atteso.append(type(self).suonata.wait(5))
+
+    def log_message(self, *x):
+        pass
+
+
+@pytest.fixture
+def server_pezzi():
+    _ServerPezzi.visti, _ServerPezzi.atteso = [], []
+    _ServerPezzi.suonata = threading.Event()
+    s = http.server.HTTPServer(("127.0.0.1", 0), _ServerPezzi)
+    th = threading.Thread(target=s.serve_forever, daemon=True)
+    th.start()
+    yield f"http://127.0.0.1:{s.server_address[1]}"
+    s.shutdown()
+    s.server_close()
+
+
+def _turno_vero(url, **k):
+    suonati, bip = [], []
+
+    def riproduci(audio):
+        suonati.append(audio)
+        _ServerPezzi.suonata.set()
+
+    asc = a.Ascolto(iter([]), lambda b: 0.0, a.invia_al_server(url, TOKEN, 5, **k), riproduci,
+                    bip.append)
+    ok = asc.turno([VOCE] * 3)
+    return ok, suonati, bip
+
+
+def test_pezzi_la_prima_frase_suona_prima_delle_altre(server_pezzi):
+    _ServerPezzi.righe = [_riga(content="Ciao. Tutto bene. Ecco.", pezzi=3, audio=_mp3(1)),
+                          _riga(audio=_mp3(2)), _riga(audio=_mp3(3)), _riga(fine=True)]
+    ok, suonati, bip = _turno_vero(server_pezzi)
+    assert ok and suonati == [b"MP3-1", b"MP3-2", b"MP3-3"] and bip == []
+    assert _ServerPezzi.atteso == [True]  # la prima è stata suonata mentre il server aspettava
+    intestazioni, corpo = _ServerPezzi.visti[0]
+    assert intestazioni["X-Gas-Formato"] == a.FORMATO_PEZZI
+    assert intestazioni["Accept"] == "audio/mpeg" and corpo.startswith(b"RIFF")
+
+
+def test_pezzi_errore_voce_a_meta(server_pezzi):
+    _ServerPezzi.righe = [_riga(content="x", pezzi=3, audio=_mp3(1)),
+                          _riga(errore_voce="Errore TTS ElevenLabs: quota"), _riga(audio=_mp3(3))]
+    ok, suonati, bip = _turno_vero(server_pezzi)
+    assert ok and suonati == [b"MP3-1"] and bip == []
+
+
+def test_pezzi_senza_voce_nella_prima_riga(server_pezzi):
+    _ServerPezzi.righe = [_riga(content="x", pezzi=2, errore_voce="TTS giù")]
+    ok, suonati, bip = _turno_vero(server_pezzi)
+    assert not ok and suonati == [] and bip == ["errore"]
+
+
+@pytest.mark.parametrize("rotta", [b"{non json\n", b'["lista"]\n', _riga(audio="%%%non-base64")])
+def test_pezzi_riga_rotta_dopo_la_prima(server_pezzi, rotta, caplog):
+    _ServerPezzi.righe = [_riga(content="x", pezzi=3, audio=_mp3(1)), rotta, _riga(audio=_mp3(3))]
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        ok, suonati, bip = _turno_vero(server_pezzi)
+    assert ok and suonati == [b"MP3-1"] and bip == []
+    assert "risposta interrotta" in caplog.text and TOKEN not in caplog.text
+
+
+def test_pezzi_riga_troppo_lunga(server_pezzi, monkeypatch):
+    monkeypatch.setattr(a, "RIGA_MAX", 64)
+    _ServerPezzi.righe = [_riga(content="x", pezzi=2, audio=_mp3(1)),
+                          _riga(audio=_b64.b64encode(b"Z" * 200).decode())]
+    ok, suonati, bip = _turno_vero(server_pezzi)
+    assert ok and suonati == [b"MP3-1"]
+
+
+def test_pezzi_connessione_chiusa_senza_fine(server_pezzi):
+    _ServerPezzi.righe = [_riga(content="x", pezzi=3, audio=_mp3(1)), _riga(audio=_mp3(2))]
+    ok, suonati, bip = _turno_vero(server_pezzi)
+    assert ok and suonati == [b"MP3-1", b"MP3-2"]
+
+
+def test_json_con_un_solo_audio(server):
+    """Il server manda JSON (frase fissa «uso», o niente formato a pezzi): l'audio si suona."""
+    _Server.risposta = (200, "application/json", json.dumps(
+        {"content": "Non ho capito", "audio": _mp3(9)}).encode())
+    ok, audio, motivo = a.invia_al_server(server, TOKEN, 5)(b"x")
+    assert (ok, audio, motivo) == (True, b"MP3-9", "")
+
+
+def test_json_audio_rotto(server):
+    _Server.risposta = (200, "application/json", b'{"audio": "%%%"}')
+    ok, audio, motivo = a.invia_al_server(server, TOKEN, 5)(b"x")
+    assert not ok and audio is None and "risposta inattesa" in motivo
+
+
+def test_senza_formato_come_prima(server):
+    """GAS_ASCOLTO_FORMATO vuoto: niente X-Gas-Formato, e un JSON non vale come risposta."""
+    _Server.risposta = (200, "application/json", json.dumps({"audio": _mp3(1)}).encode())
+    ok, audio, motivo = a.invia_al_server(server, TOKEN, 5, formato="")(b"x")
+    assert not ok and "risposta inattesa" in motivo
+    assert "X-Gas-Formato" not in _Server.visti[0][1]
+
+
+@pytest.mark.parametrize("valore,atteso", [
+    (None, a.FORMATO_PEZZI), ("", ""), (" Audio+Testo ", "audio+testo"),
+    ("audio+pezzi", "audio+pezzi"), ("audio;rm", a.FORMATO_PEZZI), ("a" * 41, a.FORMATO_PEZZI),
+])
+def test_formato_dall_ambiente(monkeypatch, valore, atteso):
+    if valore is None:
+        monkeypatch.delenv("GAS_ASCOLTO_FORMATO", raising=False)
+    else:
+        monkeypatch.setenv("GAS_ASCOLTO_FORMATO", valore)
+    assert a.formato_richiesto() == atteso
+
+
+def test_turno_chiude_la_risposta_e_svuota(caplog):
+    """Le frasi in fila: ognuna suonata, poi la risposta si chiude (il server smette di
+    sintetizzare) e il microfono si svuota una volta sola, alla fine."""
+    chiuse = []
+
+    def frasi():
+        try:
+            yield b"A"
+            yield b""
+            yield b"B"
+        finally:
+            chiuse.append(True)
+
+    f = Finti(esito=(True, frasi(), ""))
+    asc = f.ascolto(iter([]))
+    assert asc.turno([VOCE] * 3) is True
+    assert f.riprodotti == [b"A", b"B"] and chiuse == [True] and f.svuotati == 1
+
+
+def test_turno_interrotto_chiude_la_risposta():
+    """Ctrl-C (o l'arresto di launchd) durante una frase: la risposta si chiude subito, così
+    il server smette di sintetizzare le frasi che nessuno ascolterà."""
+    chiuse = []
+
+    def frasi():
+        try:
+            yield b"A"
+            yield b"B"
+        finally:
+            chiuse.append(True)
+
+    gen = frasi()
+    f = Finti(esito=(True, gen, ""))
+
+    def interrotta(audio):
+        raise KeyboardInterrupt
+
+    asc = a.Ascolto(iter([]), f.rilevatore, f.invia, interrotta, f.suona, svuota=f.svuota)
+    with pytest.raises(KeyboardInterrupt):
+        asc.turno([VOCE] * 3)
+    assert chiuse == [True] and f.svuotati == 1
+
+
+def test_turno_riproduzione_rotta_va_avanti():
+    f = Finti(esito=(True, iter([b"A", b"B"]), ""))
+
+    def rotta(audio):
+        f.riprodotti.append(audio)
+        raise OSError("afplay")
+
+    asc = a.Ascolto(iter([]), f.rilevatore, f.invia, rotta, f.suona, svuota=f.svuota)
+    assert asc.turno([VOCE] * 3) is True and f.riprodotti == [b"A", b"B"] and f.bip == []
 
 
 def test_riproduzione_da_file_0600_cancellato(monkeypatch, tmp_path):
@@ -575,8 +799,10 @@ def test_script_sintassi_e_solo_mac(script):
 
 def test_installa_non_stampa_il_token():
     testo = (VOCE_DIR / "installa.sh").read_text(encoding="utf-8")
-    assert "grep -Eq" in testo  # il controllo del token è silenzioso
+    assert 'TOKEN_VOCE="$(valore_env GAS_VOICE_TOKEN' in testo  # letto senza stamparlo
     assert "cat .env" not in testo and "echo $GAS_VOICE_TOKEN" not in testo
+    assert "$TOKEN_VOCE" not in testo.replace('[ -n "$TOKEN_VOCE" ]', "").replace(
+        '[[ "$TOKEN_VOCE" != \\#* ]]', "")
 
 
 def test_dipendenze_del_mac_fissate():
@@ -745,11 +971,138 @@ def test_installa_bootstrap_sempre_rotto_si_ferma(tmp_path):
     assert registro.splitlines().count("sleep 1") == 2  # R-629-1: niente attesa dopo il terzo
 
 
+# ── V-1/V-2 bot #328: installa.sh legge il .env come gas._carica_dotenv ──
+
+_CASI_ENV = [
+    "K=abc\n",
+    "K = abc\n",                         # spazi intorno a «=»
+    "K= abc\n",
+    "export K=abc\n",
+    "  export   K=abc  \n",
+    "K=abc # commento\n",
+    "K=#abc\n",                          # «#» senza spazio prima: fa parte del valore
+    "K=a#b\n",
+    'K="abc" # commento\n',
+    "K='a b'\n",
+    'K="a" # "b"\n',
+    'K="abc\nK=dopo\n',                 # virgolette non chiuse: riga ignorata, vale la dopo
+    "K=\nK=abc\n",                       # vale la PRIMA, anche vuota
+    "K= # solo commento\n",
+    "# K=abc\nK=vero\n",
+    "\ufeffK=bom\n",
+    "K=crlf\r\nALTRA=1\r\n",
+    "ALTRA=1\n",                          # chiave assente
+    "K=senza-a-capo-finale",
+    "KK=no\nK=si\n",
+]
+
+
+def _valore_env_bash(tmp_path, contenuto):
+    f = tmp_path / ".env"
+    f.write_bytes(contenuto.encode("utf-8"))
+    script = (VOCE_DIR / "installa.sh").read_text(encoding="utf-8")
+    inizio = script.index("_spazi_via() {")
+    fine = script.index("\n}\n", script.index("valore_env() {")) + 3
+    r = subprocess.run(["bash", "-c", script[inizio:fine] + '\nvalore_env K "$1"', "x", str(f)],
+                       capture_output=True, text=True, timeout=10)
+    return r.stdout if r.returncode == 0 else None
+
+
+@pytest.mark.parametrize("contenuto", _CASI_ENV)
+def test_installa_legge_il_env_come_gas(tmp_path, monkeypatch, contenuto):
+    import gas
+    monkeypatch.delenv("GAS_NO_DOTENV", raising=False)
+    monkeypatch.delenv("K", raising=False)
+    (tmp_path / "g").mkdir()
+    (tmp_path / "g" / ".env").write_bytes(contenuto.encode("utf-8"))
+    gas._carica_dotenv(tmp_path / "g" / ".env")
+    atteso = os.environ.get("K")
+    monkeypatch.delenv("K", raising=False)
+    assert _valore_env_bash(tmp_path, contenuto) == atteso
+
+
+@pytest.mark.parametrize("env", [
+    "GAS_VOICE_TOKEN=\nGAS_VOICE_TOKEN=segreto\n",   # la prima è vuota: il server non avrebbe token
+    "GAS_VOICE_TOKEN=''\nGAS_VOICE_TOKEN=segreto\n",
+])
+def test_installa_token_vuoto_nella_prima_riga_si_ferma(tmp_path, env):
+    gas, finti, casa = _gas_finto(tmp_path, env=env)
+    r, registro = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and "GAS_VOICE_TOKEN non è nel .env" in r.stderr
+    assert "launchctl" not in registro and "segreto" not in r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("env", ["GAS_VOICE_TOKEN = abc\n", "export GAS_VOICE_TOKEN='a b'\n"])
+def test_installa_token_scritto_come_lo_accetta_gas(tmp_path, env):
+    gas, finti, casa = _gas_finto(tmp_path, env=env)
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("env", ["GAS_VOICE_TOKEN=#abc\n", "GAS_VOICE_TOKEN= # da mettere\n"])
+def test_installa_token_che_comincia_con_cancelletto_si_ferma(tmp_path, env):
+    """Gas prende «# da mettere» come token: lo script si ferma e dice perché."""
+    gas, finti, casa = _gas_finto(tmp_path, env=env)
+    r, registro = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and "comincia con #" in r.stderr and registro == ""
+
+
+def test_installa_claude_vuoto_nella_prima_riga_avvisa(tmp_path):
+    gas, finti, casa = _gas_finto(
+        tmp_path, env="GAS_VOICE_TOKEN=t\nGAS_CLAUDE_BIN=\nGAS_CLAUDE_BIN=/x/claude\n")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and "GAS_CLAUDE_BIN è vuoto" in r.stdout
+    assert (gas / ".env").read_text().count("GAS_CLAUDE_BIN") == 2  # niente riga aggiunta
+
+
+def test_installa_claude_non_assoluto_avvisa(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=t\nGAS_CLAUDE_BIN=claude\n")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and "non è un percorso assoluto" in r.stdout
+
+
+def test_installa_claude_con_spazi_non_si_raddoppia(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=t\nGAS_CLAUDE_BIN = /x/claude\n")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and "aggiunto" not in r.stdout and "vuoto" not in r.stdout
+    assert (gas / ".env").read_text().count("GAS_CLAUDE_BIN") == 1
+
+
+def _claude_finto(tmp_path, cartella):
+    d = tmp_path / cartella
+    d.mkdir(parents=True)
+    c = d / "claude"
+    c.write_text("#!/bin/bash\nexit 0\n")
+    c.chmod(0o755)
+    return d
+
+
+@pytest.mark.parametrize("cartella", ["bin$(touch PWNED)", "bin;x", "bin`id`", "a\\b"])
+def test_installa_claude_in_cartella_pericolosa_non_scrive_il_env(tmp_path, cartella):
+    """R-625-1: la lista bianca tiene fuori dal .env un percorso con caratteri pericolosi."""
+    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=t\n")
+    d = _claude_finto(tmp_path, cartella)
+    r, _ = _installa(gas, finti, casa, tmp_path, PATH=f"{finti}:{d}:/usr/bin:/bin")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "caratteri non ammessi" in r.stdout
+    assert "GAS_CLAUDE_BIN" not in (gas / ".env").read_text()
+    assert not (tmp_path / "PWNED").exists() and not (gas / "PWNED").exists()
+
+
+def test_installa_claude_in_cartella_buona_scrive_il_env(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=t\n")
+    d = _claude_finto(tmp_path, "strumenti buoni/bin")
+    r, _ = _installa(gas, finti, casa, tmp_path, PATH=f"{finti}:{d}:/usr/bin:/bin")
+    assert r.returncode == 0 and f"GAS_CLAUDE_BIN={d}/claude aggiunto" in r.stdout
+    assert f"\nGAS_CLAUDE_BIN={d}/claude\n" in (gas / ".env").read_text()
+
+
 def test_installa_aspetta_il_server_lento(tmp_path):
     """V-3 ve #323: il server che ci mette qualche secondo non dà un falso STOP."""
     gas, finti, casa = _gas_finto(tmp_path)
     r, registro = _installa(gas, finti, casa, tmp_path, NC_FALLISCE="3")
     assert r.returncode == 0 and registro.count("nc -z") == 4
+    assert registro.splitlines().count("sleep 1") == 3  # R-631-1 (= R-623-2): si aspetta davvero
 
 
 def test_installa_server_che_non_risponde_si_ferma(tmp_path):

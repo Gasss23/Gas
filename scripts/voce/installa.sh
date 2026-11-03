@@ -20,6 +20,50 @@ SERVIZI=(com.gas.voce.server com.gas.ascolto)
 
 stop() { echo "STOP: $*" >&2; exit 1; }
 
+# V-1/V-2 bot #328: il .env si legge come lo legge Gas (gas._carica_dotenv): vale la PRIMA
+# riga della chiave, spazi tolti intorno a chiave e valore, `export ` davanti ammesso,
+# virgolette tolte (anche con « # commento» dopo), su un valore senza virgolette « #»
+# apre un commento; righe con virgolette non chiuse ignorate. Stampa il valore ed esce
+# con 0 se la chiave c'è (anche vuota), con 1 se non c'è.
+_spazi_via() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"; printf '%s' "$s"; }
+valore_env() {
+  local cercata="$1" file="${2:-$GAS/.env}" riga chiave valore q i resto n=0
+  [ -f "$file" ] || return 1
+  while IFS= read -r riga || [ -n "$riga" ]; do
+    n=$((n + 1))
+    [ "$n" -eq 1 ] && riga="${riga#$'\xef\xbb\xbf'}"
+    riga="$(_spazi_via "$riga")"
+    [ -z "$riga" ] && continue
+    [[ "$riga" == \#* ]] && continue
+    [[ "$riga" == "export "* ]] && riga="$(_spazi_via "${riga#export }")"
+    [[ "$riga" == *=* ]] || continue
+    chiave="$(_spazi_via "${riga%%=*}")"
+    [ "$chiave" = "$cercata" ] || continue
+    valore="$(_spazi_via "${riga#*=}")"
+    q="${valore:0:1}"
+    if [ "$q" = '"' ] || [ "$q" = "'" ]; then
+      for ((i = 1; i < ${#valore}; i++)); do
+        [ "${valore:i:1}" = "$q" ] || continue
+        resto="${valore:i+1}"
+        if [ -z "$resto" ] || [[ "$resto" =~ ^[[:space:]]+# ]]; then
+          printf '%s' "${valore:1:i-1}"
+          return 0
+        fi
+      done
+      continue  # virgolette non chiuse: Gas ignora la riga
+    fi
+    for ((i = 0; i < ${#valore}; i++)); do
+      if [[ "${valore:i:1}" == [[:space:]] && "${valore:i}" =~ ^[[:space:]]+# ]]; then
+        valore="${valore:0:i}"
+        break
+      fi
+    done
+    printf '%s' "$(_spazi_via "$valore")"
+    return 0
+  done < "$file"
+  return 1
+}
+
 # 1. controlli
 [ "$(uname -s)" = "Darwin" ] || stop "questo script è solo per il Mac."
 # R-615-3: lista BIANCA. La cartella finisce nel sed e nella shell del plist (cd "..."):
@@ -29,24 +73,35 @@ CONSENTITI='^[A-Za-z0-9/._ -]+$'
   || stop "la cartella di Gas ($GAS) ha caratteri non ammessi: usa solo lettere, cifre, / . _ - e spazi."
 [ -f "$GAS/gas.py" ] || stop "non trovo gas.py in $GAS."
 [ -f "$GAS/.env" ] || stop "manca $GAS/.env."
-# V-4 bot #323 su 3672964: un token vuoto o col solo commento non vale.
-grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_TOKEN=["'"'"']?[^[:space:]#"'"'"']' "$GAS/.env" \
-  || stop "GAS_VOICE_TOKEN non è nel .env: aggiungilo (il server voce non parte senza)."
+# V-4 bot #323 su 3672964: un token vuoto o col solo commento non vale (prima riga, V-1 bot #328).
+TOKEN_VOCE="$(valore_env GAS_VOICE_TOKEN || true)"
+[ -n "$TOKEN_VOCE" ] \
+  || stop "GAS_VOICE_TOKEN non è nel .env (o è vuoto): aggiungilo (il server voce non parte senza)."
+# Gas prende «GAS_VOICE_TOKEN= # da mettere» come il token «# da mettere»: un valore che
+# comincia con # è quasi sempre un commento rimasto lì, quindi ci si ferma e lo si dice.
+[[ "$TOKEN_VOCE" != \#* ]] \
+  || stop "GAS_VOICE_TOKEN nel .env comincia con #: Gas lo prenderebbe come token, ma sembra un commento. Scrivi il token vero."
+unset TOKEN_VOCE
 # V-1 bot #323: sotto launchd il PATH è minimo e il server voce non troverebbe `claude`
 # (cervello forte dalla voce: mai i gratuiti, ma il forte non partirebbe). Se nel .env
 # manca GAS_CLAUDE_BIN e `claude` c'è, si aggiunge col suo percorso assoluto.
-# R-624-3: «valido» = primo carattere non spazio, # o virgoletta, come per il token; una
-# riga vuota non si raddoppia (gas._carica_dotenv terrebbe la prima, vuota): si avvisa.
-if grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_CLAUDE_BIN=["'"'"']?[^[:space:]#"'"'"']' "$GAS/.env"; then
-  :
-elif grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_CLAUDE_BIN=' "$GAS/.env"; then
-  echo "AVVISO: nel .env GAS_CLAUDE_BIN è vuoto: dalla voce il cervello forte non partirà (mai i gratuiti). Scrivi il percorso di \`claude\` (\`which claude\`)."
+# R-624-3: una riga vuota non si raddoppia (gas._carica_dotenv terrebbe la prima, vuota):
+# si avvisa. V-1/V-2 bot #328: vale la prima riga, letta come la legge Gas.
+if CLAUDE_NEL_ENV="$(valore_env GAS_CLAUDE_BIN)"; then
+  if [ -z "$CLAUDE_NEL_ENV" ] || [[ "$CLAUDE_NEL_ENV" == \#* ]]; then
+    echo "AVVISO: nel .env GAS_CLAUDE_BIN è vuoto (o è solo un commento): dalla voce il cervello forte non partirà (mai i gratuiti). Scrivi il percorso di \`claude\` (\`which claude\`)."
+  elif [[ "$CLAUDE_NEL_ENV" != /* ]]; then
+    echo "AVVISO: nel .env GAS_CLAUDE_BIN non è un percorso assoluto: sotto launchd il cervello forte dalla voce potrebbe non partire. Scrivi il percorso intero (\`which claude\`)."
+  fi
 else
   CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
   if [[ "$CLAUDE_BIN" == /* && "$CLAUDE_BIN" =~ $CONSENTITI ]]; then
     printf '\n# Aggiunto da scripts/voce/installa.sh: sotto launchd il PATH non trova claude.\nGAS_CLAUDE_BIN=%s\n' \
       "$CLAUDE_BIN" >> "$GAS/.env"
     echo "     GAS_CLAUDE_BIN=$CLAUDE_BIN aggiunto al .env (cervello forte dalla voce)."
+  elif [ -n "$CLAUDE_BIN" ] && [[ "$CLAUDE_BIN" != /* ]]; then
+    # R-625-2: `command -v` può dare un alias o una funzione, non un percorso
+    echo "AVVISO: \`claude\` non è un percorso assoluto ($CLAUDE_BIN: alias o funzione?): scrivi tu GAS_CLAUDE_BIN=<percorso> nel .env, se no dalla voce il cervello forte non partirà."
   elif [ -n "$CLAUDE_BIN" ]; then
     echo "AVVISO: \`claude\` è in un percorso con caratteri non ammessi ($CLAUDE_BIN): scrivi tu GAS_CLAUDE_BIN nel .env, se no dalla voce il cervello forte non partirà."
   else
@@ -130,7 +185,9 @@ done
 # lo script in silenzio (porta di default 8765). V-2 bot #323: vale la PRIMA riga, come
 # per il server e per l'ascolto (gas._carica_dotenv).
 # R-622-1: un commento in linea («9001 # era 8765») si toglie prima di tenere le cifre.
-PORTA="$( { grep -E '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_PORT=' .env || true; } | head -1 | sed 's/[[:space:]]#.*//; s/.*=//; s/[^0-9]//g')"
+# V-1 bot #328: la porta si legge con valore_env, come il token (prima riga, regole di Gas).
+PORTA="$(valore_env GAS_VOICE_PORT || true)"
+PORTA="${PORTA//[^0-9]/}"
 # V-3 ve #323: il server può metterci qualche secondo ad ascoltare: si riprova per 30 s.
 PRONTO=no
 for _ in $(seq 1 30); do
@@ -147,7 +204,7 @@ for s in "${SERVIZI[@]}"; do
     *) stop "$s si è fermato dopo l'avvio: guarda $GAS/.gas_voce/${s#com.gas.}.log" ;;
   esac
 done
-if grep -Eq '^[[:space:]]*(export[[:space:]]+)?GAS_VOICE_URL=.+' .env; then
+if [ -n "$(valore_env GAS_VOICE_URL || true)" ]; then
   echo "AVVISO: nel .env c'è GAS_VOICE_URL: l'ascolto manda le richieste lì, ma questo controllo ha guardato solo il server sul Mac."
 fi
 echo "6/6 tutto acceso: dì «Hey Jarvis» e aspetta il bip."

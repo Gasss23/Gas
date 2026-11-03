@@ -2,7 +2,8 @@
 
 Gas ascolta sempre il microfono del Mac. Quando dici la parola di attivazione fa un bip,
 registra fino a quando smetti di parlare, manda la richiesta al server voce e ti risponde
-a voce. Dopo la risposta hai 12 secondi per continuare senza ripetere la parola.
+a voce, una frase alla volta: la prima si sente appena è pronta, mentre il server prepara
+le altre. Dopo la risposta hai 12 secondi per continuare senza ripetere la parola.
 
 **Parola di attivazione, per ora: «Hey Jarvis»** (modello pronto di openWakeWord).
 «Ehi Gas» va addestrata a parte: sarà una fetta successiva.
@@ -83,19 +84,20 @@ o il prossimo accesso al Mac).
 | `GAS_VOICE_FINESTRA` | 12 | secondi per continuare dopo la risposta |
 | `GAS_VOICE_MAX_TURNI` | 5 | turni di fila senza ripetere la parola |
 | `GAS_ASCOLTO_MODELLO` | hey_jarvis | modello di openWakeWord |
+| `GAS_ASCOLTO_FORMATO` | audio+pezzi | risposta a frasi in fila; vuoto = un solo audio alla fine, come prima |
 
 Dopo una modifica: `bash scripts/voce/installa.sh` (riavvia i servizi).
 
 ## Log
 
 - `.gas_voce/ascolto.log`: attivazioni, invii, errori dell'ascolto.
-- `.gas_voce/voce.server.log`: il server voce, cioè quello che stampa e gli avvisi
-  (da WARNING in su) di tutto Gas.
+- `.gas_voce/voce.server.log`: il server voce. Contiene i suoi messaggi a schermo e gli
+  avvisi (da WARNING in su) di tutto Gas.
 - `gas_debug.log`, nella cartella di Gas accanto a `gas.py` (anche sotto launchd: il
   percorso non dipende dalla cartella di avvio): la scatola nera di Gas. Qui finiscono
-  anche i **tempi della voce**, una riga INFO per ogni richiesta che ha speso qualcosa (niente
-  riga, per esempio, per una richiesta rifiutata col 401). La riga non contiene il
-  nome del logger (`gas.voce.tempi`): si cerca col testo,
+  anche i **tempi della voce**: una riga INFO per ogni richiesta di cui il server ha
+  misurato dei tempi (trascrizione, cervello, voce; niente riga, per esempio, per una
+  richiesta rifiutata col 401). La riga non contiene il nome del logger (`gas.voce.tempi`): si cerca col testo,
   `grep "tempi voce" gas_debug.log` (es. `tempi voce (200): trascrizione=0.81s cervello=2.40s server=3.30s`;
   le altre voci possibili sono `voce` e `voce_tutta`).
 
