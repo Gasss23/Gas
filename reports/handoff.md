@@ -21,16 +21,16 @@
 
 ---
 
-## §2 GIT DIFF -- .claude/agents/memoria_revisore.md |   1 +
+## §2 GIT DIFF --STAT (sessione)
+
+```
+ .claude/agents/memoria_revisore.md |   1 +
  modules/voice/server.py            |  11 ++++++++---
  reports/diff_sessione.md           |   9 ++++-----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
  reports/ultimo_report.md           |  17 ++++++++---------
- tests/test_unit_voice_server.py    |  30 ++++++++++++++++++++++++------ (sessione)
-
-```
-STAT
+ tests/test_unit_voice_server.py    |  30 ++++++++++++++++++++++++------
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -38,6 +38,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1bd0d32 docs(voce-v11): report di fine task (PR #331, review #663-M2)
 c91ccb8 fix(voce): V11 — «audio+pezzi» a testo riceve solo il testo, niente sintesi fuori dal tetto orario (V-1 bot #330 su ae3258e; review #663-M2)
 7c17275 chore(revisore): memoria review #663 — APPROVATO CON RISERVE
 ```
@@ -97,7 +98,7 @@ Se mai servirà, va fatto in una fetta dedicata con:
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check lette dalle notifiche.
-- 7c17275, c91ccb8 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+- 7c17275, c91ccb8, 1bd0d32 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
