@@ -11,4 +11,7 @@
 - **Rilevatore a intermittenza (V-1 ve #328)**: `FATTA` — il conto si azzera dopo 10 s senza errori.
 - **R-625-1, R-625-2, R-631-1, R-631-2, V-3 ve #328**: `FATTA`.
 - **Review #632**: APPROVATO CON RISERVE (R-632-1/2 BASSE, R-632-3 COSMETICA, registrate in stato_progetto).
-- **Formato «audio+pezzi» sul server**: `DEFERITA — è di M2 (modules/voice/ non si tocca da qui)`.
+- **Merge di main (PR #327, voce V9) nella #329**: `FATTA` in 96f569e, review #633 APPROVATO.
+- **Prova contro la PR #330 di M2**: `FATTA` — server di #330 e ascolto di #329 insieme: frasi in fila, errore a metà, «non ho capito», senza chiave ElevenLabs e testo vuoto gestiti.
+- **Bot e verifica esterna su 3b92254**: APPROVATO CON RISERVE tutti e due, solo BASSE e COSMETICHE (rilevatore che sbaglia spesso, LEGGIMI prima della #330, formati con lo schermo accettati, risposta troncata senza bip, test di R-625-2): `REGISTRATE` in stato_progetto.
+- **Formato «audio+pezzi» sul server**: `DEFERITA — è di M2, PR #330 (modules/voice/ non si tocca da qui)`.

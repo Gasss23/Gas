@@ -9,3 +9,4 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 - `.claude/agents/memoria_revisore.md`: riga della review #632.
 - `reports/stato_progetto.md`, `reports/roadmap.md`: fetta 39.
 - `reports/ultimo_report.md`, `reports/diff_sessione.md`, `reports/handoff.md`: report di fine task.
+- Merge di origin/main (PR #327 di M2, voce V9): entrano browser_server.py, browser_client.html, i test del server voce e la memoria del revisore, invariati (review #633).
