@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-02 — Voce V9: rumore (chat M2, coordinata da M1) — aggiornato dopo bot e verifica esterna su cc5bc6e
+**Sessione:** 2026-11-02 — Voce V9: rumore (chat M2, coordinata da M1) — aggiornato dopo il sì dell'operatore e il merge di main con #324 e #328
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #327 (https://github.com/Gasss23/Gas/pull/327). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5128485283","url":"https://github.com/Gasss23/Gas/pull/327"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
+1. Merge della PR #327 (https://github.com/Gasss23/Gas/pull/327). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5128485283","url":"https://github.com/Gasss23/Gas/pull/327"}`); `gh` nel cloud non è autenticato. Sì dell'operatore (riferito da M1); merge automatico attivato da M1.
 2. Sul Mac, dopo il merge: prova con ventola o TV; se Gas si zittisce da solo, `GAS_VOICE_AGC=0`.
 
 ---
@@ -16,6 +16,7 @@
 - **V9 — rumore**: `FATTA` (review #630–#631-M2).
 - **Merge di main (V6, V7a, V7b, V8, #319–#323)**: `FATTA` (review #657-M2).
 - **Verifica esterna su cc5bc6e** (https://github.com/Gasss23/Gas/pull/327#issuecomment-6590325947): APPROVATO CON RISERVE con V-1 MEDIA (la soglia d'ascolto dal fondo non aveva un test di scenario: col mutante il test passava) `FATTA` — modo «rumore_forte» nel test nel browser, mutante → FAILED; review #658-M2 APPROVATO. Basse registrate in §7.
+- **Bot e verifica esterna su 97c939f**: APPROVATO CON RISERVE, solo basse (registrate in §7). Sì dell'operatore (riferito da M1). **Merge di main con #324 e #328**: `FATTA`, conflitti solo in report e memoria, review #659-M2 APPROVATO.
 - **Bot su cc5bc6e**: APPROVATO CON RISERVE, verifica-bot success; V-1 (limite di R-630-1-M2 non scritto) e V-2 (fragilità falsa in §7) sistemate in questi report; V-3 (commento RMS) corretto nel test.
 
 ---
@@ -23,14 +24,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
+ .claude/agents/memoria_revisore.md |   6 ++++++
  clients/voice/browser_client.html  |  44 +++++++++++++++++++++++++++++++++++++++++---
  clients/voice/browser_server.py    |   5 ++++-
- reports/diff_sessione.md           |  16 ++++++----------
+ reports/diff_sessione.md           |  18 ++++++++----------
  reports/handoff.md                 | n/d
  reports/prova_voce_mac.md          |   1 +
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  18 ++++++++----------
+ reports/ultimo_report.md           |  28 +++++++++++++++-------------
  tests/test_unit_voice_server.py    |  90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
 ```
 
@@ -39,6 +40,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9d2758d Merge remote-tracking branch 'origin/main' into feat/voce-v9-m2
+97c939f docs(voce-v9): report dopo bot e verifica esterna su cc5bc6e (PR #327, review #658-M2)
 3afa389 test(voce): scenario «rumore_forte» che prova la soglia d'ascolto dal rumore di fondo (V-1 ve #327 su cc5bc6e; review #658-M2)
 c4d680d chore(revisore): memoria review #658 — APPROVATO
 cc5bc6e docs(voce-v9): numero della PR #327 nei report
@@ -158,17 +161,45 @@ Review #658-M2: branch feat/voce-v9-m2, PR #327. Il diff staged tocca solo `test
 
 **Memoria**: riga contatore #658-M2 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata con lo script (c4d680d). Nessuna lezione nuova.
 
+Merge di origin/main con #324 e #328. Review #659-M2:
+
+## VERDETTO: APPROVATO
+
+Review #659-M2: merge di origin/main e3056fe (PR #324, che porta il piano della mail, e PR #328, la voce H24 della chat Mani) in feat/voce-v9-m2 (PR #327). Il merge è in corso e tutto è staged.
+
+Elementi del diff esaminati:
+- `clients/voice/browser_server.py:88` — /config ora restituisce `agc` accanto a finestra, max_turni e interruzione. Rischio esaminato: una regressione delle chiavi esistenti nel merge. Esito: ok, le altre chiavi sono intatte e il diff rispetto a origin/main è solo la riga della V9.
+- `clients/voice/browser_server.py:380` — legge GAS_VOICE_AGC: tutto ciò che non è 0/false/no/off vale acceso. Rischio esaminato: un default sbagliato. Esito: ok, il default è True, come INTERRUZIONE.
+- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» ha la V9 in testa e la voce di main («prima: …») dopo. Le righe sulla V9 e sulle riserve di #318 vengono dal branch (verificato: sono in HEAD e non in origin/main). Esito: ok.
+- `.claude/agents/memoria_revisore.md:1198` — contro origin/main ci sono solo righe aggiunte in coda (#630-M2, la lezione, #631-M2, #657-M2, #658-M2). Nessuna riga di main tolta e nessun numero doppio. Esito: ok.
+- Contesto: `.claude/perimetro_review.txt:39` — `clients/` è nel perimetro e il file è identico a origin/main. Esito: ok.
+
+Controlli meccanici:
+1. `git diff --cached origin/main --stat` mostra solo la V9: 9 file (browser_client.html, browser_server.py, test_unit_voice_server.py, prova_voce_mac.md, memoria, stato, handoff, ultimo_report, diff_sessione).
+2. Gli 8 file arrivati da main sono identici a origin/main, sia staged sia nel working tree: perimetro_review.txt, clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, scripts/voce/LEGGIMI.md, scripts/voce/installa.sh, piano_mail.md, roadmap.md, ripartenza_mani.md.
+3. Non ci sono marcatori di conflitto e `git diff --cached --check` è pulito. MERGE_HEAD è uguale a origin/main (e3056fe).
+4. Prove rieseguite da me con `GAS_TEST_BROWSER_OBBLIGATORIO=1` su voice_server, voce_ascolto e voice_stt: 285 passed in 292 s.
+
+Rischio escluso: l'interazione dal vero tra la V9 (AGC e soglia dal rumore, nella pagina del browser) e la voce H24 di Mani (clients/voice/ascolto.py, un client diverso) non è verificata. Non è riproducibile in dev, perché serve il microfono reale sul Mac. I due percorsi non condividono codice nel diff. Non ho letto per intero handoff.md, ultimo_report.md e diff_sessione.md (presi dal branch): sono log di sessione e restano sotto il controllo dei gate A/B.
+
+Riserve aperte: nessuna nuova. R-630-2-M2 (AGC acceso col ronzio) resta MITIGATA in stato_progetto.
+
+Memoria: ho aggiunto la riga #659-M2 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. È nel working tree e non è staged né committata: con il merge in corso non ho lanciato commit_memoria_revisore.sh, quindi prima del commit di merge va fatto `git add` di quel file.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Dopo il merge di main: `tests/test_unit_voice_server.py` + `test_unit_voice_stt.py` + `test_unit_voice_prova_voci.py`: 243 passed (`GAS_TEST_BROWSER_OBBLIGATORIO=1`). I test nuovi stanno in `tests/test_unit_voice_server.py` (modo «rumore_costante» nel browser, `test_v9_gas_voice_agc`). Dopo la #658-M2: test_unit_voice_server.py 100 passed (modo nuovo «rumore_forte»; mutante senza la soglia dal fondo → FAILED). Kernel non toccato (`gas.py` identico a main).
+Dopo il merge di main: `tests/test_unit_voice_server.py` + `test_unit_voice_stt.py` + `test_unit_voice_prova_voci.py`: 243 passed (`GAS_TEST_BROWSER_OBBLIGATORIO=1`). I test nuovi stanno in `tests/test_unit_voice_server.py` (modo «rumore_costante» nel browser, `test_v9_gas_voice_agc`). Dopo la #658-M2: test_unit_voice_server.py 100 passed (modo nuovo «rumore_forte»; mutante senza la soglia dal fondo → FAILED). Dopo il merge di main con #324/#328: voice_server + voce_ascolto + voice_stt 285 passed (browser obbligatorio). Kernel non toccato (`gas.py` identico a main).
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check lette dall'integrazione GitHub.
-- cc5bc6e: unit-suite, handoff-check, verifica-bot, verifica, smista, esito tutti success; bot APPROVATO CON RISERVE.
-- Commit del test (scenario «rumore_forte»), memoria (c4d680d) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+- 97c939f: unit-suite success (suite voce 270 passed), handoff-check success, verifica-bot success; bot APPROVATO CON RISERVE (basse).
+- Merge di main e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
+
+- Bot su 97c939f, V-1 BASSA: lo scenario «rumore_forte» dipende dal livello del ronzio dopo i filtri di Chromium (non misurato); un rumore vero oltre il tetto 0,2 conta ancora come voce fino a 60 s.
+- Bot su 97c939f, V-2 BASSA: il fondo si riempie anche con la voce; dopo una frase chiusa a 60 s senza silenzio, «sì» e interruzioni a voce normale possono non essere sentiti (fetta piccola possibile: svuotare il fondo su maxFraseS).
 
 - R-630-2-M2: lo scenario con AGC acceso e rumore non è testato (microfono finto).
 - R-630-3-M2 (resto): frasi lunghe con voce vera e rumore: da provare sul Mac.
