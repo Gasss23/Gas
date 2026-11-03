@@ -73,6 +73,7 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
     finestra: float = 12.0  # V3: GAS_VOICE_FINESTRA, letta dalla pagina su GET /config
     max_turni: int = 5      # V-1 bot #311: GAS_VOICE_MAX_TURNI
     interruzione: bool = True  # V4: GAS_VOICE_INTERRUZIONE
+    agc: bool = True  # V9: GAS_VOICE_AGC=0 spegne il guadagno automatico del microfono
 
     def log_message(self, fmt: str, *args: object) -> None:
         log.info(fmt, *args)
@@ -84,7 +85,7 @@ class BrowserProxyHandler(BaseHTTPRequestHandler):
         if self.path == "/config":
             # V3: la pagina legge qui la finestra della conversazione (nessun segreto)
             cfg = json.dumps({"finestra": self.finestra, "max_turni": self.max_turni,
-                              "interruzione": self.interruzione}).encode()
+                              "interruzione": self.interruzione, "agc": self.agc}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(cfg)))
@@ -376,6 +377,8 @@ def run_browser_server() -> int:
     BrowserProxyHandler.max_turni = max_turni
     BrowserProxyHandler.interruzione = (os.environ.get("GAS_VOICE_INTERRUZIONE", "").strip().lower()
                                         not in ("0", "false", "no", "off"))
+    BrowserProxyHandler.agc = (os.environ.get("GAS_VOICE_AGC", "").strip().lower()
+                               not in ("0", "false", "no", "off"))
 
     # V-1 bot #308: a thread, così mentre il forte lavora (fino a GAS_VOICE_TIMEOUT) la
     # pagina si ricarica lo stesso; il server voce dietro resta a un turno alla volta.

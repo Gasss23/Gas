@@ -1,16 +1,18 @@
-# Ultimo report — 2026-11-02 — Mani: fetta 38, voce H24 sistemata dopo la prova dal vero sul Mac
+# Ultimo report — 2026-11-02 — Voce V9: rumore (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #328 della fetta 38: lo decide l'operatore, perché tocca `.claude/perimetro_review.txt` (aggiunge `scripts/voce/`).
-2. Sul Mac, dopo il merge: `bash scripts/voce/installa.sh` due volte di fila (la seconda non deve fermarsi con «Bootstrap failed: 5»), poi una richiesta a voce e `grep "tempi voce" gas_debug.log` dalla cartella di Gas.
 
-## Esito
-- **PR #324 (piano mail)**: `FATTA` — mergiata (c6206d2) col sì dell'operatore sull'head 84b1422, dopo il merge di main (PR #326, review #630 APPROVATO).
-- **Riserve della PR #324**: `FATTA` — V-1/V-2 BASSE del bot su 84b1422 e V-2 COSMETICA su 7346994 registrate in stato_progetto per la fetta 1 della mail; V-1/V-2 BASSE del bot su 922aac9 chiuse qui (questo punto e la registrazione).
-- **Rilevatore sempre in errore (V-1 ve #323)**: `FATTA` — log a 1, 2, 4, 8… errori e pausa crescente con l'esponente limitato.
-- **GAS_CLAUDE_BIN sotto launchd (V-1 bot #323) e token vuoto (V-4 bot #323)**: `FATTA` in installa.sh.
-- **Seconda esecuzione di installa.sh (M1 sul Mac)**: `FATTA` — attesa dopo bootout e bootstrap con 3 tentativi, con 4 test.
-- **Tempi della voce nel log (M1)**: `FATTA` — `grep "tempi voce" gas_debug.log`, scritto nella LEGGIMI.
-- **scripts/voce/ nel perimetro di review (V-4 ve #323)**: `FATTA`.
-- **Bot su 1d6d14f e verifica esterna (PR #328)**: APPROVATO CON RISERVE tutti e due, solo BASSE e COSMETICHE (bot V-1/V-2: prima riga del .env e regex diverse dal parser; ve V-1: log limitato solo per errori consecutivi; ve V-2 = R-625-1): `REGISTRATE` in stato_progetto, senza altri giri.
-- **Review**: #624 BOCCIATO (corretto), #625, #628, #629, #631 APPROVATO CON RISERVE; aperte solo R-625-1 BASSA e tre COSMETICHE (stato_progetto, fetta 38).
+1. Merge della PR #327 (https://github.com/Gasss23/Gas/pull/327): sì dell'operatore (riferito da M1), merge di main con #324/#328 fatto (review #659-M2), secondo la regola di merge di CLAUDE.md §10.
+2. Sul Mac, dopo il merge: parlare a Gas con ventola o TV accesa. Se Gas si zittisce da solo mentre parla, mettere `GAS_VOICE_AGC=0` nel `.env` (guida in `reports/prova_voce_mac.md`).
+
+## Esito delle fette
+
+- **V9 — rumore**: `FATTA` — microfono con noiseSuppression, echoCancellation e AGC (spegnibile con `GAS_VOICE_AGC=0`, letto dalla pagina in `/config`), soglia della voce che segue il rumore di fondo (non solo i primi 300 ms), grazia di 500 ms prima che Gas si lasci interrompere. R-584-1-M2 mitigata. Review #630-M2 CON RISERVE (chiuse in parte), #631-M2 APPROVATO.
+- **Merge di main** (V6, V7a #322, V7b #325, V8 #326, #319–#323): `FATTA` — test nel browser con i modi «guasto» e «rumore_costante» insieme; review #657-M2 APPROVATO.
+- **Bot e verifica esterna su cc5bc6e**: APPROVATO CON RISERVE; V-1 MEDIA della verifica esterna (soglia d'ascolto dal fondo senza test di scenario) `FATTA` con lo scenario «rumore_forte» (review #658-M2); note basse registrate.
+- Test: voice_server + voice_stt + voice_prova_voci 243 passed (browser obbligatorio); dopo il merge di main con #324/#328 voice_server + voce_ascolto + voice_stt 285 passed.
+
+## Anomalie
+
+- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
+- Il microfono dei test è finto (da file): rumore e voce veri si provano solo sul Mac.

@@ -1,12 +1,10 @@
-# Diff della sessione — 2026-11-02 — Mani: fetta 38, voce H24 dopo la prova sul Mac
+# Diff della sessione — 2026-11-02 — Voce V9, rumore (chat M2)
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+- `clients/voice/browser_client.html` — microfono filtrato (noiseSuppression, echoCancellation, AGC da `/config`), soglia che segue il rumore di fondo, grazia di 500 ms sull'interruzione.
+- `clients/voice/browser_server.py` — `/config` porta anche `agc` (`GAS_VOICE_AGC=0` lo spegne).
+- `tests/test_unit_voice_server.py` — test nel browser coi modi «rumore_costante» (grazia) e «rumore_forte» (soglia d'ascolto dal fondo) e test di `GAS_VOICE_AGC`.
+- `reports/prova_voce_mac.md` — rimedio `GAS_VOICE_AGC=0` con ventola o TV.
+- `.claude/agents/memoria_revisore.md` — review #630–#631-M2, #657–#659-M2.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
 
-- `clients/voice/ascolto.py`: rilevatore sempre in errore con log limitato e pausa crescente (esponente limitato).
-- `scripts/voce/installa.sh`: GAS_CLAUDE_BIN scritto se manca, token vuoto rifiutato, attesa dopo bootout e bootstrap con 3 tentativi.
-- `scripts/voce/LEGGIMI.md`: dove stanno i log e i tempi della voce (`grep "tempi voce"`), chi ruota e chi no.
-- `tests/test_unit_voce_ascolto.py`: da 73 a 93 test; launchctl finto con stato, sleep finto che registra.
-- `.claude/perimetro_review.txt`: `scripts/voce/` nel perimetro di review.
-- `.claude/agents/memoria_revisore.md`: righe delle review #624, #625, #628, #629, #631.
-- `reports/stato_progetto.md`: blocco della fetta 38; riserve della PR #324 registrate.
-- `reports/ultimo_report.md`, `reports/diff_sessione.md`, `reports/handoff.md`: report di fine task.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
