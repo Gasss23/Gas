@@ -16,6 +16,7 @@
 - **V9 — rumore**: `FATTA` (review #630–#631-M2).
 - **Merge di main (V6, V7a, V7b, V8, #319–#323)**: `FATTA` (review #657-M2).
 - **Verifica esterna su cc5bc6e** (https://github.com/Gasss23/Gas/pull/327#issuecomment-6590325947): APPROVATO CON RISERVE con V-1 MEDIA (la soglia d'ascolto dal fondo non aveva un test di scenario: col mutante il test passava) `FATTA` — modo «rumore_forte» nel test nel browser, mutante → FAILED; review #658-M2 APPROVATO. Basse registrate in §7.
+- **Bot su 490c803**: check verifica-bot failure ma verdetto testuale APPROVATO CON RISERVE con due sole note COSMETICHE (stima «~3 s» del fondo → ~350 ms; «243 passed» non aggiornato in ultimo_report): `FATTE` in questo commit di report.
 - **Bot e verifica esterna su 97c939f**: APPROVATO CON RISERVE, solo basse (registrate in §7). Sì dell'operatore (riferito da M1). **Merge di main con #324 e #328**: `FATTA`, conflitti solo in report e memoria, review #659-M2 APPROVATO.
 - **Bot su cc5bc6e**: APPROVATO CON RISERVE, verifica-bot success; V-1 (limite di R-630-1-M2 non scritto) e V-2 (fragilità falsa in §7) sistemate in questi report; V-3 (commento RMS) corretto nel test.
 
@@ -40,6 +41,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+490c803 docs(voce-v9): report dopo il merge di main con #324 e #328 (PR #327, review #659-M2)
 9d2758d Merge remote-tracking branch 'origin/main' into feat/voce-v9-m2
 97c939f docs(voce-v9): report dopo bot e verifica esterna su cc5bc6e (PR #327, review #658-M2)
 3afa389 test(voce): scenario «rumore_forte» che prova la soglia d'ascolto dal rumore di fondo (V-1 ve #327 su cc5bc6e; review #658-M2)
@@ -194,7 +196,8 @@ Dopo il merge di main: `tests/test_unit_voice_server.py` + `test_unit_voice_stt.
 
 `gh` non autenticato nel cloud: check lette dall'integrazione GitHub.
 - 97c939f: unit-suite success (suite voce 270 passed), handoff-check success, verifica-bot success; bot APPROVATO CON RISERVE (basse).
-- Merge di main e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+- 490c803: verifica-bot failure (solo due cosmetiche nel verdetto testuale, chiuse qui).
+- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
@@ -204,4 +207,4 @@ Dopo il merge di main: `tests/test_unit_voice_server.py` + `test_unit_voice_stt.
 - R-630-2-M2: lo scenario con AGC acceso e rumore non è testato (microfono finto).
 - R-630-3-M2 (resto): frasi lunghe con voce vera e rumore: da provare sul Mac.
 - R-630-1-M2 (limite aperto): la soglia d'interruzione che sale col rumore di fondo è provata solo come funzione, nessuno scenario completo la discrimina (nello scenario regge la grazia di 500 ms).
-- Il buffer del fondo non si svuota fra i turni: dopo un rumore forte (TV spenta) la soglia resta alta per ~3 s e una voce bassa può non essere sentita (V-2 ve su cc5bc6e).
+- Il buffer del fondo non si svuota fra i turni: dopo un rumore forte (TV spenta) la soglia resta alta finché il 10° percentile non scende (circa 7 campioni di silenzio, ~350 ms, secondo il bot su 490c803) e una voce bassa può non essere sentita (V-2 ve su cc5bc6e).

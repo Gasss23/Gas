@@ -10,7 +10,7 @@
 - **V9 — rumore**: `FATTA` — microfono con noiseSuppression, echoCancellation e AGC (spegnibile con `GAS_VOICE_AGC=0`, letto dalla pagina in `/config`), soglia della voce che segue il rumore di fondo (non solo i primi 300 ms), grazia di 500 ms prima che Gas si lasci interrompere. R-584-1-M2 mitigata. Review #630-M2 CON RISERVE (chiuse in parte), #631-M2 APPROVATO.
 - **Merge di main** (V6, V7a #322, V7b #325, V8 #326, #319–#323): `FATTA` — test nel browser con i modi «guasto» e «rumore_costante» insieme; review #657-M2 APPROVATO.
 - **Bot e verifica esterna su cc5bc6e**: APPROVATO CON RISERVE; V-1 MEDIA della verifica esterna (soglia d'ascolto dal fondo senza test di scenario) `FATTA` con lo scenario «rumore_forte» (review #658-M2); note basse registrate.
-- Test: voice_server + voice_stt + voice_prova_voci 243 passed (browser obbligatorio).
+- Test: voice_server + voice_stt + voice_prova_voci 243 passed (browser obbligatorio); dopo il merge di main con #324/#328 voice_server + voce_ascolto + voice_stt 285 passed.
 
 ## Anomalie
 
