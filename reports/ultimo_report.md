@@ -1,16 +1,14 @@
-# Ultimo report — 2026-11-02 — Mani: fetta 38, voce H24 sistemata dopo la prova dal vero sul Mac
+# Ultimo report — 2026-11-03 — Mani: fetta 39, ascolto H24 a frasi in fila
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #328 della fetta 38: lo decide l'operatore, perché tocca `.claude/perimetro_review.txt` (aggiunge `scripts/voce/`).
-2. Sul Mac, dopo il merge: `bash scripts/voce/installa.sh` due volte di fila (la seconda non deve fermarsi con «Bootstrap failed: 5»), poi una richiesta a voce e `grep "tempi voce" gas_debug.log` dalla cartella di Gas.
+1. Merge della PR della fetta 39: lo decide l'operatore. Il verdetto del revisore è APPROVATO CON RISERVE e la PR tocca la voce, che sta nel perimetro di review.
+2. La voce veloce serve **anche** al formato «audio+pezzi» lato server, che fa M2: finché non è in main, l'ascolto riceve un solo audio, come prima. Dopo tutti e due i merge, sul Mac: `git pull`, `bash scripts/voce/installa.sh`, «Hey Jarvis» e una domanda: la prima frase deve partire subito.
 
 ## Esito
-- **PR #324 (piano mail)**: `FATTA` — mergiata (c6206d2) col sì dell'operatore sull'head 84b1422, dopo il merge di main (PR #326, review #630 APPROVATO).
-- **Riserve della PR #324**: `FATTA` — V-1/V-2 BASSE del bot su 84b1422 e V-2 COSMETICA su 7346994 registrate in stato_progetto per la fetta 1 della mail; V-1/V-2 BASSE del bot su 922aac9 chiuse qui (questo punto e la registrazione).
-- **Rilevatore sempre in errore (V-1 ve #323)**: `FATTA` — log a 1, 2, 4, 8… errori e pausa crescente con l'esponente limitato.
-- **GAS_CLAUDE_BIN sotto launchd (V-1 bot #323) e token vuoto (V-4 bot #323)**: `FATTA` in installa.sh.
-- **Seconda esecuzione di installa.sh (M1 sul Mac)**: `FATTA` — attesa dopo bootout e bootstrap con 3 tentativi, con 4 test.
-- **Tempi della voce nel log (M1)**: `FATTA` — `grep "tempi voce" gas_debug.log`, scritto nella LEGGIMI.
-- **scripts/voce/ nel perimetro di review (V-4 ve #323)**: `FATTA`.
-- **Bot su 1d6d14f e verifica esterna (PR #328)**: APPROVATO CON RISERVE tutti e due, solo BASSE e COSMETICHE (bot V-1/V-2: prima riga del .env e regex diverse dal parser; ve V-1: log limitato solo per errori consecutivi; ve V-2 = R-625-1): `REGISTRATE` in stato_progetto, senza altri giri.
-- **Review**: #624 BOCCIATO (corretto), #625, #628, #629, #631 APPROVATO CON RISERVE; aperte solo R-625-1 BASSA e tre COSMETICHE (stato_progetto, fetta 38).
+- **PR #328 (fetta 38)**: `FATTA` — mergiata (e3056fe).
+- **Ascolto a frasi in fila (richiesta di M1)**: `FATTA` — `clients/voice/ascolto.py` chiede `audio+pezzi` e suona ogni frase appena arriva; ripieghi su JSON e audio/mpeg; test con un server vero che aspetta che la prima frase sia suonata.
+- **Lettura del .env in installa.sh (V-1/V-2 bot #328)**: `FATTA` — come `gas._carica_dotenv`, con un test di confronto su 20 casi.
+- **Rilevatore a intermittenza (V-1 ve #328)**: `FATTA` — il conto si azzera dopo 10 s senza errori.
+- **R-625-1, R-625-2, R-631-1, R-631-2, V-3 ve #328**: `FATTA`.
+- **Review #632**: APPROVATO CON RISERVE (R-632-1/2 BASSE, R-632-3 COSMETICA, registrate in stato_progetto).
+- **Formato «audio+pezzi» sul server**: `DEFERITA — è di M2 (modules/voice/ non si tocca da qui)`.
