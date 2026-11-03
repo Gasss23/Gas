@@ -8,6 +8,7 @@
 ## Esito delle fette
 
 - **V10 — voce senza schermo**: `FATTA` — formato `audio+pezzi` (costante `_FORMATO_PEZZI_VOCE`): stesse righe NDJSON della V7b; il turno usa `ISTRUZIONE_VOCE` (niente dettaglio da leggere); si dice tutta la risposta divisa in frasi (`frasi_voce`), entro 1500 caratteri, mai «Il resto è a schermo»; anche «non ho capito» e «uso» arrivano a righe. Review #660-M2 APPROVATO CON RISERVE (basse/cosmetiche).
+- **Bot su 956a00a**: taglio oltre 1500 caratteri ora annunciato («C'è altro, chiedimi se vuoi il resto.»), `FATTA` (review #661-M2).
 - Test: voice_server + voice_stt + voice_contesto + voce_ascolto + voice_prova_voci 334 passed (browser obbligatorio); mutanti → test V10 falliti.
 
 ## Anomalie

@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-03 — Voce V10: «audio+pezzi», voce senza schermo (chat M2, coordinata da M1)
+**Sessione:** 2026-11-03 — Voce V10: «audio+pezzi», voce senza schermo (chat M2, coordinata da M1) — aggiornato dopo il bot su 956a00a
 
 ---
 
@@ -14,19 +14,20 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **V10 — formato «audio+pezzi» per il client senza schermo**: `FATTA` (review #660-M2).
+- **Bot su 956a00a** (APPROVATO CON RISERVE): V-1 BASSA (taglio oltre 1500 caratteri silenzioso) `FATTA` col giro deciso da M1 — se si taglia, Gas dice alla fine «C'è altro, chiedimi se vuoi il resto.»; review #661-M2 APPROVATO. V-2 COSMETICA: il mutante dei «3 failed» è il server di main (senza la V10), quello della #660-M2 sono due mutanti mirati da 1 failed ciascuno.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- modules/voice/server.py            |  36 ++++++++++++++++++++++++++++++++++--
+ .claude/agents/memoria_revisore.md |   2 ++
+ modules/voice/server.py            |  43 +++++++++++++++++++++++++++++++++++++++++--
  reports/diff_sessione.md           |  16 ++++++----------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  26 +++++++++++++-------------
- tests/test_unit_voice_server.py    |  57 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/ultimo_report.md           |  27 ++++++++++++++-------------
+ tests/test_unit_voice_server.py    |  61 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -34,6 +35,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d010e0b fix(voce): senza schermo il taglio oltre 1500 caratteri si sente (V-1 bot #330 su 956a00a; review #661-M2)
+98727c5 chore(revisore): memoria review #661 — APPROVATO
+956a00a docs(voce-v10): numero della PR #330 nei report
 18c6d0a docs(voce-v10): report di fine task (review #660-M2)
 f7be4d0 feat(voce): V10 — formato «audio+pezzi» per il client senza schermo: tutta la risposta frase per frase, istruzione voce (chat M2; review #660-M2)
 1d44d04 chore(revisore): memoria review #660 — APPROVATO CON RISERVE
@@ -79,15 +83,43 @@ Prima della review ho letto CLAUDE.md (sez. 5), la parte di reports/stato_proget
 
 **Memoria:** ho aggiunto la riga #660-M2 a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata con lo script (1d44d04). Il diff staged è rimasto intatto (2 file, +88/−5).
 
+Correzione del bot su 956a00a. Review #661-M2:
+
+## VERDETTO: APPROVATO
+
+Review #661-M2, branch feat/voce-v10-m2, PR #330. Il diff staged è di 2 file (+16/−5) e chiude il finding V-1 BASSA del bot su 956a00a: un taglio oltre i 1500 caratteri restava silenzioso.
+
+Letture obbligatorie: CLAUDE.md (sez. 5), stato_progetto.md (sezione voce) e memoria_revisore.md, già fatte nella #660-M2 della stessa sessione; la coda della memoria l'ho riletta. Il diff non tocca la cronologia né `_get_window`, non simula output dei tool e non tocca guardrail.
+
+**Elementi esaminati**
+- `modules/voice/server.py:197` — Se le frasi tenute, unite da uno spazio, sono diverse dal testo, si aggiunge `_PARLATO_VOCE_RESTO`. Vale anche per la prima frase lunga tagliata. Rischio esaminato: un avviso falso su un testo che in realtà sta tutto, cioè un confronto che non ricostruisce il testo esatto. Esito: **ok**.
+  - Il testo viene normalizzato a spazi singoli.
+  - `_FINE_FRASE` (`modules/voice/server.py:127`) spezza solo sugli spazi.
+  - La fusione delle abbreviazioni riunisce con uno spazio.
+  - Prova eseguita: 20000 testi casuali con «Dott.», «ecc.», «3.5», «…», «...», «!?» e virgolette hanno dato 0 avvisi falsi.
+- `modules/voice/server.py:122` — Frase fissa «C'è altro, chiedimi se vuoi il resto.», decisa con M1. Rischio esaminato: che contraddica la regola «mai a schermo». Esito: **ok**. La frase non contiene «schermo» e finisce col punto, quindi le asserzioni del test reggono. Costa una sintesi in più da circa 37 caratteri, solo quando si taglia. Il totale per turno resta sotto 1500 + 37, con il tetto orario invariato.
+- `tests/test_unit_voice_server.py:1264` — Il test verifica l'avviso sui due tagli e la sua assenza quando il testo sta tutto. Il conteggio dei 1500 caratteri si fa su `frasi[:-1]`. Rischio esaminato: un test che non uccide il mutante. Esito: **ok**. Ho tolto l'`append` e `test_v10_frasi_voce_tutto_il_parlato_senza_schermo` fallisce; poi ho ripristinato il file dall'index e il working tree è pulito.
+- Contesto: `modules/voice/server.py:523` (`_do_pezzi_response`). L'avviso è una frase come le altre: rientra nel conteggio «pezzi» e, se la sua sintesi fallisce, produce la normale riga `errore_voce`. Esito: **ok**.
+
+**Prove**: `-k "v10 or v7b"` dà 15 passed (rieseguito da me). Col mutante, 1 test fallito.
+
+**Riserve della #660-M2**: R-660-2-M2 (COSMETICA, perdita dell'ultima parola al confine) cambia peso, perché ora quel taglio almeno si sente con l'avviso. R-660-1-M2 (BASSA) resta aperta: manca un test del caso senza chiave ElevenLabs col formato «audio+pezzi», che risponde con JSON e non con NDJSON.
+
+**Rischio escluso**: non ho verificato come suona l'avviso con la voce ElevenLabs reale, né come lo gestisce il client H24 sul Mac. Non si riproduce in dev e `clients/voice/ascolto.py` non è nel diff. La suite completa del server voce non l'ho rieseguita dopo questo diff: girano solo i test V10 e V7b, che sono quelli toccati dal cambio.
+
+**Memoria**: riga #661-M2 aggiunta a /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (98727c5). Il diff staged è intatto (2 file, +16/−5).
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: 3 test nuovi V10 (`test_v10_frasi_voce_tutto_il_parlato_senza_schermo`, `test_v10_formato_audio_pezzi_senza_schermo`, `test_v10_non_ho_capito_a_righe`); mutante (server di main) → 3 failed. voice_server + voice_stt + voice_contesto + voce_ascolto + voice_prova_voci: 334 passed (`GAS_TEST_BROWSER_OBBLIGATORIO=1`). Kernel non toccato (`gas.py` identico a main).
+`tests/test_unit_voice_server.py`: 3 test nuovi V10 (`test_v10_frasi_voce_tutto_il_parlato_senza_schermo`, `test_v10_formato_audio_pezzi_senza_schermo`, `test_v10_non_ho_capito_a_righe`); mutante «server di main, senza la V10» → 3 failed (i due mutanti mirati della #660-M2 danno 1 failed ciascuno); dopo la #661-M2 -k "v10 or v7b" 15 passed, mutante senza l'avviso → 1 failed. voice_server + voice_stt + voice_contesto + voce_ascolto + voice_prova_voci: 334 passed (`GAS_TEST_BROWSER_OBBLIGATORIO=1`). Kernel non toccato (`gas.py` identico a main).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione (fino a 18c6d0a, pushati insieme: run sulla sola testa, non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud: check lette dalle notifiche.
+- 956a00a: verifica-bot success (bot APPROVATO CON RISERVE); suite in corso alla lettura.
+- Correzione, memoria (98727c5) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
 - R-660-1-M2 BASSA: nessun test per «audio+pezzi» senza chiave ElevenLabs (JSON 200 con `errore_voce`, non NDJSON): il client H24 deve gestirlo.
-- R-660-2-M2 COSMETICA: il taglio di una prima frase più lunga di 1500 caratteri perde l'ultima parola se il testo finisce esattamente al confine.
+- R-660-2-M2 COSMETICA: il taglio di una prima frase più lunga di 1500 caratteri perde l'ultima parola se il testo finisce esattamente al confine (ora il taglio almeno si sente con l'avviso).
