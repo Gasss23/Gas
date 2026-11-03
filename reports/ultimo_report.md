@@ -1,19 +1,20 @@
-# Ultimo report — 2026-11-03 — Voce V10: «audio+pezzi», voce senza schermo (chat M2)
+# Ultimo report — 2026-11-03 — Mani: fetta 39, ascolto H24 a frasi in fila
 
 ## DECISIONI UMANE RICHIESTE
+1. Merge della PR #329 della fetta 39: **sì dell'operatore** (via M1, 3 novembre: «mergia #329 e #330»); la #330 è già in main. Il merge lo faccio io con la CI verde.
+2. La voce veloce serve **anche** al formato «audio+pezzi» lato server, che fa M2: finché non è in main, l'ascolto riceve un solo audio, come prima. Dopo tutti e due i merge, sul Mac: `git pull`, `bash scripts/voce/installa.sh`, «Hey Jarvis» e una domanda: la prima frase deve partire subito.
 
-1. Merge della PR #330 (https://github.com/Gasss23/Gas/pull/330), secondo la regola di merge di CLAUDE.md §10.
-2. Il client H24 (`clients/voice/ascolto.py`, chat Mani) deve mandare `X-Gas-Formato: audio+pezzi` e leggere NDJSON solo con `Content-Type: application/x-ndjson`; altrimenti è un JSON unico: 200 `{"content": ""}`, 200 con `errore_voce` (senza chiave ElevenLabs), oppure `{"error": ...}` con 401/400/429/500/502/503 prima del turno.
-
-## Esito delle fette
-
-- **V10 — voce senza schermo**: `FATTA` — formato `audio+pezzi` (costante `_FORMATO_PEZZI_VOCE`): stesse righe NDJSON della V7b; il turno usa `ISTRUZIONE_VOCE` (niente dettaglio da leggere); si dice tutta la risposta divisa in frasi (`frasi_voce`), entro 1500 caratteri, mai «Il resto è a schermo»; anche «non ho capito» e «uso» arrivano a righe. Review #660-M2 APPROVATO CON RISERVE (basse/cosmetiche).
-- **Bot su 956a00a**: taglio oltre 1500 caratteri ora annunciato («C'è altro, chiedimi se vuoi il resto.»), `FATTA` (review #661-M2).
-- **Riserve del bot su ef88184 e della verifica esterna su 956a00a**: BASSE/COSMETICHE, `REGISTRATE` senza giro (decisione di M1).
-- **Merge di origin/main (#327, V9)**: `FATTA` (review #662-M2 APPROVATO); suite completa 1063 PASS, 0 FAIL.
-- Test: voice_server + voice_stt + voice_contesto + voce_ascolto + voice_prova_voci 334 passed (browser obbligatorio); mutanti → test V10 falliti.
-
-## Anomalie
-
-- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
-- Il client H24 non è toccato qui (lo scrive la chat Mani): la prova vera è sul Mac.
+## Esito
+- **PR #328 (fetta 38)**: `FATTA` — mergiata (e3056fe).
+- **Ascolto a frasi in fila (richiesta di M1)**: `FATTA` — `clients/voice/ascolto.py` chiede `audio+pezzi` e suona ogni frase appena arriva; ripieghi su JSON e audio/mpeg; test con un server vero che aspetta che la prima frase sia suonata.
+- **Lettura del .env in installa.sh (V-1/V-2 bot #328)**: `FATTA` — come `gas._carica_dotenv`, con un test di confronto su 20 casi.
+- **Rilevatore a intermittenza (V-1 ve #328)**: `FATTA` — il conto si azzera dopo 10 s senza errori.
+- **R-625-1, R-625-2, R-631-1, R-631-2, V-3 ve #328**: `FATTA`.
+- **Review #632**: APPROVATO CON RISERVE (R-632-1/2 BASSE, R-632-3 COSMETICA, registrate in stato_progetto).
+- **Merge di main (PR #327, voce V9) nella #329**: `FATTA` in 96f569e, review #633 APPROVATO.
+- **Prova contro la PR #330 di M2**: `FATTA` — server di #330 e ascolto di #329 insieme: frasi in fila, errore a metà, «non ho capito», senza chiave ElevenLabs e testo vuoto gestiti.
+- **Bot e verifica esterna su 3b92254**: APPROVATO CON RISERVE tutti e due, solo BASSE e COSMETICHE (rilevatore che sbaglia spesso, LEGGIMI prima della #330, formati con lo schermo accettati, risposta troncata senza bip, test di R-625-2): `REGISTRATE` in stato_progetto.
+- **Formato «audio+pezzi» sul server**: `FATTA da M2` — PR #330 in main (805c272).
+- **Merge di main (PR #330) nella #329**: `FATTA` in d32d326, review #634 APPROVATO CON RISERVE (R-634-1/3 BASSE, R-634-2 COSMETICA, registrate); prova dal vero col server di main: frasi in fila, la prima a 0,3 s.
+- **Bot su fc1cab7**: APPROVATO CON RISERVE (neutral). V-1 BASSA (server a un thread occupato durante la riproduzione): `REGISTRATA`.
+- **Bot su 7957a15**: testo APPROVATO CON RISERVE, check failure per una riga del verdetto letta come «ambigua» dal parser del bot (macchina di M2). V-1 BASSA e V-2/V-3 COSMETICHE: `REGISTRATE`. Il rilancio non conta (G-2): serve un commit nuovo, questo.

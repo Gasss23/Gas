@@ -1,9 +1,13 @@
-# Diff della sessione — 2026-11-03 — Voce V10, «audio+pezzi» (chat M2)
+# Diff della sessione — 2026-11-03 — Mani: fetta 39, ascolto H24 a frasi in fila
 
-- `modules/voice/server.py` — formato `audio+pezzi` (`_FORMATO_PEZZI_VOCE`), `frasi_voce()` (tutta la risposta in frasi, tetto 1500 caratteri, avviso fisso se si taglia), `_vuole_righe_senza_schermo()`; risposta finale e risposte fisse instradate sulle righe NDJSON.
-- `tests/test_unit_voice_server.py` — test V10 (frasi, formato con istruzione voce, «non ho capito» a righe); l'helper `_voce_a_pezzi` registra i turni e accetta una trascrizione qualsiasi.
-- `.claude/agents/memoria_revisore.md` — review #660–#662-M2.
-- Merge di origin/main (#327, V9): nessun file in più rispetto a main oltre a quelli qui elencati.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
+Si riscrive a ogni sessione; la storia completa sta in git.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+- `clients/voice/ascolto.py`: formato `audio+pezzi` (righe NDJSON, una frase alla volta) con ripieghi; `Ascolto.turno` suona i pezzi in fila e chiude la risposta; conto degli errori del rilevatore con 10 s di blocchi buoni per azzerarsi; `GAS_ASCOLTO_FORMATO`.
+- `scripts/voce/installa.sh`: `valore_env` legge il .env come Gas (token, GAS_CLAUDE_BIN, porta, GAS_VOICE_URL); valori con # e percorsi non assoluti segnalati.
+- `scripts/voce/LEGGIMI.md`: frasi in fila, `GAS_ASCOLTO_FORMATO`, frasi sui log corrette.
+- `tests/test_unit_voce_ascolto.py`: da 93 a 149 test.
+- `.claude/agents/memoria_revisore.md`: riga della review #632.
+- `reports/stato_progetto.md`, `reports/roadmap.md`: fetta 39.
+- `reports/ultimo_report.md`, `reports/diff_sessione.md`, `reports/handoff.md`: report di fine task.
+- Merge di origin/main (PR #327 di M2, voce V9): entrano browser_server.py, browser_client.html, i test del server voce e la memoria del revisore, invariati (review #633).
+- Merge di origin/main (PR #330 di M2, voce V10, formato audio+pezzi): entrano modules/voice/server.py, i test del server voce e la memoria del revisore, invariati (review #634).
