@@ -25,6 +25,7 @@
 - **Merge di main (PR #327 di M2, voce V9)**: `FATTA` in 96f569e — conflitti solo nei report (tenuti i miei), nella memoria (tenute le righe di tutti e due) e nella riga «Ultimo aggiornamento» (unite); file del perimetro entrati da main identici a MERGE_HEAD. **Review #633 (chat Mani)**: APPROVATO.
 - **Bot su fc1cab7 (https://github.com/Gasss23/Gas/pull/329#pullrequestreview-5745506029)**: APPROVATO CON RISERVE, neutral. V-1 BASSA (server voce a un solo thread occupato per tutta la riproduzione, perché il client legge la riga dopo a fine frase): `REGISTRATA` in stato_progetto, rimedio nella prossima fetta (righe lette in un thread). V-2 COSMETICA (handoff §6).
 - **Merge di main (PR #330 di M2, formato «audio+pezzi»)**: `FATTA` in d32d326 — conflitti solo nei report, nella memoria e nella riga «Ultimo aggiornamento»; file di M2 identici a MERGE_HEAD; prova dal vero sull'albero unito (5 frasi in fila, la prima a 0,3 s; senza chiave bip; «non ho capito» suonato). **Review #634 (chat Mani)**: APPROVATO CON RISERVE (R-634-1/3 BASSE, R-634-2 COSMETICA, registrate).
+- **Bot su 7957a15 (https://github.com/Gasss23/Gas/pull/329#pullrequestreview-5756112568)**: testo APPROVATO CON RISERVE, nessuna ALTA o MEDIA; check verifica-bot failure perché il parser del bot ha letto la riga del verdetto come «ambigua» (macchina del bot, di M2). Rilancio fatto una volta: non ritira il verdetto (G-2). V-1 BASSA (sì dell'operatore passato da M1), V-2/V-3 COSMETICHE: `REGISTRATE` in stato_progetto in questo commit (il commit nuovo che il bot chiede).
 
 ---
 
@@ -37,7 +38,7 @@
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  32 +++++++++++++++----------------
+ reports/ultimo_report.md           |  33 ++++++++++++++++----------------
  scripts/voce/LEGGIMI.md            |  14 ++++++++------
  scripts/voce/installa.sh           |  79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
  tests/test_unit_voce_ascolto.py    | 369 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
@@ -48,6 +49,7 @@ NB: base = merge-base con origin/main = 805c272. Regola «n/d»: il conteggio di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7957a15 docs(fine-task): merge di main (PR #330) nella PR #329, sì dell'operatore, riserve registrate (review #634)
 17d8def chore(revisore): memoria review #634 — APPROVATO CON RISERVE
 d32d326 Merge origin/main (PR #330, voce V10 audio+pezzi) in PR #329
 fc1cab7 docs(fine-task): merge di main (PR #327) nella PR #329, riserve del bot e della verifica esterna registrate (review #633)
@@ -185,7 +187,7 @@ Le suite `tests/test_unit_voce_ascolto.py` e `tests/test_unit_voice_server.py` d
 - I commit di main entrati col merge (fino a b6f3750, PR #327) hanno le run della PR #327.
 - 96f569e (merge), 6fd5d16 (memoria #633), fc1cab7 (fine-task): unit-suite success, handoff-check success, verifica-bot neutral (bot APPROVATO CON RISERVE); poi conflitto con main (PR #330).
 - I commit di main entrati col merge (fino a 805c272, PR #330) hanno le run della PR #330.
-- d32d326 (merge), 17d8def (memoria #634): pushati insieme al commit di fine-task.
+- d32d326 (merge), 17d8def (memoria #634), 7957a15 (fine-task): unit-suite success, handoff-check success; verifica-bot failure (verdetto letto come ambiguo dal parser del bot, rilancio non valido per G-2).
 - Il commit che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

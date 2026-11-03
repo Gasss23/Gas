@@ -17,3 +17,4 @@
 - **Formato «audio+pezzi» sul server**: `FATTA da M2` — PR #330 in main (805c272).
 - **Merge di main (PR #330) nella #329**: `FATTA` in d32d326, review #634 APPROVATO CON RISERVE (R-634-1/3 BASSE, R-634-2 COSMETICA, registrate); prova dal vero col server di main: frasi in fila, la prima a 0,3 s.
 - **Bot su fc1cab7**: APPROVATO CON RISERVE (neutral). V-1 BASSA (server a un thread occupato durante la riproduzione): `REGISTRATA`.
+- **Bot su 7957a15**: testo APPROVATO CON RISERVE, check failure per una riga del verdetto letta come «ambigua» dal parser del bot (macchina di M2). V-1 BASSA e V-2/V-3 COSMETICHE: `REGISTRATE`. Il rilancio non conta (G-2): serve un commit nuovo, questo.
