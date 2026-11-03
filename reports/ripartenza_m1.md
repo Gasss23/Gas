@@ -62,3 +62,8 @@
 - **Browser web**: completo ma spento. Si accende solo dopo una prova sul VPS (R5, server non ancora preso).
 - Facoltativo: sbloccare `elevenlabs.io` nella rete dell'ambiente cloud, così le chat leggono la documentazione.
 - Token `gas-richieste` (repo Gas-richieste) e `GAS_RICHIESTE_REPO` nel .env: ancora da fare sul Mac.
+
+## Aggiornamento 3 novembre, pomeriggio
+- **PR #331 (V11, M2)**: le richieste a testo con audio+pezzi ora ricevono solo testo, senza ElevenLabs. È in attesa del bot e del sì dell'operatore.
+- **Decisione per l'operatore (R-663-1-M2)**: le richieste a testo devono contare anche loro nel tetto orario, oppure i client a testo sono considerati fidati?
+- **ThreadingHTTPServer**: sconsigliato per ora. Servirebbe una fetta dedicata con lock e test di concorrenza.
