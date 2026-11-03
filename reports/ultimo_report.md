@@ -1,16 +1,16 @@
-# Ultimo report — 2026-11-02 — Mani: fetta 38, voce H24 sistemata dopo la prova dal vero sul Mac
+# Ultimo report — 2026-11-03 — Voce V10: «audio+pezzi», voce senza schermo (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #328 della fetta 38: lo decide l'operatore, perché tocca `.claude/perimetro_review.txt` (aggiunge `scripts/voce/`).
-2. Sul Mac, dopo il merge: `bash scripts/voce/installa.sh` due volte di fila (la seconda non deve fermarsi con «Bootstrap failed: 5»), poi una richiesta a voce e `grep "tempi voce" gas_debug.log` dalla cartella di Gas.
 
-## Esito
-- **PR #324 (piano mail)**: `FATTA` — mergiata (c6206d2) col sì dell'operatore sull'head 84b1422, dopo il merge di main (PR #326, review #630 APPROVATO).
-- **Riserve della PR #324**: `FATTA` — V-1/V-2 BASSE del bot su 84b1422 e V-2 COSMETICA su 7346994 registrate in stato_progetto per la fetta 1 della mail; V-1/V-2 BASSE del bot su 922aac9 chiuse qui (questo punto e la registrazione).
-- **Rilevatore sempre in errore (V-1 ve #323)**: `FATTA` — log a 1, 2, 4, 8… errori e pausa crescente con l'esponente limitato.
-- **GAS_CLAUDE_BIN sotto launchd (V-1 bot #323) e token vuoto (V-4 bot #323)**: `FATTA` in installa.sh.
-- **Seconda esecuzione di installa.sh (M1 sul Mac)**: `FATTA` — attesa dopo bootout e bootstrap con 3 tentativi, con 4 test.
-- **Tempi della voce nel log (M1)**: `FATTA` — `grep "tempi voce" gas_debug.log`, scritto nella LEGGIMI.
-- **scripts/voce/ nel perimetro di review (V-4 ve #323)**: `FATTA`.
-- **Bot su 1d6d14f e verifica esterna (PR #328)**: APPROVATO CON RISERVE tutti e due, solo BASSE e COSMETICHE (bot V-1/V-2: prima riga del .env e regex diverse dal parser; ve V-1: log limitato solo per errori consecutivi; ve V-2 = R-625-1): `REGISTRATE` in stato_progetto, senza altri giri.
-- **Review**: #624 BOCCIATO (corretto), #625, #628, #629, #631 APPROVATO CON RISERVE; aperte solo R-625-1 BASSA e tre COSMETICHE (stato_progetto, fetta 38).
+1. Merge della PR della V10 (numero nell'handoff §0), secondo la regola di merge di CLAUDE.md §10.
+2. Il client H24 (`clients/voice/ascolto.py`, chat Mani) deve mandare `X-Gas-Formato: audio+pezzi` e leggere le righe NDJSON; senza chiave ElevenLabs la risposta è un JSON 200 con `errore_voce` (non NDJSON, non 503): il client deve gestire anche questo.
+
+## Esito delle fette
+
+- **V10 — voce senza schermo**: `FATTA` — formato `audio+pezzi` (costante `_FORMATO_PEZZI_VOCE`): stesse righe NDJSON della V7b; il turno usa `ISTRUZIONE_VOCE` (niente dettaglio da leggere); si dice tutta la risposta divisa in frasi (`frasi_voce`), entro 1500 caratteri, mai «Il resto è a schermo»; anche «non ho capito» e «uso» arrivano a righe. Review #660-M2 APPROVATO CON RISERVE (basse/cosmetiche).
+- Test: voice_server + voice_stt + voice_contesto + voce_ascolto + voice_prova_voci 334 passed (browser obbligatorio); mutanti → test V10 falliti.
+
+## Anomalie
+
+- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
+- Il client H24 non è toccato qui (lo scrive la chat Mani): la prova vera è sul Mac.
