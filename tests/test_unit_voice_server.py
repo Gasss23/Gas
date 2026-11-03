@@ -1219,14 +1219,18 @@ def test_v7b_frasi_parlate_ricompongono_la_parte_parlata():
         "Ciao.", "Dott. Rossi arriva.", "Va bene?"]
 
 
-def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"):
+def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k", turni=None,
+                  trascrizione="Gas, dimmi"):
     from unittest.mock import patch
-    """Server voce vero con kernel e servizi finti; ritorna (status, content-type, righe)."""
+    """Server voce vero con kernel e servizi finti; ritorna (status, content-type, righe).
+    `turni` (lista) riceve i kw di ogni run_turn (V10: quale istruzione arriva)."""
     import urllib.request
     from modules.voice.server import VoiceHandler
 
     class _K:
         def run_turn(self, prompt, **kw):
+            if turni is not None:
+                turni.append(kw)
             yield {"type": "final", "content": kernel_testo}
 
     class _H(VoiceHandler):
@@ -1240,7 +1244,7 @@ def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"
         f"http://127.0.0.1:{srv.server_address[1]}/voice", data=b"RIFF" + bytes(60), method="POST",
         headers={"Authorization": "Bearer tok", "Content-Type": "audio/wav", "X-Gas-Formato": formato})
     try:
-        with patch("modules.voice.server.transcribe_audio", return_value="Gas, dimmi"), \
+        with patch("modules.voice.server.transcribe_audio", side_effect=[trascrizione]), \
              patch("modules.voice.server.synthesize_speech", side_effect=sintesi) as tts, \
              patch.dict(os.environ, env):
             if not chiave:
@@ -1297,6 +1301,57 @@ def test_v7b_senza_chiave_o_formato_vecchio_resta_json():
     ct, righe, tts = _voce_a_pezzi("Uno. Due.", lambda *a: b"x", formato="audio+testo")
     assert ct.startswith("application/json") and tts.call_count == 1   # una sola sintesi
     assert "pezzi" not in righe[0]
+
+
+def test_v10_frasi_voce_tutto_il_parlato_senza_schermo():
+    """V10: senza schermo si dice tutta la risposta, divisa in frasi, entro il tetto; mai
+    «Il resto è a schermo»; una prima frase troppo lunga si taglia all'ultimo spazio."""
+    from modules.voice.server import frasi_voce, _PARLATO_VOCE_MAX_CHAR, _PARLATO_VOCE_RESTO
+    testo = "Uno. Due. Tre. Quattro.\n\nDott. Rossi arriva. Cinque?"
+    assert frasi_voce(testo) == ["Uno.", "Due.", "Tre.", "Quattro.", "Dott. Rossi arriva.", "Cinque?"]
+    lungo = " ".join(f"Frase numero {i} abbastanza lunga da contare." for i in range(100))
+    frasi = frasi_voce(lungo)
+    # V-1 bot #330: tagliato → alla fine la frase fissa, così il taglio si sente
+    assert frasi[-1] == _PARLATO_VOCE_RESTO
+    assert len(" ".join(frasi[:-1])) <= _PARLATO_VOCE_MAX_CHAR < len(lungo)
+    assert all(f.endswith(".") for f in frasi) and "schermo" not in " ".join(frasi)
+    unica = "parola " * 400
+    taglio, resto = frasi_voce(unica)
+    assert len(taglio) <= _PARLATO_VOCE_MAX_CHAR and not taglio.endswith(" ")
+    assert resto == _PARLATO_VOCE_RESTO
+    assert _PARLATO_VOCE_RESTO not in frasi_voce(testo)   # non tagliato: niente avviso
+    assert frasi_voce("   ") == []
+
+
+def test_v10_formato_audio_pezzi_senza_schermo():
+    """V10: «audio+pezzi» (client H24 senza schermo): stesse righe NDJSON della V7b, turno
+    con ISTRUZIONE_VOCE (non quella con lo schermo), TUTTE le frasi dette."""
+    import base64
+    from modules.voice.server import ISTRUZIONE_VOCE
+    turni = []
+    testo = "Uno. Due. Tre. Quattro. Cinque."
+    ct, righe, tts = _voce_a_pezzi(testo, lambda frase, k, v: frase.encode(),
+                                   formato="audio+pezzi", turni=turni)
+    assert ct.startswith("application/x-ndjson")
+    assert turni[0]["istruzione_turno"] == ISTRUZIONE_VOCE
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi == ["Uno.", "Due.", "Tre.", "Quattro.", "Cinque."]   # più di 3, niente «resto»
+    assert righe[0]["content"] == testo and righe[0]["pezzi"] == 5
+    assert [base64.b64decode(r["audio"]).decode() for r in righe if "audio" in r] == frasi
+    assert righe[-1]["fine"] is True and "voce" in righe[-1]["tempi"]
+
+
+def test_v10_non_ho_capito_a_righe():
+    """V10: anche «non ho capito» arriva a righe col formato senza schermo (il client H24
+    legge sempre NDJSON), senza far partire il turno."""
+    from modules.voice.stt import TrascrizioneIncerta
+    turni = []
+    ct, righe, tts = _voce_a_pezzi("mai usato", lambda frase, k, v: frase.encode(),
+                                   formato="audio+pezzi", turni=turni,
+                                   trascrizione=TrascrizioneIncerta("boh", "poco sicura"))
+    assert ct.startswith("application/x-ndjson") and turni == []
+    assert righe[0]["non_capito"] is True and righe[0]["capito"] == "boh"
+    assert righe[-1]["fine"] is True and tts.call_count == 1
 
 
 def test_v7b_proxy_inoltra_le_righe_appena_arrivano():
