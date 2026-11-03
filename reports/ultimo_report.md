@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della V10 (numero nell'handoff §0), secondo la regola di merge di CLAUDE.md §10.
+1. Merge della PR #330 (https://github.com/Gasss23/Gas/pull/330), secondo la regola di merge di CLAUDE.md §10.
 2. Il client H24 (`clients/voice/ascolto.py`, chat Mani) deve mandare `X-Gas-Formato: audio+pezzi` e leggere le righe NDJSON; senza chiave ElevenLabs la risposta è un JSON 200 con `errore_voce` (non NDJSON, non 503): il client deve gestire anche questo.
 
 ## Esito delle fette

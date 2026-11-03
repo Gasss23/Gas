@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. PR della V10: da aprire (numero dopo la creazione).
+1. Merge della PR #330 (https://github.com/Gasss23/Gas/pull/330). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5129556803","url":"https://github.com/Gasss23/Gas/pull/330"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
 2. Client H24 (chat Mani): usare `X-Gas-Formato: audio+pezzi`, gestire anche il JSON 200 con `errore_voce` senza chiave ElevenLabs.
 
 ---
@@ -34,6 +34,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+18c6d0a docs(voce-v10): report di fine task (review #660-M2)
 f7be4d0 feat(voce): V10 — formato «audio+pezzi» per il client senza schermo: tutta la risposta frase per frase, istruzione voce (chat M2; review #660-M2)
 1d44d04 chore(revisore): memoria review #660 — APPROVATO CON RISERVE
 ```
@@ -84,7 +85,7 @@ Prima della review ho letto CLAUDE.md (sez. 5), la parte di reports/stato_proget
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Commit della sessione e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+`gh` non autenticato nel cloud. Commit della sessione (fino a 18c6d0a, pushati insieme: run sulla sola testa, non letta alla scrittura) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
