@@ -119,6 +119,8 @@ _FORMATO_PEZZI = "audio+testo+pezzi"
 # entro _PARLATO_VOCE_MAX_CHAR, senza «Il resto è a schermo».
 _FORMATO_PEZZI_VOCE = "audio+pezzi"
 _PARLATO_VOCE_MAX_CHAR = 1500
+# V-1 bot #330: senza schermo un taglio deve sentirsi (nessuno legge «content»)
+_PARLATO_VOCE_RESTO = "C'è altro, chiedimi se vuoi il resto."
 _PARLATO_MAX_FRASI = 3
 _PARLATO_MAX_CHAR = 400
 _PARLATO_RESTO = " Il resto è a schermo."
@@ -176,11 +178,14 @@ def frasi_parlate(testo: str) -> List[str]:
 def frasi_voce(testo: str) -> List[str]:
     """V10: tutta la risposta da dire a voce (senza schermo), divisa in frasi. Tetto
     _PARLATO_VOCE_MAX_CHAR: si tengono le frasi intere che ci stanno; se già la prima è più
-    lunga si taglia all'ultimo spazio. Mai «Il resto è a schermo» (qui uno schermo non c'è)."""
+    lunga si taglia all'ultimo spazio. Mai «Il resto è a schermo» (qui uno schermo non c'è):
+    se qualcosa resta fuori si aggiunge _PARLATO_VOCE_RESTO (V-1 bot #330), così il taglio
+    si sente."""
     testo = " ".join(testo.split())
+    tutte = _dividi_frasi(testo)
     frasi: List[str] = []
     lunghezza = 0
-    for f in _dividi_frasi(testo):
+    for f in tutte:
         nuova = lunghezza + len(f) + (1 if frasi else 0)
         if nuova > _PARLATO_VOCE_MAX_CHAR:
             break
@@ -189,6 +194,8 @@ def frasi_voce(testo: str) -> List[str]:
     if not frasi and testo:  # prima frase già troppo lunga: taglio all'ultimo spazio
         frasi = [testo[:_PARLATO_VOCE_MAX_CHAR].rsplit(" ", 1)[0]
                  if len(testo) > _PARLATO_VOCE_MAX_CHAR else testo]
+    if testo and " ".join(frasi) != testo:
+        frasi.append(_PARLATO_VOCE_RESTO)
     return frasi
 
 

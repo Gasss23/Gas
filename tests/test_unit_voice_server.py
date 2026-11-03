@@ -1255,16 +1255,20 @@ def test_v7b_senza_chiave_o_formato_vecchio_resta_json():
 def test_v10_frasi_voce_tutto_il_parlato_senza_schermo():
     """V10: senza schermo si dice tutta la risposta, divisa in frasi, entro il tetto; mai
     «Il resto è a schermo»; una prima frase troppo lunga si taglia all'ultimo spazio."""
-    from modules.voice.server import frasi_voce, _PARLATO_VOCE_MAX_CHAR
+    from modules.voice.server import frasi_voce, _PARLATO_VOCE_MAX_CHAR, _PARLATO_VOCE_RESTO
     testo = "Uno. Due. Tre. Quattro.\n\nDott. Rossi arriva. Cinque?"
     assert frasi_voce(testo) == ["Uno.", "Due.", "Tre.", "Quattro.", "Dott. Rossi arriva.", "Cinque?"]
     lungo = " ".join(f"Frase numero {i} abbastanza lunga da contare." for i in range(100))
     frasi = frasi_voce(lungo)
-    assert len(" ".join(frasi)) <= _PARLATO_VOCE_MAX_CHAR < len(lungo)
+    # V-1 bot #330: tagliato → alla fine la frase fissa, così il taglio si sente
+    assert frasi[-1] == _PARLATO_VOCE_RESTO
+    assert len(" ".join(frasi[:-1])) <= _PARLATO_VOCE_MAX_CHAR < len(lungo)
     assert all(f.endswith(".") for f in frasi) and "schermo" not in " ".join(frasi)
     unica = "parola " * 400
-    (taglio,) = frasi_voce(unica)
+    taglio, resto = frasi_voce(unica)
     assert len(taglio) <= _PARLATO_VOCE_MAX_CHAR and not taglio.endswith(" ")
+    assert resto == _PARLATO_VOCE_RESTO
+    assert _PARLATO_VOCE_RESTO not in frasi_voce(testo)   # non tagliato: niente avviso
     assert frasi_voce("   ") == []
 
 
