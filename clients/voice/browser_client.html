@@ -338,6 +338,20 @@ const CFG = {
   interruzione: true,
   sogliaInterruzione: 0.06,
   interruzioneMs: 300,
+  // V9 (rumore): fondo stimato di continuo dagli ultimi 3 s di ascolto (60 campioni da
+  // 50 ms). Vale dopo 1,5 s di campioni; la voce deve superare fondoFattore × il 10°
+  // percentile (il rumore, non le parole), con un tetto per non diventare sordi.
+  fondoCampioni: 60,
+  fondoMinCampioni: 30,
+  fondoFattore: 2,
+  sogliaMax: 0.2,
+  // GAS_VOICE_AGC: guadagno automatico del microfono nel browser. Acceso di default (come
+  // prima: aiuta una voce bassa); con un ronzio costante (ventola, TV) l'AGC lo alza nelle
+  // pause e Gas può interrompersi da solo: GAS_VOICE_AGC=0 lo spegne.
+  agc: true,
+  // V9: appena Gas comincia a parlare il browser riadatta filtri ed eco e per un attimo
+  // il rumore di fondo «salta su»: in questo tempo l'interruzione non conta
+  graziaInterruzioneMs: 500,
 };
 const FRASI_ATTESA = ["Ci sto ragionando.", "Un attimo.", "Fammi pensare un secondo."];
 
@@ -411,8 +425,10 @@ async function apriMicrofono() {
   if (apertura) return apertura;   // doppio clic durante la richiesta del permesso
   apertura = (async () => {
     try {
+      // V9: vincoli espliciti (il browser filtra rumore ed eco prima della soglia)
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: CFG.agc,
+                 channelCount: 1 }, video: false });
     } catch (e) {
       setStatus(e.name === "NotAllowedError" ? "permesso microfono negato"
                                              : "errore microfono: " + e.message, true);
@@ -449,6 +465,19 @@ function fermaAscolto() {
 // (R-580-3-M2) con tetto a sogliaMin (V-1 bot #313): la soglia resta ≤ 3×sogliaMin
 // (0,045), così anche un «sì» a volume medio (RMS ~0,07) detto appena si riapre
 // l'ascolto la supera, anche se riempie tutti i 300 ms. Senza campioni: sogliaMin.
+// V9 (R-584-1-M2): rumore di fondo stimato di continuo. `fondo` tiene gli ultimi 3 s di
+// volume di OGNI ascolto (anche fra un turno e l'altro: la stanza è la stessa). Il 10°
+// percentile è il rumore, non le parole (fra una sillaba e l'altra la voce scende).
+const fondo = [];
+function sogliaFondo() {
+  if (fondo.length < CFG.fondoMinCampioni) return 0;
+  const ord = [...fondo].sort((a, b) => a - b);
+  return Math.min(ord[Math.floor(ord.length * 0.1)] * CFG.fondoFattore, CFG.sogliaMax);
+}
+function sogliaInterruzione() {   // col rumore sale anche la soglia per zittire Gas
+  return Math.max(CFG.sogliaInterruzione, sogliaFondo() * 1.5);
+}
+
 function sogliaDaCampioni(campioni) {
   if (!campioni.length) return CFG.sogliaMin;
   const ord = [...campioni].sort((a, b) => a - b);
@@ -506,7 +535,11 @@ async function ascolta(giaInVoce = false) {
     const ora = performance.now();
     const v = volume();
     if (ora - t0 < 300 && !giaInVoce) campioni.push(v);
-    const soglia = sogliaDaCampioni(campioni);
+    fondo.push(v);
+    if (fondo.length > CFG.fondoCampioni) fondo.shift();
+    // V9: la soglia di sempre (che protegge il «sì» detto subito) o quella del fondo,
+    // la più alta: un rumore costante (TV, ventola) smette di contare come voce
+    const soglia = Math.max(sogliaDaCampioni(campioni), sogliaFondo());
     if (v > soglia) {
       voceDopoMs += 50;   // R-581-1-M2: voce vera sentita in QUESTO ascolto
       ultimaVoce = ora;
@@ -547,10 +580,14 @@ function vigila(turno) {
   fermaVigilanza();
   if (!conversazione || !CFG.interruzione || !analyser) return;
   let sopraDa = null;
+  const inizio = performance.now();
   vigilanza = setInterval(() => {
     if (!analyser || turno !== numTurno || !conversazione) { fermaVigilanza(); return; }
     const v = volume();
-    if (v > CFG.sogliaInterruzione) {
+    if (performance.now() - inizio < CFG.graziaInterruzioneMs) { sopraDa = null; return; }
+    // V9: con la TV accesa la soglia d'interruzione sale col rumore di fondo, così il
+    // rumore non zittisce Gas; la voce vera vicina al microfono sì
+    if (v > sogliaInterruzione()) {
       if (sopraDa === null) sopraDa = performance.now();
       if (performance.now() - sopraDa > CFG.interruzioneMs) {
         fermaVigilanza();
@@ -876,5 +913,6 @@ fetch("/config").then(r => r.ok ? r.json() : {}).then(c => {
   if (Number.isFinite(c.finestra) && c.finestra > 0) CFG.finestraS = c.finestra;
   if (Number.isInteger(c.max_turni) && c.max_turni > 0) CFG.maxTurni = c.max_turni;
   if (typeof c.interruzione === "boolean") CFG.interruzione = c.interruzione;
+  if (typeof c.agc === "boolean") CFG.agc = c.agc;   // V9 (vale dalla prossima apertura del microfono)
 }).catch(() => {});
 </script>
