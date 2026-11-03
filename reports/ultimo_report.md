@@ -1,7 +1,7 @@
 # Ultimo report — 2026-11-03 — Mani: fetta 39, ascolto H24 a frasi in fila
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR della fetta 39: lo decide l'operatore. Il verdetto del revisore è APPROVATO CON RISERVE e la PR tocca la voce, che sta nel perimetro di review.
+1. Merge della PR #329 della fetta 39: lo decide l'operatore. Il verdetto del revisore è APPROVATO CON RISERVE e la PR tocca la voce, che sta nel perimetro di review.
 2. La voce veloce serve **anche** al formato «audio+pezzi» lato server, che fa M2: finché non è in main, l'ascolto riceve un solo audio, come prima. Dopo tutti e due i merge, sul Mac: `git pull`, `bash scripts/voce/installa.sh`, «Hey Jarvis» e una domanda: la prima frase deve partire subito.
 
 ## Esito
