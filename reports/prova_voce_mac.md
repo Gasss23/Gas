@@ -57,6 +57,7 @@ Più in basso c'è **«Dalla libreria di ElevenLabs»**: voci di altri utenti sc
 - **Test 1 non va (Gas si zittisce da solo):** aggiungi `GAS_VOICE_INTERRUZIONE=0` nel `.env`, chiudi e riavvia la seconda finestra (la pagina), ricarica il browser. Così non puoi più interrompere Gas, ma lui non si zittisce più da solo. Dillo a M1.
 - **Test 2 non va (il «sì» non conta):** dillo a M1 con una frase su come hai parlato (vicino/lontano dal microfono). Si abbassa la soglia della voce.
 - **Test 3 non va (sente frasi dalla TV):** dillo a M1. Intanto, dopo 5 turni di fila Gas si ferma da solo e chiede un clic, e oltre 60 richieste all'ora il server rifiuta: non può andare avanti all'infinito.
+- **Con ventilatore o TV accesi Gas si interrompe da solo o «sente» frasi che non hai detto:** aggiungi `GAS_VOICE_AGC=0` nel `.env` (spegne il guadagno automatico del microfono, che nelle pause alza il rumore), riavvia la seconda finestra e ricarica la pagina. La pagina ora stima da sola il rumore di fondo e alza la soglia della voce di conseguenza.
 - **«Voice server non raggiungibile»:** la prima finestra non è partita o si è chiusa. Riavviala e aspetta «in ascolto».
 - **«Gas non ha risposto entro 600 s»:** il cervello forte ci sta mettendo tanto. NON ripetere la richiesta: guarda la prima finestra, il lavoro può essere ancora in corso.
 - **«Troppe richieste a voce nell'ultima ora»:** hai superato il tetto di 60 richieste a voce in un'ora. Aspetta o scrivi.
