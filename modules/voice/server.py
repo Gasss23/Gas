@@ -113,6 +113,12 @@ _FORMATO_AUDIO_TESTO = "audio+testo"
 # V7b (chat M2): come «audio+testo», ma la risposta arriva a righe JSON (NDJSON) mentre la
 # voce viene sintetizzata frase per frase: la pagina comincia a parlare dopo la prima frase.
 _FORMATO_PEZZI = "audio+testo+pezzi"
+# V10 (chat M2, «voce senza schermo»): per il client H24 del Mac (clients/voice/ascolto.py),
+# che non ha uno schermo. Stesse righe NDJSON di _FORMATO_PEZZI, ma il turno usa
+# ISTRUZIONE_VOCE (niente dettaglio da leggere) e si dice TUTTA la risposta divisa in frasi,
+# entro _PARLATO_VOCE_MAX_CHAR, senza «Il resto è a schermo».
+_FORMATO_PEZZI_VOCE = "audio+pezzi"
+_PARLATO_VOCE_MAX_CHAR = 1500
 _PARLATO_MAX_FRASI = 3
 _PARLATO_MAX_CHAR = 400
 _PARLATO_RESTO = " Il resto è a schermo."
@@ -165,6 +171,25 @@ def frasi_parlate(testo: str) -> List[str]:
     """V7b: la parte parlata (vedi parte_parlata) divisa in frasi, da sintetizzare una alla
     volta. Unite di nuovo con uno spazio danno esattamente parte_parlata(testo)."""
     return _dividi_frasi(parte_parlata(testo))
+
+
+def frasi_voce(testo: str) -> List[str]:
+    """V10: tutta la risposta da dire a voce (senza schermo), divisa in frasi. Tetto
+    _PARLATO_VOCE_MAX_CHAR: si tengono le frasi intere che ci stanno; se già la prima è più
+    lunga si taglia all'ultimo spazio. Mai «Il resto è a schermo» (qui uno schermo non c'è)."""
+    testo = " ".join(testo.split())
+    frasi: List[str] = []
+    lunghezza = 0
+    for f in _dividi_frasi(testo):
+        nuova = lunghezza + len(f) + (1 if frasi else 0)
+        if nuova > _PARLATO_VOCE_MAX_CHAR:
+            break
+        frasi.append(f)
+        lunghezza = nuova
+    if not frasi and testo:  # prima frase già troppo lunga: taglio all'ultimo spazio
+        frasi = [testo[:_PARLATO_VOCE_MAX_CHAR].rsplit(" ", 1)[0]
+                 if len(testo) > _PARLATO_VOCE_MAX_CHAR else testo]
+    return frasi
 
 
 def parte_parlata(testo: str) -> str:
@@ -423,7 +448,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
 
-        if self._vuole_audio_testo():
+        if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
             self._do_audio_testo_response(result_content)
         elif self._wants_audio():
             self._do_tts_response(result_content)
@@ -436,7 +461,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def _rispondi_senza_turno(self, testo: str, segno: str) -> None:
         """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito»), nel
         formato chiesto dal client; `segno` è il campo JSON che la distingue."""
-        if self._vuole_audio_testo():
+        if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
             self._do_audio_testo_response(testo, {segno: True})
         elif self._wants_audio() and os.environ.get("ELEVENLABS_API_KEY", "").strip():
             self._do_tts_response(testo)
@@ -457,6 +482,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def _vuole_audio_testo(self) -> bool:
         return self._formato() in (_FORMATO_AUDIO_TESTO, _FORMATO_PEZZI)
 
+    def _vuole_righe_senza_schermo(self) -> bool:
+        """V10: il client H24 chiede le righe NDJSON ma non ha uno schermo."""
+        return self._formato() == _FORMATO_PEZZI_VOCE
+
     def _do_audio_testo_response(self, text: str, extra: Optional[Dict[str, Any]] = None) -> None:
         """V3: JSON {"content": testo intero, "audio": base64 MP3 della parte parlata}.
         Senza chiave ElevenLabs o con errore TTS la risposta arriva lo stesso, solo testo
@@ -473,6 +502,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
             voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
             if self._formato() == _FORMATO_PEZZI:
                 self._do_pezzi_response(out, frasi_parlate(text), api_key, voice_id)
+                return
+            if self._vuole_righe_senza_schermo():  # V10: tutto a voce, frase per frase
+                self._do_pezzi_response(out, frasi_voce(text), api_key, voice_id)
                 return
             t = time.monotonic()
             try:
