@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-03 — Voce V11: «audio+pezzi» a testo solo testo (chat M2, coordinata da M1)
+**Sessione:** 2026-11-03 — Voce V11: «audio+pezzi» a testo solo testo (chat M2, coordinata da M1) — aggiornato dopo il merge di main (#329) e i verdetti su d8f4572
 
 ---
 
@@ -18,18 +18,21 @@
 - **V-2 COSMETICA del bot su ae3258e**: `REGISTRATA` in stato_progetto (col taglio il parlato è 1500+38 caratteri).
 - **Docstring impreciso del test V10** (V-1 bot su ef88184): `FATTA`.
 - **ThreadingHTTPServer per il server voce** (riserva bot #329): `VALUTATA`, sconsigliato ora (parere nella review #663-M2); nessun codice.
+- **Bot su d8f4572** (APPROVATO CON RISERVE, verifica-bot success): V-1 COSMETICA (commento dell'helper `_voce_a_pezzi` con il ritorno sbagliato) `REGISTRATA`, senza giro.
+- **Verifica esterna su d8f4572** (commento https://github.com/Gasss23/Gas/pull/331#issuecomment-6609937549, APPROVATO CON RISERVE): V-1 BASSA = R-663-1-M2; V-2 BASSA (un client col token può dichiarare `Content-Type: audio/*`: passa comunque dal tetto, nessuna azione); V-3 COSMETICA (ramo «uso» a testo, nessun effetto); V-4 COSMETICA (testi «entro 1500»): `REGISTRATE`, senza giro.
+- **Merge di origin/main (#329, fetta 39 della chat Mani) nel branch**: `FATTA` (review #664-M2 APPROVATO).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
+ .claude/agents/memoria_revisore.md |   2 ++
  modules/voice/server.py            |  11 ++++++++---
- reports/diff_sessione.md           |   9 ++++-----
+ reports/diff_sessione.md           |  18 +++++++-----------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  17 ++++++++---------
+ reports/ultimo_report.md           |  34 +++++++++++++++++-----------------
  tests/test_unit_voice_server.py    |  30 ++++++++++++++++++++++++------
 ```
 
@@ -38,6 +41,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+049d927 Merge remote-tracking branch 'origin/main' into feat/voce-v11-m2
+d8f4572 docs(voce-v11): handoff, blocco §2 corretto (PR #331)
 1bd0d32 docs(voce-v11): report di fine task (PR #331, review #663-M2)
 c91ccb8 fix(voce): V11 — «audio+pezzi» a testo riceve solo il testo, niente sintesi fuori dal tetto orario (V-1 bot #330 su ae3258e; review #663-M2)
 7c17275 chore(revisore): memoria review #663 — APPROVATO CON RISERVE
@@ -91,17 +96,46 @@ Se mai servirà, va fatto in una fetta dedicata con:
 
 **Memoria**: riga #663-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (commit 7c17275, solo quel file). Il diff staged è rimasto intatto (stessi 2 file, 32+/9−). Lezione registrata: le mutazioni vanno fatte in una copia nella cartella scratch. Un mio primo comando con rsync è fallito; la catena && si è fermata prima di sed, quindi il repo non è stato toccato (git diff vuoto).
 
+Merge di origin/main (049d927). Review #664-M2:
+
+## VERDETTO: APPROVATO
+
+Il merge è corretto: rispetto a origin/main, quello che è in staging è solo la V11. Niente della fetta 39 è andato perso o è stato duplicato.
+
+Controlli con citazioni:
+- `clients/voice/ascolto.py:545` — lato client del contratto della fetta 39. Rischio esaminato: che la risoluzione dei conflitti abbia tenuto la versione vecchia del nostro branch. Esito: ok. Il blob in index (e454e1ef) è uguale a quello di origin/main; lo stesso vale per `scripts/voce/installa.sh`, `scripts/voce/LEGGIMI.md`, `tests/test_unit_voce_ascolto.py` e `reports/roadmap.md`.
+- `modules/voice/server.py:391` — `_parlato = is_audio` della V11, che guida `modules/voice/server.py:499`. Rischio esaminato: che il merge abbia riportato il server di main (V10 senza la V11). Esito: ok. Il blob in index (4a7d4e5e) è uguale a HEAD; lo stesso vale per `tests/test_unit_voice_server.py` (7466dc5b), `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md`.
+- `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» unita a mano. Rischio esaminato: perdere o ritoccare la riga di main. Esito: ok. Ho verificato in modo esatto che la riga è la voce V11 seguita da « — prima: » e poi dalla riga 4 di origin/main, identica. L'altra differenza dal main è la sola riga nuova della voce V11 nella lista delle voci voce (V9 e V10 sono intatte).
+- `.claude/agents/memoria_revisore.md:1215` — memoria unita a mano. Rischio esaminato: righe doppie o righe di uno dei due lati perse. Esito: ok. Rispetto a origin/main c'è solo +1 riga (#663-M2). Le righe di main (#634 e la lezione del 2026-11-03) sono presenti e non ci sono righe duplicate.
+- Diff di tutto lo staged contro origin/main (`git diff --cached origin/main --stat`): 7 file, 111 righe aggiunte e 185 tolte, come atteso.
+- `git diff --cached --check`: pulito, nessun marcatore di conflitto.
+- Nel diff del motore non c'è nessun taglio diretto della cronologia e nessun output dei tool simulato.
+
+Test rieseguiti da me:
+- `tests/test_unit_voce_ascolto.py`: 149 passed.
+- `tests/test_unit_voice_server.py -k "v10 or v11 or v7b"`: 16 passed.
+
+Cosa NON ho verificato:
+- La suite completa di `tests/test_unit_voice_server.py` insieme a quella dell'ascolto: ha superato il tempo limite della shell e l'ho interrotta. Il resto di quel file non è toccato da questo merge, perché è uguale a HEAD, che era già stato revisionato in #663-M2.
+- Niente prove sul Mac o con l'audio vero: non si possono riprodurre in questo ambiente.
+- Resta aperta, invariata, la riserva BASSA R-663-1-M2 della review precedente.
+
+Memoria: ho aggiunto la riga `#664-M2 — 2026-11-03 — APPROVATO — …` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, solo nel file di lavoro e non in staging. Non ho lanciato `commit_memoria_revisore.sh`, come mi avevi chiesto: va aggiunta all'index prima del commit di merge. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: 103 → 104 test (nuovo `test_v11_audio_pezzi_a_testo_solo_testo`); -k "v10 or v11 or v7b" 16 passed; con `modules/voice/server.py` di main il test V11 fallisce (1 failed); suite intera del file 104 passed (rieseguita dal revisore). Kernel non toccato (`gas.py` identico a main).
+`tests/test_unit_voice_server.py`: 103 → 104 test (nuovo `test_v11_audio_pezzi_a_testo_solo_testo`); -k "v10 or v11 or v7b" 16 passed; con `modules/voice/server.py` di main il test V11 fallisce (1 failed); suite intera del file 104 passed (rieseguita dal revisore). Dopo il merge di main: voice_server + voce_ascolto -k "v10 or v11 or v7b or ascolto" 166 passed. Kernel non toccato (`gas.py` identico a main).
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check lette dalle notifiche.
-- 7c17275, c91ccb8, 1bd0d32 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
+- d8f4572 (testa che conteneva 7c17275, c91ccb8, 1bd0d32): check suite completate senza fallimenti (notifica check_suite.completed); verifica-bot success (bot APPROVATO CON RISERVE).
+- 049d927 (merge di main) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
 - R-663-1-M2 BASSA: richieste a testo con sintesi (`Accept: audio/mpeg` testo intero; `audio+testo`/`audio+testo+pezzi` ≤400 caratteri) fuori dal tetto orario.
 - Bot #330 su ae3258e, V-2 COSMETICA: col taglio il parlato è 1500+38 caratteri (docstring e report dicono «entro 1500»).
 - R-660-1-M2 BASSA e R-660-2-M2 COSMETICA (dalla V10): restano aperte.
+- Bot su d8f4572, V-1 COSMETICA: il commento di `_voce_a_pezzi` dice «ritorna (status, content-type, righe)» ma ritorna (content-type, righe, mock della sintesi), ed è dopo un import (non è una vera docstring).
+- Verifica esterna su d8f4572, V-2 BASSA: un client col token può dichiarare `Content-Type: audio/*` e scegliere il percorso a voce (passa dal tetto orario: nessuna azione). V-3 COSMETICA: ramo `_wants_audio()` di `_rispondi_senza_turno` per «uso» a testo senza effetto (è un 400).

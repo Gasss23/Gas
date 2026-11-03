@@ -11,6 +11,8 @@
 - **V-2 COSMETICA bot su ae3258e** (1500+38 caratteri col taglio): `REGISTRATA` in stato_progetto, senza codice.
 - **Docstring del test V10** «il client H24 legge sempre NDJSON» (V-1 bot su ef88184): `FATTA`, corretto.
 - **ThreadingHTTPServer** (riserva bot #329): `VALUTATA` — sconsigliato ora (kernel unico con storia condivisa, tetti senza lock); nessun codice.
+- **Riserve del bot e della verifica esterna su d8f4572**: BASSE/COSMETICHE, `REGISTRATE` senza giro (decisione di M1).
+- **Merge di origin/main (#329, fetta 39)**: `FATTA` (review #664-M2 APPROVATO); voce 166 passed.
 - Test: `tests/test_unit_voice_server.py` 104 passed (rieseguito dal revisore); test V11 nuovo, mutanti → fallisce.
 
 ## Anomalie
