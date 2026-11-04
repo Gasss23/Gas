@@ -69,3 +69,4 @@
 - **ThreadingHTTPServer**: sconsigliato per ora. Servirebbe una fetta dedicata con lock e test di concorrenza.
 - **#329 mergiata da Mani (af91da0)**: «Hey Jarvis» ora suona le frasi in fila, la prima dopo circa 0,3 s. Le riserve BASSE di Mani sono in stato_progetto e aspettano la prossima fetta piccola (via di M1 dopo le prove).
 - **Possibile difetto del parser del bot**: un verdetto APPROVATO CON RISERVE che conteneva la parola «MEDIA, preesistente» è stato letto come failure. Da guardare se si ripete (si trova in scripts/bot_esito.py, il cosiddetto lato macchina del bot: decide l'operatore).
+- **#331 mergiata (9cd1ad5)**. Decisione dell'operatore: anche le richieste a testo con sintesi vocale contano nel tetto orario. Lo fa M2 nella prossima fetta piccola.
