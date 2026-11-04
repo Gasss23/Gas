@@ -73,3 +73,4 @@
 - **4 novembre, chat ripartite pulite.**
   - M2 (nuova) riparte da reports/ripartenza_m2.md sul branch feat/voce-v12-m2, con la **PR #332 (V12)** in corso. La #332 fa contare nel tetto anche le richieste a testo con risposta a voce; serve il sì dell'operatore.
   - Mani (nuova) riparte da reports/ripartenza_mani.md sul branch claude/peaceful-lovelace-0w2b7q. Non ha PR aperte e aspetta il via di M1.
+- **#332 (V12)**: il bot l'ha approvata con riserve (una BASSA, una COSMETICA). La CI e la verifica esterna sono ancora in corso. Serve il sì dell'operatore.
