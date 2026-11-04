@@ -1,9 +1,8 @@
-# Diff della sessione — 2026-11-03 — Voce V11 (chat M2)
+# Diff della sessione — 2026-11-04 — Voce V12 (chat M2)
 
-- `modules/voice/server.py` — attributo `_parlato` (richiesta a voce); `audio+pezzi` dà righe e sintesi solo alle richieste a voce, a testo solo JSON (V-1 bot #330 su ae3258e).
-- `tests/test_unit_voice_server.py` — test V11 (richiesta a testo con `audio+pezzi`: niente sintesi); l'helper `_voce_a_pezzi` accetta `prompt_testo`; docstring del test V10 corretto.
-- `.claude/agents/memoria_revisore.md` — review #663–#664-M2.
-- Merge di origin/main (#329, fetta 39): nessun file in più rispetto a main oltre a quelli qui elencati.
+- `modules/voice/server.py` — `_sintesi_a_testo()` e tetto orario anche per le richieste a testo con risposta a voce (solo se c'è la chiave ElevenLabs); `frasi_voce` non perde la parola al tetto; docstring (1500 + avviso, tetto).
+- `tests/test_unit_voice_server.py` — test V12 (parola al tetto, `audio+pezzi` senza chiave, tetto per il testo con sintesi); docstring dell'helper `_voce_a_pezzi` corretto.
+- `.claude/agents/memoria_revisore.md` — review #665–#666-M2.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
