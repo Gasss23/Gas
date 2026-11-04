@@ -31,7 +31,8 @@ Configurazione tramite variabili d'ambiente (da .env o export):
   ELEVENLABS_API_KEY  — chiave ElevenLabs  OBBLIGATORIO per output audio; assente → 503
   ELEVENLABS_VOICE_ID — voice id           (default: JBFqnCBsd6RMkjVDRZzb, George premade)
   GAS_VOICE_MAX_TURNI_ORA — richieste PARLATE al massimo nell'ultima ora (default 60), poi
-                        429; conta ogni chiamata alla trascrizione (Groq)
+                        429; conta ogni chiamata alla trascrizione (Groq) e, dalla V12, ogni
+                        richiesta a testo che chiede la risposta a voce (sintesi ElevenLabs)
   GAS_VOCE_FORTE      — 1/true/on/yes/si/sì: ogni richiesta della voce va al solo cervello
                         forte (default spento; forte fermo → errore dichiarato, mai i gratuiti)
   GAS_VOICE_STT_LOGPROB_MIN / GAS_VOICE_STT_NO_SPEECH_MAX — soglie della trascrizione
@@ -178,7 +179,8 @@ def frasi_parlate(testo: str) -> List[str]:
 def frasi_voce(testo: str) -> List[str]:
     """V10: tutta la risposta da dire a voce (senza schermo), divisa in frasi. Tetto
     _PARLATO_VOCE_MAX_CHAR: si tengono le frasi intere che ci stanno; se già la prima è più
-    lunga si taglia all'ultimo spazio. Mai «Il resto è a schermo» (qui uno schermo non c'è):
+    lunga si taglia all'ultimo spazio. Col taglio il parlato arriva a _PARLATO_VOCE_MAX_CHAR
+    più l'avviso (1500 + 1 + 37 caratteri, V-2 bot #330 su ae3258e). Mai «Il resto è a schermo» (qui uno schermo non c'è):
     se qualcosa resta fuori si aggiunge _PARLATO_VOCE_RESTO (V-1 bot #330), così il taglio
     si sente."""
     testo = " ".join(testo.split())
@@ -192,8 +194,12 @@ def frasi_voce(testo: str) -> List[str]:
         frasi.append(f)
         lunghezza = nuova
     if not frasi and testo:  # prima frase già troppo lunga: taglio all'ultimo spazio
-        frasi = [testo[:_PARLATO_VOCE_MAX_CHAR].rsplit(" ", 1)[0]
-                 if len(testo) > _PARLATO_VOCE_MAX_CHAR else testo]
+        # R-660-2-M2: si guarda anche il carattere subito dopo il tetto, così una parola che
+        # finisce proprio al tetto (seguita da uno spazio) non si perde
+        testa = testo[:_PARLATO_VOCE_MAX_CHAR + 1]
+        frasi = [testo if len(testo) <= _PARLATO_VOCE_MAX_CHAR
+                 else testa.rsplit(" ", 1)[0] if " " in testa
+                 else testo[:_PARLATO_VOCE_MAX_CHAR]]
     if testo and " ".join(frasi) != testo:
         frasi.append(_PARLATO_VOCE_RESTO)
     return frasi
@@ -423,6 +429,20 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._rispondi_senza_turno(_USO_FORTE_PARLATO, "uso")
             return
 
+        if (not is_audio and self._sintesi_a_testo()
+                and os.environ.get("ELEVENLABS_API_KEY", "").strip()):
+            # V12 (R-663-1-M2, decisione dell'operatore): anche una richiesta a TESTO che chiede
+            # la risposta a voce spende ElevenLabs, quindi conta nel tetto orario; controllata
+            # prima del turno, così oltre il tetto non parte nessun lavoro. Senza chiave
+            # ElevenLabs non si spende nulla e non conta (R-665-3-M2, come i rifiuti locali V5)
+            tetto = _max_turni_ora()
+            if len(self._turni_recenti()) >= tetto:
+                self._send_json(429, {"error": (
+                    f"Troppe richieste a voce nell'ultima ora ({tetto}, GAS_VOICE_MAX_TURNI_ORA): "
+                    "nessun lavoro avviato. Riprova più tardi o chiedi la risposta solo a testo.")})
+                return
+            type(self).turni_parlati = self._turni_recenti() + [time.monotonic()]
+
         t_cervello: Optional[float] = None
         try:
             result_content: Optional[str] = None
@@ -482,7 +502,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(200, out)
 
     def _turni_recenti(self) -> List[float]:
-        """Istanti delle richieste a voce (chiamate a Groq) dell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
+        """Istanti delle richieste a voce (chiamate a Groq) e, dalla V12, delle richieste a testo
+        con risposta a voce, nell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
         adesso = time.monotonic()
         return [t for t in self.turni_parlati if adesso - t < 3600]
 
@@ -491,6 +512,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
     def _vuole_audio_testo(self) -> bool:
         return self._formato() in (_FORMATO_AUDIO_TESTO, _FORMATO_PEZZI)
+
+    def _sintesi_a_testo(self) -> bool:
+        """V12: la richiesta (a testo) chiede una risposta sintetizzata da ElevenLabs: gli
+        stessi rami della risposta finale che chiamano la sintesi."""
+        return self._vuole_audio_testo() or (
+            self._wants_audio() and self._formato() != _FORMATO_PEZZI_VOCE)
 
     def _vuole_righe_senza_schermo(self) -> bool:
         """V10: il client H24 chiede le righe NDJSON ma non ha uno schermo. V11 (V-1 bot #330

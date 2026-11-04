@@ -1221,10 +1221,11 @@ def test_v7b_frasi_parlate_ricompongono_la_parte_parlata():
 
 def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k", turni=None,
                   trascrizione="Gas, dimmi", prompt_testo=None):
-    from unittest.mock import patch
-    """Server voce vero con kernel e servizi finti; ritorna (status, content-type, righe).
+    """Server voce vero con kernel e servizi finti; ritorna (content-type, righe, mock della
+    sintesi).
     `turni` (lista) riceve i kw di ogni run_turn (V10: quale istruzione arriva).
     Con `prompt_testo` la richiesta è a testo (JSON), non a voce (V11)."""
+    from unittest.mock import patch
     import urllib.request
     from modules.voice.server import VoiceHandler
 
@@ -1370,6 +1371,91 @@ def test_v11_audio_pezzi_a_testo_solo_testo():
                                    formato="audio+pezzi", prompt_testo="dimmi")
     assert ct.startswith("application/json") and tts.call_count == 0
     assert righe[0]["content"] == testo and "audio" not in righe[0]
+
+
+def test_v12_frasi_voce_parola_al_tetto():
+    """V12 (R-660-2-M2): una prima frase più lunga del tetto con una parola che finisce
+    proprio al tetto non perde quella parola; senza spazi si taglia al tetto."""
+    from modules.voice.server import frasi_voce, _PARLATO_VOCE_MAX_CHAR, _PARLATO_VOCE_RESTO
+    parole = ["abcdefghij"] + ["abcdefghi"] * 200      # 10 + 149 × (1 + 9) = 1500 al tetto
+    testo = " ".join(parole)
+    assert testo[_PARLATO_VOCE_MAX_CHAR] == " "
+    taglio, resto = frasi_voce(testo)
+    assert taglio == testo[:_PARLATO_VOCE_MAX_CHAR] and resto == _PARLATO_VOCE_RESTO
+    taglio, resto = frasi_voce("x" * 2000)
+    assert taglio == "x" * _PARLATO_VOCE_MAX_CHAR and resto == _PARLATO_VOCE_RESTO
+
+
+def test_v12_audio_pezzi_senza_chiave_json():
+    """V12 (R-660-1-M2): «audio+pezzi» senza chiave ElevenLabs → un JSON unico con
+    errore_voce (non NDJSON, non 503): il client H24 lo distingue dal Content-Type."""
+    ct, righe, tts = _voce_a_pezzi("Uno. Due.", lambda *a: b"x", formato="audio+pezzi", chiave=None)
+    assert ct.startswith("application/json") and tts.call_count == 0
+    assert righe[0]["content"] == "Uno. Due." and "ELEVENLABS_API_KEY" in righe[0]["errore_voce"]
+
+
+def test_v12_testo_con_sintesi_conta_nel_tetto():
+    """V12 (R-663-1-M2, decisione dell'operatore): una richiesta a TESTO che chiede la risposta
+    a voce conta nel tetto orario; oltre il tetto 429 senza turno. Il solo testo non conta, la
+    voce conta una volta sola, senza chiave ElevenLabs non conta."""
+    import urllib.error
+    import urllib.request
+    from unittest.mock import patch
+    from modules.voice.server import VoiceHandler
+    turni = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            turni.append(prompt)
+            yield {"type": "final", "content": "Ciao."}
+
+    class _H(VoiceHandler):
+        pass
+    _H.kernel = _K()
+    _H.token = "tok"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    apri = urllib.request.build_opener(urllib.request.ProxyHandler({})).open
+
+    def manda(intestazioni, voce=False):
+        dati, tipo = ((b"RIFF" + bytes(60), "audio/wav") if voce
+                      else (b'{"prompt": "dimmi"}', "application/json"))
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{srv.server_address[1]}/voice", data=dati, method="POST",
+            headers={"Authorization": "Bearer tok", "Content-Type": tipo, **intestazioni})
+        try:
+            with apri(req, timeout=10) as r:
+                return r.status
+        except urllib.error.HTTPError as exc:
+            return exc.code
+    try:
+        with patch("modules.voice.server.synthesize_speech", return_value=b"mp3"), \
+             patch("modules.voice.server.transcribe_audio", return_value="Gas, dimmi"), \
+             patch.dict(os.environ, {"ELEVENLABS_API_KEY": "k", "GROQ_API_KEY": "g",
+                                     "GAS_VOICE_MAX_TURNI_ORA": "3"}):
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            # R-665-1-M2: una richiesta a VOCE conta una volta sola (Groq), non due
+            assert manda({"X-Gas-Formato": "audio+testo"}, voce=True) == 200
+            assert manda({"X-Gas-Formato": "audio+testo"}, voce=True) == 200
+            assert manda({"X-Gas-Formato": "audio+testo"}) == 200
+            assert manda({}) == 200                                  # solo testo: non conta
+            # R-665-2-M2: audio+pezzi a testo è solo testo (V11) e non conta, anche con
+            # Accept: audio/mpeg come manda il client H24
+            assert manda({"X-Gas-Formato": "audio+pezzi", "Accept": "audio/mpeg"}) == 200
+            assert manda({"X-Gas-Formato": "audio+testo+pezzi"}) == 429
+            assert manda({"Accept": "audio/mpeg"}) == 429
+            assert manda({"X-Gas-Formato": "audio+testo"}, voce=True) == 429
+        assert len(turni) == 5 and len(_H.turni_parlati) == 3
+        # R-665-3-M2: senza chiave ElevenLabs non si spende nulla, quindi non conta
+        _H.turni_parlati = []
+        with patch.dict(os.environ, {"GAS_VOICE_MAX_TURNI_ORA": "1"}):
+            os.environ.pop("ELEVENLABS_API_KEY", None)
+            assert manda({"X-Gas-Formato": "audio+testo"}) == 200
+            assert manda({"X-Gas-Formato": "audio+testo"}) == 200
+        assert _H.turni_parlati == []
+    finally:
+        srv.shutdown()
+        srv.server_close()
 
 
 def test_v7b_proxy_inoltra_le_righe_appena_arrivano():
