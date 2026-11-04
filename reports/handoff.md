@@ -15,6 +15,7 @@
 - **V12 — R-663-1-M2** (decisione dell'operatore via M1): `FATTA` — una richiesta a testo con risposta a voce conta nel tetto orario; 429 prima del turno.
 - **Altre BASSE**: R-660-1-M2 `FATTA` (test senza chiave), R-660-2-M2 `FATTA` (parola al tetto), V-2 cosmetica bot #330 su ae3258e `FATTA`, V-1 cosmetica bot #331 `FATTA`.
 - **Riserve della review #665-M2** (R-665-1/2/3-M2): `FATTE` nella stessa fetta (review #666-M2 APPROVATO).
+- **File di ripartenza** `reports/ripartenza_m2.md` (chiesto da M1 prima del clear della chat): `FATTA`.
 - **Tetto sul numero di frasi** (V-1 verifica esterna su 956a00a): `DEFERITA` — non chiesta in questa fetta; il parlato resta entro 1500 caratteri.
 
 ---
@@ -26,6 +27,7 @@
  modules/voice/server.py            |  37 ++++++++++++++++++++++++++++++++-----
  reports/diff_sessione.md           |   9 ++++-----
  reports/handoff.md                 | n/d
+ reports/ripartenza_m2.md           |  31 +++++++++++++++++++++++++++++++
  reports/stato_progetto.md          |   3 ++-
  reports/ultimo_report.md           |  19 +++++++++----------
  tests/test_unit_voice_server.py    |  90 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
@@ -36,6 +38,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+89a176d docs(voce): file di ripartenza della chat M2 (PR #332)
+bbf45e5 docs(voce-v12): report di fine task (PR #332, review #665–#666-M2)
 f970f75 fix(voce): V12 — anche il testo con risposta a voce conta nel tetto orario; taglio al tetto senza perdere parole; riserve basse V10/V11 (review #665–#666-M2)
 f573267 chore(revisore): memoria review #666 — APPROVATO
 287d393 chore(revisore): memoria review #665 — APPROVATO CON RISERVE
@@ -139,7 +143,7 @@ Copia scratch e script dei mutanti:
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check lette dalle notifiche.
-- 287d393, f573267, f970f75 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (f970f75 pushato prima dei report; la run sul push finale testerà solo la testa).
+- 287d393, f573267, f970f75, bbf45e5, 89a176d e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (f970f75 pushato prima dei report; la run sul push finale testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
