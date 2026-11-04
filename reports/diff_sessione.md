@@ -1,13 +1,9 @@
-# Diff della sessione — 2026-11-03 — Mani: fetta 39, ascolto H24 a frasi in fila
+# Diff della sessione — 2026-11-03 — Voce V11 (chat M2)
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+- `modules/voice/server.py` — attributo `_parlato` (richiesta a voce); `audio+pezzi` dà righe e sintesi solo alle richieste a voce, a testo solo JSON (V-1 bot #330 su ae3258e).
+- `tests/test_unit_voice_server.py` — test V11 (richiesta a testo con `audio+pezzi`: niente sintesi); l'helper `_voce_a_pezzi` accetta `prompt_testo`; docstring del test V10 corretto.
+- `.claude/agents/memoria_revisore.md` — review #663–#664-M2.
+- Merge di origin/main (#329, fetta 39): nessun file in più rispetto a main oltre a quelli qui elencati.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
 
-- `clients/voice/ascolto.py`: formato `audio+pezzi` (righe NDJSON, una frase alla volta) con ripieghi; `Ascolto.turno` suona i pezzi in fila e chiude la risposta; conto degli errori del rilevatore con 10 s di blocchi buoni per azzerarsi; `GAS_ASCOLTO_FORMATO`.
-- `scripts/voce/installa.sh`: `valore_env` legge il .env come Gas (token, GAS_CLAUDE_BIN, porta, GAS_VOICE_URL); valori con # e percorsi non assoluti segnalati.
-- `scripts/voce/LEGGIMI.md`: frasi in fila, `GAS_ASCOLTO_FORMATO`, frasi sui log corrette.
-- `tests/test_unit_voce_ascolto.py`: da 93 a 149 test.
-- `.claude/agents/memoria_revisore.md`: riga della review #632.
-- `reports/stato_progetto.md`, `reports/roadmap.md`: fetta 39.
-- `reports/ultimo_report.md`, `reports/diff_sessione.md`, `reports/handoff.md`: report di fine task.
-- Merge di origin/main (PR #327 di M2, voce V9): entrano browser_server.py, browser_client.html, i test del server voce e la memoria del revisore, invariati (review #633).
-- Merge di origin/main (PR #330 di M2, voce V10, formato audio+pezzi): entrano modules/voice/server.py, i test del server voce e la memoria del revisore, invariati (review #634).
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

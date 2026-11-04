@@ -277,6 +277,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
     _capito: Optional[str] = None  # V6: trascrizione della richiesta in corso (per istanza)
     _tempi: Optional[Dict[str, float]] = None  # V7: secondi per pezzo della richiesta in corso
     _t0: float = 0.0
+    _parlato: bool = False  # V11: la richiesta in corso è a voce (audio), non a testo
     turni_parlati: List[float] = []  # V4/V5: istanti delle chiamate a Groq (tetto orario)
     prove_voci: List[float] = []  # V8: istanti delle prove di voce ElevenLabs (tetto orario)
     # V8 (R-624-1-M2): id delle voci mostrate dall'ultimo elenco (già filtrate: niente
@@ -350,6 +351,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self._t0 = time.monotonic()
         self._tempi = {}
         self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
+        self._parlato = False
         if self.path in ("/voci/prova", "/voci/aggiungi"):  # V8/V8b: prova o aggiunta di una voce
             if not self._check_auth():
                 self._send_json(401, {"error": "Unauthorized"})
@@ -386,6 +388,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         ct_base = content_type.split(";")[0].strip().lower()
         is_audio = ct_base.startswith("audio/") or ct_base == "multipart/form-data"
 
+        self._parlato = is_audio
         if is_audio:
             # V4 (V-2 ve #311, R-580-2-M2): tetto orario delle richieste a voce controllato PRIMA
             # della trascrizione, così oltre il tetto non si spende nemmeno Groq
@@ -457,7 +460,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
             self._do_audio_testo_response(result_content)
-        elif self._wants_audio():
+        elif self._wants_audio() and self._formato() != _FORMATO_PEZZI_VOCE:
             self._do_tts_response(result_content)
         else:
             out: Dict[str, Any] = {"content": result_content}
@@ -490,8 +493,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
         return self._formato() in (_FORMATO_AUDIO_TESTO, _FORMATO_PEZZI)
 
     def _vuole_righe_senza_schermo(self) -> bool:
-        """V10: il client H24 chiede le righe NDJSON ma non ha uno schermo."""
-        return self._formato() == _FORMATO_PEZZI_VOCE
+        """V10: il client H24 chiede le righe NDJSON ma non ha uno schermo. V11 (V-1 bot #330
+        su ae3258e): solo per le richieste a voce, che passano dal tetto orario; una richiesta a
+        testo con questo formato riceve solo il testo (JSON), mai la sintesi ElevenLabs."""
+        return self._formato() == _FORMATO_PEZZI_VOCE and self._parlato
 
     def _do_audio_testo_response(self, text: str, extra: Optional[Dict[str, Any]] = None) -> None:
         """V3: JSON {"content": testo intero, "audio": base64 MP3 della parte parlata}.

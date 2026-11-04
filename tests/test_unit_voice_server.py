@@ -1220,10 +1220,11 @@ def test_v7b_frasi_parlate_ricompongono_la_parte_parlata():
 
 
 def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k", turni=None,
-                  trascrizione="Gas, dimmi"):
+                  trascrizione="Gas, dimmi", prompt_testo=None):
     from unittest.mock import patch
     """Server voce vero con kernel e servizi finti; ritorna (status, content-type, righe).
-    `turni` (lista) riceve i kw di ogni run_turn (V10: quale istruzione arriva)."""
+    `turni` (lista) riceve i kw di ogni run_turn (V10: quale istruzione arriva).
+    Con `prompt_testo` la richiesta è a testo (JSON), non a voce (V11)."""
     import urllib.request
     from modules.voice.server import VoiceHandler
 
@@ -1240,9 +1241,14 @@ def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"
     srv = HTTPServer(("127.0.0.1", 0), _H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     env = {"GROQ_API_KEY": "k", **({"ELEVENLABS_API_KEY": chiave} if chiave else {})}
+    if prompt_testo is None:
+        dati, tipo = b"RIFF" + bytes(60), {"Content-Type": "audio/wav"}
+    else:
+        dati = json.dumps({"prompt": prompt_testo}).encode()
+        tipo = {"Content-Type": "application/json", "Accept": "audio/mpeg"}
     req = urllib.request.Request(
-        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=b"RIFF" + bytes(60), method="POST",
-        headers={"Authorization": "Bearer tok", "Content-Type": "audio/wav", "X-Gas-Formato": formato})
+        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=dati, method="POST",
+        headers={"Authorization": "Bearer tok", "X-Gas-Formato": formato, **tipo})
     try:
         with patch("modules.voice.server.transcribe_audio", side_effect=[trascrizione]), \
              patch("modules.voice.server.synthesize_speech", side_effect=sintesi) as tts, \
@@ -1342,8 +1348,9 @@ def test_v10_formato_audio_pezzi_senza_schermo():
 
 
 def test_v10_non_ho_capito_a_righe():
-    """V10: anche «non ho capito» arriva a righe col formato senza schermo (il client H24
-    legge sempre NDJSON), senza far partire il turno."""
+    """V10: anche «non ho capito» arriva a righe col formato senza schermo, senza far partire
+    il turno (il client H24 legge NDJSON solo con Content-Type application/x-ndjson: testo
+    vuoto, chiave ElevenLabs mancante ed errori prima del turno restano un JSON unico)."""
     from modules.voice.stt import TrascrizioneIncerta
     turni = []
     ct, righe, tts = _voce_a_pezzi("mai usato", lambda frase, k, v: frase.encode(),
@@ -1352,6 +1359,17 @@ def test_v10_non_ho_capito_a_righe():
     assert ct.startswith("application/x-ndjson") and turni == []
     assert righe[0]["non_capito"] is True and righe[0]["capito"] == "boh"
     assert righe[-1]["fine"] is True and tts.call_count == 1
+
+
+def test_v11_audio_pezzi_a_testo_solo_testo():
+    """V11 (V-1 bot #330 su ae3258e): una richiesta a TESTO con «audio+pezzi» non passa dal
+    tetto orario, quindi riceve solo il testo (JSON): nessuna sintesi ElevenLabs, anche se
+    chiede Accept: audio/mpeg."""
+    testo = "Uno. Due. Tre."
+    ct, righe, tts = _voce_a_pezzi(testo, lambda frase, k, v: frase.encode(),
+                                   formato="audio+pezzi", prompt_testo="dimmi")
+    assert ct.startswith("application/json") and tts.call_count == 0
+    assert righe[0]["content"] == testo and "audio" not in righe[0]
 
 
 def test_v7b_proxy_inoltra_le_righe_appena_arrivano():
