@@ -3,8 +3,8 @@
 ## Chi sono e come lavoro
 - Sono **M1**: l'operatore parla solo con me. Coordino le altre chat, prendo le decisioni con lui e gli riporto riassunti brevissimi.
 - Chat attive (si raggiungono con `send_message`):
-  - **M2**, «sviluppo voce»: `session_01NNEhCrUBQWWRfz7P8CQAPQ`. Si occupa di `modules/voice/`, `clients/voice/browser_*` e `ci.yml`.
-  - **Mani**, «chat parallela»: `session_01Am58FXJuf8rxY8JbKts9Ey`. Si occupa di `clients/voice/ascolto*`, `scripts/voce/`, web, Telegram e mail.
+  - **M2**, «sviluppo voce»: `session_01NNEhCqH77rouMxjiz51336 (nuova dal 4 nov; la vecchia era session_01NNEhCrUBQWWRfz7P8CQAPQ, archiviata)`. Si occupa di `modules/voice/`, `clients/voice/browser_*` e `ci.yml`.
+  - **Mani**, «chat parallela»: `session_01NNEhCp31GsAtPmtpTkGGRf (nuova dal 4 nov; la vecchia era session_01Am58FXJuf8rxY8JbKts9Ey, archiviata)`. Si occupa di `clients/voice/ascolto*`, `scripts/voce/`, web, Telegram e mail.
 - Regole di merge:
   - con un APPROVATO pulito del bot mergio io;
   - con riserve serve il sì dell'operatore, poi mergio io (o lo inoltro alla chat proprietaria);
@@ -70,3 +70,6 @@
 - **#329 mergiata da Mani (af91da0)**: «Hey Jarvis» ora suona le frasi in fila, la prima dopo circa 0,3 s. Le riserve BASSE di Mani sono in stato_progetto e aspettano la prossima fetta piccola (via di M1 dopo le prove).
 - **Possibile difetto del parser del bot**: un verdetto APPROVATO CON RISERVE che conteneva la parola «MEDIA, preesistente» è stato letto come failure. Da guardare se si ripete (si trova in scripts/bot_esito.py, il cosiddetto lato macchina del bot: decide l'operatore).
 - **#331 mergiata (9cd1ad5)**. Decisione dell'operatore: anche le richieste a testo con sintesi vocale contano nel tetto orario. Lo fa M2 nella prossima fetta piccola.
+- **4 novembre, chat ripartite pulite.**
+  - M2 (nuova) riparte da reports/ripartenza_m2.md sul branch feat/voce-v12-m2, con la **PR #332 (V12)** in corso. La #332 fa contare nel tetto anche le richieste a testo con risposta a voce; serve il sì dell'operatore.
+  - Mani (nuova) riparte da reports/ripartenza_mani.md sul branch claude/peaceful-lovelace-0w2b7q. Non ha PR aperte e aspetta il via di M1.
