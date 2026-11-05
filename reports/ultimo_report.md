@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #341 (https://github.com/Gasss23/Gas/pull/341): review #676 APPROVATO CON RISERVE e PR nel perimetro, quindi decide l'operatore tramite M1.
+1. Merge della PR #341 (https://github.com/Gasss23/Gas/pull/341) SOLO DOPO (o insieme a) la PR #339 di M2: senza il server V15 la finestra di 40 s allunga il tempo in cui il parlato della stanza viene inviato e risposto (V-1 MEDIA della verifica esterna). Review #676 APPROVATO CON RISERVE e PR nel perimetro, quindi decide l'operatore tramite M1.
 
 ## Esito
 
@@ -14,6 +14,12 @@
   - Suite ascolto 248 passed; 15 mutanti presi.
   - Review #676 APPROVATO CON RISERVE (R-676-1/2/3 BASSE; la R-676-3 è sul server di M2 ed è girata a M1).
   - Il commit di merge su main ha un diff identico a quello rivisto.
+
+## Verdetti su 43fa6ac (PR #341)
+
+- Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/341#issuecomment-6672694572).
+  - V-1 MEDIA: l'ordine di merge non era dichiarato. Chiusa dichiarandolo: la #341 si mergia dopo la #339.
+  - V-2/V-3/V-4: BASSE, registrate.
 
 ## Anomalie
 

@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #341 (https://github.com/Gasss23/Gas/pull/341). Review #676 APPROVATO CON RISERVE e PR nel perimetro: decide l'operatore tramite M1. Numero e URL dalla risposta dello strumento GitHub `create_pull_request`.
+1. Merge della PR #341 (https://github.com/Gasss23/Gas/pull/341) SOLO DOPO (o insieme a) la PR #339 di M2 (V15, lato server). Motivo (V-1 MEDIA della verifica esterna): senza la #339 in main la #341 allunga la finestra da 12 a 40 s e mette il tetto di 15 s, ma il filtro «parlato non per Gas» e la «pausa» non esistono ancora sul server, quindi il parlato della stanza sotto i 15 s verrebbe ancora inviato e risposto per 40 s invece che 12. Review #676 APPROVATO CON RISERVE e PR nel perimetro: decide l'operatore tramite M1. Numero e URL dalla risposta dello strumento GitHub `create_pull_request`.
 
 ---
 
@@ -25,7 +25,7 @@
  clients/voice/ascolto.py           | 144 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
  reports/diff_sessione.md           |  14 +++++++-------
  reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           |  25 +++++++++++--------------
+ reports/ultimo_report.md           |  31 +++++++++++++++++--------------
  scripts/voce/LEGGIMI.md            |  28 +++++++++++++++++++++-------
  tests/test_unit_voce_ascolto.py    | 230 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  reports/handoff.md                 | n/d
@@ -36,6 +36,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+43fa6ac docs(fine-task): fetta 43 parte 2 chat Mani — finestra di 40 s e difese, review #676, PR #341; PR #340 mergiata
 51c4aa0 Merge branch 'mani/finestra' into claude/peaceful-lovelace-0w2b7q
 4cd7b97 feat(voce): fetta 43 parte 2 — finestra di 40 s e difese contro il parlato della stanza
 da24b2c chore(revisore): memoria review #676 — APPROVATO CON RISERVE
@@ -117,6 +118,7 @@ I due mutanti di stato trovati dal revisore sono nella riserva R-676-1.
 `gh` non usato (GitHub passa dallo strumento MCP).
 
 Mappatura commit → run:
+- 43fa6ac: unit-suite in corso alla lettura della verifica esterna, handoff-check success.
 - 51c4aa0, 4cd7b97, da24b2c: pushati insieme prima di aprire la PR #341; run del push non letta alla scrittura dell'handoff.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
@@ -126,4 +128,5 @@ Mappatura commit → run:
 - R-676-2 BASSA: lo svuota dopo «fine» non è coperto da test.
 - R-676-3 BASSA, per M2 (girata a M1): trascrizione incerta di seguito → «Non ho capito» a voce invece di «fine».
 - Dalla #340: bot V-1 BASSA (conferma non suonabile = silenzio), verifica esterna V-4 BASSA (eco dopo la conferma), R-675-1 BASSA.
+- Verifica esterna su 43fa6ac (https://github.com/Gasss23/Gas/pull/341#issuecomment-6672694572): V-1 MEDIA (ordine di merge: la #341 dopo la #339) → chiusa dichiarando l'ordine in §0, nella PR e in stato_progetto; V-2 = R-676-1; V-3 BASSA («fine» su un turno non di seguito non è coperto da test); V-4 BASSA (una «pausa» interrotta dalla parola non chiude: il ramo dell'interruzione viene prima).
 - Restano le riserve delle fette 40, 41 e 43 parte 1, in `reports/stato_progetto.md`.
