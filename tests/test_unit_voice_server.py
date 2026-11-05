@@ -1340,7 +1340,7 @@ def test_v10_formato_audio_pezzi_senza_schermo():
     ct, righe, tts = _voce_a_pezzi(testo, lambda frase, k, v: frase.encode(),
                                    formato="audio+pezzi", turni=turni)
     assert ct.startswith("application/x-ndjson")
-    assert turni[0]["istruzione_turno"] == ISTRUZIONE_VOCE
+    assert turni[0]["istruzione_turno"].startswith(ISTRUZIONE_VOCE + " Adesso sono le ")  # V13
     frasi = [c.args[0] for c in tts.call_args_list]
     assert frasi == ["Uno.", "Due.", "Tre.", "Quattro.", "Cinque."]   # più di 3, niente «resto»
     assert righe[0]["content"] == testo and righe[0]["pezzi"] == 5
@@ -1644,3 +1644,46 @@ def test_v9_gas_voice_agc(monkeypatch, valore, atteso):
     with pytest.raises(_Fermo):
         bs.run_browser_server()
     assert bs.BrowserProxyHandler.agc is atteso
+
+
+# ── V13 (chat M2): ora locale nel turno parlato, risposte a voce più corte ──
+
+def test_v13_ora_per_voce_data_ora_e_fuso_locali():
+    """V13: la frase dell'ora usa l'ora LOCALE passata (fuso compreso), giorno e mese in
+    italiano, e dice di non usare strumenti."""
+    from datetime import datetime, timedelta, timezone
+    from modules.voice.server import ora_per_voce
+    roma = timezone(timedelta(hours=1), "CET")
+    frase = ora_per_voce(datetime(2026, 11, 5, 18, 7, tzinfo=roma))
+    assert frase.startswith("Adesso sono le 18:07 di giovedì 5 novembre 2026 (ora locale, fuso CET)")
+    assert "senza usare strumenti" in frase
+    # il fuso conta: lo stesso istante in UTC è un'altra ora e un altro giorno
+    tardi = ora_per_voce(datetime(2026, 12, 31, 23, 30, tzinfo=timezone.utc).astimezone(
+        timezone(timedelta(hours=2), "EET")))
+    assert "01:30 di venerdì 1 gennaio 2027" in tardi and "fuso EET" in tardi
+
+
+def test_v13_ora_per_voce_senza_argomento_usa_l_orologio_locale():
+    """V13: senza `adesso` vale l'ora locale della macchina (datetime.now().astimezone())."""
+    from datetime import datetime
+    from modules.voice.server import ora_per_voce
+    prima = datetime.now().astimezone()
+    frase = ora_per_voce()
+    dopo = datetime.now().astimezone()
+    assert any(f"Adesso sono le {t:%H:%M} di " in frase for t in (prima, dopo))
+    assert f"fuso {prima.tzname()}" in frase
+
+
+def test_v13_istruzione_turno_voce_con_e_senza_schermo():
+    """V13: l'istruzione del turno parlato è quella V3/V4 più l'ora; entrambe chiedono al
+    massimo due frasi."""
+    from datetime import datetime, timezone
+    from modules.voice.server import (ISTRUZIONE_VOCE, ISTRUZIONE_VOCE_SCHERMO,
+                                      istruzione_turno_voce)
+    t = datetime(2026, 11, 5, 9, 5, tzinfo=timezone.utc)
+    assert istruzione_turno_voce(False, t) == ISTRUZIONE_VOCE + " " + \
+        "Adesso sono le 09:05 di giovedì 5 novembre 2026 (ora locale, fuso UTC): per l'ora " \
+        "o la data rispondi con questa, senza usare strumenti."
+    assert istruzione_turno_voce(True, t).startswith(ISTRUZIONE_VOCE_SCHERMO + " Adesso sono le 09:05")
+    for istr in (ISTRUZIONE_VOCE, ISTRUZIONE_VOCE_SCHERMO):
+        assert "mai più di due" in istr and "1-3" not in istr

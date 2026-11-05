@@ -449,7 +449,9 @@ class TestVoiceHandlerRouting:
                 status, resp = _post_raw(self.port, wav, hdrs)
         assert status == 200
         from modules.voice.server import ISTRUZIONE_VOCE
-        assert visti == [("analizza i lead", {"cervello": "forte", "istruzione_turno": ISTRUZIONE_VOCE})]
+        assert len(visti) == 1 and visti[0][0] == "analizza i lead"
+        assert visti[0][1]["cervello"] == "forte"
+        assert visti[0][1]["istruzione_turno"].startswith(ISTRUZIONE_VOCE + " Adesso sono le ")  # V13
 
     def _uso_parlato(self, trascritto: str, extra_env: dict | None = None, accept: str | None = None):
         visti = []
@@ -505,7 +507,8 @@ class TestVoiceHandlerRouting:
             with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
                 os.environ.pop("GAS_VOCE_FORTE", None)
                 status, _ = _post_raw(self.port, wav, hdrs)
-        assert status == 200 and self.kernel.kw == {"istruzione_turno": ISTRUZIONE_VOCE}
+        assert status == 200 and set(self.kernel.kw) == {"istruzione_turno"}
+        assert self.kernel.kw["istruzione_turno"].startswith(ISTRUZIONE_VOCE + " Adesso sono le ")  # V13
         body = json.dumps({"prompt": "ciao"}).encode()
         with patch.dict(os.environ, {}):
             os.environ.pop("GAS_VOCE_FORTE", None)
@@ -524,7 +527,8 @@ class TestVoiceHandlerRouting:
                 os.environ.pop("GAS_VOCE_FORTE", None)
                 os.environ.pop("ELEVENLABS_API_KEY", None)
                 status, _ = _post_raw(self.port, wav, hdrs)
-        assert status == 200 and self.kernel.kw == {"istruzione_turno": ISTRUZIONE_VOCE_SCHERMO}
+        assert status == 200 and set(self.kernel.kw) == {"istruzione_turno"}
+        assert self.kernel.kw["istruzione_turno"].startswith(ISTRUZIONE_VOCE_SCHERMO + " Adesso sono le ")  # V13
         assert "riga vuota" in ISTRUZIONE_VOCE_SCHERMO
 
     def test_v4_tetto_orario_dei_turni_parlati(self):
