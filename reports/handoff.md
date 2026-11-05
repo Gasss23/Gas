@@ -16,6 +16,7 @@
   `GAS_ASCOLTO_VOCE_RMS` predefinito da 500 a 200 (costante `VOCE_RMS_PREDEFINITO`), LEGGIMI aggiornato, 3 test nuovi (5 casi) con mutanti uccisi. Motivo: prova dell'operatore sul MacBook Air del 5 novembre.
 - **Ripartenza della chat Mani (b7f2c23)**: `FATTA` (sessione precedente) — unita con un merge perché non era ancora in main.
 - **Riserve basse della fetta 39**: `DEFERITA — M1 ha chiesto solo la soglia`.
+- **Registrazione dei verdetti di bot e verifica esterna su 2c8cd2a**: `FATTA` — entrambi APPROVATO CON RISERVE, nessuna ALTA o MEDIA; riserve in stato_progetto.
 
 ---
 
@@ -125,4 +126,6 @@ Mappatura commit → run:
 - R-667-1 BASSA: con soglia 200 un rumore continuo (ventola, TV) può aprire turni da solo nella finestra di 12 s e non chiudere la richiesta prima dei 30 s. Da riprovare in una stanza rumorosa; si regola dal .env.
 - R-667-2 BASSA: nessun test fissa il limite basso (un default sceso per errore a 50 passerebbe).
 - R-667-3 COSMETICA: `test_main_passa_la_soglia_della_voce` non toglie GAS_VOICE_URL/GAS_VOICE_PORT dall'ambiente.
+- Bot su 2c8cd2a, V-1 BASSA: rumore continuo sopra 200 → fino a ~150 s di audio della stanza inviati alla trascrizione per attivazione (rimedio: soglia adattiva come nel client browser V9). V-2 COSMETICA: base della PR su GitHub vecchia (9cd1ad5).
+- Verifica esterna (https://github.com/Gasss23/Gas/pull/333#issuecomment-6665009996): V-1 BASSA (R-667-2 sovrastimata: un default a 50 fa fallire 3 test; resta scoperto solo il rumore continuo a ~150), V-2 BASSA (= bot V-2), V-3 BASSA (= R-667-1), V-4 COSMETICA (§6 citava la CI di 4f80d9d).
 - Restano le riserve della fetta 39 e precedenti, elencate in `reports/stato_progetto.md`.

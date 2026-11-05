@@ -10,6 +10,12 @@
 - **Ripartenza della chat Mani (b7f2c23)**: era sul branch remoto e nella PR #333 ma non in main; unita con un merge (niente force-push), resta nella stessa PR.
 - Riserve basse della fetta 39 (thread di lettura, bip su errore TTS, lista bianca del formato, …): DEFERITE — M1 ha chiesto solo la soglia.
 
+## Verdetti dopo la PR (giro su 2c8cd2a)
+
+- Bot (verifica-bot): APPROVATO CON RISERVE, check neutral (PR nel perimetro: decide l'operatore). V-1 BASSA (privacy di R-667-1: rumore continuo → fino a ~150 s di audio della stanza inviati), V-2 COSMETICA (base della PR su GitHub vecchia).
+- Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/333#issuecomment-6665009996). V-1 BASSA (R-667-2 sovrastimata: un default a 50 fa fallire 3 test), V-2 BASSA (base vecchia), V-3 BASSA (= R-667-1), V-4 COSMETICA (§6 sulla CI di 4f80d9d).
+- Tutte registrate in stato_progetto (blocco fetta 40) senza altri giri: nessuna ALTA o MEDIA.
+
 ## Anomalie
 
 - Il revisore ha lanciato per errore `git stash --keep-index` sul repo vero; l'ha annullato subito, index intatto (verificato anche da me: stesso diff staged, nessuno stash).
