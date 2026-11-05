@@ -26,7 +26,7 @@
  clients/voice/ascolto.py           | 151 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
  reports/diff_sessione.md           |  15 +++++++--------
  reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           |  27 ++++++++++-----------------
+ reports/ultimo_report.md           |  29 ++++++++++++++---------------
  scripts/voce/LEGGIMI.md            |   8 ++++++++
  tests/test_unit_voce_ascolto.py    | 270 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
  reports/handoff.md                 | n/d
@@ -37,6 +37,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e619103 docs(fine-task): fetta 41 chat Mani — interruzione con la parola, review #668–#669, PR #336; PR #333 mergiata
 ef65e42 feat(voce): fetta 41 — la parola di attivazione interrompe Gas mentre parla
 ```
 
@@ -44,7 +45,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit ef65e42 — review #668 (primo giro), verdetto integrale. Le citazioni si riferiscono al diff di allora; le righe sono cambiate di poco con le correzioni della #669:
+Commit ef65e42 — review #668 (primo giro), verdetto integrale. Le citazioni si riferiscono al diff di allora; le righe sono cambiate di poco con le correzioni della #669. Gli hash 808993d e 91f74aa citati nei verdetti sono commit del branch locale `mani/voce-interruzione`, mai pubblicato (V-1 della verifica esterna): sul branch remoto le righe #668/#669 della memoria sono nel commit di fine-task.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -119,11 +120,18 @@ Mutanti, tutti presi: soglia normale al posto di quella dell'interruzione (1 FAI
 
 ## §6 STATO CI
 
-`gh` non usato (GitHub passa dallo strumento MCP).
+`gh` non usato (GitHub passa dallo strumento MCP). Check della PR #336 su e619103, letti con `pull_request_read`:
+
+```
+handoff-check  success
+unit-suite     in_progress (run 42085956774)
+verifica-bot   failure (verdetto testuale APPROVATO CON RISERVE, parser che legge un MEDIA inesistente)
+```
 
 Mappatura commit → run:
-- ef65e42: pushato da solo prima di aprire la PR #336; run del suo push non letta alla scrittura dell'handoff.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- e619103: CI run 42085956774 — handoff-check success, unit-suite in corso alla scrittura.
+- ef65e42: run del suo push non letta (pushato da solo prima di aprire la PR).
+- Commit di fine-task che registra i verdetti: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

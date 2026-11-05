@@ -7,11 +7,17 @@
 ## Esito
 
 - **PR #333 (fetta 40, soglia della voce 200)**: MERGIATA (830c5bf), col sì dell'operatore via M1, dopo il merge di main (PR #334 di M2, review #670 APPROVATO) e la CI verde.
-- **Fetta 41 — interruzione**: FATTA. In `clients/voice/ascolto.py`, mentre Gas parla, si cerca solo la parola di attivazione, con soglia 0.7. Se la sente: frase fermata, frasi in fila scartate, bip e nuova richiesta, sempre sotto max_turni. afplay gira in sottofondo (`RiproduzioneAfplay`). Due variabili nuove: `GAS_ASCOLTO_INTERRUZIONE` e `GAS_ASCOLTO_SOGLIA_INTERRUZIONE`. LEGGIMI aggiornato. Suite ascolto: 173 passed; mutanti tutti presi.
+- **Fetta 41 — interruzione**: FATTA. In `clients/voice/ascolto.py`, mentre Gas parla, si cerca solo la parola di attivazione, con soglia 0.7. Se la sente: frase fermata, frasi in fila scartate, bip e nuova richiesta, sempre sotto max_turni. afplay gira in sottofondo (`RiproduzioneAfplay`). Due variabili nuove: `GAS_ASCOLTO_INTERRUZIONE` e `GAS_ASCOLTO_SOGLIA_INTERRUZIONE`. LEGGIMI aggiornato. Suite ascolto: 173 passed. I mutanti provati da me sono tutti presi; il revisore ne aveva lasciati vivi 5 nella #668 (poi coperti) e 1 equivalente nella #669 (R-669-2).
   - Review #668: APPROVATO CON RISERVE, con R-668-1 MEDIA (le interruzioni azzeravano il tetto dei turni), corretta.
   - Review #669: APPROVATO CON RISERVE (R-669-1 BASSA, R-669-2/3 COSMETICHE).
   - Il diff applicato su main è identico a quello rivisto: stesso SHA-256 del diff staged.
 - **Fetta 42 — «Sì, signore?»**: DEFERITA. Aspetta il merge della PR #335 di M2 (GET /voce/conferma). Il client deve ripiegare sul bip su qualsiasi errore, anche di connessione o timeout.
+
+## Verdetti su e619103 (PR #336)
+
+- Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/336#issuecomment-6666191964), 4 BASSE.
+- Bot: verdetto testuale APPROVATO CON RISERVE (2 BASSE, 1 COSMETICA), ma check failure: il parser ha letto un MEDIA che nel testo non c'è. Segnalato a M1.
+- Riserve registrate in stato_progetto (blocco fetta 41).
 
 ## Anomalie
 
