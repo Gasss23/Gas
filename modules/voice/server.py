@@ -106,6 +106,12 @@ _USO_FORTE_PARLATO = ("Dopo «forte» dimmi cosa fare, per esempio: «Gas, forte
                       "di oggi». Non ho avviato nessun lavoro.")
 # V6: trascrizione incerta (stt.TrascrizioneIncerta) → si chiede di ripetere, nessun turno
 _NON_HO_CAPITO = "Non ho capito bene, puoi ripetere?"
+# V13 (prova sul Mac del 5 nov): «Hey Jarvis!» detto dentro la finestra d'ascolto arrivava
+# al cervello come richiesta. Una trascrizione fatta SOLO della parola di attivazione (con
+# un saluto e la punteggiatura) riceve una risposta fissa, senza turno.
+_SOLO_ATTIVAZIONE = re.compile(
+    r"^[^\w]*(?:(?:ehi|ehy|hey|ei|ok|okay|ciao)\W+)?(?:jarvis|gas|gus)[^\w]*$", re.IGNORECASE)
+_RISPOSTA_ATTIVAZIONE = "Dimmi."
 
 
 # V3 (chat M2): con «X-Gas-Formato: audio+testo» (pagina del browser) la risposta è JSON
@@ -142,13 +148,16 @@ _CONTESTO_VOCE = (
 # V3: istruzione per i soli turni PARLATI (gas.py `run_turn(istruzione_turno=...)`: vale per
 # quel turno, nel messaggio system, fuori dalla cronologia). Il testo scritto resta com'è.
 # V13 (chat M2, prova di Jarvis sul Mac del 5 nov, decisione dell'operatore): risposte a
-# voce più corte, al massimo 2 frasi, senza premesse.
+# voce più corte, al massimo 2 frasi, senza premesse; niente «… sì o no?» in coda a ogni
+# risposta (a voce stanca), domanda solo se serve per fare quello che è stato chiesto.
 ISTRUZIONE_VOCE = (
     "Stai parlando a voce con l'operatore, in una conversazione rapida. Rispondi con una "
     "o due frasi brevi, mai più di due, senza premesse, senza ripetere la domanda, senza "
     "elenchi né formattazione. Dai subito un parere o una proposta "
-    "concreta (anche «no, meglio così»). Se serve una decisione chiudi con una domanda "
-    "secca a cui si risponde sì o no. Se il risultato è lungo, riassumilo in una frase."
+    "concreta (anche «no, meglio così»). "
+    "Non chiudere con domande né con offerte («vuoi che…?», «sì o no?»): fai una domanda "
+    "solo se senza la risposta non puoi fare quello che ti è stato chiesto. Se il risultato è lungo, "
+    "riassumilo in una frase."
     + " " + _CONTESTO_VOCE)
 # V4 (V-1 bot #311): con la pagina del browser c'è uno schermo: prima le frasi da dire,
 # poi, dopo una riga vuota, il dettaglio da leggere (non viene detto a voce).
@@ -156,8 +165,9 @@ ISTRUZIONE_VOCE_SCHERMO = (
     "Stai parlando a voce con l'operatore, in una conversazione rapida, e lui ha anche uno "
     "schermo. Apri con una o due frasi brevi da dire a voce, mai più di due, senza "
     "premesse né elenchi né formattazione: "
-    "dai subito un parere o una proposta concreta (anche «no, meglio così») e, se serve "
-    "una decisione, chiudi con una domanda secca a cui si risponde sì o no. Se servono "
+    "dai subito un parere o una proposta concreta (anche «no, meglio così»). "
+    "Non chiudere con domande né con offerte («vuoi che…?», «sì o no?»): fai una domanda "
+    "solo se senza la risposta non puoi fare quello che ti è stato chiesto. Se servono "
     "dettagli (dati, elenchi, analisi, testo lungo), scrivili DOPO una riga vuota: quella "
     "parte non viene letta a voce, l'operatore la legge a schermo."
     + " " + _CONTESTO_VOCE)
@@ -176,9 +186,13 @@ def ora_per_voce(adesso: Optional[datetime] = None) -> str:
     parlato. `adesso` solo per i test; deve avere il fuso (aware)."""
     ora = adesso if adesso is not None else datetime.now().astimezone()
     fuso = ora.tzname() or ora.strftime("UTC%z")
-    return (f"Adesso sono le {ora:%H:%M} di {_GIORNI[ora.weekday()]} {ora.day} "
-            f"{_MESI[ora.month - 1]} {ora.year} (ora locale, fuso {fuso}): per l'ora o la "
-            "data rispondi con questa, senza usare strumenti.")
+    # V-2 bot #334: «ore 1:30», senza lo zero iniziale che il modello potrebbe ripetere.
+    # V-1 bot #334: il system prompt di base dice «per data e ora usa data_ora»: qui si dice
+    # esplicitamente che per questo turno vale l'ora scritta, senza lo strumento.
+    return (f"Adesso è {_GIORNI[ora.weekday()]} {ora.day} {_MESI[ora.month - 1]} {ora.year}, "
+            f"ore {ora.hour}:{ora:%M} (ora locale, fuso {fuso}). In questo turno, per l'ora o "
+            "la data rispondi con questa e NON usare data_ora: vale al posto dell'indicazione "
+            "generale di usarlo.")
 
 
 def istruzione_turno_voce(schermo: bool, adesso: Optional[datetime] = None) -> str:
@@ -436,6 +450,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if prompt is None:
                 return  # risposta (errore o «non ho capito») già inviata
             self._capito = prompt  # V6: la pagina mostra «Ho capito: …»
+            if _SOLO_ATTIVAZIONE.match(prompt):  # V13: solo «Hey Jarvis»: nessun turno
+                self._rispondi_senza_turno(_RISPOSTA_ATTIVAZIONE, "attivazione")
+                return
         else:
             try:
                 data: Dict[str, Any] = json.loads(raw) if raw else {}
@@ -516,7 +533,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(200, out)
 
     def _rispondi_senza_turno(self, testo: str, segno: str) -> None:
-        """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito»), nel
+        """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito», «dimmi»), nel
         formato chiesto dal client; `segno` è il campo JSON che la distingue."""
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
             self._do_audio_testo_response(testo, {segno: True})

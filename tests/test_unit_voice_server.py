@@ -1340,7 +1340,7 @@ def test_v10_formato_audio_pezzi_senza_schermo():
     ct, righe, tts = _voce_a_pezzi(testo, lambda frase, k, v: frase.encode(),
                                    formato="audio+pezzi", turni=turni)
     assert ct.startswith("application/x-ndjson")
-    assert turni[0]["istruzione_turno"].startswith(ISTRUZIONE_VOCE + " Adesso sono le ")  # V13
+    assert turni[0]["istruzione_turno"].startswith(ISTRUZIONE_VOCE + " Adesso è ")  # V13
     frasi = [c.args[0] for c in tts.call_args_list]
     assert frasi == ["Uno.", "Due.", "Tre.", "Quattro.", "Cinque."]   # più di 3, niente «resto»
     assert righe[0]["content"] == testo and righe[0]["pezzi"] == 5
@@ -1655,23 +1655,33 @@ def test_v13_ora_per_voce_data_ora_e_fuso_locali():
     from modules.voice.server import ora_per_voce
     roma = timezone(timedelta(hours=1), "CET")
     frase = ora_per_voce(datetime(2026, 11, 5, 18, 7, tzinfo=roma))
-    assert frase.startswith("Adesso sono le 18:07 di giovedì 5 novembre 2026 (ora locale, fuso CET)")
-    assert "senza usare strumenti" in frase
+    assert frase.startswith("Adesso è giovedì 5 novembre 2026, ore 18:07 (ora locale, fuso CET)")
+    assert "NON usare data_ora" in frase
     # il fuso conta: lo stesso istante in UTC è un'altra ora e un altro giorno
     tardi = ora_per_voce(datetime(2026, 12, 31, 23, 30, tzinfo=timezone.utc).astimezone(
         timezone(timedelta(hours=2), "EET")))
-    assert "01:30 di venerdì 1 gennaio 2027" in tardi and "fuso EET" in tardi
+    assert "venerdì 1 gennaio 2027, ore 1:30 " in tardi and "fuso EET" in tardi  # V-2 bot #334
 
 
-def test_v13_ora_per_voce_senza_argomento_usa_l_orologio_locale():
-    """V13: senza `adesso` vale l'ora locale della macchina (datetime.now().astimezone())."""
+def test_v13_ora_per_voce_senza_argomento_usa_l_orologio_locale(monkeypatch):
+    """V13: senza `adesso` vale l'ora locale della macchina (datetime.now().astimezone()).
+    R-667-1-M2: fuso forzato diverso da UTC (CI e cloud girano in UTC), così un'ora senza
+    fuso non passa per locale."""
+    import time as _time
     from datetime import datetime
     from modules.voice.server import ora_per_voce
-    prima = datetime.now().astimezone()
-    frase = ora_per_voce()
-    dopo = datetime.now().astimezone()
-    assert any(f"Adesso sono le {t:%H:%M} di " in frase for t in (prima, dopo))
-    assert f"fuso {prima.tzname()}" in frase
+    monkeypatch.setenv("TZ", "Asia/Kolkata")  # UTC+5:30 tutto l'anno, niente ora legale
+    _time.tzset()
+    try:
+        prima = datetime.now().astimezone()
+        frase = ora_per_voce()
+        dopo = datetime.now().astimezone()
+        assert prima.utcoffset().total_seconds() == 5.5 * 3600
+        assert any(f", ore {t.hour}:{t:%M} " in frase for t in (prima, dopo))
+        assert f"fuso {prima.tzname()}" in frase and "fuso UTC" not in frase
+    finally:
+        monkeypatch.undo()
+        _time.tzset()
 
 
 def test_v13_istruzione_turno_voce_con_e_senza_schermo():
@@ -1682,8 +1692,11 @@ def test_v13_istruzione_turno_voce_con_e_senza_schermo():
                                       istruzione_turno_voce)
     t = datetime(2026, 11, 5, 9, 5, tzinfo=timezone.utc)
     assert istruzione_turno_voce(False, t) == ISTRUZIONE_VOCE + " " + \
-        "Adesso sono le 09:05 di giovedì 5 novembre 2026 (ora locale, fuso UTC): per l'ora " \
-        "o la data rispondi con questa, senza usare strumenti."
-    assert istruzione_turno_voce(True, t).startswith(ISTRUZIONE_VOCE_SCHERMO + " Adesso sono le 09:05")
+        "Adesso è giovedì 5 novembre 2026, ore 9:05 (ora locale, fuso UTC). In questo turno, " \
+        "per l'ora o la data rispondi con questa e NON usare data_ora: vale al posto " \
+        "dell'indicazione generale di usarlo."
+    assert istruzione_turno_voce(True, t).startswith(ISTRUZIONE_VOCE_SCHERMO + " Adesso è giovedì")
     for istr in (ISTRUZIONE_VOCE, ISTRUZIONE_VOCE_SCHERMO):
         assert "mai più di due" in istr and "1-3" not in istr
+        # niente «… sì o no?» in coda a ogni risposta (prova sul Mac del 5 nov)
+        assert "Non chiudere con domande" in istr and "chiudi con una domanda" not in istr
