@@ -21,6 +21,11 @@ Endpoint: POST /voice
     503:   JSON {"error": "<msg>"}  — STT/TTS non disponibile (chiave assente)
     500:   JSON {"error": "<msg>"}  — errore pipeline o kernel
 
+Endpoint: GET /voce/conferma (V14, stesso Bearer)
+  200: audio/mpeg di «Sì, signore?» con la voce attuale (ELEVENLABS_VOICE_ID), in cache per
+       voce: un solo giro su ElevenLabs finché la voce non cambia. 503 senza chiave
+       ElevenLabs, 502 se ElevenLabs fallisce: il client suona il bip.
+
 Avvio: `python -m modules.voice.server` dalla cartella di Gas (carica il `.env` come la CLI).
 
 Configurazione tramite variabili d'ambiente (da .env o export):
@@ -73,7 +78,7 @@ import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from modules.voice.stt import GroqSTTError, TrascrizioneIncerta, parse_audio_body, transcribe_audio
 from modules.voice.tts import DEFAULT_VOICE_ID as _TTS_DEFAULT_VOICE_ID
@@ -109,9 +114,20 @@ _NON_HO_CAPITO = "Non ho capito bene, puoi ripetere?"
 # V13 (prova sul Mac del 5 nov): «Hey Jarvis!» detto dentro la finestra d'ascolto arrivava
 # al cervello come richiesta. Una trascrizione fatta SOLO della parola di attivazione (con
 # un saluto e la punteggiatura) riceve una risposta fissa, senza turno.
+# V14: niente «ok/okay» fra i saluti (V-1 bot #334: «Ok Gas.» può essere la conferma a una
+# domanda di Gas e deve arrivare al cervello); la parola ripetuta («Hey Jarvis, Hey Jarvis»,
+# Whisper la raddoppia spesso) vale ancora come sola attivazione (R-668-2-M2).
+_ATTIVAZIONE_UNA = r"(?:(?:ehi|ehy|hey|ei|ciao)\W+)?(?:jarvis|gas|gus)"
 _SOLO_ATTIVAZIONE = re.compile(
-    r"^[^\w]*(?:(?:ehi|ehy|hey|ei|ok|okay|ciao)\W+)?(?:jarvis|gas|gus)[^\w]*$", re.IGNORECASE)
+    rf"^[^\w]*{_ATTIVAZIONE_UNA}(?:\W+{_ATTIVAZIONE_UNA})*[^\w]*$", re.IGNORECASE)
 _RISPOSTA_ATTIVAZIONE = "Dimmi."
+# V14 (chat M2, «Sì, signore?» deciso dall'operatore; contratto con la chat Mani via M1):
+# GET /voce/conferma → audio/mpeg della frase detta con la voce attuale, suonato dal client
+# H24 al posto del bip dopo la parola di attivazione. In cache in memoria: un solo giro su
+# ElevenLabs per voce (la chiave della cache contiene l'id della voce, quindi se la voce
+# cambia si rigenera). ElevenLabs assente o in errore → 503/502 pulito, il client usa il bip.
+_ENDPOINT_CONFERMA = "/voce/conferma"
+FRASE_CONFERMA = "Sì, signore?"
 
 
 # V3 (chat M2): con «X-Gas-Formato: audio+testo» (pagina del browser) la risposta è JSON
@@ -331,6 +347,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
     # V8 (R-624-1-M2): id delle voci mostrate dall'ultimo elenco (già filtrate: niente
     # cloni); la prova accetta solo queste, non un id qualunque scritto a mano
     voci_ammesse: frozenset = frozenset()
+    # V14: («voce», frase) e MP3 di «Sì, signore?»; una sola voce in cache (None = vuota)
+    conferma_cache: Optional[Tuple[Tuple[str, str], bytes]] = None
     # V8b: voci della libreria mostrate dall'ultima ricerca {id: (proprietario, nome)};
     # si aggiungono all'account solo queste
     libreria_ammesse: Dict[str, Any] = {}
@@ -744,6 +762,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         self._t0 = time.monotonic()
         self._tempi = None
+        if self.path == _ENDPOINT_CONFERMA:  # V14
+            if not self._check_auth():
+                self._send_json(401, {"error": "Unauthorized"})
+                return
+            self._conferma()
+            return
         if self.path not in ("/voci/elenco", "/voci/libreria"):
             self._method_not_allowed()
             return
@@ -771,6 +795,36 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 log.warning("ElevenLabs elenco voci rete: %s", exc)
                 out["errore"] = "Errore di rete verso ElevenLabs"
         self._send_json(200, out)
+
+    def _conferma(self) -> None:
+        """V14: GET /voce/conferma — «Sì, signore?» in MP3 con la voce attuale, dalla cache se
+        c'è già per quella voce (nessuna spesa), altrimenti un giro su ElevenLabs e in cache.
+        La cache tiene una sola voce: cambiando voce la vecchia frase si butta."""
+        api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        if not api_key:
+            self._send_json(503, {"error": "Conferma non disponibile: ELEVENLABS_API_KEY non configurata"})
+            return
+        voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+        chiave = (voice_id, FRASE_CONFERMA)
+        cache = type(self).conferma_cache
+        if cache is not None and cache[0] == chiave:
+            self._send_audio(cache[1])
+            return
+        try:
+            audio = synthesize_speech(FRASE_CONFERMA, api_key, voice_id)
+        except ElevenLabsTTSError as exc:
+            log.warning("ElevenLabs conferma status=%s: %s", exc.status, exc.message)
+            self._send_json(502, {"error": f"Errore TTS ElevenLabs: {exc.message}"})
+            return
+        except OSError as exc:
+            log.warning("ElevenLabs conferma rete: %s", exc)
+            self._send_json(502, {"error": "Errore di rete verso ElevenLabs TTS"})
+            return
+        if not audio:  # mai in cache una risposta vuota: il client ripiega sul bip
+            self._send_json(502, {"error": "Errore TTS ElevenLabs: audio vuoto"})
+            return
+        type(self).conferma_cache = (chiave, audio)
+        self._send_audio(audio)
 
     def _libreria(self) -> None:
         """V8b: GET /voci/libreria — le migliori voci della libreria condivisa (da aggiungere
