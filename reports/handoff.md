@@ -22,14 +22,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  1 +
- reports/diff_sessione.md           | 15 ++++++++-------
- reports/stato_progetto.md          |  8 ++++++--
- reports/ultimo_report.md           | 30 ++++++++++++++----------------
- scripts/voce/LEGGIMI.md            | 15 ++++++++++++---
- scripts/voce/pausa.sh              | 31 +++++++++++++++++++++++++++++++
- scripts/voce/riprendi.sh           | 31 +++++++++++++++++++++++++++++++
- tests/test_unit_voce_ascolto.py    | 77 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ .claude/agents/memoria_revisore.md |   1 +
+ reports/diff_sessione.md           |  15 ++++++++-------
+ reports/stato_progetto.md          |   8 ++++++--
+ reports/ultimo_report.md           |  32 ++++++++++++++++++--------------
+ scripts/voce/LEGGIMI.md            |  15 ++++++++++++---
+ scripts/voce/pausa.sh              |  31 +++++++++++++++++++++++++++++++
+ scripts/voce/riprendi.sh           |  31 +++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py    |  77 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
  reports/handoff.md                 | n/d
 ```
 
@@ -38,12 +38,13 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+467ac4f docs(fine-task): fetta 43 — conteggio dei test corretto nell'handoff (173 → 185)
 bb35796 docs(fine-task): fetta 43 chat Mani — pausa.sh e riprendi.sh, review #673, PR #338
 c1597d0 feat(voce): fetta 43 — pausa.sh e riprendi.sh (standby dell'ascolto dal Terminale)
 f1df0ac chore(revisore): memoria review #673 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+NB: il commit di fine-task che contiene questo file (quello che registra i verdetti) non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -84,16 +85,24 @@ Mutanti, tutti presi: pausa che spegne anche il server (2 FAILED), niente attesa
 
 ## §6 STATO CI
 
-`gh` non usato (GitHub passa dallo strumento MCP).
+`gh` non usato (GitHub passa dallo strumento MCP). Check della PR #338 su 467ac4f, letti con `pull_request_read`:
+
+```
+handoff-check  success
+unit-suite     in_progress (run 42119591756)
+verifica-bot   neutral (APPROVATO CON RISERVE, PR nel perimetro)
+```
 
 Mappatura commit → run:
-- c1597d0 e f1df0ac: pushati insieme prima di aprire la PR #338; run del push non letta alla scrittura dell'handoff.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 467ac4f: CI run 42119591756 — handoff-check success, unit-suite in corso alla scrittura.
+- bb35796, c1597d0, f1df0ac: run dei loro push non lette (le ha superate la run di 467ac4f, che testa l'albero di testa).
+- Commit di fine-task che registra i verdetti: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-673-1 BASSA: nessun test conta lo `sleep 1` fra i tentativi di bootstrap.
 - R-673-2 BASSA: riprendi.sh nasconde lo stderr del bootstrap.
 - R-673-3 COSMETICA: dopo un pausa.sh finito con ATTENZIONE, riprendi.sh può dire «già ascoltando».
+- Verifica esterna e bot su 467ac4f: riserve BASSE e COSMETICHE registrate in stato_progetto (tra le basse: riprendi.sh dice «RIPRESO» senza controllare che il processo giri).
 - Fetta 42 solo in locale: se la sessione si chiude prima del merge della #335, va rifatta.
 - Restano le riserve delle fette 40–41 e precedenti, in `reports/stato_progetto.md`.

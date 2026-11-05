@@ -17,6 +17,12 @@
   - Review #671: R-671-1/2 MEDIE, corrette.
   - Review #672: APPROVATO.
 
+## Verdetti su 467ac4f (PR #338)
+
+- Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/338#issuecomment-6670952684). Riserve: 3 BASSE e 2 COSMETICHE.
+- Bot: APPROVATO CON RISERVE (check neutral). Riserve: 2 BASSE e 1 COSMETICA. Tra le basse: riprendi.sh dice «RIPRESO» senza controllare che il processo giri davvero.
+- Tutte registrate in stato_progetto, nel blocco della fetta 43.
+
 ## Anomalie
 
 - Nel riepilogo all'operatore avevo indicato `gas_debug.log` per gli eventi dell'ascolto. Il file giusto è `.gas_voce/ascolto.log` (correzione di M1), e l'ho già corretto nel riepilogo.
