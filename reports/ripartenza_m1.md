@@ -75,3 +75,10 @@
   - Mani (nuova) riparte da reports/ripartenza_mani.md sul branch claude/peaceful-lovelace-0w2b7q. Non ha PR aperte e aspetta il via di M1.
 - **#332 (V12)**: il bot l'ha approvata con riserve (una BASSA, una COSMETICA). La CI e la verifica esterna sono ancora in corso. Serve il sì dell'operatore.
 - **#332 mergiata.** M2 è ferma e aspetta i tempi misurati sul Mac.
+
+## Prova di Jarvis sul Mac — 5 novembre
+- **Configurazione sul Mac**: aggiunto `GAS_ASCOLTO_VOCE_RMS=200` nel .env. Con 500 dopo il bip non sentiva la voce («torno ad aspettare» senza «richiesta registrata»). Con 200 risponde.
+- **Tempi** (10 richieste): trascrizione 0,4–1,2 s, voce 0,4–1,5 s, **cervello 3,9–16,9 s**. La lentezza sta nel cervello, non nella voce.
+- **Misura dell'avvio di `claude -p`** (script della proposta, modello claude-sonnet-5-5): «avvio e resto» 1,3–1,7 s, sotto la soglia di 2 s. La strada A (processo pre-avviato) servirebbe a poco. I turni da 17 s vengono probabilmente dai giri con strumenti (ogni giro rilancia la CLI e ragiona di nuovo).
+- **Difetti visti**: a «che ore sono» ha risposto che non trova il contatto Stefano tra i lead (da capire: trascrizione o cervello confuso dal pin dei lead). Per l'ora serve un giro di strumento (`data_ora`), quindi la risposta è più lenta.
+- **Proposta di cura, da far decidere all'operatore**: (1) ora e data già scritte nel prompt dei turni a voce, così si salta il giro dello strumento; (2) risposte a voce più corte; (3) capire la risposta su Stefano dai log del turno.
