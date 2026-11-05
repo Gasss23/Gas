@@ -1,39 +1,40 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-05 — Fetta bot: parser del verdetto (#336, #329) e verdetto compresso fra i job (chat M2, coordinata da M1)
+**Sessione:** 2026-11-05 — Voce V14: «Sì, signore?» (GET /voce/conferma) e filtro «Dimmi.» rivisto (chat M2, coordinata da M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #337 (https://github.com/Gasss23/Gas/pull/337). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5179453797","url":"https://github.com/Gasss23/Gas/pull/337"}`); `gh` nel cloud non è autenticato. La PR tocca la macchina del bot: il bot darà neutral e il merge lo decide l'operatore (sì per la fetta già dato via M1), secondo CLAUDE.md §10.
+1. Merge della PR #335 (https://github.com/Gasss23/Gas/pull/335). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5176502466","url":"https://github.com/Gasss23/Gas/pull/335"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **(a1) Parser — #336 su e619103 letto come MEDIA**: `FATTA` — «read bloccante» nella descrizione di una BASSA; `_BLOCCANTE_TECNICO` ristretto ai termini di sistema.
-- **(a2) Parser — #329 su 7957a15 letto «ambiguo» (3 nov)**: `FATTA` — causa vera: la prosa «- Verifica esterna su 3b92254: …» presa per titolo; il «R-615-4 (MEDIA, preesistente)» era già gestito (R-161-1). `_CITAZIONE_VERIFICA_PASSATA` a lista bianca.
-- **(b) Verdetto scartato da GitHub perché contiene il valore di un secret (#335)**: `FATTA` — gzip+base64 fra i job, `leggi_verdetto()`.
-- **Rilancio del bot sulla #335 e merge**: `DEFERITA — dopo il merge della #337` (il workflow gira in pull_request_target dalla versione di main).
-- **C1, profilo voce, sottofondo**: `DEFERITE — ordine di M1, dopo questa fetta`.
+- **V14.1 — `GET /voce/conferma`** (decisione dell'operatore, contratto con la chat Mani via M1): `FATTA` — «Sì, signore?» con la voce attuale, cache per id voce, 503/502 puliti senza cache.
+- **V14.2 — V-1 bot #334** (ok/okay fuori dal filtro «Dimmi.»): `FATTA`.
+- **V14.3 — R-668-2-M2** (parola di attivazione ripetuta): `FATTA`.
+- **Proposta sulla velocità della voce** (solo documento): `DEFERITA — dopo questa fetta`, come da ordine di M1.
+- **Client H24** (`clients/voice/ascolto.py`): `SALTATA — fuori perimetro` (chat Mani).
+- **Merge di main** (PR #335 in conflitto dopo la PR #333 della chat Mani): `FATTA` — conflitti solo nei report e nella memoria del revisore; review #670-M2 APPROVATO.
+- **Verifica esterna e bot su 0404a56**: entrambi APPROVATO CON RISERVE, nessuna ALTA/MEDIA; il check `verifica-bot` era annullato (output scartato da GitHub per una parola uguale a un secret): corretto con la PR #337 (mergiata); il push di questo handoff rilancia il bot una volta.
+- **Secondo merge di main** (PR #337 fetta bot e fetta 41 della chat Mani): `FATTA` — conflitti solo in report e memoria; review #674-M2 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md               |   8 ++++++++
- .github/workflows/verifica-bot.yml               |  18 ++++++++++++------
- reports/diff_sessione.md                         |  16 ++++++++--------
- reports/handoff.md                               | n/d
- reports/ripartenza_m2.md                         |   7 ++++---
- reports/stato_progetto.md                        |   3 ++-
- reports/ultimo_report.md                         |  29 ++++++++++++-----------------
- scripts/bot_esito.py                             |  62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- tests/dati_verifica_bot/verdetto_329_7957a15.txt |  42 ++++++++++++++++++++++++++++++++++++++++++
- tests/dati_verifica_bot/verdetto_336_e619103.txt |  30 ++++++++++++++++++++++++++++++
- tests/test_unit_verifica_bot.py                  | 179 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md  |   4 ++++
+ modules/voice/server.py             |  58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ reports/diff_sessione.md            |  13 +++++++------
+ reports/handoff.md                  | n/d
+ reports/ripartenza_m2.md            |  10 +++++-----
+ reports/stato_progetto.md           |   5 +++--
+ reports/ultimo_report.md            |  22 ++++++++++++----------
+ tests/test_unit_voice_prova_voci.py |  44 ++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_stt.py        |   6 ++++--
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -41,198 +42,151 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-fcbb8b4 fix(bot): parser del verdetto (#336 «read bloccante», #329 «Verifica esterna su …») e verdetto compresso fra i job (chat M2)
-52653ed chore(revisore): memoria review #673 — APPROVATO
-20b2302 chore(revisore): memoria review #673 — APPROVATO CON RISERVE
-11643d6 chore(revisore): memoria review #672 — BOCCIATO
-0033771 chore(revisore): memoria review #671 — BOCCIATO
+6281357 Merge origin/main (PR #337 fetta bot, fetta 41 Mani) nella PR #335 — review #674-M2 APPROVATO
+b0826a6 docs(voce): verdetto #670-M2 riemesso per il gate B (PR #335, chat M2)
+8971b77 docs(voce): report di fine task V14 dopo il merge di main (chat M2)
+ee7dc7c Merge origin/main (PR #333, fetta 40 soglia voce 200) nella PR #335 — review #670-M2 APPROVATO
+0404a56 docs(voce): report di fine task V14 (chat M2)
+882346f feat(voce): V14 — GET /voce/conferma «Sì, signore?» in cache per voce; filtro «Dimmi.» senza ok e con ripetizione (chat M2)
+47d7a5b chore(revisore): memoria review #669 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Il commit fcbb8b4 è passato da quattro review sul diff staged (ciascuna sul diff di quel momento; le citazioni path:riga si riferiscono a quella versione).
-
-Review #671-M2 sul primo diff staged (verdetto integrale):
-
-## VERDETTO: BOCCIATO
-
-Review #671-M2: diff in stage su feat/bot-verdetto-m2, base 942e665. Riguarda 5 file: scripts/bot_esito.py, .github/workflows/verifica-bot.yml, i test e due file di dati. Ho preso la versione di HEAD in una copia di prova e ho confrontato vecchio e nuovo parser sugli stessi testi. In 6 casi un verdetto che prima diventava COMMENT (NO) ora diventa APPROVE. Sono proprio l'allentamento che questa fetta non doveva introdurre.
-
-**Elementi del diff esaminati**
-
-- `scripts/bot_esito.py:101` — nuovo `_RIGA_TITOLO`. Una riga scritta in minuscolo conta come titolo solo se dopo «verifica esterna» (ed eventualmente «#N») arriva subito un separatore o una parola di esito. Rischio esaminato: un titolo di NO che non viene più riconosciuto. Esito: **blocco (R-671-1-M2, ALTA)**. Questi testi stanno sotto il titolo canonico «VERIFICA ESTERNA #5 — APPROVATO CON RISERVE», con un V-1 (BASSA). Prima davano COMMENT, ora danno APPROVE:
-  - `**Verifica esterna**: BOCCIATO` (il grassetto `**` sta tra le parole e i due punti, e non è nella lista dei separatori)
-  - `verifica esterna (seconda lettura) — BOCCIATO`
-  - `Verifica esterna, esito: BOCCIATO`
-  - `Verifica esterna boccia la PR` («boccia» non corrisponde a «bocciat»)
-
-  Il grassetto in particolare è un formato che un modello produce davvero. Strada suggerita: lasciare fuori solo la forma di #329, cioè una citazione di uno SHA o di un id («su <sha>», «#N:» seguito da elenco V-x). Ogni riga che contiene una parola di esito (approvat, bocciat, boccia, respint, esito, verdetto) resta un titolo. Vanno aggiunti test con i 4 casi sopra.
-
-- `scripts/bot_esito.py:118` — `_BLOCCANTE_TECNICO`, applicata a `scripts/bot_esito.py:216`. Rischio esaminato: omografi che tolgono una gravità vera. Esito: **blocco (R-671-2-M2, MEDIA)**. Con V-1 (BASSA), prima COMMENT e ora APPROVE:
-  - «lo giudico io bloccante»: nella lista c'è «io», che in italiano è il pronome.
-  - «difetto di processo bloccante per il merge» e «operazione bloccante: va corretto prima del merge»: «processo» e «operazione» sono anche lessico di processo del progetto.
-  - Inoltre `\s+` attraversa l'a capo («read\nbloccante» viene tolto).
-
-  Correzione: togliere «io» (resta «i/o»), «processo» e «operazione»; usare `[ \t]+` al posto di `\s+`; aggiungere test negativi.
-
-- `scripts/bot_esito.py:521` — `leggi_verdetto`. Rischio esaminato: bomba di decompressione, troncamenti, testo compresso rotto che ripiega sul testo in chiaro. Esito: **ok**. Il tetto `max_length` sta a `scripts/bot_esito.py:529`, ci sono i controlli su `unconsumed_tail` ed `eof`, base64 usa `validate=True`, un testo compresso rotto dà None (RIPROVA) senza ripiegare sul chiaro, e un JSON che non è un oggetto dà None. I dati in coda dopo il primo blocco gzip vengono ignorati: è innocuo.
-
-- `.github/workflows/verifica-bot.yml:266` — `verdetto_gz` (gzip -9n | base64 -w0) su una sola riga, passato come `VERDETTO_GZ` a `.github/workflows/verifica-bot.yml:336`. Rischio esaminato: troncamento, output vuoto, sicurezza. Esito: **riserva (R-671-3-M2, BASSA)**.
-  - La parte tecnica è a posto: con verdetto vuoto si ha RIPROVA, e se la pipe fallisce la decodifica dà None.
-  - Ma la compressione aggira anche la rete di sicurezza di GitHub («Skip output … may contain secret»). Un valore di un secret che finisse davvero nel testo ora verrebbe pubblicato nella review, salvo che corrisponda a una delle forme di `_SEGRETO` (sk-ant-, gh*_, github_pat_, -----BEGIN). I secret del job (OAuth sk-ant-, token dell'App ghs_, chiave PEM) rientrano in quelle forme, quindi il rischio è basso. Va però dichiarato nel commento del workflow e in stato_progetto.
-
-- Contesto: `tests/test_unit_verifica_bot.py:1359` — `test_titoli_fuori_formato_restano_ambigui` copre solo le varianti che restano bloccate. Nessuno dei casi di R-671-1 è testato: è per questo che i mutanti dichiarati non hanno visto le regressioni.
-
-Suite eseguita: 545 passed in tests/test_unit_verifica_bot.py (conferma il numero dichiarato). I due testi veri (#336 e #329) passano correttamente.
-
-**Rischi esplicitamente esclusi**
-
-- Non ho verificato quale secret coincidesse con una parola del testo su #335: non è riproducibile in dev e non ho accesso ai log del runner. La diagnosi resta un'affermazione di M2.
-- Non ho eseguito il workflow reale su GitHub (il mascheramento delle varianti base64 dei secret e il limite di dimensione degli output dei job non sono verificati).
-- Non ho rilanciato le suite hooks, handoff e gasmerge (366 dichiarati).
-
-**Per sbloccare**: correggere R-671-1-M2 e R-671-2-M2 con test che falliscono sul codice attuale, poi chiedere una nuova review. R-671-3-M2 può restare come riserva tracciata.
-
-Memoria aggiornata con la riga #671-M2 più 2 lezioni, committata (0033771, solo .claude/agents/memoria_revisore.md).
-
-File rilevanti:
-- /home/user/Gas/scripts/bot_esito.py
-- /home/user/Gas/.github/workflows/verifica-bot.yml
-- /home/user/Gas/tests/test_unit_verifica_bot.py
-- /home/user/Gas/.claude/agents/memoria_revisore.md
-
-Review #672-M2 sul secondo diff staged (verdetto integrale):
-
-## VERDETTO: BOCCIATO
-
-Review #672-M2. Ho esaminato il diff in staging su feat/bot-verdetto-m2 (base 942e665) in una copia dell'indice (`git checkout-index`) e l'ho confrontato con HEAD in una seconda copia. Letture obbligatorie fatte: CLAUDE.md §5, stato_progetto.md (le parti che servono), memoria_revisore.md con la riga #671-M2.
-
-**Riserve di #671 chiuse come chiesto.**
-- I 4 casi di #671 danno di nuovo COMMENT. Danno COMMENT anche «Verifica esterna su 3b92254: BOCCIATO» e i test negativi nuovi.
-- I due verdetti veri danno APPROVE: #329 (con «R-615-4 (MEDIA, preesistente)» che non blocca) e #336.
-- Test: 558 passed sulla copia dell'indice. Su HEAD con i test nuovi: 22 failed, non 21 come dichiarato (R-672-3-M2).
-
-**Il motivo bloccante è nuovo.** L'esenzione di #329 riapre il buco da un'altra parte: è costruita come lista nera di parole di esito. È proprio lo schema che il codice stesso vieta in scripts/bot_esito.py:92-95 («una lista di negazioni non finisce mai»).
-
-**Citazioni dal diff**
-- scripts/bot_esito.py:409 — salta le righe «verifica esterna [precedente] su <sha>» che non contengono parole di esito. Rischio: una riga del genere con un esito negativo, accanto al titolo canonico APPROVATO, diventa sì. Esito: **blocco**. Nella copia ho provato `_decidi_verdetto` sul testo «VERIFICA ESTERNA #1 — APPROVATO» più la riga, HEAD contro staged. Queste sono passate da COMMENT ad APPROVE:
-  - «Verifica esterna su 3b92254: FALLITA»
-  - «- … su 3b92254: KO»
-  - «… respinge la PR»
-  - «… la nega»
-  - «… rigettata»
-  - «… non passa»
-  - «- … su aaaaaaa: bloccata, da rifare»
-  - «… : si» (senza accento)
-  - «… : ❌»
-  - «Verifica esterna precedente su 3b92254: superata male»
-  - «… : FAILED»
-  - «… : rejected»
-  - «- Verifica esterna su accadde: niente» («accadde» è una parola fatta solo di cifre esadecimali e passa per uno SHA)
-
-  Nessuno SHA viene confrontato con head: la riga può citare anche l'head stessa.
-- scripts/bot_esito.py:105 — `_PAROLA_DI_ESITO`, la lista nera (approv, bocci, respint, negat, esito, verdetto, rifiut, promoss, ok, no, sì). Rischio: lessico di esito non elencato, inglese, simboli, «si» senza accento. Esito: **blocco** (è la causa del punto sopra).
-- scripts/bot_esito.py:121 — `_BLOCCANTE_TECNICO`. «io», «processo», «operazione», «funzione» e «coda» sono tolti, e il separatore `[ \t]+` non attraversa più l'a capo. «lo giudico io bloccante» dà COMMENT. Lo spazio non separabile (NBSP) non è coperto: resta COMMENT, che è il verso prudente. Esito: **riserva**. Sono NO→sì contro HEAD, su un finding con gravità strutturata BASSA:
-  - «V-1 (BASSA): una chiamata bloccante per il merge»
-  - «attesa bloccante prima del merge»
-  - «Join bloccante del merge»
-  - «la lettura bloccante del verdetto: lo considero un problema serio»
-  - «lock / pipe / select / sleep bloccante»
-
-  Per #336 basta «read bloccante».
-- scripts/bot_esito.py:526 — `leggi_verdetto`. Ok: base64 con validate, tetto a 1 MB sulla decompressione, controllo di eof e unconsumed_tail; illeggibile dà None, cioè RIPROVA.
-- .github/workflows/verifica-bot.yml:96-101 — il commento dichiara R-671-3-M2. Ok.
-- .github/workflows/verifica-bot.yml:271 — gzip -9n | base64 -w0 su una riga sola. Ok: niente delimitatore heredoc.
-- tests/test_unit_verifica_bot.py:1321 — test di #329 sul testo reale. Ok, ma nessun test di #329 copre le varianti di esito fuori lista.
-
-**Finding**
-- **R-672-1-M2 (ALTA)** — esenzione a lista nera, scripts/bot_esito.py:105 e scripts/bot_esito.py:409. Fix: lista BIANCA della coda della riga. Il resto può contenere solo id V/R/F, virgole, «e», «;» e «(BASSA|BASSE|COSMETICA|COSMETICHE)». Regex provata: la riga vera di #329 la soddisfa; «: KO», «: V-1 (ALTA)», «: V-1 e rejected» no.
-  ```
-  ^\W*verifica esterna\s+(?:precedente\s+)?su\s+[0-9a-f]{7,40}\s*[:—–-]\s*(?:(?:[VRF]-\d+|e|,|;|\((?:BASS[AE]|COSMETIC(?:A|HE))\))\s*)+\.?\s*$
-  ```
-  Facoltativo: escludere lo SHA che è un prefisso di head_analizzata. Aggiungere come test COMMENT le 13 varianti elencate sopra.
-- **R-672-2-M2 (BASSA)** — scripts/bot_esito.py:121: lista tecnica troppo ampia (chiamata, attesa, lettura, scrittura, join, lock, wait, sleep). Fix: restringere ai termini di sistema (read, write, recv, send, socket, i/o, select, poll), oppure niente esenzione se dopo viene «per il / del / prima del merge / rilascio». Test sui 4 casi sopra.
-- **R-672-3-M2 (COSMETICA)** — il conteggio dichiarato «21 test falliscono su main» è 22 nella mia prova (HEAD + test nuovi).
-
-**Rischio escluso:** non ho eseguito il workflow reale su GitHub. Non ho verificato quindi che GitHub non scarti più l'output compresso, né quanto è lungo l'output su un verdetto vero. Ho controllato solo lo script del job e i test. Non ho provato la cascata dei modelli né la GitHub App. Ho fatto solo sonde e test sulle copie, nessun mutante.
-
-Memoria: riga #672-M2 e una lezione scritte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da scripts/commit_memoria_revisore.sh (11643d6).
-
-Sonda riproducibile: /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/probe.py (si lancia con argomento la cartella scratchpad, che contiene le copie idx/ e head/).
-
-Review #673-M2 sul terzo diff staged (verdetto integrale):
+Review #669-M2 sul commit 882346f (verdetto integrale):
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #673-M2: terza review del diff in staging su feat/bot-verdetto-m2 (base 942e665). Ho rifatto le copie idx/ e head/ partendo dall'indice e da HEAD attuali. Alla sonda /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/probe.py ho aggiunto 17 casi avversari nuovi e la prova di lentezza della regex.
+Review #669-M2. Ho rivisto tutto il `git diff --cached` attuale, compreso l'aggiornamento del coordinatore: 3 file, +104/-4, branch feat/voce-v12-m2.
+
+Ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md (in modo mirato) e .claude/agents/memoria_revisore.md. Nel diff non c'è slicing della history e non c'è simulazione di tool. Non tocca i guardrail del motore (`_get_window`, cap 10 iterazioni, cap 8k).
 
 **Elementi del diff esaminati**
-- `scripts/bot_esito.py:107` — `_CITAZIONE_VERIFICA_PASSATA` ora è una lista bianca della coda. Rischio esaminato: una frase con un esito che passa da NO a sì. Esito **ok**:
-  - le 19 varianti di #671/#672 danno COMMENT sia a HEAD sia nell'indice. Tra queste: FALLITA, KO, respinge, rigettata, non passa, ❌ in coda, FAILED, rejected, «si», «superata male», «accadde», «V-1 (ALTA)», «V-1 e rejected», «**Verifica esterna**: BOCCIATO».
-  - danno COMMENT anche «V-1 (MEDIA)», «V-1 (bassa) ma BOCCIATO» e lo spazio a larghezza zero seguito da BOCCIATO.
-  - una citazione senza titolo canonico dà COMMENT.
-  - titolo canonico BOCCIATO più citazione dà COMMENT.
-  - una gravità ALTA altrove nel testo dà COMMENT.
-- `scripts/bot_esito.py:107` — prefisso `^\W*` della stessa regex. Rischio: un'emoji di esito davanti alla riga. Esito **riserva** (R-673-1-M2). «❌ Verifica esterna su 3b92254: V-1» e «🚫 Verifica esterna su …: V-1, V-2» passano da COMMENT ad APPROVE.
-- `scripts/bot_esito.py:107` — coda `(?:tok\s*)+\.?\s*$`. Rischio: lentezza su testo malevolo. Esito **riserva** (R-673-2-M2). Con 30.000 «V-1 », poi 90.000 spazi, poi «X», il controllo impiega 21 s: il costo cresce col quadrato degli spazi. Il risultato è un timeout del job, quindi niente sì. Con «e » ripetuto 50.000 volte bastano 0,29 s.
-- `scripts/bot_esito.py:124` e `scripts/bot_esito.py:220` — `_BLOCCANTE_TECNICO` ristretta. Rischio: parole comuni che cancellano una gravità detta a parole. Esito **ok**:
-  - «chiamata/attesa/join/lettura/lock/sleep/pipe/wait bloccante» danno COMMENT.
-  - «read bloccante» e «select bloccante» danno APPROVE, come voluto per il caso #336.
-  - «thread bloccante» non viene toccato (lo esclude il `\b`).
-  - una gravità detta a parole nella stessa riga resta vista.
-- `scripts/bot_esito.py:527` — `leggi_verdetto`. Rischio: un input corrotto che porta a un sì. Esito **ok**: c'è il tetto di dimensione, poi il controllo di fine flusso (eof e coda non letta), poi `validate=True`; se qualcosa fallisce il risultato è None, cioè RIPROVA.
-- `.github/workflows/verifica-bot.yml:271` — il verdetto viene compresso con gzip e passato come base64. Rischio: chi lo legge non riceve il valore. Esito **ok**: `VERDETTO_GZ` è collegato (`.github/workflows/verifica-bot.yml:339`). Il rischio di aggirare il filtro dei secret di GitHub era già stato dichiarato e accettato in R-671-3-M2.
-- `tests/test_unit_verifica_bot.py:1391` — i casi FAILED/rejected sono test COMMENT. Esito **ok**.
-- Test: con l'indice 579 passed. Con HEAD più i test nuovi 22 failed, che chiude il conteggio di R-672-3-M2.
+- `modules/voice/server.py:765` — è il ramo `/voce/conferma` in `do_GET`, con `_check_auth()` chiamato prima di qualunque spesa. Rischio esaminato: endpoint a pagamento esposto senza token. Il 401 è provato dal test. Esito: ok.
+- `modules/voice/server.py:799` — è `_conferma`. Senza chiave dà 503. Ricava la voce come il percorso `/voice` (`modules/voice/server.py:599`), quindi la conferma ha la stessa voce della risposta. La chiave della cache è (voce, frase). Rischio esaminato: spesa ripetuta e cache "avvelenata". Il salvataggio avviene solo dopo un audio non vuoto (`modules/voice/server.py:826`). Esito: ok.
+  - Mutante rieseguito da me: «cache senza confronto della chiave» viene ucciso da `test_v14_conferma_una_sintesi_per_voce` (`tests/test_unit_voice_prova_voci.py:691`). Il file è stato ripristinato e lo stage è intatto.
+- `modules/voice/server.py:799` — gestione degli errori. Rischio esaminato: eccezioni che non vengono intercettate. Esito: riserva R-669-1-M2 (sotto).
+- `modules/voice/server.py:120` — è `_ATTIVAZIONE_UNA` con la ripetizione in `_SOLO_ATTIVAZIONE`. Rischi esaminati: falsi positivi e backtracking catastrofico.
+  - «Ok Gas.», «Gas, ciao», «Hey Jarvis, Hey Jarvis, accendi» e «gasolio» non vengono presi come sola attivazione. «Hey Jarvis, Hey Jarvis!», «Jarvis Gas» e «Gas, gas.» sì.
+  - Con 5000 ripetizioni o separatori la regex risponde in circa 2 ms, quindi è lineare.
+  - Esito: ok.
+- `tests/test_unit_voice_stt.py:651` / `tests/test_unit_voice_stt.py:661` — sono i casi positivi con ripetizione e i negativi con ok/okay. Coprono V-1 bot #334 e chiudono R-668-2-M2. Esito: ok.
+- `tests/test_unit_voice_prova_voci.py:712` — test degli errori 401/503/502. Dopo un errore la cache resta vuota e la richiesta successiva riprova. Esito: ok.
 
-**Riserve (da tracciare in stato_progetto.md)**
-- **R-673-1-M2 BASSA** — `^\W*` in `scripts/bot_esito.py:107` accetta un'emoji di esito davanti alla citazione. Due interventi:
-  - restringere il prefisso ai soli segni di elenco, per esempio `^[\s>*_•-]*`;
-  - escludere uno SHA che sia prefisso della head (facoltativo, ma serve davvero solo insieme a questa correzione: oggi il caso ❌ più la head è l'unico NO→sì residuo).
-- **R-673-2-M2 BASSA** — rallentamento quadratico sulla coda: due `\s*` uno dopo l'altro prima di `$`. Sostituire la fine con `(?:\.\s*)?$`, perché il ciclo consuma già gli spazi. L'esito non è mai un sì, solo un job lento o in timeout.
-- **Cosmetica** — sono accettate code senza senso come «: e», «: ,;», «: (COSMETICA)» e SHA scritti in maiuscolo (DEADBEEF, per `re.I`). Non contengono esiti, quindi nessun rischio.
+Ho rieseguito `tests/test_unit_voice_prova_voci.py` e `tests/test_unit_voice_stt.py`: 148 passed.
 
-**Cosa non ho verificato**
-- Il percorso reale su GitHub Actions: se `${{ needs.verifica.outputs.verdetto_gz }}` arriva integro e il filtro dei secret non lo scarta. Si può provare solo su una run vera, non qui. Ho verificato solo localmente, con la logica dello script e il test `TestWorkflowVerdettoCompresso`.
-- Il diff tocca solo la macchina del bot. Non tocca il motore, `_get_window` o il cap delle iterazioni, quindi non serve un round-trip agentico e il Wall of Shame non si applica: nessuno slicing della history e nessuna simulazione di tool.
+**Le due scelte da valutare**
+- La conferma fuori dal tetto `GAS_VOICE_MAX_TURNI_ORA` è accettabile. La voce si legge dall'env del processo, quindi in pratica c'è un solo giro su ElevenLabs per processo, e senza token non si spende nulla.
+- Niente lock sulla cache: è corretto, perché il server è un `HTTPServer` single-thread (`modules/voice/server.py:1004`). Se un giorno diventasse `ThreadingHTTPServer`, il caso peggiore sono due sintesi, non una corruzione.
 
-**Memoria del revisore**: riga #673-M2 più una lezione, committate da `scripts/commit_memoria_revisore.sh` (commit 20b2302) in /home/user/Gas/.claude/agents/memoria_revisore.md.
+**Riserve (vanno tracciate in stato_progetto.md)**
+- **R-669-1-M2 (BASSA)** — `_conferma` intercetta solo `ElevenLabsTTSError` e `OSError`. Però `http.client.HTTPException` (es. `IncompleteRead` durante `resp.read()`) non è un `OSError`, e `synthesize_speech` in modules/voice/tts.py non la avvolge.
+  - Effetto: il server non va in crash (ci pensa socketserver), ma la traccia finisce su stderr e non in gas_debug.log, e il client riceve una connessione chiusa invece di un 502.
+  - È lo stesso limite dei percorsi TTS già esistenti. Soluzione consigliata: aggiungere `http.client.HTTPException` all'`except` di rete, oppure avvolgerla dentro tts.py.
+- **R-669-2-M2 (COSMETICA)** — un saluto ripetuto senza nome in mezzo («Ehi ehi Jarvis») non conta come sola attivazione e va al cervello. È innocuo.
 
-Review #673-M2 bis sul diff finale (commit fcbb8b4, verdetto integrale):
+**Rischio escluso:** non ho verificato il comportamento reale con ElevenLabs né la riproduzione sul client H24 del Mac (clients/voice/ascolto.py, che è fuori dal diff e della chat Mani). In questo ambiente non ci sono chiave né audio, quindi l'unica prova è con i mock.
+
+**Memoria:** ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #669-M2 e una lezione: `HTTPException` non è sottoclasse di `OSError`. È committata da sola con lo script, commit 47d7a5b. Lo stage del motore è intatto (3 file).
+
+Review #670-M2 sul merge ee7dc7c di origin/main (PR #333) nella PR #335 — verdetto RIEMESSO dal revisore per il gate B: stesso esito (APPROVATO), citazioni dei file del diff di sessione. L'originale citava soprattutto clients/voice/ascolto.py, che dopo il merge è in main e fuori dal diff di sessione; il suo testo integrale, non modificato, è nell'handoff del commit 8971b77:
 
 ## VERDETTO: APPROVATO
 
-Review #673-M2 bis: le correzioni di R-673-1-M2 e R-673-2-M2 sono a posto. Ho rifatto la sonda su una copia dell'indice attuale: ora 582 test passano e il verdetto vero #329 dà ancora APPROVE. Riserve aperte: nessuna.
+Review #670-M2 (riemessa con le citazioni richieste dal gate B; esito e contenuto invariati). Riguarda il merge di origin/main 830c5bf (PR #333, fetta 40) in feat/voce-v12-m2 (PR #335, V14).
 
-**Cosa ho controllato nel diff**
-- `scripts/bot_esito.py:110` — davanti a «verifica esterna» ora sono ammessi solo i segni di elenco `^[ \t>*_•-]*`. Rischio verificato: un'emoji di esito davanti alla riga che trasforma un NO in sì. Esito **ok**:
-  - «❌ Verifica esterna su 3b92254: V-1» e «🚫 … V-1, V-2» ora danno COMMENT, come a HEAD.
-  - Ho provato anche altri prefissi. «✅ …», «1. …» e «> **…**» non sono più citazioni, quindi vengono trattati come titoli fuori formato e danno NO (vince il dubbio). «• …» resta una citazione.
-- `scripts/bot_esito.py:111` — la riga ora finisce con `(?:\.\s*)?$`. Rischio verificato: la lentezza quadratica. Esito **ok**: con 30.000 «V-1 », poi 90.000 spazi e poi «X» il controllo passa da 21 s a 0,63 s; il caso «e » ripetuto 50.000 volte resta a 0,33 s.
-- `tests/test_unit_verifica_bot.py:1395` — i casi ❌ e 🚫 sono test che si aspettano COMMENT. Esito **ok**.
-- `tests/test_unit_verifica_bot.py:1474` — `test_citazione_verifica_passata_non_quadratica` controlla che quella riga venga respinta in meno di 2 s. Esito **ok**.
-- `tests/dati_verifica_bot/verdetto_329_7957a15.txt:32` — la riga vera «- Verifica esterna su 3b92254: V-1, V-3, V-4, V-5 (BASSE); V-6 e V-7 (COSMETICHE).» viene ancora riconosciuta come citazione, quindi il verdetto #329 dà APPROVE. Esito **ok**.
-- I 19 casi con esito di #671/#672 danno ancora tutti COMMENT, sia a HEAD sia nell'indice.
+Ho controllato a HEAD 8971b77 che non sia cambiato nulla rispetto a quanto revisionato:
+- `git diff --stat 0404a56 HEAD` è vuoto su modules/voice/server.py, tests/test_unit_voice_prova_voci.py e tests/test_unit_voice_stt.py: i file del branch sono intatti dopo il merge.
+- `git diff --stat 830c5bf HEAD` è vuoto su clients/voice/ascolto.py e tests/test_unit_voce_ascolto.py: i file di main sono intatti.
 
-**Cosa non ho verificato**: il tempo massimo di 2 s del test dipende dalla macchina. Su un runner CI lento potrebbe fallire senza un vero difetto: non l'ho misurato su GitHub Actions. Margine misurato qui: circa 3 volte.
+**Elementi del diff esaminati**
+- `modules/voice/server.py:799` — è `_conferma` di V14 (GET /voce/conferma, «Sì, signore?» in cache per id voce). Rischio: che il merge abbia perso o alterato V14. Esito: ok. Il file è identico a quello del branch prima del merge, e main non lo toccava.
+- `tests/test_unit_voice_prova_voci.py:691` — è `test_v14_conferma_una_sintesi_per_voce`: una sola sintesi per voce, si rigenera quando la voce cambia, e controlla `FRASE_CONFERMA == "Sì, signore?"`. Rischio: test perso nel merge. Esito: ok, il file è intatto.
+- `tests/test_unit_voice_prova_voci.py:712` — è `test_v14_conferma_errori_puliti_senza_cache`: 401 senza token, 503 senza chiave, 502 JSON senza cache per ElevenLabsTTSError, OSError e audio vuoto. Rischio: test perso nel merge. Esito: ok, il file è intatto.
+- `tests/test_unit_voice_stt.py:650` — è il filtro di attivazione di V14 (parola ripetuta riconosciuta, «ok/okay» trattato come conferma). Rischio: modifica persa nel merge. Esito: ok, il file è intatto.
+- `reports/stato_progetto.md:4` — è la riga «Ultimo aggiornamento» unita a mano. Rischio: voci perse. Esito: ok. Contiene la voce V14 seguita da « — prima: » e poi dalla riga 4 di main per intero (verificato con uno script, carattere per carattere).
 
-**Memoria del revisore**: ho aggiunto la riga #673-M2 bis (nessuna lezione nuova) in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata con lo script (commit 52653ed).
+Contesto, fuori dal diff di sessione: `clients/voice/ascolto.py:85` (`VOCE_RMS_PREDEFINITO = 200.0`) è identico a main.
+
+**Controlli meccanici sul merge prima del commit**
+- `git ls-files -u` era vuoto.
+- `git diff --cached --check` era pulito.
+- Non c'era nessun marcatore di conflitto nei file nello stage.
+- La memoria del revisore era l'unione delle due parti: #669-M2 e #670 (chat Mani) una volta ciascuna.
+
+**Test**
+Li ho fatti girare su una copia dei file presi dallo stage, con openai, pyyaml e python-dotenv installati in una cartella separata solo per la prova:
+- tests/test_unit_voce_ascolto.py: 154 passed.
+- tests/test_unit_voice*.py: 284 passed.
+
+Senza quei pacchetti si hanno 24 failed e 1 errore di raccolta, tutti `ModuleNotFoundError: openai`, quindi dovuti all'ambiente.
+
+**Cosa non ho verificato**
+- Non ho provato insieme sul Mac il client H24 con la soglia 200 e «Sì, signore?». Non si può riprodurre qui (servono microfono ed ElevenLabs).
+- Non ho rieseguito la suite completa fuori dalla voce.
+- La CI sulla head finale non l'ho letta.
+
+Non ci sono riserve nuove. Restano aperte R-669-1-M2 (BASSA) e R-669-2-M2 (COSMETICA).
+
+Non ho toccato né la memoria né lo stage.
+
+Review #674-M2 sul merge 6281357 di origin/main (PR #337 e fetta 41 della chat Mani) nella PR #335 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #674-M2. Ho controllato il merge in corso di origin/main 3eab4aa (PR #337 fetta bot + fetta 41 della chat Mani) dentro feat/voce-v12-m2 (PR #335, V14). È tutto in staging e niente è committato. Prima ho letto CLAUDE.md §5, la riga 4 di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Controllo blob per blob** (index confrontato con HEAD e con MERGE_HEAD, su tutti i file cambiati da almeno un lato rispetto alla base 830c5bf):
+- **Uguali a main (MERGE_HEAD):** scripts/bot_esito.py, .github/workflows/verifica-bot.yml, tests/test_unit_verifica_bot.py, tests/dati_verifica_bot/verdetto_329_7957a15.txt, tests/dati_verifica_bot/verdetto_336_e619103.txt, clients/voice/ascolto.py, scripts/voce/LEGGIMI.md, tests/test_unit_voce_ascolto.py.
+- **Uguali al branch (HEAD):** modules/voice/server.py, tests/test_unit_voice_prova_voci.py, tests/test_unit_voice_stt.py, reports/handoff.md, reports/ultimo_report.md, reports/diff_sessione.md.
+- **Uniti a mano:** solo .claude/agents/memoria_revisore.md, reports/stato_progetto.md e reports/ripartenza_m2.md.
+- **Pulizia:** nessun marcatore di conflitto, `git diff --cached --check` pulito, `git ls-files -u` vuoto.
+
+**Evidenze:**
+- modules/voice/server.py:765 — percorso GET /voce/conferma (V14), con l'autenticazione controllata prima di tutto. Rischio esaminato: che il merge perdesse il lavoro del branch. Esito: ok, il blob è identico a HEAD e la fetta 41 non lo tocca.
+- modules/voice/server.py:826 — mette in cache (chiave, audio) solo quando l'audio è valido. Rischio esaminato: un conflitto con il client di main. Esito: ok, il codice di clients/voice/ascolto.py (fetta 41) che arriva dal merge non chiama /voce/conferma, quindi non c'è interazione tra i due lati.
+- modules/voice/server.py:120 — `_ATTIVAZIONE_UNA`, il filtro «Dimmi.» senza ok/okay e con la parola ripetuta. Rischio esaminato: una regressione introdotta dal merge. Esito: ok, invariato rispetto a HEAD.
+- tests/test_unit_voice_prova_voci.py:687 — 43 righe di test V14 del branch. Rischio esaminato: test persi nel merge. Esito: ok, identici a HEAD e passano.
+- tests/test_unit_voice_stt.py:650 — test di instradamento del branch. Rischio esaminato: perdita. Esito: ok, identici a HEAD.
+- reports/stato_progetto.md:4 — la riga è il prefisso V14 seguito dal suffisso della riga 4 di main, verificato carattere per carattere (SUFFIX_OK). Le voci V14, «🤖 Bot di verifica» e «fetta 41 (R8» compaiono una volta ciascuna. Esito: ok.
+- reports/ripartenza_m2.md:12 — la sezione «In corso» è quella di main (PR #337 mergiata, ordine di M1 con la «pausa» al punto 0), più R-669-1/2-M2 del branch alla riga 18. Le righe del branch «Prossima fetta» sono state sostituite dall'ordine di M1, che è più recente e comprende già C1. Esito: ok.
+- .claude/agents/memoria_revisore.md — le 14 righe aggiunte dai due lati rispetto alla base sono tutte presenti una volta sola; #670 (chat Mani) compare una volta. Esito: ok.
+
+**Test** (copia dell'index fatta con `git checkout-index`, eseguita nel venv scratch): tests/test_unit_verifica_bot.py, tests/test_unit_voce_ascolto.py e tests/test_unit_voice*.py danno **1039 passed**, 0 falliti.
+
+**Nota cosmetica** (non numerata, non blocca): reports/ripartenza_m2.md:30 dice «ultimo: #673-M2», presa da main. Dopo questa review l'ultima è #674-M2: da aggiornare quando riscrivi i report a fine task.
+
+**Cosa non ho verificato:**
+- La suite completa del repo: ho eseguito solo i test indicati.
+- La CI e il comportamento del bot sulla PR dopo il push: non riproducibili qui.
+- Una nuova analisi del contenuto della fetta bot e della fetta 41: sono già state revisionate (#673-M2 bis; #668/#669 Mani) e arrivano da main identiche.
+- handoff, ultimo_report e diff_sessione presi nella versione del branch: le modifiche di main a quei file sono state scartate, come da istruzione, perché si riscrivono a fine task.
+
+**Memoria:** ho aggiunto la riga #674-M2 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e fatto `git add` del file, senza committare (merge in corso, script di commit non usato). Nessuna lezione nuova.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_verifica_bot.py`: 514 → 582 test (classi `TestVerdettiVeri`, `TestVerdettoCompresso`, `TestWorkflowVerdettoCompresso`, `test_citazione_verifica_passata_non_quadratica`), con i due verdetti veri in `tests/dati_verifica_bot/`. Con lo `scripts/bot_esito.py` di main falliscono 21 test (22 secondo il revisore, con HEAD di allora). Mutanti: senza `_BLOCCANTE_TECNICO` 6 falliscono; col vecchio `_RIGA_TITOLO` 4 falliscono; sulla versione bocciata in #671 falliscono 12 test nuovi. Altre suite toccate dal workflow: hooks + handoff + gasmerge `366 passed in 125.20s`. Motore (`gas.py`, `brains/`, `modules/`) non toccato.
+`tests/test_unit_voice_prova_voci.py`: +2 test (`test_v14_conferma_una_sintesi_per_voce`, `test_v14_conferma_errori_puliti_senza_cache`); la fixture `server` azzera `conferma_cache`. `tests/test_unit_voice_stt.py`: casi del filtro aggiornati (positivi con ripetizione, negativi «Ok Gas.», «Okay, Jarvis», «Hey Jarvis, Hey Jarvis, accendi»). Mutanti uccisi: niente cache, chiave senza voce, audio vuoto in cache. Suite voce della CI in un venv con requirements + requirements-dev: `284 passed in 321.95s` prima del filtro rivisto; dopo, `-k "v13 or v6"` di voice_stt 46 passed e revisore 148 passed su voice_prova_voci + voice_stt. Merge ee7dc7c (review #670-M2): `tests/test_unit_voce_ascolto.py` 154 passed e `tests/test_unit_voice*.py` 284 passed sui file dello stage. Merge 6281357 (review #674-M2): `tests/test_unit_verifica_bot.py` + `tests/test_unit_voce_ascolto.py` + `tests/test_unit_voice*.py` 1039 passed sui file dello stage. Kernel non toccato (`gas.py` identico a main).
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check lette con l'integrazione GitHub.
-- 0033771, 11643d6, 20b2302, 52653ed: nessuna run su questi SHA da soli (pushati insieme a fcbb8b4).
-- fcbb8b4 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (la run sul push finale testerà solo la testa).
+- 47d7a5b, 882346f: nessuna run su questi SHA da soli (pushati con 0404a56).
+- 0404a56: unit-suite completata senza fallimenti, handoff-check success, verifica-bot cancelled (output scartato: secret).
+- ee7dc7c, 8971b77: nessuna run su questi SHA da soli (pushati con b0826a6).
+- b0826a6: unit-suite e handoff-check completati senza fallimenti (evento check_suite.completed), verifica-bot cancelled (stessa causa, corretta poi dalla PR #337).
+- 6281357 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
-- R-671-3-M2 BASSA: la compressione aggira anche la rete «may contain secret» di GitHub; un secret vero nel testo resta fermato solo da `_SEGRETO` (dichiarato nel commento del workflow).
-- Nota #673-M2 bis: `test_citazione_verifica_passata_non_quadratica` ha un tetto di 2 s con margine ~3×: su un runner lento può dare un falso rosso.
-- Cosmetica #673-M2: code senza senso («: e», «: ,;») e SHA maiuscoli accettati come citazione (nessun esito, nessun rischio).
-- Non verificato da nessuno: il percorso reale su GitHub Actions (output compresso integro e non scartato): si vedrà al primo giro del bot dopo il merge.
+- Verifica esterna e bot su 0404a56: «Jarvis Gas» ora sola attivazione, caso negativo tolto senza dichiararlo (BASSA); `/voce/conferma?query` → 405 (COSMETICA); «ehi ehi Jarvis» (COSMETICA, = R-669-2).
+- Macchina del bot: output del verdetto scartato per un secret — corretto dalla PR #337 (mergiata); da osservare la prima run reale sulla #335.
+
+- R-669-1-M2 BASSA: `http.client.HTTPException` non intercettata in `_conferma` (e negli altri percorsi TTS): connessione chiusa invece di 502, traccia fuori da gas_debug.log.
+- R-669-2-M2 COSMETICA: «Ehi ehi Jarvis» (saluto ripetuto) va al cervello.
+- R-668-1-M2 BASSA: «Dimmi.» spende ElevenLabs e un posto nel tetto orario. R-668-3-M2 BASSA: segno «attivazione» non testato nei formati audio+testo e NDJSON.
+- R-667-2-M2 BASSA: fuso della macchina del server; sul VPS servirà un fuso configurabile (lì l'istruzione vieta anche data_ora). R-667-3-M2 COSMETICA: datetime naive → «fuso UTC».
+- Verifica esterna #334: V-3 BASSA nessun tetto in codice al numero di frasi; V-4 COSMETICA ora presa a inizio turno.
+- Bot su #332: V-1 BASSA (posto nel tetto del testo consumato se il turno fallisce), V-2 COSMETICA (commenti V12, 429 «o scrivi»).

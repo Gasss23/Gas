@@ -1,20 +1,22 @@
-# Ultimo report — 2026-11-05 — Fetta bot: parser del verdetto e verdetto compresso fra i job (chat M2)
+# Ultimo report — 2026-11-05 — Voce V14: «Sì, signore?» (GET /voce/conferma) e filtro «Dimmi.» rivisto (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #337 (https://github.com/Gasss23/Gas/pull/337): tocca la macchina del bot, quindi il bot darà neutral e il merge lo decide l'operatore (sì già dato via M1 per la fetta). Dopo il merge: rilancio una volta del bot sulla PR #335.
+1. Merge della PR #335 (https://github.com/Gasss23/Gas/pull/335), secondo la regola di merge di CLAUDE.md §10.
 
 ## Esito delle fette
 
-- **(a1) Parser, verdetto #336 su e619103 letto come MEDIA**: `FATTA` — «una read bloccante» nella descrizione di una BASSA; `_BLOCCANTE_TECNICO` (solo read, write, recv, send, socket, I/O, select, poll).
-- **(a2) Parser, verdetto #329 su 7957a15 letto «ambiguo» (3 nov)**: `FATTA` — la causa non era «R-615-4 (MEDIA, preesistente)» (già gestito) ma la prosa «- Verifica esterna su 3b92254: …» presa per titolo; `_CITAZIONE_VERIFICA_PASSATA` a lista bianca.
-- **(b) Verdetto scartato da GitHub perché contiene il valore di un secret**: `FATTA` — gzip+base64 fra i job, `leggi_verdetto()` con tetto 1 MB.
-- Test sui due verdetti veri (`tests/dati_verifica_bot/`) e sui casi avversari delle review: 582 passed; 21 falliscono su main.
-- Review #671-M2 e #672-M2 BOCCIATO (ognuna ha trovato allentamenti NO→sì, chiusi), #673-M2 APPROVATO CON RISERVE (R-673-1/2 chiuse subito), #673-M2 bis APPROVATO.
-- **Rilancio del bot sulla #335 e merge**: `DEFERITA — dopo il merge della #337` (il workflow gira dalla versione di main).
-- **C1, profilo voce, sottofondo**: `DEFERITE` — ordine di M1, dopo questa fetta.
+- **V14.1 — `GET /voce/conferma`** (decisione dell'operatore, contratto con la chat Mani via M1): `FATTA` — «Sì, signore?» in audio/mpeg con la voce attuale; cache in memoria con l'id della voce (un giro su ElevenLabs per voce); 503 senza chiave, 502 su errore o audio vuoto, mai in cache.
+- **V14.2 — V-1 bot #334** (togliere ok/okay dal filtro «Dimmi.»): `FATTA`.
+- **V14.3 — R-668-2-M2** («Hey Jarvis» ripetuto): `FATTA`.
+- **Proposta sulla velocità della voce** (solo documento, chiesta da M1): `DEFERITA — dopo questa fetta`, come da ordine di M1.
+- Client H24 (`clients/voice/ascolto.py`): `SALTATA — fuori perimetro`, lo fa la chat Mani.
+- Test: 2 nuovi V14 in voice_prova_voci, casi del filtro aggiornati in voice_stt; 3 mutanti uccisi; suite voce 284 passed (prima del filtro rivisto), revisore 148 passed su voice_prova_voci + voice_stt dopo.
+- Review #669-M2 APPROVATO CON RISERVE (R-669-1 BASSA, R-669-2 COSMETICA).
+- **Merge di main nel branch** (PR #335 in conflitto dopo la PR #333 della chat Mani, soglia della voce 200): `FATTA` — conflitti solo nei report e nella memoria del revisore; review #670-M2 APPROVATO (suite voce 284 passed, voce_ascolto 154 passed).
+- **Verifica esterna #335**: APPROVATO CON RISERVE (V-1 BASSA = R-669-1; V-2 BASSA «Jarvis Gas» ora sola attivazione, caso negativo tolto senza dichiararlo; V-3/V-4 COSMETICHE). **Bot**: verdetto scritto (APPROVATO CON RISERVE: V-1 BASSA «Jarvis Gas», V-2 COSMETICA query string → 405) ma check `verifica-bot` annullato due volte: GitHub scartava l'output perché conteneva una parola uguale a un secret del repo. Corretto nella PR #337 (verdetto compresso fra i job), mergiata.
+- **Secondo merge di main nel branch** (dopo la PR #337 e la fetta 41 della chat Mani): `FATTA` — conflitti solo nei report e nella memoria; review #674-M2 APPROVATO (1039 test passati fra bot, voce e ascolto). Il push rilancia il bot sulla #335 una volta.
 
 ## Anomalie
 
-- Branch nuovo `feat/bot-verdetto-m2` (diverso da quello di lavoro della voce): la correzione deve entrare in main da sola prima del rilancio sulla #335.
 - `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
