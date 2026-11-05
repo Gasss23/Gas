@@ -1081,7 +1081,7 @@ def test_plist(nome, comando):
     assert p["StandardOutPath"].startswith("CARTELLA_GAS/.gas_voce/")
 
 
-@pytest.mark.parametrize("script", ["installa.sh", "spegni.sh"])
+@pytest.mark.parametrize("script", ["installa.sh", "spegni.sh", "pausa.sh", "riprendi.sh"])
 def test_script_sintassi_e_solo_mac(script):
     percorso = VOCE_DIR / script
     assert subprocess.run(["bash", "-n", str(percorso)]).returncode == 0
@@ -1482,3 +1482,78 @@ def test_installa_rifiuta_cartelle_con_caratteri_pericolosi(tmp_path, nome):
     r, registro = _installa(gas, finti, casa, tmp_path)
     assert r.returncode == 1 and "caratteri" in r.stderr
     assert registro == "" and not (tmp_path / "PWNED").exists()
+
+
+# ── fetta 43: pausa.sh e riprendi.sh (solo l'ascolto, il server resta) ──
+
+def _voce_cmd(tmp_path, script, acceso=True, plist=True, **extra):
+    gas, finti, casa = _gas_finto(tmp_path)
+    registro = tmp_path / "registro.txt"
+    if acceso:
+        (tmp_path / "registro.txt.su.com.gas.ascolto").touch()
+    (tmp_path / "registro.txt.su.com.gas.voce.server").touch()
+    agenti = casa / "Library" / "LaunchAgents"
+    agenti.mkdir(parents=True, exist_ok=True)
+    if plist:
+        (agenti / "com.gas.ascolto.plist").write_text("<plist/>")
+    env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(registro),
+           **extra}
+    r = subprocess.run(["bash", str(gas / "scripts/voce" / script)], capture_output=True,
+                       text=True, timeout=60, env=env)
+    log_ = registro.read_text() if registro.exists() else ""
+    return r, log_, tmp_path / "registro.txt.su.com.gas.ascolto", agenti
+
+
+def test_pausa_ferma_solo_l_ascolto(tmp_path):
+    r, log_, su, agenti = _voce_cmd(tmp_path, "pausa.sh")
+    assert r.returncode == 0 and "PAUSA" in r.stdout and "riprendi.sh" in r.stdout
+    assert not su.exists()                                  # l'ascolto è giù
+    assert (tmp_path / "registro.txt.su.com.gas.voce.server").exists()   # il server no
+    assert "com.gas.voce.server" not in log_ and "bootstrap" not in log_
+    assert (agenti / "com.gas.ascolto.plist").exists()      # il plist resta
+
+
+def test_pausa_quando_e_gia_in_pausa(tmp_path):
+    r, log_, _, _ = _voce_cmd(tmp_path, "pausa.sh", acceso=False)
+    assert r.returncode == 0 and "già in pausa" in r.stdout and "bootout" not in log_
+
+
+def test_pausa_aspetta_il_bootout_lento(tmp_path):
+    r, log_, _, _ = _voce_cmd(tmp_path, "pausa.sh", BOOTOUT_LENTO="4")
+    assert r.returncode == 0 and "PAUSA" in r.stdout and log_.count("sleep 0.1") == 4
+
+
+def test_pausa_che_non_si_ferma_lo_dice(tmp_path):
+    r, _, _, _ = _voce_cmd(tmp_path, "pausa.sh", BOOTOUT_LENTO="999")
+    assert r.returncode == 1 and "non si è fermato" in r.stderr and "PAUSA" not in r.stdout
+
+
+def test_riprendi_riaccende_l_ascolto(tmp_path):
+    r, log_, su, _ = _voce_cmd(tmp_path, "riprendi.sh", acceso=False)
+    assert r.returncode == 0 and "RIPRESO" in r.stdout and su.exists()
+    assert "com.gas.voce.server" not in log_
+
+
+def test_riprendi_quando_ascolta_gia(tmp_path):
+    r, log_, _, _ = _voce_cmd(tmp_path, "riprendi.sh")
+    assert r.returncode == 0 and "già ascoltando" in r.stdout and "bootstrap" not in log_
+
+
+def test_riprendi_senza_installazione(tmp_path):
+    r, log_, _, _ = _voce_cmd(tmp_path, "riprendi.sh", acceso=False, plist=False)
+    assert r.returncode == 1 and "installa.sh" in r.stderr and "bootstrap" not in log_
+
+
+@pytest.mark.parametrize("falliti,ok", [(2, True), (3, False)])
+def test_riprendi_riprova_il_bootstrap(tmp_path, falliti, ok):
+    r, log_, su, _ = _voce_cmd(tmp_path, "riprendi.sh", acceso=False,
+                               BOOTSTRAP_FALLISCE=str(falliti))
+    assert log_.count("launchctl bootstrap") == min(falliti + 1, 3)
+    assert (r.returncode == 0) is ok and su.exists() is ok
+    if not ok:
+        assert "non è ripartito" in r.stderr
+
+
+def test_pausa_e_riprendi_nel_leggimi():
+    testo = (VOCE_DIR / "LEGGIMI.md").read_text(encoding="utf-8")
+    assert "bash scripts/voce/pausa.sh" in testo and "bash scripts/voce/riprendi.sh" in testo

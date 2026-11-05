@@ -54,9 +54,18 @@ bash scripts/voce/spegni.sh
 Spegne i due servizi e toglie i loro file da `~/Library/LaunchAgents`: non ripartono
 nemmeno al prossimo accesso. Per riaccendere: di nuovo `installa.sh`.
 
-Per una pausa veloce senza togliere niente:
-`launchctl bootout gui/$(id -u)/com.gas.ascolto` (lo riaccende il prossimo `installa.sh`
-o il prossimo accesso al Mac).
+## Pausa (standby) e ripresa
+
+Per una pausa, per esempio mentre parli con un'altra persona:
+
+```bash
+bash scripts/voce/pausa.sh      # Gas non ascolta più, nemmeno «Hey Jarvis»
+bash scripts/voce/riprendi.sh   # Gas ascolta di nuovo
+```
+
+La pausa ferma solo l'ascolto: il server voce resta acceso e non si toglie nessun file.
+Dura fino a `riprendi.sh` o al prossimo riavvio del Mac (all'accesso l'ascolto riparte da
+solo).
 
 ## Privacy
 
