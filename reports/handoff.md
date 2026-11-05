@@ -97,29 +97,31 @@ Per confrontare con la base ho lanciato per errore `git stash --keep-index` sul 
 **Memoria**
 In `.claude/agents/memoria_revisore.md` ho aggiunto la riga contatore `#667 (chat Mani) — 2026-11-05 — APPROVATO CON RISERVE — …` e la lezione di non usare `git stash` sul repo vero per i confronti. Committata con `scripts/commit_memoria_revisore.sh` (commit 27afc8f, solo quel file; lo staged del diff è rimasto intatto).
 
-Merge b00c506 (main con la PR #334 dentro la PR #333) — review #670, verdetto integrale:
+Merge b00c506 (main con la PR #334 dentro la PR #333) — review #670, verdetto RIEMESSO dal revisore per il gate B: stesso esito (APPROVATO), citazioni dei file del diff di sessione. L'originale citava server.py e test_unit_voice_server.py, che dopo il merge sono in main e fuori dal diff di sessione; il suo testo integrale, non modificato, è nell'handoff del commit dba7151:
 
 ## VERDETTO: APPROVATO
 
-Review #670 (chat Mani). Ho controllato il merge di origin/main 7bdaa8f (PR #334, voce V13) nel branch claude/peaceful-lovelace-0w2b7q (PR #333, fetta 40). Il merge è in corso e staged; ho guardato `git diff --cached HEAD` e `git diff --cached MERGE_HEAD`.
+Review #670 (chat Mani), RIEMESSA per il gate B. Non è una nuova review e l'esito non cambia. Riguarda il merge di origin/main 7bdaa8f (PR #334, voce V13) nel branch claude/peaceful-lovelace-0w2b7q (PR #333, fetta 40), ora committato come b00c506. Dopo il merge la base della sessione è main 7bdaa8f, quindi le citazioni sotto puntano a file del diff di sessione (`git diff --name-only 7bdaa8f..HEAD`). Ho riletto ogni riga in HEAD (dba7151).
 
 **Cosa ho esaminato nel diff**
-- `modules/voice/server.py:453`: è il filtro V13 `_SOLO_ATTIVAZIONE`, che risponde «Dimmi.» passando da `_rispondi_senza_turno`. Ho controllato se interagisce con la fetta 40: no. È tutto lato server e usa la stessa strada di risposta senza turno già gestita da ascolto.py nel formato audio+pezzi. Il contenuto del file nell'index è identico a quello di MERGE_HEAD, cioè quello già rivisto in #667-M2, #668-M2 e #668-M2 bis. Esito: ok.
-- `tests/test_unit_voice_server.py:1666`: è il test V13 sull'orologio locale, e anche questo file nell'index è identico a MERGE_HEAD. Ho controllato se si perdeva qualche test V13: non se ne perde nessuno. Vale lo stesso per `tests/test_unit_voice_stt.py` e per `reports/ripartenza_m2.md`, tutti identici a MERGE_HEAD. Esito: ok.
-- `reports/stato_progetto.md:4`: ho controllato se il conflitto era risolto male. La riga è il prefisso della fetta 40, poi « — prima: », poi la riga 4 di main senza modifiche (prefisso e suffisso controllati con uno script). Ho rifatto il merge in automatico con `git merge-file` nello scratch: l'unico punto in conflitto era quella riga. Il resto, cioè la voce V13 aggiunta da main e il paragrafo della fetta 40 dal tuo lato, coincide con l'index. Esito: ok.
-- Contesto: `clients/voice/ascolto.py:85` (`VOCE_RMS_PREDEFINITO = 200.0`). ascolto.py, LEGGIMI, test di ascolto, ripartenza_mani, handoff, ultimo_report e diff_sessione nell'index sono identici a HEAD, quindi resta la tua versione. Esito: ok.
-- Memoria del revisore: contiene tutte le righe di HEAD e tutte quelle di MAIN, senza doppioni. L'unica riga ripetuta è una riga vuota, che c'era già su entrambi i lati.
-- Marcatori e conflitti: nessun marcatore di conflitto, `git diff --cached HEAD --check` pulito, `git ls-files -u` vuoto.
-- Test: copia dell'index nello scratch con `git checkout-index`, senza toccare il repo vero. Suite ascolto, server e stt: 334 passed e 24 failed, 358 in totale come i tuoi. I 24 fallimenti dipendono tutti dall'ambiente: 23 per `ModuleNotFoundError: openai`, più il test di collection dell'intero repo che si ferma per lo stesso motivo. Sono gli stessi già segnalati come preesistenti in #667 (21) e #667-M2 (3).
+- `reports/stato_progetto.md:4`: è la riga «Ultimo aggiornamento», l'unico punto in conflitto del merge. Ho controllato che il conflitto non fosse risolto male. La riga è fatta così: prefisso della fetta 40 («soglia della voce predefinita 200 invece di 500…»), poi « — prima: », poi la riga 4 di main (voce V13, review #667-M2) senza modifiche. Prefisso e suffisso li ho controllati con uno script, e un `git merge-file` rifatto nello scratch dà lo stesso risultato. Il resto del file coincide. Esito: ok.
+- `clients/voice/ascolto.py:85`: contiene `VOCE_RMS_PREDEFINITO = 200.0`. Ho controllato che il merge non avesse riportato il vecchio valore 500 o la versione di main. Nell'index del merge il file era identico a HEAD del branch, quindi resta la versione della fetta 40. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:133`: è il test `test_voce_piana_passa_col_default`, cioè una voce a RMS 300 che col default 200 apre la richiesta. Lo stesso vale per `tests/test_unit_voce_ascolto.py:142` (default dalla variabile di ambiente: None, valore valido e valore non valido) e per `tests/test_unit_voce_ascolto.py:175` (allineamento con il LEGGIMI). Ho controllato che i test della fetta 40 non si perdessero nel merge: ci sono tutti e sono identici a HEAD del branch. Esito: ok.
+- `scripts/voce/LEGGIMI.md:82`: è la riga della tabella `GAS_ASCOLTO_VOCE_RMS | 200`. Ho controllato che restasse allineata al default del codice: lo è, e il test della riga 175 la verifica. Esito: ok.
+- Contesto, fuori dal diff di sessione: `modules/voice/server.py` (filtro V13 `_SOLO_ATTIVAZIONE`) e `tests/test_unit_voice_server.py` entrano da main identici a MERGE_HEAD, cioè nella versione già rivista in #667-M2 e #668-M2. Non interagiscono con la fetta 40, che tocca solo il lato client.
+- Memoria del revisore: contiene tutte le righe dei due lati, senza doppioni.
+- Marcatori e conflitti: nessun marcatore residuo, `git diff --check` pulito, `git ls-files -u` vuoto.
+- Test: ho copiato l'index nello scratch. Suite ascolto, server e stt: 334 passed e 24 failed, 358 in totale. I 24 fallimenti dipendono tutti dall'ambiente: 23 per `ModuleNotFoundError: openai`, più la collection dell'intero repo che si ferma per lo stesso motivo. Sono gli stessi già noti come preesistenti in #667 e #667-M2.
 
-**Cosa non ho verificato**
-- Non ho rieseguito le suite in un ambiente con openai installato: nel container manca. I tuoi 358 passed li prendo per buoni, ma la mia prova li conferma solo per i 334 test che non dipendono da openai.
-- Non ho rifatto la review del contenuto della V13: è già stata rivista da M2 e qui entra senza modifiche.
-- Non ho controllato come si comporta il sistema dal vero sul Mac.
+**Cosa non ho verificato (rischi esclusi)**
+- Non ho rieseguito le suite con openai installato, perché nel container manca. I 358 passed dell'agente li prendo per buoni, ma la mia prova li conferma solo per i 334 test che non dipendono da openai.
+- Non ho rifatto la review del contenuto della V13: è già stata rivista da M2 ed entra senza modifiche.
+- Non ho verificato come si comporta il sistema dal vero sul Mac: non è riproducibile in questo ambiente.
+- Non ho rivisto il commit dba7151, che tocca solo `reports/handoff.md` e `reports/ultimo_report.md` ed è fuori dal perimetro di review.
 
 **Riserve:** nessuna (nessuna R-670-n).
 
-**Memoria:** ho aggiunto la riga `#670 (chat Mani) — 2026-11-05 — APPROVATO — …` in coda a `.claude/agents/memoria_revisore.md`. È solo nel working tree, NON staged e NON committata: aggiungila tu al commit del merge con `git add`. Nessuna lezione nuova.
+**Memoria:** la riga #670 è già nella memoria del revisore (committata col merge). Per questa riemissione non ho aggiunto righe, come richiesto, e non ho toccato il repo.
 
 ## §5 DELTA TEST DEL MOTORE
 
