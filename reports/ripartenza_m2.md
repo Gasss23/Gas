@@ -9,9 +9,9 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - `gas.py`: non toccarlo (salvo righe del doctor autorizzate).
 
 ## In corso
-- **PR #337 — fetta bot**: MERGIATA (3eab4aa) col sì dell'operatore via M1. Parser (#336, #329) e verdetto gzip+base64. Riserve: R-671-3-M2 BASSA; bot V-1 BASSA ed esterna V-1 BASSA (`_BLOCCANTE_TECNICO` toglie «write/send/select bloccante» anche in prosa che chiede un fix prima del merge: restringere a read/recv/socket/i/o); esterna V-2 BASSA (SHA della citazione non confrontato con la head); 21→22 test nell'handoff (COSMETICA).
-- **PR #335 — V14** (branch `feat/voce-v12-m2`): «Sì, signore?» (GET /voce/conferma) e filtro «Dimmi.»; main (PR #337) mergiato nel branch; il push rilancia il bot (una volta). Se solo BASSE/COSMETICHE: merge (sì dell'operatore già dato).
-- **Ordine di M1 dopo**: 0) pausa a voce: trascrizione PARLATA che è solo «pausa»/«standby» (anche con «Jarvis»/«Gas» davanti) → niente cervello, audio fisso «Va bene, mi metto in pausa.» + header X-Gas-Comando: pausa (client di Mani, standby fino a riprendi.sh), stessa normalizzazione del filtro «Dimmi.»; 1) C1 «solo l'ultima domanda» (modules/voice); 2) profilo voce in run_turn (C2+A1+A2+A3, via dato anche su gas.py, tempi prima/dopo); 3) sottofondo B dopo le prove sul Mac. Proposta mandata a M1, da portare in reports/proposta_voce_rapida.md con C1.
+- **PR #339 — V15** (branch `feat/voce-v12-m2`, da main dopo le #335 e #337): pausa a voce («Va bene.» + X-Gas-Comando: pausa), turni di seguito (X-Gas-Seguito: 1, solo forte, «[NON_PER_ME]» → X-Gas-Comando: fine), conferma con timeout 5 s e cache degli errori. Review #675-M2 APPROVATO CON RISERVE. **Da fare**: verdetto del bot + verifica esterna → M1; merge col sì dell'operatore via M1.
+- **Decisione chiesta a M1**: R-675-1-M2 parte storia (i turni «non per me» restano nella storia condivisa): in questa fetta o nella fetta 2.
+- **Ordine di M1 dopo**: 1) C1 «solo l'ultima domanda» (modules/voice); 2) profilo voce in run_turn (C2+A1+A2+A3, via dato anche su gas.py, tempi prima/dopo; dentro anche la storia senza turni «non per me»); 3) sottofondo B dopo le prove sul Mac. Proposta mandata a M1, da portare in reports/proposta_voce_rapida.md con C1.
 - Caso «Stefano» (a «che ore sono» Gas ha parlato del contatto Stefano): da controllare sul Mac nella storia (`.gas_history.json`, messaggio utente prima della risposta) — trascrizione o cervello.
 
 ## Riserve aperte (voce)
@@ -27,7 +27,7 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 
 ## Regole che seguo
 - Un branch per fetta da `origin/main`; mai push su main.
-- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #674-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
+- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #675-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
 - Fine fetta: /fine-task (ultimo_report, handoff con verdetti INTEGRALI, diff_sessione, stato_progetto) → commit → `bash scripts/fine_task_finale.sh`; etichetta `verifica` sulla PR; verifica esterna con agente nuovo `general-purpose`, `model: sonnet`, prompt esatto «Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>» (URL_HANDOFF = raw del commit di testa).
 - `gh` nel cloud non è autenticato: PR, etichette e merge con gli strumenti GitHub MCP.
 - Riserve BASSE/COSMETICHE dei bot: si registrano, niente giri (regola di M1); si riapre solo per ALTA/MEDIA o se M1 lo chiede.
