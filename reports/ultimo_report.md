@@ -1,25 +1,20 @@
-# Ultimo report — 2026-11-05 — fetta 41 (chat Mani): la parola di attivazione interrompe Gas mentre parla
+# Ultimo report — 2026-11-05 — Fetta bot: parser del verdetto e verdetto compresso fra i job (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 41 (numero in handoff §0): review #669 APPROVATO CON RISERVE e PR nel perimetro, quindi decide l'operatore tramite M1.
+1. Merge della PR #337 (https://github.com/Gasss23/Gas/pull/337): tocca la macchina del bot, quindi il bot darà neutral e il merge lo decide l'operatore (sì già dato via M1 per la fetta). Dopo il merge: rilancio una volta del bot sulla PR #335.
 
-## Esito
+## Esito delle fette
 
-- **PR #333 (fetta 40, soglia della voce 200)**: MERGIATA (830c5bf), col sì dell'operatore via M1, dopo il merge di main (PR #334 di M2, review #670 APPROVATO) e la CI verde.
-- **Fetta 41 — interruzione**: FATTA. In `clients/voice/ascolto.py`, mentre Gas parla, si cerca solo la parola di attivazione, con soglia 0.7. Se la sente: frase fermata, frasi in fila scartate, bip e nuova richiesta, sempre sotto max_turni. afplay gira in sottofondo (`RiproduzioneAfplay`). Due variabili nuove: `GAS_ASCOLTO_INTERRUZIONE` e `GAS_ASCOLTO_SOGLIA_INTERRUZIONE`. LEGGIMI aggiornato. Suite ascolto: 173 passed. I mutanti provati da me sono tutti presi; il revisore ne aveva lasciati vivi 5 nella #668 (poi coperti) e 1 equivalente nella #669 (R-669-2).
-  - Review #668: APPROVATO CON RISERVE, con R-668-1 MEDIA (le interruzioni azzeravano il tetto dei turni), corretta.
-  - Review #669: APPROVATO CON RISERVE (R-669-1 BASSA, R-669-2/3 COSMETICHE).
-  - Il diff applicato su main è identico a quello rivisto: stesso SHA-256 del diff staged.
-- **Fetta 42 — «Sì, signore?»**: DEFERITA. Aspetta il merge della PR #335 di M2 (GET /voce/conferma). Il client deve ripiegare sul bip su qualsiasi errore, anche di connessione o timeout.
-
-## Verdetti su e619103 (PR #336)
-
-- Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/336#issuecomment-6666191964), 4 BASSE.
-- Bot: verdetto testuale APPROVATO CON RISERVE (2 BASSE, 1 COSMETICA), ma check failure: il parser ha letto un MEDIA che nel testo non c'è. Segnalato a M1.
-- Riserve registrate in stato_progetto (blocco fetta 41).
+- **(a1) Parser, verdetto #336 su e619103 letto come MEDIA**: `FATTA` — «una read bloccante» nella descrizione di una BASSA; `_BLOCCANTE_TECNICO` (solo read, write, recv, send, socket, I/O, select, poll).
+- **(a2) Parser, verdetto #329 su 7957a15 letto «ambiguo» (3 nov)**: `FATTA` — la causa non era «R-615-4 (MEDIA, preesistente)» (già gestito) ma la prosa «- Verifica esterna su 3b92254: …» presa per titolo; `_CITAZIONE_VERIFICA_PASSATA` a lista bianca.
+- **(b) Verdetto scartato da GitHub perché contiene il valore di un secret**: `FATTA` — gzip+base64 fra i job, `leggi_verdetto()` con tetto 1 MB.
+- Test sui due verdetti veri (`tests/dati_verifica_bot/`) e sui casi avversari delle review: 582 passed; 21 falliscono su main.
+- Review #671-M2 e #672-M2 BOCCIATO (ognuna ha trovato allentamenti NO→sì, chiusi), #673-M2 APPROVATO CON RISERVE (R-673-1/2 chiuse subito), #673-M2 bis APPROVATO.
+- **Rilancio del bot sulla #335 e merge**: `DEFERITA — dopo il merge della #337` (il workflow gira dalla versione di main).
+- **C1, profilo voce, sottofondo**: `DEFERITE` — ordine di M1, dopo questa fetta.
 
 ## Anomalie
 
-- Il primo verdetto #670 citava file usciti dal diff di sessione dopo il merge di main e il gate B lo rifiutava. Il revisore lo ha riemesso con lo stesso esito; l'originale integrale è nell'handoff del commit dba7151.
-- La fetta 41 era stata committata su un branch locale (6b74158) mentre la #333 occupava l'unico branch remoto. Dopo il merge l'ho riportata su main con lo stesso diff, e le righe #668/#669 della memoria del revisore le ho aggiunte a mano.
+- Branch nuovo `feat/bot-verdetto-m2` (diverso da quello di lavoro della voce): la correzione deve entrare in main da sola prima del rilancio sulla #335.
+- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.

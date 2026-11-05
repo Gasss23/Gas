@@ -1,10 +1,10 @@
-# Diff della sessione — 2026-11-05 — chat Mani, fetta 41
+# Diff della sessione — 2026-11-05 — Fetta bot (chat M2)
 
-File toccati (base main 830c5bf, dopo il merge della PR #333):
-- `clients/voice/ascolto.py`: interruzione con la parola di attivazione mentre Gas parla (soglia 0.7, solo la parola), afplay in sottofondo (`RiproduzioneAfplay`), interruzioni sotto max_turni, `soglia_interruzione()` dall'ambiente.
-- `scripts/voce/LEGGIMI.md`: come interrompere Gas, due righe nuove nella tabella delle regolazioni.
-- `tests/test_unit_voce_ascolto.py`: test dell'interruzione, della riproduzione in sottofondo, delle guardie §9 e del tetto dei turni.
-- `.claude/agents/memoria_revisore.md`: righe delle review #668 e #669 (con la lezione sui contatori azzerati dentro un ciclo con tetto).
-- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task (più l'esito della PR #333).
+- `scripts/bot_esito.py` — `_BLOCCANTE_TECNICO` («read bloccante» non è una gravità), `_CITAZIONE_VERIFICA_PASSATA` (citazione di una verifica passata per SHA non è un titolo), `leggi_verdetto()` (verdetto compresso gzip+base64, tetto 1 MB).
+- `.github/workflows/verifica-bot.yml` — output `verdetto_gz` al posto di `verdetto` in chiaro; `VERDETTO_GZ` al job esito; rischio R-671-3-M2 dichiarato nel commento.
+- `tests/test_unit_verifica_bot.py` — test sui due verdetti veri, casi avversari delle review #671–#673, verdetto compresso, passo «Raccogli il verdetto» eseguito davvero.
+- `tests/dati_verifica_bot/verdetto_336_e619103.txt`, `tests/dati_verifica_bot/verdetto_329_7957a15.txt` — i due verdetti veri del bot.
+- `.claude/agents/memoria_revisore.md` — review #671–#673-M2.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/ripartenza_m2.md` — report di fine task.
 
-Questo file si riscrive a ogni sessione; la storia completa sta in git.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
