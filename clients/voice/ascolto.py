@@ -10,6 +10,11 @@ esistente (modules/voice/server.py, POST /voice) e risposta riprodotta: con la r
 fila, mentre il server sintetizza le successive (fetta 39). Dopo la risposta
 resta una finestra di ascolto (GAS_VOICE_FINESTRA, 12 s) per continuare senza ripetere
 la parola, fino a GAS_VOICE_MAX_TURNI turni di fila.
+Mentre Gas parla si può interromperlo dicendo di nuovo la parola di attivazione (fetta
+41): la frase si ferma, quelle in fila si scartano e si registra la nuova richiesta.
+Grilletto SOLO la parola, con una soglia più alta (GAS_ASCOLTO_SOGLIA_INTERRUZIONE): con
+le casse del Mac il microfono sente la voce di Gas, e il volume da solo la scambierebbe
+per una domanda.
 
 Uso (dalla root ~/Gas, venv attivo, dipendenze di clients/voice/requirements-ascolto.txt):
     python clients/voice/ascolto.py
@@ -37,6 +42,8 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.5)
     GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 200, campioni int16)
     GAS_ASCOLTO_SILENZIO   — secondi di silenzio che chiudono la richiesta (default 0.8)
+    GAS_ASCOLTO_INTERRUZIONE — 0 = la parola non interrompe Gas mentre parla (default 1)
+    GAS_ASCOLTO_SOGLIA_INTERRUZIONE — soglia della parola mentre Gas parla, 0-1 (default 0.7)
     GAS_ASCOLTO_FORMATO    — formato della risposta chiesto al server (default
                              audio+pezzi, le frasi in fila; vuoto = un solo MP3)
 
@@ -83,6 +90,10 @@ PAUSA_ERRORI_MAX_S = 60.0    # pausa massima fra due tentativi col rilevatore in
 # dell'operatore (prova del 2026-11-05) dopo il bip la voce non passava («torno ad
 # aspettare»); con 200 sì. In una stanza rumorosa si alza dal .env.
 VOCE_RMS_PREDEFINITO = 200.0
+# Fetta 41: soglia della parola di attivazione mentre Gas parla. Più alta di quella
+# normale (0.5) perché il microfono sente anche la voce di Gas dalle casse.
+SOGLIA_INTERRUZIONE_PREDEFINITA = 0.7
+RIPRODUZIONE_MAX_S = 600.0   # una frase non suona più di così (come il vecchio timeout di afplay)
 BUONI_PER_AZZERARE = 125     # blocchi buoni di fila (10 s) prima di dire «di nuovo a posto»
 _BIP_OK = "/System/Library/Sounds/Tink.aiff"
 _BIP_ERRORE = "/System/Library/Sounds/Basso.aiff"
@@ -182,6 +193,15 @@ def formato_richiesto() -> str:
     return FORMATO_PEZZI
 
 
+def soglia_interruzione() -> Optional[float]:
+    """Fetta 41: soglia della parola mentre Gas parla, o None se GAS_ASCOLTO_INTERRUZIONE
+    è «0» (la parola allora non interrompe)."""
+    if os.environ.get("GAS_ASCOLTO_INTERRUZIONE", "").strip() == "0":
+        return None
+    return _numero("GAS_ASCOLTO_SOGLIA_INTERRUZIONE", SOGLIA_INTERRUZIONE_PREDEFINITA,
+                   0.05, 1.0)
+
+
 def url_valido(url: str) -> Optional[str]:
     """Motivo se l'URL del server voce non va bene: il token viaggia in chiaro solo
     verso il Mac stesso; fuori serve https."""
@@ -232,12 +252,13 @@ class Ascolto:
     invio, riproduzione, bip): nei test sono finte, nessun audio vero."""
 
     def __init__(self, blocchi: Iterator[Blocco], rilevatore: Callable[[Blocco], float],
-                 invia: Invia, riproduci: Callable[[bytes], None],
+                 invia: Invia, riproduci: Callable[[bytes], Optional[object]],
                  bip: Callable[[str], None], *,
                  svuota: Callable[[], None] = lambda: None,
                  azzera_rilevatore: Callable[[], None] = lambda: None,
                  soglia: float = 0.5, voce_rms: float = VOCE_RMS_PREDEFINITO, silenzio_s: float = 0.8,
                  finestra_s: float = 12.0, max_turni: int = 5,
+                 soglia_interruzione: Optional[float] = SOGLIA_INTERRUZIONE_PREDEFINITA,
                  dorme: Callable[[float], None] = time.sleep) -> None:
         self.blocchi = blocchi
         self.rilevatore = rilevatore
@@ -251,7 +272,10 @@ class Ascolto:
         self.silenzio_s = silenzio_s
         self.finestra_s = finestra_s
         self.max_turni = max(1, int(max_turni))
+        # None = la parola non interrompe Gas mentre parla (GAS_ASCOLTO_INTERRUZIONE=0)
+        self.soglia_interruzione = soglia_interruzione
         self.dorme = dorme
+        self.interrotto = False   # l'ultimo turno è stato interrotto dalla parola
         self._errori_rilevatore = 0
         self._buoni_di_fila = 0
         self._muti = 0
@@ -373,7 +397,10 @@ class Ascolto:
     def turno(self, blocchi: List[Blocco]) -> bool:
         """Invia la richiesta e riproduce la risposta: un MP3 intero, oppure (fetta 39)
         le frasi una dopo l'altra, ciascuna appena arriva. True se almeno un pezzo è
-        stato suonato."""
+        stato suonato. Se la parola di attivazione arriva mentre Gas parla (fetta 41) la
+        frase si ferma, la risposta si chiude (le frasi in fila si scartano e il server
+        smette di sintetizzarle) e `self.interrotto` diventa True."""
+        self.interrotto = False
         try:
             ok, risposta, motivo = self.invia(in_wav(blocchi))
         except Exception as e:  # §9
@@ -385,6 +412,7 @@ class Ascolto:
             return False
         pezzi = iter([risposta] if isinstance(risposta, (bytes, bytearray)) else risposta)
         suonati = 0
+        self._azzera()  # il rilevatore riparte pulito: ascolterà mentre Gas parla
         try:
             while True:
                 try:
@@ -398,9 +426,14 @@ class Ascolto:
                     continue
                 suonati += 1
                 try:
-                    self.riproduci(audio)
+                    in_corso = self.riproduci(audio)
                 except Exception as e:  # §9
                     log.warning("riproduzione fallita (%s)", type(e).__name__)
+                    continue
+                if self._ascolta_mentre_suona(in_corso):
+                    self.interrotto = True
+                    log.info("interrotto: parola di attivazione mentre Gas parlava")
+                    break
         finally:
             chiudi = getattr(pezzi, "close", None)
             if chiudi is not None:  # la connessione si chiude: il server smette di sintetizzare
@@ -417,6 +450,44 @@ class Ascolto:
             self._svuota()
             return False
         return True
+
+    def _ascolta_mentre_suona(self, in_corso: object) -> bool:
+        """Fetta 41: mentre la frase suona legge il microfono e cerca SOLO la parola di
+        attivazione, con `soglia_interruzione`. True = parola sentita (frase fermata).
+        `in_corso` è quello che dà `riproduci`: None se ha già suonato tutto (riproduzione
+        bloccante), altrimenti un oggetto con `finita()` e `ferma()`. La frase si ferma
+        sempre all'uscita (anche per un'eccezione), così afplay non resta acceso."""
+        if in_corso is None:
+            return False
+        errori = 0
+        try:
+            while True:
+                try:
+                    if in_corso.finita():  # type: ignore[attr-defined]
+                        return False
+                except Exception as e:  # §9: stato sconosciuto → la frase si ferma
+                    log.warning("riproduzione: stato illeggibile (%s)", type(e).__name__)
+                    return False
+                b = self._prossimo()
+                if b is None:
+                    return False
+                if self.soglia_interruzione is None:
+                    continue
+                try:
+                    punteggio = float(self.rilevatore(b))
+                except Exception as e:  # §9: senza rilevatore Gas finisce di parlare
+                    errori += 1
+                    if errori == 1:
+                        log.warning("rilevatore in errore mentre Gas parla (%s)",
+                                    type(e).__name__)
+                    continue
+                if punteggio >= self.soglia_interruzione:
+                    return True
+        finally:
+            try:
+                in_corso.ferma()  # type: ignore[attr-defined]
+            except Exception as e:  # §9
+                log.warning("arresto della riproduzione fallito (%s)", type(e).__name__)
 
     def _bip(self, tipo: str) -> None:
         try:
@@ -446,7 +517,19 @@ class Ascolto:
         while richiesta is not None:
             turni += 1
             log.info("richiesta registrata (%.1f s), invio", len(richiesta) * SEC_BLOCCO)
-            if not self.turno(richiesta) or turni >= self.max_turni:
+            riuscito = self.turno(richiesta)
+            if self.interrotto:
+                # Fetta 41: come una parola nuova — bip, poi la nuova richiesta. I turni
+                # NON ripartono da zero (R-668-1): se la voce di Gas dalle casse facesse
+                # scattare la parola, le interruzioni di fila restano sotto max_turni.
+                if turni >= self.max_turni:
+                    break
+                self._azzera()
+                self._bip("ok")
+                self._svuota()
+                richiesta = self.registra()
+                continue
+            if not riuscito or turni >= self.max_turni:
                 break
             inizio = self.aspetta_voce()
             if inizio is None:
@@ -561,19 +644,50 @@ def invia_al_server(url: str, token: str, timeout: float,
     return _invia
 
 
-def riproduci_afplay(audio: bytes) -> None:
-    """Riproduce la risposta di Gas con afplay da un file temporaneo 0600, cancellato
-    subito dopo (anche se afplay fallisce)."""
-    cartella = tempfile.mkdtemp(prefix="gas-voce-")
-    percorso = os.path.join(cartella, "risposta.mp3")
-    try:
-        fd = os.open(percorso, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(fd, "wb") as f:
-            f.write(audio)
-        subprocess.run(["afplay", percorso], check=False, timeout=600,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    finally:
-        shutil.rmtree(cartella, ignore_errors=True)
+class RiproduzioneAfplay:
+    """Fetta 41: una frase di Gas che suona con afplay in sottofondo, così intanto si
+    ascolta il microfono. File temporaneo 0600 in una cartella propria, cancellato quando
+    la frase finisce o si ferma (anche se afplay non parte)."""
+
+    def __init__(self, audio: bytes, adesso: Callable[[], float] = time.monotonic) -> None:
+        self._adesso = adesso
+        self._cartella = tempfile.mkdtemp(prefix="gas-voce-")
+        try:
+            percorso = os.path.join(self._cartella, "risposta.mp3")
+            fd = os.open(percorso, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "wb") as f:
+                f.write(audio)
+            self._proc = subprocess.Popen(["afplay", percorso], stdout=subprocess.DEVNULL,
+                                          stderr=subprocess.DEVNULL)
+        except BaseException:
+            shutil.rmtree(self._cartella, ignore_errors=True)
+            raise
+        self._inizio = adesso()
+
+    def finita(self) -> bool:
+        if self._proc.poll() is None and self._adesso() - self._inizio < RIPRODUZIONE_MAX_S:
+            return False
+        self.ferma()
+        return True
+
+    def ferma(self) -> None:
+        """Ferma afplay (se suona ancora) e cancella il file. Si può chiamare più volte."""
+        try:
+            if self._proc.poll() is None:
+                self._proc.terminate()
+                try:
+                    self._proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    self._proc.kill()
+                    self._proc.wait(timeout=2)
+        finally:
+            shutil.rmtree(self._cartella, ignore_errors=True)
+
+
+def riproduci_afplay(audio: bytes) -> RiproduzioneAfplay:
+    """Avvia la frase di Gas e torna subito: il ciclo dell'ascolto la segue con `finita()`
+    e la ferma con `ferma()` (fetta 41)."""
+    return RiproduzioneAfplay(audio)
 
 
 def bip_di_sistema(tipo: str) -> None:
@@ -655,7 +769,8 @@ def main() -> int:
                     voce_rms=_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
                     silenzio_s=_numero("GAS_ASCOLTO_SILENZIO", 0.8, 0.2, 5),
                     finestra_s=_numero("GAS_VOICE_FINESTRA", 12, 0, 120),
-                    max_turni=int(_numero("GAS_VOICE_MAX_TURNI", 5, 1, 50))).gira()
+                    max_turni=int(_numero("GAS_VOICE_MAX_TURNI", 5, 1, 50)),
+                    soglia_interruzione=soglia_interruzione()).gira()
         except KeyboardInterrupt:
             return 0
         except Exception as e:  # §9: microfono staccato o simili → si riprova
