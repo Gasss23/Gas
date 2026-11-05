@@ -35,7 +35,7 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_VOICE_MAX_TURNI    — turni di fila senza parola di attivazione (default 5)
     GAS_ASCOLTO_MODELLO    — modello di openWakeWord (default hey_jarvis)
     GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.5)
-    GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 500, campioni int16)
+    GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 200, campioni int16)
     GAS_ASCOLTO_SILENZIO   — secondi di silenzio che chiudono la richiesta (default 0.8)
     GAS_ASCOLTO_FORMATO    — formato della risposta chiesto al server (default
                              audio+pezzi, le frasi in fila; vuoto = un solo MP3)
@@ -79,6 +79,10 @@ INIZIO_VOCE_S = 0.24         # voce continua che apre un turno nella finestra (3
 MICROFONO_MUTO_S = 10.0      # tutto a zero per così tanto → avviso (permesso del microfono?)
 RIPROVA_MICROFONO_S = 5.0
 PAUSA_ERRORI_MAX_S = 60.0    # pausa massima fra due tentativi col rilevatore in errore
+# Volume (RMS, int16) sopra cui un blocco conta come voce. Era 500: sul MacBook Air
+# dell'operatore (prova del 2026-11-05) dopo il bip la voce non passava («torno ad
+# aspettare»); con 200 sì. In una stanza rumorosa si alza dal .env.
+VOCE_RMS_PREDEFINITO = 200.0
 BUONI_PER_AZZERARE = 125     # blocchi buoni di fila (10 s) prima di dire «di nuovo a posto»
 _BIP_OK = "/System/Library/Sounds/Tink.aiff"
 _BIP_ERRORE = "/System/Library/Sounds/Basso.aiff"
@@ -232,7 +236,7 @@ class Ascolto:
                  bip: Callable[[str], None], *,
                  svuota: Callable[[], None] = lambda: None,
                  azzera_rilevatore: Callable[[], None] = lambda: None,
-                 soglia: float = 0.5, voce_rms: float = 500.0, silenzio_s: float = 0.8,
+                 soglia: float = 0.5, voce_rms: float = VOCE_RMS_PREDEFINITO, silenzio_s: float = 0.8,
                  finestra_s: float = 12.0, max_turni: int = 5,
                  dorme: Callable[[float], None] = time.sleep) -> None:
         self.blocchi = blocchi
@@ -648,7 +652,7 @@ def main() -> int:
             Ascolto(mic.blocchi(), punteggio, invia, riproduci_afplay, bip_di_sistema,
                     svuota=mic.svuota, azzera_rilevatore=azzera,
                     soglia=_numero("GAS_ASCOLTO_SOGLIA", 0.5, 0.05, 0.99),
-                    voce_rms=_numero("GAS_ASCOLTO_VOCE_RMS", 500, 10, 30000),
+                    voce_rms=_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
                     silenzio_s=_numero("GAS_ASCOLTO_SILENZIO", 0.8, 0.2, 5),
                     finestra_s=_numero("GAS_VOICE_FINESTRA", 12, 0, 120),
                     max_turni=int(_numero("GAS_VOICE_MAX_TURNI", 5, 1, 50))).gira()

@@ -79,7 +79,7 @@ o il prossimo accesso al Mac).
 | Variabile | Default | Cosa fa |
 |---|---|---|
 | `GAS_ASCOLTO_SOGLIA` | 0.5 | sensibilità della parola (più alta = meno attivazioni per sbaglio) |
-| `GAS_ASCOLTO_VOCE_RMS` | 500 | volume sopra cui conta come voce |
+| `GAS_ASCOLTO_VOCE_RMS` | 200 | volume sopra cui conta come voce (più basso = sente anche la voce piana; se in una stanza rumorosa parte da solo o non chiude la richiesta, alzalo a 300–500) |
 | `GAS_ASCOLTO_SILENZIO` | 0.8 | secondi di silenzio che chiudono la richiesta |
 | `GAS_VOICE_FINESTRA` | 12 | secondi per continuare dopo la risposta |
 | `GAS_VOICE_MAX_TURNI` | 5 | turni di fila senza ripetere la parola |
