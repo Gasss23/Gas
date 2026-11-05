@@ -1,10 +1,11 @@
-# Diff della sessione — 2026-11-05 — chat Mani, fetta 41
+# Diff della sessione — 2026-11-05 — Voce V14 (chat M2)
 
-File toccati (base main 830c5bf, dopo il merge della PR #333):
-- `clients/voice/ascolto.py`: interruzione con la parola di attivazione mentre Gas parla (soglia 0.7, solo la parola), afplay in sottofondo (`RiproduzioneAfplay`), interruzioni sotto max_turni, `soglia_interruzione()` dall'ambiente.
-- `scripts/voce/LEGGIMI.md`: come interrompere Gas, due righe nuove nella tabella delle regolazioni.
-- `tests/test_unit_voce_ascolto.py`: test dell'interruzione, della riproduzione in sottofondo, delle guardie §9 e del tetto dei turni.
-- `.claude/agents/memoria_revisore.md`: righe delle review #668 e #669 (con la lezione sui contatori azzerati dentro un ciclo con tetto).
-- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task (più l'esito della PR #333).
+- `modules/voice/server.py` — `GET /voce/conferma` (`_conferma`, `conferma_cache`, `FRASE_CONFERMA`, docstring del modulo); filtro `_SOLO_ATTIVAZIONE` senza ok/okay e con la parola ripetuta.
+- `tests/test_unit_voice_prova_voci.py` — 2 test V14 (una sintesi per voce, errori puliti senza cache); la fixture azzera la cache.
+- `tests/test_unit_voice_stt.py` — casi del filtro: ripetizione riconosciuta, «Ok Gas.» al cervello.
+- `.claude/agents/memoria_revisore.md` — review #669-M2, #670-M2 e #674-M2 (merge di main).
+- Secondo merge di origin/main (PR #337 fetta bot, fetta 41 della chat Mani): conflitti risolti in `reports/stato_progetto.md`, `reports/ripartenza_m2.md` e nella memoria del revisore.
+- Merge di origin/main (PR #333 della chat Mani): conflitti risolti in `reports/stato_progetto.md` e nella memoria del revisore; i file di Mani arrivano invariati.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/ripartenza_m2.md` — report di fine task.
 
-Questo file si riscrive a ogni sessione; la storia completa sta in git.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

@@ -1,0 +1,30 @@
+VERIFICA ESTERNA #336 — APPROVATO CON RISERVE
+Metodo: lettura del codice della PR al commit e6191039469b1d4f037d84a7c4ce92e5dca52106 (cartella ./pr), diff completo con gh pr diff 336, commit e descrizione con gh pr view, stato dei check con gh pr checks e gh run view 42085956774 (headSha = e6191039, coincide). Per vincolo dell'ambiente non ho eseguito codice, test o mutanti: le prove sono letture e confronti statici. Repo reale non toccato.
+
+CLAIM VERIFICATI:
+- Perimetro (8 file: ascolto.py, LEGGIMI, test ascolto, memoria_revisore e 4 report) = file di gh pr view: VERO.
+- §3 dell'handoff (un solo commit di codice, ef65e42, più il commit di fine-task e619103): VERO, coincide con i commit della PR.
+- «Mentre Gas parla grilletto SOLO la parola, soglia 0.7»: VERO. _ascolta_mentre_suona (clients/voice/ascolto.py:454) usa solo rilevatore >= soglia_interruzione, mai rms; test della voce senza parola e del punteggio QUASI 0.6 (tests/test_unit_voce_ascolto.py:257, :266).
+- «Frase fermata, frasi in fila scartate, server che smette di sintetizzare»: VERO. ferma() nel finally (ascolto.py:486-490), break poi close() di pezzi nel finally di turno (ascolto.py:437-443); test a :246.
+- «Interruzioni sotto max_turni» (chiusura di R-668-1): VERO. Ramo interrotto con «if turni >= max_turni: break» e turni mai azzerato (ascolto.py:521-531); test a :303.
+- «GAS_ASCOLTO_INTERRUZIONE=0 la spegne»: VERO. soglia_interruzione() (ascolto.py:196) restituisce None, e _ascolta_mentre_suona allora non chiama il rilevatore; main passa il valore (ascolto.py:770); test parametrico (6 casi) e test di main (:180).
+- «afplay in sottofondo, file 0600 cancellato a fine frase o all'arresto»: VERO a lettura. Popen in RiproduzioneAfplay; rmtree su BaseException nell'init, in ferma() idempotente e alla fine in finita(); tetto RIPRODUZIONE_MAX_S. Test con Popen finto (:900-934). L'unico chiamante di riproduci_afplay è main (grep), quindi nessun altro chiamante si aspetta None.
+- «Guardie §9 di finita()/ferma()» (chiusura di R-668-2): VERO, test parametrico a 3 casi (:346).
+- «Suite ascolto da 154 a 173»: COERENTE. Righe def test_/parametrize passano da 109 a 123: 10 test semplici + 3 casi + 6 casi = 19 nuovi, e 154+19 = 173. Non ho rieseguito la suite.
+- «Diff identico a quello rivisto (stesso SHA del diff staged)»: NON VERIFICATO (vedi sotto).
+- CI sullo SHA: handoff-check success; unit-suite ancora in corso (in_progress) al momento del verdetto; verifica-bot in attesa.
+
+FINDING:
+V-1 (BASSA) — Gas può interrompersi da solo: se una risposta pronuncia la parola di attivazione (per esempio «di' Hey Jarvis»), l'eco delle casse la fa riconoscere al microfono. La soglia 0.7 è provata solo con punteggi finti. Effetto: risposta troncata, poi bip e attesa vuota. Il tetto max_turni evita la catena di turni pagati, ma non la risposta persa. Sonda non eseguibile qui. Fix: prova sul Mac con una frase TTS che contiene la parola, oppure il server evita di sintetizzarla.
+V-2 (BASSA) — Tra una frase e l'altra il microfono non viene letto: turno() resta fermo su next(pezzi) mentre il server sintetizza, e Microfono.blocchi fa una read bloccante. Una parola detta in quella pausa arriva in ritardo dal buffer di PortAudio o si perde con l'overflow (flag ignorato). Nessun test la copre. Fix: nota nel LEGGIMI, oppure leggere il microfono anche durante l'attesa del pezzo successivo.
+V-3 (COSMETICA) — ultimo_report.md dice «mutanti tutti presi», ma la #669 registra 1 mutante vivo (equivalente) e la #668 ne aveva 5 vivi. Fix: correggere la frase.
+Riserve già dichiarate dalla review di questa PR, confermate a lettura: R-669-1 (BASSA): al tetto, l'interruzione ferma Gas senza bip né nuova richiesta, mentre il LEGGIMI promette il bip; R-669-2 e R-669-3 (COSMETICHE).
+
+NON VERIFICATO:
+- Esito di unit-suite sullo SHA e6191039: run 42085956774 ancora in corso quando ho chiuso la verifica. Il merge va fatto solo con unit-suite success.
+- I numeri dei test (173 passed) e i mutanti dichiarati: in questo ambiente non posso eseguire codice.
+- Identità tra il diff rivisto (base 2c8cd2a) e quello committato su main 830c5bf: il confronto git locale non era consentito in questo ambiente.
+- Comportamento reale sul Mac (eco delle casse, latenza di afplay, overflow del microfono, terminate/kill di afplay): richiede hardware macOS.
+- Elenco dei check required nel ruleset di main: chiamata API non consentita qui. Ho usato quello di CLAUDE.md (unit-suite, handoff-check, verifica-bot).
+
+RACCOMANDAZIONE: prima del merge aspettare che unit-suite sia success sullo SHA e6191039. Poi, sul Mac, una prova con le casse: Gas deve finire una risposta normale senza interrompersi, una risposta che contiene «Hey Jarvis» va osservata (V-1), e la parola detta a metà frase deve fermarlo. V-2, V-3 e R-669-1 si possono chiudere in una fetta successiva; nessuna blocca.

@@ -151,6 +151,7 @@ def server():
     _H.voci_ammesse = frozenset({"George00000000001"})   # come dopo aver aperto l'elenco
     _H.libreria_ammesse = {}
     _H.aggiunte_voci = []
+    _H.conferma_cache = None  # V14: cache di «Sì, signore?» per test
     server.classe = _H   # i test che cambiano tetti e liste toccano questa classe
     srv = HTTPServer(("127.0.0.1", 0), _H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -683,3 +684,46 @@ def test_server_aggiunta_tetto_ed_errore(server, monkeypatch):
         stati = [_chiama(server, "POST", "/voci/aggiungi", {"voce": "Libro000000000001"})[0]
                  for _ in range(5)]
     assert stati == [200, 200, 200, 200, 429] and add.call_count == 4   # 5 all'ora, errore compreso
+
+
+# ── V14 (chat M2): GET /voce/conferma — «Sì, signore?» con la voce attuale, in cache ──
+
+def test_v14_conferma_una_sintesi_per_voce(server, monkeypatch):
+    """V14: la prima richiesta sintetizza «Sì, signore?» con la voce attuale, le successive
+    escono dalla cache senza spesa; se la voce cambia si rigenera (chiave con l'id)."""
+    from modules.voice.server import FRASE_CONFERMA
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    monkeypatch.setenv("ELEVENLABS_VOICE_ID", "Brian000000000001")
+    with patch("modules.voice.server.synthesize_speech",
+               side_effect=lambda frase, k, voce: f"mp3:{voce}".encode()) as tts:
+        for _ in range(3):
+            st, ct, corpo = _chiama(server, "GET", "/voce/conferma")
+            assert st == 200 and ct == "audio/mpeg" and corpo == b"mp3:Brian000000000001"
+        assert tts.call_count == 1
+        assert tts.call_args.args == (FRASE_CONFERMA, "k", "Brian000000000001")
+        monkeypatch.setenv("ELEVENLABS_VOICE_ID", "George00000000001")
+        st, _, corpo = _chiama(server, "GET", "/voce/conferma")
+        assert st == 200 and corpo == b"mp3:George00000000001" and tts.call_count == 2
+        st, _, corpo = _chiama(server, "GET", "/voce/conferma")
+        assert corpo == b"mp3:George00000000001" and tts.call_count == 2
+    assert FRASE_CONFERMA == "Sì, signore?"
+
+
+def test_v14_conferma_errori_puliti_senza_cache(server, monkeypatch):
+    """V14: senza token 401; senza chiave 503; ElevenLabs in errore, rete giù o audio vuoto
+    → 502 JSON (il client ripiega sul bip) e niente in cache: la richiesta dopo riprova."""
+    from modules.voice.tts import ElevenLabsTTSError
+    assert _chiama(server, "GET", "/voce/conferma", token="sbagliato")[0] == 401
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    with patch("modules.voice.server.synthesize_speech") as tts:
+        st, ct, corpo = _chiama(server, "GET", "/voce/conferma")
+    assert st == 503 and "ELEVENLABS_API_KEY" in json.loads(corpo)["error"] and tts.call_count == 0
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    for errore in (ElevenLabsTTSError(429, "quota"), OSError("rete"), None):
+        kw = {"side_effect": errore} if errore is not None else {"return_value": b""}
+        with patch("modules.voice.server.synthesize_speech", **kw):
+            st, ct, corpo = _chiama(server, "GET", "/voce/conferma")
+        assert st == 502 and ct.startswith("application/json") and "error" in json.loads(corpo)
+        assert globals()["server"].classe.conferma_cache is None
+    with patch("modules.voice.server.synthesize_speech", return_value=b"ok") as tts:
+        assert _chiama(server, "GET", "/voce/conferma")[2] == b"ok" and tts.call_count == 1

@@ -1,25 +1,22 @@
-# Ultimo report — 2026-11-05 — fetta 41 (chat Mani): la parola di attivazione interrompe Gas mentre parla
+# Ultimo report — 2026-11-05 — Voce V14: «Sì, signore?» (GET /voce/conferma) e filtro «Dimmi.» rivisto (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 41 (numero in handoff §0): review #669 APPROVATO CON RISERVE e PR nel perimetro, quindi decide l'operatore tramite M1.
+1. Merge della PR #335 (https://github.com/Gasss23/Gas/pull/335), secondo la regola di merge di CLAUDE.md §10.
 
-## Esito
+## Esito delle fette
 
-- **PR #333 (fetta 40, soglia della voce 200)**: MERGIATA (830c5bf), col sì dell'operatore via M1, dopo il merge di main (PR #334 di M2, review #670 APPROVATO) e la CI verde.
-- **Fetta 41 — interruzione**: FATTA. In `clients/voice/ascolto.py`, mentre Gas parla, si cerca solo la parola di attivazione, con soglia 0.7. Se la sente: frase fermata, frasi in fila scartate, bip e nuova richiesta, sempre sotto max_turni. afplay gira in sottofondo (`RiproduzioneAfplay`). Due variabili nuove: `GAS_ASCOLTO_INTERRUZIONE` e `GAS_ASCOLTO_SOGLIA_INTERRUZIONE`. LEGGIMI aggiornato. Suite ascolto: 173 passed. I mutanti provati da me sono tutti presi; il revisore ne aveva lasciati vivi 5 nella #668 (poi coperti) e 1 equivalente nella #669 (R-669-2).
-  - Review #668: APPROVATO CON RISERVE, con R-668-1 MEDIA (le interruzioni azzeravano il tetto dei turni), corretta.
-  - Review #669: APPROVATO CON RISERVE (R-669-1 BASSA, R-669-2/3 COSMETICHE).
-  - Il diff applicato su main è identico a quello rivisto: stesso SHA-256 del diff staged.
-- **Fetta 42 — «Sì, signore?»**: DEFERITA. Aspetta il merge della PR #335 di M2 (GET /voce/conferma). Il client deve ripiegare sul bip su qualsiasi errore, anche di connessione o timeout.
-
-## Verdetti su e619103 (PR #336)
-
-- Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/336#issuecomment-6666191964), 4 BASSE.
-- Bot: verdetto testuale APPROVATO CON RISERVE (2 BASSE, 1 COSMETICA), ma check failure: il parser ha letto un MEDIA che nel testo non c'è. Segnalato a M1.
-- Riserve registrate in stato_progetto (blocco fetta 41).
+- **V14.1 — `GET /voce/conferma`** (decisione dell'operatore, contratto con la chat Mani via M1): `FATTA` — «Sì, signore?» in audio/mpeg con la voce attuale; cache in memoria con l'id della voce (un giro su ElevenLabs per voce); 503 senza chiave, 502 su errore o audio vuoto, mai in cache.
+- **V14.2 — V-1 bot #334** (togliere ok/okay dal filtro «Dimmi.»): `FATTA`.
+- **V14.3 — R-668-2-M2** («Hey Jarvis» ripetuto): `FATTA`.
+- **Proposta sulla velocità della voce** (solo documento, chiesta da M1): `DEFERITA — dopo questa fetta`, come da ordine di M1.
+- Client H24 (`clients/voice/ascolto.py`): `SALTATA — fuori perimetro`, lo fa la chat Mani.
+- Test: 2 nuovi V14 in voice_prova_voci, casi del filtro aggiornati in voice_stt; 3 mutanti uccisi; suite voce 284 passed (prima del filtro rivisto), revisore 148 passed su voice_prova_voci + voice_stt dopo.
+- Review #669-M2 APPROVATO CON RISERVE (R-669-1 BASSA, R-669-2 COSMETICA).
+- **Merge di main nel branch** (PR #335 in conflitto dopo la PR #333 della chat Mani, soglia della voce 200): `FATTA` — conflitti solo nei report e nella memoria del revisore; review #670-M2 APPROVATO (suite voce 284 passed, voce_ascolto 154 passed).
+- **Verifica esterna #335**: APPROVATO CON RISERVE (V-1 BASSA = R-669-1; V-2 BASSA «Jarvis Gas» ora sola attivazione, caso negativo tolto senza dichiararlo; V-3/V-4 COSMETICHE). **Bot**: verdetto scritto (APPROVATO CON RISERVE: V-1 BASSA «Jarvis Gas», V-2 COSMETICA query string → 405) ma check `verifica-bot` annullato due volte: GitHub scartava l'output perché conteneva una parola uguale a un secret del repo. Corretto nella PR #337 (verdetto compresso fra i job), mergiata.
+- **Secondo merge di main nel branch** (dopo la PR #337 e la fetta 41 della chat Mani): `FATTA` — conflitti solo nei report e nella memoria; review #674-M2 APPROVATO (1039 test passati fra bot, voce e ascolto). Il push rilancia il bot sulla #335 una volta.
 
 ## Anomalie
 
-- Il primo verdetto #670 citava file usciti dal diff di sessione dopo il merge di main e il gate B lo rifiutava. Il revisore lo ha riemesso con lo stesso esito; l'originale integrale è nell'handoff del commit dba7151.
-- La fetta 41 era stata committata su un branch locale (6b74158) mentre la #333 occupava l'unico branch remoto. Dopo il merge l'ho riportata su main con lo stesso diff, e le righe #668/#669 della memoria del revisore le ho aggiunte a mano.
+- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.

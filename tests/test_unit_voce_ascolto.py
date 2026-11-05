@@ -929,6 +929,48 @@ def test_conferma_qualsiasi_errore_da_none(server_conferma, risposta, caplog):
     assert TOKEN not in caplog.text
 
 
+
+@pytest.fixture
+def server_voce_vero(monkeypatch):
+    """Il VoiceHandler vero di M2 (GET /voce/conferma, PR #335) con la sintesi finta:
+    il contratto si prova dai due lati, non solo col server finto (R-634-3)."""
+    from modules.voice.server import VoiceHandler
+
+    class _H(VoiceHandler):
+        pass
+    _H.kernel = None
+    _H.token = TOKEN
+    _H.conferma_cache = None
+    s = http.server.HTTPServer(("127.0.0.1", 0), _H)
+    t = threading.Thread(target=s.serve_forever, daemon=True)
+    t.start()
+    yield f"http://127.0.0.1:{s.server_address[1]}"
+    s.shutdown()
+    s.server_close()
+
+
+def test_conferma_col_server_voce_vero(server_voce_vero, monkeypatch):
+    from modules.voice import server as srv
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    monkeypatch.setenv("ELEVENLABS_VOICE_ID", "Brian000000000001")
+    monkeypatch.setattr(srv, "synthesize_speech", lambda frase, k, voce: b"ID3-" + frase.encode())
+    assert a.scarica_conferma(server_voce_vero, TOKEN) == "ID3-Sì, signore?".encode()
+    assert a.scarica_conferma(server_voce_vero, "token-sbagliato") is None   # 401
+
+
+@pytest.mark.parametrize("caso", ["senza_chiave", "errore_tts", "audio_vuoto"])
+def test_conferma_col_server_voce_vero_in_errore(server_voce_vero, monkeypatch, caso):
+    from modules.voice import server as srv
+    from modules.voice.tts import ElevenLabsTTSError
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "" if caso == "senza_chiave" else "k")
+
+    def tts(frase, k, voce):
+        if caso == "errore_tts":
+            raise ElevenLabsTTSError(429, "quota")
+        return b""
+    monkeypatch.setattr(srv, "synthesize_speech", tts)
+    assert a.scarica_conferma(server_voce_vero, TOKEN) is None
+
 def test_conferma_troppo_grande(server_conferma, monkeypatch):
     monkeypatch.setattr(a, "CONFERMA_MAX_BYTE", 8)
     _ServerConferma.risposta = (200, "audio/mpeg", b"Z" * 20)
