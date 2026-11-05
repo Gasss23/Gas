@@ -9,8 +9,9 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - `gas.py`: non toccarlo (salvo righe del doctor autorizzate).
 
 ## In corso
-- **PR #334 — V13** (branch `feat/voce-v12-m2`, ripartito da main dopo il merge della #332): ora locale nel turno parlato, risposte a voce «mai più di due frasi». Review #667-M2 APPROVATO CON RISERVE. **Da fare**: verdetto del bot e verifica esterna → a M1 (numero, esito, riserve); merge solo con APPROVATO pulito o col sì dell'operatore via M1.
-- **Prossime fette da M1**: (1) `GET /voce/conferma` — «Sì, signore?» in audio/mpeg con la voce attuale, in cache per id voce, 502/503 pulito se ElevenLabs fallisce (client: chat Mani); (2) poi SOLO documento: proposta voce più rapida (turno «rapido» con meno effort e senza giri inutili, stesso modello, niente Haiku; compiti lunghi in sottofondo con avviso; storia unica, peso all'ultima domanda nei turni parlati).
+- **PR #337 — fetta bot** (branch `feat/bot-verdetto-m2`): parser (#336 «read bloccante», #329 «Verifica esterna su …») e verdetto gzip+base64 fra i job. Review #671/#672 BOCCIATO, #673 APPROVATO CON RISERVE (chiuse), #673 bis APPROVATO. Tocca la macchina del bot: neutral, merge col sì dell'operatore (già dato via M1). **Poi**: rilanciare UNA volta il bot sulla #335 (togli/rimetti l'etichetta `verifica`); se solo BASSE/COSMETICHE, mergiare la #335 (sì dell'operatore già dato).
+- **PR #335 — V14** (branch `feat/voce-v12-m2`): «Sì, signore?» (GET /voce/conferma) e filtro «Dimmi.»; aspetta il rilancio del bot dopo la #337.
+- **Ordine di M1 dopo**: 1) C1 «solo l'ultima domanda» (modules/voice); 2) profilo voce in run_turn (C2+A1+A2+A3, via dato anche su gas.py, tempi prima/dopo); 3) sottofondo B dopo le prove sul Mac. Proposta mandata a M1, da portare in reports/proposta_voce_rapida.md con la fetta 1.
 - Caso «Stefano» (a «che ore sono» Gas ha parlato del contatto Stefano): da controllare sul Mac nella storia (`.gas_history.json`, messaggio utente prima della risposta) — trascrizione o cervello.
 
 ## Riserve aperte (voce)
@@ -26,7 +27,7 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 
 ## Regole che seguo
 - Un branch per fetta da `origin/main`; mai push su main.
-- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #668-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
+- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #673-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
 - Fine fetta: /fine-task (ultimo_report, handoff con verdetti INTEGRALI, diff_sessione, stato_progetto) → commit → `bash scripts/fine_task_finale.sh`; etichetta `verifica` sulla PR; verifica esterna con agente nuovo `general-purpose`, `model: sonnet`, prompt esatto «Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>» (URL_HANDOFF = raw del commit di testa).
 - `gh` nel cloud non è autenticato: PR, etichette e merge con gli strumenti GitHub MCP.
 - Riserve BASSE/COSMETICHE dei bot: si registrano, niente giri (regola di M1); si riapre solo per ALTA/MEDIA o se M1 lo chiede.
