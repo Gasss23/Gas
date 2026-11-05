@@ -16,6 +16,10 @@
 - Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/333#issuecomment-6665009996). V-1 BASSA (R-667-2 sovrastimata: un default a 50 fa fallire 3 test), V-2 BASSA (base vecchia), V-3 BASSA (= R-667-1), V-4 COSMETICA (§6 sulla CI di 4f80d9d).
 - Tutte registrate in stato_progetto (blocco fetta 40) senza altri giri: nessuna ALTA o MEDIA.
 
+## Merge di main e merge della PR
+
+- Sì dell'operatore alla #333 (via M1, 5 novembre). Main era andata avanti con la PR #334 di M2 (voce V13): merge di main in b00c506, conflitti solo nei report (handoff, ultimo_report e diff_sessione dal lato Mani; memoria del revisore con le righe di entrambi i lati; stato_progetto riga 4 col prefisso della fetta 40). Il codice è quello di main più la fetta 40, senza altre modifiche. Review #670 APPROVATO. Suite voce (ascolto, server, stt): 358 passed.
+
 ## Anomalie
 
 - Il revisore ha lanciato per errore `git stash --keep-index` sul repo vero; l'ha annullato subito, index intatto (verificato anche da me: stesso diff staged, nessuno stash).

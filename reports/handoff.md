@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #333 (https://github.com/Gasss23/Gas/pull/333). Review #667 APPROVATO CON RISERVE e PR nel perimetro: decide l'operatore tramite M1. Numero e URL letti dallo strumento GitHub (`list_pull_requests` con head `claude/peaceful-lovelace-0w2b7q`: la PR esisteva già, aperta il 4 novembre per b7f2c23).
+1. Merge della PR #333 (https://github.com/Gasss23/Gas/pull/333). Review #667 APPROVATO CON RISERVE e PR nel perimetro: l'operatore ha detto sì (via M1, 5 novembre); dopo il merge di main (review #670) la mergio io con la CI verde. Numero e URL letti dallo strumento GitHub (`list_pull_requests` con head `claude/peaceful-lovelace-0w2b7q`: la PR esisteva già, aperta il 4 novembre per b7f2c23).
 
 ---
 
@@ -16,6 +16,7 @@
   `GAS_ASCOLTO_VOCE_RMS` predefinito da 500 a 200 (costante `VOCE_RMS_PREDEFINITO`), LEGGIMI aggiornato, 3 test nuovi (5 casi) con mutanti uccisi. Motivo: prova dell'operatore sul MacBook Air del 5 novembre.
 - **Ripartenza della chat Mani (b7f2c23)**: `FATTA` (sessione precedente) — unita con un merge perché non era ancora in main.
 - **Riserve basse della fetta 39**: `DEFERITA — M1 ha chiesto solo la soglia`.
+- **Merge di main (PR #334, voce V13) in b00c506**: `FATTA` — conflitti solo nei report, review #670 APPROVATO, suite voce 358 passed.
 - **Registrazione dei verdetti di bot e verifica esterna su 2c8cd2a**: `FATTA` — entrambi APPROVATO CON RISERVE, nessuna ALTA o MEDIA; riserve in stato_progetto.
 
 ---
@@ -23,22 +24,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- clients/voice/ascolto.py           |  10 +++++++---
- reports/diff_sessione.md           |  15 +++++++++------
+ .claude/agents/memoria_revisore.md |   3 +
+ clients/voice/ascolto.py           |  10 +-
+ reports/diff_sessione.md           |  16 +--
  reports/handoff.md                 | n/d
- reports/ripartenza_mani.md         | 122 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  19 ++++++++-----------
+ reports/ripartenza_mani.md         | 122 +++++++++++++++++------
+ reports/stato_progetto.md          |   4 +-
+ reports/ultimo_report.md           |  33 ++++++++++++++++++---------------
  scripts/voce/LEGGIMI.md            |   2 +-
- tests/test_unit_voce_ascolto.py    |  49 +++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py    |  49 +++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Gli altri conteggi sono presi con i report in stage.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 7bdaa8f (dopo il merge della PR #334).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b00c506 Merge origin/main (PR #334, voce V13) nella PR #333 — review #670 APPROVATO
+51088d9 docs(fine-task): fetta 40 — riserve di bot e verifica esterna su 2c8cd2a registrate (PR #333)
+2c8cd2a docs(fine-task): fetta 40 chat Mani — soglia della voce 200, review #667, PR #333
 4f80d9d Merge remote-tracking branch 'origin/claude/peaceful-lovelace-0w2b7q' into claude/peaceful-lovelace-0w2b7q
 20d2972 fix(voce): soglia della voce predefinita 200 invece di 500 (prova sul MacBook Air del 5 novembre)
 27afc8f chore(revisore): memoria review #667 — APPROVATO CON RISERVE
@@ -93,6 +97,30 @@ Per confrontare con la base ho lanciato per errore `git stash --keep-index` sul 
 **Memoria**
 In `.claude/agents/memoria_revisore.md` ho aggiunto la riga contatore `#667 (chat Mani) — 2026-11-05 — APPROVATO CON RISERVE — …` e la lezione di non usare `git stash` sul repo vero per i confronti. Committata con `scripts/commit_memoria_revisore.sh` (commit 27afc8f, solo quel file; lo staged del diff è rimasto intatto).
 
+Merge b00c506 (main con la PR #334 dentro la PR #333) — review #670, verdetto integrale:
+
+## VERDETTO: APPROVATO
+
+Review #670 (chat Mani). Ho controllato il merge di origin/main 7bdaa8f (PR #334, voce V13) nel branch claude/peaceful-lovelace-0w2b7q (PR #333, fetta 40). Il merge è in corso e staged; ho guardato `git diff --cached HEAD` e `git diff --cached MERGE_HEAD`.
+
+**Cosa ho esaminato nel diff**
+- `modules/voice/server.py:453`: è il filtro V13 `_SOLO_ATTIVAZIONE`, che risponde «Dimmi.» passando da `_rispondi_senza_turno`. Ho controllato se interagisce con la fetta 40: no. È tutto lato server e usa la stessa strada di risposta senza turno già gestita da ascolto.py nel formato audio+pezzi. Il contenuto del file nell'index è identico a quello di MERGE_HEAD, cioè quello già rivisto in #667-M2, #668-M2 e #668-M2 bis. Esito: ok.
+- `tests/test_unit_voice_server.py:1666`: è il test V13 sull'orologio locale, e anche questo file nell'index è identico a MERGE_HEAD. Ho controllato se si perdeva qualche test V13: non se ne perde nessuno. Vale lo stesso per `tests/test_unit_voice_stt.py` e per `reports/ripartenza_m2.md`, tutti identici a MERGE_HEAD. Esito: ok.
+- `reports/stato_progetto.md:4`: ho controllato se il conflitto era risolto male. La riga è il prefisso della fetta 40, poi « — prima: », poi la riga 4 di main senza modifiche (prefisso e suffisso controllati con uno script). Ho rifatto il merge in automatico con `git merge-file` nello scratch: l'unico punto in conflitto era quella riga. Il resto, cioè la voce V13 aggiunta da main e il paragrafo della fetta 40 dal tuo lato, coincide con l'index. Esito: ok.
+- Contesto: `clients/voice/ascolto.py:85` (`VOCE_RMS_PREDEFINITO = 200.0`). ascolto.py, LEGGIMI, test di ascolto, ripartenza_mani, handoff, ultimo_report e diff_sessione nell'index sono identici a HEAD, quindi resta la tua versione. Esito: ok.
+- Memoria del revisore: contiene tutte le righe di HEAD e tutte quelle di MAIN, senza doppioni. L'unica riga ripetuta è una riga vuota, che c'era già su entrambi i lati.
+- Marcatori e conflitti: nessun marcatore di conflitto, `git diff --cached HEAD --check` pulito, `git ls-files -u` vuoto.
+- Test: copia dell'index nello scratch con `git checkout-index`, senza toccare il repo vero. Suite ascolto, server e stt: 334 passed e 24 failed, 358 in totale come i tuoi. I 24 fallimenti dipendono tutti dall'ambiente: 23 per `ModuleNotFoundError: openai`, più il test di collection dell'intero repo che si ferma per lo stesso motivo. Sono gli stessi già segnalati come preesistenti in #667 (21) e #667-M2 (3).
+
+**Cosa non ho verificato**
+- Non ho rieseguito le suite in un ambiente con openai installato: nel container manca. I tuoi 358 passed li prendo per buoni, ma la mia prova li conferma solo per i 334 test che non dipendono da openai.
+- Non ho rifatto la review del contenuto della V13: è già stata rivista da M2 e qui entra senza modifiche.
+- Non ho controllato come si comporta il sistema dal vero sul Mac.
+
+**Riserve:** nessuna (nessuna R-670-n).
+
+**Memoria:** ho aggiunto la riga `#670 (chat Mani) — 2026-11-05 — APPROVATO — …` in coda a `.claude/agents/memoria_revisore.md`. È solo nel working tree, NON staged e NON committata: aggiungila tu al commit del merge con `git add`. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voce_ascolto.py`: da 149 a 154 casi (+3 test, 5 casi). Riepilogo reale nel venv con requirements e requirements-dev:
@@ -107,19 +135,22 @@ Mutanti: costante a 500 → 4 FAILED (`test_voce_piana_passa_col_default`, `test
 
 ## §6 STATO CI
 
-`gh` non usato (per questa sessione GitHub passa dallo strumento MCP). Run sul branch lette con `actions_list`:
+`gh` non usato (GitHub passa dallo strumento MCP). Ultime run CI lette prima del merge di main:
 
 ```
-42076552098 verifica-bot  pull_request_target  completed  skipped      4f80d9d  (manca l'etichetta «verifica»)
-42076547829 CI            push                 in_progress             4f80d9d
-41750240672 verifica-bot  pull_request_target  completed  skipped      b7f2c23
+42076739905 CI  push  2c8cd2a  (handoff-check success; unit-suite in corso alla lettura)
+verifica-bot su 2c8cd2a: neutral (APPROVATO CON RISERVE, PR nel perimetro)
 ```
 
 Mappatura commit → run:
-- 4f80d9d (testa): CI run 42076547829, in corso alla scrittura dell'handoff.
-- 20d2972, 27afc8f: nessuna run su questo SHA (pushati insieme a 4f80d9d; il loro contenuto è nell'albero testato dalla run di 4f80d9d).
-- b7f2c23: nessuna run CI su questo SHA trovata tra le ultime 3 (solo verifica-bot skipped).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- b00c506 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme: la run del push testa la testa).
+- 51088d9: run del suo push, non riletta qui.
+- 2c8cd2a: CI run 42076739905.
+- 4f80d9d: CI run 42076547829.
+- 20d2972, 27afc8f: nessuna run su questo SHA (pushati insieme a 4f80d9d).
+- b7f2c23: nessuna run CI su questo SHA tra quelle lette.
+
+Suite voce in locale dopo il merge (ascolto, server, stt): 358 passed.
 
 ## §7 RISERVE APERTE
 
