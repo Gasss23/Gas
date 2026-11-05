@@ -1,23 +1,26 @@
-# Ultimo report — 2026-11-05 — Voce V13: ora locale nel turno parlato e risposte a voce più corte (chat M2)
+# Ultimo report — 2026-11-05 — fetta 40 (chat Mani): soglia della voce predefinita 200
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #334 (https://github.com/Gasss23/Gas/pull/334), secondo la regola di merge di CLAUDE.md §10.
+1. Merge della PR #333 (https://github.com/Gasss23/Gas/pull/333): review #667 APPROVATO CON RISERVE e PR che tocca il perimetro, quindi decide l'operatore tramite M1.
 
-## Esito delle fette
+## Esito
 
-- **V13.1 — ora nel turno parlato** (decisione dell'operatore via M1 dopo la prova sul Mac del 5 novembre): `FATTA` — `ora_per_voce` / `istruzione_turno_voce` in `modules/voice/server.py`: data e ora locali della macchina del server (il Mac) nell'istruzione del turno parlato, così «che ore sono» non richiede lo strumento `data_ora`.
-- **V13.2 — risposte a voce più corte**: `FATTA` — `ISTRUZIONE_VOCE` e `ISTRUZIONE_VOCE_SCHERMO` da «1-3 frasi» a «una o due frasi, mai più di due», senza premesse.
-- **V13.4 — niente «… sì o no?» in coda** (cronologia della prova sul Mac, da M1): `FATTA` — domanda solo se senza risposta non si può fare quanto chiesto.
-- **V13.5 — «Hey Jarvis» da solo** (cronologia della prova, da M1): `FATTA` — trascrizione fatta solo della parola di attivazione → «Dimmi.» senza turno (solo parlato).
-- **Note del bot su 8416674**: V-1 BASSA (istruzioni in conflitto con «usa data_ora» di gas.py) `FATTA` (la frase dell'ora dice che vale al posto di data_ora); V-2 COSMETICA («01:30») `FATTA` («ore 1:30»).
-- **R-667-1-M2** (test dell'ora cieco con TZ=UTC, confermata da V-1 della verifica esterna): `FATTA` — TZ forzato nel test, mutante ucciso.
-- **V13.3 — indagine «Stefano»** (risposta sui lead a «che ore sono»): `DEFERITA — non diagnosticabile dal cloud`: il parlato non va nel log (privacy V6) e la storia `.gas_history.json` sta sul Mac. Riportata a M1 col controllo da fare sul Mac (messaggio utente prima della risposta su Stefano nella storia).
-- **Soglia `GAS_ASCOLTO_VOCE_RMS`** (nota a margine di M1): `SALTATA — fuori perimetro`: `clients/voice/ascolto.py` è della chat Mani; segnalato a M1 (default 500, sul Mac funziona 200).
-- Test: 3 nuovi V13 in voice_server, 2 in voice_stt; asserzioni V3/V4/V10 e «forte» con `startswith`; suite voce 282 passed (prima della modifica al test del fuso; test mirati passati dopo).
-- Review #667-M2 APPROVATO CON RISERVE (R-667-1 chiusa; R-667-2 BASSA e R-667-3 COSMETICA aperte); #668-M2 APPROVATO CON RISERVE (R-668-1/2/3 BASSE); #668-M2 bis APPROVATO.
-- Bot su 8416674: APPROVATO CON RISERVE (V-1, V-2 chiuse). Verifica esterna su 8416674: APPROVATO CON RISERVE (V-1 = R-667-1 chiusa; V-2 = R-667-2, aggravata: sul VPS l'istruzione vieta anche data_ora; V-3 BASSA nessun tetto in codice alle frasi; V-4 COSMETICA ora presa a inizio turno).
+- **Fetta 40 — soglia della voce 200**: FATTA. `GAS_ASCOLTO_VOCE_RMS` predefinito da 500 a 200 (costante `VOCE_RMS_PREDEFINITO` in `clients/voice/ascolto.py`, usata da `Ascolto` e da `main`); tabella di `scripts/voce/LEGGIMI.md` a 200 con la nota per le stanze rumorose; 3 test nuovi (5 casi) in `tests/test_unit_voce_ascolto.py`, mutanti con 500 uccisi; suite voce 154 passed.
+- **Ripartenza della chat Mani (b7f2c23)**: era sul branch remoto e nella PR #333 ma non in main; unita con un merge (niente force-push), resta nella stessa PR.
+- Riserve basse della fetta 39 (thread di lettura, bip su errore TTS, lista bianca del formato, …): DEFERITE — M1 ha chiesto solo la soglia.
+
+## Verdetti dopo la PR (giro su 2c8cd2a)
+
+- Bot (verifica-bot): APPROVATO CON RISERVE, check neutral (PR nel perimetro: decide l'operatore). V-1 BASSA (privacy di R-667-1: rumore continuo → fino a ~150 s di audio della stanza inviati), V-2 COSMETICA (base della PR su GitHub vecchia).
+- Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/333#issuecomment-6665009996). V-1 BASSA (R-667-2 sovrastimata: un default a 50 fa fallire 3 test), V-2 BASSA (base vecchia), V-3 BASSA (= R-667-1), V-4 COSMETICA (§6 sulla CI di 4f80d9d).
+- Tutte registrate in stato_progetto (blocco fetta 40) senza altri giri: nessuna ALTA o MEDIA.
+
+## Merge di main e merge della PR
+
+- Sì dell'operatore alla #333 (via M1, 5 novembre). Main era andata avanti con la PR #334 di M2 (voce V13): merge di main in b00c506, conflitti solo nei report (handoff, ultimo_report e diff_sessione dal lato Mani; memoria del revisore con le righe di entrambi i lati; stato_progetto riga 4 col prefisso della fetta 40). Il codice è quello di main più la fetta 40, senza altre modifiche. Review #670 APPROVATO. Suite voce (ascolto, server, stt): 358 passed.
 
 ## Anomalie
 
-- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
+- Il revisore ha lanciato per errore `git stash --keep-index` sul repo vero; l'ha annullato subito, index intatto (verificato anche da me: stesso diff staged, nessuno stash).
+- Nell'ambiente del revisore 21 test della suite voce fallivano per `openai` mancante (uguali sulla base); nel mio venv con requirements completi: 154 passed.

@@ -1,9 +1,11 @@
-# Diff della sessione — 2026-11-05 — Voce V13 (chat M2)
+# Diff della sessione — 2026-11-05 — chat Mani, fetta 40
 
-- `modules/voice/server.py` — `ora_per_voce` e `istruzione_turno_voce`: data e ora locali nell'istruzione del turno parlato (vale al posto di data_ora, «ore 1:30»); istruzioni della voce strette a «una o due frasi» e senza «sì o no?» in coda; `_SOLO_ATTIVAZIONE`: «Hey Jarvis» da solo → «Dimmi.» senza turno.
-- `tests/test_unit_voice_server.py` — 3 test V13 (uno con TZ forzato, R-667-1-M2); asserzione V10 con `startswith`.
-- `tests/test_unit_voice_stt.py` — asserzioni V3/V4 e «forte» con `startswith` (l'istruzione ora contiene l'ora); 2 test sulla sola parola di attivazione.
-- `.claude/agents/memoria_revisore.md` — review #667-M2, #668-M2, #668-M2 bis.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/ripartenza_m2.md` — report di fine task.
+File toccati (base origin/main 8b8012d):
+- `clients/voice/ascolto.py`: soglia della voce predefinita 200 (costante `VOCE_RMS_PREDEFINITO`), usata da `Ascolto` e da `main`; docstring aggiornata. Motivo: prova sul MacBook Air del 5 novembre.
+- `scripts/voce/LEGGIMI.md`: tabella delle regolazioni a 200, con la nota per alzarlo nelle stanze rumorose.
+- `tests/test_unit_voce_ascolto.py`: test della voce piana col default, del valore passato da `main` e del LEGGIMI allineato al codice.
+- `.claude/agents/memoria_revisore.md`: riga della review #667 e lezione del revisore.
+- `reports/ripartenza_mani.md`: ripartenza della chat Mani (commit b7f2c23 della sessione precedente, unito con un merge).
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+Questo file si riscrive a ogni sessione; la storia completa sta in git.

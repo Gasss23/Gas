@@ -1,165 +1,164 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-05 — Voce V13: ora locale nel turno parlato e risposte a voce più corte (chat M2, coordinata da M1)
+**Sessione:** 2026-11-05 — chat Mani, fetta 40: soglia della voce predefinita 200 invece di 500
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #334 (https://github.com/Gasss23/Gas/pull/334). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5175852245","url":"https://github.com/Gasss23/Gas/pull/334"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
+1. Merge della PR #333 (https://github.com/Gasss23/Gas/pull/333). Review #667 APPROVATO CON RISERVE e PR nel perimetro: l'operatore ha detto sì (via M1, 5 novembre); dopo il merge di main (review #670) la mergio io con la CI verde. Numero e URL letti dallo strumento GitHub (`list_pull_requests` con head `claude/peaceful-lovelace-0w2b7q`: la PR esisteva già, aperta il 4 novembre per b7f2c23).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **V13.1 — ora locale nel turno parlato** (decisione dell'operatore via M1, prova sul Mac del 5 novembre): `FATTA` — `ora_per_voce` / `istruzione_turno_voce`; «che ore sono» senza il giro di `data_ora`.
-- **V13.2 — risposte a voce più corte**: `FATTA` — «una o due frasi, mai più di due», senza premesse, con e senza schermo.
-- **V13.4 — niente «… sì o no?» in coda** (cronologia della prova sul Mac, da M1): `FATTA`.
-- **V13.5 — «Hey Jarvis» da solo → «Dimmi.» senza turno** (cronologia della prova, da M1): `FATTA`.
-- **Note del bot su 8416674** (V-1 BASSA istruzioni in conflitto con «usa data_ora», V-2 COSMETICA «01:30»): `FATTE`.
-- **R-667-1-M2** (test dell'ora cieco con TZ=UTC; = V-1 verifica esterna su 8416674): `FATTA` — TZ forzato, mutante ucciso.
-- **V13.3 — indagine «Stefano»**: `DEFERITA — non diagnosticabile dal cloud` (il parlato non è nei log per privacy V6; la storia è sul Mac). Dalla cronologia mandata da M1: quasi sicuramente dalla storia condivisa (riepilogo di sessioni precedenti); l'operatore vuole una sola storia, quindi va curato nella proposta sulla velocità.
-- **Soglia `GAS_ASCOLTO_VOCE_RMS`**: `SALTATA — fuori perimetro` (`clients/voice/ascolto.py` è della chat Mani); segnalata a M1.
+- **Fetta 40 — soglia della voce 200**: `FATTA`
+  `GAS_ASCOLTO_VOCE_RMS` predefinito da 500 a 200 (costante `VOCE_RMS_PREDEFINITO`), LEGGIMI aggiornato, 3 test nuovi (5 casi) con mutanti uccisi. Motivo: prova dell'operatore sul MacBook Air del 5 novembre.
+- **Ripartenza della chat Mani (b7f2c23)**: `FATTA` (sessione precedente) — unita con un merge perché non era ancora in main.
+- **Riserve basse della fetta 39**: `DEFERITA — M1 ha chiesto solo la soglia`.
+- **Merge di main (PR #334, voce V13) in b00c506**: `FATTA` — conflitti solo nei report, review #670 APPROVATO, suite voce 358 passed.
+- **Registrazione dei verdetti di bot e verifica esterna su 2c8cd2a**: `FATTA` — entrambi APPROVATO CON RISERVE, nessuna ALTA o MEDIA; riserve in stato_progetto.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/voice/server.py            |  64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
- reports/diff_sessione.md           |  11 ++++++-----
+ .claude/agents/memoria_revisore.md |   3 +
+ clients/voice/ascolto.py           |  10 +-
+ reports/diff_sessione.md           |  16 +--
  reports/handoff.md                 | n/d
- reports/ripartenza_m2.md           |   8 ++++++--
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  22 +++++++++++++---------
- tests/test_unit_voice_server.py    |  58 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_voice_stt.py       |  43 ++++++++++++++++++++++++++++++++++++++++---
+ reports/ripartenza_mani.md         | 122 +++++++++++++++++------
+ reports/stato_progetto.md          |   4 +-
+ reports/ultimo_report.md           |  33 ++++++++++++++++++---------------
+ scripts/voce/LEGGIMI.md            |   2 +-
+ tests/test_unit_voce_ascolto.py    |  49 +++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 7bdaa8f (dopo il merge della PR #334).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-87ebf99 feat(voce): V13 — niente «sì o no?» in coda, «Hey Jarvis» da solo senza turno, note bot #334 (chat M2)
-6a058ce chore(revisore): memoria review #668 — APPROVATO
-db509c2 chore(revisore): memoria review #668 — APPROVATO CON RISERVE
-8416674 docs(voce): report di fine task V13 (chat M2)
-cf6233a feat(voce): V13 — ora locale nel turno parlato e risposte a voce più corte (chat M2)
-faaf406 chore(revisore): memoria review #667 — APPROVATO CON RISERVE
+b00c506 Merge origin/main (PR #334, voce V13) nella PR #333 — review #670 APPROVATO
+51088d9 docs(fine-task): fetta 40 — riserve di bot e verifica esterna su 2c8cd2a registrate (PR #333)
+2c8cd2a docs(fine-task): fetta 40 chat Mani — soglia della voce 200, review #667, PR #333
+4f80d9d Merge remote-tracking branch 'origin/claude/peaceful-lovelace-0w2b7q' into claude/peaceful-lovelace-0w2b7q
+20d2972 fix(voce): soglia della voce predefinita 200 invece di 500 (prova sul MacBook Air del 5 novembre)
+27afc8f chore(revisore): memoria review #667 — APPROVATO CON RISERVE
+b7f2c23 docs(mani): ripartenza aggiornata — stato al 4 novembre, riserve aperte, prossima fetta della voce e regole
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Review #667-M2 sul commit cf6233a (verdetto integrale):
+Commit 20d2972 (review #667, chat Mani) — verdetto integrale:
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #667-M2: V13, diff STAGED su feat/voce-v12-m2. Ho fatto le tre letture obbligatorie: CLAUDE.md, reports/stato_progetto.md e la memoria del revisore.
+Review #667 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q rispetto alla base origin/main 8b8012d: 3 file, +57/-4. Ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md e la mia memoria.
 
-**Cosa ho esaminato nel diff**
-- `modules/voice/server.py:174`: `ora_per_voce` calcola l'ora con `datetime.now().astimezone()`, come fa data_ora in gas.py. I nomi di giorni e mesi vengono da tuple italiane, quindi non dipende dal locale. Se `tzname()` manca, scrive `UTC%z`. Ho controllato il fuso, il cambio d'anno e la dipendenza dal locale: **ok**.
-- `modules/voice/server.py:481`: il ramo `is_audio` ora usa `istruzione_turno_voce(self._vuole_audio_testo())`, che viene calcolata una sola volta prima di `run_turn`. Ho provato un mutante in una copia scratch dall'index, rimettendo la vecchia costante: falliscono `tests/test_unit_voice_server.py:1343` (V10) e i test V1/V3/V4 di `tests/test_unit_voice_stt.py:454`. Il ramo è protetto dai test: **ok**.
-- `modules/voice/server.py:146`: ISTRUZIONE_VOCE e ISTRUZIONE_VOCE_SCHERMO ora dicono «una o due frasi, mai più di due», senza premesse. Sono testi di prompt e non hanno rischi tecnici; `tests/test_unit_voice_server.py:1677` verifica «mai più di due» e l'assenza di «1-3»: **ok**.
-- `tests/test_unit_voice_server.py:1666`: questo test non distingue l'ora locale dall'ora senza fuso quando la macchina è in UTC. Il mutante `datetime.now()` senza fuso **sopravvive** con TZ=UTC (container cloud e CI) ed è ucciso solo con TZ=Europe/Rome: **riserva** (R-667-1-M2).
-- Contesto, non toccato dal diff: `gas.py:4836` costruisce il messaggio system come `system_prompt + mem_pin + lezioni_pin + recap_pin + turno_pin`. L'ora finisce quindi in coda al messaggio system, dopo `recap_pin`, che cambia già a ogni domanda.
+**Elementi del diff esaminati**
+- `clients/voice/ascolto.py:85` — nuova costante `VOCE_RMS_PREDEFINITO = 200.0`, con il commento che spiega perché è stata cambiata. Rischio: due default diversi tra la classe e `main`. Esito: ok, la stessa costante è usata in entrambi i punti.
+- `clients/voice/ascolto.py:239` — il default di `Ascolto(voce_rms=...)` ora usa la costante. Rischio: una soglia più bassa cambia `registra`, che inizia a registrare dopo 0,24 s di suono sopra soglia (INIZIO_VOCE_S) e si ferma a 30 s (REGISTRAZIONE_MAX_S), e cambia `aspetta_voce`, la finestra di 12 s dopo la risposta. Esito: riserva R-667-1.
+- `clients/voice/ascolto.py:655` — `main` passa `_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000)`. Rischio: env ignorata o valore non valido. Esito: ok. «abc» torna a 200, i limiti 10–30000 restano, un valore non finito torna al default.
+- `scripts/voce/LEGGIMI.md:82` — tabella aggiornata a 200, con l'indicazione di alzarlo a 300–500 in una stanza rumorosa. Esito: ok, la allinea `test_leggimi_riporta_il_default_della_voce`.
+- `tests/test_unit_voce_ascolto.py:134` e `tests/test_unit_voce_ascolto.py:141` — test con voce a RMS 300 e test di `main` parametrizzato (None, «350», «abc»). Esito: ok, salvo R-667-2 e R-667-3.
 
-**Effetti sulla cache dei prompt (domanda dell'operatore):** trascurabili.
-- La parte fissa iniziale (`system_prompt`, poi la memoria) resta uguale tra un turno e l'altro.
-- La cache della storia, che viene dopo il messaggio system, era già persa a ogni turno per via di `recap_pin`, che cambia a ogni domanda.
-- Dentro un turno, fino a 10 giri, l'ora resta fissa, quindi i giri successivi possono riusare la cache.
-- I provider gratuiti non hanno costi di cache. Quando arriverà il cervello forte Claude (roadmap R2), l'ora nel messaggio system peserà quanto `recap_pin` e non di più.
-- Effetto pratico minimo: l'ora può essere indietro fino a un turno lungo (circa 17 s), cosa accettabile per una risposta a voce.
+**Verifiche eseguite**
+- Suite in una copia dell'index in scratch: 133 passed, 21 failed. Sulla base origin/main: 128 passed, 21 failed, gli stessi test. Sono fallimenti dell'ambiente del container: modulo `openai` assente per `test_dotenv_usa_il_caricatore_di_gas` e i 20 casi di `test_installa_legge_il_env_come_gas`. Il diff aggiunge 5 test, tutti verdi. Il conteggio di 154 passed dichiarato da voi non l'ho riprodotto per questo motivo.
+- Quattro mutanti in copia scratch, tutti uccisi:
+  - costante a 500: 4 test falliti;
+  - solo il default di Ascolto a 500: 1 fallito;
+  - solo `main` a 500: 2 falliti;
+  - `main` che ignora la variabile d'ambiente: 1 fallito.
+- Effetti collaterali:
+  - Eco della risposta: `turno` chiama `_svuota()` nel finally dopo la riproduzione (`clients/voice/ascolto.py:409`), quindi l'audio della risposta catturato dal microfono non apre turni. La soglia più bassa non cambia questo comportamento.
+  - INIZIO_VOCE_S: resta l'unica difesa contro i rumori brevi (3 blocchi di fila sopra soglia). Un clic resta escluso; un rumore continuo tra 200 e 500 ora apre il turno.
+- Wall of Shame: non applicabile. Il diff è un client, senza history né tool. §9 non toccato.
 
-**Finding**
-- **R-667-1-M2 (BASSA)**: `tests/test_unit_voice_server.py:1666` non vede la differenza tra ora con fuso e ora senza fuso in un ambiente UTC (CI e cloud). Correzione: nel test forzare `TZ=Europe/Rome` con `monkeypatch.setenv` e `time.tzset()`, oppure simulare `datetime`.
-- **R-667-2-M2 (BASSA)**: l'ora è quella della macchina che fa girare il server. Oggi è il Mac, quindi va bene. Quando Gas passerà alla VPS (spesso in UTC) l'ora detta all'operatore sarà sbagliata, a meno di un fuso configurabile, per esempio una variabile d'ambiente. Va annotato in roadmap e stato_progetto.
-- **R-667-3-M2 (COSMETICA)**: se a `ora_per_voce` arriva un'ora senza fuso, la frase dice «fuso UTC» anche quando non è vero. La docstring lo avverte e solo i test passano `adesso`.
-- **Dichiarazione incompleta**: il diff tocca anche `tests/test_unit_voice_stt.py` (3 asserzioni rese più larghe allo stesso modo), che la richiesta non elencava. Il contenuto va bene.
+**Riserve**
+- **R-667-1 BASSA**: con soglia 200 un rumore di fondo continuo sopra 200 (ventola, TV, tastiera) può:
+  - aprire turni da solo nella finestra di 12 s, mandando rumore al server e consumando trascrizione e sintesi;
+  - non far scattare mai la chiusura per silenzio, così la richiesta arriva a 30 s.
 
-**Test**
-- 199 passed e 3 failed.
-- I 3 falliti sono: `test_v1_run_server_carica_il_dotenv`, `test_v1_run_server_dotenv_rotto_non_crasha` e `test_collection_dell_intero_repo_non_esplode`. Nel container manca il modulo `openai`.
-- I due test dotenv falliscono uguali a HEAD (provato in una copia di HEAD). Il terzo non l'ho ripetuto a HEAD: lo considero preesistente perché anche lui carica tutto il repo.
-- Il numero dichiarato «280 passed» non l'ho riprodotto: l'ambiente dell'agente è diverso.
+  È mitigato da `max_turni` (5), dall'uscita del ciclo quando un turno non riesce, dal tetto orario lato server (V12) e dalla nota nel LEGGIMI. La scelta si basa su una sola prova su un Mac: va riverificata in ambiente rumoroso. Non blocca, perché si regola dal .env.
+- **R-667-2 BASSA**: nessun test fissa il limite basso. Il rumore dei test (SILENZIO) vale 10, quindi un default sceso per errore a 50 sopravvive a tutti i test. Proposta: un test in cui un rumore continuo a RMS ~150 non apre la finestra o chiude la richiesta.
+- **R-667-3 COSMETICA**: `test_main_passa_la_soglia_della_voce` (`tests/test_unit_voce_ascolto.py:141`) non toglie `GAS_VOICE_URL` e `GAS_VOICE_PORT` dall'ambiente. Il test preesistente vicino alla riga 741 lo fa: se l'ambiente di CI avesse un URL non valido, `main` restituirebbe 1 e il test fallirebbe senza motivo.
 
 **Cosa NON ho verificato**
-- Il caso «non trovo il contatto Stefano» in risposta a «che ore sono»: dal cloud non si può riprodurre (il parlato non viene registrato per privacy e la storia sta sul Mac).
-- Se il modello rispetta davvero «mai più di due frasi» e usa l'ora senza chiamare data_ora: è un comportamento del cervello, si verifica solo con una prova vocale reale sul Mac.
+- Il comportamento reale sul MacBook Air (guadagno del microfono, rumore di fondo reale, coda di riverbero dopo `afplay` e dopo `svuota`): non riproducibile nel container Linux, senza microfono né macOS.
+- I 21 test che falliscono per l'ambiente: non li ho fatti girare con le dipendenze complete. Che siano identici sulla base esclude una regressione introdotta dal diff, ma non dimostra che passino.
 
-Memoria aggiornata con la riga #667-M2 e una lezione (i test sul fuso non vedono nulla in CI con TZ=UTC: rifare il mutante con un fuso diverso). Committata con `scripts/commit_memoria_revisore.sh` (faaf406). Il diff staged è rimasto intatto (3 file).
+**Incidente di processo**
+Per confrontare con la base ho lanciato per errore `git stash --keep-index` sul repo vero. Ho verificato subito che lo stash conteneva solo una copia dello staged (nessuna modifica fuori dallo staging) e che l'index era intatto: stesso `--cached --stat`, 3 file. Poi ho rimosso lo stash e ho fatto il confronto su copie in scratch. Stato finale: index invariato, nessuno stash residuo.
 
-Review #668-M2 sul commit 87ebf99 (verdetto integrale):
+**Memoria**
+In `.claude/agents/memoria_revisore.md` ho aggiunto la riga contatore `#667 (chat Mani) — 2026-11-05 — APPROVATO CON RISERVE — …` e la lezione di non usare `git stash` sul repo vero per i confronti. Committata con `scripts/commit_memoria_revisore.sh` (commit 27afc8f, solo quel file; lo staged del diff è rimasto intatto).
 
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #668-M2: è il diff STAGED attuale di feat/voce-v12-m2 (PR #334), quindi comprende anche le correzioni V-1 e V-2 del bot #334 che il coordinamento ha aggiunto mentre la review era in corso. 3 file, +73/-20. Ho letto CLAUDE.md (sez. 5), stato_progetto (riga V13) e la memoria.
-
-Elementi del diff esaminati:
-- modules/voice/server.py:112 — `_SOLO_ATTIVAZIONE`, regex ancorata con `^…$`: saluto opzionale, poi jarvis/gas/gus, poi solo punteggiatura. Rischio: falsi positivi su richieste vere. L'ho provata su 18 frasi.
-  - Riconosciute: «Hey Jarvis!», «Gas.», «Ciao Gas», «Okay, Gas!», «Gus», «... Jarvis ...», «Ehi Jarvis.\n».
-  - Non riconosciute, come deve essere: «gas forte», «Hey Gas, ci sei?», «Gasp», «Grazie Jarvis», «Ciao Jarvis, grazie».
-  - Esito: ok.
-- modules/voice/server.py:449 — il filtro sta dopo `_do_stt` e prima di `cervello_voce`, solo nel ramo `is_audio`. Rischi esaminati:
-  - Parola «forte»: «Gas forte» non viene riconosciuto e cade sulla risposta d'uso come prima. Con `GAS_VOCE_FORTE=1`, «Hey Jarvis» riceve «Dimmi.» senza turno: nessuna spesa sul cervello forte, direzione sicura.
-  - Tetto orario: la richiesta resta contata (`turni_parlati` in modules/voice/server.py:703, prima di chiamare Groq).
-  - Formato: passa da `_rispondi_senza_turno`, quindi audio+testo, pezzi/NDJSON e il ripiego a testo funzionano come per «uso» e «non_capito».
-  - Esito: ok.
-- modules/voice/server.py:158 (e :169) — la frase «Non chiudere con domande né con offerte…» sostituisce «chiudi con una domanda secca sì/no» in entrambe le istruzioni. Rischio: un residuo della vecchia frase. Il test verifica l'assenza di «chiudi con una domanda» in tutte e due. Esito: ok.
-- modules/voice/server.py:191 — `ora_per_voce`: «Adesso è giovedì 5 novembre 2026, ore 18:07…», ora senza zero iniziale (V-2), e «In questo turno… NON usare data_ora: vale al posto dell'indicazione generale». Rischio: istruzioni in contrasto. Ho controllato il contesto in gas.py:135 («per data e ora usa data_ora»): la precedenza adesso è scritta per esteso e vale solo per il turno parlato. Esito: ok.
-- tests/test_unit_voice_stt.py:644 — test con 6 casi riconosciuti e 4 no (con la sentinella `kernel.kw` che dimostra se il turno c'è stato o no), più il test che a testo «Hey Jarvis» resta una richiesta normale. Esito: ok, con la riserva 3.
-- tests/test_unit_voice_server.py:1658 — le asserzioni seguono il nuovo testo dell'ora; il caso EET «ore 1:30» copre il cambio di giorno. Esito: ok.
-
-Caccia agli antipattern: nessuno slicing della cronologia, nessuna simulazione di output dei tool, nessun guardrail toccato (tetto 10 iterazioni, `_get_window`, tetto orario).
-
-Test: 201 passed su tests/test_unit_voice_stt.py e tests/test_unit_voice_server.py. Altri 3 falliscono per una causa che sta solo in questo ambiente: l'interprete di pytest non ha i moduli `openai` e `yaml` (`test_collection_dell_intero_repo_non_esplode` e i due `test_v1_run_server_*dotenv*`, `ModuleNotFoundError`). Non dipendono dal diff.
-
-Riserve (BASSE):
-- R-668-1-M2: «Dimmi.» spende ElevenLabs e occupa un posto del tetto orario, come «non ho capito». Accettabile, ma l'operatore deve saperlo.
-- R-668-2-M2: la ripetizione «Hey Jarvis, Hey Jarvis» (Whisper raddoppia spesso la parola) non viene riconosciuta e arriva al cervello. Rimedio facile: ripetizione `(?:…\W*)+`.
-- R-668-3-M2: nessun test che verifichi il segno `attivazione` nei formati audio+testo e pezzi/NDJSON. Lo garantisce solo il percorso condiviso con «uso» e «non_capito».
-
-«Ciao Gas» da solo che riceve «Dimmi.»: per me va bene, è un saluto senza richiesta.
-
-Rischio escluso: non ho verificato il comportamento reale con Whisper ed ElevenLabs e il ciclo di clients/voice/ascolto.py sul Mac (dopo «Dimmi.» la finestra di conversazione conta un turno), perché in questo ambiente non si può riprodurre. Non ho verificato nemmeno se i modelli rispettano davvero «non chiudere con domande»: è un'istruzione al modello e la si vede solo con prove dal vivo.
-
-Memoria: riga #668-M2 più la lezione sulla ripetizione della parola di attivazione, in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata (db509c2, solo quel file; lo stage del diff è rimasto intatto).
-
-Review #668-M2 bis sullo stage finale di 87ebf99 (+89/-26, verdetto integrale):
+Merge b00c506 (main con la PR #334 dentro la PR #333) — review #670, verdetto RIEMESSO dal revisore per il gate B: stesso esito (APPROVATO), citazioni dei file del diff di sessione. L'originale citava server.py e test_unit_voice_server.py, che dopo il merge sono in main e fuori dal diff di sessione; il suo testo integrale, non modificato, è nell'handoff del commit dba7151:
 
 ## VERDETTO: APPROVATO
 
-Revisione #668-M2 bis: copre solo la parte aggiunta allo stage dopo il verdetto #668-M2, cioè la chiusura di R-667-1-M2 in tests/test_unit_voice_server.py. Lo stage attuale è di 3 file, +89/-26. Il resto del diff è già coperto dal verdetto #668-M2, che resta APPROVATO CON RISERVE con R-668-1/2/3-M2.
+Review #670 (chat Mani), RIEMESSA per il gate B. Non è una nuova review e l'esito non cambia. Riguarda il merge di origin/main 7bdaa8f (PR #334, voce V13) nel branch claude/peaceful-lovelace-0w2b7q (PR #333, fetta 40), ora committato come b00c506. Dopo il merge la base della sessione è main 7bdaa8f, quindi le citazioni sotto puntano a file del diff di sessione (`git diff --name-only 7bdaa8f..HEAD`). Ho riletto ogni riga in HEAD (dba7151).
 
-Elementi esaminati:
-- tests/test_unit_voice_server.py:1673 — il test forza `TZ=Asia/Kolkata` (UTC+5:30, senza ora legale) con `monkeypatch.setenv` e `time.tzset()`, e controlla che lo scarto sia di 5,5 ore. Rischio: un test cieco quando CI e cloud girano in UTC (la lezione del 2026-11-05). L'ho verificato con un mutante in una copia dall'index: `datetime.now()` senza `.astimezone()` in modules/voice/server.py:187, eseguito con `TZ=UTC` → il test fallisce, quindi il mutante è ucciso. Senza il mutante passa. Esito: ok.
-- tests/test_unit_voice_server.py:1682 — nel `finally` ci sono `monkeypatch.undo()` e poi `time.tzset()`. Rischio: il fuso forzato che passa ai test successivi. L'ordine è giusto, perché prima si ripristina TZ e poi si ricarica il fuso. Sulla stessa copia la suite voce completa (tests/test_unit_voice_server.py + tests/test_unit_voice_stt.py) dà 201 passed. I 2 KO sono quelli già noti `test_v1_run_server_*dotenv*`: manca `openai` nell'interprete di pytest locale, quindi dipendono dall'ambiente e non dal diff. Esito: ok.
-- Contesto: modules/voice/server.py:188 ripiega su `ora.strftime("UTC%z")` quando il fuso manca. È per questo che l'asserzione `"fuso UTC" not in frase` riconosce l'ora senza fuso. Esito: ok.
+**Cosa ho esaminato nel diff**
+- `reports/stato_progetto.md:4`: è la riga «Ultimo aggiornamento», l'unico punto in conflitto del merge. Ho controllato che il conflitto non fosse risolto male. La riga è fatta così: prefisso della fetta 40 («soglia della voce predefinita 200 invece di 500…»), poi « — prima: », poi la riga 4 di main (voce V13, review #667-M2) senza modifiche. Prefisso e suffisso li ho controllati con uno script, e un `git merge-file` rifatto nello scratch dà lo stesso risultato. Il resto del file coincide. Esito: ok.
+- `clients/voice/ascolto.py:85`: contiene `VOCE_RMS_PREDEFINITO = 200.0`. Ho controllato che il merge non avesse riportato il vecchio valore 500 o la versione di main. Nell'index del merge il file era identico a HEAD del branch, quindi resta la versione della fetta 40. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:133`: è il test `test_voce_piana_passa_col_default`, cioè una voce a RMS 300 che col default 200 apre la richiesta. Lo stesso vale per `tests/test_unit_voce_ascolto.py:142` (default dalla variabile di ambiente: None, valore valido e valore non valido) e per `tests/test_unit_voce_ascolto.py:175` (allineamento con il LEGGIMI). Ho controllato che i test della fetta 40 non si perdessero nel merge: ci sono tutti e sono identici a HEAD del branch. Esito: ok.
+- `scripts/voce/LEGGIMI.md:82`: è la riga della tabella `GAS_ASCOLTO_VOCE_RMS | 200`. Ho controllato che restasse allineata al default del codice: lo è, e il test della riga 175 la verifica. Esito: ok.
+- Contesto, fuori dal diff di sessione: `modules/voice/server.py` (filtro V13 `_SOLO_ATTIVAZIONE`) e `tests/test_unit_voice_server.py` entrano da main identici a MERGE_HEAD, cioè nella versione già rivista in #667-M2 e #668-M2. Non interagiscono con la fetta 40, che tocca solo il lato client.
+- Memoria del revisore: contiene tutte le righe dei due lati, senza doppioni.
+- Marcatori e conflitti: nessun marcatore residuo, `git diff --check` pulito, `git ls-files -u` vuoto.
+- Test: ho copiato l'index nello scratch. Suite ascolto, server e stt: 334 passed e 24 failed, 358 in totale. I 24 fallimenti dipendono tutti dall'ambiente: 23 per `ModuleNotFoundError: openai`, più la collection dell'intero repo che si ferma per lo stesso motivo. Sono gli stessi già noti come preesistenti in #667 e #667-M2.
 
-Rischio escluso: non ho verificato il comportamento su Windows, dove `time.tzset` non esiste e il test andrebbe in errore. Il progetto gira su Mac e Linux e la CI è Linux, quindi oggi non serve. Va annotato solo se un giorno la suite girasse su Windows.
+**Cosa non ho verificato (rischi esclusi)**
+- Non ho rieseguito le suite con openai installato, perché nel container manca. I 358 passed dell'agente li prendo per buoni, ma la mia prova li conferma solo per i 334 test che non dipendono da openai.
+- Non ho rifatto la review del contenuto della V13: è già stata rivista da M2 ed entra senza modifiche.
+- Non ho verificato come si comporta il sistema dal vero sul Mac: non è riproducibile in questo ambiente.
+- Non ho rivisto il commit dba7151, che tocca solo `reports/handoff.md` e `reports/ultimo_report.md` ed è fuori dal perimetro di review.
 
-Memoria: ho aggiunto la riga «#668-M2 bis» in /home/user/Gas/.claude/agents/memoria_revisore.md, così il contatore copre anche lo stage +89/-26. È committata da sola (6a058ce) e lo stage del diff è rimasto intatto.
+**Riserve:** nessuna (nessuna R-670-n).
+
+**Memoria:** la riga #670 è già nella memoria del revisore (committata col merge). Per questa riemissione non ho aggiunto righe, come richiesto, e non ho toccato il repo.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: +3 test V13 (`test_v13_ora_per_voce_data_ora_e_fuso_locali`, `test_v13_ora_per_voce_senza_argomento_usa_l_orologio_locale` con TZ forzato ad Asia/Kolkata, `test_v13_istruzione_turno_voce_con_e_senza_schermo`); `tests/test_unit_voice_stt.py`: +2 test (`test_v13_solo_parola_di_attivazione_nessun_turno`, `test_v13_attivazione_solo_dal_parlato`); 4 asserzioni esistenti (V3, V4, V10, uso «forte») a `startswith(ISTRUZIONE + " Adesso è ")`. Suite voce della CI in un venv con requirements + requirements-dev: `280 passed in 316.38s` su cf6233a; `282 passed in 311.31s` sullo stage di 87ebf99 prima della modifica al test del fuso; dopo quella modifica `-k v13` 3 passed e mutante «ora senza fuso» ucciso in TZ=UTC (revisore #668-M2 bis: voice_server + voice_stt 201 passed, 2 KO d'ambiente per `openai` mancante). Kernel non toccato (`gas.py` identico a main).
+`tests/test_unit_voce_ascolto.py`: da 149 a 154 casi (+3 test, 5 casi). Riepilogo reale nel venv con requirements e requirements-dev:
+
+```
+........................................................................ [ 93%]
+..........                                                               [100%]
+154 passed in 16.16s
+```
+
+Mutanti: costante a 500 → 4 FAILED (`test_voce_piana_passa_col_default`, `test_main_passa_la_soglia_della_voce[None-200.0]`, `[abc-200.0]`, `test_leggimi_riporta_il_default_della_voce`); solo `main` a 500 → 2 FAILED. Nessun FAIL fuori scope nel mio ambiente (i 21 del revisore erano per `openai` assente nel suo).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud: check lette con l'integrazione GitHub (`get_check_runs` della PR #334).
-- faaf406, cf6233a: nessuna run su questi SHA da soli (pushati insieme a 8416674).
-- 8416674 (testa del push precedente): unit-suite success, handoff-check success, verifica-bot success (bot: APPROVATO CON RISERVE, V-1 BASSA e V-2 COSMETICA, chiuse in 87ebf99).
-- db509c2, 6a058ce, 87ebf99 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
+`gh` non usato (GitHub passa dallo strumento MCP). Ultime run CI lette prima del merge di main:
+
+```
+42076739905 CI  push  2c8cd2a  (handoff-check success; unit-suite in corso alla lettura)
+verifica-bot su 2c8cd2a: neutral (APPROVATO CON RISERVE, PR nel perimetro)
+```
+
+Mappatura commit → run:
+- b00c506 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme: la run del push testa la testa).
+- 51088d9: run del suo push, non riletta qui.
+- 2c8cd2a: CI run 42076739905.
+- 4f80d9d: CI run 42076547829.
+- 20d2972, 27afc8f: nessuna run su questo SHA (pushati insieme a 4f80d9d).
+- b7f2c23: nessuna run CI su questo SHA tra quelle lette.
+
+Suite voce in locale dopo il merge (ascolto, server, stt): 358 passed.
 
 ## §7 RISERVE APERTE
 
-- R-667-2-M2 BASSA: l'ora è quella della macchina del server; sul VPS servirà un fuso configurabile (verifica esterna #334 V-2: lì l'istruzione vieta anche data_ora).
-- R-667-3-M2 COSMETICA: un datetime naive passato a `ora_per_voce` direbbe «fuso UTC».
-- R-668-1-M2 BASSA: «Dimmi.» spende ElevenLabs e un posto nel tetto orario.
-- R-668-2-M2 BASSA: «Hey Jarvis, Hey Jarvis» (ripetizione di Whisper) non riconosciuto.
-- R-668-3-M2 BASSA: segno «attivazione» non testato nei formati audio+testo e NDJSON.
-- Verifica esterna #334 su 8416674: V-3 BASSA nessun tetto in codice al numero di frasi; V-4 COSMETICA ora presa a inizio turno.
-- Bot su #332 (10fe496): V-1 BASSA (posto nel tetto del testo consumato se il turno fallisce), V-2 COSMETICA (commenti V12, 429 «o scrivi»).
+- R-667-1 BASSA: con soglia 200 un rumore continuo (ventola, TV) può aprire turni da solo nella finestra di 12 s e non chiudere la richiesta prima dei 30 s. Da riprovare in una stanza rumorosa; si regola dal .env.
+- R-667-2 BASSA: nessun test fissa il limite basso (un default sceso per errore a 50 passerebbe).
+- R-667-3 COSMETICA: `test_main_passa_la_soglia_della_voce` non toglie GAS_VOICE_URL/GAS_VOICE_PORT dall'ambiente.
+- Bot su 2c8cd2a, V-1 BASSA: rumore continuo sopra 200 → fino a ~150 s di audio della stanza inviati alla trascrizione per attivazione (rimedio: soglia adattiva come nel client browser V9). V-2 COSMETICA: base della PR su GitHub vecchia (9cd1ad5).
+- Verifica esterna (https://github.com/Gasss23/Gas/pull/333#issuecomment-6665009996): V-1 BASSA (R-667-2 sovrastimata: un default a 50 fa fallire 3 test; resta scoperto solo il rumore continuo a ~150), V-2 BASSA (= bot V-2), V-3 BASSA (= R-667-1), V-4 COSMETICA (§6 citava la CI di 4f80d9d).
+- Restano le riserve della fetta 39 e precedenti, elencate in `reports/stato_progetto.md`.
