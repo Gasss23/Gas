@@ -38,6 +38,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bb35796 docs(fine-task): fetta 43 chat Mani — pausa.sh e riprendi.sh, review #673, PR #338
 c1597d0 feat(voce): fetta 43 — pausa.sh e riprendi.sh (standby dell'ascolto dal Terminale)
 f1df0ac chore(revisore): memoria review #673 — APPROVATO CON RISERVE
 ```
@@ -73,7 +74,7 @@ Review #673 (chat Mani). Ho lavorato solo in /tmp/claude-0/wt43, sul branch mani
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voce_ascolto.py`: da 174 a 185 casi (9 test nuovi su pausa e riprendi; la sintassi e il «solo Mac» passano da 2 a 4 script). Riepilogo reale nel venv con requirements e requirements-dev:
+`tests/test_unit_voce_ascolto.py`: da 173 a 185 casi (9 test nuovi su pausa e riprendi, di cui uno con 2 casi, più 2 casi di sintassi e «solo Mac» per i due script nuovi). Riepilogo reale nel venv con requirements e requirements-dev:
 
 ```
 185 passed in 18.18s
