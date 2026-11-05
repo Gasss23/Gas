@@ -87,7 +87,9 @@ def test_parola_bip_registrazione_e_risposta():
     assert f.bip == ["ok"] and f.riprodotti == [b"MP3"] and len(f.inviati) == 1
     # niente silenzio prima della voce; dopo, il silenzio che chiude la richiesta (0,8 s)
     assert _campioni(f.inviati[0]) == (20 + _sec(0.8)) * a.BLOCCO
-    assert f.svuotati >= 2 and f.azzerati == 1  # svuota dopo bip e risposta; azzera a fine
+    # svuota dopo bip e risposta; azzera prima della risposta (fetta 41: il rilevatore
+    # ascolta mentre Gas parla) e a fine conversazione
+    assert f.svuotati >= 2 and f.azzerati == 2
 
 
 def test_se_non_parli_dopo_la_parola_non_si_invia():
@@ -164,18 +166,217 @@ def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
     class AscoltoFinto:
         def __init__(self, *args, **k):
             visti.append(k["voce_rms"])
+            soglie.append(k["soglia_interruzione"])
 
         def gira(self):
             raise KeyboardInterrupt
+    soglie = []
+    monkeypatch.delenv("GAS_ASCOLTO_INTERRUZIONE", raising=False)
+    monkeypatch.delenv("GAS_ASCOLTO_SOGLIA_INTERRUZIONE", raising=False)
+    monkeypatch.delenv("GAS_VOICE_URL", raising=False)
+    monkeypatch.delenv("GAS_VOICE_PORT", raising=False)
     monkeypatch.setattr(a, "Microfono", Mic)
     monkeypatch.setattr(a, "Ascolto", AscoltoFinto)
-    assert a.main() == 0 and visti == [atteso]
+    assert a.main() == 0 and visti == [atteso] and soglie == [a.SOGLIA_INTERRUZIONE_PREDEFINITA]
 
 
 def test_leggimi_riporta_il_default_della_voce():
     """La tabella di scripts/voce/LEGGIMI.md resta allineata al default del codice."""
     testo = (RADICE / "scripts" / "voce" / "LEGGIMI.md").read_text(encoding="utf-8")
     assert f"| `GAS_ASCOLTO_VOCE_RMS` | {a.VOCE_RMS_PREDEFINITO:g} |" in testo
+    assert (f"| `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | {a.SOGLIA_INTERRUZIONE_PREDEFINITA:g} |"
+            in testo)
+
+
+# ── fetta 41: interrompere Gas mentre parla, solo con la parola ──
+
+QUASI = "QUASI"                      # blocco con punteggio 0.6: sopra la soglia normale,
+                                     # sotto quella dell'interruzione (0.7)
+
+
+class Suona:
+    """Riproduzione finta: dura `blocchi` letture del microfono, poi finisce."""
+
+    def __init__(self, audio, blocchi, log_):
+        self.audio, self.resto, self.fermata, self.log = audio, blocchi, False, log_
+
+    def finita(self):
+        if self.resto <= 0:
+            return True
+        self.resto -= 1
+        return False
+
+    def ferma(self):
+        self.fermata = True
+        self.log.append(("ferma", self.audio, self.resto))
+
+
+class FintiParlano(Finti):
+    def __init__(self, risposte, durata=10):
+        super().__init__()
+        self.risposte, self.durata, self.eventi = list(risposte), durata, []
+
+    def rilevatore(self, b):
+        return {PAROLA: 1.0, QUASI: 0.6}.get(b if isinstance(b, str) else None, 0.0)
+
+    def invia(self, wav):
+        self.inviati.append(wav)
+        return True, self.risposte.pop(0), ""
+
+    def riproduci(self, audio):
+        self.riprodotti.append(audio)
+        return Suona(audio, self.durata, self.eventi)
+
+
+def _frasi_chiuse(*frasi):
+    chiuse = []
+
+    def gen():
+        try:
+            for x in frasi:
+                yield x
+        finally:
+            chiuse.append(True)
+    return gen(), chiuse
+
+
+RICHIESTA = ((VOCE, 10), (SILENZIO, 10))
+
+
+def test_la_parola_interrompe_gas_e_apre_una_nuova_richiesta():
+    frasi, chiuse = _frasi_chiuse(b"A", b"B")
+    f = FintiParlano([frasi, b"C"])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 3), PAROLA, *RICHIESTA, (SILENZIO, 20)),
+              finestra_s=0).gira()
+    # A fermata a metà, B scartata (risposta chiusa), nuova richiesta inviata e C suonata
+    assert f.riprodotti == [b"A", b"C"] and chiuse == [True]
+    assert f.eventi[0][:2] == ("ferma", b"A") and f.eventi[0][2] > 0
+    assert len(f.inviati) == 2 and f.bip == ["ok", "ok"]
+
+
+def test_la_voce_senza_parola_non_interrompe():
+    """Il microfono sente la voce di Gas dalle casse: il volume da solo non interrompe."""
+    frasi, chiuse = _frasi_chiuse(b"A", b"B")
+    f = FintiParlano([frasi])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE, 40)), finestra_s=0).gira()
+    assert f.riprodotti == [b"A", b"B"] and len(f.inviati) == 1 and f.bip == ["ok"]
+    assert all(r == 0 for _, _, r in f.eventi)  # finite da sole, non fermate a metà
+
+
+def test_mentre_gas_parla_serve_la_soglia_piu_alta():
+    f = FintiParlano([b"A"])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (QUASI, 20)), finestra_s=0).gira()
+    assert f.riprodotti == [b"A"] and len(f.inviati) == 1 and f.eventi[0][2] == 0
+
+
+def test_interruzione_spenta():
+    f = FintiParlano([b"A"])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, PAROLA, (SILENZIO, 20)), finestra_s=0,
+              soglia_interruzione=None).gira()
+    assert f.riprodotti == [b"A"] and len(f.inviati) == 1 and f.eventi[0][2] == 0
+
+
+def test_rilevatore_rotto_mentre_gas_parla(caplog):
+    """§9: un rilevatore che fallisce durante la risposta non la ferma; una riga sola."""
+    f = FintiParlano([b"A"])
+    rotto = [False]
+
+    def rilevatore(b):
+        if rotto[0]:
+            raise RuntimeError("onnx")
+        return f.rilevatore(b)
+    asc = a.Ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 20)), rilevatore, f.invia,
+                    lambda audio: (rotto.__setitem__(0, True), f.riproduci(audio))[1],
+                    f.suona, finestra_s=0, dorme=lambda s: None)
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        asc.gira()
+    assert f.riprodotti == [b"A"] and f.eventi[0][2] == 0
+    assert caplog.text.count("rilevatore in errore mentre Gas parla") == 1
+
+
+def test_frase_fermata_anche_se_il_microfono_finisce():
+    f = FintiParlano([b"A"], durata=50)
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 3)), finestra_s=0).gira()
+    assert f.eventi and f.eventi[0][0] == "ferma" and f.eventi[0][2] > 0
+
+
+def test_le_interruzioni_restano_sotto_max_turni():
+    """R-668-1: se la voce di Gas facesse scattare la parola, le interruzioni di fila non
+    azzerano il tetto: al più max_turni richieste per conversazione."""
+    f = FintiParlano([b"A", b"B", b"C", b"D"])
+    giro = (*RICHIESTA, (SILENZIO, 2), PAROLA)
+    # dopo la seconda interruzione si torna ad aspettare la parola: la voce che segue
+    # (senza parola) non apre una terza richiesta
+    f.ascolto(_blocchi(PAROLA, *giro, *giro, *RICHIESTA, (SILENZIO, 20)),
+              finestra_s=0, max_turni=2).gira()
+    assert len(f.inviati) == 2 and f.riprodotti == [b"A", b"B"]
+
+
+def test_dopo_l_interruzione_il_bip_non_entra_nella_richiesta():
+    """R-668-3: dopo il bip dell'interruzione il microfono si svuota (il bip non deve
+    finire nella nuova richiesta): uno svuotamento in più di una risposta normale."""
+    frasi, _ = _frasi_chiuse(b"A", b"B")
+    f = FintiParlano([frasi, b"C"])
+    svuotati_al_bip = []
+    f.suona = lambda tipo: (f.bip.append(tipo), svuotati_al_bip.append(f.svuotati))
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 3), PAROLA, *RICHIESTA, (SILENZIO, 20)),
+              finestra_s=0).gira()
+    # bip della parola e bip dell'interruzione: dopo ciascuno uno svuotamento
+    assert f.bip == ["ok", "ok"] and len(f.inviati) == 2
+    prima_del_secondo = svuotati_al_bip[1]
+    assert prima_del_secondo == 2  # bip iniziale + fine del turno interrotto
+    assert f.svuotati == prima_del_secondo + 2  # svuota dopo il bip + fine del turno con C
+
+
+class _Rotta:
+    def __init__(self, rompe_finita, rompe_ferma):
+        self.rompe_finita, self.rompe_ferma, self.fermata = rompe_finita, rompe_ferma, 0
+
+    def finita(self):
+        if self.rompe_finita:
+            raise OSError("poll")
+        return False
+
+    def ferma(self):
+        self.fermata += 1
+        if self.rompe_ferma:
+            raise OSError("terminate")
+
+
+@pytest.mark.parametrize("rompe_finita,rompe_ferma", [(True, False), (False, True), (True, True)])
+def test_riproduzione_rotta_non_esce_dal_turno(caplog, rompe_finita, rompe_ferma):
+    """R-668-2: un errore di finita() o di ferma() resta dentro il turno (§9): la frase si
+    ferma, si passa alla successiva e il turno finisce bene."""
+    rotte = []
+
+    def riproduci(audio):
+        r = _Rotta(rompe_finita, rompe_ferma)
+        rotte.append(r)
+        return r
+    frasi, chiuse = _frasi_chiuse(b"A", b"B")
+    f = Finti(esito=(True, frasi, ""))
+    asc = a.Ascolto(_blocchi((SILENZIO, 3)) if rompe_finita else iter([]), f.rilevatore,
+                    f.invia, riproduci, f.suona, svuota=f.svuota)
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        assert asc.turno([VOCE] * 3) is True
+    assert len(rotte) == 2 and all(r.fermata == 1 for r in rotte) and chiuse == [True]
+    assert not asc.interrotto
+    if rompe_finita:
+        assert "riproduzione: stato illeggibile" in caplog.text
+    if rompe_ferma:
+        assert "arresto della riproduzione fallito" in caplog.text
+
+@pytest.mark.parametrize("acceso,soglia,atteso", [
+    (None, None, 0.7), ("1", "0.9", 0.9), ("0", "0.9", None), (None, "abc", 0.7),
+    (None, "5", 1.0), (" 0 ", None, None),
+])
+def test_soglia_interruzione_dall_ambiente(monkeypatch, acceso, soglia, atteso):
+    for k, v in (("GAS_ASCOLTO_INTERRUZIONE", acceso), ("GAS_ASCOLTO_SOGLIA_INTERRUZIONE", soglia)):
+        if v is None:
+            monkeypatch.delenv(k, raising=False)
+        else:
+            monkeypatch.setenv(k, v)
+    assert a.soglia_interruzione() == atteso
 
 # ── finestra di 12 s dopo la risposta ──
 
@@ -663,19 +864,62 @@ def test_turno_riproduzione_rotta_va_avanti():
     assert asc.turno([VOCE] * 3) is True and f.riprodotti == [b"A", b"B"] and f.bip == []
 
 
-def test_riproduzione_da_file_0600_cancellato(monkeypatch, tmp_path):
-    monkeypatch.setattr(a.tempfile, "tempdir", str(tmp_path))
-    visti = []
+class _Popen:
+    """afplay finto: «suona» finché il test non lo fa finire (o non lo si ferma)."""
+    ultimi: list = []
 
-    def finto_run(argv, **k):
+    def __init__(self, argv, **k):
         p = Path(argv[1])
-        visti.append((argv[0], p.read_bytes(), stat.S_IMODE(p.stat().st_mode)))
-        return subprocess.CompletedProcess(argv, 0)
+        self.visto = (argv[0], p.read_bytes(), stat.S_IMODE(p.stat().st_mode))
+        self.codice = None
+        self.terminato = False
+        _Popen.ultimi.append(self)
 
-    monkeypatch.setattr(a.subprocess, "run", finto_run)
-    a.riproduci_afplay(b"ID3-MP3")
-    assert visti == [("afplay", b"ID3-MP3", 0o600)]
-    assert list(tmp_path.iterdir()) == []
+    def poll(self):
+        return self.codice
+
+    def terminate(self):
+        self.terminato = True
+        self.codice = -15
+
+    def kill(self):
+        self.codice = -9
+
+    def wait(self, timeout=None):
+        return self.codice
+
+
+@pytest.fixture
+def popen_finto(monkeypatch, tmp_path):
+    monkeypatch.setattr(a.tempfile, "tempdir", str(tmp_path))
+    _Popen.ultimi = []
+    monkeypatch.setattr(a.subprocess, "Popen", _Popen)
+    return tmp_path
+
+
+def test_riproduzione_da_file_0600_cancellato(popen_finto):
+    r = a.riproduci_afplay(b"ID3-MP3")
+    p = _Popen.ultimi[0]
+    assert p.visto == ("afplay", b"ID3-MP3", 0o600)
+    assert not r.finita() and list(popen_finto.iterdir()) != []  # suona: il file c'è
+    p.codice = 0
+    assert r.finita() and list(popen_finto.iterdir()) == [] and not p.terminato
+
+
+def test_riproduzione_fermata_cancella_il_file(popen_finto):
+    """Fetta 41: `ferma()` spegne afplay e cancella il file; chiamarla due volte va bene."""
+    r = a.riproduci_afplay(b"x")
+    r.ferma()
+    r.ferma()
+    assert _Popen.ultimi[0].terminato and list(popen_finto.iterdir()) == []
+
+
+def test_riproduzione_troppo_lunga_si_ferma(popen_finto):
+    ora = [0.0]
+    r = a.RiproduzioneAfplay(b"x", adesso=lambda: ora[0])
+    assert not r.finita()
+    ora[0] = a.RIPRODUZIONE_MAX_S
+    assert r.finita() and _Popen.ultimi[0].terminato and list(popen_finto.iterdir()) == []
 
 
 def test_riproduzione_fallita_cancella_comunque(monkeypatch, tmp_path):
@@ -684,7 +928,7 @@ def test_riproduzione_fallita_cancella_comunque(monkeypatch, tmp_path):
     def esplode(argv, **k):
         raise OSError("afplay assente")
 
-    monkeypatch.setattr(a.subprocess, "run", esplode)
+    monkeypatch.setattr(a.subprocess, "Popen", esplode)
     with pytest.raises(OSError):
         a.riproduci_afplay(b"x")
     assert list(tmp_path.iterdir()) == []

@@ -1,164 +1,144 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-05 — chat Mani, fetta 40: soglia della voce predefinita 200 invece di 500
+**Sessione:** 2026-11-05 — chat Mani, fetta 41: la parola di attivazione interrompe Gas mentre parla
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #333 (https://github.com/Gasss23/Gas/pull/333). Review #667 APPROVATO CON RISERVE e PR nel perimetro: l'operatore ha detto sì (via M1, 5 novembre); dopo il merge di main (review #670) la mergio io con la CI verde. Numero e URL letti dallo strumento GitHub (`list_pull_requests` con head `claude/peaceful-lovelace-0w2b7q`: la PR esisteva già, aperta il 4 novembre per b7f2c23).
+1. Merge della PR #336 (https://github.com/Gasss23/Gas/pull/336). Review #669 APPROVATO CON RISERVE e PR nel perimetro: decide l'operatore tramite M1. Numero e URL dalla risposta dello strumento GitHub `create_pull_request`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 40 — soglia della voce 200**: `FATTA`
-  `GAS_ASCOLTO_VOCE_RMS` predefinito da 500 a 200 (costante `VOCE_RMS_PREDEFINITO`), LEGGIMI aggiornato, 3 test nuovi (5 casi) con mutanti uccisi. Motivo: prova dell'operatore sul MacBook Air del 5 novembre.
-- **Ripartenza della chat Mani (b7f2c23)**: `FATTA` (sessione precedente) — unita con un merge perché non era ancora in main.
-- **Riserve basse della fetta 39**: `DEFERITA — M1 ha chiesto solo la soglia`.
-- **Merge di main (PR #334, voce V13) in b00c506**: `FATTA` — conflitti solo nei report, review #670 APPROVATO, suite voce 358 passed.
-- **Registrazione dei verdetti di bot e verifica esterna su 2c8cd2a**: `FATTA` — entrambi APPROVATO CON RISERVE, nessuna ALTA o MEDIA; riserve in stato_progetto.
+- **PR #333 (fetta 40)**: `FATTA` — mergiata (830c5bf) col sì dell'operatore, CI verde.
+- **Fetta 41 — interruzione con la parola**: `FATTA`
+  Solo la parola fa da grilletto mentre Gas parla (soglia 0.7). Frase fermata, frasi in fila scartate, bip, nuova richiesta sotto max_turni. Review #668 (con R-668-1 MEDIA, corretta) e #669 APPROVATO CON RISERVE. Diff identico a quello rivisto (stesso SHA del diff staged), riportato su main dopo il merge della #333.
+- **Fetta 42 — «Sì, signore?»**: `DEFERITA — aspetta il merge della PR #335 di M2 (GET /voce/conferma)`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +
- clients/voice/ascolto.py           |  10 +-
- reports/diff_sessione.md           |  16 +--
+ .claude/agents/memoria_revisore.md |   3 +++
+ clients/voice/ascolto.py           | 151 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
+ reports/diff_sessione.md           |  15 +++++++--------
+ reports/stato_progetto.md          |   6 ++++--
+ reports/ultimo_report.md           |  29 ++++++++++++++---------------
+ scripts/voce/LEGGIMI.md            |   8 ++++++++
+ tests/test_unit_voce_ascolto.py    | 270 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
  reports/handoff.md                 | n/d
- reports/ripartenza_mani.md         | 122 +++++++++++++++++------
- reports/stato_progetto.md          |   4 +-
- reports/ultimo_report.md           |  33 ++++++++++++++++++---------------
- scripts/voce/LEGGIMI.md            |   2 +-
- tests/test_unit_voce_ascolto.py    |  49 +++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 7bdaa8f (dopo il merge della PR #334).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 830c5bf.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-b00c506 Merge origin/main (PR #334, voce V13) nella PR #333 — review #670 APPROVATO
-51088d9 docs(fine-task): fetta 40 — riserve di bot e verifica esterna su 2c8cd2a registrate (PR #333)
-2c8cd2a docs(fine-task): fetta 40 chat Mani — soglia della voce 200, review #667, PR #333
-4f80d9d Merge remote-tracking branch 'origin/claude/peaceful-lovelace-0w2b7q' into claude/peaceful-lovelace-0w2b7q
-20d2972 fix(voce): soglia della voce predefinita 200 invece di 500 (prova sul MacBook Air del 5 novembre)
-27afc8f chore(revisore): memoria review #667 — APPROVATO CON RISERVE
-b7f2c23 docs(mani): ripartenza aggiornata — stato al 4 novembre, riserve aperte, prossima fetta della voce e regole
+e619103 docs(fine-task): fetta 41 chat Mani — interruzione con la parola, review #668–#669, PR #336; PR #333 mergiata
+ef65e42 feat(voce): fetta 41 — la parola di attivazione interrompe Gas mentre parla
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 20d2972 (review #667, chat Mani) — verdetto integrale:
+Commit ef65e42 — review #668 (primo giro), verdetto integrale. Le citazioni si riferiscono al diff di allora; le righe sono cambiate di poco con le correzioni della #669. Gli hash 808993d e 91f74aa citati nei verdetti sono commit del branch locale `mani/voce-interruzione`, mai pubblicato (V-1 della verifica esterna): sul branch remoto le righe #668/#669 della memoria sono nel commit di fine-task.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #667 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q rispetto alla base origin/main 8b8012d: 3 file, +57/-4. Ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md e la mia memoria.
+Review #668 (chat Mani). Ho letto lo staged di `mani/voce-interruzione` (base 2c8cd2a, 3 file). Ho esportato l'indice in scratch con `checkout-index`: niente stash e nessuna modifica al repo vero. Lo SHA-256 del diff staged è `f10e532e…9258`, uguale prima e dopo il commit della memoria.
 
 **Elementi del diff esaminati**
-- `clients/voice/ascolto.py:85` — nuova costante `VOCE_RMS_PREDEFINITO = 200.0`, con il commento che spiega perché è stata cambiata. Rischio: due default diversi tra la classe e `main`. Esito: ok, la stessa costante è usata in entrambi i punti.
-- `clients/voice/ascolto.py:239` — il default di `Ascolto(voce_rms=...)` ora usa la costante. Rischio: una soglia più bassa cambia `registra`, che inizia a registrare dopo 0,24 s di suono sopra soglia (INIZIO_VOCE_S) e si ferma a 30 s (REGISTRAZIONE_MAX_S), e cambia `aspetta_voce`, la finestra di 12 s dopo la risposta. Esito: riserva R-667-1.
-- `clients/voice/ascolto.py:655` — `main` passa `_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000)`. Rischio: env ignorata o valore non valido. Esito: ok. «abc» torna a 200, i limiti 10–30000 restano, un valore non finito torna al default.
-- `scripts/voce/LEGGIMI.md:82` — tabella aggiornata a 200, con l'indicazione di alzarlo a 300–500 in una stanza rumorosa. Esito: ok, la allinea `test_leggimi_riporta_il_default_della_voce`.
-- `tests/test_unit_voce_ascolto.py:134` e `tests/test_unit_voce_ascolto.py:141` — test con voce a RMS 300 e test di `main` parametrizzato (None, «350», «abc»). Esito: ok, salvo R-667-2 e R-667-3.
+- `clients/voice/ascolto.py:645` — `RiproduzioneAfplay`: avvia afplay con Popen. Il file temporaneo è 0600 in una cartella sua; se afplay non parte, la cartella si cancella (anche con BaseException). C'è un tetto `RIPRODUZIONE_MAX_S`. Rischi esaminati: afplay che resta acceso, file che resta su disco. Esito: ok. Tre mutanti uccisi: senza `terminate`, senza `rmtree` in `ferma`, senza pulizia nell'init. Il mutante che ignora il tetto è ucciso anche lui.
+- `clients/voice/ascolto.py:488` — `_ascolta_mentre_suona` chiama sempre `ferma()` nel finally, anche con KeyboardInterrupt; il rilevatore viene usato solo con `soglia_interruzione`. Rischi esaminati: eccezioni che escono, il volume che fa da grilletto. Esito: ok. Il mutante «soglia normale» è ucciso dal test di `tests/test_unit_voce_ascolto.py:266`. Riserva R-668-2 sulle guardie di finita/ferma, vedi sotto.
+- `clients/voice/ascolto.py:433` — su interruzione, `turno` esce col break e il finally chiude `pezzi`, cioè la risposta: il server smette di sintetizzare. Esito: ok. Il test di `tests/test_unit_voce_ascolto.py:246` verifica la frase fermata a metà, la B scartata e la risposta chiusa. Il mutante che non rimette `interrotto` a False è ucciso.
+- `clients/voice/ascolto.py:527` — ramo `interrotto` di `conversazione`: azzera, bip, svuota, `turni = 0`, poi registra. Esito: riserva (R-668-1, R-668-3).
+- `clients/voice/ascolto.py:196` — `soglia_interruzione()`: «0» la spegne, la soglia va da 0.05 a 1.0, un valore non numerico ripiega su 0.7. Esito: ok, coperto dal test parametrico. La tabella di `scripts/voce/LEGGIMI.md:91` è allineata al codice e un test la controlla.
 
-**Verifiche eseguite**
-- Suite in una copia dell'index in scratch: 133 passed, 21 failed. Sulla base origin/main: 128 passed, 21 failed, gli stessi test. Sono fallimenti dell'ambiente del container: modulo `openai` assente per `test_dotenv_usa_il_caricatore_di_gas` e i 20 casi di `test_installa_legge_il_env_come_gas`. Il diff aggiunge 5 test, tutti verdi. Il conteggio di 154 passed dichiarato da voi non l'ho riprodotto per questo motivo.
-- Quattro mutanti in copia scratch, tutti uccisi:
-  - costante a 500: 4 test falliti;
-  - solo il default di Ascolto a 500: 1 fallito;
-  - solo `main` a 500: 2 falliti;
-  - `main` che ignora la variabile d'ambiente: 1 fallito.
-- Effetti collaterali:
-  - Eco della risposta: `turno` chiama `_svuota()` nel finally dopo la riproduzione (`clients/voice/ascolto.py:409`), quindi l'audio della risposta catturato dal microfono non apre turni. La soglia più bassa non cambia questo comportamento.
-  - INIZIO_VOCE_S: resta l'unica difesa contro i rumori brevi (3 blocchi di fila sopra soglia). Un clic resta escluso; un rumore continuo tra 200 e 500 ora apre il turno.
-- Wall of Shame: non applicabile. Il diff è un client, senza history né tool. §9 non toccato.
+**Esecuzione**: sull'indice esportato 147 passed e 20 failed. I 20 falliti mancano anche sulla base e non dipendono dal diff: `openai` e `installa` non ci sono nel container. Ho provato 12 mutanti contro l'insieme dei falliti della base: 7 uccisi, 5 vivi.
+
+**Privacy**: ok. Mentre Gas parla, i blocchi del microfono vanno solo al rilevatore locale, e dopo l'interruzione si svuota due volte (nel finally di `turno` e dopo il bip). L'unico file su disco è l'MP3 della voce di Gas (0600, cancellato), mai l'audio dell'operatore. Prima della parola nessun audio va in rete.
+
+**Finding**
+- **R-668-1 MEDIA** — A ogni interruzione `turni = 0` (`clients/voice/ascolto.py:527`), quindi le interruzioni azzerano il tetto `max_turni`. Una catena è possibile senza l'operatore: Gas dice «Jarvis» dalle casse, l'eco supera 0.7, poi un rumore sopra 200 di volume apre una richiesta, e così via: turni pagati senza tetto. Il mutante che toglie l'azzeramento sopravvive, cioè nessun test fissa la scelta. Rimedio: non azzerare (o mettere un tetto a parte alle interruzioni di fila), e aggiungere un test. Non blocca: serve che la parola scatti per eco, e il server ha già il tetto orario V12.
+- **R-668-2 BASSA** — Le guardie §9 di `finita()` e di `ferma()` (`clients/voice/ascolto.py:466`, `clients/voice/ascolto.py:488`) non hanno test: i due mutanti che le tolgono sopravvivono. Se mancassero, l'eccezione arriverebbe a `gira`, che la ferma: la conversazione finisce, ma nessun crash.
+- **R-668-3 BASSA** — Lo svuotamento dopo il bip d'interruzione (`clients/voice/ascolto.py:526`) non ha test: i test finti non mettono il bip nel microfono, quindi il mutante sopravvive.
+- **R-668-4 COSMETICA** — L'annotazione `riproduci: Callable[[bytes], None]` (`clients/voice/ascolto.py:255`) è superata: ora la funzione restituisce un oggetto con `finita()`/`ferma()`, oppure None. Serve `Optional[...]` o un Protocol.
+- Nota, non è un finding: il mutante «continue tolto dopo una riproduzione fallita» si comporta in modo identico all'originale (`in_corso=None` restituisce False). Resta aperta, come dichiarato, la riserva V-1 del bot su fc1cab7: fra una frase e l'altra il microfono non viene letto, quindi la parola detta in quel momento si coglie solo se è ancora nel buffer.
+
+**Rischio escluso**: non ho verificato il comportamento reale sul Mac, cioè afplay e `terminate` veri, l'eco delle casse del MacBook contro la soglia 0.7 di openWakeWord, e il buffer di sounddevice fra una frase e l'altra. Qui non si possono riprodurre: niente macOS, niente microfono, niente modello.
+
+**Memoria**: ho aggiunto la riga `#668` e una lezione nuova (un azzeramento del contatore dentro un ciclo con tetto va mutato, chiedendosi se l'evento che lo attiva può ripetersi da solo). Commit 808993d con `scripts/commit_memoria_revisore.sh`; lo staged non cambia (stesso SHA prima e dopo). Nota: il commit sposta HEAD da 2c8cd2a a 808993d.
+
+Commit ef65e42 — review #669 (ri-review con le correzioni), verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #669 (chat Mani). Riguarda la fetta 41, l'interruzione di Gas con la parola mentre parla. Branch mani/voce-interruzione: 3 file in staging, base 808993d. Prima della review ho letto CLAUDE.md, la testata di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+- `clients/voice/ascolto.py:525` — nel ramo dell'interruzione il codice esce se `turni >= max_turni`; `turni` non viene più azzerato. Rischio: l'eco di Gas fa scattare la parola e parte una catena di turni pagati senza limite. Ho provato in una copia, ognuno da solo, 3 mutanti: azzeramento rimesso, `>` al posto di `>=`, uscita tolta. Esito: tutti presi (22 failed contro i 21 di partenza). **R-668-1 chiusa.**
+- `tests/test_unit_voce_ascolto.py:303` — test sul tetto con `max_turni=2` e due interruzioni di fila: escono 2 invii e solo A e B suonate. Rischio: il test non distingue il mutante. Esito: ok, il mutante con l'azzeramento viene preso.
+- `tests/test_unit_voce_ascolto.py:347` — test parametrico con `finita()` rotta, `ferma()` rotta, ed entrambe. Controlla che `ferma` venga chiamata una volta per frase, che le frasi in fila vengano chiuse e che le righe di log ci siano. Rischio: con le guardie tolte l'eccezione uscirebbe dal turno. Esito: ok, l'eccezione salirebbe fuori da `turno` e il test la prende (ho controllato il percorso; i mutanti li ha provati l'agente). **R-668-2 chiusa.**
+- `tests/test_unit_voce_ascolto.py:315` — conta gli svuotamenti del microfono al momento del secondo bip (2) e alla fine (+2). Rischio: il bip finisce nella nuova richiesta. Esito: ok. **R-668-3 chiusa.**
+- `clients/voice/ascolto.py:255` — l'annotazione ora è `riproduci: Callable[[bytes], Optional[object]]` ed è coerente con `_ascolta_mentre_suona`, che accetta None (riproduzione già finita). Esito: ok. **R-668-4 chiusa.**
+- `clients/voice/ascolto.py:415` — `_azzera()` all'inizio della risposta. Ho tolto la chiamata: mutante preso. Ho anche tolto `self.interrotto = False` a inizio turno: mutante preso (23 failed). Esito: ok.
+
+**Prove eseguite**
+- Suite voce sulla copia dell'indice: 152 passed e 21 failed. I 21 sono `test_installa_legge_il_env_come_gas` (20 casi) e `test_dotenv_usa_il_caricatore_di_gas`. Falliscono perché nel container manca il modulo openai, e lo stesso test dotenv fallisce anche sulla base 2c8cd2a.
+- 152 passed qui contro i 173 dell'agente: la differenza sono questi stessi 21 test.
+- 147 passed alla #668 + 5 test nuovi = 152.
+- 6 mutanti: 5 presi e 1 sopravvissuto (vedi R-669-2), che non cambia il comportamento.
 
 **Riserve**
-- **R-667-1 BASSA**: con soglia 200 un rumore di fondo continuo sopra 200 (ventola, TV, tastiera) può:
-  - aprire turni da solo nella finestra di 12 s, mandando rumore al server e consumando trascrizione e sintesi;
-  - non far scattare mai la chiusura per silenzio, così la richiesta arriva a 30 s.
+- **R-669-1 BASSA** — Quando si arriva al tetto, l'interruzione ferma Gas ma non c'è né bip né nuova richiesta: si torna ad aspettare la parola in silenzio. Con `GAS_VOICE_MAX_TURNI=1` la parola detta mentre Gas parla non apre mai una domanda. Il comportamento è corretto per R-668-1, ma `scripts/voce/LEGGIMI.md:8` promette «fa il bip e ascolta la nuova domanda». Basta una riga nel LEGGIMI, oppure un bip di errore al tetto.
+- **R-669-2 COSMETICA** — Il mutante sopravvissuto è il `_azzera()` nel ramo dell'interruzione (`clients/voice/ascolto.py:527`). È ridondante: `registra` non usa il rilevatore, e il turno successivo, come la fine della conversazione, lo azzera già.
+- **R-669-3 COSMETICA** — Prima di `tests/test_unit_voce_ascolto.py:369` c'è una sola riga vuota dopo la funzione precedente (regola di stile PEP8 E302).
 
-  È mitigato da `max_turni` (5), dall'uscita del ciclo quando un turno non riesce, dal tetto orario lato server (V12) e dalla nota nel LEGGIMI. La scelta si basa su una sola prova su un Mac: va riverificata in ambiente rumoroso. Non blocca, perché si regola dal .env.
-- **R-667-2 BASSA**: nessun test fissa il limite basso. Il rumore dei test (SILENZIO) vale 10, quindi un default sceso per errore a 50 sopravvive a tutti i test. Proposta: un test in cui un rumore continuo a RMS ~150 non apre la finestra o chiude la richiesta.
-- **R-667-3 COSMETICA**: `test_main_passa_la_soglia_della_voce` (`tests/test_unit_voce_ascolto.py:141`) non toglie `GAS_VOICE_URL` e `GAS_VOICE_PORT` dall'ambiente. Il test preesistente vicino alla riga 741 lo fa: se l'ambiente di CI avesse un URL non valido, `main` restituirebbe 1 e il test fallirebbe senza motivo.
-
-**Cosa NON ho verificato**
-- Il comportamento reale sul MacBook Air (guadagno del microfono, rumore di fondo reale, coda di riverbero dopo `afplay` e dopo `svuota`): non riproducibile nel container Linux, senza microfono né macOS.
-- I 21 test che falliscono per l'ambiente: non li ho fatti girare con le dipendenze complete. Che siano identici sulla base esclude una regressione introdotta dal diff, ma non dimostra che passino.
-
-**Incidente di processo**
-Per confrontare con la base ho lanciato per errore `git stash --keep-index` sul repo vero. Ho verificato subito che lo stash conteneva solo una copia dello staged (nessuna modifica fuori dallo staging) e che l'index era intatto: stesso `--cached --stat`, 3 file. Poi ho rimosso lo stash e ho fatto il confronto su copie in scratch. Stato finale: index invariato, nessuno stash residuo.
+**Cosa non ho verificato**
+- Il comportamento vero sul Mac (afplay con Popen, eco delle casse, punteggi reali di openWakeWord con la soglia 0.7): non si può riprodurre nel container, che non ha afplay né microfono. Vale la prova dell'operatore.
+- I 21 test di installa/dotenv: qui manca il modulo openai.
 
 **Memoria**
-In `.claude/agents/memoria_revisore.md` ho aggiunto la riga contatore `#667 (chat Mani) — 2026-11-05 — APPROVATO CON RISERVE — …` e la lezione di non usare `git stash` sul repo vero per i confronti. Committata con `scripts/commit_memoria_revisore.sh` (commit 27afc8f, solo quel file; lo staged del diff è rimasto intatto).
-
-Merge b00c506 (main con la PR #334 dentro la PR #333) — review #670, verdetto RIEMESSO dal revisore per il gate B: stesso esito (APPROVATO), citazioni dei file del diff di sessione. L'originale citava server.py e test_unit_voice_server.py, che dopo il merge sono in main e fuori dal diff di sessione; il suo testo integrale, non modificato, è nell'handoff del commit dba7151:
-
-## VERDETTO: APPROVATO
-
-Review #670 (chat Mani), RIEMESSA per il gate B. Non è una nuova review e l'esito non cambia. Riguarda il merge di origin/main 7bdaa8f (PR #334, voce V13) nel branch claude/peaceful-lovelace-0w2b7q (PR #333, fetta 40), ora committato come b00c506. Dopo il merge la base della sessione è main 7bdaa8f, quindi le citazioni sotto puntano a file del diff di sessione (`git diff --name-only 7bdaa8f..HEAD`). Ho riletto ogni riga in HEAD (dba7151).
-
-**Cosa ho esaminato nel diff**
-- `reports/stato_progetto.md:4`: è la riga «Ultimo aggiornamento», l'unico punto in conflitto del merge. Ho controllato che il conflitto non fosse risolto male. La riga è fatta così: prefisso della fetta 40 («soglia della voce predefinita 200 invece di 500…»), poi « — prima: », poi la riga 4 di main (voce V13, review #667-M2) senza modifiche. Prefisso e suffisso li ho controllati con uno script, e un `git merge-file` rifatto nello scratch dà lo stesso risultato. Il resto del file coincide. Esito: ok.
-- `clients/voice/ascolto.py:85`: contiene `VOCE_RMS_PREDEFINITO = 200.0`. Ho controllato che il merge non avesse riportato il vecchio valore 500 o la versione di main. Nell'index del merge il file era identico a HEAD del branch, quindi resta la versione della fetta 40. Esito: ok.
-- `tests/test_unit_voce_ascolto.py:133`: è il test `test_voce_piana_passa_col_default`, cioè una voce a RMS 300 che col default 200 apre la richiesta. Lo stesso vale per `tests/test_unit_voce_ascolto.py:142` (default dalla variabile di ambiente: None, valore valido e valore non valido) e per `tests/test_unit_voce_ascolto.py:175` (allineamento con il LEGGIMI). Ho controllato che i test della fetta 40 non si perdessero nel merge: ci sono tutti e sono identici a HEAD del branch. Esito: ok.
-- `scripts/voce/LEGGIMI.md:82`: è la riga della tabella `GAS_ASCOLTO_VOCE_RMS | 200`. Ho controllato che restasse allineata al default del codice: lo è, e il test della riga 175 la verifica. Esito: ok.
-- Contesto, fuori dal diff di sessione: `modules/voice/server.py` (filtro V13 `_SOLO_ATTIVAZIONE`) e `tests/test_unit_voice_server.py` entrano da main identici a MERGE_HEAD, cioè nella versione già rivista in #667-M2 e #668-M2. Non interagiscono con la fetta 40, che tocca solo il lato client.
-- Memoria del revisore: contiene tutte le righe dei due lati, senza doppioni.
-- Marcatori e conflitti: nessun marcatore residuo, `git diff --check` pulito, `git ls-files -u` vuoto.
-- Test: ho copiato l'index nello scratch. Suite ascolto, server e stt: 334 passed e 24 failed, 358 in totale. I 24 fallimenti dipendono tutti dall'ambiente: 23 per `ModuleNotFoundError: openai`, più la collection dell'intero repo che si ferma per lo stesso motivo. Sono gli stessi già noti come preesistenti in #667 e #667-M2.
-
-**Cosa non ho verificato (rischi esclusi)**
-- Non ho rieseguito le suite con openai installato, perché nel container manca. I 358 passed dell'agente li prendo per buoni, ma la mia prova li conferma solo per i 334 test che non dipendono da openai.
-- Non ho rifatto la review del contenuto della V13: è già stata rivista da M2 ed entra senza modifiche.
-- Non ho verificato come si comporta il sistema dal vero sul Mac: non è riproducibile in questo ambiente.
-- Non ho rivisto il commit dba7151, che tocca solo `reports/handoff.md` e `reports/ultimo_report.md` ed è fuori dal perimetro di review.
-
-**Riserve:** nessuna (nessuna R-670-n).
-
-**Memoria:** la riga #670 è già nella memoria del revisore (committata col merge). Per questa riemissione non ho aggiunto righe, come richiesto, e non ho toccato il repo.
+- Riga #669 aggiunta in `.claude/agents/memoria_revisore.md` e salvata da sola nel commit 91f74aa con `scripts/commit_memoria_revisore.sh`.
+- Lo staging non è cambiato (3 file, 398+/31-).
+- Nessun `git stash`: le copie sono in scratchpad.
+- Nessuna lezione nuova.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voce_ascolto.py`: da 149 a 154 casi (+3 test, 5 casi). Riepilogo reale nel venv con requirements e requirements-dev:
+`tests/test_unit_voce_ascolto.py`: da 154 a 173 casi. Riepilogo reale nel venv con requirements e requirements-dev:
 
 ```
-........................................................................ [ 93%]
-..........                                                               [100%]
-154 passed in 16.16s
+173 passed in 20.06s
 ```
 
-Mutanti: costante a 500 → 4 FAILED (`test_voce_piana_passa_col_default`, `test_main_passa_la_soglia_della_voce[None-200.0]`, `[abc-200.0]`, `test_leggimi_riporta_il_default_della_voce`); solo `main` a 500 → 2 FAILED. Nessun FAIL fuori scope nel mio ambiente (i 21 del revisore erano per `openai` assente nel suo).
+Mutanti, tutti presi: soglia normale al posto di quella dell'interruzione (1 FAILED), niente ferma (5), niente break (1), interrotto ignorato in conversazione (1), volume al posto della parola (1), azzeramento dei turni rimesso (1), svuota dopo il bip tolto (1), guardia di finita tolta (2), guardia di ferma tolta (2). Nessun FAIL fuori scope nel mio ambiente.
 
 ## §6 STATO CI
 
-`gh` non usato (GitHub passa dallo strumento MCP). Ultime run CI lette prima del merge di main:
+`gh` non usato (GitHub passa dallo strumento MCP). Check della PR #336 su e619103, letti con `pull_request_read`:
 
 ```
-42076739905 CI  push  2c8cd2a  (handoff-check success; unit-suite in corso alla lettura)
-verifica-bot su 2c8cd2a: neutral (APPROVATO CON RISERVE, PR nel perimetro)
+handoff-check  success
+unit-suite     in_progress (run 42085956774)
+verifica-bot   failure (verdetto testuale APPROVATO CON RISERVE, parser che legge un MEDIA inesistente)
 ```
 
 Mappatura commit → run:
-- b00c506 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme: la run del push testa la testa).
-- 51088d9: run del suo push, non riletta qui.
-- 2c8cd2a: CI run 42076739905.
-- 4f80d9d: CI run 42076547829.
-- 20d2972, 27afc8f: nessuna run su questo SHA (pushati insieme a 4f80d9d).
-- b7f2c23: nessuna run CI su questo SHA tra quelle lette.
-
-Suite voce in locale dopo il merge (ascolto, server, stt): 358 passed.
+- e619103: CI run 42085956774 — handoff-check success, unit-suite in corso alla scrittura.
+- ef65e42: run del suo push non letta (pushato da solo prima di aprire la PR).
+- Commit di fine-task che registra i verdetti: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-667-1 BASSA: con soglia 200 un rumore continuo (ventola, TV) può aprire turni da solo nella finestra di 12 s e non chiudere la richiesta prima dei 30 s. Da riprovare in una stanza rumorosa; si regola dal .env.
-- R-667-2 BASSA: nessun test fissa il limite basso (un default sceso per errore a 50 passerebbe).
-- R-667-3 COSMETICA: `test_main_passa_la_soglia_della_voce` non toglie GAS_VOICE_URL/GAS_VOICE_PORT dall'ambiente.
-- Bot su 2c8cd2a, V-1 BASSA: rumore continuo sopra 200 → fino a ~150 s di audio della stanza inviati alla trascrizione per attivazione (rimedio: soglia adattiva come nel client browser V9). V-2 COSMETICA: base della PR su GitHub vecchia (9cd1ad5).
-- Verifica esterna (https://github.com/Gasss23/Gas/pull/333#issuecomment-6665009996): V-1 BASSA (R-667-2 sovrastimata: un default a 50 fa fallire 3 test; resta scoperto solo il rumore continuo a ~150), V-2 BASSA (= bot V-2), V-3 BASSA (= R-667-1), V-4 COSMETICA (§6 citava la CI di 4f80d9d).
-- Restano le riserve della fetta 39 e precedenti, elencate in `reports/stato_progetto.md`.
+- R-669-1 BASSA: al tetto dei turni la parola ferma Gas ma non fa né bip né nuova domanda; il LEGGIMI promette il bip.
+- R-669-2 COSMETICA: `_azzera()` ridondante nel ramo dell'interruzione.
+- R-669-3 COSMETICA: una riga vuota mancante in un test (PEP8 E302).
+- Bot V-1 su fc1cab7 (ancora aperta): fra una frase e l'altra il microfono non si legge.
+- Da provare sul Mac: eco delle casse contro la soglia 0.7, afplay fermato davvero.
+- PR #333: bot V-2 su 83b0975 COSMETICA (§3/§6 dell'handoff di allora), in stato_progetto.
+- Restano le riserve della fetta 40 e precedenti, elencate in `reports/stato_progetto.md`.

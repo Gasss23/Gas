@@ -1,11 +1,10 @@
-# Diff della sessione — 2026-11-05 — chat Mani, fetta 40
+# Diff della sessione — 2026-11-05 — chat Mani, fetta 41
 
-File toccati (base origin/main 8b8012d):
-- `clients/voice/ascolto.py`: soglia della voce predefinita 200 (costante `VOCE_RMS_PREDEFINITO`), usata da `Ascolto` e da `main`; docstring aggiornata. Motivo: prova sul MacBook Air del 5 novembre.
-- `scripts/voce/LEGGIMI.md`: tabella delle regolazioni a 200, con la nota per alzarlo nelle stanze rumorose.
-- `tests/test_unit_voce_ascolto.py`: test della voce piana col default, del valore passato da `main` e del LEGGIMI allineato al codice.
-- `.claude/agents/memoria_revisore.md`: riga della review #667 e lezione del revisore.
-- `reports/ripartenza_mani.md`: ripartenza della chat Mani (commit b7f2c23 della sessione precedente, unito con un merge).
-- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+File toccati (base main 830c5bf, dopo il merge della PR #333):
+- `clients/voice/ascolto.py`: interruzione con la parola di attivazione mentre Gas parla (soglia 0.7, solo la parola), afplay in sottofondo (`RiproduzioneAfplay`), interruzioni sotto max_turni, `soglia_interruzione()` dall'ambiente.
+- `scripts/voce/LEGGIMI.md`: come interrompere Gas, due righe nuove nella tabella delle regolazioni.
+- `tests/test_unit_voce_ascolto.py`: test dell'interruzione, della riproduzione in sottofondo, delle guardie §9 e del tetto dei turni.
+- `.claude/agents/memoria_revisore.md`: righe delle review #668 e #669 (con la lezione sui contatori azzerati dentro un ciclo con tetto).
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task (più l'esito della PR #333).
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.
