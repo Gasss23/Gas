@@ -128,6 +128,55 @@ def test_registrazione_al_massimo_30_secondi():
     assert _campioni(f.inviati[0]) == _sec(a.REGISTRAZIONE_MAX_S) * a.BLOCCO
 
 
+VOCE_PIANA = [300] * a.BLOCCO        # voce bassa, come al microfono del MacBook Air
+
+
+def test_voce_piana_passa_col_default():
+    """Prova del 2026-11-05 sul MacBook Air: con soglia 500 la voce dopo il bip non
+    passava («torno ad aspettare»). Col default (200) una voce a RMS 300 apre la richiesta."""
+    f = Finti()
+    f.ascolto(_blocchi(PAROLA, (VOCE_PIANA, 10), (SILENZIO, 10)), finestra_s=0).gira()
+    assert len(f.inviati) == 1 and _campioni(f.inviati[0]) == (10 + 10) * a.BLOCCO
+
+
+@pytest.mark.parametrize("valore,atteso", [(None, 200.0), ("350", 350.0), ("abc", 200.0)])
+def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
+    """`main` passa ad Ascolto GAS_ASCOLTO_VOCE_RMS, e senza variabile il default 200."""
+    monkeypatch.setattr(a, "_GAS_ROOT", tmp_path)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", TOKEN)
+    if valore is None:
+        monkeypatch.delenv("GAS_ASCOLTO_VOCE_RMS", raising=False)
+    else:
+        monkeypatch.setenv("GAS_ASCOLTO_VOCE_RMS", valore)
+    monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m: (lambda b: 0.0, lambda: None))
+
+    class Mic:
+        def blocchi(self):
+            return iter(())
+
+        def svuota(self):
+            pass
+
+        def chiudi(self):
+            pass
+    visti = []
+
+    class AscoltoFinto:
+        def __init__(self, *args, **k):
+            visti.append(k["voce_rms"])
+
+        def gira(self):
+            raise KeyboardInterrupt
+    monkeypatch.setattr(a, "Microfono", Mic)
+    monkeypatch.setattr(a, "Ascolto", AscoltoFinto)
+    assert a.main() == 0 and visti == [atteso]
+
+
+def test_leggimi_riporta_il_default_della_voce():
+    """La tabella di scripts/voce/LEGGIMI.md resta allineata al default del codice."""
+    testo = (RADICE / "scripts" / "voce" / "LEGGIMI.md").read_text(encoding="utf-8")
+    assert f"| `GAS_ASCOLTO_VOCE_RMS` | {a.VOCE_RMS_PREDEFINITO:g} |" in testo
+
 # ── finestra di 12 s dopo la risposta ──
 
 def test_finestra_continua_senza_parola():
