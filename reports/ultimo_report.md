@@ -1,22 +1,34 @@
-# Ultimo report — 2026-11-05 — Voce V14: «Sì, signore?» (GET /voce/conferma) e filtro «Dimmi.» rivisto (chat M2)
+# Ultimo report — 2026-11-05 — fetta 43 (chat Mani): standby dell'ascolto dal Terminale
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #335 (https://github.com/Gasss23/Gas/pull/335), secondo la regola di merge di CLAUDE.md §10.
+1. Merge della PR #338 (https://github.com/Gasss23/Gas/pull/338): review #673 APPROVATO CON RISERVE e PR nel perimetro, quindi decide l'operatore tramite M1.
 
-## Esito delle fette
+## Esito
 
-- **V14.1 — `GET /voce/conferma`** (decisione dell'operatore, contratto con la chat Mani via M1): `FATTA` — «Sì, signore?» in audio/mpeg con la voce attuale; cache in memoria con l'id della voce (un giro su ElevenLabs per voce); 503 senza chiave, 502 su errore o audio vuoto, mai in cache.
-- **V14.2 — V-1 bot #334** (togliere ok/okay dal filtro «Dimmi.»): `FATTA`.
-- **V14.3 — R-668-2-M2** («Hey Jarvis» ripetuto): `FATTA`.
-- **Proposta sulla velocità della voce** (solo documento, chiesta da M1): `DEFERITA — dopo questa fetta`, come da ordine di M1.
-- Client H24 (`clients/voice/ascolto.py`): `SALTATA — fuori perimetro`, lo fa la chat Mani.
-- Test: 2 nuovi V14 in voice_prova_voci, casi del filtro aggiornati in voice_stt; 3 mutanti uccisi; suite voce 284 passed (prima del filtro rivisto), revisore 148 passed su voice_prova_voci + voice_stt dopo.
-- Review #669-M2 APPROVATO CON RISERVE (R-669-1 BASSA, R-669-2 COSMETICA).
-- **Merge di main nel branch** (PR #335 in conflitto dopo la PR #333 della chat Mani, soglia della voce 200): `FATTA` — conflitti solo nei report e nella memoria del revisore; review #670-M2 APPROVATO (suite voce 284 passed, voce_ascolto 154 passed).
-- **Verifica esterna #335**: APPROVATO CON RISERVE (V-1 BASSA = R-669-1; V-2 BASSA «Jarvis Gas» ora sola attivazione, caso negativo tolto senza dichiararlo; V-3/V-4 COSMETICHE). **Bot**: verdetto scritto (APPROVATO CON RISERVE: V-1 BASSA «Jarvis Gas», V-2 COSMETICA query string → 405) ma check `verifica-bot` annullato due volte: GitHub scartava l'output perché conteneva una parola uguale a un secret del repo. Corretto nella PR #337 (verdetto compresso fra i job), mergiata.
-- **Secondo merge di main nel branch** (dopo la PR #337 e la fetta 41 della chat Mani): `FATTA` — conflitti solo nei report e nella memoria; review #674-M2 APPROVATO (1039 test passati fra bot, voce e ascolto). Il push rilancia il bot sulla #335 una volta.
+- **PR #336 (fetta 41, interruzione)**: MERGIATA da M1 (942e665) col sì dell'operatore.
+- **Fetta 43, parte 1 (pausa e ripresa dal Terminale)**: FATTA.
+  - `scripts/voce/pausa.sh` ferma solo l'ascolto; server voce e plist restano. `scripts/voce/riprendi.sh` lo ricarica.
+  - LEGGIMI aggiornato. 9 test nuovi più quelli di sintassi; 5 mutanti presi. Suite ascolto: 185 passed.
+  - Review #673 APPROVATO CON RISERVE (R-673-1/2 BASSE, R-673-3 COSMETICA).
+- **Fetta 43, parte 2 (pausa a voce)**: DEFERITA. Contratto approvato da M1: header `X-Gas-Comando: pausa`, file `.gas_voce/standby`, ripresa solo da Terminale. La parte server tocca a M2, dopo la sua fetta sul bot.
+- **Fetta 43, parte 3 (controllo dei log)**: DEFERITA. I log sono sul Mac, in `.gas_voce/ascolto.log`; il comando all'operatore lo dà M1.
+- **Fetta 42 («Sì, signore?» lato client)**: FATTA in locale (branch `mani/si-signore`, commit 9efc4bd), NON pubblicata. Si pubblica dopo il merge della PR #335 di M2.
+  - Review #671: R-671-1/2 MEDIE, corrette.
+  - Review #672: APPROVATO.
+
+## Verdetti su 467ac4f (PR #338)
+
+- Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/338#issuecomment-6670952684). Riserve: 3 BASSE e 2 COSMETICHE.
+- Bot: APPROVATO CON RISERVE (check neutral). Riserve: 2 BASSE e 1 COSMETICA. Tra le basse: riprendi.sh dice «RIPRESO» senza controllare che il processo giri davvero.
+- Tutte registrate in stato_progetto, nel blocco della fetta 43.
+
+## Merge di main e merge della PR
+
+- Sì dell'operatore alla #338 (via M1). Main era andata avanti con la PR #335 di M2 (V14 e macchina del bot): merge di main in babb272, con conflitti solo nei report. Review #674 APPROVATO; il revisore ha fatto girare 1025 test sulle suite voce e bot, tutti passati.
+- Bot su 3eff993: APPROVATO CON RISERVE (neutral). R-673-3 è rialzata a BASSA; c'è anche una COSMETICA. Entrambe registrate.
 
 ## Anomalie
 
-- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
+- Nel riepilogo all'operatore avevo indicato `gas_debug.log` per gli eventi dell'ascolto. Il file giusto è `.gas_voce/ascolto.log` (correzione di M1), e l'ho già corretto nel riepilogo.
+- La fetta 42 vive solo nel container: se la sessione si chiude prima del merge della #335, va rifatta.

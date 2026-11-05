@@ -1,192 +1,144 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-05 — Voce V14: «Sì, signore?» (GET /voce/conferma) e filtro «Dimmi.» rivisto (chat M2, coordinata da M1)
+**Sessione:** 2026-11-05 — chat Mani, fetta 43: standby dell'ascolto dal Terminale (pausa.sh, riprendi.sh)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #335 (https://github.com/Gasss23/Gas/pull/335). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5176502466","url":"https://github.com/Gasss23/Gas/pull/335"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
+1. Merge della PR #338 (https://github.com/Gasss23/Gas/pull/338). Review #673 APPROVATO CON RISERVE e PR nel perimetro: l'operatore ha detto sì (via M1); dopo il merge di main (review #674) la mergio io con la CI verde. Numero e URL dalla risposta dello strumento GitHub `create_pull_request`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **V14.1 — `GET /voce/conferma`** (decisione dell'operatore, contratto con la chat Mani via M1): `FATTA` — «Sì, signore?» con la voce attuale, cache per id voce, 503/502 puliti senza cache.
-- **V14.2 — V-1 bot #334** (ok/okay fuori dal filtro «Dimmi.»): `FATTA`.
-- **V14.3 — R-668-2-M2** (parola di attivazione ripetuta): `FATTA`.
-- **Proposta sulla velocità della voce** (solo documento): `DEFERITA — dopo questa fetta`, come da ordine di M1.
-- **Client H24** (`clients/voice/ascolto.py`): `SALTATA — fuori perimetro` (chat Mani).
-- **Merge di main** (PR #335 in conflitto dopo la PR #333 della chat Mani): `FATTA` — conflitti solo nei report e nella memoria del revisore; review #670-M2 APPROVATO.
-- **Verifica esterna e bot su 0404a56**: entrambi APPROVATO CON RISERVE, nessuna ALTA/MEDIA; il check `verifica-bot` era annullato (output scartato da GitHub per una parola uguale a un secret): corretto con la PR #337 (mergiata); il push di questo handoff rilancia il bot una volta.
-- **Secondo merge di main** (PR #337 fetta bot e fetta 41 della chat Mani): `FATTA` — conflitti solo in report e memoria; review #674-M2 APPROVATO.
+- **Fetta 43, parte 1 — pausa.sh e riprendi.sh**: `FATTA` (review #673 APPROVATO CON RISERVE).
+- **Merge di main (PR #335 di M2) in babb272**: `FATTA` — conflitti solo nei report, review #674 APPROVATO.
+- **Fetta 43, parte 2 — pausa a voce**: `DEFERITA — contratto approvato da M1 (X-Gas-Comando: pausa, .gas_voce/standby); la parte server tocca a M2, dopo la sua fetta sul bot`.
+- **Fetta 43, parte 3 — controllo dei log dell'attivazione di oggi**: `DEFERITA — i log sono sul Mac (.gas_voce/ascolto.log), il comando all'operatore lo dà M1`.
+- **Fetta 42 — «Sì, signore?» lato client**: `DEFERITA — pronta in locale (branch mani/si-signore, 9efc4bd, review #671–#672), si pubblica dopo il merge della PR #335 di M2`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   4 ++++
- modules/voice/server.py             |  58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- reports/diff_sessione.md            |  13 +++++++------
- reports/handoff.md                  | n/d
- reports/ripartenza_m2.md            |  10 +++++-----
- reports/stato_progetto.md           |   5 +++--
- reports/ultimo_report.md            |  22 ++++++++++++----------
- tests/test_unit_voice_prova_voci.py |  44 ++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voice_stt.py        |   6 ++++--
+ .claude/agents/memoria_revisore.md |   2 ++
+ reports/diff_sessione.md           |  18 +++++++++---------
+ reports/stato_progetto.md          |   8 ++++++--
+ reports/ultimo_report.md           |  40 ++++++++++++++++++++++++++--------------
+ scripts/voce/LEGGIMI.md            |  15 ++++++++++++---
+ scripts/voce/pausa.sh              |  31 +++++++++++++++++++++++++++++++
+ scripts/voce/riprendi.sh           |  31 +++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py    |  77 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 2bb05b0 (dopo il merge della PR #335).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-6281357 Merge origin/main (PR #337 fetta bot, fetta 41 Mani) nella PR #335 — review #674-M2 APPROVATO
-b0826a6 docs(voce): verdetto #670-M2 riemesso per il gate B (PR #335, chat M2)
-8971b77 docs(voce): report di fine task V14 dopo il merge di main (chat M2)
-ee7dc7c Merge origin/main (PR #333, fetta 40 soglia voce 200) nella PR #335 — review #670-M2 APPROVATO
-0404a56 docs(voce): report di fine task V14 (chat M2)
-882346f feat(voce): V14 — GET /voce/conferma «Sì, signore?» in cache per voce; filtro «Dimmi.» senza ok e con ripetizione (chat M2)
-47d7a5b chore(revisore): memoria review #669 — APPROVATO CON RISERVE
+babb272 Merge origin/main (PR #335, voce V14) nella PR #338 — review #674 APPROVATO
+3eff993 docs(fine-task): fetta 43 — riserve di bot e verifica esterna su 467ac4f registrate (PR #338)
+467ac4f docs(fine-task): fetta 43 — conteggio dei test corretto nell'handoff (173 → 185)
+bb35796 docs(fine-task): fetta 43 chat Mani — pausa.sh e riprendi.sh, review #673, PR #338
+c1597d0 feat(voce): fetta 43 — pausa.sh e riprendi.sh (standby dell'ascolto dal Terminale)
+f1df0ac chore(revisore): memoria review #673 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Review #669-M2 sul commit 882346f (verdetto integrale):
+Commit c1597d0 — review #673, verdetto integrale:
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #669-M2. Ho rivisto tutto il `git diff --cached` attuale, compreso l'aggiornamento del coordinatore: 3 file, +104/-4, branch feat/voce-v12-m2.
+Review #673 (chat Mani). Ho lavorato solo in /tmp/claude-0/wt43, sul branch mani/standby con base 942e665. Il diff staged contiene 4 file (+150/-4) e dopo il commit della memoria è rimasto staged com'era.
 
-Ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md (in modo mirato) e .claude/agents/memoria_revisore.md. Nel diff non c'è slicing della history e non c'è simulazione di tool. Non tocca i guardrail del motore (`_get_window`, cap 10 iterazioni, cap 8k).
+**Cosa ho controllato nel diff**
+- `scripts/voce/pausa.sh:13` — chiede `launchctl print` prima del bootout. Rischio: dare un errore o fare un bootout inutile quando l'ascolto è già in pausa. Esito: ok, esce 0 col messaggio «già in pausa» e senza bootout (il test lo verifica).
+- `scripts/voce/pausa.sh:18-27` — fa il bootout del solo com.gas.ascolto, poi aspetta al massimo 50 × 0,1 s che `print` fallisca. Rischio: annunciare la pausa mentre il bootout, che è asincrono, è ancora in corso. Esito: ok. Il messaggio di successo arriva solo dopo che `print` fallisce, e il test col bootout lento conta esattamente 4 attese. Il server voce e il plist non vengono toccati e nel file non ci sono né `rm` né token. `seq` e `sleep 0.1` funzionano su macOS e la sintassi è compatibile con bash 3.2.
+- `scripts/voce/riprendi.sh:15` — se manca il plist si ferma e rimanda a installa.sh, senza tentare il bootstrap. Esito: ok.
+- `scripts/voce/riprendi.sh:22-28` — tre tentativi di bootstrap, come in installa.sh (`scripts/voce/installa.sh:164`). Rischio: il bootstrap fallisce con l'errore 5 se lo si lancia subito dopo la pausa. Esito: riserva. I tentativi sono testati (2 fallimenti → riesce, 3 → esce 1). Però il mutante che toglie lo `sleep 1` fra i tentativi SOPRAVVIVE: tutti e 7 i test di riprendi passano anche senza attesa, e senza attesa i tentativi sono inutili. Inoltre lo stderr del bootstrap è nascosto da `2>/dev/null`.
+- `tests/test_unit_voce_ascolto.py:1489` — l'helper `_voce_cmd` riusa il launchctl finto di installa.sh (`tests/test_unit_voce_ascolto.py:1117`). Esito: ok. Il registro fa vedere che il server non viene mai toccato.
+- `scripts/voce/LEGGIMI.md:57` — la nuova sezione sulla pausa. Esito: ok. Dice il vero: com.gas.ascolto.plist ha RunAtLoad, quindi all'accesso al Mac l'ascolto riparte da solo.
 
-**Elementi del diff esaminati**
-- `modules/voice/server.py:765` — è il ramo `/voce/conferma` in `do_GET`, con `_check_auth()` chiamato prima di qualunque spesa. Rischio esaminato: endpoint a pagamento esposto senza token. Il 401 è provato dal test. Esito: ok.
-- `modules/voice/server.py:799` — è `_conferma`. Senza chiave dà 503. Ricava la voce come il percorso `/voice` (`modules/voice/server.py:599`), quindi la conferma ha la stessa voce della risposta. La chiave della cache è (voce, frase). Rischio esaminato: spesa ripetuta e cache "avvelenata". Il salvataggio avviene solo dopo un audio non vuoto (`modules/voice/server.py:826`). Esito: ok.
-  - Mutante rieseguito da me: «cache senza confronto della chiave» viene ucciso da `test_v14_conferma_una_sintesi_per_voce` (`tests/test_unit_voice_prova_voci.py:691`). Il file è stato ripristinato e lo stage è intatto.
-- `modules/voice/server.py:799` — gestione degli errori. Rischio esaminato: eccezioni che non vengono intercettate. Esito: riserva R-669-1-M2 (sotto).
-- `modules/voice/server.py:120` — è `_ATTIVAZIONE_UNA` con la ripetizione in `_SOLO_ATTIVAZIONE`. Rischi esaminati: falsi positivi e backtracking catastrofico.
-  - «Ok Gas.», «Gas, ciao», «Hey Jarvis, Hey Jarvis, accendi» e «gasolio» non vengono presi come sola attivazione. «Hey Jarvis, Hey Jarvis!», «Jarvis Gas» e «Gas, gas.» sì.
-  - Con 5000 ripetizioni o separatori la regex risponde in circa 2 ms, quindi è lineare.
-  - Esito: ok.
-- `tests/test_unit_voice_stt.py:651` / `tests/test_unit_voice_stt.py:661` — sono i casi positivi con ripetizione e i negativi con ok/okay. Coprono V-1 bot #334 e chiudono R-668-2-M2. Esito: ok.
-- `tests/test_unit_voice_prova_voci.py:712` — test degli errori 401/503/502. Dopo un errore la cache resta vuota e la richiesta successiva riprova. Esito: ok.
+**Test eseguiti**: su una copia dell'index nello scratchpad, la suite ascolto dà 164 passed e 21 failed. I 21 falliti sono tutti dovuti all'ambiente: manca il modulo `openai`, che `gas.py:26` importa, e succede in `test_dotenv_usa_il_caricatore_di_gas` e in `test_installa_legge_il_env_come_gas`. Il totale torna con i tuoi 185. I 15 test su pausa, riprendi e sintassi passano tutti.
 
-Ho rieseguito `tests/test_unit_voice_prova_voci.py` e `tests/test_unit_voice_stt.py`: 148 passed.
+**Riserve (da tracciare in stato_progetto.md)**
+- R-673-1 BASSA — Nessun test controlla l'attesa fra i tentativi di bootstrap. Correzione: in `test_riprendi_riprova_il_bootstrap` aggiungere `log_.count("sleep 1") == min(falliti, 2)`.
+- R-673-2 BASSA — riprendi.sh nasconde lo stderr del bootstrap, mentre installa.sh lo mostra. Se tutti i tentativi falliscono, l'operatore non vede il motivo. Correzione: lasciare visibile lo stderr almeno all'ultimo tentativo.
+- R-673-3 COSMETICA — Se pausa.sh è finita con «ATTENZIONE» e si lancia subito riprendi.sh, questo risponde «sta già ascoltando» mentre il servizio sta ancora uscendo.
 
-**Le due scelte da valutare**
-- La conferma fuori dal tetto `GAS_VOICE_MAX_TURNI_ORA` è accettabile. La voce si legge dall'env del processo, quindi in pratica c'è un solo giro su ElevenLabs per processo, e senza token non si spende nulla.
-- Niente lock sulla cache: è corretto, perché il server è un `HTTPServer` single-thread (`modules/voice/server.py:1004`). Se un giorno diventasse `ThreadingHTTPServer`, il caso peggiore sono due sintesi, non una corruzione.
+**Cosa non ho verificato**: non ho provato i comandi su un vero launchd di macOS (bootout, bootstrap, print), perché qui sono su Linux. Mi baso sul launchctl finto e sulla prova dal vero di M1 del 2026-11-02 citata in installa.sh. Non ho verificato nemmeno che il processo rilasci davvero il microfono dopo il bootout.
 
-**Riserve (vanno tracciate in stato_progetto.md)**
-- **R-669-1-M2 (BASSA)** — `_conferma` intercetta solo `ElevenLabsTTSError` e `OSError`. Però `http.client.HTTPException` (es. `IncompleteRead` durante `resp.read()`) non è un `OSError`, e `synthesize_speech` in modules/voice/tts.py non la avvolge.
-  - Effetto: il server non va in crash (ci pensa socketserver), ma la traccia finisce su stderr e non in gas_debug.log, e il client riceve una connessione chiusa invece di un 502.
-  - È lo stesso limite dei percorsi TTS già esistenti. Soluzione consigliata: aggiungere `http.client.HTTPException` all'`except` di rete, oppure avvolgerla dentro tts.py.
-- **R-669-2-M2 (COSMETICA)** — un saluto ripetuto senza nome in mezzo («Ehi ehi Jarvis») non conta come sola attivazione e va al cervello. È innocuo.
+**Memoria**: ho aggiunto la riga #673 con la lezione «nei retry con attesa il test deve contare anche le attese». L'ho committata solo in wt43: commit f1df0ac, che contiene solo quel file.
 
-**Rischio escluso:** non ho verificato il comportamento reale con ElevenLabs né la riproduzione sul client H24 del Mac (clients/voice/ascolto.py, che è fuori dal diff e della chat Mani). In questo ambiente non ci sono chiave né audio, quindi l'unica prova è con i mock.
 
-**Memoria:** ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #669-M2 e una lezione: `HTTPException` non è sottoclasse di `OSError`. È committata da sola con lo script, commit 47d7a5b. Lo stage del motore è intatto (3 file).
-
-Review #670-M2 sul merge ee7dc7c di origin/main (PR #333) nella PR #335 — verdetto RIEMESSO dal revisore per il gate B: stesso esito (APPROVATO), citazioni dei file del diff di sessione. L'originale citava soprattutto clients/voice/ascolto.py, che dopo il merge è in main e fuori dal diff di sessione; il suo testo integrale, non modificato, è nell'handoff del commit 8971b77:
+Merge babb272 (main con la PR #335 dentro la PR #338) — review #674, verdetto integrale:
 
 ## VERDETTO: APPROVATO
 
-Review #670-M2 (riemessa con le citazioni richieste dal gate B; esito e contenuto invariati). Riguarda il merge di origin/main 830c5bf (PR #333, fetta 40) in feat/voce-v12-m2 (PR #335, V14).
+Review #674 (chat Mani). Ho controllato il merge di origin/main 2bb05b0 (PR #335 di M2: V14 e macchina del bot) nel branch claude/peaceful-lovelace-0w2b7q (PR #338, fetta 43). Il merge è staged e non committato. Prima ho fatto le letture obbligatorie: CLAUDE.md sez. 5, la testa di reports/stato_progetto.md e la coda della memoria.
 
-Ho controllato a HEAD 8971b77 che non sia cambiato nulla rispetto a quanto revisionato:
-- `git diff --stat 0404a56 HEAD` è vuoto su modules/voice/server.py, tests/test_unit_voice_prova_voci.py e tests/test_unit_voice_stt.py: i file del branch sono intatti dopo il merge.
-- `git diff --stat 830c5bf HEAD` è vuoto su clients/voice/ascolto.py e tests/test_unit_voce_ascolto.py: i file di main sono intatti.
+**Esito: il merge è corretto.** Nessuna perdita, nessun marcatore di conflitto, nessuna interazione tra la fetta 43 e le modifiche di main. Nessuna riserva R-674-n.
 
 **Elementi del diff esaminati**
-- `modules/voice/server.py:799` — è `_conferma` di V14 (GET /voce/conferma, «Sì, signore?» in cache per id voce). Rischio: che il merge abbia perso o alterato V14. Esito: ok. Il file è identico a quello del branch prima del merge, e main non lo toccava.
-- `tests/test_unit_voice_prova_voci.py:691` — è `test_v14_conferma_una_sintesi_per_voce`: una sola sintesi per voce, si rigenera quando la voce cambia, e controlla `FRASE_CONFERMA == "Sì, signore?"`. Rischio: test perso nel merge. Esito: ok, il file è intatto.
-- `tests/test_unit_voice_prova_voci.py:712` — è `test_v14_conferma_errori_puliti_senza_cache`: 401 senza token, 503 senza chiave, 502 JSON senza cache per ElevenLabsTTSError, OSError e audio vuoto. Rischio: test perso nel merge. Esito: ok, il file è intatto.
-- `tests/test_unit_voice_stt.py:650` — è il filtro di attivazione di V14 (parola ripetuta riconosciuta, «ok/okay» trattato come conferma). Rischio: modifica persa nel merge. Esito: ok, il file è intatto.
-- `reports/stato_progetto.md:4` — è la riga «Ultimo aggiornamento» unita a mano. Rischio: voci perse. Esito: ok. Contiene la voce V14 seguita da « — prima: » e poi dalla riga 4 di main per intero (verificato con uno script, carattere per carattere).
-
-Contesto, fuori dal diff di sessione: `clients/voice/ascolto.py:85` (`VOCE_RMS_PREDEFINITO = 200.0`) è identico a main.
-
-**Controlli meccanici sul merge prima del commit**
-- `git ls-files -u` era vuoto.
-- `git diff --cached --check` era pulito.
-- Non c'era nessun marcatore di conflitto nei file nello stage.
-- La memoria del revisore era l'unione delle due parti: #669-M2 e #670 (chat Mani) una volta ciascuna.
-
-**Test**
-Li ho fatti girare su una copia dei file presi dallo stage, con openai, pyyaml e python-dotenv installati in una cartella separata solo per la prova:
-- tests/test_unit_voce_ascolto.py: 154 passed.
-- tests/test_unit_voice*.py: 284 passed.
-
-Senza quei pacchetti si hanno 24 failed e 1 errore di raccolta, tutti `ModuleNotFoundError: openai`, quindi dovuti all'ambiente.
+- `scripts/voce/pausa.sh:18` — fa il bootout del solo `com.gas.ascolto`. Rischio esaminato: un'interazione con la V14 o col bot. Esito ok: lo script tocca solo launchctl lato Mac. In `modules/voice/server.py`, `scripts/bot_esito.py` e `.github/workflows/verifica-bot.yml` non c'è nessun riferimento a pausa o riprendi. Il blob è uguale a HEAD, quindi il codice della fetta 43 non è cambiato.
+- `scripts/voce/riprendi.sh:23` — fa il bootstrap del plist con i tentativi. Rischio esaminato: una perdita nel merge. Esito ok: il blob è uguale a HEAD.
+- `tests/test_unit_voce_ascolto.py:1507` — i 9 test di pausa e riprendi. Rischio esaminato: una regressione dopo il merge. Esito ok. Ho esportato l'indice in una copia scratch e lanciato voce_ascolto, verifica_bot, voice_prova_voci, voice_stt e voice_server: **1025 passed, 0 failed**.
+- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento». Rischio esaminato: la perdita della storia di uno dei due lati. Esito ok: ho verificato per uguaglianza esatta che la riga è il prefisso della fetta 43, poi « — prima: », poi la riga 4 di main intera.
+  - La V13 è presa da main (versione più recente).
+  - La fetta 41 è presa dal lato Mani (con «PR #336 mergiata»).
+  - Le righe della V14 e del bot ci sono, una volta sola.
+- `reports/stato_progetto.md:666` — la riga della fetta 43. Esito ok: le riserve del bot su 3eff993 sono registrate (V-1 BASSA = R-673-3 rialzata, V-2 COSMETICA).
+- `modules/voice/server.py`, `scripts/bot_esito.py`, `.github/workflows/verifica-bot.yml`, `tests/test_unit_verifica_bot.py`, `tests/dati_verifica_bot/*`, `tests/test_unit_voice_prova_voci.py`, `tests/test_unit_voice_stt.py` e `reports/ripartenza_m2.md` — controllo dei blob. Esito ok: l'indice è uguale a MERGE_HEAD in tutti questi file. Sono gli unici file che main ha cambiato dalla base 942e665, oltre ai report e alla memoria.
+- handoff, ultimo_report, diff_sessione e LEGGIMI — controllo dei blob. Esito ok: l'indice è uguale a HEAD.
+- `.claude/agents/memoria_revisore.md` — Esito ok: è l'unione dei due lati. #673 (Mani) e le righe #669-M2…#674-M2 compaiono una volta sola.
+- Controlli generali sull'indice: `git ls-files -u` è vuoto, `git diff --cached --check HEAD` è pulito, `grep` non trova marcatori di conflitto.
 
 **Cosa non ho verificato**
-- Non ho provato insieme sul Mac il client H24 con la soglia 200 e «Sì, signore?». Non si può riprodurre qui (servono microfono ed ElevenLabs).
-- Non ho rieseguito la suite completa fuori dalla voce.
-- La CI sulla head finale non l'ho letta.
+- Non ho provato pausa.sh e riprendi.sh con un launchctl vero, perché non si può riprodurre fuori dal Mac. Restano coperti solo dai test col launchctl finto.
+- Non ho ri-revisionato nel merito il codice di V14 e del bot, già rivisto da M2 (#669-M2 e #671–#673-M2 bis). Ho controllato solo che arrivi identico a main.
 
-Non ci sono riserve nuove. Restano aperte R-669-1-M2 (BASSA) e R-669-2-M2 (COSMETICA).
-
-Non ho toccato né la memoria né lo stage.
-
-Review #674-M2 sul merge 6281357 di origin/main (PR #337 e fetta 41 della chat Mani) nella PR #335 (verdetto integrale):
-
-## VERDETTO: APPROVATO
-
-Review #674-M2. Ho controllato il merge in corso di origin/main 3eab4aa (PR #337 fetta bot + fetta 41 della chat Mani) dentro feat/voce-v12-m2 (PR #335, V14). È tutto in staging e niente è committato. Prima ho letto CLAUDE.md §5, la riga 4 di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
-
-**Controllo blob per blob** (index confrontato con HEAD e con MERGE_HEAD, su tutti i file cambiati da almeno un lato rispetto alla base 830c5bf):
-- **Uguali a main (MERGE_HEAD):** scripts/bot_esito.py, .github/workflows/verifica-bot.yml, tests/test_unit_verifica_bot.py, tests/dati_verifica_bot/verdetto_329_7957a15.txt, tests/dati_verifica_bot/verdetto_336_e619103.txt, clients/voice/ascolto.py, scripts/voce/LEGGIMI.md, tests/test_unit_voce_ascolto.py.
-- **Uguali al branch (HEAD):** modules/voice/server.py, tests/test_unit_voice_prova_voci.py, tests/test_unit_voice_stt.py, reports/handoff.md, reports/ultimo_report.md, reports/diff_sessione.md.
-- **Uniti a mano:** solo .claude/agents/memoria_revisore.md, reports/stato_progetto.md e reports/ripartenza_m2.md.
-- **Pulizia:** nessun marcatore di conflitto, `git diff --cached --check` pulito, `git ls-files -u` vuoto.
-
-**Evidenze:**
-- modules/voice/server.py:765 — percorso GET /voce/conferma (V14), con l'autenticazione controllata prima di tutto. Rischio esaminato: che il merge perdesse il lavoro del branch. Esito: ok, il blob è identico a HEAD e la fetta 41 non lo tocca.
-- modules/voice/server.py:826 — mette in cache (chiave, audio) solo quando l'audio è valido. Rischio esaminato: un conflitto con il client di main. Esito: ok, il codice di clients/voice/ascolto.py (fetta 41) che arriva dal merge non chiama /voce/conferma, quindi non c'è interazione tra i due lati.
-- modules/voice/server.py:120 — `_ATTIVAZIONE_UNA`, il filtro «Dimmi.» senza ok/okay e con la parola ripetuta. Rischio esaminato: una regressione introdotta dal merge. Esito: ok, invariato rispetto a HEAD.
-- tests/test_unit_voice_prova_voci.py:687 — 43 righe di test V14 del branch. Rischio esaminato: test persi nel merge. Esito: ok, identici a HEAD e passano.
-- tests/test_unit_voice_stt.py:650 — test di instradamento del branch. Rischio esaminato: perdita. Esito: ok, identici a HEAD.
-- reports/stato_progetto.md:4 — la riga è il prefisso V14 seguito dal suffisso della riga 4 di main, verificato carattere per carattere (SUFFIX_OK). Le voci V14, «🤖 Bot di verifica» e «fetta 41 (R8» compaiono una volta ciascuna. Esito: ok.
-- reports/ripartenza_m2.md:12 — la sezione «In corso» è quella di main (PR #337 mergiata, ordine di M1 con la «pausa» al punto 0), più R-669-1/2-M2 del branch alla riga 18. Le righe del branch «Prossima fetta» sono state sostituite dall'ordine di M1, che è più recente e comprende già C1. Esito: ok.
-- .claude/agents/memoria_revisore.md — le 14 righe aggiunte dai due lati rispetto alla base sono tutte presenti una volta sola; #670 (chat Mani) compare una volta. Esito: ok.
-
-**Test** (copia dell'index fatta con `git checkout-index`, eseguita nel venv scratch): tests/test_unit_verifica_bot.py, tests/test_unit_voce_ascolto.py e tests/test_unit_voice*.py danno **1039 passed**, 0 falliti.
-
-**Nota cosmetica** (non numerata, non blocca): reports/ripartenza_m2.md:30 dice «ultimo: #673-M2», presa da main. Dopo questa review l'ultima è #674-M2: da aggiornare quando riscrivi i report a fine task.
-
-**Cosa non ho verificato:**
-- La suite completa del repo: ho eseguito solo i test indicati.
-- La CI e il comportamento del bot sulla PR dopo il push: non riproducibili qui.
-- Una nuova analisi del contenuto della fetta bot e della fetta 41: sono già state revisionate (#673-M2 bis; #668/#669 Mani) e arrivano da main identiche.
-- handoff, ultimo_report e diff_sessione presi nella versione del branch: le modifiche di main a quei file sono state scartate, come da istruzione, perché si riscrivono a fine task.
-
-**Memoria:** ho aggiunto la riga #674-M2 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e fatto `git add` del file, senza committare (merge in corso, script di commit non usato). Nessuna lezione nuova.
+**Memoria del revisore**
+Ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga «#674 (chat Mani) — 2026-11-05 — APPROVATO — … Nessuna lezione nuova». La riga è solo nel working tree: non è staged né committata, come mi hai chiesto. Devi aggiungerla tu al commit del merge (git add).
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_prova_voci.py`: +2 test (`test_v14_conferma_una_sintesi_per_voce`, `test_v14_conferma_errori_puliti_senza_cache`); la fixture `server` azzera `conferma_cache`. `tests/test_unit_voice_stt.py`: casi del filtro aggiornati (positivi con ripetizione, negativi «Ok Gas.», «Okay, Jarvis», «Hey Jarvis, Hey Jarvis, accendi»). Mutanti uccisi: niente cache, chiave senza voce, audio vuoto in cache. Suite voce della CI in un venv con requirements + requirements-dev: `284 passed in 321.95s` prima del filtro rivisto; dopo, `-k "v13 or v6"` di voice_stt 46 passed e revisore 148 passed su voice_prova_voci + voice_stt. Merge ee7dc7c (review #670-M2): `tests/test_unit_voce_ascolto.py` 154 passed e `tests/test_unit_voice*.py` 284 passed sui file dello stage. Merge 6281357 (review #674-M2): `tests/test_unit_verifica_bot.py` + `tests/test_unit_voce_ascolto.py` + `tests/test_unit_voice*.py` 1039 passed sui file dello stage. Kernel non toccato (`gas.py` identico a main).
+`tests/test_unit_voce_ascolto.py`: da 173 a 185 casi (9 test nuovi su pausa e riprendi, di cui uno con 2 casi, più 2 casi di sintassi e «solo Mac» per i due script nuovi). Riepilogo reale nel venv con requirements e requirements-dev:
+
+```
+185 passed in 18.18s
+```
+
+Mutanti, tutti presi: pausa che spegne anche il server (2 FAILED), niente attesa del bootout (1), un solo tentativo di bootstrap (2), nessun controllo del plist (1), nessun controllo «già acceso» (1).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud: check lette con l'integrazione GitHub.
-- 47d7a5b, 882346f: nessuna run su questi SHA da soli (pushati con 0404a56).
-- 0404a56: unit-suite completata senza fallimenti, handoff-check success, verifica-bot cancelled (output scartato: secret).
-- ee7dc7c, 8971b77: nessuna run su questi SHA da soli (pushati con b0826a6).
-- b0826a6: unit-suite e handoff-check completati senza fallimenti (evento check_suite.completed), verifica-bot cancelled (stessa causa, corretta poi dalla PR #337).
-- 6281357 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
+`gh` non usato (GitHub passa dallo strumento MCP). Check della PR #338 su 3eff993, letti con `pull_request_read`:
+
+```
+handoff-check  success
+unit-suite     success (run 42120073446)
+verifica-bot   neutral (APPROVATO CON RISERVE, PR nel perimetro)
+```
+
+Mappatura commit → run:
+- 3eff993: CI run 42120073446, unit-suite e handoff-check success.
+- 467ac4f: CI run 42119591756 (handoff-check success).
+- bb35796, c1597d0, f1df0ac: run dei loro push non lette.
+- babb272 (merge di main) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme).
+
+Suite in locale sull'indice del merge (revisore #674): 1025 passed (voce_ascolto, verifica_bot, voice_prova_voci, voice_stt, voice_server).
 
 ## §7 RISERVE APERTE
 
-- Verifica esterna e bot su 0404a56: «Jarvis Gas» ora sola attivazione, caso negativo tolto senza dichiararlo (BASSA); `/voce/conferma?query` → 405 (COSMETICA); «ehi ehi Jarvis» (COSMETICA, = R-669-2).
-- Macchina del bot: output del verdetto scartato per un secret — corretto dalla PR #337 (mergiata); da osservare la prima run reale sulla #335.
-
-- R-669-1-M2 BASSA: `http.client.HTTPException` non intercettata in `_conferma` (e negli altri percorsi TTS): connessione chiusa invece di 502, traccia fuori da gas_debug.log.
-- R-669-2-M2 COSMETICA: «Ehi ehi Jarvis» (saluto ripetuto) va al cervello.
-- R-668-1-M2 BASSA: «Dimmi.» spende ElevenLabs e un posto nel tetto orario. R-668-3-M2 BASSA: segno «attivazione» non testato nei formati audio+testo e NDJSON.
-- R-667-2-M2 BASSA: fuso della macchina del server; sul VPS servirà un fuso configurabile (lì l'istruzione vieta anche data_ora). R-667-3-M2 COSMETICA: datetime naive → «fuso UTC».
-- Verifica esterna #334: V-3 BASSA nessun tetto in codice al numero di frasi; V-4 COSMETICA ora presa a inizio turno.
-- Bot su #332: V-1 BASSA (posto nel tetto del testo consumato se il turno fallisce), V-2 COSMETICA (commenti V12, 429 «o scrivi»).
+- R-673-1 BASSA: nessun test conta lo `sleep 1` fra i tentativi di bootstrap.
+- R-673-2 BASSA: riprendi.sh nasconde lo stderr del bootstrap.
+- R-673-3 COSMETICA: dopo un pausa.sh finito con ATTENZIONE, riprendi.sh può dire «già ascoltando».
+- Verifica esterna e bot su 467ac4f: riserve BASSE e COSMETICHE registrate in stato_progetto (tra le basse: riprendi.sh dice «RIPRESO» senza controllare che il processo giri).
+- Fetta 42 solo in locale: se la sessione si chiude prima del merge della #335, va rifatta.
+- Restano le riserve delle fette 40–41 e precedenti, in `reports/stato_progetto.md`.

@@ -1,11 +1,11 @@
-# Diff della sessione — 2026-11-05 — Voce V14 (chat M2)
+# Diff della sessione — 2026-11-05 — chat Mani, fetta 43
 
-- `modules/voice/server.py` — `GET /voce/conferma` (`_conferma`, `conferma_cache`, `FRASE_CONFERMA`, docstring del modulo); filtro `_SOLO_ATTIVAZIONE` senza ok/okay e con la parola ripetuta.
-- `tests/test_unit_voice_prova_voci.py` — 2 test V14 (una sintesi per voce, errori puliti senza cache); la fixture azzera la cache.
-- `tests/test_unit_voice_stt.py` — casi del filtro: ripetizione riconosciuta, «Ok Gas.» al cervello.
-- `.claude/agents/memoria_revisore.md` — review #669-M2, #670-M2 e #674-M2 (merge di main).
-- Secondo merge di origin/main (PR #337 fetta bot, fetta 41 della chat Mani): conflitti risolti in `reports/stato_progetto.md`, `reports/ripartenza_m2.md` e nella memoria del revisore.
-- Merge di origin/main (PR #333 della chat Mani): conflitti risolti in `reports/stato_progetto.md` e nella memoria del revisore; i file di Mani arrivano invariati.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/ripartenza_m2.md` — report di fine task.
+File toccati (base main 942e665, dopo il merge della PR #336):
+- `scripts/voce/pausa.sh` (nuovo): ferma solo l'ascolto, aspettando che il bootout asincrono finisca.
+- `scripts/voce/riprendi.sh` (nuovo): ricarica l'ascolto dal plist installato, con 3 tentativi.
+- `scripts/voce/LEGGIMI.md`: sezione «Pausa (standby) e ripresa» al posto della riga col launchctl a mano.
+- `tests/test_unit_voce_ascolto.py`: test di pausa.sh e riprendi.sh col launchctl finto.
+- `.claude/agents/memoria_revisore.md`: riga della review #673.
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task (più la fetta 42 pronta in locale e la PR #336 mergiata).
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+Questo file si riscrive a ogni sessione; la storia completa sta in git.
