@@ -1,8 +1,11 @@
-# Diff della sessione — 2026-11-04 — Voce V12 (chat M2)
+# Diff della sessione — 2026-11-05 — chat Mani, fetta 40
 
-- `modules/voice/server.py` — `_sintesi_a_testo()` e tetto orario anche per le richieste a testo con risposta a voce (solo se c'è la chiave ElevenLabs); `frasi_voce` non perde la parola al tetto; docstring (1500 + avviso, tetto).
-- `tests/test_unit_voice_server.py` — test V12 (parola al tetto, `audio+pezzi` senza chiave, tetto per il testo con sintesi); docstring dell'helper `_voce_a_pezzi` corretto.
-- `.claude/agents/memoria_revisore.md` — review #665–#666-M2.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
+File toccati (base origin/main 8b8012d):
+- `clients/voice/ascolto.py`: soglia della voce predefinita 200 (costante `VOCE_RMS_PREDEFINITO`), usata da `Ascolto` e da `main`; docstring aggiornata. Motivo: prova sul MacBook Air del 5 novembre.
+- `scripts/voce/LEGGIMI.md`: tabella delle regolazioni a 200, con la nota per alzarlo nelle stanze rumorose.
+- `tests/test_unit_voce_ascolto.py`: test della voce piana col default, del valore passato da `main` e del LEGGIMI allineato al codice.
+- `.claude/agents/memoria_revisore.md`: riga della review #667 e lezione del revisore.
+- `reports/ripartenza_mani.md`: ripartenza della chat Mani (commit b7f2c23 della sessione precedente, unito con un merge).
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+Questo file si riscrive a ogni sessione; la storia completa sta in git.

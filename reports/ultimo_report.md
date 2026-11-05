@@ -1,19 +1,16 @@
-# Ultimo report — 2026-11-04 — Voce V12: il testo con risposta a voce conta nel tetto orario (chat M2)
+# Ultimo report — 2026-11-05 — fetta 40 (chat Mani): soglia della voce predefinita 200
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #332 (https://github.com/Gasss23/Gas/pull/332), secondo la regola di merge di CLAUDE.md §10.
+1. Merge della PR #333 (https://github.com/Gasss23/Gas/pull/333): review #667 APPROVATO CON RISERVE e PR che tocca il perimetro, quindi decide l'operatore tramite M1.
 
-## Esito delle fette
+## Esito
 
-- **V12 — R-663-1-M2** (decisione dell'operatore: anche le richieste a testo con sintesi vocale contano nel tetto): `FATTA` — `_sintesi_a_testo()`; 429 prima del turno; solo testo e `audio+pezzi` a testo non contano; senza chiave ElevenLabs non conta; la voce resta contata una volta.
-- **R-660-2-M2** (parola persa al tetto in `frasi_voce`): `FATTA`.
-- **R-660-1-M2** (test di `audio+pezzi` senza chiave): `FATTA`.
-- **V-2 cosmetica bot #330 su ae3258e** (1500+38) e **V-1 cosmetica bot #331** (docstring dell'helper di test): `FATTE`.
-- **R-665-1/2/3-M2** (riserve della review #665): `FATTE` nella stessa fetta, review #666-M2 APPROVATO.
-- **Tetto sul numero di frasi** (V-1 della verifica esterna su 956a00a): `DEFERITA` — resta entro i 1500 caratteri, non chiesta in questa fetta.
-- Test: voice_server + voice_stt 199 passed; 3 test V12 nuovi; 6 mutanti uccisi (revisore).
+- **Fetta 40 — soglia della voce 200**: FATTA. `GAS_ASCOLTO_VOCE_RMS` predefinito da 500 a 200 (costante `VOCE_RMS_PREDEFINITO` in `clients/voice/ascolto.py`, usata da `Ascolto` e da `main`); tabella di `scripts/voce/LEGGIMI.md` a 200 con la nota per le stanze rumorose; 3 test nuovi (5 casi) in `tests/test_unit_voce_ascolto.py`, mutanti con 500 uccisi; suite voce 154 passed.
+- **Ripartenza della chat Mani (b7f2c23)**: era sul branch remoto e nella PR #333 ma non in main; unita con un merge (niente force-push), resta nella stessa PR.
+- Riserve basse della fetta 39 (thread di lettura, bip su errore TTS, lista bianca del formato, …): DEFERITE — M1 ha chiesto solo la soglia.
 
 ## Anomalie
 
-- `gh` non autenticato nel cloud: PR con l'integrazione GitHub.
+- Il revisore ha lanciato per errore `git stash --keep-index` sul repo vero; l'ha annullato subito, index intatto (verificato anche da me: stesso diff staged, nessuno stash).
+- Nell'ambiente del revisore 21 test della suite voce fallivano per `openai` mancante (uguali sulla base); nel mio venv con requirements completi: 154 passed.
