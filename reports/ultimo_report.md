@@ -13,6 +13,8 @@
 - Client H24 (`clients/voice/ascolto.py`): `SALTATA — fuori perimetro`, lo fa la chat Mani.
 - Test: 2 nuovi V14 in voice_prova_voci, casi del filtro aggiornati in voice_stt; 3 mutanti uccisi; suite voce 284 passed (prima del filtro rivisto), revisore 148 passed su voice_prova_voci + voice_stt dopo.
 - Review #669-M2 APPROVATO CON RISERVE (R-669-1 BASSA, R-669-2 COSMETICA).
+- **Merge di main nel branch** (PR #335 in conflitto dopo la PR #333 della chat Mani, soglia della voce 200): `FATTA` — conflitti solo nei report e nella memoria del revisore; review #670-M2 APPROVATO (suite voce 284 passed, voce_ascolto 154 passed).
+- **Verifica esterna #335**: APPROVATO CON RISERVE (V-1 BASSA = R-669-1; V-2 BASSA «Jarvis Gas» ora sola attivazione, caso negativo tolto senza dichiararlo; V-3/V-4 COSMETICHE). **Bot**: verdetto scritto (APPROVATO CON RISERVE: V-1 BASSA «Jarvis Gas», V-2 COSMETICA query string → 405) ma check `verifica-bot` annullato due volte: GitHub scarta l'output perché contiene una parola uguale a un secret del repo. Su indicazione di M1 non si rilancia finché l'operatore non controlla i secret.
 
 ## Anomalie
 

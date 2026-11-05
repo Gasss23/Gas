@@ -9,7 +9,8 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - `gas.py`: non toccarlo (salvo righe del doctor autorizzate).
 
 ## In corso
-- **PR #335 — V14** (branch `feat/voce-v12-m2`, ripartito da main dopo il merge della #334): `GET /voce/conferma` «Sì, signore?» in cache per voce; filtro «Dimmi.» senza ok/okay e con ripetizione. Review #669-M2 APPROVATO CON RISERVE. **Da fare**: verdetto del bot e verifica esterna → a M1; merge col sì dell'operatore via M1 (o da solo con APPROVATO pulito).
+- **PR #335 — V14** (branch `feat/voce-v12-m2`, ripartito da main dopo il merge della #334): `GET /voce/conferma` «Sì, signore?» in cache per voce; filtro «Dimmi.» senza ok/okay e con ripetizione. Review #669-M2 APPROVATO CON RISERVE; main (PR #333) mergiato nel branch, review #670-M2. Verifica esterna APPROVATO CON RISERVE (riportata a M1). Check verifica-bot annullato perché l'output contiene una parola uguale a un secret: **non rilanciare** finché M1 non dice che la macchina è sistemata; poi un rilancio solo. Merge col sì dell'operatore via M1.
+- **Prossima fetta**: C1 della proposta (istruzione «rispondi solo all'ultima domanda», solo modules/voice) appena M1 conferma il sì dell'operatore. Proposta completa in scratch: da portare nel repo come reports/proposta_voce_rapida.md.
 - **Prossima fetta da M1**: SOLO documento: proposta voce più rapida (turno «rapido» con meno effort e senza giri inutili, stesso modello, niente Haiku; compiti lunghi in sottofondo con avviso; storia unica, peso all'ultima domanda nei turni parlati).
 - Caso «Stefano» (a «che ore sono» Gas ha parlato del contatto Stefano): da controllare sul Mac nella storia (`.gas_history.json`, messaggio utente prima della risposta) — trascrizione o cervello.
 
@@ -26,7 +27,7 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 
 ## Regole che seguo
 - Un branch per fetta da `origin/main`; mai push su main.
-- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #669-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
+- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #670-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
 - Fine fetta: /fine-task (ultimo_report, handoff con verdetti INTEGRALI, diff_sessione, stato_progetto) → commit → `bash scripts/fine_task_finale.sh`; etichetta `verifica` sulla PR; verifica esterna con agente nuovo `general-purpose`, `model: sonnet`, prompt esatto «Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>» (URL_HANDOFF = raw del commit di testa).
 - `gh` nel cloud non è autenticato: PR, etichette e merge con gli strumenti GitHub MCP.
 - Riserve BASSE/COSMETICHE dei bot: si registrano, niente giri (regola di M1); si riapre solo per ALTA/MEDIA o se M1 lo chiede.
