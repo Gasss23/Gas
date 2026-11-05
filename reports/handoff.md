@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #339 (https://github.com/Gasss23/Gas/pull/339). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5180114384","url":"https://github.com/Gasss23/Gas/pull/339"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
-2. R-675-1-M2 parte storia (MEDIA, privacy): i turni di seguito giudicati «non per me» restano nella storia condivisa (li scrive gas.py): toglierli nella fetta «profilo voce» o subito.
+2. R-675-1-M2 parte storia (MEDIA; il bot ha dato FAILURE su b0405dc per questo): scegliere A) turno «effimero» in gas.py nella #339 (via su gas.py per questa PR) o B) togliere i turni di seguito dalla #339.
 
 ---
 
@@ -17,7 +17,8 @@
 - **Turni di seguito** (`X-Gas-Seguito: 1`, solo cervello forte, «[NON_PER_ME]» → `X-Gas-Comando: fine`): `FATTA`.
 - **V-2 bot #335** (conferma: timeout 5 s, errore in cache 60 s) e R-669-1-M2 per la conferma: `FATTA`.
 - **V-1 bot #335** («Jarvis Gas» dichiarato con un test): `FATTA`.
-- **Storia senza turni «non per me»**: `DEFERITA — richiede gas.py` (fetta profilo voce).
+- **V-1/V-2 verifica esterna su b0405dc**: `FATTA` (review #676-M2).
+- **Storia senza turni «non per me»** (MEDIA del bot, check failure): `IN ATTESA della scelta dell'operatore` (A gas.py / B togliere il seguito).
 - **C1**: `DEFERITA — prossima fetta`.
 
 ---
@@ -25,16 +26,16 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   5 +++++
- modules/voice/server.py             |  86 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ .claude/agents/memoria_revisore.md  |   6 ++++++
+ modules/voice/server.py             |  94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  modules/voice/tts.py                |   4 +++-
  reports/diff_sessione.md            |  13 ++++++-------
  reports/handoff.md                  | n/d
  reports/ripartenza_m2.md            |   8 ++++----
  reports/stato_progetto.md           |   3 ++-
- reports/ultimo_report.md            |  23 +++++++++++------------
+ reports/ultimo_report.md            |  24 ++++++++++++------------
  tests/test_unit_voice_prova_voci.py |  34 ++++++++++++++++++++++++++++++++--
- tests/test_unit_voice_stt.py        | 111 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_stt.py        | 133 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -42,6 +43,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bb731b2 fix(voce): V15 — seguito: «forte» dalla stanza chiude senza voce, segno [NON_PER_ME] anche come prefisso (V-1/V-2 ve #339, chat M2)
+061334c chore(revisore): memoria review #676 — APPROVATO CON RISERVE
+b0405dc docs(voce): report di fine task V15 (PR #339, chat M2)
 5cf7267 feat(voce): V15 — pausa a voce, turni di seguito decisi dal cervello forte, conferma che non blocca (chat M2)
 2d2d432 chore(revisore): memoria review #675 — APPROVATO CON RISERVE
 8c9bc1b chore(revisore): memoria review #675 — APPROVATO CON RISERVE
@@ -105,17 +109,59 @@ Cosa NON ho verificato: un turno reale col forte (claude-cli) acceso. Non si rip
 
 Memoria: riga #675-M2 ter in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con scripts/commit_memoria_revisore.sh (commit 2d2d432).
 
+Review #676-M2 sul commit bb731b2 (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #676-M2. Ho esaminato il diff staged (2 file, +34/-4) sul branch feat/voce-v12-m2. Nel worktree non ci sono modifiche fuori dallo stage (stato «M » su entrambi i file). I test li ho comunque lanciati sull'albero staged esportato in /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/st676: voice_stt + voice_prova_voci danno **156 passed**.
+
+**Cosa ho controllato nel diff:**
+- `modules/voice/server.py:538` — nel ramo `cervello == "uso"`, se il turno è un seguito (`_seguito()`), ora chiama `_chiudi_seguito()` invece di pronunciare `_USO_FORTE_PARLATO`.
+  - Rischio esaminato: che un vero «forte» detto dall'operatore nel seguito venga perso.
+  - Effetto: la conversazione si chiude in silenzio. È lo stesso trattamento del parlato non rivolto a Gas e va nella direzione della privacy della stanza.
+  - `_seguito()` vale solo per il parlato. Il ramo testo (400) e il parlato fuori dal seguito restano invariati.
+  - Esito: **ok**.
+- `modules/voice/server.py:633` — il nuovo helper `_chiudi_seguito()` imposta `_comando = COMANDO_FINE` e risponde `{"content": "", "fine": True}`.
+  - Rischio esaminato: che `_comando` resti appeso alla richiesta successiva.
+  - Si azzera dopo l'invio degli header (`modules/voice/server.py:459`) e in `modules/voice/server.py:834`.
+  - È riusato in modo identico nel ramo [NON_PER_ME] (`modules/voice/server.py:601`), quindi il comportamento non cambia.
+  - Esito: **ok**.
+- `modules/voice/server.py:145` — nuova regex `_NON_PER_ME`. L'ho provata a mano:
+  - «[NON_PER_ME] x», ««[non_per_me]» la TV» e «[NON_PER_ME]x» vengono riconosciuti.
+  - «Non per me è un problema», «Il segno [NON_PER_ME]» (segno non in testa) e «[non_per_me_ok] ciao» no.
+  - Falsi positivi: una risposta vera che comincia col segno esatto fra parentesi non è plausibile. «[non_per_me_ok]» non scatta perché la regex vuole la `]` subito dopo.
+  - Esito: **riserva** (vedi R-676-1-M2).
+- `tests/test_unit_voice_stt.py:743` — il test del segno ora ha anche due varianti col prefisso (`tests/test_unit_voice_stt.py:750` è il nuovo `test_v15_seguito_forte_dalla_stanza_non_parla`).
+  - Con trascrizione «Forte!» e X-Gas-Seguito: 1, verifica status 200, `X-Gas-Comando: fine`, content vuoto e che il kernel non venga chiamato (`kw == "NESSUN TURNO"`).
+  - Il test usa l'HTTP vero, senza simulare output di tool.
+  - Esito: **ok**.
+
+**Riserve:**
+- **R-676-1-M2 (BASSA):** solo la forma esatta con parentesi e underscore vale come prefisso. Con una coda dopo il segno, «[NON PER ME] (fra persone)» e «NON_PER_ME (fra persone)» non vengono riconosciuti e quel testo verrebbe letto ad alta voce. Il caso è residuale (il prompt chiede il segno esatto). Si può chiudere estendendo il prefisso a `\[non[_\s]+per[_\s]+me\]`, oppure tracciarlo in stato_progetto.md.
+
+**Cosa NON ho verificato:**
+- Comportamento reale sul client della stanza (Mac/telefono) alla ricezione di `fine` dopo un «forte» captato: non riproducibile in dev.
+- Il mutante «niente ramo seguito nell'uso» non l'ho rieseguito: mi fido del dato dell'agente, coerente col test che asserisce `comando == "fine"`.
+
+**Wall of Shame e guardrail:** niente slicing della history, niente simulazione di tool. Cap delle iterazioni e `_get_window` non toccati.
+
+Memoria: riga #676-M2 aggiunta a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (061334c). Lo stage del diff non è stato toccato.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_stt.py`: +6 test V15 (`test_v15_pausa_nessun_turno_e_comando`, `test_v15_pausa_solo_dal_parlato`, `test_v15_seguito_non_per_me_chiude_senza_voce`, `test_v15_seguito_rivolto_a_gas_risponde_normalmente`, `test_v15_senza_seguito_nessuna_decisione`, `test_v15_seguito_a_testo_ignorato`), «Jarvis Gas» fra i positivi. `tests/test_unit_voice_prova_voci.py`: +1 (`test_v15_conferma_errore_recente_non_richiama_elevenlabs`), IncompleteRead nel test degli errori. Suite voce della CI in un venv con requirements + requirements-dev: `291 passed in 314.82s` prima delle correzioni R-675-1/3; dopo, voice_stt + voice_prova_voci `155 passed in 46.28s` e `-k v15` 6 passed. Mutanti: senza intestazione, senza comando, senza registrazione dell'errore, senza ramo «fine»: uccisi; `self._parlato` in `_seguito()` ridondante con `is_audio` (sopravvive, difesa voluta). Kernel non toccato (`gas.py` identico a main).
+`tests/test_unit_voice_stt.py`: +6 test V15 (`test_v15_pausa_nessun_turno_e_comando`, `test_v15_pausa_solo_dal_parlato`, `test_v15_seguito_non_per_me_chiude_senza_voce`, `test_v15_seguito_rivolto_a_gas_risponde_normalmente`, `test_v15_senza_seguito_nessuna_decisione`, `test_v15_seguito_a_testo_ignorato`), «Jarvis Gas» fra i positivi. `tests/test_unit_voice_prova_voci.py`: +1 (`test_v15_conferma_errore_recente_non_richiama_elevenlabs`), IncompleteRead nel test degli errori. Suite voce della CI in un venv con requirements + requirements-dev: `291 passed in 314.82s` prima delle correzioni R-675-1/3; dopo, voice_stt + voice_prova_voci `155 passed in 46.28s` e `-k v15` 6 passed. Mutanti: senza intestazione, senza comando, senza registrazione dell'errore, senza ramo «fine»: uccisi; `self._parlato` in `_seguito()` ridondante con `is_audio` (sopravvive, difesa voluta). Commit bb731b2: `test_v15_seguito_forte_dalla_stanza_non_parla` nuovo e due varianti col prefisso; voice_stt + voice_prova_voci `156 passed in 44.95s`; mutante «niente ramo seguito nell'uso» ucciso. Kernel non toccato (`gas.py` identico a main).
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check lette con l'integrazione GitHub.
-- 04532a3, 8c9bc1b, 2d2d432: nessuna run su questi SHA da soli (pushati insieme a 5cf7267).
-- 5cf7267 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (la run sul push finale testerà solo la testa).
+- 04532a3, 8c9bc1b, 2d2d432, 5cf7267: nessuna run su questi SHA da soli (pushati insieme a b0405dc).
+- b0405dc: handoff-check success; verifica-bot FAILURE (MEDIA: R-675-1 parte storia e strumenti attivi nel seguito); unit-suite in corso alla scrittura.
+- 061334c, bb731b2 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
+
+- Bot su b0405dc, MEDIA (check failure): il parlato dei turni di seguito resta nella storia condivisa e al turno dopo può andare ai gratuiti; nel seguito gli strumenti restano attivi. Scelta A/B dell'operatore.
+- R-676-1-M2 BASSA: «[NON PER ME] (…)» e «NON_PER_ME (…)» con aggiunte non riconosciuti (solo la forma esatta con parentesi vale come prefisso).
 
 - R-675-1-M2 parte storia MEDIA: i turni «non per me» restano nella storia condivisa (gas.py).
 - R-675-2-M2 BASSA: oltre il tetto orario «pausa» riceve 429; i turni ambientali consumano il tetto.
