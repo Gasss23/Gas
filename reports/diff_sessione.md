@@ -1,11 +1,10 @@
-# Diff della sessione — 2026-11-05 — chat Mani, fetta 43
+# Diff della sessione — 2026-11-05 — chat Mani, fetta 42
 
-File toccati (base main 942e665, dopo il merge della PR #336):
-- `scripts/voce/pausa.sh` (nuovo): ferma solo l'ascolto, aspettando che il bootout asincrono finisca.
-- `scripts/voce/riprendi.sh` (nuovo): ricarica l'ascolto dal plist installato, con 3 tentativi.
-- `scripts/voce/LEGGIMI.md`: sezione «Pausa (standby) e ripresa» al posto della riga col launchctl a mano.
-- `tests/test_unit_voce_ascolto.py`: test di pausa.sh e riprendi.sh col launchctl finto.
-- `.claude/agents/memoria_revisore.md`: riga della review #673.
-- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task (più la fetta 42 pronta in locale e la PR #336 mergiata).
+File toccati (base main 6a4cb2e, dopo il merge della PR #338):
+- `clients/voice/ascolto.py`: «Sì, signore?» dopo la parola (`scarica_conferma`, classe `Conferma` in memoria con download in sottofondo, `_conferma_o_bip`, `conferma_attiva`), con ripiego sul bip su qualsiasi errore.
+- `scripts/voce/LEGGIMI.md`: spiegazione di «Sì, signore?» e variabile `GAS_ASCOLTO_CONFERMA`.
+- `tests/test_unit_voce_ascolto.py`: test della conferma (conversazione, server finto, classe, main) e test d'integrazione col VoiceHandler vero.
+- `.claude/agents/memoria_revisore.md`: righe delle review #671, #672, #675.
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task (più la PR #338 mergiata).
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.
