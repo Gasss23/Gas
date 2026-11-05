@@ -5,6 +5,12 @@ registra fino a quando smetti di parlare, manda la richiesta al server voce e ti
 a voce, una frase alla volta: la prima si sente appena è pronta, mentre il server prepara
 le altre. Dopo la risposta hai 12 secondi per continuare senza ripetere la parola.
 
+**Interrompere Gas:** mentre risponde, di' di nuovo la parola di attivazione: si ferma
+subito, salta le frasi che mancavano, fa il bip e ascolta la nuova domanda. Serve proprio
+la parola, non basta parlare: con le casse del Mac il microfono sente anche la voce di Gas.
+Per questo, mentre Gas parla, la parola deve essere riconosciuta con più sicurezza (soglia
+0.7 invece di 0.5). Se non ti sente, avvicinati o abbassa un po' il volume; con le cuffie va meglio.
+
 **Parola di attivazione, per ora: «Hey Jarvis»** (modello pronto di openWakeWord).
 «Ehi Gas» va addestrata a parte: sarà una fetta successiva.
 
@@ -81,6 +87,8 @@ o il prossimo accesso al Mac).
 | `GAS_ASCOLTO_SOGLIA` | 0.5 | sensibilità della parola (più alta = meno attivazioni per sbaglio) |
 | `GAS_ASCOLTO_VOCE_RMS` | 200 | volume sopra cui conta come voce (più basso = sente anche la voce piana; se in una stanza rumorosa parte da solo o non chiude la richiesta, alzalo a 300–500) |
 | `GAS_ASCOLTO_SILENZIO` | 0.8 | secondi di silenzio che chiudono la richiesta |
+| `GAS_ASCOLTO_INTERRUZIONE` | 1 | `0` = la parola non interrompe Gas mentre parla |
+| `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | 0.7 | sensibilità della parola mentre Gas parla (più bassa = la sente meglio, ma rischia di attivarsi con la voce di Gas) |
 | `GAS_VOICE_FINESTRA` | 12 | secondi per continuare dopo la risposta |
 | `GAS_VOICE_MAX_TURNI` | 5 | turni di fila senza ripetere la parola |
 | `GAS_ASCOLTO_MODELLO` | hey_jarvis | modello di openWakeWord |
