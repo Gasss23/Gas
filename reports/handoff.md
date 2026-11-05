@@ -1,36 +1,40 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-04 — Voce V12: il testo con risposta a voce conta nel tetto orario (chat M2, coordinata da M1)
+**Sessione:** 2026-11-05 — Voce V13: ora locale nel turno parlato e risposte a voce più corte (chat M2, coordinata da M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #332 (https://github.com/Gasss23/Gas/pull/332). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5146911127","url":"https://github.com/Gasss23/Gas/pull/332"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
+1. Merge della PR #334 (https://github.com/Gasss23/Gas/pull/334). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5175852245","url":"https://github.com/Gasss23/Gas/pull/334"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **V12 — R-663-1-M2** (decisione dell'operatore via M1): `FATTA` — una richiesta a testo con risposta a voce conta nel tetto orario; 429 prima del turno.
-- **Altre BASSE**: R-660-1-M2 `FATTA` (test senza chiave), R-660-2-M2 `FATTA` (parola al tetto), V-2 cosmetica bot #330 su ae3258e `FATTA`, V-1 cosmetica bot #331 `FATTA`.
-- **Riserve della review #665-M2** (R-665-1/2/3-M2): `FATTE` nella stessa fetta (review #666-M2 APPROVATO).
-- **File di ripartenza** `reports/ripartenza_m2.md` (chiesto da M1 prima del clear della chat): `FATTA`.
-- **Tetto sul numero di frasi** (V-1 verifica esterna su 956a00a): `DEFERITA` — non chiesta in questa fetta; il parlato resta entro 1500 caratteri.
+- **V13.1 — ora locale nel turno parlato** (decisione dell'operatore via M1, prova sul Mac del 5 novembre): `FATTA` — `ora_per_voce` / `istruzione_turno_voce`; «che ore sono» senza il giro di `data_ora`.
+- **V13.2 — risposte a voce più corte**: `FATTA` — «una o due frasi, mai più di due», senza premesse, con e senza schermo.
+- **V13.4 — niente «… sì o no?» in coda** (cronologia della prova sul Mac, da M1): `FATTA`.
+- **V13.5 — «Hey Jarvis» da solo → «Dimmi.» senza turno** (cronologia della prova, da M1): `FATTA`.
+- **Note del bot su 8416674** (V-1 BASSA istruzioni in conflitto con «usa data_ora», V-2 COSMETICA «01:30»): `FATTE`.
+- **R-667-1-M2** (test dell'ora cieco con TZ=UTC; = V-1 verifica esterna su 8416674): `FATTA` — TZ forzato, mutante ucciso.
+- **V13.3 — indagine «Stefano»**: `DEFERITA — non diagnosticabile dal cloud` (il parlato non è nei log per privacy V6; la storia è sul Mac). Dalla cronologia mandata da M1: quasi sicuramente dalla storia condivisa (riepilogo di sessioni precedenti); l'operatore vuole una sola storia, quindi va curato nella proposta sulla velocità.
+- **Soglia `GAS_ASCOLTO_VOCE_RMS`**: `SALTATA — fuori perimetro` (`clients/voice/ascolto.py` è della chat Mani); segnalata a M1.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- modules/voice/server.py            |  37 ++++++++++++++++++++++++++++++++-----
- reports/diff_sessione.md           |   9 ++++-----
+ .claude/agents/memoria_revisore.md |   4 ++++
+ modules/voice/server.py            |  64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ reports/diff_sessione.md           |  11 ++++++-----
  reports/handoff.md                 | n/d
- reports/ripartenza_m2.md           |  31 +++++++++++++++++++++++++++++++
+ reports/ripartenza_m2.md           |   8 ++++++--
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  19 +++++++++----------
- tests/test_unit_voice_server.py    |  90 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ reports/ultimo_report.md           |  22 +++++++++++++---------
+ tests/test_unit_voice_server.py    |  58 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_stt.py       |  43 ++++++++++++++++++++++++++++++++++++++++---
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -38,114 +42,124 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-89a176d docs(voce): file di ripartenza della chat M2 (PR #332)
-bbf45e5 docs(voce-v12): report di fine task (PR #332, review #665–#666-M2)
-f970f75 fix(voce): V12 — anche il testo con risposta a voce conta nel tetto orario; taglio al tetto senza perdere parole; riserve basse V10/V11 (review #665–#666-M2)
-f573267 chore(revisore): memoria review #666 — APPROVATO
-287d393 chore(revisore): memoria review #665 — APPROVATO CON RISERVE
+87ebf99 feat(voce): V13 — niente «sì o no?» in coda, «Hey Jarvis» da solo senza turno, note bot #334 (chat M2)
+6a058ce chore(revisore): memoria review #668 — APPROVATO
+db509c2 chore(revisore): memoria review #668 — APPROVATO CON RISERVE
+8416674 docs(voce): report di fine task V13 (chat M2)
+cf6233a feat(voce): V13 — ora locale nel turno parlato e risposte a voce più corte (chat M2)
+faaf406 chore(revisore): memoria review #667 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit della V12 (f970f75). Review #665-M2 sul primo diff:
+Review #667-M2 sul commit cf6233a (verdetto integrale):
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #665-M2. Ho fatto le letture obbligatorie: CLAUDE.md, stato_progetto.md (le parti che servivano) e memoria_revisore.md. Oggetto: il diff staged su feat/voce-v12-m2, cioè modules/voice/server.py e tests/test_unit_voice_server.py.
+Review #667-M2: V13, diff STAGED su feat/voce-v12-m2. Ho fatto le tre letture obbligatorie: CLAUDE.md, reports/stato_progetto.md e la memoria del revisore.
 
-**Elementi del diff esaminati**
-- `modules/voice/server.py:432` — nuovo blocco del tetto orario per le richieste a testo con sintesi. Rischi esaminati: richieste a voce contate due volte e 429 che arriva dopo il lavoro del kernel. Il blocco gira solo con `not is_audio`. Sta dopo «uso» (che risponde 400 senza contare) e prima di `run_turn`, quindi il 429 arriva prima di qualsiasi lavoro. La voce resta contata una sola volta, in `_do_stt` (modules/voice/server.py:661, contesto). Il messaggio di modules/voice/server.py:439 è coerente con quello della voce (modules/voice/server.py:404): cambia solo il suggerimento («chiedi la risposta solo a testo» invece di «scrivi»). Esito: ok nel codice, riserva sui test (R-665-1).
-- `modules/voice/server.py:514` — `_sintesi_a_testo()`. Rischio: che non corrisponda ai rami finali che chiamano la sintesi (modules/voice/server.py:478-482, contesto). Per il testo `_vuole_righe_senza_schermo()` è sempre False, quindi i rami sono identici a «`_vuole_audio_testo()` oppure (`_wants_audio()` e formato diverso da `audio+pezzi`)». Esito: ok, riserva sui test (R-665-2).
-- `modules/voice/server.py:199` — `frasi_voce` legge un carattere oltre il tetto. Casi limite eseguiti, tutti con ogni pezzo ≤1500:
-  - 1500 caratteri senza spazi → [1500], senza avviso;
-  - 1501 senza spazi → [1500, avviso];
-  - spazio in posizione 1500 → [1500, avviso], la parola non si perde;
-  - spazio in posizione 1499 → [1499, avviso].
-  
-  Esito: ok.
-- `tests/test_unit_voice_server.py:1397` — test del tetto: audio+testo e Accept audio/mpeg contano, solo testo e audio+pezzi no, poi 429 senza turno (`len(turni) == 4`). Esito: ok, ma vedi R-665-2.
-- `tests/test_unit_voice_server.py:1389` — `audio+pezzi` senza chiave restituisce un JSON con `errore_voce` e zero sintesi. Esito: ok (è copertura in più).
-- `tests/test_unit_voice_server.py:1221` — docstring di `_voce_a_pezzi` spostata prima dell'import, con il ritorno giusto (content-type, righe, mock). Esito: ok.
-- Il tetto delle prove voci (`prove_voci`, `/voci/*`) non è toccato. `git diff --cached --check` è pulito.
+**Cosa ho esaminato nel diff**
+- `modules/voice/server.py:174`: `ora_per_voce` calcola l'ora con `datetime.now().astimezone()`, come fa data_ora in gas.py. I nomi di giorni e mesi vengono da tuple italiane, quindi non dipende dal locale. Se `tzname()` manca, scrive `UTC%z`. Ho controllato il fuso, il cambio d'anno e la dipendenza dal locale: **ok**.
+- `modules/voice/server.py:481`: il ramo `is_audio` ora usa `istruzione_turno_voce(self._vuole_audio_testo())`, che viene calcolata una sola volta prima di `run_turn`. Ho provato un mutante in una copia scratch dall'index, rimettendo la vecchia costante: falliscono `tests/test_unit_voice_server.py:1343` (V10) e i test V1/V3/V4 di `tests/test_unit_voice_stt.py:454`. Il ramo è protetto dai test: **ok**.
+- `modules/voice/server.py:146`: ISTRUZIONE_VOCE e ISTRUZIONE_VOCE_SCHERMO ora dicono «una o due frasi, mai più di due», senza premesse. Sono testi di prompt e non hanno rischi tecnici; `tests/test_unit_voice_server.py:1677` verifica «mai più di due» e l'assenza di «1-3»: **ok**.
+- `tests/test_unit_voice_server.py:1666`: questo test non distingue l'ora locale dall'ora senza fuso quando la macchina è in UTC. Il mutante `datetime.now()` senza fuso **sopravvive** con TZ=UTC (container cloud e CI) ed è ucciso solo con TZ=Europe/Rome: **riserva** (R-667-1-M2).
+- Contesto, non toccato dal diff: `gas.py:4836` costruisce il messaggio system come `system_prompt + mem_pin + lezioni_pin + recap_pin + turno_pin`. L'ora finisce quindi in coda al messaggio system, dopo `recap_pin`, che cambia già a ogni domanda.
 
-**Prove (mutanti in una copia in scratch; il repo vero non è stato toccato)**
-- Base `-k "v10 or v11 or v12 or v7b"`: 19 passed. Suite completa voice_server + voice_stt sul repo: 199 passed.
-- Mutanti uccisi (i test V12 falliscono):
-  - tolta la registrazione in `turni_parlati`;
-  - ripristinato il vecchio taglio `testo[:MAX].rsplit`.
-- **Mutanti sopravvissuti:**
-  - tolto `not is_audio` a modules/voice/server.py:432. Una richiesta a voce con audio+testo verrebbe contata due volte e potrebbe ricevere il 429 dopo aver già speso Groq. Nessun test se ne accorge.
-  - tolta l'esclusione `!= _FORMATO_PEZZI_VOCE` in `_sintesi_a_testo`. Il test sopravvive perché manda `audio+pezzi` senza `Accept: audio/mpeg`, mentre clients/voice/ascolto.py:520 lo manda.
+**Effetti sulla cache dei prompt (domanda dell'operatore):** trascurabili.
+- La parte fissa iniziale (`system_prompt`, poi la memoria) resta uguale tra un turno e l'altro.
+- La cache della storia, che viene dopo il messaggio system, era già persa a ogni turno per via di `recap_pin`, che cambia a ogni domanda.
+- Dentro un turno, fino a 10 giri, l'ora resta fissa, quindi i giri successivi possono riusare la cache.
+- I provider gratuiti non hanno costi di cache. Quando arriverà il cervello forte Claude (roadmap R2), l'ora nel messaggio system peserà quanto `recap_pin` e non di più.
+- Effetto pratico minimo: l'ora può essere indietro fino a un turno lungo (circa 17 s), cosa accettabile per una risposta a voce.
 
-**Riserve (da tracciare in stato_progetto.md)**
-- R-665-1-M2 BASSA: la guardia `not is_audio` (modules/voice/server.py:432) non ha un test. Serve un test a voce con audio+testo e tetto 2 che controlli che ogni richiesta conti una volta sola.
-- R-665-2-M2 BASSA: l'esclusione di `audio+pezzi` in `_sintesi_a_testo` non ha un test. In tests/test_unit_voice_server.py:1436 va aggiunto `Accept: audio/mpeg`, come fa il client H24. Se si sbaglia si conta in eccesso (lato sicuro), quindi non blocca.
-- R-665-3-M2 BASSA: il testo con sintesi conta anche quando manca `ELEVENLABS_API_KEY`. In quel caso non si spende niente su ElevenLabs, e oltre il tetto si riceve un 429 invece del 503 utile. Questo va contro il principio V5 («i rifiuti locali non contano», modules/voice/server.py:657-660). Proposta: contare solo se la chiave c'è, oppure dichiararlo.
+**Finding**
+- **R-667-1-M2 (BASSA)**: `tests/test_unit_voice_server.py:1666` non vede la differenza tra ora con fuso e ora senza fuso in un ambiente UTC (CI e cloud). Correzione: nel test forzare `TZ=Europe/Rome` con `monkeypatch.setenv` e `time.tzset()`, oppure simulare `datetime`.
+- **R-667-2-M2 (BASSA)**: l'ora è quella della macchina che fa girare il server. Oggi è il Mac, quindi va bene. Quando Gas passerà alla VPS (spesso in UTC) l'ora detta all'operatore sarà sbagliata, a meno di un fuso configurabile, per esempio una variabile d'ambiente. Va annotato in roadmap e stato_progetto.
+- **R-667-3-M2 (COSMETICA)**: se a `ora_per_voce` arriva un'ora senza fuso, la frase dice «fuso UTC» anche quando non è vero. La docstring lo avverte e solo i test passano `adesso`.
+- **Dichiarazione incompleta**: il diff tocca anche `tests/test_unit_voice_stt.py` (3 asserzioni rese più larghe allo stesso modo), che la richiesta non elencava. Il contenuto va bene.
 
-**Rischi esclusi (non verificati)**
-- Race sul contatore `turni_parlati` con più thread (leggi-modifica-scrivi senza lock): il comportamento è lo stesso di prima nel percorso voce e non l'ho provato sotto concorrenza.
-- Comportamento dal vero con ElevenLabs e il client ascolto.py sul Mac: non riproducibile qui, la sintesi è finta.
-- Taglio patologico «a » seguito da 1600 caratteri senza spazi → si dice solo «a»: comportamento che esisteva già prima, irrealistico, non trattato.
+**Test**
+- 199 passed e 3 failed.
+- I 3 falliti sono: `test_v1_run_server_carica_il_dotenv`, `test_v1_run_server_dotenv_rotto_non_crasha` e `test_collection_dell_intero_repo_non_esplode`. Nel container manca il modulo `openai`.
+- I due test dotenv falliscono uguali a HEAD (provato in una copia di HEAD). Il terzo non l'ho ripetuto a HEAD: lo considero preesistente perché anche lui carica tutto il repo.
+- Il numero dichiarato «280 passed» non l'ho riprodotto: l'ambiente dell'agente è diverso.
 
-**Memoria**
-Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #665-M2 e una lezione: quando una condizione copia dei rami, va mutata ogni congiunzione. Ho committato con `scripts/commit_memoria_revisore.sh` (commit 287d393, solo quel file). Il diff staged di server.py e del test è rimasto intatto.
+**Cosa NON ho verificato**
+- Il caso «non trovo il contatto Stefano» in risposta a «che ore sono»: dal cloud non si può riprodurre (il parlato non viene registrato per privacy e la storia sta sul Mac).
+- Se il modello rispetta davvero «mai più di due frasi» e usa l'ora senza chiamare data_ora: è un comportamento del cervello, si verifica solo con una prova vocale reale sul Mac.
 
-Review #666-M2 sul diff finale (con le tre riserve chiuse):
+Memoria aggiornata con la riga #667-M2 e una lezione (i test sul fuso non vedono nulla in CI con TZ=UTC: rifare il mutante con un fuso diverso). Committata con `scripts/commit_memoria_revisore.sh` (faaf406). Il diff staged è rimasto intatto (3 file).
+
+Review #668-M2 sul commit 87ebf99 (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #668-M2: è il diff STAGED attuale di feat/voce-v12-m2 (PR #334), quindi comprende anche le correzioni V-1 e V-2 del bot #334 che il coordinamento ha aggiunto mentre la review era in corso. 3 file, +73/-20. Ho letto CLAUDE.md (sez. 5), stato_progetto (riga V13) e la memoria.
+
+Elementi del diff esaminati:
+- modules/voice/server.py:112 — `_SOLO_ATTIVAZIONE`, regex ancorata con `^…$`: saluto opzionale, poi jarvis/gas/gus, poi solo punteggiatura. Rischio: falsi positivi su richieste vere. L'ho provata su 18 frasi.
+  - Riconosciute: «Hey Jarvis!», «Gas.», «Ciao Gas», «Okay, Gas!», «Gus», «... Jarvis ...», «Ehi Jarvis.\n».
+  - Non riconosciute, come deve essere: «gas forte», «Hey Gas, ci sei?», «Gasp», «Grazie Jarvis», «Ciao Jarvis, grazie».
+  - Esito: ok.
+- modules/voice/server.py:449 — il filtro sta dopo `_do_stt` e prima di `cervello_voce`, solo nel ramo `is_audio`. Rischi esaminati:
+  - Parola «forte»: «Gas forte» non viene riconosciuto e cade sulla risposta d'uso come prima. Con `GAS_VOCE_FORTE=1`, «Hey Jarvis» riceve «Dimmi.» senza turno: nessuna spesa sul cervello forte, direzione sicura.
+  - Tetto orario: la richiesta resta contata (`turni_parlati` in modules/voice/server.py:703, prima di chiamare Groq).
+  - Formato: passa da `_rispondi_senza_turno`, quindi audio+testo, pezzi/NDJSON e il ripiego a testo funzionano come per «uso» e «non_capito».
+  - Esito: ok.
+- modules/voice/server.py:158 (e :169) — la frase «Non chiudere con domande né con offerte…» sostituisce «chiudi con una domanda secca sì/no» in entrambe le istruzioni. Rischio: un residuo della vecchia frase. Il test verifica l'assenza di «chiudi con una domanda» in tutte e due. Esito: ok.
+- modules/voice/server.py:191 — `ora_per_voce`: «Adesso è giovedì 5 novembre 2026, ore 18:07…», ora senza zero iniziale (V-2), e «In questo turno… NON usare data_ora: vale al posto dell'indicazione generale». Rischio: istruzioni in contrasto. Ho controllato il contesto in gas.py:135 («per data e ora usa data_ora»): la precedenza adesso è scritta per esteso e vale solo per il turno parlato. Esito: ok.
+- tests/test_unit_voice_stt.py:644 — test con 6 casi riconosciuti e 4 no (con la sentinella `kernel.kw` che dimostra se il turno c'è stato o no), più il test che a testo «Hey Jarvis» resta una richiesta normale. Esito: ok, con la riserva 3.
+- tests/test_unit_voice_server.py:1658 — le asserzioni seguono il nuovo testo dell'ora; il caso EET «ore 1:30» copre il cambio di giorno. Esito: ok.
+
+Caccia agli antipattern: nessuno slicing della cronologia, nessuna simulazione di output dei tool, nessun guardrail toccato (tetto 10 iterazioni, `_get_window`, tetto orario).
+
+Test: 201 passed su tests/test_unit_voice_stt.py e tests/test_unit_voice_server.py. Altri 3 falliscono per una causa che sta solo in questo ambiente: l'interprete di pytest non ha i moduli `openai` e `yaml` (`test_collection_dell_intero_repo_non_esplode` e i due `test_v1_run_server_*dotenv*`, `ModuleNotFoundError`). Non dipendono dal diff.
+
+Riserve (BASSE):
+- R-668-1-M2: «Dimmi.» spende ElevenLabs e occupa un posto del tetto orario, come «non ho capito». Accettabile, ma l'operatore deve saperlo.
+- R-668-2-M2: la ripetizione «Hey Jarvis, Hey Jarvis» (Whisper raddoppia spesso la parola) non viene riconosciuta e arriva al cervello. Rimedio facile: ripetizione `(?:…\W*)+`.
+- R-668-3-M2: nessun test che verifichi il segno `attivazione` nei formati audio+testo e pezzi/NDJSON. Lo garantisce solo il percorso condiviso con «uso» e «non_capito».
+
+«Ciao Gas» da solo che riceve «Dimmi.»: per me va bene, è un saluto senza richiesta.
+
+Rischio escluso: non ho verificato il comportamento reale con Whisper ed ElevenLabs e il ciclo di clients/voice/ascolto.py sul Mac (dopo «Dimmi.» la finestra di conversazione conta un turno), perché in questo ambiente non si può riprodurre. Non ho verificato nemmeno se i modelli rispettano davvero «non chiudere con domande»: è un'istruzione al modello e la si vede solo con prove dal vivo.
+
+Memoria: riga #668-M2 più la lezione sulla ripetizione della parola di attivazione, in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata (db509c2, solo quel file; lo stage del diff è rimasto intatto).
+
+Review #668-M2 bis sullo stage finale di 87ebf99 (+89/-26, verdetto integrale):
 
 ## VERDETTO: APPROVATO
 
-Review #666-M2 sul branch feat/voce-v12-m2. Ho rivisto tutto il diff staged (`git diff --cached`: modules/voice/server.py e tests/test_unit_voice_server.py), non solo la parte nuova. Ho fatto le tre letture obbligatorie: CLAUDE.md, reports/stato_progetto.md e la mia memoria, inclusa la riga #665-M2 con le tre riserve.
+Revisione #668-M2 bis: copre solo la parte aggiunta allo stage dopo il verdetto #668-M2, cioè la chiusura di R-667-1-M2 in tests/test_unit_voice_server.py. Lo stage attuale è di 3 file, +89/-26. Il resto del diff è già coperto dal verdetto #668-M2, che resta APPROVATO CON RISERVE con R-668-1/2/3-M2.
 
-**Parti del diff esaminate**
-- `modules/voice/server.py:432` — blocco del tetto orario per le richieste a testo che chiedono la risposta a voce. Ora scatta solo se valgono tre condizioni: la richiesta non è a voce (`not is_audio`), chiede la sintesi (`_sintesi_a_testo()`) e `ELEVENLABS_API_KEY` c'è.
-  - Rischi esaminati: una richiesta a voce contata due volte (prima per Groq, poi qui); un rifiuto locale senza chiave che consuma un posto nel tetto (contro il principio V5).
-  - Esito: ok. Il controllo avviene prima del turno: oltre il tetto risponde 429 e il kernel non parte. Il percorso «uso» esce con 400 prima del conteggio. Le richieste a voce vengono contate solo nel blocco esistente prima della trascrizione.
-- `modules/voice/server.py:516` — `_sintesi_a_testo()` ripete le stesse condizioni della risposta finale (righe 487-490).
-  - Rischio esaminato: una richiesta a testo «audio+pezzi» con `Accept: audio/mpeg` contata anche se dopo la V11 riceve solo testo.
-  - Esito: ok. Formato uguale a `_FORMATO_PEZZI_VOCE` → nessun conteggio, e la risposta finale va a JSON. Le due cose restano allineate.
-- `modules/voice/server.py:197` — `frasi_voce`: il taglio guarda anche il carattere subito dopo il tetto (parte già approvata nella #665).
-  - Esito: ok, il mutante che ripristina il vecchio taglio viene ucciso.
-- `tests/test_unit_voice_server.py:1396` — `test_v12_testo_con_sintesi_conta_nel_tetto`: server vero con kernel finto, sintesi e trascrizione finte, tetto 3.
-  - Verifica tre cose: due richieste a voce più una a testo con voce riempiono il tetto, mentre testo puro e audio+pezzi+Accept non contano; poi 429 per testo e per voce; senza chiave, con tetto 1, due 200 e lista dei conteggi vuota.
-  - Rischio esaminato: test che dipende dall'ordine, perché la lista dei conteggi è condivisa a livello di classe.
-  - Esito: ok. Il test usa una sottoclasse `_H` e il server scrive con `type(self)`, quindi la classe base non viene toccata. La suite completa passa.
-- `tests/test_unit_voice_server.py:1222` — la docstring di `_voce_a_pezzi` torna nella posizione giusta, prima dell'import. Esito: ok, cosmetico.
+Elementi esaminati:
+- tests/test_unit_voice_server.py:1673 — il test forza `TZ=Asia/Kolkata` (UTC+5:30, senza ora legale) con `monkeypatch.setenv` e `time.tzset()`, e controlla che lo scarto sia di 5,5 ore. Rischio: un test cieco quando CI e cloud girano in UTC (la lezione del 2026-11-05). L'ho verificato con un mutante in una copia dall'index: `datetime.now()` senza `.astimezone()` in modules/voice/server.py:187, eseguito con `TZ=UTC` → il test fallisce, quindi il mutante è ucciso. Senza il mutante passa. Esito: ok.
+- tests/test_unit_voice_server.py:1682 — nel `finally` ci sono `monkeypatch.undo()` e poi `time.tzset()`. Rischio: il fuso forzato che passa ai test successivi. L'ordine è giusto, perché prima si ripristina TZ e poi si ricarica il fuso. Sulla stessa copia la suite voce completa (tests/test_unit_voice_server.py + tests/test_unit_voice_stt.py) dà 201 passed. I 2 KO sono quelli già noti `test_v1_run_server_*dotenv*`: manca `openai` nell'interprete di pytest locale, quindi dipendono dall'ambiente e non dal diff. Esito: ok.
+- Contesto: modules/voice/server.py:188 ripiega su `ora.strftime("UTC%z")` quando il fuso manca. È per questo che l'asserzione `"fuso UTC" not in frase` riconosce l'ora senza fuso. Esito: ok.
 
-**Prove eseguite da me**
-- `tests/test_unit_voice_server.py` + `tests/test_unit_voice_stt.py`: 199 passati.
-- 6 mutanti su una copia presa dall'index nella cartella scratch, file originale ripristinato e confrontato con `cmp`:
-  1. tolto `not is_audio`
-  2. tolta l'esclusione `!= _FORMATO_PEZZI_VOCE`
-  3. tolta la condizione sulla chiave
-  4. tolta la riga che registra il conteggio
-  5. ripristinato il vecchio taglio di `frasi_voce`
-  6. tolto `_vuole_audio_testo()` da `_sintesi_a_testo`
-  Tutti uccisi (1 test fallito ciascuno). Le riserve R-665-1, R-665-2 e R-665-3-M2 sono chiuse.
+Rischio escluso: non ho verificato il comportamento su Windows, dove `time.tzset` non esiste e il test andrebbe in errore. Il progetto gira su Mac e Linux e la CI è Linux, quindi oggi non serve. Va annotato solo se un giorno la suite girasse su Windows.
 
-**Nota BASSA, non bloccante e non tracciata come riserva:** il conteggio del testo avviene prima del turno. Se il kernel fallisce (500), quel posto nel tetto resta consumato anche se ElevenLabs non è stato chiamato. Per le richieste a voce succede già lo stesso, ma lì Groq è stato speso davvero.
-
-**Cosa non ho verificato**
-- Il comportamento con il client H24 reale e con ElevenLabs/Groq veri: i test usano servizi finti e il client reale non è riproducibile qui.
-- La finestra di un'ora che scade davvero: non ho simulato `time.monotonic` oltre i 3600 secondi.
-
-**Memoria:** riga #666-M2 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (commit f573267). Il diff staged è intatto: restano in stage solo i due file.
-
-Copia scratch e script dei mutanti:
-- /tmp/claude-0/-home-user-Gas/363006d5-ae75-5e2f-8a8d-a34502419f69/scratch/m666
-- /tmp/claude-0/-home-user-Gas/363006d5-ae75-5e2f-8a8d-a34502419f69/scratch/mut.sh
+Memoria: ho aggiunto la riga «#668-M2 bis» in /home/user/Gas/.claude/agents/memoria_revisore.md, così il contatore copre anche lo stage +89/-26. È committata da sola (6a058ce) e lo stage del diff è rimasto intatto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: 104 → 107 test (`test_v12_frasi_voce_parola_al_tetto`, `test_v12_audio_pezzi_senza_chiave_json`, `test_v12_testo_con_sintesi_conta_nel_tetto`). Con `modules/voice/server.py` di main falliscono i due test V12 di codice (il terzo è copertura). Mutanti del revisore: 6 su 6 uccisi. voice_server + voice_stt: 199 passed. Kernel non toccato (`gas.py` identico a main).
+`tests/test_unit_voice_server.py`: +3 test V13 (`test_v13_ora_per_voce_data_ora_e_fuso_locali`, `test_v13_ora_per_voce_senza_argomento_usa_l_orologio_locale` con TZ forzato ad Asia/Kolkata, `test_v13_istruzione_turno_voce_con_e_senza_schermo`); `tests/test_unit_voice_stt.py`: +2 test (`test_v13_solo_parola_di_attivazione_nessun_turno`, `test_v13_attivazione_solo_dal_parlato`); 4 asserzioni esistenti (V3, V4, V10, uso «forte») a `startswith(ISTRUZIONE + " Adesso è ")`. Suite voce della CI in un venv con requirements + requirements-dev: `280 passed in 316.38s` su cf6233a; `282 passed in 311.31s` sullo stage di 87ebf99 prima della modifica al test del fuso; dopo quella modifica `-k v13` 3 passed e mutante «ora senza fuso» ucciso in TZ=UTC (revisore #668-M2 bis: voice_server + voice_stt 201 passed, 2 KO d'ambiente per `openai` mancante). Kernel non toccato (`gas.py` identico a main).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud: check lette dalle notifiche.
-- 287d393, f573267, f970f75, bbf45e5, 89a176d e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (f970f75 pushato prima dei report; la run sul push finale testerà solo la testa).
+`gh` non autenticato nel cloud: check lette con l'integrazione GitHub (`get_check_runs` della PR #334).
+- faaf406, cf6233a: nessuna run su questi SHA da soli (pushati insieme a 8416674).
+- 8416674 (testa del push precedente): unit-suite success, handoff-check success, verifica-bot success (bot: APPROVATO CON RISERVE, V-1 BASSA e V-2 COSMETICA, chiuse in 87ebf99).
+- db509c2, 6a058ce, 87ebf99 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
-- Verifica esterna su 956a00a, V-1 BASSA: nessun tetto al numero di frasi (entro 1500 caratteri), deferita.
-- Nota bassa del revisore #666-M2 (non tracciata come riserva): se il kernel fallisce, il posto nel tetto del testo resta consumato.
+- R-667-2-M2 BASSA: l'ora è quella della macchina del server; sul VPS servirà un fuso configurabile (verifica esterna #334 V-2: lì l'istruzione vieta anche data_ora).
+- R-667-3-M2 COSMETICA: un datetime naive passato a `ora_per_voce` direbbe «fuso UTC».
+- R-668-1-M2 BASSA: «Dimmi.» spende ElevenLabs e un posto nel tetto orario.
+- R-668-2-M2 BASSA: «Hey Jarvis, Hey Jarvis» (ripetizione di Whisper) non riconosciuto.
+- R-668-3-M2 BASSA: segno «attivazione» non testato nei formati audio+testo e NDJSON.
+- Verifica esterna #334 su 8416674: V-3 BASSA nessun tetto in codice al numero di frasi; V-4 COSMETICA ora presa a inizio turno.
+- Bot su #332 (10fe496): V-1 BASSA (posto nel tetto del testo consumato se il turno fallisce), V-2 COSMETICA (commenti V12, 429 «o scrivi»).

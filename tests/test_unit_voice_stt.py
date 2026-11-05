@@ -449,7 +449,9 @@ class TestVoiceHandlerRouting:
                 status, resp = _post_raw(self.port, wav, hdrs)
         assert status == 200
         from modules.voice.server import ISTRUZIONE_VOCE
-        assert visti == [("analizza i lead", {"cervello": "forte", "istruzione_turno": ISTRUZIONE_VOCE})]
+        assert len(visti) == 1 and visti[0][0] == "analizza i lead"
+        assert visti[0][1]["cervello"] == "forte"
+        assert visti[0][1]["istruzione_turno"].startswith(ISTRUZIONE_VOCE + " Adesso è ")  # V13
 
     def _uso_parlato(self, trascritto: str, extra_env: dict | None = None, accept: str | None = None):
         visti = []
@@ -505,7 +507,8 @@ class TestVoiceHandlerRouting:
             with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
                 os.environ.pop("GAS_VOCE_FORTE", None)
                 status, _ = _post_raw(self.port, wav, hdrs)
-        assert status == 200 and self.kernel.kw == {"istruzione_turno": ISTRUZIONE_VOCE}
+        assert status == 200 and set(self.kernel.kw) == {"istruzione_turno"}
+        assert self.kernel.kw["istruzione_turno"].startswith(ISTRUZIONE_VOCE + " Adesso è ")  # V13
         body = json.dumps({"prompt": "ciao"}).encode()
         with patch.dict(os.environ, {}):
             os.environ.pop("GAS_VOCE_FORTE", None)
@@ -524,7 +527,8 @@ class TestVoiceHandlerRouting:
                 os.environ.pop("GAS_VOCE_FORTE", None)
                 os.environ.pop("ELEVENLABS_API_KEY", None)
                 status, _ = _post_raw(self.port, wav, hdrs)
-        assert status == 200 and self.kernel.kw == {"istruzione_turno": ISTRUZIONE_VOCE_SCHERMO}
+        assert status == 200 and set(self.kernel.kw) == {"istruzione_turno"}
+        assert self.kernel.kw["istruzione_turno"].startswith(ISTRUZIONE_VOCE_SCHERMO + " Adesso è ")  # V13
         assert "riga vuota" in ISTRUZIONE_VOCE_SCHERMO
 
     def test_v4_tetto_orario_dei_turni_parlati(self):
@@ -636,6 +640,39 @@ class TestVoiceHandlerRouting:
                 os.environ.pop("ELEVENLABS_API_KEY", None)
                 status, resp = _post_raw(self.port, wav, hdrs)
         assert status == 200 and resp["non_capito"] is True and resp["capito"] == "boh"
+
+    def test_v13_solo_parola_di_attivazione_nessun_turno(self):
+        """V13 (prova sul Mac del 5 nov): una trascrizione fatta solo di «Hey Jarvis» (o «Gas»)
+        riceve «Dimmi.» col segno «attivazione», senza turno del kernel; una richiesta vera
+        che comincia con la parola di attivazione va al cervello come prima."""
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        for detto in ("Hey Jarvis!", "hey, jarvis.", "Jarvis", "Ehi Gas", "  Gus?  ", "Ok Gas..."):
+            self.kernel.kw = "NESSUN TURNO"
+            with patch("modules.voice.server.transcribe_audio", return_value=detto):
+                with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                    os.environ.pop("ELEVENLABS_API_KEY", None)
+                    os.environ.pop("GAS_VOCE_FORTE", None)
+                    status, resp = _post_raw(self.port, wav, hdrs)
+            assert status == 200 and resp["attivazione"] is True, detto
+            assert resp["content"] == "Dimmi." and resp["capito"] == detto
+            assert self.kernel.kw == "NESSUN TURNO", detto
+        for detto in ("Hey Jarvis, che ore sono?", "Gas, ciao", "Jarvis Gas", "gasolio"):
+            self.kernel.kw = "NESSUN TURNO"
+            with patch("modules.voice.server.transcribe_audio", return_value=detto):
+                with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                    os.environ.pop("ELEVENLABS_API_KEY", None)
+                    os.environ.pop("GAS_VOCE_FORTE", None)
+                    status, resp = _post_raw(self.port, wav, hdrs)
+            assert status == 200 and "attivazione" not in resp, detto
+            assert self.kernel.kw != "NESSUN TURNO", detto
+
+    def test_v13_attivazione_solo_dal_parlato(self):
+        """V13: a TESTO «Hey Jarvis» resta una richiesta normale (il filtro vale per il parlato)."""
+        self.kernel.kw = "NESSUN TURNO"
+        body = json.dumps({"prompt": "Hey Jarvis"}).encode()
+        status, resp = _post_raw(self.port, body, {**_AUTH, "Content-Type": "application/json"})
+        assert status == 200 and "attivazione" not in resp and self.kernel.kw == {}
 
     def test_v6_capito_azzerato_a_ogni_richiesta(self):
         """V-3 bot #318: anche riusando lo stesso oggetto handler (come farebbe un
