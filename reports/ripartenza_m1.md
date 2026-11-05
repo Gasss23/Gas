@@ -82,3 +82,9 @@
 - **Misura dell'avvio di `claude -p`** (script della proposta, modello claude-sonnet-5-5): «avvio e resto» 1,3–1,7 s, sotto la soglia di 2 s. La strada A (processo pre-avviato) servirebbe a poco. I turni da 17 s vengono probabilmente dai giri con strumenti (ogni giro rilancia la CLI e ragiona di nuovo).
 - **Difetti visti**: a «che ore sono» ha risposto che non trova il contatto Stefano tra i lead (da capire: trascrizione o cervello confuso dal pin dei lead). Per l'ora serve un giro di strumento (`data_ora`), quindi la risposta è più lenta.
 - **Proposta di cura, da far decidere all'operatore**: (1) ora e data già scritte nel prompt dei turni a voce, così si salta il giro dello strumento; (2) risposte a voce più corte; (3) capire la risposta su Stefano dai log del turno.
+- **Decisioni dell'operatore (5 nov, sera)**:
+  - a) SÌ all'interruzione nell'ascolto H24 → Mani, dopo la #333. Insieme, sempre a Mani: «Sì, signore?» alla prima attivazione.
+  - b) NO a Haiku per la voce (giudicato troppo debole). M2 deve prima mandare una proposta (solo documento) per un turno parlato più rapido con lo stesso modello, e per i compiti lunghi: «ci lavoro, ti avviso quando ho fatto» con il lavoro in sottofondo e l'avviso alla fine.
+  - c) NO alla cronologia separata: voce, Telegram e il resto sono UNA sola Gas. Le risposte fuori tema si curano in un altro modo (dentro la proposta di M2).
+- **PR in corso**: #334 (M2, V13: ora nel prompt, voce più corta, niente «sì o no?», «Hey Jarvis» da solo → «Dimmi.»); #333 (Mani, soglia della voce 200). Entrambe col revisore APPROVATO CON RISERVE BASSE, in attesa del bot.
+- **Sul Mac (.env)**: `GAS_ASCOLTO_VOCE_RMS=200`; `GAS_ASCOLTO_SOGLIA=0.35` consigliato all'operatore (da confermare che l'abbia aggiunto).
