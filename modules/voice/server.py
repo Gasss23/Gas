@@ -569,19 +569,29 @@ class VoiceHandler(BaseHTTPRequestHandler):
                     # solo il cervello forte, mai i gratuiti (CLAUDE.md §2); forte fermo →
                     # errore dichiarato e il client chiude la conversazione
                     kw["cervello"] = "forte"
+                    # R-675-1-M2 (scelta A dell'operatore): turno effimero nel kernel: nessuno
+                    # strumento offerto, niente storia condivisa del parlato della stanza
+                    kw["effimero"] = True
             t_cervello = time.monotonic()
             turno = self.kernel.run_turn(prompt, **kw)
-            for event in turno:
-                etype = event.get("type")
-                if etype == "final":
-                    result_content = event.get("content", "")
-                    self._segna("cervello", t_cervello)
-                    break
-                elif etype == "error":
-                    self._segna("cervello", t_cervello)
-                    self._send_json(500, {"error": event.get("content", "Errore pipeline")})
-                    return
-                # type="tool_res": consumato in silenzio
+            try:
+                for event in turno:
+                    etype = event.get("type")
+                    if etype == "final":
+                        result_content = event.get("content", "")
+                        self._segna("cervello", t_cervello)
+                        break
+                    elif etype == "error":
+                        self._segna("cervello", t_cervello)
+                        self._send_json(500, {"error": event.get("content", "Errore pipeline")})
+                        return
+                    # type="tool_res": consumato in silenzio
+            finally:
+                # R-677-1-M2: il kernel chiude il turno (e il turno effimero rimette la storia
+                # vera) SUBITO, non quando il generatore viene raccolto
+                close = getattr(turno, "close", None)
+                if callable(close):
+                    close()
         except Exception as exc:
             if t_cervello is not None:  # R-614-1-M2: anche un cervello che si rompe ha un tempo
                 self._segna("cervello", t_cervello)
@@ -595,7 +605,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
 
-        if is_audio and self._seguito() and _NON_PER_ME.search(result_content):
+        if is_audio and self._seguito() and (_NON_PER_ME.search(result_content)
+                                             or not result_content.strip()):
             # V15: parlato non rivolto a Gas: niente voce né testo (privacy della stanza)
             log.info("turno di seguito non rivolto a Gas: conversazione chiusa")
             self._chiudi_seguito()
@@ -802,6 +813,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
             # V6: Groq ha risposto ma il testo è probabilmente sbagliato: si chiede di
             # ripetere invece di rispondere a caso. Nel log solo il motivo, mai il parlato.
             log.info("trascrizione scartata: %s", exc.motivo)
+            if self._seguito():  # R-676-3 (review Mani): rumore della stanza → chiude, niente voce
+                self._chiudi_seguito()
+                return None
             self._capito = exc.testo
             self._rispondi_senza_turno(_NON_HO_CAPITO, "non_capito")
             return None
@@ -820,6 +834,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
         self._segna("trascrizione", t)
         if not text:
+            if self._seguito():  # R-676-3: silenzio nella finestra di conversazione → chiude
+                self._chiudi_seguito()
+                return None
             self._send_json(400, {"error": "Trascrizione vuota (silenzio o formato non supportato)"})
             return None
 

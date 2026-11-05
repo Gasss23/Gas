@@ -4693,9 +4693,18 @@ class GasKernel:
 
     def run_turn(self, user_prompt: str,
                  cervello: Optional[str] = None,
-                 istruzione_turno: Optional[str] = None) -> Generator[Dict[str, Any], None, None]:
+                 istruzione_turno: Optional[str] = None,
+                 effimero: bool = False) -> Generator[Dict[str, Any], None, None]:
         # V3 voce (chat M2): `istruzione_turno` vale SOLO per questo turno: va in coda al
         # messaggio system (come i pin), fuori dalla finestra e dalla cronologia.
+        # V15 voce (chat M2, decisione dell'operatore 5 nov, R-675-1-M2): `effimero` = turno
+        # di parlato captato senza parola di attivazione (stanza, TV): SOLO il cervello forte,
+        # NESSUNO strumento offerto (non solo vietato nel prompt), e il turno non lascia
+        # traccia nella storia condivisa (né in memoria né su .gas_history.json): il modello
+        # vede la storia di prima più questa frase, poi tutto torna com'era. Nel diario resta
+        # solo il «turno_fine» (esito, provider), mai il parlato.
+        if effimero:
+            cervello = "forte"
         # --- Fetta 1 auto-apprendimento: tracking per turno_fine ---
         _turno_id = str(uuid.uuid4())
         _turno_tool_n = 0
@@ -4749,10 +4758,24 @@ class GasKernel:
                                 "Il turno si è fermato prima della chiamata successiva. "
                                 "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
 
+        # V15: per il turno effimero si lavora su una COPIA della storia (stessi messaggi, lista
+        # nuova) e niente si salva; nel finally torna la storia vera, intatta.
+        _storia_vera: Optional[List[Dict[str, Any]]] = None
+        _offerta: Dict[str, Any] = {"tools": self.tools_schema, "tool_choice": "auto"}
+        if effimero:
+            _storia_vera = self.history
+            self.history = list(self.history)
+            _offerta = {}
+
+        def _salva() -> None:
+            if not effimero:
+                self._save_history()
+
         try:
             # Compressione automatica cronologia (FASE 2.5): no-op se sotto soglia.
             # Zero token LLM. Fail-safe §9: eccezioni → history invariata, turno OK.
-            self._compress_history_if_needed()
+            if not effimero:
+                self._compress_history_if_needed()
             self._add_to_history("user", content=user_prompt)
 
             from brains.router import classifica_compito
@@ -4863,8 +4886,7 @@ class GasKernel:
                         _chiamato_rung = True
                         try:
                             response = client.chat.completions.create(
-                                model=model, messages=payload,
-                                tools=self.tools_schema, tool_choice="auto"
+                                model=model, messages=payload, **_offerta
                             )
                         except Exception as e:
                             # R-496-1: una chiamata al forte fallita dopo il consumo
@@ -4889,8 +4911,7 @@ class GasKernel:
                                 return
                             try:
                                 response = client.chat.completions.create(
-                                    model=model, messages=payload,
-                                    tools=self.tools_schema, tool_choice="auto"
+                                    model=model, messages=payload, **_offerta
                                 )
                                 logging.warning(f"retry Gemini 400 ({name}): OK")
                             except Exception:
@@ -4906,6 +4927,14 @@ class GasKernel:
                                 getattr(usage, "costo_equivalente_usd", 0.0) if usage else 0.0)
                         msg = response.choices[0].message
 
+                        if msg.tool_calls and effimero:
+                            # V15: nessuno strumento offerto; se il modello ne chiede uno
+                            # comunque, NON si esegue: il turno finisce senza risposta
+                            logging.warning("turno effimero: chiamata a strumento ignorata")
+                            _turno_provider = name
+                            _turno_final = True
+                            yield {"type": "final", "content": ""}
+                            return
                         if msg.tool_calls:
                             self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
                             for tc in msg.tool_calls:
@@ -5008,11 +5037,11 @@ class GasKernel:
                                 if tc.function.name in UNTRUSTED_INPUT_TOOLS:
                                     _finestra_contaminata = True
                                 yield {"type": "tool_res", "output": out, "cancello": _cancello}
-                            self._save_history()
+                            _salva()
                             # continua il loop per ottenere la risposta finale
                         elif msg.content:
                             self._add_to_history("assistant", content=msg.content)
-                            self._save_history()
+                            _salva()
                             _turno_provider = name  # Fetta B: provider che ha prodotto la risposta
                             _turno_final = True
                             yield {"type": "final", "content": msg.content}
@@ -5051,7 +5080,9 @@ class GasKernel:
             yield {"type": "error",
                    "content": f"Pipeline esausta: nessun cervello ha risposto. {_dettaglio}."}
         finally:
-            if self._storia_rimandata:  # R-435-1: turno finito senza risposta finale
+            if _storia_vera is not None:  # V15: il turno effimero non lascia traccia
+                self.history = _storia_vera
+            elif self._storia_rimandata:  # R-435-1: turno finito senza risposta finale
                 self._save_history(fine_turno=True)
             _chiudi_turno()
             self._invia_avvisi_lead(_avvisi_lead, _lead_nuovi)

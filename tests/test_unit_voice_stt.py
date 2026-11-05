@@ -746,6 +746,7 @@ class TestVoiceHandlerRouting:
             assert corpo["content"] == "" and "audio" not in corpo and "capito" not in corpo
             assert ISTRUZIONE_SEGUITO in self.kernel.kw["istruzione_turno"]
             assert self.kernel.kw["cervello"] == "forte"  # R-675-1-M2: mai ai gratuiti
+            assert self.kernel.kw["effimero"] is True  # scelta A: niente storia, niente strumenti
 
     def test_v15_seguito_forte_dalla_stanza_non_parla(self):
         """V-1 ve #339: in un turno di seguito il parlato che è solo «forte» (TV) non fa
@@ -768,6 +769,71 @@ class TestVoiceHandlerRouting:
         assert r.status == 200 and comando == "fine" and corpo["content"] == ""
         assert "uso" not in corpo and self.kernel.kw == "NESSUN TURNO"
 
+    def test_v15_seguito_trascrizione_incerta_o_vuota_chiude(self):
+        """R-676-3 (review Mani): nel seguito una trascrizione incerta o vuota (rumore della
+        stanza) chiude la conversazione senza «Non ho capito» e senza turno; con la parola
+        di attivazione (niente seguito) «Non ho capito» resta."""
+        import http.client
+        from modules.voice.stt import TrascrizioneIncerta
+        wav = _fake_wav()
+        for effetto in (TrascrizioneIncerta("bzz", "poco sicura"), "", TrascrizioneIncerta("x", "y")):
+            for seguito in (True, False):
+                hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                        "X-Gas-Formato": "audio+pezzi"}
+                if seguito:
+                    hdrs["X-Gas-Seguito"] = "1"
+                self.kernel.kw = "NESSUN TURNO"
+                kw = ({"side_effect": effetto} if isinstance(effetto, Exception)
+                      else {"return_value": effetto})
+                with patch("modules.voice.server.transcribe_audio", **kw):
+                    with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                        os.environ.pop("ELEVENLABS_API_KEY", None)
+                        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                        c.request("POST", "/voice", body=wav, headers=hdrs)
+                        r = c.getresponse()
+                        corpo = json.loads(r.read())
+                        comando = r.getheader("X-Gas-Comando")
+                        c.close()
+                assert self.kernel.kw == "NESSUN TURNO"
+                if seguito:
+                    assert r.status == 200 and comando == "fine" and corpo["content"] == ""
+                    assert "non_capito" not in corpo
+                elif isinstance(effetto, Exception):
+                    assert r.status == 200 and comando is None and corpo["non_capito"] is True
+                else:
+                    assert r.status == 400 and comando is None
+
+    def test_v15_il_turno_viene_chiuso_subito(self):
+        """R-677-1-M2: dopo il «final» il server chiude il generatore del kernel (il turno
+        effimero rimette subito la storia vera), anche su errore del kernel."""
+        chiusi = []
+        tenuti = []  # un riferimento vivo: senza close() esplicito il finally non partirebbe
+
+        class _K:
+            def run_turn(self, prompt, **kw):
+                def gen():
+                    try:
+                        yield {"type": "final", "content": "ok"}
+                        yield {"type": "final", "content": "mai"}
+                    finally:
+                        chiusi.append(kw.get("effimero"))
+                g = gen()
+                tenuti.append(g)
+                return g
+
+        self.server.RequestHandlerClass.kernel = _K()
+        try:
+            status, corpo, comando = self._seguito("ignorato")
+        finally:
+            self.server.RequestHandlerClass.kernel = self.kernel
+        assert chiusi == [True] and status == 200 and corpo["content"] == "ok"
+
+    def test_v15_seguito_risposta_vuota_chiude(self):
+        """V15: il turno effimero che ignora uno strumento finisce con risposta vuota: nel
+        seguito la conversazione si chiude in silenzio (fine), niente voce."""
+        status, corpo, comando = self._seguito("")
+        assert status == 200 and comando == "fine" and corpo["content"] == ""
+
     def test_v15_seguito_rivolto_a_gas_risponde_normalmente(self):
         from modules.voice.server import ISTRUZIONE_SEGUITO
         status, corpo, comando = self._seguito("Certo, ci penso io.")
@@ -782,7 +848,7 @@ class TestVoiceHandlerRouting:
         from modules.voice.server import ISTRUZIONE_SEGUITO, SEGNO_NON_PER_ME
         status, corpo, comando = self._seguito(SEGNO_NON_PER_ME, seguito=False)
         assert comando is None and ISTRUZIONE_SEGUITO not in self.kernel.kw["istruzione_turno"]
-        assert "cervello" not in self.kernel.kw  # senza seguito: regola di sempre
+        assert "cervello" not in self.kernel.kw and "effimero" not in self.kernel.kw
 
     def test_v15_seguito_a_testo_ignorato(self):
         """A TESTO l'intestazione non conta: nessuna istruzione, nessun «fine»."""

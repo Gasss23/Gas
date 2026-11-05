@@ -11458,6 +11458,115 @@ try:
 except Exception as _e101:
     check("T101 blocco senza eccezioni", False, repr(_e101))
 
+# ---------- T103: turno effimero (V15 voce, chat M2, R-675-1-M2), round-trip §7 ----------
+# Parlato captato senza parola di attivazione: solo il forte, nessuno strumento offerto, e
+# niente traccia nella storia condivisa (memoria e .gas_history.json). Il turno normale dopo
+# fa il suo round-trip con strumenti come sempre e non vede il parlato effimero.
+try:
+    _tools103 = []
+    _script103 = []
+
+    class _Comp103(ScriptedCompletions):
+        def create(self, model=None, messages=None, tools=None, tool_choice=None):
+            _tools103.append((tools, json.dumps(messages, ensure_ascii=False)))
+            return super().create(model=model, messages=messages, tools=tools, tool_choice=tool_choice)
+
+    class _Cli103:
+        def __init__(self, timeout=None):
+            self.chat = SimpleNamespace(completions=_comp103)
+
+    class _NoOpenAI103:
+        def __init__(self, *a, **kw):
+            raise AssertionError("T103: nessun provider gratuito deve partire")
+
+    _saved103 = {kk: os.environ.get(kk) for kk in
+                 ("GAS_CLAUDE_CLI", "GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY",
+                  "GAS_OLLAMA_URL")}
+    _origcli103, _origoa103 = gas.ClaudeCliClient, gas.OpenAI
+    try:
+        for _kk in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+            os.environ.pop(_kk, None)
+        os.environ["GEMINI_API_KEY"] = "dummy-for-test"
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+        gas.ClaudeCliClient, gas.OpenAI = _Cli103, _NoOpenAI103
+        _k103 = kernel_tmp()
+        _k103.history = [{"role": "user", "content": "PRIMA-103"},
+                         {"role": "assistant", "content": "ok prima"}]
+        _k103._save_history()
+        _file103 = Path(_k103.db_path)
+        _disco_prima = _file103.read_text(encoding="utf-8")
+        _mem_prima = json.dumps(_k103.history, ensure_ascii=False)
+
+        # a) effimero con risposta: il modello vede la storia di prima e la frase, senza
+        #    strumenti; dopo il turno storia e file identici
+        _comp103 = _Comp103(["[NON_PER_ME]"])
+        _ev103a = list(_k103.run_turn("STANZA-103 la TV parla", effimero=True))
+        check("T103a effimero: risposta del forte, nessuno strumento offerto, storia intatta",
+              [e["content"] for e in _ev103a if e["type"] == "final"] == ["[NON_PER_ME]"]
+              and len(_tools103) == 1 and _tools103[0][0] is None
+              and "PRIMA-103" in _tools103[0][1] and "STANZA-103" in _tools103[0][1]
+              and json.dumps(_k103.history, ensure_ascii=False) == _mem_prima
+              and _file103.read_text(encoding="utf-8") == _disco_prima,
+              str(_ev103a)[:300])
+
+        # b) effimero, il modello chiede comunque uno strumento: NON eseguito
+        _tools103.clear()
+        _comp103 = _Comp103([[("write_file", '{"relative_path": "x103.txt", "content": "x"}')], "mai"])
+        _ev103b = list(_k103.run_turn("STANZA-103 scrivi un file", effimero=True))
+        check("T103b effimero: chiamata a strumento ignorata, nessun file, risposta vuota",
+              not (Path(_k103.root) / "x103.txt").exists()
+              and not any(e["type"] == "tool_res" for e in _ev103b)
+              and [e["content"] for e in _ev103b if e["type"] == "final"] == [""]
+              and json.dumps(_k103.history, ensure_ascii=False) == _mem_prima,
+              str(_ev103b)[:300])
+
+        # c) turno normale dopo: round-trip con strumento, storia salvata, niente parlato
+        _tools103.clear()
+        _comp103 = _Comp103([[("write_file", '{"relative_path": "v103.txt", "content": "y"}')],
+                             "Fatto 103."])
+        _ev103c = list(_k103.run_turn("scrivi v103", cervello="forte"))
+        _storia103 = json.dumps(_k103.history, ensure_ascii=False)
+        check("T103c turno normale dopo: round-trip con strumenti, storia salvata, niente STANZA",
+              [e["content"] for e in _ev103c if e["type"] == "final"] == ["Fatto 103."]
+              and any(e["type"] == "tool_res" for e in _ev103c)
+              and all(t[0] for t in _tools103)
+              and "STANZA-103" not in _storia103 and "STANZA-103" not in _tools103[0][1]
+              and "scrivi v103" in _storia103
+              and "STANZA-103" not in _file103.read_text(encoding="utf-8"),
+              _storia103[:300])
+
+        # e) R-677-2-M2: come il server, break sul final e close(): storia vera subito
+        _vera103 = _k103.history
+        _comp103 = _Comp103(["[NON_PER_ME]"])
+        _g103 = _k103.run_turn("STANZA-103 col break", effimero=True)
+        for _e in _g103:
+            if _e["type"] == "final":
+                break
+        _sospeso103 = _k103.history is not _vera103
+        _g103.close()
+        check("T103e effimero con break + close (percorso del server): storia vera subito",
+              _sospeso103 and _k103.history is _vera103
+              and "STANZA-103" not in json.dumps(_k103.history, ensure_ascii=False),
+              str(len(_k103.history)))
+
+        # d) effimero col forte spento: errore dichiarato, mai i gratuiti, storia intatta
+        os.environ.pop("GAS_CLAUDE_CLI", None)
+        _mem_prima_d = json.dumps(_k103.history, ensure_ascii=False)
+        _ev103d = list(_k103.run_turn("STANZA-103 senza forte", effimero=True))
+        check("T103d effimero col forte spento: errore, nessun gratuito, storia intatta",
+              [e["type"] for e in _ev103d] == ["error"]
+              and json.dumps(_k103.history, ensure_ascii=False) == _mem_prima_d,
+              str(_ev103d)[:300])
+    finally:
+        gas.ClaudeCliClient, gas.OpenAI = _origcli103, _origoa103
+        for _kk, _v in _saved103.items():
+            if _v is None:
+                os.environ.pop(_kk, None)
+            else:
+                os.environ[_kk] = _v
+except Exception as _e103:
+    check("T103 blocco senza eccezioni", False, repr(_e103))
+
 # ---------- T102: avvisa_operatore (R6, chat Mani), round-trip §7 ----------
 try:
     import modules.telegram.avviso as _av102
