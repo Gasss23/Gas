@@ -739,12 +739,34 @@ class TestVoiceHandlerRouting:
         decisione."""
         from modules.voice.server import ISTRUZIONE_SEGUITO, SEGNO_NON_PER_ME
         for risposta in (SEGNO_NON_PER_ME, f" {SEGNO_NON_PER_ME}\n", f"«{SEGNO_NON_PER_ME}»",
-                         "NON_PER_ME", "Non per me."):  # R-675-3-M2
+                         "NON_PER_ME", "Non per me.",  # R-675-3-M2
+                         "[NON_PER_ME] (parlato fra persone)", "«[non_per_me]» la TV"):  # V-2 ve #339
             status, corpo, comando = self._seguito(risposta)
             assert status == 200 and comando == "fine" and corpo["fine"] is True
             assert corpo["content"] == "" and "audio" not in corpo and "capito" not in corpo
             assert ISTRUZIONE_SEGUITO in self.kernel.kw["istruzione_turno"]
             assert self.kernel.kw["cervello"] == "forte"  # R-675-1-M2: mai ai gratuiti
+
+    def test_v15_seguito_forte_dalla_stanza_non_parla(self):
+        """V-1 ve #339: in un turno di seguito il parlato che è solo «forte» (TV) non fa
+        pronunciare il messaggio d'uso: si chiude la conversazione (fine), nessun turno."""
+        import http.client
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": "audio+pezzi", "X-Gas-Seguito": "1"}
+        self.kernel.kw = "NESSUN TURNO"
+        with patch("modules.voice.server.transcribe_audio", return_value="Forte!"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                c.request("POST", "/voice", body=wav, headers=hdrs)
+                r = c.getresponse()
+                corpo = json.loads(r.read())
+                comando = r.getheader("X-Gas-Comando")
+                c.close()
+        assert r.status == 200 and comando == "fine" and corpo["content"] == ""
+        assert "uso" not in corpo and self.kernel.kw == "NESSUN TURNO"
 
     def test_v15_seguito_rivolto_a_gas_risponde_normalmente(self):
         from modules.voice.server import ISTRUZIONE_SEGUITO

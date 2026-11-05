@@ -140,7 +140,9 @@ SEGNO_NON_PER_ME = "[NON_PER_ME]"
 COMANDO_FINE = "fine"
 # R-675-3-M2: anche le varianti senza parentesi o in minuscolo («NON_PER_ME», «non per me»),
 # ma solo se la risposta è SOLO il segno: «Non per me è un problema, …» resta una risposta.
-_NON_PER_ME = re.compile(r"^\W*non[_\s]+per[_\s]+me\W*$", re.IGNORECASE)
+# V-2 ve #339: il segno esatto con le parentesi vale anche se il modello aggiunge altro dopo
+# («[NON_PER_ME] (parlato fra persone)»): quel testo non va letto ad alta voce.
+_NON_PER_ME = re.compile(r"^\W*(?:\[non_per_me\]|non[_\s]+per[_\s]+me\W*$)", re.IGNORECASE)
 ISTRUZIONE_SEGUITO = (
     "Questa frase è stata captata dal microfono nella finestra di conversazione, SENZA che "
     "l'operatore dicesse la parola di attivazione: può essere rivolta a te oppure no "
@@ -533,6 +535,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if cervello == "uso":
             if not is_audio:
                 self._send_json(400, {"error": _USO_FORTE})
+            elif self._seguito():  # V-1 ve #339: «forte» captato dalla stanza: niente voce
+                self._chiudi_seguito()
             else:
                 self._rispondi_senza_turno(_USO_FORTE_PARLATO, "uso")
             return
@@ -594,8 +598,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if is_audio and self._seguito() and _NON_PER_ME.search(result_content):
             # V15: parlato non rivolto a Gas: niente voce né testo (privacy della stanza)
             log.info("turno di seguito non rivolto a Gas: conversazione chiusa")
-            self._comando = COMANDO_FINE
-            self._send_json(200, {"content": "", "fine": True})
+            self._chiudi_seguito()
             return
 
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
@@ -626,6 +629,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
         con risposta a voce, nell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
         adesso = time.monotonic()
         return [t for t in self.turni_parlati if adesso - t < 3600]
+
+    def _chiudi_seguito(self) -> None:
+        """V15: chiude la conversazione senza voce né testo (X-Gas-Comando: fine)."""
+        self._comando = COMANDO_FINE
+        self._send_json(200, {"content": "", "fine": True})
 
     def _seguito(self) -> bool:
         """V15: il client dice che il turno è nella finestra di conversazione, senza parola
