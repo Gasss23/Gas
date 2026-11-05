@@ -10,6 +10,7 @@ import stat
 import subprocess
 import sys
 import threading
+import time
 import wave
 from pathlib import Path
 
@@ -141,16 +142,22 @@ def test_voce_piana_passa_col_default():
     assert len(f.inviati) == 1 and _campioni(f.inviati[0]) == (10 + 10) * a.BLOCCO
 
 
-@pytest.mark.parametrize("valore,atteso", [(None, 200.0), ("350", 350.0), ("abc", 200.0)])
-def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
-    """`main` passa ad Ascolto GAS_ASCOLTO_VOCE_RMS, e senza variabile il default 200."""
+def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None):
+    """Fa girare `main` con microfono, rilevatore, download e Ascolto finti e restituisce
+    gli argomenti con cui ha costruito Ascolto. R-671-2: il finto usa k.get e il ciclo di
+    riprova di main (§9) fa fallire subito il test invece di restare appeso."""
     monkeypatch.setattr(a, "_GAS_ROOT", tmp_path)
     monkeypatch.setenv("GAS_VOICE_TOKEN", TOKEN)
-    if valore is None:
-        monkeypatch.delenv("GAS_ASCOLTO_VOCE_RMS", raising=False)
-    else:
-        monkeypatch.setenv("GAS_ASCOLTO_VOCE_RMS", valore)
+    for k in ("GAS_ASCOLTO_VOCE_RMS", "GAS_ASCOLTO_CONFERMA", "GAS_ASCOLTO_INTERRUZIONE",
+              "GAS_ASCOLTO_SOGLIA_INTERRUZIONE", "GAS_VOICE_URL", "GAS_VOICE_PORT"):
+        monkeypatch.delenv(k, raising=False)
+    for k, v in ambiente.items():
+        monkeypatch.setenv(k, v)
     monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m: (lambda b: 0.0, lambda: None))
+    monkeypatch.setattr(a, "scarica_conferma", lambda url, token: b"SI")
+    monkeypatch.setattr(a, "Conferma", conferma_cls or (lambda scarica: (lambda: scarica())))
+    monkeypatch.setattr(a.time, "sleep",
+                        lambda s: pytest.fail("main è finito nel ciclo di riprova"))
 
     class Mic:
         def blocchi(self):
@@ -165,19 +172,32 @@ def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
 
     class AscoltoFinto:
         def __init__(self, *args, **k):
-            visti.append(k["voce_rms"])
-            soglie.append(k["soglia_interruzione"])
+            visti.append(k)
 
         def gira(self):
             raise KeyboardInterrupt
-    soglie = []
-    monkeypatch.delenv("GAS_ASCOLTO_INTERRUZIONE", raising=False)
-    monkeypatch.delenv("GAS_ASCOLTO_SOGLIA_INTERRUZIONE", raising=False)
-    monkeypatch.delenv("GAS_VOICE_URL", raising=False)
-    monkeypatch.delenv("GAS_VOICE_PORT", raising=False)
     monkeypatch.setattr(a, "Microfono", Mic)
     monkeypatch.setattr(a, "Ascolto", AscoltoFinto)
-    assert a.main() == 0 and visti == [atteso] and soglie == [a.SOGLIA_INTERRUZIONE_PREDEFINITA]
+    assert a.main() == 0 and len(visti) == 1
+    return visti[0]
+
+
+@pytest.mark.parametrize("valore,atteso", [(None, 200.0), ("350", 350.0), ("abc", 200.0)])
+def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
+    """`main` passa ad Ascolto GAS_ASCOLTO_VOCE_RMS, e senza variabile il default 200."""
+    k = _main_finto(monkeypatch, tmp_path,
+                    {} if valore is None else {"GAS_ASCOLTO_VOCE_RMS": valore})
+    assert k.get("voce_rms") == atteso
+    assert k.get("soglia_interruzione") == a.SOGLIA_INTERRUZIONE_PREDEFINITA
+
+
+@pytest.mark.parametrize("valore,atteso", [(None, b"SI"), ("1", b"SI"), ("0", None)])
+def test_main_passa_la_conferma(monkeypatch, tmp_path, valore, atteso):
+    """R-671-1: `main` rispetta GAS_ASCOLTO_CONFERMA (0 = solo il bip)."""
+    k = _main_finto(monkeypatch, tmp_path,
+                    {} if valore is None else {"GAS_ASCOLTO_CONFERMA": valore})
+    conferma = k.get("conferma")
+    assert conferma is not None and conferma() == atteso
 
 
 def test_leggimi_riporta_il_default_della_voce():
@@ -186,6 +206,7 @@ def test_leggimi_riporta_il_default_della_voce():
     assert f"| `GAS_ASCOLTO_VOCE_RMS` | {a.VOCE_RMS_PREDEFINITO:g} |" in testo
     assert (f"| `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | {a.SOGLIA_INTERRUZIONE_PREDEFINITA:g} |"
             in testo)
+    assert "| `GAS_ASCOLTO_CONFERMA` | 1 |" in testo
 
 
 # ── fetta 41: interrompere Gas mentre parla, solo con la parola ──
@@ -365,6 +386,70 @@ def test_riproduzione_rotta_non_esce_dal_turno(caplog, rompe_finita, rompe_ferma
         assert "riproduzione: stato illeggibile" in caplog.text
     if rompe_ferma:
         assert "arresto della riproduzione fallito" in caplog.text
+
+
+# ── fetta 42: «Sì, signore?» al posto del bip ──
+
+def test_dopo_la_parola_jarvis_dice_si_signore():
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (SILENZIO, 5), *RICHIESTA, (SILENZIO, 20)), finestra_s=0,
+              conferma=lambda: b"SI-SIGNORE").gira()
+    assert f.riprodotti == [b"SI-SIGNORE", b"A"] and f.bip == [] and len(f.inviati) == 1
+
+
+@pytest.mark.parametrize("conferma", [lambda: None, lambda: b"", lambda: 1 / 0])
+def test_senza_conferma_resta_il_bip(conferma):
+    """Conferma non pronta, vuota o rotta (§9): il bip di sempre, e si va avanti."""
+    f = FintiParlano([b"A"])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 20)), finestra_s=0,
+              conferma=conferma).gira()
+    assert f.bip == ["ok"] and f.riprodotti == [b"A"] and len(f.inviati) == 1
+
+
+def test_conferma_che_non_suona_diventa_bip():
+    f = FintiParlano([b"A"])
+
+    def riproduci(audio):
+        if audio == b"SI":
+            raise OSError("afplay")
+        return f.riproduci(audio)
+    a.Ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 20)), f.rilevatore, f.invia, riproduci,
+              f.suona, finestra_s=0, conferma=lambda: b"SI").gira()
+    assert f.bip == ["ok"] and f.riprodotti == [b"A"] and len(f.inviati) == 1
+
+
+def test_la_conferma_non_si_interrompe_e_poi_si_svuota():
+    """La parola ripetuta mentre Jarvis dice «Sì, signore?» non apre niente; il microfono
+    si svuota dopo la conferma, che quindi non entra nella richiesta."""
+    f = FintiParlano([b"A"], durata=5)
+    svuotati_al_secondo_audio = []
+    riproduci = f.riproduci
+
+    def segna(audio):
+        if audio == b"A":
+            svuotati_al_secondo_audio.append(f.svuotati)
+        return riproduci(audio)
+    f.riproduci = segna
+    f.ascolto(_blocchi(PAROLA, PAROLA, PAROLA, *RICHIESTA, (SILENZIO, 20)), finestra_s=0,
+              conferma=lambda: b"SI").gira()
+    assert f.riprodotti == [b"SI", b"A"] and f.eventi[0] == ("ferma", b"SI", 0)
+    assert len(f.inviati) == 1 and svuotati_al_secondo_audio == [1]
+
+
+def test_nella_finestra_e_all_interruzione_niente_conferma():
+    """«Sì, signore?» solo alla prima attivazione con la parola: nella finestra dei 12 s
+    non serve, e all'interruzione resta il bip (più rapido)."""
+    chiamate = []
+
+    def conferma():
+        chiamate.append(1)
+        return b"SI"
+    frasi, _ = _frasi_chiuse(b"A", b"B")
+    f = FintiParlano([frasi, b"C", b"D"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (SILENZIO, 3), *RICHIESTA, PAROLA, *RICHIESTA, (SILENZIO, 3),
+                       *RICHIESTA, (SILENZIO, 20)), finestra_s=12, conferma=conferma).gira()
+    assert chiamate == [1] and f.bip == ["ok"] and len(f.inviati) == 3
+    assert f.riprodotti[0] == b"SI" and f.riprodotti.count(b"SI") == 1
 
 @pytest.mark.parametrize("acceso,soglia,atteso", [
     (None, None, 0.7), ("1", "0.9", 0.9), ("0", "0.9", None), (None, "abc", 0.7),
@@ -775,6 +860,170 @@ def test_pezzi_connessione_chiusa_senza_fine(server_pezzi):
     ok, suonati, bip = _turno_vero(server_pezzi)
     assert ok and suonati == [b"MP3-1", b"MP3-2"]
 
+
+
+class _ServerConferma(http.server.BaseHTTPRequestHandler):
+    risposta = (200, "audio/mpeg", b"ID3-SI")   # o "chiudi" / "dormi"
+    visti = []
+
+    def do_GET(self):
+        type(self).visti.append((self.path, dict(self.headers)))
+        r = type(self).risposta
+        if r == "chiudi":   # R-669-1 di M2: in certi errori il server chiude e basta
+            self.close_connection = True
+            self.wfile.flush()
+            self.connection.shutdown(2)
+            return
+        if r == "dormi":
+            time.sleep(2)
+            return
+        codice, tipo, corpo = r
+        self.send_response(codice)
+        if codice == 302:
+            self.send_header("Location", f"http://{self.headers['Host']}/rubato")
+        self.send_header("Content-Type", tipo)
+        self.send_header("Content-Length", str(len(corpo)))
+        self.end_headers()
+        self.wfile.write(corpo)
+
+    def log_message(self, *x):
+        pass
+
+
+@pytest.fixture
+def server_conferma():
+    _ServerConferma.visti = []
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _ServerConferma)
+    t = threading.Thread(target=s.serve_forever, daemon=True)
+    t.start()
+    yield f"http://127.0.0.1:{s.server_address[1]}"
+    s.shutdown()
+    s.server_close()
+
+
+def test_conferma_scaricata(server_conferma, caplog):
+    _ServerConferma.risposta = (200, "audio/mpeg", b"ID3-SI")
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        assert a.scarica_conferma(server_conferma, TOKEN) == b"ID3-SI"
+    percorso, intestazioni = _ServerConferma.visti[0]
+    assert percorso == "/voce/conferma" and intestazioni["Authorization"] == f"Bearer {TOKEN}"
+    assert TOKEN not in caplog.text
+
+
+@pytest.mark.parametrize("risposta", [
+    (503, "application/json", b'{"error": "TTS non disponibile"}'),
+    (502, "application/json", b'{"error": "Errore TTS"}'),
+    (401, "application/json", b'{"error": "no"}'),
+    (200, "application/json", b'{"audio": "x"}'),
+    (200, "audio/mpeg", b""),
+    (302, "text/plain", b""),
+    "chiudi",
+])
+def test_conferma_qualsiasi_errore_da_none(server_conferma, risposta, caplog):
+    """Su QUALSIASI errore (codici HTTP, tipo sbagliato, vuoto, redirect, connessione
+    chiusa dal server) niente eccezioni: None, e l'ascolto userà il bip."""
+    _ServerConferma.risposta = risposta
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        assert a.scarica_conferma(server_conferma, TOKEN) is None
+    assert [p for p, _ in _ServerConferma.visti] == ["/voce/conferma"]  # niente redirect
+    assert TOKEN not in caplog.text
+
+
+def test_conferma_troppo_grande(server_conferma, monkeypatch):
+    monkeypatch.setattr(a, "CONFERMA_MAX_BYTE", 8)
+    _ServerConferma.risposta = (200, "audio/mpeg", b"Z" * 20)
+    assert a.scarica_conferma(server_conferma, TOKEN) is None
+
+
+def test_conferma_timeout(server_conferma):
+    _ServerConferma.risposta = "dormi"
+    assert a.scarica_conferma(server_conferma, TOKEN, timeout=0.3) is None
+
+
+def test_conferma_server_spento():
+    assert a.scarica_conferma("http://127.0.0.1:9", TOKEN, timeout=1) is None
+
+
+def test_conferma_in_memoria_e_riprova_al_massimo_al_minuto():
+    ora = [0.0]
+    esiti = [None, b"SI"]
+    chiamate = []
+
+    def scarica():
+        chiamate.append(ora[0])
+        return esiti.pop(0)
+    c = a.Conferma(scarica, adesso=lambda: ora[0], in_sottofondo=False)
+    assert chiamate == [0.0] and c() is None          # all'avvio fallisce
+    ora[0] = 30.0
+    assert c() is None and chiamate == [0.0]          # meno di un minuto: non riprova
+    ora[0] = a.CONFERMA_RIPROVA_S + 1
+    assert c() is None and len(chiamate) == 2         # riprova (in sottofondo nel vero)
+    assert c() == b"SI" and c() == b"SI" and len(chiamate) == 2   # poi resta in memoria
+
+
+
+def test_conferma_thread_che_non_parte(monkeypatch):
+    """R-671-5: se il thread non parte, niente eccezioni e niente blocco: si riprova dopo
+    un minuto (la conferma non resta «in corso» per sempre)."""
+    ora = [0.0]
+    partenze = []
+
+    class ThreadRotto:
+        def __init__(self, **k):
+            partenze.append(k)
+
+        def start(self):
+            raise RuntimeError("can't start new thread")
+    monkeypatch.setattr(a.threading, "Thread", ThreadRotto)
+    c = a.Conferma(lambda: b"SI", adesso=lambda: ora[0])
+    assert c() is None and len(partenze) == 1
+    ora[0] = a.CONFERMA_RIPROVA_S + 1
+    assert c() is None and len(partenze) == 2
+
+
+def test_main_con_conferma_che_non_parte(monkeypatch, tmp_path):
+    """R-671-5: un errore nel creare la conferma non ferma main: resta il bip."""
+    def rotta(scarica):
+        raise RuntimeError("x")
+    k = _main_finto(monkeypatch, tmp_path, {}, conferma_cls=rotta)
+    conferma = k.get("conferma")
+    assert conferma is not None and conferma() is None
+
+
+def test_conferma_tetto_piccolo():
+    """R-671-3: «Sì, signore?» non supera qualche secondo di MP3."""
+    assert a.CONFERMA_MAX_BYTE <= 200 * 1024
+
+def test_conferma_scarica_che_esplode():
+    def esplode():
+        raise RuntimeError("x")
+    c = a.Conferma(esplode, in_sottofondo=False)
+    assert c() is None
+
+
+def test_conferma_in_sottofondo_non_blocca():
+    pronto = threading.Event()
+
+    def lenta():
+        pronto.wait(5)
+        return b"SI"
+    c = a.Conferma(lenta)
+    assert c() is None            # l'attivazione non aspetta la rete
+    pronto.set()
+    for _ in range(100):
+        if c():
+            break
+        time.sleep(0.02)
+    assert c() == b"SI"
+
+
+@pytest.mark.parametrize("valore,atteso", [(None, True), ("1", True), ("0", False), (" 0 ", False)])
+def test_conferma_attiva_dall_ambiente(monkeypatch, valore, atteso):
+    if valore is None:
+        monkeypatch.delenv("GAS_ASCOLTO_CONFERMA", raising=False)
+    else:
+        monkeypatch.setenv("GAS_ASCOLTO_CONFERMA", valore)
+    assert a.conferma_attiva() is atteso
 
 def test_json_con_un_solo_audio(server):
     """Il server manda JSON (frase fissa «uso», o niente formato a pezzi): l'audio si suona."""
