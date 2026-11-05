@@ -1,34 +1,23 @@
-# Ultimo report — 2026-11-05 — fetta 43 (chat Mani): standby dell'ascolto dal Terminale
+# Ultimo report — 2026-11-05 — fetta 42 (chat Mani): «Sì, signore?» lato client
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #338 (https://github.com/Gasss23/Gas/pull/338): review #673 APPROVATO CON RISERVE e PR nel perimetro, quindi decide l'operatore tramite M1.
+1. Merge della PR #340 (https://github.com/Gasss23/Gas/pull/340): le review #671 e #675 sono APPROVATO CON RISERVE e la PR è nel perimetro, quindi decide l'operatore tramite M1.
 
 ## Esito
 
-- **PR #336 (fetta 41, interruzione)**: MERGIATA da M1 (942e665) col sì dell'operatore.
-- **Fetta 43, parte 1 (pausa e ripresa dal Terminale)**: FATTA.
-  - `scripts/voce/pausa.sh` ferma solo l'ascolto; server voce e plist restano. `scripts/voce/riprendi.sh` lo ricarica.
-  - LEGGIMI aggiornato. 9 test nuovi più quelli di sintassi; 5 mutanti presi. Suite ascolto: 185 passed.
-  - Review #673 APPROVATO CON RISERVE (R-673-1/2 BASSE, R-673-3 COSMETICA).
-- **Fetta 43, parte 2 (pausa a voce)**: DEFERITA. Contratto approvato da M1: header `X-Gas-Comando: pausa`, file `.gas_voce/standby`, ripresa solo da Terminale. La parte server tocca a M2, dopo la sua fetta sul bot.
-- **Fetta 43, parte 3 (controllo dei log)**: DEFERITA. I log sono sul Mac, in `.gas_voce/ascolto.log`; il comando all'operatore lo dà M1.
-- **Fetta 42 («Sì, signore?» lato client)**: FATTA in locale (branch `mani/si-signore`, commit 9efc4bd), NON pubblicata. Si pubblica dopo il merge della PR #335 di M2.
-  - Review #671: R-671-1/2 MEDIE, corrette.
-  - Review #672: APPROVATO.
-
-## Verdetti su 467ac4f (PR #338)
-
-- Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/338#issuecomment-6670952684). Riserve: 3 BASSE e 2 COSMETICHE.
-- Bot: APPROVATO CON RISERVE (check neutral). Riserve: 2 BASSE e 1 COSMETICA. Tra le basse: riprendi.sh dice «RIPRESO» senza controllare che il processo giri davvero.
-- Tutte registrate in stato_progetto, nel blocco della fetta 43.
-
-## Merge di main e merge della PR
-
-- Sì dell'operatore alla #338 (via M1). Main era andata avanti con la PR #335 di M2 (V14 e macchina del bot): merge di main in babb272, con conflitti solo nei report. Review #674 APPROVATO; il revisore ha fatto girare 1025 test sulle suite voce e bot, tutti passati.
-- Bot su 3eff993: APPROVATO CON RISERVE (neutral). R-673-3 è rialzata a BASSA; c'è anche una COSMETICA. Entrambe registrate.
+- **PR #338 (fetta 43, pausa.sh e riprendi.sh)**: MERGIATA (6a4cb2e) col sì dell'operatore via M1. Prima del merge ho unito main (PR #335, review #674 APPROVATO); CI verde; il bot su 39b1e4c ha dato solo riserve già registrate.
+- **Fetta 42 — «Sì, signore?»**: FATTA e pubblicata (PR #340).
+  - Dopo «Hey Jarvis» Jarvis dice «Sì, signore?» con l'audio del server, scaricato in sottofondo e tenuto in memoria. Su qualsiasi errore resta il bip; nella finestra e all'interruzione resta il bip. `GAS_ASCOLTO_CONFERMA=0` la spegne.
+  - Test d'integrazione col server vero di M2.
+  - Suite ascolto 220 passed. Review #671 (2 MEDIE, corrette), #672 APPROVATO, #675 APPROVATO CON RISERVE (R-675-1 BASSA, R-675-2 COSMETICA).
+  - Il commit di merge su main ha righe aggiunte e tolte identiche al diff rivisto nei tre file del perimetro.
+- **Fetta 43 parte 2 (versione nuova dell'operatore)**: DEFERITA, è la prossima. Comprende:
+  - finestra di 40 s;
+  - turni di seguito con tetto corto, scartati se arrivano al tetto;
+  - header `X-Gas-Seguito`;
+  - `X-Gas-Comando` fine/pausa (contratto della PR #339 di M2).
 
 ## Anomalie
 
-- Nel riepilogo all'operatore avevo indicato `gas_debug.log` per gli eventi dell'ascolto. Il file giusto è `.gas_voce/ascolto.log` (correzione di M1), e l'ho già corretto nel riepilogo.
-- La fetta 42 vive solo nel container: se la sessione si chiude prima del merge della #335, va rifatta.
+- Nessuna.
