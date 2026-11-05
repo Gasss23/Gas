@@ -41,6 +41,7 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8971b77 docs(voce): report di fine task V14 dopo il merge di main (chat M2)
 ee7dc7c Merge origin/main (PR #333, fetta 40 soglia voce 200) nella PR #335 — review #670-M2 APPROVATO
 0404a56 docs(voce): report di fine task V14 (chat M2)
 882346f feat(voce): V14 — GET /voce/conferma «Sì, signore?» in cache per voce; filtro «Dimmi.» senza ok e con ripetizione (chat M2)
@@ -87,40 +88,46 @@ Ho rieseguito `tests/test_unit_voice_prova_voci.py` e `tests/test_unit_voice_stt
 
 **Memoria:** ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #669-M2 e una lezione: `HTTPException` non è sottoclasse di `OSError`. È committata da sola con lo script, commit 47d7a5b. Lo stage del motore è intatto (3 file).
 
-Review #670-M2 sul merge ee7dc7c di origin/main (PR #333) nella PR #335 (verdetto integrale):
+Review #670-M2 sul merge ee7dc7c di origin/main (PR #333) nella PR #335 — verdetto RIEMESSO dal revisore per il gate B: stesso esito (APPROVATO), citazioni dei file del diff di sessione. L'originale citava soprattutto clients/voice/ascolto.py, che dopo il merge è in main e fuori dal diff di sessione; il suo testo integrale, non modificato, è nell'handoff del commit 8971b77:
 
 ## VERDETTO: APPROVATO
 
-Review #670-M2 riguarda il merge di origin/main 830c5bf (PR #333, fetta 40) in feat/voce-v12-m2 (PR #335, V14). Il merge è nello stage e non è committato. Ho letto CLAUDE.md (sezione 5), la riga «Ultimo aggiornamento» di reports/stato_progetto.md e la coda di memoria_revisore.md.
+Review #670-M2 (riemessa con le citazioni richieste dal gate B; esito e contenuto invariati). Riguarda il merge di origin/main 830c5bf (PR #333, fetta 40) in feat/voce-v12-m2 (PR #335, V14).
 
-Il merge non perde nulla né di main né del branch. Non ci sono marcatori di conflitto e la suite della voce passa tutta.
+Ho controllato a HEAD 8971b77 che non sia cambiato nulla rispetto a quanto revisionato:
+- `git diff --stat 0404a56 HEAD` è vuoto su modules/voice/server.py, tests/test_unit_voice_prova_voci.py e tests/test_unit_voice_stt.py: i file del branch sono intatti dopo il merge.
+- `git diff --stat 830c5bf HEAD` è vuoto su clients/voice/ascolto.py e tests/test_unit_voce_ascolto.py: i file di main sono intatti.
 
 **Elementi del diff esaminati**
-- `clients/voice/ascolto.py:85` — porta la soglia `VOCE_RMS_PREDEFINITO = 200.0` (fetta 40). Rischio: che la risoluzione abbia lasciato la versione del branch (500) invece di quella di main. Esito: ok. Il file nello stage è identico a quello di main (lo stesso vale per `tests/test_unit_voce_ascolto.py`, `scripts/voce/LEGGIMI.md` e `reports/ripartenza_mani.md`), e il branch non li aveva toccati.
-- `modules/voice/server.py:799` — è `_conferma` di V14 (GET /voce/conferma). Rischio: che il merge abbia perso V14. Esito: ok. Il file nello stage è identico a quello del branch, e main non lo aveva toccato. Lo stesso vale per `tests/test_unit_voice_prova_voci.py`, `tests/test_unit_voice_stt.py` e `reports/ripartenza_m2.md`.
-- `reports/stato_progetto.md:4` — è la riga «Ultimo aggiornamento» unita a mano. Rischio: voci perse o storia troncata. Esito: ok. Ho verificato con uno script che la riga è la voce V14 seguita da « — prima: » e poi dalla riga 4 di main per intero, carattere per carattere. Le altre differenze (la voce V13 aggiornata e la voce V14 nuova verso la riga 612) vengono dal branch e sono state applicate in automatico.
-- `.claude/agents/memoria_revisore.md` — la memoria è l'unione delle due parti. Il confronto riga per riga non trova nessuna riga di HEAD o di main che manchi nello stage, e #669-M2 e #670 (chat Mani) compaiono una volta ciascuna.
-- `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono identici alla versione del branch, come hai scelto. Non menzionano ancora la fetta 40: va bene, si riscrivono a fine task.
+- `modules/voice/server.py:799` — è `_conferma` di V14 (GET /voce/conferma, «Sì, signore?» in cache per id voce). Rischio: che il merge abbia perso o alterato V14. Esito: ok. Il file è identico a quello del branch prima del merge, e main non lo toccava.
+- `tests/test_unit_voice_prova_voci.py:691` — è `test_v14_conferma_una_sintesi_per_voce`: una sola sintesi per voce, si rigenera quando la voce cambia, e controlla `FRASE_CONFERMA == "Sì, signore?"`. Rischio: test perso nel merge. Esito: ok, il file è intatto.
+- `tests/test_unit_voice_prova_voci.py:712` — è `test_v14_conferma_errori_puliti_senza_cache`: 401 senza token, 503 senza chiave, 502 JSON senza cache per ElevenLabsTTSError, OSError e audio vuoto. Rischio: test perso nel merge. Esito: ok, il file è intatto.
+- `tests/test_unit_voice_stt.py:650` — è il filtro di attivazione di V14 (parola ripetuta riconosciuta, «ok/okay» trattato come conferma). Rischio: modifica persa nel merge. Esito: ok, il file è intatto.
+- `reports/stato_progetto.md:4` — è la riga «Ultimo aggiornamento» unita a mano. Rischio: voci perse. Esito: ok. Contiene la voce V14 seguita da « — prima: » e poi dalla riga 4 di main per intero (verificato con uno script, carattere per carattere).
 
-**Controlli meccanici**
-- `git ls-files -u` è vuoto.
-- `git diff --cached --check` è pulito.
-- Non c'è nessun `<<<<<<<`, `=======` o `>>>>>>>` nei file nello stage.
+Contesto, fuori dal diff di sessione: `clients/voice/ascolto.py:85` (`VOCE_RMS_PREDEFINITO = 200.0`) è identico a main.
+
+**Controlli meccanici sul merge prima del commit**
+- `git ls-files -u` era vuoto.
+- `git diff --cached --check` era pulito.
+- Non c'era nessun marcatore di conflitto nei file nello stage.
+- La memoria del revisore era l'unione delle due parti: #669-M2 e #670 (chat Mani) una volta ciascuna.
 
 **Test**
-Li ho fatti girare su una copia dei file presi dallo stage.
-- Prima giro, con l'interprete del sistema: 24 failed, 412 passed e 1 errore di raccolta. Sono tutti dovuti all'ambiente: `openai` non è installato (`tests/test_unit_voce_ascolto.py` da solo dà 21 errori, tutti `ModuleNotFoundError: openai`).
-- Ho installato openai, pyyaml e python-dotenv in una cartella separata solo per la prova e ho rifatto girare: `tests/test_unit_voce_ascolto.py` dà 154 passed e `tests/test_unit_voice*.py` dà 284 passed, nessun errore.
+Li ho fatti girare su una copia dei file presi dallo stage, con openai, pyyaml e python-dotenv installati in una cartella separata solo per la prova:
+- tests/test_unit_voce_ascolto.py: 154 passed.
+- tests/test_unit_voice*.py: 284 passed.
+
+Senza quei pacchetti si hanno 24 failed e 1 errore di raccolta, tutti `ModuleNotFoundError: openai`, quindi dovuti all'ambiente.
 
 **Cosa non ho verificato**
-- Non ho provato insieme sul Mac il client H24 con la soglia 200 e «Sì, signore?» di V14. Non si può riprodurre qui (servono microfono ed ElevenLabs).
-- Non ho rieseguito la suite completa fuori dalla voce, perché il merge non tocca altri file del motore.
-- I numeri della CI sulla head finale non sono ancora disponibili: il merge non è committato.
+- Non ho provato insieme sul Mac il client H24 con la soglia 200 e «Sì, signore?». Non si può riprodurre qui (servono microfono ed ElevenLabs).
+- Non ho rieseguito la suite completa fuori dalla voce.
+- La CI sulla head finale non l'ho letta.
 
-Non ci sono riserve nuove. Restano aperte R-669-1-M2 (BASSA: errore di rete non intercettato in `_conferma`, la traccia va su stderr invece che in gas_debug.log) e R-669-2-M2 (COSMETICA: «Ehi ehi Jarvis» va al cervello).
+Non ci sono riserve nuove. Restano aperte R-669-1-M2 (BASSA) e R-669-2-M2 (COSMETICA).
 
-**Memoria del revisore**
-Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#670-M2 — 2026-11-05 — APPROVATO — … Nessuna lezione nuova.» e l'ho messa nello stage con `git add`. Non ho committato e non ho usato lo script `commit_memoria_revisore.sh`, perché il merge è in corso.
+Non ho toccato né la memoria né lo stage.
 
 ## §5 DELTA TEST DEL MOTORE
 
@@ -131,7 +138,7 @@ Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga 
 `gh` non autenticato nel cloud: check lette con l'integrazione GitHub.
 - 47d7a5b, 882346f: nessuna run su questi SHA da soli (pushati insieme a 0404a56).
 - 0404a56 (testa del push precedente): handoff-check success, unit-suite completata senza fallimenti (evento check_suite.completed), verifica-bot cancelled (output del verdetto scartato da GitHub: parola uguale a un secret).
-- ee7dc7c e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
+- ee7dc7c, 8971b77 (non pushato da solo: il gate B l'aveva fermato) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
