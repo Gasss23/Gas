@@ -647,7 +647,8 @@ class TestVoiceHandlerRouting:
         che comincia con la parola di attivazione va al cervello come prima."""
         wav = _fake_wav()
         hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
-        for detto in ("Hey Jarvis!", "hey, jarvis.", "Jarvis", "Ehi Gas", "  Gus?  ", "Ok Gas..."):
+        for detto in ("Hey Jarvis!", "hey, jarvis.", "Jarvis", "Ehi Gas", "  Gus?  ", "Ciao Gas...",
+                      "Hey Jarvis, Hey Jarvis!", "Jarvis Jarvis", "Gas, gas."):  # V14: ripetuta (R-668-2-M2)
             self.kernel.kw = "NESSUN TURNO"
             with patch("modules.voice.server.transcribe_audio", return_value=detto):
                 with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
@@ -657,7 +658,8 @@ class TestVoiceHandlerRouting:
             assert status == 200 and resp["attivazione"] is True, detto
             assert resp["content"] == "Dimmi." and resp["capito"] == detto
             assert self.kernel.kw == "NESSUN TURNO", detto
-        for detto in ("Hey Jarvis, che ore sono?", "Gas, ciao", "Jarvis Gas", "gasolio"):
+        for detto in ("Hey Jarvis, che ore sono?", "Gas, ciao", "gasolio", "Ok Gas.", "Okay, Jarvis",
+                      "Hey Jarvis, Hey Jarvis, accendi"):  # V14: «ok» è una conferma (V-1 bot #334)
             self.kernel.kw = "NESSUN TURNO"
             with patch("modules.voice.server.transcribe_audio", return_value=detto):
                 with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
