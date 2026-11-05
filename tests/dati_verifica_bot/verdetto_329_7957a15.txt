@@ -1,0 +1,42 @@
+VERIFICA ESTERNA #329 — APPROVATO CON RISERVE
+Metodo: sola lettura al commit 7957a15afa6c325b6ef224fe29edeb1436d2c2e4, nella cartella ./pr. Ho letto il diff completo con gh pr diff 329: 10 file, base 805c272, che è l'attuale main e comprende la PR #330. Ho letto la PR con gh pr view 329 (10 commit, head 7957a15, MERGEABLE, stato BLOCKED per i check ancora in corso) e i check con gh pr checks 329 e gh run view 41676470398, letti più volte. Ho letto anche i commenti della PR: i due verdetti del bot e la verifica esterna su 3b92254. Ho confrontato il codice con gas._carica_dotenv (gas.py:604-669) e con modules/voice/server.py: formati alle righe 109-129, frasi_voce a 178-199, smistamento a 458-494, _do_audio_testo_response e _do_pezzi_response a 496-576, HTTPServer a 878. Vincolo di questo ambiente: nessun codice della PR eseguito (niente test, sonde, mutanti). Le prove sono letture del codice.
+
+CLAIM VERIFICATI:
+- §2 dell'handoff (diff --stat), confrontato con gh: VERO. ascolto.py 163+33=196, installa.sh 68+11=79, test 361+8=369, LEGGIMI 8+6=14, ultimo_report 16+16=32, diff_sessione 11+7=18, stato_progetto 3+2=5, roadmap 2, memoria 5+0. La base 805c272 dichiarata è l'head di main.
+- §3 (git log): VERO. 9 commit, da 04d365c a 17d8def, più l'head 7957a15, che il log esclude per costruzione.
+- Il merge di main con la PR #330 (d32d326) non tocca i file di main: VERO. Il diff contro l'attuale main non contiene nessun file di modules/, gas.py o della CI, quindi sono identici a main. Restano solo i 10 file della PR.
+- Il contratto col server di main (#330) è compatibile: VERO da lettura.
+  - Con X-Gas-Formato «audio+pezzi» la richiesta passa da _vuole_righe_senza_schermo (server.py:492) e poi da _do_pezzi_response(frasi_voce): NDJSON con Content-Type application/x-ndjson, che il client legge con _frasi_ndjson.
+  - Senza chiave ElevenLabs o con testo vuoto il server risponde 200 in JSON senza audio. Il client lo tratta come «senza voce» e suona il bip d'errore; prima della PR lo stesso caso dava un 503 e lo stesso bip.
+  - Con errore_voce sulla prima riga non suona niente: bip. Una riga con «fine» chiude il flusso. Una frase di 1500 caratteri al massimo resta sotto RIGA_MAX (8 MB).
+- LEGGIMI («una frase alla volta», riga GAS_ASCOLTO_FORMATO): ora VERO, perché la #330 è in main. La riserva bot V-2 = ve V-2 è chiusa, come dichiara stato_progetto.
+- valore_env equivale a gas._carica_dotenv per l'uso reale: VERO da lettura riga per riga.
+  - Regole uguali: vale la prima riga; il BOM conta solo sulla prima riga; spazi tolti; «export » ammesso; chiave cercata confrontata dopo la partizione al primo «=».
+  - Virgolette: la chiusura dev'essere seguita dalla fine della riga o da \s+#, che equivale al fullmatch con .*? non goloso. Le virgolette non chiuse fanno ignorare la riga senza segnarla come vista.
+  - Senza virgolette il taglio avviene alla prima sequenza «spazi + #», come re.split. Le differenze con spazi Unicode sono già registrate (ve V-6).
+- Token che comincia con # → STOP; GAS_CLAUDE_BIN vuoto, con # o non assoluto → AVVISO; R-625-2 → AVVISO; PORTA e GAS_VOICE_URL letti con valore_env; token mai stampato e poi unset: VERO (installa.sh:77-115, 188-190, 207).
+- turno(): chiude l'iterabile nel finally (GeneratorExit e poi r.close), svuota il microfono, e con zero pezzi suonati dà il bip d'errore e False: VERO (ascolto.py, turno).
+- Riserve dichiarate REGISTRATE: VERO. stato_progetto.md:661 riporta R-632-1/2/3, R-634-1/2/3, le riserve del bot su 3b92254 e su fc1cab7 e quelle della ve V-1…V-8, ciascuna con la sua gravità.
+- Il server ha un solo thread (server.py:59, 878: HTTPServer senza ThreadingMixIn): VERO. Con la #330 in main il caso della riserva bot V-1 su fc1cab7 è ora attivo: il server resta occupato per tutta la riproduzione. La riserva è registrata come BASSA; la gravità mi sembra giusta per un uso con un solo operatore.
+
+FINDING:
+V-1 (BASSA) — Handoff §0.1: il «Sì dell'operatore (via M1, 3 novembre)», con l'agente che dice di mergiare da solo con la CI verde, non si può provare dal repo né dalla PR. È arrivato da un'altra chat ed è stato dato prima dell'head 7957a15, prima delle riserve della review #634 (R-634-1 e R-634-3, BASSE) e prima di questa verifica. Con verifica-bot neutral e un verdetto con riserve, CLAUDE.md lascia il merge all'operatore. Fix: conferma esplicita dell'operatore in sessione sull'head 7957a15, dopo aver letto i verdetti.
+V-2 (COSMETICA) — ascolto.py, _frasi_ndjson: readline(RIGA_MAX + 1) seguito da len(riga) > RIGA_MAX conta anche il carattere di a capo. Una riga di esattamente RIGA_MAX byte più l'a capo viene rifiutata. È irrilevante in pratica: circa 2 MB al massimo contro un limite di 8 MB. Fix: confrontare la lunghezza senza l'a capo, oppure dirlo nel commento.
+V-3 (COSMETICA) — ascolto.py, _frasi_ndjson: «voce interrotta dal server a metà risposta» finisce nel log anche quando l'errore_voce arriva sulla prima riga e non è stato suonato niente. Si sovrappone in parte a R-634-2. Fix: distinguere nel messaggio il caso «nessuna frase suonata».
+
+Riserve già registrate, nate da questa PR e non ripetute come finding:
+- R-632-1 (BASSA), R-632-2 (BASSA), R-632-3 (COSMETICA).
+- R-634-1 (BASSA): troncamento senza bip, ora attivo con la #330.
+- R-634-2 (COSMETICA), R-634-3 (BASSA).
+- Bot su fc1cab7: V-1 (BASSA, server a un solo thread).
+- Verifica esterna su 3b92254: V-1, V-3, V-4, V-5 (BASSE); V-6 e V-7 (COSMETICHE).
+Riserve preesistenti: R-615-4 (MEDIA, preesistente), R-615-5 (BASSA, preesistente).
+
+NON VERIFICATO:
+- Esito di unit-suite sull'head 7957a15: era ancora in corso a ogni lettura (run 41676470398, job 126058330499, partito alle 16:39:46 UTC; ultima lettura alle 16:44 UTC). Anche il check verifica (run 41676477005) era pending. Sono verdi solo handoff-check e smista. Quindi non ho verificato i «149 test» del file dell'ascolto né i «333 passed» della suite voce su questo commit. Su fc1cab7, con lo stesso codice della PR, unit-suite era success (run 41554765112).
+- Test, mutanti, fuzz e la prova dal vero «5 frasi, la prima a 0,3 s» sull'albero unito: non rieseguibili in questo ambiente. La prova è dichiarata dall'agente.
+- Il «sì» dell'operatore passato da M1 (V-1): non ce n'è traccia nel repo né nella PR.
+- Ruleset di main via API: non interrogato. Per i check required mi baso su CLAUDE.md: unit-suite, handoff-check, verifica-bot.
+- Bash 3.2 del Mac, launchctl, afplay e microfono veri.
+
+RACCOMANDAZIONE: non mergiare prima che unit-suite sia verde sull'head 7957a15. Prima del merge serve la conferma esplicita dell'operatore in sessione su questo head (V-1): il verdetto ha riserve e verifica-bot è neutral, quindi niente merge autonomo. Nella fetta successiva: righe NDJSON lette in un thread o ThreadingHTTPServer (bot V-1 su fc1cab7), bip sul troncamento (R-634-1), lista bianca di GAS_ASCOLTO_FORMATO (ve V-4), un test di integrazione tra il server vero e ascolto.py (R-634-3). Nessun finding bloccante.
