@@ -88,3 +88,7 @@
   - c) NO alla cronologia separata: voce, Telegram e il resto sono UNA sola Gas. Le risposte fuori tema si curano in un altro modo (dentro la proposta di M2).
 - **PR in corso**: #334 (M2, V13: ora nel prompt, voce più corta, niente «sì o no?», «Hey Jarvis» da solo → «Dimmi.»); #333 (Mani, soglia della voce 200). Entrambe col revisore APPROVATO CON RISERVE BASSE, in attesa del bot.
 - **Sul Mac (.env)**: `GAS_ASCOLTO_VOCE_RMS=200`; `GAS_ASCOLTO_SOGLIA=0.35` consigliato all'operatore (da confermare che l'abbia aggiunto).
+- **5 nov, sera**: mergiate #334 (7bdaa8f), #333 (830c5bf, Mani) e #336 (942e665, interruzione con la parola di attivazione). L'operatore ha detto sì a: #335, fetta bot, proposta voce rapida 1+2+3.
+  - Ordine dato a M2: (0) bot, cioè il parser di `bot_esito.py` che vede MEDIA inesistenti e il verdetto mascherato da un secret, che rende la #335 «cancelled»; poi M2 mergia la #335; (1) C1; (2) profilo voce in run_turn; (3) compiti lunghi in sottofondo, dopo la prova sul Mac.
+  - Mani: fetta 42 («Sì, signore?» lato client) dopo il merge della #335.
+  - All'operatore è chiesto di controllare i secret del repo: uno potrebbe contenere una parola comune invece della chiave vera.
