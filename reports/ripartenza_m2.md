@@ -9,9 +9,12 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - `gas.py`: non toccarlo (salvo righe del doctor autorizzate).
 
 ## In corso
-- **PR #332 — V12** (branch `feat/voce-v12-m2`): le richieste a testo che chiedono la risposta a voce contano nel tetto orario `GAS_VOICE_MAX_TURNI_ORA` (decisione dell'operatore su R-663-1-M2); chiuse R-660-1/2-M2 e cosmetiche dei bot #330/#331. Revisore #665-M2 (3 BASSE chiuse) e #666-M2 APPROVATO. Etichetta `verifica` messa, verifica esterna lanciata. **Da fare**: leggere verdetto del bot e della verifica esterna (commento sulla PR), riportarli a M1; registrare le BASSE senza giro; merge solo col sì dell'operatore via M1 (o da solo se il bot dà APPROVATO pulito, CLAUDE.md §10).
+- **PR #334 — V13** (branch `feat/voce-v12-m2`, ripartito da main dopo il merge della #332): ora locale nel turno parlato, risposte a voce «mai più di due frasi». Review #667-M2 APPROVATO CON RISERVE. **Da fare**: verdetto del bot e verifica esterna → a M1 (numero, esito, riserve); merge solo con APPROVATO pulito o col sì dell'operatore via M1.
+- Caso «Stefano» (a «che ore sono» Gas ha parlato del contatto Stefano): da controllare sul Mac nella storia (`.gas_history.json`, messaggio utente prima della risposta) — trascrizione o cervello.
 
 ## Riserve aperte (voce)
+- R-667-1-M2 BASSA (test dell'ora cieco con TZ=UTC), R-667-2-M2 BASSA (fuso configurabile per il VPS), R-667-3-M2 COSMETICA (datetime naive).
+- Bot #332: V-1 BASSA (posto nel tetto del testo consumato se il turno fallisce), V-2 COSMETICA (commenti V12, 429 «o scrivi»).
 - V-1 BASSA verifica esterna #330 su 956a00a: nessun tetto al numero di frasi lette (resta entro 1500 caratteri). Deferita.
 - Nota bassa del revisore #666-M2: se il kernel fallisce, il posto nel tetto del testo resta consumato.
 - ThreadingHTTPServer (riserva bot #329): valutato, sconsigliato ora (kernel unico con storia condivisa, tetti senza lock); servirebbe una fetta con lock e test di concorrenza.
@@ -22,7 +25,7 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 
 ## Regole che seguo
 - Un branch per fetta da `origin/main`; mai push su main.
-- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #666-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
+- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #667-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
 - Fine fetta: /fine-task (ultimo_report, handoff con verdetti INTEGRALI, diff_sessione, stato_progetto) → commit → `bash scripts/fine_task_finale.sh`; etichetta `verifica` sulla PR; verifica esterna con agente nuovo `general-purpose`, `model: sonnet`, prompt esatto «Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>» (URL_HANDOFF = raw del commit di testa).
 - `gh` nel cloud non è autenticato: PR, etichette e merge con gli strumenti GitHub MCP.
 - Riserve BASSE/COSMETICHE dei bot: si registrano, niente giri (regola di M1); si riapre solo per ALTA/MEDIA o se M1 lo chiede.
