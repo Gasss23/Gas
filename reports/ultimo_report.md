@@ -23,6 +23,11 @@
 - Bot: APPROVATO CON RISERVE (check neutral). Riserve: 2 BASSE e 1 COSMETICA. Tra le basse: riprendi.sh dice «RIPRESO» senza controllare che il processo giri davvero.
 - Tutte registrate in stato_progetto, nel blocco della fetta 43.
 
+## Merge di main e merge della PR
+
+- Sì dell'operatore alla #338 (via M1). Main era andata avanti con la PR #335 di M2 (V14 e macchina del bot): merge di main in babb272, con conflitti solo nei report. Review #674 APPROVATO; il revisore ha fatto girare 1025 test sulle suite voce e bot, tutti passati.
+- Bot su 3eff993: APPROVATO CON RISERVE (neutral). R-673-3 è rialzata a BASSA; c'è anche una COSMETICA. Entrambe registrate.
+
 ## Anomalie
 
 - Nel riepilogo all'operatore avevo indicato `gas_debug.log` per gli eventi dell'ascolto. Il file giusto è `.gas_voce/ascolto.log` (correzione di M1), e l'ho già corretto nel riepilogo.
