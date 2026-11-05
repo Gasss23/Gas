@@ -648,7 +648,8 @@ class TestVoiceHandlerRouting:
         wav = _fake_wav()
         hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
         for detto in ("Hey Jarvis!", "hey, jarvis.", "Jarvis", "Ehi Gas", "  Gus?  ", "Ciao Gas...",
-                      "Hey Jarvis, Hey Jarvis!", "Jarvis Jarvis", "Gas, gas."):  # V14: ripetuta (R-668-2-M2)
+                      "Hey Jarvis, Hey Jarvis!", "Jarvis Jarvis", "Gas, gas.",
+                      "Jarvis Gas"):  # V15 (V-1 bot #335): due nomi di fila, voluto  # V14: ripetuta (R-668-2-M2)
             self.kernel.kw = "NESSUN TURNO"
             with patch("modules.voice.server.transcribe_audio", return_value=detto):
                 with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
@@ -668,6 +669,114 @@ class TestVoiceHandlerRouting:
                     status, resp = _post_raw(self.port, wav, hdrs)
             assert status == 200 and "attivazione" not in resp, detto
             assert self.kernel.kw != "NESSUN TURNO", detto
+
+    def test_v15_pausa_nessun_turno_e_comando(self):
+        """V15 (contratto dell'operatore via M1): «pausa»/«standby»/«basta così», anche dopo la
+        parola di attivazione, → «Va bene.» con X-Gas-Comando: pausa, senza turno;
+        frasi che contengono «pausa» ma chiedono altro vanno al cervello, senza comando."""
+        import http.client
+        from modules.voice.server import RISPOSTA_PAUSA
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+
+        def chiedi(detto):
+            self.kernel.kw = "NESSUN TURNO"
+            with patch("modules.voice.server.transcribe_audio", return_value=detto):
+                with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                    os.environ.pop("ELEVENLABS_API_KEY", None)
+                    os.environ.pop("GAS_VOCE_FORTE", None)
+                    c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                    c.request("POST", "/voice", body=wav, headers=hdrs)
+                    r = c.getresponse()
+                    corpo = json.loads(r.read())
+                    comando = r.getheader("X-Gas-Comando")
+                    c.close()
+            return r.status, corpo, comando
+
+        for detto in ("Pausa.", "pausa", "Standby!", "stand by", "Stand-by.", "Jarvis, pausa",
+                      "Hey Jarvis, standby", "Ehi Gas pausa.", "Jarvis Jarvis, pausa",
+                      "Basta così.", "basta cosi", "Basta!", "Jarvis, basta così"):
+            status, corpo, comando = chiedi(detto)
+            assert status == 200 and comando == "pausa", detto
+            assert corpo["content"] == RISPOSTA_PAUSA and corpo["pausa"] is True, detto
+            assert self.kernel.kw == "NESSUN TURNO", detto
+        for detto in ("Facciamo una pausa di dieci minuti", "pausa caffè", "metti in pausa la musica",
+                      "Jarvis", "Gas, che ore sono?", "basta con questa storia",
+                      "basta così poco per cambiare"):
+            status, corpo, comando = chiedi(detto)
+            assert status == 200 and comando is None and "pausa" not in corpo, detto
+        # dopo una pausa la richiesta successiva non porta più il comando (stato per richiesta)
+        assert chiedi("Pausa")[2] == "pausa" and chiedi("Gas, ciao")[2] is None
+        # il client H24 (formato audio+pezzi) riceve lo stesso comando
+        hdrs["X-Gas-Formato"] = "audio+pezzi"
+        status, corpo, comando = chiedi("Jarvis, standby")
+        assert status == 200 and comando == "pausa" and corpo["pausa"] is True
+
+    def _seguito(self, risposta: str, seguito: bool = True, formato: str = "audio+pezzi"):
+        import http.client
+        self.kernel._events = [{"type": "final", "content": risposta}]
+        self.kernel.kw = "NESSUN TURNO"
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": formato}
+        if seguito:
+            hdrs["X-Gas-Seguito"] = "1"
+        with patch("modules.voice.server.transcribe_audio", return_value="e poi gli ho detto di no"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                c.request("POST", "/voice", body=wav, headers=hdrs)
+                r = c.getresponse()
+                corpo = json.loads(r.read())
+                comando = r.getheader("X-Gas-Comando")
+                c.close()
+        return r.status, corpo, comando
+
+    def test_v15_seguito_non_per_me_chiude_senza_voce(self):
+        """V15: turno di seguito (X-Gas-Seguito: 1) che il cervello giudica non rivolto a Gas:
+        nessun testo né voce al client, X-Gas-Comando: fine; l'istruzione del turno chiede la
+        decisione."""
+        from modules.voice.server import ISTRUZIONE_SEGUITO, SEGNO_NON_PER_ME
+        for risposta in (SEGNO_NON_PER_ME, f" {SEGNO_NON_PER_ME}\n", f"«{SEGNO_NON_PER_ME}»",
+                         "NON_PER_ME", "Non per me."):  # R-675-3-M2
+            status, corpo, comando = self._seguito(risposta)
+            assert status == 200 and comando == "fine" and corpo["fine"] is True
+            assert corpo["content"] == "" and "audio" not in corpo and "capito" not in corpo
+            assert ISTRUZIONE_SEGUITO in self.kernel.kw["istruzione_turno"]
+            assert self.kernel.kw["cervello"] == "forte"  # R-675-1-M2: mai ai gratuiti
+
+    def test_v15_seguito_rivolto_a_gas_risponde_normalmente(self):
+        from modules.voice.server import ISTRUZIONE_SEGUITO
+        status, corpo, comando = self._seguito("Certo, ci penso io.")
+        assert status == 200 and comando is None and corpo["content"] == "Certo, ci penso io."
+        frase = "Non per me è un problema, lo faccio subito."  # contiene le parole, non è il segno
+        status, corpo, comando = self._seguito(frase)
+        assert comando is None and corpo["content"] == frase
+        assert ISTRUZIONE_SEGUITO in self.kernel.kw["istruzione_turno"]
+
+    def test_v15_senza_seguito_nessuna_decisione(self):
+        """Senza l'intestazione l'istruzione non cambia e il segno non chiude nulla."""
+        from modules.voice.server import ISTRUZIONE_SEGUITO, SEGNO_NON_PER_ME
+        status, corpo, comando = self._seguito(SEGNO_NON_PER_ME, seguito=False)
+        assert comando is None and ISTRUZIONE_SEGUITO not in self.kernel.kw["istruzione_turno"]
+        assert "cervello" not in self.kernel.kw  # senza seguito: regola di sempre
+
+    def test_v15_seguito_a_testo_ignorato(self):
+        """A TESTO l'intestazione non conta: nessuna istruzione, nessun «fine»."""
+        from modules.voice.server import SEGNO_NON_PER_ME
+        self.kernel._events = [{"type": "final", "content": SEGNO_NON_PER_ME}]
+        body = json.dumps({"prompt": "ciao"}).encode()
+        status, resp = _post_raw(self.port, body, {**_AUTH, "Content-Type": "application/json",
+                                                  "X-Gas-Seguito": "1"})
+        assert status == 200 and "fine" not in resp and self.kernel.kw == {}
+
+    def test_v15_pausa_solo_dal_parlato(self):
+        """V15: a TESTO «pausa» è una richiesta normale (il comando vale solo per la voce)."""
+        self.kernel.kw = "NESSUN TURNO"
+        body = json.dumps({"prompt": "pausa"}).encode()
+        status, resp = _post_raw(self.port, body, {**_AUTH, "Content-Type": "application/json"})
+        assert status == 200 and "pausa" not in resp and self.kernel.kw == {}
 
     def test_v13_attivazione_solo_dal_parlato(self):
         """V13: a TESTO «Hey Jarvis» resta una richiesta normale (il filtro vale per il parlato)."""

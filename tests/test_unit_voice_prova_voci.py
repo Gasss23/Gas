@@ -152,6 +152,7 @@ def server():
     _H.libreria_ammesse = {}
     _H.aggiunte_voci = []
     _H.conferma_cache = None  # V14: cache di «Sì, signore?» per test
+    _H.conferma_errore = None  # V15: fallimento recente della conferma
     server.classe = _H   # i test che cambiano tetti e liste toccano questa classe
     srv = HTTPServer(("127.0.0.1", 0), _H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -695,7 +696,7 @@ def test_v14_conferma_una_sintesi_per_voce(server, monkeypatch):
     monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
     monkeypatch.setenv("ELEVENLABS_VOICE_ID", "Brian000000000001")
     with patch("modules.voice.server.synthesize_speech",
-               side_effect=lambda frase, k, voce: f"mp3:{voce}".encode()) as tts:
+               side_effect=lambda frase, k, voce, **kw: f"mp3:{voce}".encode()) as tts:
         for _ in range(3):
             st, ct, corpo = _chiama(server, "GET", "/voce/conferma")
             assert st == 200 and ct == "audio/mpeg" and corpo == b"mp3:Brian000000000001"
@@ -719,11 +720,40 @@ def test_v14_conferma_errori_puliti_senza_cache(server, monkeypatch):
         st, ct, corpo = _chiama(server, "GET", "/voce/conferma")
     assert st == 503 and "ELEVENLABS_API_KEY" in json.loads(corpo)["error"] and tts.call_count == 0
     monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
-    for errore in (ElevenLabsTTSError(429, "quota"), OSError("rete"), None):
+    import http.client
+    for errore in (ElevenLabsTTSError(429, "quota"), OSError("rete"),
+                   http.client.IncompleteRead(b"x"), None):  # V15: anche HTTPException (R-669-1)
+        globals()["server"].classe.conferma_errore = None  # V15: un errore alla volta
         kw = {"side_effect": errore} if errore is not None else {"return_value": b""}
         with patch("modules.voice.server.synthesize_speech", **kw):
             st, ct, corpo = _chiama(server, "GET", "/voce/conferma")
         assert st == 502 and ct.startswith("application/json") and "error" in json.loads(corpo)
         assert globals()["server"].classe.conferma_cache is None
+    globals()["server"].classe.conferma_errore = None
     with patch("modules.voice.server.synthesize_speech", return_value=b"ok") as tts:
         assert _chiama(server, "GET", "/voce/conferma")[2] == b"ok" and tts.call_count == 1
+
+
+def test_v15_conferma_errore_recente_non_richiama_elevenlabs(server, monkeypatch):
+    """V15 (V-2 bot #335): dopo un fallimento, per CONFERMA_PAUSA_ERRORE_S la conferma dà 502
+    subito senza richiamare ElevenLabs (server a un thread); poi riprova. Timeout corto."""
+    import modules.voice.server as srv
+    from modules.voice.tts import ElevenLabsTTSError
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    monkeypatch.setenv("ELEVENLABS_VOICE_ID", "Brian000000000001")
+    adesso = [1000.0]
+    monkeypatch.setattr(srv.time, "monotonic", lambda: adesso[0])
+    with patch("modules.voice.server.synthesize_speech",
+               side_effect=ElevenLabsTTSError(503, "giù")) as tts:
+        for _ in range(3):
+            assert _chiama(server, "GET", "/voce/conferma")[0] == 502
+        assert tts.call_count == 1
+        assert tts.call_args.kwargs["timeout"] == srv.CONFERMA_TIMEOUT_S < 30
+        adesso[0] += srv.CONFERMA_PAUSA_ERRORE_S + 1
+        assert _chiama(server, "GET", "/voce/conferma")[0] == 502
+        assert tts.call_count == 2
+    # una voce diversa non è bloccata dall'errore della voce precedente
+    monkeypatch.setenv("ELEVENLABS_VOICE_ID", "George00000000001")
+    with patch("modules.voice.server.synthesize_speech", return_value=b"ok") as tts:
+        assert _chiama(server, "GET", "/voce/conferma")[2] == b"ok" and tts.call_count == 1
+    assert globals()["server"].classe.conferma_errore is None
