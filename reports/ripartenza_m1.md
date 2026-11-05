@@ -92,3 +92,9 @@
   - Ordine dato a M2: (0) bot, cioè il parser di `bot_esito.py` che vede MEDIA inesistenti e il verdetto mascherato da un secret, che rende la #335 «cancelled»; poi M2 mergia la #335; (1) C1; (2) profilo voce in run_turn; (3) compiti lunghi in sottofondo, dopo la prova sul Mac.
   - Mani: fetta 42 («Sì, signore?» lato client) dopo il merge della #335.
   - All'operatore è chiesto di controllare i secret del repo: uno potrebbe contenere una parola comune invece della chiave vera.
+- **5 nov, notte**: mergiate #337 (bot riparato, 3eab4aa) e #335 («Sì, signore?» lato server, 2bb05b0). Sì dell'operatore alla #338 (pausa.sh e riprendi.sh, Mani). La 42 (lato client) esce dopo la #338.
+  - **Risposte per sbaglio**: dal log delle 22:32, dopo un'attivazione la finestra ha mandato al server 4 registrazioni di fila da 30 s di conversazione della stanza.
+  - **Decisione dell'operatore**: sempre in ascolto. «Pausa» a voce chiude la conversazione e «Hey Jarvis» lo risveglia; lo standby profondo esiste solo con pausa.sh. La conversazione si chiude da sola dopo 40 s di silenzio.
+  - **Difese contro le risposte per sbaglio**: registrazione di seguito al tetto → scartata; tetto di seguito più corto; header X-Gas-Seguito, con cui il cervello decide se il parlato è rivolto a Gas e, se no, il server risponde X-Gas-Comando: fine. Lato client Mani, lato server M2.
+  - **Voce**: l'operatore vorrebbe quella vera del JARVIS dei film. NO, è un clone di un attore reale (regola già decisa). Proposta: scegliere sulla pagina /voci una voce maschile inglese, calma, da maggiordomo.
+  - **Parola «Jarvis» da sola**: serve un modello addestrato da noi, insieme a «Hey Gas» (fetta futura).
