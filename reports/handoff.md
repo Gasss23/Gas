@@ -15,6 +15,7 @@
 
 - **Fetta 3 — compiti lunghi in sottofondo**: `FATTA` — strumento `in_sottofondo` offerto solo a voce (scelto dal modello), processo separato `gas.py sottofondo <id>` col suo kernel, solo cervello forte (tetto incluso), avviso Telegram finale, un compito alla volta, coda privata `.gas_sottofondo/`. Review #695-M2 (MEDIA R-695-1 chiusa con le BASSE), #696-M2 APPROVATO CON RISERVE (R-696-1/2-M2 BASSE).
 - **Correzioni dopo bot e verifica esterna sulla PR #345** (commit c19e9df): `FATTE` — bot V-1 MEDIA (avviso promesso anche quando Telegram non può avvisare → diniego con `notifica_possibile`) e V-2..V-4, verifica esterna V-1/V-2, R-696-2 (eccezione nel figlio → avviso), R-697-1 MEDIA (posto `attivo.json` vuoto/illeggibile → presa atomica tmp+`os.link`, posto vecchio ripulito), R-697-2/3, R-698-1 (killpg solo se il processo è davvero nostro, `_e_nostro`). Review #697-M2 APPROVATO CON RISERVE, #698-M2 BOCCIATO (chiusa), #699-M2 APPROVATO CON RISERVE (R-699-1/2-M2 BASSE).
+- **CI rossa su e323b60** (`test_e_nostro_riconosce_il_figlio`): `CORRETTA` in b865195 — `ps -o command=` troncava la riga a COLUMNS con il percorso lungo dell'interprete del runner; ora `ps -ww`. Riprodotta in locale con COLUMNS=20 (1 failed) e verde dopo (34 passed). Review #700-M2 APPROVATO.
 - **Lettura a voce dei compiti finiti alla prossima attivazione** (fetta 3.2 della proposta): `DEFERITA — prossima fetta`.
 - **Passaggio automatico oltre N giri** (fetta 3.3): `DEFERITA — opzionale`.
 
@@ -23,19 +24,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 ++
+ .claude/agents/memoria_revisore.md |  14 ++
  .github/workflows/ci.yml           |   7 +
  .gitignore                         |   1 +
  gas.py                             |  67 +++++++
  modules/gate/gate.py               |   3 +
- modules/sottofondo/__init__.py     | 334 ++++++++++++++++++++++++++++++++++
+ modules/sottofondo/__init__.py     | 336 +++++++++++++++++++++++++++++++++
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_kernel.py          | 120 +++++++++++++
- tests/test_unit_sottofondo.py      | 359 +++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          | 120 ++++++++++++
+ tests/test_unit_sottofondo.py      | 374 +++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 44dbe2d (merge della #344).
@@ -43,6 +44,9 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b865195 fix(sottofondo): ps -ww in _e_nostro — la riga troncata a COLUMNS non riconosceva il figlio (CI #345 rossa)
+1f301f1 chore(revisore): memoria review #700 — APPROVATO
+e323b60 docs(voce): report di fine task — correzioni fetta 3 sottofondo dopo bot e verifica esterna (PR #345, chat M2)
 c19e9df fix(sottofondo): chiude bot #345 V-1..V-4, verifica esterna V-1/V-2, R-696-2, R-697-1/2/3, R-698-1
 581e645 chore(revisore): memoria review #699 — APPROVATO CON RISERVE
 bee724e chore(revisore): memoria review #698 — BOCCIATO
@@ -247,13 +251,40 @@ Ho letto prima: CLAUDE.md (sezioni 5, 8, 9), le righe di reports/stato_progetto.
 
 Sonde nello scratchpad: /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/sonda698.py e /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/sonda699.py
 
+Review #700-M2 sul commit b865195 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #700-M2: diff staged su feat/voce-v12-m2, PR #345, base e323b60. 2 file, +19/−2. SHA-256 del diff staged: f49db071a122078e125910424e4bedad5f3f95327c74c6dda45673f1e0a13cd7.
+
+Ho letto CLAUDE.md, la riga sul sottofondo in `reports/stato_progetto.md` (riga 615) e la coda di `.claude/agents/memoria_revisore.md`.
+
+**Elementi del diff esaminati**
+- `modules/sottofondo/__init__.py:151` — il controllo che il processo sia nostro ora chiama `ps -ww -o command= -p <pid>`. Rischio esaminato: la riga troncata a COLUMNS fa fallire `endswith("sottofondo <id>")`, e la correzione deve funzionare anche su macOS. Esito: **ok**. `-ww` (larghezza senza limite) è valido su procps (Linux) e su ps BSD (macOS); provato qui con `ps -ww -o command= -p $$`, rc=0, riga intera. Se un ps minimale (busybox) non conosce l'opzione, esce con errore: returncode≠0 porta a False. Resta il caso già noto R-699-2-M2 (figlio non fermato, scelta prudente), nessun rischio nuovo di fermare un processo estraneo.
+- `modules/sottofondo/__init__.py:142` — docstring aggiornata col motivo (CI #345). Logica invariata: pid int>1, leader del gruppo, nel dubbio False. Esito: **ok**.
+- `tests/test_unit_sottofondo.py:362` — nuovo test `test_e_nostro_con_colonne_strette`. Imposta COLUMNS=20 con monkeypatch (riga 366); la variabile passa a `ps` perché `subprocess.run` eredita `os.environ`. Rischio esaminato: un test che non cattura la regressione. Esito: **ok**. Mutante fatto in un worktree separato (sorgente a HEAD senza `-ww` + test nuovo): **1 failed, 33 passed**, fallisce proprio questo test. Con la correzione: 34 passed, e 34 passed anche con `COLUMNS=20` su tutta la suite.
+- Coerenza col progetto: correzione minima, va verso «robustezza > potenza» (il figlio vero oltre la durata ora viene fermato). Non tocca il cap di 10 iterazioni né `_get_window`; nessuno slicing della history, nessun output di tool simulato.
+
+**Rischi esplicitamente esclusi**
+- Non ho eseguito `ps -ww` su un macOS reale. La portabilità viene dalla sintassi documentata di ps BSD («-w twice = unlimited»), non da una prova sul Mac.
+- Non ho rilanciato la CI del runner GitHub: in locale ho riprodotto la troncatura con COLUMNS=20.
+- Non ho rilanciato la suite kernel completa: il diff tocca solo `_e_nostro` e il suo file di test.
+
+**Incidente durante la review (da sapere)**: un mio `git stash` / `stash pop` ha tolto per un momento lo staging ai 2 file. L'ho ripristinato subito con `git add` degli stessi file. Il diff staged è identico (stessa stat +19/−2, stesso SHA-256 f49db071… prima e dopo il commit della memoria) e nel worktree non restano modifiche non staged. Prima di `bash scripts/segna_review_ok.sh` controlla `git diff --cached --stat`.
+
+**Memoria**: aggiunta la riga contatore `#700-M2 — 2026-11-06 — APPROVATO — …` e 2 lezioni: la larghezza di `ps` dipende da COLUMNS, e mai `git stash` nel worktree sotto review. Committata con `scripts/commit_memoria_revisore.sh` in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+
+File rilevanti:
+- `/home/user/Gas/modules/sottofondo/__init__.py`
+- `/home/user/Gas/tests/test_unit_sottofondo.py`
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_kernel.py` T105a-e (voce: in_sottofondo offerto e avviato — round-trip §7; testo negato; forte spento; firma; avvio fallito), T105f (avviso impossibile → diniego), T105g (finestra contaminata → serve la firma). Suite kernel `=== RIEPILOGO: 1096 PASS, 0 FAIL ===` (prima della fetta 1089). `tests/test_unit_sottofondo.py` (nella CI): 33 passed (coda, permessi, presa atomica del posto, posto vuoto vecchio/recente, durata massima, killpg solo se nostro, pid estraneo non fermato, eccezione → avviso, esito tardivo, comando vero). Prova dal vero: `gas.py sottofondo inesistente` → exit 1 con warning.
+`tests/test_unit_kernel.py` T105a-e (voce: in_sottofondo offerto e avviato — round-trip §7; testo negato; forte spento; firma; avvio fallito), T105f (avviso impossibile → diniego), T105g (finestra contaminata → serve la firma). Suite kernel `=== RIEPILOGO: 1096 PASS, 0 FAIL ===` (prima della fetta 1089). `tests/test_unit_sottofondo.py` (nella CI): 34 passed, anche con COLUMNS=20 (coda, permessi, presa atomica del posto, posto vuoto vecchio/recente, durata massima, killpg solo se nostro, pid estraneo non fermato, eccezione → avviso, esito tardivo, comando vero). Prova dal vero: `gas.py sottofondo inesistente` → exit 1 con warning.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Sulla head f3c3007 la CI (`unit-suite`, `handoff-check`) era verde; il bot aveva dato BOCCIATO (V-1 MEDIA, chiusa in c19e9df). I commit nuovi sono pushati insieme a questo report: run non ancora disponibile alla scrittura.
+`gh` non autenticato nel cloud. Su e323b60: handoff-check verde, unit-suite ROSSA per `test_e_nostro_riconosce_il_figlio` (troncatura di `ps`, corretta in b865195); bot APPROVATO CON RISERVE senza ALTA/MEDIA (verifica-bot neutral: la PR tocca la CI); verifica esterna APPROVATO CON RISERVE. I commit nuovi sono pushati insieme a questo report: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 
@@ -261,4 +292,5 @@ Sonde nello scratchpad: /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a
 - R-699-1-M2 BASSA: oltre la durata massima, se il processo non è nostro o killpg fallisce, l'avviso dice comunque «fermato» e non resta traccia nel log.
 - R-699-2-M2 BASSA: dove `ps` non c'è, un figlio nostro oltre la durata non viene fermato (resta in parallelo al compito nuovo).
 - Residui noti: l'ultimo avviso Telegram del giorno può essere consumato dal compito finito; il controllo `notifica_possibile` dentro la chiamata aggiunge un po' di latenza.
+- Bot su e323b60 (BASSE): V-1 avviso al crash del figlio solo alla richiesta successiva; V-2 il figlio può consumare l'ultimo avviso del giorno; V-3 manca prova con processi veri sulla storia condivisa; V-4 «creato» non numerico in attivo.json blocca la coda. Verifica esterna su e323b60 (BASSE): V-1 = R-699-1; V-2 posto vuoto recente → «ne sto già facendo uno» per ≤120 s; V-3 finestra di corsa nota.
 - Non verificato in dev: processo vero con `claude -p`, avviso Telegram vero.
