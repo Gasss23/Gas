@@ -11517,6 +11517,7 @@ try:
               not (Path(_k103.root) / "x103.txt").exists()
               and not any(e["type"] == "tool_res" for e in _ev103b)
               and [e["content"] for e in _ev103b if e["type"] == "final"] == [""]
+              and [e.get("strumento_negato") for e in _ev103b if e["type"] == "final"] == [True]
               and json.dumps(_k103.history, ensure_ascii=False) == _mem_prima,
               str(_ev103b)[:300])
 

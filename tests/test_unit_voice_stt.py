@@ -828,6 +828,27 @@ class TestVoiceHandlerRouting:
             self.server.RequestHandlerClass.kernel = self.kernel
         assert chiusi == [True] and status == 200 and corpo["content"] == "ok"
 
+    def test_v15_seguito_strumento_negato_chiede_la_parola(self):
+        """V15: se nel seguito il forte chiede uno strumento (negato dal turno effimero), Gas
+        non tace: dice di ripetere con la parola di attivazione; la conversazione resta."""
+        from modules.voice.server import RISPOSTA_SERVE_ATTIVAZIONE
+        self.kernel._events = [{"type": "final", "content": "", "strumento_negato": True}]
+        import http.client
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": "audio+pezzi", "X-Gas-Seguito": "1"}
+        with patch("modules.voice.server.transcribe_audio", return_value="salvalo come contatto"):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                c.request("POST", "/voice", body=wav, headers=hdrs)
+                r = c.getresponse()
+                corpo = json.loads(r.read())
+                comando = r.getheader("X-Gas-Comando")
+                c.close()
+        assert r.status == 200 and comando is None
+        assert corpo["content"] == RISPOSTA_SERVE_ATTIVAZIONE and corpo["serve_attivazione"] is True
+
     def test_v15_seguito_risposta_vuota_chiude(self):
         """V15: il turno effimero che ignora uno strumento finisce con risposta vuota: nel
         seguito la conversazione si chiude in silenzio (fine), niente voce."""

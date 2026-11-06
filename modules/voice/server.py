@@ -138,6 +138,9 @@ COMANDO_PAUSA = "pausa"
 # niente testo al client, «X-Gas-Comando: fine» (il client chiude la conversazione).
 SEGNO_NON_PER_ME = "[NON_PER_ME]"
 COMANDO_FINE = "fine"
+# V15 (V-1 bot #339, sì di M1): nel seguito il forte ha chiesto uno strumento (che non c'è):
+# invece di chiudere in silenzio Gas dice come ottenere l'azione.
+RISPOSTA_SERVE_ATTIVAZIONE = "Per farlo ripetimelo dicendo prima Hey Jarvis."
 # R-675-3-M2: anche le varianti senza parentesi o in minuscolo («NON_PER_ME», «non per me»),
 # ma solo se la risposta è SOLO il segno: «Non per me è un problema, …» resta una risposta.
 # V-2 ve #339: il segno esatto con le parentesi vale anche se il modello aggiunge altro dopo
@@ -561,6 +564,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         t_cervello: Optional[float] = None
         try:
             result_content: Optional[str] = None
+            strumento_negato = False  # V15: turno effimero che chiedeva uno strumento
             kw: Dict[str, Any] = {}
             if cervello == "forte":
                 kw["cervello"] = "forte"
@@ -582,6 +586,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
                     etype = event.get("type")
                     if etype == "final":
                         result_content = event.get("content", "")
+                        strumento_negato = bool(event.get("strumento_negato"))
                         self._segna("cervello", t_cervello)
                         break
                     elif etype == "error":
@@ -606,6 +611,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if t_cervello is not None:  # V-2 ve #322: turno finito senza final né error (V-3 bot: tipo)
                 self._segna("cervello", t_cervello)
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
+            return
+
+        if is_audio and self._seguito() and strumento_negato:
+            self._rispondi_senza_turno(RISPOSTA_SERVE_ATTIVAZIONE, "serve_attivazione")
             return
 
         if is_audio and self._seguito() and (_NON_PER_ME.search(result_content)

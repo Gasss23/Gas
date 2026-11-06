@@ -4933,7 +4933,9 @@ class GasKernel:
                             logging.warning("turno effimero: chiamata a strumento ignorata")
                             _turno_provider = name
                             _turno_final = True
-                            yield {"type": "final", "content": ""}
+                            # V15: chi chiama sa che serviva uno strumento (la voce chiede di
+                            # ripetere con la parola di attivazione invece di tacere)
+                            yield {"type": "final", "content": "", "strumento_negato": True}
                             return
                         if msg.tool_calls:
                             self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
