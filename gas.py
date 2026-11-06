@@ -4026,7 +4026,7 @@ class GasKernel:
                 (m.get("role") == "tool" and m.get("name") not in _TOOL_OUTPUT_FIDATO)
                 or (m.get("role") == "user"
                     and str(m.get("content") or "").startswith(_RIEPILOGO_COMPRESSIONE_PREFIX))
-                for m in self.history)
+                for m in self.history) or _ha_seguito_voce(self.history)  # V-1 bot e44c4b0
             # R-371-2: anche un pin non fidato visto in questa sessione, o mostrato
             # adesso, rende la riflessione non fidata (il recap non viene reiniettato).
             if not contaminata:
