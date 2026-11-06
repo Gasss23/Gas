@@ -740,13 +740,37 @@ class TestVoiceHandlerRouting:
         from modules.voice.server import ISTRUZIONE_SEGUITO, SEGNO_NON_PER_ME
         for risposta in (SEGNO_NON_PER_ME, f" {SEGNO_NON_PER_ME}\n", f"«{SEGNO_NON_PER_ME}»",
                          "NON_PER_ME", "Non per me.",  # R-675-3-M2
-                         "[NON_PER_ME] (parlato fra persone)", "«[non_per_me]» la TV"):  # V-2 ve #339
+                         "[NON_PER_ME] (parlato fra persone)", "«[non_per_me]» la TV",  # V-2 ve #339
+                         "Non è rivolto a me. [NON_PER_ME]", "La TV. «[non_per_me]».\n"):  # V-1 bot 312cd86
             status, corpo, comando = self._seguito(risposta)
             assert status == 200 and comando == "fine" and corpo["fine"] is True
             assert corpo["content"] == "" and "audio" not in corpo and "capito" not in corpo
             assert ISTRUZIONE_SEGUITO in self.kernel.kw["istruzione_turno"]
             assert self.kernel.kw["cervello"] == "forte"  # R-675-1-M2: mai ai gratuiti
             assert self.kernel.kw["effimero"] is True  # scelta A: niente storia, niente strumenti
+
+    def test_v15_seguito_pausa_senza_voce(self):
+        """V-2 bot #339 su 312cd86: nel seguito «Basta!» (anche dalla TV) chiude con
+        X-Gas-Comando: pausa ma SENZA «Va bene.» a voce; nessun turno."""
+        import http.client
+        wav = _fake_wav()
+        for formato in ("audio+pezzi", "audio+testo", ""):
+            hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                    "X-Gas-Formato": formato, "X-Gas-Seguito": "1"}
+            self.kernel.kw = "NESSUN TURNO"
+            with patch("modules.voice.server.transcribe_audio", return_value="Basta!"):
+                with patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+                    with patch("modules.voice.server.synthesize_speech",
+                               side_effect=AssertionError("nessuna voce")):
+                        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                        c.request("POST", "/voice", body=wav, headers=hdrs)
+                        r = c.getresponse()
+                        corpo = json.loads(r.read())
+                        comando = r.getheader("X-Gas-Comando")
+                        c.close()
+            assert r.status == 200 and comando == "pausa", formato
+            assert corpo["content"] == "" and corpo["pausa"] is True and "audio" not in corpo, formato
+            assert self.kernel.kw == "NESSUN TURNO", formato
 
     def test_v15_seguito_forte_dalla_stanza_non_parla(self):
         """V-1 ve #339: in un turno di seguito il parlato che è solo «forte» (TV) non fa
@@ -862,6 +886,10 @@ class TestVoiceHandlerRouting:
         status, corpo, comando = self._seguito("Certo, ci penso io.")
         assert status == 200 and comando is None and corpo["content"] == "Certo, ci penso io."
         frase = "Non per me è un problema, lo faccio subito."  # contiene le parole, non è il segno
+        status, corpo, comando = self._seguito(frase)
+        assert comando is None and corpo["content"] == frase
+        # V-1 bot 312cd86: il segno conta in testa o in coda, non in mezzo a una risposta
+        frase = "Il segno [NON_PER_ME] lo uso solo per la stanza, a te rispondo."
         status, corpo, comando = self._seguito(frase)
         assert comando is None and corpo["content"] == frase
         assert ISTRUZIONE_SEGUITO in self.kernel.kw["istruzione_turno"]

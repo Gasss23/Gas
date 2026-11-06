@@ -145,7 +145,10 @@ RISPOSTA_SERVE_ATTIVAZIONE = "Per farlo ripetimelo dicendo prima Hey Jarvis."
 # ma solo se la risposta è SOLO il segno: «Non per me è un problema, …» resta una risposta.
 # V-2 ve #339: il segno esatto con le parentesi vale anche se il modello aggiunge altro dopo
 # («[NON_PER_ME] (parlato fra persone)»): quel testo non va letto ad alta voce.
-_NON_PER_ME = re.compile(r"^\W*(?:\[non_per_me\]|non[_\s]+per[_\s]+me\W*$)", re.IGNORECASE)
+# V-1 bot #339 su 312cd86: il segno esatto vale anche IN CODA («Non è rivolto a me.
+# [NON_PER_ME]»): altrimenti il testo e il segno verrebbero letti ad alta voce.
+_NON_PER_ME = re.compile(
+    r"^\W*(?:\[non_per_me\]|non[_\s]+per[_\s]+me\W*$)|\[non_per_me\]\W*$", re.IGNORECASE)
 ISTRUZIONE_SEGUITO = (
     "Questa frase è stata captata dal microfono nella finestra di conversazione, SENZA che "
     "l'operatore dicesse la parola di attivazione: può essere rivolta a te oppure no "
@@ -519,6 +522,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._capito = prompt  # V6: la pagina mostra «Ho capito: …»
             if _SOLO_PAUSA.match(prompt):  # V15: «pausa»/«standby»: nessun turno, il client si ferma
                 self._comando = COMANDO_PAUSA
+                if self._seguito():
+                    # V-2 bot #339 su 312cd86: nel seguito «basta!» può venire dalla stanza o
+                    # dalla TV: la conversazione si chiude lo stesso, ma senza voce
+                    self._send_json(200, {"content": "", "pausa": True})
+                    return
                 self._rispondi_senza_turno(RISPOSTA_PAUSA, "pausa")
                 return
             if _SOLO_ATTIVAZIONE.match(prompt):  # V13: solo «Hey Jarvis»: nessun turno
