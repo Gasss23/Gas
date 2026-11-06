@@ -15,6 +15,12 @@
   - Review #676 APPROVATO CON RISERVE (R-676-1/2/3 BASSE; la R-676-3 è sul server di M2 ed è girata a M1).
   - Il commit di merge su main ha un diff identico a quello rivisto.
 
+## Bocciatura del bot su 851a0d1 e correzione
+
+- Bot BOCCIATO per V-1 MEDIA: nella finestra «Hey Jarvis, …» partiva come turno di seguito, e il server rispondeva «ripetimelo». Corretta in 1792ab3: il rilevatore resta acceso nella finestra, azzerato prima per R-680-1.
+- LEGGIMI corretto: la pausa nel seguito è muta; i 15 s comprendono la pausa finale.
+- Review #680 e #681 APPROVATO CON RISERVE (R-680-2 BASSA, R-681-1 COSMETICA). Suite ascolto 254 passed.
+
 ## Merge della #339 e sì dell'operatore
 
 - La #339 di M2 è in main (3cde8a5); l'ho unita nella #341 (ac06f01). Review #679 APPROVATO CON RISERVE: il revisore ha provato il contratto con il client e il VoiceHandler veri, 21 casi passati.

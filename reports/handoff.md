@@ -21,21 +21,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++
- clients/voice/ascolto.py           | 144 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
+ .claude/agents/memoria_revisore.md |   7 ++++
+ clients/voice/ascolto.py           | 176 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
  reports/diff_sessione.md           |  20 ++++------
  reports/stato_progetto.md          |   6 ++-
- reports/ultimo_report.md           |  57 ++++++++++++++--------------
- scripts/voce/LEGGIMI.md            |  28 ++++++++++----
- tests/test_unit_voce_ascolto.py    | 230 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ reports/ultimo_report.md           |  63 +++++++++++++++++-------------
+ scripts/voce/LEGGIMI.md            |  32 +++++++++++----
+ tests/test_unit_voce_ascolto.py    | 319 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 3cde8a5 (dopo il merge della PR #339).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 3cde8a5.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1792ab3 fix(voce): la parola di attivazione detta nella finestra apre una richiesta normale (V-1 bot #341)
+7669be5 chore(revisore): memoria review #681 — APPROVATO CON RISERVE
+288c3f6 chore(revisore): memoria review #680 — APPROVATO CON RISERVE
+851a0d1 docs(fine-task): fetta 43 parte 2 — merge della #339 e review #679 nella PR #341
 ac06f01 Merge origin/main (PR #339, voce V15) nella PR #341 — review #679 APPROVATO CON RISERVE
 a7ed0e8 docs(fine-task): fetta 43 parte 2 — ordine di merge dichiarato (la #341 dopo la #339, V-1 MEDIA della verifica esterna) e riserve registrate
 43fa6ac docs(fine-task): fetta 43 parte 2 chat Mani — finestra di 40 s e difese, review #676, PR #341; PR #340 mergiata
@@ -136,6 +140,73 @@ Review #679 (chat Mani): merge di origin/main 3cde8a5 (PR #339, V15 di M2) nel b
 - Ho aggiunto in coda a .claude/agents/memoria_revisore.md la riga contatore `#679 (chat Mani) — 2026-11-06 — APPROVATO CON RISERVE — …` e una lezione nuova: al primo merge che unisce client e server scritti da chat diverse, rileggere la documentazione utente contro il comportamento finale del server.
 - Il file è solo nel working tree («MM»), NON committato, come chiesto: va aggiunto con `git add` al commit del merge.
 
+
+Commit 1792ab3 (V-1 del bot su 851a0d1: parola nella finestra) — review #680, verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #680 (chat Mani) della PR #341. Ho guardato il diff staged su 851a0d1 con `git diff --cached`. Prima ho letto le tre fonti obbligatorie: CLAUDE.md sez. 5, stato_progetto.md (solo le parti sulla voce) e la memoria del revisore.
+
+**Elementi esaminati**
+- `clients/voice/ascolto.py:382`: `_parola_nel_blocco` usa la stessa soglia di `aspetta_parola`. Un errore del rilevatore (eccezione, None, valore non numerico) vale «no» (§9). Rischio: un crash nella finestra. Esito: ok. Una riserva cosmetica, vedi R-680-3.
+- `clients/voice/ascolto.py:446`: `aspetta_voce` passa ogni blocco al rilevatore. La parola arriva circa 1 s dopo «Hey», mentre la voce apre il turno già dopo 0,24 s. Quindi di solito la parola si sente dentro `registra`, ed è coperta da `clients/voice/ascolto.py:410`, dove il tetto passa a 30 s al volo. Il ciclo `while` rilegge `max_s` a ogni giro, quindi l'aumento vale davvero. Esito: ok.
+- `clients/voice/ascolto.py:643`: il flag si azzera a ogni giro della finestra. `seguito = not self.parola_nella_finestra` e il filtro dei 15 s vale solo se il turno è di seguito. Esito: ok. Il mutante «azzeramento tolto» è preso dal test del turno successivo.
+- `tests/test_unit_voce_ascolto.py:608`: verifica che la parola nella finestra dia un turno normale. Esito: ok. Il blocco della parola sta negli `iniziali`, quindi il test prende anche il mutante «aspetta_voce senza rilevatore».
+- `tests/test_unit_voce_ascolto.py:641`: rilevatore rotto dopo la prima risposta, il turno resta di seguito. Esito: ok.
+- `scripts/voce/LEGGIMI.md:10`, `scripts/voce/LEGGIMI.md:13` e `scripts/voce/LEGGIMI.md:18`: chiudono V-2 (i 15 s comprendono la pausa finale) e V-3/R-679-2 (la pausa nel seguito è muta, «Va bene.» solo con la parola). Esito: ok, coerenti col server.
+- Contesto, coerenza col server V15: `modules/voice/server.py:534`. Se la trascrizione è solo «Hey Jarvis», senza X-Gas-Seguito, il server risponde «Dimmi.» senza far partire un turno. «Hey Jarvis, pausa» passa da `modules/voice/server.py:526` e risponde «Va bene.». Il ciclo «ripetimelo» (`modules/voice/server.py:143`) non può più ripartire quando la parola si sente. Esito: ok.
+
+**Verifiche eseguite**
+- Copia dell'index in scratch: `tests/test_unit_voce_ascolto.py` dà 253 passed.
+- Due mutanti miei, entrambi presi (1 failed ciascuno): «flag non azzerato» e «`rileva_parola=False` in registra».
+
+**Domande del chiamante**
+- **Doppie attivazioni:** no. Dentro `registra`, dopo la parola, il rilevatore non viene più chiamato. Poi `turno` lo azzera prima della riproduzione e `conversazione` lo azzera alla fine, prima di `aspetta_parola`. Resta però R-680-1.
+- **Parola sentita ma la voce non parte:** caso quasi impossibile, perché la parola stessa supera `voce_rms` per 0,24 s. Se succede, `aspetta_voce` restituisce None e la parola si perde. Il flag resta alto finché la finestra non finisce (vedi R-680-2).
+- **Privacy:** il rilevatore gira in locale, quindi non esce nessun dato nuovo. Una falsa parola nella finestra manda fino a 30 s di audio come turno normale, senza i filtri V15. È la stessa fiducia nella parola che vale già fuori dalla finestra, solo resa più probabile da R-680-1.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-680-1 BASSA:** fra la riproduzione e la finestra il rilevatore non viene azzerato. Durante la riproduzione `_ascolta_mentre_suona` passa a openWakeWord la voce di Gas, con soglia 0,7. La finestra usa soglia 0,5, e il buffer interno di openWakeWord (circa 1–2 s di caratteristiche audio) porta quella voce nei primi punteggi. Un punteggio fra 0,5 e 0,7 sulla voce di Gas alzerebbe il flag e il parlato della stanza passerebbe come turno normale. Correzione: `self._azzera()` subito prima di `self.aspetta_voce()`, più un test con un rilevatore che conserva lo stato.
+- **R-680-2 BASSA:** se la parola si sente nella finestra prima che la voce parta, il flag resta alto finché la finestra non finisce. Il parlato che arriva dopo (anche la TV) diventa un turno normale da 30 s. Inoltre una parola sentita senza voce si perde a fine finestra. Nessun test copre questi due casi.
+- **R-680-3 COSMETICA:** gli errori del rilevatore nella finestra non lasciano traccia nel log. La traccia c'è comunque in `aspetta_parola`. Da segnalare: `if seguito is False:` andrebbe scritto `if not seguito:`.
+
+**Rischi esclusi (non verificati)**
+- Il comportamento reale di openWakeWord: punteggi residui dopo la riproduzione e ritardo della parola sul Mac. Il pacchetto e il microfono non ci sono in questo ambiente, quindi R-680-1 è un'analisi del codice, non una prova.
+- Nessuna prova di integrazione con il server vero su questo diff: la #679 ne aveva fatta una, questa no.
+- Suite del kernel non eseguita: il diff non tocca gas.py.
+
+**Memoria:** ho aggiunto la riga #680 e una lezione sullo stato dei rilevatori fra una fase e l'altra. Commit 288c3f6 fatto con `scripts/commit_memoria_revisore.sh`; lo staged del diff non è stato toccato.
+
+Commit 1792ab3 — review #681 (ri-review con R-680-1 corretta), verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #681 (chat Mani). Ho riletto il diff staged del branch claude/peaceful-lovelace-0w2b7q (PR #341). Il diff tocca 3 file: clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py e scripts/voce/LEGGIMI.md.
+
+Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (in testa), .claude/agents/memoria_revisore.md (la #680 e la sua lezione sul rilevatore con stato).
+
+**Elementi del diff esaminati**
+- `clients/voice/ascolto.py:644` — dopo la riproduzione, prima di `aspetta_voce()`, rimette `parola_nella_finestra` a False e chiama `self._azzera()`. Rischio esaminato: il residuo di openWakeWord (la voce di Gas sentita con soglia 0,7) poteva far scattare la parola nella finestra, dove la soglia è 0,5. Altri effetti esaminati:
+  - con `finestra_s=0` l'ho provato in una copia nella scratch: 1 solo turno, 3 azzeramenti, nessun turno di seguito, flag False. Il doppio azzeramento prima del `break` non fa danni, perché `_azzera` è fail-safe e si può ripetere.
+  - dopo un'interruzione il ramo `continue` ha il suo `_azzera` e non arriva al codice nuovo. Il giro normale successivo invece ci arriva.
+  - Esito: ok, R-680-1 chiusa.
+- `tests/test_unit_voce_ascolto.py:634` — `test_rilevatore_azzerato_prima_della_finestra`: dopo la riproduzione il rilevatore resta a 0,6 finché non viene azzerato. Rischio esaminato: un test che non morde. Ho tolto la riga `self._azzera()` in una copia: falliscono 2 test (questo e quello sotto). Esito: ok.
+- `tests/test_unit_voce_ascolto.py:93` — gli azzeramenti attesi passano da 2 a 3. È coerente col nuovo punto di azzeramento e uccide anche lui il mutante. Esito: ok.
+- `clients/voice/ascolto.py:656` — ora c'è `if not seguito:` con il log. È solo una modifica estetica e non cambia il comportamento. Esito: ok.
+- `clients/voice/ascolto.py:387` — `_parola_nel_blocco`: se il rilevatore va in errore vale «no», senza crash (§9). Esito: riserva R-681-1, sotto.
+
+**Prove**: suite ascolto sull'albero staged (copiato con `checkout-index` nella scratch): 254 passed. Mutante «azzeramento prima della finestra tolto»: 2 failed. Niente `git stash`, lo staged non è stato toccato.
+
+**Riserve**
+- R-681-1 COSMETICA: la R-680-3 non è chiusa nel senso in cui l'avevo scritta nella #680. Diceva che gli errori del rilevatore nella finestra non lasciano traccia nel log. Il diff ha cambiato solo `if not seguito:`, e `clients/voice/ascolto.py:387` fa ancora `except Exception: return False` senza `log.warning`. Rimedio: un `log.warning` con il nome dell'errore, eventualmente limitato come `_errori_rilevatore`. Si può anche chiuderla dichiarandola accettata.
+- R-680-2 BASSA: resta aperta ed è registrata.
+
+**Rischio escluso**: non ho verificato il comportamento reale di openWakeWord sul Mac, cioè se `azzera_rilevatore` svuota davvero il buffer interno del modello e quanto vale il residuo vero dopo la voce di Gas. In dev non si può riprodurre: i test usano un rilevatore finto. Non ho guardato `scripts/voce/LEGGIMI.md` oltre al diff della documentazione.
+
+Nessuno slicing della history e nessuna simulazione di tool: il diff non tocca il kernel.
+
+Memoria aggiornata con la riga #681 (chat Mani) e committata con scripts/commit_memoria_revisore.sh: commit 7669be5. Lo staged è intatto (3 file, +132/−11).
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 248 casi. Riepilogo reale nel venv con requirements e requirements-dev:
@@ -166,11 +237,12 @@ I due mutanti di stato trovati dal revisore sono nella riserva R-676-1.
 `gh` non usato (GitHub passa dallo strumento MCP).
 
 Mappatura commit → run:
-- ac06f01 (merge della #339) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme).
+- 851a0d1: CI run con handoff-check success; verifica-bot BOCCIATO (V-1 MEDIA, corretta in 1792ab3).
+- 1792ab3, 7669be5, 288c3f6 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme).
 - a7ed0e8 e 43fa6ac: run dei loro push (handoff-check success; unit-suite non riletta qui).
 - 51c4aa0, 4cd7b97, da24b2c: pushati insieme a 43fa6ac.
 
-Suite voce in locale dopo il merge (ascolto, stt, prova_voci): 410 passed. Prova d'integrazione del revisore #679 con client e server veri: 21 passed.
+Suite voce in locale dopo il merge (ascolto, stt, prova_voci): 410 passed. Dopo la correzione V-1 (1792ab3): suite ascolto 254 passed. Prova d'integrazione del revisore #679 con client e server veri: 21 passed.
 
 ## §7 RISERVE APERTE
 
@@ -179,4 +251,7 @@ Suite voce in locale dopo il merge (ascolto, stt, prova_voci): 410 passed. Prova
 - R-676-3 BASSA, per M2 (girata a M1): trascrizione incerta di seguito → «Non ho capito» a voce invece di «fine».
 - Dalla #340: bot V-1 BASSA (conferma non suonabile = silenzio), verifica esterna V-4 BASSA (eco dopo la conferma), R-675-1 BASSA.
 - Verifica esterna su 43fa6ac (https://github.com/Gasss23/Gas/pull/341#issuecomment-6672694572): V-1 MEDIA (ordine di merge: la #341 dopo la #339) → chiusa dichiarando l'ordine in §0, nella PR e in stato_progetto; V-2 = R-676-1; V-3 BASSA («fine» su un turno non di seguito non è coperto da test); V-4 BASSA (una «pausa» interrotta dalla parola non chiude: il ramo dell'interruzione viene prima).
+- Bot su 851a0d1: V-1 MEDIA corretta (1792ab3); V-2 e V-3 corrette nel LEGGIMI.
+- R-680-2 BASSA: parola sentita nella finestra prima della voce, il flag resta alto fino a fine finestra.
+- R-681-1 COSMETICA: errori del rilevatore nella finestra senza riga di log.
 - Restano le riserve delle fette 40, 41 e 43 parte 1, in `reports/stato_progetto.md`.
