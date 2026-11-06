@@ -98,6 +98,10 @@ REGISTRAZIONE_MAX_S = 30.0   # una richiesta non dura più di così
 # - nella finestra il rilevatore resta acceso: «Hey Jarvis, …» è un turno normale (V-1 bot #341);
 # - un errore in un turno di seguito chiude la conversazione senza bip (R-675-5-M2).
 FINESTRA_PREDEFINITA_S = 40.0
+# V-1 bot #341 su 23d9c1c (= R-693-2): se la parola si sente a metà di un turno di seguito,
+# della registrazione si tiene solo da poco prima della parola (openWakeWord la segnala a
+# fine parola): il parlato della stanza detto prima non parte come richiesta normale.
+PRIMA_DELLA_PAROLA_S = 1.5
 SEGUITO_MAX_PREDEFINITO_S = 15.0
 COMANDI = ("fine", "pausa")   # valori di X-Gas-Comando che il client conosce
 ATTESA_VOCE_S = 5.0          # dopo la parola, se non parli entro questo tempo si torna in attesa
@@ -409,9 +413,12 @@ class Ascolto:
                 break
             if rileva_parola and self._parola_nel_blocco(b):
                 # «Hey Jarvis, …» detto nella finestra: è una richiesta con la parola, il
-                # tetto torna quello normale (V-1 bot #341)
+                # tetto torna quello normale (V-1 bot #341). Si butta il parlato di prima
+                # della parola (V-1 bot su 23d9c1c): resta solo la parola e il dopo.
                 rileva_parola = False
                 max_s = REGISTRAZIONE_MAX_S
+                tieni = max(0, blocchi_per(PRIMA_DELLA_PAROLA_S) - 1)
+                presi = presi[-tieni:] if tieni else []
             forte = rms(b) >= self.voce_rms
             if not voce:
                 # R-615-6: la voce comincia con INIZIO_VOCE_S di fila, come nella finestra

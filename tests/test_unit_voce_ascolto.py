@@ -440,7 +440,7 @@ def test_la_conferma_non_si_interrompe_e_poi_si_svuota():
 
 
 def test_nella_finestra_e_all_interruzione_niente_conferma():
-    """«Sì, signore?» solo alla prima attivazione con la parola: nella finestra dei 12 s
+    """«Sì, signore?» solo alla prima attivazione con la parola: nella finestra
     non serve, e all'interruzione resta il bip (più rapido)."""
     chiamate = []
 
@@ -622,6 +622,22 @@ def test_parola_a_meta_della_frase_nella_finestra():
                        (SILENZIO, 10), (SILENZIO, _sec(50)))).gira()
     assert f.tipi == ["parola", "parola"]
     assert _campioni(f.inviati[1]) > _sec(15) * a.BLOCCO
+
+
+VOCE_STANZA = [1900] * a.BLOCCO      # parlato della stanza prima della parola
+
+
+def test_parlato_prima_della_parola_non_parte():
+    """V-1 bot su 23d9c1c (R-693-2): la parola a metà di un turno di seguito rende normale la
+    richiesta, ma il parlato della stanza di prima non parte: si tiene solo da poco prima
+    della parola."""
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE_STANZA, _sec(8)), PAROLA_DETTA, (VOCE, 20),
+                       (SILENZIO, 10), (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola"]
+    campioni = _campioni(f.inviati[1])
+    tenuti = a.blocchi_per(a.PRIMA_DELLA_PAROLA_S) - 1
+    assert campioni == (tenuti + 1 + 20 + 10) * a.BLOCCO   # niente 8 s di stanza
 
 
 def test_dopo_la_parola_nella_finestra_il_turno_dopo_torna_di_seguito():
