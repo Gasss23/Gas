@@ -15,6 +15,12 @@
   - Review #676 APPROVATO CON RISERVE (R-676-1/2/3 BASSE; la R-676-3 è sul server di M2 ed è girata a M1).
   - Il commit di merge su main ha un diff identico a quello rivisto.
 
+## Verifica esterna su 562f137 e merge della #343
+
+- La verifica esterna (BASSE) ha riprodotto un caso che il bot avrebbe alzato a MEDIA: una parola sentita molto prima della voce. Corretto in 165a9a4: la parola scade dopo 2 s. Review #695 APPROVATO CON RISERVE (R-695-1/2 BASSE).
+- La #343 di M2 (voce rapida) è entrata in main: l'ho unita in 8c31f6e. Review #696 APPROVATO CON RISERVE, con il client provato contro il server (R-696-1/2 BASSE, per M2).
+- Suite ascolto: 257 passed.
+
 ## Bot su 23d9c1c: R-693-2 alzata a MEDIA e corretta
 
 - Il bot ha alzato a MEDIA la parola a metà del seguito. Corretta in 01b1089: si tengono solo gli ultimi 1,5 s prima della parola e il dopo.

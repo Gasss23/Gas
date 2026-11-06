@@ -21,21 +21,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 +++++++++++
- clients/voice/ascolto.py           | 183 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------
+ .claude/agents/memoria_revisore.md |  14 ++++++++++++++
+ clients/voice/ascolto.py           | 195 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
  reports/diff_sessione.md           |  15 ++++++++-------
  reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           |  55 +++++++++++++++++++++++++++++++++++++++++++----------
- scripts/voce/LEGGIMI.md            |  34 ++++++++++++++++++++++++++-------
- tests/test_unit_voce_ascolto.py    | 339 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ reports/ultimo_report.md           |  61 +++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ scripts/voce/LEGGIMI.md            |  35 ++++++++++++++++++++++++++++-------
+ tests/test_unit_voce_ascolto.py    | 360 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main c131452.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main e68a951 (dopo il merge della PR #343).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8c31f6e Merge origin/main (PR #343, voce rapida fetta 2) nella PR #341 — review #696 APPROVATO CON RISERVE
+165a9a4 fix(voce): una parola sentita più di 2 s prima della voce non rende normale il turno (V-1 ve #341 su 562f137)
+a1aa77b chore(revisore): memoria review #695 — APPROVATO CON RISERVE
+562f137 docs(fine-task): fetta 43 parte 2 — V-1 del bot su 23d9c1c corretta, review #694 (PR #341)
 01b1089 fix(voce): parola a metà di un turno di seguito — il parlato di prima non parte (V-1 bot #341 su 23d9c1c)
 4e81502 chore(revisore): memoria review #694 — APPROVATO CON RISERVE
 23d9c1c docs(fine-task): fetta 43 parte 2 — merge della #342, review #693, verdetti su bdc79ce (PR #341)
@@ -278,12 +282,86 @@ Review #694 (chat Mani). Diff staged su 23d9c1c, PR #341, branch claude/peaceful
 
 **Memoria**: aggiunta la riga #694 e una lezione (provare due versioni sbagliate su un taglio «tieni gli ultimi N»). Committata con scripts/commit_memoria_revisore.sh (4e81502); lo staged non è cambiato (3 file, +28/−3).
 
+
+Commit 165a9a4 (V-1 della verifica esterna su 562f137: la parola scade dopo 2 s) — review #695, verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #695 (chat Mani). Diff staged su `claude/peaceful-lovelace-0w2b7q` (PR #341, HEAD 562f137). Lo sha256 del diff, b6025b22d756…, è uguale prima e dopo il commit della memoria. Prima della review ho letto CLAUDE.md, le voci R-680-2 e #341 in `reports/stato_progetto.md` e la memoria del revisore.
+
+**Correttezza: la correzione regge.** La parola resta valida per al massimo 25 blocchi (`blocchi_per(2,0)`). Poi `parola_nella_finestra` torna False e il parlato dopo parte come turno di seguito. Nessuno slicing della history, nessuna simulazione dei tool, i guardrail non sono toccati. È un cambiamento solo del client, senza nuove eccezioni: `_parola_nel_blocco` tratta già un errore del rilevatore come «no» (§9).
+
+**Righe del diff esaminate**
+- `clients/voice/ascolto.py:453` — nuovo contatore `da_parola` (blocchi dall'ultima parola sentita, None se nessuna parola). Rischio esaminato: valore rimasto da un turno precedente. È una variabile locale di `aspetta_voce` e il flag torna False prima della chiamata (`clients/voice/ascolto.py:662`, contesto). Esito: ok.
+- `clients/voice/ascolto.py:459` — la parola sentita di nuovo rimette il conteggio a 0. Caso «parola di nuovo dentro i 2 s»: con 20 blocchi + parola + altri 20 il turno è normale; con 40 blocchi senza una seconda parola è di seguito. Il conteggio riparte. Esito: ok.
+- `clients/voice/ascolto.py:462` — scadenza con `>`. La parola sentita in uno dei blocchi che aprono la voce dà turno normale: il flag diventa True e la funzione esce prima di poterlo far scadere. Esito: ok.
+- `clients/voice/ascolto.py:462` — riserva sul confine. Il contatore avanza anche nei 3 blocchi che servono ad aprire la voce. Il confine reale è quindi circa 1,84 s tra la parola e il primo blocco di voce, non 2 s: con 24 blocchi di silenzio il turno è già di seguito. Esito: riserva R-695-1.
+- `clients/voice/ascolto.py:671` (contesto, non nel diff) — interazione con `registra`. Se il flag è scaduto, `rileva_parola=True` e la parola sentita dentro la registrazione rende comunque il turno normale. Sonda «falso positivo vecchio, voce, poi parola»: turno normale. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:679` — falso positivo 20 s prima del parlato: il turno resta di seguito. Prende il mutante «senza azzeramento» (1 test fallito). Esito: ok.
+- `tests/test_unit_voce_ascolto.py:689` — parola 0,8 s prima della voce: turno normale. Insieme all'altro test prende il mutante «scade subito» (3 test falliti). Il controllo con `is RUMORE_PAROLA` è valido: `_blocchi` passa lo stesso oggetto, altrimenti questo test fallirebbe. Esito: ok.
+- `scripts/voce/LEGGIMI.md:15` — testo ammorbidito, coerente con i 18 blocchi (1,44 s) tenuti in `registra` e con la scadenza. «Più di 2 secondi» è un'approssimazione: vedi R-695-1. Esito: ok con riserva.
+
+**Prove (su una copia dell'index in scratch, niente stash):** suite ascolto 257 passed; i due mutanti presi come sopra. Sonde con gli strumenti dei test: 24, 25 e 26 blocchi di silenzio, rinnovo, parola nei blocchi della voce, flag scaduto con parola dentro `registra`.
+
+**Riserve**
+- R-695-1 BASSA: il confine effettivo è circa 1,84 s prima del primo blocco di voce (circa 2 s se si conta dalla parola all'apertura del turno), mentre LEGGIMI dice «più di 2 secondi». Nessun test sul confine: un mutante `>=` o uno spostamento di un blocco non verrebbe preso. Per chiuderla basta un test con 22 e 23 blocchi di silenzio, oppure sottrarre `blocchi_per(INIZIO_VOCE_S)` dal conteggio, oppure precisare il testo.
+- R-695-2 BASSA: un falso positivo del rilevatore entro circa 1,8 s dall'inizio del parlato della stanza rende ancora normale quel turno. È il residuo di R-694-1, ristretto da tutta la finestra a meno di 2 s: da far accettare all'operatore.
+
+**Cosa non ho verificato:** la latenza reale di openWakeWord e la frequenza dei falsi positivi alla soglia 0,5 sul Mac. Non sono riproducibili nel sandbox: lì il rilevatore è finto. Non ho verificato neanche se, con la pausa naturale dopo «Hey Jarvis», la voce parte entro 1,8 s. Nel caso tipico la parola è essa stessa voce, quindi `aspetta_voce` esce prima che il rilevatore scatti e la parola viene presa in `registra`, una strada che questo diff non cambia. Non ho rilanciato la suite intera: il diff tocca solo il client voce.
+
+**Memoria:** aggiunte la riga #695 e una lezione (sondare il confine con N-1/N/N+1 blocchi quando il contatore avanza anche nei blocchi che completano la condizione di uscita). Committata con `scripts/commit_memoria_revisore.sh` (commit a1aa77b); i 3 file staged non sono stati toccati.
+
+Merge 8c31f6e (main con la PR #343 dentro la PR #341) — review #696, verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Numero di review: **#696**. Ho controllato le memorie di tutti i branch: il numero più alto è #695 (chat Mani). Per M2 il più alto è #692-M2, sia su origin/main sia su feat/voce-v12-m2. La riga #696 è scritta in coda a .claude/agents/memoria_revisore.md e NON è committata: resta nel working tree come richiesto. Nessuna lezione nuova.
+
+Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 10), reports/stato_progetto.md (righe che riguardano la voce), memoria_revisore.md (coda).
+
+**Integrità del merge (base c131452)**
+- I file cambiati da main e dal branch sono insiemi disgiunti, a parte i 4 report.
+- Uguali a MERGE_HEAD nell'index: gas.py, brains/claude_cli.py, modules/voice/server.py, ripartenza_m2 e i test claude_cli, kernel, voice_contesto e voice_stt.
+- Uguali a HEAD nell'index: clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, scripts/voce/LEGGIMI.md, handoff, ultimo_report, diff_sessione e memoria.
+- stato_progetto: il risultato di `git merge-file` (HEAD, base, MERGE_HEAD) è identico byte per byte (cmp) all'index, rc=0, nessuna voce persa.
+- Nessun marcatore di conflitto, `ls-files -u` vuoto, `diff --check` pulito.
+
+**Test**
+- Su una copia dell'index in scratch: voce_ascolto, voice_stt, voice_contesto, claude_cli e prova_voci danno **470 passed**. Senza prova_voci tornano i 415 dichiarati.
+- Sonda in scratch: client vero (`invia_al_server`) contro il VoiceHandler vero, con kernel finto che registra i kw.
+  - Turno di seguito: `cervello=forte`, `effimero=True`, `voce=True`; istruzione = seguito + C1.
+  - Turno con la parola: solo `voce=True` + C1.
+  - «pausa» con o senza seguito: nessun turno, il client riceve il comando `pausa`.
+  - `[NON_PER_ME]`: il client riceve `(True, None, "", "fine")`.
+- Il contratto HTTP fra client e server non cambia con la #343: aggiunge solo il kw `voce` e il testo C1.
+
+**Elementi citati**
+- clients/voice/ascolto.py:766 — mette `X-Gas-Seguito: 1` sui turni di seguito. Rischio: la #343 cambia il modo in cui il server tratta il seguito. Esito: ok (con la sonda, server.py fa ancora forte+effimero e aggiunge voce=True).
+- clients/voice/ascolto.py:493 — `comando == "fine"` chiude la conversazione. Rischio: C1 o la finestra di 6 cambiano la risposta `[NON_PER_ME]`. Esito: ok (con la sonda resta JSON vuoto + `fine`).
+- tests/test_unit_voce_ascolto.py:511 — finto server con la sequenza «risposta, poi fine». Rischio: i test del client dipendono dal server di M2. Esito: ok (usano un server finto; la suite è verde sull'index).
+- scripts/voce/LEGGIMI.md:20 — la doc della pausa (muta senza la parola, «Va bene.» con la parola). Rischio: la #343 cambia la pausa. Esito: ok (la pausa esce prima di run_turn, sonda coerente).
+- reports/stato_progetto.md:615 — voce «Voce rapida, fetta 2», arrivata con l'unione automatica. Rischio: perdita o doppione. Esito: riserva cosmetica (dice «PR aperta», ma la #343 è mergiata).
+- Contesto:
+  - modules/voice/server.py:598 — `kw["voce"] = True` per ogni turno audio, quindi anche seguito ed effimero.
+  - gas.py:4857 e gas.py:4936 — routing del seguito e payload usano entrambi `_get_window(_n_finestra)`. Nessun taglio diretto della history, Wall of Shame rispettato.
+  - modules/voice/server.py:205 — testo C1.
+
+**Riserve**
+- R-696-1 BASSA: nei turni di seguito C1 («rispondi solo all'ultima cosa che l'operatore ha detto», modules/voice/server.py:205) viene prima di ISTRUZIONE_SEGUITO e dà per scontato che a parlare sia l'operatore. Questo può spingere il modello a trattare il parlato della stanza come rivolto a Gas. Si verifica solo dal vero sul Mac.
+- R-696-2 BASSA: a voce, il routing «solo forte dopo un seguito» guarda 6 messaggi invece di 10 (gas.py:4857). È coerente col payload, quindi il seguito non arriva ai gratuiti. Però il residuo già aperto V-1 bot d9c09e9 (risposte del forte che citano un seguito poi mandate ai gratuiti) scatta dopo 3 scambi invece di 5.
+- R-696-3 COSMETICA: in reports/stato_progetto.md, alla riga 615 c'è «PR aperta» (va scritto «PR #343 MERGIATA (e68a951)»). Nella voce V15 c'è ancora «ultimi ~10 messaggi» (a voce ora sono 6).
+
+**Cosa NON ho verificato**
+- Suite kernel non rilanciata: gas.py e test_unit_kernel.py sono identici a MERGE_HEAD, già rilanciati da M2 con 1089 PASS. Nel sandbox manca bwrap.
+- Effetto reale di C1 e di `--effort low` sul modello e sui tempi: richiede il Mac con `claude` loggato.
+- Latenza reale del client sul Mac.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 255 casi (248 con la fetta, 254 dopo la correzione V-1 del bot su 851a0d1, 255 dopo quella su 23d9c1c). Riepilogo reale nel venv con requirements e requirements-dev:
+`tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 257 casi (248 con la fetta, 254 dopo la correzione V-1 del bot su 851a0d1, 255 dopo quella su 23d9c1c, 257 dopo quella su 562f137). Riepilogo reale nel venv con requirements e requirements-dev:
 
 ```
-255 passed in 29.90s
+257 passed in 28.55s
 ```
 
 Mutanti presi (15):
@@ -311,7 +389,8 @@ Mappatura commit → run:
 - 851a0d1: CI run con handoff-check success; verifica-bot BOCCIATO (V-1 MEDIA, corretta in 1792ab3).
 - bdc79ce: CI run 42293018752, unit-suite e handoff-check success (voce H24: 254 passed); bot APPROVATO CON RISERVE (neutral).
 - 23d9c1c: unit-suite e handoff-check success; bot failure (V-1 alzata a MEDIA, corretta in 01b1089).
-- 01b1089, 4e81502 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 562f137: handoff-check success, unit-suite in corso alla verifica esterna.
+- 165a9a4, a1aa77b, 8c31f6e e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 - a7ed0e8 e 43fa6ac: run dei loro push (handoff-check success; unit-suite non riletta qui).
 - 51c4aa0, 4cd7b97, da24b2c: pushati insieme a 43fa6ac.
 
@@ -328,6 +407,8 @@ Suite voce in locale dopo il merge (ascolto, stt, prova_voci): 410 passed. Dopo 
 - Bot su bdc79ce V-1 = R-693-2, alzata a MEDIA su 23d9c1c: corretta in 01b1089 (taglio a 1,5 s prima della parola).
 - R-694-1 BASSA: residuo (0,3–0,7 s di stanza prima della parola; falso positivo nella finestra → il dopo è normale fino a 30 s), da far accettare all'operatore.
 - R-694-2 BASSA: 1,5 s da provare sul Mac.
+- Verifica esterna su 562f137 V-1 (= R-680-2) corretta in 165a9a4; R-695-1 BASSA (confine reale circa 1,84 s, senza test), R-695-2 BASSA (falso positivo entro circa 1,8 s: residuo da far accettare all'operatore).
+- R-696-1/2 BASSE per M2 (C1 nei turni di seguito, routing su 6 messaggi), R-696-3 COSMETICA.
 - R-680-2 BASSA: parola sentita nella finestra prima della voce, il flag resta alto fino a fine finestra.
 - R-681-1 COSMETICA: errori del rilevatore nella finestra senza riga di log.
 - Restano le riserve delle fette 40, 41 e 43 parte 1, in `reports/stato_progetto.md`.
