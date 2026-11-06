@@ -359,37 +359,42 @@ Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 10), reports/stato_progetto.md
 - Effetto reale di C1 e di `--effort low` sul modello e sui tempi: richiede il Mac con `claude` loggato.
 - Latenza reale del client sul Mac.
 
-Merge b874179 (main con la PR #344 dentro la PR #341) — review #697, verdetto integrale:
+Merge b874179 (main con la PR #344 dentro la PR #341) — review #697, verdetto integrale riemesso per il gate B (la prima emissione citava solo file ora già in main; è nella storia git di questo file, commit 627945a):
 
 ## VERDETTO: APPROVATO
 
-Review #697 (chat Mani). Il numero più alto in memoria era #696, quindi questa è la #697. Le righe #693-M2 e #694-M2 hanno una numerazione a parte, quella della chat M2.
+Review #697 (chat Mani), riemessa per il gate B. Nella prima emissione le citazioni di codice erano solo di brains/claude_cli.py e tests/test_unit_claude_cli.py. Dopo il commit del merge (b874179) quei due file sono già su main e non stanno più nel diff di sessione 44dbe2d..HEAD, che ora contiene solo i 3 file del client voce. Le citazioni nuove sono controllate a HEAD 627945a.
 
-Oggetto: merge staged di origin/main 44dbe2d (PR #344 di M2) nel branch claude/peaceful-lovelace-0w2b7q (PR #341, HEAD 7e4a7d3). La base comune è e68a951.
+Oggetto: merge di origin/main 44dbe2d (PR #344 di M2: il riconoscimento del rifiuto di `--effort` è più stretto) in claude/peaceful-lovelace-0w2b7q (PR #341, HEAD prima del merge 7e4a7d3). La base comune è e68a951.
 
 **Elementi del diff esaminati**
-- `brains/claude_cli.py:276` — la regex `_RIFIUTO_EFFORT` riconosce solo «unknown/unrecognized option/argument» seguito da `--effort`, con il blocco `(?![\w-])` alla fine. Rischi esaminati: perdita nel merge, interazione con la #341, backtracking. Il file staged è identico a MERGE_HEAD. Il backtracking quadratico l'ha già chiuso #694-M2 (un solo `\s*` libero). Esito: ok.
-- `brains/claude_cli.py:285` — `_effort_rifiutato` ora legge solo lo stderr e conta solo con un'uscita diversa da zero. L'unico chiamante è `brains/claude_cli.py:350`, dentro il blocco try che riprova senza effort, quindi un'eccezione resta intercettata come prima. Rischio esaminato: un chiamante nel client voce della #341. Il grep su clients/ e scripts/voce non trova riferimenti a claude_cli né a effort. Esito: ok, nessuna interazione.
-- `tests/test_unit_claude_cli.py:507` — il blocco `finally` rimette `_effort_non_supportato`, così un test fallito non lascia l'effort spento per i test successivi. `tests/test_unit_claude_cli.py:511` è il test parametrico, con il caso `--effort-level` → False. `tests/test_unit_claude_cli.py:567` è il test di tempo lineare. Rischio esaminato: test persi nel merge. Il file è identico a MERGE_HEAD. Esito: ok.
-- `reports/stato_progetto.md:615` — è la voce nuova «Fetta 3 sottofondo». La `reports/stato_progetto.md:616` dice ora «PR #343 MERGIATA (e68a951)». Rischio esaminato: perdita di righe della chat Mani o della chat M2. Ho rifatto `git merge-file` con base, HEAD e MERGE_HEAD in scratch: esce con codice 0 ed è identico byte per byte (cmp) al file staged. Rispetto a HEAD il diff tocca solo queste righe. Esito: ok.
-- `.claude/agents/memoria_revisore.md` — le prime 1292 righe staged sono identiche (cmp) all'intero file di HEAD, cioè fino alla riga #696. La coda (#693-M2, la lezione, #694-M2) è identica alle ultime 3 righe di MERGE_HEAD. Esito: ok, l'unione è senza perdite.
+- `clients/voice/ascolto.py:752` — `invia_al_server` costruisce il POST /voice con le sole intestazioni Authorization, Content-Type, Accept, X-Gas-Formato e X-Gas-Seguito. Rischio esaminato: il client potrebbe mandare al server qualcosa legato all'effort o a claude_cli, e allora il fix della #344 cambierebbe il suo comportamento. Nel file non c'è nessuna occorrenza di «effort» o «claude_cli». La scelta dell'effort resta tutta lato server, in brains/claude_cli.py. Il contratto HTTP non cambia. Esito: ok, nessuna interazione.
+- `clients/voice/ascolto.py:743` — `_comando` legge X-Gas-Comando dalla risposta e accetta solo i valori di COMANDI (`clients/voice/ascolto.py:110`: «fine», «pausa»); su qualsiasi eccezione restituisce "". Rischio esaminato: un'intestazione inattesa dal server dopo il fix (es. un ripiego senza effort) potrebbe far crashare il client. Il fix non aggiunge intestazioni e il filtro scarta comunque i valori sconosciuti. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:1368` — test parametrico che controlla che X-Gas-Seguito vada al server solo nei turni di seguito. Rischio esaminato: test del client persi o alterati dal merge. Il file è identico a 7e4a7d3 (`git diff --quiet 7e4a7d3 HEAD`), e nella copia dell'index questo test era incluso nei 316 passed. Esito: ok.
+- `scripts/voce/LEGGIMI.md:14` — l'istruzione all'operatore «Dillo tutto di seguito». Rischio esaminato: la risoluzione dei conflitti, presa dal lato HEAD, potrebbe aver tolto la modifica della #341. Il file è identico a 7e4a7d3, la #344 non lo tocca e non contiene riferimenti a effort o claude. Esito: ok.
 
-**Integrità del merge**
+**Contesto (file già su main, fuori dal diff di sessione)**
+- `brains/claude_cli.py:285` — `_effort_rifiutato` legge solo lo stderr e conta solo con un'uscita diversa da zero. L'unico chiamante è `brains/claude_cli.py:350`, dentro il blocco try che riprova senza effort. Nel commit del merge il file era identico a MERGE_HEAD. Esito: ok.
+
+**Integrità del merge** (controllata sull'index staged prima del commit)
 - File identici a MERGE_HEAD: brains/claude_cli.py, tests/test_unit_claude_cli.py, reports/proposta_fetta3_sottofondo.md, reports/ripartenza_m2.md.
-- File identici a HEAD: reports/handoff.md, reports/ultimo_report.md, reports/diff_sessione.md, clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, gas.py, modules/voice/server.py.
-- `git ls-files -u` è vuoto e `git diff --cached --check HEAD` è pulito. Nessun marcatore di conflitto in reports/, .claude/, brains/ e tests/.
-- Nei file di codice i due lati non si sovrappongono: da e68a951 la PR #344 cambia solo claude_cli e il suo test.
+- File identici a HEAD (7e4a7d3): clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, gas.py, modules/voice/server.py, handoff, ultimo_report, diff_sessione.
+- stato_progetto: ho rifatto `git merge-file` in scratch; esce con codice 0 ed è identico byte per byte (cmp) al file staged, con la voce fetta 3 e «#343 MERGIATA».
+- memoria: le prime 1292 righe sono identiche a HEAD (fino alla #696), e la coda #693-M2/lezione/#694-M2 è identica a MERGE_HEAD.
+- `ls-files -u` è vuoto, `--check` è pulito, nessun marcatore di conflitto.
+- I 3 file del client voce sono ancora identici a 7e4a7d3 anche dopo il commit del merge.
 
 **Test**
-Ho copiato l'index in scratch con `git checkout-index`, senza stash e senza toccare il repo: test_unit_claude_cli + test_unit_voce_ascolto danno **316 passed** in 31,7 s.
+Copia dell'index in scratch, senza stash e senza toccare il repo: test_unit_claude_cli + test_unit_voce_ascolto danno **316 passed**.
 
 **Cosa non ho verificato e perché**
-- La suite intera: in questo sandbox manca bwrap, e nella review #693 i suoi test web fallivano per questo, fuori dal diff.
-- `claude --help | grep effort` e il comportamento dell'effort con la CLI vera sul Mac: non si possono riprodurre nel cloud.
-- Le sonde regex: non le ho rilanciate, le ha già fatte #694-M2 sullo stesso contenuto (file identico a MERGE_HEAD).
+- La suite intera: in questo sandbox manca bwrap, e i suoi test web fallirebbero per questo, fuori dal diff.
+- L'effort con la CLI vera sul Mac (`claude --help | grep effort`): non si può riprodurre nel cloud.
+- Le sonde regex di claude_cli: non le ho rilanciate, le ha già fatte #694-M2 sullo stesso contenuto.
+- Non ho ricontrollato il commit dei report 627945a: è fuori dal perimetro.
 
 **Memoria**
-La riga #697 è in coda a .claude/agents/memoria_revisore.md, nel working tree e non committata, come chiesto. Non ho lanciato `commit_memoria_revisore.sh`, e il file è già staged dal merge: serve `git add` prima del commit. Nessuna lezione nuova.
+Non l'ho toccata: la riga #697 è già committata. Nessuna lezione nuova. Repo non modificato.
 
 ## §5 DELTA TEST DEL MOTORE
 
