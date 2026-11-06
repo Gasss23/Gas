@@ -1,101 +1,120 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-06 — Voce rapida, fetta 2: a voce finestra corta, niente recap vecchio, effort basso del forte, «rispondi solo all'ultima» (chat M2, coordinata da M1)
+**Sessione:** 2026-11-06 — Rifiuto di `--effort` riconosciuto in modo stretto + proposta della fetta 3 (compiti lunghi in sottofondo) (chat M2, coordinata da M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 2 (numero e URL nella risposta JSON di `create_pull_request`; `gh` nel cloud non è autenticato). Fetta ordinata dall'operatore via M1 col via su gas.py; merge secondo CLAUDE.md §10 (con riserve: sì dell'operatore via M1).
-2. Prova sul Mac: tempi del cervello a voce prima/dopo (log `gas.voce.tempi`, prima 3,9–16,9 s) e controllo che `claude --effort` esista nella versione installata (`claude --help | grep effort`); se manca, Gas riprova senza e la voce funziona lo stesso, ma senza il guadagno.
+1. Merge della PR (numero e URL dalla risposta JSON di `create_pull_request`; `gh` nel cloud non è autenticato), ordinata dall'operatore via M1; merge secondo CLAUDE.md §10.
+2. Fetta 3 (compiti lunghi in sottofondo): leggere `reports/proposta_fetta3_sottofondo.md` e decidere se farla, e se lo strumento lo sceglie il modello (consigliato) o parte da solo oltre N giri.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Finestra più corta a voce** (C2): `FATTA` — `run_turn(voce=True)`: `_get_window(6)` (GAS_VOCE_FINESTRA), sempre via `_get_window`.
-- **Niente riepilogo vecchio a voce** (A2): `FATTA` — `recap_pin` spento nei turni parlati.
-- **Effort più basso** (A3): `FATTA` — `claude -p --effort low` (documentato in `claude --help` 2.1.319; GAS_VOCE_EFFORT, vuoto = nessuno), con ripiego senza l'opzione se la CLI la rifiuta.
-- **C1 «rispondi solo all'ultima domanda»**: `FATTA` — `_CONTESTO_VOCE` in modules/voice/server.py.
-- **Tempi prima/dopo**: `NON FATTA — serve il Mac` (in dev non c'è il forte vero).
-- **Fetta 3 (documento sul sottofondo)**: `DEFERITA — prossima fetta`.
+- **Rifiuto di `--effort` stretto** (R-689-1-M2 BASSA e V-1 della verifica esterna #343; R-689-2-M2): `FATTA` — solo «unknown/unrecognized option|argument --effort» su stderr, regex lineare; review #693-M2 (riserve chiuse), #694-M2 APPROVATO.
+- **Proposta della fetta 3**: `FATTA` — documento `reports/proposta_fetta3_sottofondo.md` (nessun codice).
+- **PR #343 (voce rapida fetta 2)**: `MERGIATA` (e68a951).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- brains/claude_cli.py              | 32 ++++++++++++++++++++++++++++----
- gas.py                            | 29 ++++++++++++++++++++++++-----
- modules/voice/server.py           |  7 ++++++-
+ .claude/agents/memoria_revisore.md |  3 +++
+ brains/claude_cli.py               | 17 ++++++++++++-----
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
+ reports/proposta_fetta3_sottofondo.md           | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_claude_cli.py     | 56 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_kernel.py         | 80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voice_contesto.py |  2 +-
- tests/test_unit_voice_stt.py      |  4 ++--
+ tests/test_unit_claude_cli.py      | 49 ++++++++++++++++++++++++++++++++++++++++---------
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main c131452 (merge della #342). Il commit di codice è stato fatto su un branch locale e portato qui col cherry-pick (stesso diff revisionato).
+NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main e68a951.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-1be18db feat(kernel+voce): voce rapida fetta 2 — a voce finestra di 6, niente recap vecchio, --effort low del forte con ripiego, «rispondi solo all'ultima» (C1) (ordine dell'operatore via M1) (chat M2)
+e51ec67 fix(claude-cli): il rifiuto di --effort si riconosce solo da «unknown/unrecognized option --effort» su stderr (R-689-1/2-M2, ve #343 V-1) (chat M2)
+bc91ccb chore(revisore): memoria review #694 — APPROVATO
+1a301bd chore(revisore): memoria review #694 — APPROVATO
+df3e46e chore(revisore): memoria review #693 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. La riga di memoria #689-M2 (23c13b8) è entrata in main con la #342.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Review #689-M2 sul commit della fetta 2 (verdetto integrale):
+Review #693-M2 sul primo stage di e51ec67 (verdetto integrale):
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #689-M2. Ho guardato le modifiche in staging (`git diff --cached`, 7 file) su feat/voce-v12-m2, base bf4a93b. Prima ho letto CLAUDE.md (sez. 5 e 8), le sezioni di reports/stato_progetto.md che servivano e la memoria del revisore (lezioni del 6 nov sul seguito, sul forte e sui gratuiti).
-
-**Test rilanciati da me sull'albero in staging** (venv in scratchpad):
-- Kernel: 1089 PASS, 0 FAIL. T104a, T104b e i due casi T104c passano.
-- pytest su tests/test_unit_claude_cli.py, tests/test_unit_voice_stt.py e tests/test_unit_voice_contesto.py: 158 passed.
+Review #693-M2. Ho letto il diff staged (brains/claude_cli.py e tests/test_unit_claude_cli.py) su feat/voce-v12-m2, base e68a951. Ho fatto le letture obbligatorie: CLAUDE.md è nel contesto; di reports/stato_progetto.md e .claude/agents/memoria_revisore.md ho letto le parti su effort, R-689 e regex/ReDoS (ricerca mirata, come chiede il §11).
 
 **Elementi del diff esaminati**
-- gas.py:4773 — calcola `_n_finestra`: da `GAS_VOCE_FINESTRA` con `_env_int` e minimo 2 se `voce`, altrimenti 10. Rischio esaminato: un valore sporco o troppo piccolo produce una finestra malformata. `_env_int` è fail-safe e `_get_window` riparte sempre da un messaggio user; con n=2 la ricerca all'indietro ritrova il messaggio dell'utente del turno. Esito: ok.
-- gas.py:4857 — il controllo «c'è un seguito a voce nella finestra → solo il forte» usa `_get_window(_n_finestra)`. Rischio esaminato: dato che a voce la finestra è 6, un seguito in posizione 7–10 può mandare il turno parlato ai gratuiti. Ho verificato che anche il payload usa la stessa finestra (gas.py:4936). Il messaggio dell'utente viene aggiunto prima del routing, quindi in ogni iterazione la finestra inviata parte dallo stesso punto o più avanti ed è contenuta in quella del routing. Il seguito escluso dal controllo è escluso anche da ciò che arriva al provider: nessuna contaminazione. Il turno a testo successivo (finestra 10) lo rivede e torna solo-forte, come prima. Esito: ok.
-- gas.py:4936 — finestra del loop agentico, sempre via `_get_window`. Ho cercato tagli a mano della storia (Wall of Shame): nessuno, il cap di 10 iterazioni è intatto, nessun output degli strumenti viene simulato. Esito: ok.
-- gas.py:4873 — `recap_pin = ""` se voce. Rischio esaminato: si perde contesto utile. È una scelta dell'operatore (ordine M1) e il pin di memoria e quello delle lezioni restano. Esito: ok.
-- gas.py:4927 — `effort` passato solo a `ClaudeCliClient` e solo se impostato. Il rung OpenAI non lo riceve, e un valore fuori dalla lista dà warning e nessun effort (T104c). Esito: ok.
-- brains/claude_cli.py:343 — il ripiego `--effort`. Rischio esaminato: doppio costo o doppio tempo, e il rischio di nascondere errori veri.
-  - Il nuovo tentativo è uno solo e solo se `_effort_rifiutato` (brains/claude_cli.py:272): uscita non zero più «--effort» più una parola di rifiuto dell'argomento. Una CLI che rifiuta un'opzione si ferma prima di chiamare il modello, quindi il costo doppio è trascurabile.
-  - Il secondo tentativo sta dentro lo stesso try: timeout, FileNotFound e PermissionError restano gestiti. Il suo esito passa per la stessa classificazione (QUOTA, login, ecc.), quindi un errore vero dopo il nuovo tentativo arriva comunque al chiamante.
-  - Un errore diverso non provoca nuovi tentativi (test_effort_altro_errore_non_riprova).
-  - Esito: riserva R-689-1-M2.
-- modules/voice/server.py:599 — `kw["voce"] = True` per ogni turno audio, anche per il seguito effimero (`effimero` forza comunque il forte; a voce la finestra è 6). C1 è in `_CONTESTO_VOCE` (modules/voice/server.py:206). Esito: ok.
-- tests/test_unit_kernel.py:11694 — T104, round-trip §7. Calcolo dell'inizio della finestra: 21 messaggi, cutoff 15, quindi parte da MSG-08-user e MSG-07 resta fuori. Per il turno a testo il cutoff è 11 e la finestra parte da MSG-06. Le asserzioni corrispondono. Esito: ok.
+- `brains/claude_cli.py:276`: `_RIFIUTO_EFFORT` riconosce solo «unknown/unrecognized option/argument» seguito da `--effort`.
+  - Rischio esaminato: forme reali della CLI e falsi positivi.
+  - Sonde: queste forme danno tutte True: il messaggio di commander con «(Did you mean --verbose?)» sulla riga dopo, il messaggio con codici colore ANSI, le virgolette a backtick, «--effort=low», «unknown option --effort» senza virgolette. «Unknown argument: effort» di yargs (senza trattini) e le virgolette tipografiche ‘…’ danno False, come già con la regola vecchia: per yargs serviva «--effort» nel testo, per le virgolette tipografiche non c'è regressione. Claude Code usa commander, che scrive in ASCII su stderr.
+  - Esito: ok, con le riserve R-693-1-M2 e R-693-2-M2 sotto.
+- `brains/claude_cli.py:280`: `_effort_rifiutato` controlla prima l'uscita non zero, poi solo lo stderr.
+  - Rischio esaminato: una CLI vecchia che scrivesse il rifiuto su stdout non verrebbe più riconosciuta.
+  - Conseguenza: nessun nuovo tentativo, stdout non JSON, quindi RuntimeError «uscita non JSON» (riga 368). È un errore dichiarato, gestito come gli altri del provider: niente crash.
+  - Il caso è teorico: commander scrive gli errori di opzione con `outputError` su stderr.
+  - Esito: ok.
+- `brains/claude_cli.py:348`: chiamante (riga non toccata). Il flag permanente si accende solo dentro il try già esistente, con un solo nuovo tentativo. Con la regola stretta il caso «argument 'turbo' is invalid» (valore sbagliato) non spegne più l'effort per tutto il processo. R-689-1-M2 è chiusa. Esito: ok.
+- `tests/test_unit_claude_cli.py:507`: il `finally` azzera il flag di classe. R-689-2-M2 è chiusa. Esito: ok.
+- `tests/test_unit_claude_cli.py:511`: test parametrico con 4 rifiuti veri e 4 falsi positivi, più l'uscita 0 che dà sempre False. Copre il caso di V-1 della verifica esterna #343 («invalid» insieme a «--effort»). Esito: ok.
+
+**Test**
+- tests/test_unit_claude_cli.py: 57 passed, rilanciati da me con il venv dello scratchpad.
+- Il mutante «regola vecchia larga» (5 failed) non l'ho rilanciato: mi fido del dato dell'agente, il test parametrico lo uccide per costruzione.
 
 **Riserve**
-- R-689-1-M2 BASSA — il flag `_effort_non_supportato` (brains/claude_cli.py:302) vale per tutta la classe e resta acceso finché il processo vive. Si accende anche su un falso positivo, cioè «--effort» e «invalid» in un errore della CLI, per esempio una CLI intermedia che conosce `--effort` ma non accetta xhigh/max. Da lì in poi la voce resta senza effort fino al riavvio del server voce, e lo segnala un solo warning in gas_debug.log. Da dichiarare all'operatore. In alternativa si può limitare la parola «invalid» al caso «argument … is invalid».
-- R-689-2-M2 COSMETICA — test_effort_nel_comando_solo_se_chiesto (tests/test_unit_claude_cli.py:494) azzera il flag all'inizio ma non in un `finally`, a differenza degli altri due test.
+- **R-693-1-M2 BASSA (ReDoS quadratico)**: la sequenza `\s*[:=]?\s*` (riga 277), quando i due punti mancano, fa fare backtracking quadratico come due `\s*` adiacenti. È la stessa lezione della review #672.
+  - Misure: «unknown option» seguito da 10k spazi impiega 0,67 s; con 100k spazi 66 s.
+  - Nella pratica lo stderr della CLI non contiene cose così. Ma il server voce resterebbe bloccato sul turno, quindi lo considero un difetto di robustezza.
+  - Correzione: `\s*(?:[:=]\s*)?`. Provata: 1 MB in 0,04 s, stessi esiti sugli 8 casi del test.
+  - Conviene aggiungere un test di tempo, per esempio 100k spazi sotto 1 s.
+- **R-693-2-M2 COSMETICA**: «unknown option '--effort-level'» e «--effort_x» danno True perché `\b` corrisponde prima del trattino. Gas non passa mai quelle opzioni, quindi l'impatto pratico è nullo. Si chiude con `(?![\w-])` al posto di `\b` finale (provato: '--effort-level' e '--effortful' danno False).
 
-**Cosa NON ho verificato**
-- Il comportamento reale di `claude --effort` sulla CLI installata sul Mac dell'operatore (versione e testo vero dell'errore di commander): qui non si può riprodurre. Il caso di rifiuto l'ho valutato solo sul messaggio simulato nel test.
-- Il guadagno di latenza vero (3,9–16,9 s, poi?): serve una prova a voce sul Mac.
-- I mutanti dichiarati dall'agente (finestra voce ignorata, recap non spento) non li ho rilanciati; ho rilanciato solo le suite. Un mutante che metta il controllo del seguito a 10 (gas.py:4857) andrebbe nel verso sicuro e nessun test lo uccide, ma non è un rischio.
+**Non verificato**
+- Il messaggio reale della CLI `claude` installata sul Mac quando non conosce `--effort`: non è riproducibile qui, non c'è una CLI vecchia nell'ambiente. Il controllo da fare sul Mac resta `claude --help | grep effort`, già nel piano. L'aderenza a commander l'ho dedotta dal suo comportamento noto, non l'ho osservata sul binario.
+- gas.py non è toccato dal diff: niente kernel né round-trip agentico da rilanciare. Nessun antipattern del Wall of Shame: niente slicing della history, niente simulazione dei tool.
 
-**Memoria**: riga #689-M2 aggiunta a .claude/agents/memoria_revisore.md e committata da sola con scripts/commit_memoria_revisore.sh (commit 23c13b8). Il diff in staging della fetta è intatto (7 file). Nessuna lezione nuova.
+**Memoria**: riga #693-M2 e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate con scripts/commit_memoria_revisore.sh (commit df3e46e). La lezione: una regex con `\s*X?\s*`, X opzionale, è quadratica come due `\s*` adiacenti; va sondata col prefisso seguito da 100k spazi e niente altro.
+
+Review #694-M2 (bis di #693-M2) sul commit e51ec67 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #694-M2 (seconda passata dopo #693-M2) sul diff staged di feat/voce-v12-m2, con base e68a951. Lo SHA-256 del diff staged comincia con 2b665cb9a2ef. Le due riserve aperte nella #693 sono chiuse e non ho trovato problemi nuovi.
+
+Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la parte di reports/stato_progetto.md che riguarda claude_cli e la coda di .claude/agents/memoria_revisore.md, comprese le lezioni #672 e #693 sulle regex quadratiche.
+
+Elementi del diff esaminati:
+- `brains/claude_cli.py:276` — `_RIFIUTO_EFFORT` ora usa `\s*(?:[:=]\s*)?`: c'è un solo `\s*` libero, perché il secondo può partire solo dopo `:` o `=`. Rischio esaminato: backtracking quadratico (R-693-1-M2). Ho provato 4 testi di circa 1 MB: «unknown» seguito da spazi, «unknown option» seguito da spazi e poi «:», «unknown option =» seguito da spazi e poi «x», e «unknown option » ripetuto 70k volte. Nessuno supera 0,04 s; con la regex vecchia 100k spazi richiedevano 66 s. Esito: ok.
+- `brains/claude_cli.py:282` — `_effort_rifiutato` guarda solo stderr e solo con uscita diversa da zero; la regex finisce con `(?![\w-])`. Rischio esaminato: falsi positivi e falsi negativi (R-693-2-M2). Prove: «--effort-level» e «--effort_x» danno False; «--effort=low», «--effort.», «--effort» fra backtick, seguito da codice ANSI, con «(Did you mean …)» o a fine riga danno True. Esito: ok. Nessuna eccezione può uscire: è regex su stringa con `or ""`, quindi niente crash nel provider.
+- `tests/test_unit_claude_cli.py:521` — aggiunto il caso «unknown option '--effort-level'» → False alla tabella dei casi; ogni caso controlla anche l'uscita 0 → False. Rischio esaminato: un test che non distingue la correzione. Esito: ok.
+- `tests/test_unit_claude_cli.py:567` — `test_effort_rifiutato_tempo_lineare`: «unknown option» più 100k spazi deve finire sotto 1 s. Rischio esaminato: test fragile sulla CI, oppure test che non separa la regex nuova dalla vecchia. Con la regex nuova ci mette pochi millesimi, con la vecchia circa 66 s, quindi il margine c'è e il test boccerebbe un ritorno indietro. Esito: ok.
+- `tests/test_unit_claude_cli.py:507` (contesto già visto in #693) — il `finally` rimette `_effort_non_supportato`. Esito: ok.
+
+Ho rilanciato `tests/test_unit_claude_cli.py` nel venv dello scratchpad: 59 passed. Il diff non tocca la storia né `_get_window`, non simula l'output dei tool e non cambia il cap di 10 iterazioni né quello sull'output.
+
+Cosa NON ho verificato: il testo esatto dell'errore della CLI `claude` reale (versione vecchia senza `--effort`) sul Mac o sulla VPS, perché in questo ambiente non posso riprodurlo. La regex copre i formati di commander e yargs con i trattini; yargs senza trattini («Unknown argument: effort») resta False come con la regola vecchia, già accettato in #693. Non ho rilanciato la suite completa, solo il file toccato.
+
+Memoria: ho aggiunto la riga «#694-M2 — 2026-11-06 — APPROVATO — … Nessuna lezione nuova» in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho salvata con `scripts/commit_memoria_revisore.sh` (commit 1a301bd). Il commit successivo bc91ccb corregge un numero di riga sbagliato in quella riga (521 invece di 522). Il diff staged del motore non è stato toccato.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_kernel.py`: T104a (turno parlato: round-trip §7 con `calcola`, `--effort low`, finestra che parte da MSG-08, niente recap), T104b (turno a testo invariato: finestra 10, recap, niente effort), T104c (effort vuoto o non valido → nessuno). Suite kernel `=== RIEPILOGO: 1089 PASS, 0 FAIL ===` (prima 1085). `tests/test_unit_claude_cli.py` +3 (effort nel comando solo se chiesto; CLI che rifiuta → riprova senza e poi non lo passa più; altro errore → nessun nuovo tentativo): 49 passed. Voce (server, stt, tts, contesto, prova_voci, voce_ascolto) 518 passed. Mutanti: finestra voce ignorata → T104a FAIL; recap non spento → T104a FAIL.
+gas.py non toccato. `tests/test_unit_claude_cli.py`: +10 casi (4 rifiuti veri, 5 falsi positivi tra cui «invalid» e «--effort-level», tempo lineare) e `finally` nel test dell'effort: `59 passed` (prima 49). Mutante «regola vecchia larga» → 5 failed.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. 1be18db e il commit di fine-task che contiene questo file sono pushati insieme: run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nel cloud. I commit della sessione e quello di fine-task sono pushati insieme: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-689-1-M2 BASSA: il flag `_effort_non_supportato` vale per tutto il processo; un falso positivo («--effort» e «invalid» in un altro errore) spegne l'effort fino al riavvio del server voce (un warning in gas_debug.log).
-- R-689-2-M2 COSMETICA: un test dell'effort azzera il flag senza `finally`.
-- Bot #342 (BASSA, registrata): un marcatore d'elenco alfabetico «a) «…»» esenta una citazione; il campo strutturato blocca.
+- Nessuna riserva nuova (R-693-1/2-M2 chiuse in #694-M2). Residuo noto: un rifiuto scritto su stdout o nel formato yargs senza trattini («Unknown argument: effort») non è riconosciuto → il turno va in errore dichiarato (la CLI di Claude Code usa commander su stderr).
