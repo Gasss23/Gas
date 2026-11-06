@@ -11691,6 +11691,86 @@ try:
 except Exception as _e103:
     check("T103 blocco senza eccezioni", False, repr(_e103))
 
+# ---------- T104: voce rapida, fetta 2 (chat M2, 6 nov), round-trip §7 ----------
+# Turno parlato (voce=True): finestra di 6 messaggi via _get_window, niente recap vecchio,
+# `--effort low` al forte. Il turno a testo dopo resta com'era (finestra 10, recap, niente effort).
+try:
+    import subprocess as _sp104
+    from brains.claude_cli import ClaudeCliClient as _CCC104
+    _reg104 = []
+
+    def _cli104(risposte):
+        it = iter(risposte)
+
+        def _run(cmd, stdin, cwd, env, timeout):
+            f = cmd[cmd.index("--system-prompt-file") + 1]
+            _reg104.append({"cmd": list(cmd), "stdin": stdin,
+                            "sistema": Path(f).read_text(encoding="utf-8")})
+            return _sp104.CompletedProcess(cmd, 0, stdout=json.dumps({
+                "type": "result", "subtype": "success", "is_error": False,
+                "structured_output": next(it),
+                "usage": {"input_tokens": 10, "output_tokens": 3}}), stderr="")
+        return lambda timeout=None, **kw: _CCC104(timeout=timeout, binario="claude", runner=_run, **kw)
+
+    _saved104 = {kk: os.environ.get(kk) for kk in
+                 ("GAS_CLAUDE_CLI", "GAS_VOCE_FINESTRA", "GAS_VOCE_EFFORT")}
+    _orig104 = gas.ClaudeCliClient
+    try:
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+        for _kk in ("GAS_VOCE_FINESTRA", "GAS_VOCE_EFFORT"):
+            os.environ.pop(_kk, None)
+        _k104 = kernel_tmp()
+        _k104.history = [{"role": r, "content": f"MSG104-{i:02d}-{r}"} for i in range(10)
+                         for r in ("user", "assistant")]
+        _k104._recap_pin = lambda prompt: "\n\nRECAP-104-VECCHIO"
+        # a) turno parlato con uno strumento (round-trip §7)
+        gas.ClaudeCliClient = _cli104([
+            {"testo": "", "chiamate": [{"nome": "calcola", "argomenti": {"expr": "6*7"}}]},
+            {"testo": "Fa 42.", "chiamate": []}])
+        _ev104 = list(_k104.run_turn("quanto fa sei per sette?", cervello="forte", voce=True))
+        _p104 = _reg104[0]
+        check("T104a voce: round-trip con strumento, --effort low, finestra corta, niente recap",
+              [e["content"] for e in _ev104 if e["type"] == "final"] == ["Fa 42."]
+              and any(e["type"] == "tool_res" for e in _ev104) and len(_reg104) == 2
+              and _p104["cmd"][_p104["cmd"].index("--effort") + 1] == "low"
+              and "MSG104-09-assistant" in _p104["stdin"] and "MSG104-08-user" in _p104["stdin"]
+              and "MSG104-07-user" not in _p104["stdin"]
+              and "RECAP-104-VECCHIO" not in _p104["sistema"],
+              str(_ev104)[:300])
+        # b) turno a testo dopo: invariato (finestra 10, recap, niente effort)
+        _reg104.clear()
+        gas.ClaudeCliClient = _cli104([{"testo": "ok 104b", "chiamate": []}])
+        _k104b = kernel_tmp()  # stessa storia di partenza del turno parlato
+        _k104b.history = [{"role": r, "content": f"MSG104-{i:02d}-{r}"} for i in range(10)
+                          for r in ("user", "assistant")]
+        _k104b._recap_pin = lambda prompt: "\n\nRECAP-104-VECCHIO"
+        _ev104b = list(_k104b.run_turn("e a testo?", cervello="forte"))
+        _p104b = _reg104[0]
+        check("T104b testo: finestra di sempre, recap presente, nessun --effort",
+              [e["content"] for e in _ev104b if e["type"] == "final"] == ["ok 104b"]
+              and "--effort" not in _p104b["cmd"]
+              and "RECAP-104-VECCHIO" in _p104b["sistema"]
+              and "MSG104-06-user" in _p104b["stdin"] and "MSG104-05-user" not in _p104b["stdin"],
+              _p104b["stdin"][:300])
+        # c) GAS_VOCE_EFFORT vuoto → nessun --effort; valore non valido → ignorato
+        for _val in ("", "turbo"):
+            _reg104.clear()
+            os.environ["GAS_VOCE_EFFORT"] = _val
+            gas.ClaudeCliClient = _cli104([{"testo": "ok", "chiamate": []}])
+            list(_k104.run_turn("ciao", cervello="forte", voce=True))
+            check(f"T104c GAS_VOCE_EFFORT={_val!r}: nessun --effort",
+                  "--effort" not in _reg104[0]["cmd"], str(_reg104[0]["cmd"])[-80:])
+        os.environ.pop("GAS_VOCE_EFFORT", None)
+    finally:
+        gas.ClaudeCliClient = _orig104
+        for _kk, _v in _saved104.items():
+            if _v is None:
+                os.environ.pop(_kk, None)
+            else:
+                os.environ[_kk] = _v
+except Exception as _e104:
+    check("T104 blocco senza eccezioni", False, repr(_e104))
+
 # ---------- T102: avvisa_operatore (R6, chat Mani), round-trip §7 ----------
 try:
     import modules.telegram.avviso as _av102

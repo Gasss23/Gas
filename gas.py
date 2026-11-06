@@ -3972,6 +3972,11 @@ class GasKernel:
         return "<trascrizione_dati>\n" + corpo + "\n</trascrizione_dati>"
 
     CLAUDE_CLI_TIMEOUT_SEC: int = 300  # `claude -p` (ragionamento lungo): tetto per chiamata
+    # Voce rapida, fetta 2 (ordine dell'operatore via M1, 6 nov): nei turni PARLATI finestra più
+    # corta (sempre via _get_window, mai tagli a mano), niente recap delle sessioni vecchie e
+    # effort più basso del forte (`claude -p --effort`, documentato nell'aiuto della CLI).
+    VOCE_FINESTRA_N: int = 6
+    VOCE_EFFORT: str = "low"
 
     def _timeout_provider(self, name: str) -> int:
         """Timeout HTTP del rung: Ollama locale ha il suo (R-226-1)."""
@@ -4750,7 +4755,8 @@ class GasKernel:
     def run_turn(self, user_prompt: str,
                  cervello: Optional[str] = None,
                  istruzione_turno: Optional[str] = None,
-                 effimero: bool = False) -> Generator[Dict[str, Any], None, None]:
+                 effimero: bool = False,
+                 voce: bool = False) -> Generator[Dict[str, Any], None, None]:
         # V3 voce (chat M2): `istruzione_turno` vale SOLO per questo turno: va in coda al
         # messaggio system (come i pin), fuori dalla finestra e dalla cronologia.
         # V15 voce (chat M2, decisione dell'operatore 5 nov, R-675-1-M2): `effimero` = turno
@@ -4761,6 +4767,17 @@ class GasKernel:
         # solo il «turno_fine» (esito, provider), mai il parlato.
         if effimero:
             cervello = "forte"
+        # Voce rapida (fetta 2): profilo dei turni parlati. Finestra di GAS_VOCE_FINESTRA messaggi
+        # (default 6), recap vecchio spento, effort del forte da GAS_VOCE_EFFORT (default low;
+        # vuoto = quello della CLI). Testo e Telegram invariati.
+        _n_finestra = (_env_int("GAS_VOCE_FINESTRA", self.VOCE_FINESTRA_N, min_val=2)
+                       if voce else 10)
+        _effort: Optional[str] = None
+        if voce:
+            _effort = os.environ.get("GAS_VOCE_EFFORT", self.VOCE_EFFORT).strip().lower() or None
+            if _effort not in (None, "low", "medium", "high", "xhigh", "max"):
+                logging.warning("GAS_VOCE_EFFORT non valido (%r): uso quello della CLI", _effort)
+                _effort = None
         # --- Fetta 1 auto-apprendimento: tracking per turno_fine ---
         _turno_id = str(uuid.uuid4())
         _turno_tool_n = 0
@@ -4837,7 +4854,7 @@ class GasKernel:
             from brains.router import classifica_compito
             # R2 via B: «forte» solo su richiesta esplicita, mai dal classificatore.
             compito = "forte" if cervello == "forte" else classifica_compito(user_prompt)
-            _solo_forte_seguito = compito != "forte" and _ha_seguito_voce(self._get_window())
+            _solo_forte_seguito = compito != "forte" and _ha_seguito_voce(self._get_window(_n_finestra))
             if _solo_forte_seguito:
                 # R-682-1-M2 (scelta A dell'operatore): un seguito a voce è ancora nella
                 # finestra → solo il forte; spento o al tetto → turno fermo dichiarato
@@ -4852,7 +4869,8 @@ class GasKernel:
             # "" se la memoria è assente/degradata.
             mem_pin = self._memoria_pin()
             lezioni_pin = self._lezioni_pin()
-            recap_pin = self._recap_pin(user_prompt)  # FASE 2.6: recap fidato pertinente, come DATO
+            # FASE 2.6: recap fidato pertinente, come DATO; voce rapida: niente recap vecchio
+            recap_pin = "" if voce else self._recap_pin(user_prompt)
             turno_pin = f"\n\n{istruzione_turno.strip()}" if (istruzione_turno or "").strip() else ""
 
             # Backup automatico THROTTLED del DB di memoria (anti auto-corruzione):
@@ -4905,7 +4923,8 @@ class GasKernel:
                                     f"dichiarato, turno potenzialmente tool-blind")
                 payload: List[Dict[str, Any]] = []
                 try:
-                    client = (ClaudeCliClient(timeout=self.CLAUDE_CLI_TIMEOUT_SEC)
+                    client = (ClaudeCliClient(timeout=self.CLAUDE_CLI_TIMEOUT_SEC,
+                                              **({"effort": _effort} if _effort else {}))
                               if name == "claude-cli" else
                               OpenAI(base_url=url, api_key=os.environ.get(env),
                                      timeout=self._timeout_provider(name),
@@ -4914,7 +4933,7 @@ class GasKernel:
                         # C2: calcola contaminazione dalla finestra PRIMA di inviare
                         # al provider (§3b). Ricalcolata a ogni iterazione perché la
                         # finestra può scorrere tra un'iterazione e l'altra.
-                        _window = self._get_window()
+                        _window = self._get_window(_n_finestra)
                         # V-1 bot #222: conta anche il pin che mostra dati non fidati.
                         _finestra_contaminata = (self._finestra_e_contaminata(_window)
                                                  or getattr(self, "_pin_non_fidato", False))

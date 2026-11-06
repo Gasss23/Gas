@@ -485,3 +485,59 @@ def test_stato_abbonamento_cli_assente_e_ambiente(monkeypatch, tmp_path):
     finto.chmod(0o755)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-x")
     assert stato_abbonamento(binario=str(finto))[0] == "OK"
+
+
+# ---------------------------------------------------------------------------
+# Voce rapida, fetta 2 (6 nov): `--effort` per i turni parlati, con ripiego
+# ---------------------------------------------------------------------------
+
+def test_effort_nel_comando_solo_se_chiesto():
+    import brains.claude_cli as cc
+    cc.ClaudeCliClient._effort_non_supportato = False
+    reg = {}
+    ClaudeCliClient(runner=_runner(_ok({"testo": "ok", "chiamate": []}), reg),
+                    effort="low").chat.completions.create(model="m", messages=_msgs())
+    i = reg["cmd"].index("--effort")
+    assert reg["cmd"][i + 1] == "low"
+    reg2 = {}
+    ClaudeCliClient(runner=_runner(_ok({"testo": "ok", "chiamate": []}), reg2)) \
+        .chat.completions.create(model="m", messages=_msgs())
+    assert "--effort" not in reg2["cmd"]
+
+
+def test_effort_rifiutato_dalla_cli_vecchia_riprova_senza():
+    """Una CLI che non conosce --effort non deve spegnere la voce: si riprova senza e da lì
+    in poi l'opzione non si passa più (nel processo)."""
+    import brains.claude_cli as cc
+    cc.ClaudeCliClient._effort_non_supportato = False
+    comandi = []
+
+    def run(cmd, stdin, cwd, env, timeout):
+        comandi.append(list(cmd))
+        if "--effort" in cmd:
+            return subprocess.CompletedProcess(cmd, 1, stdout="",
+                                               stderr="error: unknown option '--effort'")
+        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(
+            _ok({"testo": "ciao", "chiamate": []})), stderr="")
+    try:
+        r = ClaudeCliClient(runner=run, effort="low").chat.completions.create(
+            model="m", messages=_msgs())
+        assert r.choices[0].message.content == "ciao"
+        assert ["--effort" in c for c in comandi] == [True, False]
+        ClaudeCliClient(runner=run, effort="low").chat.completions.create(model="m", messages=_msgs())
+        assert "--effort" not in comandi[-1] and len(comandi) == 3
+    finally:
+        cc.ClaudeCliClient._effort_non_supportato = False
+
+
+def test_effort_altro_errore_non_riprova():
+    import brains.claude_cli as cc
+    cc.ClaudeCliClient._effort_non_supportato = False
+    comandi = []
+
+    def run(cmd, stdin, cwd, env, timeout):
+        comandi.append(cmd)
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="boom")
+    with pytest.raises(RuntimeError):
+        ClaudeCliClient(runner=run, effort="low").chat.completions.create(model="m", messages=_msgs())
+    assert len(comandi) == 1 and cc.ClaudeCliClient._effort_non_supportato is False
