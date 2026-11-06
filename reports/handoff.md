@@ -23,6 +23,7 @@
 - **V-2 verifica esterna su a87d273** (il seguito non sapeva di non avere strumenti): `FATTA` — 10dc900, review #678-M2.
 - **Merge di main** (#338/#340 della chat Mani) e `**kw` nel finto del test di Mani (autorizzato da M1): `FATTA` — fd1b320, review #679-M2.
 - **V-1 (b) bot su a87d273** (strumento chiesto nel seguito → silenzio): `FATTA` — frase fissa «Per farlo ripetimelo dicendo prima Hey Jarvis.», 4ee1feb, review #680-M2.
+- **V-1/V-2 bot su 312cd86** (segno in coda; «Basta!» dalla TV nel seguito detto a voce): `FATTA` — 2e367e2, review #681-M2. Il FAILURE del bot su 312cd86 è un falso positivo del parser («letto ad alta voce» preso per ALTA): fuori scope, macchina del bot.
 - **V-1 (a) bot su a87d273** (i seguiti veri non entrano nella storia): `IN ATTESA della decisione dell'operatore`.
 - **C1**: `DEFERITA — prossima fetta`.
 
@@ -31,19 +32,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  12 ++++++++++++
- gas.py                              |  51 ++++++++++++++++++++++++++++++++++++++++++---------
- modules/voice/server.py             | 145 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
+ .claude/agents/memoria_revisore.md  |  13 +++++++++++
+ gas.py                              |  51 +++++++++++++++++++++++++++++++++++--------
+ modules/voice/server.py             | 153 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
  modules/voice/tts.py                |   4 +++-
- reports/diff_sessione.md            |  20 ++++++++++++--------
+ reports/diff_sessione.md            |  20 ++++++++++-------
  reports/handoff.md                  | n/d
- reports/ripartenza_m2.md            |   9 +++++----
+ reports/ripartenza_m2.md            |   9 ++++----
  reports/stato_progetto.md           |   3 ++-
- reports/ultimo_report.md            |  34 +++++++++++++++++++---------------
- tests/test_unit_kernel.py           | 110 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md            |  34 ++++++++++++++++-------------
+ tests/test_unit_kernel.py           | 110 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_voce_ascolto.py     |   5 +++--
- tests/test_unit_voice_prova_voci.py |  34 ++++++++++++++++++++++++++++++++--
- tests/test_unit_voice_stt.py        | 222 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_prova_voci.py |  34 +++++++++++++++++++++++++++--
+ tests/test_unit_voice_stt.py        | 250 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: origin/main 83f3bcd.
@@ -51,6 +52,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2e367e2 fix(voce): V15 — segno [NON_PER_ME] anche in coda; nel seguito la pausa chiude senza voce (V-1/V-2 bot #339 su 312cd86, chat M2)
+93ee68d chore(revisore): memoria review #681 — APPROVATO CON RISERVE
+312cd86 docs(voce): report di fine task V15 dopo V-2 ve, merge di main e frase fissa del seguito (PR #339, chat M2)
 4ee1feb feat(kernel+voce): V15 — nel seguito uno strumento chiesto fa dire «ripetimelo con Hey Jarvis» invece del silenzio (V-1 b bot #339, sì di M1) (chat M2)
 4899032 chore(revisore): memoria review #680 — APPROVATO CON RISERVE
 fd1b320 Merge origin/main (PR #338 e #340 della chat Mani) nella PR #339 — test di Mani col **kw autorizzato da M1, review #679-M2
@@ -338,9 +342,45 @@ File rilevanti:
 - /home/user/Gas/tests/test_unit_kernel.py
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
+Review #681-M2 sul commit 2e367e2 (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #681-M2 sul diff STAGED (base 312cd86, branch feat/voce-v12-m2, PR #339): modules/voice/server.py e tests/test_unit_voice_stt.py. Prima della review ho letto CLAUDE.md (sez. 1, 5, 8, 10), reports/stato_progetto.md (voce V15, riga 615) e la coda di .claude/agents/memoria_revisore.md. git status mostra solo «M » (niente «MM»), quindi l'albero di lavoro coincide con quello staged.
+
+Cosa ho esaminato:
+- modules/voice/server.py:150 — `_NON_PER_ME` ha una terza alternativa, `|\[non_per_me\]\W*$`. Il segno con le parentesi ora vale anche in coda. Rischi controllati:
+  - Precedenza della regex: l'alternativa nuova non ha `^`, ma l'uso è con `.search` (server.py:628), quindi funziona come voluto.
+  - Il segno in mezzo alla risposta non conta: «x [NON_PER_ME] y» → False.
+  - Backtracking: 200k spazi in 2 ms; 30k segni ripetuti, tempo trascurabile.
+  - Uso: solo dentro il ramo `is_audio and self._seguito()`, quindi fuori dal seguito non cambia niente.
+  - Esito: ok.
+- modules/voice/server.py:525 — nel seguito, con `_SOLO_PAUSA`, risponde `_send_json(200, {"content": "", "pausa": True})` dopo aver impostato `_comando = COMANDO_PAUSA`. L'intestazione X-Gas-Comando parte da end_headers (modules/voice/server.py:460). Rischi controllati:
+  - Niente sintesi e niente «capito» nel corpo, come in `_chiudi_seguito` (modules/voice/server.py:664). Coerente con la privacy della stanza.
+  - Nessun turno del kernel.
+  - Fuori dal seguito resta `_rispondi_senza_turno(RISPOSTA_PAUSA, …)`, invariato.
+  - `_seguito()` vale solo per il parlato (`self._parlato`, modules/voice/server.py:672), e questo ramo è già dentro `is_audio`.
+  - Esito: ok.
+- tests/test_unit_voice_stt.py:752 — `test_v15_seguito_pausa_senza_voce`. Prova 3 formati. La sintesi finta solleva AssertionError se viene chiamata. Controlla il codice 200, X-Gas-Comando: pausa, content vuoto, assenza di «audio» e che non parta nessun turno (kernel.kw resta "NESSUN TURNO"). Mutante «ramo seguito tolto» (`if False:`) provato da me in una copia scratch dell'albero: 1 failed. Esito: ok.
+- tests/test_unit_voice_stt.py:736 (test non_per_me con le varianti in coda) e la frase col segno in mezzo nel test rivolto_a_gas: coprono la regex in entrambi i versi. Il mutante «coda tolta» non l'ho rieseguito: mi fido del dato dell'agente (1 failed), e il caso in coda è asserito esplicitamente. Esito: ok.
+- Suite voice_stt + prova_voci + voce_ascolto nel venv di scratch: 381 passed, confermato.
+- Wall of Shame: nessuno slicing della history, nessuna simulazione di tool (i finti sono patch nei test). gas.py, `_get_window`, il cap delle 10 iterazioni e il cap di output non sono toccati.
+
+Riserve:
+- R-681-1-M2 BASSA: se il modello risponde davvero a Gas ma chiude per errore col segno in coda («Fatto. [NON_PER_ME]»), la risposta viene taciuta e la conversazione si chiude. Il verso è sicuro per la privacy, ma va saputo: si vedrà solo nella prova dal vero.
+- R-681-2-M2 COSMETICA: nel seguito la risposta di pausa è JSON semplice anche col formato «audio+pezzi», come `_chiudi_seguito`. Il client (chat Mani) deve decidere dall'intestazione X-Gas-Comando, non dal tipo del corpo. Collegata a R-679-2-M2, già aperta.
+- Residuo già noto, non nuovo: R-676-1-M2. «[NON PER ME]» senza trattino basso vale solo come risposta intera, non in coda.
+
+Cosa NON ho verificato:
+- Il client reale (clients/voice/ascolto.py della chat Mani) non è nel diff e oggi non manda X-Gas-Seguito: il comportamento end-to-end sul Mac non si può riprodurre qui.
+- Il comportamento del modello forte (se mette davvero il segno in testa o in coda) non è verificabile con test unitari.
+- Il FAILURE del bot su 312cd86 (falso positivo di `_FINDING_GRAVE_A_PAROLE` su «letto ad alta voce») è fuori da questo diff, come da istruzioni: macchina del bot, decide l'operatore.
+
+Memoria: riga #681-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola con scripts/commit_memoria_revisore.sh (commit 93ee68d). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_stt.py`: test V15 (pausa, seguito, «forte» dalla stanza, prefisso del segno, incerta/vuota nel seguito, chiusura del turno, strumento negato → frase fissa), «Jarvis Gas» fra i positivi. `tests/test_unit_voice_prova_voci.py`: +1 (`test_v15_conferma_errore_recente_non_richiama_elevenlabs`). `tests/test_unit_kernel.py` T103a-e (round-trip §7 del turno effimero; T103b controlla `strumento_negato`). `tests/test_unit_voce_ascolto.py` (chat Mani): solo `**kw` sui due finti, autorizzato da M1. Mutanti su gas.py (storia non ripristinata, strumenti offerti, strumento eseguito, salvataggio, forte non forzato) uccisi da T103. Esecuzione sull'head 4ee1feb, nel venv con requirements + requirements-dev: voice_stt + voice_prova_voci + voce_ascolto `380 passed in 77.91s`; suite kernel `=== RIEPILOGO: 1077 PASS, 0 FAIL ===` (prima della sessione 1076).
+`tests/test_unit_voice_stt.py`: test V15 (pausa, seguito, «forte» dalla stanza, prefisso del segno, incerta/vuota nel seguito, chiusura del turno, strumento negato → frase fissa), «Jarvis Gas» fra i positivi. `tests/test_unit_voice_prova_voci.py`: +1 (`test_v15_conferma_errore_recente_non_richiama_elevenlabs`). `tests/test_unit_kernel.py` T103a-e (round-trip §7 del turno effimero; T103b controlla `strumento_negato`). `tests/test_unit_voce_ascolto.py` (chat Mani): solo `**kw` sui due finti, autorizzato da M1. Mutanti su gas.py (storia non ripristinata, strumenti offerti, strumento eseguito, salvataggio, forte non forzato) uccisi da T103. Esecuzione sull'head 4ee1feb, nel venv con requirements + requirements-dev: voice_stt + voice_prova_voci + voce_ascolto `380 passed in 77.91s`; su 2e367e2 (+`test_v15_seguito_pausa_senza_voce`, varianti in coda) `381 passed in 77.90s`, mutanti «coda tolta» e «ramo seguito tolto» uccisi (1 failed ciascuno); suite kernel `=== RIEPILOGO: 1077 PASS, 0 FAIL ===` (prima della sessione 1076).
 
 ## §6 STATO CI
 
@@ -352,10 +392,16 @@ File rilevanti:
 - 3581f6f: CI success (run 42128563229); verifica-bot con la stessa MEDIA.
 - bad216f, aa1babe, fd64e77: nessuna run su questi SHA da soli (pushati con a87d273).
 - a87d273: CI success (run 42133629442), verifica-bot success (run 42133634353) con verdetto testuale V-1 (a)/(b) MEDIA e verifica esterna con V-2.
-- 2530577, 10dc900, fd1b320, 4899032, 4ee1feb e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
+- 2530577, 10dc900, fd1b320, 4899032, 4ee1feb: nessuna run su questi SHA da soli (pushati con 312cd86).
+- 312cd86: verifica-bot FAILURE per falso positivo del parser (verdetto testuale: V-1/V-2 BASSE, V-3 COSMETICA; «ad alta voce» letto come ALTA); CI in corso alla lettura.
+- 93ee68d, 2e367e2 e commit di fine-task che contiene questo file: run non ancora disponibile (pushati insieme).
 
 ## §7 RISERVE APERTE
 
+- Parser del bot: «ad alta voce» in un finding BASSA è letto come gravità ALTA (`_FINDING_GRAVE_A_PAROLE`, case-insensitive) → FAILURE falso su 312cd86. Fetta separata sulla macchina del bot, decide l'operatore.
+- R-681-1-M2 BASSA: «Fatto. [NON_PER_ME]» (segno in coda per errore) tace una risposta vera; verso sicuro.
+- R-681-2-M2 COSMETICA: pausa nel seguito in JSON anche con audio+pezzi; il client decide da X-Gas-Comando.
+- V-3 bot su 312cd86 COSMETICA: con lo strumento negato il diario scrive turno_fine esito=ok.
 - V-1 (a) bot su a87d273, MEDIA: i turni di seguito veri non entrano nella storia (decide l'operatore, §0 punto 2).
 - R-678-1-M2 BASSA: che il modello rispetti l'istruzione «niente strumenti» si vede solo dal vero.
 - R-678-2-M2 COSMETICA: «ricordare» ambiguo nell'istruzione.
