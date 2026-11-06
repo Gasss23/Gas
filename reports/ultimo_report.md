@@ -3,7 +3,7 @@
 ## DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #339 (https://github.com/Gasss23/Gas/pull/339), secondo la regola di merge di CLAUDE.md §10.
-2. R-675-1-M2 parte storia (MEDIA, il bot ha dato FAILURE su questo): scegliere A) turno «effimero» in gas.py nella #339 (serve il via su gas.py per questa PR) o B) togliere i turni di seguito dalla #339 e rifarli nella fetta 2.
+2. Nessun'altra decisione: l'operatore ha scelto A e detto sì alla #339 (merge con CI verde e bot/verifica esterna senza ALTA/MEDIA).
 
 ## Esito delle fette
 
@@ -12,9 +12,10 @@
 - **V-2 bot #335** (conferma che può bloccare il server): `FATTA` — timeout 5 s, errore in cache 60 s; chiusa anche R-669-1-M2 per la conferma.
 - **V-1 bot #335** («Jarvis Gas»): `FATTA` — dichiarato voluto con un test.
 - **V-1/V-2 verifica esterna su b0405dc** («forte» dalla stanza pronunciato; segno con aggiunte letto ad alta voce): `FATTA` — review #676-M2 APPROVATO CON RISERVE (R-676-1-M2 BASSA).
-- **Bot su b0405dc: FAILURE per una MEDIA** (R-675-1 parte storia: il parlato dei turni di seguito resta nella storia e al turno dopo può andare ai gratuiti; strumenti attivi nel seguito): `IN ATTESA della scelta dell'operatore via M1` — A) turno «effimero» in gas.py in questa PR, B) togliere i turni di seguito dalla #339.
+- **Bot su b0405dc e 3581f6f: FAILURE per una MEDIA** (parlato dei turni di seguito nella storia, poi ai gratuiti; strumenti attivi nel seguito): `FATTA` con la scelta A dell'operatore (via su gas.py per questa PR): `run_turn(effimero=True)` — solo forte, nessuno strumento offerto (uno chiesto non si esegue), storia su copia e ripristinata nel finally, niente salvataggio; il server chiude subito il turno (R-677-1-M2). Test T103a-e (round-trip §7). Review #677-M2 APPROVATO CON RISERVE (chiuse), #677-M2 bis APPROVATO.
+- **R-676-3** (review di Mani: nel seguito una trascrizione incerta diceva «Non ho capito»): `FATTA` — trascrizione incerta o vuota nel seguito → fine, niente voce.
 - **C1**: `DEFERITA — prossima fetta` (ordine di M1).
-- Test: suite voce 291 passed prima delle ultime due correzioni; dopo, voice_stt + voice_prova_voci 155 passed. Review #675-M2 APPROVATO CON RISERVE (bis, ter).
+- Test: suite kernel 1077 PASS 0 FAIL; voice_stt 104 passed; suite voce 293 passed (prima di R-676-3/R-677); in precedenza suite voce 291 passed prima delle ultime due correzioni; dopo, voice_stt + voice_prova_voci 155 passed. Review #675-M2 APPROVATO CON RISERVE (bis, ter).
 
 ## Anomalie
 

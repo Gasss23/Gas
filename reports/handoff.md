@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #339 (https://github.com/Gasss23/Gas/pull/339). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5180114384","url":"https://github.com/Gasss23/Gas/pull/339"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10.
-2. R-675-1-M2 parte storia (MEDIA; il bot ha dato FAILURE su b0405dc per questo): scegliere A) turno «effimero» in gas.py nella #339 (via su gas.py per questa PR) o B) togliere i turni di seguito dalla #339.
+2. Già decise dall'operatore (via M1): scelta A (turno effimero, via su gas.py per questa PR) e sì al merge della #339 con CI verde e bot + verifica esterna senza ALTA/MEDIA sul nuovo head.
 
 ---
 
@@ -18,7 +18,8 @@
 - **V-2 bot #335** (conferma: timeout 5 s, errore in cache 60 s) e R-669-1-M2 per la conferma: `FATTA`.
 - **V-1 bot #335** («Jarvis Gas» dichiarato con un test): `FATTA`.
 - **V-1/V-2 verifica esterna su b0405dc**: `FATTA` (review #676-M2).
-- **Storia senza turni «non per me»** (MEDIA del bot, check failure): `IN ATTESA della scelta dell'operatore` (A gas.py / B togliere il seguito).
+- **Storia senza turni «non per me» e nessuno strumento nel seguito** (MEDIA del bot): `FATTA` — scelta A, `run_turn(effimero=True)` in gas.py (review #677-M2 + bis).
+- **R-676-3** (review di Mani): `FATTA` — trascrizione incerta o vuota nel seguito → fine.
 - **C1**: `DEFERITA — prossima fetta`.
 
 ---
@@ -26,16 +27,18 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   6 ++++++
- modules/voice/server.py             |  94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ .claude/agents/memoria_revisore.md  |   9 +++++++++
+ gas.py                              |  49 ++++++++++++++++++++++++++++++++++++++++---------
+ modules/voice/server.py             | 133 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
  modules/voice/tts.py                |   4 +++-
- reports/diff_sessione.md            |  13 ++++++-------
+ reports/diff_sessione.md            |  15 ++++++++-------
  reports/handoff.md                  | n/d
  reports/ripartenza_m2.md            |   8 ++++----
  reports/stato_progetto.md           |   3 ++-
- reports/ultimo_report.md            |  24 ++++++++++++------------
+ reports/ultimo_report.md            |  25 +++++++++++++------------
+ tests/test_unit_kernel.py           | 109 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_voice_prova_voci.py |  34 ++++++++++++++++++++++++++++++++--
- tests/test_unit_voice_stt.py        | 133 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_stt.py        | 199 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -43,6 +46,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fd64e77 feat(kernel+voce): V15 — turno effimero per i turni di seguito (scelta A dell'operatore, R-675-1-M2) (chat M2)
+aa1babe chore(revisore): memoria review #677 — APPROVATO
+bad216f chore(revisore): memoria review #677 — APPROVATO CON RISERVE
+3581f6f docs(voce): report di fine task V15 dopo V-1/V-2 della verifica esterna (PR #339, chat M2)
 bb731b2 fix(voce): V15 — seguito: «forte» dalla stanza chiude senza voce, segno [NON_PER_ME] anche come prefisso (V-1/V-2 ve #339, chat M2)
 061334c chore(revisore): memoria review #676 — APPROVATO CON RISERVE
 b0405dc docs(voce): report di fine task V15 (PR #339, chat M2)
@@ -147,23 +154,91 @@ Review #676-M2. Ho esaminato il diff staged (2 file, +34/-4) sul branch feat/voc
 
 Memoria: riga #676-M2 aggiunta a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (061334c). Lo stage del diff non è stato toccato.
 
+Review #677-M2 sul diff staged di fd64e77 prima delle correzioni R-677-1/2 (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #677-M2 sul diff staged attuale: 4 file. Comprende l'aggiornamento richiesto da M1, cioè la parte R-676-3 di `_do_stt`. Letture fatte prima della review: CLAUDE.md (sez. 5, 8, 9), la memoria del revisore e le voci V15/R-675 di stato_progetto (cercate con grep).
+
+**Elementi del diff esaminati**
+- gas.py:4707 — se il turno è effimero forza `cervello = "forte"` prima di classificare. Rischio: un gratuito che riceve il parlato della stanza. Esito: ok. Il router usa "forte" (catena solo claude-cli). Lo prova T103d: OpenAI finto che solleva, risultato un solo errore dichiarato.
+- gas.py:4766 — salva `_storia_vera` e lavora su `list(self.history)`; `_salva()` non fa nulla e la compressione viene saltata. Rischio: modifiche fatte sul posto ai dict condivisi dalla copia superficiale. Esito: ok. `_add_to_history` fa solo append. `_get_window` e `_cap_window_chars` restituiscono liste nuove. L'unico punto che modifica sul posto (`_segna_esito_in_storia`) sta nel percorso delle firme, che un turno effimero non attraversa. Nessuno slicing nuovo: il grep di `[-N:]` sul diff è vuoto. `_get_window` e `for _ in range(10)` non sono toccati.
+- gas.py:4930 — se il modello chiede comunque uno strumento, si esce con `final` vuoto e lo strumento non viene eseguito. Rischio: simulazione dell'output del tool o esecuzione nascosta. Esito: ok. Nessun tool_res, niente nella storia. Lo strumento non viene offerto nemmeno al modello: `_offerta = {}` arriva a ClaudeCliClient come `tools=None`, e la CLI gira comunque con `--tools ""` (brains/claude_cli.py:303).
+- gas.py:5084 — nel finally la storia vera torna al suo posto. Il ramo `_storia_rimandata` di un turno precedente resta pendente e lo salderà il turno normale successivo, che è corretto. Rischio: ripristino che non avviene davvero. Esito: **riserva** (R-677-1-M2, sotto). Provato in scratch: dopo un `break` sul `final` senza `close()`, `k.history is vera` è False (4 messaggi, col parlato). Torna True solo dopo `del g` / gc. Anche con `g.throw(...)` il generatore resta sospeso sull'evento di errore, con la copia attiva fino alla chiusura.
+- modules/voice/server.py:574 — nel ramo seguito passa `kw["effimero"] = True`. Rischio: l'effimero che finisce anche fuori dal seguito. Esito: ok. Lo coprono il test con seguito=False ("effimero" not in kw) e l'assert nel test del seguito.
+- modules/voice/server.py:601 — nel seguito una risposta vuota chiude come [NON_PER_ME]. Esito: ok. Fuori dal seguito il comportamento non cambia.
+- modules/voice/server.py:809 e modules/voice/server.py:830 — R-676-3: nel seguito una STT incerta o vuota fa `_chiudi_seguito()` e ritorna None. Il chiamante (modules/voice/server.py:511) ritorna senza turno. Rischio: doppia risposta HTTP oppure un turno partito lo stesso. Esito: ok. Il test copre 3 casi × con/senza seguito; senza seguito restano «non ho capito» e il 400.
+- tests/test_unit_kernel.py T103 — fa il round-trip §7 (caso c, normale con write_file dopo l'effimero). Esito: ok, ma vedi R-677-2-M2.
+- Diario: `_chiudi_turno` scrive solo esito, conteggi, provider, tentati e classe, mai il prompt. `_recap_pin(user_prompt)` legge e basta. Ok.
+
+**Test sull'albero staged esportato** (git checkout-index)
+- Kernel: 1076 PASS, 0 FAIL; T103a-d PASS.
+- tests/test_unit_voice_stt.py: 103 passed.
+- Non ho rifatto i mutanti dichiarati.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-677-1-M2 BASSA** — Il ripristino dipende dalla chiusura del generatore. Il server fa `break` sul final senza `turno.close()`. Finché l'handler non esce, quindi, `self.history` è la copia col parlato e la risposta. Oggi non fa danni: HTTPServer single-thread e kernel della voce non condiviso con Telegram, che ha la sua istanza. Se però un secondo `run_turn` partisse mentre un generatore effimero è ancora sospeso, salverebbe il parlato su `.gas_history.json`, e il ripristino successivo cancellerebbe dalla memoria i messaggi di quel turno. Correzione proposta: `turno.close()` in un `finally` del blocco in modules/voice/server.py:576 (vale anche per gli altri chiamanti).
+- **R-677-2-M2 BASSA** — T103 consuma il generatore con `list()` e quindi non copre il percorso del server (break senza close). Aggiungere un caso con break, controllo che `history` sia la storia vera dopo `close()`, e un turno normale dopo.
+
+**Rischi esclusi**
+- Comportamento reale di `claude -p`, cioè se il modello vero, senza strumenti descritti, emette comunque il formato di tool call: non verificato, serve il forte vivo.
+- Concorrenza tra processi su `.gas_history.json`: non provata. L'effimero non salva, quindi non partecipa all'unione in `_save_history`.
+- Effetto sul client voce di un `fine` dovuto alla STT incerta: client non esercitato.
+
+Memoria aggiornata: riga #677-M2 e una lezione (stato sostituito in un generatore e ripristinato nel finally = vale solo alla chiusura). Committata con scripts/commit_memoria_revisore.sh, commit bad216f; lo stage del motore è intatto.
+
+File: /home/user/Gas/gas.py, /home/user/Gas/modules/voice/server.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/tests/test_unit_voice_stt.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+Review #677-M2 bis sullo stage finale di fd64e77 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #677-M2 bis. Ho rivisto solo l'aggiunta per R-677-1-M2 e R-677-2-M2, sullo stage attuale e già con la correzione del test (il riferimento vivo `tenuti`). Il ripristino della storia ora non dipende più dal garbage collector: il server chiude il turno subito, e un test lo dimostra.
+
+**Elementi del diff esaminati**
+- **modules/voice/server.py:592-594** — Il nuovo `try/finally` attorno al ciclo sugli eventi del turno chiude sempre il generatore con `close()`, quando esiste. Vale sia dopo il `break` sul final sia dopo il `return` sull'errore. Esito: ok.
+  - Rischio esaminato: `close()` che solleva o che rientra. `GeneratorExit` è una BaseException, quindi gli `except Exception` interni di run_turn non la catturano. Parte il finally di gas.py: rimette la storia vera, scrive `turno_fine` e poi `_invia_avvisi_lead`, che è già protetto. Quel finally non fa `yield`, quindi non può nascere RuntimeError.
+  - Se `close()` sollevasse comunque, il server risponde 500 tramite l'`except Exception` esterno. Unico caso limite, teorico: se l'errore arriva dopo un 500 già inviato, partirebbe una seconda risposta. Non ha effetti pratici.
+- **tests/test_unit_voice_stt.py:806** — `test_v15_il_turno_viene_chiuso_subito` usa un kernel finto che tiene un riferimento vivo al generatore (`tenuti`), così il finally parte solo con il `close()` del server. Rischio esaminato: un test che passa anche senza la correzione. Esito: ok.
+  - Mutante provato in una copia scratch dello stage (`close()` sostituito da `pass`): 1 failed. Con lo stage vero: 104 passed.
+- **tests/test_unit_kernel.py:11547** — T103e: dopo un `break` sul final, finché il generatore è sospeso la storia è ancora la copia. Dopo `close()`, `history` è (`is`) la storia vera e non contiene il parlato. Esito: ok, PASS.
+- Effetto collaterale (ok): `_chiudi_turno` e gli avvisi lead ora partono prima dell'invio della risposta vocale, non più all'uscita dall'handler. Aggiungono latenza solo nei turni che creano lead e mandano un avviso Telegram (rete). Il seguito effimero non ne è toccato: non usa strumenti, quindi non crea lead.
+
+**Esecuzione sullo stage esportato**
+- Suite kernel: 1077 PASS, 0 FAIL.
+- `tests/test_unit_voice_stt.py`: 104 passed.
+
+**Rischio escluso**
+- Latenza reale aggiunta dall'invio dell'avviso lead prima della risposta vocale: non misurata. Servirebbero Telegram reale e un turno con lead.
+- Il caso «su errore del kernel» citato nella docstring del test non è esercitato: il test copre solo il final. Il percorso con `return` sull'errore resta comunque coperto dal `finally` per costruzione del codice.
+
+**Memoria**
+- Aggiunta la riga #677-M2 bis in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata con `scripts/commit_memoria_revisore.sh` (commit aa1babe). Lo stage del motore non è stato toccato.
+
+File:
+- /home/user/Gas/modules/voice/server.py
+- /home/user/Gas/tests/test_unit_voice_stt.py
+- /home/user/Gas/tests/test_unit_kernel.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_stt.py`: +6 test V15 (`test_v15_pausa_nessun_turno_e_comando`, `test_v15_pausa_solo_dal_parlato`, `test_v15_seguito_non_per_me_chiude_senza_voce`, `test_v15_seguito_rivolto_a_gas_risponde_normalmente`, `test_v15_senza_seguito_nessuna_decisione`, `test_v15_seguito_a_testo_ignorato`), «Jarvis Gas» fra i positivi. `tests/test_unit_voice_prova_voci.py`: +1 (`test_v15_conferma_errore_recente_non_richiama_elevenlabs`), IncompleteRead nel test degli errori. Suite voce della CI in un venv con requirements + requirements-dev: `291 passed in 314.82s` prima delle correzioni R-675-1/3; dopo, voice_stt + voice_prova_voci `155 passed in 46.28s` e `-k v15` 6 passed. Mutanti: senza intestazione, senza comando, senza registrazione dell'errore, senza ramo «fine»: uccisi; `self._parlato` in `_seguito()` ridondante con `is_audio` (sopravvive, difesa voluta). Commit bb731b2: `test_v15_seguito_forte_dalla_stanza_non_parla` nuovo e due varianti col prefisso; voice_stt + voice_prova_voci `156 passed in 44.95s`; mutante «niente ramo seguito nell'uso» ucciso. Kernel non toccato (`gas.py` identico a main).
+`tests/test_unit_voice_stt.py`: +6 test V15 (`test_v15_pausa_nessun_turno_e_comando`, `test_v15_pausa_solo_dal_parlato`, `test_v15_seguito_non_per_me_chiude_senza_voce`, `test_v15_seguito_rivolto_a_gas_risponde_normalmente`, `test_v15_senza_seguito_nessuna_decisione`, `test_v15_seguito_a_testo_ignorato`), «Jarvis Gas» fra i positivi. `tests/test_unit_voice_prova_voci.py`: +1 (`test_v15_conferma_errore_recente_non_richiama_elevenlabs`), IncompleteRead nel test degli errori. Suite voce della CI in un venv con requirements + requirements-dev: `291 passed in 314.82s` prima delle correzioni R-675-1/3; dopo, voice_stt + voice_prova_voci `155 passed in 46.28s` e `-k v15` 6 passed. Mutanti: senza intestazione, senza comando, senza registrazione dell'errore, senza ramo «fine»: uccisi; `self._parlato` in `_seguito()` ridondante con `is_audio` (sopravvive, difesa voluta). Commit bb731b2: `test_v15_seguito_forte_dalla_stanza_non_parla` nuovo e due varianti col prefisso; voice_stt + voice_prova_voci `156 passed in 44.95s`; mutante «niente ramo seguito nell'uso» ucciso. Commit fd64e77: `gas.py` toccato (via esplicito dell'operatore): `tests/test_unit_kernel.py` T103a-e (round-trip §7) — suite kernel `=== RIEPILOGO: 1077 PASS, 0 FAIL ===` (prima 1076); mutanti su gas.py (storia non ripristinata, strumenti offerti, strumento eseguito, salvataggio, forte non forzato) tutti uccisi da T103; voice_stt `104 passed`; suite voce `293 passed in 334.66s` prima di R-676-3/R-677-1.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel cloud: check lette con l'integrazione GitHub.
-- 04532a3, 8c9bc1b, 2d2d432, 5cf7267: nessuna run su questi SHA da soli (pushati insieme a b0405dc).
-- b0405dc: handoff-check success; verifica-bot FAILURE (MEDIA: R-675-1 parte storia e strumenti attivi nel seguito); unit-suite in corso alla scrittura.
-- 061334c, bb731b2 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
+- 04532a3, 8c9bc1b, 2d2d432, 5cf7267: nessuna run su questi SHA da soli (pushati con b0405dc).
+- b0405dc: handoff-check success; verifica-bot FAILURE (MEDIA: storia del seguito, strumenti attivi).
+- 061334c, bb731b2: nessuna run su questi SHA da soli (pushati con 3581f6f).
+- 3581f6f: verifica-bot FAILURE (stessa MEDIA), handoff-check success.
+- bad216f, aa1babe, fd64e77 e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme: la run testerà solo la testa).
 
 ## §7 RISERVE APERTE
 
-- Bot su b0405dc, MEDIA (check failure): il parlato dei turni di seguito resta nella storia condivisa e al turno dopo può andare ai gratuiti; nel seguito gli strumenti restano attivi. Scelta A/B dell'operatore.
+- Bot su b0405dc/3581f6f, MEDIA: chiusa in fd64e77 (turno effimero), da confermare dal bot sul nuovo head.
 - R-676-1-M2 BASSA: «[NON PER ME] (…)» e «NON_PER_ME (…)» con aggiunte non riconosciuti (solo la forma esatta con parentesi vale come prefisso).
 
-- R-675-1-M2 parte storia MEDIA: i turni «non per me» restano nella storia condivisa (gas.py).
 - R-675-2-M2 BASSA: oltre il tetto orario «pausa» riceve 429; i turni ambientali consumano il tetto.
 - R-675-4-M2 COSMETICA: «basta così?» come domanda chiude la conversazione; «forte, pausa» va al forte.
 - R-675-5-M2 BASSA: forte spento → turni di seguito 500 (il client deve chiudere); forte acceso → ogni frase captata spende il budget del forte.
