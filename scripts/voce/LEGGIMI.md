@@ -5,6 +5,13 @@ registra fino a quando smetti di parlare, manda la richiesta al server voce e ti
 a voce, una frase alla volta: la prima si sente appena è pronta, mentre il server prepara
 le altre. Dopo la risposta hai 12 secondi per continuare senza ripetere la parola.
 
+**«Sì, signore?»:** dopo la parola, invece del bip, Jarvis risponde «Sì, signore?» con la sua
+voce. L'audio lo prepara il server voce una volta per voce; l'ascolto lo scarica in sottofondo
+all'avvio e lo tiene in memoria. Finché non c'è, o se il server dà errore, senti il bip di
+sempre. Nella finestra dei 12 secondi e quando interrompi Gas resta il bip, più rapido.
+Se cambi la voce di Jarvis sul server, «Sì, signore?» resta con la voce vecchia fino al
+riavvio dell'ascolto: `bash scripts/voce/installa.sh`.
+
 **Interrompere Gas:** mentre risponde, di' di nuovo la parola di attivazione: si ferma
 subito, salta le frasi che mancavano, fa il bip e ascolta la nuova domanda. Serve proprio
 la parola, non basta parlare: con le casse del Mac il microfono sente anche la voce di Gas.
@@ -54,9 +61,18 @@ bash scripts/voce/spegni.sh
 Spegne i due servizi e toglie i loro file da `~/Library/LaunchAgents`: non ripartono
 nemmeno al prossimo accesso. Per riaccendere: di nuovo `installa.sh`.
 
-Per una pausa veloce senza togliere niente:
-`launchctl bootout gui/$(id -u)/com.gas.ascolto` (lo riaccende il prossimo `installa.sh`
-o il prossimo accesso al Mac).
+## Pausa (standby) e ripresa
+
+Per una pausa, per esempio mentre parli con un'altra persona:
+
+```bash
+bash scripts/voce/pausa.sh      # Gas non ascolta più, nemmeno «Hey Jarvis»
+bash scripts/voce/riprendi.sh   # Gas ascolta di nuovo
+```
+
+La pausa ferma solo l'ascolto: il server voce resta acceso e non si toglie nessun file.
+Dura fino a `riprendi.sh` o al prossimo riavvio del Mac (all'accesso l'ascolto riparte da
+solo).
 
 ## Privacy
 
@@ -87,6 +103,7 @@ o il prossimo accesso al Mac).
 | `GAS_ASCOLTO_SOGLIA` | 0.5 | sensibilità della parola (più alta = meno attivazioni per sbaglio) |
 | `GAS_ASCOLTO_VOCE_RMS` | 200 | volume sopra cui conta come voce (più basso = sente anche la voce piana; se in una stanza rumorosa parte da solo o non chiude la richiesta, alzalo a 300–500) |
 | `GAS_ASCOLTO_SILENZIO` | 0.8 | secondi di silenzio che chiudono la richiesta |
+| `GAS_ASCOLTO_CONFERMA` | 1 | `0` = dopo la parola solo il bip, senza «Sì, signore?» |
 | `GAS_ASCOLTO_INTERRUZIONE` | 1 | `0` = la parola non interrompe Gas mentre parla |
 | `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | 0.7 | sensibilità della parola mentre Gas parla (più bassa = la sente meglio, ma rischia di attivarsi con la voce di Gas) |
 | `GAS_VOICE_FINESTRA` | 12 | secondi per continuare dopo la risposta |
