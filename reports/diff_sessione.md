@@ -6,7 +6,7 @@
 - `modules/voice/tts.py` — parametro `timeout` di `synthesize_speech` (default invariato).
 - `tests/test_unit_voice_stt.py` — test V15 della pausa e dei turni di seguito; «Jarvis Gas» positivo.
 - `tests/test_unit_voice_prova_voci.py` — test V15 della cache degli errori della conferma; IncompleteRead.
-- `.claude/agents/memoria_revisore.md` — review #675-M2 (prima, bis, ter), #676-M2, #677-M2 (e bis), #678-M2, #679-M2 (merge di main), #680-M2, #681-M2, #682-M2, #683-M2 (e bis), #684-M2, #685-M2.
+- `.claude/agents/memoria_revisore.md` — review #675-M2 (prima, bis, ter), #676-M2, #677-M2 (e bis), #678-M2, #679-M2 (merge di main), #680-M2, #681-M2, #682-M2, #683-M2 (e bis), #684-M2, #685-M2, #686-M2 (riflessione non fidata con un seguito in cronologia).
 - `tests/test_unit_voce_ascolto.py` (della chat Mani, autorizzato da M1) — i finti `synthesize_speech` dei test d'integrazione accettano `**kw` (`timeout=` della conferma V15).
 - Merge di origin/main (PR #338 e #340 della chat Mani): conflitti solo in `reports/stato_progetto.md` e nella memoria del revisore.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/ripartenza_m2.md` — report di fine task.

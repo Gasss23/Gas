@@ -25,6 +25,7 @@
 - **V-1 (b) bot su a87d273** (strumento chiesto nel seguito → silenzio): `FATTA` — frase fissa «Per farlo ripetimelo dicendo prima Hey Jarvis.», 4ee1feb, review #680-M2.
 - **V-1/V-2 bot su 312cd86** (segno in coda; «Basta!» dalla TV nel seguito detto a voce): `FATTA` — 2e367e2, review #681-M2. Il FAILURE del bot su 312cd86 è un falso positivo del parser («letto ad alta voce» preso per ALTA): fuori scope, macchina del bot.
 - **V-1 (a) bot su a87d273/be60a21** (i seguiti veri non entrano nella storia): `FATTA` col sì dell'operatore — `registra_seguito` in gas.py, e7a75c0, review #682-M2. Riserva nuova R-682-1-M2 MEDIA in attesa di decisione.
+- **V-1 MEDIA bot su e44c4b0** (riflessione fidata con un seguito uscito dalla finestra): `FATTA` — ad522ff, review #686-M2.
 - **V-1 MEDIA bot su 16dd4a5** (seguito salvato non contava come input non fidato): `FATTA` — ae61546, review #684-M2; T103l rafforzato in 933780f (#685-M2).
 - **V-2 MEDIA bot su 16dd4a5** (audio dei seguiti a Groq Whisper): rischio ACCETTATO dall'operatore (scelta a, via M1, 6 nov), dichiarato nei commenti (933780f) e registrato come R-684-2-M2.
 - **R-682-1-M2 MEDIA** (seguiti salvati → finestra dei gratuiti): `FATTA` con la scelta A dell'operatore — f75719d, review #683-M2 BOCCIATO poi bis APPROVATO CON RISERVE.
@@ -36,19 +37,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  21 ++++++++++++
- gas.py                              | 129 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- modules/voice/server.py             | 169 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
- modules/voice/tts.py                |   4 ++-
- reports/diff_sessione.md            |  20 +++++++-----
+ .claude/agents/memoria_revisore.md  |  22 +++++++++++
+ gas.py                              | 131 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ modules/voice/server.py             | 169 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ modules/voice/tts.py                |   4 +-
+ reports/diff_sessione.md            |  20 ++++++----
  reports/handoff.md                  | n/d
- reports/ripartenza_m2.md            |  11 ++++---
+ reports/ripartenza_m2.md            |  11 ++++--
  reports/stato_progetto.md           |   3 +-
- reports/ultimo_report.md            |  37 ++++++++++++---------
- tests/test_unit_kernel.py           | 218 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voce_ascolto.py     |   5 +--
- tests/test_unit_voice_prova_voci.py |  34 ++++++++++++++++++--
- tests/test_unit_voice_stt.py        | 277 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/ultimo_report.md            |  39 +++++++++++--------
+ tests/test_unit_kernel.py           | 233 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py     |   5 ++-
+ tests/test_unit_voice_prova_voci.py |  34 ++++++++++++++++-
+ tests/test_unit_voice_stt.py        | 277 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: origin/main 83f3bcd.
@@ -56,6 +57,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ad522ff fix(kernel): V15 — riflessione non fidata se un seguito a voce è ancora in cronologia (V-1 bot #339 su e44c4b0) (chat M2)
+6af00dc chore(revisore): memoria review #686 — APPROVATO CON RISERVE
+e44c4b0 docs(voce): report di fine task V15 dopo V-1/V-2 del bot su 16dd4a5 (PR #339, chat M2)
 933780f docs(kernel+voce): V15 — trascrizione Groq dei seguiti dichiarata come rischio accettato dall'operatore; T103l sul ramo della firma (V-2 bot #339 su 16dd4a5, R-684-1-M2) (chat M2)
 cb4dff2 chore(revisore): memoria review #685 — APPROVATO
 ae61546 fix(kernel+voce): V15 — un seguito a voce nella finestra è input non fidato (scritture alla firma); [non-per-me] col trattino (V-1 bot e V-2 ve #339 su 16dd4a5) (chat M2)
@@ -619,7 +623,37 @@ Rischi esclusi, cioè cose che non ho verificato:
 
 Memoria: ho aggiunto la riga «#685-M2 — 2026-11-06 — APPROVATO — …» (nessuna lezione nuova) e l'ho committata con scripts/commit_memoria_revisore.sh (commit cb4dff2, solo quel file; l'index staged resta intatto).
 
+Review #686-M2 sul commit ad522ff (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #686-M2: chat M2, branch feat/voce-v12-m2, PR #339, base e44c4b0. Ho esaminato il diff staged (gas.py +1/-1, tests/test_unit_kernel.py +15). Prima della review ho letto CLAUDE.md, la sezione voce V15 di reports/stato_progetto.md e la coda della memoria del revisore.
+
+**Elementi del diff esaminati**
+- `gas.py:4029` — `or _ha_seguito_voce(self.history)` nel calcolo di `contaminata` dentro `rifletti`.
+  - Rischio esaminato: un seguito a voce uscito dalla finestra di 40 messaggi produceva un recap fidato, che il pin poi reiniettava in ogni turno.
+  - Il controllo ora copre tutta la cronologia, come già fanno R-200-1 e R-201-1. Il parlato del seguito non arriva comunque al modello gratuito: la finestra che gli viene passata non lo contiene, e se il seguito è dentro la finestra la riflessione si ferma prima (`gas.py:4011`). `_ha_seguito_voce` controlla `isinstance(m, dict)`, quindi non può sollevare eccezioni.
+  - Esito: ok.
+- `gas.py:920` (contesto, file non toccato) — `_ha_seguito_voce` legge solo la chiave `CHIAVE_SEGUITO_VOCE`, senza effetti collaterali. Esito: ok.
+- `tests/test_unit_kernel.py:8545` — test T80v. Mette un seguito in testa alla cronologia e poi 2×`RIFLESSIONE_WINDOW_N` messaggi normali.
+  - Rischio esaminato: un test che passa anche senza la correzione.
+  - Il test controlla prima che il seguito sia davvero fuori dalla finestra (`_fuori80s`), poi pretende `ok`, `contaminata True` e un `recap_tipo` diverso da `"recap"`.
+  - Ho rilanciato la suite sull'albero staged copiato nella cartella di prova: Kernel 1085 PASS 0 FAIL.
+  - Mutante «riga tolta»: T80v FAIL con `contaminata False` e `recap_tipo "recap"`, quindi il mutante viene ucciso.
+  - Esito: ok, con la riserva cosmetica sotto.
+
+**Riserve**
+- R-686-1-M2 COSMETICA: l'ID «T80v» è già usato da «T80v cascata unica» (`tests/test_unit_kernel.py`). Rinominare il nuovo test, per esempio in T80w, così nell'output l'ID resta univoco.
+- V-2 BASSA del bot su e44c4b0, fuori dal diff e registrata come richiesto: il timeout di 5 s della conferma vale per ogni singola operazione di socket, non è una scadenza totale.
+- Costo da dichiarare all'operatore: dopo un seguito a voce, i recap restano non fidati fino a `clear`, come già succede dopo read_file, run_command o una compressione.
+
+**Rischio escluso**: non ho verificato il comportamento dal vero con i provider reali né il reinserimento effettivo del recap dal pin in un turno vivo. Mi sono fermato all'esito di `rifletti` (`recap_tipo`), perché il pin che salta i recap non fidati è già coperto da T80j e non è toccato da questo diff.
+
+Memoria aggiornata con la riga #686-M2 e committata con scripts/commit_memoria_revisore.sh (6af00dc). File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
+
+Su ad522ff: T80v (seguito fuori dalla finestra della riflessione → recap non fidato; ID duplicato, R-686-1-M2) — suite kernel `=== RIEPILOGO: 1085 PASS, 0 FAIL ===`; mutante «riga tolta» ucciso. Base main 83f3bcd misurata dalla verifica esterna: 1072 PASS 0 FAIL (il «1076» citato sotto era impreciso): delta della PR +13.
 
 Su 933780f: T103l (seguito in finestra → finestra contaminata, write_file al ramo della firma, non eseguita); T103j ora vede [CONTIENE INPUT ESTERNO] — suite kernel `=== RIEPILOGO: 1084 PASS, 0 FAIL ===` (nel venv della sessione; T31g fallisce solo dove manca il modulo `vectors`, anche su main); voice_stt + prova_voci + voce_ascolto `382 passed`. Mutante «controllo seguito tolto» ucciso da T103l.
 
@@ -647,10 +681,15 @@ Su e7a75c0: T103f (risposta vuota effimera → final vuoto) e T103g (registra_se
 - d38f95d: verifica-bot FAILURE per la MEDIA R-682-1 (allora aperta).
 - be724e6, 41c3275, f75719d: nessuna run su questi SHA da soli (pushati con 16dd4a5).
 - 16dd4a5: verifica-bot FAILURE (BOCCIATO: V-1 e V-2 MEDIA, chiuse sopra); verifica esterna APPROVATO CON RISERVE (solo BASSE).
-- 1ca1ca8, ae61546, cb4dff2, 933780f e commit di fine-task che contiene questo file: run non ancora disponibile (pushati insieme).
+- 1ca1ca8, ae61546, cb4dff2, 933780f: nessuna run su questi SHA da soli (pushati con e44c4b0).
+- e44c4b0: verifica-bot FAILURE (V-1 MEDIA riflessione, chiusa sopra; V-2 BASSA timeout); verifica esterna APPROVATO CON RISERVE (solo BASSE/COSMETICHE): kernel 1084/0 e voce 382 riprodotti, base main 1072/0.
+- 6af00dc, ad522ff e commit di fine-task che contiene questo file: run non ancora disponibile (pushati insieme).
 
 ## §7 RISERVE APERTE
 
+- R-686-1-M2 COSMETICA: ID «T80v» duplicato nei test del kernel.
+- V-2 BASSA bot e44c4b0: il timeout 5 s della conferma vale per singola operazione di socket, non è una scadenza totale.
+- Costo dichiarato: dopo un seguito a voce, ogni turno va solo al forte finché il seguito è negli ultimi ~10 messaggi (anche Telegram/CLI), e i recap restano non fidati fino a `clear`.
 - R-684-2-M2 ACCETTATA dall'operatore (6 nov, via M1): la trascrizione Groq Whisper (servizio gratuito) riceve anche l'audio dei seguiti, come tutta la voce.
 - Verifica esterna su 16dd4a5, BASSE: V-3 il parlato «per Gas» resta in chiaro in .gas_history.json (rischio residuo, coerente col punto 1); V-1/V-2 chiuse in ae61546.
 - R-682-1-M2 e R-682-2-M2: chiuse in f75719d. R-683-1-M2 (recap nel pin): chiusa (nessun recap con seguito in finestra). R-683-2-M2: chiusa (l'errore spiega).
