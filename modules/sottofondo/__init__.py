@@ -142,11 +142,13 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
 def _e_nostro(pid: Any, ident: str) -> bool:
     """R-698-1-M2: il pid è il NOSTRO figlio `gas.py sottofondo <ident>`, leader del proprio
     gruppo? Nel dubbio (comando illeggibile, errore) False: meglio non fermare che uccidere un
-    processo estraneo. `ps -o command=` funziona su macOS e Linux."""
+    processo estraneo. `ps -ww -o command=` funziona su macOS e Linux; `-ww` evita che la riga
+    venga troncata a COLUMNS (CI #345: con un percorso lungo dell'interprete il figlio non
+    veniva riconosciuto)."""
     try:
         if not isinstance(pid, int) or pid <= 1 or os.getpgid(pid) != pid:
             return False
-        r = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True,
+        r = subprocess.run(["ps", "-ww", "-o", "command=", "-p", str(pid)], capture_output=True,
                            text=True, timeout=5)
         comando = (r.stdout or "").strip()
         return r.returncode == 0 and comando.endswith(f"sottofondo {ident}") and "gas.py" in comando

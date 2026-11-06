@@ -357,3 +357,18 @@ def test_e_nostro_riconosce_il_figlio(tmp_path):
     finally:
         figlio.kill()
         figlio.wait()
+
+
+def test_e_nostro_con_colonne_strette(tmp_path, monkeypatch):
+    """CI #345: con COLUMNS piccolo `ps` troncava il comando e il figlio vero non era
+    riconosciuto (oltre la durata non veniva fermato). Con `-ww` la riga è intera."""
+    import subprocess as sp
+    monkeypatch.setenv("COLUMNS", "20")
+    figlio = sp.Popen([sys.executable, "-c", "import time; time.sleep(30)", "gas.py",
+                       "sottofondo", "abc123"], start_new_session=True)
+    try:
+        __import__("time").sleep(0.3)
+        assert sf._e_nostro(figlio.pid, "abc123") is True
+    finally:
+        figlio.kill()
+        figlio.wait()
