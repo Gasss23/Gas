@@ -6,7 +6,8 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #341 (https://github.com/Gasss23/Gas/pull/341) SOLO DOPO (o insieme a) la PR #339 di M2 (V15, lato server): la #339 è in main (3cde8a5) e unita qui (ac06f01); l'operatore ha detto sì (via M1). Motivo (V-1 MEDIA della verifica esterna): senza la #339 in main la #341 allunga la finestra da 12 a 40 s e mette il tetto di 15 s, ma il filtro «parlato non per Gas» e la «pausa» non esistono ancora sul server, quindi il parlato della stanza sotto i 15 s verrebbe ancora inviato e risposto per 40 s invece che 12. Review #676 APPROVATO CON RISERVE e PR nel perimetro: decide l'operatore tramite M1. Numero e URL dalla risposta dello strumento GitHub `create_pull_request`.
+1. Merge della PR #341 (https://github.com/Gasss23/Gas/pull/341): l'operatore ha detto sì (via M1), a condizione di CI verde e nessuna ALTA/MEDIA da bot e verifica esterna sul nuovo head. La #339 è in main da 3cde8a5, quindi l'ordine di merge (prima la #339, poi la #341) è rispettato. Su 7e4a7d3 il merge è stato rifiutato per conflitti con la PR #344 di M2, arrivata in main subito prima. Ho unito main (b874179, review #697 APPROVATO) e ora va ripetuto il giro CI + bot + verifica esterna su questo head.
+2. Rischio di privacy da accettare esplicitamente (R-694-1, R-695-2; V-2 della verifica esterna su 7e4a7d3): nella finestra di 40 s il rilevatore della parola resta acceso a soglia 0,5. Un falso «Hey Jarvis» rende normale (senza il filtro «non per me» del server) il parlato della stanza che arriva entro circa 2 s, più circa 0,3–0,7 s di stanza prima della parola. L'alternativa è spegnere il rilevatore nella finestra; in quel caso, per fare una richiesta normale, si dice di nuovo «Hey Jarvis» dopo la fine della finestra.
 
 ---
 
@@ -21,21 +22,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  14 ++++++++++++++
- clients/voice/ascolto.py           | 195 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
- reports/diff_sessione.md           |  15 ++++++++-------
- reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           |  61 +++++++++++++++++++++++++++++++++++++++++++++++++++----------
- scripts/voce/LEGGIMI.md            |  35 ++++++++++++++++++++++++++++-------
- tests/test_unit_voce_ascolto.py    | 360 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ .claude/agents/memoria_revisore.md |  15 ++++++
+ clients/voice/ascolto.py           | 195 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ reports/diff_sessione.md           |  15 +++---
+ reports/stato_progetto.md          |   6 ++-
+ reports/ultimo_report.md           |  65 ++++++++++++++++++++---
+ scripts/voce/LEGGIMI.md            |  35 +++++++++---
+ tests/test_unit_voce_ascolto.py    | 360 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main e68a951 (dopo il merge della PR #343).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 44dbe2d (dopo il merge della PR #344).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b874179 Merge origin/main (PR #344, fix claude-cli --effort di M2) nella PR #341 — review #697 APPROVATO
+7e4a7d3 docs(fine-task): fetta 43 parte 2 — scadenza della parola, merge della #343, review #695–#696 (PR #341)
 8c31f6e Merge origin/main (PR #343, voce rapida fetta 2) nella PR #341 — review #696 APPROVATO CON RISERVE
 165a9a4 fix(voce): una parola sentita più di 2 s prima della voce non rende normale il turno (V-1 ve #341 su 562f137)
 a1aa77b chore(revisore): memoria review #695 — APPROVATO CON RISERVE
@@ -356,6 +359,38 @@ Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 10), reports/stato_progetto.md
 - Effetto reale di C1 e di `--effort low` sul modello e sui tempi: richiede il Mac con `claude` loggato.
 - Latenza reale del client sul Mac.
 
+Merge b874179 (main con la PR #344 dentro la PR #341) — review #697, verdetto integrale:
+
+## VERDETTO: APPROVATO
+
+Review #697 (chat Mani). Il numero più alto in memoria era #696, quindi questa è la #697. Le righe #693-M2 e #694-M2 hanno una numerazione a parte, quella della chat M2.
+
+Oggetto: merge staged di origin/main 44dbe2d (PR #344 di M2) nel branch claude/peaceful-lovelace-0w2b7q (PR #341, HEAD 7e4a7d3). La base comune è e68a951.
+
+**Elementi del diff esaminati**
+- `brains/claude_cli.py:276` — la regex `_RIFIUTO_EFFORT` riconosce solo «unknown/unrecognized option/argument» seguito da `--effort`, con il blocco `(?![\w-])` alla fine. Rischi esaminati: perdita nel merge, interazione con la #341, backtracking. Il file staged è identico a MERGE_HEAD. Il backtracking quadratico l'ha già chiuso #694-M2 (un solo `\s*` libero). Esito: ok.
+- `brains/claude_cli.py:285` — `_effort_rifiutato` ora legge solo lo stderr e conta solo con un'uscita diversa da zero. L'unico chiamante è `brains/claude_cli.py:350`, dentro il blocco try che riprova senza effort, quindi un'eccezione resta intercettata come prima. Rischio esaminato: un chiamante nel client voce della #341. Il grep su clients/ e scripts/voce non trova riferimenti a claude_cli né a effort. Esito: ok, nessuna interazione.
+- `tests/test_unit_claude_cli.py:507` — il blocco `finally` rimette `_effort_non_supportato`, così un test fallito non lascia l'effort spento per i test successivi. `tests/test_unit_claude_cli.py:511` è il test parametrico, con il caso `--effort-level` → False. `tests/test_unit_claude_cli.py:567` è il test di tempo lineare. Rischio esaminato: test persi nel merge. Il file è identico a MERGE_HEAD. Esito: ok.
+- `reports/stato_progetto.md:615` — è la voce nuova «Fetta 3 sottofondo». La `reports/stato_progetto.md:616` dice ora «PR #343 MERGIATA (e68a951)». Rischio esaminato: perdita di righe della chat Mani o della chat M2. Ho rifatto `git merge-file` con base, HEAD e MERGE_HEAD in scratch: esce con codice 0 ed è identico byte per byte (cmp) al file staged. Rispetto a HEAD il diff tocca solo queste righe. Esito: ok.
+- `.claude/agents/memoria_revisore.md` — le prime 1292 righe staged sono identiche (cmp) all'intero file di HEAD, cioè fino alla riga #696. La coda (#693-M2, la lezione, #694-M2) è identica alle ultime 3 righe di MERGE_HEAD. Esito: ok, l'unione è senza perdite.
+
+**Integrità del merge**
+- File identici a MERGE_HEAD: brains/claude_cli.py, tests/test_unit_claude_cli.py, reports/proposta_fetta3_sottofondo.md, reports/ripartenza_m2.md.
+- File identici a HEAD: reports/handoff.md, reports/ultimo_report.md, reports/diff_sessione.md, clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, gas.py, modules/voice/server.py.
+- `git ls-files -u` è vuoto e `git diff --cached --check HEAD` è pulito. Nessun marcatore di conflitto in reports/, .claude/, brains/ e tests/.
+- Nei file di codice i due lati non si sovrappongono: da e68a951 la PR #344 cambia solo claude_cli e il suo test.
+
+**Test**
+Ho copiato l'index in scratch con `git checkout-index`, senza stash e senza toccare il repo: test_unit_claude_cli + test_unit_voce_ascolto danno **316 passed** in 31,7 s.
+
+**Cosa non ho verificato e perché**
+- La suite intera: in questo sandbox manca bwrap, e nella review #693 i suoi test web fallivano per questo, fuori dal diff.
+- `claude --help | grep effort` e il comportamento dell'effort con la CLI vera sul Mac: non si possono riprodurre nel cloud.
+- Le sonde regex: non le ho rilanciate, le ha già fatte #694-M2 sullo stesso contenuto (file identico a MERGE_HEAD).
+
+**Memoria**
+La riga #697 è in coda a .claude/agents/memoria_revisore.md, nel working tree e non committata, come chiesto. Non ho lanciato `commit_memoria_revisore.sh`, e il file è già staged dal merge: serve `git add` prima del commit. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 257 casi (248 con la fetta, 254 dopo la correzione V-1 del bot su 851a0d1, 255 dopo quella su 23d9c1c, 257 dopo quella su 562f137). Riepilogo reale nel venv con requirements e requirements-dev:
@@ -363,6 +398,8 @@ Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 10), reports/stato_progetto.md
 ```
 257 passed in 28.55s
 ```
+
+Dopo il merge della #344 (b874179), review #697 su una copia dell'index: test_unit_claude_cli + test_unit_voce_ascolto 316 passed.
 
 Mutanti presi (15):
 - «fine» ignorato;
@@ -390,7 +427,8 @@ Mappatura commit → run:
 - bdc79ce: CI run 42293018752, unit-suite e handoff-check success (voce H24: 254 passed); bot APPROVATO CON RISERVE (neutral).
 - 23d9c1c: unit-suite e handoff-check success; bot failure (V-1 alzata a MEDIA, corretta in 01b1089).
 - 562f137: handoff-check success, unit-suite in corso alla verifica esterna.
-- 165a9a4, a1aa77b, 8c31f6e e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 7e4a7d3 (contiene 165a9a4, a1aa77b, 8c31f6e): unit-suite, handoff-check, smista e verifica success. Bot APPROVATO CON RISERVE (check neutral): V-1 BASSA, V-2 COSMETICA, nessuna ALTA/MEDIA. Verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/341#issuecomment-6697209245). Merge rifiutato da GitHub per conflitti con la #344.
+- b874179 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 - a7ed0e8 e 43fa6ac: run dei loro push (handoff-check success; unit-suite non riletta qui).
 - 51c4aa0, 4cd7b97, da24b2c: pushati insieme a 43fa6ac.
 
@@ -409,6 +447,8 @@ Suite voce in locale dopo il merge (ascolto, stt, prova_voci): 410 passed. Dopo 
 - R-694-2 BASSA: 1,5 s da provare sul Mac.
 - Verifica esterna su 562f137 V-1 (= R-680-2) corretta in 165a9a4; R-695-1 BASSA (confine reale circa 1,84 s, senza test), R-695-2 BASSA (falso positivo entro circa 1,8 s: residuo da far accettare all'operatore).
 - R-696-1/2 BASSE per M2 (C1 nei turni di seguito, routing su 6 messaggi), R-696-3 COSMETICA.
+- Bot su 7e4a7d3: V-1 BASSA (il tetto dei turni di seguito, minimo 3 s, non tiene conto della pausa finale GAS_ASCOLTO_SILENZIO fino a 5 s: con valori estremi ogni seguito arriva al tetto e chiude), V-2 COSMETICA (LEGGIMI dice «nella conversazione senza la parola … resta il bip», ma i turni di seguito non hanno bip). Prossima fetta della voce.
+- Verifica esterna su 7e4a7d3: V-1 = R-676-1, V-2 = R-694-1/R-695-2 (privacy, §0 punto 2), V-3 = V-3/V-4 della verifica su 43fa6ac, V-4 COSMETICA (§6 con run parziali).
 - R-680-2 BASSA: parola sentita nella finestra prima della voce, il flag resta alto fino a fine finestra.
 - R-681-1 COSMETICA: errori del rilevatore nella finestra senza riga di log.
 - Restano le riserve delle fette 40, 41 e 43 parte 1, in `reports/stato_progetto.md`.

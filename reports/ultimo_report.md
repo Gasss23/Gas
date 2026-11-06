@@ -15,6 +15,12 @@
   - Review #676 APPROVATO CON RISERVE (R-676-1/2/3 BASSE; la R-676-3 è sul server di M2 ed è girata a M1).
   - Il commit di merge su main ha un diff identico a quello rivisto.
 
+## Giro su 7e4a7d3 e merge della #344
+
+- 7e4a7d3: CI verde; bot e verifica esterna APPROVATO CON RISERVE, nessuna ALTA o MEDIA. Riserve nuove: bot V-1 BASSA (tetto di seguito e pausa finale), V-2 COSMETICA (bip nel LEGGIMI); registrate in stato_progetto.
+- Il merge su GitHub è stato rifiutato per conflitti con la PR #344 di M2 (fix di claude-cli), arrivata in main poco prima. Ho unito main (b874179): conflitti solo nei report e nella memoria del revisore. Review #697 APPROVATO; 316 test passed (claude_cli + ascolto).
+- Da far accettare all'operatore: il rischio di privacy R-694-1/R-695-2 (falso «Hey Jarvis» nella finestra).
+
 ## Verifica esterna su 562f137 e merge della #343
 
 - La verifica esterna (BASSE) ha riprodotto un caso che il bot avrebbe alzato a MEDIA: una parola sentita molto prima della voce. Corretto in 165a9a4: la parola scade dopo 2 s. Review #695 APPROVATO CON RISERVE (R-695-1/2 BASSE).
