@@ -212,6 +212,13 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_claude_cli.py -v 2>&1 | tee "$RUNNER_TEMP/claude_cli_output.txt"
 
+      - name: Run sottofondo suite (pytest, zero token LLM)
+        # Fetta 3 voce (2026-11-06): compiti lunghi in sottofondo, kernel e processo finti.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_sottofondo.py -v 2>&1 | tee "$RUNNER_TEMP/sottofondo_output.txt"
+
       - name: Ingest delle fonti di studio (solo dentro knowledge/)
         # V-1 bot #228: le fonti di tipo file fuori da knowledge/ vanno rifiutate.
         if: always()

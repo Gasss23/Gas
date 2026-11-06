@@ -11771,6 +11771,96 @@ try:
 except Exception as _e104:
     check("T104 blocco senza eccezioni", False, repr(_e104))
 
+# ---------- T105: compito in sottofondo (fetta 3, chat M2, 6 nov), round-trip §7 ----------
+# A voce il forte chiama in_sottofondo: il compito va in coda e parte il processo separato
+# (finto), poi la risposta finale. A testo lo strumento non è offerto e, chiesto, è negato.
+try:
+    import subprocess as _sp105
+    from brains.claude_cli import ClaudeCliClient as _CCC105
+    import modules.sottofondo as _sf105
+    _reg105 = []
+
+    def _cli105(risposte):
+        it = iter(risposte)
+
+        def _run(cmd, stdin, cwd, env, timeout):
+            f = cmd[cmd.index("--system-prompt-file") + 1]
+            _reg105.append({"sistema": Path(f).read_text(encoding="utf-8"), "stdin": stdin})
+            return _sp105.CompletedProcess(cmd, 0, stdout=json.dumps({
+                "type": "result", "subtype": "success", "is_error": False,
+                "structured_output": next(it),
+                "usage": {"input_tokens": 10, "output_tokens": 3}}), stderr="")
+        return lambda timeout=None, **kw: _CCC105(timeout=timeout, binario="claude", runner=_run, **kw)
+
+    _saved105 = os.environ.get("GAS_CLAUDE_CLI")
+    _orig105, _avvia105 = gas.ClaudeCliClient, _sf105.avvia
+    _avviati105 = []
+    try:
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+        _sf105.avvia = lambda root, ident, popen=None: _avviati105.append((str(root), ident))
+        _k105 = kernel_tmp()
+        gas.ClaudeCliClient = _cli105([
+            {"testo": "", "chiamate": [{"nome": "in_sottofondo",
+                                        "argomenti": {"compito": "COMPITO-105 confronta tre offerte"}}]},
+            {"testo": "Ci lavoro, ti avviso su Telegram.", "chiamate": []}])
+        _ev105 = list(_k105.run_turn("confronta le offerte", cervello="forte", voce=True))
+        _res105 = [e["output"] for e in _ev105 if e["type"] == "tool_res"]
+        _job105 = list((Path(_k105.root) / _sf105.CARTELLA).glob("2*.json"))
+        check("T105a voce: in_sottofondo offerto, compito in coda, processo avviato, risposta",
+              "in_sottofondo" in _reg105[0]["sistema"]
+              and len(_res105) == 1 and _res105[0].startswith("Compito avviato in sottofondo")
+              and len(_avviati105) == 1 and len(_job105) == 1
+              and "COMPITO-105" in _job105[0].read_text(encoding="utf-8")
+              and [e["content"] for e in _ev105 if e["type"] == "final"] == ["Ci lavoro, ti avviso su Telegram."],
+              str(_ev105)[:300])
+        # b) a testo: non offerto; se chiesto lo stesso, negato e nessun avvio
+        _reg105.clear()
+        _k105b = kernel_tmp()
+        gas.ClaudeCliClient = _cli105([
+            {"testo": "", "chiamate": [{"nome": "in_sottofondo", "argomenti": {"compito": "x"}}]},
+            {"testo": "ok", "chiamate": []}])
+        _ev105b = list(_k105b.run_turn("fallo in sottofondo", cervello="forte"))
+        _res105b = [e["output"] for e in _ev105b if e["type"] == "tool_res"]
+        check("T105b testo: in_sottofondo non offerto e negato, nessun processo",
+              "in_sottofondo" not in _reg105[0]["sistema"]
+              and len(_res105b) == 1 and "solo nei turni a voce" in _res105b[0]
+              and len(_avviati105) == 1,
+              str(_ev105b)[:300])
+        # c) forte spento: negato con il motivo
+        os.environ.pop("GAS_CLAUDE_CLI", None)
+        _k105c = kernel_tmp()
+        _k105c._turno_voce = True
+        _out105c = _k105c._in_sottofondo({"compito": "x"})
+        check("T105c forte spento: compito in sottofondo negato, nessun processo",
+              _out105c.startswith("Operazione negata") and "forte" in _out105c
+              and len(_avviati105) == 1, _out105c)
+        # d) R-695-1-M2: la firma dell'operatore (kernel del bot, turno non a voce) lo avvia
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+        _k105d = kernel_tmp()
+        _out105d = _k105d.execute_tool_call("in_sottofondo", '{"compito": "firmato 105"}', firmata=True)
+        _out105d_nf = kernel_tmp().execute_tool_call("in_sottofondo", '{"compito": "x"}')
+        check("T105d firmata: avviato anche fuori dal turno a voce; senza firma negato",
+              _out105d.startswith("Compito avviato in sottofondo") and len(_avviati105) == 2
+              and "solo nei turni a voce" in _out105d_nf, _out105d)
+        # e) R-695-4-M2: avvio fallito → diniego e coda libera
+        def _avvia_rotto(root, ident, popen=None):
+            raise OSError("fork fallita")
+        _sf105.avvia = _avvia_rotto
+        _k105e = kernel_tmp()
+        _k105e._turno_voce = True
+        _out105e = _k105e._in_sottofondo({"compito": "x"})
+        check("T105e avvio fallito: diniego, coda libera",
+              _out105e.startswith("Operazione negata") and _sf105.attivo(_k105e.root) is None,
+              _out105e)
+    finally:
+        gas.ClaudeCliClient, _sf105.avvia = _orig105, _avvia105
+        if _saved105 is None:
+            os.environ.pop("GAS_CLAUDE_CLI", None)
+        else:
+            os.environ["GAS_CLAUDE_CLI"] = _saved105
+except Exception as _e105:
+    check("T105 blocco senza eccezioni", False, repr(_e105))
+
 # ---------- T102: avvisa_operatore (R6, chat Mani), round-trip §7 ----------
 try:
     import modules.telegram.avviso as _av102
