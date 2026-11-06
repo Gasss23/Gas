@@ -9,9 +9,9 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - `gas.py`: non toccarlo (salvo righe del doctor autorizzate).
 
 ## In corso
-- PR #339, #342, #343 MERGIATE il 6 nov.
-- **PR del rifiuto di --effort + proposta fetta 3** (branch `feat/voce-v12-m2` da main e68a951): aperta.
-- **In attesa dell'operatore**: decisione sulla fetta 3 (`reports/proposta_fetta3_sottofondo.md`); tempi a voce sul Mac (`gas.voce.tempi`) e `claude --help | grep effort`.
+- PR #339, #342, #343, #344 MERGIATE il 6 nov.
+- **PR della fetta 3** (compiti lunghi in sottofondo, branch `feat/voce-v12-m2` da main 44dbe2d): aperta; merge col sì via M1.
+- **Dopo**: fetta 3.2 (lettura a voce dei compiti finiti alla prossima attivazione) se M1 la ordina; prova sul Mac.
 - Caso «Stefano»: da controllare sul Mac nella storia.
 
 ## Riserve aperte (voce)
