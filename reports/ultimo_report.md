@@ -15,6 +15,12 @@
   - Review #676 APPROVATO CON RISERVE (R-676-1/2/3 BASSE; la R-676-3 è sul server di M2 ed è girata a M1).
   - Il commit di merge su main ha un diff identico a quello rivisto.
 
+## Merge della #342 e verdetti su bdc79ce
+
+- Su bdc79ce la CI è verde. Bot e verifica esterna danno APPROVATO CON RISERVE, senza ALTA o MEDIA.
+- La #342 di M2 (parser del bot) è entrata in main: l'ho unita in 7296f39. Review #693 APPROVATO CON RISERVE: R-693-1 COSMETICA; R-693-2 BASSA, che è la V-1 del bot.
+- **Da dire all'operatore (V-1 bot / R-693-2, BASSA).** Se «Hey Jarvis» si sente a metà di una frase detta senza la parola, tutta la frase va come richiesta normale, compreso il parlato di prima (fino a circa 15 s). Va corretto nella fetta successiva tagliando l'audio dalla parola, oppure accettato.
+
 ## Bocciatura del bot su 851a0d1 e correzione
 
 - Bot BOCCIATO per V-1 MEDIA: nella finestra «Hey Jarvis, …» partiva come turno di seguito, e il server rispondeva «ripetimelo». Corretta in 1792ab3: il rilevatore resta acceso nella finestra, azzerato prima per R-680-1.

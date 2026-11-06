@@ -21,21 +21,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 ++++
- clients/voice/ascolto.py           | 176 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
- reports/diff_sessione.md           |  20 ++++------
- reports/stato_progetto.md          |   6 ++-
- reports/ultimo_report.md           |  63 +++++++++++++++++-------------
- scripts/voce/LEGGIMI.md            |  32 +++++++++++----
- tests/test_unit_voce_ascolto.py    | 319 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ .claude/agents/memoria_revisore.md |   9 +++++++++
+ clients/voice/ascolto.py           | 176 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
+ reports/diff_sessione.md           |  15 ++++++++-------
+ reports/stato_progetto.md          |   6 ++++--
+ reports/ultimo_report.md           |  49 +++++++++++++++++++++++++++++++++++++++----------
+ scripts/voce/LEGGIMI.md            |  32 +++++++++++++++++++++++++-------
+ tests/test_unit_voce_ascolto.py    | 321 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 3cde8a5.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main c131452 (dopo il merge della PR #342).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7296f39 Merge origin/main (PR #342, parser del bot) nella PR #341 — review #693 APPROVATO CON RISERVE
+bdc79ce docs(fine-task): fetta 43 parte 2 — V-1 del bot corretta, review #680–#681 (PR #341)
 1792ab3 fix(voce): la parola di attivazione detta nella finestra apre una richiesta normale (V-1 bot #341)
 7669be5 chore(revisore): memoria review #681 — APPROVATO CON RISERVE
 288c3f6 chore(revisore): memoria review #680 — APPROVATO CON RISERVE
@@ -207,12 +209,47 @@ Nessuno slicing della history e nessuna simulazione di tool: il diff non tocca i
 
 Memoria aggiornata con la riga #681 (chat Mani) e committata con scripts/commit_memoria_revisore.sh: commit 7669be5. Lo staged è intatto (3 file, +132/−11).
 
+
+Merge 7296f39 (main con la PR #342 dentro la PR #341) — review #693, verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #693 (chat Mani): merge di origin/main c131452 (PR #342 di M2, parser del bot) in claude/peaceful-lovelace-0w2b7q (PR #341). Il merge è staged in /home/user/Gas. Non ho fatto stash né modifiche al repo, a parte la memoria.
+
+**Cosa ho controllato**
+- **Perdite**:
+  - Questi file sono identici a MERGE_HEAD: `scripts/bot_esito.py`, `tests/test_unit_verifica_bot.py`, `tests/dati_verifica_bot/` e `reports/ripartenza_m2.md`.
+  - Questi file sono identici a HEAD (lato Mani): `clients/voice/ascolto.py`, `scripts/voce/LEGGIMI.md`, `reports/handoff.md` e `reports/ultimo_report.md`.
+  - La memoria è l'unione dei due lati: #676–#681 di Mani e #687–#692-M2.
+  - In `reports/stato_progetto.md` ci sono sia le modifiche di M2 sia quelle di Mani. Nessuna perdita.
+- **Interazione tra le due PR**: dalla base comune 3cde8a5 i file di codice toccati sono disgiunti. La #342 tocca il bot e i suoi test, la #341 tocca la voce. Nessuna interazione.
+- **Marcatori di conflitto**: nell'index non ce ne sono.
+- **Test** (su una copia dell'index in scratch): `test_unit_voce_ascolto` + `test_unit_verifica_bot` danno 872 passed.
+
+**Citazioni**
+- `tests/test_unit_voce_ascolto.py:692` — l'intestazione diventa «finestra dopo la risposta» (V-2 del bot). Rischio esaminato: un commento che non corrisponde più al comportamento. Esito: ok, perché il valore predefinito è 40 s (`scripts/voce/LEGGIMI.md:126`). Però il testo vecchio resta in `:443`, vedi R-693-1.
+- `clients/voice/ascolto.py:446` — il rilevatore resta acceso nella finestra (V-1 bot #341). Rischio esaminato: una modifica arrivata col merge. Esito: ok, il file è identico a HEAD (`git diff --cached HEAD` vuoto) e la #342 non lo tocca.
+- `reports/stato_progetto.md:615` — la riga M2 «Bot di verifica, ad alta voce». Rischio esaminato: persa nella fusione automatica. Esito: ok, c'è, insieme a `reports/stato_progetto.md:616` (V15 «MERGIATA il 6 nov»).
+- `reports/stato_progetto.md:668` — la voce Mani della fetta 43 parte 2 con le riserve del bot e della verifica esterna su bdc79ce. Rischio esaminato: riserve tracciate male. Esito: ok, sono tracciate col link al commento della verifica esterna.
+- `reports/diff_sessione.md:3` — la base aggiornata a c131452 (PR #340, #339, #342). Esito: ok.
+- `scripts/bot_esito.py:133` — `_ALTA_VOCE` arriva da main. Esito: ok, identico a MERGE_HEAD.
+
+**Riserve**
+- **R-693-1 COSMETICA**: la docstring in `tests/test_unit_voce_ascolto.py:443` dice ancora «nella finestra dei 12 s». La V-2 del bot è stata corretta solo nell'intestazione a `:692`.
+- **R-693-2 BASSA**: la V-1 del bot su bdc79ce resta aperta in `stato_progetto`. Se la parola si sente a metà di una registrazione di seguito, tutto il blocco diventa un turno normale. Servono il rimedio oppure che l'operatore dichiari il rischio accettato. Va decisa prima del merge della #341, oppure detta esplicitamente all'operatore.
+
+**Cosa non ho verificato**
+- Suite intera sulla copia: 33 failed su 3299 passed, perché nel sandbox manca `bwrap`. Ho guardato da vicino solo i fallimenti di `test_unit_web_browser`. Gli altri non li ho attribuiti uno per uno, ma il merge non tocca il web e nessuno dei due lati tocca moduli diversi da voce e bot. Fa fede la CI.
+- Comportamento reale della voce sul Mac: non riproducibile qui.
+
+**Memoria**: ho aggiunto la riga #693 e una lezione in .claude/agents/memoria_revisore.md. È nel working tree, non committata e non aggiunta all'index (stato MM): va aggiunta con `git add` prima del commit del merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 248 casi. Riepilogo reale nel venv con requirements e requirements-dev:
+`tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 254 casi (248 con la fetta, 254 dopo la correzione V-1 del bot). Riepilogo reale nel venv con requirements e requirements-dev:
 
 ```
-248 passed in 28.02s
+254 passed in 29.72s
 ```
 
 Mutanti presi (15):
@@ -238,7 +275,8 @@ I due mutanti di stato trovati dal revisore sono nella riserva R-676-1.
 
 Mappatura commit → run:
 - 851a0d1: CI run con handoff-check success; verifica-bot BOCCIATO (V-1 MEDIA, corretta in 1792ab3).
-- 1792ab3, 7669be5, 288c3f6 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme).
+- bdc79ce: CI run 42293018752, unit-suite e handoff-check success (voce H24: 254 passed); bot APPROVATO CON RISERVE (neutral).
+- 7296f39 (merge della #342) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 - a7ed0e8 e 43fa6ac: run dei loro push (handoff-check success; unit-suite non riletta qui).
 - 51c4aa0, 4cd7b97, da24b2c: pushati insieme a 43fa6ac.
 
@@ -252,6 +290,8 @@ Suite voce in locale dopo il merge (ascolto, stt, prova_voci): 410 passed. Dopo 
 - Dalla #340: bot V-1 BASSA (conferma non suonabile = silenzio), verifica esterna V-4 BASSA (eco dopo la conferma), R-675-1 BASSA.
 - Verifica esterna su 43fa6ac (https://github.com/Gasss23/Gas/pull/341#issuecomment-6672694572): V-1 MEDIA (ordine di merge: la #341 dopo la #339) → chiusa dichiarando l'ordine in §0, nella PR e in stato_progetto; V-2 = R-676-1; V-3 BASSA («fine» su un turno non di seguito non è coperto da test); V-4 BASSA (una «pausa» interrotta dalla parola non chiude: il ramo dell'interruzione viene prima).
 - Bot su 851a0d1: V-1 MEDIA corretta (1792ab3); V-2 e V-3 corrette nel LEGGIMI.
+- Bot su bdc79ce V-1 BASSA = R-693-2: la parola sentita a metà di una frase di seguito rende normale anche il parlato di prima (da tagliare o da accettare: decide l'operatore).
+- R-693-1 COSMETICA: docstring «finestra dei 12 s» nel test.
 - R-680-2 BASSA: parola sentita nella finestra prima della voce, il flag resta alto fino a fine finestra.
 - R-681-1 COSMETICA: errori del rilevatore nella finestra senza riga di log.
 - Restano le riserve delle fette 40, 41 e 43 parte 1, in `reports/stato_progetto.md`.
