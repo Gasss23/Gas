@@ -10,6 +10,13 @@ set -uo pipefail
 [ "$(uname -s)" = "Darwin" ] || { echo "STOP: questo script è solo per il Mac." >&2; exit 1; }
 S=com.gas.ascolto
 DOMINIO="gui/$(id -u)"
+if [ ! -f "$HOME/Library/LaunchAgents/$S.plist" ] \
+   && ! launchctl print "$DOMINIO/$S" >/dev/null 2>&1; then
+  # V-3 bot su #338: mai installato non è «in pausa»
+  echo "L'ascolto di Gas non è installato: non c'è niente da mettere in pausa."
+  echo "Per installarlo: bash scripts/voce/installa.sh"
+  exit 0
+fi
 if ! launchctl print "$DOMINIO/$S" >/dev/null 2>&1; then
   echo "Gas era già in pausa: non sta ascoltando."
   echo "Per riprendere: bash scripts/voce/riprendi.sh"

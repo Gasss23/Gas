@@ -28,6 +28,8 @@ subito, salta le frasi che mancavano, fa il bip e ascolta la nuova domanda. Serv
 la parola, non basta parlare: con le casse del Mac il microfono sente anche la voce di Gas.
 Per questo, mentre Gas parla, la parola deve essere riconosciuta con più sicurezza (soglia
 0.7 invece di 0.5). Se non ti sente, avvicinati o abbassa un po' il volume; con le cuffie va meglio.
+Se nella risposta Gas stesso dice la parola («di' Hey Jarvis…»), per quella risposta
+l'interruzione è spenta: altrimenti si interromperebbe da solo, sentendosi dalle casse.
 
 **Parola di attivazione, per ora: «Hey Jarvis»** (modello pronto di openWakeWord).
 «Ehi Gas» va addestrata a parte: sarà una fetta successiva.
@@ -82,6 +84,8 @@ bash scripts/voce/riprendi.sh   # Gas ascolta di nuovo
 ```
 
 La pausa ferma solo l'ascolto: il server voce resta acceso e non si toglie nessun file.
+`riprendi.sh` controlla anche che l'ascolto resti acceso: se si ferma subito (per esempio
+perché l'ambiente Python è rotto) lo dice e indica il log da guardare.
 Dura fino a `riprendi.sh` o al prossimo riavvio del Mac (all'accesso l'ascolto riparte da
 solo).
 

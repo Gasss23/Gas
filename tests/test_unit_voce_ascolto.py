@@ -604,6 +604,101 @@ def test_dopo_l_interruzione_il_turno_non_e_di_seguito():
                        (SILENZIO, _sec(50)))).gira()
     assert f.tipi == ["parola", "parola", "seguito"]
 
+
+# ── riserve della fetta 43 parte 2 (review #676, verifica esterna #341) ──
+
+def test_dopo_un_fine_la_conversazione_dopo_ha_ancora_i_turni_di_seguito():
+    """R-676-1: `chiudi` si azzera a ogni turno. «fine» nella prima conversazione; nella
+    seconda (nuova parola) il turno di seguito c'è ancora."""
+    f = FintiSeguito([(True, b"A", "", ""), (True, None, "", "fine"),
+                      (True, b"B", "", ""), (True, b"C", "", "")])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(5)),
+                       PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito", "parola", "seguito"]
+
+
+def test_parola_e_pausa_con_audio_chiude_subito():
+    """R-676-1: «Hey Jarvis, pausa» (turno dopo la parola) con «Va bene.» chiude: nessun
+    turno di seguito, si torna ad aspettare la parola."""
+    f = FintiSeguito([(True, b"VA-BENE", "", "pausa")])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola"] and f.riprodotti == [b"VA-BENE"] and f.bip == ["ok"]
+
+
+def test_fine_anche_dopo_la_parola_chiude_senza_bip():
+    """V-3 ve #341: «fine» chiude anche su un turno non di seguito."""
+    f = FintiSeguito([(True, None, "", "fine")])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola"] and f.bip == ["ok"] and f.riprodotti == []
+
+
+def test_fine_svuota_il_microfono():
+    """R-676-2: dopo «fine» il microfono si svuota (una volta per il turno)."""
+    f = FintiSeguito([(True, b"A", "", ""), (True, None, "", "fine")])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    g = FintiSeguito([(True, b"A", "", ""), (False, None, "HTTP 500", "")])
+    g.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.svuotati == g.svuotati and f.svuotati >= 3
+
+
+def test_pausa_interrotta_dalla_parola_apre_la_nuova_domanda():
+    """V-4 ve #341, comportamento scelto: se durante «Va bene.» dici di nuovo la parola,
+    vince la parola (bip e nuova domanda), come per ogni interruzione."""
+    f = FintiSeguito([(True, b"VA-BENE", "", "pausa"), (True, b"B", "", "")])
+    f.riproduci = lambda audio: (f.riprodotti.append(audio), Suona(audio, 5, []))[1]
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 2), PAROLA, *RICHIESTA,
+                       (SILENZIO, _sec(50)))).gira()
+    assert f.tipi[:2] == ["parola", "parola"] and f.bip == ["ok", "ok"]
+
+
+# ── riserva della #336: Gas che dice la parola non si interrompe da solo ──
+
+class _Lettore:
+    def __init__(self, righe):
+        self.righe, self.chiuso = list(righe), False
+
+    def readline(self, n):
+        return self.righe.pop(0) if self.righe else b""
+
+    def close(self):
+        self.chiuso = True
+
+
+def _riga_pezzi(**k):
+    return (json.dumps(k) + "\n").encode()
+
+
+def test_frasi_ndjson_tengono_il_testo():
+    r = _Lettore([_riga_pezzi(content="Ciao. Di' Hey Jarvis.", pezzi=2,
+                              audio=_b64.b64encode(b"A").decode()),
+                  _riga_pezzi(audio=_b64.b64encode(b"B").decode()), _riga_pezzi(fine=True)])
+    fr = a._frasi_ndjson(r)
+    assert fr.testo == "" and list(fr) == [b"A", b"B"] and fr.testo.startswith("Ciao")
+    assert r.chiuso
+
+
+@pytest.mark.parametrize("testo,interrompe", [
+    ("Per svegliarmi di' Hey Jarvis.", False), ("JARVIS è il mio nome.", False),
+    ("Basta dire ehi Gas.", False), ("Il tempo è bello.", True), ("Jarvisiano no", True),
+])
+def test_se_gas_dice_la_parola_non_si_interrompe(testo, interrompe):
+    """Eco delle casse (riserva #336): se il testo della risposta contiene la parola, la
+    parola sentita mentre Gas parla non lo interrompe."""
+    class Risp:
+        def __init__(self):
+            self.testo = testo
+            self._it = iter([b"A", b"B"])
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return next(self._it)
+    f = FintiParlano([Risp()], durata=5)
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 2), PAROLA, (SILENZIO, _sec(20))),
+              finestra_s=0).gira()
+    assert (f.riprodotti == [b"A"]) is interrompe and (f.bip == ["ok", "ok"]) is interrompe
+
 # ── finestra di 12 s dopo la risposta ──
 
 def test_finestra_continua_senza_parola():
@@ -1608,10 +1703,15 @@ _FINTI = {
     "launchctl": ('echo "launchctl $*" >> "$REGISTRO"\n'
                   'case "$1" in\n'
                   '  print) s="${2##*/}"\n'
+                  # ASCOLTO_CADE: caricato ma il processo cade subito (venv rotto)
+                  '    if [ -f "$REGISTRO.su.$s" ] && [ -n "$ASCOLTO_CADE" ] \\\n'
+                  '       && [ "$s" = com.gas.ascolto ]; then\n'
+                  '      echo "	state = spawn scheduled"; echo "	last exit code = 1"; exit 0; fi\n'
                   '    if [ -f "$REGISTRO.su.$s" ]; then echo "	state = running"; exit 0; fi\n'
                   '    n=$(cat "$REGISTRO.giu.$s" 2>/dev/null || echo 0)\n'
                   '    if [ "$n" -gt 0 ]; then echo $((n-1)) > "$REGISTRO.giu.$s"\n'
-                  '      echo "	state = running"; exit 0; fi\n'
+                  # bootout in corso: ancora caricato, il processo sta uscendo
+                  '      echo "	state = exiting"; exit 0; fi\n'
                   '    echo "Could not find service" >&2; exit 113;;\n'
                   '  bootout) s="${2##*/}"; [ -f "$REGISTRO.su.$s" ] || exit 3\n'
                   '    rm -f "$REGISTRO.su.$s"; echo "${BOOTOUT_LENTO:-0}" > "$REGISTRO.giu.$s";;\n'
@@ -1977,11 +2077,13 @@ def test_installa_rifiuta_cartelle_con_caratteri_pericolosi(tmp_path, nome):
 
 # ── fetta 43: pausa.sh e riprendi.sh (solo l'ascolto, il server resta) ──
 
-def _voce_cmd(tmp_path, script, acceso=True, plist=True, **extra):
+def _voce_cmd(tmp_path, script, acceso=True, plist=True, in_uscita=0, **extra):
     gas, finti, casa = _gas_finto(tmp_path)
     registro = tmp_path / "registro.txt"
     if acceso:
         (tmp_path / "registro.txt.su.com.gas.ascolto").touch()
+    if in_uscita:   # R-673-3: subito dopo pausa.sh, il servizio sta ancora uscendo
+        (tmp_path / "registro.txt.giu.com.gas.ascolto").write_text(str(in_uscita))
     (tmp_path / "registro.txt.su.com.gas.voce.server").touch()
     agenti = casa / "Library" / "LaunchAgents"
     agenti.mkdir(parents=True, exist_ok=True)
@@ -2040,9 +2142,12 @@ def test_riprendi_riprova_il_bootstrap(tmp_path, falliti, ok):
     r, log_, su, _ = _voce_cmd(tmp_path, "riprendi.sh", acceso=False,
                                BOOTSTRAP_FALLISCE=str(falliti))
     assert log_.count("launchctl bootstrap") == min(falliti + 1, 3)
+    # R-673-1: un secondo di attesa fra un tentativo e l'altro (mai dopo l'ultimo)
+    assert log_.count("sleep 1\n") == min(falliti, 2)
     assert (r.returncode == 0) is ok and su.exists() is ok
     if not ok:
-        assert "non è ripartito" in r.stderr
+        # R-673-2: all'ultimo tentativo l'errore di launchctl si vede
+        assert "non è ripartito" in r.stderr and "Bootstrap failed: 5" in r.stderr
 
 
 def test_pausa_e_riprendi_nel_leggimi():
@@ -2060,3 +2165,44 @@ def test_leggimi_finestra_e_seguito():
     testo = (VOCE_DIR / "LEGGIMI.md").read_text(encoding="utf-8")
     assert f"| `GAS_VOICE_FINESTRA` | {a.FINESTRA_PREDEFINITA_S:g} |" in testo
     assert f"| `GAS_VOICE_SEGUITO_MAX` | {a.SEGUITO_MAX_PREDEFINITO_S:g} |" in testo
+
+
+# ── riserve della fetta 43 (bot e verifica esterna su #338) ──
+
+def test_riprendi_controlla_che_l_ascolto_resti_acceso(tmp_path):
+    """Bot V-2 su #338: caricato non vuol dire acceso. Con un venv rotto il processo cade:
+    niente «RIPRESO», un errore chiaro col log da guardare."""
+    r, log_, su, _ = _voce_cmd(tmp_path, "riprendi.sh", acceso=False, ASCOLTO_CADE="1")
+    assert r.returncode == 1 and "RIPRESO" not in r.stdout
+    assert "non resta acceso" in r.stderr and ".gas_voce/ascolto.log" in r.stderr
+    assert "sleep 3" in log_
+
+
+def test_riprendi_subito_dopo_la_pausa_aspetta_e_riaccende(tmp_path):
+    """R-673-3: il servizio sta ancora uscendo (caricato ma non «running»): riprendi.sh non
+    dice «già ascoltando», aspetta che sparisca e lo ricarica."""
+    r, log_, su, _ = _voce_cmd(tmp_path, "riprendi.sh", acceso=False, in_uscita=3)
+    assert r.returncode == 0 and "RIPRESO" in r.stdout and su.exists()
+    assert "già ascoltando" not in r.stdout and log_.count("sleep 0.1") >= 1
+
+
+def test_pausa_senza_installazione(tmp_path):
+    """V-3 bot su #338: mai installato non è «già in pausa»."""
+    r, log_, _, _ = _voce_cmd(tmp_path, "pausa.sh", acceso=False, plist=False)
+    assert r.returncode == 0 and "non è installato" in r.stdout and "installa.sh" in r.stdout
+    assert "già in pausa" not in r.stdout and "bootout" not in log_
+
+
+def test_riprendi_con_ascolto_che_cade_di_continuo(tmp_path):
+    """R-677-2: già caricato ma non acceso (launchd lo rilancia di continuo): niente tre
+    bootstrap inutili, rimanda al log."""
+    r, log_, _, _ = _voce_cmd(tmp_path, "riprendi.sh", ASCOLTO_CADE="1")
+    assert r.returncode == 1 and "non resta acceso" in r.stderr and "bootstrap" not in log_
+
+
+def test_riprendi_non_usa_grep_in_pipe():
+    """R-677-1: niente `launchctl print | grep -q` con pipefail (SIGPIPE → falso «non gira»)."""
+    righe = [r for r in (VOCE_DIR / "riprendi.sh").read_text(encoding="utf-8").splitlines()
+             if not r.lstrip().startswith("#")]
+    assert not any("| grep" in r for r in righe)
+    assert any('case "$stato" in *"state = running"*' in r for r in righe)
