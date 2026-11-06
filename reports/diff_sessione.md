@@ -1,9 +1,9 @@
-# Diff della sessione — 2026-11-06 — Bot di verifica: «ad alta voce» (chat M2)
+# Diff della sessione — 2026-11-06 — Voce rapida, fetta 2 (chat M2)
 
-- `scripts/bot_esito.py` — `_ALTA_VOCE`: «ad alta voce» (alta minuscolo) e «a voce alta» a fine frase non contano come gravità nella regola a parole; maiuscole, parentesi e campo strutturato invariati.
-- `tests/test_unit_verifica_bot.py` — test sul verdetto vero #339 su 312cd86 e casi che restano bloccati.
-- `tests/dati_verifica_bot/verdetto_339_312cd86.txt` — testo vero del verdetto.
-- `.claude/agents/memoria_revisore.md` — review #687-M2, #688-M2.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/ripartenza_m2.md` — report di fine task.
+- `gas.py` — `run_turn(voce=True)`: finestra `_get_window(GAS_VOCE_FINESTRA=6)`, niente `recap_pin`, effort `GAS_VOCE_EFFORT=low` passato al forte.
+- `brains/claude_cli.py` — `ClaudeCliClient(effort=…)` → `--effort`; ripiego senza l'opzione se la CLI la rifiuta.
+- `modules/voice/server.py` — `voce=True` per ogni turno parlato; C1 «rispondi solo all'ultima» in `_CONTESTO_VOCE`.
+- `tests/test_unit_kernel.py` (T104), `tests/test_unit_claude_cli.py`, `tests/test_unit_voice_stt.py`, `tests/test_unit_voice_contesto.py` — test del profilo voce.
+- `reports/*` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

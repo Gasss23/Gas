@@ -9,9 +9,9 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - `gas.py`: non toccarlo (salvo righe del doctor autorizzate).
 
 ## In corso
-- **PR #339 (V15) MERGIATA** il 6 nov (3cde8a5).
-- **PR del parser del bot** («ad alta voce», branch `feat/voce-v12-m2` ripartito da main): aperta, neutral → merge all'operatore via M1.
-- **Ordine di M1 dopo**: (2) fetta 2 della voce rapida (finestra più corta a voce, niente riepilogo vecchio, effort più basso se documentato, tempi prima/dopo; via su gas.py); (3) proposta tecnica della fetta 3 (compiti lunghi in sottofondo), solo documento in `reports/`. A ogni passo mandare a M1 numero di PR ed esito.
+- **PR #339 (V15)** e **PR #342 (parser del bot)**: MERGIATE il 6 nov.
+- **PR della fetta 2 voce rapida** (branch `feat/voce-v12-m2` da main c131452): aperta; merge col sì dell'operatore via M1 (riserve basse).
+- **Poi**: documento della fetta 3 (compiti lunghi in sottofondo), solo proposta in `reports/`. A ogni passo mandare a M1 numero di PR ed esito.
 - Caso «Stefano»: da controllare sul Mac nella storia.
 
 ## Riserve aperte (voce)

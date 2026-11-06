@@ -512,7 +512,7 @@ class TestVoiceHandlerRouting:
             with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
                 os.environ.pop("GAS_VOCE_FORTE", None)
                 status, _ = _post_raw(self.port, wav, hdrs)
-        assert status == 200 and set(self.kernel.kw) == {"istruzione_turno"}
+        assert status == 200 and set(self.kernel.kw) == {"istruzione_turno", "voce"} and self.kernel.kw["voce"] is True  # voce rapida
         assert self.kernel.kw["istruzione_turno"].startswith(ISTRUZIONE_VOCE + " Adesso è ")  # V13
         body = json.dumps({"prompt": "ciao"}).encode()
         with patch.dict(os.environ, {}):
@@ -532,7 +532,7 @@ class TestVoiceHandlerRouting:
                 os.environ.pop("GAS_VOCE_FORTE", None)
                 os.environ.pop("ELEVENLABS_API_KEY", None)
                 status, _ = _post_raw(self.port, wav, hdrs)
-        assert status == 200 and set(self.kernel.kw) == {"istruzione_turno"}
+        assert status == 200 and set(self.kernel.kw) == {"istruzione_turno", "voce"}
         assert self.kernel.kw["istruzione_turno"].startswith(ISTRUZIONE_VOCE_SCHERMO + " Adesso è ")  # V13
         assert "riga vuota" in ISTRUZIONE_VOCE_SCHERMO
 
