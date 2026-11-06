@@ -11550,6 +11550,45 @@ try:
               and "STANZA-103" not in json.dumps(_k103.history, ensure_ascii=False),
               str(len(_k103.history)))
 
+        # f) V-3 bot #339 su be60a21: risposta vuota del forte nel turno effimero = final
+        #    vuoto (il server chiude in silenzio), non «Pipeline esausta»; storia intatta
+        _mem_prima_f = json.dumps(_k103.history, ensure_ascii=False)
+        _comp103 = _Comp103([""])
+        _ev103f = list(_k103.run_turn("STANZA-103 silenzio", effimero=True))
+        check("T103f effimero con risposta vuota: final vuoto, niente errore, storia intatta",
+              [(e["type"], e.get("content")) for e in _ev103f] == [("final", "")]
+              and json.dumps(_k103.history, ensure_ascii=False) == _mem_prima_f,
+              str(_ev103f)[:300])
+
+        # g) V15 punto 1 (sì dell'operatore): seguito rivolto a Gas registrato dopo il turno
+        #    effimero → storia vera e file; il turno normale dopo lo vede (round-trip §7)
+        _comp103 = _Comp103(["A Roma piove 103."])
+        _g103g = _k103.run_turn("SEGUITO-103 che tempo fa a Roma?", effimero=True)
+        _ris103g = ""
+        for _e in _g103g:
+            if _e["type"] == "final":
+                _ris103g = _e["content"]
+                break
+        _g103g.close()
+        _ok103g = _k103.registra_seguito("SEGUITO-103 che tempo fa a Roma?", _ris103g)
+        _disco103g = _file103.read_text(encoding="utf-8")  # su disco SUBITO, non al turno dopo
+        _vuoti103g = (_k103.registra_seguito("", "x"), _k103.registra_seguito("x", "  "),
+                      _k103.registra_seguito("x", None))
+        _tools103.clear()
+        _comp103 = _Comp103([[("write_file", '{"relative_path": "g103.txt", "content": "z"}')],
+                             "Domani sole 103."])
+        _ev103g = list(_k103.run_turn("e domani?", cervello="forte"))
+        _storia103g = json.dumps(_k103.history, ensure_ascii=False)
+        check("T103g seguito per Gas registrato: storia vera + file, il turno dopo lo vede",
+              _ok103g is True and _vuoti103g == (False, False, False)
+              and "SEGUITO-103" in _storia103g and "A Roma piove 103." in _storia103g
+              and "SEGUITO-103" in _tools103[0][1] and "A Roma piove 103." in _tools103[0][1]
+              and "SEGUITO-103" in _disco103g and "A Roma piove 103." in _disco103g
+              and [e["content"] for e in _ev103g if e["type"] == "final"] == ["Domani sole 103."]
+              and any(e["type"] == "tool_res" for e in _ev103g)
+              and _storia103g.count("SEGUITO-103") == 1,
+              _storia103g[-400:])
+
         # d) effimero col forte spento: errore dichiarato, mai i gratuiti, storia intatta
         os.environ.pop("GAS_CLAUDE_CLI", None)
         _mem_prima_d = json.dumps(_k103.history, ensure_ascii=False)

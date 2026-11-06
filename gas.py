@@ -1802,6 +1802,24 @@ class GasKernel:
         if name: entry["name"] = name
         self.history.append(entry)
 
+    def registra_seguito(self, domanda: str, risposta: str) -> bool:
+        """V15 punto 1 (sì dell'operatore via M1, 6 nov; V-1 (a) bot #339): un turno di
+        seguito (effimero) che il chiamante ha giudicato RIVOLTO a Gas entra nella storia vera
+        come coppia user/assistant, così il seguito dopo lo ricorda. Va chiamato DOPO aver
+        chiuso il generatore del turno effimero (storia vera già ripristinata). Il parlato
+        «non per me» non passa mai di qui. Fail-safe §9: True solo se salvato su disco."""
+        if not (isinstance(domanda, str) and domanda.strip()
+                and isinstance(risposta, str) and risposta.strip()):
+            return False
+        try:
+            self._compress_history_if_needed()
+            self._add_to_history("user", content=domanda)
+            self._add_to_history("assistant", content=risposta)
+            return self._save_history(fine_turno=True)
+        except Exception as e:
+            logging.warning("registra_seguito: storia non aggiornata: %s", e)
+            return False
+
     def _get_window(self, n: int = 10) -> List[Dict[str, Any]]:
         if not self.history:
             return []
@@ -5047,6 +5065,14 @@ class GasKernel:
                             _turno_provider = name  # Fetta B: provider che ha prodotto la risposta
                             _turno_final = True
                             yield {"type": "final", "content": msg.content}
+                            return
+                        elif effimero:
+                            # V-3 bot #339 su be60a21: nel turno effimero una risposta vuota
+                            # del forte è «niente da dire» (chi chiama chiude in silenzio),
+                            # non un guasto da far finire in «Pipeline esausta» (HTTP 500)
+                            _turno_provider = name
+                            _turno_final = True
+                            yield {"type": "final", "content": ""}
                             return
                         else:
                             _motivi.append(f"{name}: risposta vuota")

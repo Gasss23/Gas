@@ -145,10 +145,12 @@ RISPOSTA_SERVE_ATTIVAZIONE = "Per farlo ripetimelo dicendo prima Hey Jarvis."
 # ma solo se la risposta è SOLO il segno: «Non per me è un problema, …» resta una risposta.
 # V-2 ve #339: il segno esatto con le parentesi vale anche se il modello aggiunge altro dopo
 # («[NON_PER_ME] (parlato fra persone)»): quel testo non va letto ad alta voce.
-# V-1 bot #339 su 312cd86: il segno esatto vale anche IN CODA («Non è rivolto a me.
-# [NON_PER_ME]»): altrimenti il testo e il segno verrebbero letti ad alta voce.
+# V-2 bot #339 su be60a21 (sì dell'operatore via M1): nel seguito il segno tra parentesi
+# chiude OVUNQUE stia («Non è rivolto a me [NON_PER_ME] (era la TV).»), anche scritto con
+# spazi («[NON PER ME]», R-676-1-M2): quel testo non va mai letto ad alta voce. Le forme
+# senza parentesi valgono solo come risposta intera.
 _NON_PER_ME = re.compile(
-    r"^\W*(?:\[non_per_me\]|non[_\s]+per[_\s]+me\W*$)|\[non_per_me\]\W*$", re.IGNORECASE)
+    r"\[\s*non[_\s]+per[_\s]+me\s*\]|^\W*non[_\s]+per[_\s]+me\W*$", re.IGNORECASE)
 ISTRUZIONE_SEGUITO = (
     "Questa frase è stata captata dal microfono nella finestra di conversazione, SENZA che "
     "l'operatore dicesse la parola di attivazione: può essere rivolta a te oppure no "
@@ -631,6 +633,18 @@ class VoiceHandler(BaseHTTPRequestHandler):
             log.info("turno di seguito non rivolto a Gas: conversazione chiusa")
             self._chiudi_seguito()
             return
+
+        if is_audio and self._seguito():
+            # V15 punto 1 (sì dell'operatore via M1, V-1 (a) bot #339): il seguito rivolto a
+            # Gas entra nella storia vera (il turno effimero non l'ha scritta), così il
+            # seguito dopo lo ricorda. Il generatore è già chiuso: storia vera ripristinata.
+            registra = getattr(self.kernel, "registra_seguito", None)
+            if callable(registra):
+                try:
+                    if not registra(prompt, result_content):
+                        log.warning("seguito rivolto a Gas non salvato nella storia")
+                except Exception as exc:  # §9: la risposta parte lo stesso
+                    log.warning("registra_seguito eccezione: %s", exc)
 
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
             self._do_audio_testo_response(result_content)

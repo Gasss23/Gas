@@ -48,6 +48,11 @@ class _MockKernel:
         self.kw = kw  # V3: istruzione_turno per i turni parlati
         yield from self._events
 
+    def registra_seguito(self, domanda: str, risposta: str) -> bool:
+        # V15 punto 1: il server registra i seguiti rivolti a Gas
+        self.registrati = getattr(self, "registrati", []) + [(domanda, risposta)]
+        return True
+
 
 def _make_server(kernel: Any, token: str) -> tuple[HTTPServer, int]:
     class _H(VoiceHandler):
@@ -716,6 +721,7 @@ class TestVoiceHandlerRouting:
         import http.client
         self.kernel._events = [{"type": "final", "content": risposta}]
         self.kernel.kw = "NESSUN TURNO"
+        self.kernel.registrati = []
         wav = _fake_wav()
         hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
                 "X-Gas-Formato": formato}
@@ -741,13 +747,16 @@ class TestVoiceHandlerRouting:
         for risposta in (SEGNO_NON_PER_ME, f" {SEGNO_NON_PER_ME}\n", f"«{SEGNO_NON_PER_ME}»",
                          "NON_PER_ME", "Non per me.",  # R-675-3-M2
                          "[NON_PER_ME] (parlato fra persone)", "«[non_per_me]» la TV",  # V-2 ve #339
-                         "Non è rivolto a me. [NON_PER_ME]", "La TV. «[non_per_me]».\n"):  # V-1 bot 312cd86
+                         "Non è rivolto a me. [NON_PER_ME]", "La TV. «[non_per_me]».\n",  # V-1 bot 312cd86
+                         "Non è rivolto a me [NON_PER_ME] (era la TV).",  # V-2 bot be60a21
+                         "[NON PER ME] (fra persone)", "x [ non per me ] y"):  # R-676-1-M2
             status, corpo, comando = self._seguito(risposta)
             assert status == 200 and comando == "fine" and corpo["fine"] is True
             assert corpo["content"] == "" and "audio" not in corpo and "capito" not in corpo
             assert ISTRUZIONE_SEGUITO in self.kernel.kw["istruzione_turno"]
             assert self.kernel.kw["cervello"] == "forte"  # R-675-1-M2: mai ai gratuiti
             assert self.kernel.kw["effimero"] is True  # scelta A: niente storia, niente strumenti
+            assert self.kernel.registrati == []  # punto 1: il parlato «non per me» resta fuori
 
     def test_v15_seguito_pausa_senza_voce(self):
         """V-2 bot #339 su 312cd86: nel seguito «Basta!» (anche dalla TV) chiude con
@@ -872,12 +881,14 @@ class TestVoiceHandlerRouting:
                 c.close()
         assert r.status == 200 and comando is None
         assert corpo["content"] == RISPOSTA_SERVE_ATTIVAZIONE and corpo["serve_attivazione"] is True
+        assert getattr(self.kernel, "registrati", []) == []  # la richiesta va ripetuta con Jarvis
 
     def test_v15_seguito_risposta_vuota_chiude(self):
         """V15: il turno effimero che ignora uno strumento finisce con risposta vuota: nel
         seguito la conversazione si chiude in silenzio (fine), niente voce."""
         status, corpo, comando = self._seguito("")
         assert status == 200 and comando == "fine" and corpo["content"] == ""
+        assert self.kernel.registrati == []
 
     def test_v15_seguito_rivolto_a_gas_risponde_normalmente(self):
         from modules.voice.server import ISTRUZIONE_SEGUITO
@@ -888,10 +899,8 @@ class TestVoiceHandlerRouting:
         frase = "Non per me è un problema, lo faccio subito."  # contiene le parole, non è il segno
         status, corpo, comando = self._seguito(frase)
         assert comando is None and corpo["content"] == frase
-        # V-1 bot 312cd86: il segno conta in testa o in coda, non in mezzo a una risposta
-        frase = "Il segno [NON_PER_ME] lo uso solo per la stanza, a te rispondo."
-        status, corpo, comando = self._seguito(frase)
-        assert comando is None and corpo["content"] == frase
+        # V15 punto 1 (sì dell'operatore): il seguito rivolto a Gas entra nella storia vera
+        assert self.kernel.registrati == [("e poi gli ho detto di no", frase)]
         assert ISTRUZIONE_SEGUITO in self.kernel.kw["istruzione_turno"]
 
     def test_v15_senza_seguito_nessuna_decisione(self):
@@ -900,6 +909,23 @@ class TestVoiceHandlerRouting:
         status, corpo, comando = self._seguito(SEGNO_NON_PER_ME, seguito=False)
         assert comando is None and ISTRUZIONE_SEGUITO not in self.kernel.kw["istruzione_turno"]
         assert "cervello" not in self.kernel.kw and "effimero" not in self.kernel.kw
+        # un turno normale si salva da sé nel kernel: il server non lo registra di nuovo
+        self._seguito("Certo.", seguito=False)
+        assert self.kernel.registrati == []
+
+    def test_v15_seguito_registrazione_che_fallisce_non_blocca(self):
+        """§9: se la storia non si aggiorna (False o eccezione) la risposta parte lo stesso."""
+        for esito in (False, RuntimeError("disco pieno")):
+            def _reg(domanda, risposta, _e=esito):
+                if isinstance(_e, Exception):
+                    raise _e
+                return _e
+            self.kernel.registra_seguito = _reg
+            try:
+                status, corpo, comando = self._seguito("Certo, ci penso io.")
+            finally:
+                del self.kernel.registra_seguito
+            assert status == 200 and comando is None and corpo["content"] == "Certo, ci penso io."
 
     def test_v15_seguito_a_testo_ignorato(self):
         """A TESTO l'intestazione non conta: nessuna istruzione, nessun «fine»."""
