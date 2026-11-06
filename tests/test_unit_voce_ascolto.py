@@ -953,7 +953,8 @@ def test_conferma_col_server_voce_vero(server_voce_vero, monkeypatch):
     from modules.voice import server as srv
     monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
     monkeypatch.setenv("ELEVENLABS_VOICE_ID", "Brian000000000001")
-    monkeypatch.setattr(srv, "synthesize_speech", lambda frase, k, voce: b"ID3-" + frase.encode())
+    # **kw: dalla V15 (chat M2) la conferma passa anche timeout= (autorizzato da M1)
+    monkeypatch.setattr(srv, "synthesize_speech", lambda frase, k, voce, **kw: b"ID3-" + frase.encode())
     assert a.scarica_conferma(server_voce_vero, TOKEN) == "ID3-Sì, signore?".encode()
     assert a.scarica_conferma(server_voce_vero, "token-sbagliato") is None   # 401
 
@@ -964,7 +965,7 @@ def test_conferma_col_server_voce_vero_in_errore(server_voce_vero, monkeypatch, 
     from modules.voice.tts import ElevenLabsTTSError
     monkeypatch.setenv("ELEVENLABS_API_KEY", "" if caso == "senza_chiave" else "k")
 
-    def tts(frase, k, voce):
+    def tts(frase, k, voce, **kw):  # **kw: timeout= della conferma V15 (chat M2)
         if caso == "errore_tts":
             raise ElevenLabsTTSError(429, "quota")
         return b""
