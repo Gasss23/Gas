@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #341 (https://github.com/Gasss23/Gas/pull/341) SOLO DOPO (o insieme a) la PR #339 di M2 (V15, lato server). Motivo (V-1 MEDIA della verifica esterna): senza la #339 in main la #341 allunga la finestra da 12 a 40 s e mette il tetto di 15 s, ma il filtro «parlato non per Gas» e la «pausa» non esistono ancora sul server, quindi il parlato della stanza sotto i 15 s verrebbe ancora inviato e risposto per 40 s invece che 12. Review #676 APPROVATO CON RISERVE e PR nel perimetro: decide l'operatore tramite M1. Numero e URL dalla risposta dello strumento GitHub `create_pull_request`.
+1. Merge della PR #341 (https://github.com/Gasss23/Gas/pull/341) SOLO DOPO (o insieme a) la PR #339 di M2 (V15, lato server): la #339 è in main (3cde8a5) e unita qui (ac06f01); l'operatore ha detto sì (via M1). Motivo (V-1 MEDIA della verifica esterna): senza la #339 in main la #341 allunga la finestra da 12 a 40 s e mette il tetto di 15 s, ma il filtro «parlato non per Gas» e la «pausa» non esistono ancora sul server, quindi il parlato della stanza sotto i 15 s verrebbe ancora inviato e risposto per 40 s invece che 12. Review #676 APPROVATO CON RISERVE e PR nel perimetro: decide l'operatore tramite M1. Numero e URL dalla risposta dello strumento GitHub `create_pull_request`.
 
 ---
 
@@ -21,21 +21,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- clients/voice/ascolto.py           | 144 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
- reports/diff_sessione.md           |  14 +++++++-------
- reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           |  31 +++++++++++++++++--------------
- scripts/voce/LEGGIMI.md            |  28 +++++++++++++++++++++-------
- tests/test_unit_voce_ascolto.py    | 230 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ .claude/agents/memoria_revisore.md |   4 ++
+ clients/voice/ascolto.py           | 144 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
+ reports/diff_sessione.md           |  20 ++++------
+ reports/stato_progetto.md          |   6 ++-
+ reports/ultimo_report.md           |  57 ++++++++++++++--------------
+ scripts/voce/LEGGIMI.md            |  28 ++++++++++----
+ tests/test_unit_voce_ascolto.py    | 230 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 83f3bcd.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 3cde8a5 (dopo il merge della PR #339).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ac06f01 Merge origin/main (PR #339, voce V15) nella PR #341 — review #679 APPROVATO CON RISERVE
+a7ed0e8 docs(fine-task): fetta 43 parte 2 — ordine di merge dichiarato (la #341 dopo la #339, V-1 MEDIA della verifica esterna) e riserve registrate
 43fa6ac docs(fine-task): fetta 43 parte 2 chat Mani — finestra di 40 s e difese, review #676, PR #341; PR #340 mergiata
 51c4aa0 Merge branch 'mani/finestra' into claude/peaceful-lovelace-0w2b7q
 4cd7b97 feat(voce): fetta 43 parte 2 — finestra di 40 s e difese contro il parlato della stanza
@@ -88,6 +90,52 @@ Review #676 (chat Mani). Riguarda la fetta 43 parte 2, cioè le difese contro il
 
 **Memoria**: aggiunta la riga #676 (chat Mani) e una lezione nuova (un flag di stato per turno va provato su due conversazioni di fila) in .claude/agents/memoria_revisore.md. Committata con lo script: commit da24b2c, solo quel file. Lo staged è identico a prima. Il marcatore non l'ho toccato.
 
+
+Merge ac06f01 (main con la PR #339 dentro la PR #341) — review #679, verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #679 (chat Mani): merge di origin/main 3cde8a5 (PR #339, V15 di M2) nel branch claude/peaceful-lovelace-0w2b7q (PR #341). Il merge è staged e non committato; il repo vero non l'ho toccato.
+
+**Com'è stato fatto il merge (controllato blob per blob nell'index)**
+- Uguali a MERGE_HEAD: gas.py, modules/voice/server.py, modules/voice/tts.py, tests/test_unit_kernel.py, tests/test_unit_voice_stt.py, tests/test_unit_voice_prova_voci.py, reports/ripartenza_m2.md.
+- Uguali a HEAD: clients/voice/ascolto.py, scripts/voce/LEGGIMI.md, reports/handoff.md, reports/ultimo_report.md, reports/diff_sessione.md.
+- `git ls-files -u` è vuoto e non ci sono marcatori di conflitto.
+- Nessuno slicing della storia (`[-N:]`) nelle righe aggiunte; `_get_window` non è toccata.
+
+**Elementi del diff esaminati**
+- tests/test_unit_voce_ascolto.py:1098 — il finto `synthesize_speech` accetta `**kw` (il `timeout=` della conferma V15). Rischio esaminato: che il merge portasse altro dal lato main. Oltre a HEAD c'è solo questa riga e quella sotto. Esito: ok.
+- tests/test_unit_voce_ascolto.py:1109 — stessa modifica sul finto dei tre casi d'errore. Vale ancora la riserva già aperta (R-675-1): i casi d'errore passano anche con un'eccezione non prevista nel finto. Esito: ok.
+- reports/stato_progetto.md:4 — la riga «Ultimo aggiornamento». Rischio esaminato: voci perse nel conflitto. È il prefisso di Mani più la riga 4 di main, e la coda coincide esattamente. Ho controllato ogni voce di HEAD e sono tutte presenti; il blocco V15 arriva da main. Esito: ok.
+- clients/voice/ascolto.py:714 — il client manda `X-Gas-Seguito: 1` solo con `seguito=True`. Il server (modules/voice/server.py:688) lo legge solo per il parlato. Rischio esaminato: header assente, e allora il parlato della stanza finirebbe a un turno normale. Il mutante «header tolto» è ucciso. Esito: ok.
+- clients/voice/ascolto.py:735 — con `X-Gas-Comando: fine` il client esce prima di leggere il corpo, quindi vale in ogni formato. Il server manda il comando da `end_headers` (modules/voice/server.py:466) e «fine» come JSON 200 `{"content":"","fine":true}` (modules/voice/server.py:683). Rischio esaminato: confusione con la riga NDJSON `{"fine": true}`, che chiude normalmente il flusso. Non succede: il comando si legge solo dall'intestazione, mai dal corpo. Esito: ok.
+- clients/voice/ascolto.py:462 — un turno di seguito che fallisce (500 o 429) chiude la conversazione senza bip. Esito: ok, confermato dalla prova qui sotto.
+- scripts/voce/LEGGIMI.md:14 — dice che nella conversazione senza la parola «pausa» fa rispondere «Va bene.». Il server finale nel seguito risponde invece con JSON muto `{"content":"","pausa":true}` (modules/voice/server.py:530, correzione V-2 del bot #339 su 312cd86). La prova d'integrazione conferma che non viene suonato nulla. Esito: riserva.
+
+**Prova d'integrazione (scratch, copia dell'index)**
+- Test: client vero (`invia_al_server` e `Ascolto.turno`) contro il VoiceHandler vero. La trascrizione è finta; la sintesi è finta e solleva un errore dove non deve essere chiamata. Il kernel è finto e conta anche le chiamate a `registra_seguito`. Risultato: 21 passed.
+- Risposta `[NON_PER_ME]` o vuota con `seguito=True`: esce `(True, None, "", "fine")` nei formati "", audio+testo, audio+pezzi e pezzi-voce. Il turno è effimero e va solo al forte; nessuna sintesi, nessuna registrazione in storia. `Ascolto.turno` imposta `chiudi=True`, senza bip e senza audio.
+- «pausa» nel seguito: comando «pausa», nessun turno del kernel, conversazione chiusa, niente voce e niente bip.
+- «pausa» con la parola: si sente «Va bene.» e arriva il comando, in tutti i formati.
+- 500 nel seguito (evento error del kernel, o eccezione) e 429 (tetto orario, senza chiamare la trascrizione): `(False, None, "HTTP 500/429", "")` e chiusura senza bip.
+- Risposta vera nel seguito (NDJSON, audio+testo, MP3): suona un pezzo, `chiudi` resta False e `registra_seguito` viene chiamato.
+- Mutante «X-Gas-Seguito tolto» nel client: 10 failed nella prova, 1 nella suite del repo (`test_invio_di_seguito_manda_l_intestazione`).
+- Suite sulla copia dell'index: voce_ascolto, voice_stt e prova_voci, 410 passed.
+
+**Riserve**
+- **R-679-1 BASSA**: nel repo manca un test d'integrazione V15 tra client vero e server vero. La suite usa solo il server finto `_ServerComando`. Consiglio di portare nel repo la prova di scratch (casi fine, pausa, 500/429), con la sintesi che fallisce se viene chiamata. Il file è nello scratchpad (prove/test_integ_679.py) e si lancia con `IDX=<radice dell'albero>`.
+- **R-679-2 BASSA**: scripts/voce/LEGGIMI.md:14 è falso dopo il merge, perché nel seguito la pausa è muta (risponde «Va bene.» solo dopo la parola). Lo stesso vale anche per «basta!».
+- **R-679-3 COSMETICA**: una pausa nel seguito finisce nel log come «turno di seguito non riuscito: risposta inattesa (senza voce)». La chiusura è giusta, ma il log non lo dice: andrebbe registrata come pausa.
+
+**Cosa non ho verificato**
+- La suite del kernel (test_unit_kernel.py) non l'ho rilanciata: gas.py e il suo test sono blob identici a MERGE_HEAD, già rivisti e provati da M2 (#682 – #686-M2). Il client non li tocca.
+- Il comportamento sul Mac (microfono vero, afplay, ElevenLabs e Groq veri) non è riproducibile qui.
+- Effetto collaterale visto ma non indagato: anche nel seguito una trascrizione «ciao gas» fa rispondere «Dimmi.», per la regola `_SOLO_ATTIVAZIONE` del server, e la finestra resta aperta. Il parlato è rivolto a Gas, quindi lo ritengo accettabile.
+
+**Memoria**
+- Ho aggiunto in coda a .claude/agents/memoria_revisore.md la riga contatore `#679 (chat Mani) — 2026-11-06 — APPROVATO CON RISERVE — …` e una lezione nuova: al primo merge che unisce client e server scritti da chat diverse, rileggere la documentazione utente contro il comportamento finale del server.
+- Il file è solo nel working tree («MM»), NON committato, come chiesto: va aggiunto con `git add` al commit del merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 248 casi. Riepilogo reale nel venv con requirements e requirements-dev:
@@ -118,9 +166,11 @@ I due mutanti di stato trovati dal revisore sono nella riserva R-676-1.
 `gh` non usato (GitHub passa dallo strumento MCP).
 
 Mappatura commit → run:
-- 43fa6ac: unit-suite in corso alla lettura della verifica esterna, handoff-check success.
-- 51c4aa0, 4cd7b97, da24b2c: pushati insieme prima di aprire la PR #341; run del push non letta alla scrittura dell'handoff.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- ac06f01 (merge della #339) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme).
+- a7ed0e8 e 43fa6ac: run dei loro push (handoff-check success; unit-suite non riletta qui).
+- 51c4aa0, 4cd7b97, da24b2c: pushati insieme a 43fa6ac.
+
+Suite voce in locale dopo il merge (ascolto, stt, prova_voci): 410 passed. Prova d'integrazione del revisore #679 con client e server veri: 21 passed.
 
 ## §7 RISERVE APERTE
 

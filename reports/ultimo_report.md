@@ -15,6 +15,15 @@
   - Review #676 APPROVATO CON RISERVE (R-676-1/2/3 BASSE; la R-676-3 è sul server di M2 ed è girata a M1).
   - Il commit di merge su main ha un diff identico a quello rivisto.
 
+## Merge della #339 e sì dell'operatore
+
+- La #339 di M2 è in main (3cde8a5); l'ho unita nella #341 (ac06f01). Review #679 APPROVATO CON RISERVE: il revisore ha provato il contratto con il client e il VoiceHandler veri, 21 casi passati.
+  - R-679-1 BASSA: manca nel repo un test d'integrazione V15.
+  - R-679-2 BASSA: il LEGGIMI dice che la «pausa» detta senza la parola risponde «Va bene.», ma è muta.
+  - R-679-3 COSMETICA: il log non dice che era una pausa.
+  - Le chiudo nella fetta 44.
+- Sì dell'operatore alla #341 (via M1): la mergio con CI verde, se bot e verifica esterna non hanno ALTA o MEDIA.
+
 ## Verdetti su 43fa6ac (PR #341)
 
 - Verifica esterna: APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/341#issuecomment-6672694572).
