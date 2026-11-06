@@ -9,13 +9,10 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - `gas.py`: non toccarlo (salvo righe del doctor autorizzate).
 
 ## In corso
-- **PR #339 — V15** (branch `feat/voce-v12-m2`, da main dopo le #335 e #337): pausa a voce («Va bene.» + X-Gas-Comando: pausa), turni di seguito (X-Gas-Seguito: 1, solo forte, «[NON_PER_ME]» → X-Gas-Comando: fine), conferma con timeout 5 s e cache degli errori. Review #675-M2 APPROVATO CON RISERVE. **Da fare**: verdetto del bot + verifica esterna → M1; merge col sì dell'operatore via M1.
-- **Bot su 312cd86**: FAILURE falso (parser: «ad alta voce» letto come ALTA). Corrette comunque le due BASSE (2e367e2, #681-M2) per avere un nuovo head da far rivalutare al bot (il check è required). Proposta a M1: fetta separata sul parser (macchina del bot, decide l'operatore).
-- **Punto 1 fatto** (e7a75c0, sì dell'operatore 6 nov). R-682-1-M2 chiusa con la scelta A (f75719d); V-1 bot 16dd4a5 chiusa (ae61546); V-2 (Groq) accettata dall'operatore (933780f). Poi merge #339 e avviso a M1 (la #341 di Mani va dopo), poi PR separata sul parser del bot («ad alta voce»).
-- **Decisione chiesta (vecchia, risolta) all'operatore via M1**: scrivere nella storia vera i turni di seguito giudicati «per Gas» (V-1 (a) bot su a87d273, MEDIA). Il punto 2 (frase fissa) è fatto.
-- **Scelta A fatta** (via su gas.py per la #339): turno effimero; sì dell'operatore al merge della #339 con CI verde e bot + verifica esterna senza ALTA/MEDIA sul nuovo head.
-- **Ordine di M1 dopo**: 1) C1 «solo l'ultima domanda» (modules/voice); 2) profilo voce in run_turn (C2+A1+A2+A3, via dato anche su gas.py, tempi prima/dopo; dentro anche la storia senza turni «non per me»); 3) sottofondo B dopo le prove sul Mac. Proposta mandata a M1, da portare in reports/proposta_voce_rapida.md con C1.
-- Caso «Stefano» (a «che ore sono» Gas ha parlato del contatto Stefano): da controllare sul Mac nella storia (`.gas_history.json`, messaggio utente prima della risposta) — trascrizione o cervello.
+- **PR #339 (V15) MERGIATA** il 6 nov (3cde8a5).
+- **PR del parser del bot** («ad alta voce», branch `feat/voce-v12-m2` ripartito da main): aperta, neutral → merge all'operatore via M1.
+- **Ordine di M1 dopo**: (2) fetta 2 della voce rapida (finestra più corta a voce, niente riepilogo vecchio, effort più basso se documentato, tempi prima/dopo; via su gas.py); (3) proposta tecnica della fetta 3 (compiti lunghi in sottofondo), solo documento in `reports/`. A ogni passo mandare a M1 numero di PR ed esito.
+- Caso «Stefano»: da controllare sul Mac nella storia.
 
 ## Riserve aperte (voce)
 - R-667-2-M2 BASSA (fuso configurabile per il VPS; lì l'istruzione vieta anche data_ora), R-667-3-M2 COSMETICA (datetime naive); R-668-1/3-M2 BASSE («Dimmi.» spende, segno non testato nei formati pezzi); R-669-1-M2 BASSA (HTTPException non intercettata nei percorsi TTS), R-669-2-M2 COSMETICA.
