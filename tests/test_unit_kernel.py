@@ -11642,6 +11642,19 @@ try:
               and (_k103.memory.ultimo_diario_per_tipo("recap") if _k103.memory else None) == _rec103k,
               str(_e103k)[:300])
 
+        # l) V-1 bot #339 su 16dd4a5: un seguito in finestra è input non fidato: una scrittura
+        #    chiesta nel turno dopo va alla firma, non si esegue (round-trip §7)
+        _contam103l = gas.GasKernel._finestra_e_contaminata(_k103._get_window())
+        _tools103.clear()
+        _comp103 = _Comp103([[("write_file", '{"relative_path": "l103.txt", "content": "TV"}')],
+                             "In attesa di firma 103l."])
+        _ev103l = list(_k103.run_turn("salva il file", cervello="forte"))
+        _res103l = [e for e in _ev103l if e["type"] == "tool_res"]
+        check("T103l seguito in finestra = non fidato: scrittura alla firma, non eseguita",
+              _contam103l and not (Path(_k103.root) / "l103.txt").exists()
+              and len(_res103l) == 1 and _res103l[0].get("cancello") in ("in_attesa", "negata"),
+              str(_ev103l)[:400])
+
         # d) effimero col forte spento: errore dichiarato, mai i gratuiti, storia intatta
         os.environ.pop("GAS_CLAUDE_CLI", None)
         _mem_prima_d = json.dumps(_k103.history, ensure_ascii=False)

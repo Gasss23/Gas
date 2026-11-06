@@ -150,7 +150,7 @@ RISPOSTA_SERVE_ATTIVAZIONE = "Per farlo ripetimelo dicendo prima Hey Jarvis."
 # spazi («[NON PER ME]», R-676-1-M2): quel testo non va mai letto ad alta voce. Le forme
 # senza parentesi valgono solo come risposta intera.
 _NON_PER_ME = re.compile(
-    r"\[\s*non[_\s]+per[_\s]+me\s*\]|^\W*non[_\s]+per[_\s]+me\W*$", re.IGNORECASE)
+    r"\[\s*non[_\s-]+per[_\s-]+me\s*\]|^\W*non[_\s-]+per[_\s-]+me\W*$", re.IGNORECASE)
 ISTRUZIONE_SEGUITO = (
     "Questa frase è stata captata dal microfono nella finestra di conversazione, SENZA che "
     "l'operatore dicesse la parola di attivazione: può essere rivolta a te oppure no "

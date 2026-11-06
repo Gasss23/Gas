@@ -749,7 +749,8 @@ class TestVoiceHandlerRouting:
                          "[NON_PER_ME] (parlato fra persone)", "«[non_per_me]» la TV",  # V-2 ve #339
                          "Non è rivolto a me. [NON_PER_ME]", "La TV. «[non_per_me]».\n",  # V-1 bot 312cd86
                          "Non è rivolto a me [NON_PER_ME] (era la TV).",  # V-2 bot be60a21
-                         "[NON PER ME] (fra persone)", "x [ non per me ] y"):  # R-676-1-M2
+                         "[NON PER ME] (fra persone)", "x [ non per me ] y",  # R-676-1-M2
+                         "[non-per-me]", "Non-per-me."):  # V-2 ve 16dd4a5
             status, corpo, comando = self._seguito(risposta)
             assert status == 200 and comando == "fine" and corpo["fine"] is True
             assert corpo["content"] == "" and "audio" not in corpo and "capito" not in corpo

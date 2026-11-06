@@ -2079,7 +2079,12 @@ class GasKernel:
     def _finestra_e_contaminata(window: List[Dict[str, Any]]) -> bool:
         """True se la finestra contiene un tool result di un tool contaminante (§3b) o un
         riepilogo di compressione che non si dichiara pulito (R-203-1).
-        Puro (no side-effect), riutilizzabile nei test diretti (R-c2-3)."""
+        Puro (no side-effect), riutilizzabile nei test diretti (R-c2-3).
+        V-1 bot #339 su 16dd4a5: anche un seguito a voce (parlato captato SENZA parola di
+        attivazione: stanza, TV) è input non fidato, così le scritture dei turni dopo vanno
+        alla firma e un riepilogo che lo contiene si dichiara INPUT ESTERNO."""
+        if _ha_seguito_voce(window):
+            return True
         for m in window:
             if m.get("role") == "tool" and m.get("name") in UNTRUSTED_INPUT_TOOLS:
                 return True
