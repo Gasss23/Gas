@@ -11589,6 +11589,59 @@ try:
               and _storia103g.count("SEGUITO-103") == 1,
               _storia103g[-400:])
 
+        # h) R-682-1-M2 (scelta A dell'operatore): i seguiti salvati sono segnati; un turno
+        #    normale «semplice» con un seguito ancora in finestra va SOLO al forte, e la
+        #    chiave interna non arriva al provider
+        _segnati103h = [m for m in _k103.history if m.get(gas.CHIAVE_SEGUITO_VOCE)]
+        _tools103.clear()
+        _comp103 = _Comp103(["Ciao 103h."])
+        _ev103h = list(_k103.run_turn("ciao"))  # niente cervello: il classificatore direbbe semplice
+        check("T103h finestra con seguito: turno normale solo sul forte, chiave non inviata",
+              len(_segnati103h) == 2
+              and [e["content"] for e in _ev103h if e["type"] == "final"] == ["Ciao 103h."]
+              and len(_tools103) == 1 and "SEGUITO-103" in _tools103[0][1]
+              and gas.CHIAVE_SEGUITO_VOCE not in _tools103[0][1]
+              and gas.CHIAVE_SEGUITO_VOCE in _file103.read_text(encoding="utf-8"),
+              str(_ev103h)[:300])
+
+        # i) col forte spento quel turno è fermo dichiarato: nessun gratuito parte
+        os.environ.pop("GAS_CLAUDE_CLI", None)
+        _ev103i = list(_k103.run_turn("ciao ancora"))
+        check("T103i finestra con seguito e forte spento: errore, mai i gratuiti",
+              [e["type"] for e in _ev103i] == ["error"]
+              and "claude-cli" in _ev103i[0]["content"]
+              and "seguito a voce" in _ev103i[0]["content"],
+              str(_ev103i)[:300])
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+
+        # j) R-682-1-M2: la compressione che riassume un seguito segna il riepilogo; senza
+        #    seguiti il riepilogo resta senza segno
+        _kj = kernel_tmp()
+        _kj.history = ([{"role": "user", "content": "SEG-103j", gas.CHIAVE_SEGUITO_VOCE: True},
+                        {"role": "assistant", "content": "r", gas.CHIAVE_SEGUITO_VOCE: True}]
+                       + [{"role": r, "content": f"m{i}"} for i in range(40)
+                          for r in ("user", "assistant")])
+        _kj._compress_history_if_needed(force=True)
+        _kk = kernel_tmp()
+        _kk.history = [{"role": r, "content": f"m{i}"} for i in range(40) for r in ("user", "assistant")]
+        _kk._compress_history_if_needed(force=True)
+        check("T103j compressione: riepilogo di un seguito segnato, altrimenti no",
+              "SEG-103j" in _kj.history[0]["content"]
+              and _kj.history[0].get(gas.CHIAVE_SEGUITO_VOCE) is True
+              and not gas._ha_seguito_voce(_kk.history),
+              str(_kj.history[0])[:200])
+
+        # k) R-682-1/R-683-1-M2: con un seguito in finestra la riflessione non chiama nessun
+        #    modello (né gratuiti né client sbagliati) e non scrive recap
+        _tools103.clear()
+        _rec103k = _k103.memory.ultimo_diario_per_tipo("recap") if _k103.memory else None
+        _e103k = _k103.rifletti()
+        check("T103k riflessione con seguito in finestra: rimandata, nessun modello, nessun recap",
+              _e103k.get("ok") is False and "seguito a voce" in str(_e103k.get("errore"))
+              and _e103k.get("provider_atteso") is None and _tools103 == []
+              and (_k103.memory.ultimo_diario_per_tipo("recap") if _k103.memory else None) == _rec103k,
+              str(_e103k)[:300])
+
         # d) effimero col forte spento: errore dichiarato, mai i gratuiti, storia intatta
         os.environ.pop("GAS_CLAUDE_CLI", None)
         _mem_prima_d = json.dumps(_k103.history, ensure_ascii=False)
