@@ -15,11 +15,17 @@
   - Review #676 APPROVATO CON RISERVE (R-676-1/2/3 BASSE; la R-676-3 è sul server di M2 ed è girata a M1).
   - Il commit di merge su main ha un diff identico a quello rivisto.
 
+## Bot su 23d9c1c: R-693-2 alzata a MEDIA e corretta
+
+- Il bot ha alzato a MEDIA la parola a metà del seguito. Corretta in 01b1089: si tengono solo gli ultimi 1,5 s prima della parola e il dopo.
+- Review #694 APPROVATO CON RISERVE. Riserve BASSE: R-694-1 (residuo da far accettare all'operatore) e R-694-2 (da provare sul Mac).
+- Suite ascolto: 255 passed.
+
 ## Merge della #342 e verdetti su bdc79ce
 
 - Su bdc79ce la CI è verde. Bot e verifica esterna danno APPROVATO CON RISERVE, senza ALTA o MEDIA.
 - La #342 di M2 (parser del bot) è entrata in main: l'ho unita in 7296f39. Review #693 APPROVATO CON RISERVE: R-693-1 COSMETICA; R-693-2 BASSA, che è la V-1 del bot.
-- **Da dire all'operatore (V-1 bot / R-693-2, BASSA).** Se «Hey Jarvis» si sente a metà di una frase detta senza la parola, tutta la frase va come richiesta normale, compreso il parlato di prima (fino a circa 15 s). Va corretto nella fetta successiva tagliando l'audio dalla parola, oppure accettato.
+- (Superato: corretto in 01b1089, vedi sopra.) **Era da dire all'operatore (V-1 bot / R-693-2).** Se «Hey Jarvis» si sente a metà di una frase detta senza la parola, tutta la frase va come richiesta normale, compreso il parlato di prima (fino a circa 15 s). Va corretto nella fetta successiva tagliando l'audio dalla parola, oppure accettato.
 
 ## Bocciatura del bot su 851a0d1 e correzione
 

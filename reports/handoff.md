@@ -21,21 +21,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
- clients/voice/ascolto.py           | 176 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
+ .claude/agents/memoria_revisore.md |  11 +++++++++++
+ clients/voice/ascolto.py           | 183 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------
  reports/diff_sessione.md           |  15 ++++++++-------
  reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           |  49 +++++++++++++++++++++++++++++++++++++++----------
- scripts/voce/LEGGIMI.md            |  32 +++++++++++++++++++++++++-------
- tests/test_unit_voce_ascolto.py    | 321 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ reports/ultimo_report.md           |  55 +++++++++++++++++++++++++++++++++++++++++++----------
+ scripts/voce/LEGGIMI.md            |  34 ++++++++++++++++++++++++++-------
+ tests/test_unit_voce_ascolto.py    | 339 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main c131452 (dopo il merge della PR #342).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main c131452.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+01b1089 fix(voce): parola a metà di un turno di seguito — il parlato di prima non parte (V-1 bot #341 su 23d9c1c)
+4e81502 chore(revisore): memoria review #694 — APPROVATO CON RISERVE
+23d9c1c docs(fine-task): fetta 43 parte 2 — merge della #342, review #693, verdetti su bdc79ce (PR #341)
 7296f39 Merge origin/main (PR #342, parser del bot) nella PR #341 — review #693 APPROVATO CON RISERVE
 bdc79ce docs(fine-task): fetta 43 parte 2 — V-1 del bot corretta, review #680–#681 (PR #341)
 1792ab3 fix(voce): la parola di attivazione detta nella finestra apre una richiesta normale (V-1 bot #341)
@@ -244,12 +247,43 @@ Review #693 (chat Mani): merge di origin/main c131452 (PR #342 di M2, parser del
 
 **Memoria**: ho aggiunto la riga #693 e una lezione in .claude/agents/memoria_revisore.md. È nel working tree, non committata e non aggiunta all'index (stato MM): va aggiunta con `git add` prima del commit del merge.
 
+
+Commit 01b1089 (V-1 del bot su 23d9c1c: taglio prima della parola) — review #694, verdetto integrale:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #694 (chat Mani). Diff staged su 23d9c1c, PR #341, branch claude/peaceful-lovelace-0w2b7q. Ho letto CLAUDE.md, la memoria e il contesto in stato_progetto.
+
+**Cosa ho controllato nel diff**
+- `clients/voice/ascolto.py:104` — nuova costante `PRIMA_DELLA_PAROLA_S = 1.5`. Rischio: che il taglio porti via la parola stessa. `blocchi_per(1.5)` = round(18,75) = 19, quindi si tengono 18 blocchi più quello della parola: circa 1,52 s. «Hey Jarvis» dura circa 0,8–1,2 s e il modello lo valuta su una finestra di circa 1,3 s, chiusa a fine parola. Ci sta, con 0,3–0,7 s di margine. Esito: ok (vedi R-694-2).
+- `clients/voice/ascolto.py:420` — `tieni = max(0, …-1)` e `presi = presi[-tieni:] if tieni else []`. Rischi controllati:
+  (a) Il caso `tieni=0` è gestito: evita `presi[-0:]`, che terrebbe tutta la lista.
+  (b) Caso «voce non ancora partita»: con `rileva_parola=True` non si verifica. registra viene chiamata solo da `clients/voice/ascolto.py:657`, con `inizio` = 3 blocchi di aspetta_voce, quindi la voce è già partita. Anche se succedesse, `presi` avrebbe al massimo 2 blocchi e il taglio non cambierebbe niente.
+  (c) Contatore del silenzio: non viene azzerato al taglio, ma i blocchi forti della parola lo riportano a 0. Si chiuderebbe in anticipo solo con una parola sotto la soglia della voce, una cosa che c'era già prima.
+  (d) Il contatore di attesa non conta, perché la voce è già partita.
+  (e) Il tetto dei 30 s ora parte da 1,5 s prima della parola, come previsto.
+  Esito: ok.
+- `tests/test_unit_voce_ascolto.py:630` — test con 8 s di stanza, poi la parola, poi voce; controlla la lunghezza esatta inviata, `(18+1+20+10)*BLOCCO`. L'ho fatto girare su una copia dell'index in scratch: 255 passed. Ho provato due versioni sbagliate del codice: senza taglio, e con `tieni=0`. Il test le scarta tutte e due. Esito: ok.
+- `scripts/voce/LEGGIMI.md:14` — scritto che nella finestra non c'è bip e che il parlato prima della parola non parte. Corretto, a parte il residuo di R-694-1. Esito: ok. `tests/test_unit_voce_ascolto.py:443`: la docstring dei «12 s» è corretta e un grep sui 3 file non trova altre occorrenze. Esito: ok.
+
+**Privacy**: il V-1 del bot è chiuso per la parte grave. Al massimo 15 s di stanza diventavano un turno normale; ora ne restano circa 0,3–0,7 s prima della parola.
+
+**Riserve**
+- R-694-1 BASSA: resta un residuo, da far accettare all'operatore in stato_progetto.
+  1. Nel turno normale vanno ancora circa 0,3–0,7 s di stanza prima della parola, senza il filtro «non per me».
+  2. Un falso positivo del rilevatore nella finestra (soglia 0,5) in mezzo al parlato della stanza rende normale tutto quello che si dice dopo, fino a 30 s. Questo c'era già dal #341 e la correzione non lo copre.
+- R-694-2 BASSA: i 1,5 s non sono provati con il ritardo vero di openWakeWord sul Mac. Serve una prova dal vivo: dire «Hey Jarvis, che ore sono» nella finestra e controllare nel testo trascritto che la parola sia intera.
+
+**Cosa NON ho verificato**: il comportamento reale sul Mac (microfono, ritardo vero di openWakeWord, durata vera di «hey_jarvis»), che qui non si può riprodurre. Il filtro «non per me» e la scelta del cervello lato server non li ho riletti, perché sono fuori dal diff.
+
+**Memoria**: aggiunta la riga #694 e una lezione (provare due versioni sbagliate su un taglio «tieni gli ultimi N»). Committata con scripts/commit_memoria_revisore.sh (4e81502); lo staged non è cambiato (3 file, +28/−3).
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 254 casi (248 con la fetta, 254 dopo la correzione V-1 del bot). Riepilogo reale nel venv con requirements e requirements-dev:
+`tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 255 casi (248 con la fetta, 254 dopo la correzione V-1 del bot su 851a0d1, 255 dopo quella su 23d9c1c). Riepilogo reale nel venv con requirements e requirements-dev:
 
 ```
-254 passed in 29.72s
+255 passed in 29.90s
 ```
 
 Mutanti presi (15):
@@ -276,7 +310,8 @@ I due mutanti di stato trovati dal revisore sono nella riserva R-676-1.
 Mappatura commit → run:
 - 851a0d1: CI run con handoff-check success; verifica-bot BOCCIATO (V-1 MEDIA, corretta in 1792ab3).
 - bdc79ce: CI run 42293018752, unit-suite e handoff-check success (voce H24: 254 passed); bot APPROVATO CON RISERVE (neutral).
-- 7296f39 (merge della #342) e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 23d9c1c: unit-suite e handoff-check success; bot failure (V-1 alzata a MEDIA, corretta in 01b1089).
+- 01b1089, 4e81502 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 - a7ed0e8 e 43fa6ac: run dei loro push (handoff-check success; unit-suite non riletta qui).
 - 51c4aa0, 4cd7b97, da24b2c: pushati insieme a 43fa6ac.
 
@@ -290,8 +325,9 @@ Suite voce in locale dopo il merge (ascolto, stt, prova_voci): 410 passed. Dopo 
 - Dalla #340: bot V-1 BASSA (conferma non suonabile = silenzio), verifica esterna V-4 BASSA (eco dopo la conferma), R-675-1 BASSA.
 - Verifica esterna su 43fa6ac (https://github.com/Gasss23/Gas/pull/341#issuecomment-6672694572): V-1 MEDIA (ordine di merge: la #341 dopo la #339) → chiusa dichiarando l'ordine in §0, nella PR e in stato_progetto; V-2 = R-676-1; V-3 BASSA («fine» su un turno non di seguito non è coperto da test); V-4 BASSA (una «pausa» interrotta dalla parola non chiude: il ramo dell'interruzione viene prima).
 - Bot su 851a0d1: V-1 MEDIA corretta (1792ab3); V-2 e V-3 corrette nel LEGGIMI.
-- Bot su bdc79ce V-1 BASSA = R-693-2: la parola sentita a metà di una frase di seguito rende normale anche il parlato di prima (da tagliare o da accettare: decide l'operatore).
-- R-693-1 COSMETICA: docstring «finestra dei 12 s» nel test.
+- Bot su bdc79ce V-1 = R-693-2, alzata a MEDIA su 23d9c1c: corretta in 01b1089 (taglio a 1,5 s prima della parola).
+- R-694-1 BASSA: residuo (0,3–0,7 s di stanza prima della parola; falso positivo nella finestra → il dopo è normale fino a 30 s), da far accettare all'operatore.
+- R-694-2 BASSA: 1,5 s da provare sul Mac.
 - R-680-2 BASSA: parola sentita nella finestra prima della voce, il flag resta alto fino a fine finestra.
 - R-681-1 COSMETICA: errori del rilevatore nella finestra senza riga di log.
 - Restano le riserve delle fette 40, 41 e 43 parte 1, in `reports/stato_progetto.md`.
