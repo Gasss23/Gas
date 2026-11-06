@@ -1336,6 +1336,7 @@ class TestVerdettiVeri:
         "V-1 (BASSA) — ad alta\nvoce",  # a capo: non è il modo di dire su una riga
         "V-1 (BASSA) — alta voce",  # senza «ad»: resta gravità
         "V-1 (BASSA) — comando a voce alta priorità",  # R-687-1-M2
+        "V-1 (BASSA) — comando a voce alta» priorità",  # V-1 bot #342: virgolette non chiudono
     ])
     def test_alta_voce_non_nasconde_una_gravita(self, riga):
         testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
@@ -1353,6 +1354,88 @@ class TestVerdettiVeri:
         testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
                  + "\nRACCOMANDAZIONE: ok\n")
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE", riga
+
+    def test_342_parole_citate_tra_virgolette_non_sono_gravita(self):
+        """Bot #342 su bf4a93b (6 nov): il verdetto cita «alta» e «R-xxx MEDIA …» tra
+        virgolette basse parlando del parser: solo V-1 BASSA e V-2 COSMETICA."""
+        testo = (DATI / "verdetto_342_bf4a93b.txt").read_text(encoding="utf-8")
+        assert "toglie «alta»" in testo and "(«R-xxx MEDIA …»)" in testo
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA"), _f("V-2", "COSMETICA")], testo)
+        assert be.decidi(v, SHA, SHA) == ("APPROVE",
+                                          "verdetto APPROVATO CON RISERVE senza finding ALTA/MEDIA")
+
+    @pytest.mark.parametrize("riga", [
+        # una gravità vera FUORI dalle virgolette blocca sempre
+        "V-1 (BASSA) — «x» ma il difetto è grave",
+        "V-1 (BASSA) — il difetto è ALTA «priorità»",
+        "V-1 (BASSA) — «alta» e anche importante",
+        "V-1 — MEDIA — «citazione»",
+        # parentesi: invariate anche dentro le virgolette
+        "V-1 (BASSA) — vedi «V-2 (MEDIA)»",
+        # virgolette non chiuse, su più righe o troppo lunghe: non sono citazioni
+        "V-1 (BASSA) — «MEDIA senza chiusura",
+        "V-1 (BASSA) — «MEDIA\n» su due righe",
+        "V-1 (BASSA) — «" + "x " * 40 + "il difetto è grave»",
+        # virgolette alte o dritte: non esentate
+        "V-1 (BASSA) — \"MEDIA\" tra virgolette dritte",
+        "V-1 (BASSA) — “grave” tra virgolette alte",
+        # review #690-M2: \r dentro, citazione che apre la riga, gravità fuori accanto
+        "V-1 (BASSA) — «x\rV-2 — grave»",
+        "«V-1 — il difetto è grave»",
+        "- «V-1 — ALTA — rompe tutto»",
+        "V-1 (BASSA) — «alta» ma MEDIA",
+        # review #691-M2: \r come fine riga, elenco numerato
+        "V-1 (BASSA) — x\r«V-2 — il difetto è grave»",
+        "1. «V-1 — ALTA — rompe tutto»",  # (la regola a parole già non vede «1. V-…»)
+    ])
+    def test_citazione_non_nasconde_una_gravita(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
+                 + "\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT", riga
+
+    def test_media_strutturata_non_sfugge_per_una_citazione(self):
+        """Condizione dell'operatore: il campo strutturato resta la fonte forte; una MEDIA
+        vera di un finding blocca anche se il testo la mette tra virgolette."""
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 "V-1 («MEDIA») — il parser legge «alta»\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "MEDIA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
+    def test_residuo_accettato_giudizio_citato(self):
+        """Residuo dichiarato (review #690-M2, scelta dell'operatore): una gravità scritta
+        SOLO tra virgolette a metà riga non conta nel testo; blocca il campo strutturato."""
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 "V-1 (BASSA) — giudizio: «grave»\nRACCOMANDAZIONE: ok\n")
+        assert be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                         SHA, SHA)[0] == "APPROVE"
+        assert be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "MEDIA")], testo),
+                         SHA, SHA)[0] == "COMMENT"
+        # R-691-4-M2: stessa classe, una seconda citazione a metà riga
+        testo2 = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                  "V-1 (BASSA) — «x» «il difetto è grave»\nRACCOMANDAZIONE: ok\n")
+        assert be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo2),
+                         SHA, SHA)[0] == "APPROVE"
+
+    def test_citazioni_tempo_lineare(self):
+        """R-691-3-M2: molte citazioni su una riga lunga non costano un tempo quadratico."""
+        import time
+        riga = "V-1 (BASSA) — " + "«x» " * 100_000
+        t0 = time.monotonic()
+        be._senza_citazioni_brevi(riga)
+        assert time.monotonic() - t0 < 5
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 (BASSA) — il filtro toglie «alta» dal testo",
+        "V-2 (BASSA) — la nota («R-xxx MEDIA …») fa bloccare il bot",
+        "V-1 (BASSA) — in «V-1 — «a voce alta» priorità» il filtro sbaglia",
+        "V-1 (BASSA) — la parola «BLOCCANTE» nel commento",
+    ])
+    def test_citazione_breve_di_una_parola(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
+                 + "\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA"), _f("V-2", "BASSA")], testo)
         assert be.decidi(v, SHA, SHA)[0] == "APPROVE", riga
 
     def test_329_verifica_esterna_citata_non_e_un_titolo(self):

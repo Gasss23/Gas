@@ -131,7 +131,41 @@ _BLOCCANTE_TECNICO = re.compile(  # R-672-2: solo termini di sistema
 # maiuscolo resta visto, nel dubbio blocca), solo nella regola a parole.
 # R-687-1-M2: «a voce alta» vale solo a fine frase («… a voce alta priorità» resta gravità).
 _ALTA_VOCE = re.compile(r"\b(?i:ad?)[ \t]+alta[ \t]+(?i:voce)\b"
-                        r"|\b(?i:a)[ \t]+(?i:voce)[ \t]+alta(?=[ \t]*(?:[.,;:)!?»\"']|$))", re.M)
+                        r"|\b(?i:a)[ \t]+(?i:voce)[ \t]+alta(?=[ \t]*(?:[.,;:)!?]|$))", re.M)
+# Fix bot #342 su bf4a93b (6 nov, scelta dell'operatore via M1): un verdetto che CITA una
+# parola di gravità tra virgolette basse («alta», «R-xxx MEDIA …») ne parla, non la assegna.
+# Nelle sole regole a parole (maiuscole e a parole) una citazione «…» breve (al massimo 80
+# caratteri, una riga, chiusa) non conta; parentesi «(MEDIA)», campo strutturato e ogni
+# parola fuori dalle virgolette restano visti. Citazioni annidate: si tolgono dall'interno.
+# R-690-1-M2: niente \r dentro (un \r si legge come a capo). R-690-2-M2: una citazione che
+# APRE la riga («V-1 — il difetto è grave» intera tra virgolette) non è esentata.
+_CITAZIONE_BREVE = re.compile(r"«[^«»\r\n]{1,80}»")
+
+
+_FINE_RIGA = re.compile(r"(\r\n|\r|\n)")
+
+
+def _senza_citazioni_riga(riga: str) -> str:
+    # R-691-1/2/3-M2: per riga (\n e \r), esente solo dopo la prima LETTERA della riga
+    # (le cifre di «1. » sono un marcatore d'elenco), in tempo lineare.
+    prima = re.search(r"[^\W\d_]", riga)
+    if prima is None:
+        return riga
+    soglia = prima.start()
+    for _ in range(5):  # annidamenti realistici: «… «a voce alta» …»
+        nuova = _CITAZIONE_BREVE.sub(
+            lambda m: "«…»" if m.start() > soglia else m.group(0), riga)
+        if nuova == riga:
+            break
+        riga = nuova
+    return riga
+
+
+def _senza_citazioni_brevi(testo: str) -> str:
+    pezzi = _FINE_RIGA.split(testo)
+    return "".join(p if i % 2 else _senza_citazioni_riga(p) for i, p in enumerate(pezzi))
+
+
 _APRE_GRAVE = re.compile(r"\s*(" + _GRAVI + r")\b", re.I)
 # Bot #240: «V-1 (BASSA) — … non la considero più grave» bloccava come MEDIA. Una gravità
 # a parole MINUSCOLA negata da «non» poco prima (al massimo 3 parole in mezzo) non conta
@@ -218,7 +252,7 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     finding = sezione[:coda.start()] if coda else sezione
     # HIGH, CRITICAL, BLOCKER... contano come MEDIA (bloccanti) anche se fuori vocabolario.
     trovate: set[str] = {p if p in GRAVITA_BLOCCANTI else "MEDIA"
-                         for p in _PAROLA_BLOCCANTE.findall(finding)}
+                         for p in _PAROLA_BLOCCANTE.findall(_senza_citazioni_brevi(finding))}
     # R-442-1: «non è la più grave» nega il primato, non la gravità: non si toglie
     pulita = _GRAVITA_NEGATA.sub(
         lambda m: m.group(0) if re.search(r"\b(?:la|lo|le|li)\s+più\b", m.group(0)) else "",
@@ -226,7 +260,8 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     # Fix bot #336 (5 nov): «Microfono.blocchi fa una read bloccante» era letto come
     # MEDIA. «bloccante» detto di una primitiva di sistema (read, write, socket, I/O…) è il
     # termine tecnico, non una gravità; ogni altro uso a parole resta bloccante.
-    if _FINDING_GRAVE_A_PAROLE.search(_ALTA_VOCE.sub("voce", _BLOCCANTE_TECNICO.sub(r"\1", pulita))):
+    if _FINDING_GRAVE_A_PAROLE.search(_ALTA_VOCE.sub("voce", _BLOCCANTE_TECNICO.sub(
+            r"\1", _senza_citazioni_brevi(pulita)))):
         trovate.add("MEDIA")
     # R-159-3: tra parentesi conta la gravità che APRE la parentesi ("(alta)", "(MEDIA-BASSA)"),
     # non una parola qualsiasi ("(test saltati)", "(in media 3 ms)", "(parte multimediale)").
