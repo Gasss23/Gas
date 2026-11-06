@@ -25,6 +25,8 @@
 - **V-1 (b) bot su a87d273** (strumento chiesto nel seguito → silenzio): `FATTA` — frase fissa «Per farlo ripetimelo dicendo prima Hey Jarvis.», 4ee1feb, review #680-M2.
 - **V-1/V-2 bot su 312cd86** (segno in coda; «Basta!» dalla TV nel seguito detto a voce): `FATTA` — 2e367e2, review #681-M2. Il FAILURE del bot su 312cd86 è un falso positivo del parser («letto ad alta voce» preso per ALTA): fuori scope, macchina del bot.
 - **V-1 (a) bot su a87d273/be60a21** (i seguiti veri non entrano nella storia): `FATTA` col sì dell'operatore — `registra_seguito` in gas.py, e7a75c0, review #682-M2. Riserva nuova R-682-1-M2 MEDIA in attesa di decisione.
+- **V-1 MEDIA bot su 16dd4a5** (seguito salvato non contava come input non fidato): `FATTA` — ae61546, review #684-M2; T103l rafforzato in 933780f (#685-M2).
+- **V-2 MEDIA bot su 16dd4a5** (audio dei seguiti a Groq Whisper): rischio ACCETTATO dall'operatore (scelta a, via M1, 6 nov), dichiarato nei commenti (933780f) e registrato come R-684-2-M2.
 - **R-682-1-M2 MEDIA** (seguiti salvati → finestra dei gratuiti): `FATTA` con la scelta A dell'operatore — f75719d, review #683-M2 BOCCIATO poi bis APPROVATO CON RISERVE.
 - **V-2/V-3 bot su be60a21** (segno in mezzo; risposta vuota effimera → 500): `FATTA` — e7a75c0.
 - **C1**: `DEFERITA — prossima fetta`.
@@ -34,19 +36,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  18 +++++++++++++
- gas.py                              | 120 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- modules/voice/server.py             | 167 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ .claude/agents/memoria_revisore.md  |  21 ++++++++++++
+ gas.py                              | 129 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ modules/voice/server.py             | 169 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
  modules/voice/tts.py                |   4 ++-
- reports/diff_sessione.md            |  20 ++++++++------
+ reports/diff_sessione.md            |  20 +++++++-----
  reports/handoff.md                  | n/d
- reports/ripartenza_m2.md            |  11 +++++---
- reports/stato_progetto.md           |   3 ++-
- reports/ultimo_report.md            |  36 ++++++++++++++-----------
- tests/test_unit_kernel.py           | 202 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voce_ascolto.py     |   5 ++--
- tests/test_unit_voice_prova_voci.py |  34 +++++++++++++++++++++--
- tests/test_unit_voice_stt.py        | 276 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/ripartenza_m2.md            |  11 ++++---
+ reports/stato_progetto.md           |   3 +-
+ reports/ultimo_report.md            |  37 ++++++++++++---------
+ tests/test_unit_kernel.py           | 218 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py     |   5 +--
+ tests/test_unit_voice_prova_voci.py |  34 ++++++++++++++++++--
+ tests/test_unit_voice_stt.py        | 277 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: origin/main 83f3bcd.
@@ -54,6 +56,11 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+933780f docs(kernel+voce): V15 — trascrizione Groq dei seguiti dichiarata come rischio accettato dall'operatore; T103l sul ramo della firma (V-2 bot #339 su 16dd4a5, R-684-1-M2) (chat M2)
+cb4dff2 chore(revisore): memoria review #685 — APPROVATO
+ae61546 fix(kernel+voce): V15 — un seguito a voce nella finestra è input non fidato (scritture alla firma); [non-per-me] col trattino (V-1 bot e V-2 ve #339 su 16dd4a5) (chat M2)
+1ca1ca8 chore(revisore): memoria review #684 — APPROVATO CON RISERVE
+16dd4a5 docs(voce): report di fine task V15 dopo R-682-1 chiusa con la scelta A (PR #339, chat M2)
 f75719d feat(kernel): V15 R-682-1 — un seguito a voce nella finestra manda il turno al solo forte; riflessione rimandata (scelta A dell'operatore via M1) (chat M2)
 41c3275 chore(revisore): memoria review #683 — APPROVATO CON RISERVE
 be724e6 chore(revisore): memoria review #683 — BOCCIATO
@@ -526,7 +533,95 @@ Non ho verificato il comportamento reale di `claude -p` (ClaudeCliClient) quando
 
 - Memoria aggiornata (riga «#683-M2 bis») e committata con `scripts/commit_memoria_revisore.sh` → commit 41c3275 (solo `/home/user/Gas/.claude/agents/memoria_revisore.md`). Lo staging del diff del motore è rimasto com'era.
 
+Review #684-M2 sul commit ae61546 (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #684-M2, branch feat/voce-v12-m2, PR #339, sul diff STAGED (gas.py, modules/voice/server.py, tests/test_unit_kernel.py, tests/test_unit_voice_stt.py). Ho fatto le letture obbligatorie: CLAUDE.md §5/§8/§9 (nel contesto), reports/stato_progetto.md (voce V15, riga 615) e la coda di .claude/agents/memoria_revisore.md (#682-M2, #683-M2, #683-M2 bis).
+
+**Elementi del diff esaminati**
+
+- `gas.py:2086` — `_finestra_e_contaminata` restituisce True quando nella finestra c'è un messaggio con `seguito_voce`.
+  - Rischio esaminato: effetti collaterali sui tre chiamanti.
+  - (a) `run_turn`, `gas.py:4917`: con un seguito in finestra gli strumenti UNCERTAIN vanno al cancello di firma, salvo `_libero_dopo_lettura`. `salva_contatto` e `imposta_stato_contatto` vengono segnati non fidati. Le righe di diario prendono il prefisso NON FIDATO. `avvisa_operatore` passa dal limite di avvisi al cancello. Sono le stesse conseguenze di una pagina web letta: è la direzione giusta e più prudente.
+  - (b) Compressione, `gas.py:1561`: il riepilogo che contiene un seguito si dichiara INPUT ESTERNO. Era già solo-forte per la chiave (`gas.py:1586`), quindi la cosa è coerente.
+  - (c) `rifletti`, `gas.py:4023`: non cambia nulla. Con un seguito in finestra la riflessione esce già prima (`gas.py:4009`), senza chiamare nessun modello.
+  - La funzione resta pura. `_ha_seguito_voce` controlla che il messaggio sia un dict.
+  - Turni Telegram dopo un seguito: le scritture finiscono nel normale flusso di firma (parcheggio e notifica), per 10 messaggi circa. È un costo d'uso accettabile e si somma a R-683b-2-M2, già aperta.
+  - Il pin non fidato non viene toccato.
+  - Esito: ok.
+- `modules/voice/server.py:153` — `_NON_PER_ME` accetta anche il trattino come separatore, sia tra parentesi sia nella forma nuda come risposta intera.
+  - Rischio esaminato: backtracking catastrofico e falsi positivi.
+  - Ogni classe di caratteri ha un solo quantificatore ed è separata da parole fisse. La forma nuda resta ancorata a `^…$`.
+  - Esito: ok.
+- `tests/test_unit_voice_stt.py:753` — due casi nuovi, «[non-per-me]» e «Non-per-me.», con chiusura senza voce.
+  - Esito: ok (107 passed rilanciati).
+- `tests/test_unit_kernel.py:11647` e `tests/test_unit_kernel.py:11653` — T103l.
+  - Rischio esaminato: il test distingue davvero il fix da un diniego qualsiasi?
+  - Ho costruito il mutante «controllo tolto» in una copia di scratch. T103l FAIL, quindi il mutante muore, ma a ucciderlo è SOLO il controllo diretto `_contam103l`.
+  - Nel mutante `write_file` viene ESEGUITA. Viene poi negata dal percorso («Operazione negata: il percorso 'l103.txt' esce dalla root di Gas…»), quindi `cancello="negata"` e il file non esiste. La parte round-trip del test passerebbe lo stesso.
+  - Esito: riserva R-684-1-M2.
+
+**Riserve**
+
+- R-684-1-M2 BASSA: la parte round-trip di T103l non dimostra il cancello. Accetta qualunque `"negata"`, anche il diniego del percorso. Rimedio: pretendere il testo del ramo di firma, cioè out che inizia con «Azione in attesa di approvazione umana» oppure contiene «impossibile notificare la richiesta di firma». Oppure usare un percorso che `_safe_path` accetta, così che nel mutante il file venga davvero creato.
+
+**Wall of Shame**: nessuno slicing della storia, `_get_window()` resta in uso, nessuna simulazione di output degli strumenti. Il tetto di 10 iterazioni e la gestione delle eccezioni dei provider non sono toccati.
+
+**Verifiche rilanciate da me**:
+- Suite kernel sull'albero staged: 1084 PASS, 0 FAIL. T103j vede [CONTIENE INPUT ESTERNO], T103l passa.
+- `test_unit_voice_stt.py`: 107 passed.
+- Mutante in `/tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/mut`: un solo FAIL, T103l.
+
+**Rischi esclusi**:
+- Non ho rilanciato `prova_voci` e `voce_ascolto` (i 382 dichiarati comprendono anche quelli). Il diff in `server.py` è la sola regex, già coperta dai casi in `test_unit_voice_stt`.
+- Non ho verificato dal vero il flusso di firma via Telegram dopo un seguito: serve il bot Telegram reale.
+- V-2 MEDIA del bot (l'audio del seguito va a Groq Whisper) è fuori dal diff e la decide l'operatore.
+
+**Memoria**: riga #684-M2 e una lezione aggiunte a `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate con lo script (commit 1ca1ca8). L'index staged del diff non è stato toccato.
+
+Review #685-M2 sul commit 933780f (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #685-M2: chat M2, branch feat/voce-v12-m2, PR #339, base ae61546. Ho letto il diff staged (3 file, +11/-4).
+
+Ho letto prima CLAUDE.md (sez. 2, 5, 8, 9), la memoria del revisore (fino a #684-M2, con la lezione sul cancello «negata») e reports/stato_progetto.md (letto solo in parte, con grep).
+
+Elementi del diff esaminati:
+
+- `gas.py:914` — il commento vicino a CHIAVE_SEGUITO_VOCE ora dice che dei seguiti si occupa solo il cervello forte, che però non è mai un gratuito. Dichiara anche l'eccezione accettata dall'operatore: Groq Whisper trascrive anche l'audio dei seguiti, come tutta la voce (V-2 del bot su #339, R-684-2-M2).
+  - Rischio esaminato: un commento che nasconde l'invio a un gratuito.
+  - Esito: ok. Ora è scritto esplicitamente e torna con la scelta (a) dell'operatore.
+- `gas.py:5155` — nel messaggio d'errore «Pipeline esausta» del turno solo-forte, «mai ai gratuiti» diventa «mai ai cervelli gratuiti».
+  - Rischio esaminato: rompere T103i se il test confronta la stringa.
+  - Esito: ok. T103i passa nella suite sull'albero staged.
+- `modules/voice/server.py:587` — nota nel ramo seguito: la trascrizione con Groq Whisper riceve l'audio anche qui, rischio accettato il 6 nov.
+  - Rischio esaminato: una modifica di comportamento nascosta.
+  - Esito: ok. Nel diff cambiano solo righe di commento, nessuna riga di codice. Il file compila (py_compile).
+- `tests/test_unit_kernel.py:11656` — T103l ora pretende che l'output venga dal ramo della firma: «Azione in attesa di approvazione umana» oppure «impossibile notificare la richiesta di firma». Chiude R-684-1-M2.
+  - Ho controllato che le due stringhe siano quelle vere del cancello di firma in `gas.py:3465` e `gas.py:3468`.
+  - Esito: ok.
+- Prova del mutante, in una copia staged in scratch (mut685): ho tolto il controllo del seguito da `_finestra_e_contaminata` (`gas.py:2088`) e ho tolto dal test anche il controllo diretto `_contam103l`.
+  - Risultato: 1083 PASS, 1 FAIL, ed è T103l. L'output del mutante è «Operazione negata: il percorso 'l103.txt' esce dalla root…», che il nuovo controllo sul testo scarta.
+  - Ora il mutante lo uccide anche la sola parte round-trip.
+- Suite kernel sull'albero staged, non mutato (st685): 1084 PASS, 0 FAIL. T103l passa sul ramo «impossibile notificare la richiesta di firma… (TELEGRAM_BOT_TOKEN mancante)».
+
+Wall of Shame: nessun taglio diretto della storia, nessun output di tool simulato. Guardrail (tetto di 10 iterazioni, `_get_window`) non toccati.
+
+Nota di processo, non una riserva: R-684-2-M2 va registrata in reports/stato_progetto.md come riserva ACCETTATA dall'operatore (scelta (a) via M1), insieme alla chiusura di V-2 del bot su #339. Lo fa l'agente principale.
+
+Rischi esclusi, cioè cose che non ho verificato:
+
+- Suite voice_stt (107 passed secondo il chiamante): non l'ho rilanciata. Il diff di server.py è solo commenti e il file compila, quindi il rischio è nullo.
+- Comportamento reale di Groq Whisper e della voce sul Mac o sul VPS: non riproducibile qui, e comunque il diff non lo cambia.
+- Il ramo «Azione in attesa di approvazione umana» con Telegram configurato: in dev passa solo il ramo «impossibile notificare» perché TELEGRAM_BOT_TOKEN manca. Il test accetta entrambi; non ho esercitato il primo.
+
+Memoria: ho aggiunto la riga «#685-M2 — 2026-11-06 — APPROVATO — …» (nessuna lezione nuova) e l'ho committata con scripts/commit_memoria_revisore.sh (commit cb4dff2, solo quel file; l'index staged resta intatto).
+
 ## §5 DELTA TEST DEL MOTORE
+
+Su 933780f: T103l (seguito in finestra → finestra contaminata, write_file al ramo della firma, non eseguita); T103j ora vede [CONTIENE INPUT ESTERNO] — suite kernel `=== RIEPILOGO: 1084 PASS, 0 FAIL ===` (nel venv della sessione; T31g fallisce solo dove manca il modulo `vectors`, anche su main); voice_stt + prova_voci + voce_ascolto `382 passed`. Mutante «controllo seguito tolto» ucciso da T103l.
 
 Su f75719d: T103h (finestra con seguito → solo forte, chiave non inviata), T103i (forte spento → errore che spiega, nessun gratuito), T103j (riepilogo di compressione segnato), T103k (riflessione rimandata, nessun modello, nessun recap) — suite kernel `=== RIEPILOGO: 1083 PASS, 0 FAIL ===`; mutanti uccisi: instradamento, chiave nel payload, segno di compressione, skip della riflessione. voice_stt + contesto `109 passed`.
 
@@ -550,10 +645,14 @@ Su e7a75c0: T103f (risposta vuota effimera → final vuoto) e T103g (registra_se
 - be60a21: verifica-bot FAILURE per la MEDIA V-1 (punto 1, allora aperto); verifica esterna con la stessa MEDIA.
 - 390785b, e7a75c0: nessuna run su questi SHA da soli (pushati con d38f95d).
 - d38f95d: verifica-bot FAILURE per la MEDIA R-682-1 (allora aperta).
-- be724e6, 41c3275, f75719d e commit di fine-task che contiene questo file: run non ancora disponibile (pushati insieme).
+- be724e6, 41c3275, f75719d: nessuna run su questi SHA da soli (pushati con 16dd4a5).
+- 16dd4a5: verifica-bot FAILURE (BOCCIATO: V-1 e V-2 MEDIA, chiuse sopra); verifica esterna APPROVATO CON RISERVE (solo BASSE).
+- 1ca1ca8, ae61546, cb4dff2, 933780f e commit di fine-task che contiene questo file: run non ancora disponibile (pushati insieme).
 
 ## §7 RISERVE APERTE
 
+- R-684-2-M2 ACCETTATA dall'operatore (6 nov, via M1): la trascrizione Groq Whisper (servizio gratuito) riceve anche l'audio dei seguiti, come tutta la voce.
+- Verifica esterna su 16dd4a5, BASSE: V-3 il parlato «per Gas» resta in chiaro in .gas_history.json (rischio residuo, coerente col punto 1); V-1/V-2 chiuse in ae61546.
 - R-682-1-M2 e R-682-2-M2: chiuse in f75719d. R-683-1-M2 (recap nel pin): chiusa (nessun recap con seguito in finestra). R-683-2-M2: chiusa (l'errore spiega).
 - R-683b-1-M2 BASSA: con `clear` la riflessione di un task con un seguito in finestra si perde (non «rimandata»).
 - R-683b-2-M2 BASSA: dopo un seguito, i turni normali (anche da Telegram) spendono il budget del forte finché il seguito è negli ultimi ~10 messaggi; col forte spento restano fermi con errore dichiarato.
