@@ -7,12 +7,16 @@ le altre. Dopo la risposta puoi continuare senza ripetere la parola: Gas resta i
 finché non passano 40 secondi senza che nessuno parli, poi torna ad aspettare «Hey Jarvis».
 
 **Nella conversazione, senza la parola** (difese contro il parlato della stanza):
-- una frase senza «Hey Jarvis» lunga più di 15 secondi non viene mandata a Gas e chiude la
-  conversazione (quasi sempre sono persone che parlano tra loro);
+- una frase senza «Hey Jarvis» lunga circa 15 secondi o più (contando anche la breve pausa
+  finale) non viene mandata a Gas e chiude la conversazione (quasi sempre sono persone che
+  parlano tra loro);
+- se nella conversazione dici di nuovo «Hey Jarvis, …», è una richiesta normale: Gas può
+  usare i suoi strumenti e la frase può durare fino a 30 secondi;
 - Gas decide se il parlato è rivolto a lui: se non lo è, non risponde e chiude la
   conversazione;
-- se dici «pausa» (o «standby», «basta così») Gas risponde «Va bene.» e torna ad aspettare
-  «Hey Jarvis»: per riprendere basta la parola. Lo standby vero, che non sente nemmeno la
+- se dici «pausa» (o «standby», «basta così») Gas chiude la conversazione e torna ad
+  aspettare «Hey Jarvis»: senza la parola lo fa in silenzio, con «Hey Jarvis, pausa»
+  risponde «Va bene.». Per riprendere basta la parola. Lo standby vero, che non sente nemmeno la
   parola, resta `bash scripts/voce/pausa.sh` (vedi sotto);
 - se qualcosa va storto in un turno senza la parola, la conversazione si chiude in silenzio.
 

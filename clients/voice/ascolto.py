@@ -93,7 +93,9 @@ REGISTRAZIONE_MAX_S = 30.0   # una richiesta non dura più di così
 #   stanza);
 # - i turni di seguito portano «X-Gas-Seguito: 1»: il server (V15 di M2, PR #339) fa
 #   decidere al cervello se il parlato è per Gas e, se no, risponde «X-Gas-Comando: fine»
-#   senza voce; «X-Gas-Comando: pausa» («Va bene.») chiude la conversazione;
+#   senza voce; «X-Gas-Comando: pausa» chiude la conversazione («Va bene.» solo dopo
+#   la parola, muta nel seguito);
+# - nella finestra il rilevatore resta acceso: «Hey Jarvis, …» è un turno normale (V-1 bot #341);
 # - un errore in un turno di seguito chiude la conversazione senza bip (R-675-5-M2).
 FINESTRA_PREDEFINITA_S = 40.0
 SEGUITO_MAX_PREDEFINITO_S = 15.0
@@ -312,6 +314,7 @@ class Ascolto:
         self.invia_seguito = invia_seguito or invia
         self.seguito_max_s = seguito_max_s
         self.chiudi = False       # l'ultimo turno chiede di chiudere la conversazione
+        self.parola_nella_finestra = False   # la parola è stata detta nella finestra
         self._errori_rilevatore = 0
         self._buoni_di_fila = 0
         self._muti = 0
@@ -376,9 +379,21 @@ class Ascolto:
                 log.warning("pausa del rilevatore fallita (%s)", type(e2).__name__)
             self._svuota()
 
+    def _parola_nel_blocco(self, b: Blocco) -> bool:
+        """V-1 bot #341: nella finestra il rilevatore resta acceso. True se la parola di
+        attivazione è nel blocco; un errore del rilevatore vale «no» (§9)."""
+        try:
+            sentita = float(self.rilevatore(b)) >= self.soglia
+        except Exception:
+            return False
+        if sentita:
+            self.parola_nella_finestra = True
+        return sentita
+
     def registra(self, iniziali: Optional[List[Blocco]] = None,
                  attesa_s: float = ATTESA_VOCE_S,
-                 max_s: float = REGISTRAZIONE_MAX_S) -> Optional[List[Blocco]]:
+                 max_s: float = REGISTRAZIONE_MAX_S,
+                 rileva_parola: bool = False) -> Optional[List[Blocco]]:
         """Registra in memoria finché, dopo la voce, c'è `silenzio_s` di silenzio
         (massimo `max_s`). None se la voce non arriva entro `attesa_s` o
         se il flusso finisce prima della voce."""
@@ -392,6 +407,11 @@ class Ascolto:
             b = self._prossimo()
             if b is None:
                 break
+            if rileva_parola and self._parola_nel_blocco(b):
+                # «Hey Jarvis, …» detto nella finestra: è una richiesta con la parola, il
+                # tetto torna quello normale (V-1 bot #341)
+                rileva_parola = False
+                max_s = REGISTRAZIONE_MAX_S
             forte = rms(b) >= self.voce_rms
             if not voce:
                 # R-615-6: la voce comincia con INIZIO_VOCE_S di fila, come nella finestra
@@ -423,6 +443,7 @@ class Ascolto:
             b = self._prossimo()
             if b is None:
                 return None
+            self._parola_nel_blocco(b)  # V-1 bot #341: il rilevatore resta acceso
             if rms(b) >= self.voce_rms:
                 di_fila.append(b)
                 if len(di_fila) >= blocchi_per(INIZIO_VOCE_S):
@@ -619,12 +640,23 @@ class Ascolto:
                 continue
             if self.chiudi or not riuscito or turni >= self.max_turni:
                 break
+            self.parola_nella_finestra = False
+            # R-680-1: il rilevatore ha appena sentito la voce di Gas (soglia 0,7): si azzera,
+            # così nella finestra (soglia 0,5) quei residui non valgono come parola.
+            self._azzera()
             inizio = self.aspetta_voce()
             if inizio is None:
                 break
-            richiesta = self.registra(inizio, max_s=self.seguito_max_s)
-            seguito = True
-            if richiesta is not None and len(richiesta) >= blocchi_per(self.seguito_max_s):
+            richiesta = self.registra(
+                inizio, rileva_parola=not self.parola_nella_finestra,
+                max_s=REGISTRAZIONE_MAX_S if self.parola_nella_finestra else self.seguito_max_s)
+            # V-1 bot #341: se nella finestra si è sentita la parola, il turno non è «di
+            # seguito»: va al server senza X-Gas-Seguito, con gli strumenti e il tetto normale.
+            seguito = not self.parola_nella_finestra
+            if not seguito:
+                log.info("parola di attivazione nella finestra: richiesta normale")
+            if (seguito and richiesta is not None
+                    and len(richiesta) >= blocchi_per(self.seguito_max_s)):
                 # (a)+(b): parlato lungo senza parola = quasi sempre la stanza: non si invia
                 log.info("parlato di %.0f s senza parola di attivazione: non lo invio, "
                          "chiudo la conversazione", self.seguito_max_s)

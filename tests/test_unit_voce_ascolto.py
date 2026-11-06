@@ -89,8 +89,8 @@ def test_parola_bip_registrazione_e_risposta():
     # niente silenzio prima della voce; dopo, il silenzio che chiude la richiesta (0,8 s)
     assert _campioni(f.inviati[0]) == (20 + _sec(0.8)) * a.BLOCCO
     # svuota dopo bip e risposta; azzera prima della risposta (fetta 41: il rilevatore
-    # ascolta mentre Gas parla) e a fine conversazione
-    assert f.svuotati >= 2 and f.azzerati == 2
+    # ascolta mentre Gas parla), prima della finestra (R-680-1) e a fine conversazione
+    assert f.svuotati >= 2 and f.azzerati == 3
 
 
 def test_se_non_parli_dopo_la_parola_non_si_invia():
@@ -594,6 +594,91 @@ def test_interrotto_un_turno_di_seguito_il_successivo_non_lo_e():
     f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, PAROLA, *RICHIESTA,
                        (SILENZIO, _sec(50)))).gira()
     assert f.tipi == ["parola", "seguito", "parola"]
+
+
+PAROLA_DETTA = [2100] * a.BLOCCO     # «Hey Jarvis» detto: è voce e il rilevatore la sente
+
+
+def _finti_con_parola_detta(esiti=()):
+    f = FintiSeguito(list(esiti))
+    f.rilevatore = lambda b: 1.0 if (b is PAROLA_DETTA or b == PAROLA) else 0.0
+    return f
+
+
+def test_parola_nella_finestra_e_una_richiesta_normale():
+    """V-1 bot #341: «Hey Jarvis, …» detto nella finestra non è un turno di seguito: va con
+    l'invio normale (gli strumenti, niente «ripetimelo»)."""
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 5), PAROLA_DETTA, *SEGUITO,
+                       (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola"]
+
+
+def test_parola_a_meta_della_frase_nella_finestra():
+    """Il rilevatore resta acceso anche mentre si registra: la parola sentita dopo l'inizio
+    della voce rende normale il turno e alza il tetto a 30 s (si invia anche oltre i 15 s)."""
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE, 5), PAROLA_DETTA, (VOCE, _sec(18)),
+                       (SILENZIO, 10), (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola"]
+    assert _campioni(f.inviati[1]) > _sec(15) * a.BLOCCO
+
+
+def test_dopo_la_parola_nella_finestra_il_turno_dopo_torna_di_seguito():
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, PAROLA_DETTA, *SEGUITO, *SEGUITO,
+                       (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola", "seguito"]
+
+
+def test_rilevatore_azzerato_prima_della_finestra():
+    """R-680-1: dopo la risposta (il rilevatore ha sentito la voce di Gas) si azzera prima
+    della finestra: un residuo fra 0,5 e 0,7 non deve rendere «normale» il turno di seguito."""
+    f = FintiSeguito([])
+    residuo = [0.0]
+
+    def rilevatore(b):
+        if b == PAROLA:
+            return 1.0
+        return residuo[0]
+
+    def azzera():
+        f.azzerati += 1
+        residuo[0] = 0.0
+
+    def riproduci(audio):
+        f.riprodotti.append(audio)
+        residuo[0] = 0.6   # la voce di Gas lascia un punteggio sotto 0,7 ma sopra 0,5
+        return None
+    a.Ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50))), rilevatore,
+              lambda wav: (f.inviati.append(wav), f._esito("parola"))[1], riproduci, f.suona,
+              svuota=f.svuota, azzera_rilevatore=azzera,
+              invia_seguito=lambda wav: (f.inviati.append(wav), f._esito("seguito"))[1]).gira()
+    assert f.tipi == ["parola", "seguito"]
+
+
+def test_senza_parola_la_frase_lunga_resta_scartata():
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE, 5), (VOCE, _sec(18)),
+                       (SILENZIO, 10), (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola"]
+
+
+def test_rilevatore_rotto_nella_finestra_non_ferma_niente():
+    f = FintiSeguito([])
+    rotto = [False]
+
+    def rilevatore(b):
+        if rotto[0]:
+            raise RuntimeError("onnx")
+        return f.rilevatore(b)
+    asc = a.Ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50))), rilevatore,
+                    lambda wav: (f.inviati.append(wav), f._esito("parola"))[1],
+                    lambda audio: (rotto.__setitem__(0, True), f.riproduci(audio))[1],
+                    f.suona, svuota=f.svuota, dorme=lambda s: None,
+                    invia_seguito=lambda wav: (f.inviati.append(wav), f._esito("seguito"))[1])
+    asc.gira()
+    assert f.tipi == ["parola", "seguito"]
 
 
 def test_dopo_l_interruzione_il_turno_non_e_di_seguito():
