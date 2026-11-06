@@ -17,11 +17,12 @@
 - **Conflitto con main** (#338/#340 di Mani, solo report) e test d'integrazione di Mani col finto senza `**kw`: `FATTA` — merge di main, riga del test autorizzata da M1, review #679-M2.
 - **V-1 (b) bot su a87d273** (strumento chiesto nel seguito → silenzio): `FATTA` — «Per farlo ripetimelo dicendo prima Hey Jarvis.», review #680-M2.
 - **V-1/V-2 bot su 312cd86** (segno [NON_PER_ME] in coda; «Basta!» dalla TV nel seguito detto a voce): `FATTA` — review #681-M2 APPROVATO CON RISERVE. Il check del bot su 312cd86 è FAILURE per un falso positivo del parser («ad alta voce» letto come ALTA): fuori scope.
-- **V-1 (a) bot su a87d273/be60a21** (i seguiti veri non entrano nella storia): `FATTA` col sì dell'operatore — `registra_seguito` in gas.py, review #682-M2 APPROVATO CON RISERVE (R-682-1-M2 MEDIA privacy, da decidere).
+- **V-1 (a) bot su a87d273/be60a21** (i seguiti veri non entrano nella storia): `FATTA` col sì dell'operatore — `registra_seguito` in gas.py, review #682-M2 APPROVATO CON RISERVE (la riserva di privacy R-682-1-M2 è poi stata chiusa in f75719d).
+- **Verifica bot su d9c09e9**: verdetto testuale APPROVATO CON RISERVE (solo basse/cosmetiche), check FAILURE per falso positivo del parser (citazione di una riserva chiusa). Basse registrate: V-1 (risposte del forte che citano un seguito restano in finestra dopo che il seguito ne esce e possono andare ai gratuiti: residuo dichiarato della scelta A), V-2 (descrizione della PR aggiornata), V-3 (testo dei report allineato), V-4 cosmetica (`_comando` non azzerato nelle risposte 405).
 - **V-1 MEDIA bot su e44c4b0** (riflessione fidata con un seguito uscito dalla finestra): `FATTA` — review #686-M2.
 - **V-1 MEDIA bot su 16dd4a5** (seguito non trattato come input non fidato): `FATTA` — scritture alla firma con un seguito in finestra, review #684-M2 e #685-M2.
 - **V-2 MEDIA bot su 16dd4a5** (audio dei seguiti a Groq Whisper): rischio accettato dall'operatore (scelta a), dichiarato e registrato (R-684-2-M2).
-- **R-682-1-M2 MEDIA** (privacy): `FATTA` con la scelta A — finestra con un seguito → solo forte; riflessione rimandata; review #683-M2 BOCCIATO (client sbagliato nella riflessione) poi bis APPROVATO CON RISERVE (R-683b-1/2-M2 BASSE).
+- **R-682-1-M2 (privacy, gravità media)**: `FATTA` con la scelta A — finestra con un seguito → solo forte; riflessione rimandata; review #683-M2 BOCCIATO (client sbagliato nella riflessione) poi bis APPROVATO CON RISERVE (R-683b-1/2-M2 BASSE).
 - **V-2/V-3 bot su be60a21** (segno in mezzo letto a voce; risposta vuota effimera → 500): `FATTA`.
 - **R-676-3** (review di Mani: nel seguito una trascrizione incerta diceva «Non ho capito»): `FATTA` — trascrizione incerta o vuota nel seguito → fine, niente voce.
 - **C1**: `DEFERITA — prossima fetta` (ordine di M1).

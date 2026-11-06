@@ -24,11 +24,12 @@
 - **Merge di main** (#338/#340 della chat Mani) e `**kw` nel finto del test di Mani (autorizzato da M1): `FATTA` — fd1b320, review #679-M2.
 - **V-1 (b) bot su a87d273** (strumento chiesto nel seguito → silenzio): `FATTA` — frase fissa «Per farlo ripetimelo dicendo prima Hey Jarvis.», 4ee1feb, review #680-M2.
 - **V-1/V-2 bot su 312cd86** (segno in coda; «Basta!» dalla TV nel seguito detto a voce): `FATTA` — 2e367e2, review #681-M2. Il FAILURE del bot su 312cd86 è un falso positivo del parser («letto ad alta voce» preso per ALTA): fuori scope, macchina del bot.
-- **V-1 (a) bot su a87d273/be60a21** (i seguiti veri non entrano nella storia): `FATTA` col sì dell'operatore — `registra_seguito` in gas.py, e7a75c0, review #682-M2. Riserva nuova R-682-1-M2 MEDIA in attesa di decisione.
+- **V-1 (a) bot su a87d273/be60a21** (i seguiti veri non entrano nella storia): `FATTA` col sì dell'operatore — `registra_seguito` in gas.py, e7a75c0, review #682-M2. Riserva di privacy R-682-1-M2 poi chiusa in f75719d (vedi sotto).
+- **Verifica bot su d9c09e9**: verdetto testuale APPROVATO CON RISERVE (solo basse/cosmetiche), check FAILURE per falso positivo del parser (citazione di una riserva chiusa). Basse registrate: V-1 (risposte del forte che citano un seguito restano in finestra dopo che il seguito ne esce e possono andare ai gratuiti: residuo dichiarato della scelta A), V-2 (descrizione della PR aggiornata), V-3 (testo dei report allineato), V-4 cosmetica (`_comando` non azzerato nelle risposte 405).
 - **V-1 MEDIA bot su e44c4b0** (riflessione fidata con un seguito uscito dalla finestra): `FATTA` — ad522ff, review #686-M2.
 - **V-1 MEDIA bot su 16dd4a5** (seguito salvato non contava come input non fidato): `FATTA` — ae61546, review #684-M2; T103l rafforzato in 933780f (#685-M2).
 - **V-2 MEDIA bot su 16dd4a5** (audio dei seguiti a Groq Whisper): rischio ACCETTATO dall'operatore (scelta a, via M1, 6 nov), dichiarato nei commenti (933780f) e registrato come R-684-2-M2.
-- **R-682-1-M2 MEDIA** (seguiti salvati → finestra dei gratuiti): `FATTA` con la scelta A dell'operatore — f75719d, review #683-M2 BOCCIATO poi bis APPROVATO CON RISERVE.
+- **R-682-1-M2 (gravità media)** (seguiti salvati → finestra dei gratuiti): `FATTA` con la scelta A dell'operatore — f75719d, review #683-M2 BOCCIATO poi bis APPROVATO CON RISERVE.
 - **V-2/V-3 bot su be60a21** (segno in mezzo; risposta vuota effimera → 500): `FATTA` — e7a75c0.
 - **C1**: `DEFERITA — prossima fetta`.
 
@@ -687,6 +688,9 @@ Su e7a75c0: T103f (risposta vuota effimera → final vuoto) e T103g (registra_se
 
 ## §7 RISERVE APERTE
 
+- V-1 BASSA bot d9c09e9 (residuo dichiarato della scelta A): quando il seguito esce dalla finestra, le risposte del forte dei turni successivi che lo citano possono andare ai gratuiti.
+- V-4 COSMETICA bot d9c09e9: `_comando` non azzerato nelle risposte 405 (oggi HTTP/1.0, nessun effetto).
+- V-1 BASSA ve d9c09e9: il segno `seguito_voce` non scade (il riepilogo di compressione lo ripropaga): la riflessione resta non fidata fino a `clear`.
 - R-686-1-M2 COSMETICA: ID «T80v» duplicato nei test del kernel.
 - V-2 BASSA bot e44c4b0: il timeout 5 s della conferma vale per singola operazione di socket, non è una scadenza totale.
 - Costo dichiarato: dopo un seguito a voce, ogni turno va solo al forte finché il seguito è negli ultimi ~10 messaggi (anche Telegram/CLI), e i recap restano non fidati fino a `clear`.
