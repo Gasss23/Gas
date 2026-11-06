@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #339 (https://github.com/Gasss23/Gas/pull/339). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5180114384","url":"https://github.com/Gasss23/Gas/pull/339"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10. Sì dell'operatore già dato via M1: CI verde e bot + verifica esterna senza ALTA/MEDIA sul nuovo head.
-2. Punto 1 FATTO col sì dell'operatore (via M1, 6 nov): i seguiti rivolti a Gas entrano nella storia vera (e7a75c0). NUOVA decisione: R-682-1-M2 MEDIA (privacy) — un seguito salvato entra nella finestra dei turni normali successivi, che possono andare ai gratuiti. Proposta: turni con un seguito salvato nella finestra → solo forte; oppure accettare il rischio. Chiesto via M1.
+2. Punto 1 FATTO col sì dell'operatore (e7a75c0) e R-682-1-M2 CHIUSA con la scelta A dell'operatore (f75719d): un seguito a voce nella finestra manda il turno al solo forte; riflessione rimandata. Nessuna nuova decisione richiesta per la #339.
 
 ---
 
@@ -25,6 +25,7 @@
 - **V-1 (b) bot su a87d273** (strumento chiesto nel seguito → silenzio): `FATTA` — frase fissa «Per farlo ripetimelo dicendo prima Hey Jarvis.», 4ee1feb, review #680-M2.
 - **V-1/V-2 bot su 312cd86** (segno in coda; «Basta!» dalla TV nel seguito detto a voce): `FATTA` — 2e367e2, review #681-M2. Il FAILURE del bot su 312cd86 è un falso positivo del parser («letto ad alta voce» preso per ALTA): fuori scope, macchina del bot.
 - **V-1 (a) bot su a87d273/be60a21** (i seguiti veri non entrano nella storia): `FATTA` col sì dell'operatore — `registra_seguito` in gas.py, e7a75c0, review #682-M2. Riserva nuova R-682-1-M2 MEDIA in attesa di decisione.
+- **R-682-1-M2 MEDIA** (seguiti salvati → finestra dei gratuiti): `FATTA` con la scelta A dell'operatore — f75719d, review #683-M2 BOCCIATO poi bis APPROVATO CON RISERVE.
 - **V-2/V-3 bot su be60a21** (segno in mezzo; risposta vuota effimera → 500): `FATTA` — e7a75c0.
 - **C1**: `DEFERITA — prossima fetta`.
 
@@ -33,19 +34,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  15 ++++++++++++
- gas.py                              |  77 +++++++++++++++++++++++++++++++++++++++++++++++++++-------
- modules/voice/server.py             | 167 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ .claude/agents/memoria_revisore.md  |  18 +++++++++++++
+ gas.py                              | 120 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ modules/voice/server.py             | 167 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
  modules/voice/tts.py                |   4 ++-
- reports/diff_sessione.md            |  20 +++++++++------
+ reports/diff_sessione.md            |  20 ++++++++------
  reports/handoff.md                  | n/d
- reports/ripartenza_m2.md            |  10 +++++---
+ reports/ripartenza_m2.md            |  11 +++++---
  reports/stato_progetto.md           |   3 ++-
- reports/ultimo_report.md            |  35 +++++++++++++++------------
- tests/test_unit_kernel.py           | 149 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md            |  36 ++++++++++++++-----------
+ tests/test_unit_kernel.py           | 202 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_voce_ascolto.py     |   5 ++--
- tests/test_unit_voice_prova_voci.py |  34 ++++++++++++++++++++++++--
- tests/test_unit_voice_stt.py        | 276 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_prova_voci.py |  34 +++++++++++++++++++++--
+ tests/test_unit_voice_stt.py        | 276 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: origin/main 83f3bcd.
@@ -53,6 +54,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f75719d feat(kernel): V15 R-682-1 — un seguito a voce nella finestra manda il turno al solo forte; riflessione rimandata (scelta A dell'operatore via M1) (chat M2)
+41c3275 chore(revisore): memoria review #683 — APPROVATO CON RISERVE
+be724e6 chore(revisore): memoria review #683 — BOCCIATO
+d38f95d docs(voce): report di fine task V15 punto 1 (seguiti nella storia vera) e R-682-1-M2 da decidere (PR #339, chat M2)
 e7a75c0 feat(kernel+voce): V15 punto 1 — i seguiti rivolti a Gas entrano nella storia vera; segno [NON_PER_ME] ovunque; risposta vuota effimera = silenzio (V-1/V-2/V-3 bot #339 su be60a21, sì dell'operatore via M1) (chat M2)
 390785b chore(revisore): memoria review #682 — APPROVATO CON RISERVE
 be60a21 docs(voce): report di fine task V15 dopo V-1/V-2 del bot su 312cd86 (PR #339, chat M2)
@@ -426,7 +431,104 @@ Prima della review ho letto CLAUDE.md (sez. 1, 2, 5, 8, 9 e 10), le voci voce/V1
 
 **Memoria**: aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #682-M2 e una lezione nuova: un dato confinato al forte va seguito anche dopo, quando entra nella storia condivisa. Committata da sola con `scripts/commit_memoria_revisore.sh` (commit 390785b); il resto dello staged è intatto.
 
+Review #683-M2 sul primo stage di f75719d (verdetto integrale):
+
+## VERDETTO: BOCCIATO
+
+Review #683-M2: diff staged di gas.py e tests/test_unit_kernel.py (PR #339, base d38f95d). Ho letto CLAUDE.md (sezioni 2, 5, 6, 8, 9), la voce V15 di reports/stato_progetto.md e la coda della memoria (lezione del 6 novembre sul dato confinato al forte).
+
+### Motivo del blocco
+
+1. `gas.py:4064` — rifletti() costruisce `OpenAI(base_url=url, api_key=os.environ.get(env))` per ogni rung della cascata. Con la nuova classe «forte» (`gas.py:4047`) l'unico rung è `("claude-cli", "GAS_CLAUDE_CLI", None, MODEL_CLAUDE_FORTE)`. Quindi `base_url=None` porta all'endpoint predefinito di OpenAI (api.openai.com) e la chiave diventa il valore "1".
+   - L'ho riprodotto in scratch: OpenAI viene costruito con base_url None e ClaudeCliClient non viene mai usato. La riflessione fallisce sempre con «nessun provider ha prodotto una riflessione valida».
+   - Effetto: proprio la trascrizione che contiene il parlato del seguito, il dato da proteggere, verrebbe mandata a un servizio esterno che Gas non usa (la richiesta parte col corpo prima del 401). È peggio della situazione che la fetta vuole correggere.
+   - Esito: **blocco**.
+2. `gas.py:4058` — il controllo `if not os.environ.get(env): continue` per il rung claude-cli considera acceso anche `GAS_CLAUDE_CLI=0` (run_turn invece usa `_rung_disponibile`, `gas.py:908`). Esito: **blocco** (va corretto insieme al punto 1).
+3. `tests/test_unit_kernel.py:11633` — T103k controlla solo `provider_atteso == "claude-cli"`. Il campo viene impostato prima della chiamata, e in T103k il finto `_NoOpenAI103` solleva `AssertionError`, che rifletti cattura. Il test passa quindi proprio perché rifletti chiama OpenAI invece del forte e fallisce: il mutante «client sbagliato» resta vivo. Esito: **blocco** (il test deve pretendere `esito["ok"]` e l'uso di ClaudeCliClient).
+
+**Correzione richiesta**: in rifletti, per `name == "claude-cli"`:
+- usare `ClaudeCliClient(timeout=self.CLAUDE_CLI_TIMEOUT_SEC)` e `_rung_disponibile(name, env)`, come run_turn;
+- valutare anche il tetto del forte;
+- in T103k verificare `ok is True` e che il finto CLI sia stato chiamato.
+
+### Elementi del diff esaminati (ok)
+
+- `gas.py:4828` — instradamento: dopo `classifica_compito`, se la finestra contiene un seguito il turno diventa «forte».
+  - Il controllo usa `self._get_window()`, cioè la stessa finestra già tagliata da `_cap_window_chars` che va nel payload: controllo e invio sono coerenti.
+  - Se un seguito esce dalla finestra a metà turno, il turno resta sul forte (verso prudente).
+  - Effimero: era già forte.
+  - Telegram (processo separato) calcola la finestra sulla propria storia in memoria; l'unione con la storia degli altri processi avviene al salvataggio, quindi la verifica copre esattamente ciò che viene inviato.
+  - Esito: ok.
+- `gas.py:4908` — il payload usa `_senza_segni_interni(_window)`. Ho cercato tutte le costruzioni di `messages=`: in run_turn passano solo da `payload` (`gas.py:4938`, `gas.py:4963`); rifletti invia un testo trascritto, non i dict. Esito: ok.
+- `gas.py:1588` — il riepilogo di compressione eredita la chiave se ha riassunto un seguito.
+  - La compressione è deterministica (nessun LLM).
+  - Il riepilogo resta di solito fuori dalla finestra da 10 messaggi (dopo la compressione la storia ha 22 messaggi), quindi la chiave non diventa permanente.
+  - Esito: ok.
+- `gas.py:1839` — `registra_seguito` segna la coppia user/assistant dopo `_add_to_history`.
+  - `_hash_messaggi` (`gas.py:1291`) serializza tutto il dict con sort_keys e `_unisci_storia_altrui` (`gas.py:1315`) unisce dict interi: la chiave sopravvive al merge, nessun confronto si rompe.
+  - Se il salvataggio fallisce, la chiave resta in memoria (prudente).
+  - Esito: ok.
+- `gas.py:5104` — `logging.info` nel ramo della risposta vuota effimera: chiude R-682-2-M2. Esito: ok.
+- Wall of Shame:
+  - Nessuno slicing nuovo della storia; `_get_window` e `_cap_window_chars` non sono toccati.
+  - `_senza_segni_interni` copia i messaggi senza togliere né tagliare nulla.
+  - Nessun output di tool simulato.
+  - Il ciclo resta a 10 iterazioni.
+  - Esito: ok.
+
+### Riserve (da tracciare anche dopo la correzione)
+
+- **R-683-1-M2 MEDIA (privacy, percorso derivato)**: quando la riflessione sul forte funzionerà, il recap nato da una finestra con un seguito viene scritto come recap fidato. `_recap_pin` (`gas.py:3904`) lo inietta nel messaggio system di ogni turno per `RECAP_MAX_GIORNI` giorni, compresi i turni che vanno ai gratuiti. Così un riassunto del parlato della stanza arriva ai gratuiti. Proposta: in quel caso scrivere il recap con un tipo che il pin non legge, oppure iniettarlo solo nei turni sul forte.
+- **R-683-2-M2 BASSA**: col forte spento, un normale «ciao» da Telegram o dal terminale riceve «Pipeline esausta: … claude-cli: GAS_CLAUDE_CLI non impostata» (T103i). Il messaggio non dice che il turno è solo-forte per via di un seguito a voce, e l'operatore aveva chiesto «forte fermo». Inoltre Gas resta inservibile sui gratuiti finché il seguito non esce dalla finestra (circa 8 messaggi): è la scelta A dell'operatore, ma va dichiarata nel testo dell'errore.
+
+### Altri punti controllati (nessun percorso aggiuntivo)
+
+- Giro notturno: `modules/notte/notte.py:283` azzera `kernel.history`.
+- `_memoria_pin`: legge il diario, dove i seguiti non scrivono.
+- Telegram e terminale: passano da run_turn.
+
+### Rischi non verificati
+
+- Non ho verificato il comportamento reale di rete di `OpenAI(base_url=None)` sul Mac o sulla VPS, cioè se il corpo parte davvero prima del 401. Non è riproducibile qui senza rete; il blocco si regge comunque sul client sbagliato, provato in scratch.
+- Non ho rilanciato la suite kernel completa (fanno fede i 1083 PASS dichiarati dall'agente): ho eseguito solo la prova mirata di rifletti, `/tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/prova_rifl.py`.
+- Il lato server della voce (`modules/voice/server.py`) è fuori da questo diff.
+
+### Memoria
+
+Ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #683-M2 e una lezione nuova: quando un secondo chiamante di `_cascata_provider` riceve una classe nuova, verificare che sappia costruire il client di quel rung e che usi `_rung_disponibile`. Il file è committato da solo (be724e6); gas.py e il test restano nello staging, non committati.
+
+Review #683-M2 bis sul commit f75719d (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #683-M2 bis (chat M2, branch feat/voce-v12-m2, PR #339, base d38f95d). Diff STAGED: gas.py e tests/test_unit_kernel.py. Prima ho letto CLAUDE.md, la parte di reports/stato_progetto.md che riguarda R-682/683 e la mia memoria (riga #683-M2).
+
+**Elementi del diff esaminati**
+- `gas.py:4004` — se la finestra della riflessione (40 messaggi, presa con `_get_window`) contiene un seguito, `rifletti` esce subito con un errore, senza chiamare nessun modello e senza scrivere un recap. Rischio esaminato: il blocco di #683 (classe «forte» → `OpenAI(base_url=None)`, controllo che accettava anche `GAS_CLAUDE_CLI=0`) e R-683-1 (un recap nato da un seguito finiva nel pin dei gratuiti). — ok: la classe «forte» non c'è più nel ramo; nessun client viene costruito; nessun recap viene scritto.
+- `tests/test_unit_kernel.py:11639` — T103k ora pretende: `ok` False, «seguito a voce» nel messaggio d'errore, `provider_atteso` None, nessuna chiamata al finto (`_tools103 == []`) e nessun recap nuovo nel diario. Rischio esaminato: un test che passa anche se la chiamata fallisce (lezione #683). — ok: il mutante «skip tolto» provato in scratch fa fallire T103k (1082 PASS, 1 FAIL).
+- `gas.py:5146` — se la cascata si esaurisce in un turno solo-forte per via di un seguito, l'errore spiega perché (R-683-2). Rischio esaminato: che il testo compaia anche nei turni forti normali. — ok: compare solo con `_solo_forte_seguito` (`gas.py:4833`), che vale True solo quando il classificatore NON aveva già scelto forte. T103i (`tests/test_unit_kernel.py:11610`) lo asserisce; il mutante «solo-forte tolto» fa fallire T103h e T103i.
+- `gas.py:4914` — il payload passa da `_senza_segni_interni(_window)`: la finestra resta intera, senza slicing, e si toglie solo la chiave interna. — ok: il mutante «strip tolto» fa fallire T103h.
+- `gas.py:1586` — la compressione segna il riepilogo quando riassume un seguito. Il segno passa anche da un riepilogo al successivo, perché il vecchio riepilogo finisce in `to_compress`. — ok: il mutante fa fallire T103j.
+- Contesto: `gas.py:1816` — `_add_to_history` non salva su disco, quindi segnare `history[-2]`/`history[-1]` prima di `_save_history(fine_turno=True)` non rompe il confronto con la base in `_unisci_storia_altrui` (gas.py:1335). La compressione è locale (nessun LLM). Gli altri chiamanti: `modules/notte/notte.py:257` lavora con la storia vuota; `gas.py:6262` (`clear`) riceve l'errore e pulisce lo stesso. Tutto fail-safe §9.
+- `gas.py:5110` — ora il ramo effimero vuoto lascia una traccia nel log (R-682-2-M2 chiusa).
+
+**Prove eseguite**
+- Suite kernel sull'albero staged esportato: 1083 PASS, 0 FAIL. T103h, T103i, T103j e T103k PASS.
+- 4 mutanti in copia scratch, tutti uccisi: skip in rifletti, solo-forte, strip della chiave, segno nella compressione.
+- Wall of Shame: nessuno slicing nuovo della storia; `_get_window` intatta; cap di 10 iterazioni e `_cap_window_chars` non toccati; nessuna simulazione di tool.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- R-683b-1-M2 BASSA: con `clear` la riflessione automatica di un task che ha un seguito in finestra non viene «rimandata» ma persa, perché la storia si pulisce subito dopo. Il messaggio «rimandata» è impreciso in quel caso.
+- R-683b-2-M2 BASSA: dopo un seguito, i turni normali successivi (anche quelli da Telegram, finché il seguito resta negli ultimi 10 messaggi) spendono il budget del forte. Col forte spento restano fermi, con un errore dichiarato. È un impatto pratico da spiegare all'operatore.
+
+**Rischio escluso**
+Non ho verificato il comportamento reale di `claude -p` (ClaudeCliClient) quando riceve il payload, né cosa succede sul Mac o sulla VPS con due processi (voce e Telegram) che scrivono la stessa storia nello stesso momento: non si riproduce in dev. Mi sono limitato a controllare che le chiavi sopravvivano all'unione JSON.
+
+- Memoria aggiornata (riga «#683-M2 bis») e committata con `scripts/commit_memoria_revisore.sh` → commit 41c3275 (solo `/home/user/Gas/.claude/agents/memoria_revisore.md`). Lo staging del diff del motore è rimasto com'era.
+
 ## §5 DELTA TEST DEL MOTORE
+
+Su f75719d: T103h (finestra con seguito → solo forte, chiave non inviata), T103i (forte spento → errore che spiega, nessun gratuito), T103j (riepilogo di compressione segnato), T103k (riflessione rimandata, nessun modello, nessun recap) — suite kernel `=== RIEPILOGO: 1083 PASS, 0 FAIL ===`; mutanti uccisi: instradamento, chiave nel payload, segno di compressione, skip della riflessione. voice_stt + contesto `109 passed`.
 
 Su e7a75c0: T103f (risposta vuota effimera → final vuoto) e T103g (registra_seguito → storia e disco subito, turno normale dopo con write_file lo vede: round-trip §7) — suite kernel `=== RIEPILOGO: 1079 PASS, 0 FAIL ===`; voice_stt + prova_voci + voce_ascolto `382 passed`; voice_server + tts + contesto `136 passed`. Mutanti uccisi: registro tolto nel server, regex vecchia, ramo `elif effimero` tolto, salvataggio finto. Nota: la verifica esterna su be60a21 aveva 1076/1 per T31g, che fallisce anche su main nel suo ambiente (modulo `vectors` mancante): ambientale.
 
@@ -446,12 +548,15 @@ Su e7a75c0: T103f (risposta vuota effimera → final vuoto) e T103g (registra_se
 - 312cd86: verifica-bot FAILURE per falso positivo del parser (verdetto testuale: V-1/V-2 BASSE, V-3 COSMETICA; «ad alta voce» letto come ALTA); CI in corso alla lettura.
 - 93ee68d, 2e367e2: nessuna run su questi SHA da soli (pushati con be60a21).
 - be60a21: verifica-bot FAILURE per la MEDIA V-1 (punto 1, allora aperto); verifica esterna con la stessa MEDIA.
-- 390785b, e7a75c0 e commit di fine-task che contiene questo file: run non ancora disponibile (pushati insieme).
+- 390785b, e7a75c0: nessuna run su questi SHA da soli (pushati con d38f95d).
+- d38f95d: verifica-bot FAILURE per la MEDIA R-682-1 (allora aperta).
+- be724e6, 41c3275, f75719d e commit di fine-task che contiene questo file: run non ancora disponibile (pushati insieme).
 
 ## §7 RISERVE APERTE
 
-- R-682-1-M2 MEDIA (privacy): seguito salvato nella finestra dei turni normali successivi → possibile invio ai gratuiti. Decide l'operatore (via M1).
-- R-682-2-M2 BASSA: il ramo della risposta vuota effimera non logga.
+- R-682-1-M2 e R-682-2-M2: chiuse in f75719d. R-683-1-M2 (recap nel pin): chiusa (nessun recap con seguito in finestra). R-683-2-M2: chiusa (l'errore spiega).
+- R-683b-1-M2 BASSA: con `clear` la riflessione di un task con un seguito in finestra si perde (non «rimandata»).
+- R-683b-2-M2 BASSA: dopo un seguito, i turni normali (anche da Telegram) spendono il budget del forte finché il seguito è negli ultimi ~10 messaggi; col forte spento restano fermi con errore dichiarato.
 - R-682-3-M2 BASSA: il seguito si registra prima della sintesi vocale.
 - Parser del bot: «ad alta voce» in un finding BASSA è letto come gravità ALTA (`_FINDING_GRAVE_A_PAROLE`, case-insensitive) → FAILURE falso su 312cd86. Fetta separata sulla macchina del bot, decide l'operatore.
 - R-681-1-M2 BASSA: «Fatto. [NON_PER_ME]» (segno in coda per errore) tace una risposta vera; verso sicuro.
