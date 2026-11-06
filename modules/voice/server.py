@@ -148,7 +148,10 @@ ISTRUZIONE_SEGUITO = (
     "l'operatore dicesse la parola di attivazione: può essere rivolta a te oppure no "
     "(persone che parlano fra loro, la TV, una telefonata). Se NON è chiaramente rivolta a "
     f"te, rispondi SOLO con {SEGNO_NON_PER_ME} e nient'altro, senza usare strumenti. "
-    "Se è rivolta a te, rispondi normalmente.")
+    "Se è rivolta a te, rispondi normalmente, ma sappi che in questo turno NON hai "
+    "strumenti: se ti chiede un'azione (scrivere, salvare, cercare, ricordare) non dire mai "
+    "di averla fatta; rispondi che per farla deve ripeterla dicendo prima la parola di "
+    "attivazione.")
 # V14 (chat M2, «Sì, signore?» deciso dall'operatore; contratto con la chat Mani via M1):
 # GET /voce/conferma → audio/mpeg della frase detta con la voce attuale, suonato dal client
 # H24 al posto del bip dopo la parola di attivazione. In cache in memoria: un solo giro su

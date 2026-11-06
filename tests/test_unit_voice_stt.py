@@ -836,6 +836,8 @@ class TestVoiceHandlerRouting:
 
     def test_v15_seguito_rivolto_a_gas_risponde_normalmente(self):
         from modules.voice.server import ISTRUZIONE_SEGUITO
+        # V-2 ve #339 su a87d273: il seguito non ha strumenti e il modello deve saperlo
+        assert "NON hai strumenti" in ISTRUZIONE_SEGUITO and "non dire mai" in ISTRUZIONE_SEGUITO
         status, corpo, comando = self._seguito("Certo, ci penso io.")
         assert status == 200 and comando is None and corpo["content"] == "Certo, ci penso io."
         frase = "Non per me è un problema, lo faccio subito."  # contiene le parole, non è il segno
