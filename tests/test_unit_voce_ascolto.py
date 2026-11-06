@@ -689,7 +689,7 @@ def test_dopo_l_interruzione_il_turno_non_e_di_seguito():
                        (SILENZIO, _sec(50)))).gira()
     assert f.tipi == ["parola", "parola", "seguito"]
 
-# ── finestra di 12 s dopo la risposta ──
+# ── finestra dopo la risposta ──
 
 def test_finestra_continua_senza_parola():
     f = Finti()

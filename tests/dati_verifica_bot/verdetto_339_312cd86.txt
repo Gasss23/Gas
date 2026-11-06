@@ -1,0 +1,22 @@
+VERIFICA ESTERNA #339 — APPROVATO CON RISERVE
+Metodo: lettura del codice al commit 312cd861ec2cbdbfae4bd2e28e91e11ef1590edc (cartella ./pr), del diff completo (gh pr diff 339, 13 file) e dei commit (gh pr view). Stato dei check letto con gh pr checks 339 e gh run view 42136916896 (headSha = 312cd86). Nessun codice della PR eseguito (vincolo dell'ambiente).
+CLAIM VERIFICATI:
+- Turno effimero «solo forte, mai i gratuiti»: VERO. run_turn(effimero=True) forza cervello="forte"; _cascata_provider("forte") restituisce solo claude-cli (gas.py:923-926); col forte spento esce un errore, nessun ripiego (T103d).
+- «Nessuno strumento offerto»: VERO. _offerta={} quindi la create non riceve tools; ClaudeCliClient con tools=None non descrive strumenti (_descrivi_strumenti: tools or []) e gira con --tools "". Uno strumento chiesto lo stesso non viene eseguito (gas.py:4930-4939): final vuoto con strumento_negato.
+- «Il parlato della stanza non resta nella storia né su .gas_history.json»: VERO dal codice. Si lavora su una copia superficiale; _add_to_history fa solo append sulla copia; _cap_window_chars non modifica i messaggi; niente compressione e niente _save_history (con _salva) nel turno effimero; nel finally torna la storia vera prima del ramo _storia_rimandata. Il server chiude subito il generatore (server.py:597-602), quindi il finally parte subito.
+- Pausa a voce: VERO. _SOLO_PAUSA vale solo per il parlato e viene dopo l'STT; X-Gas-Comando passa da end_headers in ogni formato; _comando si azzera a ogni do_POST/do_GET (keep-alive).
+- Seguito: VERO. «[NON_PER_ME]» o risposta vuota → JSON {"content":"","fine":true}, senza capito né voce; «forte» captato, trascrizione incerta o vuota → fine; a testo l'intestazione non conta.
+- /voce/conferma: VERO. Timeout 5 s passato a synthesize_speech, errore in cache 60 s per (voce, frase), HTTPException intercettata; nessun audio vuoto va in cache.
+- Numeri dei test (kernel 1077 PASS, voce 291/293 passed): NON confermati in modo indipendente, vedi sotto. Al momento della lettura la CI ha passato unit suite e hook suite; voice suite in corso.
+- Riserve dichiarate aperte nell'handoff (R-675-1-M2 parte storia, R-675-5-M2, R-675-2/4-M2): coerenti col codice (i turni di seguito per Gas non entrano mai nella storia, scelta A).
+FINDING:
+V-1 (BASSA) — _NON_PER_ME (server.py:175) prende il segno solo in testa alla risposta. Se il forte scrive «Non è rivolto a me. [NON_PER_ME]», il testo viene letto ad alta voce, segno compreso, e la conversazione non si chiude. Sonda (lettura della regex): ^\W*(?:\[non_per_me\]|…) non trova un segno che sta in coda. Fix: riconoscere il segno anche in coda (\[non_per_me\]\W*$) oppure toglierlo e chiudere.
+V-2 (BASSA) — Nel seguito _SOLO_PAUSA scatta anche su «Basta!» detto da altri o dalla TV: Gas dice «Va bene.» a voce. Fix: nel seguito comando pausa senza voce, coerente con V-1 ve #339 su «forte».
+V-3 (COSMETICA) — gas.py:4934-4935: con lo strumento negato il diario scrive turno_fine esito=ok. Fix: esito parziale o un motivo dedicato.
+NON VERIFICATO:
+- Esito finale della CI sullo SHA 312cd86: unit-suite era ancora in corso alla lettura (voice suite in esecuzione; unit suite e hook suite passate); il check «verifica» era in attesa. Il merge richiede che unit-suite chiuda verde.
+- Numeri dichiarati dei test: non posso rilanciare le suite in questo ambiente.
+- Check obbligatori nel ruleset di main: interrogazione dell'API non autorizzata in questo ambiente.
+- «Via esplicito dell'operatore su gas.py (via M1)»: arriva da un altro canale e non si verifica dal repo.
+- Comportamento reale di claude-cli quando il modello produce comunque il formato di chiamata a strumento: coperto solo dal finto di T103b.
+RACCOMANDAZIONE: fare il merge solo dopo che unit-suite su 312cd86 risulta verde. V-1 e V-2 sono piccoli e si possono chiudere nella prossima fetta voce, insieme alla decisione dell'operatore sulla parte storia dei seguiti.
