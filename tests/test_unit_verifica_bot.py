@@ -1318,6 +1318,43 @@ class TestVerdettiVeri:
         assert be.decidi(v, SHA, SHA) == ("APPROVE",
                                           "verdetto APPROVATO CON RISERVE senza finding ALTA/MEDIA")
 
+    def test_339_ad_alta_voce_non_e_una_gravita(self):
+        """Bot #339 su 312cd86 (6 nov): «il testo viene letto ad alta voce» nella descrizione
+        di V-1 (BASSA) era letto come gravità → failure definitivo su un verdetto con sole
+        BASSE/COSMETICHE."""
+        testo = (DATI / "verdetto_339_312cd86.txt").read_text(encoding="utf-8")
+        assert "letto ad alta voce" in testo
+        v = _verdetto("APPROVATO CON RISERVE",
+                      [_f("V-1", "BASSA"), _f("V-2", "BASSA"), _f("V-3", "COSMETICA")], testo)
+        assert be.decidi(v, SHA, SHA) == ("APPROVE",
+                                          "verdetto APPROVATO CON RISERVE senza finding ALTA/MEDIA")
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 (BASSA) — letto ad ALTA voce",  # maiuscolo: nel dubbio blocca
+        "V-1 (BASSA) — letto ad alta voce, ma il difetto è grave",
+        "V-1 (BASSA) — a voce alta; gravità alta",
+        "V-1 (BASSA) — ad alta\nvoce",  # a capo: non è il modo di dire su una riga
+        "V-1 (BASSA) — alta voce",  # senza «ad»: resta gravità
+        "V-1 (BASSA) — comando a voce alta priorità",  # R-687-1-M2
+    ])
+    def test_alta_voce_non_nasconde_una_gravita(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
+                 + "\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT", riga
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 (BASSA) — il testo viene letto ad alta voce",
+        "V-1 (BASSA) — Gas lo dice a voce alta",
+        "V-1 (BASSA) — Gas lo dice a voce alta, poi tace",
+        "V-1 (BASSA) — letto Ad alta Voce dal client",
+    ])
+    def test_alta_voce_modo_di_dire(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
+                 + "\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE", riga
+
     def test_329_verifica_esterna_citata_non_e_un_titolo(self):
         """Bot #329 su 7957a15 (3 nov): «- Verifica esterna su 3b92254: V-1, …» fra le
         riserve registrate era preso per una riga di verdetto fuori formato → «ambiguo».

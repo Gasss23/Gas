@@ -125,6 +125,13 @@ _FINDING_GRAVE_A_PAROLE = re.compile(
     r"^\W*[VFRG]-(?:[A-Za-z0-9]+-)*\d+\b.*\b(" + _GRAVI + r")\b", re.M | re.I)
 _BLOCCANTE_TECNICO = re.compile(  # R-672-2: solo termini di sistema
     r"\b(read|write|recv|send|socket|i/o|select|poll)[ \t]+bloccant[ei]\b", re.I)
+# Fix bot #339 su 312cd86 (6 nov): «il testo viene letto ad alta voce» nella descrizione di
+# V-1 (BASSA) era letto come gravità → failure definitivo. «ad alta voce» / «a voce alta» è
+# un modo di dire, non una gravità: si toglie SOLO con «alta» minuscolo (un «ad ALTA voce»
+# maiuscolo resta visto, nel dubbio blocca), solo nella regola a parole.
+# R-687-1-M2: «a voce alta» vale solo a fine frase («… a voce alta priorità» resta gravità).
+_ALTA_VOCE = re.compile(r"\b(?i:ad?)[ \t]+alta[ \t]+(?i:voce)\b"
+                        r"|\b(?i:a)[ \t]+(?i:voce)[ \t]+alta(?=[ \t]*(?:[.,;:)!?»\"']|$))", re.M)
 _APRE_GRAVE = re.compile(r"\s*(" + _GRAVI + r")\b", re.I)
 # Bot #240: «V-1 (BASSA) — … non la considero più grave» bloccava come MEDIA. Una gravità
 # a parole MINUSCOLA negata da «non» poco prima (al massimo 3 parole in mezzo) non conta
@@ -219,7 +226,7 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     # Fix bot #336 (5 nov): «Microfono.blocchi fa una read bloccante» era letto come
     # MEDIA. «bloccante» detto di una primitiva di sistema (read, write, socket, I/O…) è il
     # termine tecnico, non una gravità; ogni altro uso a parole resta bloccante.
-    if _FINDING_GRAVE_A_PAROLE.search(_BLOCCANTE_TECNICO.sub(r"\1", pulita)):
+    if _FINDING_GRAVE_A_PAROLE.search(_ALTA_VOCE.sub("voce", _BLOCCANTE_TECNICO.sub(r"\1", pulita))):
         trovate.add("MEDIA")
     # R-159-3: tra parentesi conta la gravità che APRE la parentesi ("(alta)", "(MEDIA-BASSA)"),
     # non una parola qualsiasi ("(test saltati)", "(in media 3 ms)", "(parte multimediale)").
