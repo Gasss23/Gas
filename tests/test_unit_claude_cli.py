@@ -494,15 +494,36 @@ def test_stato_abbonamento_cli_assente_e_ambiente(monkeypatch, tmp_path):
 def test_effort_nel_comando_solo_se_chiesto():
     import brains.claude_cli as cc
     cc.ClaudeCliClient._effort_non_supportato = False
-    reg = {}
-    ClaudeCliClient(runner=_runner(_ok({"testo": "ok", "chiamate": []}), reg),
-                    effort="low").chat.completions.create(model="m", messages=_msgs())
-    i = reg["cmd"].index("--effort")
-    assert reg["cmd"][i + 1] == "low"
-    reg2 = {}
-    ClaudeCliClient(runner=_runner(_ok({"testo": "ok", "chiamate": []}), reg2)) \
-        .chat.completions.create(model="m", messages=_msgs())
-    assert "--effort" not in reg2["cmd"]
+    try:
+        reg = {}
+        ClaudeCliClient(runner=_runner(_ok({"testo": "ok", "chiamate": []}), reg),
+                        effort="low").chat.completions.create(model="m", messages=_msgs())
+        i = reg["cmd"].index("--effort")
+        assert reg["cmd"][i + 1] == "low"
+        reg2 = {}
+        ClaudeCliClient(runner=_runner(_ok({"testo": "ok", "chiamate": []}), reg2)) \
+            .chat.completions.create(model="m", messages=_msgs())
+        assert "--effort" not in reg2["cmd"]
+    finally:  # R-689-2-M2
+        cc.ClaudeCliClient._effort_non_supportato = False
+
+
+@pytest.mark.parametrize("stderr,rifiutato", [
+    ("error: unknown option '--effort'", True),
+    ("Error: Unknown option: --effort", True),
+    ("Unrecognized argument: --effort", True),
+    ("error: unknown arguments \"--effort\"", True),
+    # R-689-1-M2 (ve #343): falsi positivi che NON devono spegnere l'effort
+    ("API Error: invalid request; see docs for --effort", False),
+    ("error: option '--effort <level>' argument 'turbo' is invalid", False),
+    ("unknown error while running with --effort low", False),
+    ("error: unknown option '--effortful'", False),
+    ("error: unknown option '--effort-level'", False),  # R-693-2-M2
+])
+def test_effort_rifiutato_solo_opzione_sconosciuta(stderr, rifiutato):
+    from brains.claude_cli import _effort_rifiutato
+    assert _effort_rifiutato(subprocess.CompletedProcess([], 1, stdout="", stderr=stderr)) is rifiutato
+    assert _effort_rifiutato(subprocess.CompletedProcess([], 0, stdout="", stderr=stderr)) is False
 
 
 def test_effort_rifiutato_dalla_cli_vecchia_riprova_senza():
@@ -541,3 +562,13 @@ def test_effort_altro_errore_non_riprova():
     with pytest.raises(RuntimeError):
         ClaudeCliClient(runner=run, effort="low").chat.completions.create(model="m", messages=_msgs())
     assert len(comandi) == 1 and cc.ClaudeCliClient._effort_non_supportato is False
+
+
+def test_effort_rifiutato_tempo_lineare():
+    """R-693-1-M2: niente backtracking quadratico su stderr patologici."""
+    import time
+    from brains.claude_cli import _effort_rifiutato
+    t0 = time.monotonic()
+    _effort_rifiutato(subprocess.CompletedProcess([], 1, stdout="",
+                                                  stderr="unknown option" + " " * 100_000))
+    assert time.monotonic() - t0 < 1

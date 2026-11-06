@@ -269,13 +269,20 @@ def _con_costo(err: RuntimeError, costo: float) -> RuntimeError:
     return err
 
 
+# R-689-1-M2 (ve #343 V-1): solo il messaggio della CLI che non conosce l'opzione
+# («error: unknown option '--effort'», «Unrecognized argument: --effort»), non un errore
+# qualsiasi che citi --effort con «invalid»: un falso positivo spegnerebbe l'effort per tutto
+# il processo del server voce.
+_RIFIUTO_EFFORT = re.compile(
+    # R-693-1-M2: `\s*(?:[:=]\s*)?` (non `\s*[:=]?\s*`, quadratico); R-693-2-M2: `(?![\w-])`
+    r"\b(?:unknown|unrecognized)\s+(?:option|argument)s?\s*(?:[:=]\s*)?['\"`]?--effort(?![\w-])",
+    re.I)
+
+
 def _effort_rifiutato(proc: subprocess.CompletedProcess) -> bool:
     """La CLI ha rifiutato l'opzione `--effort` (versione che non la conosce): uscita non
-    zero e l'opzione citata come sconosciuta nell'errore."""
-    testo = f"{proc.stderr or ''}\n{proc.stdout or ''}".lower()
-    return proc.returncode != 0 and "--effort" in testo and (
-        "unknown option" in testo or "unknown argument" in testo
-        or "unrecognized" in testo or "invalid" in testo)
+    zero e l'opzione citata come sconosciuta nell'errore della CLI (stderr)."""
+    return proc.returncode != 0 and bool(_RIFIUTO_EFFORT.search(proc.stderr or ""))
 
 
 def _esegui(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
