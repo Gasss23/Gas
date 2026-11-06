@@ -11794,10 +11794,12 @@ try:
 
     _saved105 = os.environ.get("GAS_CLAUDE_CLI")
     _orig105, _avvia105 = gas.ClaudeCliClient, _sf105.avvia
+    _notif105 = _sf105.notifica_possibile
     _avviati105 = []
     try:
         os.environ["GAS_CLAUDE_CLI"] = "1"
         _sf105.avvia = lambda root, ident, popen=None: _avviati105.append((str(root), ident))
+        _sf105.notifica_possibile = lambda root: None  # Telegram «pronto» nei test
         _k105 = kernel_tmp()
         gas.ClaudeCliClient = _cli105([
             {"testo": "", "chiamate": [{"nome": "in_sottofondo",
@@ -11849,11 +11851,39 @@ try:
         _k105e = kernel_tmp()
         _k105e._turno_voce = True
         _out105e = _k105e._in_sottofondo({"compito": "x"})
+        _sf105.avvia = lambda root, ident, popen=None: _avviati105.append((str(root), ident))
+        # f) bot #345 V-1: avviso impossibile → niente compito né promessa
+        _sf105.notifica_possibile = lambda root: "Telegram non configurato (X)"
+        _k105f = kernel_tmp()
+        _k105f._turno_voce = True
+        _out105f = _k105f._in_sottofondo({"compito": "x"})
+        _sf105.notifica_possibile = lambda root: None
+        check("T105f avviso impossibile: negato col motivo, nessun processo",
+              _out105f.startswith("Operazione negata") and "non potrei avvisare" in _out105f
+              and len(_avviati105) == 2, _out105f)
+        # g) bot #345 V-2: a voce con finestra contaminata in_sottofondo va alla firma
+        _k105g = kernel_tmp()
+        _k105g.history = [{"role": "user", "content": "leggi n.txt"},
+                          {"role": "assistant", "content": None, "tool_calls": [
+                              {"id": "r1", "type": "function", "function": {
+                                  "name": "read_file", "arguments": '{"relative_path": "n.txt"}'}}]},
+                          {"role": "tool", "tool_call_id": "r1", "name": "read_file",
+                           "content": "ESTERNO"},
+                          {"role": "assistant", "content": "letto"}]
+        gas.ClaudeCliClient = _cli105([
+            {"testo": "", "chiamate": [{"nome": "in_sottofondo", "argomenti": {"compito": "y"}}]},
+            {"testo": "In attesa.", "chiamate": []}])
+        _ev105g = list(_k105g.run_turn("fallo in sottofondo", cervello="forte", voce=True))
+        _res105g = [e for e in _ev105g if e["type"] == "tool_res"]
+        check("T105g voce con finestra contaminata: in_sottofondo alla firma, nessun processo",
+              len(_res105g) == 1 and _res105g[0].get("cancello") in ("in_attesa", "negata")
+              and len(_avviati105) == 2, str(_ev105g)[:300])
         check("T105e avvio fallito: diniego, coda libera",
               _out105e.startswith("Operazione negata") and _sf105.attivo(_k105e.root) is None,
               _out105e)
     finally:
         gas.ClaudeCliClient, _sf105.avvia = _orig105, _avvia105
+        _sf105.notifica_possibile = _notif105
         if _saved105 is None:
             os.environ.pop("GAS_CLAUDE_CLI", None)
         else:

@@ -4581,6 +4581,12 @@ class GasKernel:
                     "niente compiti in sottofondo. Dillo all'operatore.")
         try:
             from modules import sottofondo
+            # Bot #345 V-1: niente promessa di avviso che non può partire
+            motivo = sottofondo.notifica_possibile(self.root)
+            if motivo:
+                return (f"Operazione negata: non potrei avvisare l'operatore alla fine ({motivo}): "
+                        "niente compito in sottofondo. Fallo adesso se è breve, oppure dillo "
+                        "all'operatore.")
             ident, rifiuto = sottofondo.accoda(self.root, args.get("compito"))
             if ident is None:
                 return rifiuto

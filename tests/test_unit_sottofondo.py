@@ -177,3 +177,183 @@ def test_compito_corrotto_non_rompe(tmp_path):
     c.mkdir()
     (c / "rotto.json").write_text(json.dumps({"stato": "in_coda", "compito": 5}), encoding="utf-8")
     assert sf.esegui(tmp_path, "rotto", lambda: _Kernel(), lambda t, r: None) == 1
+
+
+# --- bot e verifica esterna #345 ---
+
+def test_notifica_possibile(tmp_path, monkeypatch):
+    """Bot #345 V-1: niente promessa di avviso se Telegram non può avvisare."""
+    from modules.telegram import avviso
+    monkeypatch.setenv("GAS_NOTIFICHE_GIORNO", "0")
+    assert "spente" in sf.notifica_possibile(tmp_path)
+    monkeypatch.setenv("GAS_NOTIFICHE_GIORNO", "5")
+    monkeypatch.setattr(avviso, "_manca_configurazione", lambda: "TELEGRAM_BOT_TOKEN")
+    assert "non configurato" in sf.notifica_possibile(tmp_path)
+    monkeypatch.setattr(avviso, "_manca_configurazione", lambda: None)
+    monkeypatch.setattr(avviso, "_uso_oggi", lambda p: 5)
+    assert "tetto" in sf.notifica_possibile(tmp_path)
+    monkeypatch.setattr(avviso, "_uso_oggi", lambda p: 4)
+    assert sf.notifica_possibile(tmp_path) is None
+
+
+def test_compito_con_processo_morto_diventa_ko_con_avviso(tmp_path):
+    """Bot #345 V-3: processo ucciso → compito ko e avviso, coda libera."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    job = json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))
+    job["stato"] = "in_corso"
+    (c / f"{ident}.json").write_text(json.dumps(job), encoding="utf-8")
+    (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": 2 ** 22 + 12345,
+                                           "creato": job["creato"]}), encoding="utf-8")
+    inviati, avvisa = _avvisi()
+    nuovo, _ = sf.accoda(tmp_path, "due", avvisa=avvisa)
+    assert nuovo is not None and len(inviati) == 1 and "non è finito" in inviati[0]
+    assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ko"
+
+
+def test_oltre_la_durata_massima_non_blocca(tmp_path, monkeypatch):
+    """Ve #345 V-1/V-2: pid riusato o figlio appeso: oltre la durata massima la coda si libera."""
+    monkeypatch.setenv("GAS_SOTTOFONDO_MAX_MIN", "1")
+    c = tmp_path / sf.CARTELLA
+    c.mkdir()
+    (c / sf.ATTIVO).write_text(json.dumps({"id": "x", "pid": os.getpid(),
+                                           "creato": 0}), encoding="utf-8")
+    assert sf.attivo(tmp_path) is None
+    (c / sf.ATTIVO).write_text(json.dumps({"id": "x", "pid": os.getpid(),
+                                           "creato": __import__("time").time()}), encoding="utf-8")
+    assert sf.attivo(tmp_path) is not None
+
+
+def test_posto_preso_in_modo_atomico(tmp_path, monkeypatch):
+    """Bot #345 V-4: se attivo.json compare fra il controllo e la scrittura, niente secondo compito."""
+    c = tmp_path / sf.CARTELLA
+    c.mkdir()
+    orig = sf.attivo
+    chiamate = []
+
+    def _attivo(root):
+        r = orig(root)
+        if not chiamate:  # dopo il primo controllo un altro processo prende il posto
+            (c / sf.ATTIVO).write_text(json.dumps({"id": "altro", "pid": None,
+                                                   "creato": __import__("time").time()}))
+        chiamate.append(1)
+        return r
+    monkeypatch.setattr(sf, "attivo", _attivo)
+    monkeypatch.setattr(sf, "_ripulisci", lambda root, avvisa: None)
+    ident, motivo = sf.accoda(tmp_path, "uno")
+    assert ident is None and "già un compito" in motivo
+
+
+def test_eccezione_interna_avvisa(tmp_path, monkeypatch):
+    """R-696-2-M2: anche un'eccezione nel processo separato produce l'avviso."""
+    def _rotto(*a, **k):
+        raise OSError("disco pieno")
+    monkeypatch.setattr(sf, "_esegui", _rotto)
+    inviati, avvisa = _avvisi()
+    assert sf.esegui(tmp_path, "x", lambda: _Kernel(), avvisa) == 1
+    assert len(inviati) == 1 and "interrotto" in inviati[0]
+
+
+def test_comando_gas_sottofondo(tmp_path):
+    """Bot #345 V-2: il comando vero `gas.py sottofondo <id>` esce pulito su un id assente."""
+    import subprocess
+    gas_py = Path(__file__).resolve().parents[1] / "gas.py"
+    r = subprocess.run([sys.executable, str(gas_py), "sottofondo", "inesistente"],
+                       cwd=tmp_path, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 1 and "Traceback" not in r.stderr
+
+
+# --- review #697-M2 ---
+
+def test_posto_vuoto_vecchio_non_blocca(tmp_path):
+    """R-697-1-M2: un attivo.json vuoto (crash) non blocca la coda per sempre."""
+    c = tmp_path / sf.CARTELLA
+    c.mkdir()
+    p = c / sf.ATTIVO
+    p.write_text("")
+    os.utime(p, (0, 0))
+    assert sf.accoda(tmp_path, "uno", avvisa=lambda t, r: None)[0] is not None
+
+
+def test_posto_vuoto_recente_aspetta(tmp_path):
+    c = tmp_path / sf.CARTELLA
+    c.mkdir()
+    (c / sf.ATTIVO).write_text("")
+    assert sf.accoda(tmp_path, "uno", avvisa=lambda t, r: None)[0] is None
+
+
+def test_oltre_la_durata_il_processo_vivo_viene_fermato(tmp_path, monkeypatch):
+    """R-697-2-M2: oltre la durata massima il gruppo del figlio riceve SIGTERM, compito ko."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": os.getpid(), "creato": 0}))
+    fermati = []
+    monkeypatch.setattr(sf.os, "killpg", lambda pid, sig: fermati.append((pid, sig)))
+    monkeypatch.setattr(sf, "_e_nostro", lambda pid, ident: True)
+    inviati, avvisa = _avvisi()
+    assert sf.accoda(tmp_path, "due", avvisa=avvisa)[0] is not None
+    assert fermati and fermati[0][0] == os.getpid()
+    assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ko"
+    assert len(inviati) == 1 and "durata massima" in inviati[0]
+
+
+def test_esito_tardivo_non_sovrascrive_ko(tmp_path):
+    """R-697-2-M2: un compito già chiuso ko non diventa ok né manda un secondo avviso."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            sf.annulla(tmp_path, ident, "oltre la durata massima, fermato")
+            yield {"type": "final", "content": "fatto"}
+    inviati, avvisa = _avvisi()
+    assert sf.esegui(tmp_path, ident, lambda: _K(), avvisa) == 1
+    assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ko"
+    assert inviati == []
+
+
+def test_figlio_senza_posto_non_ruba(tmp_path):
+    """R-697-3-M2: un figlio il cui posto è ora di un altro compito non parte."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    (c / sf.ATTIVO).write_text(json.dumps({"id": "altro", "pid": None,
+                                           "creato": __import__("time").time()}))
+    k = _Kernel()
+    assert sf.esegui(tmp_path, ident, lambda: k, lambda t, r: None) == 1 and k.chiamate == []
+    assert json.loads((c / sf.ATTIVO).read_text())["id"] == "altro"
+
+
+# --- review #698-M2 ---
+
+def test_pid_estraneo_non_viene_mai_fermato(tmp_path, monkeypatch):
+    """R-698-1-M2: un pid riusato da un processo estraneo (comando diverso) non riceve
+    SIGTERM; il compito diventa ko e la coda si libera lo stesso."""
+    import subprocess as sp
+    estraneo = sp.Popen(["sleep", "30"], start_new_session=True)
+    try:
+        ident, _ = sf.accoda(tmp_path, "uno")
+        c = tmp_path / sf.CARTELLA
+        (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": estraneo.pid, "creato": 0}))
+        assert sf._e_nostro(estraneo.pid, ident) is False
+        fermati = []
+        monkeypatch.setattr(sf.os, "killpg", lambda pid, sig: fermati.append(pid))
+        assert sf.accoda(tmp_path, "due", avvisa=lambda t, r: None)[0] is not None
+        assert fermati == [] and estraneo.poll() is None
+        assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ko"
+    finally:
+        estraneo.kill()
+        estraneo.wait()
+
+
+def test_e_nostro_riconosce_il_figlio(tmp_path):
+    """Il figlio vero (`... gas.py sottofondo <id>`, leader del gruppo) è riconosciuto."""
+    import subprocess as sp
+    figlio = sp.Popen([sys.executable, "-c", "import time; time.sleep(30)", "gas.py",
+                       "sottofondo", "abc123"], start_new_session=True)
+    try:
+        __import__("time").sleep(0.3)
+        assert sf._e_nostro(figlio.pid, "abc123") is True
+        assert sf._e_nostro(figlio.pid, "altro") is False
+    finally:
+        figlio.kill()
+        figlio.wait()
