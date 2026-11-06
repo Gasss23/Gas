@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #339 (https://github.com/Gasss23/Gas/pull/339). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5180114384","url":"https://github.com/Gasss23/Gas/pull/339"}`); `gh` nel cloud non è autenticato. Merge secondo la regola di CLAUDE.md §10. Sì dell'operatore già dato via M1: CI verde e bot + verifica esterna senza ALTA/MEDIA sul nuovo head.
-2. Punto 1 (V-1 a del bot su a87d273, MEDIA): scrivere o no nella storia vera i turni di seguito giudicati «per Gas». Cambia la scelta A: chiesto all'operatore via M1, NON fatto in attesa della risposta.
+2. Punto 1 FATTO col sì dell'operatore (via M1, 6 nov): i seguiti rivolti a Gas entrano nella storia vera (e7a75c0). NUOVA decisione: R-682-1-M2 MEDIA (privacy) — un seguito salvato entra nella finestra dei turni normali successivi, che possono andare ai gratuiti. Proposta: turni con un seguito salvato nella finestra → solo forte; oppure accettare il rischio. Chiesto via M1.
 
 ---
 
@@ -24,7 +24,8 @@
 - **Merge di main** (#338/#340 della chat Mani) e `**kw` nel finto del test di Mani (autorizzato da M1): `FATTA` — fd1b320, review #679-M2.
 - **V-1 (b) bot su a87d273** (strumento chiesto nel seguito → silenzio): `FATTA` — frase fissa «Per farlo ripetimelo dicendo prima Hey Jarvis.», 4ee1feb, review #680-M2.
 - **V-1/V-2 bot su 312cd86** (segno in coda; «Basta!» dalla TV nel seguito detto a voce): `FATTA` — 2e367e2, review #681-M2. Il FAILURE del bot su 312cd86 è un falso positivo del parser («letto ad alta voce» preso per ALTA): fuori scope, macchina del bot.
-- **V-1 (a) bot su a87d273** (i seguiti veri non entrano nella storia): `IN ATTESA della decisione dell'operatore`.
+- **V-1 (a) bot su a87d273/be60a21** (i seguiti veri non entrano nella storia): `FATTA` col sì dell'operatore — `registra_seguito` in gas.py, e7a75c0, review #682-M2. Riserva nuova R-682-1-M2 MEDIA in attesa di decisione.
+- **V-2/V-3 bot su be60a21** (segno in mezzo; risposta vuota effimera → 500): `FATTA` — e7a75c0.
 - **C1**: `DEFERITA — prossima fetta`.
 
 ---
@@ -32,19 +33,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  13 +++++++++++
- gas.py                              |  51 +++++++++++++++++++++++++++++++++++--------
- modules/voice/server.py             | 153 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
- modules/voice/tts.py                |   4 +++-
- reports/diff_sessione.md            |  20 ++++++++++-------
+ .claude/agents/memoria_revisore.md  |  15 ++++++++++++
+ gas.py                              |  77 +++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ modules/voice/server.py             | 167 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ modules/voice/tts.py                |   4 ++-
+ reports/diff_sessione.md            |  20 +++++++++------
  reports/handoff.md                  | n/d
- reports/ripartenza_m2.md            |   9 ++++----
+ reports/ripartenza_m2.md            |  10 +++++---
  reports/stato_progetto.md           |   3 ++-
- reports/ultimo_report.md            |  34 ++++++++++++++++-------------
- tests/test_unit_kernel.py           | 110 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voce_ascolto.py     |   5 +++--
- tests/test_unit_voice_prova_voci.py |  34 +++++++++++++++++++++++++++--
- tests/test_unit_voice_stt.py        | 250 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/ultimo_report.md            |  35 +++++++++++++++------------
+ tests/test_unit_kernel.py           | 149 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py     |   5 ++--
+ tests/test_unit_voice_prova_voci.py |  34 ++++++++++++++++++++++++--
+ tests/test_unit_voice_stt.py        | 276 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: origin/main 83f3bcd.
@@ -52,6 +53,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e7a75c0 feat(kernel+voce): V15 punto 1 — i seguiti rivolti a Gas entrano nella storia vera; segno [NON_PER_ME] ovunque; risposta vuota effimera = silenzio (V-1/V-2/V-3 bot #339 su be60a21, sì dell'operatore via M1) (chat M2)
+390785b chore(revisore): memoria review #682 — APPROVATO CON RISERVE
+be60a21 docs(voce): report di fine task V15 dopo V-1/V-2 del bot su 312cd86 (PR #339, chat M2)
 2e367e2 fix(voce): V15 — segno [NON_PER_ME] anche in coda; nel seguito la pausa chiude senza voce (V-1/V-2 bot #339 su 312cd86, chat M2)
 93ee68d chore(revisore): memoria review #681 — APPROVATO CON RISERVE
 312cd86 docs(voce): report di fine task V15 dopo V-2 ve, merge di main e frase fissa del seguito (PR #339, chat M2)
@@ -378,7 +382,53 @@ Cosa NON ho verificato:
 
 Memoria: riga #681-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola con scripts/commit_memoria_revisore.sh (commit 93ee68d). Nessuna lezione nuova.
 
+Review #682-M2 sul commit e7a75c0 (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #682-M2: branch feat/voce-v12-m2, PR #339, diff staged su base be60a21. File: gas.py, modules/voice/server.py, tests/test_unit_kernel.py, tests/test_unit_voice_stt.py.
+Prima della review ho letto CLAUDE.md (sez. 1, 2, 5, 8, 9 e 10), le voci voce/V15 di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md (#675–#681-M2).
+
+**Elementi del diff esaminati**
+- `gas.py:1805` — nuovo `registra_seguito(domanda, risposta)`. Rifiuta testi vuoti o non stringa. Comprime la storia se serve, aggiunge user+assistant e salva con `_save_history(fine_turno=True)`, che restituisce True solo se la storia è davvero su disco. Un'eccezione diventa `logging.warning` e False (§9).
+  - Rischio esaminato: sequenza dei ruoli rotta per `_get_window`, salvataggio rimandato che resta in sospeso, crash.
+  - Con fine_turno=True l'unione con la storia di altri processi non viene rimandata. La coppia parte da user. Nessuno slicing.
+  - Esito: **ok**.
+- `modules/voice/server.py:636` — la registrazione scatta solo con `is_audio and self._seguito()`. Arriva dopo il `close()` del generatore (`modules/voice/server.py:612`), quindi la storia vera è già ripristinata dal finally di `gas.py:5111`. Arriva anche dopo i rami strumento_negato, NON_PER_ME e vuota, che fanno `return` prima. Il kernel è raggiunto con getattr; False o eccezione diventano warning e la risposta parte lo stesso.
+  - Rischio esaminato: parlato «non per me» che entra in storia, doppio salvataggio nei turni normali, concorrenza.
+  - Il server è `HTTPServer` (`modules/voice/server.py:1139`), quindi un thread solo. I turni normali non passano `effimero` e si salvano da sé, come asserito nel test di `tests/test_unit_voice_stt.py:912`. La scelta del turno da salvare sta solo lato server.
+  - Esito: **ok**, con la riserva R-682-1 sotto.
+- `modules/voice/server.py:152` — la nuova regex `_NON_PER_ME` riconosce il segno tra parentesi in qualunque punto, anche con spazi o in minuscolo. La forma senza parentesi conta solo come risposta intera.
+  - Rischio esaminato: rallentamento patologico della regex (ReDoS) e falsi positivi.
+  - Non ci sono quantificatori annidati e la seconda alternativa è ancorata all'inizio. L'unico falso positivo possibile è che si taccia una risposta vera: è il verso sicuro per la privacy, scelto dall'operatore, e allarga la riserva già aperta R-681-1-M2. Il caso del test che lo contraddiceva è stato tolto in modo coerente.
+  - Esito: **ok**.
+- `gas.py:5069` — nuovo ramo `elif effimero`: risposta vuota del forte senza chiamate a strumenti → evento `final` con testo vuoto invece di «Pipeline esausta». Vale solo per il turno effimero; la storia viene comunque ripristinata nel finally.
+  - Rischio esaminato: un guasto vero del forte nascosto come «silenzio».
+  - Esito: **riserva** R-682-2.
+- `tests/test_unit_kernel.py:11582` — T103g: dopo la registrazione la storia è su disco subito. Il turno normale successivo, con uno strumento vero (write_file eseguito), vede il seguito nel payload: è il round-trip agentico di §7. Il seguito compare una volta sola e i tre casi vuoti sono rifiutati. T103f (`tests/test_unit_kernel.py:11558`) copre V-3.
+  - Esito: **ok**.
+- `tests/test_unit_voice_stt.py:916` — test sulla registrazione che fallisce (False ed eccezione): risposta 200 lo stesso.
+  - Esito: **ok**.
+
+**Test rilanciati da me** (venv della sessione): `tests/test_unit_kernel.py` 1079 PASS 0 FAIL, con T103f e T103g PASS. `tests/test_unit_voice_stt.py` 107 passed.
+
+**Wall of Shame**: nessuno slicing della storia, nessuna simulazione dell'output dei tool. Il tetto di 10 iterazioni e `_get_window` non sono toccati.
+
+**Riserve**
+- **R-682-1-M2 MEDIA (privacy)** — Il seguito salvato entra nella finestra dei turni normali successivi, e quei turni possono andare ai modelli gratuiti della cascata.
+  - Effetto: un parlato della stanza che il forte scambia per rivolto a Gas (R-680-1-M2) finisce così ai gratuiti. R-675-1-M2 lo voleva confinato al forte (CLAUDE.md §2).
+  - L'operatore ha scelto «salva i seguiti con risposta vera», ma questa conseguenza va dichiarata esplicitamente nel report, così può decidere.
+  - Possibili rimedi: marcare quei messaggi come forte-only, oppure accettare il rischio.
+- **R-682-2-M2 BASSA** — Il ramo `elif effimero` (`gas.py:5069`) non logga nulla. Se il forte torna vuoto per un guasto, la conversazione si chiude in silenzio senza traccia in gas_debug.log. Basta un `logging.info`.
+- **R-682-3-M2 BASSA** — La registrazione avviene prima della sintesi vocale. Se il TTS fallisce, la risposta è in storia ma l'operatore non l'ha sentita (come succede già nei turni normali).
+
+**Rischio esplicitamente escluso**: non ho verificato la concorrenza su più processi reali (voce + Telegram che scrivono `.gas_history.json` nello stesso momento durante il turno effimero). L'unione tra processi (`_unisci_storia_altrui`) non è toccata dal diff e qui l'ho solo letta, non provata con processi veri. Non ho verificato nemmeno il comportamento col forte vero (`claude -p`) sul Mac: non è riproducibile in dev.
+
+**Memoria**: aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #682-M2 e una lezione nuova: un dato confinato al forte va seguito anche dopo, quando entra nella storia condivisa. Committata da sola con `scripts/commit_memoria_revisore.sh` (commit 390785b); il resto dello staged è intatto.
+
 ## §5 DELTA TEST DEL MOTORE
+
+Su e7a75c0: T103f (risposta vuota effimera → final vuoto) e T103g (registra_seguito → storia e disco subito, turno normale dopo con write_file lo vede: round-trip §7) — suite kernel `=== RIEPILOGO: 1079 PASS, 0 FAIL ===`; voice_stt + prova_voci + voce_ascolto `382 passed`; voice_server + tts + contesto `136 passed`. Mutanti uccisi: registro tolto nel server, regex vecchia, ramo `elif effimero` tolto, salvataggio finto. Nota: la verifica esterna su be60a21 aveva 1076/1 per T31g, che fallisce anche su main nel suo ambiente (modulo `vectors` mancante): ambientale.
 
 `tests/test_unit_voice_stt.py`: test V15 (pausa, seguito, «forte» dalla stanza, prefisso del segno, incerta/vuota nel seguito, chiusura del turno, strumento negato → frase fissa), «Jarvis Gas» fra i positivi. `tests/test_unit_voice_prova_voci.py`: +1 (`test_v15_conferma_errore_recente_non_richiama_elevenlabs`). `tests/test_unit_kernel.py` T103a-e (round-trip §7 del turno effimero; T103b controlla `strumento_negato`). `tests/test_unit_voce_ascolto.py` (chat Mani): solo `**kw` sui due finti, autorizzato da M1. Mutanti su gas.py (storia non ripristinata, strumenti offerti, strumento eseguito, salvataggio, forte non forzato) uccisi da T103. Esecuzione sull'head 4ee1feb, nel venv con requirements + requirements-dev: voice_stt + voice_prova_voci + voce_ascolto `380 passed in 77.91s`; su 2e367e2 (+`test_v15_seguito_pausa_senza_voce`, varianti in coda) `381 passed in 77.90s`, mutanti «coda tolta» e «ramo seguito tolto» uccisi (1 failed ciascuno); suite kernel `=== RIEPILOGO: 1077 PASS, 0 FAIL ===` (prima della sessione 1076).
 
@@ -394,22 +444,26 @@ Memoria: riga #681-M2 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_r
 - a87d273: CI success (run 42133629442), verifica-bot success (run 42133634353) con verdetto testuale V-1 (a)/(b) MEDIA e verifica esterna con V-2.
 - 2530577, 10dc900, fd1b320, 4899032, 4ee1feb: nessuna run su questi SHA da soli (pushati con 312cd86).
 - 312cd86: verifica-bot FAILURE per falso positivo del parser (verdetto testuale: V-1/V-2 BASSE, V-3 COSMETICA; «ad alta voce» letto come ALTA); CI in corso alla lettura.
-- 93ee68d, 2e367e2 e commit di fine-task che contiene questo file: run non ancora disponibile (pushati insieme).
+- 93ee68d, 2e367e2: nessuna run su questi SHA da soli (pushati con be60a21).
+- be60a21: verifica-bot FAILURE per la MEDIA V-1 (punto 1, allora aperto); verifica esterna con la stessa MEDIA.
+- 390785b, e7a75c0 e commit di fine-task che contiene questo file: run non ancora disponibile (pushati insieme).
 
 ## §7 RISERVE APERTE
 
+- R-682-1-M2 MEDIA (privacy): seguito salvato nella finestra dei turni normali successivi → possibile invio ai gratuiti. Decide l'operatore (via M1).
+- R-682-2-M2 BASSA: il ramo della risposta vuota effimera non logga.
+- R-682-3-M2 BASSA: il seguito si registra prima della sintesi vocale.
 - Parser del bot: «ad alta voce» in un finding BASSA è letto come gravità ALTA (`_FINDING_GRAVE_A_PAROLE`, case-insensitive) → FAILURE falso su 312cd86. Fetta separata sulla macchina del bot, decide l'operatore.
 - R-681-1-M2 BASSA: «Fatto. [NON_PER_ME]» (segno in coda per errore) tace una risposta vera; verso sicuro.
 - R-681-2-M2 COSMETICA: pausa nel seguito in JSON anche con audio+pezzi; il client decide da X-Gas-Comando.
 - V-3 bot su 312cd86 COSMETICA: con lo strumento negato il diario scrive turno_fine esito=ok.
-- V-1 (a) bot su a87d273, MEDIA: i turni di seguito veri non entrano nella storia (decide l'operatore, §0 punto 2).
 - R-678-1-M2 BASSA: che il modello rispetti l'istruzione «niente strumenti» si vede solo dal vero.
 - R-678-2-M2 COSMETICA: «ricordare» ambiguo nell'istruzione.
 - R-679-1-M2 BASSA: test d'errore di Mani verdi anche con eccezioni impreviste (chat Mani).
 - R-679-2-M2 BASSA: manca il lato client della V15 (`X-Gas-Seguito`, `X-Gas-Comando`; chat Mani via M1).
 - R-680-1-M2 BASSA: nel seguito una frase della stanza scambiata per richiesta d'azione fa parlare Gas con la frase fissa.
 - R-680-2-M2 BASSA: testo scritto dal modello insieme a una chiamata a strumento resta scartato (comportamento preesistente).
-- R-676-1-M2 BASSA: «[NON PER ME] (…)» e «NON_PER_ME (…)» con aggiunte non riconosciuti.
+- R-676-1-M2: chiusa per la forma con parentesi (anche con spazi); «NON_PER_ME (…)» senza parentesi con aggiunte resta una risposta.
 - R-675-2-M2 BASSA: oltre il tetto orario «pausa» riceve 429; i turni ambientali consumano il tetto.
 - R-675-4-M2 COSMETICA: «basta così?» come domanda chiude la conversazione; «forte, pausa» va al forte.
 - R-675-5-M2 BASSA: forte spento → turni di seguito 500 (il client deve chiudere); forte acceso → ogni frase captata spende il budget del forte.
