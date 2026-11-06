@@ -201,7 +201,10 @@ _CONTESTO_VOCE = (
     "tenendo conto di quello che vi siete detti prima in questa conversazione. La sua "
     "frase arriva da una trascrizione vocale e può avere parole storpiate (per esempio "
     "«Gus» per «Gas»): se una parola non torna, interpretala dal contesto; se la "
-    "richiesta resta ambigua, fai una sola domanda per chiarire invece di indovinare.")
+    "richiesta resta ambigua, fai una sola domanda per chiarire invece di indovinare. "
+    # C1, voce rapida (ordine dell'operatore via M1, 6 nov): niente risposte fuori tema
+    "Rispondi solo all'ultima cosa che l'operatore ha detto: il resto della conversazione è "
+    "contesto, non argomenti da riprendere né domande ancora da sistemare.")
 # V3: istruzione per i soli turni PARLATI (gas.py `run_turn(istruzione_turno=...)`: vale per
 # quel turno, nel messaggio system, fuori dalla cronologia). Il testo scritto resta com'è.
 # V13 (chat M2, prova di Jarvis sul Mac del 5 nov, decisione dell'operatore): risposte a
@@ -592,6 +595,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
                     # strumento offerto, niente storia condivisa del parlato della stanza
                     kw["effimero"] = True
             t_cervello = time.monotonic()
+            if is_audio:  # voce rapida (fetta 2): profilo del turno parlato nel kernel
+                kw["voce"] = True
             turno = self.kernel.run_turn(prompt, **kw)
             try:
                 for event in turno:
