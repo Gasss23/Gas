@@ -11652,7 +11652,10 @@ try:
         _res103l = [e for e in _ev103l if e["type"] == "tool_res"]
         check("T103l seguito in finestra = non fidato: scrittura alla firma, non eseguita",
               _contam103l and not (Path(_k103.root) / "l103.txt").exists()
-              and len(_res103l) == 1 and _res103l[0].get("cancello") in ("in_attesa", "negata"),
+              and len(_res103l) == 1 and _res103l[0].get("cancello") in ("in_attesa", "negata")
+              # R-684-1-M2: è proprio il ramo della firma, non un diniego qualsiasi
+              and ("Azione in attesa di approvazione umana" in _res103l[0]["output"]
+                   or "impossibile notificare la richiesta di firma" in _res103l[0]["output"]),
               str(_ev103l)[:400])
 
         # d) effimero col forte spento: errore dichiarato, mai i gratuiti, storia intatta

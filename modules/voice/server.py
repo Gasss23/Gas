@@ -584,7 +584,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
                     kw["istruzione_turno"] += " " + ISTRUZIONE_SEGUITO
                     # R-675-1-M2: parlato della stanza (terzi, TV) = possibili dati personali:
                     # solo il cervello forte, mai i gratuiti (CLAUDE.md §2); forte fermo →
-                    # errore dichiarato e il client chiude la conversazione
+                    # errore dichiarato e il client chiude la conversazione. NB: la trascrizione
+                    # (Groq Whisper) riceve l'audio anche qui, come per tutta la voce: rischio
+                    # accettato dall'operatore il 6 nov (V-2 bot #339, R-684-2-M2)
                     kw["cervello"] = "forte"
                     # R-675-1-M2 (scelta A dell'operatore): turno effimero nel kernel: nessuno
                     # strumento offerto, niente storia condivisa del parlato della stanza

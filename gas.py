@@ -911,7 +911,9 @@ def _rung_disponibile(name: str, env: str) -> bool:
 # V15 R-682-1-M2 (scelta A dell'operatore via M1, 6 nov): i messaggi di un turno di seguito
 # a voce (parlato captato SENZA parola di attivazione, giudicato rivolto a Gas dal forte)
 # portano questa chiave nella storia. Finché uno di loro è nella finestra, il turno va SOLO
-# al forte (dati della stanza mai ai gratuiti, CLAUDE.md §2); la chiave non va ai provider.
+# al forte (il cervello che risponde non è mai un gratuito, CLAUDE.md §2); la chiave non va ai
+# provider. Eccezione ACCETTATA dall'operatore (V-2 bot #339, 6 nov): la trascrizione Groq
+# Whisper riceve anche l'audio dei seguiti, come tutta la voce (R-684-2-M2).
 CHIAVE_SEGUITO_VOCE = "seguito_voce"
 
 
@@ -5150,7 +5152,7 @@ class GasKernel:
             logging.warning(f"Pipeline esausta: {_dettaglio}")
             if _solo_forte_seguito:  # R-683-2-M2: l'operatore sa perché niente gratuiti
                 _dettaglio += ("; turno solo sul cervello forte perché nella conversazione "
-                               "recente c'è un seguito a voce (dati della stanza: mai ai gratuiti)")
+                               "recente c'è un seguito a voce (dati della stanza: mai ai cervelli gratuiti)")
             yield {"type": "error",
                    "content": f"Pipeline esausta: nessun cervello ha risposto. {_dettaglio}."}
         finally:
