@@ -12,8 +12,9 @@ finché non passano 40 secondi senza che nessuno parli, poi torna ad aspettare �
   parlano tra loro);
 - se nella conversazione dici di nuovo «Hey Jarvis, …», è una richiesta normale: Gas può
   usare i suoi strumenti e la frase può durare fino a 30 secondi. Dillo tutto di seguito
-  («Hey Jarvis, che ore sono»): qui non c'è il bip, e quello che era stato detto prima della
-  parola non viene mandato;
+  («Hey Jarvis, che ore sono»): qui non c'è il bip. Del parlato di prima della parola resta
+  solo un attimo (circa un secondo e mezzo, la parola compresa), e una parola sentita più di
+  2 secondi prima che si cominci a parlare non conta;
 - Gas decide se il parlato è rivolto a lui: se non lo è, non risponde e chiude la
   conversazione;
 - se dici «pausa» (o «standby», «basta così») Gas chiude la conversazione e torna ad

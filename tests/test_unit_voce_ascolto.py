@@ -673,6 +673,27 @@ def test_rilevatore_azzerato_prima_della_finestra():
     assert f.tipi == ["parola", "seguito"]
 
 
+RUMORE_PAROLA = [5] * a.BLOCCO      # rumore che il rilevatore scambia per la parola
+
+
+def test_parola_lontana_dalla_voce_non_conta():
+    """V-1 ve su 562f137 (R-680-2): un falso positivo sentito 20 s prima del parlato della
+    stanza non lo rende un turno normale: resta di seguito (e oltre 15 s non parte)."""
+    f = FintiSeguito([])
+    f.rilevatore = lambda b: 1.0 if (b is RUMORE_PAROLA or b == PAROLA) else 0.0
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 3), RUMORE_PAROLA, (SILENZIO, _sec(20)),
+                       *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito"]
+
+
+def test_parola_appena_prima_della_voce_conta():
+    f = FintiSeguito([])
+    f.rilevatore = lambda b: 1.0 if (b is RUMORE_PAROLA or b == PAROLA) else 0.0
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 3), RUMORE_PAROLA, (SILENZIO, 10),
+                       *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola"]
+
+
 def test_senza_parola_la_frase_lunga_resta_scartata():
     f = _finti_con_parola_detta()
     f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE, 5), (VOCE, _sec(18)),

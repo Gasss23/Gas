@@ -102,6 +102,10 @@ FINESTRA_PREDEFINITA_S = 40.0
 # della registrazione si tiene solo da poco prima della parola (openWakeWord la segnala a
 # fine parola): il parlato della stanza detto prima non parte come richiesta normale.
 PRIMA_DELLA_PAROLA_S = 1.5
+# V-1 della verifica esterna su 562f137 (= R-680-2): la parola sentita nella finestra conta
+# solo se la voce comincia entro questo tempo; una parola (o un falso positivo) sentita molto
+# prima non rende «normale» il parlato che arriva dopo.
+PAROLA_VALIDA_S = 2.0
 SEGUITO_MAX_PREDEFINITO_S = 15.0
 COMANDI = ("fine", "pausa")   # valori di X-Gas-Comando che il client conosce
 ATTESA_VOCE_S = 5.0          # dopo la parola, se non parli entro questo tempo si torna in attesa
@@ -446,11 +450,19 @@ class Ascolto:
         if self.finestra_s <= 0:
             return None
         di_fila: List[Blocco] = []
+        da_parola: Optional[int] = None   # blocchi passati dall'ultima parola sentita
         for _ in range(blocchi_per(self.finestra_s)):
             b = self._prossimo()
             if b is None:
                 return None
-            self._parola_nel_blocco(b)  # V-1 bot #341: il rilevatore resta acceso
+            if self._parola_nel_blocco(b):  # V-1 bot #341: il rilevatore resta acceso
+                da_parola = 0
+            elif da_parola is not None:
+                da_parola += 1
+                if da_parola > blocchi_per(PAROLA_VALIDA_S):
+                    # parola troppo lontana dall'inizio della voce: non conta (R-680-2)
+                    self.parola_nella_finestra = False
+                    da_parola = None
             if rms(b) >= self.voce_rms:
                 di_fila.append(b)
                 if len(di_fila) >= blocchi_per(INIZIO_VOCE_S):
