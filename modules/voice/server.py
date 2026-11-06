@@ -69,6 +69,7 @@ from __future__ import annotations
 
 import base64
 import hmac
+import http.client
 import json
 import logging
 import os
@@ -121,12 +122,52 @@ _ATTIVAZIONE_UNA = r"(?:(?:ehi|ehy|hey|ei|ciao)\W+)?(?:jarvis|gas|gus)"
 _SOLO_ATTIVAZIONE = re.compile(
     rf"^[^\w]*{_ATTIVAZIONE_UNA}(?:\W+{_ATTIVAZIONE_UNA})*[^\w]*$", re.IGNORECASE)
 _RISPOSTA_ATTIVAZIONE = "Dimmi."
+# V15 (contratto dell'operatore via M1, 5 nov, lato client la chat Mani): una trascrizione
+# PARLATA fatta solo di «pausa», «standby» o «basta così» (anche con la parola di attivazione
+# davanti, stessa normalizzazione del filtro «Dimmi.») non va al cervello: risposta fissa
+# breve e intestazione «X-Gas-Comando: pausa»; il client chiude la conversazione e torna ad
+# aspettare «Hey Jarvis» (non è uno standby profondo).
+_SOLO_PAUSA = re.compile(
+    rf"^[^\w]*(?:{_ATTIVAZIONE_UNA}\W+)*(?:pausa|stand[\s-]*by|basta(?:\s+cos[iì])?)[^\w]*$",
+    re.IGNORECASE)
+RISPOSTA_PAUSA = "Va bene."
+COMANDO_PAUSA = "pausa"
+# V15: «X-Gas-Seguito: 1» = turno nella finestra di conversazione, SENZA parola di
+# attivazione (il client lo dice). Il cervello decide prima se il parlato è rivolto a Gas;
+# se no (persone che parlano fra loro, TV) risponde solo col segno fisso: niente voce,
+# niente testo al client, «X-Gas-Comando: fine» (il client chiude la conversazione).
+SEGNO_NON_PER_ME = "[NON_PER_ME]"
+COMANDO_FINE = "fine"
+# V15 (V-1 bot #339, sì di M1): nel seguito il forte ha chiesto uno strumento (che non c'è):
+# invece di chiudere in silenzio Gas dice come ottenere l'azione.
+RISPOSTA_SERVE_ATTIVAZIONE = "Per farlo ripetimelo dicendo prima Hey Jarvis."
+# R-675-3-M2: anche le varianti senza parentesi o in minuscolo («NON_PER_ME», «non per me»),
+# ma solo se la risposta è SOLO il segno: «Non per me è un problema, …» resta una risposta.
+# V-2 ve #339: il segno esatto con le parentesi vale anche se il modello aggiunge altro dopo
+# («[NON_PER_ME] (parlato fra persone)»): quel testo non va letto ad alta voce.
+# V-2 bot #339 su be60a21 (sì dell'operatore via M1): nel seguito il segno tra parentesi
+# chiude OVUNQUE stia («Non è rivolto a me [NON_PER_ME] (era la TV).»), anche scritto con
+# spazi («[NON PER ME]», R-676-1-M2): quel testo non va mai letto ad alta voce. Le forme
+# senza parentesi valgono solo come risposta intera.
+_NON_PER_ME = re.compile(
+    r"\[\s*non[_\s-]+per[_\s-]+me\s*\]|^\W*non[_\s-]+per[_\s-]+me\W*$", re.IGNORECASE)
+ISTRUZIONE_SEGUITO = (
+    "Questa frase è stata captata dal microfono nella finestra di conversazione, SENZA che "
+    "l'operatore dicesse la parola di attivazione: può essere rivolta a te oppure no "
+    "(persone che parlano fra loro, la TV, una telefonata). Se NON è chiaramente rivolta a "
+    f"te, rispondi SOLO con {SEGNO_NON_PER_ME} e nient'altro, senza usare strumenti. "
+    "Se è rivolta a te, rispondi normalmente, ma sappi che in questo turno NON hai "
+    "strumenti: se ti chiede un'azione (scrivere, salvare, cercare, ricordare) non dire mai "
+    "di averla fatta; rispondi che per farla deve ripeterla dicendo prima la parola di "
+    "attivazione.")
 # V14 (chat M2, «Sì, signore?» deciso dall'operatore; contratto con la chat Mani via M1):
 # GET /voce/conferma → audio/mpeg della frase detta con la voce attuale, suonato dal client
 # H24 al posto del bip dopo la parola di attivazione. In cache in memoria: un solo giro su
 # ElevenLabs per voce (la chiave della cache contiene l'id della voce, quindi se la voce
 # cambia si rigenera). ElevenLabs assente o in errore → 503/502 pulito, il client usa il bip.
 _ENDPOINT_CONFERMA = "/voce/conferma"
+CONFERMA_TIMEOUT_S = 5.0  # V15 (V-2 bot #335): la conferma non può tenere il server 30 s
+CONFERMA_PAUSA_ERRORE_S = 60.0
 FRASE_CONFERMA = "Sì, signore?"
 
 
@@ -349,6 +390,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
     voci_ammesse: frozenset = frozenset()
     # V14: («voce», frase) e MP3 di «Sì, signore?»; una sola voce in cache (None = vuota)
     conferma_cache: Optional[Tuple[Tuple[str, str], bytes]] = None
+    # V15 (V-2 bot #335): ultimo fallimento della conferma (chiave, istante): per
+    # CONFERMA_PAUSA_ERRORE_S non si richiama ElevenLabs (server a un thread: niente attese
+    # ripetute con ElevenLabs giù), il client suona il bip.
+    conferma_errore: Optional[Tuple[Tuple[str, str], float]] = None
+    _comando: Optional[str] = None  # V15: X-Gas-Comando della risposta in corso
     # V8b: voci della libreria mostrate dall'ultima ricerca {id: (proprietario, nome)};
     # si aggiungono all'account solo queste
     libreria_ammesse: Dict[str, Any] = {}
@@ -413,7 +459,15 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def end_headers(self) -> None:
+        """V15: un comando per il client (oggi solo «pausa») viaggia in X-Gas-Comando, in ogni
+        formato di risposta (JSON, MP3, NDJSON)."""
+        if self._comando:
+            self.send_header("X-Gas-Comando", self._comando)
+        super().end_headers()
+
     def do_POST(self) -> None:
+        self._comando = None
         self._t0 = time.monotonic()
         self._tempi = {}
         self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
@@ -468,6 +522,15 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if prompt is None:
                 return  # risposta (errore o «non ho capito») già inviata
             self._capito = prompt  # V6: la pagina mostra «Ho capito: …»
+            if _SOLO_PAUSA.match(prompt):  # V15: «pausa»/«standby»: nessun turno, il client si ferma
+                self._comando = COMANDO_PAUSA
+                if self._seguito():
+                    # V-2 bot #339 su 312cd86: nel seguito «basta!» può venire dalla stanza o
+                    # dalla TV: la conversazione si chiude lo stesso, ma senza voce
+                    self._send_json(200, {"content": "", "pausa": True})
+                    return
+                self._rispondi_senza_turno(RISPOSTA_PAUSA, "pausa")
+                return
             if _SOLO_ATTIVAZIONE.match(prompt):  # V13: solo «Hey Jarvis»: nessun turno
                 self._rispondi_senza_turno(_RISPOSTA_ATTIVAZIONE, "attivazione")
                 return
@@ -488,6 +551,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if cervello == "uso":
             if not is_audio:
                 self._send_json(400, {"error": _USO_FORTE})
+            elif self._seguito():  # V-1 ve #339: «forte» captato dalla stanza: niente voce
+                self._chiudi_seguito()
             else:
                 self._rispondi_senza_turno(_USO_FORTE_PARLATO, "uso")
             return
@@ -509,24 +574,44 @@ class VoiceHandler(BaseHTTPRequestHandler):
         t_cervello: Optional[float] = None
         try:
             result_content: Optional[str] = None
+            strumento_negato = False  # V15: turno effimero che chiedeva uno strumento
             kw: Dict[str, Any] = {}
             if cervello == "forte":
                 kw["cervello"] = "forte"
             if is_audio:  # V3/V4: risposte a voce corte, col dettaglio a schermo se c'è
                 kw["istruzione_turno"] = istruzione_turno_voce(self._vuole_audio_testo())
+                if self._seguito():  # V15: prima decidere se il parlato è per Gas
+                    kw["istruzione_turno"] += " " + ISTRUZIONE_SEGUITO
+                    # R-675-1-M2: parlato della stanza (terzi, TV) = possibili dati personali:
+                    # solo il cervello forte, mai i gratuiti (CLAUDE.md §2); forte fermo →
+                    # errore dichiarato e il client chiude la conversazione. NB: la trascrizione
+                    # (Groq Whisper) riceve l'audio anche qui, come per tutta la voce: rischio
+                    # accettato dall'operatore il 6 nov (V-2 bot #339, R-684-2-M2)
+                    kw["cervello"] = "forte"
+                    # R-675-1-M2 (scelta A dell'operatore): turno effimero nel kernel: nessuno
+                    # strumento offerto, niente storia condivisa del parlato della stanza
+                    kw["effimero"] = True
             t_cervello = time.monotonic()
             turno = self.kernel.run_turn(prompt, **kw)
-            for event in turno:
-                etype = event.get("type")
-                if etype == "final":
-                    result_content = event.get("content", "")
-                    self._segna("cervello", t_cervello)
-                    break
-                elif etype == "error":
-                    self._segna("cervello", t_cervello)
-                    self._send_json(500, {"error": event.get("content", "Errore pipeline")})
-                    return
-                # type="tool_res": consumato in silenzio
+            try:
+                for event in turno:
+                    etype = event.get("type")
+                    if etype == "final":
+                        result_content = event.get("content", "")
+                        strumento_negato = bool(event.get("strumento_negato"))
+                        self._segna("cervello", t_cervello)
+                        break
+                    elif etype == "error":
+                        self._segna("cervello", t_cervello)
+                        self._send_json(500, {"error": event.get("content", "Errore pipeline")})
+                        return
+                    # type="tool_res": consumato in silenzio
+            finally:
+                # R-677-1-M2: il kernel chiude il turno (e il turno effimero rimette la storia
+                # vera) SUBITO, non quando il generatore viene raccolto
+                close = getattr(turno, "close", None)
+                if callable(close):
+                    close()
         except Exception as exc:
             if t_cervello is not None:  # R-614-1-M2: anche un cervello che si rompe ha un tempo
                 self._segna("cervello", t_cervello)
@@ -539,6 +624,29 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._segna("cervello", t_cervello)
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
+
+        if is_audio and self._seguito() and strumento_negato:
+            self._rispondi_senza_turno(RISPOSTA_SERVE_ATTIVAZIONE, "serve_attivazione")
+            return
+
+        if is_audio and self._seguito() and (_NON_PER_ME.search(result_content)
+                                             or not result_content.strip()):
+            # V15: parlato non rivolto a Gas: niente voce né testo (privacy della stanza)
+            log.info("turno di seguito non rivolto a Gas: conversazione chiusa")
+            self._chiudi_seguito()
+            return
+
+        if is_audio and self._seguito():
+            # V15 punto 1 (sì dell'operatore via M1, V-1 (a) bot #339): il seguito rivolto a
+            # Gas entra nella storia vera (il turno effimero non l'ha scritta), così il
+            # seguito dopo lo ricorda. Il generatore è già chiuso: storia vera ripristinata.
+            registra = getattr(self.kernel, "registra_seguito", None)
+            if callable(registra):
+                try:
+                    if not registra(prompt, result_content):
+                        log.warning("seguito rivolto a Gas non salvato nella storia")
+                except Exception as exc:  # §9: la risposta parte lo stesso
+                    log.warning("registra_seguito eccezione: %s", exc)
 
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
             self._do_audio_testo_response(result_content)
@@ -568,6 +676,16 @@ class VoiceHandler(BaseHTTPRequestHandler):
         con risposta a voce, nell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
         adesso = time.monotonic()
         return [t for t in self.turni_parlati if adesso - t < 3600]
+
+    def _chiudi_seguito(self) -> None:
+        """V15: chiude la conversazione senza voce né testo (X-Gas-Comando: fine)."""
+        self._comando = COMANDO_FINE
+        self._send_json(200, {"content": "", "fine": True})
+
+    def _seguito(self) -> bool:
+        """V15: il client dice che il turno è nella finestra di conversazione, senza parola
+        di attivazione (X-Gas-Seguito: 1). Vale solo per il parlato."""
+        return self._parlato and self.headers.get("X-Gas-Seguito", "").strip() == "1"
 
     def _formato(self) -> str:
         return self.headers.get("X-Gas-Formato", "").strip().lower()
@@ -731,6 +849,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
             # V6: Groq ha risposto ma il testo è probabilmente sbagliato: si chiede di
             # ripetere invece di rispondere a caso. Nel log solo il motivo, mai il parlato.
             log.info("trascrizione scartata: %s", exc.motivo)
+            if self._seguito():  # R-676-3 (review Mani): rumore della stanza → chiude, niente voce
+                self._chiudi_seguito()
+                return None
             self._capito = exc.testo
             self._rispondi_senza_turno(_NON_HO_CAPITO, "non_capito")
             return None
@@ -749,6 +870,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
         self._segna("trascrizione", t)
         if not text:
+            if self._seguito():  # R-676-3: silenzio nella finestra di conversazione → chiude
+                self._chiudi_seguito()
+                return None
             self._send_json(400, {"error": "Trascrizione vuota (silenzio o formato non supportato)"})
             return None
 
@@ -760,6 +884,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
     # ── V8 (chat M2): «prova voci» — elenco delle voci e prova con una frase fissa ──
 
     def do_GET(self) -> None:
+        self._comando = None
         self._t0 = time.monotonic()
         self._tempi = None
         if self.path == _ENDPOINT_CONFERMA:  # V14
@@ -810,19 +935,27 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if cache is not None and cache[0] == chiave:
             self._send_audio(cache[1])
             return
+        errore = type(self).conferma_errore
+        if (errore is not None and errore[0] == chiave
+                and time.monotonic() - errore[1] < CONFERMA_PAUSA_ERRORE_S):
+            self._send_json(502, {"error": "Conferma non disponibile (errore recente di ElevenLabs)"})
+            return
         try:
-            audio = synthesize_speech(FRASE_CONFERMA, api_key, voice_id)
+            audio = synthesize_speech(FRASE_CONFERMA, api_key, voice_id,
+                                      timeout=CONFERMA_TIMEOUT_S)
         except ElevenLabsTTSError as exc:
             log.warning("ElevenLabs conferma status=%s: %s", exc.status, exc.message)
-            self._send_json(502, {"error": f"Errore TTS ElevenLabs: {exc.message}"})
-            return
-        except OSError as exc:
+            audio, motivo = b"", f"Errore TTS ElevenLabs: {exc.message}"
+        except (OSError, http.client.HTTPException) as exc:  # R-669-1-M2: anche IncompleteRead
             log.warning("ElevenLabs conferma rete: %s", exc)
-            self._send_json(502, {"error": "Errore di rete verso ElevenLabs TTS"})
-            return
+            audio, motivo = b"", "Errore di rete verso ElevenLabs TTS"
+        else:
+            motivo = "Errore TTS ElevenLabs: audio vuoto"
         if not audio:  # mai in cache una risposta vuota: il client ripiega sul bip
-            self._send_json(502, {"error": "Errore TTS ElevenLabs: audio vuoto"})
+            type(self).conferma_errore = (chiave, time.monotonic())
+            self._send_json(502, {"error": motivo})
             return
+        type(self).conferma_errore = None
         type(self).conferma_cache = (chiave, audio)
         self._send_audio(audio)
 

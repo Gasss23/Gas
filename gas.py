@@ -908,6 +908,26 @@ def _rung_disponibile(name: str, env: str) -> bool:
     return bool(os.environ.get(env))
 
 
+# V15 R-682-1-M2 (scelta A dell'operatore via M1, 6 nov): i messaggi di un turno di seguito
+# a voce (parlato captato SENZA parola di attivazione, giudicato rivolto a Gas dal forte)
+# portano questa chiave nella storia. Finché uno di loro è nella finestra, il turno va SOLO
+# al forte (il cervello che risponde non è mai un gratuito, CLAUDE.md §2); la chiave non va ai
+# provider. Eccezione ACCETTATA dall'operatore (V-2 bot #339, 6 nov): la trascrizione Groq
+# Whisper riceve anche l'audio dei seguiti, come tutta la voce (R-684-2-M2).
+CHIAVE_SEGUITO_VOCE = "seguito_voce"
+
+
+def _ha_seguito_voce(messaggi: List[Dict[str, Any]]) -> bool:
+    return any(isinstance(m, dict) and m.get(CHIAVE_SEGUITO_VOCE) for m in messaggi)
+
+
+def _senza_segni_interni(messaggi: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Copia dei messaggi senza la chiave interna del seguito (i provider vedono solo i campi
+    del formato chat). Nessun messaggio tolto né tagliato."""
+    return [({k: v for k, v in m.items() if k != CHIAVE_SEGUITO_VOCE}
+             if CHIAVE_SEGUITO_VOCE in m else m) for m in messaggi]
+
+
 def _cascata_provider(compito: str) -> List[Tuple[str, str, Optional[str], str]]:
     """Cascata dei provider (nome, env-chiave, base_url, modello) per la classe di
     compito ('semplice' o altro = 'complesso'). Punto UNICO condiviso da run_turn e
@@ -1565,6 +1585,9 @@ class GasKernel:
                 {"role": "assistant",
                  "content": "Compreso. Proseguo dalla conversazione precedente."},
             ] + recent
+            if _ha_seguito_voce(to_compress):
+                # R-682-1-M2: il riepilogo contiene parlato di un seguito: resta solo-forte
+                self.history[0][CHIAVE_SEGUITO_VOCE] = True
             self._save_history()
             logging.info(
                 "Cronologia compressa: %d→%d messaggi (%d old + %d boundary → riepilogo)",
@@ -1802,6 +1825,27 @@ class GasKernel:
         if name: entry["name"] = name
         self.history.append(entry)
 
+    def registra_seguito(self, domanda: str, risposta: str) -> bool:
+        """V15 punto 1 (sì dell'operatore via M1, 6 nov; V-1 (a) bot #339): un turno di
+        seguito (effimero) che il chiamante ha giudicato RIVOLTO a Gas entra nella storia vera
+        come coppia user/assistant, così il seguito dopo lo ricorda. Va chiamato DOPO aver
+        chiuso il generatore del turno effimero (storia vera già ripristinata). Il parlato
+        «non per me» non passa mai di qui. Fail-safe §9: True solo se salvato su disco."""
+        if not (isinstance(domanda, str) and domanda.strip()
+                and isinstance(risposta, str) and risposta.strip()):
+            return False
+        try:
+            self._compress_history_if_needed()
+            self._add_to_history("user", content=domanda)
+            self._add_to_history("assistant", content=risposta)
+            # R-682-1-M2: segnati, così i turni che li hanno in finestra vanno solo al forte
+            self.history[-2][CHIAVE_SEGUITO_VOCE] = True
+            self.history[-1][CHIAVE_SEGUITO_VOCE] = True
+            return self._save_history(fine_turno=True)
+        except Exception as e:
+            logging.warning("registra_seguito: storia non aggiornata: %s", e)
+            return False
+
     def _get_window(self, n: int = 10) -> List[Dict[str, Any]]:
         if not self.history:
             return []
@@ -2037,7 +2081,12 @@ class GasKernel:
     def _finestra_e_contaminata(window: List[Dict[str, Any]]) -> bool:
         """True se la finestra contiene un tool result di un tool contaminante (§3b) o un
         riepilogo di compressione che non si dichiara pulito (R-203-1).
-        Puro (no side-effect), riutilizzabile nei test diretti (R-c2-3)."""
+        Puro (no side-effect), riutilizzabile nei test diretti (R-c2-3).
+        V-1 bot #339 su 16dd4a5: anche un seguito a voce (parlato captato SENZA parola di
+        attivazione: stanza, TV) è input non fidato, così le scritture dei turni dopo vanno
+        alla firma e un riepilogo che lo contiene si dichiara INPUT ESTERNO."""
+        if _ha_seguito_voce(window):
+            return True
         for m in window:
             if m.get("role") == "tool" and m.get("name") in UNTRUSTED_INPUT_TOOLS:
                 return True
@@ -3959,6 +4008,13 @@ class GasKernel:
             if not window:
                 esito["errore"] = "cronologia vuota: niente su cui riflettere"
                 return esito
+            if _ha_seguito_voce(window):
+                # R-682-1/R-683-1-M2: il parlato di un seguito a voce non va ai gratuiti della
+                # riflessione, né in un recap che il pin rimetterebbe in ogni turno: niente
+                # riflessione finché il seguito è nella finestra (nessun LLM chiamato)
+                esito["errore"] = ("finestra con un seguito a voce: riflessione rimandata "
+                                   "(il parlato della stanza non va ai modelli gratuiti)")
+                return esito
             # Fiducia FAIL-CLOSED su TUTTA la cronologia, non sulla sola finestra:
             # - R-200-1: un output di tool fuori da _TOOL_OUTPUT_FIDATO contamina;
             # - R-201-1: anche se è uscito dalla finestra (ripetuto per molti turni);
@@ -3970,7 +4026,7 @@ class GasKernel:
                 (m.get("role") == "tool" and m.get("name") not in _TOOL_OUTPUT_FIDATO)
                 or (m.get("role") == "user"
                     and str(m.get("content") or "").startswith(_RIEPILOGO_COMPRESSIONE_PREFIX))
-                for m in self.history)
+                for m in self.history) or _ha_seguito_voce(self.history)  # V-1 bot e44c4b0
             # R-371-2: anche un pin non fidato visto in questa sessione, o mostrato
             # adesso, rende la riflessione non fidata (il recap non viene reiniettato).
             if not contaminata:
@@ -4693,9 +4749,18 @@ class GasKernel:
 
     def run_turn(self, user_prompt: str,
                  cervello: Optional[str] = None,
-                 istruzione_turno: Optional[str] = None) -> Generator[Dict[str, Any], None, None]:
+                 istruzione_turno: Optional[str] = None,
+                 effimero: bool = False) -> Generator[Dict[str, Any], None, None]:
         # V3 voce (chat M2): `istruzione_turno` vale SOLO per questo turno: va in coda al
         # messaggio system (come i pin), fuori dalla finestra e dalla cronologia.
+        # V15 voce (chat M2, decisione dell'operatore 5 nov, R-675-1-M2): `effimero` = turno
+        # di parlato captato senza parola di attivazione (stanza, TV): SOLO il cervello forte,
+        # NESSUNO strumento offerto (non solo vietato nel prompt), e il turno non lascia
+        # traccia nella storia condivisa (né in memoria né su .gas_history.json): il modello
+        # vede la storia di prima più questa frase, poi tutto torna com'era. Nel diario resta
+        # solo il «turno_fine» (esito, provider), mai il parlato.
+        if effimero:
+            cervello = "forte"
         # --- Fetta 1 auto-apprendimento: tracking per turno_fine ---
         _turno_id = str(uuid.uuid4())
         _turno_tool_n = 0
@@ -4749,15 +4814,35 @@ class GasKernel:
                                 "Il turno si è fermato prima della chiamata successiva. "
                                 "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
 
+        # V15: per il turno effimero si lavora su una COPIA della storia (stessi messaggi, lista
+        # nuova) e niente si salva; nel finally torna la storia vera, intatta.
+        _storia_vera: Optional[List[Dict[str, Any]]] = None
+        _offerta: Dict[str, Any] = {"tools": self.tools_schema, "tool_choice": "auto"}
+        if effimero:
+            _storia_vera = self.history
+            self.history = list(self.history)
+            _offerta = {}
+
+        def _salva() -> None:
+            if not effimero:
+                self._save_history()
+
         try:
             # Compressione automatica cronologia (FASE 2.5): no-op se sotto soglia.
             # Zero token LLM. Fail-safe §9: eccezioni → history invariata, turno OK.
-            self._compress_history_if_needed()
+            if not effimero:
+                self._compress_history_if_needed()
             self._add_to_history("user", content=user_prompt)
 
             from brains.router import classifica_compito
             # R2 via B: «forte» solo su richiesta esplicita, mai dal classificatore.
             compito = "forte" if cervello == "forte" else classifica_compito(user_prompt)
+            _solo_forte_seguito = compito != "forte" and _ha_seguito_voce(self._get_window())
+            if _solo_forte_seguito:
+                # R-682-1-M2 (scelta A dell'operatore): un seguito a voce è ancora nella
+                # finestra → solo il forte; spento o al tetto → turno fermo dichiarato
+                logging.info("finestra con un seguito a voce: turno solo sul forte")
+                compito = "forte"
             _turno_classe = compito
 
             # Iniezione memoria ALWAYS-ON (fetta 2b): calcolata UNA volta per turno
@@ -4833,7 +4918,7 @@ class GasKernel:
                         # V-1 bot #222: conta anche il pin che mostra dati non fidati.
                         _finestra_contaminata = (self._finestra_e_contaminata(_window)
                                                  or getattr(self, "_pin_non_fidato", False))
-                        payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin + recap_pin + turno_pin}] + _window
+                        payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin + recap_pin + turno_pin}] + _senza_segni_interni(_window)
                         # FETTA 1 (chiude F2): budget ricontrollato prima di OGNI chiamata,
                         # non solo a inizio turno. Superato a metà turno → il turno si
                         # ferma DICHIARATO (niente fallback: il tetto vale per tutti i
@@ -4863,8 +4948,7 @@ class GasKernel:
                         _chiamato_rung = True
                         try:
                             response = client.chat.completions.create(
-                                model=model, messages=payload,
-                                tools=self.tools_schema, tool_choice="auto"
+                                model=model, messages=payload, **_offerta
                             )
                         except Exception as e:
                             # R-496-1: una chiamata al forte fallita dopo il consumo
@@ -4889,8 +4973,7 @@ class GasKernel:
                                 return
                             try:
                                 response = client.chat.completions.create(
-                                    model=model, messages=payload,
-                                    tools=self.tools_schema, tool_choice="auto"
+                                    model=model, messages=payload, **_offerta
                                 )
                                 logging.warning(f"retry Gemini 400 ({name}): OK")
                             except Exception:
@@ -4906,6 +4989,16 @@ class GasKernel:
                                 getattr(usage, "costo_equivalente_usd", 0.0) if usage else 0.0)
                         msg = response.choices[0].message
 
+                        if msg.tool_calls and effimero:
+                            # V15: nessuno strumento offerto; se il modello ne chiede uno
+                            # comunque, NON si esegue: il turno finisce senza risposta
+                            logging.warning("turno effimero: chiamata a strumento ignorata")
+                            _turno_provider = name
+                            _turno_final = True
+                            # V15: chi chiama sa che serviva uno strumento (la voce chiede di
+                            # ripetere con la parola di attivazione invece di tacere)
+                            yield {"type": "final", "content": "", "strumento_negato": True}
+                            return
                         if msg.tool_calls:
                             self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
                             for tc in msg.tool_calls:
@@ -5008,14 +5101,23 @@ class GasKernel:
                                 if tc.function.name in UNTRUSTED_INPUT_TOOLS:
                                     _finestra_contaminata = True
                                 yield {"type": "tool_res", "output": out, "cancello": _cancello}
-                            self._save_history()
+                            _salva()
                             # continua il loop per ottenere la risposta finale
                         elif msg.content:
                             self._add_to_history("assistant", content=msg.content)
-                            self._save_history()
+                            _salva()
                             _turno_provider = name  # Fetta B: provider che ha prodotto la risposta
                             _turno_final = True
                             yield {"type": "final", "content": msg.content}
+                            return
+                        elif effimero:
+                            # V-3 bot #339 su be60a21: nel turno effimero una risposta vuota
+                            # del forte è «niente da dire» (chi chiama chiude in silenzio),
+                            # non un guasto da far finire in «Pipeline esausta» (HTTP 500)
+                            logging.info(f"turno effimero: risposta vuota da {name}")  # R-682-2-M2
+                            _turno_provider = name
+                            _turno_final = True
+                            yield {"type": "final", "content": ""}
                             return
                         else:
                             _motivi.append(f"{name}: risposta vuota")
@@ -5048,10 +5150,15 @@ class GasKernel:
                     continue
             _dettaglio = "; ".join(_motivi) if _motivi else "nessun provider in cascata"
             logging.warning(f"Pipeline esausta: {_dettaglio}")
+            if _solo_forte_seguito:  # R-683-2-M2: l'operatore sa perché niente gratuiti
+                _dettaglio += ("; turno solo sul cervello forte perché nella conversazione "
+                               "recente c'è un seguito a voce (dati della stanza: mai ai cervelli gratuiti)")
             yield {"type": "error",
                    "content": f"Pipeline esausta: nessun cervello ha risposto. {_dettaglio}."}
         finally:
-            if self._storia_rimandata:  # R-435-1: turno finito senza risposta finale
+            if _storia_vera is not None:  # V15: il turno effimero non lascia traccia
+                self.history = _storia_vera
+            elif self._storia_rimandata:  # R-435-1: turno finito senza risposta finale
                 self._save_history(fine_turno=True)
             _chiudi_turno()
             self._invia_avvisi_lead(_avvisi_lead, _lead_nuovi)

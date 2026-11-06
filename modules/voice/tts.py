@@ -81,9 +81,11 @@ def synthesize_speech(
     api_key: str,
     voice_id: str,
     *,
+    timeout: float = _TIMEOUT,
     _conn_factory: Optional[Callable[[], http.client.HTTPSConnection]] = None,
 ) -> bytes:
     """Sintetizza testo in audio MP3 via ElevenLabs Flash. Ritorna i byte MP3 grezzi.
+    `timeout` (secondi): V15, la conferma «Sì, signore?» ne usa uno corto.
 
     Raises:
         ElevenLabsTTSError: se ElevenLabs risponde con status != 200
@@ -103,7 +105,7 @@ def synthesize_speech(
     conn = (
         _conn_factory()
         if _conn_factory is not None
-        else http.client.HTTPSConnection(_ELEVENLABS_HOST, timeout=_TIMEOUT)
+        else http.client.HTTPSConnection(_ELEVENLABS_HOST, timeout=timeout)
     )
     try:
         conn.request(
