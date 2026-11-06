@@ -98,3 +98,14 @@
   - **Difese contro le risposte per sbaglio**: registrazione di seguito al tetto → scartata; tetto di seguito più corto; header X-Gas-Seguito, con cui il cervello decide se il parlato è rivolto a Gas e, se no, il server risponde X-Gas-Comando: fine. Lato client Mani, lato server M2.
   - **Voce**: l'operatore vorrebbe quella vera del JARVIS dei film. NO, è un clone di un attore reale (regola già decisa). Proposta: scegliere sulla pagina /voci una voce maschile inglese, calma, da maggiordomo.
   - **Parola «Jarvis» da sola**: serve un modello addestrato da noi, insieme a «Hey Gas» (fetta futura).
+
+## PROMEMORIA DELL'OPERATORE (6 novembre) — da ricordargli
+1. **A fine lavoro sulla voce**: provare a completare un compito della roadmap interamente a voce, con Jarvis.
+2. **Accesso al terminale del Mac (problema aperto, importante)**: oggi né M1 né Gas possono usare il terminale del Mac per scrivere le cose che servono (Remote Control bloccato: cartella «not_available», fiducia negata in automatico). Decisione dell'operatore: per ora l'accesso al terminale lo deve avere SOLO M1 (Claude Code). Gas lo avrà quando sarà pronto, e se ne riparla allora.
+
+## Stato 6 novembre, notte
+- Mergiate #338 (pausa.sh/riprendi.sh, provata sul Mac) e #340 («Sì, signore?»).
+- **#339** (M2, pausa a voce e turni di seguito): l'operatore ha detto sì al punto 1, quindi i seguiti rivolti a Gas vanno nella storia e il parlato «non per me» resta fuori. Merge quando i controlli sono puliti.
+- **#341** (Mani, finestra di 40 s e difese): sì dell'operatore, merge SOLO dopo la #339.
+- Dopo la #339: la fetta di M2 sul parser del bot («ad alta voce» letto come gravità ALTA), già autorizzata con il «sì bot».
+- L'operatore proverà la voce nei prossimi giorni.
