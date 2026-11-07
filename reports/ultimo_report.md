@@ -1,21 +1,18 @@
-# Ultimo report — 2026-11-07 — fetta 44 (chat Mani): riserve dell'ascolto, proposta «Hey Gas», riserve della PR #341
+# Ultimo report — 2026-11-07 — Sottofondo: chiusura delle riserve BASSE (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 44 (review #702/#703 APPROVATO CON RISERVE, solo BASSE): decide l'operatore tramite M1.
-2. «Hey Gas» (reports/proposta_parola_gas.md): si può addestrare in circa 1 ora su Colab senza cambiare codice. La licenza dei dati negativi e l'italiano sono da valutare. Decidere se procedere e se aggiungere il verificatore personale.
+1. Merge della PR di questa fetta (riserve BASSE: sì via M1).
+2. Prova sul Mac: a voce un compito lungo → «ci lavoro» e poi avviso su Telegram.
 
-## Esito
+## Esito delle fette
 
-- **PR #341**: MERGIATA (c1a4503) il 2026-11-07, col sì dell'operatore e il rischio R-694-1/R-695-2 accettato. Prima del merge ho dovuto unire main altre due volte, con le PR #344 e #345 di M2 (review #697 e #701 APPROVATO).
-- **Fetta 44**: FATTA.
-  - riprendi.sh controlla che l'ascolto resti acceso e mostra l'errore all'ultimo tentativo;
-  - pausa.sh dice «non installato»;
-  - eco quando Gas dice «Hey Jarvis»;
-  - V-2/V-3/V-4 della #341.
-- **Riserve della #341**: FATTE.
-  - La finestra va da 0 a 120 s, come la pagina web.
-  - Ridire la parola nella finestra fa ripartire il conto dei turni.
-  - Dopo «Hey Jarvis» detto nella finestra (senza bip) si può fare una pausa fino a 5 s; rumori brevi non tengono aperta la registrazione (R-702-1).
-- Test: suite ascolto da 257 a 283 passed; 6 mutanti presi.
-- Review #702 e #703 APPROVATO CON RISERVE: resta R-702-2 BASSA, da provare sul Mac.
+- **PR #345** (fetta 3 sottofondo): `MERGIATA` (5c79886).
+- **Fetta BASSE del sottofondo**: `FATTA` — pid riusato, «creato» sbagliato, avviso al crash a ogni turno, niente avvisa_operatore nel compito in sottofondo, «fermato» solo se vero, pulizia dopo 7 giorni, inf/nan; review #701-M2 e #702-M2 APPROVATO CON RISERVE (R-701-3-M2, R-702-1-M2 BASSE).
+- **Verifica esterna #346**: V-1 BASSA (orologio indietro → compito vero fermato) e V-2 `CORRETTE` (fb620f5, review #703-M2 APPROVATO CON RISERVE, R-703-1/2-M2 BASSE).
+- **Conflitto con main (bot #346 V-1 MEDIA)**: `RISOLTO` col merge 643da99 della #341 di Mani (solo report e memoria; review #704-M2 APPROVATO).
+- Test: kernel 1100 PASS 0 FAIL; sottofondo 62 passed; sottofondo + voce_ascolto dopo il merge 319 passed.
+
+## Anomalie
+
+- Durante i test un mio test senza `killpg` neutralizzato ha mandato SIGTERM a pytest (nessun danno, corretto prima del commit).
