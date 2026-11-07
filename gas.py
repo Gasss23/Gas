@@ -4554,6 +4554,8 @@ class GasKernel:
         di firma inutile. None = si parcheggia.
         Mai eccezioni: nel dubbio si parcheggia (la firma resta il cancello)."""
         try:
+            if getattr(self, "nel_sottofondo", False):
+                return self._AVVISO_NEL_SOTTOFONDO
             if self._avvisi_turno >= 1:
                 return self._UNA_NOTIFICA_PER_TURNO
             from modules.telegram.avviso import rifiuto_al_cancello
@@ -4564,6 +4566,19 @@ class GasKernel:
             logging.warning("[GATE] controllo di avvisa_operatore fallito (%s)",
                             type(e).__name__)
             return None
+
+    # Bot #345 (head e323b60) V-2: nel processo in sottofondo avvisa_operatore non c'è, così il
+    # turno non può consumare l'ultimo avviso del giorno promesso per la fine del compito.
+    _AVVISO_NEL_SOTTOFONDO = ("Operazione negata: nel compito in sottofondo l'avviso "
+                              "all'operatore parte da solo alla fine. Scrivi tutto nella "
+                              "risposta.")
+
+    @classmethod
+    def per_sottofondo(cls, root: str) -> "GasKernel":
+        """Kernel del processo `gas.py sottofondo <id>`: senza avvisa_operatore (vedi sopra)."""
+        kernel = cls(root)
+        kernel.nel_sottofondo = True
+        return kernel
 
     def _in_sottofondo(self, args: Dict[str, Any], firmata: bool = False) -> str:
         """Fetta 3: mette in coda il compito e avvia il processo separato. Solo nei turni
@@ -4782,6 +4797,8 @@ class GasKernel:
                 # Notifica all'operatore (R6): solo TELEGRAM_ALLOWED_IDS, tetto al giorno
                 # in modules/telegram/avviso.py; qui il tetto di UNA per turno (non per
                 # l'azione firmata: è un'altra azione, decisa dall'operatore).
+                if getattr(self, "nel_sottofondo", False):
+                    return self._AVVISO_NEL_SOTTOFONDO
                 if not firmata and getattr(self, "_avvisi_turno", 0) >= 1:
                     return self._UNA_NOTIFICA_PER_TURNO
                 from modules.telegram.avviso import avvisa_operatore_esito
@@ -4852,6 +4869,14 @@ class GasKernel:
         self._avvisi_turno = 0  # avvisa_operatore: una notifica per turno
         # Fetta 3: in_sottofondo vale solo nei turni parlati non effimeri
         self._turno_voce = bool(voce and not effimero)
+        if not getattr(self, "nel_sottofondo", False):
+            # Bot #345 (head 46596b4) V-1: un compito in sottofondo il cui processo è morto
+            # diventa «ko» con avviso alla prima interazione (controlla non solleva mai).
+            try:
+                from modules import sottofondo as _sottofondo
+                _sottofondo.controlla(self.root)
+            except Exception as e:  # §9
+                logging.warning("sottofondo: controllo a inizio turno fallito: %s", e)
 
         def _chiudi_turno() -> None:
             nonlocal _turno_fine_scritto
@@ -4897,6 +4922,10 @@ class GasKernel:
         _offerta: Dict[str, Any] = {"tools": self.tools_schema, "tool_choice": "auto"}
         if voce and not effimero:  # fetta 3: a voce anche il compito in sottofondo
             _offerta = {"tools": self.tools_schema + [self.STRUMENTO_SOTTOFONDO],
+                        "tool_choice": "auto"}
+        if getattr(self, "nel_sottofondo", False):  # bot #345 V-2: niente avvisa_operatore
+            _offerta = {"tools": [s for s in self.tools_schema
+                                  if s.get("function", {}).get("name") != "avvisa_operatore"],
                         "tool_choice": "auto"}
         if effimero:
             _storia_vera = self.history
@@ -6429,7 +6458,7 @@ def main():
     if len(sys.argv) > 2 and sys.argv[1] == "sottofondo":  # fetta 3: processo separato
         from modules import sottofondo
         _root = Path.cwd()
-        sys.exit(sottofondo.esegui(_root, sys.argv[2], lambda: GasKernel(str(_root))))
+        sys.exit(sottofondo.esegui(_root, sys.argv[2], lambda: GasKernel.per_sottofondo(str(_root))))
     if len(sys.argv) > 1 and sys.argv[1] == "telegram":
         from modules.telegram.bot import run_bot
         sys.exit(run_bot())
