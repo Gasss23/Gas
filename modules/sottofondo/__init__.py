@@ -179,7 +179,7 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
             logging.warning("sottofondo %s: oltre la durata, processo %s non verificabile: "
                             "non fermato", ident, pid)
     job = _leggi(cartella / f"{Path(ident).name}.json") if ident else None
-    annulla(root, ident, motivo)
+    chiuso = annulla(root, ident, motivo)
     # R-697-3-M2: si toglie il posto solo se è ancora quello letto (o senza id)
     rilettura = _leggi(posto)
     if rilettura is not None and str(rilettura.get("id") or "") == ident:
@@ -187,7 +187,7 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
             posto.unlink()
         except FileNotFoundError:
             pass
-    if job and job.get("stato") in ("in_coda", "in_corso"):
+    if chiuso and job:  # bot #346 V-1: niente «non è finito» per un compito appena riuscito
         _avvisa(root, f"Il compito in sottofondo «{_breve(job.get('compito', ''), 80)}» non è "
                       f"finito: {motivo}.", ident, avvisa)
 
@@ -251,14 +251,24 @@ def _pulisci_vecchi(root: Path) -> None:
             logging.warning("sottofondo: pulizia di %s non riuscita: %s", f.name, e)
 
 
+_ultima_pulizia = 0.0
+
+
 def controlla(root: Path, avvisa: Optional[Callable[[str, Path], Any]] = None) -> None:
     """Bot #345 (head 46596b4) V-1: chiamata dal kernel all'inizio di ogni turno, così un
     compito il cui processo è morto (kill, riavvio) diventa «ko» e l'operatore viene avvisato
     alla prima interazione, non solo alla richiesta del compito successivo. Costa solo un
     controllo di esistenza quando la coda è vuota. Mai eccezioni (§9)."""
+    global _ultima_pulizia
     try:
-        if (Path(root) / CARTELLA / ATTIVO).exists():
+        cartella = Path(root) / CARTELLA
+        if (cartella / ATTIVO).exists():
             _ripulisci(root, avvisa)
+        # Bot #346 (2d0977e) V-3: la pulizia dei compiti vecchi anche senza compiti nuovi,
+        # al massimo una volta l'ora per processo (un elenco della cartella).
+        if time.time() - _ultima_pulizia > 3600 and cartella.is_dir():
+            _ultima_pulizia = time.time()
+            _pulisci_vecchi(root)
     except Exception as e:
         logging.warning("sottofondo: controllo non riuscito: %s", e)
 
@@ -332,13 +342,20 @@ def avvia(root: Path, ident: str, popen: Callable[..., Any] = subprocess.Popen) 
         threading.Thread(target=attesa, daemon=True).start()
 
 
-def annulla(root: Path, ident: str, motivo: str) -> None:
-    """R-695-4-M2: avvio fallito → compito «ko» e coda libera (fail-safe, mai eccezioni)."""
+def annulla(root: Path, ident: str, motivo: str) -> bool:
+    """R-695-4-M2: avvio fallito → compito «ko» e coda libera (fail-safe, mai eccezioni).
+    Bot #346 (3ee02dd) V-1: solo un compito ancora in_coda/in_corso diventa «ko»; uno già
+    finito (il figlio ha scritto «ok» un attimo prima) resta com'è. True = il compito era aperto
+    e qui si è provato a chiuderlo (anche se la scrittura è fallita): va avvisato."""
+    chiuso = False
     try:
         cartella = Path(root) / CARTELLA
         percorso = cartella / f"{Path(ident).name}.json"
         job = _leggi(percorso)
-        if job:
+        if job and job.get("stato") in ("in_coda", "in_corso"):
+            # Bot #349 V-1: True appena si sa che il compito era aperto, anche se la scrittura
+            # poi fallisce (disco pieno): l'avviso all'operatore deve partire lo stesso
+            chiuso = True
             job.update(stato="ko", fine=time.time(), errore=motivo)
             _scrivi_privato(percorso, job)
         dati = _leggi(cartella / ATTIVO)
@@ -346,6 +363,7 @@ def annulla(root: Path, ident: str, motivo: str) -> None:
             (cartella / ATTIVO).unlink()
     except Exception as e:
         logging.warning("sottofondo %s: annullamento non riuscito: %s", ident, e)
+    return chiuso
 
 
 def _avvisa(root: Path, testo: str, ident: str,
@@ -376,10 +394,14 @@ def esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
         return _esegui(Path(root), ident, kernel_factory, avvisa)
     except Exception as e:
         logging.warning("sottofondo %s: interrotto: %s", ident, e)
-        annulla(root, ident, f"interrotto ({type(e).__name__})")
-        # R-696-2-M2: l'operatore, a cui è stato promesso un avviso, lo riceve anche qui
-        _avvisa(root, "Un compito in sottofondo si è interrotto per un errore interno.",
-                ident, avvisa)
+        # R-696-2-M2: l'operatore, a cui è stato promesso un avviso, lo riceve anche qui;
+        # R-706-2-M2: niente avviso se il compito risulta già chiuso da altri («ok» scritto
+        # prima dell'eccezione, o «ko» già avvisato); un file illeggibile non prova niente
+        chiuso = annulla(root, ident, f"interrotto ({type(e).__name__})")
+        dopo = _leggi(Path(root) / CARTELLA / f"{Path(ident).name}.json")
+        if chiuso or not dopo or dopo.get("stato") not in ("ok", "ko"):
+            _avvisa(root, "Un compito in sottofondo si è interrotto per un errore interno.",
+                    ident, avvisa)
         return 1
 
 
@@ -436,6 +458,10 @@ def _esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
         (cartella / ATTIVO).unlink()
     except FileNotFoundError:
         pass
+    except OSError as e:
+        # Bot #349 (147d6c8) V-1: il posto non tolto non deve impedire l'avviso finale
+        # promesso; il posto si libera da solo (processo morto → ripulito)
+        logging.warning("sottofondo %s: posto non tolto: %s", ident, e)
     titolo = _breve(job["compito"], 80)
     testo = (f"Ho finito il compito in sottofondo «{titolo}». {_breve(risposta, RISPOSTA_AVVISO_MAX)}"
              if ok else
