@@ -1,18 +1,18 @@
-# Ultimo report — 2026-11-07 — Sottofondo: chiusura delle riserve BASSE (chat M2)
+# Ultimo report — 2026-11-07 — Sottofondo: seconda fetta di riserve BASSE (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta (riserve BASSE: sì via M1).
+1. Merge della PR di questa fetta: da sola solo con verdetto pulito, altrimenti al rientro dell'operatore.
 2. Prova sul Mac: a voce un compito lungo → «ci lavoro» e poi avviso su Telegram.
 
 ## Esito delle fette
 
-- **PR #345** (fetta 3 sottofondo): `MERGIATA` (5c79886).
-- **Fetta BASSE del sottofondo**: `FATTA` — pid riusato, «creato» sbagliato, avviso al crash a ogni turno, niente avvisa_operatore nel compito in sottofondo, «fermato» solo se vero, pulizia dopo 7 giorni, inf/nan; review #701-M2 e #702-M2 APPROVATO CON RISERVE (R-701-3-M2, R-702-1-M2 BASSE).
-- **Verifica esterna #346**: V-1 BASSA (orologio indietro → compito vero fermato) e V-2 `CORRETTE` (fb620f5, review #703-M2 APPROVATO CON RISERVE, R-703-1/2-M2 BASSE).
-- **Conflitto con main (bot #346 V-1 MEDIA)**: `RISOLTO` col merge 643da99 della #341 di Mani (solo report e memoria; review #704-M2 APPROVATO).
-- Test: kernel 1100 PASS 0 FAIL; sottofondo 62 passed; sottofondo + voce_ascolto dopo il merge 319 passed.
+- **PR #346**: `MERGIATA` (c523a04), dopo due merge di main nel branch (review #704/#705-M2).
+- **Seconda fetta BASSE**: `FATTA` — compito riuscito non diventa «ko», prompt del processo in sottofondo senza avvisa_operatore, pulizia anche da controlla(), test R-703-1; review #706-M2 APPROVATO CON RISERVE (R-706-1/2-M2 BASSE).
+- **Correzioni dopo bot #349** (avviso anche con scrittura fallita; R-706-2): `FATTE`, review #707-M2 APPROVATO CON RISERVE.
+- **Fetta 3.2** (compiti finiti letti a voce): `PRONTA`, in una PR separata dopo la decisione sulla #349.
+- Test: kernel 1100 PASS 0 FAIL; sottofondo 69 passed.
 
 ## Anomalie
 
-- Durante i test un mio test senza `killpg` neutralizzato ha mandato SIGTERM a pytest (nessun danno, corretto prima del commit).
+- Mani ha mergiato la #347 mentre la #346 aspettava il merge: secondo conflitto (solo report e memoria), risolto.

@@ -575,3 +575,136 @@ def test_orologio_indietro_pid_morto_o_assente_libera(tmp_path):
     for pid in (None, 2 ** 22 + 12345):
         (c / sf.ATTIVO).write_text(json.dumps({"id": "x", "pid": pid, "creato": _t.time() + 600}))
         assert sf.attivo(tmp_path) is None
+
+
+# ---- Fetta BASSE 2 del sottofondo (chat M2, 7 nov): bot #346 e R-703-1-M2 ----
+
+def test_compito_appena_riuscito_non_diventa_ko(tmp_path):
+    """Bot #346 (3ee02dd) V-1: se il figlio ha scritto «ok» e tolto il posto mentre un altro
+    processo ripulisce, il compito resta «ok» e non parte un avviso «non è finito»."""
+    import time as _t
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    f = c / f"{ident}.json"
+    job = json.loads(f.read_text(encoding="utf-8"))
+    job.update(stato="ok", risposta="fatto")
+    f.write_text(json.dumps(job), encoding="utf-8")
+    (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": 2 ** 22 + 12345,
+                                           "creato": _t.time()}))
+    inviati, avvisa = _avvisi()
+    sf._ripulisci(tmp_path, avvisa)
+    assert json.loads(f.read_text(encoding="utf-8"))["stato"] == "ok"
+    assert inviati == [] and not (c / sf.ATTIVO).exists()
+    assert sf.annulla(tmp_path, ident, "x") is False
+
+
+def test_annulla_chiude_solo_compiti_aperti(tmp_path):
+    ident, _ = sf.accoda(tmp_path, "uno")
+    assert sf.annulla(tmp_path, ident, "prova") is True
+    f = tmp_path / sf.CARTELLA / f"{ident}.json"
+    assert json.loads(f.read_text(encoding="utf-8"))["errore"] == "prova"
+    assert sf.annulla(tmp_path, ident, "seconda") is False
+    assert json.loads(f.read_text(encoding="utf-8"))["errore"] == "prova"
+
+
+def test_controlla_pulisce_al_massimo_una_volta_l_ora(tmp_path, monkeypatch):
+    """Bot #346 (2d0977e) V-3: la pulizia dei compiti vecchi parte anche da controlla()."""
+    chiamate = []
+    monkeypatch.setattr(sf, "_pulisci_vecchi", lambda root: chiamate.append(root))
+    monkeypatch.setattr(sf, "_ultima_pulizia", 0.0)
+    sf.controlla(tmp_path)  # cartella assente: niente
+    assert chiamate == []
+    (tmp_path / sf.CARTELLA).mkdir()
+    sf.controlla(tmp_path)
+    sf.controlla(tmp_path)
+    assert chiamate == [tmp_path]
+
+
+def test_data_futura_con_processo_estraneo_libera_il_posto(tmp_path):
+    """R-703-1-M2: «creato» nel futuro e pid vivo ma sicuramente estraneo (leader con un altro
+    comando): posto libero, il processo estraneo non viene toccato."""
+    import subprocess as sp
+    import time as _t
+    estraneo = sp.Popen(["sleep", "30"], start_new_session=True)
+    try:
+        ident, _ = sf.accoda(tmp_path, "uno")
+        c = tmp_path / sf.CARTELLA
+        (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": estraneo.pid,
+                                               "creato": _t.time() + 600}))
+        assert sf.attivo(tmp_path) is None
+        assert sf.accoda(tmp_path, "due", avvisa=lambda t, r: None)[0] is not None
+        assert estraneo.poll() is None
+    finally:
+        estraneo.kill()
+        estraneo.wait()
+
+
+def test_corsa_figlio_finisce_durante_la_pulizia_niente_avviso(tmp_path, monkeypatch):
+    """Bot #346 V-1, la corsa vera: _ripulisci legge il compito «in_corso», poi il figlio
+    scrive «ok» prima di annulla → annulla non chiude niente e non parte «non è finito»."""
+    import time as _t
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    f = c / f"{ident}.json"
+    (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": 2 ** 22 + 12345,
+                                           "creato": _t.time()}))
+    vero = sf.annulla
+
+    def _figlio_finisce_prima(root, i, motivo):
+        job = json.loads(f.read_text(encoding="utf-8"))
+        job.update(stato="ok")
+        f.write_text(json.dumps(job), encoding="utf-8")
+        return vero(root, i, motivo)
+    monkeypatch.setattr(sf, "annulla", _figlio_finisce_prima)
+    inviati, avvisa = _avvisi()
+    sf._ripulisci(tmp_path, avvisa)
+    assert inviati == [] and json.loads(f.read_text(encoding="utf-8"))["stato"] == "ok"
+
+
+
+def test_eccezione_dopo_ok_niente_avviso_di_errore(tmp_path, monkeypatch):
+    """R-706-2-M2: un'eccezione arrivata dopo che il compito è già «ok» non manda
+    «si è interrotto per un errore interno»; prima di «ok» sì."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    f = tmp_path / sf.CARTELLA / f"{ident}.json"
+
+    def _gia_ok(root, i, k, a):
+        job = json.loads(f.read_text(encoding="utf-8"))
+        job.update(stato="ok")
+        f.write_text(json.dumps(job), encoding="utf-8")
+        raise OSError("dopo ok")
+    monkeypatch.setattr(sf, "_esegui", _gia_ok)
+    inviati, avvisa = _avvisi()
+    assert sf.esegui(tmp_path, ident, lambda: None, avvisa) == 1
+    assert inviati == [] and json.loads(f.read_text(encoding="utf-8"))["stato"] == "ok"
+
+    altro = tmp_path / "due"
+    altro.mkdir()
+    ident2, _ = sf.accoda(altro, "due")
+
+    def _rotto(root, i, k, a):
+        raise OSError("prima")
+    monkeypatch.setattr(sf, "_esegui", _rotto)
+    assert sf.esegui(altro, ident2, lambda: None, avvisa) == 1
+    assert len(inviati) == 1 and "errore interno" in inviati[0]
+    assert json.loads((altro / sf.CARTELLA / f"{ident2}.json").read_text())["stato"] == "ko"
+
+
+def test_scrittura_fallita_avvisa_lo_stesso(tmp_path, monkeypatch):
+    """Bot #349 V-1: se la riscrittura del compito fallisce (disco pieno), la pulizia
+    avvisa comunque l'operatore invece di lasciare il compito «in_corso» in silenzio."""
+    import time as _t
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": 2 ** 22 + 12345,
+                                           "creato": _t.time()}))
+    vero = sf._scrivi_privato
+
+    def _disco_pieno(percorso, dati):
+        if percorso.name == f"{ident}.json":
+            raise OSError("disco pieno")
+        return vero(percorso, dati)
+    monkeypatch.setattr(sf, "_scrivi_privato", _disco_pieno)
+    inviati, avvisa = _avvisi()
+    sf._ripulisci(tmp_path, avvisa)
+    assert len(inviati) == 1 and "non è finito" in inviati[0]

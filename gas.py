@@ -4578,6 +4578,10 @@ class GasKernel:
         """Kernel del processo `gas.py sottofondo <id>`: senza avvisa_operatore (vedi sopra)."""
         kernel = cls(root)
         kernel.nel_sottofondo = True
+        # Bot #346 (2d0977e) V-1: il prompt di base descrive avvisa_operatore; qui non c'è.
+        kernel.system_prompt += (
+            "\n\nSEI UN COMPITO IN SOTTOFONDO: avvisa_operatore qui non esiste. L'avviso "
+            "all'operatore parte da solo alla fine con la tua risposta: scrivi tutto lì.")
         return kernel
 
     def _in_sottofondo(self, args: Dict[str, Any], firmata: bool = False) -> str:
