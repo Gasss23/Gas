@@ -8,7 +8,7 @@ fetta a parte), poi bip, registrazione fino al silenzio, invio al server voce gi
 esistente (modules/voice/server.py, POST /voice) e risposta riprodotta: con la risposta
 «a pezzi» del server (righe JSON, formato audio+pezzi) la prima frase suona appena arriva e le altre in
 fila, mentre il server sintetizza le successive (fetta 39). Dopo la risposta
-resta una finestra di ascolto (GAS_VOICE_FINESTRA, 12 s) per continuare senza ripetere
+resta una finestra di ascolto (GAS_VOICE_FINESTRA, 40 s) per continuare senza ripetere
 la parola, fino a GAS_VOICE_MAX_TURNI turni di fila.
 Mentre Gas parla si può interromperlo dicendo di nuovo la parola di attivazione (fetta
 41): la frase si ferma, quelle in fila si scartano e si registra la nuova richiesta.
@@ -36,7 +36,9 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
                              8765>, la porta del server voce). Fuori
                              dal Mac (host non locale) solo https, altrimenti non parte.
     GAS_VOICE_TIMEOUT      — secondi di attesa della risposta (default 600)
-    GAS_VOICE_FINESTRA     — secondi di ascolto dopo la risposta (default 12)
+    GAS_VOICE_FINESTRA     — secondi di ascolto dopo la risposta (default 40)
+    GAS_VOICE_SEGUITO_MAX  — secondi massimi di una richiesta di seguito, senza parola
+                             (default 15): chi parla più a lungo non sta parlando a Gas
     GAS_VOICE_MAX_TURNI    — turni di fila senza parola di attivazione (default 5)
     GAS_ASCOLTO_MODELLO    — modello di openWakeWord (default hey_jarvis)
     GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.5)
@@ -83,6 +85,29 @@ FREQ = 16000                 # Hz, mono, int16: il formato di openWakeWord
 BLOCCO = 1280                # campioni per blocco (80 ms)
 SEC_BLOCCO = BLOCCO / FREQ
 REGISTRAZIONE_MAX_S = 30.0   # una richiesta non dura più di così
+# Fetta 43 parte 2 (operatore, 5 novembre): nella finestra dopo la risposta il microfono
+# catturava la conversazione della stanza (4 richieste di fila da 30 s). Difese:
+# - finestra di 40 s senza voce prima di tornare ad aspettare la parola;
+# - i turni di seguito (senza parola) durano al massimo SEGUITO_MAX_S: una registrazione
+#   che ci arriva NON si invia e la conversazione si chiude (quasi sempre è parlato della
+#   stanza);
+# - i turni di seguito portano «X-Gas-Seguito: 1»: il server (V15 di M2, PR #339) fa
+#   decidere al cervello se il parlato è per Gas e, se no, risponde «X-Gas-Comando: fine»
+#   senza voce; «X-Gas-Comando: pausa» chiude la conversazione («Va bene.» solo dopo
+#   la parola, muta nel seguito);
+# - nella finestra il rilevatore resta acceso: «Hey Jarvis, …» è un turno normale (V-1 bot #341);
+# - un errore in un turno di seguito chiude la conversazione senza bip (R-675-5-M2).
+FINESTRA_PREDEFINITA_S = 40.0
+# V-1 bot #341 su 23d9c1c (= R-693-2): se la parola si sente a metà di un turno di seguito,
+# della registrazione si tiene solo da poco prima della parola (openWakeWord la segnala a
+# fine parola): il parlato della stanza detto prima non parte come richiesta normale.
+PRIMA_DELLA_PAROLA_S = 1.5
+# V-1 della verifica esterna su 562f137 (= R-680-2): la parola sentita nella finestra conta
+# solo se la voce comincia entro questo tempo; una parola (o un falso positivo) sentita molto
+# prima non rende «normale» il parlato che arriva dopo.
+PAROLA_VALIDA_S = 2.0
+SEGUITO_MAX_PREDEFINITO_S = 15.0
+COMANDI = ("fine", "pausa")   # valori di X-Gas-Comando che il client conosce
 ATTESA_VOCE_S = 5.0          # dopo la parola, se non parli entro questo tempo si torna in attesa
 INIZIO_VOCE_S = 0.24         # voce continua che apre un turno nella finestra (3 blocchi)
 MICROFONO_MUTO_S = 10.0      # tutto a zero per così tanto → avviso (permesso del microfono?)
@@ -119,7 +144,10 @@ RIGA_MAX = 8 * 1024 * 1024   # una riga NDJSON (una frase in MP3 base64) non sup
 
 Blocco = Sequence[int]       # BLOCCO campioni int16
 Risposta = Union[bytes, Iterable[bytes]]   # un MP3 intero, oppure gli MP3 delle frasi in fila
-Invia = Callable[[bytes], Tuple[bool, Optional[Risposta], str]]
+# (ok, risposta, motivo) oppure, dalla fetta 43 parte 2, (ok, risposta, motivo, comando):
+# comando è «fine», «pausa» o "" (X-Gas-Comando del server).
+Esito = Union[Tuple[bool, Optional[Risposta], str], Tuple[bool, Optional[Risposta], str, str]]
+Invia = Callable[[bytes], Esito]
 
 
 # ─────────────────────────────────────────── configurazione ──
@@ -266,7 +294,9 @@ class Ascolto:
                  svuota: Callable[[], None] = lambda: None,
                  azzera_rilevatore: Callable[[], None] = lambda: None,
                  soglia: float = 0.5, voce_rms: float = VOCE_RMS_PREDEFINITO, silenzio_s: float = 0.8,
-                 finestra_s: float = 12.0, max_turni: int = 5,
+                 finestra_s: float = FINESTRA_PREDEFINITA_S, max_turni: int = 5,
+                 seguito_max_s: float = SEGUITO_MAX_PREDEFINITO_S,
+                 invia_seguito: Optional[Invia] = None,
                  soglia_interruzione: Optional[float] = SOGLIA_INTERRUZIONE_PREDEFINITA,
                  conferma: Callable[[], Optional[bytes]] = lambda: None,
                  dorme: Callable[[float], None] = time.sleep) -> None:
@@ -288,6 +318,11 @@ class Ascolto:
         self.conferma = conferma
         self.dorme = dorme
         self.interrotto = False   # l'ultimo turno è stato interrotto dalla parola
+        # Fetta 43 parte 2: i turni di seguito vanno al server con X-Gas-Seguito: 1
+        self.invia_seguito = invia_seguito or invia
+        self.seguito_max_s = seguito_max_s
+        self.chiudi = False       # l'ultimo turno chiede di chiudere la conversazione
+        self.parola_nella_finestra = False   # la parola è stata detta nella finestra
         self._errori_rilevatore = 0
         self._buoni_di_fila = 0
         self._muti = 0
@@ -352,10 +387,23 @@ class Ascolto:
                 log.warning("pausa del rilevatore fallita (%s)", type(e2).__name__)
             self._svuota()
 
+    def _parola_nel_blocco(self, b: Blocco) -> bool:
+        """V-1 bot #341: nella finestra il rilevatore resta acceso. True se la parola di
+        attivazione è nel blocco; un errore del rilevatore vale «no» (§9)."""
+        try:
+            sentita = float(self.rilevatore(b)) >= self.soglia
+        except Exception:
+            return False
+        if sentita:
+            self.parola_nella_finestra = True
+        return sentita
+
     def registra(self, iniziali: Optional[List[Blocco]] = None,
-                 attesa_s: float = ATTESA_VOCE_S) -> Optional[List[Blocco]]:
+                 attesa_s: float = ATTESA_VOCE_S,
+                 max_s: float = REGISTRAZIONE_MAX_S,
+                 rileva_parola: bool = False) -> Optional[List[Blocco]]:
         """Registra in memoria finché, dopo la voce, c'è `silenzio_s` di silenzio
-        (massimo REGISTRAZIONE_MAX_S). None se la voce non arriva entro `attesa_s` o
+        (massimo `max_s`). None se la voce non arriva entro `attesa_s` o
         se il flusso finisce prima della voce."""
         presi: List[Blocco] = list(iniziali or [])
         voce = len(presi) >= blocchi_per(INIZIO_VOCE_S)
@@ -363,10 +411,18 @@ class Ascolto:
             presi = []
         silenzio = attesa = 0
         max_silenzio, max_attesa = blocchi_per(self.silenzio_s), blocchi_per(attesa_s)
-        while len(presi) < blocchi_per(REGISTRAZIONE_MAX_S):
+        while len(presi) < blocchi_per(max_s):
             b = self._prossimo()
             if b is None:
                 break
+            if rileva_parola and self._parola_nel_blocco(b):
+                # «Hey Jarvis, …» detto nella finestra: è una richiesta con la parola, il
+                # tetto torna quello normale (V-1 bot #341). Si butta il parlato di prima
+                # della parola (V-1 bot su 23d9c1c): resta solo la parola e il dopo.
+                rileva_parola = False
+                max_s = REGISTRAZIONE_MAX_S
+                tieni = max(0, blocchi_per(PRIMA_DELLA_PAROLA_S) - 1)
+                presi = presi[-tieni:] if tieni else []
             forte = rms(b) >= self.voce_rms
             if not voce:
                 # R-615-6: la voce comincia con INIZIO_VOCE_S di fila, come nella finestra
@@ -394,10 +450,19 @@ class Ascolto:
         if self.finestra_s <= 0:
             return None
         di_fila: List[Blocco] = []
+        da_parola: Optional[int] = None   # blocchi passati dall'ultima parola sentita
         for _ in range(blocchi_per(self.finestra_s)):
             b = self._prossimo()
             if b is None:
                 return None
+            if self._parola_nel_blocco(b):  # V-1 bot #341: il rilevatore resta acceso
+                da_parola = 0
+            elif da_parola is not None:
+                da_parola += 1
+                if da_parola > blocchi_per(PAROLA_VALIDA_S):
+                    # parola troppo lontana dall'inizio della voce: non conta (R-680-2)
+                    self.parola_nella_finestra = False
+                    da_parola = None
             if rms(b) >= self.voce_rms:
                 di_fila.append(b)
                 if len(di_fila) >= blocchi_per(INIZIO_VOCE_S):
@@ -406,20 +471,43 @@ class Ascolto:
                 di_fila = []
         return None
 
-    def turno(self, blocchi: List[Blocco]) -> bool:
+    def turno(self, blocchi: List[Blocco], seguito: bool = False) -> bool:
         """Invia la richiesta e riproduce la risposta: un MP3 intero, oppure (fetta 39)
         le frasi una dopo l'altra, ciascuna appena arriva. True se almeno un pezzo è
         stato suonato. Se la parola di attivazione arriva mentre Gas parla (fetta 41) la
         frase si ferma, la risposta si chiude (le frasi in fila si scartano e il server
-        smette di sintetizzarle) e `self.interrotto` diventa True."""
+        smette di sintetizzarle) e `self.interrotto` diventa True.
+        Fetta 43 parte 2: `seguito` = turno nella finestra, senza parola. Se il server dice
+        «fine» o «pausa», o se un turno di seguito non riesce, `self.chiudi` diventa True e
+        la conversazione si chiude (senza bip nei turni di seguito)."""
         self.interrotto = False
+        self.chiudi = False
+        comando = ""
         try:
-            ok, risposta, motivo = self.invia(in_wav(blocchi))
+            esito = (self.invia_seguito if seguito else self.invia)(in_wav(blocchi))
+            ok, risposta, motivo = esito[0], esito[1], esito[2]
+            if len(esito) > 3 and esito[3] in COMANDI:
+                comando = esito[3]
         except Exception as e:  # §9
             ok, risposta, motivo = False, None, f"errore ({type(e).__name__})"
+        if comando == "fine":
+            log.info("turno di seguito non rivolto a Gas: chiudo la conversazione")
+            self.chiudi = True
+            self._svuota()
+            return False
+        if comando == "pausa":
+            log.info("pausa a voce: chiudo la conversazione")
+            self.chiudi = True
         if not ok or not risposta:
-            log.warning("turno non riuscito: %s", motivo)
-            self._bip("errore")
+            if seguito or comando == "pausa":
+                # R-675-5-M2: un turno di seguito che non riesce (500 col forte spento, 429…)
+                # chiude la conversazione in silenzio, mai bip a ripetizione.
+                log.warning("turno di seguito non riuscito: %s; chiudo la conversazione",
+                            motivo)
+                self.chiudi = True
+            else:
+                log.warning("turno non riuscito: %s", motivo)
+                self._bip("errore")
             self._svuota()  # V-3 bot #323: il bip e l'audio rimasto non vanno al rilevatore
             return False
         pezzi = iter([risposta] if isinstance(risposta, (bytes, bytearray)) else risposta)
@@ -457,8 +545,12 @@ class Ascolto:
             # non deve aprire un turno né attivare la parola.
             self._svuota()
         if suonati == 0:
-            log.warning("turno non riuscito: risposta senza voce")
-            self._bip("errore")
+            if seguito or comando == "pausa":
+                log.warning("turno di seguito senza voce: chiudo la conversazione")
+                self.chiudi = True
+            else:
+                log.warning("turno non riuscito: risposta senza voce")
+                self._bip("errore")
             self._svuota()
             return False
         return True
@@ -547,10 +639,12 @@ class Ascolto:
         self._svuota()  # il bip o la conferma non devono finire nella richiesta
         richiesta = self.registra()
         turni = 0
+        seguito = False   # il primo turno viene dalla parola di attivazione
         while richiesta is not None:
             turni += 1
-            log.info("richiesta registrata (%.1f s), invio", len(richiesta) * SEC_BLOCCO)
-            riuscito = self.turno(richiesta)
+            log.info("richiesta registrata (%.1f s), invio%s", len(richiesta) * SEC_BLOCCO,
+                     " (di seguito)" if seguito else "")
+            riuscito = self.turno(richiesta, seguito=seguito)
             if self.interrotto:
                 # Fetta 41: come una parola nuova — bip, poi la nuova richiesta. I turni
                 # NON ripartono da zero (R-668-1): se la voce di Gas dalle casse facesse
@@ -560,14 +654,32 @@ class Ascolto:
                 self._azzera()
                 self._bip("ok")
                 self._svuota()
+                seguito = False   # dopo la parola il turno non è «di seguito»
                 richiesta = self.registra()
                 continue
-            if not riuscito or turni >= self.max_turni:
+            if self.chiudi or not riuscito or turni >= self.max_turni:
                 break
+            self.parola_nella_finestra = False
+            # R-680-1: il rilevatore ha appena sentito la voce di Gas (soglia 0,7): si azzera,
+            # così nella finestra (soglia 0,5) quei residui non valgono come parola.
+            self._azzera()
             inizio = self.aspetta_voce()
             if inizio is None:
                 break
-            richiesta = self.registra(inizio)
+            richiesta = self.registra(
+                inizio, rileva_parola=not self.parola_nella_finestra,
+                max_s=REGISTRAZIONE_MAX_S if self.parola_nella_finestra else self.seguito_max_s)
+            # V-1 bot #341: se nella finestra si è sentita la parola, il turno non è «di
+            # seguito»: va al server senza X-Gas-Seguito, con gli strumenti e il tetto normale.
+            seguito = not self.parola_nella_finestra
+            if not seguito:
+                log.info("parola di attivazione nella finestra: richiesta normale")
+            if (seguito and richiesta is not None
+                    and len(richiesta) >= blocchi_per(self.seguito_max_s)):
+                # (a)+(b): parlato lungo senza parola = quasi sempre la stanza: non si invia
+                log.info("parlato di %.0f s senza parola di attivazione: non lo invio, "
+                         "chiudo la conversazione", self.seguito_max_s)
+                break
         self._azzera()
         log.info("torno ad aspettare la parola di attivazione")
 
@@ -628,8 +740,17 @@ def _frasi_ndjson(r) -> Iterator[bytes]:
         r.close()
 
 
+def _comando(r: object) -> str:
+    """Fetta 43 parte 2: X-Gas-Comando della risposta, solo se è un comando conosciuto."""
+    try:
+        valore = (r.headers.get("X-Gas-Comando") or "").strip().lower()  # type: ignore[attr-defined]
+    except Exception:
+        return ""
+    return valore if valore in COMANDI else ""
+
+
 def invia_al_server(url: str, token: str, timeout: float,
-                    formato: Optional[str] = None) -> Invia:
+                    formato: Optional[str] = None, seguito: bool = False) -> Invia:
     """POST /voice col WAV. Con un formato (default quello a pezzi, fetta 39) la
     risposta può essere a righe JSON (le frasi in fila), JSON con un solo audio, oppure
     audio/mpeg; senza formato solo audio/mpeg, come prima. Mai il token nei log."""
@@ -641,36 +762,43 @@ def invia_al_server(url: str, token: str, timeout: float,
     }
     if formato:
         intestazioni["X-Gas-Formato"] = formato
+    if seguito:  # fetta 43 parte 2: turno nella finestra, senza parola di attivazione
+        intestazioni["X-Gas-Seguito"] = "1"
 
-    def _invia(wav: bytes) -> Tuple[bool, Optional[Risposta], str]:
+    def _invia(wav: bytes) -> Esito:
         req = urllib.request.Request(f"{url}/voice", data=wav, method="POST",
                                      headers=intestazioni)
         try:
             r = _OPENER.open(req, timeout=timeout)
         except urllib.error.HTTPError as e:
+            comando = _comando(e)
             e.close()
-            return False, None, f"HTTP {e.code}"
+            return False, None, f"HTTP {e.code}", comando
         except Exception as e:  # rete, timeout
-            return False, None, f"server voce non raggiungibile ({type(e).__name__})"
+            return False, None, f"server voce non raggiungibile ({type(e).__name__})", ""
         a_pezzi = False
+        comando = _comando(r)
         try:
             tipo = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
             if r.status != 200:
-                return False, None, f"risposta inattesa (HTTP {r.status}, {tipo or '?'})"
+                return (False, None, f"risposta inattesa (HTTP {r.status}, {tipo or '?'})",
+                        comando)
+            if comando == "fine":  # V15: niente voce né testo, la conversazione si chiude
+                return True, None, "", comando
             if tipo == "application/x-ndjson" and formato:
                 a_pezzi = True  # la connessione resta aperta: la chiude _frasi_ndjson
-                return True, _frasi_ndjson(r), ""
+                return True, _frasi_ndjson(r), "", comando
             if tipo.startswith("audio/"):
-                return True, r.read(), ""
+                return True, r.read(), "", comando
             if tipo == "application/json" and formato:
                 dati = json.loads(r.read())
                 audio = _audio_da_base64(dati.get("audio")) if isinstance(dati, dict) else None
                 if audio:
-                    return True, audio, ""
-                return False, None, "risposta inattesa (senza voce)"
-            return False, None, f"risposta inattesa (HTTP {r.status}, {tipo or '?'})"
+                    return True, audio, "", comando
+                return False, None, "risposta inattesa (senza voce)", comando
+            return False, None, f"risposta inattesa (HTTP {r.status}, {tipo or '?'})", comando
         except Exception as e:  # corpo rotto o connessione caduta
-            return False, None, f"risposta inattesa ({type(e).__name__})"
+            return False, None, f"risposta inattesa ({type(e).__name__})", comando
         finally:
             if not a_pezzi:
                 r.close()
@@ -878,7 +1006,9 @@ def main() -> int:
         log.error("openWakeWord non pronto (%s): installa con scripts/voce/installa.sh.",
                   type(e).__name__)
         return 1
-    invia = invia_al_server(url, token, _numero("GAS_VOICE_TIMEOUT", 600, 5, 3600))
+    timeout = _numero("GAS_VOICE_TIMEOUT", 600, 5, 3600)
+    invia = invia_al_server(url, token, timeout)
+    invia_seguito = invia_al_server(url, token, timeout, seguito=True)
     conferma: Callable[[], Optional[bytes]] = lambda: None
     if conferma_attiva():
         try:
@@ -895,7 +1025,10 @@ def main() -> int:
                     soglia=_numero("GAS_ASCOLTO_SOGLIA", 0.5, 0.05, 0.99),
                     voce_rms=_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
                     silenzio_s=_numero("GAS_ASCOLTO_SILENZIO", 0.8, 0.2, 5),
-                    finestra_s=_numero("GAS_VOICE_FINESTRA", 12, 0, 120),
+                    finestra_s=_numero("GAS_VOICE_FINESTRA", FINESTRA_PREDEFINITA_S, 0, 300),
+                    seguito_max_s=_numero("GAS_VOICE_SEGUITO_MAX", SEGUITO_MAX_PREDEFINITO_S,
+                                          3, REGISTRAZIONE_MAX_S),
+                    invia_seguito=invia_seguito,
                     max_turni=int(_numero("GAS_VOICE_MAX_TURNI", 5, 1, 50)),
                     soglia_interruzione=soglia_interruzione(),
                     conferma=conferma).gira()

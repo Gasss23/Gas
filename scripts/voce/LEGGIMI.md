@@ -3,12 +3,30 @@
 Gas ascolta sempre il microfono del Mac. Quando dici la parola di attivazione fa un bip,
 registra fino a quando smetti di parlare, manda la richiesta al server voce e ti risponde
 a voce, una frase alla volta: la prima si sente appena è pronta, mentre il server prepara
-le altre. Dopo la risposta hai 12 secondi per continuare senza ripetere la parola.
+le altre. Dopo la risposta puoi continuare senza ripetere la parola: Gas resta in ascolto
+finché non passano 40 secondi senza che nessuno parli, poi torna ad aspettare «Hey Jarvis».
+
+**Nella conversazione, senza la parola** (difese contro il parlato della stanza):
+- una frase senza «Hey Jarvis» lunga circa 15 secondi o più (contando anche la breve pausa
+  finale) non viene mandata a Gas e chiude la conversazione (quasi sempre sono persone che
+  parlano tra loro);
+- se nella conversazione dici di nuovo «Hey Jarvis, …», è una richiesta normale: Gas può
+  usare i suoi strumenti e la frase può durare fino a 30 secondi. Dillo tutto di seguito
+  («Hey Jarvis, che ore sono»): qui non c'è il bip. Del parlato di prima della parola resta
+  solo un attimo (circa un secondo e mezzo, la parola compresa), e una parola sentita più di
+  2 secondi prima che si cominci a parlare non conta;
+- Gas decide se il parlato è rivolto a lui: se non lo è, non risponde e chiude la
+  conversazione;
+- se dici «pausa» (o «standby», «basta così») Gas chiude la conversazione e torna ad
+  aspettare «Hey Jarvis»: senza la parola lo fa in silenzio, con «Hey Jarvis, pausa»
+  risponde «Va bene.». Per riprendere basta la parola. Lo standby vero, che non sente nemmeno la
+  parola, resta `bash scripts/voce/pausa.sh` (vedi sotto);
+- se qualcosa va storto in un turno senza la parola, la conversazione si chiude in silenzio.
 
 **«Sì, signore?»:** dopo la parola, invece del bip, Jarvis risponde «Sì, signore?» con la sua
 voce. L'audio lo prepara il server voce una volta per voce; l'ascolto lo scarica in sottofondo
 all'avvio e lo tiene in memoria. Finché non c'è, o se il server dà errore, senti il bip di
-sempre. Nella finestra dei 12 secondi e quando interrompi Gas resta il bip, più rapido.
+sempre. Nella conversazione senza la parola e quando interrompi Gas resta il bip, più rapido.
 Se cambi la voce di Jarvis sul server, «Sì, signore?» resta con la voce vecchia fino al
 riavvio dell'ascolto: `bash scripts/voce/installa.sh`.
 
@@ -79,10 +97,12 @@ solo).
 - Prima della parola di attivazione l'audio resta solo in memoria. Lo legge openWakeWord
   sul Mac: niente rete, niente disco.
 - **Attenzione alle attivazioni per sbaglio (R-615-6):** se la TV o un'altra persona dice
-  qualcosa che somiglia alla parola, oppure se qualcuno parla nei 12 secondi dopo una
-  risposta, quell'audio della stanza va al server voce (e quindi a Groq) e Gas lo prende
-  come una richiesta. Al massimo 5 turni di fila da 30 secondi, poi serve di nuovo la
-  parola. Se succede spesso, alza `GAS_ASCOLTO_SOGLIA`.
+  qualcosa che somiglia alla parola, oppure se qualcuno parla nei 40 secondi dopo una
+  risposta, quell'audio della stanza va al server voce (e quindi a Groq). Senza la parola
+  ogni frase dura al massimo 15 secondi (oltre non si manda) e Gas chiude la conversazione
+  se capisce che non parlavi a lui; al massimo 5 turni di fila, poi serve di nuovo la
+  parola. Se la parola scatta spesso per sbaglio, alza `GAS_ASCOLTO_SOGLIA`; per parlare
+  con qualcuno senza Gas, `bash scripts/voce/pausa.sh`.
 - Se dopo un bip di errore non sai se Gas ha fatto la cosa (il server può aver eseguito
   la richiesta e poi fallito la voce), chiediglielo invece di ripeterla.
 - La richiesta registrata resta in memoria e va solo al server voce. **Nessuna
@@ -106,7 +126,8 @@ solo).
 | `GAS_ASCOLTO_CONFERMA` | 1 | `0` = dopo la parola solo il bip, senza «Sì, signore?» |
 | `GAS_ASCOLTO_INTERRUZIONE` | 1 | `0` = la parola non interrompe Gas mentre parla |
 | `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | 0.7 | sensibilità della parola mentre Gas parla (più bassa = la sente meglio, ma rischia di attivarsi con la voce di Gas) |
-| `GAS_VOICE_FINESTRA` | 12 | secondi per continuare dopo la risposta |
+| `GAS_VOICE_FINESTRA` | 40 | secondi di silenzio dopo i quali la conversazione si chiude |
+| `GAS_VOICE_SEGUITO_MAX` | 15 | secondi massimi di una frase senza «Hey Jarvis» nella conversazione (3–30) |
 | `GAS_VOICE_MAX_TURNI` | 5 | turni di fila senza ripetere la parola |
 | `GAS_ASCOLTO_MODELLO` | hey_jarvis | modello di openWakeWord |
 | `GAS_ASCOLTO_FORMATO` | audio+pezzi | risposta a frasi in fila; vuoto = un solo audio alla fine, come prima |
