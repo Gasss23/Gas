@@ -2,8 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #348 (https://github.com/Gasss23/Gas/pull/348), solo documenti: resta aperta per l'operatore. Contiene anche la proposta da decidere.
-2. Proposta voce via Telegram (`reports/proposta_voce_telegram.md`): A, B o C (raccomandata B), risposta vocale solo dopo un vocale o sempre, chi tocca `modules/telegram/bot.py`.
+Nessuna nuova. Il 2026-11-07 l'operatore, via M1, ha detto sì al merge della PR #348 con le riserve e ha scelto l'opzione B per la voce via Telegram (due fette).
 
 ## Esito
 
@@ -16,3 +15,4 @@
 - Nessun codice di Mani toccato.
 - **Proposta voce via Telegram (R8)**: FATTA, solo documento.
 - Bot su b48a0a8: APPROVATO CON RISERVE. V-1 BASSA (LEGGIMI della voce parla ancora di «Ehi Gas»): DEFERITA alla prossima fetta voce, perché serve il revisore. V-2 COSMETICA: corretta nell'handoff.
+- **Merge della PR #349 di M2 nella #348**: FATTO, review #710 APPROVATO.
