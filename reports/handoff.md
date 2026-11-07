@@ -149,35 +149,37 @@ Review #703-M2: correzione di ve #346 V-1 e V-2. È stato esaminato solo il diff
 
 File rilevanti: /home/user/Gas/modules/sottofondo/__init__.py, /home/user/Gas/tests/test_unit_sottofondo.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
-Review #704-M2 sul merge 643da99 (verdetto integrale):
+Review #704-M2 sul merge 643da99 (verdetto integrale, riemesso con citazioni del diff di sessione per il gate B):
 
 ## VERDETTO: APPROVATO
 
-Review #704-M2: merge di origin/main c1a4503 (PR #341, chat Mani) in feat/voce-v12-m2 (PR #346, HEAD 8134ff3). Il merge è ancora in corso e io ho solo fatto `git add` della memoria.
+Review #704-M2 riemessa: stesso esito della prima versione. Questa volta cito file del diff di sessione (`origin/main..HEAD`, con origin/main a c1a4503 e HEAD a 77b9d47; il merge è il commit 643da99).
 
-Letture fatte prima della review: CLAUDE.md (sez. 5), il §stato di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+Prima della review ho letto CLAUDE.md (sez. 5), reports/stato_progetto.md e .claude/agents/memoria_revisore.md.
 
-**Controlli meccanici sulla risoluzione**
-- `git ls-files -u` è vuoto, quindi non resta nessun conflitto aperto.
-- `git diff --cached --check HEAD` è pulito.
-- Nessun marcatore `<<<<<<<`/`=======`/`>>>>>>>` nei file toccati (memoria, reports/*.md, ascolto.py, test, LEGGIMI).
-- Index contro il tree di main c1a4503: la differenza riguarda SOLO i 10 file che M2 ha toccato dopo il merge-base 5c79886: gas.py, modules/sottofondo/__init__.py, tests/test_unit_kernel.py, tests/test_unit_sottofondo.py, i 3 report di sessione, reports/ripartenza_m2.md, stato_progetto e memoria. Index contro HEAD: la differenza riguarda SOLO i 5 file che arrivano da main. Quindi il motore di M2 è identico a HEAD e il merge non introduce codice nuovo.
+**Cosa ho verificato**
+- Il merge non cambia il codice di M2. `git diff 8134ff3 HEAD -- gas.py modules brains tests` mostra un solo file, tests/test_unit_voce_ascolto.py, che arriva da main. gas.py, modules/sottofondo/__init__.py, tests/test_unit_kernel.py e tests/test_unit_sottofondo.py sono identici a 8134ff3.
+- `git diff --quiet origin/main HEAD` su clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py e scripts/voce/LEGGIMI.md è vuoto: quei file sono identici a main e infatti non compaiono più nel diff di sessione.
+- Durante la risoluzione:
+  - `git ls-files -u` era vuoto.
+  - `git diff --cached --check` era pulito.
+  - Non c'erano marcatori di conflitto nei file toccati.
 
 **Elementi del diff esaminati**
-1. `clients/voice/ascolto.py:654` — `_azzera()` del rilevatore tra le fasi (codice della fetta 43 parte 2, PR #341). Rischio: che la risoluzione abbia mischiato la versione del branch (blob 91e3d55) con quella di main. Esito ok: il blob nell'index è fd8b3e3, uguale a MERGE_HEAD.
-2. `tests/test_unit_voce_ascolto.py:244` — il finto rilevatore con punteggio QUASI=0.6 usato dai test della finestra. Rischio: test persi o duplicati nel merge. Esito ok: il blob nell'index è 14f4b5e, uguale a MERGE_HEAD.
-3. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento». Rischio: che si perda una delle due catene di date. Esito ok: c'è la riga di main (chat Mani, review #701). Rispetto a main l'unico delta è la riga di M2 su «Fetta 3 sottofondo» (`reports/stato_progetto.md:615`), che arriva da HEAD. Nota marginale: la storia «prima: 2026-11-05 (chat M2 … PR #339)» resta più giù nella catena di main e non è persa.
-4. `.claude/agents/memoria_revisore.md:1311` — righe #701-M2..#703-M2. Rischio: righe perse nell'unione. Esito ok: rispetto a HEAD si aggiungono solo le righe Mani #676..#701, rispetto a main solo le #701..#703-M2 con le loro lezioni. La riga #701 Mani sta alla 1317. Unione senza perdite.
+1. `gas.py:2516` — è il punto in cui il kernel gestisce lo strumento `in_sottofondo` (fetta 3, M2). Rischio esaminato: che la risoluzione del merge abbia toccato il kernel di M2. Esito: ok, nessuna differenza tra 8134ff3 e HEAD.
+2. `modules/sottofondo/__init__.py:27` — è la cartella della coda `.gas_sottofondo`, il modulo dei compiti in sottofondo con le correzioni bot/verifica esterna #345/#346. Rischio esaminato: righe perse o mescolate nel merge. Esito: ok, il file è identico a 8134ff3.
+3. `tests/test_unit_sottofondo.py:53` — è il test `test_processo_morto_non_blocca_la_coda`. Rischio esaminato: test di M2 persi. Esito: ok, il file è identico a 8134ff3 e la suite sottofondo + voce_ascolto dà 319 passed.
+4. `reports/stato_progetto.md:615` — è la riga «Fetta 3 sottofondo» del lato M2. La riga 4 («Ultimo aggiornamento») resta quella di main, con la catena della chat Mani. Rischio esaminato: perdita di una delle due catene di aggiornamento. Esito: ok, ci sono tutte e due.
+5. `.claude/agents/memoria_revisore.md:1311` — sono le righe #701..#703-M2 di M2; la riga #701 della chat Mani sta alla 1317. Rischio esaminato: righe perse nell'unione dei due lati. Esito: ok, è un'unione senza perdite.
 
 **Test**
-- `pytest tests/test_unit_sottofondo.py tests/test_unit_voce_ascolto.py`: 319 passed.
-- `python tests/test_unit_kernel.py`: 1099 PASS e 1 FAIL (T31g, GAS_VECTORS). Lo stesso FAIL esce anche a HEAD 8134ff3, provato in un worktree separato senza toccare l'index. Dipende dall'ambiente, non dal merge.
+- `python tests/test_unit_kernel.py`: 1099 PASS e 1 FAIL (T31g, GAS_VECTORS). Lo stesso FAIL c'è a 8134ff3, che ho provato in un worktree separato: è un problema dell'ambiente, non del merge.
 
-**Rischio escluso**: non ho riletto da capo la parte semantica di ascolto.py e dei suoi test, perché sono già stati revisionati e mergiati con la PR #341 (review #676–#701 della chat Mani). Ho verificato solo che i blob siano identici a MERGE_HEAD. Non ho verificato la CI remota né il comportamento sul Mac: in questo ambiente non sono riproducibili.
+**Rischio escluso**: non ho riletto da capo la logica di clients/voice/ascolto.py e dei suoi test, perché sono già stati revisionati e mergiati nella PR #341 (review #676..#701 della chat Mani) e sono identici a main. Non ho verificato la CI remota né il comportamento sul Mac: qui non si possono riprodurre.
 
 **Riserve**: nessuna.
 
-**Memoria**: aggiunta la riga `#704-M2 — 2026-11-07 — APPROVATO — …` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` (nessuna lezione nuova) e fatto `git add` del file. NON ho lanciato commit_memoria_revisore.sh, come richiesto: la riga entra nel commit di merge. Index degli altri file non toccato, nessuno stash.
+La riga contatore #704-M2 è già nella memoria ed è entrata nel commit di merge. Come mi hai chiesto, non ho toccato né file né index.
 
 ## §5 DELTA TEST DEL MOTORE
 
