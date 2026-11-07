@@ -1,9 +1,11 @@
-# Diff della sessione — 2026-11-07 — Sottofondo: seconda fetta BASSE (chat M2)
+# Diff della sessione — 2026-11-07 — chat Mani, PR #348 (solo documenti)
 
-- `modules/sottofondo/__init__.py` — `annulla` chiude solo compiti aperti e dice se ha chiuso; `_ripulisci` avvisa solo in quel caso; `controlla` pulisce i compiti vecchi al massimo una volta l'ora.
-- `gas.py` — `GasKernel.per_sottofondo`: riga nel system prompt (avvisa_operatore non esiste nel processo in sottofondo).
-- `tests/test_unit_sottofondo.py` (67), `tests/test_unit_kernel.py` (T106a/c).
-- `.claude/agents/memoria_revisore.md` — review #706.
-- `reports/*` — report di fine task.
+File toccati (base main f4ece4e):
+- `reports/proposta_parola_gas.md`: decisione dell'operatore in cima (NO a «Hey Gas»).
+- `reports/proposta_voce_telegram.md`: proposta «voce via Telegram, fuori casa» (R8), da decidere.
+- `reports/roadmap.md`: voce R8 della parola di attivazione allineata alla decisione.
+- `reports/stato_progetto.md`: PR #347 mergiata, decisione, riserve della #347.
+- `.claude/agents/memoria_revisore.md`: righe delle review #706 e #710.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+Questo file si riscrive a ogni sessione; la storia completa sta in git.

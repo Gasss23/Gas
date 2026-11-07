@@ -1,181 +1,139 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-07 — Sottofondo: seconda fetta di riserve BASSE (bot #346) (chat M2, coordinata da M1)
+**Sessione:** 2026-11-07 — chat Mani: «Hey Gas» NO, riserve della PR #347, merge della #346, proposta voce via Telegram (PR #348, solo documenti)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta: per decisione dell'operatore (via M1, 7 nov, operatore assente ~4 ore) le PR nuove si mergiano da sole solo con verdetto APPROVATO pulito; con riserve restano aperte e le decide l'operatore al rientro.
-2. Prova sul Mac (dalla #345): a voce un compito lungo → «ci lavoro» e poi avviso su Telegram.
+1. Merge della PR #348 (https://github.com/Gasss23/Gas/pull/348): SÌ dell'operatore del 2026-11-07, intorno alle 16:00 UTC, via M1, con le riserve. Numero e URL vengono dalla risposta dello strumento GitHub `create_pull_request`.
+2. Voce via Telegram: l'operatore ha scelto l'opzione B, in due fette (prima vocale → testo, poi anche la risposta in voce). Nessuna decisione aperta.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #346** (prima fetta BASSE del sottofondo): `MERGIATA` (c523a04) col sì dell'operatore via M1, dopo due merge di main nel branch (#341 e #347 di Mani, conflitti solo in report e memoria; review #704-M2 e #705-M2 APPROVATO).
-- **Seconda fetta BASSE del sottofondo**: `FATTA` — compito appena riuscito non riscritto «ko» e niente avviso «non è finito» (bot #346 V-1 su 3ee02dd e 0c836f9); riga nel prompt del processo in sottofondo «avvisa_operatore qui non esiste» (bot #346 V-1 su 2d0977e, V-4 su 0c836f9); pulizia dei compiti vecchi anche da `controlla()`, al massimo una volta l'ora (bot #346 V-3 su 2d0977e); test «data futura + processo estraneo» (R-703-1-M2). Review #706-M2 APPROVATO CON RISERVE (R-706-1/2-M2 BASSE).
-- **Correzioni dopo bot #349 e review #706** (commit 1dc10bc): `FATTE` — avviso anche se la riscrittura del compito fallisce (bot #349 V-1 BASSA); niente «errore interno» dopo un compito già chiuso (R-706-2-M2). Review #707-M2 APPROVATO CON RISERVE (R-707-1-M2 BASSA, R-707-2-M2 COSMETICA). Verifica esterna #349 su 2f3fe95: APPROVATO CON RISERVE (solo BASSE).
-- **Bot #349 su 147d6c8**: NON approvata solo per «riga del verdetto fuori formato» (problema del parser del bot); nel merito APPROVATO CON RISERVE con V-1 BASSA (se l'unlink del posto falliva, nessun avviso finale) `CORRETTA` in 0e5b2b0. Review #708-M2 APPROVATO CON RISERVE (R-708-1-M2 BASSA). Verifica esterna su 147d6c8: APPROVATO CON RISERVE (solo BASSE/cosmetiche).
-- **Fetta 3.2** (lettura a voce dei compiti finiti alla prossima attivazione): `PRONTA, NON IN QUESTA PR` — per decisione di M1 va in una PR separata dopo la decisione dell'operatore sulla #349 (questa sessione pusha solo su feat/voce-v12-m2).
+- **Decisione «Hey Gas» NO**: `FATTA`. Scritta in proposta_parola_gas.md e allineata in roadmap.md (bot V-1 su cafecf7, R-706-1).
+- **Riserve della #347 in stato_progetto**: `FATTA`. Riga 4 corretta (bot V-2 su cafecf7).
+- **Merge di main con la PR #346 di M2**: `FATTA` (ede56b5). Review #706 APPROVATO CON RISERVE.
+- **Proposta voce via Telegram (R8, richiesta di M1)**: `FATTA` — `reports/proposta_voce_telegram.md`, solo documento. Decisione dell'operatore: opzione B in due fette.
+- **Merge di main con la PR #349 di M2**: `FATTA` — review #710 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +
- gas.py                             |   4 +
- modules/sottofondo/__init__.py     |  46 +++++--
- reports/diff_sessione.md                        | n/d
- reports/handoff.md                              | n/d
- reports/ripartenza_m2.md                        | n/d
- reports/stato_progetto.md                       | n/d
- reports/ultimo_report.md                        | n/d
- tests/test_unit_kernel.py          |   4 +-
- tests/test_unit_sottofondo.py      | 152 +++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |   2 ++
+ reports/diff_sessione.md           |  16 +++++++++-------
+ reports/proposta_parola_gas.md     |   4 ++++
+ reports/proposta_voce_telegram.md  |  55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/roadmap.md                 |   2 +-
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  27 +++++++++++++--------------
+ reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main c523a04 (merge della #346).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main f4ece4e (dopo il merge della PR #349).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-0e5b2b0 fix(sottofondo): posto non tolto non blocca l'avviso finale del compito (bot #349 su 147d6c8 V-1)
-faacaf1 chore(revisore): memoria review #708 — APPROVATO CON RISERVE
-147d6c8 docs(voce): report — correzioni bot #349 e R-706-2 (review #707-M2); fetta 3.2 rimandata a PR separata (chat M2)
-1dc10bc fix(sottofondo): avviso anche se la scrittura del compito fallisce (bot #349 V-1); niente «errore interno» dopo un compito già chiuso (R-706-2-M2)
-4b21b78 chore(revisore): memoria review #707 — APPROVATO CON RISERVE
-2f3fe95 docs(voce): report di fine task — seconda fetta BASSE del sottofondo; PR #346 mergiata (chat M2)
-135535e fix(sottofondo): compito riuscito non diventa «ko», prompt del figlio senza avvisa_operatore, pulizia anche da controlla(), test R-703-1 (bot #346 V-1/V-3) (sì dell'operatore via M1)
-0898dd1 chore(revisore): memoria review #706 — APPROVATO CON RISERVE
+68a8fb2 Merge origin/main (PR #349 di M2) nella PR #348 — review #710 APPROVATO
+86773f1 docs(fine-task): PR #348 — proposta voce via Telegram, riserve del bot su b48a0a8
+e5e530c docs(voce): proposta «voce via Telegram, fuori casa» (R8), solo documento — decide l'operatore (chat Mani)
+b48a0a8 docs(fine-task): PR #348 — «Hey Gas» NO in roadmap, merge della #346, review #706
+ede56b5 Merge origin/main (PR #346 di M2) nella PR #348, con le correzioni del bot (roadmap «Hey Gas» NO, riga 4 di stato_progetto) — review #706 APPROVATO CON RISERVE
+cafecf7 docs(fine-task): chat Mani — «Hey Gas» NO e riserve della #347 (PR #348)
+021f68d docs(voce): «Hey Gas» NO (decisione dell'operatore), riserve della PR #347 registrate (chat Mani)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Review #706-M2 sul commit 135535e (verdetto integrale):
+Il diff di sessione è fatto di soli documenti. Il merge ede56b5 ha portato il codice della PR #346 di M2, identico a main, e per questo è stato revisionato. Verdetto integrale della review #706:
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #706-M2: diff in staging (`git diff --cached`) su feat/voce-v12-m2, HEAD 0c836f9, 4 file, +112/−7. Ho letto CLAUDE.md (già nel contesto), le voci del sottofondo in `reports/stato_progetto.md` e le lezioni recenti della mia memoria. Niente git stash: per i mutanti ho usato un worktree nello scratchpad, poi rimosso.
+Review #706 (chat Mani). Avevi chiesto il #704, ma in memoria il numero più alto, contando le righe -M2, è #705-M2: #704-M2 e #705-M2 esistono già. Ho quindi usato il successivo, #706, come da tua istruzione. Ho letto CLAUDE.md (in contesto), le righe interessate di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
 
-**Cosa ho guardato nel diff:**
-- `modules/sottofondo/__init__.py:345`: ora `annulla` mette «ko» solo ai compiti ancora in_coda o in_corso e ritorna True se li ha chiusi. Il posto in coda si libera comunque se è dello stesso id. Rischio esaminato: un compito «ok» che resta con la coda bloccata. Non succede, lo sblocco del posto non dipende dallo stato. Esito: ok.
-- `modules/sottofondo/__init__.py:190`: `_ripulisci` avvisa solo se `annulla` ha chiuso il compito. Rischio esaminato: avvisi persi quando il file del compito manca. Il comportamento è lo stesso di prima: niente file del compito, niente avviso. Esito: ok.
-- `modules/sottofondo/__init__.py:269`: `controlla` lancia `_pulisci_vecchi` al massimo una volta l'ora per processo, solo se la cartella esiste, dentro il try/except già presente (§9 rispettato). La prima chiamata pulisce subito: costa un solo elenco della cartella. Esito: ok.
-- `gas.py:4582`: la riga «SEI UN COMPITO IN SOTTOFONDO» viene aggiunta a `system_prompt`. Rischio esaminato: che il prompt venga ricostruito e la riga si perda. Non succede: `system_prompt` si assegna solo in `__init__` (gas.py:1120) e si usa a gas.py:5036. Non tocca `_get_window` né la finestra della storia. Esito: ok.
-- `tests/test_unit_kernel.py:11934` e `tests/test_unit_kernel.py:11948`: T106a controlla che la riga ci sia nel processo in sottofondo, T106c che manchi nei turni normali. Esito: ok.
-- `tests/test_unit_sottofondo.py:640`: la corsa è simulata col monkeypatch su `sf.annulla`. Funziona perché `_ripulisci` cerca `annulla` nel modulo a ogni chiamata. Esito: ok.
+Oggetto: merge staged di origin/main c523a04 (PR #346 di M2) nel branch claude/peaceful-lovelace-0w2b7q (PR #348, HEAD cafecf7). Merge-base 4a0b113.
 
-**Contesto (file non toccati):** gli altri chiamanti di `annulla` sono `modules/sottofondo/__init__.py:394`, `modules/sottofondo/__init__.py:413` e `gas.py:4619`. Ignorano il valore di ritorno, ed è corretto.
+**Elementi esaminati**
+- `gas.py:1` — i 4 file di codice (gas.py, modules/sottofondo/__init__.py, tests/test_unit_kernel.py, tests/test_unit_sottofondo.py) — rischio: una risoluzione che rovina il codice di M2 — confronto `git rev-parse :f` contro `MERGE_HEAD:f`: blob identici per tutti e 4 (es. gas.py 57aee40, sottofondo 2ecc12d) — ok.
+- `reports/roadmap.md:239` — voce R8 della parola di attivazione: «Parola nostra «Hey Gas»: NO (decisione dell'operatore del 2026-11-07), si resta con «hey_jarvis»» con il rimando a reports/proposta_parola_gas.md — rischio: modifiche fuori dalla riga dichiarata — HEAD, MERGE_HEAD e base hanno lo stesso blob; il word-diff staged mostra solo questa sostituzione — ok, con la riserva R-706-1.
+- `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» con «BASSE e COSMETICHE» — rischio: perdita di righe di uno dei due lati nella fusione — ho rifatto il merge con `git merge-file` a 3 vie (HEAD, base, MERGE_HEAD): pulito, rc=0. L'index differisce dal risultato SOLO alla riga 4, cioè la correzione dichiarata. Ci sono sia `reports/stato_progetto.md:615` (Fetta 3 sottofondo di M2) sia `reports/stato_progetto.md:671` (fetta 44 «PR #347 MERGIATA» del lato HEAD) — ok.
+- `.claude/agents/memoria_revisore.md:1318` — memoria del revisore (riga #704-M2) — rischio: righe perse da uno dei due lati — il blob staged è uguale a MERGE_HEAD (b009d62), quello di HEAD è uguale alla base (d952d6f), quindi lato HEAD non c'è nulla da perdere — ok.
+- `reports/proposta_parola_gas.md:8` — sezione «DECISIONE (2026-11-07)» — contesto: il blob staged è il lato HEAD (119ae01), coerente con il NO scritto in roadmap — ok.
 
-**Prove eseguite:**
-- `tests/test_unit_sottofondo.py`: 67 passed.
-- Mutante «annulla senza il controllo sullo stato»: 3 test falliti, preso.
-- Mutante «pulizia a ogni chiamata, senza il limite di un'ora»: 1 test fallito, preso.
-- Wall of Shame: nessun taglio diretto della storia, nessuna simulazione di tool. Cap 10 iterazioni e cap 8k non toccati.
+**Controlli meccanici**
+- `git ls-files -u` vuoto.
+- Nessun marcatore di conflitto nell'index.
+- `git diff --cached --check HEAD` pulito.
+- Il repo è intatto: niente stash e nessuna modifica fuori dall'index, salvo la riga di memoria qui sotto.
 
-**Riserve:**
-- R-706-1-M2 BASSA: la corsa in `annulla` è ridotta ma non chiusa. Il file viene letto e poi riscritto senza lock: se il figlio scrive «ok» fra `_leggi` e `_scrivi_privato`, viene ancora sovrascritto con «ko». Basta dichiararlo; un lock su file sarebbe sproporzionato per una riserva BASSA.
-- R-706-2-M2 BASSA: in `esegui` (`modules/sottofondo/__init__.py:394`), un'eccezione arrivata dopo che `_esegui` ha già scritto «ok» (per esempio un OSError diverso da FileNotFoundError durante l'unlink) ora lascia il compito «ok». Però all'operatore parte lo stesso «si è interrotto per un errore interno», in contraddizione con lo stato. Rimedio possibile: in quel ramo avvisare solo se `annulla` ha ritornato True.
+**Test** (copia dell'index fatta con checkout-index nello scratchpad)
+- test_unit_sottofondo.py + test_unit_voce_ascolto.py: **345 passed**.
+- Runner tests/test_unit_kernel.py: **1099 PASS, 1 FAIL**.
+  - Il fallito è T31g (riga 2031 del test): in questo ambiente il vector store non è disponibile (`vectors.available` falso).
+  - Il codice è identico a MERGE_HEAD, quindi il fallimento non viene dal merge.
+  - Da confermare sulla CI.
+- Lanciato insieme ai pytest nella stessa sessione, il runner kernel esce con SystemExit perché è uno script, non un modulo pytest. In CI va a parte, quindi non è un problema.
 
-**Non verificato:**
-- La corsa vera fra due processi (figlio reale contro `controlla` del kernel): l'ho controllata solo con la simulazione via monkeypatch, perché una corsa fra processi in dev non si riproduce in modo deterministico.
-- La suite completa del kernel (1100 PASS dichiarati): non l'ho rilanciata, ho letto solo T106a/c.
-- Il comportamento sul Mac o sulla VPS.
-
-**Memoria:** ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #706-M2 e una lezione (un «controlla lo stato prima di sovrascrivere» senza lock restringe la corsa ma non la chiude; verificare i chiamanti che ignorano il nuovo valore di ritorno). Commit 0774cd7 fatto con `commit_memoria_revisore.sh`; il diff in staging è rimasto com'era (4 file, +112/−7).
-
-Review #707-M2 sul commit 1dc10bc (verdetto integrale):
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Ho letto CLAUDE.md (sez. 5, 8, 9), `reports/stato_progetto.md` (voce sottofondo, riga 615) e la memoria del revisore (ultime voci #705-M2 e #706-M2). Il diff staged (`git diff --cached`) tocca 2 file, +62/−6. Non ho usato git stash: per i mutanti ho lavorato in un worktree separato, poi rimosso.
-
-**Elementi del diff esaminati**
-- `modules/sottofondo/__init__.py:355` — `chiuso = True` ora si imposta appena il compito risulta in_coda/in_corso, prima di `_scrivi_privato`.
-  - Rischio esaminato: con il disco pieno, `_ripulisci` (`modules/sottofondo/__init__.py:182-192`) toglieva il posto senza avvisare. Ho controllato anche gli altri chiamanti di `annulla` (`gas.py:4619` e `modules/sottofondo/__init__.py:420`): ignorano il valore di ritorno, quindi la nuova semantica non li tocca. L'eccezione resta intercettata e finisce nel log (§9).
-  - Esito: ok. Il mutante «chiuso dopo la scrittura» fa fallire `test_scrittura_fallita_avvisa_lo_stesso`.
-- `modules/sottofondo/__init__.py:400-404` — in `esegui`, l'avviso «errore interno» parte solo se `chiuso` è vero, oppure se il file del compito manca o non è già ok/ko.
-  - Rischio esaminato: due casi. Primo, nessun doppio avviso quando `_esegui` ha già scritto ok/ko. Secondo, un file illeggibile deve avvisare comunque. Se la scrittura fallisce, il file resta in_corso e l'avviso parte (una volta sola).
-  - Esito: ok. Ho provato quattro mutanti e ognuno fa fallire un test:
-    - «avviso sempre»: fallisce `test_eccezione_dopo_ok_niente_avviso_di_errore`
-    - «senza chiuso»: fallisce `test_eccezione_dopo_ok_niente_avviso_di_errore`
-    - «solo chiuso»: fallisce `test_eccezione_interna_avvisa`
-    - «senza `or not dopo`»: fallisce `test_eccezione_interna_avvisa`
-- `tests/test_unit_sottofondo.py:665` — il nuovo test copre sia «eccezione dopo ok → nessun avviso» sia «eccezione prima → un avviso e stato ko».
-  - Rischio esaminato: che il test sia tautologico.
-  - Esito: ok, perché i mutanti qui sopra lo fanno fallire.
-- `tests/test_unit_sottofondo.py:694` — `test_scrittura_fallita_avvisa_lo_stesso` simula il disco pieno solo sul file del compito.
-  - Esito: ok.
-- Guardrail: questo diff non tocca la history né `_get_window`, non simula output di tool e non modifica il tetto delle iterazioni.
+**Antipattern:** il diff del lato HEAD è fatto di soli documenti. Il codice viene da M2 ed è già stato revisionato. Non ho trovato slicing della history né simulazione di tool introdotti dal merge.
 
 **Riserve**
-- **R-707-1-M2 BASSA**: se la scrittura fallisce, `modules/sottofondo/__init__.py:355` fa partire l'avviso e il posto viene tolto, ma il file del compito resta «in_corso» per sempre. Nessuna ripulitura successiva lo rivede, perché il posto non c'è più. Lo stato su disco resta quindi incoerente; è accettabile perché l'operatore è stato avvisato.
-- **R-707-2-M2 COSMETICA**: ci sono tre righe vuote prima del nuovo test (`tests/test_unit_sottofondo.py:662-664`, PEP8 E303).
-- Resta aperta **R-706-1-M2** (corsa in `annulla` senza lock): questo diff non la tocca.
+- R-706-1 COSMETICA: nella voce di `reports/roadmap.md:239` il titolo resta «⏳ Parola di attivazione "Hey Gas" sul dispositivo», mentre più avanti la stessa riga dice che «Hey Gas» è NO. Andrebbe rinominata, per esempio «Parola di attivazione sul dispositivo (hey_jarvis)».
 
-**Test**: sottofondo 69 passed con l'index.
+**Rischio escluso:** non ho rifatto la review del codice della PR #346 (controlla() a inizio turno, per_sottofondo, T106). L'ha già revisionata M2 e qui ho verificato solo che i blob siano identici a MERGE_HEAD. Non ho verificato nemmeno la causa ambientale di T31g, cioè quale dipendenza manca.
 
-**Cosa non ho verificato**: il comportamento reale con il disco pieno sul Mac o sulla VPS (non riproducibile in dev, l'ho solo simulato con un monkeypatch) e la consegna effettiva dell'avviso Telegram (nei test `avvisa` è finto). Non ho rilanciato la suite completa, solo `tests/test_unit_sottofondo.py`.
+**Memoria:** ho aggiunto la riga `#706 (chat Mani) — 2026-11-07 — APPROVATO CON RISERVE — …` in coda a .claude/agents/memoria_revisore.md. È solo nel working tree (stato MM), non committata e non staged. Nessuna lezione nuova.
 
-**Memoria**: ho aggiunto la riga #707-M2 e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit 4b21b78). Nessuna lezione nuova.
+Merge della PR #349 di M2 — review #710, verdetto integrale:
 
-File: /home/user/Gas/modules/sottofondo/__init__.py, /home/user/Gas/tests/test_unit_sottofondo.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+## VERDETTO: APPROVATO
 
-Review #708-M2 sul commit 0e5b2b0 (verdetto integrale):
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #708-M2: la modifica di 2 file in staging (+23 righe) sul branch feat/voce-v12-m2 (HEAD 147d6c8, PR #349) chiude il finding V-1 del bot #349 ed è passata. Resta una riserva BASSA (R-708-1-M2): la correzione è giusta, ma il posto in coda si libera da solo solo se l'errore è temporaneo.
-
-Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9), reports/stato_progetto.md (voce Fetta 3 sottofondo, riga 615) e la memoria del revisore. Nessun taglio della cronologia e nessuna simulazione di tool: il diff non tocca né la cronologia né i tool.
+Review #710 (chat Mani). Oggetto: il merge di origin/main f4ece4e (PR #349 di M2, seconda fetta di riserve BASSE del sottofondo) nel branch claude/peaceful-lovelace-0w2b7q (PR #348, HEAD 86773f1). Il merge è in staging, non ancora committato. Prima della review ho letto CLAUDE.md (sez. 5), lo stato del progetto e la mia memoria.
 
 **Elementi del diff esaminati**
-- `modules/sottofondo/__init__.py:461` — `except OSError` dopo `except FileNotFoundError` sulla rimozione di attivo.json, con warning nel log. Rischi esaminati:
-  - Ordine delle eccezioni: FileNotFoundError è una sottoclasse di OSError, quindi va prima, ed è così.
-  - Esito già scritto: lo stato ok/ko è scritto prima (`modules/sottofondo/__init__.py:455`), quindi dopo l'errore l'avviso finale parte col testo giusto.
-  - Rispetto del §9: errore intercettato e loggato, il processo prosegue.
-  - Esito: ok.
-- `tests/test_unit_sottofondo.py:714` — test `test_posto_non_tolto_avviso_finale_parte_lo_stesso`: forza un PermissionError sulla rimozione del solo attivo.json e controlla tre cose: esegui restituisce 0, parte un solo avviso «Ho finito», sul disco lo stato è «ok». Rischio esaminato: il test potrebbe passare anche col codice vecchio. Verificato: ho messo il test in staging in un worktree con il modulo di HEAD e fallisce (1 failed); con la correzione passa. Suite sottofondo 70 passed. Esito: ok.
-- Contesto, `modules/sottofondo/__init__.py:186` — `_ripulisci` toglie il posto con un `except FileNotFoundError` soltanto. Rischio esaminato: il commento del fix dice «il posto si libera da solo», e questo regge solo se l'errore era temporaneo. Esito: riserva (R-708-1-M2).
-- Contesto, `gas.py:4609` — il tool in_sottofondo chiama `accoda` dentro un `try/except Exception` che logga e risponde «non accodato». Rischio esaminato: crash se `_ripulisci` solleva da dentro `accoda`. Esito: ok, l'errore resta contenuto (§9 rispettato).
+- `reports/roadmap.md:239` — la voce sulla parola di attivazione ora dice «hey_jarvis», con «Hey Gas» NO per decisione dell'operatore del 07/11. Rischio esaminato: che il merge riporti il vecchio testo «Hey Gas» di main. Esito: ok. Nell'index c'è il testo del lato HEAD (PR #348), unica differenza da main su questo file (+1/-1).
+- `reports/proposta_voce_telegram.md:1` — documento nuovo della PR #348 (proposta voce via Telegram, solo testo, nessun codice). Rischio esaminato: che il merge lo perda o lo sporchi con marcatori. Esito: ok. È presente nell'index, nessun marcatore.
+- `reports/stato_progetto.md:615` — riga «Fetta 3 sottofondo». Rischio esaminato: che la fusione automatica perda righe o rimetta testo vecchio. Esito: ok. La riga vecchia di HEAD (PR #346 aperta) è sostituita dalla versione più nuova di M2 (PR #349, R-706/707/708-M2). Anche le due righe di testa di main (aggiornamento del 07/11 e fetta 44 «PR aperta») sono sostituite dalle versioni più nuove di HEAD (PR #347 mergiata). Non si perde nessun contenuto senza che ci sia la sua versione aggiornata.
+- `.claude/agents/memoria_revisore.md:1` — unione dei due lati. Rischio esaminato: righe perse. Esito: ok. Il controllo riga per riga dà 0 righe mancanti rispetto a HEAD e 0 rispetto a f4ece4e. Rispetto a main l'index aggiunge solo la riga #706 di Mani.
+- Contesto, `gas.py:1` e `modules/sottofondo/__init__.py:1` — codice del motore. Rischio esaminato: risoluzione sbagliata sul codice. Esito: ok. I blob nell'index sono identici a MERGE_HEAD: gas.py 35b26b3, modules/sottofondo/__init__.py 6919f28, tests/test_unit_kernel.py ebc7274, tests/test_unit_sottofondo.py d89ded7, reports/ripartenza_m2.md 0aa1f19. Il contenuto l'ha già revisionato M2 (#706-#708-M2).
 
-**Riserve**
-- R-708-1-M2 BASSA: se l'errore sulla rimozione è persistente (permessi della cartella), anche `_ripulisci` (`modules/sottofondo/__init__.py:186`) solleva a ogni passaggio.
-  - Le eccezioni non escono: le contengono `controlla` (riga 270) e il try in `gas.py:4609`.
-  - Però il posto resta occupato per sempre e ogni nuovo compito viene rifiutato con «compito in sottofondo non accodato», senza un avviso esplicito all'operatore. Nella riga di memoria ho scritto «occupato»: il testo esatto è «non accodato».
-  - Rimedio possibile: in `_ripulisci` intercettare OSError e avvisare una volta.
-  - Il percorso esisteva già prima di questo diff, che lo rende solo più probabile.
-- Restano aperte, invariate: R-706-1-M2 (corsa in annulla senza lock) e R-707-1-M2 (file fermo su «in_corso» se la scrittura fallisce).
+**Controlli meccanici**
+- Il diff dell'index contro f4ece4e tocca solo reports/ e la memoria (8 file). Quindi dopo il commit il diff di sessione contro f4ece4e non tocca il motore.
+- ultimo_report, handoff e diff_sessione hanno nell'index gli stessi blob di HEAD (presi dal lato HEAD).
+- `git ls-files -u` è vuoto, `git diff --cached --check` è pulito e non ci sono marcatori di conflitto.
+- Test: 353 passed (test_unit_sottofondo + test_unit_voce_ascolto) su una copia dell'index fatta con `git checkout-index` in scratch. Nessuno stash, working tree del repo non toccato.
 
-**Rischio escluso**: non ho verificato un errore di permessi vero sul filesystem (macOS/VPS), perché il test simula PermissionError con un monkeypatch su `Path.unlink`. Non ho controllato nemmeno la corsa tra due processi sullo stesso attivo.json (già coperta da R-706-1-M2).
+**Cosa NON ho verificato**
+- La suite completa del kernel (tests/test_unit_kernel.py) non l'ho rieseguita. Il blob è identico a MERGE_HEAD, già girato da M2, e la memoria #704-M2 segnala un FAIL T31g dovuto all'ambiente.
+- Il comportamento sul Mac (compito lungo a voce con avviso Telegram) non l'ho verificato: non si può riprodurre nel cloud.
+- Il contenuto del codice della PR #349 non l'ho ri-revisionato, perché era fuori dall'oggetto di questa review.
 
-**Memoria**: ho aggiunto la riga #708-M2 e una lezione nuova («quando una correzione rimanda la pulizia a un passaggio successivo, verificare che quel passaggio gestisca lo stesso errore»). L'ho committata da sola con `scripts/commit_memoria_revisore.sh` (commit faacaf1). Il diff in staging non è stato toccato.
-
-File:
-- /home/user/Gas/modules/sottofondo/__init__.py
-- /home/user/Gas/tests/test_unit_sottofondo.py
-- /home/user/Gas/.claude/agents/memoria_revisore.md
+**Memoria**
+- Riga #710 aggiunta in coda a .claude/agents/memoria_revisore.md, solo nel working tree, NON committata. Nessuna lezione nuova.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_kernel.py` T106a ora controlla anche la riga «SEI UN COMPITO IN SOTTOFONDO» nel prompt del processo in sottofondo (round-trip §7: chiamata negata, risposta finale), T106c che manchi nei turni normali. Suite kernel `=== RIEPILOGO: 1100 PASS, 0 FAIL ===`. `tests/test_unit_sottofondo.py`: 70 passed (prima 62; +1 in 0e5b2b0: posto non tolto, avviso finale parte; +2 in 1dc10bc: scrittura fallita avvisa lo stesso, eccezione dopo «ok» senza avviso di errore): compito appena riuscito resta «ok» senza avviso, `annulla` chiude solo compiti aperti, corsa simulata (figlio che finisce durante la pulizia), pulizia da `controlla` una volta l'ora, data futura + processo estraneo. Con il modulo di prima i test nuovi danno 3 failed; mutante «avviso sul compito letto prima» → 1 failed.
+Nessuna modifica a gas.py/tests/ rispetto a main (il codice arrivato col merge è identico a main). Dalla review #706, su una copia dell'index:
+- test_unit_sottofondo + test_unit_voce_ascolto: 345 passed;
+- kernel: 1099 PASS, 1 FAIL (T31g: manca il vector store nel sandbox, fuori dal merge).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Su 147d6c8: handoff-check verde; verifica-bot failure per verdetto fuori formato (nel merito solo BASSE); unit-suite in corso. I commit nuovi sono pushati insieme a questo report: run non ancora disponibile alla scrittura.
+`gh` non usato: GitHub passa dallo strumento MCP.
+- cafecf7 (head precedente della #348): unit-suite, handoff-check, verifica success. Bot APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA): entrambe corrette qui.
+- 021f68d: ha una run CI sua, success (verifica-bot annullato o saltato). Correzione della V-2 del bot su b48a0a8.
+- ede56b5 e b48a0a8: unit-suite, handoff-check, verifica success su b48a0a8. Bot APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA, vedi §7).
+- e5e530c e 86773f1: CI della PR #348 su 86773f1 (verificata al momento del merge).
+- Merge della #349 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-706-1-M2 BASSA: la corsa in `annulla` è ristretta ma non chiusa (lettura e riscrittura senza lock).
-- R-706-2-M2: CHIUSA in 1dc10bc.
-- R-708-1-M2 BASSA: se l'errore sull'unlink del posto è persistente (permessi), anche `_ripulisci` fallisce a ogni passaggio: posto occupato per sempre e nuovi compiti «non accodato», senza avviso esplicito.
-- R-707-1-M2 BASSA: se la riscrittura del compito fallisce, l'avviso parte ma il file resta «in_corso» per sempre. R-707-2-M2 COSMETICA: righe vuote in più nel test.
-- Bot #349 V-2 COSMETICA: `_ultima_pulizia` è per processo, non per cartella, e risente dei salti dell'orologio.
-- R-701-3-M2 BASSA / bot #346 V-3 (0c836f9): con un compito in corso ogni turno lancia `ps`; due processi che controllano insieme un figlio morto possono mandare due avvisi.
-- R-703-2-M2 / bot #346 V-2 (0c836f9) BASSA: con «creato» nel futuro e identità ignota la durata massima non vale finché l'orologio non raggiunge quella data.
-- R-696-1-M2, ve #345 V-2, bot #345 V-3: BASSE, invariate.
-- Non verificato in dev: processo vero con `claude -p`, avviso Telegram vero, `ps -ww` su macOS.
+- R-706-1 COSMETICA: chiusa in questo commit (titolo della voce R8 della roadmap rinominato).
+- Bot su b48a0a8 V-1 BASSA: scripts/voce/LEGGIMI.md (righe 44 e 48) dice ancora che «Ehi Gas» sarà addestrata. Va allineato alla decisione NO nella prossima fetta voce: il LEGGIMI è nel perimetro e richiede il revisore. V-2 COSMETICA (§6 su 021f68d) corretta qui.
+- Le riserve della #347 sono in `reports/stato_progetto.md`, alla voce della fetta 44.

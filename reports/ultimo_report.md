@@ -1,19 +1,18 @@
-# Ultimo report — 2026-11-07 — Sottofondo: seconda fetta di riserve BASSE (chat M2)
+# Ultimo report — 2026-11-07 — chat Mani: «Hey Gas» NO e riserve della PR #347 (PR #348)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta: da sola solo con verdetto pulito, altrimenti al rientro dell'operatore.
-2. Prova sul Mac: a voce un compito lungo → «ci lavoro» e poi avviso su Telegram.
+Nessuna nuova. Il 2026-11-07 l'operatore, via M1, ha detto sì al merge della PR #348 con le riserve e ha scelto l'opzione B per la voce via Telegram (due fette).
 
-## Esito delle fette
+## Esito
 
-- **PR #346**: `MERGIATA` (c523a04), dopo due merge di main nel branch (review #704/#705-M2).
-- **Seconda fetta BASSE**: `FATTA` — compito riuscito non diventa «ko», prompt del processo in sottofondo senza avvisa_operatore, pulizia anche da controlla(), test R-703-1; review #706-M2 APPROVATO CON RISERVE (R-706-1/2-M2 BASSE).
-- **Correzioni dopo bot #349** (avviso anche con scrittura fallita; R-706-2): `FATTE`, review #707-M2 APPROVATO CON RISERVE.
-- **Bot #349 V-1 su 147d6c8** (avviso finale perso se il posto non si toglie): `CORRETTA`, review #708-M2 APPROVATO CON RISERVE.
-- **Fetta 3.2** (compiti finiti letti a voce): `PRONTA`, in una PR separata dopo la decisione sulla #349.
-- Test: kernel 1100 PASS 0 FAIL; sottofondo 70 passed.
-
-## Anomalie
-
-- Mani ha mergiato la #347 mentre la #346 aspettava il merge: secondo conflitto (solo report e memoria), risolto.
+- **PR #347 (fetta 44)**: MERGIATA (4a0b113) col sì dell'operatore.
+- **Decisione «Hey Gas» NO**: FATTA.
+  - Registrata in `reports/proposta_parola_gas.md`.
+  - Allineata la roadmap (`reports/roadmap.md`, voce R8): bot V-1 sulla #348 e R-706-1.
+- **Riserve della #347 in stato_progetto**: FATTA. La dicitura «BASSE e COSMETICHE» è la correzione del bot V-2 sulla #348.
+- **Merge di main (PR #346 di M2)**: FATTO (ede56b5). I conflitti erano solo nei report. Review #706: APPROVATO CON RISERVE, con una sola COSMETICA (R-706-1), corretta dopo il merge.
+- Nessun codice di Mani toccato.
+- **Proposta voce via Telegram (R8)**: FATTA, solo documento.
+- Bot su b48a0a8: APPROVATO CON RISERVE. V-1 BASSA (LEGGIMI della voce parla ancora di «Ehi Gas»): DEFERITA alla prossima fetta voce, perché serve il revisore. V-2 COSMETICA: corretta nell'handoff.
+- **Merge della PR #349 di M2 nella #348**: FATTO, review #710 APPROVATO.
