@@ -30,7 +30,10 @@
 
 ---
 
-## §2 GIT DIFF -- .claude/agents/memoria_revisore.md |   7 +++
+## §2 GIT DIFF --STAT (sessione)
+
+```
+ .claude/agents/memoria_revisore.md |   7 +++
  clients/voice/ascolto.py           | 121 ++++++++++++++++++++++++++---------
  reports/diff_sessione.md           |  20 +++---
  reports/proposta_parola_gas.md     | 156 +++++++++++++++++++++++++++++++++++++++++++++
@@ -40,10 +43,7 @@
  scripts/voce/pausa.sh              |   7 +++
  scripts/voce/riprendi.sh           |  60 ++++++++++++++----
  tests/test_unit_voce_ascolto.py    | 226 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- reports/handoff.md                 | n/d (sessione)
-
-```
-STAT
+ reports/handoff.md                 | n/d
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main c1a4503 (dopo il merge della PR #341).
