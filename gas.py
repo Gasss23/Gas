@@ -2513,6 +2513,9 @@ class GasKernel:
                     f"testo={len(str(args.get('testo', '')))} caratteri")
         if name == "salva_contatto":
             return f"contatto chiave={str(args.get('chiave', ''))[:80]!r}"
+        if name == "in_sottofondo":
+            # Il compito può contenere dati dell'operatore: nel diario solo la lunghezza.
+            return f"compito={len(str(args.get('compito', '') or ''))} caratteri"
         if name == "avvisa_operatore":
             # Il testo può venire da input non fidato (F-diario-eco): solo la lunghezza.
             return f"testo={len(str(args.get('testo', '') or ''))} caratteri"
@@ -3977,6 +3980,22 @@ class GasKernel:
     # effort più basso del forte (`claude -p --effort`, documentato nell'aiuto della CLI).
     VOCE_FINESTRA_N: int = 6
     VOCE_EFFORT: str = "low"
+    # Fetta 3 (sì dell'operatore via M1, 6 nov): compito lungo in sottofondo, offerto SOLO nei
+    # turni parlati non effimeri (a testo/Telegram il turno può già durare quanto serve).
+    STRUMENTO_SOTTOFONDO: Dict[str, Any] = {"type": "function", "function": {
+        "name": "in_sottofondo",
+        "description": ("Avvia un compito LUNGO in sottofondo (ricerche, letture di pagine o "
+                        "file grandi, più passaggi): continua in un processo separato col "
+                        "cervello forte e alla fine l'operatore riceve un avviso su Telegram. "
+                        "Usalo solo quando il compito richiede più di qualche passaggio; poi "
+                        "rispondi in una frase che ci stai lavorando e che lo avviserai. Un "
+                        "compito alla volta."),
+        "parameters": {"type": "object", "properties": {
+            "compito": {"type": "string", "description": (
+                "il compito completo e autonomo, con tutti i dettagli che servono (chi, "
+                "cosa, dove): il processo in sottofondo vede la conversazione salvata ma non "
+                "può fare domande (max 2000 caratteri)")}},
+            "required": ["compito"]}}}
 
     def _timeout_provider(self, name: str) -> int:
         """Timeout HTTP del rung: Ollama locale ha il suo (R-226-1)."""
@@ -4546,6 +4565,43 @@ class GasKernel:
                             type(e).__name__)
             return None
 
+    def _in_sottofondo(self, args: Dict[str, Any], firmata: bool = False) -> str:
+        """Fetta 3: mette in coda il compito e avvia il processo separato. Solo nei turni
+        parlati (lo strumento è offerto solo lì) e solo col cervello forte disponibile.
+        Fail-safe §9: ogni errore è un diniego dichiarato."""
+        # R-695-1-M2: con la firma dell'operatore (kernel del bot Telegram, dove il turno non è
+        # a voce) il compito parte lo stesso; forte e tetto restano controllati.
+        if not firmata and not getattr(self, "_turno_voce", False):
+            return "Operazione negata: in_sottofondo esiste solo nei turni a voce."
+        if not _rung_disponibile("claude-cli", "GAS_CLAUDE_CLI"):
+            return ("Operazione negata: il cervello forte è spento (GAS_CLAUDE_CLI): niente "
+                    "compiti in sottofondo. Dillo all'operatore.")
+        if self._tetto_claude_cli_superato() is not None:
+            return ("Operazione negata: il cervello forte ha raggiunto il tetto di oggi: "
+                    "niente compiti in sottofondo. Dillo all'operatore.")
+        try:
+            from modules import sottofondo
+            # Bot #345 V-1: niente promessa di avviso che non può partire
+            motivo = sottofondo.notifica_possibile(self.root)
+            if motivo:
+                return (f"Operazione negata: non potrei avvisare l'operatore alla fine ({motivo}): "
+                        "niente compito in sottofondo. Fallo adesso se è breve, oppure dillo "
+                        "all'operatore.")
+            ident, rifiuto = sottofondo.accoda(self.root, args.get("compito"))
+            if ident is None:
+                return rifiuto
+        except Exception as e:  # §9
+            logging.warning("in_sottofondo: coda non scrivibile: %s", e)
+            return "Operazione negata: compito in sottofondo non accodato."
+        try:
+            sottofondo.avvia(self.root, ident)
+        except Exception as e:  # §9; R-695-4-M2: niente compito appeso né coda bloccata
+            logging.warning("in_sottofondo: avvio non riuscito: %s", e)
+            sottofondo.annulla(self.root, ident, f"avvio non riuscito ({type(e).__name__})")
+            return "Operazione negata: avvio del compito in sottofondo non riuscito."
+        return (f"Compito avviato in sottofondo ({ident}). Rispondi all'operatore in una "
+                "frase che ci stai lavorando e che lo avviserai su Telegram quando hai finito.")
+
     def execute_tool_call(self, name: str, args_str: Any, firmata: bool = False) -> str:
         """Esegue un tool. `firmata=True` SOLO da applica_firma (firma umana valida):
         abilita write_file di livello 2 (1A), mai il livello 3."""
@@ -4720,6 +4776,8 @@ class GasKernel:
                 from modules.sviluppo import crea_richiesta
                 a = args if isinstance(args, dict) else {}
                 out = crea_richiesta(a.get("titolo"), a.get("descrizione"), self.root)
+            elif name == "in_sottofondo":
+                out = self._in_sottofondo(args if isinstance(args, dict) else {}, firmata=firmata)
             elif name == "avvisa_operatore":
                 # Notifica all'operatore (R6): solo TELEGRAM_ALLOWED_IDS, tetto al giorno
                 # in modules/telegram/avviso.py; qui il tetto di UNA per turno (non per
@@ -4792,6 +4850,8 @@ class GasKernel:
         _lead_nuovi = 0  # V-1 bot #225 (2° giro): lead creati dopo una lettura
         self._file_delicati_turno = []  # R-223-2: file nuovi delicati, avviso a fine turno
         self._avvisi_turno = 0  # avvisa_operatore: una notifica per turno
+        # Fetta 3: in_sottofondo vale solo nei turni parlati non effimeri
+        self._turno_voce = bool(voce and not effimero)
 
         def _chiudi_turno() -> None:
             nonlocal _turno_fine_scritto
@@ -4835,6 +4895,9 @@ class GasKernel:
         # nuova) e niente si salva; nel finally torna la storia vera, intatta.
         _storia_vera: Optional[List[Dict[str, Any]]] = None
         _offerta: Dict[str, Any] = {"tools": self.tools_schema, "tool_choice": "auto"}
+        if voce and not effimero:  # fetta 3: a voce anche il compito in sottofondo
+            _offerta = {"tools": self.tools_schema + [self.STRUMENTO_SOTTOFONDO],
+                        "tool_choice": "auto"}
         if effimero:
             _storia_vera = self.history
             self.history = list(self.history)
@@ -6363,6 +6426,10 @@ def main():
         sys.exit(rifletti_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "notte":
         sys.exit(notte_cmd(solo=sys.argv[2]) if len(sys.argv) > 2 else notte_cmd())
+    if len(sys.argv) > 2 and sys.argv[1] == "sottofondo":  # fetta 3: processo separato
+        from modules import sottofondo
+        _root = Path.cwd()
+        sys.exit(sottofondo.esegui(_root, sys.argv[2], lambda: GasKernel(str(_root))))
     if len(sys.argv) > 1 and sys.argv[1] == "telegram":
         from modules.telegram.bot import run_bot
         sys.exit(run_bot())
