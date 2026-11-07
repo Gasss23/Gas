@@ -1,19 +1,16 @@
-# Ultimo report — 2026-11-07 — Sottofondo: seconda fetta di riserve BASSE (chat M2)
+# Ultimo report — 2026-11-07 — Voce, fetta 3.2: compiti finiti detti a voce (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta: da sola solo con verdetto pulito, altrimenti al rientro dell'operatore.
-2. Prova sul Mac: a voce un compito lungo → «ci lavoro» e poi avviso su Telegram.
+1. Merge della PR di questa fetta (riserve BASSE: sì via M1).
+2. Prova sul Mac: compito lungo a voce, avviso su Telegram, poi alla prossima attivazione Gas lo dice per primo.
 
 ## Esito delle fette
 
-- **PR #346**: `MERGIATA` (c523a04), dopo due merge di main nel branch (review #704/#705-M2).
-- **Seconda fetta BASSE**: `FATTA` — compito riuscito non diventa «ko», prompt del processo in sottofondo senza avvisa_operatore, pulizia anche da controlla(), test R-703-1; review #706-M2 APPROVATO CON RISERVE (R-706-1/2-M2 BASSE).
-- **Correzioni dopo bot #349** (avviso anche con scrittura fallita; R-706-2): `FATTE`, review #707-M2 APPROVATO CON RISERVE.
-- **Bot #349 V-1 su 147d6c8** (avviso finale perso se il posto non si toglie): `CORRETTA`, review #708-M2 APPROVATO CON RISERVE.
-- **Fetta 3.2** (compiti finiti letti a voce): `PRONTA`, in una PR separata dopo la decisione sulla #349.
-- Test: kernel 1100 PASS 0 FAIL; sottofondo 70 passed.
+- **PR #349**: `MERGIATA` (f4ece4e).
+- **Fetta 3.2**: `FATTA` — alla prossima attivazione a voce (mai nel seguito né a testo) Gas dice fino a 2 compiti in sottofondo finiti nelle ultime 24 ore; review #709-M2 APPROVATO CON RISERVE (R-709-1/2-M2 BASSE).
+- Test: sottofondo 72 passed; server voce f32 5 passed (suite 115 passed).
 
 ## Anomalie
 
-- Mani ha mergiato la #347 mentre la #346 aspettava il merge: secondo conflitto (solo report e memoria), risolto.
+- Nessuna.
