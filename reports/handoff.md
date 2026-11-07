@@ -1,12 +1,13 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-07 — chat Mani: «Hey Gas» NO, riserve della PR #347, merge della #346 (PR #348, solo documenti)
+**Sessione:** 2026-11-07 — chat Mani: «Hey Gas» NO, riserve della PR #347, merge della #346, proposta voce via Telegram (PR #348, solo documenti)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #348 (https://github.com/Gasss23/Gas/pull/348). Numero e URL vengono dalla risposta dello strumento GitHub `create_pull_request`; `gh` non è usato in questa sessione. La PR è di soli documenti: la mergio da solo solo se il bot sul nuovo head dà APPROVATO senza finding, altrimenti la decide l'operatore.
+1. Merge della PR #348 (https://github.com/Gasss23/Gas/pull/348). Numero e URL vengono dalla risposta dello strumento GitHub `create_pull_request`; `gh` non è usato in questa sessione. La PR è di soli documenti e contiene la proposta «voce via Telegram» (`reports/proposta_voce_telegram.md`), che decide l'operatore: per questo resta APERTA per lui (decisione di M1: le PR nuove con riserve o da decidere restano aperte).
+2. Proposta voce via Telegram: scegliere A, B o C (raccomandata B in due fette), se la risposta vocale arriva solo dopo un vocale o sempre, e chi tocca `modules/telegram/bot.py` (Mani con la review di M2, oppure M2).
 
 ---
 
@@ -15,6 +16,7 @@
 - **Decisione «Hey Gas» NO**: `FATTA`. Scritta in proposta_parola_gas.md e allineata in roadmap.md (bot V-1 su cafecf7, R-706-1).
 - **Riserve della #347 in stato_progetto**: `FATTA`. Riga 4 corretta (bot V-2 su cafecf7).
 - **Merge di main con la PR #346 di M2**: `FATTA` (ede56b5). Review #706 APPROVATO CON RISERVE.
+- **Proposta voce via Telegram (R8, richiesta di M1)**: `FATTA` — `reports/proposta_voce_telegram.md`, solo documento.
 
 ---
 
@@ -22,11 +24,12 @@
 
 ```
  .claude/agents/memoria_revisore.md |   1 +
- reports/diff_sessione.md           |  15 ++++++++-------
+ reports/diff_sessione.md           |  16 +++++++++-------
  reports/proposta_parola_gas.md     |   4 ++++
+ reports/proposta_voce_telegram.md  |  55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  23 ++++++++++-------------
+ reports/ultimo_report.md           |  26 +++++++++++++-------------
  reports/handoff.md                 | n/d
 ```
 
@@ -35,6 +38,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e5e530c docs(voce): proposta «voce via Telegram, fuori casa» (R8), solo documento — decide l'operatore (chat Mani)
+b48a0a8 docs(fine-task): PR #348 — «Hey Gas» NO in roadmap, merge della #346, review #706
 ede56b5 Merge origin/main (PR #346 di M2) nella PR #348, con le correzioni del bot (roadmap «Hey Gas» NO, riga 4 di stato_progetto) — review #706 APPROVATO CON RISERVE
 cafecf7 docs(fine-task): chat Mani — «Hey Gas» NO e riserve della #347 (PR #348)
 021f68d docs(voce): «Hey Gas» NO (decisione dell'operatore), riserve della PR #347 registrate (chat Mani)
@@ -92,10 +97,12 @@ Nessuna modifica a gas.py/tests/ rispetto a main (il codice arrivato col merge �
 
 `gh` non usato: GitHub passa dallo strumento MCP.
 - cafecf7 (head precedente della #348): unit-suite, handoff-check, verifica success. Bot APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA): entrambe corrette qui.
-- 021f68d: pushato insieme a cafecf7, testato solo nella run di cafecf7.
-- ede56b5 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 021f68d: ha una run CI sua, success (verifica-bot annullato o saltato). Correzione della V-2 del bot su b48a0a8.
+- ede56b5 e b48a0a8: unit-suite, handoff-check, verifica success su b48a0a8. Bot APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA, vedi §7).
+- e5e530c e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-706-1 COSMETICA: chiusa in questo commit (titolo della voce R8 della roadmap rinominato).
+- Bot su b48a0a8 V-1 BASSA: scripts/voce/LEGGIMI.md (righe 44 e 48) dice ancora che «Ehi Gas» sarà addestrata. Va allineato alla decisione NO nella prossima fetta voce: il LEGGIMI è nel perimetro e richiede il revisore. V-2 COSMETICA (§6 su 021f68d) corretta qui.
 - Le riserve della #347 sono in `reports/stato_progetto.md`, alla voce della fetta 44.
