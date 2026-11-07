@@ -21,6 +21,8 @@
 - **#345** (M2, compiti lunghi in sottofondo con avviso Telegram): SÌ dell'operatore il 7/11. Al /clear era in fase di merge: verificare.
 
 ## Decisioni dell'operatore (valide)
+- 7/11: sì al merge di #346 (M2) e #347 (Mani, se niente ALTE/MEDIE). «Hey Gas» NO: si resta con «Hey Jarvis».
+- 7/11: voce «simile al film» = voce generica british/maggiordomo (NON clone dell'attore). Proposta: Daniel (premade ElevenLabs, onwK4e9ZLuTAKqWW03F9) da confrontare con George (attuale) su /voci.
 - Voce: sempre in ascolto. «Hey Jarvis» attiva. Dopo una risposta la finestra dura 40 s di silenzio, poi torna in attesa. «Jarvis, pausa» chiude la conversazione. `pausa.sh` = standby profondo, `riprendi.sh` per riaccendere.
 - Turni di seguito (senza parola): solo cervello forte, nessuno strumento. Il cervello decide se il parlato è rivolto a Gas; se no, silenzio e niente memoria. I seguiti rivolti a Gas vanno in memoria, e finché sono nella finestra si usa solo il forte (mai i gratuiti).
 - Rischi accettati: la trascrizione Groq riceve tutto l'audio della voce; circa 2 s di stanza dopo un falso «Hey Jarvis» nella finestra.
