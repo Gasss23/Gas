@@ -11931,6 +11931,7 @@ try:
         check("T106a sottofondo: avvisa_operatore non offerto e negato, risposta finale",
               _k106.nel_sottofondo is True
               and "Manda un messaggio su Telegram all'operatore (solo a lui" not in _reg106[0]["sistema"]
+              and "SEI UN COMPITO IN SOTTOFONDO" in _reg106[0]["sistema"]
               and len(_res106) == 1 and "parte da solo alla fine" in _res106[0]
               and [e["content"] for e in _ev106 if e["type"] == "final"] == ["Risultato del compito."]
               and _controlli106 == [],
@@ -11943,7 +11944,8 @@ try:
         check("T106c turno normale: sottofondo.controlla chiamata una volta, sul root; "
               "avvisa_operatore offerto",
               _controlli106 == [str(_k106c.root)]
-              and "Manda un messaggio su Telegram all'operatore (solo a lui" in _reg106[-1]["sistema"],
+              and "Manda un messaggio su Telegram all'operatore (solo a lui" in _reg106[-1]["sistema"]
+              and "SEI UN COMPITO IN SOTTOFONDO" not in _reg106[-1]["sistema"],
               str(_controlli106))
         def _rotto106(root, avvisa=None):
             raise RuntimeError("x")
