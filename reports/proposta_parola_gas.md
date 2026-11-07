@@ -5,6 +5,10 @@ Le fonti sono state lette sul repo ufficiale di openWakeWord. Alcuni siti erano 
 dalla rete della sessione: Hugging Face, Colab, home-assistant.io e il sito di ACAV100M.
 Quello che viene solo da ricerche web o da repo di terzi è segnato come **non verificato**.
 
+## DECISIONE (2026-11-07, operatore via M1)
+
+**NO (opzione B): si resta con «Hey Jarvis».** Niente addestramento di «Hey Gas» né verificatore personale per ora. Il resto del documento resta come riferimento, se in futuro si vuole riaprire la questione.
+
 ## In breve
 
 1. **Tecnicamente si può**, e su Gas non serve cambiare codice. La versione fissata di
