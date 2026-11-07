@@ -15,6 +15,7 @@
 
 - **PR #345** (fetta 3, compiti lunghi in sottofondo): `MERGIATA` (5c79886) col sì dell'operatore via M1.
 - **Fetta BASSE del sottofondo**: `FATTA` — pid riusato non blocca la coda (ve #345 V-1); «creato» non numerico/non finito/nel futuro non blocca (bot V-4, ve V-2, R-701-2); `sottofondo.controlla` a ogni turno: avviso al crash alla prima interazione (bot V-1 e323b60); processo in sottofondo senza `avvisa_operatore` (bot V-2 e323b60); «fermato» solo se fermato davvero (R-699-1, ve V-3); pulizia dei compiti finiti oltre 7 giorni (bot V-2 46596b4); inf/nan nelle variabili → default (bot V-3 46596b4). Review #701-M2 e #702-M2 APPROVATO CON RISERVE.
+- **Verifica esterna #346 su 2d0977e** (APPROVATO CON RISERVE): V-1 BASSA (regressione: orologio portato indietro → compito vero fermato e secondo compito in parallelo) e V-2 COSMETICA (1e308 → inf) `CORRETTE` in fb620f5. Review #703-M2 APPROVATO CON RISERVE (R-703-1/2-M2 BASSE).
 - **Fetta 3.2** (lettura a voce dei compiti finiti): `DEFERITA`.
 
 ---
@@ -22,16 +23,16 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 +
- gas.py                             |  31 ++++++-
- modules/sottofondo/__init__.py     | 140 +++++++++++++++++++++++++------
+ .claude/agents/memoria_revisore.md |   6 +
+ gas.py                             |  31 +++-
+ modules/sottofondo/__init__.py     | 164 ++++++++++++++++----
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_kernel.py          |  70 ++++++++++++++++
- tests/test_unit_sottofondo.py      | 168 ++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_kernel.py          |  70 +++++++++
+ tests/test_unit_sottofondo.py      | 207 ++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 5c79886 (merge della #345).
@@ -39,6 +40,9 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fb620f5 fix(sottofondo): orologio portato indietro non ferma il compito vero né ne fa partire un secondo (ve #346 V-1, R-702-1-M2); 1e308 nelle variabili → default (ve #346 V-2)
+9173c62 chore(revisore): memoria review #703 — APPROVATO CON RISERVE
+2d0977e docs(voce): report di fine task — riserve BASSE del sottofondo chiuse (chat M2)
 256c1e0 fix(sottofondo): chiude le riserve BASSE di bot e verifica esterna #345 (pid riusato, «creato», avviso al crash, ultimo avviso del giorno, «fermato», pulizia, inf/nan) (sì dell'operatore via M1)
 f0f21ce chore(revisore): memoria review #702 — APPROVATO CON RISERVE
 e2d04d0 chore(revisore): memoria review #701 — APPROVATO CON RISERVE
@@ -112,18 +116,50 @@ Review #702-M2 (bis di #701-M2, branch feat/voce-v12-m2, base 5c79886). Ho esami
 
 **Memoria**: aggiunte la riga #702-M2 e una lezione (timestamp nel futuro che decide un kill, salto all'indietro dell'orologio) in /home/user/Gas/.claude/agents/memoria_revisore.md, committate con commit atomico f0f21ce. Il diff staged è intatto (4 file, +379/−30).
 
+Review #703-M2 sul commit fb620f5 (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #703-M2: correzione di ve #346 V-1 e V-2. È stato esaminato solo il diff staged (feat/voce-v12-m2, base 2d0977e, 2 file, +69/−8). Non ho usato `git stash`. Ho provato i mutanti in un `git worktree` nello scratchpad, poi l'ho rimosso.
+
+**Elementi del diff esaminati**
+- `modules/sottofondo/__init__.py:120`: in `attivo()`, se «creato» è nel futuro la data viene ignorata. Senza pid o con pid morto il posto è libero. Con pid vivo il posto si libera solo se `_identita` è False, altrimenti (True o None) resta occupato. Rischio esaminato: un salto indietro dell'orologio (NTP) con un compito vero in corso, e un file alterato senza processo (R-701-2-M2). **Esito: ok.** R-702-1-M2 è chiusa: il nostro figlio non viene più fermato e non parte un secondo compito. R-701-2-M2 resta chiusa per il caso senza processo. L'ordine dei controlli è identico al ramo normale, quindi niente regressioni sul pid riusato (R-698-1).
+- `modules/sottofondo/__init__.py:160`: `oltre = not _nel_futuro(dati) and ...`. Rischio esaminato: killpg con una data futura. **Esito: ok.** Il ramo è solo difensivo. Con identità True o None `attivo()` ritorna prima, e con identità False il kill non avviene comunque. Il mutante che toglie la guardia sopravvive. È accettabile così, ma va dichiarato.
+- `modules/sottofondo/__init__.py:87` e `modules/sottofondo/__init__.py:226`: il controllo `isfinite` ora si fa dopo la moltiplicazione (×60 e ×86400). Rischio esaminato: con 1e308 il valore diventava inf, cioè durata infinita oppure nessuna pulizia. **Esito: ok.** V-2 è chiusa e 1e308 è aggiunto ai test parametrici.
+- `tests/test_unit_sottofondo.py:546`: crea un figlio finto vero, `python -c sleep ... gas.py sottofondo <id>`, leader di sessione, con creato = adesso+600. Controlla che il posto resti occupato, che il processo non venga ucciso, che non parta nessun avviso e che il secondo compito sia negato. Rischio esaminato: che il test passi per un ramo diverso da quello voluto. **Esito: ok.** Senza `ps` l'identità sarebbe None, il posto resterebbe occupato e il test passerebbe lo stesso: è coerente col codice.
+- `tests/test_unit_sottofondo.py:441`: il caso 1e18 con pid proprio ora si aspetta il posto occupato. **Esito: ok.** Il pid di pytest non è leader del gruppo, ma `_identita` è forzata a True dal monkeypatch del parametrico (R-701-1).
+- `tests/test_unit_sottofondo.py:570`: data futura con pid None o morto, la coda si libera. **Esito: ok.**
+
+**Controlli rilanciati**
+- 62 passed, anche con COLUMNS=20.
+- Codice di HEAD con i test nuovi: 4 failed (il caso del figlio vero, il caso 1e18 con pid proprio, i due 1e308). Tu ne avevi dichiarati 2: la differenza è solo nel conteggio.
+- Mutante «identità ignorata nel solo ramo futuro» (`return dati` se il pid è vivo): **sopravvive**, 62 passed.
+
+**Riserve**
+- **R-703-1-M2 BASSA**: nessun test copre «creato» nel futuro con un pid vivo ma estraneo (leader con un comando diverso, identità False, quindi posto libero). Il mutante qui sopra lo dimostra. Va aggiunto un test con `sleep` in `start_new_session=True` e creato = adesso+600: il test deve verificare che il posto sia libero e che il processo estraneo non venga toccato.
+- **R-703-2-M2 BASSA (trade-off da dichiarare)**: con «creato» nel futuro la durata massima non vale finché l'orologio non raggiunge quella data. Con un salto naturale di X minuti il caso peggiore è durata + X. Ma con il file alterato a 1e18 e il nostro figlio appeso, la coda resta occupata per tutta la vita del figlio: il figlio non ha un tetto di tempo proprio (in gas.py non ho trovato timeout o alarm per il sottofondo). A HEAD invece quel figlio veniva fermato. Basta dichiararlo in stato_progetto.md, oppure, se si vuole chiuderlo, usare un tetto basato sull'mtime di attivo.json.
+- R-701-3-M2 resta aperta (fuori da questo diff).
+
+**Rischio escluso**: non ho verificato il comportamento con un vero salto NTP su macOS o sulla VPS, perché in dev non si riproduce: la data futura è stata simulata scrivendo «creato». Non ho rilanciato la suite del kernel, perché il diff non tocca gas.py.
+
+**Memoria**: aggiunte la riga #703-M2 e una lezione (lanciare il mutante del solo ramo nuovo quando un controllo viene duplicato) in /home/user/Gas/.claude/agents/memoria_revisore.md. Ho lanciato `scripts/commit_memoria_revisore.sh`. Il diff staged è rimasto intatto (2 file, +69/−8).
+
+File rilevanti: /home/user/Gas/modules/sottofondo/__init__.py, /home/user/Gas/tests/test_unit_sottofondo.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_kernel.py` T106a (processo in sottofondo: avvisa_operatore non offerto e negato, risposta finale — round-trip §7), T106b (niente avviso alla firma), T106c (turno normale: `controlla` chiamata, avvisa_operatore offerto), T106d (`controlla` in errore: il turno prosegue). Suite kernel `=== RIEPILOGO: 1100 PASS, 0 FAIL ===` (prima 1096; il revisore, senza vector store, ha 1099 PASS + T31g ambientale). `tests/test_unit_sottofondo.py`: 59 passed (prima 34): pid riusato con processo vero, identità ignota, `ps` assente, «creato» parametrico × pid, inf/nan, «fermato», pulizia, `controlla`. Mutanti: «isfinite/futuro tolto» → 5 failed; gate + voce server + avvisa_operatore: 975 passed.
+`tests/test_unit_kernel.py` T106a (processo in sottofondo: avvisa_operatore non offerto e negato, risposta finale — round-trip §7), T106b (niente avviso alla firma), T106c (turno normale: `controlla` chiamata, avvisa_operatore offerto), T106d (`controlla` in errore: il turno prosegue). Suite kernel `=== RIEPILOGO: 1100 PASS, 0 FAIL ===` (prima 1096; il revisore, senza vector store, ha 1099 PASS + T31g ambientale). `tests/test_unit_sottofondo.py`: 62 passed (prima 34; anche con COLUMNS=20): orologio portato indietro con figlio vero (posto occupato, nessun kill), data futura senza processo (libero), 1e308; pid riusato con processo vero, identità ignota, `ps` assente, «creato» parametrico × pid, inf/nan, «fermato», pulizia, `controlla`. Mutanti: «isfinite/futuro tolto» → 5 failed; gate + voce server + avvisa_operatore: 975 passed.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. I commit sono pushati insieme a questo report: run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nel cloud. Su 2d0977e: handoff-check verde, unit-suite e bot in corso alla verifica esterna. I commit nuovi sono pushati insieme a questo report: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 
 - R-701-3-M2 BASSA: con un compito in corso ogni turno lancia un `ps` (timeout 5 s nel caso peggiore, sul percorso della voce); due processi che controllano insieme un figlio morto possono mandare due avvisi.
-- R-702-1-M2 BASSA: un salto all'indietro dell'orologio di oltre 2 minuti mentre un compito gira fa vedere il suo «creato» nel futuro → scaduto → il nostro figlio viene fermato.
+- R-702-1-M2: CHIUSA in fb620f5 (ve #346 V-1).
+- R-703-1-M2 BASSA: nessun test per «creato» nel futuro con pid vivo ma estraneo (posto libero); il mutante «identità ignorata nel ramo futuro» sopravvive. Anche la guardia `not _nel_futuro` in `_ripulisci` è solo difensiva (mutante sopravvive).
+- R-703-2-M2 BASSA: con «creato» nel futuro la durata massima non vale finché l'orologio non raggiunge quella data; con file alterato e figlio appeso la coda resta occupata per la vita del figlio (il figlio non ha un tetto di tempo proprio).
 - R-696-1-M2 BASSA (dalla #345): finestra contaminata + firma su Telegram.
 - Ve #345 V-2 BASSA: posto vuoto recente → «ne sto già facendo uno» per ≤120 s. Bot #345 V-3 BASSA: prova con processi veri sulla storia condivisa.
 - Non verificato in dev: processo vero con `claude -p`, avviso Telegram vero, `ps -ww` su macOS.
