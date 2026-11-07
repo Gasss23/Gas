@@ -82,7 +82,9 @@ def _numero_env(nome: str, default: float) -> float:
 
 
 def _durata_max_s() -> float:
-    return max(60.0, _numero_env("GAS_SOTTOFONDO_MAX_MIN", DURATA_MAX_S_DEFAULT / 60) * 60)
+    secondi = _numero_env("GAS_SOTTOFONDO_MAX_MIN", DURATA_MAX_S_DEFAULT / 60) * 60
+    # Ve #346 V-2: un valore enorme (1e308) diventa inf dopo la moltiplicazione → default
+    return max(60.0, secondi) if math.isfinite(secondi) else float(DURATA_MAX_S_DEFAULT)
 
 
 def _creato(dati: Dict[str, Any]) -> float:
@@ -93,8 +95,18 @@ def _creato(dati: Dict[str, Any]) -> float:
     except (TypeError, ValueError):
         return 0.0
     # R-701-2-M2: anche un «creato» nel futuro (file alterato, orologio portato indietro)
-    # vale scaduto, invece di tenere la coda occupata fino a quella data.
-    return valore if math.isfinite(valore) and valore <= time.time() + 120 else 0.0
+    # vale scaduto, invece di tenere la coda occupata fino a quella data. Chi decide se il
+    # processo va fermato guarda anche _nel_futuro (ve #346 V-1).
+    return valore if math.isfinite(valore) and not _nel_futuro(dati) else 0.0
+
+
+def _nel_futuro(dati: Dict[str, Any]) -> bool:
+    """«creato» numerico finito ma più avanti di adesso + 120 s (orologio portato indietro)."""
+    try:
+        valore = float(dati.get("creato", 0) or 0)
+    except (TypeError, ValueError):
+        return False
+    return math.isfinite(valore) and valore > time.time() + 120
 
 
 def attivo(root: Path) -> StatoAttivo:
@@ -104,10 +116,17 @@ def attivo(root: Path) -> StatoAttivo:
     dati = _leggi(Path(root) / CARTELLA / ATTIVO)
     if not dati:
         return None
+    pid = dati.get("pid")
+    if _nel_futuro(dati):
+        # Ve #346 V-1 / R-702-1-M2: con l'orologio portato indietro la data non dice più
+        # niente. Il posto resta del processo se è vivo e non sicuramente estraneo; senza pid
+        # (nessun processo ancora) o con pid morto è libero.
+        if pid is None or not _vivo(pid):
+            return None
+        return None if _identita(pid, str(dati.get("id") or "")) is False else dati
     eta = time.time() - _creato(dati)
     if eta > _durata_max_s():
         return None
-    pid = dati.get("pid")
     if pid is None:  # appena accodato, il processo non ha ancora scritto il pid
         return dati if eta < 120 else None
     if not _vivo(pid):
@@ -137,7 +156,8 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
         return
     ident = str(dati.get("id") or "")
     pid = dati.get("pid")
-    oltre = time.time() - _creato(dati) > _durata_max_s()
+    # Ve #346 V-1: con «creato» nel futuro non si è mai «oltre la durata»: niente killpg
+    oltre = not _nel_futuro(dati) and time.time() - _creato(dati) > _durata_max_s()
     motivo = "il processo si è interrotto"
     if oltre:
         motivo = "oltre la durata massima"
@@ -201,7 +221,9 @@ def _e_nostro(pid: Any, ident: str) -> bool:
 
 
 def _giorni_conservazione() -> float:
-    return max(1.0, _numero_env("GAS_SOTTOFONDO_GIORNI", GIORNI_CONSERVAZIONE_DEFAULT))
+    giorni = max(1.0, _numero_env("GAS_SOTTOFONDO_GIORNI", GIORNI_CONSERVAZIONE_DEFAULT))
+    # Ve #346 V-2: un valore enorme renderebbe il limite -inf (nessuna pulizia) → default
+    return giorni if math.isfinite(giorni * 86400) else float(GIORNI_CONSERVAZIONE_DEFAULT)
 
 
 def _pulisci_vecchi(root: Path) -> None:

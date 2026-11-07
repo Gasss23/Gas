@@ -438,11 +438,16 @@ def test_creato_non_numerico_non_blocca(tmp_path, monkeypatch, creato, pid):
     c.mkdir()
     (c / sf.ATTIVO).write_text(json.dumps({"id": "x", "pid": os.getpid() if pid else None,
                                            "creato": creato}))
+    if creato == 1e18 and pid:
+        # Ve #346 V-1: data nel futuro ma processo vivo e nostro → il posto resta suo
+        assert sf.attivo(tmp_path) is not None
+        assert sf.accoda(tmp_path, "due", avvisa=lambda t, r: None)[0] is None
+        return
     assert sf.attivo(tmp_path) is None
     assert sf.accoda(tmp_path, "due", avvisa=lambda t, r: None)[0] is not None
 
 
-@pytest.mark.parametrize("valore", ["inf", "-inf", "nan", "abc", ""])
+@pytest.mark.parametrize("valore", ["inf", "-inf", "nan", "abc", "", "1e308"])
 def test_durata_inf_nan_torna_al_default(monkeypatch, valore):
     """Bot #345 (46596b4) V-3: GAS_SOTTOFONDO_MAX_MIN non finito o non numerico → 60 minuti."""
     monkeypatch.setenv("GAS_SOTTOFONDO_MAX_MIN", valore)
@@ -504,7 +509,7 @@ def test_pulizia_dei_compiti_finiti_vecchi(tmp_path, monkeypatch):
 
 
 def test_giorni_conservazione_non_validi(monkeypatch):
-    for v in ("inf", "nan", "abc", "0", "-3"):
+    for v in ("inf", "nan", "abc", "0", "-3", "1e308"):
         monkeypatch.setenv("GAS_SOTTOFONDO_GIORNI", v)
         assert 1.0 <= sf._giorni_conservazione() <= sf.GIORNI_CONSERVAZIONE_DEFAULT
 
@@ -536,3 +541,37 @@ def test_controlla_non_solleva(tmp_path, monkeypatch):
     c.mkdir()
     (c / sf.ATTIVO).write_text("{}")
     sf.controlla(tmp_path)
+
+
+def test_orologio_indietro_non_ferma_il_figlio_vero(tmp_path):
+    """Ve #346 V-1 / R-702-1-M2: «creato» nel futuro (orologio portato indietro) con il NOSTRO
+    figlio vivo: il posto resta occupato, niente killpg, niente secondo compito, niente avviso."""
+    import subprocess as sp
+    import time as _t
+    ident, _ = sf.accoda(tmp_path, "uno")
+    figlio = sp.Popen([sys.executable, "-c", "import time; time.sleep(30)", "gas.py",
+                       "sottofondo", ident], start_new_session=True)
+    try:
+        _t.sleep(0.3)
+        c = tmp_path / sf.CARTELLA
+        (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": figlio.pid,
+                                               "creato": _t.time() + 600}))
+        assert sf.attivo(tmp_path) is not None
+        inviati, avvisa = _avvisi()
+        sf.controlla(tmp_path, avvisa)
+        assert sf.accoda(tmp_path, "due", avvisa=avvisa)[0] is None
+        assert figlio.poll() is None and inviati == []
+        assert (c / sf.ATTIVO).exists()
+    finally:
+        figlio.kill()
+        figlio.wait()
+
+
+def test_orologio_indietro_pid_morto_o_assente_libera(tmp_path):
+    """«creato» nel futuro senza processo vivo: la coda si libera (R-701-2-M2 resta chiusa)."""
+    import time as _t
+    c = tmp_path / sf.CARTELLA
+    c.mkdir()
+    for pid in (None, 2 ** 22 + 12345):
+        (c / sf.ATTIVO).write_text(json.dumps({"id": "x", "pid": pid, "creato": _t.time() + 600}))
+        assert sf.attivo(tmp_path) is None
