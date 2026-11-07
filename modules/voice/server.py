@@ -653,6 +653,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 except Exception as exc:  # §9: la risposta parte lo stesso
                     log.warning("registra_seguito eccezione: %s", exc)
 
+        if is_audio and not self._seguito():
+            result_content = self._con_compiti_finiti(result_content)
+
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
             self._do_audio_testo_response(result_content)
         elif self._wants_audio() and self._formato() != _FORMATO_PEZZI_VOCE:
@@ -662,6 +665,25 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if self._capito is not None:
                 out["capito"] = self._capito
             self._send_json(200, out)
+
+    def _con_compiti_finiti(self, risposta: str) -> str:
+        """Fetta 3.2 (chat M2, 7 nov): al turno di attivazione a voce, prima della risposta,
+        i compiti in sottofondo finiti e non ancora letti (al massimo 2, ultime 24 ore). Mai nei
+        seguiti (parlato della stanza). Fail-safe §9: un errore lascia la risposta com'è."""
+        try:
+            from modules import sottofondo
+            root = getattr(self.kernel, "root", None)
+            if root is None:
+                return risposta
+            jobs = sottofondo.da_leggere(root)
+            if not jobs:
+                return risposta
+            frase = sottofondo.frase_finiti(jobs)
+            sottofondo.segna_letti(root, jobs)
+            return f"{frase} {risposta}".strip() if frase else risposta
+        except Exception as exc:
+            log.warning("compiti finiti non letti a voce: %s", exc)
+            return risposta
 
     def _rispondi_senza_turno(self, testo: str, segno: str) -> None:
         """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito», «dimmi»), nel

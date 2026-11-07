@@ -468,3 +468,68 @@ def _esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
              f"Il compito in sottofondo «{titolo}» non è riuscito: {_breve(job['errore'], 200)}")
     _avvisa(root, testo, ident, avvisa)
     return 0 if ok else 1
+
+# ---- Fetta 3.2 (chat M2, 7 nov): lettura a voce dei compiti finiti ----
+
+LETTI_MAX = 2              # compiti letti a voce per turno
+LETTURA_RISPOSTA_MAX = 250  # caratteri della risposta letta a voce (il resto è su Telegram)
+
+
+def _ore_lettura() -> float:
+    ore = max(1.0, _numero_env("GAS_SOTTOFONDO_LEGGI_ORE", 24))
+    return ore if math.isfinite(ore * 3600) else 24.0
+
+
+def da_leggere(root: Path) -> list:
+    """Fetta 3.2: compiti finiti (ok/ko) nelle ultime GAS_SOTTOFONDO_LEGGI_ORE (default 24) e
+    non ancora letti a voce, i più vecchi prima, al massimo LETTI_MAX. Mai eccezioni (§9)."""
+    try:
+        cartella = Path(root) / CARTELLA
+        if not cartella.is_dir():
+            return []
+        limite = time.time() - _ore_lettura() * 3600
+        finiti = []
+        for f in cartella.glob("*.json"):
+            if f.name == ATTIVO:
+                continue
+            job = _leggi(f)
+            if (not job or job.get("stato") not in ("ok", "ko") or job.get("letto_a_voce")
+                    or not isinstance(job.get("id"), str) or f.stem != job["id"]):
+                continue
+            try:
+                fine = float(job.get("fine") or 0)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(fine) and fine >= limite:
+                finiti.append((fine, job))
+        finiti.sort(key=lambda x: x[0])
+        return [job for _, job in finiti[:LETTI_MAX]]
+    except Exception as e:
+        logging.warning("sottofondo: lettura dei finiti non riuscita: %s", e)
+        return []
+
+
+def frase_finiti(jobs: list) -> str:
+    """Le frasi da dire prima della risposta: titolo e un riassunto corto per ogni compito."""
+    frasi = []
+    for job in jobs:
+        titolo = _breve(job.get("compito", ""), 80)
+        if job.get("stato") == "ok":
+            frasi.append(f"Ho finito il compito in sottofondo «{titolo}»: "
+                         f"{_breve(job.get('risposta', ''), LETTURA_RISPOSTA_MAX)}")
+        else:
+            frasi.append(f"Il compito in sottofondo «{titolo}» non è riuscito.")
+    return " ".join(frasi)
+
+
+def segna_letti(root: Path, jobs: list) -> None:
+    """Segna come letti a voce (così non si ripetono). Mai eccezioni (§9)."""
+    for job in jobs:
+        try:
+            percorso = Path(root) / CARTELLA / f"{Path(str(job.get('id'))).name}.json"
+            attuale = _leggi(percorso)
+            if attuale and attuale.get("stato") in ("ok", "ko"):
+                attuale["letto_a_voce"] = True
+                _scrivi_privato(percorso, attuale)
+        except Exception as e:
+            logging.warning("sottofondo: segno di lettura non scritto: %s", e)
