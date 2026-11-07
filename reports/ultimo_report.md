@@ -1,18 +1,15 @@
-# Ultimo report — 2026-11-07 — Sottofondo: chiusura delle riserve BASSE (chat M2)
+# Ultimo report — 2026-11-07 — chat Mani: «Hey Gas» NO e riserve della PR #347 (PR #348)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta (riserve BASSE: sì via M1).
-2. Prova sul Mac: a voce un compito lungo → «ci lavoro» e poi avviso su Telegram.
+1. Merge della PR #348 (https://github.com/Gasss23/Gas/pull/348), solo documenti. La mergio da solo se il bot sul nuovo head dà APPROVATO senza finding; altrimenti resta aperta per l'operatore.
 
-## Esito delle fette
+## Esito
 
-- **PR #345** (fetta 3 sottofondo): `MERGIATA` (5c79886).
-- **Fetta BASSE del sottofondo**: `FATTA` — pid riusato, «creato» sbagliato, avviso al crash a ogni turno, niente avvisa_operatore nel compito in sottofondo, «fermato» solo se vero, pulizia dopo 7 giorni, inf/nan; review #701-M2 e #702-M2 APPROVATO CON RISERVE (R-701-3-M2, R-702-1-M2 BASSE).
-- **Verifica esterna #346**: V-1 BASSA (orologio indietro → compito vero fermato) e V-2 `CORRETTE` (fb620f5, review #703-M2 APPROVATO CON RISERVE, R-703-1/2-M2 BASSE).
-- **Conflitto con main (bot #346 V-1 MEDIA)**: `RISOLTO` col merge 643da99 della #341 di Mani (solo report e memoria; review #704-M2 APPROVATO).
-- Test: kernel 1100 PASS 0 FAIL; sottofondo 62 passed; sottofondo + voce_ascolto dopo il merge 319 passed.
-
-## Anomalie
-
-- Durante i test un mio test senza `killpg` neutralizzato ha mandato SIGTERM a pytest (nessun danno, corretto prima del commit).
+- **PR #347 (fetta 44)**: MERGIATA (4a0b113) col sì dell'operatore.
+- **Decisione «Hey Gas» NO**: FATTA.
+  - Registrata in `reports/proposta_parola_gas.md`.
+  - Allineata la roadmap (`reports/roadmap.md`, voce R8): bot V-1 sulla #348 e R-706-1.
+- **Riserve della #347 in stato_progetto**: FATTA. La dicitura «BASSE e COSMETICHE» è la correzione del bot V-2 sulla #348.
+- **Merge di main (PR #346 di M2)**: FATTO (ede56b5). I conflitti erano solo nei report. Review #706: APPROVATO CON RISERVE, con una sola COSMETICA (R-706-1), corretta dopo il merge.
+- Nessun codice di Mani toccato.
