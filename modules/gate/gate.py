@@ -69,6 +69,9 @@ GATE_ALLOWLIST: dict[str, GateClass] = {
     # Notifica all'operatore (R6, 2026-11-02): stessa regola, una pagina o una mail
     # lette nel turno non possono far partire un messaggio senza la firma.
     "avvisa_operatore":       GateClass.UNCERTAIN,
+    # Fetta 3 (2026-11-06): compito in sottofondo, offerto solo a voce; alla firma se la
+    # finestra contiene input esterno (anche un seguito a voce).
+    "in_sottofondo":          GateClass.UNCERTAIN,
     "run_command":            GateClass.UNCERTAIN,   # see §8e override below
     "browser_scrape":         GateClass.UNCERTAIN,
     "send_email":             GateClass.IRREVERSIBLE,
