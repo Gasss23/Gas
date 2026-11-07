@@ -14,8 +14,9 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **PR #349** (seconda fetta BASSE del sottofondo): `MERGIATA` (f4ece4e) col sì dell'operatore via M1; Mani avvisato per la sua #348.
-- **Fetta 3.2** (proposta `reports/proposta_fetta3_sottofondo.md`, «lettura della coda dei finiti alla prossima attivazione»): `FATTA` — `sottofondo.da_leggere` / `frase_finiti` / `segna_letti`; `VoiceHandler._con_compiti_finiti` solo nei turni a voce di attivazione (mai nel seguito, cioè parlato della stanza; mai a testo), al massimo 2 compiti finiti nelle ultime 24 ore, titolo e riassunto corto, segnati letti. Review #709-M2 APPROVATO CON RISERVE (R-709-1/2-M2 BASSE).
+- **Fetta 3.2** (proposta `reports/proposta_fetta3_sottofondo.md`, «lettura della coda dei finiti alla prossima attivazione»): `FATTA` — `sottofondo.da_leggere` / `frase_finiti` / `segna_letti`; `VoiceHandler._compiti_finiti` (prima `_con_compiti_finiti`) solo nei turni a voce di attivazione (mai nel seguito, cioè parlato della stanza; mai a testo), al massimo 2 compiti finiti nelle ultime 24 ore, titolo e riassunto corto, segnati letti. Review #709-M2 APPROVATO CON RISERVE (R-709-1/2-M2 BASSE).
 - **Correzioni dopo bot e verifica esterna #350** (commit 5b83fb2): `FATTE` — la frase dei compiti si dice per prima FUORI dal limite di 3 frasi/400 caratteri della parte parlata (bot V-1: prima poteva togliere tutto lo spazio alla risposta), test per due compiti lunghi, client senza schermo e senza chiave TTS (bot V-2); niente «:» con risposta vuota (ve V-2). Review #710-M2 APPROVATO CON RISERVE. Bot #350 su 382eab3 APPROVATA, verifica esterna APPROVATO CON RISERVE (BASSE).
+- **Conflitto con main** (merge della #348 di Mani): `RISOLTO` col merge 6cd918f (solo report e memoria del revisore, nessun file del perimetro: niente review). Bot #350 su 40c5b30 APPROVATA (BASSA: test mancanti per 3 rami di risposta; COSMETICA: nome del metodo nel report, è `_compiti_finiti`). CI su 40c5b30 verde.
 - **Fetta 3.3** (passaggio automatico al sottofondo oltre N giri): `DEFERITA — opzionale`.
 
 ---
@@ -24,7 +25,7 @@
 
 ```
  .claude/agents/memoria_revisore.md |   4 +
- modules/sottofondo/__init__.py     |  67 +++++++++++++++
+ modules/sottofondo/__init__.py     |  67 ++++++++++++++++
  modules/voice/server.py            |  48 +++++++++--
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
@@ -32,14 +33,16 @@
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
  tests/test_unit_sottofondo.py      |  51 ++++++++++++
- tests/test_unit_voice_server.py    | 108 +++++++++++++++++++++++-
+ tests/test_unit_voice_server.py    | 108 ++++++++++++++++++++++++-
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main f4ece4e (merge della #349).
+NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 53ae39b (merge della #348 di Mani, unito nel branch con 6cd918f; prima f4ece4e, merge della #349).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6cd918f Merge origin/main (PR #348 di Mani) nella PR #350 — conflitti solo in report e memoria del revisore, nessun file del perimetro
+40c5b30 docs(voce): report — correzioni bot/verifica esterna #350 (review #710-M2) (chat M2)
 5b83fb2 fix(voce): fetta 3.2 — frase dei compiti finiti fuori dal limite della parte parlata (bot #350 V-1/V-2); niente «:» con risposta vuota (ve #350 V-2)
 50de38d chore(revisore): memoria review #710 — APPROVATO CON RISERVE
 382eab3 docs(voce): report di fine task — fetta 3.2 (compiti finiti detti a voce); PR #349 mergiata (chat M2)
