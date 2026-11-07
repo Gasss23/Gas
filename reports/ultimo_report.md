@@ -9,7 +9,9 @@
 
 - **PR #346**: `MERGIATA` (c523a04), dopo due merge di main nel branch (review #704/#705-M2).
 - **Seconda fetta BASSE**: `FATTA` — compito riuscito non diventa «ko», prompt del processo in sottofondo senza avvisa_operatore, pulizia anche da controlla(), test R-703-1; review #706-M2 APPROVATO CON RISERVE (R-706-1/2-M2 BASSE).
-- Test: kernel 1100 PASS 0 FAIL; sottofondo 67 passed.
+- **Correzioni dopo bot #349** (avviso anche con scrittura fallita; R-706-2): `FATTE`, review #707-M2 APPROVATO CON RISERVE.
+- **Fetta 3.2** (compiti finiti letti a voce): `PRONTA`, in una PR separata dopo la decisione sulla #349.
+- Test: kernel 1100 PASS 0 FAIL; sottofondo 69 passed.
 
 ## Anomalie
 

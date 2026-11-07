@@ -15,23 +15,24 @@
 
 - **PR #346** (prima fetta BASSE del sottofondo): `MERGIATA` (c523a04) col sì dell'operatore via M1, dopo due merge di main nel branch (#341 e #347 di Mani, conflitti solo in report e memoria; review #704-M2 e #705-M2 APPROVATO).
 - **Seconda fetta BASSE del sottofondo**: `FATTA` — compito appena riuscito non riscritto «ko» e niente avviso «non è finito» (bot #346 V-1 su 3ee02dd e 0c836f9); riga nel prompt del processo in sottofondo «avvisa_operatore qui non esiste» (bot #346 V-1 su 2d0977e, V-4 su 0c836f9); pulizia dei compiti vecchi anche da `controlla()`, al massimo una volta l'ora (bot #346 V-3 su 2d0977e); test «data futura + processo estraneo» (R-703-1-M2). Review #706-M2 APPROVATO CON RISERVE (R-706-1/2-M2 BASSE).
-- **Prossimo passo della roadmap voce** (ordine di M1 dopo questa fetta): `DA FARE`.
+- **Correzioni dopo bot #349 e review #706** (commit 1dc10bc): `FATTE` — avviso anche se la riscrittura del compito fallisce (bot #349 V-1 BASSA); niente «errore interno» dopo un compito già chiuso (R-706-2-M2). Review #707-M2 APPROVATO CON RISERVE (R-707-1-M2 BASSA, R-707-2-M2 COSMETICA). Verifica esterna #349 su 2f3fe95: APPROVATO CON RISERVE (solo BASSE).
+- **Fetta 3.2** (lettura a voce dei compiti finiti alla prossima attivazione): `PRONTA, NON IN QUESTA PR` — per decisione di M1 va in una PR separata dopo la decisione dell'operatore sulla #349 (questa sessione pusha solo su feat/voce-v12-m2).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 +
- gas.py                             |  4 ++
- modules/sottofondo/__init__.py     | 27 +++++++++---
+ .claude/agents/memoria_revisore.md |   3 +
+ gas.py                             |   4 +
+ modules/sottofondo/__init__.py     |  42 +++++--
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_kernel.py          |  4 +-
- tests/test_unit_sottofondo.py      | 84 ++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          |   4 +-
+ tests/test_unit_sottofondo.py      | 133 ++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main c523a04 (merge della #346).
@@ -39,6 +40,9 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1dc10bc fix(sottofondo): avviso anche se la scrittura del compito fallisce (bot #349 V-1); niente «errore interno» dopo un compito già chiuso (R-706-2-M2)
+4b21b78 chore(revisore): memoria review #707 — APPROVATO CON RISERVE
+2f3fe95 docs(voce): report di fine task — seconda fetta BASSE del sottofondo; PR #346 mergiata (chat M2)
 135535e fix(sottofondo): compito riuscito non diventa «ko», prompt del figlio senza avvisa_operatore, pulizia anche da controlla(), test R-703-1 (bot #346 V-1/V-3) (sì dell'operatore via M1)
 0898dd1 chore(revisore): memoria review #706 — APPROVATO CON RISERVE
 ```
@@ -80,18 +84,57 @@ Review #706-M2: diff in staging (`git diff --cached`) su feat/voce-v12-m2, HEAD 
 
 **Memoria:** ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #706-M2 e una lezione (un «controlla lo stato prima di sovrascrivere» senza lock restringe la corsa ma non la chiude; verificare i chiamanti che ignorano il nuovo valore di ritorno). Commit 0774cd7 fatto con `commit_memoria_revisore.sh`; il diff in staging è rimasto com'era (4 file, +112/−7).
 
+Review #707-M2 sul commit 1dc10bc (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ho letto CLAUDE.md (sez. 5, 8, 9), `reports/stato_progetto.md` (voce sottofondo, riga 615) e la memoria del revisore (ultime voci #705-M2 e #706-M2). Il diff staged (`git diff --cached`) tocca 2 file, +62/−6. Non ho usato git stash: per i mutanti ho lavorato in un worktree separato, poi rimosso.
+
+**Elementi del diff esaminati**
+- `modules/sottofondo/__init__.py:355` — `chiuso = True` ora si imposta appena il compito risulta in_coda/in_corso, prima di `_scrivi_privato`.
+  - Rischio esaminato: con il disco pieno, `_ripulisci` (`modules/sottofondo/__init__.py:182-192`) toglieva il posto senza avvisare. Ho controllato anche gli altri chiamanti di `annulla` (`gas.py:4619` e `modules/sottofondo/__init__.py:420`): ignorano il valore di ritorno, quindi la nuova semantica non li tocca. L'eccezione resta intercettata e finisce nel log (§9).
+  - Esito: ok. Il mutante «chiuso dopo la scrittura» fa fallire `test_scrittura_fallita_avvisa_lo_stesso`.
+- `modules/sottofondo/__init__.py:400-404` — in `esegui`, l'avviso «errore interno» parte solo se `chiuso` è vero, oppure se il file del compito manca o non è già ok/ko.
+  - Rischio esaminato: due casi. Primo, nessun doppio avviso quando `_esegui` ha già scritto ok/ko. Secondo, un file illeggibile deve avvisare comunque. Se la scrittura fallisce, il file resta in_corso e l'avviso parte (una volta sola).
+  - Esito: ok. Ho provato quattro mutanti e ognuno fa fallire un test:
+    - «avviso sempre»: fallisce `test_eccezione_dopo_ok_niente_avviso_di_errore`
+    - «senza chiuso»: fallisce `test_eccezione_dopo_ok_niente_avviso_di_errore`
+    - «solo chiuso»: fallisce `test_eccezione_interna_avvisa`
+    - «senza `or not dopo`»: fallisce `test_eccezione_interna_avvisa`
+- `tests/test_unit_sottofondo.py:665` — il nuovo test copre sia «eccezione dopo ok → nessun avviso» sia «eccezione prima → un avviso e stato ko».
+  - Rischio esaminato: che il test sia tautologico.
+  - Esito: ok, perché i mutanti qui sopra lo fanno fallire.
+- `tests/test_unit_sottofondo.py:694` — `test_scrittura_fallita_avvisa_lo_stesso` simula il disco pieno solo sul file del compito.
+  - Esito: ok.
+- Guardrail: questo diff non tocca la history né `_get_window`, non simula output di tool e non modifica il tetto delle iterazioni.
+
+**Riserve**
+- **R-707-1-M2 BASSA**: se la scrittura fallisce, `modules/sottofondo/__init__.py:355` fa partire l'avviso e il posto viene tolto, ma il file del compito resta «in_corso» per sempre. Nessuna ripulitura successiva lo rivede, perché il posto non c'è più. Lo stato su disco resta quindi incoerente; è accettabile perché l'operatore è stato avvisato.
+- **R-707-2-M2 COSMETICA**: ci sono tre righe vuote prima del nuovo test (`tests/test_unit_sottofondo.py:662-664`, PEP8 E303).
+- Resta aperta **R-706-1-M2** (corsa in `annulla` senza lock): questo diff non la tocca.
+
+**Test**: sottofondo 69 passed con l'index.
+
+**Cosa non ho verificato**: il comportamento reale con il disco pieno sul Mac o sulla VPS (non riproducibile in dev, l'ho solo simulato con un monkeypatch) e la consegna effettiva dell'avviso Telegram (nei test `avvisa` è finto). Non ho rilanciato la suite completa, solo `tests/test_unit_sottofondo.py`.
+
+**Memoria**: ho aggiunto la riga #707-M2 e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit 4b21b78). Nessuna lezione nuova.
+
+File: /home/user/Gas/modules/sottofondo/__init__.py, /home/user/Gas/tests/test_unit_sottofondo.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_kernel.py` T106a ora controlla anche la riga «SEI UN COMPITO IN SOTTOFONDO» nel prompt del processo in sottofondo (round-trip §7: chiamata negata, risposta finale), T106c che manchi nei turni normali. Suite kernel `=== RIEPILOGO: 1100 PASS, 0 FAIL ===`. `tests/test_unit_sottofondo.py`: 67 passed (prima 62): compito appena riuscito resta «ok» senza avviso, `annulla` chiude solo compiti aperti, corsa simulata (figlio che finisce durante la pulizia), pulizia da `controlla` una volta l'ora, data futura + processo estraneo. Con il modulo di prima i test nuovi danno 3 failed; mutante «avviso sul compito letto prima» → 1 failed.
+`tests/test_unit_kernel.py` T106a ora controlla anche la riga «SEI UN COMPITO IN SOTTOFONDO» nel prompt del processo in sottofondo (round-trip §7: chiamata negata, risposta finale), T106c che manchi nei turni normali. Suite kernel `=== RIEPILOGO: 1100 PASS, 0 FAIL ===`. `tests/test_unit_sottofondo.py`: 69 passed (prima 62; +2 in 1dc10bc: scrittura fallita avvisa lo stesso, eccezione dopo «ok» senza avviso di errore): compito appena riuscito resta «ok» senza avviso, `annulla` chiude solo compiti aperti, corsa simulata (figlio che finisce durante la pulizia), pulizia da `controlla` una volta l'ora, data futura + processo estraneo. Con il modulo di prima i test nuovi danno 3 failed; mutante «avviso sul compito letto prima» → 1 failed.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. I commit sono pushati insieme a questo report: run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nel cloud. Su 2f3fe95: handoff-check e verifica-bot verdi (bot APPROVATA con riserve BASSE), unit-suite in corso alla verifica esterna. I commit nuovi sono pushati insieme a questo report: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 
 - R-706-1-M2 BASSA: la corsa in `annulla` è ristretta ma non chiusa (lettura e riscrittura senza lock).
-- R-706-2-M2 BASSA: in `esegui`, un'eccezione dopo che il compito è già «ok» manda comunque «si è interrotto per un errore interno».
+- R-706-2-M2: CHIUSA in 1dc10bc.
+- R-707-1-M2 BASSA: se la riscrittura del compito fallisce, l'avviso parte ma il file resta «in_corso» per sempre. R-707-2-M2 COSMETICA: righe vuote in più nel test.
+- Bot #349 V-2 COSMETICA: `_ultima_pulizia` è per processo, non per cartella, e risente dei salti dell'orologio.
 - R-701-3-M2 BASSA / bot #346 V-3 (0c836f9): con un compito in corso ogni turno lancia `ps`; due processi che controllano insieme un figlio morto possono mandare due avvisi.
 - R-703-2-M2 / bot #346 V-2 (0c836f9) BASSA: con «creato» nel futuro e identità ignota la durata massima non vale finché l'orologio non raggiunge quella data.
 - R-696-1-M2, ve #345 V-2, bot #345 V-3: BASSE, invariate.
