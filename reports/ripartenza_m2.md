@@ -12,7 +12,7 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - PR #339, #342, #343, #344 MERGIATE il 6 nov.
 - PR #345, #346, #349 (sottofondo) MERGIATE il 7 nov.
 - **PR della fetta 3.2** (compiti finiti detti a voce, branch `feat/voce-v12-m2` da main f4ece4e): aperta; merge col sì via M1 (riserve BASSE). Poi: fetta piccola con le BASSE del sottofondo rimaste. Mani fa la voce via Telegram (bot.py), M2 non tocca bot.py.
-- **Dopo**: fetta 3.2 (lettura a voce dei compiti finiti alla prossima attivazione) se M1 la ordina; prova sul Mac.
+- **Dopo**: prova sul Mac.
 - Caso «Stefano»: da controllare sul Mac nella storia.
 
 ## Riserve aperte (voce)
@@ -28,7 +28,7 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 
 ## Regole che seguo
 - Un branch per fetta da `origin/main`; mai push su main.
-- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #709-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
+- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #710-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
 - Fine fetta: /fine-task (ultimo_report, handoff con verdetti INTEGRALI, diff_sessione, stato_progetto) → commit → `bash scripts/fine_task_finale.sh`; etichetta `verifica` sulla PR; verifica esterna con agente nuovo `general-purpose`, `model: sonnet`, prompt esatto «Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>» (URL_HANDOFF = raw del commit di testa).
 - `gh` nel cloud non è autenticato: PR, etichette e merge con gli strumenti GitHub MCP.
 - Riserve BASSE/COSMETICHE dei bot: si registrano, niente giri (regola di M1); si riapre solo per ALTA/MEDIA o se M1 lo chiede.
