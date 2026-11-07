@@ -108,6 +108,11 @@ PRIMA_DELLA_PAROLA_S = 1.5
 PAROLA_VALIDA_S = 2.0
 SEGUITO_MAX_PREDEFINITO_S = 15.0
 COMANDI = ("fine", "pausa")   # valori di X-Gas-Comando che il client conosce
+# Riserva della #336 (eco): se la risposta di Gas contiene la parola di attivazione
+# («…di' Hey Jarvis…»), le casse la mandano al microfono e Gas si interromperebbe da solo.
+# Il testo della risposta arriva con la prima riga a pezzi («content»): se contiene la
+# parola, per quella risposta l'interruzione si spegne (resta il Terminale o la fine).
+PAROLA_NEL_TESTO = re.compile(r"\bjarvis\b|\b(?:hey|ehi|ehy)\s+gas\b", re.IGNORECASE)
 ATTESA_VOCE_S = 5.0          # dopo la parola, se non parli entro questo tempo si torna in attesa
 INIZIO_VOCE_S = 0.24         # voce continua che apre un turno nella finestra (3 blocchi)
 MICROFONO_MUTO_S = 10.0      # tutto a zero per così tanto → avviso (permesso del microfono?)
@@ -411,6 +416,14 @@ class Ascolto:
             presi = []
         silenzio = attesa = 0
         max_silenzio, max_attesa = blocchi_per(self.silenzio_s), blocchi_per(attesa_s)
+        # V-1 bot su 179d05c: dopo una parola sentita qui non c'è il bip, quindi chi aspetta
+        # un attimo prima di parlare non deve vedersi chiudere la richiesta: finché dopo la
+        # parola non c'è voce continua (INIZIO_VOCE_S) si tollera il silenzio fino ad
+        # ATTESA_VOCE_S, come dopo la parola fuori dalla finestra.
+        # R-702-1: la tolleranza ha un tetto suo (come l'attesa, R-616-2): dopo ATTESA_VOCE_S
+        # dalla parola finisce comunque, anche se rumori brevi l'hanno tenuta viva.
+        dopo_parola = False
+        forti_dopo = dal_la_parola = 0
         while len(presi) < blocchi_per(max_s):
             b = self._prossimo()
             if b is None:
@@ -423,6 +436,10 @@ class Ascolto:
                 max_s = REGISTRAZIONE_MAX_S
                 tieni = max(0, blocchi_per(PRIMA_DELLA_PAROLA_S) - 1)
                 presi = presi[-tieni:] if tieni else []
+                if voce:
+                    presi.append(b)
+                    silenzio, dopo_parola, forti_dopo, dal_la_parola = 0, True, 0, 0
+                    continue
             forte = rms(b) >= self.voce_rms
             if not voce:
                 # R-615-6: la voce comincia con INIZIO_VOCE_S di fila, come nella finestra
@@ -436,11 +453,20 @@ class Ascolto:
                     return None
                 continue
             presi.append(b)
+            if dopo_parola:
+                dal_la_parola += 1
+                if dal_la_parola >= max_attesa:
+                    dopo_parola = False
             if forte:
                 silenzio = 0
+                if dopo_parola:
+                    forti_dopo += 1
+                    if forti_dopo >= blocchi_per(INIZIO_VOCE_S):
+                        dopo_parola = False
                 continue
+            forti_dopo = 0
             silenzio += 1
-            if silenzio >= max_silenzio:
+            if silenzio >= (max_attesa if dopo_parola else max_silenzio):
                 break
         return presi if voce else None
 
@@ -512,6 +538,7 @@ class Ascolto:
             return False
         pezzi = iter([risposta] if isinstance(risposta, (bytes, bytearray)) else risposta)
         suonati = 0
+        interrompibile = True
         self._azzera()  # il rilevatore riparte pulito: ascolterà mentre Gas parla
         try:
             while True:
@@ -524,13 +551,17 @@ class Ascolto:
                     break
                 if not audio:
                     continue
+                if interrompibile and PAROLA_NEL_TESTO.search(getattr(pezzi, "testo", "") or ""):
+                    interrompibile = False
+                    log.info("la risposta contiene la parola di attivazione: niente "
+                             "interruzione mentre Gas parla (eco delle casse)")
                 suonati += 1
                 try:
                     in_corso = self.riproduci(audio)
                 except Exception as e:  # §9
                     log.warning("riproduzione fallita (%s)", type(e).__name__)
                     continue
-                if self._ascolta_mentre_suona(in_corso):
+                if self._ascolta_mentre_suona(in_corso, interrompibile=interrompibile):
                     self.interrotto = True
                     log.info("interrotto: parola di attivazione mentre Gas parlava")
                     break
@@ -674,6 +705,9 @@ class Ascolto:
             seguito = not self.parola_nella_finestra
             if not seguito:
                 log.info("parola di attivazione nella finestra: richiesta normale")
+                # V-2 bot su a269c12: max_turni conta i turni «senza ripetere la parola»;
+                # chi la ripete nella finestra riparte da zero (si incrementa al giro dopo).
+                turni = 0
             if (seguito and richiesta is not None
                     and len(richiesta) >= blocchi_per(self.seguito_max_s)):
                 # (a)+(b): parlato lungo senza parola = quasi sempre la stanza: non si invia
@@ -710,34 +744,59 @@ def _audio_da_base64(valore: object) -> Optional[bytes]:
     return base64.b64decode(valore, validate=True)
 
 
-def _frasi_ndjson(r) -> Iterator[bytes]:
-    """Fetta 39: legge le righe JSON della risposta a pezzi (V7b) e dà l'MP3 di ogni
-    frase appena la sua riga arriva. Si ferma su «fine», su «errore_voce» (il server ha
-    smesso di sintetizzare) o a fine connessione. Una riga rotta o troppo lunga alza
-    un'eccezione: il turno la prende (§9). La connessione si chiude sempre."""
-    try:
-        while True:
-            riga = r.readline(RIGA_MAX + 1)
-            if not riga:
-                return
-            if len(riga) > RIGA_MAX:
-                raise ValueError("riga troppo lunga")
-            riga = riga.strip()
-            if not riga:
-                continue
-            dati = json.loads(riga)
-            if not isinstance(dati, dict):
-                raise ValueError("riga non valida")
-            audio = _audio_da_base64(dati.get("audio"))
-            if audio:
-                yield audio
-            if dati.get("errore_voce"):
-                log.warning("voce interrotta dal server a metà risposta")
-                return
-            if dati.get("fine"):
-                return
-    finally:
-        r.close()
+class _Frasi:
+    """Fetta 39: le frasi della risposta a pezzi, una alla volta (iteratore con `close`).
+    Riserva della #336: `testo` è il testo intero della risposta («content» della prima
+    riga), per sapere se Gas sta per dire la parola di attivazione."""
+
+    def __init__(self, r) -> None:
+        self.testo = ""
+        self._gen = self._leggi(r)
+
+    def __iter__(self) -> "_Frasi":
+        return self
+
+    def __next__(self) -> bytes:
+        return next(self._gen)
+
+    def close(self) -> None:
+        self._gen.close()
+
+    def _leggi(self, r) -> Iterator[bytes]:
+        """Legge le righe JSON della risposta a pezzi (V7b) e dà l'MP3 di ogni frase appena
+        la sua riga arriva. Si ferma su «fine», su «errore_voce» (il server ha smesso di
+        sintetizzare) o a fine connessione. Una riga rotta o troppo lunga alza
+        un'eccezione: il turno la prende (§9). La connessione si chiude sempre."""
+        try:
+            while True:
+                riga = r.readline(RIGA_MAX + 1)
+                if not riga:
+                    return
+                if len(riga) > RIGA_MAX:
+                    raise ValueError("riga troppo lunga")
+                riga = riga.strip()
+                if not riga:
+                    continue
+                dati = json.loads(riga)
+                if not isinstance(dati, dict):
+                    raise ValueError("riga non valida")
+                if not self.testo and isinstance(dati.get("content"), str):
+                    self.testo = dati["content"]
+                audio = _audio_da_base64(dati.get("audio"))
+                if audio:
+                    yield audio
+                if dati.get("errore_voce"):
+                    log.warning("voce interrotta dal server a metà risposta")
+                    return
+                if dati.get("fine"):
+                    return
+        finally:
+            r.close()
+
+
+def _frasi_ndjson(r) -> _Frasi:
+    """Fetta 39: le frasi della risposta a pezzi (vedi `_Frasi`)."""
+    return _Frasi(r)
 
 
 def _comando(r: object) -> str:
@@ -1025,7 +1084,7 @@ def main() -> int:
                     soglia=_numero("GAS_ASCOLTO_SOGLIA", 0.5, 0.05, 0.99),
                     voce_rms=_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
                     silenzio_s=_numero("GAS_ASCOLTO_SILENZIO", 0.8, 0.2, 5),
-                    finestra_s=_numero("GAS_VOICE_FINESTRA", FINESTRA_PREDEFINITA_S, 0, 300),
+                    finestra_s=_numero("GAS_VOICE_FINESTRA", FINESTRA_PREDEFINITA_S, 0, 120),
                     seguito_max_s=_numero("GAS_VOICE_SEGUITO_MAX", SEGUITO_MAX_PREDEFINITO_S,
                                           3, REGISTRAZIONE_MAX_S),
                     invia_seguito=invia_seguito,
