@@ -39,14 +39,17 @@ Per questo, mentre Gas parla, la parola deve essere riconosciuta con più sicure
 0.7 invece di 0.5). Se non ti sente, avvicinati o abbassa un po' il volume; con le cuffie va meglio.
 Se nella risposta Gas stesso dice la parola («di' Hey Jarvis…»), per quella risposta
 l'interruzione è spenta: altrimenti si interromperebbe da solo, sentendosi dalle casse.
+Questo controllo vale con il formato di risposta predefinito (a frasi): con
+`GAS_ASCOLTO_FORMATO` vuoto (un solo MP3) il testo della risposta non arriva e
+l'interruzione resta accesa.
 
-**Parola di attivazione, per ora: «Hey Jarvis»** (modello pronto di openWakeWord).
-«Ehi Gas» va addestrata a parte: sarà una fetta successiva.
+**Parola di attivazione: «Hey Jarvis»** (modello pronto di openWakeWord). Una parola
+nostra («Hey Gas») non si fa: decisione dell'operatore del 7 novembre 2026
+(`reports/proposta_parola_gas.md`).
 
 **Licenza (decidi tu, R-615-5):** i modelli pronti di openWakeWord, «hey_jarvis» compreso,
 sono sotto licenza CC BY-NC-SA 4.0, cioè **non commerciale**. Per provare a casa va bene;
-per Gas al lavoro è una zona grigia. Il modello «Ehi Gas» addestrato da noi chiude la
-questione.
+per Gas al lavoro è una zona grigia, e resta da decidere.
 
 ## Accendere (un solo comando)
 
@@ -94,7 +97,10 @@ bash scripts/voce/riprendi.sh   # Gas ascolta di nuovo
 
 La pausa ferma solo l'ascolto: il server voce resta acceso e non si toglie nessun file.
 `riprendi.sh` controlla anche che l'ascolto resti acceso: se si ferma subito (per esempio
-perché l'ambiente Python è rotto) lo dice e indica il log da guardare.
+perché l'ambiente Python è rotto) lo dice e indica il log da guardare. Il controllo
+guarda i primi 3 secondi: un errore che arriva dopo (per esempio il permesso del microfono
+o il caricamento del modello) non lo vede, e se l'ascolto si riavvia di continuo può
+capitare che risponda «Gas sta già ascoltando». In questi casi guarda il log.
 Dura fino a `riprendi.sh` o al prossimo riavvio del Mac (all'accesso l'ascolto riparte da
 solo).
 
