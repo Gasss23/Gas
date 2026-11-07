@@ -708,3 +708,22 @@ def test_scrittura_fallita_avvisa_lo_stesso(tmp_path, monkeypatch):
     inviati, avvisa = _avvisi()
     sf._ripulisci(tmp_path, avvisa)
     assert len(inviati) == 1 and "non è finito" in inviati[0]
+
+
+
+def test_posto_non_tolto_avviso_finale_parte_lo_stesso(tmp_path, monkeypatch):
+    """Bot #349 (147d6c8) V-1: se togliere attivo.json fallisce (permessi), il compito resta
+    «ok» e l'avviso finale col risultato parte comunque (niente silenzio)."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    vero = Path.unlink
+
+    def _unlink(self, *a, **k):
+        if self.name == sf.ATTIVO:
+            raise PermissionError("no")
+        return vero(self, *a, **k)
+    monkeypatch.setattr(Path, "unlink", _unlink)
+    inviati, avvisa = _avvisi()
+    assert sf.esegui(tmp_path, ident, lambda: _Kernel(), avvisa) == 0
+    assert len(inviati) == 1 and inviati[0].startswith("Ho finito")
+    f = tmp_path / sf.CARTELLA / f"{ident}.json"
+    assert json.loads(f.read_text(encoding="utf-8"))["stato"] == "ok"

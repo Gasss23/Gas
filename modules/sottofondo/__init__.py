@@ -458,6 +458,10 @@ def _esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
         (cartella / ATTIVO).unlink()
     except FileNotFoundError:
         pass
+    except OSError as e:
+        # Bot #349 (147d6c8) V-1: il posto non tolto non deve impedire l'avviso finale
+        # promesso; il posto si libera da solo (processo morto → ripulito)
+        logging.warning("sottofondo %s: posto non tolto: %s", ident, e)
     titolo = _breve(job["compito"], 80)
     testo = (f"Ho finito il compito in sottofondo «{titolo}». {_breve(risposta, RISPOSTA_AVVISO_MAX)}"
              if ok else
