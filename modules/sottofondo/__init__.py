@@ -345,16 +345,19 @@ def avvia(root: Path, ident: str, popen: Callable[..., Any] = subprocess.Popen) 
 def annulla(root: Path, ident: str, motivo: str) -> bool:
     """R-695-4-M2: avvio fallito → compito «ko» e coda libera (fail-safe, mai eccezioni).
     Bot #346 (3ee02dd) V-1: solo un compito ancora in_coda/in_corso diventa «ko»; uno già
-    finito (il figlio ha scritto «ok» un attimo prima) resta com'è. True = è stato chiuso qui."""
+    finito (il figlio ha scritto «ok» un attimo prima) resta com'è. True = il compito era aperto
+    e qui si è provato a chiuderlo (anche se la scrittura è fallita): va avvisato."""
     chiuso = False
     try:
         cartella = Path(root) / CARTELLA
         percorso = cartella / f"{Path(ident).name}.json"
         job = _leggi(percorso)
         if job and job.get("stato") in ("in_coda", "in_corso"):
+            # Bot #349 V-1: True appena si sa che il compito era aperto, anche se la scrittura
+            # poi fallisce (disco pieno): l'avviso all'operatore deve partire lo stesso
+            chiuso = True
             job.update(stato="ko", fine=time.time(), errore=motivo)
             _scrivi_privato(percorso, job)
-            chiuso = True
         dati = _leggi(cartella / ATTIVO)
         if dati and dati.get("id") == ident:
             (cartella / ATTIVO).unlink()
@@ -391,10 +394,14 @@ def esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
         return _esegui(Path(root), ident, kernel_factory, avvisa)
     except Exception as e:
         logging.warning("sottofondo %s: interrotto: %s", ident, e)
-        annulla(root, ident, f"interrotto ({type(e).__name__})")
-        # R-696-2-M2: l'operatore, a cui è stato promesso un avviso, lo riceve anche qui
-        _avvisa(root, "Un compito in sottofondo si è interrotto per un errore interno.",
-                ident, avvisa)
+        # R-696-2-M2: l'operatore, a cui è stato promesso un avviso, lo riceve anche qui;
+        # R-706-2-M2: niente avviso se il compito risulta già chiuso da altri («ok» scritto
+        # prima dell'eccezione, o «ko» già avvisato); un file illeggibile non prova niente
+        chiuso = annulla(root, ident, f"interrotto ({type(e).__name__})")
+        dopo = _leggi(Path(root) / CARTELLA / f"{Path(ident).name}.json")
+        if chiuso or not dopo or dopo.get("stato") not in ("ok", "ko"):
+            _avvisa(root, "Un compito in sottofondo si è interrotto per un errore interno.",
+                    ident, avvisa)
         return 1
 
 

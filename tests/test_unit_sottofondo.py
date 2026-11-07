@@ -659,3 +659,52 @@ def test_corsa_figlio_finisce_durante_la_pulizia_niente_avviso(tmp_path, monkeyp
     inviati, avvisa = _avvisi()
     sf._ripulisci(tmp_path, avvisa)
     assert inviati == [] and json.loads(f.read_text(encoding="utf-8"))["stato"] == "ok"
+
+
+
+def test_eccezione_dopo_ok_niente_avviso_di_errore(tmp_path, monkeypatch):
+    """R-706-2-M2: un'eccezione arrivata dopo che il compito è già «ok» non manda
+    «si è interrotto per un errore interno»; prima di «ok» sì."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    f = tmp_path / sf.CARTELLA / f"{ident}.json"
+
+    def _gia_ok(root, i, k, a):
+        job = json.loads(f.read_text(encoding="utf-8"))
+        job.update(stato="ok")
+        f.write_text(json.dumps(job), encoding="utf-8")
+        raise OSError("dopo ok")
+    monkeypatch.setattr(sf, "_esegui", _gia_ok)
+    inviati, avvisa = _avvisi()
+    assert sf.esegui(tmp_path, ident, lambda: None, avvisa) == 1
+    assert inviati == [] and json.loads(f.read_text(encoding="utf-8"))["stato"] == "ok"
+
+    altro = tmp_path / "due"
+    altro.mkdir()
+    ident2, _ = sf.accoda(altro, "due")
+
+    def _rotto(root, i, k, a):
+        raise OSError("prima")
+    monkeypatch.setattr(sf, "_esegui", _rotto)
+    assert sf.esegui(altro, ident2, lambda: None, avvisa) == 1
+    assert len(inviati) == 1 and "errore interno" in inviati[0]
+    assert json.loads((altro / sf.CARTELLA / f"{ident2}.json").read_text())["stato"] == "ko"
+
+
+def test_scrittura_fallita_avvisa_lo_stesso(tmp_path, monkeypatch):
+    """Bot #349 V-1: se la riscrittura del compito fallisce (disco pieno), la pulizia
+    avvisa comunque l'operatore invece di lasciare il compito «in_corso» in silenzio."""
+    import time as _t
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": 2 ** 22 + 12345,
+                                           "creato": _t.time()}))
+    vero = sf._scrivi_privato
+
+    def _disco_pieno(percorso, dati):
+        if percorso.name == f"{ident}.json":
+            raise OSError("disco pieno")
+        return vero(percorso, dati)
+    monkeypatch.setattr(sf, "_scrivi_privato", _disco_pieno)
+    inviati, avvisa = _avvisi()
+    sf._ripulisci(tmp_path, avvisa)
+    assert len(inviati) == 1 and "non è finito" in inviati[0]
