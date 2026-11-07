@@ -15,6 +15,12 @@
   - Review #676 APPROVATO CON RISERVE (R-676-1/2/3 BASSE; la R-676-3 è sul server di M2 ed è girata a M1).
   - Il commit di merge su main ha un diff identico a quello rivisto.
 
+## Sì dell'operatore e merge della #345
+
+- 2026-11-07, tramite M1: l'operatore dice sì alla #341 e ACCETTA il rischio di privacy R-694-1/R-695-2: un falso «Hey Jarvis» nella finestra fa passare circa 2 s di parlato della stanza senza il filtro. Questo chiude la V-2 MEDIA della verifica esterna su a269c12.
+- Su a269c12: CI verde; bot APPROVATO CON RISERVE con 2 BASSE nuove (GAS_VOICE_FINESTRA condivisa col browser_server; turni con la parola contati in max_turni), da chiudere nella fetta 44.
+- Merge rifiutato per conflitti con la PR #345 di M2 (fetta 3 sottofondo). Ho unito main (769f91c): conflitti solo nei report e nella memoria. Review #701 APPROVATO; 398 test della voce e del sottofondo passati.
+
 ## Giro su 7e4a7d3 e merge della #344
 
 - 7e4a7d3: CI verde; bot e verifica esterna APPROVATO CON RISERVE, nessuna ALTA o MEDIA. Riserve nuove: bot V-1 BASSA (tetto di seguito e pausa finale), V-2 COSMETICA (bip nel LEGGIMI); registrate in stato_progetto.

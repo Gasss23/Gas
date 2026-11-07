@@ -6,8 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #341 (https://github.com/Gasss23/Gas/pull/341): l'operatore ha detto sì (via M1), a condizione di CI verde e nessuna ALTA/MEDIA da bot e verifica esterna sul nuovo head. La #339 è in main da 3cde8a5, quindi l'ordine di merge (prima la #339, poi la #341) è rispettato. Su 7e4a7d3 il merge è stato rifiutato per conflitti con la PR #344 di M2, arrivata in main subito prima. Ho unito main (b874179, review #697 APPROVATO) e ora va ripetuto il giro CI + bot + verifica esterna su questo head.
-2. Rischio di privacy da accettare esplicitamente (R-694-1, R-695-2; V-2 della verifica esterna su 7e4a7d3): nella finestra di 40 s il rilevatore della parola resta acceso a soglia 0,5. Un falso «Hey Jarvis» rende normale (senza il filtro «non per me» del server) il parlato della stanza che arriva entro circa 2 s, più circa 0,3–0,7 s di stanza prima della parola. L'alternativa è spegnere il rilevatore nella finestra; in quel caso, per fare una richiesta normale, si dice di nuovo «Hey Jarvis» dopo la fine della finestra.
+Nessuna nuova. Il 2026-11-07, tramite M1, l'operatore ha detto sì al merge della PR #341 (https://github.com/Gasss23/Gas/pull/341) con CI verde. Ha anche ACCETTATO il rischio di privacy R-694-1/R-695-2: nella finestra di 40 s, un falso «Hey Jarvis» fa passare circa 2 s di parlato della stanza senza il filtro «non per me». È la V-2 MEDIA della verifica esterna su a269c12, chiusa da questa accettazione. Il merge su a269c12 è stato rifiutato per conflitti con la PR #345 di M2: ho unito main (769f91c, review #701 APPROVATO).
 
 ---
 
@@ -22,21 +21,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  15 ++++++
- clients/voice/ascolto.py           | 195 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
- reports/diff_sessione.md           |  15 +++---
- reports/stato_progetto.md          |   6 ++-
- reports/ultimo_report.md           |  65 ++++++++++++++++++++---
- scripts/voce/LEGGIMI.md            |  35 +++++++++---
- tests/test_unit_voce_ascolto.py    | 360 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ .claude/agents/memoria_revisore.md |  16 +++++
+ clients/voice/ascolto.py           | 195 ++++++++++++++++++++++++++++++++++++++++++--------
+ reports/diff_sessione.md           |  18 +++--
+ reports/stato_progetto.md          |   6 +-
+ reports/ultimo_report.md           |  74 ++++++++++++++++---
+ scripts/voce/LEGGIMI.md            |  35 +++++++--
+ tests/test_unit_voce_ascolto.py    | 360 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 44dbe2d (dopo il merge della PR #344).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 5c79886 (dopo il merge della PR #345).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+769f91c Merge origin/main (PR #345, fetta 3 sottofondo di M2) nella PR #341 — review #701 APPROVATO
+a269c12 docs(fine-task): verdetto #697 riemesso con citazioni del diff di sessione (gate B)
+627945a docs(fine-task): fetta 43 parte 2 — giro su 7e4a7d3, merge della #344, review #697 (PR #341)
 b874179 Merge origin/main (PR #344, fix claude-cli --effort di M2) nella PR #341 — review #697 APPROVATO
 7e4a7d3 docs(fine-task): fetta 43 parte 2 — scadenza della parola, merge della #343, review #695–#696 (PR #341)
 8c31f6e Merge origin/main (PR #343, voce rapida fetta 2) nella PR #341 — review #696 APPROVATO CON RISERVE
@@ -396,6 +398,47 @@ Copia dell'index in scratch, senza stash e senza toccare il repo: test_unit_clau
 **Memoria**
 Non l'ho toccata: la riga #697 è già committata. Nessuna lezione nuova. Repo non modificato.
 
+Merge 769f91c (main con la PR #345 dentro la PR #341) — review #701, verdetto integrale:
+
+## VERDETTO: APPROVATO
+
+Review #701 (chat Mani). Il numero più alto in memoria era #700-M2, quindi questa è la #701. Ho letto CLAUDE.md (sezione 5 e sezioni 2, 3, 8), la fusione di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md da #694 a #700-M2.
+
+**Oggetto**: merge STAGED di origin/main 5c79886 (PR #345 di M2, fetta 3 «compiti in sottofondo») nel branch claude/peaceful-lovelace-0w2b7q (PR #341, HEAD a269c12). La base comune dei due lati è 44dbe2d.
+
+### Integrità del merge
+- I file presi da MERGE_HEAD hanno lo stesso blob nell'index e in 5c79886: gas.py, modules/sottofondo/__init__.py, modules/gate/gate.py, .github/workflows/ci.yml, .gitignore, tests/test_unit_kernel.py, tests/test_unit_sottofondo.py, reports/ripartenza_m2.md.
+- I file presi da HEAD hanno lo stesso blob nell'index e in HEAD: clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, scripts/voce/LEGGIMI.md, reports/handoff.md, reports/ultimo_report.md, reports/diff_sessione.md.
+- modules/voice/server.py è identico sui due lati e il merge non lo tocca.
+- Il diff fra l'index e 5c79886 contiene solo i file del lato Mani più stato_progetto e memoria (8 file). Questo conferma che dopo il commit il diff di sessione conterrà come codice solo ascolto.py, il test di ascolto e LEGGIMI.
+- reports/stato_progetto.md: rispetto a MERGE_HEAD aggiunge la riga 4 di Mani (#341, #697) e le voci della fetta 43 parte 2 e di PR #340. Rispetto a HEAD aggiunge la voce «PR #345 aperta…» di M2, con le riserve del bot e della verifica esterna. Il diff parola per parola contro entrambi i lati non mostra perdite.
+- .claude/agents/memoria_revisore.md: l'index ha 1310 righe. Le prime 1296 sono identiche a HEAD. Tutte le 1298 righe di MERGE_HEAD sono presenti (coda #695-M2..#700-M2 con le lezioni). Non ci sono righe contatore duplicate.
+- `git ls-files -u` è vuoto, `git diff --cached --check` è pulito e nell'index non ci sono marcatori di conflitto.
+
+### Elementi del diff esaminati
+- clients/voice/ascolto.py:766 — mette «X-Gas-Seguito: 1» solo nei turni nella finestra. Rischio: che questi turni facciano partire un compito in sottofondo da parlato della stanza. Il server li trasforma in turni effimeri (modules/voice/server.py:596) e il kernel offre in_sottofondo solo con `voce and not effimero` (gas.py:4898). Se il modello chiama comunque lo strumento, il server risponde con la frase che chiede la parola di attivazione. — ok
+- clients/voice/ascolto.py:743 — `_comando` legge X-Gas-Comando e accetta solo «fine» o «pausa». Rischio: che la fetta 3 abbia aggiunto comandi nuovi che il client non conosce. Il server non è cambiato, quindi il contratto resta quello della #339/#343. Un compito avviato dà una normale risposta a voce senza comando. — ok
+- clients/voice/ascolto.py:493 — con «fine» la conversazione si chiude senza voce. Rischio: che un turno di seguito finisca per sbaglio in «fine» dopo l'avvio di un compito. Non può succedere, perché l'avvio avviene solo nei turni con la parola, cioè non di seguito. — ok
+- tests/test_unit_voce_ascolto.py:1368 e tests/test_unit_voce_ascolto.py:1384 — coprono l'intestazione del seguito e i 6 casi di X-Gas-Comando (fine, pausa, maiuscole e spazi, comando sconosciuto, 429, 500). Rischio: test che non reggono più dopo il merge. Rilanciati sulla copia dell'index: verdi. — ok
+- scripts/voce/LEGGIMI.md:14 — le istruzioni per l'operatore sul turno con la parola (strumenti, 30 s, «dillo tutto di seguito»). Rischio: che contraddica la fetta 3. Non la contraddice. Osservazione, non riserva: LEGGIMI non dice che a voce un compito lungo risponde «ci sto lavorando» con avviso su Telegram. È documentazione della fetta 3, di M2.
+- Contesto, gas.py:4568 — `_in_sottofondo` nega fuori dai turni a voce, col forte spento, oltre il tetto o se l'avviso non può partire. Tutto è fail-safe §9 e il merge non cambia nulla qui.
+
+### Test sulla copia dell'index
+La copia è in /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/idx, fatta con `git checkout-index`, senza stash e senza modifiche al repo.
+- test_unit_voce_ascolto + test_unit_sottofondo + test_unit_voice_stt: **398 passed**.
+- tests/test_unit_kernel.py: **1095 PASS, 1 FAIL**. Il FAIL è T31g, che si aspetta il vector store disponibile, ma in questo ambiente manca il modulo `sqlite_vec`. Il vector store non è toccato dal merge, quindi dipende dall'ambiente e non è una regressione. T105a, T105b e T105g su in_sottofondo (a voce, a testo, a voce con finestra contaminata) sono PASS.
+
+### Wall of Shame
+Il diff di sessione non contiene slicing grezzo della history né output di strumenti simulati. Cap di 10 iterazioni, `_get_window` e guardrail non sono toccati.
+
+### Rischi esclusi
+- Non ho provato client e server voce dal vero sul Mac (audio, openWakeWord, latenza): non è riproducibile qui. La correttezza della fetta 3 (#695-M2..#700-M2) non l'ho rifatta: sono revisioni di M2 e ho verificato solo che i blob siano identici a 5c79886.
+- Il kernel l'ho fatto girare con python3 di sistema, senza `sqlite_vec`. Da qui il FAIL di T31g: in CI quel modulo c'è.
+- Non ho verificato l'invio reale dell'avviso Telegram a fine compito.
+
+### Memoria
+Ho aggiunto in coda a .claude/agents/memoria_revisore.md la riga «#701 (chat Mani) — 2026-11-07 — APPROVATO — … Nessuna lezione nuova.». Come chiesto, è solo nel working tree e non è committata né aggiunta all'index (stato `MM`). Prima di committare il merge va aggiunta all'index con `git add`.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voce_ascolto.py`: da 220 (main dopo la #340) a 257 casi (248 con la fetta, 254 dopo la correzione V-1 del bot su 851a0d1, 255 dopo quella su 23d9c1c, 257 dopo quella su 562f137). Riepilogo reale nel venv con requirements e requirements-dev:
@@ -404,7 +447,7 @@ Non l'ho toccata: la riga #697 è già committata. Nessuna lezione nuova. Repo n
 257 passed in 28.55s
 ```
 
-Dopo il merge della #344 (b874179), review #697 su una copia dell'index: test_unit_claude_cli + test_unit_voce_ascolto 316 passed.
+Dopo il merge della #344 (b874179), review #697 su una copia dell'index: test_unit_claude_cli + test_unit_voce_ascolto 316 passed. Dopo il merge della #345 (769f91c), review #701: voce_ascolto + sottofondo + voice_stt 398 passed; kernel 1095 PASS, 1 FAIL (T31g, manca sqlite_vec nel sandbox, fuori dal merge).
 
 Mutanti presi (15):
 - «fine» ignorato;
@@ -433,7 +476,8 @@ Mappatura commit → run:
 - 23d9c1c: unit-suite e handoff-check success; bot failure (V-1 alzata a MEDIA, corretta in 01b1089).
 - 562f137: handoff-check success, unit-suite in corso alla verifica esterna.
 - 7e4a7d3 (contiene 165a9a4, a1aa77b, 8c31f6e): unit-suite, handoff-check, smista e verifica success. Bot APPROVATO CON RISERVE (check neutral): V-1 BASSA, V-2 COSMETICA, nessuna ALTA/MEDIA. Verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/341#issuecomment-6697209245). Merge rifiutato da GitHub per conflitti con la #344.
-- b874179 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- a269c12 (contiene b874179, 627945a): unit-suite, handoff-check, smista e verifica success. Bot APPROVATO CON RISERVE (neutral): V-1/V-2 BASSE, V-3/V-4 COSMETICHE. Verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/341#issuecomment-6697589521), V-2 MEDIA = rischio di privacy accettato dall'operatore il 2026-11-07. Merge rifiutato per conflitti con la #345.
+- 769f91c e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 - a7ed0e8 e 43fa6ac: run dei loro push (handoff-check success; unit-suite non riletta qui).
 - 51c4aa0, 4cd7b97, da24b2c: pushati insieme a 43fa6ac.
 
@@ -454,6 +498,8 @@ Suite voce in locale dopo il merge (ascolto, stt, prova_voci): 410 passed. Dopo 
 - R-696-1/2 BASSE per M2 (C1 nei turni di seguito, routing su 6 messaggi), R-696-3 COSMETICA.
 - Bot su 7e4a7d3: V-1 BASSA (il tetto dei turni di seguito, minimo 3 s, non tiene conto della pausa finale GAS_ASCOLTO_SILENZIO fino a 5 s: con valori estremi ogni seguito arriva al tetto e chiude), V-2 COSMETICA (LEGGIMI dice «nella conversazione senza la parola … resta il bip», ma i turni di seguito non hanno bip). Prossima fetta della voce.
 - Verifica esterna su 7e4a7d3: V-1 = R-676-1, V-2 = R-694-1/R-695-2 (privacy, §0 punto 2), V-3 = V-3/V-4 della verifica su 43fa6ac, V-4 COSMETICA (§6 con run parziali).
+- Bot su a269c12: V-1 BASSA (GAS_VOICE_FINESTRA è condivisa con clients/voice/browser_server.py, che ha default 12 e massimo 120: con un valore fra 121 e 300 il browser_server non parte); V-2 BASSA (i turni con la parola nella finestra contano in max_turni); V-3 COSMETICA (un test prova _numero con i valori vecchi 12/0/120); V-4 COSMETICA (§3 senza 627945a, corretta qui). V-1 e V-2 vanno chiuse nella fetta 44 (richiesta di M1).
+- Verifica esterna su a269c12: V-2 MEDIA = R-694-1/R-695-2, rischio ACCETTATO dall'operatore il 2026-11-07; V-1 BASSA = metà «chiudi» di R-676-1; V-3 = R-695-1.
 - R-680-2 BASSA: parola sentita nella finestra prima della voce, il flag resta alto fino a fine finestra.
 - R-681-1 COSMETICA: errori del rilevatore nella finestra senza riga di log.
 - Restano le riserve delle fette 40, 41 e 43 parte 1, in `reports/stato_progetto.md`.
