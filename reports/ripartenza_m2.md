@@ -1,4 +1,4 @@
-# Ripartenza chat M2 (voce) — 2026-11-06
+# Ripartenza chat M2 (voce) — 2026-11-07
 
 Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_progetto.md` (voci «Voce V…»), `reports/ultimo_report.md`, `reports/handoff.md`.
 
@@ -10,7 +10,8 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 
 ## In corso
 - PR #339, #342, #343, #344 MERGIATE il 6 nov.
-- **PR #345 fetta 3** (compiti lunghi in sottofondo, branch `feat/voce-v12-m2` da main 44dbe2d): aperta; correzioni c19e9df dopo bot BOCCIATO e verifica esterna; nuova verifica esterna e bot sulla head nuova; merge col sì via M1 (riserve BASSE R-696-1, R-699-1/2-M2).
+- PR #345 (fetta 3 sottofondo) MERGIATA il 7 nov.
+- **PR della fetta BASSE del sottofondo** (branch `feat/voce-v12-m2` da main 5c79886): aperta; merge col sì via M1 (riserve BASSE R-701-3, R-702-1-M2).
 - **Dopo**: fetta 3.2 (lettura a voce dei compiti finiti alla prossima attivazione) se M1 la ordina; prova sul Mac.
 - Caso «Stefano»: da controllare sul Mac nella storia.
 
@@ -27,7 +28,7 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 
 ## Regole che seguo
 - Un branch per fetta da `origin/main`; mai push su main.
-- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #700-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
+- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #702-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
 - Fine fetta: /fine-task (ultimo_report, handoff con verdetti INTEGRALI, diff_sessione, stato_progetto) → commit → `bash scripts/fine_task_finale.sh`; etichetta `verifica` sulla PR; verifica esterna con agente nuovo `general-purpose`, `model: sonnet`, prompt esatto «Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>» (URL_HANDOFF = raw del commit di testa).
 - `gh` nel cloud non è autenticato: PR, etichette e merge con gli strumenti GitHub MCP.
 - Riserve BASSE/COSMETICHE dei bot: si registrano, niente giri (regola di M1); si riapre solo per ALTA/MEDIA o se M1 lo chiede.

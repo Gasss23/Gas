@@ -1,12 +1,9 @@
-# Diff della sessione — 2026-11-06 — Fetta 3 sottofondo (chat M2)
+# Diff della sessione — 2026-11-07 — Sottofondo: riserve BASSE (chat M2)
 
-- `modules/sottofondo/__init__.py` (nuovo) — coda privata, un compito alla volta (posto preso con tmp+`os.link`), avvio del processo separato, esecuzione col forte, avviso Telegram (anche su eccezione), durata massima con killpg solo se il processo è nostro, `notifica_possibile`; fail-safe §9.
-- `gas.py` — `STRUMENTO_SOTTOFONDO` (solo turni parlati non effimeri), `_in_sottofondo` (forte, tetto, firma, diniego se l'avviso non è possibile), comando `sottofondo <id>`.
-- `modules/gate/gate.py` — `in_sottofondo` UNCERTAIN.
-- `.claude/agents/memoria_revisore.md` — lezioni review #695–#699.
-- `.github/workflows/ci.yml` — passo «Run sottofondo suite».
-- `.gitignore` — `.gas_sottofondo/`.
-- `tests/test_unit_sottofondo.py` (nuovo), `tests/test_unit_kernel.py` (T105).
+- `modules/sottofondo/__init__.py` — `_identita` (sì/no/non so) al posto del solo `_e_nostro`; `attivo()` libera il posto con pid estraneo; `_creato` robusto (non numerico, non finito, futuro); `controlla()` per il kernel; «fermato» solo se killpg riesce; `_pulisci_vecchi` (GAS_SOTTOFONDO_GIORNI); `_numero_env` con isfinite.
+- `gas.py` — `GasKernel.per_sottofondo` (senza avvisa_operatore: offerta, dispatch, cancello); `controlla` a inizio turno; `gas.py sottofondo <id>` usa il nuovo costruttore.
+- `tests/test_unit_sottofondo.py` (59), `tests/test_unit_kernel.py` (T106a-d).
+- `.claude/agents/memoria_revisore.md` — review #701/#702.
 - `reports/*` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

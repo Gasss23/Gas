@@ -1,19 +1,16 @@
-# Ultimo report — 2026-11-06 — Fetta 3 voce: compiti lunghi in sottofondo (chat M2)
+# Ultimo report — 2026-11-07 — Sottofondo: chiusura delle riserve BASSE (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #345 (con riserve BASSE: sì via M1).
+1. Merge della PR di questa fetta (riserve BASSE: sì via M1).
 2. Prova sul Mac: a voce un compito lungo → «ci lavoro» e poi avviso su Telegram.
 
 ## Esito delle fette
 
-- **PR #344** (rifiuto di --effort + proposta): `MERGIATA` (44dbe2d).
-- **Fetta 3 (PR #345)**: `FATTA` — `in_sottofondo` solo a voce, processo separato, solo forte, avviso Telegram; review #695-M2 + #696-M2 APPROVATO CON RISERVE.
-- **Correzioni dopo bot e verifica esterna (c19e9df)**: `FATTE` — bot V-1 MEDIA (avviso promesso anche se Telegram non può) chiusa con diniego; posto `attivo.json` preso in modo atomico (R-697-1 MEDIA chiusa); killpg solo se il processo è nostro (R-698-1 chiusa); review #697 riserve, #698 BOCCIATO, #699-M2 APPROVATO CON RISERVE (R-699-1/2-M2 BASSE).
-- **CI rossa su e323b60**: `CORRETTA` (b865195, `ps -ww`; review #700-M2 APPROVATO).
-- **Fette 3.2 e 3.3**: `DEFERITE`.
-- Test: kernel 1096 PASS 0 FAIL; sottofondo 34 passed.
+- **PR #345** (fetta 3 sottofondo): `MERGIATA` (5c79886).
+- **Fetta BASSE del sottofondo**: `FATTA` — pid riusato, «creato» sbagliato, avviso al crash a ogni turno, niente avvisa_operatore nel compito in sottofondo, «fermato» solo se vero, pulizia dopo 7 giorni, inf/nan; review #701-M2 e #702-M2 APPROVATO CON RISERVE (R-701-3-M2, R-702-1-M2 BASSE).
+- Test: kernel 1100 PASS 0 FAIL; sottofondo 59 passed.
 
 ## Anomalie
 
-- Nessuna.
+- Durante i test un mio test senza `killpg` neutralizzato ha mandato SIGTERM a pytest (nessun danno, corretto prima del commit).
