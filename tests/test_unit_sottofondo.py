@@ -770,3 +770,11 @@ def test_frase_finiti_corta_e_segna_letti(tmp_path):
     assert sf.da_leggere(tmp_path) == []
     sf.segna_letti(tmp_path, [{"id": "../../fuori"}])  # nessuna scrittura fuori, nessuna eccezione
     assert not (tmp_path.parent / "fuori.json").exists()
+
+
+
+def test_frase_finiti_risposta_vuota():
+    """Ve #350 V-2: compito ok senza risposta → frase chiusa, senza «:» finali."""
+    for risposta in ("", None, "   "):
+        frase = sf.frase_finiti([{"id": "a", "compito": "t", "stato": "ok", "risposta": risposta}])
+        assert frase == "Ho finito il compito in sottofondo «t»."

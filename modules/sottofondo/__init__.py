@@ -515,8 +515,10 @@ def frase_finiti(jobs: list) -> str:
     for job in jobs:
         titolo = _breve(job.get("compito", ""), 80)
         if job.get("stato") == "ok":
-            frasi.append(f"Ho finito il compito in sottofondo «{titolo}»: "
-                         f"{_breve(job.get('risposta', ''), LETTURA_RISPOSTA_MAX)}")
+            riassunto = _breve(job.get("risposta", ""), LETTURA_RISPOSTA_MAX)
+            # ve #350 V-2: senza risposta niente «:» seguiti dal vuoto
+            frasi.append(f"Ho finito il compito in sottofondo «{titolo}»: {riassunto}"
+                         if riassunto else f"Ho finito il compito in sottofondo «{titolo}».")
         else:
             frasi.append(f"Il compito in sottofondo «{titolo}» non è riuscito.")
     return " ".join(frasi)

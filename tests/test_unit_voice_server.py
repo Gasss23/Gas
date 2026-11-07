@@ -1769,3 +1769,38 @@ def test_f32_seguito_non_legge(tmp_path):
                                    intestazioni={"X-Gas-Seguito": "1"})
     assert "Ho finito" not in " ".join(c.args[0] for c in tts.call_args_list)
     assert "letto_a_voce" not in json.loads(f.read_text())
+
+
+def test_f32_due_compiti_lunghi_non_tolgono_la_risposta(tmp_path):
+    """Bot #350 V-1: con schermo (audio+testo+pezzi) due compiti con riassunto lungo non
+    consumano il limite della parte parlata: la risposta viene detta lo stesso; a schermo i
+    compiti sono il primo paragrafo."""
+    lunga = "Prima frase del risultato. " + "parola " * 40 + "fine."
+    _compito_finito(tmp_path, "20261107-100000-gggggg", risposta=lunga)
+    _compito_finito(tmp_path, "20261107-100001-hhhhhh", risposta=lunga)
+    ct, righe, tts = _voce_a_pezzi("Ciao. Tutto bene.", lambda frase, k, v: frase.encode(),
+                                   root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[-2:] == ["Ciao.", "Tutto bene."]
+    assert sum(f.startswith("Ho finito il compito") for f in frasi) == 2
+    assert righe[0]["content"].startswith("Ho finito il compito")
+    assert righe[0]["content"].endswith("\n\nCiao. Tutto bene.")
+
+
+def test_f32_client_senza_schermo_audio_pezzi(tmp_path):
+    """Il client H24 (audio+pezzi, tutto a voce): prima i compiti, poi la risposta intera."""
+    _compito_finito(tmp_path, "20261107-100000-iiiiii")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(),
+                                   formato="audio+pezzi", root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[0].startswith("Ho finito il compito in sottofondo") and frasi[-1] == "Ciao."
+
+
+def test_f32_senza_chiave_tts_compiti_nel_testo(tmp_path):
+    """Senza chiave ElevenLabs la risposta arriva a testo con i compiti come primo paragrafo."""
+    f = _compito_finito(tmp_path, "20261107-100000-llllll")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), chiave=None,
+                                   root=tmp_path)
+    assert righe[0]["content"].startswith("Ho finito il compito in sottofondo")
+    assert righe[0]["content"].endswith("\n\nCiao.")
+    assert json.loads(f.read_text())["letto_a_voce"] is True

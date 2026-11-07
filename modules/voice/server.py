@@ -653,37 +653,40 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 except Exception as exc:  # §9: la risposta parte lo stesso
                     log.warning("registra_seguito eccezione: %s", exc)
 
-        if is_audio and not self._seguito():
-            result_content = self._con_compiti_finiti(result_content)
+        # Fetta 3.2: compiti in sottofondo finiti, solo nei turni a voce di attivazione
+        finiti = self._compiti_finiti() if (is_audio and not self._seguito()) else ""
 
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
-            self._do_audio_testo_response(result_content)
+            self._do_audio_testo_response(result_content, prefisso=finiti)
         elif self._wants_audio() and self._formato() != _FORMATO_PEZZI_VOCE:
-            self._do_tts_response(result_content)
+            self._do_tts_response(f"{finiti} {result_content}".strip() if finiti else result_content)
         else:
+            if finiti:
+                result_content = f"{finiti}\n\n{result_content}"
             out: Dict[str, Any] = {"content": result_content}
             if self._capito is not None:
                 out["capito"] = self._capito
             self._send_json(200, out)
 
-    def _con_compiti_finiti(self, risposta: str) -> str:
-        """Fetta 3.2 (chat M2, 7 nov): al turno di attivazione a voce, prima della risposta,
-        i compiti in sottofondo finiti e non ancora letti (al massimo 2, ultime 24 ore). Mai nei
-        seguiti (parlato della stanza). Fail-safe §9: un errore lascia la risposta com'è."""
+    def _compiti_finiti(self) -> str:
+        """Fetta 3.2 (chat M2, 7 nov): la frase sui compiti in sottofondo finiti e non ancora
+        letti (al massimo 2, ultime 24 ore), da dire PRIMA della risposta; "" se non ce ne
+        sono. Chiamata solo nei turni a voce di attivazione (mai nel seguito: parlato della
+        stanza). Fail-safe §9: un errore dà "" e la risposta parte com'è."""
         try:
             from modules import sottofondo
             root = getattr(self.kernel, "root", None)
             if root is None:
-                return risposta
+                return ""
             jobs = sottofondo.da_leggere(root)
             if not jobs:
-                return risposta
+                return ""
             frase = sottofondo.frase_finiti(jobs)
             sottofondo.segna_letti(root, jobs)
-            return f"{frase} {risposta}".strip() if frase else risposta
+            return frase.strip()
         except Exception as exc:
             log.warning("compiti finiti non letti a voce: %s", exc)
-            return risposta
+            return ""
 
     def _rispondi_senza_turno(self, testo: str, segno: str) -> None:
         """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito», «dimmi»), nel
@@ -732,11 +735,16 @@ class VoiceHandler(BaseHTTPRequestHandler):
         testo con questo formato riceve solo il testo (JSON), mai la sintesi ElevenLabs."""
         return self._formato() == _FORMATO_PEZZI_VOCE and self._parlato
 
-    def _do_audio_testo_response(self, text: str, extra: Optional[Dict[str, Any]] = None) -> None:
+    def _do_audio_testo_response(self, text: str, extra: Optional[Dict[str, Any]] = None,
+                                 prefisso: str = "") -> None:
         """V3: JSON {"content": testo intero, "audio": base64 MP3 della parte parlata}.
         Senza chiave ElevenLabs o con errore TTS la risposta arriva lo stesso, solo testo
-        (+ "errore_voce"): a schermo si legge, mai un 503 al posto della risposta."""
-        out: Dict[str, Any] = {"content": text, **(extra or {})}
+        (+ "errore_voce"): a schermo si legge, mai un 503 al posto della risposta.
+        Fetta 3.2 (bot #350 V-1): `prefisso` (compiti finiti) si dice per primo FUORI dal
+        limite della parte parlata, così non toglie spazio alla risposta; a schermo è il
+        primo paragrafo."""
+        out: Dict[str, Any] = {"content": f"{prefisso}\n\n{text}" if prefisso else text,
+                               **(extra or {})}
         if self._capito is not None:  # V6: quello che Whisper ha sentito, per la pagina
             out["capito"] = self._capito
         api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
@@ -746,16 +754,18 @@ class VoiceHandler(BaseHTTPRequestHandler):
             out["errore_voce"] = "TTS non disponibile: ELEVENLABS_API_KEY non configurata"
         else:
             voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+            prima = _dividi_frasi(" ".join(prefisso.split())) if prefisso else []
             if self._formato() == _FORMATO_PEZZI:
-                self._do_pezzi_response(out, frasi_parlate(text), api_key, voice_id)
+                self._do_pezzi_response(out, prima + frasi_parlate(text), api_key, voice_id)
                 return
             if self._vuole_righe_senza_schermo():  # V10: tutto a voce, frase per frase
-                self._do_pezzi_response(out, frasi_voce(text), api_key, voice_id)
+                self._do_pezzi_response(out, prima + frasi_voce(text), api_key, voice_id)
                 return
             t = time.monotonic()
             try:
+                parlato = " ".join(prima + [parte_parlata(text)])
                 out["audio"] = base64.b64encode(
-                    synthesize_speech(parte_parlata(text), api_key, voice_id)).decode("ascii")
+                    synthesize_speech(parlato, api_key, voice_id)).decode("ascii")
             except ElevenLabsTTSError as exc:
                 log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
                 out["errore_voce"] = f"Errore TTS ElevenLabs: {exc.message}"
