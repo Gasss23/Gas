@@ -89,8 +89,8 @@ def test_parola_bip_registrazione_e_risposta():
     # niente silenzio prima della voce; dopo, il silenzio che chiude la richiesta (0,8 s)
     assert _campioni(f.inviati[0]) == (20 + _sec(0.8)) * a.BLOCCO
     # svuota dopo bip e risposta; azzera prima della risposta (fetta 41: il rilevatore
-    # ascolta mentre Gas parla) e a fine conversazione
-    assert f.svuotati >= 2 and f.azzerati == 2
+    # ascolta mentre Gas parla), prima della finestra (R-680-1) e a fine conversazione
+    assert f.svuotati >= 2 and f.azzerati == 3
 
 
 def test_se_non_parli_dopo_la_parola_non_si_invia():
@@ -149,6 +149,7 @@ def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None):
     monkeypatch.setattr(a, "_GAS_ROOT", tmp_path)
     monkeypatch.setenv("GAS_VOICE_TOKEN", TOKEN)
     for k in ("GAS_ASCOLTO_VOCE_RMS", "GAS_ASCOLTO_CONFERMA", "GAS_ASCOLTO_INTERRUZIONE",
+              "GAS_VOICE_FINESTRA", "GAS_VOICE_SEGUITO_MAX",
               "GAS_ASCOLTO_SOGLIA_INTERRUZIONE", "GAS_VOICE_URL", "GAS_VOICE_PORT"):
         monkeypatch.delenv(k, raising=False)
     for k, v in ambiente.items():
@@ -188,6 +189,8 @@ def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
     k = _main_finto(monkeypatch, tmp_path,
                     {} if valore is None else {"GAS_ASCOLTO_VOCE_RMS": valore})
     assert k.get("voce_rms") == atteso
+    assert k.get("finestra_s") == 40.0 and k.get("seguito_max_s") == 15.0
+    assert k.get("invia_seguito") is not None
     assert k.get("soglia_interruzione") == a.SOGLIA_INTERRUZIONE_PREDEFINITA
 
 
@@ -437,7 +440,7 @@ def test_la_conferma_non_si_interrompe_e_poi_si_svuota():
 
 
 def test_nella_finestra_e_all_interruzione_niente_conferma():
-    """«Sì, signore?» solo alla prima attivazione con la parola: nella finestra dei 12 s
+    """«Sì, signore?» solo alla prima attivazione con la parola: nella finestra
     non serve, e all'interruzione resta il bip (più rapido)."""
     chiamate = []
 
@@ -463,7 +466,267 @@ def test_soglia_interruzione_dall_ambiente(monkeypatch, acceso, soglia, atteso):
             monkeypatch.setenv(k, v)
     assert a.soglia_interruzione() == atteso
 
-# ── finestra di 12 s dopo la risposta ──
+
+# ── fetta 43 parte 2: finestra di 40 s e difese dei turni di seguito ──
+
+class FintiSeguito(Finti):
+    """Invio finto che distingue il turno dopo la parola da quello di seguito."""
+
+    def __init__(self, esiti):
+        super().__init__()
+        self.esiti, self.tipi = list(esiti), []
+
+    def _esito(self, tipo):
+        self.tipi.append(tipo)
+        return self.esiti.pop(0) if self.esiti else (True, b"MP3", "", "")
+
+    def ascolto(self, blocchi, **k):
+        return a.Ascolto(iter(blocchi), self.rilevatore,
+                         lambda wav: (self.inviati.append(wav), self._esito("parola"))[1],
+                         self.riproduci, self.suona, svuota=self.svuota,
+                         azzera_rilevatore=self.azzera,
+                         invia_seguito=lambda wav: (self.inviati.append(wav),
+                                                    self._esito("seguito"))[1], **k)
+
+
+SEGUITO = ((VOCE, 10), (SILENZIO, 10))   # una richiesta di seguito da 0,8 s di voce
+
+
+def test_finestra_predefinita_40_secondi():
+    assert a.FINESTRA_PREDEFINITA_S == 40.0 and a.SEGUITO_MAX_PREDEFINITO_S == 15.0
+    f = FintiSeguito([])
+    asc = f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, _sec(30)), *SEGUITO,
+                             (SILENZIO, _sec(45))))
+    asc.gira()
+    assert asc.finestra_s == 40.0 and f.tipi == ["parola", "seguito"]
+
+
+def test_il_turno_di_seguito_usa_l_invio_di_seguito():
+    f = FintiSeguito([])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito", "seguito"] and f.bip == ["ok"]
+
+
+def test_comando_fine_chiude_la_conversazione_senza_bip(caplog):
+    f = FintiSeguito([(True, b"A", "", ""), (True, None, "", "fine")])
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, *SEGUITO,
+                           (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito"] and f.riprodotti == [b"A"] and f.bip == ["ok"]
+    # chiusa per il comando del server, non come un errore
+    assert "non rivolto a Gas" in caplog.text and "non riuscito" not in caplog.text
+
+
+def test_comando_pausa_suona_va_bene_e_chiude():
+    f = FintiSeguito([(True, b"A", "", ""), (True, b"VA-BENE", "", "pausa")])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito"] and f.riprodotti == [b"A", b"VA-BENE"]
+    assert f.bip == ["ok"]
+
+
+def test_pausa_dopo_la_parola_chiude_anche_senza_audio():
+    """«Hey Jarvis, pausa» oltre il tetto orario: 429 col comando, o niente audio: si chiude
+    in silenzio, come una pausa riuscita."""
+    f = FintiSeguito([(False, None, "HTTP 429", "pausa")])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola"] and f.bip == ["ok"]
+
+
+@pytest.mark.parametrize("esito", [(False, None, "HTTP 500", ""), (False, None, "HTTP 429"),
+                                   (True, iter([]), "", "")])
+def test_errore_di_seguito_chiude_senza_bip(esito):
+    """R-675-5-M2: col cervello forte spento i turni di seguito ricevono 500. Qualsiasi errore
+    (o risposta senza voce) chiude la conversazione, mai bip a ripetizione."""
+    f = FintiSeguito([(True, b"A", "", ""), esito])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito"] and f.bip == ["ok"]
+
+
+def test_errore_dopo_la_parola_fa_ancora_il_bip():
+    f = FintiSeguito([(False, None, "HTTP 500", "")])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, _sec(50)))).gira()
+    assert f.bip == ["ok", "errore"]
+
+
+def test_parlato_lungo_senza_parola_non_si_invia():
+    """(a)+(b): una richiesta di seguito che arriva a 15 s è parlato della stanza: non va al
+    server e la conversazione si chiude."""
+    f = FintiSeguito([])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE, _sec(20)), (SILENZIO, 10), *SEGUITO,
+                       (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola"] and len(f.inviati) == 1
+
+
+def test_il_parlato_lungo_si_smette_di_registrare_a_15_s():
+    """La registrazione di seguito si ferma al tetto (non va avanti fino a 30 s): dopo,
+    il microfono torna subito al rilevatore della parola."""
+    visti = []
+    f = FintiSeguito([])
+
+    def rilevatore(b):
+        visti.append(b is VOCE)
+        return f.rilevatore(b)
+    asc = a.Ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE, _sec(25)), (SILENZIO, 20)), rilevatore,
+                    lambda wav: (f.inviati.append(wav), (True, b"MP3", "", ""))[1],
+                    f.riproduci, f.suona, svuota=f.svuota)
+    asc.gira()
+    assert len(f.inviati) == 1
+    assert sum(visti) >= _sec(25) - _sec(a.SEGUITO_MAX_PREDEFINITO_S) - 2
+
+
+def test_parlato_di_seguito_sotto_il_tetto_si_invia():
+    f = FintiSeguito([])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE, _sec(14)), (SILENZIO, 10),
+                       (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito"]
+
+
+def test_dopo_la_parola_la_richiesta_lunga_va_ancora_fino_a_30_s():
+    f = FintiSeguito([])
+    f.ascolto(_blocchi(PAROLA, (VOCE, _sec(20)), (SILENZIO, 10), (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola"] and _campioni(f.inviati[0]) == (_sec(20) + 10) * a.BLOCCO
+
+
+def test_interrotto_un_turno_di_seguito_il_successivo_non_lo_e():
+    frasi, _ = _frasi_chiuse(b"B", b"C")
+    f = FintiSeguito([(True, b"A", "", ""), (True, frasi, "", "")])
+    f.riproduci = lambda audio: (f.riprodotti.append(audio), Suona(audio, 3, []))[1]
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, PAROLA, *RICHIESTA,
+                       (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito", "parola"]
+
+
+PAROLA_DETTA = [2100] * a.BLOCCO     # «Hey Jarvis» detto: è voce e il rilevatore la sente
+
+
+def _finti_con_parola_detta(esiti=()):
+    f = FintiSeguito(list(esiti))
+    f.rilevatore = lambda b: 1.0 if (b is PAROLA_DETTA or b == PAROLA) else 0.0
+    return f
+
+
+def test_parola_nella_finestra_e_una_richiesta_normale():
+    """V-1 bot #341: «Hey Jarvis, …» detto nella finestra non è un turno di seguito: va con
+    l'invio normale (gli strumenti, niente «ripetimelo»)."""
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 5), PAROLA_DETTA, *SEGUITO,
+                       (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola"]
+
+
+def test_parola_a_meta_della_frase_nella_finestra():
+    """Il rilevatore resta acceso anche mentre si registra: la parola sentita dopo l'inizio
+    della voce rende normale il turno e alza il tetto a 30 s (si invia anche oltre i 15 s)."""
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE, 5), PAROLA_DETTA, (VOCE, _sec(18)),
+                       (SILENZIO, 10), (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola"]
+    assert _campioni(f.inviati[1]) > _sec(15) * a.BLOCCO
+
+
+VOCE_STANZA = [1900] * a.BLOCCO      # parlato della stanza prima della parola
+
+
+def test_parlato_prima_della_parola_non_parte():
+    """V-1 bot su 23d9c1c (R-693-2): la parola a metà di un turno di seguito rende normale la
+    richiesta, ma il parlato della stanza di prima non parte: si tiene solo da poco prima
+    della parola."""
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE_STANZA, _sec(8)), PAROLA_DETTA, (VOCE, 20),
+                       (SILENZIO, 10), (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola"]
+    campioni = _campioni(f.inviati[1])
+    tenuti = a.blocchi_per(a.PRIMA_DELLA_PAROLA_S) - 1
+    assert campioni == (tenuti + 1 + 20 + 10) * a.BLOCCO   # niente 8 s di stanza
+
+
+def test_dopo_la_parola_nella_finestra_il_turno_dopo_torna_di_seguito():
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, PAROLA_DETTA, *SEGUITO, *SEGUITO,
+                       (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola", "seguito"]
+
+
+def test_rilevatore_azzerato_prima_della_finestra():
+    """R-680-1: dopo la risposta (il rilevatore ha sentito la voce di Gas) si azzera prima
+    della finestra: un residuo fra 0,5 e 0,7 non deve rendere «normale» il turno di seguito."""
+    f = FintiSeguito([])
+    residuo = [0.0]
+
+    def rilevatore(b):
+        if b == PAROLA:
+            return 1.0
+        return residuo[0]
+
+    def azzera():
+        f.azzerati += 1
+        residuo[0] = 0.0
+
+    def riproduci(audio):
+        f.riprodotti.append(audio)
+        residuo[0] = 0.6   # la voce di Gas lascia un punteggio sotto 0,7 ma sopra 0,5
+        return None
+    a.Ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50))), rilevatore,
+              lambda wav: (f.inviati.append(wav), f._esito("parola"))[1], riproduci, f.suona,
+              svuota=f.svuota, azzera_rilevatore=azzera,
+              invia_seguito=lambda wav: (f.inviati.append(wav), f._esito("seguito"))[1]).gira()
+    assert f.tipi == ["parola", "seguito"]
+
+
+RUMORE_PAROLA = [5] * a.BLOCCO      # rumore che il rilevatore scambia per la parola
+
+
+def test_parola_lontana_dalla_voce_non_conta():
+    """V-1 ve su 562f137 (R-680-2): un falso positivo sentito 20 s prima del parlato della
+    stanza non lo rende un turno normale: resta di seguito (e oltre 15 s non parte)."""
+    f = FintiSeguito([])
+    f.rilevatore = lambda b: 1.0 if (b is RUMORE_PAROLA or b == PAROLA) else 0.0
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 3), RUMORE_PAROLA, (SILENZIO, _sec(20)),
+                       *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito"]
+
+
+def test_parola_appena_prima_della_voce_conta():
+    f = FintiSeguito([])
+    f.rilevatore = lambda b: 1.0 if (b is RUMORE_PAROLA or b == PAROLA) else 0.0
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 3), RUMORE_PAROLA, (SILENZIO, 10),
+                       *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola"]
+
+
+def test_senza_parola_la_frase_lunga_resta_scartata():
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (VOCE, 5), (VOCE, _sec(18)),
+                       (SILENZIO, 10), (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola"]
+
+
+def test_rilevatore_rotto_nella_finestra_non_ferma_niente():
+    f = FintiSeguito([])
+    rotto = [False]
+
+    def rilevatore(b):
+        if rotto[0]:
+            raise RuntimeError("onnx")
+        return f.rilevatore(b)
+    asc = a.Ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50))), rilevatore,
+                    lambda wav: (f.inviati.append(wav), f._esito("parola"))[1],
+                    lambda audio: (rotto.__setitem__(0, True), f.riproduci(audio))[1],
+                    f.suona, svuota=f.svuota, dorme=lambda s: None,
+                    invia_seguito=lambda wav: (f.inviati.append(wav), f._esito("seguito"))[1])
+    asc.gira()
+    assert f.tipi == ["parola", "seguito"]
+
+
+def test_dopo_l_interruzione_il_turno_non_e_di_seguito():
+    frasi, _ = _frasi_chiuse(b"A", b"B")
+    f = FintiSeguito([(True, frasi, "", "")])
+    f.riproduci = lambda audio: (f.riprodotti.append(audio), Suona(audio, 3, []))[1]
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, PAROLA, *RICHIESTA, *SEGUITO,
+                       (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "parola", "seguito"]
+
+# ── finestra dopo la risposta ──
 
 def test_finestra_continua_senza_parola():
     f = Finti()
@@ -698,7 +961,7 @@ def server():
 
 def test_invio_al_server_vero(server):
     _Server.risposta = (200, "audio/mpeg", b"ID3-MP3")
-    ok, audio, motivo = a.invia_al_server(server, TOKEN, 5)(b"RIFF-WAV")
+    ok, audio, motivo, _ = a.invia_al_server(server, TOKEN, 5)(b"RIFF-WAV")
     assert (ok, audio, motivo) == (True, b"ID3-MP3", "")
     percorso, intestazioni, corpo = _Server.visti[0]
     assert percorso == "/voice" and corpo == b"RIFF-WAV"
@@ -713,14 +976,14 @@ def test_invio_al_server_vero(server):
 ])
 def test_invio_con_risposte_sbagliate(server, risposta, atteso):
     _Server.risposta = risposta
-    ok, audio, motivo = a.invia_al_server(server, TOKEN, 5)(b"x")
+    ok, audio, motivo, _ = a.invia_al_server(server, TOKEN, 5)(b"x")
     assert not ok and audio is None and atteso in motivo and TOKEN not in motivo
 
 
 def test_redirect_non_seguito(server):
     """R-615-2: un 302 verso un altro host non si segue (il Bearer non esce)."""
     _Server.risposta = (302, "text/plain", b"")
-    ok, audio, motivo = a.invia_al_server(server, TOKEN, 5)(b"x")
+    ok, audio, motivo, _ = a.invia_al_server(server, TOKEN, 5)(b"x")
     assert not ok and "HTTP 302" in motivo and len(_Server.visti) == 1
 
 
@@ -743,7 +1006,7 @@ def test_proxy_di_sistema_ignorato(monkeypatch):
 
 
 def test_server_giu():
-    ok, audio, motivo = a.invia_al_server("http://127.0.0.1:9", TOKEN, 2)(b"x")
+    ok, audio, motivo, _ = a.invia_al_server("http://127.0.0.1:9", TOKEN, 2)(b"x")
     assert not ok and "non raggiungibile" in motivo and TOKEN not in motivo
 
 
@@ -1068,24 +1331,80 @@ def test_conferma_attiva_dall_ambiente(monkeypatch, valore, atteso):
         monkeypatch.setenv("GAS_ASCOLTO_CONFERMA", valore)
     assert a.conferma_attiva() is atteso
 
+
+class _ServerComando(http.server.BaseHTTPRequestHandler):
+    risposta = (200, "application/json", b'{"content": "", "fine": true}', "fine")
+    visti = []
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", 0))
+        self.rfile.read(n)
+        type(self).visti.append(dict(self.headers))
+        codice, tipo, corpo, comando = type(self).risposta
+        self.send_response(codice)
+        self.send_header("Content-Type", tipo)
+        self.send_header("Content-Length", str(len(corpo)))
+        if comando:
+            self.send_header("X-Gas-Comando", comando)
+        self.end_headers()
+        self.wfile.write(corpo)
+
+    def log_message(self, *x):
+        pass
+
+
+@pytest.fixture
+def server_comando():
+    _ServerComando.visti = []
+    s = http.server.HTTPServer(("127.0.0.1", 0), _ServerComando)
+    t = threading.Thread(target=s.serve_forever, daemon=True)
+    t.start()
+    yield f"http://127.0.0.1:{s.server_address[1]}"
+    s.shutdown()
+    s.server_close()
+
+
+@pytest.mark.parametrize("seguito", [False, True])
+def test_invio_di_seguito_manda_l_intestazione(server_comando, seguito):
+    _ServerComando.risposta = (200, "audio/mpeg", b"ID3", "")
+    a.invia_al_server(server_comando, TOKEN, 5, seguito=seguito)(b"x")
+    assert (_ServerComando.visti[0].get("X-Gas-Seguito") == "1") is seguito
+
+
+@pytest.mark.parametrize("risposta,atteso", [
+    ((200, "application/json", b'{"content": "", "fine": true}', "fine"),
+     (True, None, "", "fine")),
+    ((200, "audio/mpeg", b"ID3-VA-BENE", "pausa"), (True, b"ID3-VA-BENE", "", "pausa")),
+    ((200, "audio/mpeg", b"ID3", "Pausa "), (True, b"ID3", "", "pausa")),
+    ((200, "audio/mpeg", b"ID3", "spegni-tutto"), (True, b"ID3", "", "")),
+    ((429, "application/json", b'{"error": "troppe"}', "pausa"),
+     (False, None, "HTTP 429", "pausa")),
+    ((500, "application/json", b'{"error": "x"}', ""), (False, None, "HTTP 500", "")),
+])
+def test_comando_del_server(server_comando, risposta, atteso):
+    """V15 (PR #339 di M2): X-Gas-Comando «fine» (JSON vuoto) o «pausa», in ogni formato;
+    un comando sconosciuto si ignora."""
+    _ServerComando.risposta = risposta
+    assert a.invia_al_server(server_comando, TOKEN, 5, seguito=True)(b"x") == atteso
+
 def test_json_con_un_solo_audio(server):
     """Il server manda JSON (frase fissa «uso», o niente formato a pezzi): l'audio si suona."""
     _Server.risposta = (200, "application/json", json.dumps(
         {"content": "Non ho capito", "audio": _mp3(9)}).encode())
-    ok, audio, motivo = a.invia_al_server(server, TOKEN, 5)(b"x")
+    ok, audio, motivo, _ = a.invia_al_server(server, TOKEN, 5)(b"x")
     assert (ok, audio, motivo) == (True, b"MP3-9", "")
 
 
 def test_json_audio_rotto(server):
     _Server.risposta = (200, "application/json", b'{"audio": "%%%"}')
-    ok, audio, motivo = a.invia_al_server(server, TOKEN, 5)(b"x")
+    ok, audio, motivo, _ = a.invia_al_server(server, TOKEN, 5)(b"x")
     assert not ok and audio is None and "risposta inattesa" in motivo
 
 
 def test_senza_formato_come_prima(server):
     """GAS_ASCOLTO_FORMATO vuoto: niente X-Gas-Formato, e un JSON non vale come risposta."""
     _Server.risposta = (200, "application/json", json.dumps({"audio": _mp3(1)}).encode())
-    ok, audio, motivo = a.invia_al_server(server, TOKEN, 5, formato="")(b"x")
+    ok, audio, motivo, _ = a.invia_al_server(server, TOKEN, 5, formato="")(b"x")
     assert not ok and "risposta inattesa" in motivo
     assert "X-Gas-Formato" not in _Server.visti[0][1]
 
@@ -1279,12 +1598,15 @@ def test_main_usa_la_porta_del_server(monkeypatch, tmp_path):
     visti = []
     monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m: (lambda b: 0.0, lambda: None))
     monkeypatch.setattr(a, "invia_al_server",
-                        lambda url, token, timeout: (visti.append(url), lambda wav: (False, None, ""))[1])
+                        lambda url, token, timeout, seguito=False:
+                        (visti.append((url, seguito)), lambda wav: (False, None, ""))[1])
 
     def fermati():
         raise KeyboardInterrupt
     monkeypatch.setattr(a, "Microfono", fermati)
-    assert a.main() == 0 and visti == ["http://127.0.0.1:9001"]
+    # fetta 43 parte 2: un invio normale e uno «di seguito», tutti e due sulla porta giusta
+    assert a.main() == 0 and visti == [("http://127.0.0.1:9001", False),
+                                       ("http://127.0.0.1:9001", True)]
 
 
 @pytest.mark.parametrize("ripiego", [False, True])
@@ -1849,3 +2171,15 @@ def test_riprendi_riprova_il_bootstrap(tmp_path, falliti, ok):
 def test_pausa_e_riprendi_nel_leggimi():
     testo = (VOCE_DIR / "LEGGIMI.md").read_text(encoding="utf-8")
     assert "bash scripts/voce/pausa.sh" in testo and "bash scripts/voce/riprendi.sh" in testo
+
+
+@pytest.mark.parametrize("valore,atteso", [("20", 20.0), ("1", 3.0), ("99", 30.0), ("x", 15.0)])
+def test_main_tetto_di_seguito_dall_ambiente(monkeypatch, tmp_path, valore, atteso):
+    k = _main_finto(monkeypatch, tmp_path, {"GAS_VOICE_SEGUITO_MAX": valore})
+    assert k.get("seguito_max_s") == atteso
+
+
+def test_leggimi_finestra_e_seguito():
+    testo = (VOCE_DIR / "LEGGIMI.md").read_text(encoding="utf-8")
+    assert f"| `GAS_VOICE_FINESTRA` | {a.FINESTRA_PREDEFINITA_S:g} |" in testo
+    assert f"| `GAS_VOICE_SEGUITO_MAX` | {a.SEGUITO_MAX_PREDEFINITO_S:g} |" in testo
