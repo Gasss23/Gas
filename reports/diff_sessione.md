@@ -1,8 +1,10 @@
-# Diff della sessione — 2026-11-07 — chat Mani, dopo il merge della PR #347
+# Diff della sessione — 2026-11-07 — chat Mani, PR #348 (solo documenti)
 
-File toccati (base main 4a0b113):
-- `reports/proposta_parola_gas.md`: in cima la decisione dell'operatore (NO a «Hey Gas»).
-- `reports/stato_progetto.md`: PR #347 mergiata, decisione «Hey Gas», riserve nuove di bot e verifica esterna sulla #347.
+File toccati (base main c523a04):
+- `reports/proposta_parola_gas.md`: decisione dell'operatore in cima (NO a «Hey Gas»).
+- `reports/roadmap.md`: voce R8 della parola di attivazione allineata alla decisione.
+- `reports/stato_progetto.md`: PR #347 mergiata, decisione, riserve della #347.
+- `.claude/agents/memoria_revisore.md`: riga della review #706.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.
