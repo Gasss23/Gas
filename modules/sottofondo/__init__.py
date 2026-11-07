@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import secrets
 import signal
@@ -29,6 +30,7 @@ COMPITO_MAX = 2000          # caratteri del compito
 RISPOSTA_AVVISO_MAX = 700   # caratteri della risposta dentro l'avviso Telegram
 PREFISSO_TURNO = "Compito in sottofondo (avviato a voce): "
 DURATA_MAX_S_DEFAULT = 3600  # oltre: compito considerato bloccato (GAS_SOTTOFONDO_MAX_MIN)
+GIORNI_CONSERVAZIONE_DEFAULT = 7  # compiti finiti più vecchi: cancellati (GAS_SOTTOFONDO_GIORNI)
 
 StatoAttivo = Optional[Dict[str, Any]]
 
@@ -70,12 +72,29 @@ def _vivo(pid: Any) -> bool:
     return True
 
 
-def _durata_max_s() -> float:
+def _numero_env(nome: str, default: float) -> float:
+    """Bot #345 (head 46596b4) V-3: «inf», «nan» o testo non numerico → default."""
     try:
-        minuti = float(os.environ.get("GAS_SOTTOFONDO_MAX_MIN", "") or DURATA_MAX_S_DEFAULT / 60)
+        valore = float(os.environ.get(nome, "") or default)
     except ValueError:
-        minuti = DURATA_MAX_S_DEFAULT / 60
-    return max(60.0, minuti * 60)
+        return default
+    return valore if math.isfinite(valore) else default
+
+
+def _durata_max_s() -> float:
+    return max(60.0, _numero_env("GAS_SOTTOFONDO_MAX_MIN", DURATA_MAX_S_DEFAULT / 60) * 60)
+
+
+def _creato(dati: Dict[str, Any]) -> float:
+    """Bot #345 V-4 / ve V-2: «creato» non numerico, non finito o nel futuro vale 0 (posto
+    scaduto, quindi ripulito), invece di un ValueError che bloccava la coda per sempre."""
+    try:
+        valore = float(dati.get("creato", 0) or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    # R-701-2-M2: anche un «creato» nel futuro (file alterato, orologio portato indietro)
+    # vale scaduto, invece di tenere la coda occupata fino a quella data.
+    return valore if math.isfinite(valore) and valore <= time.time() + 120 else 0.0
 
 
 def attivo(root: Path) -> StatoAttivo:
@@ -85,13 +104,18 @@ def attivo(root: Path) -> StatoAttivo:
     dati = _leggi(Path(root) / CARTELLA / ATTIVO)
     if not dati:
         return None
-    eta = time.time() - float(dati.get("creato", 0) or 0)
+    eta = time.time() - _creato(dati)
     if eta > _durata_max_s():
         return None
     pid = dati.get("pid")
     if pid is None:  # appena accodato, il processo non ha ancora scritto il pid
         return dati if eta < 120 else None
-    return dati if _vivo(pid) else None
+    if not _vivo(pid):
+        return None
+    # Ve #345 (head 46596b4) V-1: un pid vivo ma sicuramente di un ALTRO processo (pid riusato
+    # dopo un crash o un riavvio) non tiene occupata la coda. Se non si sa (niente `ps`), il
+    # posto resta occupato: meglio aspettare che far girare due compiti insieme.
+    return None if _identita(pid, str(dati.get("id") or "")) is False else dati
 
 
 def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None:
@@ -113,19 +137,28 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
         return
     ident = str(dati.get("id") or "")
     pid = dati.get("pid")
-    oltre = time.time() - float(dati.get("creato", 0) or 0) > _durata_max_s()
-    if oltre and _vivo(pid) and _e_nostro(pid, ident):
-        # R-697-2-M2: un compito oltre la durata massima viene fermato (sessione propria:
-        # il gruppo di processi ha lo stesso id del figlio), non lasciato a metà.
-        # R-698-1-M2: SOLO se il pid è davvero il nostro figlio; un pid riusato (dopo un
-        # riavvio può essere un'app dell'operatore) non si tocca mai.
-        try:
-            os.killpg(int(pid), signal.SIGTERM)
-        except Exception as e:
-            logging.warning("sottofondo %s: arresto non riuscito: %s", ident, e)
+    oltre = time.time() - _creato(dati) > _durata_max_s()
+    motivo = "il processo si è interrotto"
+    if oltre:
+        motivo = "oltre la durata massima"
+        nostro = _identita(pid, ident) if _vivo(pid) else False
+        if nostro:
+            # R-697-2-M2: un compito oltre la durata massima viene fermato (sessione propria:
+            # il gruppo di processi ha lo stesso id del figlio), non lasciato a metà.
+            # R-698-1-M2: SOLO se il pid è davvero il nostro figlio; un pid riusato (dopo un
+            # riavvio può essere un'app dell'operatore) non si tocca mai.
+            try:
+                os.killpg(int(pid), signal.SIGTERM)
+                motivo = "oltre la durata massima, fermato"
+            except Exception as e:
+                logging.warning("sottofondo %s: arresto non riuscito: %s", ident, e)
+        elif nostro is None:
+            # R-699-1/2-M2: non si sa se il processo è il nostro (niente `ps`): non si ferma,
+            # e l'avviso non dice «fermato».
+            motivo = "oltre la durata massima, forse ancora in esecuzione"
+            logging.warning("sottofondo %s: oltre la durata, processo %s non verificabile: "
+                            "non fermato", ident, pid)
     job = _leggi(cartella / f"{Path(ident).name}.json") if ident else None
-    motivo = ("oltre la durata massima, fermato" if oltre
-              else "il processo si è interrotto")
     annulla(root, ident, motivo)
     # R-697-3-M2: si toglie il posto solo se è ancora quello letto (o senza id)
     rilettura = _leggi(posto)
@@ -139,21 +172,73 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
                       f"finito: {motivo}.", ident, avvisa)
 
 
-def _e_nostro(pid: Any, ident: str) -> bool:
-    """R-698-1-M2: il pid è il NOSTRO figlio `gas.py sottofondo <ident>`, leader del proprio
-    gruppo? Nel dubbio (comando illeggibile, errore) False: meglio non fermare che uccidere un
-    processo estraneo. `ps -ww -o command=` funziona su macOS e Linux; `-ww` evita che la riga
-    venga troncata a COLUMNS (CI #345: con un percorso lungo dell'interprete il figlio non
-    veniva riconosciuto)."""
+def _identita(pid: Any, ident: str) -> Optional[bool]:
+    """Il pid è il NOSTRO figlio `gas.py sottofondo <ident>`, leader del proprio gruppo?
+    True = sì; False = sicuramente no (pid non valido, non leader, comando diverso);
+    None = non si sa (`ps` assente o in errore). `ps -ww -o command=` funziona su macOS e
+    Linux; `-ww` evita che la riga venga troncata a COLUMNS (CI #345)."""
     try:
-        if not isinstance(pid, int) or pid <= 1 or os.getpgid(pid) != pid:
+        if not isinstance(pid, int) or pid <= 1:
+            return False
+        try:
+            if os.getpgid(pid) != pid:
+                return False
+        except ProcessLookupError:
             return False
         r = subprocess.run(["ps", "-ww", "-o", "command=", "-p", str(pid)], capture_output=True,
                            text=True, timeout=5)
+        if r.returncode != 0:
+            return None
         comando = (r.stdout or "").strip()
-        return r.returncode == 0 and comando.endswith(f"sottofondo {ident}") and "gas.py" in comando
+        return comando.endswith(f"sottofondo {ident}") and "gas.py" in comando
     except Exception:
-        return False
+        return None
+
+
+def _e_nostro(pid: Any, ident: str) -> bool:
+    """R-698-1-M2: nel dubbio False (meglio non fermare che uccidere un processo estraneo)."""
+    return _identita(pid, ident) is True
+
+
+def _giorni_conservazione() -> float:
+    return max(1.0, _numero_env("GAS_SOTTOFONDO_GIORNI", GIORNI_CONSERVAZIONE_DEFAULT))
+
+
+def _pulisci_vecchi(root: Path) -> None:
+    """Bot #345 (head 46596b4) V-2: i compiti FINITI (ok/ko) più vecchi di
+    GAS_SOTTOFONDO_GIORNI (default 7) si cancellano: contengono dati dell'operatore e non
+    devono accumularsi. Anche i file temporanei rimasti da un crash. Fail-safe §9."""
+    cartella = Path(root) / CARTELLA
+    limite = time.time() - _giorni_conservazione() * 86400
+    try:
+        voci = list(cartella.iterdir())
+    except OSError:
+        return
+    for f in voci:
+        try:
+            if f.name == ATTIVO or f.stat().st_mtime > limite:
+                continue
+            if f.suffix == ".json":
+                job = _leggi(f)
+                if not job or job.get("stato") not in ("ok", "ko"):
+                    continue
+            elif not (f.name.startswith(".posto.") or ".tmp." in f.name):
+                continue
+            f.unlink()
+        except OSError as e:
+            logging.warning("sottofondo: pulizia di %s non riuscita: %s", f.name, e)
+
+
+def controlla(root: Path, avvisa: Optional[Callable[[str, Path], Any]] = None) -> None:
+    """Bot #345 (head 46596b4) V-1: chiamata dal kernel all'inizio di ogni turno, così un
+    compito il cui processo è morto (kill, riavvio) diventa «ko» e l'operatore viene avvisato
+    alla prima interazione, non solo alla richiesta del compito successivo. Costa solo un
+    controllo di esistenza quando la coda è vuota. Mai eccezioni (§9)."""
+    try:
+        if (Path(root) / CARTELLA / ATTIVO).exists():
+            _ripulisci(root, avvisa)
+    except Exception as e:
+        logging.warning("sottofondo: controllo non riuscito: %s", e)
 
 
 def notifica_possibile(root: Path) -> Optional[str]:
@@ -186,6 +271,7 @@ def accoda(root: Path, compito: Any,
         return None, f"Operazione negata: compito troppo lungo (max {COMPITO_MAX} caratteri)."
     cartella = _cartella(root)
     _ripulisci(root, avvisa)
+    _pulisci_vecchi(root)
     occupato = ("Operazione negata: c'è già un compito in sottofondo. Di' all'operatore "
                 "che ne stai già facendo uno e che lo avviserai quando hai finito.")
     if attivo(root) is not None:

@@ -11891,6 +11891,76 @@ try:
 except Exception as _e105:
     check("T105 blocco senza eccezioni", False, repr(_e105))
 
+# ---------- T106: riserve BASSE del sottofondo (chat M2, 7 nov), round-trip §7 ----------
+# a) il kernel del processo in sottofondo non offre avvisa_operatore e, chiesto, lo nega
+#    (bot #345 V-2: l'ultimo avviso del giorno resta per la fine del compito); il turno
+#    arriva comunque alla risposta finale. b) ogni turno chiama sottofondo.controlla (bot
+#    #345 V-1: avviso al crash alla prima interazione), tranne nel processo in sottofondo.
+try:
+    import subprocess as _sp106
+    from brains.claude_cli import ClaudeCliClient as _CCC106
+    import modules.sottofondo as _sf106
+    _reg106 = []
+
+    def _cli106(risposte):
+        it = iter(risposte)
+
+        def _run(cmd, stdin, cwd, env, timeout):
+            f = cmd[cmd.index("--system-prompt-file") + 1]
+            _reg106.append({"sistema": Path(f).read_text(encoding="utf-8"), "stdin": stdin})
+            return _sp106.CompletedProcess(cmd, 0, stdout=json.dumps({
+                "type": "result", "subtype": "success", "is_error": False,
+                "structured_output": next(it),
+                "usage": {"input_tokens": 10, "output_tokens": 3}}), stderr="")
+        return lambda timeout=None, **kw: _CCC106(timeout=timeout, binario="claude", runner=_run, **kw)
+
+    _saved106 = os.environ.get("GAS_CLAUDE_CLI")
+    _orig106, _contr106 = gas.ClaudeCliClient, _sf106.controlla
+    _controlli106 = []
+    try:
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+        _sf106.controlla = lambda root, avvisa=None: _controlli106.append(str(root))
+        _d106 = tempfile.mkdtemp()
+        _k106 = gas.GasKernel.per_sottofondo(_d106)
+        gas.ClaudeCliClient = _cli106([
+            {"testo": "", "chiamate": [{"nome": "avvisa_operatore",
+                                        "argomenti": {"testo": "finito"}}]},
+            {"testo": "Risultato del compito.", "chiamate": []}])
+        _ev106 = list(_k106.run_turn("compito lungo", cervello="forte"))
+        _res106 = [e["output"] for e in _ev106 if e["type"] == "tool_res"]
+        check("T106a sottofondo: avvisa_operatore non offerto e negato, risposta finale",
+              _k106.nel_sottofondo is True
+              and "Manda un messaggio su Telegram all'operatore (solo a lui" not in _reg106[0]["sistema"]
+              and len(_res106) == 1 and "parte da solo alla fine" in _res106[0]
+              and [e["content"] for e in _ev106 if e["type"] == "final"] == ["Risultato del compito."]
+              and _controlli106 == [],
+              str(_ev106)[:300])
+        check("T106b sottofondo: niente avvisa_operatore alla firma",
+              _k106._rifiuto_avviso_al_cancello('{"testo": "x"}') == _k106._AVVISO_NEL_SOTTOFONDO)
+        _k106c = kernel_tmp()
+        gas.ClaudeCliClient = _cli106([{"testo": "ciao", "chiamate": []}])
+        list(_k106c.run_turn("ciao", cervello="forte"))
+        check("T106c turno normale: sottofondo.controlla chiamata una volta, sul root; "
+              "avvisa_operatore offerto",
+              _controlli106 == [str(_k106c.root)]
+              and "Manda un messaggio su Telegram all'operatore (solo a lui" in _reg106[-1]["sistema"],
+              str(_controlli106))
+        def _rotto106(root, avvisa=None):
+            raise RuntimeError("x")
+        _sf106.controlla = _rotto106
+        gas.ClaudeCliClient = _cli106([{"testo": "ok106", "chiamate": []}])
+        _ev106d = list(kernel_tmp().run_turn("ciao", cervello="forte"))
+        check("T106d controlla in errore: il turno prosegue (§9)",
+              [e["content"] for e in _ev106d if e["type"] == "final"] == ["ok106"], str(_ev106d)[:200])
+    finally:
+        gas.ClaudeCliClient, _sf106.controlla = _orig106, _contr106
+        if _saved106 is None:
+            os.environ.pop("GAS_CLAUDE_CLI", None)
+        else:
+            os.environ["GAS_CLAUDE_CLI"] = _saved106
+except Exception as _e106:
+    check("T106 blocco senza eccezioni", False, repr(_e106))
+
 # ---------- T102: avvisa_operatore (R6, chat Mani), round-trip §7 ----------
 try:
     import modules.telegram.avviso as _av102
