@@ -17,6 +17,7 @@
 - **Fetta BASSE del sottofondo**: `FATTA` — pid riusato non blocca la coda (ve #345 V-1); «creato» non numerico/non finito/nel futuro non blocca (bot V-4, ve V-2, R-701-2); `sottofondo.controlla` a ogni turno: avviso al crash alla prima interazione (bot V-1 e323b60); processo in sottofondo senza `avvisa_operatore` (bot V-2 e323b60); «fermato» solo se fermato davvero (R-699-1, ve V-3); pulizia dei compiti finiti oltre 7 giorni (bot V-2 46596b4); inf/nan nelle variabili → default (bot V-3 46596b4). Review #701-M2 e #702-M2 APPROVATO CON RISERVE.
 - **Verifica esterna #346 su 2d0977e** (APPROVATO CON RISERVE): V-1 BASSA (regressione: orologio portato indietro → compito vero fermato e secondo compito in parallelo) e V-2 COSMETICA (1e308 → inf) `CORRETTE` in fb620f5. Review #703-M2 APPROVATO CON RISERVE (R-703-1/2-M2 BASSE).
 - **Bot #346 su 8134ff3**: NON approvata per V-1 MEDIA «PR in conflitto con main» (dopo il merge della #341 di Mani): `RISOLTA` con il merge 643da99 — conflitti solo in report (tenuti quelli di M2) e memoria del revisore (righe di entrambi); codice del motore di M2 identico. Review #704-M2 APPROVATO.
+- **Secondo conflitto con main** (merge della #347 di Mani mentre la #346 aspettava il merge, già col sì dell'operatore): `RISOLTO` col merge e1cf690 (solo report e memoria). Review #705-M2 APPROVATO. Bot su 3ee02dd: APPROVATA (BASSE: V-1 compito «ok» riscritto «ko» se controlla() corre col figlio che finisce; V-2 cosmetica sul log §3, ora completo).
 - **Fetta 3.2** (lettura a voce dei compiti finiti): `DEFERITA`.
 
 ---
@@ -24,23 +25,26 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +
- gas.py                             |  31 ++-
- modules/sottofondo/__init__.py     | 164 ++++++++++--
+ .claude/agents/memoria_revisore.md |   8 ++
+ gas.py                             |  31 ++++-
+ modules/sottofondo/__init__.py     | 164 ++++++++++++++++++----
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_kernel.py          |  70 +++++
- tests/test_unit_sottofondo.py      | 207 +++++++++++++-
+ tests/test_unit_kernel.py          |  70 ++++++++++
+ tests/test_unit_sottofondo.py      | 207 +++++++++++++++++++++++++++-
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main c1a4503 (merge della #341 di Mani, unito nel branch con 643da99).
+NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 4a0b113 (merge della #347 di Mani, unito nel branch con e1cf690; prima la #341 con 643da99).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e1cf690 Merge origin/main (PR #347, fetta 44 di Mani) nella PR #346 — conflitti solo in report e memoria del revisore; review #705-M2 APPROVATO
+3ee02dd docs(fine-task): verdetto #704-M2 riemesso con citazioni del diff di sessione (gate B) (chat M2)
+77b9d47 docs(voce): report — merge di main nella PR #346 (conflitto risolto, review #704-M2) (chat M2)
 643da99 Merge origin/main (PR #341, fetta 43 parte 2 di Mani) nella PR #346 — conflitti solo in report e memoria del revisore (bot #346 V-1 MEDIA); review #704-M2 APPROVATO
 8134ff3 docs(voce): report — verifica esterna #346 V-1/V-2 corrette (chat M2)
 fb620f5 fix(sottofondo): orologio portato indietro non ferma il compito vero né ne fa partire un secondo (ve #346 V-1, R-702-1-M2); 1e308 nelle variabili → default (ve #346 V-2)
@@ -181,13 +185,43 @@ Prima della review ho letto CLAUDE.md (sez. 5), reports/stato_progetto.md e .cla
 
 La riga contatore #704-M2 è già nella memoria ed è entrata nel commit di merge. Come mi hai chiesto, non ho toccato né file né index.
 
+Review #705-M2 sul merge e1cf690 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #705-M2: merge in corso di origin/main 4a0b113 (PR #347, chat Mani) nel branch feat/voce-v12-m2. HEAD è 3ee02dd, MERGE_HEAD è 4a0b113, la base comune è c1a4503.
+
+**Elementi esaminati:**
+- `modules/sottofondo/__init__.py:254` — `controlla()`, che alla fine del turno manda l'avviso se il compito in sottofondo è caduto (codice di M2). Rischio esaminato: che il merge alterasse il motore di M2. Il blob nell'index è identico a quello di HEAD. **Esito: ok.**
+- `gas.py:4877` — la chiamata `_sottofondo.controlla(self.root)` nel kernel, e `gas.py:2516`, cioè il ramo `in_sottofondo`. Rischio esaminato: una perdita durante la risoluzione dei conflitti. Il blob dell'index è identico a HEAD, e lo stesso vale per `tests/test_unit_sottofondo.py` e `tests/test_unit_kernel.py`. **Esito: ok.**
+- `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» presa da main (PR #341 mergiata, review #702/#703). Rischio esaminato: che il merge di questo file perdesse le modifiche di uno dei due lati. Il file nell'index contiene sia la riga 4 e la voce «fetta 44» del lato main, sia la voce «Fetta 3 sottofondo: PR #345 MERGIATA… Fetta BASSE» di M2. Nessuna delle due modifiche è persa. **Esito: ok.**
+- `.claude/agents/memoria_revisore.md:1318` — la riga #704-M2 di M2, seguita da #677, #678, #702 e #703 della chat Mani. Rischio esaminato: righe perse o marcatori di conflitto rimasti. Ho confrontato il file con le versioni di HEAD e di MERGE_HEAD (con `grep -vxFf`): 0 righe mancanti per ciascun lato. Nessun marcatore. **Esito: ok.**
+- `clients/voice/ascolto.py:457` (contesto, lato main) — il tetto `dal_la_parola`. Questo file e gli altri 5 del lato main (`tests/test_unit_voce_ascolto.py`, `scripts/voce/LEGGIMI.md`, `scripts/voce/pausa.sh`, `scripts/voce/riprendi.sh`, `reports/proposta_parola_gas.md`) hanno blob nell'index identici a MERGE_HEAD. **Esito: ok.**
+
+**Altri controlli:**
+- Nessun file in conflitto non risolto.
+- `git diff --cached --check` pulito.
+- Il working tree coincide con l'index.
+- `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono identici a HEAD, come dichiarato.
+- Ho rilanciato i test `tests/test_unit_sottofondo.py` e `tests/test_unit_voce_ascolto.py`: 345 passed.
+- Nessuno slicing della history e nessuna simulazione di tool introdotti: il codice del motore non cambia rispetto a HEAD.
+
+**Rischio escluso:**
+- Non ho rilanciato la suite completa (`tests/test_unit_kernel.py` e il resto): il blob del kernel è identico a HEAD, che ha già passato la review #704-M2 e la CI.
+- Non ho rivisto nel merito il codice di ascolto della #347: è già passato dalle review #702 e #703 della chat Mani. Qui ho verificato solo che sia identico a MERGE_HEAD.
+- Comportamento sul Mac (launchctl, microfono) non verificato: non è riproducibile qui.
+
+**Memoria:**
+- Ho aggiunto la riga `#705-M2 — 2026-11-07 — APPROVATO — …` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` (nessuna lezione nuova).
+- Ho fatto solo `git add` di quel file. Nessun commit e nessuno stash; il resto dell'index non è stato toccato.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_kernel.py` T106a (processo in sottofondo: avvisa_operatore non offerto e negato, risposta finale — round-trip §7), T106b (niente avviso alla firma), T106c (turno normale: `controlla` chiamata, avvisa_operatore offerto), T106d (`controlla` in errore: il turno prosegue). Suite kernel `=== RIEPILOGO: 1100 PASS, 0 FAIL ===` (prima 1096; il revisore, senza vector store, ha 1099 PASS + T31g ambientale). `tests/test_unit_sottofondo.py`: 62 passed (prima 34; anche con COLUMNS=20): orologio portato indietro con figlio vero (posto occupato, nessun kill), data futura senza processo (libero), 1e308; pid riusato con processo vero, identità ignota, `ps` assente, «creato» parametrico × pid, inf/nan, «fermato», pulizia, `controlla`. Mutanti: «isfinite/futuro tolto» → 5 failed; gate + voce server + avvisa_operatore: 975 passed.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Su 8134ff3: unit-suite e handoff-check verdi; verifica-bot failure solo per il conflitto con main (V-1 MEDIA), ora risolto col merge 643da99. Bot su 2d0977e: APPROVATO CON RISERVE (BASSE: prompt del figlio cita avvisa_operatore; latenza una tantum di ~20 s al primo turno dopo un crash; pulizia solo all'accodamento; `_e_nostro` usata solo nei test). I commit nuovi sono pushati insieme a questo report: run non ancora disponibile alla scrittura.
+`gh` non autenticato nel cloud. Su 3ee02dd: unit-suite, handoff-check e verifica-bot verdi (bot APPROVATA, riserve BASSE). Il merge e1cf690 e questo report sono pushati insieme: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 
@@ -197,4 +231,5 @@ La riga contatore #704-M2 è già nella memoria ed è entrata nel commit di merg
 - R-703-2-M2 BASSA: con «creato» nel futuro la durata massima non vale finché l'orologio non raggiunge quella data; con file alterato e figlio appeso la coda resta occupata per la vita del figlio (il figlio non ha un tetto di tempo proprio).
 - R-696-1-M2 BASSA (dalla #345): finestra contaminata + firma su Telegram.
 - Ve #345 V-2 BASSA: posto vuoto recente → «ne sto già facendo uno» per ≤120 s. Bot #345 V-3 BASSA: prova con processi veri sulla storia condivisa.
+- Bot #346 su 3ee02dd V-1 BASSA: se controlla() gira mentre il figlio finisce bene, annulla() può riscrivere il compito «ok» come «ko» (l'avviso dice comunque «Ho finito»).
 - Non verificato in dev: processo vero con `claude -p`, avviso Telegram vero, `ps -ww` su macOS.
