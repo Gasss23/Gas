@@ -2403,3 +2403,78 @@ def test_dopo_una_falsa_parola_i_rumori_non_tengono_aperta_la_registrazione():
     assert f.tipi == ["parola", "parola"]
     assert _campioni(f.inviati[1]) <= (5 + 1 + a.blocchi_per(a.ATTESA_VOCE_S)
                                        + a.blocchi_per(0.8)) * a.BLOCCO
+
+
+# ── fetta 45: riserve della #347 e della #341 ──
+
+def test_dopo_un_fine_la_conversazione_successiva_non_resta_chiusa():
+    """R-676-1: «fine» chiude la conversazione, ma `chiudi` si azzera a ogni turno: la
+    conversazione dopo (nuova parola) continua di seguito come al solito."""
+    f = FintiSeguito([(True, b"A", "", ""), (True, None, "", "fine"),
+                      (True, b"B", "", ""), (True, b"C", "", "")])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, 5),
+                       PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito", "parola", "seguito"]
+
+
+def test_rilevatore_rotto_nella_finestra_lascia_traccia(caplog):
+    """R-681-1: un errore del rilevatore nella finestra vale «no» ma si scrive nel log, una
+    volta ogni 100 errori."""
+    f = FintiSeguito([])
+    stato = {"parola": False, "errori": 0}
+
+    def rilevatore(b):
+        if b == PAROLA:
+            stato["parola"] = True
+            return 1.0
+        # rotto solo per 150 blocchi dopo la parola (la finestra), poi torna a funzionare:
+        # fuori dalla finestra un rilevatore rotto ha già la sua attesa (R-616-4)
+        if stato["parola"] and stato["errori"] < 150:
+            stato["errori"] += 1
+            raise RuntimeError("rotto")
+        return 0.0
+    f.rilevatore = rilevatore
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito"]
+    assert caplog.text.count("rilevatore in errore nella finestra") >= 1
+
+
+def test_pausa_nel_seguito_non_e_un_errore_nel_log(caplog):
+    """R-679-3: la pausa muta nel seguito si scrive come pausa, non come turno non riuscito."""
+    f = FintiSeguito([(True, b"A", "", ""), (True, None, "", "pausa")])
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert caplog.text.count("pausa a voce: chiudo la conversazione") == 1
+    assert "non riuscito" not in caplog.text and "senza voce" not in caplog.text
+    assert f.bip == ["ok"]
+
+
+def test_pausa_con_errore_tiene_il_motivo_nel_log(caplog):
+    """R-707-3: «pausa» insieme a un errore del server (500) resta un errore nel log, col
+    motivo."""
+    f = FintiSeguito([(True, b"A", "", ""), (False, None, "HTTP 500", "pausa")])
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert "turno di seguito non riuscito: HTTP 500" in caplog.text
+
+
+@pytest.mark.parametrize("valore,atteso,avviso", [("300", 120.0, True), ("90", 90.0, False),
+                                                  ("abc", 40.0, False), ("", 40.0, False)])
+def test_finestra_fuori_limiti_avvisa(monkeypatch, caplog, valore, atteso, avviso):
+    """V-3 bot #347: un valore oltre 120 si corregge con un avviso nel log."""
+    monkeypatch.setenv("GAS_VOICE_FINESTRA", valore)
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        assert a._finestra_dall_ambiente() == atteso
+    assert ("fuori dai limiti" in caplog.text) is avviso
+
+
+def test_pausa_senza_audio_suonabile_non_e_un_errore_nel_log(caplog):
+    """R-708-1: «pausa» con risposta riuscita ma senza audio suonabile (pezzi vuoti) passa dal
+    ramo «niente suonato»: una riga di pausa sola, nessun «senza voce»."""
+    f = FintiSeguito([(True, b"A", "", ""), (True, [b""], "", "pausa")])
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola", "seguito"]
+    assert caplog.text.count("pausa a voce: chiudo la conversazione") == 1
+    assert "senza voce" not in caplog.text and f.bip == ["ok"]
