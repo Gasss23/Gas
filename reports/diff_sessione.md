@@ -1,11 +1,9 @@
-# Diff della sessione — 2026-11-07 — chat Mani, PR #348 (solo documenti)
+# Diff della sessione — 2026-11-07 — Voce, fetta 3.2 (chat M2)
 
-File toccati (base main f4ece4e):
-- `reports/proposta_parola_gas.md`: decisione dell'operatore in cima (NO a «Hey Gas»).
-- `reports/proposta_voce_telegram.md`: proposta «voce via Telegram, fuori casa» (R8), da decidere.
-- `reports/roadmap.md`: voce R8 della parola di attivazione allineata alla decisione.
-- `reports/stato_progetto.md`: PR #347 mergiata, decisione, riserve della #347.
-- `.claude/agents/memoria_revisore.md`: righe delle review #706 e #710.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+- `modules/sottofondo/__init__.py` — `da_leggere`, `frase_finiti`, `segna_letti`, `GAS_SOTTOFONDO_LEGGI_ORE`.
+- `modules/voice/server.py` — `VoiceHandler._con_compiti_finiti`, chiamato solo nei turni a voce di attivazione.
+- `tests/test_unit_sottofondo.py`, `tests/test_unit_voice_server.py` (f32).
+- `.claude/agents/memoria_revisore.md` — review #709.
+- `reports/*` — report di fine task.
 
-Questo file si riscrive a ogni sessione; la storia completa sta in git.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

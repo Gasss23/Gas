@@ -727,3 +727,54 @@ def test_posto_non_tolto_avviso_finale_parte_lo_stesso(tmp_path, monkeypatch):
     assert len(inviati) == 1 and inviati[0].startswith("Ho finito")
     f = tmp_path / sf.CARTELLA / f"{ident}.json"
     assert json.loads(f.read_text(encoding="utf-8"))["stato"] == "ok"
+
+
+# ---- Fetta 3.2 (chat M2, 7 nov): compiti finiti da leggere a voce ----
+
+def _finito(root, ident, stato="ok", fine=None, **extra):
+    import time as _t
+    c = root / sf.CARTELLA
+    c.mkdir(exist_ok=True)
+    dati = {"id": ident, "compito": f"compito {ident}", "stato": stato, "risposta": "r " * 300,
+            "fine": _t.time() - 10 if fine is None else fine, **extra}
+    (c / f"{ident}.json").write_text(json.dumps(dati))
+    return c / f"{ident}.json"
+
+
+def test_da_leggere_filtra_e_ordina(tmp_path, monkeypatch):
+    import time as _t
+    adesso = _t.time()
+    _finito(tmp_path, "a", fine=adesso - 300)
+    _finito(tmp_path, "b", fine=adesso - 100)
+    _finito(tmp_path, "c", fine=adesso - 200, stato="ko")
+    _finito(tmp_path, "d", stato="in_corso")
+    _finito(tmp_path, "e", letto_a_voce=True)
+    _finito(tmp_path, "f", fine=adesso - 3 * 86400)
+    _finito(tmp_path, "g", fine="abc")
+    (tmp_path / sf.CARTELLA / "h.json").write_text(json.dumps({"id": "altro", "stato": "ok",
+                                                               "fine": adesso}))
+    assert [j["id"] for j in sf.da_leggere(tmp_path)] == ["a", "c"]  # i più vecchi, max 2
+    monkeypatch.setenv("GAS_SOTTOFONDO_LEGGI_ORE", "nan")
+    assert sf._ore_lettura() == 24.0
+    assert sf.da_leggere(tmp_path / "manca") == []
+
+
+def test_frase_finiti_corta_e_segna_letti(tmp_path):
+    f = _finito(tmp_path, "a")
+    jobs = sf.da_leggere(tmp_path)
+    frase = sf.frase_finiti(jobs)
+    assert frase.startswith("Ho finito il compito in sottofondo «compito a»: ")
+    assert len(frase) < 80 + sf.LETTURA_RISPOSTA_MAX + 60
+    sf.segna_letti(tmp_path, jobs)
+    assert json.loads(f.read_text())["letto_a_voce"] is True
+    assert sf.da_leggere(tmp_path) == []
+    sf.segna_letti(tmp_path, [{"id": "../../fuori"}])  # nessuna scrittura fuori, nessuna eccezione
+    assert not (tmp_path.parent / "fuori.json").exists()
+
+
+
+def test_frase_finiti_risposta_vuota():
+    """Ve #350 V-2: compito ok senza risposta → frase chiusa, senza «:» finali."""
+    for risposta in ("", None, "   "):
+        frase = sf.frase_finiti([{"id": "a", "compito": "t", "stato": "ok", "risposta": risposta}])
+        assert frase == "Ho finito il compito in sottofondo «t»."
