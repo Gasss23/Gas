@@ -15,29 +15,32 @@
 
 - **PR #350** (fetta 3.2): `MERGIATA` (9b6b2fa) col sì dell'operatore via M1 (8 nov); Mani avvisato per la #351.
 - **Fetta BASSE della #350**: `FATTA` — segno di lettura dei compiti solo dopo la consegna (ve #350 V-1, bot V-1); con risposta vuota la frase dei compiti si dice lo stesso (R-710-1-M2); la sola parola di attivazione («Dimmi.») dice i compiti, mai nel seguito (bot #350 V-5); file temporanei con nome unico fra thread (ve #350 V-3); test dei rami audio+testo e audio/mpeg (bot #350 V-1 su 40c5b30). Review #711-M2 APPROVATO CON RISERVE (R-711-1/2-M2 BASSE, R-711-3-M2 COSMETICA).
+- **Conflitto con main** (merge della #351 di Mani): `RISOLTO` col merge e7869c9 (solo report e memoria; entrano da main ascolto.py, test dell'ascolto e LEGGIMI, identici a main). Review #712-M2 APPROVATO. Bot #352 su 893b863 APPROVATA; verifica esterna APPROVATO CON RISERVE (BASSE: segno prima dell'invio nei rami JSON, test mancanti di sintesi fallita e di «Dimmi.» in 2 formati, caso degenere n_prefisso=0).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 +
+ .claude/agents/memoria_revisore.md |   3 +
  modules/sottofondo/__init__.py     |   3 +-
- modules/voice/server.py            |  55 +++++++++++++++----
+ modules/voice/server.py            |  55 ++++++--
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_sottofondo.py      |  14 +++++
- tests/test_unit_voice_server.py    | 108 +++++++++++++++++++++++++++++++++++++
+ tests/test_unit_sottofondo.py      |  14 ++
+ tests/test_unit_voice_server.py    | 108 +++++++++++++++
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 9b6b2fa (merge della #350).
+NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 9bfafdb (merge della #351 di Mani, unito nel branch con e7869c9; prima 9b6b2fa, merge della #350).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e7869c9 Merge origin/main (PR #351, fetta 45 di Mani) nella PR #352 — conflitti solo in report e memoria del revisore; review #712-M2 APPROVATO
+893b863 docs(voce): report di fine task — riserve BASSE della #350; PR #350 mergiata (chat M2)
 19167e0 fix(voce): riserve BASSE della #350 — compiti segnati letti solo dopo la consegna, «Dimmi.» dice i compiti, risposta vuota, file temporanei unici, test dei rami mancanti (sì dell'operatore via M1)
 beee8ae chore(revisore): memoria review #711 — APPROVATO CON RISERVE
 ```
@@ -80,13 +83,41 @@ Review #711-M2. Diff staged su feat/voce-v12-m2, base 9b6b2fa: 4 file, +168/−1
 
 Memoria aggiornata con la riga #711-M2 più una lezione, committata (beee8ae) in /home/user/Gas/.claude/agents/memoria_revisore.md. Il diff staged non è stato toccato (4 file, +168/−12).
 
+Review #712-M2 sul merge e7869c9 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #712-M2. Ho controllato il merge in corso di origin/main 9bfafdb (PR #351 di Mani) nel branch feat/voce-v12-m2 (HEAD 893b863, MERGE_HEAD 9bfafdb, base comune 9b6b2fa). Il merge è a posto: nessun problema trovato.
+
+Cosa ho controllato:
+- **Conflitti:** non ci sono marcatori di conflitto nei file dell'index né nell'albero di lavoro. `git ls-files -u` restituisce 0 righe e `git diff --cached --check` è pulito. L'albero di lavoro coincide con l'index.
+- **File che arrivano da main:** clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py e scripts/voce/LEGGIMI.md hanno nell'index lo stesso blob di MERGE_HEAD. Dalla base 9b6b2fa il lato M2 non li ha mai toccati, quindi non ci sono effetti incrociati tra le due modifiche.
+- **Motore M2 e report di sessione:** sono identici a HEAD (stesso blob). Vale per modules/voice/server.py, modules/sottofondo/__init__.py, tests/test_unit_voice_server.py, tests/test_unit_sottofondo.py, reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md.
+- **File uniti (reports/stato_progetto.md e .claude/agents/memoria_revisore.md):** ho preso ogni riga aggiunta da ciascun lato rispetto alla base e l'ho cercata nella versione dell'index. Ne mancano 0 su HEAD e 0 su MERGE_HEAD.
+
+Elementi del diff esaminati:
+- `modules/voice/server.py:537` — con la sola parola di attivazione dice i compiti finiti, tranne nei turni di seguito. Rischio: che il merge lo abbia alterato o che interferisca con il nuovo ascolto.py di Mani. Il blob è identico a HEAD e il lato main non tocca questo file. Esito: ok.
+- `modules/sottofondo/__init__.py:47` — nome del file temporaneo unico anche fra thread dello stesso processo. Rischio: regressione portata dal merge. Il blob è identico a HEAD. Esito: ok.
+- `tests/test_unit_voice_server.py:1` — test M2 del server voce. Rischio: test persi o alterati nel merge. Il blob è identico a HEAD. Esito: ok.
+- `clients/voice/ascolto.py:1` (contesto, arriva da main) — client dell'ascolto della PR #351. Rischio: versione diversa da quella mergiata in main. Il blob è identico a MERGE_HEAD. Esito: ok.
+
+Cosa non ho verificato (rischio escluso):
+- Non ho rieseguito i test. Per i 366 passed (sottofondo + voce_ascolto) mi fido del dato che mi hai passato.
+- Non ho rifatto la review del contenuto della PR #351. È già entrata in main, e qui ho controllato solo che il merge non l'abbia alterata.
+- Il comportamento sul Mac non è riproducibile in questo ambiente.
+
+Riga contatore scritta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md:
+`#712-M2 — 2026-11-08 — APPROVATO — … Nessuna lezione nuova.`
+
+Ho eseguito solo `git add .claude/agents/memoria_revisore.md`: nessun commit, nessuno stash, nient'altro toccato nell'index.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voice_server.py`: 126 passed (prima 118), 8 nuovi f32b — sintesi fallita non segna letti; senza schermo segnati appena dette le frasi dei compiti; risposta vuota dice comunque i compiti; sola parola di attivazione («Gas.», «Hey Jarvis!») dice i compiti prima di «Dimmi.»; nel seguito no; ramo audio+testo (MP3 unico); ramo audio/mpeg diretto (round-trip del server voce col kernel finto). Col server di main 4 di questi falliscono. `tests/test_unit_sottofondo.py`: 74 passed (+1: nomi temporanei unici). `gas.py` non toccato.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. I commit sono pushati insieme a questo report: run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nel cloud. Su 893b863: unit-suite, handoff-check e verifica-bot verdi. Il merge e7869c9 e questo report sono pushati insieme: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 
