@@ -1,6 +1,11 @@
 # Proposta: voce via Telegram, fuori casa (roadmap R8)
 
-Chat Mani, 7 novembre 2026, su richiesta di M1. Solo documento, nessun codice. Decide l'operatore.
+Chat Mani, 7 novembre 2026, su richiesta di M1.
+
+**DECISIONI DELL'OPERATORE (via M1):**
+- **7 novembre 2026:** opzione **B**, in due fette (prima vocale → testo, poi anche la risposta in voce). Il bot lo modifica Mani: M2 non ha lavori aperti su `modules/telegram/bot.py`.
+- **8 novembre 2026:** i vocali senza «forte» seguono le regole dei testi Telegram (anche ai gratuiti); `GAS_VOCE_FORTE` vale anche per i vocali; tetto di 30 vocali all'ora.
+- **Ancora da decidere (fetta 2):** la risposta vocale arriva solo quando mandi un vocale, oppure sempre?
 
 ## Cosa fa
 
@@ -38,11 +43,11 @@ Chat Mani, 7 novembre 2026, su richiesta di M1. Solo documento, nessun codice. D
 
 Il formato del vocale in uscita è da provare:
 - **OGG/Opus con `sendVoice`**: compare come «bolla» vocale. Va verificato che ElevenLabs lo dia direttamente.
-- **MP3 con `sendAudio`**: oggi funziona già, ma compare come file audio.
+- **MP3 con `sendAudio`**: Telegram lo supporta e compare come file audio, ma Gas oggi non lo usa ancora.
 
 ## File da toccare
 
-- `modules/telegram/bot.py` (condiviso con M2): in `_handle_update` un ramo nuovo per `msg["voice"]`, prima del controllo `if not text`. Poi tre funzioni piccole: `_scarica_vocale` (getFile + download con tetti), `_trascrivi` (chiama `transcribe_audio`), `_invia_vocale` (sendVoice o sendAudio). Il resto del flusso, dal comando `/forte` a `run_turn` e alla risposta, resta quello di oggi. Da coordinare con M2 prima di toccarlo.
+- `modules/telegram/bot.py` (condiviso con M2): in `_handle_update` un ramo nuovo per `msg["voice"]`, DOPO il controllo delle chat autorizzate, così una chat estranea non fa scaricare né trascrivere niente (fatto così nella fetta 1). Poi tre funzioni piccole: `_scarica_vocale` (getFile + download con tetti), `_trascrivi` (chiama `transcribe_audio`), `_invia_vocale` (sendVoice o sendAudio). Il resto del flusso, dal comando `/forte` a `run_turn` e alla risposta, resta quello di oggi. Da coordinare con M2 prima di toccarlo.
 - `modules/voice/tts.py`: solo se serve l'OGG, un parametro `formato` facoltativo in `synthesize_speech` (default MP3 come oggi).
 - `modules/voice/stt.py`: probabilmente nulla, il nome del file `.ogg` basta a Groq. Da verificare.
 - Test: un file nuovo `tests/test_unit_telegram_voce.py`, con Telegram, Groq ed ElevenLabs finti (chat non autorizzata, vocale troppo lungo, errore di Groq, firma che resta sui bottoni).
