@@ -1220,7 +1220,7 @@ def test_v7b_frasi_parlate_ricompongono_la_parte_parlata():
 
 
 def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k", turni=None,
-                  trascrizione="Gas, dimmi", prompt_testo=None):
+                  trascrizione="Gas, dimmi", prompt_testo=None, root=None, intestazioni=None):
     """Server voce vero con kernel e servizi finti; ritorna (content-type, righe, mock della
     sintesi).
     `turni` (lista) riceve i kw di ogni run_turn (V10: quale istruzione arriva).
@@ -1238,6 +1238,8 @@ def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"
     class _H(VoiceHandler):
         pass
     _H.kernel = _K()
+    if root is not None:  # fetta 3.2: cartella dei compiti in sottofondo
+        _H.kernel.root = root
     _H.token = "tok"
     srv = HTTPServer(("127.0.0.1", 0), _H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -1249,7 +1251,8 @@ def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"
         tipo = {"Content-Type": "application/json", "Accept": "audio/mpeg"}
     req = urllib.request.Request(
         f"http://127.0.0.1:{srv.server_address[1]}/voice", data=dati, method="POST",
-        headers={"Authorization": "Bearer tok", "X-Gas-Formato": formato, **tipo})
+        headers={"Authorization": "Bearer tok", "X-Gas-Formato": formato, **tipo,
+                 **(intestazioni or {})})
     try:
         with patch("modules.voice.server.transcribe_audio", side_effect=[trascrizione]), \
              patch("modules.voice.server.synthesize_speech", side_effect=sintesi) as tts, \
@@ -1700,3 +1703,104 @@ def test_v13_istruzione_turno_voce_con_e_senza_schermo():
         assert "mai più di due" in istr and "1-3" not in istr
         # niente «… sì o no?» in coda a ogni risposta (prova sul Mac del 5 nov)
         assert "Non chiudere con domande" in istr and "chiudi con una domanda" not in istr
+
+
+# ---- Fetta 3.2 (chat M2, 7 nov): compiti in sottofondo finiti letti a voce ----
+
+def _compito_finito(root, ident, stato="ok", risposta="Tre offerte: la migliore è la B.",
+                    fine=None):
+    import time as _t
+    c = root / ".gas_sottofondo"
+    c.mkdir(exist_ok=True)
+    (c / f"{ident}.json").write_text(json.dumps({
+        "id": ident, "compito": "confronta tre offerte", "stato": stato, "risposta": risposta,
+        "creato": _t.time() - 60, "fine": _t.time() - 30 if fine is None else fine}))
+    return c / f"{ident}.json"
+
+
+def test_f32_compito_finito_letto_alla_prossima_attivazione(tmp_path):
+    """A voce, prima della risposta: il compito finito (titolo + riassunto corto), poi segnato
+    letto e non ripetuto al turno dopo."""
+    f = _compito_finito(tmp_path, "20261107-100000-aaaaaa")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[0].startswith("Ho finito il compito in sottofondo «confronta tre offerte»")
+    assert "la migliore è la B." in " ".join(frasi) and frasi[-1] == "Ciao."
+    assert json.loads(f.read_text())["letto_a_voce"] is True
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path)
+    assert [c.args[0] for c in tts.call_args_list] == ["Ciao."]
+
+
+def test_f32_testo_non_legge_e_non_segna(tmp_path):
+    """A testo (anche con la sintesi chiesta) niente lettura: la coda resta per la voce."""
+    f = _compito_finito(tmp_path, "20261107-100000-bbbbbb")
+    _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path,
+                  prompt_testo="ciao")
+    assert "letto_a_voce" not in json.loads(f.read_text())
+
+
+def test_f32_compito_fallito_e_vecchio(tmp_path):
+    """Un compito fallito si dice in una frase; uno finito più di 24 ore fa non si legge."""
+    import time as _t
+    _compito_finito(tmp_path, "20261107-100000-cccccc", stato="ko", risposta="")
+    vecchio = _compito_finito(tmp_path, "20261105-100000-dddddd", fine=_t.time() - 2 * 86400)
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[0] == "Il compito in sottofondo «confronta tre offerte» non è riuscito."
+    assert "letto_a_voce" not in json.loads(vecchio.read_text())
+
+
+def test_f32_errore_nella_coda_non_rompe_la_risposta(tmp_path, monkeypatch):
+    import modules.sottofondo as sf
+
+    def _rotto(root):
+        raise RuntimeError("x")
+    monkeypatch.setattr(sf, "da_leggere", _rotto)
+    _compito_finito(tmp_path, "20261107-100000-eeeeee")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path)
+    assert [c.args[0] for c in tts.call_args_list] == ["Ciao."]
+
+
+def test_f32_seguito_non_legge(tmp_path):
+    """Nel seguito (parlato della stanza, X-Gas-Seguito: 1) i compiti finiti non si leggono:
+    restano per la prossima attivazione."""
+    f = _compito_finito(tmp_path, "20261107-100000-ffffff")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path,
+                                   intestazioni={"X-Gas-Seguito": "1"})
+    assert "Ho finito" not in " ".join(c.args[0] for c in tts.call_args_list)
+    assert "letto_a_voce" not in json.loads(f.read_text())
+
+
+def test_f32_due_compiti_lunghi_non_tolgono_la_risposta(tmp_path):
+    """Bot #350 V-1: con schermo (audio+testo+pezzi) due compiti con riassunto lungo non
+    consumano il limite della parte parlata: la risposta viene detta lo stesso; a schermo i
+    compiti sono il primo paragrafo."""
+    lunga = "Prima frase del risultato. " + "parola " * 40 + "fine."
+    _compito_finito(tmp_path, "20261107-100000-gggggg", risposta=lunga)
+    _compito_finito(tmp_path, "20261107-100001-hhhhhh", risposta=lunga)
+    ct, righe, tts = _voce_a_pezzi("Ciao. Tutto bene.", lambda frase, k, v: frase.encode(),
+                                   root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[-2:] == ["Ciao.", "Tutto bene."]
+    assert sum(f.startswith("Ho finito il compito") for f in frasi) == 2
+    assert righe[0]["content"].startswith("Ho finito il compito")
+    assert righe[0]["content"].endswith("\n\nCiao. Tutto bene.")
+
+
+def test_f32_client_senza_schermo_audio_pezzi(tmp_path):
+    """Il client H24 (audio+pezzi, tutto a voce): prima i compiti, poi la risposta intera."""
+    _compito_finito(tmp_path, "20261107-100000-iiiiii")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(),
+                                   formato="audio+pezzi", root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[0].startswith("Ho finito il compito in sottofondo") and frasi[-1] == "Ciao."
+
+
+def test_f32_senza_chiave_tts_compiti_nel_testo(tmp_path):
+    """Senza chiave ElevenLabs la risposta arriva a testo con i compiti come primo paragrafo."""
+    f = _compito_finito(tmp_path, "20261107-100000-llllll")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), chiave=None,
+                                   root=tmp_path)
+    assert righe[0]["content"].startswith("Ho finito il compito in sottofondo")
+    assert righe[0]["content"].endswith("\n\nCiao.")
+    assert json.loads(f.read_text())["letto_a_voce"] is True
