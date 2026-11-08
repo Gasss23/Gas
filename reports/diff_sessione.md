@@ -1,10 +1,11 @@
-# Diff della sessione — 2026-11-07 — chat Mani, fetta 45
+# Diff della sessione — 2026-11-08 — chat Mani, voce via Telegram fetta 1
 
-File toccati (base main 9b6b2fa, dopo il merge della PR #350):
-- `clients/voice/ascolto.py`: log degli errori del rilevatore nella finestra, log della pausa, `_finestra_dall_ambiente` con avviso.
-- `scripts/voce/LEGGIMI.md`: «Hey Gas» NO, limite del controllo dell'eco, limiti di riprendi.sh.
-- `tests/test_unit_voce_ascolto.py`: test di R-676-1, del log del rilevatore, della pausa (muta, con errore, senza audio suonabile) e della finestra fuori limiti.
-- `.claude/agents/memoria_revisore.md`: righe delle review #707–#709, #713 e #714.
+File toccati (base main 9bfafdb, dopo il merge della PR #351):
+- `modules/telegram/bot.py`: ramo dei vocali in `_handle_update` (dopo il controllo della chat autorizzata), `_scarica_vocale`, `testo_da_vocale`, tetto orario, `_gestisci_parlato`, `_risposta_del_turno` (estratta, stesso comportamento per i testi).
+- `tests/test_unit_telegram_voce.py`: 31 test con Telegram, download e Groq finti.
+- `.github/workflows/ci.yml`: il file di test nella voice suite.
+- `reports/proposta_voce_telegram.md`: decisioni dell'operatore e correzioni V-1/V-2/V-3 del bot sulla #348.
+- `.claude/agents/memoria_revisore.md`: righe delle review #711, #712 e #715.
 - `reports/*`: report di fine task.
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.
