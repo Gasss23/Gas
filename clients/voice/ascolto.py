@@ -211,6 +211,21 @@ def _numero(nome: str, default: float, minimo: float, massimo: float) -> float:
     return min(max(x, minimo), massimo)
 
 
+def _finestra_dall_ambiente() -> float:
+    """GAS_VOICE_FINESTRA nei limiti 0–120 (V-1 bot su a269c12). Un numero fuori dai limiti
+    si corregge con un avviso nel log (V-3 bot #347): la pagina web della voce, che usa la
+    stessa variabile, non parte con un valore oltre 120."""
+    finestra = _numero("GAS_VOICE_FINESTRA", FINESTRA_PREDEFINITA_S, 0, 120)
+    grezzo = (os.environ.get("GAS_VOICE_FINESTRA") or "").strip()
+    try:
+        x = float(grezzo) if grezzo else finestra
+    except ValueError:
+        x = finestra
+    if math.isfinite(x) and x != finestra:
+        log.warning("GAS_VOICE_FINESTRA=%s fuori dai limiti 0–120: uso %g", grezzo, finestra)
+    return finestra
+
+
 def url_del_server() -> str:
     """GAS_VOICE_URL, oppure il server sul Mac alla porta GAS_VOICE_PORT (la stessa che
     usano il server voce e installa.sh: R-616-1), default 8765."""
@@ -329,6 +344,7 @@ class Ascolto:
         self.chiudi = False       # l'ultimo turno chiede di chiudere la conversazione
         self.parola_nella_finestra = False   # la parola è stata detta nella finestra
         self._errori_rilevatore = 0
+        self._errori_parola = 0
         self._buoni_di_fila = 0
         self._muti = 0
 
@@ -397,7 +413,13 @@ class Ascolto:
         attivazione è nel blocco; un errore del rilevatore vale «no» (§9)."""
         try:
             sentita = float(self.rilevatore(b)) >= self.soglia
-        except Exception:
+        except Exception as e:
+            # R-681-1: l'errore resta «no», ma lascia traccia nel log (il primo e poi uno
+            # ogni 100, per non riempirlo a ogni blocco).
+            self._errori_parola += 1
+            if self._errori_parola % 100 == 1:
+                log.warning("rilevatore in errore nella finestra (%s), errori finora: %d",
+                            type(e).__name__, self._errori_parola)
             return False
         if sentita:
             self.parola_nella_finestra = True
@@ -528,8 +550,11 @@ class Ascolto:
             if seguito or comando == "pausa":
                 # R-675-5-M2: un turno di seguito che non riesce (500 col forte spento, 429…)
                 # chiude la conversazione in silenzio, mai bip a ripetizione.
-                log.warning("turno di seguito non riuscito: %s; chiudo la conversazione",
-                            motivo)
+                # R-679-3: la pausa muta (risposta giusta, senza voce) non è un errore ed è già
+                # nel log; un errore vero si scrive sempre col suo motivo (R-707-3).
+                if not (comando == "pausa" and ok):
+                    log.warning("turno di seguito non riuscito: %s; chiudo la conversazione",
+                                motivo)
                 self.chiudi = True
             else:
                 log.warning("turno non riuscito: %s", motivo)
@@ -577,7 +602,8 @@ class Ascolto:
             self._svuota()
         if suonati == 0:
             if seguito or comando == "pausa":
-                log.warning("turno di seguito senza voce: chiudo la conversazione")
+                if comando != "pausa":  # la pausa è già nel log
+                    log.warning("turno di seguito senza voce: chiudo la conversazione")
                 self.chiudi = True
             else:
                 log.warning("turno non riuscito: risposta senza voce")
@@ -1084,7 +1110,7 @@ def main() -> int:
                     soglia=_numero("GAS_ASCOLTO_SOGLIA", 0.5, 0.05, 0.99),
                     voce_rms=_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
                     silenzio_s=_numero("GAS_ASCOLTO_SILENZIO", 0.8, 0.2, 5),
-                    finestra_s=_numero("GAS_VOICE_FINESTRA", FINESTRA_PREDEFINITA_S, 0, 120),
+                    finestra_s=_finestra_dall_ambiente(),
                     seguito_max_s=_numero("GAS_VOICE_SEGUITO_MAX", SEGUITO_MAX_PREDEFINITO_S,
                                           3, REGISTRAZIONE_MAX_S),
                     invia_seguito=invia_seguito,
