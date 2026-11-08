@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 45 (il numero e l'URL vengono dalla risposta dello strumento GitHub `create_pull_request`): review APPROVATO CON RISERVE e PR nel perimetro, quindi decide l'operatore via M1.
+1. Merge della PR #351 (https://github.com/Gasss23/Gas/pull/351). Numero e URL vengono dalla risposta dello strumento GitHub `create_pull_request` (V-3 della verifica esterna). SÌ dell'operatore del 2026-11-08 via M1, con le riserve.
 
 ---
 
@@ -14,6 +14,7 @@
 
 - **PR #348**: `FATTA` — mergiata (53ae39b) col sì dell'operatore.
 - **Fetta 45 — riserve della #341 e della #347**: `FATTA`. R-676-1, R-681-1, R-679-3, R-707-3, R-708-1, V-3 e V-1/V-2 del bot #347, V-1 del bot su b48a0a8.
+- **Merge di main con la PR #350 di M2**: `FATTA`. Review #714 APPROVATO.
 - **V-1 della verifica esterna #347 (tolleranza dopo una parola sentita prima della voce)**: `SALTATA — scelta, R-708-2: aiuta quasi solo i falsi positivi e allarga la privacy (sonda del revisore #707)`.
 
 ---
@@ -21,21 +22,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
+ .claude/agents/memoria_revisore.md |   8 ++++++++
  clients/voice/ascolto.py           |  36 +++++++++++++++++++++++++++++++-----
- reports/diff_sessione.md           |  15 +++++++--------
+ reports/diff_sessione.md           |  15 ++++++++-------
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  24 ++++++++++++------------
+ reports/ultimo_report.md           |  27 +++++++++++++++------------
  scripts/voce/LEGGIMI.md            |  16 +++++++++++-----
  tests/test_unit_voce_ascolto.py    |  75 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 53ae39b (dopo il merge della PR #348).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 9b6b2fa (dopo il merge della PR #350).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ce7ace0 Merge origin/main (PR #350 di M2) nella PR #351 — review #714 APPROVATO
+2d583d6 docs(fine-task): fetta 45 chat Mani — riserve della #341 e della #347, review #707–#709 e #713
 06088cb Merge fetta 45 (riserve della #341 e della #347, voce) — review #707–#709, unione #713 APPROVATO
 d711cc6 fix(voce): fetta 45 — riserve della #341 e della #347 (log del rilevatore e della pausa, avviso sulla finestra, LEGGIMI «Hey Gas» NO, test R-676-1) — review #707–#709
 ```
@@ -116,6 +119,11 @@ Review #708 (chat Mani). Ri-review della #707 sul diff staged del worktree /tmp/
 
 **Riserve**
 - R-708-1 BASSA: manca un test per il ramo «suonati == 0» con «pausa» (clients/voice/ascolto.py:605). Serve un finto che risponda ok=True con pezzi tutti vuoti (es. `[b""]`) e comando «pausa». Il test deve controllare che la riga «pausa a voce» compaia una volta e che «senza voce» non ci sia.
+- Verifica esterna #351:
+  - V-1 BASSA: il test di R-681-1 non prova «un log ogni 100 errori»;
+  - V-2 COSMETICA: inf/nan senza test;
+  - V-3 COSMETICA: §0 senza numero, corretta qui.
+  Le prime due vanno nella prossima fetta voce.
 - R-708-2 BASSA: la V-1 della verifica esterna #347 resta NON corretta, per scelta. Va dichiarata in reports/stato_progetto.md a fine task, col motivo: il guadagno vale quasi solo per i falsi positivi e allarga l'esposizione della privacy.
 - R-707-4 COSMETICA (resta aperta): la decisione «Hey Gas no» sarà in main solo quando entra la PR #348. Restano anche inf/nan in GAS_VOICE_FINESTRA, che tornano a 40 senza avviso.
 
@@ -199,6 +207,45 @@ Rischio escluso: non ho rieseguito la parte semantica della fetta 45, cioè le s
 
 Memoria: ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga `#713 (chat Mani) — 2026-11-07 — APPROVATO — … Nessuna lezione nuova.`. È solo nel working tree e non è committata, come mi hai chiesto: non ho lanciato `scripts/commit_memoria_revisore.sh`, che comunque durante un merge in corso non può fare un commit parziale. Lo stato del file ora è `MM`: devi metterlo in staging (`git add`) prima di chiudere il merge, altrimenti la riga #713 resta fuori dal commit.
 
+Review #714 (unione con main dopo la PR #350 di M2), verdetto integrale:
+
+## VERDETTO: APPROVATO
+
+Review #714 (chat Mani). Nella memoria il numero più alto era #713 (gli -M2 arrivano al massimo a #710-M2), quindi ho usato #714. Oggetto: il merge staged di origin/main 9b6b2fa (PR #350 di M2, fetta 3.2) in claude/peaceful-lovelace-0w2b7q (HEAD 2d583d6, PR #351, fetta 45 voce). Letture fatte: CLAUDE.md (sez. 5, 6, 8, 9), la coda della memoria del revisore e le regole del processo.
+
+**Elementi del diff esaminati (fetta 45: è il codice che resta nel diff di sessione 9b6b2fa..HEAD dopo il commit)**
+- clients/voice/ascolto.py:214 — `_finestra_dall_ambiente()`: GAS_VOICE_FINESTRA tenuta fra 0 e 120, con un avviso nel log se il valore è fuori dai limiti. Rischio esaminato: valore non numerico o non finito (inf/nan) che fa crashare. `_numero` lo limita già; il `try/except ValueError` e `isfinite` evitano sia l'eccezione sia l'avviso falso. Il blob è identico a HEAD. Esito: ok.
+- clients/voice/ascolto.py:553 — la pausa muta (`comando == "pausa" and ok`) non scrive più il warning, l'errore vero sì. Rischio esaminato: un errore perso nel log. È lo stesso codice già revisionato nella #708 e nella #709, blob identico a HEAD. Esito: ok.
+- clients/voice/ascolto.py:605 — ramo «suonati == 0» con pausa, senza warning. È coperto da tests/test_unit_voce_ascolto.py:2472 (mutante già preso nella #709). Esito: ok.
+- tests/test_unit_voce_ascolto.py:2464 — `test_finestra_fuori_limiti_avvisa`: copre l'avviso di :214. Esito: ok.
+
+**Controlli sul merge**
+- **Codice di M2 identico a MERGE_HEAD (stesso blob):** modules/voice/server.py, modules/sottofondo/__init__.py, tests/test_unit_voice_server.py, tests/test_unit_sottofondo.py.
+- **Fetta 45 identica a HEAD (stesso blob):** clients/voice/ascolto.py, scripts/voce/LEGGIMI.md, tests/test_unit_voce_ascolto.py. Lo stesso vale per i 3 report presi col lato HEAD (--ours): ultimo_report.md, handoff.md, diff_sessione.md.
+- **Nessuna perdita:** in memoria_revisore.md, stato_progetto.md e ripartenza_m2.md le righe aggiunte da ciascun lato rispetto alla base 53ae39b e assenti nell'index sono 0.
+- **Nessun residuo del conflitto:** nessun marcatore, `git ls-files -u` vuoto, `git diff --cached --check` pulito.
+- **Gate B:** `git diff --cached --name-only MERGE_HEAD` dà come codice solo i 3 file della fetta 45, più memoria, stato_progetto e i 3 report.
+
+**Interazione fra il server di M2 e il client ascolto**
+- Il client ascolto manda il formato `audio+pezzi`, quindi la risposta passa da `_vuole_righe_senza_schermo`. La frase sui compiti finiti arriva come primi pezzi della risposta, prima della risposta vera (modules/voice/server.py:762). Il client li suona in ordine come pezzi qualsiasi.
+- Nessuna intestazione nuova: X-Gas-Comando e X-Gas-Seguito restano invariati.
+- La pausa esce prima che il server legga i compiti finiti (modules/voice/server.py:535). Quindi un «pausa» non consuma la lettura e non segna i compiti come letti.
+- Nei turni di seguito il server non legge i compiti finiti (`not self._seguito()`).
+- La fetta 45 non tocca intestazioni, formato o lettura dei pezzi. Nessun conflitto logico.
+
+**Test** su una copia dell'index (`git checkout-index` nello scratchpad), senza stash: test_unit_voce_ascolto + test_unit_voice_server + test_unit_sottofondo = **483 passed**. `git stash list` è vuoto.
+
+**Cosa non ho verificato**
+- Il comportamento reale sul Mac (audio vero, ElevenLabs e la durata in più dei pezzi con i compiti finiti davanti): non si può riprodurre in dev, ho verificato solo con i finti dei test.
+- Non ho ri-revisionato nel merito il codice di M2 (fetta 3.2): è già revisionato da M2 e qui ho solo provato che è identico a MERGE_HEAD.
+- Non ho fatto girare l'intera suite, solo i 3 file di test indicati.
+
+**Memoria**
+- Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#714 (chat Mani) — 2026-11-08 — APPROVATO — … Nessuna lezione nuova.». È solo nel working tree, NON committata e NON aggiunta all'index (stato `MM`): come richiesto, non ho lanciato commit_memoria_revisore.sh.
+- Per committarla insieme al merge va aggiunta all'index: senza `git add` resta fuori dal commit.
+
+Nessuna riserva.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voce_ascolto.py`: da 283 (main) a 292 casi. Riepilogo reale:
@@ -215,7 +262,7 @@ Mutanti presi:
 
 ## §6 STATO CI
 
-`gh` non usato (GitHub passa dallo strumento MCP). Per 06088cb e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff. PR #348 su 4f70927: unit-suite, handoff-check, verifica success; mergiata.
+`gh` non usato (GitHub passa dallo strumento MCP). 2d583d6 (head precedente della #351): handoff-check success, bot neutral (PR nel perimetro). La verifica esterna (https://github.com/Gasss23/Gas/pull/351#issuecomment-6711211454) dà APPROVATO CON RISERVE: V-1 BASSA, V-2 e V-3 COSMETICHE (vedi §7). Per il merge della #350 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff. PR #348 su 4f70927: unit-suite, handoff-check, verifica success; mergiata.
 
 ## §7 RISERVE APERTE
 

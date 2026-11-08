@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 45: review #707–#709 APPROVATO CON RISERVE (solo BASSE/COSMETICHE) e PR nel perimetro, quindi decide l'operatore via M1.
+Nessuna nuova. Il 2026-11-08 l'operatore, via M1, ha detto sì al merge della PR #351 con le riserve e ha accettato le riserve della fetta 1 Telegram (vocali senza «forte» con le regole dei testi, GAS_VOCE_FORTE valido anche per i vocali, tetto di 30 all'ora).
 
 ## Esito
 
@@ -16,3 +16,5 @@
   - Suite ascolto 292 passed; mutanti presi.
 - **V-1 della verifica esterna #347**: SALTATA per scelta (R-708-2). Era la tolleranza dopo una parola sentita prima della voce: secondo la sonda del revisore aiuta quasi solo i falsi positivi e fa passare fino a circa 5 s di stanza senza filtro.
 - **Fetta 1 Telegram**: pronta in locale (review #711/#712), si pubblica dopo questa PR.
+- **Merge della PR #350 di M2 nella #351**: FATTO, review #714 APPROVATO.
+- **Verifica esterna #351**: APPROVATO CON RISERVE. V-1 BASSA (test del «un log ogni 100»), V-2 COSMETICA (inf/nan senza test): vanno nella prossima fetta voce.
