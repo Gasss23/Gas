@@ -1804,3 +1804,111 @@ def test_f32_senza_chiave_tts_compiti_nel_testo(tmp_path):
     assert righe[0]["content"].startswith("Ho finito il compito in sottofondo")
     assert righe[0]["content"].endswith("\n\nCiao.")
     assert json.loads(f.read_text())["letto_a_voce"] is True
+
+
+# ---- Riserve BASSE della #350 (chat M2, 8 nov) ----
+
+def _letto(f):
+    return json.loads(f.read_text()).get("letto_a_voce") is True
+
+
+def test_f32b_sintesi_fallita_non_segna_letti(tmp_path):
+    """Ve #350 V-1: se la sintesi della prima frase fallisce, i compiti non risultano letti
+    (si ridicono alla prossima attivazione)."""
+    from modules.voice.tts import ElevenLabsTTSError
+    f = _compito_finito(tmp_path, "20261108-100000-aaaaaa")
+
+    def _rotta(frase, k, v):
+        raise ElevenLabsTTSError(500, "giù")
+    _voce_a_pezzi("Ciao.", _rotta, root=tmp_path)
+    assert not _letto(f)
+
+
+def test_f32b_segnati_appena_dette_le_frasi_dei_compiti(tmp_path):
+    """Senza schermo (audio+pezzi): dette le frasi dei compiti, risultano letti anche se poi
+    la sintesi della risposta fallisce."""
+    from modules.voice.tts import ElevenLabsTTSError
+    f = _compito_finito(tmp_path, "20261108-100000-bbbbbb", risposta="Fatto.")
+    chiamate = []
+
+    def _poi_rotta(frase, k, v):
+        chiamate.append(frase)
+        if frase == "Ciao.":
+            raise ElevenLabsTTSError(500, "giù")
+        return frase.encode()
+    _voce_a_pezzi("Ciao.", _poi_rotta, formato="audio+pezzi", root=tmp_path)
+    assert chiamate[0].startswith("Ho finito") and _letto(f)
+
+
+def test_f32b_risposta_vuota_dice_comunque_i_compiti(tmp_path):
+    """R-710-1-M2: risposta del modello vuota → la frase dei compiti si dice lo stesso."""
+    f = _compito_finito(tmp_path, "20261108-100000-cccccc")
+    ct, righe, tts = _voce_a_pezzi("", lambda frase, k, v: frase.encode(),
+                                   formato="audio+pezzi", root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi and frasi[0].startswith("Ho finito") and _letto(f)
+
+
+@pytest.mark.parametrize("parola", ["Gas.", "Hey Jarvis!"])
+def test_f32b_solo_parola_di_attivazione_dice_i_compiti(tmp_path, parola):
+    """Bot #350 V-5: con la sola parola di attivazione («Dimmi.») i compiti si dicono prima."""
+    f = _compito_finito(tmp_path, "20261108-100000-dddddd")
+    ct, righe, tts = _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(),
+                                   trascrizione=parola, root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[0].startswith("Ho finito") and frasi[-1] == "Dimmi." and _letto(f)
+
+
+def test_f32b_solo_parola_nel_seguito_non_legge(tmp_path):
+    f = _compito_finito(tmp_path, "20261108-100000-eeeeee")
+    _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(), trascrizione="Gas.",
+                  root=tmp_path, intestazioni={"X-Gas-Seguito": "1"})
+    assert not _letto(f)
+
+
+def test_f32b_formato_audio_testo_sintesi_unica(tmp_path):
+    """Bot #350 (40c5b30) V-1: ramo audio+testo (un solo MP3): compiti prima, poi la parte
+    parlata della risposta; segnati letti."""
+    import base64
+    f = _compito_finito(tmp_path, "20261108-100000-ffffff")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(),
+                                   formato="audio+testo", root=tmp_path)
+    detto = base64.b64decode(righe[0]["audio"]).decode()
+    assert detto.startswith("Ho finito il compito") and detto.endswith("Ciao.") and _letto(f)
+
+
+def test_f32b_mp3_diretto(tmp_path):
+    """Ramo audio/mpeg (_do_tts_response): compiti prima della risposta, segnati letti."""
+    from unittest.mock import patch
+    import urllib.request
+    from modules.voice.server import VoiceHandler
+    f = _compito_finito(tmp_path, "20261108-100000-gggggg")
+
+    class _K:
+        root = tmp_path
+
+        def run_turn(self, prompt, **kw):
+            yield {"type": "final", "content": "Ciao."}
+
+    class _H(VoiceHandler):
+        pass
+    _H.kernel = _K()
+    _H.token = "tok"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=b"RIFF" + bytes(60),
+        method="POST", headers={"Authorization": "Bearer tok", "Content-Type": "audio/wav",
+                                "Accept": "audio/mpeg"})
+    try:
+        with patch("modules.voice.server.transcribe_audio", side_effect=["Gas, dimmi"]), \
+             patch("modules.voice.server.synthesize_speech",
+                   side_effect=lambda frase, k, v: frase.encode()), \
+             patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=10) as r:
+                corpo = r.read().decode()
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert corpo.startswith("Ho finito il compito") and corpo.endswith("Ciao.") and _letto(f)

@@ -43,7 +43,8 @@ def _cartella(root: Path) -> Path:
 
 def _scrivi_privato(percorso: Path, dati: Dict[str, Any]) -> None:
     """Scrittura atomica, file 0600 (il compito può contenere dati dell'operatore)."""
-    tmp = percorso.with_suffix(f".tmp.{os.getpid()}")
+    # Ve #350 V-3: nome temporaneo unico anche fra thread dello stesso processo (server voce)
+    tmp = percorso.with_suffix(f".tmp.{os.getpid()}.{secrets.token_hex(4)}")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(dati, f, ensure_ascii=False)
