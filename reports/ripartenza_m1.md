@@ -21,6 +21,7 @@
 - **#345** (M2, compiti lunghi in sottofondo con avviso Telegram): SÌ dell'operatore il 7/11. Al /clear era in fase di merge: verificare.
 
 ## Decisioni dell'operatore (valide)
+- 7/11 sera: sì a #350 (M2, compiti finiti detti a voce; V-5 accettata) e #351 (Mani, fetta 45). Vocali Telegram senza «forte»: opzione A (regole dei testi Telegram, anche ai gratuiti; GAS_VOCE_FORTE vale anche lì; tetto 30/ora). Ordine merge: #350 poi #351, poi PR fetta 1 Telegram (Mani).
 - 7/11 ~16:00 UTC: sì al merge di #349 (M2) e #348 (Mani); sì alla voce via Telegram, opzione B in due fette (vocale→testo, poi anche voce). Ordine merge: #349 poi #348. In coda: PR fetta 3.2 (M2, compiti finiti detti a voce) e fetta 45 (Mani, d711cc6 in locale).
 - 7/11: sì al merge di #346 (M2) e #347 (Mani, se niente ALTE/MEDIE). «Hey Gas» NO: si resta con «Hey Jarvis».
 - 7/11: voce «simile al film» = voce generica british/maggiordomo (NON clone dell'attore). Proposta: Daniel (premade ElevenLabs, onwK4e9ZLuTAKqWW03F9) da confrontare con George (attuale) su /voci.
