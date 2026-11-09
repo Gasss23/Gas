@@ -58,6 +58,10 @@ ESITO_OUTPUT_MAX: int = 1500
 VOCALE_MAX_S: int = 60
 VOCALE_MAX_BYTES: int = 2_000_000
 VOCALE_TIMEOUT_S: int = 30
+# V-1 ve #355 (R-717-4): la risposta vocale gira nel ciclo di polling (un thread solo: la
+# guardia T78p delle firme non ammette altri thread nel bot). Tempi più corti per sintesi e
+# invio: al massimo ~30 s di attesa per vocale invece di ~60.
+VOCE_TIMEOUT_S: int = 15
 # R-711-3: tetto ai vocali trascritti in un'ora (come GAS_VOICE_MAX_TURNI_ORA della voce di
 # casa): oltre, niente download né Groq. GAS_TELEGRAM_VOCALI_ORA, default 30.
 VOCALI_ORA_PREDEFINITO: int = 30
@@ -916,15 +920,17 @@ def _risposta_del_turno(kernel: Any, chat_id: int, text: str,
 
 
 def _turno_con_finale(kernel: Any, chat_id: int, text: str,
-                      cervello: Optional[str]) -> Tuple[str, str]:
+                      cervello: Optional[str], **extra: Any) -> Tuple[str, str]:
     """(risposta in testo, sola risposta finale di Gas). La seconda è quella che si può
     dire a voce: senza i risultati degli strumenti e vuota se il turno è andato in errore."""
     parts: List[str] = []
     finali: List[str] = []
     errore = False
     try:
-        turno = (kernel.run_turn(text, cervello="forte") if cervello == "forte"
-                 else kernel.run_turn(text))
+        kw: Dict[str, Any] = dict(extra)
+        if cervello == "forte":
+            kw["cervello"] = "forte"
+        turno = kernel.run_turn(text, **kw)
         for event in turno:
             etype = event.get("type")
             if etype == "final":
@@ -964,10 +970,35 @@ def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any)
     if cervello == "uso":
         _send_text(base_url, chat_id, f"{eco}\n\n{_USO_FORTE_PARLATO}")
         return
-    risposta, finale = _turno_con_finale(kernel, chat_id, richiesta, cervello)
+    voce = _voce_accesa()
+    extra: Dict[str, Any] = {}
+    if voce:
+        # V-1 bot #355: come la voce di casa (turno parlato con schermo): prima una o due
+        # frasi da dire, i dettagli dopo una riga vuota (restano solo nel testo).
+        try:
+            from modules.voice.server import istruzione_turno_voce
+            extra["istruzione_turno"] = istruzione_turno_voce(True)
+        except Exception as e:  # §9: senza istruzione il turno parte lo stesso
+            log.warning("vocale: istruzione del turno parlato non caricata (%s)",
+                        type(e).__name__)
+    risposta, finale = _turno_con_finale(kernel, chat_id, richiesta, cervello, **extra)
     _send_text(base_url, chat_id, f"{eco}\n\n{risposta}")
-    if finale and _voce_accesa():
+    if finale and voce:
         _invia_risposta_vocale(base_url, chat_id, finale)
+
+
+_MARKDOWN = re.compile(r"(\*\*|__|`+|^[ \t]*#{1,6}[ \t]+|^[ \t]*(?:[-*•]|\d+[.)])[ \t]+)",
+                       re.MULTILINE)
+_URL = re.compile(r"https?://\S+")
+
+
+def testo_da_dire(finale: str) -> str:
+    """V-1 bot #355: niente formattazione a voce. Toglie grassetti, codice, titoli e segni
+    degli elenchi e dice «link» al posto degli indirizzi web; poi parte_parlata della voce
+    di casa sceglie le frasi da dire (i dettagli dopo la riga vuota restano nel testo)."""
+    from modules.voice.server import parte_parlata
+    pulito = _URL.sub("link", _MARKDOWN.sub("", finale))
+    return parte_parlata(pulito)
 
 
 def _voce_accesa() -> bool:
@@ -1007,16 +1038,15 @@ def _invia_risposta_vocale(base_url: str, chat_id: int, finale: str) -> None:
         _send_text(base_url, chat_id, "✗ Risposta vocale non disponibile: manca ELEVENLABS_API_KEY.")
         return
     try:
-        from modules.voice.server import parte_parlata
         from modules.voice.tts import DEFAULT_VOICE_ID, synthesize_speech
         voce = (os.environ.get("ELEVENLABS_VOICE_ID") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
-        audio = synthesize_speech(parte_parlata(finale), chiave, voce)
+        audio = synthesize_speech(testo_da_dire(finale), chiave, voce, timeout=VOCE_TIMEOUT_S)
     except Exception as e:
         log.warning("vocale: sintesi della risposta non riuscita (%s)", type(e).__name__)
         _send_text(base_url, chat_id, "✗ Risposta vocale non riuscita: la risposta è nel testo sopra.")
         return
     esito = _tg_post_file(base_url, "sendVoice", {"chat_id": str(chat_id)}, "voice",
-                          "risposta.mp3", audio, "audio/mpeg")
+                          "risposta.mp3", audio, "audio/mpeg", timeout=VOCE_TIMEOUT_S)
     if not (isinstance(esito, dict) and esito.get("ok")):
         _send_text(base_url, chat_id, "✗ Risposta vocale non inviata: la risposta è nel testo sopra.")
 

@@ -87,6 +87,12 @@ def tg(monkeypatch):
     return stato
 
 
+def _parlato(kw):
+    """V-1 bot #355: il turno di un vocale ha l'istruzione del turno parlato con schermo."""
+    from modules.voice.server import ISTRUZIONE_VOCE_SCHERMO
+    return kw.get("istruzione_turno", "").startswith(ISTRUZIONE_VOCE_SCHERMO)
+
+
 def _vocale(chat=CHAT, durata=5, chiave="message", **extra):
     voce = {"file_id": "F1", "duration": durata, "mime_type": "audio/ogg", **extra}
     return {"update_id": 1, chiave: {"chat": {"id": chat}, "voice": voce}}
@@ -95,7 +101,8 @@ def _vocale(chat=CHAT, durata=5, chiave="message", **extra):
 def test_vocale_trascritto_va_a_gas_con_la_trascrizione_in_cima(tg):
     k = Kernel("Sono le dieci.")
     bot._handle_update(BASE, _vocale(), {CHAT}, k)
-    assert k.turni == [("che ore sono", {})]
+    assert [testo for testo, _ in k.turni] == ["che ore sono"]
+    assert _parlato(k.turni[0][1]) and "cervello" not in k.turni[0][1]
     assert tg["testi"] == ["Ho capito: «che ore sono»\n\nSono le dieci."]
     assert tg["trascritti"] == [(b"OGG" * 10, "vocale.ogg")]
     # il file si scarica dall'URL dei file di Telegram, col percorso di getFile
@@ -189,7 +196,8 @@ def test_forte_detto_all_inizio_va_al_cervello_forte(tg):
     tg["trascrizione"] = "Forte, riassumi i lead di oggi"
     k = Kernel()
     bot._handle_update(BASE, _vocale(), {CHAT}, k)
-    assert k.turni == [("riassumi i lead di oggi", {"cervello": "forte"})]
+    assert [testo for testo, _ in k.turni] == ["riassumi i lead di oggi"]
+    assert k.turni[0][1]["cervello"] == "forte" and _parlato(k.turni[0][1])
 
 
 def test_forte_senza_richiesta_da_l_uso_e_nessun_turno(tg):
@@ -205,7 +213,7 @@ def test_i_comandi_non_valgono_a_voce(tg):
     tg["trascrizione"] = "/clear"
     k = Kernel()
     bot._handle_update(BASE, _vocale(), {CHAT}, k)
-    assert k.turni == [("/clear", {})]
+    assert [testo for testo, _ in k.turni] == ["/clear"]
 
 
 def test_errore_del_turno_non_fa_cadere_il_bot(tg):
@@ -416,3 +424,60 @@ def test_invio_del_vocale_con_ok_false_avviso_breve(tg):
     tg["esito_invio"] = {"ok": False, "description": "Bad Request"}
     bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("ok"))
     assert "Risposta vocale non inviata" in tg["testi"][1]
+
+
+# ── fetta 3: istruzione del turno parlato, niente formattazione a voce, voce in un thread ──
+
+def test_voce_spenta_niente_istruzione_parlata(tg, monkeypatch):
+    """Con GAS_TELEGRAM_VOCE=0 la risposta è solo testo: niente istruzione del parlato."""
+    monkeypatch.setenv("GAS_TELEGRAM_VOCE", "0")
+    k = Kernel()
+    bot._handle_update(BASE, _vocale(), {CHAT}, k)
+    assert k.turni == [("che ore sono", {})]
+
+
+def test_istruzione_non_caricata_il_turno_parte_lo_stesso(tg, monkeypatch):
+    import builtins
+    import modules.voice.server  # noqa: F401  (già caricato: il finto blocca solo il nome)
+    vero = builtins.__import__
+
+    def finto(nome, glob=None, loc=None, lista=(), *a, **kw):
+        if nome == "modules.voice.server" and "istruzione_turno_voce" in (lista or ()):
+            raise ImportError("rotto")
+        return vero(nome, glob, loc, lista, *a, **kw)
+    monkeypatch.setattr(builtins, "__import__", finto)
+    k = Kernel("ok")
+    bot._handle_update(BASE, _vocale(), {CHAT}, k)
+    assert k.turni == [("che ore sono", {})] and tg["testi"][0].endswith("ok")
+
+
+def test_a_voce_niente_formattazione_e_niente_indirizzi(tg):
+    finale = ("Ho trovato **due** lead: `Rossi` e Bianchi, dettagli su https://esempio.it/x.\n\n"
+              "- **Mario Rossi**, mario@x.it\n- Anna Bianchi")
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel(finale))
+    detto = tg["sintesi"][0]
+    assert "*" not in detto and "`" not in detto and "https" not in detto
+    assert detto.startswith("Ho trovato due lead: Rossi e Bianchi, dettagli su link")
+    assert "mario@x.it" not in detto  # il dettaglio dopo la riga vuota resta nel testo
+    assert "mario@x.it" in tg["testi"][0]
+
+
+@pytest.mark.parametrize("finale,atteso", [
+    ("# Titolo\nTesto.", "Titolo Testo."),
+    ("1. primo\n2) secondo", "primo secondo"),
+    ("• uno\n* due", "uno due"),
+    ("__forte__ e normale", "forte e normale"),
+])
+def test_testo_da_dire_toglie_i_segni(finale, atteso):
+    assert bot.testo_da_dire(finale) == atteso
+
+
+def test_voce_con_tempi_corti(tg, monkeypatch):
+    """V-1 ve #355 (R-717-4): sintesi e invio con VOCE_TIMEOUT_S (15 s), non 30."""
+    tempi = []
+    monkeypatch.setattr(tts, "synthesize_speech",
+                        lambda t, k, v, timeout=None: (tempi.append(("sintesi", timeout)), b"MP3")[1])
+    monkeypatch.setattr(bot, "_tg_post_file",
+                        lambda *a, timeout=None: (tempi.append(("invio", timeout)), {"ok": True})[1])
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("ok"))
+    assert tempi == [("sintesi", 15), ("invio", 15)] and bot.VOCE_TIMEOUT_S == 15
