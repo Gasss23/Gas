@@ -558,3 +558,31 @@ def test_all_uscita_le_voci_in_coda_si_scartano(monkeypatch):
     assert visti == [(False, True)] and bot._voce_in_coda is None
     bot._chiudi_voce()          # senza coda: niente da fare, niente errori
     assert visti == [(False, True)]
+
+
+def test_ctrl_c_durante_la_pausa_dopo_un_errore_chiude_la_coda(monkeypatch, tmp_path):
+    """V-3 ve #359 (R-725-2): un Ctrl-C mentre il bot aspetta 5 s dopo un errore del polling
+    scarta comunque la coda della voce ed esce con 0."""
+    import types
+    import gas
+    chiusure, attese = [], []
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "finto")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_IDS", str(CHAT))
+
+    def post(base_url, method, payload=None, timeout=70):
+        if method == "getMe":
+            return {"ok": True, "result": {"username": "gas"}}
+        raise RuntimeError("rete giù")
+
+    def dormi(s):
+        attese.append(s)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(bot, "_tg_post", post)
+    monkeypatch.setattr(bot, "avvisa_firme_scadute", lambda m: 0)
+    monkeypatch.setattr(bot, "_raccogli_giri", lambda: None)
+    monkeypatch.setattr(bot, "_chiudi_voce", lambda: chiusure.append(1))
+    monkeypatch.setattr(bot.time, "sleep", dormi)
+    monkeypatch.setattr(gas, "GasKernel", lambda root_dir=None: types.SimpleNamespace(memory=None))
+    assert bot.run_bot(str(tmp_path)) == 0
+    assert attese == [5] and chiusure == [1]

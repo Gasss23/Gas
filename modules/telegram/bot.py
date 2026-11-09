@@ -1010,8 +1010,10 @@ def _consegna_voce(base_url: str, chat_id: int, finale: str) -> None:
 
 
 def _chiudi_voce() -> None:
-    """All'uscita (Ctrl-C): le voci in coda si scartano, quella in corso finisce (al massimo
-    ~2×VOCE_TIMEOUT_S per attesa di rete); così l'uscita non aspetta tutta la coda."""
+    """All'uscita (Ctrl-C): le voci in coda si scartano, quella in corso finisce; così l'uscita
+    non aspetta tutta la coda. La voce in corso può trattenere l'uscita fino a circa
+    2×VOCE_TIMEOUT_S per sintesi e invio, più i 70 s di _send_text se deve mandare un avviso
+    (V-4 ve #359). Un SIGTERM (systemd) non passa di qui: le voci in coda si perdono, resta il testo."""
     global _voce_in_coda
     coda, _voce_in_coda = _voce_in_coda, None
     if coda is not None:
