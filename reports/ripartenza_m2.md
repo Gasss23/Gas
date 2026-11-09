@@ -28,7 +28,7 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 
 ## Regole che seguo
 - Un branch per fetta da `origin/main`; mai push su main.
-- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #713-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
+- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #714-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
 - Fine fetta: /fine-task (ultimo_report, handoff con verdetti INTEGRALI, diff_sessione, stato_progetto) → commit → `bash scripts/fine_task_finale.sh`; etichetta `verifica` sulla PR; verifica esterna con agente nuovo `general-purpose`, `model: sonnet`, prompt esatto «Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>» (URL_HANDOFF = raw del commit di testa).
 - `gh` nel cloud non è autenticato: PR, etichette e merge con gli strumenti GitHub MCP.
 - Riserve BASSE/COSMETICHE dei bot: si registrano, niente giri (regola di M1); si riapre solo per ALTA/MEDIA o se M1 lo chiede.

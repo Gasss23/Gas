@@ -15,29 +15,32 @@
 
 - **PR #352** (riserve BASSE della #350): `MERGIATA` (3084979) col sì dell'operatore via M1 (9 nov); Mani avvisato per la #353.
 - **Fetta BASSE aperte di sottofondo e voce**: `FATTA` — segno di lettura dei compiti dopo l'invio riuscito anche nei rami JSON (R-711-2-M2); regola unica: con schermo i compiti sono consegnati quando arriva il testo (anche se la voce fallisce), senza schermo solo se detti (bot #352 V-1 su f6de3e6); test di sintesi fallita nei rami MP3 unico e audio/mpeg e di «Dimmi.» a testo (R-711-1-M2, bot #352 V-1 su 893b863); compiti «in_coda»/«in_corso» vecchi senza posto cancellati dalla pulizia (bot #349 V-1 su a9a17a5, R-707-1-M2); pulizia oraria con orologio monotono (bot #349 V-2). Review #713-M2 APPROVATO CON RISERVE (R-713-1/2-M2 BASSE).
+- **Esiti su 3071c0e**: CI verde; bot APPROVATA (BASSA: pulizia testata solo con «in_corso», non «in_coda»; COSMETICHE: R-711-3-M2 sparita dall'elenco, righe vuote); verifica esterna APPROVATO CON RISERVE (BASSE: §6 superato, R-713-2-M2 reale, condizione dei pezzi da mettere tra parentesi). Merge rifiutato per conflitto con la #353 di Mani → `RISOLTO` col merge 8ad5c3d (review #714-M2 APPROVATO).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 +
- modules/sottofondo/__init__.py     | 18 +++++++--
- modules/voice/server.py            | 29 ++++++++++-----
+ .claude/agents/memoria_revisore.md |   3 +
+ modules/sottofondo/__init__.py     |  18 ++-
+ modules/voice/server.py            |  29 ++--
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_sottofondo.py      | 35 +++++++++++++++++-
- tests/test_unit_voice_server.py    | 76 ++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_sottofondo.py      |  35 ++++-
+ tests/test_unit_voice_server.py    |  76 ++++++++-
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 3084979 (merge della #352).
+NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 7a9fad4 (merge della #353 di Mani, unito nel branch con 8ad5c3d; prima 3084979, merge della #352).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8ad5c3d Merge origin/main (PR #353, voce via Telegram di Mani) nella PR #354 — conflitti solo in report e memoria del revisore; review #714-M2 APPROVATO
+3071c0e docs(voce): report di fine task — riserve BASSE aperte di sottofondo e voce; PR #352 mergiata (chat M2)
 760f0a9 fix(voce+sottofondo): riserve BASSE aperte — segno di lettura dopo l'invio, regola unica schermo/senza schermo, compiti aperti vecchi puliti, pulizia oraria monotona, test mancanti (sì dell'operatore via M1)
 cc9d3ab chore(revisore): memoria review #713 — APPROVATO CON RISERVE
 ```
@@ -88,17 +91,41 @@ Review #713-M2: diff staged su feat/voce-v12-m2 (base 3084979), 4 file, +139/−
 
 **Memoria**: riga #713-M2 e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da `commit_memoria_revisore.sh` (cc9d3ab). L'index del diff in review non è stato toccato: 4 file restano staged.
 
+Review #714-M2 sul merge 8ad5c3d (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #714-M2: merge in corso di origin/main 7a9fad4 (PR #353 della chat Mani, vocali via Telegram) nel branch feat/voce-v12-m2 (HEAD 3071c0e, PR #354). Base comune 3084979.
+
+Elementi esaminati:
+- `modules/voice/server.py:111` e `modules/voice/server.py:353`: `_USO_FORTE_PARLATO` e `cervello_voce`, importati dal codice Telegram entrato da main (contesto: `modules/telegram/bot.py:933`). Rischio esaminato: che le modifiche di M2 fatte dopo 3084979 cambino il contratto che bot.py usa. Fra la base e HEAD M2 tocca solo `VoiceHandler` (il primo blocco di modifiche parte da :666). Queste due definizioni sono identiche, quindi non c'è interazione fra le due PR. Esito: ok.
+- `modules/voice/server.py:779-812`: logica `consegnati` della fetta M2 (#713-M2). Rischio esaminato: che il merge l'abbia alterata. Il blob nell'index è identico a HEAD, e lo stesso vale per `modules/sottofondo/__init__.py:252-254`, `tests/test_unit_voice_server.py` e `tests/test_unit_sottofondo.py`. Esito: ok.
+- `.github/workflows/ci.yml:127` (lato main): aggiunge `tests/test_unit_telegram_voce.py` alla suite voce. Rischio esaminato: un job rotto o un file mancante. Il blob nell'index è identico a MERGE_HEAD e il file di test esiste nell'index. La suite sottofondo (`.github/workflows/ci.yml:221`) non cambia. Esito: ok.
+- `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md`: unione delle due parti. Ho cercato, riga per riga, le righe aggiunte da ciascun lato dopo la base: 0 su 2 perse da HEAD e 0 su 5 da MERGE_HEAD per la memoria; 0 su 1 e 0 su 3 per stato_progetto. Esito: ok.
+- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: tenuta la versione del branch (`--ours`), identica a HEAD, come dichiarato. Esito: ok.
+
+Controlli meccanici:
+- `modules/telegram/bot.py`, `tests/test_unit_telegram_voce.py`, `.github/workflows/ci.yml` e `reports/proposta_voce_telegram.md` nell'index sono identici a MERGE_HEAD (blob); a HEAD sono uguali alla base, quindi M2 non li tocca.
+- `git ls-files -u` vuoto, nessun marcatore di conflitto, working tree uguale all'index, nessuno stash.
+- Test sulla copia dell'index: 237 passed (`test_unit_telegram_voce`, `test_unit_voice_server`, `test_unit_sottofondo`).
+- `git diff --check`: segnala solo la riga vuota a fine file in `tests/test_unit_telegram_voce.py`. È nota cosmetica già registrata in #715 e viene da main, non dal merge.
+
+Rischio escluso: non ho rieseguito la suite completa del kernel né le altre suite voce (stt, tts, contesto, prova_voci). Il merge non tocca codice condiviso con quelle suite: i blob dei file M2 sono uguali a HEAD e quelli dei file Mani a MERGE_HEAD. Il loro esito resta alla CI della PR #354. Non ho verificato il comportamento reale su Telegram o sul Mac: non è riproducibile qui.
+
+Memoria: ho aggiunto la riga `#714-M2 — 2026-11-09 — APPROVATO — … Nessuna lezione nuova.` in /home/user/Gas/.claude/agents/memoria_revisore.md e ho fatto solo `git add` di quel file. Nessun commit mio, index non toccato per il resto.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voice_server.py` + `tests/test_unit_sottofondo.py`: 206 passed (intere). Nuovi: con schermo e voce fallita i compiti sono letti (audio+testo+pezzi, audio+testo — falliscono col codice di main); audio/mpeg con 502 → non letti; «Dimmi.» a testo senza TTS; test esistente «sintesi fallita» ora senza schermo (audio+pezzi, ha preso un mio errore durante lo sviluppo). Sottofondo: compito «in_corso» vecchio senza posto cancellato, quello col posto no; pulizia oraria con `time.monotonic`. `gas.py` non toccato.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. I commit sono pushati insieme a questo report: run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nel cloud. Su 3071c0e: unit-suite, handoff-check e verifica-bot verdi. Il merge 8ad5c3d e questo report sono pushati insieme: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 
 - R-713-1-M2 BASSA: mancano test per: senza chiave TTS e senza schermo (non letti), client chiuso nei pezzi con schermo, ordine invio→segno nei rami JSON/MP3 (mutanti non presi).
 - R-713-2-M2 BASSA: se attivo.json è illeggibile per un attimo e la durata massima supera i giorni di conservazione, un compito vivo potrebbe perdere il file (improbabile coi default).
+- R-711-3-M2 COSMETICA (ancora aperta): `_finiti_jobs` non azzerato a inizio richiesta; lambda con noqa. Bot #354 BASSA: test della pulizia con «in_coda». Ve #354 BASSA: parentesi esplicite nella condizione dei pezzi.
 - Restano: R-709-1/2-M2, R-708-1-M2, R-706-1-M2, R-701-3-M2, R-703-2-M2, R-696-1-M2; doppia lettura con due richieste contemporanee.
 - Non verificato in dev: client vero sul Mac, ElevenLabs vero.
