@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Nessuna per questa PR: per la regola di stanotte (operatore via M1, 9 nov) le PR non di sicurezza con sole riserve BASSE/COSMETICHE si mergiano con CI e bot verdi, coordinandosi con Mani.
+1. Nessuna per questa PR: per la regola di stanotte (operatore via M1, 9 nov; registrata in `reports/stato_progetto.md` come R11, fonte `reports/ripartenza_m1.md` commit 280b2f95 del branch `feat/merge-automatico-z1xjx2`) le PR non di sicurezza con sole riserve BASSE/COSMETICHE si mergiano con CI e bot verdi, coordinandosi con Mani. Se bot o verifica esterna danno una MEDIA su questa regola, la PR resta per l'operatore.
 2. Prossima PR di stanotte: server voce reso sicuro (R8) — proposta + codice, resta aperta per l'operatore.
 
 ---
@@ -17,13 +17,15 @@
 - **Cache delle frasi fisse** (velocità, decisione dell'operatore via M1): `FATTA` — `sintesi()` in `modules/voice/server.py`: «Dimmi.», «Va bene.», «Non ho capito bene…», «Il resto è a schermo.» ecc. sintetizzate una volta per processo e voce, poi dalla memoria (niente attesa né costo ElevenLabs); solo testi fissi del codice, mai testo del modello o dell'operatore.
 - **Riserve BASSE della #354**: `FATTE` — test della pulizia con «in_coda» (bot #354 V-1), `_finiti_jobs` azzerato a inizio richiesta (R-711-3-M2), lambda → funzione, parentesi esplicite nella condizione del segno (ve #354 V-3).
 - Review #715-M2 APPROVATO CON RISERVE (R-715-1-M2 COSMETICA).
+- **Merge di main (#355 di Mani) nel branch** per togliere il conflitto (MEDIA della verifica esterna sulla #356): `FATTO` (2580889), review #716-M2 APPROVATO; conflitti solo su report e memoria.
+- **Regola di merge notturna** scritta nel repo (R11 in `reports/stato_progetto.md`), come chiesto da M1 dopo la MEDIA di processo della verifica esterna sulla #357.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
+ .claude/agents/memoria_revisore.md |  3 +
  modules/voice/server.py            | 44 +++++++++++++++++++++++++++-----
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
@@ -34,11 +36,13 @@
  tests/test_unit_voice_server.py    | 51 ++++++++++++++++++++++++++++++++++++--
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main fa6b1f3 (merge della #354).
+NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main b827447 (merge della #355, entrato nel branch col merge 2580889).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2580889 Merge origin/main (#355, voce via Telegram fetta 2) in feat/voce-v12-m2
+84b88f8 docs(voce): report di fine task — cache delle frasi fisse; PR #354 mergiata (chat M2)
 b97a570 perf(voce): cache della sintesi per le frasi fisse del server voce; riserve BASSE della #354 (in_coda, _finiti_jobs, parentesi, lambda) (decisione dell'operatore via M1)
 9301c2f chore(revisore): memoria review #715 — APPROVATO CON RISERVE
 ```
@@ -79,13 +83,38 @@ Memoria: in coda a /home/user/Gas/.claude/agents/memoria_revisore.md ho aggiunto
 
 File rilevanti: /home/user/Gas/modules/voice/server.py, /home/user/Gas/tests/test_unit_voice_server.py, /home/user/Gas/tests/test_unit_sottofondo.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
+Review #716-M2 sul merge 2580889 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #716-M2: merge in corso di origin/main b827447 (PR #355 della chat Mani, voce via Telegram fetta 2) nel branch feat/voce-v12-m2 (HEAD 84b88f8, PR #356). Base comune fa6b1f3.
+
+Ho letto prima CLAUDE.md (dato nel contesto), la parte utile di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Cosa ho controllato nel diff**
+- `modules/voice/server.py:322`: è la nuova `sintesi()` di M2, con la cache delle frasi fisse. Rischio esaminato: che il codice di Telegram arrivato dal lato main la usi o dipenda da `synthesize_speech` dentro server.py, che M2 ha sostituito. Esito: ok. `modules/telegram/bot.py:1011` importa `synthesize_speech` da `modules/voice/tts.py`, che M2 non tocca. Le 6 righe tolte da M2 in server.py stanno tutte dentro VoiceHandler: 3 chiamate a synthesize_speech, la lambda e la condizione del segno.
+- `modules/voice/server.py:339`: `parte_parlata`, importata da `modules/telegram/bot.py:1010`. Rischio esaminato: firma o comportamento cambiati da M2 dopo la base. Esito: ok. Il diff da fa6b1f3 a HEAD contiene solo gli hunk a :307 (aggiunta pura) e da :503 in poi (VoiceHandler). Anche `cervello_voce` (`modules/voice/server.py:382`) e `_USO_FORTE_PARLATO` (`modules/voice/server.py:111`), usati da `modules/telegram/bot.py:958`, sono invariati.
+- `tests/test_unit_voice_server.py:1` e `tests/test_unit_sottofondo.py:1`: rischio esaminato: che il merge abbia alterato i test di M2. Esito: ok. Il blob nell'index è identico a HEAD (710bfac e 0b92db9), e lo stesso vale per `modules/sottofondo/__init__.py` (c7b2b63).
+- Lato main: rischio esaminato: contenuto diverso da MERGE_HEAD. Esito: ok. Nell'index i blob di `modules/telegram/bot.py` (c372b6f), `tests/test_unit_telegram_voce.py` (eff6818) e `tests/test_unit_voce_ascolto.py` (665c65b) sono identici a b827447.
+- Report: rischio esaminato: righe perse nei file in conflitto. Esito: ok. `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono identici a HEAD. `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md` sono l'unione dei due lati: le righe aggiunte da HEAD sono 2 e 1, da main 4 e 8, e nessuna manca.
+- Pulizia del merge: `git ls-files -u` è vuoto, nessun marcatore di conflitto, `git diff --cached --check` pulito, nessuna modifica fuori dall'index.
+- Test sulla copia dell'index (checkout-index nello scratchpad, niente stash): telegram_voce + voce_ascolto + voice_server + sottofondo, 558 passed.
+
+**Cosa NON ho verificato**
+- Il comportamento dal vivo di sendVoice e di ElevenLabs. Non si riproduce in dev, e le riserve R-717-3 e R-717-4 della chat Mani restano aperte.
+- La suite completa del motore: ho eseguito solo i 4 file toccati dai due lati.
+
+**Memoria**
+- Ho aggiunto la riga `#716-M2 — 2026-11-09 — APPROVATO — …` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza lezioni nuove.
+- Ho fatto solo `git add .claude/agents/memoria_revisore.md`. Come chiesto, non ho lanciato commit_memoria_revisore.sh, perché il merge è in corso: la memoria entra col commit di merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voice_server.py`: 3 nuovi (cache: una sola sintesi per frase fissa e voce, testo libero mai in cache, audio vuoto mai in cache; errore non in cache; tetto della cache). `tests/test_unit_sottofondo.py`: pulizia parametrica su «in_corso»/«in_coda», con e senza posto. Suite voce server + sottofondo + telegram_voce: 243 passed (intere). `gas.py` non toccato.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. I commit sono pushati insieme a questo report: run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nel cloud. Head precedente 84b88f8: CI verde e bot APPROVATA (BASSE: frasi fisse spezzate nei pezzi non in cache; commento). Nuovo head col merge: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
