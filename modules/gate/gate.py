@@ -72,6 +72,11 @@ GATE_ALLOWLIST: dict[str, GateClass] = {
     # Fetta 3 (2026-11-06): compito in sottofondo, offerto solo a voce; alla firma se la
     # finestra contiene input esterno (anche un seguito a voce).
     "in_sottofondo":          GateClass.UNCERTAIN,
+    # Terminale, opzione A (9 nov, sì dell'operatore via M1): azioni fisse di manutenzione.
+    # Classe per azione in gate_classify: lettura → UNCERTAIN (alla firma solo con input
+    # esterno nel turno), azioni che cambiano Gas → IRREVERSIBLE (sempre alla firma),
+    # azione fuori lista → DENY.
+    "manutenzione":           GateClass.UNCERTAIN,
     "run_command":            GateClass.UNCERTAIN,   # see §8e override below
     "browser_scrape":         GateClass.UNCERTAIN,
     "send_email":             GateClass.IRREVERSIBLE,
@@ -703,6 +708,12 @@ def _parse_args(args: Any) -> "dict[str, Any] | None":
     return None
 
 
+# Terminale, opzione A: stesse liste di modules/manutenzione (copiate qui per non far
+# dipendere il cancello da altri moduli; un test controlla che coincidano).
+_MANUTENZIONE_LETTURA = frozenset({"stato_gas", "log_voce"})
+_MANUTENZIONE_FIRMA = frozenset({"aggiorna_gas", "riavvia_voce"})
+
+
 def gate_classify(tool_name: Any, args: Any) -> GateClass:
     """Classify a tool call and return its GateClass.
 
@@ -758,6 +769,15 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
                     except ValueError:
                         return GateClass.DENY
             # Path is clean → fall through to allowlist lookup.
+
+        elif tool_name == "manutenzione":
+            azione = parsed.get("azione")
+            if set(parsed) - {"azione"}:
+                return GateClass.DENY  # niente argomenti liberi oltre all'azione
+            if azione in _MANUTENZIONE_FIRMA:
+                return GateClass.IRREVERSIBLE
+            if azione not in _MANUTENZIONE_LETTURA:
+                return GateClass.DENY
 
         # Rule 4 — run_command: token denylist check + §8e sandbox rule.
         elif tool_name == "run_command":

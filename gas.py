@@ -35,6 +35,7 @@ from brains.claude_cli import ClaudeCliClient
 from brains.claude_cli import stato_abbonamento as claude_cli_stato_abbonamento
 from brains.router import prefisso_forte  # R2: /forte (terminale, Telegram, voce)
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
+from modules.manutenzione import e_notte as _man_e_notte, NOTTE_NEGATA as _MAN_NOTTE_NEGATA
 from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
 from modules.gate.gate import libero_dopo_lettura, sembra_delicato
 from modules.telegram import bot as _tg_bot
@@ -2513,6 +2514,8 @@ class GasKernel:
                     f"testo={len(str(args.get('testo', '')))} caratteri")
         if name == "salva_contatto":
             return f"contatto chiave={str(args.get('chiave', ''))[:80]!r}"
+        if name == "manutenzione":
+            return f"azione={str(args.get('azione', ''))[:20]!r}"
         if name == "in_sottofondo":
             # Il compito può contenere dati dell'operatore: nel diario solo la lunghezza.
             return f"compito={len(str(args.get('compito', '') or ''))} caratteri"
@@ -3997,6 +4000,27 @@ class GasKernel:
                 "può fare domande (max 2000 caratteri)")}},
             "required": ["compito"]}}}
 
+    # Terminale, opzione A (9 nov, sì dell'operatore via M1): azioni fisse di manutenzione,
+    # offerte SOLO nei turni a testo dell'operatore (Telegram, terminale): mai a voce, mai nei
+    # turni effimeri, mai in sottofondo né nel giro notturno (kernel senza storia). Quelle che
+    # cambiano Gas vanno sempre alla firma (cancello: IRREVERSIBLE). modules/manutenzione.
+    STRUMENTO_MANUTENZIONE: Dict[str, Any] = {"type": "function", "function": {
+        "name": "manutenzione",
+        "description": ("Azioni fisse di manutenzione di Gas, solo quando l'operatore lo chiede. "
+                        "stato_gas: controllo di salute (doctor). log_voce: ultimi tempi della "
+                        "voce. aggiorna_gas: scarica il codice nuovo da main e installa le "
+                        "dipendenze. riavvia_voce: riavvia il server voce sul Mac. Le ultime due "
+                        "cambiano Gas: partono solo dopo la firma dell'operatore su Telegram."),
+        "parameters": {"type": "object", "properties": {
+            "azione": {"type": "string",
+                       "enum": ["stato_gas", "log_voce", "aggiorna_gas", "riavvia_voce"]}},
+            "required": ["azione"]}}}
+
+    def _manutenzione_offerta(self, voce: bool, effimero: bool) -> bool:
+        """Lo strumento manutenzione si offre solo nei turni a testo dell'operatore."""
+        return (not voce and not effimero and getattr(self, "carica_storia", True)
+                and not getattr(self, "nel_sottofondo", False))
+
     def _timeout_provider(self, name: str) -> int:
         """Timeout HTTP del rung: Ollama locale ha il suo (R-226-1)."""
         return self.OLLAMA_TIMEOUT_SEC if name == "ollama" else self.PROVIDER_TIMEOUT_SEC
@@ -4797,6 +4821,16 @@ class GasKernel:
                 out = crea_richiesta(a.get("titolo"), a.get("descrizione"), self.root)
             elif name == "in_sottofondo":
                 out = self._in_sottofondo(args if isinstance(args, dict) else {}, firmata=firmata)
+            elif name == "manutenzione":
+                # Terminale A: fuori dai turni a testo (voce, sottofondo, notte) è negata anche
+                # se il modello la chiama lo stesso; la firma la esegue sempre (l'operatore ha
+                # deciso). Le azioni che cambiano Gas senza firma le nega il modulo.
+                if not firmata and not getattr(self, "_turno_manutenzione", False):
+                    return ("Operazione negata: la manutenzione si chiede solo a testo "
+                            "(Telegram o terminale), mai a voce né in sottofondo.")
+                from modules.manutenzione import esegui as _manutenzione
+                a = args if isinstance(args, dict) else {}
+                out = _manutenzione(a.get("azione"), self.root, firmata=firmata)
             elif name == "avvisa_operatore":
                 # Notifica all'operatore (R6): solo TELEGRAM_ALLOWED_IDS, tetto al giorno
                 # in modules/telegram/avviso.py; qui il tetto di UNA per turno (non per
@@ -4927,6 +4961,10 @@ class GasKernel:
         if voce and not effimero:  # fetta 3: a voce anche il compito in sottofondo
             _offerta = {"tools": self.tools_schema + [self.STRUMENTO_SOTTOFONDO],
                         "tool_choice": "auto"}
+        if self._manutenzione_offerta(voce, effimero):  # terminale A: solo turni a testo
+            _offerta = {"tools": _offerta["tools"] + [self.STRUMENTO_MANUTENZIONE],
+                        "tool_choice": "auto"}
+        self._turno_manutenzione = self._manutenzione_offerta(voce, effimero)
         if getattr(self, "nel_sottofondo", False):  # bot #345 V-2: niente avvisa_operatore
             _offerta = {"tools": [s for s in self.tools_schema
                                   if s.get("function", {}).get("name") != "avvisa_operatore"],
@@ -5130,6 +5168,17 @@ class GasKernel:
                                                        and not self.SHELL_ALLOWLIST)
                                 if _run_command_spento:
                                     _gc = GateClass.DENY
+                                # Terminale A: fuori dai turni a testo (voce, sottofondo, notte)
+                                # la manutenzione è negata QUI, prima del cancello: nemmeno una
+                                # richiesta di firma deve partire da un turno a voce.
+                                _manutenzione_fuori = (tc.function.name == "manutenzione"
+                                                       and not getattr(self, "_turno_manutenzione", False))
+                                # «Mai di notte»: di notte nemmeno la richiesta di firma parte
+                                _manutenzione_notte = (tc.function.name == "manutenzione"
+                                                       and _gc == GateClass.IRREVERSIBLE
+                                                       and _man_e_notte())
+                                if _manutenzione_fuori or _manutenzione_notte:
+                                    _gc = GateClass.DENY
                                 # Review #262: un nome "libero" che risolve (symlink) a un
                                 # file delicato va alla firma di livello 2 come il file vero.
                                 if (_gc == GateClass.UNCERTAIN and tc.function.name == "write_file"
@@ -5141,6 +5190,12 @@ class GasKernel:
                                     logging.warning(f"[GATE] DENY: {tc.function.name}")
                                     out = "Operazione negata: azione non consentita in modalità autonoma."
                                     _cancello = "negata"
+                                    if _manutenzione_notte:
+                                        out = _MAN_NOTTE_NEGATA
+                                    if _manutenzione_fuori:
+                                        out = ("Operazione negata: la manutenzione si chiede solo "
+                                               "a testo (Telegram o terminale), mai a voce né in "
+                                               "sottofondo.")
                                     if _run_command_spento:  # V-3 bot #185: indica gli strumenti
                                         out = ("Operazione negata: Gas non ha comandi di sistema. "
                                                "Usa elenca_cartella, leggi_righe, cerca_testo, "
