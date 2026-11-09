@@ -1222,10 +1222,12 @@ def test_v7b_frasi_parlate_ricompongono_la_parte_parlata():
 
 
 def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k", turni=None,
-                  trascrizione="Gas, dimmi", prompt_testo=None, root=None, intestazioni=None):
+                  trascrizione="Gas, dimmi", prompt_testo=None, root=None, intestazioni=None,
+                  tts=None):
     """Server voce vero con kernel e servizi finti; ritorna (content-type, righe, mock della
     sintesi).
     `turni` (lista) riceve i kw di ogni run_turn (V10: quale istruzione arriva).
+    `tts`: un mock della sintesi da riusare fra più richieste (stessa chiave di cache).
     Con `prompt_testo` la richiesta è a testo (JSON), non a voce (V11)."""
     from unittest.mock import patch
     import urllib.request
@@ -1257,7 +1259,8 @@ def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"
                  **(intestazioni or {})})
     try:
         with patch("modules.voice.server.transcribe_audio", side_effect=[trascrizione]), \
-             patch("modules.voice.server.synthesize_speech", side_effect=sintesi) as tts, \
+             (patch("modules.voice.server.synthesize_speech", new=tts) if tts is not None
+              else patch("modules.voice.server.synthesize_speech", side_effect=sintesi)) as tts, \
              patch.dict(os.environ, env):
             if not chiave:
                 os.environ.pop("ELEVENLABS_API_KEY", None)
@@ -2107,6 +2110,12 @@ def test_sintesi_cache_forte_a_pezzi_dal_server(monkeypatch):
     pezzi = srv._dividi_frasi(srv._USO_FORTE_PARLATO)
     assert [c.args[0] for c in tts.call_args_list] == pezzi
     assert sorted(k[2] for k in cache) == sorted(pezzi)
+    # bot #360 (2° giro): la seconda richiesta, con la stessa sintesi, legge dalla cache
+    tts.reset_mock()
+    _, righe2, tts2 = _voce_a_pezzi("non usato", None, trascrizione="Gas, forte.",
+                                    formato="audio+testo+pezzi", tts=tts)
+    assert tts2 is tts and tts.call_count == 0
+    assert righe2 == righe  # stessa risposta, audio dalla memoria
 
 
 # ---- R8 fetta 1 (chat M2, sicurezza): tentativi falliti, tetto al testo, avvio chiuso ----
