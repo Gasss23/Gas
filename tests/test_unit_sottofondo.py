@@ -663,7 +663,6 @@ def test_corsa_figlio_finisce_durante_la_pulizia_niente_avviso(tmp_path, monkeyp
     assert inviati == [] and json.loads(f.read_text(encoding="utf-8"))["stato"] == "ok"
 
 
-
 def test_eccezione_dopo_ok_niente_avviso_di_errore(tmp_path, monkeypatch):
     """R-706-2-M2: un'eccezione arrivata dopo che il compito è già «ok» non manda
     «si è interrotto per un errore interno»; prima di «ok» sì."""
@@ -710,7 +709,6 @@ def test_scrittura_fallita_avvisa_lo_stesso(tmp_path, monkeypatch):
     inviati, avvisa = _avvisi()
     sf._ripulisci(tmp_path, avvisa)
     assert len(inviati) == 1 and "non è finito" in inviati[0]
-
 
 
 def test_posto_non_tolto_avviso_finale_parte_lo_stesso(tmp_path, monkeypatch):
@@ -774,7 +772,6 @@ def test_frase_finiti_corta_e_segna_letti(tmp_path):
     assert not (tmp_path.parent / "fuori.json").exists()
 
 
-
 def test_frase_finiti_risposta_vuota():
     """Ve #350 V-2: compito ok senza risposta → frase chiusa, senza «:» finali."""
     for risposta in ("", None, "   "):
@@ -796,15 +793,15 @@ def test_scrittura_temporanea_con_nome_unico(tmp_path, monkeypatch):
     assert len(set(nomi)) == 2 and all(".tmp." in n for n in nomi)
 
 
-
-def test_pulizia_non_tocca_il_compito_che_ha_il_posto(tmp_path, monkeypatch):
-    """Il compito «in_corso» vecchio che ha ancora il posto in coda non si cancella."""
+@pytest.mark.parametrize("stato", ["in_corso", "in_coda"])
+def test_pulizia_non_tocca_il_compito_che_ha_il_posto(tmp_path, monkeypatch, stato):
+    """Il compito aperto vecchio che ha ancora il posto in coda non si cancella."""
     import time as _t
     c = tmp_path / sf.CARTELLA
     c.mkdir()
     vecchio = _t.time() - 8 * 86400
     f = c / "x.json"
-    f.write_text(json.dumps({"id": "x", "stato": "in_corso", "compito": "t"}))
+    f.write_text(json.dumps({"id": "x", "stato": stato, "compito": "t"}))
     os.utime(f, (vecchio, vecchio))
     (c / sf.ATTIVO).write_text(json.dumps({"id": "x", "pid": None, "creato": _t.time()}))
     sf._pulisci_vecchi(tmp_path)
@@ -823,3 +820,17 @@ def test_pulizia_oraria_con_orologio_monotono(tmp_path, monkeypatch):
     orologio[0] += 3601
     sf.controlla(tmp_path)
     assert len(chiamate) == 2
+
+
+@pytest.mark.parametrize("stato", ["in_corso", "in_coda"])
+def test_pulizia_compito_aperto_vecchio_senza_posto(tmp_path, stato):
+    """Bot #354 V-1: anche «in_coda» vecchio senza posto si cancella, come «in_corso»."""
+    import time as _t
+    c = tmp_path / sf.CARTELLA
+    c.mkdir()
+    vecchio = _t.time() - 8 * 86400
+    f = c / "y.json"
+    f.write_text(json.dumps({"id": "y", "stato": stato, "compito": "t"}))
+    os.utime(f, (vecchio, vecchio))
+    sf._pulisci_vecchi(tmp_path)
+    assert not f.exists()

@@ -1,30 +1,20 @@
-# Ultimo report — 2026-11-09 — voce via Telegram, fetta 2 (chat Mani): risposta anche a voce
+# Ultimo report — 2026-11-09 notte — Voce: cache delle frasi fisse (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 2 Telegram: review APPROVATO CON RISERVE (solo BASSE), PR nel perimetro, quindi decide l'operatore via M1.
-2. Prova dal vivo (R-717-3): mandare un vocale al bot e controllare che la risposta arrivi anche come nota vocale. Se Telegram rifiuta l'MP3, arriva l'avviso «Risposta vocale non inviata».
+- **Merge della #356: decide l'operatore** (CLAUDE.md §10: con riserve si aspetta il suo sì; nessuna regola notturna scritta nel repo). Prossima: server voce sicuro, resta aperta per l'operatore.
 
-## Esito
+## Esito delle fette
 
-- **PR #353 (fetta 1)**: MERGIATA (7a9fad4) col sì dell'operatore.
-- **Voce via Telegram, fetta 2**: FATTA (decisione dell'operatore del 9/11: risposta a voce SOLO dopo un vocale).
-  - Prima arriva il testo, poi la parte parlata della risposta finale (parte_parlata, come la voce di casa), sintetizzata con ElevenLabs e mandata con sendVoice.
-  - Gli output degli strumenti non vanno né a voce né a ElevenLabs. Niente voce se il turno è in errore, dopo un testo o con «forte» senza richiesta.
-  - GAS_TELEGRAM_VOCE=0 la spegne. Senza chiave, con un errore di sintesi o con l'invio rifiutato arriva un avviso breve.
-- **Riserve chiuse**:
-  - V-1 bot #353: l'import di stt è protetto;
-  - V-1 ve #353: test di read(MAX+1);
-  - R-712-2;
-  - V-1 bot #351: test esatto «log ogni 100»;
-  - V-2 ve #351: test di inf/nan;
-  - R-717-1/2: test dell'eccezione e di ok:false.
-- Test: telegram_voce da 31 a 51, ascolto 295 passed. Mutanti presi.
-- Review #717 e #718 APPROVATO CON RISERVE.
-- **Merge della PR #354 di M2 nella #355**: FATTO, review #719 APPROVATO.
-- **Verifica esterna #355**: APPROVATO CON RISERVE.
-  - V-1 BASSA: polling fermo fino a circa 60 s.
-  - V-2 BASSA: dati di clienti a ElevenLabs, come la voce di casa.
-  - V-3 BASSA: MP3 da provare dal vivo.
-  - V-4 COSMETICA.
-  M1 le ha girate all'operatore.
+- **PR #354**: `MERGIATA` (fa6b1f3).
+- **Cache della sintesi per le frasi fisse**: `FATTA` (niente attesa né costo ElevenLabs per «Dimmi.» e simili).
+- **Riserve BASSE della #354**: `FATTE`. Review #715-M2 APPROVATO CON RISERVE (R-715-1-M2 COSMETICA).
+- Test: 243 passed.
+- **Bot #356 (BOCCIATO su 6872080)**: MEDIA sul report (riga «nessuna decisione») corretta; log dell'handoff in ordine reale; test che le risposte vere usano la cache. Review #721-M2 APPROVATO.
+- **Riserve della verifica esterna #356**: V-1 (test su `_finiti_jobs`), V-2 (righe vuote), V-3 (handoff) `FATTE`; V-4 BASSA registrata. Review #719-M2 APPROVATO.
+- **Merge di main (#355 di Mani) nel branch**: `FATTO` (2580889), review #716-M2 APPROVATO; test dei 4 file toccati: 558 passed.
+- #356 con riserve: resta per l'operatore (CLAUDE.md §10; nessuna regola notturna scritta nel repo).
+
+## Anomalie
+
+- Nessuna.
