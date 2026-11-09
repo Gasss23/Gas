@@ -2023,6 +2023,36 @@ def test_sintesi_frasi_fisse_dalla_cache(monkeypatch):
                         (srv.RISPOSTA_PAUSA, "v1")]
 
 
+@pytest.mark.parametrize("formato", ["audio+testo+pezzi", "audio+testo"])
+def test_sintesi_cache_usata_dalle_risposte(monkeypatch, formato):
+    """Bot #356 V-3: le risposte vere (pezzi, audio+testo, MP3 diretto) passano da sintesi(),
+    quindi «Dimmi.» finisce nella cache (chiave: funzione di sintesi, voce, frase)."""
+    import modules.voice.server as srv
+    cache = {}
+    monkeypatch.setattr(srv, "_cache_frasi", cache)
+    _, _, tts = _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(),
+                              trascrizione="Gas.", formato=formato)
+    assert [c.args[0] for c in tts.call_args_list] == ["Dimmi."]
+    assert [(k[2], v) for k, v in cache.items()] == [("Dimmi.", b"Dimmi.")]
+
+
+def test_sintesi_cache_usata_dal_mp3_diretto(monkeypatch):
+    """Bot #356 V-3: anche il ramo MP3 diretto (_do_tts_response) passa da sintesi():
+    la seconda «Dimmi.» viene dalla cache."""
+    import modules.voice.server as srv
+    chiamate, inviati = [], []
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+    monkeypatch.setattr(srv, "synthesize_speech", lambda f, k, v: chiamate.append(f) or f.encode())
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    h = VoiceHandler.__new__(VoiceHandler)
+    h._tempi = None
+    h._finiti_jobs = None
+    h._send_audio = inviati.append
+    h._do_tts_response("Dimmi.")
+    h._do_tts_response("Dimmi.")
+    assert chiamate == ["Dimmi."] and inviati == [b"Dimmi.", b"Dimmi."]
+
+
 def test_sintesi_errore_non_in_cache(monkeypatch):
     """Un errore di ElevenLabs passa al chiamante e non lascia niente in cache."""
     import modules.voice.server as srv
