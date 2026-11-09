@@ -168,20 +168,20 @@ Riga `#724-M2 … APPROVATO …` accodata in /home/user/Gas-sicura/.claude/agent
 
 Prossimo passo: `git cherry-pick --continue`. Per il gate serve prima `bash scripts/segna_review_ok.sh`, perché il diff in staging ora include anche la memoria.
 
-Review #726-M2 sul commit a2199c4 (verdetto integrale):
+Review #726-M2 sul commit a2199c4 (verdetto integrale; gli IPv4 d'esempio citati sono sostituiti con <IP-redatto> come chiede il gate IP):
 
 ## VERDETTO: APPROVATO CON RISERVE
 
 Review #726-M2. Il diff staged su feat/voce-v12-m2 tocca solo tests/test_unit_voice_server.py (+4/-3). Ho letto CLAUDE.md, le righe R8 di stato_progetto.md e la coda di memoria_revisore.md.
 
 **Cosa ho controllato nel diff**
-- `tests/test_unit_voice_server.py:2187-2192`: nel parametro di test_r8_bind_locale i tre IPv4 non loopback (0.0.0.0, 192.168.1.10, 100.64.0.5) sono stati sostituiti con «::», «2001:db8::10» e «fd7a:115c:a1e0::5». Rischio: la copertura si svuota. Esito **ok**, con una riserva bassa. `_bind_locale` (`modules/voice/server.py:404-413`) usa `ipaddress.ip_address(b).is_loopback`, che non dipende dalla famiglia IPv4/IPv6. I modi realistici di rompere la funzione vengono ancora presi:
+- `tests/test_unit_voice_server.py:2187-2192`: nel parametro di test_r8_bind_locale i tre IPv4 non loopback (<IP-redatto>, <IP-redatto>, <IP-redatto>) sono stati sostituiti con «::», «2001:db8::10» e «fd7a:115c:a1e0::5». Rischio: la copertura si svuota. Esito **ok**, con una riserva bassa. `_bind_locale` (`modules/voice/server.py:404-413`) usa `ipaddress.ip_address(b).is_loopback`, che non dipende dalla famiglia IPv4/IPv6. I modi realistici di rompere la funzione vengono ancora presi:
   - `is_private`: fd7a:: e :: risulterebbero privati e il test fallirebbe;
   - `not is_global`: 2001:db8:: è un indirizzo di documentazione e il test fallirebbe;
   - controllo solo IPv4: «::1» atteso True fallirebbe;
   - `startswith("127.")`: «127.evil.example» resta coperto.
   
-  Riserva: nessun IPv4 non loopback è più testato. Il caso più probabile nella realtà, «0.0.0.0», non ha più un test diretto. Il comportamento lo copre `is_loopback`, ma solo per semantica.
+  Riserva: nessun IPv4 non loopback è più testato. Il caso più probabile nella realtà, «<IP-redatto>», non ha più un test diretto. Il comportamento lo copre `is_loopback`, ma solo per semantica.
 - `tests/test_unit_voice_server.py:2204`: il test di avvio rifiutato ora usa BIND «::» con RETE_PRIVATA vuota, «0» e «no». Rischio: fail-closed non provato. Esito **ok**. «::» non è locale, quindi il controllo a `modules/voice/server.py:1345` restituisce 1 prima dell'import di gas. Il GasKernel finto lancia AssertionError se il server partisse. Il test verifica anche che il token non finisca nell'output.
 - `tests/test_unit_voice_server.py:2220`: il test di avvio consentito ora usa BIND «fd7a:115c:a1e0::5» con RETE_PRIVATA=1. Rischio: avvio reale del server oppure falso positivo. Esito **ok sul controllo**, con una riserva bassa. Il kernel finto lancia `_Fermo` prima di HTTPServer (`modules/voice/server.py:1355` contro `:1360`), quindi il server non parte mai davvero. Però `HTTPServer` è AF_INET: nella realtà un bind IPv6 fallirebbe con gaierror non gestito. L'esempio del test «parte» descrive quindi un caso che nella realtà non parte. Il limite c'era già e non è nel diff. Il caso reale, Tailscale 100.64/10, è IPv4.
 
@@ -192,7 +192,7 @@ Review #726-M2. Il diff staged su feat/voce-v12-m2 tocca solo tests/test_unit_vo
 **Wall of Shame**: nessuno slicing della history e nessuna simulazione di tool. Il diff tocca solo test e non tocca cap, `_get_window` né i provider.
 
 **Riserve (BASSE, da tracciare in stato_progetto.md)**
-1. R-726-1-M2: manca un caso IPv4 non loopback (es. 0.0.0.0) nel test di `_bind_locale`. È facoltativo: lo si può reintrodurre solo con un via libera umano al gate IP (`gasmerge-ip-ok`). Non va costruito l'indirizzo dinamicamente per aggirare il gate.
+1. R-726-1-M2: manca un caso IPv4 non loopback (es. l'indirizzo «tutte le interfacce») nel test di `_bind_locale`. È facoltativo: lo si può reintrodurre solo con un via libera umano al gate IP (`gasmerge-ip-ok`). Non va costruito l'indirizzo dinamicamente per aggirare il gate.
 2. R-726-2-M2: il test «avvio con rete privata parte» usa un IPv6 che HTTPServer (AF_INET) non saprebbe aprire. È un limite precedente al diff. Se in futuro si vuole supportare IPv6, serve un server con address_family AF_INET6, oppure un rifiuto chiaro con messaggio al posto del crash.
 
 **Cosa non ho verificato**: l'avvio reale del server su un'interfaccia Tailscale/VPS, perché non è riproducibile in questo ambiente. Non ho guardato nemmeno la parte di gasmerge.sh fuori dal regex, che si dichiara identica a fine_task_finale.sh.
@@ -212,7 +212,7 @@ Review #726-M2. Il diff staged su feat/voce-v12-m2 tocca solo tests/test_unit_vo
 - R-720-2-M2 BASSA (decisione dell'operatore): un client locale con token vecchio blocca per 15 minuti tutti i client su 127.0.0.1.
 - R-720-4-M2 BASSA: con 1024 IP già ricordati i nuovi non vengono più contati né bloccati (irrilevante su 127.0.0.1 o tunnel; da rivedere prima di un uso sul VPS).
 - R-720-5-M2 COSMETICA: una riga di log per ogni richiesta bloccata.
-- R-726-1-M2 BASSA: nessun IPv4 non loopback (es. 0.0.0.0) nel test di `_bind_locale`; reintrodurlo solo col via libera umano al gate IP.
+- R-726-1-M2 BASSA: nessun IPv4 non loopback (es. l'indirizzo «tutte le interfacce») nel test di `_bind_locale`; reintrodurlo solo col via libera umano al gate IP.
 - R-726-2-M2 BASSA: `HTTPServer` è solo IPv4: con un `GAS_VOICE_BIND` IPv6 l'avvio fallirebbe con un'eccezione non gestita (limite precedente).
 - Ereditate dalla #356: bot V-1/V-2 su 84b88f8 (chiuse in locale, PR di velocità a seguire), ve #356 V-4, bot su 0d34fe6 V-1/V-2/V-3 (log dell'handoff, test del tetto della cache, numero dei test nel report).
 - Non verificato: comportamento reale con un tunnel (Tailscale) e server avviato fuori da 127.0.0.1.
