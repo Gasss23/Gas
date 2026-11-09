@@ -237,13 +237,21 @@ def _pulisci_vecchi(root: Path) -> None:
         voci = list(cartella.iterdir())
     except OSError:
         return
+    posto = _leggi(cartella / ATTIVO) or {}
     for f in voci:
         try:
             if f.name == ATTIVO or f.stat().st_mtime > limite:
                 continue
             if f.suffix == ".json":
                 job = _leggi(f)
-                if not job or job.get("stato") not in ("ok", "ko"):
+                if not job:
+                    continue
+                # Bot #349 (a9a17a5) V-1 / R-707-1-M2: anche un compito rimasto «in_coda» o
+                # «in_corso» (scrittura fallita, crash) oltre il limite si cancella, se il
+                # posto in coda non è suo: contiene dati dell'operatore
+                aperto = job.get("stato") in ("in_coda", "in_corso")
+                if not (job.get("stato") in ("ok", "ko")
+                        or aperto and str(posto.get("id") or "") != f.stem):
                     continue
             elif not (f.name.startswith(".posto.") or ".tmp." in f.name):
                 continue
@@ -252,7 +260,7 @@ def _pulisci_vecchi(root: Path) -> None:
             logging.warning("sottofondo: pulizia di %s non riuscita: %s", f.name, e)
 
 
-_ultima_pulizia = 0.0
+_ultima_pulizia: Optional[float] = None  # time.monotonic() dell'ultima pulizia
 
 
 def controlla(root: Path, avvisa: Optional[Callable[[str, Path], Any]] = None) -> None:
@@ -267,8 +275,10 @@ def controlla(root: Path, avvisa: Optional[Callable[[str, Path], Any]] = None) -
             _ripulisci(root, avvisa)
         # Bot #346 (2d0977e) V-3: la pulizia dei compiti vecchi anche senza compiti nuovi,
         # al massimo una volta l'ora per processo (un elenco della cartella).
-        if time.time() - _ultima_pulizia > 3600 and cartella.is_dir():
-            _ultima_pulizia = time.time()
+        # Bot #349 (a9a17a5) V-2: orologio monotono (un salto dell'ora non ferma la pulizia)
+        adesso = time.monotonic()
+        if (_ultima_pulizia is None or adesso - _ultima_pulizia > 3600) and cartella.is_dir():
+            _ultima_pulizia = adesso
             _pulisci_vecchi(root)
     except Exception as e:
         logging.warning("sottofondo: controllo non riuscito: %s", e)
