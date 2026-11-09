@@ -2163,6 +2163,22 @@ class TestR8Limiti:
         assert self._giusto()[0] == 200
         assert self._sbagliato()[0] == 429       # il terzo fallito nella finestra blocca
 
+    def test_memoria_piena_conta_e_blocca_ancora(self, monkeypatch):
+        """R-720-4-M2 (bot #358): con la memoria piena l'IP nuovo si conta e si blocca lo stesso
+        (esce la voce più vecchia), la memoria resta entro il tetto."""
+        import modules.voice.server as srv
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "2")
+        monkeypatch.setattr(srv, "_FALLITI_MAX_IP", 3)
+        cls = self.server.RequestHandlerClass
+        adesso = time.monotonic()
+        cls.falliti = {f"ip-vecchio-{i}": [adesso - 10 + i] for i in range(3)}
+        cls.bloccati = {f"ip-bloccato-{i}": adesso + 100 + i for i in range(3)}
+        assert [self._sbagliato()[0] for _ in range(2)] == [401, 429]
+        assert self._giusto()[0] == 429                  # 127.0.0.1 bloccato davvero
+        assert "127.0.0.1" in cls.bloccati and len(cls.bloccati) == 3
+        assert "ip-bloccato-0" not in cls.bloccati       # uscito quello che scadeva prima
+        assert "ip-vecchio-0" not in cls.falliti and len(cls.falliti) <= 3
+
     def test_falliti_non_condivisi_con_la_classe_base(self, monkeypatch):
         monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "2")
         self._sbagliato()

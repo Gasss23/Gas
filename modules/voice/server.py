@@ -387,7 +387,7 @@ def _max_turni_ora() -> int:
 _MAX_FALLITI_DEFAULT = 10  # tentativi falliti per IP in _FALLITI_FINESTRA_S, poi blocco
 _FALLITI_FINESTRA_S = 600.0
 _FALLITI_BLOCCO_S = 900.0
-_FALLITI_MAX_IP = 1024  # IP ricordati al massimo (memoria limitata anche sotto attacco)
+_FALLITI_MAX_IP = 1024  # IP ricordati al massimo (memoria limitata; piena → esce il più vecchio)
 _MAX_TESTO_ORA_DEFAULT = 120
 
 
@@ -626,14 +626,19 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return False
         recenti = [t for t in falliti.pop(ip, []) if adesso - t < _FALLITI_FINESTRA_S] + [adesso]
         if len(recenti) >= _intero_env("GAS_VOICE_MAX_FALLITI", _MAX_FALLITI_DEFAULT):
-            if len(bloccati) < _FALLITI_MAX_IP:
-                bloccati[ip] = adesso + _FALLITI_BLOCCO_S
-                log.warning("AUTH BLOCCO ip=%s per %d s", ip, int(_FALLITI_BLOCCO_S))
+            # memoria piena (R-720-4-M2, bot #358): esce il blocco che scade per primo, mai
+            # si smette di bloccare l'IP che ha appena raggiunto la soglia
+            if len(bloccati) >= _FALLITI_MAX_IP:
+                del bloccati[min(bloccati, key=bloccati.__getitem__)]
+            bloccati[ip] = adesso + _FALLITI_BLOCCO_S
+            log.warning("AUTH BLOCCO ip=%s per %d s", ip, int(_FALLITI_BLOCCO_S))
             cls.bloccati, cls.falliti = bloccati, falliti
             self._send_json(429, {"error": "Troppi tentativi non autorizzati: riprova più tardi."})
             return False
-        if len(falliti) < _FALLITI_MAX_IP:
-            falliti[ip] = recenti
+        if len(falliti) >= _FALLITI_MAX_IP:
+            # memoria piena: esce l'IP col tentativo più vecchio, l'IP nuovo si conta sempre
+            del falliti[min(falliti, key=lambda k: falliti[k][-1])]
+        falliti[ip] = recenti
         cls.bloccati, cls.falliti = bloccati, falliti
         self._send_json(401, {"error": "Unauthorized"})
         return False
