@@ -24,6 +24,9 @@
 - Review #720-M2 e #722-M2 APPROVATO CON RISERVE (riserve di codice corrette: R-720-1, R-720-3, R-722-1), #723-M2 APPROVATO, #724-M2 APPROVATO (stesso contenuto riposizionato sopra la #356). Il commit 1c928ea ha lo stesso albero del commit revisionato 7e7f14b (`git diff 7e7f14b 1c928ea` vuoto).
 - **Bot #358 V-1 (BASSA, ma di sicurezza)**: con `GAS_VOICE_RETE_PRIVATA=1` il server accettava anche un bind su tutte le interfacce. `FATTA` (08e16aa): il server non parte mai su «tutte le interfacce» e, fuori da 127.0.0.1/«localhost», accetta solo un indirizzo IPv4 scritto per intero (niente nomi host, forme abbreviate come «0»/«0x0», IPv6, IPv4 dentro IPv6). Review #727-M2 e #728-M2 APPROVATO CON RISERVE (MEDIE R-727-1, R-728-1 chiuse qui), #729-M2 APPROVATO.
 - **Bot #358 su e63491b (BOCCIATO, MEDIA)**: V-1 MEDIA `FATTA` (il test del blocco «fuori da 127.0.0.1 senza rete privata» ora arriva proprio a quel controllo; mutante ucciso), V-2 BASSA `FATTA` (locale solo un IPv4 loopback o «localhost»: «::1» rifiutato con messaggio, niente crash), V-3 BASSA dichiarata in §0. Review #730-M2 APPROVATO CON RISERVE (R-730-1/2-M2 BASSE).
+- **Bot #358 su 9f1aee4 (BOCCIATO, MEDIA)**: V-1 MEDIA `FATTA` (21d5fe4): una pagina web qualsiasi poteva bloccare la voce per 15 minuti con richieste senza token; ora le richieste senza «Bearer <token>» ricevono 401 senza contare. Review #731-M2 APPROVATO CON RISERVE (R-731-1 MEDIA, R-731-2 BASSA).
+- **R-731-1-M2 MEDIA, DNS rebinding** `FATTA`: l'Host deve essere «localhost» o un indirizzo IP; un nome di dominio riceve 403 prima del controllo del token e non conta per il blocco (stessa idea già usata dalla pagina nel browser). Review #732-M2 APPROVATO.
+- **Bot #358 V-2 COSMETICA** (riga del §1 sul fail-closed): la descrizione completa è nella PR; qui: mai su tutte le interfacce, locale solo IPv4 loopback o «localhost», fuori da lì solo IPv4 scritto per intero e solo con rete privata dichiarata.
 - **Gate IP** (fine_task_finale): fermava il push per tre IPv4 d'esempio non loopback nei test. Sostituiti con IPv6 di documentazione/ULA, senza il marcatore `gasmerge-ip-ok` (via libera umano). Review #726-M2 APPROVATO CON RISERVE (R-726-1/2-M2 BASSE).
 
 ---
@@ -31,15 +34,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  14 ++
- modules/voice/server.py            | 164 ++++++++++++++++-
+ .claude/agents/memoria_revisore.md |  17 ++
+ modules/voice/server.py            | 202 ++++++++++++++++++-
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/proposta_voce_sicura.md    |  50 ++++++++++++
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    | 208 ++++++++++++++++++++++
+ tests/test_unit_voice_server.py    | 253 ++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 69d76b9 (merge della #356).
@@ -47,6 +50,11 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+12cc4b1 fix(voce): Host ammesso solo «localhost» o indirizzo IP — difesa dal DNS rebinding (R-731-1-M2)
+c00ee3d chore(revisore): memoria review #732 — APPROVATO
+21d5fe4 fix(voce): le richieste senza «Bearer <token>» non contano per il blocco (bot #358 V-1: una pagina web non può più bloccare la voce)
+ac5d29f chore(revisore): memoria review #731 — APPROVATO CON RISERVE
+9f1aee4 docs(voce): report R8 fetta 1 dopo il bot su e63491b — review #730 (chat M2)
 6e7ad81 fix(voce): test del blocco «fuori da 127.0.0.1 senza rete privata»; locale solo IPv4 loopback (bot #358 V-1/V-2)
 99413f7 chore(revisore): memoria review #730 — APPROVATO CON RISERVE
 e63491b docs(voce): handoff §3 con il log completo (chat M2)
@@ -335,13 +343,79 @@ Review #730-M2, PR di sicurezza #358, diff staged (2 file, +9/−4). Ho letto CL
 
 Memoria: aggiunta la riga #730-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con lo script (commit 99413f7). Nessuna lezione nuova.
 
+Review #731-M2 (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #731-M2 della PR di sicurezza #358 (chiude la V-1 MEDIA del bot su 9f1aee4). Ho esaminato `git diff --cached`: 2 file, +22 righe.
+
+**Cosa ho controllato nel diff**
+1. `modules/voice/server.py:589` — se la richiesta non porta un header «Bearer <qualcosa>» (header assente, «Bearer » vuoto, solo spazi, «Basic …», «bearer» senza spazio), `_autorizza` risponde 401 senza contarla e senza bloccare l'IP. Il blocco viene salvato di nuovo nella classe, come negli altri rami (copie riassegnate, nessun dict condiviso).
+   - Rischio esaminato: si può aggirare il tetto ai tentativi? No. Per provare un token bisogna mandare «Bearer <x>» non vuoto, e quei tentativi si contano ancora. Il controllo dell'IP già bloccato (429) avviene prima di questo ramo, quindi un IP bloccato resta bloccato.
+   - Esito: ok.
+2. `tests/test_unit_voice_server.py:2115` — `test_richieste_senza_token_non_bloccano`: 20 richieste senza header, 5 con «Bearer » vuoto e 5 con «Basic»; poi il token giusto (200) e infine 3 token sbagliati (401/401/429).
+   - Rischio esaminato: il test morde davvero?
+   - Esito: ok. L'ho verificato due volte. Il primo mutante (`if False and …`) era sbagliato per la precedenza tra and/or e il test passava, quindi non contava. Il mutante corretto (condizione sostituita da `if False:`) dà 1 failed. Il gruppo R8 dà 40 passed. Il file è stato ripristinato e il working tree è pulito.
+3. Contesto, file non toccato: `modules/voice/server.py:556` — `_check_auth` continua a scrivere «AUTH FAIL … header_mancante_o_malformato» per ogni richiesta senza header.
+   - Rischio esaminato: una pagina web può riempire gas_debug.log.
+   - Esito: ok. Il log è un RotatingFileHandler con dimensione massima e 3 file di backup (`gas.py:63`), quindi lo spazio occupato ha un limite. Nel log finiscono solo IP e motivo, mai il token.
+
+**Ricerca di altri modi per una pagina web di mandare «Bearer x»**
+- Credenziali nell'URL (`http://u:p@host`): il browser manda «Basic», che non si conta; `fetch()` rifiuta del tutto gli URL con credenziali. Non è un problema.
+- Form, img, script, beacon: non possono impostare l'header Authorization. Non è un problema.
+- fetch/XHR cross-origin con Authorization: richiede il preflight; OPTIONS non è gestito (501), quindi il preflight fallisce. Non è un problema.
+- **DNS rebinding: è un vettore ancora aperto.** Una pagina su un dominio dell'attaccante fa risolvere il proprio nome su loopback e diventa same-origin. A quel punto può mandare «Bearer x» senza preflight e bloccare la voce per 15 minuti. Il server non controlla l'header Host (grep di «Host» e «Origin» in `modules/voice/server.py`: nessun riscontro). Il problema c'era già prima di questa modifica e la patch non lo peggiora.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-731-1 (MEDIA)**: il blocco della voce si può ancora ottenere con il DNS rebinding. Correzione proposta: nel server, una lista bianca dell'header Host (localhost o loopback con la porta del server) controllata prima di `_autorizza`; una richiesta con Host estraneo riceve 400/403 e non si conta. Da fare in una fetta successiva.
+- **R-731-2 (BASSA)**: le richieste senza header ora non hanno nessun limite di frequenza; prima, dopo 10 ricevevano 429. Il costo per il server è basso (401 immediato, log a rotazione), quindi la accetto.
+
+**Cosa NON ho verificato**
+- Il comportamento reale dei browser (Chrome Private Network Access, Safari) contro il DNS rebinding verso loopback: non si può riprodurre in questo ambiente senza browser né Mac. Per questo la riserva resta MEDIA e non diventa un blocco.
+- Non ho rieseguito tutta la suite voce senza browser (292 passed dichiarati dall'agente): ho eseguito solo il gruppo R8 e il test mutante.
+
+Memoria aggiornata con la riga #731-M2 e una lezione sul DNS rebinding contro i server locali, già committata nel commit ac5d29f in `/home/user/Gas/.claude/agents/memoria_revisore.md` (eseguito `scripts/commit_memoria_revisore.sh`; lo staging del diff sotto review è intatto, 2 file, +22).
+
+Review #732-M2 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #732-M2, PR di sicurezza #358. Diff in staging: 2 file, +62/−1. Chiude la R-731-1-M2 MEDIA (DNS rebinding).
+
+Letture fatte prima della review: CLAUDE.md (sez. 5, 8 e 9), reports/stato_progetto.md (riga R8 fetta 1), memoria_revisore.md (lezioni del 2 nov sul confronto Origin==Host e lezione #731).
+
+Elementi del diff esaminati:
+- modules/voice/server.py:568 — `_host_ammesso()`. Toglie la porta, gestisce IPv6 tra parentesi e senza parentesi (con «::1» nudo, `count(":")>1` passa l'intero valore a ipaddress), accetta «localhost» (senza distinguere maiuscole) o un indirizzo IP valido. Rischio esaminato: un nome che passa per errore («127.0.0.1.evil.com», «localhost.», «[::1» senza parentesi chiusa, «0x7f000001»). Tutti finiscono in ValueError e vengono rifiutati, quindi il controllo sbaglia sempre dal lato della chiusura. Nel log c'è solo l'IP del client, mai l'Host né il token. — ok
+- modules/voice/server.py:600 — il controllo sta in testa a `_autorizza`, quindi vale per tutti e quattro i punti (do_POST :656/:673, do_GET :1168/:1175). Il 403 esce prima dei conteggi, perciò un Host di dominio non fa scattare il blocco della voce. Nessuna eccezione può sfuggire: c'è solo un try sul parsing e `headers.get`. — ok
+- tests/test_unit_voice_server.py:2142 — 5 Host di dominio danno 403, 403 anche col token giusto, kernel mai chiamato, poi il token giusto da 127.0.0.1 dà 200. Il test sostituisce `self.kernel.run_turn` senza monkeypatch, ma il kernel è nuovo per ogni test (setup_method), quindi non si propaga ad altri test. — ok
+- tests/test_unit_voice_server.py:2157 — test parametrico con localhost:porta, LOCALHOST, 127.0.0.1:porta e [::1]:porta: tutti 200. — ok
+- Contesto: clients/voice/browser_server.py:120 — lì la lista è più stretta (host esatto più la porta del proxy). Qui accettare qualsiasi IP, anche con porta diversa, è giustificato: il server può stare su un IPv4 privato (rete privata R8), e un IP letterale non può essere usato per il rebinding. Non è proprio «la stessa logica», ma la differenza è voluta e corretta. — ok
+
+Verifiche riprodotte da me:
+- Suite R8: 45 passed.
+- Mutante (`if not self._host_ammesso()` diventa `if False`): i test «host» danno 1 failed (test_host_di_dominio_rifiutato_e_non_conta) e 6 passed. File ripristinato dall'index; il diff in staging è invariato (+62/−1).
+
+Risposte alle domande:
+1. Host assente: va bene che passi. I browser con HTTP/1.1 mandano sempre Host, e chi scrive richieste a mano senza Host deve comunque superare il controllo del token e il tetto ai tentativi.
+2. IP come Host: sicuro contro il rebinding. Il rebinding ha bisogno di un nome che il browser rifà risolvere: con un IP l'origine è quell'IP. Una pagina servita da un'altra porta locale ha un'origine diversa, quindi per mandare Authorization serve il preflight. E le richieste senza «Bearer» non contano dal #731.
+3. 404/405 fuori da `_autorizza`: va bene. Non toccano il kernel né il conteggio dei tentativi, quindi non c'è niente da proteggere e il blocco non si può alimentare.
+
+Rischi esclusi (non verificati):
+- Comportamento reale di Chrome e Safari sul Mac con un dominio che si fa risolvere su loopback: non riproducibile qui. Ho controllato solo con http.client e un Host forzato.
+- Le suite senza browser (352) e i 15 test browser non li ho rilanciati: mi fido del dato dell'agente, anche perché le prove mirate sono verdi.
+- Un client che manda due header Host: `headers.get` prende il primo. Un browser non può farlo, quindi l'ho lasciato fuori come non rilevante per il rebinding.
+
+Nessuna riserva nuova.
+
+Memoria: aggiunta la riga #732-M2 (APPROVATO, nessuna lezione nuova) in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (commit c00ee3d, solo quel file).
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: +1 classe `TestR8Limiti` (blocco e scadenza, token giusto bloccato, log senza token, stato non condiviso, tetto al testo, ordine dei due tetti nei due versi, soglie scritte male) e test `test_r8_*` (indirizzo locale, avvio rifiutato, avvio con rete privata dichiarata). R8: 24 passed. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed, 15 deselected (sullo stesso albero, prima del riposizionamento). Mutanti uccisi: ramo del blocco, tetto al testo, fail-closed, stato condiviso, soglia mai raggiunta, ordine dei tetti. Dopo a2199c4: `pytest -q tests/test_unit_voice_server.py -k r8` → 23 passed (un caso di indirizzo in meno nel test parametrico). Dopo l'ultimo fix: R8 39 passed, suite voce 291 passed. Dopo 08e16aa: R8 38 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 290 passed, 15 deselected. Test nuovi: rifiuto di «tutte le interfacce» con e senza rete privata, di nomi host, forme abbreviate, IPv6 e IPv4 dentro IPv6; avvio consentito con un IPv4 della rete del tunnel. `gas.py` non toccato.
+`tests/test_unit_voice_server.py`: +1 classe `TestR8Limiti` (blocco e scadenza, token giusto bloccato, log senza token, stato non condiviso, tetto al testo, ordine dei due tetti nei due versi, soglie scritte male) e test `test_r8_*` (indirizzo locale, avvio rifiutato, avvio con rete privata dichiarata). R8: 24 passed. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed, 15 deselected (sullo stesso albero, prima del riposizionamento). Mutanti uccisi: ramo del blocco, tetto al testo, fail-closed, stato condiviso, soglia mai raggiunta, ordine dei tetti. Dopo a2199c4: `pytest -q tests/test_unit_voice_server.py -k r8` → 23 passed (un caso di indirizzo in meno nel test parametrico). Finale: R8 45 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_prova_voci.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 352 passed; i 15 test browser passano. Prima: R8 39 passed, suite voce 291 passed. Dopo 08e16aa: R8 38 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 290 passed, 15 deselected. Test nuovi: rifiuto di «tutte le interfacce» con e senza rete privata, di nomi host, forme abbreviate, IPv6 e IPv4 dentro IPv6; avvio consentito con un IPv4 della rete del tunnel. `gas.py` non toccato.
 
 ## §6 STATO CI
 
-Head e63491b: verifica-bot failure (BOCCIATO per V-1 MEDIA, corretta qui); handoff-check success. Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
+Head 9f1aee4: verifica-bot failure (BOCCIATO per V-1 MEDIA, corretta qui; R-731-1 MEDIA del revisore corretta qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -353,6 +427,7 @@ Head e63491b: verifica-bot failure (BOCCIATO per V-1 MEDIA, corretta qui); hando
 - Limite di progetto (review #729-M2): con `GAS_VOICE_RETE_PRIVATA=1` non si verifica che l'IPv4 sia davvero quello del tunnel; un IPv4 pubblico del computer verrebbe accettato. Da rivedere prima dell'uso sul VPS (fetta TLS o controllo dell'interfaccia).
 - R-730-1-M2 BASSA: IPv4 d'esempio costruiti da intero nei test (decisione in §0).
 - R-730-2-M2 BASSA: nessun test avvia run_server con «::1» (rifiuto verificato a mano dal revisore).
+- R-731-2-M2 BASSA: le richieste senza token non hanno più un tetto (401 immediato, log a rotazione).
 - «localhost» vale come locale e dipende da /etc/hosts (dichiarato nella docstring).
 - Ereditate dalla #356: bot V-1/V-2 su 84b88f8 (chiuse in locale, PR di velocità a seguire), ve #356 V-4, bot su 0d34fe6 V-1/V-2/V-3 (log dell'handoff, test del tetto della cache, numero dei test nel report).
 - Non verificato: comportamento reale con un tunnel (Tailscale) e server avviato fuori da 127.0.0.1.
