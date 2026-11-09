@@ -16,7 +16,8 @@
 - **PR #354** (riserve BASSE aperte): `MERGIATA` (fa6b1f3) col sì dell'operatore via M1, dopo il merge della #353 di Mani nel branch (review #714-M2).
 - **Cache delle frasi fisse** (velocità, decisione dell'operatore via M1): `FATTA` — `sintesi()` in `modules/voice/server.py`: «Dimmi.», «Va bene.», «Non ho capito bene…», «Il resto è a schermo.» ecc. sintetizzate una volta per processo e voce, poi dalla memoria (niente attesa né costo ElevenLabs); solo testi fissi del codice, mai testo del modello o dell'operatore.
 - **Riserve BASSE della #354**: `FATTE` — test della pulizia con «in_coda» (bot #354 V-1), `_finiti_jobs` azzerato a inizio richiesta (R-711-3-M2), lambda → funzione, parentesi esplicite nella condizione del segno (ve #354 V-3).
-- Review #715-M2 APPROVATO CON RISERVE (R-715-1-M2 COSMETICA).
+- Review #715-M2 APPROVATO CON RISERVE (R-715-1-M2 COSMETICA, chiusa in e97de50).
+- **Riserve della verifica esterna #356 (68a9c8d)**: V-1 BASSA `FATTA` (test `test_f32c_finiti_jobs_azzerati_a_ogni_richiesta`, mutante ucciso), V-2 COSMETICA `FATTA` (righe vuote), V-3 BASSA `FATTA` (§3 e §6 aggiornati); V-4 BASSA (cache utile solo nei pezzi, `api_key` fuori dalla chiave) registrata. Review #719-M2 APPROVATO.
 - **Merge di main (#355 di Mani) nel branch** per togliere il conflitto (MEDIA della verifica esterna sulla #356): `FATTO` (2580889), review #716-M2 APPROVATO; conflitti solo su report e memoria.
 
 ---
@@ -24,15 +25,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  3 +
- modules/voice/server.py            | 44 +++++++++++++++++++++++++++-----
+ .claude/agents/memoria_revisore.md |  4 +++
+ modules/voice/server.py            | 44 +++++++++++++++++++++----
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_sottofondo.py      | 26 +++++++++++++------
- tests/test_unit_voice_server.py    | 51 ++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_sottofondo.py      | 25 +++++++++++----
+ tests/test_unit_voice_server.py    | 66 ++++++++++++++++++++++++++++++++++++--
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main b827447 (merge della #355, entrato nel branch col merge 2580889).
@@ -41,6 +42,10 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 
 ```
 2580889 Merge origin/main (#355, voce via Telegram fetta 2) in feat/voce-v12-m2
+e97de50 test(voce): azzeramento di _finiti_jobs a ogni richiesta provato; righe vuote tolte (ve #356 V-1/V-2)
+d722506 chore(revisore): memoria review #719 — APPROVATO
+68a9c8d docs(voce): #356 resta per l'operatore; tolta la regola notturna scritta dall'agente (allineamento con M1, chat M2)
+8629e79 docs(voce): report dopo il merge di main (#355) e regola di merge notturna R11 (chat M2)
 84b88f8 docs(voce): report di fine task — cache delle frasi fisse; PR #354 mergiata (chat M2)
 b97a570 perf(voce): cache della sintesi per le frasi fisse del server voce; riserve BASSE della #354 (in_coda, _finiti_jobs, parentesi, lambda) (decisione dell'operatore via M1)
 9301c2f chore(revisore): memoria review #715 — APPROVATO CON RISERVE
@@ -107,17 +112,47 @@ Ho letto prima CLAUDE.md (dato nel contesto), la parte utile di reports/stato_pr
 - Ho aggiunto la riga `#716-M2 — 2026-11-09 — APPROVATO — …` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza lezioni nuove.
 - Ho fatto solo `git add .claude/agents/memoria_revisore.md`. Come chiesto, non ho lanciato commit_memoria_revisore.sh, perché il merge è in corso: la memoria entra col commit di merge.
 
+Review #719-M2 sul commit e97de50 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+In breve: il nuovo test riconosce davvero il difetto (se si toglie la riga di azzeramento fallisce, con la riga passa). Le due righe vuote tolte sono solo cosmetiche. Il diff tocca solo i test, quindi non indebolisce nessun guardrail.
+
+Ho letto prima CLAUDE.md (già in contesto; il diff non tocca lo slicing della history né la simulazione dei tool), le parti di reports/stato_progetto.md sulla #356 e la coda di .claude/agents/memoria_revisore.md.
+
+Cosa ho esaminato:
+- `tests/test_unit_voice_server.py:1985` — il nuovo test `test_f32c_finiti_jobs_azzerati_a_ogni_richiesta`. Mette in `_finiti_jobs` un compito "rimasto" da una richiesta precedente sulla stessa connessione, chiama `do_POST` su un path inesistente (prende il ramo 404, `modules/voice/server.py:524`) e poi `_segna_finiti_letti()`. Controlla che `segna_letti`, sostituito nel test, non venga chiamato.
+  - Rischio esaminato: il test potrebbe passare per caso, perché `_segna_finiti_letti` (`modules/voice/server.py:728`) intercetta le eccezioni e una lista vuota si otterrebbe anche se la funzione fallisse in silenzio.
+  - Ho rifatto il mutante su una copia dell'index (scratchpad, via `git checkout-index`): con la riga 506 il test passa, senza fallisce. Quindi il test distingue i due casi.
+  - Esito: ok.
+- `modules/voice/server.py:506` (contesto, non toccato) — l'azzeramento `self._finiti_jobs = None` a inizio `do_POST`. È il comportamento che il test protegge e chiude la V-1 BASSA della verifica esterna #356. Esito: ok.
+- `tests/test_unit_sottofondo.py:826` e `tests/test_unit_voice_server.py:1985` — tolte le righe vuote di troppo prima della funzione successiva (R-715-1-M2 COSMETICA). `git diff --cached --check` è pulito. Esito: ok.
+
+Esecuzione: `pytest tests/test_unit_voice_server.py tests/test_unit_sottofondo.py -k "not browser"` dà 192 passed e 21 deselected. Tu dichiari 198 passed: la differenza dipende quasi certamente dal filtro diverso con cui escludi i test browser, non da test che falliscono. Non è una riserva. Nel report scrivi il comando esatto che hai usato.
+
+Cosa NON ho verificato:
+- Il caso keep-alive reale, cioè due richieste HTTP sulla stessa connessione socket con un server vivo. Il test lo simula chiamando direttamente `do_POST` su un handler costruito con `__new__`, e non l'ho riprodotto end-to-end.
+- I test browser esclusi dal filtro, che il diff non tocca.
+
+Memoria: ho scritto la riga contatore `#719-M2 — 2026-11-09 — APPROVATO — …` (nessuna lezione nuova) e l'ho committata con lo script, commit d722506. Il diff staged dei due test è rimasto intatto nell'index.
+
+File:
+- /home/user/Gas/tests/test_unit_voice_server.py
+- /home/user/Gas/tests/test_unit_sottofondo.py
+- /home/user/Gas/modules/voice/server.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: 3 nuovi (cache: una sola sintesi per frase fissa e voce, testo libero mai in cache, audio vuoto mai in cache; errore non in cache; tetto della cache). `tests/test_unit_sottofondo.py`: pulizia parametrica su «in_corso»/«in_coda», con e senza posto. Suite voce server + sottofondo + telegram_voce: 243 passed (intere). `gas.py` non toccato.
+`tests/test_unit_voice_server.py`: 3 nuovi (cache: una sola sintesi per frase fissa e voce, testo libero mai in cache, audio vuoto mai in cache; errore non in cache; tetto della cache). `tests/test_unit_sottofondo.py`: pulizia parametrica su «in_corso»/«in_coda», con e senza posto. Suite voce server + sottofondo + telegram_voce: 243 passed (intere). `gas.py` non toccato. In più `test_f32c_finiti_jobs_azzerati_a_ogni_richiesta` (ve #356 V-1). Comando dopo e97de50: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py -k "not conversazione_nel_browser"` → 198 passed, 15 deselected.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. Head precedente 84b88f8: CI verde e bot APPROVATA (BASSE: frasi fisse spezzate nei pezzi non in cache; commento). Nuovo head col merge: run non ancora disponibile alla scrittura dell'handoff.
+Head 68a9c8d: handoff-check e verifica-bot success, unit-suite in corso al momento della verifica esterna (commento sulla PR #356). Nuovo head con e97de50: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-715-1-M2 COSMETICA: tre righe vuote prima dei test nuovi (2 file).
+- Ve #356 V-4 BASSA: la cache vale solo nelle risposte a pezzi (nel formato unico il parlato unito non è una frase fissa); `api_key` non nella chiave della cache.
 - R-713-1-M2 BASSA (in parte): test del client chiuso nei pezzi con schermo e dell'ordine invio→segno.
 - R-713-2-M2 BASSA: attivo.json illeggibile + durata > giorni → compito vivo senza file.
 - Restano: R-709-1/2-M2, R-708-1-M2, R-706-1-M2, R-701-3-M2, R-703-2-M2, R-696-1-M2.
