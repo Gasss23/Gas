@@ -666,11 +666,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
         else:
             if finiti:
                 result_content = f"{finiti}\n\n{result_content}"
-                self._segna_finiti_letti()  # a testo il client lo mostra: consegnato
             out: Dict[str, Any] = {"content": result_content}
             if self._capito is not None:
                 out["capito"] = self._capito
             self._send_json(200, out)
+            # R-711-2-M2: a testo il client lo mostra; segnati DOPO l'invio riuscito
+            self._segna_finiti_letti()
 
     def _compiti_finiti(self) -> str:
         """Fetta 3.2 (chat M2, 7 nov): la frase sui compiti in sottofondo finiti e non ancora
@@ -718,11 +719,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
         else:  # V-2 bot #318: senza TTS il messaggio arriva lo stesso, come testo (mai un 503)
             if prefisso:
                 testo = f"{prefisso}\n\n{testo}"
-                self._segna_finiti_letti()  # a testo il client lo mostra: consegnato
             out: Dict[str, Any] = {"content": testo, segno: True}
             if self._capito is not None:
                 out["capito"] = self._capito
             self._send_json(200, out)
+            self._segna_finiti_letti()  # R-711-2-M2: dopo l'invio riuscito
 
     def _turni_recenti(self) -> List[float]:
         """Istanti delle richieste a voce (chiamate a Groq) e, dalla V12, delle richieste a testo
@@ -771,19 +772,23 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if self._capito is not None:  # V6: quello che Whisper ha sentito, per la pagina
             out["capito"] = self._capito
         api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        # Bot #352 (f6de3e6) V-1, regola unica: con uno schermo i compiti sono consegnati
+        # quando il testo arriva (anche se la voce fallisce); senza schermo solo se detti.
+        # R-711-2-M2: il segno parte sempre DOPO l'invio riuscito.
+        schermo = not self._vuole_righe_senza_schermo()
+        consegnati = False
         if not (text.strip() or prefisso):  # R-710-1-M2: col prefisso si sintetizza lo stesso
             pass
         elif not api_key:
             out["errore_voce"] = "TTS non disponibile: ELEVENLABS_API_KEY non configurata"
-            if not self._vuole_righe_senza_schermo():  # a schermo il testo si legge
-                self._segna_finiti_letti()
+            consegnati = schermo
         else:
             voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
             prima = _dividi_frasi(" ".join(prefisso.split())) if prefisso else []
             resto = lambda frasi: frasi if text.strip() else []  # noqa: E731
             if self._formato() == _FORMATO_PEZZI:
                 self._do_pezzi_response(out, prima + resto(frasi_parlate(text)), api_key,
-                                        voice_id, n_prefisso=len(prima))
+                                        voice_id, n_prefisso=len(prima), schermo=True)
                 return
             if self._vuole_righe_senza_schermo():  # V10: tutto a voce, frase per frase
                 self._do_pezzi_response(out, prima + resto(frasi_voce(text)), api_key,
@@ -794,7 +799,6 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 parlato = " ".join(prima + ([parte_parlata(text)] if text.strip() else []))
                 out["audio"] = base64.b64encode(
                     synthesize_speech(parlato, api_key, voice_id)).decode("ascii")
-                self._segna_finiti_letti()
             except ElevenLabsTTSError as exc:
                 log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
                 out["errore_voce"] = f"Errore TTS ElevenLabs: {exc.message}"
@@ -803,10 +807,13 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 out["errore_voce"] = "Errore di rete verso ElevenLabs TTS"
             finally:  # R-614-1-M2: anche un TTS fallito o in timeout ha il suo tempo
                 self._segna("voce", t)
+            consegnati = True  # ramo MP3 unico: formato con schermo, il testo arriva sempre
         self._send_json(200, out)
+        if consegnati:
+            self._segna_finiti_letti()
 
     def _do_pezzi_response(self, primo: Dict[str, Any], frasi: List[str], api_key: str,
-                           voice_id: str, n_prefisso: int = 0) -> None:
+                           voice_id: str, n_prefisso: int = 0, schermo: bool = False) -> None:
         """V7b: risposta a righe JSON (NDJSON), una sintesi per frase.
         Riga 1: `primo` (content, capito, …) + "audio" della prima frase + "pezzi" (frasi
         totali). Poi una riga {"audio": …} per ogni frase successiva, appena pronta. Ultima
@@ -846,11 +853,13 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if errore is not None:
                 uscita["errore_voce"] = errore
             aperto = riga(uscita)
+            if aperto and (schermo and i == 0
+                           or errore is None and n_prefisso and i + 1 == n_prefisso):
+                # ve #350 V-1: con lo schermo i compiti arrivano con la prima riga (content),
+                # anche se la voce fallisce; senza schermo quando ne sono state dette le frasi
+                self._segna_finiti_letti()
             if errore is not None or not aperto:
                 break
-            if n_prefisso and i + 1 == n_prefisso:
-                # ve #350 V-1: le frasi dei compiti finiti sono arrivate al client
-                self._segna_finiti_letti()
         self._segna("voce_tutta", t_tutta)
         tempi = self._chiudi_tempi(200)
         if aperto:

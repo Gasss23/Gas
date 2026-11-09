@@ -1813,15 +1813,29 @@ def _letto(f):
 
 
 def test_f32b_sintesi_fallita_non_segna_letti(tmp_path):
-    """Ve #350 V-1: se la sintesi della prima frase fallisce, i compiti non risultano letti
-    (si ridicono alla prossima attivazione)."""
+    """Ve #350 V-1: senza schermo (audio+pezzi), se la sintesi della prima frase fallisce i
+    compiti non risultano letti (si ridicono alla prossima attivazione)."""
     from modules.voice.tts import ElevenLabsTTSError
     f = _compito_finito(tmp_path, "20261108-100000-aaaaaa")
 
     def _rotta(frase, k, v):
         raise ElevenLabsTTSError(500, "giù")
-    _voce_a_pezzi("Ciao.", _rotta, root=tmp_path)
+    _voce_a_pezzi("Ciao.", _rotta, formato="audio+pezzi", root=tmp_path)
     assert not _letto(f)
+
+
+@pytest.mark.parametrize("formato", ["audio+testo+pezzi", "audio+testo"])
+def test_f32c_con_schermo_voce_fallita_segna_letti(tmp_path, formato):
+    """Bot #352 (f6de3e6) V-1, regola unica: con uno schermo il testo con i compiti arriva
+    anche se la voce fallisce → letti; R-711-1-M2: test di sintesi fallita nel ramo MP3 unico."""
+    from modules.voice.tts import ElevenLabsTTSError
+    f = _compito_finito(tmp_path, "20261109-100000-aaaaaa")
+
+    def _rotta(frase, k, v):
+        raise ElevenLabsTTSError(500, "giù")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", _rotta, formato=formato, root=tmp_path)
+    assert righe[0]["content"].startswith("Ho finito") and "errore_voce" in righe[0]
+    assert _letto(f)
 
 
 def test_f32b_segnati_appena_dette_le_frasi_dei_compiti(tmp_path):
@@ -1912,3 +1926,59 @@ def test_f32b_mp3_diretto(tmp_path):
         srv.shutdown()
         srv.server_close()
     assert corpo.startswith("Ho finito il compito") and corpo.endswith("Ciao.") and _letto(f)
+
+
+
+def test_f32c_mp3_diretto_sintesi_fallita_non_segna(tmp_path):
+    """R-711-1-M2: ramo audio/mpeg con sintesi fallita (502) → compiti non letti."""
+    from unittest.mock import patch
+    import urllib.request
+    import urllib.error
+    from modules.voice.server import VoiceHandler
+    from modules.voice.tts import ElevenLabsTTSError
+    f = _compito_finito(tmp_path, "20261109-100000-bbbbbb")
+
+    class _K:
+        root = tmp_path
+
+        def run_turn(self, prompt, **kw):
+            yield {"type": "final", "content": "Ciao."}
+
+    class _H(VoiceHandler):
+        pass
+    _H.kernel = _K()
+    _H.token = "tok"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=b"RIFF" + bytes(60),
+        method="POST", headers={"Authorization": "Bearer tok", "Content-Type": "audio/wav",
+                                "Accept": "audio/mpeg"})
+
+    def _rotta(frase, k, v):
+        raise ElevenLabsTTSError(500, "giù")
+    codice = None
+    try:
+        with patch("modules.voice.server.transcribe_audio", side_effect=["Gas, dimmi"]), \
+             patch("modules.voice.server.synthesize_speech", side_effect=_rotta), \
+             patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            try:
+                urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=10)
+            except urllib.error.HTTPError as e:
+                codice = e.code
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert codice == 502 and not _letto(f)
+
+
+def test_f32c_dimmi_senza_tts_a_testo(tmp_path):
+    """Bot #352 V-1 (893b863): «Dimmi.» senza chiave TTS, risposta JSON a testo: compiti come
+    primo paragrafo e segnati letti dopo l'invio."""
+    f = _compito_finito(tmp_path, "20261109-100000-cccccc")
+    ct, righe, tts = _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(),
+                                   chiave=None, trascrizione="Gas.", root=tmp_path,
+                                   formato="")
+    assert righe[0]["content"].startswith("Ho finito") and righe[0]["content"].endswith("Dimmi.")
+    assert _letto(f)
