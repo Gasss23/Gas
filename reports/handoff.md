@@ -27,6 +27,8 @@
 - **Bot #358 su 9f1aee4 (BOCCIATO, MEDIA)**: V-1 MEDIA `FATTA` (21d5fe4): una pagina web qualsiasi poteva bloccare la voce per 15 minuti con richieste senza token; ora le richieste senza «Bearer <token>» ricevono 401 senza contare. Review #731-M2 APPROVATO CON RISERVE (R-731-1 MEDIA, R-731-2 BASSA).
 - **R-731-1-M2 MEDIA, DNS rebinding** `FATTA`: l'Host deve essere «localhost» o un indirizzo IP; un nome di dominio riceve 403 prima del controllo del token e non conta per il blocco (stessa idea già usata dalla pagina nel browser). Review #732-M2 APPROVATO.
 - **Bot #358 V-2 COSMETICA** (riga del §1 sul fail-closed): la descrizione completa è nella PR; qui: mai su tutte le interfacce, locale solo IPv4 loopback o «localhost», fuori da lì solo IPv4 scritto per intero e solo con rete privata dichiarata.
+- **Merge di main (#357 di Mani)** per togliere il conflitto (ve #358 V-1): `FATTO`; conflitti solo su report e memoria; review #733-M2 APPROVATO.
+- **Verifica esterna e bot su 39ec264**: APPROVATO CON RISERVE (solo BASSE: rete privata solo dichiarativa, log delle richieste senza token senza tetto, nomi host via tunnel rifiutati, handoff poco leggibile). Commento: https://github.com/Gasss23/Gas/pull/358#issuecomment-6749884432
 - **Gate IP** (fine_task_finale): fermava il push per tre IPv4 d'esempio non loopback nei test. Sostituiti con IPv6 di documentazione/ULA, senza il marcatore `gasmerge-ip-ok` (via libera umano). Review #726-M2 APPROVATO CON RISERVE (R-726-1/2-M2 BASSE).
 
 ---
@@ -34,22 +36,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  17 ++
- modules/voice/server.py            | 202 ++++++++++++++++++-
+ .claude/agents/memoria_revisore.md |  18 ++
+ modules/voice/server.py            | 202 ++++++++++++-
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/proposta_voce_sicura.md    |  50 ++++++++++++
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    | 253 ++++++++++++++++++++++++
+ tests/test_unit_voice_server.py    | 253 ++++++++++++++++
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 69d76b9 (merge della #356).
+NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 524ae96 (merge della #357, entrato col merge di questa sessione).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7854200 Merge origin/main (#357 di Mani) nella PR di sicurezza #358
+39ec264 docs(voce): report R8 fetta 1 — richieste senza token e DNS rebinding, review #731–#732 (chat M2)
 12cc4b1 fix(voce): Host ammesso solo «localhost» o indirizzo IP — difesa dal DNS rebinding (R-731-1-M2)
 c00ee3d chore(revisore): memoria review #732 — APPROVATO
 21d5fe4 fix(voce): le richieste senza «Bearer <token>» non contano per il blocco (bot #358 V-1: una pagina web non può più bloccare la voce)
@@ -409,13 +413,41 @@ Nessuna riserva nuova.
 
 Memoria: aggiunta la riga #732-M2 (APPROVATO, nessuna lezione nuova) in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (commit c00ee3d, solo quel file).
 
+Review #733-M2 sul merge di main (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #733-M2: merge in corso di origin/main 524ae96 (PR #357) in feat/voce-v12-m2 (PR #358, head 39ec264), base comune 69d76b9.
+
+Ho letto: CLAUDE.md §5 (righe 37-38: nessuno slicing della history e nessuna simulazione di tool in questo diff), la memoria del revisore (ultime righe #730-M2..#732-M2, #726) e la riga di stato_progetto aggiunta dal merge.
+
+Elementi esaminati:
+- `modules/telegram/bot.py:995`: `testo_da_dire` importa `parte_parlata` da `modules/voice/server.py`. Il rischio era che la #358 avesse cambiato questa funzione o le altre importate da bot.py. Le ho confrontate con l'AST tra la base 69d76b9 e l'albero di lavoro: `parte_parlata`, `cervello_voce`, `istruzione_turno_voce` e `_USO_FORTE_PARLATO` sono identiche. I blocchi della #358 aggiungono solo codice: tetti e `_bind_locale` dopo `_max_turni_ora`, `_host_ammesso` e `_autorizza` nell'handler, il controllo in `run_server`. A livello di modulo aggiunge solo `import hmac` e `import ipaddress` (librerie standard di Python) e delle costanti, quindi l'import fatto da bot.py non può rompersi. Esito: ok.
+- `modules/telegram/bot.py:1047`: chiama `synthesize_speech(..., timeout=VOCE_TIMEOUT_S)`. Il rischio era che il parametro non esistesse. La firma in `modules/voice/tts.py:85` ha `timeout: float`. Anche `_tg_post_file` accetta `timeout` (`modules/telegram/bot.py:1014`). Esito: ok.
+- `modules/telegram/bot.py:64` e `tests/test_unit_telegram_voce.py:475`: il lato main è identico a 524ae96. `git diff --cached 524ae96` su questi due file è vuoto. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1390`: l'unione dei due lati. Ho confrontato le righe uniche di HEAD e di MERGE_HEAD con quelle nell'index: nessuna riga persa su nessuno dei due lati. Nessun marcatore di conflitto, `git ls-files -u` è vuoto e `git diff --cached --check` è pulito. Esito: ok.
+- `reports/stato_progetto.md`: rispetto a 524ae96 c'è una sola riga aggiunta, quella della R8 fetta 1 della #358, quindi l'unione è corretta. Esito: ok.
+
+Test che ho rieseguito: `tests/test_unit_telegram_voce.py` e `tests/test_unit_voice_server.py` sull'albero di lavoro, 248 passed.
+
+Cosa non ho verificato:
+- Non ho rieseguito sottofondo e voce_ascolto: mi fido dei tuoi 607 passed.
+- Non ho controllato che i report della #358 tenuti col tuo lato (`--ours`: handoff.md, ultimo_report.md, diff_sessione.md) siano coerenti col nuovo stato dopo il merge. Va fatto quando li aggiorni a fine task.
+- Non ho provato la voce Telegram dal vivo (ElevenLabs e Telegram veri): non si riproduce in questo ambiente.
+
+Memoria: ho aggiunto in coda la riga contatore #733-M2 e ho fatto solo `git add .claude/agents/memoria_revisore.md`, come richiesto. Non ho lanciato `scripts/commit_memoria_revisore.sh` perché il suo `commit -o` non è ammesso mentre il merge è in corso. La riga entrerà nel commit di merge.
+
+Nota sull'hook: il gate di review (`.claude/hooks/review_gate.sh`) ha bloccato il mio primo comando, che conteneva solo `echo` e `git add`. Il motivo è che il testo della riga di memoria includeva la parola "commit". Ho riformulato la riga e il comando è passato. Prima di chiudere il merge devi comunque rigenerare il marcatore con `bash scripts/segna_review_ok.sh`.
+
+File rilevanti: /home/user/Gas/modules/telegram/bot.py, /home/user/Gas/modules/voice/server.py, /home/user/Gas/modules/voice/tts.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: +1 classe `TestR8Limiti` (blocco e scadenza, token giusto bloccato, log senza token, stato non condiviso, tetto al testo, ordine dei due tetti nei due versi, soglie scritte male) e test `test_r8_*` (indirizzo locale, avvio rifiutato, avvio con rete privata dichiarata). R8: 24 passed. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed, 15 deselected (sullo stesso albero, prima del riposizionamento). Mutanti uccisi: ramo del blocco, tetto al testo, fail-closed, stato condiviso, soglia mai raggiunta, ordine dei tetti. Dopo a2199c4: `pytest -q tests/test_unit_voice_server.py -k r8` → 23 passed (un caso di indirizzo in meno nel test parametrico). Finale: R8 45 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_prova_voci.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 352 passed; i 15 test browser passano. Prima: R8 39 passed, suite voce 291 passed. Dopo 08e16aa: R8 38 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 290 passed, 15 deselected. Test nuovi: rifiuto di «tutte le interfacce» con e senza rete privata, di nomi host, forme abbreviate, IPv6 e IPv4 dentro IPv6; avvio consentito con un IPv4 della rete del tunnel. `gas.py` non toccato.
+`tests/test_unit_voice_server.py`: +1 classe `TestR8Limiti` (blocco e scadenza, token giusto bloccato, log senza token, stato non condiviso, tetto al testo, ordine dei due tetti nei due versi, soglie scritte male) e test `test_r8_*` (indirizzo locale, avvio rifiutato, avvio con rete privata dichiarata). R8: 24 passed. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed, 15 deselected (sullo stesso albero, prima del riposizionamento). Mutanti uccisi: ramo del blocco, tetto al testo, fail-closed, stato condiviso, soglia mai raggiunta, ordine dei tetti. Dopo a2199c4: `pytest -q tests/test_unit_voice_server.py -k r8` → 23 passed (un caso di indirizzo in meno nel test parametrico). Finale: R8 45 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_prova_voci.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 352 passed; i 15 test browser passano. Dopo il merge di main: voice_server + telegram_voce + sottofondo + voce_ascolto senza browser → 607 passed. Prima: R8 39 passed, suite voce 291 passed. Dopo 08e16aa: R8 38 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 290 passed, 15 deselected. Test nuovi: rifiuto di «tutte le interfacce» con e senza rete privata, di nomi host, forme abbreviate, IPv6 e IPv4 dentro IPv6; avvio consentito con un IPv4 della rete del tunnel. `gas.py` non toccato.
 
 ## §6 STATO CI
 
-Head 9f1aee4: verifica-bot failure (BOCCIATO per V-1 MEDIA, corretta qui; R-731-1 MEDIA del revisore corretta qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
+Head 39ec264: unit-suite pass, handoff-check pass; verifica-bot failure col testo «APPROVATO» e sole BASSE (V-1 tetto di memoria a 1024 IP, V-2 nomi host via tunnel rifiutati). Nuovo head col merge di main: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -428,6 +460,7 @@ Head 9f1aee4: verifica-bot failure (BOCCIATO per V-1 MEDIA, corretta qui; R-731-
 - R-730-1-M2 BASSA: IPv4 d'esempio costruiti da intero nei test (decisione in §0).
 - R-730-2-M2 BASSA: nessun test avvia run_server con «::1» (rifiuto verificato a mano dal revisore).
 - R-731-2-M2 BASSA: le richieste senza token non hanno più un tetto (401 immediato, log a rotazione).
+- Ve #358 V-3 / bot V-2 BASSE: ogni richiesta senza token scrive una riga «AUTH FAIL» nel log (a rotazione); un client via tunnel deve usare l'IP, non un nome (MagicDNS → 403).
 - «localhost» vale come locale e dipende da /etc/hosts (dichiarato nella docstring).
 - Ereditate dalla #356: bot V-1/V-2 su 84b88f8 (chiuse in locale, PR di velocità a seguire), ve #356 V-4, bot su 0d34fe6 V-1/V-2/V-3 (log dell'handoff, test del tetto della cache, numero dei test nel report).
 - Non verificato: comportamento reale con un tunnel (Tailscale) e server avviato fuori da 127.0.0.1.
