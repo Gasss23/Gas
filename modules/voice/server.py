@@ -31,6 +31,9 @@ Avvio: `python -m modules.voice.server` dalla cartella di Gas (carica il `.env` 
 Configurazione tramite variabili d'ambiente (da .env o export):
   GAS_VOICE_BIND      — bind address       (default: 127.0.0.1); fuori da 127.0.0.1 il server
                         parte SOLO con GAS_VOICE_RETE_PRIVATA=1 (tunnel privato dichiarato, R8)
+                        e mai su tutte le interfacce («::» o equivalente IPv4); fuori da 127.0.0.1
+                        solo un indirizzo IPv4 scritto per intero, mai un nome host né IPv6;
+                        «localhost» vale come locale (dipende da /etc/hosts del computer)
   GAS_VOICE_MAX_FALLITI — tentativi con token sbagliato per IP in 10 minuti (default 10), poi
                         429 per 15 minuti a quell'IP, anche col token giusto (R8)
   GAS_VOICE_MAX_TESTO_ORA — richieste a TESTO al massimo nell'ultima ora (default 120), poi 429 (R8)
@@ -409,6 +412,27 @@ def _bind_locale(bind: str) -> bool:
         return True
     try:
         return ipaddress.ip_address(b).is_loopback
+    except ValueError:
+        return False
+
+
+def _bind_tutte_le_interfacce(bind: str) -> bool:
+    """R8 (bot #358 V-1): indirizzo «non specificato» (tutte le interfacce, IPv4 o IPv6): anche
+    dentro un tunnel esporrebbe il server in chiaro sulle interfacce pubbliche."""
+    try:
+        return ipaddress.ip_address(bind.strip()).is_unspecified
+    except ValueError:
+        return False
+
+
+def _bind_ip_letterale(bind: str) -> bool:
+    """R8 (R-727-1-M2, R-728-1/2-M2): fuori da 127.0.0.1 si accetta solo un indirizzo IPv4
+    scritto per intero (il server, HTTPServer, è solo IPv4). Un nome host, una forma abbreviata
+    («0», «0x0»…) o un IPv6 (anche «IPv4 dentro IPv6», che secondo la versione di Python sfugge
+    al controllo «tutte le interfacce») verrebbero risolti dal socket in un altro indirizzo, o
+    farebbero cadere l'avvio con un errore non gestito."""
+    try:
+        return isinstance(ipaddress.ip_address(bind.strip()), ipaddress.IPv4Address)
     except ValueError:
         return False
 
@@ -1340,6 +1364,18 @@ def run_server(root_dir: Optional[str] = None) -> int:
         port = int(os.environ.get("GAS_VOICE_PORT") or "8765")
     except ValueError:
         print("✗ gas voice: GAS_VOICE_PORT non è un numero intero valido.")
+        return 1
+
+    if _bind_tutte_le_interfacce(bind):
+        # bot #358 V-1: mai su tutte le interfacce, nemmeno con la rete privata dichiarata
+        print(f"✗ gas voice: GAS_VOICE_BIND={bind} ascolterebbe su tutte le interfacce, anche pubbliche.")
+        print("  Usa 127.0.0.1 oppure l'indirizzo del tunnel privato (con GAS_VOICE_RETE_PRIVATA=1).")
+        return 1
+
+    if not _bind_locale(bind) and not _bind_ip_letterale(bind):
+        # R-727-1-M2: un nome host o una forma abbreviata potrebbe legarsi a tutte le interfacce
+        print(f"✗ gas voice: GAS_VOICE_BIND={bind} non è un indirizzo IPv4 scritto per intero.")
+        print("  Fuori da 127.0.0.1 usa l'indirizzo IPv4 del tunnel privato, non un nome né IPv6.")
         return 1
 
     if not _bind_locale(bind) and not _env_acceso("GAS_VOICE_RETE_PRIVATA"):

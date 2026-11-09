@@ -7,6 +7,7 @@ Gira pytest standalone: python -m pytest tests/test_unit_voice_server.py -v
 from __future__ import annotations
 
 import http.client
+import ipaddress
 import json
 import logging
 import os
@@ -2211,13 +2212,62 @@ def test_r8_avvio_rifiutato_fuori_da_127_senza_rete_privata(monkeypatch, capsys,
     assert "GAS_VOICE_RETE_PRIVATA" in out and "t" * 32 not in out
 
 
+@pytest.mark.parametrize("bind,messaggio", [
+    ("0", "non è un indirizzo IPv4 scritto per intero"),       # R-727-1-M2: forme abbreviate
+    ("0x0", "non è un indirizzo IPv4 scritto per intero"),
+    ("gas.example", "non è un indirizzo IPv4 scritto per intero"),  # nome host
+    (str(ipaddress.IPv4Address(0)), "tutte le interfacce"),  # IPv4 «tutte le interfacce»
+    ("::ffff:0:0", "✗ gas voice"),  # R-728-1-M2: IPv4 dentro IPv6 (messaggio secondo Python)
+    ("fe80::1%eth0", "IPv4 scritto per intero"),  # R-728-2-M2: IPv6 con zona, niente crash
+    ("fd7a:115c:a1e0::5", "IPv4 scritto per intero"),  # IPv6: il server è solo IPv4
+])
+def test_r8_rete_privata_rifiuta_nomi_e_tutte_le_interfacce(monkeypatch, capsys, bind, messaggio):
+    """Anche con la rete privata dichiarata, il server non parte su un nome host, su una forma
+    abbreviata o su tutte le interfacce (il socket le risolverebbe da solo)."""
+    import modules.voice.server as srv
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(srv, "_carica_env", lambda: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
+    monkeypatch.setenv("GAS_VOICE_BIND", bind)
+    monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", "1")
+    monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
+    sys.modules["gas"].GasKernel = lambda **kw: (_ for _ in ()).throw(AssertionError("partito"))
+    assert run_server(root_dir="/tmp") == 1
+    assert messaggio in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("rete", ["", "1"])
+def test_r8_mai_su_tutte_le_interfacce(monkeypatch, capsys, rete):
+    """Bot #358 V-1: «::» (tutte le interfacce) è rifiutato anche con la rete privata dichiarata."""
+    import modules.voice.server as srv
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(srv, "_carica_env", lambda: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
+    monkeypatch.setenv("GAS_VOICE_BIND", "::")
+    monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", rete)
+    monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
+    sys.modules["gas"].GasKernel = lambda **kw: (_ for _ in ()).throw(AssertionError("partito"))
+    assert run_server(root_dir="/tmp") == 1
+    assert "tutte le interfacce" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("bind,tutte", [
+    ("::", True), ("::1", False), ("127.0.0.1", False), ("fd7a:115c:a1e0::5", False),
+    ("localhost", False), ("", False),
+])
+def test_r8_bind_tutte_le_interfacce(bind, tutte):
+    from modules.voice.server import _bind_tutte_le_interfacce
+    assert _bind_tutte_le_interfacce(bind) is tutte
+
+
 def test_r8_avvio_con_rete_privata_dichiarata_parte(monkeypatch):
     """Con GAS_VOICE_RETE_PRIVATA=1 il controllo lascia passare (si ferma qui, prima del kernel)."""
     import modules.voice.server as srv
     monkeypatch.setattr(sys, "path", list(sys.path))
     monkeypatch.setattr(srv, "_carica_env", lambda: None)
     monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
-    monkeypatch.setenv("GAS_VOICE_BIND", "fd7a:115c:a1e0::5")
+    # un indirizzo della rete Tailscale (100.64/10), costruito da intero: gate IP del repo
+    monkeypatch.setenv("GAS_VOICE_BIND", str(ipaddress.IPv4Address(0x64400005)))
     monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", "1")
 
     class _Fermo(Exception):
