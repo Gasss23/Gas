@@ -504,8 +504,10 @@ def test_pulizia_dei_compiti_finiti_vecchi(tmp_path, monkeypatch):
     altro.write_text("x")
     os.utime(altro, (vecchio, vecchio))
     assert sf.accoda(tmp_path, "nuovo")[0] is not None
+    # bot #349 (a9a17a5) V-1: anche un compito «in_corso» vecchio senza posto si cancella
     assert not ok_vecchio.exists() and not ko_vecchio.exists() and not tmp.exists()
-    assert in_corso.exists() and ok_recente.exists() and rotto.exists() and altro.exists()
+    assert not in_corso.exists()
+    assert ok_recente.exists() and rotto.exists() and altro.exists()
 
 
 def test_giorni_conservazione_non_validi(monkeypatch):
@@ -611,7 +613,7 @@ def test_controlla_pulisce_al_massimo_una_volta_l_ora(tmp_path, monkeypatch):
     """Bot #346 (2d0977e) V-3: la pulizia dei compiti vecchi parte anche da controlla()."""
     chiamate = []
     monkeypatch.setattr(sf, "_pulisci_vecchi", lambda root: chiamate.append(root))
-    monkeypatch.setattr(sf, "_ultima_pulizia", 0.0)
+    monkeypatch.setattr(sf, "_ultima_pulizia", None)
     sf.controlla(tmp_path)  # cartella assente: niente
     assert chiamate == []
     (tmp_path / sf.CARTELLA).mkdir()
@@ -792,3 +794,32 @@ def test_scrittura_temporanea_con_nome_unico(tmp_path, monkeypatch):
     sf._scrivi_privato(tmp_path / "a.json", {"x": 1})
     sf._scrivi_privato(tmp_path / "a.json", {"x": 2})
     assert len(set(nomi)) == 2 and all(".tmp." in n for n in nomi)
+
+
+
+def test_pulizia_non_tocca_il_compito_che_ha_il_posto(tmp_path, monkeypatch):
+    """Il compito «in_corso» vecchio che ha ancora il posto in coda non si cancella."""
+    import time as _t
+    c = tmp_path / sf.CARTELLA
+    c.mkdir()
+    vecchio = _t.time() - 8 * 86400
+    f = c / "x.json"
+    f.write_text(json.dumps({"id": "x", "stato": "in_corso", "compito": "t"}))
+    os.utime(f, (vecchio, vecchio))
+    (c / sf.ATTIVO).write_text(json.dumps({"id": "x", "pid": None, "creato": _t.time()}))
+    sf._pulisci_vecchi(tmp_path)
+    assert f.exists()
+
+
+def test_pulizia_oraria_con_orologio_monotono(tmp_path, monkeypatch):
+    """Bot #349 (a9a17a5) V-2: il limite orario usa time.monotonic, non l'ora di sistema."""
+    chiamate = []
+    monkeypatch.setattr(sf, "_pulisci_vecchi", lambda root: chiamate.append(root))
+    monkeypatch.setattr(sf, "_ultima_pulizia", None)
+    (tmp_path / sf.CARTELLA).mkdir()
+    orologio = [1000.0]
+    monkeypatch.setattr(sf.time, "monotonic", lambda: orologio[0])
+    sf.controlla(tmp_path)
+    orologio[0] += 3601
+    sf.controlla(tmp_path)
+    assert len(chiamate) == 2

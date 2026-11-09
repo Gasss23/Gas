@@ -1,11 +1,9 @@
-# Diff della sessione — 2026-11-08 — chat Mani, voce via Telegram fetta 1
+# Diff della sessione — 2026-11-09 — Sottofondo e voce: riserve BASSE (chat M2)
 
-File toccati (base main 3084979, dopo il merge della PR #352):
-- `modules/telegram/bot.py`: ramo dei vocali in `_handle_update` (dopo il controllo della chat autorizzata), `_scarica_vocale`, `testo_da_vocale`, tetto orario, `_gestisci_parlato`, `_risposta_del_turno` (estratta, stesso comportamento per i testi).
-- `tests/test_unit_telegram_voce.py`: 31 test con Telegram, download e Groq finti.
-- `.github/workflows/ci.yml`: il file di test nella voice suite.
-- `reports/proposta_voce_telegram.md`: decisioni dell'operatore e correzioni V-1/V-2/V-3 del bot sulla #348.
-- `.claude/agents/memoria_revisore.md`: righe delle review #711, #712, #715 e #716.
-- `reports/*`: report di fine task.
+- `modules/voice/server.py` — segno di lettura dopo `_send_json`; regola unica schermo/senza schermo (`_do_pezzi_response(schermo=)`, `consegnati`).
+- `modules/sottofondo/__init__.py` — `_pulisci_vecchi` cancella anche compiti aperti vecchi senza posto; `_ultima_pulizia` con `time.monotonic`.
+- `tests/test_unit_voice_server.py` (f32c), `tests/test_unit_sottofondo.py`.
+- `.claude/agents/memoria_revisore.md` — review #713.
+- `reports/*` — report di fine task.
 
-Questo file si riscrive a ogni sessione; la storia completa sta in git.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
