@@ -6,8 +6,9 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 1 Telegram (numero e URL dalla risposta dello strumento GitHub `create_pull_request`): review APPROVATO CON RISERVE e PR nel perimetro, quindi decide l'operatore via M1.
-2. Per la fetta 2: la risposta vocale arriva solo quando l'operatore manda un vocale, oppure sempre?
+1. Merge della PR #353 (https://github.com/Gasss23/Gas/pull/353): SÌ dell'operatore del 2026-11-09 via M1, con le riserve. Numero e URL dalla risposta dello strumento GitHub `create_pull_request`.
+2. V-2 della verifica esterna #353 (regola dei modelli per i vocali senza «forte»): l'operatore ha scelto l'opzione A in chat con M1 la sera del 7/11. M1 gli ha chiesto di confermarla con un suo commento sulla #353.
+3. Fetta 2: risposta vocale SOLO quando l'operatore manda un vocale (opzione A, decisione del 2026-11-09 via M1).
 
 ---
 
@@ -16,29 +17,32 @@
 - **PR #351 (fetta 45)**: `FATTA` — mergiata (9bfafdb) col sì dell'operatore.
 - **Voce via Telegram, fetta 1 (vocale → testo)**: `FATTA` — review #711/#712, unione #715.
 - **Proposta Telegram, decisioni e correzioni del bot #348**: `FATTA`.
-- **Voce via Telegram, fetta 2 (risposta in voce)**: `DEFERITA — prossima fetta, serve la risposta alla domanda 2 di §0`.
+- **Voce via Telegram, fetta 2 (risposta in voce)**: `DEFERITA — prossima fetta. Decisione presa: risposta vocale solo dopo un vocale`.
+- **Merge di main con la PR #352 di M2**: `FATTA` — review #716 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
+ .claude/agents/memoria_revisore.md |   5 +++++
  .github/workflows/ci.yml           |   3 ++-
- modules/telegram/bot.py            | 178 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------
- reports/diff_sessione.md           |  13 +++++++------
+ modules/telegram/bot.py            | 178 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------
+ reports/diff_sessione.md           |  16 +++++++++-------
  reports/proposta_voce_telegram.md  |  11 ++++++++---
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  27 +++++++++++++-------------
- tests/test_unit_telegram_voce.py   | 241 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  27 ++++++++++++++++-----------
+ tests/test_unit_telegram_voce.py   | 241 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 9bfafdb (dopo il merge della PR #351).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 3084979 (dopo il merge della PR #352).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f24dd28 Merge origin/main (PR #352 di M2) nella PR #353 — review #716 APPROVATO
+a08931f docs(fine-task): voce via Telegram fetta 1 chat Mani — review #711/#712/#715, PR #351 mergiata
 a5b2d66 Merge voce via Telegram fetta 1 (vocale → testo, R8 opzione B) e decisioni nella proposta — review #711/#712, unione #715 APPROVATO
 1684236 feat(telegram): voce via Telegram, fetta 1 — vocale → trascrizione → risposta in testo (R8, opzione B) — review #711/#712
 ```
@@ -202,6 +206,10 @@ Letture fatte prima della review: CLAUDE.md (sez. 5, 8, 10), reports/stato_proge
 
 **Riserve ancora aperte da #711/#712** (non nuove, sono di sostanza e restano da tracciare in stato_progetto.md):
 - R-711-1 BASSA, la regola dei modelli: ora c'è la decisione dell'operatore dell'8 novembre scritta nella proposta, quindi si può considerare dichiarata.
+- Verifica esterna #353:
+  - V-1 BASSA: il limite passato a r.read() non è provato da nessun test. Si chiude nella fetta 2.
+  - V-2 BASSA: la regola dei modelli è confermata solo nei report; si aspetta il commento dell'operatore sulla #353.
+  - V-3 COSMETICA.
 - R-712-1 BASSA: il posto nel tetto orario si consuma anche se il download fallisce.
 - R-712-2 COSMETICA: con un valore non numerico, doppio warning nel log.
 - R-712-3 BASSA: il contatore dei vocali si azzera quando il bot riparte.
@@ -215,6 +223,46 @@ File rilevanti:
 - /home/user/Gas/reports/proposta_voce_telegram.md
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 - copia dell'index usata per i test: /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/idx715
+
+Review #716 (unione con main dopo la PR #352 di M2), verdetto integrale:
+
+## VERDETTO: APPROVATO
+
+Review #716 (chat Mani). Oggetto: merge staged, non ancora committato, di origin/main 3084979 (PR #352 di M2, riserve BASSE della #350) nel branch claude/peaceful-lovelace-0w2b7q (HEAD a08931f, PR #353). Repo: /home/user/Gas. Base comune: 9bfafdb.
+
+**Letture obbligatorie fatte:** CLAUDE.md sez. 5, le righe di stato_progetto.md toccate dal merge e la coda della memoria (ultimo numero: #715; #712-M2 ha la sua numerazione).
+
+**Controlli meccanici**
+- I file di M2 nell'index sono identici, blob per blob, a MERGE_HEAD: modules/voice/server.py (dc38cfd), modules/sottofondo/__init__.py, tests/test_unit_voice_server.py, tests/test_unit_sottofondo.py e reports/ripartenza_m2.md. In HEAD questi file erano uguali alla base, quindi il diff portato è esattamente quello già revisionato da M2 (#711-M2).
+- Sono identici a HEAD:
+  - modules/telegram/bot.py (05ae407), tests/test_unit_telegram_voce.py e .github/workflows/ci.yml (9f5dac1);
+  - i 3 report presi dal lato HEAD (--ours): ultimo_report, handoff e diff_sessione.
+- Memoria e stato_progetto sono l'unione dei due lati. Nessuna riga aggiunta da un lato è andata persa:
+  - memoria: HEAD 4 righe aggiunte su 4 presenti, MERGE_HEAD 3 su 3;
+  - stato_progetto: HEAD 3 su 3, MERGE_HEAD 1 su 1.
+  - L'unica riga sostituita in stato_progetto (la 615) è la versione più recente di M2.
+- Nessun marcatore di conflitto. `git ls-files -u` è vuoto e `git diff --cached --check` è pulito.
+- Working tree uguale all'index prima della mia riga, niente stash.
+
+**Elementi del diff esaminati**
+- `modules/telegram/bot.py:933` — importa in modo pigro `_USO_FORTE_PARLATO` e `cervello_voce` da modules/voice/server.py. Rischio: la #352 cambia firma o comportamento di quei simboli. Esito: ok.
+  - Tutti gli hunk della #352 stanno dentro VoiceHandler (il primo parte da modules/voice/server.py:535).
+  - Le righe 1-534 di server.py nell'index sono identiche a HEAD: lì vivono `_USO_FORTE_PARLATO` (modules/voice/server.py:111), il controllo di GAS_VOCE_FORTE (modules/voice/server.py:350) e `cervello_voce` (modules/voice/server.py:353).
+  - Ho estratto e confrontato `cervello_voce` da sola: identica.
+- `modules/telegram/bot.py:938` — `cervello_voce(trascritto, parlato=True)` con il ramo "uso" a modules/telegram/bot.py:939-941. Rischio: «forte» detto, uso e GAS_VOCE_FORTE si comportano in modo diverso dopo il merge. Esito: ok, la funzione è invariata. Lo confermano i test da tests/test_unit_telegram_voce.py:167 («forte» detto all'inizio va al cervello forte) e tests/test_unit_telegram_voce.py:174 (solo «forte» dà l'uso, nessun turno), verdi sulla copia dell'index.
+- `.github/workflows/ci.yml:127` — la suite voce comprende tests/test_unit_telegram_voce.py; la suite sottofondo è a .github/workflows/ci.yml:221. Rischio: un test della #352 resta fuori dalla CI. Esito: ok. I due file di test di M2 sono già nelle suite esistenti e ci.yml è identico a HEAD.
+
+**Test** (copia dell'index in scratch con `git checkout-index`, senza stash): test_unit_telegram_voce + test_unit_voice_server + test_unit_sottofondo → 231 passed (277 s).
+
+**Rischi esclusi (non verificati)**
+- Suite completa del kernel e CI reale: non lanciate, il merge non tocca gas.py né brains/.
+- Comportamento reale con Telegram, Groq e il client voce sul Mac: non riproducibile in dev, i test usano finti.
+- Contenuto tecnico della #352: già revisionato da M2 (#711-M2), qui ho verificato solo che sia arrivato intatto.
+
+**Note cosmetiche** (non sono riserve)
+- reports/stato_progetto.md:615 (testo di M2) dice ancora «Fetta BASSE della #350 (8 nov, PR aperta)». Dopo questo merge la #352 è mergiata: da aggiornare con i report di fine task.
+
+**Memoria:** riga #716 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md nel working tree, NON committata come richiesto (non ho lanciato commit_memoria_revisore.sh). Nessuna lezione nuova.
 
 ## §5 DELTA TEST DEL MOTORE
 
@@ -232,7 +280,7 @@ Mutanti presi:
 - vocale modificato accettato;
 - niente tetto di durata;
 - `..` nel percorso;
-- niente tetto sul read;
+- niente controllo della lunghezza dopo il read (correzione: la verifica esterna #353 V-1 mostra che il limite PASSATO a read() non è provato da nessun test);
 - niente eco;
 - niente cervello_voce;
 - niente tetto orario;
@@ -242,7 +290,7 @@ Mutanti presi:
 
 ## §6 STATO CI
 
-`gh` non usato: GitHub passa dallo strumento MCP. Per i commit di questa sessione la run non è ancora disponibile alla scrittura dell'handoff. Della PR #351 su cad4291 erano success unit-suite, handoff-check e verifica; il bot era neutral; poi è stata mergiata.
+`gh` non usato: GitHub passa dallo strumento MCP. a08931f (head precedente della #353): handoff-check success. Verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/353#issuecomment-6725550824). Per il merge della #352 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff. Della PR #351 su cad4291 erano success unit-suite, handoff-check e verifica; il bot era neutral; poi è stata mergiata.
 
 ## §7 RISERVE APERTE
 
