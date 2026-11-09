@@ -21,6 +21,7 @@
 - **#345** (M2, compiti lunghi in sottofondo con avviso Telegram): SÌ dell'operatore il 7/11. Al /clear era in fase di merge: verificare.
 
 ## Decisioni dell'operatore (valide)
+- 9/11 ~10:30 UTC: sì a #356 e #357; thread voce Telegram opzione b (Mani); sicurezza server voce «scegli la sicurezza migliore» → R8 fetta 1 fail-closed, opzioni più sicure, merge se niente ALTA/MEDIA (M2); terminale opzione A sì (azioni fisse con firma a bottoni, M2 dopo R8).
 - 9/11 02:10 UTC (M1): la regola notturna di merge con riserve è SOSPESA. Verifica esterna #357 V-1 MEDIA: non è scritta dall'operatore nel repo e CLAUDE.md §10 dice il contrario; il permission check di Mani ha bloccato un agente che se la scriveva. Stanotte si mergia solo APPROVATO pulito; le PR con riserve restano per l'operatore.
 - 9/11 notte: sì a #355 (ElevenLabs accettato). M2 → B: server voce sicuro (sicurezza: PR aperta per l'operatore). Notte: lavoro continuo sulla voce (Jarvis completo, intelligente, veloce), poi roadmap, poi terminale/autonomia se avanza tempo. REGOLA DI MERGE NOTTURNA: solo BASSE/COSMETICHE e niente sicurezza → merge senza chiedere; sicurezza → resta per l'operatore. Test del mattino: reports/test_voce_mattina.md.
 - 8/11 sera: sì a #352 (M2) e #353 (Mani, vocali Telegram fetta 1). Fetta 2 Telegram: risposta vocale SOLO se l'operatore manda un vocale. V-2 #353: chiesto all'operatore di confermare la scelta A con un suo commento sulla PR.
