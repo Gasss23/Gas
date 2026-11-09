@@ -2078,6 +2078,24 @@ def test_sintesi_cache_ha_un_tetto(monkeypatch):
     assert len(srv._cache_frasi) <= srv._CACHE_FRASI_MAX
 
 
+def test_sintesi_cache_anche_per_le_frasi_divise(monkeypatch):
+    """Bot #356 V-1: nelle risposte a pezzi una frase fissa di più frasi (es. l'uso di «forte»)
+    viene divisa; anche i suoi pezzi vanno in cache. Un testo diverso no."""
+    import modules.voice.server as srv
+    chiamate = []
+    monkeypatch.setattr(srv, "synthesize_speech", lambda f, k, v: chiamate.append(f) or b"x")
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+    pezzi = srv._dividi_frasi(srv._USO_FORTE_PARLATO)
+    assert len(pezzi) >= 2
+    for _ in range(2):
+        for p in pezzi:
+            srv.sintesi(p, "k", "v")
+    assert chiamate == pezzi
+    srv.sintesi(pezzi[0] + " Altro.", "k", "v")
+    srv.sintesi(pezzi[0] + " Altro.", "k", "v")
+    assert chiamate[len(pezzi):] == [pezzi[0] + " Altro."] * 2
+
+
 # ---- R8 fetta 1 (chat M2, sicurezza): tentativi falliti, tetto al testo, avvio chiuso ----
 
 class TestR8Limiti:
