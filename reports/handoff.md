@@ -17,6 +17,7 @@
 - **Cache delle frasi fisse** (velocità, decisione dell'operatore via M1): `FATTA` — `sintesi()` in `modules/voice/server.py`: «Dimmi.», «Va bene.», «Non ho capito bene…», «Il resto è a schermo.» ecc. sintetizzate una volta per processo e voce, poi dalla memoria (niente attesa né costo ElevenLabs); solo testi fissi del codice, mai testo del modello o dell'operatore.
 - **Riserve BASSE della #354**: `FATTE` — test della pulizia con «in_coda» (bot #354 V-1), `_finiti_jobs` azzerato a inizio richiesta (R-711-3-M2), lambda → funzione, parentesi esplicite nella condizione del segno (ve #354 V-3).
 - Review #715-M2 APPROVATO CON RISERVE (R-715-1-M2 COSMETICA, chiusa in e97de50).
+- **Bot #356 su 6872080 (BOCCIATO)**: V-1 MEDIA `FATTA` (riga 5 di `reports/ultimo_report.md` diceva ancora «nessuna decisione»: ora «decide l'operatore»), V-2 BASSA `FATTA` (§3 rigenerato con `git log` reale), V-3 BASSA `FATTA` (test che le risposte vere passano dalla cache, 3 mutanti uccisi). Review #721-M2 APPROVATO.
 - **Riserve della verifica esterna #356 (68a9c8d)**: V-1 BASSA `FATTA` (test `test_f32c_finiti_jobs_azzerati_a_ogni_richiesta`, mutante ucciso), V-2 COSMETICA `FATTA` (righe vuote), V-3 BASSA `FATTA` (§3 e §6 aggiornati); V-4 BASSA (cache utile solo nei pezzi, `api_key` fuori dalla chiave) registrata. Review #719-M2 APPROVATO.
 - **Merge di main (#355 di Mani) nel branch** per togliere il conflitto (MEDIA della verifica esterna sulla #356): `FATTO` (2580889), review #716-M2 APPROVATO; conflitti solo su report e memoria.
 
@@ -25,7 +26,7 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  4 +++
+ .claude/agents/memoria_revisore.md |  5 ++
  modules/voice/server.py            | 44 +++++++++++++++++++++----
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
@@ -33,7 +34,7 @@
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
  tests/test_unit_sottofondo.py      | 25 +++++++++++----
- tests/test_unit_voice_server.py    | 66 ++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_voice_server.py    | 96 +++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main b827447 (merge della #355, entrato nel branch col merge 2580889).
@@ -41,11 +42,14 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-2580889 Merge origin/main (#355, voce via Telegram fetta 2) in feat/voce-v12-m2
+a9b220c test(voce): le risposte vere passano dalla cache delle frasi fisse (bot #356 V-3)
+31fec47 chore(revisore): memoria review #721 — APPROVATO
+6872080 docs(voce): report con le riserve della verifica esterna #356 chiuse (chat M2)
 e97de50 test(voce): azzeramento di _finiti_jobs a ogni richiesta provato; righe vuote tolte (ve #356 V-1/V-2)
 d722506 chore(revisore): memoria review #719 — APPROVATO
 68a9c8d docs(voce): #356 resta per l'operatore; tolta la regola notturna scritta dall'agente (allineamento con M1, chat M2)
 8629e79 docs(voce): report dopo il merge di main (#355) e regola di merge notturna R11 (chat M2)
+2580889 Merge origin/main (#355, voce via Telegram fetta 2) in feat/voce-v12-m2
 84b88f8 docs(voce): report di fine task — cache delle frasi fisse; PR #354 mergiata (chat M2)
 b97a570 perf(voce): cache della sintesi per le frasi fisse del server voce; riserve BASSE della #354 (in_coda, _finiti_jobs, parentesi, lambda) (decisione dell'operatore via M1)
 9301c2f chore(revisore): memoria review #715 — APPROVATO CON RISERVE
@@ -142,13 +146,34 @@ File:
 - /home/user/Gas/modules/voice/server.py
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
+Review #721-M2 sul commit a9b220c (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #721-M2. Diff staged su feat/voce-v12-m2 (PR #356): solo /home/user/Gas/tests/test_unit_voice_server.py, 30 righe aggiunte. Chiude la V-3 BASSA del bot.
+
+Ho letto prima: CLAUDE.md (sezione 5), reports/stato_progetto.md (letto in parte, con grep) e la memoria del revisore.
+
+Cosa ho controllato nel diff e nel codice intorno:
+- `tests/test_unit_voice_server.py:2027` — test parametrico sui formati «audio+testo+pezzi» e «audio+testo». Usa il server vero tramite `_voce_a_pezzi`, trascrive «Gas.» e controlla che «Dimmi.» finisca nella cache. Rischio guardato: il test potrebbe passare anche senza `sintesi()`. Non succede: la cache viene sostituita con un dizionario nuovo, quindi resta vuota se la sintesi non passa di lì, e l'assert sulla frase in cache fallisce. Il controllo sul contenuto (`k[2]`) va bene, perché la chiave contiene la funzione di sintesi finta, diversa a ogni patch. Esito: ok.
+- `tests/test_unit_voice_server.py:2039` — test sull'MP3 diretto: crea l'handler con `__new__`, mette `_tempi` e `_finiti_jobs` a None e chiama `_send_audio` due volte. Rischio guardato: attributi mancanti che farebbero crashare il test. `_segna` (`modules/voice/server.py:438`) non fa niente se `_tempi` è None, e `_segna_finiti_letti` (`modules/voice/server.py:728`) usa getattr ed esce subito senza job. La chiave ELEVENLABS è impostata con monkeypatch, quindi non si finisce nel ramo che risponde 503. Esito: ok.
+- Contesto `modules/voice/server.py:322` — `sintesi()` mette in cache solo le frasi fisse. «Dimmi.» lo è, altrimenti il test non passerebbe senza mutanti. Esito: ok.
+- Mutanti rifatti da me: ho sostituito `sintesi(` con `synthesize_speech(`, un punto alla volta, a `modules/voice/server.py:833`, `modules/voice/server.py:876` e `modules/voice/server.py:916`. Ogni volta un test fallisce (1 failed). Dopo ho ripristinato il file sorgente: lo staged è invariato e il working tree pulito su server.py.
+- Comando dichiarato rieseguito: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py -k "not conversazione_nel_browser"` → 201 passed, 15 deselected. `git diff --staged --check` è pulito.
+
+Nessun antipattern della sezione 5 (niente slicing della history, niente simulazione di tool: lo stub della sintesi nei test è un mock esterno, va bene). Il motore non è toccato.
+
+Cosa NON ho verificato: il comportamento con ElevenLabs vero e il caching con un voice_id diverso da quello di default. Il test sull'MP3 non fissa ELEVENLABS_VOICE_ID, ma il risultato non dipende dalla voce. ElevenLabs vero non si può provare in dev, servono la chiave e la rete. Non ho rifatto la suite completa del kernel: il diff tocca solo questo file di test.
+
+Memoria: aggiunta la riga #721-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (commit 31fec47, «chore(revisore): memoria review #721 — APPROVATO»). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: 3 nuovi (cache: una sola sintesi per frase fissa e voce, testo libero mai in cache, audio vuoto mai in cache; errore non in cache; tetto della cache). `tests/test_unit_sottofondo.py`: pulizia parametrica su «in_corso»/«in_coda», con e senza posto. Suite voce server + sottofondo + telegram_voce: 243 passed (intere). `gas.py` non toccato. In più `test_f32c_finiti_jobs_azzerati_a_ogni_richiesta` (ve #356 V-1). Comando dopo e97de50: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py -k "not conversazione_nel_browser"` → 198 passed, 15 deselected.
+`tests/test_unit_voice_server.py`: 3 nuovi (cache: una sola sintesi per frase fissa e voce, testo libero mai in cache, audio vuoto mai in cache; errore non in cache; tetto della cache). `tests/test_unit_sottofondo.py`: pulizia parametrica su «in_corso»/«in_coda», con e senza posto. Suite voce server + sottofondo + telegram_voce: 243 passed (intere). `gas.py` non toccato. In più `test_f32c_finiti_jobs_azzerati_a_ogni_richiesta` (ve #356 V-1). Comando dopo e97de50: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py -k "not conversazione_nel_browser"` → 198 passed, 15 deselected. Dopo a9b220c (+3 test della cache sulle risposte): 201 passed, 15 deselected.
 
 ## §6 STATO CI
 
-Head 68a9c8d: handoff-check e verifica-bot success, unit-suite in corso al momento della verifica esterna (commento sulla PR #356). Nuovo head con e97de50: run non ancora disponibile alla scrittura dell'handoff.
+Head 6872080: handoff-check success; verifica-bot failure (BOCCIATO, MEDIA sul report, corretta qui); unit-suite in corso alla scrittura. Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
