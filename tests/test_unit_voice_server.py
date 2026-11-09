@@ -2186,7 +2186,8 @@ class TestR8Limiti:
 
 
 @pytest.mark.parametrize("bind,locale", [
-    ("127.0.0.1", True), ("127.0.0.2", True), ("::1", True), ("localhost", True),
+    ("127.0.0.1", True), ("127.0.0.2", True), ("localhost", True),
+    ("::1", False), ("::ffff:127.0.0.1", False),  # bot #358 V-2: il server è solo IPv4
     # indirizzi non locali solo IPv6 di esempio (gate IP del repo: niente IPv4 non loopback)
     ("::", False), ("2001:db8::10", False), ("fd7a:115c:a1e0::5", False),
     ("127.evil.example", False), ("", False),  # R-720-3-M2: un nome host non è loopback
@@ -2202,14 +2203,16 @@ def test_r8_avvio_rifiutato_fuori_da_127_senza_rete_privata(monkeypatch, capsys,
     monkeypatch.setattr(sys, "path", list(sys.path))
     monkeypatch.setattr(srv, "_carica_env", lambda: None)
     monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
-    monkeypatch.setenv("GAS_VOICE_BIND", "::")
+    # bot #358 V-1: un IPv4 non locale scritto per intero (rete del tunnel, costruito da intero
+    # per il gate IP), così questo test prova proprio il controllo sulla rete privata
+    monkeypatch.setenv("GAS_VOICE_BIND", str(ipaddress.IPv4Address(0x64400005)))
     monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", rete)
     # se il controllo mancasse, il server non deve partire davvero: il kernel finto fallisce
     monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
     sys.modules["gas"].GasKernel = lambda **kw: (_ for _ in ()).throw(AssertionError("partito"))
     assert run_server(root_dir="/tmp") == 1
     out = capsys.readouterr().out
-    assert "GAS_VOICE_RETE_PRIVATA" in out and "t" * 32 not in out
+    assert "non è locale e la connessione è in chiaro" in out and "t" * 32 not in out
 
 
 @pytest.mark.parametrize("bind,messaggio", [

@@ -411,7 +411,9 @@ def _bind_locale(bind: str) -> bool:
     if b == "localhost":
         return True
     try:
-        return ipaddress.ip_address(b).is_loopback
+        # solo IPv4 (bot #358 V-2): HTTPServer è solo IPv4, «::1» lo farebbe cadere all'avvio
+        ip = ipaddress.ip_address(b)
+        return isinstance(ip, ipaddress.IPv4Address) and ip.is_loopback
     except ValueError:
         return False
 
