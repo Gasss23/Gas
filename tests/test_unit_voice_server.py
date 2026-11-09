@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import HTTPServer
@@ -2074,3 +2075,156 @@ def test_sintesi_cache_ha_un_tetto(monkeypatch):
     for i in range(srv._CACHE_FRASI_MAX + 5):
         srv.sintesi("Dimmi.", "k", f"voce{i}")
     assert len(srv._cache_frasi) <= srv._CACHE_FRASI_MAX
+
+
+# ---- R8 fetta 1 (chat M2, sicurezza): tentativi falliti, tetto al testo, avvio chiuso ----
+
+class TestR8Limiti:
+    TOKEN = "token_r8_valido"
+
+    def setup_method(self):
+        _MockKernel.instances.clear()
+        self.kernel = _MockKernel()
+        self.server, self.port = _make_server(self.kernel, token=self.TOKEN)
+
+    def teardown_method(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    def _giusto(self):
+        return _post(self.port, {"prompt": "ciao"}, headers={"Authorization": f"Bearer {self.TOKEN}"})
+
+    def _sbagliato(self):
+        return _post(self.port, {"prompt": "ciao"}, headers={"Authorization": "Bearer sbagliato_r8"})
+
+    def test_troppi_falliti_bloccano_anche_il_token_giusto(self, monkeypatch, caplog):
+        import modules.voice.server as srv
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "3")
+        monkeypatch.setattr(srv, "_FALLITI_BLOCCO_S", 0.5)
+        with caplog.at_level(logging.WARNING, logger="modules.voice.server"):
+            assert [self._sbagliato()[0] for _ in range(3)] == [401, 401, 429]
+            assert self._giusto()[0] == 429          # bloccato anche col token giusto
+        testo = " ".join(r.message for r in caplog.records)
+        assert "AUTH BLOCCO ip=127.0.0.1" in testo and "AUTH BLOCCATO ip=127.0.0.1" in testo
+        assert "sbagliato_r8" not in testo and self.TOKEN not in testo
+        time.sleep(0.6)
+        assert self._giusto()[0] == 200          # il blocco scade da solo
+        assert self._sbagliato()[0] == 401       # e il conto riparte da zero
+
+    def test_token_giusto_non_azzera_e_falliti_sotto_soglia(self, monkeypatch):
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "3")
+        assert [self._sbagliato()[0] for _ in range(2)] == [401, 401]
+        assert self._giusto()[0] == 200
+        assert self._sbagliato()[0] == 429       # il terzo fallito nella finestra blocca
+
+    def test_falliti_non_condivisi_con_la_classe_base(self, monkeypatch):
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "2")
+        self._sbagliato()
+        self._sbagliato()
+        assert VoiceHandler.falliti == {} and VoiceHandler.bloccati == {}
+
+    def test_tetto_alle_richieste_a_testo(self, monkeypatch):
+        monkeypatch.setenv("GAS_VOICE_MAX_TESTO_ORA", "2")
+        chiamate = []
+        orig = self.kernel.run_turn
+        self.kernel.run_turn = lambda p: chiamate.append(p) or orig(p)
+        assert self._giusto()[0] == 200 and self._giusto()[0] == 200
+        status, body = self._giusto()
+        assert status == 429 and "GAS_VOICE_MAX_TESTO_ORA" in body["error"]
+        assert len(chiamate) == 2                # oltre il tetto nessun turno parte
+
+    def test_testo_rifiutato_non_consuma_il_tetto_voce(self, monkeypatch):
+        """R-720-1-M2: il tetto al testo scatta prima del conteggio V12, così un testo rifiutato
+        non toglie posti alle richieste a voce (ascolto H24)."""
+        from unittest.mock import patch
+        monkeypatch.setenv("GAS_VOICE_MAX_TESTO_ORA", "1")
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+        hdr = {"Authorization": f"Bearer {self.TOKEN}", "Accept": "audio/mpeg"}
+        url = f"http://127.0.0.1:{self.port}/voice"
+        stati = []
+        with patch("modules.voice.server.synthesize_speech", side_effect=lambda f, k, v: b"mp3"):
+            for _ in range(3):
+                req = urllib.request.Request(url, data=b'{"prompt": "ciao"}', method="POST",
+                                             headers={"Content-Type": "application/json", **hdr})
+                try:
+                    with _SENZA_PROXY.open(req, timeout=5) as r:
+                        stati.append(r.status)
+                except urllib.error.HTTPError as e:
+                    stati.append(e.code)
+        assert stati == [200, 429, 429]
+        assert len(self.server.RequestHandlerClass.turni_parlati) == 1
+
+    def test_testo_rifiutato_dal_tetto_voce_non_consuma_il_tetto_testo(self, monkeypatch):
+        """R-722-1-M2: un testo con risposta a voce rifiutato dal tetto voce (V12) non conta nel
+        tetto al testo: una richiesta solo a testo dopo passa ancora."""
+        from unittest.mock import patch
+        monkeypatch.setenv("GAS_VOICE_MAX_TURNI_ORA", "1")
+        monkeypatch.setenv("GAS_VOICE_MAX_TESTO_ORA", "3")
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+        url = f"http://127.0.0.1:{self.port}/voice"
+        stati = []
+        with patch("modules.voice.server.synthesize_speech", side_effect=lambda f, k, v: b"mp3"):
+            for accetta in ("audio/mpeg", "audio/mpeg", "audio/mpeg", "application/json"):
+                req = urllib.request.Request(
+                    url, data=b'{"prompt": "ciao"}', method="POST",
+                    headers={"Content-Type": "application/json", "Accept": accetta,
+                             "Authorization": f"Bearer {self.TOKEN}"})
+                try:
+                    with _SENZA_PROXY.open(req, timeout=5) as r:
+                        stati.append(r.status)
+                except urllib.error.HTTPError as e:
+                    stati.append(e.code)
+        assert stati == [200, 429, 429, 200]
+        assert len(self.server.RequestHandlerClass.turni_testo) == 2
+
+    @pytest.mark.parametrize("valore", ["abc", "0", "-3", ""])
+    def test_soglie_scritte_male_usano_il_default(self, monkeypatch, valore):
+        import modules.voice.server as srv
+        monkeypatch.setenv("GAS_VOICE_MAX_TESTO_ORA", valore)
+        assert srv._intero_env("GAS_VOICE_MAX_TESTO_ORA", 120) == 120
+
+
+@pytest.mark.parametrize("bind,locale", [
+    ("127.0.0.1", True), ("127.0.0.2", True), ("::1", True), ("localhost", True),
+    ("0.0.0.0", False), ("192.168.1.10", False), ("100.64.0.5", False), ("::", False),
+    ("127.evil.example", False), ("", False),  # R-720-3-M2: un nome host non è loopback
+])
+def test_r8_bind_locale(bind, locale):
+    from modules.voice.server import _bind_locale
+    assert _bind_locale(bind) is locale
+
+
+@pytest.mark.parametrize("rete", ["", "0", "no"])
+def test_r8_avvio_rifiutato_fuori_da_127_senza_rete_privata(monkeypatch, capsys, rete):
+    import modules.voice.server as srv
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(srv, "_carica_env", lambda: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
+    monkeypatch.setenv("GAS_VOICE_BIND", "0.0.0.0")
+    monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", rete)
+    # se il controllo mancasse, il server non deve partire davvero: il kernel finto fallisce
+    monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
+    sys.modules["gas"].GasKernel = lambda **kw: (_ for _ in ()).throw(AssertionError("partito"))
+    assert run_server(root_dir="/tmp") == 1
+    out = capsys.readouterr().out
+    assert "GAS_VOICE_RETE_PRIVATA" in out and "t" * 32 not in out
+
+
+def test_r8_avvio_con_rete_privata_dichiarata_parte(monkeypatch):
+    """Con GAS_VOICE_RETE_PRIVATA=1 il controllo lascia passare (si ferma qui, prima del kernel)."""
+    import modules.voice.server as srv
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(srv, "_carica_env", lambda: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
+    monkeypatch.setenv("GAS_VOICE_BIND", "100.64.0.5")
+    monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", "1")
+
+    class _Fermo(Exception):
+        pass
+
+    def _kernel(**kw):
+        raise _Fermo()
+    monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
+    sys.modules["gas"].GasKernel = _kernel
+    with pytest.raises(_Fermo):
+        run_server(root_dir="/tmp")
