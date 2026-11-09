@@ -2437,7 +2437,8 @@ def test_rilevatore_rotto_nella_finestra_lascia_traccia(caplog):
     with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
         f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, (SILENZIO, _sec(50)))).gira()
     assert f.tipi == ["parola", "seguito"]
-    assert caplog.text.count("rilevatore in errore nella finestra") >= 1
+    # V-1 bot #351: il primo errore e poi uno ogni 100 (150 errori → righe 1 e 101)
+    assert caplog.text.count("rilevatore in errore nella finestra") == 2
 
 
 def test_pausa_nel_seguito_non_e_un_errore_nel_log(caplog):
@@ -2460,7 +2461,11 @@ def test_pausa_con_errore_tiene_il_motivo_nel_log(caplog):
 
 
 @pytest.mark.parametrize("valore,atteso,avviso", [("300", 120.0, True), ("90", 90.0, False),
-                                                  ("abc", 40.0, False), ("", 40.0, False)])
+                                                  ("abc", 40.0, False), ("", 40.0, False),
+                                                  # V-2 ve #351 (R-707-4): inf/nan tornano a
+                                                  # 40 senza avviso, e senza crash
+                                                  ("inf", 40.0, False), ("nan", 40.0, False),
+                                                  ("-5", 0.0, True)])
 def test_finestra_fuori_limiti_avvisa(monkeypatch, caplog, valore, atteso, avviso):
     """V-3 bot #347: un valore oltre 120 si corregge con un avviso nel log."""
     monkeypatch.setenv("GAS_VOICE_FINESTRA", valore)
