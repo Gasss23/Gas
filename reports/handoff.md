@@ -44,51 +44,54 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Review #720 (prima versione, con il thread), verdetto integrale:
+Review #720 (prima versione, con il thread), verdetto integrale RIEMESSO per il gate B. Stesso esito e contenuto; cambiano solo le citazioni, perché quelle originali puntavano a righe del test poi tolte. L'originale è nella storia git di questo file, commit fee3311:
 
 ## VERDETTO: BOCCIATO
 
-Review #720 (chat Mani). Diff staged in /tmp/claude-0/wt48 (branch mani/telegram3, base b827447). Ho letto CLAUDE.md (sez. 5), le parti di reports/stato_progetto.md che riguardano Telegram e la voce, e la memoria del revisore (il numero più alto era #719, nessun -M2 superiore).
+Riemesso per il gate B: verdetto #720, stesso esito e stesso contenuto, ho cambiato solo le citazioni. Ora puntano a righe che esistono a HEAD fee3311 in /home/user/Gas; il codice del thread e i test tolti nella ri-review sono citati a parole. Non ho toccato memoria e repo.
+
+Review #720 (chat Mani). Diff staged in /tmp/claude-0/wt48 (branch mani/telegram3, base b827447). Ho letto CLAUDE.md (sez. 5), le parti di reports/stato_progetto.md su Telegram e voce, e la memoria del revisore (il numero più alto era #719).
 
 **Motivo del blocco**
-La suite principale del motore va in rosso. Ho lanciato `python tests/test_unit_kernel.py` su una copia dell'index (non è pytest: è quello che CI esegue in `unit-suite`).
+La suite del motore diventa rossa. Ho lanciato `python tests/test_unit_kernel.py` su una copia dell'index (non è pytest: è quello che la CI esegue nel job `unit-suite`).
 - Copia dell'index: 1098 PASS, 2 FAIL.
-- Base b827447: 1099 PASS, 1 FAIL.
-- T31g fallisce anche sulla base: dipende dall'ambiente.
-- **T78p è una regressione nuova**: `[] ['_invia_a_tutti', '_consegna_voce']`. La guardia statica in tests/test_unit_kernel.py:8389 (V-2 della verifica esterna #241, R-450-1/R-451-1) protegge la regola della firma con i bottoni, «un click alla volta». Vuole che `ThreadPoolExecutor` compaia nel bot SOLO dentro `_invia_a_tutti`. Il nuovo pool in modules/telegram/bot.py:995 la viola, quindi `unit-suite` in CI sarebbe rossa e la PR immergeabile.
-- Nel merito il codice non viola la regola: il thread esegue solo `_invia_risposta_vocale` (sintesi, sendVoice, sendMessage) e mai `_handle_update`, `gestisci_callback` o `_riprova_orfana`.
-- Come correggere: allargare la guardia T78p in modo mirato (ammettere `_consegna_voce`, con un commento che spieghi perché) e, magari, controllare che `_lavoro` non chiami i tre gestori.
-- **Sicurezza**: quel cambio tocca una guardia della firma. La PR quindi NON rientra nella regola notturna «niente sicurezza». A mio giudizio serve il sì dell'operatore, oppure una ri-review che la classifichi in modo esplicito.
+- Base b827447: 1099 PASS, 1 FAIL. Il FAIL è T31g, legato all'ambiente e presente anche sulla base.
+- **T78p è una regressione nuova**: `[] ['_invia_a_tutti', '_consegna_voce']`. La guardia statica tests/test_unit_kernel.py:8389 protegge la firma con i bottoni, «un click alla volta». Vuole un solo `ThreadPoolExecutor` nel bot, quello in `_invia_a_tutti` (modules/telegram/bot.py:368).
+- Il diff aggiungeva un secondo pool: il `ThreadPoolExecutor(max_workers=1)` creato in modo lazy dentro `_consegna_voce`, accanto alla variabile di modulo `_voce_in_coda` (codice poi tolto, quindi lo cito a parole). Così la CI sarebbe stata rossa e la PR non mergiabile.
+- Nel merito la regola della firma non era violata: il thread eseguiva solo `_invia_risposta_vocale`, mai i gestori degli update.
+- Correzione possibile: allargare T78p in modo mirato. Però quella guardia protegge la firma, quindi è un cambio di sicurezza: fuori dalla regola notturna, serve il sì dell'operatore.
 
-**Elementi esaminati**
-- modules/telegram/bot.py:929 — `run_turn(text, **kw)`; `kw` è vuoto per i messaggi di testo (`_risposta_del_turno` non passa extra) — rischio: i testi normali cambiano — ok: la chiamata equivale a `run_turn(text)`, e cervello=forte viene aggiunto solo se richiesto (:928).
-- modules/telegram/bot.py:969 — legge `_voce_accesa()` una volta; l'istruzione si importa in un try (:976) — rischio: istruzione con la voce spenta, crash se l'import fallisce — ok: test della voce spenta e test dell'import rotto, log solo col tipo dell'eccezione (§9).
-- modules/telegram/bot.py:983 — `_consegna_voce` parte dopo l'invio del testo — rischio: la voce arriva prima del testo — ok: il testo è inviato prima in modo sincrono.
-- modules/telegram/bot.py:992 — pool lazy `max_workers=1`; `submit` è in un try (:1003) — rischi:
-  - thread safety — ok: `_tg_post`, `_send_text` e `_tg_post_file` fanno una richiesta urllib a sé per chiamata, senza stato condiviso; la creazione lazy del pool avviene solo dal thread del polling;
-  - ordine e una consegna alla volta — ok;
-  - **blocco**: rompe T78p (vedi sopra).
-- modules/telegram/bot.py:995 — shutdown — riserva BASSA: i worker di `ThreadPoolExecutor` non sono daemon e Python li aspetta all'uscita (atexit). Dopo Ctrl-C `run_bot` torna 0, ma il processo attende i vocali in coda: fino a 30 all'ora (`GAS_TELEGRAM_VOCALI_ORA`) per circa 60 s ciascuno; un secondo Ctrl-C lo chiude. Con SIGTERM e il gestore di default il processo esce subito, senza attese. Non è un crash.
-- modules/telegram/bot.py:1014 — `testo_da_dire` — rischio privacy (dati nuovi verso ElevenLabs) — ok: la fonte è sempre `finale`; il testo viene solo ridotto (URL diventano «link», tolti i segni di formattazione), poi passa a `parte_parlata`. Le regex con `[ \t]` lasciano la riga vuota, quindi il dettaglio resta solo nel testo (verificato da tests/test_unit_telegram_voce.py:457). La chiamata sta dentro il try di modules/telegram/bot.py:1062, quindi anche un ImportError è coperto (§9).
-- modules/telegram/bot.py:1011 — `_URL` con `\S+` — COSMETICA: si mangia anche la punteggiatura finale («…su https://x.it/a.» diventa «…su link», senza il punto). Anche `__` toglie gli underscore da nomi come `__init__`. Per l'ascolto è innocuo.
-- tests/test_unit_telegram_voce.py:85 — il fixture rende la consegna sincrona — rischio: il thread vero resta senza test — ok: tests/test_unit_telegram_voce.py:478 prova il pool vero (torna subito, rispetta l'ordine, massimo uno alla volta).
-- tests/test_unit_telegram_voce.py:478 — possibile test instabile — ok: è deterministico (Event con timeout di 5 s; si romperebbe solo se `partita.wait(5)` scadesse sotto un carico estremo). Non ho riprodotto il «1 failed»: file intero 30/30 verde, test thread/coda 40/40 verdi. Nessun test senza fixture usa il pool vero, quindi niente job che restano vivi tra un test e l'altro.
-- tests/test_unit_telegram_voce.py:525 — COSMETICA: `git diff --cached --check` segnala «new blank line at EOF».
+**Elementi esaminati (righe a HEAD)**
+- modules/telegram/bot.py:933 — `run_turn(text, **kw)`; per i messaggi di testo `kw` è vuoto. Rischio: cambiano i testi normali. Esito ok: la chiamata equivale a `run_turn(text)`; `cervello=forte` si aggiunge solo se richiesto (modules/telegram/bot.py:932).
+- modules/telegram/bot.py:973 — `_voce_accesa()` si legge una sola volta; l'istruzione del parlato si importa dentro un try (modules/telegram/bot.py:980). Rischi: istruzione con la voce spenta, crash se l'import fallisce. Esito ok: i test tests/test_unit_telegram_voce.py:431 e tests/test_unit_telegram_voce.py:439 lo coprono; il log riporta solo il tipo dell'eccezione (§9).
+- Consegna della voce (a parole: la chiamata a `_consegna_voce` dopo l'invio del testo, oggi sostituita da modules/telegram/bot.py:987). Rischio: la voce arriva prima del testo. Esito ok: il testo veniva inviato prima, in modo sincrono.
+- `_consegna_voce` e il suo pool (a parole: codice tolto). Rischi esaminati:
+  - Thread safety: ok. `_tg_post`, `_send_text` e `_tg_post_file` fanno ognuno una richiesta urllib a sé, senza stato condiviso. Il pool lazy veniva creato solo dal thread del polling.
+  - Ordine e una consegna alla volta: ok.
+  - Errore in `submit`: ok, finiva solo nel log.
+  - **BLOCCO**: rompe T78p.
+- Spegnimento del pool (a parole). Riserva BASSA:
+  - I worker non erano daemon e Python li aspetta all'uscita (atexit). Dopo Ctrl-C il processo avrebbe atteso i vocali in coda: al massimo 30 all'ora, circa 60 s ciascuno. Un secondo Ctrl-C lo chiude.
+  - Con SIGTERM e il gestore di default l'uscita è immediata.
+  - Non è un crash.
+- modules/telegram/bot.py:995 — `testo_da_dire`. Rischio privacy verso ElevenLabs. Esito ok:
+  - La fonte resta sempre `finale` e il testo viene solo ridotto: URL sostituiti con «link», tolti i segni di formattazione, poi `parte_parlata`.
+  - Le regex con `[ \t]` (modules/telegram/bot.py:990) lasciano la riga vuota, quindi il dettaglio resta solo nel testo (tests/test_unit_telegram_voce.py:454).
+  - La chiamata sta dentro il try di modules/telegram/bot.py:1043, quindi anche un ImportError è coperto (§9).
+- modules/telegram/bot.py:992 — `_URL` con `\S+`. COSMETICA: si mangia anche la punteggiatura finale. Anche `__` toglie gli underscore da nomi come `__init__`.
+- Test (a parole: righe tolte nella ri-review):
+  - Il fixture `tg` (tests/test_unit_telegram_voce.py:27) rendeva sincrona la consegna: ok.
+  - Il test del pool vero (ordine, una consegna alla volta, ritorno immediato) era deterministico: Event con timeout di 5 s. Il «1 failed» non l'ho riprodotto: 30 esecuzioni su 30 e 40 su 40 verdi.
+  - `git diff --cached --check` segnalava una riga vuota in fondo a tests/test_unit_telegram_voce.py. COSMETICA.
 
 **Altri controlli**
-- pytest su telegram_voce, voice_server, voce_ascolto e notte: 682 passed.
-- I test li ho fatti su `git checkout-index` copiato nello scratchpad, senza stash.
-- Wall of Shame: nessuno slicing della history e nessuna simulazione degli strumenti. Il tetto di 10 iterazioni e `_get_window` non sono toccati.
-- `istruzione_turno` contiene solo testo fisso più data e ora; va allo stesso cervello di prima: nessun dato nuovo ai modelli gratuiti.
+- pytest su telegram_voce, voice_server, voce_ascolto e notte: 682 passed. Nessuno stash.
+- Wall of Shame pulito: niente tagli diretti della cronologia, niente simulazione degli strumenti.
+- Il tetto di 10 iterazioni e `_get_window` non sono toccati.
 
-**Rischi esclusi (non verificati)**
-- sendVoice e ElevenLabs dal vivo, e il vero tempo di attesa allo spegnimento con systemd: non riproducibili qui. Resta aperta R-717-3 (MP3 via sendVoice mai provato dal vivo).
-- Non ho fatto mutation testing mio: mi sono fidato dei 6 mutanti dichiarati.
-
-**Memoria**
-Ho aggiunto in coda a /tmp/claude-0/wt48/.claude/agents/memoria_revisore.md la riga #720 (BOCCIATO) più una lezione: un pool o thread nuovo nel bot rompe T78p, quindi va lanciato `tests/test_unit_kernel.py`, e allargare la guardia è un cambio di sicurezza. NON l'ho committata, come mi hai chiesto: per questo non ho eseguito `scripts/commit_memoria_revisore.sh`.
-
-**Per la ri-review**: guardia T78p corretta in modo mirato, riga vuota in fondo a tests/test_unit_telegram_voce.py tolta, e il runner del kernel con il solo FAIL T31g, uguale alla base.
+**Non verificato**
+- sendVoice ed ElevenLabs dal vivo, e lo spegnimento sotto systemd: non riproducibili qui.
+- Non ho fatto mutation testing mio.
 
 Review #721 (ri-review, senza thread), verdetto integrale:
 
