@@ -15,21 +15,21 @@
 
 - **PR #358, server voce più sicuro (R8 fetta 1)**: `MERGIATA` (567beb7) col sì dell'operatore riferito da M1 (bot e verifica esterna senza ALTA/MEDIA).
 - **Velocità, frasi fisse divise in cache**: `FATTA` — in `modules/voice/server.py` `_FRASI_FISSE` contiene anche le frasi delle costanti come le divide `_dividi_frasi` (es. l'uso di «forte», due frasi), così anche nelle risposte a pezzi vengono dalla cache; commento del filtro riscritto (guarda il contenuto, non la provenienza). Chiude bot #356 V-1 BASSA e V-2 COSMETICA. Review #725-M2 APPROVATO; riposizionato sopra main dopo la #358 (patch identica), review #735-M2 APPROVATO.
-- **Bot #360 V-1 BASSA** (manca un test sul percorso vero «forte» → risposta a pezzi): `FATTA` — `test_sintesi_cache_forte_a_pezzi_dal_server`; review #737-M2 APPROVATO. Verifica esterna #360: APPROVATO (https://github.com/Gasss23/Gas/pull/360#issuecomment-6750706419).
+- **Bot #360 V-1 BASSA** (manca un test sul percorso vero «forte» → risposta a pezzi): `FATTA` — `test_sintesi_cache_forte_a_pezzi_dal_server`; review #737-M2 APPROVATO. Bot #360 2° giro (COSMETICA: il test controllava solo la scrittura della cache) `FATTA`: seconda richiesta letta dalla cache; review #740-M2 APPROVATO. Verifica esterna #360: APPROVATO (https://github.com/Gasss23/Gas/pull/360#issuecomment-6750706419).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +
+ .claude/agents/memoria_revisore.md |   4 +
  modules/voice/server.py            | 12 ++++++++----
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    |  31 +++
+ tests/test_unit_voice_server.py    |  44 +++-
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 567beb7 (merge della #358).
@@ -37,6 +37,9 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+dd0444f test(voce): la seconda richiesta «forte» legge i pezzi dalla cache (bot #360, 2° giro)
+a378624 chore(revisore): memoria review #740 — APPROVATO
+1e74840 docs(voce): report #360 — test del bot V-1, review #737 (chat M2)
 2067dd9 test(voce): la risposta d'uso di «forte» a pezzi passa dalla cache sul percorso vero del server (bot #360 V-1)
 8445011 chore(revisore): memoria review #737 — APPROVATO
 07ea908 docs(voce): report di fine task — frasi fisse divise in cache; PR #358 mergiata (chat M2)
@@ -119,13 +122,33 @@ Review #737-M2 sulla PR #360, branch feat/voce-v12-m2. Il diff staged contiene s
 - Ho committato la memoria con lo script: commit 8445011. Il file di test resta staged e non è committato.
 - Non ho toccato `/home/user/Gas-sicura`.
 
+Review #740-M2 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Ho controllato due punti del diff e uno del codice di contesto:
+- `tests/test_unit_voice_server.py:1226`: il parametro facoltativo `tts=None` è stato aggiunto all'helper `_voce_a_pezzi`. Ho guardato se cambia il comportamento degli altri test: no. Senza `tts` il ramo è quello di prima, `patch(..., side_effect=sintesi)`, e con `tts` passato si usa `patch(..., new=tts)`. Il nome `tts` viene riassegnato da `as tts`, ma solo dopo che l'argomento `new=tts` è già stato calcolato, quindi non c'è errore. Con `new=` il patch restituisce l'oggetto passato, cioè lo stesso mock. Sugli altri test l'esito è invariato: la suite passa. Esito: ok.
+- `tests/test_unit_voice_server.py:2113`: la seconda richiesta «Gas, forte.» usa lo stesso mock; il test controlla `tts2 is tts`, zero chiamate e `righe2 == righe`. Ho controllato se il test passa anche quando la cache non viene letta. La chiave della cache (`modules/voice/server.py:340`) è `(synthesize_speech, voice_id, frase)` ed è identica nelle due richieste, perché la funzione è lo stesso mock. `reset_mock()` conserva il `side_effect`. Mutante «cache mai letta» (`modules/voice/server.py:341` con `audio = None`): 4 test falliti, compreso questo; file rimesso a posto, nessuna modifica rimasta nel codice. Esito: ok.
+- `modules/voice/server.py:334` (contesto, file non toccato): `sintesi()` legge la cache solo per le frasi in `_FRASI_FISSE`, quindi la seconda richiesta sulla risposta d'uso di «forte» la usa davvero. Esito: ok.
+
+Test: voice_server + sottofondo + telegram_voce con `-k "not browser"`: 309 passed, 21 deselected. Tu ne dichiari 315: credo che la selezione sia diversa, come nelle review #735 e #737. Nota: il file si chiama `tests/test_unit_sottofondo.py`, non `test_unit_voice_sottofondo`.
+
+Cosa non ho verificato:
+- I test che usano il browser: non li ho eseguiti.
+- La velocità reale con ElevenLabs: il test usa un mock, quindi non la misura.
+- `/home/user/Gas-sicura`: non toccato.
+
+Memoria: riga #740-M2 aggiunta e committata con `scripts/commit_memoria_revisore.sh` (a378624). Il diff staged in `tests/test_unit_voice_server.py` è intatto.
+
+File: /home/user/Gas/tests/test_unit_voice_server.py, /home/user/Gas/modules/voice/server.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voice_server.py`: +1 test `test_sintesi_cache_anche_per_le_frasi_divise` (i pezzi di una frase fissa si sintetizzano una volta sola; un testo diverso mai in cache); col codice precedente fallisce. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 314 passed, 15 deselected; dopo il test del bot #360 V-1: 315 passed (il revisore con `-k "not browser"` ne deseleziona 21: filtro diverso). `gas.py` non toccato.
 
 ## §6 STATO CI
 
-Head 07ea908: handoff-check success; bot APPROVATA con 1 BASSA (chiusa qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
+Head 1e74840: verifica-bot success (APPROVATO CON RISERVE, 1 COSMETICA chiusa qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
