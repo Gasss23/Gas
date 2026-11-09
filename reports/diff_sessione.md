@@ -1,9 +1,9 @@
-# Diff della sessione — 2026-11-09 notte — Voce: cache delle frasi fisse (chat M2)
+# Diff della sessione — 2026-11-09 notte — chat Mani, voce via Telegram fetta 3
 
-- `modules/voice/server.py` — `sintesi()` con cache delle frasi fisse; `_finiti_jobs` azzerato a inizio richiesta; funzione al posto della lambda; parentesi nella condizione del segno.
-- `tests/test_unit_voice_server.py`, `tests/test_unit_sottofondo.py` — test della cache; test dell'azzeramento di `_finiti_jobs` (ve #356 V-1); righe vuote tolte; test che le risposte vere passano dalla cache (bot #356 V-3).
-- `.claude/agents/memoria_revisore.md` — review #715, #716 (merge di main) #719 e #721.
-- Merge di origin/main b827447 (#355 di Mani): entrano `modules/telegram/bot.py` e i suoi test, non toccati da M2.
-- `reports/*` — report di fine task.
+File toccati (base main 69d76b9, dopo il merge della PR #356):
+- `modules/telegram/bot.py`: istruzione del turno parlato per i vocali (`_turno_con_finale(**extra)`), `testo_da_dire`, `VOCE_TIMEOUT_S` = 15 per sintesi e invio.
+- `tests/test_unit_telegram_voce.py`: test dell'istruzione, della pulizia del parlato e dei tempi (da 51 a 59).
+- `.claude/agents/memoria_revisore.md`: righe delle review #720, #721, #723, #724 e #726.
+- `reports/*`: report di fine task.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+Questo file si riscrive a ogni sessione; la storia completa sta in git.

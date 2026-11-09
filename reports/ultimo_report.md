@@ -1,20 +1,18 @@
-# Ultimo report — 2026-11-09 notte — Voce: cache delle frasi fisse (chat M2)
+# Ultimo report — 2026-11-09 notte — voce via Telegram, fetta 3 (chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
 
-- **Merge della #356: decide l'operatore** (CLAUDE.md §10: con riserve si aspetta il suo sì; nessuna regola notturna scritta nel repo). Prossima: server voce sicuro, resta aperta per l'operatore.
+Nessuna nuova. Il 2026-11-09 l'operatore, via M1, ha detto sì alla #357 con le riserve e ha scelto l'opzione (b) per la voce in un thread (fetta successiva, di sicurezza).
 
-## Esito delle fette
+## Esito
 
-- **PR #354**: `MERGIATA` (fa6b1f3).
-- **Cache della sintesi per le frasi fisse**: `FATTA` (niente attesa né costo ElevenLabs per «Dimmi.» e simili).
-- **Riserve BASSE della #354**: `FATTE`. Review #715-M2 APPROVATO CON RISERVE (R-715-1-M2 COSMETICA).
-- Test: 243 passed.
-- **Bot #356 (BOCCIATO su 6872080)**: MEDIA sul report (riga «nessuna decisione») corretta; log dell'handoff in ordine reale; test che le risposte vere usano la cache. Review #721-M2 APPROVATO.
-- **Riserve della verifica esterna #356**: V-1 (test su `_finiti_jobs`), V-2 (righe vuote), V-3 (handoff) `FATTE`; V-4 BASSA registrata. Review #719-M2 APPROVATO.
-- **Merge di main (#355 di Mani) nel branch**: `FATTO` (2580889), review #716-M2 APPROVATO; test dei 4 file toccati: 558 passed.
-- #356 con riserve: resta per l'operatore (CLAUDE.md §10; nessuna regola notturna scritta nel repo).
-
-## Anomalie
-
-- Nessuna.
+- **PR #355 (fetta 2)**: MERGIATA (b827447) col sì dell'operatore.
+- **Voce via Telegram, fetta 3**: FATTA.
+  - Turno parlato (V-1 bot #355): dopo un vocale, con la voce accesa, il turno riceve l'istruzione del parlato con schermo della voce di casa. Prima una o due frasi da dire, poi i dettagli dopo una riga vuota, che restano solo nel testo.
+  - `testo_da_dire`: a voce niente grassetti, codice, titoli o segni degli elenchi; gli indirizzi web diventano «link».
+  - Tempi della voce più corti (V-1 ve #355, R-717-4 in parte): sintesi e invio con 15 s invece di 30, quindi un blocco tipico di circa 30 s invece di circa 60.
+  - Test: telegram_voce 59 passed; kernel 1099 PASS e 1 FAIL (T31g, ambiente).
+- **Consegna in un thread**: DEFERITA. La prima versione è stata BOCCIATA (#720) perché rompeva la guardia T78p delle firme; la decisione spetta all'operatore (punto 1).
+- Review #720 BOCCIATO, poi #721 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
+- **V-3 della verifica esterna #357 e R-723-1**: FATTA. Ogni tipo di a capo viene normalizzato prima della voce, così i dettagli non vanno a ElevenLabs. Review #723/#724.
+- **Merge della PR #356 di M2 nella #357**: FATTO, review #726 APPROVATO.
