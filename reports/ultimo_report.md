@@ -21,3 +21,10 @@
   - R-717-1/2: test dell'eccezione e di ok:false.
 - Test: telegram_voce da 31 a 51, ascolto 295 passed. Mutanti presi.
 - Review #717 e #718 APPROVATO CON RISERVE.
+- **Merge della PR #354 di M2 nella #355**: FATTO, review #719 APPROVATO.
+- **Verifica esterna #355**: APPROVATO CON RISERVE.
+  - V-1 BASSA: polling fermo fino a circa 60 s.
+  - V-2 BASSA: dati di clienti a ElevenLabs, come la voce di casa.
+  - V-3 BASSA: MP3 da provare dal vivo.
+  - V-4 COSMETICA.
+  M1 le ha girate all'operatore.
