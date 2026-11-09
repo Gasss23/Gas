@@ -997,6 +997,10 @@ def testo_da_dire(finale: str) -> str:
     degli elenchi e dice «link» al posto degli indirizzi web; poi parte_parlata della voce
     di casa sceglie le frasi da dire (i dettagli dopo la riga vuota restano nel testo)."""
     from modules.voice.server import parte_parlata
+    # V-3 ve #357 e R-723-1: ogni tipo di a capo («\r\n», «\r», \u2028, \f…) diventa «\n» e
+    # una riga di soli spazi (anche non separabili) diventa vuota: la riga vuota che separa il
+    # detto dai dettagli si riconosce sempre e i dettagli non vanno a ElevenLabs.
+    finale = "\n".join("" if not riga.strip() else riga for riga in finale.splitlines())
     pulito = _URL.sub("link", _MARKDOWN.sub("", finale))
     return parte_parlata(pulito)
 

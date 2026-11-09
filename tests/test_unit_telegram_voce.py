@@ -481,3 +481,16 @@ def test_voce_con_tempi_corti(tg, monkeypatch):
                         lambda *a, timeout=None: (tempi.append(("invio", timeout)), {"ok": True})[1])
     bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("ok"))
     assert tempi == [("sintesi", 15), ("invio", 15)] and bot.VOCE_TIMEOUT_S == 15
+
+
+@pytest.mark.parametrize("finale", ["Fatto.\r\n\r\ndettaglio segreto", "Fatto.\r\rdettaglio segreto",
+                                    "Fatto.\n\r\ndettaglio segreto",
+                                    # R-723-1: altri a capo e righe di soli spazi «strani»
+                                    "Fatto.\u2028\u2028dettaglio segreto",
+                                    "Fatto.\n\xa0\ndettaglio segreto",
+                                    "Fatto.\x0c\x0cdettaglio segreto",
+                                    "Fatto.\n \t\u3000\ndettaglio segreto"])
+def test_a_capo_di_windows_i_dettagli_restano_nel_testo(finale):
+    """V-3 ve #357: con «\\r\\n» la riga vuota si riconosce lo stesso: il dettaglio non si dice."""
+    detto = bot.testo_da_dire(finale)
+    assert "segreto" not in detto and detto.startswith("Fatto.")
