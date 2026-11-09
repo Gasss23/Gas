@@ -2,8 +2,8 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. (Domani) Consegna della voce in un thread a parte, così il bot non si ferma mai: serve allargare la guardia T78p delle firme («un click alla volta»). È un cambio di sicurezza, quindi decide l'operatore. Senza, il bot può restare fermo fino a circa 30 s per vocale.
-2. Merge di questa PR: per la regola notturna dell'operatore la mergio da solo se il bot dà solo BASSE/COSMETICHE (il revisore la classifica senza aspetti di sicurezza).
+1. Merge della PR #357: decide l'operatore (V-1 MEDIA di processo della verifica esterna #357).
+2. Opzioni per la voce del bot in un thread (decisione di sicurezza, R-717-4): (a) lasciare com'è (un solo thread, voce a 15 s, polling fermo circa 30 s per vocale); (b) un thread SOLO per sintesi e invio della voce, che non tocca mai update né firme, con la guardia T78p allargata in modo mirato e un test che lo vieta (consigliata); (c) la voce mandata da un processo separato tramite una coda su file (non tocca il bot, più complessa).
 
 ## Esito
 
@@ -15,3 +15,4 @@
   - Test: telegram_voce 59 passed; kernel 1099 PASS e 1 FAIL (T31g, ambiente).
 - **Consegna in un thread**: DEFERITA. La prima versione è stata BOCCIATA (#720) perché rompeva la guardia T78p delle firme; la decisione spetta all'operatore (punto 1).
 - Review #720 BOCCIATO, poi #721 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
+- **V-3 della verifica esterna #357 e R-723-1**: FATTA. Ogni tipo di a capo viene normalizzato prima della voce, così i dettagli non vanno a ElevenLabs. Review #723/#724.
