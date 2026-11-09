@@ -80,6 +80,9 @@ def tg(monkeypatch):
     monkeypatch.setenv("ELEVENLABS_API_KEY", "chiave-finta")
     monkeypatch.delenv("ELEVENLABS_VOICE_ID", raising=False)
     monkeypatch.delenv("GAS_TELEGRAM_VOCE", raising=False)
+    # la voce va in un thread (opzione b): nei test si consegna subito, in ordine
+    monkeypatch.setattr(bot, "_consegna_voce",
+                        lambda base, chat, finale: bot._invia_risposta_vocale(base, chat, finale))
     monkeypatch.setenv("GROQ_API_KEY", "chiave-finta")
     monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
     monkeypatch.delenv("GAS_TELEGRAM_VOCALI_ORA", raising=False)
@@ -494,3 +497,64 @@ def test_a_capo_di_windows_i_dettagli_restano_nel_testo(finale):
     """V-3 ve #357: con «\\r\\n» la riga vuota si riconosce lo stesso: il dettaglio non si dice."""
     detto = bot.testo_da_dire(finale)
     assert "segreto" not in detto and detto.startswith("Fatto.")
+
+
+# ── opzione (b): la voce in un thread dedicato, una alla volta (9 nov 2026) ──
+
+def test_la_voce_si_consegna_in_un_thread_e_il_polling_non_aspetta(monkeypatch):
+    import threading
+    partita, sblocca = threading.Event(), threading.Event()
+    fatte, attive, massimo = [], [0], [0]
+    lock = threading.Lock()
+
+    def lenta(base, chat, finale):
+        with lock:
+            attive[0] += 1
+            massimo[0] = max(massimo[0], attive[0])
+        partita.set()
+        sblocca.wait(5)
+        fatte.append((chat, finale))
+        with lock:
+            attive[0] -= 1
+    monkeypatch.setattr(bot, "_invia_risposta_vocale", lenta)
+    monkeypatch.setattr(bot, "_voce_in_coda", None)
+    bot._consegna_voce(BASE, CHAT, "uno")
+    bot._consegna_voce(BASE, CHAT, "due")
+    assert partita.wait(5) and fatte == []          # tornata subito, la voce è in corso
+    sblocca.set()
+    bot._voce_in_coda.shutdown(wait=True)
+    assert fatte == [(CHAT, "uno"), (CHAT, "due")] and massimo[0] == 1   # in ordine, una alla volta
+
+
+def test_il_vocale_passa_dalla_coda_non_dal_polling(tg, monkeypatch):
+    in_coda = []
+    monkeypatch.setattr(bot, "_consegna_voce", lambda b, c, f: in_coda.append((c, f)))
+    monkeypatch.setattr(bot, "_invia_risposta_vocale",
+                        lambda *a: pytest.fail("voce in linea nel polling"))
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("Sono le dieci."))
+    assert in_coda == [(CHAT, "Sono le dieci.")]
+
+
+def test_coda_della_voce_non_disponibile_non_fa_cadere(monkeypatch, caplog):
+    class Chiusa:
+        def submit(self, *a):
+            raise RuntimeError("cannot schedule new futures after shutdown")
+    monkeypatch.setattr(bot, "_voce_in_coda", Chiusa())
+    with caplog.at_level("WARNING"):
+        bot._consegna_voce(BASE, CHAT, "uno")
+    assert "coda della voce non disponibile" in caplog.text
+
+
+def test_all_uscita_le_voci_in_coda_si_scartano(monkeypatch):
+    """Ctrl-C: _chiudi_voce scarta la coda (cancel_futures) senza aspettare; la coda
+    successiva si ricrea da capo."""
+    visti = []
+
+    class Coda:
+        def shutdown(self, wait=True, cancel_futures=False):
+            visti.append((wait, cancel_futures))
+    monkeypatch.setattr(bot, "_voce_in_coda", Coda())
+    bot._chiudi_voce()
+    assert visti == [(False, True)] and bot._voce_in_coda is None
+    bot._chiudi_voce()          # senza coda: niente da fare, niente errori
+    assert visti == [(False, True)]
