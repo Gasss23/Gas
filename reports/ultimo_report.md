@@ -1,23 +1,19 @@
-# Ultimo report — 2026-11-09 — Server voce più sicuro, R8 fetta 1 (chat M2)
+# Ultimo report — 2026-11-09 — voce via Telegram, fetta 4: voce in un thread (chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
 
-- **Merge della PR di sicurezza: decide l'operatore** (CLAUDE.md §10).
-- Scelte per le fette 2 e 3 e soglie della fetta 1: `reports/proposta_voce_sicura.md`.
-- R-720-2-M2: un client locale con token vecchio blocca per 15 minuti tutti i client su 127.0.0.1 (scelta prudente da confermare).
+1. Merge della PR #359: è un CAMBIO DI SICUREZZA (guardia T78p delle firme allargata, opzione b scelta dall'operatore). Resta aperta fino al sì esplicito dell'operatore, anche se il bot dà un verdetto pulito. Consigliato il secondo passaggio nella chat claude.ai col link della PR.
+2. Guardia T78p: il revisore (#733) consiglia di fermarsi qui. Le elusioni rimaste (R-733-1/2, BASSE) richiedono codice scritto apposta e visibile in review. L'operatore decide se accettare questo limite della guardia statica.
 
-## Esito delle fette
+## Esito
 
-- **PR #356**: `MERGIATA` (69d76b9).
-- **R8 fetta 1**: `FATTA` — tetto ai tentativi con token sbagliato per IP, tetto alle richieste a testo, avvio rifiutato fuori da 127.0.0.1 senza rete privata dichiarata; proposta scritta. Review #720/#722 APPROVATO CON RISERVE (codice corretto), #723 e #724 APPROVATO.
-- Bot #358 V-1 (bind su tutte le interfacce con la rete privata): chiusa — server mai su tutte le interfacce, fuori da 127.0.0.1 solo IPv4 scritto per intero. Review #727/#728 con riserve (MEDIE corrette), #729 APPROVATO. Test: 290 passed.
-- Bot #358 su e63491b (BOCCIATO per una MEDIA: mancava il test del blocco senza rete privata): corretta, più «::1» non più locale. Review #730-M2 con riserve BASSE. Test: 291 passed. Decisione per l'operatore: IPv4 d'esempio costruiti da intero nei test (handoff §0).
-- Bot #358 su 9f1aee4 (BOCCIATO, MEDIA: una pagina web poteva bloccare la voce): corretta — richieste senza token non contano; più difesa dal DNS rebinding (Host solo «localhost» o IP). Review #731 con riserve, #732 APPROVATO. Test: 352 passed + 15 browser.
-- Merge di main (#357) per il conflitto; review #733-M2 APPROVATO; test 607 passed. Bot e verifica esterna su 39ec264: APPROVATO CON RISERVE, solo BASSE.
-- Bot su 9eee954: nessun finding nuovo ma check rosso (testo incoerente); commit nuovo che chiude R-720-4-M2 (memoria piena). Review #734-M2 APPROVATO; test 313 passed.
-- Gate IP: esempi IPv4 nei test sostituiti con IPv6 di documentazione; review #726-M2 APPROVATO CON RISERVE (R-726-1/2-M2 BASSE).
-- Test: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed.
+- **PR #357 (fetta 3)**: MERGIATA (524ae96).
+- **Voce in un thread (opzione b)**: FATTA (aca5b88; review #725 e #727).
+- **Tempi della voce di casa**: FATTA (3404378; review #722).
+- **Bot e verifica esterna #359** (V-1 MEDIA: la guardia non vincolava .map; V-2 MEDIA/BASSA: i nomi vietati erano una deny-list incompleta): CORRETTE. La guardia T78p ora è una allow-list. La consegna alla coda può essere solo `submit(_invia_risposta_vocale, base_url, chat_id, finale)`. Le funzioni raggiunte dal thread possono usare solo i nomi, gli attributi e gli import ammessi. Nessun legame può coprire un builtin o un nome del modulo. I legami di modulo si contano in modo esatto. Fuori dalle funzioni sono vietate le scritture su attributi e subscript, e in tutto il modulo l'accesso agli interni (__code__, sys.modules, exec…). Review #729–#733: a ogni giro una nuova classe di elusioni è stata chiusa con mutanti di prova; in tutto 27 mutanti presi su 28 (1 inconclusivo). V-3 (test del Ctrl-C nella pausa), V-4 (docstring) e V-5 (report): FATTE.
+- **Merge di main con la PR #358 di M2**: FATTO, review #735.
+- Test: telegram_voce, ascolto e voice_server danno 550 passed. Kernel: 1099 PASS, 1 FAIL (T31g, ambiente); T78p PASS.
 
 ## Anomalie
 
-- Nessuna nel codice. Nota di processo: la fetta è stata preparata in locale di notte (branch occupato dalla #356) e riposizionata sopra main dopo il merge; albero identico a quello revisionato.
+Nessuna nel codice della voce. La guardia statica ha richiesto 5 giri di review: è un limite noto dell'analisi per nomi.

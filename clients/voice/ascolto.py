@@ -531,6 +531,10 @@ class Ascolto:
         self.interrotto = False
         self.chiudi = False
         comando = ""
+        # Velocità (notte del 9 nov): quanto passa da fine richiesta alla prima frase di Gas
+        # (invio, server, prima frase pronta). Solo una riga INFO nel log dell'ascolto, per
+        # misurare dal vero sul Mac dove si perde tempo; non cambia il comportamento.
+        t0 = time.monotonic()
         try:
             esito = (self.invia_seguito if seguito else self.invia)(in_wav(blocchi))
             ok, risposta, motivo = esito[0], esito[1], esito[2]
@@ -581,6 +585,9 @@ class Ascolto:
                     log.info("la risposta contiene la parola di attivazione: niente "
                              "interruzione mentre Gas parla (eco delle casse)")
                 suonati += 1
+                if suonati == 1:
+                    log.info("tempo: prima frase di Gas dopo %.2f s dalla fine della richiesta",
+                             time.monotonic() - t0)
                 try:
                     in_corso = self.riproduci(audio)
                 except Exception as e:  # §9

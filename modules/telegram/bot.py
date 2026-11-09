@@ -58,9 +58,8 @@ ESITO_OUTPUT_MAX: int = 1500
 VOCALE_MAX_S: int = 60
 VOCALE_MAX_BYTES: int = 2_000_000
 VOCALE_TIMEOUT_S: int = 30
-# V-1 ve #355 (R-717-4): la risposta vocale gira nel ciclo di polling (un thread solo: la
-# guardia T78p delle firme non ammette altri thread nel bot). Tempi più corti per sintesi e
-# invio: al massimo ~30 s di attesa per vocale invece di ~60.
+# V-1 ve #355: tempi più corti per sintesi e invio della voce (gira nel thread della voce,
+# _consegna_voce): una voce lenta non trattiene a lungo quelle dopo.
 VOCE_TIMEOUT_S: int = 15
 # R-711-3: tetto ai vocali trascritti in un'ora (come GAS_VOICE_MAX_TURNI_ORA della voce di
 # casa): oltre, niente download né Groq. GAS_TELEGRAM_VOCALI_ORA, default 30.
@@ -557,11 +556,17 @@ def run_bot(root_dir: Optional[str] = None) -> int:
                 _handle_update(base_url, upd, allowed, kernel)
 
         except KeyboardInterrupt:
+            _chiudi_voce()
             print("\n✓ gas telegram: interruzione ricevuta, uscita.")
             return 0
         except Exception as e:
             log.warning("Errore nel loop di polling: %s — riprendo tra 5s", e)
-            time.sleep(5)
+            try:
+                time.sleep(5)
+            except KeyboardInterrupt:  # R-725-2: anche qui la coda della voce si scarta
+                _chiudi_voce()
+                print("\n✓ gas telegram: interruzione ricevuta, uscita.")
+                return 0
 
 
 # ─────────────────────────────── giro notturno da Telegram (R1) ──
@@ -984,7 +989,38 @@ def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any)
     risposta, finale = _turno_con_finale(kernel, chat_id, richiesta, cervello, **extra)
     _send_text(base_url, chat_id, f"{eco}\n\n{risposta}")
     if finale and voce:
-        _invia_risposta_vocale(base_url, chat_id, finale)
+        _consegna_voce(base_url, chat_id, finale)
+
+
+# Opzione (b), scelta dall'operatore il 9 nov 2026 (R-717-4): sintesi e invio della voce in
+# UN thread dedicato, una consegna alla volta e in ordine, così il polling (messaggi nuovi e
+# bottoni delle firme) non resta fermo. Il thread fa SOLO _invia_risposta_vocale: mai update,
+# firme o turni (la guardia T78p lo controlla). Fail-safe §9: un errore finisce nel log.
+_voce_in_coda: Optional[ThreadPoolExecutor] = None
+
+
+def _consegna_voce(base_url: str, chat_id: int, finale: str) -> None:
+    global _voce_in_coda
+    try:
+        if _voce_in_coda is None:
+            _voce_in_coda = ThreadPoolExecutor(max_workers=1, thread_name_prefix="gas-voce-tg")
+        _voce_in_coda.submit(_invia_risposta_vocale, base_url, chat_id, finale)
+    except Exception as e:  # per esempio a spegnimento in corso: resta il testo
+        log.warning("vocale: coda della voce non disponibile (%s)", type(e).__name__)
+
+
+def _chiudi_voce() -> None:
+    """All'uscita (Ctrl-C): le voci in coda si scartano, quella in corso finisce; così l'uscita
+    non aspetta tutta la coda. La voce in corso può trattenere l'uscita fino a circa
+    2×VOCE_TIMEOUT_S per sintesi e invio, più i 70 s di _send_text se deve mandare un avviso
+    (V-4 ve #359). Un SIGTERM (systemd) non passa di qui: le voci in coda si perdono, resta il testo."""
+    global _voce_in_coda
+    coda, _voce_in_coda = _voce_in_coda, None
+    if coda is not None:
+        try:
+            coda.shutdown(wait=False, cancel_futures=True)
+        except Exception as e:  # §9
+            log.warning("vocale: chiusura della coda non riuscita (%s)", type(e).__name__)
 
 
 _MARKDOWN = re.compile(r"(\*\*|__|`+|^[ \t]*#{1,6}[ \t]+|^[ \t]*(?:[-*•]|\d+[.)])[ \t]+)",
