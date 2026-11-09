@@ -48,6 +48,17 @@ _CALLBACK_RE = re.compile(
     r"(ok|no):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})")
 # Quanta parte dell'output di un'azione approvata torna all'operatore (UTF-16).
 ESITO_OUTPUT_MAX: int = 1500
+# Voce via Telegram, fetta 1 (R8, opzione B dell'operatore, 7 nov 2026): un messaggio
+# vocale della chat autorizzata si trascrive (Groq Whisper, come la voce di casa) e va a
+# Gas come testo; la risposta è in testo, con la trascrizione in cima. Tetti PRIMA del
+# download: niente costi né audio a Groq per vocali troppo lunghi o grandi.
+VOCALE_MAX_S: int = 60
+VOCALE_MAX_BYTES: int = 2_000_000
+VOCALE_TIMEOUT_S: int = 30
+# R-711-3: tetto ai vocali trascritti in un'ora (come GAS_VOICE_MAX_TURNI_ORA della voce di
+# casa): oltre, niente download né Groq. GAS_TELEGRAM_VOCALI_ORA, default 30.
+VOCALI_ORA_PREDEFINITO: int = 30
+_vocali_recenti: List[float] = []
 
 
 # ─────────────────────────────────────────── infra HTTP ──
@@ -84,6 +95,92 @@ def _send_text(base_url: str, chat_id: int, text: str) -> None:
 def _send_typing(base_url: str, chat_id: int) -> None:
     """Mostra l'indicatore 'sta scrivendo…' in Telegram (nessun messaggio)."""
     _tg_post(base_url, "sendChatAction", {"chat_id": chat_id, "action": "typing"})
+
+
+def _scarica_vocale(base_url: str, file_id: str) -> Optional[bytes]:
+    """getFile + download del file del vocale, al massimo VOCALE_MAX_BYTES. None su
+    qualunque errore o file troppo grande (fail-safe §9). Il token sta nell'URL di
+    Telegram: non si scrive mai nel log."""
+    info = _tg_post(base_url, "getFile", {"file_id": file_id}, timeout=VOCALE_TIMEOUT_S)
+    risultato = (info or {}).get("result") if isinstance(info, dict) else None
+    percorso = (risultato or {}).get("file_path") if isinstance(risultato, dict) else None
+    if not isinstance(percorso, str) or not percorso or ".." in percorso:
+        log.warning("vocale: getFile senza percorso valido")
+        return None
+    dimensione = risultato.get("file_size")
+    if isinstance(dimensione, int) and dimensione > VOCALE_MAX_BYTES:
+        log.warning("vocale: file troppo grande (%d byte)", dimensione)
+        return None
+    url = base_url.replace("/bot", "/file/bot", 1) + "/" + percorso
+    try:
+        with urllib.request.urlopen(url, timeout=VOCALE_TIMEOUT_S) as r:
+            dati = r.read(VOCALE_MAX_BYTES + 1)
+    except Exception as e:
+        log.warning("vocale: download non riuscito (%s)", type(e).__name__)
+        return None
+    if len(dati) > VOCALE_MAX_BYTES:
+        log.warning("vocale: file oltre %d byte", VOCALE_MAX_BYTES)
+        return None
+    return dati or None
+
+
+def _vocali_ora() -> int:
+    try:
+        n = int(os.environ.get("GAS_TELEGRAM_VOCALI_ORA") or VOCALI_ORA_PREDEFINITO)
+    except ValueError:
+        log.warning("GAS_TELEGRAM_VOCALI_ORA non numerica: uso %d", VOCALI_ORA_PREDEFINITO)
+        return VOCALI_ORA_PREDEFINITO
+    return n if n > 0 else VOCALI_ORA_PREDEFINITO
+
+
+def _posto_per_un_vocale() -> bool:
+    """R-711-3: al massimo GAS_TELEGRAM_VOCALI_ORA vocali trascritti nell'ultima ora (il
+    bot gira in un solo thread). True = c'è posto, e il vocale si conta subito."""
+    adesso = time.monotonic()
+    _vocali_recenti[:] = [t for t in _vocali_recenti if adesso - t < 3600]
+    if len(_vocali_recenti) >= _vocali_ora():
+        log.warning("vocale: tetto di %d vocali all'ora raggiunto", _vocali_ora())
+        return False
+    _vocali_recenti.append(adesso)
+    return True
+
+
+def testo_da_vocale(base_url: str, vocale: Any) -> Tuple[Optional[str], str]:
+    """(testo trascritto, "") oppure (None, messaggio da mandare all'operatore). Tetti
+    di durata e dimensione letti dal messaggio PRIMA del download. Mai eccezioni (§9)."""
+    from modules.voice.stt import GroqSTTError, TrascrizioneIncerta, transcribe_audio
+    if not isinstance(vocale, dict) or not isinstance(vocale.get("file_id"), str):
+        return None, "✗ Vocale non leggibile."
+    durata = vocale.get("duration")
+    if not isinstance(durata, int) or isinstance(durata, bool):
+        return None, "✗ Vocale senza durata: non lo trascrivo."  # R-711-2
+    if durata > VOCALE_MAX_S:
+        return None, f"✗ Vocale troppo lungo: al massimo {VOCALE_MAX_S} secondi."
+    dimensione = vocale.get("file_size")
+    if isinstance(dimensione, int) and dimensione > VOCALE_MAX_BYTES:
+        return None, "✗ Vocale troppo grande."
+    chiave = os.environ.get("GROQ_API_KEY", "").strip()
+    if not chiave:
+        return None, "✗ Trascrizione non disponibile: manca GROQ_API_KEY."
+    if not _posto_per_un_vocale():
+        return None, "✗ Troppi vocali nell'ultima ora: riprova più tardi o scrivi."
+    audio = _scarica_vocale(base_url, vocale["file_id"])
+    if audio is None:
+        return None, "✗ Non riesco a scaricare il vocale da Telegram."
+    try:
+        testo = transcribe_audio(audio, "vocale.ogg", chiave)
+    except TrascrizioneIncerta as e:
+        log.info("vocale: trascrizione scartata (%s)", e.motivo)  # mai il parlato nel log
+        return None, "Non ho capito bene il vocale: puoi ripeterlo o scriverlo?"
+    except GroqSTTError as e:
+        log.warning("vocale: Groq ha risposto %s", e.status)
+        return None, "✗ Trascrizione non riuscita (Groq)."
+    except Exception as e:
+        log.warning("vocale: trascrizione non riuscita (%s)", type(e).__name__)
+        return None, "✗ Trascrizione non riuscita."
+    if not testo.strip():
+        return None, "Nel vocale non ho sentito parole."
+    return testo.strip(), ""
 
 
 def parse_allowed_ids(raw: str) -> Tuple[Set[int], List[str]]:
@@ -739,11 +836,23 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
 
         chat_id: Optional[int] = (msg.get("chat") or {}).get("id")
         text = (msg.get("text") or "").strip()
-        if not chat_id or not text:
+        # Voce via Telegram, fetta 1: solo i vocali nuovi (non quelli «modificati»).
+        vocale = msg.get("voice") if upd.get("message") else None
+        if not chat_id or not (text or vocale):
             return
 
         if chat_id not in allowed:
+            # prima di scaricare o trascrivere: nessun costo, nessun audio a Groq
             log.warning("Messaggio da chat_id %d non autorizzato — ignorato", chat_id)
+            return
+
+        if not text:
+            _send_typing(base_url, chat_id)
+            trascritto, errore = testo_da_vocale(base_url, vocale)
+            if trascritto is None:
+                _send_text(base_url, chat_id, errore)
+                return
+            _gestisci_parlato(base_url, chat_id, trascritto, kernel)
             return
 
         giro = comando_giro(text)
@@ -783,32 +892,55 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
             return
 
         _send_typing(base_url, chat_id)
-
-        parts: List[str] = []
-        try:
-            turno = (kernel.run_turn(text, cervello="forte") if cervello == "forte"
-                     else kernel.run_turn(text))
-            for event in turno:
-                etype = event.get("type")
-                if etype == "final":
-                    parts.append(event.get("content", ""))
-                elif etype == "tool_res":
-                    out = (event.get("output") or "").strip()
-                    if out:
-                        # Tool result compatti: massimo 200 char per non spammare
-                        short = out[:200].replace("\n", " ")
-                        parts.append(f"[…] {short}")
-                elif etype == "error":
-                    parts.append(f"✗ {event.get('content', 'errore sconosciuto')}")
-        except Exception as e:
-            log.warning("run_turn fallita per chat %d: %s", chat_id, e)
-            parts.append(f"✗ Errore interno: {str(e)[:120]}")
-
-        reply = "\n\n".join(p for p in parts if p) or "(nessuna risposta)"
-        _send_text(base_url, chat_id, reply)
+        _send_text(base_url, chat_id, _risposta_del_turno(kernel, chat_id, text, cervello))
 
     except Exception as e:
         log.warning("_handle_update fallita: %s", e)
+
+
+def _risposta_del_turno(kernel: Any, chat_id: int, text: str,
+                        cervello: Optional[str]) -> str:
+    """Un turno di Gas e la risposta in testo (fail-safe §9)."""
+    parts: List[str] = []
+    try:
+        turno = (kernel.run_turn(text, cervello="forte") if cervello == "forte"
+                 else kernel.run_turn(text))
+        for event in turno:
+            etype = event.get("type")
+            if etype == "final":
+                parts.append(event.get("content", ""))
+            elif etype == "tool_res":
+                out = (event.get("output") or "").strip()
+                if out:
+                    # Tool result compatti: massimo 200 char per non spammare
+                    short = out[:200].replace("\n", " ")
+                    parts.append(f"[…] {short}")
+            elif etype == "error":
+                parts.append(f"✗ {event.get('content', 'errore sconosciuto')}")
+    except Exception as e:
+        log.warning("run_turn fallita per chat %d: %s", chat_id, e)
+        parts.append(f"✗ Errore interno: {str(e)[:120]}")
+    return "\n\n".join(p for p in parts if p) or "(nessuna risposta)"
+
+
+def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any) -> None:
+    """Il testo di un vocale va a Gas come il parlato della voce di casa: «forte …» detto
+    all'inizio vale «/forte» (stessa regola del server voce, cervello_voce); i comandi
+    (/clear, /notte) non valgono a voce. In cima alla risposta la trascrizione, così
+    l'operatore vede subito se Whisper ha sentito male. Le firme restano sui bottoni."""
+    eco = f"Ho capito: «{trascritto}»"
+    try:
+        from modules.voice.server import _USO_FORTE_PARLATO, cervello_voce
+    except Exception as e:  # R-711-4: §9, l'operatore lo sa invece di non ricevere nulla
+        log.warning("vocale: regole della voce non caricate (%s)", type(e).__name__)
+        _send_text(base_url, chat_id, f"{eco}\n\n✗ Errore interno: non posso gestire i vocali.")
+        return
+    cervello, richiesta = cervello_voce(trascritto, parlato=True)
+    if cervello == "uso":
+        _send_text(base_url, chat_id, f"{eco}\n\n{_USO_FORTE_PARLATO}")
+        return
+    risposta = _risposta_del_turno(kernel, chat_id, richiesta, cervello)
+    _send_text(base_url, chat_id, f"{eco}\n\n{risposta}")
 
 
 # ─────────────────────────────────── firma via bottoni (C4b-2) ──
