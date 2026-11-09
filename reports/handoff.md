@@ -15,21 +15,21 @@
 
 - **PR #358, server voce più sicuro (R8 fetta 1)**: `MERGIATA` (567beb7) col sì dell'operatore riferito da M1 (bot e verifica esterna senza ALTA/MEDIA).
 - **Velocità, frasi fisse divise in cache**: `FATTA` — in `modules/voice/server.py` `_FRASI_FISSE` contiene anche le frasi delle costanti come le divide `_dividi_frasi` (es. l'uso di «forte», due frasi), così anche nelle risposte a pezzi vengono dalla cache; commento del filtro riscritto (guarda il contenuto, non la provenienza). Chiude bot #356 V-1 BASSA e V-2 COSMETICA. Review #725-M2 APPROVATO; riposizionato sopra main dopo la #358 (patch identica), review #735-M2 APPROVATO.
-- **Bot #360 V-1 BASSA** (manca un test sul percorso vero «forte» → risposta a pezzi): `FATTA` — `test_sintesi_cache_forte_a_pezzi_dal_server`; review #737-M2 APPROVATO. Bot #360 2° giro (COSMETICA: il test controllava solo la scrittura della cache) `FATTA`: seconda richiesta letta dalla cache; review #740-M2 APPROVATO. Verifica esterna #360: APPROVATO (https://github.com/Gasss23/Gas/pull/360#issuecomment-6750706419).
+- **Bot #360 V-1 BASSA** (manca un test sul percorso vero «forte» → risposta a pezzi): `FATTA` — `test_sintesi_cache_forte_a_pezzi_dal_server`; review #737-M2 APPROVATO. Bot #360 2° giro (COSMETICA: il test controllava solo la scrittura della cache) `FATTA`: seconda richiesta letta dalla cache; review #740-M2 APPROVATO. Bot #360 3° giro: V-1 BASSA (confronto coi tempi misurati, test instabile) `FATTA`, review #741-M2 APPROVATO. Verifica esterna #360 su 07ea908 (prima dei test aggiunti dopo): APPROVATO (https://github.com/Gasss23/Gas/pull/360#issuecomment-6750706419).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 +
+ .claude/agents/memoria_revisore.md |   5 +
  modules/voice/server.py            | 12 ++++++++----
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    |  44 +++-
+ tests/test_unit_voice_server.py    |  47 +++-
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 567beb7 (merge della #358).
@@ -37,6 +37,9 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8984e81 test(voce): il confronto della seconda richiesta «forte» ignora i tempi misurati (bot #360, 3° giro: test instabile)
+dd2d61e chore(revisore): memoria review #741 — APPROVATO
+d6af23f docs(voce): report #360 — review #740 (chat M2)
 dd0444f test(voce): la seconda richiesta «forte» legge i pezzi dalla cache (bot #360, 2° giro)
 a378624 chore(revisore): memoria review #740 — APPROVATO
 1e74840 docs(voce): report #360 — test del bot V-1, review #737 (chat M2)
@@ -142,13 +145,40 @@ Memoria: riga #740-M2 aggiunta e committata con `scripts/commit_memoria_revisore
 
 File: /home/user/Gas/tests/test_unit_voice_server.py, /home/user/Gas/modules/voice/server.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
+Review #741-M2 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+La correzione funziona: il test ora ignora solo la chiave «tempi» e confronta ancora tutto il resto.
+
+**Elementi esaminati**
+- `tests/test_unit_voice_server.py:2120` — una lambda toglie la chiave «tempi» da ogni riga NDJSON (ogni riga di testo JSON della risposta) prima del confronto.
+  - Rischio: che il filtro nasconda altri campi che cambiano fra una richiesta e l'altra, oppure che renda il confronto inutile.
+  - Esito: ok. Ho stampato le righe vere della risposta «Gas, forte.». Sono tre:
+    - riga 1: `content`, `uso`, `capito`, `pezzi`, `audio`
+    - riga 2: `audio`
+    - riga 3: `fine`, `tempi`
+  - Non ci sono id, istanti né valori casuali. L'audio (base64 della frase) e la riga `{"fine": true}` restano confrontati, quindi il confronto continua a provare che l'audio preso dalla memoria è identico a quello sintetizzato.
+- `modules/voice/server.py:1073` (contesto) — la riga finale `{"fine": True, "tempi": …}`. I tempi vengono da `_chiudi_tempi` (`modules/voice/server.py:527`) e da `_segna` (`modules/voice/server.py:519`), misurati con `time.monotonic()` e arrotondati a 0,01 s.
+  - Rischio: altri campi che dipendono dal tempo.
+  - Esito: ok. «tempi» è l'unico campo legato al tempo nel ramo a pezzi (`modules/voice/server.py:1043-1073`).
+- `tests/test_unit_voice_server.py:2117` — `tts.call_count == 0` resta un controllo della lettura dalla cache, indipendente dal confronto delle righe. Esito: ok.
+- Il test passa in locale (1 passed). Nel diff ci sono solo cambiamenti al test, nessuna modifica al motore né ai guardrail. Nessun antipattern del Wall of Shame.
+
+**Rischio escluso**
+- Il mutante «cache mai letta» non l'ho rieseguito io: mi fido della prova dichiarata e della review #740-M2, che lo aveva già riprodotto.
+- Non ho verificato su un runner CI lento: non si riproduce qui.
+- Con l'argomento `root` attivo, la prima riga può avere altri campi (i compiti in sottofondo). Non ho verificato se dipendono dal tempo perché questo test non usa `root`.
+
+- Contatore #741-M2 aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committato (dd2d61e).
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voice_server.py`: +1 test `test_sintesi_cache_anche_per_le_frasi_divise` (i pezzi di una frase fissa si sintetizzano una volta sola; un testo diverso mai in cache); col codice precedente fallisce. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 314 passed, 15 deselected; dopo il test del bot #360 V-1: 315 passed (il revisore con `-k "not browser"` ne deseleziona 21: filtro diverso). `gas.py` non toccato.
 
 ## §6 STATO CI
 
-Head 1e74840: verifica-bot success (APPROVATO CON RISERVE, 1 COSMETICA chiusa qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
+Head d6af23f: verifica-bot APPROVATO CON RISERVE (V-1 BASSA test instabile e V-2 COSMETICA report, chiuse qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
