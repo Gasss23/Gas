@@ -1,9 +1,9 @@
-# Diff della sessione — 2026-11-08 — Voce: riserve BASSE della #350 (chat M2)
+# Diff della sessione — 2026-11-09 — Sottofondo e voce: riserve BASSE (chat M2)
 
-- `modules/voice/server.py` — `_compiti_finiti` non segna più; `_segna_finiti_letti` dopo la consegna (pezzi, MP3 unico, audio/mpeg, JSON); guardia sulla risposta vuota; «Dimmi.» con i compiti (`_rispondi_senza_turno(prefisso=)`).
-- `modules/sottofondo/__init__.py` — nome temporaneo unico in `_scrivi_privato`.
-- `tests/test_unit_voice_server.py` (f32b), `tests/test_unit_sottofondo.py`.
-- `.claude/agents/memoria_revisore.md` — review #711.
+- `modules/voice/server.py` — segno di lettura dopo `_send_json`; regola unica schermo/senza schermo (`_do_pezzi_response(schermo=)`, `consegnati`).
+- `modules/sottofondo/__init__.py` — `_pulisci_vecchi` cancella anche compiti aperti vecchi senza posto; `_ultima_pulizia` con `time.monotonic`.
+- `tests/test_unit_voice_server.py` (f32c), `tests/test_unit_sottofondo.py`.
+- `.claude/agents/memoria_revisore.md` — review #713.
 - `reports/*` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

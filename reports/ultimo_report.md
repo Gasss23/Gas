@@ -1,4 +1,4 @@
-# Ultimo report — 2026-11-08 — Voce: riserve BASSE della #350 (chat M2)
+# Ultimo report — 2026-11-09 — Sottofondo e voce: riserve BASSE aperte (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
@@ -7,10 +7,10 @@
 
 ## Esito delle fette
 
-- **PR #350**: `MERGIATA` (9b6b2fa).
-- **Riserve BASSE della #350**: `FATTA` — compiti letti solo dopo la consegna, «Dimmi.» dice i compiti, risposta vuota, file temporanei unici, test dei rami mancanti; review #711-M2 APPROVATO CON RISERVE (R-711-1/2-M2 BASSE).
-- Test: server voce 126 passed; sottofondo 74 passed.
+- **PR #352**: `MERGIATA` (3084979).
+- **Riserve BASSE aperte**: `FATTA` — segno di lettura dopo l'invio, regola unica schermo/senza schermo, compiti aperti vecchi puliti, pulizia oraria monotona, test mancanti; review #713-M2 APPROVATO CON RISERVE (R-713-1/2-M2 BASSE).
+- Test: server voce + sottofondo 206 passed.
 
 ## Anomalie
 
-- Nessuna.
+- Durante lo sviluppo un mio errore (senza schermo il segno partiva anche con voce fallita) è stato preso da un test e corretto prima del commit.
