@@ -15,20 +15,21 @@
 
 - **PR #358, server voce più sicuro (R8 fetta 1)**: `MERGIATA` (567beb7) col sì dell'operatore riferito da M1 (bot e verifica esterna senza ALTA/MEDIA).
 - **Velocità, frasi fisse divise in cache**: `FATTA` — in `modules/voice/server.py` `_FRASI_FISSE` contiene anche le frasi delle costanti come le divide `_dividi_frasi` (es. l'uso di «forte», due frasi), così anche nelle risposte a pezzi vengono dalla cache; commento del filtro riscritto (guarda il contenuto, non la provenienza). Chiude bot #356 V-1 BASSA e V-2 COSMETICA. Review #725-M2 APPROVATO; riposizionato sopra main dopo la #358 (patch identica), review #735-M2 APPROVATO.
+- **Bot #360 V-1 BASSA** (manca un test sul percorso vero «forte» → risposta a pezzi): `FATTA` — `test_sintesi_cache_forte_a_pezzi_dal_server`; review #737-M2 APPROVATO. Verifica esterna #360: APPROVATO (https://github.com/Gasss23/Gas/pull/360#issuecomment-6750706419).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
+ .claude/agents/memoria_revisore.md |   3 +
  modules/voice/server.py            | 12 ++++++++----
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    | 18 ++++++++++++++++++
+ tests/test_unit_voice_server.py    |  31 +++
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 567beb7 (merge della #358).
@@ -36,6 +37,9 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2067dd9 test(voce): la risposta d'uso di «forte» a pezzi passa dalla cache sul percorso vero del server (bot #360 V-1)
+8445011 chore(revisore): memoria review #737 — APPROVATO
+07ea908 docs(voce): report di fine task — frasi fisse divise in cache; PR #358 mergiata (chat M2)
 b660d1c chore(revisore): memoria review #735 — APPROVATO
 36adbd9 perf(voce): in cache anche le frasi fisse divise nelle risposte a pezzi; commento del filtro corretto (bot #356 V-1/V-2)
 8b95a14 chore(revisore): memoria review #725 — APPROVATO
@@ -87,13 +91,41 @@ Il cherry-pick è corretto e non ci sono problemi bloccanti. Ho fatto le tre let
 
 File: /home/user/Gas/modules/voice/server.py, /home/user/Gas/tests/test_unit_voice_server.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
+Review #737-M2 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #737-M2 sulla PR #360, branch feat/voce-v12-m2. Il diff staged contiene solo `tests/test_unit_voice_server.py` (+13 righe).
+
+**Cosa ho controllato nel diff e nel codice**
+- `tests/test_unit_voice_server.py:2099`: il nuovo test `test_sintesi_cache_forte_a_pezzi_dal_server` avvia il server vero tramite `_voce_a_pezzi`, con trascrizione «Gas, forte.» e formato audio+testo+pezzi.
+  - Rischio esaminato: residui di cache lasciati da altri test (falso verde o falso rosso). La cache è sostituita con un dict nuovo tramite monkeypatch, quindi è isolata.
+  - Rischio esaminato: falso verde se il server sintetizza altre frasi. L'asserzione è di uguaglianza esatta: le chiamate a synthesize_speech devono essere proprio `_dividi_frasi(_USO_FORTE_PARLATO)`, cioè 2 pezzi, nell'ordine giusto.
+  - Esito: ok.
+- `modules/voice/server.py:340`: la chiave della cache è `(synthesize_speech, voice_id, frase)`, quindi `k[2]` nel test è proprio la frase. L'asserzione `sorted(k[2] for k in cache) == sorted(pezzi)` controlla davvero che i pezzi stiano in cache. Esito: ok.
+- `modules/voice/server.py:328`: `_FRASI_FISSE` comprende anche i pezzi divisi.
+  - Mutante riprodotto da me (`_FRASI_FISSE = frozenset(_FRASI_FISSE_INTERE)`): il test dà 1 failed. Il file è stato ripristinato e `git status` mostra solo il file di test staged.
+  - Il mio primo mutante scritto con sed era sbagliato per precedenza degli operatori (`A | B and C` vale `(A|B) and C`). L'ho rifatto: il risultato vale solo per il secondo.
+  - Esito: ok.
+- Test: `tests/test_unit_voice_server.py`, `tests/test_unit_sottofondo.py` e `tests/test_unit_telegram_voce.py` con `-k "not browser"` danno 309 passed e 21 deselected. Il dato dichiarato era 315: credo dipenda da una selezione diversa dei test (come in #735-M2), non da un fallimento.
+- Wall of Shame (gli errori vietati da CLAUDE.md sez. 5): non c'entra. Nessuna storia dei messaggi, nessun output di tool simulato. Il mock di synthesize_speech riguarda un servizio esterno, non un tool del modello.
+
+**Cosa non ho verificato**
+- I test della pagina nel browser (`-k "not browser"`): in questo ambiente non c'è Playwright, e il diff non tocca il client.
+- La latenza reale con ElevenLabs sul Mac: il test usa una sintesi finta, quindi il guadagno di velocità dal vero resta da provare.
+
+**Dopo la review**
+- Ho scritto la riga #737-M2 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, con una lezione: rileggere i mutanti scritti con sed, per via della precedenza tra `|` e `and`.
+- Ho committato la memoria con lo script: commit 8445011. Il file di test resta staged e non è committato.
+- Non ho toccato `/home/user/Gas-sicura`.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: +1 test `test_sintesi_cache_anche_per_le_frasi_divise` (i pezzi di una frase fissa si sintetizzano una volta sola; un testo diverso mai in cache); col codice precedente fallisce. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 314 passed, 15 deselected (il revisore con `-k "not browser"` ne deseleziona 21: filtro diverso). `gas.py` non toccato.
+`tests/test_unit_voice_server.py`: +1 test `test_sintesi_cache_anche_per_le_frasi_divise` (i pezzi di una frase fissa si sintetizzano una volta sola; un testo diverso mai in cache); col codice precedente fallisce. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 314 passed, 15 deselected; dopo il test del bot #360 V-1: 315 passed (il revisore con `-k "not browser"` ne deseleziona 21: filtro diverso). `gas.py` non toccato.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel cloud. I commit sono pushati insieme a questo report: run non ancora disponibile alla scrittura dell'handoff.
+Head 07ea908: handoff-check success; bot APPROVATA con 1 BASSA (chiusa qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
