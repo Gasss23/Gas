@@ -173,11 +173,13 @@ Memoria: aggiunta la riga #721-M2 in /home/user/Gas/.claude/agents/memoria_revis
 
 ## §6 STATO CI
 
-Head 6872080: handoff-check success; verifica-bot failure (BOCCIATO, MEDIA sul report, corretta qui); unit-suite in corso alla scrittura. Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
+Head 8e2dd07: verifica-bot success (APPROVATO CON RISERVE: BASSA = due riserve del bot su 84b88f8 non registrate, ora in §7; COSMETICA = questo §6); handoff-check success; unit-suite in corso alla scrittura. Head precedente 6872080: verifica-bot failure (BOCCIATO, MEDIA sul report, corretta).
 
 ## §7 RISERVE APERTE
 
-- Ve #356 V-4 BASSA: la cache vale solo nelle risposte a pezzi (nel formato unico il parlato unito non è una frase fissa); `api_key` non nella chiave della cache.
+- Bot #356 (84b88f8) V-1 BASSA: nelle risposte a pezzi la frase sull'uso di «forte» (`_USO_FORTE_PARLATO`) viene divisa in due frasi e non va mai in cache (la descrizione della PR la dà in cache: impreciso).
+- Bot #356 (84b88f8) V-2 COSMETICA: il commento di `sintesi()` dice «mai testo del modello», ma il filtro guarda il contenuto (uguale a una costante), non la provenienza.
+- Ve #356 V-4 BASSA (corretta dal bot su 8e2dd07): nel formato audio+testo la cache vale solo se il parlato è proprio una frase fissa (es. «Dimmi.»), non quando una frase fissa è attaccata alla risposta; `api_key` non nella chiave della cache.
 - R-713-1-M2 BASSA (in parte): test del client chiuso nei pezzi con schermo e dell'ordine invio→segno.
 - R-713-2-M2 BASSA: attivo.json illeggibile + durata > giorni → compito vivo senza file.
 - Restano: R-709-1/2-M2, R-708-1-M2, R-706-1-M2, R-701-3-M2, R-703-2-M2, R-696-1-M2.
