@@ -1,30 +1,17 @@
-# Ultimo report — 2026-11-09 — voce via Telegram, fetta 2 (chat Mani): risposta anche a voce
+# Ultimo report — 2026-11-09 notte — voce via Telegram, fetta 3 (chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 2 Telegram: review APPROVATO CON RISERVE (solo BASSE), PR nel perimetro, quindi decide l'operatore via M1.
-2. Prova dal vivo (R-717-3): mandare un vocale al bot e controllare che la risposta arrivi anche come nota vocale. Se Telegram rifiuta l'MP3, arriva l'avviso «Risposta vocale non inviata».
+1. (Domani) Consegna della voce in un thread a parte, così il bot non si ferma mai: serve allargare la guardia T78p delle firme («un click alla volta»). È un cambio di sicurezza, quindi decide l'operatore. Senza, il bot può restare fermo fino a circa 30 s per vocale.
+2. Merge di questa PR: per la regola notturna dell'operatore la mergio da solo se il bot dà solo BASSE/COSMETICHE (il revisore la classifica senza aspetti di sicurezza).
 
 ## Esito
 
-- **PR #353 (fetta 1)**: MERGIATA (7a9fad4) col sì dell'operatore.
-- **Voce via Telegram, fetta 2**: FATTA (decisione dell'operatore del 9/11: risposta a voce SOLO dopo un vocale).
-  - Prima arriva il testo, poi la parte parlata della risposta finale (parte_parlata, come la voce di casa), sintetizzata con ElevenLabs e mandata con sendVoice.
-  - Gli output degli strumenti non vanno né a voce né a ElevenLabs. Niente voce se il turno è in errore, dopo un testo o con «forte» senza richiesta.
-  - GAS_TELEGRAM_VOCE=0 la spegne. Senza chiave, con un errore di sintesi o con l'invio rifiutato arriva un avviso breve.
-- **Riserve chiuse**:
-  - V-1 bot #353: l'import di stt è protetto;
-  - V-1 ve #353: test di read(MAX+1);
-  - R-712-2;
-  - V-1 bot #351: test esatto «log ogni 100»;
-  - V-2 ve #351: test di inf/nan;
-  - R-717-1/2: test dell'eccezione e di ok:false.
-- Test: telegram_voce da 31 a 51, ascolto 295 passed. Mutanti presi.
-- Review #717 e #718 APPROVATO CON RISERVE.
-- **Merge della PR #354 di M2 nella #355**: FATTO, review #719 APPROVATO.
-- **Verifica esterna #355**: APPROVATO CON RISERVE.
-  - V-1 BASSA: polling fermo fino a circa 60 s.
-  - V-2 BASSA: dati di clienti a ElevenLabs, come la voce di casa.
-  - V-3 BASSA: MP3 da provare dal vivo.
-  - V-4 COSMETICA.
-  M1 le ha girate all'operatore.
+- **PR #355 (fetta 2)**: MERGIATA (b827447) col sì dell'operatore.
+- **Voce via Telegram, fetta 3**: FATTA.
+  - Turno parlato (V-1 bot #355): dopo un vocale, con la voce accesa, il turno riceve l'istruzione del parlato con schermo della voce di casa. Prima una o due frasi da dire, poi i dettagli dopo una riga vuota, che restano solo nel testo.
+  - `testo_da_dire`: a voce niente grassetti, codice, titoli o segni degli elenchi; gli indirizzi web diventano «link».
+  - Tempi della voce più corti (V-1 ve #355, R-717-4 in parte): sintesi e invio con 15 s invece di 30, quindi un blocco tipico di circa 30 s invece di circa 60.
+  - Test: telegram_voce 59 passed; kernel 1099 PASS e 1 FAIL (T31g, ambiente).
+- **Consegna in un thread**: DEFERITA. La prima versione è stata BOCCIATA (#720) perché rompeva la guardia T78p delle firme; la decisione spetta all'operatore (punto 1).
+- Review #720 BOCCIATO, poi #721 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
