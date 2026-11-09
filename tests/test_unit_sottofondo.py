@@ -822,7 +822,6 @@ def test_pulizia_oraria_con_orologio_monotono(tmp_path, monkeypatch):
     assert len(chiamate) == 2
 
 
-
 @pytest.mark.parametrize("stato", ["in_corso", "in_coda"])
 def test_pulizia_compito_aperto_vecchio_senza_posto(tmp_path, stato):
     """Bot #354 V-1: anche «in_coda» vecchio senza posto si cancella, come «in_corso»."""

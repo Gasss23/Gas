@@ -1982,6 +1982,21 @@ def test_f32c_dimmi_senza_tts_a_testo(tmp_path):
     assert _letto(f)
 
 
+def test_f32c_finiti_jobs_azzerati_a_ogni_richiesta(monkeypatch):
+    """R-711-3-M2 (ve #356 V-1): i compiti tenuti da una richiesta precedente sulla stessa
+    connessione (keep-alive) non vengono segnati letti dalla richiesta dopo."""
+    from modules import sottofondo
+    segnati = []
+    monkeypatch.setattr(sottofondo, "segna_letti", lambda root, jobs: segnati.append(jobs))
+    h = VoiceHandler.__new__(VoiceHandler)
+    h.path = "/non-esiste"
+    h.headers = {}
+    h._send_json = lambda code, payload: None
+    h._finiti_jobs = [{"id": "della-richiesta-prima"}]
+    h.do_POST()
+    h._segna_finiti_letti()
+    assert segnati == []
+
 
 # ---- Velocità: cache delle frasi fisse (chat M2, 9 nov) ----
 
