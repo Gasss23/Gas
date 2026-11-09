@@ -1,283 +1,253 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-09 notte — chat Mani: voce via Telegram, fetta 3 (turno parlato, niente formattazione a voce, tempi della voce più corti)
+**Sessione:** 2026-11-09 — chat Mani: voce via Telegram, fetta 4 (voce consegnata in un thread, opzione b) + tempi della voce di casa
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #357 (https://github.com/Gasss23/Gas/pull/357): SÌ dell'operatore del 2026-11-09 (~10:30 UTC, via M1), con le riserve. Compresa la V-1 MEDIA di processo della verifica esterna: ora c'è il suo sì esplicito.
-2. Voce di Telegram in un thread: l'operatore ha scelto l'opzione (b). Si fa nella fetta successiva, che è un cambio di sicurezza e resta per il suo sì esplicito.
+1. Merge della PR #359 (https://github.com/Gasss23/Gas/pull/359): CAMBIO DI SICUREZZA (guardia T78p delle firme allargata, opzione b). Serve il sì esplicito dell'operatore, anche con verdetto pulito del bot. Consigliato il secondo passaggio nella chat claude.ai col link della PR.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #355 (fetta 2)**: `FATTA` — mergiata (b827447).
-- **Fetta 3, turno parlato e pulizia della voce (V-1 bot #355)**: `FATTA`.
-- **Fetta 3, tempi della voce più corti (V-1 ve #355, R-717-4 in parte)**: `FATTA`.
-- **V-3 della verifica esterna #357 e R-723-1 (dettagli detti a voce con a capo non standard)**: `FATTA` — review #723/#724.
-- **Merge di main con la PR #356 di M2**: `FATTA` — review #726 APPROVATO.
-- **Voce consegnata in un thread**: `DEFERITA — tocca la guardia T78p delle firme (review #720 BOCCIATO); decide l'operatore`.
+- **PR #357 (fetta 3)**: `FATTA` — mergiata (524ae96) col sì dell'operatore via M1.
+- **Voce consegnata in un thread (opzione b)**: `FATTA` — review #725, corretta e ri-revisionata in #727. Cambio di sicurezza: merge all'operatore.
+- **Tempi della voce di casa (misura fino alla prima frase)**: `FATTA` — review #722.
+- **Merge su main dopo la #357**: `FATTA` — review #728 APPROVATO.
+- **R-727-1 e R-725-3 (BASSE)**: `DEFERITA — tracciate in stato_progetto.md`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 ++++++++
- modules/telegram/bot.py            |  50 ++++++++++++++++++++++++++++++++++++++++++--------
- reports/diff_sessione.md           |  14 +++++++-------
- reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  28 +++++++++++++---------------
- tests/test_unit_telegram_voce.py   |  84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ clients/voice/ascolto.py           |   7 +++++++
+ modules/telegram/bot.py            |  44 ++++++++++++++++++++++++++++++++++++-----
+ reports/diff_sessione.md           |  13 ++++++++-----
  reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   3 ++-
+ reports/ultimo_report.md           |  27 ++++++++++++++------------
+ tests/test_unit_kernel.py          |  52 +++++++++++++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_telegram_voce.py   |  64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py    |  15 ++++++++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 69d76b9 (dopo il merge della PR #356).
+NB: la riga di `reports/handoff.md` dice `n/d` e manca la riga di totale (regola «n/d» dell'operatore, 2026-10-24).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-53be364 Merge origin/main (PR #356 di M2) nella PR #357 — review #726 APPROVATO
-58f088a docs(fine-task): PR #357 — V-3 corretta, opzioni per la voce in un thread, merge all'operatore
-363cd72 fix(telegram): a voce niente dettagli anche con a capo non standard (V-3 ve #357, R-723-1) — review #723/#724
-d27b040 docs(fine-task): verdetto #720 riemesso per il gate B
-fee3311 docs(fine-task): voce via Telegram fetta 3 chat Mani — review #720/#721
-792b365 feat(telegram): voce via Telegram, fetta 3 — istruzione del parlato, niente formattazione a voce, tempi della voce più corti (riserve #355) — review #720/#721
+62cb860 Merge mani/telegram4: voce Telegram in un thread a parte (opzione b) — review #728
+aca5b88 feat(telegram): voce consegnata in un thread a parte, guardia T78p irrobustita (opzione b) — review #725/#727
+3404378 feat(voce): tempo fino alla prima frase di Gas nel log dell'ascolto (misura della velocità) — review #722
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push. Il codice è stato scritto e revisionato nel worktree locale /tmp/claude-0/wt48 sulla stessa base, poi portato qui in fast-forward.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Review #720 (prima versione, con il thread), verdetto integrale RIEMESSO per il gate B. Stesso esito e contenuto; cambiano solo le citazioni, perché quelle originali puntavano a righe del test poi tolte. L'originale è nella storia git di questo file, commit fee3311:
+Commit aca5b88 (fetta 4) e 3404378 (tempi della voce di casa, unito in mani/telegram4): review #722, #725, #727. Merge 62cb860: review #728. Verdetti integrali:
 
-## VERDETTO: BOCCIATO
-
-Riemesso per il gate B: verdetto #720, stesso esito e stesso contenuto, ho cambiato solo le citazioni. Ora puntano a righe che esistono a HEAD fee3311 in /home/user/Gas; il codice del thread e i test tolti nella ri-review sono citati a parole. Non ho toccato memoria e repo.
-
-Review #720 (chat Mani). Diff staged in /tmp/claude-0/wt48 (branch mani/telegram3, base b827447). Ho letto CLAUDE.md (sez. 5), le parti di reports/stato_progetto.md su Telegram e voce, e la memoria del revisore (il numero più alto era #719).
-
-**Motivo del blocco**
-La suite del motore diventa rossa. Ho lanciato `python tests/test_unit_kernel.py` su una copia dell'index (non è pytest: è quello che la CI esegue nel job `unit-suite`).
-- Copia dell'index: 1098 PASS, 2 FAIL.
-- Base b827447: 1099 PASS, 1 FAIL. Il FAIL è T31g, legato all'ambiente e presente anche sulla base.
-- **T78p è una regressione nuova**: `[] ['_invia_a_tutti', '_consegna_voce']`. La guardia statica tests/test_unit_kernel.py:8389 protegge la firma con i bottoni, «un click alla volta». Vuole un solo `ThreadPoolExecutor` nel bot, quello in `_invia_a_tutti` (modules/telegram/bot.py:368).
-- Il diff aggiungeva un secondo pool: il `ThreadPoolExecutor(max_workers=1)` creato in modo lazy dentro `_consegna_voce`, accanto alla variabile di modulo `_voce_in_coda` (codice poi tolto, quindi lo cito a parole). Così la CI sarebbe stata rossa e la PR non mergiabile.
-- Nel merito la regola della firma non era violata: il thread eseguiva solo `_invia_risposta_vocale`, mai i gestori degli update.
-- Correzione possibile: allargare T78p in modo mirato. Però quella guardia protegge la firma, quindi è un cambio di sicurezza: fuori dalla regola notturna, serve il sì dell'operatore.
-
-**Elementi esaminati (righe a HEAD)**
-- modules/telegram/bot.py:933 — `run_turn(text, **kw)`; per i messaggi di testo `kw` è vuoto. Rischio: cambiano i testi normali. Esito ok: la chiamata equivale a `run_turn(text)`; `cervello=forte` si aggiunge solo se richiesto (modules/telegram/bot.py:932).
-- modules/telegram/bot.py:973 — `_voce_accesa()` si legge una sola volta; l'istruzione del parlato si importa dentro un try (modules/telegram/bot.py:980). Rischi: istruzione con la voce spenta, crash se l'import fallisce. Esito ok: i test tests/test_unit_telegram_voce.py:431 e tests/test_unit_telegram_voce.py:439 lo coprono; il log riporta solo il tipo dell'eccezione (§9).
-- Consegna della voce (a parole: la chiamata a `_consegna_voce` dopo l'invio del testo, oggi sostituita da modules/telegram/bot.py:987). Rischio: la voce arriva prima del testo. Esito ok: il testo veniva inviato prima, in modo sincrono.
-- `_consegna_voce` e il suo pool (a parole: codice tolto). Rischi esaminati:
-  - Thread safety: ok. `_tg_post`, `_send_text` e `_tg_post_file` fanno ognuno una richiesta urllib a sé, senza stato condiviso. Il pool lazy veniva creato solo dal thread del polling.
-  - Ordine e una consegna alla volta: ok.
-  - Errore in `submit`: ok, finiva solo nel log.
-  - **BLOCCO**: rompe T78p.
-- Spegnimento del pool (a parole). Riserva BASSA:
-  - I worker non erano daemon e Python li aspetta all'uscita (atexit). Dopo Ctrl-C il processo avrebbe atteso i vocali in coda: al massimo 30 all'ora, circa 60 s ciascuno. Un secondo Ctrl-C lo chiude.
-  - Con SIGTERM e il gestore di default l'uscita è immediata.
-  - Non è un crash.
-- modules/telegram/bot.py:995 — `testo_da_dire`. Rischio privacy verso ElevenLabs. Esito ok:
-  - La fonte resta sempre `finale` e il testo viene solo ridotto: URL sostituiti con «link», tolti i segni di formattazione, poi `parte_parlata`.
-  - Le regex con `[ \t]` (modules/telegram/bot.py:990) lasciano la riga vuota, quindi il dettaglio resta solo nel testo (tests/test_unit_telegram_voce.py:454).
-  - La chiamata sta dentro il try di modules/telegram/bot.py:1043, quindi anche un ImportError è coperto (§9).
-- modules/telegram/bot.py:992 — `_URL` con `\S+`. COSMETICA: si mangia anche la punteggiatura finale. Anche `__` toglie gli underscore da nomi come `__init__`.
-- Test (a parole: righe tolte nella ri-review):
-  - Il fixture `tg` (tests/test_unit_telegram_voce.py:27) rendeva sincrona la consegna: ok.
-  - Il test del pool vero (ordine, una consegna alla volta, ritorno immediato) era deterministico: Event con timeout di 5 s. Il «1 failed» non l'ho riprodotto: 30 esecuzioni su 30 e 40 su 40 verdi.
-  - `git diff --cached --check` segnalava una riga vuota in fondo a tests/test_unit_telegram_voce.py. COSMETICA.
-
-**Altri controlli**
-- pytest su telegram_voce, voice_server, voce_ascolto e notte: 682 passed. Nessuno stash.
-- Wall of Shame pulito: niente tagli diretti della cronologia, niente simulazione degli strumenti.
-- Il tetto di 10 iterazioni e `_get_window` non sono toccati.
-
-**Non verificato**
-- sendVoice ed ElevenLabs dal vivo, e lo spegnimento sotto systemd: non riproducibili qui.
-- Non ho fatto mutation testing mio.
-
-Review #721 (ri-review, senza thread), verdetto integrale:
+### Review #722
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #721 (chat Mani), ri-review della #720 sullo staged di /tmp/claude-0/wt48 (mani/telegram3, base b827447). Il blocco della #720 è risolto: T78p torna verde e la guardia delle firme non è toccata. Secondo me la PR rientra nella regola notturna: restano solo riserve BASSE o COSMETICHE e niente di sicurezza.
+Review #722 (chat Mani). Riguarda il diff staged su mani/tempi-ascolto nel worktree /tmp/claude-0/wt49 (base b827447). I due file del diff sono `clients/voice/ascolto.py` (+7) e `tests/test_unit_voce_ascolto.py` (+15).
 
-**Prove (su una copia dell'index fatta con `git checkout-index`, senza stash)**
-- `tests/test_unit_telegram_voce.py`: 59 passed. Con `test_unit_voice_server.py` e `test_unit_voice_tts.py`: 213 passed.
-- `python tests/test_unit_kernel.py`: 1099 PASS, 1 FAIL. È solo T31g, legato all'ambiente e presente anche sulla base. T78p è PASS con il pool solo in `_invia_a_tutti`.
-- `git diff --cached --check`: pulito, la riga vuota in fondo al file è sparita.
-
-**Elementi esaminati**
-- modules/telegram/bot.py:987 — la voce torna in linea nel polling dopo il testo. Rischi: thread e ordine. Esito ok: nel bot non ci sono più `_consegna_voce`, `_voce_in_coda` né un pool nuovo (grep fatto), l'unico `ThreadPoolExecutor` resta a :368 in `_invia_a_tutti`. Il testo parte prima della voce. Il problema di thread safety e quello dello spegnimento sollevati nella #720 non esistono più.
-- modules/telegram/bot.py:64 — `VOCE_TIMEOUT_S = 15`, usato a :1043 da `synthesize_speech(..., timeout=)` (modules/voice/tts.py:84 accetta `timeout` keyword-only) e a :1049 da `_tg_post_file(..., timeout=)`. Rischi: firma sbagliata e §9. Esito ok: tutte e due le chiamate stanno dentro i percorsi fail-safe di prima (try generico per la sintesi, `None` → avviso breve per l'invio).
-  - Riserva R-721-1 BASSA: R-717-4 è chiusa solo in parte, il polling può restare fermo fino a circa 30 s per vocale.
-  - Riserva R-721-2 BASSA: in urllib e http.client il timeout vale per ogni singola attesa sul socket, non per l'operazione intera. I «circa 30 s» sono il caso tipico, non un tetto garantito. Il commento a :61-63 va letto così.
-- modules/telegram/bot.py:932 e :980 — `**extra`, `cervello=forte` e l'istruzione del parlato, uguali alla #720. Rischi: i testi normali cambiano, istruzione con voce spenta, import rotto. Esito ok: `_risposta_del_turno` non passa extra, quindi la chiamata equivale a `run_turn(text)`. I test della voce spenta e dell'import rotto passano.
-- modules/telegram/bot.py:995 — `testo_da_dire`. Rischio privacy verso ElevenLabs. Esito ok: la fonte è sempre `finale` e il testo viene solo ridotto. La riga vuota resta, quindi i dettagli restano solo nel testo.
-  - Riserva R-721-3 COSMETICA: `_URL` (:992) si mangia anche la punteggiatura finale.
-- tests/test_unit_telegram_voce.py:475 — `test_voce_con_tempi_corti`: controlla che sintesi e invio ricevano 15. Rischio: il test non prende il valore sbagliato. Esito ok: verifica sia il valore passato sia la costante. I 2 mutanti dichiarati sono plausibili, non li ho rieseguiti.
-
-**Regola notturna**
-Il diff tocca solo il ramo dei vocali del bot e i suoi test. Il flusso delle firme e la guardia T78p non sono toccati. Ai modelli non arrivano dati nuovi (l'istruzione è testo fisso più data e ora, e va allo stesso cervello di prima). Verso ElevenLabs va meno testo di prima. Quindi nessun aspetto di sicurezza: il merge autonomo è ammesso se anche il bot dà solo BASSE o COSMETICHE.
-
-**Non verificato**
-- sendVoice ed ElevenLabs dal vivo, e i tempi reali con 15 s su rete lenta: non si possono riprodurre qui. R-717-3 resta aperta.
-- Non ho rieseguito i mutanti.
-- Non ho rifatto la suite notte e voce_ascolto: i file che usano non sono cambiati rispetto alla #720, dove davano 682 passed.
-
-**Memoria**
-In /tmp/claude-0/wt48/.claude/agents/memoria_revisore.md ho aggiunto la riga #721 (APPROVATO CON RISERVE, con R-721-1, R-721-2 e R-721-3) e una lezione: un `timeout=` limita ogni attesa sul socket, non la durata totale. Non l'ho committata. In coda al file c'è anche la riga #720 della review precedente, anche quella non committata.
-
-Review #723, verdetto integrale:
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #723 (chat Mani): diff staged su claude/peaceful-lovelace-0w2b7q, HEAD d27b040, PR #357, correzione della V-3 della verifica esterna #357.
-
-Nota di processo: al primo esame `git diff --staged` era vuoto, perché le modifiche erano solo nel working tree. Dopo il tuo avviso ho ricontrollato `git diff --cached`: modules/telegram/bot.py +3 e tests/test_unit_telegram_voce.py +8, uguali a quelle che avevo già letto nel working tree.
+Letture fatte prima della review:
+- CLAUDE.md, sezione 5.
+- reports/stato_progetto.md, letto in modo mirato.
+- La memoria del revisore, comprese le voci #720 e #721 del repo principale e di wt48 (sono le review più alte, la regola notturna è quella applicata nella #721). Il file in wt49 si ferma alla #719.
 
 Elementi del diff esaminati:
-- modules/telegram/bot.py:1002 — dentro `testo_da_dire`, «\r\n» e poi «\r» diventano «\n» prima di `_MARKDOWN`/`_URL` e di `parte_parlata`. Rischi esaminati:
-  - l'ordine delle due sostituzioni: «\r\n» viene trattato per primo, quindi non nasce un «\n\n» spurio;
-  - la regex `_MARKDOWN` con `^` MULTILINE resta corretta;
-  - la variabile è locale, quindi l'oggetto del chiamante non cambia.
-  Esito: ok.
-- modules/telegram/bot.py:985 — il testo mandato a Telegram è `risposta` (da `_turno_con_finale`) e non passa per `testo_da_dire`. Quindi la normalizzazione vale solo per il testo da dire. Esito: ok.
-- modules/telegram/bot.py:1046 — è l'unico punto che manda testo a ElevenLabs: `synthesize_speech(testo_da_dire(finale), …)`. Sta dentro try/except con log.warning e un avviso breve all'operatore (§9). Ho cercato con grep `parte_parlata` e `testo_da_dire` in modules/ e gas.py: nessun altro percorso del bot porta dettagli alla voce. L'altro uso, modules/voice/server.py:799, è la voce di casa e non è toccato dal diff. Esito: ok.
-- tests/test_unit_telegram_voce.py:486 — test parametrico con 3 casi: «\r\n\r\n», «\r\r», misto «\n\r\n». Esito: ok. Sulla copia dell'index (`git checkout-index`, niente stash) ho ottenuto:
-  - 62 passed;
-  - mutante con la riga 1002 sostituita da `pass`: 3 failed, 59 passed;
-  - `git diff --cached --check` pulito.
-- modules/voice/server.py:234 (contesto, file non toccato) — `_PARAGRAFO = r"\n[ \t]*\n"`. Esito: riserva, vedi sotto.
+1. `clients/voice/ascolto.py:537` — `t0 = time.monotonic()` prima di `invia`/`invia_seguito`, fuori dal `try`. Rischio controllato: un nuovo punto da cui può partire un'eccezione (§9) e un cambio di comportamento. `time.monotonic` non solleva eccezioni in pratica. Non cambia nessun ramo: fine, pausa, errore e seguito restano identici. Esito: ok.
+2. `clients/voice/ascolto.py:588` — `if suonati == 1: log.info("tempo: prima frase di Gas dopo %.2f s …")`, dopo il filtro `if not audio: continue` e prima di `riproduci`. Rischi controllati:
+   - Dati nel log: la riga contiene solo un float in secondi. Niente parlato, niente `testo` del pezzo, niente motivo né URL.
+   - Ripetizione della riga: `suonati` sale solo una volta per pezzo con audio, quindi c'è una sola riga per turno. Se la risposta non contiene audio (o si interrompe prima del primo pezzo) la riga non compare.
+   - Esito: ok.
+3. `tests/test_unit_voce_ascolto.py:2490` — il test `test_tempo_fino_alla_prima_frase_nel_log`. Usa il monkeypatch di `a.time.monotonic`, che è il modulo `time` globale: il patch vale per tutto il processo ma pytest lo ripristina a fine test. Rischi controllati:
+   - Altri test rotti: no.
+   - Default legati alla definizione: i default `adesso=time.monotonic` in `clients/voice/ascolto.py:905` e `clients/voice/ascolto.py:974` sono già legati quando il modulo viene definito, quindi il patch non li tocca.
+   - Iteratore esaurito: le chiamate oltre la lista ricevono 999.0, mai `StopIteration`.
+   - `logging` usa `time.time` e non `monotonic`.
+   - Esito: ok, con la riserva R-722-1.
+
+Verifiche riprodotte sulla copia dell'index (checkout-index nello scratchpad, niente stash):
+- `pytest tests/test_unit_voce_ascolto.py`: 296 passed.
+- `git diff --cached --check` pulito; worktree uguale all'index.
+- Mutanti miei, 4 su 4 presi (ognuno dà 1 failed):
+  - riga «a ogni frase» (`>= 1`);
+  - t0 preso dopo l'invio;
+  - riga tolta;
+  - livello `debug` al posto di `info`.
+
+Wall of Shame: nessuno slicing della history e nessuna simulazione dei tool. Il diff non tocca il kernel, `_get_window`, il tetto di 10 iterazioni né il tetto di 8k.
 
 Riserve:
-- R-723-1 BASSA: la correzione chiude il caso «\r» ma non tutta la classe di errori. L'ho provato su queste tre forme:
-  - «Fatto.  dettaglio segreto» → «Fatto. dettaglio segreto»;
-  - «Fatto.\n\xa0\ndettaglio segreto» (riga di solo NBSP, lo spazio non separabile) → «Fatto. dettaglio segreto»;
-  - «Fatto.\x0c\x0cdettaglio segreto» → «Fatto. dettaglio segreto».
+- **R-722-1 COSMETICA** — il test dipende dall'ordine esatto delle chiamate a `time.monotonic`. Se in futuro si aggiunge una chiamata nel percorso di invio, il test diventa rosso: non diventa mai un falso verde.
+- **R-722-2 BASSA** — misura il tempo fino al primo pezzo audio pronto, non fino al suono effettivo (la riga viene scritta prima di `riproduci`). Inoltre non separa invio, server e sintesi: per sapere dove si perde tempo servirà incrociarla con i tempi del server (V7a).
 
-  In tutti e tre i casi il dettaglio va ancora a ElevenLabs. Il motivo: `str.split()` tratta questi caratteri come spazi, mentre la regex `[ \t]` no. Sono casi rari nell'output dei modelli. Va tracciata in stato_progetto.md. La correzione possibile è normalizzare anche ` `, ` `, `\f`, `\v` e allargare `[ \t]` a `[^\S\n]`, dentro `testo_da_dire` o in `_PARAGRAFO`. Quest'ultima scelta tocca anche la voce di casa.
+Regola notturna: la PR rientra. Ci sono solo riserve BASSE o COSMETICHE e nulla tocca sicurezza, gate, cancello o perimetro del kernel.
 
-Rischi esclusi (non verificati):
-- Il runner a script `python tests/test_unit_kernel.py` non l'ho lanciato. Il diff non aggiunge thread né pool e non tocca le firme, quindi la guardia T78p non è coinvolta. La conferma resta alla CI `unit-suite`.
-- Non ho verificato la sintesi reale con ElevenLabs e l'invio a Telegram: richiedono chiavi e rete.
+Rischio escluso: il comportamento sul Mac (afplay vero, rete verso il server della voce, valore reale misurato) non è stato verificato perché non si può riprodurre nel container. Non ho neanche controllato su quale file finisce il logger `gas.ascolto` sul Mac: è configurazione dell'avvio, fuori dal diff.
 
-Memoria: la riga #723 e una lezione sono in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, nel working tree e NON committate, come richiesto. Il numero più alto che ho trovato nel repo era #721, quindi ho usato #723 come indicato.
+Memoria: ho aggiunto la riga #722 in coda a /tmp/claude-0/wt49/.claude/agents/memoria_revisore.md, non committata come richiesto. Non ho lanciato commit_memoria_revisore.sh perché la tua istruzione dice «non committata». Nessuna lezione nuova.
 
 File rilevanti:
-- /home/user/Gas/modules/telegram/bot.py
-- /home/user/Gas/tests/test_unit_telegram_voce.py
-- /home/user/Gas/modules/voice/server.py
-- /home/user/Gas/.claude/agents/memoria_revisore.md
+- /tmp/claude-0/wt49/clients/voice/ascolto.py
+- /tmp/claude-0/wt49/tests/test_unit_voce_ascolto.py
+- /tmp/claude-0/wt49/.claude/agents/memoria_revisore.md
+### Review #725
 
-Review #724, verdetto integrale:
+## VERDETTO: APPROVATO CON RISERVE
+
+**Review #725 (chat Mani).** Diff STAGED in /tmp/claude-0/wt50, branch mani/telegram4, HEAD 58f088a (la PR #357 non è ancora mergiata).
+
+**È un cambio di sicurezza:** la guardia T78p, che garantisce che le firme si gestiscano «un click alla volta», è stata allargata. Il merge spetta all'operatore, che ha già scelto l'opzione (b) via M1.
+
+**Prove sulla copia dell'index** (fatta con checkout-index, niente stash, cartella /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/r725):
+- telegram_voce: 70 passed.
+- kernel: 1099 PASS e 1 FAIL. L'unico FAIL è T31g, legato all'ambiente. T78p è verde.
+- voce_ascolto: 296 passed.
+- `git diff --cached --check`: c'è una riga vuota in fondo al file di test.
+
+### Elementi del diff esaminati
+- `modules/telegram/bot.py:997` — `_consegna_voce` crea il pool (un solo thread) alla prima voce e gli passa solo `_invia_risposta_vocale` (riga 1002). Il testo `finale` è già calcolato prima dell'invio al thread. Gli errori finiscono nel log (§9). **Rischio esaminato:** il thread tocca qualcosa oltre alla voce? No. Il thread chiama solo `testo_da_dire`, `synthesize_speech`, `_send_text`, `_tg_post` e `_tg_post_file`. `_tg_post` (riga 75) e `_tg_post_file` creano una richiesta nuova a ogni chiamata e non hanno stato condiviso. Il thread non usa mai kernel, memoria o firme. Usare `_send_text` in parallelo al polling è sicuro. `modules/voice/server.py` all'import non avvia niente, e il blocco degli import di Python basta. — **ok**
+- `modules/telegram/bot.py:987` — `_gestisci_parlato` mette la voce in coda dopo aver mandato il testo. Rischio esaminato: l'ordine dei messaggi su Telegram. — **riserva R-725-3**
+- `modules/telegram/bot.py:1007` e `modules/telegram/bot.py:559` — `_chiudi_voce` con `shutdown(wait=False, cancel_futures=True)` viene chiamato al Ctrl-C. **Provato con un ThreadPoolExecutor vero:**
+  - con la chiusura, all'uscita si aspetta solo la voce in corso (2 s);
+  - senza la chiusura, si eseguono tutte le voci in coda (4 s).
+  
+  L'attesa per la voce in corso arriva a circa 2×VOCE_TIMEOUT_S, ma 15 s è il tetto per ogni operazione sul socket, non per l'intera voce (come R-721-2). Un secondo Ctrl-C interrompe l'attesa con un traceback. — **ok con riserva R-725-2**
+- `modules/telegram/bot.py:63` — VOCE_TIMEOUT_S resta 15 e cambia solo il commento. — **ok**
+- `tests/test_unit_kernel.py:8393` — La guardia T78p allargata: un secondo pool solo in `_consegna_voce`, nomi vietati nelle tre funzioni della voce, e la riga 8401 controlla che si sottometta solo `_invia_risposta_vocale`. **Rischio esaminato:** si può eludere? **Sì**, vedi R-725-1. — **riserva**
+- `tests/test_unit_telegram_voce.py:504` — Test con thread vero: ordine giusto, una voce alla volta, il chiamante non aspetta. Il fixture `tg` (riga 84) sostituisce `_consegna_voce` con una consegna immediata, quindi gli altri test restano sincroni. La riga 548 verifica `shutdown(False, True)` e che la coda si azzeri. — **ok**
+
+### Riserve
+**R-725-1 MEDIA — la guardia T78p si elude.** Ho provato 3 mutanti miei e con tutti T78p risulta PASS:
+1. **Mutante A:** in `_gestisci_parlato`, `_voce_in_coda.submit(lambda: kernel.run_turn(trascritto))`. Mette un turno nel thread della voce, cioè proprio il rischio da evitare. La guardia controlla `submit` solo dentro `_consegna_voce`, e `_riferiti78p` non vede `run_turn` dentro una lambda.
+2. **Mutante B:** `_voce_in_coda.map(...)` dentro `_consegna_voce`. La guardia guarda solo `submit`.
+3. **Mutante C:** chiamata diretta a `gestisci_callback(...)` dentro `testo_da_dire`, che gira nel thread. La guardia per nomi non segue le funzioni chiamate.
+
+Correzione proposta:
+- ogni chiamata `.submit` o `.map` nel modulo è ammessa solo in `_invia_a_tutti` e in `_consegna_voce`;
+- `_voce_in_coda` si nomina solo in `_consegna_voce` e `_chiudi_voce` (più l'assegnazione a livello di modulo);
+- i nomi vietati si controllano anche nelle funzioni del modulo raggiungibili da `_invia_risposta_vocale` (`testo_da_dire`, `_send_text`, `_tg_post`, `_tg_post_file`).
+
+Oggi il codice è corretto. La riserva riguarda la protezione contro regressioni future.
+
+**R-725-2 BASSA — uscita fuori dal ramo Ctrl-C.** Un KeyboardInterrupt durante `time.sleep(5)` del ramo except (`modules/telegram/bot.py:564`, fuori dal try) salta `_chiudi_voce`. All'uscita Python esegue allora tutta la coda delle voci (comportamento provato).
+
+**R-725-3 BASSA — ordine dei messaggi.** Il vocale e gli avvisi «✗ Risposta vocale … la risposta è nel testo sopra» ora possono arrivare dopo la risposta in testo del messaggio successivo: «sopra» può trarre in inganno.
+
+**R-725-4 COSMETICA — riga vuota in fondo al file.** `git diff --check` segnala una riga vuota in fondo a `tests/test_unit_telegram_voce.py`, come nella #720.
+
+### Rischio escluso
+- Non ho verificato il comportamento reale su VPS e Telegram, con ElevenLabs lento o con SIGTERM di systemd (il segnale di default uccide il processo senza aspettare): non si riproduce in sviluppo, e ho provato solo con mock e con un ThreadPoolExecutor vero in locale.
+- Non ho ri-revisionato `clients/voice/ascolto.py` e `tests/test_unit_voce_ascolto.py`, già coperti dalla #722: ho solo rieseguito i 296 test.
+
+### Memoria
+- Ho aggiunto la riga #725 più una lezione in coda a /tmp/claude-0/wt50/.claude/agents/memoria_revisore.md. Il numero più alto prima era #724.
+- **NON** l'ho committata (come da tua istruzione), quindi non ho lanciato `commit_memoria_revisore.sh`.
+- Nota: il file ora è «MM», cioè ha parti staged e parti nel working tree. Va rifatto lo staging prima di `segna_review_ok.sh`, altrimenti lo SHA del diff revisionato cambia.
+### Review #727
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #727 (chat Mani). È una ri-review della #725 sul diff staged in /tmp/claude-0/wt50 (branch mani/telegram4, base 58f088a). Prima ho letto CLAUDE.md (sez. 5), reports/stato_progetto.md (solo le parti che servivano) e la coda della mia memoria.
+
+**Cosa ho controllato nel diff**
+- `tests/test_unit_kernel.py:8410` — `_consegne78p` cerca in tutto il modulo le chiamate `.submit` e `.map` e le ammette solo in `_invia_a_tutti` e `_consegna_voce`. Rischio esaminato: una sottomissione con lambda da un'altra funzione, o un metodo diverso da submit. Esito: ok. Il mutante A (lambda con `kernel.run_turn` sottomessa da `_gestisci_parlato`) e il mutante B (`.map` in `_consegna_voce`) danno T78p FAIL. Fallisce anche un mio mutante nuovo, E: in `_gestisci_parlato`, `ex = globals()['_voce_in_coda']; ex.submit(...)`.
+- `tests/test_unit_kernel.py:8416` — `_funzioni78p` più la visita del grafo delle chiamate partendo da `_invia_risposta_vocale`. Inoltre `tests/test_unit_kernel.py:8425` cerca i nomi vietati in tutte le funzioni raggiunte, e `tests/test_unit_kernel.py:8436` controlla che `testo_da_dire` sia davvero tra le raggiunte. Rischio esaminato: una chiamata vietata dentro una funzione chiamata dal thread. Esito: ok per le funzioni di primo livello. Il mutante C (`gestisci_callback` dentro `testo_da_dire`) dà FAIL, e così il mio mutante F (`_KERN.run_turn(finale)` dentro `testo_da_dire`). Esito: riserva per gli altri casi (vedi R-727-1).
+- `modules/telegram/bot.py:564` — il `time.sleep(5)` del ramo except ora sta in un try. Su KeyboardInterrupt chiama `_chiudi_voce` (`modules/telegram/bot.py:567`) ed esce con 0. Anche lo sleep di `modules/telegram/bot.py:550` sta dentro il try esterno, coperto da `modules/telegram/bot.py:559`. Rischio esaminato: uscita su Ctrl-C che salta la chiusura della coda. Esito: ok, R-725-2 chiusa. Nota: questo ramo non ha un test, ma è una modifica meccanica e l'ho verificata leggendo il codice.
+- `modules/telegram/bot.py:1002` — `_consegna_voce` non è cambiata rispetto alla #725. Il submit ha un solo bersaglio, `_invia_risposta_vocale`, ed è dentro try §9. Il mio mutante G (submit di `_handle_update` in più) dà FAIL. Esito: ok.
+- `tests/test_unit_telegram_voce.py:560` — fine del file: niente più riga vuota, e `git diff --cached --check 58f088a` non trova niente. R-725-4 chiusa.
+
+**Prove sulla copia dell'index** (checkout-index nello scratchpad, niente stash)
+- pytest su telegram_voce + voce_ascolto: 366 passed.
+- `python tests/test_unit_kernel.py`: 1099 PASS, 1 FAIL. L'unico FAIL è T31g (manca sqlite_vec nell'ambiente, come sulla base); T78p è PASS.
+- Mutanti: 6 su 8 presi (A, B, C della #725, più i miei E, F, G). Due non presi, D e H: sono la riserva R-727-1.
+
+**Riserve**
+- **R-727-1 BASSA**: il grafo considera solo le funzioni definite al primo livello del modulo. Non entrano nel controllo:
+  - una lambda assegnata a un nome di modulo (mutante D: `_aiuto = lambda *a: gestisci_callback(*a)`, chiamata da `testo_da_dire`): T78p PASS;
+  - un metodo statico di una classe (mutante H: `_H.f()` che chiama `_handle_update`, chiamato da `testo_da_dire`): T78p PASS;
+  - le funzioni di altri moduli, per esempio `parte_parlata` in modules/voice/server.py.
+
+  Servono costrutti fatti apposta, non errori probabili, quindi la riserva è BASSA. Si chiude seguendo anche le assegnazioni di lambda di modulo e i ClassDef, oppure vietando lambda e classi di modulo che contengono nomi vietati.
+- **R-725-3 BASSA** (ordine degli avvisi rispetto al messaggio dopo): resta aperta, come dichiarato.
+
+**Cosa non ho verificato**
+- Il comportamento dal vivo con Telegram vero (sendVoice e la coda sotto carico reale): non si può riprodurre qui.
+- Le elusioni intenzionali via stringhe (`globals()["gestisci_callback"]`, `getattr(modulo, ...)`): una guardia statica per nomi non può coprirle per costruzione.
+- La fetta clients/voice/ascolto.py e tests/test_unit_voce_ascolto.py: non cambiata rispetto alla #722, l'ho solo ri-eseguita (dentro i 366 passed).
+
+**Antipattern**: nessuno slicing della history e nessuna simulazione degli strumenti.
+
+È un cambio di sicurezza (la guardia delle firme è stata allargata): il merge lo decide l'operatore.
+
+**Memoria**: riga #727 più una lezione aggiunte in coda a /tmp/claude-0/wt50/.claude/agents/memoria_revisore.md, solo nel working tree, NON committate come richiesto.
+
+### Review #728
 
 ## VERDETTO: APPROVATO
 
-Review #724 (chat Mani): ri-esame della #723 sul diff staged in claude/peaceful-lovelace-0w2b7q (HEAD d27b040, PR #357). La riserva R-723-1 (a capo non standard che portavano il dettaglio a ElevenLabs) è chiusa e non ci sono riserve nuove.
+Review #728 (chat Mani): merge in staging di mani/telegram4 (aca5b88) su origin/main 524ae96, che contiene la PR #357, nel branch claude/peaceful-lovelace-0w2b7q.
 
-Elementi del diff esaminati:
-- modules/telegram/bot.py:1003. Cosa fa: `splitlines()` più `"\n".join`, e una riga fatta solo di spazi diventa vuota. Rischi esaminati:
-  - **Caratteri persi dal testo da dire:** nessuno oltre agli a capo e agli spazi delle righe vuote. Ho fatto una prova a caso su 20000 stringhe con \r,  , \x85, \f, NBSP e tab: la sequenza dei caratteri che non sono spazi resta identica.
-  - **Testo con contenuto:** le righe che contengono testo restano intatte, spazi iniziali compresi.
-  - **A capo finale:** viene perso, ma è innocuo, perché `parte_parlata` fa comunque `strip()` e poi `" ".join(split())`.
-  - **Dove agisce:** la variabile è locale. `_PARAGRAFO` (modules/voice/server.py:234) e la voce di casa non sono toccati.
-  - Esito: ok.
-- modules/telegram/bot.py:985. Il testo mandato a Telegram è `risposta`, non `finale`, e non passa da `testo_da_dire`: non viene toccato. Esito: ok.
-- modules/telegram/bot.py:1047. È l'unico invio a ElevenLabs, `synthesize_speech(testo_da_dire(finale), …)`, ed è dentro un try/except con log.warning e avviso all'operatore (§9). Nessun altro percorso del bot porta dettagli alla voce. Esito: ok.
-- tests/test_unit_telegram_voce.py:486. Il test parametrico ha 7 casi: \r\n, \r, misto, U+2028, NBSP, \f, e spazio/tab/U+3000. Sulla copia dell'index (`checkout-index`, niente stash) ho ottenuto:
-  - 66 passed;
-  - il mutante col vecchio `.replace` viene preso: 4 failed;
-  - `git diff --cached --check` è pulito.
-  Esito: ok.
+**Cosa ho controllato e con che esito**
+- **I file di codice coincidono con aca5b88.** I 5 file nell'index hanno lo stesso blob di aca5b88:
+  - modules/telegram/bot.py: 5753741
+  - tests/test_unit_kernel.py: 39864e3
+  - tests/test_unit_telegram_voce.py: 0f8f4bc
+  - clients/voice/ascolto.py: 078de61
+  - tests/test_unit_voce_ascolto.py: 1391990
 
-Nota non bloccante, senza codice di riserva: una riga fatta solo di U+200B (spazio a larghezza zero) non conta come spazio per `str.strip()`. Quindi non diventa vuota e il dettaglio verrebbe detto: «Fatto.\n​\ndettaglio segreto» diventa «Fatto. ​ dettaglio segreto». È un caso praticamente assente nell'output dei modelli.
-
-Cosa non ho verificato:
-- Il runner a script `tests/test_unit_kernel.py`: il diff non aggiunge concorrenza né tocca firme, quindi T78p non è coinvolta. La conferma la dà la CI `unit-suite`.
-- La sintesi reale con ElevenLabs e l'invio a Telegram: servono chiavi e rete.
-
-Memoria: la riga #724 è in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, nel working tree e NON committata.
-
-File:
-- /home/user/Gas/modules/telegram/bot.py
-- /home/user/Gas/tests/test_unit_telegram_voce.py
-- /home/user/Gas/.claude/agents/memoria_revisore.md
-
-Review #726 (unione con main dopo la PR #356 di M2), verdetto integrale:
-
-## VERDETTO: APPROVATO
-
-Review #726 (chat Mani). Oggetto: il merge staged, non ancora committato, di origin/main 69d76b9 (PR #356 di M2, cache delle frasi fisse) nel branch claude/peaceful-lovelace-0w2b7q (HEAD 58f088a, PR #357). Il merge-base è b827447.
-
-Letture obbligatorie fatte: CLAUDE.md (sez. 5), reports/stato_progetto.md (letto in parte), .claude/agents/memoria_revisore.md. Ho applicato le lezioni sui merge del 2026-10-12: confronto dei blob con HEAD e con MERGE_HEAD, ricerca con comm delle righe aggiunte da ciascun lato, contatore preso dal massimo numerico (in questo worktree il massimo è #724).
+  Per questi 5 file origin/main ha gli stessi blob di 58f088a, e 58f088a è antenato di main. Quindi il diff rispetto a main per il codice è esattamente quello già visto in #722, #725 e #727. I file di M2 (modules/voice/server.py e i test voice_server/sottofondo) restano quelli di main: non compaiono nel diff staged.
+- **Memoria.** È l'unione dei due lati: rispetto ad aca5b88 e a main non manca nessuna riga, e non ce n'è nessuna estranea (confronto con comm sulle righe ordinate). Nessun marcatore di conflitto.
+- **Stato del merge.** `git ls-files -u` è vuoto, `git diff --cached --check` è pulito e prima della mia riga il working tree era uguale all'index.
+- **Test sulla copia dell'index** (checkout-index nello scratchpad, niente stash):
+  - telegram_voce + ascolto: 366 passed.
+  - Suite del kernel: 1099 PASS, 1 FAIL. L'unico FAIL è T31g (sqlite_vec assente, dipende dall'ambiente); T78p PASS.
 
 **Elementi del diff esaminati**
-- `modules/telegram/bot.py:964`: importa `_USO_FORTE_PARLATO` e `cervello_voce` da server.py, dentro un try che rispetta la regola §9.
-  - Rischio esaminato: la #356 ha cambiato firma o valore di questi due nomi?
-  - Esito: ok. Nel diff b827447..MERGE_HEAD di modules/voice/server.py nessuna riga cade dentro `cervello_voce`, che si sposta e basta: ora parte da `modules/voice/server.py:382`, la firma `(prompt, parlato) -> tuple[Optional[str], str]` è invariata. Anche `_USO_FORTE_PARLATO` (`modules/voice/server.py:111`) è invariato. Ora fa parte anche di `_FRASI_FISSE`, ma questo conta solo per la nuova `sintesi()`: il bot lo manda come testo, non come voce.
-- `modules/telegram/bot.py:999`: importa `parte_parlata`, che poi riceve il testo ripulito (`modules/telegram/bot.py:1005`).
-  - Rischio esaminato: le righe si sono spostate perché M2 ha inserito `sintesi()` subito prima di `parte_parlata`. Il corpo è stato toccato?
-  - Esito: ok. L'unica parte nuova (circa 29 righe, che si sommano a quelle aggiunte prima nel file) sta tra `frasi_voce` e `parte_parlata`. Ora `parte_parlata` è a `modules/voice/server.py:339` ed è identica.
-- `modules/telegram/bot.py:979`: importa `istruzione_turno_voce(True)`.
-  - Esito: ok. La funzione (`modules/voice/server.py:258`, firma `(schermo, adesso=None)`) non è toccata dal diff di M2.
-- `modules/telegram/bot.py:1045`: il bot sintetizza con `modules.voice.tts.synthesize_speech`, non con la nuova `sintesi()` di server.py.
-  - Rischio esaminato: la cache cambia il percorso della voce su Telegram?
-  - Esito: ok, la cache non c'entra. Anche il test `tests/test_unit_telegram_voce.py:78`, che sostituisce `tts.synthesize_speech` con un finto, continua a funzionare.
-- `tests/test_unit_telegram_voce.py:309`: il test importa `parte_parlata` dal server vero, quindi copre davvero l'interazione dopo il merge. Esito: ok.
+1. modules/telegram/bot.py:1002 — `_consegna_voce` (pool di un solo thread per la voce, opzione (b)). Rischio: che dopo il merge sia diversa dalla versione revisionata in #727. Esito: ok, il blob è identico ad aca5b88.
+2. tests/test_unit_kernel.py:8410 — calcolo di `_consegne78p` nella guardia T78p allargata (cambio di sicurezza). Rischio: che il merge sia andato a toccare la guardia. Esito: ok, il blob è identico e T78p passa sulla copia dell'index.
+3. clients/voice/ascolto.py:537 — `t0 = time.monotonic()` prima dell'invio, con la riga di log a clients/voice/ascolto.py:588. Rischio: che il merge abbia perso la parte di #722. Esito: ok, il blob è identico.
+4. .claude/agents/memoria_revisore.md — l'unico conflitto, risolto come unione. Rischio: righe perse o marcatori rimasti. Esito: ok (contesto, non conta come citazione).
 
-**Controlli meccanici**
-- File di M2 identici a MERGE_HEAD (blob): modules/voice/server.py, tests/test_unit_voice_server.py, tests/test_unit_sottofondo.py. Anche reports/ripartenza_m2.md è identico a MERGE_HEAD, ed è corretto: dalla base lo aveva toccato solo M2.
-- File identici a HEAD (blob): modules/telegram/bot.py, tests/test_unit_telegram_voce.py, reports/handoff.md, reports/ultimo_report.md, reports/diff_sessione.md.
-- Memoria e stato_progetto, unione verificata con comm:
-  - memoria: righe aggiunte da HEAD 7, perse 0; da MERGE_HEAD 5, perse 0; 1372 righe contro 1360 della base, 0 righe tolte e ricomparse.
-  - stato_progetto: righe aggiunte da HEAD 3, perse 0; da MERGE_HEAD 1, perse 0.
-- Conflitti: `git ls-files -u` vuoto; nessun marcatore `<<<<<<<`/`=======`/`>>>>>>>` nei file staged né in bot.py e nel suo test; `git diff --cached --check` pulito.
-- Test su una copia dell'index (checkout-index in una cartella temporanea dello scratchpad, niente stash): telegram_voce + voice_server + sottofondo, **282 passed** in 276 secondi.
+**Rischi esclusi**
+- Non ho verificato di nuovo la logica del thread né la solidità della guardia: è coperta da #725 e #727 e i blob sono identici.
+- Non ho verificato il comportamento reale su Telegram/VPS né la CI remota: non si riproducono in dev.
+- Restano aperte le riserve BASSE R-727-1 (la guardia T78p non vede lambda di modulo né metodi di classe) e R-725-3 (gli avvisi e il vocale possono arrivare dopo la risposta al messaggio successivo).
 
-**Rischi esplicitamente esclusi**
-- Suite completa del motore e CI: non lanciate, solo i tre file richiesti. Fuori da questi tre file il merge porta solo report e memoria.
-- Prova reale con ElevenLabs e Telegram (vocale vero, cache in un processo vivo): non riproducibile in dev, nessuna chiave usata.
-- La correttezza della cache di M2 in sé non l'ho ri-revisionata: era già stata revisionata da M2 (#719-M2, #721-M2). Ho verificato solo l'identità dei blob e l'interazione con bot.py.
+**Cambio di sicurezza**: la guardia T78p è allargata, quindi il merge della PR lo decide l'operatore.
 
-**Riserve**: nessuna.
-
-**Memoria**: aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga `#726 (chat Mani) — 2026-11-09 — APPROVATO — …`, con «Nessuna lezione nuova». È solo nel working tree, NON committata e NON aggiunta all'index (lo stato è `MM`). Come richiesto non ho lanciato commit_memoria_revisore.sh. Per includerla nel merge serve `git add .claude/agents/memoria_revisore.md`, e questo cambia l'hash del diff staged per segna_review_ok.sh.
+**Memoria**
+- Ho aggiunto la riga #728 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree e non in index, come richiesto.
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`: committerebbe la memoria mentre il merge è ancora in staging, contro la tua indicazione. La riga va committata insieme al merge o subito dopo.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_telegram_voce.py`: da 51 a 66 casi.
+`tests/test_unit_telegram_voce.py`: da 66 a 70 casi. `tests/test_unit_voce_ascolto.py`: +1 caso (296).
 
 ```
-66 passed in 0.12s
+366 passed in 23.70s
 ```
 
-`python tests/test_unit_kernel.py` sull'albero della fetta: 1099 PASS, 1 FAIL. Il FAIL è T31g: vector store assente nell'ambiente, presente anche sulla base. T78p è PASS.
-
-Mutanti presi:
-- niente istruzione del parlato;
-- niente pulizia del markdown;
-- sintesi senza testo_da_dire;
-- tempi da 30 s, sia per la sintesi sia per l'invio.
+`python tests/test_unit_kernel.py` sull'albero della fetta: 1099 PASS, 1 FAIL. Il FAIL è T31g: manca `sqlite_vec` nell'ambiente, fallisce anche sulla base. T78p è PASS. Mutanti della guardia T78p presi: A, B, C (#725), E, F, G (#727); non presi D, H (R-727-1).
 
 ## §6 STATO CI
 
-`gh` non usato (GitHub passa dallo strumento MCP). d27b040: handoff-check success. Verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/357#issuecomment-6730508364). Per 363cd72, per il merge della #356 e per il commit di fine-task che contiene questo file la run non è ancora disponibile alla scrittura dell'handoff. La PR #355 su ef0e038 aveva unit-suite e handoff-check success ed è stata mergiata.
+`gh` non usato (GitHub passa dallo strumento MCP). Per 3404378, aca5b88, 62cb860 e per il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (nessuna run su 3404378 e aca5b88, mai pushati da soli). La PR #357 su 55dfa82 aveva unit-suite, handoff-check e verifica-bot success ed è stata mergiata (524ae96).
 
 ## §7 RISERVE APERTE
 
-- Verifica esterna #357:
-  - V-1 MEDIA di processo: decide l'operatore.
-  - V-2 BASSA: 15 s possono dare più avvisi su rete lenta.
-  - V-3: corretta.
-  - V-4 COSMETICA.
-  - V-5 COSMETICA.
-- R-721-1 BASSA: R-717-4 è chiusa solo in parte; il polling resta fermo fino a circa 30 s per vocale.
-- R-721-2 BASSA: il timeout vale per ogni attesa sul socket, non per l'operazione intera.
-- R-721-3 COSMETICA: la regex degli URL si mangia la punteggiatura finale.
-- R-717-3 BASSA: l'MP3 su sendVoice non è ancora provato dal vivo.
+- R-727-1 BASSA: la guardia T78p non vede lambda assegnate a nomi di modulo né metodi di classe.
+- R-725-3 BASSA: avvisi e vocale possono arrivare dopo la risposta al messaggio successivo.
+- R-722-1 COSMETICA, R-722-2 BASSA: il test dei tempi dipende dall'ordine delle chiamate; la misura è fino al primo pezzo pronto, non al suono.
+- Bot #357: V-1 BASSA (corsivo con un solo * letto a voce), V-2 COSMETICA (link markdown).
+- R-717-3 BASSA (MP3 su sendVoice da provare dal vivo), R-721-2 BASSA.
 - Le altre riserve sono in `reports/stato_progetto.md`.
