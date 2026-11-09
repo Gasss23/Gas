@@ -47,3 +47,7 @@ grep -i "warning\|error" ~/Gas/gas_debug.log | tail -20
 
 ## Aggiornamenti della notte
 (M1 li aggiunge qui man mano.)
+- Entrate in main stanotte: #355 (vocali Telegram con risposta a voce). Prova 8 valida.
+- In attesa del tuo sì (con riserve, quindi decidi tu): #356 (M2, frasi fisse in cache: «Dimmi.» istantaneo), #357 (Mani, voce Telegram più corta e senza simboli, blocco ~30 s).
+- Pronte in locale (pubblicate dopo la #356/#357): sicurezza del server voce (R8 fetta 1, decisione di sicurezza), velocità frasi divise (M2); misura «prima frase dopo X s» (Mani).
+- Decisioni di sicurezza per te: thread della voce su Telegram (3 opzioni di Mani, consiglia b); R8 fetta 1; proposta terminale (reports/proposta_terminale_autonomia.md).
