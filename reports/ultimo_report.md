@@ -2,8 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #357: decide l'operatore (V-1 MEDIA di processo della verifica esterna #357).
-2. Opzioni per la voce del bot in un thread (decisione di sicurezza, R-717-4): (a) lasciare com'è (un solo thread, voce a 15 s, polling fermo circa 30 s per vocale); (b) un thread SOLO per sintesi e invio della voce, che non tocca mai update né firme, con la guardia T78p allargata in modo mirato e un test che lo vieta (consigliata); (c) la voce mandata da un processo separato tramite una coda su file (non tocca il bot, più complessa).
+Nessuna nuova. Il 2026-11-09 l'operatore, via M1, ha detto sì alla #357 con le riserve e ha scelto l'opzione (b) per la voce in un thread (fetta successiva, di sicurezza).
 
 ## Esito
 
@@ -16,3 +15,4 @@
 - **Consegna in un thread**: DEFERITA. La prima versione è stata BOCCIATA (#720) perché rompeva la guardia T78p delle firme; la decisione spetta all'operatore (punto 1).
 - Review #720 BOCCIATO, poi #721 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
 - **V-3 della verifica esterna #357 e R-723-1**: FATTA. Ogni tipo di a capo viene normalizzato prima della voce, così i dettagli non vanno a ElevenLabs. Review #723/#724.
+- **Merge della PR #356 di M2 nella #357**: FATTO, review #726 APPROVATO.

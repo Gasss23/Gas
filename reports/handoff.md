@@ -6,8 +6,8 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #357 (https://github.com/Gasss23/Gas/pull/357): decide l'operatore. La verifica esterna #357 ha dato una V-1 MEDIA di processo: il merge autonomo notturno non è scritto in CLAUDE.md §10.
-2. Opzioni per la voce del bot in un thread (decisione di sicurezza, R-717-4): (a) lasciare com'è (un solo thread, voce a 15 s, polling fermo circa 30 s per vocale); (b) un thread SOLO per sintesi e invio della voce, che non tocca mai update né firme, con la guardia T78p allargata in modo mirato e un test che lo vieta (consigliata); (c) la voce mandata da un processo separato tramite una coda su file (non tocca il bot, più complessa).
+1. Merge della PR #357 (https://github.com/Gasss23/Gas/pull/357): SÌ dell'operatore del 2026-11-09 (~10:30 UTC, via M1), con le riserve. Compresa la V-1 MEDIA di processo della verifica esterna: ora c'è il suo sì esplicito.
+2. Voce di Telegram in un thread: l'operatore ha scelto l'opzione (b). Si fa nella fetta successiva, che è un cambio di sicurezza e resta per il suo sì esplicito.
 
 ---
 
@@ -17,6 +17,7 @@
 - **Fetta 3, turno parlato e pulizia della voce (V-1 bot #355)**: `FATTA`.
 - **Fetta 3, tempi della voce più corti (V-1 ve #355, R-717-4 in parte)**: `FATTA`.
 - **V-3 della verifica esterna #357 e R-723-1 (dettagli detti a voce con a capo non standard)**: `FATTA` — review #723/#724.
+- **Merge di main con la PR #356 di M2**: `FATTA` — review #726 APPROVATO.
 - **Voce consegnata in un thread**: `DEFERITA — tocca la guardia T78p delle firme (review #720 BOCCIATO); decide l'operatore`.
 
 ---
@@ -24,20 +25,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
+ .claude/agents/memoria_revisore.md |   8 ++++++++
  modules/telegram/bot.py            |  50 ++++++++++++++++++++++++++++++++++++++++++--------
- reports/diff_sessione.md           |  11 +++++------
+ reports/diff_sessione.md           |  14 +++++++-------
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  36 ++++++++++++------------------------
+ reports/ultimo_report.md           |  28 +++++++++++++---------------
  tests/test_unit_telegram_voce.py   |  84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
  reports/handoff.md                 | n/d
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main b827447 (dopo il merge della PR #355).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 69d76b9 (dopo il merge della PR #356).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+53be364 Merge origin/main (PR #356 di M2) nella PR #357 — review #726 APPROVATO
+58f088a docs(fine-task): PR #357 — V-3 corretta, opzioni per la voce in un thread, merge all'operatore
 363cd72 fix(telegram): a voce niente dettagli anche con a capo non standard (V-3 ve #357, R-723-1) — review #723/#724
 d27b040 docs(fine-task): verdetto #720 riemesso per il gate B
 fee3311 docs(fine-task): voce via Telegram fetta 3 chat Mani — review #720/#721
@@ -205,6 +208,46 @@ File:
 - /home/user/Gas/tests/test_unit_telegram_voce.py
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
+Review #726 (unione con main dopo la PR #356 di M2), verdetto integrale:
+
+## VERDETTO: APPROVATO
+
+Review #726 (chat Mani). Oggetto: il merge staged, non ancora committato, di origin/main 69d76b9 (PR #356 di M2, cache delle frasi fisse) nel branch claude/peaceful-lovelace-0w2b7q (HEAD 58f088a, PR #357). Il merge-base è b827447.
+
+Letture obbligatorie fatte: CLAUDE.md (sez. 5), reports/stato_progetto.md (letto in parte), .claude/agents/memoria_revisore.md. Ho applicato le lezioni sui merge del 2026-10-12: confronto dei blob con HEAD e con MERGE_HEAD, ricerca con comm delle righe aggiunte da ciascun lato, contatore preso dal massimo numerico (in questo worktree il massimo è #724).
+
+**Elementi del diff esaminati**
+- `modules/telegram/bot.py:964`: importa `_USO_FORTE_PARLATO` e `cervello_voce` da server.py, dentro un try che rispetta la regola §9.
+  - Rischio esaminato: la #356 ha cambiato firma o valore di questi due nomi?
+  - Esito: ok. Nel diff b827447..MERGE_HEAD di modules/voice/server.py nessuna riga cade dentro `cervello_voce`, che si sposta e basta: ora parte da `modules/voice/server.py:382`, la firma `(prompt, parlato) -> tuple[Optional[str], str]` è invariata. Anche `_USO_FORTE_PARLATO` (`modules/voice/server.py:111`) è invariato. Ora fa parte anche di `_FRASI_FISSE`, ma questo conta solo per la nuova `sintesi()`: il bot lo manda come testo, non come voce.
+- `modules/telegram/bot.py:999`: importa `parte_parlata`, che poi riceve il testo ripulito (`modules/telegram/bot.py:1005`).
+  - Rischio esaminato: le righe si sono spostate perché M2 ha inserito `sintesi()` subito prima di `parte_parlata`. Il corpo è stato toccato?
+  - Esito: ok. L'unica parte nuova (circa 29 righe, che si sommano a quelle aggiunte prima nel file) sta tra `frasi_voce` e `parte_parlata`. Ora `parte_parlata` è a `modules/voice/server.py:339` ed è identica.
+- `modules/telegram/bot.py:979`: importa `istruzione_turno_voce(True)`.
+  - Esito: ok. La funzione (`modules/voice/server.py:258`, firma `(schermo, adesso=None)`) non è toccata dal diff di M2.
+- `modules/telegram/bot.py:1045`: il bot sintetizza con `modules.voice.tts.synthesize_speech`, non con la nuova `sintesi()` di server.py.
+  - Rischio esaminato: la cache cambia il percorso della voce su Telegram?
+  - Esito: ok, la cache non c'entra. Anche il test `tests/test_unit_telegram_voce.py:78`, che sostituisce `tts.synthesize_speech` con un finto, continua a funzionare.
+- `tests/test_unit_telegram_voce.py:309`: il test importa `parte_parlata` dal server vero, quindi copre davvero l'interazione dopo il merge. Esito: ok.
+
+**Controlli meccanici**
+- File di M2 identici a MERGE_HEAD (blob): modules/voice/server.py, tests/test_unit_voice_server.py, tests/test_unit_sottofondo.py. Anche reports/ripartenza_m2.md è identico a MERGE_HEAD, ed è corretto: dalla base lo aveva toccato solo M2.
+- File identici a HEAD (blob): modules/telegram/bot.py, tests/test_unit_telegram_voce.py, reports/handoff.md, reports/ultimo_report.md, reports/diff_sessione.md.
+- Memoria e stato_progetto, unione verificata con comm:
+  - memoria: righe aggiunte da HEAD 7, perse 0; da MERGE_HEAD 5, perse 0; 1372 righe contro 1360 della base, 0 righe tolte e ricomparse.
+  - stato_progetto: righe aggiunte da HEAD 3, perse 0; da MERGE_HEAD 1, perse 0.
+- Conflitti: `git ls-files -u` vuoto; nessun marcatore `<<<<<<<`/`=======`/`>>>>>>>` nei file staged né in bot.py e nel suo test; `git diff --cached --check` pulito.
+- Test su una copia dell'index (checkout-index in una cartella temporanea dello scratchpad, niente stash): telegram_voce + voice_server + sottofondo, **282 passed** in 276 secondi.
+
+**Rischi esplicitamente esclusi**
+- Suite completa del motore e CI: non lanciate, solo i tre file richiesti. Fuori da questi tre file il merge porta solo report e memoria.
+- Prova reale con ElevenLabs e Telegram (vocale vero, cache in un processo vivo): non riproducibile in dev, nessuna chiave usata.
+- La correttezza della cache di M2 in sé non l'ho ri-revisionata: era già stata revisionata da M2 (#719-M2, #721-M2). Ho verificato solo l'identità dei blob e l'interazione con bot.py.
+
+**Riserve**: nessuna.
+
+**Memoria**: aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga `#726 (chat Mani) — 2026-11-09 — APPROVATO — …`, con «Nessuna lezione nuova». È solo nel working tree, NON committata e NON aggiunta all'index (lo stato è `MM`). Come richiesto non ho lanciato commit_memoria_revisore.sh. Per includerla nel merge serve `git add .claude/agents/memoria_revisore.md`, e questo cambia l'hash del diff staged per segna_review_ok.sh.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_telegram_voce.py`: da 51 a 66 casi.
@@ -223,7 +266,7 @@ Mutanti presi:
 
 ## §6 STATO CI
 
-`gh` non usato (GitHub passa dallo strumento MCP). d27b040: handoff-check success. Verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/357#issuecomment-6730508364). Per 363cd72 e per il commit di fine-task che contiene questo file la run non è ancora disponibile alla scrittura dell'handoff. La PR #355 su ef0e038 aveva unit-suite e handoff-check success ed è stata mergiata.
+`gh` non usato (GitHub passa dallo strumento MCP). d27b040: handoff-check success. Verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/357#issuecomment-6730508364). Per 363cd72, per il merge della #356 e per il commit di fine-task che contiene questo file la run non è ancora disponibile alla scrittura dell'handoff. La PR #355 su ef0e038 aveva unit-suite e handoff-check success ed è stata mergiata.
 
 ## §7 RISERVE APERTE
 
