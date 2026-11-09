@@ -2115,7 +2115,10 @@ def test_sintesi_cache_forte_a_pezzi_dal_server(monkeypatch):
     _, righe2, tts2 = _voce_a_pezzi("non usato", None, trascrizione="Gas, forte.",
                                     formato="audio+testo+pezzi", tts=tts)
     assert tts2 is tts and tts.call_count == 0
-    assert righe2 == righe  # stessa risposta, audio dalla memoria
+    # stessa risposta, audio dalla memoria (i tempi misurati no: cambiano da una richiesta
+    # all'altra, bot #360 3° giro)
+    senza_tempi = lambda rr: [{k: v for k, v in r.items() if k != "tempi"} for r in rr]  # noqa: E731
+    assert senza_tempi(righe2) == senza_tempi(righe)
 
 
 # ---- R8 fetta 1 (chat M2, sicurezza): tentativi falliti, tetto al testo, avvio chiuso ----
