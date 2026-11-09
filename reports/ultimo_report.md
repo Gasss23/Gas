@@ -10,6 +10,7 @@
 
 - **PR #356**: `MERGIATA` (69d76b9).
 - **R8 fetta 1**: `FATTA` — tetto ai tentativi con token sbagliato per IP, tetto alle richieste a testo, avvio rifiutato fuori da 127.0.0.1 senza rete privata dichiarata; proposta scritta. Review #720/#722 APPROVATO CON RISERVE (codice corretto), #723 e #724 APPROVATO.
+- Gate IP: esempi IPv4 nei test sostituiti con IPv6 di documentazione; review #726-M2 APPROVATO CON RISERVE (R-726-1/2-M2 BASSE).
 - Test: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed.
 
 ## Anomalie
