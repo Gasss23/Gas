@@ -45,6 +45,8 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+35dad0f docs(revisore): IP d'esempio redatti nella memoria #729 (gate IP, chat M2)
+d85acaf docs(voce): report R8 fetta 1 — bind mai su tutte le interfacce, review #727–#729 (chat M2)
 08e16aa fix(voce): server voce mai su tutte le interfacce né su nomi host; fuori da 127.0.0.1 solo IPv4 scritto per intero (bot #358 V-1, R-727-1, R-728-1/2/3)
 7537583 chore(revisore): memoria review #729 — APPROVATO
 4996b5f chore(revisore): memoria review #728 — APPROVATO CON RISERVE
