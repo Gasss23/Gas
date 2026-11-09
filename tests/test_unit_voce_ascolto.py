@@ -2483,3 +2483,18 @@ def test_pausa_senza_audio_suonabile_non_e_un_errore_nel_log(caplog):
     assert f.tipi == ["parola", "seguito"]
     assert caplog.text.count("pausa a voce: chiudo la conversazione") == 1
     assert "senza voce" not in caplog.text and f.bip == ["ok"]
+
+
+# ── velocità: tempo fino alla prima frase nel log (notte del 9 nov) ──
+
+def test_tempo_fino_alla_prima_frase_nel_log(monkeypatch, caplog):
+    """Una riga INFO per turno: secondi da fine richiesta alla prima frase suonata (non a
+    ogni frase). Serve a misurare dal vero dove si perde tempo."""
+    orologio = iter([100.0, 101.75, 999.0, 999.0, 999.0, 999.0])
+    monkeypatch.setattr(a.time, "monotonic", lambda: next(orologio, 999.0))
+    frasi, _ = _frasi_chiuse(b"A", b"B")
+    f = FintiSeguito([(True, frasi, "", "")])
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        assert f.ascolto(iter(())).turno([[1] * a.BLOCCO]) is True
+    righe = [r for r in caplog.text.splitlines() if "prima frase di Gas" in r]
+    assert len(righe) == 1 and "dopo 1.75 s" in righe[0]

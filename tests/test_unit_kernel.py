@@ -8386,8 +8386,56 @@ try:
     _pool78p = [_dentro78p.get(id(n), "<modulo>") for n in _ast78p.walk(_albero78p)
                 if isinstance(n, _ast78p.Call)
                 and getattr(n.func, "id", getattr(n.func, "attr", "")) in _nomi78p]
-    check("T78p update gestiti uno alla volta: nessun gestore passato a thread, pool solo nell'invio",
-          _riferiti78p == [] and _pool78p == ["_invia_a_tutti"], f"{_riferiti78p} {_pool78p}")
+    # Opzione (b) dell'operatore, 9 nov 2026: un secondo pool ammesso SOLO in _consegna_voce
+    # (voce di Telegram in un thread). Il thread esegue solo _invia_risposta_vocale, e né
+    # _consegna_voce né _invia_risposta_vocale (né _chiudi_voce) nominano un gestore degli
+    # update, run_turn o il kernel: le firme restano «un click alla volta».
+    _voce78p = {"_consegna_voce", "_invia_risposta_vocale", "_chiudi_voce"}
+    _vietati78p = _gestori78p | {"run_turn", "kernel", "_gestisci_parlato", "_turno_con_finale"}
+    _nomi_voce78p = sorted({n.id if isinstance(n, _ast78p.Name) else n.attr
+                            for f in _ast78p.walk(_albero78p)
+                            if isinstance(f, _ast78p.FunctionDef) and f.name in _voce78p
+                            for n in _ast78p.walk(f)
+                            if isinstance(n, (_ast78p.Name, _ast78p.Attribute))
+                            and (n.id if isinstance(n, _ast78p.Name) else n.attr) in _vietati78p})
+    _sottomessi78p = sorted({(a.id if isinstance(a, _ast78p.Name) else getattr(a, "attr", "?"))
+                             for n in _ast78p.walk(_albero78p)
+                             if isinstance(n, _ast78p.Call) and getattr(n.func, "attr", "") == "submit"
+                             and _dentro78p.get(id(n)) == "_consegna_voce" and n.args
+                             for a in n.args[:1]})
+    # R-725-1: (1) submit/map ammessi SOLO in _invia_a_tutti e _consegna_voce (niente lambda
+    # con un turno sottomesse da altre funzioni); (2) la coda della voce si nomina solo in
+    # _consegna_voce, _chiudi_voce e all'assegnazione di modulo; (3) i nomi vietati si cercano
+    # in TUTTE le funzioni del modulo raggiungibili da _invia_risposta_vocale.
+    _consegne78p = sorted({_dentro78p.get(id(n), "<modulo>") for n in _ast78p.walk(_albero78p)
+                           if isinstance(n, _ast78p.Call)
+                           and getattr(n.func, "attr", "") in ("submit", "map")})
+    _coda78p = sorted({_dentro78p.get(id(n), "<modulo>") for n in _ast78p.walk(_albero78p)
+                       if isinstance(n, _ast78p.Name) and n.id == "_voce_in_coda"}
+                      - {"_consegna_voce", "_chiudi_voce", "<modulo>"})
+    _funzioni78p = {f.name: f for f in _albero78p.body if isinstance(f, _ast78p.FunctionDef)}
+    _raggiunte78p, _da_vedere78p = set(), ["_invia_risposta_vocale"]
+    while _da_vedere78p:
+        _nome78p = _da_vedere78p.pop()
+        if _nome78p in _raggiunte78p or _nome78p not in _funzioni78p:
+            continue
+        _raggiunte78p.add(_nome78p)
+        _da_vedere78p += [n.id for n in _ast78p.walk(_funzioni78p[_nome78p])
+                          if isinstance(n, _ast78p.Name) and n.id in _funzioni78p]
+    _vietati_raggiunti78p = sorted({(f, n.id if isinstance(n, _ast78p.Name) else n.attr)
+                                    for f in _raggiunte78p
+                                    for n in _ast78p.walk(_funzioni78p[f])
+                                    if isinstance(n, (_ast78p.Name, _ast78p.Attribute))
+                                    and (n.id if isinstance(n, _ast78p.Name) else n.attr)
+                                    in _vietati78p})
+    check("T78p update gestiti uno alla volta: nessun gestore passato a thread, pool solo "
+          "nell'invio e nella voce (che non tocca update, firme né turni)",
+          _riferiti78p == [] and sorted(_pool78p) == ["_consegna_voce", "_invia_a_tutti"]
+          and _nomi_voce78p == [] and _sottomessi78p == ["_invia_risposta_vocale"]
+          and _consegne78p == ["_consegna_voce", "_invia_a_tutti"] and _coda78p == []
+          and _vietati_raggiunti78p == [] and "testo_da_dire" in _raggiunte78p,
+          f"{_riferiti78p} {_pool78p} {_nomi_voce78p} {_sottomessi78p} {_consegne78p} "
+          f"{_coda78p} {_vietati_raggiunti78p}")
 finally:
     if _saved_sb78 is None:
         os.environ.pop("GAS_SANDBOX_MODE", None)
