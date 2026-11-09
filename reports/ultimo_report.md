@@ -1,18 +1,23 @@
-# Ultimo report — 2026-11-09 notte — voce via Telegram, fetta 3 (chat Mani)
+# Ultimo report — 2026-11-09 — Server voce più sicuro, R8 fetta 1 (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-Nessuna nuova. Il 2026-11-09 l'operatore, via M1, ha detto sì alla #357 con le riserve e ha scelto l'opzione (b) per la voce in un thread (fetta successiva, di sicurezza).
+- **Merge della PR di sicurezza: decide l'operatore** (CLAUDE.md §10).
+- Scelte per le fette 2 e 3 e soglie della fetta 1: `reports/proposta_voce_sicura.md`.
+- R-720-2-M2: un client locale con token vecchio blocca per 15 minuti tutti i client su 127.0.0.1 (scelta prudente da confermare).
 
-## Esito
+## Esito delle fette
 
-- **PR #355 (fetta 2)**: MERGIATA (b827447) col sì dell'operatore.
-- **Voce via Telegram, fetta 3**: FATTA.
-  - Turno parlato (V-1 bot #355): dopo un vocale, con la voce accesa, il turno riceve l'istruzione del parlato con schermo della voce di casa. Prima una o due frasi da dire, poi i dettagli dopo una riga vuota, che restano solo nel testo.
-  - `testo_da_dire`: a voce niente grassetti, codice, titoli o segni degli elenchi; gli indirizzi web diventano «link».
-  - Tempi della voce più corti (V-1 ve #355, R-717-4 in parte): sintesi e invio con 15 s invece di 30, quindi un blocco tipico di circa 30 s invece di circa 60.
-  - Test: telegram_voce 59 passed; kernel 1099 PASS e 1 FAIL (T31g, ambiente).
-- **Consegna in un thread**: DEFERITA. La prima versione è stata BOCCIATA (#720) perché rompeva la guardia T78p delle firme; la decisione spetta all'operatore (punto 1).
-- Review #720 BOCCIATO, poi #721 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
-- **V-3 della verifica esterna #357 e R-723-1**: FATTA. Ogni tipo di a capo viene normalizzato prima della voce, così i dettagli non vanno a ElevenLabs. Review #723/#724.
-- **Merge della PR #356 di M2 nella #357**: FATTO, review #726 APPROVATO.
+- **PR #356**: `MERGIATA` (69d76b9).
+- **R8 fetta 1**: `FATTA` — tetto ai tentativi con token sbagliato per IP, tetto alle richieste a testo, avvio rifiutato fuori da 127.0.0.1 senza rete privata dichiarata; proposta scritta. Review #720/#722 APPROVATO CON RISERVE (codice corretto), #723 e #724 APPROVATO.
+- Bot #358 V-1 (bind su tutte le interfacce con la rete privata): chiusa — server mai su tutte le interfacce, fuori da 127.0.0.1 solo IPv4 scritto per intero. Review #727/#728 con riserve (MEDIE corrette), #729 APPROVATO. Test: 290 passed.
+- Bot #358 su e63491b (BOCCIATO per una MEDIA: mancava il test del blocco senza rete privata): corretta, più «::1» non più locale. Review #730-M2 con riserve BASSE. Test: 291 passed. Decisione per l'operatore: IPv4 d'esempio costruiti da intero nei test (handoff §0).
+- Bot #358 su 9f1aee4 (BOCCIATO, MEDIA: una pagina web poteva bloccare la voce): corretta — richieste senza token non contano; più difesa dal DNS rebinding (Host solo «localhost» o IP). Review #731 con riserve, #732 APPROVATO. Test: 352 passed + 15 browser.
+- Merge di main (#357) per il conflitto; review #733-M2 APPROVATO; test 607 passed. Bot e verifica esterna su 39ec264: APPROVATO CON RISERVE, solo BASSE.
+- Bot su 9eee954: nessun finding nuovo ma check rosso (testo incoerente); commit nuovo che chiude R-720-4-M2 (memoria piena). Review #734-M2 APPROVATO; test 313 passed.
+- Gate IP: esempi IPv4 nei test sostituiti con IPv6 di documentazione; review #726-M2 APPROVATO CON RISERVE (R-726-1/2-M2 BASSE).
+- Test: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed.
+
+## Anomalie
+
+- Nessuna nel codice. Nota di processo: la fetta è stata preparata in locale di notte (branch occupato dalla #356) e riposizionata sopra main dopo il merge; albero identico a quello revisionato.

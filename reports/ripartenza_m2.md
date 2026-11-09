@@ -1,4 +1,4 @@
-# Ripartenza chat M2 (voce) — 2026-11-07
+# Ripartenza chat M2 (voce) — 2026-11-09
 
 Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_progetto.md` (voci «Voce V…»), `reports/ultimo_report.md`, `reports/handoff.md`.
 
@@ -11,7 +11,9 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 ## In corso
 - PR #339, #342, #343, #344 MERGIATE il 6 nov.
 - PR #345, #346, #349, #350, #352, #354 (sottofondo e voce) MERGIATE (7–9 nov).
-- **9 nov notte (regole dell'operatore via M1)**: PR non di sicurezza con sole BASSE → merge mio con CI e bot verdi, coordinandomi con Mani; sicurezza → PR aperta per l'operatore. Divisione file: Mani solo modules/telegram/bot.py e clients/voice/; M2 server.py e sottofondo. In corso: PR cache delle frasi fisse; poi PR server voce sicuro (bozza della proposta nello scratchpad: tunnel privato + TLS opzionale + token di sessione + limiti).
+- PR #356 (cache delle frasi fisse) MERGIATA (69d76b9) il 9 nov col sì dell'operatore riferito da M1. Divisione file: Mani solo modules/telegram/bot.py e clients/voice/ascolto*; M2 server.py e sottofondo.
+- **In corso: PR di sicurezza R8 fetta 1** (server voce: tentativi falliti per IP, tetto al testo, avvio fail-closed; proposta `reports/proposta_voce_sicura.md`). Merge: decide l'operatore.
+- **In fila dopo R8**: fetta velocità «frasi fisse divise in cache» (commit locale a80e4b8 nella worktree /home/user/Gas-sicura, branch feat/voce-locale-fila; copia della patch mandata a M1). Poi fetta «terminale» (azioni fisse per Gas; quelle che cambiano qualcosa con firma su Telegram): proposta breve + codice, PR di sicurezza; vedi `reports/proposta_terminale_autonomia.md` sul branch di M1 feat/merge-automatico-z1xjx2.
 - **Dopo**: prova sul Mac.
 - Caso «Stefano»: da controllare sul Mac nella storia.
 
