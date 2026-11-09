@@ -8,7 +8,8 @@
 
 1. **PR di sicurezza: il merge lo decide l'operatore** (CLAUDE.md §10; tocca accessi e rete esposta).
 2. Proposta `reports/proposta_voce_sicura.md`: scelte per le fette 2 e 3 (tunnel privato, TLS opzionale, token di sessione e loro durata) e soglie della fetta 1 (10 tentativi falliti in 10 minuti per IP, 120 richieste a testo all'ora).
-3. Limite noto da confermare (R-720-2-M2): sul Mac tutti i client arrivano da 127.0.0.1, quindi un client con un token vecchio blocca per 15 minuti anche la pagina e l'ascolto H24.
+3. **IPv4 d'esempio nei test costruiti da intero** (`ipaddress.IPv4Address(0)` e un indirizzo della rete del tunnel) per non scriverli in chiaro: il gate IP del repo li vieterebbe, e il marcatore `gasmerge-ip-ok` è un via libera umano che non metto da solo (bot #358 V-3, R-730-1-M2). Decidi tu: tenerli così o mettere il marcatore e scriverli in chiaro.
+4. Limite noto da confermare (R-720-2-M2): sul Mac tutti i client arrivano da 127.0.0.1, quindi un client con un token vecchio blocca per 15 minuti anche la pagina e l'ascolto H24.
 
 ---
 
@@ -22,6 +23,7 @@
   - Proposta con opzioni e raccomandazione: `reports/proposta_voce_sicura.md`.
 - Review #720-M2 e #722-M2 APPROVATO CON RISERVE (riserve di codice corrette: R-720-1, R-720-3, R-722-1), #723-M2 APPROVATO, #724-M2 APPROVATO (stesso contenuto riposizionato sopra la #356). Il commit 1c928ea ha lo stesso albero del commit revisionato 7e7f14b (`git diff 7e7f14b 1c928ea` vuoto).
 - **Bot #358 V-1 (BASSA, ma di sicurezza)**: con `GAS_VOICE_RETE_PRIVATA=1` il server accettava anche un bind su tutte le interfacce. `FATTA` (08e16aa): il server non parte mai su «tutte le interfacce» e, fuori da 127.0.0.1/«localhost», accetta solo un indirizzo IPv4 scritto per intero (niente nomi host, forme abbreviate come «0»/«0x0», IPv6, IPv4 dentro IPv6). Review #727-M2 e #728-M2 APPROVATO CON RISERVE (MEDIE R-727-1, R-728-1 chiuse qui), #729-M2 APPROVATO.
+- **Bot #358 su e63491b (BOCCIATO, MEDIA)**: V-1 MEDIA `FATTA` (il test del blocco «fuori da 127.0.0.1 senza rete privata» ora arriva proprio a quel controllo; mutante ucciso), V-2 BASSA `FATTA` (locale solo un IPv4 loopback o «localhost»: «::1» rifiutato con messaggio, niente crash), V-3 BASSA dichiarata in §0. Review #730-M2 APPROVATO CON RISERVE (R-730-1/2-M2 BASSE).
 - **Gate IP** (fine_task_finale): fermava il push per tre IPv4 d'esempio non loopback nei test. Sostituiti con IPv6 di documentazione/ULA, senza il marcatore `gasmerge-ip-ok` (via libera umano). Review #726-M2 APPROVATO CON RISERVE (R-726-1/2-M2 BASSE).
 
 ---
@@ -29,15 +31,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  13 ++
- modules/voice/server.py            | 162 ++++++++++++++++++++++--
+ .claude/agents/memoria_revisore.md |  14 ++
+ modules/voice/server.py            | 164 ++++++++++++++++-
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/proposta_voce_sicura.md    |  50 ++++++++++++
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    | 205 ++++++++++++++++++++++++++++++
+ tests/test_unit_voice_server.py    | 208 ++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 69d76b9 (merge della #356).
@@ -45,6 +47,9 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6e7ad81 fix(voce): test del blocco «fuori da 127.0.0.1 senza rete privata»; locale solo IPv4 loopback (bot #358 V-1/V-2)
+99413f7 chore(revisore): memoria review #730 — APPROVATO CON RISERVE
+e63491b docs(voce): handoff §3 con il log completo (chat M2)
 35dad0f docs(revisore): IP d'esempio redatti nella memoria #729 (gate IP, chat M2)
 d85acaf docs(voce): report R8 fetta 1 — bind mai su tutte le interfacce, review #727–#729 (chat M2)
 08e16aa fix(voce): server voce mai su tutte le interfacce né su nomi host; fuori da 127.0.0.1 solo IPv4 scritto per intero (bot #358 V-1, R-727-1, R-728-1/2/3)
@@ -299,13 +304,44 @@ Rischi esclusi:
 
 Memoria: riga #729-M2 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (commit 7537583). Il diff staged è invariato (2 file, 87 righe aggiunte e 1 tolta).
 
+Review #730-M2 (verdetto integrale):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #730-M2, PR di sicurezza #358, diff staged (2 file, +9/−4). Ho letto CLAUDE.md, stato_progetto.md (le parti sulla voce) e la memoria del revisore (#727–#729).
+
+**Cosa ho controllato nel diff**
+1. `modules/voice/server.py:415`: `_bind_locale` ora vale solo per un IPv4 loopback o per «localhost».
+   - Rischio controllato: «::1» e gli indirizzi «IPv4 dentro IPv6» non devono più passare per locali, perché HTTPServer funziona solo con IPv4.
+   - Prova diretta: `_bind_locale` dà False sia per «::1» sia per «::ffff:127.0.0.1». Le altre due funzioni del bind (`_bind_tutte_le_interfacce`, `_bind_ip_letterale`) danno anch'esse False per questi due.
+   - Esito: ok.
+2. `modules/voice/server.py:1377` (contesto, il chiamante in run_server): dopo la modifica «::1» viene fermato qui con il messaggio «non è un indirizzo IPv4 scritto per intero» e `return 1`. Non arriva mai a `HTTPServer(...)`, che sta a `modules/voice/server.py:1398`.
+   - Esito: ok, niente crash. Il controllo «tutte le interfacce» (`modules/voice/server.py:1371`) e il controllo «rete privata» (`modules/voice/server.py:1383`) restano invariati.
+3. `tests/test_unit_voice_server.py:2208`: il test usa un IPv4 non locale costruito da un intero, quindi supera i primi due controlli e arriva davvero al controllo «rete privata». Controlla anche il messaggio «non è locale e la connessione è in chiaro».
+   - Mutante ripetuto da me (controllo di `modules/voice/server.py:1383` spento): 3 failed. File ripristinato, working tree pulito.
+   - Esito: ok, V-1 chiusa.
+4. `tests/test_unit_voice_server.py:2189`: nel test parametrico «::1» e «::ffff:127.0.0.1» ora devono dare False.
+   - Esito: ok, V-2 chiusa.
+5. Test R8 (`-k r8`): 39 passed.
+
+**Riserve (BASSE)**
+- R-730-1-M2: V-3 non è cambiata nel codice. Il test costruisce l'IPv4 a runtime da un intero, contro R-726-1. È ammesso solo come decisione dell'operatore dichiarata nell'handoff §0 (marcatore gasmerge-ip-ok oppure eccezione). Va tracciata in stato_progetto.md.
+- R-730-2-M2: nessun test fa partire run_server con «::1» per verificare che venga rifiutato. Oggi lo garantisce solo il controllo IPv4 (`modules/voice/server.py:1377`), che ho verificato a mano. Basterebbe aggiungere «::1» al test parametrico dei rifiuti in run_server.
+
+**Cosa NON ho verificato**
+- La suite completa voice_server + sottofondo + telegram_voce (291 passed secondo il chiamante): ho fatto girare solo i test R8 (39 passed).
+- Il comportamento su Python 3.11 e 3.12: ho provato una sola versione. Il cambio però scarta gli IPv6 prima di guardare `is_loopback`, quindi non dipende dalla versione di Python, a differenza di R-728-1.
+- Il bind reale su VPS o dentro il tunnel: non riproducibile in dev.
+
+Memoria: aggiunta la riga #730-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con lo script (commit 99413f7). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: +1 classe `TestR8Limiti` (blocco e scadenza, token giusto bloccato, log senza token, stato non condiviso, tetto al testo, ordine dei due tetti nei due versi, soglie scritte male) e test `test_r8_*` (indirizzo locale, avvio rifiutato, avvio con rete privata dichiarata). R8: 24 passed. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed, 15 deselected (sullo stesso albero, prima del riposizionamento). Mutanti uccisi: ramo del blocco, tetto al testo, fail-closed, stato condiviso, soglia mai raggiunta, ordine dei tetti. Dopo a2199c4: `pytest -q tests/test_unit_voice_server.py -k r8` → 23 passed (un caso di indirizzo in meno nel test parametrico). Dopo 08e16aa: R8 38 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 290 passed, 15 deselected. Test nuovi: rifiuto di «tutte le interfacce» con e senza rete privata, di nomi host, forme abbreviate, IPv6 e IPv4 dentro IPv6; avvio consentito con un IPv4 della rete del tunnel. `gas.py` non toccato.
+`tests/test_unit_voice_server.py`: +1 classe `TestR8Limiti` (blocco e scadenza, token giusto bloccato, log senza token, stato non condiviso, tetto al testo, ordine dei due tetti nei due versi, soglie scritte male) e test `test_r8_*` (indirizzo locale, avvio rifiutato, avvio con rete privata dichiarata). R8: 24 passed. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed, 15 deselected (sullo stesso albero, prima del riposizionamento). Mutanti uccisi: ramo del blocco, tetto al testo, fail-closed, stato condiviso, soglia mai raggiunta, ordine dei tetti. Dopo a2199c4: `pytest -q tests/test_unit_voice_server.py -k r8` → 23 passed (un caso di indirizzo in meno nel test parametrico). Dopo l'ultimo fix: R8 39 passed, suite voce 291 passed. Dopo 08e16aa: R8 38 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 290 passed, 15 deselected. Test nuovi: rifiuto di «tutte le interfacce» con e senza rete privata, di nomi host, forme abbreviate, IPv6 e IPv4 dentro IPv6; avvio consentito con un IPv4 della rete del tunnel. `gas.py` non toccato.
 
 ## §6 STATO CI
 
-Head b808fa7: verifica-bot success (APPROVATO CON RISERVE: V-1 BASSA chiusa in 08e16aa; V-2 COSMETICA = §3 dell'handoff e descrizione della PR, aggiornati). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
+Head e63491b: verifica-bot failure (BOCCIATO per V-1 MEDIA, corretta qui); handoff-check success. Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -315,6 +351,8 @@ Head b808fa7: verifica-bot success (APPROVATO CON RISERVE: V-1 BASSA chiusa in 0
 - R-726-1-M2 BASSA: nessun IPv4 non loopback (es. l'indirizzo «tutte le interfacce») nel test di `_bind_locale`; reintrodurlo solo col via libera umano al gate IP.
 - R-726-2-M2: chiusa in 08e16aa (gli IPv6 sono rifiutati con un messaggio, niente crash).
 - Limite di progetto (review #729-M2): con `GAS_VOICE_RETE_PRIVATA=1` non si verifica che l'IPv4 sia davvero quello del tunnel; un IPv4 pubblico del computer verrebbe accettato. Da rivedere prima dell'uso sul VPS (fetta TLS o controllo dell'interfaccia).
+- R-730-1-M2 BASSA: IPv4 d'esempio costruiti da intero nei test (decisione in §0).
+- R-730-2-M2 BASSA: nessun test avvia run_server con «::1» (rifiuto verificato a mano dal revisore).
 - «localhost» vale come locale e dipende da /etc/hosts (dichiarato nella docstring).
 - Ereditate dalla #356: bot V-1/V-2 su 84b88f8 (chiuse in locale, PR di velocità a seguire), ve #356 V-4, bot su 0d34fe6 V-1/V-2/V-3 (log dell'handoff, test del tetto della cache, numero dei test nel report).
 - Non verificato: comportamento reale con un tunnel (Tailscale) e server avviato fuori da 127.0.0.1.
