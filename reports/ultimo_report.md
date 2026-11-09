@@ -14,6 +14,7 @@
 - Bot #358 su e63491b (BOCCIATO per una MEDIA: mancava il test del blocco senza rete privata): corretta, più «::1» non più locale. Review #730-M2 con riserve BASSE. Test: 291 passed. Decisione per l'operatore: IPv4 d'esempio costruiti da intero nei test (handoff §0).
 - Bot #358 su 9f1aee4 (BOCCIATO, MEDIA: una pagina web poteva bloccare la voce): corretta — richieste senza token non contano; più difesa dal DNS rebinding (Host solo «localhost» o IP). Review #731 con riserve, #732 APPROVATO. Test: 352 passed + 15 browser.
 - Merge di main (#357) per il conflitto; review #733-M2 APPROVATO; test 607 passed. Bot e verifica esterna su 39ec264: APPROVATO CON RISERVE, solo BASSE.
+- Bot su 9eee954: nessun finding nuovo ma check rosso (testo incoerente); commit nuovo che chiude R-720-4-M2 (memoria piena). Review #734-M2 APPROVATO; test 313 passed.
 - Gate IP: esempi IPv4 nei test sostituiti con IPv6 di documentazione; review #726-M2 APPROVATO CON RISERVE (R-726-1/2-M2 BASSE).
 - Test: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed.
 

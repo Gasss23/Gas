@@ -29,6 +29,7 @@
 - **Bot #358 V-2 COSMETICA** (riga del §1 sul fail-closed): la descrizione completa è nella PR; qui: mai su tutte le interfacce, locale solo IPv4 loopback o «localhost», fuori da lì solo IPv4 scritto per intero e solo con rete privata dichiarata.
 - **Merge di main (#357 di Mani)** per togliere il conflitto (ve #358 V-1): `FATTO`; conflitti solo su report e memoria; review #733-M2 APPROVATO.
 - **Verifica esterna e bot su 39ec264**: APPROVATO CON RISERVE (solo BASSE: rete privata solo dichiarativa, log delle richieste senza token senza tetto, nomi host via tunnel rifiutati, handoff poco leggibile). Commento: https://github.com/Gasss23/Gas/pull/358#issuecomment-6749884432
+- **Bot su 9eee954**: nessun finding nuovo sul codice ma check rosso (testo «con riserve» senza finding: incoerente); il rilancio non ritira il verdetto, serve un commit nuovo. Chiusa la sua BASSA (= R-720-4-M2): con la memoria piena esce la voce più vecchia e l'IP nuovo si conta e si blocca sempre. Review #734-M2 APPROVATO.
 - **Gate IP** (fine_task_finale): fermava il push per tre IPv4 d'esempio non loopback nei test. Sostituiti con IPv6 di documentazione/ULA, senza il marcatore `gasmerge-ip-ok` (via libera umano). Review #726-M2 APPROVATO CON RISERVE (R-726-1/2-M2 BASSE).
 
 ---
@@ -36,15 +37,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  18 ++
- modules/voice/server.py            | 202 ++++++++++++-
+ .claude/agents/memoria_revisore.md |  20 ++
+ modules/voice/server.py            | 207 ++++++++++++-
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/proposta_voce_sicura.md    |  50 ++++++++++++
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    | 253 ++++++++++++++++
+ tests/test_unit_voice_server.py    | 269 +++++++++++++++++
 ```
 
 NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 524ae96 (merge della #357, entrato col merge di questa sessione).
@@ -52,6 +53,10 @@ NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d5bea31 fix(voce): con la memoria dei tentativi piena esce la voce più vecchia, l'IP nuovo si conta e si blocca sempre (R-720-4-M2, bot #358)
+6bf270e chore(revisore): memoria review #734 — APPROVATO
+9eee954 docs(voce): handoff — verdetto #733 riemesso con citazioni del diff (gate B, chat M2)
+41c5f9c docs(voce): report R8 fetta 1 dopo il merge di main (#357) — review #733 (chat M2)
 7854200 Merge origin/main (#357 di Mani) nella PR di sicurezza #358
 39ec264 docs(voce): report R8 fetta 1 — richieste senza token e DNS rebinding, review #731–#732 (chat M2)
 12cc4b1 fix(voce): Host ammesso solo «localhost» o indirizzo IP — difesa dal DNS rebinding (R-731-1-M2)
@@ -440,18 +445,54 @@ Cosa non ho verificato:
 
 Memoria: la riga contatore #733-M2 è in coda a `.claude/agents/memoria_revisore.md`. Ho fatto solo `git add` durante il merge ed è entrata nel commit di merge 41c5f9c. In questa ri-emissione non ho toccato file e non ho committato nulla.
 
+Review #734-M2 (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Il diff chiude R-720-4-M2. Prima, con la memoria piena, gli IP nuovi non venivano contati né bloccati (fail-open, cioè la protezione si spegneva). Ora la memoria resta sempre entro il tetto e l'IP nuovo viene sempre contato o bloccato. Nel diff non ci sono antipattern del Wall of Shame: niente slicing della history, niente simulazione dei tool. Il cap delle iterazioni e `_get_window` non sono toccati.
+
+**Elementi del diff esaminati**
+- `modules/voice/server.py:631` — se `bloccati` è pieno esce la voce con la scadenza più vicina, poi l'IP che ha raggiunto la soglia viene bloccato sempre. Rischi esaminati:
+  - `min()` su un dict vuoto: non può succedere, perché il ramo parte solo con il dict pieno (≥1024 voci).
+  - Prima i blocchi già scaduti vengono tolti (riga 608), quindi non si sfratta mai un blocco ancora valido finché ci sono voci morte.
+  - Esito: ok.
+- `modules/voice/server.py:639` — se `falliti` è pieno esce l'IP con il tentativo più recente più vecchio, poi l'IP nuovo viene contato sempre. Rischi esaminati:
+  - `falliti[k][-1]` su una lista vuota: escluso, perché il filtro `v and …` (riga 609) toglie le liste vuote e `recenti` contiene sempre almeno `adesso`.
+  - Un IP già presente viene tolto con `pop` (riga 627) prima del controllo del tetto, quindi non sfratta nessun altro per errore.
+  - Esito: ok.
+- `tests/test_unit_voice_server.py:2166` — `test_memoria_piena_conta_e_blocca_ancora` abbassa il tetto a 3 e controlla quattro cose: blocco effettivo (429 anche con il token giusto), dimensione della tabella, voce sfrattata giusta in `bloccati`, voce sfrattata giusta in `falliti`. Verifica che ho rifatto io: con `server.py` di HEAD il test dà 1 failed, con il diff 1 passed. Poi ho ripristinato il working tree e `git diff --stat` è vuoto (working tree identico all'index). R8: 46 passed. Esito: ok.
+- Contesto: `modules/voice/server.py:600` — il controllo dell'Host (`_host_ammesso`) e il 429 per un IP già bloccato stanno ancora prima di questa logica, quindi la loro priorità non cambia.
+
+**Domanda dell'operatore: un attaccante può «sbloccare» un IP riempiendo la tabella?**
+Sì, ma solo con più di 1024 IP diversi:
+- deve creare 1024 blocchi nuovi, con 10 tentativi ciascuno (circa 10k richieste nella finestra di 15 minuti);
+- solo il blocco che scade per primo viene sfrattato, e quell'IP riottiene al massimo 10 tentativi prima di essere bloccato di nuovo.
+
+Un attaccante con più di 1024 IP ha già circa 10 tentativi per IP ogni 15 minuti. Lo sfratto gli aggiunge circa un tentativo per ogni tentativo speso: il ritmo resta limitato, e per un attaccante con meno di 1024 IP il limite per IP resta intero. Prima, invece, a tabella piena ogni IP nuovo aveva tentativi illimitati. Il compromesso è quindi strettamente migliore e accettabile, tanto più che vale solo in locale o via tunnel. A tutto questo si somma il blocco dato dall'entropia del token.
+
+**Rischi esplicitamente esclusi (non verificati)**
+- Comportamento dietro tunnel o reverse proxy: lì `client_address` potrebbe essere sempre l'IP del tunnel, quindi tutti i client in un solo secchio e un attaccante che blocca anche l'operatore. È un tema preesistente, non introdotto da questo diff, e non riproducibile in dev.
+- Costo reale di `min()` sotto carico concorrente: `ThreadingHTTPServer` con lettura e riassegnazione dei dict di classe senza lock è una race preesistente e fuori diff. Nel caso peggiore perde qualche conteggio, senza crash.
+
+**Memoria e commit**
+- Riga #734-M2 e una lezione aggiunte in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- Commit `6bf270e` fatto con `scripts/commit_memoria_revisore.sh`. Il diff staged del motore (2 file, +27/−6) è rimasto intatto nell'index.
+- Nessun IPv4 non loopback nel verdetto né nella memoria.
+
+**Prossimo passo per te:** crea il marcatore con `bash scripts/segna_review_ok.sh`, poi committa.
+
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: +1 classe `TestR8Limiti` (blocco e scadenza, token giusto bloccato, log senza token, stato non condiviso, tetto al testo, ordine dei due tetti nei due versi, soglie scritte male) e test `test_r8_*` (indirizzo locale, avvio rifiutato, avvio con rete privata dichiarata). R8: 24 passed. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed, 15 deselected (sullo stesso albero, prima del riposizionamento). Mutanti uccisi: ramo del blocco, tetto al testo, fail-closed, stato condiviso, soglia mai raggiunta, ordine dei tetti. Dopo a2199c4: `pytest -q tests/test_unit_voice_server.py -k r8` → 23 passed (un caso di indirizzo in meno nel test parametrico). Finale: R8 45 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_prova_voci.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 352 passed; i 15 test browser passano. Dopo il merge di main: voice_server + telegram_voce + sottofondo + voce_ascolto senza browser → 607 passed. Prima: R8 39 passed, suite voce 291 passed. Dopo 08e16aa: R8 38 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 290 passed, 15 deselected. Test nuovi: rifiuto di «tutte le interfacce» con e senza rete privata, di nomi host, forme abbreviate, IPv6 e IPv4 dentro IPv6; avvio consentito con un IPv4 della rete del tunnel. `gas.py` non toccato.
+`tests/test_unit_voice_server.py`: +1 classe `TestR8Limiti` (blocco e scadenza, token giusto bloccato, log senza token, stato non condiviso, tetto al testo, ordine dei due tetti nei due versi, soglie scritte male) e test `test_r8_*` (indirizzo locale, avvio rifiutato, avvio con rete privata dichiarata). R8: 24 passed. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed, 15 deselected (sullo stesso albero, prima del riposizionamento). Mutanti uccisi: ramo del blocco, tetto al testo, fail-closed, stato condiviso, soglia mai raggiunta, ordine dei tetti. Dopo a2199c4: `pytest -q tests/test_unit_voice_server.py -k r8` → 23 passed (un caso di indirizzo in meno nel test parametrico). Finale: R8 45 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_prova_voci.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 352 passed; i 15 test browser passano. Dopo il fix della memoria piena: R8 46 passed; voice_server + sottofondo + telegram_voce senza browser 313 passed. Dopo il merge di main: voice_server + telegram_voce + sottofondo + voce_ascolto senza browser → 607 passed. Prima: R8 39 passed, suite voce 291 passed. Dopo 08e16aa: R8 38 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 290 passed, 15 deselected. Test nuovi: rifiuto di «tutte le interfacce» con e senza rete privata, di nomi host, forme abbreviate, IPv6 e IPv4 dentro IPv6; avvio consentito con un IPv4 della rete del tunnel. `gas.py` non toccato.
 
 ## §6 STATO CI
 
-Head 39ec264: unit-suite pass, handoff-check pass; verifica-bot failure col testo «APPROVATO» e sole BASSE (V-1 tetto di memoria a 1024 IP, V-2 nomi host via tunnel rifiutati). Nuovo head col merge di main: run non ancora disponibile alla scrittura dell'handoff.
+Head 9eee954: unit-suite e handoff-check in corso/pass; verifica-bot failure senza finding nuovi (testo incoerente), rilancio rifiutato dal bot (serve un commit nuovo). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-720-2-M2 BASSA (decisione dell'operatore): un client locale con token vecchio blocca per 15 minuti tutti i client su 127.0.0.1.
-- R-720-4-M2 BASSA: con 1024 IP già ricordati i nuovi non vengono più contati né bloccati (irrilevante su 127.0.0.1 o tunnel; da rivedere prima di un uso sul VPS).
+- R-720-4-M2: chiusa (memoria piena → esce la voce più vecchia). Resta: chi ha più di 1024 IP può far uscire il blocco che scade per primo (review #734-M2: compromesso migliore di prima).
 - R-720-5-M2 COSMETICA: una riga di log per ogni richiesta bloccata.
 - R-726-1-M2 BASSA: nessun IPv4 non loopback (es. l'indirizzo «tutte le interfacce») nel test di `_bind_locale`; reintrodurlo solo col via libera umano al gate IP.
 - R-726-2-M2: chiusa in 08e16aa (gli IPv6 sono rifiutati con un messaggio, niente crash).
