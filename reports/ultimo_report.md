@@ -2,20 +2,18 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta: è un CAMBIO DI SICUREZZA (guardia T78p delle firme allargata, opzione b scelta dall'operatore). Resta aperta fino al sì esplicito dell'operatore, anche con verdetto pulito del bot. Secondo passaggio consigliato nella chat claude.ai col link della PR.
+1. Merge della PR #359: è un CAMBIO DI SICUREZZA (guardia T78p delle firme allargata, opzione b scelta dall'operatore). Resta aperta fino al sì esplicito dell'operatore, anche se il bot dà un verdetto pulito. Consigliato il secondo passaggio nella chat claude.ai col link della PR.
+2. Guardia T78p: il revisore (#733) consiglia di fermarsi qui. Le elusioni rimaste (R-733-1/2, BASSE) richiedono codice scritto apposta e visibile in review. L'operatore decide se accettare questo limite della guardia statica.
 
 ## Esito
 
-- **PR #357 (fetta 3)**: MERGIATA (524ae96) col sì dell'operatore via M1; bot APPROVATO CON RISERVE, solo BASSE/COSMETICHE.
-- **Voce in un thread (opzione b)**: FATTA.
-  - `_consegna_voce`: sintesi e invio del vocale vanno in una coda di un solo thread; il polling di Telegram non resta fermo.
-  - Guardia T78p: il secondo pool è ammesso solo lì e solo per `_invia_risposta_vocale`; `.submit`/`.map` solo in `_invia_a_tutti` e `_consegna_voce`; i nomi vietati si controllano in tutte le funzioni raggiunte dal thread. I mutanti del revisore A, B, C, E, F, G sono presi.
-  - Ctrl-C scarta la coda della voce, anche durante la pausa di 5 s dopo un errore (R-725-2).
-  - Review #725 APPROVATO CON RISERVE (R-725-1 MEDIA), corretta e ri-revisionata in #727 APPROVATO CON RISERVE (solo BASSE).
-- **Tempi della voce di casa**: FATTA. Il log dice dopo quanti secondi arriva la prima frase di Gas (review #722).
-- **Merge su main dopo la #357**: FATTO, review #728 APPROVATO (blob identici a quelli revisionati).
-- Test: telegram_voce 70 + ascolto 296 = 366 passed; kernel 1099 PASS, 1 FAIL (T31g, ambiente), T78p PASS.
+- **PR #357 (fetta 3)**: MERGIATA (524ae96).
+- **Voce in un thread (opzione b)**: FATTA (aca5b88; review #725 e #727).
+- **Tempi della voce di casa**: FATTA (3404378; review #722).
+- **Bot e verifica esterna #359** (V-1 MEDIA: la guardia non vincolava .map; V-2 MEDIA/BASSA: i nomi vietati erano una deny-list incompleta): CORRETTE. La guardia T78p ora è una allow-list. La consegna alla coda può essere solo `submit(_invia_risposta_vocale, base_url, chat_id, finale)`. Le funzioni raggiunte dal thread possono usare solo i nomi, gli attributi e gli import ammessi. Nessun legame può coprire un builtin o un nome del modulo. I legami di modulo si contano in modo esatto. Fuori dalle funzioni sono vietate le scritture su attributi e subscript, e in tutto il modulo l'accesso agli interni (__code__, sys.modules, exec…). Review #729–#733: a ogni giro una nuova classe di elusioni è stata chiusa con mutanti di prova; in tutto 27 mutanti presi su 28 (1 inconclusivo). V-3 (test del Ctrl-C nella pausa), V-4 (docstring) e V-5 (report): FATTE.
+- **Merge di main con la PR #358 di M2**: FATTO, review #735.
+- Test: telegram_voce, ascolto e voice_server danno 550 passed. Kernel: 1099 PASS, 1 FAIL (T31g, ambiente); T78p PASS.
 
 ## Anomalie
 
-Nessuna.
+Nessuna nel codice della voce. La guardia statica ha richiesto 5 giri di review: è un limite noto dell'analisi per nomi.
