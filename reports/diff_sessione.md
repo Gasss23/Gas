@@ -4,7 +4,6 @@
 - `tests/test_unit_voice_server.py`, `tests/test_unit_sottofondo.py`.
 - `.claude/agents/memoria_revisore.md` — review #715 e #716 (merge di main).
 - Merge di origin/main b827447 (#355 di Mani): entrano `modules/telegram/bot.py` e i suoi test, non toccati da M2.
-- `reports/stato_progetto.md` — R11, regola di merge notturna del 9/11.
 - `reports/*` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

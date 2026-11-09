@@ -809,8 +809,6 @@ Merge della #354 (review #719 APPROVATO).
 - **R10** (2026-07-24) — `~/bin/gasmerge` DEVE essere un symlink a `scripts/gasmerge.sh` (verifica con `ls -l`). Una copia divergente significa che il gate versionato non è quello che gira.
   Origine: `### Sessione 2026-07-24 (p2)`, 🔴→✅ "~/bin/gasmerge NON era un symlink"; ℹ️ "gasmerge portato in scripts/gasmerge.sh".
 
-- **R11** (2026-11-09, decisione dell'operatore per la notte del 9/11, valida fino al mattino) — REGOLA DI MERGE NOTTURNA, deroga temporanea a CLAUDE.md §10 (che chiede il sì dell'operatore per ogni `APPROVATO CON RISERVE`): PR con sole riserve BASSE/COSMETICHE e nessun tema di sicurezza → la chat proprietaria mergia senza chiedere, con CI e bot verdi e dopo aver avvisato l'altra chat; ALTA/MEDIA → prima si corregge; sicurezza (token, accessi, firme, cancello, rete esposta, dati verso l'esterno) → la PR resta aperta per l'operatore. Al mattino torna in vigore §10.
-  Origine: `reports/ripartenza_m1.md` riga «9/11 notte» (commit 280b2f95 sul branch `feat/merge-automatico-z1xjx2`, chat M1), trasmessa da M1 a M2 e Mani.
 
 ## Note operative VPS — non per oggi
 

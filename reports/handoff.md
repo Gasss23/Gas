@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Nessuna per questa PR: per la regola di stanotte (operatore via M1, 9 nov; registrata in `reports/stato_progetto.md` come R11, fonte `reports/ripartenza_m1.md` commit 280b2f95 del branch `feat/merge-automatico-z1xjx2`) le PR non di sicurezza con sole riserve BASSE/COSMETICHE si mergiano con CI e bot verdi, coordinandosi con Mani. Se bot o verifica esterna danno una MEDIA su questa regola, la PR resta per l'operatore.
+1. **Merge della #356 (riserve BASSE/COSMETICHE): decide l'operatore.** Per allineamento con M1 (9 nov notte) stanotte nessuno mergia PR con riserve: vale CLAUDE.md §10 (solo APPROVATO pulito). La regola notturna NON è stata scritta nel repo: un agente non si scrive da sé l'autorizzazione a mergiare.
 2. Prossima PR di stanotte: server voce reso sicuro (R8) — proposta + codice, resta aperta per l'operatore.
 
 ---
@@ -18,7 +18,6 @@
 - **Riserve BASSE della #354**: `FATTE` — test della pulizia con «in_coda» (bot #354 V-1), `_finiti_jobs` azzerato a inizio richiesta (R-711-3-M2), lambda → funzione, parentesi esplicite nella condizione del segno (ve #354 V-3).
 - Review #715-M2 APPROVATO CON RISERVE (R-715-1-M2 COSMETICA).
 - **Merge di main (#355 di Mani) nel branch** per togliere il conflitto (MEDIA della verifica esterna sulla #356): `FATTO` (2580889), review #716-M2 APPROVATO; conflitti solo su report e memoria.
-- **Regola di merge notturna** scritta nel repo (R11 in `reports/stato_progetto.md`), come chiesto da M1 dopo la MEDIA di processo della verifica esterna sulla #357.
 
 ---
 
