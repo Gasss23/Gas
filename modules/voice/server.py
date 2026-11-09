@@ -29,7 +29,14 @@ Endpoint: GET /voce/conferma (V14, stesso Bearer)
 Avvio: `python -m modules.voice.server` dalla cartella di Gas (carica il `.env` come la CLI).
 
 Configurazione tramite variabili d'ambiente (da .env o export):
-  GAS_VOICE_BIND      — bind address       (default: 127.0.0.1)
+  GAS_VOICE_BIND      — bind address       (default: 127.0.0.1); fuori da 127.0.0.1 il server
+                        parte SOLO con GAS_VOICE_RETE_PRIVATA=1 (tunnel privato dichiarato, R8)
+                        e mai su tutte le interfacce («::» o equivalente IPv4); fuori da 127.0.0.1
+                        solo un indirizzo IPv4 scritto per intero, mai un nome host né IPv6;
+                        «localhost» vale come locale (dipende da /etc/hosts del computer)
+  GAS_VOICE_MAX_FALLITI — tentativi con token sbagliato per IP in 10 minuti (default 10), poi
+                        429 per 15 minuti a quell'IP, anche col token giusto (R8)
+  GAS_VOICE_MAX_TESTO_ORA — richieste a TESTO al massimo nell'ultima ora (default 120), poi 429 (R8)
   GAS_VOICE_PORT      — porta TCP          (default: 8765)
   GAS_VOICE_TOKEN     — token bearer       OBBLIGATORIO: assente/vuoto → il server non parte
   GROQ_API_KEY        — chiave Groq        OBBLIGATORIO per STT audio; assente → 503
@@ -69,6 +76,7 @@ from __future__ import annotations
 
 import base64
 import hmac
+import ipaddress
 import http.client
 import json
 import logging
@@ -373,6 +381,68 @@ def _max_turni_ora() -> int:
     return n if n > 0 else _MAX_TURNI_ORA_DEFAULT
 
 
+# R8 fetta 1 (chat M2, sicurezza): C1 — tetto ai tentativi con token sbagliato per IP;
+# C2 — tetto alle richieste a testo. Soglie proposte all'operatore in
+# reports/proposta_voce_sicura.md; tutte e due configurabili.
+_MAX_FALLITI_DEFAULT = 10  # tentativi falliti per IP in _FALLITI_FINESTRA_S, poi blocco
+_FALLITI_FINESTRA_S = 600.0
+_FALLITI_BLOCCO_S = 900.0
+_FALLITI_MAX_IP = 1024  # IP ricordati al massimo (memoria limitata; piena → esce il più vecchio)
+_MAX_TESTO_ORA_DEFAULT = 120
+
+
+def _intero_env(nome: str, default: int) -> int:
+    """Intero positivo da env; vuoto, non numerico o <= 0 → default (con avviso se scritto male)."""
+    grezzo = os.environ.get(nome, "").strip()
+    if not grezzo:
+        return default
+    try:
+        n = int(grezzo)
+    except ValueError:
+        log.warning("%s non numerica: uso %d", nome, default)
+        return default
+    return n if n > 0 else default
+
+
+def _bind_locale(bind: str) -> bool:
+    """R8: indirizzo raggiungibile solo dal computer stesso (loopback IP o «localhost»; mai un
+    nome host qualsiasi, anche se comincia con «127.», R-720-3-M2)."""
+    b = bind.strip().lower()
+    if b == "localhost":
+        return True
+    try:
+        # solo IPv4 (bot #358 V-2): HTTPServer è solo IPv4, «::1» lo farebbe cadere all'avvio
+        ip = ipaddress.ip_address(b)
+        return isinstance(ip, ipaddress.IPv4Address) and ip.is_loopback
+    except ValueError:
+        return False
+
+
+def _bind_tutte_le_interfacce(bind: str) -> bool:
+    """R8 (bot #358 V-1): indirizzo «non specificato» (tutte le interfacce, IPv4 o IPv6): anche
+    dentro un tunnel esporrebbe il server in chiaro sulle interfacce pubbliche."""
+    try:
+        return ipaddress.ip_address(bind.strip()).is_unspecified
+    except ValueError:
+        return False
+
+
+def _bind_ip_letterale(bind: str) -> bool:
+    """R8 (R-727-1-M2, R-728-1/2-M2): fuori da 127.0.0.1 si accetta solo un indirizzo IPv4
+    scritto per intero (il server, HTTPServer, è solo IPv4). Un nome host, una forma abbreviata
+    («0», «0x0»…) o un IPv6 (anche «IPv4 dentro IPv6», che secondo la versione di Python sfugge
+    al controllo «tutte le interfacce») verrebbero risolti dal socket in un altro indirizzo, o
+    farebbero cadere l'avvio con un errore non gestito."""
+    try:
+        return isinstance(ipaddress.ip_address(bind.strip()), ipaddress.IPv4Address)
+    except ValueError:
+        return False
+
+
+def _env_acceso(nome: str) -> bool:
+    return os.environ.get(nome, "").strip().lower() in ("1", "true", "on", "yes", "si", "sì")
+
+
 def _voce_tutta_forte() -> bool:
     """GAS_VOCE_FORTE acceso: regole di _env_flag in gas.py (1/true/on/yes/si) più «sì»
     con l'accento (nota #565-M2: scritto in italiano, non deve restare spento in silenzio)."""
@@ -431,6 +501,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
     # si aggiungono all'account solo queste
     libreria_ammesse: Dict[str, Any] = {}
     aggiunte_voci: List[float] = []  # V8b: istanti delle aggiunte all'account (tetto orario)
+    # R8 fetta 1 (C1): per IP, istanti dei tentativi falliti e fine del blocco (monotonic)
+    falliti: Dict[str, List[float]] = {}
+    bloccati: Dict[str, float] = {}
+    turni_testo: List[float] = []  # R8 fetta 1 (C2): istanti delle richieste a testo
 
     def log_message(self, fmt: str, *args: Any) -> None:
         log.info(fmt, *args)
@@ -491,6 +565,84 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _host_ammesso(self) -> bool:
+        """R8 (R-731-1-M2, DNS rebinding): una pagina web su un dominio qualsiasi può far
+        risolvere il suo nome sul computer e parlare al server come se fosse «locale». Il
+        browser però manda il nome del dominio nell'header Host: si accettano solo
+        «localhost» o un indirizzo IP (l'unico modo di arrivare davvero al server); un nome
+        di dominio riceve 403 prima del controllo del token e non conta per il blocco. Una
+        richiesta senza Host (client non browser, HTTP/1.0) passa al controllo del token."""
+        host = (self.headers.get("Host") or "").strip().lower()
+        if not host:
+            return True
+        if host.startswith("["):
+            nome = host[1:host.find("]")] if "]" in host else host
+        elif host.count(":") == 1:
+            nome = host.split(":", 1)[0]
+        else:
+            nome = host
+        if nome == "localhost":
+            return True
+        try:
+            ipaddress.ip_address(nome)
+            return True
+        except ValueError:
+            log.warning("HOST RIFIUTATO ip=%s", self.client_address[0])
+            return False
+
+    def _autorizza(self) -> bool:
+        """R8 fetta 1 (C1): controllo del token con tetto ai tentativi falliti per IP. Manda da sé
+        la risposta di rifiuto (403 se l'Host è un nome di dominio, 429 se l'IP è bloccato,
+        401 se il token è sbagliato) e dice se
+        la richiesta può proseguire. Un IP bloccato riceve 429 anche col token giusto, finché il
+        blocco non scade: chi indovina non può sapere quando ha indovinato. Nel log solo IP ed
+        esito, mai il token."""
+        if not self._host_ammesso():
+            self._send_json(403, {"error": "Host non ammesso"})
+            return False
+        cls = type(self)
+        ip = str(self.client_address[0])
+        adesso = time.monotonic()
+        # sempre copie riassegnate sulla classe del server: mai un dict condiviso con
+        # VoiceHandler o con altri server nello stesso processo (test)
+        bloccati = {k: v for k, v in cls.bloccati.items() if v > adesso}
+        falliti = {k: v for k, v in cls.falliti.items() if v and adesso - v[-1] < _FALLITI_FINESTRA_S}
+        if ip in bloccati:
+            cls.bloccati, cls.falliti = bloccati, falliti
+            log.warning("AUTH BLOCCATO ip=%s", ip)
+            self._send_json(429, {"error": "Troppi tentativi non autorizzati: riprova più tardi."})
+            return False
+        if self._check_auth():
+            cls.bloccati, cls.falliti = bloccati, falliti
+            return True
+        parti = self.headers.get("Authorization", "").split(" ", 1)
+        if len(parti) != 2 or parti[0].lower() != "bearer" or not parti[1].strip():
+            # bot #358 V-1: senza «Bearer <token>» non si sta provando un token, quindi non
+            # conta per il blocco. Una pagina web qualsiasi può mandare al server locale
+            # richieste senza header (img, fetch no-cors) ma non può aggiungere Authorization
+            # senza preflight, che qui fallisce: così non può bloccare la voce dell'operatore.
+            cls.bloccati, cls.falliti = bloccati, falliti
+            self._send_json(401, {"error": "Unauthorized"})
+            return False
+        recenti = [t for t in falliti.pop(ip, []) if adesso - t < _FALLITI_FINESTRA_S] + [adesso]
+        if len(recenti) >= _intero_env("GAS_VOICE_MAX_FALLITI", _MAX_FALLITI_DEFAULT):
+            # memoria piena (R-720-4-M2, bot #358): esce il blocco che scade per primo, mai
+            # si smette di bloccare l'IP che ha appena raggiunto la soglia
+            if len(bloccati) >= _FALLITI_MAX_IP:
+                del bloccati[min(bloccati, key=bloccati.__getitem__)]
+            bloccati[ip] = adesso + _FALLITI_BLOCCO_S
+            log.warning("AUTH BLOCCO ip=%s per %d s", ip, int(_FALLITI_BLOCCO_S))
+            cls.bloccati, cls.falliti = bloccati, falliti
+            self._send_json(429, {"error": "Troppi tentativi non autorizzati: riprova più tardi."})
+            return False
+        if len(falliti) >= _FALLITI_MAX_IP:
+            # memoria piena: esce l'IP col tentativo più vecchio, l'IP nuovo si conta sempre
+            del falliti[min(falliti, key=lambda k: falliti[k][-1])]
+        falliti[ip] = recenti
+        cls.bloccati, cls.falliti = bloccati, falliti
+        self._send_json(401, {"error": "Unauthorized"})
+        return False
+
     def end_headers(self) -> None:
         """V15: un comando per il client (oggi solo «pausa») viaggia in X-Gas-Comando, in ogni
         formato di risposta (JSON, MP3, NDJSON)."""
@@ -506,8 +658,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self._finiti_jobs = None  # R-711-3-M2: mai i compiti di un'altra richiesta
         self._parlato = False
         if self.path in ("/voci/prova", "/voci/aggiungi"):  # V8/V8b: prova o aggiunta di una voce
-            if not self._check_auth():
-                self._send_json(401, {"error": "Unauthorized"})
+            if not self._autorizza():
                 return
             try:
                 n = int(self.headers.get("Content-Length", 0) or 0)
@@ -524,8 +675,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "Not Found"})
             return
 
-        if not self._check_auth():
-            self._send_json(401, {"error": "Unauthorized"})
+        if not self._autorizza():
             return
 
         try:
@@ -593,6 +743,24 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._rispondi_senza_turno(_USO_FORTE_PARLATO, "uso")
             return
 
+        testo_ora: Optional[float] = None
+        if not is_audio:
+            # R8 fetta 1 (C2): tetto orario anche alle richieste a testo (ogni turno spende il
+            # cervello); controllato prima del turno, così oltre il tetto non parte nessun lavoro.
+            # Controllato PRIMA di V12 (un testo rifiutato qui non consuma il tetto voce,
+            # R-720-1-M2) ma contato DOPO, solo se anche V12 lascia passare (R-722-1-M2)
+            tetto_testo = _intero_env("GAS_VOICE_MAX_TESTO_ORA", _MAX_TESTO_ORA_DEFAULT)
+            adesso = time.monotonic()
+            testi = [t for t in type(self).turni_testo if adesso - t < 3600]
+            if len(testi) >= tetto_testo:
+                type(self).turni_testo = testi
+                self._send_json(429, {"error": (
+                    f"Troppe richieste a testo nell'ultima ora ({tetto_testo}, "
+                    "GAS_VOICE_MAX_TESTO_ORA): nessun lavoro avviato. Riprova più tardi.")})
+                return
+            type(self).turni_testo = testi
+            testo_ora = adesso
+
         if (not is_audio and self._sintesi_a_testo()
                 and os.environ.get("ELEVENLABS_API_KEY", "").strip()):
             # V12 (R-663-1-M2, decisione dell'operatore): anche una richiesta a TESTO che chiede
@@ -606,6 +774,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
                     "nessun lavoro avviato. Riprova più tardi o chiedi la risposta solo a testo.")})
                 return
             type(self).turni_parlati = self._turni_recenti() + [time.monotonic()]
+
+        if testo_ora is not None:
+            type(self).turni_testo = type(self).turni_testo + [testo_ora]
 
         t_cervello: Optional[float] = None
         try:
@@ -999,16 +1170,14 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self._t0 = time.monotonic()
         self._tempi = None
         if self.path == _ENDPOINT_CONFERMA:  # V14
-            if not self._check_auth():
-                self._send_json(401, {"error": "Unauthorized"})
+            if not self._autorizza():
                 return
             self._conferma()
             return
         if self.path not in ("/voci/elenco", "/voci/libreria"):
             self._method_not_allowed()
             return
-        if not self._check_auth():
-            self._send_json(401, {"error": "Unauthorized"})
+        if not self._autorizza():
             return
         if self.path == "/voci/libreria":
             self._libreria()
@@ -1240,6 +1409,26 @@ def run_server(root_dir: Optional[str] = None) -> int:
         port = int(os.environ.get("GAS_VOICE_PORT") or "8765")
     except ValueError:
         print("✗ gas voice: GAS_VOICE_PORT non è un numero intero valido.")
+        return 1
+
+    if _bind_tutte_le_interfacce(bind):
+        # bot #358 V-1: mai su tutte le interfacce, nemmeno con la rete privata dichiarata
+        print(f"✗ gas voice: GAS_VOICE_BIND={bind} ascolterebbe su tutte le interfacce, anche pubbliche.")
+        print("  Usa 127.0.0.1 oppure l'indirizzo del tunnel privato (con GAS_VOICE_RETE_PRIVATA=1).")
+        return 1
+
+    if not _bind_locale(bind) and not _bind_ip_letterale(bind):
+        # R-727-1-M2: un nome host o una forma abbreviata potrebbe legarsi a tutte le interfacce
+        print(f"✗ gas voice: GAS_VOICE_BIND={bind} non è un indirizzo IPv4 scritto per intero.")
+        print("  Fuori da 127.0.0.1 usa l'indirizzo IPv4 del tunnel privato, non un nome né IPv6.")
+        return 1
+
+    if not _bind_locale(bind) and not _env_acceso("GAS_VOICE_RETE_PRIVATA"):
+        # R8 fetta 1 (fail-closed): fuori da 127.0.0.1 il traffico è in chiaro (token, audio,
+        # risposte); si parte solo dentro una rete privata cifrata dichiarata (tunnel)
+        print(f"✗ gas voice: GAS_VOICE_BIND={bind} non è locale e la connessione è in chiaro.")
+        print("  Usa un tunnel privato (es. Tailscale) e dichiaralo con GAS_VOICE_RETE_PRIVATA=1,")
+        print("  oppure resta su 127.0.0.1. Vedi reports/proposta_voce_sicura.md.")
         return 1
 
     from gas import GasKernel  # import pigro: non richiede gas.py al semplice import del modulo
