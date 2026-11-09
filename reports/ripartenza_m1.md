@@ -21,6 +21,7 @@
 - **#345** (M2, compiti lunghi in sottofondo con avviso Telegram): SÌ dell'operatore il 7/11. Al /clear era in fase di merge: verificare.
 
 ## Decisioni dell'operatore (valide)
+- 9/11 notte: sì a #355 (ElevenLabs accettato). M2 → B: server voce sicuro (sicurezza: PR aperta per l'operatore). Notte: lavoro continuo sulla voce (Jarvis completo, intelligente, veloce), poi roadmap, poi terminale/autonomia se avanza tempo. REGOLA DI MERGE NOTTURNA: solo BASSE/COSMETICHE e niente sicurezza → merge senza chiedere; sicurezza → resta per l'operatore. Test del mattino: reports/test_voce_mattina.md.
 - 8/11 sera: sì a #352 (M2) e #353 (Mani, vocali Telegram fetta 1). Fetta 2 Telegram: risposta vocale SOLO se l'operatore manda un vocale. V-2 #353: chiesto all'operatore di confermare la scelta A con un suo commento sulla PR.
 - 9/11: Remote Control: la cartella Gas sul MacBook-Air-di-gaspare è nella lista ma NON offerta alle sessioni cloud (not_available: app Claude da aggiornare o funzione non ancora disponibile).
 - 7/11 sera: sì a #350 (M2, compiti finiti detti a voce; V-5 accettata) e #351 (Mani, fetta 45). Vocali Telegram senza «forte»: opzione A (regole dei testi Telegram, anche ai gratuiti; GAS_VOCE_FORTE vale anche lì; tetto 30/ora). Ordine merge: #350 poi #351, poi PR fetta 1 Telegram (Mani).
