@@ -1620,7 +1620,6 @@ def test_v7b_guardia_della_pagina(evento, chiude):
     assert voce.chiusa is chiude
 
 
-
 @pytest.mark.parametrize("valore, atteso", [(None, True), ("0", False), ("off", False),
                                             ("no", False), ("1", True), ("sì", True)])
 def test_v9_gas_voice_agc(monkeypatch, valore, atteso):
@@ -1928,7 +1927,6 @@ def test_f32b_mp3_diretto(tmp_path):
     assert corpo.startswith("Ho finito il compito") and corpo.endswith("Ciao.") and _letto(f)
 
 
-
 def test_f32c_mp3_diretto_sintesi_fallita_non_segna(tmp_path):
     """R-711-1-M2: ramo audio/mpeg con sintesi fallita (502) → compiti non letti."""
     from unittest.mock import patch
@@ -1982,3 +1980,97 @@ def test_f32c_dimmi_senza_tts_a_testo(tmp_path):
                                    formato="")
     assert righe[0]["content"].startswith("Ho finito") and righe[0]["content"].endswith("Dimmi.")
     assert _letto(f)
+
+
+def test_f32c_finiti_jobs_azzerati_a_ogni_richiesta(monkeypatch):
+    """R-711-3-M2 (ve #356 V-1): i compiti tenuti da una richiesta precedente sulla stessa
+    connessione (keep-alive) non vengono segnati letti dalla richiesta dopo."""
+    from modules import sottofondo
+    segnati = []
+    monkeypatch.setattr(sottofondo, "segna_letti", lambda root, jobs: segnati.append(jobs))
+    h = VoiceHandler.__new__(VoiceHandler)
+    h.path = "/non-esiste"
+    h.headers = {}
+    h._send_json = lambda code, payload: None
+    h._finiti_jobs = [{"id": "della-richiesta-prima"}]
+    h.do_POST()
+    h._segna_finiti_letti()
+    assert segnati == []
+
+
+# ---- Velocità: cache delle frasi fisse (chat M2, 9 nov) ----
+
+def test_sintesi_frasi_fisse_dalla_cache(monkeypatch):
+    """Le frasi fisse si sintetizzano una volta per voce; il testo libero mai in cache;
+    un audio vuoto non entra in cache."""
+    import modules.voice.server as srv
+    chiamate = []
+
+    def _finta(frase, k, v):
+        chiamate.append((frase, v))
+        return b"" if frase == srv.RISPOSTA_PAUSA else frase.encode()
+    monkeypatch.setattr(srv, "synthesize_speech", _finta)
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+    assert srv.sintesi("Dimmi.", "k", "v1") == b"Dimmi."
+    assert srv.sintesi("Dimmi.", "k", "v1") == b"Dimmi."
+    assert srv.sintesi("Dimmi.", "k", "v2") == b"Dimmi."
+    srv.sintesi("Ciao a te.", "k", "v1")
+    srv.sintesi("Ciao a te.", "k", "v1")
+    srv.sintesi(srv.RISPOSTA_PAUSA, "k", "v1")
+    srv.sintesi(srv.RISPOSTA_PAUSA, "k", "v1")
+    assert chiamate == [("Dimmi.", "v1"), ("Dimmi.", "v2"), ("Ciao a te.", "v1"),
+                        ("Ciao a te.", "v1"), (srv.RISPOSTA_PAUSA, "v1"),
+                        (srv.RISPOSTA_PAUSA, "v1")]
+
+
+@pytest.mark.parametrize("formato", ["audio+testo+pezzi", "audio+testo"])
+def test_sintesi_cache_usata_dalle_risposte(monkeypatch, formato):
+    """Bot #356 V-3: le risposte vere (pezzi, audio+testo, MP3 diretto) passano da sintesi(),
+    quindi «Dimmi.» finisce nella cache (chiave: funzione di sintesi, voce, frase)."""
+    import modules.voice.server as srv
+    cache = {}
+    monkeypatch.setattr(srv, "_cache_frasi", cache)
+    _, _, tts = _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(),
+                              trascrizione="Gas.", formato=formato)
+    assert [c.args[0] for c in tts.call_args_list] == ["Dimmi."]
+    assert [(k[2], v) for k, v in cache.items()] == [("Dimmi.", b"Dimmi.")]
+
+
+def test_sintesi_cache_usata_dal_mp3_diretto(monkeypatch):
+    """Bot #356 V-3: anche il ramo MP3 diretto (_do_tts_response) passa da sintesi():
+    la seconda «Dimmi.» viene dalla cache."""
+    import modules.voice.server as srv
+    chiamate, inviati = [], []
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+    monkeypatch.setattr(srv, "synthesize_speech", lambda f, k, v: chiamate.append(f) or f.encode())
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    h = VoiceHandler.__new__(VoiceHandler)
+    h._tempi = None
+    h._finiti_jobs = None
+    h._send_audio = inviati.append
+    h._do_tts_response("Dimmi.")
+    h._do_tts_response("Dimmi.")
+    assert chiamate == ["Dimmi."] and inviati == [b"Dimmi.", b"Dimmi."]
+
+
+def test_sintesi_errore_non_in_cache(monkeypatch):
+    """Un errore di ElevenLabs passa al chiamante e non lascia niente in cache."""
+    import modules.voice.server as srv
+    from modules.voice.tts import ElevenLabsTTSError
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+
+    def _rotta(frase, k, v):
+        raise ElevenLabsTTSError(500, "giù")
+    monkeypatch.setattr(srv, "synthesize_speech", _rotta)
+    with pytest.raises(ElevenLabsTTSError):
+        srv.sintesi("Dimmi.", "k", "v1")
+    assert srv._cache_frasi == {}
+
+
+def test_sintesi_cache_ha_un_tetto(monkeypatch):
+    import modules.voice.server as srv
+    monkeypatch.setattr(srv, "synthesize_speech", lambda f, k, v: b"x")
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+    for i in range(srv._CACHE_FRASI_MAX + 5):
+        srv.sintesi("Dimmi.", "k", f"voce{i}")
+    assert len(srv._cache_frasi) <= srv._CACHE_FRASI_MAX
