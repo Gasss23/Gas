@@ -1,276 +1,129 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-07 — chat Mani, fetta 45: riserve BASSE della #341 e della #347 (voce H24)
+**Sessione:** 2026-11-08 — Voce: riserve BASSE della PR #350 (compiti finiti detti a voce) (chat M2, coordinata da M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #351 (https://github.com/Gasss23/Gas/pull/351). Numero e URL vengono dalla risposta dello strumento GitHub `create_pull_request` (V-3 della verifica esterna). SÌ dell'operatore del 2026-11-08 via M1, con le riserve.
+1. Merge della PR di questa fetta: con riserve BASSE serve il sì dell'operatore via M1 (CLAUDE.md §10).
+2. Prova sul Mac: compito lungo a voce → avviso Telegram → alla prossima attivazione (anche solo «Gas») Gas lo dice per primo.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #348**: `FATTA` — mergiata (53ae39b) col sì dell'operatore.
-- **Fetta 45 — riserve della #341 e della #347**: `FATTA`. R-676-1, R-681-1, R-679-3, R-707-3, R-708-1, V-3 e V-1/V-2 del bot #347, V-1 del bot su b48a0a8.
-- **Merge di main con la PR #350 di M2**: `FATTA`. Review #714 APPROVATO.
-- **V-1 della verifica esterna #347 (tolleranza dopo una parola sentita prima della voce)**: `SALTATA — scelta, R-708-2: aiuta quasi solo i falsi positivi e allarga la privacy (sonda del revisore #707)`.
+- **PR #350** (fetta 3.2): `MERGIATA` (9b6b2fa) col sì dell'operatore via M1 (8 nov); Mani avvisato per la #351.
+- **Fetta BASSE della #350**: `FATTA` — segno di lettura dei compiti solo dopo la consegna (ve #350 V-1, bot V-1); con risposta vuota la frase dei compiti si dice lo stesso (R-710-1-M2); la sola parola di attivazione («Dimmi.») dice i compiti, mai nel seguito (bot #350 V-5); file temporanei con nome unico fra thread (ve #350 V-3); test dei rami audio+testo e audio/mpeg (bot #350 V-1 su 40c5b30). Review #711-M2 APPROVATO CON RISERVE (R-711-1/2-M2 BASSE, R-711-3-M2 COSMETICA).
+- **Conflitto con main** (merge della #351 di Mani): `RISOLTO` col merge e7869c9 (solo report e memoria; entrano da main ascolto.py, test dell'ascolto e LEGGIMI, identici a main). Review #712-M2 APPROVATO. Bot #352 su 893b863 APPROVATA; verifica esterna APPROVATO CON RISERVE (BASSE: segno prima dell'invio nei rami JSON, test mancanti di sintesi fallita e di «Dimmi.» in 2 formati, caso degenere n_prefisso=0).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 ++++++++
- clients/voice/ascolto.py           |  36 +++++++++++++++++++++++++++++++-----
- reports/diff_sessione.md           |  15 ++++++++-------
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  27 +++++++++++++++------------
- scripts/voce/LEGGIMI.md            |  16 +++++++++++-----
- tests/test_unit_voce_ascolto.py    |  75 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/handoff.md                 | n/d
+ .claude/agents/memoria_revisore.md |   3 +
+ modules/sottofondo/__init__.py     |   3 +-
+ modules/voice/server.py            |  55 ++++++--
+ reports/diff_sessione.md                        | n/d
+ reports/handoff.md                              | n/d
+ reports/ripartenza_m2.md                        | n/d
+ reports/stato_progetto.md                       | n/d
+ reports/ultimo_report.md                        | n/d
+ tests/test_unit_sottofondo.py      |  14 ++
+ tests/test_unit_voice_server.py    | 108 +++++++++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta. Base: main 9b6b2fa (dopo il merge della PR #350).
+NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 9bfafdb (merge della #351 di Mani, unito nel branch con e7869c9; prima 9b6b2fa, merge della #350).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-ce7ace0 Merge origin/main (PR #350 di M2) nella PR #351 — review #714 APPROVATO
-2d583d6 docs(fine-task): fetta 45 chat Mani — riserve della #341 e della #347, review #707–#709 e #713
-06088cb Merge fetta 45 (riserve della #341 e della #347, voce) — review #707–#709, unione #713 APPROVATO
-d711cc6 fix(voce): fetta 45 — riserve della #341 e della #347 (log del rilevatore e della pausa, avviso sulla finestra, LEGGIMI «Hey Gas» NO, test R-676-1) — review #707–#709
+e7869c9 Merge origin/main (PR #351, fetta 45 di Mani) nella PR #352 — conflitti solo in report e memoria del revisore; review #712-M2 APPROVATO
+893b863 docs(voce): report di fine task — riserve BASSE della #350; PR #350 mergiata (chat M2)
+19167e0 fix(voce): riserve BASSE della #350 — compiti segnati letti solo dopo la consegna, «Dimmi.» dice i compiti, risposta vuota, file temporanei unici, test dei rami mancanti (sì dell'operatore via M1)
+beee8ae chore(revisore): memoria review #711 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push. La fetta è stata scritta e revisionata nel worktree locale /tmp/claude-0/wt45 (base c523a04), poi unita a main (fra c523a04 e 53ae39b main non ha toccato i tre file di codice: verificato nella review #713).
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Review #707 (prima versione, con la tolleranza poi tolta), verdetto integrale:
+Review #711-M2 sul commit 19167e0 (verdetto integrale):
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #707 (chat Mani). Worktree /tmp/claude-0/wt45, branch mani/fetta45, base main c523a04, diff staged non committato. Ho letto CLAUDE.md, reports/stato_progetto.md (voci fetta 43 parte 2 e fetta 44) e la memoria del revisore.
+Review #711-M2. Diff staged su feat/voce-v12-m2, base 9b6b2fa: 4 file, +168/−12. Prima di revisionare ho letto CLAUDE.md (§5, §8, §9), reports/stato_progetto.md (righe 615 e seguenti, riserve aperte della fetta 3) e .claude/agents/memoria_revisore.md (lezioni #709/#710-M2). Nessuno slicing della history, nessuna simulazione di tool, guardrail intatti. git stash non usato: ho copiato l'index nello scratchpad con checkout-index.
 
-**Elementi del diff esaminati**
-- `clients/voice/ascolto.py:732` — conversazione() passa `dopo_parola=self.parola_nella_finestra` a registra(). Rischio: più audio inviato o tempi di registrazione più lunghi rispetto a main, nel caso del falso positivo. Esito: **riserva** (R-707-1 e R-707-2, sotto). La sonda è più avanti.
-- `clients/voice/ascolto.py:482` — il tetto R-702-1 (`dal_la_parola >= max_attesa`) vale anche per il percorso nuovo. Rischio: una tolleranza senza fine. Esito: **ok**. Il tetto tiene: con i clic la registrazione arriva al massimo a 5,2 s. Il tetto però conta dall'inizio di registra e non dalla parola: fino a circa 2 s in più (PAROLA_VALIDA_S).
-- `clients/voice/ascolto.py:420` — R-681-1: scrive un log.warning al 1°, 101°, 201°… errore; il contatore `_errori_parola` non si azzera mai. Rischio: log pieno, o nessun log. Esito: **ok**. Al massimo una riga ogni circa 8 s con un rilevatore sempre rotto (12,5 blocchi al secondo), e l'errore resta «no» (§9).
-- `clients/voice/ascolto.py:555` e `clients/voice/ascolto.py:607` — R-679-3: con `comando == "pausa"` scrive un info invece del warning. Rischio: un errore vero che sparisce. Esito: **riserva** (R-707-3). `modules/voice/server.py:466` aggiunge X-Gas-Comando in ogni risposta (`end_headers`). Se il server risponde 500 con «pausa» (per esempio il TTS di «Va bene.» fallisce dopo la parola), `invia_al_server` restituisce `(False, None, "HTTP 500", "pausa")` e ora il log dice solo «pausa a voce: chiudo la conversazione in silenzio», senza il motivo. In più `clients/voice/ascolto.py:549` scrive già una riga info quasi uguale, quindi nel log ci sono due righe di pausa.
-- `clients/voice/ascolto.py:214` — `_finestra_dall_ambiente()`: valore corretto con `_numero`, avviso se il valore letto è diverso. Rischio: falsi avvisi, oppure crash con un valore non numerico. Esito: **ok**. "abc" e "" non danno avviso, "300" e "-5" sì. Nota COSMETICA: "inf" e "nan" tornano a 40 senza avviso, per via di `isfinite`. Chiamata a `clients/voice/ascolto.py:1118`.
-- `scripts/voce/LEGGIMI.md:42` — il controllo dell'eco vale solo col formato a frasi. Verificato sul codice: con un MP3 intero `pezzi` è un list_iterator senza `testo`, quindi l'interruzione resta accesa. Esito: **ok**.
-- `scripts/voce/LEGGIMI.md:47` — «Hey Gas» non si fa, decisione dell'operatore del 7/11, con rimando a `reports/proposta_parola_gas.md`. Esito: **riserva COSMETICA** (R-707-4). Il documento citato e reports/stato_progetto.md non contengono questa decisione: la proposta dice ancora «Se si va avanti con Hey Gas…». Per CLAUDE.md §3 le decisioni vanno scritte nel repo.
-- `scripts/voce/LEGGIMI.md:100` — limiti del controllo di riprendi.sh (primi 3 s). Esito: **ok**, testo onesto.
-- `tests/test_unit_voce_ascolto.py:2410` (R-676-1), `tests/test_unit_voce_ascolto.py:2420`, `tests/test_unit_voce_ascolto.py:2432`, `tests/test_unit_voce_ascolto.py:2455`, `tests/test_unit_voce_ascolto.py:2467` — i test nuovi. Esito: **ok**. Sulla copia dell'index: 291 passed. Ho rifatto due mutanti e sono presi entrambi:
-  - `dopo_parola=False`: 1 fail, quello di :2420.
-  - `self.chiudi` non azzerato in turno(): 2 fail.
+**Elementi esaminati**
+- modules/voice/server.py:691 — `_compiti_finiti` ora salva solo `self._finiti_jobs` e non segna più. Rischio: compiti segnati prima della consegna (ve #350 V-1). Esito: ok.
+- modules/voice/server.py:697 — `_segna_finiti_letti`: legge `_finiti_jobs`, lo azzera PRIMA di scrivere e intercetta ogni eccezione con `log.warning` (§9). Rischio: segno doppio o crash. Esito: ok. Un secondo richiamo trova None ed esce.
+- modules/voice/server.py:853 — formato a pezzi: il segno parte quando `i + 1 == n_prefisso`, dopo che `riga()` è riuscita. Se la sintesi fallisce o il client chiude prima, si esce dal ciclo e non si segna nulla. Esito: ok. Il mutante «segno prima di riga()» viene preso da tests/test_unit_voice_server.py:1815.
+- modules/voice/server.py:889 — `_do_tts_response`: il segno parte dopo `_send_audio`. `wfile.write` su un client chiuso solleva l'eccezione prima del segno, e con i 502 si esce prima. Esito: ok. Coperto da tests/test_unit_voice_server.py:1880 per il caso riuscito.
+- modules/voice/server.py:774 — la guardia `not (text.strip() or prefisso)` e la lambda `resto` (:783) escludono le frasi della risposta quando è vuota, e il prefisso si dice lo stesso. Chiude R-710-1-M2. Esito: ok, test a tests/test_unit_voice_server.py:1843.
+- modules/voice/server.py:539 — la sola parola di attivazione legge i compiti solo se non siamo nel seguito. `prefisso` arriva in tutti e tre i rami di `_rispondi_senza_turno`, e il ramo a testo (:721) segna. Rischio privacy (lettura nel seguito): escluso, test a tests/test_unit_voice_server.py:1862. Esito: ok.
+- modules/sottofondo/__init__.py:47 — il nome temporaneo diventa `.tmp.<pid>.<token_hex(4)>`. `secrets` è già importato e `_pulisci_vecchi` (modules/sottofondo/__init__.py:248) riconosce ancora «.tmp.». Esito: ok.
+- modules/voice/server.py:797 — ramo MP3 unico: il segno parte dopo la sintesi ma PRIMA di `_send_json` (:806). Esito: riserva R-711-2-M2.
 
-**Sonda contro main** (copie in /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/main e …/staged; script in …/scratchpad/sonda/sonda.py e sonda2.py). Secondi inviati nel turno dopo la finestra:
+**Istanza del handler per richiesta**: protocol_version non è impostato, quindi resta HTTP/1.0: una connessione per richiesta, un'istanza per richiesta. `_finiti_jobs` non può arrivare da un'altra richiesta.
 
-| Caso | main | staged |
-|---|---|---|
-| A: falso positivo, 3 blocchi di stanza, pausa 2 s, 1,6 s di stanza | 1,04 s normale + 2,4 s di seguito (passa dal filtro [NON_PER_ME]) | 4,64 s, tutto in un turno normale senza filtro |
-| B/C: falso positivo + clic ogni 1 s o 4 s | 1,04 s | 5,2 s (si ferma al tetto) |
-| D: parlato continuo di 10 s | 10,8 s | 10,8 s (uguale) |
-| F: stanza a raffiche con pause di 1,2 s | 1,12 + 4×1,12 di seguito | 2,64 + 3×1,12 |
-| G: parola vera forte che scatta al 4° blocco + pausa 1,5 s | 4,24 s | 4,24 s (identico: passa da registra, già in main) |
-| G2: parola che scatta al 1° blocco | spezzata | richiesta unica |
-| G4: pausa di 6 s dopo la parola | 1,12 s | 5,2 s di silenzio, poi la voce va come seguito |
-
-Risposta alla domanda «più audio o tempi di registrazione rispetto a main?»: sì, solo quando la parola, vera o falsa, si sente PRIMA che la voce si apra, ed entro il tetto di circa 5 s. Il parlato continuo non cambia.
+**Test (rieseguiti su una copia dell'index)**: tests/test_unit_voice_server.py + tests/test_unit_sottofondo.py: 200 passed. Mutanti provati:
+- segno prima di riga() nel formato a pezzi: PRESO.
+- segno prima della sintesi nel ramo MP3 unico: SOPRAVVIVE (16/16 f32 verdi).
 
 **Riserve**
-- **R-707-1 BASSA**: il percorso nuovo scatta soprattutto sui falsi positivi. Il rilevatore vero (openWakeWord) scatta a fine parola, quindi con «Hey Jarvis» detto forte la voce si apre prima e si passa da registra, come in main (caso G). Il caso «falso positivo prima del parlato della stanza» aggiunge fino a circa 5 s di stanza al turno normale, che salta il filtro. Nel caso A, 3,6 s che in main passavano dal filtro come turno di seguito. È lo stesso meccanismo già in main per il percorso da registra (#702/#703) e rientra nella natura di R-694-1/R-695-2, accettati dall'operatore. Però il riassunto accettato parla di «circa 2 s di parlato della stanza senza filtro»: va dichiarato all'operatore come estensione. Aggiunta: il tetto parte da registra e non dalla parola, quindi fino a circa 7 s dalla parola.
-- **R-707-2 BASSA** (= R-702-2): anche qui la coda della parola, almeno 3 blocchi forti dopo l'apertura della voce, consuma la tolleranza (caso G3: richiesta spezzata in staged come in main). Il guadagno reale di V-1 ve #347 va provato sul Mac insieme a R-694-2.
-- **R-707-3 BASSA**: «pausa» insieme a un errore HTTP perde il motivo nel log (`clients/voice/ascolto.py:555`). Rimedio: tenere `motivo` nella riga info quando c'è, oppure ridurre a info solo il caso muto (`ok` vero e risposta vuota). In più c'è la riga doppia con `clients/voice/ascolto.py:549`.
-- **R-707-4 COSMETICA**: la decisione «Hey Gas no» del 7/11 va scritta in reports/proposta_parola_gas.md e/o in reports/stato_progetto.md. Inoltre "inf" e "nan" in GAS_VOICE_FINESTRA non danno avviso.
+- R-711-1-M2 BASSA: manca un test con sintesi fallita nei rami audio+testo (MP3 unico) e audio/mpeg (502). Il mutante che anticipa il segno a modules/voice/server.py:797 passa inosservato.
+- R-711-2-M2 BASSA: nei rami JSON il segno precede la scrittura (`_send_json`), cioè ramo a testo :669/:721, MP3 unico :797 e senza chiave a schermo :779. Se il client chiude durante la scrittura, i compiti risultano letti ma non sono arrivati. Nei pezzi e in audio/mpeg invece il segno segue l'invio. Correzione di una riga per ramo: spostare il segno dopo `_send_json`.
+- R-711-3-M2 COSMETICA: `_finiti_jobs` non viene azzerato in do_POST come `_capito` (:476). Oggi è innocuo per via di HTTP/1.0. In più c'è la lambda `resto` con `noqa: E731`.
 
 **Cosa non ho verificato**
-- Comportamento sul Mac con openWakeWord vero (latenza dello scatto, R-694-2): non riproducibile in dev, la sonda usa un rilevatore finto. Quindi non so quanto spesso la parola vera arrivi prima dei 3 blocchi di voce.
-- Il server vero che risponde 500 con l'intestazione «pausa»: dedotto dal codice di `end_headers`, non provato end-to-end.
-- Gli altri 3 mutanti dichiarati dall'agente (log del rilevatore, log della pausa, avviso della finestra): non rifatti.
+- Comportamento reale col client sul Mac e con ElevenLabs vero: non riproducibile in dev, tutto è mockato.
+- Concorrenza vera fra thread su `segna_letti`/`_scrivi_privato`: c'è solo il test sui nomi, nessuno stress test.
+- Una scrittura TCP riuscita non prova che il client abbia riprodotto l'audio. È un limite accettato, non verificabile lato server.
 
-**Memoria**: riga #707 e due lezioni aggiunte in coda a /tmp/claude-0/wt45/.claude/agents/memoria_revisore.md. Il file non è committato, come da istruzioni, e l'index non è stato toccato (copia con checkout-index, niente stash). In memoria non c'era già una #706 né una #707.
+Memoria aggiornata con la riga #711-M2 più una lezione, committata (beee8ae) in /home/user/Gas/.claude/agents/memoria_revisore.md. Il diff staged non è stato toccato (4 file, +168/−12).
 
-Review #708 (ri-review), verdetto integrale:
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #708 (chat Mani). Ri-review della #707 sul diff staged del worktree /tmp/claude-0/wt45 (base main c523a04). Ho letto prima CLAUDE.md, la coda di stato_progetto e la memoria del revisore.
-
-**Cosa ho esaminato nel diff**
-- clients/voice/ascolto.py:447 — `dopo_parola` ora è solo la variabile locale che c'era già in main dentro registra(). Il diff non tocca più registra(), aspetta_voce() né conversazione(). Rischio: che restasse un pezzo della tolleranza tolta. Esito: ok. Il grep trova `dopo_parola` solo a :447-491 (codice di main) e in nessun test. R-707-1 e R-707-2 sono chiuse, perché il percorso non c'è più.
-- clients/voice/ascolto.py:555 — `if not (comando == "pausa" and ok)`. Rischio: perdere il motivo quando «pausa» arriva insieme a un errore HTTP. Esito: ok.
-  - Pausa muta (ok=True, risposta None): c'è solo la riga info di :549, nessun warning.
-  - Pausa con 500 (ok=False): il warning resta, col motivo.
-  - Eccezione in invio: `comando` resta "" e il warning si scrive.
-  - Il mutante `if comando != "pausa":` a :555 viene preso: 1 test fallito, test_pausa_con_errore_tiene_il_motivo_nel_log a tests/test_unit_voce_ascolto.py:2453.
-  - R-707-3 è chiusa.
-- clients/voice/ascolto.py:605 — `if comando != "pausa"` nel ramo «suonati == 0»: niente più riga doppia per la pausa. Rischio: il ramo non è coperto dai test. Esito: riserva (R-708-1). Ho provato il mutante `if True:`: il warning «senza voce» torna anche per la pausa e la suite resta a 291 passed, quindi nessun test lo prende. test_pausa_nel_seguito_non_e_un_errore_nel_log (tests/test_unit_voce_ascolto.py:2443) usa risposta None e quindi si ferma nel ramo di :555.
-- tests/test_unit_voce_ascolto.py:2443 — il test controlla che «pausa a voce: chiudo la conversazione» compaia una sola volta e che non ci siano «non riuscito» né «senza voce». Esito: ok per il ramo di :555.
-- clients/voice/ascolto.py:214 — `_finestra_dall_ambiente`: avvisa solo se il valore è un numero finito fuori da 0–120. Esito: ok (comportamento invariato dalla #707). Restano inf/nan senza avviso, che è la parte COSMETICA già nota di R-707-4.
-- scripts/voce/LEGGIMI.md:47 — cita la decisione «Hey Gas no» e reports/proposta_parola_gas.md. Rischio: il riferimento non è ancora in main. Esito: riserva cosmetica, aperta finché la PR #348 non entra.
-- scripts/voce/LEGGIMI.md:101 — il limite dei 3 secondi di riprendi.sh. Esito: ok, solo documentazione.
-
-**Verifiche eseguite**
-- Copia dell'index fatta con checkout-index in scratch, senza stash: tests/test_unit_voce_ascolto.py dà 291 passed.
-- Mutante su :555: preso. Mutante su :605: NON preso.
-
-**Riserve**
-- R-708-1 BASSA: manca un test per il ramo «suonati == 0» con «pausa» (clients/voice/ascolto.py:605). Serve un finto che risponda ok=True con pezzi tutti vuoti (es. `[b""]`) e comando «pausa». Il test deve controllare che la riga «pausa a voce» compaia una volta e che «senza voce» non ci sia.
-- Verifica esterna #351:
-  - V-1 BASSA: il test di R-681-1 non prova «un log ogni 100 errori»;
-  - V-2 COSMETICA: inf/nan senza test;
-  - V-3 COSMETICA: §0 senza numero, corretta qui.
-  Le prime due vanno nella prossima fetta voce.
-- R-708-2 BASSA: la V-1 della verifica esterna #347 resta NON corretta, per scelta. Va dichiarata in reports/stato_progetto.md a fine task, col motivo: il guadagno vale quasi solo per i falsi positivi e allarga l'esposizione della privacy.
-- R-707-4 COSMETICA (resta aperta): la decisione «Hey Gas no» sarà in main solo quando entra la PR #348. Restano anche inf/nan in GAS_VOICE_FINESTRA, che tornano a 40 senza avviso.
-
-**Cosa NON ho verificato**
-- La suite completa: ho lanciato `pytest tests` in background ma non ho atteso l'esito. Ho verificato solo tests/test_unit_voce_ascolto.py. Il tuo dato «291 passed» coincide con quel file da solo.
-- Il comportamento reale sul Mac (microfono, openWakeWord, server voce): non si riproduce in questo ambiente.
-
-**Memoria**
-- Riga #708 aggiunta in coda a /tmp/claude-0/wt45/.claude/agents/memoria_revisore.md, non committata come richiesto, con una lezione nuova: quando la correzione tocca due rami gemelli, va provato un mutante su ciascun ramo.
-- Non ho lanciato commit_memoria_revisore.sh, perché il file deve restare non committato nel worktree.
-
-**File rilevanti**
-- /tmp/claude-0/wt45/clients/voice/ascolto.py
-- /tmp/claude-0/wt45/tests/test_unit_voce_ascolto.py
-- /tmp/claude-0/wt45/scripts/voce/LEGGIMI.md
-- /tmp/claude-0/wt45/.claude/agents/memoria_revisore.md
-- Copia dell'index usata per test e mutanti: /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/r708
-
-Review #709 (test di R-708-1), verdetto integrale:
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #709 (chat Mani). Breve ri-review della #708 sul diff staged in /tmp/claude-0/wt45, base main c523a04. R-708-1 è chiusa. Restano solo le due riserve già note dalla #708 (sotto).
-
-**Cosa ho esaminato**
-- tests/test_unit_voce_ascolto.py:2472: il nuovo test test_pausa_senza_audio_suonabile_non_e_un_errore_nel_log. Ho controllato che passi davvero dal ramo «niente suonato»: sì.
-  - La lista `[b""]` non è vuota, quindi non entra nel ramo d'errore di clients/voice/ascolto.py:553.
-  - Il pezzo vuoto viene saltato da `if not audio: continue` a clients/voice/ascolto.py:577, quindi `suonati` resta 0 e il turno arriva al ramo di clients/voice/ascolto.py:605.
-  - Il test controlla tre cose: la riga «pausa a voce» compare una volta sola, non c'è nessun «senza voce», `f.tipi == ["parola", "seguito"]` e `f.bip == ["ok"]`.
-  - Esito: ok.
-- clients/voice/ascolto.py:605: il mutante `if True:` su questa riga ora viene preso (1 fallito, proprio il nuovo test). Esito: ok.
-- Nient'altro è cambiato. Ho estratto l'index in una copia nuova e l'ho confrontata con `diff -r` con la copia della #708: l'unica differenza è il test aggiunto, a parte la cache. clients/voice/ascolto.py e scripts/voce/LEGGIMI.md sono identici. Esito: ok.
-
-**Verifiche eseguite**
-- tests/test_unit_voce_ascolto.py sulla copia dell'index: 292 passed.
-
-**Riserve ancora aperte**
-- R-708-2 BASSA: la V-1 della verifica esterna #347 resta non corretta, per scelta. Va scritta in reports/stato_progetto.md a fine task, con il motivo: il guadagno riguarda quasi solo i falsi positivi e aumenta l'esposizione della privacy.
-- R-707-4 COSMETICA: la decisione «Hey Gas no», citata in scripts/voce/LEGGIMI.md:47, entra in main solo con la PR #348. Restano anche inf/nan in GAS_VOICE_FINESTRA, che tornano a 40 senza avviso.
-
-**Cosa NON ho verificato**
-- La suite completa: ho lanciato solo tests/test_unit_voce_ascolto.py. Sul tuo «292 passed» per la suite completa mi fido del tuo dato.
-- Il comportamento reale sul Mac (microfono, openWakeWord): non si può riprodurre in questo ambiente.
-
-**Memoria**
-- Ho aggiunto la riga #709 in coda a /tmp/claude-0/wt45/.claude/agents/memoria_revisore.md, senza committarla. Nessuna lezione nuova.
-- La copia dell'index usata è in /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/r709.
-
-**File rilevanti**
-- /tmp/claude-0/wt45/tests/test_unit_voce_ascolto.py
-- /tmp/claude-0/wt45/clients/voice/ascolto.py
-- /tmp/claude-0/wt45/scripts/voce/LEGGIMI.md
-- /tmp/claude-0/wt45/.claude/agents/memoria_revisore.md
-
-Review #713 (unione con main dopo la #348), verdetto integrale:
+Review #712-M2 sul merge e7869c9 (verdetto integrale):
 
 ## VERDETTO: APPROVATO
 
-Review #713 (chat Mani). Oggetto: il merge staged di mani/fetta45 (d711cc6, fetta 45 voce, già revisionata nelle review #707, #708 e #709 su base c523a04) dentro claude/peaceful-lovelace-0w2b7q. HEAD è 53ae39b, cioè origin/main dopo la PR #348. MERGE_HEAD è d711cc6 e la merge-base è c523a04.
+Review #712-M2. Ho controllato il merge in corso di origin/main 9bfafdb (PR #351 di Mani) nel branch feat/voce-v12-m2 (HEAD 893b863, MERGE_HEAD 9bfafdb, base comune 9b6b2fa). Il merge è a posto: nessun problema trovato.
+
+Cosa ho controllato:
+- **Conflitti:** non ci sono marcatori di conflitto nei file dell'index né nell'albero di lavoro. `git ls-files -u` restituisce 0 righe e `git diff --cached --check` è pulito. L'albero di lavoro coincide con l'index.
+- **File che arrivano da main:** clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py e scripts/voce/LEGGIMI.md hanno nell'index lo stesso blob di MERGE_HEAD. Dalla base 9b6b2fa il lato M2 non li ha mai toccati, quindi non ci sono effetti incrociati tra le due modifiche.
+- **Motore M2 e report di sessione:** sono identici a HEAD (stesso blob). Vale per modules/voice/server.py, modules/sottofondo/__init__.py, tests/test_unit_voice_server.py, tests/test_unit_sottofondo.py, reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md.
+- **File uniti (reports/stato_progetto.md e .claude/agents/memoria_revisore.md):** ho preso ogni riga aggiunta da ciascun lato rispetto alla base e l'ho cercata nella versione dell'index. Ne mancano 0 su HEAD e 0 su MERGE_HEAD.
 
 Elementi del diff esaminati:
-- `clients/voice/ascolto.py:214` — `_finestra_dall_ambiente()` riporta GAS_VOICE_FINESTRA nei limiti 0–120 e scrive un avviso nel log se il valore è fuori. Rischio esaminato: crash con NaN o testo non numerico. `math.isfinite` protegge il NaN e un ValueError fa tornare il valore corretto; `math` è importato (`clients/voice/ascolto.py:63`) e la funzione viene chiamata da `main()` (`clients/voice/ascolto.py:1113`). Esito: ok.
-- `clients/voice/ascolto.py:419` — il contatore `_errori_parola` scrive nel log il primo errore del rilevatore e poi uno ogni 100. Il ritorno resta `False`, quindi un errore vale «no» come prevede la regola §9. Rischio esaminato: log che si riempie e crash. Esito: ok.
-- `clients/voice/ascolto.py:555` — per la pausa muta (`comando == "pausa" and ok`) il warning sparisce. Un errore vero continua a scrivere il suo motivo (R-707-3) e `chiudi = True` resta senza condizioni. Esito: ok.
-- `tests/test_unit_voce_ascolto.py:2420` — test che verifica la traccia nel log quando il rilevatore è rotto nella finestra. `tests/test_unit_voce_ascolto.py:2453` copre la pausa con errore, che deve tenere il motivo nel log. `tests/test_unit_voce_ascolto.py:2464` è il test parametrizzato sulla finestra fuori dai limiti. Esito: ok.
+- `modules/voice/server.py:537` — con la sola parola di attivazione dice i compiti finiti, tranne nei turni di seguito. Rischio: che il merge lo abbia alterato o che interferisca con il nuovo ascolto.py di Mani. Il blob è identico a HEAD e il lato main non tocca questo file. Esito: ok.
+- `modules/sottofondo/__init__.py:47` — nome del file temporaneo unico anche fra thread dello stesso processo. Rischio: regressione portata dal merge. Il blob è identico a HEAD. Esito: ok.
+- `tests/test_unit_voice_server.py:1` — test M2 del server voce. Rischio: test persi o alterati nel merge. Il blob è identico a HEAD. Esito: ok.
+- `clients/voice/ascolto.py:1` (contesto, arriva da main) — client dell'ascolto della PR #351. Rischio: versione diversa da quella mergiata in main. Il blob è identico a MERGE_HEAD. Esito: ok.
 
-Controlli richiesti:
-1. **I tre file nell'index sono identici a mani/fetta45.** Ho confrontato i blob:
-   - ascolto.py: c5c7147
-   - LEGGIMI.md: 1d4a563
-   - test_unit_voce_ascolto.py: 1e1fd52
+Cosa non ho verificato (rischio escluso):
+- Non ho rieseguito i test. Per i 366 passed (sottofondo + voce_ascolto) mi fido del dato che mi hai passato.
+- Non ho rifatto la review del contenuto della PR #351. È già entrata in main, e qui ho controllato solo che il merge non l'abbia alterata.
+- Il comportamento sul Mac non è riproducibile in questo ambiente.
 
-   A HEAD gli stessi tre file hanno i blob di c523a04 (1419a29, 4d6b4c8, e03624d). `git diff --stat c523a04 53ae39b` su questi tre file è vuoto. Quindi il diff contro HEAD è esattamente quello già revisionato nelle review #707–#709.
-2. **Memoria senza perdite.** Nessuna riga persa né del lato HEAD (#706, #710) né del lato fetta (#707, #708, #709 con le loro lezioni). L'unica riga in più dell'index rispetto ai due lati è una riga vuota, effetto del confronto con sort/uniq, non un contenuto nuovo.
-3. **Nessun marcatore.** `git diff --cached --check` è pulito, `git ls-files -u` è vuoto (nessun conflitto rimasto aperto) e la ricerca di `<<<<<<<` nell'index non trova niente.
-4. **Test.** Su una copia dell'index (`git checkout-index` nello scratchpad), `tests/test_unit_voce_ascolto.py` dà **292 passed**. Non ho usato stash: `git stash list` è vuoto.
+Riga contatore scritta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md:
+`#712-M2 — 2026-11-08 — APPROVATO — … Nessuna lezione nuova.`
 
-Guardrail: il diff non tocca gas.py, la finestra della storia (`_get_window`) né il tetto di 10 iterazioni. Nessuna simulazione di output dei tool, nessuno slicing della history. Coerente con «zero crash».
-
-Rischio escluso: non ho rieseguito la parte semantica della fetta 45, cioè le sonde temporali e i mutanti delle review #707–#709. Il contenuto è identico per blob a quello già revisionato, quindi qui ho verificato solo l'integrità del merge. Non ho verificato nemmeno il comportamento reale sul Mac, con microfono e openWakeWord: non è riproducibile in questo ambiente. Le riserve aperte delle review #707–#709 restano come erano.
-
-Memoria: ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga `#713 (chat Mani) — 2026-11-07 — APPROVATO — … Nessuna lezione nuova.`. È solo nel working tree e non è committata, come mi hai chiesto: non ho lanciato `scripts/commit_memoria_revisore.sh`, che comunque durante un merge in corso non può fare un commit parziale. Lo stato del file ora è `MM`: devi metterlo in staging (`git add`) prima di chiudere il merge, altrimenti la riga #713 resta fuori dal commit.
-
-Review #714 (unione con main dopo la PR #350 di M2), verdetto integrale:
-
-## VERDETTO: APPROVATO
-
-Review #714 (chat Mani). Nella memoria il numero più alto era #713 (gli -M2 arrivano al massimo a #710-M2), quindi ho usato #714. Oggetto: il merge staged di origin/main 9b6b2fa (PR #350 di M2, fetta 3.2) in claude/peaceful-lovelace-0w2b7q (HEAD 2d583d6, PR #351, fetta 45 voce). Letture fatte: CLAUDE.md (sez. 5, 6, 8, 9), la coda della memoria del revisore e le regole del processo.
-
-**Elementi del diff esaminati (fetta 45: è il codice che resta nel diff di sessione 9b6b2fa..HEAD dopo il commit)**
-- clients/voice/ascolto.py:214 — `_finestra_dall_ambiente()`: GAS_VOICE_FINESTRA tenuta fra 0 e 120, con un avviso nel log se il valore è fuori dai limiti. Rischio esaminato: valore non numerico o non finito (inf/nan) che fa crashare. `_numero` lo limita già; il `try/except ValueError` e `isfinite` evitano sia l'eccezione sia l'avviso falso. Il blob è identico a HEAD. Esito: ok.
-- clients/voice/ascolto.py:553 — la pausa muta (`comando == "pausa" and ok`) non scrive più il warning, l'errore vero sì. Rischio esaminato: un errore perso nel log. È lo stesso codice già revisionato nella #708 e nella #709, blob identico a HEAD. Esito: ok.
-- clients/voice/ascolto.py:605 — ramo «suonati == 0» con pausa, senza warning. È coperto da tests/test_unit_voce_ascolto.py:2472 (mutante già preso nella #709). Esito: ok.
-- tests/test_unit_voce_ascolto.py:2464 — `test_finestra_fuori_limiti_avvisa`: copre l'avviso di :214. Esito: ok.
-
-**Controlli sul merge**
-- **Codice di M2 identico a MERGE_HEAD (stesso blob):** modules/voice/server.py, modules/sottofondo/__init__.py, tests/test_unit_voice_server.py, tests/test_unit_sottofondo.py.
-- **Fetta 45 identica a HEAD (stesso blob):** clients/voice/ascolto.py, scripts/voce/LEGGIMI.md, tests/test_unit_voce_ascolto.py. Lo stesso vale per i 3 report presi col lato HEAD (--ours): ultimo_report.md, handoff.md, diff_sessione.md.
-- **Nessuna perdita:** in memoria_revisore.md, stato_progetto.md e ripartenza_m2.md le righe aggiunte da ciascun lato rispetto alla base 53ae39b e assenti nell'index sono 0.
-- **Nessun residuo del conflitto:** nessun marcatore, `git ls-files -u` vuoto, `git diff --cached --check` pulito.
-- **Gate B:** `git diff --cached --name-only MERGE_HEAD` dà come codice solo i 3 file della fetta 45, più memoria, stato_progetto e i 3 report.
-
-**Interazione fra il server di M2 e il client ascolto**
-- Il client ascolto manda il formato `audio+pezzi`, quindi la risposta passa da `_vuole_righe_senza_schermo`. La frase sui compiti finiti arriva come primi pezzi della risposta, prima della risposta vera (modules/voice/server.py:762). Il client li suona in ordine come pezzi qualsiasi.
-- Nessuna intestazione nuova: X-Gas-Comando e X-Gas-Seguito restano invariati.
-- La pausa esce prima che il server legga i compiti finiti (modules/voice/server.py:535). Quindi un «pausa» non consuma la lettura e non segna i compiti come letti.
-- Nei turni di seguito il server non legge i compiti finiti (`not self._seguito()`).
-- La fetta 45 non tocca intestazioni, formato o lettura dei pezzi. Nessun conflitto logico.
-
-**Test** su una copia dell'index (`git checkout-index` nello scratchpad), senza stash: test_unit_voce_ascolto + test_unit_voice_server + test_unit_sottofondo = **483 passed**. `git stash list` è vuoto.
-
-**Cosa non ho verificato**
-- Il comportamento reale sul Mac (audio vero, ElevenLabs e la durata in più dei pezzi con i compiti finiti davanti): non si può riprodurre in dev, ho verificato solo con i finti dei test.
-- Non ho ri-revisionato nel merito il codice di M2 (fetta 3.2): è già revisionato da M2 e qui ho solo provato che è identico a MERGE_HEAD.
-- Non ho fatto girare l'intera suite, solo i 3 file di test indicati.
-
-**Memoria**
-- Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#714 (chat Mani) — 2026-11-08 — APPROVATO — … Nessuna lezione nuova.». È solo nel working tree, NON committata e NON aggiunta all'index (stato `MM`): come richiesto, non ho lanciato commit_memoria_revisore.sh.
-- Per committarla insieme al merge va aggiunta all'index: senza `git add` resta fuori dal commit.
-
-Nessuna riserva.
+Ho eseguito solo `git add .claude/agents/memoria_revisore.md`: nessun commit, nessuno stash, nient'altro toccato nell'index.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voce_ascolto.py`: da 283 (main) a 292 casi. Riepilogo reale:
-
-```
-292 passed in 29.05s
-```
-
-Mutanti presi:
-- `chiudi` non azzerato;
-- niente log del rilevatore;
-- log della pausa (ramo d'errore e ramo «niente suonato»);
-- niente avviso sulla finestra.
+`tests/test_unit_voice_server.py`: 126 passed (prima 118), 8 nuovi f32b — sintesi fallita non segna letti; senza schermo segnati appena dette le frasi dei compiti; risposta vuota dice comunque i compiti; sola parola di attivazione («Gas.», «Hey Jarvis!») dice i compiti prima di «Dimmi.»; nel seguito no; ramo audio+testo (MP3 unico); ramo audio/mpeg diretto (round-trip del server voce col kernel finto). Col server di main 4 di questi falliscono. `tests/test_unit_sottofondo.py`: 74 passed (+1: nomi temporanei unici). `gas.py` non toccato.
 
 ## §6 STATO CI
 
-`gh` non usato (GitHub passa dallo strumento MCP). 2d583d6 (head precedente della #351): handoff-check success, bot neutral (PR nel perimetro). La verifica esterna (https://github.com/Gasss23/Gas/pull/351#issuecomment-6711211454) dà APPROVATO CON RISERVE: V-1 BASSA, V-2 e V-3 COSMETICHE (vedi §7). Per il merge della #350 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff. PR #348 su 4f70927: unit-suite, handoff-check, verifica success; mergiata.
+`gh` non autenticato nel cloud. Su 893b863: unit-suite, handoff-check e verifica-bot verdi. Il merge e7869c9 e questo report sono pushati insieme: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 
-- R-708-2 BASSA: la V-1 della verifica esterna #347 resta non corretta, per scelta (motivo in §1).
-- R-707-4 COSMETICA: con «inf» o «nan» in GAS_VOICE_FINESTRA il valore torna a 40 senza avviso.
-- Bot #348 su 4f70927, tutte sulla proposta Telegram e da sistemare nella PR della fetta 1 Telegram:
-  - V-1 BASSA: «sendAudio funziona già»;
-  - V-2 BASSA: decisione dell'operatore non scritta in cima alla proposta;
-  - V-3 BASSA: il ramo del vocale va dopo il controllo delle chat autorizzate (il codice della fetta 1 lo fa già);
-  - V-4 COSMETICA: §6.
-- Restano R-702-2, R-694-2, R-678-1, R-677-3 e le riserve precedenti in `reports/stato_progetto.md`.
+- R-711-1-M2 BASSA: nessun test con sintesi fallita nei rami MP3 unico e audio/mpeg.
+- R-711-2-M2 BASSA: nei rami JSON il segno di lettura precede la scrittura della risposta (client chiuso durante l'invio → compiti letti ma non arrivati).
+- R-711-3-M2 COSMETICA: `_finiti_jobs` non azzerato a inizio richiesta (innocuo con HTTP/1.0); lambda con noqa.
+- Dalla fetta 3.2: R-709-1-M2 (pulizia dei 7 giorni dalla lettura), R-709-2-M2 (frase non nella storia); doppia lettura con due richieste contemporanee.
+- Dal sottofondo: R-708-1-M2, R-707-1-M2, R-706-1-M2, R-701-3-M2, R-703-2-M2, R-696-1-M2, bot #349 (a9a17a5) V-1/V-2.
+- Non verificato in dev: client vero sul Mac, ElevenLabs vero.

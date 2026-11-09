@@ -535,7 +535,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._rispondi_senza_turno(RISPOSTA_PAUSA, "pausa")
                 return
             if _SOLO_ATTIVAZIONE.match(prompt):  # V13: solo «Hey Jarvis»: nessun turno
-                self._rispondi_senza_turno(_RISPOSTA_ATTIVAZIONE, "attivazione")
+                # Bot #350 V-5: anche la sola parola di attivazione dice i compiti finiti
+                # (i turni dopo sono seguiti, dove non si leggono)
+                finiti = "" if self._seguito() else self._compiti_finiti()
+                self._rispondi_senza_turno(_RISPOSTA_ATTIVAZIONE, "attivazione", prefisso=finiti)
                 return
         else:
             try:
@@ -663,6 +666,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         else:
             if finiti:
                 result_content = f"{finiti}\n\n{result_content}"
+                self._segna_finiti_letti()  # a testo il client lo mostra: consegnato
             out: Dict[str, Any] = {"content": result_content}
             if self._capito is not None:
                 out["capito"] = self._capito
@@ -682,20 +686,39 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if not jobs:
                 return ""
             frase = sottofondo.frase_finiti(jobs)
-            sottofondo.segna_letti(root, jobs)
+            # Ve #350 V-1: segnati letti solo DOPO la consegna (_segna_finiti_letti): se la
+            # sintesi fallisce o il client chiude, li si ridice alla prossima attivazione
+            self._finiti_jobs = jobs
             return frase.strip()
         except Exception as exc:
             log.warning("compiti finiti non letti a voce: %s", exc)
             return ""
 
-    def _rispondi_senza_turno(self, testo: str, segno: str) -> None:
+    def _segna_finiti_letti(self) -> None:
+        """Ve #350 V-1: i compiti detti in questa risposta diventano «letti» solo ora che la
+        consegna è riuscita. Una volta sola; mai eccezioni (§9)."""
+        jobs = getattr(self, "_finiti_jobs", None)
+        self._finiti_jobs = None
+        if not jobs:
+            return
+        try:
+            from modules import sottofondo
+            sottofondo.segna_letti(getattr(self.kernel, "root", None), jobs)
+        except Exception as exc:
+            log.warning("segno di lettura dei compiti non scritto: %s", exc)
+
+    def _rispondi_senza_turno(self, testo: str, segno: str, prefisso: str = "") -> None:
         """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito», «dimmi»), nel
-        formato chiesto dal client; `segno` è il campo JSON che la distingue."""
+        formato chiesto dal client; `segno` è il campo JSON che la distingue. `prefisso`:
+        compiti finiti da dire prima (fetta 3.2, solo per «dimmi»)."""
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
-            self._do_audio_testo_response(testo, {segno: True})
+            self._do_audio_testo_response(testo, {segno: True}, prefisso=prefisso)
         elif self._wants_audio() and os.environ.get("ELEVENLABS_API_KEY", "").strip():
-            self._do_tts_response(testo)
+            self._do_tts_response(f"{prefisso} {testo}".strip() if prefisso else testo)
         else:  # V-2 bot #318: senza TTS il messaggio arriva lo stesso, come testo (mai un 503)
+            if prefisso:
+                testo = f"{prefisso}\n\n{testo}"
+                self._segna_finiti_letti()  # a testo il client lo mostra: consegnato
             out: Dict[str, Any] = {"content": testo, segno: True}
             if self._capito is not None:
                 out["capito"] = self._capito
@@ -748,24 +771,30 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if self._capito is not None:  # V6: quello che Whisper ha sentito, per la pagina
             out["capito"] = self._capito
         api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
-        if not text.strip():
+        if not (text.strip() or prefisso):  # R-710-1-M2: col prefisso si sintetizza lo stesso
             pass
         elif not api_key:
             out["errore_voce"] = "TTS non disponibile: ELEVENLABS_API_KEY non configurata"
+            if not self._vuole_righe_senza_schermo():  # a schermo il testo si legge
+                self._segna_finiti_letti()
         else:
             voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
             prima = _dividi_frasi(" ".join(prefisso.split())) if prefisso else []
+            resto = lambda frasi: frasi if text.strip() else []  # noqa: E731
             if self._formato() == _FORMATO_PEZZI:
-                self._do_pezzi_response(out, prima + frasi_parlate(text), api_key, voice_id)
+                self._do_pezzi_response(out, prima + resto(frasi_parlate(text)), api_key,
+                                        voice_id, n_prefisso=len(prima))
                 return
             if self._vuole_righe_senza_schermo():  # V10: tutto a voce, frase per frase
-                self._do_pezzi_response(out, prima + frasi_voce(text), api_key, voice_id)
+                self._do_pezzi_response(out, prima + resto(frasi_voce(text)), api_key,
+                                        voice_id, n_prefisso=len(prima))
                 return
             t = time.monotonic()
             try:
-                parlato = " ".join(prima + [parte_parlata(text)])
+                parlato = " ".join(prima + ([parte_parlata(text)] if text.strip() else []))
                 out["audio"] = base64.b64encode(
                     synthesize_speech(parlato, api_key, voice_id)).decode("ascii")
+                self._segna_finiti_letti()
             except ElevenLabsTTSError as exc:
                 log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
                 out["errore_voce"] = f"Errore TTS ElevenLabs: {exc.message}"
@@ -777,7 +806,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self._send_json(200, out)
 
     def _do_pezzi_response(self, primo: Dict[str, Any], frasi: List[str], api_key: str,
-                           voice_id: str) -> None:
+                           voice_id: str, n_prefisso: int = 0) -> None:
         """V7b: risposta a righe JSON (NDJSON), una sintesi per frase.
         Riga 1: `primo` (content, capito, …) + "audio" della prima frase + "pezzi" (frasi
         totali). Poi una riga {"audio": …} per ogni frase successiva, appena pronta. Ultima
@@ -819,6 +848,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
             aperto = riga(uscita)
             if errore is not None or not aperto:
                 break
+            if n_prefisso and i + 1 == n_prefisso:
+                # ve #350 V-1: le frasi dei compiti finiti sono arrivate al client
+                self._segna_finiti_letti()
         self._segna("voce_tutta", t_tutta)
         tempi = self._chiudi_tempi(200)
         if aperto:
@@ -854,6 +886,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return
 
         self._send_audio(audio)
+        self._segna_finiti_letti()  # ve #350 V-1: solo a sintesi e invio riusciti
 
     def _do_stt(self, raw: bytes, content_type: str) -> Optional[str]:
         """Trascrive audio → testo via Groq Whisper.
