@@ -2096,6 +2096,19 @@ def test_sintesi_cache_anche_per_le_frasi_divise(monkeypatch):
     assert chiamate[len(pezzi):] == [pezzi[0] + " Altro."] * 2
 
 
+def test_sintesi_cache_forte_a_pezzi_dal_server(monkeypatch):
+    """Bot #360 V-1: sul percorso vero («Gas, forte.» senza richiesta → risposta d'uso a pezzi)
+    ogni frase della risposta d'uso finisce nella cache."""
+    import modules.voice.server as srv
+    cache = {}
+    monkeypatch.setattr(srv, "_cache_frasi", cache)
+    _, righe, tts = _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(),
+                                  trascrizione="Gas, forte.", formato="audio+testo+pezzi")
+    pezzi = srv._dividi_frasi(srv._USO_FORTE_PARLATO)
+    assert [c.args[0] for c in tts.call_args_list] == pezzi
+    assert sorted(k[2] for k in cache) == sorted(pezzi)
+
+
 # ---- R8 fetta 1 (chat M2, sicurezza): tentativi falliti, tetto al testo, avvio chiuso ----
 
 class TestR8Limiti:
