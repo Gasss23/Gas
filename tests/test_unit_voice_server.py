@@ -2112,6 +2112,19 @@ class TestR8Limiti:
         assert self._giusto()[0] == 200          # il blocco scade da solo
         assert self._sbagliato()[0] == 401       # e il conto riparte da zero
 
+    def test_richieste_senza_token_non_bloccano(self, monkeypatch):
+        """Bot #358 V-1: richieste senza «Bearer <token>» (come quelle che una pagina web può
+        mandare al server locale) non contano per il blocco: il token giusto passa ancora."""
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "3")
+        senza = [_post(self.port, {"prompt": "ciao"}, headers={})[0] for _ in range(20)]
+        vuoto = [_post(self.port, {"prompt": "ciao"}, headers={"Authorization": "Bearer "})[0]
+                 for _ in range(5)]
+        altro = [_post(self.port, {"prompt": "ciao"}, headers={"Authorization": "Basic abc"})[0]
+                 for _ in range(5)]
+        assert set(senza) == set(vuoto) == set(altro) == {401}
+        assert self._giusto()[0] == 200
+        assert [self._sbagliato()[0] for _ in range(3)] == [401, 401, 429]  # un token sì
+
     def test_token_giusto_non_azzera_e_falliti_sotto_soglia(self, monkeypatch):
         monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "3")
         assert [self._sbagliato()[0] for _ in range(2)] == [401, 401]

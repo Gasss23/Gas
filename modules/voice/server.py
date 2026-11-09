@@ -586,6 +586,15 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if self._check_auth():
             cls.bloccati, cls.falliti = bloccati, falliti
             return True
+        parti = self.headers.get("Authorization", "").split(" ", 1)
+        if len(parti) != 2 or parti[0].lower() != "bearer" or not parti[1].strip():
+            # bot #358 V-1: senza «Bearer <token>» non si sta provando un token, quindi non
+            # conta per il blocco. Una pagina web qualsiasi può mandare al server locale
+            # richieste senza header (img, fetch no-cors) ma non può aggiungere Authorization
+            # senza preflight, che qui fallisce: così non può bloccare la voce dell'operatore.
+            cls.bloccati, cls.falliti = bloccati, falliti
+            self._send_json(401, {"error": "Unauthorized"})
+            return False
         recenti = [t for t in falliti.pop(ip, []) if adesso - t < _FALLITI_FINESTRA_S] + [adesso]
         if len(recenti) >= _intero_env("GAS_VOICE_MAX_FALLITI", _MAX_FALLITI_DEFAULT):
             if len(bloccati) < _FALLITI_MAX_IP:
