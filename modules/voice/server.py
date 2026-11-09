@@ -565,12 +565,41 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _host_ammesso(self) -> bool:
+        """R8 (R-731-1-M2, DNS rebinding): una pagina web su un dominio qualsiasi può far
+        risolvere il suo nome sul computer e parlare al server come se fosse «locale». Il
+        browser però manda il nome del dominio nell'header Host: si accettano solo
+        «localhost» o un indirizzo IP (l'unico modo di arrivare davvero al server); un nome
+        di dominio riceve 403 prima del controllo del token e non conta per il blocco. Una
+        richiesta senza Host (client non browser, HTTP/1.0) passa al controllo del token."""
+        host = (self.headers.get("Host") or "").strip().lower()
+        if not host:
+            return True
+        if host.startswith("["):
+            nome = host[1:host.find("]")] if "]" in host else host
+        elif host.count(":") == 1:
+            nome = host.split(":", 1)[0]
+        else:
+            nome = host
+        if nome == "localhost":
+            return True
+        try:
+            ipaddress.ip_address(nome)
+            return True
+        except ValueError:
+            log.warning("HOST RIFIUTATO ip=%s", self.client_address[0])
+            return False
+
     def _autorizza(self) -> bool:
         """R8 fetta 1 (C1): controllo del token con tetto ai tentativi falliti per IP. Manda da sé
-        la risposta di rifiuto (429 se l'IP è bloccato, 401 se il token è sbagliato) e dice se
+        la risposta di rifiuto (403 se l'Host è un nome di dominio, 429 se l'IP è bloccato,
+        401 se il token è sbagliato) e dice se
         la richiesta può proseguire. Un IP bloccato riceve 429 anche col token giusto, finché il
         blocco non scade: chi indovina non può sapere quando ha indovinato. Nel log solo IP ed
         esito, mai il token."""
+        if not self._host_ammesso():
+            self._send_json(403, {"error": "Host non ammesso"})
+            return False
         cls = type(self)
         ip = str(self.client_address[0])
         adesso = time.monotonic()

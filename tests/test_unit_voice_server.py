@@ -2125,6 +2125,38 @@ class TestR8Limiti:
         assert self._giusto()[0] == 200
         assert [self._sbagliato()[0] for _ in range(3)] == [401, 401, 429]  # un token sì
 
+    def _con_host(self, host, token):
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            c.putrequest("POST", "/voice", skip_host=True)
+            c.putheader("Host", host)
+            c.putheader("Content-Type", "application/json")
+            corpo = b'{"prompt": "ciao"}'
+            c.putheader("Content-Length", str(len(corpo)))
+            c.putheader("Authorization", f"Bearer {token}")
+            c.endheaders(corpo)
+            return c.getresponse().status
+        finally:
+            c.close()
+
+    def test_host_di_dominio_rifiutato_e_non_conta(self, monkeypatch):
+        """R-731-1-M2 (DNS rebinding): un Host che è un nome di dominio riceve 403 anche col
+        token giusto, il kernel non parte e il blocco dell'IP non scatta."""
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "2")
+        chiamate = []
+        orig = self.kernel.run_turn
+        self.kernel.run_turn = lambda p: chiamate.append(p) or orig(p)
+        stati = [self._con_host("evil.example:8765", "sbagliato") for _ in range(5)]
+        assert stati == [403] * 5
+        assert self._con_host("evil.example", self.TOKEN) == 403
+        assert chiamate == []
+        assert self._giusto()[0] == 200                      # nessun blocco per l'IP
+
+    @pytest.mark.parametrize("host", ["localhost:8765", "LOCALHOST", "127.0.0.1:8765",
+                                      "[::1]:8765"])
+    def test_host_locali_ammessi(self, host):
+        assert self._con_host(host, self.TOKEN) == 200
+
     def test_token_giusto_non_azzera_e_falliti_sotto_soglia(self, monkeypatch):
         monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "3")
         assert [self._sbagliato()[0] for _ in range(2)] == [401, 401]
