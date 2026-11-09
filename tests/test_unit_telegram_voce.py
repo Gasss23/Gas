@@ -8,7 +8,7 @@ import io
 import pytest
 
 import modules.telegram.bot as bot
-from modules.voice import stt
+from modules.voice import stt, tts
 
 CHAT = 4242
 BASE = "https://api.telegram.org/botTOKEN"
@@ -27,6 +27,7 @@ class Kernel:
 def tg(monkeypatch):
     """Telegram finto: registra le chiamate, getFile risponde con un percorso valido."""
     stato = {"chiamate": [], "testi": [], "scaricati": [], "trascritti": [],
+             "sintesi": [], "vocali_inviati": [], "esito_invio": {"ok": True}, "letti": [],
              "file": {"file_path": "voice/file_1.oga", "file_size": 1000},
              "audio": b"OGG" * 10, "trascrizione": "che ore sono"}
 
@@ -45,6 +46,21 @@ def tg(monkeypatch):
         def __exit__(self, *a):
             return False
 
+        def read(self, n=-1):
+            stato["letti"].append(n)  # V-1 ve #353: quanto si chiede di leggere
+            return super().read(n)
+
+    def sintetizza(testo, chiave, voce, **kw):
+        stato["sintesi"].append(testo)
+        e = stato.get("errore_sintesi")
+        if e:
+            raise e
+        return b"MP3"
+
+    def invia_file(base_url, method, campi, nome, nome_file, dati, mime, timeout=0):
+        stato["vocali_inviati"].append((method, campi, nome, nome_file, dati, mime))
+        return stato["esito_invio"]
+
     def urlopen(url, timeout=0):
         stato["scaricati"].append(url)
         return Risposta(stato["audio"])
@@ -59,6 +75,11 @@ def tg(monkeypatch):
     monkeypatch.setattr(bot, "_tg_post", tg_post)
     monkeypatch.setattr(bot.urllib.request, "urlopen", urlopen)
     monkeypatch.setattr(stt, "transcribe_audio", trascrivi)
+    monkeypatch.setattr(tts, "synthesize_speech", sintetizza)
+    monkeypatch.setattr(bot, "_tg_post_file", invia_file)
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "chiave-finta")
+    monkeypatch.delenv("ELEVENLABS_VOICE_ID", raising=False)
+    monkeypatch.delenv("GAS_TELEGRAM_VOCE", raising=False)
     monkeypatch.setenv("GROQ_API_KEY", "chiave-finta")
     monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
     monkeypatch.delenv("GAS_TELEGRAM_VOCALI_ORA", raising=False)
@@ -239,3 +260,159 @@ def test_regole_della_voce_non_caricate_l_operatore_lo_sa(tg, monkeypatch):
     bot._handle_update(BASE, _vocale(), {CHAT}, k)
     assert k.turni == [] and "non posso gestire i vocali" in tg["testi"][-1]
 
+
+# ── fetta 2: risposta anche a voce, solo dopo un vocale (decisione del 9 nov 2026) ──
+
+def test_dopo_un_vocale_la_risposta_arriva_anche_a_voce(tg):
+    k = Kernel("Sono le dieci.")
+    bot._handle_update(BASE, _vocale(), {CHAT}, k)
+    assert tg["testi"] == ["Ho capito: «che ore sono»\n\nSono le dieci."]
+    assert tg["sintesi"] == ["Sono le dieci."]
+    metodo, campi, nome, nome_file, dati, mime = tg["vocali_inviati"][0]
+    assert (metodo, campi, nome, dati, mime) == ("sendVoice", {"chat_id": str(CHAT)}, "voice",
+                                                 b"MP3", "audio/mpeg")
+
+
+def test_dopo_un_testo_niente_voce(tg):
+    k = Kernel("ok")
+    bot._handle_update(BASE, {"update_id": 2, "message": {"chat": {"id": CHAT}, "text": "ciao"}},
+                       {CHAT}, k)
+    assert tg["sintesi"] == [] and tg["vocali_inviati"] == []
+
+
+@pytest.mark.parametrize("valore", ["0", "false", "OFF", "no"])
+def test_voce_spenta_resta_solo_il_testo(tg, monkeypatch, valore):
+    monkeypatch.setenv("GAS_TELEGRAM_VOCE", valore)
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("ok"))
+    assert tg["sintesi"] == [] and tg["vocali_inviati"] == [] and len(tg["testi"]) == 1
+
+
+def test_si_dice_solo_la_risposta_finale_non_gli_strumenti(tg):
+    class ConStrumenti:
+        def run_turn(self, testo, **kw):
+            yield {"type": "tool_res", "output": "dati riservati del file"}
+            yield {"type": "final", "content": "Fatto."}
+    bot._handle_update(BASE, _vocale(), {CHAT}, ConStrumenti())
+    assert "[…] dati riservati del file" in tg["testi"][0]
+    assert tg["sintesi"] == ["Fatto."]
+
+
+def test_risposta_lunga_si_dice_solo_la_parte_parlata(tg):
+    from modules.voice.server import parte_parlata
+    lungo = " ".join(f"Frase numero {i} della risposta." for i in range(40))
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel(lungo))
+    assert tg["sintesi"] == [parte_parlata(lungo)] and tg["sintesi"][0] != lungo
+
+
+def test_turno_in_errore_niente_voce(tg):
+    class Rotto:
+        def run_turn(self, *a, **kw):
+            yield {"type": "final", "content": "mezza"}
+            yield {"type": "error", "content": "giù"}
+    bot._handle_update(BASE, _vocale(), {CHAT}, Rotto())
+    assert tg["sintesi"] == [] and tg["vocali_inviati"] == []
+
+
+def test_forte_senza_richiesta_niente_voce(tg):
+    tg["trascrizione"] = "Forte."
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel())
+    assert tg["sintesi"] == [] and tg["vocali_inviati"] == []
+
+
+def test_senza_chiave_elevenlabs_avviso_e_testo_gia_arrivato(tg, monkeypatch):
+    monkeypatch.delenv("ELEVENLABS_API_KEY")
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("ok"))
+    assert tg["testi"][0].endswith("ok") and "ELEVENLABS_API_KEY" in tg["testi"][1]
+    assert tg["sintesi"] == []
+
+
+def test_sintesi_in_errore_avviso_breve(tg):
+    tg["errore_sintesi"] = tts.ElevenLabsTTSError(500, "giù")
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("ok"))
+    assert tg["vocali_inviati"] == [] and "Risposta vocale non riuscita" in tg["testi"][1]
+
+
+def test_invio_del_vocale_rifiutato_avviso_breve(tg):
+    tg["esito_invio"] = None
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("ok"))
+    assert "Risposta vocale non inviata" in tg["testi"][1]
+
+
+def test_voce_scelta_da_elevenlabs_voice_id(tg, monkeypatch):
+    voci = []
+    monkeypatch.setenv("ELEVENLABS_VOICE_ID", "VOCE1")
+    monkeypatch.setattr(tts, "synthesize_speech", lambda t, k, v, **kw: (voci.append(v), b"MP3")[1])
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("ok"))
+    assert voci == ["VOCE1"]
+
+
+def test_tg_post_file_manda_un_multipart(monkeypatch):
+    visti = {}
+
+    class R(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def urlopen(req, timeout=0):
+        visti["url"], visti["corpo"] = req.full_url, req.data
+        visti["tipo"] = req.get_header("Content-type")
+        return R(b'{"ok": true}')
+    monkeypatch.setattr(bot.urllib.request, "urlopen", urlopen)
+    esito = bot._tg_post_file(BASE, "sendVoice", {"chat_id": "42"}, "voice", "r.mp3", b"\x00MP3",
+                              "audio/mpeg")
+    assert esito == {"ok": True} and visti["url"] == BASE + "/sendVoice"
+    assert visti["tipo"].startswith("multipart/form-data; boundary=")
+    assert b'name="chat_id"\r\n\r\n42\r\n' in visti["corpo"]
+    assert b'name="voice"; filename="r.mp3"\r\nContent-Type: audio/mpeg\r\n\r\n\x00MP3' in visti["corpo"]
+
+
+def test_tg_post_file_errore_di_rete_none(monkeypatch):
+    def urlopen(req, timeout=0):
+        raise OSError("rete")
+    monkeypatch.setattr(bot.urllib.request, "urlopen", urlopen)
+    assert bot._tg_post_file(BASE, "sendVoice", {}, "voice", "r.mp3", b"", "audio/mpeg") is None
+
+
+# ── riserve della #353 ──
+
+def test_il_download_legge_al_massimo_il_tetto_piu_uno(tg):
+    """V-1 ve #353: la lettura chiede al più VOCALE_MAX_BYTES + 1 byte, non tutto il file."""
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel())
+    assert tg["letti"] == [bot.VOCALE_MAX_BYTES + 1]
+
+
+def test_trascrizione_non_caricata_l_operatore_lo_sa(tg, monkeypatch):
+    """V-1 bot #353: se modules.voice.stt non si carica arriva un errore, non il silenzio."""
+    import builtins
+    vero = builtins.__import__
+
+    def finto(nome, *a, **kw):
+        if nome == "modules.voice.stt":
+            raise ImportError("rotto")
+        return vero(nome, *a, **kw)
+    monkeypatch.setattr(builtins, "__import__", finto)
+    k = Kernel()
+    bot._handle_update(BASE, _vocale(), {CHAT}, k)
+    assert k.turni == [] and "non posso trascrivere i vocali" in tg["testi"][-1]
+
+
+
+def test_eccezione_nel_turno_niente_voce(tg):
+    """R-717-1: un'eccezione dopo un final rende il turno in errore: niente voce."""
+    class Esplode:
+        def run_turn(self, *a, **kw):
+            yield {"type": "final", "content": "mezza"}
+            raise RuntimeError("giù")
+    bot._handle_update(BASE, _vocale(), {CHAT}, Esplode())
+    assert "✗ Errore interno" in tg["testi"][0]
+    assert tg["sintesi"] == [] and tg["vocali_inviati"] == []
+
+
+def test_invio_del_vocale_con_ok_false_avviso_breve(tg):
+    """R-717-2: Telegram risponde 200 con ok:false → avviso, come per un errore di rete."""
+    tg["esito_invio"] = {"ok": False, "description": "Bad Request"}
+    bot._handle_update(BASE, _vocale(), {CHAT}, Kernel("ok"))
+    assert "Risposta vocale non inviata" in tg["testi"][1]

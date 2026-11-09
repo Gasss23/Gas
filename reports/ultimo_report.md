@@ -1,16 +1,30 @@
-# Ultimo report — 2026-11-09 — Sottofondo e voce: riserve BASSE aperte (chat M2)
+# Ultimo report — 2026-11-09 — voce via Telegram, fetta 2 (chat Mani): risposta anche a voce
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta (riserve BASSE: sì via M1).
-2. Prova sul Mac: compito lungo a voce, avviso Telegram, poi «Gas» → Gas dice per primo il compito finito.
+1. Merge della PR della fetta 2 Telegram: review APPROVATO CON RISERVE (solo BASSE), PR nel perimetro, quindi decide l'operatore via M1.
+2. Prova dal vivo (R-717-3): mandare un vocale al bot e controllare che la risposta arrivi anche come nota vocale. Se Telegram rifiuta l'MP3, arriva l'avviso «Risposta vocale non inviata».
 
-## Esito delle fette
+## Esito
 
-- **PR #352**: `MERGIATA` (3084979).
-- **Riserve BASSE aperte**: `FATTA` — segno di lettura dopo l'invio, regola unica schermo/senza schermo, compiti aperti vecchi puliti, pulizia oraria monotona, test mancanti; review #713-M2 APPROVATO CON RISERVE (R-713-1/2-M2 BASSE).
-- Test: server voce + sottofondo 206 passed.
-
-## Anomalie
-
-- Durante lo sviluppo un mio errore (senza schermo il segno partiva anche con voce fallita) è stato preso da un test e corretto prima del commit.
+- **PR #353 (fetta 1)**: MERGIATA (7a9fad4) col sì dell'operatore.
+- **Voce via Telegram, fetta 2**: FATTA (decisione dell'operatore del 9/11: risposta a voce SOLO dopo un vocale).
+  - Prima arriva il testo, poi la parte parlata della risposta finale (parte_parlata, come la voce di casa), sintetizzata con ElevenLabs e mandata con sendVoice.
+  - Gli output degli strumenti non vanno né a voce né a ElevenLabs. Niente voce se il turno è in errore, dopo un testo o con «forte» senza richiesta.
+  - GAS_TELEGRAM_VOCE=0 la spegne. Senza chiave, con un errore di sintesi o con l'invio rifiutato arriva un avviso breve.
+- **Riserve chiuse**:
+  - V-1 bot #353: l'import di stt è protetto;
+  - V-1 ve #353: test di read(MAX+1);
+  - R-712-2;
+  - V-1 bot #351: test esatto «log ogni 100»;
+  - V-2 ve #351: test di inf/nan;
+  - R-717-1/2: test dell'eccezione e di ok:false.
+- Test: telegram_voce da 31 a 51, ascolto 295 passed. Mutanti presi.
+- Review #717 e #718 APPROVATO CON RISERVE.
+- **Merge della PR #354 di M2 nella #355**: FATTO, review #719 APPROVATO.
+- **Verifica esterna #355**: APPROVATO CON RISERVE.
+  - V-1 BASSA: polling fermo fino a circa 60 s.
+  - V-2 BASSA: dati di clienti a ElevenLabs, come la voce di casa.
+  - V-3 BASSA: MP3 da provare dal vivo.
+  - V-4 COSMETICA.
+  M1 le ha girate all'operatore.
