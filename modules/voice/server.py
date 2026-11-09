@@ -307,6 +307,35 @@ def frasi_voce(testo: str) -> List[str]:
     return frasi
 
 
+# Velocità (9 nov, decisione dell'operatore via M1): le frasi fisse del server si sintetizzano
+# una volta sola per processo e voce, poi l'MP3 viene dalla memoria (niente attesa né costo
+# ElevenLabs per «Dimmi.», «Non ho capito…», «Il resto è a schermo.»…). Solo testi fissi del
+# codice, mai testo del modello o dell'operatore.
+_FRASI_FISSE = frozenset({
+    _RISPOSTA_ATTIVAZIONE, RISPOSTA_PAUSA, RISPOSTA_SERVE_ATTIVAZIONE, _NON_HO_CAPITO,
+    _USO_FORTE_PARLATO, _PARLATO_VOCE_RESTO, _PARLATO_RESTO.strip(),
+})
+_CACHE_FRASI_MAX = 32
+_cache_frasi: Dict[Tuple[Any, str, str], bytes] = {}
+
+
+def sintesi(frase: str, api_key: str, voice_id: str) -> bytes:
+    """synthesize_speech con la cache delle frasi fisse. La chiave contiene la funzione di
+    sintesi stessa (cambia nei test) e la voce; mai in cache un audio vuoto. Gli errori di
+    ElevenLabs passano al chiamante come prima."""
+    if frase not in _FRASI_FISSE:
+        return synthesize_speech(frase, api_key, voice_id)
+    chiave = (synthesize_speech, voice_id, frase)
+    audio = _cache_frasi.get(chiave)
+    if audio is None:
+        audio = synthesize_speech(frase, api_key, voice_id)
+        if audio:
+            if len(_cache_frasi) >= _CACHE_FRASI_MAX:
+                _cache_frasi.clear()
+            _cache_frasi[chiave] = audio
+    return audio
+
+
 def parte_parlata(testo: str) -> str:
     """Le prime frasi di `testo` da dire a voce (≤ _PARLATO_MAX_FRASI frasi e
     ≤ _PARLATO_MAX_CHAR caratteri); se il testo è più lungo aggiunge «Il resto è a
@@ -474,6 +503,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self._t0 = time.monotonic()
         self._tempi = {}
         self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
+        self._finiti_jobs = None  # R-711-3-M2: mai i compiti di un'altra richiesta
         self._parlato = False
         if self.path in ("/voci/prova", "/voci/aggiungi"):  # V8/V8b: prova o aggiunta di una voce
             if not self._check_auth():
@@ -785,7 +815,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
         else:
             voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
             prima = _dividi_frasi(" ".join(prefisso.split())) if prefisso else []
-            resto = lambda frasi: frasi if text.strip() else []  # noqa: E731
+
+            def resto(frasi: List[str]) -> List[str]:  # R-711-3-M2: niente lambda
+                return frasi if text.strip() else []
             if self._formato() == _FORMATO_PEZZI:
                 self._do_pezzi_response(out, prima + resto(frasi_parlate(text)), api_key,
                                         voice_id, n_prefisso=len(prima), schermo=True)
@@ -798,7 +830,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             try:
                 parlato = " ".join(prima + ([parte_parlata(text)] if text.strip() else []))
                 out["audio"] = base64.b64encode(
-                    synthesize_speech(parlato, api_key, voice_id)).decode("ascii")
+                    sintesi(parlato, api_key, voice_id)).decode("ascii")
             except ElevenLabsTTSError as exc:
                 log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
                 out["errore_voce"] = f"Errore TTS ElevenLabs: {exc.message}"
@@ -841,7 +873,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             errore: Optional[str] = None
             try:
                 uscita["audio"] = base64.b64encode(
-                    synthesize_speech(frase, api_key, voice_id)).decode("ascii")
+                    sintesi(frase, api_key, voice_id)).decode("ascii")
             except ElevenLabsTTSError as exc:
                 log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
                 errore = f"Errore TTS ElevenLabs: {exc.message}"
@@ -853,8 +885,8 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if errore is not None:
                 uscita["errore_voce"] = errore
             aperto = riga(uscita)
-            if aperto and (schermo and i == 0
-                           or errore is None and n_prefisso and i + 1 == n_prefisso):
+            if aperto and ((schermo and i == 0)
+                           or (errore is None and n_prefisso and i + 1 == n_prefisso)):
                 # ve #350 V-1: con lo schermo i compiti arrivano con la prima riga (content),
                 # anche se la voce fallisce; senza schermo quando ne sono state dette le frasi
                 self._segna_finiti_letti()
@@ -881,7 +913,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
         t = time.monotonic()
         try:
-            audio = synthesize_speech(text, api_key, voice_id)
+            audio = sintesi(text, api_key, voice_id)
             self._segna("voce", t)
         except ElevenLabsTTSError as exc:
             self._segna("voce", t)  # R-614-1-M2
