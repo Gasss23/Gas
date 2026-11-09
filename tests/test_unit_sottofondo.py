@@ -778,3 +778,17 @@ def test_frase_finiti_risposta_vuota():
     for risposta in ("", None, "   "):
         frase = sf.frase_finiti([{"id": "a", "compito": "t", "stato": "ok", "risposta": risposta}])
         assert frase == "Ho finito il compito in sottofondo «t»."
+
+
+def test_scrittura_temporanea_con_nome_unico(tmp_path, monkeypatch):
+    """Ve #350 V-3: due scritture dello stesso processo usano file temporanei diversi."""
+    nomi = []
+    vero = sf.os.replace
+
+    def _replace(src, dst):
+        nomi.append(Path(src).name)
+        return vero(src, dst)
+    monkeypatch.setattr(sf.os, "replace", _replace)
+    sf._scrivi_privato(tmp_path / "a.json", {"x": 1})
+    sf._scrivi_privato(tmp_path / "a.json", {"x": 2})
+    assert len(set(nomi)) == 2 and all(".tmp." in n for n in nomi)
