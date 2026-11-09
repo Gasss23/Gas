@@ -15,7 +15,6 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - PR #358 (R8 fetta 1) MERGIATA 567beb7.
 - **In corso: PR velocità «frasi fisse divise in cache»**. Poi: proposta + codice «terminale» (azioni fisse per Gas, firma su Telegram; PR di sicurezza).
 - (storico) PR di sicurezza R8 fetta 1 (server voce: tentativi falliti per IP, tetto al testo, avvio fail-closed; proposta `reports/proposta_voce_sicura.md`). Merge: decide l'operatore.
-- **In fila dopo R8**: fetta velocità «frasi fisse divise in cache» (commit locale a80e4b8 nella worktree /home/user/Gas-sicura, branch feat/voce-locale-fila; copia della patch mandata a M1). Poi fetta «terminale» (azioni fisse per Gas; quelle che cambiano qualcosa con firma su Telegram): proposta breve + codice, PR di sicurezza; vedi `reports/proposta_terminale_autonomia.md` sul branch di M1 feat/merge-automatico-z1xjx2.
 - **Dopo**: prova sul Mac.
 - Caso «Stefano»: da controllare sul Mac nella storia.
 

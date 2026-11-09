@@ -174,11 +174,11 @@ La correzione funziona: il test ora ignora solo la chiave «tempi» e confronta 
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: +1 test `test_sintesi_cache_anche_per_le_frasi_divise` (i pezzi di una frase fissa si sintetizzano una volta sola; un testo diverso mai in cache); col codice precedente fallisce. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 314 passed, 15 deselected; dopo il test del bot #360 V-1: 315 passed (il revisore con `-k "not browser"` ne deseleziona 21: filtro diverso). `gas.py` non toccato.
+`tests/test_unit_voice_server.py`: +2 test — `test_sintesi_cache_forte_a_pezzi_dal_server` (percorso vero «forte» a pezzi, scrittura e seconda lettura della cache) e `test_sintesi_cache_anche_per_le_frasi_divise` (i pezzi di una frase fissa si sintetizzano una volta sola; un testo diverso mai in cache); col codice precedente fallisce. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 314 passed, 15 deselected; dopo il test del bot #360 V-1: 315 passed (il revisore con `-k "not browser"` ne deseleziona 21: filtro diverso). `gas.py` non toccato.
 
 ## §6 STATO CI
 
-Head d6af23f: verifica-bot APPROVATO CON RISERVE (V-1 BASSA test instabile e V-2 COSMETICA report, chiuse qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
+Head 7de5d6b: verifica-bot failure per il formato della riga di verdetto (testo: APPROVATO CON RISERVE, 1 COSMETICA sui report, chiusa qui). Head d6af23f: verifica-bot APPROVATO CON RISERVE (V-1 BASSA test instabile e V-2 COSMETICA report, chiuse qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
