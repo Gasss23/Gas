@@ -86,9 +86,12 @@ def test_stato_gas_tempo_scaduto(monkeypatch, tmp_path):
 
 def test_log_voce_solo_righe_dei_tempi(tmp_path):
     (tmp_path / "gas_debug.log").write_text(
-        "altro\n" + "".join(f"2026 INFO tempi voce (200): stt=0.{i:02d}s server=1.{i:02d}s\n"
-                             for i in range(60))
-        + "WARNING tempi voce (200): testo libero da una pagina\n"
+        "altro\n" + "".join(f"2026-11-10 10:00:{i:02d},123 - INFO - tempi voce (200): "
+                             f"stt=0.{i:02d}s server=1.{i:02d}s\n" for i in range(60))
+        + "2026-11-10 10:01:00,000 - WARNING - tempi voce (200): testo libero da una pagina\n"
+        # V-3 verifica esterna #363: testo arbitrario che FINISCE col formato dei tempi
+        + "2026-11-10 10:01:01,000 - WARNING - segreto tempi voce (200): a=1.0s\n"
+        + "segreto 2026-11-10 10:01:02,000 - INFO - tempi voce (200): a=1.0s\n"
         + "segreto non dei tempi\n", encoding="utf-8")
     out = man.esegui("log_voce", tmp_path)
     assert "server=1.59s" in out and "server=1.19s" not in out and "segreto" not in out

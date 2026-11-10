@@ -38,7 +38,11 @@ TIMEOUT_LAUNCHCTL = 30
 
 # Una riga dei tempi della voce (modules/voice/server.py, _chiudi_tempi): solo codice HTTP e
 # numeri «nome=1.23s». Qualunque altra riga del log, anche se contiene le stesse parole, no.
-_RIGA_TEMPI = re.compile(r"tempi voce \(\d{3}\): (?:[a-z_]+=\d+(?:\.\d+)?s ?)+$")
+# V-3 verifica esterna #363: riga INTERA nel formato di gas_debug.log (gas.py, basicConfig:
+# «%(asctime)s - %(levelname)s - %(message)s»), con fullmatch: un testo arbitrario che
+# finisce col formato dei tempi non passa.
+_RIGA_TEMPI = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} - INFO - "
+                         r"tempi voce \(\d{3}\): (?:[a-z_]+=\d+(?:\.\d+)?s ?)+")
 
 # «Mai di notte» (decisione dell'operatore): nelle ore della notte le azioni che cambiano Gas
 # sono negate, sia la richiesta di firma sia l'esecuzione. Ora locale del computer di Gas;
@@ -108,7 +112,7 @@ def _log_voce(root: Path) -> str:
         return "log_voce: nessun gas_debug.log (la voce non ha ancora scritto tempi)."
     except OSError as e:
         return f"[KO] log_voce: log non leggibile ({type(e).__name__})."
-    righe = [r for r in testo.splitlines() if _RIGA_TEMPI.search(r.rstrip())]
+    righe = [r for r in testo.splitlines() if _RIGA_TEMPI.fullmatch(r.rstrip())]
     if not righe:
         return "log_voce: nessuna riga «tempi voce» recente."
     return "log_voce: ultime righe dei tempi della voce.\n" + "\n".join(righe[-RIGHE_LOG_VOCE:])
