@@ -1,19 +1,20 @@
-# Ultimo report — 2026-11-09 — Voce, velocità: frasi fisse divise in cache (chat M2)
+# Ultimo report — 2026-11-10 — voce: seguito più severo e risposte più brevi (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-- Nessuna per la #360: sì dell'operatore al merge (nota cosmetica accettata). Dalla #358: marcatore `gasmerge-ip-ok` per gli IPv4 d'esempio sì/no; controllo dell'interfaccia del tunnel prima del VPS.
+1. PR #365: merge da solo solo con verdetto del bot APPROVATO pulito; altrimenti serve il sì dell'operatore (via M1).
+2. PR #363 (terminale A, sicurezza): merge all'operatore; bot su 860c751 APPROVATO CON RISERVE (solo BASSE, check neutral).
 
-## Esito delle fette
+## Esito
 
-- **PR #358 (sicurezza del server voce)**: `MERGIATA` (567beb7).
-- **Frasi fisse divise in cache**: `FATTA` — anche nelle risposte a pezzi le frasi fisse vengono dalla memoria. Review #725-M2 e #735-M2 APPROVATO.
-- Bot #360 V-1 BASSA chiusa: test sul percorso vero «forte» a pezzi (review #737-M2 APPROVATO).
-- Bot #360 2° giro (COSMETICA) chiusa: la seconda richiesta legge dalla cache (review #740-M2 APPROVATO).
-- Bot #360 3° giro: tolto dal confronto il campo «tempi» (test instabile); review #741-M2 APPROVATO.
-- Merge di main (#359 di Mani) nel branch; review #742-M2 APPROVATO.
-- Test: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 315 passed (314 prima del test del bot #360 V-1; i giri successivi hanno modificato quel test, non aggiunto test).
+- **PR #360 (cache frasi fisse divise)**: MERGIATA (447195f) col sì dell'operatore riferito da M1.
+- **PR #363 (terminale A)**: pubblicata, merge di main (#359, #360) fatto, verifica esterna V-1 MEDIA (conflitto) chiusa; resta all'operatore.
+- **Seguito più severo**: FATTA — nel seguito i frammenti di una parola fuori elenco chiudono senza chiamare il cervello; istruzione «nel dubbio non è per te».
+- **Risposte più brevi e veloci**: FATTA — a voce UNA frase breve; tetto del parlato senza schermo 1500 → 800.
+- Review #744-M2 APPROVATO CON RISERVE (R-744-1 MEDIA: «Continua.», numeri e giorni scartati → CHIUSA), #746-M2 APPROVATO CON RISERVE (BASSE).
+- Test: voice_server, stt, tts, contesto, telegram_voce, voce_ascolto, sottofondo con -k "not browser": 743 passed.
+- **Prova sul Mac** (il modello rispetta le istruzioni più severe e più corte): DEFERITA — si fa dal vero.
 
 ## Anomalie
 
-- Nessuna. Fetta preparata in locale di notte e riposizionata sopra main (patch identica a quella revisionata).
+Nessuna. `istruzione_turno_voce(True)` vale anche per i vocali di Telegram (chat Mani): lì cambia solo il testo dell'istruzione.
