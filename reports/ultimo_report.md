@@ -1,26 +1,17 @@
-# Ultimo report — 2026-11-10 — Analisi notturna di Gas e correzioni dei bug riprodotti (M1)
+# Ultimo report — 2026-11-10 — richiesta d'un fiato non più persa sotto «Sì, signore?» (chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #366 (https://github.com/Gasss23/Gas/pull/366) quando bot e CI sono verdi: tocca il messaggio di firma (solo la vista), quindi è una PR di sicurezza.
-2. R-750-M1-1: se il primo cervello della cascata non è configurato (es. VPS senza GEMINI_API_KEY), la riga «↪ risposta da … (riserva)» compare a ogni risposta. Contarlo come ripiego? sì/no.
-3. Tetto delle 10 iterazioni per turno invece che per cervello (un turno ha fatto 40 chiamate)? sì/no.
-4. Nome dei lead nel promemoria della memoria che arriva ai modelli gratuiti: bloccarlo? sì/no.
+
+1. Merge della PR #368 (https://github.com/Gasss23/Gas/pull/368): riserve solo BASSE; il merge lo fa M1 col sì dell'operatore.
+2. Lanciare sul Mac i 3 comandi di lettura del log mandati a M1 (falsi «Hey Jarvis» o turni di seguito?) e incollarne l'output: servono per i default più severi.
 
 ## Esito
-- **Merge notturni (sì dell'operatore «mergia tutto quello che il bot ha approvato»)**: FATTO — #362, #361, #364 mergiate da M1; #363 e #365 mergiate da M2.
-- **Analisi notturna (4 agenti: motore, firme/notte/Telegram, voce, memoria/web/conoscenza)**: FATTA — 19 bug riprodotti, report in `reports/test_mattina.md`.
-- **Fix motore B1–B3, memoria/conoscenza B1–B4, notte/bot B2–B4**: FATTA — commit d9346212, review #744-M1 APPROVATO CON RISERVE.
-- **Firme B1 (`.gas_sottofondo` scrivibile senza firma)**: FATTA da M3 nella #364 (mergiata).
-- **Bug della voce B1–B5 + miglioramenti**: FATTA da M2 nella PR #367 (mergiata 802fc04).
-- **Kernel B4 (§8, ripiego dichiarato)**: FATTA — f4979c13, review #750-M1 APPROVATO CON RISERVE; riga «↪ risposta da …» in CLI e Telegram (non a voce).
-- **Kernel B5–B6**: DEFERITA — BASSE, annotati in stato_progetto.
-- **Merge di origin/main (#363, #365)**: FATTA — 769df833, review #751-M1 APPROVATO.
-- **Merge di origin/main (#367)**: FATTA — b5291a52, review #752-M1 APPROVATO.
-- **Bot #366 V-1 (handoff), V-2 (id duplicati), V-3 (exit code ingest)**: FATTA — questo handoff, rinomina #744-M1/#748-M1, commit 69c26619 (review #749-M1).
-- **`reports/test_mattina.md`**: FATTO — prove manuali sul Mac per area.
 
-## Test
-Kernel 1119 PASS / 0 FAIL; notte+ingest_fonti+sottofondo+gate+telegram_voce+manutenzione 1285 passed; con voice_server 1419 passed (prima del merge di #363/#365).
+- **PR #361**: MERGIATA (da M1).
+- **Richiesta d'un fiato (prova dal vivo del 10/11, 6 attivazioni su 8 senza richiesta)**: FATTA. In `clients/voice/ascolto.py` dopo la parola si ascolta 0,6 s; con 0,4 s di voce continua niente «Sì, signore?» e si registra da lì. Log della richiesta con secondi di voce e volume massimo in multipli della soglia. Test dell'ascolto: 310 passed (7 nuovi, mutanti presi). Review #753-M1 e #754-M1 APPROVATO CON RISERVE, riserve MEDIA/BASSA chiuse, restano BASSE.
+- **Scarto delle trascrizioni allucinate («grazie» su audio quasi vuoto)**: SALTATA — sta in modules/voice/stt.py (chat M2) e scartare «grazie» toglierebbe anche quelli veri; proposto a M1.
+- **Default più severi contro le risposte non richieste**: DEFERITA — prima i log del Mac.
 
 ## Anomalie
-Ogni merge su main fa andare in conflitto le altre PR aperte (report condivisi): da qui la scelta di far mergiare M2 da sola.
+
+Nessuna.
