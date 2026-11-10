@@ -21,6 +21,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **Verifica esterna #363 V-1 di gravità media (conflitto con main dopo il merge della #360)**: `FATTA` — merge di origin/main 447195f (d3c490c), conflitti solo nei report e nella memoria, review #745-M2 APPROVATO.
 - **Merge di origin/main 2dd0e8c (#362) nel ramo**: `FATTA` (ece76a8) — conflitti solo nei report e nella memoria; da main arrivano solo `reports/prova_r1_notte.md` e una riga di memoria (fuori dal perimetro di review).
 - **Merge di origin/main 3f08352 (#361 di Mani) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; review #749-M2 APPROVATO (file di main identici a 3f08352, nessuna interazione col terminale A; manutenzione + voce_ascolto 348 passed).
+- **Merge di origin/main eebb7c0 (#364 di M3) nel ramo**: `FATTA` — gas.py e gate.py uniti senza conflitti, controllati a mano dal revisore #754-M2 APPROVATO (index = unione esatta dei due lati; manutenzione esclusa anche nel sottofondo nuovo); kernel 1103 PASS / 1 FAIL T31g (ambiente), manutenzione + gate + sottofondo + notte 1189 passed.
 - **Bot su 7bcda34: V-1 di gravità media (manutenzione firmata ma fallita segnalata come eseguita) e V-2 BASSA (output nel diario)**: `FATTA` (ee9c7d0, review #751-M2) — esito KO → stato «incerta» (Telegram: «esito INCERTO, controlla»), nel diario solo [OK]/[KO], pip fallito con [KO] in testa; test con applica_firma reale.
 - **Verifica esterna #363 V-3 BASSA (filtro di `log_voce`)**: `FATTA` (94bd308, review #748-M2).
 - **Verifica esterna #363 V-4 BASSA (testo della firma di `aggiorna_gas`)**: `DEFERITA` — registrata in §7.
@@ -31,16 +32,16 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  14 +++++++++++++-
+ .claude/agents/memoria_revisore.md |  16 ++++++++++--
  .github/workflows/ci.yml           |   7 +++++++
  gas.py                             |  64 ++++++++++++++++++
  modules/gate/gate.py               |  20 ++++
  modules/manutenzione/__init__.py   | 192 ++++++++++++++++++
- reports/diff_sessione.md           |  18 ++++++++++--------
+ reports/diff_sessione.md           |  24 ++++++++----------
  reports/handoff.md                 | n/d
  reports/proposta_terminale_A.md    |  31 +++++++
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  26 +++++++++++-------
+ reports/ultimo_report.md           |  29 ++++++++++--------
  tests/test_unit_manutenzione.py    | 356 ++++++++++++++++++
 ```
 
@@ -49,6 +50,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9eb308a Merge origin/main (#364 di M3) nel terminale A — review #754-M2 APPROVATO (chat M2)
+2bbbc09 docs(fine-task): terminale A — V-1/V-2 del bot su 7bcda34 chiuse (review #751-M2), riserve aggiornate (chat M2)
 ee9c7d0 fix(manutenzione): una manutenzione firmata ma fallita non risulta più «eseguita» (esito incerto) e nel diario va solo [OK]/[KO]; chiude V-1 e V-2 del bot su 7bcda34 — review #751-M2 (chat M2)
 7bcda34 docs(fine-task): §3 dell'handoff aggiornato (chat M2)
 9e4aeea docs(fine-task): verdetto #749-M2 riemesso con le citazioni per il gate B (chat M2)
@@ -70,6 +73,32 @@ e93bd77 feat(gas): terminale opzione A — azioni fisse di manutenzione (stato_g
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #754-M2 (merge di main eebb7c0, PR #364 di M3) — verdetto integrale
+
+VERDETTO: APPROVATO
+
+Review #754-M2: merge di origin/main eebb7c0 (PR #364, M3) in feat/terminale-a-m2 (PR #363, terminale A).
+
+**Come sono stati uniti i due lati (verificato a mano)**
+- Il diff staged contro HEAD contiene SOLO le modifiche di M3 (gas.py +8/-1, gate.py +4, sottofondo, test). Il diff staged contro MERGE_HEAD contiene SOLO quelle del terminale A (gas.py +64, gate.py +20). Quindi l'index è l'unione esatta dei due lati e non manca niente a nessuno dei due.
+- Nessun marcatore di conflitto, `git ls-files -u` vuoto, `git diff --cached --check` pulito. Nella memoria non è stata tolta nessuna riga rispetto a HEAD.
+
+**Elementi del diff esaminati**
+- `gas.py:5282` — aggiunge `"nome": tc.function.name` all'evento tool_res (M3). Ho controllato se c'erano interazioni col diniego della manutenzione (terminale A, `gas.py:5180-5207`). È l'unico punto del run_turn in cui viene emesso un tool_res, quindi anche i dinieghi «solo a testo» e «di notte» portano il nome con `cancello="negata"`. — ok
+- `modules/sottofondo/__init__.py:400` — `_strumenti_noti` prende i nomi da `kernel.tools_schema`. `STRUMENTO_MANUTENZIONE` lì non c'è: viene aggiunto solo all'offerta, in `gas.py:4974`. Un `manutenzione` chiamato in sottofondo non entra mai nei `.passi`, né come «fatto» né come «in_firma», e `_segna_passo` scarta comunque «negata». — ok
+- `gas.py:4031` — `_manutenzione_offerta` esclude `nel_sottofondo`. L'ho provato sul kernel reale `GasKernel.per_sottofondo(root)`: `_manutenzione_offerta(False, False)` dà False, e `'manutenzione' in _strumenti_noti(k)` dà False. Il nuovo sottofondo di M3 (ripresa, progressi) costruisce ancora il kernel con `kernel_factory` → `per_sottofondo`, quindi la manutenzione resta negata prima del cancello. — ok
+- `modules/gate/gate.py:137` e `modules/gate/gate.py:321` — `.gas_sottofondo` aggiunto in _DENY_PREFIXES e _LIVELLO3_PREFISSI (M3). Le voci del terminale A (`modules/gate/gate.py:79` allowlist, `modules/gate/gate.py:777` ramo `elif tool_name == "manutenzione"`) stanno in punti diversi e non si toccano. Le due liste di manutenzione in gate.py restano allineate al modulo (test di coincidenza verde). — ok
+- `gas.py:6527` — nuovo comando `sottofondo-ferma`, messo prima del ramo `sottofondo <id>`. Non va in collisione: il confronto è esatto su argv[1]. — ok
+
+**Test**: ho lanciato io `pytest tests/test_unit_manutenzione.py tests/test_unit_gate.py tests/test_unit_sottofondo.py -k "not browser"` → 991 passed, 2 deselected. Il dato del chiamante (kernel 1103/1 FAIL T31g, ambiente) non l'ho rifatto.
+
+**Rischi esplicitamente esclusi**
+- Suite kernel completa (test_unit_kernel.py) e T31g non rilanciati da me: mi fido del dato del chiamante, che attribuisce il fallimento all'ambiente.
+- Comportamento reale su Mac/VPS (launchctl di riavvia_voce, processo separato del sottofondo con interruzione vera) non verificato: non è riproducibile in questo ambiente.
+- Il contenuto dei report risolti col ramo (stato_progetto, roadmap, proposta_r7_direttore) non è stato rivisto: è fuori dal perimetro di review.
+
+**Memoria**: ho aggiunto la riga contatore `#754-M2 — 2026-11-10 — APPROVATO — …` (nessuna lezione nuova) in fondo a /home/user/Gas/.claude/agents/memoria_revisore.md. Il file è in stage con `git add`, non ho fatto commit: siamo in un merge, quindi entra nel commit di merge.
 
 ### Review #751-M2 (V-1 e V-2 del bot su 7bcda34, commit ee9c7d0) — verdetto integrale
 
@@ -284,6 +313,8 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strum
 - 860c751 (head precedente): unit-suite success, handoff-check success, verifica-bot neutral (la PR tocca ci.yml, macchina del bot).
 - ece76a8 e 94bd308: nessuna run propria (pushati insieme al commit di fine task 3bf227f).
 - 3bf227f: bot APPROVATO CON RISERVE senza finding gravi (neutral); unit-suite non letta a fine run prima del merge successivo.
+- 2bbbc09: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE senza finding gravi).
+- 9eb308a (merge di main eebb7c0): nessuna run propria (pushato insieme al commit di fine task).
 - 7bcda34: verifica-bot failure (finding vero, corretto in ee9c7d0); unit-suite non letta a fine run.
 - ee9c7d0 e merge di main 3f08352: nessuna run propria (pushati insieme a un commit di fine task).
 - Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
