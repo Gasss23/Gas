@@ -17,16 +17,17 @@
 - **Procedura di prova `reports/prova_r1_notte.md`**: `FATTA` — catalogo di prova verificato con `carica_catalogo`, file di prova di livello 2 verificato con `livello_scrittura`.
 - **Correzioni al codice**: `SALTATA — non servono`.
 - **Messaggio a M1**: `FATTA`.
+- **Riserve del bot #362 V-1..V-4**: `FATTA` — corrette in 314b1ed (V-3 qui nel §6).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  16 ++++++----------
+ reports/diff_sessione.md  |  16 +++++------
  reports/handoff.md        | n/d
- reports/prova_r1_notte.md | 168 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/ultimo_report.md  |  19 +++++++++----------
+ reports/prova_r1_notte.md | 168 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md  |  20 +++++++-------
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -34,6 +35,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+314b1ed docs(r1): riserve V-1..V-4 del bot #362 — controllo vero del forte, pulizia che rimette sempre il catalogo, chiavi di plutil tra virgolette
+1bd7939 docs(fine-task): report della chat M4 su R1, procedura di prova del giro notturno (PR #362)
 3d65154 docs(r1): riga Firme del doctor, controllo solo sulle scadute
 db1223d docs(r1): procedura di prova del giro notturno dal vero sul Mac (chat M4)
 ```
@@ -50,15 +53,15 @@ Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-CI NON VERIFICATA con `gh` (gh presente ma non autenticato: «Failed to log in to github.com using token (GH_TOKEN)»). Letto con lo strumento GitHub di sessione (check della PR #362 sul commit 3d65154):
-- run 42725978216 (CI): `handoff-check` success, `unit-suite` in corso alla scrittura dell'handoff.
-- run 42726004122 (verifica-bot): `smista` success, `verifica` in corso.
+CI NON VERIFICATA con `gh` (gh presente ma non autenticato: «Failed to log in to github.com using token (GH_TOKEN)»). Stato letto con lo strumento GitHub di sessione e dal verdetto del bot #362.
 
 Mappatura commit→run:
-- 3d65154 (testa del push): run 42725978216 e 42726004122 (sopra).
-- db1223d: nessuna run su questo SHA come testa (pushato da solo prima; il suo contenuto è incluso nell'albero di 3d65154).
+- db1223d: run CI 42725964209 (push, headSha db1223d; segnalata da V-3 bot #362, che correggeva l'handoff precedente).
+- 3d65154: run CI 42725978216 (`handoff-check` success; `unit-suite` in corso all'ultima lettura).
+- 1bd7939: run CI 42726127034 (`handoff-check` success; `unit-suite` in corso all'ultima lettura); bot verifica-bot: success, APPROVATO CON RISERVE.
+- 314b1ed: run non ancora disponibile alla scrittura dell'handoff.
 - commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-Nessuna.
+Nessuna: V-1..V-4 del bot #362 corrette in 314b1ed (da confermare col nuovo giro del bot).

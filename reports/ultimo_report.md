@@ -11,7 +11,8 @@
 - **Procedura `reports/prova_r1_notte.md`**: `FATTA` — comandi in riquadri per sera e mattina, tabella dei guasti. Verificato qui: il catalogo col compito `prova_firma_r1` si carica senza avvisi (`carica_catalogo`), `prove_r1/buongiorno.sh` è di livello 2 (sempre alla firma, `livello_scrittura`).
 - **Correzioni al codice**: `SALTATA — non servono`: il codice per la prova c'è già.
 - **Messaggio a M1**: `FATTA` — consegnato.
-- **PR #362**: aperta, etichetta `verifica` messa; verdetto del bot in attesa.
+- **PR #362**: aperta, etichetta `verifica` messa. Bot sul commit 1bd7939: APPROVATO CON RISERVE (nessuna ALTA/MEDIA).
+- **Riserve del bot #362 (V-1, V-2 BASSE; V-3, V-4 COSMETICHE)**: `FATTA` — V-1 controllo vero del forte nel doctor (non basta OK, «spento» è OK), V-2 pulizia con `rm -rf …; mv …` che rimette sempre il catalogo, V-3 mappatura CI corretta nell'handoff, V-4 chiavi di `plutil` tra virgolette. Nuovo giro del bot sul commit nuovo.
 
 ## Anomalie
 
