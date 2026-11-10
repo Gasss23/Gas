@@ -118,8 +118,11 @@ def synthesize_speech(
                 "Content-Length": str(len(body)),
             },
         )
-        resp = conn.getresponse()
-        resp_bytes = resp.read()
+        try:
+            resp = conn.getresponse()
+            resp_bytes = resp.read()
+        except http.client.HTTPException as exc:  # audit 10 nov (B3): come un errore di rete
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
         if resp.status == 200:
             return resp_bytes
         msg = resp_bytes.decode(errors="replace")[:300]
@@ -152,8 +155,11 @@ def list_voices(
     )
     try:
         conn.request("GET", _ELEVENLABS_VOICES_PATH, headers={"xi-api-key": api_key})
-        resp = conn.getresponse()
-        corpo = resp.read()
+        try:
+            resp = conn.getresponse()
+            corpo = resp.read()
+        except http.client.HTTPException as exc:  # R-752-2: come un errore di rete
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
         if resp.status != 200:
             raise ElevenLabsTTSError(resp.status, f"ElevenLabs {resp.status}: "
                                                   f"{corpo.decode(errors='replace')[:300]}")
@@ -210,8 +216,11 @@ def list_shared_voices(
     try:
         conn.request("GET", _SHARED_VOICES_PATH + (f"?{query}" if query else ""),
                      headers={"xi-api-key": api_key})
-        resp = conn.getresponse()
-        corpo = resp.read()
+        try:
+            resp = conn.getresponse()
+            corpo = resp.read()
+        except http.client.HTTPException as exc:  # R-752-2: come un errore di rete
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
         if resp.status != 200:
             raise ElevenLabsTTSError(resp.status, f"ElevenLabs {resp.status}: "
                                                   f"{corpo.decode(errors='replace')[:300]}")
@@ -264,8 +273,11 @@ def add_shared_voice(
         conn.request("POST", _ADD_SHARED_PATH.format(owner=owner, voice_id=voice_id), body=body,
                      headers={"xi-api-key": api_key, "Content-Type": "application/json",
                               "Content-Length": str(len(body))})
-        resp = conn.getresponse()
-        corpo = resp.read()
+        try:
+            resp = conn.getresponse()
+            corpo = resp.read()
+        except http.client.HTTPException as exc:  # R-752-2: come un errore di rete
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
         if resp.status != 200:
             raise ElevenLabsTTSError(resp.status, f"ElevenLabs {resp.status}: "
                                                   f"{corpo.decode(errors='replace')[:300]}")
