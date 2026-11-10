@@ -908,6 +908,26 @@ def _rung_disponibile(name: str, env: str) -> bool:
     return bool(os.environ.get(env))
 
 
+# V15 R-682-1-M2 (scelta A dell'operatore via M1, 6 nov): i messaggi di un turno di seguito
+# a voce (parlato captato SENZA parola di attivazione, giudicato rivolto a Gas dal forte)
+# portano questa chiave nella storia. Finché uno di loro è nella finestra, il turno va SOLO
+# al forte (il cervello che risponde non è mai un gratuito, CLAUDE.md §2); la chiave non va ai
+# provider. Eccezione ACCETTATA dall'operatore (V-2 bot #339, 6 nov): la trascrizione Groq
+# Whisper riceve anche l'audio dei seguiti, come tutta la voce (R-684-2-M2).
+CHIAVE_SEGUITO_VOCE = "seguito_voce"
+
+
+def _ha_seguito_voce(messaggi: List[Dict[str, Any]]) -> bool:
+    return any(isinstance(m, dict) and m.get(CHIAVE_SEGUITO_VOCE) for m in messaggi)
+
+
+def _senza_segni_interni(messaggi: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Copia dei messaggi senza la chiave interna del seguito (i provider vedono solo i campi
+    del formato chat). Nessun messaggio tolto né tagliato."""
+    return [({k: v for k, v in m.items() if k != CHIAVE_SEGUITO_VOCE}
+             if CHIAVE_SEGUITO_VOCE in m else m) for m in messaggi]
+
+
 def _cascata_provider(compito: str) -> List[Tuple[str, str, Optional[str], str]]:
     """Cascata dei provider (nome, env-chiave, base_url, modello) per la classe di
     compito ('semplice' o altro = 'complesso'). Punto UNICO condiviso da run_turn e
@@ -1565,6 +1585,9 @@ class GasKernel:
                 {"role": "assistant",
                  "content": "Compreso. Proseguo dalla conversazione precedente."},
             ] + recent
+            if _ha_seguito_voce(to_compress):
+                # R-682-1-M2: il riepilogo contiene parlato di un seguito: resta solo-forte
+                self.history[0][CHIAVE_SEGUITO_VOCE] = True
             self._save_history()
             logging.info(
                 "Cronologia compressa: %d→%d messaggi (%d old + %d boundary → riepilogo)",
@@ -1802,6 +1825,27 @@ class GasKernel:
         if name: entry["name"] = name
         self.history.append(entry)
 
+    def registra_seguito(self, domanda: str, risposta: str) -> bool:
+        """V15 punto 1 (sì dell'operatore via M1, 6 nov; V-1 (a) bot #339): un turno di
+        seguito (effimero) che il chiamante ha giudicato RIVOLTO a Gas entra nella storia vera
+        come coppia user/assistant, così il seguito dopo lo ricorda. Va chiamato DOPO aver
+        chiuso il generatore del turno effimero (storia vera già ripristinata). Il parlato
+        «non per me» non passa mai di qui. Fail-safe §9: True solo se salvato su disco."""
+        if not (isinstance(domanda, str) and domanda.strip()
+                and isinstance(risposta, str) and risposta.strip()):
+            return False
+        try:
+            self._compress_history_if_needed()
+            self._add_to_history("user", content=domanda)
+            self._add_to_history("assistant", content=risposta)
+            # R-682-1-M2: segnati, così i turni che li hanno in finestra vanno solo al forte
+            self.history[-2][CHIAVE_SEGUITO_VOCE] = True
+            self.history[-1][CHIAVE_SEGUITO_VOCE] = True
+            return self._save_history(fine_turno=True)
+        except Exception as e:
+            logging.warning("registra_seguito: storia non aggiornata: %s", e)
+            return False
+
     def _get_window(self, n: int = 10) -> List[Dict[str, Any]]:
         if not self.history:
             return []
@@ -2037,7 +2081,12 @@ class GasKernel:
     def _finestra_e_contaminata(window: List[Dict[str, Any]]) -> bool:
         """True se la finestra contiene un tool result di un tool contaminante (§3b) o un
         riepilogo di compressione che non si dichiara pulito (R-203-1).
-        Puro (no side-effect), riutilizzabile nei test diretti (R-c2-3)."""
+        Puro (no side-effect), riutilizzabile nei test diretti (R-c2-3).
+        V-1 bot #339 su 16dd4a5: anche un seguito a voce (parlato captato SENZA parola di
+        attivazione: stanza, TV) è input non fidato, così le scritture dei turni dopo vanno
+        alla firma e un riepilogo che lo contiene si dichiara INPUT ESTERNO."""
+        if _ha_seguito_voce(window):
+            return True
         for m in window:
             if m.get("role") == "tool" and m.get("name") in UNTRUSTED_INPUT_TOOLS:
                 return True
@@ -2464,6 +2513,9 @@ class GasKernel:
                     f"testo={len(str(args.get('testo', '')))} caratteri")
         if name == "salva_contatto":
             return f"contatto chiave={str(args.get('chiave', ''))[:80]!r}"
+        if name == "in_sottofondo":
+            # Il compito può contenere dati dell'operatore: nel diario solo la lunghezza.
+            return f"compito={len(str(args.get('compito', '') or ''))} caratteri"
         if name == "avvisa_operatore":
             # Il testo può venire da input non fidato (F-diario-eco): solo la lunghezza.
             return f"testo={len(str(args.get('testo', '') or ''))} caratteri"
@@ -3923,6 +3975,27 @@ class GasKernel:
         return "<trascrizione_dati>\n" + corpo + "\n</trascrizione_dati>"
 
     CLAUDE_CLI_TIMEOUT_SEC: int = 300  # `claude -p` (ragionamento lungo): tetto per chiamata
+    # Voce rapida, fetta 2 (ordine dell'operatore via M1, 6 nov): nei turni PARLATI finestra più
+    # corta (sempre via _get_window, mai tagli a mano), niente recap delle sessioni vecchie e
+    # effort più basso del forte (`claude -p --effort`, documentato nell'aiuto della CLI).
+    VOCE_FINESTRA_N: int = 6
+    VOCE_EFFORT: str = "low"
+    # Fetta 3 (sì dell'operatore via M1, 6 nov): compito lungo in sottofondo, offerto SOLO nei
+    # turni parlati non effimeri (a testo/Telegram il turno può già durare quanto serve).
+    STRUMENTO_SOTTOFONDO: Dict[str, Any] = {"type": "function", "function": {
+        "name": "in_sottofondo",
+        "description": ("Avvia un compito LUNGO in sottofondo (ricerche, letture di pagine o "
+                        "file grandi, più passaggi): continua in un processo separato col "
+                        "cervello forte e alla fine l'operatore riceve un avviso su Telegram. "
+                        "Usalo solo quando il compito richiede più di qualche passaggio; poi "
+                        "rispondi in una frase che ci stai lavorando e che lo avviserai. Un "
+                        "compito alla volta."),
+        "parameters": {"type": "object", "properties": {
+            "compito": {"type": "string", "description": (
+                "il compito completo e autonomo, con tutti i dettagli che servono (chi, "
+                "cosa, dove): il processo in sottofondo vede la conversazione salvata ma non "
+                "può fare domande (max 2000 caratteri)")}},
+            "required": ["compito"]}}}
 
     def _timeout_provider(self, name: str) -> int:
         """Timeout HTTP del rung: Ollama locale ha il suo (R-226-1)."""
@@ -3959,6 +4032,13 @@ class GasKernel:
             if not window:
                 esito["errore"] = "cronologia vuota: niente su cui riflettere"
                 return esito
+            if _ha_seguito_voce(window):
+                # R-682-1/R-683-1-M2: il parlato di un seguito a voce non va ai gratuiti della
+                # riflessione, né in un recap che il pin rimetterebbe in ogni turno: niente
+                # riflessione finché il seguito è nella finestra (nessun LLM chiamato)
+                esito["errore"] = ("finestra con un seguito a voce: riflessione rimandata "
+                                   "(il parlato della stanza non va ai modelli gratuiti)")
+                return esito
             # Fiducia FAIL-CLOSED su TUTTA la cronologia, non sulla sola finestra:
             # - R-200-1: un output di tool fuori da _TOOL_OUTPUT_FIDATO contamina;
             # - R-201-1: anche se è uscito dalla finestra (ripetuto per molti turni);
@@ -3970,7 +4050,7 @@ class GasKernel:
                 (m.get("role") == "tool" and m.get("name") not in _TOOL_OUTPUT_FIDATO)
                 or (m.get("role") == "user"
                     and str(m.get("content") or "").startswith(_RIEPILOGO_COMPRESSIONE_PREFIX))
-                for m in self.history)
+                for m in self.history) or _ha_seguito_voce(self.history)  # V-1 bot e44c4b0
             # R-371-2: anche un pin non fidato visto in questa sessione, o mostrato
             # adesso, rende la riflessione non fidata (il recap non viene reiniettato).
             if not contaminata:
@@ -4474,6 +4554,8 @@ class GasKernel:
         di firma inutile. None = si parcheggia.
         Mai eccezioni: nel dubbio si parcheggia (la firma resta il cancello)."""
         try:
+            if getattr(self, "nel_sottofondo", False):
+                return self._AVVISO_NEL_SOTTOFONDO
             if self._avvisi_turno >= 1:
                 return self._UNA_NOTIFICA_PER_TURNO
             from modules.telegram.avviso import rifiuto_al_cancello
@@ -4484,6 +4566,60 @@ class GasKernel:
             logging.warning("[GATE] controllo di avvisa_operatore fallito (%s)",
                             type(e).__name__)
             return None
+
+    # Bot #345 (head e323b60) V-2: nel processo in sottofondo avvisa_operatore non c'è, così il
+    # turno non può consumare l'ultimo avviso del giorno promesso per la fine del compito.
+    _AVVISO_NEL_SOTTOFONDO = ("Operazione negata: nel compito in sottofondo l'avviso "
+                              "all'operatore parte da solo alla fine. Scrivi tutto nella "
+                              "risposta.")
+
+    @classmethod
+    def per_sottofondo(cls, root: str) -> "GasKernel":
+        """Kernel del processo `gas.py sottofondo <id>`: senza avvisa_operatore (vedi sopra)."""
+        kernel = cls(root)
+        kernel.nel_sottofondo = True
+        # Bot #346 (2d0977e) V-1: il prompt di base descrive avvisa_operatore; qui non c'è.
+        kernel.system_prompt += (
+            "\n\nSEI UN COMPITO IN SOTTOFONDO: avvisa_operatore qui non esiste. L'avviso "
+            "all'operatore parte da solo alla fine con la tua risposta: scrivi tutto lì.")
+        return kernel
+
+    def _in_sottofondo(self, args: Dict[str, Any], firmata: bool = False) -> str:
+        """Fetta 3: mette in coda il compito e avvia il processo separato. Solo nei turni
+        parlati (lo strumento è offerto solo lì) e solo col cervello forte disponibile.
+        Fail-safe §9: ogni errore è un diniego dichiarato."""
+        # R-695-1-M2: con la firma dell'operatore (kernel del bot Telegram, dove il turno non è
+        # a voce) il compito parte lo stesso; forte e tetto restano controllati.
+        if not firmata and not getattr(self, "_turno_voce", False):
+            return "Operazione negata: in_sottofondo esiste solo nei turni a voce."
+        if not _rung_disponibile("claude-cli", "GAS_CLAUDE_CLI"):
+            return ("Operazione negata: il cervello forte è spento (GAS_CLAUDE_CLI): niente "
+                    "compiti in sottofondo. Dillo all'operatore.")
+        if self._tetto_claude_cli_superato() is not None:
+            return ("Operazione negata: il cervello forte ha raggiunto il tetto di oggi: "
+                    "niente compiti in sottofondo. Dillo all'operatore.")
+        try:
+            from modules import sottofondo
+            # Bot #345 V-1: niente promessa di avviso che non può partire
+            motivo = sottofondo.notifica_possibile(self.root)
+            if motivo:
+                return (f"Operazione negata: non potrei avvisare l'operatore alla fine ({motivo}): "
+                        "niente compito in sottofondo. Fallo adesso se è breve, oppure dillo "
+                        "all'operatore.")
+            ident, rifiuto = sottofondo.accoda(self.root, args.get("compito"))
+            if ident is None:
+                return rifiuto
+        except Exception as e:  # §9
+            logging.warning("in_sottofondo: coda non scrivibile: %s", e)
+            return "Operazione negata: compito in sottofondo non accodato."
+        try:
+            sottofondo.avvia(self.root, ident)
+        except Exception as e:  # §9; R-695-4-M2: niente compito appeso né coda bloccata
+            logging.warning("in_sottofondo: avvio non riuscito: %s", e)
+            sottofondo.annulla(self.root, ident, f"avvio non riuscito ({type(e).__name__})")
+            return "Operazione negata: avvio del compito in sottofondo non riuscito."
+        return (f"Compito avviato in sottofondo ({ident}). Rispondi all'operatore in una "
+                "frase che ci stai lavorando e che lo avviserai su Telegram quando hai finito.")
 
     def execute_tool_call(self, name: str, args_str: Any, firmata: bool = False) -> str:
         """Esegue un tool. `firmata=True` SOLO da applica_firma (firma umana valida):
@@ -4659,10 +4795,14 @@ class GasKernel:
                 from modules.sviluppo import crea_richiesta
                 a = args if isinstance(args, dict) else {}
                 out = crea_richiesta(a.get("titolo"), a.get("descrizione"), self.root)
+            elif name == "in_sottofondo":
+                out = self._in_sottofondo(args if isinstance(args, dict) else {}, firmata=firmata)
             elif name == "avvisa_operatore":
                 # Notifica all'operatore (R6): solo TELEGRAM_ALLOWED_IDS, tetto al giorno
                 # in modules/telegram/avviso.py; qui il tetto di UNA per turno (non per
                 # l'azione firmata: è un'altra azione, decisa dall'operatore).
+                if getattr(self, "nel_sottofondo", False):
+                    return self._AVVISO_NEL_SOTTOFONDO
                 if not firmata and getattr(self, "_avvisi_turno", 0) >= 1:
                     return self._UNA_NOTIFICA_PER_TURNO
                 from modules.telegram.avviso import avvisa_operatore_esito
@@ -4693,9 +4833,30 @@ class GasKernel:
 
     def run_turn(self, user_prompt: str,
                  cervello: Optional[str] = None,
-                 istruzione_turno: Optional[str] = None) -> Generator[Dict[str, Any], None, None]:
+                 istruzione_turno: Optional[str] = None,
+                 effimero: bool = False,
+                 voce: bool = False) -> Generator[Dict[str, Any], None, None]:
         # V3 voce (chat M2): `istruzione_turno` vale SOLO per questo turno: va in coda al
         # messaggio system (come i pin), fuori dalla finestra e dalla cronologia.
+        # V15 voce (chat M2, decisione dell'operatore 5 nov, R-675-1-M2): `effimero` = turno
+        # di parlato captato senza parola di attivazione (stanza, TV): SOLO il cervello forte,
+        # NESSUNO strumento offerto (non solo vietato nel prompt), e il turno non lascia
+        # traccia nella storia condivisa (né in memoria né su .gas_history.json): il modello
+        # vede la storia di prima più questa frase, poi tutto torna com'era. Nel diario resta
+        # solo il «turno_fine» (esito, provider), mai il parlato.
+        if effimero:
+            cervello = "forte"
+        # Voce rapida (fetta 2): profilo dei turni parlati. Finestra di GAS_VOCE_FINESTRA messaggi
+        # (default 6), recap vecchio spento, effort del forte da GAS_VOCE_EFFORT (default low;
+        # vuoto = quello della CLI). Testo e Telegram invariati.
+        _n_finestra = (_env_int("GAS_VOCE_FINESTRA", self.VOCE_FINESTRA_N, min_val=2)
+                       if voce else 10)
+        _effort: Optional[str] = None
+        if voce:
+            _effort = os.environ.get("GAS_VOCE_EFFORT", self.VOCE_EFFORT).strip().lower() or None
+            if _effort not in (None, "low", "medium", "high", "xhigh", "max"):
+                logging.warning("GAS_VOCE_EFFORT non valido (%r): uso quello della CLI", _effort)
+                _effort = None
         # --- Fetta 1 auto-apprendimento: tracking per turno_fine ---
         _turno_id = str(uuid.uuid4())
         _turno_tool_n = 0
@@ -4710,6 +4871,16 @@ class GasKernel:
         _lead_nuovi = 0  # V-1 bot #225 (2° giro): lead creati dopo una lettura
         self._file_delicati_turno = []  # R-223-2: file nuovi delicati, avviso a fine turno
         self._avvisi_turno = 0  # avvisa_operatore: una notifica per turno
+        # Fetta 3: in_sottofondo vale solo nei turni parlati non effimeri
+        self._turno_voce = bool(voce and not effimero)
+        if not getattr(self, "nel_sottofondo", False):
+            # Bot #345 (head 46596b4) V-1: un compito in sottofondo il cui processo è morto
+            # diventa «ko» con avviso alla prima interazione (controlla non solleva mai).
+            try:
+                from modules import sottofondo as _sottofondo
+                _sottofondo.controlla(self.root)
+            except Exception as e:  # §9
+                logging.warning("sottofondo: controllo a inizio turno fallito: %s", e)
 
         def _chiudi_turno() -> None:
             nonlocal _turno_fine_scritto
@@ -4749,15 +4920,42 @@ class GasKernel:
                                 "Il turno si è fermato prima della chiamata successiva. "
                                 "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
 
+        # V15: per il turno effimero si lavora su una COPIA della storia (stessi messaggi, lista
+        # nuova) e niente si salva; nel finally torna la storia vera, intatta.
+        _storia_vera: Optional[List[Dict[str, Any]]] = None
+        _offerta: Dict[str, Any] = {"tools": self.tools_schema, "tool_choice": "auto"}
+        if voce and not effimero:  # fetta 3: a voce anche il compito in sottofondo
+            _offerta = {"tools": self.tools_schema + [self.STRUMENTO_SOTTOFONDO],
+                        "tool_choice": "auto"}
+        if getattr(self, "nel_sottofondo", False):  # bot #345 V-2: niente avvisa_operatore
+            _offerta = {"tools": [s for s in self.tools_schema
+                                  if s.get("function", {}).get("name") != "avvisa_operatore"],
+                        "tool_choice": "auto"}
+        if effimero:
+            _storia_vera = self.history
+            self.history = list(self.history)
+            _offerta = {}
+
+        def _salva() -> None:
+            if not effimero:
+                self._save_history()
+
         try:
             # Compressione automatica cronologia (FASE 2.5): no-op se sotto soglia.
             # Zero token LLM. Fail-safe §9: eccezioni → history invariata, turno OK.
-            self._compress_history_if_needed()
+            if not effimero:
+                self._compress_history_if_needed()
             self._add_to_history("user", content=user_prompt)
 
             from brains.router import classifica_compito
             # R2 via B: «forte» solo su richiesta esplicita, mai dal classificatore.
             compito = "forte" if cervello == "forte" else classifica_compito(user_prompt)
+            _solo_forte_seguito = compito != "forte" and _ha_seguito_voce(self._get_window(_n_finestra))
+            if _solo_forte_seguito:
+                # R-682-1-M2 (scelta A dell'operatore): un seguito a voce è ancora nella
+                # finestra → solo il forte; spento o al tetto → turno fermo dichiarato
+                logging.info("finestra con un seguito a voce: turno solo sul forte")
+                compito = "forte"
             _turno_classe = compito
 
             # Iniezione memoria ALWAYS-ON (fetta 2b): calcolata UNA volta per turno
@@ -4767,7 +4965,8 @@ class GasKernel:
             # "" se la memoria è assente/degradata.
             mem_pin = self._memoria_pin()
             lezioni_pin = self._lezioni_pin()
-            recap_pin = self._recap_pin(user_prompt)  # FASE 2.6: recap fidato pertinente, come DATO
+            # FASE 2.6: recap fidato pertinente, come DATO; voce rapida: niente recap vecchio
+            recap_pin = "" if voce else self._recap_pin(user_prompt)
             turno_pin = f"\n\n{istruzione_turno.strip()}" if (istruzione_turno or "").strip() else ""
 
             # Backup automatico THROTTLED del DB di memoria (anti auto-corruzione):
@@ -4820,7 +5019,8 @@ class GasKernel:
                                     f"dichiarato, turno potenzialmente tool-blind")
                 payload: List[Dict[str, Any]] = []
                 try:
-                    client = (ClaudeCliClient(timeout=self.CLAUDE_CLI_TIMEOUT_SEC)
+                    client = (ClaudeCliClient(timeout=self.CLAUDE_CLI_TIMEOUT_SEC,
+                                              **({"effort": _effort} if _effort else {}))
                               if name == "claude-cli" else
                               OpenAI(base_url=url, api_key=os.environ.get(env),
                                      timeout=self._timeout_provider(name),
@@ -4829,11 +5029,11 @@ class GasKernel:
                         # C2: calcola contaminazione dalla finestra PRIMA di inviare
                         # al provider (§3b). Ricalcolata a ogni iterazione perché la
                         # finestra può scorrere tra un'iterazione e l'altra.
-                        _window = self._get_window()
+                        _window = self._get_window(_n_finestra)
                         # V-1 bot #222: conta anche il pin che mostra dati non fidati.
                         _finestra_contaminata = (self._finestra_e_contaminata(_window)
                                                  or getattr(self, "_pin_non_fidato", False))
-                        payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin + recap_pin + turno_pin}] + _window
+                        payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin + recap_pin + turno_pin}] + _senza_segni_interni(_window)
                         # FETTA 1 (chiude F2): budget ricontrollato prima di OGNI chiamata,
                         # non solo a inizio turno. Superato a metà turno → il turno si
                         # ferma DICHIARATO (niente fallback: il tetto vale per tutti i
@@ -4863,8 +5063,7 @@ class GasKernel:
                         _chiamato_rung = True
                         try:
                             response = client.chat.completions.create(
-                                model=model, messages=payload,
-                                tools=self.tools_schema, tool_choice="auto"
+                                model=model, messages=payload, **_offerta
                             )
                         except Exception as e:
                             # R-496-1: una chiamata al forte fallita dopo il consumo
@@ -4889,8 +5088,7 @@ class GasKernel:
                                 return
                             try:
                                 response = client.chat.completions.create(
-                                    model=model, messages=payload,
-                                    tools=self.tools_schema, tool_choice="auto"
+                                    model=model, messages=payload, **_offerta
                                 )
                                 logging.warning(f"retry Gemini 400 ({name}): OK")
                             except Exception:
@@ -4906,6 +5104,16 @@ class GasKernel:
                                 getattr(usage, "costo_equivalente_usd", 0.0) if usage else 0.0)
                         msg = response.choices[0].message
 
+                        if msg.tool_calls and effimero:
+                            # V15: nessuno strumento offerto; se il modello ne chiede uno
+                            # comunque, NON si esegue: il turno finisce senza risposta
+                            logging.warning("turno effimero: chiamata a strumento ignorata")
+                            _turno_provider = name
+                            _turno_final = True
+                            # V15: chi chiama sa che serviva uno strumento (la voce chiede di
+                            # ripetere con la parola di attivazione invece di tacere)
+                            yield {"type": "final", "content": "", "strumento_negato": True}
+                            return
                         if msg.tool_calls:
                             self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
                             for tc in msg.tool_calls:
@@ -5008,14 +5216,23 @@ class GasKernel:
                                 if tc.function.name in UNTRUSTED_INPUT_TOOLS:
                                     _finestra_contaminata = True
                                 yield {"type": "tool_res", "output": out, "cancello": _cancello}
-                            self._save_history()
+                            _salva()
                             # continua il loop per ottenere la risposta finale
                         elif msg.content:
                             self._add_to_history("assistant", content=msg.content)
-                            self._save_history()
+                            _salva()
                             _turno_provider = name  # Fetta B: provider che ha prodotto la risposta
                             _turno_final = True
                             yield {"type": "final", "content": msg.content}
+                            return
+                        elif effimero:
+                            # V-3 bot #339 su be60a21: nel turno effimero una risposta vuota
+                            # del forte è «niente da dire» (chi chiama chiude in silenzio),
+                            # non un guasto da far finire in «Pipeline esausta» (HTTP 500)
+                            logging.info(f"turno effimero: risposta vuota da {name}")  # R-682-2-M2
+                            _turno_provider = name
+                            _turno_final = True
+                            yield {"type": "final", "content": ""}
                             return
                         else:
                             _motivi.append(f"{name}: risposta vuota")
@@ -5048,10 +5265,15 @@ class GasKernel:
                     continue
             _dettaglio = "; ".join(_motivi) if _motivi else "nessun provider in cascata"
             logging.warning(f"Pipeline esausta: {_dettaglio}")
+            if _solo_forte_seguito:  # R-683-2-M2: l'operatore sa perché niente gratuiti
+                _dettaglio += ("; turno solo sul cervello forte perché nella conversazione "
+                               "recente c'è un seguito a voce (dati della stanza: mai ai cervelli gratuiti)")
             yield {"type": "error",
                    "content": f"Pipeline esausta: nessun cervello ha risposto. {_dettaglio}."}
         finally:
-            if self._storia_rimandata:  # R-435-1: turno finito senza risposta finale
+            if _storia_vera is not None:  # V15: il turno effimero non lascia traccia
+                self.history = _storia_vera
+            elif self._storia_rimandata:  # R-435-1: turno finito senza risposta finale
                 self._save_history(fine_turno=True)
             _chiudi_turno()
             self._invia_avvisi_lead(_avvisi_lead, _lead_nuovi)
@@ -6237,6 +6459,10 @@ def main():
         sys.exit(rifletti_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "notte":
         sys.exit(notte_cmd(solo=sys.argv[2]) if len(sys.argv) > 2 else notte_cmd())
+    if len(sys.argv) > 2 and sys.argv[1] == "sottofondo":  # fetta 3: processo separato
+        from modules import sottofondo
+        _root = Path.cwd()
+        sys.exit(sottofondo.esegui(_root, sys.argv[2], lambda: GasKernel.per_sottofondo(str(_root))))
     if len(sys.argv) > 1 and sys.argv[1] == "telegram":
         from modules.telegram.bot import run_bot
         sys.exit(run_bot())

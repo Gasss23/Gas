@@ -27,6 +27,7 @@ decide. Esiti (evento → conclusione del check):
 """
 from __future__ import annotations
 
+import base64
 import bisect
 import json
 import os
@@ -34,6 +35,7 @@ import re
 import subprocess
 import sys
 import unicodedata
+import zlib
 
 VERDETTI = ("APPROVATO", "APPROVATO CON RISERVE", "BOCCIATO")
 GRAVITA_BLOCCANTI = ("ALTA", "MEDIA")
@@ -92,6 +94,21 @@ _SEGRETO = re.compile(r"sk-ant-|gh[pousr]_[A-Za-z0-9]|github_pat_|-----BEGIN")
 # parte). Una lista di negazioni non finisce mai ("NON-APPROVATO", "NON È APPROVATO",
 # "NEGATO / APPROVATO", "APPROVATO (ma io lo boccerei)"): fuori formato = COMMENT.
 _RIGA_TITOLO = re.compile(r"^\W*VERIFICA ESTERNA\b[^\n]*$", re.M | re.I)
+# Fix bot #329 (3 nov, verdetto su 7957a15 letto «ambiguo»): «- Verifica esterna su
+# 3b92254: V-1, …» cita una verifica PASSATA per SHA, non è un titolo. Si esenta SOLO quella
+# forma («verifica esterna [precedente] su <sha>: V-1, V-3 (BASSE); …»): ogni altra riga
+# che comincia con «verifica esterna» resta
+# un titolo e dev'essere canonica (review #671-M2: «**Verifica esterna**: BOCCIATO»,
+# «Verifica esterna, esito: …», «Verifica esterna boccia la PR» restano NO).
+# Review #672-M2 (R-672-1): lista BIANCA della coda, non una lista nera di parole di
+# esito (che non finisce mai, vedi sopra): dopo «su <sha>:» solo id di finding, «e», «,»,
+# «;» e gravità BASSE/COSMETICHE tra parentesi. «: KO», «: FAILED», «: V-1 (ALTA)» restano
+# titoli fuori formato (NO).
+_CITAZIONE_VERIFICA_PASSATA = re.compile(
+    # R-673-1/2-M2: davanti solo segni di elenco (un'emoji «❌» resta un titolo); la coda
+    # finisce con «(?:\.\s*)?$» (niente due \s* di fila: rallentamento quadratico).
+    r"^[ \t>*_•-]*verifica esterna\s+(?:precedente\s+)?su\s+[0-9a-f]{7,40}\s*[:—–-]\s*"
+    r"(?:(?:[VRF]-\d+|e|,|;|\((?:BASS[AE]|COSMETIC(?:A|HE))\))\s*)+(?:\.\s*)?$", re.I)
 _TITOLO_CANONICO = re.compile(
     r"VERIFICA ESTERNA(?:\s+(?:PR\s*)?#?\d+)?\s*[—–:-]\s*"
     r"(APPROVATO CON RISERVE|APPROVATO|BOCCIATO)\.?", re.I)
@@ -106,6 +123,49 @@ _PAROLA_BLOCCANTE = re.compile(r"\b(ALTA|MEDIA|HIGH|MEDIUM|CRITICAL|CRITICA|BLOC
 _FINDING_GRAVE_A_PAROLE = re.compile(
     # R-316-2: anche gli id alfabetici esentati da _RISERVA_REGISTRATA ("R-gate-wt-1").
     r"^\W*[VFRG]-(?:[A-Za-z0-9]+-)*\d+\b.*\b(" + _GRAVI + r")\b", re.M | re.I)
+_BLOCCANTE_TECNICO = re.compile(  # R-672-2: solo termini di sistema
+    r"\b(read|write|recv|send|socket|i/o|select|poll)[ \t]+bloccant[ei]\b", re.I)
+# Fix bot #339 su 312cd86 (6 nov): «il testo viene letto ad alta voce» nella descrizione di
+# V-1 (BASSA) era letto come gravità → failure definitivo. «ad alta voce» / «a voce alta» è
+# un modo di dire, non una gravità: si toglie SOLO con «alta» minuscolo (un «ad ALTA voce»
+# maiuscolo resta visto, nel dubbio blocca), solo nella regola a parole.
+# R-687-1-M2: «a voce alta» vale solo a fine frase («… a voce alta priorità» resta gravità).
+_ALTA_VOCE = re.compile(r"\b(?i:ad?)[ \t]+alta[ \t]+(?i:voce)\b"
+                        r"|\b(?i:a)[ \t]+(?i:voce)[ \t]+alta(?=[ \t]*(?:[.,;:)!?]|$))", re.M)
+# Fix bot #342 su bf4a93b (6 nov, scelta dell'operatore via M1): un verdetto che CITA una
+# parola di gravità tra virgolette basse («alta», «R-xxx MEDIA …») ne parla, non la assegna.
+# Nelle sole regole a parole (maiuscole e a parole) una citazione «…» breve (al massimo 80
+# caratteri, una riga, chiusa) non conta; parentesi «(MEDIA)», campo strutturato e ogni
+# parola fuori dalle virgolette restano visti. Citazioni annidate: si tolgono dall'interno.
+# R-690-1-M2: niente \r dentro (un \r si legge come a capo). R-690-2-M2: una citazione che
+# APRE la riga («V-1 — il difetto è grave» intera tra virgolette) non è esentata.
+_CITAZIONE_BREVE = re.compile(r"«[^«»\r\n]{1,80}»")
+
+
+_FINE_RIGA = re.compile(r"(\r\n|\r|\n)")
+
+
+def _senza_citazioni_riga(riga: str) -> str:
+    # R-691-1/2/3-M2: per riga (\n e \r), esente solo dopo la prima LETTERA della riga
+    # (le cifre di «1. » sono un marcatore d'elenco), in tempo lineare.
+    prima = re.search(r"[^\W\d_]", riga)
+    if prima is None:
+        return riga
+    soglia = prima.start()
+    for _ in range(5):  # annidamenti realistici: «… «a voce alta» …»
+        nuova = _CITAZIONE_BREVE.sub(
+            lambda m: "«…»" if m.start() > soglia else m.group(0), riga)
+        if nuova == riga:
+            break
+        riga = nuova
+    return riga
+
+
+def _senza_citazioni_brevi(testo: str) -> str:
+    pezzi = _FINE_RIGA.split(testo)
+    return "".join(p if i % 2 else _senza_citazioni_riga(p) for i, p in enumerate(pezzi))
+
+
 _APRE_GRAVE = re.compile(r"\s*(" + _GRAVI + r")\b", re.I)
 # Bot #240: «V-1 (BASSA) — … non la considero più grave» bloccava come MEDIA. Una gravità
 # a parole MINUSCOLA negata da «non» poco prima (al massimo 3 parole in mezzo) non conta
@@ -192,12 +252,16 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     finding = sezione[:coda.start()] if coda else sezione
     # HIGH, CRITICAL, BLOCKER... contano come MEDIA (bloccanti) anche se fuori vocabolario.
     trovate: set[str] = {p if p in GRAVITA_BLOCCANTI else "MEDIA"
-                         for p in _PAROLA_BLOCCANTE.findall(finding)}
+                         for p in _PAROLA_BLOCCANTE.findall(_senza_citazioni_brevi(finding))}
     # R-442-1: «non è la più grave» nega il primato, non la gravità: non si toglie
     pulita = _GRAVITA_NEGATA.sub(
         lambda m: m.group(0) if re.search(r"\b(?:la|lo|le|li)\s+più\b", m.group(0)) else "",
         sezione)
-    if _FINDING_GRAVE_A_PAROLE.search(pulita):
+    # Fix bot #336 (5 nov): «Microfono.blocchi fa una read bloccante» era letto come
+    # MEDIA. «bloccante» detto di una primitiva di sistema (read, write, socket, I/O…) è il
+    # termine tecnico, non una gravità; ogni altro uso a parole resta bloccante.
+    if _FINDING_GRAVE_A_PAROLE.search(_ALTA_VOCE.sub("voce", _BLOCCANTE_TECNICO.sub(
+            r"\1", _senza_citazioni_brevi(pulita)))):
         trovate.add("MEDIA")
     # R-159-3: tra parentesi conta la gravità che APRE la parentesi ("(alta)", "(MEDIA-BASSA)"),
     # non una parola qualsiasi ("(test saltati)", "(in media 3 ms)", "(parte multimediale)").
@@ -387,6 +451,8 @@ def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: 
     testo = _senza_invisibili(testo)
     righe = []
     for riga in _RIGA_TITOLO.findall(testo):
+        if _CITAZIONE_VERIFICA_PASSATA.match(riga):
+            continue  # fix bot #329: citazione di una verifica passata per SHA
         m = _TITOLO_CANONICO.fullmatch(riga.strip().strip("*_>`# ").strip())
         if not m:
             return "COMMENT", "riga del verdetto fuori dal formato del protocollo: verdetto ambiguo"
@@ -494,6 +560,35 @@ def _conclusioni_precedenti(repo: str, sha: str, slug: str) -> list[str] | None:
     return [r for r in grezzo.split("\n") if r]
 
 
+# Fix #335 (5 nov): GitHub scarta un output di job che contiene il valore di un secret
+# («Skip output 'verdetto' since it may contain secret») e il verdetto arrivava vuoto
+# (RIPROVA a ogni rilancio) se una parola del testo coincideva con un secret. Il job
+# «verifica» passa il verdetto compresso (gzip) e in base64: il valore in chiaro non
+# compare nell'output. Tetto alla decompressione: un verdetto vero è di pochi KB.
+VERDETTO_MAX_BYTE = 1_000_000
+
+
+def leggi_verdetto(compresso: str, in_chiaro: str = "") -> dict | None:
+    """Il verdetto strutturato dal campo compresso (base64 di gzip), oppure in chiaro se il
+    compresso manca. Illeggibile, troppo grande o non JSON → None (RIPROVA, mai un sì)."""
+    grezzo = in_chiaro
+    if compresso.strip():
+        try:
+            dati = base64.b64decode(compresso.strip(), validate=True)
+            d = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
+            testo = d.decompress(dati, VERDETTO_MAX_BYTE + 1)
+            if len(testo) > VERDETTO_MAX_BYTE or d.unconsumed_tail or not d.eof:
+                return None
+            grezzo = testo.decode("utf-8")
+        except (ValueError, zlib.error, UnicodeDecodeError):
+            return None
+    try:
+        verdetto = json.loads(grezzo) if grezzo.strip() else None
+    except (json.JSONDecodeError, RecursionError):
+        return None
+    return verdetto if isinstance(verdetto, dict) else None
+
+
 def cmd_esito() -> int:
     repo, pr = os.environ["REPO"], os.environ["PR"]
     head_analizzata = os.environ.get("HEAD_ANALIZZATA", "")
@@ -501,11 +596,8 @@ def cmd_esito() -> int:
     # R-163-1: solo "true"/"false" esatti; tutto il resto = non verificabile (RIPROVA).
     macchina_bot = {"true": True, "false": False}.get(os.environ.get("MACCHINA_BOT", ""))
     elenco = os.environ.get("ELENCO_FILE", "")
-    grezzo = os.environ.get("VERDETTO_JSON", "")
-    try:
-        verdetto = json.loads(grezzo) if grezzo.strip() else None
-    except json.JSONDecodeError:
-        verdetto = None
+    verdetto = leggi_verdetto(os.environ.get("VERDETTO_GZ", ""),
+                              os.environ.get("VERDETTO_JSON", ""))
     try:
         head_attuale = _gh("api", f"repos/{repo}/pulls/{pr}", "--jq", ".head.sha").strip()
     except subprocess.CalledProcessError:

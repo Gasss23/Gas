@@ -87,7 +87,7 @@ def test_v6_il_forte_riceve_la_conversazione_a_voce(ambiente):
     os.environ.update({"GAS_CLAUDE_CLI": "1", "GAS_VOCE_FORTE": "1", "GROQ_API_KEY": "k"})
     kernel = gas.GasKernel(root_dir=ambiente)
     srv, port = _server(kernel)
-    finto = lambda timeout=None: ClaudeCliClient(timeout=timeout, binario="claude", runner=_run)  # noqa: E731
+    finto = lambda timeout=None, **kw: ClaudeCliClient(timeout=timeout, binario="claude", runner=_run, **kw)  # noqa: E731
     try:
         with patch.object(gas, "ClaudeCliClient", finto), \
              patch("modules.voice.server.transcribe_audio",

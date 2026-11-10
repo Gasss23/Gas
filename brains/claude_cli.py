@@ -39,6 +39,7 @@ rung entra nella cascata senza toccare il ciclo agentico. Invarianti:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import secrets
@@ -268,6 +269,22 @@ def _con_costo(err: RuntimeError, costo: float) -> RuntimeError:
     return err
 
 
+# R-689-1-M2 (ve #343 V-1): solo il messaggio della CLI che non conosce l'opzione
+# («error: unknown option '--effort'», «Unrecognized argument: --effort»), non un errore
+# qualsiasi che citi --effort con «invalid»: un falso positivo spegnerebbe l'effort per tutto
+# il processo del server voce.
+_RIFIUTO_EFFORT = re.compile(
+    # R-693-1-M2: `\s*(?:[:=]\s*)?` (non `\s*[:=]?\s*`, quadratico); R-693-2-M2: `(?![\w-])`
+    r"\b(?:unknown|unrecognized)\s+(?:option|argument)s?\s*(?:[:=]\s*)?['\"`]?--effort(?![\w-])",
+    re.I)
+
+
+def _effort_rifiutato(proc: subprocess.CompletedProcess) -> bool:
+    """La CLI ha rifiutato l'opzione `--effort` (versione che non la conosce): uscita non
+    zero e l'opzione citata come sconosciuta nell'errore della CLI (stderr)."""
+    return proc.returncode != 0 and bool(_RIFIUTO_EFFORT.search(proc.stderr or ""))
+
+
 def _esegui(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
             timeout: float) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, input=stdin, capture_output=True, text=True,
@@ -287,9 +304,15 @@ class _Completions:
 class ClaudeCliClient:
     """Client con la forma minima di `openai.OpenAI` che usa run_turn."""
 
+    # Voce rapida (fetta 2): una CLI che non conosce `--effort` (versione vecchia sul Mac) non
+    # deve spegnere la voce: al primo rifiuto dell'opzione si riprova senza e non la si passa più.
+    _effort_non_supportato: bool = False
+
     def __init__(self, timeout: float = 300, binario: Optional[str] = None,
-                 runner: Optional[Callable[..., subprocess.CompletedProcess]] = None) -> None:
+                 runner: Optional[Callable[..., subprocess.CompletedProcess]] = None,
+                 effort: Optional[str] = None) -> None:
         self.timeout = timeout
+        self.effort = effort
         self.binario = binario or os.environ.get("GAS_CLAUDE_BIN") or shutil.which("claude") or "claude"
         self._runner = runner or _esegui
         self.chat = SimpleNamespace(completions=_Completions(self))
@@ -302,7 +325,9 @@ class ClaudeCliClient:
                 "--json-schema", json.dumps(SCHEMA_RISPOSTA),
                 "--tools", "", "--setting-sources", "", "--no-session-persistence",
                 "--strict-mcp-config", "--disable-slash-commands",
-                "--model", model, "--system-prompt-file", file_sistema]
+                "--model", model, "--system-prompt-file", file_sistema] + (
+                    ["--effort", self.effort]
+                    if self.effort and not ClaudeCliClient._effort_non_supportato else [])
 
     def _chiedi(self, model: str, messages: List[Dict[str, Any]],
                 tools: Optional[List[Dict[str, Any]]]) -> SimpleNamespace:
@@ -320,8 +345,14 @@ class ClaudeCliClient:
             # interno di Claude Code, la cache e l'uscita già fatta (V-2 bot #258).
             stima_minima = _costo_equivalente({}, (len(sistema) + len(stdin)) // 4, 0, model)
             try:
-                proc = self._runner(self.comando(model, file_sistema), stdin,
-                                    vuota, _ambiente_pulito(), self.timeout)
+                cmd = self.comando(model, file_sistema)
+                proc = self._runner(cmd, stdin, vuota, _ambiente_pulito(), self.timeout)
+                if "--effort" in cmd and _effort_rifiutato(proc):
+                    ClaudeCliClient._effort_non_supportato = True
+                    logging.warning("claude-cli: --effort non supportato da questa versione: "
+                                    "riprovo senza (aggiorna Claude Code per la voce rapida)")
+                    proc = self._runner(self.comando(model, file_sistema), stdin,
+                                        vuota, _ambiente_pulito(), self.timeout)
             except FileNotFoundError as e:
                 raise RuntimeError("claude-cli: comando `claude` non trovato (metti il percorso "
                                    "completo in GAS_CLAUDE_BIN nel .env)") from e

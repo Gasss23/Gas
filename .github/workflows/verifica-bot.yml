@@ -93,7 +93,12 @@ jobs:
       actions: read
       checks: read
     outputs:
-      verdetto: ${{ steps.raccogli.outputs.verdetto }}
+      # Fix #335: il verdetto passa compresso (gzip + base64): un output con il valore di
+      # un secret in chiaro GitHub lo scarta, e una parola comune del testo bastava.
+      # Rischio dichiarato (R-671-3-M2): così si aggira anche quella rete di GitHub; un
+      # secret vero finito nel testo resta fermato solo da _SEGRETO di bot_esito.py
+      # (sk-ant-, gh*_, github_pat_, -----BEGIN: le forme dei secret di questo job).
+      verdetto_gz: ${{ steps.raccogli.outputs.verdetto_gz }}
       modello: ${{ steps.raccogli.outputs.modello }}
       falliti: ${{ steps.raccogli.outputs.falliti }}
     env:
@@ -261,13 +266,14 @@ jobs:
           elif [ -n "$S3" ]; then modello=claude-fable-5-1; falliti="claude-opus-5-5, claude-opus-4-8"; verdetto="$S3"
           else falliti="claude-opus-5-5, claude-opus-4-8, claude-fable-5-1"
           fi
-          delim="EOF_$(openssl rand -hex 16)"
+          verdetto_gz=""
+          if [ -n "$verdetto" ]; then
+            verdetto_gz=$(printf '%s' "$verdetto" | gzip -9n | base64 -w0)
+          fi
           {
             echo "modello=$modello"
             echo "falliti=$falliti"
-            echo "verdetto<<$delim"
-            printf '%s\n' "$verdetto"
-            echo "$delim"
+            echo "verdetto_gz=$verdetto_gz"
           } >> "$GITHUB_OUTPUT"
 
       # Seconda prova reale (PR #142, 2026-10-07): con bwrap a posto tutti e tre i modelli
@@ -330,7 +336,7 @@ jobs:
           SOLO_REPORTS: ${{ needs.smista.outputs.solo_reports }}
           MACCHINA_BOT: ${{ needs.smista.outputs.macchina_bot }}
           ELENCO_FILE: ${{ needs.smista.outputs.elenco }}
-          VERDETTO_JSON: ${{ needs.verifica.outputs.verdetto }}
+          VERDETTO_GZ: ${{ needs.verifica.outputs.verdetto_gz }}
           MODELLO: ${{ needs.verifica.outputs.modello }}
           MODELLI_FALLITI: ${{ needs.verifica.outputs.falliti }}
           APP_SLUG: ${{ steps.app.outputs.app-slug }}

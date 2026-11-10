@@ -1299,3 +1299,302 @@ class TestWorkflow:
         # R-580-1: gli invisibili citati si scrivono come <U+XXXX>, mai col carattere vero.
         assert "SEMPRE come" in prompt and "<U+XXXX>" in prompt and "mai il carattere vero" in prompt
         assert "in qualunque campo" in prompt and "a capo e tab restano normali" in prompt  # V-1/V-2 bot #309
+
+
+# ---------------------------------------------------------------------------
+# Fetta bot M2 (5 nov): due verdetti VERI letti male e il verdetto mascherato dai secret
+# ---------------------------------------------------------------------------
+
+DATI = Path(__file__).parent / "dati_verifica_bot"
+
+
+class TestVerdettiVeri:
+    def test_336_read_bloccante_non_e_media(self):
+        """Bot #336 su e619103 (5 nov): «Microfono.blocchi fa una read bloccante» nella
+        descrizione di V-2 (BASSA) era letto come MEDIA → failure definitivo."""
+        testo = (DATI / "verdetto_336_e619103.txt").read_text(encoding="utf-8")
+        v = _verdetto("APPROVATO CON RISERVE",
+                      [_f("V-1", "BASSA"), _f("V-2", "BASSA"), _f("V-3", "COSMETICA")], testo)
+        assert be.decidi(v, SHA, SHA) == ("APPROVE",
+                                          "verdetto APPROVATO CON RISERVE senza finding ALTA/MEDIA")
+
+    def test_339_ad_alta_voce_non_e_una_gravita(self):
+        """Bot #339 su 312cd86 (6 nov): «il testo viene letto ad alta voce» nella descrizione
+        di V-1 (BASSA) era letto come gravità → failure definitivo su un verdetto con sole
+        BASSE/COSMETICHE."""
+        testo = (DATI / "verdetto_339_312cd86.txt").read_text(encoding="utf-8")
+        assert "letto ad alta voce" in testo
+        v = _verdetto("APPROVATO CON RISERVE",
+                      [_f("V-1", "BASSA"), _f("V-2", "BASSA"), _f("V-3", "COSMETICA")], testo)
+        assert be.decidi(v, SHA, SHA) == ("APPROVE",
+                                          "verdetto APPROVATO CON RISERVE senza finding ALTA/MEDIA")
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 (BASSA) — letto ad ALTA voce",  # maiuscolo: nel dubbio blocca
+        "V-1 (BASSA) — letto ad alta voce, ma il difetto è grave",
+        "V-1 (BASSA) — a voce alta; gravità alta",
+        "V-1 (BASSA) — ad alta\nvoce",  # a capo: non è il modo di dire su una riga
+        "V-1 (BASSA) — alta voce",  # senza «ad»: resta gravità
+        "V-1 (BASSA) — comando a voce alta priorità",  # R-687-1-M2
+        "V-1 (BASSA) — comando a voce alta» priorità",  # V-1 bot #342: virgolette non chiudono
+    ])
+    def test_alta_voce_non_nasconde_una_gravita(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
+                 + "\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT", riga
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 (BASSA) — il testo viene letto ad alta voce",
+        "V-1 (BASSA) — Gas lo dice a voce alta",
+        "V-1 (BASSA) — Gas lo dice a voce alta, poi tace",
+        "V-1 (BASSA) — letto Ad alta Voce dal client",
+    ])
+    def test_alta_voce_modo_di_dire(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
+                 + "\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE", riga
+
+    def test_342_parole_citate_tra_virgolette_non_sono_gravita(self):
+        """Bot #342 su bf4a93b (6 nov): il verdetto cita «alta» e «R-xxx MEDIA …» tra
+        virgolette basse parlando del parser: solo V-1 BASSA e V-2 COSMETICA."""
+        testo = (DATI / "verdetto_342_bf4a93b.txt").read_text(encoding="utf-8")
+        assert "toglie «alta»" in testo and "(«R-xxx MEDIA …»)" in testo
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA"), _f("V-2", "COSMETICA")], testo)
+        assert be.decidi(v, SHA, SHA) == ("APPROVE",
+                                          "verdetto APPROVATO CON RISERVE senza finding ALTA/MEDIA")
+
+    @pytest.mark.parametrize("riga", [
+        # una gravità vera FUORI dalle virgolette blocca sempre
+        "V-1 (BASSA) — «x» ma il difetto è grave",
+        "V-1 (BASSA) — il difetto è ALTA «priorità»",
+        "V-1 (BASSA) — «alta» e anche importante",
+        "V-1 — MEDIA — «citazione»",
+        # parentesi: invariate anche dentro le virgolette
+        "V-1 (BASSA) — vedi «V-2 (MEDIA)»",
+        # virgolette non chiuse, su più righe o troppo lunghe: non sono citazioni
+        "V-1 (BASSA) — «MEDIA senza chiusura",
+        "V-1 (BASSA) — «MEDIA\n» su due righe",
+        "V-1 (BASSA) — «" + "x " * 40 + "il difetto è grave»",
+        # virgolette alte o dritte: non esentate
+        "V-1 (BASSA) — \"MEDIA\" tra virgolette dritte",
+        "V-1 (BASSA) — “grave” tra virgolette alte",
+        # review #690-M2: \r dentro, citazione che apre la riga, gravità fuori accanto
+        "V-1 (BASSA) — «x\rV-2 — grave»",
+        "«V-1 — il difetto è grave»",
+        "- «V-1 — ALTA — rompe tutto»",
+        "V-1 (BASSA) — «alta» ma MEDIA",
+        # review #691-M2: \r come fine riga, elenco numerato
+        "V-1 (BASSA) — x\r«V-2 — il difetto è grave»",
+        "1. «V-1 — ALTA — rompe tutto»",  # (la regola a parole già non vede «1. V-…»)
+    ])
+    def test_citazione_non_nasconde_una_gravita(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
+                 + "\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT", riga
+
+    def test_media_strutturata_non_sfugge_per_una_citazione(self):
+        """Condizione dell'operatore: il campo strutturato resta la fonte forte; una MEDIA
+        vera di un finding blocca anche se il testo la mette tra virgolette."""
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 "V-1 («MEDIA») — il parser legge «alta»\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "MEDIA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
+    def test_residuo_accettato_giudizio_citato(self):
+        """Residuo dichiarato (review #690-M2, scelta dell'operatore): una gravità scritta
+        SOLO tra virgolette a metà riga non conta nel testo; blocca il campo strutturato."""
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 "V-1 (BASSA) — giudizio: «grave»\nRACCOMANDAZIONE: ok\n")
+        assert be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo),
+                         SHA, SHA)[0] == "APPROVE"
+        assert be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "MEDIA")], testo),
+                         SHA, SHA)[0] == "COMMENT"
+        # R-691-4-M2: stessa classe, una seconda citazione a metà riga
+        testo2 = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                  "V-1 (BASSA) — «x» «il difetto è grave»\nRACCOMANDAZIONE: ok\n")
+        assert be.decidi(_verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo2),
+                         SHA, SHA)[0] == "APPROVE"
+
+    def test_citazioni_tempo_lineare(self):
+        """R-691-3-M2: molte citazioni su una riga lunga non costano un tempo quadratico."""
+        import time
+        riga = "V-1 (BASSA) — " + "«x» " * 100_000
+        t0 = time.monotonic()
+        be._senza_citazioni_brevi(riga)
+        assert time.monotonic() - t0 < 5
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 (BASSA) — il filtro toglie «alta» dal testo",
+        "V-2 (BASSA) — la nota («R-xxx MEDIA …») fa bloccare il bot",
+        "V-1 (BASSA) — in «V-1 — «a voce alta» priorità» il filtro sbaglia",
+        "V-1 (BASSA) — la parola «BLOCCANTE» nel commento",
+    ])
+    def test_citazione_breve_di_una_parola(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n" + riga
+                 + "\nRACCOMANDAZIONE: ok\n")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA"), _f("V-2", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE", riga
+
+    def test_329_verifica_esterna_citata_non_e_un_titolo(self):
+        """Bot #329 su 7957a15 (3 nov): «- Verifica esterna su 3b92254: V-1, …» fra le
+        riserve registrate era preso per una riga di verdetto fuori formato → «ambiguo».
+        Nello stesso testo «R-615-4 (MEDIA, preesistente)» non deve bloccare (R-161-1)."""
+        testo = (DATI / "verdetto_329_7957a15.txt").read_text(encoding="utf-8")
+        assert "- Verifica esterna su 3b92254" in testo and "R-615-4 (MEDIA, preesistente)" in testo
+        v = _verdetto("APPROVATO CON RISERVE",
+                      [_f("V-1", "BASSA"), _f("V-2", "COSMETICA"), _f("V-3", "COSMETICA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("riga", [
+        "V-2 (BASSA) — bloccante: rompe il merge",
+        "V-2 (BASSA) — la read bloccante è un difetto grave",
+        "V-2 (BASSA) — problema bloccante del parser",
+        "V-2 — bloccanti due test",
+        # review #671-M2 (R-671-2): omografi e a capo
+        "V-2 (BASSA) — lo giudico io bloccante",
+        "V-2 (BASSA) — difetto di processo bloccante per il merge",
+        "V-2 (BASSA) — operazione bloccante: va corretto prima del merge",
+        "V-2 (BASSA) — la funzione bloccante del rilascio",
+        # review #672-M2 (R-672-2)
+        "V-2 (BASSA): una chiamata bloccante per il merge",
+        "V-2 (BASSA) — attesa bloccante prima del merge",
+        "V-2 (BASSA) — Join bloccante del merge",
+        "V-2 (BASSA) — la lettura bloccante del verdetto: problema serio",
+        "V-2 (BASSA) — lock bloccante", "V-2 (BASSA) — sleep bloccante",
+    ])
+    def test_bloccante_come_gravita_resta_bloccante(self, riga):
+        """Solo «bloccante» detto di una chiamata o di un'attesa è tecnico: ogni altro uso
+        a parole resta un NO (nel dubbio blocca)."""
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n{riga}\nNON VERIFICATO: -"
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-2", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
+    def test_bloccante_su_due_righe_resta_bloccante(self):
+        """R-671-2: «read» a fine riga e «bloccante» a capo non è la forma tecnica."""
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 "V-2 (BASSA) — manca la read\nV-3 (BASSA) bloccante per il merge\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-2", "BASSA"), _f("V-3", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
+    @pytest.mark.parametrize("tecnico", ["una read bloccante", "una write bloccante",
+                                         "una recv bloccante", "socket bloccanti", "I/O bloccante"])
+    def test_bloccante_tecnico_non_blocca(self, tecnico):
+        testo = (f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 f"V-2 (BASSA) — il client fa {tecnico} mentre aspetta.\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-2", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("riga", [
+        "VERIFICA ESTERNA NEGATA",
+        "Verifica esterna: NO",
+        "verifica esterna bocciata",
+        "Verifica esterna #1 - non approvato",
+        "**VERIFICA ESTERNA** — APPROVATO (ma io lo boccerei)",
+        # review #671-M2 (R-671-1): titoli di NO in forme che un modello scrive davvero
+        "**Verifica esterna**: BOCCIATO",
+        "verifica esterna (seconda lettura) — BOCCIATO",
+        "Verifica esterna, esito: BOCCIATO",
+        "Verifica esterna boccia la PR",
+        "Verifica esterna su 3b92254: BOCCIATO",
+        "- Verifica esterna su 3b92254 respinta",
+        "Verifica esterna precedente: vedi PR #3",
+        "- verifica esterna del 3 nov, riserve registrate",
+        # review #672-M2 (R-672-1): esiti fuori da ogni lista nera
+        "Verifica esterna su 3b92254: FALLITA", "- Verifica esterna su 3b92254: KO",
+        "Verifica esterna su 3b92254 respinge la PR", "Verifica esterna su 3b92254: la nega",
+        "Verifica esterna su 3b92254: rigettata", "Verifica esterna su 3b92254: non passa",
+        "- Verifica esterna su aaaaaaa: bloccata, da rifare", "Verifica esterna su 3b92254: si",
+        "Verifica esterna su 3b92254: \u274c", "Verifica esterna precedente su 3b92254: superata male",
+        "Verifica esterna su 3b92254: FAILED", "Verifica esterna su 3b92254: rejected",
+        "- Verifica esterna su accadde: niente", "Verifica esterna su 3b92254: V-1 (ALTA)",
+        "Verifica esterna su 3b92254: V-1 e rejected",
+        # review #673-M2 (R-673-1): un'emoji di esito davanti resta un titolo
+        "\u274c Verifica esterna su 3b92254: V-1", "\U0001f6ab Verifica esterna su 3b92254: V-1, V-2",
+    ])
+    def test_titoli_fuori_formato_restano_ambigui(self, riga):
+        """Il fix #329 non deve far passare titoli veri fuori formato o negati."""
+        testo = (f"VERIFICA ESTERNA #1 — APPROVATO\n{riga}\nMetodo: x\nFINDING:\nnessuno\n"
+                 "NON VERIFICATO: -")
+        assert be.decidi(_verdetto("APPROVATO", [], testo), SHA, SHA)[0] == "COMMENT"
+
+    @pytest.mark.parametrize("prosa", ["- Verifica esterna su 3b92254: V-1 (BASSA)",
+                                       "Verifica esterna precedente su 3b92254: V-6 e V-7",
+                                       "- verifica esterna su e6191039469b: V-2 (COSMETICA)."])
+    def test_citazioni_di_verifiche_passate_non_sono_titoli(self, prosa):
+        testo = (f"VERIFICA ESTERNA #1 — APPROVATO\nMetodo: x\n{prosa}\nFINDING:\nnessuno\n"
+                 "NON VERIFICATO: -")
+        assert be.decidi(_verdetto("APPROVATO", [], testo), SHA, SHA)[0] == "APPROVE"
+
+
+def _comprimi(testo: str) -> str:
+    import base64
+    import gzip
+    return base64.b64encode(gzip.compress(testo.encode("utf-8"))).decode()
+
+
+class TestVerdettoCompresso:
+    def test_andata_e_ritorno(self):
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")])
+        assert be.leggi_verdetto(_comprimi(json.dumps(v))) == v
+        # senza il compresso vale il campo in chiaro (compatibilità)
+        assert be.leggi_verdetto("", json.dumps(v)) == v
+        assert be.leggi_verdetto("", "") is None
+
+    @pytest.mark.parametrize("rotto", ["%%%", "QUJD!!", "aGVsbG8=", _comprimi("{non json"),
+                                       _comprimi("[1, 2]"), _comprimi('"stringa"')])
+    def test_illeggibile_e_none(self, rotto):
+        """Base64 rotto, non gzip, JSON rotto o non oggetto → None (RIPROVA, mai un sì)."""
+        assert be.leggi_verdetto(rotto) is None
+
+    def test_compresso_rotto_non_ripiega_sul_chiaro(self):
+        assert be.leggi_verdetto("%%%", json.dumps(_verdetto())) is None
+
+    def test_troppo_grande_e_none(self):
+        enorme = _comprimi(json.dumps({"testo": "a" * (be.VERDETTO_MAX_BYTE + 10)}))
+        assert be.leggi_verdetto(enorme) is None
+
+    def test_troncato_e_none(self):
+        assert be.leggi_verdetto(_comprimi(json.dumps(_verdetto()))[:-8]) is None
+
+
+class TestWorkflowVerdettoCompresso:
+    def test_il_verdetto_passa_compresso_fra_i_job(self, wf):
+        """Fix #335: niente verdetto in chiaro negli output del job (GitHub lo scarta se
+        contiene il valore di un secret); il job esito legge VERDETTO_GZ."""
+        out = wf["jobs"]["verifica"]["outputs"]
+        assert "verdetto" not in out
+        assert out["verdetto_gz"] == "${{ steps.raccogli.outputs.verdetto_gz }}"
+        env = wf["jobs"]["esito"]["steps"][-1]["env"]
+        assert env["VERDETTO_GZ"] == "${{ needs.verifica.outputs.verdetto_gz }}"
+        assert "VERDETTO_JSON" not in env
+
+    def test_lo_script_del_job_produce_un_verdetto_leggibile(self, wf, tmp_path):
+        """Il passo «Raccogli il verdetto» eseguito davvero (bash): l'output verdetto_gz,
+        riletto da leggi_verdetto, è il verdetto del primo modello che ha risposto; una
+        parola qualunque (anche «token») non compare in chiaro nell'output."""
+        passo = next(p for p in wf["jobs"]["verifica"]["steps"] if p.get("id") == "raccogli")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")],
+                      "VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nil token prima della spesa\n"
+                      "FINDING:\nV-1 (BASSA) — x\nNON VERIFICATO: -")
+        uscita = tmp_path / "out"
+        for s1, s2, atteso in ((json.dumps(v), "", "claude-opus-5-5"),
+                               ("", json.dumps(v), "claude-opus-4-8"), ("", "", "")):
+            uscita.write_text("")
+            env = {**os.environ, "S1": s1, "S2": s2, "S3": "", "GITHUB_OUTPUT": str(uscita)}
+            subprocess.run(["bash", "-euo", "pipefail", "-c", passo["run"]], env=env, check=True)
+            righe = dict(r.split("=", 1) for r in uscita.read_text().splitlines())
+            assert righe["modello"] == atteso
+            assert "token" not in uscita.read_text()
+            assert be.leggi_verdetto(righe["verdetto_gz"]) == (v if atteso else None)
+
+
+def test_citazione_verifica_passata_non_quadratica():
+    """R-673-2-M2: coda malevola (tanti id, tanti spazi, una lettera) risolta in fretta."""
+    import time
+    riga = "verifica esterna su 3b92254: " + "V-1 " * 30000 + " " * 90000 + "X"
+    t = time.monotonic()
+    assert be._CITAZIONE_VERIFICA_PASSATA.match(riga) is None
+    assert time.monotonic() - t < 2

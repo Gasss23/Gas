@@ -1,9 +1,8 @@
-# Diff della sessione — 2026-11-03 — Voce V10, «audio+pezzi» (chat M2)
+# Diff della sessione — 2026-11-10 — chat M4 (R1, prova del giro notturno)
 
-- `modules/voice/server.py` — formato `audio+pezzi` (`_FORMATO_PEZZI_VOCE`), `frasi_voce()` (tutta la risposta in frasi, tetto 1500 caratteri, avviso fisso se si taglia), `_vuole_righe_senza_schermo()`; risposta finale e risposte fisse instradate sulle righe NDJSON.
-- `tests/test_unit_voice_server.py` — test V10 (frasi, formato con istruzione voce, «non ho capito» a righe); l'helper `_voce_a_pezzi` registra i turni e accetta una trascrizione qualsiasi.
-- `.claude/agents/memoria_revisore.md` — review #660–#662-M2.
-- Merge di origin/main (#327, V9): nessun file in più rispetto a main oltre a quelli qui elencati.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task.
+File toccati (`git diff --stat` rispetto al punto di fork da main):
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+- `reports/prova_r1_notte.md` — nuovo: procedura di una notte per provare R1 sul Mac (timer alle 03:00, firma notturna approvata al mattino, riflessione, archivio della conoscenza).
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+
+Nessun file del motore toccato. Questo file si riscrive a ogni sessione; la storia completa sta in git.

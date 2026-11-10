@@ -8,6 +8,9 @@ Configurazione (env):
   TELEGRAM_ALLOWED_IDS — obbligatorio: chat_id autorizzati, separati da virgola
                          (es. "123456789,987654321"). Senza questa lista nessun
                          messaggio viene elaborato (fail-closed by design).
+  GAS_TELEGRAM_VOCALI_ORA — vocali trascritti al massimo in un'ora (default 30)
+  GAS_TELEGRAM_VOCE    — 0/false/off/no: dopo un vocale la risposta resta solo in
+                         testo (default: anche a voce, con ELEVENLABS_API_KEY)
 
 Sicurezza:
   - Whitelist esplicita: messaggi da ID non in lista vengono silenziosamente
@@ -48,6 +51,23 @@ _CALLBACK_RE = re.compile(
     r"(ok|no):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})")
 # Quanta parte dell'output di un'azione approvata torna all'operatore (UTF-16).
 ESITO_OUTPUT_MAX: int = 1500
+# Voce via Telegram, fetta 1 (R8, opzione B dell'operatore, 7 nov 2026): un messaggio
+# vocale della chat autorizzata si trascrive (Groq Whisper, come la voce di casa) e va a
+# Gas come testo; la risposta è in testo, con la trascrizione in cima. Tetti PRIMA del
+# download: niente costi né audio a Groq per vocali troppo lunghi o grandi.
+VOCALE_MAX_S: int = 60
+VOCALE_MAX_BYTES: int = 2_000_000
+VOCALE_TIMEOUT_S: int = 30
+# V-1 ve #355: tempi più corti per sintesi e invio della voce (gira nel thread della voce,
+# _consegna_voce): una voce lenta non trattiene a lungo quelle dopo.
+VOCE_TIMEOUT_S: int = 15
+# R-711-3: tetto ai vocali trascritti in un'ora (come GAS_VOICE_MAX_TURNI_ORA della voce di
+# casa): oltre, niente download né Groq. GAS_TELEGRAM_VOCALI_ORA, default 30.
+VOCALI_ORA_PREDEFINITO: int = 30
+# Fetta 2 (decisione dell'operatore del 9 nov 2026): la risposta anche a voce, SOLO quando
+# l'operatore ha mandato un vocale. GAS_TELEGRAM_VOCE=0 la spegne (resta il testo).
+_SPENTO = ("0", "false", "off", "no")
+_vocali_recenti: List[float] = []
 
 
 # ─────────────────────────────────────────── infra HTTP ──
@@ -84,6 +104,97 @@ def _send_text(base_url: str, chat_id: int, text: str) -> None:
 def _send_typing(base_url: str, chat_id: int) -> None:
     """Mostra l'indicatore 'sta scrivendo…' in Telegram (nessun messaggio)."""
     _tg_post(base_url, "sendChatAction", {"chat_id": chat_id, "action": "typing"})
+
+
+def _scarica_vocale(base_url: str, file_id: str) -> Optional[bytes]:
+    """getFile + download del file del vocale, al massimo VOCALE_MAX_BYTES. None su
+    qualunque errore o file troppo grande (fail-safe §9). Il token sta nell'URL di
+    Telegram: non si scrive mai nel log."""
+    info = _tg_post(base_url, "getFile", {"file_id": file_id}, timeout=VOCALE_TIMEOUT_S)
+    risultato = (info or {}).get("result") if isinstance(info, dict) else None
+    percorso = (risultato or {}).get("file_path") if isinstance(risultato, dict) else None
+    if not isinstance(percorso, str) or not percorso or ".." in percorso:
+        log.warning("vocale: getFile senza percorso valido")
+        return None
+    dimensione = risultato.get("file_size")
+    if isinstance(dimensione, int) and dimensione > VOCALE_MAX_BYTES:
+        log.warning("vocale: file troppo grande (%d byte)", dimensione)
+        return None
+    url = base_url.replace("/bot", "/file/bot", 1) + "/" + percorso
+    try:
+        with urllib.request.urlopen(url, timeout=VOCALE_TIMEOUT_S) as r:
+            dati = r.read(VOCALE_MAX_BYTES + 1)
+    except Exception as e:
+        log.warning("vocale: download non riuscito (%s)", type(e).__name__)
+        return None
+    if len(dati) > VOCALE_MAX_BYTES:
+        log.warning("vocale: file oltre %d byte", VOCALE_MAX_BYTES)
+        return None
+    return dati or None
+
+
+def _vocali_ora() -> int:
+    try:
+        n = int(os.environ.get("GAS_TELEGRAM_VOCALI_ORA") or VOCALI_ORA_PREDEFINITO)
+    except ValueError:
+        log.warning("GAS_TELEGRAM_VOCALI_ORA non numerica: uso %d", VOCALI_ORA_PREDEFINITO)
+        return VOCALI_ORA_PREDEFINITO
+    return n if n > 0 else VOCALI_ORA_PREDEFINITO
+
+
+def _posto_per_un_vocale() -> bool:
+    """R-711-3: al massimo GAS_TELEGRAM_VOCALI_ORA vocali trascritti nell'ultima ora (il
+    bot gira in un solo thread). True = c'è posto, e il vocale si conta subito."""
+    adesso = time.monotonic()
+    _vocali_recenti[:] = [t for t in _vocali_recenti if adesso - t < 3600]
+    tetto = _vocali_ora()
+    if len(_vocali_recenti) >= tetto:
+        log.warning("vocale: tetto di %d vocali all'ora raggiunto", tetto)
+        return False
+    _vocali_recenti.append(adesso)
+    return True
+
+
+def testo_da_vocale(base_url: str, vocale: Any) -> Tuple[Optional[str], str]:
+    """(testo trascritto, "") oppure (None, messaggio da mandare all'operatore). Tetti
+    di durata e dimensione letti dal messaggio PRIMA del download. Mai eccezioni (§9)."""
+    try:
+        from modules.voice.stt import GroqSTTError, TrascrizioneIncerta, transcribe_audio
+    except Exception as e:  # V-1 bot #353: l'operatore lo sa invece di non ricevere nulla
+        log.warning("vocale: trascrizione non caricata (%s)", type(e).__name__)
+        return None, "✗ Errore interno: non posso trascrivere i vocali."
+    if not isinstance(vocale, dict) or not isinstance(vocale.get("file_id"), str):
+        return None, "✗ Vocale non leggibile."
+    durata = vocale.get("duration")
+    if not isinstance(durata, int) or isinstance(durata, bool):
+        return None, "✗ Vocale senza durata: non lo trascrivo."  # R-711-2
+    if durata > VOCALE_MAX_S:
+        return None, f"✗ Vocale troppo lungo: al massimo {VOCALE_MAX_S} secondi."
+    dimensione = vocale.get("file_size")
+    if isinstance(dimensione, int) and dimensione > VOCALE_MAX_BYTES:
+        return None, "✗ Vocale troppo grande."
+    chiave = os.environ.get("GROQ_API_KEY", "").strip()
+    if not chiave:
+        return None, "✗ Trascrizione non disponibile: manca GROQ_API_KEY."
+    if not _posto_per_un_vocale():
+        return None, "✗ Troppi vocali nell'ultima ora: riprova più tardi o scrivi."
+    audio = _scarica_vocale(base_url, vocale["file_id"])
+    if audio is None:
+        return None, "✗ Non riesco a scaricare il vocale da Telegram."
+    try:
+        testo = transcribe_audio(audio, "vocale.ogg", chiave)
+    except TrascrizioneIncerta as e:
+        log.info("vocale: trascrizione scartata (%s)", e.motivo)  # mai il parlato nel log
+        return None, "Non ho capito bene il vocale: puoi ripeterlo o scriverlo?"
+    except GroqSTTError as e:
+        log.warning("vocale: Groq ha risposto %s", e.status)
+        return None, "✗ Trascrizione non riuscita (Groq)."
+    except Exception as e:
+        log.warning("vocale: trascrizione non riuscita (%s)", type(e).__name__)
+        return None, "✗ Trascrizione non riuscita."
+    if not testo.strip():
+        return None, "Nel vocale non ho sentito parole."
+    return testo.strip(), ""
 
 
 def parse_allowed_ids(raw: str) -> Tuple[Set[int], List[str]]:
@@ -445,11 +556,17 @@ def run_bot(root_dir: Optional[str] = None) -> int:
                 _handle_update(base_url, upd, allowed, kernel)
 
         except KeyboardInterrupt:
+            _chiudi_voce()
             print("\n✓ gas telegram: interruzione ricevuta, uscita.")
             return 0
         except Exception as e:
             log.warning("Errore nel loop di polling: %s — riprendo tra 5s", e)
-            time.sleep(5)
+            try:
+                time.sleep(5)
+            except KeyboardInterrupt:  # R-725-2: anche qui la coda della voce si scarta
+                _chiudi_voce()
+                print("\n✓ gas telegram: interruzione ricevuta, uscita.")
+                return 0
 
 
 # ─────────────────────────────── giro notturno da Telegram (R1) ──
@@ -739,11 +856,23 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
 
         chat_id: Optional[int] = (msg.get("chat") or {}).get("id")
         text = (msg.get("text") or "").strip()
-        if not chat_id or not text:
+        # Voce via Telegram, fetta 1: solo i vocali nuovi (non quelli «modificati»).
+        vocale = msg.get("voice") if upd.get("message") else None
+        if not chat_id or not (text or vocale):
             return
 
         if chat_id not in allowed:
+            # prima di scaricare o trascrivere: nessun costo, nessun audio a Groq
             log.warning("Messaggio da chat_id %d non autorizzato — ignorato", chat_id)
+            return
+
+        if not text:
+            _send_typing(base_url, chat_id)
+            trascritto, errore = testo_da_vocale(base_url, vocale)
+            if trascritto is None:
+                _send_text(base_url, chat_id, errore)
+                return
+            _gestisci_parlato(base_url, chat_id, trascritto, kernel)
             return
 
         giro = comando_giro(text)
@@ -783,32 +912,183 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
             return
 
         _send_typing(base_url, chat_id)
-
-        parts: List[str] = []
-        try:
-            turno = (kernel.run_turn(text, cervello="forte") if cervello == "forte"
-                     else kernel.run_turn(text))
-            for event in turno:
-                etype = event.get("type")
-                if etype == "final":
-                    parts.append(event.get("content", ""))
-                elif etype == "tool_res":
-                    out = (event.get("output") or "").strip()
-                    if out:
-                        # Tool result compatti: massimo 200 char per non spammare
-                        short = out[:200].replace("\n", " ")
-                        parts.append(f"[…] {short}")
-                elif etype == "error":
-                    parts.append(f"✗ {event.get('content', 'errore sconosciuto')}")
-        except Exception as e:
-            log.warning("run_turn fallita per chat %d: %s", chat_id, e)
-            parts.append(f"✗ Errore interno: {str(e)[:120]}")
-
-        reply = "\n\n".join(p for p in parts if p) or "(nessuna risposta)"
-        _send_text(base_url, chat_id, reply)
+        _send_text(base_url, chat_id, _risposta_del_turno(kernel, chat_id, text, cervello))
 
     except Exception as e:
         log.warning("_handle_update fallita: %s", e)
+
+
+def _risposta_del_turno(kernel: Any, chat_id: int, text: str,
+                        cervello: Optional[str]) -> str:
+    """Un turno di Gas e la risposta in testo (fail-safe §9)."""
+    return _turno_con_finale(kernel, chat_id, text, cervello)[0]
+
+
+def _turno_con_finale(kernel: Any, chat_id: int, text: str,
+                      cervello: Optional[str], **extra: Any) -> Tuple[str, str]:
+    """(risposta in testo, sola risposta finale di Gas). La seconda è quella che si può
+    dire a voce: senza i risultati degli strumenti e vuota se il turno è andato in errore."""
+    parts: List[str] = []
+    finali: List[str] = []
+    errore = False
+    try:
+        kw: Dict[str, Any] = dict(extra)
+        if cervello == "forte":
+            kw["cervello"] = "forte"
+        turno = kernel.run_turn(text, **kw)
+        for event in turno:
+            etype = event.get("type")
+            if etype == "final":
+                parts.append(event.get("content", ""))
+                finali.append(event.get("content", "") or "")
+            elif etype == "tool_res":
+                out = (event.get("output") or "").strip()
+                if out:
+                    # Tool result compatti: massimo 200 char per non spammare
+                    short = out[:200].replace("\n", " ")
+                    parts.append(f"[…] {short}")
+            elif etype == "error":
+                parts.append(f"✗ {event.get('content', 'errore sconosciuto')}")
+                errore = True
+    except Exception as e:
+        log.warning("run_turn fallita per chat %d: %s", chat_id, e)
+        parts.append(f"✗ Errore interno: {str(e)[:120]}")
+        errore = True
+    testo = "\n\n".join(p for p in parts if p) or "(nessuna risposta)"
+    finale = "" if errore else "\n\n".join(f for f in finali if f.strip()).strip()
+    return testo, finale
+
+
+def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any) -> None:
+    """Il testo di un vocale va a Gas come il parlato della voce di casa: «forte …» detto
+    all'inizio vale «/forte» (stessa regola del server voce, cervello_voce); i comandi
+    (/clear, /notte) non valgono a voce. In cima alla risposta la trascrizione, così
+    l'operatore vede subito se Whisper ha sentito male. Le firme restano sui bottoni."""
+    eco = f"Ho capito: «{trascritto}»"
+    try:
+        from modules.voice.server import _USO_FORTE_PARLATO, cervello_voce
+    except Exception as e:  # R-711-4: §9, l'operatore lo sa invece di non ricevere nulla
+        log.warning("vocale: regole della voce non caricate (%s)", type(e).__name__)
+        _send_text(base_url, chat_id, f"{eco}\n\n✗ Errore interno: non posso gestire i vocali.")
+        return
+    cervello, richiesta = cervello_voce(trascritto, parlato=True)
+    if cervello == "uso":
+        _send_text(base_url, chat_id, f"{eco}\n\n{_USO_FORTE_PARLATO}")
+        return
+    voce = _voce_accesa()
+    extra: Dict[str, Any] = {}
+    if voce:
+        # V-1 bot #355: come la voce di casa (turno parlato con schermo): prima una o due
+        # frasi da dire, i dettagli dopo una riga vuota (restano solo nel testo).
+        try:
+            from modules.voice.server import istruzione_turno_voce
+            extra["istruzione_turno"] = istruzione_turno_voce(True)
+        except Exception as e:  # §9: senza istruzione il turno parte lo stesso
+            log.warning("vocale: istruzione del turno parlato non caricata (%s)",
+                        type(e).__name__)
+    risposta, finale = _turno_con_finale(kernel, chat_id, richiesta, cervello, **extra)
+    _send_text(base_url, chat_id, f"{eco}\n\n{risposta}")
+    if finale and voce:
+        _consegna_voce(base_url, chat_id, finale)
+
+
+# Opzione (b), scelta dall'operatore il 9 nov 2026 (R-717-4): sintesi e invio della voce in
+# UN thread dedicato, una consegna alla volta e in ordine, così il polling (messaggi nuovi e
+# bottoni delle firme) non resta fermo. Il thread fa SOLO _invia_risposta_vocale: mai update,
+# firme o turni (la guardia T78p lo controlla). Fail-safe §9: un errore finisce nel log.
+_voce_in_coda: Optional[ThreadPoolExecutor] = None
+
+
+def _consegna_voce(base_url: str, chat_id: int, finale: str) -> None:
+    global _voce_in_coda
+    try:
+        if _voce_in_coda is None:
+            _voce_in_coda = ThreadPoolExecutor(max_workers=1, thread_name_prefix="gas-voce-tg")
+        _voce_in_coda.submit(_invia_risposta_vocale, base_url, chat_id, finale)
+    except Exception as e:  # per esempio a spegnimento in corso: resta il testo
+        log.warning("vocale: coda della voce non disponibile (%s)", type(e).__name__)
+
+
+def _chiudi_voce() -> None:
+    """All'uscita (Ctrl-C): le voci in coda si scartano, quella in corso finisce; così l'uscita
+    non aspetta tutta la coda. La voce in corso può trattenere l'uscita fino a circa
+    2×VOCE_TIMEOUT_S per sintesi e invio, più i 70 s di _send_text se deve mandare un avviso
+    (V-4 ve #359). Un SIGTERM (systemd) non passa di qui: le voci in coda si perdono, resta il testo."""
+    global _voce_in_coda
+    coda, _voce_in_coda = _voce_in_coda, None
+    if coda is not None:
+        try:
+            coda.shutdown(wait=False, cancel_futures=True)
+        except Exception as e:  # §9
+            log.warning("vocale: chiusura della coda non riuscita (%s)", type(e).__name__)
+
+
+_MARKDOWN = re.compile(r"(\*\*|__|`+|^[ \t]*#{1,6}[ \t]+|^[ \t]*(?:[-*•]|\d+[.)])[ \t]+)",
+                       re.MULTILINE)
+_URL = re.compile(r"https?://\S+")
+
+
+def testo_da_dire(finale: str) -> str:
+    """V-1 bot #355: niente formattazione a voce. Toglie grassetti, codice, titoli e segni
+    degli elenchi e dice «link» al posto degli indirizzi web; poi parte_parlata della voce
+    di casa sceglie le frasi da dire (i dettagli dopo la riga vuota restano nel testo)."""
+    from modules.voice.server import parte_parlata
+    # V-3 ve #357 e R-723-1: ogni tipo di a capo («\r\n», «\r», \u2028, \f…) diventa «\n» e
+    # una riga di soli spazi (anche non separabili) diventa vuota: la riga vuota che separa il
+    # detto dai dettagli si riconosce sempre e i dettagli non vanno a ElevenLabs.
+    finale = "\n".join("" if not riga.strip() else riga for riga in finale.splitlines())
+    pulito = _URL.sub("link", _MARKDOWN.sub("", finale))
+    return parte_parlata(pulito)
+
+
+def _voce_accesa() -> bool:
+    return os.environ.get("GAS_TELEGRAM_VOCE", "").strip().lower() not in _SPENTO
+
+
+def _tg_post_file(base_url: str, method: str, campi: Dict[str, str], nome: str,
+                  nome_file: str, dati: bytes, mime: str,
+                  timeout: int = VOCALE_TIMEOUT_S) -> Optional[Dict[str, Any]]:
+    """POST multipart/form-data all'API Telegram (stdlib). Fail-safe §9: None su errore.
+    Mai l'URL nel log (contiene il token)."""
+    confine = "GasTg" + os.urandom(8).hex()
+    corpo = b""
+    for k, v in campi.items():
+        corpo += (f"--{confine}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n"
+                  f"{v}\r\n").encode("utf-8")
+    corpo += (f"--{confine}\r\nContent-Disposition: form-data; name=\"{nome}\"; "
+              f"filename=\"{nome_file}\"\r\nContent-Type: {mime}\r\n\r\n").encode("utf-8")
+    corpo += dati + f"\r\n--{confine}--\r\n".encode("utf-8")
+    req = urllib.request.Request(
+        f"{base_url}/{method}", data=corpo,
+        headers={"Content-Type": f"multipart/form-data; boundary={confine}"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.load(r)
+    except Exception as e:
+        log.warning("Telegram %s non riuscito (%s)", method, type(e).__name__)
+        return None
+
+
+def _invia_risposta_vocale(base_url: str, chat_id: int, finale: str) -> None:
+    """Fetta 2: la parte da dire della risposta (le prime frasi, come la voce di casa:
+    parte_parlata) sintetizzata con ElevenLabs e mandata come vocale (sendVoice accetta
+    l'MP3). Il testo è già arrivato: un errore qui dà solo un avviso breve, mai un crash."""
+    chiave = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+    if not chiave:
+        _send_text(base_url, chat_id, "✗ Risposta vocale non disponibile: manca ELEVENLABS_API_KEY.")
+        return
+    try:
+        from modules.voice.tts import DEFAULT_VOICE_ID, synthesize_speech
+        voce = (os.environ.get("ELEVENLABS_VOICE_ID") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
+        audio = synthesize_speech(testo_da_dire(finale), chiave, voce, timeout=VOCE_TIMEOUT_S)
+    except Exception as e:
+        log.warning("vocale: sintesi della risposta non riuscita (%s)", type(e).__name__)
+        _send_text(base_url, chat_id, "✗ Risposta vocale non riuscita: la risposta è nel testo sopra.")
+        return
+    esito = _tg_post_file(base_url, "sendVoice", {"chat_id": str(chat_id)}, "voice",
+                          "risposta.mp3", audio, "audio/mpeg", timeout=VOCE_TIMEOUT_S)
+    if not (isinstance(esito, dict) and esito.get("ok")):
+        _send_text(base_url, chat_id, "✗ Risposta vocale non inviata: la risposta è nel testo sopra.")
 
 
 # ─────────────────────────────────── firma via bottoni (C4b-2) ──

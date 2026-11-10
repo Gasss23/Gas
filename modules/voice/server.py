@@ -21,17 +21,30 @@ Endpoint: POST /voice
     503:   JSON {"error": "<msg>"}  — STT/TTS non disponibile (chiave assente)
     500:   JSON {"error": "<msg>"}  — errore pipeline o kernel
 
+Endpoint: GET /voce/conferma (V14, stesso Bearer)
+  200: audio/mpeg di «Sì, signore?» con la voce attuale (ELEVENLABS_VOICE_ID), in cache per
+       voce: un solo giro su ElevenLabs finché la voce non cambia. 503 senza chiave
+       ElevenLabs, 502 se ElevenLabs fallisce: il client suona il bip.
+
 Avvio: `python -m modules.voice.server` dalla cartella di Gas (carica il `.env` come la CLI).
 
 Configurazione tramite variabili d'ambiente (da .env o export):
-  GAS_VOICE_BIND      — bind address       (default: 127.0.0.1)
+  GAS_VOICE_BIND      — bind address       (default: 127.0.0.1); fuori da 127.0.0.1 il server
+                        parte SOLO con GAS_VOICE_RETE_PRIVATA=1 (tunnel privato dichiarato, R8)
+                        e mai su tutte le interfacce («::» o equivalente IPv4); fuori da 127.0.0.1
+                        solo un indirizzo IPv4 scritto per intero, mai un nome host né IPv6;
+                        «localhost» vale come locale (dipende da /etc/hosts del computer)
+  GAS_VOICE_MAX_FALLITI — tentativi con token sbagliato per IP in 10 minuti (default 10), poi
+                        429 per 15 minuti a quell'IP, anche col token giusto (R8)
+  GAS_VOICE_MAX_TESTO_ORA — richieste a TESTO al massimo nell'ultima ora (default 120), poi 429 (R8)
   GAS_VOICE_PORT      — porta TCP          (default: 8765)
   GAS_VOICE_TOKEN     — token bearer       OBBLIGATORIO: assente/vuoto → il server non parte
   GROQ_API_KEY        — chiave Groq        OBBLIGATORIO per STT audio; assente → 503
   ELEVENLABS_API_KEY  — chiave ElevenLabs  OBBLIGATORIO per output audio; assente → 503
   ELEVENLABS_VOICE_ID — voice id           (default: JBFqnCBsd6RMkjVDRZzb, George premade)
   GAS_VOICE_MAX_TURNI_ORA — richieste PARLATE al massimo nell'ultima ora (default 60), poi
-                        429; conta ogni chiamata alla trascrizione (Groq)
+                        429; conta ogni chiamata alla trascrizione (Groq) e, dalla V12, ogni
+                        richiesta a testo che chiede la risposta a voce (sintesi ElevenLabs)
   GAS_VOCE_FORTE      — 1/true/on/yes/si/sì: ogni richiesta della voce va al solo cervello
                         forte (default spento; forte fermo → errore dichiarato, mai i gratuiti)
   GAS_VOICE_STT_LOGPROB_MIN / GAS_VOICE_STT_NO_SPEECH_MAX — soglie della trascrizione
@@ -63,15 +76,18 @@ from __future__ import annotations
 
 import base64
 import hmac
+import ipaddress
+import http.client
 import json
 import logging
 import os
 import re
 import subprocess
 import time
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from modules.voice.stt import GroqSTTError, TrascrizioneIncerta, parse_audio_body, transcribe_audio
 from modules.voice.tts import DEFAULT_VOICE_ID as _TTS_DEFAULT_VOICE_ID
@@ -104,6 +120,63 @@ _USO_FORTE_PARLATO = ("Dopo «forte» dimmi cosa fare, per esempio: «Gas, forte
                       "di oggi». Non ho avviato nessun lavoro.")
 # V6: trascrizione incerta (stt.TrascrizioneIncerta) → si chiede di ripetere, nessun turno
 _NON_HO_CAPITO = "Non ho capito bene, puoi ripetere?"
+# V13 (prova sul Mac del 5 nov): «Hey Jarvis!» detto dentro la finestra d'ascolto arrivava
+# al cervello come richiesta. Una trascrizione fatta SOLO della parola di attivazione (con
+# un saluto e la punteggiatura) riceve una risposta fissa, senza turno.
+# V14: niente «ok/okay» fra i saluti (V-1 bot #334: «Ok Gas.» può essere la conferma a una
+# domanda di Gas e deve arrivare al cervello); la parola ripetuta («Hey Jarvis, Hey Jarvis»,
+# Whisper la raddoppia spesso) vale ancora come sola attivazione (R-668-2-M2).
+_ATTIVAZIONE_UNA = r"(?:(?:ehi|ehy|hey|ei|ciao)\W+)?(?:jarvis|gas|gus)"
+_SOLO_ATTIVAZIONE = re.compile(
+    rf"^[^\w]*{_ATTIVAZIONE_UNA}(?:\W+{_ATTIVAZIONE_UNA})*[^\w]*$", re.IGNORECASE)
+_RISPOSTA_ATTIVAZIONE = "Dimmi."
+# V15 (contratto dell'operatore via M1, 5 nov, lato client la chat Mani): una trascrizione
+# PARLATA fatta solo di «pausa», «standby» o «basta così» (anche con la parola di attivazione
+# davanti, stessa normalizzazione del filtro «Dimmi.») non va al cervello: risposta fissa
+# breve e intestazione «X-Gas-Comando: pausa»; il client chiude la conversazione e torna ad
+# aspettare «Hey Jarvis» (non è uno standby profondo).
+_SOLO_PAUSA = re.compile(
+    rf"^[^\w]*(?:{_ATTIVAZIONE_UNA}\W+)*(?:pausa|stand[\s-]*by|basta(?:\s+cos[iì])?)[^\w]*$",
+    re.IGNORECASE)
+RISPOSTA_PAUSA = "Va bene."
+COMANDO_PAUSA = "pausa"
+# V15: «X-Gas-Seguito: 1» = turno nella finestra di conversazione, SENZA parola di
+# attivazione (il client lo dice). Il cervello decide prima se il parlato è rivolto a Gas;
+# se no (persone che parlano fra loro, TV) risponde solo col segno fisso: niente voce,
+# niente testo al client, «X-Gas-Comando: fine» (il client chiude la conversazione).
+SEGNO_NON_PER_ME = "[NON_PER_ME]"
+COMANDO_FINE = "fine"
+# V15 (V-1 bot #339, sì di M1): nel seguito il forte ha chiesto uno strumento (che non c'è):
+# invece di chiudere in silenzio Gas dice come ottenere l'azione.
+RISPOSTA_SERVE_ATTIVAZIONE = "Per farlo ripetimelo dicendo prima Hey Jarvis."
+# R-675-3-M2: anche le varianti senza parentesi o in minuscolo («NON_PER_ME», «non per me»),
+# ma solo se la risposta è SOLO il segno: «Non per me è un problema, …» resta una risposta.
+# V-2 ve #339: il segno esatto con le parentesi vale anche se il modello aggiunge altro dopo
+# («[NON_PER_ME] (parlato fra persone)»): quel testo non va letto ad alta voce.
+# V-2 bot #339 su be60a21 (sì dell'operatore via M1): nel seguito il segno tra parentesi
+# chiude OVUNQUE stia («Non è rivolto a me [NON_PER_ME] (era la TV).»), anche scritto con
+# spazi («[NON PER ME]», R-676-1-M2): quel testo non va mai letto ad alta voce. Le forme
+# senza parentesi valgono solo come risposta intera.
+_NON_PER_ME = re.compile(
+    r"\[\s*non[_\s-]+per[_\s-]+me\s*\]|^\W*non[_\s-]+per[_\s-]+me\W*$", re.IGNORECASE)
+ISTRUZIONE_SEGUITO = (
+    "Questa frase è stata captata dal microfono nella finestra di conversazione, SENZA che "
+    "l'operatore dicesse la parola di attivazione: può essere rivolta a te oppure no "
+    "(persone che parlano fra loro, la TV, una telefonata). Se NON è chiaramente rivolta a "
+    f"te, rispondi SOLO con {SEGNO_NON_PER_ME} e nient'altro, senza usare strumenti. "
+    "Se è rivolta a te, rispondi normalmente, ma sappi che in questo turno NON hai "
+    "strumenti: se ti chiede un'azione (scrivere, salvare, cercare, ricordare) non dire mai "
+    "di averla fatta; rispondi che per farla deve ripeterla dicendo prima la parola di "
+    "attivazione.")
+# V14 (chat M2, «Sì, signore?» deciso dall'operatore; contratto con la chat Mani via M1):
+# GET /voce/conferma → audio/mpeg della frase detta con la voce attuale, suonato dal client
+# H24 al posto del bip dopo la parola di attivazione. In cache in memoria: un solo giro su
+# ElevenLabs per voce (la chiave della cache contiene l'id della voce, quindi se la voce
+# cambia si rigenera). ElevenLabs assente o in errore → 503/502 pulito, il client usa il bip.
+_ENDPOINT_CONFERMA = "/voce/conferma"
+CONFERMA_TIMEOUT_S = 5.0  # V15 (V-2 bot #335): la conferma non può tenere il server 30 s
+CONFERMA_PAUSA_ERRORE_S = 60.0
+FRASE_CONFERMA = "Sì, signore?"
 
 
 # V3 (chat M2): con «X-Gas-Formato: audio+testo» (pagina del browser) la risposta è JSON
@@ -136,26 +209,64 @@ _CONTESTO_VOCE = (
     "tenendo conto di quello che vi siete detti prima in questa conversazione. La sua "
     "frase arriva da una trascrizione vocale e può avere parole storpiate (per esempio "
     "«Gus» per «Gas»): se una parola non torna, interpretala dal contesto; se la "
-    "richiesta resta ambigua, fai una sola domanda per chiarire invece di indovinare.")
+    "richiesta resta ambigua, fai una sola domanda per chiarire invece di indovinare. "
+    # C1, voce rapida (ordine dell'operatore via M1, 6 nov): niente risposte fuori tema
+    "Rispondi solo all'ultima cosa che l'operatore ha detto: il resto della conversazione è "
+    "contesto, non argomenti da riprendere né domande ancora da sistemare.")
 # V3: istruzione per i soli turni PARLATI (gas.py `run_turn(istruzione_turno=...)`: vale per
 # quel turno, nel messaggio system, fuori dalla cronologia). Il testo scritto resta com'è.
+# V13 (chat M2, prova di Jarvis sul Mac del 5 nov, decisione dell'operatore): risposte a
+# voce più corte, al massimo 2 frasi, senza premesse; niente «… sì o no?» in coda a ogni
+# risposta (a voce stanca), domanda solo se serve per fare quello che è stato chiesto.
 ISTRUZIONE_VOCE = (
-    "Stai parlando a voce con l'operatore, in una conversazione rapida. Rispondi in 1-3 "
-    "frasi brevi, senza elenchi né formattazione. Dai subito un parere o una proposta "
-    "concreta (anche «no, meglio così»). Se serve una decisione chiudi con una domanda "
-    "secca a cui si risponde sì o no. Se il risultato è lungo, riassumilo in una frase."
+    "Stai parlando a voce con l'operatore, in una conversazione rapida. Rispondi con una "
+    "o due frasi brevi, mai più di due, senza premesse, senza ripetere la domanda, senza "
+    "elenchi né formattazione. Dai subito un parere o una proposta "
+    "concreta (anche «no, meglio così»). "
+    "Non chiudere con domande né con offerte («vuoi che…?», «sì o no?»): fai una domanda "
+    "solo se senza la risposta non puoi fare quello che ti è stato chiesto. Se il risultato è lungo, "
+    "riassumilo in una frase."
     + " " + _CONTESTO_VOCE)
 # V4 (V-1 bot #311): con la pagina del browser c'è uno schermo: prima le frasi da dire,
 # poi, dopo una riga vuota, il dettaglio da leggere (non viene detto a voce).
 ISTRUZIONE_VOCE_SCHERMO = (
     "Stai parlando a voce con l'operatore, in una conversazione rapida, e lui ha anche uno "
-    "schermo. Apri con 1-3 frasi brevi da dire a voce, senza elenchi né formattazione: "
-    "dai subito un parere o una proposta concreta (anche «no, meglio così») e, se serve "
-    "una decisione, chiudi con una domanda secca a cui si risponde sì o no. Se servono "
+    "schermo. Apri con una o due frasi brevi da dire a voce, mai più di due, senza "
+    "premesse né elenchi né formattazione: "
+    "dai subito un parere o una proposta concreta (anche «no, meglio così»). "
+    "Non chiudere con domande né con offerte («vuoi che…?», «sì o no?»): fai una domanda "
+    "solo se senza la risposta non puoi fare quello che ti è stato chiesto. Se servono "
     "dettagli (dati, elenchi, analisi, testo lungo), scrivili DOPO una riga vuota: quella "
     "parte non viene letta a voce, l'operatore la legge a schermo."
     + " " + _CONTESTO_VOCE)
 _PARAGRAFO = re.compile(r"\n[ \t]*\n")
+
+# V13 (chat M2): data e ora LOCALI della macchina che fa girare il server (il Mac) scritte
+# nell'istruzione del turno parlato, così «che ore sono» non costa un giro dello strumento
+# data_ora (un giro = una chiamata in più al cervello, secondi di attesa a voce).
+_GIORNI = ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica")
+_MESI = ("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+         "settembre", "ottobre", "novembre", "dicembre")
+
+
+def ora_per_voce(adesso: Optional[datetime] = None) -> str:
+    """V13: la frase con data e ora locali (fuso della macchina) per l'istruzione del turno
+    parlato. `adesso` solo per i test; deve avere il fuso (aware)."""
+    ora = adesso if adesso is not None else datetime.now().astimezone()
+    fuso = ora.tzname() or ora.strftime("UTC%z")
+    # V-2 bot #334: «ore 1:30», senza lo zero iniziale che il modello potrebbe ripetere.
+    # V-1 bot #334: il system prompt di base dice «per data e ora usa data_ora»: qui si dice
+    # esplicitamente che per questo turno vale l'ora scritta, senza lo strumento.
+    return (f"Adesso è {_GIORNI[ora.weekday()]} {ora.day} {_MESI[ora.month - 1]} {ora.year}, "
+            f"ore {ora.hour}:{ora:%M} (ora locale, fuso {fuso}). In questo turno, per l'ora o "
+            "la data rispondi con questa e NON usare data_ora: vale al posto dell'indicazione "
+            "generale di usarlo.")
+
+
+def istruzione_turno_voce(schermo: bool, adesso: Optional[datetime] = None) -> str:
+    """V3/V4 + V13: l'istruzione del turno parlato (con o senza schermo) più data e ora."""
+    base = ISTRUZIONE_VOCE_SCHERMO if schermo else ISTRUZIONE_VOCE
+    return f"{base} {ora_per_voce(adesso)}"
 
 
 def _dividi_frasi(testo: str) -> List[str]:
@@ -178,7 +289,8 @@ def frasi_parlate(testo: str) -> List[str]:
 def frasi_voce(testo: str) -> List[str]:
     """V10: tutta la risposta da dire a voce (senza schermo), divisa in frasi. Tetto
     _PARLATO_VOCE_MAX_CHAR: si tengono le frasi intere che ci stanno; se già la prima è più
-    lunga si taglia all'ultimo spazio. Mai «Il resto è a schermo» (qui uno schermo non c'è):
+    lunga si taglia all'ultimo spazio. Col taglio il parlato arriva a _PARLATO_VOCE_MAX_CHAR
+    più l'avviso (1500 + 1 + 37 caratteri, V-2 bot #330 su ae3258e). Mai «Il resto è a schermo» (qui uno schermo non c'è):
     se qualcosa resta fuori si aggiunge _PARLATO_VOCE_RESTO (V-1 bot #330), così il taglio
     si sente."""
     testo = " ".join(testo.split())
@@ -192,11 +304,48 @@ def frasi_voce(testo: str) -> List[str]:
         frasi.append(f)
         lunghezza = nuova
     if not frasi and testo:  # prima frase già troppo lunga: taglio all'ultimo spazio
-        frasi = [testo[:_PARLATO_VOCE_MAX_CHAR].rsplit(" ", 1)[0]
-                 if len(testo) > _PARLATO_VOCE_MAX_CHAR else testo]
+        # R-660-2-M2: si guarda anche il carattere subito dopo il tetto, così una parola che
+        # finisce proprio al tetto (seguita da uno spazio) non si perde
+        testa = testo[:_PARLATO_VOCE_MAX_CHAR + 1]
+        frasi = [testo if len(testo) <= _PARLATO_VOCE_MAX_CHAR
+                 else testa.rsplit(" ", 1)[0] if " " in testa
+                 else testo[:_PARLATO_VOCE_MAX_CHAR]]
     if testo and " ".join(frasi) != testo:
         frasi.append(_PARLATO_VOCE_RESTO)
     return frasi
+
+
+# Velocità (9 nov, decisione dell'operatore via M1): le frasi fisse del server si sintetizzano
+# una volta sola per processo e voce, poi l'MP3 viene dalla memoria (niente attesa né costo
+# ElevenLabs per «Dimmi.», «Non ho capito…», «Il resto è a schermo.»…). Entra in cache solo un
+# testo IDENTICO a una di queste costanti del codice (o a una delle sue frasi, come le dividono
+# le risposte a pezzi: bot #356 V-1), quindi mai una risposta del modello o una richiesta
+# dell'operatore, qualunque sia la provenienza (bot #356 V-2).
+_FRASI_FISSE_INTERE = (
+    _RISPOSTA_ATTIVAZIONE, RISPOSTA_PAUSA, RISPOSTA_SERVE_ATTIVAZIONE, _NON_HO_CAPITO,
+    _USO_FORTE_PARLATO, _PARLATO_VOCE_RESTO, _PARLATO_RESTO.strip(),
+)
+_FRASI_FISSE = frozenset(_FRASI_FISSE_INTERE) | frozenset(
+    p for f in _FRASI_FISSE_INTERE for p in _dividi_frasi(f))
+_CACHE_FRASI_MAX = 32
+_cache_frasi: Dict[Tuple[Any, str, str], bytes] = {}
+
+
+def sintesi(frase: str, api_key: str, voice_id: str) -> bytes:
+    """synthesize_speech con la cache delle frasi fisse. La chiave contiene la funzione di
+    sintesi stessa (cambia nei test) e la voce; mai in cache un audio vuoto. Gli errori di
+    ElevenLabs passano al chiamante come prima."""
+    if frase not in _FRASI_FISSE:
+        return synthesize_speech(frase, api_key, voice_id)
+    chiave = (synthesize_speech, voice_id, frase)
+    audio = _cache_frasi.get(chiave)
+    if audio is None:
+        audio = synthesize_speech(frase, api_key, voice_id)
+        if audio:
+            if len(_cache_frasi) >= _CACHE_FRASI_MAX:
+                _cache_frasi.clear()
+            _cache_frasi[chiave] = audio
+    return audio
 
 
 def parte_parlata(testo: str) -> str:
@@ -234,6 +383,68 @@ def _max_turni_ora() -> int:
         log.warning("GAS_VOICE_MAX_TURNI_ORA non numerica: uso %d", _MAX_TURNI_ORA_DEFAULT)
         return _MAX_TURNI_ORA_DEFAULT
     return n if n > 0 else _MAX_TURNI_ORA_DEFAULT
+
+
+# R8 fetta 1 (chat M2, sicurezza): C1 — tetto ai tentativi con token sbagliato per IP;
+# C2 — tetto alle richieste a testo. Soglie proposte all'operatore in
+# reports/proposta_voce_sicura.md; tutte e due configurabili.
+_MAX_FALLITI_DEFAULT = 10  # tentativi falliti per IP in _FALLITI_FINESTRA_S, poi blocco
+_FALLITI_FINESTRA_S = 600.0
+_FALLITI_BLOCCO_S = 900.0
+_FALLITI_MAX_IP = 1024  # IP ricordati al massimo (memoria limitata; piena → esce il più vecchio)
+_MAX_TESTO_ORA_DEFAULT = 120
+
+
+def _intero_env(nome: str, default: int) -> int:
+    """Intero positivo da env; vuoto, non numerico o <= 0 → default (con avviso se scritto male)."""
+    grezzo = os.environ.get(nome, "").strip()
+    if not grezzo:
+        return default
+    try:
+        n = int(grezzo)
+    except ValueError:
+        log.warning("%s non numerica: uso %d", nome, default)
+        return default
+    return n if n > 0 else default
+
+
+def _bind_locale(bind: str) -> bool:
+    """R8: indirizzo raggiungibile solo dal computer stesso (loopback IP o «localhost»; mai un
+    nome host qualsiasi, anche se comincia con «127.», R-720-3-M2)."""
+    b = bind.strip().lower()
+    if b == "localhost":
+        return True
+    try:
+        # solo IPv4 (bot #358 V-2): HTTPServer è solo IPv4, «::1» lo farebbe cadere all'avvio
+        ip = ipaddress.ip_address(b)
+        return isinstance(ip, ipaddress.IPv4Address) and ip.is_loopback
+    except ValueError:
+        return False
+
+
+def _bind_tutte_le_interfacce(bind: str) -> bool:
+    """R8 (bot #358 V-1): indirizzo «non specificato» (tutte le interfacce, IPv4 o IPv6): anche
+    dentro un tunnel esporrebbe il server in chiaro sulle interfacce pubbliche."""
+    try:
+        return ipaddress.ip_address(bind.strip()).is_unspecified
+    except ValueError:
+        return False
+
+
+def _bind_ip_letterale(bind: str) -> bool:
+    """R8 (R-727-1-M2, R-728-1/2-M2): fuori da 127.0.0.1 si accetta solo un indirizzo IPv4
+    scritto per intero (il server, HTTPServer, è solo IPv4). Un nome host, una forma abbreviata
+    («0», «0x0»…) o un IPv6 (anche «IPv4 dentro IPv6», che secondo la versione di Python sfugge
+    al controllo «tutte le interfacce») verrebbero risolti dal socket in un altro indirizzo, o
+    farebbero cadere l'avvio con un errore non gestito."""
+    try:
+        return isinstance(ipaddress.ip_address(bind.strip()), ipaddress.IPv4Address)
+    except ValueError:
+        return False
+
+
+def _env_acceso(nome: str) -> bool:
+    return os.environ.get(nome, "").strip().lower() in ("1", "true", "on", "yes", "si", "sì")
 
 
 def _voce_tutta_forte() -> bool:
@@ -277,15 +488,27 @@ class VoiceHandler(BaseHTTPRequestHandler):
     _capito: Optional[str] = None  # V6: trascrizione della richiesta in corso (per istanza)
     _tempi: Optional[Dict[str, float]] = None  # V7: secondi per pezzo della richiesta in corso
     _t0: float = 0.0
+    _parlato: bool = False  # V11: la richiesta in corso è a voce (audio), non a testo
     turni_parlati: List[float] = []  # V4/V5: istanti delle chiamate a Groq (tetto orario)
     prove_voci: List[float] = []  # V8: istanti delle prove di voce ElevenLabs (tetto orario)
     # V8 (R-624-1-M2): id delle voci mostrate dall'ultimo elenco (già filtrate: niente
     # cloni); la prova accetta solo queste, non un id qualunque scritto a mano
     voci_ammesse: frozenset = frozenset()
+    # V14: («voce», frase) e MP3 di «Sì, signore?»; una sola voce in cache (None = vuota)
+    conferma_cache: Optional[Tuple[Tuple[str, str], bytes]] = None
+    # V15 (V-2 bot #335): ultimo fallimento della conferma (chiave, istante): per
+    # CONFERMA_PAUSA_ERRORE_S non si richiama ElevenLabs (server a un thread: niente attese
+    # ripetute con ElevenLabs giù), il client suona il bip.
+    conferma_errore: Optional[Tuple[Tuple[str, str], float]] = None
+    _comando: Optional[str] = None  # V15: X-Gas-Comando della risposta in corso
     # V8b: voci della libreria mostrate dall'ultima ricerca {id: (proprietario, nome)};
     # si aggiungono all'account solo queste
     libreria_ammesse: Dict[str, Any] = {}
     aggiunte_voci: List[float] = []  # V8b: istanti delle aggiunte all'account (tetto orario)
+    # R8 fetta 1 (C1): per IP, istanti dei tentativi falliti e fine del blocco (monotonic)
+    falliti: Dict[str, List[float]] = {}
+    bloccati: Dict[str, float] = {}
+    turni_testo: List[float] = []  # R8 fetta 1 (C2): istanti delle richieste a testo
 
     def log_message(self, fmt: str, *args: Any) -> None:
         log.info(fmt, *args)
@@ -346,13 +569,100 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _host_ammesso(self) -> bool:
+        """R8 (R-731-1-M2, DNS rebinding): una pagina web su un dominio qualsiasi può far
+        risolvere il suo nome sul computer e parlare al server come se fosse «locale». Il
+        browser però manda il nome del dominio nell'header Host: si accettano solo
+        «localhost» o un indirizzo IP (l'unico modo di arrivare davvero al server); un nome
+        di dominio riceve 403 prima del controllo del token e non conta per il blocco. Una
+        richiesta senza Host (client non browser, HTTP/1.0) passa al controllo del token."""
+        host = (self.headers.get("Host") or "").strip().lower()
+        if not host:
+            return True
+        if host.startswith("["):
+            nome = host[1:host.find("]")] if "]" in host else host
+        elif host.count(":") == 1:
+            nome = host.split(":", 1)[0]
+        else:
+            nome = host
+        if nome == "localhost":
+            return True
+        try:
+            ipaddress.ip_address(nome)
+            return True
+        except ValueError:
+            log.warning("HOST RIFIUTATO ip=%s", self.client_address[0])
+            return False
+
+    def _autorizza(self) -> bool:
+        """R8 fetta 1 (C1): controllo del token con tetto ai tentativi falliti per IP. Manda da sé
+        la risposta di rifiuto (403 se l'Host è un nome di dominio, 429 se l'IP è bloccato,
+        401 se il token è sbagliato) e dice se
+        la richiesta può proseguire. Un IP bloccato riceve 429 anche col token giusto, finché il
+        blocco non scade: chi indovina non può sapere quando ha indovinato. Nel log solo IP ed
+        esito, mai il token."""
+        if not self._host_ammesso():
+            self._send_json(403, {"error": "Host non ammesso"})
+            return False
+        cls = type(self)
+        ip = str(self.client_address[0])
+        adesso = time.monotonic()
+        # sempre copie riassegnate sulla classe del server: mai un dict condiviso con
+        # VoiceHandler o con altri server nello stesso processo (test)
+        bloccati = {k: v for k, v in cls.bloccati.items() if v > adesso}
+        falliti = {k: v for k, v in cls.falliti.items() if v and adesso - v[-1] < _FALLITI_FINESTRA_S}
+        if ip in bloccati:
+            cls.bloccati, cls.falliti = bloccati, falliti
+            log.warning("AUTH BLOCCATO ip=%s", ip)
+            self._send_json(429, {"error": "Troppi tentativi non autorizzati: riprova più tardi."})
+            return False
+        if self._check_auth():
+            cls.bloccati, cls.falliti = bloccati, falliti
+            return True
+        parti = self.headers.get("Authorization", "").split(" ", 1)
+        if len(parti) != 2 or parti[0].lower() != "bearer" or not parti[1].strip():
+            # bot #358 V-1: senza «Bearer <token>» non si sta provando un token, quindi non
+            # conta per il blocco. Una pagina web qualsiasi può mandare al server locale
+            # richieste senza header (img, fetch no-cors) ma non può aggiungere Authorization
+            # senza preflight, che qui fallisce: così non può bloccare la voce dell'operatore.
+            cls.bloccati, cls.falliti = bloccati, falliti
+            self._send_json(401, {"error": "Unauthorized"})
+            return False
+        recenti = [t for t in falliti.pop(ip, []) if adesso - t < _FALLITI_FINESTRA_S] + [adesso]
+        if len(recenti) >= _intero_env("GAS_VOICE_MAX_FALLITI", _MAX_FALLITI_DEFAULT):
+            # memoria piena (R-720-4-M2, bot #358): esce il blocco che scade per primo, mai
+            # si smette di bloccare l'IP che ha appena raggiunto la soglia
+            if len(bloccati) >= _FALLITI_MAX_IP:
+                del bloccati[min(bloccati, key=bloccati.__getitem__)]
+            bloccati[ip] = adesso + _FALLITI_BLOCCO_S
+            log.warning("AUTH BLOCCO ip=%s per %d s", ip, int(_FALLITI_BLOCCO_S))
+            cls.bloccati, cls.falliti = bloccati, falliti
+            self._send_json(429, {"error": "Troppi tentativi non autorizzati: riprova più tardi."})
+            return False
+        if len(falliti) >= _FALLITI_MAX_IP:
+            # memoria piena: esce l'IP col tentativo più vecchio, l'IP nuovo si conta sempre
+            del falliti[min(falliti, key=lambda k: falliti[k][-1])]
+        falliti[ip] = recenti
+        cls.bloccati, cls.falliti = bloccati, falliti
+        self._send_json(401, {"error": "Unauthorized"})
+        return False
+
+    def end_headers(self) -> None:
+        """V15: un comando per il client (oggi solo «pausa») viaggia in X-Gas-Comando, in ogni
+        formato di risposta (JSON, MP3, NDJSON)."""
+        if self._comando:
+            self.send_header("X-Gas-Comando", self._comando)
+        super().end_headers()
+
     def do_POST(self) -> None:
+        self._comando = None
         self._t0 = time.monotonic()
         self._tempi = {}
         self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
+        self._finiti_jobs = None  # R-711-3-M2: mai i compiti di un'altra richiesta
+        self._parlato = False
         if self.path in ("/voci/prova", "/voci/aggiungi"):  # V8/V8b: prova o aggiunta di una voce
-            if not self._check_auth():
-                self._send_json(401, {"error": "Unauthorized"})
+            if not self._autorizza():
                 return
             try:
                 n = int(self.headers.get("Content-Length", 0) or 0)
@@ -369,8 +679,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "Not Found"})
             return
 
-        if not self._check_auth():
-            self._send_json(401, {"error": "Unauthorized"})
+        if not self._autorizza():
             return
 
         try:
@@ -386,6 +695,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         ct_base = content_type.split(";")[0].strip().lower()
         is_audio = ct_base.startswith("audio/") or ct_base == "multipart/form-data"
 
+        self._parlato = is_audio
         if is_audio:
             # V4 (V-2 ve #311, R-580-2-M2): tetto orario delle richieste a voce controllato PRIMA
             # della trascrizione, così oltre il tetto non si spende nemmeno Groq
@@ -399,6 +709,21 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if prompt is None:
                 return  # risposta (errore o «non ho capito») già inviata
             self._capito = prompt  # V6: la pagina mostra «Ho capito: …»
+            if _SOLO_PAUSA.match(prompt):  # V15: «pausa»/«standby»: nessun turno, il client si ferma
+                self._comando = COMANDO_PAUSA
+                if self._seguito():
+                    # V-2 bot #339 su 312cd86: nel seguito «basta!» può venire dalla stanza o
+                    # dalla TV: la conversazione si chiude lo stesso, ma senza voce
+                    self._send_json(200, {"content": "", "pausa": True})
+                    return
+                self._rispondi_senza_turno(RISPOSTA_PAUSA, "pausa")
+                return
+            if _SOLO_ATTIVAZIONE.match(prompt):  # V13: solo «Hey Jarvis»: nessun turno
+                # Bot #350 V-5: anche la sola parola di attivazione dice i compiti finiti
+                # (i turni dopo sono seguiti, dove non si leggono)
+                finiti = "" if self._seguito() else self._compiti_finiti()
+                self._rispondi_senza_turno(_RISPOSTA_ATTIVAZIONE, "attivazione", prefisso=finiti)
+                return
         else:
             try:
                 data: Dict[str, Any] = json.loads(raw) if raw else {}
@@ -416,32 +741,90 @@ class VoiceHandler(BaseHTTPRequestHandler):
         if cervello == "uso":
             if not is_audio:
                 self._send_json(400, {"error": _USO_FORTE})
+            elif self._seguito():  # V-1 ve #339: «forte» captato dalla stanza: niente voce
+                self._chiudi_seguito()
             else:
                 self._rispondi_senza_turno(_USO_FORTE_PARLATO, "uso")
             return
 
+        testo_ora: Optional[float] = None
+        if not is_audio:
+            # R8 fetta 1 (C2): tetto orario anche alle richieste a testo (ogni turno spende il
+            # cervello); controllato prima del turno, così oltre il tetto non parte nessun lavoro.
+            # Controllato PRIMA di V12 (un testo rifiutato qui non consuma il tetto voce,
+            # R-720-1-M2) ma contato DOPO, solo se anche V12 lascia passare (R-722-1-M2)
+            tetto_testo = _intero_env("GAS_VOICE_MAX_TESTO_ORA", _MAX_TESTO_ORA_DEFAULT)
+            adesso = time.monotonic()
+            testi = [t for t in type(self).turni_testo if adesso - t < 3600]
+            if len(testi) >= tetto_testo:
+                type(self).turni_testo = testi
+                self._send_json(429, {"error": (
+                    f"Troppe richieste a testo nell'ultima ora ({tetto_testo}, "
+                    "GAS_VOICE_MAX_TESTO_ORA): nessun lavoro avviato. Riprova più tardi.")})
+                return
+            type(self).turni_testo = testi
+            testo_ora = adesso
+
+        if (not is_audio and self._sintesi_a_testo()
+                and os.environ.get("ELEVENLABS_API_KEY", "").strip()):
+            # V12 (R-663-1-M2, decisione dell'operatore): anche una richiesta a TESTO che chiede
+            # la risposta a voce spende ElevenLabs, quindi conta nel tetto orario; controllata
+            # prima del turno, così oltre il tetto non parte nessun lavoro. Senza chiave
+            # ElevenLabs non si spende nulla e non conta (R-665-3-M2, come i rifiuti locali V5)
+            tetto = _max_turni_ora()
+            if len(self._turni_recenti()) >= tetto:
+                self._send_json(429, {"error": (
+                    f"Troppe richieste a voce nell'ultima ora ({tetto}, GAS_VOICE_MAX_TURNI_ORA): "
+                    "nessun lavoro avviato. Riprova più tardi o chiedi la risposta solo a testo.")})
+                return
+            type(self).turni_parlati = self._turni_recenti() + [time.monotonic()]
+
+        if testo_ora is not None:
+            type(self).turni_testo = type(self).turni_testo + [testo_ora]
+
         t_cervello: Optional[float] = None
         try:
             result_content: Optional[str] = None
+            strumento_negato = False  # V15: turno effimero che chiedeva uno strumento
             kw: Dict[str, Any] = {}
             if cervello == "forte":
                 kw["cervello"] = "forte"
             if is_audio:  # V3/V4: risposte a voce corte, col dettaglio a schermo se c'è
-                kw["istruzione_turno"] = (ISTRUZIONE_VOCE_SCHERMO if self._vuole_audio_testo()
-                                          else ISTRUZIONE_VOCE)
+                kw["istruzione_turno"] = istruzione_turno_voce(self._vuole_audio_testo())
+                if self._seguito():  # V15: prima decidere se il parlato è per Gas
+                    kw["istruzione_turno"] += " " + ISTRUZIONE_SEGUITO
+                    # R-675-1-M2: parlato della stanza (terzi, TV) = possibili dati personali:
+                    # solo il cervello forte, mai i gratuiti (CLAUDE.md §2); forte fermo →
+                    # errore dichiarato e il client chiude la conversazione. NB: la trascrizione
+                    # (Groq Whisper) riceve l'audio anche qui, come per tutta la voce: rischio
+                    # accettato dall'operatore il 6 nov (V-2 bot #339, R-684-2-M2)
+                    kw["cervello"] = "forte"
+                    # R-675-1-M2 (scelta A dell'operatore): turno effimero nel kernel: nessuno
+                    # strumento offerto, niente storia condivisa del parlato della stanza
+                    kw["effimero"] = True
             t_cervello = time.monotonic()
+            if is_audio:  # voce rapida (fetta 2): profilo del turno parlato nel kernel
+                kw["voce"] = True
             turno = self.kernel.run_turn(prompt, **kw)
-            for event in turno:
-                etype = event.get("type")
-                if etype == "final":
-                    result_content = event.get("content", "")
-                    self._segna("cervello", t_cervello)
-                    break
-                elif etype == "error":
-                    self._segna("cervello", t_cervello)
-                    self._send_json(500, {"error": event.get("content", "Errore pipeline")})
-                    return
-                # type="tool_res": consumato in silenzio
+            try:
+                for event in turno:
+                    etype = event.get("type")
+                    if etype == "final":
+                        result_content = event.get("content", "")
+                        strumento_negato = bool(event.get("strumento_negato"))
+                        self._segna("cervello", t_cervello)
+                        break
+                    elif etype == "error":
+                        self._segna("cervello", t_cervello)
+                        self._send_json(500, {"error": event.get("content", "Errore pipeline")})
+                        return
+                    # type="tool_res": consumato in silenzio
+            finally:
+                # R-677-1-M2: il kernel chiude il turno (e il turno effimero rimette la storia
+                # vera) SUBITO, non quando il generatore viene raccolto
+                close = getattr(turno, "close", None)
+                if callable(close):
+                    close()
         except Exception as exc:
             if t_cervello is not None:  # R-614-1-M2: anche un cervello che si rompe ha un tempo
                 self._segna("cervello", t_cervello)
@@ -455,33 +838,113 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
 
+        if is_audio and self._seguito() and strumento_negato:
+            self._rispondi_senza_turno(RISPOSTA_SERVE_ATTIVAZIONE, "serve_attivazione")
+            return
+
+        if is_audio and self._seguito() and (_NON_PER_ME.search(result_content)
+                                             or not result_content.strip()):
+            # V15: parlato non rivolto a Gas: niente voce né testo (privacy della stanza)
+            log.info("turno di seguito non rivolto a Gas: conversazione chiusa")
+            self._chiudi_seguito()
+            return
+
+        if is_audio and self._seguito():
+            # V15 punto 1 (sì dell'operatore via M1, V-1 (a) bot #339): il seguito rivolto a
+            # Gas entra nella storia vera (il turno effimero non l'ha scritta), così il
+            # seguito dopo lo ricorda. Il generatore è già chiuso: storia vera ripristinata.
+            registra = getattr(self.kernel, "registra_seguito", None)
+            if callable(registra):
+                try:
+                    if not registra(prompt, result_content):
+                        log.warning("seguito rivolto a Gas non salvato nella storia")
+                except Exception as exc:  # §9: la risposta parte lo stesso
+                    log.warning("registra_seguito eccezione: %s", exc)
+
+        # Fetta 3.2: compiti in sottofondo finiti, solo nei turni a voce di attivazione
+        finiti = self._compiti_finiti() if (is_audio and not self._seguito()) else ""
+
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
-            self._do_audio_testo_response(result_content)
-        elif self._wants_audio():
-            self._do_tts_response(result_content)
+            self._do_audio_testo_response(result_content, prefisso=finiti)
+        elif self._wants_audio() and self._formato() != _FORMATO_PEZZI_VOCE:
+            self._do_tts_response(f"{finiti} {result_content}".strip() if finiti else result_content)
         else:
+            if finiti:
+                result_content = f"{finiti}\n\n{result_content}"
             out: Dict[str, Any] = {"content": result_content}
             if self._capito is not None:
                 out["capito"] = self._capito
             self._send_json(200, out)
+            # R-711-2-M2: a testo il client lo mostra; segnati DOPO l'invio riuscito
+            self._segna_finiti_letti()
 
-    def _rispondi_senza_turno(self, testo: str, segno: str) -> None:
-        """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito»), nel
-        formato chiesto dal client; `segno` è il campo JSON che la distingue."""
+    def _compiti_finiti(self) -> str:
+        """Fetta 3.2 (chat M2, 7 nov): la frase sui compiti in sottofondo finiti e non ancora
+        letti (al massimo 2, ultime 24 ore), da dire PRIMA della risposta; "" se non ce ne
+        sono. Chiamata solo nei turni a voce di attivazione (mai nel seguito: parlato della
+        stanza). Fail-safe §9: un errore dà "" e la risposta parte com'è."""
+        try:
+            from modules import sottofondo
+            root = getattr(self.kernel, "root", None)
+            if root is None:
+                return ""
+            jobs = sottofondo.da_leggere(root)
+            if not jobs:
+                return ""
+            frase = sottofondo.frase_finiti(jobs)
+            # Ve #350 V-1: segnati letti solo DOPO la consegna (_segna_finiti_letti): se la
+            # sintesi fallisce o il client chiude, li si ridice alla prossima attivazione
+            self._finiti_jobs = jobs
+            return frase.strip()
+        except Exception as exc:
+            log.warning("compiti finiti non letti a voce: %s", exc)
+            return ""
+
+    def _segna_finiti_letti(self) -> None:
+        """Ve #350 V-1: i compiti detti in questa risposta diventano «letti» solo ora che la
+        consegna è riuscita. Una volta sola; mai eccezioni (§9)."""
+        jobs = getattr(self, "_finiti_jobs", None)
+        self._finiti_jobs = None
+        if not jobs:
+            return
+        try:
+            from modules import sottofondo
+            sottofondo.segna_letti(getattr(self.kernel, "root", None), jobs)
+        except Exception as exc:
+            log.warning("segno di lettura dei compiti non scritto: %s", exc)
+
+    def _rispondi_senza_turno(self, testo: str, segno: str, prefisso: str = "") -> None:
+        """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito», «dimmi»), nel
+        formato chiesto dal client; `segno` è il campo JSON che la distingue. `prefisso`:
+        compiti finiti da dire prima (fetta 3.2, solo per «dimmi»)."""
         if self._vuole_audio_testo() or self._vuole_righe_senza_schermo():
-            self._do_audio_testo_response(testo, {segno: True})
+            self._do_audio_testo_response(testo, {segno: True}, prefisso=prefisso)
         elif self._wants_audio() and os.environ.get("ELEVENLABS_API_KEY", "").strip():
-            self._do_tts_response(testo)
+            self._do_tts_response(f"{prefisso} {testo}".strip() if prefisso else testo)
         else:  # V-2 bot #318: senza TTS il messaggio arriva lo stesso, come testo (mai un 503)
+            if prefisso:
+                testo = f"{prefisso}\n\n{testo}"
             out: Dict[str, Any] = {"content": testo, segno: True}
             if self._capito is not None:
                 out["capito"] = self._capito
             self._send_json(200, out)
+            self._segna_finiti_letti()  # R-711-2-M2: dopo l'invio riuscito
 
     def _turni_recenti(self) -> List[float]:
-        """Istanti delle richieste a voce (chiamate a Groq) dell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
+        """Istanti delle richieste a voce (chiamate a Groq) e, dalla V12, delle richieste a testo
+        con risposta a voce, nell'ultima ora (tetto GAS_VOICE_MAX_TURNI_ORA)."""
         adesso = time.monotonic()
         return [t for t in self.turni_parlati if adesso - t < 3600]
+
+    def _chiudi_seguito(self) -> None:
+        """V15: chiude la conversazione senza voce né testo (X-Gas-Comando: fine)."""
+        self._comando = COMANDO_FINE
+        self._send_json(200, {"content": "", "fine": True})
+
+    def _seguito(self) -> bool:
+        """V15: il client dice che il turno è nella finestra di conversazione, senza parola
+        di attivazione (X-Gas-Seguito: 1). Vale solo per il parlato."""
+        return self._parlato and self.headers.get("X-Gas-Seguito", "").strip() == "1"
 
     def _formato(self) -> str:
         return self.headers.get("X-Gas-Formato", "").strip().lower()
@@ -489,34 +952,60 @@ class VoiceHandler(BaseHTTPRequestHandler):
     def _vuole_audio_testo(self) -> bool:
         return self._formato() in (_FORMATO_AUDIO_TESTO, _FORMATO_PEZZI)
 
-    def _vuole_righe_senza_schermo(self) -> bool:
-        """V10: il client H24 chiede le righe NDJSON ma non ha uno schermo."""
-        return self._formato() == _FORMATO_PEZZI_VOCE
+    def _sintesi_a_testo(self) -> bool:
+        """V12: la richiesta (a testo) chiede una risposta sintetizzata da ElevenLabs: gli
+        stessi rami della risposta finale che chiamano la sintesi."""
+        return self._vuole_audio_testo() or (
+            self._wants_audio() and self._formato() != _FORMATO_PEZZI_VOCE)
 
-    def _do_audio_testo_response(self, text: str, extra: Optional[Dict[str, Any]] = None) -> None:
+    def _vuole_righe_senza_schermo(self) -> bool:
+        """V10: il client H24 chiede le righe NDJSON ma non ha uno schermo. V11 (V-1 bot #330
+        su ae3258e): solo per le richieste a voce, che passano dal tetto orario; una richiesta a
+        testo con questo formato riceve solo il testo (JSON), mai la sintesi ElevenLabs."""
+        return self._formato() == _FORMATO_PEZZI_VOCE and self._parlato
+
+    def _do_audio_testo_response(self, text: str, extra: Optional[Dict[str, Any]] = None,
+                                 prefisso: str = "") -> None:
         """V3: JSON {"content": testo intero, "audio": base64 MP3 della parte parlata}.
         Senza chiave ElevenLabs o con errore TTS la risposta arriva lo stesso, solo testo
-        (+ "errore_voce"): a schermo si legge, mai un 503 al posto della risposta."""
-        out: Dict[str, Any] = {"content": text, **(extra or {})}
+        (+ "errore_voce"): a schermo si legge, mai un 503 al posto della risposta.
+        Fetta 3.2 (bot #350 V-1): `prefisso` (compiti finiti) si dice per primo FUORI dal
+        limite della parte parlata, così non toglie spazio alla risposta; a schermo è il
+        primo paragrafo."""
+        out: Dict[str, Any] = {"content": f"{prefisso}\n\n{text}" if prefisso else text,
+                               **(extra or {})}
         if self._capito is not None:  # V6: quello che Whisper ha sentito, per la pagina
             out["capito"] = self._capito
         api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
-        if not text.strip():
+        # Bot #352 (f6de3e6) V-1, regola unica: con uno schermo i compiti sono consegnati
+        # quando il testo arriva (anche se la voce fallisce); senza schermo solo se detti.
+        # R-711-2-M2: il segno parte sempre DOPO l'invio riuscito.
+        schermo = not self._vuole_righe_senza_schermo()
+        consegnati = False
+        if not (text.strip() or prefisso):  # R-710-1-M2: col prefisso si sintetizza lo stesso
             pass
         elif not api_key:
             out["errore_voce"] = "TTS non disponibile: ELEVENLABS_API_KEY non configurata"
+            consegnati = schermo
         else:
             voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+            prima = _dividi_frasi(" ".join(prefisso.split())) if prefisso else []
+
+            def resto(frasi: List[str]) -> List[str]:  # R-711-3-M2: niente lambda
+                return frasi if text.strip() else []
             if self._formato() == _FORMATO_PEZZI:
-                self._do_pezzi_response(out, frasi_parlate(text), api_key, voice_id)
+                self._do_pezzi_response(out, prima + resto(frasi_parlate(text)), api_key,
+                                        voice_id, n_prefisso=len(prima), schermo=True)
                 return
             if self._vuole_righe_senza_schermo():  # V10: tutto a voce, frase per frase
-                self._do_pezzi_response(out, frasi_voce(text), api_key, voice_id)
+                self._do_pezzi_response(out, prima + resto(frasi_voce(text)), api_key,
+                                        voice_id, n_prefisso=len(prima))
                 return
             t = time.monotonic()
             try:
+                parlato = " ".join(prima + ([parte_parlata(text)] if text.strip() else []))
                 out["audio"] = base64.b64encode(
-                    synthesize_speech(parte_parlata(text), api_key, voice_id)).decode("ascii")
+                    sintesi(parlato, api_key, voice_id)).decode("ascii")
             except ElevenLabsTTSError as exc:
                 log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
                 out["errore_voce"] = f"Errore TTS ElevenLabs: {exc.message}"
@@ -525,10 +1014,13 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 out["errore_voce"] = "Errore di rete verso ElevenLabs TTS"
             finally:  # R-614-1-M2: anche un TTS fallito o in timeout ha il suo tempo
                 self._segna("voce", t)
+            consegnati = True  # ramo MP3 unico: formato con schermo, il testo arriva sempre
         self._send_json(200, out)
+        if consegnati:
+            self._segna_finiti_letti()
 
     def _do_pezzi_response(self, primo: Dict[str, Any], frasi: List[str], api_key: str,
-                           voice_id: str) -> None:
+                           voice_id: str, n_prefisso: int = 0, schermo: bool = False) -> None:
         """V7b: risposta a righe JSON (NDJSON), una sintesi per frase.
         Riga 1: `primo` (content, capito, …) + "audio" della prima frase + "pezzi" (frasi
         totali). Poi una riga {"audio": …} per ogni frase successiva, appena pronta. Ultima
@@ -556,7 +1048,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             errore: Optional[str] = None
             try:
                 uscita["audio"] = base64.b64encode(
-                    synthesize_speech(frase, api_key, voice_id)).decode("ascii")
+                    sintesi(frase, api_key, voice_id)).decode("ascii")
             except ElevenLabsTTSError as exc:
                 log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
                 errore = f"Errore TTS ElevenLabs: {exc.message}"
@@ -568,6 +1060,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if errore is not None:
                 uscita["errore_voce"] = errore
             aperto = riga(uscita)
+            if aperto and ((schermo and i == 0)
+                           or (errore is None and n_prefisso and i + 1 == n_prefisso)):
+                # ve #350 V-1: con lo schermo i compiti arrivano con la prima riga (content),
+                # anche se la voce fallisce; senza schermo quando ne sono state dette le frasi
+                self._segna_finiti_letti()
             if errore is not None or not aperto:
                 break
         self._segna("voce_tutta", t_tutta)
@@ -591,7 +1088,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
         t = time.monotonic()
         try:
-            audio = synthesize_speech(text, api_key, voice_id)
+            audio = sintesi(text, api_key, voice_id)
             self._segna("voce", t)
         except ElevenLabsTTSError as exc:
             self._segna("voce", t)  # R-614-1-M2
@@ -605,6 +1102,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return
 
         self._send_audio(audio)
+        self._segna_finiti_letti()  # ve #350 V-1: solo a sintesi e invio riusciti
 
     def _do_stt(self, raw: bytes, content_type: str) -> Optional[str]:
         """Trascrive audio → testo via Groq Whisper.
@@ -637,6 +1135,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
             # V6: Groq ha risposto ma il testo è probabilmente sbagliato: si chiede di
             # ripetere invece di rispondere a caso. Nel log solo il motivo, mai il parlato.
             log.info("trascrizione scartata: %s", exc.motivo)
+            if self._seguito():  # R-676-3 (review Mani): rumore della stanza → chiude, niente voce
+                self._chiudi_seguito()
+                return None
             self._capito = exc.testo
             self._rispondi_senza_turno(_NON_HO_CAPITO, "non_capito")
             return None
@@ -655,6 +1156,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
         self._segna("trascrizione", t)
         if not text:
+            if self._seguito():  # R-676-3: silenzio nella finestra di conversazione → chiude
+                self._chiudi_seguito()
+                return None
             self._send_json(400, {"error": "Trascrizione vuota (silenzio o formato non supportato)"})
             return None
 
@@ -666,13 +1170,18 @@ class VoiceHandler(BaseHTTPRequestHandler):
     # ── V8 (chat M2): «prova voci» — elenco delle voci e prova con una frase fissa ──
 
     def do_GET(self) -> None:
+        self._comando = None
         self._t0 = time.monotonic()
         self._tempi = None
+        if self.path == _ENDPOINT_CONFERMA:  # V14
+            if not self._autorizza():
+                return
+            self._conferma()
+            return
         if self.path not in ("/voci/elenco", "/voci/libreria"):
             self._method_not_allowed()
             return
-        if not self._check_auth():
-            self._send_json(401, {"error": "Unauthorized"})
+        if not self._autorizza():
             return
         if self.path == "/voci/libreria":
             self._libreria()
@@ -695,6 +1204,44 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 log.warning("ElevenLabs elenco voci rete: %s", exc)
                 out["errore"] = "Errore di rete verso ElevenLabs"
         self._send_json(200, out)
+
+    def _conferma(self) -> None:
+        """V14: GET /voce/conferma — «Sì, signore?» in MP3 con la voce attuale, dalla cache se
+        c'è già per quella voce (nessuna spesa), altrimenti un giro su ElevenLabs e in cache.
+        La cache tiene una sola voce: cambiando voce la vecchia frase si butta."""
+        api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        if not api_key:
+            self._send_json(503, {"error": "Conferma non disponibile: ELEVENLABS_API_KEY non configurata"})
+            return
+        voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+        chiave = (voice_id, FRASE_CONFERMA)
+        cache = type(self).conferma_cache
+        if cache is not None and cache[0] == chiave:
+            self._send_audio(cache[1])
+            return
+        errore = type(self).conferma_errore
+        if (errore is not None and errore[0] == chiave
+                and time.monotonic() - errore[1] < CONFERMA_PAUSA_ERRORE_S):
+            self._send_json(502, {"error": "Conferma non disponibile (errore recente di ElevenLabs)"})
+            return
+        try:
+            audio = synthesize_speech(FRASE_CONFERMA, api_key, voice_id,
+                                      timeout=CONFERMA_TIMEOUT_S)
+        except ElevenLabsTTSError as exc:
+            log.warning("ElevenLabs conferma status=%s: %s", exc.status, exc.message)
+            audio, motivo = b"", f"Errore TTS ElevenLabs: {exc.message}"
+        except (OSError, http.client.HTTPException) as exc:  # R-669-1-M2: anche IncompleteRead
+            log.warning("ElevenLabs conferma rete: %s", exc)
+            audio, motivo = b"", "Errore di rete verso ElevenLabs TTS"
+        else:
+            motivo = "Errore TTS ElevenLabs: audio vuoto"
+        if not audio:  # mai in cache una risposta vuota: il client ripiega sul bip
+            type(self).conferma_errore = (chiave, time.monotonic())
+            self._send_json(502, {"error": motivo})
+            return
+        type(self).conferma_errore = None
+        type(self).conferma_cache = (chiave, audio)
+        self._send_audio(audio)
 
     def _libreria(self) -> None:
         """V8b: GET /voci/libreria — le migliori voci della libreria condivisa (da aggiungere
@@ -866,6 +1413,26 @@ def run_server(root_dir: Optional[str] = None) -> int:
         port = int(os.environ.get("GAS_VOICE_PORT") or "8765")
     except ValueError:
         print("✗ gas voice: GAS_VOICE_PORT non è un numero intero valido.")
+        return 1
+
+    if _bind_tutte_le_interfacce(bind):
+        # bot #358 V-1: mai su tutte le interfacce, nemmeno con la rete privata dichiarata
+        print(f"✗ gas voice: GAS_VOICE_BIND={bind} ascolterebbe su tutte le interfacce, anche pubbliche.")
+        print("  Usa 127.0.0.1 oppure l'indirizzo del tunnel privato (con GAS_VOICE_RETE_PRIVATA=1).")
+        return 1
+
+    if not _bind_locale(bind) and not _bind_ip_letterale(bind):
+        # R-727-1-M2: un nome host o una forma abbreviata potrebbe legarsi a tutte le interfacce
+        print(f"✗ gas voice: GAS_VOICE_BIND={bind} non è un indirizzo IPv4 scritto per intero.")
+        print("  Fuori da 127.0.0.1 usa l'indirizzo IPv4 del tunnel privato, non un nome né IPv6.")
+        return 1
+
+    if not _bind_locale(bind) and not _env_acceso("GAS_VOICE_RETE_PRIVATA"):
+        # R8 fetta 1 (fail-closed): fuori da 127.0.0.1 il traffico è in chiaro (token, audio,
+        # risposte); si parte solo dentro una rete privata cifrata dichiarata (tunnel)
+        print(f"✗ gas voice: GAS_VOICE_BIND={bind} non è locale e la connessione è in chiaro.")
+        print("  Usa un tunnel privato (es. Tailscale) e dichiaralo con GAS_VOICE_RETE_PRIVATA=1,")
+        print("  oppure resta su 127.0.0.1. Vedi reports/proposta_voce_sicura.md.")
         return 1
 
     from gas import GasKernel  # import pigro: non richiede gas.py al semplice import del modulo

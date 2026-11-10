@@ -7,11 +7,13 @@ Gira pytest standalone: python -m pytest tests/test_unit_voice_server.py -v
 from __future__ import annotations
 
 import http.client
+import ipaddress
 import json
 import logging
 import os
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import HTTPServer
@@ -1220,10 +1222,14 @@ def test_v7b_frasi_parlate_ricompongono_la_parte_parlata():
 
 
 def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k", turni=None,
-                  trascrizione="Gas, dimmi"):
+                  trascrizione="Gas, dimmi", prompt_testo=None, root=None, intestazioni=None,
+                  tts=None):
+    """Server voce vero con kernel e servizi finti; ritorna (content-type, righe, mock della
+    sintesi).
+    `turni` (lista) riceve i kw di ogni run_turn (V10: quale istruzione arriva).
+    `tts`: un mock della sintesi da riusare fra più richieste (stessa chiave di cache).
+    Con `prompt_testo` la richiesta è a testo (JSON), non a voce (V11)."""
     from unittest.mock import patch
-    """Server voce vero con kernel e servizi finti; ritorna (status, content-type, righe).
-    `turni` (lista) riceve i kw di ogni run_turn (V10: quale istruzione arriva)."""
     import urllib.request
     from modules.voice.server import VoiceHandler
 
@@ -1236,16 +1242,25 @@ def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"
     class _H(VoiceHandler):
         pass
     _H.kernel = _K()
+    if root is not None:  # fetta 3.2: cartella dei compiti in sottofondo
+        _H.kernel.root = root
     _H.token = "tok"
     srv = HTTPServer(("127.0.0.1", 0), _H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     env = {"GROQ_API_KEY": "k", **({"ELEVENLABS_API_KEY": chiave} if chiave else {})}
+    if prompt_testo is None:
+        dati, tipo = b"RIFF" + bytes(60), {"Content-Type": "audio/wav"}
+    else:
+        dati = json.dumps({"prompt": prompt_testo}).encode()
+        tipo = {"Content-Type": "application/json", "Accept": "audio/mpeg"}
     req = urllib.request.Request(
-        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=b"RIFF" + bytes(60), method="POST",
-        headers={"Authorization": "Bearer tok", "Content-Type": "audio/wav", "X-Gas-Formato": formato})
+        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=dati, method="POST",
+        headers={"Authorization": "Bearer tok", "X-Gas-Formato": formato, **tipo,
+                 **(intestazioni or {})})
     try:
         with patch("modules.voice.server.transcribe_audio", side_effect=[trascrizione]), \
-             patch("modules.voice.server.synthesize_speech", side_effect=sintesi) as tts, \
+             (patch("modules.voice.server.synthesize_speech", new=tts) if tts is not None
+              else patch("modules.voice.server.synthesize_speech", side_effect=sintesi)) as tts, \
              patch.dict(os.environ, env):
             if not chiave:
                 os.environ.pop("ELEVENLABS_API_KEY", None)
@@ -1333,7 +1348,7 @@ def test_v10_formato_audio_pezzi_senza_schermo():
     ct, righe, tts = _voce_a_pezzi(testo, lambda frase, k, v: frase.encode(),
                                    formato="audio+pezzi", turni=turni)
     assert ct.startswith("application/x-ndjson")
-    assert turni[0]["istruzione_turno"] == ISTRUZIONE_VOCE
+    assert turni[0]["istruzione_turno"].startswith(ISTRUZIONE_VOCE + " Adesso è ")  # V13
     frasi = [c.args[0] for c in tts.call_args_list]
     assert frasi == ["Uno.", "Due.", "Tre.", "Quattro.", "Cinque."]   # più di 3, niente «resto»
     assert righe[0]["content"] == testo and righe[0]["pezzi"] == 5
@@ -1342,8 +1357,9 @@ def test_v10_formato_audio_pezzi_senza_schermo():
 
 
 def test_v10_non_ho_capito_a_righe():
-    """V10: anche «non ho capito» arriva a righe col formato senza schermo (il client H24
-    legge sempre NDJSON), senza far partire il turno."""
+    """V10: anche «non ho capito» arriva a righe col formato senza schermo, senza far partire
+    il turno (il client H24 legge NDJSON solo con Content-Type application/x-ndjson: testo
+    vuoto, chiave ElevenLabs mancante ed errori prima del turno restano un JSON unico)."""
     from modules.voice.stt import TrascrizioneIncerta
     turni = []
     ct, righe, tts = _voce_a_pezzi("mai usato", lambda frase, k, v: frase.encode(),
@@ -1352,6 +1368,102 @@ def test_v10_non_ho_capito_a_righe():
     assert ct.startswith("application/x-ndjson") and turni == []
     assert righe[0]["non_capito"] is True and righe[0]["capito"] == "boh"
     assert righe[-1]["fine"] is True and tts.call_count == 1
+
+
+def test_v11_audio_pezzi_a_testo_solo_testo():
+    """V11 (V-1 bot #330 su ae3258e): una richiesta a TESTO con «audio+pezzi» non passa dal
+    tetto orario, quindi riceve solo il testo (JSON): nessuna sintesi ElevenLabs, anche se
+    chiede Accept: audio/mpeg."""
+    testo = "Uno. Due. Tre."
+    ct, righe, tts = _voce_a_pezzi(testo, lambda frase, k, v: frase.encode(),
+                                   formato="audio+pezzi", prompt_testo="dimmi")
+    assert ct.startswith("application/json") and tts.call_count == 0
+    assert righe[0]["content"] == testo and "audio" not in righe[0]
+
+
+def test_v12_frasi_voce_parola_al_tetto():
+    """V12 (R-660-2-M2): una prima frase più lunga del tetto con una parola che finisce
+    proprio al tetto non perde quella parola; senza spazi si taglia al tetto."""
+    from modules.voice.server import frasi_voce, _PARLATO_VOCE_MAX_CHAR, _PARLATO_VOCE_RESTO
+    parole = ["abcdefghij"] + ["abcdefghi"] * 200      # 10 + 149 × (1 + 9) = 1500 al tetto
+    testo = " ".join(parole)
+    assert testo[_PARLATO_VOCE_MAX_CHAR] == " "
+    taglio, resto = frasi_voce(testo)
+    assert taglio == testo[:_PARLATO_VOCE_MAX_CHAR] and resto == _PARLATO_VOCE_RESTO
+    taglio, resto = frasi_voce("x" * 2000)
+    assert taglio == "x" * _PARLATO_VOCE_MAX_CHAR and resto == _PARLATO_VOCE_RESTO
+
+
+def test_v12_audio_pezzi_senza_chiave_json():
+    """V12 (R-660-1-M2): «audio+pezzi» senza chiave ElevenLabs → un JSON unico con
+    errore_voce (non NDJSON, non 503): il client H24 lo distingue dal Content-Type."""
+    ct, righe, tts = _voce_a_pezzi("Uno. Due.", lambda *a: b"x", formato="audio+pezzi", chiave=None)
+    assert ct.startswith("application/json") and tts.call_count == 0
+    assert righe[0]["content"] == "Uno. Due." and "ELEVENLABS_API_KEY" in righe[0]["errore_voce"]
+
+
+def test_v12_testo_con_sintesi_conta_nel_tetto():
+    """V12 (R-663-1-M2, decisione dell'operatore): una richiesta a TESTO che chiede la risposta
+    a voce conta nel tetto orario; oltre il tetto 429 senza turno. Il solo testo non conta, la
+    voce conta una volta sola, senza chiave ElevenLabs non conta."""
+    import urllib.error
+    import urllib.request
+    from unittest.mock import patch
+    from modules.voice.server import VoiceHandler
+    turni = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            turni.append(prompt)
+            yield {"type": "final", "content": "Ciao."}
+
+    class _H(VoiceHandler):
+        pass
+    _H.kernel = _K()
+    _H.token = "tok"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    apri = urllib.request.build_opener(urllib.request.ProxyHandler({})).open
+
+    def manda(intestazioni, voce=False):
+        dati, tipo = ((b"RIFF" + bytes(60), "audio/wav") if voce
+                      else (b'{"prompt": "dimmi"}', "application/json"))
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{srv.server_address[1]}/voice", data=dati, method="POST",
+            headers={"Authorization": "Bearer tok", "Content-Type": tipo, **intestazioni})
+        try:
+            with apri(req, timeout=10) as r:
+                return r.status
+        except urllib.error.HTTPError as exc:
+            return exc.code
+    try:
+        with patch("modules.voice.server.synthesize_speech", return_value=b"mp3"), \
+             patch("modules.voice.server.transcribe_audio", return_value="Gas, dimmi"), \
+             patch.dict(os.environ, {"ELEVENLABS_API_KEY": "k", "GROQ_API_KEY": "g",
+                                     "GAS_VOICE_MAX_TURNI_ORA": "3"}):
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            # R-665-1-M2: una richiesta a VOCE conta una volta sola (Groq), non due
+            assert manda({"X-Gas-Formato": "audio+testo"}, voce=True) == 200
+            assert manda({"X-Gas-Formato": "audio+testo"}, voce=True) == 200
+            assert manda({"X-Gas-Formato": "audio+testo"}) == 200
+            assert manda({}) == 200                                  # solo testo: non conta
+            # R-665-2-M2: audio+pezzi a testo è solo testo (V11) e non conta, anche con
+            # Accept: audio/mpeg come manda il client H24
+            assert manda({"X-Gas-Formato": "audio+pezzi", "Accept": "audio/mpeg"}) == 200
+            assert manda({"X-Gas-Formato": "audio+testo+pezzi"}) == 429
+            assert manda({"Accept": "audio/mpeg"}) == 429
+            assert manda({"X-Gas-Formato": "audio+testo"}, voce=True) == 429
+        assert len(turni) == 5 and len(_H.turni_parlati) == 3
+        # R-665-3-M2: senza chiave ElevenLabs non si spende nulla, quindi non conta
+        _H.turni_parlati = []
+        with patch.dict(os.environ, {"GAS_VOICE_MAX_TURNI_ORA": "1"}):
+            os.environ.pop("ELEVENLABS_API_KEY", None)
+            assert manda({"X-Gas-Formato": "audio+testo"}) == 200
+            assert manda({"X-Gas-Formato": "audio+testo"}) == 200
+        assert _H.turni_parlati == []
+    finally:
+        srv.shutdown()
+        srv.server_close()
 
 
 def test_v7b_proxy_inoltra_le_righe_appena_arrivano():
@@ -1513,7 +1625,6 @@ def test_v7b_guardia_della_pagina(evento, chiude):
     assert voce.chiusa is chiude
 
 
-
 @pytest.mark.parametrize("valore, atteso", [(None, True), ("0", False), ("off", False),
                                             ("no", False), ("1", True), ("sì", True)])
 def test_v9_gas_voice_agc(monkeypatch, valore, atteso):
@@ -1540,3 +1651,738 @@ def test_v9_gas_voice_agc(monkeypatch, valore, atteso):
     with pytest.raises(_Fermo):
         bs.run_browser_server()
     assert bs.BrowserProxyHandler.agc is atteso
+
+
+# ── V13 (chat M2): ora locale nel turno parlato, risposte a voce più corte ──
+
+def test_v13_ora_per_voce_data_ora_e_fuso_locali():
+    """V13: la frase dell'ora usa l'ora LOCALE passata (fuso compreso), giorno e mese in
+    italiano, e dice di non usare strumenti."""
+    from datetime import datetime, timedelta, timezone
+    from modules.voice.server import ora_per_voce
+    roma = timezone(timedelta(hours=1), "CET")
+    frase = ora_per_voce(datetime(2026, 11, 5, 18, 7, tzinfo=roma))
+    assert frase.startswith("Adesso è giovedì 5 novembre 2026, ore 18:07 (ora locale, fuso CET)")
+    assert "NON usare data_ora" in frase
+    # il fuso conta: lo stesso istante in UTC è un'altra ora e un altro giorno
+    tardi = ora_per_voce(datetime(2026, 12, 31, 23, 30, tzinfo=timezone.utc).astimezone(
+        timezone(timedelta(hours=2), "EET")))
+    assert "venerdì 1 gennaio 2027, ore 1:30 " in tardi and "fuso EET" in tardi  # V-2 bot #334
+
+
+def test_v13_ora_per_voce_senza_argomento_usa_l_orologio_locale(monkeypatch):
+    """V13: senza `adesso` vale l'ora locale della macchina (datetime.now().astimezone()).
+    R-667-1-M2: fuso forzato diverso da UTC (CI e cloud girano in UTC), così un'ora senza
+    fuso non passa per locale."""
+    import time as _time
+    from datetime import datetime
+    from modules.voice.server import ora_per_voce
+    monkeypatch.setenv("TZ", "Asia/Kolkata")  # UTC+5:30 tutto l'anno, niente ora legale
+    _time.tzset()
+    try:
+        prima = datetime.now().astimezone()
+        frase = ora_per_voce()
+        dopo = datetime.now().astimezone()
+        assert prima.utcoffset().total_seconds() == 5.5 * 3600
+        assert any(f", ore {t.hour}:{t:%M} " in frase for t in (prima, dopo))
+        assert f"fuso {prima.tzname()}" in frase and "fuso UTC" not in frase
+    finally:
+        monkeypatch.undo()
+        _time.tzset()
+
+
+def test_v13_istruzione_turno_voce_con_e_senza_schermo():
+    """V13: l'istruzione del turno parlato è quella V3/V4 più l'ora; entrambe chiedono al
+    massimo due frasi."""
+    from datetime import datetime, timezone
+    from modules.voice.server import (ISTRUZIONE_VOCE, ISTRUZIONE_VOCE_SCHERMO,
+                                      istruzione_turno_voce)
+    t = datetime(2026, 11, 5, 9, 5, tzinfo=timezone.utc)
+    assert istruzione_turno_voce(False, t) == ISTRUZIONE_VOCE + " " + \
+        "Adesso è giovedì 5 novembre 2026, ore 9:05 (ora locale, fuso UTC). In questo turno, " \
+        "per l'ora o la data rispondi con questa e NON usare data_ora: vale al posto " \
+        "dell'indicazione generale di usarlo."
+    assert istruzione_turno_voce(True, t).startswith(ISTRUZIONE_VOCE_SCHERMO + " Adesso è giovedì")
+    for istr in (ISTRUZIONE_VOCE, ISTRUZIONE_VOCE_SCHERMO):
+        assert "mai più di due" in istr and "1-3" not in istr
+        # niente «… sì o no?» in coda a ogni risposta (prova sul Mac del 5 nov)
+        assert "Non chiudere con domande" in istr and "chiudi con una domanda" not in istr
+
+
+# ---- Fetta 3.2 (chat M2, 7 nov): compiti in sottofondo finiti letti a voce ----
+
+def _compito_finito(root, ident, stato="ok", risposta="Tre offerte: la migliore è la B.",
+                    fine=None):
+    import time as _t
+    c = root / ".gas_sottofondo"
+    c.mkdir(exist_ok=True)
+    (c / f"{ident}.json").write_text(json.dumps({
+        "id": ident, "compito": "confronta tre offerte", "stato": stato, "risposta": risposta,
+        "creato": _t.time() - 60, "fine": _t.time() - 30 if fine is None else fine}))
+    return c / f"{ident}.json"
+
+
+def test_f32_compito_finito_letto_alla_prossima_attivazione(tmp_path):
+    """A voce, prima della risposta: il compito finito (titolo + riassunto corto), poi segnato
+    letto e non ripetuto al turno dopo."""
+    f = _compito_finito(tmp_path, "20261107-100000-aaaaaa")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[0].startswith("Ho finito il compito in sottofondo «confronta tre offerte»")
+    assert "la migliore è la B." in " ".join(frasi) and frasi[-1] == "Ciao."
+    assert json.loads(f.read_text())["letto_a_voce"] is True
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path)
+    assert [c.args[0] for c in tts.call_args_list] == ["Ciao."]
+
+
+def test_f32_testo_non_legge_e_non_segna(tmp_path):
+    """A testo (anche con la sintesi chiesta) niente lettura: la coda resta per la voce."""
+    f = _compito_finito(tmp_path, "20261107-100000-bbbbbb")
+    _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path,
+                  prompt_testo="ciao")
+    assert "letto_a_voce" not in json.loads(f.read_text())
+
+
+def test_f32_compito_fallito_e_vecchio(tmp_path):
+    """Un compito fallito si dice in una frase; uno finito più di 24 ore fa non si legge."""
+    import time as _t
+    _compito_finito(tmp_path, "20261107-100000-cccccc", stato="ko", risposta="")
+    vecchio = _compito_finito(tmp_path, "20261105-100000-dddddd", fine=_t.time() - 2 * 86400)
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[0] == "Il compito in sottofondo «confronta tre offerte» non è riuscito."
+    assert "letto_a_voce" not in json.loads(vecchio.read_text())
+
+
+def test_f32_errore_nella_coda_non_rompe_la_risposta(tmp_path, monkeypatch):
+    import modules.sottofondo as sf
+
+    def _rotto(root):
+        raise RuntimeError("x")
+    monkeypatch.setattr(sf, "da_leggere", _rotto)
+    _compito_finito(tmp_path, "20261107-100000-eeeeee")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path)
+    assert [c.args[0] for c in tts.call_args_list] == ["Ciao."]
+
+
+def test_f32_seguito_non_legge(tmp_path):
+    """Nel seguito (parlato della stanza, X-Gas-Seguito: 1) i compiti finiti non si leggono:
+    restano per la prossima attivazione."""
+    f = _compito_finito(tmp_path, "20261107-100000-ffffff")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), root=tmp_path,
+                                   intestazioni={"X-Gas-Seguito": "1"})
+    assert "Ho finito" not in " ".join(c.args[0] for c in tts.call_args_list)
+    assert "letto_a_voce" not in json.loads(f.read_text())
+
+
+def test_f32_due_compiti_lunghi_non_tolgono_la_risposta(tmp_path):
+    """Bot #350 V-1: con schermo (audio+testo+pezzi) due compiti con riassunto lungo non
+    consumano il limite della parte parlata: la risposta viene detta lo stesso; a schermo i
+    compiti sono il primo paragrafo."""
+    lunga = "Prima frase del risultato. " + "parola " * 40 + "fine."
+    _compito_finito(tmp_path, "20261107-100000-gggggg", risposta=lunga)
+    _compito_finito(tmp_path, "20261107-100001-hhhhhh", risposta=lunga)
+    ct, righe, tts = _voce_a_pezzi("Ciao. Tutto bene.", lambda frase, k, v: frase.encode(),
+                                   root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[-2:] == ["Ciao.", "Tutto bene."]
+    assert sum(f.startswith("Ho finito il compito") for f in frasi) == 2
+    assert righe[0]["content"].startswith("Ho finito il compito")
+    assert righe[0]["content"].endswith("\n\nCiao. Tutto bene.")
+
+
+def test_f32_client_senza_schermo_audio_pezzi(tmp_path):
+    """Il client H24 (audio+pezzi, tutto a voce): prima i compiti, poi la risposta intera."""
+    _compito_finito(tmp_path, "20261107-100000-iiiiii")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(),
+                                   formato="audio+pezzi", root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[0].startswith("Ho finito il compito in sottofondo") and frasi[-1] == "Ciao."
+
+
+def test_f32_senza_chiave_tts_compiti_nel_testo(tmp_path):
+    """Senza chiave ElevenLabs la risposta arriva a testo con i compiti come primo paragrafo."""
+    f = _compito_finito(tmp_path, "20261107-100000-llllll")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(), chiave=None,
+                                   root=tmp_path)
+    assert righe[0]["content"].startswith("Ho finito il compito in sottofondo")
+    assert righe[0]["content"].endswith("\n\nCiao.")
+    assert json.loads(f.read_text())["letto_a_voce"] is True
+
+
+# ---- Riserve BASSE della #350 (chat M2, 8 nov) ----
+
+def _letto(f):
+    return json.loads(f.read_text()).get("letto_a_voce") is True
+
+
+def test_f32b_sintesi_fallita_non_segna_letti(tmp_path):
+    """Ve #350 V-1: senza schermo (audio+pezzi), se la sintesi della prima frase fallisce i
+    compiti non risultano letti (si ridicono alla prossima attivazione)."""
+    from modules.voice.tts import ElevenLabsTTSError
+    f = _compito_finito(tmp_path, "20261108-100000-aaaaaa")
+
+    def _rotta(frase, k, v):
+        raise ElevenLabsTTSError(500, "giù")
+    _voce_a_pezzi("Ciao.", _rotta, formato="audio+pezzi", root=tmp_path)
+    assert not _letto(f)
+
+
+@pytest.mark.parametrize("formato", ["audio+testo+pezzi", "audio+testo"])
+def test_f32c_con_schermo_voce_fallita_segna_letti(tmp_path, formato):
+    """Bot #352 (f6de3e6) V-1, regola unica: con uno schermo il testo con i compiti arriva
+    anche se la voce fallisce → letti; R-711-1-M2: test di sintesi fallita nel ramo MP3 unico."""
+    from modules.voice.tts import ElevenLabsTTSError
+    f = _compito_finito(tmp_path, "20261109-100000-aaaaaa")
+
+    def _rotta(frase, k, v):
+        raise ElevenLabsTTSError(500, "giù")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", _rotta, formato=formato, root=tmp_path)
+    assert righe[0]["content"].startswith("Ho finito") and "errore_voce" in righe[0]
+    assert _letto(f)
+
+
+def test_f32b_segnati_appena_dette_le_frasi_dei_compiti(tmp_path):
+    """Senza schermo (audio+pezzi): dette le frasi dei compiti, risultano letti anche se poi
+    la sintesi della risposta fallisce."""
+    from modules.voice.tts import ElevenLabsTTSError
+    f = _compito_finito(tmp_path, "20261108-100000-bbbbbb", risposta="Fatto.")
+    chiamate = []
+
+    def _poi_rotta(frase, k, v):
+        chiamate.append(frase)
+        if frase == "Ciao.":
+            raise ElevenLabsTTSError(500, "giù")
+        return frase.encode()
+    _voce_a_pezzi("Ciao.", _poi_rotta, formato="audio+pezzi", root=tmp_path)
+    assert chiamate[0].startswith("Ho finito") and _letto(f)
+
+
+def test_f32b_risposta_vuota_dice_comunque_i_compiti(tmp_path):
+    """R-710-1-M2: risposta del modello vuota → la frase dei compiti si dice lo stesso."""
+    f = _compito_finito(tmp_path, "20261108-100000-cccccc")
+    ct, righe, tts = _voce_a_pezzi("", lambda frase, k, v: frase.encode(),
+                                   formato="audio+pezzi", root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi and frasi[0].startswith("Ho finito") and _letto(f)
+
+
+@pytest.mark.parametrize("parola", ["Gas.", "Hey Jarvis!"])
+def test_f32b_solo_parola_di_attivazione_dice_i_compiti(tmp_path, parola):
+    """Bot #350 V-5: con la sola parola di attivazione («Dimmi.») i compiti si dicono prima."""
+    f = _compito_finito(tmp_path, "20261108-100000-dddddd")
+    ct, righe, tts = _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(),
+                                   trascrizione=parola, root=tmp_path)
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert frasi[0].startswith("Ho finito") and frasi[-1] == "Dimmi." and _letto(f)
+
+
+def test_f32b_solo_parola_nel_seguito_non_legge(tmp_path):
+    f = _compito_finito(tmp_path, "20261108-100000-eeeeee")
+    _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(), trascrizione="Gas.",
+                  root=tmp_path, intestazioni={"X-Gas-Seguito": "1"})
+    assert not _letto(f)
+
+
+def test_f32b_formato_audio_testo_sintesi_unica(tmp_path):
+    """Bot #350 (40c5b30) V-1: ramo audio+testo (un solo MP3): compiti prima, poi la parte
+    parlata della risposta; segnati letti."""
+    import base64
+    f = _compito_finito(tmp_path, "20261108-100000-ffffff")
+    ct, righe, tts = _voce_a_pezzi("Ciao.", lambda frase, k, v: frase.encode(),
+                                   formato="audio+testo", root=tmp_path)
+    detto = base64.b64decode(righe[0]["audio"]).decode()
+    assert detto.startswith("Ho finito il compito") and detto.endswith("Ciao.") and _letto(f)
+
+
+def test_f32b_mp3_diretto(tmp_path):
+    """Ramo audio/mpeg (_do_tts_response): compiti prima della risposta, segnati letti."""
+    from unittest.mock import patch
+    import urllib.request
+    from modules.voice.server import VoiceHandler
+    f = _compito_finito(tmp_path, "20261108-100000-gggggg")
+
+    class _K:
+        root = tmp_path
+
+        def run_turn(self, prompt, **kw):
+            yield {"type": "final", "content": "Ciao."}
+
+    class _H(VoiceHandler):
+        pass
+    _H.kernel = _K()
+    _H.token = "tok"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=b"RIFF" + bytes(60),
+        method="POST", headers={"Authorization": "Bearer tok", "Content-Type": "audio/wav",
+                                "Accept": "audio/mpeg"})
+    try:
+        with patch("modules.voice.server.transcribe_audio", side_effect=["Gas, dimmi"]), \
+             patch("modules.voice.server.synthesize_speech",
+                   side_effect=lambda frase, k, v: frase.encode()), \
+             patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=10) as r:
+                corpo = r.read().decode()
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert corpo.startswith("Ho finito il compito") and corpo.endswith("Ciao.") and _letto(f)
+
+
+def test_f32c_mp3_diretto_sintesi_fallita_non_segna(tmp_path):
+    """R-711-1-M2: ramo audio/mpeg con sintesi fallita (502) → compiti non letti."""
+    from unittest.mock import patch
+    import urllib.request
+    import urllib.error
+    from modules.voice.server import VoiceHandler
+    from modules.voice.tts import ElevenLabsTTSError
+    f = _compito_finito(tmp_path, "20261109-100000-bbbbbb")
+
+    class _K:
+        root = tmp_path
+
+        def run_turn(self, prompt, **kw):
+            yield {"type": "final", "content": "Ciao."}
+
+    class _H(VoiceHandler):
+        pass
+    _H.kernel = _K()
+    _H.token = "tok"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=b"RIFF" + bytes(60),
+        method="POST", headers={"Authorization": "Bearer tok", "Content-Type": "audio/wav",
+                                "Accept": "audio/mpeg"})
+
+    def _rotta(frase, k, v):
+        raise ElevenLabsTTSError(500, "giù")
+    codice = None
+    try:
+        with patch("modules.voice.server.transcribe_audio", side_effect=["Gas, dimmi"]), \
+             patch("modules.voice.server.synthesize_speech", side_effect=_rotta), \
+             patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            try:
+                urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=10)
+            except urllib.error.HTTPError as e:
+                codice = e.code
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert codice == 502 and not _letto(f)
+
+
+def test_f32c_dimmi_senza_tts_a_testo(tmp_path):
+    """Bot #352 V-1 (893b863): «Dimmi.» senza chiave TTS, risposta JSON a testo: compiti come
+    primo paragrafo e segnati letti dopo l'invio."""
+    f = _compito_finito(tmp_path, "20261109-100000-cccccc")
+    ct, righe, tts = _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(),
+                                   chiave=None, trascrizione="Gas.", root=tmp_path,
+                                   formato="")
+    assert righe[0]["content"].startswith("Ho finito") and righe[0]["content"].endswith("Dimmi.")
+    assert _letto(f)
+
+
+def test_f32c_finiti_jobs_azzerati_a_ogni_richiesta(monkeypatch):
+    """R-711-3-M2 (ve #356 V-1): i compiti tenuti da una richiesta precedente sulla stessa
+    connessione (keep-alive) non vengono segnati letti dalla richiesta dopo."""
+    from modules import sottofondo
+    segnati = []
+    monkeypatch.setattr(sottofondo, "segna_letti", lambda root, jobs: segnati.append(jobs))
+    h = VoiceHandler.__new__(VoiceHandler)
+    h.path = "/non-esiste"
+    h.headers = {}
+    h._send_json = lambda code, payload: None
+    h._finiti_jobs = [{"id": "della-richiesta-prima"}]
+    h.do_POST()
+    h._segna_finiti_letti()
+    assert segnati == []
+
+
+# ---- Velocità: cache delle frasi fisse (chat M2, 9 nov) ----
+
+def test_sintesi_frasi_fisse_dalla_cache(monkeypatch):
+    """Le frasi fisse si sintetizzano una volta per voce; il testo libero mai in cache;
+    un audio vuoto non entra in cache."""
+    import modules.voice.server as srv
+    chiamate = []
+
+    def _finta(frase, k, v):
+        chiamate.append((frase, v))
+        return b"" if frase == srv.RISPOSTA_PAUSA else frase.encode()
+    monkeypatch.setattr(srv, "synthesize_speech", _finta)
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+    assert srv.sintesi("Dimmi.", "k", "v1") == b"Dimmi."
+    assert srv.sintesi("Dimmi.", "k", "v1") == b"Dimmi."
+    assert srv.sintesi("Dimmi.", "k", "v2") == b"Dimmi."
+    srv.sintesi("Ciao a te.", "k", "v1")
+    srv.sintesi("Ciao a te.", "k", "v1")
+    srv.sintesi(srv.RISPOSTA_PAUSA, "k", "v1")
+    srv.sintesi(srv.RISPOSTA_PAUSA, "k", "v1")
+    assert chiamate == [("Dimmi.", "v1"), ("Dimmi.", "v2"), ("Ciao a te.", "v1"),
+                        ("Ciao a te.", "v1"), (srv.RISPOSTA_PAUSA, "v1"),
+                        (srv.RISPOSTA_PAUSA, "v1")]
+
+
+@pytest.mark.parametrize("formato", ["audio+testo+pezzi", "audio+testo"])
+def test_sintesi_cache_usata_dalle_risposte(monkeypatch, formato):
+    """Bot #356 V-3: le risposte vere (pezzi, audio+testo, MP3 diretto) passano da sintesi(),
+    quindi «Dimmi.» finisce nella cache (chiave: funzione di sintesi, voce, frase)."""
+    import modules.voice.server as srv
+    cache = {}
+    monkeypatch.setattr(srv, "_cache_frasi", cache)
+    _, _, tts = _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(),
+                              trascrizione="Gas.", formato=formato)
+    assert [c.args[0] for c in tts.call_args_list] == ["Dimmi."]
+    assert [(k[2], v) for k, v in cache.items()] == [("Dimmi.", b"Dimmi.")]
+
+
+def test_sintesi_cache_usata_dal_mp3_diretto(monkeypatch):
+    """Bot #356 V-3: anche il ramo MP3 diretto (_do_tts_response) passa da sintesi():
+    la seconda «Dimmi.» viene dalla cache."""
+    import modules.voice.server as srv
+    chiamate, inviati = [], []
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+    monkeypatch.setattr(srv, "synthesize_speech", lambda f, k, v: chiamate.append(f) or f.encode())
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    h = VoiceHandler.__new__(VoiceHandler)
+    h._tempi = None
+    h._finiti_jobs = None
+    h._send_audio = inviati.append
+    h._do_tts_response("Dimmi.")
+    h._do_tts_response("Dimmi.")
+    assert chiamate == ["Dimmi."] and inviati == [b"Dimmi.", b"Dimmi."]
+
+
+def test_sintesi_errore_non_in_cache(monkeypatch):
+    """Un errore di ElevenLabs passa al chiamante e non lascia niente in cache."""
+    import modules.voice.server as srv
+    from modules.voice.tts import ElevenLabsTTSError
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+
+    def _rotta(frase, k, v):
+        raise ElevenLabsTTSError(500, "giù")
+    monkeypatch.setattr(srv, "synthesize_speech", _rotta)
+    with pytest.raises(ElevenLabsTTSError):
+        srv.sintesi("Dimmi.", "k", "v1")
+    assert srv._cache_frasi == {}
+
+
+def test_sintesi_cache_ha_un_tetto(monkeypatch):
+    import modules.voice.server as srv
+    monkeypatch.setattr(srv, "synthesize_speech", lambda f, k, v: b"x")
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+    for i in range(srv._CACHE_FRASI_MAX + 5):
+        srv.sintesi("Dimmi.", "k", f"voce{i}")
+    assert len(srv._cache_frasi) <= srv._CACHE_FRASI_MAX
+
+
+def test_sintesi_cache_anche_per_le_frasi_divise(monkeypatch):
+    """Bot #356 V-1: nelle risposte a pezzi una frase fissa di più frasi (es. l'uso di «forte»)
+    viene divisa; anche i suoi pezzi vanno in cache. Un testo diverso no."""
+    import modules.voice.server as srv
+    chiamate = []
+    monkeypatch.setattr(srv, "synthesize_speech", lambda f, k, v: chiamate.append(f) or b"x")
+    monkeypatch.setattr(srv, "_cache_frasi", {})
+    pezzi = srv._dividi_frasi(srv._USO_FORTE_PARLATO)
+    assert len(pezzi) >= 2
+    for _ in range(2):
+        for p in pezzi:
+            srv.sintesi(p, "k", "v")
+    assert chiamate == pezzi
+    srv.sintesi(pezzi[0] + " Altro.", "k", "v")
+    srv.sintesi(pezzi[0] + " Altro.", "k", "v")
+    assert chiamate[len(pezzi):] == [pezzi[0] + " Altro."] * 2
+
+
+def test_sintesi_cache_forte_a_pezzi_dal_server(monkeypatch):
+    """Bot #360 V-1: sul percorso vero («Gas, forte.» senza richiesta → risposta d'uso a pezzi)
+    ogni frase della risposta d'uso finisce nella cache."""
+    import modules.voice.server as srv
+    cache = {}
+    monkeypatch.setattr(srv, "_cache_frasi", cache)
+    _, righe, tts = _voce_a_pezzi("non usato", lambda frase, k, v: frase.encode(),
+                                  trascrizione="Gas, forte.", formato="audio+testo+pezzi")
+    pezzi = srv._dividi_frasi(srv._USO_FORTE_PARLATO)
+    assert [c.args[0] for c in tts.call_args_list] == pezzi
+    assert sorted(k[2] for k in cache) == sorted(pezzi)
+    # bot #360 (2° giro): la seconda richiesta, con la stessa sintesi, legge dalla cache
+    tts.reset_mock()
+    _, righe2, tts2 = _voce_a_pezzi("non usato", None, trascrizione="Gas, forte.",
+                                    formato="audio+testo+pezzi", tts=tts)
+    assert tts2 is tts and tts.call_count == 0
+    # stessa risposta, audio dalla memoria (i tempi misurati no: cambiano da una richiesta
+    # all'altra, bot #360 3° giro)
+    senza_tempi = lambda rr: [{k: v for k, v in r.items() if k != "tempi"} for r in rr]  # noqa: E731
+    assert senza_tempi(righe2) == senza_tempi(righe)
+
+
+# ---- R8 fetta 1 (chat M2, sicurezza): tentativi falliti, tetto al testo, avvio chiuso ----
+
+class TestR8Limiti:
+    TOKEN = "token_r8_valido"
+
+    def setup_method(self):
+        _MockKernel.instances.clear()
+        self.kernel = _MockKernel()
+        self.server, self.port = _make_server(self.kernel, token=self.TOKEN)
+
+    def teardown_method(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    def _giusto(self):
+        return _post(self.port, {"prompt": "ciao"}, headers={"Authorization": f"Bearer {self.TOKEN}"})
+
+    def _sbagliato(self):
+        return _post(self.port, {"prompt": "ciao"}, headers={"Authorization": "Bearer sbagliato_r8"})
+
+    def test_troppi_falliti_bloccano_anche_il_token_giusto(self, monkeypatch, caplog):
+        import modules.voice.server as srv
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "3")
+        monkeypatch.setattr(srv, "_FALLITI_BLOCCO_S", 0.5)
+        with caplog.at_level(logging.WARNING, logger="modules.voice.server"):
+            assert [self._sbagliato()[0] for _ in range(3)] == [401, 401, 429]
+            assert self._giusto()[0] == 429          # bloccato anche col token giusto
+        testo = " ".join(r.message for r in caplog.records)
+        assert "AUTH BLOCCO ip=127.0.0.1" in testo and "AUTH BLOCCATO ip=127.0.0.1" in testo
+        assert "sbagliato_r8" not in testo and self.TOKEN not in testo
+        time.sleep(0.6)
+        assert self._giusto()[0] == 200          # il blocco scade da solo
+        assert self._sbagliato()[0] == 401       # e il conto riparte da zero
+
+    def test_richieste_senza_token_non_bloccano(self, monkeypatch):
+        """Bot #358 V-1: richieste senza «Bearer <token>» (come quelle che una pagina web può
+        mandare al server locale) non contano per il blocco: il token giusto passa ancora."""
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "3")
+        senza = [_post(self.port, {"prompt": "ciao"}, headers={})[0] for _ in range(20)]
+        vuoto = [_post(self.port, {"prompt": "ciao"}, headers={"Authorization": "Bearer "})[0]
+                 for _ in range(5)]
+        altro = [_post(self.port, {"prompt": "ciao"}, headers={"Authorization": "Basic abc"})[0]
+                 for _ in range(5)]
+        assert set(senza) == set(vuoto) == set(altro) == {401}
+        assert self._giusto()[0] == 200
+        assert [self._sbagliato()[0] for _ in range(3)] == [401, 401, 429]  # un token sì
+
+    def _con_host(self, host, token):
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            c.putrequest("POST", "/voice", skip_host=True)
+            c.putheader("Host", host)
+            c.putheader("Content-Type", "application/json")
+            corpo = b'{"prompt": "ciao"}'
+            c.putheader("Content-Length", str(len(corpo)))
+            c.putheader("Authorization", f"Bearer {token}")
+            c.endheaders(corpo)
+            return c.getresponse().status
+        finally:
+            c.close()
+
+    def test_host_di_dominio_rifiutato_e_non_conta(self, monkeypatch):
+        """R-731-1-M2 (DNS rebinding): un Host che è un nome di dominio riceve 403 anche col
+        token giusto, il kernel non parte e il blocco dell'IP non scatta."""
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "2")
+        chiamate = []
+        orig = self.kernel.run_turn
+        self.kernel.run_turn = lambda p: chiamate.append(p) or orig(p)
+        stati = [self._con_host("evil.example:8765", "sbagliato") for _ in range(5)]
+        assert stati == [403] * 5
+        assert self._con_host("evil.example", self.TOKEN) == 403
+        assert chiamate == []
+        assert self._giusto()[0] == 200                      # nessun blocco per l'IP
+
+    @pytest.mark.parametrize("host", ["localhost:8765", "LOCALHOST", "127.0.0.1:8765",
+                                      "[::1]:8765"])
+    def test_host_locali_ammessi(self, host):
+        assert self._con_host(host, self.TOKEN) == 200
+
+    def test_token_giusto_non_azzera_e_falliti_sotto_soglia(self, monkeypatch):
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "3")
+        assert [self._sbagliato()[0] for _ in range(2)] == [401, 401]
+        assert self._giusto()[0] == 200
+        assert self._sbagliato()[0] == 429       # il terzo fallito nella finestra blocca
+
+    def test_memoria_piena_conta_e_blocca_ancora(self, monkeypatch):
+        """R-720-4-M2 (bot #358): con la memoria piena l'IP nuovo si conta e si blocca lo stesso
+        (esce la voce più vecchia), la memoria resta entro il tetto."""
+        import modules.voice.server as srv
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "2")
+        monkeypatch.setattr(srv, "_FALLITI_MAX_IP", 3)
+        cls = self.server.RequestHandlerClass
+        adesso = time.monotonic()
+        cls.falliti = {f"ip-vecchio-{i}": [adesso - 10 + i] for i in range(3)}
+        cls.bloccati = {f"ip-bloccato-{i}": adesso + 100 + i for i in range(3)}
+        assert [self._sbagliato()[0] for _ in range(2)] == [401, 429]
+        assert self._giusto()[0] == 429                  # 127.0.0.1 bloccato davvero
+        assert "127.0.0.1" in cls.bloccati and len(cls.bloccati) == 3
+        assert "ip-bloccato-0" not in cls.bloccati       # uscito quello che scadeva prima
+        assert "ip-vecchio-0" not in cls.falliti and len(cls.falliti) <= 3
+
+    def test_falliti_non_condivisi_con_la_classe_base(self, monkeypatch):
+        monkeypatch.setenv("GAS_VOICE_MAX_FALLITI", "2")
+        self._sbagliato()
+        self._sbagliato()
+        assert VoiceHandler.falliti == {} and VoiceHandler.bloccati == {}
+
+    def test_tetto_alle_richieste_a_testo(self, monkeypatch):
+        monkeypatch.setenv("GAS_VOICE_MAX_TESTO_ORA", "2")
+        chiamate = []
+        orig = self.kernel.run_turn
+        self.kernel.run_turn = lambda p: chiamate.append(p) or orig(p)
+        assert self._giusto()[0] == 200 and self._giusto()[0] == 200
+        status, body = self._giusto()
+        assert status == 429 and "GAS_VOICE_MAX_TESTO_ORA" in body["error"]
+        assert len(chiamate) == 2                # oltre il tetto nessun turno parte
+
+    def test_testo_rifiutato_non_consuma_il_tetto_voce(self, monkeypatch):
+        """R-720-1-M2: il tetto al testo scatta prima del conteggio V12, così un testo rifiutato
+        non toglie posti alle richieste a voce (ascolto H24)."""
+        from unittest.mock import patch
+        monkeypatch.setenv("GAS_VOICE_MAX_TESTO_ORA", "1")
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+        hdr = {"Authorization": f"Bearer {self.TOKEN}", "Accept": "audio/mpeg"}
+        url = f"http://127.0.0.1:{self.port}/voice"
+        stati = []
+        with patch("modules.voice.server.synthesize_speech", side_effect=lambda f, k, v: b"mp3"):
+            for _ in range(3):
+                req = urllib.request.Request(url, data=b'{"prompt": "ciao"}', method="POST",
+                                             headers={"Content-Type": "application/json", **hdr})
+                try:
+                    with _SENZA_PROXY.open(req, timeout=5) as r:
+                        stati.append(r.status)
+                except urllib.error.HTTPError as e:
+                    stati.append(e.code)
+        assert stati == [200, 429, 429]
+        assert len(self.server.RequestHandlerClass.turni_parlati) == 1
+
+    def test_testo_rifiutato_dal_tetto_voce_non_consuma_il_tetto_testo(self, monkeypatch):
+        """R-722-1-M2: un testo con risposta a voce rifiutato dal tetto voce (V12) non conta nel
+        tetto al testo: una richiesta solo a testo dopo passa ancora."""
+        from unittest.mock import patch
+        monkeypatch.setenv("GAS_VOICE_MAX_TURNI_ORA", "1")
+        monkeypatch.setenv("GAS_VOICE_MAX_TESTO_ORA", "3")
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+        url = f"http://127.0.0.1:{self.port}/voice"
+        stati = []
+        with patch("modules.voice.server.synthesize_speech", side_effect=lambda f, k, v: b"mp3"):
+            for accetta in ("audio/mpeg", "audio/mpeg", "audio/mpeg", "application/json"):
+                req = urllib.request.Request(
+                    url, data=b'{"prompt": "ciao"}', method="POST",
+                    headers={"Content-Type": "application/json", "Accept": accetta,
+                             "Authorization": f"Bearer {self.TOKEN}"})
+                try:
+                    with _SENZA_PROXY.open(req, timeout=5) as r:
+                        stati.append(r.status)
+                except urllib.error.HTTPError as e:
+                    stati.append(e.code)
+        assert stati == [200, 429, 429, 200]
+        assert len(self.server.RequestHandlerClass.turni_testo) == 2
+
+    @pytest.mark.parametrize("valore", ["abc", "0", "-3", ""])
+    def test_soglie_scritte_male_usano_il_default(self, monkeypatch, valore):
+        import modules.voice.server as srv
+        monkeypatch.setenv("GAS_VOICE_MAX_TESTO_ORA", valore)
+        assert srv._intero_env("GAS_VOICE_MAX_TESTO_ORA", 120) == 120
+
+
+@pytest.mark.parametrize("bind,locale", [
+    ("127.0.0.1", True), ("127.0.0.2", True), ("localhost", True),
+    ("::1", False), ("::ffff:127.0.0.1", False),  # bot #358 V-2: il server è solo IPv4
+    # indirizzi non locali solo IPv6 di esempio (gate IP del repo: niente IPv4 non loopback)
+    ("::", False), ("2001:db8::10", False), ("fd7a:115c:a1e0::5", False),
+    ("127.evil.example", False), ("", False),  # R-720-3-M2: un nome host non è loopback
+])
+def test_r8_bind_locale(bind, locale):
+    from modules.voice.server import _bind_locale
+    assert _bind_locale(bind) is locale
+
+
+@pytest.mark.parametrize("rete", ["", "0", "no"])
+def test_r8_avvio_rifiutato_fuori_da_127_senza_rete_privata(monkeypatch, capsys, rete):
+    import modules.voice.server as srv
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(srv, "_carica_env", lambda: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
+    # bot #358 V-1: un IPv4 non locale scritto per intero (rete del tunnel, costruito da intero
+    # per il gate IP), così questo test prova proprio il controllo sulla rete privata
+    monkeypatch.setenv("GAS_VOICE_BIND", str(ipaddress.IPv4Address(0x64400005)))
+    monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", rete)
+    # se il controllo mancasse, il server non deve partire davvero: il kernel finto fallisce
+    monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
+    sys.modules["gas"].GasKernel = lambda **kw: (_ for _ in ()).throw(AssertionError("partito"))
+    assert run_server(root_dir="/tmp") == 1
+    out = capsys.readouterr().out
+    assert "non è locale e la connessione è in chiaro" in out and "t" * 32 not in out
+
+
+@pytest.mark.parametrize("bind,messaggio", [
+    ("0", "non è un indirizzo IPv4 scritto per intero"),       # R-727-1-M2: forme abbreviate
+    ("0x0", "non è un indirizzo IPv4 scritto per intero"),
+    ("gas.example", "non è un indirizzo IPv4 scritto per intero"),  # nome host
+    (str(ipaddress.IPv4Address(0)), "tutte le interfacce"),  # IPv4 «tutte le interfacce»
+    ("::ffff:0:0", "✗ gas voice"),  # R-728-1-M2: IPv4 dentro IPv6 (messaggio secondo Python)
+    ("fe80::1%eth0", "IPv4 scritto per intero"),  # R-728-2-M2: IPv6 con zona, niente crash
+    ("fd7a:115c:a1e0::5", "IPv4 scritto per intero"),  # IPv6: il server è solo IPv4
+])
+def test_r8_rete_privata_rifiuta_nomi_e_tutte_le_interfacce(monkeypatch, capsys, bind, messaggio):
+    """Anche con la rete privata dichiarata, il server non parte su un nome host, su una forma
+    abbreviata o su tutte le interfacce (il socket le risolverebbe da solo)."""
+    import modules.voice.server as srv
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(srv, "_carica_env", lambda: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
+    monkeypatch.setenv("GAS_VOICE_BIND", bind)
+    monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", "1")
+    monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
+    sys.modules["gas"].GasKernel = lambda **kw: (_ for _ in ()).throw(AssertionError("partito"))
+    assert run_server(root_dir="/tmp") == 1
+    assert messaggio in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("rete", ["", "1"])
+def test_r8_mai_su_tutte_le_interfacce(monkeypatch, capsys, rete):
+    """Bot #358 V-1: «::» (tutte le interfacce) è rifiutato anche con la rete privata dichiarata."""
+    import modules.voice.server as srv
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(srv, "_carica_env", lambda: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
+    monkeypatch.setenv("GAS_VOICE_BIND", "::")
+    monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", rete)
+    monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
+    sys.modules["gas"].GasKernel = lambda **kw: (_ for _ in ()).throw(AssertionError("partito"))
+    assert run_server(root_dir="/tmp") == 1
+    assert "tutte le interfacce" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("bind,tutte", [
+    ("::", True), ("::1", False), ("127.0.0.1", False), ("fd7a:115c:a1e0::5", False),
+    ("localhost", False), ("", False),
+])
+def test_r8_bind_tutte_le_interfacce(bind, tutte):
+    from modules.voice.server import _bind_tutte_le_interfacce
+    assert _bind_tutte_le_interfacce(bind) is tutte
+
+
+def test_r8_avvio_con_rete_privata_dichiarata_parte(monkeypatch):
+    """Con GAS_VOICE_RETE_PRIVATA=1 il controllo lascia passare (si ferma qui, prima del kernel)."""
+    import modules.voice.server as srv
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(srv, "_carica_env", lambda: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
+    # un indirizzo della rete Tailscale (100.64/10), costruito da intero: gate IP del repo
+    monkeypatch.setenv("GAS_VOICE_BIND", str(ipaddress.IPv4Address(0x64400005)))
+    monkeypatch.setenv("GAS_VOICE_RETE_PRIVATA", "1")
+
+    class _Fermo(Exception):
+        pass
+
+    def _kernel(**kw):
+        raise _Fermo()
+    monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
+    sys.modules["gas"].GasKernel = _kernel
+    with pytest.raises(_Fermo):
+        run_server(root_dir="/tmp")
