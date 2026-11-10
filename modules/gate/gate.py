@@ -132,6 +132,9 @@ _DENY_PREFIXES: tuple[str, ...] = (
     ".venv",
     ".git",
     ".gas_notte",   # R-220-4: stato del giro notturno (riepilogo, storie, lock, log)
+    # Audit notturno (M1, 10 nov) / R7: coda dei compiti in sottofondo (compiti, esiti letti
+    # a voce, progressi .passi, segni .ferma, lock): scritta solo dal codice del kernel.
+    ".gas_sottofondo",
 )
 
 # Verifica-bot PR #160 (V-1): estensioni che Python carica/esegue all'avvio di
@@ -315,6 +318,7 @@ _LIVELLO3_PREFISSI: tuple[str, ...] = (
     ".env", ".git", ".claude",
     ".gas_memory", ".gas_history", ".gas_knowledge", ".gas_vectors", ".gas_tokens",
     ".gas_claude_cli_uso", ".gas_richieste_uso", ".gas_notifiche_uso", ".gas_notte",
+    ".gas_sottofondo",  # audit notturno 10 nov: compiti in sottofondo, mai scrivibili da Gas
     "gate_config", "venv", ".venv",
 )
 # Il cancello: "modules/gate" come prefisso (copre anche modules/gate.py e simili).
