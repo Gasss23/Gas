@@ -2553,6 +2553,10 @@ class GasKernel:
         negativo = s.startswith("Errore eseguendo") or s.startswith("Operazione negata")
         if name == "ricorda":
             return "[KO]" if negativo else f"[OK] {getattr(self, '_ricorda_n', 0)} risultati restituiti"
+        if name == "manutenzione":
+            # V-1/V-2 bot #363: gli esiti negativi del modulo iniziano con «[KO]»; nel diario
+            # solo l'esito (l'azione è negli argomenti), mai l'output (doctor, log, git, pip).
+            return "[KO]" if (negativo or s.startswith("[KO]")) else "[OK]"
         if name == "read_file":
             if negativo:
                 return "[KO]"
@@ -3641,6 +3645,11 @@ class GasKernel:
             else:
                 # Gli altri tool parcheggiabili restituiscono testo del kernel.
                 res["eseguita"] = not esito.startswith("[KO]")
+                # V-1 bot #363: una manutenzione firmata e partita ma non riuscita (git pull o
+                # pip falliti, tempo scaduto, launchctl) può aver fatto solo una parte del
+                # lavoro: esito INCERTO, mai «eseguita». Un diniego («Operazione negata») no.
+                incerta = (tool == "manutenzione" and not res["eseguita"]
+                           and not (out or "").strip().startswith("Operazione negata"))
             res["stato"] = ("finita" if res["eseguita"] else
                             "incerta" if incerta else "non_partita")
             if res["eseguita"]:

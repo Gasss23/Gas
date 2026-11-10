@@ -311,3 +311,46 @@ def test_round_trip_aggiorna_gas_va_alla_firma(monkeypatch, tmp_path):
     ev = list(k.run_turn("aggiorna gas", cervello="forte"))
     assert [e["content"] for e in ev if e["type"] == "final"] == ["Serve la tua firma."]
     assert run.chiamate == []
+
+
+# ---- V-1/V-2 bot #363: esito di una manutenzione firmata ----
+
+def _firma(monkeypatch, k, azione):
+    """Una richiesta di manutenzione approvata dall'operatore su Telegram, poi applicata."""
+    monkeypatch.setenv("TELEGRAM_ALLOWED_IDS", "4242")
+    esito, aid = k.memory.accoda_approvazione("manutenzione", {"azione": azione})
+    assert aid, esito
+    ok, msg = k.memory.resolve_approval(aid, "approved", telegram_user_id=4242)
+    assert ok, msg
+    return k.applica_firma(aid)
+
+
+@pytest.mark.parametrize("esiti, pezzo", [
+    ([(0, "main\n"), (0, ""), (1, "fatal: rete giù\n")], "git pull non riuscito"),
+    ([(0, "main\n"), (0, ""), (0, "ok\n"), (1, "ERROR: pip\n")], "dipendenze NON installate"),
+])
+def test_aggiorna_gas_firmata_ma_fallita_non_e_eseguita(monkeypatch, tmp_path, esiti, pezzo):
+    """V-1 bot #363: git pull o pip falliti dopo la firma → mai «eseguita»: esito incerto."""
+    run = _Run(list(esiti))
+    monkeypatch.setattr(man, "_run", run)
+    k = _kernel(tmp_path)
+    (tmp_path / "requirements.txt").write_text("x\n", encoding="utf-8")
+    res = _firma(monkeypatch, k, "aggiorna_gas")
+    assert res["eseguita"] is False and res["stato"] == "incerta", res
+    assert res["output"].startswith("[KO]") and pezzo in res["output"]
+
+
+def test_aggiorna_gas_firmata_riuscita_e_eseguita(monkeypatch, tmp_path):
+    run = _Run([(0, "main\n"), (0, ""), (0, "ok\n")])
+    monkeypatch.setattr(man, "_run", run)
+    k = _kernel(tmp_path)
+    res = _firma(monkeypatch, k, "aggiorna_gas")
+    assert res["eseguita"] is True and res["stato"] == "finita", res
+
+
+def test_diario_della_manutenzione_solo_esito(tmp_path):
+    """V-2 bot #363: nel diario solo [OK]/[KO], mai l'output (doctor, log, git, pip)."""
+    k = _kernel(tmp_path)
+    assert k._esito_diario("manutenzione", "stato_gas: doctor OK.\nsegreto") == "[OK]"
+    assert k._esito_diario("manutenzione", "[KO] aggiorna_gas: git pull non riuscito.\nx") == "[KO]"
+    assert k._esito_diario("manutenzione", "Operazione negata: di notte no.") == "[KO]"

@@ -138,8 +138,9 @@ def _aggiorna_gas(root: Path) -> str:
         codice, out_pip = _esegui([sys.executable, "-m", "pip", "install", "-q", "-r",
                                    "requirements.txt"], root, TIMEOUT_PIP)
         if codice != 0:
-            righe.append(f"[KO] dipendenze non installate (pip).\n{_coda(out_pip, 15)}")
-            return "\n".join(righe)
+            # V-1 bot #363: l'esito negativo va in TESTA, così il kernel lo riconosce
+            return ("[KO] aggiorna_gas: codice aggiornato da main, ma dipendenze NON "
+                    f"installate (pip).\n{_coda(out_pip, 15)}\n{_coda(out, 10)}")
         righe.append("Dipendenze a posto.")
     righe.append("Il codice nuovo vale dal prossimo avvio: per la voce serve riavvia_voce, "
                  "il bot Telegram lo usa dopo il suo riavvio.")
