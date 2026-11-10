@@ -1,10 +1,13 @@
-# Diff di sessione — 2026-11-10 — voce: seguito più severo e risposte più brevi (chat M2)
+# Diff di sessione — 2026-11-10 — terminale opzione A (chat M2)
 
-- `modules/voice/server.py` — `ISTRUZIONE_SEGUITO` più severa; `_RISPOSTE_BREVI_SEGUITO` + `seguito_da_scartare` e chiamata nel seguito (prima del cervello); `ISTRUZIONE_VOCE`/`_SCHERMO` «UNA frase breve»; `_PARLATO_VOCE_MAX_CHAR` 800.
-- `tests/test_unit_voice_server.py` — test della funzione, dell'istruzione e del tetto 800; commento del test al tetto aggiornato; «UNA frase breve» nelle istruzioni.
-- `tests/test_unit_voice_stt.py` — test end-to-end: frammenti chiusi senza turno, risposte brevi al cervello, con attivazione il filtro non vale.
-- `.claude/agents/memoria_revisore.md` — righe #744-M2 e #746-M2.
-- `reports/stato_progetto.md`, `reports/ripartenza_m2.md` — stato della fetta e riserve (anche quelle del bot sulla #363).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+File toccati (rispetto a origin/main):
+- `gas.py` — strumento `manutenzione` nella lista strumenti; DENY prima del cancello nei turni a voce/effimeri/sottofondo/notte e nella finestra notte.
+- `modules/gate/gate.py` — livello dell'azione: sola lettura libera, azioni che cambiano Gas IRREVERSIBILI (firma), fuori lista negate.
+- `modules/manutenzione/__init__.py` — modulo nuovo: azioni fisse, comandi senza shell con tempo massimo e output tagliato, finestra notte controllata anche all'esecuzione firmata.
+- `tests/test_unit_manutenzione.py` — test del modulo, del cancello e del divieto in run_turn.
+- `.github/workflows/ci.yml` — passo «manutenzione suite».
+- `reports/proposta_terminale_A.md` — proposta (decisione dell'operatore via M1).
+- `.claude/agents/memoria_revisore.md` — righe #736, #738, #739, #743-M2.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md` — report di fine task; in stato_progetto la voce del terminale A con le riserve aperte.
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.
