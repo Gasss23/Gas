@@ -8,11 +8,17 @@ l'unione fra processi esiste già (`_save_history` con lock su file). Il compito
 cervello forte; alla fine l'operatore riceve un avviso su Telegram (`avvisa_operatore`, col
 tetto al giorno). Un compito alla volta. Fail-safe §9: ogni errore diventa uno stato «ko» e
 un avviso, mai un crash.
+
+R7 fetta 1 (chat M3, 10 nov): se il processo muore (kill, crash, riavvio) e il compito non è
+oltre la durata massima, il controllo lo rimette in coda e lo riavvia, al massimo
+GAS_SOTTOFONDO_RIPRESE volte (default 2, tetto 5). Il compito ripreso riceve i progressi
+(`<id>.passi`: solo NOMI degli strumenti già usati, mai argomenti o testi letti).
 """
 from __future__ import annotations
 
 import json
 import logging
+import re
 import math
 import os
 import secrets
@@ -22,7 +28,12 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+try:
+    import fcntl  # R7 fetta 1: lock della ripresa (assente su Windows → niente ripresa)
+except ImportError:  # pragma: no cover
+    fcntl = None  # type: ignore[assignment]
 
 CARTELLA = ".gas_sottofondo"
 ATTIVO = "attivo.json"
@@ -31,6 +42,12 @@ RISPOSTA_AVVISO_MAX = 700   # caratteri della risposta dentro l'avviso Telegram
 PREFISSO_TURNO = "Compito in sottofondo (avviato a voce): "
 DURATA_MAX_S_DEFAULT = 3600  # oltre: compito considerato bloccato (GAS_SOTTOFONDO_MAX_MIN)
 GIORNI_CONSERVAZIONE_DEFAULT = 7  # compiti finiti più vecchi: cancellati (GAS_SOTTOFONDO_GIORNI)
+# R7 fetta 1 (chat M3, 10 nov): ripresa dopo un crash
+RIPRESE_DEFAULT = 2   # riprese automatiche di un compito il cui processo è morto (GAS_SOTTOFONDO_RIPRESE)
+RIPRESE_TETTO = 5     # tetto duro, qualunque valore dica l'ambiente
+PASSI_MAX = 50        # nomi di strumenti tenuti come progressi
+LOCK = ".lock"
+_NOME_STRUMENTO = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
 StatoAttivo = Optional[Dict[str, Any]]
 
@@ -160,6 +177,8 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
     # Ve #346 V-1: con «creato» nel futuro non si è mai «oltre la durata»: niente killpg
     oltre = not _nel_futuro(dati) and time.time() - _creato(dati) > _durata_max_s()
     motivo = "il processo si è interrotto"
+    if ident and _fermato(root, ident):  # bot #364 V-1: fermato dall'operatore, niente ripresa
+        motivo = "fermato dall'operatore"
     if oltre:
         motivo = "oltre la durata massima"
         nostro = _identita(pid, ident) if _vivo(pid) else False
@@ -180,6 +199,12 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
             logging.warning("sottofondo %s: oltre la durata, processo %s non verificabile: "
                             "non fermato", ident, pid)
     job = _leggi(cartella / f"{Path(ident).name}.json") if ident else None
+    # R7 fetta 1: processo morto (NON oltre la durata) → il compito riparte da solo, al massimo
+    # GAS_SOTTOFONDO_RIPRESE volte; il tempo resta contato dalla prima creazione (tetto duro).
+    # R-736-1: None = il posto è già cambiato (ripreso o chiuso da un altro processo che
+    # controllava insieme): qui non si chiude niente, altrimenti si annullerebbe la sua ripresa.
+    if not oltre and job and _riprendi(root, ident, dati, avvisa) is not False:
+        return
     chiuso = annulla(root, ident, motivo)
     # R-697-3-M2: si toglie il posto solo se è ancora quello letto (o senza id)
     rilettura = _leggi(posto)
@@ -191,6 +216,246 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
     if chiuso and job:  # bot #346 V-1: niente «non è finito» per un compito appena riuscito
         _avvisa(root, f"Il compito in sottofondo «{_breve(job.get('compito', ''), 80)}» non è "
                       f"finito: {motivo}.", ident, avvisa)
+
+
+def _riprese_max() -> int:
+    valore = _numero_env("GAS_SOTTOFONDO_RIPRESE", RIPRESE_DEFAULT)
+    return int(min(RIPRESE_TETTO, max(0.0, valore)))
+
+
+def _riprese(job: Dict[str, Any]) -> int:
+    valore = job.get("riprese")
+    if valore is None:
+        return 0
+    # un valore alterato (testo, negativo, booleano) vale «riprese finite»
+    return valore if isinstance(valore, int) and not isinstance(valore, bool) and valore >= 0 \
+        else RIPRESE_TETTO
+
+
+def _fermato(root: Path, ident: str) -> bool:
+    try:
+        return (Path(root) / CARTELLA / f"{Path(ident).name}.ferma").exists()
+    except OSError:
+        return False
+
+
+def _lock_esclusivo(cartella: Path) -> Optional[int]:
+    """Il lock della coda (lo stesso di _riprendi), o None se non disponibile. Mai eccezioni."""
+    if fcntl is None:
+        return None
+    try:
+        fd = os.open(cartella / LOCK, os.O_WRONLY | os.O_CREAT, 0o600)
+    except OSError:
+        return None
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+    except OSError:
+        os.close(fd)
+        return None
+    return fd
+
+
+def _sblocca(fd: Optional[int]) -> None:
+    if fd is None:
+        return
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def ferma(root: Path, avvisa: Optional[Callable[[str, Path], Any]] = None) -> Tuple[bool, str]:
+    """Bot #364 V-1: `gas.py sottofondo-ferma` — l'operatore ferma il compito in corso senza che
+    riparta: segna `<id>.ferma` (letto da _riprendi e da _esegui), ferma il processo SOLO se è
+    sicuramente il nostro figlio, poi chiude il compito «ko» con avviso. R-743-1: segno e chiusura
+    sotto lo stesso lock di _riprendi. Ritorna (riuscito, frase per il terminale). Mai eccezioni."""
+    try:
+        cartella = Path(root) / CARTELLA
+        dati = _leggi(cartella / ATTIVO)
+        ident = str((dati or {}).get("id") or "")
+        if not ident:
+            return True, "Nessun compito in sottofondo in corso."
+        fd = _lock_esclusivo(cartella)
+        try:
+            _scrivi_privato(cartella / f"{Path(ident).name}.ferma", {"fermato": time.time()})
+            # R-744-1: il pid si rilegge DOPO il segno: o il figlio ha già scritto il suo pid
+            # (e lo si ferma), o lo scrive dopo e vede il segno in _esegui
+            riletto = _leggi(cartella / ATTIVO) or {}
+            pid = riletto.get("pid") if str(riletto.get("id") or "") == ident else None
+            nostro = _identita(pid, ident) if _vivo(pid) else False
+            if nostro:
+                try:
+                    os.killpg(int(pid), signal.SIGTERM)
+                except Exception as e:
+                    logging.warning("sottofondo %s: arresto non riuscito: %s", ident, e)
+            chiuso = annulla(root, ident, "fermato dall'operatore")
+        finally:
+            _sblocca(fd)
+        if not chiuso:
+            # R-743-3: il compito era già finito (o chiuso da altri): niente «fermato»
+            return True, f"Il compito {ident} era già finito: niente da fermare."
+        # R-743-2: senza `ps` il processo non si può verificare né fermare: lo si dice
+        dubbio = (" Il processo non si è potuto verificare e potrebbe essere ancora attivo."
+                  if nostro is None else "")
+        job = _leggi(cartella / f"{Path(ident).name}.json") or {}
+        _avvisa(root, f"Il compito in sottofondo «{_breve(job.get('compito', ''), 80)}» è "
+                      f"stato fermato dall'operatore.{dubbio}", ident, avvisa)
+        return True, f"Compito {ident} fermato: non riparte.{dubbio}"
+    except Exception as e:  # §9
+        logging.warning("sottofondo: arresto non riuscito: %s", e)
+        return False, f"Arresto non riuscito ({type(e).__name__}): vedi gas_debug.log."
+
+
+def _avvia_ripresa(root: Path, ident: str) -> None:
+    """Punto unico di avvio della ripresa (i test lo sostituiscono: niente processi veri)."""
+    avvia(root, ident)
+
+
+def _riprendi(root: Path, ident: str, letto: Dict[str, Any],
+              avvisa: Optional[Callable[[str, Path], Any]]) -> Optional[bool]:
+    """R7 fetta 1: rimette in coda e riavvia un compito il cui processo è morto. True = gestito
+    (ripreso, oppure chiuso «ko» con avviso se il riavvio fallisce); None = il posto non è più
+    quello letto (un altro processo lo ha già ripreso o chiuso: non toccare niente, R-736-1);
+    False = nessuna ripresa (riprese finite, lock non disponibile, stato del compito chiuso):
+    il chiamante chiude il compito come prima.
+    La presa del posto avviene sotto lock esclusivo e solo se il posto è ancora quello letto,
+    così due processi che controllano insieme non avviano due copie. Mai eccezioni (§9)."""
+    if fcntl is None or not ident or _riprese_max() <= 0:
+        return False
+    cartella = Path(root) / CARTELLA
+    percorso = cartella / f"{Path(ident).name}.json"
+    try:
+        fd = os.open(cartella / LOCK, os.O_WRONLY | os.O_CREAT, 0o600)
+    except OSError as e:
+        logging.warning("sottofondo %s: lock della ripresa non disponibile: %s", ident, e)
+        return False
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        posto = _leggi(cartella / ATTIVO)
+        job = _leggi(percorso)
+        # R-737-1: posto sparito/illeggibile → False (si chiude come prima, annulla è protetto
+        # dallo stato del compito); None solo se un ALTRO posto c'è o un compito è attivo
+        if (posto is not None and posto != letto) or attivo(root) is not None:
+            return None
+        if (not posto or not job or job.get("stato") not in ("in_coda", "in_corso")
+                or _riprese(job) >= _riprese_max()
+                or _fermato(root, ident)
+                # bot #364 V-2: il tetto di tempo vale dalla PRIMA creazione del compito, anche
+                # se il figlio di una ripresa muore prima di rimettere quella data nel posto
+                or _nel_futuro(job) or time.time() - _creato(job) > _durata_max_s()
+                or not isinstance(job.get("compito"), str)):
+            return False
+        job.update(stato="in_coda", riprese=_riprese(job) + 1, ripreso=time.time())
+        job.pop("pid", None)
+        _scrivi_privato(percorso, job)
+        # pid None: il nuovo processo ha 120 s per presentarsi; «creato» qui è adesso (il posto
+        # appena preso non scade), poi _esegui rimette la creazione originale (tetto totale).
+        _scrivi_privato(cartella / ATTIVO, {"id": ident, "pid": None, "creato": time.time()})
+    except Exception as e:  # §9: senza ripresa si chiude «ko» come prima
+        logging.warning("sottofondo %s: ripresa non preparata: %s", ident, e)
+        return False
+    finally:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
+    logging.warning("sottofondo %s: processo interrotto, ripresa %d di %d", ident,
+                    job["riprese"], _riprese_max())
+    # Bot #364 V-1: l'operatore sa SUBITO che il compito è ripartito, e come fermarlo
+    _avvisa(root, f"Il compito in sottofondo «{_breve(job.get('compito', ''), 80)}» si era "
+                  f"interrotto: lo riprendo (ripresa {job['riprese']} di {_riprese_max()}). "
+                  "Per fermarlo: python gas.py sottofondo-ferma", ident, avvisa)
+    try:
+        _avvia_ripresa(root, ident)
+    except Exception as e:
+        logging.warning("sottofondo %s: riavvio non riuscito: %s", ident, e)
+        if annulla(root, ident, f"ripresa non avviata ({type(e).__name__})"):
+            _avvisa(root, f"Il compito in sottofondo «{_breve(job.get('compito', ''), 80)}» "
+                          "non è finito: il processo si è interrotto e la ripresa non è partita.",
+                    ident, avvisa)
+    return True
+
+
+Passo = Tuple[str, str]  # (nome dello strumento, "fatto" | "in_firma")
+
+
+def _passi(root: Path, ident: str) -> List[Passo]:
+    """I progressi salvati, solo voci dal formato valido. Mai eccezioni."""
+    try:
+        dati = json.loads((Path(root) / CARTELLA / f"{Path(ident).name}.passi")
+                          .read_text(encoding="utf-8"))
+        voci = dati.get("passi") if isinstance(dati, dict) else None
+        if not isinstance(voci, list):
+            return []
+        validi = [(v[0], v[1]) for v in voci
+                  if isinstance(v, list) and len(v) == 2 and isinstance(v[0], str)
+                  and _NOME_STRUMENTO.match(v[0]) and v[1] in ("fatto", "in_firma")]
+        return validi[-PASSI_MAX:]
+    except Exception:
+        return []
+
+
+def _strumenti_noti(kernel: Any) -> frozenset:
+    """R-736-2: i nomi degli strumenti registrati nel kernel; senza elenco nessun nome."""
+    try:
+        return frozenset(t["function"]["name"] for t in getattr(kernel, "tools_schema", None) or []
+                         if isinstance(t, dict) and isinstance(t.get("function"), dict)
+                         and isinstance(t["function"].get("name"), str))
+    except Exception:
+        return frozenset()
+
+
+def _segna_passo(root: Path, ident: str, passi: List[Passo], ev: Dict[str, Any],
+                 noti: frozenset) -> None:
+    """Salva in `<id>.passi` (file a parte: non tocca mai lo stato del compito, che può chiudere
+    un altro processo) il NOME dello strumento appena usato, mai argomenti o risultati: il testo
+    letto da fuori non entra nel prompt della ripresa. R-736-2: solo strumenti registrati (un nome
+    inventato dal modello non entra). R-736-3: eseguito → «fatto»; parcheggiato alla firma →
+    «in_firma» (alla ripresa non va richiesto di nuovo); negato → niente. Mai eccezioni."""
+    nome, cancello = ev.get("nome"), ev.get("cancello")
+    if not isinstance(nome, str) or nome not in noti or not _NOME_STRUMENTO.match(nome):
+        return
+    if cancello is None:
+        esito = "fatto"
+    elif cancello == "in_attesa":
+        esito = "in_firma"
+    else:
+        return
+    passi.append((nome, esito))
+    del passi[:-PASSI_MAX]
+    try:
+        _scrivi_privato(Path(root) / CARTELLA / f"{Path(ident).name}.passi",
+                        {"passi": [list(p) for p in passi]})
+    except Exception as e:
+        logging.warning("sottofondo %s: progresso non salvato: %s", ident, e)
+
+
+def _elenco(nomi: List[str]) -> str:
+    conti: Dict[str, int] = {}
+    for n in nomi:
+        conti[n] = conti.get(n, 0) + 1
+    return ", ".join(f"{n}×{c}" if c > 1 else n for n, c in conti.items())
+
+
+def _nota_ripresa(riprese: int, passi: List[Passo]) -> str:
+    if riprese <= 0:
+        return ""
+    fatti = [n for n, e in passi if e == "fatto"]
+    in_firma = [n for n, e in passi if e == "in_firma"]
+    nota = ""
+    if fatti:
+        nota += (f" Prima dell'interruzione hai già usato questi strumenti: {_elenco(fatti)}. I "
+                 "loro risultati non sono salvati qui: prima di rifare un passo controlla se il "
+                 "suo effetto c'è già (per esempio un file già scritto).")
+    if in_firma:
+        nota += (f" Queste azioni sono già in attesa della firma dell'operatore: "
+                 f"{_elenco(in_firma)}. Non chiederle di nuovo.")
+    if not nota:
+        nota = " Prima dell'interruzione non risultano strumenti usati."
+    return (f"\n\n[Ripresa automatica {riprese}: il processo del compito si era interrotto.{nota} "
+            "Porta a termine il compito.]")
 
 
 def _identita(pid: Any, ident: str) -> Optional[bool]:
@@ -252,6 +517,10 @@ def _pulisci_vecchi(root: Path) -> None:
                 aperto = job.get("stato") in ("in_coda", "in_corso")
                 if not (job.get("stato") in ("ok", "ko")
                         or aperto and str(posto.get("id") or "") != f.stem):
+                    continue
+            elif f.suffix in (".passi", ".ferma"):
+                # R7 fetta 1: progressi di un compito non più in corso
+                if str(posto.get("id") or "") == f.stem:
                     continue
             elif not (f.name.startswith(".posto.") or ".tmp." in f.name):
                 continue
@@ -433,12 +702,24 @@ def _esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
     _scrivi_privato(cartella / ATTIVO, {"id": ident, "pid": os.getpid(), "creato": job.get("creato")})
     job.update(stato="in_corso", pid=os.getpid(), inizio=time.time())
     _scrivi_privato(percorso, job)
+    if _fermato(root, ident):
+        # R-743-1: fermato dall'operatore mentre questo processo partiva (dopo la ripresa):
+        # si chiude senza eseguire; l'avviso «fermato» è già partito da ferma()
+        annulla(root, ident, "fermato dall'operatore")
+        return 1
     risposta, errore = "", ""
     turno = None
+    riprese = _riprese(job) if job.get("riprese") else 0
+    passi = _passi(root, ident)
     try:
         kernel = kernel_factory()
-        turno = kernel.run_turn(PREFISSO_TURNO + job["compito"], cervello="forte")
+        noti = _strumenti_noti(kernel)
+        turno = kernel.run_turn(PREFISSO_TURNO + job["compito"] + _nota_ripresa(riprese, passi),
+                                cervello="forte")
         for ev in turno:
+            if ev.get("type") == "tool_res":
+                _segna_passo(root, ident, passi, ev, noti)
+                continue
             if ev.get("type") == "final":
                 risposta = str(ev.get("content") or "")
                 break
@@ -474,9 +755,14 @@ def _esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
         # promesso; il posto si libera da solo (processo morto → ripulito)
         logging.warning("sottofondo %s: posto non tolto: %s", ident, e)
     titolo = _breve(job["compito"], 80)
-    testo = (f"Ho finito il compito in sottofondo «{titolo}». {_breve(risposta, RISPOSTA_AVVISO_MAX)}"
+    # R7 fetta 1: l'operatore sa che il compito si era interrotto ed è ripartito
+    ripreso = (f" (ripreso {riprese} {'volta' if riprese == 1 else 'volte'} dopo "
+               "un'interruzione)" if riprese else "")
+    testo = (f"Ho finito il compito in sottofondo «{titolo}»{ripreso}. "
+             f"{_breve(risposta, RISPOSTA_AVVISO_MAX)}"
              if ok else
-             f"Il compito in sottofondo «{titolo}» non è riuscito: {_breve(job['errore'], 200)}")
+             f"Il compito in sottofondo «{titolo}»{ripreso} non è riuscito: "
+             f"{_breve(job['errore'], 200)}")
     _avvisa(root, testo, ident, avvisa)
     return 0 if ok else 1
 
