@@ -111,8 +111,21 @@ def _init_fts(conn: sqlite3.Connection) -> None:
 # Chunking
 # ─────────────────────────────────────────────────────────────────────────────
 def chunk_text(text: str, chunk_chars: int) -> list[str]:
-    """Divide il testo in chunk da ≤ chunk_chars char, spezzando ai capoversi."""
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    """Divide il testo in chunk da ≤ chunk_chars char, spezzando ai capoversi.
+    Audit 2026-11-10 B2: un capoverso più lungo del tetto (testo incollato senza
+    righe vuote) si spezza in pezzi ≤ chunk_chars, possibilmente a uno spazio:
+    prima diventava un chunk unico di qualunque lunghezza."""
+    chunk_chars = max(1, chunk_chars)
+    paragraphs: list[str] = []
+    for p in (p.strip() for p in text.split("\n\n")):
+        while len(p) > chunk_chars:
+            taglio = p.rfind(" ", 0, chunk_chars + 1)
+            if taglio < chunk_chars // 2:
+                taglio = chunk_chars  # niente spazio utile: taglio netto
+            paragraphs.append(p[:taglio].rstrip())
+            p = p[taglio:].lstrip()
+        if p:
+            paragraphs.append(p)
     chunks: list[str] = []
     current: list[str] = []
     current_len = 0
@@ -217,12 +230,71 @@ def ingest_file_source(conn: sqlite3.Connection, source: dict) -> dict[str, int 
         )
         stats["ingested"] += 1
 
+    # Audit 2026-11-10 B1: i chunk oltre la nuova lunghezza della fonte (fonte
+    # accorciata, o troncata a chunk_max) non esistono più → superseded, mai
+    # cancellati (stessa regola del versioning). Prima restavano attivi e Gas
+    # continuava a pescare testo tolto dalla fonte.
+    attuali = {f"chunk_{i:04d}" for i in range(len(chunks))}
+    for vecchio in conn.execute(
+            "SELECT id, chunk_ref FROM knowledge WHERE source_name = ? AND stato = 'active'",
+            (nome,)).fetchall():
+        if vecchio["chunk_ref"] not in attuali:
+            conn.execute("UPDATE knowledge SET stato = 'superseded' WHERE id = ?",
+                         (vecchio["id"],))
+            log.info("[%s] %s — non più nella fonte, superseded", nome, vecchio["chunk_ref"])
+            stats["superseded"] += 1
+
     conn.commit()
     log.info(
         "[%s] completato — ingested=%d skipped=%d superseded=%d",
         nome, stats["ingested"], stats["skipped"], stats["superseded"],
     )
     return {"source": nome, **stats}
+
+
+def carica_fonti(percorso: Path) -> list[dict]:
+    """Audit 2026-11-10 B3: sources.yaml vuoto o di forma sbagliata → nessuna fonte
+    (con un log), mai AttributeError. Le voci che non sono dizionari si scartano."""
+    with open(percorso, encoding="utf-8") as fh:
+        catalogo = yaml.safe_load(fh)
+    if not isinstance(catalogo, dict):
+        if catalogo is not None:
+            log.error("sources.yaml: attesa una mappa con 'sources', trovato %s",
+                      type(catalogo).__name__)
+        return []
+    fonti = catalogo.get("sources") or []
+    if not isinstance(fonti, list):
+        log.error("sources.yaml: 'sources' non è una lista")
+        return []
+    return [f for f in fonti if isinstance(f, dict)]
+
+
+def ingest_fonti(conn: sqlite3.Connection, fonti: list[dict]) -> dict[str, int]:
+    """Ingerisce le fonti una per una. Audit 2026-11-10 B3: una fonte rotta (file non
+    UTF-8, uri che è una cartella, voce senza uri) si salta con un log e le altre
+    proseguono; prima un'eccezione fermava l'intero ingest."""
+    totale = {"ingested": 0, "skipped": 0, "errori": 0}
+    for src in fonti:
+        nome = src.get("nome", "?")
+        tipo = src.get("tipo", "file")
+        if tipo != "file":
+            log.warning("[%s] tipo '%s' non supportato in K2, skip", nome, tipo)
+            continue
+        try:
+            result = ingest_file_source(conn, src)
+        except (OSError, UnicodeError, KeyError, ValueError, TypeError, sqlite3.Error) as e:
+            try:
+                conn.rollback()  # niente mezza fonte: o tutta o niente
+            except sqlite3.Error:
+                pass
+            log.error("[%s] fonte saltata: %s", nome, type(e).__name__)
+            totale["errori"] += 1
+            continue
+        if result.get("error"):
+            totale["errori"] += 1
+        totale["ingested"] += int(result.get("ingested", 0))
+        totale["skipped"] += int(result.get("skipped", 0))
+    return totale
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -259,13 +331,10 @@ def main() -> None:
         log.error("sources.yaml non trovato: %s", SOURCES_YAML)
         sys.exit(1)
 
-    with open(SOURCES_YAML, encoding="utf-8") as fh:
-        catalog = yaml.safe_load(fh)
-
-    all_sources: list[dict] = catalog.get("sources", [])
+    all_sources: list[dict] = carica_fonti(SOURCES_YAML)
 
     if args.source:
-        all_sources = [s for s in all_sources if s["nome"] == args.source]
+        all_sources = [s for s in all_sources if s.get("nome") == args.source]
         if not all_sources:
             log.error("Fonte '%s' non trovata in sources.yaml", args.source)
             sys.exit(1)
@@ -275,25 +344,18 @@ def main() -> None:
 
     if args.dry_run:
         for s in active:
-            log.info("[DRY RUN] %s (%s) → %s", s["nome"], s["tipo"], s["uri"])
+            log.info("[DRY RUN] %s (%s) → %s", s.get("nome", "?"), s.get("tipo", "file"),
+                     s.get("uri", "?"))
         return
 
     conn = open_db(db_path)
     log.info("DB: %s", db_path)
 
-    total_ingested = total_skipped = 0
-    for src in active:
-        tipo = src.get("tipo", "file")
-        if tipo == "file":
-            result = ingest_file_source(conn, src)
-        else:
-            log.warning("[%s] tipo '%s' non supportato in K2, skip", src["nome"], tipo)
-            continue
-        total_ingested += result.get("ingested", 0)
-        total_skipped += result.get("skipped", 0)
+    totale = ingest_fonti(conn, active)
 
     conn.close()
-    log.info("=== TOTALE: ingested=%d  skipped=%d ===", total_ingested, total_skipped)
+    log.info("=== TOTALE: ingested=%d  skipped=%d  fonti con errori=%d ===",
+             totale["ingested"], totale["skipped"], totale["errori"])
 
 
 if __name__ == "__main__":

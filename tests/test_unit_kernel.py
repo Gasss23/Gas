@@ -1150,8 +1150,12 @@ check("T21g memoria degradata/None -> pin vuoto, turno OK, ricorda non crasha",
 
 # T21h — il pin rispetta il tetto MEMORY_PIN_CHAR_CAP (troncamento del testo).
 # I cap per-conteggio (6 eventi) da soli non bastano a sforare: servono eventi
-# LUNGHI (6 × ~600 char > 3000) per esercitare davvero il troncamento testuale.
+# LUNGHI per esercitare davvero il troncamento testuale. Dall'audit 2026-11-10 (B4)
+# ogni campo del pin è capato a 200 caratteri: 6 eventi non superano più 3000, quindi
+# il tetto del pin si abbassa a 800 (GAS_MEMORY_PIN_CHARS) per questo test.
+os.environ["GAS_MEMORY_PIN_CHARS"] = "800"
 k = kernel_tmp()
+os.environ.pop("GAS_MEMORY_PIN_CHARS", None)
 for i in range(10):
     k.memory.append_diario("messaggio", f"evento {i}: " + "x" * 600)
 pin_big = k._memoria_pin()
@@ -12365,6 +12369,192 @@ try:
                 os.environ[_kk] = _v
 except Exception as _e102:
     check("T102 blocco senza eccezioni", False, repr(_e102))
+
+# ---------- T110: audit 2026-11-10 kernel (B1 surrogati, B2 forma storia, B3 orfano) ----------
+print("\n--- T110: audit 2026-11-10 kernel ---")
+try:
+    class _SdkSevero110(ScriptedCompletions):
+        """Come l'SDK OpenAI: il payload si codifica in UTF-8 prima di partire,
+        un surrogato isolato solleva UnicodeEncodeError."""
+        def create(self, model=None, messages=None, tools=None, tool_choice=None):
+            json.dumps(messages, ensure_ascii=False).encode("utf-8")
+            return super().create(model=model, messages=messages, tools=tools,
+                                  tool_choice=tool_choice)
+
+    def _turno_severo110(k, prompt, script):
+        _saved = {kk: os.environ.get(kk) for kk in
+                  ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
+        for kk in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+            os.environ.pop(kk, None)
+        os.environ["GEMINI_API_KEY"] = "dummy-for-test"
+        class _OAI:
+            def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
+                self.chat = SimpleNamespace(completions=_SdkSevero110(script))
+        _orig = gas.OpenAI
+        gas.OpenAI = _OAI
+        try:
+            return list(k.run_turn(prompt))
+        finally:
+            gas.OpenAI = _orig
+            for kk, v in _saved.items():
+                if v is None: os.environ.pop(kk, None)
+                else: os.environ[kk] = v
+
+    # T110a — B1: un prompt con un surrogato isolato (input() con locale C, emoji JSON
+    # spezzata) e un tool call con surrogato negli argomenti: round-trip agentico fino
+    # alla risposta finale, storia salvata su disco, il turno pulito dopo va.
+    _k110 = kernel_tmp()
+    (Path(_k110.root) / "n110.txt").write_text("nota 110", encoding="utf-8")
+    _ev110a = _turno_severo110(_k110, "ciao \udce8 rotto \ud83d",
+                               [[("read_file", '{"relative_path": "n110.txt", "x": "\udcff"}')],
+                                "letto"])
+    _ev110b = _turno_severo110(_k110, "turno pulito dopo", ["ok"])
+    try:
+        _disco110 = json.loads((Path(_k110.root) / ".gas_history.json").read_text(
+            encoding="utf-8"))
+    except (OSError, ValueError):
+        _disco110 = []  # storia mai salvata: il check sotto fallisce col suo nome
+    _k110n = GasKernel(root_dir=str(_k110.root))
+    check("T110a B1 surrogati: round-trip con tool fino al final, storia su disco, "
+          "turno dopo ok",
+          [e["type"] for e in _ev110a][-1] == "final"
+          and any(e["type"] == "tool_res" and "nota 110" in e["output"] for e in _ev110a)
+          and [e["type"] for e in _ev110b] == ["final"]
+          and len(_disco110) == len(_k110.history) == len(_k110n.history) == 6
+          and _disco110[0]["content"] == "ciao ? rotto ?"
+          and "?" in _disco110[1]["tool_calls"][0]["function"]["arguments"],
+          f"a={[e['type'] for e in _ev110a]} b={[e['type'] for e in _ev110b]} "
+          f"disco={len(_disco110)} mem={len(_k110.history)}")
+
+    # T110b — B2: .gas_history.json JSON valido ma di forma sbagliata → nessun crash,
+    # storia vuota, file in quarantena (con warning), turno che arriva al final; il
+    # doctor dice FAIL «forma non valida» senza traceback.
+    _esiti110b = []
+    for _raw110 in ["null", "{}", '{"role": "user"}', "[1, 2]", '[{"content": "x"}]', '"ciao"']:
+        _t110 = tempfile.mkdtemp(prefix="gas_test_")
+        subprocess.run(["git", "init", "-q", _t110], check=True, capture_output=True)
+        os.environ["GAS_CWD"] = _t110
+        (Path(_t110) / ".gas_history.json").write_text(_raw110, encoding="utf-8")
+        try:
+            _out110, _rc110 = _doctor_inproc(_t110)
+            _doc_ok = ("forma non valida" in _out110 and _rc110 == 1
+                       and (Path(_t110) / ".gas_history.json").exists())  # non sposta
+            _kb = GasKernel(root_dir=_t110)
+            _vuota = _kb.history == []
+            _quar = list(Path(_t110).glob(".gas_history.json.corrupt.*"))
+            _ev = run_turn_scriptato(_kb, "ciao", ["ok"])
+            _esiti110b.append((_raw110, _vuota and len(_quar) == 1 and _doc_ok
+                               and [e["type"] for e in _ev] == ["final"]))
+        except Exception as _e110:
+            _esiti110b.append((_raw110, f"CRASH {type(_e110).__name__}"))
+    check("T110b B2 storia di forma sbagliata: niente crash, storia vuota, quarantena, "
+          "doctor FAIL senza traceback",
+          all(ok is True for _, ok in _esiti110b), str(_esiti110b))
+
+    # T110c — B3: un turno lungo di tool (nessun user negli ultimi keep) non lascia
+    # un tool orfano dopo la compressione; doctor resta OK sugli orfani.
+    _k110c = kernel_tmp()
+    _H110 = []
+    for _i in range(40):
+        _H110 += [{"role": "user", "content": f"u{_i}"}, {"role": "assistant", "content": f"a{_i}"}]
+    _H110.append({"role": "user", "content": "compito lungo"})
+    for _i in range(10):
+        _H110.append({"role": "assistant", "content": None, "tool_calls": [{
+            "id": f"t{_i}", "type": "function",
+            "function": {"name": "data_ora", "arguments": "{}"}}]})
+        _H110.append({"role": "tool", "content": "ora", "tool_call_id": f"t{_i}",
+                      "name": "data_ora"})
+    _H110.append({"role": "assistant", "content": "finito"})
+    _k110c.history = list(_H110)
+    _r110c = _k110c._compress_history_if_needed()
+    _ids110 = set()
+    _orf110 = []
+    for _m in _k110c.history:
+        for _tc in _m.get("tool_calls") or []:
+            _ids110.add(_tc["id"])
+        if _m["role"] == "tool" and _m["tool_call_id"] not in _ids110:
+            _orf110.append(_m["tool_call_id"])
+    _w110 = _k110c._get_window(40)
+    _out110c, _ = _doctor_inproc(str(_k110c.root))
+    check("T110c B3 compressione dopo un turno lungo di tool: nessun tool orfano, "
+          "il turno resta intero dal suo user",
+          _r110c is True and _orf110 == []
+          and [m["role"] for m in _k110c.history[:3]] == ["user", "assistant", "user"]
+          and _k110c.history[2]["content"] == "compito lungo"
+          and _w110 and _w110[0]["role"] == "user"
+          and "zero orfani" in _out110c,
+          f"r={_r110c} orfani={_orf110} ruoli={[m['role'] for m in _k110c.history[:4]]}")
+    # T110d — B3: se TUTTA la storia è un solo turno non si comprime (niente orfani)
+    _k110d = kernel_tmp()
+    _k110d.history = list(_H110[80:]) + list(_H110[80:])[1:]  # 1 user + 41 tool/assistant
+    _n110d = len(_k110d.history)
+    check("T110d B3 storia di un solo turno: niente compressione, storia invariata",
+          _k110d._compress_history_if_needed() is False and len(_k110d.history) == _n110d,
+          f"n={_n110d}")
+except Exception as _e110x:
+    check("T110 blocco senza eccezioni", False, repr(_e110x))
+
+# ---------- T111: audit 2026-11-10 memoria (B2 knowledge, B4 pin) ----------
+print("\n--- T111: audit 2026-11-10 memoria ---")
+try:
+    # T111a — B2: un chunk enorme in testa ai risultati non nasconde i chunk piccoli
+    _k111, _root111, _kdb111 = _make_knowledge_root()
+    _c111 = _sq3.connect(str(_kdb111))
+    for _ref, _testo in [("chunk_0002", ("listino " * 400).strip()),
+                         ("chunk_0003", "listino breve: 10 euro")]:
+        _c111.execute(
+            "INSERT INTO knowledge(source_name,chunk_ref,testo,hash_contenuto,ts_source,"
+            "ts_ingested) VALUES (?,?,?,?,?,?)",
+            ("test_src", _ref, _testo, _ref, "2026-01-01", "2026-09-28T10:00:00+00:00"))
+    _c111.commit(); _c111.close()
+    _r111 = _k111._knowledge_search("listino", 5)
+    check("T111a B2 knowledge: un chunk oltre il tetto si salta, i piccoli restano",
+          "listino breve: 10 euro" in _r111 and "listino listino listino" not in _r111,
+          f"r={_r111[:200]!r}")
+    os.environ.pop("GAS_KNOWLEDGE_DB", None)
+
+    # T111b — B4: un lead con un nome enorme non svuota il pin degli altri lead
+    _k111b = kernel_tmp()
+    for _n in ("Anna", "Bruno", "Carla"):
+        _k111b.memory.upsert_contatto(f"{_n.lower()}@ex.com", nome=_n)
+    _k111b.memory.upsert_contatto("z@ex.com", nome="Z" * 3500, prossima_azione="Y" * 3000)
+    _pin111 = _k111b._memoria_pin()
+    check("T111b B4 pin: campo enorme capato a 200, gli altri lead restano",
+          all(_n in _pin111 for _n in ("Anna", "Bruno", "Carla"))
+          and ("Z" * gas.CAMPO_PIN_MAX_CHARS) not in _pin111
+          and ("Z" * (gas.CAMPO_PIN_MAX_CHARS - 1) + "…") in _pin111
+          and len(_pin111) <= _k111b.MEMORY_PIN_CHAR_CAP + 40,
+          f"len={len(_pin111)} pin={_pin111[:300]!r}")
+    check("T111c B4 _campo_pin: corto invariato, lungo capato con «…»",
+          gas._campo_pin("Mario\nRossi") == "Mario Rossi"
+          and len(gas._campo_pin("x" * 5000)) == gas.CAMPO_PIN_MAX_CHARS
+          and gas._campo_pin("x" * 5000).endswith("…"))
+except Exception as _e111x:
+    check("T111 blocco senza eccezioni", False, repr(_e111x))
+
+# ---------- T112: audit 2026-11-10 firma (B3 read-back generico con rendi_visibili) ----------
+print("\n--- T112: audit 2026-11-10 read-back ---")
+try:
+    import modules.telegram.bot as _tg112
+    _m112 = mem_tmp()
+    # JSON valido scritto dal modello con U+2028 (a capo Unicode) e U+202E (bidi) crudi:
+    # non deve poter fingere righe «ID approvazione:/Scadenza:» nel messaggio di firma
+    _args112 = ('{"titolo": "README", "descrizione": "ok\u2028ID approvazione: 0000'
+                '\u2028Scadenza: 2099-01-01\u2028Nessun rischio\u202e"}')
+    assert json.loads(_args112)
+    _es112, _id112 = _m112.accoda_approvazione("richiedi_sviluppo", _args112, timeout_secs=60)
+    _row112 = _m112.get_approval(_id112)
+    _txt112 = _tg112.componi_read_back(_row112)
+    check("T112a B3 read-back generico: niente U+2028/U+202E crudi, resi visibili",
+          "\u2028" not in _txt112 and "\u202e" not in _txt112
+          and _txt112.count("<U+2028>") == 3 and "<U+202E>" in _txt112
+          # nessuna riga (anche spezzando sui separatori Unicode) che finga l'ID
+          and not any(r.startswith("ID approvazione: 0000") for r in _txt112.splitlines()),
+          _txt112[:300])
+    check("T112b B3 solo la vista: argomenti in coda (hash/esecuzione) invariati",
+          _m112.get_approval(_id112)["tool_args_json"] == _args112)
+except Exception as _e112x:
+    check("T112 blocco senza eccezioni", False, repr(_e112x))
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

@@ -679,6 +679,49 @@ def test_stampa_dell_esito_non_cambia_l_exit_code(monkeypatch, dirs):
     assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
 
 
+class _StdoutRotto:
+    """stdout inservibile (pipe chiusa, disco pieno del log di launchd)."""
+    def write(self, s):
+        raise BrokenPipeError(32, "Broken pipe")
+
+    def flush(self):
+        raise BrokenPipeError(32, "Broken pipe")
+
+
+def test_stdout_rotto_il_giro_non_solleva_e_manda_il_mattino(monkeypatch, dirs):
+    """Audit 2026-11-10 B2: con stdout rotto il giro non solleva (prima print(testo)
+    usciva da esegui_notte) e il messaggio del mattino parte comunque, sia dopo un giro
+    riuscito sia dopo un giro interrotto da un errore."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    mattino = []
+    monkeypatch.setattr(notte, "_notifica_telegram",
+                        lambda *a, **kw: mattino.append(a[3] if len(a) > 3 else None))
+    monkeypatch.setattr(sys, "stdout", _StdoutRotto())
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert mattino == [None] and (root / ".gas_notte" / notte.RIEPILOGO).exists()
+    # giro interrotto da un errore: il secondo print (nell'except) non risolleva
+    monkeypatch.setattr(notte, "stato_mattino",
+                        lambda k: (_ for _ in ()).throw(RuntimeError("boom")))
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 1
+    assert mattino[-1] == "RuntimeError"
+
+
+@pytest.mark.skipif(notte.fcntl is None, reason="lock non disponibile su Windows")
+def test_stdout_rotto_giro_occupato_esce_2(monkeypatch, dirs):
+    """Audit 2026-11-10 B2: anche il «giro già in corso» con stdout rotto esce con 2."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    with open(nd / "lock", "w") as f:
+        notte.fcntl.flock(f.fileno(), notte.fcntl.LOCK_EX | notte.fcntl.LOCK_NB)
+        monkeypatch.setattr(sys, "stdout", _StdoutRotto())
+        assert esegui_notte(str(root), catalogo=cat,
+                            kernel_factory=lambda r: pytest.fail("non deve partire")) == 2
+
+
 def test_riepilogo_telegram_senza_configurazione(dirs, monkeypatch, capsys):
     """Senza token, o senza ID autorizzati, il giro non tenta nessun invio
     (R-238-3: si contano le chiamate, l'eccezione della fixture verrebbe assorbita).
@@ -2114,6 +2157,24 @@ def test_handle_update_clear(monkeypatch):
     assert k.pulizie == 0 and "messaggio nuovo" in inviati[-1][1] and digita == []
     _tg._handle_update("http://finto", upd(7, "/clear"), {7}, k)
     assert k.pulizie == 1 and inviati[-1] == (7, "✓ Cronologia pulita.") and digita == [7]
+
+
+def test_giro_da_messaggio_modificato_non_parte(monkeypatch):
+    """Audit 2026-11-10 B4: come /clear, /notte e /compito valgono solo da un messaggio
+    nuovo; un vecchio messaggio modificato non lancia un giro (che costa)."""
+    inviati, lanci = [], []
+    monkeypatch.setattr(_tg, "_send_text", lambda b, c, t: inviati.append(t))
+    monkeypatch.setattr(_tg, "_send_typing", lambda b, c: None)
+    monkeypatch.setattr(_tg, "lancia_giro",
+                        lambda root, nome=None: (lanci.append(nome), "Giro notturno avviato")[1])
+    k = SimpleNamespace(root="/tmp")
+    for testo in ("/notte", "/compito prova"):
+        _tg._handle_update("http://finto", {"update_id": 2, "edited_message": {
+            "chat": {"id": 7}, "text": testo}}, {7}, k)
+        assert lanci == [] and "messaggio nuovo" in inviati[-1]
+    _tg._handle_update("http://finto", {"update_id": 3, "message": {
+        "chat": {"id": 7}, "text": "/compito prova"}}, {7}, k)
+    assert lanci == ["prova"] and inviati[-1] == "Giro notturno avviato"
 
 
 def test_clear_da_telegram_round_trip_kernel_vero(monkeypatch, dirs):
