@@ -220,6 +220,13 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_sottofondo.py -v 2>&1 | tee "$RUNNER_TEMP/sottofondo_output.txt"
 
+      - name: Run manutenzione suite (pytest, zero token LLM)
+        # Terminale, opzione A (2026-11-09): azioni fisse di manutenzione, comandi finti.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_manutenzione.py -v 2>&1 | tee "$RUNNER_TEMP/manutenzione_output.txt"
+
       - name: Ingest delle fonti di studio (solo dentro knowledge/)
         # V-1 bot #228: le fonti di tipo file fuori da knowledge/ vanno rifiutate.
         if: always()
