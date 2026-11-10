@@ -10,6 +10,7 @@
 - **Terminale opzione A (codice + proposta + test)**: FATTA (e93bd77). Review #736-M2 BOCCIATO, poi #738-M2 e #739-M2 APPROVATO CON RISERVE (riserve di codice corrette prima del commit). Proposta in `reports/proposta_terminale_A.md`.
 - **Merge di origin/main (#359 di Mani) nel ramo**: FATTO (32619b5), review #743-M2 APPROVATO CON RISERVE (R-743-1 BASSA: riserve del terminale A non registrate in stato_progetto → registrate ora).
 - **Verifica esterna #363**: APPROVATO CON RISERVE. V-1 di gravità media (conflitto con main dopo il merge della #360): CHIUSA col merge di main (d3c490c), review #745-M2 APPROVATO. V-3 BASSA (filtro di `log_voce`): CHIUSA (94bd308, review #748-M2). V-4 BASSA (testo della firma di `aggiorna_gas`) registrata.
+- **Bot su 7bcda34**: finding di gravità media vero (manutenzione firmata ma fallita segnalata «eseguita»): CORRETTO in ee9c7d0 (esito incerto, diario solo [OK]/[KO]), review #751-M2.
 - **Merge di main (#362)**: FATTO (ece76a8), solo report e memoria.
 - **Test**: kernel 1099 PASS / 1 FAIL (T31g, GAS_VECTORS: ambiente, preesistente); pytest manutenzione + gate + notte 1064 passed.
 - **Prova dal vivo di `riavvia_voce` (launchctl) sul Mac**: DEFERITA — si fa dopo il merge.

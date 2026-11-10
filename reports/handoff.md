@@ -21,6 +21,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **Verifica esterna #363 V-1 di gravità media (conflitto con main dopo il merge della #360)**: `FATTA` — merge di origin/main 447195f (d3c490c), conflitti solo nei report e nella memoria, review #745-M2 APPROVATO.
 - **Merge di origin/main 2dd0e8c (#362) nel ramo**: `FATTA` (ece76a8) — conflitti solo nei report e nella memoria; da main arrivano solo `reports/prova_r1_notte.md` e una riga di memoria (fuori dal perimetro di review).
 - **Merge di origin/main 3f08352 (#361 di Mani) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; review #749-M2 APPROVATO (file di main identici a 3f08352, nessuna interazione col terminale A; manutenzione + voce_ascolto 348 passed).
+- **Bot su 7bcda34: V-1 di gravità media (manutenzione firmata ma fallita segnalata come eseguita) e V-2 BASSA (output nel diario)**: `FATTA` (ee9c7d0, review #751-M2) — esito KO → stato «incerta» (Telegram: «esito INCERTO, controlla»), nel diario solo [OK]/[KO], pip fallito con [KO] in testa; test con applica_firma reale.
 - **Verifica esterna #363 V-3 BASSA (filtro di `log_voce`)**: `FATTA` (94bd308, review #748-M2).
 - **Verifica esterna #363 V-4 BASSA (testo della firma di `aggiorna_gas`)**: `DEFERITA` — registrata in §7.
 - **Prova dal vivo di `riavvia_voce` / launchctl sul Mac**: `DEFERITA` — dopo il merge.
@@ -30,17 +31,17 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  12 +++++++++++-
+ .claude/agents/memoria_revisore.md |  14 +++++++++++++-
  .github/workflows/ci.yml           |   7 +++++++
- gas.py                             |  55 +++++++
+ gas.py                             |  64 ++++++++++++++++++
  modules/gate/gate.py               |  20 ++++
- modules/manutenzione/__init__.py   | 191 ++++++++++++++
+ modules/manutenzione/__init__.py   | 192 ++++++++++++++++++
  reports/diff_sessione.md           |  18 ++++++++++--------
  reports/handoff.md                 | n/d
  reports/proposta_terminale_A.md    |  31 +++++++
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  25 ++++++++++--------
- tests/test_unit_manutenzione.py    | 313 ++++++++++++++++++++++
+ reports/ultimo_report.md           |  26 +++++++++++-------
+ tests/test_unit_manutenzione.py    | 356 ++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -48,6 +49,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ee9c7d0 fix(manutenzione): una manutenzione firmata ma fallita non risulta più «eseguita» (esito incerto) e nel diario va solo [OK]/[KO]; chiude V-1 e V-2 del bot su 7bcda34 — review #751-M2 (chat M2)
+7bcda34 docs(fine-task): §3 dell'handoff aggiornato (chat M2)
 9e4aeea docs(fine-task): verdetto #749-M2 riemesso con le citazioni per il gate B (chat M2)
 6e0f597 docs(fine-task): terminale A dopo il merge di main (#361), review #749-M2 (chat M2)
 62de796 Merge origin/main (#361 di Mani) nel terminale A — review #749-M2 APPROVATO (chat M2)
@@ -67,6 +70,38 @@ e93bd77 feat(gas): terminale opzione A — azioni fisse di manutenzione (stato_g
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #751-M2 (V-1 e V-2 del bot su 7bcda34, commit ee9c7d0) — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #751-M2: diff staged su feat/terminale-a-m2 (PR #363). Chiude V-1 (media) e V-2 (bassa) del bot su 7bcda34. Ho fatto le letture obbligatorie: CLAUDE.md sez. 5, 6, 8 e 9, stato_progetto con grep mirato, la coda di memoria_revisore.
+
+**Cosa ho controllato nel diff**
+- `gas.py:2556` — nuovo ramo `manutenzione` in `_esito_diario`. Restituisce solo «[KO]» (diniego, errore, oppure output che inizia con «[KO]») o «[OK]». Rischio esaminato: output del modulo (doctor, git, pip) che finisce nel diario, cioè V-2, e fallimenti scambiati per successi, cioè V-1. Esito: ok. Il ramo sta prima del fallback `_esito_sintetico` (`gas.py:2539`), che metteva nel diario 160 caratteri di output. `_cap_tool_output` (`gas.py:2044`) aggiunge testo solo in coda, quindi il prefisso «[KO]» resta in testa.
+- `gas.py:3651` — `incerta` vale per una manutenzione non eseguita il cui output non inizia con «Operazione negata». Rischio esaminato: un diniego scambiato per esito incerto, oppure un pull o un pip fallito che risulta «eseguita». Esito: ok, la logica è corretta. Va nella direzione prudente: anche «[KO] non sul branch main» (nulla fatto) finisce in «incerta», cioè «controlla» invece di «non partita». Per un'azione irreversibile firmata è accettabile. Il messaggio Telegram è quello già esistente in `modules/telegram/bot.py:1126`. Riserva sul test (R-751-1, sotto).
+- `modules/manutenzione/__init__.py:142` — se pip fallisce dopo un pull riuscito, l'esito ora inizia con «[KO] aggiorna_gas: …». Prima il «[KO]» stava in mezzo a `righe`. Rischio esaminato: il kernel non riconosceva l'esito negativo. Esito: ok. Le code di pip e di git restano nell'output del tool, che va nella storia e non nel diario.
+- `gas.py:5263` (contesto, riga non toccata) — `_turno_tool_ko` ora conta anche i «[KO]» del modulo nei turni a testo. Il turno può quindi chiudersi «parziale» invece di «ok»: è più vero, non è una regressione. I dinieghi «Operazione negata» erano già contati prima.
+- Altri percorsi verso il diario: `append_diario` e `_diario_log` sono chiamati solo da `_diario_log_tool`, dal recap del modello (`gas.py:4175`, testo scritto dal modello, fuori dal perimetro) e da `turno_fine`. `registra_esito_esecuzione` ora salva solo «[OK]»/«[KO]». Nessun altro percorso porta l'output della manutenzione nel diario.
+- `tests/test_unit_manutenzione.py:329` — `applica_firma` reale (accoda, resolve, applica) con pull fallito e con pip fallito: eseguita False, stato «incerta». Più un caso riuscito («finita») e un test del diario con solo l'esito. Esito: ok.
+
+**Prove eseguite** (su una copia dell'index, `git checkout-index`)
+- `tests/test_unit_manutenzione.py`: 49 passed.
+- Mutante 1, tolto il ramo manutenzione in `_esito_diario`: 3 test falliti, mutante ucciso.
+- Mutante 2, `incerta` sempre False: 2 test falliti, mutante ucciso.
+- Mutante 3, ripristinato il vecchio return di pip col «[KO]» non in testa: 1 test fallito, mutante ucciso.
+- Mutante 4, tolta l'esclusione «Operazione negata» da `incerta`: **sopravvive** (120 passed su manutenzione + telegram).
+
+**Riserve**
+- R-751-1 (BASSA): manca il test sul lato «negato» della nuova regola. Esempio: firma di aggiorna_gas eseguita di notte → `NOTTE_NEGATA` → deve restare `non_partita`, non `incerta`. Ora quella clausola non è coperta dalla suite. Basta un test con `e_notte` forzato a True.
+- R-751-2 (COSMETICA): `stato_gas` con doctor FAIL dà «[OK]» nel diario, perché l'esito non inizia con «[KO]». Coerente con il modulo (l'azione di lettura è riuscita), ma il diario non distingue «doctor FAIL».
+
+**Cosa non ho verificato**
+- Suite kernel e gate+telegram complete: mi fido dei numeri dell'agente (kernel 1099 PASS / 1 FAIL T31g, ambiente; gate+telegram 892 passed). Ho rilanciato solo manutenzione + telegram.
+- Comportamento reale di git, pip e launchctl sul Mac: non riproducibile in questo ambiente, i test usano `_run` finto.
+- Testo del messaggio Telegram nel caso «non sul branch main» visto dall'operatore: solo letto nel codice, non provato.
+
+**Memoria**: ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #751-M2 e una lezione (per un terzo stato con un'esclusione servono test su entrambi i lati). Il file è in staging con `git add`, nessun commit.
 
 ### Review #749-M2 (merge di main 3f08352, PR #361 di Mani) — verdetto integrale RIEMESSO
 
@@ -240,6 +275,7 @@ I verdetti integrali sono stati emessi prima di un `/clear` di questa chat e non
 
   T31g è fuori scope: dipende dall'ambiente (GAS_VECTORS), fallisce uguale su main.
 - `python -m pytest -q tests/test_unit_manutenzione.py tests/test_unit_gate.py tests/test_unit_notte.py`: 1064 passed.
+- Dopo ee9c7d0: `python -m pytest -q tests/test_unit_manutenzione.py`: 49 passed; `python tests/test_unit_kernel.py`: 1099 PASS, 1 FAIL (T31g, ambiente); `pytest tests/test_unit_gate.py tests/test_unit_telegram*.py -k "not browser"`: 892 passed.
 - Dopo 94bd308: `python -m pytest -q tests/test_unit_manutenzione.py`: 45 passed (test di `log_voce` con righe nel formato vero e due righe ostili).
 
 ## §6 STATO CI
@@ -248,7 +284,8 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strum
 - 860c751 (head precedente): unit-suite success, handoff-check success, verifica-bot neutral (la PR tocca ci.yml, macchina del bot).
 - ece76a8 e 94bd308: nessuna run propria (pushati insieme al commit di fine task 3bf227f).
 - 3bf227f: bot APPROVATO CON RISERVE senza finding gravi (neutral); unit-suite non letta a fine run prima del merge successivo.
-- Merge di main 3f08352: nessuna run su questo SHA (pushato insieme al commit di fine task).
+- 7bcda34: verifica-bot failure (finding vero, corretto in ee9c7d0); unit-suite non letta a fine run.
+- ee9c7d0 e merge di main 3f08352: nessuna run propria (pushati insieme a un commit di fine task).
 - Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -261,6 +298,9 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strum
 - Verifica esterna #363 (commento sulla PR, su bcca777) V-1 di gravità media (PR non mergeabile, conflitto con main): CHIUSA (d3c490c, review #745-M2).
 - Verifica esterna #363 V-2 BASSA (CI non conclusa al momento della verifica): da rileggere sulla head nuova.
 - Verifica esterna #363 V-3 BASSA (filtro di `log_voce`): CHIUSA (94bd308, review #748-M2).
+- Bot su 7bcda34 V-1 (gravità media) e V-2 BASSA: CHIUSE (ee9c7d0, review #751-M2).
+- R-751-1 BASSA — manca il test sul lato «negato» della regola dell'esito incerto (firma di notte → deve restare non_partita).
+- R-751-2 COSMETICA — stato_gas con doctor FAIL dà [OK] nel diario.
 - R-748-1 BASSA — un altro logger che scrive testo esterno con un a-capo può ancora produrre una riga valida per il filtro (solo nomi minuscoli e numeri: nessun dato altrui).
 - Bot su 860c751 V-2 BASSA — le richieste a TESTO del server voce arrivano a run_turn senza voce=True: lì `manutenzione` è offerta (letture senza firma, azioni alla firma). Decide l'operatore insieme a R-738-2.
 - Verifica esterna #363 V-4 BASSA — `aggiorna_gas` lancia `pip install -r` su codice appena scaricato da main; l'unica barriera è la firma, e la richiesta di firma dice solo «Esegui manutenzione». Fix proposto: testo della firma più esplicito.
