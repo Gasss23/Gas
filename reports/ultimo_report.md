@@ -11,10 +11,11 @@
 - **Analisi notturna (4 agenti: motore, firme/notte/Telegram, voce, memoria/web/conoscenza)**: FATTA — 19 bug riprodotti, report in `reports/test_mattina.md`.
 - **Fix motore B1–B3, memoria/conoscenza B1–B4, notte/bot B2–B4**: FATTA — commit d9346212, review #744-M1 APPROVATO CON RISERVE.
 - **Firme B1 (`.gas_sottofondo` scrivibile senza firma)**: FATTA da M3 nella #364 (mergiata).
-- **Bug della voce B1–B5 + miglioramenti**: FATTA da M2 nella PR #367 (aperta, la mergia M2 dopo la #366).
+- **Bug della voce B1–B5 + miglioramenti**: FATTA da M2 nella PR #367 (mergiata 802fc04).
 - **Kernel B4 (§8, ripiego dichiarato)**: FATTA — f4979c13, review #750-M1 APPROVATO CON RISERVE; riga «↪ risposta da …» in CLI e Telegram (non a voce).
 - **Kernel B5–B6**: DEFERITA — BASSE, annotati in stato_progetto.
 - **Merge di origin/main (#363, #365)**: FATTA — 769df833, review #751-M1 APPROVATO.
+- **Merge di origin/main (#367)**: FATTA — b5291a52, review #752-M1 APPROVATO.
 - **Bot #366 V-1 (handoff), V-2 (id duplicati), V-3 (exit code ingest)**: FATTA — questo handoff, rinomina #744-M1/#748-M1, commit 69c26619 (review #749-M1).
 - **`reports/test_mattina.md`**: FATTO — prove manuali sul Mac per area.
 

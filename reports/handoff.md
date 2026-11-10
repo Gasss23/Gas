@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #366 (https://github.com/Gasss23/Gas/pull/366). Numero e URL dall'output di `create_pull_request` dello strumento GitHub (gh assente in questo ambiente). Tocca il messaggio di firma (solo la vista): PR di sicurezza.
-2. R-750-M1-1: se il primo cervello della cascata non è configurato (es. VPS senza GEMINI_API_KEY), la riga «↪ risposta da … (riserva)» compare a ogni risposta. Contarlo come ripiego? sì/no.
+2. R-750-M1-1 + bot #366 V-1 (3° giro): la riga «↪ risposta da … (riserva)» oggi copre solo il ripiego della cascata. Da decidere: (a) se il primo cervello non configurato (VPS senza GEMINI_API_KEY) conta come ripiego; (b) se dichiarare anche Flash-lite scelto dal router per i compiti semplici.
 3. Tetto delle 10 iterazioni per turno invece che per cervello? sì/no.
 4. Nome dei lead nel promemoria della memoria verso i modelli gratuiti: bloccarlo? sì/no.
 
@@ -15,14 +15,14 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Merge notturni con il sì dell'operatore**: FATTA — #362, #361, #364 mergiate da M1; #363, #365 mergiate da M2.
+- **Fetta 1 — Merge notturni con il sì dell'operatore**: FATTA — #362, #361, #364 mergiate da M1; #363, #365, #367 mergiate da M2.
 - **Fetta 2 — Analisi notturna (4 agenti)**: FATTA — 19 bug riprodotti, `reports/test_mattina.md`.
 - **Fetta 3 — Fix motore/memoria/conoscenza/notte/bot**: FATTA — d9346212, review #744-M1.
 - **Fetta 4 — Merge di origin/main (#361, #364)**: FATTA — 81c3c55c, review #748-M1.
 - **Fetta 5 — Bot #366 V-1/V-2/V-3 (1° giro)**: FATTA — 69c26619 (review #749-M1) + handoff 802e9701.
 - **Fetta 6 — Kernel B4, ripiego dichiarato (§8) + bot #366 V-1 cosmetica (2° giro)**: FATTA — f4979c13, review #750-M1.
 - **Fetta 7 — Merge di origin/main (#363, #365)**: FATTA — 769df833, review #751-M1.
-- **Fetta 8 — Bug della voce B1–B5**: FATTA da M2 nella PR #367 (aperta; la mergia M2 dopo la #366).
+- **Fetta 8 — Merge di origin/main (#367, bug della voce B1–B5 fatti da M2)**: FATTA — b5291a52, review #752-M1.
 - **Fetta 9 — Kernel B5–B6**: DEFERITA — BASSE, annotati in stato_progetto.
 
 ---
@@ -30,23 +30,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md      |  10 +++++++++
- gas.py                                  |  94 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ .claude/agents/memoria_revisore.md      |  11 +++++++++++
+ gas.py                                  |  94 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
  modules/notte/notte.py                  |   6 +++---
- modules/telegram/bot.py                 |  16 +++++++++++---
- reports/diff_sessione.md                |  22 +++++++++----------
+ modules/telegram/bot.py                 |  16 +++++++++++++---
+ reports/diff_sessione.md                |  19 +++++++++++--------
  reports/handoff.md                      | n/d
- reports/proposta_terminale_autonomia.md |  28 ++++++++++++++++++++++++
- reports/ripartenza_m1.md                |  70 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/proposta_terminale_autonomia.md |  28 ++++++++++++++++++++++++++++
+ reports/ripartenza_m1.md                |  70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/stato_progetto.md               |   2 ++
- reports/test_mattina.md                 | 308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/test_voce_mattina.md            |  53 +++++++++++++++++++++++++++++++++++++++++++++
- reports/ultimo_report.md                |  31 +++++++++++++++-----------
- tests/test_unit_ingest_fonti.py         |  97 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_kernel.py               | 295 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_notte.py                |  61 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_telegram_voce.py        |  31 ++++++++++++++++++++++++++
- tools/ingest_knowledge.py               | 105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
+ reports/test_mattina.md                 | 308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/test_voce_mattina.md            |  53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md                |  33 +++++++++++++++++++--------------
+ tests/test_unit_ingest_fonti.py         |  97 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py               | 295 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py                |  61 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_telegram_voce.py        |  31 +++++++++++++++++++++++++++++++
+ tools/ingest_knowledge.py               | 105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -54,6 +54,8 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b5291a52 merge: origin/main (#367) nella #366 (review #752-M1 APPROVATO)
+55a0c1c1 docs(fine-task): handoff rigenerato su ripiego B4 e merge di #363/#365 (bot #366 V-1 ALTA)
 769df833 merge: origin/main (#363, #365) nella #366 (review #751-M1 APPROVATO)
 f4979c13 fix(kernel): dichiara il ripiego su un cervello di riserva nei turni normali (audit B4, §8) + commento/test ingest (bot #366 V-1)
 802e9701 docs(fine-task): handoff e report della sessione dell'analisi notturna (bot #366 V-1)
@@ -258,26 +260,51 @@ Cosa NON ho verificato:
 
 Memoria: ho aggiunto la riga `#751-M1 — 2026-11-10 — APPROVATO — ...` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho messa in stage (`git add`). Nessun commit, come richiesto. Dopo l'aggiunta `--check` è pulito e `ls-files -u` dà 0. Nessuna lezione nuova.
 
+### Review #752-M1 (merge b5291a52)
+
+## VERDETTO: APPROVATO
+
+Il merge di origin/main 802fc04 (#367) dentro la #366 è pulito: nessuna riga persa da nessuno dei due lati e nessun conflitto rimasto.
+
+**Elementi del diff esaminati:**
+- `modules/voice/server.py:495` — timeout del socket e resto dell'audit voce arrivati con la #367. Rischio: una risoluzione dei conflitti che altera il codice di main. Esito ok: `git diff --cached origin/main -- modules/voice clients tests/test_unit_voice_*.py` dà 0 righe, quindi modules/voice, clients/voice/browser_server.py e i 3 test voice sono identici a main.
+- `tests/test_unit_voice_tts.py:1` — test B3 dell'audit (+30 righe). Rischio: test persi o duplicati con l'unione. Esito ok: file identico a origin/main.
+- `reports/stato_progetto.md:379` — aggiunte le due riserve del 3° giro: ve #366 V-2 (`chunk_text`) e bot #366 V-1 (Flash-lite scelto dal router). Rischio: riserva descritta male. Esito ok: l'ho confermata leggendo `tools/ingest_knowledge.py:137` e `tools/ingest_knowledge.py:141`. Il primo paragrafo di un nuovo chunk non conta il +2 del separatore, quindi un chunk può superare `chunk_chars` di 2. Nessuna riga di origin/main persa nello stato (confronto riga per riga).
+- `.claude/agents/memoria_revisore.md:1474` — memoria unita dai due lati. Rischio: righe uniche perse. Esito ok: tutte le righe di HEAD e di origin/main sono nel file staged. I doppioni #746/#747 di M3 e la lezione «CARTELLA di stato» c'erano già in HEAD, non li introduce il merge.
+- Contesto: `gas.py:1` (insieme a bot.py, notte.py, ingest_knowledge.py e ai 4 test del nostro lato). Rischio: modifiche della #366 perse nel merge. Esito ok: il patch-id da a164b42 a HEAD coincide con quello dello staged rispetto a origin/main per tutti e 8 i file.
+
+**Controlli meccanici:**
+- MERGE_HEAD = origin/main = 802fc04.
+- `ls-files -u` vuoto, `--check` pulito, nessun marcatore di conflitto in reports/ e in memoria.
+
+**Cosa NON ho verificato:**
+- Non ho rilanciato i test: kernel 1119/0 e pytest 472 passed sono i numeri che mi hai dato tu. Il codice delle due PR è disgiunto e identico ai rispettivi lati, quindi i test dovrebbero restare uguali.
+- I test con «browser» nel nome sono esclusi da `-k "not browser"`. Dato che il codice voce/browser è identico a main, conta la CI di main.
+- handoff, ultimo_report e diff_sessione presi dal nostro lato: non li ho controllati, li riscrive /fine-task.
+
+**Memoria:** ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#752-M1 — 2026-11-10 — APPROVATO — …» e l'ho messa in stage. Come mi hai chiesto non l'ho committata e non ho lanciato commit_memoria_revisore.sh (con il merge in corso fallirebbe comunque). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel: 1100 PASS / 0 FAIL (main prima dei fix) → 1113 (fix + merge #361/#364) → 1119 PASS / 0 FAIL (ripiego B4, T113a-f; e dopo il merge di #363/#365). Verifica esterna: i test nuovi dei fix sul codice di main davano 1106 PASS / 7 FAIL.
-- pytest dopo il merge di #363/#365: `python -m pytest -q tests/test_unit_notte.py tests/test_unit_ingest_fonti.py tests/test_unit_sottofondo.py tests/test_unit_gate.py tests/test_unit_telegram_voce.py tests/test_unit_manutenzione.py` → 1285 passed. Prima del merge, con anche tests/test_unit_voice_server.py: 1419 passed. Revisore #751-M1: voice_server+manutenzione+telegram_voce `-k "not browser"` 291 passed.
+- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): main a164b42 = 1104 PASS / 0 FAIL (verifica esterna 3° giro); con questa PR 1119 PASS / 0 FAIL (dopo i merge di #363/#365 e di #367). I test nuovi della PR sul codice di main: 1106 PASS / 12 FAIL (T110a-c, T111a-b, T112a, T113a-d; verifica esterna 3° giro).
+- pytest dopo il merge di #367: `python -m pytest -q tests/test_unit_telegram_voce.py tests/test_unit_voice_server.py tests/test_unit_ingest_fonti.py tests/test_unit_notte.py -k "not browser"` → 472 passed, 28 deselected. Dopo il merge di #363/#365: notte+ingest_fonti+sottofondo+gate+telegram_voce+manutenzione → 1285 passed.
 
 ```
 === RIEPILOGO: 1119 PASS, 0 FAIL ===
 ```
 
-Fuori scope: 5 SKIP del kernel (T13a/b/c/e, T30e) e tests/test_unit_web_browser.py nel container (mancano bwrap e il modello di embedding; la CI li installa).
+Fuori scope: 5 SKIP del kernel (T13a/b/c/e, T30e), test con «browser» e tests/test_unit_web_browser.py nel container (mancano bwrap, browser e il modello di embedding; la CI li installa).
 
 ## §6 STATO CI
 
 CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumento GitHub sulla PR #366:
-- 81c3c55c: handoff-check failure (handoff mancante, chiuso in 802e9701); verifica-bot failure.
-- 802e9701: handoff-check success; verifica-bot failure (testo APPROVATO CON RISERVE, failure per «(MEDIA, …)» riferito al kernel B4 allora aperto: B4 ora chiuso in f4979c13).
-- f4979c13: handoff-check failure (handoff non aggiornato, chiuso da questo commit); verifica-bot failure (BOCCIATO per V-1 ALTA = handoff fermo, chiuso da questo commit).
-- 69c26619: nessuna run su questo SHA (pushato insieme a 802e9701).
-- 769df833: nessuna run su questo SHA (pushato insieme al commit di fine-task).
-- Commit precedenti della sessione (fd6c2425, 844e79aa, d9346212, aefb15c7, 39098377, 4d8dcdd6 e i docs(m1)): nessuna run propria con PR; il loro contenuto è testato dalle run dei commit di testa.
+- 55a0c1c1: handoff-check success; verifica-bot success (APPROVATO CON RISERVE, una BASSA); check suite completata (evento GitHub check_suite.completed, nessun check fallito).
+- f4979c13: handoff-check failure e verifica-bot failure (handoff fermo, chiuso in 55a0c1c1).
+- 802e9701: handoff-check success; verifica-bot failure (chiuso con B4 in f4979c13).
+- 81c3c55c: handoff-check failure; verifica-bot failure (handoff mancante, chiuso in 802e9701).
+- 69c26619, 769df833: nessuna run su questo SHA (pushati insieme al commit di testa successivo).
+- b5291a52: nessuna run su questo SHA (pushato insieme al commit di fine-task).
+- Commit precedenti della sessione (fd6c2425, 844e79aa, d9346212, aefb15c7, 39098377, 4d8dcdd6 e i docs(m1)): nessuna run propria con PR; contenuto testato dalle run dei commit di testa.
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -288,6 +315,8 @@ CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumen
 - R-744-M1-4 COSMETICA — log «Cronologia compressa» con conteggio sbagliato.
 - R-750-M1-1 BASSA — primo cervello non configurato → riga di riserva a ogni risposta (decisione in §0).
 - R-750-M1-2 COSMETICA — T113f controlla solo il codice di main, non la stampa vera.
-- R-750-M1-3 COSMETICA — connessione sqlite3 non chiusa nel test dell'ingest; il caso `../fuori.txt` passerebbe anche come «file mancante».
-- Ve #366 V-3 BASSA — un solo turno lungo (ultimo_user==0) non viene mai compresso.
+- R-750-M1-3 COSMETICA — connessione sqlite3 non chiusa nel test dell'ingest.
+- Bot #366 3° giro V-1 BASSA — Flash-lite scelto dal router non dichiarato (decisione in §0).
+- Ve #366 2° giro V-3 BASSA — un solo turno lungo (ultimo_user==0) non viene mai compresso.
+- Ve #366 3° giro V-2 BASSA — `chunk_text` può superare `chunk_chars` di 2 (logica preesistente).
 - Kernel B5/B6 BASSE non implementati.
