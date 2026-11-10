@@ -1,4 +1,4 @@
-# Ultimo report — 2026-11-10 — ascolto H24: meno attivazioni per sbaglio (chat Mani)
+# Ultimo report — 2026-11-10 — ascolto H24: meno attivazioni per sbaglio + V-1 della verifica esterna #361 (chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
 
@@ -15,6 +15,8 @@ Nessuna nuova. L'operatore, via M1, ha detto sì alla fetta correttiva se le ris
   - primo mezzo secondo della finestra ignorato (coda dell'eco).
 - LEGGIMI aggiornato. Test dell'ascolto: 300 passed, 4 test nuovi, 4 mutanti presi. Review #736 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
 
+- **V-1 MEDIA della verifica esterna #361**: FATTA (bc37ae5). Nella finestra dopo la risposta la parola valeva con UN solo blocco: un picco isolato rendeva il turno normale e azzerava il conto dei turni di seguito. Ora anche lì servono 2 blocchi di fila (conto azzerato sotto soglia, su errore, allo scatto e a ogni nuova finestra); commento della soglia corretto (V-3). Test dell'ascolto: 303 passed, 3 test nuovi, tutti gli azzeramenti presi da mutanti. Review #737 APPROVATO CON RISERVE (R-737-1: azzeramenti senza test), chiusa dalla re-review #738 APPROVATO.
+
 ## Anomalie
 
-Nessuna.
+Suite completa nel container: 1 test del browser vero fallito (`test_testo_scritto_dal_javascript`), fuori scope (il branch non tocca modules/); fa fede la CI.
