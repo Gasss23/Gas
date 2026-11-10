@@ -1,5 +1,10 @@
 # Ripartenza M1 (coordinamento): stato al 7 novembre 2026
 
+## STATO NOTTE 10/11 (~00:40 UTC)
+- Operatore: «mergia tutto quello che il bot ha approvato» (vale anche per riserve BASSE e per #363 sicurezza) + «passa la notte ad analizzare ogni cosa, domattina test e miglioramenti pronti da mergiare».
+- #362 MERGIATA (2dd0e8c). #363 conflitto → M2 risolve, poi mergio io. #361 aspetta unit-suite (Mani). #364/#365 verifica-bot failure → M3/M2 correggono.
+- Audit notturno: 4 agenti (kernel, cancello/notte/telegram, voce, memoria/web) → scratchpad/audit/*.md. Domattina: reports/test_mattina.md + PR di miglioramenti (revisore + bot) sul branch feat/merge-automatico-z1xjx2.
+
 ## STATO AL 10/11 (dopo /clear leggi prima questo)
 - **REGOLA N.1 dell'operatore (arrabbiato, 10/11):** risposte di MASSIMO 5 righe. Scrivergli solo per decisioni o risultati da provare. Niente papiri, niente cronaca.
 - **Operatore 10/11: NO all'obiettivo unico; TUTTE e 5 le chat lavorano INSIEME, mai una alla volta.** Si lavora in parallelo su tutto, con più chat. Nuove chat: **M3** `session_01NNEhCpcBJbujHFoDPBQLgM` (R7 direttore v2, branch feat/r7-direttore-m3); **M4** `session_01NNEhCt7spryW9nfRfuFnME` (R1 giro notturno dal vero, branch feat/r1-notte-m4). Mani: voce/ascolto (#361). M2: terminale A + server voce.
