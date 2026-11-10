@@ -474,10 +474,16 @@ class Ascolto:
     def registra(self, iniziali: Optional[List[Blocco]] = None,
                  attesa_s: float = ATTESA_VOCE_S,
                  max_s: float = REGISTRAZIONE_MAX_S,
-                 rileva_parola: bool = False) -> Optional[List[Blocco]]:
+                 rileva_parola: bool = False,
+                 subito: bool = False) -> Optional[List[Blocco]]:
         """Registra in memoria finché, dopo la voce, c'è `silenzio_s` di silenzio
         (massimo `max_s`). None se la voce non arriva entro `attesa_s` o
-        se il flusso finisce prima della voce."""
+        se il flusso finisce prima della voce.
+        `subito` (V-1 verifica esterna #368): `iniziali` viene da `_voce_subito` e può
+        essere solo la coda di «…vis». Come dopo una parola nella finestra si tollera il
+        silenzio fino ad `attesa_s`; se dopo quei blocchi non arriva altra voce continua
+        (INIZIO_VOCE_S) non si invia niente: meglio ripetere «Hey Jarvis» che mandare a
+        Whisper mezzo secondo di coda (risposte inventate come «Di niente»)."""
         presi: List[Blocco] = list(iniziali or [])
         voce = len(presi) >= blocchi_per(INIZIO_VOCE_S)
         if not voce:
@@ -490,7 +496,8 @@ class Ascolto:
         # ATTESA_VOCE_S, come dopo la parola fuori dalla finestra.
         # R-702-1: la tolleranza ha un tetto suo (come l'attesa, R-616-2): dopo ATTESA_VOCE_S
         # dalla parola finisce comunque, anche se rumori brevi l'hanno tenuta viva.
-        dopo_parola = False
+        dopo_parola = subito and voce
+        confermata = not dopo_parola
         forti_dopo = dal_la_parola = 0
         while len(presi) < blocchi_per(max_s):
             b = self._prossimo()
@@ -531,11 +538,15 @@ class Ascolto:
                     forti_dopo += 1
                     if forti_dopo >= blocchi_per(INIZIO_VOCE_S):
                         dopo_parola = False
+                        confermata = True
                 continue
             forti_dopo = 0
             silenzio += 1
             if silenzio >= (max_attesa if dopo_parola else max_silenzio):
                 break
+        if not confermata:
+            log.info("dopo la parola solo un attimo di voce, poi niente: non invio")
+            return None
         return presi if voce else None
 
     def aspetta_voce(self) -> Optional[List[Blocco]]:
@@ -777,7 +788,7 @@ class Ascolto:
             # «Hey Jarvis, che ore sono» d'un fiato: niente conferma (coprirebbe la richiesta
             # e andrebbe buttata), si registra da qui. Non suona niente, quindi niente eco.
             log.info("voce subito dopo la parola: niente conferma, registro")
-            richiesta = self.registra(subito)
+            richiesta = self.registra(subito, subito=True)
         else:
             self._conferma_o_bip()
             self._svuota()  # il bip o la conferma non devono finire nella richiesta

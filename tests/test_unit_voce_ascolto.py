@@ -2678,3 +2678,27 @@ def test_voce_che_parte_allo_scadere_non_finisce_sotto_la_conferma():
               finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
     assert f.riprodotti == [b"A"] and len(f.inviati) == 1
     assert _campioni(f.inviati[0]) == (finestra - 2 + 10 + a.blocchi_per(0.8)) * a.BLOCCO
+
+
+def test_coda_lunga_della_parola_poi_pausa_aspetta_la_richiesta():
+    """V-1 verifica esterna #368: coda di «…vis» lunga quanto SUBITO_VOCE_S, poi una
+    pausa più lunga del silenzio di fine richiesta: si aspetta (fino ad ATTESA_VOCE_S) e
+    la richiesta vera arriva intera, non solo la coda."""
+    coda = a.blocchi_per(a.SUBITO_VOCE_S)
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (VOCE, coda), (SILENZIO, 15), (VOCE, 10), (SILENZIO, 20)),
+              finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
+    assert len(f.inviati) == 1
+    assert _campioni(f.inviati[0]) == (coda + 15 + 10 + a.blocchi_per(0.8)) * a.BLOCCO
+
+
+def test_solo_la_coda_della_parola_non_si_invia(caplog):
+    """V-1 verifica esterna #368: dopo la parola solo un attimo di voce (la coda o un
+    rumore) e poi silenzio: niente a Whisper, si torna ad aspettare la parola."""
+    f = FintiParlano([b"A"], durata=3)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        f.ascolto(_blocchi(PAROLA, (VOCE, a.blocchi_per(a.SUBITO_VOCE_S) + 1),
+                           (SILENZIO, a.blocchi_per(a.ATTESA_VOCE_S) + 20)),
+                  finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
+    assert f.inviati == [] and f.riprodotti == []
+    assert "poi niente: non invio" in caplog.text
