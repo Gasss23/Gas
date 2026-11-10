@@ -12567,6 +12567,109 @@ try:
 except Exception as _e112x:
     check("T112 blocco senza eccezioni", False, repr(_e112x))
 
+# ---------- T113: audit 2026-11-10 B4, §8 ripiego dichiarato nei turni normali ----------
+print("\n--- T113: audit B4 ripiego dichiarato ---")
+try:
+    _ch113 = ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
+              "GAS_DAILY_TOKEN_BUDGET")
+    _sv113 = {k: os.environ.get(k) for k in _ch113}
+
+    class _Err113(Exception):
+        status_code = 429
+
+    def _turno113(script, chiavi=("GEMINI_API_KEY", "OPENROUTER_API_KEY"), prompt="ciao"):
+        """script: modello → lista di risposte (eccezione o oggetto). Ritorna (eventi, k)."""
+        _rimaste = {m: list(v) for m, v in script.items()}
+
+        class _C113:
+            def __init__(self, *a, **kw):
+                self.chat = self
+                self.completions = self
+
+            def create(self, model=None, **kw):
+                r = _rimaste[model].pop(0)
+                if isinstance(r, Exception):
+                    raise r
+                return r
+        for _k in _ch113:
+            os.environ.pop(_k, None)
+        for _k in chiavi:
+            os.environ[_k] = "finta-113"
+        _vo = gas.OpenAI
+        gas.OpenAI = _C113
+        try:
+            _k113 = kernel_tmp()
+            return list(_k113.run_turn(prompt)), _k113
+        finally:
+            gas.OpenAI = _vo
+            for _k, _v in _sv113.items():
+                if _v is None:
+                    os.environ.pop(_k, None)
+                else:
+                    os.environ[_k] = _v
+
+    def _r113(content=None, tool_calls=None):
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+            content=content, tool_calls=tool_calls))], usage=None)
+
+    _lite, _flash, _free = (gas.GEMINI_FLASH_LITE_MODEL, gas.GEMINI_FLASH_MODEL,
+                            gas.OPENROUTER_FREE_MODEL)
+    # T113a: il primo rung risponde → nessun ripiego, nessuna riga
+    _ev, _ = _turno113({_lite: [_r113("ok dal primo")]})
+    _fin = [e for e in _ev if e["type"] == "final"]
+    check("T113a primo della cascata: provider/modello nel final, ripiego False, avviso vuoto",
+          len(_fin) == 1 and _fin[0].get("provider", "") == "gemini-flash-lite"
+          and _fin[0].get("modello", "") == _lite and _fin[0].get("ripiego", "") is False
+          and _fin[0].get("avviso_ripiego", "") == "", str(_ev))
+    # T113b: i Gemini in quota → risponde il gratuito (prova p10 dell'audit)
+    _ev, _ = _turno113({_lite: [_Err113("429 a")], _flash: [_Err113("429 b")],
+                        _free: [_r113("dal gratuito")]})
+    _fin = [e for e in _ev if e["type"] == "final"]
+    check("T113b ripiego sul gratuito dichiarato con modello e motivo classificato",
+          len(_fin) == 1 and _fin[0]["content"] == "dal gratuito"
+          and _fin[0].get("provider", "") == "openrouter" and _fin[0].get("ripiego", "") is True
+          and _fin[0].get("avviso_ripiego", "").startswith(f"↪ risposta da {_free} (openrouter, riserva: ")
+          and "gemini-flash-lite: QUOTA (HTTP 429)" in _fin[0].get("avviso_ripiego", "")
+          and "groq: GROQ_API_KEY non impostata" in _fin[0].get("avviso_ripiego", "")
+          and "429 a" not in _fin[0].get("avviso_ripiego", ""), str(_fin))
+    # T113c: round-trip agentico con una tool call SUL rung di riserva (§7)
+    _tc113 = SimpleNamespace(id="call_113", type="function",
+                             function=SimpleNamespace(name="data_ora", arguments="{}"))
+    _ev, _k113c = _turno113({_lite: [_Err113("429")],
+                             _flash: [_r113(tool_calls=[_tc113]), _r113("sono le dieci")]})
+    _tipi = [e["type"] for e in _ev]
+    _fin = [e for e in _ev if e["type"] == "final"]
+    _ruoli = [m["role"] for m in _k113c.history]
+    check("T113c round-trip: tool eseguito sul ripiego, poi final dichiarato, storia coerente",
+          _tipi == ["tool_res", "final"] and "UTC" in _ev[0]["output"]
+          and _fin[0].get("provider", "") == "gemini-flash" and _fin[0].get("ripiego", "") is True
+          and "gemini-flash-lite: QUOTA (HTTP 429)" in _fin[0].get("avviso_ripiego", "")
+          and _ruoli[-4:] == ["user", "assistant", "tool", "assistant"], f"{_tipi} {_ruoli}")
+    # T113d: tool call sul primo rung, poi il primo cade a metà turno → ripiego dichiarato
+    _ev, _k113d = _turno113({_lite: [_r113(tool_calls=[_tc113]), _Err113("429")],
+                             _flash: [_r113("finito dal secondo")]})
+    _fin = [e for e in _ev if e["type"] == "final"]
+    check("T113d primo rung cade dopo la tool call → il final dice il ripiego",
+          [e["type"] for e in _ev] == ["tool_res", "final"]
+          and _fin[0].get("provider", "") == "gemini-flash" and _fin[0].get("ripiego", "") is True,
+          str(_ev))
+    # T113e: helper puro — il forte non è mai ripiego, motivo capato, senza motivi niente «:»
+    _forte = gas._info_ripiego("claude-cli", "m", "gemini-flash-lite", ["x: KO"])
+    _lungo = gas._info_ripiego("groq", "g", "gemini-flash", ["a" * 500])
+    _nudo = gas._info_ripiego("groq", "g", "gemini-flash", [])
+    check("T113e _info_ripiego: forte mai ripiego; motivo capato con «…»; senza motivi riga nuda",
+          _forte["ripiego"] is False and _forte["avviso_ripiego"] == ""
+          and _lungo["avviso_ripiego"].endswith("…)")
+          and len(_lungo["avviso_ripiego"]) <= gas.RIPIEGO_MOTIVO_MAX_CHARS + 40
+          and _nudo["avviso_ripiego"] == "↪ risposta da g (groq, riserva)", str((_lungo, _nudo)))
+    # T113f: la CLI stampa la riga solo col ripiego (sorgente del REPL)
+    import inspect as _insp113
+    _src113 = _insp113.getsource(gas.main)
+    check("T113f CLI: stampa avviso_ripiego dopo la risposta finale",
+          'event.get("avviso_ripiego")' in _src113)
+except Exception as _e113x:
+    check("T113 blocco senza eccezioni", False, repr(_e113x))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

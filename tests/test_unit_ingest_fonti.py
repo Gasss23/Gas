@@ -2,6 +2,7 @@
 knowledge/ (l'unica cartella protetta dalla firma, roadmap 5.3)."""
 import importlib.util
 import sys
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -113,6 +114,9 @@ def test_sources_yaml_vuoto_o_storto(ingest, tmp_path, contenuto):
 @pytest.mark.parametrize("fonti_yaml,codice", [
     ("sources:\n  - nome: ok\n    uri: knowledge/ok.txt\n", None),
     ("sources:\n  - nome: ok\n    uri: knowledge/ok.txt\n  - nome: rotta\n    uri: knowledge/manca/\n", 1),
+    # V-1 bot #366 / R-749-M1-1: anche un uri inesistente o rifiutato dà exit 1
+    ("sources:\n  - nome: ok\n    uri: knowledge/ok.txt\n  - nome: rotta\n    uri: knowledge/non_esiste.txt\n", 1),
+    ("sources:\n  - nome: ok\n    uri: knowledge/ok.txt\n  - nome: rotta\n    uri: ../fuori.txt\n", 1),
 ])
 def test_main_exit_code_se_una_fonte_fallisce(ingest, tmp_path, monkeypatch, fonti_yaml, codice):
     """V-3 bot #366: le fonti buone si caricano comunque, ma se una fallisce il comando
@@ -129,3 +133,7 @@ def test_main_exit_code_se_una_fonte_fallisce(ingest, tmp_path, monkeypatch, fon
         with pytest.raises(SystemExit) as e:
             mod.main()
         assert e.value.code == codice
+    # la fonte buona è caricata comunque
+    with sqlite3.connect(tmp_path / "m.db") as conn:
+        assert conn.execute("SELECT COUNT(*) FROM knowledge WHERE source_name = 'ok' "
+                            "AND stato = 'active'").fetchone()[0] > 0

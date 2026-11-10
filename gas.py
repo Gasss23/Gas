@@ -437,6 +437,28 @@ def _classify_provider_error(status_code: Optional[int], err_text: str,
         return ("WARN", "402: crediti esauriti (rung free opzionale)")
     return ("KO", err_text[:60])
 
+RIPIEGO_MOTIVO_MAX_CHARS = 160  # B4: motivo breve nella riga di avviso del ripiego
+
+
+def _info_ripiego(nome: str, modello: str, primo: str,
+                  motivi: List[str]) -> Dict[str, Any]:
+    """§8 Model Awareness (audit B4): campi dell'evento «final» che dicono chi ha
+    risposto e se è un ripiego rispetto al primo rung della cascata. `avviso_ripiego`
+    è la riga pronta per CLI e Telegram ("" se nessun ripiego). Il cervello forte
+    (claude-cli, /forte) non è mai un ripiego. Il motivo usa solo le righe di
+    `_motivi` (nome, env ed esito classificato: mai testo grezzo dell'errore). PURA."""
+    ripiego = nome != primo and nome != "claude-cli"
+    avviso = ""
+    if ripiego:
+        motivo = "; ".join(motivi)
+        if len(motivo) > RIPIEGO_MOTIVO_MAX_CHARS:
+            motivo = motivo[:RIPIEGO_MOTIVO_MAX_CHARS - 1] + "…"
+        avviso = f"↪ risposta da {modello} ({nome}, riserva"
+        avviso += f": {motivo})" if motivo else ")"
+    return {"provider": nome, "modello": modello, "ripiego": ripiego,
+            "avviso_ripiego": avviso}
+
+
 def _motivo_forte(e: BaseException) -> Optional[str]:
     """Motivo leggibile di un errore del cervello forte, per la riga «Pipeline esausta»
     (e quindi il report della notte). Solo i messaggi di `brains/claude_cli.py`, che
@@ -5263,7 +5285,8 @@ class GasKernel:
                             _salva()
                             _turno_provider = name  # Fetta B: provider che ha prodotto la risposta
                             _turno_final = True
-                            yield {"type": "final", "content": msg.content}
+                            yield {"type": "final", "content": msg.content,
+                                   **_info_ripiego(name, model, providers[0][0], _motivi)}
                             return
                         elif effimero:
                             # V-3 bot #339 su be60a21: nel turno effimero una risposta vuota
@@ -6533,7 +6556,10 @@ def main():
                 print("\nUso: /forte <richiesta>\n")
                 continue
             for event in kernel.run_turn(prompt, cervello=cervello):
-                if event["type"] == "final": print(f"\n{event['content']}\n")
+                if event["type"] == "final":
+                    print(f"\n{event['content']}\n")
+                    if event.get("avviso_ripiego"):  # §8 (audit B4): ha risposto una riserva
+                        print(f"  {event['avviso_ripiego']}\n")
                 elif event["type"] == "tool_res": print(f"  → {event['output'].strip()}")
                 elif event["type"] == "error": print(f"\n✗ {event['content']}\n")
         except KeyboardInterrupt: break

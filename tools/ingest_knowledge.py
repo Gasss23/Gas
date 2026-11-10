@@ -357,7 +357,8 @@ def main() -> None:
     log.info("=== TOTALE: ingested=%d  skipped=%d  fonti con errori=%d ===",
              totale["ingested"], totale["skipped"], totale["errori"])
     # V-3 bot #366: le altre fonti sono caricate, ma chi lancia l'ingest da script deve
-    # vedere che qualcosa è fallito (exit code ≠ 0, come prima dei fix B3)
+    # vedere che qualcosa è fallito: ora OGNI fonte fallita (anche un file mancante o un
+    # uri rifiutato, che prima davano exit 0) fa uscire con 1 (V-1 bot #366)
     if totale["errori"] > 0:
         sys.exit(1)
 
