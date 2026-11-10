@@ -1,20 +1,21 @@
-# Ultimo report — 2026-11-10 — terminale opzione A: azioni fisse di manutenzione per Gas (chat M2)
+# Ultimo report — 2026-11-10 — voce: correzioni dell'audit notturno (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR del terminale A: è un CAMBIO DI SICUREZZA (strumento nuovo `manutenzione`, livello nel cancello, aggancio in gas.py). Resta aperta fino al sì esplicito dell'operatore, anche con verdetto pulito del bot. Consigliato il secondo passaggio nella chat claude.ai col link della PR.
-2. R-738-2: i vocali di Telegram arrivano a Gas come turni a testo, quindi lì lo strumento è offerto (le azioni che cambiano Gas restano comunque alla firma). Se «mai a voce» deve valere anche per i vocali di Telegram lo decide l'operatore.
+1. PR #367: merge con verdetto del bot senza finding ALTA/MEDIA e CI verde (sì dell'operatore riferito da M1: «mergia tutto quello che il bot ha approvato»).
 
 ## Esito
 
-- **Terminale opzione A (codice + proposta + test)**: FATTA (e93bd77). Review #736-M2 BOCCIATO, poi #738-M2 e #739-M2 APPROVATO CON RISERVE (riserve di codice corrette prima del commit). Proposta in `reports/proposta_terminale_A.md`.
-- **Merge di origin/main (#359 di Mani) nel ramo**: FATTO (32619b5), review #743-M2 APPROVATO CON RISERVE (R-743-1 BASSA: riserve del terminale A non registrate in stato_progetto → registrate ora).
-- **Verifica esterna #363**: APPROVATO CON RISERVE. V-1 di gravità media (conflitto con main dopo il merge della #360): CHIUSA col merge di main (d3c490c), review #745-M2 APPROVATO. V-3 BASSA (filtro di `log_voce`): CHIUSA (94bd308, review #748-M2). V-4 BASSA (testo della firma di `aggiorna_gas`) registrata.
-- **Bot su 7bcda34**: finding di gravità media vero (manutenzione firmata ma fallita segnalata «eseguita»): CORRETTO in ee9c7d0 (esito incerto, diario solo [OK]/[KO]), review #751-M2.
-- **Merge di main (#362)**: FATTO (ece76a8), solo report e memoria.
-- **Test**: kernel 1099 PASS / 1 FAIL (T31g, GAS_VECTORS: ambiente, preesistente); pytest manutenzione + gate + notte 1064 passed.
-- **Prova dal vivo di `riavvia_voce` (launchctl) sul Mac**: DEFERITA — si fa dopo il merge.
+- **B1 timeout del socket del server voce (60 s)**: FATTA.
+- **B2 «Hey Jarvis, forte: …» al forte (anche parola ripetuta)**: FATTA.
+- **B3 risposte rotte di Groq ed ElevenLabs → errore di rete** (sintesi, elenco voci, libreria, aggiunta voce): FATTA.
+- **B4 `.env` del proxy del browser con le regole di Gas**: FATTA.
+- **B5 JSON di forma sbagliata → 400**: FATTA.
+- **Miglioramenti** (413 su corpo e prompt, porta prima del kernel, proxy che segue GAS_VOICE_PORT): FATTA.
+- **Sospetti da valutare di M1** («forte» detto durante «Sì, signore?», blocco per IP condiviso su 127.0.0.1, connessione ElevenLabs riusata): DEFERITA — non toccati in questa PR.
+- Review #752-M2 APPROVATO CON RISERVE (BASSE), #755-M2 APPROVATO (R-752-2/3 chiuse), merge di main #759-M2 APPROVATO.
+- Test: suite voce -k "audit or not browser" 808 passed; voice_server/stt/tts con i test browser 347 passed.
 
 ## Anomalie
 
-- I verdetti integrali di #736/#738/#739-M2 sono stati dati prima di un `/clear` della chat: nell'handoff c'è la loro riga di memoria del revisore, non il testo integrale.
+Nessuna.
