@@ -354,3 +354,28 @@ def test_diario_della_manutenzione_solo_esito(tmp_path):
     assert k._esito_diario("manutenzione", "stato_gas: doctor OK.\nsegreto") == "[OK]"
     assert k._esito_diario("manutenzione", "[KO] aggiorna_gas: git pull non riuscito.\nx") == "[KO]"
     assert k._esito_diario("manutenzione", "Operazione negata: di notte no.") == "[KO]"
+
+
+def test_aggiorna_gas_riuscito_chiede_di_riavviare_subito_il_bot(monkeypatch, tmp_path):
+    """V-1 bot #363 su bae9278: dopo un aggiornamento riuscito il bot Telegram può mescolare
+    codice vecchio e nuovo: l'esito chiede di riavviarlo SUBITO."""
+    run = _Run([(0, "main\n"), (0, ""), (0, "ok\n")])
+    monkeypatch.setattr(man, "_run", run)
+    out = man.esegui("aggiorna_gas", tmp_path, firmata=True)
+    assert "RIAVVIA SUBITO il bot Telegram" in out and "vecchio e nuovo" in out
+    assert "codice vecchio\n" not in out and "lo usa dopo il suo riavvio" not in out
+
+
+def test_avviso_di_riavvio_arriva_su_telegram_anche_con_output_lungo(monkeypatch, tmp_path):
+    """R-756-1: il messaggio Telegram taglia la FINE dell'output: l'avviso sta in testa e
+    arriva anche con un git pull lunghissimo."""
+    from modules.telegram import bot
+    lungo = "".join(f" modules/{'percorso/' * 25}file_{i:03d}.py | 12 +++++-----\n"
+                    for i in range(200))  # _coda tiene 10 righe: righe molto lunghe
+    run = _Run([(0, "main\n"), (0, ""), (0, lungo)])
+    monkeypatch.setattr(man, "_run", run)
+    out = man.esegui("aggiorna_gas", tmp_path, firmata=True)
+    msg = bot.componi_esito_firma("ok", "id-1", True, "",
+                                  {"tool": "manutenzione", "eseguita": True, "esito": "[OK]",
+                                   "output": out})
+    assert len(out) > bot.ESITO_OUTPUT_MAX and "RIAVVIA SUBITO il bot Telegram" in msg

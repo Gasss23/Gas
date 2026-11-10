@@ -133,7 +133,14 @@ def _aggiorna_gas(root: Path) -> str:
     codice, out = _esegui(["git", "pull", "--ff-only", "origin", "main"], root, TIMEOUT_GIT)
     if codice != 0:
         return f"[KO] aggiorna_gas: git pull non riuscito.\n{_coda(out)}"
-    righe = [f"aggiorna_gas: codice aggiornato da main.\n{_coda(out, 10)}"]
+    # V-1 bot #363 su bae9278: il bot Telegram (dove gira questa firma) NON resta sul codice
+    # vecchio: i moduli importati dentro le funzioni arrivano nuovi accanto a gas.py e bot.py
+    # vecchi. Gas non sa riavviare il bot da sé (non è un servizio noto): lo dice chiaro, in
+    # TESTA (R-756-1: il messaggio Telegram taglia la fine dell'output).
+    righe = ["aggiorna_gas: codice aggiornato da main.\n"
+             "⚠️ RIAVVIA SUBITO il bot Telegram: finché non lo riavvii può mescolare "
+             "codice vecchio e nuovo. Per la voce serve riavvia_voce.",
+             _coda(out, 10)]
     if (root / "requirements.txt").is_file():
         codice, out_pip = _esegui([sys.executable, "-m", "pip", "install", "-q", "-r",
                                    "requirements.txt"], root, TIMEOUT_PIP)
@@ -142,8 +149,6 @@ def _aggiorna_gas(root: Path) -> str:
             return ("[KO] aggiorna_gas: codice aggiornato da main, ma dipendenze NON "
                     f"installate (pip).\n{_coda(out_pip, 15)}\n{_coda(out, 10)}")
         righe.append("Dipendenze a posto.")
-    righe.append("Il codice nuovo vale dal prossimo avvio: per la voce serve riavvia_voce, "
-                 "il bot Telegram lo usa dopo il suo riavvio.")
     return "\n".join(righe)
 
 

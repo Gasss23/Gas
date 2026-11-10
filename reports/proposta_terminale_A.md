@@ -24,7 +24,7 @@ Un solo strumento nuovo per Gas, `manutenzione`, con un argomento `azione` scelt
 
 ## Limiti noti
 - I vocali di Telegram arrivano a Gas come turni a testo, quindi lì lo strumento è offerto. Il mittente è comunque l'operatore autenticato, e le azioni che cambiano Gas restano alla firma. Se «mai a voce» deve valere anche per i vocali lo decide l'operatore.
-- La firma viene eseguita nel processo del bot Telegram: `aggiorna_gas` può occuparlo per qualche minuto (pip). Dopo l'aggiornamento il bot usa il codice nuovo solo dal suo prossimo riavvio, e il messaggio di esito lo dice.
+- La firma viene eseguita nel processo del bot Telegram: `aggiorna_gas` può occuparlo per qualche minuto (pip). Dopo l'aggiornamento il bot NON resta sul codice vecchio: i moduli importati dentro le funzioni arrivano nuovi accanto a quelli vecchi già caricati. Gas non sa riavviare il bot da sé, quindi l'esito chiede di riavviarlo SUBITO (V-1 del bot su bae9278).
 - `launchctl kickstart` non è ancora stato provato dal vivo sul Mac: va provato dopo il merge.
 
 ## Fette
