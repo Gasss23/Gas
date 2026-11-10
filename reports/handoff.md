@@ -1,382 +1,259 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-10 — R7 fetta 1: il compito in sottofondo riparte da solo dopo un crash (chat M3, coordinata da M1)
+**Sessione:** 2026-11-10 — voce: seguito più severo e risposte più brevi (chat M2)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #364 (https://github.com/Gasss23/Gas/pull/364): contiene una correzione di SICUREZZA al cancello (`.gas_sottofondo/` mai scrivibile, dall'audit notturno di M1), quindi serve il sì dell'operatore via M1 anche col verdetto del bot APPROVATO. Revisore APPROVATO CON RISERVE (solo BASSA/COSMETICA); bot su a7eb3fc APPROVATA con riserve BASSE.
+1. Merge della PR #365 (https://github.com/Gasss23/Gas/pull/365): da solo solo con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore (via M1).
+2. PR #363 (terminale A, altra sessione di lavoro di questa chat): merge all'operatore (sicurezza).
+
+NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Proposta R7** (`reports/proposta_r7_direttore.md`): `FATTA` — opzioni e raccomandazione, mandata a M1.
-- **Fetta 1 — ripresa automatica del compito in sottofondo dopo un crash**: `FATTA` — `modules/sottofondo/__init__.py` (ripresa sotto lock, max `GAS_SOTTOFONDO_RIPRESE`, progressi `<id>.passi`), `gas.py` (`tool_res` porta `nome`). Review #736 → #737 → #738 APPROVATO CON RISERVE.
-- **Bot #364 su dc6c25a (NON approvata, V-1 MEDIA + V-2 BASSA)**: `FATTA` — avviso a ogni ripresa, comando `python gas.py sottofondo-ferma` (segno `<id>.ferma` sotto il lock, kill solo del nostro figlio, compito «ko»), niente ripresa oltre la durata dalla prima creazione. Review #743 → #744 → #745 APPROVATO CON RISERVE (commit 47c8aa3).
-- **Verifica esterna #364 (su dc6c25a)**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA (https://github.com/Gasss23/Gas/pull/364#issuecomment-6755289640); V-1 BASSA tracciata in stato_progetto.
-- **Bot #364 2° giro (a7eb3fc)**: APPROVATA (check verifica-bot success), riserve BASSE V-1 (avviso di ripresa e tetto notifiche) e V-2 (cartella di lancio di `sottofondo-ferma`), COSMETICA V-3 (descrizione PR, corretta). Verifica esterna 2° giro: APPROVATO CON RISERVE, nessuna ALTA/MEDIA (https://github.com/Gasss23/Gas/pull/364#issuecomment-6755522719). Riserve in stato_progetto.
-- **Audit notturno (M1): `.gas_sottofondo/` scrivibile senza firma**: `FATTA` — denylist + livello 3 in `modules/gate/gate.py` (commit 1537f0c), test gate e kernel T6s. Review #746 APPROVATO CON RISERVE.
-- **Merge di origin/main nel branch**: `FATTA` — #360 di M2 (review #739 APPROVATO), #362 di M4 (solo report e memoria del revisore, nessun codice), #361 (review #747 APPROVATO).
-- **Ripresa al boot / piano scritto dal modello / lista dei lavori ricorrenti**: `DEFERITA` — fette successive della proposta.
+- **Fetta 1 — seguito più severo (filtro lato server + istruzione)**: `FATTA` (1340aa0).
+- **Fetta 2 — risposte a voce più brevi (una frase, tetto 800)**: `FATTA` (1340aa0).
+- **R-744-1-M2, gravità media (risposte di una parola scartate)**: `FATTA` — chiusa prima del commit, review #746-M2.
+- **Note BASSE di bot e verifica esterna #365 (V-2 copertura del ramo «forte», V-3 elenco stretto e accenti) e R-746-1/2-M2**: `FATTA` (d07fbdf, review #747-M2). NB: il check del bot su e0f8f31 era «failure» ma il verdetto testuale era APPROVATO CON RISERVE con sole BASSE: il parser ha letto come finding la citazione di una riserva già chiusa (falso failure noto, direzione sicura).
+- **Merge di origin/main 2dd0e8c (#362) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; da main arrivano solo `reports/prova_r1_notte.md` e una riga di memoria (fuori dal perimetro di review). Chiude V-1 (gravità media, PR non mergeabile) della seconda verifica esterna #365.
+- **Merge di origin/main 3f08352 (#361 di Mani) nel ramo**: `FATTA` — conflitti solo nei report; review #750-M2 APPROVATO CON RISERVE (file di main identici a 3f08352; il client di ascolto gestisce bene il «fine» più frequente; 575 passed). Chiude V-1 BASSA del bot su 1638d81 (PR in conflitto).
+- **Merge di origin/main eebb7c0 (#364 di M3) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; review #753-M2 APPROVATO (file di main identici; nessuna interazione fra il sottofondo nuovo e il filtro del seguito); voice_server + voice_stt + sottofondo + gate 1218 passed.
+- **Prova sul Mac col modello vero**: `DEFERITA` — non riproducibile qui.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  16 +
- gas.py                             |   8 +-
- modules/gate/gate.py               |   4 +
- modules/sottofondo/__init__.py     | 294 +-
- reports/diff_sessione.md           |  22 +-
+ .claude/agents/memoria_revisore.md |   8 ++++++++
+ modules/voice/server.py            |  73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ reports/diff_sessione.md           |  19 ++++++---------
  reports/handoff.md                 | n/d
- reports/proposta_r7_direttore.md   |  28 +
- reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  33 +-
- tests/test_unit_gate.py            |   7 +
- tests/test_unit_kernel.py          |  13 +
- tests/test_unit_sottofondo.py      | 358 +
+ reports/ripartenza_m2.md           |   2 ++
+ reports/stato_progetto.md          |   2 ++
+ reports/ultimo_report.md           |  30 +++++++++++-------
+ tests/test_unit_voice_server.py    |  37 ++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_stt.py       |  67 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta. BASE = 3f08352 (merge-base con origin/main dopo il merge della #361).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-5c3af803 Merge origin/main (#361) in feat/r7-direttore-m3 — review #747
-1537f0c7 fix(gate): .gas_sottofondo mai scrivibile né leggibile da Gas (audit notturno, R7, M3)
-dd7b36c1 chore(revisore): memoria review #746 — APPROVATO CON RISERVE
-a7eb3fc0 docs(fine-task): R7 fetta 1 — correzioni del bot #364 (avviso alla ripresa, sottofondo-ferma, tetto di tempo), merge della #362 (M3)
-00499543 Merge origin/main (#362 di M4) in feat/r7-direttore-m3 — solo report e memoria del revisore
-47c8aa3d fix(R7): bot #364 — avviso a ogni ripresa e comando sottofondo-ferma; tetto di tempo dalla prima creazione (M3)
-30720bba chore(revisore): memoria review #745 — APPROVATO CON RISERVE
-d4e78289 chore(revisore): memoria review #744 — APPROVATO CON RISERVE
-aec71956 chore(revisore): memoria review #743 — APPROVATO CON RISERVE
-dc6c25aa docs(fine-task): R7 fetta 1 — ripresa dei compiti in sottofondo dopo un crash (M3), PR #364
-ef18a4ef Merge origin/main (#360 di M2) in feat/r7-direttore-m3 — review #739
-3101011d feat(R7): fetta 1 — il compito in sottofondo riparte da solo dopo un crash (M3)
-18523105 chore(revisore): memoria review #738 — APPROVATO CON RISERVE
-525064c1 chore(revisore): memoria review #737 — APPROVATO CON RISERVE
-9575467d chore(revisore): memoria review #736 — APPROVATO CON RISERVE
+815eed7 Merge origin/main (#364 di M3) nella #365 — review #753-M2 APPROVATO (chat M2)
+57853ff docs(fine-task): voce #365 dopo il merge di main (#361), review #750-M2 (chat M2)
+4cae6c9 Merge origin/main (#361 di Mani) nella #365 — review #750-M2 APPROVATO CON RISERVE (chat M2)
+1638d81 docs(fine-task): voce #365 dopo il merge di main (#362) — V-1 della seconda verifica esterna chiusa, riserve aggiornate (chat M2)
+4ec82c5 Merge origin/main (#362) nella #365 — conflitti solo nei report e nella memoria, chiude V-1 verifica esterna #365 bis (chat M2)
+588c450 docs(fine-task): voce #365 — note BASSE di bot e verifica esterna chiuse (review #747-M2), riserve aggiornate (chat M2)
+d07fbdf fix(voce): seguito — elenco delle risposte brevi più largo con accenti normalizzati, copertura del ramo «forte» nel seguito, assert «Resto.»; chiude V-2/V-3 bot e verifica esterna #365, R-746-1/2-M2 — review #747-M2 (chat M2)
+e0f8f31 docs(fine-task): voce — seguito più severo e risposte più brevi, PR #365; riserve del bot sulla #363 registrate (chat M2)
+1340aa0 feat(voce): seguito più severo (frammenti di una parola chiusi senza cervello, istruzione «nel dubbio non è per te») e risposte a voce più brevi (una frase, tetto 800) — review #744-M2, #746-M2 (chat M2)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 3101011 (motore): tre giri, #736 → #737 → #738. Commit ef18a4e (merge): #739. Commit 47c8aa3 (correzioni bot #364): tre giri, #743 → #744 → #745. Il merge 0049954 (#362) non tocca il perimetro di codice. Commit 1537f0c (sicurezza, cancello): #746. Merge 5c3af80 (#361): #747. Verdetti integrali.
+### Review #753-M2 (merge di main eebb7c0, PR #364 di M3) — verdetto integrale
 
-### Review #736
-
-VERDETTO: APPROVATO CON RISERVE
-
-Revisione n. 736 della fetta 1 di R7 (ripresa dei compiti in sottofondo), sul branch feat/r7-direttore-m3. Il diff è ancora nella working tree, non staged.
-
-Letture obbligatorie fatte: CLAUDE.md (sezioni 5, 8, 9 e 10), reports/stato_progetto.md (solo le parti su R7 e sottofondo) e la memoria del revisore (coda).
-
-**Test eseguiti da me**
-- pytest su tests/test_unit_sottofondo.py: 99 passed.
-- Suite del kernel (tests/test_unit_kernel.py): 1100 PASS, 0 FAIL. T105a passa.
-- Il perimetro guardato è gas.py, modules/ e tests/.
-
-**Elementi del diff esaminati**
-1. `modules/sottofondo/__init__.py:197` — `_ripulisci` chiama `_riprendi` e, se riceve False, passa ad `annulla`. Rischio: race tra due processi che controllano lo stesso compito nello stesso momento. Esito: **riserva MEDIA (R-736-1)**, spiegata sotto.
-2. `modules/sottofondo/__init__.py:251` — Sotto il lock, il posto viene ripreso solo se è ancora quello letto, nessun compito è attivo, lo stato è in_coda o in_corso, le riprese non sono finite e il compito è un testo. Rischio: due copie dello stesso compito avviate insieme. Esito: ok, non partono mai due copie.
-3. `modules/sottofondo/__init__.py:568` — Il nuovo processo rimette nel posto la data di creazione originale. Rischio: superare il tetto di tempo. Esito: ok, ed è più stretto di quanto dice la proposta. Il tempo totale resta una sola durata massima contata dalla prima creazione, non (1+riprese)×durata. Va corretto il testo di reports/proposta_r7_direttore.md (cosmetico).
-4. `modules/sottofondo/__init__.py:296` — `_segna_passo` salva solo nomi validi secondo la regex, al massimo 50, in un file 0600 separato, e non solleva mai eccezioni. Rischio: un canale di prompt injection. Esito: **riserva BASSA (R-736-2)**.
-5. `modules/sottofondo/__init__.py:577` — La nota di ripresa viene aggiunta al prompt del compito. Rischio: azioni ripetute alla ripresa. Esito: **riserva BASSA (R-736-3)**. Le azioni che passano dal cancello tornano alla firma, non partono da sole.
-6. `modules/sottofondo/__init__.py:387` — I file `.passi` vecchi vengono cancellati, tranne quello del compito che occupa il posto. Il file `.lock` non viene mai cancellato, ed è giusto così. Esito: ok.
-7. `gas.py:5219` — L'evento tool_res ora porta anche il nome dello strumento. Rischio: rompere chi legge l'evento. Esito: ok. È un campo in più e T105a lo verifica. Nessuno slicing della storia, `_get_window` e il tetto di 10 iterazioni non sono toccati.
-
-**Finding**
-- **R-736-1 MEDIA — riprodotta.** Il processo che perde il lock annulla la ripresa fatta dal vincitore. Lo script race.py (scratchpad della sessione) lancia due `_ripulisci` in thread, ed entrambi leggono il posto vecchio. A riprende il compito e lo avvia. B, che aspettava il lock, trova il posto cambiato: `_riprendi` restituisce False e B passa ad `annulla`. Risultato finale: compito «ko», riprese=1, posto tolto, avviso «non è finito: il processo si è interrotto».
-  - Nel caso più probabile, il processo avviato da A esce subito come «già eseguito», quindi si torna al comportamento di prima di R7.
-  - Se invece quel processo è già in_corso, gira senza posto: la coda risulta libera e un secondo compito potrebbe partire in parallelo.
-  - Il lock rende quindi la race sicura nel risultato, invece di evitarla.
-  - Correzione: distinguere «gestito da altri» (posto diverso da quello letto, oppure un compito attivo) da «niente ripresa». Per esempio `_riprendi` restituisce True in quel caso, oppure `_ripulisci` rilegge il posto e si ferma se non è più quello letto. Il test `test_posto_cambiato_nel_frattempo_niente_ripresa` controlla solo `_riprendi` da solo; serve un test sul chiamante.
-  - Consiglio di chiuderla prima del commit.
-- **R-736-2 BASSA.** I nomi salvati non sono confrontati con gli strumenti registrati. Il modello può chiamare uno strumento inesistente; la chiamata viene negata, ma il nome compare lo stesso nell'evento. Così un testo scelto dal modello (fino a 40 caratteri `[a-z0-9_]`, eco possibile di testo letto da fuori) entra nel prompt FIDATO della ripresa, senza segno di contaminazione. La frase della proposta «nessun nuovo testo non fidato nel prompt» non è esatta. Correzione: salvare solo i nomi degli strumenti registrati, oppure solo le chiamate con `cancello` None.
-- **R-736-3 BASSA.** Anche le chiamate negate o parcheggiate («in_attesa») risultano «già usate» nella nota. Alla ripresa il modello parcheggia di nuovo la stessa azione: ci sono due richieste nella coda delle firme e l'operatore potrebbe firmarle tutte e due. Correzione: nella nota distinguere «in attesa di firma» da «eseguito», oppure non contare le chiamate negate.
-- **Nota cosmetica.** Il tetto di tempo scritto nella proposta va corretto (vedi punto 3).
-
-**Rischi esclusi (non verificati)**
-- Processi nipoti rimasti vivi: se muore il processo `gas.py sottofondo` ma un suo sottoprocesso continua a girare, il compito ripreso potrebbe lavorare insieme a lui. Non l'ho verificato perché non si riproduce con processi finti nei test.
-- Comportamento reale su Mac o VPS, cioè `flock` su filesystem di rete e riavvio vero della macchina: non verificato, l'ho controllato solo su Linux dev con thread.
-- Il percorso completo del cancello firme quando un compito ripreso chiede la firma: l'ho controllato solo leggendo gas.py:5139-5176, senza un test end-to-end.
-
-**Memoria**
-Riga contatore #736 e una lezione nuova aggiunte in .claude/agents/memoria_revisore.md, committate da sole con lo script (commit 9575467).
-
-Le riserve R-736-1, R-736-2 e R-736-3 vanno scritte in reports/stato_progetto.md se si committa senza correggerle.
-
-### Review #737
-
-VERDETTO: APPROVATO CON RISERVE
-
-Seconda revisione (#737) della fetta 1 di R7, branch feat/r7-direttore-m3, diff `git diff HEAD -- gas.py modules/ tests/` (in parte staged e in parte no). Prima ho letto CLAUDE.md (sezione 5), stato_progetto.md (sezione R7) e la mia memoria, con la riga #736 e la lezione sul «perdente del lock».
-
-**Cosa ho controllato nel diff**
-- `modules/sottofondo/__init__.py:204` — `_ripulisci` ora si ferma quando `_riprendi(...) is not False`. Rischio: che chi arriva secondo al lock annulli la ripresa appena fatta dall'altro (R-736-1). Esito: **ok**. Per provarlo ho copiato il codice nello scratchpad e tolto `is not False`: `test_due_controlli_insieme_non_annullano_la_ripresa` fallisce (1 failed). Con la correzione passa.
-- `modules/sottofondo/__init__.py:260` — sotto il lock, se il posto non è più quello letto oppure c'è un compito attivo, si restituisce None prima degli altri controlli. Rischio: casi che prima finivano in «annulla» e adesso non li chiude più nessuno. Esito: **riserva R-737-1** (vedi sotto).
-- `modules/sottofondo/__init__.py:312` — `_strumenti_noti` legge `kernel.tools_schema`, che esiste davvero in `gas.py:1244`. Ogni errore dà un elenco vuoto, quindi nessun nome viene salvato. Rischio: un nome inventato dal modello che finisce nel prompt fidato (R-736-2). Esito: **ok**, coperto da `tests/test_unit_sottofondo.py:1036` e dal caso `fai_x_subito` a `tests/test_unit_sottofondo.py:973`.
-- `modules/sottofondo/__init__.py:332` — `cancello` None diventa «fatto», `in_attesa` diventa «in_firma», tutto il resto (anche `negata`) viene escluso. `_passi` scarta le voci malformate e i valori sconosciuti. Ho confrontato con i valori che `_cancello` assume davvero in `gas.py:5139-5186`. Esito: **ok** (R-736-3 chiusa), con una nota cosmetica.
-- `gas.py:5219` — `tool_res` porta `"nome": tc.function.name`, verificato da T105a in `tests/test_unit_kernel.py:12034`. Esito: **ok**. Non tocca `_get_window`, il tetto di 10 giri né quello degli 8k di output.
-- Wall of Shame: nel diff non c'è nessun taglio della history né output di strumenti simulati. I test usano un `_Kernel` finto che riceve eventi, ma l'esecuzione dei tool nel kernel resta quella vera.
-
-**Riserve**
-- **R-737-1 BASSA**: col nuovo ramo None ricade anche il caso in cui il posto è sparito o illeggibile sotto il lock (`_leggi` dà None, quindi `posto != letto`). Prima finiva in «annulla», cioè compito «ko» con avviso. Ora non succede niente, e se nessun altro ha chiuso il compito (per esempio il posto tolto dopo 120 s perché illeggibile), il compito resta «in_coda»/«in_corso» senza posto e senza avviso. Correzione possibile: restituire None solo se `posto` non è None ed è diverso da `letto`, oppure se c'è un compito attivo. Con il posto assente si lascia False, e `annulla` è comunque protetto dallo stato del compito.
-- **R-737-2 COSMETICA**: `reports/proposta_r7_direttore.md` dice «Il file del compito tiene i progressi», ma i progressi stanno in `<id>.passi`, un file separato. Inoltre un parcheggio che restituisce un testo diverso da «Azione in attesa…» o «Operazione negata…» (in quel caso `_cancello` resta None) viene registrato come «fatto».
-
-**Rischio escluso**
-- Non ho rilanciato la suite kernel completa (1100 PASS dichiarati dall'agente): la parte di `gas.py` è identica a quella del giro #736, dove T105a passava. Ho rilanciato solo `pytest tests/test_unit_sottofondo.py`: 102 passed.
-- La ripresa con processi veri (fcntl tra processi reali, kill del figlio) non l'ho provata: nei test `_avvia_ripresa` è sostituito da un finto.
-
-**Memoria**
-Ho aggiunto la riga #737 e una lezione (un bool che diventa tri-stato porta con sé anche i casi «stato sparito», che restano orfani) in `.claude/agents/memoria_revisore.md`, committata con `scripts/commit_memoria_revisore.sh` (525064c).
-
-Il commit è consentito: le riserve R-737-1 e R-737-2 vanno tracciate in `reports/stato_progetto.md`.
-
-### Review #738
-
-VERDETTO: APPROVATO CON RISERVE
-
-Review #738 (chat M3), terzo giro della fetta 1 di R7 sul branch feat/r7-direttore-m3. Ho esaminato `git diff HEAD -- gas.py modules/ tests/`, concentrandomi solo sulla modifica nuova. Prima ho fatto le letture obbligatorie: CLAUDE.md §5, stato_progetto con grep mirato, coda della mia memoria.
-
-**Cosa ho esaminato**
-- modules/sottofondo/__init__.py:258 — `_riprendi` sotto il lock rilegge il posto e il compito, poi decide. Rischio esaminato: R-737-1, cioè un posto sparito o illeggibile che finiva nel ramo None e lasciava il compito aperto senza che nessuno lo chiudesse. Ora restituisce None solo se `posto is not None and posto != letto` oppure se c'è un compito attivo. Un posto sparito o illeggibile passa al controllo successivo `not posto` e restituisce False. Esito: ok, R-737-1 CHIUSA.
-- modules/sottofondo/__init__.py:204 — `_ripulisci` con False chiama `annulla`. Rischio esaminato: un posto sparito perché il figlio della ripresa ha appena finito, e `annulla` che segna «ko» un compito riuscito. `annulla` (modules/sottofondo/__init__.py:549) chiude solo un compito ancora in_coda o in_corso. `_esegui` scrive l'esito (modules/sottofondo/__init__.py:656) PRIMA di togliere il posto (modules/sottofondo/__init__.py:659). Quindi chi trova il posto sparito vede già «ok» o «ko» e non tocca niente, e non parte nessun avviso doppio. Esito: ok.
-- tests/test_unit_sottofondo.py:1050 — test nuovo `test_posto_sparito_sotto_il_lock_compito_chiuso`. Rischio esaminato: se copre davvero quello che il nome promette. Controlla solo che `_riprendi` restituisca False e che non parta nessuna ripresa. Non fa il giro intero da `_ripulisci` fino a «ko» con avviso, che pure sono scritti nel nome e nella docstring. Esito: riserva cosmetica.
-- La proposta ora dice «Un file a parte (`<id>.passi`)». Esito: ok, parte principale di R-737-2 chiusa. Il resto (un parcheggio con testo inatteso registrato come «fatto») resta tracciato in stato_progetto, come dichiarato.
-
-pytest tests/test_unit_sottofondo.py: 103 passed (rieseguito da me).
-
-**Riserve**
-- R-738-1 COSMETICA: il test nuovo verifica solo il False di `_riprendi`. Non controlla la chiusura «ko» con avviso promessa dal nome. Basta aggiungere un'asserzione passando da `_ripulisci`: stato «ko» e un avviso.
-
-**Cosa NON ho verificato**
-- Non ho rieseguito la suite kernel (tests/test_unit_kernel.py) né la sonda di race in thread: gas.py e i test del kernel non sono cambiati dopo la #737.
-- Non ho verificato un posto illeggibile perché corrotto in modo parziale, con un json valido ma un id diverso: ricade nel ramo None per costruzione, già coperto nella #737.
-
-Memoria aggiornata: riga #738 in .claude/agents/memoria_revisore.md, committata (1852310), nessuna lezione nuova.
-
-### Review #739 (merge di origin/main) — verdetto RIEMESSO
-
-Il gate B ha rifiutato il verdetto originale (1 sola citazione di file del diff di sessione): il revisore lo ha riemesso con lo stesso esito e citazioni nella forma del gate. Sotto, prima il verdetto riemesso, poi l'originale invariato (in blocco di codice).
-
-## VERDETTO: APPROVATO
-
-Il merge in corso di origin/main 447195f (PR #360 di M2) in feat/r7-direttore-m3 si può committare (revisione #739, chat M3).
-
-**Cosa ho controllato**
-- modules/sottofondo/__init__.py:689 — `da_leggere(root)` restituisce i compiti in sottofondo finiti e non ancora letti. Il server voce la chiama nei turni di attivazione (contesto: modules/voice/server.py:887). Ho cercato una rottura dell'interfaccia tra R7 e il codice voce arrivato da main. La funzione esiste a HEAD M3 con la stessa firma e il merge non tocca modules/sottofondo (`git diff --cached HEAD --stat -- modules/sottofondo` è vuoto). Esito: ok.
-- modules/sottofondo/__init__.py:718 — `frase_finiti(jobs)` produce la frase detta a voce. Anche qui ho controllato l'interfaccia usata dal server: esiste ed è invariata. Esito: ok.
-- modules/sottofondo/__init__.py:733 — `segna_letti(root, jobs)` è chiamata dal server dopo la frase (contesto: modules/voice/server.py:911). Ho controllato l'interfaccia e la firma è compatibile. I test voice_server e sottofondo lanciati insieme con `-k "not browser"` danno 267 passed. Esito: ok.
-- Contesto, modules/voice/server.py:324 — `_FRASI_FISSE` ora contiene anche i pezzi di `_dividi_frasi`. È l'unica modifica di codice rispetto a HEAD. `git diff --cached MERGE_HEAD -- modules/voice tests/test_unit_voice_server.py` è vuoto, quindi il codice è identico a quello già revisionato e mergiato con la #360. Esito: ok.
-- Contesto, .claude/agents/memoria_revisore.md:1416 — il conflitto è risolto come unione delle due parti. Confrontando le righe ordinate, l'index non perde nessuna riga né di HEAD né di MERGE_HEAD. Sono presenti #736, #737 e #738 di M3 con le loro due lezioni e #725, #735, #737, #740, #741 e #742-M2. Non restano marcatori, `git ls-files -u` è vuoto e `git diff --cached --check` è pulito. Esito: ok.
-
-**Cosa non ho verificato**
-- La suite kernel e le righe di gas.py di questa sessione: il merge non le tocca e restano coperte dalle review #736-#738.
-- Il contenuto dei file in reports/: ho solo controllato che non abbiano marcatori di conflitto, sono fuori dal perimetro di review.
-
-**Note per te**
-- La prima riga è `## VERDETTO: APPROVATO`, nel formato obbligatorio del mio regolamento, e non `VERDETTO: APPROVATO` come avevi chiesto. Contiene comunque `VERDETTO:`, il marcatore che cerca il gate B. Se `check_verdetto.py` la rifiuta per il `##`, riemetto senza.
-- Memoria non toccata in questo secondo giro: la riga #739 è già nell'index dal primo giro.
-
-Verdetto originale #739 (invariato):
-
-```
 VERDETTO: APPROVATO
 
-Il merge in corso di origin/main 447195f (PR #360 di M2) in feat/r7-direttore-m3 si può committare.
+Review #753-M2. È il merge staged di origin/main eebb7c0 (PR #364, sottofondo di M3) nel ramo feat/voce-filtro-m2 (PR #365), nel worktree /home/user/Gas-voce. Non ho fatto commit.
 
 **Cosa ho controllato nel diff**
-- modules/voice/server.py:324 — `_FRASI_FISSE` ora contiene anche i pezzi creati da `_dividi_frasi` sulle frasi fisse del codice. È l'unica modifica di codice rispetto a HEAD. Ho cercato due rischi: che il codice si discostasse dalla #360 già revisionata e che in cache entrasse testo del modello. `git diff --cached MERGE_HEAD -- modules/voice tests/test_unit_voice_server.py` è vuoto, quindi il codice è identico a quello di main. Esito: ok.
-- tests/test_unit_voice_server.py:2099 — sono i test della #360 sulla cache delle frasi fisse. Sono identici a quelli di MERGE_HEAD. Lanciati insieme ai test di sottofondo con `-k "not browser"`: 267 passed. Esito: ok.
-- .claude/agents/memoria_revisore.md:1416 — il conflitto è risolto come unione delle due parti. Ho confrontato le righe ordinate dell'index con HEAD e con MERGE_HEAD: nessuna riga persa da nessuno dei due lati. Ci sono sia #736, #737 e #738 di M3 con le loro due lezioni, sia #725, #735, #737, #740, #741 e #742-M2. Non restano marcatori di conflitto, `git ls-files -u` è vuoto e `git diff --cached --check` non segnala nulla. La copia di lavoro coincide con l'index. Esito: ok.
-- Citazione di contesto, modules/sottofondo/__init__.py:689 — il server voce usa `da_leggere`, `frase_finiti` e `segna_letti` (modules/voice/server.py:887). Ho verificato che esistono ancora nella versione M3 (righe 689, 718 e 733). Il merge non tocca modules/sottofondo. Esito: ok, nessuna interferenza con R7.
+1. MERGE_HEAD coincide con origin/main (eebb7c0). Ho confrontato con `git diff --cached origin/main` questi file: gas.py, modules/gate/gate.py, modules/sottofondo/__init__.py, tests/test_unit_gate.py, tests/test_unit_kernel.py, tests/test_unit_sottofondo.py, reports/proposta_r7_direttore.md e reports/roadmap.md. Sono tutti identici a main.
+2. `git diff --cached origin/main --stat` mostra solo:
+   - la fetta voce: modules/voice/server.py e i test voice_server/voice_stt;
+   - i report del ramo;
+   - nella memoria 7 righe aggiunte e 0 tolte rispetto a main, cioè l'unione corretta;
+   - in stato_progetto.md 2 righe aggiunte e 0 tolte.
+3. `git ls-files -u` è vuoto (nessun conflitto rimasto) e `git diff --cached --check` è pulito.
+
+**Citazioni**
+- `modules/voice/server.py:779` — il filtro del seguito: se il seguito è un frammento della stanza (`seguito_da_scartare`), chiude subito, senza turno del kernel. Rischio esaminato: che salti o duplichi l'annuncio dei compiti in sottofondo finiti. Esito ok: chiude prima che l'annuncio venga calcolato, e l'annuncio resta solo sui turni di attivazione (condizione `is_audio and not self._seguito()`, modules/voice/server.py:922).
+- `modules/voice/server.py:939` — `_compiti_finiti` usa le funzioni di sottofondo `da_leggere`, `frase_finiti` e `segna_letti`. Rischio esaminato: che la #364 abbia cambiato queste funzioni. Esito ok: nelle parti cambiate dalla #364 nessuna delle tre compare. Sono ancora a `modules/sottofondo/__init__.py:780`, `modules/sottofondo/__init__.py:809` e `modules/sottofondo/__init__.py:824`. Un compito fermato con il nuovo `ferma` scrive un file `.ferma` a parte e non cambia il filtro sugli stati ok/ko, quindi non produce annunci finti.
+- `modules/voice/server.py:212` — la funzione `seguito_da_scartare`: non cambia col merge, quindi l'esito resta quello della review #750-M2.
+
+**Rischi esclusi**
+- Non ho rilanciato i test: per i 1218 passed mi fido del dato dichiarato dall'agente.
+- Non ho verificato dal vivo il caso di un annuncio dei finiti mentre gira una ripresa di un compito (la nuova `_riprendi` della #364): non si riproduce in dev senza audio e senza un compito in corso.
+- La riserva R-750-1-M2 (eco di 0,5 s che può troncare un «Sì» detto subito) resta aperta e il merge non la cambia.
+
+**Memoria**
+Ho aggiunto la riga #753-M2 in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in stage con `git -C /home/user/Gas-voce add`. Nessuna lezione nuova. Lo script di commit della memoria non l'ho lanciato: durante un merge non può fare commit parziali, quindi la riga entra nel commit di merge.
+
+### Review #750-M2 (merge di main 3f08352, PR #361 di Mani) — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #750-M2: merge in staging di origin/main 3f08352 (PR #361 della chat Mani) in feat/voce-filtro-m2 (PR #365), nel worktree /home/user/Gas-voce.
+
+**Cosa ho controllato del merge**
+- I tre file che arrivano da main (clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, scripts/voce/LEGGIMI.md) sono identici a 3f08352: `git diff --cached 3f08352` è vuoto su tutti e tre.
+- `git diff --cached origin/main` mostra solo la fetta voce, cioè modules/voice/server.py, tests/test_unit_voice_server.py e tests/test_unit_voice_stt.py. Il resto sono report (handoff, ultimo_report, diff_sessione, ripartenza_m2, stato_progetto con +2 righe) e la memoria (+6 righe aggiunte, 0 tolte).
+- Nessun conflitto rimasto: `git ls-files -u` è vuoto. Esiste MERGE_HEAD e `--check` è pulito.
+- In stato_progetto.md, rispetto a HEAD, ci sono solo la riga #359 aggiornata e la nuova voce #361. Rispetto a main ci sono solo le 2 righe della nostra fetta.
+
+**Elementi del codice esaminati**
+- `modules/voice/server.py:779`: nel seguito, `seguito_da_scartare(prompt)` chiama `_chiudi_seguito` (definito in `modules/voice/server.py:996`). Questo manda `X-Gas-Comando: fine` con `{"content": "", "fine": true}`. Il controllo viene dopo pausa e `_SOLO_ATTIVAZIONE`, quindi un «Hey Jarvis.» captato nella finestra con un solo blocco (cosa più probabile ora che la #361 chiede 2 blocchi di fila) riceve ancora la risposta di attivazione e non viene scartato. Rischio esaminato: un turno legittimo scartato per l'interazione con la #361. Esito: ok.
+- `modules/voice/server.py:212`: `seguito_da_scartare` scarta solo una trascrizione vuota oppure di una sola parola fuori elenco e non numerica. «Hey Jarvis, Marco» ha 3 parole e va al cervello. Rischio esaminato: un turno detto con la parola ma sentito come seguito. Esito: ok.
+- `clients/voice/ascolto.py:584` (contesto, arriva da main): con il comando «fine» il client mette `chiudi=True`, svuota il microfono e restituisce False, senza bip e senza contare l'errore. Il ciclo `conversazione` esce quando `self.chiudi` è vero e torna ad aspettare la parola dopo `_azzera()`. Quindi un «fine» più frequente chiude in silenzio, che è l'esito voluto, e si somma bene ai 3 turni e ai 15 s della #361. Rischio esaminato: bip a ripetizione o un turno fantasma su «fine». Esito: ok. I test che coprono il caso sono a `tests/test_unit_voce_ascolto.py:519` e `tests/test_unit_voce_ascolto.py:760`.
+- `tests/test_unit_voice_server.py:2392`: il test del filtro («Mamma.», «Ehm» scartati; «Resto.» e le risposte brevi passano). Esito: ok.
+
+**Test**: pytest su voice_server, voice_stt e voce_ascolto con `-k "not browser"`: 575 passed, 25 deselected.
+
+**Riserva BASSA R-750-1-M2**: la #361 fa ignorare il primo mezzo secondo della finestra (`CODA_ECO_S`, già segnalato come R-736-2). Una risposta di una parola detta subito («Sì») può quindi arrivare troncata, con trascrizione vuota o storpiata. Il filtro di M2 ora la scarta e chiude la conversazione in silenzio, mentre prima andava al cervello. È da osservare dal vivo, non blocca il merge.
 
 **Cosa non ho verificato**
-- La suite kernel (gas.py) non l'ho lanciata: il merge non tocca né gas.py né modules/sottofondo.
-- I file in reports/ (handoff, ultimo_report e gli altri) non li ho letti per contenuto, ho solo controllato che non abbiano marcatori di conflitto. Sono fuori dal perimetro di review.
+- Il comportamento dal vivo sul Mac (microfono reale, Whisper sul parlato troncato): non si può riprodurre qui.
+- La pagina web (clients/voice/browser_server.py): fuori dal merge, e i test browser sono deselezionati come richiesto.
 
-**Memoria del revisore**
-- Ho scritto la riga contatore `#739 (chat M3)` e l'ho aggiunta all'index con `git add`, quindi entra nel commit di merge.
-- Lo script `bash scripts/commit_memoria_revisore.sh` non è partito: l'hook del gate di review ha bloccato il comando perché manca il marcatore `.claude/.review_ok`. Con un merge in corso lo script non sarebbe comunque utilizzabile, come già successo in #733-M2.
-- Prima di committare il merge devi rigenerare il marcatore con `bash scripts/segna_review_ok.sh`. La mia riga è nell'index, quindi va generato sull'index attuale.
-```
+**Memoria**: ho aggiunto la riga `#750-M2` in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-voce add`. Nessun commit, come richiesto: per questo non ho lanciato lo script di commit della memoria. Nessuna lezione nuova.
 
-### Review #743
+### Review #747-M2 (correzioni BASSE di bot, verifica esterna e #746, commit d07fbdf) — verdetto integrale
 
-## VERDETTO: APPROVATO CON RISERVE
+VERDETTO: APPROVATO CON RISERVE
 
-Review #743 (chat M3): 4° giro della R7 fetta 1, correzioni ai punti del bot sulla PR #364 (V-1 e V-2). Ho letto CLAUDE.md (sez. 5, 8 e 9), le voci R7 di reports/stato_progetto.md e la mia memoria. Nel diff non c'è nessuno degli antipattern vietati (niente taglio diretto della storia, niente output di tool inventati). Il tetto di 10 giri del loop e la funzione `_get_window()` non sono toccati. Ho lanciato `pytest tests/test_unit_sottofondo.py`: 109 passati.
+Review #747-M2 sul diff staged di /home/user/Gas-voce (branch feat/voce-filtro-m2, PR #365). Prima ho letto le parti obbligatorie: CLAUDE.md §5, le parti voce/M2 di stato_progetto.md e la memoria del revisore. Non ho trovato antipattern del Wall of Shame: nessuno slicing della history, nessun output di tool simulato, guardrail non toccati.
 
 **Elementi del diff esaminati**
-- `modules/sottofondo/__init__.py:242` — nuova `ferma()`. Scrive `<id>.ferma` PRIMA di fermare il processo, e lo ferma solo se `_identita` è True; poi `annulla` e manda l'avviso. Rischio esaminato: corsa con un `controlla` di un altro processo che, morto il figlio, prova a riprendere il compito. Il segno c'è già quando `_riprendi` lo controlla sotto lock, quindi niente ripresa, il compito si chiude «ko» col motivo «fermato dall'operatore», e un solo avviso perché `annulla` scrive solo su un compito ancora aperto. Esito: ok.
-- `modules/sottofondo/__init__.py:252` — `os.killpg` solo con `_identita(pid, ident) is True`. Rischio: pid riusato da un'app dell'operatore. Con False non uccide niente (provato da `tests/test_unit_sottofondo.py:1095` con un `sleep` estraneo). Con None (manca `ps`) però non ferma il processo, `annulla` libera comunque il posto e la frase dice «fermato: non riparte». Esito: riserva R-743-2.
-- `modules/sottofondo/__init__.py:305` — V-2: niente ripresa se `_nel_futuro(job)` o se il tempo dal «creato» del COMPITO supera la durata massima. `accoda` scrive sempre «creato» nel compito (`modules/sottofondo/__init__.py:565`), quindi un «creato» mancante (vale 0) si ha solo su file alterati, e lì negare la ripresa è prudente. Test: `tests/test_unit_sottofondo.py:1110`. Esito: ok.
-- `modules/sottofondo/__init__.py:325` — avviso Telegram a ogni ripresa con il comando per fermarla. Rischio: crash. `_avvisa` cattura e registra ogni errore (§9). Se poi il riavvio fallisce arrivano due avvisi («lo riprendo», poi «non è finito»), accettabile. Esito: ok.
-- `modules/sottofondo/__init__.py:180` — `_ripulisci` usa il motivo «fermato dall'operatore» se c'è il segno, e «oltre la durata» vince giustamente su questo. `modules/sottofondo/__init__.py:476` — pulizia dei `.ferma` vecchi, solo se non sono del posto in corso. Esito: ok.
-- `gas.py:6463` — comando `sottofondo-ferma`. `ferma` non lancia mai eccezioni (try/except che scrive in gas_debug.log), e la prova da riga di comando è in `tests/test_unit_sottofondo.py:1127`. Esce con 0 anche se l'arresto fallisce. Esito: riserva cosmetica (R-743-3).
-
-**Riserve (da tracciare in stato_progetto.md)**
-- **R-743-1 BASSA (corsa)**: `ferma` non prende il lock della ripresa, e `_esegui` non ricontrolla `.ferma`. Due finestre strette in cui il «ko» scritto da `ferma` viene sovrascritto e il compito gira lo stesso:
-  - (a) `_riprendi` ha già superato il controllo di `_fermato` sotto lock e riscrive il compito «in_coda» partendo dalla sua copia letta prima;
-  - (b) il figlio di una ripresa, partito col posto senza pid, ha già letto il compito «in_coda» e lo riscrive «in_corso» (`modules/sottofondo/__init__.py:660-662`). In questo caso `ferma` non lo uccide nemmeno, perché il pid letto era None.
-
-  Correzione economica: `ferma` scrive il segno e chiude il compito sotto lo stesso `flock` di `_riprendi`, e `_esegui` ricontrolla `_fermato` dopo aver scritto «in_corso» (se c'è il segno, chiude «ko» senza eseguire). Finestra di millisecondi, non bloccante.
-- **R-743-2 BASSA**: con `_identita` None (niente `ps`) il processo resta vivo, il posto viene liberato (può partire un secondo compito in parallelo) e la frase a terminale e l'avviso dicono «fermato». Serve un testo onesto («segnato come fermato, il processo potrebbe essere ancora attivo»), come già fa `_ripulisci` per la durata. Nessun test copre il caso None.
-- **R-743-3 COSMETICA**: se il figlio scrive «ok» un attimo prima, `ferma` stampa comunque «Compito … fermato: non riparte» (l'avviso giustamente non parte). Inoltre `gas.py sottofondo-ferma` esce sempre con 0, anche su «Arresto non riuscito».
-
-**Rischio escluso (non verificato)**: non ho provato processi veri. In particolare: SIGTERM a un figlio vero nel mezzo di un `run_turn`, `flock` fra processi distinti, nipoti rimasti vivi nel gruppo, consegna reale dell'avviso Telegram (tetto giornaliero compreso). Non sono riproducibili nei test unitari, che sostituiscono l'avvio. Non ho rilanciato la suite del kernel (1100 PASS dichiarati dall'agente). Non ho rivisto `reports/proposta_r7_direttore.md` (fuori dal perimetro di review).
-
-Memoria aggiornata (riga #743 (chat M3), più una lezione sul lock condiviso fra chi scrive e chi legge il segno di arresto) e committata con `scripts/commit_memoria_revisore.sh` (commit aec71956, solo .claude/agents/memoria_revisore.md). Gli altri file del diff restano non committati.
-
-### Review #744
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #744, quinto giro di R7 fetta 1 (branch feat/r7-direttore-m3). Ho letto CLAUDE.md, lo stato del progetto (stato_progetto) e la mia memoria (memoria_revisore). Ho eseguito `pytest tests/test_unit_sottofondo.py`: 111 passed.
-
-**Elementi del diff esaminati**
-- `modules/sottofondo/__init__.py:280` — `ferma` prende il lock con `_lock_esclusivo`, scrive `<id>.ferma`, fa killpg solo se `_identita` è True, poi chiama `annulla` (`annulla` non prende il lock, quindi niente deadlock). L'avviso parte fuori dal lock. Rischio esaminato: R-743-1 (concorrenza con `_riprendi`). Esito: **ok** verso `_riprendi`, che ricontrolla `_fermato` sotto lo stesso lock (`modules/sottofondo/__init__.py:341`). Esito: **riserva** verso il figlio, vedi R-744-1.
-- `modules/sottofondo/__init__.py:276` — `dati = _leggi(cartella / ATTIVO)` viene letto PRIMA del lock e prima di scrivere il segno, e il pid usato per il kill (riga 283) viene da quella lettura. Rischio esaminato: lettura vecchia del pid. Esito: **riserva** (R-744-1).
-- `modules/sottofondo/__init__.py:702` — `_esegui`, dopo aver scritto «in_corso», ricontrolla `_fermato` e chiude «ko» senza mandare un secondo avviso. Rischio esaminato: il figlio di una ripresa che parte dopo l'arresto. Esito: **ok**. Il mutante `if False:` viene preso da `test_figlio_della_ripresa_fermato_non_esegue` (1 failed).
-- `modules/sottofondo/__init__.py:292` — se il compito è già chiuso, la frase è «era già finito» e non parte nessun avviso. Con `nostro is None` la frase e l'avviso dicono «potrebbe essere ancora attivo». Rischio esaminato: R-743-2 e R-743-3. Esito: **ok**. Lo coprono `tests/test_unit_sottofondo.py:1097` e `tests/test_unit_sottofondo.py:1146`.
-- `gas.py:6463` — il comando `sottofondo-ferma` stampa la frase ed esce con 1 se `ok` è False. Rischio esaminato: crash nel comando o codice di uscita sbagliato. Esito: **ok**. `ferma` cattura ogni eccezione (§9), e `test_comando_sottofondo_ferma` lancia il comando come processo vero.
-- `modules/sottofondo/__init__.py:180` — in `_ripulisci` il segno cambia il motivo in «fermato dall'operatore». Il compito è già chiuso da `ferma`, quindi `annulla` lì ritorna False e non parte un doppio avviso. Esito: **ok**.
-
-**Riserve**
-- **R-744-1 BASSA** — la finestra di R-743-1 si è ristretta ma resta aperta. Sequenza: `ferma` legge ATTIVO con pid None (posto appena preso da accoda o ripresa). Poi il figlio scrive pid e «in_corso» e controlla il segno, che non c'è ancora, quindi esegue. Poi `ferma` scrive `.ferma`, non uccide niente (usa il pid vecchio), chiude «ko», libera il posto e dice «fermato: non riparte». Risultato: il compito gira fino in fondo in silenzio, l'esito finale viene ignorato perché lo stato è già «ko», e il posto è libero, quindi un secondo compito può partire insieme. L'ho riprodotto iniettando le scritture del figlio prima del lock: lo script è race.py nello scratchpad della sessione. Correzione: dentro il lock, rileggere ATTIVO e prendere il pid DOPO aver scritto `.ferma`. Così o il pid del figlio è già visibile (e lo si ferma), o il figlio scrive dopo il segno e lo vede.
-- **R-744-2 BASSA** — nessun test prova che `ferma` usi il lock. Il mutante «`fd = None`» al posto di `_lock_esclusivo` (riga 280) dà 111 passed.
-- Nota, nessuna nuova riserva: con `_identita` None, `annulla` libera il posto anche se il processo forse è vivo. Questo va contro la regola di `attivo()` («nel dubbio il posto resta occupato»). Ora almeno il caso viene dichiarato all'operatore.
-
-**Rischio escluso**: non ho verificato il comportamento con processi figli veri e un vero `os.killpg` su macOS/VPS, né `fcntl` assente (lì `_lock_esclusivo` ritorna None e si procede senza lock). Le corse le ho provate solo con iniezione deterministica in un unico processo, non con concorrenza reale fra processi.
-
-**Memoria**: aggiunta la riga #744 e una lezione in `.claude/agents/memoria_revisore.md`, committata con lo script (commit d4e78289). Il file del motore usato per i mutanti è stato ripristinato: il diff stat è identico a prima (90 righe).
-
-### Review #745
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Sesto giro sul branch feat/r7-direttore-m3 (`git diff -- gas.py modules/ tests/`, 3 file). Prima ho letto CLAUDE.md §5, stato_progetto.md (riga R7) e la memoria del revisore.
-
-**Cosa ho controllato nel codice**
-- `modules/sottofondo/__init__.py:280` — `ferma` prende `_lock_esclusivo` prima di scrivere il segno `<id>.ferma` e di chiudere il compito. Rischio: deadlock, perché `annulla` viene chiamato con il lock già preso. `annulla` non prende il lock (`modules/sottofondo/__init__.py:625`), quindi il rischio non c'è. Esito: ok.
-- `modules/sottofondo/__init__.py:285` — dopo aver scritto il segno si rilegge ATTIVO, e il pid si usa solo se l'id è ancora lo stesso. Rischio: resta una finestra in cui il figlio lancia il compito senza che nessuno se ne accorga (R-744-1). L'ordine è l'inverso di `_esegui`, che scrive prima il pid e poi controlla `_fermato` (`modules/sottofondo/__init__.py:702-705`). Quindi o `ferma` vede il pid, o il figlio vede il segno. Ho controllato anche il caso in cui il figlio ricrea ATTIVO e scrive «in_corso» dopo che `annulla` ha già chiuso il compito: il figlio vede il segno, richiama `annulla` e il compito torna «ko» con il posto liberato. `annulla` non manda avvisi, quindi l'avviso resta uno solo. Esito: ok, R-744-1 chiusa.
-- `modules/sottofondo/__init__.py:286` — controllo `id == ident`. Rischio: fermare il processo di un altro compito. È una difesa in più: `_identita(pid, ident)` controlla già il comando del processo (`modules/sottofondo/__init__.py:461`). Esito: riserva cosmetica, vedi sotto.
-- `tests/test_unit_sottofondo.py:1176` — `test_ferma_usa_il_lock_e_rilegge_il_pid`. Rischio: un test che non distingue il codice giusto da quello sbagliato (R-744-2). Esito: ok, i risultati dei mutanti sono qui sotto.
-- `gas.py:6463` — comando `sottofondo-ferma`: exit 0 o 1 e stampa della frase. Invariato rispetto alla #744. Esito: ok.
-
-**Prove con codice volutamente rotto (mutanti), file ripristinato dopo ogni prova**
-- Codice attuale: 112 passed.
-- Mutante «fd = None» (niente lock): 1 failed, 111 passed. Preso.
-- Mutante con la vecchia lettura (pid preso dalla prima lettura di ATTIVO): 1 failed, 111 passed. Preso.
-- Mutante senza il controllo `id == ident`: 112 passed. Non preso.
-
-**Riserve**
-- R-745-1 (COSMETICA): nessun test copre il caso in cui l'id cambia fra la prima e la seconda lettura di ATTIVO. Il rischio pratico è basso perché `_identita` verifica comunque il comando del processo.
-- Nota sul test: prova che il lock viene chiamato, non che copra davvero tutta la parte critica. Basta a prendere il mutante «lock tolto», ma non è una prova di mutua esclusione.
-
-**Cosa non ho verificato e perché**
-- Non ho provato processi veri: flock fra processi diversi, `killpg` su un figlio reale, eventuali nipoti rimasti vivi. Non si riproduce nei test unitari, che sostituiscono `_vivo`, `_identita` e `killpg`.
-- Non ho controllato l'atomicità di `_scrivi_privato` (scrittura con rename): mi baso sulle review precedenti.
-- Non ho fatto la caccia al Wall of Shame: il diff non contiene slicing della history (grep su `[-N:]` vuoto) né simulazione dell'output dei tool.
-
-**Memoria**: ho aggiunto in .claude/agents/memoria_revisore.md la riga #745 e una lezione nuova (un test che registra solo la chiamata del lock non prova la mutua esclusione), poi ho lanciato `scripts/commit_memoria_revisore.sh` per committare solo quel file.
-
-### Review #746 (sicurezza: `.gas_sottofondo` nel cancello)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Ho fatto le letture obbligatorie: CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md con Grep mirato e la mia memoria `.claude/agents/memoria_revisore.md`. Ho applicato la lezione registrata nelle review #559-M1 e #498: ogni nuovo file di stato del kernel deve stare in tutte le liste sorelle e va provato col kernel vero.
-
-**Elementi del diff esaminati**
-- modules/gate/gate.py:132 — aggiunge `.gas_sottofondo` a `_DENY_PREFIXES`, la lista dei percorsi negati. Rischi esaminati: varianti di percorso e nuova cartella `.gas_sottofondo_old/`. Ho provato a mano 12 varianti: `./`, `.GAS_SOTTOFONDO`, `x/../`, punto o spazio finale, punto fullwidth, carattere invisibile U+200B nel nome, `dati/.gas_sottofondo/`. Tutte danno DENY sia in `write_file` sia in `read_file`. La nuova `.gas_sottofondo_old/` è negata anche lei, perché il confronto è per prefisso, come già per `.gas_notte`. Esito: ok.
-- modules/gate/gate.py:316 — aggiunge `.gas_sottofondo` a `_LIVELLO3_PREFISSI`, i percorsi mai scrivibili. Di conseguenza entra anche in `_LETTURA_NEGATA` (modules/gate/gate.py:339), che è usata da `lettura_consentita` e da `run_command`. Rischio esaminato: la scrittura con firma e gli altri strumenti di lettura.
-  - Nel cancello, `elenca_cartella`, `cerca_testo`, `conta_file`, `leggi_righe` e `run_command "cat .gas_sottofondo/a.json"` danno tutti DENY.
-  - Nel kernel vero (in una cartella temporanea): `elenca_cartella` e `cerca_testo` sulla radice «.» saltano la cartella («5 voci protette omesse»). Il segreto scritto dentro non esce.
-  - Un symlink dal nome innocuo `link` che punta a `.gas_sottofondo` viene negato in `read_file`, `leggi_righe` ed `elenca_cartella`. In `write_file` risponde «questo file non si scrive mai, nemmeno con firma»: lo ferma il ricontrollo sul percorso risolto in `_risolvi_lettura` (gas.py:2669).
+- `modules/voice/server.py:203` — `_senza_accenti`: NFKD seguito dalla rimozione dei caratteri combinanti. Viene applicata a tutto l'elenco, che diventa `_RISPOSTE_BREVI_NORM`. Rischi esaminati:
+  - collisioni dopo la normalizzazione, per esempio «perché» e «perche»: sono innocue, finiscono tutte e due nel frozenset;
+  - forme NFD: coperte da un test;
+  - eccezioni: nessuna, perché `unicodedata` fa parte della libreria standard.
   - Esito: ok.
-- tests/test_unit_kernel.py:161 — test T6s: `write_file` con `firmata` False e True, controlla che il file non esista. Rischio esaminato: un test che passa anche senza la correzione. Ho tolto la correzione dal cancello: T6s dà 4 FAIL («Successo: File … aggiornato») e tests/test_unit_gate.py dà 10 failed. I test colpiscono davvero. Esito: ok.
-- tests/test_unit_gate.py:359 — elenco con id del compito, `attivo.json`, `.passi`, `.ferma`, `.lock` e le varianti. Esito: ok.
-- Citazione di contesto, modules/sottofondo/__init__.py:282 — il codice del kernel scrive `.ferma`, `.passi` e i compiti con `Path` diretto (`_scrivi_privato`), non tramite `write_file`/`read_file`. modules/voice/server.py:891 chiama `sottofondo.da_leggere(root)` in-process. Quindi il kernel non si rompe: con la correzione, 944 passed tra tests/test_unit_gate.py e tests/test_unit_sottofondo.py, e la suite del kernel dà 1104 PASS 0 FAIL, riprodotti. Esito: ok.
+- `modules/voice/server.py:215` — la normalizzazione si applica anche alla trascrizione, prima di `\w+`. Rischio esaminato: che un solo lato normalizzato lasci passare «Lunedi» o «Perchè». Mutanti:
+  - normalizzazione tolta dalla trascrizione: rosso;
+  - controllo fatto sull'elenco non normalizzato: rosso.
+  - Esito: ok.
+- `modules/voice/server.py:85` — l'import di `unicodedata` sta fra `re` e `subprocess`, fuori dall'ordine alfabetico. Esito: riserva cosmetica.
+- `modules/voice/server.py:190` — elenco allargato (sicuro, forse, stasera, numeri da 11 a 20, decine, cento, mille, ora/dopo/mai/sempre/niente/nulla/subito/adesso). Ho valutato se il filtro serve ancora. Sì: scarta ancora nomi, interiezioni («Ehm», «Mamma.», «Forte!») e tutte le parole fuori elenco. Però «Ora!», «Mai!», «Niente!», «Dopo» sono anche frammenti tipici della TV o della stanza, e adesso arrivano al cervello con la spesa di un turno. Esito: riserva **R-747-2-M2 (BASSA)**, un compromesso da scrivere nel commento o in stato_progetto. Non lo considero un blocco: nel seguito un falso «passa» costa un turno, un falso «scarta» perde la risposta dell'operatore.
+- `tests/test_unit_voice_server.py:2410` — casi a parola singola (davvero di UNA sola parola, come chiedeva la lezione del #746), forma NFD, «Resto.» da solo (R-746-2 chiusa) e i contro-esempi «Mamma.»/«Ehm». Esito: ok.
+- `tests/test_unit_voice_stt.py:844` — test V-2 «Gas, forte.» nel seguito: si aspetta il comando `fine`, il contenuto vuoto, nessun turno. Mutanti:
+  - tolto il ramo `elif self._seguito()` di «uso»: rosso, ok;
+  - filtro esteso a ≤2 parole, così «Gas, forte.» viene scartato dal filtro prima del ramo «uso»: **il test V-2 da solo resta VERDE**. I due rami danno la stessa risposta (`_chiudi_seguito`, `modules/voice/server.py:996`), quindi il test non prova di aver superato il filtro. Quel mutante lo prendono comunque altri test della suite (rosso). Esito: riserva **R-747-1-M2 (BASSA)**: aggiungere un'osservazione del percorso, per esempio caplog che verifica l'assenza di «seguito scartato senza cervello» oppure una spia su `cervello_voce`.
+
+**Esecuzione**
+- pytest su voice_server + voice_stt con `-k "not browser"`: 276 passed, l'ho riprodotto io.
+- 4 mutanti, tutti rossi sulla suite.
+- Ho ripristinato `server.py` dopo ogni mutante: alla fine ci sono solo le modifiche staged e nessuna modifica non staged.
+
+**Rischio escluso**
+- Non ho verificato il comportamento con trascrizioni reali di Whisper (accenti sul Mac o sulla VPS, come scrive «perchè»): non è riproducibile in dev, i test usano stringhe fisse.
+- Non ho controllato ligature o caratteri compatibili che NFKD trasforma in più lettere: è un caso marginale, al massimo un frammento passa al cervello.
+
+**Riserve da tracciare in stato_progetto.md**
+1. R-747-1-M2 (BASSA): il test V-2 non distingue il ramo «uso» dallo scarto del filtro.
+2. R-747-2-M2 (BASSA): «ora/dopo/mai/sempre/niente/nulla/subito/adesso» in elenco fanno passare al cervello anche i frammenti della TV. Dichiarare il compromesso o toglierle.
+3. Cosmetica: l'ordine dell'import di `unicodedata`.
+
+**Memoria**
+- Riga contatore #747-M2 e una lezione aggiunte in /home/user/Gas-voce/.claude/agents/memoria_revisore.md e messe in stage con `git -C /home/user/Gas-voce add`.
+- Nessun commit, come chiesto: lo script `commit_memoria_revisore.sh` non l'ho eseguito.
+- Un ciclo di attesa che avevo lanciato in background (b3fgnx8h1) è rimasto appeso: è innocuo e si chiude da solo al timeout.
+
+### Review #744-M2 — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #744-M2. Ho esaminato il diff in staging nel worktree /home/user/Gas-voce (branch feat/voce-filtro-m2). Letture fatte: CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md (letto in modo mirato), memoria del revisore.
+
+**Elementi del diff esaminati**
+- `modules/voice/server.py:188` — `seguito_da_scartare`: cerca le parole con `\w+` sul testo minuscolo, unicode, quindi «sì» con l'accento viene riconosciuto. Scarta se non ci sono parole oppure se c'è una sola parola fuori dall'elenco. Rischi esaminati: input vuoto, solo punteggiatura, apostrofi («D'accordo» conta 2 parole e passa), «Sì sì» passa. Nessuna eccezione possibile: tipi a posto, nessun crash. Esito: ok.
+- `modules/voice/server.py:753` — punto della chiamata. Ordine dei filtri: pausa (`_SOLO_PAUSA`, che copre anche «basta»), poi attivazione, poi frammento, poi `cervello_voce` (forte). Vale solo per il parlato nel seguito, perché `_seguito()` richiede `_parlato`; il percorso JSON/testo non è toccato. «Forte!» nel seguito ora lo chiude il filtro invece del ramo «uso», ma l'esito è lo stesso (`_chiudi_seguito`, comando fine, nessun turno). Nessuna spesa del cervello per i frammenti. Esito: ok.
+- `modules/voice/server.py:182` — `_RISPOSTE_BREVI_SEGUITO`. Rischio esaminato: risposte legittime perse. «Sì.», «No!», «Grazie.», «Perché?», «Ok» passano. Però «Continua», «Avanti», «Tre», «3», «Domani», «Marco», «Bene» vengono scartati: verificato eseguendo la funzione. Esito: riserva R-744-1-M2.
+- `modules/voice/server.py:219` — tetto del parlato 1500→800; docstring di `frasi_voce` aggiornata a «800 + 1 + 37». Nessun altro uso della costante fuori dal modulo. Esito: ok.
+- `modules/voice/server.py:246` — `ISTRUZIONE_VOCE` e `ISTRUZIONE_VOCE_SCHERMO` chiedono «UNA frase breve»; la frase «mai più di due» resta. `modules/telegram/bot.py:985` (contesto, file non toccato) usa `istruzione_turno_voce(True)`: lì cambia solo il testo dell'istruzione, coerente. Esito: ok.
+- `tests/test_unit_voice_stt.py:828` e `tests/test_unit_voice_stt.py:844` — test end-to-end via HTTP: i frammenti chiudono senza turno, le risposte brevi e le frasi arrivano al cervello in modo effimero, con la parola di attivazione «Mamma.» va al cervello. `tests/test_unit_voice_server.py:2392` è il test della funzione e dell'istruzione. Esito: ok.
+
+**Mutanti** (tutti ripristinati, nessuna modifica fuori dallo staging rimasta)
+1. Chiamata disattivata (`if False and …`): 1 failed (test_seguito_frammento_chiude_senza_cervello).
+2. Tolto `self._seguito() and`, cioè filtro sempre attivo: 1 failed (test_seguito_frammento_con_attivazione_va_al_cervello).
+3. Elenco ignorato (`return len(parole) == 1`): 2 failed.
+
+Suite test_unit_voice_server, voice_stt, voice_tts, voice_contesto, telegram_voce, voce_ascolto e sottofondo con -k "not browser": **743 passed**, come dichiarato. Il file si chiama tests/test_unit_sottofondo.py.
 
 **Riserve**
-- R-746-1 BASSA, problema che esisteva già: `run_command "grep -r … ."` o `ls -a` sulla radice resta IRREVERSIBLE, quindi esegue dopo il cancello. Dentro la sandbox bwrap, in sola lettura, la cartella è leggibile. Vale anche per `.gas_notte`, `.gas_memory.db` ecc.: nessun rischio di scrittura (montaggio in sola lettura), quindi il problema M1 non si riapre. Da tracciare come limite generale della denylist su `run_command`.
-- R-746-2 COSMETICA, parità tra liste: `.gas_sottofondo` (come già `.gas_notte`) manca da `_SAFE_PATH_DENY_PREFIXES` (gas.py:2061). Il ricontrollo del livello sul percorso risolto la copre, come ho misurato col symlink. `.gitignore` la esclude già (riga 24).
+- **R-744-1-M2 (MEDIA)**: le risposte di una parola fuori elenco vengono scartate in silenzio e la conversazione si chiude. Il caso più forte: quando taglia, Gas stesso dice `_PARLATO_VOCE_RESTO` («C'è altro, chiedimi se vuoi il resto.», `modules/voice/server.py:221`). Col tetto a 800 succederà più spesso, e «Continua.» o «Avanti.» vengono buttati. Stesso problema per numeri, nomi e giorni dati in risposta a una domanda che Gas fa solo quando gli serve. Non c'è crash né un'azione sbagliata, la direzione è sicura, ma l'utente deve ripetere con la parola di attivazione. Correzione minima suggerita: aggiungere almeno «continua», «avanti», «altro», «resto», «procedi», «bene»; valutare anche le cifre e i numeri brevi.
+- **R-744-2-M2 (BASSA, preesistente)**: «Grazie.», l'allucinazione tipica di Whisper sul silenzio, è in elenco e continua ad andare al cervello. Non è una regressione.
 
-**Rischi esclusi (non verificati)**
-- Comportamento dentro bwrap reale su VPS o Mac: la prova di `run_command` è solo di classificazione del cancello.
-- Hard link verso file dentro `.gas_sottofondo`: c'è un controllo già esistente su `st_nlink`, ma non l'ho provato per questa cartella.
-- Il processo figlio in sottofondo: ho verificato solo che non usi `write_file` per la propria coda (grep), non l'ho eseguito.
+**Rischi esplicitamente esclusi**
+- Non ho verificato se il modello rispetta davvero l'istruzione più severa (`[NON_PER_ME]` nel dubbio, una frase da circa venti parole): dipende dal comportamento del modello e non si può riprodurre nei test unitari senza chiamate reali.
+- Non ho verificato l'effetto sul client H24 (Mani) di una chiusura del seguito più frequente: client fuori da questo diff.
 
-Nessun antipattern della sezione 5 nel diff: nessuna simulazione di tool, nessun taglio della history. La riga contatore #746 è committata in `.claude/agents/memoria_revisore.md` (commit dd7b36c1), con una lezione nuova: le cartelle di stato vanno provate anche via symlink e via visita della cartella, non solo per nome.
+**Memoria**: riga `#744-M2 — 2026-11-10 — APPROVATO CON RISERVE — …` più una lezione (una lista bianca va provata contro le frasi che Gas stesso invita a dire) aggiunte in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md, messe in staging con `git add`. Nessun commit, come richiesto, quindi niente commit_memoria_revisore.sh.
 
-File rilevanti: modules/gate/gate.py, tests/test_unit_gate.py, tests/test_unit_kernel.py, .claude/agents/memoria_revisore.md. Lo script della prova è prova.py nello scratchpad della sessione.
+### Review #746-M2 (seguito di #744-M2, correzione di R-744-1) — verdetto integrale
 
-### Review #747 (merge di origin/main, #361)
+VERDETTO: APPROVATO CON RISERVE
 
-## VERDETTO: APPROVATO
+Review #746-M2: riguarda il diff in staging del worktree /home/user/Gas-voce, branch feat/voce-filtro-m2, con base 447195f. È il seguito della #744-M2.
 
-Il merge di origin/main 3f08352 (PR #361) in feat/r7-direttore-m3 è pulito. Tutti i controlli richiesti passano.
+**R-744-1-M2 (MEDIA) è CHIUSA.** «Continua.», «Avanti!», «Altro?», «Tre.», «3», «Domani.» e «Venerdì» ora arrivano al cervello. L'unico limite che resta, i nomi propri da soli, è scritto nel commento del codice.
 
-**Elementi esaminati:**
-- modules/gate/gate.py:132 — `.gas_sottofondo` nelle cartelle mai scrivibili (e a :316 nel livello 3). Rischio: che il merge abbia toccato questa protezione. Esito: ok, `git diff --cached HEAD` non tocca modules/, gas.py né brains/, quindi il file è identico a HEAD, già revisionato in #746.
-- modules/sottofondo/__init__.py:269 — `ferma()` con lock e seconda lettura del pid. Rischio: che il codice dei compiti in sottofondo e quello della voce (#361) si tocchino. Esito: ok, i due lati cambiano file diversi (#361 tocca solo clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, scripts/voce/LEGGIMI.md). Nessuna interazione.
-- tests/test_unit_sottofondo.py:1176 — `test_ferma_usa_il_lock_e_rilegge_il_pid`, file invariato rispetto a HEAD. Esito: ok. `pytest tests/test_unit_voce_ascolto.py tests/test_unit_sottofondo.py -k "not browser"` dà **411 passed** (4 deselezionati).
-- clients/voice/ascolto.py:452 — codice di #361 (`_sopra_finestra`). Rischio: arrivato diverso da main. Esito: ok, `git diff --cached MERGE_HEAD -- clients tests/test_unit_voce_ascolto.py scripts` è vuoto (0 righe).
-- .claude/agents/memoria_revisore.md:1426 — il conflitto è risolto come unione dei due lati. Rispetto a HEAD +7 righe, rispetto a MERGE_HEAD +15, 0 righe tolte da nessun lato. Nessun marcatore di conflitto, `git ls-files -u` vuoto, `git diff --cached --check` pulito. Esito: ok.
-- reports/stato_progetto.md:378 — rispetto a MERGE_HEAD aggiunge solo la voce «R7 fetta 1» di M3 (più una riga vuota). Rispetto a HEAD ha le modifiche di #361 (voce #359 aggiornata a MERGIATA e nuova voce «ascolto H24»). Esito: ok, ci sono entrambe le parti.
+Cosa ho controllato nel diff:
+- `modules/voice/server.py:182`: `_RISPOSTE_BREVI_SEGUITO` ora contiene continua/prosegui/avanti/altro/resto/ancora/dimmi/bene, i giorni, i numeri da uno a dieci in parole e gli ordinali. Rischio esaminato: con una lista più larga il filtro potrebbe diventare inutile. Esito ok: ho provato a runtime e «Mamma.», «Allora…», «Comunque», «Forte!», «Ehm» e «Mh» vengono ancora scartati senza chiamare il cervello.
+- `modules/voice/server.py:202-203`: con `and not parole[0].isdigit()` le cifre non si scartano più. Rischio esaminato: falsi positivi. Esito ok: «²» passa al cervello, ma è un caso innocuo.
+- `modules/voice/server.py:762`: il filtro scatta solo nel seguito, cioè quando l'operatore parla senza dire prima la parola di attivazione (chiamata invariata rispetto alla #744). Rischio esaminato: un frammento detto dopo la parola di attivazione verrebbe scartato. Esito ok: il test `tests/test_unit_voice_stt.py:828` e quello successivo con attivazione verificano che quel frammento va comunque al cervello.
+- `tests/test_unit_voice_server.py:2401`: casi nuovi che sotto R-744-1 venivano scartati e ora devono passare. Esito ok.
+- `tests/test_unit_voice_server.py:2407`: assert su «Il resto.». Esito **riserva**: sono due parole, quindi la frase passa comunque e il test non prova che «resto» sia in elenco.
 
-**Cosa non ho verificato:**
-- La suite completa del kernel (tests/test_unit_kernel.py) non l'ho rieseguita. Il merge non tocca gas.py né modules/ rispetto a HEAD, quindi resta valido l'esito di #746 (1104/0).
-- Il comportamento della voce sul Mac reale non è riproducibile qui.
+Mutanti (tutti uccisi, poi ripristinati con `git checkout` dall'index; lo staging è intatto):
+1. Tolto il controllo `isdigit`: 1 test fallito.
+2. Tolti continua/avanti/altro/resto dall'elenco: 1 test fallito.
+3. Tolto venerdì: 1 test fallito.
 
-**Cosa devi fare tu (contatore memoria):**
-- Ho aggiunto in coda a .claude/agents/memoria_revisore.md la riga «#747 (chat M3) — 2026-11-10 — APPROVATO — …». Al momento non è in stage: va aggiunta da te.
-- Non sono riuscito a metterla in stage né a lanciare scripts/commit_memoria_revisore.sh: l'hook del gate (PreToolUse) mi ha bloccato i comandi Bash perché `.claude/.review_ok` non corrisponde ancora al diff staged.
-- Lo script comunque non funzionerebbe durante un merge, perché git non consente un commit parziale a merge in corso.
-- Quindi fai `git add .claude/agents/memoria_revisore.md` (la riga #747 entra nel commit di merge), poi `bash scripts/segna_review_ok.sh` sul diff staged finale, poi committa il merge.
+Test: `pytest voice_server + voice_stt -k "not browser"` dà 275 passed, come dichiarato.
+
+Riserve (vanno scritte in stato_progetto.md):
+- **R-746-1-M2 (BASSA)**: i numeri in parole oltre «dieci» («Undici.», «Venti») vengono ancora scartati nel seguito.
+- **R-746-2-M2 (BASSA)**: l'assert «Il resto.» a `tests/test_unit_voice_server.py:2407` non prova nulla, perché sono due parole. Va sostituito con «Resto.» da solo.
+
+Nota: «Basta.», «Fine.», «Zitto» ed «Esci» vengono scartati, ma lo scarto chiude la conversazione, quindi l'esito è quello voluto.
+
+Cosa NON ho verificato:
+- Comportamento con il microfono vero e Whisper: non si riproduce in dev, perché la trascrizione è simulata con un patch.
+- Prove col cervello reale: non riproducibili in dev, perché il kernel nei test è finto.
+- Altre suite (telegram_voce, voce_ascolto, kernel): non le ho rilanciate, perché il diff tocca solo `server.py` e i due file di test.
+
+Memoria: ho aggiunto la riga `#746-M2` e una lezione nuova in /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-voce add`. Lezione: nei test di una lista bianca «una parola sola», ogni caso deve essere davvero di una parola. Nessun commit fatto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_sottofondo.py`: 79 casi su main (base) → 112 casi alla fine, tutti passati (`112 passed`).
-- `tests/test_unit_gate.py`: `832 passed` (10 failed senza la correzione di `.gas_sottofondo`).
-- Suite kernel: 1100 PASS prima → dopo, rilanciata sull'albero del codice di 1537f0c (T6s nuovo, 4 check):
+- gas.py non toccato. Test nuovi: `test_seguito_frammento_chiude_senza_cervello`, `test_seguito_frammento_con_attivazione_va_al_cervello`, `test_seguito_forte_che_supera_il_filtro_non_parla` (stt), `test_seguito_da_scartare_e_istruzione_severa`, `test_parlato_voce_tetto_piu_corto` (server).
+- `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voice_contesto.py tests/test_unit_telegram_voce.py tests/test_unit_voce_ascolto.py tests/test_unit_sottofondo.py -k "not browser"` sul commit d07fbdf:
 
 ```
-=== RIEPILOGO: 1104 PASS, 0 FAIL ===
+744 passed, 25 deselected in 89.18s (0:01:29)
 ```
-
-Voce + notte + sottofondo, a metà sessione: `478 passed in 289.68s`; voce ascolto + sottofondo dopo il merge della #361 (dal revisore #747): `411 passed`.
 
 ## §6 STATO CI
 
-Check della PR #364 letti con gli strumenti GitHub di sessione alla scrittura dell'handoff (head della PR a7eb3fc, prima del push di questo giro):
-- run 42729901220 su a7eb3fc: `unit-suite` success, `handoff-check` success.
-- run 42729904942 su a7eb3fc (bot di verifica): `smista`/`verifica`/`esito` success; check `verifica-bot` success (APPROVATA con riserve BASSE).
-- run 42728191825 / 42728208340 su dc6c25a: CI success, `verifica-bot` failure (superata dalle correzioni in 47c8aa3).
-- run 42727825423 su ef18a4e: `handoff-check` failure (handoff non ancora scritto allora).
-
-Mappatura commit→run:
-- a7eb3fc: run 42729901220 (CI) e 42729904942 (bot).
-- dc6c25a: run 42728191825 (CI) e 42728208340 (bot).
-- ef18a4e: run 42727825423.
-- 3101011, 9575467, 525064c, 1852310, aec7195, d4e7828, 30720bb, 47c8aa3, 0049954, dd7b36c, 1537f0c, 5c3af80: nessuna run su questi SHA (1537f0c e 5c3af80 escono col push di questo giro).
-- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strumento GitHub MCP:
+- e0f8f31 (head precedente): handoff-check success; verifica-bot failure (falso failure del parser, vedi §1); unit-suite non letta a fine run.
+- 1340aa0: nessuna run propria letta.
+- d07fbdf: nessuna run su questo SHA (pushato insieme al commit di fine task).
+- 588c450: handoff-check success; unit-suite e verifica-bot in corso alla seconda verifica esterna, poi superati dal nuovo push.
+- Merge di main: nessuna run su questo SHA (pushato insieme al commit di fine task).
+- Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-737-2** (BASSA): un parcheggio alla firma con testo diverso da «Azione in attesa…»/«Operazione negata…» lascia `cancello` None e risulta «fatto» nei progressi.
-- **R-738-1** (COSMETICA): `test_posto_sparito_sotto_il_lock_compito_chiuso` prova solo il False di `_riprendi`.
-- **R-745-1** (COSMETICA): nessun test sull'id cambiato fra le due letture di ATTIVO in `ferma`.
-- **R-746-1** (BASSA, preesistente): `run_command` grep/ls sulla radice legge le cartelle di stato dentro bwrap in sola lettura.
-- **R-746-2** (COSMETICA): `.gas_sottofondo`/`.gas_notte` mancano da `_SAFE_PATH_DENY_PREFIXES` (coperti dal ricontrollo sul percorso risolto).
-- **Bot #364 2° giro V-1** (BASSA): l'avviso a ogni ripresa consuma il tetto giornaliero delle notifiche; **V-2** (BASSA): `sottofondo-ferma` usa la cartella corrente come radice.
-- **Verifica esterna #364**: 1° giro V-1 (BASSA) compito mai partito ritentato fino a 2 volte; 2° giro V-2 (BASSA) arresto reale con `killpg` non provato, V-4 (COSMETICA) comando non in CLAUDE.md §3.
-- Nota #744: senza `ps` `ferma` libera il posto anche se il processo forse è vivo (dichiarato nell'avviso).
-- Non verificato: processi veri (flock fra processi, kill del figlio, nipoti rimasti vivi), cancello firme end-to-end su un compito ripreso, bwrap reale.
+- R-744-1-M2 (gravità media): CHIUSA (1340aa0, review #746-M2).
+- R-746-1-M2 e R-746-2-M2 BASSE: CHIUSE (d07fbdf, review #747-M2).
+- Bot e verifica esterna #365 V-2 e V-3 BASSE: CHIUSE (d07fbdf).
+- R-744-2-M2 BASSA (preesistente): «Grazie.», allucinazione tipica di Whisper, va al cervello nel seguito.
+- R-747-1-M2 BASSA: il test di «Gas, forte.» nel seguito non distingue il ramo «uso» dallo scarto del filtro (stessa risposta).
+- R-747-2-M2 BASSA: «ora/dopo/mai/sempre/niente/nulla/subito/adesso» in elenco fanno passare al cervello anche frammenti della TV (compromesso: un falso «passa» costa un turno, un falso «scarta» perde la risposta dell'operatore).
+- Cosmetica #747 (e V-5 della seconda verifica esterna #365): ordine dell'import di `unicodedata`.
+- Seconda verifica esterna #365 (commento sulla PR, su 588c450): V-1 (gravità media, conflitto con main) CHIUSA col merge di main; V-2 BASSA (CI non conclusa) da rileggere sulla head nuova; V-3 BASSA (falso failure del parser, non riprodotto); V-4 BASSA («Ⅻ», «ﬁne» scartati dopo NFKD: marginale, dentro il limite dichiarato).
+- R-750-1-M2 BASSA: col primo mezzo secondo ignorato dal client (#361), un «Sì» detto subito può arrivare troncato e ora viene scartato in silenzio: da osservare dal vivo.
+- Bot su 1638d81: V-1 BASSA (conflitto) chiusa col merge di main; V-2 BASSA (CI) da rileggere; V-3 COSMETICA (numeri dei test nella descrizione della PR, import fuori ordine).
+- Limite dichiarato: un nome proprio da solo nel seguito si scarta.
+- Non verificato: il modello rispetta davvero «nel dubbio [NON_PER_ME]» e «una frase» (prova sul Mac).
