@@ -12029,7 +12029,9 @@ try:
               and len(_res105) == 1 and _res105[0].startswith("Compito avviato in sottofondo")
               and len(_avviati105) == 1 and len(_job105) == 1
               and "COMPITO-105" in _job105[0].read_text(encoding="utf-8")
-              and [e["content"] for e in _ev105 if e["type"] == "final"] == ["Ci lavoro, ti avviso su Telegram."],
+              and [e["content"] for e in _ev105 if e["type"] == "final"] == ["Ci lavoro, ti avviso su Telegram."]
+              # R7 fetta 1 (M3): l'evento tool_res porta il nome dello strumento (progressi)
+              and [e.get("nome") for e in _ev105 if e["type"] == "tool_res"] == ["in_sottofondo"],
               str(_ev105)[:300])
         # b) a testo: non offerto; se chiesto lo stesso, negato e nessun avvio
         _reg105.clear()

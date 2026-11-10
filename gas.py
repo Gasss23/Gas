@@ -5215,7 +5215,8 @@ class GasKernel:
                                 # contaminazione si ricalcolava solo all'iterazione dopo).
                                 if tc.function.name in UNTRUSTED_INPUT_TOOLS:
                                     _finestra_contaminata = True
-                                yield {"type": "tool_res", "output": out, "cancello": _cancello}
+                                yield {"type": "tool_res", "output": out, "cancello": _cancello,
+                                       "nome": tc.function.name}  # R7 fetta 1: progressi
                             _salva()
                             # continua il loop per ottenere la risposta finale
                         elif msg.content:
