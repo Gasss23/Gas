@@ -19,6 +19,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **Fetta 2 — risposte a voce più brevi (una frase, tetto 800)**: `FATTA` (1340aa0).
 - **R-744-1-M2, gravità media (risposte di una parola scartate)**: `FATTA` — chiusa prima del commit, review #746-M2.
 - **Note BASSE di bot e verifica esterna #365 (V-2 copertura del ramo «forte», V-3 elenco stretto e accenti) e R-746-1/2-M2**: `FATTA` (d07fbdf, review #747-M2). NB: il check del bot su e0f8f31 era «failure» ma il verdetto testuale era APPROVATO CON RISERVE con sole BASSE: il parser ha letto come finding la citazione di una riserva già chiusa (falso failure noto, direzione sicura).
+- **Merge di origin/main 2dd0e8c (#362) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; da main arrivano solo `reports/prova_r1_notte.md` e una riga di memoria (fuori dal perimetro di review). Chiude V-1 (gravità media, PR non mergeabile) della seconda verifica esterna #365.
 - **Prova sul Mac col modello vero**: `DEFERITA` — non riproducibile qui.
 
 ---
@@ -28,11 +29,11 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ```
  .claude/agents/memoria_revisore.md |   6 ++++++
  modules/voice/server.py            |  73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- reports/diff_sessione.md           |  14 ++++++++------
+ reports/diff_sessione.md           |  12 +++++++-----
  reports/handoff.md                 | n/d
  reports/ripartenza_m2.md           |   2 ++
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  24 +++++++++++++-----------
+ reports/ultimo_report.md           |  28 ++++++++++++----------------
  tests/test_unit_voice_server.py    |  37 ++++++++++++++++++++++++++++++++++++-
  tests/test_unit_voice_stt.py       |  67 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
@@ -42,6 +43,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4ec82c5 Merge origin/main (#362) nella #365 — conflitti solo nei report e nella memoria, chiude V-1 verifica esterna #365 bis (chat M2)
+588c450 docs(fine-task): voce #365 — note BASSE di bot e verifica esterna chiuse (review #747-M2), riserve aggiornate (chat M2)
 d07fbdf fix(voce): seguito — elenco delle risposte brevi più largo con accenti normalizzati, copertura del ramo «forte» nel seguito, assert «Resto.»; chiude V-2/V-3 bot e verifica esterna #365, R-746-1/2-M2 — review #747-M2 (chat M2)
 e0f8f31 docs(fine-task): voce — seguito più severo e risposte più brevi, PR #365; riserve del bot sulla #363 registrate (chat M2)
 1340aa0 feat(voce): seguito più severo (frammenti di una parola chiusi senza cervello, istruzione «nel dubbio non è per te») e risposte a voce più brevi (una frase, tetto 800) — review #744-M2, #746-M2 (chat M2)
@@ -174,6 +177,8 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strum
 - e0f8f31 (head precedente): handoff-check success; verifica-bot failure (falso failure del parser, vedi §1); unit-suite non letta a fine run.
 - 1340aa0: nessuna run propria letta.
 - d07fbdf: nessuna run su questo SHA (pushato insieme al commit di fine task).
+- 588c450: handoff-check success; unit-suite e verifica-bot in corso alla seconda verifica esterna, poi superati dal nuovo push.
+- Merge di main: nessuna run su questo SHA (pushato insieme al commit di fine task).
 - Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -184,6 +189,7 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strum
 - R-744-2-M2 BASSA (preesistente): «Grazie.», allucinazione tipica di Whisper, va al cervello nel seguito.
 - R-747-1-M2 BASSA: il test di «Gas, forte.» nel seguito non distingue il ramo «uso» dallo scarto del filtro (stessa risposta).
 - R-747-2-M2 BASSA: «ora/dopo/mai/sempre/niente/nulla/subito/adesso» in elenco fanno passare al cervello anche frammenti della TV (compromesso: un falso «passa» costa un turno, un falso «scarta» perde la risposta dell'operatore).
-- Cosmetica #747: ordine dell'import di `unicodedata`.
+- Cosmetica #747 (e V-5 della seconda verifica esterna #365): ordine dell'import di `unicodedata`.
+- Seconda verifica esterna #365 (commento sulla PR, su 588c450): V-1 (gravità media, conflitto con main) CHIUSA col merge di main; V-2 BASSA (CI non conclusa) da rileggere sulla head nuova; V-3 BASSA (falso failure del parser, non riprodotto); V-4 BASSA («Ⅻ», «ﬁne» scartati dopo NFKD: marginale, dentro il limite dichiarato).
 - Limite dichiarato: un nome proprio da solo nel seguito si scarta.
 - Non verificato: il modello rispetta davvero «nel dubbio [NON_PER_ME]» e «una frase» (prova sul Mac).
