@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-10 — chat Mani: ascolto H24, meno attivazioni per sbaglio (Jarvis rispondeva senza essere chiamato) + correzione della V-1 MEDIA della verifica esterna #361
+**Sessione:** 2026-11-10 — chat Mani: ascolto H24, meno attivazioni per sbaglio (Jarvis rispondeva senza essere chiamato) + correzione della V-1 MEDIA della verifica esterna #361 + merge di main (PR #360) per togliere il conflitto
 
 ---
 
@@ -15,6 +15,7 @@
 - **PR #359 (voce di Telegram in un thread)**: `FATTA` — mergiata (695b759) col sì esplicito dell'operatore.
 - **Ascolto H24, meno attivazioni per sbaglio**: `FATTA` — review #736 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
 - **V-1 MEDIA della verifica esterna #361 (nella finestra la parola valeva con 1 solo blocco)**: `FATTA` — bc37ae5, review #737 APPROVATO CON RISERVE poi #738 APPROVATO (R-737-1 chiusa con test e mutanti).
+- **V-1 MEDIA della verifica esterna #361, 2° giro (PR in conflitto con main)**: `FATTA` — a13f442, merge di origin/main 447195f (PR #360); conflitti solo nei report (memoria unione, report del nostro lato), review #739 APPROVATO.
 - **V-1 della verifica esterna #359 (log degli errori del thread della voce)**: `DEFERITA — prossima fetta voce, come deciso dall'operatore`.
 
 ---
@@ -22,21 +23,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 ++++
- clients/voice/ascolto.py           |  76 +++++++++++++++++++++++++++++++++++++-----------
- reports/diff_sessione.md           |  15 +++++-----
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ clients/voice/ascolto.py           |  76 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
+ reports/diff_sessione.md           |  15 +++++++++------
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   4 ++-
- reports/ultimo_report.md           |  23 ++++++++-------
- scripts/voce/LEGGIMI.md            |  15 +++++-----
- tests/test_unit_voce_ascolto.py    | 130 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ reports/stato_progetto.md          |   4 +++-
+ reports/ultimo_report.md           |  26 +++++++++++++++-----------
+ scripts/voce/LEGGIMI.md            |  15 ++++++++-------
+ tests/test_unit_voce_ascolto.py    | 130 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
 ```
 
-NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handoff.md` dice `n/d` e manca la riga di totale.
+NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handoff.md` dice `n/d` e manca la riga di totale. Base = merge-base con origin/main dopo il merge a13f442 (447195f).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a13f442 merge: origin/main (PR #360) in claude/peaceful-lovelace-0w2b7q — conflitti solo nei report, review #739
+0e5291c docs(fine-task): V-1 della verifica esterna #361 chiusa — PR #361
 bc37ae5 fix(voce): anche nella finestra la parola vale solo con 2 blocchi di fila — V-1 verifica esterna #361, review #737/#738
 0d36e37 chore(revisore): memoria review #738 — APPROVATO
 4a78ffa chore(revisore): memoria review #737 — APPROVATO CON RISERVE
@@ -128,6 +131,62 @@ Cosa NON ho verificato:
 
 Memoria: riga contatore #738 aggiunta in fondo a /home/user/Gas/.claude/agents/memoria_revisore.md e committata dallo script (0d36e37). Nessuna lezione nuova.
 
+Commit a13f442 (merge di origin/main): verdetto integrale della review #739 RIEMESSO dal revisore (stesso esito) perché il gate B rifiutava l'originale: dopo il merge la base è 447195f e le sue citazioni a modules/voice/server.py e tests/test_unit_voice_server.py non erano più file del diff. Il verdetto originale è riportato sotto, non ritoccato.
+
+## VERDETTO: APPROVATO
+
+Review #739 riemessa (chat Mani). Riguarda il merge di origin/main 447195f (PR #360 di M2) nel branch claude/peaceful-lovelace-0w2b7q, PR #361, ora committato come a13f442. Le verifiche e l'esito sono quelli di prima. Le citazioni ora puntano solo a file del diff della sessione (base 447195f), con le righe controllate su HEAD a13f442.
+
+Cosa ho controllato:
+- `clients/voice/ascolto.py:444` — azzeramento di `_sopra_finestra` sul ramo dell'eccezione (attributo dichiarato a `clients/voice/ascolto.py:364`). Rischio: che il merge abbia toccato la correzione V-1 già revisionata in #737/#738. Il file è identico al lato del branch prima del merge (0e5291c → HEAD: diff vuoto); durante il merge era identico a HEAD nello staging. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:2589` — `test_conto_della_parola_nella_finestra_si_azzera`, il test che chiude R-737-1. Rischio: test del branch perso o mescolato. Il file è identico a 0e5291c (diff vuoto). Esito: ok.
+- `scripts/voce/LEGGIMI.md:136` — riga di `GAS_ASCOLTO_BLOCCHI_PAROLA` (default 2, intervallo 1–5). Rischio: documentazione del branch sovrascritta dal lato main. Il file è identico a 0e5291c. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1416` — righe #736–#738 del nostro lato, conservate nell'unione accanto a #740-M2, #741-M2 e #742-M2 di main. Rischio: righe perse da uno dei due lati. Nello staging del merge: rispetto a main +6/0 e rispetto al vecchio HEAD +7/0, contando la mia riga #739 a `.claude/agents/memoria_revisore.md:1422`. Nessun marcatore di conflitto. Esito: ok.
+- `reports/stato_progetto.md:686` — voce R8 «ascolto H24: meno attivazioni per sbaglio» della PR #361. Rischio: perdita della modifica di main nell'unione automatica. Durante il merge, rispetto a MERGE_HEAD restavano solo le 2 righe R8 del nostro lato, quindi la modifica di main resta. Esito: ok.
+
+Controlli generali:
+- Il codice arrivato da main (modules/voice/server.py, tests/test_unit_voice_server.py, reports/ripartenza_m2.md) era identico a MERGE_HEAD durante il merge. Dopo il commit non fa più parte del diff della sessione.
+- I due lati toccano file di codice diversi (base 695b759). `git ls-files -u` era vuoto e `--check` pulito.
+- Ho rilanciato `test_unit_voce_ascolto.py` e `test_unit_voice_server.py` con `-k "not browser"`: 463 passed, 25 deselected.
+- Nessun antipattern del Wall of Shame: il merge non porta codice nuovo nel kernel.
+
+Cosa NON ho verificato:
+- La suite del kernel e test_unit_telegram_voce: il merge non tocca né gas.py né bot.py.
+- I test con browser (25 deselected).
+- Il comportamento dal vivo sul Mac: non riproducibile qui.
+
+Come chiesto, non ho toccato né la memoria né lo staging. La riga #739 è già nel commit a13f442.
+
+**Verdetto originale #739 (prima della riemissione), integrale in un blocco di testo (le sue citazioni di modules/ e tests/test_unit_voice_server.py non sono più nel diff della sessione):**
+
+```text
+## VERDETTO: APPROVATO
+
+Review #739 (chat Mani). Ho controllato il merge di origin/main 447195f (PR #360 di M2) nel branch claude/peaceful-lovelace-0w2b7q (HEAD 0e5291c, PR #361). Il merge è ancora in corso e le modifiche sono in staging. Ho letto prima CLAUDE.md §5, le sezioni di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+Cosa ho controllato:
+- `modules/voice/server.py:331` — cache delle frasi fisse portata dalla #360 di M2 (righe 331-345). Rischio: che il merge abbia alterato il codice di main. `git diff --cached MERGE_HEAD` su questo file è vuoto (0 righe). Esito: ok.
+- `tests/test_unit_voice_server.py:2113` — test della cache alla seconda richiesta, arriva da main. Rischio: test di main persi o mescolati. Il file è identico a MERGE_HEAD (diff vuoto); lo è anche `reports/ripartenza_m2.md`. Esito: ok.
+- `clients/voice/ascolto.py:452` — conto dei blocchi della parola nella finestra (`_sopra_finestra`), dal nostro branch. Rischio: che il merge abbia toccato la correzione già revisionata in #737/#738. Il file è identico a HEAD; lo sono anche `tests/test_unit_voce_ascolto.py`, `scripts/voce/LEGGIMI.md`, `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md`. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1416` — memoria risolta come unione dei due lati. Rischio: righe di uno dei due lati perse. Prima della mia riga: rispetto a main +5 righe e 0 tolte (le #736, #737, #738 e due lezioni); rispetto a HEAD +6 e 0 tolte (#740-M2, #741-M2, #742-M2 e le altre righe di M2). Nessun marcatore di conflitto. Esito: ok.
+- `reports/stato_progetto.md:684` — unito in automatico da git. Rischio: perdita della modifica fatta su main. Rispetto a MERGE_HEAD restano solo le 2 righe R8 del nostro lato (stato della #359 aggiornato e voce della PR #361), quindi la modifica di main resta. Esito: ok.
+
+Controlli generali:
+- I due lati toccano file di codice diversi. Dalla base 695b759 main ha cambiato server.py e il suo test, il nostro lato ascolto.py, il suo test e LEGGIMI. Nessun file di codice è stato modificato da tutti e due.
+- `git ls-files -u` è vuoto, `git diff --cached --check` è pulito, non ci sono modifiche fuori dallo staging.
+- Ho rilanciato `test_unit_voce_ascolto.py` e `test_unit_voice_server.py` con `-k "not browser"`: 463 passed, 25 deselected. Torna col numero dichiarato.
+- Nessun antipattern del Wall of Shame: il merge non porta codice nuovo nel kernel.
+
+Cosa NON ho verificato:
+- La suite del kernel (test_unit_kernel) e test_unit_telegram_voce: il merge non tocca né gas.py né bot.py, e #742-M2 ha già controllato che bot.py non usa la cache della #360.
+- I test con browser (25 deselected).
+- Il comportamento dal vivo sul Mac: non riproducibile qui.
+
+Memoria: ho aggiunto la riga `#739 (chat Mani) — 2026-11-10 — APPROVATO — … Nessuna lezione nuova.` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git add`. Dopo l'aggiunta il file risulta +7/0 rispetto a HEAD e +6/0 rispetto a MERGE_HEAD; ls-files -u è ancora vuoto. Come chiesto, non ho lanciato scripts/commit_memoria_revisore.sh perché il merge è in corso.
+
+Attenzione: lo staging è cambiato (c'è la riga di memoria in più). Il marcatore della review (`bash scripts/segna_review_ok.sh`) va creato adesso, sul diff in staging così com'è, prima del commit del merge.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 Kernel non toccato. `tests/test_unit_voce_ascolto.py`: da 296 (base 695b759) a 303 casi (300 dopo 1a031ae, 303 dopo bc37ae5).
@@ -136,18 +195,21 @@ Kernel non toccato. `tests/test_unit_voce_ascolto.py`: da 296 (base 695b759) a 3
 303 passed in 24.80s
 ```
 
+Dopo il merge a13f442: `test_unit_voce_ascolto.py` + `test_unit_voice_server.py -k "not browser"` → `463 passed, 25 deselected`.
+
 Mutanti presi su bc37ae5: soglia di 1 blocco nella finestra (comportamento vecchio), nessun azzeramento sotto soglia, su errore, allo scatto e all'inizio della finestra.
 Suite completa del repo (su bc37ae5 meno l'ultimo test): `1 failed, 2976 passed` con `-x`; il fallito è `tests/test_unit_web_browser.py::test_testo_scritto_dal_javascript` (Chromium vero nel container cloud), fuori scope: il branch non tocca `modules/`. Fa fede la unit-suite della CI.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel container (GitHub passa dallo strumento MCP). Mappatura commit→run:
-- f142023 (testa precedente della PR): handoff-check success, smista success; unit-suite e verifica in corso alla verifica esterna #361.
-- 1a031ae, 3835a14, 4a78ffa, 0d36e37: nessuna run su questo SHA (commit intermedi, pushati insieme a commit successivi).
-- bc37ae5 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 0e5291c (testa precedente della PR): handoff-check success, smista success; unit-suite e verifica in corso alla verifica esterna #361 (2° giro); la verifica-bot di bc37ae5 risulta cancelled (sostituita dal push successivo).
+- 1a031ae, 3835a14, f142023, 4a78ffa, 0d36e37, bc37ae5: nessuna run conclusa su questo SHA (commit intermedi o sostituiti da push successivi).
+- a13f442 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- Verifica esterna #361 (2° giro, APPROVATO CON RISERVE): V-1 MEDIA (conflitto con main) CHIUSA in a13f442; V-2 BASSA (CI e bot non ancora verdi sull'head) da controllare prima del merge; V-3 BASSA = R-736-1; V-4 BASSA: clients/voice/browser_server.py tiene finestra 12 s e 5 turni (la modalità browser non riceve la correzione), prossima fetta voce; V-5 COSMETICA = R-736-3.
 - Verifica esterna #361: V-1 MEDIA e V-3 CHIUSE in bc37ae5; V-2 BASSA (il revisore #736 non aveva visto la lacuna) superata; V-4 BASSA = R-736-1.
 - R-737-1 BASSA: CHIUSA in #738.
 
