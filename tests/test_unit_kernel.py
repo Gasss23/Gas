@@ -155,6 +155,15 @@ for nome in bloccati:
     check(f"T6 guardrail blocca {nome!r}", ok, out[:50])
 out = k.execute_tool_call("write_file", {"relative_path": "storia_del_gas_naturale.txt", "content": "lecito"})
 check("T6 controllo: file lecito passa", out.startswith("Successo"), out[:60])
+# Audit notturno 10 nov (R7, M3): la coda dei compiti in sottofondo non si scrive mai, nemmeno
+# con firma (un compito «finito» falso verrebbe letto a voce; .ferma/.passi pilotano la ripresa)
+for _firm in (False, True):
+    for nome in (".gas_sottofondo/20261110-000000-abcdef.json", ".gas_sottofondo/x.ferma"):
+        out = k.execute_tool_call("write_file", {"relative_path": nome, "content": "{}"},
+                                  firmata=_firm)
+        check(f"T6s .gas_sottofondo mai scrivibile {nome!r} firmata={_firm}",
+              "Operazione negata" in out and not (Path(os.environ["GAS_CWD"]) / nome).exists(),
+              out[:80])
 
 # ---------- T7: errori dei tool non crashano ----------
 k = kernel_tmp()
