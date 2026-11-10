@@ -20,6 +20,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **Riserve del terminale A registrate in stato_progetto (R-743-1)**: `FATTA` (bcca777).
 - **Verifica esterna #363 V-1 di gravità media (conflitto con main dopo il merge della #360)**: `FATTA` — merge di origin/main 447195f (d3c490c), conflitti solo nei report e nella memoria, review #745-M2 APPROVATO.
 - **Merge di origin/main 2dd0e8c (#362) nel ramo**: `FATTA` (ece76a8) — conflitti solo nei report e nella memoria; da main arrivano solo `reports/prova_r1_notte.md` e una riga di memoria (fuori dal perimetro di review).
+- **Merge di origin/main 3f08352 (#361 di Mani) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; review #749-M2 APPROVATO (file di main identici a 3f08352, nessuna interazione col terminale A; manutenzione + voce_ascolto 348 passed).
 - **Verifica esterna #363 V-3 BASSA (filtro di `log_voce`)**: `FATTA` (94bd308, review #748-M2).
 - **Verifica esterna #363 V-4 BASSA (testo della firma di `aggiorna_gas`)**: `DEFERITA` — registrata in §7.
 - **Prova dal vivo di `riavvia_voce` / launchctl sul Mac**: `DEFERITA` — dopo il merge.
@@ -29,16 +30,16 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
+ .claude/agents/memoria_revisore.md |  12 +++++++++++-
  .github/workflows/ci.yml           |   7 +++++++
  gas.py                             |  55 +++++++
  modules/gate/gate.py               |  20 ++++
  modules/manutenzione/__init__.py   | 191 ++++++++++++++
- reports/diff_sessione.md           |  17 +++++++++++------
+ reports/diff_sessione.md           |  18 ++++++++++--------
  reports/handoff.md                 | n/d
  reports/proposta_terminale_A.md    |  31 +++++++
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  26 ++++++++++----------------
+ reports/ultimo_report.md           |  25 ++++++++++--------
  tests/test_unit_manutenzione.py    | 313 ++++++++++++++++++++++
 ```
 
@@ -47,6 +48,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+62de796 Merge origin/main (#361 di Mani) nel terminale A — review #749-M2 APPROVATO (chat M2)
+3bf227f docs(fine-task): terminale A — merge di main (#362), V-3 verifica esterna #363 chiusa (review #748-M2), riserve aggiornate (chat M2)
 94bd308 fix(manutenzione): filtro di log_voce sulla riga intera di gas_debug.log (fullmatch), chiude V-3 verifica esterna #363 — review #748-M2 APPROVATO CON RISERVE (chat M2)
 ece76a8 Merge origin/main (#362) nel terminale A — conflitti solo nei report e nella memoria (chat M2)
 860c751 docs(fine-task): terminale A dopo il merge di main (#360) — verifica esterna #363 V-1 chiusa, V-2/V-3/V-4 registrate (chat M2)
@@ -62,6 +65,32 @@ e93bd77 feat(gas): terminale opzione A — azioni fisse di manutenzione (stato_g
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #749-M2 (merge di main 3f08352, PR #361 di Mani) — verdetto integrale
+
+VERDETTO: APPROVATO
+
+Review #749-M2 (chat M2). Diff staged: il merge di origin/main 3f08352 (PR #361 della chat Mani) nel ramo feat/terminale-a-m2. La base comune è 2dd0e8c.
+
+**Elementi del diff esaminati:**
+- `clients/voice/ascolto.py:179`: importa `_carica_dotenv` da gas. Il rischio era un'interazione con il terminale A, che modifica gas.py. Nel diff 3f08352..HEAD di gas.py non compare `_carica_dotenv` (definita in `gas.py:609`). Il blob del file è identico a quello di 3f08352. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:1` e `scripts/voce/LEGGIMI.md:1`: il rischio era che la risoluzione dei conflitti avesse alterato i file di main. `git diff --cached 3f08352` su questi due file e su ascolto.py è vuoto. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1416`: è l'unione dei due lati. Il rischio era perdere righe o lasciarne di doppie. Nessuna riga persa né rispetto a main né rispetto a HEAD (confronto `comm` sulle righe ordinate), nessuna riga doppia, nessun marcatore di conflitto. La #742-M2 compare una volta sola: è stata spostata, non persa. Esito: ok.
+- `reports/stato_progetto.md:617`: rispetto a main cambia solo la riga +1 «Terminale opzione A». Rispetto a HEAD entrano le due righe di Mani (#359 mergiata, #361). Esito: ok.
+
+**Controlli meccanici:**
+- `git diff --cached --stat origin/main` mostra 11 file, cioè solo il terminale A più i report e la memoria: gas.py, `modules/gate/gate.py`, `modules/manutenzione/__init__.py`, il test di manutenzione, ci.yml e la proposta, più handoff, ultimo_report, diff_sessione, stato_progetto e memoria.
+- Il lato main della base tocca solo ascolto.py, il test di ascolto, LEGGIMI e i report. I due insiemi di codice non si sovrappongono.
+- `git ls-files -u` è vuoto e `git diff --cached --check` è pulito.
+- Test lanciati sulla copia dell'index (`checkout-index`), manutenzione più voce_ascolto: **348 passed**.
+
+**Cosa non ho verificato:**
+- Il comportamento dal vivo dell'ascolto sul Mac (microfono, parola di attivazione): non si può riprodurre in questo ambiente.
+- La suite del kernel e quella del gate non le ho rilanciate: il merge non tocca né gas.py né il gate, che sono identici a HEAD, già revisionati in #745-M2.
+
+**Memoria:**
+- Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga «#749-M2 — 2026-11-10 — APPROVATO — … Nessuna lezione nuova» e l'ho messa in staging con `git add`.
+- Come mi hai chiesto non ho fatto commit, quindi non ho lanciato nemmeno `commit_memoria_revisore.sh`.
 
 ### Review #748-M2 (V-3 verifica esterna #363, commit 94bd308) — verdetto integrale
 
@@ -183,7 +212,9 @@ I verdetti integrali sono stati emessi prima di un `/clear` di questa chat e non
 
 CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strumento GitHub MCP:
 - 860c751 (head precedente): unit-suite success, handoff-check success, verifica-bot neutral (la PR tocca ci.yml, macchina del bot).
-- ece76a8 e 94bd308: nessuna run su questi SHA (pushati insieme al commit di fine task).
+- ece76a8 e 94bd308: nessuna run propria (pushati insieme al commit di fine task 3bf227f).
+- 3bf227f: bot APPROVATO CON RISERVE senza finding gravi (neutral); unit-suite non letta a fine run prima del merge successivo.
+- Merge di main 3f08352: nessuna run su questo SHA (pushato insieme al commit di fine task).
 - Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
