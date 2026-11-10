@@ -1,13 +1,10 @@
-# Diff della sessione — 2026-11-10 — analisi notturna (M1)
+# Diff della sessione — 2026-11-10 — chat Mani, richiesta d'un fiato
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+File toccati (base main a0c200c, dopo il merge della PR #361):
+- `clients/voice/ascolto.py`: `_voce_subito` (SUBITO_S 0,6 s, SUBITO_VOCE_S 0,4 s) prima della conferma; `subito_s` nel costruttore (default 0) e in main; log della richiesta con voce e volume; `registra(subito=True)` invia solo se dopo i blocchi iniziali arriva altra voce continua (V-1 verifica esterna #368); se non arriva, ripiego su «Sì, signore?» e nuova registrazione (2° giro).
+- `tests/test_unit_voce_ascolto.py`: 11 test nuovi o aggiornati e il controllo di main.
+- `scripts/voce/LEGGIMI.md`: paragrafo «Richiesta d'un fiato» (anche: frase troppo corta → conferma, ripetila).
+- `.claude/agents/memoria_revisore.md`: righe #753-M1, #754-M1, #755-M1, #756-M1 e lezione.
+- `reports/*`: report di fine task e voce in stato_progetto.
 
-- `gas.py`: B1 `_utf8_sicuro` (surrogati), B2 `_forma_storia_valida` (storia di forma sbagliata), B3 compressione al confine user, B2 conoscenza `continue`, B4 campi del pin capati; ripiego dichiarato (`_info_ripiego`, evento final, riga in CLI).
-- `tools/ingest_knowledge.py`: chunk superseded quando la fonte si accorcia, `chunk_text` spezza i paragrafi lunghi, una fonte rotta non ferma le altre, exit 1 se una fonte fallisce.
-- `modules/notte/notte.py`: `_stampa_sicura` al posto di print.
-- `modules/telegram/bot.py`: `rendi_visibili` nel messaggio di firma; `/notte` e `/compito` da messaggio modificato rifiutati; riga del ripiego nel testo (mai a voce).
-- `tests/test_unit_kernel.py`, `tests/test_unit_ingest_fonti.py`, `tests/test_unit_notte.py`, `tests/test_unit_telegram_voce.py`: test nuovi per ogni bug (mutanti presi).
-- `reports/test_mattina.md`: bug trovati e prove manuali del mattino.
-- `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md`: riserve e righe #744-M1, #748-M1, #749-M1, #750-M1, #751-M1, #752-M1; riserve del 3° giro di bot e verifica esterna.
-- `reports/ripartenza_m1.md`, `reports/proposta_terminale_autonomia.md`, `reports/test_voce_mattina.md`: note di coordinamento M1.
-- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: report di fine sessione.
+Questo file si riscrive a ogni sessione; la storia completa sta in git.
