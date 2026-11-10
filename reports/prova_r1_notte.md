@@ -39,6 +39,12 @@ python3 gas.py doctor
 python3 tools/ingest_knowledge.py
 ```
 
+Deve finire con una riga `=== TOTALE: ingested=… skipped=… ===`. Controllo dell'archivio — deve stampare un numero maggiore di 0:
+
+```
+python3 -c "import sqlite3,os; print(sqlite3.connect(os.path.expanduser('~/Gas/.gas_knowledge.db')).execute('SELECT count(*) FROM knowledge_fts').fetchone()[0])"
+```
+
 **4. Timer notturno installato e alle 03:00** — la prima riga deve mostrare `com.gas.notte`, poi `"Hour" => 3` e `"Minute" => 0`.
 
 ```
@@ -72,6 +78,12 @@ Controllo del catalogo — deve stampare `prova_firma_r1` tra i compiti e `avvis
 
 ```
 python3 -c "from pathlib import Path; from modules.notte.notte import carica_catalogo; c,a=carica_catalogo(Path.home()/'.gas_notte.yaml', Path.cwd()); print('compiti:', [x['nome'] for x in c]); print('avvisi:', a)"
+```
+
+Se non è così, rimetti il catalogo di prima, non fare la prova stanotte e avvisa M1 con l'output:
+
+```
+mv ~/.gas_notte.yaml.prima_di_r1 ~/.gas_notte.yaml
 ```
 
 **6. Nessuna cartella di prova rimasta** — deve dire «No such file or directory»:
@@ -152,7 +164,7 @@ rm -rf ~/Gas/prove_r1; mv ~/.gas_notte.yaml.prima_di_r1 ~/.gas_notte.yaml
 
 ## Esito
 
-**R1 passa** se A, B, C, D, E e F sono come descritto. Manda a M1 l'output di B, C, E, F e una foto del messaggio del mattino (A).
+**R1 passa** se A, B, C, D, E e F sono come descritto e il controllo dell'archivio della sera (punto 3) ha dato un numero maggiore di 0. Manda a M1 l'output di B, C, E, F e una foto del messaggio del mattino (A).
 
 Se qualcosa non va, cosa guardare:
 
