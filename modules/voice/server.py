@@ -162,12 +162,45 @@ _NON_PER_ME = re.compile(
 ISTRUZIONE_SEGUITO = (
     "Questa frase è stata captata dal microfono nella finestra di conversazione, SENZA che "
     "l'operatore dicesse la parola di attivazione: può essere rivolta a te oppure no "
-    "(persone che parlano fra loro, la TV, una telefonata). Se NON è chiaramente rivolta a "
-    f"te, rispondi SOLO con {SEGNO_NON_PER_ME} e nient'altro, senza usare strumenti. "
+    "(persone che parlano fra loro, la TV, una telefonata). "
+    # Filtro più severo (10 nov, richiesta dell'operatore via M1): nel dubbio, silenzio.
+    "È rivolta a te SOLO se è chiaramente una domanda o una richiesta per te, oppure il "
+    "seguito diretto di quello che vi siete appena detti. NON è rivolta a te se parla di te "
+    "in terza persona («Gas ha detto…»), se si rivolge a un'altra persona, se è un commento "
+    "a voce alta, una frase lasciata a metà, un pezzo di dialogo, di notiziario o di "
+    "pubblicità, un testo letto ad alta voce. NEL DUBBIO NON è rivolta a te. "
+    f"Se NON è chiaramente rivolta a te, rispondi SOLO con {SEGNO_NON_PER_ME} e "
+    "nient'altro, senza usare strumenti. "
     "Se è rivolta a te, rispondi normalmente, ma sappi che in questo turno NON hai "
     "strumenti: se ti chiede un'azione (scrivere, salvare, cercare, ricordare) non dire mai "
     "di averla fatta; rispondi che per farla deve ripeterla dicendo prima la parola di "
     "attivazione.")
+# Filtro più severo, lato server (10 nov, via M1): nel seguito una trascrizione senza parole
+# o di UNA parola sola che non è una risposta breve plausibile («Mamma.», «Allora…», «Forte!»
+# dalla TV) chiude la conversazione SENZA chiamare il cervello: niente attesa né spesa. Le
+# risposte brevi in elenco (es. «Sì.» a una domanda di Gas) vanno al cervello come prima.
+_RISPOSTE_BREVI_SEGUITO = frozenset((
+    "sì", "si", "no", "ok", "okay", "certo", "esatto", "giusto", "perfetto", "grazie", "vai",
+    "fallo", "dai", "confermo", "annulla", "aspetta", "ripeti", "cosa", "come", "quando",
+    "dove", "perché", "perche", "chi", "quale", "quanto", "quanti",
+    # R-744-1-M2: le parole che Gas stesso invita a dire («C'è altro, chiedimi se vuoi il
+    # resto.») e le risposte brevi a una sua domanda (giorni, numeri)
+    "continua", "prosegui", "procedi", "avanti", "altro", "resto", "ancora", "dimmi", "bene",
+    "male", "fatto", "stop", "fermo", "oggi", "domani", "ieri", "dopodomani", "lunedì",
+    "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica", "uno", "una", "due",
+    "tre", "quattro", "cinque", "sei", "sette", "otto", "nove", "dieci", "tutti", "tutto",
+    "nessuno", "entrambi", "primo", "prima", "secondo", "seconda", "ultimo", "ultima"))
+
+
+def seguito_da_scartare(trascrizione: str) -> bool:
+    """Vero se nel seguito la trascrizione è un frammento da non mandare al cervello: nessuna
+    parola, oppure una sola parola fuori da _RISPOSTE_BREVI_SEGUITO e non numerica."""
+    parole = re.findall(r"\w+", trascrizione.lower())
+    if not parole:
+        return True
+    # limite dichiarato (R-744-1-M2): un nome proprio da solo («Marco.») si scarta
+    return (len(parole) == 1 and parole[0] not in _RISPOSTE_BREVI_SEGUITO
+            and not parole[0].isdigit())
 # V14 (chat M2, «Sì, signore?» deciso dall'operatore; contratto con la chat Mani via M1):
 # GET /voce/conferma → audio/mpeg della frase detta con la voce attuale, suonato dal client
 # H24 al posto del bip dopo la parola di attivazione. In cache in memoria: un solo giro su
@@ -191,7 +224,8 @@ _FORMATO_PEZZI = "audio+testo+pezzi"
 # ISTRUZIONE_VOCE (niente dettaglio da leggere) e si dice TUTTA la risposta divisa in frasi,
 # entro _PARLATO_VOCE_MAX_CHAR, senza «Il resto è a schermo».
 _FORMATO_PEZZI_VOCE = "audio+pezzi"
-_PARLATO_VOCE_MAX_CHAR = 1500
+# 10 nov (risposte più brevi e veloci, via M1): 1500 → 800, meno attesa di sintesi
+_PARLATO_VOCE_MAX_CHAR = 800
 # V-1 bot #330: senza schermo un taglio deve sentirsi (nessuno legge «content»)
 _PARLATO_VOCE_RESTO = "C'è altro, chiedimi se vuoi il resto."
 _PARLATO_MAX_FRASI = 3
@@ -219,8 +253,9 @@ _CONTESTO_VOCE = (
 # voce più corte, al massimo 2 frasi, senza premesse; niente «… sì o no?» in coda a ogni
 # risposta (a voce stanca), domanda solo se serve per fare quello che è stato chiesto.
 ISTRUZIONE_VOCE = (
-    "Stai parlando a voce con l'operatore, in una conversazione rapida. Rispondi con una "
-    "o due frasi brevi, mai più di due, senza premesse, senza ripetere la domanda, senza "
+    "Stai parlando a voce con l'operatore, in una conversazione rapida. Rispondi con UNA "
+    "frase breve (una ventina di parole); una seconda solo se indispensabile, mai più di due, "
+    "senza premesse, senza ripetere la domanda, senza "
     "elenchi né formattazione. Dai subito un parere o una proposta "
     "concreta (anche «no, meglio così»). "
     "Non chiudere con domande né con offerte («vuoi che…?», «sì o no?»): fai una domanda "
@@ -231,8 +266,8 @@ ISTRUZIONE_VOCE = (
 # poi, dopo una riga vuota, il dettaglio da leggere (non viene detto a voce).
 ISTRUZIONE_VOCE_SCHERMO = (
     "Stai parlando a voce con l'operatore, in una conversazione rapida, e lui ha anche uno "
-    "schermo. Apri con una o due frasi brevi da dire a voce, mai più di due, senza "
-    "premesse né elenchi né formattazione: "
+    "schermo. Apri con UNA frase breve da dire a voce (una ventina di parole); una seconda "
+    "solo se indispensabile, mai più di due, senza premesse né elenchi né formattazione: "
     "dai subito un parere o una proposta concreta (anche «no, meglio così»). "
     "Non chiudere con domande né con offerte («vuoi che…?», «sì o no?»): fai una domanda "
     "solo se senza la risposta non puoi fare quello che ti è stato chiesto. Se servono "
@@ -290,7 +325,7 @@ def frasi_voce(testo: str) -> List[str]:
     """V10: tutta la risposta da dire a voce (senza schermo), divisa in frasi. Tetto
     _PARLATO_VOCE_MAX_CHAR: si tengono le frasi intere che ci stanno; se già la prima è più
     lunga si taglia all'ultimo spazio. Col taglio il parlato arriva a _PARLATO_VOCE_MAX_CHAR
-    più l'avviso (1500 + 1 + 37 caratteri, V-2 bot #330 su ae3258e). Mai «Il resto è a schermo» (qui uno schermo non c'è):
+    più l'avviso (800 + 1 + 37 caratteri, V-2 bot #330 su ae3258e). Mai «Il resto è a schermo» (qui uno schermo non c'è):
     se qualcosa resta fuori si aggiunge _PARLATO_VOCE_RESTO (V-1 bot #330), così il taglio
     si sente."""
     testo = " ".join(testo.split())
@@ -723,6 +758,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 # (i turni dopo sono seguiti, dove non si leggono)
                 finiti = "" if self._seguito() else self._compiti_finiti()
                 self._rispondi_senza_turno(_RISPOSTA_ATTIVAZIONE, "attivazione", prefisso=finiti)
+                return
+            if self._seguito() and seguito_da_scartare(prompt):
+                # filtro più severo (10 nov): frammento della stanza → chiude, nessun turno
+                log.info("seguito scartato senza cervello: frammento")
+                self._chiudi_seguito()
                 return
         else:
             try:

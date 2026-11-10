@@ -803,6 +803,64 @@ class TestVoiceHandlerRouting:
         assert r.status == 200 and comando == "fine" and corpo["content"] == ""
         assert "uso" not in corpo and self.kernel.kw == "NESSUN TURNO"
 
+    def _seguito_detto(self, detto: str):
+        """Turno di seguito (audio+pezzi) con una trascrizione scelta; il cervello risponde
+        «Va bene così.» se viene chiamato."""
+        import http.client
+        self.kernel._events = [{"type": "final", "content": "Va bene così."}]
+        self.kernel.kw = "NESSUN TURNO"
+        self.kernel.registrati = []
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": "audio+pezzi", "X-Gas-Seguito": "1"}
+        with patch("modules.voice.server.transcribe_audio", return_value=detto):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                c.request("POST", "/voice", body=wav, headers=hdrs)
+                r = c.getresponse()
+                corpo = r.read()
+                comando = r.getheader("X-Gas-Comando")
+                c.close()
+        return r.status, corpo, comando
+
+    def test_seguito_frammento_chiude_senza_cervello(self):
+        """Filtro più severo (10 nov): nel seguito un frammento di una parola sola che non è
+        una risposta breve (o senza parole) chiude la conversazione SENZA chiamare il
+        cervello; le risposte brevi in elenco e le frasi vere vanno al cervello."""
+        for detto in ("Mamma.", "Allora…", "Comunque", "Televisione!", "...", "Forte!"):
+            status, corpo, comando = self._seguito_detto(detto)
+            assert status == 200 and comando == "fine", detto
+            assert json.loads(corpo)["content"] == "", detto
+            assert self.kernel.kw == "NESSUN TURNO", detto
+        for detto in ("Sì.", "No!", "Grazie.", "Perché?", "e poi gli ho detto di no",
+                      "Spegni la luce"):
+            status, corpo, comando = self._seguito_detto(detto)
+            assert status == 200 and comando != "fine", detto
+            assert self.kernel.kw != "NESSUN TURNO", detto
+            assert self.kernel.kw["effimero"] is True, detto
+
+    def test_seguito_frammento_con_attivazione_va_al_cervello(self):
+        """Il filtro vale SOLO nel seguito: con la parola di attivazione una parola sola
+        («Mamma.») va al cervello come sempre."""
+        import http.client
+        self.kernel._events = [{"type": "final", "content": "Dimmi pure."}]
+        self.kernel.kw = "NESSUN TURNO"
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": "audio+pezzi"}
+        with patch("modules.voice.server.transcribe_audio", return_value="Mamma."):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
+                os.environ.pop("ELEVENLABS_API_KEY", None)
+                os.environ.pop("GAS_VOCE_FORTE", None)
+                c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                c.request("POST", "/voice", body=wav, headers=hdrs)
+                r = c.getresponse()
+                r.read()
+                c.close()
+        assert r.status == 200 and self.kernel.kw != "NESSUN TURNO"
+
     def test_v15_seguito_trascrizione_incerta_o_vuota_chiude(self):
         """R-676-3 (review Mani): nel seguito una trascrizione incerta o vuota (rumore della
         stanza) chiude la conversazione senza «Non ho capito» e senza turno; con la parola
