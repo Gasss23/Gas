@@ -27,7 +27,7 @@ Nessuna modifica al codice serve per questa prova: il codice c'è già tutto.
 cd ~/Gas && git checkout main && git pull && source .venv/bin/activate
 ```
 
-**2. Controllo generale** — non deve esserci nessuna riga FAIL; «Cervello forte» deve dire OK.
+**2. Controllo generale** — non deve esserci nessuna riga FAIL. Nelle righe «Cervello forte»: `claude-cli` NON deve dire «spento», `comando claude` e `login` devono dire OK (il compito di prova usa il forte).
 
 ```
 python3 gas.py doctor
@@ -39,7 +39,7 @@ python3 gas.py doctor
 python3 tools/ingest_knowledge.py
 ```
 
-**4. Timer notturno installato e alle 03:00** — la prima riga deve mostrare `com.gas.notte`, poi `Hour => 3` e `Minute => 0`.
+**4. Timer notturno installato e alle 03:00** — la prima riga deve mostrare `com.gas.notte`, poi `"Hour" => 3` e `"Minute" => 0`.
 
 ```
 launchctl list | grep com.gas.notte; plutil -p ~/Library/LaunchAgents/com.gas.notte.plist | grep -A3 StartCalendarInterval
@@ -145,7 +145,7 @@ python3 gas.py doctor; python3 gas.py lezioni lista
 **G. Pulizia** — togli il file di prova, rimetti il catalogo di prima, chiudi la finestra con `caffeinate` (Ctrl-C; se lì girava anche il bot, riavvialo normalmente):
 
 ```
-rm -r ~/Gas/prove_r1 && mv ~/.gas_notte.yaml.prima_di_r1 ~/.gas_notte.yaml
+rm -rf ~/Gas/prove_r1; mv ~/.gas_notte.yaml.prima_di_r1 ~/.gas_notte.yaml
 ```
 
 ---
