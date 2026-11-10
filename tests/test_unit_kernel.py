@@ -8386,8 +8386,224 @@ try:
     _pool78p = [_dentro78p.get(id(n), "<modulo>") for n in _ast78p.walk(_albero78p)
                 if isinstance(n, _ast78p.Call)
                 and getattr(n.func, "id", getattr(n.func, "attr", "")) in _nomi78p]
-    check("T78p update gestiti uno alla volta: nessun gestore passato a thread, pool solo nell'invio",
-          _riferiti78p == [] and _pool78p == ["_invia_a_tutti"], f"{_riferiti78p} {_pool78p}")
+    # Opzione (b) dell'operatore, 9 nov 2026: un secondo pool ammesso SOLO in _consegna_voce
+    # (voce di Telegram in un thread). Il thread esegue solo _invia_risposta_vocale, e né
+    # _consegna_voce né _invia_risposta_vocale (né _chiudi_voce) nominano un gestore degli
+    # update, run_turn o il kernel: le firme restano «un click alla volta».
+    _voce78p = {"_consegna_voce", "_invia_risposta_vocale", "_chiudi_voce"}
+    _vietati78p = _gestori78p | {"run_turn", "kernel", "_gestisci_parlato", "_turno_con_finale"}
+    _nomi_voce78p = sorted({n.id if isinstance(n, _ast78p.Name) else n.attr
+                            for f in _ast78p.walk(_albero78p)
+                            if isinstance(f, _ast78p.FunctionDef) and f.name in _voce78p
+                            for n in _ast78p.walk(f)
+                            if isinstance(n, (_ast78p.Name, _ast78p.Attribute))
+                            and (n.id if isinstance(n, _ast78p.Name) else n.attr) in _vietati78p})
+    # V-1 ve #359: in _consegna_voce l'UNICA consegna al pool è submit(_invia_risposta_vocale, ...)
+    # (niente .map, niente altri bersagli, niente callable in variabile).
+    _sottomessi78p = sorted(((n.func.attr, n.args[0].id if n.args and isinstance(n.args[0], _ast78p.Name)
+                              else _ast78p.dump(n.args[0]) if n.args else "")
+                             for n in _ast78p.walk(_albero78p)
+                             if isinstance(n, _ast78p.Call) and isinstance(n.func, _ast78p.Attribute)
+                             and n.func.attr in ("submit", "map")
+                             and _dentro78p.get(id(n)) == "_consegna_voce"))
+    # La coda della voce si usa solo per submit (in _consegna_voce) e shutdown (in _chiudi_voce).
+    _usi_coda78p = sorted({(_dentro78p.get(id(n), "<modulo>"), n.attr) for n in _ast78p.walk(_albero78p)
+                           if isinstance(n, _ast78p.Attribute) and isinstance(n.value, _ast78p.Name)
+                           and n.value.id in ("_voce_in_coda", "coda")
+                           and _dentro78p.get(id(n)) in ("_consegna_voce", "_chiudi_voce")}
+                          - {("_consegna_voce", "submit"), ("_chiudi_voce", "shutdown")})
+    # R-725-1: (1) submit/map ammessi SOLO in _invia_a_tutti e _consegna_voce (niente lambda
+    # con un turno sottomesse da altre funzioni); (2) la coda della voce si nomina solo in
+    # _consegna_voce, _chiudi_voce e all'assegnazione di modulo; (3) i nomi vietati si cercano
+    # in TUTTE le funzioni del modulo raggiungibili da _invia_risposta_vocale.
+    _consegne78p = sorted({_dentro78p.get(id(n), "<modulo>") for n in _ast78p.walk(_albero78p)
+                           if isinstance(n, _ast78p.Call)
+                           and getattr(n.func, "attr", "") in ("submit", "map")})
+    _coda78p = sorted({_dentro78p.get(id(n), "<modulo>") for n in _ast78p.walk(_albero78p)
+                       if isinstance(n, _ast78p.Name) and n.id == "_voce_in_coda"}
+                      - {"_consegna_voce", "_chiudi_voce", "<modulo>"})
+    _funzioni78p = {f.name: f for f in _albero78p.body if isinstance(f, _ast78p.FunctionDef)}
+    _raggiunte78p, _da_vedere78p = set(), ["_invia_risposta_vocale"]
+    while _da_vedere78p:
+        _nome78p = _da_vedere78p.pop()
+        if _nome78p in _raggiunte78p or _nome78p not in _funzioni78p:
+            continue
+        _raggiunte78p.add(_nome78p)
+        _da_vedere78p += [n.id for n in _ast78p.walk(_funzioni78p[_nome78p])
+                          if isinstance(n, _ast78p.Name) and n.id in _funzioni78p]
+    _vietati_raggiunti78p = sorted({(f, n.id if isinstance(n, _ast78p.Name) else n.attr)
+                                    for f in _raggiunte78p
+                                    for n in _ast78p.walk(_funzioni78p[f])
+                                    if isinstance(n, (_ast78p.Name, _ast78p.Attribute))
+                                    and (n.id if isinstance(n, _ast78p.Name) else n.attr)
+                                    in _vietati78p})
+    # V-2 ve #359 e R-727-1: ALLOW-LIST. Nelle funzioni raggiunte dal thread della voce ogni nome
+    # globale (non parametro né variabile locale), ogni attributo e ogni import deve essere tra
+    # quelli ammessi qui: un nome di modulo nuovo (funzione di firma, lambda, classe, memoria,
+    # kernel) fa fallire la guardia. Allargare queste liste è un cambio di sicurezza (revisore).
+    def _locali78p(f):
+        _s = {a.arg for a in _ast78p.walk(f.args) if isinstance(a, _ast78p.arg)}
+        _s |= {n.id for n in _ast78p.walk(f)
+               if isinstance(n, _ast78p.Name) and isinstance(n.ctx, (_ast78p.Store, _ast78p.Del))}
+        _s |= {h.name for h in _ast78p.walk(f) if isinstance(h, _ast78p.ExceptHandler) and h.name}
+        # R-730-1: un nome dichiarato global/nonlocal NON è locale, anche se assegnato
+        return _s - {g for n in _ast78p.walk(f) if isinstance(n, (_ast78p.Global, _ast78p.Nonlocal))
+                     for g in n.names}
+    _globali_ok78p = {"Any", "DEFAULT_VOICE_ID", "Dict", "Exception", "Optional", "VOCALE_TIMEOUT_S",
+                      "VOCE_TIMEOUT_S", "_MARKDOWN", "_URL", "_send_text", "_tg_post", "_tg_post_file",
+                      "bytes", "dict", "int", "isinstance", "json", "len", "log", "os", "parte_parlata",
+                      "str", "synthesize_speech", "testo_da_dire", "type", "urllib"}
+    _attributi_ok78p = {"HTTPError", "Request", "URLError", "__name__", "code", "dumps", "encode",
+                        "environ", "error", "get", "hex", "items", "join", "load", "reason", "request",
+                        "splitlines", "strip", "sub", "urandom", "urlopen", "warning"}
+    _import_ok78p = {("modules.voice.server", "parte_parlata"), ("modules.voice.tts", "DEFAULT_VOICE_ID"),
+                     ("modules.voice.tts", "synthesize_speech")}
+    # R-729-1/2: anche _consegna_voce ha la sua allow-list (niente getattr, niente altre
+    # funzioni del modulo), la coda si usa solo come chiamata diretta (niente «invia =
+    # _voce_in_coda.submit») e submit riceve esattamente _invia_risposta_vocale, base_url,
+    # chat_id, finale, senza argomenti con nome.
+    _f_consegna78p = next(f for f in _albero78p.body
+                          if isinstance(f, _ast78p.FunctionDef) and f.name == "_consegna_voce")
+    _consegna_fuori78p = sorted(
+        {("nome", n.id) for n in _ast78p.walk(_f_consegna78p)
+         if isinstance(n, _ast78p.Name) and isinstance(n.ctx, _ast78p.Load)
+         and n.id not in _locali78p(_f_consegna78p) - {"_voce_in_coda"}
+         and n.id not in {"ThreadPoolExecutor", "_voce_in_coda", "_invia_risposta_vocale",
+                          "Exception", "log", "type", "int", "str"}}
+        | {("attributo", n.attr) for n in _ast78p.walk(_f_consegna78p)
+           if isinstance(n, _ast78p.Attribute) and n.attr not in {"submit", "warning", "__name__"}})
+    # R-730-2: i nomi fidati (funzioni del modulo e nomi delle allow-list) non si
+    # riassegnano: una sola def per nome, nessun'altra assegnazione o import fuori dalle
+    # funzioni per le funzioni (al massimo uno per gli altri nomi), nessun «global» se non per
+    # _voce_in_coda e _BOT_USERNAME, nessun globals() nel modulo.
+    import builtins as _builtins78p
+    _builtin78p = set(dir(_builtins78p))
+    # nomi importati DENTRO le funzioni del thread (sono nell'allow-list degli import)
+    _import_nomi_ok78p = {n for _m, n in _import_ok78p}
+    _legati_una_volta78p = {"Any", "Dict", "Optional", "VOCALE_TIMEOUT_S", "VOCE_TIMEOUT_S", "_MARKDOWN",
+                            "_URL", "json", "log", "os", "urllib", "ThreadPoolExecutor", "_voce_in_coda"}
+    _fidati78p = (set(_funzioni78p) | _globali_ok78p
+                  | {"ThreadPoolExecutor", "_voce_in_coda", "_invia_risposta_vocale"})
+    def _livello_modulo78p(nodi):
+        for _n in nodi:
+            if isinstance(_n, (_ast78p.FunctionDef, _ast78p.AsyncFunctionDef, _ast78p.ClassDef)):
+                yield ("def", _n.name)
+                continue
+            if isinstance(_n, _ast78p.ImportFrom):
+                for _a in _n.names:
+                    yield ("lega", _a.asname or _a.name)
+                continue
+            if isinstance(_n, _ast78p.Import):  # «import urllib.error» + «import urllib.request»
+                for _a in _n.names:              # legano lo stesso pacchetto: si conta una volta
+                    yield ("lega", _a.asname) if _a.asname else ("pacchetto", _a.name.split(".")[0])
+                continue
+            for _x in _ast78p.walk(_n):
+                if isinstance(_x, _ast78p.Name) and isinstance(_x.ctx, (_ast78p.Store, _ast78p.Del)):
+                    yield ("lega", _x.id)
+                # R-731-3: legami che non sono Name Store (match-capture, except ... as)
+                for _campo in ("name", "rest"):
+                    if isinstance(_x, (_ast78p.MatchAs, _ast78p.MatchStar, _ast78p.MatchMapping,
+                                       _ast78p.ExceptHandler)) and isinstance(getattr(_x, _campo, None), str):
+                        yield ("lega", getattr(_x, _campo))
+                if isinstance(_x, (_ast78p.FunctionDef, _ast78p.AsyncFunctionDef, _ast78p.ClassDef)):
+                    yield ("def", _x.name)
+    from collections import Counter as _Counter78p
+    _tutti78p = list(_livello_modulo78p(_albero78p.body))
+    _legami78p = _Counter78p([x for x in _tutti78p if x[0] != "pacchetto"]
+                             + [("lega", n) for _k, n in set(x for x in _tutti78p if x[0] == "pacchetto")])
+    _riassegnati78p = sorted(
+        {(k, n) for (k, n), c in _legami78p.items() if n in _fidati78p
+         and ((n in _funzioni78p and (k == "lega" or c > 1)) or (n not in _funzioni78p and c > 1))}
+        | {("lega+def", n) for n in _funzioni78p
+           if _legami78p[("lega", n)] or _legami78p[("def", n)] != 1}
+        | {("global", g) for n in _ast78p.walk(_albero78p) if isinstance(n, (_ast78p.Global, _ast78p.Nonlocal))
+           for g in n.names if g not in {"_voce_in_coda", "_BOT_USERNAME"}}
+        | {("globals()", _dentro78p.get(id(n), "<modulo>")) for n in _ast78p.walk(_albero78p)
+           if isinstance(n, _ast78p.Call) and getattr(n.func, "id", "") in ("globals", "vars", "setattr")}
+        # R-731-2 e R-732-1: numero ESATTO di legami di modulo per ogni nome fidato che non è
+        # una funzione: 1 per quelli elencati qui (import e costanti del modulo), 0 per tutti gli
+        # altri (builtin e nomi importati solo dentro le funzioni del thread).
+        | {("legami", n, _legami78p[("lega", n)]) for n in _fidati78p - set(_funzioni78p)
+           if _legami78p[("lega", n)] != (1 if n in _legati_una_volta78p else 0)}
+        # R-732-2: fuori dalle funzioni nessuna scrittura su attributo o subscript
+        | {("scrive", _ast78p.dump(_t)[:60]) for _n in _albero78p.body
+           if not isinstance(_n, (_ast78p.FunctionDef, _ast78p.AsyncFunctionDef, _ast78p.ClassDef))
+           for _x in _ast78p.walk(_n)
+           if isinstance(_x, (_ast78p.Assign, _ast78p.AugAssign, _ast78p.AnnAssign, _ast78p.Delete))
+           for _t in (_x.targets if isinstance(_x, (_ast78p.Assign, _ast78p.Delete)) else [_x.target])
+           for _tt in _ast78p.walk(_t) if isinstance(_tt, (_ast78p.Attribute, _ast78p.Subscript))}
+        # R-732-2: in tutto il modulo niente accesso agli interni delle funzioni, a sys.modules,
+        # ai builtin come modulo o all'esecuzione dinamica
+        | {("interni", n.attr) for n in _ast78p.walk(_albero78p) if isinstance(n, _ast78p.Attribute)
+           and (n.attr in {"__code__", "__globals__", "__builtins__", "__dict__", "__closure__",
+                           "__defaults__", "__kwdefaults__"}
+                or (n.attr == "modules" and getattr(n.value, "id", "") == "sys"))}
+        | {("interni", a.name) for n in _ast78p.walk(_albero78p)
+           if isinstance(n, (_ast78p.Import, _ast78p.ImportFrom))
+           for a in n.names if (getattr(n, "module", None) or a.name).split(".")[0] in ("builtins", "importlib")}
+        | {("interni", n.id) for n in _ast78p.walk(_albero78p) if isinstance(n, _ast78p.Name)
+           and n.id in {"__builtins__", "__import__", "exec", "eval", "compile"}}
+        # R-731-3: niente «import *» (legherebbe nomi senza contarli)
+        | {("import *", n.module) for n in _ast78p.walk(_albero78p)
+           if isinstance(n, _ast78p.ImportFrom) and any(a.name == "*" for a in n.names)})
+    # R-731-1: nelle funzioni sotto guardia (consegna e funzioni raggiunte dal thread) nessun
+    # legame, in nessuno scope (anche comprensioni, lambda, def annidate, match, except),
+    # può avere il nome di un builtin o di un nome del modulo: così i «locali» raccolti con
+    # ast.walk non coprono mai un nome globale. Unica eccezione: _voce_in_coda dichiarata global.
+    _nomi_modulo78p = {n for _k, n in _tutti78p}
+    def _legami_funzione78p(f):
+        for _x in _ast78p.walk(f):
+            if isinstance(_x, _ast78p.arg):
+                yield _x.arg
+            elif isinstance(_x, _ast78p.Name) and isinstance(_x.ctx, (_ast78p.Store, _ast78p.Del)):
+                yield _x.id
+            elif isinstance(_x, (_ast78p.FunctionDef, _ast78p.AsyncFunctionDef, _ast78p.ClassDef)) and _x is not f:
+                yield _x.name
+            elif isinstance(_x, (_ast78p.Import, _ast78p.ImportFrom)):
+                for _a in _x.names:
+                    yield (_a.asname or _a.name).split(".")[0]
+            for _campo in ("name", "rest"):
+                if isinstance(_x, (_ast78p.MatchAs, _ast78p.MatchStar, _ast78p.MatchMapping,
+                                   _ast78p.ExceptHandler)) and isinstance(getattr(_x, _campo, None), str):
+                    yield getattr(_x, _campo)
+    _ombre78p = sorted({(f, n) for f in _raggiunte78p | {"_consegna_voce"}
+                        for n in _legami_funzione78p(_funzioni78p[f])
+                        if (n in _builtin78p or n in _nomi_modulo78p)
+                        and not (f == "_consegna_voce" and n == "_voce_in_coda")
+                        and not (n in _import_nomi_ok78p)})
+    _func_chiamate78p = {id(n.func) for n in _ast78p.walk(_albero78p) if isinstance(n, _ast78p.Call)}
+    _coda_non_chiamata78p = sorted({(_dentro78p.get(id(n), "<modulo>"), n.attr)
+                                    for n in _ast78p.walk(_albero78p)
+                                    if isinstance(n, _ast78p.Attribute)
+                                    and isinstance(n.value, _ast78p.Name)
+                                    and n.value.id in ("_voce_in_coda", "coda")
+                                    and id(n) not in _func_chiamate78p})
+    _argomenti_submit78p = [([a.id if isinstance(a, _ast78p.Name) else _ast78p.dump(a) for a in n.args],
+                             [k.arg for k in n.keywords])
+                            for n in _ast78p.walk(_f_consegna78p)
+                            if isinstance(n, _ast78p.Call) and isinstance(n.func, _ast78p.Attribute)
+                            and n.func.attr == "submit"]
+    _fuori_lista78p = sorted(
+        {(f, "nome", n.id) for f in _raggiunte78p for n in _ast78p.walk(_funzioni78p[f])
+         if isinstance(n, _ast78p.Name) and isinstance(n.ctx, _ast78p.Load)
+         and n.id not in _locali78p(_funzioni78p[f]) and n.id not in _globali_ok78p}
+        | {(f, "attributo", n.attr) for f in _raggiunte78p for n in _ast78p.walk(_funzioni78p[f])
+           if isinstance(n, _ast78p.Attribute) and n.attr not in _attributi_ok78p}
+        | {(f, "import", f"{getattr(n, 'module', None)}.{a.name}") for f in _raggiunte78p
+           for n in _ast78p.walk(_funzioni78p[f]) if isinstance(n, (_ast78p.Import, _ast78p.ImportFrom))
+           for a in n.names if (getattr(n, "module", None), a.name) not in _import_ok78p})
+    check("T78p update gestiti uno alla volta: nessun gestore passato a thread, pool solo "
+          "nell'invio e nella voce (che non tocca update, firme né turni)",
+          _riferiti78p == [] and sorted(_pool78p) == ["_consegna_voce", "_invia_a_tutti"]
+          and _nomi_voce78p == [] and _sottomessi78p == [("submit", "_invia_risposta_vocale")]
+          and _consegne78p == ["_consegna_voce", "_invia_a_tutti"] and _coda78p == []
+          and _vietati_raggiunti78p == [] and "testo_da_dire" in _raggiunte78p
+          and _usi_coda78p == [] and _fuori_lista78p == [] and _consegna_fuori78p == []
+          and _coda_non_chiamata78p == [] and _riassegnati78p == [] and _ombre78p == []
+          and _argomenti_submit78p == [(["_invia_risposta_vocale", "base_url", "chat_id", "finale"], [])],
+          f"{_riferiti78p} {_pool78p} {_nomi_voce78p} {_sottomessi78p} {_consegne78p} "
+          f"{_coda78p} {_vietati_raggiunti78p} {_usi_coda78p} {_fuori_lista78p} "
+          f"{_consegna_fuori78p} {_coda_non_chiamata78p} {_argomenti_submit78p} {_riassegnati78p} {_ombre78p}")
 finally:
     if _saved_sb78 is None:
         os.environ.pop("GAS_SANDBOX_MODE", None)
