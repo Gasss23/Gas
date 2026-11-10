@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Nessuna per questa PR (velocità, non sicurezza): con verdetto pulito del bot la mergio io; con riserve chiedo il sì all'operatore tramite M1 (CLAUDE.md §10).
+1. Nessuna: l'operatore ha dato il sì al merge della #360 con la nota cosmetica (riferito da M1, 9/11 sera).
 2. Restano dalla #358 (mergiata): IPv4 d'esempio nei test costruiti da intero (marcatore `gasmerge-ip-ok` sì/no); limite «rete privata solo dichiarativa» da chiudere prima del VPS.
 
 ---
@@ -22,21 +22,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +
- modules/voice/server.py            | 12 ++++++++----
+ .claude/agents/memoria_revisore.md |   6 +
+ modules/voice/server.py            |  12 +-
  reports/diff_sessione.md                        | n/d
  reports/handoff.md                              | n/d
  reports/ripartenza_m2.md                        | n/d
  reports/stato_progetto.md                       | n/d
  reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    |  47 +++-
+ tests/test_unit_voice_server.py    |  47 ++-
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 567beb7 (merge della #358).
+NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 695b759 (merge della #359 di Mani, entrato nel branch col merge di questa sessione).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+34a0d67 Merge origin/main (#359 di Mani) nella PR #360
+ce0cbe4 docs(voce): report #360 allineati al diff (2 test, ripartenza) — bot 4° giro (chat M2)
+7de5d6b docs(voce): report #360 — review #741, numeri dei test allineati (chat M2)
 8984e81 test(voce): il confronto della seconda richiesta «forte» ignora i tempi misurati (bot #360, 3° giro: test instabile)
 dd2d61e chore(revisore): memoria review #741 — APPROVATO
 d6af23f docs(voce): report #360 — review #740 (chat M2)
@@ -172,13 +175,40 @@ La correzione funziona: il test ora ignora solo la chiave «tempi» e confronta 
 
 - Contatore #741-M2 aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committato (dd2d61e).
 
+Review #742-M2 sul merge di main (verdetto integrale):
+
+## VERDETTO: APPROVATO
+
+Review #742-M2: merge in corso di origin/main 695b759 (PR #359) dentro feat/voce-v12-m2 (PR #360, head ce0cbe4). Base comune 567beb7.
+
+**Elementi esaminati**
+- `modules/voice/server.py:324-329`: la #360 crea `_FRASI_FISSE_INTERE` e `_FRASI_FISSE`, che ora contiene anche le frasi divise da `_dividi_frasi`. Rischio controllato: che la #359 (in `modules/telegram/bot.py`) dipenda da questo blocco o dalla cache di `sintesi()`. Esito: ok. Rispetto alla base, la #360 cambia solo queste righe di `server.py`. Gli oggetti di `server.py` che `bot.py` importa (`_USO_FORTE_PARLATO` a :119, `istruzione_turno_voce` a :266, `parte_parlata` a :351, `cervello_voce` a :456) non sono toccati.
+- `modules/telegram/bot.py:1081` (contesto, file in arrivo da main): la voce di Telegram sintetizza con `modules.voice.tts.synthesize_speech`, non con `server.sintesi`. La cache delle frasi fisse quindi non entra in gioco. I punti d'import sono `bot.py:969`, `:984` e `:1035`. Esito: ok. `clients/voice/ascolto.py` non importa nulla da `modules.voice`: cita `server.py` solo nella docstring.
+- `tests/test_unit_voice_server.py:2084` e `tests/test_unit_voice_server.py:2102`: sono i test della #360 (frasi divise in cache, «forte» a pezzi dal server). Rischio controllato: che si rompano dopo il merge. Esito: ok, la suite passa.
+- `.claude/agents/memoria_revisore.md:1415` (unione dei due lati): dalla versione di HEAD (1398 righe) e da quella di MERGE_HEAD (1410 righe) non manca nessuna riga, verificato con `grep -vxFf` in entrambe le direzioni. Il file risultante ha 1415 righe e zero marcatori di conflitto. Esito: ok.
+- I file di codice e test in arrivo (`clients/voice/ascolto.py`, `modules/telegram/bot.py`, `tests/test_unit_kernel.py`, `tests/test_unit_telegram_voce.py`, `tests/test_unit_voce_ascolto.py`) sono identici a 695b759: `git diff --cached MERGE_HEAD` su ciascuno è vuoto.
+- `reports/stato_progetto.md`: differisce da main solo nella riga R8, dove resta la versione M2 «✅ PR #358 MERGIATA». È un merge automatico corretto, perché main conservava la riga vecchia della base («🔄 PR aperta»).
+- Nessun marcatore di conflitto in `reports/`, `.claude/`, `modules/`, `clients/` e `tests/`. Nessuno slicing della history e nessuna simulazione di tool nel diff.
+
+**Test eseguiti**
+- Voice server, voce Telegram, ascolto voce e sottofondo con `-k "not browser"`: 606 passed, 25 deselected. Tu ne avevi dichiarati 616, quasi certamente perché la selezione dei test è diversa.
+- Suite del kernel `tests/test_unit_kernel.py` (si lancia come script, non con pytest): 1099 PASS, 1 FAIL. Il FAIL è T31g ed è dovuto all'ambiente: qui manca `sentence_transformers`, quindi il vector store risulta non disponibile. T31g non è toccato da questo merge.
+
+**Cosa NON ho verificato**
+- I test browser (deselezionati) e il comportamento reale di Telegram e del server voce sul Mac/VPS: non si possono riprodurre in questo ambiente.
+- Il contenuto di handoff, ultimo_report e diff_sessione tenuti dal tuo lato: sono report, fuori dal perimetro tecnico di questa review.
+
+**Memoria**
+- Ho aggiunto la riga contatore #742-M2 in `/home/user/Gas/.claude/agents/memoria_revisore.md` e fatto solo `git add` su quel file, come chiesto. Nessuna lezione nuova.
+- Non ho lanciato `commit_memoria_revisore.sh`, perché committerebbe durante il merge. La memoria entra nel commit di chiusura del merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `tests/test_unit_voice_server.py`: +2 test — `test_sintesi_cache_forte_a_pezzi_dal_server` (percorso vero «forte» a pezzi, scrittura e seconda lettura della cache) e `test_sintesi_cache_anche_per_le_frasi_divise` (i pezzi di una frase fissa si sintetizzano una volta sola; un testo diverso mai in cache); col codice precedente fallisce. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 314 passed, 15 deselected; dopo il test del bot #360 V-1: 315 passed (il revisore con `-k "not browser"` ne deseleziona 21: filtro diverso). `gas.py` non toccato.
 
 ## §6 STATO CI
 
-Head 7de5d6b: verifica-bot failure per il formato della riga di verdetto (testo: APPROVATO CON RISERVE, 1 COSMETICA sui report, chiusa qui). Head d6af23f: verifica-bot APPROVATO CON RISERVE (V-1 BASSA test instabile e V-2 COSMETICA report, chiuse qui). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
+Head ce0cbe4: unit-suite, handoff-check e verifica-bot success (bot: APPROVATO CON RISERVE, 1 COSMETICA accettata dall'operatore). Nuovo head col merge di main (#359): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
