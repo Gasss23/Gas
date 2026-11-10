@@ -11,8 +11,9 @@
 - **PR #363 (terminale A)**: pubblicata, merge di main (#359, #360) fatto, verifica esterna V-1 MEDIA (conflitto) chiusa; resta all'operatore.
 - **Seguito più severo**: FATTA — nel seguito i frammenti di una parola fuori elenco chiudono senza chiamare il cervello; istruzione «nel dubbio non è per te».
 - **Risposte più brevi e veloci**: FATTA — a voce UNA frase breve; tetto del parlato senza schermo 1500 → 800.
-- Review #744-M2 APPROVATO CON RISERVE (R-744-1 MEDIA: «Continua.», numeri e giorni scartati → CHIUSA), #746-M2 APPROVATO CON RISERVE (BASSE).
-- Test: voice_server, stt, tts, contesto, telegram_voce, voce_ascolto, sottofondo con -k "not browser": 743 passed.
+- Review #744-M2 APPROVATO CON RISERVE (R-744-1, gravità media: «Continua.», numeri e giorni scartati → CHIUSA), #746-M2 APPROVATO CON RISERVE (BASSE), #747-M2 APPROVATO CON RISERVE (BASSE): elenco più largo con accenti normalizzati, copertura del ramo «forte» nel seguito.
+- Bot su e0f8f31: check failure ma verdetto APPROVATO CON RISERVE con sole BASSE (falso failure del parser su una riserva già chiusa citata nel verdetto); le BASSE sono state corrette in d07fbdf.
+- Test: voice_server, stt, tts, contesto, telegram_voce, voce_ascolto, sottofondo con -k "not browser": 744 passed.
 - **Prova sul Mac** (il modello rispetta le istruzioni più severe e più corte): DEFERITA — si fa dal vero.
 
 ## Anomalie

@@ -17,7 +17,8 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 
 - **Fetta 1 — seguito più severo (filtro lato server + istruzione)**: `FATTA` (1340aa0).
 - **Fetta 2 — risposte a voce più brevi (una frase, tetto 800)**: `FATTA` (1340aa0).
-- **R-744-1-M2 MEDIA (risposte di una parola scartate)**: `FATTA` — chiusa prima del commit, review #746-M2.
+- **R-744-1-M2, gravità media (risposte di una parola scartate)**: `FATTA` — chiusa prima del commit, review #746-M2.
+- **Note BASSE di bot e verifica esterna #365 (V-2 copertura del ramo «forte», V-3 elenco stretto e accenti) e R-746-1/2-M2**: `FATTA` (d07fbdf, review #747-M2). NB: il check del bot su e0f8f31 era «failure» ma il verdetto testuale era APPROVATO CON RISERVE con sole BASSE: il parser ha letto come finding la citazione di una riserva già chiusa (falso failure noto, direzione sicura).
 - **Prova sul Mac col modello vero**: `DEFERITA` — non riproducibile qui.
 
 ---
@@ -25,15 +26,15 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  4 ++++
- modules/voice/server.py            | 56 ++++++++++++++++++++++++++++++++++++++++++++++++--------
- reports/diff_sessione.md           | 14 ++++++++------
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ modules/voice/server.py            |  73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ reports/diff_sessione.md           |  14 ++++++++------
  reports/handoff.md                 | n/d
- reports/ripartenza_m2.md           |  2 ++
- reports/stato_progetto.md          |  2 ++
- reports/ultimo_report.md           | 23 ++++++++++++-----------
- tests/test_unit_voice_server.py    | 31 ++++++++++++++++++++++++++++++-
- tests/test_unit_voice_stt.py       | 58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ripartenza_m2.md           |   2 ++
+ reports/stato_progetto.md          |   2 ++
+ reports/ultimo_report.md           |  24 +++++++++++++-----------
+ tests/test_unit_voice_server.py    |  37 ++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_stt.py       |  67 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -41,12 +42,56 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d07fbdf fix(voce): seguito — elenco delle risposte brevi più largo con accenti normalizzati, copertura del ramo «forte» nel seguito, assert «Resto.»; chiude V-2/V-3 bot e verifica esterna #365, R-746-1/2-M2 — review #747-M2 (chat M2)
+e0f8f31 docs(fine-task): voce — seguito più severo e risposte più brevi, PR #365; riserve del bot sulla #363 registrate (chat M2)
 1340aa0 feat(voce): seguito più severo (frammenti di una parola chiusi senza cervello, istruzione «nel dubbio non è per te») e risposte a voce più brevi (una frase, tetto 800) — review #744-M2, #746-M2 (chat M2)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #747-M2 (correzioni BASSE di bot, verifica esterna e #746, commit d07fbdf) — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #747-M2 sul diff staged di /home/user/Gas-voce (branch feat/voce-filtro-m2, PR #365). Prima ho letto le parti obbligatorie: CLAUDE.md §5, le parti voce/M2 di stato_progetto.md e la memoria del revisore. Non ho trovato antipattern del Wall of Shame: nessuno slicing della history, nessun output di tool simulato, guardrail non toccati.
+
+**Elementi del diff esaminati**
+- `modules/voice/server.py:203` — `_senza_accenti`: NFKD seguito dalla rimozione dei caratteri combinanti. Viene applicata a tutto l'elenco, che diventa `_RISPOSTE_BREVI_NORM`. Rischi esaminati:
+  - collisioni dopo la normalizzazione, per esempio «perché» e «perche»: sono innocue, finiscono tutte e due nel frozenset;
+  - forme NFD: coperte da un test;
+  - eccezioni: nessuna, perché `unicodedata` fa parte della libreria standard.
+  - Esito: ok.
+- `modules/voice/server.py:215` — la normalizzazione si applica anche alla trascrizione, prima di `\w+`. Rischio esaminato: che un solo lato normalizzato lasci passare «Lunedi» o «Perchè». Mutanti:
+  - normalizzazione tolta dalla trascrizione: rosso;
+  - controllo fatto sull'elenco non normalizzato: rosso.
+  - Esito: ok.
+- `modules/voice/server.py:85` — l'import di `unicodedata` sta fra `re` e `subprocess`, fuori dall'ordine alfabetico. Esito: riserva cosmetica.
+- `modules/voice/server.py:190` — elenco allargato (sicuro, forse, stasera, numeri da 11 a 20, decine, cento, mille, ora/dopo/mai/sempre/niente/nulla/subito/adesso). Ho valutato se il filtro serve ancora. Sì: scarta ancora nomi, interiezioni («Ehm», «Mamma.», «Forte!») e tutte le parole fuori elenco. Però «Ora!», «Mai!», «Niente!», «Dopo» sono anche frammenti tipici della TV o della stanza, e adesso arrivano al cervello con la spesa di un turno. Esito: riserva **R-747-2-M2 (BASSA)**, un compromesso da scrivere nel commento o in stato_progetto. Non lo considero un blocco: nel seguito un falso «passa» costa un turno, un falso «scarta» perde la risposta dell'operatore.
+- `tests/test_unit_voice_server.py:2410` — casi a parola singola (davvero di UNA sola parola, come chiedeva la lezione del #746), forma NFD, «Resto.» da solo (R-746-2 chiusa) e i contro-esempi «Mamma.»/«Ehm». Esito: ok.
+- `tests/test_unit_voice_stt.py:844` — test V-2 «Gas, forte.» nel seguito: si aspetta il comando `fine`, il contenuto vuoto, nessun turno. Mutanti:
+  - tolto il ramo `elif self._seguito()` di «uso»: rosso, ok;
+  - filtro esteso a ≤2 parole, così «Gas, forte.» viene scartato dal filtro prima del ramo «uso»: **il test V-2 da solo resta VERDE**. I due rami danno la stessa risposta (`_chiudi_seguito`, `modules/voice/server.py:996`), quindi il test non prova di aver superato il filtro. Quel mutante lo prendono comunque altri test della suite (rosso). Esito: riserva **R-747-1-M2 (BASSA)**: aggiungere un'osservazione del percorso, per esempio caplog che verifica l'assenza di «seguito scartato senza cervello» oppure una spia su `cervello_voce`.
+
+**Esecuzione**
+- pytest su voice_server + voice_stt con `-k "not browser"`: 276 passed, l'ho riprodotto io.
+- 4 mutanti, tutti rossi sulla suite.
+- Ho ripristinato `server.py` dopo ogni mutante: alla fine ci sono solo le modifiche staged e nessuna modifica non staged.
+
+**Rischio escluso**
+- Non ho verificato il comportamento con trascrizioni reali di Whisper (accenti sul Mac o sulla VPS, come scrive «perchè»): non è riproducibile in dev, i test usano stringhe fisse.
+- Non ho controllato ligature o caratteri compatibili che NFKD trasforma in più lettere: è un caso marginale, al massimo un frammento passa al cervello.
+
+**Riserve da tracciare in stato_progetto.md**
+1. R-747-1-M2 (BASSA): il test V-2 non distingue il ramo «uso» dallo scarto del filtro.
+2. R-747-2-M2 (BASSA): «ora/dopo/mai/sempre/niente/nulla/subito/adesso» in elenco fanno passare al cervello anche i frammenti della TV. Dichiarare il compromesso o toglierle.
+3. Cosmetica: l'ordine dell'import di `unicodedata`.
+
+**Memoria**
+- Riga contatore #747-M2 e una lezione aggiunte in /home/user/Gas-voce/.claude/agents/memoria_revisore.md e messe in stage con `git -C /home/user/Gas-voce add`.
+- Nessun commit, come chiesto: lo script `commit_memoria_revisore.sh` non l'ho eseguito.
+- Un ciclo di attesa che avevo lanciato in background (b3fgnx8h1) è rimasto appeso: è innocuo e si chiude da solo al timeout.
 
 ### Review #744-M2 — verdetto integrale
 
@@ -116,24 +161,29 @@ Memoria: ho aggiunto la riga `#746-M2` e una lezione nuova in /home/user/Gas-voc
 
 ## §5 DELTA TEST DEL MOTORE
 
-- gas.py non toccato. Test nuovi: `test_seguito_frammento_chiude_senza_cervello`, `test_seguito_frammento_con_attivazione_va_al_cervello` (stt), `test_seguito_da_scartare_e_istruzione_severa`, `test_parlato_voce_tetto_piu_corto` (server).
-- `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voice_contesto.py tests/test_unit_telegram_voce.py tests/test_unit_voce_ascolto.py tests/test_unit_sottofondo.py -k "not browser"` sul commit 1340aa0:
+- gas.py non toccato. Test nuovi: `test_seguito_frammento_chiude_senza_cervello`, `test_seguito_frammento_con_attivazione_va_al_cervello`, `test_seguito_forte_che_supera_il_filtro_non_parla` (stt), `test_seguito_da_scartare_e_istruzione_severa`, `test_parlato_voce_tetto_piu_corto` (server).
+- `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voice_contesto.py tests/test_unit_telegram_voce.py tests/test_unit_voce_ascolto.py tests/test_unit_sottofondo.py -k "not browser"` sul commit d07fbdf:
 
 ```
-743 passed, 25 deselected in 90.45s (0:01:30)
+744 passed, 25 deselected in 89.18s (0:01:29)
 ```
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente): `gh` nel cloud non è autenticato.
-- 1340aa0 (pushato da solo prima di aprire la PR #365): run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strumento GitHub MCP:
+- e0f8f31 (head precedente): handoff-check success; verifica-bot failure (falso failure del parser, vedi §1); unit-suite non letta a fine run.
+- 1340aa0: nessuna run propria letta.
+- d07fbdf: nessuna run su questo SHA (pushato insieme al commit di fine task).
 - Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-744-1-M2 MEDIA: CHIUSA (1340aa0, review #746-M2).
+- R-744-1-M2 (gravità media): CHIUSA (1340aa0, review #746-M2).
+- R-746-1-M2 e R-746-2-M2 BASSE: CHIUSE (d07fbdf, review #747-M2).
+- Bot e verifica esterna #365 V-2 e V-3 BASSE: CHIUSE (d07fbdf).
 - R-744-2-M2 BASSA (preesistente): «Grazie.», allucinazione tipica di Whisper, va al cervello nel seguito.
-- R-746-1-M2 BASSA: numeri in parole oltre «dieci» scartati nel seguito.
-- R-746-2-M2 BASSA: l'assert «Il resto.» nel test non prova l'elenco (due parole).
+- R-747-1-M2 BASSA: il test di «Gas, forte.» nel seguito non distingue il ramo «uso» dallo scarto del filtro (stessa risposta).
+- R-747-2-M2 BASSA: «ora/dopo/mai/sempre/niente/nulla/subito/adesso» in elenco fanno passare al cervello anche frammenti della TV (compromesso: un falso «passa» costa un turno, un falso «scarta» perde la risposta dell'operatore).
+- Cosmetica #747: ordine dell'import di `unicodedata`.
 - Limite dichiarato: un nome proprio da solo nel seguito si scarta.
 - Non verificato: il modello rispetta davvero «nel dubbio [NON_PER_ME]» e «una frase» (prova sul Mac).
