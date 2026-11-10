@@ -113,10 +113,18 @@ def _vero(v: Any) -> bool:
     return isinstance(v, str) and v.strip().lower() in ("true", "1", "si", "sì", "yes")
 
 
+CAMPO_PIN_MAX_CHARS = 200
+
+
 def _campo_pin(text: Any) -> str:
     """Campo del pin su UNA riga (verifica esterna #222 V-2): un a-capo nel nome o
-    nella prossima azione di un lead non deve creare una riga finta nel blocco."""
-    return " ".join(_sanitize_memory_text(str(text)).split())
+    nella prossima azione di un lead non deve creare una riga finta nel blocco.
+    Audit 2026-11-10 B4: capato a CAMPO_PIN_MAX_CHARS, così un solo campo enorme
+    (es. un nome di 3000 caratteri) non svuota il pin degli altri lead."""
+    s = " ".join(_sanitize_memory_text(str(text)).split())
+    if len(s) <= CAMPO_PIN_MAX_CHARS:
+        return s
+    return s[:CAMPO_PIN_MAX_CHARS - 1] + "…"
 
 
 _GAS_SYSTEM_PROMPT_BASE = (
@@ -429,6 +437,28 @@ def _classify_provider_error(status_code: Optional[int], err_text: str,
     if (status_code == 402 or "402" in txt) and not obbligatoria:
         return ("WARN", "402: crediti esauriti (rung free opzionale)")
     return ("KO", err_text[:60])
+
+RIPIEGO_MOTIVO_MAX_CHARS = 160  # B4: motivo breve nella riga di avviso del ripiego
+
+
+def _info_ripiego(nome: str, modello: str, primo: str,
+                  motivi: List[str]) -> Dict[str, Any]:
+    """§8 Model Awareness (audit B4): campi dell'evento «final» che dicono chi ha
+    risposto e se è un ripiego rispetto al primo rung della cascata. `avviso_ripiego`
+    è la riga pronta per CLI e Telegram ("" se nessun ripiego). Il cervello forte
+    (claude-cli, /forte) non è mai un ripiego. Il motivo usa solo le righe di
+    `_motivi` (nome, env ed esito classificato: mai testo grezzo dell'errore). PURA."""
+    ripiego = nome != primo and nome != "claude-cli"
+    avviso = ""
+    if ripiego:
+        motivo = "; ".join(motivi)
+        if len(motivo) > RIPIEGO_MOTIVO_MAX_CHARS:
+            motivo = motivo[:RIPIEGO_MOTIVO_MAX_CHARS - 1] + "…"
+        avviso = f"↪ risposta da {modello} ({nome}, riserva"
+        avviso += f": {motivo})" if motivo else ")"
+    return {"provider": nome, "modello": modello, "ripiego": ripiego,
+            "avviso_ripiego": avviso}
+
 
 def _motivo_forte(e: BaseException) -> Optional[str]:
     """Motivo leggibile di un errore del cervello forte, per la riga «Pipeline esausta»
@@ -918,6 +948,20 @@ def _rung_disponibile(name: str, env: str) -> bool:
 CHIAVE_SEGUITO_VOCE = "seguito_voce"
 
 
+def _utf8_sicuro(v: Any) -> Any:
+    """Audit 2026-11-10 B1: un surrogato isolato (es. \\udce8 da input non UTF-8, o
+    un'emoji JSON spezzata a metà) diventa «?». Altrimenti né il salvataggio della
+    storia né l'SDK dei provider riescono a codificare il testo, finché resta in finestra."""
+    return v.encode("utf-8", "replace").decode("utf-8") if isinstance(v, str) else v
+
+
+def _forma_storia_valida(storia: Any) -> bool:
+    """Audit 2026-11-10 B2: la storia è una lista di messaggi dict con role stringa.
+    Un JSON valido ma di forma sbagliata (null, {}, [1]) non deve far crashare (§9)."""
+    return isinstance(storia, list) and all(
+        isinstance(m, dict) and isinstance(m.get("role"), str) for m in storia)
+
+
 def _ha_seguito_voce(messaggi: List[Dict[str, Any]]) -> bool:
     return any(isinstance(m, dict) and m.get(CHIAVE_SEGUITO_VOCE) for m in messaggi)
 
@@ -1268,7 +1312,10 @@ class GasKernel:
             return []
         try:
             with open(self.db_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                storia = json.load(f)
+            if not _forma_storia_valida(storia):
+                raise ValueError("forma non valida (attesa una lista di messaggi con role)")
+            return storia
         except Exception as e:
             logging.warning("Storia corrotta, messa in quarantena: %s", e)
             try:
@@ -1334,8 +1381,8 @@ class GasKernel:
         try:
             with open(self.db_path, "r", encoding="utf-8") as f:
                 altrui = json.load(f)
-            if not isinstance(altrui, list):
-                raise ValueError("storia non è una lista")
+            if not _forma_storia_valida(altrui):
+                raise ValueError("storia di forma non valida")
         except Exception as e:
             logging.warning("Storia cambiata da un altro processo ma illeggibile (%s): "
                             "la sovrascrivo", e)
@@ -1550,11 +1597,23 @@ class GasKernel:
             # Allinea recent al primo user per rispettare l'invariante _get_window.
             # I messaggi di recent che precedono il primo user vengono piegati nel
             # riepilogo (R-comp-1 fix): zero drop silenzioso.
-            start = 0
+            start: Optional[int] = None
             for i, m in enumerate(recent):
                 if m.get("role") == "user":
                     start = i
                     break
+            if start is None:
+                # Audit 2026-11-10 B3: nessun user negli ultimi keep_msgs (un turno lungo
+                # di tool): si tiene il turno intero dal suo user, così dopo il riepilogo
+                # non resta mai un tool result orfano del suo assistant(tool_calls).
+                ultimo_user = max((i for i, m in enumerate(old) if m.get("role") == "user"),
+                                  default=None)
+                if ultimo_user == 0:
+                    return False  # tutta la storia è un solo turno: niente da comprimere
+                if ultimo_user is not None:
+                    recent = old[ultimo_user:] + recent
+                    old = old[:ultimo_user]
+                start = 0  # nessun user da nessuna parte: caso degenere di prima (T54)
             boundary = recent[:start]
             recent = recent[start:]
             # Riepilogo deterministico: old + eventuali boundary piegati
@@ -1819,9 +1878,9 @@ class GasKernel:
     def _add_to_history(self, role: str, content: Optional[str] = None, tool_calls: Optional[List[Any]] = None, tool_call_id: Optional[str] = None, name: Optional[str] = None):
         """Costruisce un dizionario puro, evitando oggetti complessi."""
         entry = {"role": role}
-        if content is not None: entry["content"] = content
+        if content is not None: entry["content"] = _utf8_sicuro(content)
         if tool_calls:
-            entry["tool_calls"] = [{"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}} for tc in tool_calls]
+            entry["tool_calls"] = [{"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": _utf8_sicuro(tc.function.arguments)}} for tc in tool_calls]
         if tool_call_id: entry["tool_call_id"] = tool_call_id
         if name: entry["name"] = name
         self.history.append(entry)
@@ -4492,7 +4551,9 @@ class GasKernel:
             testo = _sanitize_memory_text(str(row["testo"]))
             riga = f"{header}\n{testo}"
             if totale + len(riga) > self.KNOWLEDGE_MAX_CHARS:
-                break
+                # audit 2026-11-10 B2: un chunk troppo grande non nasconde i successivi
+                # (più piccoli e pertinenti): si salta, non si esce
+                continue
             righe.append(riga)
             totale += len(riga)
         if not righe:
@@ -5288,7 +5349,8 @@ class GasKernel:
                             _salva()
                             _turno_provider = name  # Fetta B: provider che ha prodotto la risposta
                             _turno_final = True
-                            yield {"type": "final", "content": msg.content}
+                            yield {"type": "final", "content": msg.content,
+                                   **_info_ripiego(name, model, providers[0][0], _motivi)}
                             return
                         elif effimero:
                             # V-3 bot #339 su be60a21: nel turno effimero una risposta vuota
@@ -5465,7 +5527,12 @@ def doctor(root_dir: Optional[str] = None) -> int:
         try:
             with open(db_path, "r", encoding="utf-8") as f:
                 history = json.load(f)
-            check("File", ".gas_history.json", "OK", f"JSON valido, {len(history)} messaggi")
+            if _forma_storia_valida(history):
+                check("File", ".gas_history.json", "OK", f"JSON valido, {len(history)} messaggi")
+            else:  # audit 2026-11-10 B2: JSON valido ma forma sbagliata → FAIL, niente crash
+                history = None
+                check("File", ".gas_history.json", "FAIL",
+                      "forma non valida (attesa una lista di messaggi con role)")
         except Exception as e:
             check("File", ".gas_history.json", "FAIL", f"JSON corrotto: {str(e)[:50]}")
 
@@ -6553,7 +6620,10 @@ def main():
                 print("\nUso: /forte <richiesta>\n")
                 continue
             for event in kernel.run_turn(prompt, cervello=cervello):
-                if event["type"] == "final": print(f"\n{event['content']}\n")
+                if event["type"] == "final":
+                    print(f"\n{event['content']}\n")
+                    if event.get("avviso_ripiego"):  # §8 (audit B4): ha risposto una riserva
+                        print(f"  {event['avviso_ripiego']}\n")
                 elif event["type"] == "tool_res": print(f"  → {event['output'].strip()}")
                 elif event["type"] == "error": print(f"\n✗ {event['content']}\n")
         except KeyboardInterrupt: break

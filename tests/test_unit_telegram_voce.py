@@ -315,6 +315,37 @@ def test_risposta_lunga_si_dice_solo_la_parte_parlata(tg):
     assert tg["sintesi"] == [parte_parlata(lungo)] and tg["sintesi"][0] != lungo
 
 
+class ConRipiego:
+    """Audit B4 (§8): ha risposto un cervello di riserva."""
+    def __init__(self, avviso="↪ risposta da m:free (openrouter, riserva: groq: QUOTA (HTTP 429))"):
+        self.avviso = avviso
+
+    def run_turn(self, testo, **kw):
+        yield {"type": "final", "content": "Sono le dieci.", "provider": "openrouter",
+               "modello": "m:free", "ripiego": bool(self.avviso),
+               "avviso_ripiego": self.avviso}
+
+
+def test_ripiego_dichiarato_nel_testo_ma_non_detto_a_voce(tg):
+    k = ConRipiego()
+    bot._handle_update(BASE, _vocale(), {CHAT}, k)
+    assert tg["testi"] == [f"Ho capito: «che ore sono»\n\nSono le dieci.\n\n{k.avviso}"]
+    assert tg["sintesi"] == ["Sono le dieci."]
+
+
+def test_ripiego_dichiarato_anche_nei_messaggi_di_testo(tg):
+    k = ConRipiego()
+    bot._handle_update(BASE, {"update_id": 3, "message": {"chat": {"id": CHAT}, "text": "ciao"}},
+                       {CHAT}, k)
+    assert tg["testi"] == [f"Sono le dieci.\n\n{k.avviso}"]
+
+
+def test_senza_ripiego_nessuna_riga_in_piu(tg):
+    bot._handle_update(BASE, {"update_id": 4, "message": {"chat": {"id": CHAT}, "text": "ciao"}},
+                       {CHAT}, ConRipiego(avviso=""))
+    assert tg["testi"] == ["Sono le dieci."]
+
+
 def test_turno_in_errore_niente_voce(tg):
     class Rotto:
         def run_turn(self, *a, **kw):

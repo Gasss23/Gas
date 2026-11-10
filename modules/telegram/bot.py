@@ -223,14 +223,16 @@ def lunghezza_telegram(text: str) -> int:
 
 def componi_read_back(approval: Dict[str, Any]) -> str:
     """Testo del read-back di una richiesta 'pending' (riga di approvals).
-    `tool_args_json` INTEGRALE e verbatim, mai troncato (§4c)."""
+    `tool_args_json` INTEGRALE, mai troncato (§4c). Audit 2026-11-10 B3: passa da
+    `rendi_visibili` (solo la vista: hash e argomenti eseguiti non cambiano), così
+    U+2028 o controlli bidi crudi nel JSON del modello non fingono righe del messaggio."""
     scad = time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime(approval["ts_expiry"]))
     return (
         "GAS chiede la tua firma\n\n"
         f"Azione: {approval['azione_leggibile']}\n"
         f"Tool: {approval['tool_name']}\n\n"
         "ARGOMENTI (testo grezzo, può contenere testo di terzi):\n"
-        f"{approval['tool_args_json']}\n\n"
+        f"{rendi_visibili(approval['tool_args_json'])}\n\n"
         f"ID approvazione: {approval['id']}\n"
         f"Scadenza: {scad}\n\n"
         "Nessuna azione verrà eseguita senza la tua firma: "
@@ -878,7 +880,12 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
         giro = comando_giro(text)
         if giro is not None:
             tipo, valore = giro
-            if tipo == "errore":
+            if not upd.get("message"):
+                # audit 2026-11-10 B4, come /clear (V-1 bot #263): un giro costa, vale
+                # solo da un messaggio nuovo, mai da un vecchio messaggio modificato
+                _send_text(base_url, chat_id, "/notte e /compito non valgono da un messaggio "
+                           "modificato: mandalo come messaggio nuovo.")
+            elif tipo == "errore":
                 _send_text(base_url, chat_id, valore or "")
             else:
                 root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
@@ -941,6 +948,9 @@ def _turno_con_finale(kernel: Any, chat_id: int, text: str,
             if etype == "final":
                 parts.append(event.get("content", ""))
                 finali.append(event.get("content", "") or "")
+                # §8 (audit B4): ha risposto una riserva → riga nel testo, mai a voce
+                if event.get("avviso_ripiego"):
+                    parts.append(str(event["avviso_ripiego"]))
             elif etype == "tool_res":
                 out = (event.get("output") or "").strip()
                 if out:

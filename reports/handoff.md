@@ -1,229 +1,322 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-10 — voce: correzioni dell'audit notturno (chat M2)
+**Sessione:** 2026-11-10 — Analisi notturna di Gas e correzioni dei bug riprodotti (M1, PR #366)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #367 (https://github.com/Gasss23/Gas/pull/367): con verdetto del bot senza finding ALTA/MEDIA e CI verde, sì dell'operatore riferito da M1 («mergia tutto quello che il bot ha approvato»).
-
-NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
+1. Merge della PR #366 (https://github.com/Gasss23/Gas/pull/366). Numero e URL dall'output di `create_pull_request` dello strumento GitHub (gh assente in questo ambiente). Tocca il messaggio di firma (solo la vista): PR di sicurezza.
+2. R-750-M1-1 + bot #366 V-1 (3° giro): la riga «↪ risposta da … (riserva)» oggi copre solo il ripiego della cascata. Da decidere: (a) se il primo cervello non configurato (VPS senza GEMINI_API_KEY) conta come ripiego; (b) se dichiarare anche Flash-lite scelto dal router per i compiti semplici.
+3. Tetto delle 10 iterazioni per turno invece che per cervello? sì/no.
+4. Nome dei lead nel promemoria della memoria verso i modelli gratuiti: bloccarlo? sì/no.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **B1 — timeout del socket del server voce (60 s)**: `FATTA` (1c53cf9).
-- **B2 — «Hey Jarvis, forte: …» al forte, anche con la parola ripetuta**: `FATTA` (1c53cf9).
-- **B3 — risposte rotte di Groq ed ElevenLabs come errori di rete (sintesi, elenco voci, libreria, aggiunta voce)**: `FATTA` (1c53cf9; R-752-2 chiusa nello stesso commit, review #755-M2).
-- **B4 — `.env` del proxy del browser con le regole di Gas**: `FATTA` (1c53cf9).
-- **B5 — JSON di forma sbagliata → 400**: `FATTA` (1c53cf9).
-- **Miglioramenti (413, porta prima del kernel, proxy su GAS_VOICE_PORT)**: `FATTA` (1c53cf9; R-752-3 chiusa, review #755-M2).
-- **Merge di origin/main f4d2d4f (#364, #365)**: `FATTA` (d1b5628), review #759-M2.
-- **Merge di origin/main a164b42 (#363 terminale A)**: `FATTA` (1af440e) — conflitti solo nei report e nella memoria; review #760-M2 APPROVATO; manutenzione + voice_server + stt + tts + gate 1207 passed.
-- **Bot e verifica esterna #367 su ea3033b**: APPROVATO CON RISERVE, solo BASSE (porta fuori 0-65535 → traceback; test del timeout solo sulle intestazioni e con soglia stretta; GAS_VOICE_PORT filtrato a sole cifre): registrate in §7.
-- **Sospetti di M1 da valutare** («forte» durante «Sì, signore?», blocco per IP condiviso su 127.0.0.1, connessione ElevenLabs riusata): `DEFERITA` — non toccati qui.
+- **Fetta 1 — Merge notturni con il sì dell'operatore**: FATTA — #362, #361, #364 mergiate da M1; #363, #365, #367 mergiate da M2.
+- **Fetta 2 — Analisi notturna (4 agenti)**: FATTA — 19 bug riprodotti, `reports/test_mattina.md`.
+- **Fetta 3 — Fix motore/memoria/conoscenza/notte/bot**: FATTA — d9346212, review #744-M1.
+- **Fetta 4 — Merge di origin/main (#361, #364)**: FATTA — 81c3c55c, review #748-M1.
+- **Fetta 5 — Bot #366 V-1/V-2/V-3 (1° giro)**: FATTA — 69c26619 (review #749-M1) + handoff 802e9701.
+- **Fetta 6 — Kernel B4, ripiego dichiarato (§8) + bot #366 V-1 cosmetica (2° giro)**: FATTA — f4979c13, review #750-M1.
+- **Fetta 7 — Merge di origin/main (#363, #365)**: FATTA — 769df833, review #751-M1.
+- **Fetta 8 — Merge di origin/main (#367, bug della voce B1–B5 fatti da M2)**: FATTA — b5291a52, review #752-M1.
+- **Fetta 9 — Kernel B5–B6**: DEFERITA — BASSE, annotati in stato_progetto.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 +++++
- clients/voice/browser_server.py    |  45 ++++++++++++++++++++++++++++++++++++++-------
- modules/voice/server.py            |  39 +++++++++++++++++++++++++++++++++++----
- modules/voice/stt.py               |   8 ++++++--
- modules/voice/tts.py               |  28 ++++++++++++++++++++--------
- reports/diff_sessione.md           |  17 ++++++-------
- reports/handoff.md                 | n/d
- reports/ripartenza_m2.md           |   2 ++
- reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  23 ++++++++---------
- tests/test_unit_voice_server.py    | 171 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_voice_stt.py       |  18 ++++++++++++++++++
- tests/test_unit_voice_tts.py       |  30 ++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md      |  11 +++++++++++
+ gas.py                                  |  94 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ modules/notte/notte.py                  |   6 +++---
+ modules/telegram/bot.py                 |  16 +++++++++++++---
+ reports/diff_sessione.md                |  19 +++++++++++--------
+ reports/handoff.md                      | n/d
+ reports/proposta_terminale_autonomia.md |  28 ++++++++++++++++++++++++++++
+ reports/ripartenza_m1.md                |  70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md               |   2 ++
+ reports/test_mattina.md                 | 308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/test_voce_mattina.md            |  53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md                |  33 +++++++++++++++++++--------------
+ tests/test_unit_ingest_fonti.py         |  97 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py               | 295 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py                |  61 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_telegram_voce.py        |  31 +++++++++++++++++++++++++++++++
+ tools/ingest_knowledge.py               | 105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
+NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-1af440e Merge origin/main (#363) nelle correzioni dell'audit voce — review #760-M2 APPROVATO (chat M2)
-ea3033b docs(fine-task): voce — correzioni dell'audit notturno, PR #367 (chat M2)
-d1b5628 Merge origin/main (#364, #365) nelle correzioni dell'audit voce — review #759-M2 APPROVATO (chat M2)
-1c53cf9 fix(voce): correzioni dell'audit notturno — timeout del socket, «Hey Jarvis, forte» al forte, risposte rotte di Groq/ElevenLabs come errori di rete, .env del browser come Gas, 400 al JSON di forma sbagliata, tetti 413, porta prima del kernel — review #752-M2, #755-M2 (chat M2)
+b5291a52 merge: origin/main (#367) nella #366 (review #752-M1 APPROVATO)
+55a0c1c1 docs(fine-task): handoff rigenerato su ripiego B4 e merge di #363/#365 (bot #366 V-1 ALTA)
+769df833 merge: origin/main (#363, #365) nella #366 (review #751-M1 APPROVATO)
+f4979c13 fix(kernel): dichiara il ripiego su un cervello di riserva nei turni normali (audit B4, §8) + commento/test ingest (bot #366 V-1)
+802e9701 docs(fine-task): handoff e report della sessione dell'analisi notturna (bot #366 V-1)
+69c26619 fix(ingest): exit 1 se una fonte fallisce (bot #366 V-3) + id review #744-M1/#748-M1 (bot #366 V-2)
+81c3c55c merge: origin/main (#361, #364) nel branch dei fix dell'audit notturno (review #748 APPROVATO)
+fd6c2425 docs(m1): test del mattino dall'analisi notturna
+844e79aa docs(stato): audit 2026-11-10 — kernel B4-B6 annotati, riserve R-744-1..4
+d9346212 fix(audit 2026-11-10): kernel, memoria/conoscenza, notte/bot — bug riprodotti dall'audit notturno
+aefb15c7 chore(revisore): memoria review #744 — APPROVATO CON RISERVE
+39098377 docs(m1): stato notte 10/11 (merge #362, audit notturno)
+4d8dcdd6 Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
+e8f7a3ec docs(m1): tutte le chat lavorano in parallelo
+34eede56 docs(m1): nuove chat M3 (R7) e M4 (R1), lavoro in parallelo
+cfb09cb3 docs(m1): ripartenza dopo /clear — stato al 10/11 e regola delle risposte brevi
+22e70e44 docs(m1): tolte le copie di sicurezza delle patch di M2 (R8 mergiata in #358)
+3fcdd9ec docs(m1): decisioni del 9/11 mattina (#356, #357, thread b, R8, terminale A)
+9c770ee0 docs(m1): aggiornamento notturno dei test voce del mattino
+f9fd5521 docs(m1): copia di sicurezza della patch velocità di M2
+06a3ef78 docs(m1): copia di sicurezza della patch R8 fetta 1 di M2 (lavoro locale non pushabile)
+02e7e076 docs(m1): proposta terminale e autonomia (azioni fisse per Gas, poi strada B)
+c4250b86 docs(m1): sospesa la regola notturna di merge con riserve (V-1 MEDIA #357)
+280b2f95 docs(m1): piano dei test voce del mattino e decisioni della notte del 9/11
+e928846e docs(m1): sì a #352/#353, risposta vocale solo su vocale, stato Remote Control
+49a26c72 docs(m1): sì a #350 e #351, vocali Telegram opzione A
+8d1f6d91 docs(m1): sì dell'operatore a #348, #349 e voce via Telegram (opzione B)
+91a4739b docs(m1): decisioni del 7/11 — merge #346/#347, niente «Hey Gas», proposta voce Daniel
+abe75db7 docs(m1): ripartenza M1 compatta per /clear (stato 7 nov, decisioni, prossimi passi)
+7b901438 docs(m1): promemoria dell'operatore (prova roadmap a voce, accesso al terminale) e stato #339/#341
+9400296e docs(m1): pausa a voce come fine conversazione, finestra 40 s, difese contro le risposte per sbaglio
+37deeace docs(m1): merge #333/#334/#336 e ordine delle fette voce e bot
+1acb9294 docs(m1): decisioni dell'operatore sulla voce (interruzione, velocità, storia unica)
+f59c66e2 docs(m1): esito prova Jarvis sul Mac, tempi e misura avvio claude -p
+12a494a1 docs(m1): #332 mergiata
+2ec42656 docs(m1): stato #332
+ac79e75c docs(m1): nuove sessioni M2 e Mani
+7f34c387 docs(m1): ripartenza aggiornata (#331)
+a72c2fa2 docs(m1): ripartenza aggiornata (#329)
+f5e0af34 docs(m1): ripartenza aggiornata (#331)
+19cd69bb docs(m1): ripartenza della chat di coordinamento al 3 novembre
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #760-M2 (merge di main a164b42, PR #363) — verdetto integrale
+### Review #744-M1 (commit d9346212; numerata «#744» nel testo originale, rinominata per collisione con #744 di M3 — bot #366 V-2)
 
-VERDETTO: APPROVATO
+## VERDETTO: APPROVATO CON RISERVE
 
-Review #760-M2: merge di origin/main a164b42 (PR #363, terminale A) in fix/voce-audit-m2 (PR #367), in staging nel worktree /home/user/Gas-audit.
+Review #744. Ho controllato il diff staged del branch `feat/merge-automatico-z1xjx2`: 7 file di codice e test, nessuno dei file proibiti dal Wall of Shame.
 
-Controlli fatti:
-- **Stato del merge:** MERGE_HEAD è a164b42. `git ls-files -u` è vuoto e `git diff --cached --check` è pulito.
-- **File di main identici:** gas.py, modules/gate/gate.py, modules/manutenzione/__init__.py, tests/test_unit_manutenzione.py e .github/workflows/ci.yml non compaiono in `git diff --cached origin/main`, quindi sono identici a origin/main.
-- **Differenza rimasta rispetto a main:** `git diff --cached origin/main` contiene solo l'audit voce (modules/voice/server.py, stt.py, tts.py, clients/voice/browser_server.py, test voice_server/stt/tts), i report, la memoria e stato_progetto.md (+1 riga).
-- **Codice dell'audit non toccato dal merge:** la differenza staged rispetto a HEAD sui file voce, browser e test voice è di 0 righe.
-
-Elementi del diff esaminati:
-1. `modules/voice/server.py:589`: `_chiudi_tempi` scrive «tempi voce (%s): k=v.vvs». Rischio: che l'audit abbia cambiato il formato letto da log_voce. Esito: ok. Nel diff dell'audit rispetto a main nessuna riga +/- tocca «tempi», e la regex di contesto in `modules/manutenzione/__init__.py:45` richiede proprio `\(\d{3}\): (?:[a-z_]+=\d+(?:\.\d+)?s ?)+`.
-2. `modules/voice/server.py:751`: il nuovo 413 passa da `_send_json`, quindi da `_chiudi_tempi`. Rischio: una riga «tempi voce» che log_voce non riconosce. Esito: ok. Il codice ha 3 cifre e, se nella richiesta non si è ancora speso tempo, `_tempi` è vuoto e non viene scritta nessuna riga.
-3. `modules/voice/server.py:547` (`timeout = 60`) e `clients/voice/browser_server.py:362` (porta da GAS_VOICE_PORT): sono solo del server voce e del proxy, e la manutenzione non li usa. Rischio: interazione con `riavvia_voce` o `stato_gas`. Esito: ok, nessuna dipendenza.
-4. Memoria e stato_progetto: con un controllo `uniq -d` non risultano righe duplicate introdotte dal merge. Le intestazioni #736–#739 doppie esistono già su origin/main e #742-M2 è doppio già su HEAD, quindi non dipendono da questo merge.
-
-Test: ho lanciato una selezione mirata di manutenzione e voice_server con `-k "log_voce or tempi or audit"`: 22 passed. I 1207 dichiarati dall'agente non li ho rilanciati.
-
-Rischio escluso: non ho riprodotto log_voce su un gas_debug.log reale del Mac con richieste andate in timeout. Il timeout chiude il socket senza passare da `_send_json`, quindi in quel caso non c'è riga dei tempi: è coerente con l'esito, ma non l'ho provato dal vivo. Resta aperta R-752-1 (riserva BASSA dell'audit: il timeout di 60 s vale per tutto l'invio di una risposta lunga e non ferma chi manda pochi byte alla volta).
-
-Memoria: ho aggiunto la riga #760-M2 in coda a /home/user/Gas-audit/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-audit add`. Nessun commit, come richiesto. Nessuna lezione nuova.
-
-### Review #759-M2 (merge di main f4d2d4f, commit d1b5628) — verdetto integrale
-
-VERDETTO: APPROVATO
-
-Il merge staged di origin/main f4d2d4f (che contiene la #364 di M3 e la #365 di M2) nel ramo fix/voce-audit-m2 (commit 1c53cf9) è corretto. In server.py convivono tutte le correzioni dell'audit e il filtro del seguito, e l'ordine dei controlli in do_POST è quello giusto.
-
-**Stato del merge**
-- MERGE_HEAD coincide con origin/main (f4d2d4f).
-- `git ls-files -u` è vuoto e `git diff --cached --check` è pulito.
-- gas.py, modules/gate/gate.py, modules/sottofondo/__init__.py e i loro tre test sono identici a origin/main.
-- Rispetto alla base 3f08352, le righe aggiunte e tolte dall'audit sono identiche a 1c53cf9. Vale per clients/voice/browser_server.py, modules/voice/stt.py, modules/voice/tts.py, tests/test_unit_voice_tts.py e per le righe +/- di modules/voice/server.py.
+**Cosa ho rifatto io:** ho estratto l'index in una cartella a parte con `git checkout-index`, senza usare stash.
+- Suite del kernel: 1109 PASS, 0 FAIL.
+- Test di ingest e notte: 212 passed.
+- `git diff --staged --check` pulito.
+- Ho scritto 3 mutanti miei (versioni del codice col fix tolto) e i test li hanno presi tutti:
+  - B3 compressione: torna `start = 0`, fallisce T110c.
+  - B4 bot: il controllo del messaggio modificato diventa `if False`, fallisce `test_giro_da_messaggio_modificato_non_parte`.
+  - B1 ingest: il «superseded» per i chunk in più non scatta più, fallisce `test_fonte_accorciata_supera_i_chunk_vecchi`.
 
 **Elementi del diff esaminati**
-- `modules/voice/server.py:775` — controllo della pausa, seguito dal controllo della sola parola di attivazione. Ho controllato se il filtro della #365 è stato inserito prima di questi due controlli. Esito: ok. Il filtro sta dopo entrambi, quindi «Hey Jarvis, pausa» nel seguito resta una pausa.
-- `modules/voice/server.py:790` — `seguito_da_scartare` sul parlato del seguito, prima di `cervello_voce`. Ho controllato se la nuova `_PAROLA_FORTE` (con jarvis) cambia cosa viene scartato. Esito: ok, provato a mano:
-  - «Jarvis, forte.» ha due parole e non viene scartato. `cervello_voce` dà `('uso','')`, poi il seguito si chiude senza voce (`modules/voice/server.py:820`).
-  - «Forte!» viene scartato prima del cervello.
-  - «Hey Jarvis, forte: che tempo fa» va al forte.
-  - «Jarvis, Gas, forte dimmi» va al forte.
-  - «Fortemente sì» resta normale.
-- `modules/voice/server.py:118` — `_PAROLA_FORTE` riconosce `jarvis` e la parola ripetuta. Ho controllato se il merge ha perso o duplicato la riga. Esito: ok, compare una volta sola, nella forma di 1c53cf9.
-- `modules/voice/server.py:750` (tetto 413 prima di leggere il corpo) e `modules/voice/server.py:802` (400 per JSON di forma sbagliata) — Ho controllato se il ramo testo è ancora integro dopo l'unione con la #365. Esito: ok. La #365 tocca solo il ramo audio.
-- `modules/voice/server.py:1514` — la porta si apre prima del kernel e il server viene chiuso con `server_close` se il kernel fallisce. Esito: ok, l'hunk è identico.
-- `tests/test_unit_voice_server.py:19` — la riga di import diventa `BaseHTTPRequestHandler, HTTPServer`. Ho controllato se nel conflitto si è perso un import. Esito: ok. Conteggio dei test: 77 nella base, +2 da main, +7 dall'audit, totale 86. Nessun nome duplicato, quindi nessun test ne nasconde un altro. Ci sono sia `test_seguito_da_scartare_e_istruzione_severa` (riga 2561) sia `test_audit_*` (righe 2409–2532).
-- `tests/test_unit_voice_stt.py` — unito senza conflitti. Esito: ok, coperto dalla suite.
+- `gas.py:1582`: per B3, quando negli ultimi messaggi non c'è un user, tiene il turno intero partendo dall'ultimo user di `old`. Rischio esaminato: taglio cieco della storia e tool rimasti orfani. Il taglio avviene su un confine `user`, non su un indice fisso, quindi la finestra parte sempre da un user e il tool resta col suo assistant. Una storia fatta di un solo turno restituisce False. Esito: **ok**.
+- `gas.py:1858`: `_utf8_sicuro` (definito a `gas.py:928`) ripulisce contenuto e argomenti delle chiamate, cambiando i surrogati isolati in «?». Rischio: altre strade per scrivere nella storia. Esito: **riserva** (R-744-1).
+- `gas.py:935`: `_forma_storia_valida` è usata nel caricamento (`gas.py:1294`), che mette in quarantena e riparte da storia vuota, nell'unione con l'altro processo (`gas.py:1362`) e nel doctor (`gas.py:5447`), che dà FAIL e mette `history = None` così il controllo dei tool orfani viene saltato. Esito: **ok**, con una riserva BASSA (R-744-2).
+- `tools/ingest_knowledge.py:237`: i chunk attivi oltre la nuova lunghezza della fonte diventano `superseded` e non vengono mai cancellati, prima del commit della fonte. Esito: **ok**.
+- `tools/ingest_knowledge.py:113`: `chunk_text` avanza sempre: la parte tagliata ha almeno 1 carattere e non può essere vuota dopo `strip`, anche con tetto 1. Esito: **ok**.
+- `tools/ingest_knowledge.py:272`: `ingest_fonti` fa il rollback di una fonte rotta e passa alla successiva; nel log va solo il tipo dell'eccezione. Esito: **ok**.
+- `gas.py:4499`: nella ricerca nella conoscenza `break` diventa `continue`. Il numero di righe resta limitato dal `LIMIT` della query e il tetto di caratteri resta. Esito: **ok**.
+- `modules/telegram/bot.py:235`: `rendi_visibili` agisce solo sul testo mostrato, non su hash o argomenti eseguiti (lo conferma T112b). Esito: **ok**.
+- `modules/telegram/bot.py:884`: `/notte` e `/compito` da un messaggio modificato vengono rifiutati come `/clear`, prima di `lancia_giro`. Esito: **ok**.
+- `modules/notte/notte.py:928`: `_stampa_sicura` non solleva eccezioni. Esito: **ok**.
+- `gas.py:118`: `_campo_pin` è capato a 200 caratteri. Un taglio in mezzo a «&lt;» non può creare un tag. Esito: **ok**.
 
-**Test lanciati da me**
-- tests/test_unit_voice_server.py, tests/test_unit_voice_stt.py e tests/test_unit_voice_tts.py senza filtro `-k`, quindi browser inclusi: 347 passed in 5 minuti.
+**Finding**
+1. **R-744-1, BASSA**: `gas.py:3575`, il blocco aggiunto alla storia dopo una firma (output del tool e argomenti) usa `history.extend` e non passa da `_utf8_sicuro`. `_save_history` usa `ensure_ascii=False`, quindi un surrogato nell'output di un'azione firmata può ancora far fallire il salvataggio. Il fallimento è gestito (§9), ma il bug B1 lì resta aperto.
+2. **R-744-2, BASSA**: `_forma_storia_valida` non controlla `tool_calls`. Un elemento che non è un dizionario, o che non ha `id`, fa ancora sollevare `tc["id"]` nel doctor. È un caso più stretto di B2.
+3. **R-744-3, BASSA**: una fonte il cui file è sparito o il cui uri viene rifiutato esce prima del passaggio a `superseded`, quindi i suoi chunk vecchi restano attivi.
+4. **R-744-4, COSMETICA**: il log «Cronologia compressa» calcola `len(old)+keep_msgs`, che è sbagliato quando B3 sposta il turno da `old` a `recent`.
+
+**Coerenza col progetto:** tutto va nella direzione «zero crash». Nessuna simulazione di tool e nessun taglio della storia con `[-N:]`. `_get_window`, il tetto di 10 iterazioni e il tetto dell'output non sono toccati.
+
+**Cosa NON ho verificato:**
+- I 33 test di `tests/test_unit_web_browser.py` e i 5 SKIP del kernel, perché nel container mancano bwrap ed embedding.
+- Una `.gas_history.json` reale dell'operatore, che nel container non c'è: non ho potuto provare che una storia vera esistente supera il nuovo controllo di forma, quindi il rischio di quarantena di una storia legittima è escluso solo in teoria.
+- L'ingest su una knowledge reale: una sola volta, i paragrafi lunghi già presenti verranno rispezzati e quindi rimarcati `superseded` e reingeriti.
+
+Le riserve vanno tracciate in `reports/stato_progetto.md`. Ho aggiunto la riga #744 e una lezione nuova in `.claude/agents/memoria_revisore.md`, committata da sola (aefb15c7). Nessun altro file è stato modificato.
+
+### Review #748-M1 (merge 81c3c55c; «#748» nel testo originale)
+
+## VERDETTO: APPROVATO
+
+Review #748: merge staged di origin/main eebb7c0 (PR #361 e #364) nel branch feat/merge-automatico-z1xjx2, sopra i fix dell'audit notturno d9346212 (review #744). Il merge è giusto: nessuna riga persa, i due lati convivono e i test passano.
+
+Elementi del diff esaminati:
+- `gas.py:928` — `_utf8_sicuro` (fix B1 della #744) e `gas.py:935` `_forma_storia_valida` (fix B2): dopo il merge sono presenti e invariati. Il rischio era che il merge automatico perdesse una parte dei fix o delle modifiche di #364. Ho confrontato le righe aggiunte e tolte nei due sensi:
+  - quelle di HEAD rispetto alla base sono uguali a quelle dell'index rispetto a MERGE_HEAD;
+  - quelle di MERGE_HEAD rispetto alla base sono uguali a quelle dell'index rispetto a HEAD.
+  - Esito: ok, entrambi i lati sono intatti.
+- `gas.py:5258` — campo `"nome": tc.function.name` aggiunto all'evento `tool_res` (#364, progressi R7). Il rischio era un'interazione con i filtri della storia della #744. È solo un campo dell'evento: non scrive in `self.history` e non passa dalla finestra. Nessuno slicing della storia, nessun output di tool simulato. Esito: ok.
+- `gas.py:6507` — comando `sottofondo-ferma` nel main (bot #364 V-1). È una parte isolata e non entra in conflitto con i fix della #744. Esito: ok.
+- `tests/test_unit_kernel.py:1` — test fusi in automatico. Il confronto nei due sensi è pulito: ci sono sia i test T110c/T112b della #744 sia quelli della #364. L'ho rilanciato: 1113 PASS, 0 FAIL. Esito: ok.
+- `reports/stato_progetto.md:380` — unione del conflitto:
+  - rispetto a MERGE_HEAD nessuna riga tolta;
+  - rispetto a HEAD è sparita 1 riga, quella della PR #359. È sostituita dalla versione aggiornata di main («PR #359 MERGIATA 695b759»): sostituzione voluta, non una perdita.
+  - Le riserve R-744-1..4 (`reports/stato_progetto.md:379`) e la nota sull'audit (`reports/stato_progetto.md:378`) sono ancora presenti.
+  - Esito: ok.
+- `.claude/agents/memoria_revisore.md:1437` — unione del conflitto: nessuna riga tolta né rispetto a HEAD né rispetto a MERGE_HEAD. Esito: ok.
+
+Controlli generali:
+- Tutti i file che HEAD non tocca (`modules/gate/gate.py`, `modules/sottofondo/__init__.py`, `clients/voice/ascolto.py` e i loro test) nell'index sono identici a MERGE_HEAD.
+- `git ls-files -u` è vuoto, non ci sono marcatori di conflitto e `git diff --cached --check` è pulito.
+- Ho rilanciato `tests/test_unit_gate.py` e `tests/test_unit_sottofondo.py`: 944 passed.
+
+Rischio escluso: non ho rilanciato da me le suite notte, ingest e telegram_voce (1227 passed secondo l'agente). Il merge non tocca in modo nuovo i loro file: `modules/notte/notte.py`, `modules/telegram/bot.py` e `tools/ingest_knowledge.py` vengono solo da HEAD, già approvati nella #744, e sono uguali a HEAD. Non ho verificato nemmeno il comportamento con processi veri (flock, kill dei figli): già dichiarato non provato in #364 e non riproducibile qui.
+
+Riserve: nessuna nuova. Restano aperte quelle già tracciate in `reports/stato_progetto.md`: R-744-1..4 e quelle della #364.
+
+Memoria: ho aggiunto la riga contatore #748 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` (nessuna lezione nuova) e l'ho messa in stage con `git add`, senza commit, come richiesto. Durante il merge lo script di commit della memoria non va lanciato: la riga entra nel commit di merge.
+
+### Review #749-M1 (commit 69c26619)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #749-M1. Diff staged sul branch feat/merge-automatico-z1xjx2 (PR #366), 4 file. Ho letto: CLAUDE.md, stato_progetto.md (riga 379) e la coda di memoria_revisore.md.
+
+**Righe del diff controllate**
+- `tools/ingest_knowledge.py:361` — quando `totale["errori"] > 0` il programma esce con `sys.exit(1)`. Questo avviene dopo `conn.close()` e dopo il log del TOTALE. Rischi controllati:
+  - perdita delle fonti buone: no, `ingest_fonti` (tools/ingest_knowledge.py:272) fa il commit per fonte, e con un errore annulla solo la fonte rotta;
+  - chiamanti che si aspettano exit 0: no. `tests/e2e/e2e_k3k4_llm.py:97` controlla il codice 0 su fonti sane, quindi è coerente. `gas.py:4478` cita lo script solo in un commento. La modalità `--dry-run` resta con `return`.
+  - Esito: ok.
+- `tests/test_unit_ingest_fonti.py:113` — test parametrizzato con due casi: tutte le fonti ok → `main()` finisce senza uscire; c'è una fonte che è una cartella (`knowledge/manca/`) → `SystemExit` con codice 1. Ho provato il mutante da solo: tolto l'exit, il test dà «1 failed, 14 passed». Col fix: 15 passed. File ripristinato, nessuna modifica rimasta fuori dallo stage. Esito: ok.
+- `reports/stato_progetto.md:379` — rinomina in #744-M1 e R-744-M1-1..4. Annotate la chiusura di bot #366 V-3 e la riserva ve #366 V-3. Coerente. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1437` e `.claude/agents/memoria_revisore.md:1442` — rinomina in #744-M1 e #748-M1. Le voci R-744-1/2 rimaste a `.claude/agents/memoria_revisore.md:1425` e `.claude/agents/memoria_revisore.md:1427` sono di M3, quindi è giusto non toccarle. Esito: ok.
+
+**Riserva**
+- R-749-M1-1 (cosmetica): nel caso con la fonte rotta il test non controlla che la fonte «ok» sia davvero nel DB. La promessa «le altre restano caricate» non è verificata da questo test. Basta una query sul DB prima o dopo il `SystemExit`.
 
 **Cosa non ho verificato**
-- Le suite voce_ascolto, telegram_voce e sottofondo, e la suite completa: non le ho rilanciate. Mi fido delle 808 passate dichiarate dall'agente, e i file di M3 sono identici a origin/main.
-- Il comportamento reale sul Mac (Whisper, flusso H24): non si può riprodurre qui.
-- La riserva R-752-1 (timeout di `sendall` come durata totale dell'invio) resta aperta.
+- Non ho lanciato l'e2e `tests/e2e/e2e_k3k4_llm.py`: usa un LLM vero. Ho controllato solo che la sua aspettativa (rc 0) resti valida con fonti sane.
+- Non ho controllato il comportamento sulla VPS.
 
 **Memoria**
-- Ho aggiunto la riga contatore `#759-M2` (nessuna lezione nuova) in coda a /home/user/Gas-audit/.claude/agents/memoria_revisore.md.
-- Il file è in staging con `git -C /home/user/Gas-audit add`. Nessun commit, come richiesto.
+- Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga `#749-M1 — 2026-11-10 — APPROVATO CON RISERVE — ...` e l'ho messa in stage con `git add`.
+- Come mi hai chiesto, NON ho committato: non ho lanciato `scripts/commit_memoria_revisore.sh`.
 
-### Review #755-M2 (seguito di #752-M2, R-752-2 e R-752-3) — verdetto integrale
+### Review #750-M1 (commit f4979c13)
 
-VERDETTO: APPROVATO
+## VERDETTO: APPROVATO CON RISERVE
 
-Review #755-M2 (seguito della #752-M2), nel worktree /home/user/Gas-audit, solo sul delta. Le due riserve R-752-2 e R-752-3 sono chiuse: tutti e 4 i mutanti sono stati uccisi.
+Review #750-M1: diff in stage su `feat/merge-automatico-z1xjx2` (PR #366). Ho letto CLAUDE.md (sezioni 5, 8, 9), il finding B4 in `reports/stato_progetto.md` e la coda della memoria del revisore.
 
-**Cosa ho controllato nel diff**
-- **modules/voice/tts.py:161** (`list_voices`), **modules/voice/tts.py:222** (`list_shared_voices`), **modules/voice/tts.py:279** (`add_shared_voice`)
-  - Cosa fa: un HTTPException su `getresponse()` o `read()` diventa OSError, con `from exc`.
-  - Rischio esaminato: risposta rotta che esce dal gestore e lascia la richiesta senza risposta.
-  - Esito: ok. Il server prende già OSError in tutti e tre i rami (elenco voci, libreria, aggiunta) e risponde in modo dichiarato.
-  - Mutante: ho tolto la conversione una funzione alla volta (in tutte e 3, non solo in `list_voices`). Ogni volta `test_audit_b3_altre_funzioni_tts` fallisce: ucciso.
-- **clients/voice/browser_server.py:362-364**
-  - Cosa fa: se manca GAS_VOICE_URL, il proxy del browser usa GAS_VOICE_PORT.
-  - Rischio esaminato: ripiego senza test.
-  - Esito: ok. Il nuovo `test_audit_proxy_segue_gas_voice_port` copre tre casi: GAS_VOICE_PORT=9001 dà 9001, nessuna variabile dà 8765, GAS_VOICE_URL ha la precedenza.
-  - Mutante: con l'URL fisso a 8765 il caso 9001 fallisce: ucciso.
+**Elementi del diff esaminati**
 
-**Test**: suite tts + stt + test della porta: 137 passed, sulla copia dell'index.
+1. `gas.py:443` — `_info_ripiego`, funzione pura. Segna un ripiego quando chi risponde non è il primo cervello della cascata e non è `claude-cli`. Il motivo usa solo le righe di `_motivi` e si taglia a 160 caratteri con «…». Rischio esaminato: testo grezzo dell'errore (dati della richiesta) mandato su Telegram. La fonte dei motivi è `gas.py:5324`: contiene solo nome, livello classificato, codice HTTP o nome dell'eccezione, e per il cervello forte `_motivo_forte`, che è filtrato. Il test T113b lo prova: `"429 a" not in avviso`. Esito: **ok**.
+2. `gas.py:5288` — l'evento `final` ora porta anche provider, modello, ripiego e avviso, ma solo sul ramo della risposta con testo. Gli altri due `final` (`gas.py:5176` strumento negato, `gas.py:5298` turno effimero) restano invariati. Rischio esaminato: campi incoerenti tra i rami, o una lista dei cervelli vuota. Non può succedere: un `final` esiste solo dentro il ciclo sui cervelli, quindi `providers[0]` c'è sempre. Con `/forte` la cascata è solo `claude-cli`, quindi non c'è mai ripiego. Esito: **ok**.
+3. `modules/telegram/bot.py:952` — la riga di avviso entra in `parts` (il testo), non in `finali` (la parte detta a voce). Rischio esaminato: l'avviso letto a voce, oppure finito nella sintesi. `_turno_con_finale` costruisce la parte parlata solo da `finali`. Il test `tests/test_unit_telegram_voce.py:329` controlla `sintesi == ["Sono le dieci."]`. Esito: **ok**.
+4. `gas.py:6559` — la riga in terminale si stampa solo se `avviso_ripiego` non è vuoto. Rischio esaminato: chiave assente in un altro tipo di `final`. Si usa `.get`, quindi non si rompe. Esito: **ok**.
+5. `tests/test_unit_kernel.py:12628` — T113a-f. T113c fa il giro completo con uno strumento chiamato sul cervello di riserva e controlla che la storia resti coerente (§7). Nel diff niente taglia la storia inviata ai provider: `_ruoli[-4:]` è un controllo sui ruoli dentro il test, non sulla storia. Rischio esaminato: test che fingono l'output di uno strumento (Wall of Shame). `data_ora` viene eseguito davvero; il client finto simula solo il provider, ed è ammesso. Esito: **ok**.
+6. `tools/ingest_knowledge.py:363` + `tests/test_unit_ingest_fonti.py:119` — commento corretto; test parametrizzato con un file inesistente e un percorso rifiutato (`../fuori.txt`), più il controllo che la fonte buona resti attiva nel DB. Chiude R-749-M1-1 (la mia riserva della review precedente: il test non controllava che la fonte buona fosse davvero nel DB). Esito: **ok**, con la riserva 3.
 
-**Nota (BASSA, non bloccante)**: in `add_shared_voice` la risposta può rompersi DOPO che ElevenLabs ha già aggiunto la voce. Il server però risponde «Errore di rete verso ElevenLabs» invece di «esito incerto, controlla l'account» (come fa già quando lo status è 200 ma l'id manca).
+**Riserve**
 
-**Cosa NON ho verificato**
-- R-752-1 resta aperta: lo stream NDJSON con risposte lunghe e il timeout di 60 s su `sendall` vanno misurati sul Mac, qui non si può riprodurre.
-- Non ho rieseguito tutte le 373 dichiarate (prova_voci e i test del server oltre a quello della porta): il delta tocca solo tts.py e i due test nuovi.
+- **R-750-M1-1 (BASSA)**: se il primo cervello della cascata non ha mai la chiave (per esempio una VPS senza `GEMINI_API_KEY`), ogni risposta su Telegram e in terminale porta «↪ … riserva: gemini-…: GEMINI_API_KEY non impostata». È vero (§8), ma è rumoroso. Da decidere più avanti se un cervello «non configurato» debba contare come ripiego.
+- **R-750-M1-2 (COSMETICA)**: T113f controlla solo che la stringa compaia nel codice di `main`, non la stampa vera del terminale.
+- **R-750-M1-3 (COSMETICA)**: in `tests/test_unit_ingest_fonti.py:137`, `with sqlite3.connect(...)` salva le modifiche ma non chiude la connessione. Inoltre il caso `../fuori.txt` non controlla che l'errore sia proprio «uri fuori da knowledge/»: passerebbe anche come file mancante.
 
-**Memoria**: riga `#755-M2` aggiunta in coda a /home/user/Gas-audit/.claude/agents/memoria_revisore.md e messa in staging con `git -C /home/user/Gas-audit add`. Nessun commit, come chiesto. Nessuna lezione nuova.
+**Rischi esclusi**
 
-### Review #752-M2 (correzioni dell'audit) — verdetto integrale
+- **Test NON rilanciati da me**: l'esecuzione di `python tests/test_unit_kernel.py` e `pytest` è stata negata in questa sessione. Non ho prove indipendenti dei conteggi (1119/0, 17, 74) né dei test mutanti dichiarati (5 e 2 fallimenti): li prendo dall'agente. L'agente o la CI devono rilanciarli prima del merge.
+- **Server voce, notte e sottofondo** non li ho riletti uno per uno. La voce resta invariata per scelta e i campi nuovi sono solo aggiunti all'evento, quindi chi legge solo `content` non si rompe. Comportamento con Telegram reale e VPS non verificato: non si riproduce qui.
 
-VERDETTO: APPROVATO CON RISERVE
+**Memoria del revisore**: ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga #750-M1 e una lezione. **Il `git add` è stato negato** in questa sessione: l'agente deve eseguire `git add .claude/agents/memoria_revisore.md`. Come richiesto, non ho fatto commit né push.
 
-Review #752-M2 del diff STAGED in /home/user/Gas-audit (branch fix/voce-audit-m2, base 3f08352). Prima della review ho letto CLAUDE.md (sez. 5), le parti utili di stato_progetto.md e la coda della memoria. Nessun antipattern del Wall of Shame: niente slicing della history, niente output dei tool simulato. Cap 10 iterazioni, `_get_window` e i guardrail non sono toccati.
+### Review #751-M1 (merge 769df833)
 
-**Cosa ho controllato nel codice**
-- modules/voice/server.py:495 — `timeout = 60` sul VoiceHandler.
-  - Rischio: tagliare le risposte lunghe del forte.
-  - Esito: ok, con riserva.
-    - Mentre il kernel calcola (fino a 300 s) il socket non fa operazioni, quindi il timeout non scatta.
-    - Il timeout però vale anche su `sendall`, e da Python 3.5 conta la durata TOTALE dell'invio, non il singolo pezzo. L'ho provato con un socketpair: TimeoutError a 2,0 s anche se il lettore riceveva.
-    - Il client (clients/voice/ascolto.py:614) legge una riga NDJSON, suona la frase e solo dopo legge la successiva. Quando i buffer si riempiono, ogni riga deve partire entro 60 s mentre il client suona la frase prima. Con frasi normali va bene, ma va misurato sul Mac con una risposta lunga.
-    - Sulla lettura il timeout vale per ogni singola recv. Basta per una connessione muta, non per lo slowloris (1 byte ogni 59 s blocca ancora l'unico thread, anche prima del token).
-- modules/voice/server.py:119 — `_PAROLA_FORTE` con jarvis e `(...)*`.
-  - Falsi positivi: nessuno nuovo. Non scattano «Jarvis, fortemente», «Jarvis parla più forte», «Jarvisforte x», «Gas e forte x», «ciao forte x», «Gas gasolio forte».
-  - «Jarvis forte-mente ok» va al forte con richiesta «mente ok». Lo faceva già «Gas forte-mente» col vecchio regex. Sbaglia verso il forte, cioè costa budget ma non manda dati ai gratuiti.
-  - Il ramo «uso» è invariato: «jarvis jarvis forte» e «Hey Jarvis, forte.» danno ("uso", "").
-  - Backtracking: nessun problema, 20000 caratteri patologici in circa 2 ms.
-  - Il cambio vale anche per i vocali di Telegram, che usano `cervello_voce` (modules/telegram/bot.py:969). È coerente con lo scopo.
-- modules/voice/server.py:698 — 413 sul corpo. Esito: ok.
-  - Il controllo viene DOPO `_autorizza` (chi non ha il token riceve 401 e il corpo non viene letto) e PRIMA di `rfile.read`.
-  - Il corpo non letto non sporca la richiesta successiva: il server risponde in HTTP/1.0 e chiude la connessione dopo ogni risposta.
-- modules/voice/server.py:747 — JSON di forma sbagliata dà 400. Esito: ok. `{"prompt": 0}` o `false` finiscono in «mancante o vuoto», sempre 400.
-- modules/voice/server.py:754 — 413 sul prompt oltre 20000 caratteri. Esito: ok.
-- modules/voice/server.py:1459 — porta aperta prima del kernel. Esito: ok. Su OSError esce con return 1 e un messaggio chiaro; su `BaseException` chiude il server e rilancia l'eccezione.
-- modules/voice/stt.py:256 e modules/voice/tts.py:122 — HTTPException diventa OSError. Esito: ok. Il server (`_do_stt`) e bot.py:1084 (`except Exception`) prendono già OSError.
-  - Riserva: le altre funzioni di tts restano scoperte, cioè l'elenco voci (modules/voice/tts.py:158), la libreria (modules/voice/tts.py:216) e l'aggiunta di una voce (modules/voice/tts.py:270). Il server prende solo ElevenLabsTTSError e OSError, quindi un IncompleteRead esce dal gestore: il server non crasha, ma la richiesta resta senza risposta e lo stack finisce su stderr, non in gas_debug.log. Nell'aggiunta di una voce il contatore orario è già stato incrementato e l'esito resta incerto senza nessun messaggio.
-- clients/voice/browser_server.py:362 — se manca GAS_VOICE_URL, il proxy usa GAS_VOICE_PORT (stesso parsing di clients/voice/ascolto.py:246). Esito: riserva, nessun test copre questo ripiego (mutante sopravvissuto).
-- clients/voice/browser_server.py:70 (`_valore_dotenv`) e il nuovo `_load_dotenv` — confrontati con `_carica_dotenv` di gas.py: regole equivalenti, vince la prima riga, una riga con virgolette non chiuse lascia valere quella dopo. Esito: ok. Differenza già presente prima: il proxy non rispetta GAS_NO_DOTENV.
+## VERDETTO: APPROVATO
 
-**Prova dei mutanti** (12, sulla copia dell'index): 11 uccisi.
-- Uccisi: regex senza jarvis, regex con `?` al posto di `*`, 413 sul corpo tolto, `>` cambiato in `>=` sul prompt, isinstance del prompt tolto, `server_close` tolto, `return 1` della porta occupata tolto, B3 di stt e di tts, `return None` delle virgolette non chiuse, rimozione di `export`.
-- Sopravvissuto: il ripiego GAS_VOICE_PORT del browser (nessun test lo copre).
+Review #751-M1. Ho controllato il merge in stage di origin/main a164b42 (contiene la #363 sul terminale A e la #365 sulla voce) nel branch feat/merge-automatico-z1xjx2 (PR #366).
 
-**Test**: suite voice server, stt e tts con `-k "not browser"`: 310 passed. Test con «browser» nel nome: 28 passed. Attenzione: `-k "not browser"` esclude anche i test nuovi b4 del dotenv, che hanno «browser» nel nome. Li ho fatti girare a parte e passano.
+**Controllo che nessuna riga sia andata persa.** Per ogni file di codice e di test ho confrontato le impronte delle modifiche (git patch-id):
+- **Le nostre modifiche** (da eebb7c0 a HEAD) coincidono con il diff in stage rispetto a origin/main. Vale per gas.py, modules/notte/notte.py, modules/telegram/bot.py, tools/ingest_knowledge.py e i test kernel, notte, ingest_fonti e telegram_voce.
+- **Le modifiche di main** (da eebb7c0 a origin/main) coincidono con il diff in stage rispetto a HEAD. Vale per gas.py, modules/manutenzione/__init__.py, modules/voice/server.py, modules/gate/gate.py e tests/test_unit_manutenzione.py.
+- **gas.py**, fuso in automatico, ha impronte identiche su tutti e due i lati: nessuna riga persa né duplicata.
+- `git ls-files -u` è vuoto, non ci sono marcatori di conflitto e `--check` è pulito.
 
-**Riserve** (da segnare in stato_progetto.md)
-- R-752-1 (BASSA): il timeout di 60 s vale anche su sendall come durata totale. Misurare sul Mac lo stream NDJSON con risposte lunghe. Lo slowloris non è coperto.
-- R-752-2 (BASSA): la conversione B3 manca nell'elenco voci, nella libreria e nell'aggiunta di una voce (modules/voice/tts.py:158/216/270).
-- R-752-3 (BASSA): manca un test per il ripiego GAS_VOICE_PORT del proxy, ad esempio GAS_VOICE_PORT=9001 deve dare `BrowserProxyHandler.voice_port == 9001`.
-- Cosmetica: un TimeoutError durante `rfile.read` finisce come traceback su stderr invece che in gas_debug.log.
+Elementi esaminati:
+- `gas.py:5034` — aggiunge lo strumento manutenzione all'offerta dei turni a testo (`_manutenzione_offerta`, gas.py:4087). Rischio: che si sovrapponga all'arricchimento del ripiego del cervello di riserva (B4) o lo alteri. Esito: ok. Il blocco lavora solo su `_offerta`, prima del ciclo, e non tocca `_motivi` né `providers`.
+- `gas.py:5352` — l'evento final del ramo `msg.content` porta `**_info_ripiego(...)` (B4). Rischio: che la fusione con il blocco del cancello della manutenzione (gas.py:5241-5250) abbia spostato o duplicato il final. Esito: ok. C'è un solo yield final arricchito, e il ramo effimero (voce) resta senza ripiego.
+- `gas.py:4894` — esecuzione di manutenzione dentro `execute_tool_call`, con diniego fuori dai turni a testo. Rischio: conflitto con la catena elif del nostro lato. Esito: ok, il codice è identico a main.
+- `.claude/agents/memoria_revisore.md:1451` — la memoria è stata risolta per unione. Rischio: perdere righe uniche. Esito: ok. Il confronto con comm tra HEAD/MERGE_HEAD e lo stage non trova righe uniche perse. L'unica differenza è un doppione identico di `#742-M2` presente due volte in HEAD e ora una volta sola, come su main: è corretto.
 
-**Cosa NON ho verificato**
-- Il comportamento reale sul Mac (dimensione dei buffer di loopback, durata delle frasi, telefono in rete privata): non riproducibile qui.
-- Le suite di ascolto, sottofondo, telegram_voce, contesto e prova_voci non le ho rieseguite: il diff non le tocca. Il totale dichiarato di 813 non l'ho verificato.
+Test che ho rilanciato:
+- tests/test_unit_kernel.py: 1119 PASS, 0 FAIL (compresi T113e e T113f sul ripiego).
+- pytest su voice_server, manutenzione e telegram_voce con `-k "not browser"`: 291 passed, 21 deselected.
 
-**Memoria**: aggiunti in coda a /home/user/Gas-audit/.claude/agents/memoria_revisore.md la riga `#752-M2` e due lezioni (sendall col timeout totale; `-k "not browser"` che esclude test nuovi). File messo in staging con `git -C /home/user/Gas-audit add`. Nessun commit fatto, come richiesto.
+Cosa NON ho verificato:
+- **Test pytest di notte, ingest_fonti, sottofondo e gate:** non li ho rilanciati. Mi fido del conteggio dell'agente (1285 passed), perché quei file non sono toccati dal lato di main.
+- **Test con `-k browser`:** esclusi perché richiedono un browser, non disponibile qui.
+- **Report presi dal nostro lato** (handoff.md, ultimo_report.md, diff_sessione.md): non li ho rivisti, verranno riscritti da /fine-task.
+- **Comportamento reale sul Mac:** non verificato, sia la riga di avviso del ripiego su Telegram insieme a una richiesta di manutenzione firmata, sia il riavvio della voce. Non è riproducibile qui.
+
+Memoria: ho aggiunto la riga `#751-M1 — 2026-11-10 — APPROVATO — ...` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho messa in stage (`git add`). Nessun commit, come richiesto. Dopo l'aggiunta `--check` è pulito e `ls-files -u` dà 0. Nessuna lezione nuova.
+
+### Review #752-M1 (merge b5291a52)
+
+## VERDETTO: APPROVATO
+
+Il merge di origin/main 802fc04 (#367) dentro la #366 è pulito: nessuna riga persa da nessuno dei due lati e nessun conflitto rimasto.
+
+**Elementi del diff esaminati:**
+- `modules/voice/server.py:495` — timeout del socket e resto dell'audit voce arrivati con la #367. Rischio: una risoluzione dei conflitti che altera il codice di main. Esito ok: `git diff --cached origin/main -- modules/voice clients tests/test_unit_voice_*.py` dà 0 righe, quindi modules/voice, clients/voice/browser_server.py e i 3 test voice sono identici a main.
+- `tests/test_unit_voice_tts.py:1` — test B3 dell'audit (+30 righe). Rischio: test persi o duplicati con l'unione. Esito ok: file identico a origin/main.
+- `reports/stato_progetto.md:379` — aggiunte le due riserve del 3° giro: ve #366 V-2 (`chunk_text`) e bot #366 V-1 (Flash-lite scelto dal router). Rischio: riserva descritta male. Esito ok: l'ho confermata leggendo `tools/ingest_knowledge.py:137` e `tools/ingest_knowledge.py:141`. Il primo paragrafo di un nuovo chunk non conta il +2 del separatore, quindi un chunk può superare `chunk_chars` di 2. Nessuna riga di origin/main persa nello stato (confronto riga per riga).
+- `.claude/agents/memoria_revisore.md:1474` — memoria unita dai due lati. Rischio: righe uniche perse. Esito ok: tutte le righe di HEAD e di origin/main sono nel file staged. I doppioni #746/#747 di M3 e la lezione «CARTELLA di stato» c'erano già in HEAD, non li introduce il merge.
+- Contesto: `gas.py:1` (insieme a bot.py, notte.py, ingest_knowledge.py e ai 4 test del nostro lato). Rischio: modifiche della #366 perse nel merge. Esito ok: il patch-id da a164b42 a HEAD coincide con quello dello staged rispetto a origin/main per tutti e 8 i file.
+
+**Controlli meccanici:**
+- MERGE_HEAD = origin/main = 802fc04.
+- `ls-files -u` vuoto, `--check` pulito, nessun marcatore di conflitto in reports/ e in memoria.
+
+**Cosa NON ho verificato:**
+- Non ho rilanciato i test: kernel 1119/0 e pytest 472 passed sono i numeri che mi hai dato tu. Il codice delle due PR è disgiunto e identico ai rispettivi lati, quindi i test dovrebbero restare uguali.
+- I test con «browser» nel nome sono esclusi da `-k "not browser"`. Dato che il codice voce/browser è identico a main, conta la CI di main.
+- handoff, ultimo_report e diff_sessione presi dal nostro lato: non li ho controllati, li riscrive /fine-task.
+
+**Memoria:** ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#752-M1 — 2026-11-10 — APPROVATO — …» e l'ho messa in stage. Come mi hai chiesto non l'ho committata e non ho lanciato commit_memoria_revisore.sh (con il merge in corso fallirebbe comunque). Nessuna lezione nuova.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- gas.py non toccato. Test nuovi: `test_audit_b1_timeout_del_socket`, `test_audit_b5_json_di_forma_sbagliata_400` (6 casi), `test_audit_tetti_413`, `test_audit_porta_occupata_messaggio_chiaro`, `test_audit_b4_dotenv_del_browser_come_gas` (7 casi), `test_audit_b4_dotenv_non_sovrascrive`, `test_audit_proxy_segue_gas_voice_port` (3 casi), casi «Hey Jarvis, forte» in `test_v1_parola_forte_parlata` (server); `test_audit_b3_risposta_rotta_diventa_oserror` (stt e tts), `test_audit_b3_altre_funzioni_tts` (tts). `test_r8_avvio_con_rete_privata_dichiarata_parte` adattato (porta prima del kernel).
-- Dopo il merge di main (d1b5628): `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voce_ascolto.py tests/test_unit_telegram_voce.py tests/test_unit_sottofondo.py -k "audit or not browser"`:
+- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): main a164b42 = 1104 PASS / 0 FAIL (verifica esterna 3° giro); con questa PR 1119 PASS / 0 FAIL (dopo i merge di #363/#365 e di #367). I test nuovi della PR sul codice di main: 1106 PASS / 12 FAIL (T110a-c, T111a-b, T112a, T113a-d; verifica esterna 3° giro).
+- pytest dopo il merge di #367: `python -m pytest -q tests/test_unit_telegram_voce.py tests/test_unit_voice_server.py tests/test_unit_ingest_fonti.py tests/test_unit_notte.py -k "not browser"` → 472 passed, 28 deselected. Dopo il merge di #363/#365: notte+ingest_fonti+sottofondo+gate+telegram_voce+manutenzione → 1285 passed.
 
 ```
-808 passed, 25 deselected in 80.53s (0:01:20)
+=== RIEPILOGO: 1119 PASS, 0 FAIL ===
 ```
 
-- Revisore #759-M2: voice_server + stt + tts con i test browser: 347 passed.
+Fuori scope: 5 SKIP del kernel (T13a/b/c/e, T30e), test con «browser» e tests/test_unit_web_browser.py nel container (mancano bwrap, browser e il modello di embedding; la CI li installa).
 
 ## §6 STATO CI
 
-CI NON VERIFICATA con `gh` (non autenticato nel cloud).
-- ea3033b: handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE); unit-suite non letta a fine run prima del merge di main.
-- 1c53cf9, d1b5628 e 1af440e: nessuna run propria letta.
-- Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumento GitHub sulla PR #366:
+- 55a0c1c1: handoff-check success; verifica-bot success (APPROVATO CON RISERVE, una BASSA); check suite completata (evento GitHub check_suite.completed, nessun check fallito).
+- f4979c13: handoff-check failure e verifica-bot failure (handoff fermo, chiuso in 55a0c1c1).
+- 802e9701: handoff-check success; verifica-bot failure (chiuso con B4 in f4979c13).
+- 81c3c55c: handoff-check failure; verifica-bot failure (handoff mancante, chiuso in 802e9701).
+- 69c26619, 769df833: nessuna run su questo SHA (pushati insieme al commit di testa successivo).
+- b5291a52: nessuna run su questo SHA (pushato insieme al commit di fine-task).
+- Commit precedenti della sessione (fd6c2425, 844e79aa, d9346212, aefb15c7, 39098377, 4d8dcdd6 e i docs(m1)): nessuna run propria con PR; contenuto testato dalle run dei commit di testa.
+- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-752-1 BASSA: il timeout di 60 s vale su tutto il `sendall`: misurare sul Mac uno stream NDJSON lungo; lo slowloris (1 byte ogni 59 s) non è coperto.
-- R-752-2 e R-752-3 BASSE: CHIUSE (1c53cf9, review #755-M2).
-- Nota #755: in `add_shared_voice` una risposta rotta dopo l'aggiunta riuscita dice «errore di rete» invece di «esito incerto» (BASSA).
-- Cosmetica #752: un TimeoutError durante `rfile.read` finisce su stderr invece che in gas_debug.log.
-- Bot #367 su ea3033b V-1 BASSA: GAS_VOICE_PORT fuori 0-65535 (es. 99999) → OverflowError/ValueError con traceback (server e proxy), non una regressione.
-- Bot #367 V-2 BASSA: il test del timeout prova solo intestazioni ferme, non un corpo dichiarato che non arriva; soglia di 4,5 s stretta per un runner lento.
-- Verifica esterna #367 V-3/V-4: /voci/prova e /voci/aggiungi hanno già un tetto loro (4096 byte); GAS_VOICE_PORT filtrato a sole cifre senza avviso (COSMETICA).
-- Sospetti di M1 non toccati: «forte» durante «Sì, signore?», blocco per IP condiviso su 127.0.0.1, connessione ElevenLabs riusata.
+- R-744-M1-1 BASSA — `history.extend` dopo una firma non passa da `_utf8_sicuro`.
+- R-744-M1-2 BASSA — `_forma_storia_valida` non controlla `tool_calls`.
+- R-744-M1-3 BASSA — fonte con file sparito/uri rifiutato tiene attivi i chunk vecchi.
+- R-744-M1-4 COSMETICA — log «Cronologia compressa» con conteggio sbagliato.
+- R-750-M1-1 BASSA — primo cervello non configurato → riga di riserva a ogni risposta (decisione in §0).
+- R-750-M1-2 COSMETICA — T113f controlla solo il codice di main, non la stampa vera.
+- R-750-M1-3 COSMETICA — connessione sqlite3 non chiusa nel test dell'ingest.
+- Bot #366 3° giro V-1 BASSA — Flash-lite scelto dal router non dichiarato (decisione in §0).
+- Ve #366 2° giro V-3 BASSA — un solo turno lungo (ultimo_user==0) non viene mai compresso.
+- Ve #366 3° giro V-2 BASSA — `chunk_text` può superare `chunk_chars` di 2 (logica preesistente).
+- Kernel B5/B6 BASSE non implementati.

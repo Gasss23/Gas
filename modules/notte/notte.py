@@ -841,7 +841,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 # occupato; ENOLCK/EINVAL (fs senza flock) vanno come giro interrotto.
                 if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
                     raise
-                print("Un altro giro notturno è già in corso: esco.")
+                _stampa_sicura("Un altro giro notturno è già in corso: esco.")
                 logging.warning("notte: giro NON avviato, lock occupato da un altro giro")
                 da_notificare = (_ora_locale(), [], [], GIRO_OCCUPATO)
                 return 2
@@ -925,7 +925,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
             _scrivi_atomico(notte_dir / RIEPILOGO, testo)
         except Exception as e:
             logging.warning("notte: riepilogo non scritto: %s", e)
-        print(testo)
+        _stampa_sicura(testo)
         # inviato a lock rilasciato (V-2 #169)
         da_notificare = (inizio, esiti, avvisi, None, _lezioni_in_attesa(kernel), stato)
         if saltati_r7:  # R-406-1: un salto per crash ripetuti è un ko, anche se era l'unico
@@ -937,7 +937,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         return 0 if all(e["esito"] == "ok" for e in esiti) else 1
     except Exception as e:
         logging.warning("notte: giro interrotto: %s", e)
-        print(f"Giro notturno interrotto: {type(e).__name__} (dettagli in gas_debug.log)")
+        _stampa_sicura(f"Giro notturno interrotto: {type(e).__name__} (dettagli in gas_debug.log)")
         # Solo il nome del tipo: il messaggio dell'eccezione può contenere testo non fidato.
         da_notificare = (_ora_locale(),
                          [], [], type(e).__name__)
