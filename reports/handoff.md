@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #364 (https://github.com/Gasss23/Gas/pull/364). Revisore APPROVATO CON RISERVE (solo BASSA/COSMETICA); il bot sul giro precedente (dc6c25a) aveva dato una MEDIA, corretta in 47c8aa3. L'agente mergia da solo solo con il nuovo verdetto del bot APPROVATO pulito; altrimenti serve il sì dell'operatore via M1.
+1. Merge della PR #364 (https://github.com/Gasss23/Gas/pull/364): contiene una correzione di SICUREZZA al cancello (`.gas_sottofondo/` mai scrivibile, dall'audit notturno di M1), quindi serve il sì dell'operatore via M1 anche col verdetto del bot APPROVATO. Revisore APPROVATO CON RISERVE (solo BASSA/COSMETICA); bot su a7eb3fc APPROVATA con riserve BASSE.
 
 ---
 
@@ -16,7 +16,9 @@
 - **Fetta 1 — ripresa automatica del compito in sottofondo dopo un crash**: `FATTA` — `modules/sottofondo/__init__.py` (ripresa sotto lock, max `GAS_SOTTOFONDO_RIPRESE`, progressi `<id>.passi`), `gas.py` (`tool_res` porta `nome`). Review #736 → #737 → #738 APPROVATO CON RISERVE.
 - **Bot #364 su dc6c25a (NON approvata, V-1 MEDIA + V-2 BASSA)**: `FATTA` — avviso a ogni ripresa, comando `python gas.py sottofondo-ferma` (segno `<id>.ferma` sotto il lock, kill solo del nostro figlio, compito «ko»), niente ripresa oltre la durata dalla prima creazione. Review #743 → #744 → #745 APPROVATO CON RISERVE (commit 47c8aa3).
 - **Verifica esterna #364 (su dc6c25a)**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA (https://github.com/Gasss23/Gas/pull/364#issuecomment-6755289640); V-1 BASSA tracciata in stato_progetto.
-- **Merge di origin/main nel branch**: `FATTA` — #360 di M2 (review #739 APPROVATO) e #362 di M4 (solo report e memoria del revisore, nessun codice).
+- **Bot #364 2° giro (a7eb3fc)**: APPROVATA (check verifica-bot success), riserve BASSE V-1 (avviso di ripresa e tetto notifiche) e V-2 (cartella di lancio di `sottofondo-ferma`), COSMETICA V-3 (descrizione PR, corretta). Verifica esterna 2° giro: APPROVATO CON RISERVE, nessuna ALTA/MEDIA (https://github.com/Gasss23/Gas/pull/364#issuecomment-6755522719). Riserve in stato_progetto.
+- **Audit notturno (M1): `.gas_sottofondo/` scrivibile senza firma**: `FATTA` — denylist + livello 3 in `modules/gate/gate.py` (commit 1537f0c), test gate e kernel T6s. Review #746 APPROVATO CON RISERVE.
+- **Merge di origin/main nel branch**: `FATTA` — #360 di M2 (review #739 APPROVATO), #362 di M4 (solo report e memoria del revisore, nessun codice), #361 (review #747 APPROVATO).
 - **Ripresa al boot / piano scritto dal modello / lista dei lavori ricorrenti**: `DEFERITA` — fette successive della proposta.
 
 ---
@@ -24,24 +26,30 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  12 +
+ .claude/agents/memoria_revisore.md |  16 +
  gas.py                             |   8 +-
+ modules/gate/gate.py               |   4 +
  modules/sottofondo/__init__.py     | 294 +-
- reports/diff_sessione.md           |  15 +-
+ reports/diff_sessione.md           |  22 +-
  reports/handoff.md                 | n/d
  reports/proposta_r7_direttore.md   |  28 +
  reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |   2 +-
+ reports/stato_progetto.md          |   2 +
  reports/ultimo_report.md           |  33 +-
- tests/test_unit_kernel.py          |   4 +-
+ tests/test_unit_gate.py            |   7 +
+ tests/test_unit_kernel.py          |  13 +
  tests/test_unit_sottofondo.py      | 358 +
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta. BASE = 2dd0e8c (merge-base con origin/main dopo il merge della #362).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta. BASE = 3f08352 (merge-base con origin/main dopo il merge della #361).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5c3af803 Merge origin/main (#361) in feat/r7-direttore-m3 — review #747
+1537f0c7 fix(gate): .gas_sottofondo mai scrivibile né leggibile da Gas (audit notturno, R7, M3)
+dd7b36c1 chore(revisore): memoria review #746 — APPROVATO CON RISERVE
+a7eb3fc0 docs(fine-task): R7 fetta 1 — correzioni del bot #364 (avviso alla ripresa, sottofondo-ferma, tetto di tempo), merge della #362 (M3)
 00499543 Merge origin/main (#362 di M4) in feat/r7-direttore-m3 — solo report e memoria del revisore
 47c8aa3d fix(R7): bot #364 — avviso a ogni ripresa e comando sottofondo-ferma; tetto di tempo dalla prima creazione (M3)
 30720bba chore(revisore): memoria review #745 — APPROVATO CON RISERVE
@@ -59,7 +67,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 3101011 (motore): tre giri, #736 → #737 → #738. Commit ef18a4e (merge): #739. Commit 47c8aa3 (correzioni bot #364): tre giri, #743 → #744 → #745. Il merge 0049954 (#362) non tocca il perimetro di codice. Verdetti integrali.
+Commit 3101011 (motore): tre giri, #736 → #737 → #738. Commit ef18a4e (merge): #739. Commit 47c8aa3 (correzioni bot #364): tre giri, #743 → #744 → #745. Il merge 0049954 (#362) non tocca il perimetro di codice. Commit 1537f0c (sicurezza, cancello): #746. Merge 5c3af80 (#361): #747. Verdetti integrali.
 
 ### Review #736
 
@@ -280,35 +288,95 @@ Sesto giro sul branch feat/r7-direttore-m3 (`git diff -- gas.py modules/ tests/`
 
 **Memoria**: ho aggiunto in .claude/agents/memoria_revisore.md la riga #745 e una lezione nuova (un test che registra solo la chiamata del lock non prova la mutua esclusione), poi ho lanciato `scripts/commit_memoria_revisore.sh` per committare solo quel file.
 
+### Review #746 (sicurezza: `.gas_sottofondo` nel cancello)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ho fatto le letture obbligatorie: CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md con Grep mirato e la mia memoria `.claude/agents/memoria_revisore.md`. Ho applicato la lezione registrata nelle review #559-M1 e #498: ogni nuovo file di stato del kernel deve stare in tutte le liste sorelle e va provato col kernel vero.
+
+**Elementi del diff esaminati**
+- modules/gate/gate.py:132 — aggiunge `.gas_sottofondo` a `_DENY_PREFIXES`, la lista dei percorsi negati. Rischi esaminati: varianti di percorso e nuova cartella `.gas_sottofondo_old/`. Ho provato a mano 12 varianti: `./`, `.GAS_SOTTOFONDO`, `x/../`, punto o spazio finale, punto fullwidth, carattere invisibile U+200B nel nome, `dati/.gas_sottofondo/`. Tutte danno DENY sia in `write_file` sia in `read_file`. La nuova `.gas_sottofondo_old/` è negata anche lei, perché il confronto è per prefisso, come già per `.gas_notte`. Esito: ok.
+- modules/gate/gate.py:316 — aggiunge `.gas_sottofondo` a `_LIVELLO3_PREFISSI`, i percorsi mai scrivibili. Di conseguenza entra anche in `_LETTURA_NEGATA` (modules/gate/gate.py:339), che è usata da `lettura_consentita` e da `run_command`. Rischio esaminato: la scrittura con firma e gli altri strumenti di lettura.
+  - Nel cancello, `elenca_cartella`, `cerca_testo`, `conta_file`, `leggi_righe` e `run_command "cat .gas_sottofondo/a.json"` danno tutti DENY.
+  - Nel kernel vero (in una cartella temporanea): `elenca_cartella` e `cerca_testo` sulla radice «.» saltano la cartella («5 voci protette omesse»). Il segreto scritto dentro non esce.
+  - Un symlink dal nome innocuo `link` che punta a `.gas_sottofondo` viene negato in `read_file`, `leggi_righe` ed `elenca_cartella`. In `write_file` risponde «questo file non si scrive mai, nemmeno con firma»: lo ferma il ricontrollo sul percorso risolto in `_risolvi_lettura` (gas.py:2669).
+  - Esito: ok.
+- tests/test_unit_kernel.py:161 — test T6s: `write_file` con `firmata` False e True, controlla che il file non esista. Rischio esaminato: un test che passa anche senza la correzione. Ho tolto la correzione dal cancello: T6s dà 4 FAIL («Successo: File … aggiornato») e tests/test_unit_gate.py dà 10 failed. I test colpiscono davvero. Esito: ok.
+- tests/test_unit_gate.py:359 — elenco con id del compito, `attivo.json`, `.passi`, `.ferma`, `.lock` e le varianti. Esito: ok.
+- Citazione di contesto, modules/sottofondo/__init__.py:282 — il codice del kernel scrive `.ferma`, `.passi` e i compiti con `Path` diretto (`_scrivi_privato`), non tramite `write_file`/`read_file`. modules/voice/server.py:891 chiama `sottofondo.da_leggere(root)` in-process. Quindi il kernel non si rompe: con la correzione, 944 passed tra tests/test_unit_gate.py e tests/test_unit_sottofondo.py, e la suite del kernel dà 1104 PASS 0 FAIL, riprodotti. Esito: ok.
+
+**Riserve**
+- R-746-1 BASSA, problema che esisteva già: `run_command "grep -r … ."` o `ls -a` sulla radice resta IRREVERSIBLE, quindi esegue dopo il cancello. Dentro la sandbox bwrap, in sola lettura, la cartella è leggibile. Vale anche per `.gas_notte`, `.gas_memory.db` ecc.: nessun rischio di scrittura (montaggio in sola lettura), quindi il problema M1 non si riapre. Da tracciare come limite generale della denylist su `run_command`.
+- R-746-2 COSMETICA, parità tra liste: `.gas_sottofondo` (come già `.gas_notte`) manca da `_SAFE_PATH_DENY_PREFIXES` (gas.py:2061). Il ricontrollo del livello sul percorso risolto la copre, come ho misurato col symlink. `.gitignore` la esclude già (riga 24).
+
+**Rischi esclusi (non verificati)**
+- Comportamento dentro bwrap reale su VPS o Mac: la prova di `run_command` è solo di classificazione del cancello.
+- Hard link verso file dentro `.gas_sottofondo`: c'è un controllo già esistente su `st_nlink`, ma non l'ho provato per questa cartella.
+- Il processo figlio in sottofondo: ho verificato solo che non usi `write_file` per la propria coda (grep), non l'ho eseguito.
+
+Nessun antipattern della sezione 5 nel diff: nessuna simulazione di tool, nessun taglio della history. La riga contatore #746 è committata in `.claude/agents/memoria_revisore.md` (commit dd7b36c1), con una lezione nuova: le cartelle di stato vanno provate anche via symlink e via visita della cartella, non solo per nome.
+
+File rilevanti: modules/gate/gate.py, tests/test_unit_gate.py, tests/test_unit_kernel.py, .claude/agents/memoria_revisore.md. Lo script della prova è prova.py nello scratchpad della sessione.
+
+### Review #747 (merge di origin/main, #361)
+
+## VERDETTO: APPROVATO
+
+Il merge di origin/main 3f08352 (PR #361) in feat/r7-direttore-m3 è pulito. Tutti i controlli richiesti passano.
+
+**Elementi esaminati:**
+- modules/gate/gate.py:132 — `.gas_sottofondo` nelle cartelle mai scrivibili (e a :316 nel livello 3). Rischio: che il merge abbia toccato questa protezione. Esito: ok, `git diff --cached HEAD` non tocca modules/, gas.py né brains/, quindi il file è identico a HEAD, già revisionato in #746.
+- modules/sottofondo/__init__.py:269 — `ferma()` con lock e seconda lettura del pid. Rischio: che il codice dei compiti in sottofondo e quello della voce (#361) si tocchino. Esito: ok, i due lati cambiano file diversi (#361 tocca solo clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, scripts/voce/LEGGIMI.md). Nessuna interazione.
+- tests/test_unit_sottofondo.py:1176 — `test_ferma_usa_il_lock_e_rilegge_il_pid`, file invariato rispetto a HEAD. Esito: ok. `pytest tests/test_unit_voce_ascolto.py tests/test_unit_sottofondo.py -k "not browser"` dà **411 passed** (4 deselezionati).
+- clients/voice/ascolto.py:452 — codice di #361 (`_sopra_finestra`). Rischio: arrivato diverso da main. Esito: ok, `git diff --cached MERGE_HEAD -- clients tests/test_unit_voce_ascolto.py scripts` è vuoto (0 righe).
+- .claude/agents/memoria_revisore.md:1426 — il conflitto è risolto come unione dei due lati. Rispetto a HEAD +7 righe, rispetto a MERGE_HEAD +15, 0 righe tolte da nessun lato. Nessun marcatore di conflitto, `git ls-files -u` vuoto, `git diff --cached --check` pulito. Esito: ok.
+- reports/stato_progetto.md:378 — rispetto a MERGE_HEAD aggiunge solo la voce «R7 fetta 1» di M3 (più una riga vuota). Rispetto a HEAD ha le modifiche di #361 (voce #359 aggiornata a MERGIATA e nuova voce «ascolto H24»). Esito: ok, ci sono entrambe le parti.
+
+**Cosa non ho verificato:**
+- La suite completa del kernel (tests/test_unit_kernel.py) non l'ho rieseguita. Il merge non tocca gas.py né modules/ rispetto a HEAD, quindi resta valido l'esito di #746 (1104/0).
+- Il comportamento della voce sul Mac reale non è riproducibile qui.
+
+**Cosa devi fare tu (contatore memoria):**
+- Ho aggiunto in coda a .claude/agents/memoria_revisore.md la riga «#747 (chat M3) — 2026-11-10 — APPROVATO — …». Al momento non è in stage: va aggiunta da te.
+- Non sono riuscito a metterla in stage né a lanciare scripts/commit_memoria_revisore.sh: l'hook del gate (PreToolUse) mi ha bloccato i comandi Bash perché `.claude/.review_ok` non corrisponde ancora al diff staged.
+- Lo script comunque non funzionerebbe durante un merge, perché git non consente un commit parziale a merge in corso.
+- Quindi fai `git add .claude/agents/memoria_revisore.md` (la riga #747 entra nel commit di merge), poi `bash scripts/segna_review_ok.sh` sul diff staged finale, poi committa il merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_sottofondo.py`: 79 casi su main (base, contati dalla verifica esterna) → 112 casi alla fine, tutti passati (`112 passed`).
-- Suite kernel: 1100 PASS prima (T105a senza il controllo sul nome) → dopo, rilanciata sull'albero finale del codice (47c8aa3):
+- `tests/test_unit_sottofondo.py`: 79 casi su main (base) → 112 casi alla fine, tutti passati (`112 passed`).
+- `tests/test_unit_gate.py`: `832 passed` (10 failed senza la correzione di `.gas_sottofondo`).
+- Suite kernel: 1100 PASS prima → dopo, rilanciata sull'albero del codice di 1537f0c (T6s nuovo, 4 check):
 
 ```
-=== RIEPILOGO: 1100 PASS, 0 FAIL ===
+=== RIEPILOGO: 1104 PASS, 0 FAIL ===
 ```
 
-(T105a esteso, nessun check nuovo.) Voce + notte + sottofondo, a metà sessione: `478 passed in 289.68s`.
+Voce + notte + sottofondo, a metà sessione: `478 passed in 289.68s`; voce ascolto + sottofondo dopo il merge della #361 (dal revisore #747): `411 passed`.
 
 ## §6 STATO CI
 
-Check della PR #364 letti con gli strumenti GitHub di sessione alla scrittura dell'handoff (head della PR ancora dc6c25a, prima del push di questo giro):
-- run 42728191825 su dc6c25a: `unit-suite` success, `handoff-check` success.
-- run 42728208340 su dc6c25a (bot di verifica): `smista`/`verifica`/`esito` success; check `verifica-bot` **failure** (verdetto NON approvata, V-1 MEDIA) → corretto in 47c8aa3.
-- run 42727825423 su ef18a4e: `handoff-check` failure (handoff non ancora scritto allora), superata dalla run su dc6c25a.
+Check della PR #364 letti con gli strumenti GitHub di sessione alla scrittura dell'handoff (head della PR a7eb3fc, prima del push di questo giro):
+- run 42729901220 su a7eb3fc: `unit-suite` success, `handoff-check` success.
+- run 42729904942 su a7eb3fc (bot di verifica): `smista`/`verifica`/`esito` success; check `verifica-bot` success (APPROVATA con riserve BASSE).
+- run 42728191825 / 42728208340 su dc6c25a: CI success, `verifica-bot` failure (superata dalle correzioni in 47c8aa3).
+- run 42727825423 su ef18a4e: `handoff-check` failure (handoff non ancora scritto allora).
 
 Mappatura commit→run:
+- a7eb3fc: run 42729901220 (CI) e 42729904942 (bot).
 - dc6c25a: run 42728191825 (CI) e 42728208340 (bot).
 - ef18a4e: run 42727825423.
-- 3101011, 9575467, 525064c, 1852310, aec7195, d4e7828, 30720bb, 47c8aa3, 0049954: nessuna run su questi SHA (47c8aa3 e 0049954 escono col push di questo giro).
+- 3101011, 9575467, 525064c, 1852310, aec7195, d4e7828, 30720bb, 47c8aa3, 0049954, dd7b36c, 1537f0c, 5c3af80: nessuna run su questi SHA (1537f0c e 5c3af80 escono col push di questo giro).
 - Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-737-2** (BASSA): un parcheggio alla firma con testo diverso da «Azione in attesa…»/«Operazione negata…» lascia `cancello` None e risulta «fatto» nei progressi.
-- **R-738-1** (COSMETICA): `test_posto_sparito_sotto_il_lock_compito_chiuso` prova solo il False di `_riprendi`, non il giro fino a «ko» con avviso.
+- **R-738-1** (COSMETICA): `test_posto_sparito_sotto_il_lock_compito_chiuso` prova solo il False di `_riprendi`.
 - **R-745-1** (COSMETICA): nessun test sull'id cambiato fra le due letture di ATTIVO in `ferma`.
-- **Verifica esterna #364 V-1** (BASSA): anche un compito mai partito (pid assente dopo 120 s) viene ritentato fino a 2 volte prima di chiudersi.
+- **R-746-1** (BASSA, preesistente): `run_command` grep/ls sulla radice legge le cartelle di stato dentro bwrap in sola lettura.
+- **R-746-2** (COSMETICA): `.gas_sottofondo`/`.gas_notte` mancano da `_SAFE_PATH_DENY_PREFIXES` (coperti dal ricontrollo sul percorso risolto).
+- **Bot #364 2° giro V-1** (BASSA): l'avviso a ogni ripresa consuma il tetto giornaliero delle notifiche; **V-2** (BASSA): `sottofondo-ferma` usa la cartella corrente come radice.
+- **Verifica esterna #364**: 1° giro V-1 (BASSA) compito mai partito ritentato fino a 2 volte; 2° giro V-2 (BASSA) arresto reale con `killpg` non provato, V-4 (COSMETICA) comando non in CLAUDE.md §3.
 - Nota #744: senza `ps` `ferma` libera il posto anche se il processo forse è vivo (dichiarato nell'avviso).
-- Non verificato: processi veri (flock fra processi, kill del figlio, nipoti rimasti vivi), cancello firme end-to-end su un compito ripreso.
+- Non verificato: processi veri (flock fra processi, kill del figlio, nipoti rimasti vivi), cancello firme end-to-end su un compito ripreso, bwrap reale.
