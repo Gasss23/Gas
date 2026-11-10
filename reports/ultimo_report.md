@@ -1,19 +1,17 @@
-# Ultimo report — 2026-11-09 — Voce, velocità: frasi fisse divise in cache (chat M2)
+# Ultimo report — 2026-11-10 — R7 fetta 1: ripresa dei compiti in sottofondo dopo un crash (chat M3)
 
 ## DECISIONI UMANE RICHIESTE
+1. Merge della PR #364 (https://github.com/Gasss23/Gas/pull/364): revisore APPROVATO CON RISERVE (BASSA/COSMETICA); si mergia solo col verdetto del bot APPROVATO pulito, altrimenti col sì dell'operatore via M1.
 
-- Nessuna per la #360: sì dell'operatore al merge (nota cosmetica accettata). Dalla #358: marcatore `gasmerge-ip-ok` per gli IPv4 d'esempio sì/no; controllo dell'interfaccia del tunnel prima del VPS.
+## Esito
+- **Proposta R7** (`reports/proposta_r7_direttore.md`): FATTA — 4 opzioni, raccomandato l'ordine ripresa automatica → ripresa al boot → piano scritto dal modello → lista dei lavori ricorrenti. Mandata a M1.
+- **Fetta 1 — ripresa automatica**: FATTA — `modules/sottofondo/__init__.py`: processo morto (non oltre la durata massima) → compito di nuovo in coda e riavviato, max `GAS_SOTTOFONDO_RIPRESE` (default 2, tetto 5), presa del posto sotto `fcntl.flock`, tempo totale contato dalla prima creazione. Progressi in `<id>.passi` (0600): solo nomi di strumenti registrati, «fatto»/«in_firma»; nota nel prompt del compito ripreso; avviso finale «ripreso N volte». `gas.py`: `tool_res` porta `nome`.
+- **Riserve del revisore**: R-736-1 (MEDIA, corsa fra due controlli), R-736-2, R-736-3, R-737-1 CHIUSE; aperte R-737-2 (BASSA) e R-738-1 (COSMETICA), in `reports/stato_progetto.md`.
+- **Merge di origin/main (#360 di M2)**: FATTO, review #739 APPROVATO.
+- Ripresa al boot, piano scritto dal modello, lista dei lavori ricorrenti: DEFERITE — fette successive.
 
-## Esito delle fette
-
-- **PR #358 (sicurezza del server voce)**: `MERGIATA` (567beb7).
-- **Frasi fisse divise in cache**: `FATTA` — anche nelle risposte a pezzi le frasi fisse vengono dalla memoria. Review #725-M2 e #735-M2 APPROVATO.
-- Bot #360 V-1 BASSA chiusa: test sul percorso vero «forte» a pezzi (review #737-M2 APPROVATO).
-- Bot #360 2° giro (COSMETICA) chiusa: la seconda richiesta legge dalla cache (review #740-M2 APPROVATO).
-- Bot #360 3° giro: tolto dal confronto il campo «tempi» (test instabile); review #741-M2 APPROVATO.
-- Merge di main (#359 di Mani) nel branch; review #742-M2 APPROVATO.
-- Test: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 315 passed (314 prima del test del bot #360 V-1; i giri successivi hanno modificato quel test, non aggiunto test).
+## Test
+pytest `tests/test_unit_sottofondo.py`: 103 passed. Suite kernel: 1100 PASS, 0 FAIL. Voce+notte+sottofondo: 478 passed.
 
 ## Anomalie
-
-- Nessuna. Fetta preparata in locale di notte e riposizionata sopra main (patch identica a quella revisionata).
+Nessuna. Non provato con processi veri (flock fra processi, kill del figlio).

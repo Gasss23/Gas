@@ -1,8 +1,13 @@
-# Diff della sessione — 2026-11-09 — Voce, velocità: frasi fisse divise in cache (chat M2)
+# Diff di sessione — 2026-11-10 — R7 fetta 1 (chat M3)
 
-- `modules/voice/server.py` — `_FRASI_FISSE_INTERE` e `_FRASI_FISSE` con le frasi divise; commento del filtro.
-- `tests/test_unit_voice_server.py` — `test_sintesi_cache_anche_per_le_frasi_divise`, `test_sintesi_cache_forte_a_pezzi_dal_server`.
-- `.claude/agents/memoria_revisore.md` — review #725, #735, #737, #740, #741, #742 (merge di main, #359 di Mani).
-- `reports/*` — report di fine task.
+File toccati (da `git diff --stat BASE..HEAD`, BASE = merge-base con origin/main):
+- `modules/sottofondo/__init__.py` — ripresa automatica dopo un crash (`_riprendi` sotto lock, `_riprese_max`), progressi `<id>.passi` (`_segna_passo`, `_passi`, `_strumenti_noti`), nota nel prompt (`_nota_ripresa`), pulizia dei `.passi` vecchi, avviso «ripreso N volte».
+- `gas.py` — l'evento `tool_res` porta anche il nome dello strumento (serve ai progressi).
+- `tests/test_unit_sottofondo.py` — test della ripresa, della corsa fra due controlli, dei progressi; fixture che spegne le riprese nei test esistenti.
+- `tests/test_unit_kernel.py` — T105a controlla il nome nell'evento `tool_res`.
+- `reports/proposta_r7_direttore.md` — proposta R7 (opzioni e raccomandazione).
+- `.claude/agents/memoria_revisore.md` — righe #736–#739.
+- `reports/roadmap.md`, `reports/stato_progetto.md` — stato di R7 e riserve aperte.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

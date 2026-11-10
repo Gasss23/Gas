@@ -225,7 +225,7 @@ Tutto da zero. Lista completa al capitolo 8.
 
 ### R7 — Direttore v2: compiti lunghi ⏳
 Oggi ogni compito notturno parte da zero e non può riprendere. Nessuna decisione da prendere: tutto lavoro tecnico, adatto al turno di notte (R3).
-- ⏳ Piano scritto del compito, progressi salvati, ripresa dopo un'interruzione (M3).
+- 🔄 Piano scritto del compito, progressi salvati, ripresa dopo un'interruzione (M3). Fetta 1 (chat M3, PR #364): il compito in sottofondo riparte da solo dopo un crash, con i nomi degli strumenti già usati. Restano: ripresa al boot, piano scritto dal modello (`reports/proposta_r7_direttore.md`).
 - ⏳ **Lista dei lavori ricorrenti con stato** (fatto, in sospeso, fallito, da non ritentare): disegno di giugno, mai costruito.
 - ⏳ Tetti di tempo duri.
 - ✅ Tre stati per un comando firmato: non partito, finito, partito con esito incerto (R-c4b3-5, review #428/#429, 21 ottobre). ✅ R-c4b3-3 (crash tra reclamo e storia: esito recuperato al nuovo click, review #445-#447, 21 ottobre).

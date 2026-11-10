@@ -1,21 +1,21 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-09 — Voce, velocità: in cache anche le frasi fisse divise nelle risposte a pezzi (chat M2, coordinata da M1); PR #358 (sicurezza) mergiata
+**Sessione:** 2026-11-10 — R7 fetta 1: il compito in sottofondo riparte da solo dopo un crash (chat M3, coordinata da M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Nessuna: l'operatore ha dato il sì al merge della #360 con la nota cosmetica (riferito da M1, 9/11 sera).
-2. Restano dalla #358 (mergiata): IPv4 d'esempio nei test costruiti da intero (marcatore `gasmerge-ip-ok` sì/no); limite «rete privata solo dichiarativa» da chiudere prima del VPS.
+1. Merge della PR #364 (https://github.com/Gasss23/Gas/pull/364). Revisore APPROVATO CON RISERVE (solo BASSA/COSMETICA): l'agente mergia da solo solo con verdetto del bot APPROVATO pulito; altrimenti serve il sì dell'operatore via M1.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #358, server voce più sicuro (R8 fetta 1)**: `MERGIATA` (567beb7) col sì dell'operatore riferito da M1 (bot e verifica esterna senza ALTA/MEDIA).
-- **Velocità, frasi fisse divise in cache**: `FATTA` — in `modules/voice/server.py` `_FRASI_FISSE` contiene anche le frasi delle costanti come le divide `_dividi_frasi` (es. l'uso di «forte», due frasi), così anche nelle risposte a pezzi vengono dalla cache; commento del filtro riscritto (guarda il contenuto, non la provenienza). Chiude bot #356 V-1 BASSA e V-2 COSMETICA. Review #725-M2 APPROVATO; riposizionato sopra main dopo la #358 (patch identica), review #735-M2 APPROVATO.
-- **Bot #360 V-1 BASSA** (manca un test sul percorso vero «forte» → risposta a pezzi): `FATTA` — `test_sintesi_cache_forte_a_pezzi_dal_server`; review #737-M2 APPROVATO. Bot #360 2° giro (COSMETICA: il test controllava solo la scrittura della cache) `FATTA`: seconda richiesta letta dalla cache; review #740-M2 APPROVATO. Bot #360 3° giro: V-1 BASSA (confronto coi tempi misurati, test instabile) `FATTA`, review #741-M2 APPROVATO. Verifica esterna #360 su 07ea908 (prima dei test aggiunti dopo): APPROVATO (https://github.com/Gasss23/Gas/pull/360#issuecomment-6750706419).
+- **Proposta R7** (`reports/proposta_r7_direttore.md`): `FATTA` — opzioni e raccomandazione, mandata a M1.
+- **Fetta 1 — ripresa automatica del compito in sottofondo dopo un crash**: `FATTA` — `modules/sottofondo/__init__.py` (ripresa sotto lock, max `GAS_SOTTOFONDO_RIPRESE`, progressi `<id>.passi`), `gas.py` (`tool_res` porta `nome`). Review #736 → #737 → #738 APPROVATO CON RISERVE.
+- **Merge di origin/main (#360 di M2) nel branch**: `FATTA` — review #739 APPROVATO.
+- **Ripresa al boot / piano scritto dal modello / lista dei lavori ricorrenti**: `DEFERITA` — fette successive della proposta.
 
 ---
 
@@ -23,195 +23,201 @@
 
 ```
  .claude/agents/memoria_revisore.md |   6 +
- modules/voice/server.py            |  12 +-
- reports/diff_sessione.md                        | n/d
- reports/handoff.md                              | n/d
- reports/ripartenza_m2.md                        | n/d
- reports/stato_progetto.md                       | n/d
- reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    |  47 ++-
+ gas.py                             |   3 +-
+ modules/sottofondo/__init__.py     | 203 +-
+ reports/diff_sessione.md           |  15 +-
+ reports/handoff.md                 | n/d
+ reports/proposta_r7_direttore.md   |  28 +
+ reports/roadmap.md                 |   2 +-
+ reports/stato_progetto.md          |   2 +
+ reports/ultimo_report.md           |  24 +-
+ tests/test_unit_kernel.py          |   4 +-
+ tests/test_unit_sottofondo.py      | 222 +
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 695b759 (merge della #359 di Mani, entrato nel branch col merge di questa sessione).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-34a0d67 Merge origin/main (#359 di Mani) nella PR #360
-ce0cbe4 docs(voce): report #360 allineati al diff (2 test, ripartenza) — bot 4° giro (chat M2)
-7de5d6b docs(voce): report #360 — review #741, numeri dei test allineati (chat M2)
-8984e81 test(voce): il confronto della seconda richiesta «forte» ignora i tempi misurati (bot #360, 3° giro: test instabile)
-dd2d61e chore(revisore): memoria review #741 — APPROVATO
-d6af23f docs(voce): report #360 — review #740 (chat M2)
-dd0444f test(voce): la seconda richiesta «forte» legge i pezzi dalla cache (bot #360, 2° giro)
-a378624 chore(revisore): memoria review #740 — APPROVATO
-1e74840 docs(voce): report #360 — test del bot V-1, review #737 (chat M2)
-2067dd9 test(voce): la risposta d'uso di «forte» a pezzi passa dalla cache sul percorso vero del server (bot #360 V-1)
-8445011 chore(revisore): memoria review #737 — APPROVATO
-07ea908 docs(voce): report di fine task — frasi fisse divise in cache; PR #358 mergiata (chat M2)
-b660d1c chore(revisore): memoria review #735 — APPROVATO
-36adbd9 perf(voce): in cache anche le frasi fisse divise nelle risposte a pezzi; commento del filtro corretto (bot #356 V-1/V-2)
-8b95a14 chore(revisore): memoria review #725 — APPROVATO
+ef18a4ef Merge origin/main (#360 di M2) in feat/r7-direttore-m3 — review #739
+3101011d feat(R7): fetta 1 — il compito in sottofondo riparte da solo dopo un crash (M3)
+18523105 chore(revisore): memoria review #738 — APPROVATO CON RISERVE
+525064c1 chore(revisore): memoria review #737 — APPROVATO CON RISERVE
+9575467d chore(revisore): memoria review #736 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Review #725-M2 sul commit originale a80e4b8 (verdetto integrale):
+Commit 3101011 (motore): tre giri, #736 → #737 → #738. Commit ef18a4e (merge): #739. Verdetti integrali.
 
-## VERDETTO: APPROVATO
+### Review #736
 
-Review #725-M2: diff in staging su feat/voce-locale-fila, nella worktree /home/user/Gas-sicura. Tocca 2 file (+26/-4).
+VERDETTO: APPROVATO CON RISERVE
+
+Revisione n. 736 della fetta 1 di R7 (ripresa dei compiti in sottofondo), sul branch feat/r7-direttore-m3. Il diff è ancora nella working tree, non staged.
+
+Letture obbligatorie fatte: CLAUDE.md (sezioni 5, 8, 9 e 10), reports/stato_progetto.md (solo le parti su R7 e sottofondo) e la memoria del revisore (coda).
+
+**Test eseguiti da me**
+- pytest su tests/test_unit_sottofondo.py: 99 passed.
+- Suite del kernel (tests/test_unit_kernel.py): 1100 PASS, 0 FAIL. T105a passa.
+- Il perimetro guardato è gas.py, modules/ e tests/.
 
 **Elementi del diff esaminati**
-- `modules/voice/server.py:321` — `_FRASI_FISSE_INTERE` è la tupla delle 7 costanti intere. Ho controllato l'ordine di definizione: `_dividi_frasi` (`modules/voice/server.py:269`) e tutte le costanti sono definite prima di questo punto, quindi non c'è NameError all'import. Esito: ok.
-- `modules/voice/server.py:325` — `_FRASI_FISSE` = le costanti intere più i loro pezzi divisi da `_dividi_frasi`. L'ho verificato stampando l'insieme reale. I pezzi nuovi sono solo 2: «Dopo «forte» dimmi cosa fare, per esempio: «Gas, forte: riassumi i lead di oggi».» e «Non ho avviato nessun lavoro.». Le altre 6 costanti sono già di una frase sola. Chiude V-1 BASSA. Esito: ok.
-- Il rischio che mi hai chiesto di guardare. Un testo del modello può coincidere solo con «Non ho avviato nessun lavoro.» (pezzo nuovo) o con «Va bene.» / «Dimmi.» (frasi intere che c'erano già prima di questo diff). Il confronto è esatto: la chiave `(synthesize_speech, voice_id, frase)` (`modules/voice/server.py:337`) richiede lo stesso testo e la stessa voce, quindi l'audio restituito è proprio quello del testo richiesto. È innocuo: nessuna fuga di contenuto e nessun audio sbagliato. Il tetto `_CACHE_FRASI_MAX = 32` (`modules/voice/server.py:327`) resta molto sopra le 9 voci per ogni voce. Esito: ok.
-- `modules/voice/server.py:315` — il commento ora dice «entra in cache solo un testo IDENTICO a una di queste costanti…», cioè descrive il filtro per contenuto e non più la provenienza. Chiude V-2 COSMETICA. Esito: ok.
-- `tests/test_unit_voice_server.py:2080` — `test_sintesi_cache_anche_per_le_frasi_divise`. Controlla che i pezzi vengano sintetizzati una volta sola su due giri, e che un testo diverso («pezzo + Altro.») non vada mai in cache. L'ho eseguito: `-k cache` dà 7 passed. Esito: ok.
+1. `modules/sottofondo/__init__.py:197` — `_ripulisci` chiama `_riprendi` e, se riceve False, passa ad `annulla`. Rischio: race tra due processi che controllano lo stesso compito nello stesso momento. Esito: **riserva MEDIA (R-736-1)**, spiegata sotto.
+2. `modules/sottofondo/__init__.py:251` — Sotto il lock, il posto viene ripreso solo se è ancora quello letto, nessun compito è attivo, lo stato è in_coda o in_corso, le riprese non sono finite e il compito è un testo. Rischio: due copie dello stesso compito avviate insieme. Esito: ok, non partono mai due copie.
+3. `modules/sottofondo/__init__.py:568` — Il nuovo processo rimette nel posto la data di creazione originale. Rischio: superare il tetto di tempo. Esito: ok, ed è più stretto di quanto dice la proposta. Il tempo totale resta una sola durata massima contata dalla prima creazione, non (1+riprese)×durata. Va corretto il testo di reports/proposta_r7_direttore.md (cosmetico).
+4. `modules/sottofondo/__init__.py:296` — `_segna_passo` salva solo nomi validi secondo la regex, al massimo 50, in un file 0600 separato, e non solleva mai eccezioni. Rischio: un canale di prompt injection. Esito: **riserva BASSA (R-736-2)**.
+5. `modules/sottofondo/__init__.py:577` — La nota di ripresa viene aggiunta al prompt del compito. Rischio: azioni ripetute alla ripresa. Esito: **riserva BASSA (R-736-3)**. Le azioni che passano dal cancello tornano alla firma, non partono da sole.
+6. `modules/sottofondo/__init__.py:387` — I file `.passi` vecchi vengono cancellati, tranne quello del compito che occupa il posto. Il file `.lock` non viene mai cancellato, ed è giusto così. Esito: ok.
+7. `gas.py:5219` — L'evento tool_res ora porta anche il nome dello strumento. Rischio: rompere chi legge l'evento. Esito: ok. È un campo in più e T105a lo verifica. Nessuno slicing della storia, `_get_window` e il tetto di 10 iterazioni non sono toccati.
 
-**Rischi esclusi**
-- Non ho verificato che il test fallisca col codice precedente: mi fido della tua prova, non l'ho rifatta.
-- Non ho rieseguito la suite completa da 277 test, solo il sottoinsieme `-k cache`.
-- Non ho verificato il comportamento con ElevenLabs reale né sul Mac: non è riproducibile qui.
+**Finding**
+- **R-736-1 MEDIA — riprodotta.** Il processo che perde il lock annulla la ripresa fatta dal vincitore. Lo script race.py (scratchpad della sessione) lancia due `_ripulisci` in thread, ed entrambi leggono il posto vecchio. A riprende il compito e lo avvia. B, che aspettava il lock, trova il posto cambiato: `_riprendi` restituisce False e B passa ad `annulla`. Risultato finale: compito «ko», riprese=1, posto tolto, avviso «non è finito: il processo si è interrotto».
+  - Nel caso più probabile, il processo avviato da A esce subito come «già eseguito», quindi si torna al comportamento di prima di R7.
+  - Se invece quel processo è già in_corso, gira senza posto: la coda risulta libera e un secondo compito potrebbe partire in parallelo.
+  - Il lock rende quindi la race sicura nel risultato, invece di evitarla.
+  - Correzione: distinguere «gestito da altri» (posto diverso da quello letto, oppure un compito attivo) da «niente ripresa». Per esempio `_riprendi` restituisce True in quel caso, oppure `_ripulisci` rilegge il posto e si ferma se non è più quello letto. Il test `test_posto_cambiato_nel_frattempo_niente_ripresa` controlla solo `_riprendi` da solo; serve un test sul chiamante.
+  - Consiglio di chiuderla prima del commit.
+- **R-736-2 BASSA.** I nomi salvati non sono confrontati con gli strumenti registrati. Il modello può chiamare uno strumento inesistente; la chiamata viene negata, ma il nome compare lo stesso nell'evento. Così un testo scelto dal modello (fino a 40 caratteri `[a-z0-9_]`, eco possibile di testo letto da fuori) entra nel prompt FIDATO della ripresa, senza segno di contaminazione. La frase della proposta «nessun nuovo testo non fidato nel prompt» non è esatta. Correzione: salvare solo i nomi degli strumenti registrati, oppure solo le chiamate con `cancello` None.
+- **R-736-3 BASSA.** Anche le chiamate negate o parcheggiate («in_attesa») risultano «già usate» nella nota. Alla ripresa il modello parcheggia di nuovo la stessa azione: ci sono due richieste nella coda delle firme e l'operatore potrebbe firmarle tutte e due. Correzione: nella nota distinguere «in attesa di firma» da «eseguito», oppure non contare le chiamate negate.
+- **Nota cosmetica.** Il tetto di tempo scritto nella proposta va corretto (vedi punto 3).
+
+**Rischi esclusi (non verificati)**
+- Processi nipoti rimasti vivi: se muore il processo `gas.py sottofondo` ma un suo sottoprocesso continua a girare, il compito ripreso potrebbe lavorare insieme a lui. Non l'ho verificato perché non si riproduce con processi finti nei test.
+- Comportamento reale su Mac o VPS, cioè `flock` su filesystem di rete e riavvio vero della macchina: non verificato, l'ho controllato solo su Linux dev con thread.
+- Il percorso completo del cancello firme quando un compito ripreso chiede la firma: l'ho controllato solo leggendo gas.py:5139-5176, senza un test end-to-end.
 
 **Memoria**
-- Riga #725-M2 aggiunta in /home/user/Gas-sicura/.claude/agents/memoria_revisore.md e committata nella worktree con lo script (commit bef35b5).
-- Nessuna lezione nuova. /home/user/Gas non l'ho toccato.
+Riga contatore #736 e una lezione nuova aggiunte in .claude/agents/memoria_revisore.md, committate da sole con lo script (commit 9575467).
 
-Review #735-M2 sul riposizionamento 36adbd9 (verdetto integrale):
+Le riserve R-736-1, R-736-2 e R-736-3 vanno scritte in reports/stato_progetto.md se si committa senza correggerle.
 
-## VERDETTO: APPROVATO
+### Review #737
 
-Il cherry-pick è corretto e non ci sono problemi bloccanti. Ho fatto le tre letture obbligatorie: CLAUDE.md, reports/stato_progetto.md (letto con Grep mirato) e .claude/agents/memoria_revisore.md.
+VERDETTO: APPROVATO CON RISERVE
 
-**Elementi esaminati**
-1. `modules/voice/server.py:324` — `_FRASI_FISSE_INTERE` e `_FRASI_FISSE`: l'insieme contiene le frasi intere più i pezzi prodotti da `_dividi_frasi`. Rischio esaminato: che il contesto nuovo della R8 fetta 1 interagisca col codice spostato. `_dividi_frasi` è definita prima (`modules/voice/server.py:272`) e le costanti sono già tutte definite. `_host_ammesso` (`modules/voice/server.py:572`) e `_autorizza` (`modules/voice/server.py:597`) non toccano mai `_FRASI_FISSE` né la cache. `sintesi()` viene chiamata solo nei rami di risposta (`modules/voice/server.py:1008`, `modules/voice/server.py:1051`, `modules/voice/server.py:1091`), dopo i controlli R8. Esito: ok.
-2. `tests/test_unit_voice_server.py:2081` — `test_sintesi_cache_anche_per_le_frasi_divise`. È l'ultimo test della serie sulla cache di `sintesi`, subito prima del blocco «R8 fetta 1» (`tests/test_unit_voice_server.py:2099`), quindi è nel posto giusto. Da solo passa (1 passed). Esito: ok.
-3. `.claude/agents/memoria_revisore.md:1394` — riga #725-M2 riportata col cherry-pick. Rispetto a `origin/main` il diff è +1 e −0. Nessuna riga del vecchio `origin/feat/voce-v12-m2` manca a HEAD (`comm` = 0). Esito: ok.
-4. Le righe +/- di `git show a80e4b8` e `git show 36adbd9` sono identiche: il `diff` fra le due è vuoto. Esito: ok.
+Seconda revisione (#737) della fetta 1 di R7, branch feat/r7-direttore-m3, diff `git diff HEAD -- gas.py modules/ tests/` (in parte staged e in parte no). Prima ho letto CLAUDE.md (sezione 5), stato_progetto.md (sezione R7) e la mia memoria, con la riga #736 e la lezione sul «perdente del lock».
 
-**Test:** `test_unit_voice_server`, `test_unit_sottofondo` e `test_unit_telegram_voce` con `-k "not browser"` danno 308 passed e 21 deselected. Tu ne dichiari 314: probabilmente hai usato una selezione diversa. Non è bloccante, ma nel report scrivi il comando esatto che hai usato.
+**Cosa ho controllato nel diff**
+- `modules/sottofondo/__init__.py:204` — `_ripulisci` ora si ferma quando `_riprendi(...) is not False`. Rischio: che chi arriva secondo al lock annulli la ripresa appena fatta dall'altro (R-736-1). Esito: **ok**. Per provarlo ho copiato il codice nello scratchpad e tolto `is not False`: `test_due_controlli_insieme_non_annullano_la_ripresa` fallisce (1 failed). Con la correzione passa.
+- `modules/sottofondo/__init__.py:260` — sotto il lock, se il posto non è più quello letto oppure c'è un compito attivo, si restituisce None prima degli altri controlli. Rischio: casi che prima finivano in «annulla» e adesso non li chiude più nessuno. Esito: **riserva R-737-1** (vedi sotto).
+- `modules/sottofondo/__init__.py:312` — `_strumenti_noti` legge `kernel.tools_schema`, che esiste davvero in `gas.py:1244`. Ogni errore dà un elenco vuoto, quindi nessun nome viene salvato. Rischio: un nome inventato dal modello che finisce nel prompt fidato (R-736-2). Esito: **ok**, coperto da `tests/test_unit_sottofondo.py:1036` e dal caso `fai_x_subito` a `tests/test_unit_sottofondo.py:973`.
+- `modules/sottofondo/__init__.py:332` — `cancello` None diventa «fatto», `in_attesa` diventa «in_firma», tutto il resto (anche `negata`) viene escluso. `_passi` scarta le voci malformate e i valori sconosciuti. Ho confrontato con i valori che `_cancello` assume davvero in `gas.py:5139-5186`. Esito: **ok** (R-736-3 chiusa), con una nota cosmetica.
+- `gas.py:5219` — `tool_res` porta `"nome": tc.function.name`, verificato da T105a in `tests/test_unit_kernel.py:12034`. Esito: **ok**. Non tocca `_get_window`, il tetto di 10 giri né quello degli 8k di output.
+- Wall of Shame: nel diff non c'è nessun taglio della history né output di strumenti simulati. I test usano un `_Kernel` finto che riceve eventi, ma l'esecuzione dei tool nel kernel resta quella vera.
 
-**Rischio escluso:** i test con browser e la resa audio reale con ElevenLabs non li ho verificati, perché qui manca il browser e manca la chiave. Non ho rivalutato la parte di sicurezza R8, già approvata nella #734-M2.
-
-**Memoria:** riga #735-M2 aggiunta e committata con lo script in `b660d1c` (`chore(revisore): memoria review #735 — APPROVATO`). Nessuna lezione nuova.
-
-File: /home/user/Gas/modules/voice/server.py, /home/user/Gas/tests/test_unit_voice_server.py, /home/user/Gas/.claude/agents/memoria_revisore.md
-
-Review #737-M2 (verdetto integrale):
-
-## VERDETTO: APPROVATO
-
-Review #737-M2 sulla PR #360, branch feat/voce-v12-m2. Il diff staged contiene solo `tests/test_unit_voice_server.py` (+13 righe).
-
-**Cosa ho controllato nel diff e nel codice**
-- `tests/test_unit_voice_server.py:2099`: il nuovo test `test_sintesi_cache_forte_a_pezzi_dal_server` avvia il server vero tramite `_voce_a_pezzi`, con trascrizione «Gas, forte.» e formato audio+testo+pezzi.
-  - Rischio esaminato: residui di cache lasciati da altri test (falso verde o falso rosso). La cache è sostituita con un dict nuovo tramite monkeypatch, quindi è isolata.
-  - Rischio esaminato: falso verde se il server sintetizza altre frasi. L'asserzione è di uguaglianza esatta: le chiamate a synthesize_speech devono essere proprio `_dividi_frasi(_USO_FORTE_PARLATO)`, cioè 2 pezzi, nell'ordine giusto.
-  - Esito: ok.
-- `modules/voice/server.py:340`: la chiave della cache è `(synthesize_speech, voice_id, frase)`, quindi `k[2]` nel test è proprio la frase. L'asserzione `sorted(k[2] for k in cache) == sorted(pezzi)` controlla davvero che i pezzi stiano in cache. Esito: ok.
-- `modules/voice/server.py:328`: `_FRASI_FISSE` comprende anche i pezzi divisi.
-  - Mutante riprodotto da me (`_FRASI_FISSE = frozenset(_FRASI_FISSE_INTERE)`): il test dà 1 failed. Il file è stato ripristinato e `git status` mostra solo il file di test staged.
-  - Il mio primo mutante scritto con sed era sbagliato per precedenza degli operatori (`A | B and C` vale `(A|B) and C`). L'ho rifatto: il risultato vale solo per il secondo.
-  - Esito: ok.
-- Test: `tests/test_unit_voice_server.py`, `tests/test_unit_sottofondo.py` e `tests/test_unit_telegram_voce.py` con `-k "not browser"` danno 309 passed e 21 deselected. Il dato dichiarato era 315: credo dipenda da una selezione diversa dei test (come in #735-M2), non da un fallimento.
-- Wall of Shame (gli errori vietati da CLAUDE.md sez. 5): non c'entra. Nessuna storia dei messaggi, nessun output di tool simulato. Il mock di synthesize_speech riguarda un servizio esterno, non un tool del modello.
-
-**Cosa non ho verificato**
-- I test della pagina nel browser (`-k "not browser"`): in questo ambiente non c'è Playwright, e il diff non tocca il client.
-- La latenza reale con ElevenLabs sul Mac: il test usa una sintesi finta, quindi il guadagno di velocità dal vero resta da provare.
-
-**Dopo la review**
-- Ho scritto la riga #737-M2 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, con una lezione: rileggere i mutanti scritti con sed, per via della precedenza tra `|` e `and`.
-- Ho committato la memoria con lo script: commit 8445011. Il file di test resta staged e non è committato.
-- Non ho toccato `/home/user/Gas-sicura`.
-
-Review #740-M2 (verdetto integrale):
-
-## VERDETTO: APPROVATO
-
-Ho controllato due punti del diff e uno del codice di contesto:
-- `tests/test_unit_voice_server.py:1226`: il parametro facoltativo `tts=None` è stato aggiunto all'helper `_voce_a_pezzi`. Ho guardato se cambia il comportamento degli altri test: no. Senza `tts` il ramo è quello di prima, `patch(..., side_effect=sintesi)`, e con `tts` passato si usa `patch(..., new=tts)`. Il nome `tts` viene riassegnato da `as tts`, ma solo dopo che l'argomento `new=tts` è già stato calcolato, quindi non c'è errore. Con `new=` il patch restituisce l'oggetto passato, cioè lo stesso mock. Sugli altri test l'esito è invariato: la suite passa. Esito: ok.
-- `tests/test_unit_voice_server.py:2113`: la seconda richiesta «Gas, forte.» usa lo stesso mock; il test controlla `tts2 is tts`, zero chiamate e `righe2 == righe`. Ho controllato se il test passa anche quando la cache non viene letta. La chiave della cache (`modules/voice/server.py:340`) è `(synthesize_speech, voice_id, frase)` ed è identica nelle due richieste, perché la funzione è lo stesso mock. `reset_mock()` conserva il `side_effect`. Mutante «cache mai letta» (`modules/voice/server.py:341` con `audio = None`): 4 test falliti, compreso questo; file rimesso a posto, nessuna modifica rimasta nel codice. Esito: ok.
-- `modules/voice/server.py:334` (contesto, file non toccato): `sintesi()` legge la cache solo per le frasi in `_FRASI_FISSE`, quindi la seconda richiesta sulla risposta d'uso di «forte» la usa davvero. Esito: ok.
-
-Test: voice_server + sottofondo + telegram_voce con `-k "not browser"`: 309 passed, 21 deselected. Tu ne dichiari 315: credo che la selezione sia diversa, come nelle review #735 e #737. Nota: il file si chiama `tests/test_unit_sottofondo.py`, non `test_unit_voice_sottofondo`.
-
-Cosa non ho verificato:
-- I test che usano il browser: non li ho eseguiti.
-- La velocità reale con ElevenLabs: il test usa un mock, quindi non la misura.
-- `/home/user/Gas-sicura`: non toccato.
-
-Memoria: riga #740-M2 aggiunta e committata con `scripts/commit_memoria_revisore.sh` (a378624). Il diff staged in `tests/test_unit_voice_server.py` è intatto.
-
-File: /home/user/Gas/tests/test_unit_voice_server.py, /home/user/Gas/modules/voice/server.py, /home/user/Gas/.claude/agents/memoria_revisore.md
-
-Review #741-M2 (verdetto integrale):
-
-## VERDETTO: APPROVATO
-
-La correzione funziona: il test ora ignora solo la chiave «tempi» e confronta ancora tutto il resto.
-
-**Elementi esaminati**
-- `tests/test_unit_voice_server.py:2120` — una lambda toglie la chiave «tempi» da ogni riga NDJSON (ogni riga di testo JSON della risposta) prima del confronto.
-  - Rischio: che il filtro nasconda altri campi che cambiano fra una richiesta e l'altra, oppure che renda il confronto inutile.
-  - Esito: ok. Ho stampato le righe vere della risposta «Gas, forte.». Sono tre:
-    - riga 1: `content`, `uso`, `capito`, `pezzi`, `audio`
-    - riga 2: `audio`
-    - riga 3: `fine`, `tempi`
-  - Non ci sono id, istanti né valori casuali. L'audio (base64 della frase) e la riga `{"fine": true}` restano confrontati, quindi il confronto continua a provare che l'audio preso dalla memoria è identico a quello sintetizzato.
-- `modules/voice/server.py:1073` (contesto) — la riga finale `{"fine": True, "tempi": …}`. I tempi vengono da `_chiudi_tempi` (`modules/voice/server.py:527`) e da `_segna` (`modules/voice/server.py:519`), misurati con `time.monotonic()` e arrotondati a 0,01 s.
-  - Rischio: altri campi che dipendono dal tempo.
-  - Esito: ok. «tempi» è l'unico campo legato al tempo nel ramo a pezzi (`modules/voice/server.py:1043-1073`).
-- `tests/test_unit_voice_server.py:2117` — `tts.call_count == 0` resta un controllo della lettura dalla cache, indipendente dal confronto delle righe. Esito: ok.
-- Il test passa in locale (1 passed). Nel diff ci sono solo cambiamenti al test, nessuna modifica al motore né ai guardrail. Nessun antipattern del Wall of Shame.
+**Riserve**
+- **R-737-1 BASSA**: col nuovo ramo None ricade anche il caso in cui il posto è sparito o illeggibile sotto il lock (`_leggi` dà None, quindi `posto != letto`). Prima finiva in «annulla», cioè compito «ko» con avviso. Ora non succede niente, e se nessun altro ha chiuso il compito (per esempio il posto tolto dopo 120 s perché illeggibile), il compito resta «in_coda»/«in_corso» senza posto e senza avviso. Correzione possibile: restituire None solo se `posto` non è None ed è diverso da `letto`, oppure se c'è un compito attivo. Con il posto assente si lascia False, e `annulla` è comunque protetto dallo stato del compito.
+- **R-737-2 COSMETICA**: `reports/proposta_r7_direttore.md` dice «Il file del compito tiene i progressi», ma i progressi stanno in `<id>.passi`, un file separato. Inoltre un parcheggio che restituisce un testo diverso da «Azione in attesa…» o «Operazione negata…» (in quel caso `_cancello` resta None) viene registrato come «fatto».
 
 **Rischio escluso**
-- Il mutante «cache mai letta» non l'ho rieseguito io: mi fido della prova dichiarata e della review #740-M2, che lo aveva già riprodotto.
-- Non ho verificato su un runner CI lento: non si riproduce qui.
-- Con l'argomento `root` attivo, la prima riga può avere altri campi (i compiti in sottofondo). Non ho verificato se dipendono dal tempo perché questo test non usa `root`.
+- Non ho rilanciato la suite kernel completa (1100 PASS dichiarati dall'agente): la parte di `gas.py` è identica a quella del giro #736, dove T105a passava. Ho rilanciato solo `pytest tests/test_unit_sottofondo.py`: 102 passed.
+- La ripresa con processi veri (fcntl tra processi reali, kill del figlio) non l'ho provata: nei test `_avvia_ripresa` è sostituito da un finto.
 
-- Contatore #741-M2 aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committato (dd2d61e).
+**Memoria**
+Ho aggiunto la riga #737 e una lezione (un bool che diventa tri-stato porta con sé anche i casi «stato sparito», che restano orfani) in `.claude/agents/memoria_revisore.md`, committata con `scripts/commit_memoria_revisore.sh` (525064c).
 
-Review #742-M2 sul merge di main (verdetto integrale):
+Il commit è consentito: le riserve R-737-1 e R-737-2 vanno tracciate in `reports/stato_progetto.md`.
+
+### Review #738
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #738 (chat M3), terzo giro della fetta 1 di R7 sul branch feat/r7-direttore-m3. Ho esaminato `git diff HEAD -- gas.py modules/ tests/`, concentrandomi solo sulla modifica nuova. Prima ho fatto le letture obbligatorie: CLAUDE.md §5, stato_progetto con grep mirato, coda della mia memoria.
+
+**Cosa ho esaminato**
+- modules/sottofondo/__init__.py:258 — `_riprendi` sotto il lock rilegge il posto e il compito, poi decide. Rischio esaminato: R-737-1, cioè un posto sparito o illeggibile che finiva nel ramo None e lasciava il compito aperto senza che nessuno lo chiudesse. Ora restituisce None solo se `posto is not None and posto != letto` oppure se c'è un compito attivo. Un posto sparito o illeggibile passa al controllo successivo `not posto` e restituisce False. Esito: ok, R-737-1 CHIUSA.
+- modules/sottofondo/__init__.py:204 — `_ripulisci` con False chiama `annulla`. Rischio esaminato: un posto sparito perché il figlio della ripresa ha appena finito, e `annulla` che segna «ko» un compito riuscito. `annulla` (modules/sottofondo/__init__.py:549) chiude solo un compito ancora in_coda o in_corso. `_esegui` scrive l'esito (modules/sottofondo/__init__.py:656) PRIMA di togliere il posto (modules/sottofondo/__init__.py:659). Quindi chi trova il posto sparito vede già «ok» o «ko» e non tocca niente, e non parte nessun avviso doppio. Esito: ok.
+- tests/test_unit_sottofondo.py:1050 — test nuovo `test_posto_sparito_sotto_il_lock_compito_chiuso`. Rischio esaminato: se copre davvero quello che il nome promette. Controlla solo che `_riprendi` restituisca False e che non parta nessuna ripresa. Non fa il giro intero da `_ripulisci` fino a «ko» con avviso, che pure sono scritti nel nome e nella docstring. Esito: riserva cosmetica.
+- La proposta ora dice «Un file a parte (`<id>.passi`)». Esito: ok, parte principale di R-737-2 chiusa. Il resto (un parcheggio con testo inatteso registrato come «fatto») resta tracciato in stato_progetto, come dichiarato.
+
+pytest tests/test_unit_sottofondo.py: 103 passed (rieseguito da me).
+
+**Riserve**
+- R-738-1 COSMETICA: il test nuovo verifica solo il False di `_riprendi`. Non controlla la chiusura «ko» con avviso promessa dal nome. Basta aggiungere un'asserzione passando da `_ripulisci`: stato «ko» e un avviso.
+
+**Cosa NON ho verificato**
+- Non ho rieseguito la suite kernel (tests/test_unit_kernel.py) né la sonda di race in thread: gas.py e i test del kernel non sono cambiati dopo la #737.
+- Non ho verificato un posto illeggibile perché corrotto in modo parziale, con un json valido ma un id diverso: ricade nel ramo None per costruzione, già coperto nella #737.
+
+Memoria aggiornata: riga #738 in .claude/agents/memoria_revisore.md, committata (1852310), nessuna lezione nuova.
+
+### Review #739 (merge di origin/main) — verdetto RIEMESSO
+
+Il gate B ha rifiutato il verdetto originale (1 sola citazione di file del diff di sessione): il revisore lo ha riemesso con lo stesso esito e citazioni nella forma del gate. Sotto, prima il verdetto riemesso, poi l'originale invariato (in blocco di codice).
 
 ## VERDETTO: APPROVATO
 
-Review #742-M2: merge in corso di origin/main 695b759 (PR #359) dentro feat/voce-v12-m2 (PR #360, head ce0cbe4). Base comune 567beb7.
+Il merge in corso di origin/main 447195f (PR #360 di M2) in feat/r7-direttore-m3 si può committare (revisione #739, chat M3).
 
-**Elementi esaminati**
-- `modules/voice/server.py:324-329`: la #360 crea `_FRASI_FISSE_INTERE` e `_FRASI_FISSE`, che ora contiene anche le frasi divise da `_dividi_frasi`. Rischio controllato: che la #359 (in `modules/telegram/bot.py`) dipenda da questo blocco o dalla cache di `sintesi()`. Esito: ok. Rispetto alla base, la #360 cambia solo queste righe di `server.py`. Gli oggetti di `server.py` che `bot.py` importa (`_USO_FORTE_PARLATO` a :119, `istruzione_turno_voce` a :266, `parte_parlata` a :351, `cervello_voce` a :456) non sono toccati.
-- `modules/telegram/bot.py:1081` (contesto, file in arrivo da main): la voce di Telegram sintetizza con `modules.voice.tts.synthesize_speech`, non con `server.sintesi`. La cache delle frasi fisse quindi non entra in gioco. I punti d'import sono `bot.py:969`, `:984` e `:1035`. Esito: ok. `clients/voice/ascolto.py` non importa nulla da `modules.voice`: cita `server.py` solo nella docstring.
-- `tests/test_unit_voice_server.py:2084` e `tests/test_unit_voice_server.py:2102`: sono i test della #360 (frasi divise in cache, «forte» a pezzi dal server). Rischio controllato: che si rompano dopo il merge. Esito: ok, la suite passa.
-- `.claude/agents/memoria_revisore.md:1415` (unione dei due lati): dalla versione di HEAD (1398 righe) e da quella di MERGE_HEAD (1410 righe) non manca nessuna riga, verificato con `grep -vxFf` in entrambe le direzioni. Il file risultante ha 1415 righe e zero marcatori di conflitto. Esito: ok.
-- I file di codice e test in arrivo (`clients/voice/ascolto.py`, `modules/telegram/bot.py`, `tests/test_unit_kernel.py`, `tests/test_unit_telegram_voce.py`, `tests/test_unit_voce_ascolto.py`) sono identici a 695b759: `git diff --cached MERGE_HEAD` su ciascuno è vuoto.
-- `reports/stato_progetto.md`: differisce da main solo nella riga R8, dove resta la versione M2 «✅ PR #358 MERGIATA». È un merge automatico corretto, perché main conservava la riga vecchia della base («🔄 PR aperta»).
-- Nessun marcatore di conflitto in `reports/`, `.claude/`, `modules/`, `clients/` e `tests/`. Nessuno slicing della history e nessuna simulazione di tool nel diff.
+**Cosa ho controllato**
+- modules/sottofondo/__init__.py:689 — `da_leggere(root)` restituisce i compiti in sottofondo finiti e non ancora letti. Il server voce la chiama nei turni di attivazione (contesto: modules/voice/server.py:887). Ho cercato una rottura dell'interfaccia tra R7 e il codice voce arrivato da main. La funzione esiste a HEAD M3 con la stessa firma e il merge non tocca modules/sottofondo (`git diff --cached HEAD --stat -- modules/sottofondo` è vuoto). Esito: ok.
+- modules/sottofondo/__init__.py:718 — `frase_finiti(jobs)` produce la frase detta a voce. Anche qui ho controllato l'interfaccia usata dal server: esiste ed è invariata. Esito: ok.
+- modules/sottofondo/__init__.py:733 — `segna_letti(root, jobs)` è chiamata dal server dopo la frase (contesto: modules/voice/server.py:911). Ho controllato l'interfaccia e la firma è compatibile. I test voice_server e sottofondo lanciati insieme con `-k "not browser"` danno 267 passed. Esito: ok.
+- Contesto, modules/voice/server.py:324 — `_FRASI_FISSE` ora contiene anche i pezzi di `_dividi_frasi`. È l'unica modifica di codice rispetto a HEAD. `git diff --cached MERGE_HEAD -- modules/voice tests/test_unit_voice_server.py` è vuoto, quindi il codice è identico a quello già revisionato e mergiato con la #360. Esito: ok.
+- Contesto, .claude/agents/memoria_revisore.md:1416 — il conflitto è risolto come unione delle due parti. Confrontando le righe ordinate, l'index non perde nessuna riga né di HEAD né di MERGE_HEAD. Sono presenti #736, #737 e #738 di M3 con le loro due lezioni e #725, #735, #737, #740, #741 e #742-M2. Non restano marcatori, `git ls-files -u` è vuoto e `git diff --cached --check` è pulito. Esito: ok.
 
-**Test eseguiti**
-- Voice server, voce Telegram, ascolto voce e sottofondo con `-k "not browser"`: 606 passed, 25 deselected. Tu ne avevi dichiarati 616, quasi certamente perché la selezione dei test è diversa.
-- Suite del kernel `tests/test_unit_kernel.py` (si lancia come script, non con pytest): 1099 PASS, 1 FAIL. Il FAIL è T31g ed è dovuto all'ambiente: qui manca `sentence_transformers`, quindi il vector store risulta non disponibile. T31g non è toccato da questo merge.
+**Cosa non ho verificato**
+- La suite kernel e le righe di gas.py di questa sessione: il merge non le tocca e restano coperte dalle review #736-#738.
+- Il contenuto dei file in reports/: ho solo controllato che non abbiano marcatori di conflitto, sono fuori dal perimetro di review.
 
-**Cosa NON ho verificato**
-- I test browser (deselezionati) e il comportamento reale di Telegram e del server voce sul Mac/VPS: non si possono riprodurre in questo ambiente.
-- Il contenuto di handoff, ultimo_report e diff_sessione tenuti dal tuo lato: sono report, fuori dal perimetro tecnico di questa review.
+**Note per te**
+- La prima riga è `## VERDETTO: APPROVATO`, nel formato obbligatorio del mio regolamento, e non `VERDETTO: APPROVATO` come avevi chiesto. Contiene comunque `VERDETTO:`, il marcatore che cerca il gate B. Se `check_verdetto.py` la rifiuta per il `##`, riemetto senza.
+- Memoria non toccata in questo secondo giro: la riga #739 è già nell'index dal primo giro.
 
-**Memoria**
-- Ho aggiunto la riga contatore #742-M2 in `/home/user/Gas/.claude/agents/memoria_revisore.md` e fatto solo `git add` su quel file, come chiesto. Nessuna lezione nuova.
-- Non ho lanciato `commit_memoria_revisore.sh`, perché committerebbe durante il merge. La memoria entra nel commit di chiusura del merge.
+Verdetto originale #739 (invariato):
+
+```
+VERDETTO: APPROVATO
+
+Il merge in corso di origin/main 447195f (PR #360 di M2) in feat/r7-direttore-m3 si può committare.
+
+**Cosa ho controllato nel diff**
+- modules/voice/server.py:324 — `_FRASI_FISSE` ora contiene anche i pezzi creati da `_dividi_frasi` sulle frasi fisse del codice. È l'unica modifica di codice rispetto a HEAD. Ho cercato due rischi: che il codice si discostasse dalla #360 già revisionata e che in cache entrasse testo del modello. `git diff --cached MERGE_HEAD -- modules/voice tests/test_unit_voice_server.py` è vuoto, quindi il codice è identico a quello di main. Esito: ok.
+- tests/test_unit_voice_server.py:2099 — sono i test della #360 sulla cache delle frasi fisse. Sono identici a quelli di MERGE_HEAD. Lanciati insieme ai test di sottofondo con `-k "not browser"`: 267 passed. Esito: ok.
+- .claude/agents/memoria_revisore.md:1416 — il conflitto è risolto come unione delle due parti. Ho confrontato le righe ordinate dell'index con HEAD e con MERGE_HEAD: nessuna riga persa da nessuno dei due lati. Ci sono sia #736, #737 e #738 di M3 con le loro due lezioni, sia #725, #735, #737, #740, #741 e #742-M2. Non restano marcatori di conflitto, `git ls-files -u` è vuoto e `git diff --cached --check` non segnala nulla. La copia di lavoro coincide con l'index. Esito: ok.
+- Citazione di contesto, modules/sottofondo/__init__.py:689 — il server voce usa `da_leggere`, `frase_finiti` e `segna_letti` (modules/voice/server.py:887). Ho verificato che esistono ancora nella versione M3 (righe 689, 718 e 733). Il merge non tocca modules/sottofondo. Esito: ok, nessuna interferenza con R7.
+
+**Cosa non ho verificato**
+- La suite kernel (gas.py) non l'ho lanciata: il merge non tocca né gas.py né modules/sottofondo.
+- I file in reports/ (handoff, ultimo_report e gli altri) non li ho letti per contenuto, ho solo controllato che non abbiano marcatori di conflitto. Sono fuori dal perimetro di review.
+
+**Memoria del revisore**
+- Ho scritto la riga contatore `#739 (chat M3)` e l'ho aggiunta all'index con `git add`, quindi entra nel commit di merge.
+- Lo script `bash scripts/commit_memoria_revisore.sh` non è partito: l'hook del gate di review ha bloccato il comando perché manca il marcatore `.claude/.review_ok`. Con un merge in corso lo script non sarebbe comunque utilizzabile, come già successo in #733-M2.
+- Prima di committare il merge devi rigenerare il marcatore con `bash scripts/segna_review_ok.sh`. La mia riga è nell'index, quindi va generato sull'index attuale.
+```
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: +2 test — `test_sintesi_cache_forte_a_pezzi_dal_server` (percorso vero «forte» a pezzi, scrittura e seconda lettura della cache) e `test_sintesi_cache_anche_per_le_frasi_divise` (i pezzi di una frase fissa si sintetizzano una volta sola; un testo diverso mai in cache); col codice precedente fallisce. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 314 passed, 15 deselected; dopo il test del bot #360 V-1: 315 passed (il revisore con `-k "not browser"` ne deseleziona 21: filtro diverso). `gas.py` non toccato.
+- `tests/test_unit_sottofondo.py`: 99 casi a metà sessione (dopo la prima versione della fetta) → 103 casi alla fine, tutti passati (`103 passed in 2.32s`).
+- Suite kernel: prima 1100 PASS (T105a senza il controllo sul nome) → dopo:
+
+```
+=== RIEPILOGO: 1100 PASS, 0 FAIL ===
+```
+
+(T105a esteso, nessun check nuovo.) Voce + notte + sottofondo: `478 passed in 289.68s`.
 
 ## §6 STATO CI
 
-Head ce0cbe4: unit-suite, handoff-check e verifica-bot success (bot: APPROVATO CON RISERVE, 1 COSMETICA accettata dall'operatore). Nuovo head col merge di main (#359): run non ancora disponibile alla scrittura dell'handoff.
+`gh` non usato per la CI in questa sessione (solo strumenti GitHub di sessione). Check della PR #364 letti alla scrittura dell'handoff, run sul commit ef18a4e (testa del push precedente):
+- `unit-suite`: in_progress (run 42727825423).
+- `handoff-check`: failure (run 42727825423) — atteso: l'handoff di sessione non era ancora scritto; si ripete col push di questo commit.
+- `verifica-bot` (smista/verifica/esito): skipped — etichetta `verifica` non ancora messa.
+
+Mappatura commit→run:
+- ef18a4e: run 42727825423 (push del branch col merge).
+- 3101011: nessuna run propria su questo SHA (pushato prima dell'apertura della PR; contenuto incluso nell'albero di ef18a4e).
+- 9575467, 525064c, 1852310 (memoria revisore): nessuna run su questi SHA.
+- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Dalla #358: R-720-2-M2 (client locale col token vecchio blocca tutti per 15 min), R-720-5-M2 (log per richiesta bloccata), R-726-1-M2, R-730-1/2-M2, R-731-2-M2; limite: con la rete privata non si verifica che l'IPv4 sia del tunnel; client via tunnel con un nome (MagicDNS) → 403.
-- Ve #356 V-4 BASSA: `api_key` non nella chiave della cache (innocuo: l'audio dipende da testo e voce).
-- Non verificato in dev: guadagno di latenza reale con ElevenLabs.
+- **R-737-2** (BASSA): un parcheggio alla firma con testo diverso da «Azione in attesa…»/«Operazione negata…» lascia `cancello` None e risulta «fatto» nei progressi.
+- **R-738-1** (COSMETICA): `test_posto_sparito_sotto_il_lock_compito_chiuso` prova solo il False di `_riprendi`, non il giro fino a «ko» con avviso.
+- Non verificato (dichiarato dal revisore): processi veri (flock fra processi, kill del figlio, nipoti rimasti vivi), cancello firme end-to-end su un compito ripreso.
