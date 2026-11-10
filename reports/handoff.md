@@ -21,6 +21,8 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **B5 — JSON di forma sbagliata → 400**: `FATTA` (1c53cf9).
 - **Miglioramenti (413, porta prima del kernel, proxy su GAS_VOICE_PORT)**: `FATTA` (1c53cf9; R-752-3 chiusa, review #755-M2).
 - **Merge di origin/main f4d2d4f (#364, #365)**: `FATTA` (d1b5628), review #759-M2.
+- **Merge di origin/main a164b42 (#363 terminale A)**: `FATTA` (1af440e) — conflitti solo nei report e nella memoria; review #760-M2 APPROVATO; manutenzione + voice_server + stt + tts + gate 1207 passed.
+- **Bot e verifica esterna #367 su ea3033b**: APPROVATO CON RISERVE, solo BASSE (porta fuori 0-65535 → traceback; test del timeout solo sulle intestazioni e con soglia stretta; GAS_VOICE_PORT filtrato a sole cifre): registrate in §7.
 - **Sospetti di M1 da valutare** («forte» durante «Sì, signore?», blocco per IP condiviso su 127.0.0.1, connessione ElevenLabs riusata): `DEFERITA` — non toccati qui.
 
 ---
@@ -28,16 +30,16 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
+ .claude/agents/memoria_revisore.md |   6 +++++
  clients/voice/browser_server.py    |  45 ++++++++++++++++++++++++++++++++++++++-------
  modules/voice/server.py            |  39 +++++++++++++++++++++++++++++++++++----
  modules/voice/stt.py               |   8 ++++++--
  modules/voice/tts.py               |  28 ++++++++++++++++++++--------
- reports/diff_sessione.md           |  14 +++++++-------
+ reports/diff_sessione.md           |  17 ++++++-------
  reports/handoff.md                 | n/d
  reports/ripartenza_m2.md           |   2 ++
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  24 ++++++++++++------------
+ reports/ultimo_report.md           |  23 ++++++++---------
  tests/test_unit_voice_server.py    | 171 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
  tests/test_unit_voice_stt.py       |  18 ++++++++++++++++++
  tests/test_unit_voice_tts.py       |  30 ++++++++++++++++++++++++++++++
@@ -48,6 +50,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1af440e Merge origin/main (#363) nelle correzioni dell'audit voce — review #760-M2 APPROVATO (chat M2)
+ea3033b docs(fine-task): voce — correzioni dell'audit notturno, PR #367 (chat M2)
 d1b5628 Merge origin/main (#364, #365) nelle correzioni dell'audit voce — review #759-M2 APPROVATO (chat M2)
 1c53cf9 fix(voce): correzioni dell'audit notturno — timeout del socket, «Hey Jarvis, forte» al forte, risposte rotte di Groq/ElevenLabs come errori di rete, .env del browser come Gas, 400 al JSON di forma sbagliata, tetti 413, porta prima del kernel — review #752-M2, #755-M2 (chat M2)
 ```
@@ -55,6 +59,30 @@ d1b5628 Merge origin/main (#364, #365) nelle correzioni dell'audit voce — revi
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #760-M2 (merge di main a164b42, PR #363) — verdetto integrale
+
+VERDETTO: APPROVATO
+
+Review #760-M2: merge di origin/main a164b42 (PR #363, terminale A) in fix/voce-audit-m2 (PR #367), in staging nel worktree /home/user/Gas-audit.
+
+Controlli fatti:
+- **Stato del merge:** MERGE_HEAD è a164b42. `git ls-files -u` è vuoto e `git diff --cached --check` è pulito.
+- **File di main identici:** gas.py, modules/gate/gate.py, modules/manutenzione/__init__.py, tests/test_unit_manutenzione.py e .github/workflows/ci.yml non compaiono in `git diff --cached origin/main`, quindi sono identici a origin/main.
+- **Differenza rimasta rispetto a main:** `git diff --cached origin/main` contiene solo l'audit voce (modules/voice/server.py, stt.py, tts.py, clients/voice/browser_server.py, test voice_server/stt/tts), i report, la memoria e stato_progetto.md (+1 riga).
+- **Codice dell'audit non toccato dal merge:** la differenza staged rispetto a HEAD sui file voce, browser e test voice è di 0 righe.
+
+Elementi del diff esaminati:
+1. `modules/voice/server.py:589`: `_chiudi_tempi` scrive «tempi voce (%s): k=v.vvs». Rischio: che l'audit abbia cambiato il formato letto da log_voce. Esito: ok. Nel diff dell'audit rispetto a main nessuna riga +/- tocca «tempi», e la regex di contesto in `modules/manutenzione/__init__.py:45` richiede proprio `\(\d{3}\): (?:[a-z_]+=\d+(?:\.\d+)?s ?)+`.
+2. `modules/voice/server.py:751`: il nuovo 413 passa da `_send_json`, quindi da `_chiudi_tempi`. Rischio: una riga «tempi voce» che log_voce non riconosce. Esito: ok. Il codice ha 3 cifre e, se nella richiesta non si è ancora speso tempo, `_tempi` è vuoto e non viene scritta nessuna riga.
+3. `modules/voice/server.py:547` (`timeout = 60`) e `clients/voice/browser_server.py:362` (porta da GAS_VOICE_PORT): sono solo del server voce e del proxy, e la manutenzione non li usa. Rischio: interazione con `riavvia_voce` o `stato_gas`. Esito: ok, nessuna dipendenza.
+4. Memoria e stato_progetto: con un controllo `uniq -d` non risultano righe duplicate introdotte dal merge. Le intestazioni #736–#739 doppie esistono già su origin/main e #742-M2 è doppio già su HEAD, quindi non dipendono da questo merge.
+
+Test: ho lanciato una selezione mirata di manutenzione e voice_server con `-k "log_voce or tempi or audit"`: 22 passed. I 1207 dichiarati dall'agente non li ho rilanciati.
+
+Rischio escluso: non ho riprodotto log_voce su un gas_debug.log reale del Mac con richieste andate in timeout. Il timeout chiude il socket senza passare da `_send_json`, quindi in quel caso non c'è riga dei tempi: è coerente con l'esito, ma non l'ho provato dal vivo. Resta aperta R-752-1 (riserva BASSA dell'audit: il timeout di 60 s vale per tutto l'invio di una risposta lunga e non ferma chi manda pochi byte alla volta).
+
+Memoria: ho aggiunto la riga #760-M2 in coda a /home/user/Gas-audit/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-audit add`. Nessun commit, come richiesto. Nessuna lezione nuova.
 
 ### Review #759-M2 (merge di main f4d2d4f, commit d1b5628) — verdetto integrale
 
@@ -185,7 +213,8 @@ Review #752-M2 del diff STAGED in /home/user/Gas-audit (branch fix/voce-audit-m2
 ## §6 STATO CI
 
 CI NON VERIFICATA con `gh` (non autenticato nel cloud).
-- 1c53cf9 e d1b5628: run non ancora disponibile alla scrittura dell'handoff (pushati prima di aprire la PR #367).
+- ea3033b: handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE); unit-suite non letta a fine run prima del merge di main.
+- 1c53cf9, d1b5628 e 1af440e: nessuna run propria letta.
 - Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -194,4 +223,7 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud).
 - R-752-2 e R-752-3 BASSE: CHIUSE (1c53cf9, review #755-M2).
 - Nota #755: in `add_shared_voice` una risposta rotta dopo l'aggiunta riuscita dice «errore di rete» invece di «esito incerto» (BASSA).
 - Cosmetica #752: un TimeoutError durante `rfile.read` finisce su stderr invece che in gas_debug.log.
+- Bot #367 su ea3033b V-1 BASSA: GAS_VOICE_PORT fuori 0-65535 (es. 99999) → OverflowError/ValueError con traceback (server e proxy), non una regressione.
+- Bot #367 V-2 BASSA: il test del timeout prova solo intestazioni ferme, non un corpo dichiarato che non arriva; soglia di 4,5 s stretta per un runner lento.
+- Verifica esterna #367 V-3/V-4: /voci/prova e /voci/aggiungi hanno già un tetto loro (4096 byte); GAS_VOICE_PORT filtrato a sole cifre senza avviso (COSMETICA).
 - Sospetti di M1 non toccati: «forte» durante «Sì, signore?», blocco per IP condiviso su 127.0.0.1, connessione ElevenLabs riusata.
