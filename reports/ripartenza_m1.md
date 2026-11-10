@@ -2,7 +2,7 @@
 
 ## STATO AL 10/11 (dopo /clear leggi prima questo)
 - **REGOLA N.1 dell'operatore (arrabbiato, 10/11):** risposte di MASSIMO 5 righe. Scrivergli solo per decisioni o risultati da provare. Niente papiri, niente cronaca.
-- **Obiettivo unico proposto (attende il suo sì):** «Hey Jarvis» → domanda → risposta breve in < 5 s, senza scatti a vuoto. Tutto il resto fermo.
+- **Operatore 10/11: NO all'obiettivo unico.** Si lavora in parallelo su tutto, con più chat. Nuove chat: **M3** `session_01NNEhCpcBJbujHFoDPBQLgM` (R7 direttore v2, branch feat/r7-direttore-m3); **M4** `session_01NNEhCt7spryW9nfRfuFnME` (R1 giro notturno dal vero, branch feat/r1-notte-m4). Mani: voce/ascolto (#361). M2: terminale A + server voce.
 - Mergiate il 9/11: #356, #357, #358 (sicurezza server voce), #359 (voce Telegram in thread), #360 se M2 l'ha chiusa (verificare).
 - In corso: Mani → fetta correttiva ascolto (finestra 15 s, max 2 seguiti, eco ignorata, parola confermata su 2 frame, soglia più alta). M2 → PR terminale A (sicurezza, attende sì).
 - Sul Mac (.env): GAS_VOICE_MAX_TURNI=1, GAS_ASCOLTO_SOGLIA=0.6 (mitigazione falsi «Hey Jarvis» e seguiti, 9/11 sera).
