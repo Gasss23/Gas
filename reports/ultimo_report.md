@@ -1,24 +1,23 @@
-# Ultimo report — 2026-11-10 — ascolto H24: meno attivazioni per sbaglio + V-1 della verifica esterna #361 (chat Mani)
+# Ultimo report — 2026-11-10 — R7 fetta 1: ripresa dei compiti in sottofondo dopo un crash (chat M3)
 
 ## DECISIONI UMANE RICHIESTE
-
-Nessuna nuova. L'operatore, via M1, ha detto sì alla fetta correttiva se le riserve sono solo BASSE. Dopo il merge va provato dal vivo sul Mac se «Hey Jarvis» scatta ancora con 2 blocchi di fila (R-736-1). Se non scatta: `GAS_ASCOLTO_BLOCCHI_PAROLA=1` nel .env.
+1. Merge della PR #364 (https://github.com/Gasss23/Gas/pull/364): contiene una correzione di SICUREZZA al cancello (`.gas_sottofondo/` mai scrivibile, dall'audit notturno), quindi serve il sì dell'operatore via M1 anche col bot APPROVATO. Revisore APPROVATO CON RISERVE (solo BASSA/COSMETICA); bot sul giro a7eb3fc APPROVATA con riserve BASSE; la correzione di sicurezza va ancora passata da bot e verifica esterna.
 
 ## Esito
+- **Proposta R7** (`reports/proposta_r7_direttore.md`): FATTA — 4 opzioni, raccomandato l'ordine ripresa automatica → ripresa al boot → piano scritto dal modello → lista dei lavori ricorrenti. Mandata a M1.
+- **Fetta 1 — ripresa automatica**: FATTA — `modules/sottofondo/__init__.py`: processo morto (non oltre la durata massima) → compito di nuovo in coda e riavviato, max `GAS_SOTTOFONDO_RIPRESE` (default 2, tetto 5), presa del posto sotto `fcntl.flock`, tempo totale contato dalla prima creazione. Progressi in `<id>.passi` (0600): solo nomi di strumenti registrati, «fatto»/«in_firma»; nota nel prompt del compito ripreso; avviso finale «ripreso N volte». `gas.py`: `tool_res` porta `nome`.
+- **Riserve del revisore**: R-736-1 (MEDIA, corsa fra due controlli), R-736-2, R-736-3, R-737-1 CHIUSE; aperte R-737-2 (BASSA), R-738-1 e R-745-1 (COSMETICHE), in `reports/stato_progetto.md`.
+- **Merge di origin/main (#360 di M2)**: FATTO, review #739 APPROVATO.
+- **Bot #364 su dc6c25a** (NON approvata): V-1 MEDIA (un kill dell'operatore faceva ripartire il compito in silenzio) CHIUSA — avviso a ogni ripresa e comando `python gas.py sottofondo-ferma` (segno `<id>.ferma` sotto il lock della coda, ferma il processo solo se è il nostro figlio, chiude «ko»); V-2 BASSA (tetto di tempo con un buco) CHIUSA — niente ripresa oltre la durata contata dalla prima creazione. Review #743 → #744 → #745 APPROVATO CON RISERVE (R-743-1/2/3 e R-744-1/2 chiuse; resta R-745-1 COSMETICA).
+- **Verifica esterna #364** (su dc6c25a): APPROVATO CON RISERVE, nessuna ALTA/MEDIA; V-1 BASSA (compito mai partito ritentato) tracciata in stato_progetto.
+- **Merge di origin/main (#362 di M4)**: FATTO (solo report e memoria del revisore).
+- **Bot #364 2° giro (a7eb3fc)**: APPROVATA, riserve BASSE (avviso di ripresa e tetto notifiche; cartella di lancio di `sottofondo-ferma`) tracciate in stato_progetto. Verifica esterna 2° giro: APPROVATO CON RISERVE, nessuna ALTA/MEDIA.
+- **Audit notturno (M1) — `.gas_sottofondo/` scrivibile senza firma**: FATTO — denylist + livello 3 in `modules/gate/gate.py`, test gate (10 failed senza fix) e kernel T6s. Review #746 APPROVATO CON RISERVE (R-746-1 BASSA preesistente, R-746-2 COSMETICA).
+- **Merge di origin/main (#361)**: FATTO, review #747 APPROVATO.
+- Ripresa al boot, piano scritto dal modello, lista dei lavori ricorrenti: DEFERITE — fette successive.
 
-- **PR #359 (voce di Telegram in un thread)**: MERGIATA (695b759) col sì esplicito dell'operatore.
-- **Ascolto H24, meno attivazioni per sbaglio**: FATTA. Il log del 9/11 mostra falsi «Hey Jarvis» e turni di seguito risposti. Nuovi default in `clients/voice/ascolto.py`:
-  - finestra di 15 s (era 40);
-  - al massimo 2 turni di seguito dopo la richiesta (erano 4);
-  - soglia della parola 0,6 (era 0,5);
-  - parola valida solo con 2 blocchi di fila sopra soglia (`GAS_ASCOLTO_BLOCCHI_PAROLA`);
-  - primo mezzo secondo della finestra ignorato (coda dell'eco).
-- LEGGIMI aggiornato. Test dell'ascolto: 300 passed, 4 test nuovi, 4 mutanti presi. Review #736 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
-
-- **V-1 MEDIA della verifica esterna #361**: FATTA (bc37ae5). Nella finestra dopo la risposta la parola valeva con UN solo blocco: un picco isolato rendeva il turno normale e azzerava il conto dei turni di seguito. Ora anche lì servono 2 blocchi di fila (conto azzerato sotto soglia, su errore, allo scatto e a ogni nuova finestra); commento della soglia corretto (V-3). Test dell'ascolto: 303 passed, 3 test nuovi, tutti gli azzeramenti presi da mutanti. Review #737 APPROVATO CON RISERVE (R-737-1: azzeramenti senza test), chiusa dalla re-review #738 APPROVATO.
-- **Verifica esterna #361, 2° giro**: APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/361#issuecomment-6755215312)). V-1 MEDIA (PR in conflitto con main, solo nei report) CHIUSA col merge di origin/main 447195f (a13f442), review #739 APPROVATO. Aperte: V-2 (CI/bot da attendere), V-4 BASSA (pagina web voce non allineata: 12 s, 5 turni).
-- **Verifica esterna #361 3° giro e bot**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA. Bot: V-1 BASSA (3ª interruzione chiude senza bip), V-2 COSMETICA (commenti «40 s»), per la prossima fetta voce. Merge di main dopo la #362 (8ff4db4, solo documenti). Il merge della PR lo fa M1 col sì dell'operatore.
+## Test
+pytest `tests/test_unit_sottofondo.py`: 112 passed. Suite kernel: 1104 PASS, 0 FAIL. Gate: 832 passed. Voce+notte+sottofondo: 478 passed.
 
 ## Anomalie
-
-Suite completa nel container: 1 test del browser vero fallito (`test_testo_scritto_dal_javascript`), fuori scope (il branch non tocca modules/); fa fede la CI.
+Nessuna. Non provato con processi veri (flock fra processi, kill del figlio).
