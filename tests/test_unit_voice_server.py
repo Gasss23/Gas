@@ -16,7 +16,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from http.server import HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Generator, List
@@ -414,6 +414,9 @@ def test_forte_dalla_voce(monkeypatch):
     ("/forte analizza", ("forte", "analizza")),
     ("Ehi Gas, forte: analizza", ("forte", "analizza")),       # V-2 ve #304
     ("Ok Gas forte analizza", ("forte", "analizza")),
+    ("Hey Jarvis, forte: analizza", ("forte", "analizza")),      # audit 10 nov (B2)
+    ("Jarvis, Gas, forte analizza", ("forte", "analizza")),      # parola ripetuta
+    ("Hey Jarvis hey Jarvis forte analizza", ("forte", "analizza")),
 ])
 def test_v1_parola_forte_parlata(monkeypatch, parlato, atteso):
     monkeypatch.delenv("GAS_VOCE_FORTE", raising=False)
@@ -2384,5 +2387,169 @@ def test_r8_avvio_con_rete_privata_dichiarata_parte(monkeypatch):
         raise _Fermo()
     monkeypatch.setitem(sys.modules, "gas", type(sys)("gas"))
     sys.modules["gas"].GasKernel = _kernel
+    # audit 10 nov: la porta si apre PRIMA del kernel; qui un server finto (l'IP del tunnel
+    # non esiste su questa macchina)
+    chiusi = []
+
+    class _SrvFinto:
+        def __init__(self, indirizzo, handler):
+            self.indirizzo = indirizzo
+
+        def server_close(self):
+            chiusi.append(self.indirizzo)
+    monkeypatch.setattr(srv, "HTTPServer", _SrvFinto)
     with pytest.raises(_Fermo):
         run_server(root_dir="/tmp")
+    assert len(chiusi) == 1  # kernel fallito → porta richiusa
+
+
+# ─────────────────────────── audit notturno 10 nov ───────────────────────────
+
+def test_audit_b1_timeout_del_socket():
+    """B1: il server è a un thread; una connessione muta (anche senza token) non blocca la
+    voce: dopo `timeout` secondi il socket si chiude e la richiesta successiva passa."""
+    import socket as _so
+    from modules.voice.server import VoiceHandler
+    assert VoiceHandler.timeout == 60
+
+    class _H(VoiceHandler):
+        timeout = 1
+    _H.kernel = _MockKernel(events=[{"type": "final", "content": "eccomi"}])
+    _H.token = "tok-b1"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        muta = _so.create_connection(("127.0.0.1", srv.server_address[1]))
+        muta.sendall(b"POST /voice HTTP/1.1\r\nContent-Length: 50\r\n")  # e poi più nulla
+        t0 = time.monotonic()
+        st, corpo = _post(srv.server_address[1], {"prompt": "ci sei?"},
+                          headers={"Authorization": "Bearer tok-b1"})
+        assert st == 200 and corpo["content"] == "eccomi"
+        assert time.monotonic() - t0 < 4.5
+        muta.close()
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def _post_grezzo(port, raw: bytes, token: str):
+    req = urllib.request.Request(f"http://127.0.0.1:{port}/voice", data=raw, method="POST",
+                                 headers={"Content-Type": "application/json",
+                                          "Authorization": f"Bearer {token}"})
+    try:
+        with _SENZA_PROXY.open(req, timeout=5) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read())
+
+
+@pytest.mark.parametrize("raw", [b"[]", b'"ciao"', b"3", b'{"prompt": 123}',
+                                 b'{"prompt": ["a"]}', b'{"prompt": {"x": 1}}'])
+def test_audit_b5_json_di_forma_sbagliata_400(raw):
+    """B5: JSON valido ma di forma sbagliata → 400 con un messaggio, mai connessione chiusa."""
+    k = _MockKernel()
+    server, port = _make_server(k, "tok-b5")
+    try:
+        st, corpo = _post_grezzo(port, raw, "tok-b5")
+        assert st == 400 and "JSON" in corpo["error"]
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_audit_tetti_413(monkeypatch):
+    """Tetti: corpo oltre _MAX_CORPO_BYTE (controllato PRIMA di leggerlo) e prompt oltre
+    _MAX_PROMPT_CHAR → 413, nessun turno."""
+    import modules.voice.server as srv_mod
+    k = _MockKernel()
+    server, port = _make_server(k, "tok-413")
+    try:
+        st, corpo = _post_grezzo(port, json.dumps({"prompt": "x" * 20_001}).encode(), "tok-413")
+        assert st == 413 and "troppo lungo" in corpo["error"]
+        st, _ = _post_grezzo(port, json.dumps({"prompt": "x" * 20_000}).encode(), "tok-413")
+        assert st == 200
+        monkeypatch.setattr(srv_mod, "_MAX_CORPO_BYTE", 100)
+        st, corpo = _post_grezzo(port, json.dumps({"prompt": "y" * 200}).encode(), "tok-413")
+        assert st == 413 and "troppo grande" in corpo["error"]
+    finally:
+        server.shutdown()
+        server.server_close()
+    assert srv_mod._MAX_PROMPT_CHAR == 20_000
+
+
+def test_audit_porta_occupata_messaggio_chiaro(monkeypatch, capsys):
+    """Porta occupata → messaggio chiaro e uscita 1, PRIMA di caricare il kernel."""
+    import modules.voice.server as srv_mod
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(srv_mod, "_carica_env", lambda: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "t" * 32)
+    monkeypatch.delenv("GAS_VOICE_BIND", raising=False)
+    occupata = HTTPServer(("127.0.0.1", 0), BaseHTTPRequestHandler)
+    monkeypatch.setenv("GAS_VOICE_PORT", str(occupata.server_address[1]))
+    caricato = []
+    finto = type(sys)("gas")
+    finto.GasKernel = lambda **kw: caricato.append(kw)
+    monkeypatch.setitem(sys.modules, "gas", finto)
+    try:
+        assert run_server(root_dir="/tmp") == 1
+    finally:
+        occupata.server_close()
+    out = capsys.readouterr().out
+    assert "non riesco ad ascoltare" in out and caricato == []
+
+
+@pytest.mark.parametrize("riga, atteso", [
+    ('GAS_VOICE_TOKEN="abc123"', "abc123"),
+    ("GAS_VOICE_TOKEN='abc123'  # commento", "abc123"),
+    ("export GAS_VOICE_TOKEN=abc123", "abc123"),
+    ("GAS_VOICE_TOKEN=abc123 # commento", "abc123"),
+    ("GAS_VOICE_TOKEN=abc123\t# commento", "abc123"),
+    ("GAS_VOICE_TOKEN=abc#123", "abc#123"),
+    ('GAS_VOICE_TOKEN="non chiuse', None),
+])
+def test_audit_b4_dotenv_del_browser_come_gas(monkeypatch, tmp_path, riga, atteso):
+    """B4: il .env del proxy del browser segue le regole di gas.py (virgolette, commenti,
+    export): un token tra virgolette non deve arrivare con le virgolette (401 e blocco IP)."""
+    import clients.voice.browser_server as bs
+    monkeypatch.delenv("GAS_VOICE_TOKEN", raising=False)
+    (tmp_path / ".env").write_text(riga + "\n", encoding="utf-8")
+    bs._load_dotenv(tmp_path)
+    assert os.environ.get("GAS_VOICE_TOKEN") == atteso
+    monkeypatch.delenv("GAS_VOICE_TOKEN", raising=False)
+
+
+def test_audit_b4_dotenv_non_sovrascrive(monkeypatch, tmp_path):
+    import clients.voice.browser_server as bs
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "dalla-shell")
+    (tmp_path / ".env").write_text("GAS_VOICE_TOKEN=dal-file\n", encoding="utf-8")
+    bs._load_dotenv(tmp_path)
+    assert os.environ["GAS_VOICE_TOKEN"] == "dalla-shell"
+
+
+@pytest.mark.parametrize("url, porta, atteso", [(None, "9001", 9001), (None, None, 8765),
+                                                ("http://127.0.0.1:7000", "9001", 7000)])
+def test_audit_proxy_segue_gas_voice_port(monkeypatch, url, porta, atteso):
+    """R-752-3: senza GAS_VOICE_URL il proxy del browser segue GAS_VOICE_PORT, come il
+    server voce; GAS_VOICE_URL, se c'è, vince."""
+    bs = _browser_server_module()
+    monkeypatch.setattr(bs, "_load_dotenv", lambda root: None)
+    monkeypatch.setenv("GAS_VOICE_TOKEN", "tok")
+    for k in ("GAS_VOICE_TIMEOUT", "GAS_VOICE_FINESTRA", "GAS_VOICE_MAX_TURNI", "GAS_BROWSER_PORT"):
+        monkeypatch.delenv(k, raising=False)
+    for k, v in (("GAS_VOICE_URL", url), ("GAS_VOICE_PORT", porta)):
+        if v is None:
+            monkeypatch.delenv(k, raising=False)
+        else:
+            monkeypatch.setenv(k, v)
+
+    class _Fermo(Exception):
+        pass
+
+    class _NonParte:
+        def __init__(self, *a):
+            raise _Fermo()
+
+    monkeypatch.setattr(bs, "ThreadingHTTPServer", _NonParte)
+    with pytest.raises(_Fermo):
+        bs.run_browser_server()
+    assert bs.BrowserProxyHandler.voice_port == atteso

@@ -102,6 +102,9 @@ _log_tempi = logging.getLogger("gas.voce.tempi")
 _log_tempi.setLevel(logging.INFO)
 
 _ENDPOINT = "/voice"
+# Audit 10 nov: tetti alla dimensione della richiesta (413)
+_MAX_CORPO_BYTE = 10 * 1024 * 1024
+_MAX_PROMPT_CHAR = 20_000
 
 # V1 (chat M2): la barra di «/forte» non si detta e Whisper scrive «Forte, …»: la parola
 # «forte» all'inizio del parlato (anche dopo «Gas», o «Gus» come lo trascrive Whisper)
@@ -111,7 +114,9 @@ _ENDPOINT = "/voice"
 # sicura, costa budget: R-564-1-M2, V-1 ve #304); «Gas e forte …» o un saluto non in
 # elenco restano normali (con GAS_VOCE_FORTE=1 vanno comunque al forte).
 _PAROLA_FORTE = re.compile(
-    r"^[^\w/]*(?:(?:(?:ehi|ehy|hey|ok|okay|ciao|senti)\W+)?(?:gas|gus)\b\W*)?forte(?!\w)(.*)$",
+    # Audit 10 nov (B2): anche «Hey Jarvis, forte: …» e la parola ripetuta («Jarvis, Gas,
+    # forte …») vanno al forte, mai ai gratuiti
+    r"^[^\w/]*(?:(?:(?:ehi|ehy|hey|ok|okay|ciao|senti)\W+)?(?:gas|gus|jarvis)\b\W*)*forte(?!\w)(.*)$",
     re.IGNORECASE | re.DOTALL)
 _USO_FORTE = "Uso: /forte <richiesta> (a voce: «forte <richiesta>»)"
 # V2 (V-2 ve #304): a chi PARLA l'istruzione d'uso arriva come risposta da ascoltare
@@ -485,6 +490,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
     kernel: Any = None
     token: str = ""
+    # Audit 10 nov (B1): socket del client. Il server è a un thread: una connessione muta o
+    # un corpo che non arriva (anche senza token) non blocca la voce oltre questi secondi
+    timeout = 60
     _capito: Optional[str] = None  # V6: trascrizione della richiesta in corso (per istanza)
     _tempi: Optional[Dict[str, float]] = None  # V7: secondi per pezzo della richiesta in corso
     _t0: float = 0.0
@@ -687,6 +695,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
         except ValueError:
             self._send_json(400, {"error": "Content-Length non valido"})
             return
+        if length > _MAX_CORPO_BYTE:  # audit 10 nov: tetto prima di leggere
+            self._send_json(413, {"error": "Richiesta troppo grande"})
+            return
         raw = self.rfile.read(length) if length > 0 else b""
         # V-2 bot #322: il caricamento dell'audio dalla pagina è «rete», non tempo del server
         self._t0 = time.monotonic()
@@ -731,9 +742,17 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._send_json(400, {"error": "Body JSON non valido"})
                 return
 
+            # Audit 10 nov (B5): JSON valido ma di forma sbagliata ([] o {"prompt": 123})
+            # → 400, non una connessione chiusa senza risposta
+            if not isinstance(data, dict) or not isinstance(data.get("prompt") or "", str):
+                self._send_json(400, {"error": "Body JSON non valido"})
+                return
             prompt = (data.get("prompt") or "").strip()
             if not prompt:
                 self._send_json(400, {"error": "Campo 'prompt' mancante o vuoto"})
+                return
+            if len(prompt) > _MAX_PROMPT_CHAR:
+                self._send_json(413, {"error": f"Testo troppo lungo (oltre {_MAX_PROMPT_CHAR} caratteri)"})
                 return
 
         # R-ve269-2 + V1: «/forte», «forte …» parlato o GAS_VOCE_FORTE → solo forte, mai ai gratuiti
@@ -1435,14 +1454,26 @@ def run_server(root_dir: Optional[str] = None) -> int:
         print("  oppure resta su 127.0.0.1. Vedi reports/proposta_voce_sicura.md.")
         return 1
 
-    from gas import GasKernel  # import pigro: non richiede gas.py al semplice import del modulo
+    # Audit 10 nov: prima la porta, poi il kernel. Con la porta occupata un messaggio chiaro
+    # e uscita 1, invece di un traceback dopo secondi di caricamento (launchd in loop)
+    try:
+        server = HTTPServer((bind, port), VoiceHandler)
+    except OSError as exc:
+        print(f"✗ gas voice: non riesco ad ascoltare su {bind}:{port} ({exc.strerror or exc}).")
+        print("  Un altro server voce è già acceso? Oppure cambia GAS_VOICE_PORT.")
+        return 1
 
-    kernel = GasKernel(root_dir=str(root))
+    try:
+        from gas import GasKernel  # import pigro: non richiede gas.py al semplice import del modulo
+
+        kernel = GasKernel(root_dir=str(root))
+    except BaseException:
+        server.server_close()
+        raise
 
     VoiceHandler.kernel = kernel
     VoiceHandler.token = token
 
-    server = HTTPServer((bind, port), VoiceHandler)
     print(f"✓ gas voice: in ascolto su http://{bind}:{port}{_ENDPOINT}")
     if _voce_tutta_forte():
         print("  GAS_VOCE_FORTE acceso: ogni richiesta va al solo cervello forte.")

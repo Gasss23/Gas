@@ -443,3 +443,33 @@ def test_server_uses_default_voice_when_env_absent(monkeypatch):
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_audit_b3_risposta_rotta_diventa_oserror():
+    """B3: IncompleteRead di ElevenLabs → OSError, preso dai rami di sintesi del server."""
+    import http.client
+
+    class _Rotta(_FakeConn):
+        def getresponse(self):
+            resp = MagicMock()
+            resp.read.side_effect = http.client.IncompleteRead(b"x", 10)
+            return resp
+    with pytest.raises(OSError, match="IncompleteRead"):
+        synthesize_speech("ciao", "k", "v", _conn_factory=lambda: _Rotta(200, b""))
+
+
+def test_audit_b3_altre_funzioni_tts():
+    """R-752-2: anche elenco voci, libreria e aggiunta di una voce trasformano una risposta
+    rotta in OSError (il server prende ElevenLabsTTSError e OSError)."""
+    import http.client
+    from modules.voice.tts import add_shared_voice, list_shared_voices, list_voices
+
+    class _Rotta(_FakeConn):
+        def getresponse(self):
+            raise http.client.IncompleteRead(b"x", 10)
+    fab = lambda: _Rotta(200, b"")  # noqa: E731
+    for chiamata in (lambda: list_voices("k", _conn_factory=fab),
+                     lambda: list_shared_voices("k", _conn_factory=fab),
+                     lambda: add_shared_voice("k", "owner", "v", "nome", _conn_factory=fab)):
+        with pytest.raises(OSError, match="IncompleteRead"):
+            chiamata()

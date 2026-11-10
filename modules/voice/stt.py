@@ -253,8 +253,12 @@ def transcribe_audio(
                 "Content-Length": str(len(body)),
             },
         )
-        resp = conn.getresponse()
-        resp_body = resp.read()
+        try:
+            resp = conn.getresponse()
+            resp_body = resp.read()
+        except http.client.HTTPException as exc:  # audit 10 nov (B3): IncompleteRead,
+            # BadStatusLine… come un errore di rete, così il chiamante risponde al client
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
         if resp.status == 200:
             try:
                 data = json.loads(resp_body)

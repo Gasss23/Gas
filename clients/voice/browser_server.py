@@ -12,7 +12,7 @@ Uso (dalla root ~/Gas, con venv attivata):
 
 Variabili d'ambiente (lette da .env nella root Gas se presenti):
     GAS_VOICE_TOKEN    — token bearer  OBBLIGATORIO
-    GAS_VOICE_URL      — URL base voice server  (default: http://127.0.0.1:8765)
+    GAS_VOICE_URL      — URL base voice server  (default: http://127.0.0.1:<GAS_VOICE_PORT o 8765>)
     GAS_BROWSER_PORT   — porta questo server    (default: 9000)
     GAS_VOICE_TIMEOUT  — secondi di attesa della risposta di Gas (default: 600; una
                          chiamata del cervello forte può durare fino a 300 s)
@@ -30,11 +30,13 @@ import http.client
 import json
 import logging
 import os
+import re
 import socket
 import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -46,19 +48,45 @@ _HTML_VOCI = _HERE / "prova_voci.html"   # V8: pagina «prova voci»
 _CONNECT_TIMEOUT = 10  # secondi per collegarsi al voice server (non per la risposta)
 
 
+_DOTENV_CHIAVE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_DOTENV_VIRGOLETTE = re.compile(r"""(['"])(.*?)\1(?:\s+#.*)?""")
+
+
+def _valore_dotenv(grezzo: str) -> Optional[str]:
+    """Audit 10 nov (B4): stesse regole di `_carica_dotenv` in gas.py. Virgolette '…' o "…"
+    tolte (anche se seguite da ` # commento`); su un valore senza virgolette uno spazio e `#`
+    aprono un commento; virgolette non chiuse → None (riga ignorata). Prima il token tra
+    virgolette arrivava con le virgolette: 401 a ogni richiesta e, dopo 10 tentativi,
+    127.0.0.1 bloccato per 15 minuti anche per l'ascolto H24."""
+    v = grezzo.strip()
+    m = _DOTENV_VIRGOLETTE.fullmatch(v)
+    if m:
+        return m.group(2)
+    if v[:1] in ("'", '"'):
+        return None
+    return re.split(r"\s+#", v, maxsplit=1)[0].rstrip()
+
+
 def _load_dotenv(root: Path) -> None:
-    """Carica .env dalla root senza sovrascrivere vars già nell'ambiente."""
+    """Carica .env dalla root senza sovrascrivere vars già nell'ambiente. Stesse regole di
+    gas.py (`export`, commenti, virgolette); non importa gas.py, che all'import configura
+    il log e carica i provider."""
     env_path = root / ".env"
-    if not env_path.exists():
+    try:
+        testo = env_path.read_text(encoding="utf-8-sig")
+    except OSError:
         return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
+    for line in testo.splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
+        if line.startswith("export "):
+            line = line[len("export "):].lstrip()
         key, _, value = line.partition("=")
         key = key.strip()
-        if key and key not in os.environ:
-            os.environ[key] = value.strip()
+        valore = _valore_dotenv(value)
+        if _DOTENV_CHIAVE.fullmatch(key) and valore is not None and key not in os.environ:
+            os.environ[key] = valore
 
 
 class BrowserProxyHandler(BaseHTTPRequestHandler):
@@ -330,7 +358,10 @@ def run_browser_server() -> int:
         print("  Genera un token con: openssl rand -hex 32")
         return 1
 
-    voice_url = (os.environ.get("GAS_VOICE_URL") or "http://127.0.0.1:8765").strip().rstrip("/")
+    # Audit 10 nov: senza GAS_VOICE_URL segue GAS_VOICE_PORT, come il server voce
+    porta_voce = "".join(c for c in os.environ.get("GAS_VOICE_PORT", "") if c.isdigit()) or "8765"
+    voice_url = (os.environ.get("GAS_VOICE_URL")
+                 or f"http://127.0.0.1:{porta_voce}").strip().rstrip("/")
     parsed = urllib.parse.urlparse(voice_url)
     voice_host = parsed.hostname or "127.0.0.1"
     voice_port = parsed.port or 8765

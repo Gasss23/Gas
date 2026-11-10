@@ -1211,3 +1211,21 @@ class TestVoiceHandlerRouting:
                 status, resp = _post_raw(self.port, wav, hdrs)
         assert status == 200
         assert received_prompts == ["prompt trascritto"]
+
+
+def test_audit_b3_risposta_rotta_diventa_oserror():
+    """B3: IncompleteRead / BadStatusLine di Groq → OSError (come la rete), così il server
+    risponde al client invece di chiudere la connessione."""
+    import http.client
+
+    class _Rotta(_FakeConn):
+        def getresponse(self):
+            raise http.client.IncompleteRead(b"x", 10)
+    with pytest.raises(OSError, match="risposta rotta"):
+        transcribe_audio(_fake_wav(), "audio.wav", "k", _conn_factory=_factory(_Rotta()))
+
+    class _Male(_FakeConn):
+        def getresponse(self):
+            raise http.client.BadStatusLine("x")
+    with pytest.raises(OSError, match="BadStatusLine"):
+        transcribe_audio(_fake_wav(), "audio.wav", "k", _conn_factory=_factory(_Male()))
