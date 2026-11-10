@@ -1,25 +1,24 @@
-# Ultimo report — 2026-11-10 — chat M4: R1 «Giro notturno provato dal vero», procedura di prova
+# Ultimo report — 2026-11-10 — ascolto H24: meno attivazioni per sbaglio + V-1 della verifica esterna #361 (chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #362 (solo documentazione): la mergio io se il bot dà APPROVATO pulito con CI verde; altrimenti serve il sì dell'operatore via M1.
-2. Archivio della conoscenza (voce R1 «avviso knowledge_fts»): tolto dalla prova perché l'unica fonte è quella di prova, superata (V-2 bot #362 terzo giro). Va creato quando c'è una fonte vera: decide l'operatore quale.
-3. L'operatore sceglie una notte e segue `reports/prova_r1_notte.md` (sera + mattina), poi manda a M1 gli output dei punti B, C, E, F.
+Nessuna nuova. L'operatore, via M1, ha detto sì alla fetta correttiva se le riserve sono solo BASSE. Dopo il merge va provato dal vivo sul Mac se «Hey Jarvis» scatta ancora con 2 blocchi di fila (R-736-1). Se non scatta: `GAS_ASCOLTO_BLOCCHI_PAROLA=1` nel .env.
 
 ## Esito
 
-- **Analisi di cosa manca a R1**: `FATTA` — già provati in ottobre messaggio del mattino, bottoni di giorno, timer e giro col forte. Mancano: partenza alle 03:00 da solo, firma nata di notte approvata al mattino (24 ore), riga «Riflessione», archivio `knowledge_fts` (poi tolto dalla prova, vedi sotto).
-- **Procedura `reports/prova_r1_notte.md`**: `FATTA` — comandi in riquadri per sera e mattina, tabella dei guasti. Verificato qui: il catalogo col compito `prova_firma_r1` si carica senza avvisi (`carica_catalogo`), `prove_r1/buongiorno.sh` è di livello 2 (sempre alla firma, `livello_scrittura`).
-- **Correzioni al codice**: `SALTATA — non servono`: il codice per la prova c'è già.
-- **Messaggio a M1**: `FATTA` — consegnato.
-- **PR #362**: aperta, etichetta `verifica` messa. Bot sul commit 1bd7939: APPROVATO CON RISERVE (nessuna ALTA/MEDIA).
-- **Riserve del bot #362 (V-1, V-2 BASSE; V-3, V-4 COSMETICHE)**: `FATTA` — V-1 controllo vero del forte nel doctor (non basta OK, «spento» è OK), V-2 pulizia con `rm -rf …; mv …` che rimette sempre il catalogo, V-3 mappatura CI corretta nell'handoff, V-4 chiavi di `plutil` tra virgolette.
-- **Riserve del bot #362, secondo giro su 1eb30cb (V-1, V-2 BASSE)**: `FATTA` in bae139c — controllo esplicito dell'archivio `knowledge_fts` (conteggio > 0) e output atteso dell'ingest; cosa fare se il controllo del catalogo non passa. 
+- **PR #359 (voce di Telegram in un thread)**: MERGIATA (695b759) col sì esplicito dell'operatore.
+- **Ascolto H24, meno attivazioni per sbaglio**: FATTA. Il log del 9/11 mostra falsi «Hey Jarvis» e turni di seguito risposti. Nuovi default in `clients/voice/ascolto.py`:
+  - finestra di 15 s (era 40);
+  - al massimo 2 turni di seguito dopo la richiesta (erano 4);
+  - soglia della parola 0,6 (era 0,5);
+  - parola valida solo con 2 blocchi di fila sopra soglia (`GAS_ASCOLTO_BLOCCHI_PAROLA`);
+  - primo mezzo secondo della finestra ignorato (coda dell'eco).
+- LEGGIMI aggiornato. Test dell'ascolto: 300 passed, 4 test nuovi, 4 mutanti presi. Review #736 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
 
-- **Riserve del bot #362, terzo giro su e4191a2 (V-1, V-2 BASSE; V-3 COSMETICA)**: `FATTA` — controllo B con l'ora del giro nel log del timer; archivio della conoscenza tolto dalla prova (diventa decisione dell'operatore); WARN «spento nella shell ma il .env lo accende» accettato.
-
-- **Merge di main (447195f) per il conflitto della #362**: `FATTA` — review #743-M4 APPROVATO CON RISERVE, riserve chiuse. Sì dell'operatore al merge riferito da M1.
+- **V-1 MEDIA della verifica esterna #361**: FATTA (bc37ae5). Nella finestra dopo la risposta la parola valeva con UN solo blocco: un picco isolato rendeva il turno normale e azzerava il conto dei turni di seguito. Ora anche lì servono 2 blocchi di fila (conto azzerato sotto soglia, su errore, allo scatto e a ogni nuova finestra); commento della soglia corretto (V-3). Test dell'ascolto: 303 passed, 3 test nuovi, tutti gli azzeramenti presi da mutanti. Review #737 APPROVATO CON RISERVE (R-737-1: azzeramenti senza test), chiusa dalla re-review #738 APPROVATO.
+- **Verifica esterna #361, 2° giro**: APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/361#issuecomment-6755215312)). V-1 MEDIA (PR in conflitto con main, solo nei report) CHIUSA col merge di origin/main 447195f (a13f442), review #739 APPROVATO. Aperte: V-2 (CI/bot da attendere), V-4 BASSA (pagina web voce non allineata: 12 s, 5 turni).
+- **Verifica esterna #361 3° giro e bot**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA. Bot: V-1 BASSA (3ª interruzione chiude senza bip), V-2 COSMETICA (commenti «40 s»), per la prossima fetta voce. Merge di main dopo la #362 (8ff4db4, solo documenti). Il merge della PR lo fa M1 col sì dell'operatore.
 
 ## Anomalie
 
-- `gh` nel container non è autenticato (token rifiutato): stato CI letto con gli strumenti GitHub della sessione.
+Suite completa nel container: 1 test del browser vero fallito (`test_testo_scritto_dal_javascript`), fuori scope (il branch non tocca modules/); fa fede la CI.
