@@ -482,8 +482,8 @@ class Ascolto:
         `subito` (V-1 verifica esterna #368): `iniziali` viene da `_voce_subito` e può
         essere solo la coda di «…vis». Come dopo una parola nella finestra si tollera il
         silenzio fino ad `attesa_s`; se dopo quei blocchi non arriva altra voce continua
-        (INIZIO_VOCE_S) non si invia niente: meglio ripetere «Hey Jarvis» che mandare a
-        Whisper mezzo secondo di coda (risposte inventate come «Di niente»)."""
+        (INIZIO_VOCE_S) torna None: niente mezzo secondo di coda a Whisper (risposte
+        inventate come «Di niente»); chi chiama ripiega sulla conferma."""
         presi: List[Blocco] = list(iniziali or [])
         voce = len(presi) >= blocchi_per(INIZIO_VOCE_S)
         if not voce:
@@ -534,7 +534,10 @@ class Ascolto:
                     dopo_parola = False
             if forte:
                 silenzio = 0
-                if dopo_parola:
+                # V-2 ve #368 (2° giro): finché la richiesta non è confermata i blocchi forti
+                # si contano anche dopo la tolleranza, così la voce che parte verso la fine
+                # dei 5 s conferma la richiesta invece di farla scartare.
+                if dopo_parola or not confermata:
                     forti_dopo += 1
                     if forti_dopo >= blocchi_per(INIZIO_VOCE_S):
                         dopo_parola = False
@@ -545,7 +548,6 @@ class Ascolto:
             if silenzio >= (max_attesa if dopo_parola else max_silenzio):
                 break
         if not confermata:
-            log.info("dopo la parola solo un attimo di voce, poi niente: non invio")
             return None
         return presi if voce else None
 
@@ -789,6 +791,14 @@ class Ascolto:
             # e andrebbe buttata), si registra da qui. Non suona niente, quindi niente eco.
             log.info("voce subito dopo la parola: niente conferma, registro")
             richiesta = self.registra(subito, subito=True)
+            if richiesta is None:
+                # V-1 ve #368 (2° giro): richiesta brevissima («Hey Jarvis, pausa») o solo
+                # la coda della parola: niente a Whisper, ma nemmeno silenzio. Si ripiega
+                # su «Sì, signore?» e si ascolta di nuovo, così si sa che va ripetuta.
+                log.info("dopo la parola solo un attimo di voce: chiedo con la conferma")
+                self._conferma_o_bip()
+                self._svuota()
+                richiesta = self.registra()
         else:
             self._conferma_o_bip()
             self._svuota()  # il bip o la conferma non devono finire nella richiesta

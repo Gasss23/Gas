@@ -2692,13 +2692,37 @@ def test_coda_lunga_della_parola_poi_pausa_aspetta_la_richiesta():
     assert _campioni(f.inviati[0]) == (coda + 15 + 10 + a.blocchi_per(0.8)) * a.BLOCCO
 
 
-def test_solo_la_coda_della_parola_non_si_invia(caplog):
-    """V-1 verifica esterna #368: dopo la parola solo un attimo di voce (la coda o un
-    rumore) e poi silenzio: niente a Whisper, si torna ad aspettare la parola."""
+def test_solo_la_coda_della_parola_non_si_invia_e_suona_la_conferma(caplog):
+    """V-1 verifica esterna #368 (1° e 2° giro): dopo la parola solo un attimo di voce (la
+    coda, o una richiesta brevissima come «pausa») e poi silenzio: niente a Whisper, ma
+    suona «Sì, signore?» e si ascolta di nuovo; senza altra voce si torna ad aspettare."""
     f = FintiParlano([b"A"], durata=3)
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         f.ascolto(_blocchi(PAROLA, (VOCE, a.blocchi_per(a.SUBITO_VOCE_S) + 1),
-                           (SILENZIO, a.blocchi_per(a.ATTESA_VOCE_S) + 20)),
+                           (SILENZIO, 2 * a.blocchi_per(a.ATTESA_VOCE_S) + 20)),
                   finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
-    assert f.inviati == [] and f.riprodotti == []
-    assert "poi niente: non invio" in caplog.text
+    assert f.inviati == [] and f.riprodotti == [b"SI"]
+    assert "chiedo con la conferma" in caplog.text
+
+
+def test_richiesta_brevissima_poi_ripetuta_dopo_la_conferma():
+    """V-1 ve #368 (2° giro): «Hey Jarvis, pausa» troppo breve: suona la conferma e la
+    richiesta ripetuta dopo arriva intera."""
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (VOCE, 6), (SILENZIO, a.blocchi_per(a.ATTESA_VOCE_S) + 5),
+                       (VOCE, 10), (SILENZIO, 20)),
+              finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
+    assert f.riprodotti == [b"SI", b"A"] and len(f.inviati) == 1
+    assert _campioni(f.inviati[0]) == (10 + a.blocchi_per(0.8)) * a.BLOCCO
+
+
+def test_voce_verso_la_fine_della_tolleranza_conferma_la_richiesta():
+    """V-2 ve #368 (2° giro, R-755-1-M1): coda, quasi 5 s di pausa e poi la richiesta:
+    i blocchi forti contano anche oltre la tolleranza, la richiesta si invia."""
+    coda = a.blocchi_per(a.SUBITO_VOCE_S)
+    pausa = a.blocchi_per(a.ATTESA_VOCE_S) - 2
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (VOCE, coda), (SILENZIO, pausa), (VOCE, 10), (SILENZIO, 20)),
+              finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
+    assert f.riprodotti == [b"A"] and len(f.inviati) == 1
+    assert _campioni(f.inviati[0]) == (coda + pausa + 10 + a.blocchi_per(0.8)) * a.BLOCCO

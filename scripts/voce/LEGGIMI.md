@@ -35,7 +35,9 @@ riavvio dell'ascolto: `bash scripts/voce/installa.sh`.
 **Richiesta d'un fiato:** se dici «Hey Jarvis, che ore sono» senza pause, Jarvis non dice
 «Sì, signore?» (coprirebbe la tua frase) e registra subito. Basta che nel primo 0,6 s dopo
 la parola parta voce continua per almeno 0,4 s; se invece ti fermi dopo «Hey Jarvis», senti la conferma e
-poi parli. Nel log, ogni «richiesta registrata» dice anche quanti secondi di voce e quanto
+poi parli. Se dopo la parola senti
+comunque «Sì, signore?», la frase era troppo corta (sotto circa due terzi di secondo, es. «Hey
+Jarvis, pausa» detto di corsa): non è stata mandata, ripetila dopo la conferma. Nel log, ogni «richiesta registrata» dice anche quanti secondi di voce e quanto
 forte (in multipli di `GAS_ASCOLTO_VOCE_RMS`): utile se le richieste arrivano tagliate.
 
 **Interrompere Gas:** mentre risponde, di' di nuovo la parola di attivazione: si ferma
