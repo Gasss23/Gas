@@ -48,6 +48,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9e4aeea docs(fine-task): verdetto #749-M2 riemesso con le citazioni per il gate B (chat M2)
+6e0f597 docs(fine-task): terminale A dopo il merge di main (#361), review #749-M2 (chat M2)
 62de796 Merge origin/main (#361 di Mani) nel terminale A — review #749-M2 APPROVATO (chat M2)
 3bf227f docs(fine-task): terminale A — merge di main (#362), V-3 verifica esterna #363 chiusa (review #748-M2), riserve aggiornate (chat M2)
 94bd308 fix(manutenzione): filtro di log_voce sulla riga intera di gas_debug.log (fullmatch), chiude V-3 verifica esterna #363 — review #748-M2 APPROVATO CON RISERVE (chat M2)
