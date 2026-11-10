@@ -66,8 +66,39 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #749-M2 (merge di main 3f08352, PR #361 di Mani) — verdetto integrale
+### Review #749-M2 (merge di main 3f08352, PR #361 di Mani) — verdetto integrale RIEMESSO
 
+Il primo verdetto citava un solo file di codice del diff di sessione e il gate B lo rifiutava: come da regola il revisore l'ha RIEMESSO con la stessa sostanza e le citazioni del lato terminale A. Sotto, prima il verdetto riemesso, poi l'originale (in un blocco, alla lettera).
+
+VERDETTO: APPROVATO
+
+Review #749-M2 (chat M2), riemessa con la stessa sostanza: aggiunte le citazioni del lato terminale A. Diff staged: il merge di origin/main 3f08352 (PR #361 della chat Mani) in feat/terminale-a-m2, con base comune 2dd0e8c.
+
+**File del terminale A esaminati:** con `git diff --cached HEAD --quiet` su gas.py, modules/, .github/ e il test di manutenzione risultano identici a HEAD, quindi il merge non li tocca.
+- `gas.py:5174`: è la guardia `_manutenzione_fuori` in run_turn, che nega lo strumento prima del cancello quando il turno è a voce, effimero, in sottofondo o di notte. Il rischio era che il merge alterasse la guardia. Il file è identico a HEAD e la #361 non tocca gas.py. Esito: ok.
+- `gas.py:609`: è `_carica_dotenv`, l'unico punto di gas.py usato dal lato main (ascolto.py lo importa). Il rischio era un'interazione tra i due lati. La funzione non compare nel diff 3f08352..HEAD di gas.py. Esito: ok.
+- `modules/manutenzione/__init__.py:177`: rifiuta le azioni da firmare se manca la firma; alla riga 180 c'è la finestra notte anche per le azioni firmate. Il rischio era che la risoluzione dei conflitti indebolisse questi blocchi. Il file è identico a HEAD (già revisionato in #739-M2 e #745-M2). Esito: ok.
+- `modules/gate/gate.py:777`: classifica come IRREVERSIBLE le azioni di `_MANUTENZIONE_FIRMA`. Il rischio era una regressione del cancello. Il file è identico a HEAD. Esito: ok.
+- `.github/workflows/ci.yml:223`: è il passo della CI che lancia la suite di manutenzione. Il rischio era perdere il passo durante la risoluzione. Il file è identico a HEAD. Esito: ok.
+- `tests/test_unit_manutenzione.py:260`: è `test_a_voce_nessuna_richiesta_di_firma`. Passa sulla copia dell'index. Esito: ok.
+
+**File di main e altri controlli:**
+- `clients/voice/ascolto.py:179`, `tests/test_unit_voce_ascolto.py` e `scripts/voce/LEGGIMI.md`: blob identici a 3f08352 (`git diff --cached 3f08352` vuoto).
+- `git diff --cached --stat origin/main` mostra solo il terminale A più report e memoria (11 file).
+- `.claude/agents/memoria_revisore.md`: è l'unione dei due lati. Nessuna riga persa né da main né da HEAD, nessuna riga doppia, nessun marcatore; la #742-M2 compare una volta sola.
+- `reports/stato_progetto.md`: rispetto a main cambia solo la riga +1 del terminale A.
+- `git ls-files -u` è vuoto e `git diff --cached --check` è pulito.
+- Test sulla copia dell'index (`checkout-index`), manutenzione più voce_ascolto: **348 passed**.
+
+**Cosa non ho verificato:**
+- Il comportamento dal vivo dell'ascolto sul Mac (microfono, parola di attivazione): non si può riprodurre qui.
+- Le suite del kernel e del gate non le ho rilanciate: gas.py e il gate sono identici a HEAD e già revisionati in #745-M2.
+
+**Memoria:** la riga #749-M2 è già in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` e in staging. Nessun commit e nessun'altra modifica ai file.
+
+Verdetto originale #749-M2, alla lettera:
+
+```
 VERDETTO: APPROVATO
 
 Review #749-M2 (chat M2). Diff staged: il merge di origin/main 3f08352 (PR #361 della chat Mani) nel ramo feat/terminale-a-m2. La base comune è 2dd0e8c.
@@ -91,6 +122,7 @@ Review #749-M2 (chat M2). Diff staged: il merge di origin/main 3f08352 (PR #361 
 **Memoria:**
 - Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga «#749-M2 — 2026-11-10 — APPROVATO — … Nessuna lezione nuova» e l'ho messa in staging con `git add`.
 - Come mi hai chiesto non ho fatto commit, quindi non ho lanciato nemmeno `commit_memoria_revisore.sh`.
+```
 
 ### Review #748-M2 (V-3 verifica esterna #363, commit 94bd308) — verdetto integrale
 
