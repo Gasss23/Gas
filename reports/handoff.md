@@ -21,6 +21,8 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **Verifica esterna #363 V-1 di gravità media (conflitto con main dopo il merge della #360)**: `FATTA` — merge di origin/main 447195f (d3c490c), conflitti solo nei report e nella memoria, review #745-M2 APPROVATO.
 - **Merge di origin/main 2dd0e8c (#362) nel ramo**: `FATTA` (ece76a8) — conflitti solo nei report e nella memoria; da main arrivano solo `reports/prova_r1_notte.md` e una riga di memoria (fuori dal perimetro di review).
 - **Merge di origin/main 3f08352 (#361 di Mani) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; review #749-M2 APPROVATO (file di main identici a 3f08352, nessuna interazione col terminale A; manutenzione + voce_ascolto 348 passed).
+- **Bot su bae9278: V-1 di gravità media (dopo aggiorna_gas il bot Telegram mescola codice vecchio e nuovo)**: `FATTA` (eb12cab, review #756-M2 e #757-M2) — l'esito chiede in TESTA di riavviare subito il bot (Gas non sa riavviarlo da sé: non è un servizio noto); test che passa dal messaggio Telegram tagliato.
+- **Merge di origin/main f4d2d4f (#365) nel ramo**: `FATTA` (1da1185) — review #758-M2 APPROVATO; manutenzione + voice_server + voice_stt 327 passed.
 - **Merge di origin/main eebb7c0 (#364 di M3) nel ramo**: `FATTA` — gas.py e gate.py uniti senza conflitti, controllati a mano dal revisore #754-M2 APPROVATO (index = unione esatta dei due lati; manutenzione esclusa anche nel sottofondo nuovo); kernel 1103 PASS / 1 FAIL T31g (ambiente), manutenzione + gate + sottofondo + notte 1189 passed.
 - **Bot su 7bcda34: V-1 di gravità media (manutenzione firmata ma fallita segnalata come eseguita) e V-2 BASSA (output nel diario)**: `FATTA` (ee9c7d0, review #751-M2) — esito KO → stato «incerta» (Telegram: «esito INCERTO, controlla»), nel diario solo [OK]/[KO], pip fallito con [KO] in testa; test con applica_firma reale.
 - **Verifica esterna #363 V-3 BASSA (filtro di `log_voce`)**: `FATTA` (94bd308, review #748-M2).
@@ -32,17 +34,17 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  16 ++++++++++--
+ .claude/agents/memoria_revisore.md |  26 +++++++++++++++---
  .github/workflows/ci.yml           |   7 +++++++
  gas.py                             |  64 ++++++++++++++++++
  modules/gate/gate.py               |  20 ++++
- modules/manutenzione/__init__.py   | 192 ++++++++++++++++++
- reports/diff_sessione.md           |  24 ++++++++----------
+ modules/manutenzione/__init__.py   | 197 ++++++++++++++++++
+ reports/diff_sessione.md           |  17 +++++++------
  reports/handoff.md                 | n/d
  reports/proposta_terminale_A.md    |  31 +++++++
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  29 ++++++++++--------
- tests/test_unit_manutenzione.py    | 356 ++++++++++++++++++
+ reports/ultimo_report.md           |  23 ++++++++---------
+ tests/test_unit_manutenzione.py    | 381 ++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -50,6 +52,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1da1185 Merge origin/main (#365) nel terminale A — review #758-M2 APPROVATO (chat M2)
+eb12cab fix(manutenzione): dopo aggiorna_gas l'esito chiede in testa di riavviare subito il bot Telegram (codice misto); chiude V-1 del bot su bae9278 — review #756-M2, #757-M2 (chat M2)
+bae9278 docs(fine-task): terminale A dopo il merge di main (#364), review #754-M2 (chat M2)
 9eb308a Merge origin/main (#364 di M3) nel terminale A — review #754-M2 APPROVATO (chat M2)
 2bbbc09 docs(fine-task): terminale A — V-1/V-2 del bot su 7bcda34 chiuse (review #751-M2), riserve aggiornate (chat M2)
 ee9c7d0 fix(manutenzione): una manutenzione firmata ma fallita non risulta più «eseguita» (esito incerto) e nel diario va solo [OK]/[KO]; chiude V-1 e V-2 del bot su 7bcda34 — review #751-M2 (chat M2)
@@ -73,6 +78,80 @@ e93bd77 feat(gas): terminale opzione A — azioni fisse di manutenzione (stato_g
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #758-M2 (merge di main f4d2d4f, PR #365) — verdetto integrale
+
+VERDETTO: APPROVATO
+
+Review #758-M2 (chat M2). È il merge, già nell'area di stage, di origin/main f4d2d4f (PR #365) nel ramo feat/terminale-a-m2 (PR #363).
+
+**Elementi del diff esaminati**
+- `modules/voice/server.py:849` è il codice che arriva da main: costruisce gli argomenti di run_turn e mette `voce=True` solo per le richieste audio (`is_audio`, `modules/voice/server.py:862`). Il rischio era che il nuovo server voce cambiasse ciò che arriva a run_turn e quindi a `_manutenzione_offerta`. Il diff fra HEAD e quello che è in stage su server.py non tocca né `run_turn` né `voce=`. Esito: ok.
+- `gas.py:4028` è `_manutenzione_offerta`, del terminale A: offre lo strumento solo se il turno non è a voce, non è effimero, carica la storia e non gira nel sottofondo. Il rischio era che la #365 la aggirasse. La #365 non la tocca: i turni a voce e di seguito restano esclusi. Le richieste a testo del server voce restano la riserva già registrata (V-2 del bot su 860c751), immutata. Esito: ok.
+- `modules/gate/gate.py:777`, il ramo `manutenzione` del cancello, e `modules/manutenzione/__init__.py:121` (`_aggiorna_gas`) non cambiano rispetto a HEAD. I file di main sono disgiunti da quelli del terminale A. Esito: ok.
+- `tests/test_unit_manutenzione.py:51`: le liste del modulo e del cancello sono uguali. La suite gira verde dopo il merge. Esito: ok.
+
+**Controlli meccanici**
+- `modules/voice/server.py`, `tests/test_unit_voice_server.py` e `tests/test_unit_voice_stt.py` sono identici a origin/main.
+- MERGE_HEAD coincide con origin/main (f4d2d4f).
+- `git diff --cached origin/main` contiene solo il terminale A (gas.py, modules/manutenzione, modules/gate/gate.py, il test della manutenzione, ci.yml, la proposta), più i report e la memoria.
+- `git ls-files -u` è vuoto e `git diff --cached --check` è pulito.
+- Conflitti di unione: stato_progetto e memoria sono un'unione senza doppioni (verificato sul diff rispetto a HEAD).
+- Test: `pytest tests/test_unit_manutenzione.py tests/test_unit_voice_server.py tests/test_unit_voice_stt.py -k "not browser"` dà 327 passed e 21 deselected.
+
+**Cosa non ho verificato**
+- Suite completa e test di tipo browser: non lanciati, la richiesta era una review rapida e i test browser sono esclusi.
+- Comportamento dal vivo sul Mac di `riavvia_voce` e del filtro del seguito: non riproducibile qui.
+- Contenuto dei report che tieni dal ramo (handoff, ultimo_report, diff_sessione): non riletto riga per riga.
+
+**Memoria**
+- La riga contatore #758-M2 è in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` e il file è aggiunto all'index con `git add`.
+- Non ho fatto commit e non ho lanciato commit_memoria_revisore.sh, come chiedevi.
+- Nessuna lezione nuova.
+
+### Review #757-M2 (chiusura di R-756-1, commit eb12cab) — verdetto integrale
+
+VERDETTO: APPROVATO
+
+Il messaggio di #756-M2 era già stato consegnato. Questo è il verdetto di #757-M2, il seguito che chiude R-756-1.
+
+**Elementi del diff esaminati**
+- `modules/manutenzione/__init__.py:141` — dopo un `aggiorna_gas` riuscito, l'avviso «⚠️ RIAVVIA SUBITO il bot Telegram…» ora sta nella prima voce di `righe`, subito dopo «codice aggiornato da main.». La coda di git e «Dipendenze a posto.» vengono dopo. Rischio esaminato: che il taglio a `ESITO_OUTPUT_MAX` (`modules/telegram/bot.py:53`), fatto da `componi_esito_firma` (`modules/telegram/bot.py:1114`) tenendo l'inizio del testo, faccia sparire l'avviso. Ora l'avviso sta nei primi ~170 caratteri e non può essere tagliato. Il caso pip fallito resta in testa con `[KO]`, invariato. Esito: ok.
+- `tests/test_unit_manutenzione.py:369` — test nuovo che passa da `componi_esito_firma` con un output git più lungo di 1500 caratteri. Controlla sia che l'output superi il tetto sia che l'avviso compaia nel messaggio finale. Mutante (avviso rimesso in coda, nel worktree): questo test fallisce (1 failed, 50 passed). Con il codice ripristinato: 51 passed. Il worktree coincide di nuovo con lo staged. Esito: ok.
+- `reports/stato_progetto.md:619` — R-738-3 è riscritta: non dice più «bot sul codice vecchio», ma che il bot può mescolare codice vecchio e nuovo e che l'avviso chiede di riavviarlo. R-756-2 BASSA (nessun blocco meccanico delle firme fino al riavvio) è registrata. Esito: ok.
+
+**Nota cosmetica, nessuna riserva**: se git pull non scrive niente, la seconda voce di `righe` è vuota e nel messaggio compare una riga vuota.
+
+**Cosa non ho verificato**: il messaggio reale su Telegram. Il conteggio in unità UTF-16 è provato solo tramite `_tronca_utf16`, senza invio vero (non riproducibile nel container). Resta non provato anche il comportamento dal vivo del bot con codice misto.
+
+Nessun commit fatto.
+
+**Memoria**: ho aggiunto la riga #757-M2 («nessuna lezione nuova») in /home/user/Gas/.claude/agents/memoria_revisore.md, già messa in stage con `git add`.
+
+### Review #756-M2 (V-1 del bot su bae9278) — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #756-M2 sul diff staged del branch feat/terminale-a-m2 (PR #363). Riguarda il finding V-1 del bot (gravità media) su bae9278. Prima ho letto CLAUDE.md, la riga del terminale A in reports/stato_progetto.md (riga 619) e la mia memoria. In memoria non c'era nessuna riga #756-M2 della prima esecuzione interrotta, quindi non c'era niente da sostituire.
+
+**Elementi del diff esaminati**
+- `modules/manutenzione/__init__.py:148` — dopo un `aggiorna_gas` riuscito, il messaggio vecchio («il bot lo usa dopo il suo riavvio») è sostituito da «⚠️ RIAVVIA SUBITO il bot Telegram… mescolare codice vecchio e nuovo». Rischio esaminato: che l'avviso arrivi davvero all'operatore. L'esito della firma passa da `componi_esito_firma` (contesto: `modules/telegram/bot.py:1114`), che taglia l'output a `ESITO_OUTPUT_MAX` = 1500 caratteri (`modules/telegram/bot.py:53`) e tiene l'inizio del testo. Ho simulato un caso realistico: 10 righe di git pull con percorsi lunghi danno 1079 caratteri, e l'avviso arriva. L'avviso però sta in fondo al testo: con righe di git più lunghe può essere tagliato. Esito: riserva.
+- `tests/test_unit_manutenzione.py:359` — test nuovo: l'esito riuscito contiene l'avviso e non contiene più la frase vecchia. Rischio esaminato: se il test copre il percorso reale fino all'operatore. Controlla solo l'output di `esegui`, non il messaggio Telegram già tagliato. Esito: ok, con il limite indicato sotto.
+- `modules/manutenzione/__init__.py:145` — commento che motiva la scelta. Esito: ok.
+- `reports/proposta_terminale_A.md` — il paragrafo dei limiti ora dice il vero. Esito: ok.
+
+**La scelta basta per una gravità media?** Sì, ma con riserve. Un riavvio fatto da Gas di un processo che il repo non conosce rischierebbe di lasciare il bot spento: per il principio «zero crash» è peggio dell'avviso. Il codice misto è un rischio di funzionamento (eccezioni, incoerenze), non un modo di aggirare le regole: le azioni restano soggette alla firma dell'operatore. L'avviso è onesto e corregge l'affermazione falsa, che era il cuore del finding.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-756-1 BASSA**: l'avviso è in fondo a un output che `componi_esito_firma` taglia tenendo l'inizio. Correzione semplice: metterlo subito dopo la prima riga e testarlo passando da `componi_esito_firma` con un output git lungo. Consigliato prima del merge: è il motivo stesso del finding.
+- **R-756-2 BASSA**: non c'è un blocco meccanico. Le firme già in coda (riavvia_voce, scritture) restano eseguibili dal bot con codice misto fino al riavvio. Un diniego del kernel fino al riavvio sarebbe più forte, ma non lo ritengo necessario per questa gravità.
+- **R-738-3** in stato_progetto.md va aggiornata: dice ancora «bot sul codice vecchio fino al riavvio».
+
+**Cosa non ho verificato**: il comportamento dal vivo del bot con codice misto dopo un vero git pull sul Mac (non si riproduce nel container: servono un processo bot reale e un cambio di main), e la lunghezza reale dell'output di git pull sul Mac.
+
+Suite manutenzione rieseguita: 50 passed. Non ho fatto commit.
+
+**Memoria**: ho aggiunto la riga #756-M2 e una lezione (un avviso in fondo a un output che il canale taglia tenendo l'inizio può sparire) in /home/user/Gas/.claude/agents/memoria_revisore.md, già messa in stage con `git add`.
 
 ### Review #754-M2 (merge di main eebb7c0, PR #364 di M3) — verdetto integrale
 
@@ -304,6 +383,7 @@ I verdetti integrali sono stati emessi prima di un `/clear` di questa chat e non
 
   T31g è fuori scope: dipende dall'ambiente (GAS_VECTORS), fallisce uguale su main.
 - `python -m pytest -q tests/test_unit_manutenzione.py tests/test_unit_gate.py tests/test_unit_notte.py`: 1064 passed.
+- Dopo eb12cab: `python -m pytest -q tests/test_unit_manutenzione.py`: 51 passed.
 - Dopo ee9c7d0: `python -m pytest -q tests/test_unit_manutenzione.py`: 49 passed; `python tests/test_unit_kernel.py`: 1099 PASS, 1 FAIL (T31g, ambiente); `pytest tests/test_unit_gate.py tests/test_unit_telegram*.py -k "not browser"`: 892 passed.
 - Dopo 94bd308: `python -m pytest -q tests/test_unit_manutenzione.py`: 45 passed (test di `log_voce` con righe nel formato vero e due righe ostili).
 
@@ -313,6 +393,8 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strum
 - 860c751 (head precedente): unit-suite success, handoff-check success, verifica-bot neutral (la PR tocca ci.yml, macchina del bot).
 - ece76a8 e 94bd308: nessuna run propria (pushati insieme al commit di fine task 3bf227f).
 - 3bf227f: bot APPROVATO CON RISERVE senza finding gravi (neutral); unit-suite non letta a fine run prima del merge successivo.
+- bae9278: verifica-bot failure (finding di gravità media vero, corretto in eb12cab); unit-suite non letta a fine run.
+- eb12cab e merge di main f4d2d4f (1da1185): nessuna run propria (pushati insieme al commit di fine task).
 - 2bbbc09: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE senza finding gravi).
 - 9eb308a (merge di main eebb7c0): nessuna run propria (pushato insieme al commit di fine task).
 - 7bcda34: verifica-bot failure (finding vero, corretto in ee9c7d0); unit-suite non letta a fine run.
@@ -330,6 +412,8 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strum
 - Verifica esterna #363 V-2 BASSA (CI non conclusa al momento della verifica): da rileggere sulla head nuova.
 - Verifica esterna #363 V-3 BASSA (filtro di `log_voce`): CHIUSA (94bd308, review #748-M2).
 - Bot su 7bcda34 V-1 (gravità media) e V-2 BASSA: CHIUSE (ee9c7d0, review #751-M2).
+- Bot su bae9278 V-1 (gravità media): CHIUSA (eb12cab, review #756-M2/#757-M2).
+- R-756-2 BASSA — nessun blocco meccanico delle firme fino al riavvio del bot dopo un aggiornamento.
 - R-751-1 BASSA — manca il test sul lato «negato» della regola dell'esito incerto (firma di notte → deve restare non_partita).
 - R-751-2 COSMETICA — stato_gas con doctor FAIL dà [OK] nel diario.
 - R-748-1 BASSA — un altro logger che scrive testo esterno con un a-capo può ancora produrre una riga valida per il filtro (solo nomi minuscoli e numeri: nessun dato altrui).
