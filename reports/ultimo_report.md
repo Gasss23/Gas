@@ -1,21 +1,21 @@
-# Ultimo report — 2026-11-10 — voce: seguito più severo e risposte più brevi (chat M2)
+# Ultimo report — 2026-11-10 — voce: correzioni dell'audit notturno (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. PR #365: merge da solo solo con verdetto del bot APPROVATO pulito; altrimenti serve il sì dell'operatore (via M1).
-2. PR #363 (terminale A, sicurezza): merge all'operatore; bot su 860c751 APPROVATO CON RISERVE (solo BASSE, check neutral).
+1. PR #367: merge con verdetto del bot senza finding ALTA/MEDIA e CI verde (sì dell'operatore riferito da M1: «mergia tutto quello che il bot ha approvato»).
 
 ## Esito
 
-- **PR #360 (cache frasi fisse divise)**: MERGIATA (447195f) col sì dell'operatore riferito da M1.
-- **PR #363 (terminale A)**: pubblicata, merge di main (#359, #360) fatto, verifica esterna V-1 MEDIA (conflitto) chiusa; resta all'operatore.
-- **Seguito più severo**: FATTA — nel seguito i frammenti di una parola fuori elenco chiudono senza chiamare il cervello; istruzione «nel dubbio non è per te».
-- **Risposte più brevi e veloci**: FATTA — a voce UNA frase breve; tetto del parlato senza schermo 1500 → 800.
-- Review #744-M2 APPROVATO CON RISERVE (R-744-1, gravità media: «Continua.», numeri e giorni scartati → CHIUSA), #746-M2 APPROVATO CON RISERVE (BASSE), #747-M2 APPROVATO CON RISERVE (BASSE): elenco più largo con accenti normalizzati, copertura del ramo «forte» nel seguito.
-- Bot su e0f8f31: check failure ma verdetto APPROVATO CON RISERVE con sole BASSE (falso failure del parser su una riserva già chiusa citata nel verdetto); le BASSE sono state corrette in d07fbdf.
-- Test: voice_server, stt, tts, contesto, telegram_voce, voce_ascolto, sottofondo con -k "not browser": 744 passed.
-- **Prova sul Mac** (il modello rispetta le istruzioni più severe e più corte): DEFERITA — si fa dal vero.
+- **B1 timeout del socket del server voce (60 s)**: FATTA.
+- **B2 «Hey Jarvis, forte: …» al forte (anche parola ripetuta)**: FATTA.
+- **B3 risposte rotte di Groq ed ElevenLabs → errore di rete** (sintesi, elenco voci, libreria, aggiunta voce): FATTA.
+- **B4 `.env` del proxy del browser con le regole di Gas**: FATTA.
+- **B5 JSON di forma sbagliata → 400**: FATTA.
+- **Miglioramenti** (413 su corpo e prompt, porta prima del kernel, proxy che segue GAS_VOICE_PORT): FATTA.
+- **Sospetti da valutare di M1** («forte» detto durante «Sì, signore?», blocco per IP condiviso su 127.0.0.1, connessione ElevenLabs riusata): DEFERITA — non toccati in questa PR.
+- Review #752-M2 APPROVATO CON RISERVE (BASSE), #755-M2 APPROVATO (R-752-2/3 chiuse), merge di main #759-M2 APPROVATO.
+- Test: suite voce -k "audit or not browser" 808 passed; voice_server/stt/tts con i test browser 347 passed.
 
 ## Anomalie
 
-Nessuna. `istruzione_turno_voce(True)` vale anche per i vocali di Telegram (chat Mani): lì cambia solo il testo dell'istruzione.
+Nessuna.

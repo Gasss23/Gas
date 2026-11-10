@@ -1,13 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-10 — voce: seguito più severo e risposte più brevi (chat M2)
+**Sessione:** 2026-11-10 — voce: correzioni dell'audit notturno (chat M2)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #365 (https://github.com/Gasss23/Gas/pull/365): da solo solo con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore (via M1).
-2. PR #363 (terminale A, altra sessione di lavoro di questa chat): merge all'operatore (sicurezza).
+1. Merge della PR #367 (https://github.com/Gasss23/Gas/pull/367): con verdetto del bot senza finding ALTA/MEDIA e CI verde, sì dell'operatore riferito da M1 («mergia tutto quello che il bot ha approvato»).
 
 NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
 
@@ -15,29 +14,33 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — seguito più severo (filtro lato server + istruzione)**: `FATTA` (1340aa0).
-- **Fetta 2 — risposte a voce più brevi (una frase, tetto 800)**: `FATTA` (1340aa0).
-- **R-744-1-M2, gravità media (risposte di una parola scartate)**: `FATTA` — chiusa prima del commit, review #746-M2.
-- **Note BASSE di bot e verifica esterna #365 (V-2 copertura del ramo «forte», V-3 elenco stretto e accenti) e R-746-1/2-M2**: `FATTA` (d07fbdf, review #747-M2). NB: il check del bot su e0f8f31 era «failure» ma il verdetto testuale era APPROVATO CON RISERVE con sole BASSE: il parser ha letto come finding la citazione di una riserva già chiusa (falso failure noto, direzione sicura).
-- **Merge di origin/main 2dd0e8c (#362) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; da main arrivano solo `reports/prova_r1_notte.md` e una riga di memoria (fuori dal perimetro di review). Chiude V-1 (gravità media, PR non mergeabile) della seconda verifica esterna #365.
-- **Merge di origin/main 3f08352 (#361 di Mani) nel ramo**: `FATTA` — conflitti solo nei report; review #750-M2 APPROVATO CON RISERVE (file di main identici a 3f08352; il client di ascolto gestisce bene il «fine» più frequente; 575 passed). Chiude V-1 BASSA del bot su 1638d81 (PR in conflitto).
-- **Merge di origin/main eebb7c0 (#364 di M3) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; review #753-M2 APPROVATO (file di main identici; nessuna interazione fra il sottofondo nuovo e il filtro del seguito); voice_server + voice_stt + sottofondo + gate 1218 passed.
-- **Prova sul Mac col modello vero**: `DEFERITA` — non riproducibile qui.
+- **B1 — timeout del socket del server voce (60 s)**: `FATTA` (1c53cf9).
+- **B2 — «Hey Jarvis, forte: …» al forte, anche con la parola ripetuta**: `FATTA` (1c53cf9).
+- **B3 — risposte rotte di Groq ed ElevenLabs come errori di rete (sintesi, elenco voci, libreria, aggiunta voce)**: `FATTA` (1c53cf9; R-752-2 chiusa nello stesso commit, review #755-M2).
+- **B4 — `.env` del proxy del browser con le regole di Gas**: `FATTA` (1c53cf9).
+- **B5 — JSON di forma sbagliata → 400**: `FATTA` (1c53cf9).
+- **Miglioramenti (413, porta prima del kernel, proxy su GAS_VOICE_PORT)**: `FATTA` (1c53cf9; R-752-3 chiusa, review #755-M2).
+- **Merge di origin/main f4d2d4f (#364, #365)**: `FATTA` (d1b5628), review #759-M2.
+- **Sospetti di M1 da valutare** («forte» durante «Sì, signore?», blocco per IP condiviso su 127.0.0.1, connessione ElevenLabs riusata): `DEFERITA` — non toccati qui.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 ++++++++
- modules/voice/server.py            |  73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- reports/diff_sessione.md           |  19 ++++++---------
+ .claude/agents/memoria_revisore.md |   5 +++++
+ clients/voice/browser_server.py    |  45 ++++++++++++++++++++++++++++++++++++++-------
+ modules/voice/server.py            |  39 +++++++++++++++++++++++++++++++++++----
+ modules/voice/stt.py               |   8 ++++++--
+ modules/voice/tts.py               |  28 ++++++++++++++++++++--------
+ reports/diff_sessione.md           |  14 +++++++-------
  reports/handoff.md                 | n/d
  reports/ripartenza_m2.md           |   2 ++
- reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  30 +++++++++++-------
- tests/test_unit_voice_server.py    |  37 ++++++++++++++++++++++++++++++++++++-
- tests/test_unit_voice_stt.py       |  67 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   1 +
+ reports/ultimo_report.md           |  24 ++++++++++++------------
+ tests/test_unit_voice_server.py    | 171 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_stt.py       |  18 ++++++++++++++++++
+ tests/test_unit_voice_tts.py       |  30 ++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -45,215 +48,150 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-815eed7 Merge origin/main (#364 di M3) nella #365 — review #753-M2 APPROVATO (chat M2)
-57853ff docs(fine-task): voce #365 dopo il merge di main (#361), review #750-M2 (chat M2)
-4cae6c9 Merge origin/main (#361 di Mani) nella #365 — review #750-M2 APPROVATO CON RISERVE (chat M2)
-1638d81 docs(fine-task): voce #365 dopo il merge di main (#362) — V-1 della seconda verifica esterna chiusa, riserve aggiornate (chat M2)
-4ec82c5 Merge origin/main (#362) nella #365 — conflitti solo nei report e nella memoria, chiude V-1 verifica esterna #365 bis (chat M2)
-588c450 docs(fine-task): voce #365 — note BASSE di bot e verifica esterna chiuse (review #747-M2), riserve aggiornate (chat M2)
-d07fbdf fix(voce): seguito — elenco delle risposte brevi più largo con accenti normalizzati, copertura del ramo «forte» nel seguito, assert «Resto.»; chiude V-2/V-3 bot e verifica esterna #365, R-746-1/2-M2 — review #747-M2 (chat M2)
-e0f8f31 docs(fine-task): voce — seguito più severo e risposte più brevi, PR #365; riserve del bot sulla #363 registrate (chat M2)
-1340aa0 feat(voce): seguito più severo (frammenti di una parola chiusi senza cervello, istruzione «nel dubbio non è per te») e risposte a voce più brevi (una frase, tetto 800) — review #744-M2, #746-M2 (chat M2)
+d1b5628 Merge origin/main (#364, #365) nelle correzioni dell'audit voce — review #759-M2 APPROVATO (chat M2)
+1c53cf9 fix(voce): correzioni dell'audit notturno — timeout del socket, «Hey Jarvis, forte» al forte, risposte rotte di Groq/ElevenLabs come errori di rete, .env del browser come Gas, 400 al JSON di forma sbagliata, tetti 413, porta prima del kernel — review #752-M2, #755-M2 (chat M2)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #753-M2 (merge di main eebb7c0, PR #364 di M3) — verdetto integrale
+### Review #759-M2 (merge di main f4d2d4f, commit d1b5628) — verdetto integrale
 
 VERDETTO: APPROVATO
 
-Review #753-M2. È il merge staged di origin/main eebb7c0 (PR #364, sottofondo di M3) nel ramo feat/voce-filtro-m2 (PR #365), nel worktree /home/user/Gas-voce. Non ho fatto commit.
+Il merge staged di origin/main f4d2d4f (che contiene la #364 di M3 e la #365 di M2) nel ramo fix/voce-audit-m2 (commit 1c53cf9) è corretto. In server.py convivono tutte le correzioni dell'audit e il filtro del seguito, e l'ordine dei controlli in do_POST è quello giusto.
 
-**Cosa ho controllato nel diff**
-1. MERGE_HEAD coincide con origin/main (eebb7c0). Ho confrontato con `git diff --cached origin/main` questi file: gas.py, modules/gate/gate.py, modules/sottofondo/__init__.py, tests/test_unit_gate.py, tests/test_unit_kernel.py, tests/test_unit_sottofondo.py, reports/proposta_r7_direttore.md e reports/roadmap.md. Sono tutti identici a main.
-2. `git diff --cached origin/main --stat` mostra solo:
-   - la fetta voce: modules/voice/server.py e i test voice_server/voice_stt;
-   - i report del ramo;
-   - nella memoria 7 righe aggiunte e 0 tolte rispetto a main, cioè l'unione corretta;
-   - in stato_progetto.md 2 righe aggiunte e 0 tolte.
-3. `git ls-files -u` è vuoto (nessun conflitto rimasto) e `git diff --cached --check` è pulito.
+**Stato del merge**
+- MERGE_HEAD coincide con origin/main (f4d2d4f).
+- `git ls-files -u` è vuoto e `git diff --cached --check` è pulito.
+- gas.py, modules/gate/gate.py, modules/sottofondo/__init__.py e i loro tre test sono identici a origin/main.
+- Rispetto alla base 3f08352, le righe aggiunte e tolte dall'audit sono identiche a 1c53cf9. Vale per clients/voice/browser_server.py, modules/voice/stt.py, modules/voice/tts.py, tests/test_unit_voice_tts.py e per le righe +/- di modules/voice/server.py.
 
-**Citazioni**
-- `modules/voice/server.py:779` — il filtro del seguito: se il seguito è un frammento della stanza (`seguito_da_scartare`), chiude subito, senza turno del kernel. Rischio esaminato: che salti o duplichi l'annuncio dei compiti in sottofondo finiti. Esito ok: chiude prima che l'annuncio venga calcolato, e l'annuncio resta solo sui turni di attivazione (condizione `is_audio and not self._seguito()`, modules/voice/server.py:922).
-- `modules/voice/server.py:939` — `_compiti_finiti` usa le funzioni di sottofondo `da_leggere`, `frase_finiti` e `segna_letti`. Rischio esaminato: che la #364 abbia cambiato queste funzioni. Esito ok: nelle parti cambiate dalla #364 nessuna delle tre compare. Sono ancora a `modules/sottofondo/__init__.py:780`, `modules/sottofondo/__init__.py:809` e `modules/sottofondo/__init__.py:824`. Un compito fermato con il nuovo `ferma` scrive un file `.ferma` a parte e non cambia il filtro sugli stati ok/ko, quindi non produce annunci finti.
-- `modules/voice/server.py:212` — la funzione `seguito_da_scartare`: non cambia col merge, quindi l'esito resta quello della review #750-M2.
+**Elementi del diff esaminati**
+- `modules/voice/server.py:775` — controllo della pausa, seguito dal controllo della sola parola di attivazione. Ho controllato se il filtro della #365 è stato inserito prima di questi due controlli. Esito: ok. Il filtro sta dopo entrambi, quindi «Hey Jarvis, pausa» nel seguito resta una pausa.
+- `modules/voice/server.py:790` — `seguito_da_scartare` sul parlato del seguito, prima di `cervello_voce`. Ho controllato se la nuova `_PAROLA_FORTE` (con jarvis) cambia cosa viene scartato. Esito: ok, provato a mano:
+  - «Jarvis, forte.» ha due parole e non viene scartato. `cervello_voce` dà `('uso','')`, poi il seguito si chiude senza voce (`modules/voice/server.py:820`).
+  - «Forte!» viene scartato prima del cervello.
+  - «Hey Jarvis, forte: che tempo fa» va al forte.
+  - «Jarvis, Gas, forte dimmi» va al forte.
+  - «Fortemente sì» resta normale.
+- `modules/voice/server.py:118` — `_PAROLA_FORTE` riconosce `jarvis` e la parola ripetuta. Ho controllato se il merge ha perso o duplicato la riga. Esito: ok, compare una volta sola, nella forma di 1c53cf9.
+- `modules/voice/server.py:750` (tetto 413 prima di leggere il corpo) e `modules/voice/server.py:802` (400 per JSON di forma sbagliata) — Ho controllato se il ramo testo è ancora integro dopo l'unione con la #365. Esito: ok. La #365 tocca solo il ramo audio.
+- `modules/voice/server.py:1514` — la porta si apre prima del kernel e il server viene chiuso con `server_close` se il kernel fallisce. Esito: ok, l'hunk è identico.
+- `tests/test_unit_voice_server.py:19` — la riga di import diventa `BaseHTTPRequestHandler, HTTPServer`. Ho controllato se nel conflitto si è perso un import. Esito: ok. Conteggio dei test: 77 nella base, +2 da main, +7 dall'audit, totale 86. Nessun nome duplicato, quindi nessun test ne nasconde un altro. Ci sono sia `test_seguito_da_scartare_e_istruzione_severa` (riga 2561) sia `test_audit_*` (righe 2409–2532).
+- `tests/test_unit_voice_stt.py` — unito senza conflitti. Esito: ok, coperto dalla suite.
 
-**Rischi esclusi**
-- Non ho rilanciato i test: per i 1218 passed mi fido del dato dichiarato dall'agente.
-- Non ho verificato dal vivo il caso di un annuncio dei finiti mentre gira una ripresa di un compito (la nuova `_riprendi` della #364): non si riproduce in dev senza audio e senza un compito in corso.
-- La riserva R-750-1-M2 (eco di 0,5 s che può troncare un «Sì» detto subito) resta aperta e il merge non la cambia.
-
-**Memoria**
-Ho aggiunto la riga #753-M2 in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in stage con `git -C /home/user/Gas-voce add`. Nessuna lezione nuova. Lo script di commit della memoria non l'ho lanciato: durante un merge non può fare commit parziali, quindi la riga entra nel commit di merge.
-
-### Review #750-M2 (merge di main 3f08352, PR #361 di Mani) — verdetto integrale
-
-VERDETTO: APPROVATO CON RISERVE
-
-Review #750-M2: merge in staging di origin/main 3f08352 (PR #361 della chat Mani) in feat/voce-filtro-m2 (PR #365), nel worktree /home/user/Gas-voce.
-
-**Cosa ho controllato del merge**
-- I tre file che arrivano da main (clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, scripts/voce/LEGGIMI.md) sono identici a 3f08352: `git diff --cached 3f08352` è vuoto su tutti e tre.
-- `git diff --cached origin/main` mostra solo la fetta voce, cioè modules/voice/server.py, tests/test_unit_voice_server.py e tests/test_unit_voice_stt.py. Il resto sono report (handoff, ultimo_report, diff_sessione, ripartenza_m2, stato_progetto con +2 righe) e la memoria (+6 righe aggiunte, 0 tolte).
-- Nessun conflitto rimasto: `git ls-files -u` è vuoto. Esiste MERGE_HEAD e `--check` è pulito.
-- In stato_progetto.md, rispetto a HEAD, ci sono solo la riga #359 aggiornata e la nuova voce #361. Rispetto a main ci sono solo le 2 righe della nostra fetta.
-
-**Elementi del codice esaminati**
-- `modules/voice/server.py:779`: nel seguito, `seguito_da_scartare(prompt)` chiama `_chiudi_seguito` (definito in `modules/voice/server.py:996`). Questo manda `X-Gas-Comando: fine` con `{"content": "", "fine": true}`. Il controllo viene dopo pausa e `_SOLO_ATTIVAZIONE`, quindi un «Hey Jarvis.» captato nella finestra con un solo blocco (cosa più probabile ora che la #361 chiede 2 blocchi di fila) riceve ancora la risposta di attivazione e non viene scartato. Rischio esaminato: un turno legittimo scartato per l'interazione con la #361. Esito: ok.
-- `modules/voice/server.py:212`: `seguito_da_scartare` scarta solo una trascrizione vuota oppure di una sola parola fuori elenco e non numerica. «Hey Jarvis, Marco» ha 3 parole e va al cervello. Rischio esaminato: un turno detto con la parola ma sentito come seguito. Esito: ok.
-- `clients/voice/ascolto.py:584` (contesto, arriva da main): con il comando «fine» il client mette `chiudi=True`, svuota il microfono e restituisce False, senza bip e senza contare l'errore. Il ciclo `conversazione` esce quando `self.chiudi` è vero e torna ad aspettare la parola dopo `_azzera()`. Quindi un «fine» più frequente chiude in silenzio, che è l'esito voluto, e si somma bene ai 3 turni e ai 15 s della #361. Rischio esaminato: bip a ripetizione o un turno fantasma su «fine». Esito: ok. I test che coprono il caso sono a `tests/test_unit_voce_ascolto.py:519` e `tests/test_unit_voce_ascolto.py:760`.
-- `tests/test_unit_voice_server.py:2392`: il test del filtro («Mamma.», «Ehm» scartati; «Resto.» e le risposte brevi passano). Esito: ok.
-
-**Test**: pytest su voice_server, voice_stt e voce_ascolto con `-k "not browser"`: 575 passed, 25 deselected.
-
-**Riserva BASSA R-750-1-M2**: la #361 fa ignorare il primo mezzo secondo della finestra (`CODA_ECO_S`, già segnalato come R-736-2). Una risposta di una parola detta subito («Sì») può quindi arrivare troncata, con trascrizione vuota o storpiata. Il filtro di M2 ora la scarta e chiude la conversazione in silenzio, mentre prima andava al cervello. È da osservare dal vivo, non blocca il merge.
+**Test lanciati da me**
+- tests/test_unit_voice_server.py, tests/test_unit_voice_stt.py e tests/test_unit_voice_tts.py senza filtro `-k`, quindi browser inclusi: 347 passed in 5 minuti.
 
 **Cosa non ho verificato**
-- Il comportamento dal vivo sul Mac (microfono reale, Whisper sul parlato troncato): non si può riprodurre qui.
-- La pagina web (clients/voice/browser_server.py): fuori dal merge, e i test browser sono deselezionati come richiesto.
-
-**Memoria**: ho aggiunto la riga `#750-M2` in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-voce add`. Nessun commit, come richiesto: per questo non ho lanciato lo script di commit della memoria. Nessuna lezione nuova.
-
-### Review #747-M2 (correzioni BASSE di bot, verifica esterna e #746, commit d07fbdf) — verdetto integrale
-
-VERDETTO: APPROVATO CON RISERVE
-
-Review #747-M2 sul diff staged di /home/user/Gas-voce (branch feat/voce-filtro-m2, PR #365). Prima ho letto le parti obbligatorie: CLAUDE.md §5, le parti voce/M2 di stato_progetto.md e la memoria del revisore. Non ho trovato antipattern del Wall of Shame: nessuno slicing della history, nessun output di tool simulato, guardrail non toccati.
-
-**Elementi del diff esaminati**
-- `modules/voice/server.py:203` — `_senza_accenti`: NFKD seguito dalla rimozione dei caratteri combinanti. Viene applicata a tutto l'elenco, che diventa `_RISPOSTE_BREVI_NORM`. Rischi esaminati:
-  - collisioni dopo la normalizzazione, per esempio «perché» e «perche»: sono innocue, finiscono tutte e due nel frozenset;
-  - forme NFD: coperte da un test;
-  - eccezioni: nessuna, perché `unicodedata` fa parte della libreria standard.
-  - Esito: ok.
-- `modules/voice/server.py:215` — la normalizzazione si applica anche alla trascrizione, prima di `\w+`. Rischio esaminato: che un solo lato normalizzato lasci passare «Lunedi» o «Perchè». Mutanti:
-  - normalizzazione tolta dalla trascrizione: rosso;
-  - controllo fatto sull'elenco non normalizzato: rosso.
-  - Esito: ok.
-- `modules/voice/server.py:85` — l'import di `unicodedata` sta fra `re` e `subprocess`, fuori dall'ordine alfabetico. Esito: riserva cosmetica.
-- `modules/voice/server.py:190` — elenco allargato (sicuro, forse, stasera, numeri da 11 a 20, decine, cento, mille, ora/dopo/mai/sempre/niente/nulla/subito/adesso). Ho valutato se il filtro serve ancora. Sì: scarta ancora nomi, interiezioni («Ehm», «Mamma.», «Forte!») e tutte le parole fuori elenco. Però «Ora!», «Mai!», «Niente!», «Dopo» sono anche frammenti tipici della TV o della stanza, e adesso arrivano al cervello con la spesa di un turno. Esito: riserva **R-747-2-M2 (BASSA)**, un compromesso da scrivere nel commento o in stato_progetto. Non lo considero un blocco: nel seguito un falso «passa» costa un turno, un falso «scarta» perde la risposta dell'operatore.
-- `tests/test_unit_voice_server.py:2410` — casi a parola singola (davvero di UNA sola parola, come chiedeva la lezione del #746), forma NFD, «Resto.» da solo (R-746-2 chiusa) e i contro-esempi «Mamma.»/«Ehm». Esito: ok.
-- `tests/test_unit_voice_stt.py:844` — test V-2 «Gas, forte.» nel seguito: si aspetta il comando `fine`, il contenuto vuoto, nessun turno. Mutanti:
-  - tolto il ramo `elif self._seguito()` di «uso»: rosso, ok;
-  - filtro esteso a ≤2 parole, così «Gas, forte.» viene scartato dal filtro prima del ramo «uso»: **il test V-2 da solo resta VERDE**. I due rami danno la stessa risposta (`_chiudi_seguito`, `modules/voice/server.py:996`), quindi il test non prova di aver superato il filtro. Quel mutante lo prendono comunque altri test della suite (rosso). Esito: riserva **R-747-1-M2 (BASSA)**: aggiungere un'osservazione del percorso, per esempio caplog che verifica l'assenza di «seguito scartato senza cervello» oppure una spia su `cervello_voce`.
-
-**Esecuzione**
-- pytest su voice_server + voice_stt con `-k "not browser"`: 276 passed, l'ho riprodotto io.
-- 4 mutanti, tutti rossi sulla suite.
-- Ho ripristinato `server.py` dopo ogni mutante: alla fine ci sono solo le modifiche staged e nessuna modifica non staged.
-
-**Rischio escluso**
-- Non ho verificato il comportamento con trascrizioni reali di Whisper (accenti sul Mac o sulla VPS, come scrive «perchè»): non è riproducibile in dev, i test usano stringhe fisse.
-- Non ho controllato ligature o caratteri compatibili che NFKD trasforma in più lettere: è un caso marginale, al massimo un frammento passa al cervello.
-
-**Riserve da tracciare in stato_progetto.md**
-1. R-747-1-M2 (BASSA): il test V-2 non distingue il ramo «uso» dallo scarto del filtro.
-2. R-747-2-M2 (BASSA): «ora/dopo/mai/sempre/niente/nulla/subito/adesso» in elenco fanno passare al cervello anche i frammenti della TV. Dichiarare il compromesso o toglierle.
-3. Cosmetica: l'ordine dell'import di `unicodedata`.
+- Le suite voce_ascolto, telegram_voce e sottofondo, e la suite completa: non le ho rilanciate. Mi fido delle 808 passate dichiarate dall'agente, e i file di M3 sono identici a origin/main.
+- Il comportamento reale sul Mac (Whisper, flusso H24): non si può riprodurre qui.
+- La riserva R-752-1 (timeout di `sendall` come durata totale dell'invio) resta aperta.
 
 **Memoria**
-- Riga contatore #747-M2 e una lezione aggiunte in /home/user/Gas-voce/.claude/agents/memoria_revisore.md e messe in stage con `git -C /home/user/Gas-voce add`.
-- Nessun commit, come chiesto: lo script `commit_memoria_revisore.sh` non l'ho eseguito.
-- Un ciclo di attesa che avevo lanciato in background (b3fgnx8h1) è rimasto appeso: è innocuo e si chiude da solo al timeout.
+- Ho aggiunto la riga contatore `#759-M2` (nessuna lezione nuova) in coda a /home/user/Gas-audit/.claude/agents/memoria_revisore.md.
+- Il file è in staging con `git -C /home/user/Gas-audit add`. Nessun commit, come richiesto.
 
-### Review #744-M2 — verdetto integrale
+### Review #755-M2 (seguito di #752-M2, R-752-2 e R-752-3) — verdetto integrale
 
-VERDETTO: APPROVATO CON RISERVE
+VERDETTO: APPROVATO
 
-Review #744-M2. Ho esaminato il diff in staging nel worktree /home/user/Gas-voce (branch feat/voce-filtro-m2). Letture fatte: CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md (letto in modo mirato), memoria del revisore.
+Review #755-M2 (seguito della #752-M2), nel worktree /home/user/Gas-audit, solo sul delta. Le due riserve R-752-2 e R-752-3 sono chiuse: tutti e 4 i mutanti sono stati uccisi.
 
-**Elementi del diff esaminati**
-- `modules/voice/server.py:188` — `seguito_da_scartare`: cerca le parole con `\w+` sul testo minuscolo, unicode, quindi «sì» con l'accento viene riconosciuto. Scarta se non ci sono parole oppure se c'è una sola parola fuori dall'elenco. Rischi esaminati: input vuoto, solo punteggiatura, apostrofi («D'accordo» conta 2 parole e passa), «Sì sì» passa. Nessuna eccezione possibile: tipi a posto, nessun crash. Esito: ok.
-- `modules/voice/server.py:753` — punto della chiamata. Ordine dei filtri: pausa (`_SOLO_PAUSA`, che copre anche «basta»), poi attivazione, poi frammento, poi `cervello_voce` (forte). Vale solo per il parlato nel seguito, perché `_seguito()` richiede `_parlato`; il percorso JSON/testo non è toccato. «Forte!» nel seguito ora lo chiude il filtro invece del ramo «uso», ma l'esito è lo stesso (`_chiudi_seguito`, comando fine, nessun turno). Nessuna spesa del cervello per i frammenti. Esito: ok.
-- `modules/voice/server.py:182` — `_RISPOSTE_BREVI_SEGUITO`. Rischio esaminato: risposte legittime perse. «Sì.», «No!», «Grazie.», «Perché?», «Ok» passano. Però «Continua», «Avanti», «Tre», «3», «Domani», «Marco», «Bene» vengono scartati: verificato eseguendo la funzione. Esito: riserva R-744-1-M2.
-- `modules/voice/server.py:219` — tetto del parlato 1500→800; docstring di `frasi_voce` aggiornata a «800 + 1 + 37». Nessun altro uso della costante fuori dal modulo. Esito: ok.
-- `modules/voice/server.py:246` — `ISTRUZIONE_VOCE` e `ISTRUZIONE_VOCE_SCHERMO` chiedono «UNA frase breve»; la frase «mai più di due» resta. `modules/telegram/bot.py:985` (contesto, file non toccato) usa `istruzione_turno_voce(True)`: lì cambia solo il testo dell'istruzione, coerente. Esito: ok.
-- `tests/test_unit_voice_stt.py:828` e `tests/test_unit_voice_stt.py:844` — test end-to-end via HTTP: i frammenti chiudono senza turno, le risposte brevi e le frasi arrivano al cervello in modo effimero, con la parola di attivazione «Mamma.» va al cervello. `tests/test_unit_voice_server.py:2392` è il test della funzione e dell'istruzione. Esito: ok.
+**Cosa ho controllato nel diff**
+- **modules/voice/tts.py:161** (`list_voices`), **modules/voice/tts.py:222** (`list_shared_voices`), **modules/voice/tts.py:279** (`add_shared_voice`)
+  - Cosa fa: un HTTPException su `getresponse()` o `read()` diventa OSError, con `from exc`.
+  - Rischio esaminato: risposta rotta che esce dal gestore e lascia la richiesta senza risposta.
+  - Esito: ok. Il server prende già OSError in tutti e tre i rami (elenco voci, libreria, aggiunta) e risponde in modo dichiarato.
+  - Mutante: ho tolto la conversione una funzione alla volta (in tutte e 3, non solo in `list_voices`). Ogni volta `test_audit_b3_altre_funzioni_tts` fallisce: ucciso.
+- **clients/voice/browser_server.py:362-364**
+  - Cosa fa: se manca GAS_VOICE_URL, il proxy del browser usa GAS_VOICE_PORT.
+  - Rischio esaminato: ripiego senza test.
+  - Esito: ok. Il nuovo `test_audit_proxy_segue_gas_voice_port` copre tre casi: GAS_VOICE_PORT=9001 dà 9001, nessuna variabile dà 8765, GAS_VOICE_URL ha la precedenza.
+  - Mutante: con l'URL fisso a 8765 il caso 9001 fallisce: ucciso.
 
-**Mutanti** (tutti ripristinati, nessuna modifica fuori dallo staging rimasta)
-1. Chiamata disattivata (`if False and …`): 1 failed (test_seguito_frammento_chiude_senza_cervello).
-2. Tolto `self._seguito() and`, cioè filtro sempre attivo: 1 failed (test_seguito_frammento_con_attivazione_va_al_cervello).
-3. Elenco ignorato (`return len(parole) == 1`): 2 failed.
+**Test**: suite tts + stt + test della porta: 137 passed, sulla copia dell'index.
 
-Suite test_unit_voice_server, voice_stt, voice_tts, voice_contesto, telegram_voce, voce_ascolto e sottofondo con -k "not browser": **743 passed**, come dichiarato. Il file si chiama tests/test_unit_sottofondo.py.
+**Nota (BASSA, non bloccante)**: in `add_shared_voice` la risposta può rompersi DOPO che ElevenLabs ha già aggiunto la voce. Il server però risponde «Errore di rete verso ElevenLabs» invece di «esito incerto, controlla l'account» (come fa già quando lo status è 200 ma l'id manca).
 
-**Riserve**
-- **R-744-1-M2 (MEDIA)**: le risposte di una parola fuori elenco vengono scartate in silenzio e la conversazione si chiude. Il caso più forte: quando taglia, Gas stesso dice `_PARLATO_VOCE_RESTO` («C'è altro, chiedimi se vuoi il resto.», `modules/voice/server.py:221`). Col tetto a 800 succederà più spesso, e «Continua.» o «Avanti.» vengono buttati. Stesso problema per numeri, nomi e giorni dati in risposta a una domanda che Gas fa solo quando gli serve. Non c'è crash né un'azione sbagliata, la direzione è sicura, ma l'utente deve ripetere con la parola di attivazione. Correzione minima suggerita: aggiungere almeno «continua», «avanti», «altro», «resto», «procedi», «bene»; valutare anche le cifre e i numeri brevi.
-- **R-744-2-M2 (BASSA, preesistente)**: «Grazie.», l'allucinazione tipica di Whisper sul silenzio, è in elenco e continua ad andare al cervello. Non è una regressione.
+**Cosa NON ho verificato**
+- R-752-1 resta aperta: lo stream NDJSON con risposte lunghe e il timeout di 60 s su `sendall` vanno misurati sul Mac, qui non si può riprodurre.
+- Non ho rieseguito tutte le 373 dichiarate (prova_voci e i test del server oltre a quello della porta): il delta tocca solo tts.py e i due test nuovi.
 
-**Rischi esplicitamente esclusi**
-- Non ho verificato se il modello rispetta davvero l'istruzione più severa (`[NON_PER_ME]` nel dubbio, una frase da circa venti parole): dipende dal comportamento del modello e non si può riprodurre nei test unitari senza chiamate reali.
-- Non ho verificato l'effetto sul client H24 (Mani) di una chiusura del seguito più frequente: client fuori da questo diff.
+**Memoria**: riga `#755-M2` aggiunta in coda a /home/user/Gas-audit/.claude/agents/memoria_revisore.md e messa in staging con `git -C /home/user/Gas-audit add`. Nessun commit, come chiesto. Nessuna lezione nuova.
 
-**Memoria**: riga `#744-M2 — 2026-11-10 — APPROVATO CON RISERVE — …` più una lezione (una lista bianca va provata contro le frasi che Gas stesso invita a dire) aggiunte in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md, messe in staging con `git add`. Nessun commit, come richiesto, quindi niente commit_memoria_revisore.sh.
-
-### Review #746-M2 (seguito di #744-M2, correzione di R-744-1) — verdetto integrale
+### Review #752-M2 (correzioni dell'audit) — verdetto integrale
 
 VERDETTO: APPROVATO CON RISERVE
 
-Review #746-M2: riguarda il diff in staging del worktree /home/user/Gas-voce, branch feat/voce-filtro-m2, con base 447195f. È il seguito della #744-M2.
+Review #752-M2 del diff STAGED in /home/user/Gas-audit (branch fix/voce-audit-m2, base 3f08352). Prima della review ho letto CLAUDE.md (sez. 5), le parti utili di stato_progetto.md e la coda della memoria. Nessun antipattern del Wall of Shame: niente slicing della history, niente output dei tool simulato. Cap 10 iterazioni, `_get_window` e i guardrail non sono toccati.
 
-**R-744-1-M2 (MEDIA) è CHIUSA.** «Continua.», «Avanti!», «Altro?», «Tre.», «3», «Domani.» e «Venerdì» ora arrivano al cervello. L'unico limite che resta, i nomi propri da soli, è scritto nel commento del codice.
+**Cosa ho controllato nel codice**
+- modules/voice/server.py:495 — `timeout = 60` sul VoiceHandler.
+  - Rischio: tagliare le risposte lunghe del forte.
+  - Esito: ok, con riserva.
+    - Mentre il kernel calcola (fino a 300 s) il socket non fa operazioni, quindi il timeout non scatta.
+    - Il timeout però vale anche su `sendall`, e da Python 3.5 conta la durata TOTALE dell'invio, non il singolo pezzo. L'ho provato con un socketpair: TimeoutError a 2,0 s anche se il lettore riceveva.
+    - Il client (clients/voice/ascolto.py:614) legge una riga NDJSON, suona la frase e solo dopo legge la successiva. Quando i buffer si riempiono, ogni riga deve partire entro 60 s mentre il client suona la frase prima. Con frasi normali va bene, ma va misurato sul Mac con una risposta lunga.
+    - Sulla lettura il timeout vale per ogni singola recv. Basta per una connessione muta, non per lo slowloris (1 byte ogni 59 s blocca ancora l'unico thread, anche prima del token).
+- modules/voice/server.py:119 — `_PAROLA_FORTE` con jarvis e `(...)*`.
+  - Falsi positivi: nessuno nuovo. Non scattano «Jarvis, fortemente», «Jarvis parla più forte», «Jarvisforte x», «Gas e forte x», «ciao forte x», «Gas gasolio forte».
+  - «Jarvis forte-mente ok» va al forte con richiesta «mente ok». Lo faceva già «Gas forte-mente» col vecchio regex. Sbaglia verso il forte, cioè costa budget ma non manda dati ai gratuiti.
+  - Il ramo «uso» è invariato: «jarvis jarvis forte» e «Hey Jarvis, forte.» danno ("uso", "").
+  - Backtracking: nessun problema, 20000 caratteri patologici in circa 2 ms.
+  - Il cambio vale anche per i vocali di Telegram, che usano `cervello_voce` (modules/telegram/bot.py:969). È coerente con lo scopo.
+- modules/voice/server.py:698 — 413 sul corpo. Esito: ok.
+  - Il controllo viene DOPO `_autorizza` (chi non ha il token riceve 401 e il corpo non viene letto) e PRIMA di `rfile.read`.
+  - Il corpo non letto non sporca la richiesta successiva: il server risponde in HTTP/1.0 e chiude la connessione dopo ogni risposta.
+- modules/voice/server.py:747 — JSON di forma sbagliata dà 400. Esito: ok. `{"prompt": 0}` o `false` finiscono in «mancante o vuoto», sempre 400.
+- modules/voice/server.py:754 — 413 sul prompt oltre 20000 caratteri. Esito: ok.
+- modules/voice/server.py:1459 — porta aperta prima del kernel. Esito: ok. Su OSError esce con return 1 e un messaggio chiaro; su `BaseException` chiude il server e rilancia l'eccezione.
+- modules/voice/stt.py:256 e modules/voice/tts.py:122 — HTTPException diventa OSError. Esito: ok. Il server (`_do_stt`) e bot.py:1084 (`except Exception`) prendono già OSError.
+  - Riserva: le altre funzioni di tts restano scoperte, cioè l'elenco voci (modules/voice/tts.py:158), la libreria (modules/voice/tts.py:216) e l'aggiunta di una voce (modules/voice/tts.py:270). Il server prende solo ElevenLabsTTSError e OSError, quindi un IncompleteRead esce dal gestore: il server non crasha, ma la richiesta resta senza risposta e lo stack finisce su stderr, non in gas_debug.log. Nell'aggiunta di una voce il contatore orario è già stato incrementato e l'esito resta incerto senza nessun messaggio.
+- clients/voice/browser_server.py:362 — se manca GAS_VOICE_URL, il proxy usa GAS_VOICE_PORT (stesso parsing di clients/voice/ascolto.py:246). Esito: riserva, nessun test copre questo ripiego (mutante sopravvissuto).
+- clients/voice/browser_server.py:70 (`_valore_dotenv`) e il nuovo `_load_dotenv` — confrontati con `_carica_dotenv` di gas.py: regole equivalenti, vince la prima riga, una riga con virgolette non chiuse lascia valere quella dopo. Esito: ok. Differenza già presente prima: il proxy non rispetta GAS_NO_DOTENV.
 
-Cosa ho controllato nel diff:
-- `modules/voice/server.py:182`: `_RISPOSTE_BREVI_SEGUITO` ora contiene continua/prosegui/avanti/altro/resto/ancora/dimmi/bene, i giorni, i numeri da uno a dieci in parole e gli ordinali. Rischio esaminato: con una lista più larga il filtro potrebbe diventare inutile. Esito ok: ho provato a runtime e «Mamma.», «Allora…», «Comunque», «Forte!», «Ehm» e «Mh» vengono ancora scartati senza chiamare il cervello.
-- `modules/voice/server.py:202-203`: con `and not parole[0].isdigit()` le cifre non si scartano più. Rischio esaminato: falsi positivi. Esito ok: «²» passa al cervello, ma è un caso innocuo.
-- `modules/voice/server.py:762`: il filtro scatta solo nel seguito, cioè quando l'operatore parla senza dire prima la parola di attivazione (chiamata invariata rispetto alla #744). Rischio esaminato: un frammento detto dopo la parola di attivazione verrebbe scartato. Esito ok: il test `tests/test_unit_voice_stt.py:828` e quello successivo con attivazione verificano che quel frammento va comunque al cervello.
-- `tests/test_unit_voice_server.py:2401`: casi nuovi che sotto R-744-1 venivano scartati e ora devono passare. Esito ok.
-- `tests/test_unit_voice_server.py:2407`: assert su «Il resto.». Esito **riserva**: sono due parole, quindi la frase passa comunque e il test non prova che «resto» sia in elenco.
+**Prova dei mutanti** (12, sulla copia dell'index): 11 uccisi.
+- Uccisi: regex senza jarvis, regex con `?` al posto di `*`, 413 sul corpo tolto, `>` cambiato in `>=` sul prompt, isinstance del prompt tolto, `server_close` tolto, `return 1` della porta occupata tolto, B3 di stt e di tts, `return None` delle virgolette non chiuse, rimozione di `export`.
+- Sopravvissuto: il ripiego GAS_VOICE_PORT del browser (nessun test lo copre).
 
-Mutanti (tutti uccisi, poi ripristinati con `git checkout` dall'index; lo staging è intatto):
-1. Tolto il controllo `isdigit`: 1 test fallito.
-2. Tolti continua/avanti/altro/resto dall'elenco: 1 test fallito.
-3. Tolto venerdì: 1 test fallito.
+**Test**: suite voice server, stt e tts con `-k "not browser"`: 310 passed. Test con «browser» nel nome: 28 passed. Attenzione: `-k "not browser"` esclude anche i test nuovi b4 del dotenv, che hanno «browser» nel nome. Li ho fatti girare a parte e passano.
 
-Test: `pytest voice_server + voice_stt -k "not browser"` dà 275 passed, come dichiarato.
+**Riserve** (da segnare in stato_progetto.md)
+- R-752-1 (BASSA): il timeout di 60 s vale anche su sendall come durata totale. Misurare sul Mac lo stream NDJSON con risposte lunghe. Lo slowloris non è coperto.
+- R-752-2 (BASSA): la conversione B3 manca nell'elenco voci, nella libreria e nell'aggiunta di una voce (modules/voice/tts.py:158/216/270).
+- R-752-3 (BASSA): manca un test per il ripiego GAS_VOICE_PORT del proxy, ad esempio GAS_VOICE_PORT=9001 deve dare `BrowserProxyHandler.voice_port == 9001`.
+- Cosmetica: un TimeoutError durante `rfile.read` finisce come traceback su stderr invece che in gas_debug.log.
 
-Riserve (vanno scritte in stato_progetto.md):
-- **R-746-1-M2 (BASSA)**: i numeri in parole oltre «dieci» («Undici.», «Venti») vengono ancora scartati nel seguito.
-- **R-746-2-M2 (BASSA)**: l'assert «Il resto.» a `tests/test_unit_voice_server.py:2407` non prova nulla, perché sono due parole. Va sostituito con «Resto.» da solo.
+**Cosa NON ho verificato**
+- Il comportamento reale sul Mac (dimensione dei buffer di loopback, durata delle frasi, telefono in rete privata): non riproducibile qui.
+- Le suite di ascolto, sottofondo, telegram_voce, contesto e prova_voci non le ho rieseguite: il diff non le tocca. Il totale dichiarato di 813 non l'ho verificato.
 
-Nota: «Basta.», «Fine.», «Zitto» ed «Esci» vengono scartati, ma lo scarto chiude la conversazione, quindi l'esito è quello voluto.
-
-Cosa NON ho verificato:
-- Comportamento con il microfono vero e Whisper: non si riproduce in dev, perché la trascrizione è simulata con un patch.
-- Prove col cervello reale: non riproducibili in dev, perché il kernel nei test è finto.
-- Altre suite (telegram_voce, voce_ascolto, kernel): non le ho rilanciate, perché il diff tocca solo `server.py` e i due file di test.
-
-Memoria: ho aggiunto la riga `#746-M2` e una lezione nuova in /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-voce add`. Lezione: nei test di una lista bianca «una parola sola», ogni caso deve essere davvero di una parola. Nessun commit fatto.
+**Memoria**: aggiunti in coda a /home/user/Gas-audit/.claude/agents/memoria_revisore.md la riga `#752-M2` e due lezioni (sendall col timeout totale; `-k "not browser"` che esclude test nuovi). File messo in staging con `git -C /home/user/Gas-audit add`. Nessun commit fatto, come richiesto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- gas.py non toccato. Test nuovi: `test_seguito_frammento_chiude_senza_cervello`, `test_seguito_frammento_con_attivazione_va_al_cervello`, `test_seguito_forte_che_supera_il_filtro_non_parla` (stt), `test_seguito_da_scartare_e_istruzione_severa`, `test_parlato_voce_tetto_piu_corto` (server).
-- `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voice_contesto.py tests/test_unit_telegram_voce.py tests/test_unit_voce_ascolto.py tests/test_unit_sottofondo.py -k "not browser"` sul commit d07fbdf:
+- gas.py non toccato. Test nuovi: `test_audit_b1_timeout_del_socket`, `test_audit_b5_json_di_forma_sbagliata_400` (6 casi), `test_audit_tetti_413`, `test_audit_porta_occupata_messaggio_chiaro`, `test_audit_b4_dotenv_del_browser_come_gas` (7 casi), `test_audit_b4_dotenv_non_sovrascrive`, `test_audit_proxy_segue_gas_voice_port` (3 casi), casi «Hey Jarvis, forte» in `test_v1_parola_forte_parlata` (server); `test_audit_b3_risposta_rotta_diventa_oserror` (stt e tts), `test_audit_b3_altre_funzioni_tts` (tts). `test_r8_avvio_con_rete_privata_dichiarata_parte` adattato (porta prima del kernel).
+- Dopo il merge di main (d1b5628): `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voce_ascolto.py tests/test_unit_telegram_voce.py tests/test_unit_sottofondo.py -k "audit or not browser"`:
 
 ```
-744 passed, 25 deselected in 89.18s (0:01:29)
+808 passed, 25 deselected in 80.53s (0:01:20)
 ```
+
+- Revisore #759-M2: voice_server + stt + tts con i test browser: 347 passed.
 
 ## §6 STATO CI
 
-CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strumento GitHub MCP:
-- e0f8f31 (head precedente): handoff-check success; verifica-bot failure (falso failure del parser, vedi §1); unit-suite non letta a fine run.
-- 1340aa0: nessuna run propria letta.
-- d07fbdf: nessuna run su questo SHA (pushato insieme al commit di fine task).
-- 588c450: handoff-check success; unit-suite e verifica-bot in corso alla seconda verifica esterna, poi superati dal nuovo push.
-- Merge di main: nessuna run su questo SHA (pushato insieme al commit di fine task).
+CI NON VERIFICATA con `gh` (non autenticato nel cloud).
+- 1c53cf9 e d1b5628: run non ancora disponibile alla scrittura dell'handoff (pushati prima di aprire la PR #367).
 - Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-744-1-M2 (gravità media): CHIUSA (1340aa0, review #746-M2).
-- R-746-1-M2 e R-746-2-M2 BASSE: CHIUSE (d07fbdf, review #747-M2).
-- Bot e verifica esterna #365 V-2 e V-3 BASSE: CHIUSE (d07fbdf).
-- R-744-2-M2 BASSA (preesistente): «Grazie.», allucinazione tipica di Whisper, va al cervello nel seguito.
-- R-747-1-M2 BASSA: il test di «Gas, forte.» nel seguito non distingue il ramo «uso» dallo scarto del filtro (stessa risposta).
-- R-747-2-M2 BASSA: «ora/dopo/mai/sempre/niente/nulla/subito/adesso» in elenco fanno passare al cervello anche frammenti della TV (compromesso: un falso «passa» costa un turno, un falso «scarta» perde la risposta dell'operatore).
-- Cosmetica #747 (e V-5 della seconda verifica esterna #365): ordine dell'import di `unicodedata`.
-- Seconda verifica esterna #365 (commento sulla PR, su 588c450): V-1 (gravità media, conflitto con main) CHIUSA col merge di main; V-2 BASSA (CI non conclusa) da rileggere sulla head nuova; V-3 BASSA (falso failure del parser, non riprodotto); V-4 BASSA («Ⅻ», «ﬁne» scartati dopo NFKD: marginale, dentro il limite dichiarato).
-- R-750-1-M2 BASSA: col primo mezzo secondo ignorato dal client (#361), un «Sì» detto subito può arrivare troncato e ora viene scartato in silenzio: da osservare dal vivo.
-- Bot su 1638d81: V-1 BASSA (conflitto) chiusa col merge di main; V-2 BASSA (CI) da rileggere; V-3 COSMETICA (numeri dei test nella descrizione della PR, import fuori ordine).
-- Limite dichiarato: un nome proprio da solo nel seguito si scarta.
-- Non verificato: il modello rispetta davvero «nel dubbio [NON_PER_ME]» e «una frase» (prova sul Mac).
+- R-752-1 BASSA: il timeout di 60 s vale su tutto il `sendall`: misurare sul Mac uno stream NDJSON lungo; lo slowloris (1 byte ogni 59 s) non è coperto.
+- R-752-2 e R-752-3 BASSE: CHIUSE (1c53cf9, review #755-M2).
+- Nota #755: in `add_shared_voice` una risposta rotta dopo l'aggiunta riuscita dice «errore di rete» invece di «esito incerto» (BASSA).
+- Cosmetica #752: un TimeoutError durante `rfile.read` finisce su stderr invece che in gas_debug.log.
+- Sospetti di M1 non toccati: «forte» durante «Sì, signore?», blocco per IP condiviso su 127.0.0.1, connessione ElevenLabs riusata.

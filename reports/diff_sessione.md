@@ -1,10 +1,10 @@
-# Diff di sessione — 2026-11-10 — voce: seguito più severo e risposte più brevi (chat M2)
+# Diff di sessione — 2026-11-10 — voce: correzioni dell'audit notturno (chat M2)
 
-- `modules/voice/server.py` — `ISTRUZIONE_SEGUITO` più severa; `_RISPOSTE_BREVI_SEGUITO` + `seguito_da_scartare` e chiamata nel seguito (prima del cervello); `ISTRUZIONE_VOCE`/`_SCHERMO` «UNA frase breve»; `_PARLATO_VOCE_MAX_CHAR` 800.
-- `tests/test_unit_voice_server.py` — test della funzione, dell'istruzione e del tetto 800; commento del test al tetto aggiornato; «UNA frase breve» nelle istruzioni.
-- `tests/test_unit_voice_stt.py` — test end-to-end: frammenti chiusi senza turno, risposte brevi al cervello, con attivazione il filtro non vale.
-- `.claude/agents/memoria_revisore.md` — righe #744-M2 e #746-M2.
-- `reports/stato_progetto.md`, `reports/ripartenza_m2.md` — stato della fetta e riserve (anche quelle del bot sulla #363).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+- `modules/voice/server.py` — timeout del socket (B1), `_PAROLA_FORTE` con jarvis e ripetizione (B2), 400 al JSON di forma sbagliata (B5), tetti 413 su corpo e prompt, porta aperta prima del kernel con messaggio chiaro.
+- `modules/voice/stt.py`, `modules/voice/tts.py` — HTTPException → OSError (B3), anche in elenco voci, libreria e aggiunta voce.
+- `clients/voice/browser_server.py` — `.env` con le regole di Gas (B4); senza GAS_VOICE_URL segue GAS_VOICE_PORT.
+- `tests/test_unit_voice_server.py`, `tests/test_unit_voice_stt.py`, `tests/test_unit_voice_tts.py` — un test per ogni correzione; test dell'avvio con rete privata adattato (server finto).
+- `.claude/agents/memoria_revisore.md` — righe #752, #755, #759-M2.
+- `reports/*` — report di fine task e stato.
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.

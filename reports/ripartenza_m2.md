@@ -20,6 +20,8 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 
 - **10 nov**: #360 MERGIATA (447195f). PR #363 terminale A aperta (sicurezza, decide l'operatore; bot APPROVATO CON RISERVE neutral). PR #365 seguito più severo + risposte più brevi (worktree `../Gas-voce`, branch feat/voce-filtro-m2). Ultima review: #746-M2.
 
+- **10 nov (2)**: #365 MERGIATA (f4d2d4f). #363 in attesa della CI su 7c1e7b5 (bot senza ALTA/MEDIA). PR #367 audit voce (worktree `../Gas-audit`, branch fix/voce-audit-m2). Ultima review: #759-M2.
+
 ## Riserve aperte (voce)
 - R-667-2-M2 BASSA (fuso configurabile per il VPS; lì l'istruzione vieta anche data_ora), R-667-3-M2 COSMETICA (datetime naive); R-668-1/3-M2 BASSE («Dimmi.» spende, segno non testato nei formati pezzi); R-669-1-M2 BASSA (HTTPException non intercettata nei percorsi TTS), R-669-2-M2 COSMETICA.
 - Bot #332: V-1 BASSA (posto nel tetto del testo consumato se il turno fallisce), V-2 COSMETICA (commenti V12, 429 «o scrivi»).
