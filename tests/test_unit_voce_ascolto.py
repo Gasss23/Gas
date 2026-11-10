@@ -194,6 +194,7 @@ def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
     # correzione 10/11/2026: soglia 0,6, parola su 2 blocchi di fila, 3 turni, coda dell'eco
     assert k.get("soglia") == 0.6 and k.get("blocchi_parola") == 2
     assert k.get("max_turni") == 3 and k.get("coda_eco_s") == 0.5
+    assert k.get("subito_s") == a.SUBITO_S == 0.6   # prova del 10/11: richiesta d'un fiato
     assert k.get("soglia_interruzione") == a.SOGLIA_INTERRUZIONE_PREDEFINITA
 
 
@@ -2606,3 +2607,74 @@ def test_conto_della_parola_nella_finestra_si_azzera():
     asc = f.ascolto(_blocchi(PAROLA_DETTA, (VOCE, 10), (SILENZIO, _sec(20))), blocchi_parola=2)
     asc._sopra_finestra = 1
     assert asc.aspetta_voce() is not None and asc.parola_nella_finestra is False
+
+
+# ── prova dal vivo del 10/11/2026: «Hey Jarvis, …» d'un fiato finiva sotto «Sì, signore?» ──
+
+def test_richiesta_d_un_fiato_senza_conferma():
+    """Voce continua subito dopo la parola: niente «Sì, signore?» (avrebbe coperto la
+    richiesta, poi buttata), e quei blocchi aprono la richiesta inviata."""
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (VOCE, 10), (SILENZIO, 20)), finestra_s=0, subito_s=0.6,
+              conferma=lambda: b"SI").gira()
+    assert f.riprodotti == [b"A"] and f.bip == [] and len(f.inviati) == 1
+    assert _campioni(f.inviati[0]) == (10 + a.blocchi_per(0.8)) * a.BLOCCO   # tutta la voce
+
+
+def test_pausa_dopo_la_parola_la_conferma_resta():
+    """Silenzio dopo la parola (chi aspetta la risposta): la conferma suona come prima."""
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (SILENZIO, 10), *RICHIESTA, (SILENZIO, 20)), finestra_s=0,
+              subito_s=0.6, conferma=lambda: b"SI").gira()
+    assert f.riprodotti == [b"SI", b"A"] and len(f.inviati) == 1
+
+
+def test_coda_breve_della_parola_non_salta_la_conferma():
+    """Blocchi forti non di fila (la coda di «Jarvis», un colpo) non sono voce continua:
+    la conferma suona."""
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (VOCE, 2), SILENZIO, VOCE, (SILENZIO, 6), *RICHIESTA,
+                       (SILENZIO, 20)),
+              finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
+    assert f.riprodotti == [b"SI", b"A"]
+    # e con subito_s=0 (default del costruttore) la voce d'un fiato non salta la conferma
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (VOCE, 10), (SILENZIO, 30)), finestra_s=0,
+              conferma=lambda: b"SI").gira()
+    assert f.riprodotti[0] == b"SI"
+
+
+def test_fine_flusso_subito_dopo_la_parola_non_rompe():
+    f = FintiParlano([b"A"])
+    f.ascolto(_blocchi(PAROLA, (VOCE, 2)), finestra_s=0, subito_s=0.6).gira()
+    assert f.inviati == []
+
+
+def test_log_della_richiesta_con_voce_e_volume(caplog):
+    """Solo numeri: durata, secondi di voce, volume massimo (per tarare le soglie)."""
+    f = Finti()
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        f.ascolto(_blocchi(PAROLA, (VOCE, 10), (SILENZIO, 20)), finestra_s=0).gira()
+    righe = [r for r in caplog.text.splitlines() if "richiesta registrata" in r]
+    assert len(righe) == 1 and "voce 0.8 s" in righe[0] and "volume max 10.0× la soglia" in righe[0]
+
+
+def test_coda_della_parola_poi_pausa_non_salta_la_conferma():
+    """R-753-1-M1: tre blocchi forti (la coda di «…vis») e poi una pausa non sono una
+    richiesta d'un fiato: la conferma suona e la richiesta vera arriva dopo, intera."""
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (VOCE, 3), (SILENZIO, 12), (VOCE, 10), (SILENZIO, 20)),
+              finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
+    assert f.riprodotti == [b"SI", b"A"] and len(f.inviati) == 1
+    assert _campioni(f.inviati[0]) == (10 + a.blocchi_per(0.8)) * a.BLOCCO
+
+
+def test_voce_che_parte_allo_scadere_non_finisce_sotto_la_conferma():
+    """R-753-2-M1: voce che comincia proprio alla fine della finestra: si legge ancora
+    finché non si decide, la conferma non suona sopra la frase e niente va perso."""
+    finestra = a.blocchi_per(0.6)
+    f = FintiParlano([b"A"], durata=3)
+    f.ascolto(_blocchi(PAROLA, (SILENZIO, finestra - 2), (VOCE, 10), (SILENZIO, 20)),
+              finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
+    assert f.riprodotti == [b"A"] and len(f.inviati) == 1
+    assert _campioni(f.inviati[0]) == (finestra - 2 + 10 + a.blocchi_per(0.8)) * a.BLOCCO

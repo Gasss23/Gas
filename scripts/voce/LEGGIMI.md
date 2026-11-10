@@ -32,6 +32,12 @@ sempre. Quando interrompi Gas resta il bip, più rapido; nella conversazione sen
 Se cambi la voce di Jarvis sul server, «Sì, signore?» resta con la voce vecchia fino al
 riavvio dell'ascolto: `bash scripts/voce/installa.sh`.
 
+**Richiesta d'un fiato:** se dici «Hey Jarvis, che ore sono» senza pause, Jarvis non dice
+«Sì, signore?» (coprirebbe la tua frase) e registra subito. Basta che nel primo 0,6 s dopo
+la parola parta voce continua per almeno 0,4 s; se invece ti fermi dopo «Hey Jarvis», senti la conferma e
+poi parli. Nel log, ogni «richiesta registrata» dice anche quanti secondi di voce e quanto
+forte (in multipli di `GAS_ASCOLTO_VOCE_RMS`): utile se le richieste arrivano tagliate.
+
 **Interrompere Gas:** mentre risponde, di' di nuovo la parola di attivazione: si ferma
 subito, salta le frasi che mancavano, fa il bip e ascolta la nuova domanda. Serve proprio
 la parola, non basta parlare: con le casse del Mac il microfono sente anche la voce di Gas.
