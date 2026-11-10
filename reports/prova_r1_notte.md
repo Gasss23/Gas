@@ -136,7 +136,7 @@ ls ~/Gas/prove_r1
 cat ~/Gas/prove_r1/buongiorno.sh
 ```
 
-**F. Controllo finale** — nessun FAIL; la riga «Firme» deve dire «0 in attesa, nessuna scaduta»; poi le lezioni proposte stanotte:
+**F. Controllo finale** — nessun FAIL; la riga «Firme» deve finire con «nessuna scaduta»; poi le lezioni proposte stanotte:
 
 ```
 python3 gas.py doctor; python3 gas.py lezioni lista
