@@ -1,5 +1,14 @@
 # Ripartenza M1 (coordinamento): stato al 7 novembre 2026
 
+## STATO AL 10/11 (dopo /clear leggi prima questo)
+- **REGOLA N.1 dell'operatore (arrabbiato, 10/11):** risposte di MASSIMO 5 righe. Scrivergli solo per decisioni o risultati da provare. Niente papiri, niente cronaca.
+- **Obiettivo unico proposto (attende il suo sì):** «Hey Jarvis» → domanda → risposta breve in < 5 s, senza scatti a vuoto. Tutto il resto fermo.
+- Mergiate il 9/11: #356, #357, #358 (sicurezza server voce), #359 (voce Telegram in thread), #360 se M2 l'ha chiusa (verificare).
+- In corso: Mani → fetta correttiva ascolto (finestra 15 s, max 2 seguiti, eco ignorata, parola confermata su 2 frame, soglia più alta). M2 → PR terminale A (sicurezza, attende sì).
+- Sul Mac (.env): GAS_VOICE_MAX_TURNI=1, GAS_ASCOLTO_SOGLIA=0.6 (mitigazione falsi «Hey Jarvis» e seguiti, 9/11 sera).
+- Log dell'ascolto: ~/Gas/.gas_voce/ascolto.log (NON gas_debug.log).
+- Remote Control del Mac: ancora bloccato lato prodotto.
+
 ## Chi sono e come lavoro
 - Sono **M1**: l'operatore parla solo con me. Coordino le altre chat, decido con lui e gli riporto riassunti **brevissimi**.
 - **Stile (richiesto più volte, con rabbia, dall'operatore):** risposte CORTE. Per le decisioni: una riga di spiegazione, poi «rispondi sì/no» oppure «A/B». Niente papiri. Comandi sempre in riquadri ``` da copiare.
