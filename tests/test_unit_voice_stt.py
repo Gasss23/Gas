@@ -841,6 +841,15 @@ class TestVoiceHandlerRouting:
             assert self.kernel.kw != "NESSUN TURNO", detto
             assert self.kernel.kw["effimero"] is True, detto
 
+    def test_seguito_forte_che_supera_il_filtro_non_parla(self):
+        """V-2 bot #365: «Gas, forte.» nel seguito (due parole) supera il filtro dei frammenti
+        e arriva al ramo «uso» del seguito: chiude senza voce né turno (V-1 ve #339)."""
+        status, corpo, comando = self._seguito_detto("Gas, forte.")
+        assert status == 200 and comando == "fine"
+        corpo = json.loads(corpo)
+        assert corpo["content"] == "" and "uso" not in corpo
+        assert self.kernel.kw == "NESSUN TURNO"
+
     def test_seguito_frammento_con_attivazione_va_al_cervello(self):
         """Il filtro vale SOLO nel seguito: con la parola di attivazione una parola sola
         («Mamma.») va al cervello come sempre."""

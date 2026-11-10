@@ -82,6 +82,7 @@ import json
 import logging
 import os
 import re
+import unicodedata
 import subprocess
 import time
 from datetime import datetime
@@ -189,17 +190,33 @@ _RISPOSTE_BREVI_SEGUITO = frozenset((
     "male", "fatto", "stop", "fermo", "oggi", "domani", "ieri", "dopodomani", "lunedì",
     "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica", "uno", "una", "due",
     "tre", "quattro", "cinque", "sei", "sette", "otto", "nove", "dieci", "tutti", "tutto",
-    "nessuno", "entrambi", "primo", "prima", "secondo", "seconda", "ultimo", "ultima"))
+    "nessuno", "entrambi", "primo", "prima", "secondo", "seconda", "ultimo", "ultima",
+    # V-3 bot #365 e R-746-1-M2: altre risposte brevi comuni, momenti del giorno, numeri
+    "sicuro", "sicura", "certamente", "assolutamente", "volentieri", "forse", "davvero",
+    "scusa", "scusi", "stasera", "stanotte", "domattina", "mezzogiorno", "mezzanotte",
+    "adesso", "ora", "subito", "dopo", "presto", "tardi", "sempre", "mai", "niente", "nulla",
+    "undici", "dodici", "tredici", "quattordici", "quindici", "sedici", "diciassette",
+    "diciotto", "diciannove", "venti", "trenta", "quaranta", "cinquanta", "sessanta",
+    "cento", "mille"))
+
+
+def _senza_accenti(testo: str) -> str:
+    """V-3 bot #365: «Perchè»/«perché», «Lunedi»/«lunedì» e le forme NFD contano uguali."""
+    return "".join(c for c in unicodedata.normalize("NFKD", testo)
+                   if not unicodedata.combining(c))
+
+
+_RISPOSTE_BREVI_NORM = frozenset(_senza_accenti(p) for p in _RISPOSTE_BREVI_SEGUITO)
 
 
 def seguito_da_scartare(trascrizione: str) -> bool:
     """Vero se nel seguito la trascrizione è un frammento da non mandare al cervello: nessuna
     parola, oppure una sola parola fuori da _RISPOSTE_BREVI_SEGUITO e non numerica."""
-    parole = re.findall(r"\w+", trascrizione.lower())
+    parole = re.findall(r"\w+", _senza_accenti(trascrizione.lower()))
     if not parole:
         return True
     # limite dichiarato (R-744-1-M2): un nome proprio da solo («Marco.») si scarta
-    return (len(parole) == 1 and parole[0] not in _RISPOSTE_BREVI_SEGUITO
+    return (len(parole) == 1 and parole[0] not in _RISPOSTE_BREVI_NORM
             and not parole[0].isdigit())
 # V14 (chat M2, «Sì, signore?» deciso dall'operatore; contratto con la chat Mani via M1):
 # GET /voce/conferma → audio/mpeg della frase detta con la voce attuale, suonato dal client

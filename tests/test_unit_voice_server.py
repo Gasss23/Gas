@@ -2404,7 +2404,13 @@ def test_seguito_da_scartare_e_istruzione_severa():
     assert "terza persona" in ISTRUZIONE_SEGUITO
     # R-744-1-M2: la parola che Gas stesso invita a dire quando taglia il parlato passa
     from modules.voice.server import _PARLATO_VOCE_RESTO
-    assert "resto" in _PARLATO_VOCE_RESTO and not seguito_da_scartare("Il resto.")
+    assert "resto" in _PARLATO_VOCE_RESTO and not seguito_da_scartare("Resto.")  # R-746-2-M2
+    # V-3 bot #365 + R-746-1-M2: altre risposte brevi, accenti normalizzati, numeri oltre dieci
+    import unicodedata
+    for t in ("Sicuro.", "Certamente!", "Forse", "Davvero?", "Scusa?", "Stasera.", "Perchè?",
+              "Lunedi", unicodedata.normalize("NFD", "Lunedì"), "Undici.", "Venti"):
+        assert not seguito_da_scartare(t), t
+    assert seguito_da_scartare("Mamma.") and seguito_da_scartare("Ehm")
 
 
 def test_parlato_voce_tetto_piu_corto():
