@@ -108,3 +108,24 @@ def test_sources_yaml_vuoto_o_storto(ingest, tmp_path, contenuto):
     y.write_text(contenuto, encoding="utf-8")
     fonti = mod.carica_fonti(y)
     assert fonti == ([{"nome": "x"}] if "nome: x" in contenuto else [])
+
+
+@pytest.mark.parametrize("fonti_yaml,codice", [
+    ("sources:\n  - nome: ok\n    uri: knowledge/ok.txt\n", None),
+    ("sources:\n  - nome: ok\n    uri: knowledge/ok.txt\n  - nome: rotta\n    uri: knowledge/manca/\n", 1),
+])
+def test_main_exit_code_se_una_fonte_fallisce(ingest, tmp_path, monkeypatch, fonti_yaml, codice):
+    """V-3 bot #366: le fonti buone si caricano comunque, ma se una fallisce il comando
+    esce con 1 (chi lo lancia da script lo vede); tutto ok → nessun exit."""
+    mod, _ = ingest
+    (mod.REPO_ROOT / "knowledge" / "manca").mkdir()
+    y = mod.REPO_ROOT / "knowledge" / "sources.yaml"
+    y.write_text(fonti_yaml, encoding="utf-8")
+    monkeypatch.setattr(mod, "SOURCES_YAML", y)
+    monkeypatch.setattr(sys, "argv", ["ingest", "--db", str(tmp_path / "m.db")])
+    if codice is None:
+        mod.main()
+    else:
+        with pytest.raises(SystemExit) as e:
+            mod.main()
+        assert e.value.code == codice
