@@ -15,6 +15,7 @@
 
 - **Richiesta d'un fiato (prova dal vivo 10/11, 6 attivazioni su 8 senza richiesta)**: `FATTA` — 0664325, review #753-M1 e #754-M1 APPROVATO CON RISERVE (MEDIA/BASSA chiuse, restano BASSE).
 - **V-1 MEDIA della verifica esterna #368 (coda di «…vis» ≥0,4 s + pausa → si inviava solo la coda)**: `FATTA` — af8ad62, review #755-M1 APPROVATO CON RISERVE (R-755-1-M1 BASSA).
+- **V-1 MEDIA / V-2 BASSA della verifica esterna #368, 2° giro (richiesta brevissima persa in silenzio; voce verso la fine dei 5 s scartata)**: `FATTA` — 2213519, review #756-M1 APPROVATO CON RISERVE (R-756-1-M1 BASSA, R-756-2-M1 COSMETICA).
 - **Scarto delle trascrizioni allucinate di Whisper**: `SALTATA — sta in modules/voice/stt.py (chat M2); scartare «grazie» toglierebbe anche quelli veri`.
 - **Default più severi contro le risposte non richieste**: `DEFERITA — prima i log del Mac richiesti all'operatore via M1`.
 
@@ -23,14 +24,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- clients/voice/ascolto.py           |  79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ .claude/agents/memoria_revisore.md |   5 +++++
+ clients/voice/ascolto.py           |  91 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
  reports/diff_sessione.md           |  19 ++++++++-----------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  30 +++++++++++-------------------
- scripts/voce/LEGGIMI.md            |   6 ++++++
- tests/test_unit_voce_ascolto.py    |  96 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  31 ++++++++++++-------------------
+ scripts/voce/LEGGIMI.md            |   8 ++++++++
+ tests/test_unit_voce_ascolto.py    | 120 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handoff.md` dice `n/d` e manca la riga di totale.
@@ -38,6 +39,9 @@ NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handof
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2213519 fix(voce): richiesta brevissima d'un fiato → «Sì, signore?» invece del silenzio; voce verso la fine dei 5 s non più scartata — V-1/V-2 verifica esterna #368 (2° giro), review #756-M1
+fd1e340 chore(revisore): memoria review #756 — APPROVATO CON RISERVE
+e4bc824 docs(fine-task): V-1 della verifica esterna #368 chiusa — PR #368
 af8ad62 fix(voce): dopo la parola solo la coda di «…vis» non si invia più — V-1 verifica esterna #368, review #755-M1
 8d60aac chore(revisore): memoria review #755 — APPROVATO CON RISERVE
 02937e5 docs(fine-task): richiesta d'un fiato — PR #368
@@ -138,27 +142,60 @@ Review #755-M1 del diff staged su claude/peaceful-lovelace-0w2b7q (PR #368). Il 
 **Memoria**
 Riga #755-M1 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script dedicato (commit 8d60aac). Nessuna lezione nuova.
 
+Commit 2213519: verdetto integrale della review #756-M1.
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Esito: la modifica è corretta. Restano una riserva BASSA (la conferma di ripiego arriva tardi) e una COSMETICA (a fine flusso suona comunque la conferma).
+
+Letture obbligatorie fatte: CLAUDE.md §5, la voce PR #368 in reports/stato_progetto.md e la coda della memoria (#753–#755-M1).
+
+**Elementi del diff esaminati**
+- `clients/voice/ascolto.py:540` — la condizione `if dopo_parola or not confermata:` fa contare i blocchi forti anche dopo la tolleranza, finché la richiesta non è confermata. Rischio esaminato: un cambio di comportamento per i chiamanti senza `subito`. Lì `confermata = not dopo_parola` vale True (`clients/voice/ascolto.py:500`), quindi la condizione si riduce a `dopo_parola`, come prima. Lo stesso vale per il ramo `rileva_parola`, che accende `dopo_parola` ma lascia `confermata=True`. Esito: ok.
+- `clients/voice/ascolto.py:548` — regola che chiude la registrazione col silenzio, quando la conferma arriva tardi. Rischio esaminato: il contatore `dal_la_parola` cresce a ogni blocco ed è sempre ≥ `silenzio`, quindi `dopo_parola` si spegne prima o nello stesso blocco. Se la voce riparte prima della scadenza, il primo blocco forte azzera il silenzio e la conferma arriva con 3 blocchi forti di fila anche oltre i 5 s. Se invece c'è stato solo silenzio, dopo la scadenza vale `max_silenzio`, la registrazione si chiude e torna None. Esito: ok.
+- `clients/voice/ascolto.py:794` — se `registra(subito, subito=True)` torna None si ripiega su `_conferma_o_bip()`, poi `_svuota()`, poi `registra()`. Rischi esaminati:
+  - Doppia conferma o eco: nel ramo «d'un fiato» non suona niente prima, quindi il ripiego suona una sola volta, e `_svuota()` dopo la conferma toglie l'eco come nel ramo normale. Ok.
+  - Fine flusso: sonda con il solo «pausa» e poi fine dei blocchi. Il risultato è `riprodotti == [b"SI"]`, nessun invio e niente crash, perché `_prossimo` torna None e il secondo `registra()` torna None. Riserva COSMETICA R-756-2-M1: alla chiusura del microfono suona un «Sì, signore?» inutile.
+  - Latenza: il ripiego scatta solo dopo ~5 s di silenzio (la soglia `max_attesa` vale finché `dopo_parola` è acceso). Con rumore a impulsi brevi (sonda: 2 blocchi di voce e 3 di silenzio, ripetuti) la richiesta non viene mai confermata e la registrazione può durare fino a `REGISTRAZIONE_MAX_S`=30 s prima della conferma. Nessun invio a Whisper. Riserva BASSA R-756-1-M1.
+- `tests/test_unit_voce_ascolto.py:2708` e `tests/test_unit_voce_ascolto.py:2719` — sono i due test nuovi. Rischio esaminato: che non proteggano davvero la modifica. Ho riprodotto i mutanti dichiarati. Con `if dopo_parola:` fallisce 1 test (`test_voce_verso_la_fine_della_tolleranza...`). Con il ripiego tolto ne falliscono 2 (`test_richiesta_brevissima...` e quello della sola coda a `tests/test_unit_voce_ascolto.py:2695`). Il file è stato ripristinato e il diff staged è invariato. Suite: 314 passed. Esito: ok.
+- `scripts/voce/LEGGIMI.md:39` — paragrafo «la frase era troppo corta (sotto circa due terzi di secondo)». La cifra è coerente: 5 blocchi d'un fiato più 3 blocchi di conferma fanno 0,64 s. Però il paragrafo non dice che la conferma arriva circa 5 s dopo (fa parte di R-756-1-M1).
+
+**Riserve da tracciare in stato_progetto.md**
+- **R-756-1-M1 BASSA**: la conferma di ripiego arriva solo dopo ~5 s di silenzio, o fino a 30 s con rumore a impulsi. Chi dice «Hey Jarvis, pausa» aspetta 5 s senza riscontro. Proposte:
+  - scrivere il ritardo nel LEGGIMI;
+  - oppure, in una fetta futura, chiudere prima la tolleranza quando non resta abbastanza voce per una conferma.
+- **R-756-2-M1 COSMETICA**: se il flusso finisce durante la tolleranza, suona comunque «Sì, signore?» prima di uscire. È innocuo.
+
+**Antipattern del Wall of Shame**: niente slicing della history (il codice è della voce e lo slicing `presi[-tieni:]` di blocchi audio era già presente), niente simulazione di tool. Nessun guardrail toccato.
+
+**Rischio escluso**: non ho verificato il comportamento dal vivo sul Mac (microfono reale, soglia `GAS_ASCOLTO_VOCE_RMS`, durata reale di un «pausa» detto di corsa). Non si riproduce in dev: la cifra di «due terzi di secondo» e l'accettabilità dei 5 s di attesa vanno provate dal vivo coi log.
+
+**Memoria**: aggiunta la riga #756-M1 a /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script dedicato (commit fd1e340). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel non toccato. `tests/test_unit_voce_ascolto.py`: da 303 (base a0c200c) a 312 casi (310 dopo 0664325, 312 dopo af8ad62).
+Kernel non toccato. `tests/test_unit_voce_ascolto.py`: da 303 (base a0c200c) a 314 casi (310 dopo 0664325, 312 dopo af8ad62, 314 dopo 2213519).
 
 ```
-312 passed in 30.49s
+314 passed in 29.58s
 ```
 
-Mutanti presi: ramo «subito» tolto, conto di fila senza azzeramento, `return letti[-1:]`, `servono = INIZIO_VOCE_S` (coda di «…vis»), niente allungamento al bordo della finestra. Su af8ad62: `confermata` sempre True, `dopo_parola` iniziale False, `registra` senza `subito=True` → presi. Equivalente: `return None` → `break` su fine flusso.
+Mutanti presi: ramo «subito» tolto, conto di fila senza azzeramento, `return letti[-1:]`, `servono = INIZIO_VOCE_S` (coda di «…vis»), niente allungamento al bordo della finestra. Su af8ad62: `confermata` sempre True, `dopo_parola` iniziale False, `registra` senza `subito=True` → presi. Su 2213519: `if dopo_parola:` al posto di `or not confermata` → 1 failed; ripiego sulla conferma tolto → 2 failed. Equivalente: `return None` → `break` su fine flusso.
 
 ## §6 STATO CI
 
 `gh` non autenticato nel container (GitHub passa dallo strumento MCP). Mappatura commit→run:
-- 02937e5 (testa precedente della PR #368): handoff-check success; unit-suite e verifica in corso alla verifica esterna #368.
-- 8599767, fa7f9f8, 0664325, 8d60aac: nessuna run conclusa su questo SHA (commit intermedi o sostituiti da push successivi).
-- af8ad62 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- e4bc824 (testa precedente della PR #368): handoff-check, smista e verifica success; verifica-bot FAILURE (finding MEDIA del bot = V-1 del 2° giro, corretta in 2213519); unit-suite in corso alla verifica esterna.
+- 8599767, fa7f9f8, 0664325, 02937e5, 8d60aac, af8ad62, fd1e340: nessuna run conclusa su questo SHA letta qui (commit intermedi o sostituiti da push successivi).
+- 2213519 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - Verifica esterna #368 ([commento](https://github.com/Gasss23/Gas/pull/368#issuecomment-6774438194), APPROVATO CON RISERVE): V-1 MEDIA CHIUSA in af8ad62; V-2 BASSA: falso «Hey Jarvis» + sottofondo continuo ≥0,4 s → niente conferma e registrazione silenziosa (prima la conferma avvisava; la registrazione del sottofondo c'era anche prima), legata alla priorità «risposte non richieste»; V-3 BASSA: i blocchi della finestra subito includono il silenzio iniziale; V-4 COSMETICA (handoff).
-- R-755-1-M1 BASSA: voce che parte proprio allo scadere dei 5 s di tolleranza viene registrata e poi scartata, con un log fuorviante.
+- R-755-1-M1 BASSA: CHIUSA in 2213519 (V-2 del 2° giro).
+- Verifica esterna #368 2° giro ([commento](https://github.com/Gasss23/Gas/pull/368#issuecomment-6774749197)): V-1 MEDIA e V-2 BASSA CHIUSE in 2213519; V-3 BASSA: i blocchi iniziali (silenzio e coda di «…vis») vanno a Whisper, «Vis, pausa» può non essere preso come comando; SUBITO_S arrotondato a 8 blocchi; V-4 COSMETICA LEGGIMI: CHIUSA.
+- R-756-1-M1 BASSA: la conferma di ripiego arriva dopo ~5 s di silenzio (fino a 30 s con rumore a impulsi).
+- R-756-2-M1 COSMETICA: a fine flusso durante la tolleranza suona comunque «Sì, signore?».
 - #754-M1 BASSA: costo del calcolo rms su ogni blocco per il log della richiesta (decine di ms prima dell'invio).
 - #754-M1 BASSA (limite di progetto): voce che parte dopo la finestra di 0,6 s perde ancora l'inizio sotto la conferma; chi fa una pausa dopo «Hey Jarvis» sente la conferma 0,6 s più tardi.
 - Da provare dal vivo: che la coda reale di «…vis» resti sotto 0,4 s di voce continua.
