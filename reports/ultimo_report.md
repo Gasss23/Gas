@@ -1,25 +1,23 @@
-# Ultimo report — 2026-11-10 — chat M4: R1 «Giro notturno provato dal vero», procedura di prova
+# Ultimo report — 2026-11-10 — R7 fetta 1: ripresa dei compiti in sottofondo dopo un crash (chat M3)
 
 ## DECISIONI UMANE RICHIESTE
-
-1. Merge della PR #362 (solo documentazione): la mergio io se il bot dà APPROVATO pulito con CI verde; altrimenti serve il sì dell'operatore via M1.
-2. Archivio della conoscenza (voce R1 «avviso knowledge_fts»): tolto dalla prova perché l'unica fonte è quella di prova, superata (V-2 bot #362 terzo giro). Va creato quando c'è una fonte vera: decide l'operatore quale.
-3. L'operatore sceglie una notte e segue `reports/prova_r1_notte.md` (sera + mattina), poi manda a M1 gli output dei punti B, C, E, F.
+1. Merge della PR #364 (https://github.com/Gasss23/Gas/pull/364): contiene una correzione di SICUREZZA al cancello (`.gas_sottofondo/` mai scrivibile, dall'audit notturno), quindi serve il sì dell'operatore via M1 anche col bot APPROVATO. Revisore APPROVATO CON RISERVE (solo BASSA/COSMETICA); bot sul giro a7eb3fc APPROVATA con riserve BASSE; la correzione di sicurezza va ancora passata da bot e verifica esterna.
 
 ## Esito
+- **Proposta R7** (`reports/proposta_r7_direttore.md`): FATTA — 4 opzioni, raccomandato l'ordine ripresa automatica → ripresa al boot → piano scritto dal modello → lista dei lavori ricorrenti. Mandata a M1.
+- **Fetta 1 — ripresa automatica**: FATTA — `modules/sottofondo/__init__.py`: processo morto (non oltre la durata massima) → compito di nuovo in coda e riavviato, max `GAS_SOTTOFONDO_RIPRESE` (default 2, tetto 5), presa del posto sotto `fcntl.flock`, tempo totale contato dalla prima creazione. Progressi in `<id>.passi` (0600): solo nomi di strumenti registrati, «fatto»/«in_firma»; nota nel prompt del compito ripreso; avviso finale «ripreso N volte». `gas.py`: `tool_res` porta `nome`.
+- **Riserve del revisore**: R-736-1 (MEDIA, corsa fra due controlli), R-736-2, R-736-3, R-737-1 CHIUSE; aperte R-737-2 (BASSA), R-738-1 e R-745-1 (COSMETICHE), in `reports/stato_progetto.md`.
+- **Merge di origin/main (#360 di M2)**: FATTO, review #739 APPROVATO.
+- **Bot #364 su dc6c25a** (NON approvata): V-1 MEDIA (un kill dell'operatore faceva ripartire il compito in silenzio) CHIUSA — avviso a ogni ripresa e comando `python gas.py sottofondo-ferma` (segno `<id>.ferma` sotto il lock della coda, ferma il processo solo se è il nostro figlio, chiude «ko»); V-2 BASSA (tetto di tempo con un buco) CHIUSA — niente ripresa oltre la durata contata dalla prima creazione. Review #743 → #744 → #745 APPROVATO CON RISERVE (R-743-1/2/3 e R-744-1/2 chiuse; resta R-745-1 COSMETICA).
+- **Verifica esterna #364** (su dc6c25a): APPROVATO CON RISERVE, nessuna ALTA/MEDIA; V-1 BASSA (compito mai partito ritentato) tracciata in stato_progetto.
+- **Merge di origin/main (#362 di M4)**: FATTO (solo report e memoria del revisore).
+- **Bot #364 2° giro (a7eb3fc)**: APPROVATA, riserve BASSE (avviso di ripresa e tetto notifiche; cartella di lancio di `sottofondo-ferma`) tracciate in stato_progetto. Verifica esterna 2° giro: APPROVATO CON RISERVE, nessuna ALTA/MEDIA.
+- **Audit notturno (M1) — `.gas_sottofondo/` scrivibile senza firma**: FATTO — denylist + livello 3 in `modules/gate/gate.py`, test gate (10 failed senza fix) e kernel T6s. Review #746 APPROVATO CON RISERVE (R-746-1 BASSA preesistente, R-746-2 COSMETICA).
+- **Merge di origin/main (#361)**: FATTO, review #747 APPROVATO.
+- Ripresa al boot, piano scritto dal modello, lista dei lavori ricorrenti: DEFERITE — fette successive.
 
-- **Analisi di cosa manca a R1**: `FATTA` — già provati in ottobre messaggio del mattino, bottoni di giorno, timer e giro col forte. Mancano: partenza alle 03:00 da solo, firma nata di notte approvata al mattino (24 ore), riga «Riflessione», archivio `knowledge_fts` (poi tolto dalla prova, vedi sotto).
-- **Procedura `reports/prova_r1_notte.md`**: `FATTA` — comandi in riquadri per sera e mattina, tabella dei guasti. Verificato qui: il catalogo col compito `prova_firma_r1` si carica senza avvisi (`carica_catalogo`), `prove_r1/buongiorno.sh` è di livello 2 (sempre alla firma, `livello_scrittura`).
-- **Correzioni al codice**: `SALTATA — non servono`: il codice per la prova c'è già.
-- **Messaggio a M1**: `FATTA` — consegnato.
-- **PR #362**: aperta, etichetta `verifica` messa. Bot sul commit 1bd7939: APPROVATO CON RISERVE (nessuna ALTA/MEDIA).
-- **Riserve del bot #362 (V-1, V-2 BASSE; V-3, V-4 COSMETICHE)**: `FATTA` — V-1 controllo vero del forte nel doctor (non basta OK, «spento» è OK), V-2 pulizia con `rm -rf …; mv …` che rimette sempre il catalogo, V-3 mappatura CI corretta nell'handoff, V-4 chiavi di `plutil` tra virgolette.
-- **Riserve del bot #362, secondo giro su 1eb30cb (V-1, V-2 BASSE)**: `FATTA` in bae139c — controllo esplicito dell'archivio `knowledge_fts` (conteggio > 0) e output atteso dell'ingest; cosa fare se il controllo del catalogo non passa. 
-
-- **Riserve del bot #362, terzo giro su e4191a2 (V-1, V-2 BASSE; V-3 COSMETICA)**: `FATTA` — controllo B con l'ora del giro nel log del timer; archivio della conoscenza tolto dalla prova (diventa decisione dell'operatore); WARN «spento nella shell ma il .env lo accende» accettato.
-
-- **Merge di main (447195f) per il conflitto della #362**: `FATTA` — review #743-M4 APPROVATO CON RISERVE, riserve chiuse. Sì dell'operatore al merge riferito da M1.
+## Test
+pytest `tests/test_unit_sottofondo.py`: 112 passed. Suite kernel: 1104 PASS, 0 FAIL. Gate: 832 passed. Voce+notte+sottofondo: 478 passed.
 
 ## Anomalie
-
-- `gh` nel container non è autenticato (token rifiutato): stato CI letto con gli strumenti GitHub della sessione.
+Nessuna. Non provato con processi veri (flock fra processi, kill del figlio).

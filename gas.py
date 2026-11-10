@@ -5254,7 +5254,8 @@ class GasKernel:
                                 # contaminazione si ricalcolava solo all'iterazione dopo).
                                 if tc.function.name in UNTRUSTED_INPUT_TOOLS:
                                     _finestra_contaminata = True
-                                yield {"type": "tool_res", "output": out, "cancello": _cancello}
+                                yield {"type": "tool_res", "output": out, "cancello": _cancello,
+                                       "nome": tc.function.name}  # R7 fetta 1: progressi
                             _salva()
                             # continua il loop per ottenere la risposta finale
                         elif msg.content:
@@ -6503,6 +6504,11 @@ def main():
         sys.exit(rifletti_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "notte":
         sys.exit(notte_cmd(solo=sys.argv[2]) if len(sys.argv) > 2 else notte_cmd())
+    if len(sys.argv) > 1 and sys.argv[1] == "sottofondo-ferma":  # R7, bot #364 V-1
+        from modules import sottofondo
+        _ok, _frase = sottofondo.ferma(Path.cwd())
+        print(_frase)
+        sys.exit(0 if _ok else 1)
     if len(sys.argv) > 2 and sys.argv[1] == "sottofondo":  # fetta 3: processo separato
         from modules import sottofondo
         _root = Path.cwd()

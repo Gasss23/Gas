@@ -8,7 +8,7 @@ fetta a parte), poi bip, registrazione fino al silenzio, invio al server voce gi
 esistente (modules/voice/server.py, POST /voice) e risposta riprodotta: con la risposta
 «a pezzi» del server (righe JSON, formato audio+pezzi) la prima frase suona appena arriva e le altre in
 fila, mentre il server sintetizza le successive (fetta 39). Dopo la risposta
-resta una finestra di ascolto (GAS_VOICE_FINESTRA, 40 s) per continuare senza ripetere
+resta una finestra di ascolto (GAS_VOICE_FINESTRA, 15 s) per continuare senza ripetere
 la parola, fino a GAS_VOICE_MAX_TURNI turni di fila.
 Mentre Gas parla si può interromperlo dicendo di nuovo la parola di attivazione (fetta
 41): la frase si ferma, quelle in fila si scartano e si registra la nuova richiesta.
@@ -36,12 +36,13 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
                              8765>, la porta del server voce). Fuori
                              dal Mac (host non locale) solo https, altrimenti non parte.
     GAS_VOICE_TIMEOUT      — secondi di attesa della risposta (default 600)
-    GAS_VOICE_FINESTRA     — secondi di ascolto dopo la risposta (default 40)
+    GAS_VOICE_FINESTRA     — secondi di ascolto dopo la risposta (default 15)
     GAS_VOICE_SEGUITO_MAX  — secondi massimi di una richiesta di seguito, senza parola
                              (default 15): chi parla più a lungo non sta parlando a Gas
-    GAS_VOICE_MAX_TURNI    — turni di fila senza parola di attivazione (default 5)
+    GAS_VOICE_MAX_TURNI    — turni dopo la parola, il primo compreso (default 3: 2 di seguito)
     GAS_ASCOLTO_MODELLO    — modello di openWakeWord (default hey_jarvis)
-    GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.5)
+    GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.6)
+    GAS_ASCOLTO_BLOCCHI_PAROLA — blocchi da 80 ms di fila sopra soglia per la parola, 1-5 (default 2)
     GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 200, campioni int16)
     GAS_ASCOLTO_SILENZIO   — secondi di silenzio che chiudono la richiesta (default 0.8)
     GAS_ASCOLTO_INTERRUZIONE — 0 = la parola non interrompe Gas mentre parla (default 1)
@@ -97,7 +98,7 @@ REGISTRAZIONE_MAX_S = 30.0   # una richiesta non dura più di così
 #   la parola, muta nel seguito);
 # - nella finestra il rilevatore resta acceso: «Hey Jarvis, …» è un turno normale (V-1 bot #341);
 # - un errore in un turno di seguito chiude la conversazione senza bip (R-675-5-M2).
-FINESTRA_PREDEFINITA_S = 40.0
+FINESTRA_PREDEFINITA_S = 15.0
 # V-1 bot #341 su 23d9c1c (= R-693-2): se la parola si sente a metà di un turno di seguito,
 # della registrazione si tiene solo da poco prima della parola (openWakeWord la segnala a
 # fine parola): il parlato della stanza detto prima non parte come richiesta normale.
@@ -107,6 +108,16 @@ PRIMA_DELLA_PAROLA_S = 1.5
 # prima non rende «normale» il parlato che arriva dopo.
 PAROLA_VALIDA_S = 2.0
 SEGUITO_MAX_PREDEFINITO_S = 15.0
+# Correzione del 10/11/2026 (log dell'operatore: Jarvis risponde senza essere chiamato):
+# al massimo 2 turni di seguito dopo la parola (3 turni in tutto), finestra di 15 s.
+MAX_TURNI_PREDEFINITO = 3
+# Stessa correzione: soglia predefinita della parola 0,6 (era 0,5) e parola valida solo se il
+# rilevatore la sente in BLOCCHI_PAROLA_PREDEFINITO blocchi di fila (un picco isolato di
+# 80 ms era la causa dei falsi «Hey Jarvis»). Nella finestra si ignora il primo mezzo
+# secondo: è la coda dell'eco della voce di Gas nella stanza.
+SOGLIA_PREDEFINITA = 0.6
+BLOCCHI_PAROLA_PREDEFINITO = 2
+CODA_ECO_S = 0.5
 COMANDI = ("fine", "pausa")   # valori di X-Gas-Comando che il client conosce
 # Riserva della #336 (eco): se la risposta di Gas contiene la parola di attivazione
 # («…di' Hey Jarvis…»), le casse la mandano al microfono e Gas si interromperebbe da solo.
@@ -314,12 +325,13 @@ class Ascolto:
                  svuota: Callable[[], None] = lambda: None,
                  azzera_rilevatore: Callable[[], None] = lambda: None,
                  soglia: float = 0.5, voce_rms: float = VOCE_RMS_PREDEFINITO, silenzio_s: float = 0.8,
-                 finestra_s: float = FINESTRA_PREDEFINITA_S, max_turni: int = 5,
+                 finestra_s: float = FINESTRA_PREDEFINITA_S, max_turni: int = MAX_TURNI_PREDEFINITO,
                  seguito_max_s: float = SEGUITO_MAX_PREDEFINITO_S,
                  invia_seguito: Optional[Invia] = None,
                  soglia_interruzione: Optional[float] = SOGLIA_INTERRUZIONE_PREDEFINITA,
                  conferma: Callable[[], Optional[bytes]] = lambda: None,
-                 dorme: Callable[[float], None] = time.sleep) -> None:
+                 dorme: Callable[[float], None] = time.sleep,
+                 blocchi_parola: int = 1, coda_eco_s: float = 0.0) -> None:
         self.blocchi = blocchi
         self.rilevatore = rilevatore
         self.invia = invia
@@ -332,6 +344,10 @@ class Ascolto:
         self.silenzio_s = silenzio_s
         self.finestra_s = finestra_s
         self.max_turni = max(1, int(max_turni))
+        # blocchi di fila sopra soglia per la parola (main: BLOCCHI_PAROLA_PREDEFINITO; il
+        # default 1 del costruttore è quello dei rilevatori finti dei test)
+        self.blocchi_parola = max(1, int(blocchi_parola))
+        self.coda_eco_s = max(0.0, float(coda_eco_s))
         # None = la parola non interrompe Gas mentre parla (GAS_ASCOLTO_INTERRUZIONE=0)
         self.soglia_interruzione = soglia_interruzione
         # Fetta 42: l'audio di «Sì, signore?» (None = non pronto o spento → bip)
@@ -345,6 +361,7 @@ class Ascolto:
         self.parola_nella_finestra = False   # la parola è stata detta nella finestra
         self._errori_rilevatore = 0
         self._errori_parola = 0
+        self._sopra_finestra = 0   # V-1 ve #361: blocchi di fila sopra soglia nella finestra
         self._buoni_di_fila = 0
         self._muti = 0
 
@@ -365,7 +382,9 @@ class Ascolto:
         return b
 
     def aspetta_parola(self) -> bool:
-        """Legge blocchi finché il rilevatore supera la soglia. False a fine flusso."""
+        """Legge blocchi finché il rilevatore supera la soglia per `blocchi_parola` blocchi
+        di fila. False a fine flusso. Un errore del rilevatore azzera il conto."""
+        sopra = 0
         while True:
             b = self._prossimo()
             if b is None:
@@ -374,6 +393,7 @@ class Ascolto:
                 punteggio = float(self.rilevatore(b))
             except Exception as e:  # §9: un errore del modello non ferma l'ascolto
                 self._errore_rilevatore(e)
+                sopra = 0
                 continue
             if self._errori_rilevatore:
                 # V-1 ve #328: il conto si azzera solo dopo BUONI_PER_AZZERARE blocchi buoni
@@ -386,7 +406,11 @@ class Ascolto:
                     self._errori_rilevatore = 0
                     self._buoni_di_fila = 0
             if punteggio >= self.soglia:
-                return True
+                sopra += 1
+                if sopra >= self.blocchi_parola:
+                    return True
+            else:
+                sopra = 0
 
     def _errore_rilevatore(self, e: Exception) -> None:
         """V-1 ve #323: un rilevatore che fallisce non deve scrivere una riga per blocco
@@ -410,10 +434,14 @@ class Ascolto:
 
     def _parola_nel_blocco(self, b: Blocco) -> bool:
         """V-1 bot #341: nella finestra il rilevatore resta acceso. True se la parola di
-        attivazione è nel blocco; un errore del rilevatore vale «no» (§9)."""
+        attivazione è nel blocco; un errore del rilevatore vale «no» (§9).
+        V-1 ve #361: come in `aspetta_parola`, la parola vale solo dopo `blocchi_parola`
+        blocchi di fila sopra soglia (un picco isolato non apre un turno normale); il conto
+        si azzera sotto soglia, su errore e quando la parola scatta."""
         try:
-            sentita = float(self.rilevatore(b)) >= self.soglia
+            sopra = float(self.rilevatore(b)) >= self.soglia
         except Exception as e:
+            self._sopra_finestra = 0
             # R-681-1: l'errore resta «no», ma lascia traccia nel log (il primo e poi uno
             # ogni 100, per non riempirlo a ogni blocco).
             self._errori_parola += 1
@@ -421,9 +449,15 @@ class Ascolto:
                 log.warning("rilevatore in errore nella finestra (%s), errori finora: %d",
                             type(e).__name__, self._errori_parola)
             return False
-        if sentita:
-            self.parola_nella_finestra = True
-        return sentita
+        if not sopra:
+            self._sopra_finestra = 0
+            return False
+        self._sopra_finestra += 1
+        if self._sopra_finestra < self.blocchi_parola:
+            return False
+        self._sopra_finestra = 0
+        self.parola_nella_finestra = True
+        return True
 
     def registra(self, iniziali: Optional[List[Blocco]] = None,
                  attesa_s: float = ATTESA_VOCE_S,
@@ -497,6 +531,11 @@ class Ascolto:
         `finestra_s` (INIZIO_VOCE_S di voce continua), altrimenti None."""
         if self.finestra_s <= 0:
             return None
+        # coda dell'eco: i primi blocchi dopo la voce di Gas non aprono un turno
+        for _ in range(blocchi_per(self.coda_eco_s) if self.coda_eco_s > 0 else 0):
+            if self._prossimo() is None:
+                return None
+        self._sopra_finestra = 0   # V-1 ve #361: il conto riparte con la finestra
         di_fila: List[Blocco] = []
         da_parola: Optional[int] = None   # blocchi passati dall'ultima parola sentita
         for _ in range(blocchi_per(self.finestra_s)):
@@ -725,7 +764,7 @@ class Ascolto:
                 break
             self.parola_nella_finestra = False
             # R-680-1: il rilevatore ha appena sentito la voce di Gas (soglia 0,7): si azzera,
-            # così nella finestra (soglia 0,5) quei residui non valgono come parola.
+            # così nella finestra (soglia 0,6) quei residui non valgono come parola.
             self._azzera()
             inizio = self.aspetta_voce()
             if inizio is None:
@@ -1114,14 +1153,17 @@ def main() -> int:
             mic = Microfono()
             Ascolto(mic.blocchi(), punteggio, invia, riproduci_afplay, bip_di_sistema,
                     svuota=mic.svuota, azzera_rilevatore=azzera,
-                    soglia=_numero("GAS_ASCOLTO_SOGLIA", 0.5, 0.05, 0.99),
+                    soglia=_numero("GAS_ASCOLTO_SOGLIA", SOGLIA_PREDEFINITA, 0.05, 0.99),
+                    blocchi_parola=int(_numero("GAS_ASCOLTO_BLOCCHI_PAROLA",
+                                               BLOCCHI_PAROLA_PREDEFINITO, 1, 5)),
+                    coda_eco_s=CODA_ECO_S,
                     voce_rms=_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
                     silenzio_s=_numero("GAS_ASCOLTO_SILENZIO", 0.8, 0.2, 5),
                     finestra_s=_finestra_dall_ambiente(),
                     seguito_max_s=_numero("GAS_VOICE_SEGUITO_MAX", SEGUITO_MAX_PREDEFINITO_S,
                                           3, REGISTRAZIONE_MAX_S),
                     invia_seguito=invia_seguito,
-                    max_turni=int(_numero("GAS_VOICE_MAX_TURNI", 5, 1, 50)),
+                    max_turni=int(_numero("GAS_VOICE_MAX_TURNI", MAX_TURNI_PREDEFINITO, 1, 50)),
                     soglia_interruzione=soglia_interruzione(),
                     conferma=conferma).gira()
         except KeyboardInterrupt:
