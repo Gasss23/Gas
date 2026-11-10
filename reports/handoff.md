@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #364 (https://github.com/Gasss23/Gas/pull/364). Revisore APPROVATO CON RISERVE (solo BASSA/COSMETICA): l'agente mergia da solo solo con verdetto del bot APPROVATO pulito; altrimenti serve il sì dell'operatore via M1.
+1. Merge della PR #364 (https://github.com/Gasss23/Gas/pull/364). Revisore APPROVATO CON RISERVE (solo BASSA/COSMETICA); il bot sul giro precedente (dc6c25a) aveva dato una MEDIA, corretta in 47c8aa3. L'agente mergia da solo solo con il nuovo verdetto del bot APPROVATO pulito; altrimenti serve il sì dell'operatore via M1.
 
 ---
 
@@ -14,7 +14,9 @@
 
 - **Proposta R7** (`reports/proposta_r7_direttore.md`): `FATTA` — opzioni e raccomandazione, mandata a M1.
 - **Fetta 1 — ripresa automatica del compito in sottofondo dopo un crash**: `FATTA` — `modules/sottofondo/__init__.py` (ripresa sotto lock, max `GAS_SOTTOFONDO_RIPRESE`, progressi `<id>.passi`), `gas.py` (`tool_res` porta `nome`). Review #736 → #737 → #738 APPROVATO CON RISERVE.
-- **Merge di origin/main (#360 di M2) nel branch**: `FATTA` — review #739 APPROVATO.
+- **Bot #364 su dc6c25a (NON approvata, V-1 MEDIA + V-2 BASSA)**: `FATTA` — avviso a ogni ripresa, comando `python gas.py sottofondo-ferma` (segno `<id>.ferma` sotto il lock, kill solo del nostro figlio, compito «ko»), niente ripresa oltre la durata dalla prima creazione. Review #743 → #744 → #745 APPROVATO CON RISERVE (commit 47c8aa3).
+- **Verifica esterna #364 (su dc6c25a)**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA (https://github.com/Gasss23/Gas/pull/364#issuecomment-6755289640); V-1 BASSA tracciata in stato_progetto.
+- **Merge di origin/main nel branch**: `FATTA` — #360 di M2 (review #739 APPROVATO) e #362 di M4 (solo report e memoria del revisore, nessun codice).
 - **Ripresa al boot / piano scritto dal modello / lista dei lavori ricorrenti**: `DEFERITA` — fette successive della proposta.
 
 ---
@@ -22,24 +24,30 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 +
- gas.py                             |   3 +-
- modules/sottofondo/__init__.py     | 203 +-
+ .claude/agents/memoria_revisore.md |  12 +
+ gas.py                             |   8 +-
+ modules/sottofondo/__init__.py     | 294 +-
  reports/diff_sessione.md           |  15 +-
  reports/handoff.md                 | n/d
  reports/proposta_r7_direttore.md   |  28 +
  reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  24 +-
+ reports/stato_progetto.md          |   2 +-
+ reports/ultimo_report.md           |  33 +-
  tests/test_unit_kernel.py          |   4 +-
- tests/test_unit_sottofondo.py      | 222 +
+ tests/test_unit_sottofondo.py      | 358 +
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta. BASE = 2dd0e8c (merge-base con origin/main dopo il merge della #362).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+00499543 Merge origin/main (#362 di M4) in feat/r7-direttore-m3 — solo report e memoria del revisore
+47c8aa3d fix(R7): bot #364 — avviso a ogni ripresa e comando sottofondo-ferma; tetto di tempo dalla prima creazione (M3)
+30720bba chore(revisore): memoria review #745 — APPROVATO CON RISERVE
+d4e78289 chore(revisore): memoria review #744 — APPROVATO CON RISERVE
+aec71956 chore(revisore): memoria review #743 — APPROVATO CON RISERVE
+dc6c25aa docs(fine-task): R7 fetta 1 — ripresa dei compiti in sottofondo dopo un crash (M3), PR #364
 ef18a4ef Merge origin/main (#360 di M2) in feat/r7-direttore-m3 — review #739
 3101011d feat(R7): fetta 1 — il compito in sottofondo riparte da solo dopo un crash (M3)
 18523105 chore(revisore): memoria review #738 — APPROVATO CON RISERVE
@@ -51,7 +59,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 3101011 (motore): tre giri, #736 → #737 → #738. Commit ef18a4e (merge): #739. Verdetti integrali.
+Commit 3101011 (motore): tre giri, #736 → #737 → #738. Commit ef18a4e (merge): #739. Commit 47c8aa3 (correzioni bot #364): tre giri, #743 → #744 → #745. Il merge 0049954 (#362) non tocca il perimetro di codice. Verdetti integrali.
 
 ### Review #736
 
@@ -192,32 +200,115 @@ Il merge in corso di origin/main 447195f (PR #360 di M2) in feat/r7-direttore-m3
 - Prima di committare il merge devi rigenerare il marcatore con `bash scripts/segna_review_ok.sh`. La mia riga è nell'index, quindi va generato sull'index attuale.
 ```
 
+### Review #743
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #743 (chat M3): 4° giro della R7 fetta 1, correzioni ai punti del bot sulla PR #364 (V-1 e V-2). Ho letto CLAUDE.md (sez. 5, 8 e 9), le voci R7 di reports/stato_progetto.md e la mia memoria. Nel diff non c'è nessuno degli antipattern vietati (niente taglio diretto della storia, niente output di tool inventati). Il tetto di 10 giri del loop e la funzione `_get_window()` non sono toccati. Ho lanciato `pytest tests/test_unit_sottofondo.py`: 109 passati.
+
+**Elementi del diff esaminati**
+- `modules/sottofondo/__init__.py:242` — nuova `ferma()`. Scrive `<id>.ferma` PRIMA di fermare il processo, e lo ferma solo se `_identita` è True; poi `annulla` e manda l'avviso. Rischio esaminato: corsa con un `controlla` di un altro processo che, morto il figlio, prova a riprendere il compito. Il segno c'è già quando `_riprendi` lo controlla sotto lock, quindi niente ripresa, il compito si chiude «ko» col motivo «fermato dall'operatore», e un solo avviso perché `annulla` scrive solo su un compito ancora aperto. Esito: ok.
+- `modules/sottofondo/__init__.py:252` — `os.killpg` solo con `_identita(pid, ident) is True`. Rischio: pid riusato da un'app dell'operatore. Con False non uccide niente (provato da `tests/test_unit_sottofondo.py:1095` con un `sleep` estraneo). Con None (manca `ps`) però non ferma il processo, `annulla` libera comunque il posto e la frase dice «fermato: non riparte». Esito: riserva R-743-2.
+- `modules/sottofondo/__init__.py:305` — V-2: niente ripresa se `_nel_futuro(job)` o se il tempo dal «creato» del COMPITO supera la durata massima. `accoda` scrive sempre «creato» nel compito (`modules/sottofondo/__init__.py:565`), quindi un «creato» mancante (vale 0) si ha solo su file alterati, e lì negare la ripresa è prudente. Test: `tests/test_unit_sottofondo.py:1110`. Esito: ok.
+- `modules/sottofondo/__init__.py:325` — avviso Telegram a ogni ripresa con il comando per fermarla. Rischio: crash. `_avvisa` cattura e registra ogni errore (§9). Se poi il riavvio fallisce arrivano due avvisi («lo riprendo», poi «non è finito»), accettabile. Esito: ok.
+- `modules/sottofondo/__init__.py:180` — `_ripulisci` usa il motivo «fermato dall'operatore» se c'è il segno, e «oltre la durata» vince giustamente su questo. `modules/sottofondo/__init__.py:476` — pulizia dei `.ferma` vecchi, solo se non sono del posto in corso. Esito: ok.
+- `gas.py:6463` — comando `sottofondo-ferma`. `ferma` non lancia mai eccezioni (try/except che scrive in gas_debug.log), e la prova da riga di comando è in `tests/test_unit_sottofondo.py:1127`. Esce con 0 anche se l'arresto fallisce. Esito: riserva cosmetica (R-743-3).
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-743-1 BASSA (corsa)**: `ferma` non prende il lock della ripresa, e `_esegui` non ricontrolla `.ferma`. Due finestre strette in cui il «ko» scritto da `ferma` viene sovrascritto e il compito gira lo stesso:
+  - (a) `_riprendi` ha già superato il controllo di `_fermato` sotto lock e riscrive il compito «in_coda» partendo dalla sua copia letta prima;
+  - (b) il figlio di una ripresa, partito col posto senza pid, ha già letto il compito «in_coda» e lo riscrive «in_corso» (`modules/sottofondo/__init__.py:660-662`). In questo caso `ferma` non lo uccide nemmeno, perché il pid letto era None.
+
+  Correzione economica: `ferma` scrive il segno e chiude il compito sotto lo stesso `flock` di `_riprendi`, e `_esegui` ricontrolla `_fermato` dopo aver scritto «in_corso» (se c'è il segno, chiude «ko» senza eseguire). Finestra di millisecondi, non bloccante.
+- **R-743-2 BASSA**: con `_identita` None (niente `ps`) il processo resta vivo, il posto viene liberato (può partire un secondo compito in parallelo) e la frase a terminale e l'avviso dicono «fermato». Serve un testo onesto («segnato come fermato, il processo potrebbe essere ancora attivo»), come già fa `_ripulisci` per la durata. Nessun test copre il caso None.
+- **R-743-3 COSMETICA**: se il figlio scrive «ok» un attimo prima, `ferma` stampa comunque «Compito … fermato: non riparte» (l'avviso giustamente non parte). Inoltre `gas.py sottofondo-ferma` esce sempre con 0, anche su «Arresto non riuscito».
+
+**Rischio escluso (non verificato)**: non ho provato processi veri. In particolare: SIGTERM a un figlio vero nel mezzo di un `run_turn`, `flock` fra processi distinti, nipoti rimasti vivi nel gruppo, consegna reale dell'avviso Telegram (tetto giornaliero compreso). Non sono riproducibili nei test unitari, che sostituiscono l'avvio. Non ho rilanciato la suite del kernel (1100 PASS dichiarati dall'agente). Non ho rivisto `reports/proposta_r7_direttore.md` (fuori dal perimetro di review).
+
+Memoria aggiornata (riga #743 (chat M3), più una lezione sul lock condiviso fra chi scrive e chi legge il segno di arresto) e committata con `scripts/commit_memoria_revisore.sh` (commit aec71956, solo .claude/agents/memoria_revisore.md). Gli altri file del diff restano non committati.
+
+### Review #744
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #744, quinto giro di R7 fetta 1 (branch feat/r7-direttore-m3). Ho letto CLAUDE.md, lo stato del progetto (stato_progetto) e la mia memoria (memoria_revisore). Ho eseguito `pytest tests/test_unit_sottofondo.py`: 111 passed.
+
+**Elementi del diff esaminati**
+- `modules/sottofondo/__init__.py:280` — `ferma` prende il lock con `_lock_esclusivo`, scrive `<id>.ferma`, fa killpg solo se `_identita` è True, poi chiama `annulla` (`annulla` non prende il lock, quindi niente deadlock). L'avviso parte fuori dal lock. Rischio esaminato: R-743-1 (concorrenza con `_riprendi`). Esito: **ok** verso `_riprendi`, che ricontrolla `_fermato` sotto lo stesso lock (`modules/sottofondo/__init__.py:341`). Esito: **riserva** verso il figlio, vedi R-744-1.
+- `modules/sottofondo/__init__.py:276` — `dati = _leggi(cartella / ATTIVO)` viene letto PRIMA del lock e prima di scrivere il segno, e il pid usato per il kill (riga 283) viene da quella lettura. Rischio esaminato: lettura vecchia del pid. Esito: **riserva** (R-744-1).
+- `modules/sottofondo/__init__.py:702` — `_esegui`, dopo aver scritto «in_corso», ricontrolla `_fermato` e chiude «ko» senza mandare un secondo avviso. Rischio esaminato: il figlio di una ripresa che parte dopo l'arresto. Esito: **ok**. Il mutante `if False:` viene preso da `test_figlio_della_ripresa_fermato_non_esegue` (1 failed).
+- `modules/sottofondo/__init__.py:292` — se il compito è già chiuso, la frase è «era già finito» e non parte nessun avviso. Con `nostro is None` la frase e l'avviso dicono «potrebbe essere ancora attivo». Rischio esaminato: R-743-2 e R-743-3. Esito: **ok**. Lo coprono `tests/test_unit_sottofondo.py:1097` e `tests/test_unit_sottofondo.py:1146`.
+- `gas.py:6463` — il comando `sottofondo-ferma` stampa la frase ed esce con 1 se `ok` è False. Rischio esaminato: crash nel comando o codice di uscita sbagliato. Esito: **ok**. `ferma` cattura ogni eccezione (§9), e `test_comando_sottofondo_ferma` lancia il comando come processo vero.
+- `modules/sottofondo/__init__.py:180` — in `_ripulisci` il segno cambia il motivo in «fermato dall'operatore». Il compito è già chiuso da `ferma`, quindi `annulla` lì ritorna False e non parte un doppio avviso. Esito: **ok**.
+
+**Riserve**
+- **R-744-1 BASSA** — la finestra di R-743-1 si è ristretta ma resta aperta. Sequenza: `ferma` legge ATTIVO con pid None (posto appena preso da accoda o ripresa). Poi il figlio scrive pid e «in_corso» e controlla il segno, che non c'è ancora, quindi esegue. Poi `ferma` scrive `.ferma`, non uccide niente (usa il pid vecchio), chiude «ko», libera il posto e dice «fermato: non riparte». Risultato: il compito gira fino in fondo in silenzio, l'esito finale viene ignorato perché lo stato è già «ko», e il posto è libero, quindi un secondo compito può partire insieme. L'ho riprodotto iniettando le scritture del figlio prima del lock: lo script è race.py nello scratchpad della sessione. Correzione: dentro il lock, rileggere ATTIVO e prendere il pid DOPO aver scritto `.ferma`. Così o il pid del figlio è già visibile (e lo si ferma), o il figlio scrive dopo il segno e lo vede.
+- **R-744-2 BASSA** — nessun test prova che `ferma` usi il lock. Il mutante «`fd = None`» al posto di `_lock_esclusivo` (riga 280) dà 111 passed.
+- Nota, nessuna nuova riserva: con `_identita` None, `annulla` libera il posto anche se il processo forse è vivo. Questo va contro la regola di `attivo()` («nel dubbio il posto resta occupato»). Ora almeno il caso viene dichiarato all'operatore.
+
+**Rischio escluso**: non ho verificato il comportamento con processi figli veri e un vero `os.killpg` su macOS/VPS, né `fcntl` assente (lì `_lock_esclusivo` ritorna None e si procede senza lock). Le corse le ho provate solo con iniezione deterministica in un unico processo, non con concorrenza reale fra processi.
+
+**Memoria**: aggiunta la riga #744 e una lezione in `.claude/agents/memoria_revisore.md`, committata con lo script (commit d4e78289). Il file del motore usato per i mutanti è stato ripristinato: il diff stat è identico a prima (90 righe).
+
+### Review #745
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Sesto giro sul branch feat/r7-direttore-m3 (`git diff -- gas.py modules/ tests/`, 3 file). Prima ho letto CLAUDE.md §5, stato_progetto.md (riga R7) e la memoria del revisore.
+
+**Cosa ho controllato nel codice**
+- `modules/sottofondo/__init__.py:280` — `ferma` prende `_lock_esclusivo` prima di scrivere il segno `<id>.ferma` e di chiudere il compito. Rischio: deadlock, perché `annulla` viene chiamato con il lock già preso. `annulla` non prende il lock (`modules/sottofondo/__init__.py:625`), quindi il rischio non c'è. Esito: ok.
+- `modules/sottofondo/__init__.py:285` — dopo aver scritto il segno si rilegge ATTIVO, e il pid si usa solo se l'id è ancora lo stesso. Rischio: resta una finestra in cui il figlio lancia il compito senza che nessuno se ne accorga (R-744-1). L'ordine è l'inverso di `_esegui`, che scrive prima il pid e poi controlla `_fermato` (`modules/sottofondo/__init__.py:702-705`). Quindi o `ferma` vede il pid, o il figlio vede il segno. Ho controllato anche il caso in cui il figlio ricrea ATTIVO e scrive «in_corso» dopo che `annulla` ha già chiuso il compito: il figlio vede il segno, richiama `annulla` e il compito torna «ko» con il posto liberato. `annulla` non manda avvisi, quindi l'avviso resta uno solo. Esito: ok, R-744-1 chiusa.
+- `modules/sottofondo/__init__.py:286` — controllo `id == ident`. Rischio: fermare il processo di un altro compito. È una difesa in più: `_identita(pid, ident)` controlla già il comando del processo (`modules/sottofondo/__init__.py:461`). Esito: riserva cosmetica, vedi sotto.
+- `tests/test_unit_sottofondo.py:1176` — `test_ferma_usa_il_lock_e_rilegge_il_pid`. Rischio: un test che non distingue il codice giusto da quello sbagliato (R-744-2). Esito: ok, i risultati dei mutanti sono qui sotto.
+- `gas.py:6463` — comando `sottofondo-ferma`: exit 0 o 1 e stampa della frase. Invariato rispetto alla #744. Esito: ok.
+
+**Prove con codice volutamente rotto (mutanti), file ripristinato dopo ogni prova**
+- Codice attuale: 112 passed.
+- Mutante «fd = None» (niente lock): 1 failed, 111 passed. Preso.
+- Mutante con la vecchia lettura (pid preso dalla prima lettura di ATTIVO): 1 failed, 111 passed. Preso.
+- Mutante senza il controllo `id == ident`: 112 passed. Non preso.
+
+**Riserve**
+- R-745-1 (COSMETICA): nessun test copre il caso in cui l'id cambia fra la prima e la seconda lettura di ATTIVO. Il rischio pratico è basso perché `_identita` verifica comunque il comando del processo.
+- Nota sul test: prova che il lock viene chiamato, non che copra davvero tutta la parte critica. Basta a prendere il mutante «lock tolto», ma non è una prova di mutua esclusione.
+
+**Cosa non ho verificato e perché**
+- Non ho provato processi veri: flock fra processi diversi, `killpg` su un figlio reale, eventuali nipoti rimasti vivi. Non si riproduce nei test unitari, che sostituiscono `_vivo`, `_identita` e `killpg`.
+- Non ho controllato l'atomicità di `_scrivi_privato` (scrittura con rename): mi baso sulle review precedenti.
+- Non ho fatto la caccia al Wall of Shame: il diff non contiene slicing della history (grep su `[-N:]` vuoto) né simulazione dell'output dei tool.
+
+**Memoria**: ho aggiunto in .claude/agents/memoria_revisore.md la riga #745 e una lezione nuova (un test che registra solo la chiamata del lock non prova la mutua esclusione), poi ho lanciato `scripts/commit_memoria_revisore.sh` per committare solo quel file.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_sottofondo.py`: 99 casi a metà sessione (dopo la prima versione della fetta) → 103 casi alla fine, tutti passati (`103 passed in 2.32s`).
-- Suite kernel: prima 1100 PASS (T105a senza il controllo sul nome) → dopo:
+- `tests/test_unit_sottofondo.py`: 79 casi su main (base, contati dalla verifica esterna) → 112 casi alla fine, tutti passati (`112 passed`).
+- Suite kernel: 1100 PASS prima (T105a senza il controllo sul nome) → dopo, rilanciata sull'albero finale del codice (47c8aa3):
 
 ```
 === RIEPILOGO: 1100 PASS, 0 FAIL ===
 ```
 
-(T105a esteso, nessun check nuovo.) Voce + notte + sottofondo: `478 passed in 289.68s`.
+(T105a esteso, nessun check nuovo.) Voce + notte + sottofondo, a metà sessione: `478 passed in 289.68s`.
 
 ## §6 STATO CI
 
-`gh` non usato per la CI in questa sessione (solo strumenti GitHub di sessione). Check della PR #364 letti alla scrittura dell'handoff, run sul commit ef18a4e (testa del push precedente):
-- `unit-suite`: in_progress (run 42727825423).
-- `handoff-check`: failure (run 42727825423) — atteso: l'handoff di sessione non era ancora scritto; si ripete col push di questo commit.
-- `verifica-bot` (smista/verifica/esito): skipped — etichetta `verifica` non ancora messa.
+Check della PR #364 letti con gli strumenti GitHub di sessione alla scrittura dell'handoff (head della PR ancora dc6c25a, prima del push di questo giro):
+- run 42728191825 su dc6c25a: `unit-suite` success, `handoff-check` success.
+- run 42728208340 su dc6c25a (bot di verifica): `smista`/`verifica`/`esito` success; check `verifica-bot` **failure** (verdetto NON approvata, V-1 MEDIA) → corretto in 47c8aa3.
+- run 42727825423 su ef18a4e: `handoff-check` failure (handoff non ancora scritto allora), superata dalla run su dc6c25a.
 
 Mappatura commit→run:
-- ef18a4e: run 42727825423 (push del branch col merge).
-- 3101011: nessuna run propria su questo SHA (pushato prima dell'apertura della PR; contenuto incluso nell'albero di ef18a4e).
-- 9575467, 525064c, 1852310 (memoria revisore): nessuna run su questi SHA.
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- dc6c25a: run 42728191825 (CI) e 42728208340 (bot).
+- ef18a4e: run 42727825423.
+- 3101011, 9575467, 525064c, 1852310, aec7195, d4e7828, 30720bb, 47c8aa3, 0049954: nessuna run su questi SHA (47c8aa3 e 0049954 escono col push di questo giro).
+- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-737-2** (BASSA): un parcheggio alla firma con testo diverso da «Azione in attesa…»/«Operazione negata…» lascia `cancello` None e risulta «fatto» nei progressi.
 - **R-738-1** (COSMETICA): `test_posto_sparito_sotto_il_lock_compito_chiuso` prova solo il False di `_riprendi`, non il giro fino a «ko» con avviso.
-- Non verificato (dichiarato dal revisore): processi veri (flock fra processi, kill del figlio, nipoti rimasti vivi), cancello firme end-to-end su un compito ripreso.
+- **R-745-1** (COSMETICA): nessun test sull'id cambiato fra le due letture di ATTIVO in `ferma`.
+- **Verifica esterna #364 V-1** (BASSA): anche un compito mai partito (pid assente dopo 120 s) viene ritentato fino a 2 volte prima di chiudersi.
+- Nota #744: senza `ps` `ferma` libera il posto anche se il processo forse è vivo (dichiarato nell'avviso).
+- Non verificato: processi veri (flock fra processi, kill del figlio, nipoti rimasti vivi), cancello firme end-to-end su un compito ripreso.
