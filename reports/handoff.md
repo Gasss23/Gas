@@ -21,6 +21,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **Note BASSE di bot e verifica esterna #365 (V-2 copertura del ramo «forte», V-3 elenco stretto e accenti) e R-746-1/2-M2**: `FATTA` (d07fbdf, review #747-M2). NB: il check del bot su e0f8f31 era «failure» ma il verdetto testuale era APPROVATO CON RISERVE con sole BASSE: il parser ha letto come finding la citazione di una riserva già chiusa (falso failure noto, direzione sicura).
 - **Merge di origin/main 2dd0e8c (#362) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; da main arrivano solo `reports/prova_r1_notte.md` e una riga di memoria (fuori dal perimetro di review). Chiude V-1 (gravità media, PR non mergeabile) della seconda verifica esterna #365.
 - **Merge di origin/main 3f08352 (#361 di Mani) nel ramo**: `FATTA` — conflitti solo nei report; review #750-M2 APPROVATO CON RISERVE (file di main identici a 3f08352; il client di ascolto gestisce bene il «fine» più frequente; 575 passed). Chiude V-1 BASSA del bot su 1638d81 (PR in conflitto).
+- **Merge di origin/main eebb7c0 (#364 di M3) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; review #753-M2 APPROVATO (file di main identici; nessuna interazione fra il sottofondo nuovo e il filtro del seguito); voice_server + voice_stt + sottofondo + gate 1218 passed.
 - **Prova sul Mac col modello vero**: `DEFERITA` — non riproducibile qui.
 
 ---
@@ -28,13 +29,13 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
+ .claude/agents/memoria_revisore.md |   8 ++++++++
  modules/voice/server.py            |  73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- reports/diff_sessione.md           |  15 +++++++--------
+ reports/diff_sessione.md           |  19 ++++++---------
  reports/handoff.md                 | n/d
  reports/ripartenza_m2.md           |   2 ++
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  27 ++++++++++++------
+ reports/ultimo_report.md           |  30 +++++++++++-------
  tests/test_unit_voice_server.py    |  37 ++++++++++++++++++++++++++++++++++++-
  tests/test_unit_voice_stt.py       |  67 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
@@ -44,6 +45,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+815eed7 Merge origin/main (#364 di M3) nella #365 — review #753-M2 APPROVATO (chat M2)
+57853ff docs(fine-task): voce #365 dopo il merge di main (#361), review #750-M2 (chat M2)
 4cae6c9 Merge origin/main (#361 di Mani) nella #365 — review #750-M2 APPROVATO CON RISERVE (chat M2)
 1638d81 docs(fine-task): voce #365 dopo il merge di main (#362) — V-1 della seconda verifica esterna chiusa, riserve aggiornate (chat M2)
 4ec82c5 Merge origin/main (#362) nella #365 — conflitti solo nei report e nella memoria, chiude V-1 verifica esterna #365 bis (chat M2)
@@ -56,6 +59,34 @@ e0f8f31 docs(fine-task): voce — seguito più severo e risposte più brevi, PR 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #753-M2 (merge di main eebb7c0, PR #364 di M3) — verdetto integrale
+
+VERDETTO: APPROVATO
+
+Review #753-M2. È il merge staged di origin/main eebb7c0 (PR #364, sottofondo di M3) nel ramo feat/voce-filtro-m2 (PR #365), nel worktree /home/user/Gas-voce. Non ho fatto commit.
+
+**Cosa ho controllato nel diff**
+1. MERGE_HEAD coincide con origin/main (eebb7c0). Ho confrontato con `git diff --cached origin/main` questi file: gas.py, modules/gate/gate.py, modules/sottofondo/__init__.py, tests/test_unit_gate.py, tests/test_unit_kernel.py, tests/test_unit_sottofondo.py, reports/proposta_r7_direttore.md e reports/roadmap.md. Sono tutti identici a main.
+2. `git diff --cached origin/main --stat` mostra solo:
+   - la fetta voce: modules/voice/server.py e i test voice_server/voice_stt;
+   - i report del ramo;
+   - nella memoria 7 righe aggiunte e 0 tolte rispetto a main, cioè l'unione corretta;
+   - in stato_progetto.md 2 righe aggiunte e 0 tolte.
+3. `git ls-files -u` è vuoto (nessun conflitto rimasto) e `git diff --cached --check` è pulito.
+
+**Citazioni**
+- `modules/voice/server.py:779` — il filtro del seguito: se il seguito è un frammento della stanza (`seguito_da_scartare`), chiude subito, senza turno del kernel. Rischio esaminato: che salti o duplichi l'annuncio dei compiti in sottofondo finiti. Esito ok: chiude prima che l'annuncio venga calcolato, e l'annuncio resta solo sui turni di attivazione (condizione `is_audio and not self._seguito()`, modules/voice/server.py:922).
+- `modules/voice/server.py:939` — `_compiti_finiti` usa le funzioni di sottofondo `da_leggere`, `frase_finiti` e `segna_letti`. Rischio esaminato: che la #364 abbia cambiato queste funzioni. Esito ok: nelle parti cambiate dalla #364 nessuna delle tre compare. Sono ancora a `modules/sottofondo/__init__.py:780`, `modules/sottofondo/__init__.py:809` e `modules/sottofondo/__init__.py:824`. Un compito fermato con il nuovo `ferma` scrive un file `.ferma` a parte e non cambia il filtro sugli stati ok/ko, quindi non produce annunci finti.
+- `modules/voice/server.py:212` — la funzione `seguito_da_scartare`: non cambia col merge, quindi l'esito resta quello della review #750-M2.
+
+**Rischi esclusi**
+- Non ho rilanciato i test: per i 1218 passed mi fido del dato dichiarato dall'agente.
+- Non ho verificato dal vivo il caso di un annuncio dei finiti mentre gira una ripresa di un compito (la nuova `_riprendi` della #364): non si riproduce in dev senza audio e senza un compito in corso.
+- La riserva R-750-1-M2 (eco di 0,5 s che può troncare un «Sì» detto subito) resta aperta e il merge non la cambia.
+
+**Memoria**
+Ho aggiunto la riga #753-M2 in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in stage con `git -C /home/user/Gas-voce add`. Nessuna lezione nuova. Lo script di commit della memoria non l'ho lanciato: durante un merge non può fare commit parziali, quindi la riga entra nel commit di merge.
 
 ### Review #750-M2 (merge di main 3f08352, PR #361 di Mani) — verdetto integrale
 
