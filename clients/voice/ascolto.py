@@ -361,6 +361,7 @@ class Ascolto:
         self.parola_nella_finestra = False   # la parola è stata detta nella finestra
         self._errori_rilevatore = 0
         self._errori_parola = 0
+        self._sopra_finestra = 0   # V-1 ve #361: blocchi di fila sopra soglia nella finestra
         self._buoni_di_fila = 0
         self._muti = 0
 
@@ -433,10 +434,14 @@ class Ascolto:
 
     def _parola_nel_blocco(self, b: Blocco) -> bool:
         """V-1 bot #341: nella finestra il rilevatore resta acceso. True se la parola di
-        attivazione è nel blocco; un errore del rilevatore vale «no» (§9)."""
+        attivazione è nel blocco; un errore del rilevatore vale «no» (§9).
+        V-1 ve #361: come in `aspetta_parola`, la parola vale solo dopo `blocchi_parola`
+        blocchi di fila sopra soglia (un picco isolato non apre un turno normale); il conto
+        si azzera sotto soglia, su errore e quando la parola scatta."""
         try:
-            sentita = float(self.rilevatore(b)) >= self.soglia
+            sopra = float(self.rilevatore(b)) >= self.soglia
         except Exception as e:
+            self._sopra_finestra = 0
             # R-681-1: l'errore resta «no», ma lascia traccia nel log (il primo e poi uno
             # ogni 100, per non riempirlo a ogni blocco).
             self._errori_parola += 1
@@ -444,9 +449,15 @@ class Ascolto:
                 log.warning("rilevatore in errore nella finestra (%s), errori finora: %d",
                             type(e).__name__, self._errori_parola)
             return False
-        if sentita:
-            self.parola_nella_finestra = True
-        return sentita
+        if not sopra:
+            self._sopra_finestra = 0
+            return False
+        self._sopra_finestra += 1
+        if self._sopra_finestra < self.blocchi_parola:
+            return False
+        self._sopra_finestra = 0
+        self.parola_nella_finestra = True
+        return True
 
     def registra(self, iniziali: Optional[List[Blocco]] = None,
                  attesa_s: float = ATTESA_VOCE_S,
@@ -524,6 +535,7 @@ class Ascolto:
         for _ in range(blocchi_per(self.coda_eco_s) if self.coda_eco_s > 0 else 0):
             if self._prossimo() is None:
                 return None
+        self._sopra_finestra = 0   # V-1 ve #361: il conto riparte con la finestra
         di_fila: List[Blocco] = []
         da_parola: Optional[int] = None   # blocchi passati dall'ultima parola sentita
         for _ in range(blocchi_per(self.finestra_s)):
@@ -752,7 +764,7 @@ class Ascolto:
                 break
             self.parola_nella_finestra = False
             # R-680-1: il rilevatore ha appena sentito la voce di Gas (soglia 0,7): si azzera,
-            # così nella finestra (soglia 0,5) quei residui non valgono come parola.
+            # così nella finestra (soglia 0,6) quei residui non valgono come parola.
             self._azzera()
             inizio = self.aspetta_voce()
             if inizio is None:

@@ -2556,3 +2556,53 @@ def test_al_massimo_due_turni_di_seguito_con_il_predefinito():
     f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, *SEGUITO, *SEGUITO, *SEGUITO,
                        (SILENZIO, _sec(20)))).gira()
     assert a.MAX_TURNI_PREDEFINITO == 3 and f.tipi == ["parola", "seguito", "seguito"]
+
+
+def test_nella_finestra_un_picco_isolato_non_vale_come_parola():
+    """V-1 ve #361: anche nella finestra (attesa e registrazione) la parola vale solo con
+    blocchi_parola blocchi di fila: un picco isolato non rende «normale» il turno né azzera
+    il conto dei turni di seguito."""
+    f = _finti_con_parola_detta()
+    picco = (PAROLA_DETTA, *SEGUITO)
+    f.ascolto(_blocchi(PAROLA, PAROLA, *RICHIESTA, *picco, *picco, *picco, *picco,
+                       (SILENZIO, _sec(20))), blocchi_parola=2).gira()
+    assert f.tipi == ["parola", "seguito", "seguito"]
+    # a metà della frase (registrazione) e con due picchi NON di fila: resta di seguito
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, PAROLA, *RICHIESTA, (VOCE, 5), PAROLA_DETTA, (VOCE, 2),
+                       PAROLA_DETTA, (VOCE, 3), (SILENZIO, 10), (SILENZIO, _sec(20))),
+              blocchi_parola=2).gira()
+    assert f.tipi == ["parola", "seguito"]
+
+
+def test_nella_finestra_due_blocchi_di_fila_valgono_come_parola():
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, PAROLA, *RICHIESTA, (PAROLA_DETTA, 2), *SEGUITO,
+                       (SILENZIO, _sec(20))), blocchi_parola=2).gira()
+    assert f.tipi == ["parola", "parola"]
+    f = _finti_con_parola_detta()
+    f.ascolto(_blocchi(PAROLA, PAROLA, *RICHIESTA, (VOCE, 5), (PAROLA_DETTA, 2), (VOCE, 3),
+                       (SILENZIO, 10), (SILENZIO, _sec(20))), blocchi_parola=2).gira()
+    assert f.tipi == ["parola", "parola"]
+
+
+def test_conto_della_parola_nella_finestra_si_azzera():
+    """R-737-1: il conto dei blocchi di fila nella finestra si azzera su errore del
+    rilevatore, quando la parola scatta e all'inizio di ogni finestra."""
+    valori = iter([1.0, RuntimeError("x"), 1.0, 1.0, 1.0, 1.0])
+
+    def rilevatore(b):
+        v = next(valori)
+        if isinstance(v, Exception):
+            raise v
+        return v
+    f = Finti()
+    asc = a.Ascolto(iter(()), rilevatore, f.invia, f.riproduci, f.suona, blocchi_parola=2)
+    esiti = [asc._parola_nel_blocco(VOCE) for _ in range(6)]
+    # errore fra due blocchi alti: non sono «di fila»; dopo lo scatto il conto riparte
+    assert esiti == [False, False, False, True, False, True]
+    # un residuo del giro prima non vale nella finestra nuova
+    f = _finti_con_parola_detta()
+    asc = f.ascolto(_blocchi(PAROLA_DETTA, (VOCE, 10), (SILENZIO, _sec(20))), blocchi_parola=2)
+    asc._sopra_finestra = 1
+    assert asc.aspetta_voce() is not None and asc.parola_nella_finestra is False
