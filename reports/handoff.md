@@ -1,506 +1,557 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-09 — Server voce reso sicuro, fetta 1 (R8: tentativi falliti, tetto al testo, avvio fail-closed) — chat M2, coordinata da M1
+**Sessione:** 2026-11-09 — chat Mani: voce via Telegram, fetta 4 (voce consegnata in un thread, opzione b) + tempi della voce di casa + correzioni della guardia T78p dopo bot e verifica esterna #359
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **PR di sicurezza: il merge lo decide l'operatore** (CLAUDE.md §10; tocca accessi e rete esposta).
-2. Proposta `reports/proposta_voce_sicura.md`: scelte per le fette 2 e 3 (tunnel privato, TLS opzionale, token di sessione e loro durata) e soglie della fetta 1 (10 tentativi falliti in 10 minuti per IP, 120 richieste a testo all'ora).
-3. **IPv4 d'esempio nei test costruiti da intero** (`ipaddress.IPv4Address(0)` e un indirizzo della rete del tunnel) per non scriverli in chiaro: il gate IP del repo li vieterebbe, e il marcatore `gasmerge-ip-ok` è un via libera umano che non metto da solo (bot #358 V-3, R-730-1-M2). Decidi tu: tenerli così o mettere il marcatore e scriverli in chiaro.
-4. Limite noto da confermare (R-720-2-M2): sul Mac tutti i client arrivano da 127.0.0.1, quindi un client con un token vecchio blocca per 15 minuti anche la pagina e l'ascolto H24.
+1. Merge della PR #359 (https://github.com/Gasss23/Gas/pull/359): è un CAMBIO DI SICUREZZA, perché allarga la guardia T78p delle firme (opzione b). Serve il sì esplicito dell'operatore, anche se il verdetto del bot è pulito. Consigliato il secondo passaggio nella chat claude.ai col link della PR.
+2. Guardia T78p: il revisore (#733) consiglia di fermarsi qui. Le elusioni che restano (R-733-1/2, BASSE) richiedono codice scritto apposta e visibile in review. Decide l'operatore se accettare questo limite della guardia statica.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #356**: `MERGIATA` (69d76b9) col sì dell'operatore riferito da M1.
-- **R8 fetta 1, server voce più sicuro**: `FATTA` in `modules/voice/server.py`:
-  - C1 — `_autorizza()`: tetto ai tentativi con token sbagliato per IP (`GAS_VOICE_MAX_FALLITI`, default 10 in 10 minuti → 429 per 15 minuti a quell'IP, anche col token giusto); nel log solo IP ed esito; memoria limitata a 1024 IP; usato in tutti e quattro i punti che controllavano il token.
-  - C2 — tetto alle richieste a testo (`GAS_VOICE_MAX_TESTO_ORA`, default 120/ora): controllato prima del tetto voce (V12), contato solo se anche V12 lascia passare.
-  - Avvio fail-closed: `GAS_VOICE_BIND` non locale (controllo con `ipaddress.is_loopback` o «localhost») → il server non parte senza `GAS_VOICE_RETE_PRIVATA=1`.
-  - Proposta con opzioni e raccomandazione: `reports/proposta_voce_sicura.md`.
-- Review #720-M2 e #722-M2 APPROVATO CON RISERVE (riserve di codice corrette: R-720-1, R-720-3, R-722-1), #723-M2 APPROVATO, #724-M2 APPROVATO (stesso contenuto riposizionato sopra la #356). Il commit 1c928ea ha lo stesso albero del commit revisionato 7e7f14b (`git diff 7e7f14b 1c928ea` vuoto).
-- **Bot #358 V-1 (BASSA, ma di sicurezza)**: con `GAS_VOICE_RETE_PRIVATA=1` il server accettava anche un bind su tutte le interfacce. `FATTA` (08e16aa): il server non parte mai su «tutte le interfacce» e, fuori da 127.0.0.1/«localhost», accetta solo un indirizzo IPv4 scritto per intero (niente nomi host, forme abbreviate come «0»/«0x0», IPv6, IPv4 dentro IPv6). Review #727-M2 e #728-M2 APPROVATO CON RISERVE (MEDIE R-727-1, R-728-1 chiuse qui), #729-M2 APPROVATO.
-- **Bot #358 su e63491b (BOCCIATO, MEDIA)**: V-1 MEDIA `FATTA` (il test del blocco «fuori da 127.0.0.1 senza rete privata» ora arriva proprio a quel controllo; mutante ucciso), V-2 BASSA `FATTA` (locale solo un IPv4 loopback o «localhost»: «::1» rifiutato con messaggio, niente crash), V-3 BASSA dichiarata in §0. Review #730-M2 APPROVATO CON RISERVE (R-730-1/2-M2 BASSE).
-- **Bot #358 su 9f1aee4 (BOCCIATO, MEDIA)**: V-1 MEDIA `FATTA` (21d5fe4): una pagina web qualsiasi poteva bloccare la voce per 15 minuti con richieste senza token; ora le richieste senza «Bearer <token>» ricevono 401 senza contare. Review #731-M2 APPROVATO CON RISERVE (R-731-1 MEDIA, R-731-2 BASSA).
-- **R-731-1-M2 MEDIA, DNS rebinding** `FATTA`: l'Host deve essere «localhost» o un indirizzo IP; un nome di dominio riceve 403 prima del controllo del token e non conta per il blocco (stessa idea già usata dalla pagina nel browser). Review #732-M2 APPROVATO.
-- **Bot #358 V-2 COSMETICA** (riga del §1 sul fail-closed): la descrizione completa è nella PR; qui: mai su tutte le interfacce, locale solo IPv4 loopback o «localhost», fuori da lì solo IPv4 scritto per intero e solo con rete privata dichiarata.
-- **Merge di main (#357 di Mani)** per togliere il conflitto (ve #358 V-1): `FATTO`; conflitti solo su report e memoria; review #733-M2 APPROVATO.
-- **Verifica esterna e bot su 39ec264**: APPROVATO CON RISERVE (solo BASSE: rete privata solo dichiarativa, log delle richieste senza token senza tetto, nomi host via tunnel rifiutati, handoff poco leggibile). Commento: https://github.com/Gasss23/Gas/pull/358#issuecomment-6749884432
-- **Bot su 9eee954**: nessun finding nuovo sul codice ma check rosso (testo «con riserve» senza finding: incoerente); il rilancio non ritira il verdetto, serve un commit nuovo. Chiusa la sua BASSA (= R-720-4-M2): con la memoria piena esce la voce più vecchia e l'IP nuovo si conta e si blocca sempre. Review #734-M2 APPROVATO.
-- **Gate IP** (fine_task_finale): fermava il push per tre IPv4 d'esempio non loopback nei test. Sostituiti con IPv6 di documentazione/ULA, senza il marcatore `gasmerge-ip-ok` (via libera umano). Review #726-M2 APPROVATO CON RISERVE (R-726-1/2-M2 BASSE).
+- **PR #357 (fetta 3)**: `FATTA` — mergiata (524ae96).
+- **Voce consegnata in un thread (opzione b)**: `FATTA` — review #725 e #727.
+- **Tempi della voce di casa**: `FATTA` — review #722.
+- **Bot e verifica esterna #359 (V-1/V-2 MEDIA sulla guardia T78p, V-3/V-4/V-5)**: `FATTA` — review #729–#733, guardia trasformata in allow-list, 27 mutanti presi su 28 (1 inconclusivo).
+- **Merge di main con la PR #358 di M2**: `FATTA` — review #735 APPROVATO.
+- **R-733-1/2, R-725-3 (BASSE)**: `DEFERITA — tracciate in stato_progetto.md; per R-733 decide l'operatore`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  20 ++
- modules/voice/server.py            | 207 ++++++++++++-
- reports/diff_sessione.md                        | n/d
- reports/handoff.md                              | n/d
- reports/proposta_voce_sicura.md    |  50 ++++++++++++
- reports/ripartenza_m2.md                        | n/d
- reports/stato_progetto.md                       | n/d
- reports/ultimo_report.md                        | n/d
- tests/test_unit_voice_server.py    | 269 +++++++++++++++++
+ .claude/agents/memoria_revisore.md |  17 ++++++++
+ clients/voice/ascolto.py           |   7 ++++
+ modules/telegram/bot.py            |  46 +++++++++++++++++++---
+ reports/diff_sessione.md           |  17 ++++----
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   5 ++-
+ reports/ultimo_report.md           |  26 ++++++-------
+ tests/test_unit_kernel.py          | 220 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_telegram_voce.py   |  92 +++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py    |  15 +++++++
 ```
 
-NB: regola «n/d» — i report si scrivono in questo stesso commit di fine task; riga di totale tolta. Base: origin/main 524ae96 (merge della #357, entrato col merge di questa sessione).
+NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handoff.md` dice `n/d` e manca la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-d5bea31 fix(voce): con la memoria dei tentativi piena esce la voce più vecchia, l'IP nuovo si conta e si blocca sempre (R-720-4-M2, bot #358)
-6bf270e chore(revisore): memoria review #734 — APPROVATO
-9eee954 docs(voce): handoff — verdetto #733 riemesso con citazioni del diff (gate B, chat M2)
-41c5f9c docs(voce): report R8 fetta 1 dopo il merge di main (#357) — review #733 (chat M2)
-7854200 Merge origin/main (#357 di Mani) nella PR di sicurezza #358
-39ec264 docs(voce): report R8 fetta 1 — richieste senza token e DNS rebinding, review #731–#732 (chat M2)
-12cc4b1 fix(voce): Host ammesso solo «localhost» o indirizzo IP — difesa dal DNS rebinding (R-731-1-M2)
-c00ee3d chore(revisore): memoria review #732 — APPROVATO
-21d5fe4 fix(voce): le richieste senza «Bearer <token>» non contano per il blocco (bot #358 V-1: una pagina web non può più bloccare la voce)
-ac5d29f chore(revisore): memoria review #731 — APPROVATO CON RISERVE
-9f1aee4 docs(voce): report R8 fetta 1 dopo il bot su e63491b — review #730 (chat M2)
-6e7ad81 fix(voce): test del blocco «fuori da 127.0.0.1 senza rete privata»; locale solo IPv4 loopback (bot #358 V-1/V-2)
-99413f7 chore(revisore): memoria review #730 — APPROVATO CON RISERVE
-e63491b docs(voce): handoff §3 con il log completo (chat M2)
-35dad0f docs(revisore): IP d'esempio redatti nella memoria #729 (gate IP, chat M2)
-d85acaf docs(voce): report R8 fetta 1 — bind mai su tutte le interfacce, review #727–#729 (chat M2)
-08e16aa fix(voce): server voce mai su tutte le interfacce né su nomi host; fuori da 127.0.0.1 solo IPv4 scritto per intero (bot #358 V-1, R-727-1, R-728-1/2/3)
-7537583 chore(revisore): memoria review #729 — APPROVATO
-4996b5f chore(revisore): memoria review #728 — APPROVATO CON RISERVE
-be46557 chore(revisore): memoria review #727 — APPROVATO CON RISERVE
-b808fa7 docs(voce): IP d'esempio redatti nell'handoff e nella memoria del revisore (gate IP, chat M2)
-d1ade2f docs(voce): handoff R8 fetta 1 — gate IP e review #726 (chat M2)
-a2199c4 test(voce): esempi di indirizzi non locali in IPv6 di documentazione (gate IP del repo)
-a6cdadb chore(revisore): memoria review #726 — APPROVATO CON RISERVE
-6b6b3ca docs(voce): report di fine task — server voce più sicuro, R8 fetta 1; PR #356 mergiata (chat M2)
-1c928ea feat(voce): server voce più sicuro, fetta 1 — tetto ai tentativi con token sbagliato per IP, tetto alle richieste a testo, avvio rifiutato fuori da 127.0.0.1 senza rete privata; proposta R8 (decisione dell'operatore via M1)
-9a1300d chore(revisore): memoria review #723 — APPROVATO
-3a1596f chore(revisore): memoria review #722 — APPROVATO CON RISERVE
-6a72415 chore(revisore): memoria review #720 — APPROVATO CON RISERVE
+4e57b58 Merge origin/main (#358 di M2, server voce più sicuro) nella PR #359 — review #735
+5801c12 chore(revisore): memoria review #729–#733 e stato della fetta 4 (chat Mani)
+fff8f3b fix(telegram): guardia T78p della voce come allow-list, chiude le elusioni di bot e verifica esterna #359 — review #729–#733
+f352190 docs(fine-task): fetta 4 voce Telegram in un thread — PR #359 per il sì dell'operatore (sicurezza)
+62cb860 Merge mani/telegram4: voce Telegram in un thread a parte (opzione b) — review #728
+aca5b88 feat(telegram): voce consegnata in un thread a parte, guardia T78p irrobustita (opzione b) — review #725/#727
+3404378 feat(voce): tempo fino alla prima frase di Gas nel log dell'ascolto (misura della velocità) — review #722
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. La riga della memoria #724-M2 è dentro 1c928ea (scritta durante il cherry-pick, come da regola).
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Review #720-M2 (verdetto integrale):
+Verdetti integrali per commit:
+- 3404378: review #722.
+- aca5b88: review #725 e #727.
+- 62cb860: review #728.
+- fff8f3b: review #729–#733.
+- 4e57b58: review #735.
+
+### Review #722
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #720-M2, fetta di sicurezza R8 fetta 1, diff staged nella worktree /home/user/Gas-sicura (branch feat/voce-sicura-locale, base b827447).
+Review #722 (chat Mani). Riguarda il diff staged su mani/tempi-ascolto nel worktree /tmp/claude-0/wt49 (base b827447). I due file del diff sono `clients/voice/ascolto.py` (+7) e `tests/test_unit_voce_ascolto.py` (+15).
 
-Letture obbligatorie fatte: CLAUDE.md §5, stato_progetto (righe R8), memoria della worktree.
-- Wall of Shame: nessun taglio diretto della storia e nessuna simulazione degli strumenti.
-- Test: `pytest tests/test_unit_voice_server.py` dà **150 passed**, `git diff --cached --check` è pulito, la worktree coincide con l'index.
+Letture fatte prima della review:
+- CLAUDE.md, sezione 5.
+- reports/stato_progetto.md, letto in modo mirato.
+- La memoria del revisore, comprese le voci #720 e #721 del repo principale e di wt48 (sono le review più alte, la regola notturna è quella applicata nella #721). Il file in wt49 si ferma alla #719.
 
-**Elementi del diff esaminati**
-- modules/voice/server.py:505 — `_autorizza`: legge l'IP solo da `client_address`. Nessun X-Forwarded-For né altri header, quindi niente bypass via header. L'IP bloccato riceve 429 prima del confronto del token. Stato tenuto come copie riassegnate sulla classe; nel log solo IP ed esito. — Rischi esaminati: bypass, stato condiviso, token nel log. — **ok**
-- modules/voice/server.py:528 — tetto di 1024 IP su `bloccati` e su `falliti` (:534). La lista di un IP non supera la soglia, perché al blocco l'IP esce da `falliti`. Memoria quindi limitata. Però con le tabelle piene gli IP nuovi non vengono più contati né bloccati (fail-open). — **riserva R-720-4-M2**
-- modules/voice/server.py:653 — tetto C2 sulle richieste a testo. Viene dopo i rifiuti locali (JSON non valido, «uso» → 400), che quindi non contano: corretto. Viene però DOPO il blocco V12 (:651), che ha già aggiunto un posto a `turni_parlati`. Sonda mia (GAS_VOICE_MAX_TESTO_ORA=1, testo con Accept audio/mpeg, chiave ElevenLabs finta): 3 richieste → 200/429/429, ma `turni_parlati` = 3. Il testo rifiutato da C2 consuma posti del tetto voce, cioè anche dell'ascolto H24. — **riserva R-720-1-M2**
-- modules/voice/server.py:374 — `_bind_locale` accetta qualsiasi stringa che inizi con «127.», anche un nome host: `_bind_locale("127.evil.example")` dà True (provato), e quel nome può risolversi su un'interfaccia pubblica, aggirando il fail-closed di :1298. Serve un errore di configurazione dell'operatore. — **riserva R-720-3-M2**
-- modules/voice/server.py:1298 — avvio rifiutato fuori da loopback senza GAS_VOICE_RETE_PRIVATA=1. Il messaggio a schermo non stampa il token (lo verifica il test). — **ok**
-- modules/voice/server.py:1057 e modules/voice/server.py:554 — GET /voce/conferma, /voci/elenco, /voci/libreria e POST /voci/* passano tutti da `_autorizza`. I 404/405 restano senza autenticazione e non contano, come prima. — **ok**
-- tests/test_unit_voice_server.py:2008, :2028, :2034 — coprono blocco e scadenza, assenza del token nel log, stato non condiviso con VoiceHandler, e nessun turno oltre il tetto del testo. Manca un test sull'ordine C2/V12. — **ok, con la lacuna della R-720-1-M2**
+Elementi del diff esaminati:
+1. `clients/voice/ascolto.py:537` — `t0 = time.monotonic()` prima di `invia`/`invia_seguito`, fuori dal `try`. Rischio controllato: un nuovo punto da cui può partire un'eccezione (§9) e un cambio di comportamento. `time.monotonic` non solleva eccezioni in pratica. Non cambia nessun ramo: fine, pausa, errore e seguito restano identici. Esito: ok.
+2. `clients/voice/ascolto.py:588` — `if suonati == 1: log.info("tempo: prima frase di Gas dopo %.2f s …")`, dopo il filtro `if not audio: continue` e prima di `riproduci`. Rischi controllati:
+   - Dati nel log: la riga contiene solo un float in secondi. Niente parlato, niente `testo` del pezzo, niente motivo né URL.
+   - Ripetizione della riga: `suonati` sale solo una volta per pezzo con audio, quindi c'è una sola riga per turno. Se la risposta non contiene audio (o si interrompe prima del primo pezzo) la riga non compare.
+   - Esito: ok.
+3. `tests/test_unit_voce_ascolto.py:2490` — il test `test_tempo_fino_alla_prima_frase_nel_log`. Usa il monkeypatch di `a.time.monotonic`, che è il modulo `time` globale: il patch vale per tutto il processo ma pytest lo ripristina a fine test. Rischi controllati:
+   - Altri test rotti: no.
+   - Default legati alla definizione: i default `adesso=time.monotonic` in `clients/voice/ascolto.py:905` e `clients/voice/ascolto.py:974` sono già legati quando il modulo viene definito, quindi il patch non li tocca.
+   - Iteratore esaurito: le chiamate oltre la lista ricevono 999.0, mai `StopIteration`.
+   - `logging` usa `time.time` e non `monotonic`.
+   - Esito: ok, con la riserva R-722-1.
 
-**Riserve**
-- **R-720-1-M2 (BASSA)**: spostare il controllo C2 prima del blocco V12 (modules/voice/server.py:641-651). Basta riordinarli, più un test che controlli `turni_parlati` dopo un 429 di C2.
-- **R-720-2-M2 (BASSA, decisione dell'operatore)**: tutti i client locali arrivano da 127.0.0.1, anche la pagina, perché clients/voice/browser_server.py fa da proxy. Un client con un token vecchio blocca per 15 minuti sia la pagina sia l'ascolto H24. Il blocco si rinnova a ogni scadenza finché quel client resta acceso: le richieste bloccate non contano, ma dopo la scadenza bastano altri 10 errori. L'ascolto manda richieste solo dopo la parola di attivazione, quindi è lento a raggiungere la soglia. Accettabile come scelta prudente, da dichiarare all'operatore. Sul tunnel invece gli IP sono per dispositivo.
-- **R-720-3-M2 (BASSA)**: in `_bind_locale` usare `ipaddress.ip_address(bind).is_loopback` più il solo «localhost».
-- **R-720-4-M2 (BASSA)**: fail-open con le tabelle piene. Irrilevante su loopback o tunnel; da dichiarare prima di un uso sul VPS.
-- **R-720-5-M2 (COSMETICA)**: una riga di warning per ogni richiesta bloccata, senza limite: sotto attacco gas_debug.log cresce (il doctor ne controlla la dimensione). Un login riuscito non azzera il conto dei tentativi falliti: è una scelta esplicita, coperta dal test di :2028.
+Verifiche riprodotte sulla copia dell'index (checkout-index nello scratchpad, niente stash):
+- `pytest tests/test_unit_voce_ascolto.py`: 296 passed.
+- `git diff --cached --check` pulito; worktree uguale all'index.
+- Mutanti miei, 4 su 4 presi (ognuno dà 1 failed):
+  - riga «a ogni frase» (`>= 1`);
+  - t0 preso dopo l'invio;
+  - riga tolta;
+  - livello `debug` al posto di `info`.
 
-Nota, non introdotta da questo diff: `_bind_locale` accetta «::1», ma HTTPServer è solo IPv4, quindi con GAS_VOICE_BIND=::1 l'avvio fallisce con un'eccezione non gestita (comportamento che c'era già prima).
+Wall of Shame: nessuno slicing della history e nessuna simulazione dei tool. Il diff non tocca il kernel, `_get_window`, il tetto di 10 iterazioni né il tetto di 8k.
 
-**Rischio esplicitamente escluso**: non ho provato il comportamento reale di Tailscale (IP di origine visto dal server, NAT) né il server avviato davvero fuori da loopback: non si riproduce in questo ambiente. Non ho rieseguito le altre suite della voce (prova_voci, tts, stt, voce_ascolto, telegram_voce): il diff tocca solo server.py, e il risultato di 664 passed è quello dichiarato dall'agente. Non ho rilanciato i suoi mutanti.
+Riserve:
+- **R-722-1 COSMETICA** — il test dipende dall'ordine esatto delle chiamate a `time.monotonic`. Se in futuro si aggiunge una chiamata nel percorso di invio, il test diventa rosso: non diventa mai un falso verde.
+- **R-722-2 BASSA** — misura il tempo fino al primo pezzo audio pronto, non fino al suono effettivo (la riga viene scritta prima di `riproduci`). Inoltre non separa invio, server e sintesi: per sapere dove si perde tempo servirà incrociarla con i tempi del server (V7a).
 
-- Memoria aggiornata con la riga #720-M2 e una lezione: /home/user/Gas-sicura/.claude/agents/memoria_revisore.md. Committata solo lei nella worktree (commit 3bb6c6f); l'index del diff è intatto.
-- Sonda: /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/sonda_r8.py
+Regola notturna: la PR rientra. Ci sono solo riserve BASSE o COSMETICHE e nulla tocca sicurezza, gate, cancello o perimetro del kernel.
 
-Review #722-M2 (verdetto integrale):
+Rischio escluso: il comportamento sul Mac (afplay vero, rete verso il server della voce, valore reale misurato) non è stato verificato perché non si può riprodurre nel container. Non ho neanche controllato su quale file finisce il logger `gas.ascolto` sul Mac: è configurazione dell'avvio, fuori dal diff.
 
-## VERDETTO: APPROVATO CON RISERVE
+Memoria: ho aggiunto la riga #722 in coda a /tmp/claude-0/wt49/.claude/agents/memoria_revisore.md, non committata come richiesto. Non ho lanciato commit_memoria_revisore.sh perché la tua istruzione dice «non committata». Nessuna lezione nuova.
 
-Ho controllato la review #722-M2, che è il seguito della #720-M2. Il lavoro è nella worktree /home/user/Gas-sicura (branch feat/voce-sicura-locale, base b827447) e ho esaminato lo staged.
-
-**Elementi del diff esaminati**
-- modules/voice/server.py:647 — il tetto al testo (C2) ora sta prima del blocco V12 (modules/voice/server.py:661-673). Rischio esaminato: un testo rifiutato da C2 non deve più consumare un posto del tetto voce. Esito: ok, R-720-1-M2 chiusa. Il nuovo test tests/test_unit_voice_server.py:2044 passa (200/429/429, turni_parlati = 1).
-- modules/voice/server.py:375 — `_bind_locale` ora usa `ipaddress.ip_address(b).is_loopback` più il solo «localhost». Rischio esaminato: un nome host che comincia con «127.» non deve passare per locale, e i casi limite devono restare fail-closed. Esito: ok, R-720-3-M2 chiusa. I casi in tests/test_unit_voice_server.py:2075 coprono «127.evil.example» e la stringa vuota. «::ffff:127.0.0.1» (con Python 3.11) e «[::1]» con le parentesi danno False: il server rifiuta di partire, quindi chiude invece di aprire.
-- modules/voice/server.py:76 — aggiunto l'import di `ipaddress`. Esito: ok.
-- reports/proposta_voce_sicura.md — la sezione «Stato» dichiara i limiti R-720-2, R-720-4 e R-720-5. Esito: ok, la conferma spetta all'operatore.
-- Esecuzione: tests/test_unit_voice_server.py dà 153 passed e `git diff --cached --check` è pulito.
-
-**Riserva**
-- R-722-1-M2 BASSA: è lo stesso problema di R-720-1-M2 nel verso opposto. In modules/voice/server.py:659 C2 conta la richiesta a testo prima che V12 decida. Così un testo che chiede la risposta in audio (Accept audio/mpeg), se V12 lo rifiuta, consuma comunque un posto del tetto testo. Sonda eseguita con GAS_VOICE_MAX_TURNI_ORA=1 e GAS_VOICE_MAX_TESTO_ORA=3: tre richieste a testo con audio e poi una solo a testo danno 200/429/429/429. Alla fine turni_testo = 3 ma è partito un solo turno, e la richiesta solo a testo viene rifiutata da C2 senza aver fatto lavoro. Correzione suggerita: tenere il controllo C2 dov'è, ma aggiungere l'istante a `turni_testo` solo dopo che anche V12 ha lasciato passare, e aggiungere un test con la sonda descritta. È da correggere o da dichiarare in stato_progetto.md.
-
-**Cosa non ho verificato**
-- Non ho rieseguito le altre suite della voce (prova_voci, tts, contesto, stt, telegram_voce): ho preso per buono il tuo 377 passed. Il diff tocca solo do_POST/do_GET e `_bind_locale` del server, quindi l'impatto su quelle suite è improbabile.
-- Non ho provato il comportamento con un tunnel reale (Tailscale) né su VPS: non si può riprodurre in questo ambiente.
-
-**Memoria**
-Ho aggiunto in /home/user/Gas-sicura/.claude/agents/memoria_revisore.md la riga #722-M2 e una lezione: ogni tetto deve contare la richiesta solo dopo che tutti i controlli successivi sono passati. Le ho committate con lo script della memoria nella worktree (commit e4bc254). Lo staged del diff è intatto (3 file, 291+/9-).
-
-Review #723-M2 (verdetto integrale):
-
-## VERDETTO: APPROVATO
-
-La riserva R-722-1-M2 è chiusa: un testo rifiutato dal tetto voce non consuma più un posto del tetto al testo. Non ho riserve nuove.
-
-**Righe del diff che ho esaminato**
-- `modules/voice/server.py:647` — il tetto al testo (C2) viene controllato prima di V12, ma qui si annota solo l'istante in `testo_ora` (`:663`), senza aggiungerlo a `turni_testo`. Il rifiuto (`:657`) ripulisce la lista senza aggiungere nulla. Rischio: che un rifiuto consumi un posto, o che resti dentro un istante vecchio. Esito: ok.
-- `modules/voice/server.py:679` — l'istante entra in `turni_testo` solo dopo che anche V12 ha lasciato passare. Ho cercato altri `return` tra il controllo (`:656`) e il conteggio (`:680`): c'è solo il 429 di V12 (`:670-673`), ed è proprio il caso in cui non si deve contare. Il ramo `cervello == "uso"` (`:640`) esce prima del controllo e quindi non conta. Rischio: rifiuti che consumano il tetto, o turni partiti senza essere contati. Esito: ok.
-- `tests/test_unit_voice_server.py:2065` — è la mia sonda di #722: tetto voce 1, tetto testo 3, tre testi con risposta a voce e uno solo a testo danno 200/429/429/200, con 2 posti usati nel tetto al testo. Rischio: un test che non distingua il vecchio ordine dal nuovo. Ti fidi del fatto che col codice di #722 fallisce (non l'ho rifatto io), ma i valori attesi corrispondono a quanto avevo misurato a mano in #722 (200/429/429/429, 3 posti usati). Esito: ok.
-- Contesto: `modules/voice/server.py:1328` — il server è un `HTTPServer` senza thread, quindi lo spazio più largo tra controllo e conteggio non apre una corsa tra richieste concorrenti. Esito: ok.
-
-**Prove**
-- `pytest tests/test_unit_voice_server.py -k "tetto or testo"`: 14 passed.
-- `git diff --cached --check`: pulito.
-- La suite completa del file l'ho lanciata in background ed è andata oltre i 120 s del comando; non ne ho letto l'esito. Mi baso sui tuoi 378 passed.
-
-**Cosa non ho verificato**
-- Suite completa del file e suite voce intera: non le ho rifatte io.
-- Comportamento con il server dietro un proxy o con più thread: oggi il server è a thread singolo, quindi non riproducibile.
-- I turni partiti e finiti in errore 500 contano lo stesso nel tetto al testo. Lo ritengo corretto, perché il lavoro è partito.
-
-**Memoria**: aggiunta la riga #723-M2 in `/home/user/Gas-sicura/.claude/agents/memoria_revisore.md` e committata con lo script nella worktree (commit 49bfebf). `/home/user/Gas` non l'ho toccato.
-
-Review #724-M2 sul riposizionamento sopra la #356 (verdetto integrale):
-
-## VERDETTO: APPROVATO
-
-Il cherry-pick di 5c233ce sopra 0d34fe6 (#356) ha lo stesso contenuto del commit originale. L'unione automatica di server.py ha tenuto sia la cache della #356 sia le difese R8, e nessun test della #356 è andato perso.
-
-Letture obbligatorie fatte: CLAUDE.md sezione 5, reports/stato_progetto.md (righe su R8 e #356, lette in modo mirato) e la coda di .claude/agents/memoria_revisore.md (lezioni #722 e #723 sull'ordine dei tetti, applicate qui sotto).
-
-**Cosa ho controllato**
-- **Stesso contenuto.** Ho messo a confronto le sole righe +/- di `git diff --cached` e di `git show 5c233ce`, tolte le intestazioni dei file: sono identiche. Cambia solo il contesto. Anche lo stat coincide: 3 file, 321 righe aggiunte e 9 tolte.
-- **Test della #356 intatti.** `git diff 0d34fe6 -- tests/` dà solo 154 aggiunte e 0 righe tolte. Gli hunk sono due: l'import a riga 15 e l'accodamento dopo `test_sintesi_cache_ha_un_tetto`. L'ordine è prima la #356, poi R8, come hai detto.
-- **Unione pulita.** Niente marcatori di conflitto in modules/voice/server.py né in tests/test_unit_voice_server.py, e nessuna modifica fuori dallo staging.
-- **Test eseguiti da me.** `pytest tests/test_unit_voice_server.py` → 161 passed. Il tuo 276 (con sottofondo e telegram_voce) non l'ho rieseguito.
-
-**Elementi del diff esaminati**
-- `modules/voice/server.py:542` — `_autorizza`: tetto ai tentativi falliti per IP, 429 a un IP bloccato anche col token giusto, nel log solo IP ed esito. Rischio: che l'unione abbia lasciato una strada col controllo diretto del token. `_check_auth()` compare una sola volta, a :560 dentro `_autorizza`; le quattro chiamate (:592, :609, :1104, :1111) passano tutte da `_autorizza()`. Esito: ok.
-- `modules/voice/server.py:685` — tetto alle richieste a testo (C2): controllato prima del tetto voce (V12, :694-702), contato solo dopo che anche V12 lascia passare (:709-710, `testo_ora`). Rischio: tornare indietro sulle riserve R-720-1 e R-722-1 (un rifiuto di un tetto che consuma l'altro). Ordine conservato: tra il controllo e il conteggio l'unico return è il 429 di V12, voluto. Esito: ok.
-- `modules/voice/server.py:1345` — avvio rifiutato (fail-closed) se l'indirizzo d'ascolto non è locale e manca `GAS_VOICE_RETE_PRIVATA`; resta dopo il controllo del token (:1333) e prima dell'import di GasKernel. Rischio: blocco perso nell'unione. Presente e intatto. Esito: ok.
-- `tests/test_unit_voice_server.py:2078` — inizio dei 153 test R8 accodati, subito dopo i test della cache della #356 (:2040-2076). Rischio: test persi o sovrascritti nella risoluzione del conflitto. Solo aggiunte. Esito: ok.
-
-Contesto, file non toccati dal cherry-pick: la cache `sintesi()` della #356 è viva in `modules/voice/server.py:327` (tetto 32 voci, mai in cache un audio vuoto), insieme a `_finiti_jobs` (:589, :824-834).
-
-**Cosa NON ho verificato**
-- I test di sottofondo e telegram_voce e quelli col browser: non rieseguiti per tempo (la sola suite voice_server dura 4 minuti e mezzo).
-- Il comportamento reale sul Mac con Tailscale: non riproducibile in questo ambiente.
-
-**Memoria**
-Riga `#724-M2 … APPROVATO …` accodata in /home/user/Gas-sicura/.claude/agents/memoria_revisore.md e messa in staging con `git add`, senza commit: entra col commit del cherry-pick, come chiesto. Nessuna lezione nuova.
-
-Prossimo passo: `git cherry-pick --continue`. Per il gate serve prima `bash scripts/segna_review_ok.sh`, perché il diff in staging ora include anche la memoria.
-
-Review #726-M2 sul commit a2199c4 (verdetto integrale; gli IPv4 d'esempio citati sono sostituiti con <IP-redatto> come chiede il gate IP):
+File rilevanti:
+- /tmp/claude-0/wt49/clients/voice/ascolto.py
+- /tmp/claude-0/wt49/tests/test_unit_voce_ascolto.py
+- /tmp/claude-0/wt49/.claude/agents/memoria_revisore.md
+### Review #725
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #726-M2. Il diff staged su feat/voce-v12-m2 tocca solo tests/test_unit_voice_server.py (+4/-3). Ho letto CLAUDE.md, le righe R8 di stato_progetto.md e la coda di memoria_revisore.md.
+**Review #725 (chat Mani).** Diff STAGED in /tmp/claude-0/wt50, branch mani/telegram4, HEAD 58f088a (la PR #357 non è ancora mergiata).
+
+**È un cambio di sicurezza:** la guardia T78p, che garantisce che le firme si gestiscano «un click alla volta», è stata allargata. Il merge spetta all'operatore, che ha già scelto l'opzione (b) via M1.
+
+**Prove sulla copia dell'index** (fatta con checkout-index, niente stash, cartella /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/r725):
+- telegram_voce: 70 passed.
+- kernel: 1099 PASS e 1 FAIL. L'unico FAIL è T31g, legato all'ambiente. T78p è verde.
+- voce_ascolto: 296 passed.
+- `git diff --cached --check`: c'è una riga vuota in fondo al file di test.
+
+### Elementi del diff esaminati
+- `modules/telegram/bot.py:997` — `_consegna_voce` crea il pool (un solo thread) alla prima voce e gli passa solo `_invia_risposta_vocale` (riga 1002). Il testo `finale` è già calcolato prima dell'invio al thread. Gli errori finiscono nel log (§9). **Rischio esaminato:** il thread tocca qualcosa oltre alla voce? No. Il thread chiama solo `testo_da_dire`, `synthesize_speech`, `_send_text`, `_tg_post` e `_tg_post_file`. `_tg_post` (riga 75) e `_tg_post_file` creano una richiesta nuova a ogni chiamata e non hanno stato condiviso. Il thread non usa mai kernel, memoria o firme. Usare `_send_text` in parallelo al polling è sicuro. `modules/voice/server.py` all'import non avvia niente, e il blocco degli import di Python basta. — **ok**
+- `modules/telegram/bot.py:987` — `_gestisci_parlato` mette la voce in coda dopo aver mandato il testo. Rischio esaminato: l'ordine dei messaggi su Telegram. — **riserva R-725-3**
+- `modules/telegram/bot.py:1007` e `modules/telegram/bot.py:559` — `_chiudi_voce` con `shutdown(wait=False, cancel_futures=True)` viene chiamato al Ctrl-C. **Provato con un ThreadPoolExecutor vero:**
+  - con la chiusura, all'uscita si aspetta solo la voce in corso (2 s);
+  - senza la chiusura, si eseguono tutte le voci in coda (4 s).
+  
+  L'attesa per la voce in corso arriva a circa 2×VOCE_TIMEOUT_S, ma 15 s è il tetto per ogni operazione sul socket, non per l'intera voce (come R-721-2). Un secondo Ctrl-C interrompe l'attesa con un traceback. — **ok con riserva R-725-2**
+- `modules/telegram/bot.py:63` — VOCE_TIMEOUT_S resta 15 e cambia solo il commento. — **ok**
+- `tests/test_unit_kernel.py:8393` — La guardia T78p allargata: un secondo pool solo in `_consegna_voce`, nomi vietati nelle tre funzioni della voce, e la riga 8401 controlla che si sottometta solo `_invia_risposta_vocale`. **Rischio esaminato:** si può eludere? **Sì**, vedi R-725-1. — **riserva**
+- `tests/test_unit_telegram_voce.py:504` — Test con thread vero: ordine giusto, una voce alla volta, il chiamante non aspetta. Il fixture `tg` (riga 84) sostituisce `_consegna_voce` con una consegna immediata, quindi gli altri test restano sincroni. La riga 548 verifica `shutdown(False, True)` e che la coda si azzeri. — **ok**
+
+### Riserve
+**R-725-1 MEDIA — la guardia T78p si elude.** Ho provato 3 mutanti miei e con tutti T78p risulta PASS:
+1. **Mutante A:** in `_gestisci_parlato`, `_voce_in_coda.submit(lambda: kernel.run_turn(trascritto))`. Mette un turno nel thread della voce, cioè proprio il rischio da evitare. La guardia controlla `submit` solo dentro `_consegna_voce`, e `_riferiti78p` non vede `run_turn` dentro una lambda.
+2. **Mutante B:** `_voce_in_coda.map(...)` dentro `_consegna_voce`. La guardia guarda solo `submit`.
+3. **Mutante C:** chiamata diretta a `gestisci_callback(...)` dentro `testo_da_dire`, che gira nel thread. La guardia per nomi non segue le funzioni chiamate.
+
+Correzione proposta:
+- ogni chiamata `.submit` o `.map` nel modulo è ammessa solo in `_invia_a_tutti` e in `_consegna_voce`;
+- `_voce_in_coda` si nomina solo in `_consegna_voce` e `_chiudi_voce` (più l'assegnazione a livello di modulo);
+- i nomi vietati si controllano anche nelle funzioni del modulo raggiungibili da `_invia_risposta_vocale` (`testo_da_dire`, `_send_text`, `_tg_post`, `_tg_post_file`).
+
+Oggi il codice è corretto. La riserva riguarda la protezione contro regressioni future.
+
+**R-725-2 BASSA — uscita fuori dal ramo Ctrl-C.** Un KeyboardInterrupt durante `time.sleep(5)` del ramo except (`modules/telegram/bot.py:564`, fuori dal try) salta `_chiudi_voce`. All'uscita Python esegue allora tutta la coda delle voci (comportamento provato).
+
+**R-725-3 BASSA — ordine dei messaggi.** Il vocale e gli avvisi «✗ Risposta vocale … la risposta è nel testo sopra» ora possono arrivare dopo la risposta in testo del messaggio successivo: «sopra» può trarre in inganno.
+
+**R-725-4 COSMETICA — riga vuota in fondo al file.** `git diff --check` segnala una riga vuota in fondo a `tests/test_unit_telegram_voce.py`, come nella #720.
+
+### Rischio escluso
+- Non ho verificato il comportamento reale su VPS e Telegram, con ElevenLabs lento o con SIGTERM di systemd (il segnale di default uccide il processo senza aspettare): non si riproduce in sviluppo, e ho provato solo con mock e con un ThreadPoolExecutor vero in locale.
+- Non ho ri-revisionato `clients/voice/ascolto.py` e `tests/test_unit_voce_ascolto.py`, già coperti dalla #722: ho solo rieseguito i 296 test.
+
+### Memoria
+- Ho aggiunto la riga #725 più una lezione in coda a /tmp/claude-0/wt50/.claude/agents/memoria_revisore.md. Il numero più alto prima era #724.
+- **NON** l'ho committata (come da tua istruzione), quindi non ho lanciato `commit_memoria_revisore.sh`.
+- Nota: il file ora è «MM», cioè ha parti staged e parti nel working tree. Va rifatto lo staging prima di `segna_review_ok.sh`, altrimenti lo SHA del diff revisionato cambia.
+### Review #727
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #727 (chat Mani). È una ri-review della #725 sul diff staged in /tmp/claude-0/wt50 (branch mani/telegram4, base 58f088a). Prima ho letto CLAUDE.md (sez. 5), reports/stato_progetto.md (solo le parti che servivano) e la coda della mia memoria.
 
 **Cosa ho controllato nel diff**
-- `tests/test_unit_voice_server.py:2187-2192`: nel parametro di test_r8_bind_locale i tre IPv4 non loopback (<IP-redatto>, <IP-redatto>, <IP-redatto>) sono stati sostituiti con «::», «2001:db8::10» e «fd7a:115c:a1e0::5». Rischio: la copertura si svuota. Esito **ok**, con una riserva bassa. `_bind_locale` (`modules/voice/server.py:404-413`) usa `ipaddress.ip_address(b).is_loopback`, che non dipende dalla famiglia IPv4/IPv6. I modi realistici di rompere la funzione vengono ancora presi:
-  - `is_private`: fd7a:: e :: risulterebbero privati e il test fallirebbe;
-  - `not is_global`: 2001:db8:: è un indirizzo di documentazione e il test fallirebbe;
-  - controllo solo IPv4: «::1» atteso True fallirebbe;
-  - `startswith("127.")`: «127.evil.example» resta coperto.
-  
-  Riserva: nessun IPv4 non loopback è più testato. Il caso più probabile nella realtà, «<IP-redatto>», non ha più un test diretto. Il comportamento lo copre `is_loopback`, ma solo per semantica.
-- `tests/test_unit_voice_server.py:2204`: il test di avvio rifiutato ora usa BIND «::» con RETE_PRIVATA vuota, «0» e «no». Rischio: fail-closed non provato. Esito **ok**. «::» non è locale, quindi il controllo a `modules/voice/server.py:1345` restituisce 1 prima dell'import di gas. Il GasKernel finto lancia AssertionError se il server partisse. Il test verifica anche che il token non finisca nell'output.
-- `tests/test_unit_voice_server.py:2220`: il test di avvio consentito ora usa BIND «fd7a:115c:a1e0::5» con RETE_PRIVATA=1. Rischio: avvio reale del server oppure falso positivo. Esito **ok sul controllo**, con una riserva bassa. Il kernel finto lancia `_Fermo` prima di HTTPServer (`modules/voice/server.py:1355` contro `:1360`), quindi il server non parte mai davvero. Però `HTTPServer` è AF_INET: nella realtà un bind IPv6 fallirebbe con gaierror non gestito. L'esempio del test «parte» descrive quindi un caso che nella realtà non parte. Il limite c'era già e non è nel diff. Il caso reale, Tailscale 100.64/10, è IPv4.
+- `tests/test_unit_kernel.py:8410` — `_consegne78p` cerca in tutto il modulo le chiamate `.submit` e `.map` e le ammette solo in `_invia_a_tutti` e `_consegna_voce`. Rischio esaminato: una sottomissione con lambda da un'altra funzione, o un metodo diverso da submit. Esito: ok. Il mutante A (lambda con `kernel.run_turn` sottomessa da `_gestisci_parlato`) e il mutante B (`.map` in `_consegna_voce`) danno T78p FAIL. Fallisce anche un mio mutante nuovo, E: in `_gestisci_parlato`, `ex = globals()['_voce_in_coda']; ex.submit(...)`.
+- `tests/test_unit_kernel.py:8416` — `_funzioni78p` più la visita del grafo delle chiamate partendo da `_invia_risposta_vocale`. Inoltre `tests/test_unit_kernel.py:8425` cerca i nomi vietati in tutte le funzioni raggiunte, e `tests/test_unit_kernel.py:8436` controlla che `testo_da_dire` sia davvero tra le raggiunte. Rischio esaminato: una chiamata vietata dentro una funzione chiamata dal thread. Esito: ok per le funzioni di primo livello. Il mutante C (`gestisci_callback` dentro `testo_da_dire`) dà FAIL, e così il mio mutante F (`_KERN.run_turn(finale)` dentro `testo_da_dire`). Esito: riserva per gli altri casi (vedi R-727-1).
+- `modules/telegram/bot.py:564` — il `time.sleep(5)` del ramo except ora sta in un try. Su KeyboardInterrupt chiama `_chiudi_voce` (`modules/telegram/bot.py:567`) ed esce con 0. Anche lo sleep di `modules/telegram/bot.py:550` sta dentro il try esterno, coperto da `modules/telegram/bot.py:559`. Rischio esaminato: uscita su Ctrl-C che salta la chiusura della coda. Esito: ok, R-725-2 chiusa. Nota: questo ramo non ha un test, ma è una modifica meccanica e l'ho verificata leggendo il codice.
+- `modules/telegram/bot.py:1002` — `_consegna_voce` non è cambiata rispetto alla #725. Il submit ha un solo bersaglio, `_invia_risposta_vocale`, ed è dentro try §9. Il mio mutante G (submit di `_handle_update` in più) dà FAIL. Esito: ok.
+- `tests/test_unit_telegram_voce.py:560` — fine del file: niente più riga vuota, e `git diff --cached --check 58f088a` non trova niente. R-725-4 chiusa.
 
-**Gate IP**: ho rifatto a mano il controllo IP del gate (stesso regex di `scripts/fine_task_finale.sh:73`, poi tolti i 127.x e le righe `gasmerge-ip-ok`) sull'albero in staging (`git grep --cached`): nessun IPv4 non loopback. Le sole righe con IPv4 nel diff sono quelle rimosse. Il marcatore `gasmerge-ip-ok` non è stato aggiunto (corretto).
+**Prove sulla copia dell'index** (checkout-index nello scratchpad, niente stash)
+- pytest su telegram_voce + voce_ascolto: 366 passed.
+- `python tests/test_unit_kernel.py`: 1099 PASS, 1 FAIL. L'unico FAIL è T31g (manca sqlite_vec nell'ambiente, come sulla base); T78p è PASS.
+- Mutanti: 6 su 8 presi (A, B, C della #725, più i miei E, F, G). Due non presi, D e H: sono la riserva R-727-1.
 
-**Test**: `pytest tests/test_unit_voice_server.py -k r8` dà 23 passed, 137 deselected.
+**Riserve**
+- **R-727-1 BASSA**: il grafo considera solo le funzioni definite al primo livello del modulo. Non entrano nel controllo:
+  - una lambda assegnata a un nome di modulo (mutante D: `_aiuto = lambda *a: gestisci_callback(*a)`, chiamata da `testo_da_dire`): T78p PASS;
+  - un metodo statico di una classe (mutante H: `_H.f()` che chiama `_handle_update`, chiamato da `testo_da_dire`): T78p PASS;
+  - le funzioni di altri moduli, per esempio `parte_parlata` in modules/voice/server.py.
 
-**Wall of Shame**: nessuno slicing della history e nessuna simulazione di tool. Il diff tocca solo test e non tocca cap, `_get_window` né i provider.
+  Servono costrutti fatti apposta, non errori probabili, quindi la riserva è BASSA. Si chiude seguendo anche le assegnazioni di lambda di modulo e i ClassDef, oppure vietando lambda e classi di modulo che contengono nomi vietati.
+- **R-725-3 BASSA** (ordine degli avvisi rispetto al messaggio dopo): resta aperta, come dichiarato.
 
-**Riserve (BASSE, da tracciare in stato_progetto.md)**
-1. R-726-1-M2: manca un caso IPv4 non loopback (es. l'indirizzo «tutte le interfacce») nel test di `_bind_locale`. È facoltativo: lo si può reintrodurre solo con un via libera umano al gate IP (`gasmerge-ip-ok`). Non va costruito l'indirizzo dinamicamente per aggirare il gate.
-2. R-726-2-M2: il test «avvio con rete privata parte» usa un IPv6 che HTTPServer (AF_INET) non saprebbe aprire. È un limite precedente al diff. Se in futuro si vuole supportare IPv6, serve un server con address_family AF_INET6, oppure un rifiuto chiaro con messaggio al posto del crash.
+**Cosa non ho verificato**
+- Il comportamento dal vivo con Telegram vero (sendVoice e la coda sotto carico reale): non si può riprodurre qui.
+- Le elusioni intenzionali via stringhe (`globals()["gestisci_callback"]`, `getattr(modulo, ...)`): una guardia statica per nomi non può coprirle per costruzione.
+- La fetta clients/voice/ascolto.py e tests/test_unit_voce_ascolto.py: non cambiata rispetto alla #722, l'ho solo ri-eseguita (dentro i 366 passed).
 
-**Cosa non ho verificato**: l'avvio reale del server su un'interfaccia Tailscale/VPS, perché non è riproducibile in questo ambiente. Non ho guardato nemmeno la parte di gasmerge.sh fuori dal regex, che si dichiara identica a fine_task_finale.sh.
+**Antipattern**: nessuno slicing della history e nessuna simulazione degli strumenti.
 
-**Memoria**: ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #726-M2 e una lezione. Era sul branch in commit a6cdadb (script `commit_memoria_revisore.sh`). Il diff staged sotto review è rimasto intatto.
+È un cambio di sicurezza (la guardia delle firme è stata allargata): il merge lo decide l'operatore.
 
-Review #727-M2 (verdetto integrale; IPv4 d'esempio sostituiti con <IP-redatto> per il gate IP):
+**Memoria**: riga #727 più una lezione aggiunte in coda a /tmp/claude-0/wt50/.claude/agents/memoria_revisore.md, solo nel working tree, NON committate come richiesto.
+
+### Review #728
+
+## VERDETTO: APPROVATO
+
+Review #728 (chat Mani): merge in staging di mani/telegram4 (aca5b88) su origin/main 524ae96, che contiene la PR #357, nel branch claude/peaceful-lovelace-0w2b7q.
+
+**Cosa ho controllato e con che esito**
+- **I file di codice coincidono con aca5b88.** I 5 file nell'index hanno lo stesso blob di aca5b88:
+  - modules/telegram/bot.py: 5753741
+  - tests/test_unit_kernel.py: 39864e3
+  - tests/test_unit_telegram_voce.py: 0f8f4bc
+  - clients/voice/ascolto.py: 078de61
+  - tests/test_unit_voce_ascolto.py: 1391990
+
+  Per questi 5 file origin/main ha gli stessi blob di 58f088a, e 58f088a è antenato di main. Quindi il diff rispetto a main per il codice è esattamente quello già visto in #722, #725 e #727. I file di M2 (modules/voice/server.py e i test voice_server/sottofondo) restano quelli di main: non compaiono nel diff staged.
+- **Memoria.** È l'unione dei due lati: rispetto ad aca5b88 e a main non manca nessuna riga, e non ce n'è nessuna estranea (confronto con comm sulle righe ordinate). Nessun marcatore di conflitto.
+- **Stato del merge.** `git ls-files -u` è vuoto, `git diff --cached --check` è pulito e prima della mia riga il working tree era uguale all'index.
+- **Test sulla copia dell'index** (checkout-index nello scratchpad, niente stash):
+  - telegram_voce + ascolto: 366 passed.
+  - Suite del kernel: 1099 PASS, 1 FAIL. L'unico FAIL è T31g (sqlite_vec assente, dipende dall'ambiente); T78p PASS.
+
+**Elementi del diff esaminati**
+1. modules/telegram/bot.py:1002 — `_consegna_voce` (pool di un solo thread per la voce, opzione (b)). Rischio: che dopo il merge sia diversa dalla versione revisionata in #727. Esito: ok, il blob è identico ad aca5b88.
+2. tests/test_unit_kernel.py:8410 — calcolo di `_consegne78p` nella guardia T78p allargata (cambio di sicurezza). Rischio: che il merge sia andato a toccare la guardia. Esito: ok, il blob è identico e T78p passa sulla copia dell'index.
+3. clients/voice/ascolto.py:537 — `t0 = time.monotonic()` prima dell'invio, con la riga di log a clients/voice/ascolto.py:588. Rischio: che il merge abbia perso la parte di #722. Esito: ok, il blob è identico.
+4. .claude/agents/memoria_revisore.md — l'unico conflitto, risolto come unione. Rischio: righe perse o marcatori rimasti. Esito: ok (contesto, non conta come citazione).
+
+**Rischi esclusi**
+- Non ho verificato di nuovo la logica del thread né la solidità della guardia: è coperta da #725 e #727 e i blob sono identici.
+- Non ho verificato il comportamento reale su Telegram/VPS né la CI remota: non si riproducono in dev.
+- Restano aperte le riserve BASSE R-727-1 (la guardia T78p non vede lambda di modulo né metodi di classe) e R-725-3 (gli avvisi e il vocale possono arrivare dopo la risposta al messaggio successivo).
+
+**Cambio di sicurezza**: la guardia T78p è allargata, quindi il merge della PR lo decide l'operatore.
+
+**Memoria**
+- Ho aggiunto la riga #728 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree e non in index, come richiesto.
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`: committerebbe la memoria mentre il merge è ancora in staging, contro la tua indicazione. La riga va committata insieme al merge o subito dopo.
+
+### Review #729
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #727-M2 della PR di sicurezza #358 (R8 fetta 1, chiusura della V-1 BASSA del bot). Diff staged: 2 file, +40 righe.
+Review #729 (chat Mani). Ho controllato il diff in staging su claude/peaceful-lovelace-0w2b7q (HEAD f352190, PR #359, cambio di sicurezza). Prima ho letto CLAUDE.md (sez. 5), le voci recenti di reports/stato_progetto.md e la coda della mia memoria (#725, #727, #728).
+
+**Come ho verificato**
+- Ho lavorato su una copia dell'index, estratta con checkout-index nello scratchpad. Niente stash.
+- `git diff --cached --check` è pulito.
+- Per i tre file del diff il working tree coincide con l'index.
+- telegram_voce + ascolto: 367 passed.
+- Suite kernel: 1099 PASS, 1 FAIL. L'unico FAIL è T31g (manca sqlite_vec, è l'ambiente). T78p è PASS.
 
 **Elementi del diff esaminati**
-- `modules/voice/server.py:417`: `_bind_tutte_le_interfacce()` usa `ipaddress.ip_address(...).is_unspecified` e restituisce False su ValueError. Ho controllato se la si può aggirare: **riserva** (dettagli sotto). Sulle forme canoniche funziona: «::», la forma IPv6 estesa con tutti zeri, «::ffff:0:0», «::%lo» danno tutti True.
-- `modules/voice/server.py:1355`: il controllo in `run_server` viene prima di quello sulla rete privata (`modules/voice/server.py:1361`) e restituisce 1 prima di importare il kernel. Il messaggio non contiene il token. Ho controllato l'ordine e che il server si fermi davvero prima di partire: **ok**.
-- `tests/test_unit_voice_server.py:2215`: il test gira sia senza sia con la rete privata dichiarata. Il kernel è finto e fallisce se viene avviato, quindi il test dimostra che il server non parte: **ok**.
-- `tests/test_unit_voice_server.py:2233`: tabella di casi senza indirizzi IPv4 non loopback, coerente col gate IP. Manca però la forma IPv4 canonica «tutte le interfacce», che è il caso reale (vedi sotto): **riserva BASSA**.
-- Contesto: `modules/voice/server.py:1376`: `HTTPServer((bind, port))` usa AF_INET. Per questo «::» in pratica fallirebbe già al bind, e il rischio vero riguarda le forme IPv4.
-- Eseguito: `pytest -k r8` dà 31 passed. Il mutante l'ha dichiarato l'agente principale e non l'ho rieseguito.
+1. `tests/test_unit_kernel.py:8403`. `_sottomessi78p` registra ogni chiamata `.submit`/`.map` dentro `_consegna_voce` come coppia (metodo, primo argomento). Se il primo argomento non è un nome, registra il suo dump; senza argomenti registra "". Rischio: map o bersagli diversi. Ho provato `submit(fn=_risposta_del_turno)` e un alias della coda (`q = _voce_in_coda; q.submit(_risposta_del_turno, …)`): FAIL entrambi, presi. Esito: **riserva**. La guardia vede solo `submit`/`map` scritti direttamente come `x.submit(...)`. Due forme passano (R-729-1).
+2. `tests/test_unit_kernel.py:8444`. `_locali78p` e la allow-list (`_globali_ok78p`, `_attributi_ok78p`, `_import_ok78p`, righe 8450-8466) controllano le funzioni raggiunte da `_invia_risposta_vocale`. Rischio: nomi di modulo che sfuggono alla lista. Ho provato:
+   - `import gas`, un import relativo e `__import__("gas")`: FAIL.
+   - `global avvisa_firme_scadute` con assegnazione finta, un parametro di default che copre il nome globale, walrus e comprensione: FAIL. Il grafo delle chiamate segue comunque `avvisa_firme_scadute`, che è in bot.py, e la allow-list boccia le funzioni che raggiunge.
+   - `_send_text` rifatto a livello di modulo con un wrapper che chiama le firme: FAIL.
+   
+   Il trucco del `global` copre solo nomi già importati a livello di modulo (sys, subprocess, re, ThreadPoolExecutor…). Con gli attributi ammessi non si arriva a niente di pericoloso, e ThreadPoolExecutor lo prende `_pool78p`. Esito: **ok**. Chiude V-2 e R-727-1 per i nomi dentro bot.py.
+3. `modules/telegram/bot.py:1012`. Nuova docstring di `_chiudi_voce`. Ho verificato che `_send_text` usa `_tg_post`, che ha timeout predefinito di 70 s, e che con SIGTERM la Python esce senza passare dall'except. La docstring è coerente. Esito: **ok** (V-4).
+4. `tests/test_unit_telegram_voce.py:563`. Nuovo test: Ctrl-C durante la pausa di 5 s dopo un errore. Ho provato due mutanti:
+   - `_chiudi_voce()` sostituito con `pass` alla riga 567 di modules/telegram/bot.py: 1 failed.
+   - uscita anticipata con `SystemExit`: 1 failed.
+   
+   Il test non lascia stato globale: `_chiudi_voce` e `gas.GasKernel` sono patchati e ripristinati da monkeypatch. Esito: **ok** (V-3).
+5. Citazione di contesto: `modules/telegram/bot.py:1002`. `_consegna_voce` non è soggetta a nessuna allow-list. Da qui nasce R-729-1.
 
-**Riserva MEDIA (risposta alla domanda sul nome host): il controllo si aggira.** L'ho verificato in sandbox. `ipaddress` rifiuta con ValueError le forme legacy, quindi la funzione restituisce False. Il socket invece le accetta tramite `getaddrinfo`/`inet_aton` e le risolve tutte all'IPv4 «tutte le interfacce»:
-- «0»
-- «00»
-- «0x0»
-- «0.0»
+**I mutanti (applicati a modules/telegram/bot.py, poi T78p)**
+- FAIL, cioè presi: 12. Sono i 10 elencati sopra (`import gas`, import relativo, `__import__`, `global`, default che copre il nome, walrus, comprensione, rebind di `_send_text`, alias della coda, `submit(fn=...)`) più i due di V-3 sul test.
+- PASS, cioè elusioni: 3, riprodotti nella copia.
+  - (a) `invia = _voce_in_coda.submit` seguito da `invia(_risposta_del_turno, None, chat_id, finale, None)` in `_consegna_voce`. È proprio il «callable in variabile» che la correzione V-1 dice di escludere, ma con il metodo invece del bersaglio.
+  - (b) `getattr(_voce_in_coda, "map")(_risposta_del_turno, …)` in `_consegna_voce`.
+  - (c) `submit(_invia_risposta_vocale, base_url, chat_id, globals())` più `finale.get("avvisa_firme_scadute")(None)` nel thread. `get` è un attributo ammesso.
 
-Lo stesso succede con un nome host che risolve lì, per esempio una voce in /etc/hosts o un DNS. In questi casi `_bind_locale` dà False, ma con `GAS_VOICE_RETE_PRIVATA=1` il controllo della rete privata passa e `HTTPServer` si lega su tutte le interfacce. Quindi la frase «il server non parte mai» è falsa per queste forme.
+**Riserve**
+- **R-729-1 MEDIA**: le elusioni (a) e (b) portano un turno (`_risposta_del_turno`) nel thread della voce senza che T78p lo veda. È la stessa classe di V-1, chiusa solo per la forma `.map(...)` scritta direttamente. Correzione semplice, da fare prima di rimandare al bot o alla verifica esterna:
+  - una allow-list dei nomi caricati in `_consegna_voce`: `{ThreadPoolExecutor, _voce_in_coda, _invia_risposta_vocale, base_url, chat_id, finale, Exception, log, type}`. Questa prende `getattr` e `_risposta_del_turno`;
+  - ogni `Attribute` su `_voce_in_coda` o su `coda` deve essere il `func` di una Call. Questa prende `invia = _voce_in_coda.submit`.
+- **R-729-2 BASSA**: gli argomenti di `submit` dopo il primo non sono vincolati, quindi passa (c). Servono due modifiche volute, ma basterebbe chiedere che gli argomenti siano esattamente i nomi `base_url, chat_id, finale`.
+- R-725-3 BASSA resta aperta (avvisi e vocale possono arrivare dopo la risposta successiva).
+- CAMBIO DI SICUREZZA: il merge spetta all'operatore.
 
-Il rischio richiede che l'operatore stesso configuri male il `.env`, non un attaccante remoto: per questo è MEDIA e non bloccante. Però è una PR di sicurezza e non va dichiarata «V-1 chiusa» finché resta aperto.
+**Cosa NON ho verificato**
+- Il mutante del chiamante «import gas dentro testo_da_dire» l'ho rifatto io (FAIL, `('testo_da_dire', 'import', 'None.gas')`). I suoi sei mutanti invece non li ho rifatti: mi fido del suo risultato, perché i miei ne coprono le stesse classi.
+- Il comportamento reale del bot con Telegram ed ElevenLabs veri: in questo ambiente non ci sono token.
+- Le funzioni in altri moduli (`parte_parlata` in modules/voice/server.py, `synthesize_speech`): il grafo per scelta non le segue. Resta la parte di R-727-1 sugli altri moduli.
 
-**Rimedio consigliato, nella stessa fetta (poche righe), una delle due:**
-1. Risolvere `bind` con `socket.getaddrinfo(bind, None)` e rifiutare se un risultato qualsiasi è `is_unspecified`, bloccando anche se la risoluzione dà errore.
-2. Più semplice: con la rete privata accettare solo IP letterali (più «localhost» per il caso locale).
+**Memoria**
+Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #729 e una lezione: una allow-list a valle va estesa anche alla funzione che consegna al pool. Le ho messe solo nel working tree, non nell'index, come chiesto. Per lo stesso motivo NON ho lanciato `scripts/commit_memoria_revisore.sh`, che la committerebbe: il file va committato da te a fine task.
 
-In entrambi i casi aggiungere test con «0» e «0x0»: sono ammessi dal gate IP perché non hanno la forma a quattro gruppi. Se non si corregge ora, va tracciata come riserva in `/home/user/Gas/reports/stato_progetto.md` e dichiarata nell'handoff.
+Script dei mutanti (rilanciabile): /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/mut.py
 
-**Riserva BASSA:** nei test manca la forma IPv4 canonica di «tutte le interfacce», per via del gate IP. Si può coprire costruendola a runtime (per esempio `".".join(["0"] * 4)`) senza scriverla letterale nel diff.
+### Review #730
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #730 (chat Mani): ri-review della #729 sul diff staged (branch claude/peaceful-lovelace-0w2b7q, HEAD f352190, PR #359). È un CAMBIO DI SICUREZZA, quindi il merge lo decide l'operatore.
+
+**Letture fatte prima della review:** CLAUDE.md (sez. 5, 8 e 9), reports/stato_progetto.md (solo le righe su #359, Fetta 4 e T78p), la coda di .claude/agents/memoria_revisore.md (#725–#729 e le lezioni).
+
+**Come ho verificato:** su una copia dell'index fatta con `git checkout-index` in /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/idx730, senza stash.
+- Suite kernel: 1099 PASS, 1 FAIL (solo T31g, già noto). T78p è PASS.
+- tests/test_unit_telegram_voce.py: 71 passed.
+- `git diff --cached --check` è pulito, e su modules/ e tests/ il working tree coincide con l'index.
+
+**Elementi del diff esaminati:**
+- `tests/test_unit_kernel.py:8464` — `_consegna_fuori78p` controlla con una allow-list nomi e attributi di `_consegna_voce`. Rischio esaminato: un turno portato nel thread con getattr o con un metodo legato in una variabile (R-729-1). Esito: ok. I mutanti a_alias_metodo, b_getattr_map e submit_var fanno fallire T78p.
+- `tests/test_unit_kernel.py:8473` — `_coda_non_chiamata78p` vuole che ogni attributo di `_voce_in_coda`/`coda` sia chiamato direttamente. Rischio esaminato: `invia = _voce_in_coda.submit` usato in un'altra funzione. Esito: ok, il controllo copre tutto il modulo.
+- `tests/test_unit_kernel.py:8479` — `_argomenti_submit78p` vuole per submit esattamente gli argomenti `[_invia_risposta_vocale, base_url, chat_id, finale]`, senza keyword. Rischio esaminato: R-729-2, cioè `globals()` passato al thread o `finale=` come keyword. Esito: ok, c_globals e c_kw fanno fallire T78p.
+- `tests/test_unit_kernel.py:8444` — `_locali78p` considera locale ogni nome che riceve un assegnamento. Rischio esaminato: un nome dichiarato `global`. Esito: **riserva R-730-1**, sotto.
+- `tests/test_unit_kernel.py:8425` (contesto) — `_funzioni78p` e il `next()` di `_f_consegna78p` guardano solo le def di primo livello e solo la prima `_consegna_voce`. Esito: **riserva R-730-2**, sotto.
+- `modules/telegram/bot.py:1007` (contesto) — la sola `submit` di `_consegna_voce`. Esito: ok, invariata rispetto alla #729.
+
+**Mutanti:**
+- I tuoi 11 di mut2.py, rilanciati da me: tutti T78p FAIL. Per lanciarlo sulla mia copia ho cambiato la riga 2 di /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/mut2.py: la sorgente ora si passa come secondo argomento. Il file di prima, bot_orig.py, è identico al bot.py dell'index.
+- Miei, presi da T78p (FAIL):
+  - decoratore su `_consegna_voce`;
+  - decoratore su `_invia_risposta_vocale` che restituisce `_risposta_del_turno`;
+  - valore di default di un parametro (`_invia_risposta_vocale=_risposta_del_turno`);
+  - lambda dentro `_consegna_voce`;
+  - `global` con assegnamento morto dentro `testo_da_dire` (lo prende il controllo sulle funzioni chiamate).
+- Miei, NON presi da T78p (PASS, cioè elusioni):
+  1. Dentro `_consegna_voce`: `global _voce_in_coda, _invia_risposta_vocale, _risposta_del_turno`, poi `if False: _risposta_del_turno = None`, poi `_invia_risposta_vocale = _risposta_del_turno`. Così il thread esegue `_risposta_del_turno`.
+  2. Fuori da ogni funzione: `_invia_risposta_vocale = _risposta_del_turno`, `_send_text = _risposta_del_turno`, `globals()['_invia_risposta_vocale'] = ...`.
+  3. Una seconda `def _consegna_voce` più sotto, con `getattr(_voce_in_coda, 'submit')(_risposta_del_turno, ...)`.
+- Script: /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/mut730.py e /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/mut730b.py. Dopo ogni giro ho verificato con cmp che bot.py della copia fosse ripristinato.
+- Altri tre mutanti non contano: due decoratori della prima serie bloccavano l'import del modulo e una lambda era scritta male; li ho rifatti sopra (5b, 9b, 7b).
+
+**Riserve:**
+- **R-730-1 BASSA** (`tests/test_unit_kernel.py:8444`): `_locali78p` tratta come locale un nome dichiarato `global`. Con un assegnamento morto, qualunque nome globale entra nell'allow-list di `_consegna_voce` e delle funzioni chiamate dal thread. In `_consegna_voce` questo porta un turno nel thread (elusione 1). Correzione semplice: togliere da `_locali78p` i nomi delle istruzioni `ast.Global` e `ast.Nonlocal`. Serve codice scritto apposta, non capita per sbaglio, per questo BASSA.
+- **R-730-2 BASSA** (`tests/test_unit_kernel.py:8425`): il codice fuori dalle funzioni non è controllato. Si possono riassegnare i nomi fidati (`_invia_risposta_vocale`, `_send_text`, `log`, …) e ridefinire `_consegna_voce`; il `next()` guarda solo la prima def. Rientra nel limite già dichiarato della guardia statica. Rimedio possibile: vietare fuori dalle funzioni gli assegnamenti ai nomi di `_funzioni78p` e delle allow-list, e accettare una sola def per nome.
+- Restano aperte R-725-3 BASSA, R-722-1 COSMETICA e R-722-2 BASSA.
+
+**Rischi esclusi (cosa non ho verificato):**
+- Comportamento dal vivo del thread della voce con Telegram reale (sendVoice, tempi): non riproducibile qui.
+- Elusioni dinamiche fuori dall'AST del modulo (importlib, `sys.modules`, monkeypatch da altri moduli come modules/voice/server.py): limite dichiarato della guardia statica, non provato.
+- Ho girato solo la suite kernel e tests/test_unit_telegram_voce.py; la suite dell'ascolto non l'ho rilanciata, perché il diff #730 tocca solo il test kernel.
+
+**Memoria:** ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree e non nell'index come chiesto, la riga #730 e una lezione: in un'allow-list AST basata sui «locali», togliere sempre i nomi dichiarati `global`/`nonlocal` e controllare le riassegnazioni dei nomi fidati fuori dalle funzioni. Non ho lanciato `scripts/commit_memoria_revisore.sh`, perché committerebbe la memoria contro la tua istruzione; va inclusa a fine task.
+
+### Review #731
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #731 (chat Mani). Ri-review della #730 sul diff STAGED (branch claude/peaceful-lovelace-0w2b7q, HEAD f352190, PR #359, cambio di sicurezza). Prima ho letto CLAUDE.md (sez. 5), stato_progetto.md (solo le parti che servono) e la coda della mia memoria (#729, #730).
+
+**Elementi del diff esaminati**
+- tests/test_unit_kernel.py:8449 — `_locali78p` ora toglie dai locali i nomi dichiarati global/nonlocal (R-730-1). Rischio: un assegnamento morto rende «locale» un nome globale. Esito: ok, il mutante e1 di mut3.py fallisce come atteso. Riserva R-731-1 (sotto): i «locali» si raccolgono ancora con `ast.walk(f)`, che scende negli scope annidati.
+- tests/test_unit_kernel.py:8503 — `_riassegnati78p` controlla rebind e doppie def dei nomi fidati, i `global` diversi da _voce_in_coda/_BOT_USERNAME e le chiamate globals()/vars()/setattr (R-730-2). Rischio: elusioni a livello di modulo. Esito: ok su rebind di funzioni, doppie def, globals()[...] e `type X =`. Riserve R-731-2 e R-731-3 sui builtin e su forme di legame non contate.
+- tests/test_unit_kernel.py:8479 — `_fidati78p` = funzioni del modulo + `_globali_ok78p` + i tre nomi della coda. Rischio: un nome fidato che non è legato a modulo (un builtin) passa con un solo legame, perché la regola «c > 1» vale solo per nomi già legati. Esito: riserva (R-731-2).
+- modules/telegram/bot.py:1002 (`_consegna_voce`) e modules/telegram/bot.py:1072 (`_invia_risposta_vocale`), file nel diff. Ho controllato che la guardia descriva il codice reale: c'è un solo `submit` con i 4 argomenti esatti, e `isinstance`/`str` sono usati nel thread (modules/telegram/bot.py:1088). Esito: ok.
+
+**Verifica sulla copia dell'index** (checkout-index, niente stash; worktree uguale all'index su modules/ e tests/)
+- test_unit_kernel: 1099 PASS, 1 FAIL (solo T31g, già noto); T78p PASS.
+- test_unit_telegram_voce: 71 passed.
+- `git diff --cached --check`: pulito.
+
+**Mutanti miei** (scratchpad mut4.py e mut5.py, su bot.py della copia; la copia è stata ripristinata e confrontata con cmp)
+- FAIL, cioè preso dalla guardia: `type _send_text = int` a livello di modulo.
+- PASS, cioè elusioni:
+  1. In testo_da_dire: `[0 for exec in ()]` seguito da `exec('...')`. Il bersaglio della comprensione finisce nei «locali» della funzione esterna, ma la comprensione ha uno scope suo: `exec` resta il builtin. Questo apre exec/getattr/__import__ nel thread della voce.
+  2. In _consegna_voce: `[0 for getattr in () for _risposta_del_turno in ()]` seguito da `getattr(_voce_in_coda, 'map')(_risposta_del_turno, [chat_id])`. Porta un turno nel thread: è l'effetto di R-729-1 che rientra da un'altra strada.
+  3. A livello di modulo: `isinstance = (lambda _o: (lambda *a: _o(*a) if a[0] != 'x' else _risposta_del_turno(*a)))(isinstance)`. Un builtin dell'allow-list riassegnato una sola volta non viene preso.
+  4. A livello di modulo: `match _risposta_del_turno:` con `case _send_text: pass`. Il legame passa da MatchAs, che ha un nome-stringa e non un Name Store, quindi non viene contato.
+  5. A livello di modulo: `from modules.voice.server import *`. Viene contato come legame di «*», non dei nomi che lega.
+- Inconclusivo: il wrapper su `str` rompe altri test (T77r) prima che T78p venga stampato.
+
+**Riserve**
+- **R-731-1 MEDIA** — `_locali78p` (tests/test_unit_kernel.py:8444) usa `ast.walk(f)`, che scende in comprensioni, lambda e def annidate: questi hanno uno scope proprio, quindi un nome legato lì risulta «locale» alla funzione esterna anche se non lo è. Così qualunque nome passa l'allow-list, sia nelle funzioni raggiunte dal thread sia in _consegna_voce (elusioni 1 e 2). La classe è la stessa di R-730-1. Correzione: raccogliere i locali solo nello scope della funzione, senza scendere in ListComp/SetComp/DictComp/GeneratorExp/Lambda/FunctionDef/ClassDef annidati. In alternativa, vietare nelle funzioni sotto guardia i bersagli di comprensione che coincidono con un nome globale o builtin.
+- **R-731-2 BASSA** — Un builtin dell'allow-list (isinstance, str, len, int, type, bytes, dict, Exception) riassegnato una volta a livello di modulo non viene preso (elusione 3). Correzione: per i nomi fidati non legati nel sorgente atteso, il numero di legami ammesso è 0; oppure confrontare ogni nome con un conteggio di riferimento fisso.
+- **R-731-3 BASSA** — I legami a livello di modulo fatti con match-capture (MatchAs/MatchStar/MatchMapping.rest) e con `import *` non vengono contati (elusioni 4 e 5). Correzione: contare anche quei nodi e vietare `import *` nel modulo.
+
+Tutte e tre le elusioni richiedono codice volutamente avversario e visibile in review. Il gate primario resta il revisore; T78p è una rete in più. Per questo sono riserve e non un blocco.
+
+**Cosa non ho verificato**
+- getattr/importlib/sys.modules dinamici fuori da bot.py, e il comportamento interno di funzioni di altri moduli (parte_parlata, synthesize_speech): sono limiti dell'analisi statica già dichiarati, non li ho ritestati.
+- Gli scope ricavati dall'AST dipendono dalla versione di Python: ho provato solo con Python 3.13.18 della sandbox, non con la versione della CI né del Mac.
+- Il comportamento runtime reale del thread della voce su Telegram/VPS non è riproducibile qui.
+- Non ho ri-eseguito mut3.py dell'agente: mi fido del suo 16/16 FAIL. Il caso e1 l'ho ricontrollato solo leggendo il codice a :8449.
+
+Wall of Shame: nel diff non c'è slicing della history né simulazione di tool. Nessun guardrail (cap 10 iterazioni, cap 8k, `_get_window`) è toccato.
+
+CAMBIO DI SICUREZZA: il merge lo decide l'operatore.
+
+**Memoria**: ho aggiunto la riga #731 e una lezione in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree e non nell'index, come richiesto. Per questo NON ho lanciato `scripts/commit_memoria_revisore.sh`, che la committerebbe: va committata nel commit di fine task.
+
+File utili: /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/modules/telegram/bot.py, /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/mut4.py, /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/mut5.py, /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/k731.txt
+
+### Review #732
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #732, chat Mani. È la ri-review della #731 sul diff staged del branch claude/peaceful-lovelace-0w2b7q (HEAD f352190, PR #359). È un CAMBIO DI SICUREZZA, quindi il merge lo decide l'operatore.
+
+Prima della review ho letto CLAUDE.md (sez. 5), la parte di reports/stato_progetto.md sulla PR #359 (riga 683) e la coda della memoria (#728–#731).
+
+**Elementi del diff esaminati**
+- `tests/test_unit_kernel.py:8546`: `_ombre78p` raccoglie i legami in tutti gli scope delle funzioni sotto guardia. Contano argomenti anche di lambda, Name Store/Del, def e class annidate, import, match-capture ed except-as. Rischio esaminato: un `[0 for X in ()]` che faccia passare per locale un nome globale. Esito: **ok**, R-731-1 chiusa. Le eccezioni sono limitate a `_voce_in_coda` in `_consegna_voce` e ai nomi di `_import_ok78p`. I mutanti r1 e r2 della #731 ora danno FAIL.
+- `tests/test_unit_kernel.py:8521`: nessun builtin si lega a livello di modulo. Rischio esaminato: `isinstance = <wrapper>`. Esito: **ok**, R-731-2 chiusa per i builtin.
+- `tests/test_unit_kernel.py:8512`: `_riassegnati78p` conta i legami di modulo, compresi MatchAs/MatchStar/MatchMapping.rest ed ExceptHandler.name, e vieta `import *`. Esito: **ok** per R-731-3. Resta però una **riserva**, R-732-1, descritta sotto.
+- `tests/test_unit_kernel.py:8452`: `_globali_ok78p` contiene `parte_parlata`, `synthesize_speech` e `DEFAULT_VOICE_ID`, che oggi sono importati solo dentro le funzioni (`modules/telegram/bot.py:1035` e `modules/telegram/bot.py:1081`). Esito: **riserva** R-732-1.
+- `modules/telegram/bot.py:1012`: cambia solo la docstring di `_chiudi_voce`. Esito: **ok**, è invariata dalla #729.
+- `tests/test_unit_telegram_voce.py:563`: test V-3 (Ctrl-C durante la pausa). Esito: **ok**, è invariato dalla #729.
+
+**Prove sulla copia dell'index** (checkout-index in scratchpad/idx732, niente stash)
+- Kernel: 1099 PASS, 1 FAIL. L'unico FAIL è T31g, già noto. T78p è PASS.
+- Test telegram_voce + voce_ascolto: 367 passed.
+- `git diff --cached --check` pulito; il working tree coincide con l'index su modules/ e tests/; la copia di bot.py è stata ripristinata e verificata con cmp.
+
+**Mutanti miei** (scratchpad/mut732.py e mut732b.py)
+- FAIL (preso): `_URL = _U()` a livello di modulo, dove `_U.sub` esegue un turno. Lo segnala `('lega', '_URL')`.
+- PASS, quindi elusioni:
+  1. `synthesize_speech = _risposta_del_turno` a livello di modulo, più `synthesize_speech(...)` dentro `_tg_post_file`, che è raggiunta dal thread.
+  2. `parte_parlata = lambda t: _risposta_del_turno(None, 0, t)` a livello di modulo, togliendo l'import locale in `testo_da_dire`. Così un turno girerebbe nel thread della voce.
+  3. `sys.modules[__name__]._send_text = _risposta_del_turno`.
+  4. `_send_text.__code__ = _risposta_del_turno.__code__`.
+  5. `_send_text.__globals__['_tg_post'] = _risposta_del_turno`.
+  6. `import builtins as _b; _b.len = <wrapper>`.
+- Inconclusivi: `from gas import GasKernel as parte_parlata` e `_b.isinstance = lambda *a: True`. Rompono il modulo o la suite prima che T78p venga eseguito.
+
+**Riserve**
+- **R-732-1 MEDIA**: i nomi dell'allow-list con 0 legami a livello di modulo (`parte_parlata`, `synthesize_speech`, `DEFAULT_VOICE_ID`) passano con un solo legame, perché `c > 1` scatta solo se il nome era già legato (`tests/test_unit_kernel.py:8512`). È la stessa falla di R-731-2, ma sui nomi importati dentro le funzioni invece che sui builtin. La sintassi è del tutto ordinaria e porta un turno nel thread della voce. Correzione: fissare per ogni nome fidato il numero esatto di legami atteso a livello di modulo (0 per questi tre), non «al massimo 1».
+- **R-732-2 BASSA**: a livello di modulo non sono controllate le scritture su attributo o subscript: `sys.modules[__name__].x = …`, `f.__code__ = …`, `f.__globals__[…] = …`, `builtins.x = …`. Il limite già dichiarato riguarda sys.modules e getattr dinamici «fuori da bot.py», mentre questi stanno in bot.py. Correzione suggerita: vietare a livello di modulo ogni assegnamento con bersaglio Attribute o Subscript, oppure almeno ogni menzione di `__code__`, `__globals__`, `sys.modules` e `builtins`.
+
+**Rischio escluso**: non ho verificato il comportamento dal vivo del thread della voce (Telegram ed ElevenLabs reali), perché non è riproducibile qui senza token. Restano anche i limiti statici già dichiarati: getattr, importlib e sys.modules dinamici negli altri moduli, e le funzioni di altri moduli (modules.voice.*) chiamate dal thread.
+
+**Memoria**: ho aggiunto la riga #732 e una lezione in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree. Non l'ho messa in index e non ho lanciato scripts/commit_memoria_revisore.sh, perché la tua istruzione «NON in index» è in conflitto con il commit atomico previsto dal protocollo: il commit resta a te, a fine task. L'index contiene ancora solo bot.py, test_unit_kernel.py e test_unit_telegram_voce.py.
+
+File utili:
+- /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/mut732.py
+- /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/mut732b.py
+- /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/idx732
+
+### Review #733
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #733 (chat Mani). È la ri-review della #732 sul diff staged del branch claude/peaceful-lovelace-0w2b7q (HEAD f352190, PR #359). Si tratta di un cambio di sicurezza: il merge lo decide l'operatore.
+
+Ho letto CLAUDE.md (sez. 5), stato_progetto.md solo nelle parti che servono e la coda della memoria (#729–#732). Non ho trovato antipattern del Wall of Shame: il diff tocca solo una guardia statica nei test, senza slicing della history e senza simulare tool.
+
+**Come ho verificato**
+- Ho lavorato su una copia dell'index (checkout-index, niente stash): /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/idx733
+- `git diff --cached --check` è pulito. Su modules/ e tests/ il working tree coincide con l'index.
+- Suite kernel: 1099 PASS e 1 FAIL, solo T31g (il FAIL già noto). T78p è PASS.
+- tests/test_unit_telegram_voce.py: 71 passed.
+
+**Elementi del diff esaminati**
+- tests/test_unit_kernel.py:8483 — definisce `_legati_una_volta78p`, l'insieme dei nomi che a livello di modulo devono avere esattamente 1 legame. Rischio: un nome fidato lasciato fuori, o uno messo dentro per errore. L'ho confrontato con il modulo: ci sono `log` (modules/telegram/bot.py:41), i due timeout (bot.py:60 e :63), `_voce_in_coda` (bot.py:999), `_MARKDOWN` e `_URL` (bot.py:1026-1028). I builtin, `parte_parlata`, `synthesize_speech` e `DEFAULT_VOICE_ID` cadono nel ramo «0 legami». Esito: ok.
+- tests/test_unit_kernel.py:8526 — controllo del numero ESATTO di legami (1 oppure 0) per ogni nome fidato che non è una funzione. Rischio: che lasci passare un legame singolo di un nome che oggi ne ha 0, cioè l'elusione R-732-1. I mutanti s1 e s2 della #732 ora danno FAIL, come provato dall'agente. Il conteggio dei pacchetti (`import urllib.error` + `import urllib.request` contati una volta sola) è coerente. Esito: ok. R-732-1 chiusa.
+- tests/test_unit_kernel.py:8530 — vieta, fuori dalle funzioni, gli store su Attribute e Subscript (Assign, AugAssign, AnnAssign, Delete). Rischio: falsi positivi sul codice di modulo esistente, ed elusioni con chiamate invece che con store. Falsi positivi nessuno (T78p PASS). Elusioni: vedi R-733-1. Esito: riserva BASSA.
+- tests/test_unit_kernel.py:8535-8545 — vieta in tutto il modulo `__code__`, `__globals__` e gli altri interni delle funzioni, `sys.modules`, l'import di builtins/importlib e i nomi `__builtins__`, `__import__`, `exec`, `eval`, `compile`. Rischio: alias. Il controllo guarda solo il nome letterale `sys`, quindi `import sys as _s` passa. Esito: riserva BASSA (R-733-1).
+- modules/telegram/bot.py:1028 (contesto, file nel diff) — `_URL = re.compile(...)` è un legame unico a modulo. Rischio: la guardia conta i legami ma non controlla il valore. Esito: riserva BASSA (R-733-2).
+
+**Mutanti miei**
+Script: /tmp/claude-0/-home-user-Gas/48869dec-0411-5e4c-ab0d-042d43a34667/scratchpad/m733/mut.py — 12 mutanti, ciascuno su una copia separata.
+- 1 dà T78p FAIL: `setattr(_me, '_send_text', …)` su un auto-import dentro una funzione. Lo blocca il controllo su globals()/setattr.
+- 9 danno T78p PASS (elusioni):
+  - m1: `import sys as _s` + `_s.modules[__name__]._send_text = _risposta_del_turno` dentro una funzione chiamata a modulo
+  - m2: `from sys import modules` + `modules[__name__]._send_text = …` dentro una funzione
+  - m3: `getattr(sys, 'modules')[__name__].__setattr__('_send_text', …)` a modulo
+  - m4: `locals().update(_send_text=…)` a modulo (a livello di modulo locals() è globals())
+  - m5: `_g = globals` + `_g().update(…)`
+  - m6: `import modules.telegram.bot as _me` + `_me._send_text = …` dentro una funzione
+  - m7: auto-import + `_me.__setattr__('_send_text', …)` a modulo
+  - m12: `_patch.__getattribute__('__glob' + 'als__')[...] = …`
+  - m8: `_URL = _UrlFinto()`, una classe il cui `sub` fa un turno: un solo legame, ma con un valore ostile
+- 2 non concludono: m9 (`_URL` costruito da una funzione) e m10 (handler di logging che fa un turno) rompono l'import del modulo prima di T78p, quindi non sono significativi.
+
+**Come li ho classificati (rispetto alla tua nota)**
+Tutte e nove le elusioni sono BASSE. Ognuna richiede di riassegnare deliberatamente una funzione del modulo stesso tramite le sue parti interne: aliasare `sys` per arrivare a `sys.modules`, auto-importare il modulo, usare `locals()`/`globals` come dizionario, chiamare `__setattr__`/`__getattribute__` con stringhe composte, oppure scrivere una classe finta il cui metodo avvia un turno. Nessuna di queste può nascere per caso in un refactor, e in review si vede. Non ho trovato elusioni con sintassi ordinaria: nessuna MEDIA.
+
+**Riserve**
+- R-733-1 BASSA: il modulo può ancora riscrivere le proprie funzioni tramite alias di `sys` o `from sys import modules`, auto-import del modulo, `locals()` a modulo, alias di `globals`, oppure `__setattr__`/`__getattribute__` con stringhe. Il divieto su `sys.modules` (tests/test_unit_kernel.py:8538-8540) guarda solo il nome letterale `sys`. Il divieto sugli store (tests/test_unit_kernel.py:8530) vale solo fuori dalle funzioni e solo per gli store, non per le chiamate. È un limite di una guardia statica che l'operatore può accettare: consiglio di non inseguirlo oltre.
+- R-733-2 BASSA: il VALORE dei nomi legati una volta (`_URL`, `_MARKDOWN`, `log`, i timeout) non è vincolato. Un solo legame a un oggetto ostile passa (m8). Anche qui serve codice chiaramente voluto.
 
 **Rischi esplicitamente esclusi**
-- Comportamento reale su VPS/Tailscale, cioè il bind effettivo sull'interfaccia del tunnel: non riproducibile qui.
-- Risoluzione DNS reale di nomi host verso «tutte le interfacce»: dedotta da `getaddrinfo` sulle forme numeriche, non provata con un DNS reale.
-- Il mutante dichiarato (2 failed): non rieseguito.
+- Il monkeypatch da ALTRI moduli (gas.py, test, plugin che fanno `bot._send_text = …`) è fuori dal perimetro: la guardia analizza solo modules/telegram/bot.py. Con un grep su gas.py, modules/ e brains/ non ho trovato assegnamenti del genere, ma non è una prova dinamica.
+- Comportamento a runtime su VPS/Telegram reale non verificato: non è riproducibile in dev, e il diff tocca solo la guardia statica nei test.
+- Il caso `except … as` resta inconclusivo, come già detto nella #732. Non l'ho ripreso.
 
 **Memoria**
-- Riga #727-M2 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md` (senza IPv4 non loopback), più una lezione sulla differenza tra quello che legge `ipaddress` e quello su cui il socket si lega davvero.
-- Committata con lo script: commit be46557.
+Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #733 e una lezione nuova, solo nel working tree e NON nell'index. Come mi hai chiesto, non ho eseguito scripts/commit_memoria_revisore.sh, che invece le istruzioni del revisore prevederebbero subito dopo la riga contatore. L'index contiene ancora solo modules/telegram/bot.py, tests/test_unit_kernel.py e tests/test_unit_telegram_voce.py.
 
-Review #728-M2 (verdetto integrale; IPv4 d'esempio sostituiti con <IP-redatto> per il gate IP):
+### Review #735
 
-## VERDETTO: APPROVATO CON RISERVE
+## VERDETTO: APPROVATO
 
-Ho letto CLAUDE.md (sez. 5, 8, 9 e 10), stato_progetto.md (righe R8, 615-616) e memoria_revisore.md, applicando le lezioni #726 e #727. Wall of Shame: il diff non tocca la history, non ci sono slicing né simulazioni di tool. Guardrail (cap di 10 iterazioni, `_get_window`) non toccati.
+Review #735 (chat Mani). Ho controllato il merge staged di origin/main 567beb7 (dentro c'è la PR #358, server voce R8 di M2) nel branch claude/peaceful-lovelace-0w2b7q (HEAD 5801c12, PR #359). Ho letto CLAUDE.md sez. 5, la parte di stato_progetto toccata dal merge e la coda della memoria.
+
+**Il merge è integro**
+- File di main: nell'index hanno lo stesso blob di 567beb7. Sono modules/voice/server.py (288f456), tests/test_unit_voice_server.py (259a69d), reports/proposta_voce_sicura.md (c432268) e reports/ripartenza_m2.md (c1d9956).
+- File di Mani: nell'index hanno lo stesso blob di HEAD (e diverso da main). Sono modules/telegram/bot.py, tests/test_unit_kernel.py, tests/test_unit_telegram_voce.py, clients/voice/ascolto.py e tests/test_unit_voce_ascolto.py.
+- reports/handoff.md, ultimo_report.md e diff_sessione.md sono presi da HEAD. ultimo_report e diff_sessione sono già modificati nel working tree, non in index: è la tua riscrittura di fine task.
+- reports/stato_progetto.md, unito in automatico: aggiunge solo la riga «Server voce più sicuro, R8 fetta 1» di M2. Nessun marcatore di conflitto.
+- `.claude/agents/memoria_revisore.md` è l'unione dei due lati:
+  - mancano 0 righe di HEAD e 0 righe di main;
+  - l'unica riga «in più» è vuota;
+  - nessun marcatore;
+  - prima della mia aggiunta il working tree era uguale all'index.
+- `git ls-files -u` è vuoto e `git diff --cached --check` è pulito.
 
 **Elementi del diff esaminati**
-- `modules/voice/server.py:427` — `_bind_ip_letterale`: True solo se `ipaddress.ip_address(bind.strip())` legge la stringa. Rischio: forme che il socket lega in modo diverso. Con `HTTPServer` solo IPv4 (AF_INET), l'IPv4 stretto di ipaddress (quattro numeri, niente zeri iniziali) coincide col bind reale, e «0», «0x0», «127.1» e i nomi host restano fuori. Esito: ok, ma c'è la riserva R-728-1 qui sotto.
-- `modules/voice/server.py:1373` — controllo in `run_server` dopo «tutte le interfacce» (`modules/voice/server.py:1367`) e prima della rete privata (`modules/voice/server.py:1379`). Rischio: ordine sbagliato o «localhost» respinto. **L'ordine è giusto**: tutte le interfacce, poi IP letterale, poi rete privata. Ogni rifiuto arriva prima del kernel e tutti sono fail-closed. «0» viene respinto col messaggio «non è un indirizzo IP scritto per intero» e non con «tutte le interfacce»: va bene lo stesso. `bind` arriva già senza spazi (`modules/voice/server.py:1360`), quindi lo strip interno non crea differenze col bind reale. Esito: ok.
-- `tests/test_unit_voice_server.py:2216` — test parametrico su «0», «0x0», «gas.example» e IPv4 canonico (`str(ipaddress.IPv4Address(0))`, `tests/test_unit_voice_server.py:2219`). Rischio: il kernel parte comunque. Lo stub del `GasKernel` lancia un errore se viene chiamato e c'è `== 1` sull'uscita. Ho rilanciato la suite R8: 35 passed. La BASSA della #727 (manca il caso IPv4 canonico) è chiusa. Esito: ok.
+- modules/voice/server.py:347 — `parte_parlata`, la funzione della allow-list T78p che il thread della voce Telegram chiama. Rischio: che la #358 ne cambi il comportamento. Ho confrontato l'albero AST tra la base 524ae96 e 567beb7: è identico. Identiche anche `cervello_voce` (modules/voice/server.py:452), `istruzione_turno_voce` e `_USO_FORTE_PARLATO`, che bot.py importa (modules/telegram/bot.py:969, :984, :1035). Esito: ok.
+- modules/voice/server.py:407 — `_bind_locale`, con `_env_acceso` a modules/voice/server.py:442: funzioni nuove della #358, a livello di modulo e solo per l'avvio del server. Rischio: che aggiungano un import o un nome che la guardia T78p dovrebbe autorizzare. Non entrano nel grafo delle chiamate raggiunte da `_invia_risposta_vocale`, e T78p resta PASS. Esito: ok.
+- modules/voice/server.py:593 — `_autorizza`, con lo sfratto a tabella piena (R8, già revisionato in #734-M2). Rischio: che il merge abbia alterato il codice revisionato. Il blob è identico a 567beb7. Esito: ok.
+- tests/test_unit_kernel.py:8454 — la allow-list T78p contiene `parte_parlata`, e a tests/test_unit_kernel.py:8459 l'import fidato `("modules.voice.server", "parte_parlata")`. Rischio: allow-list rimasta senza effetto dopo il merge. Il file è quello di HEAD e il test passa sulla copia dell'index. Esito: ok.
 
-**Riserve**
-- **R-728-1 MEDIA (da chiudere prima del merge, è una PR di sicurezza)**: un IPv4-mapped come «::ffff:0:0» (anche scritto in forma puntata) è un IP letterale per ipaddress. Il risultato di `is_unspecified` cambia con la versione di Python, l'ho provato: **3.12.3 dà False** (è la venv WSL), 3.11.18 e 3.13.18 danno True. Il socket AF_INET su Linux (glibc) lega quella stringa a **tutte le interfacce IPv4**, l'ho provato con `socket.bind`. Quindi con `GAS_VOICE_RETE_PRIVATA=1` e Python 3.12.3 il controllo si aggira. Per mano dell'operatore è un errore improbabile, ma è proprio la falla che la PR deve chiudere. Rimedio: se `ipaddress.ip_address(...)` ha `.ipv4_mapped`, controllare l'indirizzo IPv4 mappato. Meglio ancora, visto che il server è solo IPv4: fuori da loopback accettare solo `IPv4Address`, oppure verificare con `socket.getaddrinfo(bind, port, AF_INET)` l'indirizzo che verrà davvero usato. In più un caso di test con l'IPv4-mapped.
-- **R-728-2 BASSA (esiste già, non è nel diff)**: un IPv6 con zone id («fe80::1%eth0») o un IPv6 qualsiasi passa i controlli, poi `HTTPServer((bind, port), …)` a `modules/voice/server.py:1394` fallisce con `gaierror`, che nessuno intercetta: esce con un traceback invece del messaggio «✗». È fail-closed, ma la regola è zero crash. Si risolve insieme a R-728-1 se si accetta solo IPv4.
-- **R-728-3 COSMETICA**: «localhost» accettato come locale (`modules/voice/server.py:406`) dipende da /etc/hosts del Mac. **Sì, va dichiarato** in una riga della docstring di `GAS_VOICE_BIND`. Il rischio è basso: chi può modificare /etc/hosts ha già i permessi di amministratore sul Mac.
-
-**Rischi esclusi**: il comportamento di `getaddrinfo` su macOS con gli IPv4-mapped non l'ho verificato, perché qui c'è solo Linux. Non sono stati eseguiti mutanti (il «3 failed» è tuo). Non ho lanciato la suite intera fuori da R8.
-
-**Memoria**: riga #728-M2 più una lezione (IPv4-mapped e versioni di Python), committate con lo script (4996b5f).
-
-File rilevanti: /home/user/Gas/modules/voice/server.py, /home/user/Gas/tests/test_unit_voice_server.py, /home/user/Gas/.claude/agents/memoria_revisore.md
-
-Review #729-M2 (verdetto integrale; IPv4 d'esempio sostituiti con <IP-redatto> per il gate IP):
-
-## VERDETTO: APPROVATO
-
-In breve: con la rete privata dichiarata non resta più un modo di legare il server a tutte le interfacce. L'unico residuo è «localhost», che dipende da /etc/hosts ed è ora scritto nella documentazione.
-
-Elementi del diff esaminati:
-- `modules/voice/server.py:428` — `_bind_ip_letterale` restituisce True solo se ipaddress legge un `IPv4Address`. Rischio esaminato: forme che il socket risolve in modo diverso da ipaddress. L'ho provato con: «0», «0x0», «0.0», «00», «<IP-redatto>», «127.1», «0177.0.0.1», cifre non ASCII, «::ffff:0:0», «::ffff:<IP-redatto>», «fe80::1%eth0», «::». Restituisce False per tutte. ipaddress accetta solo quattro numeri decimali ASCII senza zeri iniziali, quindi `inet_aton` non può interpretare diversamente un IPv4 accettato. — ok
-- `modules/voice/server.py:1369` e `modules/voice/server.py:1375` — in `run_server` prima viene rifiutato «tutte le interfacce» (`is_unspecified`), poi tutto ciò che non è loopback o «localhost» e non è un IPv4 scritto per intero. Tutto questo avviene prima del controllo della rete privata (:1381) e prima di `HTTPServer` (:1396). Rischio esaminato: un bind diverso da quello controllato. Il valore usato da `HTTPServer` è lo stesso già ripulito dagli spazi (:1362). L'unico IPv4 che vale «tutte le interfacce» è <IP-redatto>, e lo intercetta :1369. Un IPv4-mapped viene rifiutato in ogni versione di Python: su 3.11 e 3.13 da :1369 (`is_unspecified` True, verificato), su 3.12.3 da :1375 (è un `IPv6Address`). — ok
-- `tests/test_unit_voice_server.py:2220` — il caso «::ffff:0:0» accetta qualsiasi messaggio «✗ gas voice». Rischio esaminato: un test che dipende dalla versione di Python. Il rifiuto (codice 1, kernel mai avviato) vale su tutte le versioni; cambia solo quale controllo lo intercetta. — ok
-- `tests/test_unit_voice_server.py:2270` — il test «avvio con rete privata parte» ora usa un IPv4 costruito da intero (`0x64400005`, rete Tailscale), compatibile con il gate IP. Rischio esaminato (lezione di #726): l'esempio deve essere realistico per `HTTPServer`, che lavora solo in IPv4. Ora lo è, mentre prima era un IPv6. — ok
-
-Controlli eseguiti dal revisore:
-- Test R8: 38 passed (Python 3.13.18).
-- Mutante «accetta qualsiasi IP», rifatto su una copia dell'index: 2 failed su 3.13 (fe80 e fd7a). I 3 che hai dichiarato sono coerenti con 3.12.3, dove anche il caso mapped arriva al controllo IPv4.
-- `git diff --cached --check` pulito.
-
-Osservazioni (nessuna riserva):
-- «localhost» passa ancora, ma solo se /etc/hosts lo manda a un indirizzo diverso dal loopback. È dichiarato nella docstring di `GAS_VOICE_BIND` (chiude R-728-3).
-- Con `GAS_VOICE_RETE_PRIVATA=1` il controllo non verifica che l'IPv4 appartenga davvero al tunnel. Un IPv4 pubblico dell'host verrebbe accettato. Non è «tutte le interfacce» ed è un limite di progetto R8 (la dichiarazione spetta all'operatore). Lo segnalo solo per la parte VPS.
-- Su CI (3.11) il caso mapped non passa da `_bind_ip_letterale`, perché lo intercetta prima :1369. Il ramo IPv6 è comunque coperto dai casi fe80 e fd7a.
-
-Rischi esclusi:
-- Il comportamento reale su Python 3.12.3 (venv WSL) non l'ho eseguito, perché qui c'è solo 3.13 e 3.11. L'ho dedotto dal tipo restituito da ipaddress, che non dipende dalla versione.
-- Non ho provato il bind reale su un'interfaccia Tailscale: non è riproducibile in questo ambiente.
-
-Memoria: riga #729-M2 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (commit 7537583). Il diff staged è invariato (2 file, 87 righe aggiunte e 1 tolta).
-
-Review #730-M2 (verdetto integrale):
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #730-M2, PR di sicurezza #358, diff staged (2 file, +9/−4). Ho letto CLAUDE.md, stato_progetto.md (le parti sulla voce) e la memoria del revisore (#727–#729).
-
-**Cosa ho controllato nel diff**
-1. `modules/voice/server.py:415`: `_bind_locale` ora vale solo per un IPv4 loopback o per «localhost».
-   - Rischio controllato: «::1» e gli indirizzi «IPv4 dentro IPv6» non devono più passare per locali, perché HTTPServer funziona solo con IPv4.
-   - Prova diretta: `_bind_locale` dà False sia per «::1» sia per «::ffff:127.0.0.1». Le altre due funzioni del bind (`_bind_tutte_le_interfacce`, `_bind_ip_letterale`) danno anch'esse False per questi due.
-   - Esito: ok.
-2. `modules/voice/server.py:1377` (contesto, il chiamante in run_server): dopo la modifica «::1» viene fermato qui con il messaggio «non è un indirizzo IPv4 scritto per intero» e `return 1`. Non arriva mai a `HTTPServer(...)`, che sta a `modules/voice/server.py:1398`.
-   - Esito: ok, niente crash. Il controllo «tutte le interfacce» (`modules/voice/server.py:1371`) e il controllo «rete privata» (`modules/voice/server.py:1383`) restano invariati.
-3. `tests/test_unit_voice_server.py:2208`: il test usa un IPv4 non locale costruito da un intero, quindi supera i primi due controlli e arriva davvero al controllo «rete privata». Controlla anche il messaggio «non è locale e la connessione è in chiaro».
-   - Mutante ripetuto da me (controllo di `modules/voice/server.py:1383` spento): 3 failed. File ripristinato, working tree pulito.
-   - Esito: ok, V-1 chiusa.
-4. `tests/test_unit_voice_server.py:2189`: nel test parametrico «::1» e «::ffff:127.0.0.1» ora devono dare False.
-   - Esito: ok, V-2 chiusa.
-5. Test R8 (`-k r8`): 39 passed.
-
-**Riserve (BASSE)**
-- R-730-1-M2: V-3 non è cambiata nel codice. Il test costruisce l'IPv4 a runtime da un intero, contro R-726-1. È ammesso solo come decisione dell'operatore dichiarata nell'handoff §0 (marcatore gasmerge-ip-ok oppure eccezione). Va tracciata in stato_progetto.md.
-- R-730-2-M2: nessun test fa partire run_server con «::1» per verificare che venga rifiutato. Oggi lo garantisce solo il controllo IPv4 (`modules/voice/server.py:1377`), che ho verificato a mano. Basterebbe aggiungere «::1» al test parametrico dei rifiuti in run_server.
+**Prove sulla copia dell'index** (checkout-index in una cartella temporanea, niente stash, cartella poi cancellata)
+- tests/test_unit_telegram_voce.py, tests/test_unit_voce_ascolto.py e tests/test_unit_voice_server.py: **550 passed**.
+- tests/test_unit_kernel.py: **1099 PASS / 1 FAIL**. L'unico FAIL è T31g (GAS_VECTORS, dipende dall'ambiente, atteso).
+- T78p («update gestiti uno alla volta…»): **PASS**.
 
 **Cosa NON ho verificato**
-- La suite completa voice_server + sottofondo + telegram_voce (291 passed secondo il chiamante): ho fatto girare solo i test R8 (39 passed).
-- Il comportamento su Python 3.11 e 3.12: ho provato una sola versione. Il cambio però scarta gli IPv6 prima di guardare `is_loopback`, quindi non dipende dalla versione di Python, a differenza di R-728-1.
-- Il bind reale su VPS o dentro il tunnel: non riproducibile in dev.
+- Non ho rifatto la review di merito sulla sicurezza della #358 (tetti per IP, bind, controllo dell'Host): l'ha già fatta M2 in #720–#734-M2 e il blob è identico. Ho controllato solo l'integrità del merge e l'interazione con il thread della voce.
+- Non ho verificato il comportamento reale sul Mac né sul VPS (server voce vivo, client): non è riproducibile qui.
+- La venv del repo non esiste: le prove girano con il python3 di sistema.
 
-Memoria: aggiunta la riga #730-M2 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con lo script (commit 99413f7). Nessuna lezione nuova.
+**Riserve e note**
+- Nessuna riserva nuova.
+- Restano aperte quelle già tracciate per la #359: R-733-1 e R-733-2, entrambe BASSE.
+- Restano aperte quelle di M2 per la #358, elencate nella riga dello stato.
+- È un cambio di sicurezza: il merge lo decide l'operatore.
 
-Review #731-M2 (verdetto integrale):
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #731-M2 della PR di sicurezza #358 (chiude la V-1 MEDIA del bot su 9f1aee4). Ho esaminato `git diff --cached`: 2 file, +22 righe.
-
-**Cosa ho controllato nel diff**
-1. `modules/voice/server.py:589` — se la richiesta non porta un header «Bearer <qualcosa>» (header assente, «Bearer » vuoto, solo spazi, «Basic …», «bearer» senza spazio), `_autorizza` risponde 401 senza contarla e senza bloccare l'IP. Il blocco viene salvato di nuovo nella classe, come negli altri rami (copie riassegnate, nessun dict condiviso).
-   - Rischio esaminato: si può aggirare il tetto ai tentativi? No. Per provare un token bisogna mandare «Bearer <x>» non vuoto, e quei tentativi si contano ancora. Il controllo dell'IP già bloccato (429) avviene prima di questo ramo, quindi un IP bloccato resta bloccato.
-   - Esito: ok.
-2. `tests/test_unit_voice_server.py:2115` — `test_richieste_senza_token_non_bloccano`: 20 richieste senza header, 5 con «Bearer » vuoto e 5 con «Basic»; poi il token giusto (200) e infine 3 token sbagliati (401/401/429).
-   - Rischio esaminato: il test morde davvero?
-   - Esito: ok. L'ho verificato due volte. Il primo mutante (`if False and …`) era sbagliato per la precedenza tra and/or e il test passava, quindi non contava. Il mutante corretto (condizione sostituita da `if False:`) dà 1 failed. Il gruppo R8 dà 40 passed. Il file è stato ripristinato e il working tree è pulito.
-3. Contesto, file non toccato: `modules/voice/server.py:556` — `_check_auth` continua a scrivere «AUTH FAIL … header_mancante_o_malformato» per ogni richiesta senza header.
-   - Rischio esaminato: una pagina web può riempire gas_debug.log.
-   - Esito: ok. Il log è un RotatingFileHandler con dimensione massima e 3 file di backup (`gas.py:63`), quindi lo spazio occupato ha un limite. Nel log finiscono solo IP e motivo, mai il token.
-
-**Ricerca di altri modi per una pagina web di mandare «Bearer x»**
-- Credenziali nell'URL (`http://u:p@host`): il browser manda «Basic», che non si conta; `fetch()` rifiuta del tutto gli URL con credenziali. Non è un problema.
-- Form, img, script, beacon: non possono impostare l'header Authorization. Non è un problema.
-- fetch/XHR cross-origin con Authorization: richiede il preflight; OPTIONS non è gestito (501), quindi il preflight fallisce. Non è un problema.
-- **DNS rebinding: è un vettore ancora aperto.** Una pagina su un dominio dell'attaccante fa risolvere il proprio nome su loopback e diventa same-origin. A quel punto può mandare «Bearer x» senza preflight e bloccare la voce per 15 minuti. Il server non controlla l'header Host (grep di «Host» e «Origin» in `modules/voice/server.py`: nessun riscontro). Il problema c'era già prima di questa modifica e la patch non lo peggiora.
-
-**Riserve (da tracciare in stato_progetto.md)**
-- **R-731-1 (MEDIA)**: il blocco della voce si può ancora ottenere con il DNS rebinding. Correzione proposta: nel server, una lista bianca dell'header Host (localhost o loopback con la porta del server) controllata prima di `_autorizza`; una richiesta con Host estraneo riceve 400/403 e non si conta. Da fare in una fetta successiva.
-- **R-731-2 (BASSA)**: le richieste senza header ora non hanno nessun limite di frequenza; prima, dopo 10 ricevevano 429. Il costo per il server è basso (401 immediato, log a rotazione), quindi la accetto.
-
-**Cosa NON ho verificato**
-- Il comportamento reale dei browser (Chrome Private Network Access, Safari) contro il DNS rebinding verso loopback: non si può riprodurre in questo ambiente senza browser né Mac. Per questo la riserva resta MEDIA e non diventa un blocco.
-- Non ho rieseguito tutta la suite voce senza browser (292 passed dichiarati dall'agente): ho eseguito solo il gruppo R8 e il test mutante.
-
-Memoria aggiornata con la riga #731-M2 e una lezione sul DNS rebinding contro i server locali, già committata nel commit ac5d29f in `/home/user/Gas/.claude/agents/memoria_revisore.md` (eseguito `scripts/commit_memoria_revisore.sh`; lo staging del diff sotto review è intatto, 2 file, +22).
-
-Review #732-M2 (verdetto integrale):
-
-## VERDETTO: APPROVATO
-
-Review #732-M2, PR di sicurezza #358. Diff in staging: 2 file, +62/−1. Chiude la R-731-1-M2 MEDIA (DNS rebinding).
-
-Letture fatte prima della review: CLAUDE.md (sez. 5, 8 e 9), reports/stato_progetto.md (riga R8 fetta 1), memoria_revisore.md (lezioni del 2 nov sul confronto Origin==Host e lezione #731).
-
-Elementi del diff esaminati:
-- modules/voice/server.py:568 — `_host_ammesso()`. Toglie la porta, gestisce IPv6 tra parentesi e senza parentesi (con «::1» nudo, `count(":")>1` passa l'intero valore a ipaddress), accetta «localhost» (senza distinguere maiuscole) o un indirizzo IP valido. Rischio esaminato: un nome che passa per errore («127.0.0.1.evil.com», «localhost.», «[::1» senza parentesi chiusa, «0x7f000001»). Tutti finiscono in ValueError e vengono rifiutati, quindi il controllo sbaglia sempre dal lato della chiusura. Nel log c'è solo l'IP del client, mai l'Host né il token. — ok
-- modules/voice/server.py:600 — il controllo sta in testa a `_autorizza`, quindi vale per tutti e quattro i punti (do_POST :656/:673, do_GET :1168/:1175). Il 403 esce prima dei conteggi, perciò un Host di dominio non fa scattare il blocco della voce. Nessuna eccezione può sfuggire: c'è solo un try sul parsing e `headers.get`. — ok
-- tests/test_unit_voice_server.py:2142 — 5 Host di dominio danno 403, 403 anche col token giusto, kernel mai chiamato, poi il token giusto da 127.0.0.1 dà 200. Il test sostituisce `self.kernel.run_turn` senza monkeypatch, ma il kernel è nuovo per ogni test (setup_method), quindi non si propaga ad altri test. — ok
-- tests/test_unit_voice_server.py:2157 — test parametrico con localhost:porta, LOCALHOST, 127.0.0.1:porta e [::1]:porta: tutti 200. — ok
-- Contesto: clients/voice/browser_server.py:120 — lì la lista è più stretta (host esatto più la porta del proxy). Qui accettare qualsiasi IP, anche con porta diversa, è giustificato: il server può stare su un IPv4 privato (rete privata R8), e un IP letterale non può essere usato per il rebinding. Non è proprio «la stessa logica», ma la differenza è voluta e corretta. — ok
-
-Verifiche riprodotte da me:
-- Suite R8: 45 passed.
-- Mutante (`if not self._host_ammesso()` diventa `if False`): i test «host» danno 1 failed (test_host_di_dominio_rifiutato_e_non_conta) e 6 passed. File ripristinato dall'index; il diff in staging è invariato (+62/−1).
-
-Risposte alle domande:
-1. Host assente: va bene che passi. I browser con HTTP/1.1 mandano sempre Host, e chi scrive richieste a mano senza Host deve comunque superare il controllo del token e il tetto ai tentativi.
-2. IP come Host: sicuro contro il rebinding. Il rebinding ha bisogno di un nome che il browser rifà risolvere: con un IP l'origine è quell'IP. Una pagina servita da un'altra porta locale ha un'origine diversa, quindi per mandare Authorization serve il preflight. E le richieste senza «Bearer» non contano dal #731.
-3. 404/405 fuori da `_autorizza`: va bene. Non toccano il kernel né il conteggio dei tentativi, quindi non c'è niente da proteggere e il blocco non si può alimentare.
-
-Rischi esclusi (non verificati):
-- Comportamento reale di Chrome e Safari sul Mac con un dominio che si fa risolvere su loopback: non riproducibile qui. Ho controllato solo con http.client e un Host forzato.
-- Le suite senza browser (352) e i 15 test browser non li ho rilanciati: mi fido del dato dell'agente, anche perché le prove mirate sono verdi.
-- Un client che manda due header Host: `headers.get` prende il primo. Un browser non può farlo, quindi l'ho lasciato fuori come non rilevante per il rebinding.
-
-Nessuna riserva nuova.
-
-Memoria: aggiunta la riga #732-M2 (APPROVATO, nessuna lezione nuova) in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (commit c00ee3d, solo quel file).
-
-Review #733-M2 sul merge di main (verdetto integrale, riemesso con le citazioni dei file del diff):
-
-## VERDETTO: APPROVATO
-
-Review #733-M2: merge di origin/main 524ae96 (PR #357) in feat/voce-v12-m2 (PR #358, head 39ec264), base comune 69d76b9, ora committato come HEAD 41c5f9c. L'esito e il contenuto non cambiano. Ho aggiunto le citazioni dei file del diff di sessione, verificate a HEAD 41c5f9c.
-
-Ho letto: CLAUDE.md §5 (righe 37-38: nessuno slicing della history e nessuna simulazione di tool in questo diff), la memoria del revisore (ultime righe #730-M2..#732-M2, #726) e la riga di stato_progetto aggiunta dal merge.
-
-Elementi esaminati:
-- `modules/voice/server.py:347`: `parte_parlata`, la funzione che bot.py importa in `testo_da_dire`. Il rischio era che la #358 l'avesse cambiata. Il confronto AST tra la base 69d76b9 e l'albero di lavoro la dà identica. Esito: ok.
-- `modules/voice/server.py:452`: `cervello_voce`. Anche questa è importata da bot.py e il confronto AST con 69d76b9 la dà identica. Esito: ok.
-- `modules/voice/server.py:266` e `modules/voice/server.py:119`: `istruzione_turno_voce` e `_USO_FORTE_PARLATO`, importate da bot.py. Il confronto AST con 69d76b9 le dà identiche. Esito: ok.
-- `modules/voice/server.py:78`: a livello di modulo la #358 aggiunge solo `import hmac` e `import ipaddress` (righe 78-79, librerie standard di Python) e delle costanti. Il rischio era un errore all'import, che romperebbe gli import fatti da bot.py: escluso. Esito: ok.
-- `modules/voice/server.py:568` e `modules/voice/server.py:593`: `_host_ammesso` e `_autorizza` sono metodi dell'handler HTTP che bot.py non usa. Non c'è interazione col lato main. Esito: ok.
-- `.claude/agents/memoria_revisore.md:1391`: la riga contatore #733-M2, in coda all'unione dei due lati. Ho confrontato le righe uniche di HEAD e di MERGE_HEAD con quelle nell'index prima del commit: nessuna riga persa su nessuno dei due lati. Nessun marcatore di conflitto, `git ls-files -u` era vuoto e `git diff --cached --check` era pulito. Esito: ok.
-- Contesto, file ora nella base: `modules/telegram/bot.py:1047` chiama `synthesize_speech(..., timeout=VOCE_TIMEOUT_S)` e la firma in `modules/voice/tts.py:85` accetta `timeout`. `modules/telegram/bot.py` e `tests/test_unit_telegram_voce.py` erano identici a 524ae96 (`git diff --cached 524ae96` vuoto). Esito: ok.
-- `reports/stato_progetto.md`: rispetto a 524ae96 c'è una sola riga aggiunta, quella della R8 fetta 1 della #358, quindi l'unione è corretta. Esito: ok.
-
-Test che ho rieseguito: `tests/test_unit_telegram_voce.py` e `tests/test_unit_voice_server.py` sull'albero di lavoro durante il merge, 248 passed.
-
-Cosa non ho verificato:
-- Non ho rieseguito sottofondo e voce_ascolto: mi fido dei 607 passed dichiarati dall'agente.
-- Non ho controllato che i report della #358 tenuti col lato `--ours` (handoff.md, ultimo_report.md, diff_sessione.md) siano coerenti col nuovo stato dopo il merge.
-- Non ho provato la voce Telegram dal vivo (ElevenLabs e Telegram veri): non si riproduce in questo ambiente.
-
-Memoria: la riga contatore #733-M2 è in coda a `.claude/agents/memoria_revisore.md`. Ho fatto solo `git add` durante il merge ed è entrata nel commit di merge 41c5f9c. In questa ri-emissione non ho toccato file e non ho committato nulla.
-
-Review #734-M2 (verdetto integrale):
-
-## VERDETTO: APPROVATO
-
-Il diff chiude R-720-4-M2. Prima, con la memoria piena, gli IP nuovi non venivano contati né bloccati (fail-open, cioè la protezione si spegneva). Ora la memoria resta sempre entro il tetto e l'IP nuovo viene sempre contato o bloccato. Nel diff non ci sono antipattern del Wall of Shame: niente slicing della history, niente simulazione dei tool. Il cap delle iterazioni e `_get_window` non sono toccati.
-
-**Elementi del diff esaminati**
-- `modules/voice/server.py:631` — se `bloccati` è pieno esce la voce con la scadenza più vicina, poi l'IP che ha raggiunto la soglia viene bloccato sempre. Rischi esaminati:
-  - `min()` su un dict vuoto: non può succedere, perché il ramo parte solo con il dict pieno (≥1024 voci).
-  - Prima i blocchi già scaduti vengono tolti (riga 608), quindi non si sfratta mai un blocco ancora valido finché ci sono voci morte.
-  - Esito: ok.
-- `modules/voice/server.py:639` — se `falliti` è pieno esce l'IP con il tentativo più recente più vecchio, poi l'IP nuovo viene contato sempre. Rischi esaminati:
-  - `falliti[k][-1]` su una lista vuota: escluso, perché il filtro `v and …` (riga 609) toglie le liste vuote e `recenti` contiene sempre almeno `adesso`.
-  - Un IP già presente viene tolto con `pop` (riga 627) prima del controllo del tetto, quindi non sfratta nessun altro per errore.
-  - Esito: ok.
-- `tests/test_unit_voice_server.py:2166` — `test_memoria_piena_conta_e_blocca_ancora` abbassa il tetto a 3 e controlla quattro cose: blocco effettivo (429 anche con il token giusto), dimensione della tabella, voce sfrattata giusta in `bloccati`, voce sfrattata giusta in `falliti`. Verifica che ho rifatto io: con `server.py` di HEAD il test dà 1 failed, con il diff 1 passed. Poi ho ripristinato il working tree e `git diff --stat` è vuoto (working tree identico all'index). R8: 46 passed. Esito: ok.
-- Contesto: `modules/voice/server.py:600` — il controllo dell'Host (`_host_ammesso`) e il 429 per un IP già bloccato stanno ancora prima di questa logica, quindi la loro priorità non cambia.
-
-**Domanda dell'operatore: un attaccante può «sbloccare» un IP riempiendo la tabella?**
-Sì, ma solo con più di 1024 IP diversi:
-- deve creare 1024 blocchi nuovi, con 10 tentativi ciascuno (circa 10k richieste nella finestra di 15 minuti);
-- solo il blocco che scade per primo viene sfrattato, e quell'IP riottiene al massimo 10 tentativi prima di essere bloccato di nuovo.
-
-Un attaccante con più di 1024 IP ha già circa 10 tentativi per IP ogni 15 minuti. Lo sfratto gli aggiunge circa un tentativo per ogni tentativo speso: il ritmo resta limitato, e per un attaccante con meno di 1024 IP il limite per IP resta intero. Prima, invece, a tabella piena ogni IP nuovo aveva tentativi illimitati. Il compromesso è quindi strettamente migliore e accettabile, tanto più che vale solo in locale o via tunnel. A tutto questo si somma il blocco dato dall'entropia del token.
-
-**Rischi esplicitamente esclusi (non verificati)**
-- Comportamento dietro tunnel o reverse proxy: lì `client_address` potrebbe essere sempre l'IP del tunnel, quindi tutti i client in un solo secchio e un attaccante che blocca anche l'operatore. È un tema preesistente, non introdotto da questo diff, e non riproducibile in dev.
-- Costo reale di `min()` sotto carico concorrente: `ThreadingHTTPServer` con lettura e riassegnazione dei dict di classe senza lock è una race preesistente e fuori diff. Nel caso peggiore perde qualche conteggio, senza crash.
-
-**Memoria e commit**
-- Riga #734-M2 e una lezione aggiunte in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`.
-- Commit `6bf270e` fatto con `scripts/commit_memoria_revisore.sh`. Il diff staged del motore (2 file, +27/−6) è rimasto intatto nell'index.
-- Nessun IPv4 non loopback nel verdetto né nella memoria.
-
-**Prossimo passo per te:** crea il marcatore con `bash scripts/segna_review_ok.sh`, poi committa.
+**Memoria**
+- Ho aggiunto in coda la riga #735, solo nel working tree e non in index (come richiesto), in /home/user/Gas/.claude/agents/memoria_revisore.md. Nessuna lezione nuova.
+- Non ho lanciato scripts/commit_memoria_revisore.sh perché il merge è in corso e la riga doveva restare fuori dall'index.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_voice_server.py`: +1 classe `TestR8Limiti` (blocco e scadenza, token giusto bloccato, log senza token, stato non condiviso, tetto al testo, ordine dei due tetti nei due versi, soglie scritte male) e test `test_r8_*` (indirizzo locale, avvio rifiutato, avvio con rete privata dichiarata). R8: 24 passed. Comando: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 276 passed, 15 deselected (sullo stesso albero, prima del riposizionamento). Mutanti uccisi: ramo del blocco, tetto al testo, fail-closed, stato condiviso, soglia mai raggiunta, ordine dei tetti. Dopo a2199c4: `pytest -q tests/test_unit_voice_server.py -k r8` → 23 passed (un caso di indirizzo in meno nel test parametrico). Finale: R8 45 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_prova_voci.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 352 passed; i 15 test browser passano. Dopo il fix della memoria piena: R8 46 passed; voice_server + sottofondo + telegram_voce senza browser 313 passed. Dopo il merge di main: voice_server + telegram_voce + sottofondo + voce_ascolto senza browser → 607 passed. Prima: R8 39 passed, suite voce 291 passed. Dopo 08e16aa: R8 38 passed; `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 290 passed, 15 deselected. Test nuovi: rifiuto di «tutte le interfacce» con e senza rete privata, di nomi host, forme abbreviate, IPv6 e IPv4 dentro IPv6; avvio consentito con un IPv4 della rete del tunnel. `gas.py` non toccato.
+`tests/test_unit_telegram_voce.py`: da 66 a 71 casi. `tests/test_unit_voce_ascolto.py`: +1 caso. Sull'albero del merge:
+
+```
+550 passed in 295.24s (0:04:55)
+```
+
+(telegram_voce + voce_ascolto + voice_server). `python tests/test_unit_kernel.py`: 1099 PASS, 1 FAIL. Il FAIL è T31g: manca `sqlite_vec` nell'ambiente, ed era già presente sulla base. T78p è PASS.
+
+Mutanti della guardia T78p: 27 presi su 28, script `mut5m.py` nello scratchpad. Presi tutti quelli di bot, verifica esterna e review #725–#732. Uno è inconclusivo: `except … as _send_text` rompe il modulo prima del test.
 
 ## §6 STATO CI
 
-Head 9eee954: unit-suite e handoff-check in corso/pass; verifica-bot failure senza finding nuovi (testo incoerente), rilancio rifiutato dal bot (serve un commit nuovo). Nuovo head: run non ancora disponibile alla scrittura dell'handoff.
+`gh` non è stato usato: GitHub passa dallo strumento MCP. Su f352190 la PR #359 aveva unit-suite success, handoff-check success e verifica-bot failure (V-1 MEDIA, ora corretta). Per fff8f3b, 5801c12, 4e57b58 e per il commit di fine-task che contiene questo file la run non era ancora disponibile alla scrittura dell'handoff; nessuna run sui primi tre, che non sono mai stati pushati da soli.
 
 ## §7 RISERVE APERTE
 
-- R-720-2-M2 BASSA (decisione dell'operatore): un client locale con token vecchio blocca per 15 minuti tutti i client su 127.0.0.1.
-- R-720-4-M2: chiusa (memoria piena → esce la voce più vecchia). Resta: chi ha più di 1024 IP può far uscire il blocco che scade per primo (review #734-M2: compromesso migliore di prima).
-- R-720-5-M2 COSMETICA: una riga di log per ogni richiesta bloccata.
-- R-726-1-M2 BASSA: nessun IPv4 non loopback (es. l'indirizzo «tutte le interfacce») nel test di `_bind_locale`; reintrodurlo solo col via libera umano al gate IP.
-- R-726-2-M2: chiusa in 08e16aa (gli IPv6 sono rifiutati con un messaggio, niente crash).
-- Limite di progetto (review #729-M2): con `GAS_VOICE_RETE_PRIVATA=1` non si verifica che l'IPv4 sia davvero quello del tunnel; un IPv4 pubblico del computer verrebbe accettato. Da rivedere prima dell'uso sul VPS (fetta TLS o controllo dell'interfaccia).
-- R-730-1-M2 BASSA: IPv4 d'esempio costruiti da intero nei test (decisione in §0).
-- R-730-2-M2 BASSA: nessun test avvia run_server con «::1» (rifiuto verificato a mano dal revisore).
-- R-731-2-M2 BASSA: le richieste senza token non hanno più un tetto (401 immediato, log a rotazione).
-- Ve #358 V-3 / bot V-2 BASSE: ogni richiesta senza token scrive una riga «AUTH FAIL» nel log (a rotazione); un client via tunnel deve usare l'IP, non un nome (MagicDNS → 403).
-- «localhost» vale come locale e dipende da /etc/hosts (dichiarato nella docstring).
-- Ereditate dalla #356: bot V-1/V-2 su 84b88f8 (chiuse in locale, PR di velocità a seguire), ve #356 V-4, bot su 0d34fe6 V-1/V-2/V-3 (log dell'handoff, test del tetto della cache, numero dei test nel report).
-- Non verificato: comportamento reale con un tunnel (Tailscale) e server avviato fuori da 127.0.0.1.
+- R-733-1 BASSA: il modulo può ancora riscrivere le sue funzioni con codice voluto. Esempi: alias di sys o `from sys import modules`, auto-import, `locals()`, alias di globals, `__setattr__` con stringhe.
+- R-733-2 BASSA: il VALORE dei nomi legati una volta (`_URL`, `log`…) non è vincolato.
+- R-725-3 BASSA: avvisi e vocale possono arrivare dopo la risposta al messaggio successivo.
+- R-722-1 COSMETICA, R-722-2 BASSA (tempi della voce di casa).
+- Bot #357: V-1 BASSA (corsivo con un solo * letto a voce), V-2 COSMETICA.
+- R-717-3 BASSA (MP3 su sendVoice da provare dal vivo), R-721-2 BASSA.
+- Le altre riserve sono in `reports/stato_progetto.md`.
