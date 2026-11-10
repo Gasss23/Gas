@@ -12,7 +12,7 @@ processo muore (kill, riavvio, crash), alla prima interazione diventa «ko» e l
    **progressi** scritti dal kernel (solo NOMI degli strumenti registrati, eseguiti o in attesa di firma;
    mai argomenti o testo letto) e il compito ripreso li riceve nel prompt («hai già usato: …, controlla
    prima di rifare»). Riuso totale di coda, posto unico e avviso di M2; presa del posto sotto lock
-   (`fcntl`) così due processi non lo riavviano due volte. Esito finale: «ripreso N volte».
+   (`fcntl`) così due processi non lo riavviano due volte. A ogni ripresa l'operatore riceve un avviso; per fermare davvero un compito: `python gas.py sottofondo-ferma` (niente ripresa). Esito finale: «ripreso N volte».
 2. **Piano scritto dal modello** (strumento `segna_passo(nota)`, piano + passi fatti nel file del
    compito). Ripresa più precisa, ma le note sono testo del modello (possibile eco di testo
    letto): da fare dopo la 1, con lo stesso marchio «non fidato» del diario.

@@ -177,6 +177,8 @@ def _ripulisci(root: Path, avvisa: Optional[Callable[[str, Path], Any]]) -> None
     # Ve #346 V-1: con «creato» nel futuro non si è mai «oltre la durata»: niente killpg
     oltre = not _nel_futuro(dati) and time.time() - _creato(dati) > _durata_max_s()
     motivo = "il processo si è interrotto"
+    if ident and _fermato(root, ident):  # bot #364 V-1: fermato dall'operatore, niente ripresa
+        motivo = "fermato dall'operatore"
     if oltre:
         motivo = "oltre la durata massima"
         nostro = _identita(pid, ident) if _vivo(pid) else False
@@ -230,6 +232,82 @@ def _riprese(job: Dict[str, Any]) -> int:
         else RIPRESE_TETTO
 
 
+def _fermato(root: Path, ident: str) -> bool:
+    try:
+        return (Path(root) / CARTELLA / f"{Path(ident).name}.ferma").exists()
+    except OSError:
+        return False
+
+
+def _lock_esclusivo(cartella: Path) -> Optional[int]:
+    """Il lock della coda (lo stesso di _riprendi), o None se non disponibile. Mai eccezioni."""
+    if fcntl is None:
+        return None
+    try:
+        fd = os.open(cartella / LOCK, os.O_WRONLY | os.O_CREAT, 0o600)
+    except OSError:
+        return None
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+    except OSError:
+        os.close(fd)
+        return None
+    return fd
+
+
+def _sblocca(fd: Optional[int]) -> None:
+    if fd is None:
+        return
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def ferma(root: Path, avvisa: Optional[Callable[[str, Path], Any]] = None) -> Tuple[bool, str]:
+    """Bot #364 V-1: `gas.py sottofondo-ferma` — l'operatore ferma il compito in corso senza che
+    riparta: segna `<id>.ferma` (letto da _riprendi e da _esegui), ferma il processo SOLO se è
+    sicuramente il nostro figlio, poi chiude il compito «ko» con avviso. R-743-1: segno e chiusura
+    sotto lo stesso lock di _riprendi. Ritorna (riuscito, frase per il terminale). Mai eccezioni."""
+    try:
+        cartella = Path(root) / CARTELLA
+        dati = _leggi(cartella / ATTIVO)
+        ident = str((dati or {}).get("id") or "")
+        if not ident:
+            return True, "Nessun compito in sottofondo in corso."
+        fd = _lock_esclusivo(cartella)
+        try:
+            _scrivi_privato(cartella / f"{Path(ident).name}.ferma", {"fermato": time.time()})
+            # R-744-1: il pid si rilegge DOPO il segno: o il figlio ha già scritto il suo pid
+            # (e lo si ferma), o lo scrive dopo e vede il segno in _esegui
+            riletto = _leggi(cartella / ATTIVO) or {}
+            pid = riletto.get("pid") if str(riletto.get("id") or "") == ident else None
+            nostro = _identita(pid, ident) if _vivo(pid) else False
+            if nostro:
+                try:
+                    os.killpg(int(pid), signal.SIGTERM)
+                except Exception as e:
+                    logging.warning("sottofondo %s: arresto non riuscito: %s", ident, e)
+            chiuso = annulla(root, ident, "fermato dall'operatore")
+        finally:
+            _sblocca(fd)
+        if not chiuso:
+            # R-743-3: il compito era già finito (o chiuso da altri): niente «fermato»
+            return True, f"Il compito {ident} era già finito: niente da fermare."
+        # R-743-2: senza `ps` il processo non si può verificare né fermare: lo si dice
+        dubbio = (" Il processo non si è potuto verificare e potrebbe essere ancora attivo."
+                  if nostro is None else "")
+        job = _leggi(cartella / f"{Path(ident).name}.json") or {}
+        _avvisa(root, f"Il compito in sottofondo «{_breve(job.get('compito', ''), 80)}» è "
+                      f"stato fermato dall'operatore.{dubbio}", ident, avvisa)
+        return True, f"Compito {ident} fermato: non riparte.{dubbio}"
+    except Exception as e:  # §9
+        logging.warning("sottofondo: arresto non riuscito: %s", e)
+        return False, f"Arresto non riuscito ({type(e).__name__}): vedi gas_debug.log."
+
+
 def _avvia_ripresa(root: Path, ident: str) -> None:
     """Punto unico di avvio della ripresa (i test lo sostituiscono: niente processi veri)."""
     avvia(root, ident)
@@ -263,6 +341,10 @@ def _riprendi(root: Path, ident: str, letto: Dict[str, Any],
             return None
         if (not posto or not job or job.get("stato") not in ("in_coda", "in_corso")
                 or _riprese(job) >= _riprese_max()
+                or _fermato(root, ident)
+                # bot #364 V-2: il tetto di tempo vale dalla PRIMA creazione del compito, anche
+                # se il figlio di una ripresa muore prima di rimettere quella data nel posto
+                or _nel_futuro(job) or time.time() - _creato(job) > _durata_max_s()
                 or not isinstance(job.get("compito"), str)):
             return False
         job.update(stato="in_coda", riprese=_riprese(job) + 1, ripreso=time.time())
@@ -281,6 +363,10 @@ def _riprendi(root: Path, ident: str, letto: Dict[str, Any],
             os.close(fd)
     logging.warning("sottofondo %s: processo interrotto, ripresa %d di %d", ident,
                     job["riprese"], _riprese_max())
+    # Bot #364 V-1: l'operatore sa SUBITO che il compito è ripartito, e come fermarlo
+    _avvisa(root, f"Il compito in sottofondo «{_breve(job.get('compito', ''), 80)}» si era "
+                  f"interrotto: lo riprendo (ripresa {job['riprese']} di {_riprese_max()}). "
+                  "Per fermarlo: python gas.py sottofondo-ferma", ident, avvisa)
     try:
         _avvia_ripresa(root, ident)
     except Exception as e:
@@ -432,7 +518,7 @@ def _pulisci_vecchi(root: Path) -> None:
                 if not (job.get("stato") in ("ok", "ko")
                         or aperto and str(posto.get("id") or "") != f.stem):
                     continue
-            elif f.suffix == ".passi":
+            elif f.suffix in (".passi", ".ferma"):
                 # R7 fetta 1: progressi di un compito non più in corso
                 if str(posto.get("id") or "") == f.stem:
                     continue
@@ -616,6 +702,11 @@ def _esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
     _scrivi_privato(cartella / ATTIVO, {"id": ident, "pid": os.getpid(), "creato": job.get("creato")})
     job.update(stato="in_corso", pid=os.getpid(), inizio=time.time())
     _scrivi_privato(percorso, job)
+    if _fermato(root, ident):
+        # R-743-1: fermato dall'operatore mentre questo processo partiva (dopo la ripresa):
+        # si chiude senza eseguire; l'avviso «fermato» è già partito da ferma()
+        annulla(root, ident, "fermato dall'operatore")
+        return 1
     risposta, errore = "", ""
     turno = None
     riprese = _riprese(job) if job.get("riprese") else 0

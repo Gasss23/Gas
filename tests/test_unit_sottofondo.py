@@ -871,7 +871,9 @@ def test_processo_morto_riparte_da_solo(tmp_path, monkeypatch, _niente_riprese_v
     posto = json.loads((c / sf.ATTIVO).read_text(encoding="utf-8"))
     assert job["stato"] == "in_coda" and job["riprese"] == 1 and "pid" not in job
     assert posto["id"] == ident and posto["pid"] is None
-    assert _niente_riprese_vere == [ident] and inviati == []
+    # bot #364 V-1: l'operatore sa subito della ripresa e come fermarla
+    assert _niente_riprese_vere == [ident] and len(inviati) == 1
+    assert "lo riprendo (ripresa 1 di 2)" in inviati[0] and "sottofondo-ferma" in inviati[0]
     # un secondo controllo subito dopo (altro processo): posto preso, nessun secondo avvio
     sf.controlla(tmp_path, avvisa)
     assert _niente_riprese_vere == [ident]
@@ -928,7 +930,7 @@ def test_riavvio_fallito_ko_con_avviso(tmp_path, monkeypatch):
     sf.controlla(tmp_path, avvisa)
     job = json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))
     assert job["stato"] == "ko" and "ripresa non avviata" in job["errore"]
-    assert len(inviati) == 1 and "ripresa non è partita" in inviati[0]
+    assert len(inviati) == 2 and "ripresa non è partita" in inviati[1]
     assert not (c / sf.ATTIVO).exists()
 
 
@@ -960,7 +962,8 @@ def test_due_controlli_insieme_non_annullano_la_ripresa(tmp_path, monkeypatch,
     sf._ripulisci(tmp_path, avvisa)  # B
     job = json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))
     assert job["stato"] == "in_coda" and job["riprese"] == 1
-    assert (c / sf.ATTIVO).exists() and inviati == [] and _niente_riprese_vere == [ident]
+    assert (c / sf.ATTIVO).exists() and _niente_riprese_vere == [ident]
+    assert len(inviati) == 1 and "lo riprendo" in inviati[0]
 
 
 @pytest.mark.parametrize("valore,atteso", [("-1", 0), ("99", sf.RIPRESE_TETTO), ("abc", 2),
@@ -1025,12 +1028,13 @@ def test_pulizia_dei_progressi_vecchi(tmp_path):
     c = tmp_path / sf.CARTELLA
     c.mkdir()
     vecchio, attuale = c / "vecchio.passi", c / "attuale.passi"
-    for f in (vecchio, attuale):
+    fermo = c / "vecchio.ferma"  # bot #364 V-1: anche i segni di arresto vecchi
+    for f in (vecchio, attuale, fermo):
         f.write_text("{}", encoding="utf-8")
         os.utime(f, (1, 1))
     (c / sf.ATTIVO).write_text(json.dumps({"id": "attuale", "pid": None, "creato": 0}))
     sf._pulisci_vecchi(tmp_path)
-    assert not vecchio.exists() and attuale.exists()
+    assert not vecchio.exists() and attuale.exists() and not fermo.exists()
 
 
 def test_kernel_senza_elenco_strumenti_nessun_passo(tmp_path):
@@ -1056,3 +1060,135 @@ def test_posto_sparito_sotto_il_lock_compito_chiuso(tmp_path, monkeypatch, _nien
     (c / sf.ATTIVO).unlink()
     assert sf._riprendi(tmp_path, ident, letto, None) is False
     assert _niente_riprese_vere == []
+
+
+# ---- Bot #364 (dc6c25a): V-1 fermare un compito senza che riparta, V-2 tetto dalla prima creazione ----
+
+def test_ferma_il_compito_non_riparte(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path)
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.ferma(tmp_path, avvisa)
+    assert ok and ident in frase and "non riparte" in frase and "potrebbe" not in frase
+    job = json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))
+    assert job["stato"] == "ko" and job["errore"] == "fermato dall'operatore"
+    assert not (c / sf.ATTIVO).exists() and (c / f"{ident}.ferma").exists()
+    assert len(inviati) == 1 and "fermato dall'operatore" in inviati[0]
+    sf.controlla(tmp_path, avvisa)
+    assert _niente_riprese_vere == [] and len(inviati) == 1
+
+
+def test_segno_di_arresto_blocca_la_ripresa(tmp_path, monkeypatch, _niente_riprese_vere):
+    """Kill fatto a mano + segno `<id>.ferma` (es. annulla non riuscito): niente ripresa, il
+    compito si chiude «ko» con motivo «fermato dall'operatore»."""
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path)
+    (c / f"{ident}.ferma").write_text("{}", encoding="utf-8")
+    inviati, avvisa = _avvisi()
+    sf.controlla(tmp_path, avvisa)
+    assert _niente_riprese_vere == []
+    assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ko"
+    assert len(inviati) == 1 and "fermato dall'operatore" in inviati[0]
+
+
+def test_ferma_senza_compito(tmp_path):
+    assert sf.ferma(tmp_path) == (True, "Nessun compito in sottofondo in corso.")
+
+
+def test_ferma_non_tocca_un_processo_estraneo(tmp_path, monkeypatch):
+    import subprocess as sp
+    import time as _t
+    estraneo = sp.Popen(["sleep", "30"], start_new_session=True)
+    try:
+        ident, _ = sf.accoda(tmp_path, "uno")
+        c = tmp_path / sf.CARTELLA
+        (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": estraneo.pid,
+                                               "creato": _t.time()}))
+        sf.ferma(tmp_path, _avvisi()[1])
+        assert estraneo.poll() is None
+        # R-743-2: pid non verificabile (niente `ps`) → non si ferma e lo si dice
+        ident2, _ = sf.accoda(tmp_path, "due")
+        (c / sf.ATTIVO).write_text(json.dumps({"id": ident2, "pid": estraneo.pid,
+                                               "creato": _t.time()}))
+        monkeypatch.setattr(sf, "_identita", lambda pid, ident: None)
+        inviati, avvisa = _avvisi()
+        ok, frase = sf.ferma(tmp_path, avvisa)
+        assert ok and "potrebbe essere ancora attivo" in frase and estraneo.poll() is None
+        assert len(inviati) == 1 and "potrebbe essere ancora attivo" in inviati[0]
+    finally:
+        estraneo.kill()
+        estraneo.wait()
+
+
+def test_ripresa_negata_oltre_la_durata_dalla_prima_creazione(tmp_path, monkeypatch,
+                                                              _niente_riprese_vere):
+    """Bot #364 V-2: il posto di una ripresa ha «creato» = adesso; se il figlio muore prima di
+    rimettere la data originale, la durata si conta comunque dalla prima creazione."""
+    import time as _t
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path, riprese=1, stato="in_coda")
+    job = json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))
+    job["creato"] = _t.time() - sf._durata_max_s() - 10
+    (c / f"{ident}.json").write_text(json.dumps(job), encoding="utf-8")
+    inviati, avvisa = _avvisi()
+    sf.controlla(tmp_path, avvisa)
+    assert _niente_riprese_vere == []
+    assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ko"
+    assert len(inviati) == 1 and "non è finito" in inviati[0]
+
+
+def test_comando_sottofondo_ferma(tmp_path):
+    import subprocess as sp
+    gas_py = Path(__file__).resolve().parents[1] / "gas.py"
+    r = sp.run([sys.executable, str(gas_py), "sottofondo-ferma"], cwd=str(tmp_path),
+               capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0 and "Nessun compito" in r.stdout and "Traceback" not in r.stderr
+
+
+def test_ferma_compito_gia_finito(tmp_path):
+    """R-743-3: il figlio ha scritto «ok» un attimo prima: niente «fermato», niente avviso."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    job = json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))
+    job["stato"] = "ok"
+    (c / f"{ident}.json").write_text(json.dumps(job), encoding="utf-8")
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.ferma(tmp_path, avvisa)
+    assert ok and "era già finito" in frase and inviati == []
+    assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ok"
+
+
+def test_figlio_della_ripresa_fermato_non_esegue(tmp_path):
+    """R-743-1 (b): il compito è stato fermato mentre il figlio della ripresa partiva: il figlio
+    non esegue il compito e lo lascia chiuso «ko»."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    (c / f"{ident}.ferma").write_text("{}", encoding="utf-8")
+    k = _Kernel()
+    inviati, avvisa = _avvisi()
+    assert sf.esegui(tmp_path, ident, lambda: k, avvisa) == 1
+    assert k.chiamate == [] and inviati == []
+    job = json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))
+    assert job["stato"] == "ko" and job["errore"] == "fermato dall'operatore"
+    assert not (c / sf.ATTIVO).exists()
+
+
+def test_ferma_usa_il_lock_e_rilegge_il_pid(tmp_path, monkeypatch):
+    """R-744-1/2: ferma prende il lock della coda e usa il pid scritto DOPO la prima lettura
+    (il figlio si è presentato nel frattempo): quello viene fermato."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    preso, uccisi = [], []
+    vero_lock = sf._lock_esclusivo
+
+    def _lock(cartella):
+        preso.append(True)
+        # il figlio si presenta fra la prima lettura di ferma e il lock
+        (c / sf.ATTIVO).write_text(json.dumps({"id": ident, "pid": 4242, "creato": 1e9}))
+        return vero_lock(cartella)
+    monkeypatch.setattr(sf, "_lock_esclusivo", _lock)
+    monkeypatch.setattr(sf, "_vivo", lambda pid: pid == 4242)
+    monkeypatch.setattr(sf, "_identita", lambda pid, i: pid == 4242 and i == ident)
+    monkeypatch.setattr(sf.os, "killpg", lambda pid, sig: uccisi.append(pid))
+    ok, frase = sf.ferma(tmp_path, _avvisi()[1])
+    assert ok and preso == [True] and uccisi == [4242] and "potrebbe" not in frase
