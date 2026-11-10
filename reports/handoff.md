@@ -18,16 +18,17 @@
 - **Correzioni al codice**: `SALTATA — non servono`.
 - **Messaggio a M1**: `FATTA`.
 - **Riserve del bot #362 V-1..V-4**: `FATTA` — corrette in 314b1ed (V-3 qui nel §6).
+- **Riserve del bot #362 secondo giro V-1/V-2**: `FATTA` — corrette in bae139c.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  16 +++++------
+ reports/diff_sessione.md  |  16 ++++-------
  reports/handoff.md        | n/d
- reports/prova_r1_notte.md | 168 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/ultimo_report.md  |  20 +++++++-------
+ reports/prova_r1_notte.md | 180 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md  |  21 +++++++-------
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -35,6 +36,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bae139c docs(r1): riserve V-1/V-2 del bot #362 secondo giro — controllo dell'archivio della conoscenza, cosa fare se il catalogo non passa
+1eb30cb docs(fine-task): report aggiornati dopo le riserve del bot #362 (chat M4)
 314b1ed docs(r1): riserve V-1..V-4 del bot #362 — controllo vero del forte, pulizia che rimette sempre il catalogo, chiavi di plutil tra virgolette
 1bd7939 docs(fine-task): report della chat M4 su R1, procedura di prova del giro notturno (PR #362)
 3d65154 docs(r1): riga Firme del doctor, controllo solo sulle scadute
@@ -59,9 +62,11 @@ Mappatura commit→run:
 - db1223d: run CI 42725964209 (push, headSha db1223d; segnalata da V-3 bot #362, che correggeva l'handoff precedente).
 - 3d65154: run CI 42725978216 (`handoff-check` success; `unit-suite` in corso all'ultima lettura).
 - 1bd7939: run CI 42726127034 (`handoff-check` success; `unit-suite` in corso all'ultima lettura); bot verifica-bot: success, APPROVATO CON RISERVE.
-- 314b1ed: run non ancora disponibile alla scrittura dell'handoff.
+- 314b1ed: nessuna run su questo SHA come testa (pushato insieme a 1eb30cb).
+- 1eb30cb: run CI 42726692326 e verifica-bot 42726694742 (bot: APPROVATO CON RISERVE, V-1/V-2 BASSE).
+- bae139c: run non ancora disponibile alla scrittura dell'handoff.
 - commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-Nessuna: V-1..V-4 del bot #362 corrette in 314b1ed (da confermare col nuovo giro del bot).
+Nessuna: V-1..V-4 del bot #362 corrette in 314b1ed, V-1/V-2 del secondo giro in bae139c (da confermare col nuovo giro del bot).

@@ -12,7 +12,8 @@
 - **Correzioni al codice**: `SALTATA — non servono`: il codice per la prova c'è già.
 - **Messaggio a M1**: `FATTA` — consegnato.
 - **PR #362**: aperta, etichetta `verifica` messa. Bot sul commit 1bd7939: APPROVATO CON RISERVE (nessuna ALTA/MEDIA).
-- **Riserve del bot #362 (V-1, V-2 BASSE; V-3, V-4 COSMETICHE)**: `FATTA` — V-1 controllo vero del forte nel doctor (non basta OK, «spento» è OK), V-2 pulizia con `rm -rf …; mv …` che rimette sempre il catalogo, V-3 mappatura CI corretta nell'handoff, V-4 chiavi di `plutil` tra virgolette. Nuovo giro del bot sul commit nuovo.
+- **Riserve del bot #362 (V-1, V-2 BASSE; V-3, V-4 COSMETICHE)**: `FATTA` — V-1 controllo vero del forte nel doctor (non basta OK, «spento» è OK), V-2 pulizia con `rm -rf …; mv …` che rimette sempre il catalogo, V-3 mappatura CI corretta nell'handoff, V-4 chiavi di `plutil` tra virgolette.
+- **Riserve del bot #362, secondo giro su 1eb30cb (V-1, V-2 BASSE)**: `FATTA` in bae139c — controllo esplicito dell'archivio `knowledge_fts` (conteggio > 0) e output atteso dell'ingest; cosa fare se il controllo del catalogo non passa. Nuovo giro del bot sul commit nuovo.
 
 ## Anomalie
 
