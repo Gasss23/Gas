@@ -13,7 +13,6 @@ Manca, ed è quello che prova questa notte:
 1. Il timer parte **alle 03:00 da solo** (non al risveglio del Mac, non a mano).
 2. Una richiesta di firma **nata di notte** arriva su Telegram, **resta valida fino al mattino** (24 ore) e il click su Approva **del mattino** la esegue. Prima nessuna azione rischiosa parte da sola.
 3. Riga «Riflessione:» nel resoconto del giro e lezioni in `gas lezioni lista`.
-4. Avviso `knowledge_fts` tolto (archivio della conoscenza creato).
 
 Nessuna modifica al codice serve per questa prova: il codice c'è già tutto.
 
@@ -27,23 +26,13 @@ Nessuna modifica al codice serve per questa prova: il codice c'è già tutto.
 cd ~/Gas && git checkout main && git pull && source .venv/bin/activate
 ```
 
-**2. Controllo generale** — non deve esserci nessuna riga FAIL. Nelle righe «Cervello forte»: `claude-cli` NON deve dire «spento», `comando claude` e `login` devono dire OK (il compito di prova usa il forte).
+**2. Controllo generale** — non deve esserci nessuna riga FAIL. Nelle righe «Cervello forte»: `claude-cli` NON deve dire «spento (GAS_CLAUDE_CLI non attivo)» (va bene il WARN «spento nella shell ma il .env lo accende»), `comando claude` e `login` devono dire OK (il compito di prova usa il forte).
 
 ```
 python3 gas.py doctor
 ```
 
-**3. Archivio della conoscenza** (toglie l'avviso `knowledge_fts`, una volta sola)
-
-```
-python3 tools/ingest_knowledge.py
-```
-
-Deve finire con una riga `=== TOTALE: ingested=… skipped=… ===`. Controllo dell'archivio — deve stampare un numero maggiore di 0:
-
-```
-python3 -c "import sqlite3,os; print(sqlite3.connect(os.path.expanduser('~/Gas/.gas_knowledge.db')).execute('SELECT count(*) FROM knowledge_fts').fetchone()[0])"
-```
+**3. (Archivio della conoscenza: NON in questa prova.)** L'unica fonte del catalogo `knowledge/sources.yaml` è quella di prova (`test_local`, testo superato): crearlo ora metterebbe dati vecchi nelle risposte di Gas. Si fa quando c'è una fonte vera (decisione dell'operatore via M1).
 
 **4. Timer notturno installato e alle 03:00** — la prima riga deve mostrare `com.gas.notte`, poi `"Hour" => 3` e `"Minute" => 0`.
 
@@ -124,10 +113,10 @@ Fine della sera. Non lanciare il giro a mano: deve partire da solo alle 03:00.
 
 Deve esserci anche, verso le 03, **la richiesta di firma con i bottoni** Approva/Rifiuta per `prove_r1/buongiorno.sh`. **Non cliccare ancora.**
 
-**B. Il giro è partito dal timer e ha mandato il messaggio** — guarda l'ora nella prima riga e «Riepilogo Telegram inviato.»:
+**B. Il giro è partito dal timer e ha mandato il messaggio** — l'ultima riga «# Giro notturno di Gas — …» del log del timer deve avere la **data di oggi e un'ora tra 03:00 e 03:10**, e dopo di lei deve esserci «Riepilogo Telegram inviato.»:
 
 ```
-cd ~/Gas && source .venv/bin/activate && head -5 .gas_notte/ultimo_giro.md && grep -n "Riepilogo Telegram\|NON avviato\|INTERROTTO" .gas_notte/launchd.log | tail -3
+cd ~/Gas && source .venv/bin/activate && grep -n "^# Giro notturno di Gas\|Riepilogo Telegram\|NON avviato\|INTERROTTO" .gas_notte/launchd.log | tail -4
 ```
 
 **C. Resoconto completo** — cerca: `punto_lead — OK` con la riga «Riflessione: …», e `prova_firma_r1 — OK` con «in attesa della tua firma su Telegram: 1»:
@@ -164,7 +153,7 @@ rm -rf ~/Gas/prove_r1; mv ~/.gas_notte.yaml.prima_di_r1 ~/.gas_notte.yaml
 
 ## Esito
 
-**R1 passa** se A, B, C, D, E e F sono come descritto e il controllo dell'archivio della sera (punto 3) ha dato un numero maggiore di 0. Manda a M1 l'output di B, C, E, F e una foto del messaggio del mattino (A).
+**R1 passa** se A, B, C, D, E e F sono come descritto. Manda a M1 l'output di B, C, E, F e una foto del messaggio del mattino (A).
 
 Se qualcosa non va, cosa guardare:
 
