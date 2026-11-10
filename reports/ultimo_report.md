@@ -18,6 +18,8 @@
 
 - **Riserve del bot #362, terzo giro su e4191a2 (V-1, V-2 BASSE; V-3 COSMETICA)**: `FATTA` — controllo B con l'ora del giro nel log del timer; archivio della conoscenza tolto dalla prova (diventa decisione dell'operatore); WARN «spento nella shell ma il .env lo accende» accettato.
 
+- **Merge di main (447195f) per il conflitto della #362**: `FATTA` — review #743-M4 APPROVATO CON RISERVE, riserve chiuse. Sì dell'operatore al merge riferito da M1.
+
 ## Anomalie
 
 - `gh` nel container non è autenticato (token rifiutato): stato CI letto con gli strumenti GitHub della sessione.
