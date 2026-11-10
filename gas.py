@@ -127,6 +127,36 @@ def _campo_pin(text: Any) -> str:
     return s[:CAMPO_PIN_MAX_CHARS - 1] + "…"
 
 
+# Pin anonimo per i cervelli non forti (operatore 2026-11-10): strumenti le cui righe di
+# diario parlano di un lead (chiave, stato, ricerca per contatto) → dettagli omessi.
+_TOOL_DATI_LEAD: frozenset = frozenset({"salva_contatto", "imposta_stato_contatto",
+                                        "unisci_contatti", "ricorda"})
+IDENTIFICATIVO_MIN_CHARS = 3   # campo intero (nome, chiave, contatto)
+IDENTIFICATIVO_PAROLA_MIN = 4  # singola parola di un campo (cognome, dominio, …)
+
+
+def _identificativi_contatti(contatti: List[Dict[str, Any]]) -> List[str]:
+    """Testi (minuscoli) che identificano un contatto: nome, chiave e recapito interi e
+    le loro parole lunghe (per «Rossi» in una riga che non riporta «Mario Rossi»). Per
+    nascondere le righe di diario che li contengono ai cervelli non forti. PURA."""
+    out: set = set()
+    for c in contatti:
+        for campo in ("nome", "chiave", "contatto"):
+            v = " ".join(str(c.get(campo) or "").lower().split())
+            if len(v) >= IDENTIFICATIVO_MIN_CHARS:
+                out.add(v)
+            for parola in re.split(r"[^\w]+", v):
+                if len(parola) >= IDENTIFICATIVO_PAROLA_MIN:
+                    out.add(parola)
+    return sorted(out)
+
+
+def _contiene_identificativo(testo: str, identificativi: List[str]) -> bool:
+    """True se il testo contiene uno degli identificativi (confronto minuscolo). PURA."""
+    t = " ".join(str(testo).lower().split())
+    return any(i in t for i in identificativi)
+
+
 _GAS_SYSTEM_PROMPT_BASE = (
     "REGOLE TASSATIVE:\n"
     "- Hai 13 tool nativi: read_file, elenca_cartella, leggi_righe, cerca_testo, conta_file, "
@@ -440,15 +470,25 @@ def _classify_provider_error(status_code: Optional[int], err_text: str,
 
 RIPIEGO_MOTIVO_MAX_CHARS = 160  # B4: motivo breve nella riga di avviso del ripiego
 
+# §8 Model Awareness (bot #366 V-1, decisione dell'operatore 2026-11-10): rung della
+# cascata che montano una VERSIONE MINORE di un modello (oggi Flash-lite, scelto dal
+# router per i compiti semplici). Criterio sul NOME del rung (stabile), non sull'ID del
+# modello (sovrascrivibile da env in brains/model_ids.py). Il forte non è mai minore.
+RUNG_VERSIONE_LEGGERA: frozenset = frozenset({"gemini-flash-lite"})
+
 
 def _info_ripiego(nome: str, modello: str, primo: str,
                   motivi: List[str]) -> Dict[str, Any]:
     """§8 Model Awareness (audit B4): campi dell'evento «final» che dicono chi ha
     risposto e se è un ripiego rispetto al primo rung della cascata. `avviso_ripiego`
-    è la riga pronta per CLI e Telegram ("" se nessun ripiego). Il cervello forte
-    (claude-cli, /forte) non è mai un ripiego. Il motivo usa solo le righe di
-    `_motivi` (nome, env ed esito classificato: mai testo grezzo dell'errore). PURA."""
+    è la riga pronta per CLI e Telegram, mai a voce ("" se niente da dichiarare). Il
+    cervello forte (claude-cli, /forte) non è mai un ripiego né una versione minore.
+    Il primo rung non configurato conta come ripiego (R-750-M1-1, operatore 2026-11-10).
+    Senza ripiego, una risposta da una versione minore (RUNG_VERSIONE_LEGGERA) si
+    dichiara comunque (bot #366 V-1, operatore 2026-11-10). Il motivo usa solo le righe
+    di `_motivi` (nome, env ed esito classificato: mai testo grezzo dell'errore). PURA."""
     ripiego = nome != primo and nome != "claude-cli"
+    leggera = nome in RUNG_VERSIONE_LEGGERA and nome != "claude-cli"
     avviso = ""
     if ripiego:
         motivo = "; ".join(motivi)
@@ -456,8 +496,10 @@ def _info_ripiego(nome: str, modello: str, primo: str,
             motivo = motivo[:RIPIEGO_MOTIVO_MAX_CHARS - 1] + "…"
         avviso = f"↪ risposta da {modello} ({nome}, riserva"
         avviso += f": {motivo})" if motivo else ")"
+    elif leggera:
+        avviso = f"↪ risposta da {modello} (versione leggera scelta per un compito semplice)"
     return {"provider": nome, "modello": modello, "ripiego": ripiego,
-            "avviso_ripiego": avviso}
+            "versione_leggera": leggera, "avviso_ripiego": avviso}
 
 
 def _motivo_forte(e: BaseException) -> Optional[str]:
@@ -1978,6 +2020,7 @@ class GasKernel:
     # resta intatta. Il pin ha un suo tetto dedicato, ampiamente sotto
     # WINDOW_CHAR_CAP, così il payload totale (system+pin+finestra) resta sano.
     # Default (override via env, risolti in __init__ — riserva R2 fetta 2b):
+    MAX_CHIAMATE_TURNO = 10        # §8: chiamate al modello per TURNO, fra tutti i cervelli
     MEMORY_PIN_CHAR_CAP = 3000     # tetto rigido del solo blocco-memoria
     MEMORY_PIN_CONTACTS = 8        # max lead attivi nel pin
     MEMORY_PIN_EVENTS = 6          # max eventi diario "significativi" nel pin
@@ -3878,7 +3921,19 @@ class GasKernel:
         return riga
 
     def _memoria_pin(self) -> str:
-        """Blocco di memoria ALWAYS-ON (lato lettura, fetta 2b) da appendere al
+        """Variante PIENA del pin (vedi _memoria_pin_varianti): quella del cervello forte."""
+        return self._memoria_pin_varianti()[0]
+
+    def _memoria_pin_varianti(self) -> Tuple[str, str]:
+        """(pin pieno, pin anonimo), calcolati in UN solo passaggio per turno. Il pieno va
+        SOLO al cervello forte (claude-cli); l'anonimo a tutti gli altri provider (regola
+        dei modelli, CLAUDE.md §2; decisione dell'operatore 2026-11-10): niente dati
+        identificativi dei lead (nomi, chiavi, contatti, prossime azioni) ma una riga
+        «N lead attivi (dettagli solo al cervello forte)», e le righe di diario legate a un
+        lead (strumenti dei contatti, contatto_id, o testo che contiene un identificativo
+        di un contatto) senza dettagli.
+
+        Blocco di memoria ALWAYS-ON (lato lettura, fetta 2b) da appendere al
         system prompt: riassunto COMPATTO e CAPATO di lead attivi + poche azioni
         recenti significative (escluso il rumore di lettura). Sta NEL messaggio
         system (FUORI dalla finestra) → NON passa da _get_window/_cap_window_chars,
@@ -3886,8 +3941,8 @@ class GasKernel:
         dedicato MEMORY_PIN_CHAR_CAP. Si calcola UNA volta per turno (no eco delle
         azioni in corso, no query ripetute nel loop a 10 iterazioni).
 
-        Fail-safe (§9): memoria None/degradata o qualunque errore → stringa
-        vuota, il turno prosegue. Ritorna "" (niente da iniettare) oppure il
+        Fail-safe (§9): memoria None/degradata o qualunque errore → stringhe
+        vuote, il turno prosegue. Ogni variante è "" (niente da iniettare) oppure il
         blocco già preceduto da due newline, pronto per `system_prompt + pin`."""
         # V-1 bot #222: True se il pin MOSTRA dati scritti da un turno contaminato
         # (contatto non_fidato o riga di diario marcata): il turno che lo vede è a sua
@@ -3897,15 +3952,21 @@ class GasKernel:
         # proposito (con True una memoria guasta manderebbe alla firma ogni scrittura).
         self._pin_non_fidato = False
         if self.memory is None:
-            return ""
+            return "", ""
         try:
             righe: List[str] = []
-            attivi = [c for c in self.memory.lista_contatti()
-                      if c.get("stato") not in STATI_CHIUSI][:self.MEMORY_PIN_CONTACTS]
+            righe_anon: List[str] = []
+            tutti = self.memory.lista_contatti()
+            tutti_attivi = [c for c in tutti if c.get("stato") not in STATI_CHIUSI]
+            attivi = tutti_attivi[:self.MEMORY_PIN_CONTACTS]
             if any(c.get("non_fidato") for c in attivi):
                 self._pin_non_fidato = True
+            identificativi = _identificativi_contatti(tutti)
             if attivi:
                 righe.append("## Lead attivi")
+                righe_anon.append("## Lead attivi")
+                righe_anon.append(f"- {len(tutti_attivi)} lead attivi "
+                                  "(dettagli solo al cervello forte)")
                 for c in attivi:
                     nome = _campo_pin(c.get("nome") or c.get("chiave") or "?")
                     pa = (f" → prossima: {_campo_pin(c['prossima_azione'])}"
@@ -3920,6 +3981,7 @@ class GasKernel:
                       if e.get("tipo") not in self.DIARIO_NOISE_TIPI][:self.MEMORY_PIN_EVENTS]
             if eventi:
                 righe.append("## Ultime azioni")
+                righe_anon.append("## Ultime azioni")
                 for e in eventi:
                     desc = str(e.get("descrizione") or "")
                     tipo = str(e.get("tipo") or "")
@@ -3937,30 +3999,41 @@ class GasKernel:
                         f"- [{_campo_pin(tipo)}] "
                         f"{_campo_pin(desc)}"
                     )
+                    # Variante anonima (operatore 2026-11-10): una riga legata a un lead
+                    # perde i dettagli. Il confronto è sul testo grezzo, minuscolo.
+                    if (str(e.get("tipo") or "") in _TOOL_DATI_LEAD or e.get("contatto_id")
+                            or _contiene_identificativo(desc, identificativi)):
+                        desc = "(dettagli di un lead omessi: solo al cervello forte)"
+                    righe_anon.append(f"- [{_campo_pin(tipo)}] {_campo_pin(desc)}")
             if not righe:
-                return ""
-            blocco = ("# MEMORIA (sola lettura — usa il tool 'ricorda' per "
-                      "approfondire il diario o un lead)\n" + "\n".join(righe))
-            # Tetto rigido del pin (stesso principio di _cap_tool_output: tronco
-            # il TESTO, non sequenze di messaggi → niente slicing della storia).
-            # Taglio all'ultima riga intera per non lasciare una riga monca.
-            if len(blocco) > self.MEMORY_PIN_CHAR_CAP:
-                tagliato = blocco[:self.MEMORY_PIN_CHAR_CAP].rsplit("\n", 1)[0]
-                blocco = tagliato + "\n…[memoria troncata]"
-            # R2 fetta A: la memoria entra nel prompt come DATO delimitato, non
-            # come istruzione. Il contenuto è già sanitizzato sopra (campo per
-            # campo); il blocco viene avvolto DOPO il troncamento così il cap
-            # si applica al solo contenuto, non al wrapper (costante, ~30 char).
-            return "\n\n" + _MEMORIA_DATI_OPEN + "\n" + blocco + "\n" + _MEMORIA_DATI_CLOSE
+                return "", ""
+            return self._avvolgi_pin(righe), self._avvolgi_pin(righe_anon)
         except Exception as e:
             logging.warning(f"_memoria_pin fallito: {e}")
             self._pin_non_fidato = True  # fail-closed: pin non valutabile
-            return ""
+            return "", ""
         finally:
             # R-371-2: resta vero fino a `clear` (la riflessione non deve fare un
             # recap fidato da una sessione che ha visto dati non fidati).
             if self._pin_non_fidato:
                 self._pin_non_fidato_visto = True
+
+    def _avvolgi_pin(self, righe: List[str]) -> str:
+        """Blocco del pin pronto per `system_prompt + pin`: intestazione, tetto e
+        delimitatori di dato (stesso formato per le due varianti)."""
+        blocco = ("# MEMORIA (sola lettura — usa il tool 'ricorda' per "
+                  "approfondire il diario o un lead)\n" + "\n".join(righe))
+        # Tetto rigido del pin (stesso principio di _cap_tool_output: tronco
+        # il TESTO, non sequenze di messaggi → niente slicing della storia).
+        # Taglio all'ultima riga intera per non lasciare una riga monca.
+        if len(blocco) > self.MEMORY_PIN_CHAR_CAP:
+            tagliato = blocco[:self.MEMORY_PIN_CHAR_CAP].rsplit("\n", 1)[0]
+            blocco = tagliato + "\n…[memoria troncata]"
+        # R2 fetta A: la memoria entra nel prompt come DATO delimitato, non
+        # come istruzione. Il contenuto è già sanitizzato (campo per campo); il
+        # blocco viene avvolto DOPO il troncamento così il cap si applica al solo
+        # contenuto, non al wrapper (costante, ~30 char).
+        return "\n\n" + _MEMORIA_DATI_OPEN + "\n" + blocco + "\n" + _MEMORIA_DATI_CLOSE
 
     def _lezioni_pin(self) -> str:
         """Blocco <lezioni_dati> da appendere al system prompt: solo lezioni 'approvata',
@@ -5071,7 +5144,9 @@ class GasKernel:
             # Vive nel messaggio system (system_prompt + mem_pin + lezioni_pin + recap_pin), FUORI
             # dalla finestra: _get_window/_cap_window_chars restano intatti. Fail-safe:
             # "" se la memoria è assente/degradata.
-            mem_pin = self._memoria_pin()
+            # Due varianti (operatore 2026-11-10): la piena SOLO al cervello forte, quella
+            # senza dati identificativi dei lead a tutti gli altri (scelta nel payload).
+            mem_pin, mem_pin_anonimo = self._memoria_pin_varianti()
             lezioni_pin = self._lezioni_pin()
             # FASE 2.6: recap fidato pertinente, come DATO; voce rapida: niente recap vecchio
             recap_pin = "" if voce else self._recap_pin(user_prompt)
@@ -5110,7 +5185,20 @@ class GasKernel:
             # 2026-10-12). Solo nome, variabile d'ambiente ed esito classificato: mai il
             # testo grezzo dell'errore (potrebbe riportare dati della richiesta).
             _motivi: List[str] = []
+            # §8 (decisione dell'operatore 2026-11-10): tetto di chiamate al modello PER
+            # TURNO, condiviso fra i cervelli della cascata (prima era per cervello: un
+            # turno poteva farne 10×N). Esaurito → turno finito dichiarato, mai crash.
+            _chiamate_turno = 0
+            _tetto_turno = False
             for name, env, url, model in providers:
+                # Prima del controllo della chiave (R-753-M1-3): a tetto finito i rung
+                # seguenti non aggiungono «non impostata» ai motivi.
+                if _tetto_turno:
+                    break
+                if _chiamate_turno >= self.MAX_CHIAMATE_TURNO:
+                    _motivi.append(f"tetto di {self.MAX_CHIAMATE_TURNO} chiamate al modello "
+                                   f"per turno raggiunto: {name} e successivi non provati")
+                    break
                 if not _rung_disponibile(name, env):
                     _motivi.append(f"{name}: {env} non impostata")
                     continue
@@ -5133,7 +5221,7 @@ class GasKernel:
                               OpenAI(base_url=url, api_key=os.environ.get(env),
                                      timeout=self._timeout_provider(name),
                                      max_retries=self.PROVIDER_MAX_RETRIES))
-                    for _ in range(10):  # max 10 iterazioni agentic loop
+                    for _ in range(10):  # §8 barriera per cervello; il tetto vero è MAX_CHIAMATE_TURNO (per turno)
                         # C2: calcola contaminazione dalla finestra PRIMA di inviare
                         # al provider (§3b). Ricalcolata a ogni iterazione perché la
                         # finestra può scorrere tra un'iterazione e l'altra.
@@ -5141,7 +5229,8 @@ class GasKernel:
                         # V-1 bot #222: conta anche il pin che mostra dati non fidati.
                         _finestra_contaminata = (self._finestra_e_contaminata(_window)
                                                  or getattr(self, "_pin_non_fidato", False))
-                        payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin + recap_pin + turno_pin}] + _senza_segni_interni(_window)
+                        _pin_rung = mem_pin if name == "claude-cli" else mem_pin_anonimo
+                        payload = [{"role": "system", "content": self.system_prompt + _pin_rung + lezioni_pin + recap_pin + turno_pin}] + _senza_segni_interni(_window)
                         # FETTA 1 (chiude F2): budget ricontrollato prima di OGNI chiamata,
                         # non solo a inizio turno. Superato a metà turno → il turno si
                         # ferma DICHIARATO (niente fallback: il tetto vale per tutti i
@@ -5168,7 +5257,18 @@ class GasKernel:
                                 logging.warning(f"cervello forte: tetto giornaliero {_tetto}: turno fermato")
                                 yield _errore_tetto_forte(_tetto)
                                 return
+                        # Tetto per turno: dopo il budget (che ha la precedenza) e prima
+                        # della chiamata. Alla prima iterazione non scatta mai (lo
+                        # controlla il giro esterno), quindi qui il rung è già «tentato».
+                        if _chiamate_turno >= self.MAX_CHIAMATE_TURNO:
+                            _tetto_turno = True
+                            logging.warning(f"tetto di {self.MAX_CHIAMATE_TURNO} chiamate per "
+                                            f"turno raggiunto su {name}: turno fermato")
+                            _motivi.append(f"{name}: tetto di {self.MAX_CHIAMATE_TURNO} "
+                                           "chiamate al modello per turno raggiunto")
+                            break
                         _chiamato_rung = True
+                        _chiamate_turno += 1
                         try:
                             response = client.chat.completions.create(
                                 model=model, messages=payload, **_offerta
@@ -5182,8 +5282,9 @@ class GasKernel:
                             # Il 400 di Gemini può essere transitorio (diagnosi
                             # 2026-06-10: stesso payload accettato 5/5 al replay):
                             # UN solo retry con payload identico, poi fallback
-                            if not (name.startswith("gemini") and "400" in str(e)[:120]):
-                                raise
+                            if (not (name.startswith("gemini") and "400" in str(e)[:120])
+                                    or _chiamate_turno >= self.MAX_CHIAMATE_TURNO):
+                                raise  # anche il retry è una chiamata: conta nel tetto
                             # V-1 bot #191: anche il retry è una create, quindi passa dal
                             # budget. Superato → stop dichiarato come prima della create
                             # (V-1 bot #191, 2° giro: niente «Pipeline esausta … HTTP 400»
@@ -5194,6 +5295,7 @@ class GasKernel:
                                 logging.warning(f"retry Gemini 400 ({name}): saltato, budget superato")
                                 yield _errore_budget_meta_turno(_sup)
                                 return
+                            _chiamate_turno += 1
                             try:
                                 response = client.chat.completions.create(
                                     model=model, messages=payload, **_offerta
@@ -6622,7 +6724,7 @@ def main():
             for event in kernel.run_turn(prompt, cervello=cervello):
                 if event["type"] == "final":
                     print(f"\n{event['content']}\n")
-                    if event.get("avviso_ripiego"):  # §8 (audit B4): ha risposto una riserva
+                    if event.get("avviso_ripiego"):  # §8: ha risposto una riserva o Flash-lite
                         print(f"  {event['avviso_ripiego']}\n")
                 elif event["type"] == "tool_res": print(f"  → {event['output'].strip()}")
                 elif event["type"] == "error": print(f"\n✗ {event['content']}\n")
