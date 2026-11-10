@@ -17,7 +17,9 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 
 - **Fetta 1 — terminale opzione A (strumento `manutenzione`, cancello, divieti in run_turn, test, CI)**: `FATTA` (e93bd77).
 - **Merge di origin/main (#359 di Mani) nel ramo**: `FATTA` (32619b5), review #743-M2.
-- **Riserve del terminale A registrate in stato_progetto (R-743-1)**: `FATTA` (commit di fine task).
+- **Riserve del terminale A registrate in stato_progetto (R-743-1)**: `FATTA` (bcca777).
+- **Verifica esterna #363 V-1 MEDIA (conflitto con main dopo il merge della #360)**: `FATTA` — merge di origin/main 447195f (d3c490c), conflitti solo nei report e nella memoria, review #745-M2 APPROVATO.
+- **Verifica esterna #363 V-3 BASSA e V-4 BASSA**: `DEFERITA` — registrate in §7 (regola: BASSE si registrano, niente giri).
 - **Prova dal vivo di `riavvia_voce` / launchctl sul Mac**: `DEFERITA` — dopo il merge.
 
 ---
@@ -25,16 +27,16 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
+ .claude/agents/memoria_revisore.md |   8 ++++++++
  .github/workflows/ci.yml           |   7 +++++++
  gas.py                             |  55 +++++++
  modules/gate/gate.py               |  20 ++++
  modules/manutenzione/__init__.py   | 187 ++++++++++++++
- reports/diff_sessione.md           |  19 ++++++++++---------
+ reports/diff_sessione.md           |  17 +++++++++++------
  reports/handoff.md                 | n/d
  reports/proposta_terminale_A.md    |  31 +++++++
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  18 ++++++++----------
+ reports/ultimo_report.md           |  21 ++++++++++-----------
  tests/test_unit_manutenzione.py    | 310 ++++++++++++++++++++++
 ```
 
@@ -43,6 +45,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d3c490c Merge origin/main (#360) nel terminale A, chiude V-1 verifica esterna #363 (conflitto) — review #745-M2 APPROVATO (chat M2)
+bcca777 docs(fine-task): terminale opzione A — report, handoff e riserve in stato_progetto (R-743-1); PR #363 per il sì dell'operatore (chat M2)
 32619b5 Merge origin/main (#359 di Mani) nel terminale A — review #743-M2 APPROVATO CON RISERVE (chat M2)
 e93bd77 feat(gas): terminale opzione A — azioni fisse di manutenzione (stato_gas, log_voce; aggiorna_gas e riavvia_voce solo con firma), mai a voce né di notte (decisione dell'operatore via M1)
 54a6299 chore(revisore): memoria review #739 — APPROVATO CON RISERVE
@@ -53,6 +57,35 @@ e93bd77 feat(gas): terminale opzione A — azioni fisse di manutenzione (stato_g
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #745-M2 (merge di main 447195f, commit d3c490c) — verdetto integrale
+
+VERDETTO: APPROVATO
+
+Review #745-M2 (chat M2). È il merge staged di origin/main 447195f (PR #360, frasi fisse divise in cache) in feat/terminale-a-m2 (HEAD bcca777, PR #363). Ho letto prima CLAUDE.md, la riga del terminale A in stato_progetto.md e la coda della memoria.
+
+**Elementi del diff esaminati:**
+- `modules/voice/server.py:324` — `_FRASI_FISSE_INTERE` diventa una tupla. `_FRASI_FISSE` ora è l'unione delle frasi intere e dei pezzi prodotti da `_dividi_frasi`. Rischio esaminato: che il merge perda parti della #360 o le mescoli col terminale A, e che tocchi la manutenzione. Il blob è identico a MERGE_HEAD (`git diff --cached MERGE_HEAD` vuoto). Nel server la parola «manutenzione» non compare. La #360 cambia solo le righe 324-329. — ok
+- `tests/test_unit_voice_server.py:2099` — sono i test della cache sul percorso vero «Gas, forte.» (già revisionati in #737/#740/#741-M2). Rischio esaminato: test persi nel merge. Il blob è identico a 447195f. — ok
+- `gas.py:5174` — il DENY `_manutenzione_fuori` in run_turn, prima del cancello. Rischio esaminato: che il merge perda il recinto del terminale A. gas.py, `modules/gate/gate.py`, `modules/manutenzione/__init__.py:176`, `tests/test_unit_manutenzione.py`, ci.yml e la proposta sono identici a HEAD (diff vuoto). — ok
+- `reports/stato_progetto.md:617` — conflitto risolto a mano. Contiene la riga R8 di main («✅ #358 MERGIATA 567beb7») e la riga «🔒 Terminale opzione A» del ramo, che contiene anche le riserve R-738-2/3, R-739-1/2 e R-743-1. Non ci sono marcatori di conflitto. — ok
+- `.claude/agents/memoria_revisore.md` — è l'unione dei due lati: nessuna riga persa né da HEAD né da MERGE_HEAD. L'ordine è #736–#739-M2, poi #742-M2, poi #743-M2. Non ci sono marcatori. — ok
+
+**Controlli sul merge:**
+- `git diff --cached origin/main` contiene 11 file: il terminale A (gas.py, gate.py, manutenzione, test, ci.yml, proposta), i report (handoff, ultimo_report, diff_sessione, stato_progetto) e la memoria. Non c'è nessun file di codice di main.
+- handoff, ultimo_report e diff_sessione sono identici a HEAD. ripartenza_m2.md è identico a main.
+- `git ls-files -u` è vuoto, `git diff --cached --check` è pulito e nel worktree non ci sono modifiche fuori dall'index.
+
+**Test eseguiti (python3 di sistema):**
+- manutenzione + voice_server con -k "not browser": 209 passed, 21 deselected.
+- test_unit_gate: 823 passed.
+- test_unit_kernel: 1100 PASS e 1 FAIL, solo T31g (noto, dipende dall'ambiente).
+
+**Interazione fra #360 e terminale A:** non ce n'è. La #360 tocca solo l'insieme delle frasi da mettere in cache nella sintesi. Il server voce chiama ancora `run_turn` (modules/voice/server.py:808) con gli stessi argomenti, quindi la guardia della manutenzione per i turni a voce resta quella di gas.py:5174.
+
+**Rischio escluso:** non ho verificato dal vivo la sintesi ElevenLabs né `riavvia_voce` sul Mac, perché in dev non si possono riprodurre. Non ho rilanciato telegram_voce e voce_ascolto: la #360 non tocca bot.py né ascolto.py, e la #743-M2 li aveva già coperti.
+
+**Memoria:** ho aggiunto la riga `#745-M2 — 2026-11-10 — APPROVATO — … Nessuna lezione nuova.` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git add`. Come chiesto, non ho fatto commit e non ho lanciato commit_memoria_revisore.sh, perché il merge è ancora in corso. Il worktree /home/user/Gas-voce non l'ho toccato.
 
 ### Review #743-M2 (merge di main, commit 32619b5) — verdetto integrale
 
@@ -115,7 +148,9 @@ I verdetti integrali sono stati emessi prima di un `/clear` di questa chat e non
 ## §6 STATO CI
 
 CI NON VERIFICATA (gh assente): `gh` nel cloud non è autenticato.
-- 32619b5 (merge, pushato da solo prima di aprire la PR #363): run non ancora disponibile alla scrittura dell'handoff.
+- bcca777 (head precedente della PR #363): handoff-check success; esito di unit-suite non letto prima del nuovo push (la verifica esterna lo dava in corso).
+- d3c490c (merge di main 447195f): nessuna run su questo SHA (pushato insieme al commit di fine task).
+- 32619b5: nessuna run propria letta (pushato da solo prima di aprire la PR #363).
 - e93bd77, 54a6299, 28c559e, 1ebb897: nessuna run su questi SHA (mai pushati da soli; il loro contenuto è nell'albero di 32619b5).
 - Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
@@ -125,4 +160,8 @@ CI NON VERIFICATA (gh assente): `gh` nel cloud non è autenticato.
 - R-738-3 BASSA — l'esecuzione firmata gira nel processo del bot: `aggiorna_gas` può occuparlo fino a ~19 min; il bot resta sul codice vecchio fino al riavvio.
 - R-739-1 BASSA — finestra notte in ora locale della macchina: su un VPS in UTC slitta.
 - R-739-2 BASSA — il testo «Could not find service» di launchctl non è stato provato dal vivo.
-- R-743-1 BASSA — riserve non registrate in stato_progetto: CHIUSA in questo commit (voce «Terminale opzione A»).
+- R-743-1 BASSA — riserve non registrate in stato_progetto: CHIUSA (bcca777, voce «Terminale opzione A»).
+- Verifica esterna #363 (commento sulla PR, su bcca777) V-1 MEDIA (PR non mergeabile, conflitto con main): CHIUSA (d3c490c, review #745-M2).
+- Verifica esterna #363 V-2 BASSA (CI non conclusa al momento della verifica): da rileggere sulla head nuova.
+- Verifica esterna #363 V-3 BASSA — il filtro delle righe dei tempi di `log_voce` usa `.search` sull'intera riga: una riga con testo arbitrario che finisce col formato dei tempi passa. Fix proposto: ancorare il match.
+- Verifica esterna #363 V-4 BASSA — `aggiorna_gas` lancia `pip install -r` su codice appena scaricato da main; l'unica barriera è la firma, e la richiesta di firma dice solo «Esegui manutenzione». Fix proposto: testo della firma più esplicito.
