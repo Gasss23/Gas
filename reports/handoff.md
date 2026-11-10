@@ -36,6 +36,7 @@ NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handof
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3835a14 docs(fine-task): ascolto H24 meno attivazioni per sbaglio — PR #361
 1a031ae fix(voce): l'ascolto risponde meno senza essere chiamato — finestra 15 s, al massimo 2 seguiti, parola su 2 blocchi di fila, soglia 0,6, coda dell'eco ignorata — review #736
 ```
 
