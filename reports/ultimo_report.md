@@ -1,8 +1,8 @@
 # Ultimo report — 2026-11-10 — Decisioni dell'operatore: avviso Flash-lite, tetto di 10 chiamate per turno, nomi dei lead mai ai modelli non forti (M1)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione (numero nel §0 dell'handoff).
-2. R-753-M1-A: i risultati di `ricorda`/`salva_contatto` già nella storia, il testo dell'operatore e `recap_pin` possono contenere nomi di clienti e arrivano ancora ai modelli non forti nei turni successivi. Estendere il blocco anche lì? sì/no
+1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370).
+2. R-753-M1-A: i risultati di `ricorda`/`salva_contatto` già nella storia, il testo dell'operatore `recap_pin` e la riflessione di fine task (ve #370 V-1) possono contenere nomi di clienti e arrivano ancora ai modelli non forti. Estendere il blocco anche lì? sì/no
 
 ## Esito
 - **(a) Primo cervello non configurato = ripiego dichiarato** (sì dell'operatore): FATTA — nessun cambio di codice, test T113a4 lo fissa.

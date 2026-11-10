@@ -6,8 +6,8 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa sessione (branch feat/merge-automatico-z1xjx2 → main). Numero e URL dall'output di `create_pull_request` dello strumento GitHub (gh assente): aggiornati nel commento della PR e nel riepilogo in chat.
-2. R-753-M1-A: estendere il blocco dei nomi dei clienti anche ai risultati di `ricorda`/`salva_contatto` nella storia, al testo dell'operatore e a `recap_pin` verso i modelli non forti? sì/no
+1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370). Numero e URL dall'output di `create_pull_request` dello strumento GitHub (gh assente).
+2. R-753-M1-A: estendere il blocco dei nomi dei clienti anche ai risultati di `ricorda`/`salva_contatto` nella storia, al testo dell'operatore, a `recap_pin` e alla riflessione di fine task (ve #370 V-1) verso i modelli non forti? sì/no
 
 ---
 
@@ -39,6 +39,8 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fabf2e9a docs(stato): R-753-M1-A estesa alla riflessione (ve #370 V-1) e buchi noti del pin anonimo
+e761eefc docs(fine-task): decisioni dell'operatore del 2026-11-10 (Flash-lite, tetto per turno, pin anonimo)
 d5773ec1 fix(kernel): decisioni dell'operatore 2026-11-10 — Flash-lite dichiarato, tetto di 10 chiamate per turno, pin senza dati dei lead ai non forti (review #753-M1)
 ```
 
@@ -130,12 +132,15 @@ Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed e
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente).
-- d5773ec1: nessuna run su questo SHA (pushato insieme al commit di fine-task).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumento GitHub sulla PR #370:
+- e761eefc: handoff-check success; verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE); unit-suite in corso alla scrittura.
+- d5773ec1: nessuna run su questo SHA (pushato insieme a e761eefc).
+- Commit di stato (R-753-M1-A estesa) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-753-M1-A (decisione dell'operatore) — storia, testo dell'operatore e `recap_pin` possono ancora portare nomi di clienti ai modelli non forti.
+- R-753-M1-A (decisione dell'operatore) — storia, testo dell'operatore, `recap_pin` e riflessione di fine task (ve #370 V-1 MEDIA, aggiunta qui) possono ancora portare nomi di clienti ai modelli non forti.
+- Ve #370 V-2 / bot #370 V-1/V-2 BASSE — buchi del pin anonimo: lapidi dei lead fusi, parole di prossima_azione/note, nomi corti.
+- Bot #370 V-3 COSMETICA — commento a gas.py ~4002 non corrisponde al codice.
 - Limite noto del pin anonimo: nel testo del diario non si cercano nomi più corti di 3 caratteri né parole più corte di 4.
 - Riserve precedenti ancora aperte (R-744-M1-1..4, R-750-M1-2/3, ve #366 V-2/V-3): in reports/stato_progetto.md.
