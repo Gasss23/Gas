@@ -1,19 +1,19 @@
-# Ultimo report — 2026-11-09 — voce via Telegram, fetta 4: voce in un thread (chat Mani)
+# Ultimo report — 2026-11-09 — Voce, velocità: frasi fisse divise in cache (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #359: è un CAMBIO DI SICUREZZA (guardia T78p delle firme allargata, opzione b scelta dall'operatore). Resta aperta fino al sì esplicito dell'operatore, anche se il bot dà un verdetto pulito. Consigliato il secondo passaggio nella chat claude.ai col link della PR.
-2. Guardia T78p: il revisore (#733) consiglia di fermarsi qui. Le elusioni rimaste (R-733-1/2, BASSE) richiedono codice scritto apposta e visibile in review. L'operatore decide se accettare questo limite della guardia statica.
+- Nessuna per la #360: sì dell'operatore al merge (nota cosmetica accettata). Dalla #358: marcatore `gasmerge-ip-ok` per gli IPv4 d'esempio sì/no; controllo dell'interfaccia del tunnel prima del VPS.
 
-## Esito
+## Esito delle fette
 
-- **PR #357 (fetta 3)**: MERGIATA (524ae96).
-- **Voce in un thread (opzione b)**: FATTA (aca5b88; review #725 e #727).
-- **Tempi della voce di casa**: FATTA (3404378; review #722).
-- **Bot e verifica esterna #359** (V-1 MEDIA: la guardia non vincolava .map; V-2 MEDIA/BASSA: i nomi vietati erano una deny-list incompleta): CORRETTE. La guardia T78p ora è una allow-list. La consegna alla coda può essere solo `submit(_invia_risposta_vocale, base_url, chat_id, finale)`. Le funzioni raggiunte dal thread possono usare solo i nomi, gli attributi e gli import ammessi. Nessun legame può coprire un builtin o un nome del modulo. I legami di modulo si contano in modo esatto. Fuori dalle funzioni sono vietate le scritture su attributi e subscript, e in tutto il modulo l'accesso agli interni (__code__, sys.modules, exec…). Review #729–#733: a ogni giro una nuova classe di elusioni è stata chiusa con mutanti di prova; in tutto 27 mutanti presi su 28 (1 inconclusivo). V-3 (test del Ctrl-C nella pausa), V-4 (docstring) e V-5 (report): FATTE.
-- **Merge di main con la PR #358 di M2**: FATTO, review #735.
-- Test: telegram_voce, ascolto e voice_server danno 550 passed. Kernel: 1099 PASS, 1 FAIL (T31g, ambiente); T78p PASS.
+- **PR #358 (sicurezza del server voce)**: `MERGIATA` (567beb7).
+- **Frasi fisse divise in cache**: `FATTA` — anche nelle risposte a pezzi le frasi fisse vengono dalla memoria. Review #725-M2 e #735-M2 APPROVATO.
+- Bot #360 V-1 BASSA chiusa: test sul percorso vero «forte» a pezzi (review #737-M2 APPROVATO).
+- Bot #360 2° giro (COSMETICA) chiusa: la seconda richiesta legge dalla cache (review #740-M2 APPROVATO).
+- Bot #360 3° giro: tolto dal confronto il campo «tempi» (test instabile); review #741-M2 APPROVATO.
+- Merge di main (#359 di Mani) nel branch; review #742-M2 APPROVATO.
+- Test: `pytest -q tests/test_unit_voice_server.py tests/test_unit_sottofondo.py tests/test_unit_telegram_voce.py -k "not conversazione_nel_browser"` → 315 passed (314 prima del test del bot #360 V-1; i giri successivi hanno modificato quel test, non aggiunto test).
 
 ## Anomalie
 
-Nessuna nel codice della voce. La guardia statica ha richiesto 5 giri di review: è un limite noto dell'analisi per nomi.
+- Nessuna. Fetta preparata in locale di notte e riposizionata sopra main (patch identica a quella revisionata).
