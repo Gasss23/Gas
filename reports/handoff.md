@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-10 — chat Mani: ascolto H24, meno attivazioni per sbaglio (Jarvis rispondeva senza essere chiamato) + correzione della V-1 MEDIA della verifica esterna #361 + merge di main (PR #360) per togliere il conflitto
+**Sessione:** 2026-11-10 — chat Mani: ascolto H24, meno attivazioni per sbaglio (Jarvis rispondeva senza essere chiamato) + correzione della V-1 MEDIA della verifica esterna #361 + merge di main (PR #360 e #362) per togliere i conflitti
 
 ---
 
@@ -16,6 +16,8 @@
 - **Ascolto H24, meno attivazioni per sbaglio**: `FATTA` — review #736 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
 - **V-1 MEDIA della verifica esterna #361 (nella finestra la parola valeva con 1 solo blocco)**: `FATTA` — bc37ae5, review #737 APPROVATO CON RISERVE poi #738 APPROVATO (R-737-1 chiusa con test e mutanti).
 - **V-1 MEDIA della verifica esterna #361, 2° giro (PR in conflitto con main)**: `FATTA` — a13f442, merge di origin/main 447195f (PR #360); conflitti solo nei report (memoria unione, report del nostro lato), review #739 APPROVATO.
+- **Merge di main dopo la PR #362 (solo documenti)**: `FATTA` — 8ff4db4; conflitti solo nei report (memoria unione, report del nostro lato); nessun file del perimetro di review nello staging, revisore non richiesto.
+- **Verifica esterna #361 3° giro e bot**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA; bot neutral (decide l'operatore). Merge: M1 riporta il sì dell'operatore («mergia tutto quello che il bot ha approvato») e lo esegue M1.
 - **V-1 della verifica esterna #359 (log degli errori del thread della voce)**: `DEFERITA — prossima fetta voce, come deciso dall'operatore`.
 
 ---
@@ -28,16 +30,18 @@
  reports/diff_sessione.md           |  15 +++++++++------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  26 +++++++++++++++-----------
+ reports/ultimo_report.md           |  29 ++++++++++++++---------------
  scripts/voce/LEGGIMI.md            |  15 ++++++++-------
  tests/test_unit_voce_ascolto.py    | 130 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
 ```
 
-NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handoff.md` dice `n/d` e manca la riga di totale. Base = merge-base con origin/main dopo il merge a13f442 (447195f).
+NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handoff.md` dice `n/d` e manca la riga di totale. Base = merge-base con origin/main dopo il merge 8ff4db4 (2dd0e8c).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8ff4db4 merge: origin/main (PR #362) in claude/peaceful-lovelace-0w2b7q — solo documenti, conflitti nei report
+5b57208 docs(fine-task): merge di main nella PR #361 (conflitto chiuso, review #739)
 a13f442 merge: origin/main (PR #360) in claude/peaceful-lovelace-0w2b7q — conflitti solo nei report, review #739
 0e5291c docs(fine-task): V-1 della verifica esterna #361 chiusa — PR #361
 bc37ae5 fix(voce): anche nella finestra la parola vale solo con 2 blocchi di fila — V-1 verifica esterna #361, review #737/#738
@@ -131,6 +135,8 @@ Cosa NON ho verificato:
 
 Memoria: riga contatore #738 aggiunta in fondo a /home/user/Gas/.claude/agents/memoria_revisore.md e committata dallo script (0d36e37). Nessuna lezione nuova.
 
+Commit 8ff4db4 (merge di origin/main 2dd0e8c, PR #362): staging con soli .claude/agents/memoria_revisore.md e reports/prova_r1_notte.md, fuori dal perimetro di review: revisore non richiesto.
+
 Commit a13f442 (merge di origin/main): verdetto integrale della review #739 RIEMESSO dal revisore (stesso esito) perché il gate B rifiutava l'originale: dopo il merge la base è 447195f e le sue citazioni a modules/voice/server.py e tests/test_unit_voice_server.py non erano più file del diff. Il verdetto originale è riportato sotto, non ritoccato.
 
 ## VERDETTO: APPROVATO
@@ -203,12 +209,14 @@ Suite completa del repo (su bc37ae5 meno l'ultimo test): `1 failed, 2976 passed`
 ## §6 STATO CI
 
 `gh` non autenticato nel container (GitHub passa dallo strumento MCP). Mappatura commit→run:
-- 0e5291c (testa precedente della PR): handoff-check success, smista success; unit-suite e verifica in corso alla verifica esterna #361 (2° giro); la verifica-bot di bc37ae5 risulta cancelled (sostituita dal push successivo).
-- 1a031ae, 3835a14, f142023, 4a78ffa, 0d36e37, bc37ae5: nessuna run conclusa su questo SHA (commit intermedi o sostituiti da push successivi).
-- a13f442 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 5b57208 (testa precedente della PR): handoff-check success, smista success, verifica success, esito success, verifica-bot neutral (APPROVATO CON RISERVE, solo BASSE/COSMETICHE); unit-suite in corso alla scrittura. Su bc37ae5 la run 42727359780 era success (dal bot).
+- 1a031ae, 3835a14, f142023, 4a78ffa, 0d36e37, 0e5291c, a13f442: nessuna run conclusa su questo SHA (commit intermedi o sostituiti da push successivi).
+- 8ff4db4 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- Bot #361 (su 5b57208, APPROVATO CON RISERVE): V-1 BASSA — col nuovo default di 3 turni, alla 3ª interruzione con la parola la conversazione si chiude senza bip e la richiesta dopo va persa (R-668-1, prima alla 5ª); V-2 COSMETICA — commenti «finestra di 40 s» in clients/voice/ascolto.py e nel test, LEGGIMI senza nota che la pagina web resta a 5 turni. Prossima fetta voce.
+- Verifica esterna #361 3° giro ([commento](https://github.com/Gasss23/Gas/pull/361#issuecomment-6755342314)): solo BASSE/COSMETICHE (CI da attendere, R-736-1, pagina web 12 s/5 turni, costruttore 0,5, sigla «ve» nei commenti).
 - Verifica esterna #361 (2° giro, APPROVATO CON RISERVE): V-1 MEDIA (conflitto con main) CHIUSA in a13f442; V-2 BASSA (CI e bot non ancora verdi sull'head) da controllare prima del merge; V-3 BASSA = R-736-1; V-4 BASSA: clients/voice/browser_server.py tiene finestra 12 s e 5 turni (la modalità browser non riceve la correzione), prossima fetta voce; V-5 COSMETICA = R-736-3.
 - Verifica esterna #361: V-1 MEDIA e V-3 CHIUSE in bc37ae5; V-2 BASSA (il revisore #736 non aveva visto la lacuna) superata; V-4 BASSA = R-736-1.
 - R-737-1 BASSA: CHIUSA in #738.

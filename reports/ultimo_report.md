@@ -17,6 +17,7 @@ Nessuna nuova. L'operatore, via M1, ha detto sì alla fetta correttiva se le ris
 
 - **V-1 MEDIA della verifica esterna #361**: FATTA (bc37ae5). Nella finestra dopo la risposta la parola valeva con UN solo blocco: un picco isolato rendeva il turno normale e azzerava il conto dei turni di seguito. Ora anche lì servono 2 blocchi di fila (conto azzerato sotto soglia, su errore, allo scatto e a ogni nuova finestra); commento della soglia corretto (V-3). Test dell'ascolto: 303 passed, 3 test nuovi, tutti gli azzeramenti presi da mutanti. Review #737 APPROVATO CON RISERVE (R-737-1: azzeramenti senza test), chiusa dalla re-review #738 APPROVATO.
 - **Verifica esterna #361, 2° giro**: APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/361#issuecomment-6755215312)). V-1 MEDIA (PR in conflitto con main, solo nei report) CHIUSA col merge di origin/main 447195f (a13f442), review #739 APPROVATO. Aperte: V-2 (CI/bot da attendere), V-4 BASSA (pagina web voce non allineata: 12 s, 5 turni).
+- **Verifica esterna #361 3° giro e bot**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA. Bot: V-1 BASSA (3ª interruzione chiude senza bip), V-2 COSMETICA (commenti «40 s»), per la prossima fetta voce. Merge di main dopo la #362 (8ff4db4, solo documenti). Il merge della PR lo fa M1 col sì dell'operatore.
 
 ## Anomalie
 
