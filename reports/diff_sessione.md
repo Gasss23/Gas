@@ -1,15 +1,13 @@
-# Diff di sessione — 2026-11-10 — R7 fetta 1 (chat M3)
+# Diff della sessione — 2026-11-10 — analisi notturna (M1)
 
-File toccati (da `git diff --stat BASE..HEAD`, BASE = merge-base con origin/main):
-- `modules/sottofondo/__init__.py` — ripresa automatica dopo un crash (`_riprendi` sotto lock, `_riprese_max`), progressi `<id>.passi` (`_segna_passo`, `_passi`, `_strumenti_noti`), nota nel prompt (`_nota_ripresa`), pulizia dei `.passi` vecchi, avviso «ripreso N volte»; avviso a ogni ripresa e `ferma()` (comando per fermare un compito senza ripresa, bot #364 V-1); niente ripresa oltre la durata dalla prima creazione (V-2).
-- `gas.py` — l'evento `tool_res` porta anche il nome dello strumento (serve ai progressi); comando `gas.py sottofondo-ferma`.
-- `tests/test_unit_sottofondo.py` — test della ripresa, della corsa fra due controlli, dei progressi; fixture che spegne le riprese nei test esistenti.
-- `modules/gate/gate.py` — `.gas_sottofondo` nella denylist e al livello 3 (audit notturno: coda dei compiti scrivibile senza firma).
-- `tests/test_unit_gate.py` — percorsi di `.gas_sottofondo` negati in scrittura e lettura.
-- `tests/test_unit_kernel.py` — T105a controlla il nome nell'evento `tool_res`; T6s: write_file su `.gas_sottofondo` negato anche con firma.
-- `reports/proposta_r7_direttore.md` — proposta R7 (opzioni e raccomandazione).
-- `.claude/agents/memoria_revisore.md` — righe #736–#739, #743–#747 (più le righe arrivate dai merge di main).
-- `reports/roadmap.md`, `reports/stato_progetto.md` — stato di R7 e riserve aperte.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+Si riscrive a ogni sessione; la storia completa sta in git.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+- `gas.py`: B1 `_utf8_sicuro` (surrogati), B2 `_forma_storia_valida` (storia di forma sbagliata), B3 compressione al confine user, B2 conoscenza `continue`, B4 campi del pin capati.
+- `tools/ingest_knowledge.py`: chunk superseded quando la fonte si accorcia, `chunk_text` spezza i paragrafi lunghi, una fonte rotta non ferma le altre, exit 1 se una fonte fallisce.
+- `modules/notte/notte.py`: `_stampa_sicura` al posto di print.
+- `modules/telegram/bot.py`: `rendi_visibili` nel messaggio di firma; `/notte` e `/compito` da messaggio modificato rifiutati.
+- `tests/test_unit_kernel.py`, `tests/test_unit_ingest_fonti.py`, `tests/test_unit_notte.py`: test nuovi per ogni bug (mutanti presi).
+- `reports/test_mattina.md`: bug trovati e prove manuali del mattino.
+- `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md`: riserve e righe #744-M1, #748-M1, #749-M1.
+- `reports/ripartenza_m1.md`, `reports/proposta_terminale_autonomia.md`, `reports/test_voce_mattina.md`: note di coordinamento M1.
+- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: report di fine sessione.
