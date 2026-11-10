@@ -1388,7 +1388,7 @@ def test_v12_frasi_voce_parola_al_tetto():
     """V12 (R-660-2-M2): una prima frase più lunga del tetto con una parola che finisce
     proprio al tetto non perde quella parola; senza spazi si taglia al tetto."""
     from modules.voice.server import frasi_voce, _PARLATO_VOCE_MAX_CHAR, _PARLATO_VOCE_RESTO
-    parole = ["abcdefghij"] + ["abcdefghi"] * 200      # 10 + 149 × (1 + 9) = 1500 al tetto
+    parole = ["abcdefghij"] + ["abcdefghi"] * 200      # spazi a 10, 20, … : uno cade sul tetto (800)
     testo = " ".join(parole)
     assert testo[_PARLATO_VOCE_MAX_CHAR] == " "
     taglio, resto = frasi_voce(testo)
@@ -1708,6 +1708,7 @@ def test_v13_istruzione_turno_voce_con_e_senza_schermo():
     assert istruzione_turno_voce(True, t).startswith(ISTRUZIONE_VOCE_SCHERMO + " Adesso è giovedì")
     for istr in (ISTRUZIONE_VOCE, ISTRUZIONE_VOCE_SCHERMO):
         assert "mai più di due" in istr and "1-3" not in istr
+        assert "UNA frase breve" in istr  # 10 nov: risposte più brevi (via M1)
         # niente «… sì o no?» in coda a ogni risposta (prova sul Mac del 5 nov)
         assert "Non chiudere con domande" in istr and "chiudi con una domanda" not in istr
 
@@ -2553,3 +2554,39 @@ def test_audit_proxy_segue_gas_voice_port(monkeypatch, url, porta, atteso):
     with pytest.raises(_Fermo):
         bs.run_browser_server()
     assert bs.BrowserProxyHandler.voice_port == atteso
+
+
+
+
+def test_seguito_da_scartare_e_istruzione_severa():
+    """Filtro più severo (10 nov, via M1): frammenti di una parola fuori elenco o senza
+    parole si scartano; risposte brevi e frasi vere no. L'istruzione del seguito dice che
+    nel dubbio il parlato NON è per Gas."""
+    from modules.voice.server import ISTRUZIONE_SEGUITO, seguito_da_scartare
+    for t in ("", "...", "Mamma.", "Allora…", "Forte!", "  TELEVISIONE  "):
+        assert seguito_da_scartare(t), t
+    for t in ("Sì.", "si", "No!", "Grazie.", "Perché?", "Ok", "Spegni la luce",
+              "Gas ha detto una cosa", "Continua.", "Avanti!", "Altro?", "Tre.", "3",
+              "Domani.", "Venerdì", "D'accordo."):  # R-744-1-M2
+        assert not seguito_da_scartare(t), t
+    assert "NEL DUBBIO NON è rivolta a te" in ISTRUZIONE_SEGUITO
+    assert "terza persona" in ISTRUZIONE_SEGUITO
+    # R-744-1-M2: la parola che Gas stesso invita a dire quando taglia il parlato passa
+    from modules.voice.server import _PARLATO_VOCE_RESTO
+    assert "resto" in _PARLATO_VOCE_RESTO and not seguito_da_scartare("Resto.")  # R-746-2-M2
+    # V-3 bot #365 + R-746-1-M2: altre risposte brevi, accenti normalizzati, numeri oltre dieci
+    import unicodedata
+    for t in ("Sicuro.", "Certamente!", "Forse", "Davvero?", "Scusa?", "Stasera.", "Perchè?",
+              "Lunedi", unicodedata.normalize("NFD", "Lunedì"), "Undici.", "Venti"):
+        assert not seguito_da_scartare(t), t
+    assert seguito_da_scartare("Mamma.") and seguito_da_scartare("Ehm")
+
+
+def test_parlato_voce_tetto_piu_corto():
+    """10 nov: senza schermo il parlato si ferma a 800 caratteri (prima 1500)."""
+    from modules.voice.server import frasi_voce, _PARLATO_VOCE_MAX_CHAR, _PARLATO_VOCE_RESTO
+    assert _PARLATO_VOCE_MAX_CHAR == 800
+    testo = " ".join(["Questa è una frase di prova abbastanza lunga."] * 40)
+    frasi = frasi_voce(testo)
+    assert frasi[-1] == _PARLATO_VOCE_RESTO
+    assert len(" ".join(frasi[:-1])) <= 800

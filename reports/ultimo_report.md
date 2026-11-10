@@ -1,24 +1,21 @@
-# Ultimo report — 2026-11-10 — ascolto H24: meno attivazioni per sbaglio + V-1 della verifica esterna #361 (chat Mani)
+# Ultimo report — 2026-11-10 — voce: seguito più severo e risposte più brevi (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-Nessuna nuova. L'operatore, via M1, ha detto sì alla fetta correttiva se le riserve sono solo BASSE. Dopo il merge va provato dal vivo sul Mac se «Hey Jarvis» scatta ancora con 2 blocchi di fila (R-736-1). Se non scatta: `GAS_ASCOLTO_BLOCCHI_PAROLA=1` nel .env.
+1. PR #365: merge da solo solo con verdetto del bot APPROVATO pulito; altrimenti serve il sì dell'operatore (via M1).
+2. PR #363 (terminale A, sicurezza): merge all'operatore; bot su 860c751 APPROVATO CON RISERVE (solo BASSE, check neutral).
 
 ## Esito
 
-- **PR #359 (voce di Telegram in un thread)**: MERGIATA (695b759) col sì esplicito dell'operatore.
-- **Ascolto H24, meno attivazioni per sbaglio**: FATTA. Il log del 9/11 mostra falsi «Hey Jarvis» e turni di seguito risposti. Nuovi default in `clients/voice/ascolto.py`:
-  - finestra di 15 s (era 40);
-  - al massimo 2 turni di seguito dopo la richiesta (erano 4);
-  - soglia della parola 0,6 (era 0,5);
-  - parola valida solo con 2 blocchi di fila sopra soglia (`GAS_ASCOLTO_BLOCCHI_PAROLA`);
-  - primo mezzo secondo della finestra ignorato (coda dell'eco).
-- LEGGIMI aggiornato. Test dell'ascolto: 300 passed, 4 test nuovi, 4 mutanti presi. Review #736 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
-
-- **V-1 MEDIA della verifica esterna #361**: FATTA (bc37ae5). Nella finestra dopo la risposta la parola valeva con UN solo blocco: un picco isolato rendeva il turno normale e azzerava il conto dei turni di seguito. Ora anche lì servono 2 blocchi di fila (conto azzerato sotto soglia, su errore, allo scatto e a ogni nuova finestra); commento della soglia corretto (V-3). Test dell'ascolto: 303 passed, 3 test nuovi, tutti gli azzeramenti presi da mutanti. Review #737 APPROVATO CON RISERVE (R-737-1: azzeramenti senza test), chiusa dalla re-review #738 APPROVATO.
-- **Verifica esterna #361, 2° giro**: APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/361#issuecomment-6755215312)). V-1 MEDIA (PR in conflitto con main, solo nei report) CHIUSA col merge di origin/main 447195f (a13f442), review #739 APPROVATO. Aperte: V-2 (CI/bot da attendere), V-4 BASSA (pagina web voce non allineata: 12 s, 5 turni).
-- **Verifica esterna #361 3° giro e bot**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA. Bot: V-1 BASSA (3ª interruzione chiude senza bip), V-2 COSMETICA (commenti «40 s»), per la prossima fetta voce. Merge di main dopo la #362 (8ff4db4, solo documenti). Il merge della PR lo fa M1 col sì dell'operatore.
+- **PR #360 (cache frasi fisse divise)**: MERGIATA (447195f) col sì dell'operatore riferito da M1.
+- **PR #363 (terminale A)**: pubblicata, merge di main (#359, #360) fatto, verifica esterna V-1 MEDIA (conflitto) chiusa; resta all'operatore.
+- **Seguito più severo**: FATTA — nel seguito i frammenti di una parola fuori elenco chiudono senza chiamare il cervello; istruzione «nel dubbio non è per te».
+- **Risposte più brevi e veloci**: FATTA — a voce UNA frase breve; tetto del parlato senza schermo 1500 → 800.
+- Review #744-M2 APPROVATO CON RISERVE (R-744-1, gravità media: «Continua.», numeri e giorni scartati → CHIUSA), #746-M2 APPROVATO CON RISERVE (BASSE), #747-M2 APPROVATO CON RISERVE (BASSE): elenco più largo con accenti normalizzati, copertura del ramo «forte» nel seguito.
+- Bot su e0f8f31: check failure ma verdetto APPROVATO CON RISERVE con sole BASSE (falso failure del parser su una riserva già chiusa citata nel verdetto); le BASSE sono state corrette in d07fbdf.
+- Test: voice_server, stt, tts, contesto, telegram_voce, voce_ascolto, sottofondo con -k "not browser": 744 passed.
+- **Prova sul Mac** (il modello rispetta le istruzioni più severe e più corte): DEFERITA — si fa dal vero.
 
 ## Anomalie
 
-Suite completa nel container: 1 test del browser vero fallito (`test_testo_scritto_dal_javascript`), fuori scope (il branch non tocca modules/); fa fede la CI.
+Nessuna. `istruzione_turno_voce(True)` vale anche per i vocali di Telegram (chat Mani): lì cambia solo il testo dell'istruzione.

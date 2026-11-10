@@ -1,229 +1,259 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-10 — chat Mani: ascolto H24, meno attivazioni per sbaglio (Jarvis rispondeva senza essere chiamato) + correzione della V-1 MEDIA della verifica esterna #361 + merge di main (PR #360 e #362) per togliere i conflitti
+**Sessione:** 2026-11-10 — voce: seguito più severo e risposte più brevi (chat M2)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #361 (https://github.com/Gasss23/Gas/pull/361): M1 riporta il sì dell'operatore se restano solo riserve BASSE; con un verdetto non pulito l'agente chiede comunque conferma in chat prima di mergiare. Dopo il merge va provato dal vivo sul Mac che «Hey Jarvis» scatti ancora (R-736-1); se non scatta, aggiungere `GAS_ASCOLTO_BLOCCHI_PAROLA=1` nel .env.
+1. Merge della PR #365 (https://github.com/Gasss23/Gas/pull/365): da solo solo con verdetto del bot APPROVATO pulito; con riserve serve il sì dell'operatore (via M1).
+2. PR #363 (terminale A, altra sessione di lavoro di questa chat): merge all'operatore (sicurezza).
+
+NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PR #359 (voce di Telegram in un thread)**: `FATTA` — mergiata (695b759) col sì esplicito dell'operatore.
-- **Ascolto H24, meno attivazioni per sbaglio**: `FATTA` — review #736 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
-- **V-1 MEDIA della verifica esterna #361 (nella finestra la parola valeva con 1 solo blocco)**: `FATTA` — bc37ae5, review #737 APPROVATO CON RISERVE poi #738 APPROVATO (R-737-1 chiusa con test e mutanti).
-- **V-1 MEDIA della verifica esterna #361, 2° giro (PR in conflitto con main)**: `FATTA` — a13f442, merge di origin/main 447195f (PR #360); conflitti solo nei report (memoria unione, report del nostro lato), review #739 APPROVATO.
-- **Merge di main dopo la PR #362 (solo documenti)**: `FATTA` — 8ff4db4; conflitti solo nei report (memoria unione, report del nostro lato); nessun file del perimetro di review nello staging, revisore non richiesto.
-- **Verifica esterna #361 3° giro e bot**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA; bot neutral (decide l'operatore). Merge: M1 riporta il sì dell'operatore («mergia tutto quello che il bot ha approvato») e lo esegue M1.
-- **V-1 della verifica esterna #359 (log degli errori del thread della voce)**: `DEFERITA — prossima fetta voce, come deciso dall'operatore`.
+- **Fetta 1 — seguito più severo (filtro lato server + istruzione)**: `FATTA` (1340aa0).
+- **Fetta 2 — risposte a voce più brevi (una frase, tetto 800)**: `FATTA` (1340aa0).
+- **R-744-1-M2, gravità media (risposte di una parola scartate)**: `FATTA` — chiusa prima del commit, review #746-M2.
+- **Note BASSE di bot e verifica esterna #365 (V-2 copertura del ramo «forte», V-3 elenco stretto e accenti) e R-746-1/2-M2**: `FATTA` (d07fbdf, review #747-M2). NB: il check del bot su e0f8f31 era «failure» ma il verdetto testuale era APPROVATO CON RISERVE con sole BASSE: il parser ha letto come finding la citazione di una riserva già chiusa (falso failure noto, direzione sicura).
+- **Merge di origin/main 2dd0e8c (#362) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; da main arrivano solo `reports/prova_r1_notte.md` e una riga di memoria (fuori dal perimetro di review). Chiude V-1 (gravità media, PR non mergeabile) della seconda verifica esterna #365.
+- **Merge di origin/main 3f08352 (#361 di Mani) nel ramo**: `FATTA` — conflitti solo nei report; review #750-M2 APPROVATO CON RISERVE (file di main identici a 3f08352; il client di ascolto gestisce bene il «fine» più frequente; 575 passed). Chiude V-1 BASSA del bot su 1638d81 (PR in conflitto).
+- **Merge di origin/main eebb7c0 (#364 di M3) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; review #753-M2 APPROVATO (file di main identici; nessuna interazione fra il sottofondo nuovo e il filtro del seguito); voice_server + voice_stt + sottofondo + gate 1218 passed.
+- **Prova sul Mac col modello vero**: `DEFERITA` — non riproducibile qui.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- clients/voice/ascolto.py           |  76 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
- reports/diff_sessione.md           |  15 +++++++++------
+ .claude/agents/memoria_revisore.md |   8 ++++++++
+ modules/voice/server.py            |  73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ reports/diff_sessione.md           |  19 ++++++---------
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  29 ++++++++++++++---------------
- scripts/voce/LEGGIMI.md            |  15 ++++++++-------
- tests/test_unit_voce_ascolto.py    | 130 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ reports/ripartenza_m2.md           |   2 ++
+ reports/stato_progetto.md          |   2 ++
+ reports/ultimo_report.md           |  30 +++++++++++-------
+ tests/test_unit_voice_server.py    |  37 ++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_stt.py       |  67 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handoff.md` dice `n/d` e manca la riga di totale. Base = merge-base con origin/main dopo il merge 8ff4db4 (2dd0e8c).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-8ff4db4 merge: origin/main (PR #362) in claude/peaceful-lovelace-0w2b7q — solo documenti, conflitti nei report
-5b57208 docs(fine-task): merge di main nella PR #361 (conflitto chiuso, review #739)
-a13f442 merge: origin/main (PR #360) in claude/peaceful-lovelace-0w2b7q — conflitti solo nei report, review #739
-0e5291c docs(fine-task): V-1 della verifica esterna #361 chiusa — PR #361
-bc37ae5 fix(voce): anche nella finestra la parola vale solo con 2 blocchi di fila — V-1 verifica esterna #361, review #737/#738
-0d36e37 chore(revisore): memoria review #738 — APPROVATO
-4a78ffa chore(revisore): memoria review #737 — APPROVATO CON RISERVE
-f142023 docs(fine-task): numero della PR #361 in stato_progetto
-3835a14 docs(fine-task): ascolto H24 meno attivazioni per sbaglio — PR #361
-1a031ae fix(voce): l'ascolto risponde meno senza essere chiamato — finestra 15 s, al massimo 2 seguiti, parola su 2 blocchi di fila, soglia 0,6, coda dell'eco ignorata — review #736
+815eed7 Merge origin/main (#364 di M3) nella #365 — review #753-M2 APPROVATO (chat M2)
+57853ff docs(fine-task): voce #365 dopo il merge di main (#361), review #750-M2 (chat M2)
+4cae6c9 Merge origin/main (#361 di Mani) nella #365 — review #750-M2 APPROVATO CON RISERVE (chat M2)
+1638d81 docs(fine-task): voce #365 dopo il merge di main (#362) — V-1 della seconda verifica esterna chiusa, riserve aggiornate (chat M2)
+4ec82c5 Merge origin/main (#362) nella #365 — conflitti solo nei report e nella memoria, chiude V-1 verifica esterna #365 bis (chat M2)
+588c450 docs(fine-task): voce #365 — note BASSE di bot e verifica esterna chiuse (review #747-M2), riserve aggiornate (chat M2)
+d07fbdf fix(voce): seguito — elenco delle risposte brevi più largo con accenti normalizzati, copertura del ramo «forte» nel seguito, assert «Resto.»; chiude V-2/V-3 bot e verifica esterna #365, R-746-1/2-M2 — review #747-M2 (chat M2)
+e0f8f31 docs(fine-task): voce — seguito più severo e risposte più brevi, PR #365; riserve del bot sulla #363 registrate (chat M2)
+1340aa0 feat(voce): seguito più severo (frammenti di una parola chiusi senza cervello, istruzione «nel dubbio non è per te») e risposte a voce più brevi (una frase, tetto 800) — review #744-M2, #746-M2 (chat M2)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 1a031ae: verdetto integrale della review #736.
+### Review #753-M2 (merge di main eebb7c0, PR #364 di M3) — verdetto integrale
 
-## VERDETTO: APPROVATO CON RISERVE
+VERDETTO: APPROVATO
 
-Review #736 (chat Mani). Ho letto il diff staged (`git diff --cached`, 3 file: clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, scripts/voce/LEGGIMI.md) e l'ho verificato su una copia dell'index fatta con `git checkout-index -a --prefix=` nello scratchpad, senza stash. Prima ho letto CLAUDE.md sez. 5, reports/stato_progetto.md (voci voce/H24) e la coda della mia memoria.
+Review #753-M2. È il merge staged di origin/main eebb7c0 (PR #364, sottofondo di M3) nel ramo feat/voce-filtro-m2 (PR #365), nel worktree /home/user/Gas-voce. Non ho fatto commit.
+
+**Cosa ho controllato nel diff**
+1. MERGE_HEAD coincide con origin/main (eebb7c0). Ho confrontato con `git diff --cached origin/main` questi file: gas.py, modules/gate/gate.py, modules/sottofondo/__init__.py, tests/test_unit_gate.py, tests/test_unit_kernel.py, tests/test_unit_sottofondo.py, reports/proposta_r7_direttore.md e reports/roadmap.md. Sono tutti identici a main.
+2. `git diff --cached origin/main --stat` mostra solo:
+   - la fetta voce: modules/voice/server.py e i test voice_server/voice_stt;
+   - i report del ramo;
+   - nella memoria 7 righe aggiunte e 0 tolte rispetto a main, cioè l'unione corretta;
+   - in stato_progetto.md 2 righe aggiunte e 0 tolte.
+3. `git ls-files -u` è vuoto (nessun conflitto rimasto) e `git diff --cached --check` è pulito.
+
+**Citazioni**
+- `modules/voice/server.py:779` — il filtro del seguito: se il seguito è un frammento della stanza (`seguito_da_scartare`), chiude subito, senza turno del kernel. Rischio esaminato: che salti o duplichi l'annuncio dei compiti in sottofondo finiti. Esito ok: chiude prima che l'annuncio venga calcolato, e l'annuncio resta solo sui turni di attivazione (condizione `is_audio and not self._seguito()`, modules/voice/server.py:922).
+- `modules/voice/server.py:939` — `_compiti_finiti` usa le funzioni di sottofondo `da_leggere`, `frase_finiti` e `segna_letti`. Rischio esaminato: che la #364 abbia cambiato queste funzioni. Esito ok: nelle parti cambiate dalla #364 nessuna delle tre compare. Sono ancora a `modules/sottofondo/__init__.py:780`, `modules/sottofondo/__init__.py:809` e `modules/sottofondo/__init__.py:824`. Un compito fermato con il nuovo `ferma` scrive un file `.ferma` a parte e non cambia il filtro sugli stati ok/ko, quindi non produce annunci finti.
+- `modules/voice/server.py:212` — la funzione `seguito_da_scartare`: non cambia col merge, quindi l'esito resta quello della review #750-M2.
+
+**Rischi esclusi**
+- Non ho rilanciato i test: per i 1218 passed mi fido del dato dichiarato dall'agente.
+- Non ho verificato dal vivo il caso di un annuncio dei finiti mentre gira una ripresa di un compito (la nuova `_riprendi` della #364): non si riproduce in dev senza audio e senza un compito in corso.
+- La riserva R-750-1-M2 (eco di 0,5 s che può troncare un «Sì» detto subito) resta aperta e il merge non la cambia.
+
+**Memoria**
+Ho aggiunto la riga #753-M2 in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in stage con `git -C /home/user/Gas-voce add`. Nessuna lezione nuova. Lo script di commit della memoria non l'ho lanciato: durante un merge non può fare commit parziali, quindi la riga entra nel commit di merge.
+
+### Review #750-M2 (merge di main 3f08352, PR #361 di Mani) — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #750-M2: merge in staging di origin/main 3f08352 (PR #361 della chat Mani) in feat/voce-filtro-m2 (PR #365), nel worktree /home/user/Gas-voce.
+
+**Cosa ho controllato del merge**
+- I tre file che arrivano da main (clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py, scripts/voce/LEGGIMI.md) sono identici a 3f08352: `git diff --cached 3f08352` è vuoto su tutti e tre.
+- `git diff --cached origin/main` mostra solo la fetta voce, cioè modules/voice/server.py, tests/test_unit_voice_server.py e tests/test_unit_voice_stt.py. Il resto sono report (handoff, ultimo_report, diff_sessione, ripartenza_m2, stato_progetto con +2 righe) e la memoria (+6 righe aggiunte, 0 tolte).
+- Nessun conflitto rimasto: `git ls-files -u` è vuoto. Esiste MERGE_HEAD e `--check` è pulito.
+- In stato_progetto.md, rispetto a HEAD, ci sono solo la riga #359 aggiornata e la nuova voce #361. Rispetto a main ci sono solo le 2 righe della nostra fetta.
+
+**Elementi del codice esaminati**
+- `modules/voice/server.py:779`: nel seguito, `seguito_da_scartare(prompt)` chiama `_chiudi_seguito` (definito in `modules/voice/server.py:996`). Questo manda `X-Gas-Comando: fine` con `{"content": "", "fine": true}`. Il controllo viene dopo pausa e `_SOLO_ATTIVAZIONE`, quindi un «Hey Jarvis.» captato nella finestra con un solo blocco (cosa più probabile ora che la #361 chiede 2 blocchi di fila) riceve ancora la risposta di attivazione e non viene scartato. Rischio esaminato: un turno legittimo scartato per l'interazione con la #361. Esito: ok.
+- `modules/voice/server.py:212`: `seguito_da_scartare` scarta solo una trascrizione vuota oppure di una sola parola fuori elenco e non numerica. «Hey Jarvis, Marco» ha 3 parole e va al cervello. Rischio esaminato: un turno detto con la parola ma sentito come seguito. Esito: ok.
+- `clients/voice/ascolto.py:584` (contesto, arriva da main): con il comando «fine» il client mette `chiudi=True`, svuota il microfono e restituisce False, senza bip e senza contare l'errore. Il ciclo `conversazione` esce quando `self.chiudi` è vero e torna ad aspettare la parola dopo `_azzera()`. Quindi un «fine» più frequente chiude in silenzio, che è l'esito voluto, e si somma bene ai 3 turni e ai 15 s della #361. Rischio esaminato: bip a ripetizione o un turno fantasma su «fine». Esito: ok. I test che coprono il caso sono a `tests/test_unit_voce_ascolto.py:519` e `tests/test_unit_voce_ascolto.py:760`.
+- `tests/test_unit_voice_server.py:2392`: il test del filtro («Mamma.», «Ehm» scartati; «Resto.» e le risposte brevi passano). Esito: ok.
+
+**Test**: pytest su voice_server, voice_stt e voce_ascolto con `-k "not browser"`: 575 passed, 25 deselected.
+
+**Riserva BASSA R-750-1-M2**: la #361 fa ignorare il primo mezzo secondo della finestra (`CODA_ECO_S`, già segnalato come R-736-2). Una risposta di una parola detta subito («Sì») può quindi arrivare troncata, con trascrizione vuota o storpiata. Il filtro di M2 ora la scarta e chiude la conversazione in silenzio, mentre prima andava al cervello. È da osservare dal vivo, non blocca il merge.
+
+**Cosa non ho verificato**
+- Il comportamento dal vivo sul Mac (microfono reale, Whisper sul parlato troncato): non si può riprodurre qui.
+- La pagina web (clients/voice/browser_server.py): fuori dal merge, e i test browser sono deselezionati come richiesto.
+
+**Memoria**: ho aggiunto la riga `#750-M2` in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-voce add`. Nessun commit, come richiesto: per questo non ho lanciato lo script di commit della memoria. Nessuna lezione nuova.
+
+### Review #747-M2 (correzioni BASSE di bot, verifica esterna e #746, commit d07fbdf) — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #747-M2 sul diff staged di /home/user/Gas-voce (branch feat/voce-filtro-m2, PR #365). Prima ho letto le parti obbligatorie: CLAUDE.md §5, le parti voce/M2 di stato_progetto.md e la memoria del revisore. Non ho trovato antipattern del Wall of Shame: nessuno slicing della history, nessun output di tool simulato, guardrail non toccati.
 
 **Elementi del diff esaminati**
-- `clients/voice/ascolto.py:387` — `aspetta_parola` conta i blocchi di fila sopra soglia (`sopra`). Rischio: il conto non si azzera su un ramo e due picchi isolati sommati fanno scattare la parola. Ho guardato tutti i rami: eccezione → `sopra = 0` (:395), sotto soglia → `sopra = 0` (:412), NaN → `nan >= soglia` è False, quindi azzera. Il ramo dei «buoni di fila» dopo gli errori non tocca `sopra`. Esito: **ok**.
-- `clients/voice/ascolto.py:409` — `return True` solo con `sopra >= self.blocchi_parola`. Il valore viene da `max(1, int(...))` (:349) e in main da `_numero(...,1,5)` (:1145): il valore 0 o negativo è impossibile, e inf/nan/abc tornano al default 2. Esito: **ok**.
-- `clients/voice/ascolto.py:524` — `aspetta_voce` scarta prima `blocchi_per(0.5)` = 6 blocchi, poi parte la finestra. A fine flusso esce con None, senza crash. Questi blocchi NON passano a `_parola_nel_blocco`, ma il rilevatore è appena stato azzerato (`_azzera`, :756), quindi non perde stato utile. La finestra reale diventa 15,5 s. Il percorso dell'interruzione (:741-749) non passa da `aspetta_voce`, quindi lì la coda dell'eco non si applica, come dichiarato. Il microfono viene comunque svuotato a fine riproduzione (:636): la coda vale 0,5 s in tempo reale dopo la fine della voce di Gas. Esito: **ok**, con riserva R-736-2.
-- `clients/voice/ascolto.py:328` e `clients/voice/ascolto.py:1154` — `MAX_TURNI_PREDEFINITO=3` è usato sia dal costruttore sia da main. Le interruzioni contano nei turni (R-668-1 resta valida) e una parola ripetuta nella finestra azzera il conto come prima. Esito: **ok**.
-- `clients/voice/ascolto.py:1144` — la soglia predefinita in main passa a 0,6 e la finestra usa la stessa soglia (`_parola_nel_blocco`). L'interruzione resta a 0,7 e su un blocco solo. Esito: **ok**.
-- `tests/test_unit_voce_ascolto.py:2513` e `tests/test_unit_voce_ascolto.py:2541` — test nuovi su: parola isolata contro 2 blocchi di fila, errore che azzera il conto, coda dell'eco e massimo 2 turni di seguito. Rischio: test che passano anche col codice rotto. Ho rifatto io due mutanti sulla copia dell'index: senza `sopra = 0` nel ramo sotto soglia → 1 test fallito; coda dell'eco a 0 → 1 test fallito. Suite completa: **300 passed**. Esito: **ok**.
-- `scripts/voce/LEGGIMI.md:135` — tabella aggiornata (0.6, nuova riga BLOCCHI_PAROLA, 15, 3), coerente con il docstring di ascolto.py. Esito: **ok**.
-- Contesto: `clients/voice/browser_server.py:73` — la pagina web tiene il suo default di 12 s e il diff non la tocca. Esito: **ok**.
+- `modules/voice/server.py:203` — `_senza_accenti`: NFKD seguito dalla rimozione dei caratteri combinanti. Viene applicata a tutto l'elenco, che diventa `_RISPOSTE_BREVI_NORM`. Rischi esaminati:
+  - collisioni dopo la normalizzazione, per esempio «perché» e «perche»: sono innocue, finiscono tutte e due nel frozenset;
+  - forme NFD: coperte da un test;
+  - eccezioni: nessuna, perché `unicodedata` fa parte della libreria standard.
+  - Esito: ok.
+- `modules/voice/server.py:215` — la normalizzazione si applica anche alla trascrizione, prima di `\w+`. Rischio esaminato: che un solo lato normalizzato lasci passare «Lunedi» o «Perchè». Mutanti:
+  - normalizzazione tolta dalla trascrizione: rosso;
+  - controllo fatto sull'elenco non normalizzato: rosso.
+  - Esito: ok.
+- `modules/voice/server.py:85` — l'import di `unicodedata` sta fra `re` e `subprocess`, fuori dall'ordine alfabetico. Esito: riserva cosmetica.
+- `modules/voice/server.py:190` — elenco allargato (sicuro, forse, stasera, numeri da 11 a 20, decine, cento, mille, ora/dopo/mai/sempre/niente/nulla/subito/adesso). Ho valutato se il filtro serve ancora. Sì: scarta ancora nomi, interiezioni («Ehm», «Mamma.», «Forte!») e tutte le parole fuori elenco. Però «Ora!», «Mai!», «Niente!», «Dopo» sono anche frammenti tipici della TV o della stanza, e adesso arrivano al cervello con la spesa di un turno. Esito: riserva **R-747-2-M2 (BASSA)**, un compromesso da scrivere nel commento o in stato_progetto. Non lo considero un blocco: nel seguito un falso «passa» costa un turno, un falso «scarta» perde la risposta dell'operatore.
+- `tests/test_unit_voice_server.py:2410` — casi a parola singola (davvero di UNA sola parola, come chiedeva la lezione del #746), forma NFD, «Resto.» da solo (R-746-2 chiusa) e i contro-esempi «Mamma.»/«Ehm». Esito: ok.
+- `tests/test_unit_voice_stt.py:844` — test V-2 «Gas, forte.» nel seguito: si aspetta il comando `fine`, il contenuto vuoto, nessun turno. Mutanti:
+  - tolto il ramo `elif self._seguito()` di «uso»: rosso, ok;
+  - filtro esteso a ≤2 parole, così «Gas, forte.» viene scartato dal filtro prima del ramo «uso»: **il test V-2 da solo resta VERDE**. I due rami danno la stessa risposta (`_chiudi_seguito`, `modules/voice/server.py:996`), quindi il test non prova di aver superato il filtro. Quel mutante lo prendono comunque altri test della suite (rosso). Esito: riserva **R-747-1-M2 (BASSA)**: aggiungere un'osservazione del percorso, per esempio caplog che verifica l'assenza di «seguito scartato senza cervello» oppure una spia su `cervello_voce`.
 
-**Wall of Shame**: nessuno slicing di cronologia, il diff è solo nel client voce e non tocca il kernel. Nessuna simulazione di tool. §9: le eccezioni del rilevatore restano intercettate e il loop di `gira` non cambia. I guardrail del kernel (10 iterazioni, `_get_window`) non sono toccati.
+**Esecuzione**
+- pytest su voice_server + voice_stt con `-k "not browser"`: 276 passed, l'ho riprodotto io.
+- 4 mutanti, tutti rossi sulla suite.
+- Ho ripristinato `server.py` dopo ogni mutante: alla fine ci sono solo le modifiche staged e nessuna modifica non staged.
 
-**Riserve (tutte BASSE)**
-- **R-736-1**: non sappiamo se con 2 blocchi di fila la parola vera scatta ancora. Con un blocco da 1280 campioni openWakeWord dà un solo punteggio (:1104), e i rilevamenti veri di solito restano sopra soglia per più frame: la libreria stessa ha un parametro «patience» con la stessa logica. Ma qui non si può provare. Rimedio pronto: `GAS_ASCOLTO_BLOCCHI_PAROLA=1`. Va confermato dal vivo sul Mac.
-- **R-736-2**: se l'operatore parla entro 0,5 s dalla fine della risposta, quel primo mezzo secondo non entra nella richiesta (può mancare la prima sillaba) e non viene ascoltato dal rilevatore. È un costo accettabile rispetto all'eco, ma non è scritto nel LEGGIMI.
-- **R-736-3 (cosmetica)**: il default del costruttore resta `soglia=0.5`, quello di main è `SOGLIA_PREDEFINITA=0.6`. È voluto per i test e lo dichiari, ma chi crea `Ascolto` fuori da main riceve la soglia vecchia.
+**Rischio escluso**
+- Non ho verificato il comportamento con trascrizioni reali di Whisper (accenti sul Mac o sulla VPS, come scrive «perchè»): non è riproducibile in dev, i test usano stringhe fisse.
+- Non ho controllato ligature o caratteri compatibili che NFKD trasforma in più lettere: è un caso marginale, al massimo un frammento passa al cervello.
 
-**Rischio escluso**: non ho verificato il comportamento reale col microfono e openWakeWord sul Mac (falsi positivi e negativi con TV o stanza): fuori dal Mac non si riproduce. Non ho verificato nemmeno la pagina web (browser_server.py), che non è nel diff.
+**Riserve da tracciare in stato_progetto.md**
+1. R-747-1-M2 (BASSA): il test V-2 non distingue il ramo «uso» dallo scarto del filtro.
+2. R-747-2-M2 (BASSA): «ora/dopo/mai/sempre/niente/nulla/subito/adesso» in elenco fanno passare al cervello anche i frammenti della TV. Dichiarare il compromesso o toglierle.
+3. Cosmetica: l'ordine dell'import di `unicodedata`.
 
-**Memoria**: ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree e NON in index, la riga `#736 (chat Mani) — 2026-11-10 — APPROVATO CON RISERVE — …` e una lezione: «un conto N blocchi di fila va azzerato su ogni ramo che non conferma; mutante per ramo». Come mi hai chiesto non ho lanciato `scripts/commit_memoria_revisore.sh`: il file resta da committare nel tuo fine-task. L'index è intatto (staged solo i 3 file sotto review).
+**Memoria**
+- Riga contatore #747-M2 e una lezione aggiunte in /home/user/Gas-voce/.claude/agents/memoria_revisore.md e messe in stage con `git -C /home/user/Gas-voce add`.
+- Nessun commit, come chiesto: lo script `commit_memoria_revisore.sh` non l'ho eseguito.
+- Un ciclo di attesa che avevo lanciato in background (b3fgnx8h1) è rimasto appeso: è innocuo e si chiude da solo al timeout.
 
-Commit bc37ae5: verdetto integrale della review #737 (primo giro) e della re-review #738 (sul diff finale, che aggiunge solo il test per R-737-1).
+### Review #744-M2 — verdetto integrale
 
-## VERDETTO: APPROVATO CON RISERVE
+VERDETTO: APPROVATO CON RISERVE
 
-Review #737. Ho letto prima CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (le voci sulla voce) e la mia memoria (lezione #736: un conto «N blocchi di fila» va azzerato su ogni ramo che non conferma, e ogni azzeramento va provato con un mutante). Ho lavorato su una copia dell'index nella cartella temporanea: con il codice staged la suite del file dà 302 passed.
+Review #744-M2. Ho esaminato il diff in staging nel worktree /home/user/Gas-voce (branch feat/voce-filtro-m2). Letture fatte: CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md (letto in modo mirato), memoria del revisore.
 
 **Elementi del diff esaminati**
-- `clients/voice/ascolto.py:452` — il conto `_sopra_finestra` (righe 452-460) si azzera sotto soglia, sale di uno a ogni blocco sopra soglia, dà True solo quando arriva a `blocchi_parola` e allo scatto si azzera. Rischi guardati: NaN (`NaN >= soglia` è False, quindi azzera), `blocchi_parola` ≤ 0 (il costruttore a :349 lo porta a 1 con `max(1, …)`), predefinito 1 (si comporta come prima) — ok.
-- `clients/voice/ascolto.py:444` — azzeramento nel ramo dell'eccezione, uguale a quello di `aspetta_parola` (clients/voice/ascolto.py:397); l'errore resta «no» e si logga come prima (§9) — ok, ma nessun test lo copre (riserva).
-- `clients/voice/ascolto.py:538` — azzeramento all'inizio di `aspetta_voce`, dopo la coda dell'eco. Il conto NON si azzera tra `aspetta_voce` e `registra(rileva_parola=True)`, perché la chiamata in `conversazione` (clients/voice/ascolto.py:769-772) non fa altre letture in mezzo: una parola a cavallo dei due metodi vale, come richiesto. Se la parola è scattata nella finestra, `registra` parte con `rileva_parola=False` e il conto non si usa più — ok. Nessun test lo copre (riserva).
-- `clients/voice/ascolto.py:487` — interazione con il taglio PRIMA_DELLA_PAROLA_S in `registra`. Ora la parola scatta sul 2° blocco. Il 1° blocco sopra soglia è già in `presi` (se c'era voce) e `presi[-tieni:]` lo tiene, quindi il taglio tiene ancora la parola. In `aspetta_voce` (:545-552) `da_parola` parte un blocco dopo (80 ms), trascurabile rispetto a PAROLA_VALIDA_S = 2 s — ok.
-- `clients/voice/ascolto.py:767` — commento corretto da 0,5 a 0,6 (V-3) — ok.
-- `tests/test_unit_voce_ascolto.py:2561` — picco isolato in attesa e in registrazione, e due picchi non di fila, con `blocchi_parola=2`. I mutanti «torna il comportamento vecchio (soglia di 1 blocco)» e «niente azzeramento sotto soglia» li prende (1 failed) — ok.
-- `tests/test_unit_voce_ascolto.py:2578` — due blocchi di fila valgono come parola, nella finestra e a metà frase — ok.
+- `modules/voice/server.py:188` — `seguito_da_scartare`: cerca le parole con `\w+` sul testo minuscolo, unicode, quindi «sì» con l'accento viene riconosciuto. Scarta se non ci sono parole oppure se c'è una sola parola fuori dall'elenco. Rischi esaminati: input vuoto, solo punteggiatura, apostrofi («D'accordo» conta 2 parole e passa), «Sì sì» passa. Nessuna eccezione possibile: tipi a posto, nessun crash. Esito: ok.
+- `modules/voice/server.py:753` — punto della chiamata. Ordine dei filtri: pausa (`_SOLO_PAUSA`, che copre anche «basta»), poi attivazione, poi frammento, poi `cervello_voce` (forte). Vale solo per il parlato nel seguito, perché `_seguito()` richiede `_parlato`; il percorso JSON/testo non è toccato. «Forte!» nel seguito ora lo chiude il filtro invece del ramo «uso», ma l'esito è lo stesso (`_chiudi_seguito`, comando fine, nessun turno). Nessuna spesa del cervello per i frammenti. Esito: ok.
+- `modules/voice/server.py:182` — `_RISPOSTE_BREVI_SEGUITO`. Rischio esaminato: risposte legittime perse. «Sì.», «No!», «Grazie.», «Perché?», «Ok» passano. Però «Continua», «Avanti», «Tre», «3», «Domani», «Marco», «Bene» vengono scartati: verificato eseguendo la funzione. Esito: riserva R-744-1-M2.
+- `modules/voice/server.py:219` — tetto del parlato 1500→800; docstring di `frasi_voce` aggiornata a «800 + 1 + 37». Nessun altro uso della costante fuori dal modulo. Esito: ok.
+- `modules/voice/server.py:246` — `ISTRUZIONE_VOCE` e `ISTRUZIONE_VOCE_SCHERMO` chiedono «UNA frase breve»; la frase «mai più di due» resta. `modules/telegram/bot.py:985` (contesto, file non toccato) usa `istruzione_turno_voce(True)`: lì cambia solo il testo dell'istruzione, coerente. Esito: ok.
+- `tests/test_unit_voice_stt.py:828` e `tests/test_unit_voice_stt.py:844` — test end-to-end via HTTP: i frammenti chiudono senza turno, le risposte brevi e le frasi arrivano al cervello in modo effimero, con la parola di attivazione «Mamma.» va al cervello. `tests/test_unit_voice_server.py:2392` è il test della funzione e dell'istruzione. Esito: ok.
 
-**Riserve BASSE (da tracciare in stato_progetto.md)**
-- R-737-1: tre mutanti NON vengono presi, la suite resta 302 passed:
-  - tolto l'azzeramento all'inizio di `aspetta_voce` (:538);
-  - tolto l'azzeramento sull'eccezione (:444);
-  - tolto l'azzeramento quando la parola scatta (:458).
+**Mutanti** (tutti ripristinati, nessuna modifica fuori dallo staging rimasta)
+1. Chiamata disattivata (`if False and …`): 1 failed (test_seguito_frammento_chiude_senza_cervello).
+2. Tolto `self._seguito() and`, cioè filtro sempre attivo: 1 failed (test_seguito_frammento_con_attivazione_va_al_cervello).
+3. Elenco ignorato (`return len(parole) == 1`): 2 failed.
 
-  Il codice è giusto, ma questi azzeramenti non hanno un test. Il caso reale per :538: un `registra` che finisce per tetto massimo (`max_s`) o per fine flusso con l'ultimo blocco sopra soglia lascia il conto a 1; senza l'azzeramento, nella finestra dopo basterebbe un solo picco. Servono test con un residuo lasciato dal giro prima e con un'eccezione tra due blocchi sopra soglia.
+Suite test_unit_voice_server, voice_stt, voice_tts, voice_contesto, telegram_voce, voce_ascolto e sottofondo con -k "not browser": **743 passed**, come dichiarato. Il file si chiama tests/test_unit_sottofondo.py.
 
-**Rischi esclusi**: non ho verificato l'efficacia reale dei 2 blocchi con openWakeWord sul microfono del Mac (non riproducibile qui, servono il modello vero e la stanza). Non ho controllato la doppia attivazione in `aspetta_voce` con 4 o più blocchi alti di fila: li ho giudicati innocui da lettura (riporta solo `da_parola` a 0), senza un test.
+**Riserve**
+- **R-744-1-M2 (MEDIA)**: le risposte di una parola fuori elenco vengono scartate in silenzio e la conversazione si chiude. Il caso più forte: quando taglia, Gas stesso dice `_PARLATO_VOCE_RESTO` («C'è altro, chiedimi se vuoi il resto.», `modules/voice/server.py:221`). Col tetto a 800 succederà più spesso, e «Continua.» o «Avanti.» vengono buttati. Stesso problema per numeri, nomi e giorni dati in risposta a una domanda che Gas fa solo quando gli serve. Non c'è crash né un'azione sbagliata, la direzione è sicura, ma l'utente deve ripetere con la parola di attivazione. Correzione minima suggerita: aggiungere almeno «continua», «avanti», «altro», «resto», «procedi», «bene»; valutare anche le cifre e i numeri brevi.
+- **R-744-2-M2 (BASSA, preesistente)**: «Grazie.», l'allucinazione tipica di Whisper sul silenzio, è in elenco e continua ad andare al cervello. Non è una regressione.
 
-Nessun antipattern del Wall of Shame: il diff non tocca la history né simula l'output dei tool. Guardrail invariati (cap 10 iterazioni, `_get_window`).
+**Rischi esplicitamente esclusi**
+- Non ho verificato se il modello rispetta davvero l'istruzione più severa (`[NON_PER_ME]` nel dubbio, una frase da circa venti parole): dipende dal comportamento del modello e non si può riprodurre nei test unitari senza chiamate reali.
+- Non ho verificato l'effetto sul client H24 (Mani) di una chiusura del seguito più frequente: client fuori da questo diff.
 
-Memoria aggiornata (riga #737 più una lezione) e committata da sola con `scripts/commit_memoria_revisore.sh`: commit 4a78ffa. File: /home/user/Gas/.claude/agents/memoria_revisore.md
+**Memoria**: riga `#744-M2 — 2026-11-10 — APPROVATO CON RISERVE — …` più una lezione (una lista bianca va provata contro le frasi che Gas stesso invita a dire) aggiunte in coda a /home/user/Gas-voce/.claude/agents/memoria_revisore.md, messe in staging con `git add`. Nessun commit, come richiesto, quindi niente commit_memoria_revisore.sh.
 
-## VERDETTO: APPROVATO
+### Review #746-M2 (seguito di #744-M2, correzione di R-744-1) — verdetto integrale
 
-Re-review #738 del diff staged su claude/peaceful-lovelace-0w2b7q. Letture obbligatorie fatte: CLAUDE.md §5, reports/stato_progetto.md (selettiva), memoria_revisore.md (lezioni del 2026-11-10 su azzeramento per ramo e punto di ripartenza). Rispetto a #737 il diff aggiunge solo il test nuovo. ascolto.py resta come in #737.
+VERDETTO: APPROVATO CON RISERVE
 
-Elementi del diff esaminati:
-- `tests/test_unit_voce_ascolto.py:2588` — il test `test_conto_della_parola_nella_finestra_si_azzera` usa questa sequenza del rilevatore: alto, errore, alto, alto, alto, alto. Si aspetta i risultati [F, F, F, T, F, T]. Poi parte con un residuo `_sopra_finestra = 1` e fa un `aspetta_voce()`, dove la parola non deve risultare detta. Rischio esaminato: che il test non distingua i tre azzeramenti. Esito: ok. Ogni ramo ha la sua asserzione e i mutanti lo confermano (sotto).
-- `clients/voice/ascolto.py:444` — azzera il conto quando il rilevatore va in errore. Mutante `pass`: il nuovo test fallisce (1 failed, 302 passed). Esito: ok.
-- `clients/voice/ascolto.py:458` — azzera il conto quando la parola scatta. Mutante `pass`: il nuovo test fallisce. Esito: ok.
-- `clients/voice/ascolto.py:538` — azzera il conto all'inizio di ogni finestra in `aspetta_voce`. Mutante `pass`: il nuovo test fallisce. Esito: ok. Questo applica la lezione di memoria «punto di ripartenza testato con un residuo».
-- `clients/voice/ascolto.py:453` — azzera il conto sotto soglia. Mutante extra, non richiesto: lo prende `test_nella_finestra_un_picco_isolato_non_vale_come_parola`. Esito: ok.
+Review #746-M2: riguarda il diff in staging del worktree /home/user/Gas-voce, branch feat/voce-filtro-m2, con base 447195f. È il seguito della #744-M2.
 
-Ho lavorato su una copia dell'index (`git checkout-index`, nella scratchpad). Base: 303 passed. Tutti e 4 i mutanti presi. `git diff --cached --check` pulito.
+**R-744-1-M2 (MEDIA) è CHIUSA.** «Continua.», «Avanti!», «Altro?», «Tre.», «3», «Domani.» e «Venerdì» ora arrivano al cervello. L'unico limite che resta, i nomi propri da soli, è scritto nel commento del codice.
 
-**R-737-1 è chiusa**: ognuno dei 4 azzeramenti di `_sopra_finestra` ha un test che fallisce se lo si toglie.
+Cosa ho controllato nel diff:
+- `modules/voice/server.py:182`: `_RISPOSTE_BREVI_SEGUITO` ora contiene continua/prosegui/avanti/altro/resto/ancora/dimmi/bene, i giorni, i numeri da uno a dieci in parole e gli ordinali. Rischio esaminato: con una lista più larga il filtro potrebbe diventare inutile. Esito ok: ho provato a runtime e «Mamma.», «Allora…», «Comunque», «Forte!», «Ehm» e «Mh» vengono ancora scartati senza chiamare il cervello.
+- `modules/voice/server.py:202-203`: con `and not parole[0].isdigit()` le cifre non si scartano più. Rischio esaminato: falsi positivi. Esito ok: «²» passa al cervello, ma è un caso innocuo.
+- `modules/voice/server.py:762`: il filtro scatta solo nel seguito, cioè quando l'operatore parla senza dire prima la parola di attivazione (chiamata invariata rispetto alla #744). Rischio esaminato: un frammento detto dopo la parola di attivazione verrebbe scartato. Esito ok: il test `tests/test_unit_voice_stt.py:828` e quello successivo con attivazione verificano che quel frammento va comunque al cervello.
+- `tests/test_unit_voice_server.py:2401`: casi nuovi che sotto R-744-1 venivano scartati e ora devono passare. Esito ok.
+- `tests/test_unit_voice_server.py:2407`: assert su «Il resto.». Esito **riserva**: sono due parole, quindi la frase passa comunque e il test non prova che «resto» sia in elenco.
 
-Cosa NON ho verificato:
-- Se i 2 blocchi di fila funzionano davvero contro i falsi positivi del rilevatore reale. Si vede solo sul Mac col microfono, non qui; la riserva BASSA di #736 resta.
-- La suite completa del kernel: il diff tocca solo il client voce e il suo file di test.
+Mutanti (tutti uccisi, poi ripristinati con `git checkout` dall'index; lo staging è intatto):
+1. Tolto il controllo `isdigit`: 1 test fallito.
+2. Tolti continua/avanti/altro/resto dall'elenco: 1 test fallito.
+3. Tolto venerdì: 1 test fallito.
 
-- Verdetto nullo: nessuno.
+Test: `pytest voice_server + voice_stt -k "not browser"` dà 275 passed, come dichiarato.
 
-Memoria: riga contatore #738 aggiunta in fondo a /home/user/Gas/.claude/agents/memoria_revisore.md e committata dallo script (0d36e37). Nessuna lezione nuova.
+Riserve (vanno scritte in stato_progetto.md):
+- **R-746-1-M2 (BASSA)**: i numeri in parole oltre «dieci» («Undici.», «Venti») vengono ancora scartati nel seguito.
+- **R-746-2-M2 (BASSA)**: l'assert «Il resto.» a `tests/test_unit_voice_server.py:2407` non prova nulla, perché sono due parole. Va sostituito con «Resto.» da solo.
 
-Commit 8ff4db4 (merge di origin/main 2dd0e8c, PR #362): staging con soli .claude/agents/memoria_revisore.md e reports/prova_r1_notte.md, fuori dal perimetro di review: revisore non richiesto.
-
-Commit a13f442 (merge di origin/main): verdetto integrale della review #739 RIEMESSO dal revisore (stesso esito) perché il gate B rifiutava l'originale: dopo il merge la base è 447195f e le sue citazioni a modules/voice/server.py e tests/test_unit_voice_server.py non erano più file del diff. Il verdetto originale è riportato sotto, non ritoccato.
-
-## VERDETTO: APPROVATO
-
-Review #739 riemessa (chat Mani). Riguarda il merge di origin/main 447195f (PR #360 di M2) nel branch claude/peaceful-lovelace-0w2b7q, PR #361, ora committato come a13f442. Le verifiche e l'esito sono quelli di prima. Le citazioni ora puntano solo a file del diff della sessione (base 447195f), con le righe controllate su HEAD a13f442.
-
-Cosa ho controllato:
-- `clients/voice/ascolto.py:444` — azzeramento di `_sopra_finestra` sul ramo dell'eccezione (attributo dichiarato a `clients/voice/ascolto.py:364`). Rischio: che il merge abbia toccato la correzione V-1 già revisionata in #737/#738. Il file è identico al lato del branch prima del merge (0e5291c → HEAD: diff vuoto); durante il merge era identico a HEAD nello staging. Esito: ok.
-- `tests/test_unit_voce_ascolto.py:2589` — `test_conto_della_parola_nella_finestra_si_azzera`, il test che chiude R-737-1. Rischio: test del branch perso o mescolato. Il file è identico a 0e5291c (diff vuoto). Esito: ok.
-- `scripts/voce/LEGGIMI.md:136` — riga di `GAS_ASCOLTO_BLOCCHI_PAROLA` (default 2, intervallo 1–5). Rischio: documentazione del branch sovrascritta dal lato main. Il file è identico a 0e5291c. Esito: ok.
-- `.claude/agents/memoria_revisore.md:1416` — righe #736–#738 del nostro lato, conservate nell'unione accanto a #740-M2, #741-M2 e #742-M2 di main. Rischio: righe perse da uno dei due lati. Nello staging del merge: rispetto a main +6/0 e rispetto al vecchio HEAD +7/0, contando la mia riga #739 a `.claude/agents/memoria_revisore.md:1422`. Nessun marcatore di conflitto. Esito: ok.
-- `reports/stato_progetto.md:686` — voce R8 «ascolto H24: meno attivazioni per sbaglio» della PR #361. Rischio: perdita della modifica di main nell'unione automatica. Durante il merge, rispetto a MERGE_HEAD restavano solo le 2 righe R8 del nostro lato, quindi la modifica di main resta. Esito: ok.
-
-Controlli generali:
-- Il codice arrivato da main (modules/voice/server.py, tests/test_unit_voice_server.py, reports/ripartenza_m2.md) era identico a MERGE_HEAD durante il merge. Dopo il commit non fa più parte del diff della sessione.
-- I due lati toccano file di codice diversi (base 695b759). `git ls-files -u` era vuoto e `--check` pulito.
-- Ho rilanciato `test_unit_voce_ascolto.py` e `test_unit_voice_server.py` con `-k "not browser"`: 463 passed, 25 deselected.
-- Nessun antipattern del Wall of Shame: il merge non porta codice nuovo nel kernel.
+Nota: «Basta.», «Fine.», «Zitto» ed «Esci» vengono scartati, ma lo scarto chiude la conversazione, quindi l'esito è quello voluto.
 
 Cosa NON ho verificato:
-- La suite del kernel e test_unit_telegram_voce: il merge non tocca né gas.py né bot.py.
-- I test con browser (25 deselected).
-- Il comportamento dal vivo sul Mac: non riproducibile qui.
+- Comportamento con il microfono vero e Whisper: non si riproduce in dev, perché la trascrizione è simulata con un patch.
+- Prove col cervello reale: non riproducibili in dev, perché il kernel nei test è finto.
+- Altre suite (telegram_voce, voce_ascolto, kernel): non le ho rilanciate, perché il diff tocca solo `server.py` e i due file di test.
 
-Come chiesto, non ho toccato né la memoria né lo staging. La riga #739 è già nel commit a13f442.
-
-**Verdetto originale #739 (prima della riemissione), integrale in un blocco di testo (le sue citazioni di modules/ e tests/test_unit_voice_server.py non sono più nel diff della sessione):**
-
-```text
-## VERDETTO: APPROVATO
-
-Review #739 (chat Mani). Ho controllato il merge di origin/main 447195f (PR #360 di M2) nel branch claude/peaceful-lovelace-0w2b7q (HEAD 0e5291c, PR #361). Il merge è ancora in corso e le modifiche sono in staging. Ho letto prima CLAUDE.md §5, le sezioni di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
-
-Cosa ho controllato:
-- `modules/voice/server.py:331` — cache delle frasi fisse portata dalla #360 di M2 (righe 331-345). Rischio: che il merge abbia alterato il codice di main. `git diff --cached MERGE_HEAD` su questo file è vuoto (0 righe). Esito: ok.
-- `tests/test_unit_voice_server.py:2113` — test della cache alla seconda richiesta, arriva da main. Rischio: test di main persi o mescolati. Il file è identico a MERGE_HEAD (diff vuoto); lo è anche `reports/ripartenza_m2.md`. Esito: ok.
-- `clients/voice/ascolto.py:452` — conto dei blocchi della parola nella finestra (`_sopra_finestra`), dal nostro branch. Rischio: che il merge abbia toccato la correzione già revisionata in #737/#738. Il file è identico a HEAD; lo sono anche `tests/test_unit_voce_ascolto.py`, `scripts/voce/LEGGIMI.md`, `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md`. Esito: ok.
-- `.claude/agents/memoria_revisore.md:1416` — memoria risolta come unione dei due lati. Rischio: righe di uno dei due lati perse. Prima della mia riga: rispetto a main +5 righe e 0 tolte (le #736, #737, #738 e due lezioni); rispetto a HEAD +6 e 0 tolte (#740-M2, #741-M2, #742-M2 e le altre righe di M2). Nessun marcatore di conflitto. Esito: ok.
-- `reports/stato_progetto.md:684` — unito in automatico da git. Rischio: perdita della modifica fatta su main. Rispetto a MERGE_HEAD restano solo le 2 righe R8 del nostro lato (stato della #359 aggiornato e voce della PR #361), quindi la modifica di main resta. Esito: ok.
-
-Controlli generali:
-- I due lati toccano file di codice diversi. Dalla base 695b759 main ha cambiato server.py e il suo test, il nostro lato ascolto.py, il suo test e LEGGIMI. Nessun file di codice è stato modificato da tutti e due.
-- `git ls-files -u` è vuoto, `git diff --cached --check` è pulito, non ci sono modifiche fuori dallo staging.
-- Ho rilanciato `test_unit_voce_ascolto.py` e `test_unit_voice_server.py` con `-k "not browser"`: 463 passed, 25 deselected. Torna col numero dichiarato.
-- Nessun antipattern del Wall of Shame: il merge non porta codice nuovo nel kernel.
-
-Cosa NON ho verificato:
-- La suite del kernel (test_unit_kernel) e test_unit_telegram_voce: il merge non tocca né gas.py né bot.py, e #742-M2 ha già controllato che bot.py non usa la cache della #360.
-- I test con browser (25 deselected).
-- Il comportamento dal vivo sul Mac: non riproducibile qui.
-
-Memoria: ho aggiunto la riga `#739 (chat Mani) — 2026-11-10 — APPROVATO — … Nessuna lezione nuova.` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git add`. Dopo l'aggiunta il file risulta +7/0 rispetto a HEAD e +6/0 rispetto a MERGE_HEAD; ls-files -u è ancora vuoto. Come chiesto, non ho lanciato scripts/commit_memoria_revisore.sh perché il merge è in corso.
-
-Attenzione: lo staging è cambiato (c'è la riga di memoria in più). Il marcatore della review (`bash scripts/segna_review_ok.sh`) va creato adesso, sul diff in staging così com'è, prima del commit del merge.
-```
+Memoria: ho aggiunto la riga `#746-M2` e una lezione nuova in /home/user/Gas-voce/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-voce add`. Lezione: nei test di una lista bianca «una parola sola», ogni caso deve essere davvero di una parola. Nessun commit fatto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel non toccato. `tests/test_unit_voce_ascolto.py`: da 296 (base 695b759) a 303 casi (300 dopo 1a031ae, 303 dopo bc37ae5).
+- gas.py non toccato. Test nuovi: `test_seguito_frammento_chiude_senza_cervello`, `test_seguito_frammento_con_attivazione_va_al_cervello`, `test_seguito_forte_che_supera_il_filtro_non_parla` (stt), `test_seguito_da_scartare_e_istruzione_severa`, `test_parlato_voce_tetto_piu_corto` (server).
+- `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py tests/test_unit_voice_contesto.py tests/test_unit_telegram_voce.py tests/test_unit_voce_ascolto.py tests/test_unit_sottofondo.py -k "not browser"` sul commit d07fbdf:
 
 ```
-303 passed in 24.80s
+744 passed, 25 deselected in 89.18s (0:01:29)
 ```
-
-Dopo il merge a13f442: `test_unit_voce_ascolto.py` + `test_unit_voice_server.py -k "not browser"` → `463 passed, 25 deselected`.
-
-Mutanti presi su bc37ae5: soglia di 1 blocco nella finestra (comportamento vecchio), nessun azzeramento sotto soglia, su errore, allo scatto e all'inizio della finestra.
-Suite completa del repo (su bc37ae5 meno l'ultimo test): `1 failed, 2976 passed` con `-x`; il fallito è `tests/test_unit_web_browser.py::test_testo_scritto_dal_javascript` (Chromium vero nel container cloud), fuori scope: il branch non tocca `modules/`. Fa fede la unit-suite della CI.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container (GitHub passa dallo strumento MCP). Mappatura commit→run:
-- 5b57208 (testa precedente della PR): handoff-check success, smista success, verifica success, esito success, verifica-bot neutral (APPROVATO CON RISERVE, solo BASSE/COSMETICHE); unit-suite in corso alla scrittura. Su bc37ae5 la run 42727359780 era success (dal bot).
-- 1a031ae, 3835a14, f142023, 4a78ffa, 0d36e37, 0e5291c, a13f442: nessuna run conclusa su questo SHA (commit intermedi o sostituiti da push successivi).
-- 8ff4db4 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA con `gh` (non autenticato nel cloud); esiti letti con lo strumento GitHub MCP:
+- e0f8f31 (head precedente): handoff-check success; verifica-bot failure (falso failure del parser, vedi §1); unit-suite non letta a fine run.
+- 1340aa0: nessuna run propria letta.
+- d07fbdf: nessuna run su questo SHA (pushato insieme al commit di fine task).
+- 588c450: handoff-check success; unit-suite e verifica-bot in corso alla seconda verifica esterna, poi superati dal nuovo push.
+- Merge di main: nessuna run su questo SHA (pushato insieme al commit di fine task).
+- Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Bot #361 (su 5b57208, APPROVATO CON RISERVE): V-1 BASSA — col nuovo default di 3 turni, alla 3ª interruzione con la parola la conversazione si chiude senza bip e la richiesta dopo va persa (R-668-1, prima alla 5ª); V-2 COSMETICA — commenti «finestra di 40 s» in clients/voice/ascolto.py e nel test, LEGGIMI senza nota che la pagina web resta a 5 turni. Prossima fetta voce.
-- Verifica esterna #361 3° giro ([commento](https://github.com/Gasss23/Gas/pull/361#issuecomment-6755342314)): solo BASSE/COSMETICHE (CI da attendere, R-736-1, pagina web 12 s/5 turni, costruttore 0,5, sigla «ve» nei commenti).
-- Verifica esterna #361 (2° giro, APPROVATO CON RISERVE): V-1 MEDIA (conflitto con main) CHIUSA in a13f442; V-2 BASSA (CI e bot non ancora verdi sull'head) da controllare prima del merge; V-3 BASSA = R-736-1; V-4 BASSA: clients/voice/browser_server.py tiene finestra 12 s e 5 turni (la modalità browser non riceve la correzione), prossima fetta voce; V-5 COSMETICA = R-736-3.
-- Verifica esterna #361: V-1 MEDIA e V-3 CHIUSE in bc37ae5; V-2 BASSA (il revisore #736 non aveva visto la lacuna) superata; V-4 BASSA = R-736-1.
-- R-737-1 BASSA: CHIUSA in #738.
-
-- R-736-1 BASSA: con 2 blocchi di fila la parola vera scatta ancora? Da provare dal vivo; rimedio `GAS_ASCOLTO_BLOCCHI_PAROLA=1`.
-- R-736-2 BASSA: chi parla entro 0,5 s dalla fine della risposta perde la prima sillaba.
-- R-736-3 COSMETICA: il costruttore tiene soglia 0,5, main usa 0,6.
-- Verifica esterna #359: V-1 BASSA, prossima fetta voce.
-- R-733-1/2 e V-3 della verifica esterna #359: accettati dall'operatore come limite della guardia statica.
-- Le altre riserve sono in `reports/stato_progetto.md`.
+- R-744-1-M2 (gravità media): CHIUSA (1340aa0, review #746-M2).
+- R-746-1-M2 e R-746-2-M2 BASSE: CHIUSE (d07fbdf, review #747-M2).
+- Bot e verifica esterna #365 V-2 e V-3 BASSE: CHIUSE (d07fbdf).
+- R-744-2-M2 BASSA (preesistente): «Grazie.», allucinazione tipica di Whisper, va al cervello nel seguito.
+- R-747-1-M2 BASSA: il test di «Gas, forte.» nel seguito non distingue il ramo «uso» dallo scarto del filtro (stessa risposta).
+- R-747-2-M2 BASSA: «ora/dopo/mai/sempre/niente/nulla/subito/adesso» in elenco fanno passare al cervello anche frammenti della TV (compromesso: un falso «passa» costa un turno, un falso «scarta» perde la risposta dell'operatore).
+- Cosmetica #747 (e V-5 della seconda verifica esterna #365): ordine dell'import di `unicodedata`.
+- Seconda verifica esterna #365 (commento sulla PR, su 588c450): V-1 (gravità media, conflitto con main) CHIUSA col merge di main; V-2 BASSA (CI non conclusa) da rileggere sulla head nuova; V-3 BASSA (falso failure del parser, non riprodotto); V-4 BASSA («Ⅻ», «ﬁne» scartati dopo NFKD: marginale, dentro il limite dichiarato).
+- R-750-1-M2 BASSA: col primo mezzo secondo ignorato dal client (#361), un «Sì» detto subito può arrivare troncato e ora viene scartato in silenzio: da osservare dal vivo.
+- Bot su 1638d81: V-1 BASSA (conflitto) chiusa col merge di main; V-2 BASSA (CI) da rileggere; V-3 COSMETICA (numeri dei test nella descrizione della PR, import fuori ordine).
+- Limite dichiarato: un nome proprio da solo nel seguito si scarta.
+- Non verificato: il modello rispetta davvero «nel dubbio [NON_PER_ME]» e «una frase» (prova sul Mac).

@@ -355,6 +355,10 @@ class TestNFKC:
     "venv/lib/python3.13/site-packages/x.pth",
     ".git/config", ".git/hooks/pre-commit", ".github/workflows/ci.yml",
     ".gas_notte/ultimo_giro.md", ".gas_notte/launchd.log", "./.gas_notte/lock",
+    # audit notturno 10 nov: un compito «finito» falso letto a voce, o .ferma/.passi
+    ".gas_sottofondo/20261110-000000-abcdef.json", ".gas_sottofondo/attivo.json",
+    ".gas_sottofondo/x.passi", ".gas_sottofondo/x.ferma", ".gas_sottofondo/.lock",
+    "./.GAS_SOTTOFONDO/nuovo.json", "dati/../.gas_sottofondo/x.json",
     "VENV/bin/activate", "sub/../venv/bin/activate",
 ])
 def test_write_catena_di_avvio_deny(path):
@@ -381,6 +385,8 @@ def test_read_file_py_resta_consentita():
 def test_read_file_venv_e_gas_notte_deny():
     assert gate_classify("read_file", {"relative_path": "venv/bin/activate"}) == GateClass.DENY
     assert gate_classify("read_file", {"relative_path": ".gas_notte/ultimo_giro.md"}) == GateClass.DENY
+    # audit notturno 10 nov: i compiti in sottofondo contengono dati dell'operatore
+    assert gate_classify("read_file", {"relative_path": ".gas_sottofondo/x.json"}) == GateClass.DENY
 
 
 @pytest.mark.parametrize("path", [
@@ -461,6 +467,7 @@ from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, 
     ".env", ".env.prod", "dati/.env", ".envrc", ".git/config", ".github/workflows/ci.yml",
     ".gitignore", ".claude/settings.json", "dati/.claude/x", ".gas_memory.db",
     ".gas_history.json", ".gas_notte/ultimo_giro.md", ".gas_knowledge.db",
+    ".gas_sottofondo/attivo.json", ".gas_sottofondo/x.ferma",  # audit notturno 10 nov
     ".gas_vectors.db", ".gas_tokens.jsonl", "gate_config.yaml", "venv/bin/activate",
     ".gas_claude_cli_uso.json", ".gas_claude_cli_uso.json.123.tmp",  # V-1 bot #258
     ".gas_richieste_uso.json", ".gas_richieste_uso.json.123.tmp",  # V-1 bot #307

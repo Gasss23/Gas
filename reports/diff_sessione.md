@@ -1,11 +1,10 @@
-# Diff della sessione — 2026-11-10 — chat Mani, ascolto H24: meno attivazioni per sbaglio
+# Diff di sessione — 2026-11-10 — voce: seguito più severo e risposte più brevi (chat M2)
 
-File toccati (base main 695b759, dopo il merge della PR #359; poi merge di origin/main 447195f, PR #360, in a13f442: codice di main senza modifiche, conflitti solo nei report):
-- `clients/voice/ascolto.py`: finestra 15 s, MAX_TURNI_PREDEFINITO 3, SOGLIA_PREDEFINITA 0,6, parola su `blocchi_parola` blocchi di fila (GAS_ASCOLTO_BLOCCHI_PAROLA, default 2), coda dell'eco di 0,5 s ignorata nella finestra; poi (bc37ae5, V-1 verifica esterna #361) anche nella finestra la parola vale solo con 2 blocchi di fila, commento soglia 0,6.
-- `tests/test_unit_voce_ascolto.py`: default aggiornati, 4 test nuovi + 3 per la finestra (V-1 #361, R-737-1).
-- `scripts/voce/LEGGIMI.md`: tabella delle regolazioni e paragrafo privacy coi nuovi valori.
-- `.claude/agents/memoria_revisore.md`: righe #736, #737, #738 e lezioni.
-- `reports/stato_progetto.md`: voce Mani con l'esito della verifica esterna #361.
-- `reports/*`: report di fine task.
+- `modules/voice/server.py` — `ISTRUZIONE_SEGUITO` più severa; `_RISPOSTE_BREVI_SEGUITO` + `seguito_da_scartare` e chiamata nel seguito (prima del cervello); `ISTRUZIONE_VOCE`/`_SCHERMO` «UNA frase breve»; `_PARLATO_VOCE_MAX_CHAR` 800.
+- `tests/test_unit_voice_server.py` — test della funzione, dell'istruzione e del tetto 800; commento del test al tetto aggiornato; «UNA frase breve» nelle istruzioni.
+- `tests/test_unit_voice_stt.py` — test end-to-end: frammenti chiusi senza turno, risposte brevi al cervello, con attivazione il filtro non vale.
+- `.claude/agents/memoria_revisore.md` — righe #744-M2 e #746-M2.
+- `reports/stato_progetto.md`, `reports/ripartenza_m2.md` — stato della fetta e riserve (anche quelle del bot sulla #363).
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.
