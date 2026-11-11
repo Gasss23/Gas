@@ -50,7 +50,13 @@ _ECO_CORTA_NO_SPEECH_DEFAULT = 0.9
 _ALLUCINAZIONI_PARTI = ("amara.org", "qtss", "sottotitoli creati", "sottotitoli a cura",
                         "sottotitoli e revisione")
 _ALLUCINAZIONI_INTERE = ("grazie per la visione", "grazie per l'ascolto",
-                         "iscriviti al canale", "grazie a tutti per la visione")
+                         "iscriviti al canale", "grazie a tutti per la visione",
+                         # Allucinazioni 10 nov (operatore via M1): su audio corto o debole
+                         # (caso reale: 1,1 s → «Grazie.» → Gas: «Di niente, quando vuoi sono
+                         # qui») Whisper scrive un ringraziamento da solo: non è una richiesta
+                         "grazie", "grazie mille", "grazie a tutti", "grazie a voi",
+                         "grazie per aver guardato", "grazie per l'attenzione",
+                         "sottotitoli", "sottotitoli a cura di")
 
 
 class GroqSTTError(Exception):
@@ -83,6 +89,24 @@ class TrascrizioneIncerta(Exception):
         self.motivo = motivo
 
 
+class TrascrizioneAllucinata(TrascrizioneIncerta):
+    """Allucinazioni 10 nov: la trascrizione è una frase che Whisper inventa sul silenzio
+    o sul rumore («Grazie.», «Sottotitoli a cura di…», solo punteggiatura). Il server voce
+    la scarta in SILENZIO (nessuna risposta, nessun turno), non chiede di ripetere.
+    Sottoclasse di TrascrizioneIncerta: chi prende già quella (bot Telegram) non cambia."""
+
+
+def allucinazione(testo: str) -> bool:
+    """True se il testo trascritto è un'allucinazione nota di Whisper o non ha parole."""
+    # R-761-3-M2: apostrofo tipografico come quello semplice
+    norm = " ".join(testo.lower().replace("\u2019", "'").split())
+    if not _PAROLA.search(norm):
+        return True  # «…», «.», solo punteggiatura o simboli: nessuna parola detta
+    if any(p in norm for p in _ALLUCINAZIONI_PARTI):
+        return True
+    return norm.strip(" .!?…,;:-–—«»\"'\u201c\u201d\u2018") in _ALLUCINAZIONI_INTERE
+
+
 def _soglia_env(nome: str, default: float) -> float:
     try:
         v = float(os.environ.get(nome, "").strip() or default)
@@ -95,7 +119,7 @@ def _motivo_incerta(testo: str, segmenti: Any) -> Optional[str]:
     """Perché la trascrizione è da scartare, o None se va bene. Senza segmenti (risposta
     senza dettagli) decide solo l'elenco delle frasi inventate."""
     norm = " ".join(testo.lower().split())
-    if any(p in norm for p in _ALLUCINAZIONI_PARTI) or norm.rstrip(".!") in _ALLUCINAZIONI_INTERE:
+    if allucinazione(testo):
         return "frase tipica di Whisper sul silenzio"
     parole = _PAROLA.findall(norm)
     if len(parole) >= _PROMPT_ECO_MIN_PAROLE and _pezzo_del_prompt(parole):
@@ -267,6 +291,8 @@ def transcribe_audio(
             if not isinstance(data, dict):
                 raise GroqSTTError(resp.status, "risposta Groq non è un oggetto JSON")
             testo = (data.get("text") or "").strip()
+            if testo and allucinazione(testo):
+                raise TrascrizioneAllucinata(testo, "frase tipica di Whisper sul silenzio")
             motivo = _motivo_incerta(testo, data.get("segments")) if testo else None
             if motivo:
                 raise TrascrizioneIncerta(testo, motivo)
