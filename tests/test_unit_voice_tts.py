@@ -473,3 +473,220 @@ def test_audit_b3_altre_funzioni_tts():
                      lambda: add_shared_voice("k", "owner", "v", "nome", _conn_factory=fab)):
         with pytest.raises(OSError, match="IncompleteRead"):
             chiamata()
+
+
+# ── Velocità (11 nov): connessione HTTPS verso ElevenLabs tenuta aperta e riusata ──
+
+class _ConnViva:
+    """HTTPSConnection finta che conta richieste e può fallire alla richiesta n."""
+    create: list = []
+
+    def __init__(self, host, timeout=None):
+        self.host, self.timeout, self.sock = host, timeout, None
+        self.richieste = 0
+        self.chiusa = False
+        self.fallisci = None      # eccezione da alzare alla prossima request
+        self.will_close = False
+        type(self).create.append(self)
+
+    def request(self, method, path, body=None, headers=None):
+        if self.fallisci is not None:
+            exc, self.fallisci = self.fallisci, None
+            raise exc
+        self.richieste += 1
+
+    def getresponse(self):
+        resp = MagicMock()
+        resp.status = 200
+        resp.read.return_value = b"MP3"
+        resp.will_close = self.will_close
+        return resp
+
+    def close(self):
+        self.chiusa = True
+
+
+@pytest.fixture
+def conn_viva(monkeypatch):
+    import modules.voice.tts as tts_mod
+    _ConnViva.create = []
+    tts_mod._chiudi_conn_locale()
+    monkeypatch.delenv("GAS_TTS_KEEPALIVE", raising=False)
+    monkeypatch.setattr(tts_mod.http.client, "HTTPSConnection", _ConnViva)
+    yield tts_mod
+    tts_mod._chiudi_conn_locale()
+
+
+def test_keepalive_riusa_la_connessione(conn_viva):
+    for frase in ("Prima frase.", "Seconda frase.", "Terza."):
+        assert synthesize_speech(frase, "k", "v") == b"MP3"
+    assert len(_ConnViva.create) == 1 and _ConnViva.create[0].richieste == 3
+
+
+def test_keepalive_riprova_una_volta_se_il_server_ha_chiuso(conn_viva):
+    import http.client
+    synthesize_speech("Uno.", "k", "v")
+    _ConnViva.create[0].fallisci = http.client.RemoteDisconnected("chiusa")
+    assert synthesize_speech("Due.", "k", "v") == b"MP3"
+    assert len(_ConnViva.create) == 2 and _ConnViva.create[0].chiusa
+    assert _ConnViva.create[1].richieste == 1
+
+
+def test_keepalive_connessione_nuova_che_fallisce_non_riprova(conn_viva):
+    """Su una connessione appena aperta l'errore risale come OSError, senza un secondo
+    tentativo (niente doppio addebito di caratteri)."""
+    import http.client
+
+    class _Rotta(_ConnViva):
+        def request(self, *a, **kw):
+            raise http.client.RemoteDisconnected("giù")
+    conn_viva.http.client.HTTPSConnection = _Rotta
+    with pytest.raises(OSError, match="RemoteDisconnected"):
+        synthesize_speech("Uno.", "k", "v")
+    assert len(_ConnViva.create) == 1
+
+
+def test_keepalive_errore_http_e_will_close(conn_viva):
+    """«Connection: close» del server fa chiudere la connessione (il 4xx è in
+    test_keepalive_status_non_200)."""
+    synthesize_speech("Uno.", "k", "v")
+    _ConnViva.create[0].will_close = True
+    synthesize_speech("Due.", "k", "v")
+    assert _ConnViva.create[0].chiusa
+    synthesize_speech("Tre.", "k", "v")
+    assert len(_ConnViva.create) == 2
+
+
+def test_keepalive_spento(conn_viva, monkeypatch):
+    monkeypatch.setenv("GAS_TTS_KEEPALIVE", "0")
+    synthesize_speech("Uno.", "k", "v")
+    synthesize_speech("Due.", "k", "v")
+    assert len(_ConnViva.create) == 2 and all(c.chiusa for c in _ConnViva.create)
+
+
+def test_keepalive_una_connessione_per_thread(conn_viva):
+    import threading
+    synthesize_speech("Uno.", "k", "v")
+    t = threading.Thread(target=lambda: synthesize_speech("Altro thread.", "k", "v"))
+    t.start()
+    t.join()
+    assert len(_ConnViva.create) == 2
+
+
+def test_keepalive_status_non_200(conn_viva):
+    class _Rifiuto(_ConnViva):
+        def getresponse(self):
+            resp = MagicMock()
+            resp.status = 401
+            resp.read.return_value = b'{"detail":"no"}'
+            resp.will_close = False
+            return resp
+    conn_viva.http.client.HTTPSConnection = _Rifiuto
+    with pytest.raises(ElevenLabsTTSError) as e:
+        synthesize_speech("Uno.", "k", "v")
+    assert e.value.status == 401
+
+
+
+def test_keepalive_errore_durante_la_lettura_non_riprova(conn_viva):
+    """R-765-1-M2: se la connessione salta mentre arriva l'audio (stato 200 già ricevuto)
+    NON si rifà la richiesta: ElevenLabs l'avrebbe già fatta pagare."""
+    class _Taglia(_ConnViva):
+        def getresponse(self):
+            resp = MagicMock()
+            resp.status = 200
+            resp.read.side_effect = ConnectionResetError("tagliata")
+            resp.will_close = False
+            return resp
+    synthesize_speech("Uno.", "k", "v")          # connessione aperta e riusabile
+    conn_viva.http.client.HTTPSConnection = _Taglia
+    _ConnViva.create[0].getresponse = _Taglia.getresponse.__get__(_ConnViva.create[0])
+    with pytest.raises(OSError, match="ConnectionResetError"):
+        synthesize_speech("Due.", "k", "v")
+    assert _ConnViva.create[0].richieste == 2 and len(_ConnViva.create) == 1
+    assert _ConnViva.create[0].chiusa
+
+
+def test_keepalive_connessione_ferma_da_troppo_si_butta(conn_viva, monkeypatch):
+    """R-765-2-M2: dopo più di _KEEPALIVE_INATTIVA_MAX_S senza uso si apre una nuova."""
+    ora = [1000.0]
+    monkeypatch.setattr(conn_viva.time, "monotonic", lambda: ora[0])
+    synthesize_speech("Uno.", "k", "v")
+    ora[0] += 19  # ve #372 V-1: valori fissi, la soglia di 20 s è parte del contratto
+    synthesize_speech("Due.", "k", "v")
+    assert len(_ConnViva.create) == 1
+    ora[0] += 21
+    synthesize_speech("Tre.", "k", "v")
+    assert len(_ConnViva.create) == 2 and _ConnViva.create[0].chiusa
+
+
+def test_keepalive_timeout_aggiornato_sul_socket(conn_viva, monkeypatch):
+    """R-765-3-M2: il timeout di ogni chiamata (es. 5 s della conferma) vale anche sul
+    socket della connessione riusata."""
+    monkeypatch.setattr(conn_viva, "_conn_caduta", lambda conn: False)  # socket finto
+    synthesize_speech("Uno.", "k", "v", timeout=30)
+    conn = _ConnViva.create[0]
+    conn.sock = MagicMock()
+    synthesize_speech("Due.", "k", "v", timeout=5)
+    assert conn.timeout == 5
+    conn.sock.settimeout.assert_called_with(5)
+
+
+def test_keepalive_eccezione_qualsiasi_chiude(conn_viva):
+    """R-765-3-M2: un'eccezione non prevista chiude e scarta la connessione."""
+    synthesize_speech("Uno.", "k", "v")
+    _ConnViva.create[0].fallisci = KeyboardInterrupt()
+    with pytest.raises(KeyboardInterrupt):
+        synthesize_speech("Due.", "k", "v")
+    assert _ConnViva.create[0].chiusa
+    synthesize_speech("Tre.", "k", "v")
+    assert len(_ConnViva.create) == 2
+
+
+
+def test_keepalive_errore_dopo_l_invio_non_riprova(conn_viva):
+    """V-1 bot #372: se la connessione riusata si chiude DOPO l'invio (in getresponse) non
+    si rifà la richiesta: ElevenLabs potrebbe averla già fatta pagare."""
+    import http.client
+    synthesize_speech("Uno.", "k", "v")
+    conn = _ConnViva.create[0]
+
+    def _chiusa_dopo_invio():
+        raise http.client.RemoteDisconnected("chiusa dopo l'invio")
+    conn.getresponse = _chiusa_dopo_invio
+    with pytest.raises(OSError, match="RemoteDisconnected"):
+        synthesize_speech("Due.", "k", "v")
+    assert conn.richieste == 2 and len(_ConnViva.create) == 1 and conn.chiusa
+
+
+def test_keepalive_connessione_chiusa_dal_server_non_si_riusa(conn_viva):
+    """R-770-1-M2: se a riposo il socket è leggibile (il server ha chiuso), si apre una
+    connessione nuova PRIMA di inviare, senza consumare il nuovo tentativo."""
+    import socket
+    a, b = socket.socketpair()
+    try:
+        synthesize_speech("Una.", "k", "v")
+        prima = _ConnViva.create[0]
+        prima.sock = a
+        b.close()  # il «server» chiude: a diventa leggibile (EOF)
+        synthesize_speech("Due.", "k", "v")
+        assert len(_ConnViva.create) == 2
+        assert prima.chiusa and prima.richieste == 1
+        assert _ConnViva.create[1].richieste == 1
+    finally:
+        a.close()
+
+
+def test_keepalive_connessione_viva_a_riposo_si_riusa(conn_viva):
+    """Socket aperto e senza dati da leggere: la connessione si riusa."""
+    import socket
+    a, b = socket.socketpair()
+    try:
+        synthesize_speech("Una.", "k", "v")
+        _ConnViva.create[0].sock = a
+        synthesize_speech("Due.", "k", "v")
+        assert len(_ConnViva.create) == 1
+        assert _ConnViva.create[0].richieste == 2
+    finally:
+        a.close()
+        b.close()
