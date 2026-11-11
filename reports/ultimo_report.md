@@ -9,6 +9,7 @@
 - **(b) Flash-lite dichiarato** (sì): FATTA — `RUNG_VERSIONE_LEGGERA`, riga «↪ risposta da … (versione leggera scelta per un compito semplice)» in CLI e testo Telegram, mai a voce.
 - **Tetto di 10 chiamate al modello per turno** (sì): FATTA — `MAX_CHIAMATE_TURNO`, contatore unico fra i cervelli; `for _ in range(10)` resta come barriera per cervello (§8).
 - **Nomi dei lead mai ai modelli non forti** (sì): FATTA per il pin della memoria — variante piena solo a claude-cli, anonima agli altri. DEFERITA la storia/recap (R-753-M1-A, decisione dell'operatore).
+- **Bot #370 5° giro V-1 (MEDIA)**: pin anonimo fail-closed se la lettura dei contatti fallisce — FATTA (T114f2, review #765-M1coord APPROVATO CON RISERVE, R-765-1-M1coord BASSA).
 - Review #753-M1: 1° giro APPROVATO CON RISERVE, 2° giro APPROVATO.
 
 ## Test

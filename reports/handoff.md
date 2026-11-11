@@ -18,6 +18,7 @@
 - **Fetta 3 — tetto di 10 chiamate per turno**: FATTA — `MAX_CHIAMATE_TURNO`.
 - **Fetta 5 — merge di origin/main (#368 di Mani)**: FATTA — review #757-M1 APPROVATO.
 - **Fetta 6 — merge di origin/main (#369 di M2)**: FATTA — review #764-M1coord APPROVATO.
+- **Fetta 7 — bot #370 5° giro V-1 MEDIA (pin anonimo fail-open se la lettura dei contatti fallisce)**: FATTA — 7f072617, test T114f2, review #765-M1coord APPROVATO CON RISERVE.
 - **Fetta 4 — nomi dei lead mai ai modelli non forti**: FATTA per il pin; DEFERITA per storia/recap (R-753-M1-A, §0 punto 2).
 
 ---
@@ -25,14 +26,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- gas.py                             | 164 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
+ .claude/agents/memoria_revisore.md |   7 +++++++
+ gas.py                             | 173 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
  modules/telegram/bot.py            |   2 +-
  reports/diff_sessione.md           |  14 +++++++-------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  20 ++++++++++----------
- tests/test_unit_kernel.py          | 247 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ reports/ultimo_report.md           |  21 +++++++++++----------
+ tests/test_unit_kernel.py          | 262 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  tests/test_unit_notte.py           |   4 +++-
 ```
 
@@ -41,6 +42,9 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7f072617 fix(kernel): pin anonimo fail-closed se la lettura dei contatti fallisce (bot #370 V-1 MEDIA) + riserve registrate (bot #370 V-2)
+fcdc0f55 chore(revisore): memoria review #765 — APPROVATO CON RISERVE
+7c5d5fc4 docs(fine-task): handoff #370 dopo il merge di #369
 9bd8c091 merge: origin/main (#369) nella #370 (review #764-M1coord APPROVATO)
 7c5f969a docs(fine-task): verdetto #757-M1 riemesso, originale in blocco (come #749-M2)
 8512854d docs(fine-task): verdetto #757-M1 riemesso per il gate
@@ -213,13 +217,45 @@ Rischi esclusi, cioè cose che non ho verificato:
 
 Memoria: ho aggiunto la riga `#764-M1coord — 2026-11-11 — APPROVATO — …` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho messa in stage. Come richiesto non ho committato e non ho lanciato commit_memoria_revisore.sh. Nessuna lezione nuova.
 
+### Review #765-M1coord (commit 7f072617)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #765-M1coord: diff staged su feat/merge-automatico-z1xjx2 (PR #370). Il diff tocca gas.py, tests/test_unit_kernel.py e reports/stato_progetto.md.
+
+Prima della review ho letto CLAUDE.md (sez. 5, Wall of Shame), le parti di reports/stato_progetto.md che riguardano #370 e la coda di .claude/agents/memoria_revisore.md.
+
+**Cosa ho controllato nel diff**
+- `gas.py:3963`: ora i contatti si leggono con `self.memory.leggi_contatti()`. Se la lettura fallisce torna None, quindi `contatti_ok=False` e la lista diventa `[]`. Ho controllato che `leggi_contatti` (modules/memory/store.py:1250) non sollevi mai eccezioni: intercetta `sqlite3.Error/OSError`, scrive nel log e torna None. Esito: ok. Nessuna eccezione nuova; l'`except Exception` già presente resta la rete di sicurezza (§9).
+- `gas.py:4012`: con `not contatti_ok` la variante anonima toglie i dettagli da OGNI riga del diario. Il pin pieno (`righe`, solo per il cervello forte) non cambia. Ho controllato che nessuna riga vada persa e che il dettaglio esca solo da quella anonima. Esito: ok, il comportamento è fail-closed come chiesto dal finding V-1 MEDIA del bot.
+- `gas.py:3950`: commento V-1 ve #273. Con la lettura fallita `tutti=[]`, nessun contatto risulta attivo e `_pin_non_fidato` resta False. È coerente col commento e il test T21b2 (tests/test_unit_kernel.py:1052) è ancora verde. Esito: ok.
+- `gas.py:4009`: commento corretto (V-3 cosmetica del bot): il confronto avviene sulla descrizione già pronta per il pin. Ho verificato che corrisponde al codice, perché `desc` viene sostituita prima del confronto. Esito: ok.
+- `tests/test_unit_kernel.py:12855`: test T114f2. Ricollega `leggi_contatti` a una funzione che torna None e lo ripristina nel `finally`. Controlla che nella variante anonima non compaiano offerta_bianchi, piano.txt e telefonata, che ci siano 5 righe omesse e che offerta_bianchi resti nel pin pieno. Esito: ok. Ho rieseguito tutta la suite kernel: **1135 PASS, 0 FAIL**.
+- Slicing: nel diff non c'è nessuno `[-N:]`. Lo `[:self.MEMORY_PIN_CONTACTS]` già presente taglia i contatti, non la storia dei messaggi. Esito: ok.
+
+**Riserva**
+- **R-765-1-M1coord (BASSA)** — `gas.py:3963` chiama `self.memory.leggi_contatti()` direttamente, senza il ripiego già usato in `gas.py:4392` (R-527-1/2: `getattr(..., "leggi_contatti")` e, se manca, `lista_contatti`).
+  - Una memoria senza `leggi_contatti` (vecchia o finta nei test) ora causa un AttributeError. L'`except` lo intercetta, ma il risultato è un pin vuoto con `_pin_non_fidato=True`, cioè ogni scrittura finisce alla firma. Prima, con `lista_contatti`, funzionava.
+  - Oggi in produzione esiste solo MemoryStore, che ha il metodo: per questo non blocca. Va registrata in stato_progetto.md.
+
+**Cosa non ho verificato**
+- Il mutante dichiarato dal chiamante (codice vecchio → T114f2 fallisce, rc=1): non l'ho rieseguito, mi fido della dichiarazione. La suite verde col codice nuovo invece l'ho rieseguita.
+- La riga di reports/stato_progetto.md (bot #370 V-2): è troncata nel diff, quindi ho controllato solo che si tratti di una riga sostituita (modifica di un rigo, niente cancellazioni). Non ho confrontato il contenuto parola per parola con la decisione dell'operatore.
+- Le righe del diario che nominano lead fusi (le «lapidi») con la lettura riuscita: sono fuori dal perimetro di questo fix.
+
+**Memoria del revisore: attenzione, è già committata**
+Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #765-M1coord e una lezione: se un fix sostituisce un metodo della memoria, va allineato al ripiego `getattr` già presente nel kernel. Poi ho eseguito `scripts/commit_memoria_revisore.sh`, come prescrive il mio protocollo, ma questo va contro la tua richiesta di non committare e lasciare la riga in stage.
+- È stato creato il commit fcdc0f55, che contiene solo `memoria_revisore.md`.
+- Il diff staged del motore (gas.py, test, stato_progetto) è intatto e non committato, quindi l'hash per `segna_review_ok.sh` non cambia.
+- Se vuoi la riga in stage come avevi chiesto: `git reset --soft HEAD~1`.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1119 PASS / 0 FAIL (main a0c200c, container) → 1134 PASS / 0 FAIL (rilanciato da M1 dopo il commit d5773ec1 e di nuovo dopo il merge di #368). Dopo il merge: `python -m pytest -q tests/test_unit_voce_ascolto.py tests/test_unit_telegram_voce.py tests/test_unit_notte.py -k "not browser"` → 583 passed.
+- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1119 PASS / 0 FAIL (main a0c200c, container) → 1134 PASS / 0 FAIL → 1135 PASS / 0 FAIL dopo 7f072617 (T114f2; col codice vecchio T114f2 fallisce) (rilanciato da M1 dopo il commit d5773ec1 e di nuovo dopo il merge di #368). Dopo il merge: `python -m pytest -q tests/test_unit_voce_ascolto.py tests/test_unit_telegram_voce.py tests/test_unit_notte.py -k "not browser"` → 583 passed.
 - `python -m pytest -q tests/test_unit_telegram_voce.py tests/test_unit_notte.py tests/test_unit_sottofondo.py tests/test_unit_gate.py tests/test_unit_manutenzione.py tests/test_unit_voice_server.py -k "not browser"` → 1448 passed, 30 deselected.
 
 ```
-=== RIEPILOGO: 1134 PASS, 0 FAIL ===
+=== RIEPILOGO: 1135 PASS, 0 FAIL ===
 ```
 
 Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed embedding nel container). Sul Mac T74b5 fallisce per PATH_MAX di macOS (preesistente, test con percorsi da ~960 byte): non toccato qui.
@@ -227,11 +263,11 @@ Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed e
 ## §6 STATO CI
 
 CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumento GitHub sulla PR #370:
-- 7c5f969a: handoff-check, verifica-bot success (APPROVATO CON RISERVE, BASSE/COSMETICHE); unit-suite in corso alla scrittura.
-- f5ea9b64: handoff-check failure (§4 senza citazioni, chiuso in 7c5f969a); verifica-bot annullata (head cambiata).
+- 7c5d5fc4: handoff-check success; verifica-bot failure (V-1 MEDIA fail-open, chiuso in 7f072617); unit-suite in corso alla scrittura.
+- 7c5f969a: unit-suite, handoff-check, verifica-bot success.
 - e9b74f59: unit-suite, handoff-check, verifica-bot success.
 - Gli altri commit della sessione: nessuna run propria (pushati insieme al commit di testa successivo).
-- Merge di #369 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- fcdc0f55, 7f072617 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -239,6 +275,7 @@ CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumen
 - Ve #370 V-2 / bot #370 V-1/V-2 BASSE — buchi del pin anonimo: lapidi dei lead fusi, parole di prossima_azione/note, nomi corti.
 - Bot #370 V-3 COSMETICA — commento a gas.py ~4002 non corrisponde al codice.
 - Limite noto del pin anonimo: nel testo del diario non si cercano nomi più corti di 3 caratteri né parole più corte di 4.
+- R-765-1-M1coord BASSA — `_memoria_pin_varianti` senza ripiego getattr→lista_contatti.
 - Bot #370 4° giro V-1 BASSA: anche `lezioni_pin` arriva intero ai cervelli non forti e può nominare un lead: entra nel blocco esteso (R-753-M1-A, decisione «sì» dell'operatore). Ve #370 3° giro: accenti/translitterazioni e telefoni senza spazi non riconosciuti dal pin anonimo (BASSE).
 - Numerazione delle review: la chat di Mani usa anch'essa il suffisso «-M1» (#754-#756-M1); #753-M1 compare due volte (una per chat). Processo, nessun effetto sul codice.
 - Riserve precedenti ancora aperte (R-744-M1-1..4, R-750-M1-2/3, ve #366 V-2/V-3): in reports/stato_progetto.md.
