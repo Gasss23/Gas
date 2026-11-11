@@ -17,3 +17,4 @@ Dati del Mac (sera 11/11): dopo il riavvio delle 23:34 una sola attivazione (23:
 
 Bot #377: APPROVATO CON RISERVE (check neutral: decide l'operatore). V-1 BASSA chiusa (test della soglia bassa), review #792-M1coord APPROVATO.
 Bot #377 su 7966abf: APPROVATO CON RISERVE (neutral); V-1 BASSA dichiarata, V-2 COSMETICA chiusa (review #793-M1coord APPROVATO).
+Bot #377 su 30612577: V-1 BASSA chiusa (punteggio massimo delle taciute, 37eb1fc3; review #794-M1coord APPROVATO CON RISERVE, R-794-1 BASSA).

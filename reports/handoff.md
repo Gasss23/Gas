@@ -16,6 +16,7 @@
 - **Fetta 1 — log «parola quasi sentita» nell'ascolto + sezione nella diagnosi**: FATTA — aafe58b1, review #791-M1coord APPROVATO CON RISERVE. Motivo: dopo l'aggiornamento della sera dell'11/11 (soglia 0,7 per 3 blocchi) l'operatore riferisce «a un certo punto ha smesso di rispondermi» e il log non mostra nessuna attivazione dopo le 23:38: le chiamate scartate non lasciavano traccia.
 - **Fetta 2 — bot #377 V-1 BASSA (test della soglia bassa non provava la guardia)**: FATTA — review #792-M1coord APPROVATO.
 - **Fetta 3 — bot #377 (7966abf) V-1 BASSA dichiarata, V-2 COSMETICA**: FATTA — review #793-M1coord APPROVATO.
+- **Fetta 4 — bot #377 (30612577) V-1 BASSA: punteggio massimo delle «quasi» taciute**: FATTA — 37eb1fc3, review #794-M1coord APPROVATO CON RISERVE (R-794-1 BASSA).
 
 ---
 
@@ -110,6 +111,29 @@ Non verificato: suite non rieseguita (332 passed dichiarato; il delta non cambia
 
 Memoria: riga #793-M1coord in .claude/agents/memoria_revisore.md (commit 07c65023).
 
+### Review #794-M1coord (bot #377 V-1 BASSA su 30612577: punteggio delle taciute)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #794-M1coord, diff staged del branch fix/voce-quasi-parola (PR #377), fix di bot #377 V-1. Letti prima CLAUDE.md §5, le parti voce di reports/stato_progetto.md e la coda della memoria.
+
+**Codice esaminato**
+- `clients/voice/ascolto.py:495` — salita taciuta (meno di 5 s dalla riga precedente): `_quasi_taciuti_max = max(..., massimo)`. Rischio: max sbagliato o effetto sull'attivazione. `massimo` arriva come parametro; `_segnala_quasi` scrive solo nel log, non ritorna nulla e non cambia `soglia`, `punteggio_parola` né il return True di `aspetta_parola`. Esito: ok.
+- `clients/voice/ascolto.py:498` — «K, max M» solo se K > 0, altrimenti «0» (riga uguale a prima). Il max non può valere 0.0 con K > 0 (ogni salita taciuta parte da 0,30). Esito: ok.
+- `clients/voice/ascolto.py:504` — dopo ogni riga il max torna a 0.0 insieme al conteggio; parte da 0.0 nel costruttore (`clients/voice/ascolto.py:408`). Esito: ok.
+- `scripts/voce/diagnosi_ascolto.py:41` — regex `_QUASI` con «, max X» facoltativo. Rischio: righe vecchie non lette. Provata a mano: «altre taciute: 4)» → ('0.81','2','4',None); «altre taciute: 4, max 0.92)» → ('0.81','2','4','0.92'). Esito: ok.
+- `scripts/voce/diagnosi_ascolto.py:167` — «(+K taciute prima, max M)» solo con taciute e max presenti; righe vecchie senza max non stampano altro e non vanno in errore su None. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:2983` controlla «altre taciute: 1, max 0.60»; `tests/test_unit_voce_ascolto.py:3027` la lettura di `taciute_max` (None / 0.92). Esito: ok.
+
+**Test**: 332 passed su tests/test_unit_voce_ascolto.py (un primo giro con 59 falliti era dovuto a un `scripts/voce/__pycache__` creato dalla verifica del revisore, poi cancellato; il diff non c'entra).
+
+**Riserve**
+- R-794-1-M1coord, BASSA: due casi senza test automatico — (1) riga vecchia con taciute > 0 e senza max (verificata solo a mano); (2) azzeramento del max fra una riga e la successiva.
+
+**Rischi esclusi**: utilità reale del max per tarare la soglia sul Mac (non riproducibile in sviluppo); LEGGIMI non riletto riga per riga (coerente col codice).
+
+**Memoria**: riga #794-M1coord e una lezione (pulire i `__pycache__` creati dalla propria verifica) in .claude/agents/memoria_revisore.md (commit 8f955cc4).
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python -m pytest -q tests/test_unit_voce_ascolto.py` → 326 passed (main e196964) → 332 passed (aafe58b1; 6 test nuovi).
@@ -127,5 +151,6 @@ CI letta con lo strumento GitHub sulla PR #377: 278f7595 handoff-check success, 
 
 - R-791-1 BASSA — conteggio delle «taciute» è una stima (ultimo gruppo perso a fine flusso/riavvio, mezzanotte sommata al giorno dopo).
 - R-791-2 BASSA — la diagnosi legge tutto il log in memoria (il log dell'ascolto non ruota).
+- R-794-1 BASSA — senza test: riga vecchia con taciute e senza max; azzeramento del max fra righe.
 - Bot #377 V-1 BASSA (dichiarata): la riga «quasi» c'è solo nell'attesa della parola, non nella finestra dopo un turno né mentre Gas parla.
 - Non provato: rumore reale di casa (TV) → quante righe «quasi» al giorno.
