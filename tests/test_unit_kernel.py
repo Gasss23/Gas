@@ -13042,6 +13042,30 @@ try:
     check("T115a3 parole di 3 lettere a parola intera: «Ugo» sì, «sugo»/«linea» no",
           _ci("ho visto Ugo ieri", _id115) and _ci("lin, domani", _id115)
           and not _ci("pasta al sugo", _id115) and not _ci("una linea nuova", _id115))
+    _id115v1 = gas._identificativi_contatti([
+        {"nome": "Marco Conte"}, {"nome": "Anna Costa"}, {"nome": "Rita Neri"},
+        {"nome": "Sara Riva", "chiave": "sara riva"}])
+    check("T115a3b parola intera anche da 4 lettere in su (V-1 bot #375): «contesto»,"
+          " «ritardo», «generico», «arriva» NON sono lead",
+          not _ci("nel contesto di ieri", _id115v1) and not _ci("contento del risultato", _id115v1)
+          and not _ci("sono in ritardo", _id115v1) and not _ci("un caso generico", _id115v1)
+          and not _ci("il pacco arriva domani", _id115v1)
+          and _ci("ho sentito Conte", _id115v1) and _ci("offerta_costa.pdf", _id115v1)
+          and _ci("rita, domani", _id115v1) and _ci("chiama Marco Conte", _id115v1)
+          and _ci("Riva:", _id115v1), str(_id115v1))
+    check("T115a3c limiti dichiarati: un cognome che è anche una parola italiana"
+          " («quanto costa») combacia, e senza accenti «sarà» combacia con «Sara»",
+          _ci("quanto costa il servizio?", _id115v1) and _ci("sarà fatto", _id115v1))
+    _id115r1 = gas._identificativi_contatti([
+        {"nome": "Mario Rossi"}, {"nome": "Acme Srl"},
+        {"nome": "Giulia Bianchi", "contatto": "giulia@bianchi.it"}])
+    check("T115a3d nomi attaccati, con cifre, in email/domini/file ancora riconosciuti (R1 #789)",
+          _ci("scrivi a mariorossi", _id115r1) and _ci("file MarioRossi.pdf", _id115r1)
+          and _ci("vedi www.acmesrl.it", _id115r1) and _ci("cartella Bianchi2", _id115r1)
+          and _ci("progetto acme2024", _id115r1) and _ci("scrivi a gbianchi@x.it", _id115r1)
+          and not _ci("nel contesto di ieri.", _id115r1)
+          and not _ci("il file contesto.txt", gas._identificativi_contatti([{"nome": "Zorzi"}])),
+          str(_id115r1))
     check("T115a4 parole generiche fuori (info, .it), campo intero e dominio dentro",
           not _ci("chiedo informazioni sul sito .it", _id115)
           and _ci("mail a info@acme.it", _id115) and _ci("offerta acme", _id115)

@@ -135,7 +135,10 @@ def _campo_pin(text: Any) -> str:
 _TOOL_DATI_LEAD: frozenset = frozenset({"salva_contatto", "imposta_stato_contatto",
                                         "unisci_contatti", "ricorda"})
 IDENTIFICATIVO_MIN_CHARS = 3   # campo intero o parola: sotto non si cerca
-IDENTIFICATIVO_SUBSTRING_MIN = 4  # da qui in su confronto «contenuto in»; a 3 parola intera
+# Confronto SEMPRE a parola intera (V-1 bot #375 su 17378b0): «contenuto in» faceva
+# combaciare «Conte» con «contesto», «Rita» con «ritardo». Un cognome che è anche una
+# parola intera («Costa» in «quanto costa») combacia ancora: falso positivo dichiarato.
+_IDENT_IN_INDIRIZZO_MIN = 4  # dentro email/domini/file: «contenuto in» da 4 caratteri
 TELEFONO_MIN_CIFRE = 7  # recapiti confrontati sulle sole cifre da 7 cifre in su
 # Parole troppo comuni per identificare un lead (pezzi di email/domini, forme societarie,
 # parole brevi italiane/inglesi): fuori dagli identificativi, così «informazioni» o «.com»
@@ -182,11 +185,17 @@ def _identificativi_contatti(contatti: List[Dict[str, Any]]) -> List[str]:
             v = _normalizza_confronto(c.get(campo) or "")
             if len(v) >= IDENTIFICATIVO_MIN_CHARS:
                 out.add(v)
-            for parola in re.split(r"[\W_]+", v):
+            parole = [p for p in re.split(r"[\W_]+", v) if p]
+            for parola in parole:
                 # parole di sole cifre no: i numeri si confrontano come telefoni (≥7 cifre)
                 if (len(parola) >= IDENTIFICATIVO_MIN_CHARS and not parola.isdigit()
                         and parola not in _PAROLE_GENERICHE):
                     out.add(parola)
+            # R1 #789: il nome scritto attaccato («mariorossi», «MarioRossi.pdf»)
+            if campo == "nome" and len(parole) > 1:
+                attaccato = "".join(parole)
+                if len(attaccato) >= IDENTIFICATIVO_MIN_CHARS and not attaccato.isdigit():
+                    out.add(attaccato)
             cifre = re.sub(r"\D", "", v)
             if len(cifre) >= TELEFONO_MIN_CIFRE:
                 out.add(_PREFISSO_TEL + cifre)
@@ -195,8 +204,12 @@ def _identificativi_contatti(contatti: List[Dict[str, Any]]) -> List[str]:
 
 def _contiene_identificativo(testo: Any, identificativi: List[str]) -> bool:
     """True se il testo contiene uno degli identificativi. Confronto sul testo normalizzato
-    (_normalizza_confronto); da IDENTIFICATIVO_SUBSTRING_MIN caratteri «contenuto in» (anche
-    dentro «offerta_bianchi»), più corti a parola intera (lettere e cifre attorno no);
+    (_normalizza_confronto), a parola intera: niente lettere subito prima o dopo (cifre,
+    «_», spazi e punteggiatura separano: «offerta_bianchi» e «bianchi2» combaciano con
+    «bianchi», «contesto» non combacia con «conte»; V-1 bot #375); dentro le parole con
+    «@» o «.» (email, domini, nomi di file) «contenuto in» da _IDENT_IN_INDIRIZZO_MIN
+    caratteri («gbianchi@x.it», «www.acmesrl.it»; R1 #789). Limiti dichiarati: un cognome
+    che è anche una parola («quanto costa») combacia, e senza accenti «sarà» con «Sara»;
     i telefoni sulle sole cifre di ogni sequenza numerica del testo (da TELEFONO_MIN_CIFRE
     cifre: l'una contenuta nell'altra, così «+39 333 1234567» e «3331234567» combaciano).
     PURA."""
@@ -204,6 +217,9 @@ def _contiene_identificativo(testo: Any, identificativi: List[str]) -> bool:
     if not t:
         return False
     sequenze: Optional[List[str]] = None
+    # R1 #789: dentro email, domini e nomi di file («gbianchi@x.it», «www.acmesrl.it»)
+    # le parole sono attaccate: lì si cerca «contenuto in» (verso sicuro: va al forte).
+    indirizzi = [tok for tok in t.split() if "@" in tok or "." in tok.strip(".,;:!?")]
     for i in identificativi:
         if i.startswith(_PREFISSO_TEL):
             if sequenze is None:
@@ -213,10 +229,10 @@ def _contiene_identificativo(testo: Any, identificativi: List[str]) -> bool:
             tel = i[len(_PREFISSO_TEL):]
             if any(d in tel or tel in d for d in sequenze):
                 return True
-        elif len(i) >= IDENTIFICATIVO_SUBSTRING_MIN:
-            if i in t:
-                return True
-        elif re.search(r"(?<![^\W_])" + re.escape(i) + r"(?![^\W_])", t):
+        elif re.search(r"(?<![^\W\d_])" + re.escape(i) + r"(?![^\W\d_])", t):
+            return True
+        elif (len(i) >= _IDENT_IN_INDIRIZZO_MIN and " " not in i
+              and any(i in tok for tok in indirizzi)):
             return True
     return False
 
