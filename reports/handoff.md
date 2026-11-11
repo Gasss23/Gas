@@ -151,6 +151,34 @@ Cosa non ho verificato:
 
 Memoria: ho aggiunto la riga #757-M1 in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho messa in stage, senza committare come richiesto. Contiene una lezione nuova: dopo un merge della memoria, il numero della review si prende dalla coda del file fuso, non da quella del proprio lato.
 
+### Review #757-M1 — verdetto RIEMESSO dal revisore per il gate check_verdetto (stesso esito; l'originale sopra non citava file del diff di sessione)
+
+## VERDETTO: APPROVATO
+
+Review #757-M1, riemessa per il gate. Ho verificato il merge staged di origin/main 904d9d6 (PR #368 di Mani) in feat/merge-automatico-z1xjx2 (HEAD e9b74f5, PR #370). Il numero #754-M1 che mi era stato indicato è già occupato: le righe #754, #755 e #756-M1 vengono dalla chat di Mani, che usa anche lei la sigla M1.
+
+Elementi esaminati:
+- `gas.py:5198` — controllo del tetto MAX_CHIAMATE_TURNO nel giro esterno di run_turn (costante a `gas.py:2023`, barriera §8 da 10 per cervello a `gas.py:5224`). Rischio: che il merge abbia alterato il nostro lato. Il diff staged contro HEAD su gas.py è di 0 righe: il file non è toccato dal merge e il guardrail §8 è intatto. Esito: ok.
+- `modules/telegram/bot.py:951` — commento §8 sulla riga di riserva o versione leggera, mai detta a voce, dentro `_turno_con_finale` (`modules/telegram/bot.py:952` passa `avviso_ripiego` nel testo). Rischio: perdita della modifica nostra (bot #366 V-1) nella risoluzione. Il diff staged contro HEAD è di 0 righe e il diff contro 904d9d6 contiene solo la modifica nostra. Esito: ok.
+- `tests/test_unit_kernel.py` e `tests/test_unit_notte.py` — diff staged contro HEAD di 0 righe, quindi invariati dal merge. Esito: ok.
+- Contesto, file arrivati da main e ora identici a main: `clients/voice/ascolto.py:724` (`_voce_subito`, usato a `clients/voice/ascolto.py:793` con subito=True), `tests/test_unit_voce_ascolto.py:2719` e `scripts/voce/LEGGIMI.md`. Sono identici a MERGE_HEAD (diff di 0 righe). Dal merge-base a0c200c i due lati di codice sono disgiunti. Ho rieseguito `tests/test_unit_voce_ascolto.py`: 314 passed. Esito: ok.
+- `reports/stato_progetto.md:697` — c'è la voce «richiesta d'un fiato (PR #368)» di Mani e c'è anche la nostra voce delle decisioni dell'operatore (#366). Esito: ok.
+- `.claude/agents/memoria_revisore.md:1484` — unione delle due code di memoria. Il diff contro MERGE_HEAD aggiunge solo le 3 righe nostre, quello contro HEAD solo le 5 di Mani: non si perde nulla. Esito: ok. Resta una nota di processo: la numerazione #753-M1 è doppia tra i due lati.
+
+Controlli meccanici:
+- `git ls-files -u` è vuoto.
+- `git diff --cached --check` è pulito.
+- Nessun marcatore di conflitto.
+- MERGE_HEAD è 904d9d6.
+- Nessun tocco a `_get_window`, ai provider o ai guardrail.
+
+Cosa non ho verificato:
+- Il test kernel (1134 PASS) e il pytest su voce, telegram_voce e notte (583 passed) non li ho rieseguiti: mi fido del numero dell'agente. Il codice del nostro lato ha già avuto la review #753-M1 (2° giro).
+- Il comportamento dal vivo della voce sul Mac non è riproducibile qui.
+- handoff.md, ultimo_report.md e diff_sessione.md presi dal nostro lato non li ho controllati riga per riga, perché li riscrive /fine-task.
+
+Memoria: la riga #757-M1 è già in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` ed è in stage, non committata. Non ho aggiunto una riga nuova: questa è la stessa review riemessa, non una review nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1119 PASS / 0 FAIL (main a0c200c, container) → 1134 PASS / 0 FAIL (rilanciato da M1 dopo il commit d5773ec1 e di nuovo dopo il merge di #368). Dopo il merge: `python -m pytest -q tests/test_unit_voce_ascolto.py tests/test_unit_telegram_voce.py tests/test_unit_notte.py -k "not browser"` → 583 passed.
