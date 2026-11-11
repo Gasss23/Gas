@@ -1624,3 +1624,58 @@ class TestAvvisoTokenAdmin:
         r = subprocess.run(["bash", str(link_dir / "gasmerge"), "123"], env=env, input="\n",
                            capture_output=True, text=True, cwd=tmp_path)
         assert "AMMINISTRA" in r.stderr and "assente" not in r.stderr, r.stderr
+
+
+class TestTimeoutSulMac:
+    """Audit 11 nov B1: `timeout` non esiste su macOS (rc 127): gasmerge deve funzionare anche
+    senza, con gtimeout o con perl alarm."""
+
+    @staticmethod
+    def _path_senza_timeout(tmp_path: Path) -> Path:
+        """Una cartella con tutti gli eseguibili del PATH tranne timeout/gtimeout (come il Mac)."""
+        senza = tmp_path / "senza_timeout"
+        senza.mkdir()
+        for d in os.environ.get("PATH", "").split(":"):
+            try:
+                voci = list(Path(d).iterdir())
+            except OSError:
+                continue
+            for f in voci:
+                if f.name in ("timeout", "gtimeout") or (senza / f.name).exists():
+                    continue
+                if f.is_file() and os.access(f, os.X_OK):
+                    (senza / f.name).symlink_to(f)
+        return senza
+
+    def test_senza_timeout_usa_perl_e_prosegue(self, tmp_path):
+        work = TestPerimetroPromemoria()._repo(tmp_path, "gas.py\n", {"gas.py": "x = 1\n"})
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin, ci_rc=0)
+        senza = self._path_senza_timeout(tmp_path)
+        assert not (senza / "timeout").exists() and (senza / "perl").exists()
+        env = {**os.environ, "GAS_REPO_DIR": str(work), "PATH": f"{fake_bin}:{senza}"}
+        r = subprocess.run(["bash", str(GASMERGE), "123"], env=env, capture_output=True,
+                           text=True, input="\n")
+        out = r.stdout + r.stderr
+        assert "codice 127" not in out and "timeout: command not found" not in out, out
+        assert "--- FILE DI MOTORE ---" in out, out
+
+    def test_ripiego_perl_ferma_un_figlio_che_ignora_sigalrm(self, tmp_path):
+        """Review #766-M1: gh (Go) ignora SIGALRM. Il ripiego perl deve uccidere il figlio
+        allo scadere ed uscire 124, passare il codice del figlio e dare 127 se non parte."""
+        import re
+        import time as _t
+        testo = GASMERGE.read_text(encoding="utf-8")
+        m = re.search(r"else TMO=\(perl -e '(.*?)' 900\); fi", testo, re.S)
+        assert m, "ripiego perl non trovato in gasmerge.sh"
+        prog = m.group(1)
+        t0 = _t.monotonic()
+        r = subprocess.run(["perl", "-e", prog, "1", "perl", "-e",
+                            '$SIG{ALRM}="IGNORE"; sleep 8'], capture_output=True)
+        assert r.returncode == 124 and _t.monotonic() - t0 < 6, (r.returncode, _t.monotonic() - t0)
+        r = subprocess.run(["perl", "-e", prog, "5", "sh", "-c", "exit 8"], capture_output=True)
+        assert r.returncode == 8
+        r = subprocess.run(["perl", "-e", prog, "5", str(tmp_path / "non_esiste")],
+                           capture_output=True)
+        assert r.returncode == 127

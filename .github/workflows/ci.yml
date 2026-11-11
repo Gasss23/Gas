@@ -20,6 +20,11 @@ name: CI
 
 on: push
 
+# Audit 11 nov S1: il token della run può solo leggere il codice (gira su ogni branch;
+# nessuno step scrive su GitHub: gh è uno stub nei test).
+permissions:
+  contents: read
+
 jobs:
   unit-suite:
     runs-on: ubuntu-latest

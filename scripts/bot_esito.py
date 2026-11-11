@@ -205,10 +205,14 @@ def tocca_macchina_bot(files: list[str]) -> bool:
     vuoto o troncato dall'API = non verificabile = sì (prudenza)."""
     if not files or len(files) >= MAX_FILE_API:
         return True
-    for f in files:
-        if f.rsplit("/", 1)[-1] in NOMI_MACCHINA_BOT:
+    # Audit 11 nov B2: confronto senza maiuscole (come modules/gate/gate.py): sul disco del
+    # Mac, case-insensitive, `.Claude/hooks/x.sh` È .claude/hooks/x.sh.
+    nomi = {n.casefold() for n in NOMI_MACCHINA_BOT}
+    voci = [v.casefold() for v in MACCHINA_BOT]
+    for f in (str(x).casefold() for x in files):
+        if f.rsplit("/", 1)[-1] in nomi:
             return True
-        for voce in MACCHINA_BOT:
+        for voce in voci:
             if (f.startswith(voce) if voce.endswith("/") else f == voce):
                 return True
     return False

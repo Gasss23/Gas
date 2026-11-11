@@ -74,7 +74,18 @@ echo "--- CHECK CI ---"
 # restare appesi all'infinito. set +e/-e locale per catturare l'exit code
 # senza far terminare lo script su un exit non-zero prima del case sotto.
 set +e
-timeout 900 gh pr checks "$PR" --watch --fail-fast --interval 10
+# Audit 11 nov B1: `timeout` non esiste su macOS (rc 127 → gasmerge inutilizzabile dal Mac):
+# timeout (Linux) → gtimeout (coreutils di Homebrew) → perl (sempre presente su macOS).
+# Review #766-M1: perl fa da PADRE e uccide il figlio allo scadere (gh è un binario Go, che
+# ignora SIGALRM: un semplice `alarm; exec` non lo fermerebbe). Esce 124 come timeout(1),
+# altrimenti col codice del figlio; comando non avviabile → 127.
+if command -v timeout >/dev/null 2>&1; then TMO=(timeout 900)
+elif command -v gtimeout >/dev/null 2>&1; then TMO=(gtimeout 900)
+else TMO=(perl -e 'my $t=shift; my $p=fork; exit 127 unless defined $p;
+  if(!$p){exec @ARGV or exit 127}
+  $SIG{ALRM}=sub{kill "TERM",$p; sleep 2; kill "KILL",$p; waitpid $p,0; exit 124};
+  alarm $t; waitpid $p,0; exit($? & 127 ? 128+($? & 127) : $? >> 8)' 900); fi
+"${TMO[@]}" gh pr checks "$PR" --watch --fail-fast --interval 10
 CI_RC=$?
 set -e
 case "$CI_RC" in
