@@ -924,21 +924,58 @@ class ScriptedCompletions:
             msg = SimpleNamespace(content=None, tool_calls=tcs)
         return SimpleNamespace(choices=[SimpleNamespace(message=msg)])
 
-def run_turn_scriptato(k, prompt, script):
+import contextlib as _contextlib
+
+
+@_contextlib.contextmanager
+def forte_finto(completions, registro=None):
+    """Blocco esteso dei nomi (operatore 2026-11-10 notte): quando nella finestra entrano
+    dati di lead (ricorda, salva_contatto, …) il turno passa al cervello forte. Qui il forte
+    (claude-cli) è finto e CONDIVIDE lo script del client gratuito, così il round-trip
+    prosegue dal punto in cui era; `registro` (lista) riceve un elemento per ogni chiamata
+    al forte."""
+    class _Forte:
+        def __init__(self, *a, **kw):
+            def _create(*aa, **kk):
+                if registro is not None:
+                    registro.append(kk.get("messages"))
+                return completions.create(*aa, **kk)
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+    _o, _v = gas.ClaudeCliClient, os.environ.get("GAS_CLAUDE_CLI")
+    gas.ClaudeCliClient = _Forte
+    os.environ["GAS_CLAUDE_CLI"] = "1"
+    try:
+        yield
+    finally:
+        gas.ClaudeCliClient = _o
+        if _v is None:
+            os.environ.pop("GAS_CLAUDE_CLI", None)
+        else:
+            os.environ["GAS_CLAUDE_CLI"] = _v
+
+
+def run_turn_scriptato(k, prompt, script, registro_forte=None):
     """Esegue un round-trip di run_turn col client scriptato, isolando l'ambiente
-    (un solo provider deterministico: gemini-flash-lite, gli altri rung spenti)."""
+    (un solo provider deterministico: gemini-flash-lite, gli altri rung spenti; il forte
+    finto continua lo stesso script se la finestra si riempie di dati di lead)."""
     saved = {kk: os.environ.get(kk) for kk in
              ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
     for kk in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
         os.environ.pop(kk, None)
     os.environ["GEMINI_API_KEY"] = "dummy-for-test"
+    _ultimo = [ScriptedCompletions(script)]  # script dell'ultimo client gratuito creato
     class _FakeOpenAI:
         def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
-            self.chat = SimpleNamespace(completions=ScriptedCompletions(script))
+            _ultimo.append(ScriptedCompletions(script))
+            self.chat = SimpleNamespace(completions=_ultimo[-1])
+    class _Prosegui:  # il forte prosegue lo script del client gratuito da cui subentra
+        def create(self, *a, **kw):
+            return _ultimo[-1].create(*a, **kw)
     _orig = gas.OpenAI
     gas.OpenAI = _FakeOpenAI
     try:
-        return list(k.run_turn(prompt))
+        with forte_finto(_Prosegui(), registro_forte):
+            return list(k.run_turn(prompt))
     finally:
         gas.OpenAI = _orig
         for kk, v in saved.items():
@@ -4716,13 +4753,18 @@ for _kk in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
 os.environ["GEMINI_API_KEY"] = "dummy-for-test"
 _orig_oai69h = gas.OpenAI
 
+_comp69h = _ScriptedCompletions69h()
+
 class _FakeOAI69h:
     def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
-        self.chat = _SN(completions=_ScriptedCompletions69h())
+        self.chat = _SN(completions=_comp69h)
 
 gas.OpenAI = _FakeOAI69h
 try:
-    _evs69h = list(_k69h.run_turn("cerca il codice segreto nella knowledge"))
+    # blocco esteso dei nomi: dopo il risultato di ricorda il turno passa al forte (finto,
+    # stesso script)
+    with forte_finto(_comp69h):
+        _evs69h = list(_k69h.run_turn("cerca il codice segreto nella knowledge"))
 finally:
     gas.OpenAI = _orig_oai69h
     for _kk, _v in _saved_rt69h.items():
@@ -12917,6 +12959,282 @@ try:
 except Exception as _e114x:
     import traceback as _tb114
     check("T114 blocco senza eccezioni", False, repr(_e114x) + _tb114.format_exc()[-600:])
+
+# ---------- T115: blocco esteso dei nomi (decisione dell'operatore 2026-11-10 notte) ----------
+print("\n--- T115: blocco esteso dei nomi (finestra, recap, lezioni, riflessione) ---")
+try:
+    _ch115 = ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
+              "GAS_DAILY_TOKEN_BUDGET", "GAS_CLAUDE_CLI")
+    _sv115 = {kk: os.environ.get(kk) for kk in _ch115}
+
+    def _ripristina115():
+        for _kk, _v in _sv115.items():
+            if _v is None:
+                os.environ.pop(_kk, None)
+            else:
+                os.environ[_kk] = _v
+
+    # --- T115a: confronto robusto (punto 4) ---
+    _id115 = gas._identificativi_contatti([
+        {"nome": "Nicolò Ferrè", "chiave": "info@acme.it", "contatto": "+39 333 1234567"},
+        {"nome": "Ugo Lin", "chiave": "ugo lin"}])
+    _ci = gas._contiene_identificativo
+    check("T115a1 accenti: «nicolo ferre» e «NICOLÒ» riconosciuti (NFKD senza accenti)",
+          _ci("scrivi a nicolo ferre", _id115) and _ci("NICOLÒ ha chiamato", _id115)
+          and _ci("Ferre", _id115), str(_id115))
+    check("T115a2 telefoni sulle sole cifre (≥7): con e senza spazi, trattini, prefisso",
+          _ci("chiama 3331234567", _id115) and _ci("tel. 333-123-4567", _id115)
+          and _ci("+393331234567", _id115) and not _ci("ordine 12345", _id115)
+          and not _ci("totale 98765432", _id115) and "333" not in _id115)
+    check("T115a3 parole di 3 lettere a parola intera: «Ugo» sì, «sugo»/«linea» no",
+          _ci("ho visto Ugo ieri", _id115) and _ci("lin, domani", _id115)
+          and not _ci("pasta al sugo", _id115) and not _ci("una linea nuova", _id115))
+    check("T115a4 parole generiche fuori (info, .it), campo intero e dominio dentro",
+          not _ci("chiedo informazioni sul sito .it", _id115)
+          and _ci("mail a info@acme.it", _id115) and _ci("offerta acme", _id115)
+          and "info" not in _id115)
+    check("T115a5 prossima_azione e note NON sono identificativi (falsi positivi)",
+          gas._identificativi_contatti([{"nome": "Zed", "prossima_azione": "preventivo",
+                                         "note": "fornitore"}]) == ["zed"])
+    _fl = gas._finestra_ha_dati_lead
+    check("T115a6 finestra: risultato o chiamata di uno strumento dei contatti, nome in un testo",
+          _fl([{"role": "tool", "name": "ricorda", "content": "x"}], [])
+          and _fl([{"role": "assistant", "tool_calls": [{"function": {
+              "name": "salva_contatto", "arguments": "{}"}}]}], [])
+          and _fl([{"role": "user", "content": "scrivi a Nicolò"}], _id115)
+          and _fl([{"role": "assistant", "tool_calls": [{"function": {
+              "name": "scrivi_a_ferre", "arguments": "{}"}}]}], _id115)
+          and not _fl([{"role": "user", "content": "che ore sono?"},
+                       {"role": "tool", "name": "data_ora", "content": "12:00"}], _id115)
+          and not _fl([{"role": "user", "content": "scrivi a Nicolò"}], None))
+
+    # --- T115b: lapidi, tipo inventato, ripiego getattr (punto 4) ---
+    _k115b = kernel_tmp()
+    _k115b.memory.upsert_contatto("zora.old@ex.com", nome="Zora")
+    _k115b.memory.upsert_contatto("anna@nuova.it", nome="Anna Neri")
+    _k115b.memory.unisci_contatti("zora.old@ex.com", "anna@nuova.it")
+    _lap = _k115b.memory.leggi_contatti(includi_lapidi=True)
+    check("T115b1 leggi_contatti(includi_lapidi=True) restituisce anche il lead fuso",
+          len(_lap) == 2 and len(_k115b.memory.leggi_contatti()) == 1
+          and any(c.get("merged_into") for c in _lap), str(_lap)[:200])
+    _k115b.memory.append_diario("write_file", "path='per_zora.txt' | [OK]")
+    _k115b.memory.append_diario("manda_a_neri", "x | [OK]")
+    _p115b, _a115b = _k115b._memoria_pin_varianti()
+    check("T115b2 pin anonimo: chiave del lead fuso e tipo inventato col nome omessi; "
+          "1 lead attivo (la lapide non è nell'elenco)",
+          "zora" not in _a115b and "manda_a_neri" not in _a115b
+          and "1 lead attivi" in _a115b and "per_zora" in _p115b
+          and "manda_a_neri" in _p115b, _a115b)
+
+    class _MemVecchia115:  # memoria finta senza leggi_contatti (R-765-1-M1coord)
+        def lista_contatti(self):
+            return [{"nome": "Gino Pace", "chiave": "gino", "stato": "nuovo"}]
+
+        def diario_recente(self, n):
+            return [{"tipo": "write_file", "descrizione": "lettera a gino pace | [OK]"}]
+    _k115c = kernel_tmp()
+    _k115c.memory = _MemVecchia115()
+    _p115c, _a115c = _k115c._memoria_pin_varianti()
+    check("T115b3 senza leggi_contatti: ripiego su lista_contatti, pin presente e anonimo",
+          "Gino Pace" in _p115c and "gino" not in _a115c.lower()
+          and "1 lead attivi" in _a115c and _k115c._contatti_per_filtro()[0]["chiave"] == "gino",
+          _a115c)
+
+    # --- T115c: finestra con dati di lead → solo il forte (punto 1, round-trip §7) ---
+    def _r115(content=None, tool_calls=None):
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+            content=content, tool_calls=tool_calls))], usage=None)
+
+    def _tc115(nome, args="{}", i=0):
+        return SimpleNamespace(id=f"call_115_{nome}_{i}", type="function",
+                               function=SimpleNamespace(name=nome, arguments=args))
+
+    class _Script115:
+        def __init__(self, risposte):
+            self.risposte, self.visti = list(risposte), []
+
+        def create(self, model=None, messages=None, **kw):
+            self.visti.append(json.dumps(messages, default=str))
+            r = self.risposte.pop(0)
+            if isinstance(r, Exception):
+                raise r
+            return r
+
+    def _turno115(k, prompt, gratis, forte=None, forte_acceso=True, chiavi=("GEMINI_API_KEY",)):
+        """gratis/forte: liste di risposte. Ritorna (eventi, script gratis, script forte)."""
+        _g, _f = _Script115(gratis), _Script115(forte or [])
+
+        class _OAI115:
+            def __init__(self, *a, **kw):
+                self.chat = SimpleNamespace(completions=_g)
+        for _kk in _ch115:
+            os.environ.pop(_kk, None)
+        for _kk in chiavi:
+            os.environ[_kk] = "finta-115"
+        _vo = gas.OpenAI
+        gas.OpenAI = _OAI115
+        try:
+            if forte_acceso:
+                with forte_finto(_f):
+                    return list(k.run_turn(prompt)), _g, _f
+            return list(k.run_turn(prompt)), _g, _f
+        finally:
+            gas.OpenAI = _vo
+            _ripristina115()
+
+    def _k_con_ricorda():
+        k = kernel_tmp()
+        k.memory.upsert_contatto("giulia@acme.it", nome="Giulia Bianchi")
+        k.history = [
+            {"role": "user", "content": "che lead abbiamo?"},
+            {"role": "assistant", "content": None, "tool_calls": [{
+                "id": "r1", "type": "function",
+                "function": {"name": "ricorda", "arguments": '{"query": "lead"}'}}]},
+            {"role": "tool", "tool_call_id": "r1", "name": "ricorda",
+             "content": "<memoria_dati>Giulia Bianchi giulia@acme.it</memoria_dati>"},
+            {"role": "assistant", "content": "Hai un lead."}]
+        return k
+    _k115c1 = _k_con_ricorda()
+    _ev, _g, _f = _turno115(_k115c1, "che ore sono?", [_r115("gratis")],
+                            [_r115(tool_calls=[_tc115("data_ora")]), _r115("sono le 12")])
+    _fine115 = _k115c1.memory.ultimo_diario_per_tipo("turno_fine")
+    check("T115c1 finestra con un ricorda precedente: gratuiti saltati, il forte risponde "
+          "(round-trip tool → final), turno di classe forte deciso a inizio turno",
+          [e["type"] for e in _ev] == ["tool_res", "final"] and not _g.visti
+          and len(_f.visti) == 2 and _ev[-1].get("provider") == "claude-cli"
+          and _ev[-1]["content"] == "sono le 12"
+          and "classe=forte" in _fine115["descrizione"]
+          and "tentati=claude-cli ;" in _fine115["descrizione"], str(_ev)[-300:])
+    _ev, _g, _f = _turno115(_k_con_ricorda(), "che ore sono?", [_r115("gratis")],
+                            forte_acceso=False)
+    check("T115c2 forte assente: messaggio dichiarato, nessuna chiamata ai gratuiti, niente crash",
+          len(_ev) == 1 and _ev[0]["type"] == "error"
+          and _ev[0]["content"] == ("Questa richiesta contiene dati di clienti: rispondo "
+                                    "solo col cervello forte, che ora non è disponibile. "
+                                    "Dettagli: claude-cli: GAS_CLAUDE_CLI non impostata.")
+          and not _g.visti, str(_ev))
+    # T115c3: a metà turno — il gratuito chiama ricorda; il risultato NON torna al gratuito,
+    # il turno passa al forte che chiude il round-trip
+    _k115c3 = kernel_tmp()
+    _k115c3.memory.upsert_contatto("giulia@acme.it", nome="Giulia Bianchi")
+    _ev, _g, _f = _turno115(_k115c3, "cerca nella memoria",
+                            [_r115(tool_calls=[_tc115("ricorda", '{"query": "acme"}')]),
+                             _r115("NON DEVE ARRIVARE")],
+                            [_r115("Trovato il lead.")])
+    check("T115c3 a metà turno: dopo ricorda il gratuito non riceve il risultato, risponde il forte",
+          [e["type"] for e in _ev] == ["tool_res", "final"] and len(_g.visti) == 1
+          and len(_f.visti) == 1 and _ev[-1].get("provider") == "claude-cli"
+          and "Giulia" not in _g.visti[0], str(_ev)[-300:])
+    _k115c4 = kernel_tmp()
+    _k115c4.memory.upsert_contatto("giulia@acme.it", nome="Giulia Bianchi")
+    _ev, _g, _f = _turno115(_k115c4, "cerca nella memoria",
+                            [_r115(tool_calls=[_tc115("ricorda", '{"query": "acme"}')]),
+                             _r115("NON DEVE ARRIVARE")], forte_acceso=False)
+    check("T115c4 a metà turno col forte spento: turno fermo dichiarato, una sola chiamata gratuita",
+          [e["type"] for e in _ev] == ["tool_res", "error"] and len(_g.visti) == 1
+          and "dati di clienti" in _ev[-1]["content"]
+          and "saltato (dati di clienti" in _ev[-1]["content"], str(_ev)[-300:])
+    # T115c5: nome di un lead scritto dall'operatore (con accento diverso) → solo il forte
+    _k115c5 = kernel_tmp()
+    _k115c5.memory.upsert_contatto("nicolo@ex.it", nome="Nicolò Ferrè")
+    _ev, _g, _f = _turno115(_k115c5, "prepara una mail per Nicolo Ferre", [_r115("gratis")],
+                            [_r115("Bozza pronta.")])
+    check("T115c5 identificativo nel testo dell'operatore (senza accenti): solo il forte",
+          _ev[-1].get("provider") == "claude-cli" and not _g.visti, str(_ev)[-200:])
+    # T115c6: finestra pulita → i gratuiti restano (nessun falso blocco)
+    _k115c6 = kernel_tmp()
+    _k115c6.memory.upsert_contatto("nicolo@ex.it", nome="Nicolò Ferrè", contatto="+39 333 1234567")
+    _ev, _g, _f = _turno115(_k115c6, "che ore sono? costa 333 euro", [_r115("ok gratis")],
+                            [_r115("forte")])
+    check("T115c6 finestra senza dati di lead: risponde il gratuito, forte mai chiamato",
+          _ev[-1].get("content") == "ok gratis" and not _f.visti, str(_ev)[-200:])
+    # T115c7: lettura dei contatti fallita → resta il controllo sugli strumenti (fail-closed)
+    _k115c7 = _k_con_ricorda()
+    _k115c7.memory.leggi_contatti = lambda *a, **kw: None
+    _ev, _g, _f = _turno115(_k115c7, "che ore sono?", [_r115("gratis")], [_r115("forte ok")])
+    check("T115c7 contatti illeggibili e ricorda in finestra: solo il forte",
+          _ev[-1].get("content") == "forte ok" and not _g.visti, str(_ev)[-200:])
+
+    # --- T115d: recap e lezioni anonimi ai non forti (punto 2) ---
+    def _k115d():
+        k = kernel_tmp()
+        k.memory.upsert_contatto("giulia@acme.it", nome="Giulia Bianchi")
+        for testo in ("Con Bianchi usa sempre il lei.", "Rispondi in modo conciso."):
+            lid, _ = k.memory.aggiungi_lezione(testo)
+            k.memory.approva_lezione(lid)
+        k.memory.append_diario("recap", "Obiettivo: preventivo per Giulia Bianchi.",
+                               fonte="modello")
+        return k
+    _ev, _g, _f = _turno115(_k115d(), "riprendiamo il preventivo", [_r115("ok")])
+    _sys_g = _g.visti[0] if _g.visti else ""
+    check("T115d1 ai gratuiti: lezione col nome di un lead e recap che lo nomina omessi, "
+          "le altre lezioni restano",
+          "Rispondi in modo conciso" in _sys_g and "usa sempre il lei" not in _sys_g
+          and "preventivo per Giulia" not in _sys_g and "RECAP PERTINENTE" not in _sys_g,
+          _sys_g[-600:])
+    _kd3 = _k115d()
+    _g3, _f3 = _Script115([]), _Script115([_r115("ok forte")])
+    os.environ["GEMINI_API_KEY"] = "finta-115"
+    try:
+        with forte_finto(_f3):
+            _ev = list(_kd3.run_turn("riprendiamo il preventivo", cervello="forte"))
+    finally:
+        _ripristina115()
+    _sys_f = _f3.visti[0] if _f3.visti else ""
+    check("T115d2 al forte: lezioni e recap pieni",
+          "usa sempre il lei" in _sys_f and "preventivo per Giulia" in _sys_f, _sys_f[-600:])
+    _kd4 = _k115d()
+    _kd4.memory.leggi_contatti = lambda *a, **kw: None
+    _ev, _g, _f = _turno115(_kd4, "riprendiamo il preventivo", [_r115("ok")])
+    _sys_g4 = _g.visti[0] if _g.visti else ""
+    check("T115d3 contatti illeggibili: ai gratuiti niente lezioni né recap (fail-closed)",
+          _sys_g4 and "Rispondi in modo conciso" not in _sys_g4
+          and "RECAP PERTINENTE" not in _sys_g4, _sys_g4[-400:])
+
+    # --- T115e: riflessione di fine task (punto 3) ---
+    _RISP115 = json.dumps({"recap": "Obiettivo: lead.\nStato: fatto.", "lezioni": []})
+
+    def _rifl115(k, forte_acceso, risposte_forte=None):
+        _g, _f = _Script115([_r115(_RISP115)]), _Script115(risposte_forte or [])
+
+        class _OAI115e:
+            def __init__(self, *a, **kw):
+                self.chat = SimpleNamespace(completions=_g)
+        for _kk in _ch115:
+            os.environ.pop(_kk, None)
+        os.environ["GEMINI_API_KEY"] = "finta-115"
+        _vo = gas.OpenAI
+        gas.OpenAI = _OAI115e
+        try:
+            if forte_acceso:
+                with forte_finto(_f):
+                    return k.rifletti(), _g, _f
+            return k.rifletti(), _g, _f
+        finally:
+            gas.OpenAI = _vo
+            _ripristina115()
+    _e, _g, _f = _rifl115(_k_con_ricorda(), forte_acceso=False)
+    check("T115e1 riflessione con dati di lead e forte spento: rimandata, nessun gratuito",
+          not _e["ok"] and "riflessione rimandata" in (_e["errore"] or "") and not _g.visti, str(_e))
+    _e, _g, _f = _rifl115(_k_con_ricorda(), forte_acceso=True, risposte_forte=[_r115(_RISP115)])
+    check("T115e2 riflessione con dati di lead e forte acceso: la fa il forte, nessun gratuito",
+          _e["ok"] and _e["provider"] == "claude-cli" and not _g.visti and len(_f.visti) == 1,
+          str(_e))
+    _k115e3 = kernel_tmp()
+    _k115e3.memory.upsert_contatto("giulia@acme.it", nome="Giulia Bianchi")
+    for _t in ("Con Bianchi usa sempre il lei.", "Rispondi in modo conciso."):
+        _lid, _ = _k115e3.memory.aggiungi_lezione(_t)
+        _k115e3.memory.approva_lezione(_lid)
+    _k115e3.history = [{"role": "user", "content": "calcola 2+2"},
+                       {"role": "assistant", "content": "4"}]
+    _e, _g, _f = _rifl115(_k115e3, forte_acceso=True, risposte_forte=[_r115(_RISP115)])
+    check("T115e3 riflessione pulita ai gratuiti: lezione col nome di un lead tolta dalle note",
+          _e["ok"] and _e["provider"] == "gemini-flash" and not _f.visti
+          and "Rispondi in modo conciso" in _g.visti[0] and "usa sempre il lei" not in _g.visti[0],
+          str(_e))
+except Exception as _e115x:
+    import traceback as _tb115
+    check("T115 blocco senza eccezioni", False, repr(_e115x) + _tb115.format_exc()[-800:])
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

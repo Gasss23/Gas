@@ -12,6 +12,7 @@ except ImportError:  # pragma: no cover
     fcntl = None  # type: ignore[assignment]
 import re
 import json
+import unicodedata
 import shlex
 import stat
 import sys
@@ -129,32 +130,112 @@ def _campo_pin(text: Any) -> str:
 
 # Pin anonimo per i cervelli non forti (operatore 2026-11-10): strumenti le cui righe di
 # diario parlano di un lead (chiave, stato, ricerca per contatto) → dettagli omessi.
+# Blocco esteso (operatore 2026-11-10 notte): i loro messaggi nella finestra (chiamata o
+# risultato) mandano il turno SOLO al cervello forte.
 _TOOL_DATI_LEAD: frozenset = frozenset({"salva_contatto", "imposta_stato_contatto",
                                         "unisci_contatti", "ricorda"})
-IDENTIFICATIVO_MIN_CHARS = 3   # campo intero (nome, chiave, contatto)
-IDENTIFICATIVO_PAROLA_MIN = 4  # singola parola di un campo (cognome, dominio, …)
+IDENTIFICATIVO_MIN_CHARS = 3   # campo intero o parola: sotto non si cerca
+IDENTIFICATIVO_SUBSTRING_MIN = 4  # da qui in su confronto «contenuto in»; a 3 parola intera
+TELEFONO_MIN_CIFRE = 7  # recapiti confrontati sulle sole cifre da 7 cifre in su
+# Parole troppo comuni per identificare un lead (pezzi di email/domini, forme societarie,
+# parole brevi italiane/inglesi): fuori dagli identificativi, così «informazioni» o «.com»
+# non mandano ogni turno al forte. Il campo INTERO (es. «info@acme.it») resta cercato.
+_PAROLE_GENERICHE: frozenset = frozenset({
+    "com", "net", "org", "www", "http", "https", "info", "mail", "email", "gmail",
+    "hotmail", "outlook", "yahoo", "libero", "icloud", "live", "pec", "srl", "spa",
+    "snc", "sas", "the", "and", "per", "con", "del", "dei", "via", "sig", "dott"})
+_PREFISSO_TEL = "\x00tel:"  # marca un identificativo «solo cifre» (mai nel testo normalizzato)
+
+
+def _normalizza_confronto(testo: Any) -> str:
+    """Testo per il confronto con gli identificativi: Unicode NFKD senza accenti (segni
+    combinanti), casefold, spazi compressi. «Nicolò» e «nicolo» combaciano. PURA, mai
+    solleva."""
+    t = str(testo if testo is not None else "")
+    try:
+        t = "".join(ch for ch in unicodedata.normalize("NFKD", t)
+                    if not unicodedata.combining(ch))
+    except (TypeError, ValueError):  # pragma: no cover — input esotico, mai crash
+        pass
+    return " ".join(t.casefold().split())
 
 
 def _identificativi_contatti(contatti: List[Dict[str, Any]]) -> List[str]:
-    """Testi (minuscoli) che identificano un contatto: nome, chiave e recapito interi e
-    le loro parole lunghe (per «Rossi» in una riga che non riporta «Mario Rossi»). Per
-    nascondere le righe di diario che li contengono ai cervelli non forti. PURA."""
+    """Identificativi (normalizzati) dei contatti: nome, chiave e recapito interi, le loro
+    parole da IDENTIFICATIVO_MIN_CHARS caratteri (per «Rossi» in un testo che non riporta
+    «Mario Rossi»; escluse _PAROLE_GENERICHE e le parole di sole cifre) e, per i campi con almeno TELEFONO_MIN_CIFRE
+    cifre, le sole cifre (telefoni scritti con o senza spazi). Vanno passati anche i lead
+    fusi (lapidi): la loro chiave vecchia identifica ancora la persona. NON entrano
+    prossima_azione e note (testo libero: troppi falsi positivi). PURA."""
     out: set = set()
     for c in contatti:
         for campo in ("nome", "chiave", "contatto"):
-            v = " ".join(str(c.get(campo) or "").lower().split())
+            v = _normalizza_confronto(c.get(campo) or "")
             if len(v) >= IDENTIFICATIVO_MIN_CHARS:
                 out.add(v)
-            for parola in re.split(r"[^\w]+", v):
-                if len(parola) >= IDENTIFICATIVO_PAROLA_MIN:
+            for parola in re.split(r"[\W_]+", v):
+                # parole di sole cifre no: i numeri si confrontano come telefoni (≥7 cifre)
+                if (len(parola) >= IDENTIFICATIVO_MIN_CHARS and not parola.isdigit()
+                        and parola not in _PAROLE_GENERICHE):
                     out.add(parola)
+            cifre = re.sub(r"\D", "", v)
+            if len(cifre) >= TELEFONO_MIN_CIFRE:
+                out.add(_PREFISSO_TEL + cifre)
     return sorted(out)
 
 
-def _contiene_identificativo(testo: str, identificativi: List[str]) -> bool:
-    """True se il testo contiene uno degli identificativi (confronto minuscolo). PURA."""
-    t = " ".join(str(testo).lower().split())
-    return any(i in t for i in identificativi)
+def _contiene_identificativo(testo: Any, identificativi: List[str]) -> bool:
+    """True se il testo contiene uno degli identificativi. Confronto sul testo normalizzato
+    (_normalizza_confronto); da IDENTIFICATIVO_SUBSTRING_MIN caratteri «contenuto in» (anche
+    dentro «offerta_bianchi»), più corti a parola intera (lettere e cifre attorno no);
+    i telefoni sulle sole cifre di ogni sequenza numerica del testo (da TELEFONO_MIN_CIFRE
+    cifre: l'una contenuta nell'altra, così «+39 333 1234567» e «3331234567» combaciano).
+    PURA."""
+    t = _normalizza_confronto(testo)
+    if not t:
+        return False
+    sequenze: Optional[List[str]] = None
+    for i in identificativi:
+        if i.startswith(_PREFISSO_TEL):
+            if sequenze is None:
+                sequenze = [d for d in (re.sub(r"\D", "", s) for s in
+                                        re.findall(r"\d[\d \t().\-/]*\d", t))
+                            if len(d) >= TELEFONO_MIN_CIFRE]
+            tel = i[len(_PREFISSO_TEL):]
+            if any(d in tel or tel in d for d in sequenze):
+                return True
+        elif len(i) >= IDENTIFICATIVO_SUBSTRING_MIN:
+            if i in t:
+                return True
+        elif re.search(r"(?<![^\W_])" + re.escape(i) + r"(?![^\W_])", t):
+            return True
+    return False
+
+
+def _finestra_ha_dati_lead(messaggi: List[Dict[str, Any]],
+                           identificativi: Optional[List[str]]) -> bool:
+    """True se i messaggi contengono dati di lead (blocco esteso dei nomi, operatore
+    2026-11-10 notte): una chiamata o un risultato di uno strumento dei contatti
+    (_TOOL_DATI_LEAD), oppure un identificativo noto in un testo qualunque (contenuto,
+    nome e argomenti delle chiamate a strumento, anche inventati). Con `identificativi`
+    None (lettura dei contatti fallita) conta solo il controllo sugli strumenti: chi
+    chiama tratta già quel caso in modo prudente. PURA."""
+    for m in messaggi:
+        if m.get("role") == "tool" and m.get("name") in _TOOL_DATI_LEAD:
+            return True
+        testi = [m.get("content")]
+        for tc in m.get("tool_calls") or []:
+            fn = (tc.get("function") or {}) if isinstance(tc, dict) else {}
+            if fn.get("name") in _TOOL_DATI_LEAD:
+                return True
+            testi += [fn.get("name"), fn.get("arguments")]
+        if identificativi and any(_contiene_identificativo(x, identificativi)
+                                  for x in testi if x):
+            return True
+    return False
+
+
+_NON_LETTI = object()  # sentinella: «contatti non ancora letti in questo turno»
 
 
 _GAS_SYSTEM_PROMPT_BASE = (
@@ -3924,7 +4005,27 @@ class GasKernel:
         """Variante PIENA del pin (vedi _memoria_pin_varianti): quella del cervello forte."""
         return self._memoria_pin_varianti()[0]
 
-    def _memoria_pin_varianti(self) -> Tuple[str, str]:
+    def _contatti_per_filtro(self) -> Optional[List[Dict[str, Any]]]:
+        """Contatti VIVI e LAPIDI (lead fusi), per riconoscere i dati dei clienti da non
+        dare ai cervelli non forti. None = lettura fallita: chi chiama chiude (fail-closed).
+        Memoria assente → [] (nessun contatto da proteggere). R-765-1-M1coord: senza
+        leggi_contatti (memorie vecchie o finte) si ripiega su lista_contatti come in
+        _cerca_lead; con una leggi_contatti di firma vecchia, senza le lapidi. Mai solleva."""
+        if self.memory is None:
+            return []
+        try:
+            leggi = getattr(self.memory, "leggi_contatti", None)
+            if not callable(leggi):
+                return self.memory.lista_contatti()
+            try:
+                return leggi(includi_lapidi=True)
+            except TypeError:
+                return leggi()
+        except Exception as e:  # §9
+            logging.warning(f"lettura dei contatti per il filtro dei dati dei clienti fallita: {e}")
+            return None
+
+    def _memoria_pin_varianti(self, contatti: Any = _NON_LETTI) -> Tuple[str, str]:
         """(pin pieno, pin anonimo), calcolati in UN solo passaggio per turno. Il pieno va
         SOLO al cervello forte (claude-cli); l'anonimo a tutti gli altri provider (regola
         dei modelli, CLAUDE.md §2; decisione dell'operatore 2026-11-10): niente dati
@@ -3943,7 +4044,9 @@ class GasKernel:
 
         Fail-safe (§9): memoria None/degradata o qualunque errore → stringhe
         vuote, il turno prosegue. Ogni variante è "" (niente da iniettare) oppure il
-        blocco già preceduto da due newline, pronto per `system_prompt + pin`."""
+        blocco già preceduto da due newline, pronto per `system_prompt + pin`.
+        `contatti`: risultato di _contatti_per_filtro già letto nel turno (default: lo
+        legge qui)."""
         # V-1 bot #222: True se il pin MOSTRA dati scritti da un turno contaminato
         # (contatto non_fidato o riga di diario marcata): il turno che lo vede è a sua
         # volta contaminato. Nel dubbio (eccezione mentre il pin si costruisce) True.
@@ -3960,14 +4063,15 @@ class GasKernel:
             # «lettura fallita» (None). Con la lettura fallita gli identificativi non si
             # conoscono: la variante anonima chiude (fail-closed) i dettagli di TUTTE le
             # righe del diario, così un nome non può arrivare ai cervelli non forti.
-            letti = self.memory.leggi_contatti()
+            letti = self._contatti_per_filtro() if contatti is _NON_LETTI else contatti
             contatti_ok = letti is not None
-            tutti = letti if contatti_ok else []
+            # lapidi (lead fusi) solo per gli identificativi, mai nell'elenco del pin
+            tutti = [c for c in (letti or []) if c.get("merged_into") is None]
             tutti_attivi = [c for c in tutti if c.get("stato") not in STATI_CHIUSI]
             attivi = tutti_attivi[:self.MEMORY_PIN_CONTACTS]
             if any(c.get("non_fidato") for c in attivi):
                 self._pin_non_fidato = True
-            identificativi = _identificativi_contatti(tutti)
+            identificativi = _identificativi_contatti(letti or [])
             if attivi:
                 righe.append("## Lead attivi")
                 righe_anon.append("## Lead attivi")
@@ -4009,6 +4113,11 @@ class GasKernel:
                     # perde i dettagli. Il confronto è sulla descrizione già pronta per il
                     # pin (dopo la sostituzione delle righe contaminate), in minuscolo.
                     # Contatti non leggibili → nessuna riga con i dettagli (fail-closed).
+                    # Anche il TIPO passa dal filtro: per le tool call è il nome scelto
+                    # dal modello (può essere inventato e contenere un nome).
+                    if (not contatti_ok
+                            or _contiene_identificativo(tipo, identificativi)):
+                        tipo = "azione"
                     if (not contatti_ok
                             or str(e.get("tipo") or "") in _TOOL_DATI_LEAD or e.get("contatto_id")
                             or _contiene_identificativo(desc, identificativi)):
@@ -4045,24 +4154,35 @@ class GasKernel:
         return "\n\n" + _MEMORIA_DATI_OPEN + "\n" + blocco + "\n" + _MEMORIA_DATI_CLOSE
 
     def _lezioni_pin(self) -> str:
-        """Blocco <lezioni_dati> da appendere al system prompt: solo lezioni 'approvata',
-        max 10 (più recenti per decisa_il), escape con _sanitize_memory_text.
-        Separato da <memoria_dati>. Blocco ASSENTE (stringa vuota) se nessuna lezione
-        approvata. Fail-safe (§9): errore → stringa vuota, turno prosegue."""
+        """Variante PIENA (vedi _lezioni_pin_varianti): quella del cervello forte."""
+        return self._lezioni_pin_varianti([])[0]
+
+    def _lezioni_pin_varianti(self, identificativi: Optional[List[str]]) -> Tuple[str, str]:
+        """(pieno, anonimo) del blocco <lezioni_dati> da appendere al system prompt: solo
+        lezioni 'approvata', max 10 (più recenti per decisa_il), escape con
+        _sanitize_memory_text. Separato da <memoria_dati>. Blocco ASSENTE (stringa vuota)
+        se nessuna lezione approvata. Il pieno va SOLO al cervello forte; l'anonimo
+        (blocco esteso dei nomi, operatore 2026-11-10 notte) toglie le lezioni che
+        contengono un identificativo di un lead, e con `identificativi` None (lettura dei
+        contatti fallita) è vuoto (fail-closed). Fail-safe (§9): errore → ("", "")."""
         if self.memory is None:
-            return ""
+            return "", ""
         try:
             lezioni = self.memory.get_lezioni_approvate(limit=10)
-            if not lezioni:
-                return ""
-            righe = [_sanitize_memory_text(l.get("testo", "")) for l in lezioni]
-            blocco = "\n".join(f"- {r}" for r in righe if r)
-            if not blocco:
-                return ""
-            return "\n\n" + _LEZIONI_DATI_OPEN + "\n" + blocco + "\n" + _LEZIONI_DATI_CLOSE
+            righe = [r for r in (_sanitize_memory_text(l.get("testo", ""))
+                                 for l in lezioni or []) if r]
+
+            def _blocco(rr: List[str]) -> str:
+                if not rr:
+                    return ""
+                return ("\n\n" + _LEZIONI_DATI_OPEN + "\n" + "\n".join(f"- {r}" for r in rr)
+                        + "\n" + _LEZIONI_DATI_CLOSE)
+            anon = ([] if identificativi is None else
+                    [r for r in righe if not _contiene_identificativo(r, identificativi)])
+            return _blocco(righe), _blocco(anon)
         except Exception as e:
             logging.warning(f"_lezioni_pin fallito: {e}")
-            return ""
+            return "", ""
 
     def _recap_pin(self, user_prompt: str = "") -> str:
         """Blocco <recap_dati> (FASE 2.6) da appendere al system prompt: un recap
@@ -4231,6 +4351,19 @@ class GasKernel:
                 self._memoria_pin()
                 contaminata = bool(self._pin_non_fidato or self._pin_non_fidato_visto)
             esito["contaminata"] = contaminata
+            # Blocco esteso dei nomi (operatore 2026-11-10 notte, CLAUDE.md §2): una
+            # trascrizione con dati di lead va SOLO al forte; forte spento → riflessione
+            # rimandata (dichiarata nel log), mai ai gratuiti. Lettura dei contatti fallita
+            # → ai gratuiti niente lezioni nelle note (fail-closed).
+            _contatti = self._contatti_per_filtro()
+            _ident = None if _contatti is None else _identificativi_contatti(_contatti)
+            solo_forte = _finestra_ha_dati_lead(window, _ident)
+            if solo_forte and not _rung_disponibile("claude-cli", "GAS_CLAUDE_CLI"):
+                esito["errore"] = ("riflessione rimandata: la trascrizione contiene dati di "
+                                   "clienti e il cervello forte non è disponibile (mai ai "
+                                   "modelli gratuiti)")
+                logging.warning(f"riflessione: {esito['errore']}")
+                return esito
             # Lezioni già DECISE dall'operatore: il modello le vede per non riproporle,
             # avvolte come dato e sanitizzate. Mai quelle ancora 'proposta' (R-352-1). Delle
             # rifiutate/ritirate solo quelle nate da finestre fidate: il rifiuto non rende
@@ -4240,9 +4373,12 @@ class GasKernel:
                       if l.get("stato") == "approvata"
                       or (l.get("stato") in ("rifiutata", "ritirata")
                           and ":non_fidato" not in str(l.get("turni_sorgente") or ""))]
-            note = "\n".join(
-                "- " + _sanitize_memory_text(" ".join(str(l.get("testo") or "").split()))
-                for l in decise[:RIFLESSIONE_LEZIONI_NOTE])
+            righe_note = [_sanitize_memory_text(" ".join(str(l.get("testo") or "").split()))
+                          for l in decise[:RIFLESSIONE_LEZIONI_NOTE]]
+            if not solo_forte:  # ai gratuiti niente lezioni che nominano un lead
+                righe_note = ([] if _ident is None else
+                              [r for r in righe_note if not _contiene_identificativo(r, _ident)])
+            note = "\n".join("- " + r for r in righe_note)
             sistema = _RIFLESSIONE_PROMPT.format(
                 recap_max=self.RECAP_MAX_CHARS, max_lezioni=self.RIFLESSIONE_MAX_LEZIONI)
             if note:
@@ -4255,7 +4391,7 @@ class GasKernel:
                 {"role": "user", "content": self._trascrizione_riflessione(window)},
             ]
             parsed: Optional[Tuple[str, List[str]]] = None
-            for name, env, url, model in _cascata_provider("complesso"):
+            for name, env, url, model in _cascata_provider("forte" if solo_forte else "complesso"):
                 # FETTA 1: budget ricontrollato prima di OGNI chiamata (anche dopo un
                 # provider fallito che ha già consumato token). Prima del controllo
                 # della chiave (V-2 verifica esterna #191): budget superato e nessuna
@@ -4265,16 +4401,35 @@ class GasKernel:
                     esito["errore"] = (f"budget giornaliero esaurito: ${_sup[0]:.4f} spesi "
                                        f"(limite ${_sup[1]:.2f} USD)")
                     return esito
-                if not os.environ.get(env):
+                if not _rung_disponibile(name, env):
                     continue
+                if name == "claude-cli":
+                    _tetto = self._tetto_claude_cli_superato()
+                    if _tetto is not None:
+                        esito["errore"] = ("riflessione rimandata: il cervello forte ha "
+                                           "raggiunto il tetto di oggi (dati di clienti: "
+                                           "mai ai modelli gratuiti)")
+                        logging.warning(f"riflessione: {esito['errore']} {_tetto}")
+                        return esito
                 if esito["provider_atteso"] is None:
                     esito["provider_atteso"] = name  # primo rung disponibile (§8)
                 try:
-                    client = OpenAI(base_url=url, api_key=os.environ.get(env),
-                                    timeout=self._timeout_provider(name),
-                                    max_retries=self.PROVIDER_MAX_RETRIES)
-                    response = client.chat.completions.create(model=model, messages=messaggi)
+                    client = (ClaudeCliClient(timeout=self.CLAUDE_CLI_TIMEOUT_SEC)
+                              if name == "claude-cli" else
+                              OpenAI(base_url=url, api_key=os.environ.get(env),
+                                     timeout=self._timeout_provider(name),
+                                     max_retries=self.PROVIDER_MAX_RETRIES))
+                    try:
+                        response = client.chat.completions.create(model=model, messages=messaggi)
+                    except Exception as e_forte:
+                        if name == "claude-cli":  # R-496-1: anche la chiamata fallita conta
+                            self._registra_uso_claude_cli(
+                                getattr(e_forte, "costo_equivalente_usd", 0.0))
+                        raise
                     usage = getattr(response, "usage", None)
+                    if name == "claude-cli":
+                        self._registra_uso_claude_cli(
+                            getattr(usage, "costo_equivalente_usd", 0.0) if usage else 0.0)
                     if usage:
                         self._log_tokens(name, model,
                                          getattr(usage, "prompt_tokens", 0) or 0,
@@ -5146,6 +5301,20 @@ class GasKernel:
                 # finestra → solo il forte; spento o al tetto → turno fermo dichiarato
                 logging.info("finestra con un seguito a voce: turno solo sul forte")
                 compito = "forte"
+            # Blocco esteso dei nomi (decisione dell'operatore 2026-11-10 notte, CLAUDE.md §2):
+            # contatti (vivi e lapidi) letti UNA volta per turno; se la finestra che si
+            # manderebbe contiene dati di lead (strumenti dei contatti o un identificativo
+            # noto) il turno va SOLO al forte; forte assente → turno fermo dichiarato.
+            # Lettura fallita → identificativi None: resta il controllo sugli strumenti e
+            # i pin/recap/lezioni dei non forti si chiudono (fail-closed).
+            _contatti_turno = self._contatti_per_filtro()
+            _ident = (None if _contatti_turno is None
+                      else _identificativi_contatti(_contatti_turno))
+            _solo_forte_lead = compito != "forte" and _finestra_ha_dati_lead(
+                self._get_window(_n_finestra), _ident)
+            if _solo_forte_lead:
+                logging.info("finestra con dati di clienti: turno solo sul forte")
+                compito = "forte"
             _turno_classe = compito
 
             # Iniezione memoria ALWAYS-ON (fetta 2b): calcolata UNA volta per turno
@@ -5155,10 +5324,14 @@ class GasKernel:
             # "" se la memoria è assente/degradata.
             # Due varianti (operatore 2026-11-10): la piena SOLO al cervello forte, quella
             # senza dati identificativi dei lead a tutti gli altri (scelta nel payload).
-            mem_pin, mem_pin_anonimo = self._memoria_pin_varianti()
-            lezioni_pin = self._lezioni_pin()
+            mem_pin, mem_pin_anonimo = self._memoria_pin_varianti(_contatti_turno)
+            lezioni_pin, lezioni_pin_anonimo = self._lezioni_pin_varianti(_ident)
             # FASE 2.6: recap fidato pertinente, come DATO; voce rapida: niente recap vecchio
             recap_pin = "" if voce else self._recap_pin(user_prompt)
+            # Blocco esteso: ai non forti il recap solo se non nomina un lead (e solo con
+            # i contatti letti: altrimenti omesso, fail-closed)
+            recap_pin_anonimo = (recap_pin if _ident is not None
+                                 and not _contiene_identificativo(recap_pin, _ident) else "")
             turno_pin = f"\n\n{istruzione_turno.strip()}" if (istruzione_turno or "").strip() else ""
 
             # Backup automatico THROTTLED del DB di memoria (anti auto-corruzione):
@@ -5199,7 +5372,15 @@ class GasKernel:
             # turno poteva farne 10×N). Esaurito → turno finito dichiarato, mai crash.
             _chiamate_turno = 0
             _tetto_turno = False
-            for name, env, url, model in providers:
+            # Coda dei rung: il blocco esteso dei nomi può sostituire i rung non forti
+            # rimasti col forte a metà turno (indice esplicito, niente lista mutata
+            # mentre un for la scorre)
+            _coda = list(providers)
+            _i_coda = 0
+            while _i_coda < len(_coda):
+                name, env, url, model = _coda[_i_coda]
+                _i_coda += 1
+                _passa_al_forte = False
                 # Prima del controllo della chiave (R-753-M1-3): a tetto finito i rung
                 # seguenti non aggiungono «non impostata» ai motivi.
                 if _tetto_turno:
@@ -5235,11 +5416,21 @@ class GasKernel:
                         # al provider (§3b). Ricalcolata a ogni iterazione perché la
                         # finestra può scorrere tra un'iterazione e l'altra.
                         _window = self._get_window(_n_finestra)
+                        # Blocco esteso dei nomi: un risultato di ricorda/salva_contatto
+                        # (o un nome di lead) appena entrato nella finestra non va a un
+                        # cervello non forte: si passa al forte PRIMA della chiamata
+                        if name != "claude-cli" and _finestra_ha_dati_lead(_window, _ident):
+                            _passa_al_forte = True
+                            if not _chiamato_rung:
+                                _turno_tentati.pop()
+                            break
                         # V-1 bot #222: conta anche il pin che mostra dati non fidati.
                         _finestra_contaminata = (self._finestra_e_contaminata(_window)
                                                  or getattr(self, "_pin_non_fidato", False))
-                        _pin_rung = mem_pin if name == "claude-cli" else mem_pin_anonimo
-                        payload = [{"role": "system", "content": self.system_prompt + _pin_rung + lezioni_pin + recap_pin + turno_pin}] + _senza_segni_interni(_window)
+                        _forte_rung = name == "claude-cli"
+                        _pin_rung = (mem_pin + lezioni_pin + recap_pin if _forte_rung else
+                                     mem_pin_anonimo + lezioni_pin_anonimo + recap_pin_anonimo)
+                        payload = [{"role": "system", "content": self.system_prompt + _pin_rung + turno_pin}] + _senza_segni_interni(_window)
                         # FETTA 1 (chiude F2): budget ricontrollato prima di OGNI chiamata,
                         # non solo a inizio turno. Superato a metà turno → il turno si
                         # ferma DICHIARATO (niente fallback: il tetto vale per tutti i
@@ -5501,8 +5692,21 @@ class GasKernel:
                                       f" ({_mf})" if _mf else
                                       f" ({type(e).__name__})"))
                     continue
+                if _passa_al_forte:
+                    # Blocco esteso dei nomi: i rung non forti rimasti escono dalla coda
+                    logging.info(f"dati di clienti nella finestra: {name} saltato, turno solo sul forte")
+                    _motivi.append(f"{name}: saltato (dati di clienti nella conversazione)")
+                    _solo_forte_lead = True
+                    _coda = _coda[:_i_coda] + _cascata_provider("forte")
             _dettaglio = "; ".join(_motivi) if _motivi else "nessun provider in cascata"
             logging.warning(f"Pipeline esausta: {_dettaglio}")
+            if _solo_forte_lead:
+                # Blocco esteso dei nomi: mai ai gratuiti, motivo dichiarato all'operatore
+                yield {"type": "error",
+                       "content": ("Questa richiesta contiene dati di clienti: rispondo solo "
+                                   "col cervello forte, che ora non è disponibile. "
+                                   f"Dettagli: {_dettaglio}.")}
+                return
             if _solo_forte_seguito:  # R-683-2-M2: l'operatore sa perché niente gratuiti
                 _dettaglio += ("; turno solo sul cervello forte perché nella conversazione "
                                "recente c'è un seguito a voce (dati della stanza: mai ai cervelli gratuiti)")
