@@ -8,7 +8,7 @@ fetta a parte), poi bip, registrazione fino al silenzio, invio al server voce gi
 esistente (modules/voice/server.py, POST /voice) e risposta riprodotta: con la risposta
 «a pezzi» del server (righe JSON, formato audio+pezzi) la prima frase suona appena arriva e le altre in
 fila, mentre il server sintetizza le successive (fetta 39). Dopo la risposta
-resta una finestra di ascolto (GAS_VOICE_FINESTRA, 15 s) per continuare senza ripetere
+resta una finestra di ascolto (GAS_VOICE_FINESTRA, 10 s) per continuare senza ripetere
 la parola, fino a GAS_VOICE_MAX_TURNI turni di fila.
 Mentre Gas parla si può interromperlo dicendo di nuovo la parola di attivazione (fetta
 41): la frase si ferma, quelle in fila si scartano e si registra la nuova richiesta.
@@ -36,18 +36,18 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
                              8765>, la porta del server voce). Fuori
                              dal Mac (host non locale) solo https, altrimenti non parte.
     GAS_VOICE_TIMEOUT      — secondi di attesa della risposta (default 600)
-    GAS_VOICE_FINESTRA     — secondi di ascolto dopo la risposta (default 15)
+    GAS_VOICE_FINESTRA     — secondi di ascolto dopo la risposta (default 10)
     GAS_VOICE_SEGUITO_MAX  — secondi massimi di una richiesta di seguito, senza parola
                              (default 15): chi parla più a lungo non sta parlando a Gas
-    GAS_VOICE_MAX_TURNI    — turni dopo la parola, il primo compreso (default 3: 2 di seguito)
+    GAS_VOICE_MAX_TURNI    — turni dopo la parola, il primo compreso (default 1: nessun seguito)
     GAS_ASCOLTO_MODELLO    — modello di openWakeWord (default hey_jarvis)
-    GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.6)
-    GAS_ASCOLTO_BLOCCHI_PAROLA — blocchi da 80 ms di fila sopra soglia per la parola, 1-5 (default 2)
+    GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.7)
+    GAS_ASCOLTO_BLOCCHI_PAROLA — blocchi da 80 ms di fila sopra soglia per la parola, 1-5 (default 3)
     GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 200, campioni int16)
     GAS_ASCOLTO_SILENZIO   — secondi di silenzio che chiudono la richiesta (default 0.8)
     GAS_ASCOLTO_INTERRUZIONE — 0 = la parola non interrompe Gas mentre parla (default 1)
     GAS_ASCOLTO_CONFERMA   — 0 = dopo la parola solo il bip, senza «Sì, signore?» (default 1)
-    GAS_ASCOLTO_SOGLIA_INTERRUZIONE — soglia della parola mentre Gas parla, 0-1 (default 0.7)
+    GAS_ASCOLTO_SOGLIA_INTERRUZIONE — soglia della parola mentre Gas parla, 0-1 (default 0.8)
     GAS_ASCOLTO_FORMATO    — formato della risposta chiesto al server (default
                              audio+pezzi, le frasi in fila; vuoto = un solo MP3)
 
@@ -88,7 +88,8 @@ SEC_BLOCCO = BLOCCO / FREQ
 REGISTRAZIONE_MAX_S = 30.0   # una richiesta non dura più di così
 # Fetta 43 parte 2 (operatore, 5 novembre): nella finestra dopo la risposta il microfono
 # catturava la conversazione della stanza (4 richieste di fila da 30 s). Difese:
-# - finestra di 40 s senza voce prima di tornare ad aspettare la parola;
+# - finestra senza voce prima di tornare ad aspettare la parola (era 40 s; ora
+#   FINESTRA_PREDEFINITA_S, e i seguiti sono spenti di default: MAX_TURNI_PREDEFINITO);
 # - i turni di seguito (senza parola) durano al massimo SEGUITO_MAX_S: una registrazione
 #   che ci arriva NON si invia e la conversazione si chiude (quasi sempre è parlato della
 #   stanza);
@@ -98,7 +99,7 @@ REGISTRAZIONE_MAX_S = 30.0   # una richiesta non dura più di così
 #   la parola, muta nel seguito);
 # - nella finestra il rilevatore resta acceso: «Hey Jarvis, …» è un turno normale (V-1 bot #341);
 # - un errore in un turno di seguito chiude la conversazione senza bip (R-675-5-M2).
-FINESTRA_PREDEFINITA_S = 15.0
+FINESTRA_PREDEFINITA_S = 10.0
 # V-1 bot #341 su 23d9c1c (= R-693-2): se la parola si sente a metà di un turno di seguito,
 # della registrazione si tiene solo da poco prima della parola (openWakeWord la segnala a
 # fine parola): il parlato della stanza detto prima non parte come richiesta normale.
@@ -110,13 +111,19 @@ PAROLA_VALIDA_S = 2.0
 SEGUITO_MAX_PREDEFINITO_S = 15.0
 # Correzione del 10/11/2026 (log dell'operatore: Jarvis risponde senza essere chiamato):
 # al massimo 2 turni di seguito dopo la parola (3 turni in tutto), finestra di 15 s.
-MAX_TURNI_PREDEFINITO = 3
+# Sera del 10/11 (operatore: «a volte anche mentre parlo per cazzi miei mi risponde»,
+# obiettivo zero risposte non richieste): i turni di seguito senza parola sono SPENTI di
+# default (1 = solo la richiesta dopo «Hey Jarvis»); si riaccendono con GAS_VOICE_MAX_TURNI.
+# La finestra (10 s) resta per chi li riaccende.
+MAX_TURNI_PREDEFINITO = 1
 # Stessa correzione: soglia predefinita della parola 0,6 (era 0,5) e parola valida solo se il
 # rilevatore la sente in BLOCCHI_PAROLA_PREDEFINITO blocchi di fila (un picco isolato di
 # 80 ms era la causa dei falsi «Hey Jarvis»). Nella finestra si ignora il primo mezzo
 # secondo: è la coda dell'eco della voce di Gas nella stanza.
-SOGLIA_PREDEFINITA = 0.6
-BLOCCHI_PAROLA_PREDEFINITO = 2
+# Sera del 10/11: più severi (0,7 e 3 blocchi, cioè 240 ms di fila sopra soglia). Se la
+# parola vera non scatta più: GAS_ASCOLTO_SOGLIA=0.6 o GAS_ASCOLTO_BLOCCHI_PAROLA=2.
+SOGLIA_PREDEFINITA = 0.7
+BLOCCHI_PAROLA_PREDEFINITO = 3
 CODA_ECO_S = 0.5
 # Prova dal vivo del 10/11/2026: 6 volte su 8 «Hey Jarvis, …» detto tutto d'un fiato andava
 # perso, perché la richiesta cadeva mentre suonava «Sì, signore?» (audio buttato) e dopo
@@ -142,8 +149,12 @@ PAUSA_ERRORI_MAX_S = 60.0    # pausa massima fra due tentativi col rilevatore in
 # aspettare»); con 200 sì. In una stanza rumorosa si alza dal .env.
 VOCE_RMS_PREDEFINITO = 200.0
 # Fetta 41: soglia della parola di attivazione mentre Gas parla. Più alta di quella
-# normale (0.5) perché il microfono sente anche la voce di Gas dalle casse.
-SOGLIA_INTERRUZIONE_PREDEFINITA = 0.7
+# normale (SOGLIA_PREDEFINITA) perché il microfono sente anche la voce di Gas dalle casse.
+# Sera del 10/11: 0,8, sempre sopra SOGLIA_PREDEFINITA (che è salita a 0,7).
+SOGLIA_INTERRUZIONE_PREDEFINITA = 0.8
+# R-757-1-M1: turni ammessi quando si interrompe Gas con la parola, anche se max_turni è
+# più basso (1 = seguiti spenti): la richiesta più una interruzione con la nuova domanda.
+TURNI_CON_INTERRUZIONE = 2
 # Fetta 42: «Sì, signore?» detto da Jarvis dopo la parola, al posto del bip. L'audio lo
 # prepara il server voce (GET /voce/conferma, cache per voce lato server, PR #335 di M2);
 # il client lo scarica in sottofondo e lo tiene in memoria. Qualsiasi errore → bip.
@@ -325,7 +336,9 @@ def in_wav(blocchi: List[Blocco]) -> bytes:
 
 class Ascolto:
     """Il ciclo dell'ascolto, con le parti esterne iniettate (microfono, rilevatore,
-    invio, riproduzione, bip): nei test sono finte, nessun audio vero."""
+    invio, riproduzione, bip): nei test sono finte, nessun audio vero.
+    I default del costruttore sono quelli dei test (seguiti accesi, soglie basse): i
+    valori veri, più severi, li passa sempre `main` (*_PREDEFINITO/A)."""
 
     def __init__(self, blocchi: Iterator[Blocco], rilevatore: Callable[[Blocco], float],
                  invia: Invia, riproduci: Callable[[bytes], Optional[object]],
@@ -333,10 +346,10 @@ class Ascolto:
                  svuota: Callable[[], None] = lambda: None,
                  azzera_rilevatore: Callable[[], None] = lambda: None,
                  soglia: float = 0.5, voce_rms: float = VOCE_RMS_PREDEFINITO, silenzio_s: float = 0.8,
-                 finestra_s: float = FINESTRA_PREDEFINITA_S, max_turni: int = MAX_TURNI_PREDEFINITO,
+                 finestra_s: float = 15.0, max_turni: int = 3,
                  seguito_max_s: float = SEGUITO_MAX_PREDEFINITO_S,
                  invia_seguito: Optional[Invia] = None,
-                 soglia_interruzione: Optional[float] = SOGLIA_INTERRUZIONE_PREDEFINITA,
+                 soglia_interruzione: Optional[float] = 0.7,
                  conferma: Callable[[], Optional[bytes]] = lambda: None,
                  dorme: Callable[[float], None] = time.sleep,
                  blocchi_parola: int = 1, coda_eco_s: float = 0.0,
@@ -823,7 +836,10 @@ class Ascolto:
                 # Fetta 41: come una parola nuova — bip, poi la nuova richiesta. I turni
                 # NON ripartono da zero (R-668-1): se la voce di Gas dalle casse facesse
                 # scattare la parola, le interruzioni di fila restano sotto max_turni.
-                if turni >= self.max_turni:
+                # R-757-1-M1: almeno UNA interruzione apre la nuova domanda anche coi turni di
+                # seguito spenti (max_turni=1, default di main): «Hey Jarvis» detto mentre
+                # Gas parla è la parola vera (soglia 0,8), non il parlato della stanza.
+                if turni >= max(self.max_turni, TURNI_CON_INTERRUZIONE):
                     break
                 self._azzera()
                 self._bip("ok")
@@ -834,8 +850,9 @@ class Ascolto:
             if self.chiudi or not riuscito or turni >= self.max_turni:
                 break
             self.parola_nella_finestra = False
-            # R-680-1: il rilevatore ha appena sentito la voce di Gas (soglia 0,7): si azzera,
-            # così nella finestra (soglia 0,6) quei residui non valgono come parola.
+            # R-680-1: il rilevatore ha appena sentito la voce di Gas (soglia dell'interruzione):
+            # si azzera, così nella finestra (soglia normale, più bassa) quei residui non
+            # valgono come parola.
             self._azzera()
             inizio = self.aspetta_voce()
             if inizio is None:

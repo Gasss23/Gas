@@ -189,11 +189,13 @@ def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
     k = _main_finto(monkeypatch, tmp_path,
                     {} if valore is None else {"GAS_ASCOLTO_VOCE_RMS": valore})
     assert k.get("voce_rms") == atteso
-    assert k.get("finestra_s") == 15.0 and k.get("seguito_max_s") == 15.0
+    assert k.get("finestra_s") == 10.0 and k.get("seguito_max_s") == 15.0
     assert k.get("invia_seguito") is not None
-    # correzione 10/11/2026: soglia 0,6, parola su 2 blocchi di fila, 3 turni, coda dell'eco
-    assert k.get("soglia") == 0.6 and k.get("blocchi_parola") == 2
-    assert k.get("max_turni") == 3 and k.get("coda_eco_s") == 0.5
+    # sera del 10/11 (zero risposte non richieste): soglia 0,7, parola su 3 blocchi di fila,
+    # niente turni di seguito (1), finestra 10 s, interruzione 0,8; coda dell'eco 0,5 s
+    assert k.get("soglia") == 0.7 and k.get("blocchi_parola") == 3
+    assert k.get("max_turni") == 1 and k.get("coda_eco_s") == 0.5
+    assert a.SOGLIA_INTERRUZIONE_PREDEFINITA == 0.8 > a.SOGLIA_PREDEFINITA
     assert k.get("subito_s") == a.SUBITO_S == 0.6   # prova del 10/11: richiesta d'un fiato
     assert k.get("soglia_interruzione") == a.SOGLIA_INTERRUZIONE_PREDEFINITA
 
@@ -214,6 +216,9 @@ def test_leggimi_riporta_il_default_della_voce():
     assert (f"| `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | {a.SOGLIA_INTERRUZIONE_PREDEFINITA:g} |"
             in testo)
     assert "| `GAS_ASCOLTO_CONFERMA` | 1 |" in testo
+    assert f"| `GAS_ASCOLTO_SOGLIA` | {a.SOGLIA_PREDEFINITA:g} |" in testo
+    assert f"| `GAS_ASCOLTO_BLOCCHI_PAROLA` | {a.BLOCCHI_PAROLA_PREDEFINITO} |" in testo
+    assert f"| `GAS_VOICE_MAX_TURNI` | {a.MAX_TURNI_PREDEFINITO} |" in testo
 
 
 # ── fetta 41: interrompere Gas mentre parla, solo con la parola ──
@@ -459,7 +464,7 @@ def test_nella_finestra_e_all_interruzione_niente_conferma():
     assert f.riprodotti[0] == b"SI" and f.riprodotti.count(b"SI") == 1
 
 @pytest.mark.parametrize("acceso,soglia,atteso", [
-    (None, None, 0.7), ("1", "0.9", 0.9), ("0", "0.9", None), (None, "abc", 0.7),
+    (None, None, 0.8), ("1", "0.9", 0.9), ("0", "0.9", None), (None, "abc", 0.8),
     (None, "5", 1.0), (" 0 ", None, None),
 ])
 def test_soglia_interruzione_dall_ambiente(monkeypatch, acceso, soglia, atteso):
@@ -496,9 +501,10 @@ class FintiSeguito(Finti):
 SEGUITO = ((VOCE, 10), (SILENZIO, 10))   # una richiesta di seguito da 0,8 s di voce
 
 
-def test_finestra_predefinita_15_secondi():
-    """Correzione 10/11/2026 (Jarvis rispondeva senza essere chiamato): finestra di 15 s."""
-    assert a.FINESTRA_PREDEFINITA_S == 15.0 and a.SEGUITO_MAX_PREDEFINITO_S == 15.0
+def test_finestra_15_s_del_costruttore_e_10_s_di_main():
+    """Correzione 10/11/2026: finestra di 15 s (default del costruttore, quello dei test;
+    main usa FINESTRA_PREDEFINITA_S, 10 s dalla sera del 10/11)."""
+    assert a.FINESTRA_PREDEFINITA_S == 10.0 and a.SEGUITO_MAX_PREDEFINITO_S == 15.0
     f = FintiSeguito([])
     asc = f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, _sec(12)), *SEGUITO,
                              (SILENZIO, _sec(20))))
@@ -2470,10 +2476,10 @@ def test_pausa_con_errore_tiene_il_motivo_nel_log(caplog):
 
 
 @pytest.mark.parametrize("valore,atteso,avviso", [("300", 120.0, True), ("90", 90.0, False),
-                                                  ("abc", 15.0, False), ("", 15.0, False),
+                                                  ("abc", 10.0, False), ("", 10.0, False),
                                                   # V-2 ve #351 (R-707-4): inf/nan tornano al
                                                   # predefinito senza avviso, e senza crash
-                                                  ("inf", 15.0, False), ("nan", 15.0, False),
+                                                  ("inf", 10.0, False), ("nan", 10.0, False),
                                                   ("-5", 0.0, True)])
 def test_finestra_fuori_limiti_avvisa(monkeypatch, caplog, valore, atteso, avviso):
     """V-3 bot #347: un valore oltre 120 si corregge con un avviso nel log."""
@@ -2552,11 +2558,26 @@ def test_coda_dell_eco_non_apre_un_seguito():
     assert f.tipi == ["parola", "seguito"]   # senza la coda la stessa voce apriva un seguito
 
 
-def test_al_massimo_due_turni_di_seguito_con_il_predefinito():
+def test_al_massimo_due_turni_di_seguito_con_3_turni():
     f = FintiSeguito([])
     f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, *SEGUITO, *SEGUITO, *SEGUITO,
-                       (SILENZIO, _sec(20)))).gira()
-    assert a.MAX_TURNI_PREDEFINITO == 3 and f.tipi == ["parola", "seguito", "seguito"]
+                       (SILENZIO, _sec(20))), max_turni=3).gira()
+    assert f.tipi == ["parola", "seguito", "seguito"]
+
+
+def test_col_predefinito_di_main_niente_turni_di_seguito():
+    """Sera del 10/11 (zero risposte non richieste): con MAX_TURNI_PREDEFINITO=1 dopo la
+    risposta non si ascolta più; il parlato che segue senza «Hey Jarvis» non parte, la
+    parola ripetuta sì."""
+    assert a.MAX_TURNI_PREDEFINITO == 1
+    f = FintiSeguito([])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, *SEGUITO, (SILENZIO, _sec(20))),
+              max_turni=a.MAX_TURNI_PREDEFINITO).gira()
+    assert f.tipi == ["parola"]
+    f = FintiSeguito([])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, *SEGUITO, PAROLA, *RICHIESTA, (SILENZIO, _sec(20))),
+              max_turni=a.MAX_TURNI_PREDEFINITO).gira()
+    assert f.tipi == ["parola", "parola"]
 
 
 def test_nella_finestra_un_picco_isolato_non_vale_come_parola():
@@ -2726,3 +2747,24 @@ def test_voce_verso_la_fine_della_tolleranza_conferma_la_richiesta():
               finestra_s=0, subito_s=0.6, conferma=lambda: b"SI").gira()
     assert f.riprodotti == [b"A"] and len(f.inviati) == 1
     assert _campioni(f.inviati[0]) == (coda + pausa + 10 + a.blocchi_per(0.8)) * a.BLOCCO
+
+
+def test_coi_seguiti_spenti_l_interruzione_apre_ancora_la_nuova_domanda():
+    """R-757-1-M1: con max_turni=1 (default di main) «Hey Jarvis» mentre Gas parla lo ferma
+    e la nuova domanda si registra, come con i seguiti accesi."""
+    frasi, chiuse = _frasi_chiuse(b"A", b"B")
+    f = FintiParlano([frasi, b"C"])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 3), PAROLA, *RICHIESTA, (SILENZIO, 20)),
+              finestra_s=0, max_turni=a.MAX_TURNI_PREDEFINITO).gira()
+    assert f.riprodotti == [b"A", b"C"] and chiuse == [True]
+    assert len(f.inviati) == 2 and f.bip == ["ok", "ok"]
+
+
+def test_coi_seguiti_spenti_la_seconda_interruzione_chiude():
+    """R-668-1 resta: con max_turni=1 una sola interruzione apre una domanda; la seconda
+    ferma Gas e si torna ad aspettare la parola (difesa contro l'eco che si interrompe)."""
+    f = FintiParlano([_frasi_chiuse(b"A", b"B")[0], _frasi_chiuse(b"C", b"D")[0], b"E"])
+    f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, 3), PAROLA, *RICHIESTA, (SILENZIO, 3),
+                       PAROLA, *RICHIESTA, (SILENZIO, 20)),
+              finestra_s=0, max_turni=a.MAX_TURNI_PREDEFINITO).gira()
+    assert len(f.inviati) == 2 and b"E" not in f.riprodotti

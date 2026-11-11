@@ -3,8 +3,12 @@
 Gas ascolta sempre il microfono del Mac. Quando dici la parola di attivazione fa un bip,
 registra fino a quando smetti di parlare, manda la richiesta al server voce e ti risponde
 a voce, una frase alla volta: la prima si sente appena è pronta, mentre il server prepara
-le altre. Dopo la risposta puoi continuare senza ripetere la parola: Gas resta in ascolto
-finché non passano 15 secondi senza che nessuno parli, poi torna ad aspettare «Hey Jarvis».
+le altre. Dopo la risposta Gas torna subito ad aspettare «Hey Jarvis»: per un'altra
+domanda si ripete la parola (dalla sera del 10/11, obiettivo «zero risposte non richieste»).
+
+**Conversazione senza ripetere la parola (spenta di default):** con `GAS_VOICE_MAX_TURNI`
+più di 1 (es. 3), dopo la risposta Gas resta in ascolto finché non passano
+`GAS_VOICE_FINESTRA` secondi (10) senza che nessuno parli, e vale quanto segue.
 
 **Nella conversazione, senza la parola** (difese contro il parlato della stanza):
 - una frase senza «Hey Jarvis» lunga circa 15 secondi o più (contando anche la breve pausa
@@ -44,7 +48,9 @@ forte (in multipli di `GAS_ASCOLTO_VOCE_RMS`): utile se le richieste arrivano ta
 subito, salta le frasi che mancavano, fa il bip e ascolta la nuova domanda. Serve proprio
 la parola, non basta parlare: con le casse del Mac il microfono sente anche la voce di Gas.
 Per questo, mentre Gas parla, la parola deve essere riconosciuta con più sicurezza (soglia
-0.7 invece di 0.5). Se non ti sente, avvicinati o abbassa un po' il volume; con le cuffie va meglio.
+0.8 invece di 0.7). Anche coi turni di seguito spenti (il default) un'interruzione apre la
+nuova domanda; se interrompi di nuovo anche quella risposta, Gas si ferma e torna ad
+aspettare la parola. Se non ti sente, avvicinati o abbassa un po' il volume; con le cuffie va meglio.
 Se nella risposta Gas stesso dice la parola («di' Hey Jarvis…»), per quella risposta
 l'interruzione è spenta: altrimenti si interromperebbe da solo, sentendosi dalle casse.
 Questo controllo vale con il formato di risposta predefinito (a frasi): con
@@ -117,11 +123,14 @@ solo).
 - Prima della parola di attivazione l'audio resta solo in memoria. Lo legge openWakeWord
   sul Mac: niente rete, niente disco.
 - **Attenzione alle attivazioni per sbaglio (R-615-6):** se la TV o un'altra persona dice
-  qualcosa che somiglia alla parola, oppure se qualcuno parla nei 15 secondi dopo una
-  risposta, quell'audio della stanza va al server voce (e quindi a Groq). Senza la parola
-  ogni frase dura al massimo 15 secondi (oltre non si manda) e Gas chiude la conversazione
-  se capisce che non parlavi a lui; al massimo 2 turni di seguito, poi serve di nuovo la
-  parola. Se la parola scatta spesso per sbaglio, alza `GAS_ASCOLTO_SOGLIA` o `GAS_ASCOLTO_BLOCCHI_PAROLA`; per parlare
+  qualcosa che somiglia alla parola, quell'audio della stanza va al server voce (e quindi a
+  Groq). Per questo dalla sera del 10/11 la parola vale solo se è chiara (soglia 0,7, 3
+  blocchi da 80 ms di fila) e dopo la risposta non si ascolta senza la parola. Se riaccendi
+  i turni di seguito (`GAS_VOICE_MAX_TURNI`), anche chi parla nei secondi dopo una risposta
+  finisce al server: senza la parola ogni frase dura al massimo 15 secondi (oltre non si
+  manda) e Gas chiude la conversazione se capisce che non parlavi a lui. Se invece la
+  parola vera non scatta più, abbassa `GAS_ASCOLTO_SOGLIA` (0.6) o
+  `GAS_ASCOLTO_BLOCCHI_PAROLA` (2). Se la parola scatta spesso per sbaglio, alza `GAS_ASCOLTO_SOGLIA` o `GAS_ASCOLTO_BLOCCHI_PAROLA`; per parlare
   con qualcuno senza Gas, `bash scripts/voce/pausa.sh`.
 - Se dopo un bip di errore non sai se Gas ha fatto la cosa (il server può aver eseguito
   la richiesta e poi fallito la voce), chiediglielo invece di ripeterla.
@@ -140,16 +149,16 @@ solo).
 
 | Variabile | Default | Cosa fa |
 |---|---|---|
-| `GAS_ASCOLTO_SOGLIA` | 0.6 | sensibilità della parola (più alta = meno attivazioni per sbaglio) |
-| `GAS_ASCOLTO_BLOCCHI_PAROLA` | 2 | blocchi da 80 ms di fila sopra la soglia perché la parola valga (1–5; più alto = meno attivazioni per sbaglio) |
+| `GAS_ASCOLTO_SOGLIA` | 0.7 | sensibilità della parola (più alta = meno attivazioni per sbaglio) |
+| `GAS_ASCOLTO_BLOCCHI_PAROLA` | 3 | blocchi da 80 ms di fila sopra la soglia perché la parola valga (1–5; più alto = meno attivazioni per sbaglio) |
 | `GAS_ASCOLTO_VOCE_RMS` | 200 | volume sopra cui conta come voce (più basso = sente anche la voce piana; se in una stanza rumorosa parte da solo o non chiude la richiesta, alzalo a 300–500) |
 | `GAS_ASCOLTO_SILENZIO` | 0.8 | secondi di silenzio che chiudono la richiesta |
 | `GAS_ASCOLTO_CONFERMA` | 1 | `0` = dopo la parola solo il bip, senza «Sì, signore?» |
 | `GAS_ASCOLTO_INTERRUZIONE` | 1 | `0` = la parola non interrompe Gas mentre parla |
-| `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | 0.7 | sensibilità della parola mentre Gas parla (più bassa = la sente meglio, ma rischia di attivarsi con la voce di Gas) |
-| `GAS_VOICE_FINESTRA` | 15 | secondi di silenzio dopo i quali la conversazione si chiude (0–120; `0` = niente finestra. La stessa variabile vale per la pagina web della voce, che accetta solo da più di 0 fino a 120: se usi anche quella, non mettere 0) |
+| `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | 0.8 | sensibilità della parola mentre Gas parla (più bassa = la sente meglio, ma rischia di attivarsi con la voce di Gas) |
+| `GAS_VOICE_FINESTRA` | 10 | secondi di silenzio dopo i quali la conversazione si chiude (0–120; `0` = niente finestra. La stessa variabile vale per la pagina web della voce, che accetta solo da più di 0 fino a 120: se usi anche quella, non mettere 0) |
 | `GAS_VOICE_SEGUITO_MAX` | 15 | secondi massimi di una frase senza «Hey Jarvis» nella conversazione (3–30) |
-| `GAS_VOICE_MAX_TURNI` | 3 | turni dopo la parola, il primo compreso (3 = la richiesta più 2 di seguito senza ripetere la parola) |
+| `GAS_VOICE_MAX_TURNI` | 1 | turni dopo la parola, il primo compreso (1 = solo la richiesta dopo «Hey Jarvis»: per continuare si ripete la parola; 3 = la richiesta più 2 di seguito senza ripeterla) |
 | `GAS_ASCOLTO_MODELLO` | hey_jarvis | modello di openWakeWord |
 | `GAS_ASCOLTO_FORMATO` | audio+pezzi | risposta a frasi in fila; vuoto = un solo audio alla fine, come prima |
 
