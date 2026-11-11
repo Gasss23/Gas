@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370). Numero e URL dall'output di `create_pull_request` dello strumento GitHub (gh assente).
+1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370): sì dell'operatore già dato («mergia la #368, #369 e #370»).
 2. R-753-M1-A: DECISA dall'operatore il 2026-11-10 notte («blocco esteso dei nomi sì»): si implementa in una PR successiva. Testo originale della domanda: estendere il blocco dei nomi dei clienti anche ai risultati di `ricorda`/`salva_contatto` nella storia, al testo dell'operatore, a `recap_pin` e alla riflessione di fine task (ve #370 V-1) verso i modelli non forti? sì/no
 
 ---
@@ -17,6 +17,7 @@
 - **Fetta 2 — (b) Flash-lite dichiarato**: FATTA — `RUNG_VERSIONE_LEGGERA`, riga nel testo (mai a voce).
 - **Fetta 3 — tetto di 10 chiamate per turno**: FATTA — `MAX_CHIAMATE_TURNO`.
 - **Fetta 5 — merge di origin/main (#368 di Mani)**: FATTA — review #757-M1 APPROVATO.
+- **Fetta 6 — merge di origin/main (#369 di M2)**: FATTA — review #764-M1coord APPROVATO.
 - **Fetta 4 — nomi dei lead mai ai modelli non forti**: FATTA per il pin; DEFERITA per storia/recap (R-753-M1-A, §0 punto 2).
 
 ---
@@ -24,13 +25,13 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
+ .claude/agents/memoria_revisore.md |   5 +++++
  gas.py                             | 164 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
  modules/telegram/bot.py            |   2 +-
- reports/diff_sessione.md           |  15 +++++++--------
+ reports/diff_sessione.md           |  14 +++++++-------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  21 ++++++++++-----------
+ reports/ultimo_report.md           |  20 ++++++++++----------
  tests/test_unit_kernel.py          | 247 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  tests/test_unit_notte.py           |   4 +++-
 ```
@@ -40,6 +41,10 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9bd8c091 merge: origin/main (#369) nella #370 (review #764-M1coord APPROVATO)
+7c5f969a docs(fine-task): verdetto #757-M1 riemesso, originale in blocco (come #749-M2)
+8512854d docs(fine-task): verdetto #757-M1 riemesso per il gate
+f5ea9b64 docs(fine-task): handoff #370 dopo il merge di #368
 05184a94 merge: origin/main (#368) nella #370 (review #757-M1 APPROVATO)
 e9b74f59 docs(fine-task): handoff #370 aggiornato (R-753-M1-A estesa, CI)
 fabf2e9a docs(stato): R-753-M1-A estesa alla riflessione (ve #370 V-1) e buchi noti del pin anonimo
@@ -47,7 +52,7 @@ e761eefc docs(fine-task): decisioni dell'operatore del 2026-11-10 (Flash-lite, t
 d5773ec1 fix(kernel): decisioni dell'operatore 2026-11-10 — Flash-lite dichiarato, tetto di 10 chiamate per turno, pin senza dati dei lead ai non forti (review #753-M1)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. I commit di soli report compaiono tutti tranne l'ultimo.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -183,6 +188,31 @@ Cosa non ho verificato:
 Memoria: ho aggiunto la riga #757-M1 in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho messa in stage, senza committare come richiesto. Contiene una lezione nuova: dopo un merge della memoria, il numero della review si prende dalla coda del file fuso, non da quella del proprio lato.
 ```
 
+### Review #764-M1coord (merge di origin/main #369)
+
+## VERDETTO: APPROVATO
+
+Review #764-M1coord: merge in stage di origin/main 51b7d20 (PR #369 di M2, allucinazioni di Whisper) nel branch feat/merge-automatico-z1xjx2 (PR #370, HEAD 7c5f969a). Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), i finding aperti in reports/stato_progetto.md e la coda della memoria. Il numero più alto nel file fuso era #763, quindi questa review è la #764.
+
+Elementi esaminati:
+- `modules/voice/stt.py:92` — `TrascrizioneAllucinata` è una sottoclasse di `TrascrizioneIncerta`, introdotta dal lato main. Rischio esaminato: righe perse o alterate nella risoluzione del merge. Il file in stage è identico a MERGE_HEAD (diff di 0 righe), e lo stesso vale per `modules/voice/server.py`, `tests/test_unit_voice_stt.py` e `reports/ripartenza_m2.md`. Ho rieseguito `test_unit_voice_stt`: 140 passed. Esito: ok.
+- `gas.py:500` (contesto del diff di sessione rispetto a origin/main, invariato dal merge) — l'avviso «versione leggera scelta per un compito semplice» viene messo in `avviso_ripiego`. Rischio esaminato: che il server voce, toccato dall'altro lato, lo pronunci, violando la regola §8 «riga nel testo, mai a voce». `modules/voice/server.py` non cita mai `avviso_ripiego`: lo usano solo la CLI (`gas.py:6727`) e Telegram. Esito: ok.
+- `modules/telegram/bot.py:186` (contesto del diff di sessione, invariato) — il bot cattura `TrascrizioneIncerta`, quindi copre anche la nuova sottoclasse `TrascrizioneAllucinata` di M2. Il commento modificato dalla #370 (bot.py:951) è disgiunto. Rischio esaminato: un'eccezione non gestita sul vocale Telegram dopo l'unione dei due lati. Esito: ok. Resta la riserva già tracciata R-761-1-M2 (BASSA): un vocale «Grazie» riceve «Non ho capito bene il vocale». È un cambio di comportamento noto, non nasce da questo merge.
+- `tests/test_unit_notte.py:2228` (contesto del diff di sessione) — le nuove asserzioni sul testo Telegram con la riga «versione leggera» non dipendono dallo strato STT. Esito: ok.
+
+Controlli meccanici:
+- Merge-base 904d9d6. Il lato main tocca solo voice/stt/test_voice_stt più i report; il lato #370 tocca solo gas.py, bot.py, test kernel/notte più i report. I file di codice sono disgiunti.
+- `git ls-files -u` è vuoto, non ci sono marcatori di conflitto tra le righe aggiunte (0) e `--check` è pulito.
+- `reports/stato_progetto.md` e `.claude/agents/memoria_revisore.md` in stage contengono solo aggiunte rispetto a ENTRAMBI i lati (0 righe tolte contro HEAD e contro MERGE_HEAD). L'unione è senza perdite e le righe #761–#763-M2 non hanno doppioni.
+- Le cifre dei test sono parte rieseguite, parte dichiarate. Rieseguito da me: stt 140 passed. Dichiarati dal chiamante e non rieseguiti: kernel 1134 PASS, pytest voce e Telegram 396 passed.
+
+Rischi esclusi, cioè cose che non ho verificato:
+- Non ho rieseguito né la suite kernel completa né i test `-k browser`: mi baso sui numeri del chiamante, e i file di codice dei due lati non si toccano.
+- Non ho verificato il comportamento reale col microfono, con Groq o su VPS: non è riproducibile in questo ambiente.
+- Non ho confrontato i patch-id commit per commit: ho usato al loro posto il diff per file contro MERGE_HEAD e HEAD, che dà lo stesso risultato sui file non in conflitto.
+
+Memoria: ho aggiunto la riga `#764-M1coord — 2026-11-11 — APPROVATO — …` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho messa in stage. Come richiesto non ho committato e non ho lanciato commit_memoria_revisore.sh. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1119 PASS / 0 FAIL (main a0c200c, container) → 1134 PASS / 0 FAIL (rilanciato da M1 dopo il commit d5773ec1 e di nuovo dopo il merge di #368). Dopo il merge: `python -m pytest -q tests/test_unit_voce_ascolto.py tests/test_unit_telegram_voce.py tests/test_unit_notte.py -k "not browser"` → 583 passed.
@@ -197,10 +227,11 @@ Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed e
 ## §6 STATO CI
 
 CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumento GitHub sulla PR #370:
-- e9b74f59: unit-suite, handoff-check, verifica-bot success (check suite completata).
-- e761eefc: handoff-check e verifica-bot success; check suite completata.
-- d5773ec1, fabf2e9: nessuna run propria (pushati insieme al commit di testa successivo).
-- Merge di #368 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- 7c5f969a: handoff-check, verifica-bot success (APPROVATO CON RISERVE, BASSE/COSMETICHE); unit-suite in corso alla scrittura.
+- f5ea9b64: handoff-check failure (§4 senza citazioni, chiuso in 7c5f969a); verifica-bot annullata (head cambiata).
+- e9b74f59: unit-suite, handoff-check, verifica-bot success.
+- Gli altri commit della sessione: nessuna run propria (pushati insieme al commit di testa successivo).
+- Merge di #369 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -208,5 +239,6 @@ CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumen
 - Ve #370 V-2 / bot #370 V-1/V-2 BASSE — buchi del pin anonimo: lapidi dei lead fusi, parole di prossima_azione/note, nomi corti.
 - Bot #370 V-3 COSMETICA — commento a gas.py ~4002 non corrisponde al codice.
 - Limite noto del pin anonimo: nel testo del diario non si cercano nomi più corti di 3 caratteri né parole più corte di 4.
+- Bot #370 4° giro V-1 BASSA: anche `lezioni_pin` arriva intero ai cervelli non forti e può nominare un lead: entra nel blocco esteso (R-753-M1-A, decisione «sì» dell'operatore). Ve #370 3° giro: accenti/translitterazioni e telefoni senza spazi non riconosciuti dal pin anonimo (BASSE).
 - Numerazione delle review: la chat di Mani usa anch'essa il suffisso «-M1» (#754-#756-M1); #753-M1 compare due volte (una per chat). Processo, nessun effetto sul codice.
 - Riserve precedenti ancora aperte (R-744-M1-1..4, R-750-M1-2/3, ve #366 V-2/V-3): in reports/stato_progetto.md.
