@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #376 (https://github.com/Gasss23/Gas/pull/376). Tocca la macchina di controllo (gate, hook, CI): con il bot «neutral» o con riserve decide l'operatore, via M1. Revisore APPROVATO (#767-M1).
+1. Merge della PR #376 (https://github.com/Gasss23/Gas/pull/376). Tocca la macchina di controllo (gate, hook, CI): con il bot «neutral» o con riserve decide l'operatore, via M1. Revisore APPROVATO (#767-M1, #768-M1). Bot su 078ad0a: APPROVATO CON RISERVE, check neutral, nessuna ALTA/MEDIA; la sua V-1 BASSA è corretta in 6272544.
 
 ---
 
@@ -16,27 +16,28 @@
 - **B2 MEDIA — maiuscole in `tocca_macchina_bot` e `_nel_perimetro`**: `FATTA` — casefold; stesso bug trovato e corretto in `.claude/hooks/review_gate.sh` (grep -i, `GIT_ICASE_PATHSPECS=1`).
 - **B4 BASSA — `sottofondo-ferma` fuori dalla cartella di Gas**: `FATTA` — errore con la cartella da usare, exit 1.
 - **S1 — `ci.yml` senza `permissions`**: `FATTA` — `permissions: contents: read`.
+- **Bot #376 (078ad0a) e verifica esterna #376**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA (https://github.com/Gasss23/Gas/pull/376#issuecomment-6784648609). V-1 BASSA comune (B2 incompleto: il promemoria «FILE DI MOTORE» di gasmerge distingueva le maiuscole): `FATTA` in 6272544 (`shopt -s nocasematch` attorno al ciclo, test), review #768-M1 APPROVATO. V-3 cosmetica (docstring di un test hooks) corretta; V-2 cosmetica (§2 «17 +-») corretta qui sotto.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  3 +
+ .claude/agents/memoria_revisore.md |  4 +
  .claude/hooks/review_gate.sh       |  6 +-
  .github/workflows/ci.yml           |  5 +
  modules/sottofondo/__init__.py     |  7 +
  reports/diff_sessione.md           | 19 +-
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |  4 +-
- reports/ultimo_report.md           | 19 +-
+ reports/ultimo_report.md           | 20 +-
  scripts/bot_esito.py               | 10 +-
  scripts/check_verdetto.py          |  5 +-
- scripts/gasmerge.sh                | 13 +-
- tests/test_unit_gasmerge.py        | 55 +
+ scripts/gasmerge.sh                | 17 +-
+ tests/test_unit_gasmerge.py        | 63 +
  tests/test_unit_handoff_check.py   |  3 +
  tests/test_unit_hooks.py           | 19 +
- tests/test_unit_sottofondo.py      | 17 +-
+ tests/test_unit_sottofondo.py      | 17 +
  tests/test_unit_verifica_bot.py    |  2 +
 ```
 
@@ -45,6 +46,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+62725449 fix(audit 11 nov): bot #376 V-1 — promemoria «FILE DI MOTORE» di gasmerge senza maiuscole (M3)
+0d5ab5b7 chore(revisore): memoria review #768 — APPROVATO
+078ad0a7 docs(fine-task): audit 11 nov B1/B2/B4/S1, PR #376 (M3)
 8eb21c02 fix(audit 11 nov): gasmerge senza timeout sul Mac, maiuscole nei gate, sottofondo-ferma fuori cartella, CI in sola lettura (M3)
 a3e00420 chore(revisore): memoria review #767 — APPROVATO
 c2f8b03f chore(revisore): memoria review #766 — BOCCIATO
@@ -54,7 +58,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 8eb21c0: due giri, #766-M1 (BOCCIATO) → #767-M1 (APPROVATO). Verdetti integrali.
+Commit 8eb21c0: due giri, #766-M1 (BOCCIATO) → #767-M1 (APPROVATO). Commit 6272544 (bot #376 V-1): #768-M1 (APPROVATO). Verdetti integrali.
 
 ### Review #766-M1
 
@@ -125,10 +129,32 @@ Cosa NON ho verificato:
 
 Memoria del revisore: aggiunta la riga #767-M1 e committata da sola con lo script dedicato (commit a3e00420), in .claude/agents/memoria_revisore.md. Nessuna lezione nuova.
 
+### Review #768-M1 (bot #376 V-1)
+
+## VERDETTO: APPROVATO
+
+Il fix è corretto e ha un ambito stretto. Il test morde, la suite passa.
+
+**Elementi del diff esaminati**
+
+- `scripts/gasmerge.sh:237`: `shopt -s nocasematch` viene acceso subito prima del ciclo del promemoria «FILE DI MOTORE». Ho cercato un'uscita anticipata che lasci l'opzione accesa. Nel ciclo, che va da `scripts/gasmerge.sh:240` a `scripts/gasmerge.sh:249`, ci sono solo `continue` e `break`: niente `exit` né `return`, e niente comandi che possano far scattare `set -e`, perché i `[[ ]]` stanno dentro liste `&&` e `read` chiude il ciclo senza errore. Gli input arrivano con `<<<`, quindi non c'è una subshell. Dentro il ciclo nocasematch tocca anche il `case "$v" in */)`, ma quel modello non contiene lettere, quindi non cambia nulla. Esito: ok.
+- `scripts/gasmerge.sh:250`: `shopt -u nocasematch` viene spento subito dopo il `done`. In tutto il file ci sono solo questi due `shopt`, entrambi in questo diff, quindi nessun altro confronto `[[ ]]` o `case` del file è influenzato. Il rischio che resta è opposto, cioè più file segnalati come motore, e per un promemoria che non è un gate va nel verso sicuro. Esito: ok.
+- `tests/test_unit_gasmerge.py:537`: il test nuovo `test_maiuscole_nel_perimetro` copre `GAS.py` e `Modules/x.py`. Ho fatto una mutazione su una copia del repo nello scratchpad, togliendo `shopt -s`: 2 test falliti e 10 passati nella classe. Il test morde. Esito: ok.
+- `tests/test_unit_hooks.py:573`: cambia solo la docstring, che ora parla di `Brains/x.py` e quindi corrisponde al corpo del test. Nota cosmetica: la riga è molto lunga, ma non blocca. Esito: ok.
+- Suite `tests/test_unit_gasmerge.py` + `tests/test_unit_hooks.py`: 330 passati, rifatto da me.
+
+**Cosa NON ho verificato**
+
+Non ho eseguito il codice col bash 3.2 di macOS: qui non c'è. Che `nocasematch` esista in quella versione lo ricavo dalla documentazione di bash (l'opzione c'è dalla 3.1), non da una prova.
+
+**Memoria del revisore**
+
+Ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga `#768-M1 — 2026-11-11 — APPROVATO — … — nessuna lezione nuova`. Ho poi lanciato `scripts/commit_memoria_revisore.sh`, che non ha stampato nulla; `git status` non mostra più quel file come modificato. Il diff sotto review è intatto nel working tree: `scripts/gasmerge.sh`, `tests/test_unit_gasmerge.py` e `tests/test_unit_hooks.py` risultano ancora modificati.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Senza le correzioni (stash): 8 test falliscono in gasmerge/verifica_bot/handoff_check/sottofondo (`8 failed, 883 passed`); il test hook delle maiuscole (3 casi) e quello del file non tracciato falliscono senza il fix dell'hook; il vecchio ripiego `alarm; exec` dava rc 0 dopo 4 s su un figlio che ignora SIGALRM.
-- Con le correzioni: gasmerge + verifica_bot + handoff_check + sottofondo `891 passed`; hooks `215 passed`.
+- Con le correzioni: gasmerge + verifica_bot + handoff_check + sottofondo `891 passed`; hooks `215 passed`. Dopo 6272544: gasmerge + hooks `330 passed` (test nuovo `test_maiuscole_nel_perimetro`: 2 failed senza il fix).
 - Suite kernel (dopo il primo giro di correzioni; il secondo giro non tocca il codice letto dal kernel):
 
 ```
@@ -137,14 +163,15 @@ Memoria del revisore: aggiunta la riga #767-M1 e committata da sola con lo scrip
 
 ## §6 STATO CI
 
-PR #376 appena aperta sul commit 8eb21c0: run non ancora disponibile alla scrittura dell'handoff.
+Check della PR #376 letti alla scrittura dell'handoff, head 078ad0a (prima del push di questo giro): `handoff-check` success; `verifica-bot` neutral (PR sulla macchina del bot, verdetto APPROVATO CON RISERVE senza ALTA/MEDIA); `unit-suite` (run 42941195559) in corso secondo la verifica esterna, esito finale non letto.
 
 Mappatura commit→run:
-- 8eb21c0: run non ancora disponibile alla scrittura dell'handoff.
-- a3e0042, c2f8b03 (memoria revisore): nessuna run su questi SHA (pushati insieme a 8eb21c0).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- 078ad0a: run 42941195559 (CI) e run del bot su quello SHA.
+- 8eb21c0, a3e0042, c2f8b03: nessuna run su questi SHA (pushati insieme a 078ad0a).
+- 0d5ab5b, 6272544: nessuna run su questi SHA (escono col push di questo giro).
+- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - Limite noto (BASSA, #767-M1): il ripiego perl uccide solo il figlio diretto (gh pr checks non lancia sotto-processi).
-- Non verificato: macOS reale (perl di sistema, gh vero in `--watch`), run CI coi nuovi permessi.
+- Non verificato: macOS reale (perl di sistema, bash 3.2 con nocasematch, gh vero in `--watch`), esito finale di unit-suite coi nuovi permessi.
