@@ -1,203 +1,116 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-10 — chat Mani: «Hey Jarvis, …» detto d'un fiato non finisce più sotto «Sì, signore?»
+**Sessione:** 2026-11-11 — voce più veloce: connessione verso ElevenLabs riusata (chat M2)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #368 (https://github.com/Gasss23/Gas/pull/368): riserve solo BASSE; il merge lo esegue M1 col sì dell'operatore.
-2. Lanciare sul Mac i 3 comandi di lettura del log mandati a M1 e incollarne l'output (falsi «Hey Jarvis» o turni di seguito?): servono per i default più severi.
+1. Merge della PR #372 (https://github.com/Gasss23/Gas/pull/372): con verdetto del bot APPROVATO pulito e CI verde la mergia la chat (regola notturna di M1); con riserve resta pronta per il «mergia» del mattino.
+
+NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Richiesta d'un fiato (prova dal vivo 10/11, 6 attivazioni su 8 senza richiesta)**: `FATTA` — 0664325, review #753-M1 e #754-M1 APPROVATO CON RISERVE (MEDIA/BASSA chiuse, restano BASSE).
-- **V-1 MEDIA della verifica esterna #368 (coda di «…vis» ≥0,4 s + pausa → si inviava solo la coda)**: `FATTA` — af8ad62, review #755-M1 APPROVATO CON RISERVE (R-755-1-M1 BASSA).
-- **V-1 MEDIA / V-2 BASSA della verifica esterna #368, 2° giro (richiesta brevissima persa in silenzio; voce verso la fine dei 5 s scartata)**: `FATTA` — 2213519, review #756-M1 APPROVATO CON RISERVE (R-756-1-M1 BASSA, R-756-2-M1 COSMETICA).
-- **Scarto delle trascrizioni allucinate di Whisper**: `SALTATA — sta in modules/voice/stt.py (chat M2); scartare «grazie» toglierebbe anche quelli veri`.
-- **Default più severi contro le risposte non richieste**: `DEFERITA — prima i log del Mac richiesti all'operatore via M1`.
+- **Connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi**: `FATTA` (commit di codice nel §3).
+- **R-765-1-M2 MEDIA (doppio addebito), R-765-2-M2 MEDIA (connessione ferma), R-765-3-M2 BASSA (test)**: `FATTA` — chiuse prima del commit, review #768-M2.
+- **Misura del guadagno sul Mac**: `DEFERITA` — serve la rete vera.
+- **Latenza del cervello (prima frase 5-9 s)**: `DEFERITA` — streaming da `claude -p` in `brains/`/`gas.py`, fetta separata.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- clients/voice/ascolto.py           |  91 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
- reports/diff_sessione.md           |  19 ++++++++-----------
+ .claude/agents/memoria_revisore.md |   3 +++
+ modules/voice/tts.py               |  95 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  12 +++++-------
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  31 ++++++++++++-------------------
- scripts/voce/LEGGIMI.md            |   8 ++++++++
- tests/test_unit_voce_ascolto.py    | 120 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   1 +
+ reports/ultimo_report.md           |  16 +++++++---------
+ tests/test_unit_voice_tts.py       | 166 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: per la regola «n/d» dell'operatore (2026-10-24) la riga di `reports/handoff.md` dice `n/d` e manca la riga di totale.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-2213519 fix(voce): richiesta brevissima d'un fiato → «Sì, signore?» invece del silenzio; voce verso la fine dei 5 s non più scartata — V-1/V-2 verifica esterna #368 (2° giro), review #756-M1
-fd1e340 chore(revisore): memoria review #756 — APPROVATO CON RISERVE
-e4bc824 docs(fine-task): V-1 della verifica esterna #368 chiusa — PR #368
-af8ad62 fix(voce): dopo la parola solo la coda di «…vis» non si invia più — V-1 verifica esterna #368, review #755-M1
-8d60aac chore(revisore): memoria review #755 — APPROVATO CON RISERVE
-02937e5 docs(fine-task): richiesta d'un fiato — PR #368
-0664325 fix(voce): «Hey Jarvis, …» detto d'un fiato non finisce più sotto «Sì, signore?» — review #753-M1/#754-M1
-fa7f9f8 chore(revisore): memoria review #754 — APPROVATO CON RISERVE
-8599767 chore(revisore): memoria review #753 — APPROVATO CON RISERVE
+4f031dc perf(voce): connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi (una per thread, buttata dopo 20 s ferma, niente doppio addebito) — review #765-M2, #768-M2 (chat M2)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 0664325: verdetto integrale della review #753-M1 (primo giro) e della re-review #754-M1 (sul diff committato).
+### Review #768-M2 (seguito di #765-M2) — verdetto integrale
 
-## VERDETTO: APPROVATO CON RISERVE
+VERDETTO: APPROVATO
 
-Ho controllato il diff in staging (`git diff --cached`) sul branch claude/peaceful-lovelace-0w2b7q, 3 file. Prima ho letto CLAUDE.md, stato_progetto.md (solo le parti che servivano) e la mia memoria. Ho fatto girare tests/test_unit_voce_ascolto.py: **308 passed**. Con uno script mio nella cartella temporanea ho provato due casi limite.
+Review #768-M2, seguito di #765-M2, sul diff STAGED in /home/user/Gas-tts: tutte e tre le riserve sono chiuse. Ho controllato solo il delta, i mutanti e la sonda di #765.
 
-**Elementi del diff esaminati**
-- `clients/voice/ascolto.py:708` — `_voce_subito`: legge al massimo `blocchi_per(subito_s)` blocchi (5 nel main) e restituisce i blocchi solo con 3 blocchi forti di fila (INIZIO_VOCE_S). Rischi controllati:
-  - fine del flusso: restituisce None, e il chiamante suona la conferma; la conferma poi non legge più nulla, quindi nessun crash;
-  - il conto «di fila» si azzera su un blocco debole;
-  - con `subito_s<=0` esce subito: i test vecchi non cambiano.
-  - Esito: ok.
-- `clients/voice/ascolto.py:773` — `registra(subito)`. Ho controllato che `registra` (`clients/voice/ascolto.py:471`) riceva `iniziali` già validi: ci sono almeno 3 blocchi, quindi voce=True; nessuno svuotamento, quindi l'audio non si perde; in quel ramo non suona niente, quindi niente eco. Non può restituire None (voce=True), e il tetto max_s conta anche i blocchi iniziali (al massimo 5 su 187), quindi non cambia nulla. Esito: ok. Le due sonde però hanno trovato due problemi:
-  - **R-753-1-M1 (MEDIA)**: la sonda è PAROLA → 3 blocchi di voce (la coda di «…vis» se il rilevatore scatta prima della fine della parola) → pausa → richiesta. La conferma viene saltata a vuoto. Con una pausa più corta di silenzio_s (0,8 s) la richiesta si attacca e va bene (provato: un solo invio di 31 blocchi). Ma chi aspetta il «Sì, signore?» (che non arriva) per più di 0,8 s si vede chiudere la richiesta sul solo «…vis». Whisper riceve circa 0,3 s di audio, quindi è probabile un'allucinazione tipo «grazie». Nessun crash, ma è un caso d'uso rovinato. Prima di decidere una correzione va provato dal vivo. Il nuovo log aiuta a riconoscerlo: «voce subito…» seguito da «voce 0.2–0.3 s». Correzione possibile: nel ramo «subito», dare a `registra` la stessa tolleranza fino ad ATTESA_VOCE_S che ha già `dopo_parola`, finché non arrivano altri 3 blocchi forti.
-  - **R-753-2-M1 (BASSA)**: con voce che parte al 4° blocco (cioè dopo circa 0,16 s dalla rilevazione) la finestra finisce con di_fila=1-2. Risultato: la conferma suona sopra l'inizio della frase e quell'audio si butta (sonda: riprodotti [SI, A], inizio perso), cioè il difetto di prima, ristretto ma non chiuso. Correzione suggerita: se la finestra finisce con di_fila>0, continuare a leggere fino a INIZIO_VOCE_S (al massimo 2 blocchi in più).
-- `clients/voice/ascolto.py:785` — riga di log con voce e volume massimo espresso come multiplo della soglia. Rischi controllati:
-  - divisione per zero: protetta;
-  - nessun valore dell'audio nel log (test_log_senza_audio_ne_token passa);
-  - il «×» fuori ASCII su stderr non crea problemi: in Python stderr usa sempre backslashreplace.
-  - Costo: rms viene calcolato su ogni blocco della richiesta (fino a circa 187×1280 campioni in Python puro), cioè decine di ms prima dell'invio.
-  - Esito: ok, con una nota BASSA sul costo.
-- `clients/voice/ascolto.py:1202` — main passa `subito_s=SUBITO_S`; il test di main lo controlla. Esito: ok.
-- `tests/test_unit_voce_ascolto.py:2614` e `tests/test_unit_voce_ascolto.py:2632` — coprono: voce d'un fiato, pausa, blocchi forti non di fila, default 0, fine del flusso. Il controllo sulla lunghezza totale uccide il mutante `letti[-1:]`. Esito: ok. Manca un test sul bordo della finestra (R-753-2-M1).
+**Cosa ho esaminato nel diff**
+- `modules/voice/tts.py:139`: `resp.read()` ora sta in un try separato, dopo quello che può riprovare. Un errore durante la lettura chiude la connessione e risale come OSError (`:140-142`). Rischio esaminato: un secondo POST dopo un 200, cioè il doppio addebito di R-765-1-M2. Ho rilanciato la sonda di #765 (connessione che salta a metà dell'audio su una connessione riusata): ora dà `OSError: risposta rotta (ConnectionResetError)` senza nuova richiesta, mentre prima le richieste erano 3 per 2 frasi. Il mutante «read di nuovo nel try che riprova» viene preso dai test (1 failed). **Esito: ok, R-765-1-M2 chiusa.**
+- `modules/voice/tts.py:113`: una connessione inattiva da più di `_KEEPALIVE_INATTIVA_MAX_S` = 20 s (`:87`) viene chiusa e se ne apre una nuova, prima di decidere se la connessione è «riusata». Rischio esaminato: una connessione persa in silenzio che fa aspettare tutto il timeout (R-765-2-M2). Il tempo di ultimo uso (`usata`) si aggiorna solo a risposta letta e senza «Connection: close» (`:149`), e una connessione esiste solo dopo un successo, quindi il valore di partenza 0.0 non entra mai in gioco. I mutanti «soglia tolta», «soglia enorme» e «usata non aggiornato» vengono presi dai test (1, 1 e 6 failed). **Esito: ok, R-765-2-M2 chiusa.**
+- `modules/voice/tts.py:121-123`: il timeout viene aggiornato sulla connessione e sul socket riusato. Ora i mutanti «settimeout tolto» e «conn.timeout tolto» vengono presi dai test (1 failed ciascuno). **Esito: ok.**
+- `modules/voice/tts.py:135-137`: un'eccezione qualsiasi chiude la connessione. Il mutante che toglie il ramo `except BaseException` viene preso dai test (1 failed). **Esito: ok, R-765-3-M2 chiusa.**
 
-**Costo di 0,4 s**: si paga solo quando dopo la parola c'è silenzio (la conferma arriva 0,4 s più tardi). È accettabile per l'obiettivo, e il valore è una costante facile da regolare.
+**Test**
+- `tests/test_unit_voice_tts.py`: 37 passed.
+- Mutanti: tutti uccisi (7 sul codice nuovo più la variante «read lasciato anche fuori»).
 
-**Guardrail**: il diff non tocca kernel, `_get_window`, il tetto di 10 iterazioni né i provider. Nessun antipattern del Wall of Shame (è una lista di blocchi audio, non la cronologia). Le eccezioni restano gestite (§9).
+**Cosa non ho verificato**
+- Se 20 s bastano a coprire le pause fra le frasi di una risposta lunga sul server voce, e quanto tiene aperta una connessione inattiva ElevenLabs. Serve una prova dal vivo con chiave e rete vere, che qui non ho.
+- Non ho rilanciato le suite voice_server, telegram e contesto: il delta tocca solo tts.py e il suo test.
 
-**Rischio escluso**: comportamento con microfono e rilevatore openWakeWord veri sul Mac (quando scatta il rilevatore rispetto alla fine di «Jarvis», RMS reale della coda «-vis»). Non si può riprodurre in questo ambiente: R-753-1-M1 si può confermare o smentire solo con una prova dal vivo e il nuovo log.
+**Memoria del revisore**
+- Ho aggiunto la riga #768-M2, senza lezioni nuove, in /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-tts add`. Nessun commit.
 
-**Riserve da tracciare in stato_progetto.md**: R-753-1-M1 (MEDIA), R-753-2-M1 (BASSA), più la nota BASSA sul costo del calcolo rms nel log.
+### Review #765-M2 — verdetto integrale
 
-Riga contatore #753-M1 e una lezione nuova scritte in /home/user/Gas/.claude/agents/memoria_revisore.md e committate (8599767, solo quel file). Il diff in staging è intatto (3 file).
+VERDETTO: APPROVATO CON RISERVE
 
-## VERDETTO: APPROVATO CON RISERVE
+Review #765-M2 sul diff STAGED in /home/user/Gas-tts, branch perf/voce-tts-keepalive-m2: la connessione HTTPS verso ElevenLabs resta aperta e si riusa, una per thread.
 
-Re-review #754-M1 del diff in staging aggiornato (branch claude/peaceful-lovelace-0w2b7q, 3 file, +134/−6). Ho rifatto le due sonde di #753-M1 più quattro casi nuovi con uno script mio nella cartella temporanea; tests/test_unit_voce_ascolto.py: **310 passed**. Le due riserve di #753-M1 sono chiuse; restano solo note BASSE.
+Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la memoria del revisore e le voci di stato_progetto che riguardano la voce. La modifica non tocca la storia dei messaggi né `_get_window`, non simula i tool e non indebolisce né il tetto di 10 giri né quello di 8k caratteri. Nessuna eccezione arriva a far crashare il programma: i chiamanti gestiscono già OSError ed ElevenLabsTTSError.
 
-**Elementi del diff esaminati**
-- `clients/voice/ascolto.py:127` — SUBITO_S=0,6 s (8 blocchi) e SUBITO_VOCE_S=0,4 s (5 blocchi). **R-753-1-M1 chiusa.** Sonde con coda di 3 e di 4 blocchi forti seguita da una pausa di 1,2 s: la conferma suona e la richiesta vera arriva intera (20 blocchi inviati). Esito: ok.
-- `clients/voice/ascolto.py:711` — `_voce_subito`. Il ciclo ha un tetto finestra+servono (12 blocchi, circa 0,96 s): non può girare all'infinito. Rischi controllati:
-  - fine del flusso dentro l'allungamento: restituisce None, suona la conferma, nessun crash;
-  - un blocco debole durante l'allungamento azzera il conto e fa uscire dal ciclo;
-  - i blocchi restituiti sono almeno 5, più dei 3 di INIZIO_VOCE_S, quindi `registra` (`clients/voice/ascolto.py:780`) parte con voce=True.
-  - **R-753-2-M1 chiusa**: con voce che parte all'ultimo blocco della finestra non suona la conferma e la richiesta è intera (27 blocchi).
-  - Esito: ok.
-- `clients/voice/ascolto.py:792` — riga di log con voce e volume: invariata rispetto a #753. Esito: riserva BASSA (vedi sotto).
-- `tests/test_unit_voce_ascolto.py:2662` e `tests/test_unit_voce_ascolto.py:2672` — i due test nuovi coprono proprio le due riserve chiuse; per l'agente ognuno dei due mutanti fa fallire un test. Esito: ok.
-- `clients/voice/ascolto.py:1209` — main passa `subito_s=SUBITO_S`. Esito: ok.
+**Cosa ho esaminato nel diff**
+- `modules/voice/tts.py:75`: `threading.local()` tiene una connessione per thread. Rischio esaminato: stato o chiave condivisi fra thread. La chiave viaggia nell'header di ogni richiesta e non viene salvata. Il server voce gira su un solo thread (`HTTPServer` senza ThreadingMixIn, `modules/voice/server.py:1517`). Il bot Telegram sintetizza da un esecutore suo (`modules/telegram/bot.py:1017`). Il mutante «connessione globale invece che per thread» viene preso dai test. **Esito: ok.**
+- `modules/voice/tts.py:117`: nuovo tentativo solo se la connessione era riusata ed è il primo tentativo. Il mutante «riprova anche su una connessione nuova» viene preso dai test. **Esito: ok.**
+- `modules/voice/tts.py:114`: `resp.read()` sta dentro lo stesso try che fa ripartire il tentativo, e `ConnectionResetError` è nella lista degli errori «connessione chiusa». **Esito: riserva R-765-1-M2 (MEDIA), possibile doppio addebito.** Una sonda (connessione finta, nessuna chiamata reale) lo conferma: se la connessione salta a metà dell'audio dopo che ElevenLabs ha già risposto 200, parte un secondo POST, che ElevenLabs farebbe pagare di nuovo. Due frasi hanno prodotto 3 richieste. Correzione: riprovare solo se l'errore arriva prima dello status, cioè durante `request`/`getresponse`. Un errore durante `read()` deve risalire come OSError.
+- `modules/voice/tts.py:78`: l'elenco degli errori che fanno riprovare non comprende `TimeoutError`, ed è giusto, perché riprovare raddoppierebbe l'attesa. Però il bot Telegram fa una sola sintesi per risposta, a minuti di distanza, quindi riusa sempre una connessione rimasta ferma a lungo. Se il router, il cambio di Wi-Fi o la sospensione del Mac l'hanno persa senza avvisare, la richiesta aspetta tutto il timeout (`VOCE_TIMEOUT_S`) e fallisce, mentre prima funzionava. La stessa cosa vale per la conferma vocale col suo timeout di 5 s (`modules/voice/server.py:232`). **Esito: riserva R-765-2-M2 (MEDIA).** Correzione: buttare la connessione se è inutilizzata da più di circa 15-30 s. Il guadagno di velocità, che sta fra le frasi di una stessa risposta, resta intatto.
+- `modules/voice/tts.py:126`: se il server manda «Connection: close» la connessione si chiude. Il mutante viene preso da `tests/test_unit_voice_tts.py:549`. **Esito: ok.**
+- `modules/voice/tts.py:167`: il riuso vale solo senza `_conn_factory` e si spegne con `GAS_TTS_KEEPALIVE=0`. Il percorso vecchio è invariato e lo copre `tests/test_unit_voice_tts.py:559`. **Esito: ok.**
+- `modules/voice/tts.py:110`: il timeout viene aggiornato anche sul socket riusato. Il codice è corretto, ma sopravvivono i mutanti «settimeout tolto», «conn.timeout tolto» ed «except BaseException non chiude la connessione», perché nella connessione finta dei test `sock` è sempre None. **Esito: riserva R-765-3-M2 (BASSA), mutanti non coperti.**
 
-**Riserve (tutte BASSE)**
-1. Costo del calcolo rms nel log della richiesta: decine di ms prima dell'invio. Già tracciata dall'agente.
-2. Limite di progetto, non da correggere: la voce che parte DOPO la finestra perde ancora l'inizio sotto la conferma. Sonda: 17 blocchi inviati su 20 attesi. Vale anche per la voce a singhiozzo sul bordo (2 blocchi forti, 1 debole, poi voce): il conto torna a 0 e la conferma suona. Una finestra deve pur finire. Chi fa una pausa dopo «Hey Jarvis» paga ora 0,6 s di attesa in più prima della conferma (prima erano 0,4 s).
+**Altre note**
+- Socket lasciati aperti: quando un thread muore, la sua connessione viene chiusa dal garbage collector. Entrambi i chiamanti hanno thread che durano, quindi non c'è un accumulo.
+- Test: `tests/test_unit_voice_tts.py` dà 33 passed. Mutanti: 3 presi, 3 sopravvissuti (elencati sopra).
 
-**Guardrail**: kernel, `_get_window`, tetto di 10 iterazioni e provider non sono toccati; nessun antipattern del Wall of Shame; eccezioni gestite (§9).
+**Cosa non ho verificato**
+- Il comportamento reale di ElevenLabs: quanto tiene aperta una connessione inattiva e se manda «Connection: close». Serve una chiave e una rete vera, che qui non ho.
+- La perdita silenziosa della connessione dopo la sospensione del Mac o un cambio di Wi-Fi. Non si riproduce in questo ambiente; R-765-2-M2 è un ragionamento sul codice, non un caso osservato.
+- Non ho rilanciato le suite voice_server, stt, prova_voci, telegram_voce e contesto (428 passed secondo chi mi ha invocato), perché il diff tocca solo tts.py e il suo test.
 
-**Rischio escluso**: con microfono e rilevatore openWakeWord veri non ho potuto verificare che la coda reale di «…vis» resti sotto i 5 blocchi forti, né la durata reale delle pause tra «Hey Jarvis» e la richiesta. Non si può riprodurre qui: lo dirà la prova dal vivo, aiutata dal nuovo log.
-
-Riga contatore #754-M1 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (fa7f9f8, solo quel file). Il diff in staging è intatto.
-
-Commit af8ad62: verdetto integrale della review #755-M1.
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #755-M1 del diff staged su claude/peaceful-lovelace-0w2b7q (PR #368). Il diff tocca 2 file: clients/voice/ascolto.py e tests/test_unit_voce_ascolto.py. Prima della review ho letto CLAUDE.md (sez. 5), reports/stato_progetto.md (voce R8, PR #368) e la mia memoria. I test della voce danno **312 passed** (li ho rilanciati io).
-
-**Elementi del diff esaminati**
-- `clients/voice/ascolto.py:499` — con `subito=True` si parte con `dopo_parola=True` (si tollera il silenzio fino ad ATTESA_VOCE_S). Il rischio era che `voce` fosse False e la richiesta restasse sospesa: non succede, perché i blocchi iniziali da `_voce_subito` sono almeno 5, sopra i 3 di INIZIO_VOCE_S, quindi `voce` vale True. — ok
-- `clients/voice/ascolto.py:500` — `confermata = not dopo_parola`. Il rischio era cambiare il comportamento degli altri chiamanti, che non passano `subito`: controllati `clients/voice/ascolto.py:795`, `clients/voice/ascolto.py:822` e `clients/voice/ascolto.py:833`. Per loro `confermata` resta True, quindi nessuna differenza, anche nel ramo `rileva_parola`, che rimette `dopo_parola=True` ma non tocca `confermata`. — ok
-- `clients/voice/ascolto.py:539` — la conferma scatta con altri 3 blocchi forti di fila dopo quelli iniziali; `forti_dopo` riparte da 0 e i 5 blocchi iniziali non contano. Il rischio era perdere la richiesta detta d'un fiato. Se la voce continua, o dopo la pausa della virgola, arrivano 3 blocchi forti e la richiesta è confermata. Si perde solo una richiesta tutta dentro i 5 blocchi: è una scelta dichiarata dall'operatore (zero risposte non richieste). — ok
-- `clients/voice/ascolto.py:547` — se la richiesta non è confermata, log e None. Ho controllato le tre uscite del ciclo:
-  - fine del flusso (`b is None`) → None se non confermata;
-  - tetto `max_s` raggiunto senza conferma → None;
-  - `dal_la_parola` che scade senza blocchi forti → `dopo_parola=False`, poi esce con il silenzio normale (`max_silenzio`) → None.
-  Nessuna eccezione nuova e nessuno slicing della history. — ok, ma vedi riserva 1
-- `clients/voice/ascolto.py:791` — `conversazione` passa `subito=True` solo nel ramo «subito»; il ramo con conferma o bip resta com'era. — ok
-- `tests/test_unit_voce_ascolto.py:2683` — coda di 5 blocchi, poi 15 di silenzio (1,2 s, più del silenzio di fine richiesta da 0,8 s), poi 10 di voce: si invia la richiesta intera e il conteggio dei campioni è esatto. `tests/test_unit_voce_ascolto.py:2695`: con la sola coda non si invia niente, non si riproduce niente e il log c'è. Coprono la V-1. — ok
-
-**Riserve**
-1. **R-755-1-M1 (BASSA).** Se l'utente comincia a parlare proprio quando scade la tolleranza dopo la parola (circa 5 s, ATTESA_VOCE_S), la richiesta non viene mai confermata. Succede perché `dopo_parola` si spegne (`clients/voice/ascolto.py:527`) prima che i blocchi forti vengano contati (`clients/voice/ascolto.py:536`). La richiesta viene registrata tutta fino al silenzio e poi scartata, con il log fuorviante «solo un attimo di voce». Nel ramo con conferma lo stesso bordo dà None subito, senza registrare. Correzione possibile: contare `forti_dopo` anche quando `dopo_parola` si spegne mentre `forti_dopo > 0`, oppure scrivere un log diverso quando la tolleranza è scaduta. Va tracciata in stato_progetto.md.
-
-**Cosa NON ho verificato**
-- Il comportamento dal vivo sul Mac (microfono vero, durata reale della coda di «Jarvis», rumore ambientale): in questo ambiente non si può riprodurre.
-- I mutanti dichiarati non li ho rieseguiti: ho verificato la logica leggendo il codice e rilanciando la suite.
-
-**Memoria**
-Riga #755-M1 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script dedicato (commit 8d60aac). Nessuna lezione nuova.
-
-Commit 2213519: verdetto integrale della review #756-M1.
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Esito: la modifica è corretta. Restano una riserva BASSA (la conferma di ripiego arriva tardi) e una COSMETICA (a fine flusso suona comunque la conferma).
-
-Letture obbligatorie fatte: CLAUDE.md §5, la voce PR #368 in reports/stato_progetto.md e la coda della memoria (#753–#755-M1).
-
-**Elementi del diff esaminati**
-- `clients/voice/ascolto.py:540` — la condizione `if dopo_parola or not confermata:` fa contare i blocchi forti anche dopo la tolleranza, finché la richiesta non è confermata. Rischio esaminato: un cambio di comportamento per i chiamanti senza `subito`. Lì `confermata = not dopo_parola` vale True (`clients/voice/ascolto.py:500`), quindi la condizione si riduce a `dopo_parola`, come prima. Lo stesso vale per il ramo `rileva_parola`, che accende `dopo_parola` ma lascia `confermata=True`. Esito: ok.
-- `clients/voice/ascolto.py:548` — regola che chiude la registrazione col silenzio, quando la conferma arriva tardi. Rischio esaminato: il contatore `dal_la_parola` cresce a ogni blocco ed è sempre ≥ `silenzio`, quindi `dopo_parola` si spegne prima o nello stesso blocco. Se la voce riparte prima della scadenza, il primo blocco forte azzera il silenzio e la conferma arriva con 3 blocchi forti di fila anche oltre i 5 s. Se invece c'è stato solo silenzio, dopo la scadenza vale `max_silenzio`, la registrazione si chiude e torna None. Esito: ok.
-- `clients/voice/ascolto.py:794` — se `registra(subito, subito=True)` torna None si ripiega su `_conferma_o_bip()`, poi `_svuota()`, poi `registra()`. Rischi esaminati:
-  - Doppia conferma o eco: nel ramo «d'un fiato» non suona niente prima, quindi il ripiego suona una sola volta, e `_svuota()` dopo la conferma toglie l'eco come nel ramo normale. Ok.
-  - Fine flusso: sonda con il solo «pausa» e poi fine dei blocchi. Il risultato è `riprodotti == [b"SI"]`, nessun invio e niente crash, perché `_prossimo` torna None e il secondo `registra()` torna None. Riserva COSMETICA R-756-2-M1: alla chiusura del microfono suona un «Sì, signore?» inutile.
-  - Latenza: il ripiego scatta solo dopo ~5 s di silenzio (la soglia `max_attesa` vale finché `dopo_parola` è acceso). Con rumore a impulsi brevi (sonda: 2 blocchi di voce e 3 di silenzio, ripetuti) la richiesta non viene mai confermata e la registrazione può durare fino a `REGISTRAZIONE_MAX_S`=30 s prima della conferma. Nessun invio a Whisper. Riserva BASSA R-756-1-M1.
-- `tests/test_unit_voce_ascolto.py:2708` e `tests/test_unit_voce_ascolto.py:2719` — sono i due test nuovi. Rischio esaminato: che non proteggano davvero la modifica. Ho riprodotto i mutanti dichiarati. Con `if dopo_parola:` fallisce 1 test (`test_voce_verso_la_fine_della_tolleranza...`). Con il ripiego tolto ne falliscono 2 (`test_richiesta_brevissima...` e quello della sola coda a `tests/test_unit_voce_ascolto.py:2695`). Il file è stato ripristinato e il diff staged è invariato. Suite: 314 passed. Esito: ok.
-- `scripts/voce/LEGGIMI.md:39` — paragrafo «la frase era troppo corta (sotto circa due terzi di secondo)». La cifra è coerente: 5 blocchi d'un fiato più 3 blocchi di conferma fanno 0,64 s. Però il paragrafo non dice che la conferma arriva circa 5 s dopo (fa parte di R-756-1-M1).
-
-**Riserve da tracciare in stato_progetto.md**
-- **R-756-1-M1 BASSA**: la conferma di ripiego arriva solo dopo ~5 s di silenzio, o fino a 30 s con rumore a impulsi. Chi dice «Hey Jarvis, pausa» aspetta 5 s senza riscontro. Proposte:
-  - scrivere il ritardo nel LEGGIMI;
-  - oppure, in una fetta futura, chiudere prima la tolleranza quando non resta abbastanza voce per una conferma.
-- **R-756-2-M1 COSMETICA**: se il flusso finisce durante la tolleranza, suona comunque «Sì, signore?» prima di uscire. È innocuo.
-
-**Antipattern del Wall of Shame**: niente slicing della history (il codice è della voce e lo slicing `presi[-tieni:]` di blocchi audio era già presente), niente simulazione di tool. Nessun guardrail toccato.
-
-**Rischio escluso**: non ho verificato il comportamento dal vivo sul Mac (microfono reale, soglia `GAS_ASCOLTO_VOCE_RMS`, durata reale di un «pausa» detto di corsa). Non si riproduce in dev: la cifra di «due terzi di secondo» e l'accettabilità dei 5 s di attesa vanno provate dal vivo coi log.
-
-**Memoria**: aggiunta la riga #756-M1 a /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script dedicato (commit fd1e340). Nessuna lezione nuova.
+**Memoria del revisore**
+- Ho aggiunto la riga #765-M2 e una lezione nuova in /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git add`. Nessun commit, come richiesto.
+- La sonda è in /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/sonda.py.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel non toccato. `tests/test_unit_voce_ascolto.py`: da 303 (base a0c200c) a 314 casi (310 dopo 0664325, 312 dopo af8ad62, 314 dopo 2213519).
-
-```
-314 passed in 29.58s
-```
-
-Mutanti presi: ramo «subito» tolto, conto di fila senza azzeramento, `return letti[-1:]`, `servono = INIZIO_VOCE_S` (coda di «…vis»), niente allungamento al bordo della finestra. Su af8ad62: `confermata` sempre True, `dopo_parola` iniziale False, `registra` senza `subito=True` → presi. Su 2213519: `if dopo_parola:` al posto di `or not confermata` → 1 failed; ripiego sulla conferma tolto → 2 failed. Equivalente: `return None` → `break` su fine flusso.
+- gas.py non toccato. Test nuovi in `tests/test_unit_voice_tts.py` (11).
+- `python -m pytest -q tests/test_unit_voice_tts.py`: 37 passed.
+- `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_prova_voci.py tests/test_unit_telegram_voce.py tests/test_unit_voice_contesto.py -k "audit or not browser"` (prima delle correzioni R-765, che toccano solo tts.py): 428 passed.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container (GitHub passa dallo strumento MCP). Mappatura commit→run:
-- e4bc824 (testa precedente della PR #368): handoff-check, smista e verifica success; verifica-bot FAILURE (finding MEDIA del bot = V-1 del 2° giro, corretta in 2213519); unit-suite in corso alla verifica esterna.
-- 8599767, fa7f9f8, 0664325, 02937e5, 8d60aac, af8ad62, fd1e340: nessuna run conclusa su questo SHA letta qui (commit intermedi o sostituiti da push successivi).
-- 2213519 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA con `gh` (non autenticato nel cloud).
+- Commit di codice: run non ancora disponibile alla scrittura dell'handoff (pushato prima di aprire la PR #372).
+- Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Verifica esterna #368 ([commento](https://github.com/Gasss23/Gas/pull/368#issuecomment-6774438194), APPROVATO CON RISERVE): V-1 MEDIA CHIUSA in af8ad62; V-2 BASSA: falso «Hey Jarvis» + sottofondo continuo ≥0,4 s → niente conferma e registrazione silenziosa (prima la conferma avvisava; la registrazione del sottofondo c'era anche prima), legata alla priorità «risposte non richieste»; V-3 BASSA: i blocchi della finestra subito includono il silenzio iniziale; V-4 COSMETICA (handoff).
-- R-755-1-M1 BASSA: CHIUSA in 2213519 (V-2 del 2° giro).
-- Verifica esterna #368 2° giro ([commento](https://github.com/Gasss23/Gas/pull/368#issuecomment-6774749197)): V-1 MEDIA e V-2 BASSA CHIUSE in 2213519; V-3 BASSA: i blocchi iniziali (silenzio e coda di «…vis») vanno a Whisper, «Vis, pausa» può non essere preso come comando; SUBITO_S arrotondato a 8 blocchi; V-4 COSMETICA LEGGIMI: CHIUSA.
-- R-756-1-M1 BASSA: la conferma di ripiego arriva dopo ~5 s di silenzio (fino a 30 s con rumore a impulsi).
-- R-756-2-M1 COSMETICA: a fine flusso durante la tolleranza suona comunque «Sì, signore?».
-- #754-M1 BASSA: costo del calcolo rms su ogni blocco per il log della richiesta (decine di ms prima dell'invio).
-- #754-M1 BASSA (limite di progetto): voce che parte dopo la finestra di 0,6 s perde ancora l'inizio sotto la conferma; chi fa una pausa dopo «Hey Jarvis» sente la conferma 0,6 s più tardi.
-- Da provare dal vivo: che la coda reale di «…vis» resti sotto 0,4 s di voce continua.
-- Aperto (priorità ALTA dell'operatore): risposte non richieste — attesa dei log del Mac.
-- Le altre riserve sono in `reports/stato_progetto.md`.
+- R-765-1-M2 MEDIA, R-765-2-M2 MEDIA, R-765-3-M2 BASSA: CHIUSE (review #768-M2).
+- Non verificato: guadagno reale e durata delle connessioni inattive di ElevenLabs (prova sul Mac).

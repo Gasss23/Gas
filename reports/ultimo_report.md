@@ -1,18 +1,16 @@
-# Ultimo report — 2026-11-10 — richiesta d'un fiato non più persa sotto «Sì, signore?» (chat Mani)
+# Ultimo report — 2026-11-11 — voce più veloce: connessione verso ElevenLabs riusata (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #368 (https://github.com/Gasss23/Gas/pull/368): riserve solo BASSE; il merge lo fa M1 col sì dell'operatore.
-2. Lanciare sul Mac i 3 comandi di lettura del log mandati a M1 (falsi «Hey Jarvis» o turni di seguito?) e incollarne l'output: servono per i default più severi.
+1. PR #372: merge con verdetto del bot APPROVATO pulito e CI verde (regola notturna di M1); con riserve resta pronta per il mattino.
 
 ## Esito
 
-- **PR #361**: MERGIATA (da M1).
-- **Richiesta d'un fiato (prova dal vivo del 10/11, 6 attivazioni su 8 senza richiesta)**: FATTA. In `clients/voice/ascolto.py` dopo la parola si ascolta 0,6 s; con 0,4 s di voce continua niente «Sì, signore?» e si registra da lì. Log della richiesta con secondi di voce e volume massimo in multipli della soglia. Test dell'ascolto: 310 passed (7 nuovi, mutanti presi). Review #753-M1 e #754-M1 APPROVATO CON RISERVE, riserve MEDIA/BASSA chiuse, restano BASSE.
-- **V-1 MEDIA della verifica esterna #368**: FATTA (af8ad62). Una coda di «…vis» lunga seguita da una pausa faceva inviare solo la coda; ora si aspetta altra voce continua fino a 5 s, altrimenti non si invia niente. Test 312 passed. Review #755-M1 APPROVATO CON RISERVE (R-755-1-M1 BASSA).
-- **V-1 MEDIA / V-2 BASSA della verifica esterna #368, 2° giro**: FATTA (2213519). Una richiesta brevissima d'un fiato («Hey Jarvis, pausa») spariva in silenzio: ora suona «Sì, signore?» e si può ripetere; la voce che parte verso la fine dei 5 s non viene più scartata. Test 314 passed. Review #756-M1 APPROVATO CON RISERVE (R-756-1-M1 BASSA: la conferma di ripiego arriva dopo ~5 s).
-- **Scarto delle trascrizioni allucinate («grazie» su audio quasi vuoto)**: SALTATA — sta in modules/voice/stt.py (chat M2) e scartare «grazie» toglierebbe anche quelli veri; proposto a M1.
-- **Default più severi contro le risposte non richieste**: DEFERITA — prima i log del Mac.
+- **Connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi della risposta a voce**: FATTA. Una per thread; buttata dopo 20 s ferma; nuovo tentativo solo se la connessione riusata risulta chiusa prima della risposta (niente doppio addebito); `GAS_TTS_KEEPALIVE=0` la spegne.
+- Review #765-M2 APPROVATO CON RISERVE (R-765-1 MEDIA doppio addebito, R-765-2 MEDIA connessione ferma, R-765-3 BASSA test: tutte chiuse prima del commit), #768-M2 APPROVATO.
+- Test: tts 37 passed; voice_server, stt, prova_voci, telegram_voce, contesto 428 passed.
+- **Misura del guadagno reale sul Mac** (`gas.voce.tempi`): DEFERITA — serve la rete vera.
+- **Latenza del cervello (5-9 s alla prima frase)**: DEFERITA — sta in `brains/` e `gas.py` (streaming della prima frase da `claude -p`): fetta separata, da concordare.
 
 ## Anomalie
 
