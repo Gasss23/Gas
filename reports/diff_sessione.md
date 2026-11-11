@@ -1,10 +1,9 @@
-# Diff della sessione — 2026-11-10 — chat Mani, richiesta d'un fiato
+# Diff di sessione — 2026-11-10 — voce: allucinazioni di Whisper (chat M2)
 
-File toccati (base main a0c200c, dopo il merge della PR #361):
-- `clients/voice/ascolto.py`: `_voce_subito` (SUBITO_S 0,6 s, SUBITO_VOCE_S 0,4 s) prima della conferma; `subito_s` nel costruttore (default 0) e in main; log della richiesta con voce e volume; `registra(subito=True)` invia solo se dopo i blocchi iniziali arriva altra voce continua (V-1 verifica esterna #368); se non arriva, ripiego su «Sì, signore?» e nuova registrazione (2° giro).
-- `tests/test_unit_voce_ascolto.py`: 11 test nuovi o aggiornati e il controllo di main.
-- `scripts/voce/LEGGIMI.md`: paragrafo «Richiesta d'un fiato» (anche: frase troppo corta → conferma, ripetila).
-- `.claude/agents/memoria_revisore.md`: righe #753-M1, #754-M1, #755-M1, #756-M1 e lezione.
-- `reports/*`: report di fine task e voce in stato_progetto.
+- `modules/voice/stt.py` — elenco delle allucinazioni allargato, funzione `allucinazione`, eccezione `TrascrizioneAllucinata` (sottoclasse di `TrascrizioneIncerta`).
+- `modules/voice/server.py` — allucinazione o trascrizione vuota → risposta vuota «fine», nessun turno, log senza testo.
+- `tests/test_unit_voice_stt.py` — test del filtro, di `transcribe_audio` e del server; test esistenti aggiornati (vuota = silenzio).
+- `.claude/agents/memoria_revisore.md` — righe #761, #762-M2.
+- `reports/*` — report di fine task e stato.
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.

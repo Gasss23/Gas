@@ -579,7 +579,7 @@ class TestVoiceHandlerRouting:
             with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key", "GAS_VOICE_MAX_TURNI_ORA": "2"}):
                 os.environ.pop("GAS_VOCE_FORTE", None)
                 stati = [_post_raw(self.port, wav, hdrs)[0] for _ in range(3)]
-        assert stati == [200, 400, 429], stati   # uso (istruzione), vuota (400), tetto
+        assert stati == [200, 200, 429], stati   # uso (istruzione), vuota (silenzio, 10 nov), tetto
         assert stt.call_count == 2
         assert chiamate == []
 
@@ -901,8 +901,8 @@ class TestVoiceHandlerRouting:
                     assert "non_capito" not in corpo
                 elif isinstance(effetto, Exception):
                     assert r.status == 200 and comando is None and corpo["non_capito"] is True
-                else:
-                    assert r.status == 400 and comando is None
+                else:  # allucinazioni 10 nov: vuota → silenzio anche con l'attivazione
+                    assert r.status == 200 and comando == "fine" and corpo["content"] == ""
 
     def test_v15_il_turno_viene_chiuso_subito(self):
         """R-677-1-M2: dopo il «final» il server chiude il generatore del kernel (il turno
@@ -1257,14 +1257,17 @@ class TestVoiceHandlerRouting:
                 status, resp = _post_raw(self.port, wav, hdrs)
         assert status == 502
 
-    def test_empty_transcription_returns_400(self):
-        """Groq ritorna testo vuoto (silenzio) → 400."""
+    def test_empty_transcription_chiude_in_silenzio(self):
+        """Groq ritorna testo vuoto (silenzio) → risposta vuota «fine», nessun turno
+        (allucinazioni 10 nov: prima era un errore 400)."""
         wav = _fake_wav()
         hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav))}
+        self.kernel.kw = "NESSUN TURNO"
         with patch("modules.voice.server.transcribe_audio", return_value=""):
             with patch.dict(os.environ, {"GROQ_API_KEY": "fake-key"}):
                 status, resp = _post_raw(self.port, wav, hdrs)
-        assert status == 400
+        assert status == 200 and resp["content"] == "" and resp["fine"] is True
+        assert self.kernel.kw == "NESSUN TURNO"
 
     def test_transcribed_text_passed_to_kernel(self):
         """Il testo trascritto viene passato al kernel esattamente."""
@@ -1296,3 +1299,78 @@ def test_audit_b3_risposta_rotta_diventa_oserror():
             raise http.client.BadStatusLine("x")
     with pytest.raises(OSError, match="BadStatusLine"):
         transcribe_audio(_fake_wav(), "audio.wav", "k", _conn_factory=_factory(_Male()))
+
+
+
+# ── Allucinazioni di Whisper (10 nov, operatore via M1) ──
+
+@pytest.mark.parametrize("testo", ["Grazie.", "grazie", "Grazie!", "Grazie mille.", "…", "...",
+                                   ".", " ? ", "Sottotitoli a cura di QTSS",
+                                   "Grazie per la visione.", "Sottotitoli creati dalla comunità",
+                                   "«Grazie»", "GRAZIE A TUTTI.",
+                                   "\u201cGrazie.\u201d", "Grazie per l\u2019attenzione.",
+                                   "\u2014 Grazie! \u2014"])  # R-761-3-M2
+def test_allucinazioni_note(testo):
+    from modules.voice.stt import allucinazione
+    assert allucinazione(testo), testo
+
+
+@pytest.mark.parametrize("testo", ["Grazie, ora segna il lead Rossi", "Gas, che ore sono?",
+                                   "Sì.", "No", "Dimmi i lead di oggi", "3"])
+def test_non_allucinazioni(testo):
+    from modules.voice.stt import allucinazione
+    assert not allucinazione(testo), testo
+
+
+def test_transcribe_alza_trascrizione_allucinata():
+    """«Grazie.» su audio corto (caso reale da 1,1 s) → TrascrizioneAllucinata, che resta
+    una TrascrizioneIncerta per chi la prende già (bot Telegram)."""
+    from modules.voice.stt import TrascrizioneAllucinata, TrascrizioneIncerta
+    for testo in ("Grazie.", "...", "Sottotitoli a cura di QTSS"):
+        conn = _FakeConn(200, json.dumps({"text": testo}))
+        with pytest.raises(TrascrizioneAllucinata) as e:
+            transcribe_audio(_fake_wav(), "a.wav", "k", _conn_factory=_factory(conn))
+        assert isinstance(e.value, TrascrizioneIncerta)
+
+
+class TestAllucinazioniServer:
+    """Il server tace sulle allucinazioni: niente turno, niente «Non ho capito», niente
+    testo nel log, con o senza parola di attivazione."""
+
+    def setup_method(self):
+        self.kernel = _MockKernel()
+        self.server, self.port = _make_server(self.kernel, _TOKEN)
+
+    def teardown_method(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    @pytest.mark.parametrize("seguito", [False, True])
+    @pytest.mark.parametrize("formato", ["audio+pezzi", "audio+testo", ""])
+    def test_silenzio_senza_turno(self, seguito, formato, caplog):
+        import http.client
+        import logging as _lg
+        from modules.voice.stt import TrascrizioneAllucinata
+        wav = _fake_wav()
+        hdrs = {**_AUTH, "Content-Type": "audio/wav", "Content-Length": str(len(wav)),
+                "X-Gas-Formato": formato}
+        if seguito:
+            hdrs["X-Gas-Seguito"] = "1"
+        self.kernel.kw = "NESSUN TURNO"
+        caplog.set_level(_lg.INFO, logger="modules.voice.server")
+        with patch("modules.voice.server.transcribe_audio",
+                   side_effect=TrascrizioneAllucinata("Grazie SEGRETO.", "frase tipica")):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}):
+                with patch("modules.voice.server.synthesize_speech",
+                           side_effect=AssertionError("nessuna voce")):
+                    c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                    c.request("POST", "/voice", body=wav, headers=hdrs)
+                    r = c.getresponse()
+                    corpo = json.loads(r.read())
+                    comando = r.getheader("X-Gas-Comando")
+                    c.close()
+        assert r.status == 200 and comando == "fine"
+        assert corpo["content"] == "" and corpo["fine"] is True
+        assert "capito" not in corpo and "audio" not in corpo and "non_capito" not in corpo
+        assert self.kernel.kw == "NESSUN TURNO"
+        assert "SEGRETO" not in caplog.text and "scartata in silenzio" in caplog.text
