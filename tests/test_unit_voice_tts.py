@@ -547,7 +547,8 @@ def test_keepalive_connessione_nuova_che_fallisce_non_riprova(conn_viva):
 
 
 def test_keepalive_errore_http_e_will_close(conn_viva):
-    """Un 4xx risale come ElevenLabsTTSError; «Connection: close» del server fa chiudere."""
+    """«Connection: close» del server fa chiudere la connessione (il 4xx è in
+    test_keepalive_status_non_200)."""
     synthesize_speech("Uno.", "k", "v")
     _ConnViva.create[0].will_close = True
     synthesize_speech("Due.", "k", "v")
@@ -639,3 +640,19 @@ def test_keepalive_eccezione_qualsiasi_chiude(conn_viva):
     assert _ConnViva.create[0].chiusa
     synthesize_speech("Tre.", "k", "v")
     assert len(_ConnViva.create) == 2
+
+
+
+def test_keepalive_errore_dopo_l_invio_non_riprova(conn_viva):
+    """V-1 bot #372: se la connessione riusata si chiude DOPO l'invio (in getresponse) non
+    si rifà la richiesta: ElevenLabs potrebbe averla già fatta pagare."""
+    import http.client
+    synthesize_speech("Uno.", "k", "v")
+    conn = _ConnViva.create[0]
+
+    def _chiusa_dopo_invio():
+        raise http.client.RemoteDisconnected("chiusa dopo l'invio")
+    conn.getresponse = _chiusa_dopo_invio
+    with pytest.raises(OSError, match="RemoteDisconnected"):
+        synthesize_speech("Due.", "k", "v")
+    assert conn.richieste == 2 and len(_ConnViva.create) == 1 and conn.chiusa

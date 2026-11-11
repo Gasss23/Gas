@@ -104,9 +104,10 @@ def _chiudi_conn_locale() -> None:
 
 def _post_riusando(path: str, body: bytes, headers: dict, timeout: float) -> "tuple[int, bytes]":
     """POST su una connessione HTTPS tenuta aperta (una per thread). Si riprova UNA volta,
-    con una connessione nuova, solo se quella riusata risulta chiusa PRIMA di avere lo stato
-    della risposta (R-765-1-M2: un errore mentre arriva l'audio non si ripete, ElevenLabs
-    avrebbe già fatto pagare la frase). Ogni errore chiude la connessione e risale come
+    con una connessione nuova, solo se quella riusata risulta chiusa mentre si INVIA la
+    richiesta (V-1 bot #372, R-765-1-M2: dopo l'invio un errore non si ripete, ElevenLabs
+    potrebbe aver già elaborato e fatto pagare la frase). Rischio residuo dichiarato: una
+    connessione riusata chiusa dal server dopo l'invio dà un errore invece di un tentativo. Ogni errore chiude la connessione e risale come
     OSError (o HTTPException → OSError)."""
     for tentativo in (1, 2):
         conn = getattr(_conn_locale, "conn", None)
@@ -123,11 +124,23 @@ def _post_riusando(path: str, body: bytes, headers: dict, timeout: float) -> "tu
             conn.sock.settimeout(timeout)
         try:
             conn.request("POST", path, body=body, headers=headers)
-            resp = conn.getresponse()
         except _CONN_CHIUSA as exc:
+            # V-1 bot #372: si riprova SOLO se la richiesta non è partita (fase di invio);
+            # dopo l'invio ElevenLabs potrebbe averla già elaborata e fatta pagare
             _chiudi_conn_locale()
             if riusata and tentativo == 1:
                 continue
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
+        except http.client.HTTPException as exc:
+            _chiudi_conn_locale()
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
+        except BaseException:
+            _chiudi_conn_locale()
+            raise
+        try:
+            resp = conn.getresponse()
+        except (http.client.HTTPException, OSError) as exc:
+            _chiudi_conn_locale()  # richiesta già inviata: niente nuovo tentativo
             raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
         except http.client.HTTPException as exc:
             _chiudi_conn_locale()
