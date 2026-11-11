@@ -20,11 +20,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
- clients/voice/ascolto.py           | 39 +++++++++++++++++++++++++++++++++++++++
- scripts/voce/LEGGIMI.md            |  4 ++++
- scripts/voce/diagnosi_ascolto.py   | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- tests/test_unit_voce_ascolto.py    | 91 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |   2 ++
+ clients/voice/ascolto.py           |  39 +++++++++++++++++++++++++
+ reports/diff_sessione.md           |  18 +++++-------
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   1 +
+ reports/ultimo_report.md           |  24 +++++----------
+ scripts/voce/LEGGIMI.md            |   4 +++
+ scripts/voce/diagnosi_ascolto.py   |  63 ++++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_voce_ascolto.py    |  91 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -32,6 +36,7 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+dee51752 docs(fine-task): voce — log «parola quasi sentita» (review #791-M1coord)
 aafe58b1 feat(voce): log «parola quasi sentita» per tarare la soglia su dati veri + diagnosi — review #791-M1coord
 6c11f0e8 chore(revisore): memoria review #791 — APPROVATO CON RISERVE
 ```
