@@ -570,7 +570,7 @@ class TestReviewGateFailClosed:
         assert result.returncode == 2, (result.returncode, result.stderr)
 
     def test_gate_maiuscole_non_tracciato_blocca(self, tmp_path):
-        """Review #766-M1: un GAS.py NON tracciato accanto a un diff del motore in stage blocca
+        """Review #766-M1: un file del motore NON tracciato con maiuscole diverse (Brains/x.py) accanto a un diff del motore in stage blocca
         come un gas.py (pathspec senza maiuscole)."""
         _init_repo(tmp_path)
         self._stage(tmp_path, "gas.py", "# revisionato\n")

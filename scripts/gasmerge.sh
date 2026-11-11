@@ -232,6 +232,9 @@ git cat-file -e "refs/remotes/origin/main:.claude/perimetro_review.txt" 2>/dev/n
   || git cat-file -e "$HEAD_SHA:.claude/perimetro_review.txt" 2>/dev/null \
   || PERIM_LETTO=0
 ENGINE=""
+# Bot #376 V-1: confronto col perimetro senza maiuscole (disco del Mac case-insensitive:
+# GAS.py è gas.py). nocasematch esiste anche nel bash 3.2 di macOS (al contrario di ${f,,}).
+shopt -s nocasematch
 # R-167-1: anche qui `read` in C (stessa classe del gate IP: un path che finisce con un
 # byte non UTF-8 si mangerebbe il newline e il file di motore seguente).
 while IFS= LC_ALL=C read -r f; do
@@ -244,6 +247,7 @@ while IFS= LC_ALL=C read -r f; do
     esac
   done <<< "$PERIM_VOCI"
 done <<< "$ENGINE_DIFF"
+shopt -u nocasematch
 if [ "$PERIM_LETTO" -eq 0 ]; then
   echo "ATTENZIONE: .claude/perimetro_review.txt illeggibile su main e sul branch — ogni file conta come motore"
 fi

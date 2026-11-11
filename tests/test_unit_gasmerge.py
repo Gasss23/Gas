@@ -534,6 +534,14 @@ class TestPerimetroPromemoria:
         sez = self._sezione(tmp_path, work)
         assert "clients/caffè.py" in sez and "doc-only" not in sez, sez
 
+    @pytest.mark.parametrize("nome", ["GAS.py", "Modules/x.py"])
+    def test_maiuscole_nel_perimetro(self, tmp_path, nome):
+        """Bot #376 V-1: GAS.py o Modules/x.py contano come motore (disco del Mac
+        case-insensitive), il promemoria per l'operatore compare."""
+        work = self._repo(tmp_path, "gas.py\nmodules/\n", {nome: "x\n"})
+        sez = self._sezione(tmp_path, work)
+        assert nome in sez and "doc-only" not in sez, sez
+
     def test_tag_origin_main_non_dirotta_il_promemoria(self, tmp_path):
         """R-144-1 (verifica esterna #122): un tag "origin/main" sul branch non svuota il diff."""
         work = self._repo(tmp_path, "gas_identity.md\n", {"gas_identity.md": "x\n"})
