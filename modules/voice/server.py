@@ -216,11 +216,24 @@ def _senza_accenti(testo: str) -> str:
 _RISPOSTE_BREVI_NORM = frozenset(_senza_accenti(p) for p in _RISPOSTE_BREVI_SEGUITO)
 
 
+# Filtro 2 (11 nov, operatore via M1): nel seguito una frase fatta SOLO di intercalari
+# («Ehm, allora…», «Mah, boh», «Beh insomma») è parlato della stanza, non una richiesta.
+_INTERCALARI = frozenset((
+    "ehm", "eh", "ehh", "mh", "mhm", "mm", "mmm", "uhm", "um", "uh", "ah", "oh", "boh", "mah",
+    "beh", "bah", "allora", "cioe", "insomma", "tipo", "vabbe", "vabbeh", "dunque", "praticamente",
+    "comunque", "quindi"))
+# V-1 bot #373: «niente» e «nulla» NON sono intercalari: da soli sono risposte valide a
+# «C'è altro?» (_RISPOSTE_BREVI_SEGUITO, V-3 bot #365 / R-746-1-M2)
+
+
 def seguito_da_scartare(trascrizione: str) -> bool:
     """Vero se nel seguito la trascrizione è un frammento da non mandare al cervello: nessuna
-    parola, oppure una sola parola fuori da _RISPOSTE_BREVI_SEGUITO e non numerica."""
+    parola, solo intercalari (filtro 2), oppure una sola parola fuori da
+    _RISPOSTE_BREVI_SEGUITO e non numerica."""
     parole = re.findall(r"\w+", _senza_accenti(trascrizione.lower()))
     if not parole:
+        return True
+    if all(p in _INTERCALARI for p in parole):
         return True
     # limite dichiarato (R-744-1-M2): un nome proprio da solo («Marco.») si scarta
     return (len(parole) == 1 and parole[0] not in _RISPOSTE_BREVI_NORM

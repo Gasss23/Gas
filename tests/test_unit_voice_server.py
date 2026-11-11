@@ -2678,3 +2678,16 @@ def test_anticipo_mai_oltre_il_primo_paragrafo_ne_oltre_il_tetto():
         c = AnticipoVoce("k", "v")
         c.testo("x" * (_PARLATO_MAX_CHAR + 1) + ". Due.", True)
         assert tts.call_count == 1                               # solo il caso a
+
+
+@pytest.mark.parametrize("testo, scarta", [
+    ("Ehm, allora…", True), ("Mah, boh.", True), ("Beh insomma", True), ("Comunque", True),
+    ("Niente.", False), ("Nulla!", False), ("Ehm, niente.", False),  # V-1 bot #373
+    ("Eh, tipo, praticamente", True),
+    ("Allora segna il lead Rossi", False), ("Sì", False), ("Boh, dimmi tu", False),
+])
+def test_filtro2_seguito_solo_intercalari(testo, scarta):
+    """Filtro 2 (11 nov): nel seguito una frase fatta solo di intercalari è parlato della
+    stanza e si scarta; basta una parola vera perché passi."""
+    from modules.voice.server import seguito_da_scartare
+    assert seguito_da_scartare(testo) is scarta, testo
