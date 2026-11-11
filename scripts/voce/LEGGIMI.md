@@ -178,7 +178,7 @@ Dopo una modifica: `bash scripts/voce/installa.sh` (riavvia i servizi).
   `GAS_ASCOLTO_VOCE_RMS`).
   Ogni «parola quasi sentita» è una salita del rilevatore (punteggio da 0,30 in su) che
   NON ha attivato: punteggio massimo, blocchi, soglia in uso (al massimo una riga ogni 5 s,
-  le altre contate; il conteggio è una stima). Vale solo nell'attesa di «Hey Jarvis»: nella
+  le altre contate col loro punteggio massimo; il conteggio è una stima). Vale solo nell'attesa di «Hey Jarvis»: nella
   finestra dopo una risposta e mentre Gas parla le salite scartate non si scrivono. Se «Hey Jarvis» detto da te finisce lì con punteggi tra 0,5 e 0,7, la
   soglia è troppo alta: `GAS_ASCOLTO_SOGLIA=0.6` in `.env` e `bash scripts/voce/installa.sh`.
 - **Diagnosi in un comando:** `python3 scripts/voce/diagnosi_ascolto.py` (dalla cartella di

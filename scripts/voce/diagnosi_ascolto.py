@@ -38,7 +38,7 @@ _RIGA = re.compile(r"^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})[,.]\d+ \w+ (.*)$")
 _PAROLA = re.compile(r"^parola di attivazione(?: \(punteggio ([\d.]+)"
                      r"(?:, picchi corti scartati prima: (\d+))?\))?$")
 _QUASI = re.compile(r"^parola quasi sentita \(punteggio max ([\d.]+), (\d+) blocchi"
-                    r".*?altre taciute: (\d+)\)$")
+                    r".*?altre taciute: (\d+)(?:, max ([\d.]+))?\)$")
 _RICHIESTA = re.compile(r"^richiesta registrata \(([\d.]+) s(?:, voce ([\d.]+) s)?")
 
 
@@ -123,6 +123,7 @@ class Quasi:
     punteggio: float
     blocchi: int
     taciute: int = 0
+    taciute_max: Optional[float] = None   # punteggio massimo fra le taciute (se scritto)
 
 
 def leggi_quasi(righe: Iterable[str]) -> List[Quasi]:
@@ -138,7 +139,8 @@ def leggi_quasi(righe: Iterable[str]) -> List[Quasi]:
         try:
             giorno = datetime.strptime(m.group(1), "%Y-%m-%d").date()
             out.append(Quasi(giorno, m.group(2), float(q.group(1)), int(q.group(2)),
-                             int(q.group(3))))
+                             int(q.group(3)),
+                             float(q.group(4)) if q.group(4) else None))
         except ValueError:
             continue
     return out
@@ -162,8 +164,10 @@ def riassunto_quasi(quasi: List[Quasi], giorni: int, ultime: int,
     ultime = max(0, min(ultime, len(scelte)))
     righe.append("Ultime %d quasi sentite:" % ultime)
     for q in scelte[len(scelte) - ultime:]:
-        righe.append("  %s %s  punteggio max %.2f  %d blocchi"
-                     % (q.giorno.isoformat(), q.ora, q.punteggio, q.blocchi))
+        extra = ("  (+%d taciute prima, max %.2f)" % (q.taciute, q.taciute_max)
+                 if q.taciute and q.taciute_max is not None else "")
+        righe.append("  %s %s  punteggio max %.2f  %d blocchi%s"
+                     % (q.giorno.isoformat(), q.ora, q.punteggio, q.blocchi, extra))
     return "\n".join(righe)
 
 

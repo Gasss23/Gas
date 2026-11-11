@@ -2968,6 +2968,7 @@ def test_quasi_sentita_scritta_con_i_numeri_quando_non_attiva(caplog):
     assert "punteggio max 0.65, 3 blocchi da 0.30 in su" in righe[0]
     assert "soglia 0.70 per 3 blocchi; altre taciute: 0" in righe[0]
     assert asc._quasi_taciuti == 1 and f.inviati == []
+    assert asc._quasi_taciuti_max == 0.95   # il punteggio della salita taciuta non si perde
 
 
 def test_quasi_sentita_dopo_la_pausa_conta_le_taciute(caplog):
@@ -2979,7 +2980,7 @@ def test_quasi_sentita_dopo_la_pausa_conta_le_taciute(caplog):
     righe = _righe_quasi(caplog)
     assert len(righe) == 2
     assert "punteggio max 0.50" in righe[0] and "altre taciute: 0" in righe[0]
-    assert "punteggio max 0.55" in righe[1] and "altre taciute: 1" in righe[1]
+    assert "punteggio max 0.55" in righe[1] and "altre taciute: 1, max 0.60" in righe[1]
 
 
 def test_quasi_sentita_non_scritta_se_la_salita_attiva(caplog):
@@ -3021,9 +3022,10 @@ def test_diagnosi_legge_le_quasi_sentite(tmp_path, capsys):
             + "2026-11-11 00:06:00,000 INFO parola quasi sentita (punteggio max 0.62, 2 "
               "blocchi da 0.30 in su, soglia 0.70 per 3 blocchi; altre taciute: 0)\n"
             + "2026-11-11 00:07:00,000 INFO parola quasi sentita (punteggio max 0.81, 2 "
-              "blocchi da 0.30 in su, soglia 0.70 per 3 blocchi; altre taciute: 4)\n")
+              "blocchi da 0.30 in su, soglia 0.70 per 3 blocchi; altre taciute: 4, max 0.92)\n")
     q = d.leggi_quasi(log_.splitlines(True))
-    assert [(x.punteggio, x.blocchi, x.taciute) for x in q] == [(0.62, 2, 0), (0.81, 2, 4)]
+    assert [(x.punteggio, x.blocchi, x.taciute, x.taciute_max) for x in q] == [
+        (0.62, 2, 0, None), (0.81, 2, 4, 0.92)]
     # le quasi sentite non diventano attivazioni
     assert len(d.leggi(log_.splitlines(True))) == 3
     f = tmp_path / "ascolto.log"
@@ -3031,4 +3033,4 @@ def test_diagnosi_legge_le_quasi_sentite(tmp_path, capsys):
     assert d.main(["--log", str(f), "--giorni", "3650"]) == 0
     out = capsys.readouterr().out
     assert "2026-11-11: 2 (più 4 taciute dal limite del log)" in out
-    assert "00:07:00  punteggio max 0.81  2 blocchi" in out
+    assert "00:07:00  punteggio max 0.81  2 blocchi  (+4 taciute prima, max 0.92)" in out

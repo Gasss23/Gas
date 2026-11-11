@@ -405,6 +405,7 @@ class Ascolto:
         self._blocchi_letti = 0
         self._ultimo_quasi: Optional[int] = None
         self._quasi_taciuti = 0
+        self._quasi_taciuti_max = 0.0   # punteggio massimo fra le salite taciute
         self._sopra_finestra = 0   # V-1 ve #361: blocchi di fila sopra soglia nella finestra
         self._buoni_di_fila = 0
         self._muti = 0
@@ -490,12 +491,18 @@ class Ascolto:
         if (self._ultimo_quasi is not None
                 and self._blocchi_letti - self._ultimo_quasi < blocchi_per(QUASI_PAUSA_S)):
             self._quasi_taciuti += 1
+            self._quasi_taciuti_max = max(self._quasi_taciuti_max, massimo)
             return
+        # bot #377 V-1: delle taciute si scrive anche il punteggio massimo (chi ripete
+        # «Hey Jarvis» dopo 2-3 s spesso lo dice più forte: è il dato che serve a tarare)
+        taciute = ("%d, max %.2f" % (self._quasi_taciuti, self._quasi_taciuti_max)
+                   if self._quasi_taciuti else "0")
         log.info("parola quasi sentita (punteggio max %.2f, %d blocchi da %.2f in su, "
-                 "soglia %.2f per %d blocchi; altre taciute: %d)", massimo, blocchi,
-                 SOGLIA_QUASI, self.soglia, self.blocchi_parola, self._quasi_taciuti)
+                 "soglia %.2f per %d blocchi; altre taciute: %s)", massimo, blocchi,
+                 SOGLIA_QUASI, self.soglia, self.blocchi_parola, taciute)
         self._ultimo_quasi = self._blocchi_letti
         self._quasi_taciuti = 0
+        self._quasi_taciuti_max = 0.0
 
     def _errore_rilevatore(self, e: Exception) -> None:
         """V-1 ve #323: un rilevatore che fallisce non deve scrivere una riga per blocco
