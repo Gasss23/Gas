@@ -76,7 +76,7 @@ import urllib.parse
 import urllib.request
 import wave
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
 log = logging.getLogger("gas.ascolto")
 
@@ -1238,6 +1238,45 @@ def rilevatore_openwakeword(modello: str) -> Tuple[Callable[[Blocco], float],
     return punteggio, m.reset
 
 
+def _regolazioni() -> Dict[str, Any]:
+    """Le regolazioni dell'ascolto lette una volta dal .env/ambiente, nei limiti."""
+    return {
+        "soglia": _numero("GAS_ASCOLTO_SOGLIA", SOGLIA_PREDEFINITA, 0.05, 0.99),
+        "blocchi_parola": int(_numero("GAS_ASCOLTO_BLOCCHI_PAROLA",
+                                      BLOCCHI_PAROLA_PREDEFINITO, 1, 5)),
+        "voce_rms": _numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
+        "silenzio_s": _numero("GAS_ASCOLTO_SILENZIO", 0.8, 0.2, 5),
+        "finestra_s": _finestra_dall_ambiente(),
+        "seguito_max_s": _numero("GAS_VOICE_SEGUITO_MAX", SEGUITO_MAX_PREDEFINITO_S,
+                                 3, REGISTRAZIONE_MAX_S),
+        "max_turni": int(_numero("GAS_VOICE_MAX_TURNI", MAX_TURNI_PREDEFINITO, 1, 50)),
+        "soglia_interruzione": soglia_interruzione(),
+    }
+
+
+def _scrivi_regolazioni(r: Dict[str, Any]) -> None:
+    """V-1 bot #371 su 5b27586: all'avvio il log dice i valori IN USO (il .env vince sui
+    predefiniti: una GAS_ASCOLTO_SOGLIA=0.6 rimasta nel .env annulla la soglia 0,7), e
+    avvisa quando il .env rende la parola più facile dei predefiniti."""
+    interr = r["soglia_interruzione"]
+    log.info("regolazioni in uso: soglia %.2f, blocchi di fila %d, turni %d, finestra %g s, "
+             "interruzione %s, voce %g", r["soglia"], r["blocchi_parola"], r["max_turni"],
+             r["finestra_s"], "spenta" if interr is None else "%.2f" % interr, r["voce_rms"])
+    piu_facile = []
+    if r["soglia"] < SOGLIA_PREDEFINITA:
+        piu_facile.append("GAS_ASCOLTO_SOGLIA=%g (predefinito %g)"
+                          % (r["soglia"], SOGLIA_PREDEFINITA))
+    if r["blocchi_parola"] < BLOCCHI_PAROLA_PREDEFINITO:
+        piu_facile.append("GAS_ASCOLTO_BLOCCHI_PAROLA=%d (predefinito %d)"
+                          % (r["blocchi_parola"], BLOCCHI_PAROLA_PREDEFINITO))
+    if r["max_turni"] > MAX_TURNI_PREDEFINITO:
+        piu_facile.append("GAS_VOICE_MAX_TURNI=%d (predefinito %d)"
+                          % (r["max_turni"], MAX_TURNI_PREDEFINITO))
+    if piu_facile:
+        log.warning("il .env rende l'ascolto più facile dei predefiniti: %s — toglile se "
+                    "Jarvis risponde quando non lo chiami", ", ".join(piu_facile))
+
+
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     _carica_dotenv(_GAS_ROOT)
@@ -1267,25 +1306,17 @@ def main() -> int:
         except Exception as e:  # §9 (R-671-5): senza conferma resta il bip
             log.warning("conferma non avviata (%s): solo bip", type(e).__name__)
     log.info("ascolto pronto: parola «%s», server %s", modello, url)
+    regolazioni = _regolazioni()
+    _scrivi_regolazioni(regolazioni)
     while True:
         mic = None
         try:
             mic = Microfono()
             Ascolto(mic.blocchi(), punteggio, invia, riproduci_afplay, bip_di_sistema,
                     svuota=mic.svuota, azzera_rilevatore=azzera,
-                    soglia=_numero("GAS_ASCOLTO_SOGLIA", SOGLIA_PREDEFINITA, 0.05, 0.99),
-                    blocchi_parola=int(_numero("GAS_ASCOLTO_BLOCCHI_PAROLA",
-                                               BLOCCHI_PAROLA_PREDEFINITO, 1, 5)),
                     coda_eco_s=CODA_ECO_S, subito_s=SUBITO_S,
-                    voce_rms=_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
-                    silenzio_s=_numero("GAS_ASCOLTO_SILENZIO", 0.8, 0.2, 5),
-                    finestra_s=_finestra_dall_ambiente(),
-                    seguito_max_s=_numero("GAS_VOICE_SEGUITO_MAX", SEGUITO_MAX_PREDEFINITO_S,
-                                          3, REGISTRAZIONE_MAX_S),
-                    invia_seguito=invia_seguito,
-                    max_turni=int(_numero("GAS_VOICE_MAX_TURNI", MAX_TURNI_PREDEFINITO, 1, 50)),
-                    soglia_interruzione=soglia_interruzione(),
-                    conferma=conferma).gira()
+                    invia_seguito=invia_seguito, conferma=conferma,
+                    **regolazioni).gira()
         except KeyboardInterrupt:
             return 0
         except Exception as e:  # §9: microfono staccato o simili → si riprova

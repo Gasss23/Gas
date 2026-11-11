@@ -151,7 +151,8 @@ def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None):
     monkeypatch.setenv("GAS_VOICE_TOKEN", TOKEN)
     for k in ("GAS_ASCOLTO_VOCE_RMS", "GAS_ASCOLTO_CONFERMA", "GAS_ASCOLTO_INTERRUZIONE",
               "GAS_VOICE_FINESTRA", "GAS_VOICE_SEGUITO_MAX",
-              "GAS_ASCOLTO_SOGLIA_INTERRUZIONE", "GAS_VOICE_URL", "GAS_VOICE_PORT"):
+              "GAS_ASCOLTO_SOGLIA_INTERRUZIONE", "GAS_VOICE_URL", "GAS_VOICE_PORT",
+              "GAS_ASCOLTO_SOGLIA", "GAS_ASCOLTO_BLOCCHI_PAROLA", "GAS_VOICE_MAX_TURNI"):
         monkeypatch.delenv(k, raising=False)
     for k, v in ambiente.items():
         monkeypatch.setenv(k, v)
@@ -2910,3 +2911,32 @@ def test_diagnosi_riconosce_le_righe_scritte_dall_ascolto(caplog):
     att = d.leggi(righe)
     assert len(att) == 1 and att[0].punteggio == 1.0 and att[0].voce_s == [0.8]
     assert att[0].esito() == "richiesta inviata"
+
+
+
+def test_main_scrive_le_regolazioni_in_uso(monkeypatch, tmp_path, caplog):
+    """V-1 bot #371: all'avvio il log dice i valori in uso; coi predefiniti nessun avviso."""
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        _main_finto(monkeypatch, tmp_path, {})
+    assert ("regolazioni in uso: soglia 0.70, blocchi di fila 3, turni 1, finestra 10 s, "
+            "interruzione 0.80, voce 200") in caplog.text
+    assert "più facile dei predefiniti" not in caplog.text
+
+
+def test_main_avvisa_se_il_env_rende_la_parola_piu_facile(monkeypatch, tmp_path, caplog):
+    """V-1 bot #371: una GAS_ASCOLTO_SOGLIA=0.6 rimasta nel .env del Mac annulla la soglia
+    0,7: l'avvio lo dice chiaramente (anche per blocchi e turni)."""
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.6",
+                                                "GAS_ASCOLTO_BLOCCHI_PAROLA": "2",
+                                                "GAS_VOICE_MAX_TURNI": "3",
+                                                "GAS_ASCOLTO_INTERRUZIONE": "0"})
+    assert k.get("soglia") == 0.6 and k.get("max_turni") == 3
+    avvisi = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING
+              and "più facile dei predefiniti" in r.getMessage()]
+    assert len(avvisi) == 1
+    for pezzo in ("GAS_ASCOLTO_SOGLIA=0.6 (predefinito 0.7)",
+                  "GAS_ASCOLTO_BLOCCHI_PAROLA=2 (predefinito 3)",
+                  "GAS_VOICE_MAX_TURNI=3 (predefinito 1)"):
+        assert pezzo in avvisi[0]
+    assert "interruzione spenta" in caplog.text

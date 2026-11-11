@@ -129,6 +129,10 @@ solo).
   i turni di seguito (`GAS_VOICE_MAX_TURNI`), anche chi parla nei secondi dopo una risposta
   finisce al server: senza la parola ogni frase dura al massimo 15 secondi (oltre non si
   manda) e Gas chiude la conversazione se capisce che non parlavi a lui.
+- **Il `.env` vince sui predefiniti.** Se nel `.env` hai ancora `GAS_ASCOLTO_SOGLIA=0.6`
+  (la mitigazione del 9/11), la soglia nuova 0,7 non vale: toglila. `GAS_VOICE_MAX_TURNI=1`
+  ora è il predefinito e si può togliere. All'avvio `.gas_voce/ascolto.log` scrive
+  «regolazioni in uso: …» e avvisa se il `.env` rende la parola più facile dei predefiniti.
 - Se la parola vera non scatta più: abbassa `GAS_ASCOLTO_SOGLIA` (0.6) o
   `GAS_ASCOLTO_BLOCCHI_PAROLA` (2).
 - Se la parola scatta spesso per sbaglio, alza `GAS_ASCOLTO_SOGLIA` o `GAS_ASCOLTO_BLOCCHI_PAROLA`; per parlare
