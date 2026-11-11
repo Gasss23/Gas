@@ -118,6 +118,14 @@ MAX_TURNI_PREDEFINITO = 3
 SOGLIA_PREDEFINITA = 0.6
 BLOCCHI_PAROLA_PREDEFINITO = 2
 CODA_ECO_S = 0.5
+# Prova dal vivo del 10/11/2026: 6 volte su 8 «Hey Jarvis, …» detto tutto d'un fiato andava
+# perso, perché la richiesta cadeva mentre suonava «Sì, signore?» (audio buttato) e dopo
+# restava solo silenzio. Ora, prima della conferma, si ascolta per SUBITO_S: se c'è già
+# voce continua per SUBITO_VOCE_S, niente conferma e quei blocchi aprono la richiesta.
+# R-753-1-M1: SUBITO_VOCE_S è più lunga della coda di «…vis» (rilevatore che scatta prima
+# della fine della parola): una coda seguita da una pausa non salta la conferma.
+SUBITO_S = 0.6
+SUBITO_VOCE_S = 0.4
 COMANDI = ("fine", "pausa")   # valori di X-Gas-Comando che il client conosce
 # Riserva della #336 (eco): se la risposta di Gas contiene la parola di attivazione
 # («…di' Hey Jarvis…»), le casse la mandano al microfono e Gas si interromperebbe da solo.
@@ -331,7 +339,8 @@ class Ascolto:
                  soglia_interruzione: Optional[float] = SOGLIA_INTERRUZIONE_PREDEFINITA,
                  conferma: Callable[[], Optional[bytes]] = lambda: None,
                  dorme: Callable[[float], None] = time.sleep,
-                 blocchi_parola: int = 1, coda_eco_s: float = 0.0) -> None:
+                 blocchi_parola: int = 1, coda_eco_s: float = 0.0,
+                 subito_s: float = 0.0) -> None:
         self.blocchi = blocchi
         self.rilevatore = rilevatore
         self.invia = invia
@@ -348,6 +357,9 @@ class Ascolto:
         # default 1 del costruttore è quello dei rilevatori finti dei test)
         self.blocchi_parola = max(1, int(blocchi_parola))
         self.coda_eco_s = max(0.0, float(coda_eco_s))
+        # quanto si ascolta dopo la parola prima di «Sì, signore?» (main: SUBITO_S; il
+        # default 0 del costruttore è quello dei test che si aspettano sempre la conferma)
+        self.subito_s = max(0.0, float(subito_s))
         # None = la parola non interrompe Gas mentre parla (GAS_ASCOLTO_INTERRUZIONE=0)
         self.soglia_interruzione = soglia_interruzione
         # Fetta 42: l'audio di «Sì, signore?» (None = non pronto o spento → bip)
@@ -462,10 +474,16 @@ class Ascolto:
     def registra(self, iniziali: Optional[List[Blocco]] = None,
                  attesa_s: float = ATTESA_VOCE_S,
                  max_s: float = REGISTRAZIONE_MAX_S,
-                 rileva_parola: bool = False) -> Optional[List[Blocco]]:
+                 rileva_parola: bool = False,
+                 subito: bool = False) -> Optional[List[Blocco]]:
         """Registra in memoria finché, dopo la voce, c'è `silenzio_s` di silenzio
         (massimo `max_s`). None se la voce non arriva entro `attesa_s` o
-        se il flusso finisce prima della voce."""
+        se il flusso finisce prima della voce.
+        `subito` (V-1 verifica esterna #368): `iniziali` viene da `_voce_subito` e può
+        essere solo la coda di «…vis». Come dopo una parola nella finestra si tollera il
+        silenzio fino ad `attesa_s`; se dopo quei blocchi non arriva altra voce continua
+        (INIZIO_VOCE_S) torna None: niente mezzo secondo di coda a Whisper (risposte
+        inventate come «Di niente»); chi chiama ripiega sulla conferma."""
         presi: List[Blocco] = list(iniziali or [])
         voce = len(presi) >= blocchi_per(INIZIO_VOCE_S)
         if not voce:
@@ -478,7 +496,8 @@ class Ascolto:
         # ATTESA_VOCE_S, come dopo la parola fuori dalla finestra.
         # R-702-1: la tolleranza ha un tetto suo (come l'attesa, R-616-2): dopo ATTESA_VOCE_S
         # dalla parola finisce comunque, anche se rumori brevi l'hanno tenuta viva.
-        dopo_parola = False
+        dopo_parola = subito and voce
+        confermata = not dopo_parola
         forti_dopo = dal_la_parola = 0
         while len(presi) < blocchi_per(max_s):
             b = self._prossimo()
@@ -515,15 +534,21 @@ class Ascolto:
                     dopo_parola = False
             if forte:
                 silenzio = 0
-                if dopo_parola:
+                # V-2 ve #368 (2° giro): finché la richiesta non è confermata i blocchi forti
+                # si contano anche dopo la tolleranza, così la voce che parte verso la fine
+                # dei 5 s conferma la richiesta invece di farla scartare.
+                if dopo_parola or not confermata:
                     forti_dopo += 1
                     if forti_dopo >= blocchi_per(INIZIO_VOCE_S):
                         dopo_parola = False
+                        confermata = True
                 continue
             forti_dopo = 0
             silenzio += 1
             if silenzio >= (max_attesa if dopo_parola else max_silenzio):
                 break
+        if not confermata:
+            return None
         return presi if voce else None
 
     def aspetta_voce(self) -> Optional[List[Blocco]]:
@@ -696,6 +721,28 @@ class Ascolto:
             except Exception as e:  # §9
                 log.warning("arresto della riproduzione fallito (%s)", type(e).__name__)
 
+    def _voce_subito(self) -> Optional[List[Blocco]]:
+        """Dopo la parola ascolta per `subito_s`: se c'è voce continua per SUBITO_VOCE_S
+        (chi dice la richiesta d'un fiato) torna i blocchi letti, che aprono la richiesta;
+        altrimenti None (si suona la conferma e quei blocchi si buttano).
+        R-753-2-M1: se allo scadere la voce è appena partita, si continua a leggere finché
+        non si decide (al massimo SUBITO_VOCE_S in più), così la conferma non le suona sopra."""
+        if self.subito_s <= 0:
+            return None
+        servono = blocchi_per(SUBITO_VOCE_S)
+        finestra = blocchi_per(self.subito_s)
+        letti: List[Blocco] = []
+        di_fila = 0
+        while len(letti) < finestra or (di_fila and len(letti) < finestra + servono):
+            b = self._prossimo()
+            if b is None:
+                return None
+            letti.append(b)
+            di_fila = di_fila + 1 if rms(b) >= self.voce_rms else 0
+            if di_fila >= servono:
+                return letti
+        return None
+
     def _conferma_o_bip(self) -> None:
         """Fetta 42: dopo la parola Jarvis dice «Sì, signore?» (audio del server, in
         memoria); se non è pronto o qualcosa va storto, il bip di sempre. La conferma
@@ -738,14 +785,38 @@ class Ascolto:
         """Dopo la parola: «Sì, signore?» (o il bip), richiesta, risposta, poi la finestra
         per continuare."""
         log.info("parola di attivazione")
-        self._conferma_o_bip()
-        self._svuota()  # il bip o la conferma non devono finire nella richiesta
-        richiesta = self.registra()
+        subito = self._voce_subito()
+        if subito:
+            # «Hey Jarvis, che ore sono» d'un fiato: niente conferma (coprirebbe la richiesta
+            # e andrebbe buttata), si registra da qui. Non suona niente, quindi niente eco.
+            log.info("voce subito dopo la parola: niente conferma, registro")
+            richiesta = self.registra(subito, subito=True)
+            if richiesta is None:
+                # V-1 ve #368 (2° giro): richiesta brevissima («Hey Jarvis, pausa») o solo
+                # la coda della parola: niente a Whisper, ma nemmeno silenzio. Si ripiega
+                # su «Sì, signore?» e si ascolta di nuovo, così si sa che va ripetuta.
+                log.info("dopo la parola solo un attimo di voce: chiedo con la conferma")
+                self._conferma_o_bip()
+                self._svuota()
+                richiesta = self.registra()
+        else:
+            self._conferma_o_bip()
+            self._svuota()  # il bip o la conferma non devono finire nella richiesta
+            richiesta = self.registra()
         turni = 0
         seguito = False   # il primo turno viene dalla parola di attivazione
         while richiesta is not None:
             turni += 1
-            log.info("richiesta registrata (%.1f s), invio%s", len(richiesta) * SEC_BLOCCO,
+            # solo numeri (durata, voce, volume), mai l'audio: servono a tarare le soglie
+            # quando una richiesta arriva corta o debole (prova del 10/11: 1,1 s → Whisper
+            # ha capito «grazie»)
+            voce_s = sum(1 for b in richiesta if rms(b) >= self.voce_rms) * SEC_BLOCCO
+            picco = max((rms(b) for b in richiesta), default=0.0)
+            # il volume come multiplo della soglia della voce (GAS_ASCOLTO_VOCE_RMS): dice
+            # di quanto alzarla o abbassarla, e nel log non finisce nessun valore dell'audio
+            log.info("richiesta registrata (%.1f s, voce %.1f s, volume max %.1f× la soglia),"
+                     " invio%s", len(richiesta) * SEC_BLOCCO, voce_s,
+                     picco / self.voce_rms if self.voce_rms > 0 else 0.0,
                      " (di seguito)" if seguito else "")
             riuscito = self.turno(richiesta, seguito=seguito)
             if self.interrotto:
@@ -1156,7 +1227,7 @@ def main() -> int:
                     soglia=_numero("GAS_ASCOLTO_SOGLIA", SOGLIA_PREDEFINITA, 0.05, 0.99),
                     blocchi_parola=int(_numero("GAS_ASCOLTO_BLOCCHI_PAROLA",
                                                BLOCCHI_PAROLA_PREDEFINITO, 1, 5)),
-                    coda_eco_s=CODA_ECO_S,
+                    coda_eco_s=CODA_ECO_S, subito_s=SUBITO_S,
                     voce_rms=_numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
                     silenzio_s=_numero("GAS_ASCOLTO_SILENZIO", 0.8, 0.2, 5),
                     finestra_s=_finestra_dall_ambiente(),
