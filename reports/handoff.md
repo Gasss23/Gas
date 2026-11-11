@@ -19,6 +19,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **Tempi interni del forte nel log (richiesta di M1)**: `FATTA` (a9419ea). Riga `tempi claude-cli:` in gas_debug.log a ogni chiamata: tutto, prima_riga, primo_testo, richiesta, ttft, api, cli, fuori_cli, token.
 - **R-773-1-M2 BASSA, R-773-3-M2 COSMETICA**: `FATTA` (a9419ea, review #778-M2).
 - **Merge di origin/main (#370)**: `FATTA` (71b04fa, review #779-M2).
+- **Merge di origin/main (#371, #372, #373) dopo il «mergia tutte» dell'operatore (via M1)**: `FATTA` (ae2e424, review #786-M2; conflitto solo nei test aggiunti in coda, tenuti entrambi).
 - **B3 BASSA audit notturno 2 (M1): uscita della CLI letta in UTF-8 con sostituzione** + cosmetiche del bot #374 (SIGKILL, risposta arrivata non è un timeout, log dei tempi che fallisce lascia traccia): `FATTA` (e9b05e5, review #781/#782-M2).
 - **V-1 del bot #374 su 87c5ff3 (gravità media: l'anticipo poteva mandare a ElevenLabs testo oltre il primo paragrafo o oltre il tetto della parte parlata, es. un elenco di clienti per lo schermo)**: `FATTA` (c8c5f8f, review #783-M2: fuzz di 20000 flussi, la frase anticipata è sempre un prefisso del parlato normale).
 - **Niente schema strumenti nei turni a voce semplici (ordine 2)**: `DEFERITA` — misurato qui: lo schema da 9k caratteri pesa ~0,3 s; prima servono i tempi del Mac.
@@ -29,7 +30,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 ++++++++
+ .claude/agents/memoria_revisore.md |  15 ++++++++++++---
  brains/claude_cli.py               | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  gas.py                             |  14 +++++++++++---
  modules/voice/server.py            |  84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
@@ -43,11 +44,13 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
  tests/test_unit_voice_server.py    |  90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
-NB: confronto con origin/main (e3eb542). Regola «n/d» — i conteggi dei report scritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
+NB: confronto con origin/main (f87ea6c). Regola «n/d» — i conteggi dei report scritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ae2e424 Merge origin/main (#371, #372, #373) nella #374 — review #786-M2 APPROVATO (chat M2)
+092a1fb docs(fine-task): #374 dopo la V-1 del bot su 87c5ff3 — review #783-M2 (chat M2)
 c8c5f8f fix(voce): anticipo solo dal primo paragrafo ed entro il tetto della parte parlata (V-1 bot #374 su 87c5ff3) — review #783-M2 (chat M2)
 87c5ff3 docs(fine-task): #374 dopo B3 e cosmetiche del bot — review #781/#782-M2 (chat M2)
 e9b05e5 fix(cervello): uscita della CLI letta in UTF-8 con sostituzione (B3 audit notturno 2), SIGKILL, risposta arrivata non è un timeout, log dei tempi che fallisce lascia traccia — review #781/#782-M2 (chat M2)
@@ -61,6 +64,34 @@ a9419ea perf(voce): tempi interni del forte nel log, nipoti uccisi al timeout, p
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #786-M2 (merge di origin/main con #371, #372, #373) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Review #786-M2. È il merge staged di origin/main f87ea6c (le PR #371, #372 e #373) nella PR #374, la voce rapida, in /home/user/Gas-stream.
+
+Controlli meccanici:
+- `git ls-files -u` è vuoto e `git diff --cached --check` non segnala niente.
+- Non ci sono marcatori di conflitto né in modules/voice/server.py né in tests/test_unit_voice_server.py.
+- Rispetto a MERGE_HEAD (cioè main) il codice differisce solo nei 6 file della #374: brains/claude_cli.py, gas.py, modules/voice/server.py e i 3 file di test. Quindi il codice portato da main è intatto.
+- Rispetto a HEAD, modules/voice/server.py porta solo le modifiche della #373: `_INTERCALARI` e il nuovo ramo «solo intercalari» in `seguito_da_scartare`. Il codice dell'anticipo non cambia.
+
+Elementi esaminati:
+- modules/voice/server.py:1301: con `TrascrizioneAllucinata` la funzione esce con `return None` dopo `_chiudi_seguito()`, quindi prima di qualsiasi turno. Rischio esaminato: un anticipo creato da una trascrizione allucinata. Esito: ok, `AnticipoVoce` nasce solo dentro il turno.
+- modules/voice/server.py:873: un seguito da scartare (anche solo intercalari) chiude la conversazione e fa `return` prima di `run_turn`. Rischio esaminato: un frammento della stanza che arriva a ElevenLabs. Esito: ok. In più l'anticipo non si crea mai nei seguiti: la condizione `not self._seguito()` è a modules/voice/server.py:971.
+- modules/voice/server.py:410: il filo `anticipo-voce` chiama `sintesi`, cioè `synthesize_speech`. Rischio esaminato: il keep-alive della #372 condiviso fra thread. Esito: ok. `_conn_locale` è una `threading.local()` (modules/voice/tts.py:77), quindi il filo dell'anticipo apre la sua connessione. Alla fine del filo la connessione resta lì finché la raccolta della memoria di Python non la chiude. Nessuna conseguenza pratica.
+- tests/test_unit_voice_server.py:2689: `test_filtro2_seguito_solo_intercalari` sta in coda dopo i 6 test dell'anticipo (righe 2599-2662), senza doppioni. Esito: ok.
+- Memoria e report: le 2 righe #764-M1coord e #765-M1coord risultano «tolte» rispetto a MERGE_HEAD, ma sono solo spostate (1 occorrenza per ciascun lato). Unione corretta.
+
+Rischi esclusi, non verificati:
+- La suite dei test: ho rilanciato voice_server, tts e stt, ma l'esecuzione non si è chiusa entro il tempo. Fanno fede i 525 passed che hai dichiarato tu, più il test del kernel che stai lanciando.
+- Il comportamento reale del keep-alive verso ElevenLabs con due thread contemporanei (quello dell'anticipo e quello principale): serve la rete vera, non riproducibile qui.
+- brains/claude_cli.py e gas.py: fuori dal diff del merge (identici a HEAD), già coperti dalle review della #374.
+
+Memoria: ho aggiunto la riga contatore #786-M2 in .claude/agents/memoria_revisore.md e l'ho messa in staging. Non ho lanciato `scripts/commit_memoria_revisore.sh`, perché durante un merge in corso il commit parziale (`git commit -o`) non è possibile: la riga entra nel commit del merge. Nessuna lezione nuova.
+
+File: /home/user/Gas-stream/modules/voice/server.py, /home/user/Gas-stream/modules/voice/tts.py, /home/user/Gas-stream/tests/test_unit_voice_server.py, /home/user/Gas-stream/.claude/agents/memoria_revisore.md
 
 ### Review #783-M2 (V-1 bot #374 su 87c5ff3) — verdetto integrale
 
@@ -261,6 +292,7 @@ In /home/user/Gas-stream/.claude/agents/memoria_revisore.md ho aggiunto la riga 
 
 ## §5 DELTA TEST DEL MOTORE
 
+- Dopo il merge ae2e424: voice_server + claude_cli + tts + stt 525 passed; kernel 1136 PASS, 1 FAIL (T31g, fastembed assente, come su main).
 - Dopo c8c5f8f: `tests/test_unit_voice_server.py` + `tests/test_unit_claude_cli.py` 293 passed (rieseguiti dal revisore #783).
 - Dopo e9b05e5: `python -m pytest -q tests/test_unit_claude_cli.py` 77 passed (anche con `LC_ALL=C`).
 - `python tests/test_unit_kernel.py` dopo il merge: 1136 PASS, 1 FAIL (T31g, fastembed assente in questo ambiente: lo stesso FAIL c'è su main). Nuovi T104d (round-trip §7 con strumento + flusso: anticipo solo della risposta finale) e T104e (a testo niente flusso), PASS.
