@@ -11995,6 +11995,53 @@ try:
             check(f"T104c GAS_VOCE_EFFORT={_val!r}: nessun --effort",
                   "--effort" not in _reg104[0]["cmd"], str(_reg104[0]["cmd"])[-80:])
         os.environ.pop("GAS_VOCE_EFFORT", None)
+        # d) voce rapida (chat M2, 11 nov): con su_testo_voce il forte scrive a flusso
+        # (stream-json) e il testo della risposta finale arriva in anticipo; round-trip §7 con
+        # uno strumento: il giro con la chiamata NON dà anticipo, la risposta finale sì.
+        _reg104.clear()
+        _out104d = iter([
+            {"chiamate": [{"nome": "calcola", "argomenti": {"expr": "6*7"}}], "testo": ""},
+            {"chiamate": [], "testo": "Fa 42. Altro?"}])
+
+        def _flusso104(cmd, stdin, cwd, env, timeout, su_riga):
+            _reg104.append({"cmd": list(cmd)})
+            js = json.dumps(next(_out104d), ensure_ascii=False)
+            righe = [json.dumps({"type": "stream_event", "event": {
+                "type": "content_block_start", "index": 0,
+                "content_block": {"type": "tool_use", "name": "StructuredOutput"}}})]
+            righe += [json.dumps({"type": "stream_event", "event": {
+                "type": "content_block_delta", "index": 0,
+                "delta": {"type": "input_json_delta", "partial_json": js[i:i + 7]}}})
+                for i in range(0, len(js), 7)]
+            fine = json.dumps({"type": "result", "subtype": "success", "is_error": False,
+                               "structured_output": json.loads(js),
+                               "usage": {"input_tokens": 10, "output_tokens": 3}})
+            for r in righe + [fine]:
+                su_riga(r + "\n")
+            return _sp104.CompletedProcess(cmd, 0, stdout=fine, stderr="")
+        gas.ClaudeCliClient = lambda timeout=None, **kw: _CCC104(
+            timeout=timeout, binario="claude", runner=lambda *a: None,
+            runner_flusso=_flusso104, **kw)
+        _anticipi104 = []
+        _ev104d = list(_k104.run_turn("quanto fa sei per sette?", cervello="forte", voce=True,
+                                      su_testo_voce=lambda t, f: _anticipi104.append((t, f))))
+        check("T104d voce rapida: stream-json, anticipo solo della risposta finale, round-trip",
+              [e["content"] for e in _ev104d if e["type"] == "final"] == ["Fa 42. Altro?"]
+              and any(e["type"] == "tool_res" for e in _ev104d) and len(_reg104) == 2
+              and all(r["cmd"][r["cmd"].index("--output-format") + 1] == "stream-json"
+                      for r in _reg104)
+              and _anticipi104 and _anticipi104[-1] == ("Fa 42. Altro?", True)
+              and all("Fa 42. Altro?".startswith(t) for t, _ in _anticipi104),
+              str(_anticipi104)[:300])
+        # e) turno a testo con su_testo_voce (non dovrebbe capitare): nessun flusso
+        _reg104.clear()
+        gas.ClaudeCliClient = _cli104([{"testo": "ok", "chiamate": []}])
+        list(_k104b.run_turn("a testo", cervello="forte",
+                             su_testo_voce=lambda t, f: _anticipi104.append("TESTO")))
+        check("T104e testo: niente stream-json né anticipo anche con su_testo_voce",
+              "TESTO" not in _anticipi104
+              and _reg104[0]["cmd"][_reg104[0]["cmd"].index("--output-format") + 1] == "json",
+              str(_reg104[0]["cmd"])[:120])
     finally:
         gas.ClaudeCliClient = _orig104
         for _kk, _v in _saved104.items():
