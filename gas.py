@@ -147,11 +147,20 @@ _PAROLE_GENERICHE: frozenset = frozenset({
 _PREFISSO_TEL = "\x00tel:"  # marca un identificativo «solo cifre» (mai nel testo normalizzato)
 
 
+# V-2 ve #375: lettere che NFKD non scompone (ł, ø, đ, æ, ß…) → traslitterazione ASCII,
+# così «Søren Ødegård» combacia con «Soren Odegard» e «Đorđe» con «Djordje».
+_TRASLITTERA = str.maketrans({
+    "ł": "l", "Ł": "l", "ø": "o", "Ø": "o", "đ": "dj", "Đ": "dj", "ð": "d", "Ð": "d",
+    "þ": "th", "Þ": "th", "æ": "ae", "Æ": "ae", "œ": "oe", "Œ": "oe", "ß": "ss",
+    "ı": "i", "ħ": "h", "Ħ": "h", "ŧ": "t", "Ŧ": "t"})
+
+
 def _normalizza_confronto(testo: Any) -> str:
-    """Testo per il confronto con gli identificativi: Unicode NFKD senza accenti (segni
-    combinanti), casefold, spazi compressi. «Nicolò» e «nicolo» combaciano. PURA, mai
-    solleva."""
-    t = str(testo if testo is not None else "")
+    """Testo per il confronto con gli identificativi: traslitterazione delle lettere che
+    NFKD non scompone (ł, ø, đ, æ, ß…), Unicode NFKD senza accenti (segni combinanti),
+    casefold, spazi compressi. «Nicolò» e «nicolo», «Søren» e «soren» combaciano. PURA,
+    mai solleva."""
+    t = str(testo if testo is not None else "").translate(_TRASLITTERA)
     try:
         t = "".join(ch for ch in unicodedata.normalize("NFKD", t)
                     if not unicodedata.combining(ch))
@@ -218,8 +227,11 @@ def _finestra_ha_dati_lead(messaggi: List[Dict[str, Any]],
     2026-11-10 notte): una chiamata o un risultato di uno strumento dei contatti
     (_TOOL_DATI_LEAD), oppure un identificativo noto in un testo qualunque (contenuto,
     nome e argomenti delle chiamate a strumento, anche inventati). Con `identificativi`
-    None (lettura dei contatti fallita) conta solo il controllo sugli strumenti: chi
-    chiama tratta già quel caso in modo prudente. PURA."""
+    None (lettura dei contatti fallita) i nomi dei lead non si possono riconoscere:
+    True (fail-closed, V-1 bot #375), così la conversazione va solo al forte e, se il
+    forte non c'è, si aspetta (CLAUDE.md §2: mai ai gratuiti). PURA."""
+    if identificativi is None:
+        return True
     for m in messaggi:
         if m.get("role") == "tool" and m.get("name") in _TOOL_DATI_LEAD:
             return True
@@ -4016,14 +4028,23 @@ class GasKernel:
         try:
             leggi = getattr(self.memory, "leggi_contatti", None)
             if not callable(leggi):
-                return self.memory.lista_contatti()
-            try:
-                return leggi(includi_lapidi=True)
-            except TypeError:
-                return leggi()
+                letti = self.memory.lista_contatti()
+            else:
+                try:
+                    letti = leggi(includi_lapidi=True)
+                except TypeError:
+                    letti = leggi()
         except Exception as e:  # §9
             logging.warning(f"lettura dei contatti per il filtro dei dati dei clienti fallita: {e}")
-            return None
+            letti = None
+        # V-1 bot #375 + #767-M1coord: si prova SEMPRE a leggere (available=False non vuol
+        # dire illeggibile: collisione di chiavi o lock all'avvio lasciano il DB leggibile).
+        # Solo se la lettura fallisce E la memoria è degradata per tutta la sessione il DB è
+        # davvero illeggibile (diario compreso) = come memoria assente → []. Altrimenti None
+        # (guasto momentaneo): la conversazione va solo al forte.
+        if letti is None and getattr(self.memory, "available", True) is False:
+            return []
+        return letti
 
     def _memoria_pin_varianti(self, contatti: Any = _NON_LETTI) -> Tuple[str, str]:
         """(pin pieno, pin anonimo), calcolati in UN solo passaggio per turno. Il pieno va
@@ -5305,8 +5326,8 @@ class GasKernel:
             # contatti (vivi e lapidi) letti UNA volta per turno; se la finestra che si
             # manderebbe contiene dati di lead (strumenti dei contatti o un identificativo
             # noto) il turno va SOLO al forte; forte assente → turno fermo dichiarato.
-            # Lettura fallita → identificativi None: resta il controllo sugli strumenti e
-            # i pin/recap/lezioni dei non forti si chiudono (fail-closed).
+            # Lettura fallita → identificativi None: la finestra conta come «con dati di
+            # clienti» (solo il forte) e i pin/recap/lezioni dei non forti si chiudono.
             _contatti_turno = self._contatti_per_filtro()
             _ident = (None if _contatti_turno is None
                       else _identificativi_contatti(_contatti_turno))
@@ -5651,8 +5672,15 @@ class GasKernel:
                             _salva()
                             _turno_provider = name  # Fetta B: provider che ha prodotto la risposta
                             _turno_final = True
-                            yield {"type": "final", "content": msg.content,
-                                   **_info_ripiego(name, model, providers[0][0], _motivi)}
+                            _info_fin = _info_ripiego(name, model, providers[0][0], _motivi)
+                            if _solo_forte_lead and name == "claude-cli":
+                                # V-2 bot #375 (§8): il passaggio al forte per i dati dei
+                                # clienti si dichiara (solo testo, mai a voce come le altre
+                                # righe di avviso): consuma il tetto del forte.
+                                _info_fin["avviso_ripiego"] = (
+                                    "↪ risposta dal cervello forte: nella conversazione ci "
+                                    "sono dati di clienti (mai ai modelli gratuiti)")
+                            yield {"type": "final", "content": msg.content, **_info_fin}
                             return
                         elif effimero:
                             # V-3 bot #339 su be60a21: nel turno effimero una risposta vuota

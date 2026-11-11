@@ -12982,6 +12982,12 @@ try:
     check("T115a1 accenti: «nicolo ferre» e «NICOLÒ» riconosciuti (NFKD senza accenti)",
           _ci("scrivi a nicolo ferre", _id115) and _ci("NICOLÒ ha chiamato", _id115)
           and _ci("Ferre", _id115), str(_id115))
+    check("T115a1b lettere non scomposte da NFKD: ø, đ, ł, æ, ß traslitterate (V-2 ve #375)",
+          gas._normalizza_confronto("Søren Ødegård") == "soren odegard"
+          and gas._normalizza_confronto("Đorđe Đurić") == "djordje djuric"
+          and gas._normalizza_confronto("Łukasz Æsir Straße") == "lukasz aesir strasse"
+          and gas._contiene_identificativo("scrivi a Soren Odegard",
+                                           gas._identificativi_contatti([{"nome": "Søren Ødegård"}])))
     check("T115a2 telefoni sulle sole cifre (≥7): con e senza spazi, trattini, prefisso",
           _ci("chiama 3331234567", _id115) and _ci("tel. 333-123-4567", _id115)
           and _ci("+393331234567", _id115) and not _ci("ordine 12345", _id115)
@@ -13006,7 +13012,8 @@ try:
               "name": "scrivi_a_ferre", "arguments": "{}"}}]}], _id115)
           and not _fl([{"role": "user", "content": "che ore sono?"},
                        {"role": "tool", "name": "data_ora", "content": "12:00"}], _id115)
-          and not _fl([{"role": "user", "content": "scrivi a Nicolò"}], None))
+          # V-1 bot #375: identificativi None (lettura fallita) → fail-closed, sempre True
+          and _fl([{"role": "user", "content": "che ore sono?"}], None))
 
     # --- T115b: lapidi, tipo inventato, ripiego getattr (punto 4) ---
     _k115b = kernel_tmp()
@@ -13155,6 +13162,39 @@ try:
     check("T115c7 contatti illeggibili e ricorda in finestra: solo il forte",
           _ev[-1].get("content") == "forte ok" and not _g.visti, str(_ev)[-200:])
 
+    # T115c8 (V-1 bot #375): contatti illeggibili e finestra SENZA strumenti dei contatti,
+    # con un nome nel testo dell'operatore → fail-closed: solo il forte, mai i gratuiti
+    _k115c8 = kernel_tmp()
+    _k115c8.memory.upsert_contatto("mario@rossi.it", nome="Mario Rossi")
+    _k115c8.memory.leggi_contatti = lambda *a, **kw: None
+    _ev, _g, _f = _turno115(_k115c8, "scrivi a Mario Rossi", [_r115("gratis")],
+                            [_r115("forte ok")])
+    check("T115c8 contatti illeggibili, nome nel testo e nessun ricorda: solo il forte",
+          _ev[-1].get("content") == "forte ok" and not _g.visti, str(_ev)[-200:])
+    _ev, _g, _f = _turno115(_k115c8, "scrivi a Mario Rossi", [_r115("gratis")],
+                            forte_acceso=False)
+    check("T115c9 contatti illeggibili e forte spento: turno fermo dichiarato, nessun gratuito",
+          _ev[-1]["type"] == "error" and "dati di clienti" in _ev[-1]["content"]
+          and not _g.visti, str(_ev)[-200:])
+    # T115c11 (#767-M1coord): available=False ma DB leggibile → i nomi si riconoscono
+    # ancora: solo il forte, e il pin anonimo non nomina il lead
+    _k115c11 = kernel_tmp()
+    _k115c11.memory.upsert_contatto("mario@rossi.it", nome="Mario Rossi")
+    _k115c11.memory.append_diario("email_inviata", "mandata offerta a Mario Rossi")
+    _k115c11.memory.available = False
+    _ev, _g, _f = _turno115(_k115c11, "scrivi a Mario Rossi", [_r115("gratis")],
+                            [_r115("forte ok")])
+    _pf, _pa = _k115c11._memoria_pin_varianti()
+    check("T115c11 memoria available=False ma leggibile: nome riconosciuto, solo il forte",
+          _ev[-1].get("content") == "forte ok" and not _g.visti
+          and "Mario Rossi" not in _pa, str(_ev)[-200:] + _pa[-300:])
+    # T115c10 (V-2 bot #375, §8): il passaggio al forte per dati di clienti è dichiarato
+    _ev, _g, _f = _turno115(_k_con_ricorda(), "che ore sono?", [_r115("gratis")],
+                            [_r115("sono le 12")])
+    check("T115c10 risposta del forte per dati di clienti: avviso nel final",
+          "cervello forte: nella conversazione ci sono dati di clienti"
+          in (_ev[-1].get("avviso_ripiego") or ""), str(_ev)[-300:])
+
     # --- T115d: recap e lezioni anonimi ai non forti (punto 2) ---
     def _k115d():
         k = kernel_tmp()
@@ -13187,9 +13227,11 @@ try:
     _kd4.memory.leggi_contatti = lambda *a, **kw: None
     _ev, _g, _f = _turno115(_kd4, "riprendiamo il preventivo", [_r115("ok")])
     _sys_g4 = _g.visti[0] if _g.visti else ""
-    check("T115d3 contatti illeggibili: ai gratuiti niente lezioni né recap (fail-closed)",
-          _sys_g4 and "Rispondi in modo conciso" not in _sys_g4
-          and "RECAP PERTINENTE" not in _sys_g4, _sys_g4[-400:])
+    # V-1 bot #375: con i contatti illeggibili i gratuiti non vengono proprio chiamati
+    # (turno solo sul forte, qui spento → turno fermo dichiarato): più forte di prima
+    check("T115d3 contatti illeggibili: ai gratuiti niente (né lezioni né recap né turno)",
+          not _g.visti and _ev and _ev[-1]["type"] == "error"
+          and "dati di clienti" in _ev[-1]["content"], str(_ev)[-300:])
 
     # --- T115e: riflessione di fine task (punto 3) ---
     _RISP115 = json.dumps({"recap": "Obiettivo: lead.\nStato: fatto.", "lezioni": []})
