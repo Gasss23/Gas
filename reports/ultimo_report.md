@@ -1,19 +1,18 @@
-# Ultimo report — 2026-11-10 — Decisioni dell'operatore: avviso Flash-lite, tetto di 10 chiamate per turno, nomi dei lead mai ai modelli non forti (M1)
+# Ultimo report — 2026-11-11 notte — Blocco esteso dei nomi: dati dei clienti mai ai cervelli gratuiti (M1)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370).
-2. R-753-M1-A: i risultati di `ricorda`/`salva_contatto` già nella storia, il testo dell'operatore `recap_pin` e la riflessione di fine task (ve #370 V-1) possono contenere nomi di clienti e arrivano ancora ai modelli non forti. Estendere il blocco anche lì? sì/no
+1. Merge della PR di questa sessione (blocco esteso dei nomi): riserve solo BASSE/COSMETICHE.
+2. Effetto voluto della regola da confermare: anche un `ricorda` usato solo per la conoscenza caricata manda il turno al cervello forte (se il forte non c'è, il turno si chiude dichiarato). Va bene così? sì/no
 
 ## Esito
-- **(a) Primo cervello non configurato = ripiego dichiarato** (sì dell'operatore): FATTA — nessun cambio di codice, test T113a4 lo fissa.
-- **(b) Flash-lite dichiarato** (sì): FATTA — `RUNG_VERSIONE_LEGGERA`, riga «↪ risposta da … (versione leggera scelta per un compito semplice)» in CLI e testo Telegram, mai a voce.
-- **Tetto di 10 chiamate al modello per turno** (sì): FATTA — `MAX_CHIAMATE_TURNO`, contatore unico fra i cervelli; `for _ in range(10)` resta come barriera per cervello (§8).
-- **Nomi dei lead mai ai modelli non forti** (sì): FATTA per il pin della memoria — variante piena solo a claude-cli, anonima agli altri. DEFERITA la storia/recap (R-753-M1-A, decisione dell'operatore).
-- **Bot #370 5° giro V-1 (MEDIA)**: pin anonimo fail-closed se la lettura dei contatti fallisce — FATTA (T114f2, review #765-M1coord APPROVATO CON RISERVE, R-765-1-M1coord BASSA).
-- Review #753-M1: 1° giro APPROVATO CON RISERVE, 2° giro APPROVATO.
+- **Finestra con dati di lead → solo il forte** (decisione dell'operatore «blocco esteso sì»): FATTA — anche a metà turno; forte assente → messaggio dichiarato, mai ai gratuiti.
+- **Recap e lezioni ai non forti**: FATTA — omessi/filtrati se nominano un lead; contatti illeggibili → omessi.
+- **Riflessione di fine task**: FATTA — con dati di lead solo al forte (tetto e uso registrati), altrimenti rimandata.
+- **Confronto dei nomi più robusto**: FATTA — accenti (NFKD), lapidi dei lead fusi, telefoni sulle cifre, parole di 3 lettere a parola intera, anche il tipo della riga di diario; ripiego getattr (chiude R-765-1-M1coord).
+- R-753-M1-A: CHIUSA. Review #766-M1coord APPROVATO CON RISERVE (R-766-1..4, BASSE/COSMETICHE).
 
 ## Test
-Kernel 1119 → 1134 PASS / 0 FAIL; pytest telegram_voce+notte+sottofondo+gate+manutenzione+voice_server (-k "not browser") 1448 passed.
+Kernel 1135 → 1157 PASS / 0 FAIL (T115a-e e round-trip; 18 mutanti uccisi); pytest telegram_voce+notte+sottofondo+gate+manutenzione+voice_server+voce_ascolto (-k "not browser") 1758 passed.
 
 ## Anomalie
-Nessuna.
+Nessuna. Non provato: passaggio al `claude -p` vero sul Mac a metà turno.

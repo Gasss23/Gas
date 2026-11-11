@@ -1,9 +1,9 @@
-# Diff della sessione — 2026-11-10 pomeriggio — decisioni dell'operatore (M1)
+# Diff della sessione — 2026-11-11 notte — blocco esteso dei nomi (M1)
 
 Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `gas.py`: `_info_ripiego` riconosce la versione leggera (Flash-lite); `MAX_CHIAMATE_TURNO` = tetto di 10 chiamate per turno condiviso fra i cervelli; `_memoria_pin_varianti()` (pin pieno solo al forte, anonimo agli altri).
-- `modules/telegram/bot.py`: la riga dell'avviso vale anche per la versione leggera (solo testo).
-- `tests/test_unit_kernel.py`: T9a/T9b aggiornati, T113a2-a4, T114a-i nuovi; `tests/test_unit_notte.py`: test Telegram adattato alla riga di Flash-lite.
-- `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md`: decisioni del 2026-11-10, riserva R-753-M1-A, riga #753-M1.
+- `gas.py`: finestra con dati di lead → solo il forte (anche a metà turno), recap/lezioni filtrati per i non forti, riflessione con dati di lead solo al forte, confronto dei nomi con NFKD, lapidi, cifre dei telefoni, parole corte a parola intera, tipo della riga di diario.
+- `modules/memory/store.py`: `leggi_contatti(includi_lapidi=...)`.
+- `tests/test_unit_kernel.py`: T115a-e, round-trip, `forte_finto` negli helper per i round-trip con ricorda/salva_contatto.
+- `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md`: R-753-M1-A chiusa, riserve R-766-1..4, riga #766-M1coord.
 - `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: report di fine sessione.
