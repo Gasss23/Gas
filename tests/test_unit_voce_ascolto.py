@@ -2768,3 +2768,38 @@ def test_coi_seguiti_spenti_la_seconda_interruzione_chiude():
                        PAROLA, *RICHIESTA, (SILENZIO, 20)),
               finestra_s=0, max_turni=a.MAX_TURNI_PREDEFINITO).gira()
     assert len(f.inviati) == 2 and b"E" not in f.riprodotti
+
+
+def test_un_picco_isolato_non_interrompe_gas():
+    """V-1 bot #371: mentre Gas parla la parola vale solo con blocchi_parola blocchi di fila
+    sopra la soglia dell'interruzione: un picco isolato (o due non di fila) non ferma Gas e
+    non apre una richiesta; tre di fila sì."""
+    frasi, chiuse = _frasi_chiuse(b"A", b"B")
+    f = FintiParlano([frasi], durata=10)
+    f.ascolto(_blocchi((PAROLA, 3), *RICHIESTA, (SILENZIO, 2), PAROLA, SILENZIO, PAROLA,
+                       PAROLA, (SILENZIO, 40)), finestra_s=0, blocchi_parola=3).gira()
+    assert f.riprodotti == [b"A", b"B"] and len(f.inviati) == 1
+    assert all(r == 0 for _, _, r in f.eventi)   # finite da sole, mai fermate
+    frasi, chiuse = _frasi_chiuse(b"A", b"B")
+    f = FintiParlano([frasi, b"C"], durata=10)
+    f.ascolto(_blocchi((PAROLA, 3), *RICHIESTA, (SILENZIO, 2), (PAROLA, 3), *RICHIESTA,
+                       (SILENZIO, 40)), finestra_s=0, blocchi_parola=3).gira()
+    assert f.riprodotti == [b"A", b"C"] and len(f.inviati) == 2 and chiuse == [True]
+
+
+def test_errore_del_rilevatore_mentre_gas_parla_azzera_il_conto():
+    """V-1 bot #371: un errore del rilevatore fra due blocchi alti non li rende «di fila»."""
+    valori = iter([1.0, 1.0] + [1.0, RuntimeError("x"), 1.0] + [0.0] * 300)
+    # i primi due fanno scattare la parola; gli altri cadono sui primi blocchi di A
+
+    def rilevatore(b):
+        v = next(valori)
+        if isinstance(v, Exception):
+            raise v
+        return v
+    frasi, _ = _frasi_chiuse(b"A", b"B")
+    f = FintiParlano([frasi], durata=10)
+    a.Ascolto(iter(_blocchi((SILENZIO, 2), (VOCE, 10), (SILENZIO, 200))), rilevatore,
+              f.invia, f.riproduci, f.suona, finestra_s=0, blocchi_parola=2,
+              dorme=lambda s: None).gira()
+    assert f.riprodotti == [b"A", b"B"] and all(r == 0 for _, _, r in f.eventi)

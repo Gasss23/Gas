@@ -48,7 +48,7 @@ forte (in multipli di `GAS_ASCOLTO_VOCE_RMS`): utile se le richieste arrivano ta
 subito, salta le frasi che mancavano, fa il bip e ascolta la nuova domanda. Serve proprio
 la parola, non basta parlare: con le casse del Mac il microfono sente anche la voce di Gas.
 Per questo, mentre Gas parla, la parola deve essere riconosciuta con più sicurezza (soglia
-0.8 invece di 0.7). Anche coi turni di seguito spenti (il default) un'interruzione apre la
+0.8 invece di 0.7, e come sempre per `GAS_ASCOLTO_BLOCCHI_PAROLA` blocchi di fila). Anche coi turni di seguito spenti (il default) un'interruzione apre la
 nuova domanda; se interrompi di nuovo anche quella risposta, Gas si ferma e torna ad
 aspettare la parola. Se non ti sente, avvicinati o abbassa un po' il volume; con le cuffie va meglio.
 Se nella risposta Gas stesso dice la parola («di' Hey Jarvis…»), per quella risposta
@@ -128,9 +128,10 @@ solo).
   blocchi da 80 ms di fila) e dopo la risposta non si ascolta senza la parola. Se riaccendi
   i turni di seguito (`GAS_VOICE_MAX_TURNI`), anche chi parla nei secondi dopo una risposta
   finisce al server: senza la parola ogni frase dura al massimo 15 secondi (oltre non si
-  manda) e Gas chiude la conversazione se capisce che non parlavi a lui. Se invece la
-  parola vera non scatta più, abbassa `GAS_ASCOLTO_SOGLIA` (0.6) o
-  `GAS_ASCOLTO_BLOCCHI_PAROLA` (2). Se la parola scatta spesso per sbaglio, alza `GAS_ASCOLTO_SOGLIA` o `GAS_ASCOLTO_BLOCCHI_PAROLA`; per parlare
+  manda) e Gas chiude la conversazione se capisce che non parlavi a lui.
+- Se la parola vera non scatta più: abbassa `GAS_ASCOLTO_SOGLIA` (0.6) o
+  `GAS_ASCOLTO_BLOCCHI_PAROLA` (2).
+- Se la parola scatta spesso per sbaglio, alza `GAS_ASCOLTO_SOGLIA` o `GAS_ASCOLTO_BLOCCHI_PAROLA`; per parlare
   con qualcuno senza Gas, `bash scripts/voce/pausa.sh`.
 - Se dopo un bip di errore non sai se Gas ha fatto la cosa (il server può aver eseguito
   la richiesta e poi fallito la voce), chiediglielo invece di ripeterla.

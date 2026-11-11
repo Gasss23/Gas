@@ -8,8 +8,9 @@ fetta a parte), poi bip, registrazione fino al silenzio, invio al server voce gi
 esistente (modules/voice/server.py, POST /voice) e risposta riprodotta: con la risposta
 «a pezzi» del server (righe JSON, formato audio+pezzi) la prima frase suona appena arriva e le altre in
 fila, mentre il server sintetizza le successive (fetta 39). Dopo la risposta
-resta una finestra di ascolto (GAS_VOICE_FINESTRA, 10 s) per continuare senza ripetere
-la parola, fino a GAS_VOICE_MAX_TURNI turni di fila.
+si torna ad aspettare la parola: i turni di seguito senza parola sono spenti di default
+(GAS_VOICE_MAX_TURNI=1). Con GAS_VOICE_MAX_TURNI più alto resta una finestra di ascolto
+(GAS_VOICE_FINESTRA, 10 s) per continuare senza ripetere la parola, fino a quei turni.
 Mentre Gas parla si può interromperlo dicendo di nuovo la parola di attivazione (fetta
 41): la frase si ferma, quelle in fila si scartano e si registra la nuova richiesta.
 Grilletto SOLO la parola, con una soglia più alta (GAS_ASCOLTO_SOGLIA_INTERRUZIONE): con
@@ -705,6 +706,10 @@ class Ascolto:
         if in_corso is None:
             return False
         errori = 0
+        # V-1 bot #371: come fuori, la parola vale solo con `blocchi_parola` blocchi di fila
+        # sopra soglia: un picco isolato (voce di Gas o stanza) non interrompe e non apre
+        # una richiesta. Il conto si azzera sotto soglia e su errore.
+        sopra = 0
         try:
             while True:
                 try:
@@ -722,12 +727,17 @@ class Ascolto:
                     punteggio = float(self.rilevatore(b))
                 except Exception as e:  # §9: senza rilevatore Gas finisce di parlare
                     errori += 1
+                    sopra = 0
                     if errori == 1:
                         log.warning("rilevatore in errore mentre Gas parla (%s)",
                                     type(e).__name__)
                     continue
                 if punteggio >= self.soglia_interruzione:
-                    return True
+                    sopra += 1
+                    if sopra >= self.blocchi_parola:
+                        return True
+                else:
+                    sopra = 0
         finally:
             try:
                 in_corso.ferma()  # type: ignore[attr-defined]
