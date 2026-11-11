@@ -1,203 +1,271 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-11 — Audit dell'11 novembre: gasmerge senza timeout sul Mac, maiuscole nei gate, sottofondo-ferma fuori cartella, CI in sola lettura (chat M3, coordinata da M1)
+**Sessione:** 2026-11-11 notte — Blocco esteso dei nomi: dati dei clienti mai ai cervelli gratuiti (M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Nessuna: l'operatore ha detto «mergia tutte» (riferito da M1, 11 nov), vale per la PR #376 (https://github.com/Gasss23/Gas/pull/376). La mergia l'agente dopo il merge di main, con CI e bot verdi senza ALTA/MEDIA, nell'ordine deciso da M1 (dopo #372-#374 di M2, prima della #375).
+1. Merge della PR #375 (già autorizzato: «mergia tutte») (https://github.com/Gasss23/Gas/pull/375).
+2. Effetto della regola: anche un `ricorda` usato solo per la conoscenza caricata manda il turno al forte. Va bene così? sì/no
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **B1 MEDIA — `scripts/gasmerge.sh` senza `timeout` sul Mac**: `FATTA` — timeout → gtimeout → perl padre che uccide il figlio ed esce 124. Primo tentativo BOCCIATO (#766-M1: gh è Go e ignora SIGALRM), corretto e APPROVATO (#767-M1).
-- **B2 MEDIA — maiuscole in `tocca_macchina_bot` e `_nel_perimetro`**: `FATTA` — casefold; stesso bug trovato e corretto in `.claude/hooks/review_gate.sh` (grep -i, `GIT_ICASE_PATHSPECS=1`).
-- **B4 BASSA — `sottofondo-ferma` fuori dalla cartella di Gas**: `FATTA` — errore con la cartella da usare, exit 1.
-- **S1 — `ci.yml` senza `permissions`**: `FATTA` — `permissions: contents: read`.
-- **Merge di origin/main 0ef0b5c (#372, #373, #374 di M2)**: `FATTA` — nessun codice cambiato rispetto ai due lati, review #787-M3 APPROVATO; sottofondo+gasmerge+hooks+verifica_bot+handoff_check+gate 1940 passed, kernel 1137 PASS 0 FAIL.
-- **Bot #376 (078ad0a) e verifica esterna #376**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA (https://github.com/Gasss23/Gas/pull/376#issuecomment-6784648609). V-1 BASSA comune (B2 incompleto: il promemoria «FILE DI MOTORE» di gasmerge distingueva le maiuscole): `FATTA` in 6272544 (`shopt -s nocasematch` attorno al ciclo, test), review #768-M1 APPROVATO. V-3 cosmetica (docstring di un test hooks) corretta; V-2 cosmetica (§2 «17 +-») corretta qui sotto.
+- **Fetta 1 — finestra con dati di lead → solo il forte**: FATTA.
+- **Fetta 2 — recap e lezioni filtrati per i non forti**: FATTA.
+- **Fetta 3 — riflessione con dati di lead solo al forte**: FATTA.
+- **Fetta 4 — confronto dei nomi più robusto (NFKD, lapidi, telefoni, parole corte, tipo)**: FATTA.
+- **Fetta 5 — bot/ve #375 V-1 MEDIA (contatti illeggibili), traslitterazione, avviso del forte**: FATTA — 96092c7e, review #767-M1coord BOCCIATO → #768-M1coord APPROVATO CON RISERVE.
+- **Fetta 6 — bot #375 V-1 MEDIA (falsi positivi «Conte»→«contesto») e V-2**: FATTA — 6a7ca7eb, review #789-M1coord e #790-M1coord APPROVATO CON RISERVE.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +
- .claude/hooks/review_gate.sh       |   6 +-
- .github/workflows/ci.yml           |   5 +
- modules/sottofondo/__init__.py     |   7 +
- reports/diff_sessione.md           |  20 +-
+ .claude/agents/memoria_revisore.md |  10 ++++
+ gas.py                             | 340 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------
+ modules/memory/store.py            |  17 ++++---
+ reports/diff_sessione.md           |  22 ++++-----
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   4 +-
- reports/ultimo_report.md           |  23 +-
- scripts/bot_esito.py               |  10 +-
- scripts/check_verdetto.py          |   5 +-
- scripts/gasmerge.sh                |  17 +-
- tests/test_unit_gasmerge.py        |  63 +
- tests/test_unit_handoff_check.py   |   3 +
- tests/test_unit_hooks.py           |  19 +-
- tests/test_unit_sottofondo.py      |  17 +
- tests/test_unit_verifica_bot.py    |   2 +
+ reports/stato_progetto.md          |   3 +-
+ reports/ultimo_report.md           |  25 +++++-----
+ tests/test_unit_kernel.py          | 396 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ tests/test_unit_notte.py           |  10 ++--
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta. BASE = 0ef0b5c (merge-base con origin/main dopo il merge di #372-#374).
+NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-902eedce Merge origin/main (#372, #373, #374 di M2) nella PR #376 — review #787-M3
-3f305e98 docs(fine-task): audit 11 nov — bot/verifica esterna #376, correzione V-1 (M3)
-62725449 fix(audit 11 nov): bot #376 V-1 — promemoria «FILE DI MOTORE» di gasmerge senza maiuscole (M3)
-0d5ab5b7 chore(revisore): memoria review #768 — APPROVATO
-078ad0a7 docs(fine-task): audit 11 nov B1/B2/B4/S1, PR #376 (M3)
-8eb21c02 fix(audit 11 nov): gasmerge senza timeout sul Mac, maiuscole nei gate, sottofondo-ferma fuori cartella, CI in sola lettura (M3)
-a3e00420 chore(revisore): memoria review #767 — APPROVATO
-c2f8b03f chore(revisore): memoria review #766 — BOCCIATO
+6a7ca7eb fix(kernel): blocco dei nomi a parola intera, con recupero per nomi attaccati, cifre ed email/domini (bot #375 V-1/V-2) — review #789/#790-M1coord
+87446218 chore(revisore): memoria review #790 — APPROVATO CON RISERVE
+e800a8ff chore(revisore): memoria review #789 — APPROVATO CON RISERVE
+17378b06 docs(fine-task): handoff #375 dopo il merge di main (#371-#374, #376) — review #788-M1coord
+366cfcc7 Merge origin/main (#371-#374, #376) nella #375 — review #788-M1coord APPROVATO
+9ca898bd docs(fine-task): handoff #375 dopo il fix di bot/ve #375
+96092c7e fix(kernel): blocco dei nomi fail-closed con contatti illeggibili, traslitterazione, avviso del forte (bot/ve #375)
+5e5a3bb7 docs(fine-task): blocco esteso dei nomi (R-753-M1-A)
+863ca51c feat(kernel): blocco esteso dei nomi — dati dei clienti mai ai cervelli gratuiti (chiude R-753-M1-A)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 8eb21c0: due giri, #766-M1 (BOCCIATO) → #767-M1 (APPROVATO). Commit 6272544 (bot #376 V-1): #768-M1 (APPROVATO). Merge 902eedc: #787-M3 (APPROVATO). Verdetti integrali.
+# Verdetti integrali del revisore — blocco esteso dei nomi
 
-### Review #766-M1
+## Giro 1 — #766-M1coord
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #766-M1coord del diff staged sul branch feat/merge-automatico-z1xjx2 (PR #370). Chiude R-753-M1-A: i dati dei clienti non vanno più ai cervelli gratuiti. Ho letto CLAUDE.md (§2, §5, §8, §9), la riga 378 di reports/stato_progetto.md e la mia memoria.
+
+**Cosa ho esaminato**
+1. `gas.py:215`: `_finestra_ha_dati_lead` riconosce nella finestra le chiamate e i risultati degli strumenti dei contatti, e i nomi noti anche dentro le chiamate a strumento. Rischio esaminato: chiamate a strumento in forma non-dict, contenuto None o a lista. `_add_to_history` le salva sempre come dict, le sonde danno l'esito giusto. **ok**
+2. `gas.py:5313`: controllo a inizio turno sulla stessa finestra `self._get_window(_n_finestra)`. Rischio esaminato: slicing della storia (§5). Nessuno: l'unico `[:_i_coda]` (`gas.py:5700`) taglia la coda dei cervelli, non la storia. **ok**
+3. `gas.py:5422`: controllo a metà turno prima di ogni chiamata a un cervello non forte. Poi il salto al forte (`gas.py:5695-5700`) e il messaggio dichiarato (`gas.py:5706`). Rischi esaminati:
+   - il `break` non aggiunge «10 iterazioni»;
+   - `_turno_tentati.pop()` scatta solo se quel cervello non era stato chiamato;
+   - il forte non entra due volte in coda (la cascata «forte» contiene solo claude-cli);
+   - tetto di 10 chiamate e budget invariati (§8).
+   
+   Il mio mutante che toglie il controllo viene ucciso (T115c3/c4). **ok**
+4. `gas.py:5327-5334` e `gas.py:5430-5433`: memoria, lezioni e riassunto della sessione (recap) in versione piena solo al forte, anonima agli altri. Se la lettura dei contatti fallisce, lezioni e recap vengono tolti (fail-closed). Il mutante «recap anonimo = pieno» viene ucciso (T115d1/d3). **ok**
+5. `gas.py:4358-4366` e `gas.py:4406-4432`: la riflessione con dati di clienti la fa solo il forte (ClaudeCliClient, tetto controllato, uso registrato anche se la chiamata fallisce). Forte spento o al tetto → riflessione rimandata, senza crash. Prima la cascata «complesso» non conteneva claude-cli, quindi `_rung_disponibile` non cambia il resto del comportamento. **ok**
+6. `gas.py:4008`: `_contatti_per_filtro` legge i lead fusi (lapidi), con ripiego `getattr` e §9 (avviso nel log e `None`). Il mutante sul tipo della riga di diario viene ucciso (T115b2). **ok, con R-766-3**
+7. `modules/memory/store.py:1262`: `leggi_contatti(includi_lapidi)` usa solo pezzi SQL fissi; il valore dello stato resta parametrizzato, quindi niente SQL iniettabile. Il comportamento di default non cambia. **ok**
+8. `tests/test_unit_kernel.py:977`: `run_turn_scriptato` ora gira sempre con un forte finto. **riserva R-766-2**
+
+Test del kernel rilanciati da me: 1157 PASS, 0 FAIL. `--check` pulito; ho ripristinato gas.py dopo i mutanti (`git diff` del working tree vuoto).
+
+**Finding**
+- **R-766-1-M1coord (BASSA)**: falsi positivi. Le parole comuni nei nomi d'azienda contano come nomi: con «Studio Verde Srl», la frase «il prato è verde» manda il turno al forte. In più il regex dei telefoni (`gas.py:202`) unisce cifre separate da spazi: «file da 1 2 3 4 5 6 7 byte» viene preso per un telefono. Effetto: turni in più sul tetto giornaliero del forte, e con il forte spento un rifiuto. Il limite dichiarato (b) copre la lista delle parole generiche, non questo.
+- **R-766-2-M1coord (BASSA)**: `run_turn_scriptato` (`tests/test_unit_kernel.py:977`) accende il forte finto per tutti i test che lo usano. I test vecchi con `ricorda`/`salva_contatto` ora passano dal forte senza che nessuno controlli quale cervello ha risposto: un test pensato per il percorso dei gratuiti può non provarlo più.
+- **R-766-3-M1coord (COSMETICA)**: due difetti in `_contatti_per_filtro`. Il ripiego su `lista_contatti` (`gas.py:4019`) trasforma un errore di lettura in «nessun contatto», quindi non è fail-closed (riguarda solo memorie vecchie o finte, non quella usata in produzione). E `except TypeError` (`gas.py:4022`) riprova senza lapidi anche quando il TypeError nasce dentro la funzione.
+- **R-766-4-M1coord (COSMETICA)**: il messaggio «Questa richiesta contiene dati di clienti…» (`gas.py:5706`) non dice che il blocco dura finché i dati restano nella finestra, né che `clear` lo toglie.
+
+**Cosa NON ho verificato**
+- Il comportamento con il vero `claude -p` sul Mac quando il passaggio avviene a metà turno, con la storia che contiene chiamate a strumento fatte da Gemini: i test usano un forte finto e qui non posso riprodurlo.
+- Le altre suite pytest (telegram, notte, sottofondo, gate, manutenzione, voce): 1758 passed secondo il chiamante, non rilanciate da me.
+- Altri percorsi verso modelli esterni fuori da gas.py (la trascrizione Groq della voce è un'eccezione già accettata dall'operatore).
+
+Ho aggiunto la riga #766-M1coord e una lezione in coda a `.claude/agents/memoria_revisore.md` e ho messo in stage solo quel file. Nessun commit, `commit_memoria_revisore.sh` non lanciato, come richiesto.
+
+### Review #767-M1coord (1° giro sul fix di bot/ve #375)
 
 ## VERDETTO: BOCCIATO
 
-Review #766-M1. Diff nel working tree di feat/r7-direttore-m3, 11 file. Ho letto CLAUDE.md (sez. 5), stato_progetto.md e la mia memoria. La riga di memoria è committata (c2f8b03f).
+Review #767-M1coord, sul diff staged del branch feat/merge-automatico-z1xjx2 (PR #375): gas.py, tests/test_unit_kernel.py, tests/test_unit_notte.py.
 
-**Motivo del blocco (B1, MEDIA → blocco: il fix promette un timeout che sul Mac non c'è)**
-- scripts/gasmerge.sh:82 — ripiego `perl -e 'alarm shift; exec @ARGV or exit 127' 900`. Rischio esaminato: SIGALRM sopravvive a exec, ma lo deve far morire il programma lanciato. Esito: **blocco**. gh è un binario Go (verificato con `file /usr/local/bin/gh`: «Go BuildID»). Il runtime Go cattura SIGALRM e, senza `signal.Notify`, lo ignora: «Other signals will be caught but no action will be taken». Prova fatta: un binario Go che dorme 6 s, lanciato sotto il perl con 1 s, finisce dopo 6 s con rc=0. Lo stesso binario sotto `timeout 1` esce con rc=124 dopo 1 s. Quindi sul Mac senza gtimeout `gh pr checks --watch` torna a poter restare appeso all'infinito, e la riga 85 (142→124) non scatta mai con gh.
-- tests/test_unit_gasmerge.py:1664 — `test_perl_alarm_scaduto_vale_timeout` prova il perl con `sleep`, che è un programma C e muore con SIGALRM: con gh la prova non vale. Il secondo pezzo usa uno stub che esce 142 da solo, quindi prova solo la mappa dei codici. Esito: **blocco** (la prova non dimostra quello che dichiara).
-- **Correzione proposta, già provata qui**: il perl fa da padre, con fork e kill esplicito:
-  `perl -e 'my $t=shift; my $p=fork; exit 127 unless defined $p; if(!$p){exec @ARGV or exit 127} $SIG{ALRM}=sub{kill "TERM",$p; sleep 2; kill "KILL",$p; waitpid $p,0; exit 124}; alarm $t; waitpid $p,0; exit($? & 127 ? 128+($? & 127) : $? >> 8)' 900`
-  Esiti misurati: binario Go ucciso dopo circa 3 s con rc 124; un figlio che esce 8 restituisce 8; un comando inesistente restituisce 127. Con questa versione la riga 85 (142→124) non serve più. Il test va rifatto con un figlio che ignora SIGALRM, per esempio `perl -e '$SIG{ALRM}="IGNORE"; sleep 5'`, verificando rc=124 e un tempo trascorso molto sotto i 5 s.
-- Sulla mappa dei codici d'uscita, come richiesto: se gh esce da solo, il suo codice passa intatto (exec sostituisce il processo), e un exec fallito dà 127. Su questo la mappa è corretta.
-
-**Resto del diff (ok)**
-- scripts/bot_esito.py:210 — casefold su NOMI_MACCHINA_BOT e MACCHINA_BOT. Rischio esaminato: che allarghi o restringa male. Esito: ok. Il confronto può solo allargarsi, quindi più PR finiscono in «neutral» (decide l'operatore): è la direzione prudente. I test_no esistenti restano verdi e `[".Claude/hooks/x.sh"]`/`[".GITHUB/..."]` sono coperti.
-- scripts/check_verdetto.py:155 — `_nel_perimetro` senza maiuscole. Lo usano anche scripts/check_handoff.py:144 e scripts/check_verdetto.py:249, entrambi come «tocca il perimetro → servono più controlli». Allargare quindi rende i gate più severi, mai più deboli. Esito: ok.
-- .claude/hooks/review_gate.sh:371 — `grep -qiE "$PERIM_RE"`. Il regex è ancorato con `^(...)` (.claude/hooks/review_gate.sh:341); -i allarga solo, nella direzione del blocco. Esito: ok. Test: tests/test_unit_hooks.py `test_gate_maiuscole_bloccano`, 3 passed rieseguiti.
-- .github/workflows/ci.yml:25 — `permissions: contents: read`. Rischio esaminato: step che scrivono su GitHub. Gli step usano solo actions/checkout@v4, setup-python@v5, `git fetch origin main` (.github/workflows/ci.yml:372) e script con gh finto. Nessun job ridefinisce i permessi. Esito: ok.
-- modules/sottofondo/__init__.py:276 — `ferma()` senza cartella della coda restituisce (False, frase) ed exit 1 (unico chiamante: gas.py:6707). Tutto resta dentro il try e non introduce eccezioni nuove. Esito: ok, con una nota COSMETICA sotto.
-
-**Riserve (da tracciare anche dopo il nuovo giro)**
-- BASSA, risponde alla tua domanda sulla riga ~360 — sì, il pathspec ha lo stesso problema. .claude/hooks/review_gate.sh:360: il filtro di `git status ... -- "${PERIM_PATHS[@]}"` distingue le maiuscole. Prova in un repo di prova: `GAS.py` e `Brains/x.py` non tracciati restano invisibili col pathspec `gas.py brains/`, e compaiono con `GIT_ICASE_PATHSPECS=1`. Sul Mac il danno è limitato: il disco non distingue le maiuscole e git di norma vede il nome reale sul disco. Su Linux un file come `GAS.py` non tracciato sfugge al blocco «modifiche non in stage». Correzione: anteporre `GIT_ICASE_PATHSPECS=1` a quel `git status`, più un test.
-- COSMETICA: in una cartella di Gas dove non è mai partito nessun compito, `sottofondo-ferma` dice «lancia il comando dalla cartella di Gas», che lì è fuorviante. Si potrebbe distinguere controllando se esiste gas.py in root.
-
-**Rischi esclusi (non verificati)**
-- Non ho provato su macOS reale: le differenze tra perl e il runtime Go per Darwin le ho dedotte. Il comportamento Go su SIGALRM è documentato uguale su tutti i sistemi ed è provato qui su Linux.
-- Non ho rieseguito le suite complete (891 test di gasmerge/verifica_bot/handoff_check/sottofondo, 214 hooks, 1135 kernel): mi fido dei numeri dichiarati. Ho rieseguito solo i test nuovi: 2 passed con `-k Timeout` e 3 passed per le maiuscole negli hooks.
-- Non ho verificato la run CI reale con i nuovi permessi.
-
-Nessuno slicing della history e nessuna simulazione dei tool nel diff.
-
-File rilevanti:
-- scripts/gasmerge.sh
-- tests/test_unit_gasmerge.py
-- .claude/hooks/review_gate.sh
-- .claude/agents/memoria_revisore.md
-
-### Review #767-M1
-
-## VERDETTO: APPROVATO
-
-Secondo giro della review #766-M1 (che era BOCCIATO), branch feat/r7-direttore-m3, modifiche ancora non committate (working tree). Ho letto prima CLAUDE.md §5, la memoria del revisore e l'intestazione di stato_progetto.
-
-Cosa ho esaminato nel diff:
-
-- `scripts/gasmerge.sh:84` — Cosa fa: se mancano `timeout` e `gtimeout`, usa perl come processo padre (fork ed exec del comando, poi alarm; allo scadere manda TERM, aspetta 2 s, manda KILL ed esce 124). Rischio esaminato: gh è un binario Go e ignora SIGALRM, che era il motivo del BOCCIATO. Prova fatta con un binario Go vero, compilato apposta, col programma perl estratto da gasmerge.sh:
-  - binario da 8 s con limite 1 s → rc 124 in 3 s;
-  - figlio che esce con codice 3 → rc 3 (codice passato);
-  - `kill -9` su se stesso → rc 137;
-  - figlio che ignora sia TERM sia ALRM → ucciso con KILL, rc 124.
-
-  La mappa 142→124 è tolta e il `case` a `scripts/gasmerge.sh:91` è coerente. Esito: ok.
-- `tests/test_unit_gasmerge.py:1665` — Cosa fa: estrae il programma perl dal sorgente di gasmerge.sh con una regex, quindi il test si rompe se lo script cambia. Prova un figlio che ignora SIGALRM (rc 124 in meno di 6 s), il codice 8 passato e il 127 su un comando inesistente. Rischio esaminato: che sia di nuovo una prova falsa come col vecchio `sleep`. Il figlio perl con `$SIG{ALRM}="IGNORE"` riproduce il comportamento di Go. Esito: ok.
-- `.claude/hooks/review_gate.sh:361` — Cosa fa: aggiunge `GIT_ICASE_PATHSPECS=1` a `git status` sul pathspec del perimetro, così le maiuscole non contano anche per i file non tracciati. Rischio esaminato: un file non tracciato come Brains/x.py non verrebbe visto. Esito: ok, coperto da `tests/test_unit_hooks.py:572`.
-- `modules/sottofondo/__init__.py:277` — Cosa fa: `ferma()` senza coda ma con gas.py nella root risponde (True, «Nessun compito in sottofondo in corso.»). Da un'altra cartella resta l'errore che dice di lanciarlo dalla cartella di Gas. Tutto sta dentro il try esistente, quindi nessuna eccezione nuova. Esito: ok.
-
-Suite rieseguita: gasmerge + hooks + sottofondo + verifica_bot + handoff_check, 1106 passed (cioè 891 + 215, come dichiarato).
-
-Wall of Shame: nessuno slicing della storia e nessuna simulazione di tool. Il motore (gas.py, brains) non è toccato.
-
-Cosa NON ho verificato:
-
-- Non ho fatto la prova a mano di `GIT_ICASE_PATHSPECS` in un repo temporaneo: il comando conteneva la parola "commit" e il gate e il classificatore dei permessi l'hanno negato. Non ho aggirato il blocco. Mi affido al test `tests/test_unit_hooks.py:572`, che è passato. Non ho rifatto nemmeno la prova inversa (il test fallisce senza la correzione): resta un'affermazione dell'autore.
-- Comportamento reale su macOS non verificato: qui gira Linux. Il perl di sistema del Mac e un gh vero in modalità `--watch` non sono riproducibili in questo ambiente.
-- Limite noto (BASSA, non è una riserva): con il ripiego perl l'uccisione arriva solo al figlio diretto, non ai suoi eventuali sotto-processi. Per `gh pr checks` non conta, perché non ne lancia.
-
-Memoria del revisore: aggiunta la riga #767-M1 e committata da sola con lo script dedicato (commit a3e00420), in .claude/agents/memoria_revisore.md. Nessuna lezione nuova.
-
-### Review #768-M1 (bot #376 V-1)
-
-## VERDETTO: APPROVATO
-
-Il fix è corretto e ha un ambito stretto. Il test morde, la suite passa.
+**Motivo bloccante (privacy, CLAUDE.md §2)**
+- gas.py:4032: la scorciatoia `if getattr(self.memory, "available", True) is False: return []` introduce una regressione. `available=False` non vuol dire che il DB sia illeggibile. Succede anche con `ChiaveNormCollisione` (modules/memory/store.py:586) e con un `sqlite3.Error` all'avvio, per esempio un lock oltre i 10 s. In questi casi il DB resta leggibile, perché `leggi_contatti`, `lista_contatti` e `diario_recente` (modules/memory/store.py:1250, modules/memory/store.py:1240, modules/memory/store.py:1010) non controllano `available`.
+- L'ho provato a mano: MemoryStore reale con il contatto «Mario Rossi», `available=False` impostato a mano.
+  - `leggi_contatti` restituisce `['Mario Rossi']`, mentre `_contatti_per_filtro` restituisce `[]`.
+  - `_finestra_ha_dati_lead("scrivi a Mario Rossi")` dà False, quindi il turno va ai gratuiti.
+  - La variante anonima del pin, quella che va ai gratuiti, contiene «- [email_inviata] mandata offerta a Mario Rossi». Con `available=True` la stessa riga esce come «(dettagli di un lead omessi…)».
+- Prima di questo diff, nello stesso scenario, la lettura riusciva e i nomi venivano riconosciuti. Il fix peggiora quindi il caso che voleva rendere più prudente, e il commento «nessun contatto leggibile da nessuna parte (né pin né strumenti)» è falso.
+- Correzione proposta:
+  - provare comunque la lettura;
+  - restituire `[]` solo se `available is False` e anche la lettura fallisce (allora il DB è davvero illeggibile, diario compreso);
+  - in alternativa, fare rispettare `available` a tutti i lettori (pin/diario/strumenti).
+- Serve un test con `available=False` e DB leggibile: nome nel testo, poi solo il forte, e il pin anonimo senza nome.
 
 **Elementi del diff esaminati**
+1. gas.py:234: con `identificativi is None` la funzione restituisce True (fail-closed), prima del controllo sugli strumenti. Rischio esaminato: un nome che passa ai gratuiti quando la lettura fallisce. Esito: ok. T115c8 (forte risponde, gratuito non visto) e T115c9 (forte spento: errore dichiarato, nessun gratuito) passano, rieseguiti.
+2. gas.py:4032: scorciatoia `available is False → []`. Rischio esaminato: falso negativo sui dati dei clienti. Esito: blocco (dettaglio sopra).
+3. gas.py:5673: `avviso_ripiego` per il forte quando ci sono dati di clienti. Rischio esaminato: sovrascrivere un avviso §8 già presente. Esito: ok, perché `_info_ripiego` (gas.py:573) per claude-cli restituisce sempre "" (non è mai ripiego né versione leggera). Solo testo, la voce non è toccata. T115c10 passa.
+4. gas.py:152: tabella `_TRASLITTERA` (ł ø đ æ ß þ ı ħ ŧ…) applicata prima di NFKD in `_normalizza_confronto`. Rischio esaminato: rottura del confronto o eccezioni. Esito: ok. `str.translate` non solleva e la funzione resta pura. T115a1b passa, e passa anche il riconoscimento «Soren Odegard» contro «Søren Ødegård».
+5. tests/test_unit_kernel.py:13015 (T115a6, None ora True) e T115d3 (gratuiti mai chiamati, errore dichiarato): cambio di comportamento voluto. L'asserzione nuova è più forte della vecchia («niente lezioni/recap» diventa «nessuna chiamata»). Esito: legittimi, nessun indebolimento.
+6. tests/test_unit_notte.py:2421: è stata tolta l'asserzione `== 0` sul ritorno di `_giro` invece di aggiornarla. L'ho verificato a mano: ora il ritorno è 1. Esito: riserva BASSA, va asserito `== 1`, altrimenti il test non distingue un giro che crasha a metà dopo aver scritto il riepilogo. Il resto (`script.visti == []`, riepilogo «non letti», Telegram) va bene.
 
-- `scripts/gasmerge.sh:237`: `shopt -s nocasematch` viene acceso subito prima del ciclo del promemoria «FILE DI MOTORE». Ho cercato un'uscita anticipata che lasci l'opzione accesa. Nel ciclo, che va da `scripts/gasmerge.sh:240` a `scripts/gasmerge.sh:249`, ci sono solo `continue` e `break`: niente `exit` né `return`, e niente comandi che possano far scattare `set -e`, perché i `[[ ]]` stanno dentro liste `&&` e `read` chiude il ciclo senza errore. Gli input arrivano con `<<<`, quindi non c'è una subshell. Dentro il ciclo nocasematch tocca anche il `case "$v" in */)`, ma quel modello non contiene lettere, quindi non cambia nulla. Esito: ok.
-- `scripts/gasmerge.sh:250`: `shopt -u nocasematch` viene spento subito dopo il `done`. In tutto il file ci sono solo questi due `shopt`, entrambi in questo diff, quindi nessun altro confronto `[[ ]]` o `case` del file è influenzato. Il rischio che resta è opposto, cioè più file segnalati come motore, e per un promemoria che non è un gate va nel verso sicuro. Esito: ok.
-- `tests/test_unit_gasmerge.py:537`: il test nuovo `test_maiuscole_nel_perimetro` copre `GAS.py` e `Modules/x.py`. Ho fatto una mutazione su una copia del repo nello scratchpad, togliendo `shopt -s`: 2 test falliti e 10 passati nella classe. Il test morde. Esito: ok.
-- `tests/test_unit_hooks.py:573`: cambia solo la docstring, che ora parla di `Brains/x.py` e quindi corrisponde al corpo del test. Nota cosmetica: la riga è molto lunga, ma non blocca. Esito: ok.
-- Suite `tests/test_unit_gasmerge.py` + `tests/test_unit_hooks.py`: 330 passati, rifatto da me.
+Suite: kernel 1161 PASS 0 FAIL (rieseguita); il test notte `-k contatti_illeggibili` passa (2 passed). Nessuno slicing della storia (la finestra passa sempre da `_get_window`, gas.py:5332). Nessuna eccezione nuova che si propaga.
 
-**Cosa NON ho verificato**
+**Riserve minori (da sistemare insieme al fix)**
+- BASSA: il punto 6 sopra.
+- COSMETICA: il commento a gas.py:5326 («resta il controllo sugli strumenti») è stantio dopo V-1.
+- COSMETICA: con la lettura fallita il messaggio di stop di T115c9 dice «Questa richiesta contiene dati di clienti», ma non lo si sa. Meglio «potrebbe contenere» o «contatti illeggibili».
 
-Non ho eseguito il codice col bash 3.2 di macOS: qui non c'è. Che `nocasematch` esista in quella versione lo ricavo dalla documentazione di bash (l'opzione c'è dalla 3.1), non da una prova.
+**Rischi esplicitamente esclusi**
+- Suite pytest completa (1758) non rieseguita: ho eseguito solo il test notte toccato e la suite kernel.
+- Comportamento su VPS con lock reale all'avvio non riprodotto: ho simulato `available=False` impostandolo a mano.
+- Il caso `ChiaveNormCollisione` non l'ho costruito end-to-end: ho dedotto dal codice (modules/memory/store.py:586) che il DB resta leggibile in quello stato.
 
-**Memoria del revisore**
+Memoria: in /home/user/Gas/.claude/agents/memoria_revisore.md ho aggiunto la riga contatore `#767-M1coord — 2026-11-11 — BOCCIATO — …` e una lezione: un flag diagnostico come `available` non equivale a «dati illeggibili» se altri lettori lo ignorano. Il file è in stage (git add). commit_memoria_revisore.sh non è stato lanciato, come richiesto.
 
-Ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga `#768-M1 — 2026-11-11 — APPROVATO — … — nessuna lezione nuova`. Ho poi lanciato `scripts/commit_memoria_revisore.sh`, che non ha stampato nulla; `git status` non mostra più quel file come modificato. Il diff sotto review è intatto nel working tree: `scripts/gasmerge.sh`, `tests/test_unit_gasmerge.py` e `tests/test_unit_hooks.py` risultano ancora modificati.
+### Review #768-M1coord (2° giro, commit 96092c7e)
 
-### Review #787-M3 (merge di origin/main 0ef0b5c)
+## VERDETTO: APPROVATO CON RISERVE
+
+Secondo giro della review #767-M1coord (numero di contatore #768-M1coord) sul diff staged del branch feat/merge-automatico-z1xjx2 (PR #375). Il blocco del primo giro è chiuso: si può committare, con le riserve sotto.
+
+**Elementi del diff esaminati**
+1. **gas.py:4045** — `_contatti_per_filtro` ora legge sempre i contatti (gas.py:4028-4039) e restituisce `[]` solo se `letti is None` e `available is False`.
+   - Rischio esaminato: la regressione del primo giro, cioè `available=False` con DB leggibile che faceva arrivare i nomi ai gratuiti.
+   - Esito: **ok**. Ho rifatto a mano l'esperimento del blocco: MemoryStore reale con «Mario Rossi» e `available=False`. Il filtro restituisce la riga, `_finestra_ha_dati_lead("scrivi a Mario Rossi")` dà True e il pin anonimo mostra «(dettagli di un lead omessi…)» senza il nome.
+2. **tests/test_unit_kernel.py:13179-13190** — T115c11: `available=False` con DB leggibile; deve rispondere solo il forte e il pin anonimo non deve contenere «Mario Rossi».
+   - Rischio esaminato: un test che non uccide la vecchia scorciatoia.
+   - Esito: **ok**. Ho rimesso a mano nel working tree la scorciatoia del primo giro: T115c11 FAIL (risponde gemini-flash «gratis»), 1161 PASS e 1 FAIL. Working tree poi ripristinato dall'index.
+3. **tests/test_unit_notte.py:2422** — ora `assert _giro(...) == 1`, più `script.visti == []`.
+   - Rischio esaminato: test indebolito.
+   - Esito: **ok**. Il codice di ritorno 1 coincide con quello che avevo misurato al primo giro (compito fermo dichiarato). I test riallineati (T115a6, T115d3) sono legittimi.
+4. **gas.py:5326** — commento corretto: identificativi None, quindi la finestra conta come «con dati di clienti». Esito: ok.
+5. **gas.py:234, gas.py:5673, gas.py:152** — già esaminati al primo giro (fail-closed con None, avviso del forte, traslitterazione) e invariati. Esito: ok.
+
+Esecuzioni: suite kernel **1162 PASS, 0 FAIL** (rieseguita); `test_unit_notte -k contatti_illeggibili` 2 passed. Nessuno slicing della storia (la finestra passa da `_get_window`). L'eccezione resta intercettata e loggata (gas.py:4037-4039), nessun crash.
+
+**Riserve**
+- **R-768-1 COSMETICA**: quando la lettura dei contatti fallisce, il messaggio di stop dice comunque «Questa richiesta contiene dati di clienti», ma non lo si sa. Meglio «potrebbe contenere». T115c2 fissa il testo esatto: va cambiato insieme.
+- **R-768-2 BASSA**: con `available is False` e lettura fallita, `[]` dà per scontato che sia illeggibile anche il diario. Se si guastasse solo la tabella contatti e il diario restasse leggibile, le righe del diario con nomi arriverebbero ai gratuiti senza filtro. Caso raro; ha senso tracciarlo in stato_progetto.md.
+
+**Rischi esplicitamente esclusi**
+- Suite pytest completa (1758) non rieseguita: ho rieseguito solo la suite kernel e il test notte toccato.
+- `ChiaveNormCollisione` e lock all'avvio non riprodotti end-to-end: ho simulato `available=False` impostandolo a mano, come in T115c11.
+- Comportamento su VPS non verificato.
+
+**Memoria**: ho aggiunto la riga `#768-M1coord — 2026-11-11 — APPROVATO CON RISERVE — …` in /home/user/Gas/.claude/agents/memoria_revisore.md, dopo la #767 del primo giro, e l'ho messa in stage (git add). Nessuna lezione nuova. Non ho lanciato commit_memoria_revisore.sh.
+
+### Review #788-M1coord (merge di origin/main 9844b1f nella #375, commit 366cfcc7)
 
 ## VERDETTO: APPROVATO
 
-Ho controllato il merge in stage di origin/main 0ef0b5c (PR #372, #373 e #374 di M2) dentro feat/r7-direttore-m3 (PR #376). Tutte e tre le verifiche richieste tornano.
+Review #788-M1coord — merge di origin/main 9844b1f (#371, #372, #373, #374, #376) nella PR #375 (branch feat/merge-automatico-z1xjx2).
 
-1. **Codice arrivato da main: identico a MERGE_HEAD.** `git diff --cached MERGE_HEAD --stat` su gas.py, brains, clients, modules/voice, scripts/voce e i test kernel/claude_cli/voce_ascolto/voice_* non dà output.
-2. **File della #376: identici a HEAD.** Il diff contro HEAD su scripts/gasmerge.sh, scripts/bot_esito.py, scripts/check_verdetto.py, .claude/hooks/review_gate.sh, .github/workflows/ci.yml e modules/sottofondo è vuoto.
-3. **Conflitti risolti senza perdite.**
-   - `git ls-files -u` è vuoto, `git diff --cached --check` è pulito e non c'è nessun marcatore di conflitto.
-   - In .claude/agents/memoria_revisore.md non manca nessuna riga, né rispetto a HEAD né rispetto a MERGE_HEAD.
-   - reports/stato_progetto.md non perde righe rispetto a MERGE_HEAD. Rispetto a HEAD ne cambia una sola: la riga della PR #368, sostituita dalla versione aggiornata di main. In più entra la voce della PR #371.
+**Verifiche meccaniche**: nessun conflitto residuo (`git ls-files -u` vuoto, `--check` pulito, nessun marcatore in gas.py/test kernel/stato_progetto/memoria); gas.py parsa (`ast.parse` ok). Per gas.py e tests/test_unit_kernel.py il merge automatico non ha perso nessun lato: il diff rispetto a HEAD coincide riga per riga col diff base..MERGE_HEAD (le modifiche di main), e quello rispetto a MERGE_HEAD col diff base..HEAD (le modifiche della #375).
 
-Citazioni (file della #376, identici a HEAD):
-- `scripts/gasmerge.sh:82` — sceglie il comando di timeout nell'ordine timeout, poi gtimeout, poi perl che fa da padre al comando (esce con 124 allo scadere) — rischio esaminato: che il merge abbia alterato questa parte — esito: ok, diff contro HEAD vuoto.
-- `scripts/bot_esito.py:210` — confronto senza maiuscole dei nomi e dei percorsi che appartengono alla macchina del bot — rischio esaminato: che la versione di main sovrascriva la modifica della #376 — esito: ok, la PR #372, #373 e #374 non toccano questo file.
-- `modules/sottofondo/__init__.py:276` — se la cartella della coda manca e non siamo nella cartella di Gas, restituisce un errore invece del falso «nessun compito» — rischio esaminato: che il merge interferisca con questa logica — esito: ok, identico a HEAD, e i moduli voce arrivati da main non lo importano.
+**Elementi del diff esaminati**
+- gas.py:5435 — il callback `su_testo_voce` (#374) arriva solo a `ClaudeCliClient` (il forte), e solo se `voce`. Rischio: anticipo voce a un modello gratuito o da un turno con dati di clienti. I rami gratuiti creano `OpenAI(...)` senza callback → ok.
+- gas.py:5340 — il blocco esteso dei nomi (#375) forza `compito="forte"` prima di costruire la coda dei provider. Rischio: turno voce con dati di clienti. Il forte riceve comunque l'anticipo voce, corretto perché il forte può vedere i dati → ok.
+- gas.py:5451 e gas.py:5736 — al passaggio a metà turno verso il forte per dati di clienti i provider rimanenti sono sostituiti da `_cascata_provider("forte")`; `voce`/`su_testo_voce` restano attivi, quindi l'anticipo parte solo dal forte. Forte assente → errore dichiarato prima di qualunque chiamata streaming, nessun anticipo → ok.
+- gas.py:5684 — l'avviso «risposta dal cervello forte: … dati di clienti» si aggiunge dopo `_info_ripiego` (#374) senza toccarne gli altri campi; solo testo (`avviso_ripiego` non compare in modules/voice/server.py) → ok.
+- modules/voice/server.py:972 (contesto) — il server voce passa `kw["su_testo_voce"]`; dopo il merge la firma di `run_turn` lo accetta (gas.py:5201) e `ClaudeCliClient` accetta `su_testo` (brains/claude_cli.py:551) → ok.
 
-Rischio escluso: non ho rieseguito i test. I risultati (1940 passed sulle suite sottofondo, gasmerge, hooks, verifica_bot, handoff_check e gate; kernel 1137 PASS, 0 FAIL) sono dichiarati da te. Il merge non cambia codice rispetto a nessuno dei due lati già revisionati, quindi il rischio è basso.
+**Report e memoria**: memoria_revisore.md non perde righe né rispetto a HEAD né a MERGE_HEAD; stato_progetto.md: rispetto a MERGE_HEAD cambia solo la riga «Decisioni 2026-11-10» (versione #375), rispetto a HEAD solo le righe di main (incluso «Audit 11 nov»).
 
-Memoria: ho aggiunto in coda a .claude/agents/memoria_revisore.md la riga contatore `#787-M3 — 2026-11-11 — APPROVATO — …` e l'ho messa in stage (stato M; non ho lanciato lo script di commit perché siamo dentro un merge). Ho scelto io il numero, partendo dal più alto presente (#786): se la tua numerazione prevede un altro numero, correggilo prima del commit.
+**Test rieseguiti**: `python tests/test_unit_kernel.py` → 1164 PASS, 0 FAIL (inclusi T115e2/T115e3); `pytest tests/test_unit_claude_cli.py` → 77 passed. Non rieseguita la suite completa (dichiarata 3994 passed, 33 failed in test_unit_web_browser).
+
+**Non verificato**: tests/test_unit_voice_server.py e i 33 fallimenti di test_unit_web_browser (attribuiti all'ambiente); anticipo voce dal vivo con `claude -p` reale insieme al blocco dei nomi (serve Mac/VPS).
+
+Nessuna lezione nuova; riga contatore #788-M1coord aggiunta in .claude/agents/memoria_revisore.md.
+
+
+### Review #789-M1coord (fix bot #375 V-1/V-2 su 17378b0, 1° giro)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #789-M1coord — PR #375, branch feat/merge-automatico-z1xjx2. Diff staged esaminato (gas.py, tests/test_unit_kernel.py, reports/stato_progetto.md); suite del kernel rieseguita: **1166 PASS, 0 FAIL** (coincide col dichiarato).
+
+**Elementi del diff esaminati**
+- `gas.py:220` — `_contiene_identificativo` ora confronta sempre a parola intera (regex `(?<![^\W_])…(?![^\W_])`); rimosso il ramo «contenuto in» (`i in t`). Rischio: che «_» separi e che lettere Unicode/cifre attacchino. Provato: `offerta_bianchi`, `#bianchi`, `bianchi's`, `L'Acme`, `ACME-2024` → riconosciuti; `contesto`, `ritardo`, `generico`, `arriva` → non più riconosciuti → **ok**, V-1 MEDIA del bot chiusa.
+- `gas.py:138` — tolta la costante `IDENTIFICATIVO_SUBSTRING_MIN`, sostituita da un commento col limite dichiarato. Rischio: usi residui → grep su *.py e *.md attivi: nessun riferimento → **ok**.
+- `tests/test_unit_kernel.py:13048` (T115a3b) e `:13056` (T115a3c) — coprono i casi del bot (positivi «Conte», «offerta_costa.pdf», «Riva:») e i limiti nel verso sicuro («quanto costa», «sarà») → **ok**, ma manca la copertura del verso opposto (vedi R1).
+- Contesto `tests/test_unit_kernel.py:12930` — il pin anonimo con `offerta_bianchi.txt` resta significativo («_» separa ancora, il nome viene riconosciuto); T114f/T114f2 passano.
+- `gas.py:174` `_identificativi_contatti` non toccato: separa su `[\W_]+`, gli identificativi restano coerenti col nuovo confronto.
+
+**Riserve**
+- **R1 (MEDIA, verso non sicuro)** — falsi negativi nuovi, non dichiarati né fissati da test. Verificati: oggi False, prima del fix (nomi da 4 lettere in su) True: `scrivi a mariorossi`; `file MarioRossi.pdf`; `www.acmesrl.it` (lead «Acme Srl»); `Bianchi2`; `acme2024`; `gbianchi@x.it` (con un altro recapito salvato). Il fix toglie falsi positivi (verso sicuro: al forte) e aggiunge falsi negativi nel verso non sicuro: dati del cliente possono finire su un modello gratuito (CLAUDE.md §2). Lo scambio va (1) dichiarato in stato_progetto accanto al limite (c) e (2) fissato con un test (es. T115a3d). Possibile recupero mirato: «contenuto in» solo dentro token con «@» o «.» (email e domini).
+- **R2 (BASSA)** — la voce di stato_progetto «limite (c) allineato al codice» descrive solo i falsi positivi rimasti; va completata con R1.
+
+**Rischi esclusi**: pytest notte/telegram_voce/voice_server/sottofondo non rieseguiti (moduli non toccati, dato dichiarato 613 passed); instradamento con provider veri/VPS non riproducibile in dev; costo della regex sulle finestre grandi non misurato (stesso pattern già usato per gli identificativi da 3 caratteri).
+
+Memoria: riga #789-M1coord e una lezione nuova in .claude/agents/memoria_revisore.md, committate in e800a8ff.
+
+### Review #790-M1coord (2° giro di #789-M1coord, commit 6a7ca7eb)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Re-review #790-M1coord, PR #375. Diff staged esteso riletto; suite del kernel rieseguita: **1167 PASS, 0 FAIL**; T115a3d passa.
+
+**Elementi del diff esaminati**
+- `gas.py:232` — il confine di parola guarda solo le lettere (`[^\W\d_]`): le cifre separano. Rischio: falsi negativi su «bianchi2»/«acme2024» e nuovi falsi positivi → **ok** («ugo2» ora combacia con «Ugo»: falso positivo trascurabile, verso sicuro).
+- `gas.py:196` — per il campo nome con più parole si aggiunge il nome attaccato («mariorossi», «marcoconte»). Rischio: combaci dentro parole più lunghe → **ok**, il confronto resta a parola intera e vale solo per il nome.
+- `gas.py:222` — token del testo con «@» o «.» (punteggiatura finale tolta); `gas.py:141` soglia `_IDENT_IN_INDIRIZZO_MIN = 4`. Rischio: falsi positivi e costo → **riserva** (R1). «1.200 euro», «e.g. contenuto», «ieri.» non fanno scattare il confronto; costo basso (token estratti una volta per chiamata).
+- `tests/test_unit_kernel.py:13062` (T115a3d) — copre tutti i casi della #789 più due negativi → **ok**, ma il negativo «contesto.txt» usa il lead «Zorzi», non «Conte».
+- reports/stato_progetto.md — dichiara lo scambio sui falsi negativi e lascia aperto «offertabianchi»; R2 della #789 chiusa.
+
+**Riserve**
+- **R1 (BASSA, verso sicuro)** — dentro percorsi, URL e nomi di file tornano i falsi positivi della V-1 del bot. Verificati True: «il file contesto.txt» (lead Conte); «modules/generico.py» (lead Neri); «vedi https://ritardo.it» (lead Rita); «ieri.Contento» (frase senza spazio dopo il punto). I risultati dei tool nella finestra sono pieni di percorsi: con lead dal nome comune più turni al forte (costo, attesa). Nessun rischio per i dati. Da dichiarare in stato_progetto e fissare con un test col lead «Conte».
+
+**Rischi esclusi**: aumento reale dei turni al forte con dati veri non misurabile in dev; pytest notte/telegram_voce non rieseguiti (dato dichiarato 273 passed).
+
+Memoria: riga #790-M1coord e una lezione nuova in .claude/agents/memoria_revisore.md, committate in 87446218.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Senza le correzioni (stash): 8 test falliscono in gasmerge/verifica_bot/handoff_check/sottofondo (`8 failed, 883 passed`); il test hook delle maiuscole (3 casi) e quello del file non tracciato falliscono senza il fix dell'hook; il vecchio ripiego `alarm; exec` dava rc 0 dopo 4 s su un figlio che ignora SIGALRM.
-- Con le correzioni: gasmerge + verifica_bot + handoff_check + sottofondo `891 passed`; hooks `215 passed`. Dopo 6272544: gasmerge + hooks `330 passed` (test nuovo `test_maiuscole_nel_perimetro`: 2 failed senza il fix).
-- Suite kernel (dopo il primo giro di correzioni; il secondo giro non tocca il codice letto dal kernel):
+- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1135 PASS / 0 FAIL (main e3eb542) → 1157 PASS / 0 FAIL (863ca51c) → 1162 PASS / 0 FAIL (96092c7e, rilanciato da M1; T115c8 e T115c11 falliscono senza il fix) → 1164 PASS / 0 FAIL (366cfcc7, dopo il merge di main) → 1167 PASS / 0 FAIL (6a7ca7eb; T115a3b fallisce col vecchio confronto «contenuto in»).
+- Dopo 6a7ca7eb: `pytest tests/test_unit_notte.py tests/test_unit_telegram_voce.py` → 273 passed; con il 1° giro anche voice_server e sottofondo → 613 passed.
+- Suite pytest completa dopo il merge (366cfcc7): 3994 passed, 2 skipped, 33 failed tutti in tests/test_unit_web_browser.py, che fallisce identico (33 failed) su origin/main 9844b1f in questo container (browser assente: ambiente, non il merge).
+- `python -m pytest -q tests/test_unit_telegram_voce.py tests/test_unit_notte.py tests/test_unit_sottofondo.py tests/test_unit_gate.py tests/test_unit_manutenzione.py tests/test_unit_voice_server.py tests/test_unit_voce_ascolto.py -k "not browser"` → 1758 passed, 34 deselected (rilanciato da M1 anche dopo 96092c7e).
 
 ```
-=== RIEPILOGO: 1135 PASS, 0 FAIL ===
+=== RIEPILOGO: 1167 PASS, 0 FAIL ===
 ```
+
+Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed embedding nel container).
 
 ## §6 STATO CI
 
-Su 3f305e9 (head prima del push di questo giro): CI completata senza fallimenti (evento check_suite.completed delle 02:06 dell'11 nov: nessuna suite in errore; `handoff-check` success), bot APPROVATO CON RISERVE con check `verifica-bot` neutral, verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/376#issuecomment-6784746339).
-
-Mappatura commit→run:
-- 3f305e9: run 42942230185 (CI) e run del bot su quello SHA.
-- 078ad0a: run 42941195559 (CI) e run del bot.
-- 8eb21c0, a3e0042, c2f8b03, 0d5ab5b, 6272544: nessuna run su questi SHA (pushati insieme ai commit di fine-task).
-- 902eedc e commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumento GitHub sulla PR #375:
+- 5e5a3bb7: handoff-check success; verifica-bot failure (V-1 MEDIA, chiusa in 96092c7e).
+- 863ca51c: nessuna run propria (pushato insieme a 5e5a3bb7).
+- 9ca898bd: unit-suite, handoff-check e verifica-bot success (letti con lo strumento GitHub sulla PR #375).
+- 17378b06 (merge di main + fine-task): unit-suite in corso alla lettura del bot; verifica-bot failure (V-1 MEDIA, V-2 COSMETICA: chiuse in 6a7ca7eb).
+- 6a7ca7eb e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Bot e verifica esterna su 3f305e9 (BASSE): il ripiego perl uccide solo il figlio diretto; `ferma()` riconosce la cartella di Gas dalla presenza di `gas.py`.
-- Limite noto (BASSA, #767-M1): il ripiego perl uccide solo il figlio diretto (gh pr checks non lancia sotto-processi).
-- Non verificato: macOS reale (perl di sistema, bash 3.2 con nocasematch, gh vero in `--watch`), esito finale di unit-suite coi nuovi permessi.
+- R-790-1 BASSA (verso sicuro) — dentro percorsi/URL/nomi di file il confronto «contenuto in» rifà combaciare nomi comuni («contesto.txt» con Conte, «modules/generico.py» con Neri): più turni al forte; manca un test col lead «Conte».
+- Limiti dichiarati del confronto a parola intera: «quanto costa» con Costa, «sarà» con Sara; «offertabianchi» (nome attaccato a un'altra parola senza punto né @) non riconosciuto.
+- R-768-1 COSMETICA — messaggio di stop «contiene dati di clienti» anche con la lettura fallita.
+- R-768-2 BASSA — available=False e lettura fallita → [] presume illeggibile anche il diario.
+- Ve #375 V-3/V-4 BASSE — parole di 1-2 lettere mai cercate da sole; nomi spaziati o con caratteri a larghezza zero.
+- R-766-1 BASSA — falsi positivi del confronto (es. «verde» da «Studio Verde Srl», cifre separate da spazi): turni mandati al forte senza bisogno (direzione sicura).
+- R-766-2 BASSA — i round-trip vecchi passano dal forte finto senza controllare chi ha risposto.
+- R-766-3 COSMETICA — due imprecisioni nella lettura dei contatti per memorie vecchie/finte.
+- R-766-4 COSMETICA — il messaggio «solo col cervello forte» non dice che `clear` toglie il blocco.
+- Effetto della regola (decisione in §0): anche un `ricorda` sulla sola conoscenza manda il turno al forte.
+- Non provato: passaggio al `claude -p` vero sul Mac a metà turno.
+- Restano aperte le riserve precedenti in reports/stato_progetto.md (R-744-M1-*, R-750-M1-2/3, ve #366 V-2/V-3).

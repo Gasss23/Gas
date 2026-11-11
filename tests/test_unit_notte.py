@@ -2412,11 +2412,15 @@ def test_resoconto_nel_giro_con_contatti_illeggibili(monkeypatch, dirs):
     from modules.memory import MemoryStore
     root, fuori = dirs
     _memoria_con_lead(root)
-    monkeypatch.setattr(MemoryStore, "leggi_contatti", lambda self, *a: None)
+    monkeypatch.setattr(MemoryStore, "leggi_contatti", lambda self, *a, **kw: None)
     cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
     inviati = _telegram_finto(monkeypatch)
-    assert _giro(monkeypatch, root, cat, _Script({"p": [[("calcola", json.dumps({"expr": "1+1"}))],
-                                                       "fatto"]})) == 0
+    # Blocco esteso dei nomi (V-1 bot #375): con i contatti illeggibili il turno del
+    # compito va solo al forte (qui spento) e si ferma dichiarato, mai ai gratuiti; il
+    # giro arriva comunque al riepilogo e a Telegram (esito del compito: errore).
+    script = _Script({"p": [[("calcola", json.dumps({"expr": "1+1"}))], "fatto"]})
+    assert _giro(monkeypatch, root, cat, script) == 1  # compito fermo dichiarato
+    assert script.visti == []  # nessuna chiamata ai cervelli gratuiti
     riepilogo = (root / ".gas_notte" / "ultimo_giro.md").read_text(encoding="utf-8")
     assert "- Lead attivi: non letti" in riepilogo and "Lead attivi: 0" not in riepilogo
     assert "- Firme in attesa: 1" in riepilogo

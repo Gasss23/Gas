@@ -1,14 +1,14 @@
-# Diff di sessione — 2026-11-11 — Audit dell'11 novembre (chat M3)
+# Diff della sessione — 2026-11-11 notte — blocco esteso dei nomi (M1)
 
-File toccati (da `git diff --stat BASE..HEAD`, BASE = merge-base con origin/main):
-- `scripts/gasmerge.sh` — ripiego senza `timeout` (gtimeout, poi perl padre che uccide il figlio).
-- `scripts/bot_esito.py` — `tocca_macchina_bot` senza maiuscole.
-- `scripts/check_verdetto.py` — `_nel_perimetro` senza maiuscole.
-- `.claude/hooks/review_gate.sh` — perimetro senza maiuscole (grep -i, pathspec icase).
-- `.github/workflows/ci.yml` — `permissions: contents: read`.
-- `modules/sottofondo/__init__.py` — `ferma()` fuori dalla cartella di Gas: errore che dice dove lanciarlo.
-- `tests/test_unit_gasmerge.py`, `tests/test_unit_verifica_bot.py`, `tests/test_unit_handoff_check.py`, `tests/test_unit_hooks.py`, `tests/test_unit_sottofondo.py` — test delle correzioni.
-- `.claude/agents/memoria_revisore.md` — righe #766-M1, #767-M1.
-- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.
+Si riscrive a ogni sessione; la storia completa sta in git.
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+- `gas.py`: finestra con dati di lead → solo il forte (anche a metà turno), recap/lezioni filtrati per i non forti, riflessione con dati di lead solo al forte, confronto dei nomi con NFKD, lapidi, cifre dei telefoni, parole corte a parola intera, tipo della riga di diario.
+- `modules/memory/store.py`: `leggi_contatti(includi_lapidi=...)`.
+- `tests/test_unit_kernel.py`: T115a-e, round-trip, `forte_finto` negli helper per i round-trip con ricorda/salva_contatto.
+- `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md`: R-753-M1-A chiusa, riserve R-766-1..4, riga #766-M1coord.
+- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: report di fine sessione.
+
+## Merge di main (2026-11-11 sera)
+Commit 366cfcc7: unione di origin/main 9844b1f nella #375; conflitti solo nei report (stato_progetto: aggiunta riga «Audit 11 nov»; memoria_revisore: unione). Review #788-M1coord APPROVATO.
+
+Commit 6a7ca7eb: gas.py `_contiene_identificativo`/`_identificativi_contatti` (parola intera; nome attaccato; «contenuto in» dentro email/domini/file), test T115a3b/c/d, stato_progetto. Motivo: bot #375 V-1 MEDIA (falsi positivi «Conte»→«contesto»).

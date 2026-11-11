@@ -1247,24 +1247,29 @@ class MemoryStore:
         contatti = self.leggi_contatti(filtro_stato)
         return [] if contatti is None else contatti
 
-    def leggi_contatti(self, filtro_stato: Optional[str] = None
+    def leggi_contatti(self, filtro_stato: Optional[str] = None,
+                       includi_lapidi: bool = False
                        ) -> Optional[List[Dict[str, Any]]]:
         """Come lista_contatti, ma None se la lettura fallisce (R-454-1 / V-2 bot
         #241: DB bloccato fra due letture). [] vuol dire davvero «nessun contatto»:
         chi conta i lead (resoconto del mattino, `ricorda fermi`) non deve scambiare
-        un errore per «0 lead». SOLA LETTURA, mai solleva."""
+        un errore per «0 lead». Con includi_lapidi=True tornano anche i lead fusi
+        (merged_into valorizzato): servono al kernel per riconoscere i dati dei
+        clienti da non dare ai cervelli non forti. Frammenti SQL costanti, il valore
+        dello stato resta parametrizzato. SOLA LETTURA, mai solleva."""
         try:
             with self._connect() as con:
+                vivi = "" if includi_lapidi else "merged_into IS NULL"
                 if filtro_stato is not None:
+                    dove = "stato = ?" + (f" AND {vivi}" if vivi else "")
                     cur = con.execute(
-                        "SELECT * FROM contatti WHERE stato = ? "
-                        "AND merged_into IS NULL "
+                        f"SELECT * FROM contatti WHERE {dove} "
                         "ORDER BY aggiornato_il DESC", (filtro_stato,),
                     )
                 else:
+                    dove = f"WHERE {vivi} " if vivi else ""
                     cur = con.execute(
-                        "SELECT * FROM contatti WHERE merged_into IS NULL "
-                        "ORDER BY aggiornato_il DESC"
+                        f"SELECT * FROM contatti {dove}ORDER BY aggiornato_il DESC"
                     )
                 return self._rows(cur)
         except (sqlite3.Error, OSError) as e:
