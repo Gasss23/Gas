@@ -1,19 +1,18 @@
-# Ultimo report — 2026-11-10 — Decisioni dell'operatore: avviso Flash-lite, tetto di 10 chiamate per turno, nomi dei lead mai ai modelli non forti (M1)
+# Ultimo report — 2026-11-11 notte — voce: prima frase in anticipo e tempi del forte (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370).
-2. R-753-M1-A: i risultati di `ricorda`/`salva_contatto` già nella storia, il testo dell'operatore `recap_pin` e la riflessione di fine task (ve #370 V-1) possono contenere nomi di clienti e arrivano ancora ai modelli non forti. Estendere il blocco anche lì? sì/no
+
+1. PR dello streaming: con verdetto del bot APPROVATO pulito e CI verde la mergia la chat; con riserve resta per il mattino.
+2. Sul Mac, dopo il merge e il riavvio del server voce: `grep "tempi claude-cli" gas_debug.log | tail -5` e incollare il risultato (dice dove vanno i 6–7 s del cervello).
 
 ## Esito
-- **(a) Primo cervello non configurato = ripiego dichiarato** (sì dell'operatore): FATTA — nessun cambio di codice, test T113a4 lo fissa.
-- **(b) Flash-lite dichiarato** (sì): FATTA — `RUNG_VERSIONE_LEGGERA`, riga «↪ risposta da … (versione leggera scelta per un compito semplice)» in CLI e testo Telegram, mai a voce.
-- **Tetto di 10 chiamate al modello per turno** (sì): FATTA — `MAX_CHIAMATE_TURNO`, contatore unico fra i cervelli; `for _ in range(10)` resta come barriera per cervello (§8).
-- **Nomi dei lead mai ai modelli non forti** (sì): FATTA per il pin della memoria — variante piena solo a claude-cli, anonima agli altri. DEFERITA la storia/recap (R-753-M1-A, decisione dell'operatore).
-- **Bot #370 5° giro V-1 (MEDIA)**: pin anonimo fail-closed se la lettura dei contatti fallisce — FATTA (T114f2, review #765-M1coord APPROVATO CON RISERVE, R-765-1-M1coord BASSA).
-- Review #753-M1: 1° giro APPROVATO CON RISERVE, 2° giro APPROVATO.
 
-## Test
-Kernel 1119 → 1134 PASS / 0 FAIL; pytest telegram_voce+notte+sottofondo+gate+manutenzione+voice_server (-k "not browser") 1448 passed.
+- **Prima frase in anticipo**: FATTA. Nei turni a voce `claude -p` scrive a flusso; la voce della prima frase si prepara mentre la CLI finisce e si usa solo se identica alla risposta finale. Dal vivo: prima frase pronta ~1,2 s prima.
+- **Tempi del forte nel log**: FATTI (riga `tempi claude-cli:` in gas_debug.log, solo numeri).
+- Review #773-M2 APPROVATO CON RISERVE (R-773-1/3 chiuse in #778, R-773-2 BASSA aperta), #778 e #779 (merge di main) APPROVATO.
+- Test: kernel 1136 PASS, 1 FAIL T31g (fastembed assente, come su main); claude_cli + voice_server 290 passed.
+- **Niente schema strumenti a voce e processo CLI caldo**: DEFERITI in attesa dei tempi del Mac.
 
 ## Anomalie
+
 Nessuna.

@@ -1,281 +1,183 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-10 pomeriggio — Decisioni dell'operatore: avviso Flash-lite, tetto per turno, nomi dei lead mai ai modelli non forti (M1)
+**Sessione:** 2026-11-11 notte — voce più veloce: prima frase in anticipo dal cervello forte e tempi del forte nel log (chat M2)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370): sì dell'operatore già dato («mergia la #368, #369 e #370»).
-2. R-753-M1-A: DECISA dall'operatore il 2026-11-10 notte («blocco esteso dei nomi sì»): si implementa in una PR successiva. Testo originale della domanda: estendere il blocco dei nomi dei clienti anche ai risultati di `ricorda`/`salva_contatto` nella storia, al testo dell'operatore, a `recap_pin` e alla riflessione di fine task (ve #370 V-1) verso i modelli non forti? sì/no
+1. Merge della PR dello streaming (URL nel commento della PR e nella descrizione, dalla risposta di `create_pull_request`): con verdetto del bot APPROVATO pulito e CI verde la mergia la chat; con riserve resta pronta per il «mergia» del mattino (riserva aperta R-773-2-M2 BASSA).
+2. Prova sul Mac: dopo il merge e il riavvio del server voce, `grep "tempi claude-cli" gas_debug.log | tail -5` dice dove vanno i 6–7 s del cervello sul Mac (fuori_cli = avvio di Claude Code e login; ttft = attesa del primo token). Da incollare a M1/M2.
+
+NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — (a) primo cervello non configurato = ripiego dichiarato**: FATTA — solo test T113a4 (nessun cambio di codice, sì dell'operatore).
-- **Fetta 2 — (b) Flash-lite dichiarato**: FATTA — `RUNG_VERSIONE_LEGGERA`, riga nel testo (mai a voce).
-- **Fetta 3 — tetto di 10 chiamate per turno**: FATTA — `MAX_CHIAMATE_TURNO`.
-- **Fetta 5 — merge di origin/main (#368 di Mani)**: FATTA — review #757-M1 APPROVATO.
-- **Fetta 6 — merge di origin/main (#369 di M2)**: FATTA — review #764-M1coord APPROVATO.
-- **Fetta 7 — bot #370 5° giro V-1 MEDIA (pin anonimo fail-open se la lettura dei contatti fallisce)**: FATTA — 7f072617, test T114f2, review #765-M1coord APPROVATO CON RISERVE.
-- **Fetta 4 — nomi dei lead mai ai modelli non forti**: FATTA per il pin; DEFERITA per storia/recap (R-753-M1-A, §0 punto 2).
+- **Streaming della prima frase (ordine 1 di M1)**: `FATTA` (6e711ce). `claude -p` nei turni a voce scrive a flusso (stream-json); il testo della risposta finale arriva a pezzi solo se comincia con `"chiamate": []`; il server voce sintetizza la prima frase intera in un filo a parte e la usa SOLO se è identica alla prima frase della risposta finale. Dal vivo (cloud, sonnet low): prima frase pronta a ~2,1 s, risposta finale del client a ~3,4 s.
+- **Tempi interni del forte nel log (richiesta di M1)**: `FATTA` (a9419ea). Riga `tempi claude-cli:` in gas_debug.log a ogni chiamata: tutto, prima_riga, primo_testo, richiesta, ttft, api, cli, fuori_cli, token.
+- **R-773-1-M2 BASSA, R-773-3-M2 COSMETICA**: `FATTA` (a9419ea, review #778-M2).
+- **Merge di origin/main (#370)**: `FATTA` (71b04fa, review #779-M2).
+- **Niente schema strumenti nei turni a voce semplici (ordine 2)**: `DEFERITA` — misurato qui: lo schema da 9k caratteri pesa ~0,3 s; prima servono i tempi del Mac.
+- **Processo CLI caldo (ordine 3)**: `DEFERITA` — non sicuro così com'è (il prompt di sistema e il codice dei ruoli cambiano a ogni chiamata); i tempi `fuori_cli` del Mac diranno se vale.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
- gas.py                             | 173 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
- modules/telegram/bot.py            |   2 +-
- reports/diff_sessione.md           |  14 +++++++-------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ brains/claude_cli.py               | 282 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ gas.py                             |  14 +++++++++++---
+ modules/voice/server.py            |  74 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/diff_sessione.md           | n/d
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  21 +++++++++++----------
- tests/test_unit_kernel.py          | 262 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- tests/test_unit_notte.py           |   4 +++-
+ reports/ripartenza_m2.md           | n/d
+ reports/stato_progetto.md          | n/d
+ reports/ultimo_report.md           | n/d
+ tests/test_unit_claude_cli.py      | 201 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          |  47 +++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_server.py    |  69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
-NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
+NB: confronto con origin/main (e3eb542). Regola «n/d» — i conteggi dei report scritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-7f072617 fix(kernel): pin anonimo fail-closed se la lettura dei contatti fallisce (bot #370 V-1 MEDIA) + riserve registrate (bot #370 V-2)
-fcdc0f55 chore(revisore): memoria review #765 — APPROVATO CON RISERVE
-7c5d5fc4 docs(fine-task): handoff #370 dopo il merge di #369
-9bd8c091 merge: origin/main (#369) nella #370 (review #764-M1coord APPROVATO)
-7c5f969a docs(fine-task): verdetto #757-M1 riemesso, originale in blocco (come #749-M2)
-8512854d docs(fine-task): verdetto #757-M1 riemesso per il gate
-f5ea9b64 docs(fine-task): handoff #370 dopo il merge di #368
-05184a94 merge: origin/main (#368) nella #370 (review #757-M1 APPROVATO)
-e9b74f59 docs(fine-task): handoff #370 aggiornato (R-753-M1-A estesa, CI)
-fabf2e9a docs(stato): R-753-M1-A estesa alla riflessione (ve #370 V-1) e buchi noti del pin anonimo
-e761eefc docs(fine-task): decisioni dell'operatore del 2026-11-10 (Flash-lite, tetto per turno, pin anonimo)
-d5773ec1 fix(kernel): decisioni dell'operatore 2026-11-10 — Flash-lite dichiarato, tetto di 10 chiamate per turno, pin senza dati dei lead ai non forti (review #753-M1)
+71b04fa Merge origin/main (#370) nello streaming della prima frase — review #779-M2 APPROVATO (chat M2)
+a9419ea perf(voce): tempi interni del forte nel log, nipoti uccisi al timeout, pipe chiuse — review #778-M2 (chat M2)
+6e711ce perf(voce): prima frase in anticipo — claude -p a flusso (stream-json), voce della prima frase preparata mentre il forte finisce — review #773-M2 (chat M2)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. I commit di soli report compaiono tutti tranne l'ultimo.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-# Review #753-M1 — 1° giro
+### Review #779-M2 (merge di origin/main) — verdetto integrale
 
-## VERDETTO: APPROVATO CON RISERVE
+## VERDETTO: APPROVATO
 
-Revisione #753-M1 del diff in stage sul branch `feat/merge-automatico-z1xjx2` (PR #366). Prima ho letto CLAUDE.md (§5, §8, §2), `reports/stato_progetto.md` (righe 378-379) e la mia memoria. Non ho committato nulla.
+Review #779-M2: merge di origin/main e3eb542 (la #370 di M1) in perf/voce-streaming-m2, preparato in /home/user/Gas-stream, con HEAD a9419ea.
 
-**Le prove dell'autore, rifatte da me**
-- `tests/test_unit_kernel.py`: **1131 PASS, 0 FAIL**, confermato.
-- Telegram e notte con pytest: 273 passed.
-- Ho provato 4 mutanti miei, cioè versioni del codice rotte apposta per vedere se i test se ne accorgono:
-  - tolto il controllo su `contatto_id` nel pin: i test lo scoprono (T114f fallisce);
-  - tolta la ricerca dei nomi dei lead nel testo del diario: i test lo scoprono (T114f fallisce);
-  - il secondo tentativo dopo un errore 400 di Gemini non conta come chiamata: **i test non se ne accorgono**;
-  - il secondo tentativo ignora il tetto di 10: **i test non se ne accorgono**.
+Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), le parti di reports/stato_progetto.md che riguardano questa fetta e .claude/agents/memoria_revisore.md.
 
-**Righe del diff esaminate**
-- `gas.py:5199` — controllo del tetto all'inizio di ogni cervello. Se le 10 chiamate sono già finite, scrive il motivo e chiude il giro. Rischio esaminato: passare al cervello dopo anche a tetto finito. Ho seguito anche il caso in cui la decima chiamata fallisce: si torna qui, il giro si chiude e arriva «Pipeline esausta» col motivo. — ok
-- `gas.py:5261` — controllo del tetto dentro il giro di un cervello, dopo il controllo del budget e prima della chiamata. Rischio esaminato: un tetto che scatta dopo l'altro e ne consuma il posto (lezione del 2026-11-09). Il contatore sale solo quando la chiamata parte davvero (`gas.py:5269`). Alla fine si arriva a «Pipeline esausta» (`gas.py:5499`). Non c'è nessun taglio diretto della storia. — ok
-- `gas.py:5284` — il secondo tentativo dopo un 400 di Gemini conta nel tetto: rinuncia se il tetto è pieno e altrimenti aumenta il contatore (`gas.py:5296`). Rischio esaminato: si potrebbe superare il tetto di 1. La logica è giusta, ma nessun test la copre. — riserva (R-753-M1-1)
-- `gas.py:480-502` — `_info_ripiego` con `versione_leggera`. Il caso «risposta da una riserva» vince su «versione leggera». Il cervello forte (claude-cli) è escluso. Per i compiti semplici `_cascata_provider` (`gas.py:1040`) mette Flash-lite al primo posto, quindi non è un ripiego ma viene dichiarato. Rischio esaminato: l'avviso detto a voce. Sia la CLI (`gas.py:6725`) sia Telegram (`modules/telegram/bot.py:951`) lo scrivono solo come riga di testo. Il test notte che si aspettava solo «42» è stato aggiornato (`tests/test_unit_notte.py:2229`). — ok
-- `gas.py:5230` — `_pin_rung`: il pin con i dati dei lead va solo a `claude-cli`, quello anonimo a tutti gli altri. Le due versioni si calcolano una volta per turno (`gas.py:5149`), dentro il messaggio di sistema. `_get_window` e la finestra non sono toccati. — ok
-- `gas.py:3955-4007` — versione anonima del pin. Al posto dei lead mostra solo quanti sono. Le righe del diario legate a un lead perdono i dettagli: quelle degli strumenti dei contatti, quelle con `contatto_id` e quelle che contengono un nome o un dato di un contatto. Si confronta col testo originale, prima della sostituzione per i turni contaminati, e col `tipo` originale. Gli identificativi si prendono da tutti i contatti, anche chiusi. Rischio esaminato: un nome che passa lo stesso. Un nome di 1–2 lettere non viene cercato (limite dichiarato in stato_progetto). Le parole comuni, tipo «info», nascondono troppo, ma è un errore nel verso sicuro. In caso di errore restituisce `"", ""`, come prima. — ok
-- `gas.py:4222` — contesto, file non toccato: `rifletti` chiama ancora `_memoria_pin()`, che ora restituisce la versione piena. Solo il segnale `_pin_non_fidato` cambia, ed è identico per le due versioni. — ok
+**Cosa ho guardato nel diff**
+- `gas.py:5025` — aggiunge `su_testo_voce` alla firma di `run_turn`, accanto a `voce: bool`. Rischio: che il merge abbia perso o duplicato un parametro della #370. Rispetto a MERGE_HEAD, gas.py cambia solo in 14 righe: l'import di `Callable`, la firma con il suo commento e il costruttore. Esito: ok.
+- `gas.py:5233` — `ClaudeCliClient(timeout=…, effort…, su_testo…)`. `su_testo` passa solo se è un turno a voce, c'è la funzione ed è il ramo `claude-cli`. Rischio: che i cervelli gratuiti ricevano il flusso, cosa che andrebbe contro la regola dei modelli. Il ramo `OpenAI(...)` è rimasto com'era. Esito: ok.
+- `gas.py:5280` — il controllo del tetto di 10 chiamate per turno della #370 sta dentro il ciclo, prima di ogni chiamata. Il conteggio sale a `gas.py:5288` e anche sul retry di Gemini 400 a `gas.py:5315`. Rischio: che il flusso aggiri il tetto. Non lo aggira: il flusso e l'anticipo vivono dentro una sola chiamata, che viene contata come le altre. L'anticipo parla solo quando la risposta inizia con `"chiamate": []`, quindi non aggiunge giri. Esito: ok.
+- `gas.py:5249` — `_pin_rung`: il pin completo della memoria va solo a `claude-cli`, gli altri cervelli ricevono la versione senza dati dei lead. Rischio: che il testo anticipato porti dati del pin ai cervelli non forti. Non succede: il flusso esiste solo per il cervello forte, che il pin completo lo riceve già. Esito: ok.
+- `modules/voice/server.py:949` — `kw["su_testo_voce"] = self._anticipo.testo`, invariato rispetto ad a9419ea (#773/#778). Esito: ok.
+- `brains/claude_cli.py:634` — senza `su_testo` il forte usa l'uscita json di prima. T104e conferma che con un turno a testo resta `--output-format json`. Esito: ok.
+- `.claude/agents/memoria_revisore.md` (unione delle due versioni) — nessuna riga tolta rispetto a HEAD né rispetto a MERGE_HEAD. Le righe #773, #778, #764-M1coord e #765-M1coord ci sono tutte e senza doppioni. Nessun file in conflitto, nessun marcatore di conflitto, `git diff --cached --check` pulito. Esito: ok.
+
+**Test rieseguiti da me**
+- claude_cli + voice_server: 290 passed.
+- Kernel: 1136 PASS, 1 FAIL. Il FAIL è T31g, che c'era già (manca fastembed). T104d e T104e PASS.
+
+**Rischi esclusi (non verificati)**
+- Il tetto conta le chiamate a `create`, non i processi `claude -p`. Un eventuale nuovo tentativo interno di `ClaudeCliClient` non passa dal tetto. Questo c'era già prima del merge e non l'ho riesaminato qui.
+- Non ho provato dal vero sul Mac (ElevenLabs con la CLI reale): non si può riprodurre in questo ambiente.
+- Non ho riletto le parti della #370 che non toccano questa fetta (`modules/telegram/bot.py`, test della notte). Le ha già approvate la #764/#765-M1coord.
+
+Nessuna riserva nuova. R-773-2-M2 resta accettata come prima.
+
+**Memoria**
+- Ho aggiunto la riga `#779-M2 — 2026-11-11 — APPROVATO — …` in coda a /home/user/Gas-stream/.claude/agents/memoria_revisore.md e l'ho messa in staging (`M ` nell'index).
+- Lo script `commit_memoria_revisore.sh` non ha committato il file: git non permette un commit parziale durante un merge. Lo script ha scritto un WARN in gas_debug.log e ha lasciato intatto l'index. La riga entrerà nel commit del merge.
+- Nessuna lezione nuova.
+
+### Review #778-M2 (R-773-1/R-773-3, tempi del forte) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Review #778-M2: il delta in staging su 6e711ce chiude le riserve R-773-1 e R-773-3 e aggiunge i tempi del forte nel log, senza riserve nuove.
+
+**Elementi del diff esaminati**
+- `brains/claude_cli.py:427` — `uccidi_tutti`: `os.killpg(proc.pid, 9)`, e se fallisce `proc.kill()`; il processo parte con `start_new_session=True`. Si usa al timeout (`brains/claude_cli.py:435`) e nel finally (`brains/claude_cli.py:468`). Rischi esaminati:
+  - nipote che tiene aperto lo stdout: ho rifatto la sonda `bash -c "sleep 8 & sleep 8"` con timeout 1 s. TimeoutExpired arriva dopo 1,0 s (prima erano 8 s) e `pgrep` non trova nessun `sleep` rimasto;
+  - `su_riga` che solleva: il figlio muore subito;
+  - 5 MB di stdin a un figlio che non li legge: nessun blocco.
+  - Il finally chiama killpg solo se `poll()` è None, quindi mai su un pid già raccolto. Con la sessione nuova il Ctrl-C del terminale non arriva più al figlio, ma lo uccide comunque il finally.
+  - Esito: ok, R-773-1-M2 chiusa.
+- `brains/claude_cli.py:468` (finally) — chiusura esplicita di stdout e stderr, dopo i join dei fili; un `OSError` viene ignorato. Esito: ok, R-773-3-M2 chiusa.
+- `brains/claude_cli.py:498` — `_log_tempi_cli`. Rischi esaminati:
+  - privacy: scrive solo numeri, mai testo. I tempi della CLI passano un filtro di tipo (bool escluso) e di intervallo 0–3.600.000 ms; i token vengono da `_token`, già limitato;
+  - §9: tutto è dentro `try/except Exception`;
+  - visibilità: il logger `gas.claude_cli.tempi` è a livello INFO. Il file handler di gas.py non ha livello, quindi la riga arriva in gas_debug.log; la console resta a WARNING (`gas.py:50`).
+  - Esito: ok.
+- `brains/claude_cli.py:653` — in `_esegui_cmd`, `su_riga` e `su_testo` sono avvolti per prendere i tempi della prima riga e del primo testo. `lettore.riga` intercetta ancora gli errori di `su_testo`. Il ramo json registra i tempi a `brains/claude_cli.py:636`. Esito: ok.
+
+**Riproduzioni**
+- claude_cli: 75 passed.
+
+**Note cosmetiche (non bloccanti)**
+- C'è `9` dove servirebbe `signal.SIGKILL`.
+- Se manca la riga `result` (errore), la riga dei tempi riporta solo i tempi misurati da Gas.
+
+**Rischi esclusi (non verificati)**
+- Il mutante `start_new_session=False` e la prova dal vivo con i tempi dichiarati dalla CLI: li prendo dal tuo messaggio, qui non ho la CLI autenticata.
+- Lo scarto di `time_to_request_from_spawn_ms`: non l'ho verificato sulla CLI vera.
 
 **Riserve**
-- **R-753-M1-1 (BASSA)**: «anche il secondo tentativo dopo un 400 di Gemini conta» è una decisione esplicita dell'operatore, ma nessun test la prova. Gli ultimi due mutanti dell'elenco sopra passano tutti i 1131 test. Serve un test con Gemini che risponde 400 alla decima chiamata: il secondo tentativo non deve partire e il tetto deve essere dichiarato.
-- **R-753-M1-2 (BASSA)**: `recap_pin` (`gas.py:5152`, il riassunto delle sessioni precedenti) va ancora a tutti i cervelli gratuiti. Può contenere nomi di lead se la riflessione ne parlava. È lo stesso problema della riserva aperta R-753-M1-A: va annotato lì insieme.
-- **R-753-M1-3 (COSMETICA)**: dopo che il tetto è scattato, i cervelli seguenti non configurati aggiungono ancora «… non impostata» ai motivi, perché il `continue` di `gas.py:5196` arriva prima del `break`. Il messaggio di «Pipeline esausta» diventa più rumoroso.
+- R-773-2-M2 (anticipo buttato ma già pagato a ElevenLabs) resta aperta come riserva accettata: va tracciata in reports/stato_progetto.md.
 
-**Cosa NON ho verificato**
-- Il comportamento con Gemini, Groq o OpenRouter veri e con `claude -p` reale: i test usano client finti e qui non ci sono chiavi.
-- Il server voce e il sottofondo: non sono nel diff. Ho controllato solo che la CLI e Telegram non leggano l'avviso a voce.
-- Le suite `gate`, `manutenzione` e `voice_server`: non le ho rilanciate.
+**Memoria**
+Ho aggiunto la riga contatore #778-M2 in /home/user/Gas-stream/.claude/agents/memoria_revisore.md, nessuna lezione nuova. Il file è in staging e non l'ho committato.
 
-La riga #753-M1 e una lezione nuova sono in `.claude/agents/memoria_revisore.md`, messe in stage. Non ho lanciato `commit_memoria_revisore.sh`, perché mi avevi chiesto di non committare.
-
-# Review #753-M1 — 2° giro
-
-## VERDETTO: APPROVATO
-
-Revisione #753-M1, 2° giro, sul diff in stage del branch feat/merge-automatico-z1xjx2 (PR #366). Prima della revisione ho riletto CLAUDE.md (sez. 5 e 8), la riga del 1° giro in memoria e la voce R-753-M1 in `reports/stato_progetto.md`.
-
-**Parti del diff esaminate**
-
-1. `gas.py:5196` — nel giro esterno i due controlli del tetto (`_tetto_turno` e `_chiamate_turno >= MAX_CHIAMATE_TURNO`) ora vengono prima del controllo della chiave (`gas.py:5202`).
-   - Rischio esaminato: un rung saltato in modo sbagliato, o «non impostata» ancora aggiunta dopo il tetto.
-   - Esito: **ok**. Se il primo cervello finisce le sue 10 iterazioni esattamente a 10 chiamate, il controllo esterno sul rung seguente aggiunge «tetto … e successivi non provati» e si ferma. L'ordine vecchio (rimesso da me) produceva «groq: GROQ_API_KEY non impostata; openrouter…; ollama…» e non arrivava mai al tetto, quindi T114c4 falliva.
-2. `gas.py:5285` — il retry del 400 di Gemini parte solo se `_chiamate_turno < MAX`, e la nuova chiamata conta (`gas.py:5298`).
-   - Rischio esaminato: un'undicesima chiamata.
-   - Esito: **ok**. Se il 400 arriva alla decima chiamata, l'errore passa al gestore esterno e il rung seguente dichiara il tetto. Se arriva alla nona, il retry è la decima e il controllo interno (`gas.py:5263`) ferma il turno. Il controllo del budget prima del retry resta.
-3. `tests/test_unit_kernel.py:12801` — T114c2, T114c3 e T114c4.
-   - Rischio esaminato: test che passano anche col codice sbagliato.
-   - Esito: **ok**. Ho rieseguito io i tre mutanti dichiarati e ognuno fa fallire il test previsto:
-     - retry che ignora il tetto → T114c2 FAIL (11 chiamate);
-     - retry non contato → T114c3 FAIL (11 chiamate);
-     - ordine vecchio dei controlli → T114c4 FAIL.
-   - `gas.py` è tornato identico a quello in stage dopo ogni mutante.
-4. `reports/stato_progetto.md:378` — R-753-M1-1 e R-753-M1-3 chiuse con i test che le provano; R-753-M1-2 (recap_pin ai cervelli gratuiti) annotata dentro la riserva aperta R-753-M1-A.
-   - Esito: **ok**. Coerente con quanto chiesto nel 1° giro.
-
-**Esecuzione**
-- `tests/test_unit_kernel.py`: 1134 PASS, 0 FAIL.
-- `git diff --cached --check`: pulito.
-- Nessun taglio diretto della cronologia e nessuna simulazione dell'output dei tool. La finestra passa sempre da `_get_window` (`gas.py:5228`). La barriera `for _ in range(10)` per cervello resta (§8).
-
-**Cosa non ho verificato**
-- La suite pytest di telegram, voce, notte, sottofondo, gate, manutenzione e voice_server (1448 passed secondo l'autore) non l'ho rilanciata. Il delta di questo giro tocca solo `gas.py` nel ciclo della cascata e i test del kernel; quei moduli non sono cambiati rispetto al 1° giro.
-- Il comportamento reale del 400 di Gemini in produzione non è verificato: in sviluppo non si riproduce, i test usano un client finto.
-
-**Memoria**: la riga «#753-M1 (2° giro)» è aggiunta in coda a `.claude/agents/memoria_revisore.md` e in stage. Come da tua istruzione non ho committato, quindi non ho lanciato `commit_memoria_revisore.sh`.
-
-### Review #757-M1 (merge di origin/main #368) — verdetto integrale RIEMESSO
-
-Il primo verdetto non citava file di codice del diff di sessione e il gate B lo rifiutava: come da regola il revisore l'ha RIEMESSO con la stessa sostanza e le citazioni del nostro lato. Sotto, prima il verdetto riemesso, poi l'originale (in un blocco, alla lettera).
-
-## VERDETTO: APPROVATO
-
-Review #757-M1, riemessa per il gate. Ho verificato il merge staged di origin/main 904d9d6 (PR #368 di Mani) in feat/merge-automatico-z1xjx2 (HEAD e9b74f5, PR #370). Il numero #754-M1 che mi era stato indicato è già occupato: le righe #754, #755 e #756-M1 vengono dalla chat di Mani, che usa anche lei la sigla M1.
-
-Elementi esaminati:
-- `gas.py:5198` — controllo del tetto MAX_CHIAMATE_TURNO nel giro esterno di run_turn (costante a `gas.py:2023`, barriera §8 da 10 per cervello a `gas.py:5224`). Rischio: che il merge abbia alterato il nostro lato. Il diff staged contro HEAD su gas.py è di 0 righe: il file non è toccato dal merge e il guardrail §8 è intatto. Esito: ok.
-- `modules/telegram/bot.py:951` — commento §8 sulla riga di riserva o versione leggera, mai detta a voce, dentro `_turno_con_finale` (`modules/telegram/bot.py:952` passa `avviso_ripiego` nel testo). Rischio: perdita della modifica nostra (bot #366 V-1) nella risoluzione. Il diff staged contro HEAD è di 0 righe e il diff contro 904d9d6 contiene solo la modifica nostra. Esito: ok.
-- `tests/test_unit_kernel.py` e `tests/test_unit_notte.py` — diff staged contro HEAD di 0 righe, quindi invariati dal merge. Esito: ok.
-- Contesto, file arrivati da main e ora identici a main: `clients/voice/ascolto.py:724` (`_voce_subito`, usato a `clients/voice/ascolto.py:793` con subito=True), `tests/test_unit_voce_ascolto.py:2719` e `scripts/voce/LEGGIMI.md`. Sono identici a MERGE_HEAD (diff di 0 righe). Dal merge-base a0c200c i due lati di codice sono disgiunti. Ho rieseguito `tests/test_unit_voce_ascolto.py`: 314 passed. Esito: ok.
-- `reports/stato_progetto.md:697` — c'è la voce «richiesta d'un fiato (PR #368)» di Mani e c'è anche la nostra voce delle decisioni dell'operatore (#366). Esito: ok.
-- `.claude/agents/memoria_revisore.md:1484` — unione delle due code di memoria. Il diff contro MERGE_HEAD aggiunge solo le 3 righe nostre, quello contro HEAD solo le 5 di Mani: non si perde nulla. Esito: ok. Resta una nota di processo: la numerazione #753-M1 è doppia tra i due lati.
-
-Controlli meccanici:
-- `git ls-files -u` è vuoto.
-- `git diff --cached --check` è pulito.
-- Nessun marcatore di conflitto.
-- MERGE_HEAD è 904d9d6.
-- Nessun tocco a `_get_window`, ai provider o ai guardrail.
-
-Cosa non ho verificato:
-- Il test kernel (1134 PASS) e il pytest su voce, telegram_voce e notte (583 passed) non li ho rieseguiti: mi fido del numero dell'agente. Il codice del nostro lato ha già avuto la review #753-M1 (2° giro).
-- Il comportamento dal vivo della voce sul Mac non è riproducibile qui.
-- handoff.md, ultimo_report.md e diff_sessione.md presi dal nostro lato non li ho controllati riga per riga, perché li riscrive /fine-task.
-
-Memoria: la riga #757-M1 è già in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` ed è in stage, non committata. Non ho aggiunto una riga nuova: questa è la stessa review riemessa, non una review nuova.
-
-**Verdetto originale (alla lettera):**
-
-```
-## VERDETTO: APPROVATO
-
-Review #757-M1. Il numero che mi avevi indicato, #754-M1, è già usato: nella memoria fusa le righe #754, #755 e #756-M1 vengono dalla chat di Mani, che usa anche lei la sigla M1. Anche #753-M1 compare due volte, una per lato.
-
-Ho verificato il merge staged di origin/main 904d9d6 (PR #368) in feat/merge-automatico-z1xjx2 (HEAD e9b74f5, PR #370).
-
-Elementi del diff esaminati:
-- `clients/voice/ascolto.py:724` — `_voce_subito`, la richiesta detta d'un fiato, e il suo uso a :793 con `registra(subito, subito=True)`. Rischio: perdere o alterare righe di Mani nel merge. Il file staged è identico a MERGE_HEAD (diff di 0 righe). Dal merge-base a0c200c il nostro lato non tocca ascolto.py, quindi i due lati sono disgiunti. Esito: ok.
-- `tests/test_unit_voce_ascolto.py:2719` — l'ultimo test aggiunto da #368 (voce verso la fine della tolleranza). Rischio: test persi o un file a metà tra i due lati. Il file è identico a MERGE_HEAD. Ho rieseguito la suite: 314 passed. Esito: ok.
-- `scripts/voce/LEGGIMI.md:1` — le 8 righe aggiunte da Mani. Il file è identico a MERGE_HEAD. Esito: ok.
-- `reports/stato_progetto.md:697` — la voce «Mani — richiesta d'un fiato (PR #368)». Rischio: perdere la nostra voce delle decisioni dell'operatore (#366) o quella di Mani. Ci sono entrambe e la riga #361 modificata da Mani è presa dal suo lato. Esito: ok.
-- `.claude/agents/memoria_revisore.md:1484` — unione delle due code di memoria. Rischio: righe perse. Il diff contro MERGE_HEAD aggiunge solo le 3 righe nostre (#753-M1 + lezione + 2° giro), quello contro HEAD solo le 5 di Mani. Non si perde nulla. Esito: ok, con la sola nota sulla numerazione doppia, che è di processo e non tocca il codice.
-
-Controlli meccanici:
-- `git ls-files -u` è vuoto.
-- `git diff --cached --check` è pulito.
-- Nessun marcatore di conflitto in reports, .claude, clients, tests e scripts.
-- MERGE_HEAD è 904d9d6.
-- Il merge non tocca `_get_window`, il tetto di 10 iterazioni né i provider.
-
-Cosa non ho verificato:
-- Il test kernel (1134 PASS) e il pytest su voce, telegram_voce e notte (583 passed) non li ho rieseguiti: mi fido del tuo numero. Il nostro lato di codice (gas.py, bot.py) è fuori da questo merge e ha già avuto la sua review (#753-M1, 2° giro).
-- Il comportamento dal vivo della voce sul Mac non è riproducibile qui.
-- handoff.md, ultimo_report.md e diff_sessione.md presi dal nostro lato non li ho controllati riga per riga, perché li riscrive /fine-task.
-
-Memoria: ho aggiunto la riga #757-M1 in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho messa in stage, senza committare come richiesto. Contiene una lezione nuova: dopo un merge della memoria, il numero della review si prende dalla coda del file fuso, non da quella del proprio lato.
-```
-
-### Review #764-M1coord (merge di origin/main #369)
-
-## VERDETTO: APPROVATO
-
-Review #764-M1coord: merge in stage di origin/main 51b7d20 (PR #369 di M2, allucinazioni di Whisper) nel branch feat/merge-automatico-z1xjx2 (PR #370, HEAD 7c5f969a). Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), i finding aperti in reports/stato_progetto.md e la coda della memoria. Il numero più alto nel file fuso era #763, quindi questa review è la #764.
-
-Elementi esaminati:
-- `modules/voice/stt.py:92` — `TrascrizioneAllucinata` è una sottoclasse di `TrascrizioneIncerta`, introdotta dal lato main. Rischio esaminato: righe perse o alterate nella risoluzione del merge. Il file in stage è identico a MERGE_HEAD (diff di 0 righe), e lo stesso vale per `modules/voice/server.py`, `tests/test_unit_voice_stt.py` e `reports/ripartenza_m2.md`. Ho rieseguito `test_unit_voice_stt`: 140 passed. Esito: ok.
-- `gas.py:500` (contesto del diff di sessione rispetto a origin/main, invariato dal merge) — l'avviso «versione leggera scelta per un compito semplice» viene messo in `avviso_ripiego`. Rischio esaminato: che il server voce, toccato dall'altro lato, lo pronunci, violando la regola §8 «riga nel testo, mai a voce». `modules/voice/server.py` non cita mai `avviso_ripiego`: lo usano solo la CLI (`gas.py:6727`) e Telegram. Esito: ok.
-- `modules/telegram/bot.py:186` (contesto del diff di sessione, invariato) — il bot cattura `TrascrizioneIncerta`, quindi copre anche la nuova sottoclasse `TrascrizioneAllucinata` di M2. Il commento modificato dalla #370 (bot.py:951) è disgiunto. Rischio esaminato: un'eccezione non gestita sul vocale Telegram dopo l'unione dei due lati. Esito: ok. Resta la riserva già tracciata R-761-1-M2 (BASSA): un vocale «Grazie» riceve «Non ho capito bene il vocale». È un cambio di comportamento noto, non nasce da questo merge.
-- `tests/test_unit_notte.py:2228` (contesto del diff di sessione) — le nuove asserzioni sul testo Telegram con la riga «versione leggera» non dipendono dallo strato STT. Esito: ok.
-
-Controlli meccanici:
-- Merge-base 904d9d6. Il lato main tocca solo voice/stt/test_voice_stt più i report; il lato #370 tocca solo gas.py, bot.py, test kernel/notte più i report. I file di codice sono disgiunti.
-- `git ls-files -u` è vuoto, non ci sono marcatori di conflitto tra le righe aggiunte (0) e `--check` è pulito.
-- `reports/stato_progetto.md` e `.claude/agents/memoria_revisore.md` in stage contengono solo aggiunte rispetto a ENTRAMBI i lati (0 righe tolte contro HEAD e contro MERGE_HEAD). L'unione è senza perdite e le righe #761–#763-M2 non hanno doppioni.
-- Le cifre dei test sono parte rieseguite, parte dichiarate. Rieseguito da me: stt 140 passed. Dichiarati dal chiamante e non rieseguiti: kernel 1134 PASS, pytest voce e Telegram 396 passed.
-
-Rischi esclusi, cioè cose che non ho verificato:
-- Non ho rieseguito né la suite kernel completa né i test `-k browser`: mi baso sui numeri del chiamante, e i file di codice dei due lati non si toccano.
-- Non ho verificato il comportamento reale col microfono, con Groq o su VPS: non è riproducibile in questo ambiente.
-- Non ho confrontato i patch-id commit per commit: ho usato al loro posto il diff per file contro MERGE_HEAD e HEAD, che dà lo stesso risultato sui file non in conflitto.
-
-Memoria: ho aggiunto la riga `#764-M1coord — 2026-11-11 — APPROVATO — …` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho messa in stage. Come richiesto non ho committato e non ho lanciato commit_memoria_revisore.sh. Nessuna lezione nuova.
-
-### Review #765-M1coord (commit 7f072617)
+### Review #773-M2 (streaming della prima frase) — verdetto integrale
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #765-M1coord: diff staged su feat/merge-automatico-z1xjx2 (PR #370). Il diff tocca gas.py, tests/test_unit_kernel.py e reports/stato_progetto.md.
+Review #773-M2 sul diff staged in /home/user/Gas-stream (branch perf/voce-streaming-m2, base 51b7d20). Prima della review ho letto CLAUDE.md (§5, §8, §9), reports/stato_progetto.md (le parti sulla voce rapida) e la memoria del revisore.
 
-Prima della review ho letto CLAUDE.md (sez. 5, Wall of Shame), le parti di reports/stato_progetto.md che riguardano #370 e la coda di .claude/agents/memoria_revisore.md.
+**Elementi del diff esaminati**
+- `brains/claude_cli.py:414` — `_esegui_a_flusso`: Popen, un filo scrive lo stdin, un filo legge lo stderr, lo stdout si legge nel filo principale, un Timer uccide il processo. Rischi esaminati: deadlock, fili orfani, processo vivo se `su_riga` solleva. Sonde reali, tutte passate:
+  - 5 MB di stdin a un figlio che non li legge: ritorna in 0,02 s, nessun blocco;
+  - `su_riga` che solleva: figlio ucciso subito, eccezione propagata, nessun filo rimasto;
+  - timeout di 1 s: TimeoutExpired dopo 1,0 s.
+  - Esito: ok, con la riserva R-773-1-M2 qui sotto.
+- `brains/claude_cli.py:450` — `for linea in proc.stdout`. Rischio esaminato: un timeout che non tiene. Esito: **riserva R-773-1-M2 (BASSA)**. Se un nipote del processo tiene aperto lo stdout dopo il kill, la lettura aspetta che il nipote muoia. Sonda `bash -c "sleep 8 & sleep 8"` con timeout 1 s: l'eccezione arriva dopo 8 s. `subprocess.run` (il vecchio `_esegui`) uccide e non aspetta la fine dell'uscita, quindi questo blocco non lo aveva. Con `--tools ""` è improbabile che la CLI lasci figli vivi. Rimedio: `start_new_session=True` + `os.killpg` in `uccidi`.
+- `brains/claude_cli.py:304` e `brains/claude_cli.py:387` — `_INIZIO_TESTO` / `_aggiorna`: l'anticipo parte solo con `{"chiamate": [], "testo": "`. Le altre forme lo spengono: chiamate non vuote, «testo» per primo, più di 80 caratteri senza corrispondenza, escape non valido. Una seconda risposta strutturata dopo un anticipo lo spegne (`brains/claude_cli.py:377`). Ogni errore, anche di `su_testo`, è preso in `riga()` e scritto in gas_debug.log (§9). Esito: ok.
+- `brains/claude_cli.py:85` — ordine dello schema cambiato, «chiamate» prima di «testo». Rischio esaminato: effetto sul non-voce. `_risposta` legge un dict, quindi l'ordine non conta per il parsing. SCHEMA_RISPOSTA si usa solo in `comando()`. T104e conferma che fuori dalla voce l'uscita resta `json`. Esito: ok. L'effetto del cambio d'ordine sulla qualità delle risposte non è misurato (vedi rischi esclusi).
+- `modules/voice/server.py:434` — `AnticipoVoce.prendi`. Rischio esaminato: un anticipo sbagliato che finisce a voce. L'audio si restituisce solo se `frase` è identica alla frase anticipata, con la stessa voce (`_voce_tts`). In ogni altro caso torna None e parte la sintesi normale. Gli errori della sintesi risalgono come quelli di `sintesi` e finiscono negli `except` di prima. Esito: ok, un anticipo sbagliato non può arrivare a voce.
+- `modules/voice/server.py:945` — l'anticipo si crea solo con la chiave, `not self._seguito()` e formato pezzi o pezzi_voce. `_parlato` è già impostato prima, a `modules/voice/server.py:821`. Rischio esaminato: privacy dei seguiti. Esito: ok, nessun parlato della stanza arriva a ElevenLabs prima del filtro.
+- `modules/voice/server.py:416` — `testo()` normalizza il testo grezzo. Il finale passa invece da `parte_parlata` / `frasi_voce`. Rischio esaminato: costo e quota quando l'anticipo si butta. Esito: **riserva R-773-2-M2 (BASSA)**. Una prima frase con markdown, più lunga di `_PARLATO_MAX_CHAR`, un turno rifatto dal kernel o una risposta del cervello di riserva fanno buttare l'anticipo. La sintesi però è già stata pagata a ElevenLabs: una frase per turno, testo di Gas e non della stanza. Il filo non si annulla. Il costo della CLI non cambia: resta una sola chiamata.
+- `gas.py:5139` — `su_testo` si passa solo se `name == "claude-cli"` e `voce`. Rischi esaminati: regola dei modelli e tocco minimo su run_turn. I gratuiti non ricevono nulla. Cap delle 10 iterazioni, `_get_window` e payload non toccati, nessuno slicing della cronologia. Esito: ok, conflitto con la #370 di M1 limitato alla firma e al costruttore del client.
+- `tests/test_unit_kernel.py:12023` — T104d, round-trip §7 con uno strumento: il giro con la chiamata non dà anticipo, la risposta finale sì. Il runner è finto, ma lo strumento gira davvero (`tool_res` 42). Non è simulazione dell'output degli strumenti. Esito: ok.
 
-**Cosa ho controllato nel diff**
-- `gas.py:3963`: ora i contatti si leggono con `self.memory.leggi_contatti()`. Se la lettura fallisce torna None, quindi `contatti_ok=False` e la lista diventa `[]`. Ho controllato che `leggi_contatti` (modules/memory/store.py:1250) non sollevi mai eccezioni: intercetta `sqlite3.Error/OSError`, scrive nel log e torna None. Esito: ok. Nessuna eccezione nuova; l'`except Exception` già presente resta la rete di sicurezza (§9).
-- `gas.py:4012`: con `not contatti_ok` la variante anonima toglie i dettagli da OGNI riga del diario. Il pin pieno (`righe`, solo per il cervello forte) non cambia. Ho controllato che nessuna riga vada persa e che il dettaglio esca solo da quella anonima. Esito: ok, il comportamento è fail-closed come chiesto dal finding V-1 MEDIA del bot.
-- `gas.py:3950`: commento V-1 ve #273. Con la lettura fallita `tutti=[]`, nessun contatto risulta attivo e `_pin_non_fidato` resta False. È coerente col commento e il test T21b2 (tests/test_unit_kernel.py:1052) è ancora verde. Esito: ok.
-- `gas.py:4009`: commento corretto (V-3 cosmetica del bot): il confronto avviene sulla descrizione già pronta per il pin. Ho verificato che corrisponde al codice, perché `desc` viene sostituita prima del confronto. Esito: ok.
-- `tests/test_unit_kernel.py:12855`: test T114f2. Ricollega `leggi_contatti` a una funzione che torna None e lo ripristina nel `finally`. Controlla che nella variante anonima non compaiano offerta_bianchi, piano.txt e telefonata, che ci siano 5 righe omesse e che offerta_bianchi resti nel pin pieno. Esito: ok. Ho rieseguito tutta la suite kernel: **1135 PASS, 0 FAIL**.
-- Slicing: nel diff non c'è nessuno `[-N:]`. Lo `[:self.MEMORY_PIN_CONTACTS]` già presente taglia i contatti, non la storia dei messaggi. Esito: ok.
+**Riproduzioni**
+- claude_cli + voice_server (suite intera): 287 passed.
+- Kernel: 1120 PASS, 1 FAIL (T31g, fastembed assente, già presente su main); T104d e T104e PASS.
 
-**Riserva**
-- **R-765-1-M1coord (BASSA)** — `gas.py:3963` chiama `self.memory.leggi_contatti()` direttamente, senza il ripiego già usato in `gas.py:4392` (R-527-1/2: `getattr(..., "leggi_contatti")` e, se manca, `lista_contatti`).
-  - Una memoria senza `leggi_contatti` (vecchia o finta nei test) ora causa un AttributeError. L'`except` lo intercetta, ma il risultato è un pin vuoto con `_pin_non_fidato=True`, cioè ogni scrittura finisce alla firma. Prima, con `lista_contatti`, funzionava.
-  - Oggi in produzione esiste solo MemoryStore, che ha il metodo: per questo non blocca. Va registrata in stato_progetto.md.
+**Riserve**
+- R-773-1-M2 BASSA — un nipote che tiene aperto lo stdout allunga il timeout (vedi sopra).
+- R-773-2-M2 BASSA — anticipo buttato ma già pagato quando il testo grezzo e la parte parlata non coincidono.
+- R-773-3-M2 COSMETICA — Popen senza `with`: le pipe si chiudono solo quando il GC raccoglie l'oggetto.
 
-**Cosa non ho verificato**
-- Il mutante dichiarato dal chiamante (codice vecchio → T114f2 fallisce, rc=1): non l'ho rieseguito, mi fido della dichiarazione. La suite verde col codice nuovo invece l'ho rieseguita.
-- La riga di reports/stato_progetto.md (bot #370 V-2): è troncata nel diff, quindi ho controllato solo che si tratti di una riga sostituita (modifica di un rigo, niente cancellazioni). Non ho confrontato il contenuto parola per parola con la decisione dell'operatore.
-- Le righe del diario che nominano lead fusi (le «lapidi») con la lettura riuscita: sono fuori dal perimetro di questo fix.
+**Rischi esclusi (non verificati)**
+- Il comportamento reale della CLI `claude -p` in stream-json, cioè l'ordine dei campi nell'input_json_delta di StructuredOutput e la riga `result` con gli stessi campi dell'uscita json: qui non c'è la CLI autenticata. Mi fido delle misure dal vivo del chiamante (2,1 s / 3,4 s).
+- Il comportamento sul Mac con ElevenLabs vero.
+- L'effetto del nuovo ordine dello schema sulla qualità delle risposte del modello non-voce.
 
-**Memoria del revisore: attenzione, è già committata**
-Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #765-M1coord e una lezione: se un fix sostituisce un metodo della memoria, va allineato al ripiego `getattr` già presente nel kernel. Poi ho eseguito `scripts/commit_memoria_revisore.sh`, come prescrive il mio protocollo, ma questo va contro la tua richiesta di non committare e lasciare la riga in stage.
-- È stato creato il commit fcdc0f55, che contiene solo `memoria_revisore.md`.
-- Il diff staged del motore (gas.py, test, stato_progetto) è intatto e non committato, quindi l'hash per `segna_review_ok.sh` non cambia.
-- Se vuoi la riga in stage come avevi chiesto: `git reset --soft HEAD~1`.
+**Memoria**
+In /home/user/Gas-stream/.claude/agents/memoria_revisore.md ho aggiunto la riga contatore #773-M2 e una lezione: sostituire `subprocess.run(timeout)` con Popen e lettura a righe cambia cosa vuol dire il timeout; va sondato con un nipote in background. Ho usato il numero #773 indicato da te: in questo file l'ultima riga era #763-M2. Il file è in staging. Non ho lanciato `scripts/commit_memoria_revisore.sh`, perché hai chiesto solo lo staging; il file viaggerà nel tuo commit.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1119 PASS / 0 FAIL (main a0c200c, container) → 1134 PASS / 0 FAIL → 1135 PASS / 0 FAIL dopo 7f072617 (T114f2; col codice vecchio T114f2 fallisce) (rilanciato da M1 dopo il commit d5773ec1 e di nuovo dopo il merge di #368). Dopo il merge: `python -m pytest -q tests/test_unit_voce_ascolto.py tests/test_unit_telegram_voce.py tests/test_unit_notte.py -k "not browser"` → 583 passed.
-- `python -m pytest -q tests/test_unit_telegram_voce.py tests/test_unit_notte.py tests/test_unit_sottofondo.py tests/test_unit_gate.py tests/test_unit_manutenzione.py tests/test_unit_voice_server.py -k "not browser"` → 1448 passed, 30 deselected.
-
-```
-=== RIEPILOGO: 1135 PASS, 0 FAIL ===
-```
-
-Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed embedding nel container). Sul Mac T74b5 fallisce per PATH_MAX di macOS (preesistente, test con percorsi da ~960 byte): non toccato qui.
+- `python tests/test_unit_kernel.py` dopo il merge: 1136 PASS, 1 FAIL (T31g, fastembed assente in questo ambiente: lo stesso FAIL c'è su main). Nuovi T104d (round-trip §7 con strumento + flusso: anticipo solo della risposta finale) e T104e (a testo niente flusso), PASS.
+- `python -m pytest -q tests/test_unit_claude_cli.py`: 75 passed (16 test nuovi: parser a pezzi, escape e surrogati, processo vero con timeout e nipoti, tempi nel log).
+- `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_claude_cli.py`: 287 passed prima di #778; 290 passed dopo il merge (rieseguiti dal revisore #779).
+- Prova dal vivo nel cloud con la CLI vera: risposta corretta, riga dei tempi «tutto=4.38s prima_riga=0.62s primo_testo=3.93s richiesta=0.18s ttft=3.46s api=3.31s cli=3.49s fuori_cli=0.90s token_in=1697 token_out=94».
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumento GitHub sulla PR #370:
-- 7c5d5fc4: handoff-check success; verifica-bot failure (V-1 MEDIA fail-open, chiuso in 7f072617); unit-suite in corso alla scrittura.
-- 7c5f969a: unit-suite, handoff-check, verifica-bot success.
-- e9b74f59: unit-suite, handoff-check, verifica-bot success.
-- Gli altri commit della sessione: nessuna run propria (pushati insieme al commit di testa successivo).
-- fcdc0f55, 7f072617 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA con `gh` (non autenticato nel cloud). Run non ancora disponibili alla scrittura dell'handoff (branch nuovo, pushato con questo commit).
 
 ## §7 RISERVE APERTE
 
-- R-753-M1-A (decisione dell'operatore) — storia, testo dell'operatore, `recap_pin` e riflessione di fine task (ve #370 V-1 MEDIA, aggiunta qui) possono ancora portare nomi di clienti ai modelli non forti.
-- Ve #370 V-2 / bot #370 V-1/V-2 BASSE — buchi del pin anonimo: lapidi dei lead fusi, parole di prossima_azione/note, nomi corti.
-- Bot #370 V-3 COSMETICA — commento a gas.py ~4002 non corrisponde al codice.
-- Limite noto del pin anonimo: nel testo del diario non si cercano nomi più corti di 3 caratteri né parole più corte di 4.
-- R-765-1-M1coord BASSA — `_memoria_pin_varianti` senza ripiego getattr→lista_contatti.
-- Bot #370 4° giro V-1 BASSA: anche `lezioni_pin` arriva intero ai cervelli non forti e può nominare un lead: entra nel blocco esteso (R-753-M1-A, decisione «sì» dell'operatore). Ve #370 3° giro: accenti/translitterazioni e telefoni senza spazi non riconosciuti dal pin anonimo (BASSE).
-- Numerazione delle review: la chat di Mani usa anch'essa il suffisso «-M1» (#754-#756-M1); #753-M1 compare due volte (una per chat). Processo, nessun effetto sul codice.
-- Riserve precedenti ancora aperte (R-744-M1-1..4, R-750-M1-2/3, ve #366 V-2/V-3): in reports/stato_progetto.md.
+- R-773-1-M2 BASSA, R-773-3-M2 COSMETICA: CHIUSE (review #778-M2).
+- R-773-2-M2 BASSA: un anticipo buttato (prima frase diversa dalla risposta finale: markdown, frase troppo lunga, cervello di riserva) è già stato pagato a ElevenLabs (una frase per turno, testo di Gas).
+- Cosmetiche #778: `9` invece di `signal.SIGKILL`; senza riga `result` i tempi riportano solo quelli misurati da Gas.
+- Non verificato: guadagno reale sul Mac; effetto dell'ordine «chiamate» prima di «testo» dello schema sulla qualità delle risposte non a voce.

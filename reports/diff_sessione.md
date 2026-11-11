@@ -1,9 +1,10 @@
-# Diff della sessione — 2026-11-10 pomeriggio — decisioni dell'operatore (M1)
+# Diff di sessione — 2026-11-11 notte — voce: prima frase in anticipo (chat M2)
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+- `brains/claude_cli.py` — con `su_testo` il forte gira a flusso (stream-json): `_esegui_a_flusso` (Popen, fili per stdin/stderr, timeout che uccide il gruppo), `_TestoInArrivo` e `_stringa_parziale` (testo della risposta finale a pezzi, solo dopo `"chiamate": []`), schema con «chiamate» prima di «testo», riga dei tempi `gas.claude_cli.tempi`.
+- `gas.py` — `run_turn(su_testo_voce=…)`, passato a ClaudeCliClient solo nei turni a voce.
+- `modules/voice/server.py` — `AnticipoVoce`: voce della prima frase preparata in un filo, usata solo se identica alla risposta finale; mai nei seguiti.
+- `tests/` — claude_cli (16 nuovi), voice_server (5 nuovi), kernel T104d/T104e.
+- Merge di origin/main (#370).
+- `reports/*` — report di fine task e stato.
 
-- `gas.py`: `_info_ripiego` riconosce la versione leggera (Flash-lite); `MAX_CHIAMATE_TURNO` = tetto di 10 chiamate per turno condiviso fra i cervelli; `_memoria_pin_varianti()` (pin pieno solo al forte, anonimo agli altri).
-- `modules/telegram/bot.py`: la riga dell'avviso vale anche per la versione leggera (solo testo).
-- `tests/test_unit_kernel.py`: T9a/T9b aggiornati, T113a2-a4, T114a-i nuovi; `tests/test_unit_notte.py`: test Telegram adattato alla riga di Flash-lite.
-- `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md`: decisioni del 2026-11-10, riserva R-753-M1-A, riga #753-M1.
-- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: report di fine sessione.
+Questo file si riscrive a ogni sessione; la storia completa sta in git.
