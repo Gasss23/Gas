@@ -10,3 +10,5 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 
 ## Merge di main (2026-11-11 sera)
 Commit 366cfcc7: unione di origin/main 9844b1f nella #375; conflitti solo nei report (stato_progetto: aggiunta riga «Audit 11 nov»; memoria_revisore: unione). Review #788-M1coord APPROVATO.
+
+Commit 6a7ca7eb: gas.py `_contiene_identificativo`/`_identificativi_contatti` (parola intera; nome attaccato; «contenuto in» dentro email/domini/file), test T115a3b/c/d, stato_progetto. Motivo: bot #375 V-1 MEDIA (falsi positivi «Conte»→«contesto»).

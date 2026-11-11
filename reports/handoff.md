@@ -18,21 +18,22 @@
 - **Fetta 3 — riflessione con dati di lead solo al forte**: FATTA.
 - **Fetta 4 — confronto dei nomi più robusto (NFKD, lapidi, telefoni, parole corte, tipo)**: FATTA.
 - **Fetta 5 — bot/ve #375 V-1 MEDIA (contatti illeggibili), traslitterazione, avviso del forte**: FATTA — 96092c7e, review #767-M1coord BOCCIATO → #768-M1coord APPROVATO CON RISERVE.
+- **Fetta 6 — bot #375 V-1 MEDIA (falsi positivi «Conte»→«contesto») e V-2**: FATTA — 6a7ca7eb, review #789-M1coord e #790-M1coord APPROVATO CON RISERVE.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 +++
- gas.py                             | 324 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------
- modules/memory/store.py            |  17 +++++---
- reports/diff_sessione.md           |  19 +++-----
+ .claude/agents/memoria_revisore.md |  10 ++++
+ gas.py                             | 340 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------
+ modules/memory/store.py            |  17 ++++---
+ reports/diff_sessione.md           |  22 ++++-----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           |  22 +++++-----
- tests/test_unit_kernel.py          | 372 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- tests/test_unit_notte.py           |  10 +++--
+ reports/ultimo_report.md           |  25 +++++-----
+ tests/test_unit_kernel.py          | 396 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ tests/test_unit_notte.py           |  10 ++--
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -40,6 +41,10 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6a7ca7eb fix(kernel): blocco dei nomi a parola intera, con recupero per nomi attaccati, cifre ed email/domini (bot #375 V-1/V-2) — review #789/#790-M1coord
+87446218 chore(revisore): memoria review #790 — APPROVATO CON RISERVE
+e800a8ff chore(revisore): memoria review #789 — APPROVATO CON RISERVE
+17378b06 docs(fine-task): handoff #375 dopo il merge di main (#371-#374, #376) — review #788-M1coord
 366cfcc7 Merge origin/main (#371-#374, #376) nella #375 — review #788-M1coord APPROVATO
 9ca898bd docs(fine-task): handoff #375 dopo il fix di bot/ve #375
 96092c7e fix(kernel): blocco dei nomi fail-closed con contatti illeggibili, traslitterazione, avviso del forte (bot/ve #375)
@@ -187,14 +192,56 @@ Review #788-M1coord — merge di origin/main 9844b1f (#371, #372, #373, #374, #3
 Nessuna lezione nuova; riga contatore #788-M1coord aggiunta in .claude/agents/memoria_revisore.md.
 
 
+### Review #789-M1coord (fix bot #375 V-1/V-2 su 17378b0, 1° giro)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #789-M1coord — PR #375, branch feat/merge-automatico-z1xjx2. Diff staged esaminato (gas.py, tests/test_unit_kernel.py, reports/stato_progetto.md); suite del kernel rieseguita: **1166 PASS, 0 FAIL** (coincide col dichiarato).
+
+**Elementi del diff esaminati**
+- `gas.py:220` — `_contiene_identificativo` ora confronta sempre a parola intera (regex `(?<![^\W_])…(?![^\W_])`); rimosso il ramo «contenuto in» (`i in t`). Rischio: che «_» separi e che lettere Unicode/cifre attacchino. Provato: `offerta_bianchi`, `#bianchi`, `bianchi's`, `L'Acme`, `ACME-2024` → riconosciuti; `contesto`, `ritardo`, `generico`, `arriva` → non più riconosciuti → **ok**, V-1 MEDIA del bot chiusa.
+- `gas.py:138` — tolta la costante `IDENTIFICATIVO_SUBSTRING_MIN`, sostituita da un commento col limite dichiarato. Rischio: usi residui → grep su *.py e *.md attivi: nessun riferimento → **ok**.
+- `tests/test_unit_kernel.py:13048` (T115a3b) e `:13056` (T115a3c) — coprono i casi del bot (positivi «Conte», «offerta_costa.pdf», «Riva:») e i limiti nel verso sicuro («quanto costa», «sarà») → **ok**, ma manca la copertura del verso opposto (vedi R1).
+- Contesto `tests/test_unit_kernel.py:12930` — il pin anonimo con `offerta_bianchi.txt` resta significativo («_» separa ancora, il nome viene riconosciuto); T114f/T114f2 passano.
+- `gas.py:174` `_identificativi_contatti` non toccato: separa su `[\W_]+`, gli identificativi restano coerenti col nuovo confronto.
+
+**Riserve**
+- **R1 (MEDIA, verso non sicuro)** — falsi negativi nuovi, non dichiarati né fissati da test. Verificati: oggi False, prima del fix (nomi da 4 lettere in su) True: `scrivi a mariorossi`; `file MarioRossi.pdf`; `www.acmesrl.it` (lead «Acme Srl»); `Bianchi2`; `acme2024`; `gbianchi@x.it` (con un altro recapito salvato). Il fix toglie falsi positivi (verso sicuro: al forte) e aggiunge falsi negativi nel verso non sicuro: dati del cliente possono finire su un modello gratuito (CLAUDE.md §2). Lo scambio va (1) dichiarato in stato_progetto accanto al limite (c) e (2) fissato con un test (es. T115a3d). Possibile recupero mirato: «contenuto in» solo dentro token con «@» o «.» (email e domini).
+- **R2 (BASSA)** — la voce di stato_progetto «limite (c) allineato al codice» descrive solo i falsi positivi rimasti; va completata con R1.
+
+**Rischi esclusi**: pytest notte/telegram_voce/voice_server/sottofondo non rieseguiti (moduli non toccati, dato dichiarato 613 passed); instradamento con provider veri/VPS non riproducibile in dev; costo della regex sulle finestre grandi non misurato (stesso pattern già usato per gli identificativi da 3 caratteri).
+
+Memoria: riga #789-M1coord e una lezione nuova in .claude/agents/memoria_revisore.md, committate in e800a8ff.
+
+### Review #790-M1coord (2° giro di #789-M1coord, commit 6a7ca7eb)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Re-review #790-M1coord, PR #375. Diff staged esteso riletto; suite del kernel rieseguita: **1167 PASS, 0 FAIL**; T115a3d passa.
+
+**Elementi del diff esaminati**
+- `gas.py:232` — il confine di parola guarda solo le lettere (`[^\W\d_]`): le cifre separano. Rischio: falsi negativi su «bianchi2»/«acme2024» e nuovi falsi positivi → **ok** («ugo2» ora combacia con «Ugo»: falso positivo trascurabile, verso sicuro).
+- `gas.py:196` — per il campo nome con più parole si aggiunge il nome attaccato («mariorossi», «marcoconte»). Rischio: combaci dentro parole più lunghe → **ok**, il confronto resta a parola intera e vale solo per il nome.
+- `gas.py:222` — token del testo con «@» o «.» (punteggiatura finale tolta); `gas.py:141` soglia `_IDENT_IN_INDIRIZZO_MIN = 4`. Rischio: falsi positivi e costo → **riserva** (R1). «1.200 euro», «e.g. contenuto», «ieri.» non fanno scattare il confronto; costo basso (token estratti una volta per chiamata).
+- `tests/test_unit_kernel.py:13062` (T115a3d) — copre tutti i casi della #789 più due negativi → **ok**, ma il negativo «contesto.txt» usa il lead «Zorzi», non «Conte».
+- reports/stato_progetto.md — dichiara lo scambio sui falsi negativi e lascia aperto «offertabianchi»; R2 della #789 chiusa.
+
+**Riserve**
+- **R1 (BASSA, verso sicuro)** — dentro percorsi, URL e nomi di file tornano i falsi positivi della V-1 del bot. Verificati True: «il file contesto.txt» (lead Conte); «modules/generico.py» (lead Neri); «vedi https://ritardo.it» (lead Rita); «ieri.Contento» (frase senza spazio dopo il punto). I risultati dei tool nella finestra sono pieni di percorsi: con lead dal nome comune più turni al forte (costo, attesa). Nessun rischio per i dati. Da dichiarare in stato_progetto e fissare con un test col lead «Conte».
+
+**Rischi esclusi**: aumento reale dei turni al forte con dati veri non misurabile in dev; pytest notte/telegram_voce non rieseguiti (dato dichiarato 273 passed).
+
+Memoria: riga #790-M1coord e una lezione nuova in .claude/agents/memoria_revisore.md, committate in 87446218.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1135 PASS / 0 FAIL (main e3eb542) → 1157 PASS / 0 FAIL (863ca51c) → 1162 PASS / 0 FAIL (96092c7e, rilanciato da M1; T115c8 e T115c11 falliscono senza il fix) → 1164 PASS / 0 FAIL (366cfcc7, dopo il merge di main).
+- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1135 PASS / 0 FAIL (main e3eb542) → 1157 PASS / 0 FAIL (863ca51c) → 1162 PASS / 0 FAIL (96092c7e, rilanciato da M1; T115c8 e T115c11 falliscono senza il fix) → 1164 PASS / 0 FAIL (366cfcc7, dopo il merge di main) → 1167 PASS / 0 FAIL (6a7ca7eb; T115a3b fallisce col vecchio confronto «contenuto in»).
+- Dopo 6a7ca7eb: `pytest tests/test_unit_notte.py tests/test_unit_telegram_voce.py` → 273 passed; con il 1° giro anche voice_server e sottofondo → 613 passed.
 - Suite pytest completa dopo il merge (366cfcc7): 3994 passed, 2 skipped, 33 failed tutti in tests/test_unit_web_browser.py, che fallisce identico (33 failed) su origin/main 9844b1f in questo container (browser assente: ambiente, non il merge).
 - `python -m pytest -q tests/test_unit_telegram_voce.py tests/test_unit_notte.py tests/test_unit_sottofondo.py tests/test_unit_gate.py tests/test_unit_manutenzione.py tests/test_unit_voice_server.py tests/test_unit_voce_ascolto.py -k "not browser"` → 1758 passed, 34 deselected (rilanciato da M1 anche dopo 96092c7e).
 
 ```
-=== RIEPILOGO: 1164 PASS, 0 FAIL ===
+=== RIEPILOGO: 1167 PASS, 0 FAIL ===
 ```
 
 Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed embedding nel container).
@@ -205,10 +252,13 @@ CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumen
 - 5e5a3bb7: handoff-check success; verifica-bot failure (V-1 MEDIA, chiusa in 96092c7e).
 - 863ca51c: nessuna run propria (pushato insieme a 5e5a3bb7).
 - 9ca898bd: unit-suite, handoff-check e verifica-bot success (letti con lo strumento GitHub sulla PR #375).
-- 366cfcc7 (merge di main) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- 17378b06 (merge di main + fine-task): unit-suite in corso alla lettura del bot; verifica-bot failure (V-1 MEDIA, V-2 COSMETICA: chiuse in 6a7ca7eb).
+- 6a7ca7eb e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- R-790-1 BASSA (verso sicuro) — dentro percorsi/URL/nomi di file il confronto «contenuto in» rifà combaciare nomi comuni («contesto.txt» con Conte, «modules/generico.py» con Neri): più turni al forte; manca un test col lead «Conte».
+- Limiti dichiarati del confronto a parola intera: «quanto costa» con Costa, «sarà» con Sara; «offertabianchi» (nome attaccato a un'altra parola senza punto né @) non riconosciuto.
 - R-768-1 COSMETICA — messaggio di stop «contiene dati di clienti» anche con la lettura fallita.
 - R-768-2 BASSA — available=False e lettura fallita → [] presume illeggibile anche il diario.
 - Ve #375 V-3/V-4 BASSE — parole di 1-2 lettere mai cercate da sole; nomi spaziati o con caratteri a larghezza zero.

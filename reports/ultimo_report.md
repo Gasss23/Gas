@@ -20,3 +20,5 @@ Nessuna. Non provato: passaggio al `claude -p` vero sul Mac a metà turno.
 
 ## Aggiornamento 2026-11-11 sera
 Merge di origin/main 9844b1f (#371-#374, #376) nella #375 (commit 366cfcc7), review #788-M1coord APPROVATO. Kernel 1164 PASS / 0 FAIL; pytest 3994 passed, 33 failed solo in test_unit_web_browser (identici su main: ambiente).
+
+Fix bot #375 V-1/V-2 (commit 6a7ca7eb): confronto dei nomi a parola intera, con recupero per nomi attaccati, cifre ed email/domini/file; review #789-M1coord e #790-M1coord APPROVATO CON RISERVE (R-790-1 BASSA). Kernel 1167 PASS / 0 FAIL.
