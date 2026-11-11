@@ -220,7 +220,9 @@ _RISPOSTE_BREVI_NORM = frozenset(_senza_accenti(p) for p in _RISPOSTE_BREVI_SEGU
 _INTERCALARI = frozenset((
     "ehm", "eh", "ehh", "mh", "mhm", "mm", "mmm", "uhm", "um", "uh", "ah", "oh", "boh", "mah",
     "beh", "bah", "allora", "cioe", "insomma", "tipo", "vabbe", "vabbeh", "dunque", "praticamente",
-    "comunque", "niente", "nulla", "quindi"))
+    "comunque", "quindi"))
+# V-1 bot #373: «niente» e «nulla» NON sono intercalari: da soli sono risposte valide a
+# «C'è altro?» (_RISPOSTE_BREVI_SEGUITO, V-3 bot #365 / R-746-1-M2)
 
 
 def seguito_da_scartare(trascrizione: str) -> bool:

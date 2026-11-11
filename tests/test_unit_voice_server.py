@@ -2594,7 +2594,8 @@ def test_parlato_voce_tetto_piu_corto():
 
 @pytest.mark.parametrize("testo, scarta", [
     ("Ehm, allora…", True), ("Mah, boh.", True), ("Beh insomma", True), ("Comunque", True),
-    ("Niente.", True), ("Eh, tipo, praticamente", True),
+    ("Niente.", False), ("Nulla!", False), ("Ehm, niente.", False),  # V-1 bot #373
+    ("Eh, tipo, praticamente", True),
     ("Allora segna il lead Rossi", False), ("Sì", False), ("Boh, dimmi tu", False),
 ])
 def test_filtro2_seguito_solo_intercalari(testo, scarta):
