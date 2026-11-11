@@ -21,15 +21,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- clients/voice/ascolto.py           |  39 +++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |   4 +++
+ clients/voice/ascolto.py           |  39 ++++++++++++++++++++++++
  reports/diff_sessione.md           |  18 +++++-------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  24 +++++----------
+ reports/ultimo_report.md           |  24 ++++++---------
  scripts/voce/LEGGIMI.md            |   4 +++
- scripts/voce/diagnosi_ascolto.py   |  63 ++++++++++++++++++++++++++++++++++++++--
- tests/test_unit_voce_ascolto.py    |  91 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ scripts/voce/diagnosi_ascolto.py   |  63 +++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_voce_ascolto.py    |  92 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -37,6 +37,10 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f99e1eda docs(fine-task): handoff #377 dopo il fix di bot V-1
+6072471f test(voce): la guardia della soglia bassa ora è provata davvero (bot #377 V-1) — review #792-M1coord
+7504f44a chore(revisore): memoria review #792 — APPROVATO
+278f7595 docs(fine-task): §2/§3 dell'handoff con i report
 dee51752 docs(fine-task): voce — log «parola quasi sentita» (review #791-M1coord)
 aafe58b1 feat(voce): log «parola quasi sentita» per tarare la soglia su dati veri + diagnosi — review #791-M1coord
 6c11f0e8 chore(revisore): memoria review #791 — APPROVATO CON RISERVE
