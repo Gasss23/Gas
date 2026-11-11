@@ -1,16 +1,19 @@
-# Ultimo report — 2026-11-11 — voce più veloce: connessione verso ElevenLabs riusata (chat M2)
+# Ultimo report — 2026-11-11 — voce: filtro 2, più allucinazioni di Whisper scartate (chat M2)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. PR #372: la verifica esterna dà APPROVATO CON RISERVE (solo BASSE/COSMETICHE, chiuse con questo giro): resta pronta per il «mergia» dell'operatore, salvo un verdetto del bot APPROVATO pulito con CI verde (allora la mergia la chat).
+1. PR #373: con riserve BASSE resta pronta per il «mergia» del mattino (con verdetto del bot APPROVATO pulito e CI verde la mergia la chat).
+2. R-764-2-M2: un vocale Telegram «Grazie di cuore» riceve «Non ho capito bene il vocale». Va bene?
+3. R-774-1-M2: «Scarica i sottotitoli a cura di Rai, grazie mille.» viene scartata in silenzio. Accettabile?
 
 ## Esito
 
-- **Connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi della risposta a voce**: FATTA. Una per thread; buttata dopo 20 s ferma o se il server l'ha già chiusa (select a 0 s); nuovo tentativo SOLO se la connessione riusata cade durante l'invio (niente doppio addebito); `GAS_TTS_KEEPALIVE=0` la spegne.
-- Review #765, #768, #770 (con riserve, chiuse), #771, #772, #776 (merge di main) APPROVATO.
-- V-1 del bot #372 e V-1 della verifica esterna #372: chiuse.
-- Test: tts 40 passed; tts+stt dopo il merge 180 passed; kernel 1134 PASS, 1 FAIL T31g (fastembed assente, come su main).
-- **Misura del guadagno reale sul Mac** (`gas.voce.tempi`): DEFERITA — serve la rete vera.
+- **Filtro 2** (varianti dei saluti, composte frase per frase, parti note solo su frasi corte, intercalari nel seguito): FATTO (438704b).
+- **V-1 del bot #373** (crediti + «, grazie per la visione» o senza punteggiatura passavano al cervello): CORRETTA (789ade7) — divisione anche su , ; : e crediti che finiscono con una chiusura lunga a parola intera.
+- Merge di origin/main (#370): fatto, review #777-M2 APPROVATO.
+- **V-1 del bot #373 su 4559e23** («Niente.» nel seguito scartato, regressione): CORRETTA (48b605f, review #780-M2 APPROVATO).
+- Review #774/#775-M2 APPROVATO CON RISERVE (BASSE/COSMETICHE), #777-M2 APPROVATO.
+- Test: stt+telegram 255 passed; kernel 1134 PASS, 1 FAIL T31g (fastembed assente, come su main).
 
 ## Anomalie
 

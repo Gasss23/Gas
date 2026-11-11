@@ -1,12 +1,14 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-11 — voce più veloce: connessione verso ElevenLabs riusata (chat M2)
+**Sessione:** 2026-11-11 — voce: filtro 2, più allucinazioni di Whisper scartate (chat M2)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. («mergia tutte» dell'operatore, via M1, 11 nov mattina: la chat mergia la #372 con CI e bot verdi senza ALTA/MEDIA.) Merge della PR #372 (https://github.com/Gasss23/Gas/pull/372): la verifica esterna #372 dà APPROVATO CON RISERVE (V-1 e V-2 BASSE, V-3 COSMETICA), quindi la PR resta pronta per il «mergia» dell'operatore; con verdetto del bot APPROVATO pulito e CI verde la mergia la chat (regola notturna di M1).
+1. Merge della PR #373 (https://github.com/Gasss23/Gas/pull/373): il bot sul head precedente aveva una V-1 di gravità media (corretta qui, review #774/#775-M2 con riserve BASSE) e la verifica esterna #373 era APPROVATO CON RISERVE (BASSE): con riserve resta pronta per il «mergia» del mattino; con verdetto del bot APPROVATO pulito e CI verde la mergia la chat.
+2. R-764-2-M2: su Telegram un vocale «Grazie di cuore» ora riceve «Non ho capito bene il vocale». Va bene? (file della chat Mani)
+3. R-774-1-M2: una richiesta corta coi crediti seguita da «, grazie mille» («Scarica i sottotitoli a cura di Rai, grazie mille.») viene scartata in silenzio. Gas non gestisce sottotitoli: accettabile?
 
 NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
 
@@ -14,254 +16,339 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi**: `FATTA` (commit di codice nel §3).
-- **R-765-1-M2 MEDIA (doppio addebito), R-765-2-M2 MEDIA (connessione ferma), R-765-3-M2 BASSA (test)**: `FATTA` — chiuse prima del commit, review #768-M2.
-- **V-1 del bot #372 (nuovo tentativo dopo l'invio = possibile doppio addebito)**: `FATTA` — il nuovo tentativo parte solo durante l'invio (review #770-M2).
-- **R-770-1-M2 BASSA (connessione chiusa dal server mentre era ferma) e R-770-2-M2 COSMETICA**: `FATTA` — `_conn_caduta` (select a 0 s) prima del riuso (review #771-M2).
-- **V-1 della verifica esterna #372 (test della soglia agganciato alla costante)**: `FATTA` — valori fissi 19/21 s (review #772-M2).
-- **Merge di origin/main (#370, #369)**: `FATTA` — review #776-M2.
-- **Merge di origin/main (#371) dopo il «mergia» dell'operatore**: `FATTA` (725eaa7, review #784-M2).
-- **Misura del guadagno sul Mac**: `DEFERITA` — serve la rete vera.
-- **Latenza del cervello (prima frase 5-9 s)**: `DEFERITA` — fetta separata (streaming della prima frase da `claude -p`).
+- **Varianti dei saluti, frasi intere senza punteggiatura interna, allucinazioni composte frase per frase**: `FATTA` (438704b).
+- **Parti note solo su frasi corte (V-1 bot #369)**: `FATTA` (438704b).
+- **Intercalari nel seguito**: `FATTA` (438704b).
+- **R-764-1, R-766-1, R-767-1**: `FATTA` — chiuse prima del commit (review #766, #767, #769-M2).
+- **V-1 del bot #373 (crediti + chiusura con virgola o senza punteggiatura passavano)**: `FATTA` (789ade7) — divisione anche su , ; : e crediti che finiscono con una chiusura lunga a parola intera (review #774, #775-M2).
+- **Merge di origin/main (#370)**: `FATTA` (7f7933e, review #777-M2).
+- **Merge di origin/main (#371, #372) dopo il «mergia tutte» dell'operatore (via M1)**: `FATTA` (1f7edb1, review #785-M2). Test stt+tts+ascolto+telegram_voce dopo il merge: 621 passed.
+- **V-1 del bot #373 su 4559e23 (gravità media: «Niente.» nel seguito scartato, regressione)**: `FATTA` (48b605f) — «niente»/«nulla» tolti dagli intercalari (review #780-M2).
+- **Prova sul Mac dal vero**: `DEFERITA`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  10 ++++++++++
- modules/voice/tts.py               | 126 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md | 20 +++++++++++++++++---
+ modules/voice/server.py            | 15 ++++++++++++++-
+ modules/voice/stt.py               | 67 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  reports/diff_sessione.md           | n/d
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          | n/d
  reports/ultimo_report.md           | n/d
- tests/test_unit_voice_tts.py       | 217 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_server.py    | 13 +++++++++++++
+ tests/test_unit_voice_stt.py       | 47 +++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: confronto con origin/main (bb424f0, dopo il merge). Regola «n/d» — i conteggi dei report riscritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
+NB: confronto con origin/main (52023d8, dopo il merge). Regola «n/d» — i conteggi dei report riscritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-725eaa7 Merge origin/main (#371) nella #372 — review #784-M2 APPROVATO (chat M2)
-2edadc7 docs(fine-task): #372 dopo V-1 bot, R-770-1, V-1 ve e merge di main — review #770-#776-M2 (chat M2)
-cc70808 Merge origin/main (#370, #369) nella #372 — review #776-M2 APPROVATO (chat M2)
-39eaf0a test(voce): soglia di inattività del keep-alive a valori fissi 19/21 s (V-1 ve #372)
-e7dadc1 fix(voce): keep-alive TTS, connessione chiusa dal server scartata prima dell'invio (R-770-1-M2)
-2479a53 fix(voce): keep-alive TTS, nuovo tentativo solo durante l'invio (V-1 bot #372)
-36095b4 docs(fine-task): voce — connessione ElevenLabs riusata, PR #372 (chat M2)
-4f031dc perf(voce): connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi (una per thread, buttata dopo 20 s ferma, niente doppio addebito) — review #765-M2, #768-M2 (chat M2)
+1f7edb1 Merge origin/main (#371, #372) nella #373 — review #785-M2 APPROVATO (chat M2)
+a15617e docs(fine-task): #373 dopo la V-1 del bot su 4559e23 — review #780-M2 (chat M2)
+48b605f fix(voce): «Niente.»/«Nulla.» nel seguito tornano risposte valide, non intercalari (V-1 bot #373 su 4559e23)
+4559e23 docs(fine-task): #373 dopo V-1 bot e merge di main — review #774-#777-M2 (chat M2)
+7f7933e Merge origin/main (#370) nella #373 — review #777-M2 APPROVATO (chat M2)
+789ade7 fix(voce): filtro 2 — crediti seguiti da chiusura con virgola o senza punteggiatura scartati (V-1 bot #373)
+2f31b66 docs(fine-task): voce — filtro 2, PR #373 (chat M2)
+438704b fix(voce): filtro 2 — varianti dei saluti di Whisper e allucinazioni composte scartate frase per frase, intercalari nel seguito, parti note solo su frasi corte — review #764/#766/#767/#769-M2 (chat M2)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #784-M2 (merge di origin/main con la #371) — verdetto integrale
+### Review #785-M2 (merge di origin/main con #371 e #372) — verdetto integrale
 
 ## VERDETTO: APPROVATO
 
-Il merge di main (con la #371) nella PR #372 è pulito. Il codice della #372 non cambia e il codice di main entra identico. 506 test passati, rieseguiti da me.
+Ho letto: CLAUDE.md §5 (mirato), la memoria del revisore (la coda) e reports/stato_progetto.md (solo il diff).
+
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:52`: la lista `_ALLUCINAZIONI_INTERE` del filtro, usata a `modules/voice/stt.py:140`. Rischio: che il merge abbia toccato il filtro o che si sia legato a tts/ascolto. Esito ok: il file è identico a HEAD (diff 0). Importa solo librerie standard (`modules/voice/stt.py:9`), quindi non dipende né da tts.py né da ascolto.py.
+- `modules/voice/server.py:220`: le parole di riempitivo `_INTERCALARI` (filtro 2), controllate a `modules/voice/server.py:235`. Rischio: che il merge abbia perso o duplicato le righe della correzione V-1 del bot (da soli, «niente» e «nulla» non contano come riempitivo). Esito ok: identico a HEAD (diff 0).
+- `tests/test_unit_voice_stt.py:1401` e `tests/test_unit_voice_stt.py:1421`: i test del filtro 2 (saluti scartati, richieste che passano). Esito ok: identici a HEAD.
+- `modules/voice/tts.py:1` (contesto, arriva da main): rischio che il merge abbia alterato il keep-alive della #372. Esito ok: identico a MERGE_HEAD (diff 0). Lo stesso vale per `clients/voice/ascolto.py`, `scripts/voce/diagnosi_ascolto.py`, `tests/test_unit_voce_ascolto.py` e `tests/test_unit_voice_tts.py`.
+- `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md`: rispetto a MERGE_HEAD risultano tolte solo 2 righe (#764-M1coord e #765-M1coord). In realtà sono solo spostate: stesso md5 e 2 occorrenze per lato. In stato_progetto l'unica riga tolta rispetto a HEAD è la #368, sostituita dalla versione «MERGIATA» di main. Esito ok.
+- Meccanica del merge: `git ls-files -u` vuoto, `git diff --cached --check` pulito, 0 marcatori di conflitto in .claude, reports, modules, tests e clients.
+
+**Rischi esclusi**
+- Test: non ho la conferma dei 621 passed. Ho lanciato stt+tts+ascolto+server, ma la run non si è chiusa entro il tempo ed è finita in background senza esito. Il numero è quello che dichiari tu: prima del commit va rivista almeno la riga finale di pytest.
+- Comportamento dal vivo sul Mac (filtro e keep-alive insieme in una conversazione vera): non verificato, qui non si può riprodurre.
+
+**Memoria**
+- Ho aggiunto in coda a /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md la riga `#785-M2 — 2026-11-11 — APPROVATO — … Nessuna lezione nuova.` ed è già in staging (`git add`).
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`: durante un merge `git commit -o` fallisce (Git non permette commit parziali a metà merge). Il file entra col commit di merge.
+- Il diff della memoria rispetto a HEAD conta 21 righe: le 20 portate da main più la mia.
+
+### Review #780-M2 (V-1 bot #373 su 4559e23) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Review #780-M2: correzione della V-1 MEDIA del bot sulla PR #373 (head 4559e23). Il diff staged in /home/user/Gas-filtro2 tocca 2 file del motore, più la memoria del revisore.
 
 **Cosa ho controllato nel diff**
-- `modules/voice/tts.py:106` — `_conn_caduta` e la soglia `_KEEPALIVE_INATTIVA_MAX_S` (`modules/voice/tts.py:88`, usata a `:133`) sono identiche a HEAD (diff 0 sul file). Rischio esaminato: che il merge alteri il keep-alive. Esito: ok.
-- `tests/test_unit_voice_tts.py:520` — `test_keepalive_riusa_la_connessione` e gli altri test del keep-alive sono identici a HEAD e passano. Rischio esaminato: test persi o modificati nel merge. Esito: ok.
-- `clients/voice/ascolto.py:58` — gli import dell'ascolto sono solo della libreria standard e nel file non c'è nessun riferimento a tts o `synthesize`. Lo stesso vale per `scripts/voce/diagnosi_ascolto.py`. Rischio esaminato: un'interazione tra l'ascolto della #371 e la sintesi vocale. Esito: nessuna interazione.
-- `reports/stato_progetto.md:626` — c'è la voce della #372. Rispetto a MERGE_HEAD non manca nessuna riga. Rispetto a HEAD manca una sola riga: la voce della #368, sostituita dalla versione di main che la segna «MERGIATA». Esito: ok.
+- `modules/voice/server.py:223`: «niente» e «nulla» sono stati tolti da `_INTERCALARI`. Il rischio era che una parola stesse sia nell'elenco che scarta sia in quello che accetta. Ho calcolato a runtime l'intersezione tra `_INTERCALARI` e `_RISPOSTE_BREVI_NORM` (`modules/voice/server.py:215`): è vuota. Esito: ok.
+- Parità con main per una parola sola. Su origin/main «niente» e «nulla» erano già tra le risposte brevi (origin/main, `modules/voice/server.py` riga 203), e su main una frase lunga passa sempre. Con l'intersezione vuota, su una parola sola il nuovo `seguito_da_scartare` dà lo stesso risultato di main. Verificato eseguendolo: «Niente.», «Nulla.», «Nulla!» e «niente» danno False. «Mai» dà False. «Comunque», «Boh» e «Quindi?» danno True, come su main, perché non sono risposte brevi. Esito: ok.
+- `modules/voice/server.py:235`: il filtro 2 (`all(p in _INTERCALARI ...)`) cambia il comportamento solo per le frasi di più parole fatte tutte di intercalari. «Ehm, allora…» e «Mah, boh.» danno ancora True, quindi restano scartate. «Ehm, niente.» e «Niente niente» danno False, cioè passano: è corretto. Esito: ok.
+- `tests/test_unit_voice_server.py:2597`: aggiunti i casi ("Niente.", False), ("Nulla!", False), ("Ehm, niente.", False). Il caso «Comunque» True resta. Ho rieseguito `-k seguito`: 14 passed. Esito: ok.
+- Le regole del progetto sono rispettate: nessuno slicing della history, nessun output di strumenti simulato, nessuna nuova eccezione.
+
+**Correzione alla mia review #764**: lì avevo scritto «"Niente." da solo era già scartato prima». Era falso: non l'avevo verificato su main. L'ho annotato nella memoria.
+
+**Cosa NON ho verificato**
+- La suite completa di `tests/test_unit_voice_server.py`: l'ho lanciata, ma non ha finito entro il tempo. Ho verificato solo il gruppo `-k seguito`. Il resto della suite non è stato rieseguito su questo diff, ma la modifica riguarda solo questo filtro.
+- Il comportamento con Whisper reale e il microfono: non si riproduce in dev.
+
+**Memoria del revisore**: ho aggiunto la riga #780-M2 e una lezione. Quando un elenco che scarta parole sta accanto a uno che le accetta, l'intersezione va calcolata e deve essere vuota. Ogni frase del tipo «prima era già così» va provata eseguendo la funzione su origin/main. Il file è in staging insieme al diff, come mi hai chiesto. Non ho eseguito `scripts/commit_memoria_revisore.sh`, per non creare un commit separato sul branch prima del tuo.
+
+File: /home/user/Gas-filtro2/modules/voice/server.py, /home/user/Gas-filtro2/tests/test_unit_voice_server.py, /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md
+
+### Review #777-M2 (merge di origin/main) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Review #777-M2: merge di origin/main e3eb542 (con la #370) nella PR #373 (filtro 2 delle allucinazioni di Whisper), staged in /home/user/Gas-filtro2 (HEAD 789ade7).
+
+**Letture obbligatorie fatte**: CLAUDE.md §5, reports/stato_progetto.md (letto per sezioni, voci #369/#373) e la coda di .claude/agents/memoria_revisore.md.
 
 **Controlli meccanici**
-- Nessun file in conflitto, nessun marcatore di conflitto, `git diff --cached --check` pulito.
-- Il codice preso da main è identico a MERGE_HEAD (diff 0): `clients/voice/ascolto.py`, `scripts/voce/*`, `tests/test_unit_voce_ascolto.py`, `reports/proposta_verifica_parlante.md`.
-- `.claude/agents/memoria_revisore.md`: 0 righe tolte rispetto a MERGE_HEAD. I numeri doppi (#757-M1, #753-M1, #746/#747 chat M3, #614-M2) c'erano già prima, nessuno è nuovo.
-- Test: tts, stt e ascolto insieme 506 passed in 58 s.
+- `git ls-files -u` è vuoto e `git diff --cached --check` è pulito. Non ci sono marcatori di conflitto nei file toccati: le righe `=======` che grep trova in reports/e2e_k3bis_output.txt erano già nel file, sono separatori.
+- gas.py, modules/telegram/bot.py, tests/test_unit_kernel.py e tests/test_unit_notte.py sono identici a MERGE_HEAD: 0 righe di diff.
+- In `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md` il merge non toglie nessuna riga rispetto a nessuno dei due lati, sono state solo aggiunte. Nella memoria restano due righe doppie (#746 e #747 della chat M3) che c'erano già prima del merge.
+- Righe tolte solo in reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md: lì è stata tenuta la versione del branch, come dichiarato.
 
-**Non verificato**
-- Il comportamento reale sul Mac (latenza di ElevenLabs con la connessione riusata, taratura dell'ascolto): non si può riprodurre qui.
-- La CI della PR dopo il merge: il commit non esiste ancora.
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:150` — `allucinazione()` controlla frase per frase e scarta solo se ogni frase è un'allucinazione. Rischio esaminato: che la #370 cambi l'ingresso o chi la chiama. La #370 non tocca modules/voice/. Esito: ok.
+- `modules/voice/stt.py:113` — `TrascrizioneAllucinata` è una sottoclasse di `TrascrizioneIncerta`. Rischio esaminato: che il bot Telegram, toccato dalla #370, non prenda più l'eccezione. Il vocale passa ancora da `except TrascrizioneIncerta` (`modules/telegram/bot.py:186`). Nella #370, bot.py cambia solo un commento (`modules/telegram/bot.py:951`). Esito: ok.
+- `modules/voice/server.py:1221` — l'except dedicato chiude il seguito e scarta in silenzio. Rischio esaminato: che `avviso_ripiego` o `versione_leggera` della #370 finiscano a voce. Nessuna occorrenza in modules/voice/. Esito: ok.
+- `tests/test_unit_voice_stt.py:1398` — i casi della divisione in frasi sono ancora nella suite dopo il merge. Esito: ok.
 
-**Memoria**
-- Ho aggiunto in coda a `/home/user/Gas-tts/.claude/agents/memoria_revisore.md` la riga `#784-M2 — 2026-11-11 — APPROVATO — …` (nessuna lezione nuova) e l'ho messa in staging.
-- Il numero #784 l'hai dato tu: nella memoria fusa l'ultimo numero è #776-M2.
-- Non ho lanciato `scripts/commit_memoria_revisore.sh`: c'è un merge in corso e hai chiesto la memoria in staging. Entra nel commit di merge.
+**Test rieseguiti da me**
+- test_unit_voice_stt + test_unit_voice_server + test_unit_notte: 599 passed.
+- test_unit_telegram_voce: 74 passed.
 
-### Review #776-M2 (merge di origin/main) — verdetto integrale
-
-## VERDETTO: APPROVATO
-
-Review #776-M2: merge di origin/main e3eb542 (#370 e #369) nella PR #372 (keep-alive ElevenLabs). Il merge è in staging in /home/user/Gas-tts, HEAD 39eaf0a, MERGE_HEAD e3eb542.
-
-**Cosa ho controllato**
-- **Merge pulito:** `git ls-files -u` è vuoto, non ci sono marcatori di conflitto né in memoria né in reports/, e `git diff --cached --check HEAD` è pulito.
-- **Memoria e stato_progetto, nessuna riga persa:**
-  - Rispetto a HEAD il diff contiene solo aggiunte: 11 righe in memoria (#753-M1, #757-M1, #761–#765) e 2 voci in stato_progetto (#366 decisioni M1, #369 allucinazioni). Nessuna riga tolta.
-  - Rispetto a MERGE_HEAD (`git diff MERGE_HEAD`) non manca nessuna riga, né in memoria né in stato_progetto.
-  - Non ci sono doppioni nuovi: l'unico numero ripetuto in più rispetto a HEAD è #753-M1, che è doppio già in main (1° e 2° giro).
-
-**Citazioni**
-- `modules/voice/tts.py:121` — `_post_riusando`, il keep-alive con un solo nuovo tentativo, fatto solo durante l'invio. Rischio esaminato: che il merge alteri il file o che il codice di main ci interagisca. Il file non è nel diff del merge, main non lo ha toccato dal merge-base e il codice nuovo di main non contiene nessun riferimento al TTS. Esito: ok.
-- `modules/voice/tts.py:106` — `_conn_caduta`, il controllo che la connessione non sia già chiusa prima di riusarla. Non toccato dal merge. Esito: ok.
-- `tests/test_unit_voice_tts.py:610` — `test_keepalive_connessione_ferma_da_troppo_si_butta`, insieme agli altri test keep-alive (righe 520–623). Restano intatti. tts+stt: 180 passed, rieseguiti da me dopo il merge. Esito: ok.
-- Contesto: `modules/telegram/bot.py:1091` — importa `synthesize_speech`. La #370 cambia bot.py solo in un commento (riga «§8 … versione leggera»), quindi la chiamata al TTS resta invariata. Esito: ok.
-- Contesto: `modules/voice/server.py:95` — importa il TTS. Il diff di main in server.py tocca solo il ramo della trascrizione (`TrascrizioneAllucinata`, vuota → silenzio) e non aggiunge chiamate di sintesi. Non c'è interazione con il keep-alive. Esito: ok.
-
-**Rischi esclusi (non verificati)**
-- La suite kernel (1134 PASS, 1 FAIL T31g per fastembed assente) non l'ho rieseguita: prendo per buono il numero del chiamante. Nel merge gas.py coincide con main, già approvato nelle review #764/#765-M1coord.
-- Il comportamento del keep-alive verso ElevenLabs reale non è verificato: non si riproduce in dev.
+**Rischi esclusi**
+- La suite del kernel (1134 PASS, 1 FAIL T31g perché manca fastembed) non l'ho rieseguita. gas.py è identico a main (diff 0), quindi il risultato dipende solo da main.
+- Comportamento dal vivo (Mac, Groq vero) non verificato: non riproducibile qui.
 
 **Memoria**
-- Ho aggiunto la riga `#776-M2 — 2026-11-11 — APPROVATO — …` in coda a /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging (`git add`). MERGE_HEAD è ancora presente.
-- `scripts/commit_memoria_revisore.sh` non l'ho eseguito: il primo tentativo è stato bloccato dall'hook review_gate perché `.review_ok` non corrisponde al diff in staging. In più, durante un merge `git commit -o` non può fare commit parziali. Il file entra quindi con il commit del merge.
-- Ora il diff in staging è cambiato (memoria aggiornata): bisogna rigenerare il marcatore con `bash scripts/segna_review_ok.sh` prima di committare.
-
-Nessuna lezione nuova.
-
-### Review #772-M2 (V-1 verifica esterna #372) — verdetto integrale
-
-## VERDETTO: APPROVATO
-
-Review #772-M2 (chat M2): diff in staging di /home/user/Gas-tts, PR #372. Il diff tocca solo tests/test_unit_voice_tts.py (2 righe aggiunte, 2 tolte).
-
-Elementi del diff che ho esaminato:
-- `tests/test_unit_voice_tts.py:615`: l'avanzamento di 5 s diventa `ora[0] += 19`. Rischio esaminato: con 19 s si deve ancora riusare la connessione, perché 19 è sotto la soglia di 20 s (`modules/voice/tts.py:88`) e il controllo usa il `>` stretto. Prima, con 5 s, una soglia abbassata a 15 non veniva scoperta. Esito: ok. Il mutante «soglia 15» ora è preso (1 failed).
-- `tests/test_unit_voice_tts.py:618`: `ora[0] += _KEEPALIVE_INATTIVA_MAX_S + 1` diventa `ora[0] += 21`. Rischio esaminato: il test non deve più ricavare il valore atteso dalla costante che sta controllando. «usata» viene aggiornato dopo la lettura della seconda risposta, quindi l'inattività misurata è 21 s ed è maggiore di 20: si apre una connessione nuova. Esito: ok. I mutanti «soglia 1e9» e «soglia 25» sono presi (1 failed ciascuno).
-- Contesto (file non toccato): `modules/voice/tts.py:133`. Il confronto `time.monotonic() - usata > _KEEPALIVE_INATTIVA_MAX_S` è coerente con i valori fissi 19 e 21.
-
-Verifiche eseguite: la suite del file dà 40 passed. Ho provato tre mutanti della costante (1e9, 25, 15), uno alla volta, ripristinando ogni volta il file originale: tutti presi. modules/voice/tts.py è rimasto intatto (in `git status` compaiono solo il test e la memoria).
-
-Rischio che ho escluso:
-- Il confine esatto di 20 s non è coperto: la differenza tra `>` e `>=` non viene scoperta. Lo considero accettabile e non apro una riserva, perché il contratto è «circa 20 s» e la finestra 19/21 basta a bloccare la soglia.
-- Il mutante «usata non aggiornato» non l'ho riprovato. Con questi valori il test da solo non lo distingue (da 1000 a 1040 sono comunque più di 20 s). La review #768 lo dava preso, ma non ho controllato da quale test.
-- Nessun guardrail toccato: il cap di 10 iterazioni, `_get_window` e l'assenza di slicing non sono interessati da questo diff, che riguarda solo un test.
-
-Memoria: ho aggiunto la riga `#772-M2` in coda a /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging in /home/user/Gas-tts (`M  .claude/agents/memoria_revisore.md`). Nessuna lezione nuova. Non ho committato, come da tua richiesta di sola messa in staging.
+- Riga `#777-M2` aggiunta in coda a `.claude/agents/memoria_revisore.md` e messa in staging (`git add`), nessuna lezione nuova.
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`: il merge è ancora in corso e git non accetta un commit parziale (`-o`) durante un merge. Il file entra col commit di merge.
+- Il numero #777 l'ho preso dalla tua richiesta: in coda al file, sul lato M2, l'ultima riga è #775-M2 e non esiste una #776-M2.
+- Per la regola R-139-1 non chiudo con un riepilogo «Verdetto finale»: l'esito sta solo nella prima riga.
 
 File rilevanti:
-- /home/user/Gas-tts/tests/test_unit_voice_tts.py
-- /home/user/Gas-tts/modules/voice/tts.py
-- /home/user/Gas-tts/.claude/agents/memoria_revisore.md
+- /home/user/Gas-filtro2/modules/voice/stt.py
+- /home/user/Gas-filtro2/modules/voice/server.py
+- /home/user/Gas-filtro2/modules/telegram/bot.py
+- /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md
 
-### Review #771-M2 (R-770-1/R-770-2) — verdetto integrale
-
-## VERDETTO: APPROVATO
-
-Re-review #771-M2 sul diff in staging in /home/user/Gas-tts (PR #372, keep-alive ElevenLabs). Ho letto CLAUDE.md (sez. 5, 8, 9), lo stato del progetto (parte Voce) e la mia memoria (#765, #768, #770-M2). Le due riserve di #770-M2 sono chiuse.
-
-**Cosa ho controllato nel diff**
-1. `modules/voice/tts.py:106`: nuova funzione `_conn_caduta`. Se il socket non c'è risponde False, e va bene perché la request la aprirà. Fa un select a 0 s. Rischio: un errore del select che risale e fa crashare. Esito ok: OSError, ValueError e TypeError vengono intercettati.
-2. `modules/voice/tts.py:116`: un errore del controllo conta come «caduta». Rischio: un socket chiuso o con fileno -1 che fa esplodere select. Esito ok: si chiude e se ne apre una nuova, in linea con il §9.
-3. `modules/voice/tts.py:136`: il controllo viene fatto prima di `riusata = conn is not None`. Rischio: che la riconnessione consumi il nuovo tentativo. Esito ok: la connessione nuova ha `riusata=False` e un nuovo tentativo resta possibile solo per una connessione davvero riusata che cade durante l'invio. Al secondo giro del ciclo conn è None, quindi il controllo non viene rifatto.
-4. `modules/voice/tts.py:162`: `getresponse()` ora ha un solo ramo `except (HTTPException, OSError)`. Rischio: perdere la gestione di HTTPException. Esito ok: il ramo tolto non veniva mai eseguito, perché il precedente catturava già HTTPException. La docstring corrisponde al codice.
-5. `tests/test_unit_voice_tts.py:662`: socketpair con il lato «server» chiuso. Verifica che si crei una connessione nuova, che la vecchia sia chiusa con 1 richiesta e la nuova abbia 1 richiesta (nessun nuovo tentativo consumato). Esito ok. Ho provato il mutante «`_conn_caduta` restituisce sempre False»: questo test lo cattura (1 failed, 39 passed). Ho poi ripristinato il file e `git diff` sulle modifiche non in staging è vuoto.
-6. `tests/test_unit_voice_tts.py:680`: socket vivo, la connessione viene riusata. Esito ok. Il monkeypatch in `tests/test_unit_voice_tts.py:626` è giustificato: con un MagicMock, select solleverebbe TypeError, che conterebbe come caduta e falserebbe il test del timeout.
-
-Risultato: tts **40 passed**, rilanciati da me.
-
-**Falsi positivi da TLS (la tua domanda)**
-Ho fatto una prova reale in locale: server Python TLS 1.3 con `num_tickets=4` e tre POST keep-alive. Dopo `resp.read()` il socket non risulta mai leggibile e `pending()` è 0. I ticket arrivano subito dopo l'handshake, prima della risposta HTTP, e la lettura della risposta li consuma. Resterebbe un falso positivo solo se un server mandasse un ticket o altri dati dopo la risposta. In quel caso il costo è un handshake in più e nessun errore né doppio addebito, quindi è accettabile.
-Il punto cieco è l'opposto, un falso negativo: dati già nel buffer SSL (`sock.pending()>0`), che select non vede. Nel caso normale qui non succede, perché la risposta viene letta tutta, e rientra nel rischio residuo dichiarato in docstring. Se vuoi una difesa in più costa poco: `or sock.pending()` per gli SSLSocket. Non è una riserva.
-
-**Cosa non ho verificato**
-- Il comportamento con l'endpoint reale ElevenLabs e la sua CDN (quando manda i ticket, chiusure con o senza close_notify): non si riproduce in dev senza rete e senza la chiave. La prova copre solo un server OpenSSL locale.
-- Il tempo che il select a 0 s aggiunge sulla latenza della voce: non l'ho misurato. È trascurabile per costruzione (una chiamata di sistema senza attesa).
-
-**Memoria**
-Ho aggiunto la riga `#771-M2` e una lezione su come provare i falsi positivi TLS in /home/user/Gas-tts/.claude/agents/memoria_revisore.md. Il file è in staging insieme a tts.py e al test. Non ho lanciato `commit_memoria_revisore.sh`, perché mi hai chiesto solo lo staging.
-
-File: /home/user/Gas-tts/modules/voice/tts.py, /home/user/Gas-tts/tests/test_unit_voice_tts.py, /home/user/Gas-tts/.claude/agents/memoria_revisore.md
-
-### Review #770-M2 (V-1 bot #372) — verdetto integrale
+### Review #775-M2 (seguito di #774-M2) — verdetto integrale
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #770-M2, seguito della PR #372, sul diff STAGED in /home/user/Gas-tts. Il finding V-1 del bot è chiuso: ora un nuovo tentativo parte solo se la connessione salta mentre la richiesta viene inviata. Ho controllato solo il delta e il mutante richiesto.
+Review #775-M2 su tutto il diff in staging in /home/user/Gas-filtro2 (PR #373). Le due riserve del giro precedente sono chiuse: R-774-2-M2 (la chiusura ora conta solo a parola intera) e R-774-3-M2 (aggiunti test che dipendono solo dalla divisione su virgola e due punti). Nessuna regola del Wall of Shame è violata e nessun guardrail è toccato.
 
-**Cosa ho esaminato nel diff**
-- `modules/voice/tts.py:126`: solo `conn.request()` resta nel try che può ripetere. Il nuovo tentativo scatta solo su una connessione riusata, al primo tentativo (`modules/voice/tts.py:131`). Rischio esaminato: un secondo POST dopo che ElevenLabs ha già ricevuto la richiesta. **Esito: ok.**
-- `modules/voice/tts.py:141`: `conn.getresponse()` ha un try suo: chiude la connessione e alza OSError, senza nuovo tentativo. Ho provato il mutante che rimette `getresponse()` nel try che ripete: lo prende `test_keepalive_errore_dopo_l_invio_non_riprova` (`tests/test_unit_voice_tts.py:646`), che verifica 2 richieste, 1 connessione e connessione chiusa. **Esito: ok.**
-- Test: `tests/test_unit_voice_tts.py` dà 38 passed.
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:126` — `_CHIUSURE_LUNGHE` mette ora uno spazio davanti a ogni chiusura. Rischio: corrispondenza a metà parola. Esito: ok, il test con «delle disgrazie a voi» passa al cervello. Mutante «spazio tolto dalle chiusure»: 1 failed, ucciso.
+- `modules/voice/stt.py:138` — `(" " + " ".join(parole)).endswith(_CHIUSURE_LUNGHE)`. Rischio: chiusure che non combaciano mai. Esito: **riserva**. `_PAROLA` toglie l'apostrofo, quindi «l'ascolto» diventa «l ascolto». Le chiusure scritte con l'apostrofo («grazie per l'ascolto», «grazie per l'attenzione») non combaciano mai in questo controllo: «Sottotitoli creati dalla comunità Amara.org grazie per l'ascolto» passa al cervello (verificato).
+- `modules/voice/stt.py:123` — divisione su `, ; :`. Esito: ok. Mutante «virgola tolta»: 2 failed. Mutante «: tolto»: 1 failed. Mutante «; tolto»: sopravvive, perché nessun test dipende dal punto e virgola (cosmetica).
+- `tests/test_unit_voice_stt.py:1398` — «Sottotitoli a cura di QTSS, grazie per la visione, alla prossima.» viene scartata solo grazie alla divisione. Esito: ok.
+- `tests/test_unit_voice_stt.py:1420` — richiesta con «disgrazie a voi». Esito: ok, passa.
+
+**Prove eseguite**
+- `tests/test_unit_voice_stt.py`: 181 passed. `-k telegram`: 101 passed.
+- Mutanti con `-k "filtro2 or allucin"`:
+  - uccisi: regola nuova tolta (2 failed), virgola tolta (2 failed), «:» tolto (1 failed), spazio tolto dalle chiusure (1 failed);
+  - sopravvissuti:
+    - «;» tolto: nessun test usa il punto e virgola (cosmetica);
+    - fine frase cambiata in «contiene»: manca un test con la chiusura a metà frase (bassa, non ho aperto una riserva a parte);
+    - spazio tolto davanti alla frase: equivalente, non cambia il comportamento.
+- Dopo i mutanti `modules/voice/stt.py` è tornato identico alla versione in staging (`git diff` vuoto).
 
 **Riserve**
-- **R-770-1-M2 (BASSA): il nuovo tentativo ormai non scatta quasi mai.** Quando ElevenLabs chiude una connessione inattiva, di solito l'invio riesce lo stesso (finisce nel buffer) e l'errore `RemoteDisconnected` arriva solo in `getresponse()`. Quindi nel caso tipico ora si ha un errore e la frase persa, e il nuovo tentativo scatta quasi solo su `BrokenPipe`. Il limite di 20 s di inattività riduce il problema, ma solo se ElevenLabs tiene aperte le connessioni più di 20 s, cosa non nota. Rimedio senza rischio di doppio addebito: prima di inviare su una connessione riusata, controllare che il socket non sia già leggibile (`select` a 0 s; se è leggibile, il server l'ha chiusa) e in quel caso aprirne una nuova. È quello che fa `is_connection_dropped` di urllib3.
-- **R-770-2-M2 (COSMETICA):**
-  - il ramo `except http.client.HTTPException` a `modules/voice/tts.py:145` non viene mai eseguito, perché la riga sopra cattura già `(HTTPException, OSError)`;
-  - nella docstring, `modules/voice/tts.py:110` è una riga troppo lunga.
+- **R-775-1-M2 (BASSA)**: le chiusure con apostrofo non funzionano nel controllo di fine frase. Proposta: costruire `_CHIUSURE_LUNGHE` con `" ".join(_PAROLA.findall(f))`.
+- **R-775-2-M2 (COSMETICA)**: nessun test per «;».
+- R-774-1-M2 (BASSA) e R-774-4-M2 (COSMETICA) restano aperte; le hai accettate come riserve. Due esempi verificati ancora oggi: «Scarica i sottotitoli a cura di Rai, grazie mille.» e «Cerca chi ha fatto i sottotitoli a cura di Rai e digli grazie a tutti» vengono scartate.
+- Restano aperte anche R-764-2-M2 (BASSA) e R-761-4 (COSMETICA).
 
-**Cosa non ho verificato**
-- Il tempo reale dopo cui ElevenLabs chiude le connessioni inattive, e quindi quanto spesso capiti R-770-1-M2. Serve una prova dal vivo con chiave e rete vere, che qui non ho.
-- Non ho rilanciato le suite voice_server e telegram: il delta tocca solo tts.py e il suo test.
+**Non verificato**: il comportamento sull'audio reale di Groq Whisper e del server voce (servono microfono e rete). Non ho rilanciato le suite del server voce né dell'ascolto: il diff tocca solo la funzione `allucinazione()`.
 
-**Memoria del revisore**
-- Ho aggiunto la riga #770-M2 e una lezione nuova in /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-tts add`. Nessun commit.
+**Memoria**: ho aggiunto in coda a /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md la riga contatore #775-M2 e una lezione: le parole estratte da una regex che toglie l'apostrofo non combaciano con voci d'elenco scritte con l'apostrofo. Il file è in staging; non ho committato.
 
-### Review #768-M2 (seguito di #765-M2) — verdetto integrale
+### Review #774-M2 (V-1 bot #373) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #774-M2 sul diff in staging di /home/user/Gas-filtro2 (PR #373, filtro delle allucinazioni di Whisper). La correzione chiude la V-1 di gravità media del bot #373: «Sottotitoli a cura di QTSS, grazie per la visione.» e le altre 4 varianti nuove vengono scartate. Nessuna regola del Wall of Shame è violata (niente history, niente simulazione di tool) e nessun guardrail è toccato. Restano però falsi positivi nuovi, e i test non coprono la divisione su virgola e punteggiatura simile.
+
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:123` — `_FINE_FRASE_STT` ora divide anche su `, ; :` seguiti da spazio. Rischio esaminato: richieste vere scartate in silenzio. Esito: **riserva**. Il tetto di 8 parole per le parti note ora vale per ogni pezzo tra due virgole, non per la frase intera:
+  - «Scarica i sottotitoli a cura di Rai, grazie mille.» ora viene scartata. Prima passava (verificato col codice di HEAD).
+  - «Sottotitoli, grazie.» e «Grazie mille, sottotitoli.» ora vengono scartate. Prima passavano.
+  - Restano corrette: «Gas, cerca chi ha fatto i sottotitoli a cura di Rai, grazie.» passa, perché il pezzo «gas,» non è un'allucinazione. «Grazie: alla prossima riunione parliamo di Rossi.» passa. «1,5 grazie» passa (niente spazio dopo la virgola).
+- `modules/voice/stt.py:138` — `" ".join(parole).endswith(_CHIUSURE_LUNGHE)`, con `_CHIUSURE_LUNGHE` definita in `modules/voice/stt.py:126` (16 chiusure di almeno 3 parole). Rischio esaminato: corrispondenze a metà parola e richieste lunghe che finiscono con un saluto. Esito: **riserva**.
+  - «Cerca chi ha fatto i sottotitoli a cura di Rai e digli grazie a tutti» ora viene scartata. Prima passava.
+  - Il confronto non controlla il confine di parola: «…disgrazie a voi» combacia con «grazie a voi».
+  - Falso negativo cosmetico: «Sottotitoli a cura di QTSS grazie a tutti per la visione e alla prossima» passa ancora.
+- `modules/voice/stt.py:135` — il tetto di 8 parole resta prima della regola nuova. Rischio esaminato: regressione della V-1 bot #369. Esito: ok sulla frase intera; il caso «Gas, cerca chi ha fatto i sottotitoli a cura di Rai per il film» passa ancora.
+- `tests/test_unit_voice_stt.py:1392` e `tests/test_unit_voice_stt.py:1396` — casi scartati con virgola e punto e virgola. Rischio esaminato: se i test uccidono l'estensione del separatore. Esito: **riserva**. Il primo caso lo prende anche la regola `endswith`, il secondo il tetto di 8 parole sulla frase intera, quindi nessuno dei due dipende davvero dalla divisione su virgola.
+- `tests/test_unit_voice_stt.py:1413` — richieste vere con virgola e due punti. Esito: ok, passano.
+
+**Prove eseguite**
+- `tests/test_unit_voice_stt.py`: 177 passed.
+- `-k telegram`: 101 passed.
+- Mutanti, tutti lanciati con `-k "filtro2 or allucin"`:
+  - regola `endswith` sostituita da `if False:` → 2 failed, **ucciso**;
+  - virgola tolta dalla regex → 66 passed, **sopravvive**;
+  - «;» tolto → **sopravvive**;
+  - «:» tolto → **sopravvive**;
+  - soglia delle chiusure da 3 a 2 parole → **sopravvive**;
+  - `endswith` sostituito da «contiene» → **sopravvive**.
+- Ho controllato che la divisione su virgola abbia un'utilità reale: «Sottotitoli a cura di QTSS, grazie per la visione, alla prossima.» e «Grazie per la visione, sottotitoli a cura di QTSS.» vengono scartate solo grazie a lei.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-774-1-M2 (BASSA)**: con la divisione su virgola il tetto di 8 parole si applica a ogni pezzo. Una richiesta corta coi crediti, seguita da «, grazie mille», viene scartata in silenzio; idem «Sottotitoli, grazie.». Rischio pratico basso, perché Gas non gestisce sottotitoli.
+- **R-774-2-M2 (BASSA)**: il controllo `endswith` va agganciato al confine di parola (`(" " + testo).endswith(" " + c)`). Inoltre oggi colpisce ogni frase lunga con una parte nota che finisce con un saluto.
+- **R-774-3-M2 (BASSA, test)**: nessun test uccide l'estensione del separatore. Proposta: aggiungere «Sottotitoli a cura di QTSS, grazie per la visione, alla prossima.», che uccide il mutante «virgola tolta», e un caso con «:».
+- **R-774-4-M2 (COSMETICA)**: «… QTSS grazie a tutti per la visione e alla prossima» passa.
+- R-764-2-M2 (BASSA) e R-761-4 (COSMETICA) restano aperte.
+
+**Non verificato**
+- Il comportamento sull'audio reale di Groq Whisper e del server voce: richiede un microfono e la rete, non è riproducibile qui. Ho controllato solo la funzione `allucinazione()` e i test unitari.
+- Non ho rilanciato le suite del server voce né dell'ascolto: il diff tocca solo la funzione pura.
+
+**Memoria**
+- Ho aggiunto in coda a /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md la riga contatore #774-M2 e 2 lezioni nuove:
+  1. allargare un separatore di frasi fa riapplicare i tetti per frase a ogni pezzo;
+  2. `endswith` senza spazio iniziale combacia a metà parola.
+- Il file è in staging in /home/user/Gas-filtro2. Non ho lanciato `commit_memoria_revisore.sh`, perché mi hai chiesto solo lo staging.
+- Durante i mutanti un `>` nel testo di un `echo` ha creato per errore il file `in` nella radice del repo: l'ho cancellato. `modules/voice/stt.py` è tornato identico alla versione in staging (`git diff` vuoto).
+
+### Review #769-M2 (seguito di #767-M2, R-767-1) — verdetto integrale
 
 VERDETTO: APPROVATO
 
-Review #768-M2, seguito di #765-M2, sul diff STAGED in /home/user/Gas-tts: tutte e tre le riserve sono chiuse. Ho controllato solo il delta, i mutanti e la sonda di #765.
+Review #769-M2 (segue la #767-M2) sul diff staged di /home/user/Gas-filtro2. R-767-1-M2 è chiusa: le allucinazioni composte (crediti + saluto) tornano a essere scartate e le richieste vere passano.
 
-**Cosa ho esaminato nel diff**
-- `modules/voice/tts.py:139`: `resp.read()` ora sta in un try separato, dopo quello che può riprovare. Un errore durante la lettura chiude la connessione e risale come OSError (`:140-142`). Rischio esaminato: un secondo POST dopo un 200, cioè il doppio addebito di R-765-1-M2. Ho rilanciato la sonda di #765 (connessione che salta a metà dell'audio su una connessione riusata): ora dà `OSError: risposta rotta (ConnectionResetError)` senza nuova richiesta, mentre prima le richieste erano 3 per 2 frasi. Il mutante «read di nuovo nel try che riprova» viene preso dai test (1 failed). **Esito: ok, R-765-1-M2 chiusa.**
-- `modules/voice/tts.py:113`: una connessione inattiva da più di `_KEEPALIVE_INATTIVA_MAX_S` = 20 s (`:87`) viene chiusa e se ne apre una nuova, prima di decidere se la connessione è «riusata». Rischio esaminato: una connessione persa in silenzio che fa aspettare tutto il timeout (R-765-2-M2). Il tempo di ultimo uso (`usata`) si aggiorna solo a risposta letta e senza «Connection: close» (`:149`), e una connessione esiste solo dopo un successo, quindi il valore di partenza 0.0 non entra mai in gioco. I mutanti «soglia tolta», «soglia enorme» e «usata non aggiornato» vengono presi dai test (1, 1 e 6 failed). **Esito: ok, R-765-2-M2 chiusa.**
-- `modules/voice/tts.py:121-123`: il timeout viene aggiornato sulla connessione e sul socket riusato. Ora i mutanti «settimeout tolto» e «conn.timeout tolto» vengono presi dai test (1 failed ciascuno). **Esito: ok.**
-- `modules/voice/tts.py:135-137`: un'eccezione qualsiasi chiude la connessione. Il mutante che toglie il ramo `except BaseException` viene preso dai test (1 failed). **Esito: ok, R-765-3-M2 chiusa.**
+Le review #764, #766 e #767 le avevo già consegnate prima dei tuoi messaggi. In breve, tutte APPROVATO CON RISERVE:
+- #764-M2: R-764-1 e R-764-2, entrambe BASSE.
+- #766-M2: chiude R-764-1 e apre R-766-1 (BASSA).
+- #767-M2: chiude R-766-1 e apre R-767-1 (MEDIA), ora chiusa da questo diff.
 
-**Test**
-- `tests/test_unit_voice_tts.py`: 37 passed.
-- Mutanti: tutti uccisi (7 sul codice nuovo più la variante «read lasciato anche fuori»).
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:124` — `_frase_allucinata` raccoglie le regole che prima valevano per tutta la trascrizione: nessuna parola, parti note col tetto di 8 parole, frasi intere con e senza punteggiatura interna, saluti con almeno un «grazie». Rischio: perdere una regola nello spostamento. Esito: ok, i casi di #764, #766 e #767 danno lo stesso risultato.
+- `modules/voice/stt.py:121` — `_FINE_FRASE_STT` divide le frasi solo dove la punteggiatura di fine frase è seguita da uno spazio. Rischio: spezzare «amara.org». Esito: ok.
+  - «amara.org» resta intera e la frase dei crediti viene scartata.
+  - «Grazie.Grazie mille.» (senza spazio) viene scartata già dal controllo sulla frase intera.
+- `modules/voice/stt.py:151` — divisa in frasi, la trascrizione è scartata solo se OGNI frase è un'allucinazione (`all`). Esito: ok.
+  - Scartate, anche passando da `_motivo_incerta`: «Sottotitoli creati dalla comunità Amara.org. Grazie per la visione.», «Sottotitoli a cura di QTSS. Grazie a tutti per la visione.», «Grazie. Grazie mille. Alla prossima!», «Grazie! Ciao a tutti!».
+  - Passano: «Grazie. Ora segna il lead Rossi.», «Grazie mille. Che ore sono?», «Grazie. Il prossimo.», «Segna il lead Rossi. …» (la frase fatta di soli puntini non trascina con sé quella vera), la richiesta lunga coi «sottotitoli a cura di Rai», «Chi ha fatto i sottotitoli a cura di Rai? Sottotitoli a cura di chi?».
 
-**Cosa non ho verificato**
-- Se 20 s bastano a coprire le pause fra le frasi di una risposta lunga sul server voce, e quanto tiene aperta una connessione inattiva ElevenLabs. Serve una prova dal vivo con chiave e rete vere, che qui non ho.
-- Non ho rilanciato le suite voice_server, telegram e contesto: il delta tocca solo tts.py e il suo test.
+**Test e mutanti**
+- Suite voice_stt + voice_server + telegram_voce + voce_ascolto (`-k "audit or not browser"`): **751 passed**.
+- Mutanti provati, entrambi fanno fallire i test (quindi i test li rilevano):
+  - `all` → `any` nella riga `modules/voice/stt.py:151`: 2 test falliti;
+  - «niente divisione in frasi» (`return False`): 3 test falliti.
+- Ho ripristinato il file dopo ogni mutante: nessuna modifica rimasta fuori dallo staging.
 
-**Memoria del revisore**
-- Ho aggiunto la riga #768-M2, senza lezioni nuove, in /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-tts add`. Nessun commit.
+Il diff non tocca la storia dei messaggi né `_get_window`, non simula l'output dei tool e non cambia i provider.
 
-### Review #765-M2 — verdetto integrale
+**Riserve ancora aperte da prima**: R-764-2-M2 BASSA (su Telegram un vocale «Grazie di cuore» ora riceve «non ho capito»), R-761-4 COSMETICA. Questo diff non ne aggiunge.
+
+**Cosa non ho verificato**: come Whisper mette davvero punteggiatura e spazi tra le frasi su audio reale (per esempio crediti e saluto senza punto in mezzo). Serve la prova sul Mac.
+
+**Memoria**: ho aggiunto la riga #769-M2 in /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md, senza lezioni nuove, e l'ho messa in staging con `git -C /home/user/Gas-filtro2 add`. Non ho fatto commit.
+
+### Review #767-M2 (seguito di #766-M2) — verdetto integrale
 
 VERDETTO: APPROVATO CON RISERVE
 
-Review #765-M2 sul diff STAGED in /home/user/Gas-tts, branch perf/voce-tts-keepalive-m2: la connessione HTTPS verso ElevenLabs resta aperta e si riusa, una per thread.
+Review #767-M2 (segue la #766-M2) sul diff staged di /home/user/Gas-filtro2. Il problema dei saluti con la virgola (R-766-1) è chiuso, ma il nuovo limite di 8 parole lascia passare di nuovo alcune allucinazioni: è la riserva MEDIA R-767-1-M2 qui sotto.
 
-Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la memoria del revisore e le voci di stato_progetto che riguardano la voce. La modifica non tocca la storia dei messaggi né `_get_window`, non simula i tool e non indebolisce né il tetto di 10 giri né quello di 8k caratteri. Nessuna eccezione arriva a far crashare il programma: i chiamanti gestiscono già OSError ed ElevenLabsTTSError.
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:133` — le frasi intere ora si confrontano anche senza la punteggiatura interna, e l'elenco ha in più «grazie mille e alla prossima» e «grazie mille a tutti e alla prossima». Rischio esaminato: che il confronto senza punteggiatura scarti anche richieste vere. Prove: «Grazie, e alla prossima!», «Grazie mille, e alla prossima», «Grazie, per l'ascolto», «Iscriviti, al canale» vengono tutte scartate. Esito: ok, R-766-1-M2 chiusa.
+- `modules/voice/stt.py:128` — le parti note (`_ALLUCINAZIONI_PARTI`) fanno scartare la frase solo se ha al massimo `_PARTI_MAX_PAROLE` = 8 parole. Il limite vale anche in `_motivo_incerta` (`modules/voice/stt.py:152`). «Gas, cerca chi ha fatto i sottotitoli a cura di Rai per il film» passa. Il problema: le allucinazioni COMPOSTE, cioè una riga di crediti più un saluto, superano le 8 parole e ora arrivano al cervello («Sottotitoli creati dalla comunità Amara.org. Grazie per la visione.», «Sottotitoli a cura di QTSS. Grazie a tutti per la visione.»). Esito: **riserva MEDIA R-767-1-M2**, non bloccante. Proposta: togliere la parte nota dal testo e scartare se quello che resta è vuoto o è a sua volta un'allucinazione.
+- `tests/test_unit_voice_stt.py:1399` — il test con la richiesta lunga dei «sottotitoli a cura di Rai». Esito: ok, ma manca un test per la frase composta crediti + saluto.
 
-**Cosa ho esaminato nel diff**
-- `modules/voice/tts.py:75`: `threading.local()` tiene una connessione per thread. Rischio esaminato: stato o chiave condivisi fra thread. La chiave viaggia nell'header di ogni richiesta e non viene salvata. Il server voce gira su un solo thread (`HTTPServer` senza ThreadingMixIn, `modules/voice/server.py:1517`). Il bot Telegram sintetizza da un esecutore suo (`modules/telegram/bot.py:1017`). Il mutante «connessione globale invece che per thread» viene preso dai test. **Esito: ok.**
-- `modules/voice/tts.py:117`: nuovo tentativo solo se la connessione era riusata ed è il primo tentativo. Il mutante «riprova anche su una connessione nuova» viene preso dai test. **Esito: ok.**
-- `modules/voice/tts.py:114`: `resp.read()` sta dentro lo stesso try che fa ripartire il tentativo, e `ConnectionResetError` è nella lista degli errori «connessione chiusa». **Esito: riserva R-765-1-M2 (MEDIA), possibile doppio addebito.** Una sonda (connessione finta, nessuna chiamata reale) lo conferma: se la connessione salta a metà dell'audio dopo che ElevenLabs ha già risposto 200, parte un secondo POST, che ElevenLabs farebbe pagare di nuovo. Due frasi hanno prodotto 3 richieste. Correzione: riprovare solo se l'errore arriva prima dello status, cioè durante `request`/`getresponse`. Un errore durante `read()` deve risalire come OSError.
-- `modules/voice/tts.py:78`: l'elenco degli errori che fanno riprovare non comprende `TimeoutError`, ed è giusto, perché riprovare raddoppierebbe l'attesa. Però il bot Telegram fa una sola sintesi per risposta, a minuti di distanza, quindi riusa sempre una connessione rimasta ferma a lungo. Se il router, il cambio di Wi-Fi o la sospensione del Mac l'hanno persa senza avvisare, la richiesta aspetta tutto il timeout (`VOCE_TIMEOUT_S`) e fallisce, mentre prima funzionava. La stessa cosa vale per la conferma vocale col suo timeout di 5 s (`modules/voice/server.py:232`). **Esito: riserva R-765-2-M2 (MEDIA).** Correzione: buttare la connessione se è inutilizzata da più di circa 15-30 s. Il guadagno di velocità, che sta fra le frasi di una stessa risposta, resta intatto.
-- `modules/voice/tts.py:126`: se il server manda «Connection: close» la connessione si chiude. Il mutante viene preso da `tests/test_unit_voice_tts.py:549`. **Esito: ok.**
-- `modules/voice/tts.py:167`: il riuso vale solo senza `_conn_factory` e si spegne con `GAS_TTS_KEEPALIVE=0`. Il percorso vecchio è invariato e lo copre `tests/test_unit_voice_tts.py:559`. **Esito: ok.**
-- `modules/voice/tts.py:110`: il timeout viene aggiornato anche sul socket riusato. Il codice è corretto, ma sopravvivono i mutanti «settimeout tolto», «conn.timeout tolto» ed «except BaseException non chiude la connessione», perché nella connessione finta dei test `sock` è sempre None. **Esito: riserva R-765-3-M2 (BASSA), mutanti non coperti.**
+**Test e mutante**: suite voice_stt + voice_server + telegram_voce + voce_ascolto: 746 passed. Mutante «tolto il limite di parole»: 1 test fallisce.
 
-**Altre note**
-- Socket lasciati aperti: quando un thread muore, la sua connessione viene chiusa dal garbage collector. Entrambi i chiamanti hanno thread che durano, quindi non c'è un accumulo.
-- Test: `tests/test_unit_voice_tts.py` dà 33 passed. Mutanti: 3 presi, 3 sopravvissuti (elencati sopra).
+**Riserve aperte**: R-767-1-M2 (MEDIA); R-764-2-M2 (BASSA); R-761-4 (COSMETICA).
 
-**Cosa non ho verificato**
-- Il comportamento reale di ElevenLabs: quanto tiene aperta una connessione inattiva e se manda «Connection: close». Serve una chiave e una rete vera, che qui non ho.
-- La perdita silenziosa della connessione dopo la sospensione del Mac o un cambio di Wi-Fi. Non si riproduce in questo ambiente; R-765-2-M2 è un ragionamento sul codice, non un caso osservato.
-- Non ho rilanciato le suite voice_server, stt, prova_voci, telegram_voce e contesto (428 passed secondo chi mi ha invocato), perché il diff tocca solo tts.py e il suo test.
+**Cosa non ho verificato**: quanto spesso Whisper produce davvero le frasi composte crediti + saluto. Serve audio reale sul Mac.
 
-**Memoria del revisore**
-- Ho aggiunto la riga #765-M2 e una lezione nuova in /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git add`. Nessun commit, come richiesto.
-- La sonda è in /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/sonda.py.
+**Memoria**: riga #767-M2 e una lezione nuova (con un tetto di lunghezza a un filtro per sottostringa, provare l'unione di due frasi già nell'elenco), in staging.
+
+### Review #766-M2 (seguito di #764-M2) — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #766-M2 (segue la #764-M2) sul diff staged di /home/user/Gas-filtro2 (branch fix/voce-filtro2-m2). R-764-1-M2 è chiusa. Ho controllato solo la parte nuova del diff.
+
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:52`: l'elenco `_PAROLE_DEI_SALUTI` di oggi non contiene più «prossimo», «prossima», «ancora», «il», «video», «alla», «al». Restano «la», «per», «di», «l», «a», «e». «Grazie, la prossima.» passa lo stesso, perché «prossima» non è più nell'elenco. Esito: ok.
+- `modules/voice/stt.py:61`: le chiusure tipiche ora sono frasi intere in `_ALLUCINAZIONI_INTERE`. Il confronto toglie la punteggiatura solo ai bordi. Restano scartate «Grazie a tutti e alla prossima.», «Alla prossima.», «Grazie per aver guardato il video.», «Grazie di cuore.», «Grazie, grazie.», «Grazie mille a tutti.»; passano «Grazie, il prossimo.», «Grazie, la prossima.», «Grazie, ancora.», «Grazie, il video.»; passano anche «Grazie, e alla prossima!» e «Grazie mille e alla prossima». Esito: **riserva BASSA R-766-1-M2**.
+- `tests/test_unit_voice_stt.py:1395`: i 4 casi di R-764-1 stanno nel test delle richieste che devono passare. Esito: ok.
+
+**Test e mutante**: `-k "filtro2 or allucin"`: 59 passed. Mutante «ancora rimesso in `_PAROLE_DEI_SALUTI`»: 1 test fallito.
+
+**Riserve aperte**: R-766-1-M2 (BASSA); R-764-2-M2 (BASSA); R-761-4 (COSMETICA).
+
+**Memoria**: riga #766-M2 in staging.
+
+### Review #764-M2 — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Ho fatto la review #764-M2 sul diff staged di /home/user/Gas-filtro2 (branch fix/voce-filtro2-m2, head 8b11ba8). Prima ho letto CLAUDE.md (sez. 5), reports/stato_progetto.md (in modo mirato) e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:121` — nuovo ramo di `allucinazione()`: la frase è scartata se contiene almeno un «grazie» e tutte le parole sono nell'elenco `_PAROLE_DEI_SALUTI`. Sonde: «Grazie Gas», «Grazie a te.», «Grazie, a domani», «Grazie, per oggi è tutto», «grazie e basta» passano; «Ciao» e «Buonanotte.» passano. Esito: **riserva** (R-764-1).
+- `modules/voice/stt.py:67` — l'elenco `_PAROLE_DEI_SALUTI` contiene anche «il», «la», «per», «di», «prossimo/prossima», «ancora», «video». «Grazie, il prossimo.», «Grazie, la prossima.», «Grazie, ancora.» e «Grazie, il video.» risultano allucinazioni. Esito: **riserva BASSA R-764-1-M2**.
+- `modules/voice/stt.py:59` — «ciao a tutti» e «ciao ciao a tutti» aggiunti; tolta «sottotitoli a cura di», che resta coperta dall'elenco delle frasi parziali. Esito: ok.
+- `modules/voice/server.py:233` — `seguito_da_scartare` scarta le frasi fatte solo di intercalari (elenco `_INTERCALARI` a `modules/voice/server.py:220`). «Niente.» da solo era già scartato prima; cambiano solo le frasi di più intercalari. Scartare vuol dire chiudere il seguito senza turno (`modules/voice/server.py:802`). «Niente, annulla», «Allora sì» e «Boh, dimmi tu» passano. Esito: ok.
+- Contesto: `modules/voice/stt.py:138` — `_motivo_incerta` chiama `allucinazione()`, quindi il filtro vale anche per il bot Telegram. Esito: **riserva BASSA R-764-2-M2**.
+
+**Test e mutanti**: suite voice_stt + voice_server + telegram_voce: 429 passed. Mutanti: requisito «almeno un grazie» tolto (2 falliti), `all` → `any` (2 falliti), ramo degli intercalari tolto (5 falliti).
+
+**Riserve**: R-764-1-M2 (BASSA), R-764-2-M2 (BASSA), R-761-4 COSMETICA.
+
+Wall of Shame: il diff non tocca la history né `_get_window`, non simula output di tool e non cambia guardrail o provider.
+
+**Cosa non ho verificato**: il comportamento dal vivo sul Mac con il microfono. Non ho provato nemmeno parole con accenti fuori dalla regex `_PAROLA`.
+
+**Memoria**: riga #764-M2 in staging.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- gas.py non toccato dalla PR (dopo il merge coincide con main). Test nuovi in `tests/test_unit_voice_tts.py`: 14.
-- `python -m pytest -q tests/test_unit_voice_tts.py tests/test_unit_voice_stt.py` dopo il merge: 180 passed (tts da solo 40 passed).
-- `python tests/test_unit_kernel.py` dopo il merge: 1134 PASS, 1 FAIL (T31g, fastembed assente in questo ambiente: lo stesso FAIL c'è su main).
-- Prima del merge: `tests/test_unit_voice_tts.py` + `tests/test_unit_voice_server.py` 250 passed.
+- Dopo 48b605f: `python -m pytest -q tests/test_unit_voice_server.py` 221 passed.
+- gas.py non toccato dalla PR (dopo il merge coincide con main). Test nuovi: `test_filtro2_varianti_dei_saluti` (23 casi), `test_filtro2_le_richieste_passano` (19), `test_filtro2_seguito_solo_intercalari` (9).
+- Dopo la correzione V-1 bot #373: `tests/test_unit_voice_stt.py` 177 passed (181 alla review #775); `tests/test_unit_telegram*.py` 74 passed.
+- Dopo il merge di main: `tests/test_unit_voice_stt.py tests/test_unit_telegram*.py` 255 passed; `python tests/test_unit_kernel.py` 1134 PASS, 1 FAIL (T31g, fastembed assente in questo ambiente: lo stesso FAIL c'è su main). Il revisore #777 ha rieseguito voice_stt+voice_server+notte: 599 passed.
+- Prima della correzione (2f31b66): suite voce `-k "audit or not browser"` 751 passed, 25 deselected (riprodotto dalla verifica esterna #373).
 
 ## §6 STATO CI
 
 CI NON VERIFICATA con `gh` (non autenticato nel cloud).
-- Head precedente 36095b4: `unit-suite`, `handoff-check` e `verifica-bot` success (letti dalla verifica esterna #372 via API).
-- Nuovi commit (2479a53…cc70808 e fine-task): run non ancora disponibile alla scrittura dell'handoff.
+- Head precedente 2f31b66: `handoff-check` success; `verifica-bot` failure (finding di gravità media, corretto in 789ade7); `unit-suite` in corso alla lettura.
+- Head 4559e23: `verifica-bot` failure (V-1 di gravità media, corretta in 48b605f).
+- Nuovi commit (48b605f e fine-task): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-765-1-M2 MEDIA, R-765-2-M2 MEDIA, R-765-3-M2 BASSA: CHIUSE (review #768-M2).
-- V-1 bot #372: CHIUSA (review #770-M2). R-770-1-M2 BASSA, R-770-2-M2 COSMETICA: CHIUSE (review #771-M2).
-- Verifica esterna #372: V-1 BASSA CHIUSA (review #772-M2); V-2 BASSA (nuovo tentativo dopo l'invio) CHIUSA dalla stessa correzione della V-1 del bot; V-3 COSMETICA (stato CI) superata da questo §6.
-- Non verificato: guadagno reale e durata delle connessioni inattive di ElevenLabs (prova sul Mac).
+- R-764-1-M2 BASSA, R-766-1-M2 BASSA, R-767-1-M2 (gravità media): CHIUSE (438704b, review #766/#767/#769-M2).
+- V-1 BASSA del bot su #369 (parti note in una richiesta lunga): CHIUSA per le richieste di oltre 8 parole; quelle di 8 o meno con una parte nota restano scartate (limite dichiarato, V-1/V-3 verifica esterna #373, non regressione).
+- V-1 del bot #373 (gravità media): CHIUSA (789ade7, review #774/#775-M2). R-774-2-M2 BASSA, R-774-3-M2 BASSA: CHIUSE (review #775-M2).
+- R-774-1-M2 BASSA: «Scarica i sottotitoli a cura di Rai, grazie mille.» scartata (vedi §0.3).
+- R-775-1-M2 BASSA: le chiusure con apostrofo («grazie per l'ascolto») non contano nel controllo di fine frase.
+- R-774-4-M2 COSMETICA, R-775-2-M2 COSMETICA (nessun test per «;»).
+- R-764-2-M2 BASSA: su Telegram un vocale «Grazie di cuore» ora riceve «Non ho capito bene il vocale» (allarga R-761-1).
+- R-761-4-M2 COSMETICA: «grazie» nell'elenco delle risposte brevi del seguito non viene più raggiunto.
+- V-1 del bot #373 su 4559e23 (gravità media): CHIUSA (48b605f, review #780-M2). Nella review #764-M2 (sotto, integrale) la frase ««Niente.» da solo era già scartato prima» è FALSA: su main «Niente.» passava; ora passa di nuovo.
+- Bot #373 su 4559e23, V-2 BASSA: il tetto di 8 parole vale per ogni frase dopo la divisione, quindi una richiesta divisa in frasi corte con parti note («Trovami i sottotitoli a cura di Rai. Poi i sottotitoli creati da Netflix.») viene scartata (estende R-774-1-M2).
+- Verifica esterna #373: V-2 BASSA (nessun fix, coerente con l'intento), V-3 COSMETICA.
+- Non verificato: come Whisper punteggia davvero le frasi su audio reale (prova sul Mac).
