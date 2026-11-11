@@ -612,10 +612,10 @@ def test_keepalive_connessione_ferma_da_troppo_si_butta(conn_viva, monkeypatch):
     ora = [1000.0]
     monkeypatch.setattr(conn_viva.time, "monotonic", lambda: ora[0])
     synthesize_speech("Uno.", "k", "v")
-    ora[0] += 5
+    ora[0] += 19  # ve #372 V-1: valori fissi, la soglia di 20 s è parte del contratto
     synthesize_speech("Due.", "k", "v")
     assert len(_ConnViva.create) == 1
-    ora[0] += conn_viva._KEEPALIVE_INATTIVA_MAX_S + 1
+    ora[0] += 21
     synthesize_speech("Tre.", "k", "v")
     assert len(_ConnViva.create) == 2 and _ConnViva.create[0].chiusa
 
