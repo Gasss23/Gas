@@ -10,6 +10,8 @@ import http.client
 import json
 import logging
 import os
+import threading
+import time
 from typing import Callable, Optional
 
 _ELEVENLABS_HOST = "api.elevenlabs.io"
@@ -67,6 +69,88 @@ def _cap_text(text: str) -> str:
     return truncated
 
 
+# Velocità (11 nov, operatore via M1: «più veloce»): la risposta a voce si sintetizza frase
+# per frase e ogni frase apriva una connessione HTTPS nuova (DNS + TCP + TLS verso gli USA,
+# qualche centinaio di ms). La connessione si tiene aperta e si riusa, una per thread
+# (il bot Telegram sintetizza da un thread suo). GAS_TTS_KEEPALIVE=0 la spegne.
+_conn_locale = threading.local()
+# Errori che, su una connessione RIUSATA, vogliono dire «il server l'ha chiusa nel frattempo»
+# (timeout di inattività di ElevenLabs): si riprova UNA volta con una connessione nuova.
+_CONN_CHIUSA = (http.client.RemoteDisconnected, http.client.CannotSendRequest,
+                http.client.ResponseNotReady, BrokenPipeError, ConnectionResetError,
+                ConnectionAbortedError)
+
+
+# R-765-2-M2: una connessione ferma da più di così (il bot Telegram sintetizza a minuti di
+# distanza; il Mac si sospende, cambia Wi-Fi) si butta: altrimenti una connessione persa in
+# silenzio farebbe aspettare tutto il timeout. Il guadagno resta fra le frasi di una risposta.
+_KEEPALIVE_INATTIVA_MAX_S = 20.0
+
+
+def _keepalive_acceso() -> bool:
+    return os.environ.get("GAS_TTS_KEEPALIVE", "").strip().lower() not in (
+        "0", "false", "no", "off")
+
+
+def _chiudi_conn_locale() -> None:
+    conn = getattr(_conn_locale, "conn", None)
+    _conn_locale.conn = None
+    if conn is not None:
+        try:
+            conn.close()
+        except Exception:  # §9: chiudere non deve mai rompere la sintesi
+            pass
+
+
+def _post_riusando(path: str, body: bytes, headers: dict, timeout: float) -> "tuple[int, bytes]":
+    """POST su una connessione HTTPS tenuta aperta (una per thread). Si riprova UNA volta,
+    con una connessione nuova, solo se quella riusata risulta chiusa PRIMA di avere lo stato
+    della risposta (R-765-1-M2: un errore mentre arriva l'audio non si ripete, ElevenLabs
+    avrebbe già fatto pagare la frase). Ogni errore chiude la connessione e risale come
+    OSError (o HTTPException → OSError)."""
+    for tentativo in (1, 2):
+        conn = getattr(_conn_locale, "conn", None)
+        if conn is not None and (time.monotonic() - getattr(_conn_locale, "usata", 0.0)
+                                 > _KEEPALIVE_INATTIVA_MAX_S):
+            _chiudi_conn_locale()  # R-765-2-M2: ferma da troppo, meglio una nuova
+            conn = None
+        riusata = conn is not None
+        if conn is None:
+            conn = http.client.HTTPSConnection(_ELEVENLABS_HOST, timeout=timeout)
+            _conn_locale.conn = conn
+        conn.timeout = timeout
+        if conn.sock is not None:
+            conn.sock.settimeout(timeout)
+        try:
+            conn.request("POST", path, body=body, headers=headers)
+            resp = conn.getresponse()
+        except _CONN_CHIUSA as exc:
+            _chiudi_conn_locale()
+            if riusata and tentativo == 1:
+                continue
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
+        except http.client.HTTPException as exc:
+            _chiudi_conn_locale()
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
+        except BaseException:
+            _chiudi_conn_locale()
+            raise
+        try:
+            dati = resp.read()  # R-765-1-M2: da qui in poi niente nuovo tentativo
+        except (http.client.HTTPException, OSError) as exc:
+            _chiudi_conn_locale()
+            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
+        except BaseException:
+            _chiudi_conn_locale()
+            raise
+        if resp.will_close:
+            _chiudi_conn_locale()
+        else:
+            _conn_locale.usata = time.monotonic()
+        return resp.status, dati
+    raise OSError("connessione verso ElevenLabs non disponibile")  # non raggiunto
+
+
 class ElevenLabsTTSError(Exception):
     """Errore dall'API ElevenLabs (rete o risposta non 200)."""
 
@@ -101,6 +185,17 @@ def synthesize_speech(
             "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
         }
     ).encode("utf-8")
+
+    if _conn_factory is None and _keepalive_acceso():
+        stato, resp_bytes = _post_riusando(path, body, {
+            "xi-api-key": api_key,
+            "Content-Type": "application/json",
+            "Content-Length": str(len(body)),
+        }, timeout)
+        if stato == 200:
+            return resp_bytes
+        msg = resp_bytes.decode(errors="replace")[:300]
+        raise ElevenLabsTTSError(stato, f"ElevenLabs {stato}: {msg}")
 
     conn = (
         _conn_factory()
