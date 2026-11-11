@@ -90,7 +90,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from modules.voice.stt import GroqSTTError, TrascrizioneIncerta, parse_audio_body, transcribe_audio
+from modules.voice.stt import (GroqSTTError, TrascrizioneAllucinata, TrascrizioneIncerta,
+                               parse_audio_body, transcribe_audio)
 from modules.voice.tts import DEFAULT_VOICE_ID as _TTS_DEFAULT_VOICE_ID
 from modules.voice.tts import (ElevenLabsTTSError, add_shared_voice, list_shared_voices,
                                list_voices, synthesize_speech)
@@ -1206,6 +1207,14 @@ class VoiceHandler(BaseHTTPRequestHandler):
         t = time.monotonic()
         try:
             text = transcribe_audio(audio_bytes, filename, api_key)
+        except TrascrizioneAllucinata:
+            self._segna("trascrizione", t)
+            # Allucinazioni 10 nov (operatore via M1): «Grazie.», «Sottotitoli…», solo
+            # punteggiatura su audio corto o debole non sono richieste: silenzio, nessun turno
+            # (niente memoria), con o senza parola di attivazione. Nel log solo l'esito.
+            log.info("trascrizione scartata in silenzio: frase tipica di Whisper")
+            self._chiudi_seguito()
+            return None
         except TrascrizioneIncerta as exc:
             self._segna("trascrizione", t)
             # V6: Groq ha risposto ma il testo è probabilmente sbagliato: si chiede di
@@ -1232,10 +1241,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
 
         self._segna("trascrizione", t)
         if not text:
-            if self._seguito():  # R-676-3: silenzio nella finestra di conversazione → chiude
-                self._chiudi_seguito()
-                return None
-            self._send_json(400, {"error": "Trascrizione vuota (silenzio o formato non supportato)"})
+            # R-676-3 + allucinazioni 10 nov: trascrizione vuota (silenzio) → chiude in
+            # silenzio anche con la parola di attivazione, niente errore né voce
+            log.info("trascrizione scartata in silenzio: vuota")
+            self._chiudi_seguito()
             return None
 
         return text
