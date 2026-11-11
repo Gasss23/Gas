@@ -167,7 +167,16 @@ Dopo una modifica: `bash scripts/voce/installa.sh` (riavvia i servizi).
 
 ## Log
 
-- `.gas_voce/ascolto.log`: attivazioni, invii, errori dell'ascolto.
+- `.gas_voce/ascolto.log`: attivazioni, invii, errori dell'ascolto. Solo numeri, mai audio
+  né testo: ogni «parola di attivazione» dice il punteggio della parola e quante salite
+  troppo corte (falsi «Hey Jarvis» fermati) ci sono state prima; ogni «richiesta
+  registrata» dice secondi di voce e volume medio e massimo (in multipli di
+  `GAS_ASCOLTO_VOCE_RMS`).
+- **Diagnosi in un comando:** `python3 scripts/voce/diagnosi_ascolto.py` (dalla cartella di
+  Gas) riassume gli ultimi 2 giorni: attivazioni con richiesta, senza richiesta (di solito
+  false: TV, persone), sospette (meno di 0,6 s di voce, dove Whisper inventa «Grazie»), e
+  le ultime 20 con ora e punteggio. Più giorni: `--giorni 7 --ultime 50`. È una stima, non
+  la verità: «senza richiesta» può anche essere un «Hey Jarvis» vero senza domanda dopo.
 - `.gas_voce/voce.server.log`: il server voce. Contiene i suoi messaggi a schermo e gli
   avvisi (da WARNING in su) di tutto Gas.
 - `gas_debug.log`, nella cartella di Gas accanto a `gas.py` (anche sotto launchd: il

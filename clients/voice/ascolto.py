@@ -387,6 +387,11 @@ class Ascolto:
         self.parola_nella_finestra = False   # la parola è stata detta nella finestra
         self._errori_rilevatore = 0
         self._errori_parola = 0
+        # Misura per tarare (solo numeri, mai audio): punteggio massimo della parola che ha
+        # appena attivato e quante salite sopra soglia troppo corte sono state scartate
+        # dall'attivazione precedente (falsi «Hey Jarvis» fermati dai blocchi di fila).
+        self.punteggio_parola = 0.0
+        self.picchi_scartati = 0
         self._sopra_finestra = 0   # V-1 ve #361: blocchi di fila sopra soglia nella finestra
         self._buoni_di_fila = 0
         self._muti = 0
@@ -409,8 +414,12 @@ class Ascolto:
 
     def aspetta_parola(self) -> bool:
         """Legge blocchi finché il rilevatore supera la soglia per `blocchi_parola` blocchi
-        di fila. False a fine flusso. Un errore del rilevatore azzera il conto."""
+        di fila. False a fine flusso. Un errore del rilevatore azzera il conto.
+        Lascia in `punteggio_parola` il punteggio massimo della corsa che ha attivato e in
+        `picchi_scartati` le corse sopra soglia troppo corte viste prima."""
         sopra = 0
+        massimo = 0.0
+        self.picchi_scartati = 0
         while True:
             b = self._prossimo()
             if b is None:
@@ -419,7 +428,10 @@ class Ascolto:
                 punteggio = float(self.rilevatore(b))
             except Exception as e:  # §9: un errore del modello non ferma l'ascolto
                 self._errore_rilevatore(e)
+                if sopra:
+                    self.picchi_scartati += 1
                 sopra = 0
+                massimo = 0.0
                 continue
             if self._errori_rilevatore:
                 # V-1 ve #328: il conto si azzera solo dopo BUONI_PER_AZZERARE blocchi buoni
@@ -433,10 +445,15 @@ class Ascolto:
                     self._buoni_di_fila = 0
             if punteggio >= self.soglia:
                 sopra += 1
+                massimo = max(massimo, punteggio)
                 if sopra >= self.blocchi_parola:
+                    self.punteggio_parola = massimo
                     return True
             else:
+                if sopra:
+                    self.picchi_scartati += 1
                 sopra = 0
+                massimo = 0.0
 
     def _errore_rilevatore(self, e: Exception) -> None:
         """V-1 ve #323: un rilevatore che fallisce non deve scrivere una riga per blocco
@@ -807,7 +824,8 @@ class Ascolto:
     def conversazione(self) -> None:
         """Dopo la parola: «Sì, signore?» (o il bip), richiesta, risposta, poi la finestra
         per continuare."""
-        log.info("parola di attivazione")
+        log.info("parola di attivazione (punteggio %.2f, picchi corti scartati prima: %d)",
+                 self.punteggio_parola, self.picchi_scartati)
         subito = self._voce_subito()
         if subito:
             # «Hey Jarvis, che ore sono» d'un fiato: niente conferma (coprirebbe la richiesta
@@ -833,12 +851,16 @@ class Ascolto:
             # solo numeri (durata, voce, volume), mai l'audio: servono a tarare le soglie
             # quando una richiesta arriva corta o debole (prova del 10/11: 1,1 s → Whisper
             # ha capito «grazie»)
-            voce_s = sum(1 for b in richiesta if rms(b) >= self.voce_rms) * SEC_BLOCCO
-            picco = max((rms(b) for b in richiesta), default=0.0)
+            volumi = [rms(b) for b in richiesta]
+            forti = [v for v in volumi if v >= self.voce_rms]
+            voce_s = len(forti) * SEC_BLOCCO
+            picco = max(volumi, default=0.0)
+            medio = sum(forti) / len(forti) if forti else 0.0
             # il volume come multiplo della soglia della voce (GAS_ASCOLTO_VOCE_RMS): dice
             # di quanto alzarla o abbassarla, e nel log non finisce nessun valore dell'audio
-            log.info("richiesta registrata (%.1f s, voce %.1f s, volume max %.1f× la soglia),"
-                     " invio%s", len(richiesta) * SEC_BLOCCO, voce_s,
+            log.info("richiesta registrata (%.1f s, voce %.1f s, volume medio %.1f× e max "
+                     "%.1f× la soglia), invio%s", len(richiesta) * SEC_BLOCCO, voce_s,
+                     medio / self.voce_rms if self.voce_rms > 0 else 0.0,
                      picco / self.voce_rms if self.voce_rms > 0 else 0.0,
                      " (di seguito)" if seguito else "")
             riuscito = self.turno(richiesta, seguito=seguito)

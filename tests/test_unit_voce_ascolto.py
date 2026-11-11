@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 import wave
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -2677,7 +2678,8 @@ def test_log_della_richiesta_con_voce_e_volume(caplog):
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         f.ascolto(_blocchi(PAROLA, (VOCE, 10), (SILENZIO, 20)), finestra_s=0).gira()
     righe = [r for r in caplog.text.splitlines() if "richiesta registrata" in r]
-    assert len(righe) == 1 and "voce 0.8 s" in righe[0] and "volume max 10.0× la soglia" in righe[0]
+    assert len(righe) == 1 and "voce 0.8 s" in righe[0]
+    assert "volume medio 10.0× e max 10.0× la soglia" in righe[0]
 
 
 def test_coda_della_parola_poi_pausa_non_salta_la_conferma():
@@ -2803,3 +2805,108 @@ def test_errore_del_rilevatore_mentre_gas_parla_azzera_il_conto():
               f.invia, f.riproduci, f.suona, finestra_s=0, blocchi_parola=2,
               dorme=lambda s: None).gira()
     assert f.riprodotti == [b"A", b"B"] and all(r == 0 for _, _, r in f.eventi)
+
+
+def test_log_dell_attivazione_con_punteggio_e_picchi_scartati(caplog):
+    """Misura per tarare (solo numeri): l'attivazione dice il punteggio massimo della corsa
+    che ha attivato e quante salite sopra soglia troppo corte sono state scartate prima."""
+    valori = iter([0.9, 0.0, 0.8, RuntimeError("x"), 0.99, 0.0, 0.7, 0.85] + [0.0] * 300)
+
+    def rilevatore(b):
+        v = next(valori)
+        if isinstance(v, Exception):
+            raise v
+        return v
+    f = Finti()
+    asc = a.Ascolto(iter(_blocchi((SILENZIO, 8), (VOCE, 10), (SILENZIO, 40))), rilevatore,
+                    f.invia, f.riproduci, f.suona, finestra_s=0, soglia=0.7,
+                    blocchi_parola=2, dorme=lambda s: None)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        asc.gira()
+    # il picco scartato da 0,99 non conta: vale il massimo della corsa che ha attivato
+    assert asc.punteggio_parola == 0.85 and len(f.inviati) == 1
+    righe = [r for r in caplog.text.splitlines() if "parola di attivazione (" in r]
+    assert righe and "punteggio 0.85" in righe[0]
+    assert "picchi corti scartati prima: 3" in righe[0]   # 0,9 · 0,8 (poi errore) · 0,99
+
+
+# ── diagnosi delle attivazioni (scripts/voce/diagnosi_ascolto.py) ──
+
+def _diagnosi():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("diagnosi_ascolto",
+                                                  VOCE_DIR / "diagnosi_ascolto.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod   # le dataclass cercano il modulo per nome
+    prima, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:   # niente __pycache__ in scripts/voce/ (altri test elencano quella cartella)
+        spec.loader.exec_module(mod)
+    finally:
+        sys.dont_write_bytecode = prima
+    return mod
+
+
+_LOG_ESEMPIO = """\
+2026-11-10 23:01:00,100 INFO ascolto pronto: parola «hey_jarvis», server http://x
+2026-11-10 23:02:00,000 INFO parola di attivazione (punteggio 0.93, picchi corti scartati prima: 2)
+2026-11-10 23:02:03,000 INFO richiesta registrata (2.4 s, voce 1.6 s, volume medio 3.0× e max 9.0× la soglia), invio
+2026-11-10 23:02:09,000 INFO torno ad aspettare la parola di attivazione
+2026-11-10 23:10:00,000 INFO parola di attivazione (punteggio 0.71, picchi corti scartati prima: 0)
+2026-11-10 23:10:07,000 INFO torno ad aspettare la parola di attivazione
+riga rotta senza data
+2026-11-11 00:05:00,000 INFO parola di attivazione
+2026-11-11 00:05:02,000 INFO richiesta registrata (1.1 s), invio
+2026-11-11 00:05:02,500 INFO richiesta registrata (1.0 s, voce 0.3 s, volume medio 1.2× e max 2.0× la soglia), invio (di seguito)
+2026-11-11 00:05:03,000 INFO interrotto: parola di attivazione mentre Gas parlava
+2026-11-11 00:05:09,000 INFO torno ad aspettare la parola di attivazione
+"""
+
+
+def test_diagnosi_raggruppa_le_attivazioni_e_dice_l_esito():
+    d = _diagnosi()
+    att = d.leggi(_LOG_ESEMPIO.splitlines(True))
+    assert [x.esito() for x in att] == ["richiesta inviata", "nessuna richiesta",
+                                        "richiesta inviata (1 di seguito, 1 interruzioni)"]
+    assert att[0].punteggio == 0.93 and att[0].picchi_scartati == 2 and att[0].voce_s == [1.6]
+    assert att[2].punteggio is None   # righe del formato vecchio: niente punteggio
+    testo = d.riassunto(att, giorni=2, ultime=10, oggi=date(2026, 11, 11))
+    assert ("2026-11-10: 2 attivazioni — 1 con richiesta (di cui 0 sospette), 1 senza "
+            "richiesta (probabili false); picchi corti scartati: 2") in testo
+    # due punteggi: la mediana è la media dei due
+    assert "punteggio della parola: min 0.71, mediana 0.82, max 0.93" in testo
+    assert "23:10:00  punteggio 0.71  voce —  → nessuna richiesta" in testo
+
+
+def test_diagnosi_richiesta_cortissima_e_sospetta():
+    d = _diagnosi()
+    att = d.leggi(["2026-11-11 01:00:00,0 INFO parola di attivazione (punteggio 0.80, "
+                   "picchi corti scartati prima: 0)\n",
+                   "2026-11-11 01:00:02,0 INFO richiesta registrata (1.1 s, voce 0.3 s, "
+                   "volume medio 1.1× e max 1.5× la soglia), invio\n"])
+    assert att[0].esito() == "richiesta sospetta (voce 0.3 s)"
+
+
+def test_diagnosi_da_riga_di_comando(tmp_path, capsys):
+    d = _diagnosi()
+    log_ = tmp_path / "ascolto.log"
+    log_.write_text(_LOG_ESEMPIO, encoding="utf-8")
+    assert d.main(["--log", str(log_), "--giorni", "3650", "--ultime", "1"]) == 0
+    out = capsys.readouterr().out
+    assert "Ultime 1:" in out and "2026-11-11 00:05:00" in out
+    assert "2026-11-10 23:02:00" not in out
+    assert d.main(["--log", str(log_), "--giorni", "3650", "--ultime", "0"]) == 0
+    out = capsys.readouterr().out   # R-761-1-M1: «--ultime 0» non elenca niente
+    assert "Ultime 0:" in out and "punteggio 0.93  voce" not in out
+    assert d.main(["--log", str(tmp_path / "manca.log")]) == 1
+
+
+def test_diagnosi_riconosce_le_righe_scritte_dall_ascolto(caplog):
+    """Il formato del log dell'ascolto e quello che legge la diagnosi restano allineati."""
+    d = _diagnosi()
+    f = Finti()
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        f.ascolto(_blocchi(PAROLA, (VOCE, 10), (SILENZIO, 30)), finestra_s=0).gira()
+    righe = ["2026-11-11 02:00:00,000 INFO %s\n" % r.getMessage() for r in caplog.records]
+    att = d.leggi(righe)
+    assert len(att) == 1 and att[0].punteggio == 1.0 and att[0].voce_s == [0.8]
+    assert att[0].esito() == "richiesta inviata"
