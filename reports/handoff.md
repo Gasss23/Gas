@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #372 (https://github.com/Gasss23/Gas/pull/372): la verifica esterna #372 dà APPROVATO CON RISERVE (V-1 e V-2 BASSE, V-3 COSMETICA), quindi la PR resta pronta per il «mergia» dell'operatore; con verdetto del bot APPROVATO pulito e CI verde la mergia la chat (regola notturna di M1).
+1. («mergia tutte» dell'operatore, via M1, 11 nov mattina: la chat mergia la #372 con CI e bot verdi senza ALTA/MEDIA.) Merge della PR #372 (https://github.com/Gasss23/Gas/pull/372): la verifica esterna #372 dà APPROVATO CON RISERVE (V-1 e V-2 BASSE, V-3 COSMETICA), quindi la PR resta pronta per il «mergia» dell'operatore; con verdetto del bot APPROVATO pulito e CI verde la mergia la chat (regola notturna di M1).
 
 NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
 
@@ -20,6 +20,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **R-770-1-M2 BASSA (connessione chiusa dal server mentre era ferma) e R-770-2-M2 COSMETICA**: `FATTA` — `_conn_caduta` (select a 0 s) prima del riuso (review #771-M2).
 - **V-1 della verifica esterna #372 (test della soglia agganciato alla costante)**: `FATTA` — valori fissi 19/21 s (review #772-M2).
 - **Merge di origin/main (#370, #369)**: `FATTA` — review #776-M2.
+- **Merge di origin/main (#371) dopo il «mergia» dell'operatore**: `FATTA` (725eaa7, review #784-M2).
 - **Misura del guadagno sul Mac**: `DEFERITA` — serve la rete vera.
 - **Latenza del cervello (prima frase 5-9 s)**: `DEFERITA` — fetta separata (streaming della prima frase da `claude -p`).
 
@@ -28,7 +29,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
+ .claude/agents/memoria_revisore.md |  10 ++++++++++
  modules/voice/tts.py               | 126 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md           | n/d
  reports/handoff.md                 | n/d
@@ -37,11 +38,13 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
  tests/test_unit_voice_tts.py       | 217 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: confronto con origin/main (e3eb542, dopo il merge). Regola «n/d» — i conteggi dei report riscritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
+NB: confronto con origin/main (bb424f0, dopo il merge). Regola «n/d» — i conteggi dei report riscritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+725eaa7 Merge origin/main (#371) nella #372 — review #784-M2 APPROVATO (chat M2)
+2edadc7 docs(fine-task): #372 dopo V-1 bot, R-770-1, V-1 ve e merge di main — review #770-#776-M2 (chat M2)
 cc70808 Merge origin/main (#370, #369) nella #372 — review #776-M2 APPROVATO (chat M2)
 39eaf0a test(voce): soglia di inattività del keep-alive a valori fissi 19/21 s (V-1 ve #372)
 e7dadc1 fix(voce): keep-alive TTS, connessione chiusa dal server scartata prima dell'invio (R-770-1-M2)
@@ -53,6 +56,33 @@ e7dadc1 fix(voce): keep-alive TTS, connessione chiusa dal server scartata prima 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #784-M2 (merge di origin/main con la #371) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Il merge di main (con la #371) nella PR #372 è pulito. Il codice della #372 non cambia e il codice di main entra identico. 506 test passati, rieseguiti da me.
+
+**Cosa ho controllato nel diff**
+- `modules/voice/tts.py:106` — `_conn_caduta` e la soglia `_KEEPALIVE_INATTIVA_MAX_S` (`modules/voice/tts.py:88`, usata a `:133`) sono identiche a HEAD (diff 0 sul file). Rischio esaminato: che il merge alteri il keep-alive. Esito: ok.
+- `tests/test_unit_voice_tts.py:520` — `test_keepalive_riusa_la_connessione` e gli altri test del keep-alive sono identici a HEAD e passano. Rischio esaminato: test persi o modificati nel merge. Esito: ok.
+- `clients/voice/ascolto.py:58` — gli import dell'ascolto sono solo della libreria standard e nel file non c'è nessun riferimento a tts o `synthesize`. Lo stesso vale per `scripts/voce/diagnosi_ascolto.py`. Rischio esaminato: un'interazione tra l'ascolto della #371 e la sintesi vocale. Esito: nessuna interazione.
+- `reports/stato_progetto.md:626` — c'è la voce della #372. Rispetto a MERGE_HEAD non manca nessuna riga. Rispetto a HEAD manca una sola riga: la voce della #368, sostituita dalla versione di main che la segna «MERGIATA». Esito: ok.
+
+**Controlli meccanici**
+- Nessun file in conflitto, nessun marcatore di conflitto, `git diff --cached --check` pulito.
+- Il codice preso da main è identico a MERGE_HEAD (diff 0): `clients/voice/ascolto.py`, `scripts/voce/*`, `tests/test_unit_voce_ascolto.py`, `reports/proposta_verifica_parlante.md`.
+- `.claude/agents/memoria_revisore.md`: 0 righe tolte rispetto a MERGE_HEAD. I numeri doppi (#757-M1, #753-M1, #746/#747 chat M3, #614-M2) c'erano già prima, nessuno è nuovo.
+- Test: tts, stt e ascolto insieme 506 passed in 58 s.
+
+**Non verificato**
+- Il comportamento reale sul Mac (latenza di ElevenLabs con la connessione riusata, taratura dell'ascolto): non si può riprodurre qui.
+- La CI della PR dopo il merge: il commit non esiste ancora.
+
+**Memoria**
+- Ho aggiunto in coda a `/home/user/Gas-tts/.claude/agents/memoria_revisore.md` la riga `#784-M2 — 2026-11-11 — APPROVATO — …` (nessuna lezione nuova) e l'ho messa in staging.
+- Il numero #784 l'hai dato tu: nella memoria fusa l'ultimo numero è #776-M2.
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`: c'è un merge in corso e hai chiesto la memoria in staging. Entra nel commit di merge.
 
 ### Review #776-M2 (merge di origin/main) — verdetto integrale
 
