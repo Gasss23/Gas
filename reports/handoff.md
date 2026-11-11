@@ -20,6 +20,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **R-773-1-M2 BASSA, R-773-3-M2 COSMETICA**: `FATTA` (a9419ea, review #778-M2).
 - **Merge di origin/main (#370)**: `FATTA` (71b04fa, review #779-M2).
 - **B3 BASSA audit notturno 2 (M1): uscita della CLI letta in UTF-8 con sostituzione** + cosmetiche del bot #374 (SIGKILL, risposta arrivata non è un timeout, log dei tempi che fallisce lascia traccia): `FATTA` (e9b05e5, review #781/#782-M2).
+- **V-1 del bot #374 su 87c5ff3 (gravità media: l'anticipo poteva mandare a ElevenLabs testo oltre il primo paragrafo o oltre il tetto della parte parlata, es. un elenco di clienti per lo schermo)**: `FATTA` (c8c5f8f, review #783-M2: fuzz di 20000 flussi, la frase anticipata è sempre un prefisso del parlato normale).
 - **Niente schema strumenti nei turni a voce semplici (ordine 2)**: `DEFERITA` — misurato qui: lo schema da 9k caratteri pesa ~0,3 s; prima servono i tempi del Mac.
 - **Processo CLI caldo (ordine 3)**: `DEFERITA` — non sicuro così com'è (il prompt di sistema e il codice dei ruoli cambiano a ogni chiamata); i tempi `fuori_cli` del Mac diranno se vale.
 
@@ -28,10 +29,10 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
+ .claude/agents/memoria_revisore.md |   8 ++++++++
  brains/claude_cli.py               | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  gas.py                             |  14 +++++++++++---
- modules/voice/server.py            |  74 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ modules/voice/server.py            |  84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
  reports/diff_sessione.md           | n/d
  reports/handoff.md                 | n/d
  reports/ripartenza_m2.md           | n/d
@@ -39,7 +40,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
  reports/ultimo_report.md           | n/d
  tests/test_unit_claude_cli.py      | 223 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_kernel.py          |  47 +++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voice_server.py    |  69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_voice_server.py    |  90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: confronto con origin/main (e3eb542). Regola «n/d» — i conteggi dei report scritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
@@ -47,6 +48,8 @@ NB: confronto con origin/main (e3eb542). Regola «n/d» — i conteggi dei repor
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c8c5f8f fix(voce): anticipo solo dal primo paragrafo ed entro il tetto della parte parlata (V-1 bot #374 su 87c5ff3) — review #783-M2 (chat M2)
+87c5ff3 docs(fine-task): #374 dopo B3 e cosmetiche del bot — review #781/#782-M2 (chat M2)
 e9b05e5 fix(cervello): uscita della CLI letta in UTF-8 con sostituzione (B3 audit notturno 2), SIGKILL, risposta arrivata non è un timeout, log dei tempi che fallisce lascia traccia — review #781/#782-M2 (chat M2)
 567b1bb docs(fine-task): #374 — riserve della verifica esterna registrate (V-1 uscita di testo, cosmetiche) (chat M2)
 ba9220c docs(fine-task): voce — prima frase in anticipo e tempi del forte (chat M2)
@@ -58,6 +61,48 @@ a9419ea perf(voce): tempi interni del forte nel log, nipoti uccisi al timeout, p
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #783-M2 (V-1 bot #374 su 87c5ff3) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #783-M2: diff staged in /home/user/Gas-stream, PR #374. Chiude la V-1 MEDIA del bot su 87c5ff3.
+
+Letture fatte: CLAUDE.md (sez. 5, 8, 9, 10), le parti di reports/stato_progetto.md che riguardano l'anticipo e la V-1, la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+- `modules/voice/server.py:423` — taglia il testo al primo paragrafo con la stessa `_PARAGRAFO` e lo stesso `lstrip` di `parte_parlata` (modules/voice/server.py:482). Rischio: il paragrafo si chiude in modo diverso fra testo a metà e testo finale (`\r\n`, riga vuota con spazi o tab). Uso la stessa regex, quindi il comportamento è coerente. Esito: ok.
+- `modules/voice/server.py:424` — `paragrafo_finito = finito or len(pezzi) == 2`. Rischio: si anticipa una frase ancora aperta. La riga vuota chiude davvero la frase, perché il paragrafo successivo non può allungarla. Esito: ok.
+- `modules/voice/server.py:427` — tetto sulla frase ancora aperta. Rischio: mandare a ElevenLabs un testo lungo senza punteggiatura. Questo ramo però non cambia il comportamento: quando la frase si chiude, la scarta comunque il tetto di riga 430. Serve solo a fermarsi prima. Esito: ok (il mutante sopravvive, ma è equivalente).
+- `modules/voice/server.py:430` — tetto `> _PARLATO_MAX_CHAR` sulla prima frase chiusa. Coincide con `parte_parlata`, che rifiuta con `len(prova) > _PARLATO_MAX_CHAR` (modules/voice/server.py:491). Rischio: confine a 400. Esito: riserva R-783-1-M2.
+- `modules/voice/server.py:449` — `prendi` usa `not self._frase`. Rischio: con l'anticipo spento ("") si restituisce un audio. Non succede comunque, perché con "" `_filo` resta None: la modifica è difensiva. Esito: ok.
+- `tests/test_unit_voice_server.py:2662` — test nuovo con tre casi: elenco dopo la riga vuota, testo lungo senza punto, frase da 401 caratteri. Esito: ok, uccide i mutanti principali.
+- Contesto: `modules/voice/server.py:956` crea l'anticipo solo con chiave ElevenLabs, fuori dai seguiti e solo nei formati a pezzi. `modules/voice/server.py:791` lo azzera a ogni POST. `brains/claude_cli.py:343`: il lettore passa solo il campo «testo» di una risposta senza chiamate a strumenti e si spegne alla seconda risposta strutturata. Esito: ok.
+
+**Mutanti (applicati nel working tree, ripristinati dall'index; alla fine worktree = index)**
+1. Split del paragrafo tolto (`pezzi = [t.lstrip()]`): il test fallisce.
+2. Tetto sulla frase chiusa tolto: il test fallisce.
+3. `paragrafo_finito = finito`: il test fallisce.
+4. Tetto sulla frase aperta tolto: sopravvive, ma è equivalente (vedi riga 427).
+5. `prendi` con `is None`: sopravvive, equivalente (vedi riga 449).
+6. `>` diventa `>=` sul tetto: sopravvive. Il caso a 400 caratteri esatti non è testato. È la riserva R-783-1-M2.
+
+**Altri modi di mandare testo che il percorso normale non manderebbe (cercati)**
+- Fuzz con 20000 flussi casuali: paragrafi, `\n \n`, `\n\t\n`, `\r\n\r\n`, abbreviazioni (dott., es.), «3.5», frasi senza punteggiatura, testo consegnato a pezzi in punti casuali più la chiusura con `finito`. In tutti i casi la frase mandata a ElevenLabs è un prefisso di `parte_parlata(finale)` e anche di `" ".join(frasi_voce(finale))`, e non supera 400 caratteri. Zero violazioni.
+- Il testo di una risposta intermedia con strumenti non arriva: il lettore di brains/claude_cli.py parla solo con `"chiamate": []`. Un nuovo processo al «riprova» non conta: l'anticipo è già fissato a una frase per turno. I seguiti (parlato della stanza) e i cervelli di riserva sono esclusi.
+- Resta un caso solo di spreco, senza rischio sui dati. In formato voce senza schermo (`audio+pezzi`), `frasi_voce` non divide i paragrafi. Con «Ecco:\n\nDettaglio.» l'anticipo sintetizza «Ecco:» ma la prima frase finale è «Ecco: Dettaglio.»: niente corrispondenza, una chiamata TTS buttata. Il testo mandato è comunque contenuto che verrebbe detto.
+
+**Riserve**
+- R-783-1-M2 (BASSA): manca un test di confine a 400 caratteri esatti; il mutante `>=` sopravvive. Basta aggiungere `"x"*_PARLATO_MAX_CHAR + ". Due."` con anticipo atteso.
+- R-783-2-M2 (BASSA, solo costo): in `audio+pezzi` un primo paragrafo senza punto finale porta a una sintesi sprecata, perché il percorso normale unisce i paragrafi. Non porta testo nuovo a ElevenLabs.
+
+**Test**: `-k anticipo` 6 passed. tests/test_unit_voice_server.py + tests/test_unit_claude_cli.py: 293 passed.
+
+**Rischio escluso**: non ho verificato il comportamento con la CLI di Claude vera, con ElevenLabs vero e con la latenza reale sul Mac. Né rete né chiavi in questo ambiente: ho testato solo con `synthesize_speech` simulato. Non ho verificato nemmeno la decodifica di escape JSON spezzati fra due delta (`_stringa_parziale`), che sta fuori da questo diff.
+
+**Memoria**: riga `#783-M2` aggiunta in coda a /home/user/Gas-stream/.claude/agents/memoria_revisore.md, con una lezione: per un «mai più testo del percorso normale» va provata con fuzz sui prefissi del flusso la proprietà «anticipo = prefisso del percorso normale». Il file è in staging (`git add`) e NON committato, come chiesto. `scripts/commit_memoria_revisore.sh` non l'ho lanciato. Lo staging contiene ora: memoria_revisore.md, modules/voice/server.py, tests/test_unit_voice_server.py.
+
+Lo script di fuzz è in /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/fuzz.py.
 
 ### Review #782-M2 (R-781-1) — verdetto integrale
 
@@ -216,6 +261,7 @@ In /home/user/Gas-stream/.claude/agents/memoria_revisore.md ho aggiunto la riga 
 
 ## §5 DELTA TEST DEL MOTORE
 
+- Dopo c8c5f8f: `tests/test_unit_voice_server.py` + `tests/test_unit_claude_cli.py` 293 passed (rieseguiti dal revisore #783).
 - Dopo e9b05e5: `python -m pytest -q tests/test_unit_claude_cli.py` 77 passed (anche con `LC_ALL=C`).
 - `python tests/test_unit_kernel.py` dopo il merge: 1136 PASS, 1 FAIL (T31g, fastembed assente in questo ambiente: lo stesso FAIL c'è su main). Nuovi T104d (round-trip §7 con strumento + flusso: anticipo solo della risposta finale) e T104e (a testo niente flusso), PASS.
 - `python -m pytest -q tests/test_unit_claude_cli.py`: 75 passed (16 test nuovi: parser a pezzi, escape e surrogati, processo vero con timeout e nipoti, tempi nel log).
@@ -226,12 +272,15 @@ In /home/user/Gas-stream/.claude/agents/memoria_revisore.md ho aggiunto la riga 
 
 CI NON VERIFICATA con `gh` (non autenticato nel cloud).
 - Head 567b1bb: suite di check completata senza fallimenti (notifica GitHub); `verifica-bot` success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE).
-- Nuovi commit (e9b05e5 e fine-task): run non ancora disponibile alla scrittura dell'handoff.
+- Head 87c5ff3: `verifica-bot` failure (V-1 di gravità media, corretta in c8c5f8f).
+- Nuovi commit (c8c5f8f e fine-task): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-773-1-M2 BASSA, R-773-3-M2 COSMETICA: CHIUSE (review #778-M2).
-- R-773-2-M2 BASSA: un anticipo buttato (prima frase diversa dalla risposta finale: markdown, frase troppo lunga, cervello di riserva) è già stato pagato a ElevenLabs (una frase per turno, testo di Gas).
+- V-1 del bot #374 su 87c5ff3 (gravità media): CHIUSA (c8c5f8f, review #783-M2).
+- R-783-1-M2 BASSA: manca il test di confine a 400 caratteri esatti. R-783-2-M2 BASSA (solo costo): in `audio+pezzi` un primo paragrafo senza punto finale porta a una sintesi buttata (testo che verrebbe comunque detto).
+- R-773-2-M2 BASSA (ridotta da c8c5f8f: l'anticipo è sempre un prefisso del parlato normale): un anticipo buttato (prima frase diversa dalla risposta finale: markdown, frase troppo lunga, cervello di riserva) è già stato pagato a ElevenLabs (una frase per turno, testo di Gas).
   V-1 verifica esterna #374 (BASSA): è anche un'uscita di testo verso ElevenLabs prima del finale. Limite dichiarato: il kernel NON modifica il testo finale del forte (`gas.py`, `yield {"type": "final", "content": msg.content}`), quindi la frase anticipata è testo che il forte ha scritto per la risposta a voce e che nel caso normale va comunque a ElevenLabs; esce in più solo quando poi non viene detta (taglio della parte parlata, risposta poi scartata e rifatta da un altro cervello).
 - V-2/V-3/V-4 verifica esterna #374 (COSMETICHE): guadagno 1,2–1,3 s (misure diverse, stessa prova); riga di stato spostata fuori dal paragrafo del gate; `9` invece di `signal.SIGKILL` e finestra di microsecondi del Timer dopo la fine regolare.
 - Cosmetiche #778: `9` invece di `signal.SIGKILL` (CHIUSA in e9b05e5); senza riga `result` i tempi riportano solo quelli misurati da Gas.
