@@ -2657,3 +2657,24 @@ def test_anticipo_voce_aspetta_la_prima_frase_intera():
         b = AnticipoVoce("k", "v")
         b.testo("Risposta unica", True)                      # finita: si anticipa lo stesso
         assert b.prendi("Risposta unica") == b"Risposta unica"
+
+
+def test_anticipo_mai_oltre_il_primo_paragrafo_ne_oltre_il_tetto():
+    """V-1 bot #374: l'anticipo non manda a ElevenLabs testo che il percorso normale non
+    direbbe: niente oltre il primo paragrafo, niente frasi oltre _PARLATO_MAX_CHAR."""
+    from unittest.mock import patch
+    from modules.voice.server import AnticipoVoce, _PARLATO_MAX_CHAR
+    with patch("modules.voice.server.synthesize_speech", side_effect=lambda f, k, v: f.encode()) as tts:
+        a = AnticipoVoce("k", "v")       # primo paragrafo senza punto: elenco per lo schermo
+        a.testo("Ecco i lead aperti:\n\n- Mario Rossi, 333 1234567.\n- Luca", False)
+        assert a.prendi("Ecco i lead aperti:") == b"Ecco i lead aperti:"
+        assert [c.args[0] for c in tts.call_args_list] == ["Ecco i lead aperti:"]
+        lungo = "parola " * 200                                  # niente punteggiatura
+        b = AnticipoVoce("k", "v")
+        b.testo(lungo, False)
+        b.testo(lungo + "fine. Altro", False)
+        b.testo(lungo + "fine. Altro.", True)
+        assert b.prendi(" ".join(lungo.split()) + " fine.") is None
+        c = AnticipoVoce("k", "v")
+        c.testo("x" * (_PARLATO_MAX_CHAR + 1) + ". Due.", True)
+        assert tts.call_count == 1                               # solo il caso a

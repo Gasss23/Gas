@@ -417,9 +417,19 @@ class AnticipoVoce:
         with self._lock:
             if self._frase is not None:
                 return
-            frasi = _dividi_frasi(" ".join(t.split()))
-            if not frasi or (len(frasi) < 2 and not finito):
+            # V-1 bot #374 (87c5ff3): mai più testo di quello che il percorso normale direbbe.
+            # Solo il PRIMO paragrafo (come parte_parlata) e solo una frase entro il tetto
+            # della parte parlata; altrimenti nessun anticipo per questo turno.
+            pezzi = _PARAGRAFO.split(t.lstrip(), maxsplit=1)
+            paragrafo_finito = finito or len(pezzi) == 2
+            frasi = _dividi_frasi(" ".join(pezzi[0].split()))
+            if not frasi or (len(frasi) < 2 and not paragrafo_finito):
+                if len(" ".join(pezzi[0].split())) > _PARLATO_MAX_CHAR:
+                    self._frase = ""  # frase già oltre il tetto: niente anticipo
                 return  # la prima frase non è ancora sicuramente finita
+            if len(frasi[0]) > _PARLATO_MAX_CHAR:
+                self._frase = ""  # oltre il tetto della parte parlata: niente anticipo
+                return
             self._frase = frasi[0]
             self._filo = threading.Thread(target=self._sintetizza, daemon=True,
                                           name="anticipo-voce")
@@ -436,7 +446,7 @@ class AnticipoVoce:
         None se non c'è anticipo per lei. Gli errori della sintesi risalgono come quelli di
         `sintesi` (ElevenLabsTTSError, OSError)."""
         with self._lock:
-            if self._frase is None or self._frase != frase or self._filo is None:
+            if not self._frase or self._frase != frase or self._filo is None:
                 return None
             filo, self._filo = self._filo, None
         filo.join()  # la sintesi ha già il suo timeout (tts.py)
