@@ -1556,3 +1556,4 @@
 - 2026-11-11 — Su un contatore «taciute» riportato solo nella riga successiva, verificare cosa succede all'ultimo gruppo (fine flusso/riavvio) e a cavallo di giorno nei riassunti per data.
 #792-M1coord — 2026-11-11 — APPROVATO — delta #791: test soglia bassa ora prova la guardia (tests/test_unit_voce_ascolto.py:2994, clients/voice/ascolto.py:485), mutante rieseguito (1 failed senza guardia), 332 PASS; riserve R1/R2 di #791 restano aperte
 - 2026-11-11 — Un test «spento» che usa valori che non arriverebbero comunque al ramo protetto non prova la guardia: pretendere input che senza guardia produrrebbero l'effetto, e provarlo col mutante.
+#793-M1coord — 2026-11-11 — APPROVATO — delta doc bot #377 V-1/V-2: unico chiamante di _segnala_quasi è aspetta_parola (clients/voice/ascolto.py:457), docstring «uguale o sotto» coerente con la guardia <= (clients/voice/ascolto.py:487); nessun codice eseguibile cambiato
