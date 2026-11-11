@@ -235,12 +235,15 @@ finally:
 
 tool_res = [e for e in eventi if e["type"] == "tool_res"]
 errori = [e for e in eventi if e["type"] == "error"]
-check("T9a ogni provider cappato a 10 iterazioni",
-      all(n == 10 for n in chiamate.values()) and len(chiamate) == 3,
+# §8 (operatore 2026-11-10): il tetto è di 10 chiamate per TURNO, non per cervello
+# (prima un turno a 3 provider faceva 30 chiamate): il primo le consuma tutte.
+check("T9a tetto di 10 chiamate al modello PER TURNO (non per cervello)",
+      sum(chiamate.values()) == 10 and chiamate == {gas.GEMINI_FLASH_LITE_MODEL: 10},
       f"chiamate per modello: {chiamate}")
-check("T9b loop infinito assorbito senza crash, pipeline esausta dichiarata col motivo",
+check("T9b loop infinito assorbito senza crash, pipeline esausta dichiarata col tetto",
       len(errori) == 1 and errori[0]["content"].startswith("Pipeline esausta:")
-      and errori[0]["content"].count("10 iterazioni senza risposta finale") == 3,
+      and errori[0]["content"].count("10 iterazioni senza risposta finale") == 1
+      and "tetto di 10 chiamate al modello per turno raggiunto" in errori[0]["content"],
       f"tool_res={len(tool_res)} errori={errori}")
 check("T9c storia salvata su disco nella root temporanea",
       k.db_path.exists() and k.db_path.stat().st_size > 0)
@@ -1132,9 +1135,11 @@ msgs = captured.get("msgs", [])
 tool_names = {t["function"]["name"] for t in (captured.get("tools") or [])}
 sys0 = msgs[0] if msgs else {}
 finestra_pulita = len(msgs) >= 2 and all(m["role"] != "system" for m in msgs[1:]) and msgs[1]["role"] == "user"
-check("T21f iniezione: pin nel system, 1 solo system, finestra parte da user",
+# Operatore 2026-11-10: a Gemini (non forte) va il pin ANONIMO: lead contati, mai nominati.
+check("T21f iniezione: pin (anonimo al gratuito) nel system, 1 solo system, finestra parte da user",
       sys0.get("role") == "system" and "# MEMORIA" in sys0.get("content", "")
-      and "Mario" in sys0["content"] and finestra_pulita
+      and "Mario" not in sys0["content"]
+      and "2 lead attivi (dettagli solo al cervello forte)" in sys0["content"] and finestra_pulita
       and "ricorda" in tool_names
       and len([e for e in ev_f if e["type"] == "final"]) == 1,
       f"n_msgs={len(msgs)} ruoli={[m['role'] for m in msgs]}")
@@ -12664,10 +12669,41 @@ try:
     # T113a: il primo rung risponde → nessun ripiego, nessuna riga
     _ev, _ = _turno113({_lite: [_r113("ok dal primo")]})
     _fin = [e for e in _ev if e["type"] == "final"]
-    check("T113a primo della cascata: provider/modello nel final, ripiego False, avviso vuoto",
+    # Bot #366 V-1 (operatore 2026-11-10): Flash-lite scelto dal router si dichiara
+    # comunque (versione minore, §8), senza essere un ripiego.
+    check("T113a primo della cascata Flash-lite: nessun ripiego ma versione leggera dichiarata",
           len(_fin) == 1 and _fin[0].get("provider", "") == "gemini-flash-lite"
           and _fin[0].get("modello", "") == _lite and _fin[0].get("ripiego", "") is False
+          and _fin[0].get("versione_leggera", "") is True
+          and _fin[0].get("avviso_ripiego", "")
+          == f"↪ risposta da {_lite} (versione leggera scelta per un compito semplice)", str(_ev))
+    # T113a2: compito complesso, risponde il primo (Flash, non minore) → nessuna riga
+    _ev, _ = _turno113({_flash: [_r113("ok complesso")]},
+                       prompt="analizza il piano marketing della settimana prossima")
+    _fin = [e for e in _ev if e["type"] == "final"]
+    check("T113a2 primo della cascata non minore (Flash): nessun avviso",
+          len(_fin) == 1 and _fin[0].get("provider", "") == "gemini-flash"
+          and _fin[0].get("ripiego", "") is False and _fin[0].get("versione_leggera", "") is False
           and _fin[0].get("avviso_ripiego", "") == "", str(_ev))
+    # T113a3: round-trip agentico (§7) su Flash-lite: tool call, poi final con la riga
+    _tc113a = SimpleNamespace(id="call_113a", type="function",
+                              function=SimpleNamespace(name="data_ora", arguments="{}"))
+    _ev, _k113a = _turno113({_lite: [_r113(tool_calls=[_tc113a]), _r113("sono le dieci")]})
+    _fin = [e for e in _ev if e["type"] == "final"]
+    check("T113a3 round-trip su Flash-lite: tool eseguito, final con la versione leggera",
+          [e["type"] for e in _ev] == ["tool_res", "final"]
+          and "versione leggera" in _fin[0].get("avviso_ripiego", "")
+          and [m["role"] for m in _k113a.history][-4:] == ["user", "assistant", "tool", "assistant"],
+          str(_ev))
+    # T113a4: R-750-M1-1 (operatore 2026-11-10: sì) — primo cervello NON configurato
+    # (VPS senza GEMINI_API_KEY) → la risposta di Groq è un ripiego dichiarato
+    _ev, _ = _turno113({gas.GROQ_MODEL: [_r113("da groq")]}, chiavi=("GROQ_API_KEY",))
+    _fin = [e for e in _ev if e["type"] == "final"]
+    check("T113a4 R-750-M1-1: primo cervello non configurato conta come ripiego",
+          len(_fin) == 1 and _fin[0].get("provider", "") == "groq"
+          and _fin[0].get("ripiego", "") is True
+          and "gemini-flash-lite: GEMINI_API_KEY non impostata" in _fin[0].get("avviso_ripiego", ""),
+          str(_ev))
     # T113b: i Gemini in quota → risponde il gratuito (prova p10 dell'audit)
     _ev, _ = _turno113({_lite: [_Err113("429 a")], _flash: [_Err113("429 b")],
                         _free: [_r113("dal gratuito")]})
@@ -12716,6 +12752,218 @@ try:
           'event.get("avviso_ripiego")' in _src113)
 except Exception as _e113x:
     check("T113 blocco senza eccezioni", False, repr(_e113x))
+
+# ---------- T114: decisioni dell'operatore 2026-11-10 (review #753-M1) ----------
+print("\n--- T114: tetto per turno, versione leggera, pin anonimo ---")
+try:
+    _ch114 = ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
+              "GAS_DAILY_TOKEN_BUDGET", "GAS_CLAUDE_CLI")
+    _sv114 = {kk: os.environ.get(kk) for kk in _ch114}
+
+    class _Err114(Exception):
+        status_code = 429
+
+    def _tc114(i):
+        return SimpleNamespace(id=f"call_114_{i}", type="function",
+                               function=SimpleNamespace(name="data_ora", arguments="{}"))
+
+    def _r114(content=None, tool_calls=None):
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+            content=content, tool_calls=tool_calls))], usage=None)
+
+    def _turno114(script, chiavi=("GEMINI_API_KEY", "GROQ_API_KEY"), prompt="ciao", k=None):
+        """script: modello → lista di risposte. Ritorna (eventi, kernel, chiamate per
+        modello, system prompt visti per modello)."""
+        _rimaste = {m: list(v) for m, v in script.items()}
+        _n, _sys = {}, {}
+
+        class _C114:
+            def __init__(self, *a, **kw):
+                self.chat = self
+                self.completions = self
+
+            def create(self, model=None, messages=None, **kw):
+                _n[model] = _n.get(model, 0) + 1
+                _sys.setdefault(model, []).append(messages[0]["content"])
+                r = _rimaste[model].pop(0)
+                if isinstance(r, Exception):
+                    raise r
+                return r
+        for _kk in _ch114:
+            os.environ.pop(_kk, None)
+        for _kk in chiavi:
+            os.environ[_kk] = "finta-114"
+        _vo = gas.OpenAI
+        gas.OpenAI = _C114
+        try:
+            _k = k or kernel_tmp()
+            return list(_k.run_turn(prompt)), _k, _n, _sys
+        finally:
+            gas.OpenAI = _vo
+            for _kk, _v in _sv114.items():
+                if _v is None:
+                    os.environ.pop(_kk, None)
+                else:
+                    os.environ[_kk] = _v
+
+    _lite, _flash, _groq = gas.GEMINI_FLASH_LITE_MODEL, gas.GEMINI_FLASH_MODEL, gas.GROQ_MODEL
+    # T114a: tre cervelli che falliscono DOPO tool call. Prima: lite 5 + flash 5 + groq 10
+    # = 20 chiamate. Ora il tetto è per turno: 10 in tutto, groq mai chiamato.
+    _ev, _k114a, _n, _ = _turno114({
+        _lite: [_r114(tool_calls=[_tc114(i)]) for i in range(4)] + [_Err114("429")],
+        _flash: [_r114(tool_calls=[_tc114(10 + i)]) for i in range(4)] + [_Err114("429")],
+        _groq: [_r114(tool_calls=[_tc114(20 + i)]) for i in range(10)]})
+    _err = [e for e in _ev if e["type"] == "error"]
+    check("T114a tetto di 10 chiamate per turno condiviso fra i cervelli che falliscono dopo tool call",
+          sum(_n.values()) == 10 and _n.get(_lite) == 5 and _n.get(_flash) == 5
+          and _groq not in _n, str(_n))
+    check("T114b tetto esaurito durante il ripiego: turno finito dichiarato, niente crash",
+          len(_err) == 1 and _err[0]["content"].startswith("Pipeline esausta:")
+          and "tetto di 10 chiamate al modello per turno raggiunto: groq e successivi non provati"
+          in _err[0]["content"]
+          and len([e for e in _ev if e["type"] == "tool_res"]) == 8
+          and not [e for e in _ev if e["type"] == "final"], str(_ev)[-400:])
+    # T114c: il tetto scatta A METÀ di un cervello di riserva (lite 3 chiamate, flash
+    # al massimo 7), poi un nuovo turno riparte da capo con un round-trip completo (§7).
+    _ev, _k114c, _n, _ = _turno114({
+        _lite: [_r114(tool_calls=[_tc114(i)]) for i in range(2)] + [_Err114("429")],
+        _flash: [_r114(tool_calls=[_tc114(30 + i)]) for i in range(20)]})
+    _err = [e for e in _ev if e["type"] == "error"]
+    check("T114c tetto a metà del cervello di riserva: flash si ferma a 7, motivo dichiarato",
+          _n == {_lite: 3, _flash: 7} and len(_err) == 1
+          and "gemini-flash: tetto di 10 chiamate al modello per turno raggiunto" in _err[0]["content"],
+          f"{_n} {_err}")
+    _ev, _, _n, _ = _turno114({_lite: [_r114(tool_calls=[_tc114(99)]), _r114("ripartito")]},
+                              k=_k114c)
+    check("T114d turno successivo: contatore da zero, round-trip tool → final",
+          [e["type"] for e in _ev] == ["tool_res", "final"] and _n == {_lite: 2}
+          and _k114c.history[-1]["role"] == "assistant", str(_ev)[-300:])
+    # T114c2 (R-753-M1-1): il retry del 400 di Gemini conta nel tetto. 400 alla decima
+    # chiamata → niente retry; 400 alla nona → il retry è la decima, poi il tetto.
+    class _Err400(Exception):
+        status_code = 400
+
+        def __str__(self):
+            return "400 Bad Request"
+    _ev, _, _n, _ = _turno114({
+        _lite: [_r114(tool_calls=[_tc114(i)]) for i in range(9)]
+               + [_Err400(), _r114("retry oltre il tetto")]})
+    _err = [e for e in _ev if e["type"] == "error"]
+    check("T114c2 400 di Gemini alla decima chiamata: il retry non parte, tetto dichiarato",
+          _n == {_lite: 10} and len(_err) == 1 and not [e for e in _ev if e["type"] == "final"]
+          and "tetto di 10 chiamate al modello per turno raggiunto: gemini-flash e successivi"
+          in _err[0]["content"], f"{_n} {_err}")
+    _ev, _, _n, _ = _turno114({
+        _lite: [_r114(tool_calls=[_tc114(i)]) for i in range(8)]
+               + [_Err400(), _r114(tool_calls=[_tc114(50)]), _r114("undicesima chiamata")]})
+    _err = [e for e in _ev if e["type"] == "error"]
+    check("T114c3 il retry del 400 conta come chiamata: dopo il retry riuscito il tetto scatta",
+          _n == {_lite: 10} and len(_err) == 1
+          and "gemini-flash-lite: tetto di 10 chiamate al modello per turno raggiunto"
+          in _err[0]["content"], f"{_n} {_err}")
+    # T114c4 (R-753-M1-3): a tetto finito i rung seguenti non configurati non aggiungono
+    # «non impostata» (qui groq senza chiave)
+    _ev, _, _n, _ = _turno114({_flash: [_r114(tool_calls=[_tc114(i)]) for i in range(10)]},
+                              chiavi=("GEMINI_API_KEY",),
+                              prompt="analizza il piano marketing della settimana prossima")
+    _err = [e for e in _ev if e["type"] == "error"]
+    check("T114c4 dopo il tetto niente «non impostata» dei rung seguenti",
+          len(_err) == 1 and "GROQ_API_KEY non impostata" not in _err[0]["content"]
+          and "tetto di 10 chiamate" in _err[0]["content"], str(_err))
+    # T114e: helper puro — il forte non è mai «versione leggera»; Groq/Flash nemmeno
+    check("T114e _info_ripiego: forte e rung non minori senza riga di versione leggera",
+          gas._info_ripiego("claude-cli", "m", "claude-cli", [])["versione_leggera"] is False
+          and gas._info_ripiego("claude-cli", "m", "claude-cli", [])["avviso_ripiego"] == ""
+          and gas._info_ripiego("gemini-flash", "f", "gemini-flash", [])["avviso_ripiego"] == ""
+          and "claude-cli" not in gas.RUNG_VERSIONE_LEGGERA)
+
+    # T114f: pin anonimo per i non forti — lead contati, mai nominati; righe di diario
+    # legate a un lead (strumento, contatto_id o identificativo nel testo) senza dettagli
+    def _popola114(k):
+        c1 = k.memory.upsert_contatto("giulia@acme.it", nome="Giulia Bianchi",
+                                      contatto="+39 333 1234567",
+                                      prossima_azione="richiamare per il preventivo Acme")
+        k.memory.upsert_contatto("paolo.verdi@ex.com", nome="Paolo Verdi")
+        k.memory.append_diario("write_file", "path='piano.txt' | [OK] scritto")
+        k.memory.append_diario("write_file", "path='offerta_bianchi.txt' | [OK] scritto")
+        k.memory.append_diario("salva_contatto", "contatto chiave='giulia@acme.it' | [OK]")
+        k.memory.append_diario("messaggio", "telefonata fatta", contatto_id=c1)
+        k.memory.append_diario("imposta_stato_contatto",
+                               "chiave='paolo.verdi@ex.com' stato='interessato' | [OK]")
+    _k114f = kernel_tmp(); _popola114(_k114f)
+    _piena, _anon = _k114f._memoria_pin_varianti()
+    _vietati = ("Giulia", "Bianchi", "giulia@acme.it", "acme", "Acme", "333 1234567",
+                "Paolo", "Verdi", "paolo.verdi", "preventivo", "telefonata", "offerta_bianchi")
+    check("T114f pin anonimo: nessun dato identificativo dei lead, conteggio presente",
+          not [v for v in _vietati if v in _anon]
+          and "2 lead attivi (dettagli solo al cervello forte)" in _anon
+          and "piano.txt" in _anon and _anon.count("dettagli di un lead omessi") == 4,
+          _anon)
+    # T114f2 (V-1 bot #370 5° giro): lettura dei contatti fallita (None) → la variante
+    # anonima chiude i dettagli di TUTTE le righe del diario (fail-closed), anche quelle
+    # che nominano un cliente senza contatto_id ("offerta_bianchi"); il pin pieno resta.
+    _k114f2 = kernel_tmp(); _popola114(_k114f2)
+    _orig_leggi = _k114f2.memory.leggi_contatti
+    _k114f2.memory.leggi_contatti = lambda filtro_stato=None: None
+    try:
+        _piena2, _anon2 = _k114f2._memoria_pin_varianti()
+    finally:
+        _k114f2.memory.leggi_contatti = _orig_leggi
+    check("T114f2 contatti illeggibili: pin anonimo fail-closed, nessun dettaglio del diario",
+          "offerta_bianchi" not in _anon2 and "piano.txt" not in _anon2
+          and "telefonata" not in _anon2
+          and _anon2.count("dettagli di un lead omessi") == 5
+          and "offerta_bianchi" in _piena2, _anon2)
+    check("T114g pin pieno invariato (per il forte) e _memoria_pin() == variante piena",
+          "Giulia Bianchi" in _piena and "offerta_bianchi" in _piena
+          and "richiamare per il preventivo Acme" in _piena
+          and _k114f._memoria_pin() == _piena, _piena[:300])
+    # T114h: round-trip agentico (§7) con ripiego: i gratuiti vedono SOLO il pin anonimo
+    # a ogni iterazione, anche dopo la tool call; la finestra resta intatta.
+    _ev, _k114h, _n, _sys = _turno114({
+        _lite: [_r114(tool_calls=[_tc114(1)]), _Err114("429")],
+        _flash: [_r114(tool_calls=[_tc114(2)]), _r114("fatto")]}, k=_k114f)
+    _tutti = [x for v in _sys.values() for x in v]
+    check("T114h round-trip sui gratuiti: tool → ripiego → tool → final, mai nomi dei lead",
+          [e["type"] for e in _ev] == ["tool_res", "tool_res", "final"]
+          and len(_tutti) == 4 and all("# MEMORIA" in x for x in _tutti)
+          and not any(v in x for x in _tutti for v in ("Giulia", "Bianchi", "giulia@acme.it"))
+          and all("2 lead attivi (dettagli solo al cervello forte)" in x for x in _tutti),
+          str(_n))
+    # T114i: il cervello forte (claude-cli) riceve il pin PIENO (round-trip tool → final)
+    from brains.claude_cli import ClaudeCliClient as _CCC114
+    import subprocess as _sp114
+    _reg114 = []
+    _it114 = iter([{"testo": "", "chiamate": [{"nome": "data_ora", "argomenti": {}}]},
+                   {"testo": "ok forte", "chiamate": []}])
+
+    def _run114(cmd, stdin, cwd, env, timeout):
+        _fs = cmd[cmd.index("--system-prompt-file") + 1]  # il pin vive nel file di sistema
+        _reg114.append(Path(_fs).read_text(encoding="utf-8"))
+        return _sp114.CompletedProcess(cmd, 0, stdout=json.dumps({
+            "type": "result", "subtype": "success", "is_error": False,
+            "structured_output": next(_it114),
+            "usage": {"input_tokens": 10, "output_tokens": 3}}), stderr="")
+    _orig114 = gas.ClaudeCliClient
+    gas.ClaudeCliClient = lambda timeout=None, **kw: _CCC114(timeout=timeout, binario="claude",
+                                                              runner=_run114)
+    os.environ["GAS_CLAUDE_CLI"] = "1"
+    try:
+        _ev = list(_k114f.run_turn("che lead abbiamo?", cervello="forte"))
+    finally:
+        gas.ClaudeCliClient = _orig114
+        if _sv114["GAS_CLAUDE_CLI"] is None:
+            os.environ.pop("GAS_CLAUDE_CLI", None)
+        else:
+            os.environ["GAS_CLAUDE_CLI"] = _sv114["GAS_CLAUDE_CLI"]
+    check("T114i il cervello forte riceve il pin pieno coi lead (round-trip tool → final)",
+          [e["type"] for e in _ev] == ["tool_res", "final"] and len(_reg114) == 2
+          and all("Giulia Bianchi" in x for x in _reg114)
+          and not any("dettagli solo al cervello forte" in x for x in _reg114),
+          str(_ev)[-300:])
+except Exception as _e114x:
+    import traceback as _tb114
+    check("T114 blocco senza eccezioni", False, repr(_e114x) + _tb114.format_exc()[-600:])
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

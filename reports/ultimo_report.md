@@ -1,18 +1,19 @@
-# Ultimo report — 2026-11-10 — voce: allucinazioni di Whisper scartate in silenzio (chat M2)
+# Ultimo report — 2026-11-10 — Decisioni dell'operatore: avviso Flash-lite, tetto di 10 chiamate per turno, nomi dei lead mai ai modelli non forti (M1)
 
 ## DECISIONI UMANE RICHIESTE
-
-1. PR #369: merge con verdetto del bot senza finding ALTA/MEDIA e CI verde («mergia» dell'operatore via M1).
-2. R-761-1: su Telegram un vocale «Grazie» ora riceve «Non ho capito bene il vocale» (prima arrivava al cervello). Va bene così o serve un messaggio diverso? (file della chat Mani)
+1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370).
+2. R-753-M1-A: i risultati di `ricorda`/`salva_contatto` già nella storia, il testo dell'operatore `recap_pin` e la riflessione di fine task (ve #370 V-1) possono contenere nomi di clienti e arrivano ancora ai modelli non forti. Estendere il blocco anche lì? sì/no
 
 ## Esito
+- **(a) Primo cervello non configurato = ripiego dichiarato** (sì dell'operatore): FATTA — nessun cambio di codice, test T113a4 lo fissa.
+- **(b) Flash-lite dichiarato** (sì): FATTA — `RUNG_VERSIONE_LEGGERA`, riga «↪ risposta da … (versione leggera scelta per un compito semplice)» in CLI e testo Telegram, mai a voce.
+- **Tetto di 10 chiamate al modello per turno** (sì): FATTA — `MAX_CHIAMATE_TURNO`, contatore unico fra i cervelli; `for _ in range(10)` resta come barriera per cervello (§8).
+- **Nomi dei lead mai ai modelli non forti** (sì): FATTA per il pin della memoria — variante piena solo a claude-cli, anonima agli altri. DEFERITA la storia/recap (R-753-M1-A, decisione dell'operatore).
+- **Bot #370 5° giro V-1 (MEDIA)**: pin anonimo fail-closed se la lettura dei contatti fallisce — FATTA (T114f2, review #765-M1coord APPROVATO CON RISERVE, R-765-1-M1coord BASSA).
+- Review #753-M1: 1° giro APPROVATO CON RISERVE, 2° giro APPROVATO.
 
-- **Allucinazioni note di Whisper («Grazie.», «Grazie mille», «Sottotitoli…», solo punteggiatura) scartate in silenzio, con o senza parola di attivazione**: FATTA. Niente turno né memoria; log INFO solo con l'esito.
-- **Trascrizione vuota → silenzio anche con la parola di attivazione** (prima errore 400): FATTA.
-- Review #761-M2 APPROVATO CON RISERVE, #762-M2 APPROVATO (R-761-3 apostrofo tipografico chiusa).
-- Test: stt 140 passed; voce + telegram_voce + voce_ascolto 724 passed; browser 28 passed.
-- **Prova sul Mac** (parlare senza chiamare Gas, audio corti): DEFERITA — dal vero.
+## Test
+Kernel 1119 → 1134 PASS / 0 FAIL; pytest telegram_voce+notte+sottofondo+gate+manutenzione+voice_server (-k "not browser") 1448 passed.
 
 ## Anomalie
-
 Nessuna.

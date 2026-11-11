@@ -948,7 +948,7 @@ def _turno_con_finale(kernel: Any, chat_id: int, text: str,
             if etype == "final":
                 parts.append(event.get("content", ""))
                 finali.append(event.get("content", "") or "")
-                # §8 (audit B4): ha risposto una riserva → riga nel testo, mai a voce
+                # §8 (audit B4, bot #366 V-1): riserva o versione leggera → riga nel testo, mai a voce
                 if event.get("avviso_ripiego"):
                     parts.append(str(event["avviso_ripiego"]))
             elif etype == "tool_res":
