@@ -118,7 +118,12 @@ class TrascrizioneAllucinata(TrascrizioneIncerta):
     prima, ma con più casi (un vocale «Grazie» ora è «non ho capito», R-761-1-M2)."""
 
 
-_FINE_FRASE_STT = re.compile(r"(?<=[.!?…])\s+")
+# V-1 bot #373: anche virgola, punto e virgola e due punti separano i pezzi da provare
+# («Sottotitoli a cura di QTSS, grazie per la visione.»)
+_FINE_FRASE_STT = re.compile(r"(?<=[.!?…,;:])\s+")
+# V-1 bot #373: le chiusure lunghe (≥ 3 parole) che Whisper attacca ai crediti senza
+# punteggiatura («Sottotitoli creati dalla comunità Amara.org grazie per la visione»)
+_CHIUSURE_LUNGHE = tuple(" " + f for f in _ALLUCINAZIONI_INTERE if len(f.split()) >= 3)
 
 
 def _frase_allucinata(norm: str) -> bool:
@@ -126,8 +131,12 @@ def _frase_allucinata(norm: str) -> bool:
     if not _PAROLA.search(norm):
         return True  # «…», «.», solo punteggiatura o simboli: nessuna parola detta
     parole = _PAROLA.findall(norm)
-    if len(parole) <= _PARTI_MAX_PAROLE and any(p in norm for p in _ALLUCINAZIONI_PARTI):
-        return True
+    if any(p in norm for p in _ALLUCINAZIONI_PARTI):
+        if len(parole) <= _PARTI_MAX_PAROLE:
+            return True
+        # V-1 bot #373: crediti seguiti da una chiusura lunga, anche senza punteggiatura
+        if (" " + " ".join(parole)).endswith(_CHIUSURE_LUNGHE):  # R-774-2-M2: parola intera
+            return True
     if norm.strip(" .!?…,;:-–—«»\"'\u201c\u201d\u2018") in _ALLUCINAZIONI_INTERE:
         return True
     # R-766-1-M2: frase intera anche con la punteggiatura interna («Grazie, e alla prossima!»)

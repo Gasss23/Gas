@@ -1387,7 +1387,17 @@ class TestAllucinazioniServer:
                                    # R-767-1-M2: allucinazioni composte (crediti + saluto)
                                    "Sottotitoli creati dalla comunità Amara.org. Grazie per la visione.",
                                    "Sottotitoli a cura di QTSS. Grazie a tutti per la visione.",
-                                   "Grazie. Grazie mille. Alla prossima!"])
+                                   "Grazie. Grazie mille. Alla prossima!",
+                                   # V-1 bot #373: con la virgola o senza punteggiatura
+                                   "Sottotitoli a cura di QTSS, grazie per la visione.",
+                                   "Sottotitoli creati dalla comunità Amara.org, grazie per la visione",
+                                   "Sottotitoli creati dalla comunità Amara.org grazie per la visione",
+                                   "Sottotitoli a cura di QTSS grazie a tutti per la visione",
+                                   "Sottotitoli a cura di QTSS; grazie a tutti.",
+                                   # R-774-3-M2: casi presi solo dalla divisione su , e :
+                                   "Sottotitoli a cura di QTSS, grazie per la visione, alla prossima.",
+                                   "Grazie per la visione, sottotitoli a cura di QTSS.",
+                                   "Grazie per la visione: sottotitoli a cura di QTSS."])
 def test_filtro2_varianti_dei_saluti(testo):
     from modules.voice.stt import allucinazione
     assert allucinazione(testo), testo
@@ -1402,7 +1412,12 @@ def test_filtro2_varianti_dei_saluti(testo):
                                    # V-1 bot #369: parte nota dentro una richiesta lunga
                                    "Gas, cerca chi ha fatto i sottotitoli a cura di Rai per il film",
                                    # R-767-1-M2: una frase vera accanto a un saluto passa
-                                   "Grazie. Ora segna il lead Rossi.", "Grazie mille. Che ore sono?"])
+                                   "Grazie. Ora segna il lead Rossi.", "Grazie mille. Che ore sono?",
+                                   # V-1 bot #373: virgole dentro una richiesta vera
+                                   "Allora, grazie, dimmi le novità.", "Grazie, segna Rossi: domani.",
+                                   "Cerca i sottotitoli a cura di Rai per il video di ieri sera grazie",
+                                   # R-774-2-M2: la chiusura conta solo a parola intera
+                                   "Sottotitoli a cura di Rai per il film delle disgrazie a voi"])
 def test_filtro2_le_richieste_passano(testo):
     from modules.voice.stt import allucinazione
     assert not allucinazione(testo), testo
