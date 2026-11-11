@@ -1,18 +1,15 @@
-# Ultimo report — 2026-11-10 — richiesta d'un fiato non più persa sotto «Sì, signore?» (chat Mani)
+# Ultimo report — 2026-11-11 — ascolto più severo di default: zero risposte non richieste (chat Mani)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #368 (https://github.com/Gasss23/Gas/pull/368): riserve solo BASSE; il merge lo fa M1 col sì dell'operatore.
-2. Lanciare sul Mac i 3 comandi di lettura del log mandati a M1 (falsi «Hey Jarvis» o turni di seguito?) e incollarne l'output: servono per i default più severi.
+1. Merge della PR #371 (https://github.com/Gasss23/Gas/pull/371): review APPROVATO; merge secondo la regola di CLAUDE.md §10 (verdetto del bot sull'head).
+2. Al mattino: provare «Hey Jarvis» dal vivo; se non scatta più, `GAS_ASCOLTO_SOGLIA=0.6` o `GAS_ASCOLTO_BLOCCHI_PAROLA=2` nel .env. Lanciare i 3 comandi di lettura del log mandati a M1.
 
 ## Esito
 
-- **PR #361**: MERGIATA (da M1).
-- **Richiesta d'un fiato (prova dal vivo del 10/11, 6 attivazioni su 8 senza richiesta)**: FATTA. In `clients/voice/ascolto.py` dopo la parola si ascolta 0,6 s; con 0,4 s di voce continua niente «Sì, signore?» e si registra da lì. Log della richiesta con secondi di voce e volume massimo in multipli della soglia. Test dell'ascolto: 310 passed (7 nuovi, mutanti presi). Review #753-M1 e #754-M1 APPROVATO CON RISERVE, riserve MEDIA/BASSA chiuse, restano BASSE.
-- **V-1 MEDIA della verifica esterna #368**: FATTA (af8ad62). Una coda di «…vis» lunga seguita da una pausa faceva inviare solo la coda; ora si aspetta altra voce continua fino a 5 s, altrimenti non si invia niente. Test 312 passed. Review #755-M1 APPROVATO CON RISERVE (R-755-1-M1 BASSA).
-- **V-1 MEDIA / V-2 BASSA della verifica esterna #368, 2° giro**: FATTA (2213519). Una richiesta brevissima d'un fiato («Hey Jarvis, pausa») spariva in silenzio: ora suona «Sì, signore?» e si può ripetere; la voce che parte verso la fine dei 5 s non viene più scartata. Test 314 passed. Review #756-M1 APPROVATO CON RISERVE (R-756-1-M1 BASSA: la conferma di ripiego arriva dopo ~5 s).
-- **Scarto delle trascrizioni allucinate («grazie» su audio quasi vuoto)**: SALTATA — sta in modules/voice/stt.py (chat M2) e scartare «grazie» toglierebbe anche quelli veri; proposto a M1.
-- **Default più severi contro le risposte non richieste**: DEFERITA — prima i log del Mac.
+- **PR #368 (richiesta d'un fiato)**: MERGIATA da M1 (904d9d6).
+- **Default più severi (priorità ALTA dell'operatore)**: FATTA. Soglia 0,7, 3 blocchi di fila, turni di seguito spenti, finestra 10 s, interruzione 0,8; un'interruzione apre ancora la nuova domanda. Test dell'ascolto 317 passed. Review #757-M1 APPROVATO CON RISERVE (MEDIA chiusa) e #758-M1 APPROVATO.
+- **Lettura dei log del Mac**: DEFERITA — l'operatore dorme, l'ascolto è in pausa.
 
 ## Anomalie
 

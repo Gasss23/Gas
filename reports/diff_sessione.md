@@ -1,10 +1,10 @@
-# Diff della sessione — 2026-11-10 — chat Mani, richiesta d'un fiato
+# Diff della sessione — 2026-11-11 — chat Mani, ascolto più severo di default
 
-File toccati (base main a0c200c, dopo il merge della PR #361):
-- `clients/voice/ascolto.py`: `_voce_subito` (SUBITO_S 0,6 s, SUBITO_VOCE_S 0,4 s) prima della conferma; `subito_s` nel costruttore (default 0) e in main; log della richiesta con voce e volume; `registra(subito=True)` invia solo se dopo i blocchi iniziali arriva altra voce continua (V-1 verifica esterna #368); se non arriva, ripiego su «Sì, signore?» e nuova registrazione (2° giro).
-- `tests/test_unit_voce_ascolto.py`: 11 test nuovi o aggiornati e il controllo di main.
-- `scripts/voce/LEGGIMI.md`: paragrafo «Richiesta d'un fiato» (anche: frase troppo corta → conferma, ripetila).
-- `.claude/agents/memoria_revisore.md`: righe #753-M1, #754-M1, #755-M1, #756-M1 e lezione.
+File toccati (base main 904d9d6, dopo il merge della PR #368):
+- `clients/voice/ascolto.py`: SOGLIA_PREDEFINITA 0,7, BLOCCHI_PAROLA_PREDEFINITO 3, MAX_TURNI_PREDEFINITO 1, FINESTRA_PREDEFINITA_S 10, SOGLIA_INTERRUZIONE_PREDEFINITA 0,8, TURNI_CON_INTERRUZIONE 2; costruttore coi valori dei test; commenti e docstring.
+- `tests/test_unit_voce_ascolto.py`: default di main e del LEGGIMI, 3 test nuovi, test esistenti adattati.
+- `scripts/voce/LEGGIMI.md`: intro, conversazione senza parola spenta di default, interruzione, privacy, tabella.
+- `.claude/agents/memoria_revisore.md`: righe #757-M1, #758-M1 e lezione.
 - `reports/*`: report di fine task e voce in stato_progetto.
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.
