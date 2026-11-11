@@ -2,18 +2,17 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. PR #373: merge con verdetto del bot APPROVATO pulito e CI verde (regola notturna di M1); con riserve resta pronta per il mattino.
-2. R-764-2-M2 (con R-761-1): su Telegram un vocale «Grazie», «Grazie di cuore» ora riceve «Non ho capito bene il vocale». Va bene o serve un altro messaggio? (file della chat Mani)
+1. PR #373: con riserve BASSE resta pronta per il «mergia» del mattino (con verdetto del bot APPROVATO pulito e CI verde la mergia la chat).
+2. R-764-2-M2: un vocale Telegram «Grazie di cuore» riceve «Non ho capito bene il vocale». Va bene?
+3. R-774-1-M2: «Scarica i sottotitoli a cura di Rai, grazie mille.» viene scartata in silenzio. Accettabile?
 
 ## Esito
 
-- **Varianti dei saluti di chiusura scartate** («Grazie, grazie.», «Grazie mille a tutti.», «Grazie, e alla prossima!»): FATTA.
-- **Allucinazioni composte scartate frase per frase** (crediti + saluto): FATTA.
-- **Parti note solo su frasi corte** (una richiesta vera che contiene «sottotitoli a cura» passa; V-1 bot #369): FATTA.
-- **Intercalari nel seguito** («Ehm, allora…», «Mah, boh») scartati: FATTA.
-- Review #764/#766/#767-M2 APPROVATO CON RISERVE (R-764-1, R-766-1, R-767-1 chiuse), #769-M2 APPROVATO.
-- Test: voice_stt + voice_server + telegram_voce + voce_ascolto 751 passed.
-- **Prova sul Mac dal vero**: DEFERITA.
+- **Filtro 2** (varianti dei saluti, composte frase per frase, parti note solo su frasi corte, intercalari nel seguito): FATTO (438704b).
+- **V-1 del bot #373** (crediti + «, grazie per la visione» o senza punteggiatura passavano al cervello): CORRETTA (789ade7) — divisione anche su , ; : e crediti che finiscono con una chiusura lunga a parola intera.
+- Merge di origin/main (#370): fatto, review #777-M2 APPROVATO.
+- Review #774/#775-M2 APPROVATO CON RISERVE (BASSE/COSMETICHE), #777-M2 APPROVATO.
+- Test: stt+telegram 255 passed; kernel 1134 PASS, 1 FAIL T31g (fastembed assente, come su main).
 
 ## Anomalie
 

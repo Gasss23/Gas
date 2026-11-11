@@ -6,8 +6,9 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #373 (https://github.com/Gasss23/Gas/pull/373): con verdetto del bot APPROVATO pulito e CI verde la mergia la chat (regola notturna di M1); con riserve resta pronta per il «mergia» del mattino.
+1. Merge della PR #373 (https://github.com/Gasss23/Gas/pull/373): il bot sul head precedente aveva una V-1 di gravità media (corretta qui, review #774/#775-M2 con riserve BASSE) e la verifica esterna #373 era APPROVATO CON RISERVE (BASSE): con riserve resta pronta per il «mergia» del mattino; con verdetto del bot APPROVATO pulito e CI verde la mergia la chat.
 2. R-764-2-M2: su Telegram un vocale «Grazie di cuore» ora riceve «Non ho capito bene il vocale». Va bene? (file della chat Mani)
+3. R-774-1-M2: una richiesta corta coi crediti seguita da «, grazie mille» («Scarica i sottotitoli a cura di Rai, grazie mille.») viene scartata in silenzio. Gas non gestisce sottotitoli: accettabile?
 
 NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
 
@@ -19,6 +20,8 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **Parti note solo su frasi corte (V-1 bot #369)**: `FATTA` (438704b).
 - **Intercalari nel seguito**: `FATTA` (438704b).
 - **R-764-1, R-766-1, R-767-1**: `FATTA` — chiuse prima del commit (review #766, #767, #769-M2).
+- **V-1 del bot #373 (crediti + chiusura con virgola o senza punteggiatura passavano)**: `FATTA` (789ade7) — divisione anche su , ; : e crediti che finiscono con una chiusura lunga a parola intera (review #774, #775-M2).
+- **Merge di origin/main (#370)**: `FATTA` (7f7933e, review #777-M2).
 - **Prova sul Mac dal vero**: `DEFERITA`.
 
 ---
@@ -26,28 +29,153 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
+ .claude/agents/memoria_revisore.md |  11 +++++++++++
  modules/voice/server.py            |  13 ++++++++++++-
- modules/voice/stt.py               |  58 +++++++++++++++++++++++++++++++++++++++++++++++++++-------
- reports/diff_sessione.md           |  10 +++++-----
+ modules/voice/stt.py               |  67 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ reports/diff_sessione.md           | n/d
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  18 ++++++++++--------
+ reports/stato_progetto.md          | n/d
+ reports/ultimo_report.md           | n/d
  tests/test_unit_voice_server.py    |  12 ++++++++++++
- tests/test_unit_voice_stt.py       |  32 ++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_stt.py       |  47 +++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
+NB: confronto con origin/main (e3eb542, dopo il merge). Regola «n/d» — i conteggi dei report riscritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7f7933e Merge origin/main (#370) nella #373 — review #777-M2 APPROVATO (chat M2)
+789ade7 fix(voce): filtro 2 — crediti seguiti da chiusura con virgola o senza punteggiatura scartati (V-1 bot #373)
+2f31b66 docs(fine-task): voce — filtro 2, PR #373 (chat M2)
 438704b fix(voce): filtro 2 — varianti dei saluti di Whisper e allucinazioni composte scartate frase per frase, intercalari nel seguito, parti note solo su frasi corte — review #764/#766/#767/#769-M2 (chat M2)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #777-M2 (merge di origin/main) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Review #777-M2: merge di origin/main e3eb542 (con la #370) nella PR #373 (filtro 2 delle allucinazioni di Whisper), staged in /home/user/Gas-filtro2 (HEAD 789ade7).
+
+**Letture obbligatorie fatte**: CLAUDE.md §5, reports/stato_progetto.md (letto per sezioni, voci #369/#373) e la coda di .claude/agents/memoria_revisore.md.
+
+**Controlli meccanici**
+- `git ls-files -u` è vuoto e `git diff --cached --check` è pulito. Non ci sono marcatori di conflitto nei file toccati: le righe `=======` che grep trova in reports/e2e_k3bis_output.txt erano già nel file, sono separatori.
+- gas.py, modules/telegram/bot.py, tests/test_unit_kernel.py e tests/test_unit_notte.py sono identici a MERGE_HEAD: 0 righe di diff.
+- In `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md` il merge non toglie nessuna riga rispetto a nessuno dei due lati, sono state solo aggiunte. Nella memoria restano due righe doppie (#746 e #747 della chat M3) che c'erano già prima del merge.
+- Righe tolte solo in reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md: lì è stata tenuta la versione del branch, come dichiarato.
+
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:150` — `allucinazione()` controlla frase per frase e scarta solo se ogni frase è un'allucinazione. Rischio esaminato: che la #370 cambi l'ingresso o chi la chiama. La #370 non tocca modules/voice/. Esito: ok.
+- `modules/voice/stt.py:113` — `TrascrizioneAllucinata` è una sottoclasse di `TrascrizioneIncerta`. Rischio esaminato: che il bot Telegram, toccato dalla #370, non prenda più l'eccezione. Il vocale passa ancora da `except TrascrizioneIncerta` (`modules/telegram/bot.py:186`). Nella #370, bot.py cambia solo un commento (`modules/telegram/bot.py:951`). Esito: ok.
+- `modules/voice/server.py:1221` — l'except dedicato chiude il seguito e scarta in silenzio. Rischio esaminato: che `avviso_ripiego` o `versione_leggera` della #370 finiscano a voce. Nessuna occorrenza in modules/voice/. Esito: ok.
+- `tests/test_unit_voice_stt.py:1398` — i casi della divisione in frasi sono ancora nella suite dopo il merge. Esito: ok.
+
+**Test rieseguiti da me**
+- test_unit_voice_stt + test_unit_voice_server + test_unit_notte: 599 passed.
+- test_unit_telegram_voce: 74 passed.
+
+**Rischi esclusi**
+- La suite del kernel (1134 PASS, 1 FAIL T31g perché manca fastembed) non l'ho rieseguita. gas.py è identico a main (diff 0), quindi il risultato dipende solo da main.
+- Comportamento dal vivo (Mac, Groq vero) non verificato: non riproducibile qui.
+
+**Memoria**
+- Riga `#777-M2` aggiunta in coda a `.claude/agents/memoria_revisore.md` e messa in staging (`git add`), nessuna lezione nuova.
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`: il merge è ancora in corso e git non accetta un commit parziale (`-o`) durante un merge. Il file entra col commit di merge.
+- Il numero #777 l'ho preso dalla tua richiesta: in coda al file, sul lato M2, l'ultima riga è #775-M2 e non esiste una #776-M2.
+- Per la regola R-139-1 non chiudo con un riepilogo «Verdetto finale»: l'esito sta solo nella prima riga.
+
+File rilevanti:
+- /home/user/Gas-filtro2/modules/voice/stt.py
+- /home/user/Gas-filtro2/modules/voice/server.py
+- /home/user/Gas-filtro2/modules/telegram/bot.py
+- /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md
+
+### Review #775-M2 (seguito di #774-M2) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #775-M2 su tutto il diff in staging in /home/user/Gas-filtro2 (PR #373). Le due riserve del giro precedente sono chiuse: R-774-2-M2 (la chiusura ora conta solo a parola intera) e R-774-3-M2 (aggiunti test che dipendono solo dalla divisione su virgola e due punti). Nessuna regola del Wall of Shame è violata e nessun guardrail è toccato.
+
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:126` — `_CHIUSURE_LUNGHE` mette ora uno spazio davanti a ogni chiusura. Rischio: corrispondenza a metà parola. Esito: ok, il test con «delle disgrazie a voi» passa al cervello. Mutante «spazio tolto dalle chiusure»: 1 failed, ucciso.
+- `modules/voice/stt.py:138` — `(" " + " ".join(parole)).endswith(_CHIUSURE_LUNGHE)`. Rischio: chiusure che non combaciano mai. Esito: **riserva**. `_PAROLA` toglie l'apostrofo, quindi «l'ascolto» diventa «l ascolto». Le chiusure scritte con l'apostrofo («grazie per l'ascolto», «grazie per l'attenzione») non combaciano mai in questo controllo: «Sottotitoli creati dalla comunità Amara.org grazie per l'ascolto» passa al cervello (verificato).
+- `modules/voice/stt.py:123` — divisione su `, ; :`. Esito: ok. Mutante «virgola tolta»: 2 failed. Mutante «: tolto»: 1 failed. Mutante «; tolto»: sopravvive, perché nessun test dipende dal punto e virgola (cosmetica).
+- `tests/test_unit_voice_stt.py:1398` — «Sottotitoli a cura di QTSS, grazie per la visione, alla prossima.» viene scartata solo grazie alla divisione. Esito: ok.
+- `tests/test_unit_voice_stt.py:1420` — richiesta con «disgrazie a voi». Esito: ok, passa.
+
+**Prove eseguite**
+- `tests/test_unit_voice_stt.py`: 181 passed. `-k telegram`: 101 passed.
+- Mutanti con `-k "filtro2 or allucin"`:
+  - uccisi: regola nuova tolta (2 failed), virgola tolta (2 failed), «:» tolto (1 failed), spazio tolto dalle chiusure (1 failed);
+  - sopravvissuti:
+    - «;» tolto: nessun test usa il punto e virgola (cosmetica);
+    - fine frase cambiata in «contiene»: manca un test con la chiusura a metà frase (bassa, non ho aperto una riserva a parte);
+    - spazio tolto davanti alla frase: equivalente, non cambia il comportamento.
+- Dopo i mutanti `modules/voice/stt.py` è tornato identico alla versione in staging (`git diff` vuoto).
+
+**Riserve**
+- **R-775-1-M2 (BASSA)**: le chiusure con apostrofo non funzionano nel controllo di fine frase. Proposta: costruire `_CHIUSURE_LUNGHE` con `" ".join(_PAROLA.findall(f))`.
+- **R-775-2-M2 (COSMETICA)**: nessun test per «;».
+- R-774-1-M2 (BASSA) e R-774-4-M2 (COSMETICA) restano aperte; le hai accettate come riserve. Due esempi verificati ancora oggi: «Scarica i sottotitoli a cura di Rai, grazie mille.» e «Cerca chi ha fatto i sottotitoli a cura di Rai e digli grazie a tutti» vengono scartate.
+- Restano aperte anche R-764-2-M2 (BASSA) e R-761-4 (COSMETICA).
+
+**Non verificato**: il comportamento sull'audio reale di Groq Whisper e del server voce (servono microfono e rete). Non ho rilanciato le suite del server voce né dell'ascolto: il diff tocca solo la funzione `allucinazione()`.
+
+**Memoria**: ho aggiunto in coda a /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md la riga contatore #775-M2 e una lezione: le parole estratte da una regex che toglie l'apostrofo non combaciano con voci d'elenco scritte con l'apostrofo. Il file è in staging; non ho committato.
+
+### Review #774-M2 (V-1 bot #373) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #774-M2 sul diff in staging di /home/user/Gas-filtro2 (PR #373, filtro delle allucinazioni di Whisper). La correzione chiude la V-1 di gravità media del bot #373: «Sottotitoli a cura di QTSS, grazie per la visione.» e le altre 4 varianti nuove vengono scartate. Nessuna regola del Wall of Shame è violata (niente history, niente simulazione di tool) e nessun guardrail è toccato. Restano però falsi positivi nuovi, e i test non coprono la divisione su virgola e punteggiatura simile.
+
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:123` — `_FINE_FRASE_STT` ora divide anche su `, ; :` seguiti da spazio. Rischio esaminato: richieste vere scartate in silenzio. Esito: **riserva**. Il tetto di 8 parole per le parti note ora vale per ogni pezzo tra due virgole, non per la frase intera:
+  - «Scarica i sottotitoli a cura di Rai, grazie mille.» ora viene scartata. Prima passava (verificato col codice di HEAD).
+  - «Sottotitoli, grazie.» e «Grazie mille, sottotitoli.» ora vengono scartate. Prima passavano.
+  - Restano corrette: «Gas, cerca chi ha fatto i sottotitoli a cura di Rai, grazie.» passa, perché il pezzo «gas,» non è un'allucinazione. «Grazie: alla prossima riunione parliamo di Rossi.» passa. «1,5 grazie» passa (niente spazio dopo la virgola).
+- `modules/voice/stt.py:138` — `" ".join(parole).endswith(_CHIUSURE_LUNGHE)`, con `_CHIUSURE_LUNGHE` definita in `modules/voice/stt.py:126` (16 chiusure di almeno 3 parole). Rischio esaminato: corrispondenze a metà parola e richieste lunghe che finiscono con un saluto. Esito: **riserva**.
+  - «Cerca chi ha fatto i sottotitoli a cura di Rai e digli grazie a tutti» ora viene scartata. Prima passava.
+  - Il confronto non controlla il confine di parola: «…disgrazie a voi» combacia con «grazie a voi».
+  - Falso negativo cosmetico: «Sottotitoli a cura di QTSS grazie a tutti per la visione e alla prossima» passa ancora.
+- `modules/voice/stt.py:135` — il tetto di 8 parole resta prima della regola nuova. Rischio esaminato: regressione della V-1 bot #369. Esito: ok sulla frase intera; il caso «Gas, cerca chi ha fatto i sottotitoli a cura di Rai per il film» passa ancora.
+- `tests/test_unit_voice_stt.py:1392` e `tests/test_unit_voice_stt.py:1396` — casi scartati con virgola e punto e virgola. Rischio esaminato: se i test uccidono l'estensione del separatore. Esito: **riserva**. Il primo caso lo prende anche la regola `endswith`, il secondo il tetto di 8 parole sulla frase intera, quindi nessuno dei due dipende davvero dalla divisione su virgola.
+- `tests/test_unit_voice_stt.py:1413` — richieste vere con virgola e due punti. Esito: ok, passano.
+
+**Prove eseguite**
+- `tests/test_unit_voice_stt.py`: 177 passed.
+- `-k telegram`: 101 passed.
+- Mutanti, tutti lanciati con `-k "filtro2 or allucin"`:
+  - regola `endswith` sostituita da `if False:` → 2 failed, **ucciso**;
+  - virgola tolta dalla regex → 66 passed, **sopravvive**;
+  - «;» tolto → **sopravvive**;
+  - «:» tolto → **sopravvive**;
+  - soglia delle chiusure da 3 a 2 parole → **sopravvive**;
+  - `endswith` sostituito da «contiene» → **sopravvive**.
+- Ho controllato che la divisione su virgola abbia un'utilità reale: «Sottotitoli a cura di QTSS, grazie per la visione, alla prossima.» e «Grazie per la visione, sottotitoli a cura di QTSS.» vengono scartate solo grazie a lei.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-774-1-M2 (BASSA)**: con la divisione su virgola il tetto di 8 parole si applica a ogni pezzo. Una richiesta corta coi crediti, seguita da «, grazie mille», viene scartata in silenzio; idem «Sottotitoli, grazie.». Rischio pratico basso, perché Gas non gestisce sottotitoli.
+- **R-774-2-M2 (BASSA)**: il controllo `endswith` va agganciato al confine di parola (`(" " + testo).endswith(" " + c)`). Inoltre oggi colpisce ogni frase lunga con una parte nota che finisce con un saluto.
+- **R-774-3-M2 (BASSA, test)**: nessun test uccide l'estensione del separatore. Proposta: aggiungere «Sottotitoli a cura di QTSS, grazie per la visione, alla prossima.», che uccide il mutante «virgola tolta», e un caso con «:».
+- **R-774-4-M2 (COSMETICA)**: «… QTSS grazie a tutti per la visione e alla prossima» passa.
+- R-764-2-M2 (BASSA) e R-761-4 (COSMETICA) restano aperte.
+
+**Non verificato**
+- Il comportamento sull'audio reale di Groq Whisper e del server voce: richiede un microfono e la rete, non è riproducibile qui. Ho controllato solo la funzione `allucinazione()` e i test unitari.
+- Non ho rilanciato le suite del server voce né dell'ascolto: il diff tocca solo la funzione pura.
+
+**Memoria**
+- Ho aggiunto in coda a /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md la riga contatore #774-M2 e 2 lezioni nuove:
+  1. allargare un separatore di frasi fa riapplicare i tetti per frase a ogni pezzo;
+  2. `endswith` senza spazio iniziale combacia a metà parola.
+- Il file è in staging in /home/user/Gas-filtro2. Non ho lanciato `commit_memoria_revisore.sh`, perché mi hai chiesto solo lo staging.
+- Durante i mutanti un `>` nel testo di un `echo` ha creato per errore il file `in` nella radice del repo: l'ho cancellato. `modules/voice/stt.py` è tornato identico alla versione in staging (`git diff` vuoto).
 
 ### Review #769-M2 (seguito di #767-M2, R-767-1) — verdetto integrale
 
@@ -145,23 +273,26 @@ Wall of Shame: il diff non tocca la history né `_get_window`, non simula output
 
 ## §5 DELTA TEST DEL MOTORE
 
-- gas.py non toccato. Test nuovi: `test_filtro2_varianti_dei_saluti` (15 casi), `test_filtro2_le_richieste_passano` (15), `test_filtro2_seguito_solo_intercalari` (9).
-- `python -m pytest -q tests/test_unit_voice_stt.py tests/test_unit_voice_server.py tests/test_unit_telegram_voce.py tests/test_unit_voce_ascolto.py -k "audit or not browser"`:
-
-```
-751 passed, 25 deselected in 78.91s (0:01:18)
-```
+- gas.py non toccato dalla PR (dopo il merge coincide con main). Test nuovi: `test_filtro2_varianti_dei_saluti` (23 casi), `test_filtro2_le_richieste_passano` (19), `test_filtro2_seguito_solo_intercalari` (9).
+- Dopo la correzione V-1 bot #373: `tests/test_unit_voice_stt.py` 177 passed (181 alla review #775); `tests/test_unit_telegram*.py` 74 passed.
+- Dopo il merge di main: `tests/test_unit_voice_stt.py tests/test_unit_telegram*.py` 255 passed; `python tests/test_unit_kernel.py` 1134 PASS, 1 FAIL (T31g, fastembed assente in questo ambiente: lo stesso FAIL c'è su main). Il revisore #777 ha rieseguito voice_stt+voice_server+notte: 599 passed.
+- Prima della correzione (2f31b66): suite voce `-k "audit or not browser"` 751 passed, 25 deselected (riprodotto dalla verifica esterna #373).
 
 ## §6 STATO CI
 
 CI NON VERIFICATA con `gh` (non autenticato nel cloud).
-- 438704b: run non ancora disponibile alla scrittura dell'handoff (pushato prima di aprire la PR #373).
-- Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
+- Head precedente 2f31b66: `handoff-check` success; `verifica-bot` failure (finding di gravità media, corretto in 789ade7); `unit-suite` in corso alla lettura.
+- Nuovi commit (789ade7, 7f7933e e fine-task): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-764-1-M2 BASSA, R-766-1-M2 BASSA, R-767-1-M2 MEDIA: CHIUSE (438704b, review #766/#767/#769-M2).
-- V-1 BASSA del bot su #369 (parti note in una richiesta lunga): CHIUSA.
+- R-764-1-M2 BASSA, R-766-1-M2 BASSA, R-767-1-M2 (gravità media): CHIUSE (438704b, review #766/#767/#769-M2).
+- V-1 BASSA del bot su #369 (parti note in una richiesta lunga): CHIUSA per le richieste di oltre 8 parole; quelle di 8 o meno con una parte nota restano scartate (limite dichiarato, V-1/V-3 verifica esterna #373, non regressione).
+- V-1 del bot #373 (gravità media): CHIUSA (789ade7, review #774/#775-M2). R-774-2-M2 BASSA, R-774-3-M2 BASSA: CHIUSE (review #775-M2).
+- R-774-1-M2 BASSA: «Scarica i sottotitoli a cura di Rai, grazie mille.» scartata (vedi §0.3).
+- R-775-1-M2 BASSA: le chiusure con apostrofo («grazie per l'ascolto») non contano nel controllo di fine frase.
+- R-774-4-M2 COSMETICA, R-775-2-M2 COSMETICA (nessun test per «;»).
 - R-764-2-M2 BASSA: su Telegram un vocale «Grazie di cuore» ora riceve «Non ho capito bene il vocale» (allarga R-761-1).
 - R-761-4-M2 COSMETICA: «grazie» nell'elenco delle risposte brevi del seguito non viene più raggiunto.
+- Verifica esterna #373: V-2 BASSA (nessun fix, coerente con l'intento), V-3 COSMETICA.
 - Non verificato: come Whisper punteggia davvero le frasi su audio reale (prova sul Mac).

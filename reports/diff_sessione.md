@@ -1,9 +1,10 @@
 # Diff di sessione — 2026-11-11 — voce: filtro 2 (chat M2)
 
-- `modules/voice/stt.py` — `_frase_allucinata` (regole di una frase), `allucinazione` frase per frase, saluti di chiusura (`_SALUTI_ALLUCINATI`, `_PAROLE_DEI_SALUTI`), frasi intere senza punteggiatura interna, tetto di 8 parole per le parti note, docstring di `TrascrizioneAllucinata` corretta.
-- `modules/voice/server.py` — `_INTERCALARI` e loro uso in `seguito_da_scartare`.
-- `tests/test_unit_voice_stt.py`, `tests/test_unit_voice_server.py` — test positivi e negativi.
-- `.claude/agents/memoria_revisore.md` — righe #764, #766, #767, #769-M2.
+- `modules/voice/stt.py` — varianti dei saluti, confronto senza punteggiatura interna, allucinazioni composte frase per frase (divise anche su , ; :), parti note solo su frasi corte, crediti seguiti da una chiusura lunga (V-1 bot #373).
+- `modules/voice/server.py` — intercalari nel seguito.
+- `tests/test_unit_voice_stt.py`, `tests/test_unit_voice_server.py` — casi nuovi.
+- `.claude/agents/memoria_revisore.md` — righe #764–#777-M2.
+- Merge di origin/main (#370).
 - `reports/*` — report di fine task e stato.
 
 Questo file si riscrive a ogni sessione; la storia completa sta in git.
