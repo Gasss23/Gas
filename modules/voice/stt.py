@@ -56,7 +56,28 @@ _ALLUCINAZIONI_INTERE = ("grazie per la visione", "grazie per l'ascolto",
                          # qui») Whisper scrive un ringraziamento da solo: non è una richiesta
                          "grazie", "grazie mille", "grazie a tutti", "grazie a voi",
                          "grazie per aver guardato", "grazie per l'attenzione",
-                         "sottotitoli", "sottotitoli a cura di")
+                         "sottotitoli", "ciao a tutti", "ciao ciao a tutti",
+                         # R-764-1-M2: le chiusure con «prossima» o «video» solo intere
+                         "alla prossima", "grazie e alla prossima", "grazie a tutti e alla prossima",
+                         "grazie per aver guardato il video", "grazie per la visione e alla prossima",
+                         "grazie mille e alla prossima", "grazie mille a tutti e alla prossima")
+# V-1 bot #369 su 8b11ba8: le parti note («sottotitoli a cura», «qtss»…) scartano solo una
+# trascrizione CORTA; dentro una richiesta lunga («Gas, cerca chi ha fatto i sottotitoli a
+# cura di Rai…») decidono le soglie di _motivo_incerta, che chiedono di ripetere
+_PARTI_MAX_PAROLE = 8
+# Filtro 2 (11 nov, operatore via M1: «zero risposte non richieste»; V-1 bot #369): le
+# VARIANTI dei saluti di chiusura che Whisper inventa («Grazie, grazie.», «Grazie mille a
+# tutti.», «Grazie a tutti e alla prossima.»). Una frase fatta SOLO di queste parole, con
+# almeno un «grazie», è un'allucinazione. Basta una parola fuori elenco («Grazie Gas»,
+# «Grazie, ora segna…») perché passi al cervello. «Ciao» da solo non è un'allucinazione
+# tipica: resta una richiesta (solo «ciao a tutti» è nell'elenco delle frasi intere).
+_SALUTI_ALLUCINATI = frozenset(("grazie",))
+# R-764-1-M2: niente «prossimo/prossima», «ancora», «il», «video»: «Grazie, il prossimo.»
+# e «Grazie, ancora.» nel seguito sono richieste vere di andare avanti
+_PAROLE_DEI_SALUTI = _SALUTI_ALLUCINATI | frozenset((
+    "ciao", "arrivederci", "buonanotte", "mille", "tante", "tutti", "tutte", "a", "voi", "e",
+    "buona", "buon", "serata", "giornata", "notte", "per", "la", "l", "aver", "avete",
+    "guardato", "seguito", "visione", "ascolto", "attenzione", "di", "cuore"))
 
 
 class GroqSTTError(Exception):
@@ -93,18 +114,41 @@ class TrascrizioneAllucinata(TrascrizioneIncerta):
     """Allucinazioni 10 nov: la trascrizione è una frase che Whisper inventa sul silenzio
     o sul rumore («Grazie.», «Sottotitoli a cura di…», solo punteggiatura). Il server voce
     la scarta in SILENZIO (nessuna risposta, nessun turno), non chiede di ripetere.
-    Sottoclasse di TrascrizioneIncerta: chi prende già quella (bot Telegram) non cambia."""
+    Sottoclasse di TrascrizioneIncerta: chi prende già quella (bot Telegram) la riceve come
+    prima, ma con più casi (un vocale «Grazie» ora è «non ho capito», R-761-1-M2)."""
+
+
+_FINE_FRASE_STT = re.compile(r"(?<=[.!?…])\s+")
+
+
+def _frase_allucinata(norm: str) -> bool:
+    """Una sola frase (già normalizzata) è un'allucinazione nota?"""
+    if not _PAROLA.search(norm):
+        return True  # «…», «.», solo punteggiatura o simboli: nessuna parola detta
+    parole = _PAROLA.findall(norm)
+    if len(parole) <= _PARTI_MAX_PAROLE and any(p in norm for p in _ALLUCINAZIONI_PARTI):
+        return True
+    if norm.strip(" .!?…,;:-–—«»\"'\u201c\u201d\u2018") in _ALLUCINAZIONI_INTERE:
+        return True
+    # R-766-1-M2: frase intera anche con la punteggiatura interna («Grazie, e alla prossima!»)
+    if " ".join(parole) in _ALLUCINAZIONI_INTERE:
+        return True
+    # filtro 2: le varianti dei saluti di chiusura
+    return (any(p in _SALUTI_ALLUCINATI for p in parole)
+            and all(p in _PAROLE_DEI_SALUTI for p in parole))
 
 
 def allucinazione(testo: str) -> bool:
-    """True se il testo trascritto è un'allucinazione nota di Whisper o non ha parole."""
+    """True se il testo trascritto è un'allucinazione nota di Whisper o non ha parole.
+    R-767-1-M2: si guarda frase per frase; è un'allucinazione solo se lo è OGNI frase
+    («Sottotitoli a cura di QTSS. Grazie a tutti per la visione.» sì; una richiesta vera
+    con dentro una parte nota no)."""
     # R-761-3-M2: apostrofo tipografico come quello semplice
     norm = " ".join(testo.lower().replace("\u2019", "'").split())
-    if not _PAROLA.search(norm):
-        return True  # «…», «.», solo punteggiatura o simboli: nessuna parola detta
-    if any(p in norm for p in _ALLUCINAZIONI_PARTI):
+    if _frase_allucinata(norm):
         return True
-    return norm.strip(" .!?…,;:-–—«»\"'\u201c\u201d\u2018") in _ALLUCINAZIONI_INTERE
+    frasi = [f for f in _FINE_FRASE_STT.split(norm) if f.strip()]
+    return len(frasi) > 1 and all(_frase_allucinata(f) for f in frasi)
 
 
 def _soglia_env(nome: str, default: float) -> float:

@@ -2590,3 +2590,15 @@ def test_parlato_voce_tetto_piu_corto():
     frasi = frasi_voce(testo)
     assert frasi[-1] == _PARLATO_VOCE_RESTO
     assert len(" ".join(frasi[:-1])) <= 800
+
+
+@pytest.mark.parametrize("testo, scarta", [
+    ("Ehm, allora…", True), ("Mah, boh.", True), ("Beh insomma", True), ("Comunque", True),
+    ("Niente.", True), ("Eh, tipo, praticamente", True),
+    ("Allora segna il lead Rossi", False), ("Sì", False), ("Boh, dimmi tu", False),
+])
+def test_filtro2_seguito_solo_intercalari(testo, scarta):
+    """Filtro 2 (11 nov): nel seguito una frase fatta solo di intercalari è parlato della
+    stanza e si scarta; basta una parola vera perché passi."""
+    from modules.voice.server import seguito_da_scartare
+    assert seguito_da_scartare(testo) is scarta, testo

@@ -1374,3 +1374,35 @@ class TestAllucinazioniServer:
         assert "capito" not in corpo and "audio" not in corpo and "non_capito" not in corpo
         assert self.kernel.kw == "NESSUN TURNO"
         assert "SEGRETO" not in caplog.text and "scartata in silenzio" in caplog.text
+
+
+# ── Filtro 2 (11 nov, operatore via M1): varianti dei saluti di chiusura ──
+
+@pytest.mark.parametrize("testo", ["Grazie, grazie.", "Grazie mille a tutti.",
+                                   "Grazie a tutti e alla prossima.", "Ciao a tutti!",
+                                   "Grazie di cuore.", "Grazie tante, ciao!",
+                                   "Grazie per aver guardato il video.", "Ciao ciao a tutti",
+                                   "Sottotitoli a cura di QTSS",
+                                   "Grazie, e alla prossima!", "Grazie mille e alla prossima",  # R-766-1-M2
+                                   # R-767-1-M2: allucinazioni composte (crediti + saluto)
+                                   "Sottotitoli creati dalla comunità Amara.org. Grazie per la visione.",
+                                   "Sottotitoli a cura di QTSS. Grazie a tutti per la visione.",
+                                   "Grazie. Grazie mille. Alla prossima!"])
+def test_filtro2_varianti_dei_saluti(testo):
+    from modules.voice.stt import allucinazione
+    assert allucinazione(testo), testo
+
+
+@pytest.mark.parametrize("testo", ["Grazie Gas", "Grazie, ora segna il lead Rossi",
+                                   "Ciao Gas, che ore sono?", "Buona idea, procedi",
+                                   "Tutti i lead di oggi", "Alla prossima riunione cosa porto?",
+                                   "Ciao", "Buonanotte.",
+                                   "Grazie, il prossimo.", "Grazie, la prossima.", "Grazie, ancora.",
+                                   "Grazie, il video.",  # R-764-1-M2
+                                   # V-1 bot #369: parte nota dentro una richiesta lunga
+                                   "Gas, cerca chi ha fatto i sottotitoli a cura di Rai per il film",
+                                   # R-767-1-M2: una frase vera accanto a un saluto passa
+                                   "Grazie. Ora segna il lead Rossi.", "Grazie mille. Che ore sono?"])
+def test_filtro2_le_richieste_passano(testo):
+    from modules.voice.stt import allucinazione
+    assert not allucinazione(testo), testo
