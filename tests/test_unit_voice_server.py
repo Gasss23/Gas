@@ -1226,7 +1226,7 @@ def test_v7b_frasi_parlate_ricompongono_la_parte_parlata():
 
 def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k", turni=None,
                   trascrizione="Gas, dimmi", prompt_testo=None, root=None, intestazioni=None,
-                  tts=None):
+                  tts=None, anticipi=None):
     """Server voce vero con kernel e servizi finti; ritorna (content-type, righe, mock della
     sintesi).
     `turni` (lista) riceve i kw di ogni run_turn (V10: quale istruzione arriva).
@@ -1240,6 +1240,9 @@ def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"
         def run_turn(self, prompt, **kw):
             if turni is not None:
                 turni.append(kw)
+            if anticipi is not None and kw.get("su_testo_voce"):
+                for t, finito in anticipi:  # voce rapida: testo in anticipo dal forte
+                    kw["su_testo_voce"](t, finito)
             yield {"type": "final", "content": kernel_testo}
 
     class _H(VoiceHandler):
@@ -2590,3 +2593,67 @@ def test_parlato_voce_tetto_piu_corto():
     frasi = frasi_voce(testo)
     assert frasi[-1] == _PARLATO_VOCE_RESTO
     assert len(" ".join(frasi[:-1])) <= 800
+
+
+# ── Voce rapida (chat M2, 11 nov): la prima frase si sintetizza mentre il forte finisce ──
+def test_anticipo_prima_frase_usata_una_sintesi_per_frase():
+    import base64
+    turni = []
+    ct, righe, tts = _voce_a_pezzi(
+        "Uno. Due.", lambda frase, k, v: frase.encode(), formato="audio+pezzi", turni=turni,
+        anticipi=[("Un", False), ("Uno. D", False), ("Uno. Due.", True)])
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert callable(turni[0]["su_testo_voce"])
+    assert sorted(frasi) == ["Due.", "Uno."]                 # «Uno.» una volta sola
+    assert [base64.b64decode(r["audio"]).decode() for r in righe if "audio" in r] == \
+        ["Uno.", "Due."]
+
+
+def test_anticipo_diverso_dalla_risposta_finale_non_va_a_voce():
+    import base64
+    ct, righe, tts = _voce_a_pezzi(
+        "Uno. Due.", lambda frase, k, v: frase.encode(), formato="audio+testo+pezzi",
+        anticipi=[("Ciao. Al", False)])
+    frasi = [c.args[0] for c in tts.call_args_list]
+    assert sorted(frasi) == ["Ciao.", "Due.", "Uno."]       # l'anticipo si butta
+    assert [base64.b64decode(r["audio"]).decode() for r in righe if "audio" in r] == \
+        ["Uno.", "Due."]
+
+
+def test_anticipo_errore_della_sintesi_come_una_sintesi_fallita():
+    ct, righe, tts = _voce_a_pezzi("Uno. Due.", OSError("rete"), formato="audio+pezzi",
+                                   anticipi=[("Uno. Due.", True)])
+    assert righe[0]["errore_voce"] == "Errore di rete verso ElevenLabs TTS"
+    assert "audio" not in righe[0] and tts.call_count == 1  # niente seconda prova
+    assert righe[-1]["fine"] is True
+
+
+def test_anticipo_mai_nei_seguiti_ne_senza_pezzi_ne_senza_chiave():
+    for formato, intest, chiave in (("audio+pezzi", {"X-Gas-Seguito": "1"}, "k"),
+                                    ("audio+testo", None, "k"),
+                                    ("audio+pezzi", None, None)):
+        turni = []
+        _voce_a_pezzi("Uno. Due.", lambda frase, k, v: frase.encode(), formato=formato,
+                      turni=turni, intestazioni=intest, chiave=chiave,
+                      trascrizione="Ehi Gas, dimmi una cosa" if intest else "Gas, dimmi",
+                      anticipi=[("Uno. Due.", True)])
+        assert turni and "su_testo_voce" not in turni[0], (formato, intest, chiave)
+
+
+def test_anticipo_voce_aspetta_la_prima_frase_intera():
+    from unittest.mock import patch
+    from modules.voice.server import AnticipoVoce
+    with patch("modules.voice.server.synthesize_speech", side_effect=lambda f, k, v: f.encode()) as tts:
+        a = AnticipoVoce("k", "v")
+        a.testo("Uno", False)
+        a.testo("Uno due tre", False)
+        assert a.prendi("Uno due tre") is None and tts.call_count == 0
+        a.testo("Uno due tre. Qu", False)
+        a.testo("Altro. Testo.", True)                       # una sola frase per turno
+        assert a.prendi("Altro.") is None
+        assert a.prendi("Uno due tre.") == b"Uno due tre."
+        assert a.prendi("Uno due tre.") is None              # una volta sola
+        assert tts.call_count == 1
+        b = AnticipoVoce("k", "v")
+        b.testo("Risposta unica", True)                      # finita: si anticipa lo stesso
+        assert b.prendi("Risposta unica") == b"Risposta unica"

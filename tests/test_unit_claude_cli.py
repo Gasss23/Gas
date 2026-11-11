@@ -572,3 +572,167 @@ def test_effort_rifiutato_tempo_lineare():
     _effort_rifiutato(subprocess.CompletedProcess([], 1, stdout="",
                                                   stderr="unknown option" + " " * 100_000))
     assert time.monotonic() - t0 < 1
+
+
+# ── Voce rapida (chat M2, 11 nov): testo della risposta in anticipo (stream-json) ──
+from brains.claude_cli import _TestoInArrivo, _stringa_parziale, _esegui_a_flusso  # noqa: E402
+
+
+def _ev(tipo, **kw):
+    return json.dumps({"type": "stream_event", "event": dict(type=tipo, **kw)}) + "\n"
+
+
+def _righe_flusso(pezzi, nome="StructuredOutput"):
+    righe = [json.dumps({"type": "system", "subtype": "init"}) + "\n",
+             _ev("content_block_start", index=0,
+                 content_block={"type": "tool_use", "name": nome, "input": {}})]
+    righe += [_ev("content_block_delta", index=0,
+                  delta={"type": "input_json_delta", "partial_json": p}) for p in pezzi]
+    righe.append(_ev("content_block_stop", index=0))
+    return righe
+
+
+def _leggi(pezzi, nome="StructuredOutput"):
+    visti = []
+    lettore = _TestoInArrivo(lambda t, f: visti.append((t, f)))
+    for r in _righe_flusso(pezzi, nome):
+        lettore.riga(r)
+    return visti
+
+
+def test_anticipo_testo_a_pezzi_con_chiamate_vuote():
+    visti = _leggi(['{"chiamate": []', ', "testo": "Ciao', ' a te. Seco', 'nda."}'])
+    assert visti[0] == ("Ciao", False)
+    assert visti[-1] == ("Ciao a te. Seconda.", True)
+    assert [t for t, _ in visti] == ["Ciao", "Ciao a te. Seco", "Ciao a te. Seconda."] + \
+        ["Ciao a te. Seconda."] * (len(visti) - 3)
+
+
+def test_anticipo_tace_se_ci_sono_chiamate_o_testo_prima():
+    assert _leggi(['{"chiamate": [{"nome": "read_file", "argomenti": {}}], "testo": "Leggo."}']) == []
+    assert _leggi(['{"testo": "Ciao.", "chiamate": []}']) == []
+    assert _leggi(['{"chiamate": []', ', "testo": "Ciao."}'], nome="Altro") == []
+
+
+def test_anticipo_escape_e_caratteri_spezzati():
+    visti = _leggi(['{"chiamate":[],"testo":"Va \\', 'u00e8 ok \\"si\\"', '\\nfine\\ud83d', '\\ude00"}'])
+    assert ("Va ", False) in visti
+    assert visti[-1] == ('Va è ok "si"\nfine\U0001F600', True)
+    assert all("\\" not in t and not any("\ud800" <= c <= "\udfff" for c in t) for t, _ in visti)
+
+
+def test_stringa_parziale_escape_non_valido_spegne():
+    assert _stringa_parziale('abc\\x"') == (None, True)
+    assert _stringa_parziale('abc') == ("abc", False)
+    assert _stringa_parziale('ab"c') == ("ab", True)
+
+
+def test_anticipo_errore_della_callback_non_rompe_e_spegne():
+    chiamate = []
+
+    def cb(t, f):
+        chiamate.append(t)
+        raise ValueError("rotto")
+    lettore = _TestoInArrivo(cb)
+    for r in _righe_flusso(['{"chiamate": [], "testo": "Uno', ' due"}']):
+        lettore.riga(r)
+    assert chiamate == ["Uno"]
+
+
+def test_anticipo_seconda_risposta_strutturata_spegne():
+    visti = []
+    lettore = _TestoInArrivo(lambda t, f: visti.append(t))
+    for r in _righe_flusso(['{"chiamate": [], "testo": "Uno'] ) + _righe_flusso(['{"chiamate": [], "testo": "Due"}']):
+        lettore.riga(r)
+    assert visti == ["Uno"]
+
+
+def _runner_flusso(righe, registro, codice=0, stderr=""):
+    def run(cmd, stdin, cwd, env, timeout, su_riga):
+        registro.update(cmd=cmd, stdin=stdin)
+        risultato = None
+        for r in righe:
+            su_riga(r)
+            if json.loads(r).get("type") == "result":
+                risultato = r
+        return subprocess.CompletedProcess(cmd, codice, stdout=risultato or "".join(righe),
+                                           stderr=stderr)
+    return run
+
+
+def test_client_con_su_testo_usa_stream_json_e_da_la_stessa_risposta():
+    reg, visti = {}, []
+    righe = _righe_flusso(['{"chiamate": [], "testo": "Ecco', ' fatto."}']) + \
+        [json.dumps(_ok({"chiamate": [], "testo": "Ecco fatto."})) + "\n"]
+    c = ClaudeCliClient(runner=lambda *a: pytest.fail("runner json usato"),
+                        runner_flusso=_runner_flusso(righe, reg),
+                        su_testo=lambda t, f: visti.append((t, f)))
+    r = c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs(), tools=_TOOLS)
+    cmd = reg["cmd"]
+    assert cmd[cmd.index("--output-format") + 1] == "stream-json"
+    assert "--include-partial-messages" in cmd and "--verbose" in cmd
+    assert r.choices[0].message.content == "Ecco fatto."
+    assert visti[-1] == ("Ecco fatto.", True)
+
+
+def test_client_senza_su_testo_resta_json():
+    reg = {}
+    c = ClaudeCliClient(runner=_runner(_ok({"testo": "ok", "chiamate": []}), reg))
+    c.chat.completions.create(model="m", messages=_msgs(), tools=_TOOLS)
+    assert reg["cmd"][reg["cmd"].index("--output-format") + 1] == "json"
+    assert "--include-partial-messages" not in reg["cmd"]
+
+
+def test_schema_chiamate_prima_di_testo():
+    assert list(SCHEMA_RISPOSTA["properties"]) == ["chiamate", "testo"]
+
+
+def test_flusso_errore_di_quota_in_testo_resta_quota():
+    righe = ["Claude usage limit reached. Your limit will reset at 5pm\n"]
+    c = ClaudeCliClient(runner_flusso=_runner_flusso_testo(righe), su_testo=lambda t, f: None)
+    with pytest.raises(RuntimeError, match="^429 "):
+        c.chat.completions.create(model="m", messages=_msgs(), tools=_TOOLS)
+
+
+def _runner_flusso_testo(righe):
+    def run(cmd, stdin, cwd, env, timeout, su_riga):
+        for r in righe:
+            su_riga(r)
+        return subprocess.CompletedProcess(cmd, 1, stdout="".join(righe), stderr="")
+    return run
+
+
+def _script(tmp_path, corpo):
+    f = tmp_path / "finto_claude.py"
+    f.write_text(corpo, encoding="utf-8")
+    return [sys.executable, str(f)]
+
+
+def test_esegui_a_flusso_processo_vero_riga_result(tmp_path):
+    cmd = _script(tmp_path, (
+        "import sys, json\n"
+        "dati = sys.stdin.read()\n"
+        "print(json.dumps({'type': 'system'}), flush=True)\n"
+        "print(json.dumps({'type': 'result', 'eco': dati}), flush=True)\n"
+        "sys.stderr.write('avviso')\n"))
+    viste = []
+    proc = _esegui_a_flusso(cmd, "INGRESSO" * 10000, str(tmp_path), dict(os.environ), 10,
+                            viste.append)
+    assert proc.returncode == 0 and len(viste) == 2
+    assert json.loads(proc.stdout) == {"type": "result", "eco": "INGRESSO" * 10000}
+    assert proc.stderr == "avviso"
+
+
+def test_esegui_a_flusso_senza_result_da_tutta_l_uscita(tmp_path):
+    cmd = _script(tmp_path, "print('riga uno'); print('riga due'); raise SystemExit(3)\n")
+    proc = _esegui_a_flusso(cmd, "", str(tmp_path), dict(os.environ), 10, lambda r: None)
+    assert proc.returncode == 3 and proc.stdout == "riga uno\nriga due\n"
+
+
+def test_esegui_a_flusso_tempo_scaduto_uccide(tmp_path):
+    cmd = _script(tmp_path, "import time\nprint('{}', flush=True)\ntime.sleep(30)\n")
+    import time
+    t = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        _esegui_a_flusso(cmd, "", str(tmp_path), dict(os.environ), 0.5, lambda r: None)
+    assert time.monotonic() - t < 10
