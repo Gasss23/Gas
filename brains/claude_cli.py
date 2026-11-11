@@ -44,6 +44,7 @@ import os
 import re
 import secrets
 import shutil
+import signal
 import subprocess
 import tempfile
 import threading
@@ -291,7 +292,10 @@ def _effort_rifiutato(proc: subprocess.CompletedProcess) -> bool:
 
 def _esegui(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
             timeout: float) -> subprocess.CompletedProcess:
+    # B3 audit notturno 2 (M1): un byte non UTF-8 della CLI (locale di launchd) non deve
+    # diventare UnicodeDecodeError (niente costo né riconoscimento di limite/login)
     return subprocess.run(cmd, input=stdin, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace",
                           cwd=cwd, env=env, timeout=timeout, check=False)
 
 
@@ -420,13 +424,13 @@ def _esegui_a_flusso(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
     # R-773-1-M2: gruppo di processi suo, così al timeout muoiono anche eventuali nipoti che
     # terrebbero aperto lo stdout (la lettura aspetterebbe loro, oltre il timeout)
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, text=True, cwd=cwd, env=env,
-                            start_new_session=True)
+                            stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                            errors="replace", cwd=cwd, env=env, start_new_session=True)
     scaduto = threading.Event()
 
     def uccidi_tutti() -> None:
         try:
-            os.killpg(proc.pid, 9)
+            os.killpg(proc.pid, signal.SIGKILL)
         except OSError:
             proc.kill()
 
@@ -475,7 +479,7 @@ def _esegui_a_flusso(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
                     flusso.close()
             except OSError:
                 pass
-    if scaduto.is_set():
+    if scaduto.is_set() and risultato is None:  # bot #374 V-2: result arrivata = finita
         raise subprocess.TimeoutExpired(cmd, timeout)
     return subprocess.CompletedProcess(cmd, proc.returncode,
                                        stdout=risultato if risultato is not None else "".join(righe),
@@ -520,8 +524,8 @@ def _log_tempi_cli(t0: float, prima: Optional[float], primo_testo: Optional[floa
             entrata, uscita = _token(dati)
             parti.append(f"token_in={entrata} token_out={uscita}")
         _log_tempi.info("tempi claude-cli: %s", " ".join(parti))
-    except Exception:  # noqa: BLE001 — un registro non rompe mai il turno
-        pass
+    except Exception as exc:  # noqa: BLE001 — un registro non rompe mai il turno
+        logging.warning("claude-cli: tempi non registrati (%s)", type(exc).__name__)
 
 
 class _Completions:

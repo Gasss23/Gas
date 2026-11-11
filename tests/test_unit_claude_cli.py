@@ -773,3 +773,25 @@ def test_esegui_a_flusso_tempo_scaduto_uccide_anche_i_nipoti(tmp_path):
     with pytest.raises(subprocess.TimeoutExpired):
         _esegui_a_flusso(cmd, "", str(tmp_path), dict(os.environ), 0.5, lambda r: None)
     assert time.monotonic() - t < 4
+
+
+def test_esegui_byte_non_utf8_non_rompe(tmp_path):
+    """B3 audit notturno 2: un byte non UTF-8 nell'uscita della CLI diventa «�», niente
+    UnicodeDecodeError (così limite/login e costo restano riconosciuti)."""
+    from brains.claude_cli import _esegui
+    cmd = _script(tmp_path, "import sys\nsys.stdout.buffer.write(b'usage limit \\xff\\n')\n"
+                            "sys.stderr.buffer.write(b'\\xfe')\n")
+    proc = _esegui(cmd, "", str(tmp_path), dict(os.environ), 10)
+    assert "usage limit" in proc.stdout and "\ufffd" in proc.stdout and "\ufffd" in proc.stderr
+    proc = _esegui_a_flusso(cmd, "", str(tmp_path), dict(os.environ), 10, lambda r: None)
+    assert "usage limit" in proc.stdout and "\ufffd" in proc.stdout
+
+
+def test_esegui_a_flusso_result_poi_appeso_restituisce_la_risposta(tmp_path):
+    """R-781-1-M2: riga result arrivata, poi processo appeso → ucciso al timeout ma la
+    risposta (già pagata) si usa, niente TimeoutExpired."""
+    cmd = _script(tmp_path, "import json, time\n"
+                            "print(json.dumps({'type': 'result', 'ok': 1}), flush=True)\n"
+                            "time.sleep(30)\n")
+    proc = _esegui_a_flusso(cmd, "", str(tmp_path), dict(os.environ), 1.0, lambda r: None)
+    assert proc.returncode != 0 and json.loads(proc.stdout) == {"type": "result", "ok": 1}
