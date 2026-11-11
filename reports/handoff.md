@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #376 (https://github.com/Gasss23/Gas/pull/376). Tocca la macchina di controllo (gate, hook, CI): con il bot «neutral» o con riserve decide l'operatore, via M1. Revisore APPROVATO (#767-M1, #768-M1). Bot su 078ad0a: APPROVATO CON RISERVE, check neutral, nessuna ALTA/MEDIA; la sua V-1 BASSA è corretta in 6272544.
+1. Nessuna: l'operatore ha detto «mergia tutte» (riferito da M1, 11 nov), vale per la PR #376 (https://github.com/Gasss23/Gas/pull/376). La mergia l'agente dopo il merge di main, con CI e bot verdi senza ALTA/MEDIA, nell'ordine deciso da M1 (dopo #372-#374 di M2, prima della #375).
 
 ---
 
@@ -16,6 +16,7 @@
 - **B2 MEDIA — maiuscole in `tocca_macchina_bot` e `_nel_perimetro`**: `FATTA` — casefold; stesso bug trovato e corretto in `.claude/hooks/review_gate.sh` (grep -i, `GIT_ICASE_PATHSPECS=1`).
 - **B4 BASSA — `sottofondo-ferma` fuori dalla cartella di Gas**: `FATTA` — errore con la cartella da usare, exit 1.
 - **S1 — `ci.yml` senza `permissions`**: `FATTA` — `permissions: contents: read`.
+- **Merge di origin/main 0ef0b5c (#372, #373, #374 di M2)**: `FATTA` — nessun codice cambiato rispetto ai due lati, review #787-M3 APPROVATO; sottofondo+gasmerge+hooks+verifica_bot+handoff_check+gate 1940 passed, kernel 1137 PASS 0 FAIL.
 - **Bot #376 (078ad0a) e verifica esterna #376**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA (https://github.com/Gasss23/Gas/pull/376#issuecomment-6784648609). V-1 BASSA comune (B2 incompleto: il promemoria «FILE DI MOTORE» di gasmerge distingueva le maiuscole): `FATTA` in 6272544 (`shopt -s nocasematch` attorno al ciclo, test), review #768-M1 APPROVATO. V-3 cosmetica (docstring di un test hooks) corretta; V-2 cosmetica (§2 «17 +-») corretta qui sotto.
 
 ---
@@ -23,29 +24,31 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  4 +
- .claude/hooks/review_gate.sh       |  6 +-
- .github/workflows/ci.yml           |  5 +
- modules/sottofondo/__init__.py     |  7 +
- reports/diff_sessione.md           | 19 +-
+ .claude/agents/memoria_revisore.md |   5 +
+ .claude/hooks/review_gate.sh       |   6 +-
+ .github/workflows/ci.yml           |   5 +
+ modules/sottofondo/__init__.py     |   7 +
+ reports/diff_sessione.md           |  20 +-
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |  4 +-
- reports/ultimo_report.md           | 20 +-
- scripts/bot_esito.py               | 10 +-
- scripts/check_verdetto.py          |  5 +-
- scripts/gasmerge.sh                | 17 +-
- tests/test_unit_gasmerge.py        | 63 +
- tests/test_unit_handoff_check.py   |  3 +
- tests/test_unit_hooks.py           | 19 +
- tests/test_unit_sottofondo.py      | 17 +
- tests/test_unit_verifica_bot.py    |  2 +
+ reports/stato_progetto.md          |   4 +-
+ reports/ultimo_report.md           |  23 +-
+ scripts/bot_esito.py               |  10 +-
+ scripts/check_verdetto.py          |   5 +-
+ scripts/gasmerge.sh                |  17 +-
+ tests/test_unit_gasmerge.py        |  63 +
+ tests/test_unit_handoff_check.py   |   3 +
+ tests/test_unit_hooks.py           |  19 +-
+ tests/test_unit_sottofondo.py      |  17 +
+ tests/test_unit_verifica_bot.py    |   2 +
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta. BASE = e3eb542.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta. BASE = 0ef0b5c (merge-base con origin/main dopo il merge di #372-#374).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+902eedce Merge origin/main (#372, #373, #374 di M2) nella PR #376 — review #787-M3
+3f305e98 docs(fine-task): audit 11 nov — bot/verifica esterna #376, correzione V-1 (M3)
 62725449 fix(audit 11 nov): bot #376 V-1 — promemoria «FILE DI MOTORE» di gasmerge senza maiuscole (M3)
 0d5ab5b7 chore(revisore): memoria review #768 — APPROVATO
 078ad0a7 docs(fine-task): audit 11 nov B1/B2/B4/S1, PR #376 (M3)
@@ -58,7 +61,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 8eb21c0: due giri, #766-M1 (BOCCIATO) → #767-M1 (APPROVATO). Commit 6272544 (bot #376 V-1): #768-M1 (APPROVATO). Verdetti integrali.
+Commit 8eb21c0: due giri, #766-M1 (BOCCIATO) → #767-M1 (APPROVATO). Commit 6272544 (bot #376 V-1): #768-M1 (APPROVATO). Merge 902eedc: #787-M3 (APPROVATO). Verdetti integrali.
 
 ### Review #766-M1
 
@@ -151,6 +154,28 @@ Non ho eseguito il codice col bash 3.2 di macOS: qui non c'è. Che `nocasematch`
 
 Ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga `#768-M1 — 2026-11-11 — APPROVATO — … — nessuna lezione nuova`. Ho poi lanciato `scripts/commit_memoria_revisore.sh`, che non ha stampato nulla; `git status` non mostra più quel file come modificato. Il diff sotto review è intatto nel working tree: `scripts/gasmerge.sh`, `tests/test_unit_gasmerge.py` e `tests/test_unit_hooks.py` risultano ancora modificati.
 
+### Review #787-M3 (merge di origin/main 0ef0b5c)
+
+## VERDETTO: APPROVATO
+
+Ho controllato il merge in stage di origin/main 0ef0b5c (PR #372, #373 e #374 di M2) dentro feat/r7-direttore-m3 (PR #376). Tutte e tre le verifiche richieste tornano.
+
+1. **Codice arrivato da main: identico a MERGE_HEAD.** `git diff --cached MERGE_HEAD --stat` su gas.py, brains, clients, modules/voice, scripts/voce e i test kernel/claude_cli/voce_ascolto/voice_* non dà output.
+2. **File della #376: identici a HEAD.** Il diff contro HEAD su scripts/gasmerge.sh, scripts/bot_esito.py, scripts/check_verdetto.py, .claude/hooks/review_gate.sh, .github/workflows/ci.yml e modules/sottofondo è vuoto.
+3. **Conflitti risolti senza perdite.**
+   - `git ls-files -u` è vuoto, `git diff --cached --check` è pulito e non c'è nessun marcatore di conflitto.
+   - In .claude/agents/memoria_revisore.md non manca nessuna riga, né rispetto a HEAD né rispetto a MERGE_HEAD.
+   - reports/stato_progetto.md non perde righe rispetto a MERGE_HEAD. Rispetto a HEAD ne cambia una sola: la riga della PR #368, sostituita dalla versione aggiornata di main. In più entra la voce della PR #371.
+
+Citazioni (file della #376, identici a HEAD):
+- `scripts/gasmerge.sh:82` — sceglie il comando di timeout nell'ordine timeout, poi gtimeout, poi perl che fa da padre al comando (esce con 124 allo scadere) — rischio esaminato: che il merge abbia alterato questa parte — esito: ok, diff contro HEAD vuoto.
+- `scripts/bot_esito.py:210` — confronto senza maiuscole dei nomi e dei percorsi che appartengono alla macchina del bot — rischio esaminato: che la versione di main sovrascriva la modifica della #376 — esito: ok, la PR #372, #373 e #374 non toccano questo file.
+- `modules/sottofondo/__init__.py:276` — se la cartella della coda manca e non siamo nella cartella di Gas, restituisce un errore invece del falso «nessun compito» — rischio esaminato: che il merge interferisca con questa logica — esito: ok, identico a HEAD, e i moduli voce arrivati da main non lo importano.
+
+Rischio escluso: non ho rieseguito i test. I risultati (1940 passed sulle suite sottofondo, gasmerge, hooks, verifica_bot, handoff_check e gate; kernel 1137 PASS, 0 FAIL) sono dichiarati da te. Il merge non cambia codice rispetto a nessuno dei due lati già revisionati, quindi il rischio è basso.
+
+Memoria: ho aggiunto in coda a .claude/agents/memoria_revisore.md la riga contatore `#787-M3 — 2026-11-11 — APPROVATO — …` e l'ho messa in stage (stato M; non ho lanciato lo script di commit perché siamo dentro un merge). Ho scelto io il numero, partendo dal più alto presente (#786): se la tua numerazione prevede un altro numero, correggilo prima del commit.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Senza le correzioni (stash): 8 test falliscono in gasmerge/verifica_bot/handoff_check/sottofondo (`8 failed, 883 passed`); il test hook delle maiuscole (3 casi) e quello del file non tracciato falliscono senza il fix dell'hook; il vecchio ripiego `alarm; exec` dava rc 0 dopo 4 s su un figlio che ignora SIGALRM.
@@ -163,15 +188,16 @@ Ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga `#768-M1 — 
 
 ## §6 STATO CI
 
-Check della PR #376 letti alla scrittura dell'handoff, head 078ad0a (prima del push di questo giro): `handoff-check` success; `verifica-bot` neutral (PR sulla macchina del bot, verdetto APPROVATO CON RISERVE senza ALTA/MEDIA); `unit-suite` (run 42941195559) in corso secondo la verifica esterna, esito finale non letto.
+Su 3f305e9 (head prima del push di questo giro): CI completata senza fallimenti (evento check_suite.completed delle 02:06 dell'11 nov: nessuna suite in errore; `handoff-check` success), bot APPROVATO CON RISERVE con check `verifica-bot` neutral, verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/376#issuecomment-6784746339).
 
 Mappatura commit→run:
-- 078ad0a: run 42941195559 (CI) e run del bot su quello SHA.
-- 8eb21c0, a3e0042, c2f8b03: nessuna run su questi SHA (pushati insieme a 078ad0a).
-- 0d5ab5b, 6272544: nessuna run su questi SHA (escono col push di questo giro).
-- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
+- 3f305e9: run 42942230185 (CI) e run del bot su quello SHA.
+- 078ad0a: run 42941195559 (CI) e run del bot.
+- 8eb21c0, a3e0042, c2f8b03, 0d5ab5b, 6272544: nessuna run su questi SHA (pushati insieme ai commit di fine-task).
+- 902eedc e commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- Bot e verifica esterna su 3f305e9 (BASSE): il ripiego perl uccide solo il figlio diretto; `ferma()` riconosce la cartella di Gas dalla presenza di `gas.py`.
 - Limite noto (BASSA, #767-M1): il ripiego perl uccide solo il figlio diretto (gh pr checks non lancia sotto-processi).
 - Non verificato: macOS reale (perl di sistema, bash 3.2 con nocasematch, gh vero in `--watch`), esito finale di unit-suite coi nuovi permessi.
