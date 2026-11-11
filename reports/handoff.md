@@ -22,15 +22,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 +++
- clients/voice/ascolto.py           |  39 ++++++++++++++++++++++++
- reports/diff_sessione.md           |  18 +++++-------
+ .claude/agents/memoria_revisore.md |   5 +++
+ clients/voice/ascolto.py           |  42 +++++++++++++++++++++++++
+ reports/diff_sessione.md           |  18 +++++------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  24 ++++++---------
- scripts/voce/LEGGIMI.md            |   4 +++
- scripts/voce/diagnosi_ascolto.py   |  63 +++++++++++++++++++++++++++++++++++++--
- tests/test_unit_voce_ascolto.py    |  92 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  25 ++++++---------
+ scripts/voce/LEGGIMI.md            |   5 +++
+ scripts/voce/diagnosi_ascolto.py   |  63 ++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_voce_ascolto.py    |  92 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -38,6 +38,10 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0017ea72 docs(fine-task): handoff #377 dopo V-1/V-2 del bot
+f4a5a64f docs(voce): perimetro della riga «quasi sentita» dichiarato (bot #377 V-1/V-2) — review #793-M1coord
+07c65023 chore(revisore): memoria review #793 — APPROVATO
+7966abf4 docs(fine-task): §2/§3 handoff #377
 f99e1eda docs(fine-task): handoff #377 dopo il fix di bot V-1
 6072471f test(voce): la guardia della soglia bassa ora è provata davvero (bot #377 V-1) — review #792-M1coord
 7504f44a chore(revisore): memoria review #792 — APPROVATO
