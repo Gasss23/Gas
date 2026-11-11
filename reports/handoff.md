@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #375 (https://github.com/Gasss23/Gas/pull/375).
+1. Merge della PR #375 (già autorizzato: «mergia tutte») (https://github.com/Gasss23/Gas/pull/375).
 2. Effetto della regola: anche un `ricorda` usato solo per la conoscenza caricata manda il turno al forte. Va bene così? sì/no
 
 ---
@@ -24,15 +24,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- gas.py                             | 324 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------
- modules/memory/store.py            |  17 +++++++++++------
- reports/diff_sessione.md           |  10 +++++-----
+ .claude/agents/memoria_revisore.md |   6 +++
+ gas.py                             | 324 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------
+ modules/memory/store.py            |  17 +++++---
+ reports/diff_sessione.md           |  19 +++-----
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  22 +++++++++++-----------
- tests/test_unit_kernel.py          | 372 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- tests/test_unit_notte.py           |  10 +++++++---
+ reports/stato_progetto.md          |   3 +-
+ reports/ultimo_report.md           |  22 +++++-----
+ tests/test_unit_kernel.py          | 372 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ tests/test_unit_notte.py           |  10 +++--
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -40,6 +40,8 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+366cfcc7 Merge origin/main (#371-#374, #376) nella #375 — review #788-M1coord APPROVATO
+9ca898bd docs(fine-task): handoff #375 dopo il fix di bot/ve #375
 96092c7e fix(kernel): blocco dei nomi fail-closed con contatti illeggibili, traslitterazione, avviso del forte (bot/ve #375)
 5e5a3bb7 docs(fine-task): blocco esteso dei nomi (R-753-M1-A)
 863ca51c feat(kernel): blocco esteso dei nomi — dati dei clienti mai ai cervelli gratuiti (chiude R-753-M1-A)
@@ -161,13 +163,38 @@ Esecuzioni: suite kernel **1162 PASS, 0 FAIL** (rieseguita); `test_unit_notte -k
 
 **Memoria**: ho aggiunto la riga `#768-M1coord — 2026-11-11 — APPROVATO CON RISERVE — …` in /home/user/Gas/.claude/agents/memoria_revisore.md, dopo la #767 del primo giro, e l'ho messa in stage (git add). Nessuna lezione nuova. Non ho lanciato commit_memoria_revisore.sh.
 
+### Review #788-M1coord (merge di origin/main 9844b1f nella #375, commit 366cfcc7)
+
+## VERDETTO: APPROVATO
+
+Review #788-M1coord — merge di origin/main 9844b1f (#371, #372, #373, #374, #376) nella PR #375 (branch feat/merge-automatico-z1xjx2).
+
+**Verifiche meccaniche**: nessun conflitto residuo (`git ls-files -u` vuoto, `--check` pulito, nessun marcatore in gas.py/test kernel/stato_progetto/memoria); gas.py parsa (`ast.parse` ok). Per gas.py e tests/test_unit_kernel.py il merge automatico non ha perso nessun lato: il diff rispetto a HEAD coincide riga per riga col diff base..MERGE_HEAD (le modifiche di main), e quello rispetto a MERGE_HEAD col diff base..HEAD (le modifiche della #375).
+
+**Elementi del diff esaminati**
+- gas.py:5435 — il callback `su_testo_voce` (#374) arriva solo a `ClaudeCliClient` (il forte), e solo se `voce`. Rischio: anticipo voce a un modello gratuito o da un turno con dati di clienti. I rami gratuiti creano `OpenAI(...)` senza callback → ok.
+- gas.py:5340 — il blocco esteso dei nomi (#375) forza `compito="forte"` prima di costruire la coda dei provider. Rischio: turno voce con dati di clienti. Il forte riceve comunque l'anticipo voce, corretto perché il forte può vedere i dati → ok.
+- gas.py:5451 e gas.py:5736 — al passaggio a metà turno verso il forte per dati di clienti i provider rimanenti sono sostituiti da `_cascata_provider("forte")`; `voce`/`su_testo_voce` restano attivi, quindi l'anticipo parte solo dal forte. Forte assente → errore dichiarato prima di qualunque chiamata streaming, nessun anticipo → ok.
+- gas.py:5684 — l'avviso «risposta dal cervello forte: … dati di clienti» si aggiunge dopo `_info_ripiego` (#374) senza toccarne gli altri campi; solo testo (`avviso_ripiego` non compare in modules/voice/server.py) → ok.
+- modules/voice/server.py:972 (contesto) — il server voce passa `kw["su_testo_voce"]`; dopo il merge la firma di `run_turn` lo accetta (gas.py:5201) e `ClaudeCliClient` accetta `su_testo` (brains/claude_cli.py:551) → ok.
+
+**Report e memoria**: memoria_revisore.md non perde righe né rispetto a HEAD né a MERGE_HEAD; stato_progetto.md: rispetto a MERGE_HEAD cambia solo la riga «Decisioni 2026-11-10» (versione #375), rispetto a HEAD solo le righe di main (incluso «Audit 11 nov»).
+
+**Test rieseguiti**: `python tests/test_unit_kernel.py` → 1164 PASS, 0 FAIL (inclusi T115e2/T115e3); `pytest tests/test_unit_claude_cli.py` → 77 passed. Non rieseguita la suite completa (dichiarata 3994 passed, 33 failed in test_unit_web_browser).
+
+**Non verificato**: tests/test_unit_voice_server.py e i 33 fallimenti di test_unit_web_browser (attribuiti all'ambiente); anticipo voce dal vivo con `claude -p` reale insieme al blocco dei nomi (serve Mac/VPS).
+
+Nessuna lezione nuova; riga contatore #788-M1coord aggiunta in .claude/agents/memoria_revisore.md.
+
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1135 PASS / 0 FAIL (main e3eb542) → 1157 PASS / 0 FAIL (863ca51c) → 1162 PASS / 0 FAIL (96092c7e, rilanciato da M1; T115c8 e T115c11 falliscono senza il fix).
+- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1135 PASS / 0 FAIL (main e3eb542) → 1157 PASS / 0 FAIL (863ca51c) → 1162 PASS / 0 FAIL (96092c7e, rilanciato da M1; T115c8 e T115c11 falliscono senza il fix) → 1164 PASS / 0 FAIL (366cfcc7, dopo il merge di main).
+- Suite pytest completa dopo il merge (366cfcc7): 3994 passed, 2 skipped, 33 failed tutti in tests/test_unit_web_browser.py, che fallisce identico (33 failed) su origin/main 9844b1f in questo container (browser assente: ambiente, non il merge).
 - `python -m pytest -q tests/test_unit_telegram_voce.py tests/test_unit_notte.py tests/test_unit_sottofondo.py tests/test_unit_gate.py tests/test_unit_manutenzione.py tests/test_unit_voice_server.py tests/test_unit_voce_ascolto.py -k "not browser"` → 1758 passed, 34 deselected (rilanciato da M1 anche dopo 96092c7e).
 
 ```
-=== RIEPILOGO: 1162 PASS, 0 FAIL ===
+=== RIEPILOGO: 1164 PASS, 0 FAIL ===
 ```
 
 Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed embedding nel container).
@@ -177,7 +204,8 @@ Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed e
 CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumento GitHub sulla PR #375:
 - 5e5a3bb7: handoff-check success; verifica-bot failure (V-1 MEDIA, chiusa in 96092c7e).
 - 863ca51c: nessuna run propria (pushato insieme a 5e5a3bb7).
-- 96092c7e e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- 9ca898bd: unit-suite, handoff-check e verifica-bot success (letti con lo strumento GitHub sulla PR #375).
+- 366cfcc7 (merge di main) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

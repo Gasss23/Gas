@@ -17,3 +17,6 @@ Kernel 1135 → 1157 → 1162 PASS / 0 FAIL (T115a-e e round-trip; 18 mutanti uc
 
 ## Anomalie
 Nessuna. Non provato: passaggio al `claude -p` vero sul Mac a metà turno.
+
+## Aggiornamento 2026-11-11 sera
+Merge di origin/main 9844b1f (#371-#374, #376) nella #375 (commit 366cfcc7), review #788-M1coord APPROVATO. Kernel 1164 PASS / 0 FAIL; pytest 3994 passed, 33 failed solo in test_unit_web_browser (identici su main: ambiente).

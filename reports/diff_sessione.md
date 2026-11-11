@@ -7,3 +7,6 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 - `tests/test_unit_kernel.py`: T115a-e, round-trip, `forte_finto` negli helper per i round-trip con ricorda/salva_contatto.
 - `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md`: R-753-M1-A chiusa, riserve R-766-1..4, riga #766-M1coord.
 - `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: report di fine sessione.
+
+## Merge di main (2026-11-11 sera)
+Commit 366cfcc7: unione di origin/main 9844b1f nella #375; conflitti solo nei report (stato_progetto: aggiunta riga «Audit 11 nov»; memoria_revisore: unione). Review #788-M1coord APPROVATO.
