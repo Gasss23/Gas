@@ -1092,6 +1092,18 @@ def test_segno_di_arresto_blocca_la_ripresa(tmp_path, monkeypatch, _niente_ripre
 
 
 def test_ferma_senza_compito(tmp_path):
+    (tmp_path / sf.CARTELLA).mkdir()
+    assert sf.ferma(tmp_path) == (True, "Nessun compito in sottofondo in corso.")
+
+
+def test_ferma_fuori_dalla_cartella_di_gas(tmp_path):
+    """Audit 11 nov B4: senza la coda (lanciato da un'altra cartella) niente «nessun compito»
+    falso: errore che dice dove lanciarlo."""
+    ok, frase = sf.ferma(tmp_path)
+    assert not ok and "cartella di Gas" in frase and str(tmp_path.resolve()) in frase
+    assert not (tmp_path / sf.CARTELLA).exists()
+    # review #766-M1: nella cartella di Gas dove non è mai partito un compito, niente errore
+    (tmp_path / "gas.py").write_text("")
     assert sf.ferma(tmp_path) == (True, "Nessun compito in sottofondo in corso.")
 
 
@@ -1140,6 +1152,11 @@ def test_ripresa_negata_oltre_la_durata_dalla_prima_creazione(tmp_path, monkeypa
 def test_comando_sottofondo_ferma(tmp_path):
     import subprocess as sp
     gas_py = Path(__file__).resolve().parents[1] / "gas.py"
+    r = sp.run([sys.executable, str(gas_py), "sottofondo-ferma"], cwd=str(tmp_path),
+               capture_output=True, text=True, timeout=120)
+    # audit 11 nov B4: da una cartella senza coda → uscita 1 e indicazione di dove lanciarlo
+    assert r.returncode == 1 and "cartella di Gas" in r.stdout and "Traceback" not in r.stderr
+    (tmp_path / sf.CARTELLA).mkdir()
     r = sp.run([sys.executable, str(gas_py), "sottofondo-ferma"], cwd=str(tmp_path),
                capture_output=True, text=True, timeout=120)
     assert r.returncode == 0 and "Nessun compito" in r.stdout and "Traceback" not in r.stderr

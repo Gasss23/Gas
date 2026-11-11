@@ -357,7 +357,8 @@ VOCI_CABLATE
   # possono entrare nel commit DOPO questo controllo (`commit -a`, pathspec,
   # `add && commit`). Fail-closed: il commit si fa solo con il motore tutto in
   # stage (e revisionato) oppure tutto pulito.
-  WT_OUT=$(git status --porcelain --no-renames --untracked-files=all -- "${PERIM_PATHS[@]}" 2>/dev/null)
+  # Audit 11 nov B2 / review #766-M1: pathspec senza maiuscole (GAS.py non tracciato su Linux)
+  WT_OUT=$(GIT_ICASE_PATHSPECS=1 git status --porcelain --no-renames --untracked-files=all -- "${PERIM_PATHS[@]}" 2>/dev/null)
   WT_RC=$?
   if [ "$WT_RC" -ne 0 ]; then
     echo "BLOCCATO (gate review): 'git status' fallito in '$REPO' (exit $WT_RC) — fail-closed." >&2
@@ -367,7 +368,8 @@ VOCI_CABLATE
     echo "BLOCCATO (gate review): in '$REPO' ci sono modifiche NON in stage (o file non tracciati) nel perimetro di review (.claude/perimetro_review.txt). Mettile in stage e falle revisionare, oppure mettile da parte (git stash), poi riprova." >&2
     exit 2
   fi
-  if ! printf '%s\n' "$DIFF_OUT" | grep -qE "$PERIM_RE"; then
+  # Audit 11 nov B2: senza maiuscole (disco del Mac case-insensitive: GAS.py è gas.py)
+  if ! printf '%s\n' "$DIFF_OUT" | grep -qiE "$PERIM_RE"; then
     exit 0   # nessun file del perimetro in stage in questo checkout
   fi
 

@@ -152,7 +152,10 @@ def _carica_perimetro(path: Path = PERIMETRO_FILE, repo: Path | None = None,
 
 
 def _nel_perimetro(f: str, perimetro: list[str]) -> bool:
-    return any(f.startswith(v) if v.endswith("/") else f == v for v in perimetro)
+    # Audit 11 nov B2: senza maiuscole (disco del Mac case-insensitive: `GAS.py` è gas.py)
+    f = f.casefold()
+    return any(f.startswith(v.casefold()) if v.endswith("/") else f == v.casefold()
+               for v in perimetro)
 
 
 def _contabile(path: str) -> bool:

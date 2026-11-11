@@ -23,7 +23,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import List, Dict, Any, Generator, Optional, Tuple
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 from openai import OpenAI
 from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CONTATTO, normalizza_chiave
 from modules.memory import now_iso_da
@@ -5197,7 +5197,13 @@ class GasKernel:
                  cervello: Optional[str] = None,
                  istruzione_turno: Optional[str] = None,
                  effimero: bool = False,
-                 voce: bool = False) -> Generator[Dict[str, Any], None, None]:
+                 voce: bool = False,
+                 su_testo_voce: Optional[Callable[[str, bool], None]] = None
+                 ) -> Generator[Dict[str, Any], None, None]:
+        # Voce rapida (chat M2, 11 nov): `su_testo_voce(testo, finito)` riceve in anticipo il
+        # testo della risposta finale mentre il cervello forte (claude -p) la scrive, così il
+        # server voce prepara la prima frase. Solo nei turni a voce e solo col forte; è un
+        # anticipo, la risposta del turno resta quella dell'evento «final».
         # V3 voce (chat M2): `istruzione_turno` vale SOLO per questo turno: va in coda al
         # messaggio system (come i pin), fuori dalla finestra e dalla cronologia.
         # V15 voce (chat M2, decisione dell'operatore 5 nov, R-675-1-M2): `effimero` = turno
@@ -5427,7 +5433,9 @@ class GasKernel:
                 payload: List[Dict[str, Any]] = []
                 try:
                     client = (ClaudeCliClient(timeout=self.CLAUDE_CLI_TIMEOUT_SEC,
-                                              **({"effort": _effort} if _effort else {}))
+                                              **({"effort": _effort} if _effort else {}),
+                                              **({"su_testo": su_testo_voce}
+                                                 if voce and su_testo_voce else {}))
                               if name == "claude-cli" else
                               OpenAI(base_url=url, api_key=os.environ.get(env),
                                      timeout=self._timeout_provider(name),

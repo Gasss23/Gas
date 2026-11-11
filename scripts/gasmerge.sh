@@ -74,7 +74,18 @@ echo "--- CHECK CI ---"
 # restare appesi all'infinito. set +e/-e locale per catturare l'exit code
 # senza far terminare lo script su un exit non-zero prima del case sotto.
 set +e
-timeout 900 gh pr checks "$PR" --watch --fail-fast --interval 10
+# Audit 11 nov B1: `timeout` non esiste su macOS (rc 127 → gasmerge inutilizzabile dal Mac):
+# timeout (Linux) → gtimeout (coreutils di Homebrew) → perl (sempre presente su macOS).
+# Review #766-M1: perl fa da PADRE e uccide il figlio allo scadere (gh è un binario Go, che
+# ignora SIGALRM: un semplice `alarm; exec` non lo fermerebbe). Esce 124 come timeout(1),
+# altrimenti col codice del figlio; comando non avviabile → 127.
+if command -v timeout >/dev/null 2>&1; then TMO=(timeout 900)
+elif command -v gtimeout >/dev/null 2>&1; then TMO=(gtimeout 900)
+else TMO=(perl -e 'my $t=shift; my $p=fork; exit 127 unless defined $p;
+  if(!$p){exec @ARGV or exit 127}
+  $SIG{ALRM}=sub{kill "TERM",$p; sleep 2; kill "KILL",$p; waitpid $p,0; exit 124};
+  alarm $t; waitpid $p,0; exit($? & 127 ? 128+($? & 127) : $? >> 8)' 900); fi
+"${TMO[@]}" gh pr checks "$PR" --watch --fail-fast --interval 10
 CI_RC=$?
 set -e
 case "$CI_RC" in
@@ -221,6 +232,9 @@ git cat-file -e "refs/remotes/origin/main:.claude/perimetro_review.txt" 2>/dev/n
   || git cat-file -e "$HEAD_SHA:.claude/perimetro_review.txt" 2>/dev/null \
   || PERIM_LETTO=0
 ENGINE=""
+# Bot #376 V-1: confronto col perimetro senza maiuscole (disco del Mac case-insensitive:
+# GAS.py è gas.py). nocasematch esiste anche nel bash 3.2 di macOS (al contrario di ${f,,}).
+shopt -s nocasematch
 # R-167-1: anche qui `read` in C (stessa classe del gate IP: un path che finisce con un
 # byte non UTF-8 si mangerebbe il newline e il file di motore seguente).
 while IFS= LC_ALL=C read -r f; do
@@ -233,6 +247,7 @@ while IFS= LC_ALL=C read -r f; do
     esac
   done <<< "$PERIM_VOCI"
 done <<< "$ENGINE_DIFF"
+shopt -u nocasematch
 if [ "$PERIM_LETTO" -eq 0 ]; then
   echo "ATTENZIONE: .claude/perimetro_review.txt illeggibile su main e sul branch — ogni file conta come motore"
 fi

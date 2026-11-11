@@ -816,6 +816,8 @@ class TestMacchinaBot:
         [".claude.json"],
         [".gitattributes"],                              # G-5 #130: -diff nasconde file
         ["modules/.gitattributes"],
+        [".Claude/hooks/x.sh"], ["modules/claude.md"],   # audit 11 nov B2: Mac case-insensitive
+        [".GITHUB/workflows/ci.yml"],
         [],                                              # elenco illeggibile
         ["gas.py"] * be.MAX_FILE_API,                    # elenco troncato
     ])

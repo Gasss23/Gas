@@ -44,8 +44,11 @@ import os
 import re
 import secrets
 import shutil
+import signal
 import subprocess
 import tempfile
+import threading
+import time
 import uuid
 from types import SimpleNamespace
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -63,11 +66,12 @@ _ENV_PERMESSE = frozenset({
     "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy",
 })
 
-# Risposta obbligata: testo finale oppure chiamate agli strumenti di Gas.
+# Risposta obbligata: testo finale oppure chiamate agli strumenti di Gas. Voce rapida (chat
+# M2, 11 nov): «chiamate» PRIMA di «testo» (l'ordine guida quello in cui Claude scrive), così
+# chi legge a pezzi sa subito se il testo è la risposta finale (`"chiamate": []`).
 SCHEMA_RISPOSTA: Dict[str, Any] = {
     "type": "object",
     "properties": {
-        "testo": {"type": "string"},
         "chiamate": {
             "type": "array",
             "items": {
@@ -79,8 +83,9 @@ SCHEMA_RISPOSTA: Dict[str, Any] = {
                 "required": ["nome", "argomenti"],
             },
         },
+        "testo": {"type": "string"},
     },
-    "required": ["testo", "chiamate"],
+    "required": ["chiamate", "testo"],
 }
 
 # Solo il limite dell'abbonamento è QUOTA; «prompt/context limit» resta errore (R-492-2).
@@ -287,8 +292,240 @@ def _effort_rifiutato(proc: subprocess.CompletedProcess) -> bool:
 
 def _esegui(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
             timeout: float) -> subprocess.CompletedProcess:
+    # B3 audit notturno 2 (M1): un byte non UTF-8 della CLI (locale di launchd) non deve
+    # diventare UnicodeDecodeError (niente costo né riconoscimento di limite/login)
     return subprocess.run(cmd, input=stdin, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace",
                           cwd=cwd, env=env, timeout=timeout, check=False)
+
+
+# ── Voce rapida (chat M2, 11 nov, M1 per l'operatore: «streaming della prima frase») ──
+# Nei turni a voce il testo della risposta arriva a pezzi (`--output-format stream-json
+# --include-partial-messages`): il server voce può preparare la voce della prima frase
+# mentre la CLI finisce. Il turno resta IDENTICO: la riga finale `result` ha gli stessi campi
+# dell'uscita json e passa dalla stessa `_risposta` (schema, chiamate, costo, errori). Il testo
+# a pezzi è solo un ANTICIPO: chi lo usa deve confrontarlo con la risposta finale del turno.
+_INIZIO_TESTO = re.compile(r'\s*\{\s*"chiamate"\s*:\s*\[\s*\]\s*,\s*"testo"\s*:\s*"')
+_STRUMENTO_SCHEMA = "StructuredOutput"  # lo strumento con cui la CLI dà il JSON dello schema
+
+
+def _stringa_parziale(s: str) -> Tuple[Optional[str], bool]:
+    """Decodifica l'inizio di una stringa JSON (senza la virgoletta d'apertura) che può essere
+    ancora incompleta. → (testo decodificato fin dove è completo, stringa finita?). Un escape
+    non valido → (None, True): da qui in poi niente anticipo."""
+    i, n, fine = 0, len(s), None
+    while i < n:
+        c = s[i]
+        if c == '"':
+            fine = i
+            break
+        if c != "\\":
+            i += 1
+            continue
+        if i + 1 >= n:
+            break
+        if s[i + 1] == "u":
+            if i + 6 > n:
+                break
+            i += 6
+        else:
+            i += 2
+    corpo = s[:fine if fine is not None else i]
+    try:
+        testo = json.loads('"' + corpo + '"')
+    except ValueError:
+        return None, True
+    if fine is None and testo and "\ud800" <= testo[-1] <= "\udbff":
+        testo = testo[:-1]  # metà di una coppia surrogata: si aspetta l'altra metà
+    return testo, fine is not None
+
+
+class _TestoInArrivo:
+    """Legge le righe stream-json della CLI e passa a `su_testo(testo, finito)` il campo
+    «testo» della risposta mentre arriva. SOLO se la risposta comincia con `"chiamate": []`
+    (nessuno strumento da chiamare: è la risposta finale); altrimenti tace. Ogni errore,
+    anche di `su_testo`, spegne l'anticipo e basta (§9: il turno non ne risente)."""
+
+    def __init__(self, su_testo: Callable[[str, bool], None]) -> None:
+        self._su_testo = su_testo
+        self._dentro = False
+        self._json = ""
+        self._spento = False
+        self._detto: Optional[str] = None
+
+    def riga(self, linea: str) -> None:
+        if self._spento:
+            return
+        try:
+            self._leggi(linea)
+        except Exception as exc:  # §9: l'anticipo non deve mai rompere il turno
+            self._spento = True
+            logging.warning("claude-cli: anticipo del testo spento (%s)", type(exc).__name__)
+
+    def _leggi(self, linea: str) -> None:
+        try:
+            ev = json.loads(linea)
+        except ValueError:
+            return
+        if not isinstance(ev, dict) or ev.get("type") != "stream_event":
+            return
+        e = ev.get("event")
+        if not isinstance(e, dict):
+            return
+        tipo = e.get("type")
+        if tipo == "content_block_start":
+            blocco = e.get("content_block") if isinstance(e.get("content_block"), dict) else {}
+            self._dentro = (blocco.get("type") == "tool_use"
+                            and blocco.get("name") == _STRUMENTO_SCHEMA)
+            if self._dentro and self._detto is not None:
+                self._spento = True  # una seconda risposta strutturata: niente anticipo
+            self._json = ""
+        elif tipo == "content_block_stop":
+            self._dentro = False
+        elif tipo == "content_block_delta" and self._dentro:
+            delta = e.get("delta") if isinstance(e.get("delta"), dict) else {}
+            if delta.get("type") == "input_json_delta":
+                self._json += str(delta.get("partial_json") or "")
+                self._aggiorna()
+
+    def _aggiorna(self) -> None:
+        m = _INIZIO_TESTO.match(self._json)
+        if m is None:
+            # ancora troppo corto per decidere? se non può più diventare l'inizio atteso, stop
+            if len(self._json) > 80 or '"testo"' in self._json or (
+                    '"chiamate"' in self._json and re.search(r'\[\s*[^\s\]]', self._json)):
+                self._spento = True
+            return
+        testo, finito = _stringa_parziale(self._json[m.end():])
+        if testo is None:
+            self._spento = True
+            return
+        if testo != self._detto or finito:
+            self._detto = testo
+            self._su_testo(testo, finito)
+            if finito:
+                self._spento = True
+
+
+def _e_risultato(linea: str) -> bool:
+    try:
+        ev = json.loads(linea)
+    except ValueError:
+        return False
+    return isinstance(ev, dict) and ev.get("type") == "result"
+
+
+def _esegui_a_flusso(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
+                     timeout: float, su_riga: Callable[[str], None]) -> subprocess.CompletedProcess:
+    """Come `_esegui`, ma legge l'uscita riga per riga (stream-json) e la passa a `su_riga`.
+    Ritorna la riga `result` come stdout (gli stessi campi dell'uscita json); senza riga
+    `result` tutta l'uscita, così i controlli su limite e login restano quelli di sempre.
+    Tempo scaduto → il processo si uccide e si alza TimeoutExpired, come `subprocess.run`."""
+    # R-773-1-M2: gruppo di processi suo, così al timeout muoiono anche eventuali nipoti che
+    # terrebbero aperto lo stdout (la lettura aspetterebbe loro, oltre il timeout)
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                            errors="replace", cwd=cwd, env=env, start_new_session=True)
+    scaduto = threading.Event()
+
+    def uccidi_tutti() -> None:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except OSError:
+            proc.kill()
+
+    def uccidi() -> None:
+        scaduto.set()
+        uccidi_tutti()
+
+    timer = threading.Timer(timeout, uccidi)
+    timer.daemon = True
+    errori: List[str] = []
+
+    def scrivi() -> None:
+        try:
+            proc.stdin.write(stdin)
+            proc.stdin.close()
+        except (OSError, ValueError):
+            pass  # il figlio è già uscito: lo dirà il suo codice d'uscita
+
+    def leggi_errori() -> None:
+        errori.append(proc.stderr.read())
+
+    fili = [threading.Thread(target=scrivi, daemon=True),
+            threading.Thread(target=leggi_errori, daemon=True)]
+    timer.start()
+    righe: List[str] = []
+    risultato: Optional[str] = None
+    try:
+        for f in fili:
+            f.start()
+        for linea in proc.stdout:
+            righe.append(linea)
+            if _e_risultato(linea):
+                risultato = linea
+            su_riga(linea)
+        proc.wait()
+    finally:
+        timer.cancel()
+        if proc.poll() is None:
+            uccidi_tutti()
+            proc.wait()
+        for f in fili:
+            f.join(timeout=5)
+        for flusso in (proc.stdout, proc.stderr):  # R-773-3-M2: pipe chiuse subito
+            try:
+                if flusso is not None:
+                    flusso.close()
+            except OSError:
+                pass
+    if scaduto.is_set() and risultato is None:  # bot #374 V-2: result arrivata = finita
+        raise subprocess.TimeoutExpired(cmd, timeout)
+    return subprocess.CompletedProcess(cmd, proc.returncode,
+                                       stdout=risultato if risultato is not None else "".join(righe),
+                                       stderr="".join(errori))
+
+
+# Tempi interni del forte (M1, 11 nov: sul Mac il cervello a voce fa 6,5–7,7 s contro i
+# 2,4–2,9 s misurati nel cloud). Una riga INFO per processo in gas_debug.log, solo numeri:
+# avvio → prima riga, → primo testo, → fine, più i tempi che la CLI dichiara nella riga
+# `result` (avvio fino alla richiesta, primo token, durata dell'API) e i token d'ingresso.
+_log_tempi = logging.getLogger("gas.claude_cli.tempi")
+_log_tempi.setLevel(logging.INFO)
+# `fuori_cli` = tutto − durata dichiarata dalla CLI: avvio di node/Claude Code, login,
+# chiusura del processo (la parte che un processo caldo toglierebbe).
+_CAMPI_TEMPI_CLI = (("richiesta", "time_to_request_ms"), ("ttft", "ttft_ms"),
+                    ("api", "duration_api_ms"), ("cli", "duration_ms"))
+_TEMPO_CLI_MAX_MS = 3_600_000  # un valore assurdo non si scrive
+
+
+def _log_tempi_cli(t0: float, prima: Optional[float], primo_testo: Optional[float],
+                   proc: Any) -> None:
+    """§9: mai un errore da qui (è solo un registro)."""
+    try:
+        fine = time.monotonic()
+        parti = [f"tutto={fine - t0:.2f}s"]
+        if prima is not None:
+            parti.append(f"prima_riga={prima - t0:.2f}s")
+        if primo_testo is not None:
+            parti.append(f"primo_testo={primo_testo - t0:.2f}s")
+        try:
+            dati = json.loads(getattr(proc, "stdout", "") or "")
+        except ValueError:
+            dati = None
+        if isinstance(dati, dict):
+            for nome, chiave in _CAMPI_TEMPI_CLI:
+                v = dati.get(chiave)
+                if (isinstance(v, (int, float)) and not isinstance(v, bool)
+                        and 0 <= v <= _TEMPO_CLI_MAX_MS):
+                    parti.append(f"{nome}={v / 1000:.2f}s")
+                    if chiave == "duration_ms":
+                        parti.append(f"fuori_cli={fine - t0 - v / 1000:.2f}s")
+            entrata, uscita = _token(dati)
+            parti.append(f"token_in={entrata} token_out={uscita}")
+        _log_tempi.info("tempi claude-cli: %s", " ".join(parti))
+    except Exception as exc:  # noqa: BLE001 — un registro non rompe mai il turno
+        logging.warning("claude-cli: tempi non registrati (%s)", type(exc).__name__)
 
 
 class _Completions:
@@ -310,18 +547,27 @@ class ClaudeCliClient:
 
     def __init__(self, timeout: float = 300, binario: Optional[str] = None,
                  runner: Optional[Callable[..., subprocess.CompletedProcess]] = None,
-                 effort: Optional[str] = None) -> None:
+                 effort: Optional[str] = None,
+                 su_testo: Optional[Callable[[str, bool], None]] = None,
+                 runner_flusso: Optional[Callable[..., subprocess.CompletedProcess]] = None
+                 ) -> None:
         self.timeout = timeout
         self.effort = effort
         self.binario = binario or os.environ.get("GAS_CLAUDE_BIN") or shutil.which("claude") or "claude"
         self._runner = runner or _esegui
+        # Voce rapida: `su_testo(testo, finito)` riceve il testo della risposta finale mentre
+        # arriva (anticipo, vedi _TestoInArrivo); None = uscita json di sempre
+        self.su_testo = su_testo
+        self._runner_flusso = runner_flusso or _esegui_a_flusso
         self.chat = SimpleNamespace(completions=_Completions(self))
 
     def comando(self, model: str, file_sistema: str) -> List[str]:
         # Il system prompt (col pin dei lead) va in un file della cartella temporanea,
         # non negli argomenti visibili con `ps` (R-492-3). Niente server MCP né skill
         # dell'utente (R-492-1): `--tools ""` spegne solo gli strumenti integrati.
-        return [self.binario, "-p", "--output-format", "json",
+        uscita = (["--output-format", "stream-json", "--verbose", "--include-partial-messages"]
+                  if self.su_testo is not None else ["--output-format", "json"])
+        return [self.binario, "-p"] + uscita + [
                 "--json-schema", json.dumps(SCHEMA_RISPOSTA),
                 "--tools", "", "--setting-sources", "", "--no-session-persistence",
                 "--strict-mcp-config", "--disable-slash-commands",
@@ -346,13 +592,12 @@ class ClaudeCliClient:
             stima_minima = _costo_equivalente({}, (len(sistema) + len(stdin)) // 4, 0, model)
             try:
                 cmd = self.comando(model, file_sistema)
-                proc = self._runner(cmd, stdin, vuota, _ambiente_pulito(), self.timeout)
+                proc = self._esegui_cmd(cmd, stdin, vuota)
                 if "--effort" in cmd and _effort_rifiutato(proc):
                     ClaudeCliClient._effort_non_supportato = True
                     logging.warning("claude-cli: --effort non supportato da questa versione: "
                                     "riprovo senza (aggiorna Claude Code per la voce rapida)")
-                    proc = self._runner(self.comando(model, file_sistema), stdin,
-                                        vuota, _ambiente_pulito(), self.timeout)
+                    proc = self._esegui_cmd(self.comando(model, file_sistema), stdin, vuota)
             except FileNotFoundError as e:
                 raise RuntimeError("claude-cli: comando `claude` non trovato (metti il percorso "
                                    "completo in GAS_CLAUDE_BIN nel .env)") from e
@@ -387,6 +632,31 @@ class ClaudeCliClient:
         except Exception as e:
             raise _con_costo(RuntimeError("claude-cli: risposta non valida"),
                              _costo_dati(dati, model)) from e
+
+    def _esegui_cmd(self, cmd: List[str], stdin: str, cwd: str) -> subprocess.CompletedProcess:
+        t0 = time.monotonic()
+        if self.su_testo is None:
+            proc = self._runner(cmd, stdin, cwd, _ambiente_pulito(), self.timeout)
+            _log_tempi_cli(t0, None, None, proc)
+            return proc
+        prima: List[float] = []
+        primo_testo: List[float] = []
+        su_testo = self.su_testo
+
+        def su_testo_misurato(testo: str, finito: bool) -> None:
+            if not primo_testo:
+                primo_testo.append(time.monotonic())
+            su_testo(testo, finito)
+        lettore = _TestoInArrivo(su_testo_misurato)  # nuovo a ogni processo (anche al riprova)
+
+        def su_riga(linea: str) -> None:
+            if not prima:
+                prima.append(time.monotonic())
+            lettore.riga(linea)
+        proc = self._runner_flusso(cmd, stdin, cwd, _ambiente_pulito(), self.timeout, su_riga)
+        _log_tempi_cli(t0, prima[0] if prima else None,
+                       primo_testo[0] if primo_testo else None, proc)
+        return proc
 
     def _risposta(self, dati: Dict[str, Any], proc: subprocess.CompletedProcess,
                   model: str) -> SimpleNamespace:
