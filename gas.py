@@ -3956,7 +3956,13 @@ class GasKernel:
         try:
             righe: List[str] = []
             righe_anon: List[str] = []
-            tutti = self.memory.lista_contatti()
+            # V-1 bot #370 (5° giro): leggi_contatti distingue «nessun contatto» ([]) da
+            # «lettura fallita» (None). Con la lettura fallita gli identificativi non si
+            # conoscono: la variante anonima chiude (fail-closed) i dettagli di TUTTE le
+            # righe del diario, così un nome non può arrivare ai cervelli non forti.
+            letti = self.memory.leggi_contatti()
+            contatti_ok = letti is not None
+            tutti = letti if contatti_ok else []
             tutti_attivi = [c for c in tutti if c.get("stato") not in STATI_CHIUSI]
             attivi = tutti_attivi[:self.MEMORY_PIN_CONTACTS]
             if any(c.get("non_fidato") for c in attivi):
@@ -4000,8 +4006,11 @@ class GasKernel:
                         f"{_campo_pin(desc)}"
                     )
                     # Variante anonima (operatore 2026-11-10): una riga legata a un lead
-                    # perde i dettagli. Il confronto è sul testo grezzo, minuscolo.
-                    if (str(e.get("tipo") or "") in _TOOL_DATI_LEAD or e.get("contatto_id")
+                    # perde i dettagli. Il confronto è sulla descrizione già pronta per il
+                    # pin (dopo la sostituzione delle righe contaminate), in minuscolo.
+                    # Contatti non leggibili → nessuna riga con i dettagli (fail-closed).
+                    if (not contatti_ok
+                            or str(e.get("tipo") or "") in _TOOL_DATI_LEAD or e.get("contatto_id")
                             or _contiene_identificativo(desc, identificativi)):
                         desc = "(dettagli di un lead omessi: solo al cervello forte)"
                     righe_anon.append(f"- [{_campo_pin(tipo)}] {_campo_pin(desc)}")

@@ -12852,6 +12852,21 @@ try:
           and "2 lead attivi (dettagli solo al cervello forte)" in _anon
           and "piano.txt" in _anon and _anon.count("dettagli di un lead omessi") == 4,
           _anon)
+    # T114f2 (V-1 bot #370 5° giro): lettura dei contatti fallita (None) → la variante
+    # anonima chiude i dettagli di TUTTE le righe del diario (fail-closed), anche quelle
+    # che nominano un cliente senza contatto_id ("offerta_bianchi"); il pin pieno resta.
+    _k114f2 = kernel_tmp(); _popola114(_k114f2)
+    _orig_leggi = _k114f2.memory.leggi_contatti
+    _k114f2.memory.leggi_contatti = lambda filtro_stato=None: None
+    try:
+        _piena2, _anon2 = _k114f2._memoria_pin_varianti()
+    finally:
+        _k114f2.memory.leggi_contatti = _orig_leggi
+    check("T114f2 contatti illeggibili: pin anonimo fail-closed, nessun dettaglio del diario",
+          "offerta_bianchi" not in _anon2 and "piano.txt" not in _anon2
+          and "telefonata" not in _anon2
+          and _anon2.count("dettagli di un lead omessi") == 5
+          and "offerta_bianchi" in _piena2, _anon2)
     check("T114g pin pieno invariato (per il forte) e _memoria_pin() == variante piena",
           "Giulia Bianchi" in _piena and "offerta_bianchi" in _piena
           and "richiamare per il preventivo Acme" in _piena
