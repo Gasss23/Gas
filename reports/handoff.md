@@ -18,6 +18,8 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **Allucinazioni note di Whisper scartate in silenzio (con o senza parola di attivazione)**: `FATTA` (722e7b7).
 - **Trascrizione vuota → silenzio anche con la parola di attivazione**: `FATTA` (722e7b7).
 - **R-761-3-M2 (apostrofo e virgolette tipografici)**: `FATTA` — chiusa prima del commit, review #762-M2.
+- **Merge di origin/main (#368 di Mani) nel ramo**: `FATTA` — conflitti solo nei report e nella memoria; review #763-M2 APPROVATO CON RISERVE (file di main identici; il client di ascolto chiude senza bip anche sul turno con la parola); voice_stt + voice_server + voce_ascolto 639 passed.
+- **Bot e verifica esterna su 859d25b**: APPROVATO CON RISERVE, solo BASSE e COSMETICHE (varianti non in elenco come «Grazie, grazie.»; docstring sulla sottoclasse; voce doppia «sottotitoli a cura di»): registrate in §7.
 - **Prova sul Mac dal vero**: `DEFERITA` — non riproducibile qui.
 
 ---
@@ -25,15 +27,15 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
+ .claude/agents/memoria_revisore.md |   4 ++++
  modules/voice/server.py            |  19 ++++++++++++++-----
- modules/voice/stt.py               |  30 ++++++++++++++++++++++++++++--
- reports/diff_sessione.md           |  18 +++++++-----------
+ modules/voice/stt.py               |  30 ++++++++++++++++++
+ reports/diff_sessione.md           |  13 ++++++-------
  reports/handoff.md                 | n/d
  reports/ripartenza_m2.md           |   2 ++
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  30 +++++++++++-------------------
- tests/test_unit_voice_stt.py       |  90 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ reports/ultimo_report.md           |  17 ++++++++---------
+ tests/test_unit_voice_stt.py       |  90 ++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
@@ -41,12 +43,46 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b15a9a4 Merge origin/main (#368 di Mani) nella #369 — review #763-M2 APPROVATO CON RISERVE (chat M2)
+859d25b docs(fine-task): voce — allucinazioni di Whisper, PR #369 (chat M2)
 722e7b7 fix(voce): le allucinazioni di Whisper («Grazie.», «Sottotitoli…», solo punteggiatura) e le trascrizioni vuote si scartano in silenzio, senza turno — review #761-M2, #762-M2 (chat M2)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #763-M2 (merge di main, PR #368 di Mani) — verdetto integrale
+
+VERDETTO: APPROVATO CON RISERVE
+
+Review #763-M2 sul merge di origin/main (#368) in fix/voce-allucinazioni-m2 (PR #369), diff staged in /home/user/Gas-alluc.
+
+**Integrità del merge**
+- clients/voice/ascolto.py, tests/test_unit_voce_ascolto.py e scripts/voce/LEGGIMI.md sono identici a origin/main (verificato con `git diff --cached origin/main --quiet`).
+- `git diff --cached origin/main --stat` contiene solo la fetta (modules/voice/stt.py, modules/voice/server.py, tests/test_unit_voice_stt.py), i report (handoff, ultimo_report, diff_sessione, ripartenza_m2, stato_progetto con +1 riga) e la memoria (+#761, la lezione, +#762). Non ci sono doppioni.
+
+**Citazioni del diff**
+- modules/voice/stt.py:99 — `allucinazione()` normalizza l'apostrofo tipografico (’) e scarta tre casi: testo senza parole, frasi che contengono parti note, frasi intere note. Rischio esaminato: falsi positivi e regressioni di `_motivo_incerta`, che ora la riusa (modules/voice/stt.py:122). Esito: ok.
+- modules/voice/stt.py:294 — `TrascrizioneAllucinata` viene sollevata prima di `_motivo_incerta`. È una sottoclasse di `TrascrizioneIncerta`, quindi il bot Telegram la intercetta ancora. Rischio: il bot Telegram la intercetta ancora come `TrascrizioneIncerta`, ma la risposta cambia (già tracciato come R-761-1 BASSA). Esito: ok.
+- modules/voice/server.py:1210 — un `except TrascrizioneAllucinata` dedicato, messo prima di quello per `TrascrizioneIncerta`, chiama `_chiudi_seguito()` (risposta 200 `{"content":"","fine":true}` + `X-Gas-Comando: fine`, definita in modules/voice/server.py:1016). A modules/voice/server.py:1243 la trascrizione vuota chiude in silenzio anche con la parola di attivazione. Rischio: ordine degli `except` e nessun turno al kernel. Esito: ok.
+- tests/test_unit_voice_stt.py:1260 — test della trascrizione vuota: verifica la risposta «fine» e che il kernel non venga chiamato. Esito: ok.
+
+**Interazione col client aggiornato dalla #368 (citazioni di contesto)**
+- clients/voice/ascolto.py:988 — `invia_al_server` riceve «fine» anche sul primo turno, quello con la parola, e restituisce `(True, None, "", "fine")`.
+- clients/voice/ascolto.py:609 — `turno()` mette `chiudi=True`, svuota il microfono e restituisce False senza bip d'errore. Il ciclo esce a clients/voice/ascolto.py:833.
+- Il caso è già coperto dal test del client tests/test_unit_voce_ascolto.py:761 (`test_fine_anche_dopo_la_parola_chiude_senza_bip`). Si sente solo il bip «ok» della parola. Esito: ok.
+
+**Riserve**
+- R-763-1-M2 COSMETICA: sul primo turno con la parola, un'allucinazione o una trascrizione vuota scrivono nel log del client «turno di seguito non rivolto a Gas» (clients/voice/ascolto.py:610). Il messaggio è fuorviante quando si cerca la causa di un problema, ma il comportamento è corretto.
+- Restano aperte R-761-1/2-M2 BASSE e R-761-4-M2 COSMETICA.
+
+**Cosa non ho verificato**
+- Non ho rilanciato i test: i 639 passed li ha dichiarati il chiamante.
+- Comportamento dal vero sul Mac (microfono, parola reale, Groq) non verificato: in questo ambiente non si può riprodurre.
+
+**Memoria**
+- Riga #763-M2 aggiunta in coda a /home/user/Gas-alluc/.claude/agents/memoria_revisore.md e messa in staging con `git -C /home/user/Gas-alluc add`. Nessun commit, come richiesto.
 
 ### Review #762-M2 (seguito di #761-M2, R-761-3) — verdetto integrale
 
@@ -127,7 +163,8 @@ Review #761-M2. Diff staged in /home/user/Gas-alluc, branch fix/voce-allucinazio
 ## §6 STATO CI
 
 CI NON VERIFICATA con `gh` (non autenticato nel cloud).
-- 722e7b7: run non ancora disponibile alla scrittura dell'handoff (pushato prima di aprire la PR #369).
+- 859d25b: unit-suite success, handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE).
+- 722e7b7 e merge di main: nessuna run propria letta.
 - Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -137,4 +174,7 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud).
 - R-761-1-M2 BASSA: su Telegram un vocale «Grazie» ora riceve «Non ho capito bene il vocale» (decisione dell'operatore, §0 punto 2).
 - R-761-2-M2 BASSA: nella pagina browser una trascrizione vuota o allucinata mostra una risposta vuota invece di un messaggio di diagnosi.
 - R-761-4-M2 COSMETICA: «grazie» nell'elenco delle risposte brevi del seguito non viene più raggiunto.
+- Bot su 859d25b V-1 BASSA: varianti non in elenco («Grazie, grazie.», «Grazie a tutti e alla prossima.», «Grazie mille a tutti.») vanno ancora al cervello — fetta successiva.
+- Bot su 859d25b V-2/V-3 COSMETICHE: docstring della sottoclasse («Telegram non cambia» vale solo per il tipo); «sottotitoli a cura di» doppia; allucinazione() chiamata due volte.
+- R-763-1-M2 COSMETICA: nel log del client, sul turno con la parola, «turno di seguito non rivolto a Gas» anche per un'allucinazione.
 - Non verificato: come scrive davvero Groq (apostrofi, «Grazie.») sul Mac.
