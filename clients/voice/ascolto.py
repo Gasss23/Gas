@@ -126,7 +126,8 @@ MAX_TURNI_PREDEFINITO = 1
 SOGLIA_PREDEFINITA = 0.7
 BLOCCHI_PAROLA_PREDEFINITO = 3
 # Sera dell'11/11 (operatore: «a un certo punto ha smesso di rispondermi»): con 0,7 e 3
-# blocchi le chiamate vere scartate non lasciavano traccia. Ogni salita del rilevatore da
+# blocchi le chiamate vere scartate non lasciavano traccia. Nell'attesa della parola (non
+# nella finestra dopo un turno né mentre Gas parla) ogni salita del rilevatore da
 # SOGLIA_QUASI in su che NON attiva si scrive nel log come «parola quasi sentita» (solo
 # numeri), al massimo una riga ogni QUASI_PAUSA_S (le altre si contano nella riga dopo):
 # serve a tarare soglia e blocchi sui dati veri (scripts/voce/diagnosi_ascolto.py).
@@ -481,7 +482,9 @@ class Ascolto:
         """Una salita del rilevatore da SOGLIA_QUASI in su finita senza attivare: una riga
         «parola quasi sentita» (solo numeri: punteggio massimo, blocchi, soglia in uso),
         al massimo una ogni QUASI_PAUSA_S; quelle taciute si contano nella riga dopo. Con
-        una soglia della parola sotto SOGLIA_QUASI non scrive nulla (sarebbe rumore)."""
+        una soglia della parola uguale o sotto SOGLIA_QUASI non scrive nulla (sarebbe
+        rumore). Solo nell'attesa della parola (`aspetta_parola`): nella finestra dopo un
+        turno e nell'interruzione mentre Gas parla le salite non si scrivono."""
         if self.soglia <= SOGLIA_QUASI:
             return
         if (self._ultimo_quasi is not None
