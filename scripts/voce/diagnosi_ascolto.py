@@ -6,7 +6,9 @@ Legge il log dell'ascolto (`.gas_voce/ascolto.log`: solo eventi e numeri, mai au
 testo) e dice, per ogni giorno, quante volte «Hey Jarvis» è scattato e com'è finita:
 richiesta inviata, nessuna richiesta (di solito una falsa attivazione: TV, persone),
 richiesta cortissima (sospetta), interruzioni, turni di seguito. Poi elenca le ultime
-attivazioni con ora, punteggio della parola, secondi di voce ed esito.
+attivazioni con ora, punteggio della parola, secondi di voce ed esito, e le «quasi
+sentite»: salite del rilevatore che non hanno attivato (chiamate vere scartate da soglia
+e blocchi troppo severi, oppure rumore).
 
 Uso (sul Mac, dalla cartella di Gas):
     python3 scripts/voce/diagnosi_ascolto.py                 # ultimi 2 giorni, ultime 20
@@ -35,6 +37,8 @@ VOCE_SOSPETTA_S = 0.6
 _RIGA = re.compile(r"^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})[,.]\d+ \w+ (.*)$")
 _PAROLA = re.compile(r"^parola di attivazione(?: \(punteggio ([\d.]+)"
                      r"(?:, picchi corti scartati prima: (\d+))?\))?$")
+_QUASI = re.compile(r"^parola quasi sentita \(punteggio max ([\d.]+), (\d+) blocchi"
+                    r".*?altre taciute: (\d+)\)$")
 _RICHIESTA = re.compile(r"^richiesta registrata \(([\d.]+) s(?:, voce ([\d.]+) s)?")
 
 
@@ -110,6 +114,59 @@ def leggi(righe: Iterable[str]) -> List[Attivazione]:
     return tutte
 
 
+@dataclass
+class Quasi:
+    """Una salita del rilevatore che NON ha attivato («parola quasi sentita»): spesso un
+    «Hey Jarvis» vero detto piano o lontano, a volte TV o persone."""
+    giorno: date
+    ora: str
+    punteggio: float
+    blocchi: int
+    taciute: int = 0
+
+
+def leggi_quasi(righe: Iterable[str]) -> List[Quasi]:
+    """Le righe «parola quasi sentita» del log (le altre si saltano senza errori)."""
+    out: List[Quasi] = []
+    for riga in righe:
+        m = _RIGA.match(riga.rstrip("\n"))
+        if not m:
+            continue
+        q = _QUASI.match(m.group(3))
+        if not q:
+            continue
+        try:
+            giorno = datetime.strptime(m.group(1), "%Y-%m-%d").date()
+            out.append(Quasi(giorno, m.group(2), float(q.group(1)), int(q.group(2)),
+                             int(q.group(3))))
+        except ValueError:
+            continue
+    return out
+
+
+def riassunto_quasi(quasi: List[Quasi], giorni: int, ultime: int,
+                    oggi: Optional[date] = None) -> str:
+    """Quante chiamate sono arrivate vicino alla soglia senza attivare, e le ultime."""
+    oggi = oggi or date.today()
+    dal = oggi - timedelta(days=max(giorni, 1) - 1)
+    scelte = [q for q in quasi if q.giorno >= dal]
+    righe = ["Quasi sentite (salite del rilevatore che NON hanno attivato):"]
+    if not scelte:
+        righe.append("  nessuna nel periodo.")
+        return "\n".join(righe)
+    for g in sorted({q.giorno for q in scelte}):
+        del_giorno = [q for q in scelte if q.giorno == g]
+        taciute = sum(q.taciute for q in del_giorno)
+        righe.append("  %s: %d (più %d taciute dal limite del log)"
+                     % (g.isoformat(), len(del_giorno), taciute))
+    ultime = max(0, min(ultime, len(scelte)))
+    righe.append("Ultime %d quasi sentite:" % ultime)
+    for q in scelte[len(scelte) - ultime:]:
+        righe.append("  %s %s  punteggio max %.2f  %d blocchi"
+                     % (q.giorno.isoformat(), q.ora, q.punteggio, q.blocchi))
+    return "\n".join(righe)
+
+
 def riassunto(attivazioni: List[Attivazione], giorni: int, ultime: int,
               oggi: Optional[date] = None) -> str:
     oggi = oggi or date.today()
@@ -157,7 +214,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("✗ log dell'ascolto non trovato: %s" % args.log, file=sys.stderr)
         return 1
     with args.log.open(encoding="utf-8", errors="replace") as fh:
-        print(riassunto(leggi(fh), args.giorni, max(args.ultime, 0)))
+        righe = fh.readlines()
+    print(riassunto(leggi(righe), args.giorni, max(args.ultime, 0)))
+    print(riassunto_quasi(leggi_quasi(righe), args.giorni, max(args.ultime, 0)))
     return 0
 
 

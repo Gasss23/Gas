@@ -176,6 +176,10 @@ Dopo una modifica: `bash scripts/voce/installa.sh` (riavvia i servizi).
   troppo corte (falsi «Hey Jarvis» fermati) ci sono state prima; ogni «richiesta
   registrata» dice secondi di voce e volume medio e massimo (in multipli di
   `GAS_ASCOLTO_VOCE_RMS`).
+  Ogni «parola quasi sentita» è una salita del rilevatore (punteggio da 0,30 in su) che
+  NON ha attivato: punteggio massimo, blocchi, soglia in uso (al massimo una riga ogni 5 s,
+  le altre contate). Se «Hey Jarvis» detto da te finisce lì con punteggi tra 0,5 e 0,7, la
+  soglia è troppo alta: `GAS_ASCOLTO_SOGLIA=0.6` in `.env` e `bash scripts/voce/installa.sh`.
 - **Diagnosi in un comando:** `python3 scripts/voce/diagnosi_ascolto.py` (dalla cartella di
   Gas) riassume gli ultimi 2 giorni: attivazioni con richiesta, senza richiesta (di solito
   false: TV, persone), sospette (meno di 0,6 s di voce, dove Whisper inventa «Grazie»), e
