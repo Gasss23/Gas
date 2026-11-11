@@ -2,15 +2,15 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. PR #372: merge con verdetto del bot APPROVATO pulito e CI verde (regola notturna di M1); con riserve resta pronta per il mattino.
+1. PR #372: la verifica esterna dà APPROVATO CON RISERVE (solo BASSE/COSMETICHE, chiuse con questo giro): resta pronta per il «mergia» dell'operatore, salvo un verdetto del bot APPROVATO pulito con CI verde (allora la mergia la chat).
 
 ## Esito
 
-- **Connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi della risposta a voce**: FATTA. Una per thread; buttata dopo 20 s ferma; nuovo tentativo solo se la connessione riusata risulta chiusa prima della risposta (niente doppio addebito); `GAS_TTS_KEEPALIVE=0` la spegne.
-- Review #765-M2 APPROVATO CON RISERVE (R-765-1 MEDIA doppio addebito, R-765-2 MEDIA connessione ferma, R-765-3 BASSA test: tutte chiuse prima del commit), #768-M2 APPROVATO.
-- Test: tts 37 passed; voice_server, stt, prova_voci, telegram_voce, contesto 428 passed.
+- **Connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi della risposta a voce**: FATTA. Una per thread; buttata dopo 20 s ferma o se il server l'ha già chiusa (select a 0 s); nuovo tentativo SOLO se la connessione riusata cade durante l'invio (niente doppio addebito); `GAS_TTS_KEEPALIVE=0` la spegne.
+- Review #765, #768, #770 (con riserve, chiuse), #771, #772, #776 (merge di main) APPROVATO.
+- V-1 del bot #372 e V-1 della verifica esterna #372: chiuse.
+- Test: tts 40 passed; tts+stt dopo il merge 180 passed; kernel 1134 PASS, 1 FAIL T31g (fastembed assente, come su main).
 - **Misura del guadagno reale sul Mac** (`gas.voce.tempi`): DEFERITA — serve la rete vera.
-- **Latenza del cervello (5-9 s alla prima frase)**: DEFERITA — sta in `brains/` e `gas.py` (streaming della prima frase da `claude -p`): fetta separata, da concordare.
 
 ## Anomalie
 

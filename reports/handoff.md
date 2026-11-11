@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #372 (https://github.com/Gasss23/Gas/pull/372): con verdetto del bot APPROVATO pulito e CI verde la mergia la chat (regola notturna di M1); con riserve resta pronta per il «mergia» del mattino.
+1. Merge della PR #372 (https://github.com/Gasss23/Gas/pull/372): la verifica esterna #372 dà APPROVATO CON RISERVE (V-1 e V-2 BASSE, V-3 COSMETICA), quindi la PR resta pronta per il «mergia» dell'operatore; con verdetto del bot APPROVATO pulito e CI verde la mergia la chat (regola notturna di M1).
 
 NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
 
@@ -16,34 +16,152 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 
 - **Connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi**: `FATTA` (commit di codice nel §3).
 - **R-765-1-M2 MEDIA (doppio addebito), R-765-2-M2 MEDIA (connessione ferma), R-765-3-M2 BASSA (test)**: `FATTA` — chiuse prima del commit, review #768-M2.
+- **V-1 del bot #372 (nuovo tentativo dopo l'invio = possibile doppio addebito)**: `FATTA` — il nuovo tentativo parte solo durante l'invio (review #770-M2).
+- **R-770-1-M2 BASSA (connessione chiusa dal server mentre era ferma) e R-770-2-M2 COSMETICA**: `FATTA` — `_conn_caduta` (select a 0 s) prima del riuso (review #771-M2).
+- **V-1 della verifica esterna #372 (test della soglia agganciato alla costante)**: `FATTA` — valori fissi 19/21 s (review #772-M2).
+- **Merge di origin/main (#370, #369)**: `FATTA` — review #776-M2.
 - **Misura del guadagno sul Mac**: `DEFERITA` — serve la rete vera.
-- **Latenza del cervello (prima frase 5-9 s)**: `DEFERITA` — streaming da `claude -p` in `brains/`/`gas.py`, fetta separata.
+- **Latenza del cervello (prima frase 5-9 s)**: `DEFERITA` — fetta separata (streaming della prima frase da `claude -p`).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- modules/voice/tts.py               |  95 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  12 +++++-------
+ .claude/agents/memoria_revisore.md |   9 +++++++++
+ modules/voice/tts.py               | 126 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           | n/d
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  16 +++++++---------
- tests/test_unit_voice_tts.py       | 166 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          | n/d
+ reports/ultimo_report.md           | n/d
+ tests/test_unit_voice_tts.py       | 217 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; riga di totale tolta.
+NB: confronto con origin/main (e3eb542, dopo il merge). Regola «n/d» — i conteggi dei report riscritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+cc70808 Merge origin/main (#370, #369) nella #372 — review #776-M2 APPROVATO (chat M2)
+39eaf0a test(voce): soglia di inattività del keep-alive a valori fissi 19/21 s (V-1 ve #372)
+e7dadc1 fix(voce): keep-alive TTS, connessione chiusa dal server scartata prima dell'invio (R-770-1-M2)
+2479a53 fix(voce): keep-alive TTS, nuovo tentativo solo durante l'invio (V-1 bot #372)
+36095b4 docs(fine-task): voce — connessione ElevenLabs riusata, PR #372 (chat M2)
 4f031dc perf(voce): connessione HTTPS verso ElevenLabs tenuta aperta fra le frasi (una per thread, buttata dopo 20 s ferma, niente doppio addebito) — review #765-M2, #768-M2 (chat M2)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #776-M2 (merge di origin/main) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Review #776-M2: merge di origin/main e3eb542 (#370 e #369) nella PR #372 (keep-alive ElevenLabs). Il merge è in staging in /home/user/Gas-tts, HEAD 39eaf0a, MERGE_HEAD e3eb542.
+
+**Cosa ho controllato**
+- **Merge pulito:** `git ls-files -u` è vuoto, non ci sono marcatori di conflitto né in memoria né in reports/, e `git diff --cached --check HEAD` è pulito.
+- **Memoria e stato_progetto, nessuna riga persa:**
+  - Rispetto a HEAD il diff contiene solo aggiunte: 11 righe in memoria (#753-M1, #757-M1, #761–#765) e 2 voci in stato_progetto (#366 decisioni M1, #369 allucinazioni). Nessuna riga tolta.
+  - Rispetto a MERGE_HEAD (`git diff MERGE_HEAD`) non manca nessuna riga, né in memoria né in stato_progetto.
+  - Non ci sono doppioni nuovi: l'unico numero ripetuto in più rispetto a HEAD è #753-M1, che è doppio già in main (1° e 2° giro).
+
+**Citazioni**
+- `modules/voice/tts.py:121` — `_post_riusando`, il keep-alive con un solo nuovo tentativo, fatto solo durante l'invio. Rischio esaminato: che il merge alteri il file o che il codice di main ci interagisca. Il file non è nel diff del merge, main non lo ha toccato dal merge-base e il codice nuovo di main non contiene nessun riferimento al TTS. Esito: ok.
+- `modules/voice/tts.py:106` — `_conn_caduta`, il controllo che la connessione non sia già chiusa prima di riusarla. Non toccato dal merge. Esito: ok.
+- `tests/test_unit_voice_tts.py:610` — `test_keepalive_connessione_ferma_da_troppo_si_butta`, insieme agli altri test keep-alive (righe 520–623). Restano intatti. tts+stt: 180 passed, rieseguiti da me dopo il merge. Esito: ok.
+- Contesto: `modules/telegram/bot.py:1091` — importa `synthesize_speech`. La #370 cambia bot.py solo in un commento (riga «§8 … versione leggera»), quindi la chiamata al TTS resta invariata. Esito: ok.
+- Contesto: `modules/voice/server.py:95` — importa il TTS. Il diff di main in server.py tocca solo il ramo della trascrizione (`TrascrizioneAllucinata`, vuota → silenzio) e non aggiunge chiamate di sintesi. Non c'è interazione con il keep-alive. Esito: ok.
+
+**Rischi esclusi (non verificati)**
+- La suite kernel (1134 PASS, 1 FAIL T31g per fastembed assente) non l'ho rieseguita: prendo per buono il numero del chiamante. Nel merge gas.py coincide con main, già approvato nelle review #764/#765-M1coord.
+- Il comportamento del keep-alive verso ElevenLabs reale non è verificato: non si riproduce in dev.
+
+**Memoria**
+- Ho aggiunto la riga `#776-M2 — 2026-11-11 — APPROVATO — …` in coda a /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging (`git add`). MERGE_HEAD è ancora presente.
+- `scripts/commit_memoria_revisore.sh` non l'ho eseguito: il primo tentativo è stato bloccato dall'hook review_gate perché `.review_ok` non corrisponde al diff in staging. In più, durante un merge `git commit -o` non può fare commit parziali. Il file entra quindi con il commit del merge.
+- Ora il diff in staging è cambiato (memoria aggiornata): bisogna rigenerare il marcatore con `bash scripts/segna_review_ok.sh` prima di committare.
+
+Nessuna lezione nuova.
+
+### Review #772-M2 (V-1 verifica esterna #372) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Review #772-M2 (chat M2): diff in staging di /home/user/Gas-tts, PR #372. Il diff tocca solo tests/test_unit_voice_tts.py (2 righe aggiunte, 2 tolte).
+
+Elementi del diff che ho esaminato:
+- `tests/test_unit_voice_tts.py:615`: l'avanzamento di 5 s diventa `ora[0] += 19`. Rischio esaminato: con 19 s si deve ancora riusare la connessione, perché 19 è sotto la soglia di 20 s (`modules/voice/tts.py:88`) e il controllo usa il `>` stretto. Prima, con 5 s, una soglia abbassata a 15 non veniva scoperta. Esito: ok. Il mutante «soglia 15» ora è preso (1 failed).
+- `tests/test_unit_voice_tts.py:618`: `ora[0] += _KEEPALIVE_INATTIVA_MAX_S + 1` diventa `ora[0] += 21`. Rischio esaminato: il test non deve più ricavare il valore atteso dalla costante che sta controllando. «usata» viene aggiornato dopo la lettura della seconda risposta, quindi l'inattività misurata è 21 s ed è maggiore di 20: si apre una connessione nuova. Esito: ok. I mutanti «soglia 1e9» e «soglia 25» sono presi (1 failed ciascuno).
+- Contesto (file non toccato): `modules/voice/tts.py:133`. Il confronto `time.monotonic() - usata > _KEEPALIVE_INATTIVA_MAX_S` è coerente con i valori fissi 19 e 21.
+
+Verifiche eseguite: la suite del file dà 40 passed. Ho provato tre mutanti della costante (1e9, 25, 15), uno alla volta, ripristinando ogni volta il file originale: tutti presi. modules/voice/tts.py è rimasto intatto (in `git status` compaiono solo il test e la memoria).
+
+Rischio che ho escluso:
+- Il confine esatto di 20 s non è coperto: la differenza tra `>` e `>=` non viene scoperta. Lo considero accettabile e non apro una riserva, perché il contratto è «circa 20 s» e la finestra 19/21 basta a bloccare la soglia.
+- Il mutante «usata non aggiornato» non l'ho riprovato. Con questi valori il test da solo non lo distingue (da 1000 a 1040 sono comunque più di 20 s). La review #768 lo dava preso, ma non ho controllato da quale test.
+- Nessun guardrail toccato: il cap di 10 iterazioni, `_get_window` e l'assenza di slicing non sono interessati da questo diff, che riguarda solo un test.
+
+Memoria: ho aggiunto la riga `#772-M2` in coda a /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging in /home/user/Gas-tts (`M  .claude/agents/memoria_revisore.md`). Nessuna lezione nuova. Non ho committato, come da tua richiesta di sola messa in staging.
+
+File rilevanti:
+- /home/user/Gas-tts/tests/test_unit_voice_tts.py
+- /home/user/Gas-tts/modules/voice/tts.py
+- /home/user/Gas-tts/.claude/agents/memoria_revisore.md
+
+### Review #771-M2 (R-770-1/R-770-2) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Re-review #771-M2 sul diff in staging in /home/user/Gas-tts (PR #372, keep-alive ElevenLabs). Ho letto CLAUDE.md (sez. 5, 8, 9), lo stato del progetto (parte Voce) e la mia memoria (#765, #768, #770-M2). Le due riserve di #770-M2 sono chiuse.
+
+**Cosa ho controllato nel diff**
+1. `modules/voice/tts.py:106`: nuova funzione `_conn_caduta`. Se il socket non c'è risponde False, e va bene perché la request la aprirà. Fa un select a 0 s. Rischio: un errore del select che risale e fa crashare. Esito ok: OSError, ValueError e TypeError vengono intercettati.
+2. `modules/voice/tts.py:116`: un errore del controllo conta come «caduta». Rischio: un socket chiuso o con fileno -1 che fa esplodere select. Esito ok: si chiude e se ne apre una nuova, in linea con il §9.
+3. `modules/voice/tts.py:136`: il controllo viene fatto prima di `riusata = conn is not None`. Rischio: che la riconnessione consumi il nuovo tentativo. Esito ok: la connessione nuova ha `riusata=False` e un nuovo tentativo resta possibile solo per una connessione davvero riusata che cade durante l'invio. Al secondo giro del ciclo conn è None, quindi il controllo non viene rifatto.
+4. `modules/voice/tts.py:162`: `getresponse()` ora ha un solo ramo `except (HTTPException, OSError)`. Rischio: perdere la gestione di HTTPException. Esito ok: il ramo tolto non veniva mai eseguito, perché il precedente catturava già HTTPException. La docstring corrisponde al codice.
+5. `tests/test_unit_voice_tts.py:662`: socketpair con il lato «server» chiuso. Verifica che si crei una connessione nuova, che la vecchia sia chiusa con 1 richiesta e la nuova abbia 1 richiesta (nessun nuovo tentativo consumato). Esito ok. Ho provato il mutante «`_conn_caduta` restituisce sempre False»: questo test lo cattura (1 failed, 39 passed). Ho poi ripristinato il file e `git diff` sulle modifiche non in staging è vuoto.
+6. `tests/test_unit_voice_tts.py:680`: socket vivo, la connessione viene riusata. Esito ok. Il monkeypatch in `tests/test_unit_voice_tts.py:626` è giustificato: con un MagicMock, select solleverebbe TypeError, che conterebbe come caduta e falserebbe il test del timeout.
+
+Risultato: tts **40 passed**, rilanciati da me.
+
+**Falsi positivi da TLS (la tua domanda)**
+Ho fatto una prova reale in locale: server Python TLS 1.3 con `num_tickets=4` e tre POST keep-alive. Dopo `resp.read()` il socket non risulta mai leggibile e `pending()` è 0. I ticket arrivano subito dopo l'handshake, prima della risposta HTTP, e la lettura della risposta li consuma. Resterebbe un falso positivo solo se un server mandasse un ticket o altri dati dopo la risposta. In quel caso il costo è un handshake in più e nessun errore né doppio addebito, quindi è accettabile.
+Il punto cieco è l'opposto, un falso negativo: dati già nel buffer SSL (`sock.pending()>0`), che select non vede. Nel caso normale qui non succede, perché la risposta viene letta tutta, e rientra nel rischio residuo dichiarato in docstring. Se vuoi una difesa in più costa poco: `or sock.pending()` per gli SSLSocket. Non è una riserva.
+
+**Cosa non ho verificato**
+- Il comportamento con l'endpoint reale ElevenLabs e la sua CDN (quando manda i ticket, chiusure con o senza close_notify): non si riproduce in dev senza rete e senza la chiave. La prova copre solo un server OpenSSL locale.
+- Il tempo che il select a 0 s aggiunge sulla latenza della voce: non l'ho misurato. È trascurabile per costruzione (una chiamata di sistema senza attesa).
+
+**Memoria**
+Ho aggiunto la riga `#771-M2` e una lezione su come provare i falsi positivi TLS in /home/user/Gas-tts/.claude/agents/memoria_revisore.md. Il file è in staging insieme a tts.py e al test. Non ho lanciato `commit_memoria_revisore.sh`, perché mi hai chiesto solo lo staging.
+
+File: /home/user/Gas-tts/modules/voice/tts.py, /home/user/Gas-tts/tests/test_unit_voice_tts.py, /home/user/Gas-tts/.claude/agents/memoria_revisore.md
+
+### Review #770-M2 (V-1 bot #372) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #770-M2, seguito della PR #372, sul diff STAGED in /home/user/Gas-tts. Il finding V-1 del bot è chiuso: ora un nuovo tentativo parte solo se la connessione salta mentre la richiesta viene inviata. Ho controllato solo il delta e il mutante richiesto.
+
+**Cosa ho esaminato nel diff**
+- `modules/voice/tts.py:126`: solo `conn.request()` resta nel try che può ripetere. Il nuovo tentativo scatta solo su una connessione riusata, al primo tentativo (`modules/voice/tts.py:131`). Rischio esaminato: un secondo POST dopo che ElevenLabs ha già ricevuto la richiesta. **Esito: ok.**
+- `modules/voice/tts.py:141`: `conn.getresponse()` ha un try suo: chiude la connessione e alza OSError, senza nuovo tentativo. Ho provato il mutante che rimette `getresponse()` nel try che ripete: lo prende `test_keepalive_errore_dopo_l_invio_non_riprova` (`tests/test_unit_voice_tts.py:646`), che verifica 2 richieste, 1 connessione e connessione chiusa. **Esito: ok.**
+- Test: `tests/test_unit_voice_tts.py` dà 38 passed.
+
+**Riserve**
+- **R-770-1-M2 (BASSA): il nuovo tentativo ormai non scatta quasi mai.** Quando ElevenLabs chiude una connessione inattiva, di solito l'invio riesce lo stesso (finisce nel buffer) e l'errore `RemoteDisconnected` arriva solo in `getresponse()`. Quindi nel caso tipico ora si ha un errore e la frase persa, e il nuovo tentativo scatta quasi solo su `BrokenPipe`. Il limite di 20 s di inattività riduce il problema, ma solo se ElevenLabs tiene aperte le connessioni più di 20 s, cosa non nota. Rimedio senza rischio di doppio addebito: prima di inviare su una connessione riusata, controllare che il socket non sia già leggibile (`select` a 0 s; se è leggibile, il server l'ha chiusa) e in quel caso aprirne una nuova. È quello che fa `is_connection_dropped` di urllib3.
+- **R-770-2-M2 (COSMETICA):**
+  - il ramo `except http.client.HTTPException` a `modules/voice/tts.py:145` non viene mai eseguito, perché la riga sopra cattura già `(HTTPException, OSError)`;
+  - nella docstring, `modules/voice/tts.py:110` è una riga troppo lunga.
+
+**Cosa non ho verificato**
+- Il tempo reale dopo cui ElevenLabs chiude le connessioni inattive, e quindi quanto spesso capiti R-770-1-M2. Serve una prova dal vivo con chiave e rete vere, che qui non ho.
+- Non ho rilanciato le suite voice_server e telegram: il delta tocca solo tts.py e il suo test.
+
+**Memoria del revisore**
+- Ho aggiunto la riga #770-M2 e una lezione nuova in /home/user/Gas-tts/.claude/agents/memoria_revisore.md e l'ho messa in staging con `git -C /home/user/Gas-tts add`. Nessun commit.
 
 ### Review #768-M2 (seguito di #765-M2) — verdetto integrale
 
@@ -100,17 +218,20 @@ Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la memoria del reviso
 
 ## §5 DELTA TEST DEL MOTORE
 
-- gas.py non toccato. Test nuovi in `tests/test_unit_voice_tts.py` (11).
-- `python -m pytest -q tests/test_unit_voice_tts.py`: 37 passed.
-- `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_prova_voci.py tests/test_unit_telegram_voce.py tests/test_unit_voice_contesto.py -k "audit or not browser"` (prima delle correzioni R-765, che toccano solo tts.py): 428 passed.
+- gas.py non toccato dalla PR (dopo il merge coincide con main). Test nuovi in `tests/test_unit_voice_tts.py`: 14.
+- `python -m pytest -q tests/test_unit_voice_tts.py tests/test_unit_voice_stt.py` dopo il merge: 180 passed (tts da solo 40 passed).
+- `python tests/test_unit_kernel.py` dopo il merge: 1134 PASS, 1 FAIL (T31g, fastembed assente in questo ambiente: lo stesso FAIL c'è su main).
+- Prima del merge: `tests/test_unit_voice_tts.py` + `tests/test_unit_voice_server.py` 250 passed.
 
 ## §6 STATO CI
 
 CI NON VERIFICATA con `gh` (non autenticato nel cloud).
-- Commit di codice: run non ancora disponibile alla scrittura dell'handoff (pushato prima di aprire la PR #372).
-- Commit di fine task: run non ancora disponibile alla scrittura dell'handoff.
+- Head precedente 36095b4: `unit-suite`, `handoff-check` e `verifica-bot` success (letti dalla verifica esterna #372 via API).
+- Nuovi commit (2479a53…cc70808 e fine-task): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-765-1-M2 MEDIA, R-765-2-M2 MEDIA, R-765-3-M2 BASSA: CHIUSE (review #768-M2).
+- V-1 bot #372: CHIUSA (review #770-M2). R-770-1-M2 BASSA, R-770-2-M2 COSMETICA: CHIUSE (review #771-M2).
+- Verifica esterna #372: V-1 BASSA CHIUSA (review #772-M2); V-2 BASSA (nuovo tentativo dopo l'invio) CHIUSA dalla stessa correzione della V-1 del bot; V-3 COSMETICA (stato CI) superata da questo §6.
 - Non verificato: guadagno reale e durata delle connessioni inattive di ElevenLabs (prova sul Mac).
