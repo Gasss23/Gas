@@ -736,3 +736,40 @@ def test_esegui_a_flusso_tempo_scaduto_uccide(tmp_path):
     with pytest.raises(subprocess.TimeoutExpired):
         _esegui_a_flusso(cmd, "", str(tmp_path), dict(os.environ), 0.5, lambda r: None)
     assert time.monotonic() - t < 10
+
+
+def test_tempi_del_forte_nel_log(caplog):
+    """M1, 11 nov: una riga INFO coi tempi interni del forte (solo numeri, nessun testo)."""
+    import logging
+    righe = _righe_flusso(['{"chiamate": [], "testo": "Segreto', ' cliente."}']) + \
+        [json.dumps(dict(_ok({"chiamate": [], "testo": "Segreto cliente."}),
+                         time_to_request_ms=150, ttft_ms=900, duration_api_ms=1200,
+                         duration_ms=1500, time_to_request_from_spawn_ms=10**12)) + "\n"]
+    c = ClaudeCliClient(runner_flusso=_runner_flusso(righe, {}), su_testo=lambda t, f: None)
+    with caplog.at_level(logging.INFO, logger="gas.claude_cli.tempi"):
+        c.chat.completions.create(model="m", messages=_msgs(), tools=_TOOLS)
+    msg = " ".join(r.getMessage() for r in caplog.records if r.name == "gas.claude_cli.tempi")
+    for pezzo in ("tutto=", "prima_riga=", "primo_testo=", "richiesta=0.15s", "ttft=0.90s",
+                  "api=1.20s", "cli=1.50s", "fuori_cli=", "token_in=125 token_out=7"):
+        assert pezzo in msg, (pezzo, msg)
+    assert "Segreto" not in msg and "cliente" not in msg
+
+
+def test_tempi_del_forte_anche_senza_flusso_e_mai_un_errore(caplog):
+    import logging
+    c = ClaudeCliClient(runner=_runner(_ok({"testo": "ok", "chiamate": []}), {}))
+    with caplog.at_level(logging.INFO, logger="gas.claude_cli.tempi"):
+        c.chat.completions.create(model="m", messages=_msgs(), tools=_TOOLS)
+    assert any("tutto=" in r.getMessage() for r in caplog.records)
+    from brains.claude_cli import _log_tempi_cli
+    _log_tempi_cli(0.0, None, None, object())  # proc strano: nessuna eccezione
+
+
+def test_esegui_a_flusso_tempo_scaduto_uccide_anche_i_nipoti(tmp_path):
+    """R-773-1-M2: un nipote che tiene aperto lo stdout non allunga il timeout."""
+    import time
+    cmd = ["bash", "-c", "sleep 8 & sleep 8"]
+    t = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        _esegui_a_flusso(cmd, "", str(tmp_path), dict(os.environ), 0.5, lambda r: None)
+    assert time.monotonic() - t < 4

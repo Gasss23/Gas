@@ -47,6 +47,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import uuid
 from types import SimpleNamespace
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -416,13 +417,22 @@ def _esegui_a_flusso(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
     Ritorna la riga `result` come stdout (gli stessi campi dell'uscita json); senza riga
     `result` tutta l'uscita, così i controlli su limite e login restano quelli di sempre.
     Tempo scaduto → il processo si uccide e si alza TimeoutExpired, come `subprocess.run`."""
+    # R-773-1-M2: gruppo di processi suo, così al timeout muoiono anche eventuali nipoti che
+    # terrebbero aperto lo stdout (la lettura aspetterebbe loro, oltre il timeout)
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, text=True, cwd=cwd, env=env)
+                            stderr=subprocess.PIPE, text=True, cwd=cwd, env=env,
+                            start_new_session=True)
     scaduto = threading.Event()
+
+    def uccidi_tutti() -> None:
+        try:
+            os.killpg(proc.pid, 9)
+        except OSError:
+            proc.kill()
 
     def uccidi() -> None:
         scaduto.set()
-        proc.kill()
+        uccidi_tutti()
 
     timer = threading.Timer(timeout, uccidi)
     timer.daemon = True
@@ -455,15 +465,63 @@ def _esegui_a_flusso(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
     finally:
         timer.cancel()
         if proc.poll() is None:
-            proc.kill()
+            uccidi_tutti()
             proc.wait()
         for f in fili:
             f.join(timeout=5)
+        for flusso in (proc.stdout, proc.stderr):  # R-773-3-M2: pipe chiuse subito
+            try:
+                if flusso is not None:
+                    flusso.close()
+            except OSError:
+                pass
     if scaduto.is_set():
         raise subprocess.TimeoutExpired(cmd, timeout)
     return subprocess.CompletedProcess(cmd, proc.returncode,
                                        stdout=risultato if risultato is not None else "".join(righe),
                                        stderr="".join(errori))
+
+
+# Tempi interni del forte (M1, 11 nov: sul Mac il cervello a voce fa 6,5–7,7 s contro i
+# 2,4–2,9 s misurati nel cloud). Una riga INFO per processo in gas_debug.log, solo numeri:
+# avvio → prima riga, → primo testo, → fine, più i tempi che la CLI dichiara nella riga
+# `result` (avvio fino alla richiesta, primo token, durata dell'API) e i token d'ingresso.
+_log_tempi = logging.getLogger("gas.claude_cli.tempi")
+_log_tempi.setLevel(logging.INFO)
+# `fuori_cli` = tutto − durata dichiarata dalla CLI: avvio di node/Claude Code, login,
+# chiusura del processo (la parte che un processo caldo toglierebbe).
+_CAMPI_TEMPI_CLI = (("richiesta", "time_to_request_ms"), ("ttft", "ttft_ms"),
+                    ("api", "duration_api_ms"), ("cli", "duration_ms"))
+_TEMPO_CLI_MAX_MS = 3_600_000  # un valore assurdo non si scrive
+
+
+def _log_tempi_cli(t0: float, prima: Optional[float], primo_testo: Optional[float],
+                   proc: Any) -> None:
+    """§9: mai un errore da qui (è solo un registro)."""
+    try:
+        fine = time.monotonic()
+        parti = [f"tutto={fine - t0:.2f}s"]
+        if prima is not None:
+            parti.append(f"prima_riga={prima - t0:.2f}s")
+        if primo_testo is not None:
+            parti.append(f"primo_testo={primo_testo - t0:.2f}s")
+        try:
+            dati = json.loads(getattr(proc, "stdout", "") or "")
+        except ValueError:
+            dati = None
+        if isinstance(dati, dict):
+            for nome, chiave in _CAMPI_TEMPI_CLI:
+                v = dati.get(chiave)
+                if (isinstance(v, (int, float)) and not isinstance(v, bool)
+                        and 0 <= v <= _TEMPO_CLI_MAX_MS):
+                    parti.append(f"{nome}={v / 1000:.2f}s")
+                    if chiave == "duration_ms":
+                        parti.append(f"fuori_cli={fine - t0 - v / 1000:.2f}s")
+            entrata, uscita = _token(dati)
+            parti.append(f"token_in={entrata} token_out={uscita}")
+        _log_tempi.info("tempi claude-cli: %s", " ".join(parti))
+    except Exception:  # noqa: BLE001 — un registro non rompe mai il turno
+        pass
 
 
 class _Completions:
@@ -572,10 +630,29 @@ class ClaudeCliClient:
                              _costo_dati(dati, model)) from e
 
     def _esegui_cmd(self, cmd: List[str], stdin: str, cwd: str) -> subprocess.CompletedProcess:
+        t0 = time.monotonic()
         if self.su_testo is None:
-            return self._runner(cmd, stdin, cwd, _ambiente_pulito(), self.timeout)
-        lettore = _TestoInArrivo(self.su_testo)  # nuovo a ogni processo (anche al riprova)
-        return self._runner_flusso(cmd, stdin, cwd, _ambiente_pulito(), self.timeout, lettore.riga)
+            proc = self._runner(cmd, stdin, cwd, _ambiente_pulito(), self.timeout)
+            _log_tempi_cli(t0, None, None, proc)
+            return proc
+        prima: List[float] = []
+        primo_testo: List[float] = []
+        su_testo = self.su_testo
+
+        def su_testo_misurato(testo: str, finito: bool) -> None:
+            if not primo_testo:
+                primo_testo.append(time.monotonic())
+            su_testo(testo, finito)
+        lettore = _TestoInArrivo(su_testo_misurato)  # nuovo a ogni processo (anche al riprova)
+
+        def su_riga(linea: str) -> None:
+            if not prima:
+                prima.append(time.monotonic())
+            lettore.riga(linea)
+        proc = self._runner_flusso(cmd, stdin, cwd, _ambiente_pulito(), self.timeout, su_riga)
+        _log_tempi_cli(t0, prima[0] if prima else None,
+                       primo_testo[0] if primo_testo else None, proc)
+        return proc
 
     def _risposta(self, dati: Dict[str, Any], proc: subprocess.CompletedProcess,
                   model: str) -> SimpleNamespace:
