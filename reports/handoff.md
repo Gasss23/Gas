@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370). Numero e URL dall'output di `create_pull_request` dello strumento GitHub (gh assente).
-2. R-753-M1-A: estendere il blocco dei nomi dei clienti anche ai risultati di `ricorda`/`salva_contatto` nella storia, al testo dell'operatore, a `recap_pin` e alla riflessione di fine task (ve #370 V-1) verso i modelli non forti? sì/no
+2. R-753-M1-A: DECISA dall'operatore il 2026-11-10 notte («blocco esteso dei nomi sì»): si implementa in una PR successiva. Testo originale della domanda: estendere il blocco dei nomi dei clienti anche ai risultati di `ricorda`/`salva_contatto` nella storia, al testo dell'operatore, a `recap_pin` e alla riflessione di fine task (ve #370 V-1) verso i modelli non forti? sì/no
 
 ---
 
@@ -16,6 +16,7 @@
 - **Fetta 1 — (a) primo cervello non configurato = ripiego dichiarato**: FATTA — solo test T113a4 (nessun cambio di codice, sì dell'operatore).
 - **Fetta 2 — (b) Flash-lite dichiarato**: FATTA — `RUNG_VERSIONE_LEGGERA`, riga nel testo (mai a voce).
 - **Fetta 3 — tetto di 10 chiamate per turno**: FATTA — `MAX_CHIAMATE_TURNO`.
+- **Fetta 5 — merge di origin/main (#368 di Mani)**: FATTA — review #757-M1 APPROVATO.
 - **Fetta 4 — nomi dei lead mai ai modelli non forti**: FATTA per il pin; DEFERITA per storia/recap (R-753-M1-A, §0 punto 2).
 
 ---
@@ -23,13 +24,13 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
+ .claude/agents/memoria_revisore.md |   4 ++++
  gas.py                             | 164 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
  modules/telegram/bot.py            |   2 +-
- reports/diff_sessione.md           |  14 +++++---------
+ reports/diff_sessione.md           |  15 +++++++--------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  28 ++++++++++------------------
+ reports/ultimo_report.md           |  21 ++++++++++-----------
  tests/test_unit_kernel.py          | 247 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  tests/test_unit_notte.py           |   4 +++-
 ```
@@ -39,6 +40,8 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+05184a94 merge: origin/main (#368) nella #370 (review #757-M1 APPROVATO)
+e9b74f59 docs(fine-task): handoff #370 aggiornato (R-753-M1-A estesa, CI)
 fabf2e9a docs(stato): R-753-M1-A estesa alla riflessione (ve #370 V-1) e buchi noti del pin anonimo
 e761eefc docs(fine-task): decisioni dell'operatore del 2026-11-10 (Flash-lite, tetto per turno, pin anonimo)
 d5773ec1 fix(kernel): decisioni dell'operatore 2026-11-10 — Flash-lite dichiarato, tetto di 10 chiamate per turno, pin senza dati dei lead ai non forti (review #753-M1)
@@ -119,9 +122,38 @@ Revisione #753-M1, 2° giro, sul diff in stage del branch feat/merge-automatico-
 
 **Memoria**: la riga «#753-M1 (2° giro)» è aggiunta in coda a `.claude/agents/memoria_revisore.md` e in stage. Come da tua istruzione non ho committato, quindi non ho lanciato `commit_memoria_revisore.sh`.
 
+### Review #757-M1 (merge di origin/main #368)
+
+## VERDETTO: APPROVATO
+
+Review #757-M1. Il numero che mi avevi indicato, #754-M1, è già usato: nella memoria fusa le righe #754, #755 e #756-M1 vengono dalla chat di Mani, che usa anche lei la sigla M1. Anche #753-M1 compare due volte, una per lato.
+
+Ho verificato il merge staged di origin/main 904d9d6 (PR #368) in feat/merge-automatico-z1xjx2 (HEAD e9b74f5, PR #370).
+
+Elementi del diff esaminati:
+- `clients/voice/ascolto.py:724` — `_voce_subito`, la richiesta detta d'un fiato, e il suo uso a :793 con `registra(subito, subito=True)`. Rischio: perdere o alterare righe di Mani nel merge. Il file staged è identico a MERGE_HEAD (diff di 0 righe). Dal merge-base a0c200c il nostro lato non tocca ascolto.py, quindi i due lati sono disgiunti. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:2719` — l'ultimo test aggiunto da #368 (voce verso la fine della tolleranza). Rischio: test persi o un file a metà tra i due lati. Il file è identico a MERGE_HEAD. Ho rieseguito la suite: 314 passed. Esito: ok.
+- `scripts/voce/LEGGIMI.md:1` — le 8 righe aggiunte da Mani. Il file è identico a MERGE_HEAD. Esito: ok.
+- `reports/stato_progetto.md:697` — la voce «Mani — richiesta d'un fiato (PR #368)». Rischio: perdere la nostra voce delle decisioni dell'operatore (#366) o quella di Mani. Ci sono entrambe e la riga #361 modificata da Mani è presa dal suo lato. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1484` — unione delle due code di memoria. Rischio: righe perse. Il diff contro MERGE_HEAD aggiunge solo le 3 righe nostre (#753-M1 + lezione + 2° giro), quello contro HEAD solo le 5 di Mani. Non si perde nulla. Esito: ok, con la sola nota sulla numerazione doppia, che è di processo e non tocca il codice.
+
+Controlli meccanici:
+- `git ls-files -u` è vuoto.
+- `git diff --cached --check` è pulito.
+- Nessun marcatore di conflitto in reports, .claude, clients, tests e scripts.
+- MERGE_HEAD è 904d9d6.
+- Il merge non tocca `_get_window`, il tetto di 10 iterazioni né i provider.
+
+Cosa non ho verificato:
+- Il test kernel (1134 PASS) e il pytest su voce, telegram_voce e notte (583 passed) non li ho rieseguiti: mi fido del tuo numero. Il nostro lato di codice (gas.py, bot.py) è fuori da questo merge e ha già avuto la sua review (#753-M1, 2° giro).
+- Il comportamento dal vivo della voce sul Mac non è riproducibile qui.
+- handoff.md, ultimo_report.md e diff_sessione.md presi dal nostro lato non li ho controllati riga per riga, perché li riscrive /fine-task.
+
+Memoria: ho aggiunto la riga #757-M1 in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho messa in stage, senza committare come richiesto. Contiene una lezione nuova: dopo un merge della memoria, il numero della review si prende dalla coda del file fuso, non da quella del proprio lato.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1119 PASS / 0 FAIL (main a0c200c, container) → 1134 PASS / 0 FAIL (rilanciato da M1 dopo il commit d5773ec1).
+- Kernel (`PYTHONUTF8=1 python tests/test_unit_kernel.py`): 1119 PASS / 0 FAIL (main a0c200c, container) → 1134 PASS / 0 FAIL (rilanciato da M1 dopo il commit d5773ec1 e di nuovo dopo il merge di #368). Dopo il merge: `python -m pytest -q tests/test_unit_voce_ascolto.py tests/test_unit_telegram_voce.py tests/test_unit_notte.py -k "not browser"` → 583 passed.
 - `python -m pytest -q tests/test_unit_telegram_voce.py tests/test_unit_notte.py tests/test_unit_sottofondo.py tests/test_unit_gate.py tests/test_unit_manutenzione.py tests/test_unit_voice_server.py -k "not browser"` → 1448 passed, 30 deselected.
 
 ```
@@ -133,9 +165,10 @@ Fuori scope: SKIP del kernel e test con «browser» (mancano bwrap, browser ed e
 ## §6 STATO CI
 
 CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumento GitHub sulla PR #370:
-- e761eefc: handoff-check success; verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE); unit-suite in corso alla scrittura.
-- d5773ec1: nessuna run su questo SHA (pushato insieme a e761eefc).
-- Commit di stato (R-753-M1-A estesa) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- e9b74f59: unit-suite, handoff-check, verifica-bot success (check suite completata).
+- e761eefc: handoff-check e verifica-bot success; check suite completata.
+- d5773ec1, fabf2e9: nessuna run propria (pushati insieme al commit di testa successivo).
+- Merge di #368 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -143,4 +176,5 @@ CI NON VERIFICATA (gh assente) con `gh run list`; check run letti con lo strumen
 - Ve #370 V-2 / bot #370 V-1/V-2 BASSE — buchi del pin anonimo: lapidi dei lead fusi, parole di prossima_azione/note, nomi corti.
 - Bot #370 V-3 COSMETICA — commento a gas.py ~4002 non corrisponde al codice.
 - Limite noto del pin anonimo: nel testo del diario non si cercano nomi più corti di 3 caratteri né parole più corte di 4.
+- Numerazione delle review: la chat di Mani usa anch'essa il suffisso «-M1» (#754-#756-M1); #753-M1 compare due volte (una per chat). Processo, nessun effetto sul codice.
 - Riserve precedenti ancora aperte (R-744-M1-1..4, R-750-M1-2/3, ve #366 V-2/V-3): in reports/stato_progetto.md.
