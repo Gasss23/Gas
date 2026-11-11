@@ -2225,7 +2225,9 @@ def test_clear_da_telegram_con_la_riflessione_vera(monkeypatch, dirs):
         return {"update_id": 1, "message": {"chat": {"id": 7}, "text": testo}}
 
     _tg._handle_update("http://finto", upd("quanto fa 6*7"), {7}, k)
-    assert inviati[-1] == "42"
+    # §8 (operatore 2026-11-10): Flash-lite si dichiara nel testo Telegram
+    assert inviati[-1].split("\n\n")[0] == "42"
+    assert inviati[-1].endswith("(versione leggera scelta per un compito semplice)")
     _tg._handle_update("http://finto", upd("/clear"), {7}, k)
     assert _ClientRifl.riflessioni == 1 and k.history == []
     primo, recap = inviati[-2], inviati[-1]
