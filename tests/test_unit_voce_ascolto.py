@@ -2991,7 +2991,8 @@ def test_quasi_sentita_non_scritta_se_la_salita_attiva(caplog):
 
 def test_quasi_sentita_spenta_con_soglia_bassa(caplog):
     # soglia della parola sotto SOGLIA_QUASI (test/regolazioni estreme): niente righe
-    asc, _ = _ascolto_quasi([0.25, 0.28, 0.0], soglia=0.2, blocchi_parola=5)
+    # salita da 0,30 in su che non attiva (servono 5 blocchi): senza la guardia si scriverebbe
+    asc, _ = _ascolto_quasi([0.35, 0.4, 0.0], soglia=0.3, blocchi_parola=5)
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         asc.aspetta_parola()
     assert _righe_quasi(caplog) == []
