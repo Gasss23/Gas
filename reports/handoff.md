@@ -22,6 +22,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **R-764-1, R-766-1, R-767-1**: `FATTA` — chiuse prima del commit (review #766, #767, #769-M2).
 - **V-1 del bot #373 (crediti + chiusura con virgola o senza punteggiatura passavano)**: `FATTA` (789ade7) — divisione anche su , ; : e crediti che finiscono con una chiusura lunga a parola intera (review #774, #775-M2).
 - **Merge di origin/main (#370)**: `FATTA` (7f7933e, review #777-M2).
+- **Merge di origin/main (#371, #372) dopo il «mergia tutte» dell'operatore (via M1)**: `FATTA` (1f7edb1, review #785-M2). Test stt+tts+ascolto+telegram_voce dopo il merge: 621 passed.
 - **V-1 del bot #373 su 4559e23 (gravità media: «Niente.» nel seguito scartato, regressione)**: `FATTA` (48b605f) — «niente»/«nulla» tolti dagli intercalari (review #780-M2).
 - **Prova sul Mac dal vero**: `DEFERITA`.
 
@@ -30,7 +31,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md | 13 +++++++++++++
+ .claude/agents/memoria_revisore.md | 20 +++++++++++++++++---
  modules/voice/server.py            | 15 ++++++++++++++-
  modules/voice/stt.py               | 67 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  reports/diff_sessione.md           | n/d
@@ -41,11 +42,13 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
  tests/test_unit_voice_stt.py       | 47 +++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: confronto con origin/main (e3eb542, dopo il merge). Regola «n/d» — i conteggi dei report riscritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
+NB: confronto con origin/main (52023d8, dopo il merge). Regola «n/d» — i conteggi dei report riscritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1f7edb1 Merge origin/main (#371, #372) nella #373 — review #785-M2 APPROVATO (chat M2)
+a15617e docs(fine-task): #373 dopo la V-1 del bot su 4559e23 — review #780-M2 (chat M2)
 48b605f fix(voce): «Niente.»/«Nulla.» nel seguito tornano risposte valide, non intercalari (V-1 bot #373 su 4559e23)
 4559e23 docs(fine-task): #373 dopo V-1 bot e merge di main — review #774-#777-M2 (chat M2)
 7f7933e Merge origin/main (#370) nella #373 — review #777-M2 APPROVATO (chat M2)
@@ -57,6 +60,29 @@ NB: confronto con origin/main (e3eb542, dopo il merge). Regola «n/d» — i con
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #785-M2 (merge di origin/main con #371 e #372) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Ho letto: CLAUDE.md §5 (mirato), la memoria del revisore (la coda) e reports/stato_progetto.md (solo il diff).
+
+**Elementi del diff esaminati**
+- `modules/voice/stt.py:52`: la lista `_ALLUCINAZIONI_INTERE` del filtro, usata a `modules/voice/stt.py:140`. Rischio: che il merge abbia toccato il filtro o che si sia legato a tts/ascolto. Esito ok: il file è identico a HEAD (diff 0). Importa solo librerie standard (`modules/voice/stt.py:9`), quindi non dipende né da tts.py né da ascolto.py.
+- `modules/voice/server.py:220`: le parole di riempitivo `_INTERCALARI` (filtro 2), controllate a `modules/voice/server.py:235`. Rischio: che il merge abbia perso o duplicato le righe della correzione V-1 del bot (da soli, «niente» e «nulla» non contano come riempitivo). Esito ok: identico a HEAD (diff 0).
+- `tests/test_unit_voice_stt.py:1401` e `tests/test_unit_voice_stt.py:1421`: i test del filtro 2 (saluti scartati, richieste che passano). Esito ok: identici a HEAD.
+- `modules/voice/tts.py:1` (contesto, arriva da main): rischio che il merge abbia alterato il keep-alive della #372. Esito ok: identico a MERGE_HEAD (diff 0). Lo stesso vale per `clients/voice/ascolto.py`, `scripts/voce/diagnosi_ascolto.py`, `tests/test_unit_voce_ascolto.py` e `tests/test_unit_voice_tts.py`.
+- `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md`: rispetto a MERGE_HEAD risultano tolte solo 2 righe (#764-M1coord e #765-M1coord). In realtà sono solo spostate: stesso md5 e 2 occorrenze per lato. In stato_progetto l'unica riga tolta rispetto a HEAD è la #368, sostituita dalla versione «MERGIATA» di main. Esito ok.
+- Meccanica del merge: `git ls-files -u` vuoto, `git diff --cached --check` pulito, 0 marcatori di conflitto in .claude, reports, modules, tests e clients.
+
+**Rischi esclusi**
+- Test: non ho la conferma dei 621 passed. Ho lanciato stt+tts+ascolto+server, ma la run non si è chiusa entro il tempo ed è finita in background senza esito. Il numero è quello che dichiari tu: prima del commit va rivista almeno la riga finale di pytest.
+- Comportamento dal vivo sul Mac (filtro e keep-alive insieme in una conversazione vera): non verificato, qui non si può riprodurre.
+
+**Memoria**
+- Ho aggiunto in coda a /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md la riga `#785-M2 — 2026-11-11 — APPROVATO — … Nessuna lezione nuova.` ed è già in staging (`git add`).
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`: durante un merge `git commit -o` fallisce (Git non permette commit parziali a metà merge). Il file entra col commit di merge.
+- Il diff della memoria rispetto a HEAD conta 21 righe: le 20 portate da main più la mia.
 
 ### Review #780-M2 (V-1 bot #373 su 4559e23) — verdetto integrale
 
