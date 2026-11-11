@@ -179,5 +179,7 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud). Run non ancora disponibi
 
 - R-773-1-M2 BASSA, R-773-3-M2 COSMETICA: CHIUSE (review #778-M2).
 - R-773-2-M2 BASSA: un anticipo buttato (prima frase diversa dalla risposta finale: markdown, frase troppo lunga, cervello di riserva) è già stato pagato a ElevenLabs (una frase per turno, testo di Gas).
+  V-1 verifica esterna #374 (BASSA): è anche un'uscita di testo verso ElevenLabs prima del finale. Limite dichiarato: il kernel NON modifica il testo finale del forte (`gas.py`, `yield {"type": "final", "content": msg.content}`), quindi la frase anticipata è testo che il forte ha scritto per la risposta a voce e che nel caso normale va comunque a ElevenLabs; esce in più solo quando poi non viene detta (taglio della parte parlata, risposta poi scartata e rifatta da un altro cervello).
+- V-2/V-3/V-4 verifica esterna #374 (COSMETICHE): guadagno 1,2–1,3 s (misure diverse, stessa prova); riga di stato spostata fuori dal paragrafo del gate; `9` invece di `signal.SIGKILL` e finestra di microsecondi del Timer dopo la fine regolare.
 - Cosmetiche #778: `9` invece di `signal.SIGKILL`; senza riga `result` i tempi riportano solo quelli misurati da Gas.
 - Non verificato: guadagno reale sul Mac; effetto dell'ordine «chiamate» prima di «testo» dello schema sulla qualità delle risposte non a voce.
