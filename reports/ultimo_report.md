@@ -1,19 +1,16 @@
-# Ultimo report — 2026-11-10 — Decisioni dell'operatore: avviso Flash-lite, tetto di 10 chiamate per turno, nomi dei lead mai ai modelli non forti (M1)
+# Ultimo report — 2026-11-11 — Audit dell'11 novembre: correzioni B1/B2/B4/S1 (chat M3)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #370 (https://github.com/Gasss23/Gas/pull/370).
-2. R-753-M1-A: i risultati di `ricorda`/`salva_contatto` già nella storia, il testo dell'operatore `recap_pin` e la riflessione di fine task (ve #370 V-1) possono contenere nomi di clienti e arrivano ancora ai modelli non forti. Estendere il blocco anche lì? sì/no
+1. Merge della PR #376 (https://github.com/Gasss23/Gas/pull/376): tocca la macchina di controllo (gate, hook, CI) → con riserve del bot decide l'operatore (via M1). Revisore APPROVATO (#767-M1).
 
 ## Esito
-- **(a) Primo cervello non configurato = ripiego dichiarato** (sì dell'operatore): FATTA — nessun cambio di codice, test T113a4 lo fissa.
-- **(b) Flash-lite dichiarato** (sì): FATTA — `RUNG_VERSIONE_LEGGERA`, riga «↪ risposta da … (versione leggera scelta per un compito semplice)» in CLI e testo Telegram, mai a voce.
-- **Tetto di 10 chiamate al modello per turno** (sì): FATTA — `MAX_CHIAMATE_TURNO`, contatore unico fra i cervelli; `for _ in range(10)` resta come barriera per cervello (§8).
-- **Nomi dei lead mai ai modelli non forti** (sì): FATTA per il pin della memoria — variante piena solo a claude-cli, anonima agli altri. DEFERITA la storia/recap (R-753-M1-A, decisione dell'operatore).
-- **Bot #370 5° giro V-1 (MEDIA)**: pin anonimo fail-closed se la lettura dei contatti fallisce — FATTA (T114f2, review #765-M1coord APPROVATO CON RISERVE, R-765-1-M1coord BASSA).
-- Review #753-M1: 1° giro APPROVATO CON RISERVE, 2° giro APPROVATO.
+- **B1 MEDIA — gasmerge senza `timeout` sul Mac**: FATTA — `scripts/gasmerge.sh`: timeout → gtimeout → perl come processo padre che allo scadere uccide `gh` (Go ignora SIGALRM) ed esce 124. Il primo tentativo (`alarm; exec`) era stato BOCCIATO dal revisore (#766-M1) proprio per questo.
+- **B2 MEDIA — maiuscole nei gate**: FATTA — `scripts/bot_esito.py`, `scripts/check_verdetto.py` con casefold; trovato lo stesso bug in `.claude/hooks/review_gate.sh` e corretto (`grep -qiE`, `GIT_ICASE_PATHSPECS=1`).
+- **B4 BASSA — `sottofondo-ferma` fuori cartella**: FATTA — errore che dice di lanciarlo dalla cartella di Gas, exit 1; nella cartella di Gas senza compiti resta «Nessun compito».
+- **S1 — CI con permessi di scrittura**: FATTA — `.github/workflows/ci.yml` `permissions: contents: read`.
 
 ## Test
-Kernel 1119 → 1134 PASS / 0 FAIL; pytest telegram_voce+notte+sottofondo+gate+manutenzione+voice_server (-k "not browser") 1448 passed.
+Ogni correzione ha un test che fallisce senza (8 + 3 hooks, più il nuovo test del ripiego perl e quello sul file non tracciato). gasmerge + verifica_bot + handoff_check + sottofondo: 891 passed; hooks: 215 passed; kernel: 1135 PASS, 0 FAIL.
 
 ## Anomalie
-Nessuna.
+Il push forzato del branch è stato negato dai permessi: non serviva (il branch di prima era tutto dentro main, push normale). Non provato su macOS reale.

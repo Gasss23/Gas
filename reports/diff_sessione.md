@@ -1,9 +1,14 @@
-# Diff della sessione — 2026-11-10 pomeriggio — decisioni dell'operatore (M1)
+# Diff di sessione — 2026-11-11 — Audit dell'11 novembre (chat M3)
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+File toccati (da `git diff --stat BASE..HEAD`, BASE = merge-base con origin/main):
+- `scripts/gasmerge.sh` — ripiego senza `timeout` (gtimeout, poi perl padre che uccide il figlio).
+- `scripts/bot_esito.py` — `tocca_macchina_bot` senza maiuscole.
+- `scripts/check_verdetto.py` — `_nel_perimetro` senza maiuscole.
+- `.claude/hooks/review_gate.sh` — perimetro senza maiuscole (grep -i, pathspec icase).
+- `.github/workflows/ci.yml` — `permissions: contents: read`.
+- `modules/sottofondo/__init__.py` — `ferma()` fuori dalla cartella di Gas: errore che dice dove lanciarlo.
+- `tests/test_unit_gasmerge.py`, `tests/test_unit_verifica_bot.py`, `tests/test_unit_handoff_check.py`, `tests/test_unit_hooks.py`, `tests/test_unit_sottofondo.py` — test delle correzioni.
+- `.claude/agents/memoria_revisore.md` — righe #766-M1, #767-M1.
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.
 
-- `gas.py`: `_info_ripiego` riconosce la versione leggera (Flash-lite); `MAX_CHIAMATE_TURNO` = tetto di 10 chiamate per turno condiviso fra i cervelli; `_memoria_pin_varianti()` (pin pieno solo al forte, anonimo agli altri).
-- `modules/telegram/bot.py`: la riga dell'avviso vale anche per la versione leggera (solo testo).
-- `tests/test_unit_kernel.py`: T9a/T9b aggiornati, T113a2-a4, T114a-i nuovi; `tests/test_unit_notte.py`: test Telegram adattato alla riga di Flash-lite.
-- `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md`: decisioni del 2026-11-10, riserva R-753-M1-A, riga #753-M1.
-- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: report di fine sessione.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
