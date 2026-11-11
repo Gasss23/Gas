@@ -273,6 +273,13 @@ def ferma(root: Path, avvisa: Optional[Callable[[str, Path], Any]] = None) -> Tu
     sotto lo stesso lock di _riprendi. Ritorna (riuscito, frase per il terminale). Mai eccezioni."""
     try:
         cartella = Path(root) / CARTELLA
+        if not cartella.is_dir():
+            if (Path(root) / "gas.py").is_file():  # cartella di Gas, mai partito un compito
+                return True, "Nessun compito in sottofondo in corso."
+            # Audit 11 nov B4 / bot #364 V-2: lanciato da un'altra cartella, niente «nessun
+            # compito» falso e rassicurante mentre il compito gira e riparte
+            return False, (f"Nessuna coda dei compiti in {Path(root).resolve()}: lancia il "
+                           "comando dalla cartella di Gas (cd ~/Gas).")
         dati = _leggi(cartella / ATTIVO)
         ident = str((dati or {}).get("id") or "")
         if not ident:

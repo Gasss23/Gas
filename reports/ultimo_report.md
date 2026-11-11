@@ -1,20 +1,19 @@
-# Ultimo report — 2026-11-11 notte — voce: prima frase in anticipo e tempi del forte (chat M2)
+# Ultimo report — 2026-11-11 — Audit dell'11 novembre: correzioni B1/B2/B4/S1 (chat M3)
 
 ## DECISIONI UMANE RICHIESTE
-
-1. PR dello streaming: con verdetto del bot APPROVATO pulito e CI verde la mergia la chat; con riserve resta per il mattino.
-2. Sul Mac, dopo il merge e il riavvio del server voce: `grep "tempi claude-cli" gas_debug.log | tail -5` e incollare il risultato (dice dove vanno i 6–7 s del cervello).
+Nessuna: «mergia tutte» dell'operatore (via M1, 11 nov) vale per la PR #376; la mergia l'agente con CI e bot verdi senza ALTA/MEDIA.
 
 ## Esito
+- **B1 MEDIA — gasmerge senza `timeout` sul Mac**: FATTA — `scripts/gasmerge.sh`: timeout → gtimeout → perl come processo padre che allo scadere uccide `gh` (Go ignora SIGALRM) ed esce 124. Il primo tentativo (`alarm; exec`) era stato BOCCIATO dal revisore (#766-M1) proprio per questo.
+- **B2 MEDIA — maiuscole nei gate**: FATTA — `scripts/bot_esito.py`, `scripts/check_verdetto.py` con casefold; trovato lo stesso bug in `.claude/hooks/review_gate.sh` e corretto (`grep -qiE`, `GIT_ICASE_PATHSPECS=1`).
+- **B4 BASSA — `sottofondo-ferma` fuori cartella**: FATTA — errore che dice di lanciarlo dalla cartella di Gas, exit 1; nella cartella di Gas senza compiti resta «Nessun compito».
+- **S1 — CI con permessi di scrittura**: FATTA — `.github/workflows/ci.yml` `permissions: contents: read`.
+- **Bot e verifica esterna #376**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA; la V-1 BASSA comune (promemoria «FILE DI MOTORE» di gasmerge con le maiuscole) è CORRETTA (review #768-M1 APPROVATO, test nuovo).
 
-- **Prima frase in anticipo**: FATTA. Nei turni a voce `claude -p` scrive a flusso; la voce della prima frase si prepara mentre la CLI finisce e si usa solo se identica alla risposta finale. Dal vivo: prima frase pronta ~1,2 s prima.
-- **Tempi del forte nel log**: FATTI (riga `tempi claude-cli:` in gas_debug.log, solo numeri).
-- **B3 dell'audit notturno 2** (byte non UTF-8 della CLI → errore senza costo né riconoscimento di limite/login): CORRETTA (e9b05e5, review #781/#782-M2).
-- **V-1 del bot su 87c5ff3** (l'anticipo poteva mandare a ElevenLabs testo che non verrebbe detto): CORRETTA (c8c5f8f) — solo primo paragrafo ed entro il tetto della parte parlata (review #783-M2).
-- Review #773-M2 APPROVATO CON RISERVE (R-773-1/3 chiuse in #778, R-773-2 BASSA aperta), #778 e #779 (merge di main) APPROVATO.
-- Test: kernel 1136 PASS, 1 FAIL T31g (fastembed assente, come su main); claude_cli + voice_server 290 passed.
-- **Niente schema strumenti a voce e processo CLI caldo**: DEFERITI in attesa dei tempi del Mac.
+- **Merge di origin/main 0ef0b5c (#372-#374 di M2)**: FATTO, review #787-M3 APPROVATO.
+
+## Test
+Ogni correzione ha un test che fallisce senza (8 + 3 hooks, più il nuovo test del ripiego perl e quello sul file non tracciato). gasmerge + verifica_bot + handoff_check + sottofondo: 891 passed; hooks: 215 passed; kernel: 1135 PASS, 0 FAIL.
 
 ## Anomalie
-
-Nessuna.
+Il push forzato del branch è stato negato dai permessi: non serviva (il branch di prima era tutto dentro main, push normale). Non provato su macOS reale.

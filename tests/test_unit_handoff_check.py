@@ -726,6 +726,9 @@ class TestCheckVerdetto:
                   "tools/ingest_knowledge.py", "clients/voice/x.py"):
             assert cv._nel_perimetro(f, per), f
         assert not cv._nel_perimetro("reports/x.md", per)
+        # audit 11 nov B2: sul disco del Mac (case-insensitive) sono gli stessi file
+        for f in ("GAS.py", "Modules/x.py", "Tests/test_x.py", "Clients/voice/x.py"):
+            assert cv._nel_perimetro(f, per), f
 
     def test_r177_1_perimetro_non_utf8_fail_closed(self, tmp_path):
         """R-177-1: un byte non UTF-8 nel perimetro → None (fail-closed), non un crash."""

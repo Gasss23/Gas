@@ -1,10 +1,14 @@
-# Diff di sessione — 2026-11-11 notte — voce: prima frase in anticipo (chat M2)
+# Diff di sessione — 2026-11-11 — Audit dell'11 novembre (chat M3)
 
-- `brains/claude_cli.py` — con `su_testo` il forte gira a flusso (stream-json): `_esegui_a_flusso` (Popen, fili per stdin/stderr, timeout che uccide il gruppo), `_TestoInArrivo` e `_stringa_parziale` (testo della risposta finale a pezzi, solo dopo `"chiamate": []`), schema con «chiamate» prima di «testo», riga dei tempi `gas.claude_cli.tempi`.
-- `gas.py` — `run_turn(su_testo_voce=…)`, passato a ClaudeCliClient solo nei turni a voce.
-- `modules/voice/server.py` — `AnticipoVoce`: voce della prima frase preparata in un filo, usata solo se identica alla risposta finale; mai nei seguiti.
-- `tests/` — claude_cli (16 nuovi), voice_server (5 nuovi), kernel T104d/T104e.
-- Merge di origin/main (#370).
-- `reports/*` — report di fine task e stato.
+File toccati (da `git diff --stat BASE..HEAD`, BASE = merge-base con origin/main):
+- `scripts/gasmerge.sh` — ripiego senza `timeout` (gtimeout, poi perl padre che uccide il figlio).
+- `scripts/bot_esito.py` — `tocca_macchina_bot` senza maiuscole.
+- `scripts/check_verdetto.py` — `_nel_perimetro` senza maiuscole.
+- `.claude/hooks/review_gate.sh` — perimetro senza maiuscole (grep -i, pathspec icase).
+- `.github/workflows/ci.yml` — `permissions: contents: read`.
+- `modules/sottofondo/__init__.py` — `ferma()` fuori dalla cartella di Gas: errore che dice dove lanciarlo.
+- `tests/test_unit_gasmerge.py`, `tests/test_unit_verifica_bot.py`, `tests/test_unit_handoff_check.py`, `tests/test_unit_hooks.py`, `tests/test_unit_sottofondo.py` — test delle correzioni.
+- `.claude/agents/memoria_revisore.md` — righe #766-M1, #767-M1.
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.
 
-Questo file si riscrive a ogni sessione; la storia completa sta in git.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

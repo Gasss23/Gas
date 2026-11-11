@@ -1,321 +1,203 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-11 notte — voce più veloce: prima frase in anticipo dal cervello forte e tempi del forte nel log (chat M2)
+**Sessione:** 2026-11-11 — Audit dell'11 novembre: gasmerge senza timeout sul Mac, maiuscole nei gate, sottofondo-ferma fuori cartella, CI in sola lettura (chat M3, coordinata da M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR dello streaming (URL nel commento della PR e nella descrizione, dalla risposta di `create_pull_request`): con verdetto del bot APPROVATO pulito e CI verde la mergia la chat; con riserve resta pronta per il «mergia» del mattino (riserva aperta R-773-2-M2 BASSA).
-2. Prova sul Mac: dopo il merge e il riavvio del server voce, `grep "tempi claude-cli" gas_debug.log | tail -5` dice dove vanno i 6–7 s del cervello sul Mac (fuori_cli = avvio di Claude Code e login; ttft = attesa del primo token). Da incollare a M1/M2.
-
-NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request`.
+1. Nessuna: l'operatore ha detto «mergia tutte» (riferito da M1, 11 nov), vale per la PR #376 (https://github.com/Gasss23/Gas/pull/376). La mergia l'agente dopo il merge di main, con CI e bot verdi senza ALTA/MEDIA, nell'ordine deciso da M1 (dopo #372-#374 di M2, prima della #375).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Streaming della prima frase (ordine 1 di M1)**: `FATTA` (6e711ce). `claude -p` nei turni a voce scrive a flusso (stream-json); il testo della risposta finale arriva a pezzi solo se comincia con `"chiamate": []`; il server voce sintetizza la prima frase intera in un filo a parte e la usa SOLO se è identica alla prima frase della risposta finale. Dal vivo (cloud, sonnet low): prima frase pronta a ~2,1 s, risposta finale del client a ~3,4 s.
-- **Tempi interni del forte nel log (richiesta di M1)**: `FATTA` (a9419ea). Riga `tempi claude-cli:` in gas_debug.log a ogni chiamata: tutto, prima_riga, primo_testo, richiesta, ttft, api, cli, fuori_cli, token.
-- **R-773-1-M2 BASSA, R-773-3-M2 COSMETICA**: `FATTA` (a9419ea, review #778-M2).
-- **Merge di origin/main (#370)**: `FATTA` (71b04fa, review #779-M2).
-- **Merge di origin/main (#371, #372, #373) dopo il «mergia tutte» dell'operatore (via M1)**: `FATTA` (ae2e424, review #786-M2; conflitto solo nei test aggiunti in coda, tenuti entrambi).
-- **B3 BASSA audit notturno 2 (M1): uscita della CLI letta in UTF-8 con sostituzione** + cosmetiche del bot #374 (SIGKILL, risposta arrivata non è un timeout, log dei tempi che fallisce lascia traccia): `FATTA` (e9b05e5, review #781/#782-M2).
-- **V-1 del bot #374 su 87c5ff3 (gravità media: l'anticipo poteva mandare a ElevenLabs testo oltre il primo paragrafo o oltre il tetto della parte parlata, es. un elenco di clienti per lo schermo)**: `FATTA` (c8c5f8f, review #783-M2: fuzz di 20000 flussi, la frase anticipata è sempre un prefisso del parlato normale).
-- **Niente schema strumenti nei turni a voce semplici (ordine 2)**: `DEFERITA` — misurato qui: lo schema da 9k caratteri pesa ~0,3 s; prima servono i tempi del Mac.
-- **Processo CLI caldo (ordine 3)**: `DEFERITA` — non sicuro così com'è (il prompt di sistema e il codice dei ruoli cambiano a ogni chiamata); i tempi `fuori_cli` del Mac diranno se vale.
+- **B1 MEDIA — `scripts/gasmerge.sh` senza `timeout` sul Mac**: `FATTA` — timeout → gtimeout → perl padre che uccide il figlio ed esce 124. Primo tentativo BOCCIATO (#766-M1: gh è Go e ignora SIGALRM), corretto e APPROVATO (#767-M1).
+- **B2 MEDIA — maiuscole in `tocca_macchina_bot` e `_nel_perimetro`**: `FATTA` — casefold; stesso bug trovato e corretto in `.claude/hooks/review_gate.sh` (grep -i, `GIT_ICASE_PATHSPECS=1`).
+- **B4 BASSA — `sottofondo-ferma` fuori dalla cartella di Gas**: `FATTA` — errore con la cartella da usare, exit 1.
+- **S1 — `ci.yml` senza `permissions`**: `FATTA` — `permissions: contents: read`.
+- **Merge di origin/main 0ef0b5c (#372, #373, #374 di M2)**: `FATTA` — nessun codice cambiato rispetto ai due lati, review #787-M3 APPROVATO; sottofondo+gasmerge+hooks+verifica_bot+handoff_check+gate 1940 passed, kernel 1137 PASS 0 FAIL.
+- **Bot #376 (078ad0a) e verifica esterna #376**: APPROVATO CON RISERVE, nessuna ALTA/MEDIA (https://github.com/Gasss23/Gas/pull/376#issuecomment-6784648609). V-1 BASSA comune (B2 incompleto: il promemoria «FILE DI MOTORE» di gasmerge distingueva le maiuscole): `FATTA` in 6272544 (`shopt -s nocasematch` attorno al ciclo, test), review #768-M1 APPROVATO. V-3 cosmetica (docstring di un test hooks) corretta; V-2 cosmetica (§2 «17 +-») corretta qui sotto.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  15 ++++++++++++---
- brains/claude_cli.py               | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- gas.py                             |  14 +++++++++++---
- modules/voice/server.py            |  84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/diff_sessione.md           | n/d
+ .claude/agents/memoria_revisore.md |   5 +
+ .claude/hooks/review_gate.sh       |   6 +-
+ .github/workflows/ci.yml           |   5 +
+ modules/sottofondo/__init__.py     |   7 +
+ reports/diff_sessione.md           |  20 +-
  reports/handoff.md                 | n/d
- reports/ripartenza_m2.md           | n/d
- reports/stato_progetto.md          | n/d
- reports/ultimo_report.md           | n/d
- tests/test_unit_claude_cli.py      | 223 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_kernel.py          |  47 +++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voice_server.py    |  90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/stato_progetto.md          |   4 +-
+ reports/ultimo_report.md           |  23 +-
+ scripts/bot_esito.py               |  10 +-
+ scripts/check_verdetto.py          |   5 +-
+ scripts/gasmerge.sh                |  17 +-
+ tests/test_unit_gasmerge.py        |  63 +
+ tests/test_unit_handoff_check.py   |   3 +
+ tests/test_unit_hooks.py           |  19 +-
+ tests/test_unit_sottofondo.py      |  17 +
+ tests/test_unit_verifica_bot.py    |   2 +
 ```
 
-NB: confronto con origin/main (f87ea6c). Regola «n/d» — i conteggi dei report scritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile al momento della scrittura; riga di totale tolta. BASE = 0ef0b5c (merge-base con origin/main dopo il merge di #372-#374).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-ae2e424 Merge origin/main (#371, #372, #373) nella #374 — review #786-M2 APPROVATO (chat M2)
-092a1fb docs(fine-task): #374 dopo la V-1 del bot su 87c5ff3 — review #783-M2 (chat M2)
-c8c5f8f fix(voce): anticipo solo dal primo paragrafo ed entro il tetto della parte parlata (V-1 bot #374 su 87c5ff3) — review #783-M2 (chat M2)
-87c5ff3 docs(fine-task): #374 dopo B3 e cosmetiche del bot — review #781/#782-M2 (chat M2)
-e9b05e5 fix(cervello): uscita della CLI letta in UTF-8 con sostituzione (B3 audit notturno 2), SIGKILL, risposta arrivata non è un timeout, log dei tempi che fallisce lascia traccia — review #781/#782-M2 (chat M2)
-567b1bb docs(fine-task): #374 — riserve della verifica esterna registrate (V-1 uscita di testo, cosmetiche) (chat M2)
-ba9220c docs(fine-task): voce — prima frase in anticipo e tempi del forte (chat M2)
-71b04fa Merge origin/main (#370) nello streaming della prima frase — review #779-M2 APPROVATO (chat M2)
-a9419ea perf(voce): tempi interni del forte nel log, nipoti uccisi al timeout, pipe chiuse — review #778-M2 (chat M2)
-6e711ce perf(voce): prima frase in anticipo — claude -p a flusso (stream-json), voce della prima frase preparata mentre il forte finisce — review #773-M2 (chat M2)
+902eedce Merge origin/main (#372, #373, #374 di M2) nella PR #376 — review #787-M3
+3f305e98 docs(fine-task): audit 11 nov — bot/verifica esterna #376, correzione V-1 (M3)
+62725449 fix(audit 11 nov): bot #376 V-1 — promemoria «FILE DI MOTORE» di gasmerge senza maiuscole (M3)
+0d5ab5b7 chore(revisore): memoria review #768 — APPROVATO
+078ad0a7 docs(fine-task): audit 11 nov B1/B2/B4/S1, PR #376 (M3)
+8eb21c02 fix(audit 11 nov): gasmerge senza timeout sul Mac, maiuscole nei gate, sottofondo-ferma fuori cartella, CI in sola lettura (M3)
+a3e00420 chore(revisore): memoria review #767 — APPROVATO
+c2f8b03f chore(revisore): memoria review #766 — BOCCIATO
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #786-M2 (merge di origin/main con #371, #372, #373) — verdetto integrale
+Commit 8eb21c0: due giri, #766-M1 (BOCCIATO) → #767-M1 (APPROVATO). Commit 6272544 (bot #376 V-1): #768-M1 (APPROVATO). Merge 902eedc: #787-M3 (APPROVATO). Verdetti integrali.
+
+### Review #766-M1
+
+## VERDETTO: BOCCIATO
+
+Review #766-M1. Diff nel working tree di feat/r7-direttore-m3, 11 file. Ho letto CLAUDE.md (sez. 5), stato_progetto.md e la mia memoria. La riga di memoria è committata (c2f8b03f).
+
+**Motivo del blocco (B1, MEDIA → blocco: il fix promette un timeout che sul Mac non c'è)**
+- scripts/gasmerge.sh:82 — ripiego `perl -e 'alarm shift; exec @ARGV or exit 127' 900`. Rischio esaminato: SIGALRM sopravvive a exec, ma lo deve far morire il programma lanciato. Esito: **blocco**. gh è un binario Go (verificato con `file /usr/local/bin/gh`: «Go BuildID»). Il runtime Go cattura SIGALRM e, senza `signal.Notify`, lo ignora: «Other signals will be caught but no action will be taken». Prova fatta: un binario Go che dorme 6 s, lanciato sotto il perl con 1 s, finisce dopo 6 s con rc=0. Lo stesso binario sotto `timeout 1` esce con rc=124 dopo 1 s. Quindi sul Mac senza gtimeout `gh pr checks --watch` torna a poter restare appeso all'infinito, e la riga 85 (142→124) non scatta mai con gh.
+- tests/test_unit_gasmerge.py:1664 — `test_perl_alarm_scaduto_vale_timeout` prova il perl con `sleep`, che è un programma C e muore con SIGALRM: con gh la prova non vale. Il secondo pezzo usa uno stub che esce 142 da solo, quindi prova solo la mappa dei codici. Esito: **blocco** (la prova non dimostra quello che dichiara).
+- **Correzione proposta, già provata qui**: il perl fa da padre, con fork e kill esplicito:
+  `perl -e 'my $t=shift; my $p=fork; exit 127 unless defined $p; if(!$p){exec @ARGV or exit 127} $SIG{ALRM}=sub{kill "TERM",$p; sleep 2; kill "KILL",$p; waitpid $p,0; exit 124}; alarm $t; waitpid $p,0; exit($? & 127 ? 128+($? & 127) : $? >> 8)' 900`
+  Esiti misurati: binario Go ucciso dopo circa 3 s con rc 124; un figlio che esce 8 restituisce 8; un comando inesistente restituisce 127. Con questa versione la riga 85 (142→124) non serve più. Il test va rifatto con un figlio che ignora SIGALRM, per esempio `perl -e '$SIG{ALRM}="IGNORE"; sleep 5'`, verificando rc=124 e un tempo trascorso molto sotto i 5 s.
+- Sulla mappa dei codici d'uscita, come richiesto: se gh esce da solo, il suo codice passa intatto (exec sostituisce il processo), e un exec fallito dà 127. Su questo la mappa è corretta.
+
+**Resto del diff (ok)**
+- scripts/bot_esito.py:210 — casefold su NOMI_MACCHINA_BOT e MACCHINA_BOT. Rischio esaminato: che allarghi o restringa male. Esito: ok. Il confronto può solo allargarsi, quindi più PR finiscono in «neutral» (decide l'operatore): è la direzione prudente. I test_no esistenti restano verdi e `[".Claude/hooks/x.sh"]`/`[".GITHUB/..."]` sono coperti.
+- scripts/check_verdetto.py:155 — `_nel_perimetro` senza maiuscole. Lo usano anche scripts/check_handoff.py:144 e scripts/check_verdetto.py:249, entrambi come «tocca il perimetro → servono più controlli». Allargare quindi rende i gate più severi, mai più deboli. Esito: ok.
+- .claude/hooks/review_gate.sh:371 — `grep -qiE "$PERIM_RE"`. Il regex è ancorato con `^(...)` (.claude/hooks/review_gate.sh:341); -i allarga solo, nella direzione del blocco. Esito: ok. Test: tests/test_unit_hooks.py `test_gate_maiuscole_bloccano`, 3 passed rieseguiti.
+- .github/workflows/ci.yml:25 — `permissions: contents: read`. Rischio esaminato: step che scrivono su GitHub. Gli step usano solo actions/checkout@v4, setup-python@v5, `git fetch origin main` (.github/workflows/ci.yml:372) e script con gh finto. Nessun job ridefinisce i permessi. Esito: ok.
+- modules/sottofondo/__init__.py:276 — `ferma()` senza cartella della coda restituisce (False, frase) ed exit 1 (unico chiamante: gas.py:6707). Tutto resta dentro il try e non introduce eccezioni nuove. Esito: ok, con una nota COSMETICA sotto.
+
+**Riserve (da tracciare anche dopo il nuovo giro)**
+- BASSA, risponde alla tua domanda sulla riga ~360 — sì, il pathspec ha lo stesso problema. .claude/hooks/review_gate.sh:360: il filtro di `git status ... -- "${PERIM_PATHS[@]}"` distingue le maiuscole. Prova in un repo di prova: `GAS.py` e `Brains/x.py` non tracciati restano invisibili col pathspec `gas.py brains/`, e compaiono con `GIT_ICASE_PATHSPECS=1`. Sul Mac il danno è limitato: il disco non distingue le maiuscole e git di norma vede il nome reale sul disco. Su Linux un file come `GAS.py` non tracciato sfugge al blocco «modifiche non in stage». Correzione: anteporre `GIT_ICASE_PATHSPECS=1` a quel `git status`, più un test.
+- COSMETICA: in una cartella di Gas dove non è mai partito nessun compito, `sottofondo-ferma` dice «lancia il comando dalla cartella di Gas», che lì è fuorviante. Si potrebbe distinguere controllando se esiste gas.py in root.
+
+**Rischi esclusi (non verificati)**
+- Non ho provato su macOS reale: le differenze tra perl e il runtime Go per Darwin le ho dedotte. Il comportamento Go su SIGALRM è documentato uguale su tutti i sistemi ed è provato qui su Linux.
+- Non ho rieseguito le suite complete (891 test di gasmerge/verifica_bot/handoff_check/sottofondo, 214 hooks, 1135 kernel): mi fido dei numeri dichiarati. Ho rieseguito solo i test nuovi: 2 passed con `-k Timeout` e 3 passed per le maiuscole negli hooks.
+- Non ho verificato la run CI reale con i nuovi permessi.
+
+Nessuno slicing della history e nessuna simulazione dei tool nel diff.
+
+File rilevanti:
+- scripts/gasmerge.sh
+- tests/test_unit_gasmerge.py
+- .claude/hooks/review_gate.sh
+- .claude/agents/memoria_revisore.md
+
+### Review #767-M1
 
 ## VERDETTO: APPROVATO
 
-Review #786-M2. È il merge staged di origin/main f87ea6c (le PR #371, #372 e #373) nella PR #374, la voce rapida, in /home/user/Gas-stream.
+Secondo giro della review #766-M1 (che era BOCCIATO), branch feat/r7-direttore-m3, modifiche ancora non committate (working tree). Ho letto prima CLAUDE.md §5, la memoria del revisore e l'intestazione di stato_progetto.
 
-Controlli meccanici:
-- `git ls-files -u` è vuoto e `git diff --cached --check` non segnala niente.
-- Non ci sono marcatori di conflitto né in modules/voice/server.py né in tests/test_unit_voice_server.py.
-- Rispetto a MERGE_HEAD (cioè main) il codice differisce solo nei 6 file della #374: brains/claude_cli.py, gas.py, modules/voice/server.py e i 3 file di test. Quindi il codice portato da main è intatto.
-- Rispetto a HEAD, modules/voice/server.py porta solo le modifiche della #373: `_INTERCALARI` e il nuovo ramo «solo intercalari» in `seguito_da_scartare`. Il codice dell'anticipo non cambia.
+Cosa ho esaminato nel diff:
 
-Elementi esaminati:
-- modules/voice/server.py:1301: con `TrascrizioneAllucinata` la funzione esce con `return None` dopo `_chiudi_seguito()`, quindi prima di qualsiasi turno. Rischio esaminato: un anticipo creato da una trascrizione allucinata. Esito: ok, `AnticipoVoce` nasce solo dentro il turno.
-- modules/voice/server.py:873: un seguito da scartare (anche solo intercalari) chiude la conversazione e fa `return` prima di `run_turn`. Rischio esaminato: un frammento della stanza che arriva a ElevenLabs. Esito: ok. In più l'anticipo non si crea mai nei seguiti: la condizione `not self._seguito()` è a modules/voice/server.py:971.
-- modules/voice/server.py:410: il filo `anticipo-voce` chiama `sintesi`, cioè `synthesize_speech`. Rischio esaminato: il keep-alive della #372 condiviso fra thread. Esito: ok. `_conn_locale` è una `threading.local()` (modules/voice/tts.py:77), quindi il filo dell'anticipo apre la sua connessione. Alla fine del filo la connessione resta lì finché la raccolta della memoria di Python non la chiude. Nessuna conseguenza pratica.
-- tests/test_unit_voice_server.py:2689: `test_filtro2_seguito_solo_intercalari` sta in coda dopo i 6 test dell'anticipo (righe 2599-2662), senza doppioni. Esito: ok.
-- Memoria e report: le 2 righe #764-M1coord e #765-M1coord risultano «tolte» rispetto a MERGE_HEAD, ma sono solo spostate (1 occorrenza per ciascun lato). Unione corretta.
+- `scripts/gasmerge.sh:84` — Cosa fa: se mancano `timeout` e `gtimeout`, usa perl come processo padre (fork ed exec del comando, poi alarm; allo scadere manda TERM, aspetta 2 s, manda KILL ed esce 124). Rischio esaminato: gh è un binario Go e ignora SIGALRM, che era il motivo del BOCCIATO. Prova fatta con un binario Go vero, compilato apposta, col programma perl estratto da gasmerge.sh:
+  - binario da 8 s con limite 1 s → rc 124 in 3 s;
+  - figlio che esce con codice 3 → rc 3 (codice passato);
+  - `kill -9` su se stesso → rc 137;
+  - figlio che ignora sia TERM sia ALRM → ucciso con KILL, rc 124.
 
-Rischi esclusi, non verificati:
-- La suite dei test: ho rilanciato voice_server, tts e stt, ma l'esecuzione non si è chiusa entro il tempo. Fanno fede i 525 passed che hai dichiarato tu, più il test del kernel che stai lanciando.
-- Il comportamento reale del keep-alive verso ElevenLabs con due thread contemporanei (quello dell'anticipo e quello principale): serve la rete vera, non riproducibile qui.
-- brains/claude_cli.py e gas.py: fuori dal diff del merge (identici a HEAD), già coperti dalle review della #374.
+  La mappa 142→124 è tolta e il `case` a `scripts/gasmerge.sh:91` è coerente. Esito: ok.
+- `tests/test_unit_gasmerge.py:1665` — Cosa fa: estrae il programma perl dal sorgente di gasmerge.sh con una regex, quindi il test si rompe se lo script cambia. Prova un figlio che ignora SIGALRM (rc 124 in meno di 6 s), il codice 8 passato e il 127 su un comando inesistente. Rischio esaminato: che sia di nuovo una prova falsa come col vecchio `sleep`. Il figlio perl con `$SIG{ALRM}="IGNORE"` riproduce il comportamento di Go. Esito: ok.
+- `.claude/hooks/review_gate.sh:361` — Cosa fa: aggiunge `GIT_ICASE_PATHSPECS=1` a `git status` sul pathspec del perimetro, così le maiuscole non contano anche per i file non tracciati. Rischio esaminato: un file non tracciato come Brains/x.py non verrebbe visto. Esito: ok, coperto da `tests/test_unit_hooks.py:572`.
+- `modules/sottofondo/__init__.py:277` — Cosa fa: `ferma()` senza coda ma con gas.py nella root risponde (True, «Nessun compito in sottofondo in corso.»). Da un'altra cartella resta l'errore che dice di lanciarlo dalla cartella di Gas. Tutto sta dentro il try esistente, quindi nessuna eccezione nuova. Esito: ok.
 
-Memoria: ho aggiunto la riga contatore #786-M2 in .claude/agents/memoria_revisore.md e l'ho messa in staging. Non ho lanciato `scripts/commit_memoria_revisore.sh`, perché durante un merge in corso il commit parziale (`git commit -o`) non è possibile: la riga entra nel commit del merge. Nessuna lezione nuova.
+Suite rieseguita: gasmerge + hooks + sottofondo + verifica_bot + handoff_check, 1106 passed (cioè 891 + 215, come dichiarato).
 
-File: /home/user/Gas-stream/modules/voice/server.py, /home/user/Gas-stream/modules/voice/tts.py, /home/user/Gas-stream/tests/test_unit_voice_server.py, /home/user/Gas-stream/.claude/agents/memoria_revisore.md
+Wall of Shame: nessuno slicing della storia e nessuna simulazione di tool. Il motore (gas.py, brains) non è toccato.
 
-### Review #783-M2 (V-1 bot #374 su 87c5ff3) — verdetto integrale
+Cosa NON ho verificato:
 
-## VERDETTO: APPROVATO CON RISERVE
+- Non ho fatto la prova a mano di `GIT_ICASE_PATHSPECS` in un repo temporaneo: il comando conteneva la parola "commit" e il gate e il classificatore dei permessi l'hanno negato. Non ho aggirato il blocco. Mi affido al test `tests/test_unit_hooks.py:572`, che è passato. Non ho rifatto nemmeno la prova inversa (il test fallisce senza la correzione): resta un'affermazione dell'autore.
+- Comportamento reale su macOS non verificato: qui gira Linux. Il perl di sistema del Mac e un gh vero in modalità `--watch` non sono riproducibili in questo ambiente.
+- Limite noto (BASSA, non è una riserva): con il ripiego perl l'uccisione arriva solo al figlio diretto, non ai suoi eventuali sotto-processi. Per `gh pr checks` non conta, perché non ne lancia.
 
-Review #783-M2: diff staged in /home/user/Gas-stream, PR #374. Chiude la V-1 MEDIA del bot su 87c5ff3.
+Memoria del revisore: aggiunta la riga #767-M1 e committata da sola con lo script dedicato (commit a3e00420), in .claude/agents/memoria_revisore.md. Nessuna lezione nuova.
 
-Letture fatte: CLAUDE.md (sez. 5, 8, 9, 10), le parti di reports/stato_progetto.md che riguardano l'anticipo e la V-1, la coda di .claude/agents/memoria_revisore.md.
-
-**Elementi del diff esaminati**
-- `modules/voice/server.py:423` — taglia il testo al primo paragrafo con la stessa `_PARAGRAFO` e lo stesso `lstrip` di `parte_parlata` (modules/voice/server.py:482). Rischio: il paragrafo si chiude in modo diverso fra testo a metà e testo finale (`\r\n`, riga vuota con spazi o tab). Uso la stessa regex, quindi il comportamento è coerente. Esito: ok.
-- `modules/voice/server.py:424` — `paragrafo_finito = finito or len(pezzi) == 2`. Rischio: si anticipa una frase ancora aperta. La riga vuota chiude davvero la frase, perché il paragrafo successivo non può allungarla. Esito: ok.
-- `modules/voice/server.py:427` — tetto sulla frase ancora aperta. Rischio: mandare a ElevenLabs un testo lungo senza punteggiatura. Questo ramo però non cambia il comportamento: quando la frase si chiude, la scarta comunque il tetto di riga 430. Serve solo a fermarsi prima. Esito: ok (il mutante sopravvive, ma è equivalente).
-- `modules/voice/server.py:430` — tetto `> _PARLATO_MAX_CHAR` sulla prima frase chiusa. Coincide con `parte_parlata`, che rifiuta con `len(prova) > _PARLATO_MAX_CHAR` (modules/voice/server.py:491). Rischio: confine a 400. Esito: riserva R-783-1-M2.
-- `modules/voice/server.py:449` — `prendi` usa `not self._frase`. Rischio: con l'anticipo spento ("") si restituisce un audio. Non succede comunque, perché con "" `_filo` resta None: la modifica è difensiva. Esito: ok.
-- `tests/test_unit_voice_server.py:2662` — test nuovo con tre casi: elenco dopo la riga vuota, testo lungo senza punto, frase da 401 caratteri. Esito: ok, uccide i mutanti principali.
-- Contesto: `modules/voice/server.py:956` crea l'anticipo solo con chiave ElevenLabs, fuori dai seguiti e solo nei formati a pezzi. `modules/voice/server.py:791` lo azzera a ogni POST. `brains/claude_cli.py:343`: il lettore passa solo il campo «testo» di una risposta senza chiamate a strumenti e si spegne alla seconda risposta strutturata. Esito: ok.
-
-**Mutanti (applicati nel working tree, ripristinati dall'index; alla fine worktree = index)**
-1. Split del paragrafo tolto (`pezzi = [t.lstrip()]`): il test fallisce.
-2. Tetto sulla frase chiusa tolto: il test fallisce.
-3. `paragrafo_finito = finito`: il test fallisce.
-4. Tetto sulla frase aperta tolto: sopravvive, ma è equivalente (vedi riga 427).
-5. `prendi` con `is None`: sopravvive, equivalente (vedi riga 449).
-6. `>` diventa `>=` sul tetto: sopravvive. Il caso a 400 caratteri esatti non è testato. È la riserva R-783-1-M2.
-
-**Altri modi di mandare testo che il percorso normale non manderebbe (cercati)**
-- Fuzz con 20000 flussi casuali: paragrafi, `\n \n`, `\n\t\n`, `\r\n\r\n`, abbreviazioni (dott., es.), «3.5», frasi senza punteggiatura, testo consegnato a pezzi in punti casuali più la chiusura con `finito`. In tutti i casi la frase mandata a ElevenLabs è un prefisso di `parte_parlata(finale)` e anche di `" ".join(frasi_voce(finale))`, e non supera 400 caratteri. Zero violazioni.
-- Il testo di una risposta intermedia con strumenti non arriva: il lettore di brains/claude_cli.py parla solo con `"chiamate": []`. Un nuovo processo al «riprova» non conta: l'anticipo è già fissato a una frase per turno. I seguiti (parlato della stanza) e i cervelli di riserva sono esclusi.
-- Resta un caso solo di spreco, senza rischio sui dati. In formato voce senza schermo (`audio+pezzi`), `frasi_voce` non divide i paragrafi. Con «Ecco:\n\nDettaglio.» l'anticipo sintetizza «Ecco:» ma la prima frase finale è «Ecco: Dettaglio.»: niente corrispondenza, una chiamata TTS buttata. Il testo mandato è comunque contenuto che verrebbe detto.
-
-**Riserve**
-- R-783-1-M2 (BASSA): manca un test di confine a 400 caratteri esatti; il mutante `>=` sopravvive. Basta aggiungere `"x"*_PARLATO_MAX_CHAR + ". Due."` con anticipo atteso.
-- R-783-2-M2 (BASSA, solo costo): in `audio+pezzi` un primo paragrafo senza punto finale porta a una sintesi sprecata, perché il percorso normale unisce i paragrafi. Non porta testo nuovo a ElevenLabs.
-
-**Test**: `-k anticipo` 6 passed. tests/test_unit_voice_server.py + tests/test_unit_claude_cli.py: 293 passed.
-
-**Rischio escluso**: non ho verificato il comportamento con la CLI di Claude vera, con ElevenLabs vero e con la latenza reale sul Mac. Né rete né chiavi in questo ambiente: ho testato solo con `synthesize_speech` simulato. Non ho verificato nemmeno la decodifica di escape JSON spezzati fra due delta (`_stringa_parziale`), che sta fuori da questo diff.
-
-**Memoria**: riga `#783-M2` aggiunta in coda a /home/user/Gas-stream/.claude/agents/memoria_revisore.md, con una lezione: per un «mai più testo del percorso normale» va provata con fuzz sui prefissi del flusso la proprietà «anticipo = prefisso del percorso normale». Il file è in staging (`git add`) e NON committato, come chiesto. `scripts/commit_memoria_revisore.sh` non l'ho lanciato. Lo staging contiene ora: memoria_revisore.md, modules/voice/server.py, tests/test_unit_voice_server.py.
-
-Lo script di fuzz è in /tmp/claude-0/-home-user-Gas/62c50102-54a5-5454-8ce4-94a07d021191/scratchpad/fuzz.py.
-
-### Review #782-M2 (R-781-1) — verdetto integrale
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #782-M2, PR #374. Ho rivisto tutto il diff in staging su /home/user/Gas-stream: brains/claude_cli.py, tests/test_unit_claude_cli.py e la memoria. Il nuovo test chiude R-781-1-M2; resta solo R-781-2-M2, BASSA.
-
-**Elementi del diff esaminati**
-- `tests/test_unit_claude_cli.py:790` — nuovo test `test_esegui_a_flusso_result_poi_appeso_restituisce_la_risposta`: il processo scrive la riga result, poi resta appeso (`sleep 30`), con timeout di 1 s. Il test controlla `returncode != 0` e che lo stdout sia proprio la riga result. Rischio esaminato: un test che non prende il mutante. Esito: ok. Ho rieseguito io il mutante (tolto `and risultato is None`): il test fallisce (1 failed). Poi ho rimesso il codice com'era e la copia di lavoro di `brains/claude_cli.py` è di nuovo identica allo staging (riga 482 presente).
-- `brains/claude_cli.py:482` — TimeoutExpired solo se manca la riga result. Rischio esaminato: un processo appeso DOPO la riga result. Esito: ok. Il processo viene ucciso allo scadere del timeout e il chiamante (`brains/claude_cli.py:609`) usa la risposta già pagata, col costo vero.
-- `brains/claude_cli.py:298` e `brains/claude_cli.py:427` — encoding UTF-8 con sostituzione dei byte non validi in `_esegui` e `_esegui_a_flusso`. Esito: ok, invariati rispetto alla review #781-M2.
-- `brains/claude_cli.py:528` — `logging.warning` col solo tipo dell'eccezione in `_log_tempi_cli`. Esito: ok, nessun contenuto nel log.
-
-Test: claude_cli 77 passed (rieseguito).
-
-**Riserva aperta**
-- R-781-2-M2 (BASSA): se la CLI resta appesa dopo la riga result, la risposta arriva solo allo scadere dell'intero timeout. Uscire subito alla riga result interromperebbe Claude Code mentre chiude: va valutato a parte, come proponi. Va tracciata in stato_progetto.md.
-
-**Rischio escluso**: non ho verificato il comportamento sotto launchd sul Mac né con il locale reale della CLI, perché non si può riprodurre nel cloud.
-
-Nessuno slicing della history, nessuna simulazione di tool, guardrail invariati.
-
-**Memoria**: ho aggiunto la riga `#782-M2` in /home/user/Gas-stream/.claude/agents/memoria_revisore.md e il file è in staging (diff totale: 3 file, +34/−6). Il marcatore della review (`segna_review_ok.sh`) va creato dopo questo `git add`.
-
-### Review #781-M2 (B3 e cosmetiche del bot) — verdetto integrale
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #781-M2, PR #374. Ho rivisto il diff in staging su /home/user/Gas-stream (brains/claude_cli.py e tests/test_unit_claude_cli.py). Prima ho letto CLAUDE.md, reports/stato_progetto.md e la memoria del revisore.
-
-**Elementi del diff esaminati**
-- `brains/claude_cli.py:298` — `_esegui` ora usa `encoding="utf-8", errors="replace"`. Rischio esaminato: un UnicodeDecodeError che sfugge al riconoscimento di limite e login e al costo. Esito: ok. Un byte non valido diventa «�» e i controlli testuali di limite e login continuano a funzionare.
-- `brains/claude_cli.py:427` — `Popen` di `_esegui_a_flusso` con lo stesso encoding. `os.killpg` ora usa `signal.SIGKILL` (import a riga 47). Rischio esaminato: un decode che fallisce dentro il ciclo di lettura. Esito: ok.
-- `brains/claude_cli.py:482` — TimeoutExpired solo se `scaduto` è impostato e `risultato is None`. Rischio esaminato: il caso che hai chiesto, cioè un processo che resta appeso DOPO aver scritto la riga `result`. L'ho provato con una sonda vera: lo script stampa la riga result, poi `sleep 30`, timeout 1,5 s. Risultato: il processo viene ucciso a 1,5 s e la funzione ritorna `CompletedProcess(returncode=-9, stdout=<riga result>)`, senza eccezione. Il chiamante (`brains/claude_cli.py:609`) fa il parse della riga e usa la risposta già pagata, col costo vero. Prima invece c'era TimeoutExpired con la sola stima minima del costo. `_effort_rifiutato` (`brains/claude_cli.py:290`) con codice -9 scatta solo se lo stderr contiene il rifiuto di `--effort`, cosa incompatibile con una riga result valida. Esito: comportamento corretto e migliore di prima.
-- `brains/claude_cli.py:528` — `_log_tempi_cli` ora registra un `logging.warning` col solo nome del tipo d'eccezione. Rischio esaminato: dati della conversazione nel log. Esito: ok, nessun contenuto finisce nel log e il turno non si rompe (§9).
-- `tests/test_unit_claude_cli.py:778` — il test usa un processo vero che scrive \xff su stdout e \xfe su stderr e passa da entrambi i runner. Esito: ok. Ho rieseguito con `LC_ALL=C`: 76 passed.
-
-**Riserve (entrambe BASSE)**
-- R-781-1-M2: nessun test copre il caso «riga result, poi processo appeso». Se si toglie `and risultato is None`, la suite resta verde. Va aggiunto un test come la mia sonda: result, poi sleep, timeout breve, controllo `returncode == -9` e stdout uguale alla riga result.
-- R-781-2-M2: in quel caso la risposta arriva solo allo scadere dell'intero timeout, quindi a voce la latenza è piena. Il ciclo di lettura potrebbe uscire appena legge la riga result e chiudere il processo. È un miglioramento possibile, non un difetto introdotto dal diff.
-
-**Rischio escluso**: non ho verificato il comportamento reale sotto launchd sul Mac, con il locale vero della CLI, perché non si può riprodurre nel cloud. La copertura viene solo dal test con `LC_ALL=C` e dal processo sintetico.
-
-Nessuno slicing della history, nessuna simulazione di tool, guardrail invariati.
-
-**Memoria**: ho aggiunto in coda la riga `#781-M2` in /home/user/Gas-stream/.claude/agents/memoria_revisore.md, nessuna lezione nuova. Il file è in staging (`git add`) come mi hai chiesto, quindi non ho eseguito `scripts/commit_memoria_revisore.sh`. Attenzione: ora la memoria fa parte del diff in staging, quindi il marcatore della review (`segna_review_ok.sh`) va creato dopo questo `git add`.
-
-### Review #779-M2 (merge di origin/main) — verdetto integrale
+### Review #768-M1 (bot #376 V-1)
 
 ## VERDETTO: APPROVATO
 
-Review #779-M2: merge di origin/main e3eb542 (la #370 di M1) in perf/voce-streaming-m2, preparato in /home/user/Gas-stream, con HEAD a9419ea.
+Il fix è corretto e ha un ambito stretto. Il test morde, la suite passa.
 
-Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), le parti di reports/stato_progetto.md che riguardano questa fetta e .claude/agents/memoria_revisore.md.
+**Elementi del diff esaminati**
 
-**Cosa ho guardato nel diff**
-- `gas.py:5025` — aggiunge `su_testo_voce` alla firma di `run_turn`, accanto a `voce: bool`. Rischio: che il merge abbia perso o duplicato un parametro della #370. Rispetto a MERGE_HEAD, gas.py cambia solo in 14 righe: l'import di `Callable`, la firma con il suo commento e il costruttore. Esito: ok.
-- `gas.py:5233` — `ClaudeCliClient(timeout=…, effort…, su_testo…)`. `su_testo` passa solo se è un turno a voce, c'è la funzione ed è il ramo `claude-cli`. Rischio: che i cervelli gratuiti ricevano il flusso, cosa che andrebbe contro la regola dei modelli. Il ramo `OpenAI(...)` è rimasto com'era. Esito: ok.
-- `gas.py:5280` — il controllo del tetto di 10 chiamate per turno della #370 sta dentro il ciclo, prima di ogni chiamata. Il conteggio sale a `gas.py:5288` e anche sul retry di Gemini 400 a `gas.py:5315`. Rischio: che il flusso aggiri il tetto. Non lo aggira: il flusso e l'anticipo vivono dentro una sola chiamata, che viene contata come le altre. L'anticipo parla solo quando la risposta inizia con `"chiamate": []`, quindi non aggiunge giri. Esito: ok.
-- `gas.py:5249` — `_pin_rung`: il pin completo della memoria va solo a `claude-cli`, gli altri cervelli ricevono la versione senza dati dei lead. Rischio: che il testo anticipato porti dati del pin ai cervelli non forti. Non succede: il flusso esiste solo per il cervello forte, che il pin completo lo riceve già. Esito: ok.
-- `modules/voice/server.py:949` — `kw["su_testo_voce"] = self._anticipo.testo`, invariato rispetto ad a9419ea (#773/#778). Esito: ok.
-- `brains/claude_cli.py:634` — senza `su_testo` il forte usa l'uscita json di prima. T104e conferma che con un turno a testo resta `--output-format json`. Esito: ok.
-- `.claude/agents/memoria_revisore.md` (unione delle due versioni) — nessuna riga tolta rispetto a HEAD né rispetto a MERGE_HEAD. Le righe #773, #778, #764-M1coord e #765-M1coord ci sono tutte e senza doppioni. Nessun file in conflitto, nessun marcatore di conflitto, `git diff --cached --check` pulito. Esito: ok.
+- `scripts/gasmerge.sh:237`: `shopt -s nocasematch` viene acceso subito prima del ciclo del promemoria «FILE DI MOTORE». Ho cercato un'uscita anticipata che lasci l'opzione accesa. Nel ciclo, che va da `scripts/gasmerge.sh:240` a `scripts/gasmerge.sh:249`, ci sono solo `continue` e `break`: niente `exit` né `return`, e niente comandi che possano far scattare `set -e`, perché i `[[ ]]` stanno dentro liste `&&` e `read` chiude il ciclo senza errore. Gli input arrivano con `<<<`, quindi non c'è una subshell. Dentro il ciclo nocasematch tocca anche il `case "$v" in */)`, ma quel modello non contiene lettere, quindi non cambia nulla. Esito: ok.
+- `scripts/gasmerge.sh:250`: `shopt -u nocasematch` viene spento subito dopo il `done`. In tutto il file ci sono solo questi due `shopt`, entrambi in questo diff, quindi nessun altro confronto `[[ ]]` o `case` del file è influenzato. Il rischio che resta è opposto, cioè più file segnalati come motore, e per un promemoria che non è un gate va nel verso sicuro. Esito: ok.
+- `tests/test_unit_gasmerge.py:537`: il test nuovo `test_maiuscole_nel_perimetro` copre `GAS.py` e `Modules/x.py`. Ho fatto una mutazione su una copia del repo nello scratchpad, togliendo `shopt -s`: 2 test falliti e 10 passati nella classe. Il test morde. Esito: ok.
+- `tests/test_unit_hooks.py:573`: cambia solo la docstring, che ora parla di `Brains/x.py` e quindi corrisponde al corpo del test. Nota cosmetica: la riga è molto lunga, ma non blocca. Esito: ok.
+- Suite `tests/test_unit_gasmerge.py` + `tests/test_unit_hooks.py`: 330 passati, rifatto da me.
 
-**Test rieseguiti da me**
-- claude_cli + voice_server: 290 passed.
-- Kernel: 1136 PASS, 1 FAIL. Il FAIL è T31g, che c'era già (manca fastembed). T104d e T104e PASS.
+**Cosa NON ho verificato**
 
-**Rischi esclusi (non verificati)**
-- Il tetto conta le chiamate a `create`, non i processi `claude -p`. Un eventuale nuovo tentativo interno di `ClaudeCliClient` non passa dal tetto. Questo c'era già prima del merge e non l'ho riesaminato qui.
-- Non ho provato dal vero sul Mac (ElevenLabs con la CLI reale): non si può riprodurre in questo ambiente.
-- Non ho riletto le parti della #370 che non toccano questa fetta (`modules/telegram/bot.py`, test della notte). Le ha già approvate la #764/#765-M1coord.
+Non ho eseguito il codice col bash 3.2 di macOS: qui non c'è. Che `nocasematch` esista in quella versione lo ricavo dalla documentazione di bash (l'opzione c'è dalla 3.1), non da una prova.
 
-Nessuna riserva nuova. R-773-2-M2 resta accettata come prima.
+**Memoria del revisore**
 
-**Memoria**
-- Ho aggiunto la riga `#779-M2 — 2026-11-11 — APPROVATO — …` in coda a /home/user/Gas-stream/.claude/agents/memoria_revisore.md e l'ho messa in staging (`M ` nell'index).
-- Lo script `commit_memoria_revisore.sh` non ha committato il file: git non permette un commit parziale durante un merge. Lo script ha scritto un WARN in gas_debug.log e ha lasciato intatto l'index. La riga entrerà nel commit del merge.
-- Nessuna lezione nuova.
+Ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga `#768-M1 — 2026-11-11 — APPROVATO — … — nessuna lezione nuova`. Ho poi lanciato `scripts/commit_memoria_revisore.sh`, che non ha stampato nulla; `git status` non mostra più quel file come modificato. Il diff sotto review è intatto nel working tree: `scripts/gasmerge.sh`, `tests/test_unit_gasmerge.py` e `tests/test_unit_hooks.py` risultano ancora modificati.
 
-### Review #778-M2 (R-773-1/R-773-3, tempi del forte) — verdetto integrale
+### Review #787-M3 (merge di origin/main 0ef0b5c)
 
 ## VERDETTO: APPROVATO
 
-Review #778-M2: il delta in staging su 6e711ce chiude le riserve R-773-1 e R-773-3 e aggiunge i tempi del forte nel log, senza riserve nuove.
+Ho controllato il merge in stage di origin/main 0ef0b5c (PR #372, #373 e #374 di M2) dentro feat/r7-direttore-m3 (PR #376). Tutte e tre le verifiche richieste tornano.
 
-**Elementi del diff esaminati**
-- `brains/claude_cli.py:427` — `uccidi_tutti`: `os.killpg(proc.pid, 9)`, e se fallisce `proc.kill()`; il processo parte con `start_new_session=True`. Si usa al timeout (`brains/claude_cli.py:435`) e nel finally (`brains/claude_cli.py:468`). Rischi esaminati:
-  - nipote che tiene aperto lo stdout: ho rifatto la sonda `bash -c "sleep 8 & sleep 8"` con timeout 1 s. TimeoutExpired arriva dopo 1,0 s (prima erano 8 s) e `pgrep` non trova nessun `sleep` rimasto;
-  - `su_riga` che solleva: il figlio muore subito;
-  - 5 MB di stdin a un figlio che non li legge: nessun blocco.
-  - Il finally chiama killpg solo se `poll()` è None, quindi mai su un pid già raccolto. Con la sessione nuova il Ctrl-C del terminale non arriva più al figlio, ma lo uccide comunque il finally.
-  - Esito: ok, R-773-1-M2 chiusa.
-- `brains/claude_cli.py:468` (finally) — chiusura esplicita di stdout e stderr, dopo i join dei fili; un `OSError` viene ignorato. Esito: ok, R-773-3-M2 chiusa.
-- `brains/claude_cli.py:498` — `_log_tempi_cli`. Rischi esaminati:
-  - privacy: scrive solo numeri, mai testo. I tempi della CLI passano un filtro di tipo (bool escluso) e di intervallo 0–3.600.000 ms; i token vengono da `_token`, già limitato;
-  - §9: tutto è dentro `try/except Exception`;
-  - visibilità: il logger `gas.claude_cli.tempi` è a livello INFO. Il file handler di gas.py non ha livello, quindi la riga arriva in gas_debug.log; la console resta a WARNING (`gas.py:50`).
-  - Esito: ok.
-- `brains/claude_cli.py:653` — in `_esegui_cmd`, `su_riga` e `su_testo` sono avvolti per prendere i tempi della prima riga e del primo testo. `lettore.riga` intercetta ancora gli errori di `su_testo`. Il ramo json registra i tempi a `brains/claude_cli.py:636`. Esito: ok.
+1. **Codice arrivato da main: identico a MERGE_HEAD.** `git diff --cached MERGE_HEAD --stat` su gas.py, brains, clients, modules/voice, scripts/voce e i test kernel/claude_cli/voce_ascolto/voice_* non dà output.
+2. **File della #376: identici a HEAD.** Il diff contro HEAD su scripts/gasmerge.sh, scripts/bot_esito.py, scripts/check_verdetto.py, .claude/hooks/review_gate.sh, .github/workflows/ci.yml e modules/sottofondo è vuoto.
+3. **Conflitti risolti senza perdite.**
+   - `git ls-files -u` è vuoto, `git diff --cached --check` è pulito e non c'è nessun marcatore di conflitto.
+   - In .claude/agents/memoria_revisore.md non manca nessuna riga, né rispetto a HEAD né rispetto a MERGE_HEAD.
+   - reports/stato_progetto.md non perde righe rispetto a MERGE_HEAD. Rispetto a HEAD ne cambia una sola: la riga della PR #368, sostituita dalla versione aggiornata di main. In più entra la voce della PR #371.
 
-**Riproduzioni**
-- claude_cli: 75 passed.
+Citazioni (file della #376, identici a HEAD):
+- `scripts/gasmerge.sh:82` — sceglie il comando di timeout nell'ordine timeout, poi gtimeout, poi perl che fa da padre al comando (esce con 124 allo scadere) — rischio esaminato: che il merge abbia alterato questa parte — esito: ok, diff contro HEAD vuoto.
+- `scripts/bot_esito.py:210` — confronto senza maiuscole dei nomi e dei percorsi che appartengono alla macchina del bot — rischio esaminato: che la versione di main sovrascriva la modifica della #376 — esito: ok, la PR #372, #373 e #374 non toccano questo file.
+- `modules/sottofondo/__init__.py:276` — se la cartella della coda manca e non siamo nella cartella di Gas, restituisce un errore invece del falso «nessun compito» — rischio esaminato: che il merge interferisca con questa logica — esito: ok, identico a HEAD, e i moduli voce arrivati da main non lo importano.
 
-**Note cosmetiche (non bloccanti)**
-- C'è `9` dove servirebbe `signal.SIGKILL`.
-- Se manca la riga `result` (errore), la riga dei tempi riporta solo i tempi misurati da Gas.
+Rischio escluso: non ho rieseguito i test. I risultati (1940 passed sulle suite sottofondo, gasmerge, hooks, verifica_bot, handoff_check e gate; kernel 1137 PASS, 0 FAIL) sono dichiarati da te. Il merge non cambia codice rispetto a nessuno dei due lati già revisionati, quindi il rischio è basso.
 
-**Rischi esclusi (non verificati)**
-- Il mutante `start_new_session=False` e la prova dal vivo con i tempi dichiarati dalla CLI: li prendo dal tuo messaggio, qui non ho la CLI autenticata.
-- Lo scarto di `time_to_request_from_spawn_ms`: non l'ho verificato sulla CLI vera.
-
-**Riserve**
-- R-773-2-M2 (anticipo buttato ma già pagato a ElevenLabs) resta aperta come riserva accettata: va tracciata in reports/stato_progetto.md.
-
-**Memoria**
-Ho aggiunto la riga contatore #778-M2 in /home/user/Gas-stream/.claude/agents/memoria_revisore.md, nessuna lezione nuova. Il file è in staging e non l'ho committato.
-
-### Review #773-M2 (streaming della prima frase) — verdetto integrale
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #773-M2 sul diff staged in /home/user/Gas-stream (branch perf/voce-streaming-m2, base 51b7d20). Prima della review ho letto CLAUDE.md (§5, §8, §9), reports/stato_progetto.md (le parti sulla voce rapida) e la memoria del revisore.
-
-**Elementi del diff esaminati**
-- `brains/claude_cli.py:414` — `_esegui_a_flusso`: Popen, un filo scrive lo stdin, un filo legge lo stderr, lo stdout si legge nel filo principale, un Timer uccide il processo. Rischi esaminati: deadlock, fili orfani, processo vivo se `su_riga` solleva. Sonde reali, tutte passate:
-  - 5 MB di stdin a un figlio che non li legge: ritorna in 0,02 s, nessun blocco;
-  - `su_riga` che solleva: figlio ucciso subito, eccezione propagata, nessun filo rimasto;
-  - timeout di 1 s: TimeoutExpired dopo 1,0 s.
-  - Esito: ok, con la riserva R-773-1-M2 qui sotto.
-- `brains/claude_cli.py:450` — `for linea in proc.stdout`. Rischio esaminato: un timeout che non tiene. Esito: **riserva R-773-1-M2 (BASSA)**. Se un nipote del processo tiene aperto lo stdout dopo il kill, la lettura aspetta che il nipote muoia. Sonda `bash -c "sleep 8 & sleep 8"` con timeout 1 s: l'eccezione arriva dopo 8 s. `subprocess.run` (il vecchio `_esegui`) uccide e non aspetta la fine dell'uscita, quindi questo blocco non lo aveva. Con `--tools ""` è improbabile che la CLI lasci figli vivi. Rimedio: `start_new_session=True` + `os.killpg` in `uccidi`.
-- `brains/claude_cli.py:304` e `brains/claude_cli.py:387` — `_INIZIO_TESTO` / `_aggiorna`: l'anticipo parte solo con `{"chiamate": [], "testo": "`. Le altre forme lo spengono: chiamate non vuote, «testo» per primo, più di 80 caratteri senza corrispondenza, escape non valido. Una seconda risposta strutturata dopo un anticipo lo spegne (`brains/claude_cli.py:377`). Ogni errore, anche di `su_testo`, è preso in `riga()` e scritto in gas_debug.log (§9). Esito: ok.
-- `brains/claude_cli.py:85` — ordine dello schema cambiato, «chiamate» prima di «testo». Rischio esaminato: effetto sul non-voce. `_risposta` legge un dict, quindi l'ordine non conta per il parsing. SCHEMA_RISPOSTA si usa solo in `comando()`. T104e conferma che fuori dalla voce l'uscita resta `json`. Esito: ok. L'effetto del cambio d'ordine sulla qualità delle risposte non è misurato (vedi rischi esclusi).
-- `modules/voice/server.py:434` — `AnticipoVoce.prendi`. Rischio esaminato: un anticipo sbagliato che finisce a voce. L'audio si restituisce solo se `frase` è identica alla frase anticipata, con la stessa voce (`_voce_tts`). In ogni altro caso torna None e parte la sintesi normale. Gli errori della sintesi risalgono come quelli di `sintesi` e finiscono negli `except` di prima. Esito: ok, un anticipo sbagliato non può arrivare a voce.
-- `modules/voice/server.py:945` — l'anticipo si crea solo con la chiave, `not self._seguito()` e formato pezzi o pezzi_voce. `_parlato` è già impostato prima, a `modules/voice/server.py:821`. Rischio esaminato: privacy dei seguiti. Esito: ok, nessun parlato della stanza arriva a ElevenLabs prima del filtro.
-- `modules/voice/server.py:416` — `testo()` normalizza il testo grezzo. Il finale passa invece da `parte_parlata` / `frasi_voce`. Rischio esaminato: costo e quota quando l'anticipo si butta. Esito: **riserva R-773-2-M2 (BASSA)**. Una prima frase con markdown, più lunga di `_PARLATO_MAX_CHAR`, un turno rifatto dal kernel o una risposta del cervello di riserva fanno buttare l'anticipo. La sintesi però è già stata pagata a ElevenLabs: una frase per turno, testo di Gas e non della stanza. Il filo non si annulla. Il costo della CLI non cambia: resta una sola chiamata.
-- `gas.py:5139` — `su_testo` si passa solo se `name == "claude-cli"` e `voce`. Rischi esaminati: regola dei modelli e tocco minimo su run_turn. I gratuiti non ricevono nulla. Cap delle 10 iterazioni, `_get_window` e payload non toccati, nessuno slicing della cronologia. Esito: ok, conflitto con la #370 di M1 limitato alla firma e al costruttore del client.
-- `tests/test_unit_kernel.py:12023` — T104d, round-trip §7 con uno strumento: il giro con la chiamata non dà anticipo, la risposta finale sì. Il runner è finto, ma lo strumento gira davvero (`tool_res` 42). Non è simulazione dell'output degli strumenti. Esito: ok.
-
-**Riproduzioni**
-- claude_cli + voice_server (suite intera): 287 passed.
-- Kernel: 1120 PASS, 1 FAIL (T31g, fastembed assente, già presente su main); T104d e T104e PASS.
-
-**Riserve**
-- R-773-1-M2 BASSA — un nipote che tiene aperto lo stdout allunga il timeout (vedi sopra).
-- R-773-2-M2 BASSA — anticipo buttato ma già pagato quando il testo grezzo e la parte parlata non coincidono.
-- R-773-3-M2 COSMETICA — Popen senza `with`: le pipe si chiudono solo quando il GC raccoglie l'oggetto.
-
-**Rischi esclusi (non verificati)**
-- Il comportamento reale della CLI `claude -p` in stream-json, cioè l'ordine dei campi nell'input_json_delta di StructuredOutput e la riga `result` con gli stessi campi dell'uscita json: qui non c'è la CLI autenticata. Mi fido delle misure dal vivo del chiamante (2,1 s / 3,4 s).
-- Il comportamento sul Mac con ElevenLabs vero.
-- L'effetto del nuovo ordine dello schema sulla qualità delle risposte del modello non-voce.
-
-**Memoria**
-In /home/user/Gas-stream/.claude/agents/memoria_revisore.md ho aggiunto la riga contatore #773-M2 e una lezione: sostituire `subprocess.run(timeout)` con Popen e lettura a righe cambia cosa vuol dire il timeout; va sondato con un nipote in background. Ho usato il numero #773 indicato da te: in questo file l'ultima riga era #763-M2. Il file è in staging. Non ho lanciato `scripts/commit_memoria_revisore.sh`, perché hai chiesto solo lo staging; il file viaggerà nel tuo commit.
+Memoria: ho aggiunto in coda a .claude/agents/memoria_revisore.md la riga contatore `#787-M3 — 2026-11-11 — APPROVATO — …` e l'ho messa in stage (stato M; non ho lanciato lo script di commit perché siamo dentro un merge). Ho scelto io il numero, partendo dal più alto presente (#786): se la tua numerazione prevede un altro numero, correggilo prima del commit.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Dopo il merge ae2e424: voice_server + claude_cli + tts + stt 525 passed; kernel 1136 PASS, 1 FAIL (T31g, fastembed assente, come su main).
-- Dopo c8c5f8f: `tests/test_unit_voice_server.py` + `tests/test_unit_claude_cli.py` 293 passed (rieseguiti dal revisore #783).
-- Dopo e9b05e5: `python -m pytest -q tests/test_unit_claude_cli.py` 77 passed (anche con `LC_ALL=C`).
-- `python tests/test_unit_kernel.py` dopo il merge: 1136 PASS, 1 FAIL (T31g, fastembed assente in questo ambiente: lo stesso FAIL c'è su main). Nuovi T104d (round-trip §7 con strumento + flusso: anticipo solo della risposta finale) e T104e (a testo niente flusso), PASS.
-- `python -m pytest -q tests/test_unit_claude_cli.py`: 75 passed (16 test nuovi: parser a pezzi, escape e surrogati, processo vero con timeout e nipoti, tempi nel log).
-- `python -m pytest -q tests/test_unit_voice_server.py tests/test_unit_claude_cli.py`: 287 passed prima di #778; 290 passed dopo il merge (rieseguiti dal revisore #779).
-- Prova dal vivo nel cloud con la CLI vera: risposta corretta, riga dei tempi «tutto=4.38s prima_riga=0.62s primo_testo=3.93s richiesta=0.18s ttft=3.46s api=3.31s cli=3.49s fuori_cli=0.90s token_in=1697 token_out=94».
+- Senza le correzioni (stash): 8 test falliscono in gasmerge/verifica_bot/handoff_check/sottofondo (`8 failed, 883 passed`); il test hook delle maiuscole (3 casi) e quello del file non tracciato falliscono senza il fix dell'hook; il vecchio ripiego `alarm; exec` dava rc 0 dopo 4 s su un figlio che ignora SIGALRM.
+- Con le correzioni: gasmerge + verifica_bot + handoff_check + sottofondo `891 passed`; hooks `215 passed`. Dopo 6272544: gasmerge + hooks `330 passed` (test nuovo `test_maiuscole_nel_perimetro`: 2 failed senza il fix).
+- Suite kernel (dopo il primo giro di correzioni; il secondo giro non tocca il codice letto dal kernel):
+
+```
+=== RIEPILOGO: 1135 PASS, 0 FAIL ===
+```
 
 ## §6 STATO CI
 
-CI NON VERIFICATA con `gh` (non autenticato nel cloud).
-- Head 567b1bb: suite di check completata senza fallimenti (notifica GitHub); `verifica-bot` success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE).
-- Head 87c5ff3: `verifica-bot` failure (V-1 di gravità media, corretta in c8c5f8f).
-- Nuovi commit (c8c5f8f e fine-task): run non ancora disponibile alla scrittura dell'handoff.
+Su 3f305e9 (head prima del push di questo giro): CI completata senza fallimenti (evento check_suite.completed delle 02:06 dell'11 nov: nessuna suite in errore; `handoff-check` success), bot APPROVATO CON RISERVE con check `verifica-bot` neutral, verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/376#issuecomment-6784746339).
+
+Mappatura commit→run:
+- 3f305e9: run 42942230185 (CI) e run del bot su quello SHA.
+- 078ad0a: run 42941195559 (CI) e run del bot.
+- 8eb21c0, a3e0042, c2f8b03, 0d5ab5b, 6272544: nessuna run su questi SHA (pushati insieme ai commit di fine-task).
+- 902eedc e commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-773-1-M2 BASSA, R-773-3-M2 COSMETICA: CHIUSE (review #778-M2).
-- V-1 del bot #374 su 87c5ff3 (gravità media): CHIUSA (c8c5f8f, review #783-M2).
-- R-783-1-M2 BASSA: manca il test di confine a 400 caratteri esatti. R-783-2-M2 BASSA (solo costo): in `audio+pezzi` un primo paragrafo senza punto finale porta a una sintesi buttata (testo che verrebbe comunque detto).
-- R-773-2-M2 BASSA (ridotta da c8c5f8f: l'anticipo è sempre un prefisso del parlato normale): un anticipo buttato (prima frase diversa dalla risposta finale: markdown, frase troppo lunga, cervello di riserva) è già stato pagato a ElevenLabs (una frase per turno, testo di Gas).
-  V-1 verifica esterna #374 (BASSA): è anche un'uscita di testo verso ElevenLabs prima del finale. Limite dichiarato: il kernel NON modifica il testo finale del forte (`gas.py`, `yield {"type": "final", "content": msg.content}`), quindi la frase anticipata è testo che il forte ha scritto per la risposta a voce e che nel caso normale va comunque a ElevenLabs; esce in più solo quando poi non viene detta (taglio della parte parlata, risposta poi scartata e rifatta da un altro cervello).
-- V-2/V-3/V-4 verifica esterna #374 (COSMETICHE): guadagno 1,2–1,3 s (misure diverse, stessa prova); riga di stato spostata fuori dal paragrafo del gate; `9` invece di `signal.SIGKILL` e finestra di microsecondi del Timer dopo la fine regolare.
-- Cosmetiche #778: `9` invece di `signal.SIGKILL` (CHIUSA in e9b05e5); senza riga `result` i tempi riportano solo quelli misurati da Gas.
-- Bot #374 su 567b1bb: V-1 BASSA = R-773-2-M2 (sopra); V-2 e V-3 COSMETICHE CHIUSE (e9b05e5).
-- R-781-1-M2 BASSA: CHIUSA (review #782-M2). R-781-2-M2 BASSA: se la CLI resta appesa dopo la riga `result`, la risposta arriva solo allo scadere del timeout; uscire subito alla riga `result` toglierebbe anche ~0,6 s di chiusura della CLI a ogni turno, ma interrompe Claude Code mentre chiude: da valutare a parte.
-- Non verificato: guadagno reale sul Mac; effetto dell'ordine «chiamate» prima di «testo» dello schema sulla qualità delle risposte non a voce.
+- Bot e verifica esterna su 3f305e9 (BASSE): il ripiego perl uccide solo il figlio diretto; `ferma()` riconosce la cartella di Gas dalla presenza di `gas.py`.
+- Limite noto (BASSA, #767-M1): il ripiego perl uccide solo il figlio diretto (gh pr checks non lancia sotto-processi).
+- Non verificato: macOS reale (perl di sistema, bash 3.2 con nocasematch, gh vero in `--watch`), esito finale di unit-suite coi nuovi permessi.

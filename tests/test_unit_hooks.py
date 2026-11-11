@@ -560,6 +560,25 @@ class TestReviewGateFailClosed:
             f"Atteso exit 0 (pass), got {result.returncode}; stderr={result.stderr!r}"
         )
 
+    @pytest.mark.parametrize("rel", ["GAS.py", "Modules/x.py", "Tests/test_x.py"])
+    def test_gate_maiuscole_bloccano(self, tmp_path, rel):
+        """Audit 11 nov B2: sul disco del Mac (case-insensitive) GAS.py è gas.py: il perimetro
+        non distingue le maiuscole."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, rel)
+        result = self._run(tmp_path)
+        assert result.returncode == 2, (result.returncode, result.stderr)
+
+    def test_gate_maiuscole_non_tracciato_blocca(self, tmp_path):
+        """Review #766-M1: un file del motore NON tracciato con maiuscole diverse (Brains/x.py) accanto a un diff del motore in stage blocca
+        come un gas.py (pathspec senza maiuscole)."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py", "# revisionato\n")
+        (tmp_path / "Brains").mkdir()
+        (tmp_path / "Brains" / "x.py").write_text("# nuovo\n")
+        result = self._run(tmp_path, has_review_ok=True)
+        assert result.returncode == 2 and "NON in stage" in result.stderr, result.stderr
+
     def test_gate_c_doc_only_passes(self, tmp_path):
         """T-gate-C: solo file non-motore staged → esente, PASSA (exit 0)."""
         _init_repo(tmp_path)
