@@ -22,6 +22,7 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 - **R-764-1, R-766-1, R-767-1**: `FATTA` — chiuse prima del commit (review #766, #767, #769-M2).
 - **V-1 del bot #373 (crediti + chiusura con virgola o senza punteggiatura passavano)**: `FATTA` (789ade7) — divisione anche su , ; : e crediti che finiscono con una chiusura lunga a parola intera (review #774, #775-M2).
 - **Merge di origin/main (#370)**: `FATTA` (7f7933e, review #777-M2).
+- **V-1 del bot #373 su 4559e23 (gravità media: «Niente.» nel seguito scartato, regressione)**: `FATTA` (48b605f) — «niente»/«nulla» tolti dagli intercalari (review #780-M2).
 - **Prova sul Mac dal vero**: `DEFERITA`.
 
 ---
@@ -29,15 +30,15 @@ NB: `gh` nel cloud non è autenticato; numero e URL della PR vengono dalla rispo
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 +++++++++++
- modules/voice/server.py            |  13 ++++++++++++-
- modules/voice/stt.py               |  67 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ .claude/agents/memoria_revisore.md | 13 +++++++++++++
+ modules/voice/server.py            | 15 ++++++++++++++-
+ modules/voice/stt.py               | 67 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  reports/diff_sessione.md           | n/d
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          | n/d
  reports/ultimo_report.md           | n/d
- tests/test_unit_voice_server.py    |  12 ++++++++++++
- tests/test_unit_voice_stt.py       |  47 +++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voice_server.py    | 13 +++++++++++++
+ tests/test_unit_voice_stt.py       | 47 +++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: confronto con origin/main (e3eb542, dopo il merge). Regola «n/d» — i conteggi dei report riscritti in questo commit di fine-task non sono misurabili mentre li si scrive; riga di totale tolta.
@@ -45,6 +46,8 @@ NB: confronto con origin/main (e3eb542, dopo il merge). Regola «n/d» — i con
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+48b605f fix(voce): «Niente.»/«Nulla.» nel seguito tornano risposte valide, non intercalari (V-1 bot #373 su 4559e23)
+4559e23 docs(fine-task): #373 dopo V-1 bot e merge di main — review #774-#777-M2 (chat M2)
 7f7933e Merge origin/main (#370) nella #373 — review #777-M2 APPROVATO (chat M2)
 789ade7 fix(voce): filtro 2 — crediti seguiti da chiusura con virgola o senza punteggiatura scartati (V-1 bot #373)
 2f31b66 docs(fine-task): voce — filtro 2, PR #373 (chat M2)
@@ -54,6 +57,29 @@ NB: confronto con origin/main (e3eb542, dopo il merge). Regola «n/d» — i con
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+### Review #780-M2 (V-1 bot #373 su 4559e23) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Review #780-M2: correzione della V-1 MEDIA del bot sulla PR #373 (head 4559e23). Il diff staged in /home/user/Gas-filtro2 tocca 2 file del motore, più la memoria del revisore.
+
+**Cosa ho controllato nel diff**
+- `modules/voice/server.py:223`: «niente» e «nulla» sono stati tolti da `_INTERCALARI`. Il rischio era che una parola stesse sia nell'elenco che scarta sia in quello che accetta. Ho calcolato a runtime l'intersezione tra `_INTERCALARI` e `_RISPOSTE_BREVI_NORM` (`modules/voice/server.py:215`): è vuota. Esito: ok.
+- Parità con main per una parola sola. Su origin/main «niente» e «nulla» erano già tra le risposte brevi (origin/main, `modules/voice/server.py` riga 203), e su main una frase lunga passa sempre. Con l'intersezione vuota, su una parola sola il nuovo `seguito_da_scartare` dà lo stesso risultato di main. Verificato eseguendolo: «Niente.», «Nulla.», «Nulla!» e «niente» danno False. «Mai» dà False. «Comunque», «Boh» e «Quindi?» danno True, come su main, perché non sono risposte brevi. Esito: ok.
+- `modules/voice/server.py:235`: il filtro 2 (`all(p in _INTERCALARI ...)`) cambia il comportamento solo per le frasi di più parole fatte tutte di intercalari. «Ehm, allora…» e «Mah, boh.» danno ancora True, quindi restano scartate. «Ehm, niente.» e «Niente niente» danno False, cioè passano: è corretto. Esito: ok.
+- `tests/test_unit_voice_server.py:2597`: aggiunti i casi ("Niente.", False), ("Nulla!", False), ("Ehm, niente.", False). Il caso «Comunque» True resta. Ho rieseguito `-k seguito`: 14 passed. Esito: ok.
+- Le regole del progetto sono rispettate: nessuno slicing della history, nessun output di strumenti simulato, nessuna nuova eccezione.
+
+**Correzione alla mia review #764**: lì avevo scritto «"Niente." da solo era già scartato prima». Era falso: non l'avevo verificato su main. L'ho annotato nella memoria.
+
+**Cosa NON ho verificato**
+- La suite completa di `tests/test_unit_voice_server.py`: l'ho lanciata, ma non ha finito entro il tempo. Ho verificato solo il gruppo `-k seguito`. Il resto della suite non è stato rieseguito su questo diff, ma la modifica riguarda solo questo filtro.
+- Il comportamento con Whisper reale e il microfono: non si riproduce in dev.
+
+**Memoria del revisore**: ho aggiunto la riga #780-M2 e una lezione. Quando un elenco che scarta parole sta accanto a uno che le accetta, l'intersezione va calcolata e deve essere vuota. Ogni frase del tipo «prima era già così» va provata eseguendo la funzione su origin/main. Il file è in staging insieme al diff, come mi hai chiesto. Non ho eseguito `scripts/commit_memoria_revisore.sh`, per non creare un commit separato sul branch prima del tuo.
+
+File: /home/user/Gas-filtro2/modules/voice/server.py, /home/user/Gas-filtro2/tests/test_unit_voice_server.py, /home/user/Gas-filtro2/.claude/agents/memoria_revisore.md
 
 ### Review #777-M2 (merge di origin/main) — verdetto integrale
 
@@ -273,6 +299,7 @@ Wall of Shame: il diff non tocca la history né `_get_window`, non simula output
 
 ## §5 DELTA TEST DEL MOTORE
 
+- Dopo 48b605f: `python -m pytest -q tests/test_unit_voice_server.py` 221 passed.
 - gas.py non toccato dalla PR (dopo il merge coincide con main). Test nuovi: `test_filtro2_varianti_dei_saluti` (23 casi), `test_filtro2_le_richieste_passano` (19), `test_filtro2_seguito_solo_intercalari` (9).
 - Dopo la correzione V-1 bot #373: `tests/test_unit_voice_stt.py` 177 passed (181 alla review #775); `tests/test_unit_telegram*.py` 74 passed.
 - Dopo il merge di main: `tests/test_unit_voice_stt.py tests/test_unit_telegram*.py` 255 passed; `python tests/test_unit_kernel.py` 1134 PASS, 1 FAIL (T31g, fastembed assente in questo ambiente: lo stesso FAIL c'è su main). Il revisore #777 ha rieseguito voice_stt+voice_server+notte: 599 passed.
@@ -282,7 +309,8 @@ Wall of Shame: il diff non tocca la history né `_get_window`, non simula output
 
 CI NON VERIFICATA con `gh` (non autenticato nel cloud).
 - Head precedente 2f31b66: `handoff-check` success; `verifica-bot` failure (finding di gravità media, corretto in 789ade7); `unit-suite` in corso alla lettura.
-- Nuovi commit (789ade7, 7f7933e e fine-task): run non ancora disponibile alla scrittura dell'handoff.
+- Head 4559e23: `verifica-bot` failure (V-1 di gravità media, corretta in 48b605f).
+- Nuovi commit (48b605f e fine-task): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -294,5 +322,7 @@ CI NON VERIFICATA con `gh` (non autenticato nel cloud).
 - R-774-4-M2 COSMETICA, R-775-2-M2 COSMETICA (nessun test per «;»).
 - R-764-2-M2 BASSA: su Telegram un vocale «Grazie di cuore» ora riceve «Non ho capito bene il vocale» (allarga R-761-1).
 - R-761-4-M2 COSMETICA: «grazie» nell'elenco delle risposte brevi del seguito non viene più raggiunto.
+- V-1 del bot #373 su 4559e23 (gravità media): CHIUSA (48b605f, review #780-M2). Nella review #764-M2 (sotto, integrale) la frase ««Niente.» da solo era già scartato prima» è FALSA: su main «Niente.» passava; ora passa di nuovo.
+- Bot #373 su 4559e23, V-2 BASSA: il tetto di 8 parole vale per ogni frase dopo la divisione, quindi una richiesta divisa in frasi corte con parti note («Trovami i sottotitoli a cura di Rai. Poi i sottotitoli creati da Netflix.») viene scartata (estende R-774-1-M2).
 - Verifica esterna #373: V-2 BASSA (nessun fix, coerente con l'intento), V-3 COSMETICA.
 - Non verificato: come Whisper punteggia davvero le frasi su audio reale (prova sul Mac).
