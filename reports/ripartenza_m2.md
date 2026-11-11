@@ -32,12 +32,13 @@ Leggi questo file dopo un clear. Fonte di verità per lo stato: `reports/stato_p
 - ThreadingHTTPServer (riserva bot #329): valutato, sconsigliato ora (kernel unico con storia condivisa, tetti senza lock); servirebbe una fetta con lock e test di concorrenza.
 
 ## Prossimi passi (da M1)
-- Aspettare i tempi misurati dall'operatore sul Mac (log `gas.voce.tempi`) prima di decidere altro sulla velocità della voce.
+- 11 nov notte: aperte #372 (keep-alive ElevenLabs), #373 (filtro 2) e la PR dello streaming della prima frase (branch perf/voce-streaming-m2). Merge solo con bot APPROVATO pulito, avvisando M1 prima di ogni merge; con riserve restano per il mattino.
+- Latenza del cervello: aspettare le righe `tempi claude-cli:` del Mac (gas_debug.log). Poi decidere fra «niente schema strumenti a voce» (~0,3 s misurati qui) e «processo CLI caldo» (solo se `fuori_cli` è grande e c'è un modo sicuro).
 - Nuove fette solo su richiesta di M1.
 
 ## Regole che seguo
 - Un branch per fetta da `origin/main`; mai push su main.
-- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #715-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
+- Prima di ogni commit che tocca il perimetro (`.claude/perimetro_review.txt`): subagent `revisore` sul diff staged → `bash scripts/segna_review_ok.sh` in un comando separato → commit. Numeri review col suffisso `-M2` (ultimo: #780-M2). In un merge, la riga di memoria del revisore va aggiunta all'index prima del commit.
 - Fine fetta: /fine-task (ultimo_report, handoff con verdetti INTEGRALI, diff_sessione, stato_progetto) → commit → `bash scripts/fine_task_finale.sh`; etichetta `verifica` sulla PR; verifica esterna con agente nuovo `general-purpose`, `model: sonnet`, prompt esatto «Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>» (URL_HANDOFF = raw del commit di testa).
 - `gh` nel cloud non è autenticato: PR, etichette e merge con gli strumenti GitHub MCP.
 - Riserve BASSE/COSMETICHE dei bot: si registrano, niente giri (regola di M1); si riapre solo per ALTA/MEDIA o se M1 lo chiede.

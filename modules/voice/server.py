@@ -84,6 +84,7 @@ import os
 import re
 import unicodedata
 import subprocess
+import threading
 import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -400,6 +401,73 @@ _FRASI_FISSE = frozenset(_FRASI_FISSE_INTERE) | frozenset(
     p for f in _FRASI_FISSE_INTERE for p in _dividi_frasi(f))
 _CACHE_FRASI_MAX = 32
 _cache_frasi: Dict[Tuple[Any, str, str], bytes] = {}
+
+
+def _voce_tts() -> str:
+    return (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+
+
+class AnticipoVoce:
+    """Voce rapida (chat M2, 11 nov, M1 per l'operatore: «streaming della prima frase»).
+    Il kernel passa a `testo(t, finito)` il testo della risposta mentre il cervello forte lo
+    scrive (brains/claude_cli.py, `su_testo`). Appena la prima frase è intera, la sua voce si
+    prepara in un filo a parte, mentre la CLI finisce e il turno si chiude. È solo un ANTICIPO:
+    a voce va SOLO se la stessa frase, identica, è anche la prima frase della risposta finale
+    (`prendi`); altrimenti (strumenti, risposta cambiata, cervello di riserva) si butta. Una
+    sola frase per turno; nessun anticipo nei seguiti (il parlato della stanza non va mai a
+    ElevenLabs prima di sapere che era per Gas)."""
+
+    def __init__(self, api_key: str, voice_id: str) -> None:
+        self._api_key = api_key
+        self._voice_id = voice_id
+        self._lock = threading.Lock()
+        self._frase: Optional[str] = None
+        self._filo: Optional[threading.Thread] = None
+        self._audio: Optional[bytes] = None
+        self._errore: Optional[BaseException] = None
+
+    def testo(self, t: str, finito: bool) -> None:
+        with self._lock:
+            if self._frase is not None:
+                return
+            # V-1 bot #374 (87c5ff3): mai più testo di quello che il percorso normale direbbe.
+            # Solo il PRIMO paragrafo (come parte_parlata) e solo una frase entro il tetto
+            # della parte parlata; altrimenti nessun anticipo per questo turno.
+            pezzi = _PARAGRAFO.split(t.lstrip(), maxsplit=1)
+            paragrafo_finito = finito or len(pezzi) == 2
+            frasi = _dividi_frasi(" ".join(pezzi[0].split()))
+            if not frasi or (len(frasi) < 2 and not paragrafo_finito):
+                if len(" ".join(pezzi[0].split())) > _PARLATO_MAX_CHAR:
+                    self._frase = ""  # frase già oltre il tetto: niente anticipo
+                return  # la prima frase non è ancora sicuramente finita
+            if len(frasi[0]) > _PARLATO_MAX_CHAR:
+                self._frase = ""  # oltre il tetto della parte parlata: niente anticipo
+                return
+            self._frase = frasi[0]
+            self._filo = threading.Thread(target=self._sintetizza, daemon=True,
+                                          name="anticipo-voce")
+            self._filo.start()
+
+    def _sintetizza(self) -> None:
+        try:
+            self._audio = sintesi(self._frase or "", self._api_key, self._voice_id)
+        except BaseException as exc:  # §9: l'errore si dà a chi usa l'anticipo, mai qui
+            self._errore = exc
+
+    def prendi(self, frase: str) -> Optional[bytes]:
+        """L'audio anticipato se `frase` è proprio la frase anticipata (una volta sola);
+        None se non c'è anticipo per lei. Gli errori della sintesi risalgono come quelli di
+        `sintesi` (ElevenLabsTTSError, OSError)."""
+        with self._lock:
+            if not self._frase or self._frase != frase or self._filo is None:
+                return None
+            filo, self._filo = self._filo, None
+        filo.join()  # la sintesi ha già il suo timeout (tts.py)
+        if self._errore is not None:
+            if isinstance(self._errore, (ElevenLabsTTSError, OSError)):
+                raise self._errore
+            raise OSError(f"anticipo voce fallito ({type(self._errore).__name__})")
+        return self._audio
 
 
 def sintesi(frase: str, api_key: str, voice_id: str) -> bytes:
@@ -734,6 +802,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self._tempi = {}
         self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
         self._finiti_jobs = None  # R-711-3-M2: mai i compiti di un'altra richiesta
+        self._anticipo: Optional[AnticipoVoce] = None  # voce rapida: mai quello di un'altra
         self._parlato = False
         if self.path in ("/voci/prova", "/voci/aggiungi"):  # V8/V8b: prova o aggiunta di una voce
             if not self._autorizza():
@@ -895,6 +964,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
             t_cervello = time.monotonic()
             if is_audio:  # voce rapida (fetta 2): profilo del turno parlato nel kernel
                 kw["voce"] = True
+                chiave_tts = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+                if (chiave_tts and not self._seguito()
+                        and self._formato() in (_FORMATO_PEZZI, _FORMATO_PEZZI_VOCE)):
+                    # voce rapida: la prima frase si sintetizza mentre il cervello finisce
+                    self._anticipo = AnticipoVoce(chiave_tts, _voce_tts())
+                    kw["su_testo_voce"] = self._anticipo.testo
             turno = self.kernel.run_turn(prompt, **kw)
             try:
                 for event in turno:
@@ -1078,7 +1153,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
             out["errore_voce"] = "TTS non disponibile: ELEVENLABS_API_KEY non configurata"
             consegnati = schermo
         else:
-            voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+            voice_id = _voce_tts()
             prima = _dividi_frasi(" ".join(prefisso.split())) if prefisso else []
 
             def resto(frasi: List[str]) -> List[str]:  # R-711-3-M2: niente lambda
@@ -1137,8 +1212,11 @@ class VoiceHandler(BaseHTTPRequestHandler):
             t = time.monotonic()
             errore: Optional[str] = None
             try:
-                uscita["audio"] = base64.b64encode(
-                    sintesi(frase, api_key, voice_id)).decode("ascii")
+                audio = (self._anticipo.prendi(frase)
+                         if self._anticipo is not None else None)
+                if audio is None:
+                    audio = sintesi(frase, api_key, voice_id)
+                uscita["audio"] = base64.b64encode(audio).decode("ascii")
             except ElevenLabsTTSError as exc:
                 log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
                 errore = f"Errore TTS ElevenLabs: {exc.message}"
