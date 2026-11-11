@@ -620,9 +620,10 @@ def test_keepalive_connessione_ferma_da_troppo_si_butta(conn_viva, monkeypatch):
     assert len(_ConnViva.create) == 2 and _ConnViva.create[0].chiusa
 
 
-def test_keepalive_timeout_aggiornato_sul_socket(conn_viva):
+def test_keepalive_timeout_aggiornato_sul_socket(conn_viva, monkeypatch):
     """R-765-3-M2: il timeout di ogni chiamata (es. 5 s della conferma) vale anche sul
     socket della connessione riusata."""
+    monkeypatch.setattr(conn_viva, "_conn_caduta", lambda conn: False)  # socket finto
     synthesize_speech("Uno.", "k", "v", timeout=30)
     conn = _ConnViva.create[0]
     conn.sock = MagicMock()
@@ -656,3 +657,36 @@ def test_keepalive_errore_dopo_l_invio_non_riprova(conn_viva):
     with pytest.raises(OSError, match="RemoteDisconnected"):
         synthesize_speech("Due.", "k", "v")
     assert conn.richieste == 2 and len(_ConnViva.create) == 1 and conn.chiusa
+
+
+def test_keepalive_connessione_chiusa_dal_server_non_si_riusa(conn_viva):
+    """R-770-1-M2: se a riposo il socket è leggibile (il server ha chiuso), si apre una
+    connessione nuova PRIMA di inviare, senza consumare il nuovo tentativo."""
+    import socket
+    a, b = socket.socketpair()
+    try:
+        synthesize_speech("Una.", "k", "v")
+        prima = _ConnViva.create[0]
+        prima.sock = a
+        b.close()  # il «server» chiude: a diventa leggibile (EOF)
+        synthesize_speech("Due.", "k", "v")
+        assert len(_ConnViva.create) == 2
+        assert prima.chiusa and prima.richieste == 1
+        assert _ConnViva.create[1].richieste == 1
+    finally:
+        a.close()
+
+
+def test_keepalive_connessione_viva_a_riposo_si_riusa(conn_viva):
+    """Socket aperto e senza dati da leggere: la connessione si riusa."""
+    import socket
+    a, b = socket.socketpair()
+    try:
+        synthesize_speech("Una.", "k", "v")
+        _ConnViva.create[0].sock = a
+        synthesize_speech("Due.", "k", "v")
+        assert len(_ConnViva.create) == 1
+        assert _ConnViva.create[0].richieste == 2
+    finally:
+        a.close()
+        b.close()

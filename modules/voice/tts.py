@@ -10,6 +10,7 @@ import http.client
 import json
 import logging
 import os
+import select
 import threading
 import time
 from typing import Callable, Optional
@@ -102,18 +103,38 @@ def _chiudi_conn_locale() -> None:
             pass
 
 
+def _conn_caduta(conn: http.client.HTTPSConnection) -> bool:
+    """True se la connessione ferma risulta chiusa dal server: a riposo il socket non deve
+    avere niente da leggere; se è leggibile (EOF, reset o dati inattesi) non va riusata.
+    Ogni errore del controllo conta come «caduta» (fail-safe: si apre una nuova). Senza
+    socket non c'è niente da controllare: la richiesta stessa aprirà la connessione."""
+    sock = conn.sock
+    if sock is None:
+        return False
+    try:
+        leggibili, _, _ = select.select([sock], [], [], 0)
+    except (OSError, ValueError, TypeError):
+        return True
+    return bool(leggibili)
+
+
 def _post_riusando(path: str, body: bytes, headers: dict, timeout: float) -> "tuple[int, bytes]":
     """POST su una connessione HTTPS tenuta aperta (una per thread). Si riprova UNA volta,
     con una connessione nuova, solo se quella riusata risulta chiusa mentre si INVIA la
     richiesta (V-1 bot #372, R-765-1-M2: dopo l'invio un errore non si ripete, ElevenLabs
-    potrebbe aver già elaborato e fatto pagare la frase). Rischio residuo dichiarato: una
-    connessione riusata chiusa dal server dopo l'invio dà un errore invece di un tentativo. Ogni errore chiude la connessione e risale come
-    OSError (o HTTPException → OSError)."""
+    potrebbe aver già elaborato e fatto pagare la frase). R-770-1-M2: prima di riusarla si
+    guarda se il server l'ha già chiusa (socket leggibile a riposo, come `is_connection_dropped`
+    di urllib3) e in quel caso se ne apre una nuova. Rischio residuo dichiarato: una chiusura
+    che arriva proprio durante l'invio dà un errore invece di un tentativo. Ogni errore chiude
+    la connessione e risale come OSError (o HTTPException → OSError)."""
     for tentativo in (1, 2):
         conn = getattr(_conn_locale, "conn", None)
         if conn is not None and (time.monotonic() - getattr(_conn_locale, "usata", 0.0)
                                  > _KEEPALIVE_INATTIVA_MAX_S):
             _chiudi_conn_locale()  # R-765-2-M2: ferma da troppo, meglio una nuova
+            conn = None
+        if conn is not None and _conn_caduta(conn):
+            _chiudi_conn_locale()  # R-770-1-M2: chiusa dal server mentre era ferma
             conn = None
         riusata = conn is not None
         if conn is None:
@@ -141,9 +162,6 @@ def _post_riusando(path: str, body: bytes, headers: dict, timeout: float) -> "tu
             resp = conn.getresponse()
         except (http.client.HTTPException, OSError) as exc:
             _chiudi_conn_locale()  # richiesta già inviata: niente nuovo tentativo
-            raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
-        except http.client.HTTPException as exc:
-            _chiudi_conn_locale()
             raise OSError(f"risposta rotta ({type(exc).__name__})") from exc
         except BaseException:
             _chiudi_conn_locale()
