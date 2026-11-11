@@ -14,6 +14,7 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 1 — log «parola quasi sentita» nell'ascolto + sezione nella diagnosi**: FATTA — aafe58b1, review #791-M1coord APPROVATO CON RISERVE. Motivo: dopo l'aggiornamento della sera dell'11/11 (soglia 0,7 per 3 blocchi) l'operatore riferisce «a un certo punto ha smesso di rispondermi» e il log non mostra nessuna attivazione dopo le 23:38: le chiamate scartate non lasciavano traccia.
+- **Fetta 2 — bot #377 V-1 BASSA (test della soglia bassa non provava la guardia)**: FATTA — review #792-M1coord APPROVATO.
 
 ---
 
@@ -68,6 +69,20 @@ Review #791-M1coord sul diff staged del branch fix/voce-quasi-parola. Letti prim
 
 Memoria: riga #791-M1coord e una lezione in .claude/agents/memoria_revisore.md (commit 6c11f0e8).
 
+### Review #792-M1coord (fix bot #377 V-1 BASSA, test della soglia bassa)
+
+## VERDETTO: APPROVATO
+
+Review #792-M1coord: modifica sopra la #791-M1coord sul branch fix/voce-quasi-parola, diff staged (solo il file di test, 2 righe aggiunte e 1 tolta), chiude V-1 BASSA del bot #377.
+
+**Elementi esaminati**
+- `tests/test_unit_voce_ascolto.py:2992` — `test_quasi_sentita_spenta_con_soglia_bassa` ora usa [0.35, 0.4, 0.0] con soglia 0.3 e blocchi_parola=5. Rischio: test che non tocca il ramo protetto (prima i valori erano sotto 0,3). Ora la salita supera 0,3 per 2 blocchi, ne servono 5 per attivare, scende a 0.0 e arriva a `_segnala_quasi`; prova anche il caso limite soglia = SOGLIA_QUASI (il `<=`). Esito: **ok**.
+- `clients/voice/ascolto.py:485` — guardia `if self.soglia <= SOGLIA_QUASI: return`, non toccata. Rischio: test che passa anche senza la guardia. Mutante provato (guardia → `if False:`): `-k soglia_bassa` → «1 failed»; file ripristinato, `git diff` vuoto su ascolto.py, suite intera 332 passed. Esito: **ok**.
+
+**Rischio escluso**: comportamento sul Mac col rilevatore vero non verificato. Restano aperte le riserve BASSE della #791 (R1 taciute residue; R2 `readlines()` su un log che non ruota).
+
+**Memoria**: riga #792-M1coord e una lezione in .claude/agents/memoria_revisore.md (commit 7504f44a).
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python -m pytest -q tests/test_unit_voce_ascolto.py` → 326 passed (main e196964) → 332 passed (aafe58b1; 6 test nuovi).
@@ -79,7 +94,7 @@ Memoria: riga #791-M1coord e una lezione in .claude/agents/memoria_revisore.md (
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente): run della PR non ancora disponibile alla scrittura dell'handoff.
+CI letta con lo strumento GitHub sulla PR #377: 278f7595 handoff-check success, unit-suite in corso; verifica-bot neutral (APPROVATO CON RISERVE, V-1 BASSA chiusa qui). Run del commit finale non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

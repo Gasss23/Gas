@@ -14,3 +14,5 @@ tests/test_unit_voce_ascolto.py: 326 → 332 passed (6 nuovi). Kernel non toccat
 
 ## Anomalie
 Dati del Mac (sera 11/11): dopo il riavvio delle 23:34 una sola attivazione (23:38, punteggio 0,90), poi nessuna; tempi claude-cli: primo testo 3,15 s, tutto 5,49 s, avvio fuori CLI 1,73 s; la prima frase arriva al client solo a fine turno (6,16 s): lo streaming della #374 prepara la voce in anticipo ma la risposta HTTP parte a turno finito.
+
+Bot #377: APPROVATO CON RISERVE (check neutral: decide l'operatore). V-1 BASSA chiusa (test della soglia bassa), review #792-M1coord APPROVATO.
