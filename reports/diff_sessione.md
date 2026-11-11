@@ -1,9 +1,12 @@
-# Diff della sessione — 2026-11-10 pomeriggio — decisioni dell'operatore (M1)
+# Diff della sessione — 2026-11-11 notte — chat Mani, PR #371
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+File toccati (base main e3eb542, dopo i merge di #368, #369, #370 nel branch):
+- `clients/voice/ascolto.py`: default più severi (soglia 0,7, 3 blocchi, seguiti spenti, finestra 10 s, interruzione 0,8, TURNI_CON_INTERRUZIONE 2); l'interruzione vuole blocchi di fila; costruttore coi valori dei test; misure nel log (punteggio della parola, picchi corti scartati, volume medio); regolazioni lette una volta e scritte all'avvio, con avviso se il .env le rende più facili.
+- `tests/test_unit_voce_ascolto.py`: test dei default, dell'interruzione, delle misure, della diagnosi e delle regolazioni.
+- `scripts/voce/diagnosi_ascolto.py`: nuovo, riassunto delle attivazioni dal log (solo lettura).
+- `scripts/voce/LEGGIMI.md`: intro, seguiti spenti, interruzione, privacy, «il .env vince», sezione Log e diagnosi, tabella.
+- `.claude/agents/memoria_revisore.md`: righe #757-M1…#764-M1 e lezioni.
+- `reports/proposta_verifica_parlante.md`: proposta per l'operatore.
+- `reports/*`: report di fine task e voce in stato_progetto.
 
-- `gas.py`: `_info_ripiego` riconosce la versione leggera (Flash-lite); `MAX_CHIAMATE_TURNO` = tetto di 10 chiamate per turno condiviso fra i cervelli; `_memoria_pin_varianti()` (pin pieno solo al forte, anonimo agli altri).
-- `modules/telegram/bot.py`: la riga dell'avviso vale anche per la versione leggera (solo testo).
-- `tests/test_unit_kernel.py`: T9a/T9b aggiornati, T113a2-a4, T114a-i nuovi; `tests/test_unit_notte.py`: test Telegram adattato alla riga di Flash-lite.
-- `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md`: decisioni del 2026-11-10, riserva R-753-M1-A, riga #753-M1.
-- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: report di fine sessione.
+Questo file si riscrive a ogni sessione; la storia completa sta in git.
