@@ -122,36 +122,9 @@ Revisione #753-M1, 2° giro, sul diff in stage del branch feat/merge-automatico-
 
 **Memoria**: la riga «#753-M1 (2° giro)» è aggiunta in coda a `.claude/agents/memoria_revisore.md` e in stage. Come da tua istruzione non ho committato, quindi non ho lanciato `commit_memoria_revisore.sh`.
 
-### Review #757-M1 (merge di origin/main #368)
+### Review #757-M1 (merge di origin/main #368) — verdetto integrale RIEMESSO
 
-## VERDETTO: APPROVATO
-
-Review #757-M1. Il numero che mi avevi indicato, #754-M1, è già usato: nella memoria fusa le righe #754, #755 e #756-M1 vengono dalla chat di Mani, che usa anche lei la sigla M1. Anche #753-M1 compare due volte, una per lato.
-
-Ho verificato il merge staged di origin/main 904d9d6 (PR #368) in feat/merge-automatico-z1xjx2 (HEAD e9b74f5, PR #370).
-
-Elementi del diff esaminati:
-- `clients/voice/ascolto.py:724` — `_voce_subito`, la richiesta detta d'un fiato, e il suo uso a :793 con `registra(subito, subito=True)`. Rischio: perdere o alterare righe di Mani nel merge. Il file staged è identico a MERGE_HEAD (diff di 0 righe). Dal merge-base a0c200c il nostro lato non tocca ascolto.py, quindi i due lati sono disgiunti. Esito: ok.
-- `tests/test_unit_voce_ascolto.py:2719` — l'ultimo test aggiunto da #368 (voce verso la fine della tolleranza). Rischio: test persi o un file a metà tra i due lati. Il file è identico a MERGE_HEAD. Ho rieseguito la suite: 314 passed. Esito: ok.
-- `scripts/voce/LEGGIMI.md:1` — le 8 righe aggiunte da Mani. Il file è identico a MERGE_HEAD. Esito: ok.
-- `reports/stato_progetto.md:697` — la voce «Mani — richiesta d'un fiato (PR #368)». Rischio: perdere la nostra voce delle decisioni dell'operatore (#366) o quella di Mani. Ci sono entrambe e la riga #361 modificata da Mani è presa dal suo lato. Esito: ok.
-- `.claude/agents/memoria_revisore.md:1484` — unione delle due code di memoria. Rischio: righe perse. Il diff contro MERGE_HEAD aggiunge solo le 3 righe nostre (#753-M1 + lezione + 2° giro), quello contro HEAD solo le 5 di Mani. Non si perde nulla. Esito: ok, con la sola nota sulla numerazione doppia, che è di processo e non tocca il codice.
-
-Controlli meccanici:
-- `git ls-files -u` è vuoto.
-- `git diff --cached --check` è pulito.
-- Nessun marcatore di conflitto in reports, .claude, clients, tests e scripts.
-- MERGE_HEAD è 904d9d6.
-- Il merge non tocca `_get_window`, il tetto di 10 iterazioni né i provider.
-
-Cosa non ho verificato:
-- Il test kernel (1134 PASS) e il pytest su voce, telegram_voce e notte (583 passed) non li ho rieseguiti: mi fido del tuo numero. Il nostro lato di codice (gas.py, bot.py) è fuori da questo merge e ha già avuto la sua review (#753-M1, 2° giro).
-- Il comportamento dal vivo della voce sul Mac non è riproducibile qui.
-- handoff.md, ultimo_report.md e diff_sessione.md presi dal nostro lato non li ho controllati riga per riga, perché li riscrive /fine-task.
-
-Memoria: ho aggiunto la riga #757-M1 in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho messa in stage, senza committare come richiesto. Contiene una lezione nuova: dopo un merge della memoria, il numero della review si prende dalla coda del file fuso, non da quella del proprio lato.
-
-### Review #757-M1 — verdetto RIEMESSO dal revisore per il gate check_verdetto (stesso esito; l'originale sopra non citava file del diff di sessione)
+Il primo verdetto non citava file di codice del diff di sessione e il gate B lo rifiutava: come da regola il revisore l'ha RIEMESSO con la stessa sostanza e le citazioni del nostro lato. Sotto, prima il verdetto riemesso, poi l'originale (in un blocco, alla lettera).
 
 ## VERDETTO: APPROVATO
 
@@ -178,6 +151,37 @@ Cosa non ho verificato:
 - handoff.md, ultimo_report.md e diff_sessione.md presi dal nostro lato non li ho controllati riga per riga, perché li riscrive /fine-task.
 
 Memoria: la riga #757-M1 è già in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` ed è in stage, non committata. Non ho aggiunto una riga nuova: questa è la stessa review riemessa, non una review nuova.
+
+**Verdetto originale (alla lettera):**
+
+```
+## VERDETTO: APPROVATO
+
+Review #757-M1. Il numero che mi avevi indicato, #754-M1, è già usato: nella memoria fusa le righe #754, #755 e #756-M1 vengono dalla chat di Mani, che usa anche lei la sigla M1. Anche #753-M1 compare due volte, una per lato.
+
+Ho verificato il merge staged di origin/main 904d9d6 (PR #368) in feat/merge-automatico-z1xjx2 (HEAD e9b74f5, PR #370).
+
+Elementi del diff esaminati:
+- `clients/voice/ascolto.py:724` — `_voce_subito`, la richiesta detta d'un fiato, e il suo uso a :793 con `registra(subito, subito=True)`. Rischio: perdere o alterare righe di Mani nel merge. Il file staged è identico a MERGE_HEAD (diff di 0 righe). Dal merge-base a0c200c il nostro lato non tocca ascolto.py, quindi i due lati sono disgiunti. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:2719` — l'ultimo test aggiunto da #368 (voce verso la fine della tolleranza). Rischio: test persi o un file a metà tra i due lati. Il file è identico a MERGE_HEAD. Ho rieseguito la suite: 314 passed. Esito: ok.
+- `scripts/voce/LEGGIMI.md:1` — le 8 righe aggiunte da Mani. Il file è identico a MERGE_HEAD. Esito: ok.
+- `reports/stato_progetto.md:697` — la voce «Mani — richiesta d'un fiato (PR #368)». Rischio: perdere la nostra voce delle decisioni dell'operatore (#366) o quella di Mani. Ci sono entrambe e la riga #361 modificata da Mani è presa dal suo lato. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1484` — unione delle due code di memoria. Rischio: righe perse. Il diff contro MERGE_HEAD aggiunge solo le 3 righe nostre (#753-M1 + lezione + 2° giro), quello contro HEAD solo le 5 di Mani. Non si perde nulla. Esito: ok, con la sola nota sulla numerazione doppia, che è di processo e non tocca il codice.
+
+Controlli meccanici:
+- `git ls-files -u` è vuoto.
+- `git diff --cached --check` è pulito.
+- Nessun marcatore di conflitto in reports, .claude, clients, tests e scripts.
+- MERGE_HEAD è 904d9d6.
+- Il merge non tocca `_get_window`, il tetto di 10 iterazioni né i provider.
+
+Cosa non ho verificato:
+- Il test kernel (1134 PASS) e il pytest su voce, telegram_voce e notte (583 passed) non li ho rieseguiti: mi fido del tuo numero. Il nostro lato di codice (gas.py, bot.py) è fuori da questo merge e ha già avuto la sua review (#753-M1, 2° giro).
+- Il comportamento dal vivo della voce sul Mac non è riproducibile qui.
+- handoff.md, ultimo_report.md e diff_sessione.md presi dal nostro lato non li ho controllati riga per riga, perché li riscrive /fine-task.
+
+Memoria: ho aggiunto la riga #757-M1 in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho messa in stage, senza committare come richiesto. Contiene una lezione nuova: dopo un merge della memoria, il numero della review si prende dalla coda del file fuso, non da quella del proprio lato.
+```
 
 ## §5 DELTA TEST DEL MOTORE
 
