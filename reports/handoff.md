@@ -15,6 +15,7 @@
 
 - **Fetta 1 — log «parola quasi sentita» nell'ascolto + sezione nella diagnosi**: FATTA — aafe58b1, review #791-M1coord APPROVATO CON RISERVE. Motivo: dopo l'aggiornamento della sera dell'11/11 (soglia 0,7 per 3 blocchi) l'operatore riferisce «a un certo punto ha smesso di rispondermi» e il log non mostra nessuna attivazione dopo le 23:38: le chiamate scartate non lasciavano traccia.
 - **Fetta 2 — bot #377 V-1 BASSA (test della soglia bassa non provava la guardia)**: FATTA — review #792-M1coord APPROVATO.
+- **Fetta 3 — bot #377 (7966abf) V-1 BASSA dichiarata, V-2 COSMETICA**: FATTA — review #793-M1coord APPROVATO.
 
 ---
 
@@ -87,6 +88,24 @@ Review #792-M1coord: modifica sopra la #791-M1coord sul branch fix/voce-quasi-pa
 
 **Memoria**: riga #792-M1coord e una lezione in .claude/agents/memoria_revisore.md (commit 7504f44a).
 
+### Review #793-M1coord (bot #377 V-1 BASSA dichiarata, V-2 COSMETICA)
+
+## VERDETTO: APPROVATO
+
+Review #793-M1coord. Diff staged del branch fix/voce-quasi-parola (PR #377): 3 file, 8 righe aggiunte e 4 tolte. Solo commenti, docstring e documentazione: le righe cambiate in clients/voice/ascolto.py sono tutte in un commento `#` o nel docstring; nessuna riga eseguibile cambia.
+
+Elementi esaminati:
+- clients/voice/ascolto.py:128 — il commento sopra SOGLIA_QUASI dice che la riga «parola quasi sentita» si scrive solo nell'attesa della parola. Rischio: dire più di quanto fa il codice. Esito: ok. L'unico punto che chiama `_segnala_quasi` è clients/voice/ascolto.py:457, dentro `aspetta_parola` (clients/voice/ascolto.py:429); `_ascolta_mentre_suona` (clients/voice/ascolto.py:759, confronto a :794) e `aspetta_voce` (clients/voice/ascolto.py:627) non lo chiamano.
+- clients/voice/ascolto.py:481 — docstring di `_segnala_quasi`: «uguale o sotto» SOGLIA_QUASI e «solo in `aspetta_parola`». Esito: ok, la guardia a clients/voice/ascolto.py:487 è `if self.soglia <= SOGLIA_QUASI: return`; V-2 chiusa.
+- scripts/voce/LEGGIMI.md:181 — «il conteggio è una stima» (R-791-1) e «vale solo nell'attesa di Hey Jarvis». Esito: ok.
+- reports/stato_progetto.md:380 — V-1 del bot #377 registrata come «dichiarato». Esito: ok, scelta legittima per una BASSA.
+
+Wall of Shame: nessun taglio della cronologia, nessun output inventato; guardrail non toccati.
+
+Non verificato: suite non rieseguita (332 passed dichiarato; il delta non cambia il bytecode); uso del rilevatore nella finestra dopo un turno non controllato (la frase vale comunque: lì `_segnala_quasi` non è chiamato). Restano aperte R-791-1 e R-791-2.
+
+Memoria: riga #793-M1coord in .claude/agents/memoria_revisore.md (commit 07c65023).
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python -m pytest -q tests/test_unit_voce_ascolto.py` → 326 passed (main e196964) → 332 passed (aafe58b1; 6 test nuovi).
@@ -104,4 +123,5 @@ CI letta con lo strumento GitHub sulla PR #377: 278f7595 handoff-check success, 
 
 - R-791-1 BASSA — conteggio delle «taciute» è una stima (ultimo gruppo perso a fine flusso/riavvio, mezzanotte sommata al giorno dopo).
 - R-791-2 BASSA — la diagnosi legge tutto il log in memoria (il log dell'ascolto non ruota).
+- Bot #377 V-1 BASSA (dichiarata): la riga «quasi» c'è solo nell'attesa della parola, non nella finestra dopo un turno né mentre Gas parla.
 - Non provato: rumore reale di casa (TV) → quante righe «quasi» al giorno.
