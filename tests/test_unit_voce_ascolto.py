@@ -2940,3 +2940,97 @@ def test_main_avvisa_se_il_env_rende_la_parola_piu_facile(monkeypatch, tmp_path,
                   "GAS_VOICE_MAX_TURNI=3 (predefinito 1)"):
         assert pezzo in avvisi[0]
     assert "interruzione spenta" in caplog.text
+
+
+# ── «parola quasi sentita» (sera dell'11/11: chiamate vere scartate senza traccia) ──
+
+def _ascolto_quasi(valori, soglia=0.7, blocchi_parola=3, n_blocchi=None):
+    it = iter(list(valori) + [0.0] * 400)
+    f = Finti()
+    n = n_blocchi or (len(valori) + 20)
+    asc = a.Ascolto(iter(_blocchi((SILENZIO, n))), lambda b: next(it), f.invia,
+                    f.riproduci, f.suona, finestra_s=0, soglia=soglia,
+                    blocchi_parola=blocchi_parola, dorme=lambda s: None)
+    return asc, f
+
+
+def _righe_quasi(caplog):
+    return [r for r in caplog.text.splitlines() if "parola quasi sentita" in r]
+
+
+def test_quasi_sentita_scritta_con_i_numeri_quando_non_attiva(caplog):
+    # 0,5 · 0,65 · 0,4 sotto la soglia 0,7, poi una salita sopra soglia di 2 blocchi (servono 3)
+    asc, f = _ascolto_quasi([0.0, 0.5, 0.65, 0.4, 0.0, 0.0, 0.9, 0.95, 0.1, 0.0])
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        assert asc.aspetta_parola() is False   # fine flusso, nessuna attivazione
+    righe = _righe_quasi(caplog)
+    assert len(righe) == 1   # la seconda salita cade entro 5 s: taciuta
+    assert "punteggio max 0.65, 3 blocchi da 0.30 in su" in righe[0]
+    assert "soglia 0.70 per 3 blocchi; altre taciute: 0" in righe[0]
+    assert asc._quasi_taciuti == 1 and f.inviati == []
+    assert asc._quasi_taciuti_max == 0.95   # il punteggio della salita taciuta non si perde
+
+
+def test_quasi_sentita_dopo_la_pausa_conta_le_taciute(caplog):
+    pausa = a.blocchi_per(a.QUASI_PAUSA_S)
+    valori = [0.5, 0.0, 0.6, 0.0] + [0.0] * pausa + [0.55, 0.0]
+    asc, _ = _ascolto_quasi(valori)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        asc.aspetta_parola()
+    righe = _righe_quasi(caplog)
+    assert len(righe) == 2
+    assert "punteggio max 0.50" in righe[0] and "altre taciute: 0" in righe[0]
+    assert "punteggio max 0.55" in righe[1] and "altre taciute: 1, max 0.60" in righe[1]
+
+
+def test_quasi_sentita_non_scritta_se_la_salita_attiva(caplog):
+    asc, _ = _ascolto_quasi([0.4, 0.8, 0.85, 0.9, 0.0])
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        assert asc.aspetta_parola() is True
+    assert _righe_quasi(caplog) == [] and asc.punteggio_parola == 0.9
+
+
+def test_quasi_sentita_spenta_con_soglia_bassa(caplog):
+    # soglia della parola sotto SOGLIA_QUASI (test/regolazioni estreme): niente righe
+    # salita da 0,30 in su che non attiva (servono 5 blocchi): senza la guardia si scriverebbe
+    asc, _ = _ascolto_quasi([0.35, 0.4, 0.0], soglia=0.3, blocchi_parola=5)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        asc.aspetta_parola()
+    assert _righe_quasi(caplog) == []
+
+
+def test_quasi_sentita_azzerata_da_un_errore_del_rilevatore(caplog):
+    valori = iter([0.5, RuntimeError("x"), 0.0] + [0.0] * 50)
+
+    def rilevatore(b):
+        v = next(valori)
+        if isinstance(v, Exception):
+            raise v
+        return v
+    f = Finti()
+    asc = a.Ascolto(iter(_blocchi((SILENZIO, 30))), rilevatore, f.invia, f.riproduci,
+                    f.suona, finestra_s=0, soglia=0.7, blocchi_parola=3,
+                    dorme=lambda s: None)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        asc.aspetta_parola()
+    assert _righe_quasi(caplog) == []   # la salita interrotta dall'errore non si scrive
+
+
+def test_diagnosi_legge_le_quasi_sentite(tmp_path, capsys):
+    d = _diagnosi()
+    log_ = (_LOG_ESEMPIO
+            + "2026-11-11 00:06:00,000 INFO parola quasi sentita (punteggio max 0.62, 2 "
+              "blocchi da 0.30 in su, soglia 0.70 per 3 blocchi; altre taciute: 0)\n"
+            + "2026-11-11 00:07:00,000 INFO parola quasi sentita (punteggio max 0.81, 2 "
+              "blocchi da 0.30 in su, soglia 0.70 per 3 blocchi; altre taciute: 4, max 0.92)\n")
+    q = d.leggi_quasi(log_.splitlines(True))
+    assert [(x.punteggio, x.blocchi, x.taciute, x.taciute_max) for x in q] == [
+        (0.62, 2, 0, None), (0.81, 2, 4, 0.92)]
+    # le quasi sentite non diventano attivazioni
+    assert len(d.leggi(log_.splitlines(True))) == 3
+    f = tmp_path / "ascolto.log"
+    f.write_text(log_, encoding="utf-8")
+    assert d.main(["--log", str(f), "--giorni", "3650"]) == 0
+    out = capsys.readouterr().out
+    assert "2026-11-11: 2 (più 4 taciute dal limite del log)" in out
+    assert "00:07:00  punteggio max 0.81  2 blocchi  (+4 taciute prima, max 0.92)" in out
