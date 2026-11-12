@@ -13,6 +13,7 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 1 — prima frase subito** (sul Mac dei tempi dell'11/11: prima frase pronta ~3,7 s dopo la richiesta ma arrivata al client a ~6,2 s, a turno finito): FATTA — 59478461, review #799-M1coord BOCCIATO → #801-M1coord APPROVATO CON RISERVE. Solo client senza schermo (audio+pezzi), mai nei seguiti, mai con compiti finiti da annunciare, mai se la prima frase contiene la parola di attivazione.
+- **Fetta 2 — merge di main (#378) nella #379**: FATTA — review #802-M1coord APPROVATO.
 
 ---
 
@@ -99,10 +100,31 @@ Review #801-M1coord, secondo giro della #799. Diff staged riletto: 4 file, +277/
 
 **Memoria**: riga #801-M1coord (commit 37654b0f).
 
+### Review #802-M1coord (merge di origin/main cb9ae3c, PR #378, nella #379)
+
+## VERDETTO: APPROVATO
+
+Review #802-M1coord: merge di origin/main cb9ae3c (PR #378) nella PR #379, branch perf/voce-prima-frase-subito. Letti CLAUDE.md §5, stato_progetto.md e la memoria del revisore.
+
+**Nessun lato ha perso modifiche.** Confrontate le righe +/- di `git diff base..MERGE_HEAD` con `git diff HEAD --cached`, e di `git diff base..HEAD` con `git diff MERGE_HEAD --cached`: su `clients/voice/ascolto.py` e `tests/test_unit_voce_ascolto.py` coincidono in entrambe le direzioni. Il file in staging si analizza senza errori; cartella di lavoro = staging.
+
+Elementi del diff esaminati:
+- `clients/voice/ascolto.py:829` — l'interruzione mentre Gas parla usa `self.blocchi_interruzione` (#378). Rischio: ritorno a `blocchi_parola` (1 blocco, eco delle casse). Esito: ok; contatore azzerato su errore e sotto soglia.
+- `clients/voice/ascolto.py:777` — bip d'errore se la prima frase è già detta e il turno fallisce (#379), dopo il `finally` del ciclo, fuori da `_ascolta_mentre_suona`. Rischio: interferenza con l'interruzione. Esito: ok — punti diversi; interrotto → `break`, il bip parte solo con `errore_turno` (impostato in `clients/voice/ascolto.py:1059`); con `suonati == 0` resta il bip esistente, niente doppio bip.
+- `clients/voice/ascolto.py:1336` — `_regolazioni()` legge `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` (1-5, default 3) e lo passa al costruttore (`clients/voice/ascolto.py:378`) via `**regolazioni`. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:836` (test #379 su `errore_turno=True`) e `tests/test_unit_voce_ascolto.py:3224` (test #378 parola=1, interruzione=3) presenti. Esito: ok.
+- Wall of Shame: nessuno slicing della history, nessuna simulazione dei tool; motore non toccato.
+
+Test: `tests/test_unit_voce_ascolto.py` 346 passed (rilanciato dal revisore).
+
+Rischi esclusi: `tests/test_unit_voice_server.py` non rieseguito (timeout dell'ambiente; il merge non tocca il server: valgono i 236 passed del coordinatore); comportamento reale sul Mac non verificato. R-800-1 ancora aperta, ereditata.
+
+Memoria: riga #802-M1coord in .claude/agents/memoria_revisore.md, entrata nel commit di merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python -B -m pytest -q tests/test_unit_voice_server.py` → 227 passed (main 3756c97) → 236 passed (59478461; 9 test nuovi, uno prova che la prima riga arriva a turno ancora aperto).
-- `tests/test_unit_voce_ascolto.py` → 332 → 334 passed.
+- `tests/test_unit_voce_ascolto.py` → 332 → 334 passed → 346 passed dopo il merge di main (#378); voice_server 236 passed dopo il merge.
 - Kernel (`python -B tests/test_unit_kernel.py`): 1167 PASS, 0 FAIL (gas.py non toccato).
 
 ```
@@ -111,7 +133,7 @@ Review #801-M1coord, secondo giro della #799. Diff staged riletto: 4 file, +277/
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente): run della PR non ancora disponibile alla scrittura dell'handoff.
+CI letta con lo strumento GitHub sulla PR #379: e2766972 tutti i check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE). Run del merge non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

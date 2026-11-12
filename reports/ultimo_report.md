@@ -13,3 +13,5 @@ voice_server 227 → 236 passed; voce_ascolto 332 → 334; kernel 1167 PASS.
 
 ## Anomalie
 Nessuna. Non provato sul Mac.
+
+Merge di main (#378) nella #379: conflitti solo nei report; review #802-M1coord APPROVATO; voce_ascolto 346, voice_server 236 passed.
