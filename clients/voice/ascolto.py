@@ -43,7 +43,7 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_VOICE_MAX_TURNI    — turni dopo la parola, il primo compreso (default 1: nessun seguito)
     GAS_ASCOLTO_MODELLO    — modello di openWakeWord (default hey_jarvis)
     GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.7)
-    GAS_ASCOLTO_BLOCCHI_PAROLA — blocchi da 80 ms di fila sopra soglia per la parola, 1-5 (default 3)
+    GAS_ASCOLTO_BLOCCHI_PAROLA — blocchi da 80 ms di fila sopra soglia per la parola, 1-5 (default 1)
     GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 200, campioni int16)
     GAS_ASCOLTO_SILENZIO   — secondi di silenzio che chiudono la richiesta (default 0.8)
     GAS_ASCOLTO_INTERRUZIONE — 0 = la parola non interrompe Gas mentre parla (default 1)
@@ -123,8 +123,15 @@ MAX_TURNI_PREDEFINITO = 1
 # secondo: è la coda dell'eco della voce di Gas nella stanza.
 # Sera del 10/11: più severi (0,7 e 3 blocchi, cioè 240 ms di fila sopra soglia). Se la
 # parola vera non scatta più: GAS_ASCOLTO_SOGLIA=0.6 o GAS_ASCOLTO_BLOCCHI_PAROLA=2.
+# Notte dell'11-12/11 (operatore: «non risponde»; misura col modello vero su voci sintetiche,
+# reports/voce_taratura_2026-11-12.md): i 3 blocchi di fila erano la causa. Con la pronuncia
+# italiana il picco di «Hey Jarvis» dura 1-2 blocchi: 3 blocchi dimezzavano le chiamate
+# riconosciute (35 → 19 su 81), mentre la soglia 0,5 → 0,7 quasi non le toccava (37 → 35).
+# Le frasi comuni in italiano danno punteggio ~0 a qualunque soglia: i falsi «Hey Jarvis» dei
+# giorni scorsi venivano dalla soglia 0,35 rimasta nel .env. Quindi soglia 0,7 e 1 blocco.
+# Per tarare sulla voce vera: python3 scripts/voce/taratura_parola.py.
 SOGLIA_PREDEFINITA = 0.7
-BLOCCHI_PAROLA_PREDEFINITO = 3
+BLOCCHI_PAROLA_PREDEFINITO = 1
 # Sera dell'11/11 (operatore: «a un certo punto ha smesso di rispondermi»): con 0,7 e 3
 # blocchi le chiamate vere scartate non lasciavano traccia. Nell'attesa della parola (non
 # nella finestra dopo un turno né mentre Gas parla) ogni salita del rilevatore da
@@ -436,6 +443,7 @@ class Ascolto:
         massimo = 0.0
         quasi = 0.0          # punteggio massimo della salita da SOGLIA_QUASI in su in corso
         quasi_blocchi = 0    # blocchi di quella salita
+        quasi_sopra = 0      # bot #377 V-1: blocchi di fila sopra soglia più lunghi della salita
         self.picchi_scartati = 0
         while True:
             b = self._prossimo()
@@ -449,14 +457,14 @@ class Ascolto:
                     self.picchi_scartati += 1
                 sopra = 0
                 massimo = 0.0
-                quasi, quasi_blocchi = 0.0, 0
+                quasi, quasi_blocchi, quasi_sopra = 0.0, 0, 0
                 continue
             if punteggio >= SOGLIA_QUASI:
                 quasi = max(quasi, punteggio)
                 quasi_blocchi += 1
             elif quasi:
-                self._segnala_quasi(quasi, quasi_blocchi)
-                quasi, quasi_blocchi = 0.0, 0
+                self._segnala_quasi(quasi, quasi_blocchi, quasi_sopra)
+                quasi, quasi_blocchi, quasi_sopra = 0.0, 0, 0
             if self._errori_rilevatore:
                 # V-1 ve #328: il conto si azzera solo dopo BUONI_PER_AZZERARE blocchi buoni
                 # di fila, così un rilevatore che sbaglia a intermittenza non scrive due
@@ -469,6 +477,7 @@ class Ascolto:
                     self._buoni_di_fila = 0
             if punteggio >= self.soglia:
                 sopra += 1
+                quasi_sopra = max(quasi_sopra, sopra)
                 massimo = max(massimo, punteggio)
                 if sopra >= self.blocchi_parola:
                     self.punteggio_parola = massimo
@@ -479,7 +488,7 @@ class Ascolto:
                 sopra = 0
                 massimo = 0.0
 
-    def _segnala_quasi(self, massimo: float, blocchi: int) -> None:
+    def _segnala_quasi(self, massimo: float, blocchi: int, sopra: int = 0) -> None:
         """Una salita del rilevatore da SOGLIA_QUASI in su finita senza attivare: una riga
         «parola quasi sentita» (solo numeri: punteggio massimo, blocchi, soglia in uso),
         al massimo una ogni QUASI_PAUSA_S; quelle taciute si contano nella riga dopo. Con
@@ -497,9 +506,12 @@ class Ascolto:
         # «Hey Jarvis» dopo 2-3 s spesso lo dice più forte: è il dato che serve a tarare)
         taciute = ("%d, max %.2f" % (self._quasi_taciuti, self._quasi_taciuti_max)
                    if self._quasi_taciuti else "0")
+        # bot #377 V-1: quanti blocchi di fila sono andati sopra la soglia (0 = soglia mai
+        # raggiunta → è la soglia a fermarla; >0 = sono i blocchi di fila a fermarla)
         log.info("parola quasi sentita (punteggio max %.2f, %d blocchi da %.2f in su, "
-                 "soglia %.2f per %d blocchi; altre taciute: %s)", massimo, blocchi,
-                 SOGLIA_QUASI, self.soglia, self.blocchi_parola, taciute)
+                 "%d di fila sopra soglia, soglia %.2f per %d blocchi; altre taciute: %s)",
+                 massimo, blocchi, SOGLIA_QUASI, sopra, self.soglia, self.blocchi_parola,
+                 taciute)
         self._ultimo_quasi = self._blocchi_letti
         self._quasi_taciuti = 0
         self._quasi_taciuti_max = 0.0

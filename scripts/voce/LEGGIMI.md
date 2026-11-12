@@ -133,8 +133,11 @@ solo).
   (la mitigazione del 9/11), la soglia nuova 0,7 non vale: toglila. `GAS_VOICE_MAX_TURNI=1`
   ora è il predefinito e si può togliere. All'avvio `.gas_voce/ascolto.log` scrive
   «regolazioni in uso: …» e avvisa se il `.env` rende la parola più facile dei predefiniti.
-- Se la parola vera non scatta più: abbassa `GAS_ASCOLTO_SOGLIA` (0.6) o
-  `GAS_ASCOLTO_BLOCCHI_PAROLA` (2).
+- Se la parola vera non scatta più: lancia `python3 scripts/voce/taratura_parola.py`
+  (dici «Hey Jarvis» qualche volta e lo script consiglia soglia e blocchi sulla tua voce,
+  senza salvare audio), oppure abbassa `GAS_ASCOLTO_SOGLIA` (0.6). Se nel `.env` c'è
+  `GAS_ASCOLTO_BLOCCHI_PAROLA=2` o `3`, toglilo: con la pronuncia italiana il picco della
+  parola dura 1-2 blocchi (misura del 12/11, `reports/voce_taratura_2026-11-12.md`).
 - Se la parola scatta spesso per sbaglio, alza `GAS_ASCOLTO_SOGLIA` o `GAS_ASCOLTO_BLOCCHI_PAROLA`; per parlare
   con qualcuno senza Gas, `bash scripts/voce/pausa.sh`.
 - Se dopo un bip di errore non sai se Gas ha fatto la cosa (il server può aver eseguito
@@ -155,7 +158,7 @@ solo).
 | Variabile | Default | Cosa fa |
 |---|---|---|
 | `GAS_ASCOLTO_SOGLIA` | 0.7 | sensibilità della parola (più alta = meno attivazioni per sbaglio) |
-| `GAS_ASCOLTO_BLOCCHI_PAROLA` | 3 | blocchi da 80 ms di fila sopra la soglia perché la parola valga (1–5; più alto = meno attivazioni per sbaglio) |
+| `GAS_ASCOLTO_BLOCCHI_PAROLA` | 1 | blocchi da 80 ms di fila sopra la soglia perché la parola valga (1–5; più alto = meno attivazioni per sbaglio) |
 | `GAS_ASCOLTO_VOCE_RMS` | 200 | volume sopra cui conta come voce (più basso = sente anche la voce piana; se in una stanza rumorosa parte da solo o non chiude la richiesta, alzalo a 300–500) |
 | `GAS_ASCOLTO_SILENZIO` | 0.8 | secondi di silenzio che chiudono la richiesta |
 | `GAS_ASCOLTO_CONFERMA` | 1 | `0` = dopo la parola solo il bip, senza «Sì, signore?» |
