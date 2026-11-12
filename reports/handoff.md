@@ -18,6 +18,7 @@
 - **Fetta 2 — predefinito 1 blocco (soglia 0,7), «sopra soglia» nella riga quasi, scripts/voce/taratura_parola.py**: FATTA — 0ce03e55, review #795-M1coord e #796-M1coord APPROVATO CON RISERVE.
 - **Fetta 3 — R-796-1/2 (avviso «più permissiva», test d'uguaglianza)**: FATTA — 045707c8, review #797-M1coord APPROVATO CON RISERVE.
 - **Fetta 4 — R-797-1 (ramo irraggiungibile)**: FATTA — d12e9b67, review #798-M1coord APPROVATO CON RISERVE.
+- **Fetta 5 — bot #378 (82eb3bd) V-1 MEDIA: interruzione su 3 blocchi separata; V-2 script della misura; V-3/V-4**: FATTA — review #800-M1coord APPROVATO CON RISERVE (R-800-1 BASSA).
 
 ---
 
@@ -134,9 +135,33 @@ Review #798-M1coord su R-797-1. Diff staged: scripts/voce/taratura_parola.py e t
 
 **Memoria**: riga #798-M1coord (commit 032542c7).
 
+### Review #800-M1coord (fix bot #378 V-1..V-4 su 82eb3bd)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #800-M1coord, diff staged nella worktree del branch fix/voce-blocchi-taratura (PR #378). Lette le ultime righe della memoria del revisore e il contesto voce di stato_progetto.md. tests/test_unit_voce_ascolto.py rieseguito: **344 passed**.
+
+**Elementi del diff esaminati**
+- `clients/voice/ascolto.py:827` — mentre Gas parla contano i `blocchi_interruzione`, non i `blocchi_parola`. Rischio: la parola su 1 blocco annulla la protezione contro l'eco della #371 (V-1 MEDIA del bot). Il conto `sopra` si azzera sotto soglia e su errore. — **ok**
+- `clients/voice/ascolto.py:378` e `clients/voice/ascolto.py:396` — parametro nuovo del costruttore, `Optional[int]`; `None` = come la parola (test esistenti invariati); minimo 1; type hint. — **ok**
+- `clients/voice/ascolto.py:1327` — `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` letta con `_numero`, limiti 1-5, al costruttore via `**regolazioni` (`clients/voice/ascolto.py:1400`); `tests/test_unit_voce_ascolto.py:201` verifica 3; log e avviso sotto 3 coperti da `tests/test_unit_voce_ascolto.py:2927` e `:2938`. — **ok**
+- `clients/voice/ascolto.py:490` — `quasi_sopra` aggiornato solo con punteggio >= SOGLIA_QUASI (V-3 BASSA): ramo già irraggiungibile, modifica difensiva senza cambio di comportamento; manca un test, accettabile. — **ok**
+- `tests/test_unit_voce_ascolto.py:3195` — il test nuovo verifica solo i due attributi, non che con parola=1 e interruzione=3 uno o due blocchi alti non fermino Gas; il percorso di `_ascolta_mentre_suona` resta coperto dal test della #371 (`tests/test_unit_voce_ascolto.py:2781`) con `blocchi_parola=3`, cioè con i due valori uguali. — **riserva (R-800-1)**
+- `scripts/voce/misura_parola_sintetica.py:51` — script di misura fuori dai test; espeak-ng e ffmpeg con elenco di argomenti, senza shell. — **ok**
+
+Nessun problema del Wall of Shame.
+
+**Riserve**
+- **R-800-1 BASSA** — manca un test di comportamento con `blocchi_parola=1` e `blocchi_interruzione=3` (1-2 blocchi alti mentre Gas parla non interrompono, 3 di fila sì): una regressione che rimetta `blocchi_parola` alla riga 827 passerebbe i test. Tracciare in stato_progetto.md o chiudere con un test.
+
+**Rischi esclusi**: script di misura non eseguito dal revisore (servono modello onnx ed espeak-ng; numeri presi dall'esecuzione del coordinatore); eco reale sul Mac non verificabile; LEGGIMI e report solo scorsi.
+
+**Memoria**: riga #800-M1coord nella worktree (commit b6421da1).
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `python -B -m pytest -q tests/test_unit_voce_ascolto.py` → 332 passed (main 3756c97) → 343 passed (d12e9b67).
+- `python -B -m pytest -q tests/test_unit_voce_ascolto.py` → 332 passed (main 3756c97) → 343 passed (d12e9b67) → 344 passed (fix bot #378).
+- `scripts/voce/misura_parola_sintetica.py` eseguito: stessi numeri del report (35/81 contro 19/81; falsi 9 contro 3 su 120).
 - `tests/test_unit_voice_server.py` insieme a voce_ascolto: 568 passed dopo 0ce03e55 (prima dei fix di R-795-1).
 - Kernel non toccato.
 
@@ -146,11 +171,12 @@ Review #798-M1coord su R-797-1. Diff staged: scripts/voce/taratura_parola.py e t
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente): run della PR non ancora disponibile alla scrittura dell'handoff.
+CI letta con lo strumento GitHub sulla PR #378: 82eb3bd unit-suite e handoff-check success; verifica-bot failure (V-1 MEDIA, V-2/V-3 BASSE, V-4 COSMETICA: corrette nel commit successivo). Run del commit finale non ancora disponibile.
 
 ## §7 RISERVE APERTE
 
-- R-795-3 BASSA — il blocco unico vale anche per l'interruzione mentre Gas parla (soglia 0,8) e per la finestra dopo un turno (spenta di default).
+- R-795-3 → chiusa (bot #378 V-1): interruzione mentre Gas parla su 3 blocchi (`GAS_ASCOLTO_BLOCCHI_INTERRUZIONE`).
+- R-800-1 BASSA — manca un test di comportamento con parola=1 e interruzione=3.
 - R-798-1 BASSA — `max(tutte)` in `consiglio()` dipende da un invariante non scritto (1 in BLOCCHI, filtro a min(SOGLIE)).
 - Compromesso sui quasi-omofoni (decisione in §0).
 - Non provato: voce vera dell'operatore e microfono del Mac (misure su voci sintetiche).

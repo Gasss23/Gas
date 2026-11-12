@@ -14,3 +14,5 @@ tests/test_unit_voce_ascolto.py 332 → 343 passed; con voice_server 568 passed.
 
 ## Anomalie
 Nessuna. Non provato sulla voce vera.
+
+Bot #378 su 82eb3bd: BOCCIATO (V-1 MEDIA: con 1 blocco anche l'interruzione mentre Gas parla diventava più facile). Corretto: interruzione separata su 3 blocchi, script della misura nel repo (stessi numeri), V-3/V-4; review #800-M1coord APPROVATO CON RISERVE (R-800-1 BASSA).
