@@ -20,15 +20,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- clients/voice/ascolto.py           |  11 ++++++++++-
- modules/voice/server.py            | 118 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
- reports/diff_sessione.md           |  12 +++++-------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ clients/voice/ascolto.py           |  11 ++++++++-
+ modules/voice/server.py            | 118 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ reports/diff_sessione.md           |  13 +++++------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  17 ++++++-----------
- tests/test_unit_voce_ascolto.py    |  25 +++++++++++++++++++++++++
- tests/test_unit_voice_server.py    | 135 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  15 ++++++-------
+ tests/test_unit_voce_ascolto.py    |  25 +++++++++++++++++++++
+ tests/test_unit_voice_server.py    | 135 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -36,6 +36,9 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+37e729b8 docs(fine-task): handoff #379 dopo il merge di main
+9a0fb748 Merge origin/main (#378) nella #379 — review #802-M1coord APPROVATO
+e2766972 docs(fine-task): §2/§3 handoff
 f7053b3d docs(fine-task): voce — prima frase subito (review #799/#801-M1coord)
 59478461 perf(voce): la prima frase parte appena pronta, senza aspettare la fine del turno (~2 s prima) — review #799/#801-M1coord
 37654b0f chore(revisore): memoria review #801 — APPROVATO CON RISERVE
