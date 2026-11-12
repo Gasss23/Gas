@@ -1,20 +1,15 @@
-# Ultimo report — 2026-11-11 notte — Voce: log «parola quasi sentita» (M1)
+# Ultimo report — 2026-11-12 notte — Voce: la prima frase parte appena pronta (M1)
 
 ## DECISIONI UMANE RICHIESTE
 1. Merge della PR di questa sessione (riserve solo BASSE).
-2. Dopo una prova sul Mac: soglia della parola a 0,6 se le chiamate vere finiscono tra le «quasi sentite». sì/no dopo i dati.
 
 ## Esito
-- **Log «parola quasi sentita»** (clients/voice/ascolto.py): FATTA — ogni salita del rilevatore da 0,30 in su che non attiva scrive punteggio massimo, blocchi e soglia (solo numeri, max una riga ogni 5 s). L'attivazione non cambia.
-- **Diagnosi** (scripts/voce/diagnosi_ascolto.py): FATTA — sezione «Quasi sentite» per giorno e ultime.
-- Review #791-M1coord APPROVATO CON RISERVE (R-791-1/2 BASSE).
+- **Prima frase subito**: FATTA. Il server manda la voce della prima frase appena ElevenLabs l'ha pronta, mentre il cervello forte finisce; il resto arriva dopo, senza ripeterla. Solo per l'ascolto H24 (senza schermo), mai nei seguiti, mai con compiti finiti da annunciare, mai se la frase contiene «Jarvis». Errore del turno dopo la prima frase → bip d'errore.
+- Atteso sul Mac (tempi dell'11/11): prima frase da ~6,2 s a ~4 s dalla fine della richiesta. Da misurare.
+- Review #799-M1coord BOCCIATO (prefisso dei compiti) → #801-M1coord APPROVATO CON RISERVE (R-801-1, R-799-1 BASSE).
 
 ## Test
-tests/test_unit_voce_ascolto.py: 326 → 332 passed (6 nuovi). Kernel non toccato.
+voice_server 227 → 236 passed; voce_ascolto 332 → 334; kernel 1167 PASS.
 
 ## Anomalie
-Dati del Mac (sera 11/11): dopo il riavvio delle 23:34 una sola attivazione (23:38, punteggio 0,90), poi nessuna; tempi claude-cli: primo testo 3,15 s, tutto 5,49 s, avvio fuori CLI 1,73 s; la prima frase arriva al client solo a fine turno (6,16 s): lo streaming della #374 prepara la voce in anticipo ma la risposta HTTP parte a turno finito.
-
-Bot #377: APPROVATO CON RISERVE (check neutral: decide l'operatore). V-1 BASSA chiusa (test della soglia bassa), review #792-M1coord APPROVATO.
-Bot #377 su 7966abf: APPROVATO CON RISERVE (neutral); V-1 BASSA dichiarata, V-2 COSMETICA chiusa (review #793-M1coord APPROVATO).
-Bot #377 su 30612577: V-1 BASSA chiusa (punteggio massimo delle taciute, 37eb1fc3; review #794-M1coord APPROVATO CON RISERVE, R-794-1 BASSA).
+Nessuna. Non provato sul Mac.
