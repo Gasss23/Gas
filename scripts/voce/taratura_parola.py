@@ -28,7 +28,7 @@ RADICE = Path(__file__).resolve().parents[2]
 SOGLIA_SALITA = 0.3                      # da qui in su comincia una «salita» del punteggio
 SOGLIE = (0.5, 0.6, 0.7, 0.8)            # soglie provate
 BLOCCHI = (1, 2, 3)                      # blocchi di fila provati
-SOGLIA_PREDEFINITA = 0.7                 # quella dell'ascolto (clients/voice/ascolto.py)
+SOGLIA_PREDEFINITA = 0.7                 # = clients/voice/ascolto.py (test di uguaglianza)
 SEC_BLOCCO = 0.08
 # Prova col modello vero (12/11): un solo «Hey Jarvis» a volte dà due salite staccate da
 # 1-3 blocchi sotto 0,30. Una salita finisce solo dopo PAUSA_BLOCCHI blocchi di fila sotto
@@ -125,17 +125,17 @@ def consiglio(trovate: Sequence[Salita], attese: int) -> List[str]:
         righe.append("Consiglio: GAS_ASCOLTO_SOGLIA=%g e GAS_ASCOLTO_BLOCCHI_PAROLA=%d "
                      "(prende tutte le chiamate). Nel .env, poi bash scripts/voce/installa.sh."
                      % (t, b))
-        if t < SOGLIA_PREDEFINITA:
-            righe.append("Attenzione: soglia %g più permissiva del predefinito %g — più "
-                         "rischio di risposte quando non lo chiami. Se una salita era un "
-                         "rumore, rifai la prova in silenzio prima di cambiare il .env."
-                         % (t, SOGLIA_PREDEFINITA))
     else:
         t, b, n = max(tabella, key=lambda x: (x[2], x[0], x[1]))
         righe.append("Nessuna regolazione le prende tutte: la migliore è "
                      "GAS_ASCOLTO_SOGLIA=%g e GAS_ASCOLTO_BLOCCHI_PAROLA=%d (%d su %d). "
                      "Prova più vicino al microfono o un po' più lento." % (t, b, n,
                                                                             len(trovate)))
+    if t < SOGLIA_PREDEFINITA:   # R-796-1: avviso anche nel ramo «la migliore»
+        righe.append("Attenzione: soglia %g più permissiva del predefinito %g — più "
+                     "rischio di risposte quando non lo chiami. Se una salita era un "
+                     "rumore, rifai la prova in silenzio prima di cambiare il .env."
+                     % (t, SOGLIA_PREDEFINITA))
     return righe
 
 

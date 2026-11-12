@@ -3172,3 +3172,15 @@ def test_taratura_microfono_non_pronto(capsys):
         raise OSError("niente microfono")
     assert t.main([], sorgente=rotta) == 1
     assert "microfono o modello non pronti (OSError)" in capsys.readouterr().err
+
+
+def test_taratura_soglia_predefinita_uguale_all_ascolto_e_avviso_nel_ramo_migliore():
+    # R-796-2: la copia nello script resta uguale al predefinito dell'ascolto
+    t = _taratura()
+    assert t.SOGLIA_PREDEFINITA == a.SOGLIA_PREDEFINITA
+    # R-796-1: anche «nessuna regolazione le prende tutte» avvisa se la migliore è sotto 0,7
+    p = [0.0] * t.PAUSA_BLOCCHI
+    s = list(t.salite([0.0, 0.55] + p + [0.58] + p + [0.65] + p + [0.95, 0.0]))
+    righe = t.consiglio(s, attese=0)
+    assert any("GAS_ASCOLTO_SOGLIA=0.5" in r for r in righe)
+    assert any("più permissiva del predefinito 0.7" in r for r in righe)
