@@ -24,7 +24,17 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-X
+ .claude/agents/memoria_revisore.md  |   6 +++++
+ clients/voice/ascolto.py            |  28 ++++++++++++++++-------
+ reports/diff_sessione.md            |  15 +++++++------
+ reports/handoff.md                  | n/d
+ reports/stato_progetto.md           |   1 +
+ reports/ultimo_report.md            |  18 ++++++---------
+ reports/voce_taratura_2026-11-12.md |  38 ++++++++++++++++++++++++++++++++
+ scripts/voce/LEGGIMI.md             |   9 +++++---
+ scripts/voce/diagnosi_ascolto.py    |  12 ++++++----
+ scripts/voce/taratura_parola.py     | 189 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py     | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -32,7 +42,14 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-Y
+5512ede8 docs(fine-task): voce — 1 blocco e taratura (review #795-#798-M1coord)
+d12e9b67 refactor(voce): taratura senza il ramo irraggiungibile (R-797-1) — review #798-M1coord
+032542c7 chore(revisore): memoria review #798 — APPROVATO CON RISERVE
+045707c8 fix(voce): taratura — avviso «più permissiva» in ogni ramo, test d'uguaglianza della soglia (R-796-1/2) — review #797-M1coord
+e7a4a42f chore(revisore): memoria review #797 — APPROVATO CON RISERVE
+0ce03e55 fix(voce): «Hey Jarvis» su 1 blocco (3 dimezzavano le chiamate), taratura sulla voce vera, «sopra soglia» nella riga quasi — review #795/#796-M1coord
+0365386b chore(revisore): memoria review #796 — APPROVATO CON RISERVE
+dff590da chore(revisore): memoria review #795 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
