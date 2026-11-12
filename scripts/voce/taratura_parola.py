@@ -85,8 +85,9 @@ def descrivi(n: int, s: Salita) -> str:
 
 
 def consiglio(trovate: Sequence[Salita], attese: int) -> List[str]:
-    """La regolazione più severa che prende tutte le chiamate trovate; se le salite sono
-    meno delle chiamate attese, lo dice (parola non sentita nemmeno a 0,3)."""
+    """La regolazione più severa che prende tutte le chiamate trovate (salite deboli escluse
+    e dichiarate); avvisa se le salite sono meno o più delle chiamate attese e se la soglia
+    consigliata è più permissiva del predefinito."""
     righe: List[str] = []
     if not trovate:
         return ["Nessuna salita del punteggio: il microfono non sente la parola (volume, "
@@ -118,20 +119,15 @@ def consiglio(trovate: Sequence[Salita], attese: int) -> List[str]:
     for b in BLOCCHI:
         righe.append("  %d blocc%s: %s" % (b, "o " if b == 1 else "hi", "  ".join(
             "soglia %.1f → %d" % (t, n) for (t, bb, n) in tabella if bb == b)))
+    # R-797-1: dopo il filtro delle salite deboli ognuna arriva almeno a min(SOGLIE), quindi
+    # la regolazione più permissiva (min(SOGLIE), 1 blocco) le prende sempre tutte
     tutte = [(t, b) for (t, b, n) in tabella if n == len(trovate)]
-    if tutte:
-        # la più severa: soglia più alta, poi più blocchi
-        t, b = max(tutte, key=lambda tb: (tb[0], tb[1]))
-        righe.append("Consiglio: GAS_ASCOLTO_SOGLIA=%g e GAS_ASCOLTO_BLOCCHI_PAROLA=%d "
-                     "(prende tutte le chiamate). Nel .env, poi bash scripts/voce/installa.sh."
-                     % (t, b))
-    else:
-        t, b, n = max(tabella, key=lambda x: (x[2], x[0], x[1]))
-        righe.append("Nessuna regolazione le prende tutte: la migliore è "
-                     "GAS_ASCOLTO_SOGLIA=%g e GAS_ASCOLTO_BLOCCHI_PAROLA=%d (%d su %d). "
-                     "Prova più vicino al microfono o un po' più lento." % (t, b, n,
-                                                                            len(trovate)))
-    if t < SOGLIA_PREDEFINITA:   # R-796-1: avviso anche nel ramo «la migliore»
+    # la più severa: soglia più alta, poi più blocchi
+    t, b = max(tutte, key=lambda tb: (tb[0], tb[1]))
+    righe.append("Consiglio: GAS_ASCOLTO_SOGLIA=%g e GAS_ASCOLTO_BLOCCHI_PAROLA=%d "
+                 "(prende tutte le chiamate). Nel .env, poi bash scripts/voce/installa.sh."
+                 % (t, b))
+    if t < SOGLIA_PREDEFINITA:
         righe.append("Attenzione: soglia %g più permissiva del predefinito %g — più "
                      "rischio di risposte quando non lo chiami. Se una salita era un "
                      "rumore, rifai la prova in silenzio prima di cambiare il .env."
