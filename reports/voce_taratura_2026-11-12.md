@@ -3,6 +3,7 @@
 **Sintomo (operatore, sera 11/11):** dopo l'aggiornamento con soglia 0,7 e 3 blocchi di fila Jarvis risponde una volta e poi «non risponde più»; nel log una sola attivazione (23:38, punteggio 0,90).
 
 ## Metodo
+Riproducibile con `scripts/voce/misura_parola_sintetica.py` (fuori dai test: serve espeak-ng, ffmpeg e openwakeword; `--grezzi` per una riga per prova).
 Modello vero `hey_jarvis_v0.1` di openWakeWord (onnx, come sul Mac), stessi blocchi da 80 ms dell'ascolto, nel container cloud. Voci sintetiche espeak-ng (it, en-us, en-gb; velocità 130/170/210; volume pieno e basso; con e senza rumore). Limite: voci sintetiche, non la voce dell'operatore. Per la voce vera c'è `scripts/voce/taratura_parola.py`.
 
 ## Risultati
@@ -32,7 +33,7 @@ Modello vero `hey_jarvis_v0.1` di openWakeWord (onnx, come sul Mac), stessi bloc
 
 ## Ancora aperto
 - **Compromesso da confermare (operatore):** con 1 blocco i falsi sui quasi-omofoni passano da 3 a 9 su 120 frasi; le frasi comuni restano a ~0. Scelto per prendere le chiamate vere.
-- R-795-3: il blocco unico vale anche per l'interruzione mentre Gas parla (lì protegge la soglia 0,8) e per la finestra dopo un turno (spenta di default).
+- Bot #378 V-1 (chiusa): l'interruzione mentre Gas parla resta su 3 blocchi di fila (`GAS_ASCOLTO_BLOCCHI_INTERRUZIONE`), perché lì il rischio è l'eco della voce di Gas, che questa misura non copre. Il blocco unico vale per l'attesa della parola e per la finestra dopo un turno (spenta di default).
 - Verifica sulla voce vera (taratura sul Mac).
 - Contro TV/altre persone resta la proposta di verifica del parlante (`reports/proposta_verifica_parlante.md`).
 - Latenza: la prima frase arriva al client solo a fine turno (~6 s); lo streaming #374 prepara la voce prima ma la risposta parte a turno finito.

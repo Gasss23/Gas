@@ -197,6 +197,8 @@ def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
     # finestra 10 s, interruzione 0,8; coda dell'eco 0,5 s. Notte 11-12/11: parola su 1 blocco
     # (con 3 di fila la pronuncia italiana non scattava: reports/voce_taratura_2026-11-12.md)
     assert k.get("soglia") == 0.7 and k.get("blocchi_parola") == 1
+    # bot #378 V-1: l'interruzione mentre Gas parla resta su 3 blocchi di fila
+    assert k.get("blocchi_interruzione") == a.BLOCCHI_INTERRUZIONE_PREDEFINITO == 3
     assert k.get("max_turni") == 1 and k.get("coda_eco_s") == 0.5
     assert a.SOGLIA_INTERRUZIONE_PREDEFINITA == 0.8 > a.SOGLIA_PREDEFINITA
     assert k.get("subito_s") == a.SUBITO_S == 0.6   # prova del 10/11: richiesta d'un fiato
@@ -221,6 +223,8 @@ def test_leggimi_riporta_il_default_della_voce():
     assert "| `GAS_ASCOLTO_CONFERMA` | 1 |" in testo
     assert f"| `GAS_ASCOLTO_SOGLIA` | {a.SOGLIA_PREDEFINITA:g} |" in testo
     assert f"| `GAS_ASCOLTO_BLOCCHI_PAROLA` | {a.BLOCCHI_PAROLA_PREDEFINITO} |" in testo
+    assert (f"| `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` | {a.BLOCCHI_INTERRUZIONE_PREDEFINITO} |"
+            in testo)
     assert f"| `GAS_VOICE_MAX_TURNI` | {a.MAX_TURNI_PREDEFINITO} |" in testo
 
 
@@ -2920,7 +2924,7 @@ def test_main_scrive_le_regolazioni_in_uso(monkeypatch, tmp_path, caplog):
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         _main_finto(monkeypatch, tmp_path, {})
     assert ("regolazioni in uso: soglia 0.70, blocchi di fila 1, turni 1, finestra 10 s, "
-            "interruzione 0.80, voce 200") in caplog.text
+            "interruzione 0.80 su 3 blocchi, voce 200") in caplog.text
     assert "più facile dei predefiniti" not in caplog.text
 
 
@@ -2931,13 +2935,15 @@ def test_main_avvisa_se_il_env_rende_la_parola_piu_facile(monkeypatch, tmp_path,
         k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.6",
                                                 "GAS_ASCOLTO_BLOCCHI_PAROLA": "2",
                                                 "GAS_VOICE_MAX_TURNI": "3",
+                                                "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE": "1",
                                                 "GAS_ASCOLTO_INTERRUZIONE": "0"})
     assert k.get("soglia") == 0.6 and k.get("max_turni") == 3
     avvisi = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING
               and "più facile dei predefiniti" in r.getMessage()]
     assert len(avvisi) == 1
     for pezzo in ("GAS_ASCOLTO_SOGLIA=0.6 (predefinito 0.7)",
-                  "GAS_VOICE_MAX_TURNI=3 (predefinito 1)"):
+                  "GAS_VOICE_MAX_TURNI=3 (predefinito 1)",
+                  "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE=1 (predefinito 3)"):
         assert pezzo in avvisi[0]
     # 2 blocchi di fila sono PIÙ severi del predefinito (1): niente avviso per i blocchi
     assert "GAS_ASCOLTO_BLOCCHI_PAROLA" not in avvisi[0]
@@ -3184,3 +3190,15 @@ def test_taratura_soglia_predefinita_uguale_all_ascolto_e_avviso_sotto_0_7():
     righe = t.consiglio(s, attese=0)
     assert any("GAS_ASCOLTO_SOGLIA=0.5" in r and "prende tutte le chiamate" in r for r in righe)
     assert any("più permissiva del predefinito 0.7" in r for r in righe)
+
+
+def test_interruzione_resta_su_tre_blocchi_anche_con_la_parola_su_uno():
+    # bot #378 V-1: un picco isolato della voce di Gas (eco) non lo interrompe
+    f = Finti()
+    asc = a.Ascolto(iter(()), lambda b: 0.0, f.invia, f.riproduci, f.suona,
+                    blocchi_parola=1, blocchi_interruzione=3, soglia_interruzione=0.8)
+    assert asc.blocchi_parola == 1 and asc.blocchi_interruzione == 3
+    # senza il parametro vale quello della parola (default dei test)
+    b = a.Ascolto(iter(()), lambda b: 0.0, f.invia, f.riproduci, f.suona, blocchi_parola=2)
+    assert b.blocchi_interruzione == 2
+

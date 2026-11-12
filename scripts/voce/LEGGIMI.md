@@ -164,6 +164,7 @@ solo).
 | `GAS_ASCOLTO_CONFERMA` | 1 | `0` = dopo la parola solo il bip, senza «Sì, signore?» |
 | `GAS_ASCOLTO_INTERRUZIONE` | 1 | `0` = la parola non interrompe Gas mentre parla |
 | `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | 0.8 | sensibilità della parola mentre Gas parla (più bassa = la sente meglio, ma rischia di attivarsi con la voce di Gas) |
+| `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` | 3 | blocchi da 80 ms di fila per interrompere Gas mentre parla (1–5; resta 3 contro l'eco della sua voce, anche ora che la parola vale con 1) |
 | `GAS_VOICE_FINESTRA` | 10 | secondi di silenzio dopo i quali la conversazione si chiude (0–120; `0` = niente finestra. La stessa variabile vale per la pagina web della voce, che accetta solo da più di 0 fino a 120: se usi anche quella, non mettere 0) |
 | `GAS_VOICE_SEGUITO_MAX` | 15 | secondi massimi di una frase senza «Hey Jarvis» nella conversazione (3–30) |
 | `GAS_VOICE_MAX_TURNI` | 1 | turni dopo la parola, il primo compreso (1 = solo la richiesta dopo «Hey Jarvis»: per continuare si ripete la parola; 3 = la richiesta più 2 di seguito senza ripeterla) |

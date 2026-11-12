@@ -49,6 +49,7 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_ASCOLTO_INTERRUZIONE — 0 = la parola non interrompe Gas mentre parla (default 1)
     GAS_ASCOLTO_CONFERMA   — 0 = dopo la parola solo il bip, senza «Sì, signore?» (default 1)
     GAS_ASCOLTO_SOGLIA_INTERRUZIONE — soglia della parola mentre Gas parla, 0-1 (default 0.8)
+    GAS_ASCOLTO_BLOCCHI_INTERRUZIONE — blocchi di fila per interrompere Gas, 1-5 (default 3)
     GAS_ASCOLTO_FORMATO    — formato della risposta chiesto al server (default
                              audio+pezzi, le frasi in fila; vuoto = un solo MP3)
 
@@ -121,8 +122,8 @@ MAX_TURNI_PREDEFINITO = 1
 # rilevatore la sente in BLOCCHI_PAROLA_PREDEFINITO blocchi di fila (un picco isolato di
 # 80 ms era la causa dei falsi «Hey Jarvis»). Nella finestra si ignora il primo mezzo
 # secondo: è la coda dell'eco della voce di Gas nella stanza.
-# Sera del 10/11: più severi (0,7 e 3 blocchi, cioè 240 ms di fila sopra soglia). Se la
-# parola vera non scatta più: GAS_ASCOLTO_SOGLIA=0.6 o GAS_ASCOLTO_BLOCCHI_PAROLA=2.
+# Sera del 10/11: più severi (0,7 e 3 blocchi, cioè 240 ms di fila sopra soglia) — storico,
+# superato dalla misura qui sotto.
 # Notte dell'11-12/11 (operatore: «non risponde»; misura col modello vero su voci sintetiche,
 # reports/voce_taratura_2026-11-12.md): i 3 blocchi di fila erano la causa. Con la pronuncia
 # italiana il picco di «Hey Jarvis» dura 1-2 blocchi: 3 blocchi dimezzavano le chiamate
@@ -132,6 +133,10 @@ MAX_TURNI_PREDEFINITO = 1
 # Per tarare sulla voce vera: python3 scripts/voce/taratura_parola.py.
 SOGLIA_PREDEFINITA = 0.7
 BLOCCHI_PAROLA_PREDEFINITO = 1
+# Bot #378 V-1: l'interruzione mentre Gas parla resta su 3 blocchi di fila (come dalla #371):
+# lì il rischio è l'eco della voce di Gas, che la misura del 12/11 non copre. Il blocco unico
+# vale per l'attesa della parola e per la finestra dopo un turno (spenta di default).
+BLOCCHI_INTERRUZIONE_PREDEFINITO = 3
 # Sera dell'11/11 (operatore: «a un certo punto ha smesso di rispondermi»): con 0,7 e 3
 # blocchi le chiamate vere scartate non lasciavano traccia. Nell'attesa della parola (non
 # nella finestra dopo un turno né mentre Gas parla) ogni salita del rilevatore da
@@ -369,7 +374,8 @@ class Ascolto:
                  conferma: Callable[[], Optional[bytes]] = lambda: None,
                  dorme: Callable[[float], None] = time.sleep,
                  blocchi_parola: int = 1, coda_eco_s: float = 0.0,
-                 subito_s: float = 0.0) -> None:
+                 subito_s: float = 0.0,
+                 blocchi_interruzione: Optional[int] = None) -> None:
         self.blocchi = blocchi
         self.rilevatore = rilevatore
         self.invia = invia
@@ -385,6 +391,10 @@ class Ascolto:
         # blocchi di fila sopra soglia per la parola (main: BLOCCHI_PAROLA_PREDEFINITO; il
         # default 1 del costruttore è quello dei rilevatori finti dei test)
         self.blocchi_parola = max(1, int(blocchi_parola))
+        # bot #378 V-1: blocchi di fila per interrompere Gas mentre parla (main:
+        # BLOCCHI_INTERRUZIONE_PREDEFINITO; None = come la parola, il default dei test)
+        self.blocchi_interruzione = (self.blocchi_parola if blocchi_interruzione is None
+                                     else max(1, int(blocchi_interruzione)))
         self.coda_eco_s = max(0.0, float(coda_eco_s))
         # quanto si ascolta dopo la parola prima di «Sì, signore?» (main: SUBITO_S; il
         # default 0 del costruttore è quello dei test che si aspettano sempre la conferma)
@@ -477,7 +487,8 @@ class Ascolto:
                     self._buoni_di_fila = 0
             if punteggio >= self.soglia:
                 sopra += 1
-                quasi_sopra = max(quasi_sopra, sopra)
+                if punteggio >= SOGLIA_QUASI:  # bot #378 V-3: solo dentro una salita «quasi»
+                    quasi_sopra = max(quasi_sopra, sopra)
                 massimo = max(massimo, punteggio)
                 if sopra >= self.blocchi_parola:
                     self.punteggio_parola = massimo
@@ -784,9 +795,10 @@ class Ascolto:
         if in_corso is None:
             return False
         errori = 0
-        # V-1 bot #371: come fuori, la parola vale solo con `blocchi_parola` blocchi di fila
-        # sopra soglia: un picco isolato (voce di Gas o stanza) non interrompe e non apre
-        # una richiesta. Il conto si azzera sotto soglia e su errore.
+        # V-1 bot #371 e bot #378 V-1: la parola vale solo con `blocchi_interruzione`
+        # blocchi di fila sopra soglia (3 di default): un picco isolato (voce di Gas o
+        # stanza) non interrompe e non apre una richiesta. Il conto si azzera sotto soglia e
+        # su errore.
         sopra = 0
         try:
             while True:
@@ -812,7 +824,7 @@ class Ascolto:
                     continue
                 if punteggio >= self.soglia_interruzione:
                     sopra += 1
-                    if sopra >= self.blocchi_parola:
+                    if sopra >= self.blocchi_interruzione:
                         return True
                 else:
                     sopra = 0
@@ -1312,6 +1324,8 @@ def _regolazioni() -> Dict[str, Any]:
                                  3, REGISTRAZIONE_MAX_S),
         "max_turni": int(_numero("GAS_VOICE_MAX_TURNI", MAX_TURNI_PREDEFINITO, 1, 50)),
         "soglia_interruzione": soglia_interruzione(),
+        "blocchi_interruzione": int(_numero("GAS_ASCOLTO_BLOCCHI_INTERRUZIONE",
+                                            BLOCCHI_INTERRUZIONE_PREDEFINITO, 1, 5)),
     }
 
 
@@ -1322,7 +1336,9 @@ def _scrivi_regolazioni(r: Dict[str, Any]) -> None:
     interr = r["soglia_interruzione"]
     log.info("regolazioni in uso: soglia %.2f, blocchi di fila %d, turni %d, finestra %g s, "
              "interruzione %s, voce %g", r["soglia"], r["blocchi_parola"], r["max_turni"],
-             r["finestra_s"], "spenta" if interr is None else "%.2f" % interr, r["voce_rms"])
+             r["finestra_s"], "spenta" if interr is None else "%.2f su %d blocchi"
+             % (interr, r.get("blocchi_interruzione", BLOCCHI_INTERRUZIONE_PREDEFINITO)),
+             r["voce_rms"])
     piu_facile = []
     if r["soglia"] < SOGLIA_PREDEFINITA:
         piu_facile.append("GAS_ASCOLTO_SOGLIA=%g (predefinito %g)"
@@ -1330,6 +1346,10 @@ def _scrivi_regolazioni(r: Dict[str, Any]) -> None:
     if r["blocchi_parola"] < BLOCCHI_PAROLA_PREDEFINITO:
         piu_facile.append("GAS_ASCOLTO_BLOCCHI_PAROLA=%d (predefinito %d)"
                           % (r["blocchi_parola"], BLOCCHI_PAROLA_PREDEFINITO))
+    if r.get("blocchi_interruzione", BLOCCHI_INTERRUZIONE_PREDEFINITO) < \
+            BLOCCHI_INTERRUZIONE_PREDEFINITO:
+        piu_facile.append("GAS_ASCOLTO_BLOCCHI_INTERRUZIONE=%d (predefinito %d)"
+                          % (r["blocchi_interruzione"], BLOCCHI_INTERRUZIONE_PREDEFINITO))
     if r["max_turni"] > MAX_TURNI_PREDEFINITO:
         piu_facile.append("GAS_VOICE_MAX_TURNI=%d (predefinito %d)"
                           % (r["max_turni"], MAX_TURNI_PREDEFINITO))
