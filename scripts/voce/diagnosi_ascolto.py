@@ -38,6 +38,7 @@ _RIGA = re.compile(r"^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})[,.]\d+ \w+ (.*)$")
 _PAROLA = re.compile(r"^parola di attivazione(?: \(punteggio ([\d.]+)"
                      r"(?:, picchi corti scartati prima: (\d+))?\))?$")
 _QUASI = re.compile(r"^parola quasi sentita \(punteggio max ([\d.]+), (\d+) blocchi"
+                    r"(?: da [\d.]+ in su, (\d+) di fila sopra soglia)?"
                     r".*?altre taciute: (\d+)(?:, max ([\d.]+))?\)$")
 _RICHIESTA = re.compile(r"^richiesta registrata \(([\d.]+) s(?:, voce ([\d.]+) s)?")
 
@@ -124,6 +125,7 @@ class Quasi:
     blocchi: int
     taciute: int = 0
     taciute_max: Optional[float] = None   # punteggio massimo fra le taciute (se scritto)
+    sopra: Optional[int] = None   # blocchi di fila sopra soglia (righe dal 12/11 in poi)
 
 
 def leggi_quasi(righe: Iterable[str]) -> List[Quasi]:
@@ -139,8 +141,9 @@ def leggi_quasi(righe: Iterable[str]) -> List[Quasi]:
         try:
             giorno = datetime.strptime(m.group(1), "%Y-%m-%d").date()
             out.append(Quasi(giorno, m.group(2), float(q.group(1)), int(q.group(2)),
-                             int(q.group(3)),
-                             float(q.group(4)) if q.group(4) else None))
+                             int(q.group(4)),
+                             float(q.group(5)) if q.group(5) else None,
+                             int(q.group(3)) if q.group(3) else None))
         except ValueError:
             continue
     return out
@@ -166,8 +169,9 @@ def riassunto_quasi(quasi: List[Quasi], giorni: int, ultime: int,
     for q in scelte[len(scelte) - ultime:]:
         extra = ("  (+%d taciute prima, max %.2f)" % (q.taciute, q.taciute_max)
                  if q.taciute and q.taciute_max is not None else "")
-        righe.append("  %s %s  punteggio max %.2f  %d blocchi%s"
-                     % (q.giorno.isoformat(), q.ora, q.punteggio, q.blocchi, extra))
+        sopra = ("  %d di fila sopra soglia" % q.sopra) if q.sopra is not None else ""
+        righe.append("  %s %s  punteggio max %.2f  %d blocchi%s%s"
+                     % (q.giorno.isoformat(), q.ora, q.punteggio, q.blocchi, sopra, extra))
     return "\n".join(righe)
 
 

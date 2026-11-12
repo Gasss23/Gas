@@ -193,9 +193,12 @@ def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
     assert k.get("voce_rms") == atteso
     assert k.get("finestra_s") == 10.0 and k.get("seguito_max_s") == 15.0
     assert k.get("invia_seguito") is not None
-    # sera del 10/11 (zero risposte non richieste): soglia 0,7, parola su 3 blocchi di fila,
-    # niente turni di seguito (1), finestra 10 s, interruzione 0,8; coda dell'eco 0,5 s
-    assert k.get("soglia") == 0.7 and k.get("blocchi_parola") == 3
+    # sera del 10/11 (zero risposte non richieste): soglia 0,7, niente turni di seguito (1),
+    # finestra 10 s, interruzione 0,8; coda dell'eco 0,5 s. Notte 11-12/11: parola su 1 blocco
+    # (con 3 di fila la pronuncia italiana non scattava: reports/voce_taratura_2026-11-12.md)
+    assert k.get("soglia") == 0.7 and k.get("blocchi_parola") == 1
+    # bot #378 V-1: l'interruzione mentre Gas parla resta su 3 blocchi di fila
+    assert k.get("blocchi_interruzione") == a.BLOCCHI_INTERRUZIONE_PREDEFINITO == 3
     assert k.get("max_turni") == 1 and k.get("coda_eco_s") == 0.5
     assert a.SOGLIA_INTERRUZIONE_PREDEFINITA == 0.8 > a.SOGLIA_PREDEFINITA
     assert k.get("subito_s") == a.SUBITO_S == 0.6   # prova del 10/11: richiesta d'un fiato
@@ -220,6 +223,8 @@ def test_leggimi_riporta_il_default_della_voce():
     assert "| `GAS_ASCOLTO_CONFERMA` | 1 |" in testo
     assert f"| `GAS_ASCOLTO_SOGLIA` | {a.SOGLIA_PREDEFINITA:g} |" in testo
     assert f"| `GAS_ASCOLTO_BLOCCHI_PAROLA` | {a.BLOCCHI_PAROLA_PREDEFINITO} |" in testo
+    assert (f"| `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` | {a.BLOCCHI_INTERRUZIONE_PREDEFINITO} |"
+            in testo)
     assert f"| `GAS_VOICE_MAX_TURNI` | {a.MAX_TURNI_PREDEFINITO} |" in testo
 
 
@@ -2943,8 +2948,8 @@ def test_main_scrive_le_regolazioni_in_uso(monkeypatch, tmp_path, caplog):
     """V-1 bot #371: all'avvio il log dice i valori in uso; coi predefiniti nessun avviso."""
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         _main_finto(monkeypatch, tmp_path, {})
-    assert ("regolazioni in uso: soglia 0.70, blocchi di fila 3, turni 1, finestra 10 s, "
-            "interruzione 0.80, voce 200") in caplog.text
+    assert ("regolazioni in uso: soglia 0.70, blocchi di fila 1, turni 1, finestra 10 s, "
+            "interruzione 0.80 su 3 blocchi, voce 200") in caplog.text
     assert "più facile dei predefiniti" not in caplog.text
 
 
@@ -2955,15 +2960,18 @@ def test_main_avvisa_se_il_env_rende_la_parola_piu_facile(monkeypatch, tmp_path,
         k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.6",
                                                 "GAS_ASCOLTO_BLOCCHI_PAROLA": "2",
                                                 "GAS_VOICE_MAX_TURNI": "3",
+                                                "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE": "1",
                                                 "GAS_ASCOLTO_INTERRUZIONE": "0"})
     assert k.get("soglia") == 0.6 and k.get("max_turni") == 3
     avvisi = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING
               and "più facile dei predefiniti" in r.getMessage()]
     assert len(avvisi) == 1
     for pezzo in ("GAS_ASCOLTO_SOGLIA=0.6 (predefinito 0.7)",
-                  "GAS_ASCOLTO_BLOCCHI_PAROLA=2 (predefinito 3)",
-                  "GAS_VOICE_MAX_TURNI=3 (predefinito 1)"):
+                  "GAS_VOICE_MAX_TURNI=3 (predefinito 1)",
+                  "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE=1 (predefinito 3)"):
         assert pezzo in avvisi[0]
+    # 2 blocchi di fila sono PIÙ severi del predefinito (1): niente avviso per i blocchi
+    assert "GAS_ASCOLTO_BLOCCHI_PAROLA" not in avvisi[0]
     assert "interruzione spenta" in caplog.text
 
 
@@ -3059,3 +3067,163 @@ def test_diagnosi_legge_le_quasi_sentite(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "2026-11-11: 2 (più 4 taciute dal limite del log)" in out
     assert "00:07:00  punteggio max 0.81  2 blocchi  (+4 taciute prima, max 0.92)" in out
+
+
+def test_quasi_sentita_dice_i_blocchi_di_fila_sopra_soglia(caplog):
+    # bot #377 V-1: 2 blocchi sopra soglia ma ne servono 3 → «2 di fila sopra soglia»
+    asc, _ = _ascolto_quasi([0.0, 0.8, 0.9, 0.4, 0.0], soglia=0.7, blocchi_parola=3)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        asc.aspetta_parola()
+    righe = _righe_quasi(caplog)
+    assert len(righe) == 1 and "3 blocchi da 0.30 in su, 2 di fila sopra soglia" in righe[0]
+    # salita mai arrivata alla soglia → 0 di fila: è la soglia a fermarla
+    asc, _ = _ascolto_quasi([0.0, 0.5, 0.6, 0.0], soglia=0.7, blocchi_parola=1)
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        asc.aspetta_parola()
+    assert "0 di fila sopra soglia" in _righe_quasi(caplog)[0]
+
+
+def test_parola_su_un_blocco_scatta_col_picco_corto_della_pronuncia_italiana():
+    # misura del 12/11: il picco di «Hey Jarvis» detto all'italiana dura 1-2 blocchi;
+    # coi predefiniti (0,7 e 1 blocco) un picco di un solo blocco a 0,91 attiva
+    assert a.BLOCCHI_PAROLA_PREDEFINITO == 1 and a.SOGLIA_PREDEFINITA == 0.7
+    asc, _ = _ascolto_quasi([0.0, 0.4, 0.91, 0.3, 0.0], soglia=a.SOGLIA_PREDEFINITA,
+                            blocchi_parola=a.BLOCCHI_PAROLA_PREDEFINITO)
+    assert asc.aspetta_parola() is True and asc.punteggio_parola == 0.91
+
+
+def test_diagnosi_legge_le_quasi_con_i_blocchi_sopra_soglia():
+    d = _diagnosi()
+    righe = ["2026-11-12 01:00:00,000 INFO parola quasi sentita (punteggio max 0.90, 3 blocchi "
+             "da 0.30 in su, 2 di fila sopra soglia, soglia 0.70 per 3 blocchi; altre "
+             "taciute: 1, max 0.95)\n",
+             "2026-11-12 01:01:00,000 INFO parola quasi sentita (punteggio max 0.62, 2 blocchi "
+             "da 0.30 in su, soglia 0.70 per 3 blocchi; altre taciute: 0)\n"]
+    q = d.leggi_quasi(righe)
+    assert [(x.punteggio, x.blocchi, x.sopra, x.taciute, x.taciute_max) for x in q] == [
+        (0.90, 3, 2, 1, 0.95), (0.62, 2, None, 0, None)]
+    testo = d.riassunto_quasi(q, giorni=1, ultime=5, oggi=date(2026, 11, 12))
+    assert "01:00:00  punteggio max 0.90  3 blocchi  2 di fila sopra soglia" in testo
+
+
+# ── taratura della parola (scripts/voce/taratura_parola.py) ──
+
+def _taratura():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("taratura_parola",
+                                                  VOCE_DIR / "taratura_parola.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    prima, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.dont_write_bytecode = prima
+    return mod
+
+
+def test_taratura_trova_le_salite_e_i_blocchi_di_fila():
+    t = _taratura()
+    pausa = [0.0] * t.PAUSA_BLOCCHI
+    s = list(t.salite([0.0, 0.4, 0.75, 0.85, 0.55] + pausa + [0.92, 0.2] + pausa + [0.5]))
+    assert len(s) == 3
+    assert s[0].massimo == 0.85 and s[0].blocchi == 4
+    assert s[0].di_fila == {0.5: 3, 0.6: 2, 0.7: 2, 0.8: 1}
+    assert s[1].di_fila == {0.5: 1, 0.6: 1, 0.7: 1, 0.8: 1} and s[1].inizio_s == 0.8
+    assert s[2].massimo == 0.5 and s[2].di_fila[0.5] == 1   # salita ancora aperta a fine flusso
+
+
+def test_taratura_unisce_le_salite_della_stessa_parola():
+    # prova col modello vero: un «Hey Jarvis» può dare 0,57 e poi 0,93 staccati da 2 blocchi
+    t = _taratura()
+    s = list(t.salite([0.0, 0.57, 0.1, 0.2, 0.93, 0.0] + [0.0] * t.PAUSA_BLOCCHI))
+    assert len(s) == 1 and s[0].massimo == 0.93 and s[0].blocchi == 2
+    # le corse di fila non attraversano la pausa
+    assert s[0].di_fila[0.5] == 1
+
+
+def test_taratura_consiglia_la_regolazione_piu_severa_che_le_prende_tutte():
+    t = _taratura()
+    s = list(t.salite([0.0, 0.9, 0.95] + [0.0] * t.PAUSA_BLOCCHI + [0.85, 0.0]))
+    righe = t.consiglio(s, attese=2)
+    assert any("GAS_ASCOLTO_SOGLIA=0.8 e GAS_ASCOLTO_BLOCCHI_PAROLA=1" in r for r in righe)
+    assert not any("Attenzione" in r for r in righe)
+    # chiamate attese 3, salite 2: lo dice
+    assert any("2 salite su 3 chiamate attese" in r for r in t.consiglio(s, attese=3))
+    # nessuna salita: niente consiglio
+    assert "Nessuna salita" in t.consiglio([], attese=3)[0]
+
+
+def test_taratura_consiglia_0_7_quando_una_chiamata_sta_sopra_per_un_solo_blocco():
+    t = _taratura()
+    p = [0.0] * t.PAUSA_BLOCCHI
+    s = list(t.salite([0.0, 0.95, 0.95] + p + [0.75, 0.0]))   # la seconda: 1 blocco a 0,75
+    righe = t.consiglio(s, attese=0)
+    assert any("GAS_ASCOLTO_SOGLIA=0.7 e GAS_ASCOLTO_BLOCCHI_PAROLA=1" in r for r in righe)
+    s = list(t.salite([0.0, 0.95, 0.4, 0.95] + p + [0.75, 0.0]))   # 1 blocco ciascuna
+    assert any("GAS_ASCOLTO_SOGLIA=0.7" in r for r in t.consiglio(s, attese=0))
+
+
+def test_taratura_salite_deboli_fuori_dal_consiglio_e_avvisi():
+    # R-795-1: un rumore a 0,45 non trascina il consiglio; uno a 0,55 sì, ma con l'avviso
+    t = _taratura()
+    p = [0.0] * t.PAUSA_BLOCCHI
+    s = list(t.salite([0.0, 0.45] + p + [0.9, 0.0]))
+    righe = t.consiglio(s, attese=0)
+    assert any("1 salita sotto 0.5" in r for r in righe)
+    assert any("GAS_ASCOLTO_SOGLIA=0.8" in r for r in righe)
+    s = list(t.salite([0.0, 0.55] + p + [0.9, 0.0]))
+    righe = t.consiglio(s, attese=1)
+    assert any("GAS_ASCOLTO_SOGLIA=0.5" in r for r in righe)
+    assert any("più permissiva del predefinito 0.7" in r for r in righe)
+    assert any("2 salite ma 1 chiamate attese" in r for r in righe)
+    # solo salite deboli: nessun consiglio
+    s = list(t.salite([0.0, 0.4, 0.0]))
+    assert "Nessuna chiamata abbastanza forte" in t.consiglio(s, attese=0)[-1]
+
+
+def test_taratura_da_riga_di_comando_con_sorgente_finta(capsys):
+    t = _taratura()
+    chiuso = []
+
+    def sorgente(secondi, modello):
+        assert secondi == 5.0 and modello == "hey_jarvis"
+        return iter([0.0, 0.9] + [0.0] * 6 + [0.88, 0.0]), lambda: chiuso.append(1)
+    assert t.main(["--secondi", "5", "--chiamate", "2"], sorgente=sorgente) == 0
+    out = capsys.readouterr().out
+    assert " 1) a " in out and " 2) a " in out and "GAS_ASCOLTO_SOGLIA=0.8" in out
+    assert chiuso == [1]
+
+
+def test_taratura_microfono_non_pronto(capsys):
+    t = _taratura()
+
+    def rotta(secondi, modello):
+        raise OSError("niente microfono")
+    assert t.main([], sorgente=rotta) == 1
+    assert "microfono o modello non pronti (OSError)" in capsys.readouterr().err
+
+
+def test_taratura_soglia_predefinita_uguale_all_ascolto_e_avviso_sotto_0_7():
+    # R-796-2: la copia nello script resta uguale al predefinito dell'ascolto
+    t = _taratura()
+    assert t.SOGLIA_PREDEFINITA == a.SOGLIA_PREDEFINITA
+    # R-796-1/R-797-1: consiglio sotto 0,7 → avviso esplicito
+    p = [0.0] * t.PAUSA_BLOCCHI
+    s = list(t.salite([0.0, 0.55] + p + [0.58] + p + [0.65] + p + [0.95, 0.0]))
+    righe = t.consiglio(s, attese=0)
+    assert any("GAS_ASCOLTO_SOGLIA=0.5" in r and "prende tutte le chiamate" in r for r in righe)
+    assert any("più permissiva del predefinito 0.7" in r for r in righe)
+
+
+def test_interruzione_resta_su_tre_blocchi_anche_con_la_parola_su_uno():
+    # bot #378 V-1: un picco isolato della voce di Gas (eco) non lo interrompe
+    f = Finti()
+    asc = a.Ascolto(iter(()), lambda b: 0.0, f.invia, f.riproduci, f.suona,
+                    blocchi_parola=1, blocchi_interruzione=3, soglia_interruzione=0.8)
+    assert asc.blocchi_parola == 1 and asc.blocchi_interruzione == 3
+    # senza il parametro vale quello della parola (default dei test)
+    b = a.Ascolto(iter(()), lambda b: 0.0, f.invia, f.riproduci, f.suona, blocchi_parola=2)
+    assert b.blocchi_interruzione == 2
+
