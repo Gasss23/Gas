@@ -25,17 +25,18 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   6 +++++
- clients/voice/ascolto.py            |  28 ++++++++++++++++-------
- reports/diff_sessione.md            |  15 +++++++------
- reports/handoff.md                  | n/d
- reports/stato_progetto.md           |   1 +
- reports/ultimo_report.md            |  18 ++++++---------
- reports/voce_taratura_2026-11-12.md |  38 ++++++++++++++++++++++++++++++++
- scripts/voce/LEGGIMI.md             |   9 +++++---
- scripts/voce/diagnosi_ascolto.py    |  12 ++++++----
- scripts/voce/taratura_parola.py     | 189 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voce_ascolto.py     | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ .claude/agents/memoria_revisore.md      |   7 ++++++
+ clients/voice/ascolto.py                |  64 ++++++++++++++++++++++++++++++++++++++-------------
+ reports/diff_sessione.md                |  15 ++++++------
+ reports/handoff.md                      | n/d
+ reports/stato_progetto.md               |   1 +
+ reports/ultimo_report.md                |  18 +++++++--------
+ reports/voce_taratura_2026-11-12.md     |  39 +++++++++++++++++++++++++++++++
+ scripts/voce/LEGGIMI.md                 |  10 +++++---
+ scripts/voce/diagnosi_ascolto.py        |  12 ++++++----
+ scripts/voce/misura_parola_sintetica.py | 125 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ scripts/voce/taratura_parola.py         | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_voce_ascolto.py         | 182 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -43,6 +44,10 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0d464e11 docs(fine-task): handoff #378 dopo il fix del bot
+3286da4e fix(voce): interruzione su 3 blocchi separata dalla parola, misura riproducibile (bot #378 V-1..V-4) — review #800-M1coord
+b6421da1 chore(revisore): memoria review #800 — APPROVATO CON RISERVE
+82eb3bd6 docs(fine-task): §2/§3 handoff
 5512ede8 docs(fine-task): voce — 1 blocco e taratura (review #795-#798-M1coord)
 d12e9b67 refactor(voce): taratura senza il ramo irraggiungibile (R-797-1) — review #798-M1coord
 032542c7 chore(revisore): memoria review #798 — APPROVATO CON RISERVE
