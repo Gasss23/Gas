@@ -751,6 +751,8 @@ class Ascolto:
             # Quello che il microfono ha sentito mentre Gas parlava è la sua voce:
             # non deve aprire un turno né attivare la parola.
             self._svuota()
+        if suonati and getattr(pezzi, "errore_turno", False) is True:
+            self._bip("errore")   # prima frase detta, poi il turno è fallito
         if suonati == 0:
             if seguito or comando == "pausa":
                 if comando != "pausa":  # la pausa è già nel log
@@ -992,6 +994,9 @@ class _Frasi:
 
     def __init__(self, r) -> None:
         self.testo = ""
+        # notte 11-12/11: il turno è fallito dopo che la prima frase era già partita in
+        # anticipo (riga «errore_turno»): il chiamante suona il bip d'errore
+        self.errore_turno = False
         self._gen = self._leggi(r)
 
     def __iter__(self) -> "_Frasi":
@@ -1027,7 +1032,11 @@ class _Frasi:
                 if audio:
                     yield audio
                 if dati.get("errore_voce"):
-                    log.warning("voce interrotta dal server a metà risposta")
+                    if dati.get("errore_turno"):
+                        self.errore_turno = True
+                        log.warning("turno fallito dopo la prima frase")
+                    else:
+                        log.warning("voce interrotta dal server a metà risposta")
                     return
                 if dati.get("fine"):
                     return
