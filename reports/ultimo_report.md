@@ -1,18 +1,17 @@
-# Ultimo report — 2026-11-12 notte — Voce: perché «Hey Jarvis» non risponde (M1)
+# Ultimo report — 2026-11-12 notte — Voce: la prima frase parte appena pronta (M1)
 
 ## DECISIONI UMANE RICHIESTE
 1. Merge della PR di questa sessione (riserve solo BASSE).
-2. Compromesso: con 1 blocco i falsi sui quasi-omofoni salgono da 3 a 9 su 120 frasi; le chiamate vere prese da 19 a 35 su 81. sì/no
 
 ## Esito
-- **Causa trovata** (misura col modello vero hey_jarvis su voci sintetiche, reports/voce_taratura_2026-11-12.md): i 3 blocchi di fila sopra 0,7 della #371 dimezzavano le chiamate prese; la pronuncia italiana resta sopra soglia 1-2 blocchi. La soglia 0,5→0,7 non cambiava quasi nulla. Frasi comuni ~0: i falsi dei giorni scorsi venivano dalla soglia 0,35 nel .env.
-- **Correzione**: predefinito 0,7 e 1 blocco; riga «quasi sentita» con i blocchi di fila sopra soglia; `scripts/voce/taratura_parola.py` per tarare sulla voce vera (nessun audio salvato).
-- Review #795/#796/#797/#798-M1coord APPROVATO CON RISERVE (R-795-1 MEDIA chiusa; aperte R-795-3, R-798-1 BASSE).
+- **Prima frase subito**: FATTA. Il server manda la voce della prima frase appena ElevenLabs l'ha pronta, mentre il cervello forte finisce; il resto arriva dopo, senza ripeterla. Solo per l'ascolto H24 (senza schermo), mai nei seguiti, mai con compiti finiti da annunciare, mai se la frase contiene «Jarvis». Errore del turno dopo la prima frase → bip d'errore.
+- Atteso sul Mac (tempi dell'11/11): prima frase da ~6,2 s a ~4 s dalla fine della richiesta. Da misurare.
+- Review #799-M1coord BOCCIATO (prefisso dei compiti) → #801-M1coord APPROVATO CON RISERVE (R-801-1, R-799-1 BASSE).
 
 ## Test
-tests/test_unit_voce_ascolto.py 332 → 343 passed; con voice_server 568 passed.
+voice_server 227 → 236 passed; voce_ascolto 332 → 334; kernel 1167 PASS.
 
 ## Anomalie
-Nessuna. Non provato sulla voce vera.
+Nessuna. Non provato sul Mac.
 
-Bot #378 su 82eb3bd: BOCCIATO (V-1 MEDIA: con 1 blocco anche l'interruzione mentre Gas parla diventava più facile). Corretto: interruzione separata su 3 blocchi, script della misura nel repo (stessi numeri), V-3/V-4; review #800-M1coord APPROVATO CON RISERVE (R-800-1 BASSA).
+Merge di main (#378) nella #379: conflitti solo nei report; review #802-M1coord APPROVATO; voce_ascolto 346, voice_server 236 passed.

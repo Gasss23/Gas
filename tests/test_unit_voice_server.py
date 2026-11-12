@@ -2691,3 +2691,138 @@ def test_filtro2_seguito_solo_intercalari(testo, scarta):
     stanza e si scarta; basta una parola vera perché passi."""
     from modules.voice.server import seguito_da_scartare
     assert seguito_da_scartare(testo) is scarta, testo
+
+
+# ── Prima frase subito (notte 11-12/11, M1): la voce della prima frase parte prima che il
+# turno finisca, solo per il client senza schermo (audio+pezzi) ──
+def _voce_subito(anticipi, finale, formato="audio+pezzi", errore_kernel=False, finiti=None):
+    """Server voce vero; il kernel finto manda gli anticipi e poi ASPETTA che il client
+    abbia letto la prima riga (prova che la prima frase arriva prima della fine del turno).
+    Ritorna (status, righe, frasi sintetizzate, prima_riga_prima_della_fine)."""
+    from unittest.mock import patch
+    import urllib.request
+    from modules.voice.server import VoiceHandler
+    letta = threading.Event()
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            if kw.get("su_testo_voce"):
+                for t, finito in anticipi:
+                    kw["su_testo_voce"](t, finito)
+            letta.wait(3)   # il turno «pensa» finché il client non ha la prima riga
+            if errore_kernel:
+                yield {"type": "error", "content": "Pipeline esausta"}
+                return
+            yield {"type": "final", "content": finale}
+
+    class _H(VoiceHandler):
+        pass
+    if finiti is not None:   # compiti finiti: una risposta per chiamata di _compiti_finiti
+        risposte = list(finiti)
+        _H._compiti_finiti = lambda self: risposte.pop(0) if risposte else ""
+    _H.kernel = _K()
+    _H.token = "tok"
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    env = {"GROQ_API_KEY": "k", "ELEVENLABS_API_KEY": "k"}
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{srv.server_address[1]}/voice", data=b"RIFF" + bytes(60),
+        method="POST", headers={"Authorization": "Bearer tok", "X-Gas-Formato": formato,
+                                "Content-Type": "audio/wav"})
+    righe = []
+    prima_presto = False
+    try:
+        with patch("modules.voice.server.transcribe_audio", side_effect=["Gas, dimmi"]), \
+             patch("modules.voice.server.synthesize_speech",
+                   side_effect=lambda frase, k, v: frase.encode()) as tts, \
+             patch.dict(os.environ, env):
+            os.environ.pop("GAS_VOCE_FORTE", None)
+            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(
+                    req, timeout=10) as r:
+                status = r.status
+                if formato == "audio+pezzi":
+                    primo = r.readline()
+                    prima_presto = not letta.is_set()
+                    righe.append(json.loads(primo))
+                letta.set()
+                righe += [json.loads(x) for x in r.read().decode().splitlines() if x.strip()]
+            frasi = [c.args[0] for c in tts.call_args_list]
+    finally:
+        letta.set()
+        srv.shutdown()
+        srv.server_close()
+    return status, righe, frasi, prima_presto
+
+
+def _audio_righe(righe):
+    import base64
+    return [base64.b64decode(r["audio"]).decode() for r in righe if "audio" in r]
+
+
+def test_prima_frase_subito_arriva_prima_della_fine_del_turno():
+    status, righe, frasi, presto = _voce_subito([("Uno. D", False)], "Uno. Due.")
+    assert status == 200 and presto                       # prima riga letta a turno aperto
+    assert righe[0] == {"audio": righe[0]["audio"], "anticipo": True}
+    assert _audio_righe(righe) == ["Uno.", "Due."]          # «Uno.» detta una volta sola
+    assert sorted(frasi) == ["Due.", "Uno."]                # una sintesi per frase
+    assert righe[1]["content"] == "Uno. Due." and righe[-1]["fine"] is True
+    assert "prima_voce" in righe[-1]["tempi"]
+
+
+def test_prima_frase_subito_risposta_finale_diversa_dice_tutto():
+    status, righe, frasi, presto = _voce_subito([("Ciao. Al", False)], "Uno. Due.")
+    assert presto and _audio_righe(righe) == ["Ciao.", "Uno.", "Due."]
+    assert righe[1]["content"] == "Uno. Due."
+
+
+def test_prima_frase_subito_risposta_di_una_sola_frase():
+    status, righe, frasi, presto = _voce_subito([("Fatto.", True)], "Fatto.")
+    assert presto and _audio_righe(righe) == ["Fatto."]
+    assert righe[1]["content"] == "Fatto." and "audio" not in righe[1]
+    assert righe[-1]["fine"] is True and frasi == ["Fatto."]
+
+
+def test_prima_frase_subito_errore_del_turno_dopo_l_anticipo():
+    status, righe, frasi, presto = _voce_subito([("Uno. D", False)], "", errore_kernel=True)
+    assert status == 200 and presto
+    assert righe[1] == {"errore_voce": "Pipeline esausta", "errore_turno": True}
+    assert righe[-1]["fine"] is True
+
+
+def test_prima_frase_subito_mai_con_lo_schermo():
+    # audio+testo+pezzi (pagina con schermo): la prima riga porta sempre il testo
+    status, righe, frasi, presto = _voce_subito([("Uno. D", False)], "Uno. Due.",
+                                                formato="audio+testo+pezzi")
+    assert righe[0]["content"] == "Uno. Due." and "anticipo" not in righe[0]
+    assert _audio_righe(righe) == ["Uno.", "Due."]
+
+
+def test_prima_frase_subito_non_parte_se_contiene_la_parola():
+    # eco delle casse: il client sa se Gas si può interrompere solo dal testo intero
+    status, righe, frasi, presto = _voce_subito([("Sono Jarvis. D", False)], "Sono Jarvis. Due.")
+    assert not presto or "anticipo" not in righe[0]
+    assert righe[0]["content"] == "Sono Jarvis. Due." and "anticipo" not in righe[0]
+    assert _audio_righe(righe) == ["Sono Jarvis.", "Due."]
+
+
+def test_regola_della_parola_uguale_al_client():
+    from modules.voice.server import _PAROLA_NELLA_FRASE
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from clients.voice import ascolto
+    assert _PAROLA_NELLA_FRASE.pattern == ascolto.PAROLA_NEL_TESTO.pattern
+
+
+def test_prima_frase_subito_niente_anticipo_con_compiti_finiti_da_dire():
+    # revisore #799 (MEDIA): i compiti finiti si dicono prima della risposta
+    status, righe, frasi, presto = _voce_subito([("Uno. D", False)], "Uno. Due.",
+                                                finiti=["Ho finito il compito.",
+                                                        "Ho finito il compito."])
+    assert "anticipo" not in righe[0] and righe[0]["content"].startswith("Ho finito")
+    assert _audio_righe(righe) == ["Ho finito il compito.", "Uno.", "Due."]
+
+
+def test_prima_frase_subito_compiti_finiti_arrivati_durante_il_turno():
+    # prima del turno nessun compito, dopo sì: la prima frase non si ripete
+    status, righe, frasi, presto = _voce_subito([("Uno. D", False)], "Uno. Due.",
+                                                finiti=["", "Ho finito il compito."])
+    assert presto and _audio_righe(righe) == ["Uno.", "Ho finito il compito.", "Due."]

@@ -821,6 +821,31 @@ def test_frasi_ndjson_tengono_il_testo():
     assert r.chiuso
 
 
+def test_frasi_ndjson_prima_frase_in_anticipo_senza_testo():
+    # notte 11-12/11: il server manda la prima frase prima del testo (riga «anticipo»)
+    r = _Lettore([_riga_pezzi(audio=_b64.b64encode(b"A").decode(), anticipo=True),
+                  _riga_pezzi(content="Uno. Due.", pezzi=1, audio=_b64.b64encode(b"B").decode()),
+                  _riga_pezzi(fine=True)])
+    fr = a._frasi_ndjson(r)
+    assert list(fr) == [b"A", b"B"] and fr.testo == "Uno. Due." and r.chiuso
+
+
+def test_turno_fallito_dopo_la_prima_frase_suona_il_bip_d_errore():
+    # revisore #799 R2: prima frase anticipata, poi il turno fallisce → bip d'errore
+    r = _Lettore([_riga_pezzi(audio=_b64.b64encode(b"A").decode(), anticipo=True),
+                  _riga_pezzi(errore_voce="Pipeline esausta", errore_turno=True),
+                  _riga_pezzi(fine=True)])
+    f = Finti(esito=(True, a._frasi_ndjson(r), ""))
+    f.ascolto(_blocchi(PAROLA, (VOCE, 10), (SILENZIO, 30)), finestra_s=0).gira()
+    assert f.riprodotti == [b"A"] and "errore" in f.bip
+    # un errore della sola voce a metà (TTS) resta senza bip, come prima
+    r2 = _Lettore([_riga_pezzi(content="x", audio=_b64.b64encode(b"A").decode()),
+                   _riga_pezzi(errore_voce="Errore TTS")])
+    g = Finti(esito=(True, a._frasi_ndjson(r2), ""))
+    g.ascolto(_blocchi(PAROLA, (VOCE, 10), (SILENZIO, 30)), finestra_s=0).gira()
+    assert g.riprodotti == [b"A"] and "errore" not in g.bip
+
+
 @pytest.mark.parametrize("testo,interrompe", [
     ("Per svegliarmi di' Hey Jarvis.", False), ("JARVIS è il mio nome.", False),
     ("Basta dire ehi Gas.", False), ("Il tempo è bello.", True), ("Jarvisiano no", True),

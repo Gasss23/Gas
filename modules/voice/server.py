@@ -89,7 +89,7 @@ import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from modules.voice.stt import (GroqSTTError, TrascrizioneAllucinata, TrascrizioneIncerta,
                                parse_audio_body, transcribe_audio)
@@ -407,6 +407,11 @@ def _voce_tts() -> str:
     return (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
 
 
+# Stesso controllo del client (clients/voice/ascolto.py, PAROLA_NEL_TESTO): una prima frase
+# che contiene la parola di attivazione non parte in anticipo.
+_PAROLA_NELLA_FRASE = re.compile(r"\bjarvis\b|\b(?:hey|ehi|ehy)\s+gas\b", re.IGNORECASE)
+
+
 class AnticipoVoce:
     """Voce rapida (chat M2, 11 nov, M1 per l'operatore: «streaming della prima frase»).
     Il kernel passa a `testo(t, finito)` il testo della risposta mentre il cervello forte lo
@@ -417,9 +422,14 @@ class AnticipoVoce:
     sola frase per turno; nessun anticipo nei seguiti (il parlato della stanza non va mai a
     ElevenLabs prima di sapere che era per Gas)."""
 
-    def __init__(self, api_key: str, voice_id: str) -> None:
+    def __init__(self, api_key: str, voice_id: str,
+                 pronto: Optional[Callable[[str, bytes], None]] = None) -> None:
         self._api_key = api_key
         self._voice_id = voice_id
+        # Notte 11-12/11 (M1, «voglio la versione migliore»): `pronto(frase, audio)` appena
+        # la voce della prima frase è pronta, così il server la manda SUBITO al client senza
+        # aspettare la fine del turno (circa 2 s prima sul Mac). Solo senza schermo.
+        self._pronto = pronto
         self._lock = threading.Lock()
         self._frase: Optional[str] = None
         self._filo: Optional[threading.Thread] = None
@@ -453,6 +463,12 @@ class AnticipoVoce:
             self._audio = sintesi(self._frase or "", self._api_key, self._voice_id)
         except BaseException as exc:  # §9: l'errore si dà a chi usa l'anticipo, mai qui
             self._errore = exc
+            return
+        if self._pronto is not None and self._audio:
+            try:
+                self._pronto(self._frase or "", self._audio)
+            except Exception as exc:  # §9: l'invio anticipato fallito non ferma il turno
+                log.warning("voce anticipata non inviata (%s)", type(exc).__name__)
 
     def prendi(self, frase: str) -> Optional[bytes]:
         """L'audio anticipato se `frase` è proprio la frase anticipata (una volta sola);
@@ -672,7 +688,61 @@ class VoiceHandler(BaseHTTPRequestHandler):
                         " ".join(f"{k}={v:.2f}s" for k, v in tempi.items()))
         return tempi
 
+    def _invia_anticipo(self, frase: str, audio: bytes) -> None:
+        """Dal filo della sintesi anticipata: se il turno non ha ancora risposto, apre la
+        risposta NDJSON e manda subito la voce della prima frase (riga {"audio", "anticipo"}).
+        Il resto (content, altre frasi, fine) lo manda `_do_pezzi_response` a turno finito,
+        senza ripetere questa frase se la risposta finale comincia con lei."""
+        if _PAROLA_NELLA_FRASE.search(frase):
+            # il client decide se Gas si può interrompere dal testo intero (eco delle casse,
+            # riserva #336), che qui non c'è ancora: la frase con la parola aspetta il turno
+            return
+        with self._risposta_lock:
+            if getattr(self, "_risposta_stato", "chiusa") != "attesa":
+                return
+            self._risposta_stato = "chiusa"  # se l'invio fallisce non si riprova
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.end_headers()
+            riga = {"audio": base64.b64encode(audio).decode("ascii"), "anticipo": True}
+            self.wfile.write(json.dumps(riga).encode("utf-8") + b"\n")
+            self.wfile.flush()
+            self._risposta_stato = "anticipata"
+            self._frase_anticipata = frase
+            self._segna("prima_voce", self._t0)
+
+    def _prendi_risposta(self) -> bool:
+        """Il turno prende la risposta: da qui il filo della sintesi non manda più nulla.
+        True se la prima frase è già partita (intestazioni NDJSON già inviate)."""
+        lock = getattr(self, "_risposta_lock", None)
+        if lock is None:
+            return False
+        with lock:
+            anticipata = self._risposta_stato == "anticipata"
+            self._risposta_stato = "chiusa" if not anticipata else "anticipata"
+            return anticipata
+
     def _send_json(self, code: int, payload: Dict[str, Any]) -> None:
+        if self._prendi_risposta():
+            # la prima frase è già partita a NDJSON: l'errore (o la risposta senza voce)
+            # viaggia come riga, poi la fine
+            tempi = self._chiudi_tempi(code)
+            righe: List[Dict[str, Any]] = []
+            if code >= 400:
+                # revisore #799 R2: «errore_turno» fa suonare al client il bip d'errore
+                # (prima, col 500, suonava; ora la prima frase è già partita)
+                righe.append({"errore_voce": str(payload.get("error") or "Errore"),
+                              "errore_turno": True})
+            else:
+                righe.append({k: v for k, v in payload.items() if k != "audio"})
+            righe.append({"fine": True, **({"tempi": tempi} if tempi else {})})
+            try:
+                for r in righe:
+                    self.wfile.write(json.dumps(r, ensure_ascii=False).encode("utf-8") + b"\n")
+                self.wfile.flush()
+            except OSError as exc:
+                log.warning("voce anticipata: client chiuso (%s)", type(exc).__name__)
+            return
         tempi = self._chiudi_tempi(code)
         if tempi is not None:
             payload = dict(payload, tempi=tempi)
@@ -684,6 +754,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _send_audio(self, data: bytes, tipo: str = "audio/mpeg") -> None:
+        if self._prendi_risposta():  # revisore #799 R3: mai dopo un anticipo (formato a righe)
+            self._send_json(500, {"error": "risposta audio dopo la prima frase anticipata"})
+            return
         tempi = self._chiudi_tempi(200)
         self.send_response(200)
         self.send_header("Content-Type", tipo)
@@ -803,6 +876,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
         self._finiti_jobs = None  # R-711-3-M2: mai i compiti di un'altra richiesta
         self._anticipo: Optional[AnticipoVoce] = None  # voce rapida: mai quello di un'altra
+        # Prima frase subito (notte 11-12/11): stato della risposta condiviso col filo della
+        # sintesi anticipata. «attesa» = nessuna risposta ancora; «anticipata» = intestazioni
+        # NDJSON e prima frase già partite; «chiusa» = il turno ha preso la risposta.
+        self._risposta_lock = threading.Lock()
+        self._risposta_stato = "attesa"
+        self._frase_anticipata: Optional[str] = None
         self._parlato = False
         if self.path in ("/voci/prova", "/voci/aggiungi"):  # V8/V8b: prova o aggiunta di una voce
             if not self._autorizza():
@@ -968,7 +1047,13 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 if (chiave_tts and not self._seguito()
                         and self._formato() in (_FORMATO_PEZZI, _FORMATO_PEZZI_VOCE)):
                     # voce rapida: la prima frase si sintetizza mentre il cervello finisce
-                    self._anticipo = AnticipoVoce(chiave_tts, _voce_tts())
+                    # Revisore #799 (MEDIA): con compiti finiti da annunciare la risposta
+                    # comincia con loro (prefisso): niente invio anticipato in quel caso
+                    subito = (self._vuole_righe_senza_schermo()
+                              and not self._compiti_finiti())
+                    self._anticipo = AnticipoVoce(
+                        chiave_tts, _voce_tts(),
+                        pronto=self._invia_anticipo if subito else None)
                     kw["su_testo_voce"] = self._anticipo.testo
             turno = self.kernel.run_turn(prompt, **kw)
             try:
@@ -1192,9 +1277,19 @@ class VoiceHandler(BaseHTTPRequestHandler):
         riga {"fine": true, "tempi": …}. Un errore TTS a metà → riga {"errore_voce": …} e
         stop (il testo è già a schermo). Il client che chiude la connessione ferma la
         sintesi (niente spesa per frasi che nessuno ascolta)."""
-        self.send_response(200)
-        self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
-        self.end_headers()  # HTTP/1.0: niente Content-Length, la fine è la chiusura
+        if self._prendi_risposta():
+            # prima frase già partita (anticipo): intestazioni già inviate; la frase non si
+            # ripete se la risposta finale comincia proprio con lei
+            # la prima frase della risposta sta dopo l'eventuale prefisso (compiti finiti
+            # arrivati durante il turno): si toglie lì, mai il prefisso
+            if len(frasi) > n_prefisso and frasi[n_prefisso] == self._frase_anticipata:
+                frasi = frasi[:n_prefisso] + frasi[n_prefisso + 1:]
+            if not frasi:
+                frasi = [""]  # una riga col solo testo (content), senza voce
+        else:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.end_headers()  # HTTP/1.0: niente Content-Length, la fine è la chiusura
 
         def riga(obj: Dict[str, Any]) -> bool:
             try:
@@ -1212,11 +1307,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
             t = time.monotonic()
             errore: Optional[str] = None
             try:
-                audio = (self._anticipo.prendi(frase)
-                         if self._anticipo is not None else None)
-                if audio is None:
-                    audio = sintesi(frase, api_key, voice_id)
-                uscita["audio"] = base64.b64encode(audio).decode("ascii")
+                if frase:
+                    audio = (self._anticipo.prendi(frase)
+                             if self._anticipo is not None else None)
+                    if audio is None:
+                        audio = sintesi(frase, api_key, voice_id)
+                    uscita["audio"] = base64.b64encode(audio).decode("ascii")
             except ElevenLabsTTSError as exc:
                 log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
                 errore = f"Errore TTS ElevenLabs: {exc.message}"

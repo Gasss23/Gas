@@ -1,42 +1,34 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-12 notte — Voce: perché «Hey Jarvis» non risponde (misura col modello vero) + correzione (M1)
+**Sessione:** 2026-11-12 notte — Voce: la prima frase parte appena pronta (M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR di questa sessione (riserve solo BASSE).
-2. Compromesso da confermare: con 1 blocco i falsi sui quasi-omofoni («hey Jervis», «hey Chavez») salgono da 3 a 9 su 120 frasi di prova; le frasi comuni restano a ~0. In cambio le chiamate vere prese salgono da 19 a 35 su 81 (prova di 5 chiamate: da 2/5 a 5/5). sì/no
-3. Dopo il merge: taratura sulla voce vera (`python3 scripts/voce/taratura_parola.py --chiamate 5`).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — misura col modello vero (hey_jarvis onnx) su voci sintetiche**: FATTA — reports/voce_taratura_2026-11-12.md.
-- **Fetta 2 — predefinito 1 blocco (soglia 0,7), «sopra soglia» nella riga quasi, scripts/voce/taratura_parola.py**: FATTA — 0ce03e55, review #795-M1coord e #796-M1coord APPROVATO CON RISERVE.
-- **Fetta 3 — R-796-1/2 (avviso «più permissiva», test d'uguaglianza)**: FATTA — 045707c8, review #797-M1coord APPROVATO CON RISERVE.
-- **Fetta 4 — R-797-1 (ramo irraggiungibile)**: FATTA — d12e9b67, review #798-M1coord APPROVATO CON RISERVE.
-- **Fetta 5 — bot #378 (82eb3bd) V-1 MEDIA: interruzione su 3 blocchi separata; V-2 script della misura; V-3/V-4**: FATTA — review #800-M1coord APPROVATO CON RISERVE (R-800-1 BASSA).
+- **Fetta 1 — prima frase subito** (sul Mac dei tempi dell'11/11: prima frase pronta ~3,7 s dopo la richiesta ma arrivata al client a ~6,2 s, a turno finito): FATTA — 59478461, review #799-M1coord BOCCIATO → #801-M1coord APPROVATO CON RISERVE. Solo client senza schermo (audio+pezzi), mai nei seguiti, mai con compiti finiti da annunciare, mai se la prima frase contiene la parola di attivazione.
+- **Fetta 2 — merge di main (#378) nella #379**: FATTA — review #802-M1coord APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md      |   7 ++++++
- clients/voice/ascolto.py                |  64 ++++++++++++++++++++++++++++++++++++++-------------
- reports/diff_sessione.md                |  15 ++++++------
- reports/handoff.md                      | n/d
- reports/stato_progetto.md               |   1 +
- reports/ultimo_report.md                |  18 +++++++--------
- reports/voce_taratura_2026-11-12.md     |  39 +++++++++++++++++++++++++++++++
- scripts/voce/LEGGIMI.md                 |  10 +++++---
- scripts/voce/diagnosi_ascolto.py        |  12 ++++++----
- scripts/voce/misura_parola_sintetica.py | 125 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- scripts/voce/taratura_parola.py         | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voce_ascolto.py         | 182 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ clients/voice/ascolto.py           |  11 ++++++++-
+ modules/voice/server.py            | 118 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ reports/diff_sessione.md           |  13 +++++------
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   1 +
+ reports/ultimo_report.md           |  15 ++++++-------
+ tests/test_unit_voce_ascolto.py    |  25 +++++++++++++++++++++
+ tests/test_unit_voice_server.py    | 135 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -44,144 +36,110 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-0d464e11 docs(fine-task): handoff #378 dopo il fix del bot
-3286da4e fix(voce): interruzione su 3 blocchi separata dalla parola, misura riproducibile (bot #378 V-1..V-4) — review #800-M1coord
-b6421da1 chore(revisore): memoria review #800 — APPROVATO CON RISERVE
-82eb3bd6 docs(fine-task): §2/§3 handoff
-5512ede8 docs(fine-task): voce — 1 blocco e taratura (review #795-#798-M1coord)
-d12e9b67 refactor(voce): taratura senza il ramo irraggiungibile (R-797-1) — review #798-M1coord
-032542c7 chore(revisore): memoria review #798 — APPROVATO CON RISERVE
-045707c8 fix(voce): taratura — avviso «più permissiva» in ogni ramo, test d'uguaglianza della soglia (R-796-1/2) — review #797-M1coord
-e7a4a42f chore(revisore): memoria review #797 — APPROVATO CON RISERVE
-0ce03e55 fix(voce): «Hey Jarvis» su 1 blocco (3 dimezzavano le chiamate), taratura sulla voce vera, «sopra soglia» nella riga quasi — review #795/#796-M1coord
-0365386b chore(revisore): memoria review #796 — APPROVATO CON RISERVE
-dff590da chore(revisore): memoria review #795 — APPROVATO CON RISERVE
+37e729b8 docs(fine-task): handoff #379 dopo il merge di main
+9a0fb748 Merge origin/main (#378) nella #379 — review #802-M1coord APPROVATO
+e2766972 docs(fine-task): §2/§3 handoff
+f7053b3d docs(fine-task): voce — prima frase subito (review #799/#801-M1coord)
+59478461 perf(voce): la prima frase parte appena pronta, senza aspettare la fine del turno (~2 s prima) — review #799/#801-M1coord
+37654b0f chore(revisore): memoria review #801 — APPROVATO CON RISERVE
+382aae45 chore(revisore): memoria review #799 — BOCCIATO
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #795-M1coord (commit 0ce03e55, 1° giro)
+### Review #799-M1coord (1° giro, diff staged poi corretto)
 
-## VERDETTO: APPROVATO CON RISERVE
+## VERDETTO: BOCCIATO
 
-Review #795-M1coord, diff staged su fix/voce-blocchi-taratura. Letti prima CLAUDE.md §5, le parti voce di stato_progetto.md e la memoria del revisore. Suite voce_ascolto + voice_server: 568 passed (con `python -B`, `__pycache__` delle verifiche a mano pulito). Nessun antipattern del Wall of Shame.
+Review #799-M1coord: modifica staged su perf/voce-prima-frase-subito, base origin/main 3756c97. Letti prima CLAUDE.md (sezione 5), reports/stato_progetto.md e la memoria del revisore.
 
-**Elementi esaminati**
-- clients/voice/ascolto.py:134 — `BLOCCHI_PAROLA_PREDEFINITO` da 3 a 1, soglia 0,7. Rischio: attivazione su un picco isolato, contro «zero risposte non richieste». La misura in reports/voce_taratura_2026-11-12.md lo giustifica (3 blocchi 19/81, 1 blocco 35/81; frasi comuni ~0 a ogni regola); costo dichiarato: quasi-omofoni falsi da 3 a 9. Esito: ok, compromesso da scrivere nell'handoff come scelta dell'operatore.
-- clients/voice/ascolto.py:480 — `quasi_sopra = max(quasi_sopra, sopra)`, azzerato alle righe 460 e 467, passato a `_segnala_quasi` (riga 491, default 0, chiamante unico). Rischio: valore della salita prima. Esito: ok.
-- clients/voice/ascolto.py:1330 — `_scrivi_regolazioni` avvisa ancora su soglia < 0,7 e turni oltre il predefinito; il ramo sui blocchi non scatta più (minimo 1): innocuo. Chi ha `GAS_ASCOLTO_BLOCCHI_PAROLA=3` nel .env non riceve avvisi (più severo): lo dice la riga «regolazioni in uso» e LEGGIMI.md:139. Esito: ok.
-- clients/voice/ascolto.py:560 e clients/voice/ascolto.py:815 — finestra dopo un turno e interruzione usano lo stesso `blocchi_parola`: anche lì basta un blocco; si perde «un picco isolato non interrompe» (bot #371 V-1). Restano la soglia d'interruzione 0,8 e la finestra spenta di default (`MAX_TURNI_PREDEFINITO=1`). Esito: riserva R-795-3.
-- scripts/voce/diagnosi_ascolto.py:41 — gruppo opzionale «(\d+) di fila sopra soglia», gruppi rinumerati alla riga 144; provato sui 3 formati: `sopra` None, None, 2; taciute e max giusti. Esito: ok.
-- scripts/voce/taratura_parola.py:51-77 — `salite()`: sequenza [0,.4,.9,.2,.2,.8,.8,0×5,.35]: le prime due salite vicine si uniscono (massimo 0,9, 2 blocchi di fila sopra ogni soglia); contatore azzerato nella pausa. Esito: ok.
-- scripts/voce/taratura_parola.py:86-118 — `consiglio()` chiede che scattino TUTTE le salite, rumore compreso: una salita di rumore a 0,55 porta a consigliare 0,5 senza dirlo; una a 0,35 porta a «Nessuna regolazione le prende tutte». Esito: riserva R-795-1.
-- scripts/voce/taratura_parola.py:157-164 — `chiudi()` nel `finally`: microfono chiuso anche con Ctrl-C; `Microfono()` che fallisce → esito 1 e messaggio; errore di lettura → traceback dopo la chiusura (accettabile). Privacy: solo numeri, nessun audio su disco. Esito: ok.
-
-**Riserve**
-- **R-795-1 MEDIA**: `consiglio()` tratta ogni salita da 0,3 in su come chiamata voluta: un rumore può far consigliare una soglia sotto 0,7 senza avviso. Correzioni: mai sotto i predefiniti senza scriverlo; con `--chiamate` e più salite, avvisare.
-- **R-795-2 BASSA**: docstring in clients/voice/ascolto.py:46 dice ancora «(default 3)».
-- **R-795-3 BASSA**: blocchi=1 vale anche per interruzione e finestra dopo un turno: dichiararlo o separare il conteggio in una fetta successiva.
-
-**Rischio escluso**: voce vera e microfono del Mac non verificati; misura del report non riprodotta (niente microfono né modello qui); suite intera del motore non eseguita.
-
-**Memoria**: riga #795-M1coord e una lezione in .claude/agents/memoria_revisore.md (commit dff590da).
-
-### Review #796-M1coord (2° giro, stesso commit 0ce03e55)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Re-review #796-M1coord, secondo giro di #795, diff staged (7 file). R-795-1 e R-795-2 chiuse; restano due riserve BASSE. Rieseguiti gli 11 test di taratura e della riga «quasi» (passano).
-
-**Elementi esaminati**
-- scripts/voce/taratura_parola.py:104 — salite con massimo sotto 0,5 escluse dal consiglio e dichiarate; solo salite deboli → stop alla riga 111 senza consiglio. Esito: ok, R-795-1 chiusa nel caso principale.
-- scripts/voce/taratura_parola.py:98 — più salite delle `--chiamate` attese → avviso «probabilmente rumore». Esito: ok.
-- scripts/voce/taratura_parola.py:128 — soglia consigliata sotto 0,7 → avviso esplicito. Esito: ok; scoperto il ramo «nessuna regolazione le prende tutte» (scripts/voce/taratura_parola.py:134) → R-796-1.
-- scripts/voce/taratura_parola.py:31 — `SOGLIA_PREDEFINITA = 0.7` copiata da clients/voice/ascolto.py:133 senza test d'uguaglianza → R-796-2.
-- clients/voice/ascolto.py:46 — docstring «(default 1)». Esito: ok, R-795-2 chiusa.
-- R-795-3 e il compromesso (3 → 9 su 120 quasi-omofoni) dichiarati in reports/stato_progetto.md e reports/voce_taratura_2026-11-12.md: ok; il compromesso va riportato nell'handoff come decisione da confermare.
-
-**Riserve aperte**: **R-796-1 BASSA** avviso mancante nel ramo «la migliore» (scripts/voce/taratura_parola.py:134-138); **R-796-2 BASSA** `SOGLIA_PREDEFINITA` duplicata senza test; **R-795-3 BASSA** (dichiarata).
-
-**Rischio escluso**: voce vera e microfono non verificabili; misure del report non riprodotte.
-
-**Memoria**: riga #796-M1coord (commit 0365386b).
-
-### Review #797-M1coord (commit 045707c8)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #797-M1coord: delta su #796, diff staged di 2 file. R-796-1/2 chiuse nel codice, ma il ramo «nessuna regolazione le prende tutte» non è più raggiungibile e il test nuovo non lo prova.
-
-**Elementi esaminati**
-- scripts/voce/taratura_parola.py:135 — avviso «più permissiva» dopo i due rami; `t` definito in entrambi; uscite anticipate alle righe 91 e 112 senza salite. Esito: ok, R-796-1 chiusa.
-- tests/test_unit_voce_ascolto.py:3178 — `t.SOGLIA_PREDEFINITA == a.SOGLIA_PREDEFINITA`. Esito: ok, R-796-2 chiusa.
-- tests/test_unit_voce_ascolto.py:3180-3185 — la sequenza (0,55/0,58/0,65/0,95) passa dal ramo «Consiglio … prende tutte le chiamate», non dal secondo: dopo il filtro (scripts/voce/taratura_parola.py:104) ogni salita ha massimo ≥ 0,5, quindi con 0,5 e 1 blocco scattano tutte e il ramo `else` (scripts/voce/taratura_parola.py:128) è morto. Stesso per test_taratura_senza_regolazione_perfetta_dice_la_migliore (tests/test_unit_voce_ascolto.py:3127). Esito: **R-797-1 BASSA** — togliere il ramo o dichiararlo; rinominare i test.
-
-**Rischio escluso**: suite completa non rilanciata (343 dichiarati); voce vera non verificabile.
-
-**Memoria**: riga #797-M1coord e una lezione (commit e7a4a42f).
-
-### Review #798-M1coord (commit d12e9b67)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #798-M1coord su R-797-1. Diff staged: scripts/voce/taratura_parola.py e tests/test_unit_voce_ascolto.py. R-797-1 chiusa; una riserva BASSA nuova.
-
-**Elementi esaminati**
-- scripts/voce/taratura_parola.py:122-129 — ramo `else` tolto, commento col perché, `max(tutte)` diretto. Rischio: `max()` su lista vuota. Invariante: ogni salita rimasta ha `massimo >= 0,5`, che viene da un blocco con `p >= 0,5` (`salite()`, scripts/voce/taratura_parola.py:64-68) → `di_fila[0.5] >= 1` → con 0,5 e 1 blocco scattano tutte, `tutte` mai vuota. Esito: ok, ma l'invariante regge solo finché `BLOCCHI` contiene 1 e il filtro usa `min(SOGLIE)` → R-798-1.
-- scripts/voce/taratura_parola.py:130 — avviso «più permissiva» su percorso unico. Esito: ok.
-- scripts/voce/taratura_parola.py:88 — docstring coerente. Esito: ok.
-- tests/test_unit_voce_ascolto.py:3127 e tests/test_unit_voce_ascolto.py:3177 — nomi e asserzioni coerenti col ramo provato. Esito: ok. 8 test di taratura passano.
-
-**Riserva**: **R-798-1 BASSA** — `max(tutte)` dipende da un invariante non scritto: cambiando `BLOCCHI` o il filtro, `ValueError`. Difesa: `assert tutte` col commento o un test su `1 in BLOCCHI` e `min(SOGLIE)`.
-
-**Rischio escluso**: voce vera e microfono non verificabili; suite completa non rilanciata.
-
-**Memoria**: riga #798-M1coord (commit 032542c7).
-
-### Review #800-M1coord (fix bot #378 V-1..V-4 su 82eb3bd)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #800-M1coord, diff staged nella worktree del branch fix/voce-blocchi-taratura (PR #378). Lette le ultime righe della memoria del revisore e il contesto voce di stato_progetto.md. tests/test_unit_voce_ascolto.py rieseguito: **344 passed**.
+**Motivo del blocco (MEDIA, verificato con una prova)**
+Con compiti finiti da annunciare (prefisso, fetta 3.2) la prima frase della risposta si sente due volte e l'annuncio finisce in mezzo alla risposta.
+- In `_do_pezzi_response` la prima frase si toglie solo se `frasi[0]` è uguale alla frase anticipata (modules/voice/server.py:1274). Con il prefisso `frasi` è prefisso + risposta (modules/voice/server.py:1238-1242), quindi `frasi[0]` è la frase del prefisso: il confronto fallisce.
+- I compiti finiti si leggono solo dopo il turno (modules/voice/server.py:1105), quando la prima frase è già partita.
+- Prova (spazio temporaneo, `_voce_subito` con `_compiti_finiti` = "Ho finito il compito."): audio `['Uno.', 'Ho finito il compito.', 'Uno.', 'Due.']`; la riga del testo dice `pezzi: 3`, gli audio sono 4.
+- Correzione suggerita: calcolare `_compiti_finiti()` prima di `run_turn` e passare `pronto=None` se ci sono compiti da annunciare; test col prefisso.
 
 **Elementi del diff esaminati**
-- `clients/voice/ascolto.py:827` — mentre Gas parla contano i `blocchi_interruzione`, non i `blocchi_parola`. Rischio: la parola su 1 blocco annulla la protezione contro l'eco della #371 (V-1 MEDIA del bot). Il conto `sopra` si azzera sotto soglia e su errore. — **ok**
-- `clients/voice/ascolto.py:378` e `clients/voice/ascolto.py:396` — parametro nuovo del costruttore, `Optional[int]`; `None` = come la parola (test esistenti invariati); minimo 1; type hint. — **ok**
-- `clients/voice/ascolto.py:1327` — `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` letta con `_numero`, limiti 1-5, al costruttore via `**regolazioni` (`clients/voice/ascolto.py:1400`); `tests/test_unit_voce_ascolto.py:201` verifica 3; log e avviso sotto 3 coperti da `tests/test_unit_voce_ascolto.py:2927` e `:2938`. — **ok**
-- `clients/voice/ascolto.py:490` — `quasi_sopra` aggiornato solo con punteggio >= SOGLIA_QUASI (V-3 BASSA): ramo già irraggiungibile, modifica difensiva senza cambio di comportamento; manca un test, accettabile. — **ok**
-- `tests/test_unit_voce_ascolto.py:3195` — il test nuovo verifica solo i due attributi, non che con parola=1 e interruzione=3 uno o due blocchi alti non fermino Gas; il percorso di `_ascolta_mentre_suona` resta coperto dal test della #371 (`tests/test_unit_voce_ascolto.py:2781`) con `blocchi_parola=3`, cioè con i due valori uguali. — **riserva (R-800-1)**
-- `scripts/voce/misura_parola_sintetica.py:51` — script di misura fuori dai test; espeak-ng e ffmpeg con elenco di argomenti, senza shell. — **ok**
-
-Nessun problema del Wall of Shame.
+- modules/voice/server.py:691 — `_invia_anticipo`: blocca la frase con la parola di attivazione; sotto `_risposta_lock` scrive intestazioni e riga solo se lo stato è «attesa»; lo stato passa a «chiusa» prima della scrittura. Rischio: due fili sulla stessa connessione. Esito: ok (HTTP/1.0, una richiesta per gestore; errore di scrittura catturato in `_sintetizza`, modules/voice/server.py:467-471).
+- modules/voice/server.py:714 — `_prendi_risposta`. Rischio: una via di risposta che non passa da qui. Esito: ok con riserva: `_send_json` (modules/voice/server.py:726) e `_do_pezzi_response` (modules/voice/server.py:1271) ci passano; `_send_audio` (modules/voice/server.py:753) no, oggi irraggiungibile con l'anticipo acceso.
+- modules/voice/server.py:726-742 — errore dopo l'anticipo: riga `errore_voce` + `fine`, stato HTTP già 200. Esito: riserva R2.
+- modules/voice/server.py:1044-1047 — invio immediato solo con `_vuole_righe_senza_schermo()` e fuori dai seguiti (modules/voice/server.py:1041). Rischio: privacy. Esito: ok.
+- clients/voice/ascolto.py:727 (contesto) — controllo della parola a ogni pezzo; la frase anticipata per costruzione non contiene la parola; `test_regola_della_parola_uguale_al_client` (tests/test_unit_voice_server.py:2804). Esito: ok.
 
 **Riserve**
-- **R-800-1 BASSA** — manca un test di comportamento con `blocchi_parola=1` e `blocchi_interruzione=3` (1-2 blocchi alti mentre Gas parla non interrompono, 3 di fila sì): una regressione che rimetta `blocchi_parola` alla riga 827 passerebbe i test. Tracciare in stato_progetto.md o chiudere con un test.
+- R1 (BASSA): se la risposta finale cambia rispetto alla frase anticipata si sente una frase in più (es. "Ecco\n\nIl resto."): da dichiarare.
+- R2 (MEDIA, esperienza): errore del turno dopo l'anticipo → nessun bip (prima, col 500, `_bip("errore")`); l'utente sente solo la prima frase e poi silenzio.
+- R3 (COSMETICA): `_send_audio` non passa da `_prendi_risposta`.
 
-**Rischi esclusi**: script di misura non eseguito dal revisore (servono modello onnx ed espeak-ng; numeri presi dall'esecuzione del coordinatore); eco reale sul Mac non verificabile; LEGGIMI e report solo scorsi.
+**Test**: voice_server + voce_ascolto 567 passed (rieseguiti). Kernel non rieseguito (gas.py non toccato).
 
-**Memoria**: riga #800-M1coord nella worktree (commit b6421da1).
+**Non verificato**: tempi reali sul Mac, `claude -p` vero, ElevenLabs vero; scrittura lenta con client bloccato (lucchetto fino al timeout di 60 s del socket, ragionato).
+
+**Memoria**: riga #799-M1coord e una lezione (commit 382aae45).
+
+### Review #801-M1coord (2° giro, commit 59478461)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #801-M1coord, secondo giro della #799. Diff staged riletto: 4 file, +277/-12. Il blocco della #799 è risolto: con un compito finito già pronto prima del turno la prova dà `['Ho finito il compito.', 'Uno.', 'Due.']` (prima `['Uno.', 'Ho finito il compito.', 'Uno.', 'Due.']`).
+
+**Elementi del diff esaminati**
+- modules/voice/server.py:1052 — con compiti da annunciare l'invio anticipato si spegne (`pronto=None`); solo senza schermo e mai nei seguiti (dentro `not self._seguito()`). Rischio: effetti della lettura prima del turno. Esito: ok — `_compiti_finiti` (modules/voice/server.py:1131) non solleva e scrive solo `_finiti_jobs`; la lettura dopo il turno (modules/voice/server.py:1115) lo sovrascrive; se i compiti spariscono `_segna_finiti_letti` non è chiamato (`n_prefisso` 0): innocuo.
+- modules/voice/server.py:1285 — dopo un anticipo la frase si cerca in `frasi[n_prefisso]` e si toglie solo quella; prefisso e `n_prefisso` invariati. Rischio: segno dei compiti letti, ripetizioni. Esito: ok; riserva sull'ordine (R-801-1).
+- modules/voice/server.py:754-759 — `_send_audio` passa da `_prendi_risposta`; dopo un anticipo `_send_json(500)` scrive la riga d'errore. Esito: ok (chiude R3).
+- modules/voice/server.py:726-737 — errore del turno dopo un anticipo con `"errore_turno": true`; clients/voice/ascolto.py:1035 lo registra; clients/voice/ascolto.py:754 suona `_bip("errore")` se almeno una frase è stata detta; errore della sola sintesi senza bip come prima; con 0 frasi resta il ramo vecchio (niente doppio bip). Esito: ok (chiude R2).
+- Sicurezza fra i due fili (`_invia_anticipo` modules/voice/server.py:691, `_prendi_risposta` modules/voice/server.py:717) invariata rispetto alla #799.
+
+**Test**: voice_server + voce_ascolto 570 passed (236 + 334); i 9 test della prima frase subito e i 2 nuovi del client passano anche da soli.
+
+**Riserve (da segnare in stato_progetto.md)**
+- R-801-1 (BASSA): un compito che finisce durante il turno si annuncia dopo la prima frase della risposta, non prima (ordine diverso da quello della fetta 3.2), senza ripetizioni.
+- R-799-1 (BASSA): una frase in più se la risposta finale cambia rispetto alla frase anticipata.
+
+**Non verificato**: tempi reali sul Mac, `claude -p`, ElevenLabs e casse veri; suite del kernel (gas.py non toccato).
+
+**Memoria**: riga #801-M1coord (commit 37654b0f).
+
+### Review #802-M1coord (merge di origin/main cb9ae3c, PR #378, nella #379)
+
+## VERDETTO: APPROVATO
+
+Review #802-M1coord: merge di origin/main cb9ae3c (PR #378) nella PR #379, branch perf/voce-prima-frase-subito. Letti CLAUDE.md §5, stato_progetto.md e la memoria del revisore.
+
+**Nessun lato ha perso modifiche.** Confrontate le righe +/- di `git diff base..MERGE_HEAD` con `git diff HEAD --cached`, e di `git diff base..HEAD` con `git diff MERGE_HEAD --cached`: su `clients/voice/ascolto.py` e `tests/test_unit_voce_ascolto.py` coincidono in entrambe le direzioni. Il file in staging si analizza senza errori; cartella di lavoro = staging.
+
+Elementi del diff esaminati:
+- `clients/voice/ascolto.py:829` — l'interruzione mentre Gas parla usa `self.blocchi_interruzione` (#378). Rischio: ritorno a `blocchi_parola` (1 blocco, eco delle casse). Esito: ok; contatore azzerato su errore e sotto soglia.
+- `clients/voice/ascolto.py:777` — bip d'errore se la prima frase è già detta e il turno fallisce (#379), dopo il `finally` del ciclo, fuori da `_ascolta_mentre_suona`. Rischio: interferenza con l'interruzione. Esito: ok — punti diversi; interrotto → `break`, il bip parte solo con `errore_turno` (impostato in `clients/voice/ascolto.py:1059`); con `suonati == 0` resta il bip esistente, niente doppio bip.
+- `clients/voice/ascolto.py:1336` — `_regolazioni()` legge `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` (1-5, default 3) e lo passa al costruttore (`clients/voice/ascolto.py:378`) via `**regolazioni`. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:836` (test #379 su `errore_turno=True`) e `tests/test_unit_voce_ascolto.py:3224` (test #378 parola=1, interruzione=3) presenti. Esito: ok.
+- Wall of Shame: nessuno slicing della history, nessuna simulazione dei tool; motore non toccato.
+
+Test: `tests/test_unit_voce_ascolto.py` 346 passed (rilanciato dal revisore).
+
+Rischi esclusi: `tests/test_unit_voice_server.py` non rieseguito (timeout dell'ambiente; il merge non tocca il server: valgono i 236 passed del coordinatore); comportamento reale sul Mac non verificato. R-800-1 ancora aperta, ereditata.
+
+Memoria: riga #802-M1coord in .claude/agents/memoria_revisore.md, entrata nel commit di merge.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `python -B -m pytest -q tests/test_unit_voce_ascolto.py` → 332 passed (main 3756c97) → 343 passed (d12e9b67) → 344 passed (fix bot #378).
-- `scripts/voce/misura_parola_sintetica.py` eseguito: stessi numeri del report (35/81 contro 19/81; falsi 9 contro 3 su 120).
-- `tests/test_unit_voice_server.py` insieme a voce_ascolto: 568 passed dopo 0ce03e55 (prima dei fix di R-795-1).
-- Kernel non toccato.
+- `python -B -m pytest -q tests/test_unit_voice_server.py` → 227 passed (main 3756c97) → 236 passed (59478461; 9 test nuovi, uno prova che la prima riga arriva a turno ancora aperto).
+- `tests/test_unit_voce_ascolto.py` → 332 → 334 passed → 346 passed dopo il merge di main (#378); voice_server 236 passed dopo il merge.
+- Kernel (`python -B tests/test_unit_kernel.py`): 1167 PASS, 0 FAIL (gas.py non toccato).
 
 ```
-343 passed
+236 passed
 ```
 
 ## §6 STATO CI
 
-CI letta con lo strumento GitHub sulla PR #378: 82eb3bd unit-suite e handoff-check success; verifica-bot failure (V-1 MEDIA, V-2/V-3 BASSE, V-4 COSMETICA: corrette nel commit successivo). Run del commit finale non ancora disponibile.
+CI letta con lo strumento GitHub sulla PR #379: e2766972 tutti i check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE). Run del merge non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-795-3 → chiusa (bot #378 V-1): interruzione mentre Gas parla su 3 blocchi (`GAS_ASCOLTO_BLOCCHI_INTERRUZIONE`).
-- R-800-1 BASSA — manca un test di comportamento con parola=1 e interruzione=3.
-- R-798-1 BASSA — `max(tutte)` in `consiglio()` dipende da un invariante non scritto (1 in BLOCCHI, filtro a min(SOGLIE)).
-- Compromesso sui quasi-omofoni (decisione in §0).
-- Non provato: voce vera dell'operatore e microfono del Mac (misure su voci sintetiche).
+- R-801-1 BASSA — un compito finito arrivato durante il turno si annuncia dopo la prima frase, non prima.
+- R-799-1 BASSA — una frase in più se la risposta finale cambia rispetto a quella anticipata.
+- Non provato: tempi reali sul Mac (atteso circa 2 s in meno alla prima frase), `claude -p` ed ElevenLabs veri.
