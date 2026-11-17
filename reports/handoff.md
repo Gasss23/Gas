@@ -14,19 +14,22 @@
 
 - **Fetta 1 — togliere «Hey Jarvis» e storpiature in testa alla richiesta** (diario del Mac 17/11 15:28:57Z: `ricorda` con query 'jarways', un giro in più): FATTA — 1ae76716, review #806-M1coord APPROVATO CON RISERVE (R-806-1 MEDIA).
 - **Fetta 2 — R-806-1: nel seguito il vocativo resta**: FATTA — 6e62dcde, review #807-M1coord APPROVATO CON RISERVE (R-807-1 BASSA).
+- **Porting del fix bwrap (dalla PR #380, commit 605e154c)** per la CI su Ubuntu 26.04: FATTO — review #808-M1coord APPROVATO CON RISERVE (R-808-1 BASSA: meglio mergiare prima la #380).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
+ .claude/agents/memoria_revisore.md |   5 +++++
  modules/voice/server.py            |  28 +++++++++++++++++++++++++++-
+ modules/web/browser.py             |  93 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
  reports/diff_sessione.md           |   9 ++++-----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
  reports/ultimo_report.md           |  15 ++++++---------
  tests/test_unit_voice_server.py    |  42 +++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_web_browser.py     |  89 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -34,6 +37,9 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c87ea5e4 fix(web): sandbox del browser su Ubuntu 26.04 (porting di 605e154c dalla PR #380) — review #808-M1coord
+50fade22 chore(revisore): memoria review #808 — APPROVATO CON RISERVE
+4cab4326 docs(fine-task): §2/§3 handoff
 75732f2f docs(fine-task): voce — parola di attivazione tolta (review #806/#807-M1coord)
 6e62dcde fix(voce): nel seguito il vocativo «Jarvis, …» resta (R-806-1) — review #807-M1coord
 f36758e9 chore(revisore): memoria review #807 — APPROVATO CON RISERVE
@@ -79,6 +85,32 @@ Review #807-M1coord, delta sulla #806. Id libero; riga contatore in f36758e9; di
 
 **Non verificato**: suite voice_server completa non rieseguita (la #806 dava 248 passed; il delta tocca una riga coperta dai test mirati); comportamento reale del forte nel seguito (serve `claude -p` sul Mac).
 
+### Review #808-M1coord (porting del fix bwrap di #380, commit 605e154c)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #808-M1coord. Porting del commit 605e154c (PR #380) in due branch: fix/voce-togli-parola e feat/voce-verifica-parlante. Letti prima CLAUDE.md, reports/stato_progetto.md e la memoria.
+
+**Porting identico nei due posti.** Tolte le righe index, i due diff staged e `git show 605e154c` hanno lo stesso SHA-256 (5969695a…); i file interi in staging coincidono con `605e154c:file` (browser.py dfeae8f8…, test f4bbae85…). Staged solo i 2 file (+177/-5).
+
+**Elementi esaminati**
+- modules/web/browser.py:283 — `_programmi_fuori` segue i collegamenti di /usr/bin al massimo 16 volte e monta in sola lettura solo il file vero, più un `--symlink` per ogni collegamento intermedio. Rischio: allargare il sandbox. Si blocca se il genitore è un collegamento, se il percorso è fuori dalle radici ammesse, dentro /usr/local, dentro Gas o la home (anche col percorso vero); collegamento rotto, ciclo o catena troppo lunga non espongono niente. — ok
+- modules/web/browser.py:278 — radici ammesse solo `/usr` e `/etc/alternatives`; /usr/local escluso; si espone file per file, mai cartelle. — ok
+- modules/web/browser.py:325 — solo un file vero ed eseguibile; una modifica a metà lettura finisce in `except OSError` e il programma viene saltato senza crash. — ok
+- modules/web/browser.py:397 — il controllo parte dopo i montaggi esposti e prima del tmpfs su Gas e home: i protetti restano coperti. — ok
+- tests/test_unit_web_browser.py:477 — `test_programmi_fuori_espone_solo_catene_ammesse`: 8 casi negativi più la catena buona; eseguito qui: PASS. — ok
+- tests/test_unit_web_browser.py:395 — `_catene_di_usr_bin` amplia l'elenco dei file permessi nel test, calcolato dall'host: allentamento voluto e proporzionato (solo /usr/ e /etc/alternatives/ fuori da /usr/local/). — ok
+
+**Test nel container (bwrap assente):** a HEAD 33 failed, 11 passed; col porting 34 failed, 12 passed (+1 test nuovo con bwrap, +1 senza). Gli altri fallimenti dipendono da bwrap assente.
+
+**Wall of Shame:** nessuna violazione; kernel non toccato.
+
+**Riserve:** R-808-1 BASSA — le due PR voce portano un fix del browser estraneo al loro tema: meglio mergiare prima la #380, poi riportare main (modifica identica, niente conflitti); nel report va detto che il fix arriva da #380.
+
+**Rischio escluso:** comportamento reale nel sandbox su Ubuntu 26.04 non verificato (bwrap assente): fa fede la CI di #380 (unit-suite success); merito del fix già revisionato nell'altra chat.
+
+**Memoria:** riga #808-M1coord e una lezione (commit 50fade22 su fix/voce-togli-parola).
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python -B -m pytest -q tests/test_unit_voice_server.py` → 236 passed (main 01eb9f5) → 248 passed (1ae76716) → 249 (6e62dcde; mirati 54 passed, suite completa non rilanciata dopo il delta).
@@ -94,5 +126,6 @@ CI NON VERIFICATA (gh assente): run della PR non ancora disponibile. Nota: dal 1
 
 ## §7 RISERVE APERTE
 
+- R-808-1 BASSA — il fix bwrap della #380 viaggia anche qui: meglio mergiare prima la #380.
 - R-806-2 BASSA — falsi positivi rari: «Ehi, gas è salito» → «è salito»; «Gas: la bolletta…» → «la bolletta…».
 - R-807-1 BASSA — nel seguito una storpiatura («Jarways, …») arriva ancora al forte.
