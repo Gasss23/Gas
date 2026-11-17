@@ -1,8 +1,12 @@
-# Diff della sessione — 2026-11-12 notte — voce: prima frase subito (M1)
+# Diff sessione — 2026-11-17 — Presentazione clienti (prima bozza)
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+File toccati (da `git diff --stat BASE..HEAD` + report di fine task):
 
-- `modules/voice/server.py`: `AnticipoVoce(pronto=…)`; `_invia_anticipo`/`_prendi_risposta` (stato della risposta sotto lucchetto); `_send_json`/`_send_audio`/`_do_pezzi_response` consapevoli dell'anticipo; `_PAROLA_NELLA_FRASE`; niente anticipo con compiti finiti da dire.
-- `clients/voice/ascolto.py`: `_Frasi.errore_turno` e bip d'errore se il turno fallisce dopo la prima frase.
-- `tests/test_unit_voice_server.py`, `tests/test_unit_voce_ascolto.py`: test nuovi.
-- `.claude/agents/memoria_revisore.md`, `reports/*`: righe #799/#801 e report.
+- `presentazione_clienti/build.py` — nuovo: genera la presentazione HTML 16:9 (15 pagine, grafici SVG, segnaposto per i dati mancanti).
+- `presentazione_clienti/render.js` — nuovo: stampa l'HTML in PDF con il Chromium di Playwright.
+- `presentazione_clienti/titoli_svg.json` — nuovo: cache dei titoli sfumati convertiti in tracciati (il build funziona anche senza fonttools/uharfbuzz).
+- `presentazione_clienti/Presentazione_Ecosistema.pdf` — nuovo: la bozza consegnata all'operatore.
+- `presentazione_clienti/.gitignore` — nuovo: esclude l'HTML generato.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
