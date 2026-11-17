@@ -6,7 +6,7 @@
 const S = {
   dati: null, tab: 'panoramica', filtro: 'tutti', cerca: '', ordina: { campo: 'nome', verso: 1 },
   cliente: null, clienteDati: null, grafico: 'commissioni', bozze: {}, live: false,
-  rinviato: false, modale: null, eventiVisti: new Set(), stream: null,
+  rinviato: false, modale: null, eventiVisti: new Set(), stream: null, selezionati: new Set(),
 };
 const SCHEDE = [
   ['panoramica', 'Panoramica', '◈'], ['clienti', 'Clienti', '◉'],
@@ -444,9 +444,42 @@ function vistaClienti(d) {
       el('p', { testo: `${righe.length} di ${d.clienti.length} clienti · ogni casella vuota è un servizio che il cliente non ha ancora` })),
     el('div', { class: 'strumenti' }, cerca,
       el('div', { class: 'chips' }, FILTRI.map(([id, nome]) => el('button', { class: 'chip', 'aria-pressed': S.filtro === id ? 'true' : 'false', onclick: () => { S.filtro = id; disegna(); }, testo: nome })))),
+    barraSelezione(d, righe),
     leadPronti(d),
     tabellaClienti(d, righe),
   ];
+}
+function barraSelezione(d, righe) {
+  // scelta dell'operatore (decisione 17-11): un messaggio a cliente singolo, con le spunte
+  // per tutti / nessuno / alcuni. Regole dure e ritmo mensile restano anche qui.
+  const vivi = new Set(d.clienti.map((c) => c.id));
+  for (const id of [...S.selezionati]) if (!vivi.has(id)) S.selezionati.delete(id);
+  const n = S.selezionati.size;
+  const prepara = async () => {
+    const r = await esegui(() => api('/api/proposte/selezionati', { clienti: [...S.selezionati] }));
+    if (!r) return;
+    const es = r.risultato, esclusi = Object.entries(es.esclusi || {});
+    avviso(`Messaggi pronti da approvare: ${es.create.length}` + (esclusi.length ? ` · saltati ${esclusi.length}` : ''), 'ok');
+    if (esclusi.length) apriModale(() => modaleEsclusi(esclusi));
+    S.selezionati.clear();
+    S.tab = 'opportunita';
+    carica();
+  };
+  return el('div', { class: 'strumenti selezione' },
+    el('span', { class: 'suggerimento', testo: n ? `${n} selezionati` : 'Spunta i clienti a cui scrivere' }),
+    el('button', { class: 'btn piccolo', onclick: () => { righe.forEach((c) => S.selezionati.add(c.id)); disegna(); } }, '☑ Tutti quelli in lista'),
+    el('button', { class: 'btn piccolo', disabled: !n, onclick: () => { S.selezionati.clear(); disegna(); } }, '☐ Nessuno'),
+    el('button', { class: 'btn primario piccolo', disabled: !n, onclick: prepara, title: 'Prepara un messaggio per ogni cliente spuntato: li approvi uno per uno' }, `✉ Prepara messaggio (${n})`));
+}
+function modaleEsclusi(esclusi) {
+  const nome = (id) => nomeCliente(Number(id));
+  return el('div', { class: 'modale-velo', onclick: (e) => { if (e.target === e.currentTarget) chiudiModale(); } },
+    el('div', { class: 'carta modale' },
+      el('h2', { testo: 'Clienti saltati' }),
+      el('p', { class: 'sotto', testo: 'Le regole valgono anche a mano: consenso, STOP, un messaggio al mese, una proposta alla volta.' }),
+      el('div', { class: 'feed' }, esclusi.map(([id, motivo]) => el('div', { class: 'voce', stile: { gridTemplateColumns: '1fr' } },
+        el('div', {}, el('b', { testo: nome(id) }), el('div', { class: 'chi', testo: motivo }))))),
+      el('div', {}, el('button', { class: 'btn', onclick: chiudiModale, testo: 'Chiudi' }))));
 }
 function leadPronti(d) {
   if (!d.lead_pronti || !d.lead_pronti.length) return null;
@@ -460,7 +493,11 @@ function leadPronti(d) {
 function tabellaClienti(d, righe) {
   const freccia = (campo) => S.ordina.campo === campo ? (S.ordina.verso > 0 ? ' ↑' : ' ↓') : '';
   const th = (testo, campo, extra) => el('th', { class: extra?.classe, onclick: () => ordinaPer(campo), scope: 'col' }, extra?.pallino, testo + freccia(campo));
-  const testa = el('tr', {}, th('Cliente', 'nome'),
+  const tutti = righe.length > 0 && righe.every((c) => S.selezionati.has(c.id));
+  const spuntaTutti = el('input', { type: 'checkbox', checked: tutti, 'aria-label': 'Seleziona tutti quelli in lista',
+    onclick: (e) => e.stopPropagation(),
+    onchange: (e) => { righe.forEach((c) => (e.target.checked ? S.selezionati.add(c.id) : S.selezionati.delete(c.id))); disegna(); } });
+  const testa = el('tr', {}, el('th', { class: 'spunta' }, spuntaTutti), th('Cliente', 'nome'),
     d.servizi.map((s) => th(s.nome, 'srv:' + s.id, { pallino: el('span', { class: 'pallino', stile: { background: colore(s.slot) } }) })),
     th('Profitto mese', 'profitto_mese_cents', { classe: 'destra' }), th('Profitto totale', 'profitto_totale_cents', { classe: 'destra' }),
     th('Ci ha pagato', 'commissioni_totali_cents', { classe: 'destra' }));
@@ -486,7 +523,12 @@ function tabellaClienti(d, righe) {
     if (c.stato !== 'attivo') badge.push(el('span', { class: 'badge', testo: c.stato.replace('_', ' ') }));
     if (!c.pagante) badge.push(el('span', { class: 'badge', testo: 'nessun pagamento' }));
     if (obiettivo) badge.push(el('span', { class: 'badge tipo-' + obiettivo.tipo, testo: '◎ ' + TIPI[obiettivo.tipo] }));
-    return el('tr', { onclick: () => apriCliente(c.id), tabindex: '0', onkeydown: (e) => { if (e.key === 'Enter') apriCliente(c.id); } },
+    const spunta = el('input', { type: 'checkbox', checked: S.selezionati.has(c.id), 'aria-label': 'Seleziona ' + c.nome,
+      onclick: (e) => e.stopPropagation(),
+      onchange: (e) => { if (e.target.checked) S.selezionati.add(c.id); else S.selezionati.delete(c.id); disegna(); } });
+    if (!c.followup_attivo) badge.push(el('span', { class: 'badge', testo: 'follow-up spento' }));
+    return el('tr', { class: S.selezionati.has(c.id) ? 'scelta' : '', onclick: () => apriCliente(c.id), tabindex: '0', onkeydown: (e) => { if (e.key === 'Enter') apriCliente(c.id); } },
+      el('td', { class: 'spunta', onclick: (e) => e.stopPropagation() }, spunta),
       el('td', { class: 'cliente' }, el('div', { class: 'nome', testo: c.nome }), el('div', { class: 'sub' }, el('span', { testo: c.telefono || 'senza telefono' }), badge)),
       celle,
       el('td', { class: 'destra num ' + (c.profitto_mese_cents > 0 ? 'su' : c.profitto_mese_cents < 0 ? 'giu' : ''), testo: euroSegno(c.profitto_mese_cents) }),
@@ -494,7 +536,7 @@ function tabellaClienti(d, righe) {
       el('td', { class: 'destra num', testo: euro0(c.commissioni_totali_cents) }));
   });
   return el('div', { class: 'tabella-scorri' }, el('table', { class: 'matrice' }, el('thead', {}, testa),
-    el('tbody', {}, corpo.length ? corpo : el('tr', {}, el('td', { colspan: String(d.servizi.length + 4) }, el('div', { class: 'vuoto', testo: 'Nessun cliente con questi filtri.' }))))));
+    el('tbody', {}, corpo.length ? corpo : el('tr', {}, el('td', { colspan: String(d.servizi.length + 5) }, el('div', { class: 'vuoto', testo: 'Nessun cliente con questi filtri.' }))))));
 }
 
 /* ------------------------------------------------------------------ OPPORTUNITÀ */
@@ -519,8 +561,21 @@ function cartaProposta(p) {
       delete S.bozze[p.id];
       carica();
     };
+    const opus = S.dati.server.opus || {};
+    const riscrivi = async (ev) => {
+      const b = ev.currentTarget;
+      b.disabled = true; b.textContent = '✨ Opus sta scrivendo…';
+      const r = await esegui(() => api('/api/proposte/riscrivi', { id: p.id }), 'Testo riscritto da Claude Opus');
+      if (r) { delete S.bozze[p.id]; }
+      carica();
+    };
+    const invii = S.dati.server.invii || {};
+    const fermo = invii.max && invii.fatti >= invii.max;
     parti.push(area, el('div', { class: 'azioni' },
-      el('button', { class: 'btn primario', onclick: invia, title: 'Apre WhatsApp col messaggio già scritto: tu premi invio' }, '✓ Approva e apri WhatsApp'),
+      el('button', { class: 'btn primario', onclick: invia, disabled: fermo,
+        title: fermo ? `Pausa anti-blocco: ${invii.fatti}/${invii.max} invii negli ultimi ${invii.minuti} min` : 'Apre WhatsApp col messaggio già scritto: tu premi invio' }, '✓ Approva e apri WhatsApp'),
+      el('button', { class: 'btn', onclick: riscrivi, disabled: !!opus.motivo,
+        title: opus.motivo || `Riscrive il testo con ${opus.modello} (mai modelli gratuiti)` }, '✨ Riscrivi con Opus'),
       el('button', { class: 'btn', onclick: () => navigator.clipboard?.writeText(area.value).then(() => avviso('Messaggio copiato', 'ok')) }, 'Copia'),
       el('button', { class: 'btn rosso', onclick: () => azioneProposta(p.id, 'scarta', 'Proposta scartata') }, 'Scarta')));
   } else if (p.stato === 'inviata' || p.stato === 'senza_risposta') {
@@ -538,6 +593,14 @@ async function azioneProposta(id, azione, ok) {
   await esegui(() => api('/api/proposte/azione', { id, azione }), ok);
   carica();
 }
+function indicatoreInvii(inv) {
+  if (!inv || !inv.max) return null;
+  const pieno = inv.fatti >= inv.max;
+  const minuti = Math.ceil((inv.libero_tra_s || 0) / 60);
+  return el('span', { class: 'badge ' + (pieno ? 'stato-senza_risposta' : 'ok'),
+    title: 'Invio a scaglioni per non farsi bloccare da WhatsApp',
+    testo: pieno ? `⏸ ${inv.fatti}/${inv.max} invii in ${inv.minuti} min · prossimo tra ${minuti} min` : `Invii ${inv.fatti}/${inv.max} negli ultimi ${inv.minuti} min` });
+}
 function vistaOpportunita(d) {
   const da = d.proposte_aperte.filter((p) => p.stato === 'da_approvare');
   const inviate = d.proposte_aperte.filter((p) => p.stato === 'inviata').concat(d.proposte_recenti.filter((p) => p.stato === 'senza_risposta'));
@@ -549,9 +612,10 @@ function vistaOpportunita(d) {
     voci.length ? el('div', { class: 'pila-opp' }, voci.map(cartaProposta)) : el('div', { class: 'vuoto', testo: vuoto }));
   return [
     el('div', { class: 'titolo-sezione' }, el('h1', { testo: 'Opportunità' }),
-      el('p', { testo: `Il motore legge i dati da solo: contatta chi ha pagato almeno ${r.pagamenti_min} commissione e ha fatto almeno ${euro0(r.soglia_cents)} nel mese. Una proposta alla volta, almeno ${r.pausa_giorni} giorni tra un messaggio e l’altro, al massimo ${r.max_messaggi_30g} al mese, mai a chi ha detto STOP.` })),
+      el('p', { testo: `Il motore legge i dati da solo: un follow-up al mese a chi è cliente da almeno ${r.anzianita_min_giorni} giorni, ha pagato almeno ${r.pagamenti_min} commissione e ha fatto almeno ${euro0(r.soglia_cents)} nel mese. Mai dopo una perdita, mai a chi ha detto STOP o ha il follow-up spento. Invii a scaglioni: al massimo ${r.invii_per_lotto} ogni ${r.lotto_minuti} minuti.` })),
     el('div', { class: 'strumenti' },
       el('button', { class: 'btn primario', onclick: scansiona }, '⟳ Scansiona ora'),
+      indicatoreInvii(d.server.invii),
       ultima ? el('span', { class: 'suggerimento', testo: `Ultima scansione ${ora(new Date(d.server.ultima_scansione_ts * 1000).toISOString())}: ${ultima.create.length} nuove, ${Object.keys(ultima.esclusi).length} clienti esclusi (il perché è nella scheda di ognuno).` }) : null),
     el('div', { class: 'colonne-opp' },
       colonna('Da approvare', da, 'Niente da approvare: il motore riprova da solo quando cambiano i dati.', 'principale'),
@@ -577,7 +641,9 @@ function vistaServizi(d) {
         regola(`${r.pausa_giorni} giorni`, 'pausa minima tra due messaggi', 'GAS_CRM_PAUSA_GIORNI'),
         regola(String(r.max_messaggi_30g), 'messaggi al massimo in 30 giorni', 'GAS_CRM_MAX_MESSAGGI_30G'),
         regola(`${r.pausa_dopo_no_giorni} giorni`, 'prima di riproporre ciò a cui ha detto no', 'GAS_CRM_PAUSA_DOPO_NO_GIORNI'),
-        regola(`+${r.aumento_pct}%`, 'aumento di capitale suggerito', 'GAS_CRM_AUMENTO_PCT'))),
+        regola(`+${r.aumento_pct}%`, 'aumento di capitale suggerito', 'GAS_CRM_AUMENTO_PCT'),
+        regola(`${r.anzianita_min_giorni} giorni`, 'da cliente prima della prima proposta', 'GAS_CRM_ANZIANITA_GIORNI'),
+        regola(`${r.invii_per_lotto} / ${r.lotto_minuti} min`, 'invii a scaglioni (anti-blocco WhatsApp)', 'GAS_CRM_INVII_PER_LOTTO · GAS_CRM_LOTTO_MINUTI'))),
   ];
 }
 function regola(valore, testo, env) { return el('div', { class: 'regola' }, el('b', { class: 'num', testo: valore }), el('span', { testo }), el('div', {}, el('code', { testo: env }))); }
@@ -594,7 +660,9 @@ function cartaServizio(s) {
   const carta = el('section', { class: 'carta servizio' },
     el('span', { class: 'striscia', stile: { background: colore(s.slot) } }),
     el('div', { class: 'intestazione-carta' }, el('div', {}, el('h2', { testo: s.nome }), el('p', { class: 'sotto', testo: `${s.codice} · ${descriviCommissione(s)}` })),
-      el('span', { class: 'badge ' + (s.attivo ? 'ok' : ''), testo: s.attivo ? 'attivo' : 'spento' })),
+      el('div', { stile: { display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' } },
+        s.consigliato ? el('span', { class: 'badge tipo-cross_sell', testo: '★ da consigliare' }) : null,
+        el('span', { class: 'badge ' + (s.attivo ? 'ok' : ''), testo: s.attivo ? 'attivo' : 'spento' }))),
     s.descrizione ? el('p', { class: 'suggerimento', testo: s.descrizione }) : null,
     el('div', { class: 'metriche' },
       el('div', {}, el('span', { testo: 'Clienti' }), el('b', { testo: `${s.clienti_attivi} · ${pct(s.penetrazione_bp)}` })),
@@ -618,6 +686,7 @@ function moduloServizio(s) {
     priorita: el('input', { type: 'text', inputmode: 'numeric', value: String(v('priorita', 100)) }),
     descrizione: el('input', { type: 'text', value: v('descrizione', '') || '', placeholder: 'Una riga per te' }),
     attivo: el('input', { type: 'checkbox', checked: v('attivo', true) }),
+    consigliato: el('input', { type: 'checkbox', checked: v('consigliato', false) }),
   };
   campi.modello.value = v('modello_commissione', 'percentuale_profitto');
   const salva = async (ev) => {
@@ -626,6 +695,7 @@ function moduloServizio(s) {
       nome: campi.nome.value, modello_commissione: campi.modello.value, commissione_pct: campi.commissione.value,
       commissione_fissa: campi.fissa.value, capitale_minimo: campi.minimo.value, rendimento_stimato_pct: campi.rendimento.value,
       priorita: campi.priorita.value, descrizione: campi.descrizione.value, attivo: campi.attivo.checked,
+      consigliato: campi.consigliato.checked,
     };
     if (nuovo) corpo.codice = campi.codice.value; else corpo.id = s.id;
     const r = await esegui(() => api(nuovo ? '/api/servizi' : '/api/servizi/aggiorna', corpo), nuovo ? 'Servizio creato' : 'Servizio aggiornato');
@@ -638,7 +708,8 @@ function moduloServizio(s) {
     el('div', { class: 'riga' }, el('label', { class: 'campo' }, 'Commissione %', campi.commissione), el('label', { class: 'campo' }, 'Fisso € al mese', campi.fissa)),
     el('div', { class: 'riga' }, el('label', { class: 'campo' }, 'Capitale minimo €', campi.minimo), el('label', { class: 'campo' }, 'Rendimento stimato %/mese', campi.rendimento)),
     el('div', { class: 'riga' }, el('label', { class: 'campo' }, 'Priorità (più bassa = prima)', campi.priorita), el('label', { class: 'campo' }, 'Descrizione', campi.descrizione)),
-    el('label', { class: 'check' }, campi.attivo, 'Servizio attivo (il motore può proporlo)'),
+    el('label', { class: 'check' }, campi.attivo, 'Servizio attivo'),
+    el('label', { class: 'check' }, campi.consigliato, 'Da consigliare nei follow-up (se ne segni almeno uno, il motore propone solo quelli)'),
     el('button', { class: 'btn primario', type: 'submit', testo: nuovo ? 'Crea servizio' : 'Salva' }));
 }
 function cartaNuovoServizio() {
@@ -656,6 +727,7 @@ function cassetto(x) {
   const aggiorna = (campi, ok) => esegui(() => api('/api/clienti/aggiorna', Object.assign({ id: c.id }, campi)), ok).then(carica);
   const consenso = el('input', { type: 'checkbox', checked: !!c.consenso_marketing, onchange: (e) => aggiorna({ consenso_marketing: e.target.checked }, 'Consenso aggiornato') });
   const stop = el('input', { type: 'checkbox', checked: !!c.opt_out, onchange: (e) => aggiorna({ opt_out: e.target.checked }, 'Preferenza aggiornata') });
+  const followup = el('input', { type: 'checkbox', checked: c.followup_attivo !== 0, onchange: (e) => aggiorna({ followup_attivo: e.target.checked }, 'Follow-up aggiornato') });
   const statoSel = el('select', { onchange: (e) => aggiorna({ stato: e.target.value }, 'Stato aggiornato'), stile: { width: 'auto' } },
     ['attivo', 'in_pausa', 'perso'].map((s) => el('option', { value: s, testo: s.replace('_', ' ') })));
   statoSel.value = c.stato;
@@ -701,6 +773,7 @@ function cassetto(x) {
         el('div', { class: 'modulo' },
           el('label', { class: 'check' }, consenso, 'Ha dato il consenso a ricevere proposte su WhatsApp (serve per qualsiasi messaggio promozionale)'),
           el('label', { class: 'check' }, stop, 'Ha chiesto STOP: non contattarlo mai più'),
+          el('label', { class: 'check' }, followup, 'Follow-up mensile automatico (toglilo per escludere questo cliente dalle proposte del motore)'),
           el('label', { class: 'campo', stile: { maxWidth: '220px' } }, 'Stato del cliente', statoSel))),
       el('div', { class: 'blocco' }, el('h3', { testo: `Servizi (${x.posizioni.length})` }),
         el('div', { class: 'modulo' }, posizioni.length ? posizioni : el('div', { class: 'vuoto', testo: 'Non è ancora in nessun servizio.' }))),

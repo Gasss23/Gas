@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import sqlite3
 import threading
 import time
@@ -35,7 +36,9 @@ class Orologio:
 
 
 INIZIO = datetime(2026, 6, 20, 10, 0, tzinfo=timezone.utc)
-REGOLE = motore.Regole()  # default espliciti: indipendenti dalle variabili d'ambiente
+# Ritmo SETTIMANALE esplicito per i test di insistenza e di pausa (scritti col ritmo della
+# prima bozza); i default MENSILI decisi dall'operatore il 17-11 hanno i loro test sotto.
+REGOLE = motore.Regole(pausa_giorni=7, max_messaggi_30g=4)
 
 
 @pytest.fixture
@@ -257,7 +260,9 @@ def test_proposte_transizioni_e_doppioni(st: CRMStore) -> None:
     with pytest.raises(ErroreCRM, match="non ammesso"):
         st.transiziona_proposta(pid, "accettata")
     p = st.transiziona_proposta(pid, "inviata", messaggio="testo corretto")
-    assert p["messaggio"] == "testo corretto" and p["inviata_il"] and p["canale"] == "whatsapp"
+    # anche dallo store (non solo dal server) il testo corretto riceve la riga STOP (V-2 bot #381)
+    assert p["messaggio"].startswith("testo corretto") and p["messaggio"].endswith(messaggi.RIGA_STOP)
+    assert p["inviata_il"] and p["canale"] == "whatsapp"
     with pytest.raises(ErroreCRM, match="prima dell'invio"):
         st.transiziona_proposta(pid, "rifiutata", messaggio="no")
     st.transiziona_proposta(pid, "rifiutata")
@@ -486,7 +491,8 @@ def test_regole_da_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GAS_CRM_PAUSA_GIORNI", "zero")
     monkeypatch.setenv("GAS_CRM_MAX_MESSAGGI_30G", "999")
     r = motore.Regole.da_env()
-    assert r.soglia_cents == 250_000 and r.pausa_giorni == 7 and r.max_messaggi_30g == 4
+    # valori sbagliati → i default (mensili, decisione dell'operatore 2026-11-17)
+    assert r.soglia_cents == 250_000 and r.pausa_giorni == 30 and r.max_messaggi_30g == 1
 
 
 # ---------------------------------------------------------------------- messaggi
@@ -1157,3 +1163,324 @@ def test_r806_3_testo_lungo_errore_chiaro(st: CRMStore, avviato) -> None:
     codice, _, err = c.post("/api/proposte/azione",
                             {"id": pid, "azione": "invia", "messaggio": "x" * (TESTO_MAX - 20)})
     assert codice == 400 and "accorcialo" in err["errore"]
+
+
+# ---------------------------------------------------------------------- decisioni del 17-11 (2° giro)
+
+
+def test_default_mensili_e_follow_up_spegnibile(st: CRMStore, orologio: Orologio) -> None:
+    mensili = motore.Regole()  # i default decisi dall'operatore: un messaggio al mese
+    assert mensili.pausa_giorni == 30 and mensili.max_messaggi_30g == 1
+    srv = servizi_base(st)
+    cid, _ = cliente_contento(st, srv)
+    p1 = motore.scansiona(st, regole=mensili).create[0]
+    st.transiziona_proposta(p1, "inviata")
+    st.transiziona_proposta(p1, "accettata")
+    orologio.avanti(8)
+    esito = motore.scansiona(st, regole=mensili)
+    assert esito.create == [] and "pausa minima 30" in esito.esclusi[cid]
+    st.aggiorna_cliente(cid, followup_attivo=False)
+    orologio.avanti(25)
+    esito = motore.scansiona(st, regole=mensili)
+    assert esito.create == [] and "follow-up mensile spento" in esito.esclusi[cid]
+    # a mano (spunta dell'operatore) si può ancora, perché le regole dure sono rispettate
+    assert len(motore.prepara_selezionati(st, [cid], regole=mensili).create) == 1
+
+
+def test_mai_a_chi_e_appena_entrato_ne_dopo_una_perdita(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    nuovo = st.aggiungi_cliente("Nuovo", telefono="+390000000041", consenso_marketing=True)
+    pid = st.apri_posizione(nuovo, srv["oro"], data="2026-06-05", capitale_iniziale_cents=1_000_000)
+    st.registra_movimento(pid, "profitto", 150_000, data="2026-06-15")
+    st.registra_movimento(pid, "commissione", 30_000, data="2026-06-16")
+    in_perdita, pos = cliente_contento(st, srv, nome="Pina", telefono="+390000000042")
+    st.registra_movimento(pos, "perdita", 10_000, data="2026-06-10")
+    esito = motore.scansiona(st, regole=REGOLE)
+    assert "cliente da 15 giorni" in esito.esclusi[nuovo]
+    assert "in perdita" in esito.esclusi[in_perdita]
+    assert esito.create == []
+
+
+def test_servizi_da_consigliare_hanno_la_precedenza(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    st.aggiorna_servizio(srv["gestito"], consigliato=True)
+    cliente_contento(st, srv)
+    p = st.proposta(motore.scansiona(st, regole=REGOLE).create[0])
+    # senza il segno avrebbe proposto Segnali VIP (99 € fissi): ora solo il servizio consigliato
+    assert p is not None and p["servizio_id"] == srv["gestito"]
+
+
+def test_selezione_manuale_regole_dure_e_testo_neutro(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    a, _ = cliente_contento(st, srv)
+    senza_profitto = st.aggiungi_cliente("Ugo Neri", telefono="+390000000043", consenso_marketing=True)
+    st.apri_posizione(senza_profitto, srv["oro"], data="2026-06-01", capitale_iniziale_cents=500_000)
+    stop = st.aggiungi_cliente("Lia", telefono="+390000000044", consenso_marketing=True)
+    st.aggiorna_cliente(stop, opt_out=True)
+    senza_consenso = st.aggiungi_cliente("Teo", telefono="+390000000045")
+    esito = motore.prepara_selezionati(st, [a, senza_profitto, stop, senza_consenso, 999, a, True],
+                                       regole=REGOLE)
+    assert len(esito.create) == 2
+    assert "STOP" in esito.esclusi[stop] and "consenso" in esito.esclusi[senza_consenso]
+    assert esito.esclusi[999] == "cliente inesistente"
+    neutro = [st.proposta(x) for x in esito.create if st.proposta(x)["cliente_id"] == senza_profitto][0]  # type: ignore[index]
+    assert neutro is not None and "€" not in neutro["messaggio"]
+    assert messaggi.NOTA_RISCHIO_DEFAULT not in neutro["messaggio"]
+    assert neutro["messaggio"].endswith(messaggi.RIGA_STOP) and neutro["messaggio"].startswith("Ciao Ugo!")
+    # una proposta aperta alla volta anche a mano
+    assert motore.prepara_selezionati(st, [a], regole=REGOLE).esclusi[a] == "ha già una proposta aperta"
+
+
+def test_testo_neutro_inviato_com_e(st: CRMStore, monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-808-7: il testo neutro rimandato identico parte com'è (senza la nota sul rischio);
+    cambiato dall'operatore, riceve nota e riga STOP (V-1 bot #381)."""
+    monkeypatch.delenv("GAS_CRM_NOTA_RISCHIO", raising=False)
+    srv = servizi_base(st)
+    ids = []
+    for i in range(2):
+        c = st.aggiungi_cliente(f"Ugo{i} Neri", telefono=f"+39000000005{i}", consenso_marketing=True)
+        st.apri_posizione(c, srv["oro"], data="2026-06-01", capitale_iniziale_cents=500_000)
+        ids.append(c)
+    esito = motore.prepara_selezionati(st, ids, regole=REGOLE)
+    p1, p2 = esito.create
+    testo1 = st.proposta(p1)["messaggio"]  # type: ignore[index]
+    assert messaggi.NOTA_RISCHIO_DEFAULT not in testo1
+    inviata = st.transiziona_proposta(p1, "inviata", messaggio="  " + testo1 + "\n")
+    assert inviata["messaggio"] == testo1
+    cambiato = st.transiziona_proposta(p2, "inviata", messaggio="Ciao Ugo, ti chiamo domani")
+    assert cambiato["messaggio"] == ("Ciao Ugo, ti chiamo domani\n\n" + messaggi.NOTA_RISCHIO_DEFAULT
+                                     + "\n\n" + messaggi.RIGA_STOP)
+
+
+def test_identita_dopo_crash_a_meta_scrittura(tmp_path: Path) -> None:
+    """R-808-3: journal rimasto dopo un crash del CRM: il kernel legge lo stesso (SQLite
+    annulla la scrittura a metà), invece di mandare tutto al forte per sempre."""
+    import subprocess
+    import sys
+    from modules.crm.store import identita_clienti
+    db = tmp_path / ".gas_memory_crm.db"
+    CRMStore(db).aggiungi_cliente("Marco Bianchi", telefono="+393331234567")
+    codice = ("import sqlite3, os; con = sqlite3.connect(%r); con.execute('PRAGMA cache_size=1'); "
+              "con.execute('BEGIN IMMEDIATE'); "
+              "con.execute(\"UPDATE crm_clienti SET nome = 'X' || hex(randomblob(20000))\"); "
+              "con.execute(\"INSERT INTO crm_eventi (ts, tipo, descrizione, autore) SELECT ts, tipo, "
+              "descrizione || hex(randomblob(9000)), autore FROM crm_eventi\"); os._exit(0)") % str(db)
+    subprocess.run([sys.executable, "-c", codice], check=True)
+    assert (tmp_path / ".gas_memory_crm.db-journal").exists()
+    letti = identita_clienti(db)
+    assert letti is not None and [c["nome"] for c in letti] == ["Marco Bianchi"]
+
+
+def test_invio_a_scaglioni(st: CRMStore, orologio: Orologio) -> None:
+    srv = servizi_base(st)
+    ids = [cliente_contento(st, srv, nome=f"C{i}", telefono=f"+3900000001{i:02d}")[0] for i in range(3)]
+    proposte = motore.scansiona(st, regole=REGOLE).create
+    assert len(proposte) == 3
+    st.transiziona_proposta(proposte[0], "inviata", tetto_invii=(2, 60))
+    st.transiziona_proposta(proposte[1], "inviata", tetto_invii=(2, 60))
+    with pytest.raises(ErroreCRM, match="pausa anti-blocco"):
+        st.transiziona_proposta(proposte[2], "inviata", tetto_invii=(2, 60))
+    assert st.proposta(proposte[2])["stato"] == "da_approvare"  # type: ignore[index]
+    orologio.ora = orologio.ora + timedelta(minutes=61)
+    st.transiziona_proposta(proposte[2], "inviata", tetto_invii=(2, 60))
+    assert len(st.invii_recenti(60)) == 1 and len(ids) == 3
+
+
+def test_prelievo_controllato_alla_sua_data(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid = st.aggiungi_cliente("Anna", telefono="+390000000046")
+    pos = st.apri_posizione(cid, srv["oro"], data="2026-05-01", capitale_iniziale_cents=100_000)
+    st.registra_movimento(pos, "deposito", 50_000, data="2026-05-20")
+    with pytest.raises(ErroreCRM, match="capitale"):  # il 10 maggio c'erano solo 1.000 €
+        st.registra_movimento(pos, "prelievo", 150_000, data="2026-05-10")
+    st.registra_movimento(pos, "prelievo", 100_000, data="2026-05-10")
+    st.registra_movimento(pos, "prelievo", 50_000, data="2026-05-25")
+    assert analisi.metriche_cliente(dati(st), cid).capitale_cents == 0
+    with pytest.raises(ErroreCRM, match="futuro"):
+        st.apri_posizione(cid, srv["segnali"], data="2026-07-01")
+
+
+def test_migrazione_di_un_db_della_prima_bozza(tmp_path: Path) -> None:
+    db = tmp_path / ".gas_memory_crm.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE crm_clienti (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL, "
+                "telefono TEXT, email TEXT, stato TEXT NOT NULL DEFAULT 'attivo', "
+                "consenso_marketing INTEGER NOT NULL DEFAULT 0, consenso_il TEXT, "
+                "opt_out INTEGER NOT NULL DEFAULT 0, opt_out_il TEXT, presentato_da INTEGER, "
+                "contatto_id INTEGER, note TEXT, creato_il TEXT NOT NULL, aggiornato_il TEXT NOT NULL)")
+    con.execute("INSERT INTO crm_clienti (nome, creato_il, aggiornato_il) VALUES ('Vecchio', 'x', 'x')")
+    con.commit()
+    con.close()
+    s = CRMStore(db)
+    assert s.available and s.clienti()[0]["followup_attivo"] == 1
+    assert "consigliato" in {r[1] for r in sqlite3.connect(db).execute("PRAGMA table_info(crm_servizi)")}
+
+
+def test_identita_clienti_e_backup(st: CRMStore, tmp_path: Path) -> None:
+    from modules.crm.store import identita_clienti
+    st.aggiungi_cliente("Marco Bianchi", telefono="+393331234567", email="m@esempio.it")
+    ident = identita_clienti(st.db_path)
+    assert ident == [{"nome": "Marco Bianchi", "chiave": "m@esempio.it", "contatto": "+393331234567",
+                      "merged_into": "crm", "stato": "chiuso"}]
+    assert identita_clienti(tmp_path / "manca.db") == []
+    cartella = tmp_path / "cartella.db"
+    cartella.mkdir()
+    assert identita_clienti(cartella) is None
+    copie = tmp_path / "copie"
+    primo = st.backup(copie, keep=2)
+    assert primo is not None and CRMStore(primo).clienti()[0]["nome"] == "Marco Bianchi"
+    st._orologio = lambda: INIZIO + timedelta(seconds=1)  # type: ignore[assignment]
+    st.backup(copie, keep=2)
+    st._orologio = lambda: INIZIO + timedelta(seconds=2)  # type: ignore[assignment]
+    st.backup(copie, keep=2)
+    assert len(list(copie.glob("crm-*.db"))) == 2
+
+
+class _ClaudeFinto:
+    def __init__(self, risposta: str, costo: float = 0.01) -> None:
+        self.risposta, self.costo, self.visti = risposta, costo, []
+
+    def __call__(self, modello: str, messaggi_: List[Dict[str, str]]) -> Tuple[str, float]:
+        self.visti.append((modello, messaggi_))
+        return self.risposta, self.costo
+
+
+class _ClaudeCheFallisce:
+    def __call__(self, modello: str, messaggi_: List[Dict[str, str]]) -> Tuple[str, float]:
+        e = RuntimeError("tempo scaduto")
+        e.costo_equivalente_usd = 0.2  # type: ignore[attr-defined]
+        raise e
+
+
+def _uso_forte(cartella: Path) -> float:
+    return float(json.loads((cartella / ".gas_claude_cli_uso.json").read_text())["usd"])
+
+
+def test_scrittore_opus(st: CRMStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from modules.crm import scrittore
+    monkeypatch.setattr(scrittore, "_senza_conto", False)
+    srv = servizi_base(st)
+    cliente_contento(st, srv)
+    pid = motore.scansiona(st, regole=REGOLE).create[0]
+    conto = tmp_path / "conto"
+    conto.mkdir()
+    finto = _ClaudeFinto("«Ciao Mario, ottimo mese! Ti va di provare Segnali VIP? Ne parliamo?»")
+    p = scrittore.riscrivi(st, pid, chiedi=finto, root=conto)
+    assert p["messaggio"].startswith("Ciao Mario, ottimo mese!") and p["messaggio"].endswith(messaggi.RIGA_STOP)
+    modello, inviati = finto.visti[0]
+    tutto = json.dumps(inviati, ensure_ascii=False)
+    # minimizzazione: niente telefono, cognome, email
+    assert "0000000001" not in tutto and "Rossi" not in tutto and "@" not in tutto and "Mario" in tutto
+    assert st.conta_eventi_del_giorno("proposta", scrittore.NOTA_EVENTO) == 1
+    # R-808-2: il costo entra nel conto del cervello forte del kernel
+    assert _uso_forte(conto) == pytest.approx(0.01)
+    with pytest.raises(ErroreCRM, match="garantit"):
+        scrittore.riscrivi(st, pid, chiedi=_ClaudeFinto("Guadagno garantito, fidati!"), root=conto)
+    assert st.proposta(pid)["messaggio"] == p["messaggio"]  # type: ignore[index]
+    assert _uso_forte(conto) == pytest.approx(0.02)  # anche il testo scartato è consumo
+    with pytest.raises(ErroreCRM, match="non ha risposto"):
+        scrittore.riscrivi(st, pid, chiedi=_ClaudeCheFallisce(), root=conto)
+    assert _uso_forte(conto) == pytest.approx(0.22)  # e la chiamata fallita dopo il consumo
+    # R-808-2: il tetto conta i TENTATIVI (riuscito + scartato + fallito = 3)
+    assert st.conta_eventi_del_giorno(scrittore.TIPO_TENTATIVO, scrittore.NOTA_TENTATIVO) == 3
+    monkeypatch.setenv("GAS_CRM_OPUS_GIORNO", "3")
+    with pytest.raises(ErroreCRM, match="tetto di oggi"):
+        scrittore.riscrivi(st, pid, chiedi=finto, root=conto)
+    assert len(finto.visti) == 1  # Claude non è stato chiamato
+    monkeypatch.setenv("GAS_CRM_OPUS_GIORNO", "60")
+    # tetto del forte raggiunto o conto illeggibile: niente chiamata
+    monkeypatch.setenv("GAS_CLAUDE_CLI_TETTO_USD", "0.2")
+    with pytest.raises(ErroreCRM, match="tetto giornaliero del cervello forte"):
+        scrittore.riscrivi(st, pid, chiedi=finto, root=conto)
+    monkeypatch.delenv("GAS_CLAUDE_CLI_TETTO_USD")
+    (conto / ".gas_claude_cli_uso.json").write_text("rovinato")
+    with pytest.raises(ErroreCRM, match="illeggibile"):
+        scrittore.riscrivi(st, pid, chiedi=finto, root=conto)
+    assert len(finto.visti) == 1
+    # consumo non registrabile (cartella del conto inesistente): riscritture ferme
+    with pytest.raises(ErroreCRM, match="non ha risposto"):
+        scrittore.riscrivi(st, pid, chiedi=_ClaudeCheFallisce(), root=tmp_path / "manca")
+    assert scrittore._senza_conto is True
+    with pytest.raises(ErroreCRM, match="non si è potuto registrare"):
+        scrittore.riscrivi(st, pid, chiedi=finto, root=tmp_path / "manca")
+    monkeypatch.setattr(scrittore, "_senza_conto", False)
+    monkeypatch.delenv("GAS_CLAUDE_CLI", raising=False)
+    assert "spento" in (scrittore.disponibile() or "")
+    with pytest.raises(ErroreCRM, match="spento"):
+        scrittore.riscrivi(st, pid)  # senza Claude acceso: mai un altro modello
+    monkeypatch.setenv("GAS_CLAUDE_CLI", "1")
+    monkeypatch.setenv("GAS_CRM_MODELLO", "claude-sonnet-5-5")
+    assert "non è Opus" in (scrittore.disponibile() or "")
+
+
+def test_tetto_degli_eventi_atomico(st: CRMStore) -> None:
+    import threading
+    esiti: List[str] = []
+
+    def prova() -> None:
+        try:
+            st.segna_evento_entro_tetto("opus", "tentativo", 3, motivo="tetto di oggi")
+            esiti.append("ok")
+        except ErroreCRM:
+            esiti.append("no")
+
+    fili = [threading.Thread(target=prova) for _ in range(8)]
+    for f in fili:
+        f.start()
+    for f in fili:
+        f.join()
+    assert esiti.count("ok") == 3 and esiti.count("no") == 5
+    assert st.conta_eventi_del_giorno("opus", "tentativo") == 3
+
+
+def test_import_csv_doppio_bloccato(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from modules.crm import __main__ as cli
+    db = tmp_path / ".gas_memory_crm.db"
+    s = CRMStore(db)
+    srv = servizi_base(s)
+    cid = s.aggiungi_cliente("Anna", telefono="+390000000051")
+    s.apri_posizione(cid, srv["oro"], data="2026-01-01")
+    monkeypatch.setenv("GAS_CRM_DB", str(db))
+    f = tmp_path / "estratto.csv"
+    f.write_text("telefono;servizio;tipo;importo;data;nota\n"
+                 "+390000000051;oro;deposito;1.000;2026-01-02;\n", encoding="utf-8")
+    assert cli.main(["import", str(f)]) == 0
+    assert cli.main(["import", str(f)]) == 1  # stesso file due volte: fermato
+    assert len(s.movimenti(cid)) == 1
+    assert cli.main(["import", "--forza", str(f)]) == 0
+    assert len(s.movimenti(cid)) == 2
+
+
+def test_porta_dal_file_delle_chiavi(monkeypatch: pytest.MonkeyPatch) -> None:
+    from modules.crm import __main__ as cli
+    visto: Dict[str, int] = {}
+    monkeypatch.delenv("GAS_CRM_PORT", raising=False)
+    monkeypatch.setattr(cli, "_carica_chiavi", lambda: os.environ.__setitem__("GAS_CRM_PORT", "9123"))
+    monkeypatch.setattr(cli, "cmd_serve", lambda a: visto.setdefault("porta", a.porta) and 0)
+    cli.main(["serve"])
+    os.environ.pop("GAS_CRM_PORT", None)
+    assert visto["porta"] == 9123  # R-804-1: il .env si legge PRIMA del parser
+
+
+def test_server_selezione_scaglioni_e_difese_nuove(avviato, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GAS_CLAUDE_CLI", raising=False)
+    stato, c, _ = avviato
+    st = stato.store
+    srv = servizi_base(st)
+    a, _ = cliente_contento(st, srv)
+    c.post("/api/login", {"token": TOKEN})
+    codice, _, r = c.post("/api/proposte/selezionati", {"clienti": [a]})
+    assert codice == 200 and len(r["risultato"]["create"]) == 1
+    assert c.post("/api/proposte/selezionati", {"clienti": []})[0] == 400
+    stato_d = c.get("/api/stato")[2]["server"]
+    assert stato_d["invii"]["max"] == stato.regole.invii_per_lotto and "opus" in stato_d
+    assert c.get("/api/stato", intestazioni={"Host": ""})[0] == 403
+    assert c.post("/api/clienti", {"nome": "X", "consenso_marketing": "false"})[0] == 400
+    cid = c.post("/api/clienti", {"nome": "Y", "telefono": "+390000000052"})[2]["risultato"]["id"]
+    assert c.post("/api/posizioni", {"cliente_id": cid, "servizio_id": srv["oro"],
+                                     "capitale_iniziale": "1,234"})[0] == 400
+    assert st.posizioni(cid) == []  # importo sbagliato: nessuna posizione a metà
+    assert c.post("/api/clienti/aggiorna", {"id": cid, "followup_attivo": False})[0] == 200
+    assert st.cliente(cid)["followup_attivo"] == 0  # type: ignore[index]
+    codice, _, err = c.post("/api/proposte/riscrivi", {"id": r["risultato"]["create"][0]})
+    assert codice == 400 and "spento" in err["errore"]  # Claude spento: mai un altro modello

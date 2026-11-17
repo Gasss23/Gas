@@ -5,7 +5,8 @@ Comandi:
   scan [--demo]                  una scansione del motore delle opportunità
   riepilogo [--demo]             numeri principali in testo
   spiega ID [--demo]             perché il motore propone (o no) qualcosa a un cliente
-  demo                           crea il DB dimostrativo (.gas_crm_demo.db)
+  demo                           crea il DB dimostrativo (.gas_memory_crm_demo.db)
+  backup                         copia di sicurezza del DB in .gas_memory_crm_backup/
   servizio --codice C --nome N --modello M [--commissione 25] [--fissa 99] [--minimo 1000]
            [--rendimento 3] [--priorita 10]
   cliente --nome N [--telefono T] [--email E] [--consenso]
@@ -13,8 +14,10 @@ Comandi:
   movimento --cliente ID --servizio CODICE --tipo T --importo 1.234,56 [--data …] [--nota …]
   import FILE.csv                movimenti da CSV: telefono;servizio;tipo;importo;data;nota
 
-Il DB vero è `.gas_memory.db` nella cartella di Gas (stesso file della memoria, così il
-backup lo copre); `GAS_CRM_DB` lo cambia. `--demo` usa `.gas_crm_demo.db`.
+Il DB vero è `.gas_memory_crm.db` nella cartella di Gas: un file SOLO del CRM, separato
+dalla memoria (decisione dell'operatore 2026-11-17), col prefisso che il cancello rende
+illeggibile agli strumenti di Gas; `GAS_CRM_DB` lo cambia. `--demo` usa
+`.gas_memory_crm_demo.db`. Il server fa una copia di sicurezza all'avvio e una al giorno.
 """
 from __future__ import annotations
 
@@ -28,7 +31,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from modules.crm import analisi, motore
-from modules.crm.store import (CRMStore, ErroreCRM, default_db_path, formatta_euro,
+from modules.crm.store import (CRMStore, ErroreCRM, formatta_euro, percorso_db,
                                normalizza_telefono, parse_importo, parse_percentuale_bp)
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -55,13 +58,13 @@ def _db(demo: bool) -> Path:
     if demo:
         from modules.crm.demo import percorso_demo
         return percorso_demo(ROOT)
-    env = os.environ.get("GAS_CRM_DB", "").strip()
-    if env and not Path(env).name.startswith(".gas_memory"):
+    percorso = percorso_db(ROOT)
+    if not percorso.name.startswith(".gas_memory"):
         # R-803-10: i file .gas_memory* sono illeggibili dagli strumenti di Gas (cancello);
         # un nome diverso perde quella protezione e i dati dei clienti diventano leggibili
-        print(f"ATTENZIONE: GAS_CRM_DB={env} non si chiama .gas_memory*: gli strumenti di Gas "
-              "potrebbero leggerlo. Usa un nome che inizia con .gas_memory.", file=sys.stderr)
-    return Path(env) if env else default_db_path(ROOT)
+        print(f"ATTENZIONE: GAS_CRM_DB={percorso} non si chiama .gas_memory*: gli strumenti "
+              "di Gas potrebbero leggerlo. Usa un nome che inizia con .gas_memory.", file=sys.stderr)
+    return percorso
 
 
 def _store(demo: bool) -> CRMStore:
@@ -108,7 +111,7 @@ def cmd_serve(a: argparse.Namespace) -> int:
         avvisa = invia_notifica
     stato = server.Stato(st, token, demo=a.demo,
                          scan_minuti=_env_int("GAS_CRM_SCAN_MINUTI", 10, 1, 1440),
-                         avvisa=avvisa, memoria_db=None if a.demo else st.db_path)
+                         avvisa=avvisa, memoria_db=None if a.demo else ROOT / ".gas_memory.db")
 
     def pronto(url: str) -> None:
         print(f"CRM Gas {'(DEMO) ' if a.demo else ''}in ascolto su {url}")
@@ -165,6 +168,15 @@ def cmd_riepilogo(a: argparse.Namespace) -> int:
 
 def cmd_spiega(a: argparse.Namespace) -> int:
     print(motore.spiega(_store(a.demo), a.id))
+    return 0
+
+
+def cmd_backup(a: argparse.Namespace) -> int:
+    dest = _store(a.demo).backup()
+    if dest is None:
+        print("ERRORE: backup non riuscito (vedi gas_debug.log)")
+        return 1
+    print(f"Backup fatto: {dest}")
     return 0
 
 
@@ -245,6 +257,11 @@ def cmd_import(a: argparse.Namespace) -> int:
         print(f"Import FERMATO: file non leggibile ({type(e).__name__}).")
         return 1
     clienti_tel = {c["telefono"]: int(c["id"]) for c in st.clienti() if c["telefono"]}
+    # R-804-3: un estratto caricato due volte raddoppierebbe i movimenti in un registro che
+    # non si corregge. Righe IDENTICHE a movimenti già registrati (e non stornati) fermano
+    # l'import, salvo --forza.
+    gia = {(int(m["posizione_id"]), m["tipo"], int(m["importo_cents"]), m["data"])
+           for m in st.movimenti() if not m["stornato"] and m["storno_di"] is None}
     pronti: List[Tuple[int, str, int, Optional[str], Optional[str]]] = []
     errori: List[str] = []
     for n, r in enumerate(righe, start=2):
@@ -255,7 +272,14 @@ def cmd_import(a: argparse.Namespace) -> int:
             pid = _posizione(st, clienti_tel[tel], str(r.get("servizio") or ""))
             riga = (pid, str(r.get("tipo") or "").strip(), parse_importo(r.get("importo")),
                     (r.get("data") or "").strip() or None, (r.get("nota") or "").strip() or None)
-            st.valida_movimento(*riga[:4], fonte="import", nota=riga[4])
+            valori = st.valida_movimento(*riga[:4], fonte="import", nota=riga[4])
+            chiave = (valori[0], valori[1], valori[2], valori[3])
+            if not a.forza and chiave in gia:
+                raise ErroreCRM("movimento identico già registrato (stesso servizio, tipo, importo "
+                                "e data): file già importato? Usa --forza se è voluto")
+            if not a.forza and chiave in {(p[0], p[1], p[2], p[3] or st.oggi().isoformat())
+                                          for p in pronti}:
+                raise ErroreCRM("riga ripetuta nel file (usa --forza se è voluto)")
             pronti.append(riga)
         except ErroreCRM as e:
             errori.append(f"riga {n}: {e}")
@@ -286,6 +310,7 @@ def parser() -> argparse.ArgumentParser:
     sp = nuovo("spiega", cmd_spiega, "spiega le scelte del motore su un cliente")
     sp.add_argument("id", type=int)
     sub.add_parser("demo", help="crea il DB dimostrativo").set_defaults(fn=cmd_demo)
+    nuovo("backup", cmd_backup, "copia di sicurezza del DB")
     sp = nuovo("servizio", cmd_servizio, "aggiungi un servizio")
     sp.add_argument("--codice", required=True)
     sp.add_argument("--nome", required=True)
@@ -321,6 +346,8 @@ def parser() -> argparse.ArgumentParser:
     sp.add_argument("--data", required=True)
     sp = nuovo("import", cmd_import, "importa movimenti da CSV")
     sp.add_argument("file")
+    sp.add_argument("--forza", action="store_true",
+                    help="importa anche le righe identiche a movimenti già registrati")
     return p
 
 
@@ -338,8 +365,8 @@ def _carica_chiavi() -> None:
 def main(argv: Optional[List[str]] = None) -> int:
     logging.basicConfig(filename=str(ROOT / "gas_debug.log"), level=logging.WARNING,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    _carica_chiavi()  # R-804-1: PRIMA del parser, che legge GAS_CRM_PORT per il default
     a = parser().parse_args(argv)
-    _carica_chiavi()
     if a.comando == "demo":
         a.demo = True
     try:

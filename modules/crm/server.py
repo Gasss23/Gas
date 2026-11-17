@@ -32,15 +32,15 @@ import secrets
 import sqlite3
 import threading
 import time
-from datetime import date
+from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlsplit
 
-from modules.crm import analisi, motore
-from modules.crm.messaggi import completa_testo, link_whatsapp
-from modules.crm.store import (TESTO_MAX, CRMStore, ErroreCRM, normalizza_telefono,
+from modules.crm import analisi, motore, scrittore
+from modules.crm.messaggi import link_whatsapp
+from modules.crm.store import (CRMStore, ErroreCRM, normalizza_telefono,
                                parse_importo, parse_percentuale_bp, valida_data)
 
 log = logging.getLogger(__name__)
@@ -65,6 +65,7 @@ FALLITI_FINESTRA_S = 600.0
 BLOCCO_S = 900.0
 MAX_STREAM = 16
 AVVISO_MIN_S = 3600.0
+BACKUP_OGNI_S = 24 * 3600.0
 
 Invia = Callable[[str], Tuple[bool, str]]
 
@@ -115,6 +116,7 @@ class Stato:
         self.scan_richiesta = threading.Event()
         self.ultimo_avviso = 0.0
         self.scan_lock = threading.Lock()
+        self.ultimo_backup = 0.0  # monotonic: il guardiano fa una copia all'avvio e ogni giorno
         # R-803-1: UN SOLO MemoryStore per processo. Aprirne uno rifà l'indice di ricerca
         # del diario e lo salva (una scrittura): farlo a ogni lettura della dashboard
         # innescava un ciclo «scrittura → cambio → rilettura → scrittura».
@@ -289,6 +291,10 @@ def _guardiano(stato: Stato) -> None:
                 pass
             con = None
         adesso = time.monotonic()
+        if not stato.demo and (stato.ultimo_backup == 0.0 or adesso - stato.ultimo_backup >= BACKUP_OGNI_S):
+            stato.ultimo_backup = adesso
+            if stato.store.backup() is None:
+                log.warning("CRM: copia di sicurezza automatica non riuscita")
         dovuta = (adesso >= prossima_scan or stato.scan_richiesta.is_set()
                   or (scan_dopo_cambio is not None and adesso >= scan_dopo_cambio))
         if dovuta:
@@ -355,7 +361,7 @@ class CRMHandler(BaseHTTPRequestHandler):
     def _host_ammesso(self) -> bool:
         host = (self.headers.get("Host") or "").strip().lower()
         if not host:
-            return True
+            return False  # V-3 bot #381 (2° giro): niente eccezioni alla difesa dal DNS rebinding
         if host.startswith("["):
             nome = host[1:host.find("]")] if "]" in host else host
         elif host.count(":") == 1:
@@ -491,11 +497,26 @@ class CRMHandler(BaseHTTPRequestHandler):
             "regole": {"soglia_cents": r.soglia_cents, "pausa_giorni": r.pausa_giorni,
                        "max_messaggi_30g": r.max_messaggi_30g,
                        "pausa_dopo_no_giorni": r.pausa_dopo_no_giorni,
-                       "pagamenti_min": r.pagamenti_min, "aumento_pct": r.aumento_pct},
+                       "pagamenti_min": r.pagamenti_min, "aumento_pct": r.aumento_pct,
+                       "anzianita_min_giorni": r.anzianita_min_giorni,
+                       "invii_per_lotto": r.invii_per_lotto, "lotto_minuti": r.lotto_minuti},
+            "invii": self._invii(),
+            "opus": {"motivo": scrittore.disponibile(), "modello": scrittore.modello()},
         }
         corpo["lead_pronti"] = self.stato.lead_pronti()
         corpo["eventi"] = self.stato.store.eventi(n=40)
         return self._json(200, corpo)
+
+    def _invii(self) -> Dict[str, Any]:
+        """Scaglioni anti-blocco: invii fatti nella finestra e tra quanto se ne libera uno."""
+        r = self.stato.regole
+        recenti = self.stato.store.invii_recenti(r.lotto_minuti)
+        libero_tra = 0
+        if len(recenti) >= r.invii_per_lotto:
+            libero = recenti[-r.invii_per_lotto] + timedelta(minutes=r.lotto_minuti)
+            libero_tra = max(0, int((libero - self.stato.store._orologio()).total_seconds()))
+        return {"fatti": len(recenti), "max": r.invii_per_lotto, "minuti": r.lotto_minuti,
+                "libero_tra_s": libero_tra}
 
     def _dettaglio_cliente(self, cid: int) -> None:
         store = self.stato.store
@@ -642,6 +663,9 @@ class CRMHandler(BaseHTTPRequestHandler):
             "/api/movimenti": self._nuovo_movimento,
             "/api/movimenti/storno": self._storno,
             "/api/proposte/azione": self._azione_proposta,
+            "/api/proposte/selezionati": self._prepara_selezionati,
+            "/api/proposte/riscrivi": lambda d: {"messaggio": scrittore.riscrivi(
+                self.stato.store, _id(d, "id"))["messaggio"]},
             "/api/note": self._nota,
             "/api/scansiona": lambda _d: self.stato.scansiona(),
             "/api/lead/converti": lambda d: {"id": self.stato.converti_lead(_id(d, "contatto_id"))},
@@ -662,14 +686,15 @@ class CRMHandler(BaseHTTPRequestHandler):
     def _nuovo_cliente(self, d: Dict[str, Any]) -> Dict[str, Any]:
         cid = self.stato.store.aggiungi_cliente(
             nome=str(d.get("nome") or ""), telefono=d.get("telefono") or None, email=d.get("email") or None,
-            consenso_marketing=bool(d.get("consenso_marketing")),
+            # V-2 bot #381 (2° giro): il valore grezzo, controllato dallo store («false» non è sì)
+            consenso_marketing=d.get("consenso_marketing", False),
             presentato_da=_id_opz(d, "presentato_da"), note=d.get("note") or None,
         )
         return {"id": cid}
 
     def _aggiorna_cliente(self, d: Dict[str, Any]) -> None:
         campi = {k: d[k] for k in ("nome", "telefono", "email", "stato", "consenso_marketing",
-                                   "opt_out", "note", "presentato_da") if k in d}
+                                   "opt_out", "note", "presentato_da", "followup_attivo") if k in d}
         if "presentato_da" in campi:
             campi["presentato_da"] = _id_opz(d, "presentato_da")
         self.stato.store.aggiorna_cliente(_id(d, "id"), **campi)
@@ -693,8 +718,9 @@ class CRMHandler(BaseHTTPRequestHandler):
                 campi["priorita"] = int(d["priorita"])
             except (TypeError, ValueError):
                 raise ErroreCRM("priorità: serve un numero intero") from None
-        if "attivo" in d:
-            campi["attivo"] = bool(d["attivo"])
+        for k in ("attivo", "consigliato"):
+            if k in d:
+                campi[k] = d[k]  # valore grezzo: lo controlla lo store (_bool01)
         return campi
 
     def _nuovo_servizio(self, d: Dict[str, Any]) -> Dict[str, Any]:
@@ -714,13 +740,13 @@ class CRMHandler(BaseHTTPRequestHandler):
         self.stato.store.aggiorna_servizio(_id(d, "id"), **self._campi_servizio(d))
 
     def _nuova_posizione(self, d: Dict[str, Any]) -> Dict[str, Any]:
-        st = self.stato.store
-        pid = st.apri_posizione(_id(d, "cliente_id"), _id(d, "servizio_id"),
-                                data=d.get("data") or None)
+        # V-3 bot #381 (2° giro): importo controllato PRIMA e posizione + deposito in una
+        # sola transazione: un capitale scritto male non lascia una posizione a metà
         capitale = d.get("capitale_iniziale")
-        if capitale not in (None, "", 0, "0"):
-            st.registra_movimento(pid, "deposito", parse_importo(capitale),
-                                  data=d.get("data") or None, nota="capitale iniziale")
+        cents = None if capitale in (None, "", 0, "0") else parse_importo(capitale)
+        pid = self.stato.store.apri_posizione(_id(d, "cliente_id"), _id(d, "servizio_id"),
+                                              data=d.get("data") or None,
+                                              capitale_iniziale_cents=cents)
         return {"id": pid}
 
     def _stato_posizione(self, d: Dict[str, Any]) -> None:
@@ -753,14 +779,13 @@ class CRMHandler(BaseHTTPRequestHandler):
             if motore.motivo_non_contattabile(cliente):
                 raise ErroreCRM(f"non si può inviare: {motore.motivo_non_contattabile(cliente)}")
             testo = d.get("messaggio") or None
-            if testo is not None:
-                if not isinstance(testo, str):
-                    raise ErroreCRM("messaggio: deve essere testo")
-                testo = completa_testo(testo)  # V-1 bot #381: STOP e nota sempre in fondo
-                if len(testo) > TESTO_MAX:  # R-806-3: l'aggiunta non deve dare un errore oscuro
-                    raise ErroreCRM(f"messaggio troppo lungo: con la nota e la riga STOP supera "
-                                    f"{TESTO_MAX} caratteri, accorcialo di {len(testo) - TESTO_MAX}")
-            nuova = st.transiziona_proposta(pid, "inviata", messaggio=testo, canale="whatsapp")
+            if testo is not None and not isinstance(testo, str):
+                raise ErroreCRM("messaggio: deve essere testo")
+            # nota, riga STOP, lunghezza e tetto degli invii li controlla lo store, dentro la
+            # transazione dell'invio (V-2 bot #381; scaglioni anti-blocco di WhatsApp)
+            r = self.stato.regole
+            nuova = st.transiziona_proposta(pid, "inviata", messaggio=testo, canale="whatsapp",
+                                            tetto_invii=(r.invii_per_lotto, r.lotto_minuti))
             return {"link_whatsapp": link_whatsapp(cliente.get("telefono"), nuova["messaggio"])}
         if azione == "scarta":
             st.transiziona_proposta(pid, "scartata")
@@ -775,6 +800,18 @@ class CRMHandler(BaseHTTPRequestHandler):
         else:
             raise ErroreCRM("azione non valida")
         return {}
+
+    def _prepara_selezionati(self, d: Dict[str, Any]) -> Dict[str, Any]:
+        ids = d.get("clienti")
+        if not isinstance(ids, list) or not ids:
+            raise ErroreCRM("nessun cliente selezionato")
+        if len(ids) > motore.SELEZIONE_MAX:
+            raise ErroreCRM(f"al massimo {motore.SELEZIONE_MAX} clienti per volta")
+        esito = motore.prepara_selezionati(self.stato.store, [_id({"x": v}, "x") for v in ids],
+                                           regole=self.stato.regole)
+        if esito.errore:
+            raise ErroreCRM(esito.errore)
+        return esito.come_dict()
 
     def _nota(self, d: Dict[str, Any]) -> None:
         self.stato.store.annota(_id(d, "cliente_id"), str(d.get("testo") or ""))

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import ast
 import difflib
+import functools
 import hashlib
 import math as _math_module
 import os
@@ -202,6 +203,74 @@ def _identificativi_contatti(contatti: List[Dict[str, Any]]) -> List[str]:
     return sorted(out)
 
 
+def _trie_regex(parole: List[str]) -> str:
+    """Le parole come UNA alternanza a trie (prefissi in comune messi a fattore): la regex
+    trova «una qualunque delle parole» esattamente come N ricerche separate (il
+    backtracking prova tutti i rami), ma con un passaggio solo sul testo (R-808-1: con
+    migliaia di clienti del CRM le ricerche separate costavano secondi a ogni turno).
+    Ricorsione solo nei punti in cui il trie si dirama. PURA."""
+    radice: Dict[str, Any] = {}
+    for parola in parole:
+        nodo = radice
+        for ch in parola:
+            nodo = nodo.setdefault(ch, {})
+        nodo[""] = {}  # fine di una parola
+
+    def emetti(nodo: Dict[str, Any]) -> str:
+        rami = []
+        for ch in sorted(k for k in nodo if k):
+            pezzi, sotto = [re.escape(ch)], nodo[ch]
+            while len(sotto) == 1 and "" not in sotto:  # catena senza diramazioni
+                (c2, sotto), = sotto.items()
+                pezzi.append(re.escape(c2))
+            rami.append("".join(pezzi) + emetti(sotto))
+        if not rami:
+            return ""
+        if "" not in nodo and len(rami) == 1:
+            return rami[0]
+        corpo = "(?:" + "|".join(rami) + ")"
+        return corpo + "?" if "" in nodo else corpo
+
+    return emetti(radice)
+
+
+_Confrontatore = Tuple[Optional["re.Pattern[str]"], Optional["re.Pattern[str]"],
+                       Optional["re.Pattern[str]"], frozenset, Tuple[str, ...]]
+_TEL_SOTTOSTRINGHE_MAX = 32  # telefoni più lunghi: confronto «d in tel» uno per uno
+
+
+@functools.lru_cache(maxsize=4)
+def _confrontatore(identificativi: Tuple[str, ...]) -> Optional[_Confrontatore]:
+    """Regex compilate UNA volta per elenco di identificativi (R-808-1): parole intere,
+    «contenuto in» dentro gli indirizzi, e le cifre dei telefoni. Tenute in cache: l'elenco
+    si ricostruisce a ogni turno ma resta uguale finché i contatti non cambiano. None se
+    la compilazione fallisce (elenco patologico): il chiamante ripiega sulle ricerche una
+    per una, più lente ma con lo stesso esito (§9, mai crash)."""
+    telefoni = [i[len(_PREFISSO_TEL):] for i in identificativi if i.startswith(_PREFISSO_TEL)]
+    parole = [i for i in identificativi if not i.startswith(_PREFISSO_TEL)]
+    in_indirizzo = [i for i in parole if len(i) >= _IDENT_IN_INDIRIZZO_MIN and " " not in i]
+    # «d in tel» (una sequenza del testo dentro un telefono noto): tutte le sottostringhe
+    # da TELEFONO_MIN_CIFRE cifre dei telefoni, in un insieme (le sequenze ne hanno almeno
+    # tante); i telefoni anomali più lunghi restano un confronto uno per uno.
+    sottostringhe = frozenset(
+        tel[a:b] for tel in telefoni if len(tel) <= _TEL_SOTTOSTRINGHE_MAX
+        for a in range(len(tel)) for b in range(a + TELEFONO_MIN_CIFRE, len(tel) + 1))
+    tel_lunghi = tuple(tel for tel in telefoni if len(tel) > _TEL_SOTTOSTRINGHE_MAX)
+    try:
+        parola_re = (re.compile(r"(?<![^\W\d_])(?:" + _trie_regex(parole) + r")(?![^\W\d_])")
+                     if parole else None)
+        # gli indirizzi (e sotto le sequenze di cifre) si uniscono con uno spazio: questi
+        # identificativi non hanno spazi, quindi nessuna corrispondenza scavalca due pezzi
+        # (stesso esito di «i in tok» e di «tel in d»)
+        indirizzo_re = re.compile(_trie_regex(in_indirizzo)) if in_indirizzo else None
+        tel_re = re.compile(_trie_regex(telefoni)) if telefoni else None
+    except (re.error, RecursionError, OverflowError, MemoryError) as e:
+        logging.warning(f"filtro dei contatti: regex unica non compilabile ({type(e).__name__}), "
+                        "ripiego sulle ricerche una per una")
+        return None
+    return parola_re, indirizzo_re, tel_re, sottostringhe, tel_lunghi
+
+
 def _contiene_identificativo(testo: Any, identificativi: List[str]) -> bool:
     """True se il testo contiene uno degli identificativi. Confronto sul testo normalizzato
     (_normalizza_confronto), a parola intera: niente lettere subito prima o dopo (cifre,
@@ -212,13 +281,39 @@ def _contiene_identificativo(testo: Any, identificativi: List[str]) -> bool:
     che è anche una parola («quanto costa») combacia, e senza accenti «sarà» con «Sara»;
     i telefoni sulle sole cifre di ogni sequenza numerica del testo (da TELEFONO_MIN_CIFRE
     cifre: l'una contenuta nell'altra, così «+39 333 1234567» e «3331234567» combaciano).
-    PURA."""
+    Una sola regex compilata e in cache per elenco (R-808-1), stesso esito delle ricerche
+    una per una (_contiene_identificativo_uno_per_uno). PURA."""
     t = _normalizza_confronto(testo)
-    if not t:
+    if not t or not identificativi:
         return False
+    conf = _confrontatore(tuple(identificativi))
+    if conf is None:
+        return _contiene_identificativo_uno_per_uno(t, identificativi)
+    parola_re, indirizzo_re, tel_re, tel_sottostringhe, tel_lunghi = conf
+    if parola_re is not None and parola_re.search(t):
+        return True
+    if indirizzo_re is not None:
+        # R1 #789: dentro email, domini e nomi di file («gbianchi@x.it», «www.acmesrl.it»)
+        # le parole sono attaccate: lì si cerca «contenuto in» (verso sicuro: va al forte).
+        indirizzi = [tok for tok in t.split() if "@" in tok or "." in tok.strip(".,;:!?")]
+        if indirizzi and indirizzo_re.search(" ".join(indirizzi)):
+            return True
+    if tel_re is not None:
+        sequenze = [d for d in (re.sub(r"\D", "", s) for s in
+                                re.findall(r"\d[\d \t().\-/]*\d", t))
+                    if len(d) >= TELEFONO_MIN_CIFRE]
+        if sequenze and (tel_re.search(" ".join(sequenze))           # tel in d
+                         or any(d in tel_sottostringhe for d in sequenze)  # d in tel
+                         or any(d in tel for d in sequenze for tel in tel_lunghi)):
+            return True
+    return False
+
+
+def _contiene_identificativo_uno_per_uno(t: str, identificativi: List[str]) -> bool:
+    """Le stesse regole di _contiene_identificativo, una ricerca per identificativo sul
+    testo GIÀ normalizzato `t`: ripiego se la regex unica non si compila, e riferimento
+    dei test di equivalenza (R-808-1). Lenta con migliaia di identificativi. PURA."""
     sequenze: Optional[List[str]] = None
-    # R1 #789: dentro email, domini e nomi di file («gbianchi@x.it», «www.acmesrl.it»)
-    # le parole sono attaccate: lì si cerca «contenuto in» (verso sicuro: va al forte).
     indirizzi = [tok for tok in t.split() if "@" in tok or "." in tok.strip(".,;:!?")]
     for i in identificativi:
         if i.startswith(_PREFISSO_TEL):
@@ -479,6 +574,7 @@ OPENROUTER_FREE_MODEL = MODEL_OPENROUTER                        # tool-capable
 OLLAMA_MODEL = MODEL_OLLAMA                                      # tool-capable
 TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"                          # contabilità token per-chiamata
 CLAUDE_CLI_USO_FILENAME = ".gas_claude_cli_uso.json"              # uso del cervello forte, oggi
+_RADICE_REPO = Path(__file__).resolve().parent  # cartella del repo: lì il CRM tiene i suoi file (R-808-4)
 
 # Prezzi per milione di token (USD), approssimati — aggiornare se cambiano.
 # Fonte: pagine prezzi ufficiali (rilevate al 2025-06).
@@ -1301,6 +1397,70 @@ def _leggi_uso_claude_cli(root: Path) -> Optional[float]:
         return None
 
 
+def _tetto_claude_cli_usd() -> float:
+    """Tetto giornaliero del cervello forte in USD equivalenti (GAS_CLAUDE_CLI_TETTO_USD,
+    default 4.60)."""
+    return _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
+
+
+def tetto_claude_cli_superato(root: Path) -> Optional[Tuple[Optional[float], float]]:
+    """(usato, tetto) se il tetto giornaliero del cervello forte è raggiunto o il conto di
+    `root` è illeggibile (usato=None), altrimenti None. Funzione di modulo: la usano il
+    kernel e chi altro chiama il forte nello stesso conto (R-808-2: le riscritture del
+    CRM con Opus)."""
+    tetto = _tetto_claude_cli_usd()
+    usato = _leggi_uso_claude_cli(root)
+    if usato is None or usato >= tetto:
+        return (usato, tetto)
+    return None
+
+
+def registra_uso_claude_cli(root: Path, usd: Any, attesa_lucchetto: float = 5.0) -> bool:
+    """Aggiunge l'uso di una chiamata al conto di oggi del cervello forte in `root`
+    (scrittura atomica). File illeggibile → non si tocca (resta il fermo). Lettura, somma e
+    scrittura avvengono sotto un lucchetto su file (R-496-2: il bot e il giro di notte in
+    parallelo non perdono più un aggiornamento; dove `fcntl` manca si procede senza),
+    atteso al massimo `attesa_lucchetto` secondi (R-502-1). Ritorna False se il consumo
+    NON è stato registrato (lucchetto occupato, disco): chi chiama ferma il forte
+    (R-502-2: mai consumare senza conto); True se registrato o se il conto era già
+    illeggibile (il forte è già fermo da sé). Funzione di modulo: la usano il kernel e il
+    CRM (R-808-2). Mai eccezioni (§9)."""
+    registrato = fermo_gia = False
+    try:
+        try:
+            usd_f = float(usd)
+        except (TypeError, ValueError):
+            usd_f = 0.0
+        if not _math_module.isfinite(usd_f) or usd_f < 0:  # V-4 ve #258: niente Infinity
+            logging.warning("_registra_uso_claude_cli: costo non valido (%r) — ignorato", usd)
+            usd_f = 0.0
+        p = root / CLAUDE_CLI_USO_FILENAME
+        with open(p.with_name(p.name + ".lock"), "a", encoding="utf-8") as lucchetto:
+            if fcntl is not None:
+                scadenza = _time.monotonic() + attesa_lucchetto
+                while True:
+                    try:
+                        fcntl.flock(lucchetto.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except BlockingIOError:
+                        if _time.monotonic() >= scadenza:
+                            raise TimeoutError(f"lucchetto del conto occupato da oltre "
+                                               f"{attesa_lucchetto}s")
+                        _time.sleep(0.05)
+            gia = _leggi_uso_claude_cli(root)
+            if gia is None:
+                fermo_gia = True  # già fermo: tetto_claude_cli_superato lo vede da sé
+                return True
+            tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+            tmp.write_text(json.dumps({"giorno": datetime.now().date().isoformat(),
+                                       "usd": round(gia + usd_f, 6)}), encoding="utf-8")
+            os.replace(tmp, p)
+            registrato = True
+    except Exception as e:
+        logging.warning("_registra_uso_claude_cli: scrittura fallita (%s) — forte fermo", e)
+    return registrato or fermo_gia
+
+
 def _percorso_vettori(root: Path) -> Path:
     """Archivio dei vettori: GAS_VECTORS_DB se impostata, altrimenti <root>/.gas_vectors.db.
     R7 (roadmap): unica fonte del percorso, così reindex/vettori/doctor e il kernel
@@ -1965,49 +2125,12 @@ class GasKernel:
         return _leggi_uso_claude_cli(self.root)
 
     def _registra_uso_claude_cli(self, usd: Any) -> None:
-        """Aggiunge l'uso di una chiamata al conto di oggi (scrittura atomica). File
-        illeggibile → non si tocca (resta il fermo). Lettura, somma e scrittura avvengono
-        sotto un lucchetto su file (R-496-2: il bot e il giro di notte in parallelo non
-        perdono più un aggiornamento; dove `fcntl` manca si procede senza), atteso al
-        massimo LOCK_STORIA_SEC (R-502-1). Se il consumo NON si riesce a registrare
-        (lucchetto occupato, disco, file illeggibile) il forte si ferma per questo
-        processo (R-502-2: mai consumare senza conto). Mai eccezioni (§9)."""
-        registrato = fermo_gia = False
-        try:
-            try:
-                usd_f = float(usd)
-            except (TypeError, ValueError):
-                usd_f = 0.0
-            if not _math_module.isfinite(usd_f) or usd_f < 0:  # V-4 ve #258: niente Infinity
-                logging.warning("_registra_uso_claude_cli: costo non valido (%r) — ignorato", usd)
-                usd_f = 0.0
-            p = self.root / CLAUDE_CLI_USO_FILENAME
-            with open(p.with_name(p.name + ".lock"), "a", encoding="utf-8") as lucchetto:
-                if fcntl is not None:
-                    scadenza = _time.monotonic() + self.LOCK_STORIA_SEC
-                    while True:
-                        try:
-                            fcntl.flock(lucchetto.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                            break
-                        except BlockingIOError:
-                            if _time.monotonic() >= scadenza:
-                                raise TimeoutError(f"lucchetto del conto occupato da oltre "
-                                                   f"{self.LOCK_STORIA_SEC}s")
-                            _time.sleep(0.05)
-                gia = self._uso_claude_cli()
-                if gia is None:
-                    fermo_gia = True  # già fermo: _tetto_claude_cli_superato lo vede da sé
-                    return
-                tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
-                tmp.write_text(json.dumps({"giorno": datetime.now().date().isoformat(),
-                                           "usd": round(gia + usd_f, 6)}), encoding="utf-8")
-                os.replace(tmp, p)
-                registrato = True
-        except Exception as e:
-            logging.warning("_registra_uso_claude_cli: scrittura fallita (%s) — forte fermo", e)
-        finally:
-            if not registrato and not fermo_gia:
-                self._forte_senza_conto = True
+        """Aggiunge l'uso di una chiamata al conto di oggi (vedi `registra_uso_claude_cli`).
+        Se il consumo NON si riesce a registrare (lucchetto occupato, disco, file
+        illeggibile) il forte si ferma per questo processo (R-502-2: mai consumare senza
+        conto). Mai eccezioni (§9)."""
+        if not registra_uso_claude_cli(self.root, usd, self.LOCK_STORIA_SEC):
+            self._forte_senza_conto = True
 
     def _tetto_claude_cli_superato(self) -> Optional[Tuple[Optional[float], float]]:
         """(usato, tetto) se il tetto giornaliero del cervello forte è raggiunto (o il
@@ -2018,13 +2141,9 @@ class GasKernel:
         Limite dichiarato (V-1 bot #262): il controllo avviene PRIMA della chiamata e fuori
         dal lucchetto (che copre solo la registrazione dopo): due processi in parallelo
         possono passare insieme e sforare il tetto di al massimo una chiamata ciascuno."""
-        tetto = _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
         if getattr(self, "_forte_senza_conto", False):  # R-502-2: un consumo non registrato
-            return (None, tetto)
-        usato = self._uso_claude_cli()
-        if usato is None or usato >= tetto:
-            return (usato, tetto)
-        return None
+            return (None, _tetto_claude_cli_usd())
+        return tetto_claude_cli_superato(self.root)
 
     def _add_to_history(self, role: str, content: Optional[str] = None, tool_calls: Optional[List[Any]] = None, tool_call_id: Optional[str] = None, name: Optional[str] = None):
         """Costruisce un dizionario puro, evitando oggetti complessi."""
@@ -4034,8 +4153,43 @@ class GasKernel:
         return self._memoria_pin_varianti()[0]
 
     def _contatti_per_filtro(self) -> Optional[List[Dict[str, Any]]]:
-        """Contatti VIVI e LAPIDI (lead fusi), per riconoscere i dati dei clienti da non
-        dare ai cervelli non forti. None = lettura fallita: chi chiama chiude (fail-closed).
+        """Contatti della rubrica (vivi e lapidi) PIÙ i clienti del CRM, per riconoscere i
+        dati dei clienti da non dare ai cervelli non forti. None = lettura fallita (dell'una
+        o dell'altra fonte): chi chiama chiude (fail-closed, tutto al forte).
+        R-803-4 (operatore 2026-11-17: «massima riservatezza, mai ai modelli gratuiti»): i
+        clienti del CRM (`.gas_memory_crm.db`) arrivano con `merged_into="crm"`, quindi
+        come le lapidi servono SOLO agli identificativi e non entrano mai nell'elenco dei
+        lead del blocco di memoria. File del CRM assente → nessun cliente. Mai solleva."""
+        letti = self._contatti_lead_per_filtro()
+        if letti is None:
+            return None
+        clienti: Optional[List[Dict[str, Any]]] = []
+        try:
+            from modules.crm.store import identita_clienti, percorso_db
+            # R-808-4: la riga di comando del CRM tiene il file nella cartella del repo,
+            # il kernel nella sua radice (per il terminale interattivo è la cartella da cui
+            # lo si lancia): si leggono TUTTE E DUE, così un kernel avviato altrove non
+            # perde la protezione in silenzio. Con GAS_CRM_DB il percorso è uno solo.
+            percorsi: List[Path] = []
+            for radice in (self.root, _RADICE_REPO):
+                q = percorso_db(radice)
+                if all(q.resolve() != x.resolve() for x in percorsi):
+                    percorsi.append(q)
+            for q in percorsi:
+                da_q = identita_clienti(q)
+                if da_q is None:
+                    clienti = None
+                    break
+                clienti = (clienti or []) + da_q
+        except Exception as e:  # §9: modulo o file rotto → fail-closed, mai crash
+            logging.warning(f"lettura dei clienti del CRM per il filtro fallita: {e}")
+            clienti = None
+        if clienti is None:
+            return None
+        return list(letti) + clienti
+
+    def _contatti_lead_per_filtro(self) -> Optional[List[Dict[str, Any]]]:
+        """Contatti VIVI e LAPIDI (lead fusi) della rubrica. None = lettura fallita.
         Memoria assente → [] (nessun contatto da proteggere). R-765-1-M1coord: senza
         leggi_contatti (memorie vecchie o finte) si ripiega su lista_contatti come in
         _cerca_lead; con una leggi_contatti di firma vecchia, senza le lapidi. Mai solleva."""

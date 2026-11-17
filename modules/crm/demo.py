@@ -1,6 +1,6 @@
 """Dati DIMOSTRATIVI per vedere il CRM pieno: servizi e clienti INVENTATI.
 
-Vanno in un file separato (`.gas_crm_demo.db`), mai nel DB vero. I numeri di telefono sono
+Vanno in un file separato (`.gas_memory_crm_demo.db`), mai nel DB vero. I numeri di telefono sono
 volutamente non assegnabili (+39 000 …): nessun messaggio può arrivare a una persona vera.
 I nomi dei servizi sono segnaposto: quelli veri li configura l'operatore.
 """
@@ -20,11 +20,11 @@ SERVIZI_DEMO: Tuple[Tuple[str, str, str, int, int, int, int, str], ...] = (
      "Copia delle operazioni sull'oro (DEMO)"),
     ("conto-gestito", "Conto Gestito", "percentuale_profitto", 3000, 0, 500_000, 250,
      "Conto gestito su più mercati (DEMO)"),
-    ("segnali-vip", "Segnali VIP", "fisso_mensile", 0, 9_900, 0, 0,
-     "Abbonamento ai segnali (DEMO)"),
+    ("sala-segnali", "Sala Segnali", "fisso_mensile", 0, 9_900, 0, 0,
+     "Sala segnali in abbonamento (DEMO)"),
     ("fondo-protetto", "Fondo Protetto", "percentuale_capitale_annua", 200, 0, 1_000_000, 120,
      "Linea prudente (DEMO)"),
-    ("academy", "Academy", "fisso_mensile", 0, 4_900, 0, 0, "Formazione mensile (DEMO)"),
+    ("copyflip", "Copyflip", "fisso_mensile", 0, 4_900, 0, 0, "Copyflip in abbonamento (DEMO)"),
 )
 
 NOMI = ("Marco Bianchi", "Giulia Romano", "Luca Esposito", "Sara Colombo", "Andrea Ricci",
@@ -57,22 +57,24 @@ def popola(store: CRMStore, oggi: date | None = None, seme: int = 23) -> Dict[st
                                            commissione_fissa_cents=fisso,
                                            capitale_minimo_cents=cap_min,
                                            rendimento_stimato_bp=rend, priorita=(i + 1) * 10,
-                                           descrizione=desc, autore="demo")
+                                           descrizione=desc, autore="demo",
+                                           # i servizi da consigliare nei follow-up (17-11)
+                                           consigliato=cod in ("sala-segnali", "copyflip"))
     # profili: (servizi, capitale base in euro, rendimento medio bp, mesi di anzianità)
     profili = [
-        (["copy-oro"], 8_000, 520, 10), (["copy-oro", "segnali-vip"], 15_000, 610, 12),
+        (["copy-oro"], 8_000, 520, 10), (["copy-oro", "sala-segnali"], 15_000, 610, 12),
         (["conto-gestito"], 25_000, 380, 9), (["copy-oro"], 30_000, 450, 7),
-        (["segnali-vip"], 0, 0, 5), (["copy-oro", "conto-gestito"], 40_000, 420, 12),
+        (["sala-segnali"], 0, 0, 5), (["copy-oro", "conto-gestito"], 40_000, 420, 12),
         (["fondo-protetto"], 60_000, 110, 8), (["copy-oro"], 5_000, 300, 3),
-        (["conto-gestito", "fondo-protetto"], 80_000, 260, 11), (["academy"], 0, 0, 4),
-        (["copy-oro"], 22_000, 560, 6), (["copy-oro", "academy"], 12_000, 480, 8),
+        (["conto-gestito", "fondo-protetto"], 80_000, 260, 11), (["copyflip"], 0, 0, 4),
+        (["copy-oro"], 22_000, 560, 6), (["copy-oro", "copyflip"], 12_000, 480, 8),
         (["conto-gestito"], 18_000, 410, 5), (["copy-oro"], 3_000, 200, 1),
-        (["copy-oro", "conto-gestito", "segnali-vip"], 55_000, 470, 12),
+        (["copy-oro", "conto-gestito", "sala-segnali"], 55_000, 470, 12),
         (["fondo-protetto"], 35_000, 100, 6), (["copy-oro"], 26_000, 590, 9),
-        (["segnali-vip", "academy"], 0, 0, 7), (["conto-gestito"], 45_000, 360, 10),
+        (["sala-segnali", "copyflip"], 0, 0, 7), (["conto-gestito"], 45_000, 360, 10),
         (["copy-oro"], 9_500, 430, 4), (["copy-oro", "fondo-protetto"], 70_000, 330, 12),
         (["conto-gestito"], 12_000, 150, 2), (["copy-oro"], 17_000, 640, 8),
-        (["academy"], 0, 0, 2), (["copy-oro", "segnali-vip"], 20_000, 500, 6),
+        (["copyflip"], 0, 0, 2), (["copy-oro", "sala-segnali"], 20_000, 500, 6),
         (["conto-gestito"], 32_000, 440, 7),
     ]
     clienti: List[int] = []
@@ -130,4 +132,4 @@ def popola(store: CRMStore, oggi: date | None = None, seme: int = 23) -> Dict[st
 
 
 def percorso_demo(root: Path) -> Path:
-    return Path(root) / ".gas_crm_demo.db"
+    return Path(root) / ".gas_memory_crm_demo.db"

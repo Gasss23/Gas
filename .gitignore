@@ -60,6 +60,7 @@ AGENTS.md
 .gas_notifiche_uso.json
 .gas_notifiche_uso.json.*.tmp
 
-# CRM: DB dimostrativo con dati inventati (python -m modules.crm demo)
-.gas_crm_demo.db
-.gas_crm_demo.db-journal
+# CRM: dati dei clienti (file dedicato), copie di sicurezza e DB dimostrativo
+.gas_memory_crm*
+# R-808-7: DB demo della prima bozza (nome vecchio), se è rimasto sul Mac
+.gas_crm_demo.db*

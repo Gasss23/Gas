@@ -67,8 +67,12 @@ def _env_int(nome: str, default: int, minimo: int = 0, massimo: int = 10**12) ->
 class Regole:
     soglia_cents: int = 100_000          # 1.000 € di profitto nel mese
     pagamenti_min: int = 1               # commissioni già pagate per essere «contento»
-    pausa_giorni: int = 7                # giorni minimi tra due messaggi
-    max_messaggi_30g: int = 4            # tetto messaggi in 30 giorni
+    # un solo follow-up al mese per cliente (decisione dell'operatore 2026-11-17, punto 2)
+    pausa_giorni: int = 30               # giorni minimi tra due messaggi
+    max_messaggi_30g: int = 1            # tetto messaggi in 30 giorni
+    anzianita_min_giorni: int = 30       # mai proposte a chi è appena entrato (punto 9)
+    invii_per_lotto: int = 10            # invio a scaglioni: al massimo N messaggi…
+    lotto_minuti: int = 60               # …in questa finestra (anti-blocco WhatsApp)
     pausa_dopo_no_giorni: int = 30       # dopo un no, quello stesso obiettivo si ripropone tra…
     attesa_risposta_giorni: int = 5      # inviata da più di… senza esito → senza_risposta
     aumento_pct: int = 50                # aumento di capitale suggerito, % del capitale
@@ -80,8 +84,11 @@ class Regole:
         return cls(
             soglia_cents=_env_int("GAS_CRM_SOGLIA_EURO", 1000, 0, 10**9) * 100,
             pagamenti_min=_env_int("GAS_CRM_PAGAMENTI_MIN", 1, 0, 1000),
-            pausa_giorni=_env_int("GAS_CRM_PAUSA_GIORNI", 7, 1, 365),
-            max_messaggi_30g=_env_int("GAS_CRM_MAX_MESSAGGI_30G", 4, 1, 30),
+            pausa_giorni=_env_int("GAS_CRM_PAUSA_GIORNI", 30, 1, 365),
+            max_messaggi_30g=_env_int("GAS_CRM_MAX_MESSAGGI_30G", 1, 1, 30),
+            anzianita_min_giorni=_env_int("GAS_CRM_ANZIANITA_GIORNI", 30, 0, 3650),
+            invii_per_lotto=_env_int("GAS_CRM_INVII_PER_LOTTO", 10, 1, 500),
+            lotto_minuti=_env_int("GAS_CRM_LOTTO_MINUTI", 60, 1, 1440),
             pausa_dopo_no_giorni=_env_int("GAS_CRM_PAUSA_DOPO_NO_GIORNI", 30, 1, 3650),
             attesa_risposta_giorni=_env_int("GAS_CRM_ATTESA_RISPOSTA_GIORNI", 5, 1, 90),
             aumento_pct=_env_int("GAS_CRM_AUMENTO_PCT", 50, 1, 1000),
@@ -151,18 +158,43 @@ def motivo_non_contattabile(cliente: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _entrato_il(d: analisi.Dati, cliente_id: int) -> Optional[date]:
+    """Il giorno in cui il cliente è entrato: la prima apertura di un servizio, altrimenti
+    la creazione della scheda."""
+    aperture = [p.aperta_il for p in d.per_cliente.get(cliente_id, []) if p.aperta_il]
+    if aperture:
+        return _giorno(min(aperture))
+    return _giorno(d.clienti[cliente_id].get("creato_il"))
+
+
 def valuta_cliente(d: analisi.Dati, cliente_id: int, regole: Regole,
-                   affinita: Optional[Dict[Tuple[int, int], int]] = None) -> Decisione:
-    """Decide la prossima migliore azione per un cliente. Funzione PURA (niente DB)."""
+                   affinita: Optional[Dict[Tuple[int, int], int]] = None,
+                   manuale: bool = False) -> Decisione:
+    """Decide la prossima migliore azione per un cliente. Funzione PURA (niente DB).
+
+    `manuale=True` è la scelta esplicita dell'operatore (spunte nella scheda Clienti):
+    saltano soglia di profitto, primo pagamento, anzianità e interruttore del follow-up,
+    ma restano SEMPRE le regole dure (attivo, consenso, STOP, telefono) e il ritmo (una
+    proposta aperta alla volta, pausa e tetto mensile): niente raffiche anche a mano."""
     cliente = d.clienti[cliente_id]
     duro = motivo_non_contattabile(cliente)
     if duro:
         return Decisione(esclusione=duro)
     m = analisi.metriche_cliente(d, cliente_id)
-    if m.pagamenti < regole.pagamenti_min:
-        return Decisione(esclusione="non ha ancora pagato la prima commissione")
-
     oggi = d.oggi
+    if not manuale:
+        if not cliente.get("followup_attivo", 1):
+            return Decisione(esclusione="follow-up mensile spento per questo cliente")
+        if m.pagamenti < regole.pagamenti_min:
+            return Decisione(esclusione="non ha ancora pagato la prima commissione")
+        entrato = _entrato_il(d, cliente_id)
+        if entrato is not None and (oggi - entrato).days < regole.anzianita_min_giorni:
+            return Decisione(esclusione=f"cliente da {(oggi - entrato).days} giorni (si aspettano "
+                                        f"almeno {regole.anzianita_min_giorni} giorni)")
+        if m.profitto_mese_cents < 0:
+            # decisione dell'operatore (punto 3): mai messaggi legati alle perdite
+            return Decisione(esclusione="mese in corso in perdita: si aspetta")
+
     sue = [p for p in d.proposte if int(p["cliente_id"]) == cliente_id]
     if any(p["stato"] in ("da_approvare", "inviata") for p in sue):
         return Decisione(esclusione="ha già una proposta aperta")
@@ -183,12 +215,16 @@ def valuta_cliente(d: analisi.Dati, cliente_id: int, regole: Regole,
             return Decisione(esclusione=f"già {recenti} messaggi negli ultimi 30 giorni")
 
     mese = d.mese
-    if m.profitto_mese_cents >= regole.soglia_cents and m.profitto_mese_cents >= m.profitto_mese_prec_cents:
+    soglia = 1 if manuale else regole.soglia_cents
+    if m.profitto_mese_cents >= soglia and m.profitto_mese_cents >= m.profitto_mese_prec_cents:
         rif_mese, rif_profitto = mese, m.profitto_mese_cents
-    elif m.profitto_mese_prec_cents >= regole.soglia_cents:
+    elif m.profitto_mese_prec_cents >= soglia:
         rif_mese, rif_profitto = analisi.mese_precedente(mese), m.profitto_mese_prec_cents
-    elif m.profitto_mese_cents >= regole.soglia_cents:
+    elif m.profitto_mese_cents >= soglia:
         rif_mese, rif_profitto = mese, m.profitto_mese_cents
+    elif manuale:
+        # scelta dell'operatore senza un profitto da citare: testo neutro, nessun numero
+        rif_mese, rif_profitto = mese, 0
     else:
         migliore = max(m.profitto_mese_cents, m.profitto_mese_prec_cents)
         return Decisione(esclusione=f"profitto del mese {formatta_euro_tondo(migliore)}, "
@@ -211,9 +247,16 @@ def valuta_cliente(d: analisi.Dati, cliente_id: int, regole: Regole,
     profitto_msg = attuale.profitto_per_mese.get(rif_mese, 0) if attuale else rif_profitto
     if profitto_msg <= 0:
         profitto_msg = rif_profitto
-    base_motivo = (f"{mese_label}: +{formatta_euro_tondo(rif_profitto)} di profitto "
-                   f"(soglia {formatta_euro_tondo(regole.soglia_cents)}); "
-                   f"servizi attivi {len(attive)} su {sum(1 for s in d.servizi.values() if s['attivo'])}")
+    if rif_profitto > 0:
+        base_motivo = (f"{mese_label}: +{formatta_euro_tondo(rif_profitto)} di profitto"
+                       + ("" if manuale else f" (soglia {formatta_euro_tondo(regole.soglia_cents)})")
+                       + f"; servizi attivi {len(attive)} su "
+                       f"{sum(1 for s in d.servizi.values() if s['attivo'])}")
+    else:
+        base_motivo = (f"scelta dell'operatore, nessun profitto recente da citare; servizi attivi "
+                       f"{len(attive)} su {sum(1 for s in d.servizi.values() if s['attivo'])}")
+    if manuale and rif_profitto > 0:
+        base_motivo = "scelta dell'operatore; " + base_motivo
 
     no_recente_cross = any(p["tipo"] == "cross_sell" and p["stato"] == "rifiutata"
                            and _entro(p, regole.pausa_dopo_no_giorni) for p in sue)
@@ -246,9 +289,15 @@ def valuta_cliente(d: analisi.Dati, cliente_id: int, regole: Regole,
         medio = sum(capitali) // len(capitali) if capitali else 0
         aff = affinita or {}
         candidati = []
+        # servizi «da consigliare» (sala segnali, copyflip…): se ce n'è almeno uno, il motore
+        # propone solo quelli (decisione dell'operatore 2026-11-17, punto 2)
+        consigliati = {int(s["id"]) for s in d.servizi.values()
+                       if s["attivo"] and s.get("consigliato")}
         for s in d.servizi.values():
             sid = int(s["id"])
             if not s["attivo"] or sid in posseduti or _bloccato("cross_sell", servizio_id=sid):
+                continue
+            if consigliati and sid not in consigliati:
                 continue
             capitale = max(int(s["capitale_minimo_cents"]), _arrotonda_su(medio // 2))
             roi, fonte = analisi.roi_atteso_bp(d, sid)
@@ -403,6 +452,59 @@ def scansiona(store: CRMStore, oggi: Optional[date] = None,
     return esito
 
 
+SELEZIONE_MAX = 1000
+
+
+def prepara_selezionati(store: CRMStore, clienti_ids: List[int], oggi: Optional[date] = None,
+                        regole: Optional[Regole] = None, autore: str = "operatore") -> EsitoScansione:
+    """Proposte per i clienti scelti dall'operatore con le spunte (decisione 2026-11-17,
+    punto 1). Usa `valuta_cliente(manuale=True)`: regole dure e ritmo restano, la soglia di
+    profitto no. Ogni proposta nasce «da_approvare» come le altre. Non solleva."""
+    esito = EsitoScansione()
+    reg = regole or Regole.da_env()
+    ids = []
+    for x in clienti_ids[:SELEZIONE_MAX]:
+        if isinstance(x, bool) or not isinstance(x, int) or x <= 0:
+            continue
+        if x not in ids:
+            ids.append(x)
+    foto = store.fotografia()
+    if foto is None:
+        esito.errore = "database non disponibile"
+        return esito
+    d = analisi.costruisci(foto, oggi or store.oggi())
+    aff = analisi.affinita_bp(d)
+    for cid in ids:
+        if cid not in d.clienti:
+            esito.esclusi[cid] = "cliente inesistente"
+            continue
+        try:
+            dec = valuta_cliente(d, cid, reg, aff, manuale=True)
+        except Exception as e:  # §9
+            log.warning("CRM: valutazione manuale del cliente %s fallita: %s", cid, e)
+            esito.esclusi[cid] = "errore nella valutazione (vedi gas_debug.log)"
+            continue
+        if dec.azione is None:
+            esito.esclusi[cid] = dec.esclusione or "nessuna azione"
+            continue
+        a = dec.azione
+        try:
+            nuovo = store.crea_proposta(
+                cliente_id=cid, tipo=a.tipo, chiave=f"cliente:{cid}", motivo=a.motivo,
+                messaggio=a.messaggio, valore_stimato_cents=a.valore_stimato_cents,
+                livello=a.livello, servizio_id=a.servizio_id, posizione_id=a.posizione_id,
+                autore=autore)
+        except ErroreCRM as e:
+            esito.esclusi[cid] = f"proposta non salvata: {e}"
+            continue
+        if nuovo is None:
+            esito.esclusi[cid] = "ha già una proposta aperta"
+        else:
+            esito.create.append(nuovo)
+            esito.valore_nuovo_cents += a.valore_stimato_cents
+    return esito
+
+
 def spiega(store: CRMStore, cliente_id: int, oggi: Optional[date] = None,
            regole: Optional[Regole] = None) -> str:
     """Perché il motore farebbe (o non farebbe) qualcosa con questo cliente, a parole.
@@ -420,4 +522,4 @@ def spiega(store: CRMStore, cliente_id: int, oggi: Optional[date] = None,
 
 
 __all__ = ["Regole", "Azione", "Decisione", "EsitoScansione", "valuta_cliente", "scansiona",
-           "spiega", "motivo_non_contattabile"]
+           "spiega", "motivo_non_contattabile", "prepara_selezionati"]

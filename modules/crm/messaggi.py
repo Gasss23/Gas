@@ -62,6 +62,21 @@ _TESTI: Dict[str, Dict[int, str]] = {
 }
 
 
+# Testi NEUTRI (scelta manuale dell'operatore senza un profitto recente da citare): nessun
+# numero, nessuna allusione ai risultati (né alle perdite: decisione dell'operatore, punto 3).
+_TESTI_NEUTRI: Dict[str, str] = {
+    "cross_sell": ("Ciao {nome}! 👋 Ti scrivo perché stiamo seguendo da vicino {servizio_nuovo} "
+                   "e credo che possa interessarti, accanto a {servizio_attuale}. Ti va se ti "
+                   "racconto in 5 minuti come funziona?"),
+    "aumento_capitale": ("Ciao {nome}! Volevo sentire come ti stai trovando con "
+                         "{servizio_attuale}. Se ti interessa, possiamo valutare insieme "
+                         "un aumento di {aumento}: ti preparo due conti chiari, senza impegno."),
+    "referral": ("Ciao {nome}! 🙌 Una domanda veloce: conosci qualcuno a cui potrebbe "
+                 "interessare quello che stai facendo con noi? Se me lo presenti lo seguo io "
+                 "personalmente."),
+}
+
+
 def nota_rischio() -> str:
     """Nota sul rischio in coda ai messaggi con numeri. Variabile assente → default;
     variabile presente ma vuota → nessuna nota (scelta esplicita dell'operatore)."""
@@ -90,6 +105,14 @@ def componi(tipo: str, livello: int, nome: str, mese_label: str, profitto_cents:
     «questo mese sei già a…». Solleva KeyError su tipo sconosciuto."""
     liv = min(max(int(livello), 1), 3)
     modello = _TESTI[tipo][liv]
+    if profitto_cents <= 0:
+        corpo = _TESTI_NEUTRI[tipo].format(
+            nome=nome_breve(nome) or "ciao",
+            servizio_nuovo=servizio_nuovo or "un nuovo servizio",
+            servizio_attuale=servizio_attuale or "il tuo servizio",
+            aumento=formatta_euro_tondo(aumento_cents or 0),
+        )
+        return f"{corpo}\n\n{RIGA_STOP}"
     profitto = "+" + formatta_euro_tondo(profitto_cents)
     corpo = modello.format(
         nome=nome_breve(nome) or "ciao",

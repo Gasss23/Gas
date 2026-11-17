@@ -317,3 +317,14 @@ table.matrice { border-collapse: separate; border-spacing: 0; width: 100%; min-w
 .toast.errore { border-color: rgba(255, 138, 138, 0.55); }
 .toast.ok { border-color: rgba(63, 209, 122, 0.5); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* selezione clienti (spunte) */
+.matrice th.spunta, .matrice td.spunta { width: 38px; text-align: center; padding-left: 14px; padding-right: 4px; }
+.matrice td.spunta { position: sticky; left: 0; z-index: 2; background: #0c1324; }
+.matrice thead th.spunta { z-index: 4; }
+.matrice td.cliente { left: 38px; }
+.matrice input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accento); cursor: pointer; }
+.matrice tbody tr.scelta td { background: rgba(78, 225, 255, 0.07); }
+.strumenti.selezione { padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--bordo); }
+.matrice tbody tr.scelta td.cliente, .matrice tbody tr.scelta td.spunta { background: #0f1c31; }
+.matrice tbody tr:hover td.spunta { background: #0f1a30; }

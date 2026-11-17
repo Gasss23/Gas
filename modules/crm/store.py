@@ -1,8 +1,9 @@
 """Persistenza del CRM clienti — tabelle `crm_*` in SQLite.
 
-Dove stanno i dati: di default nello STESSO file della memoria di Gas (`.gas_memory.db`),
-così il backup esistente (`gas backup`, copia del file) copre anche i clienti. Le tabelle
-hanno tutte il prefisso `crm_` e non toccano quelle della memoria.
+Dove stanno i dati: in un file DEDICATO, `.gas_memory_crm.db` accanto a Gas (decisione
+dell'operatore 2026-11-17: dati dei clienti separati dalla memoria). Il prefisso
+`.gas_memory` lo rende illeggibile agli strumenti del modello (cancello). Copie di
+sicurezza con `CRMStore.backup` in `.gas_memory_crm_backup/`.
 
 Invarianti (incise anche nei test):
   * SOLDI IN CENTESIMI INTERI. Mai float: «1.234,56 €» diventa 123456. Le percentuali
@@ -23,16 +24,22 @@ sbagliato (la dashboard lo mostra all'operatore) e loggano gli errori del DB.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 log = logging.getLogger(__name__)
 
-DEFAULT_DB_FILENAME = ".gas_memory.db"
+# File DEDICATO del CRM (decisione dell'operatore 2026-11-17: dati dei clienti separati
+# dalla memoria di Gas). Il prefisso «.gas_memory» non è un caso: il cancello rende
+# illeggibili agli strumenti del modello tutti i file che iniziano così.
+DEFAULT_DB_FILENAME = ".gas_memory_crm.db"
+BACKUP_DIRNAME = ".gas_memory_crm_backup"
+BACKUP_KEEP = 30
 
 MODELLI_COMMISSIONE: Tuple[str, ...] = (
     "percentuale_profitto",       # commissione_bp sul profitto netto del mese
@@ -436,10 +443,28 @@ class CRMStore:
             with self._connect() as con:
                 for ddl in _SCHEMA:
                     con.execute(ddl)
+                self._migra(con)
                 con.commit()
             self.available = True
         except (sqlite3.Error, OSError) as e:
             log.warning("CRM: init fallita su %s (%s) — degrado", self.db_path, e)
+
+    @staticmethod
+    def _migra(con: sqlite3.Connection) -> None:
+        """Colonne aggiunte dopo la prima bozza (decisioni del 17-11, `reports/crm/decisioni.md`):
+        ALTER TABLE solo se mancano, così un DB già creato si aggiorna da sé."""
+        aggiunte = (
+            # follow-up mensile togliibile cliente per cliente (punto 2)
+            ("crm_clienti", "followup_attivo",
+             "INTEGER NOT NULL DEFAULT 1 CHECK (followup_attivo IN (0, 1))"),
+            # servizi da consigliare nei follow-up (sala segnali, copyflip…)
+            ("crm_servizi", "consigliato",
+             "INTEGER NOT NULL DEFAULT 0 CHECK (consigliato IN (0, 1))"),
+        )
+        for tabella, colonna, definizione in aggiunte:
+            presenti = {r[1] for r in con.execute(f"PRAGMA table_info({tabella})")}
+            if colonna not in presenti:
+                con.execute(f"ALTER TABLE {tabella} ADD COLUMN {colonna} {definizione}")
 
     def _connect(self) -> sqlite3.Connection:
         con = sqlite3.connect(str(self.db_path), timeout=10)
@@ -509,7 +534,7 @@ class CRMStore:
                           commissione_bp: int = 0, commissione_fissa_cents: int = 0,
                           capitale_minimo_cents: int = 0, rendimento_stimato_bp: int = 0,
                           priorita: int = 100, descrizione: Optional[str] = None,
-                          autore: str = "operatore") -> int:
+                          autore: str = "operatore", consigliato: bool = False) -> int:
         cod = _testo(codice, "codice", 40, obbligatorio=True)
         assert cod is not None
         cod = cod.lower()
@@ -526,15 +551,16 @@ class CRMStore:
             _intero(priorita, "priorita", 0, 10_000),
         )
         desc = _testo(descrizione, "descrizione")
+        cons = _bool01(consigliato, "consigliato")
         ora = self._ts()
 
         def _fn(con: sqlite3.Connection) -> int:
             cur = con.execute(
                 "INSERT INTO crm_servizi (codice, nome, descrizione, modello_commissione, "
                 "commissione_bp, commissione_fissa_cents, capitale_minimo_cents, "
-                "rendimento_stimato_bp, priorita, attivo, creato_il, aggiornato_il) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)",
-                (cod, nom, desc, modello_commissione, *valori, ora, ora),
+                "rendimento_stimato_bp, priorita, attivo, creato_il, aggiornato_il, consigliato) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
+                (cod, nom, desc, modello_commissione, *valori, ora, ora, cons),
             )
             self._evento(con, None, "servizio", f"Nuovo servizio: {nom}", autore)
             return _nuovo_id(cur)
@@ -542,7 +568,7 @@ class CRMStore:
 
     _CAMPI_SERVIZIO = ("nome", "descrizione", "modello_commissione", "commissione_bp",
                        "commissione_fissa_cents", "capitale_minimo_cents",
-                       "rendimento_stimato_bp", "priorita", "attivo")
+                       "rendimento_stimato_bp", "priorita", "attivo", "consigliato")
 
     def aggiorna_servizio(self, servizio_id: int, autore: str = "operatore",
                           **campi: Any) -> None:
@@ -559,8 +585,8 @@ class CRMStore:
             elif k == "modello_commissione":
                 if v not in MODELLI_COMMISSIONE:
                     raise ErroreCRM("modello di commissione non valido")
-            elif k == "attivo":
-                v = _bool01(v, "attivo")
+            elif k in ("attivo", "consigliato"):
+                v = _bool01(v, k)
             elif k in ("commissione_bp", "rendimento_stimato_bp"):
                 v = _intero(v, k, 0, BP_MAX)
             elif k == "priorita":
@@ -656,6 +682,9 @@ class CRMStore:
                 sets.append("opt_out_il = ?")
                 args.append(ora if v else None)
                 note_diario.append("STOP ai messaggi" if v else "STOP revocato dal cliente")
+            elif k == "followup_attivo":
+                v = _bool01(v, k)
+                note_diario.append("follow-up mensile " + ("ACCESO" if v else "SPENTO"))
             elif k == "presentato_da":
                 v = None if v is None else _intero(v, k, 1, 2**62)
                 if v == cid:
@@ -687,11 +716,19 @@ class CRMStore:
 
     # ------------------------------------------------------------------ posizioni
     def apri_posizione(self, cliente_id: int, servizio_id: int, data: Optional[str] = None,
-                       autore: str = "operatore") -> int:
-        """Mette il cliente in un servizio (o lo riattiva se c'era già stato)."""
+                       autore: str = "operatore",
+                       capitale_iniziale_cents: Optional[int] = None) -> int:
+        """Mette il cliente in un servizio (o lo riattiva se c'era già stato). Con
+        `capitale_iniziale_cents` registra anche il deposito, nella STESSA transazione (V-3
+        bot #381: prima un capitale scritto male lasciava la posizione aperta senza soldi)."""
         cid = _intero(cliente_id, "cliente_id", 1, 2**62)
         sid = _intero(servizio_id, "servizio_id", 1, 2**62)
         giorno = valida_data(data or self._oggi(), "data di apertura")
+        if giorno > self._oggi():
+            raise ErroreCRM("data di apertura nel futuro")
+        deposito = None
+        if capitale_iniziale_cents is not None:
+            deposito = _intero(capitale_iniziale_cents, "capitale iniziale", 1, IMPORTO_MAX_CENTS)
         ora = self._ts()
 
         def _fn(con: sqlite3.Connection) -> int:
@@ -711,6 +748,10 @@ class CRMStore:
                     "aggiornato_il = ? WHERE id = ?", (ora, esiste["id"]),
                 )
                 self._evento(con, cid, "servizio", f"Riattivato nel servizio {srv['nome']}", autore)
+                if deposito is not None:
+                    fonte = autore if autore in FONTI_MOVIMENTO else "operatore"
+                    self._inserisci_movimento(con, (int(esiste["id"]), "deposito", deposito, giorno,
+                                                    fonte, "capitale iniziale"))
                 return int(esiste["id"])
             cur = con.execute(
                 "INSERT INTO crm_posizioni (cliente_id, servizio_id, stato, aperta_il, "
@@ -718,7 +759,12 @@ class CRMStore:
                 (cid, sid, giorno, ora, ora),
             )
             self._evento(con, cid, "servizio", f"Entrato nel servizio {srv['nome']}", autore)
-            return _nuovo_id(cur)
+            nuova = _nuovo_id(cur)
+            if deposito is not None:
+                fonte = autore if autore in FONTI_MOVIMENTO else "operatore"
+                self._inserisci_movimento(con, (nuova, "deposito", deposito, giorno, fonte,
+                                                "capitale iniziale"))
+            return nuova
         return self._scrivi(_fn)
 
     def cambia_stato_posizione(self, posizione_id: int, stato: str,
@@ -806,10 +852,12 @@ class CRMStore:
         if giorno < str(r["aperta_il"]):
             raise ErroreCRM(f"data {giorno} prima dell'apertura del servizio ({r['aperta_il']})")
         if tipo == "prelievo":
-            capitale = self._capitale(con, pid)
+            # V-1 bot #381 (2° giro): il capitale che conta è quello ALLA DATA del prelievo
+            # e a ogni data successiva, non solo il totale di oggi
+            capitale = self._saldo_minimo_da(con, pid, giorno)
             if imp > capitale:
                 raise ErroreCRM(f"prelievo di {formatta_euro(imp)} maggiore del capitale "
-                                f"({formatta_euro(capitale)})")
+                                f"disponibile dal {giorno} ({formatta_euro(capitale)})")
         cur = con.execute(
             "INSERT INTO crm_movimenti (posizione_id, tipo, importo_cents, data, fonte, "
             "nota, storno_di, registrato_il) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)",
@@ -832,6 +880,29 @@ class CRMStore:
             (posizione_id,),
         ).fetchone()
         return int(r[0])
+
+    @staticmethod
+    def _saldo_minimo_da(con: sqlite3.Connection, posizione_id: int, giorno: str) -> int:
+        """Il capitale più basso della posizione da `giorno` in poi (depositi − prelievi
+        validi, giorno per giorno). Un prelievo datato `giorno` è possibile solo se non
+        supera questo valore: altrimenti in qualche data il capitale andrebbe sotto zero."""
+        righe = con.execute(
+            "SELECT m.data, SUM(CASE m.tipo WHEN 'deposito' THEN m.importo_cents "
+            "ELSE -m.importo_cents END) FROM crm_movimenti m "
+            "WHERE m.posizione_id = ? AND m.tipo IN ('deposito', 'prelievo') "
+            "AND m.storno_di IS NULL "
+            "AND NOT EXISTS (SELECT 1 FROM crm_movimenti s WHERE s.storno_di = m.id) "
+            "GROUP BY m.data ORDER BY m.data", (posizione_id,),
+        ).fetchall()
+        # saldo a fine `giorno` (tutto ciò che è datato fino a quel giorno compreso), poi il
+        # minimo dei saldi alle date successive
+        saldo = sum(int(delta) for data, delta in righe if str(data) <= giorno)
+        minimo = saldo
+        for data, delta in righe:
+            if str(data) > giorno:
+                saldo += int(delta)
+                minimo = min(minimo, saldo)
+        return minimo
 
     def registra_movimento(self, posizione_id: int, tipo: str, importo_cents: int,
                            data: Optional[str] = None, fonte: str = "operatore",
@@ -884,7 +955,8 @@ class CRMStore:
                 raise ErroreCRM("movimento inesistente")
             if m["storno_di"] is not None:
                 raise ErroreCRM("questo è già uno storno: registra di nuovo il movimento giusto")
-            if m["tipo"] == "deposito" and self._capitale(con, m["posizione_id"]) < m["importo_cents"]:
+            if (m["tipo"] == "deposito" and
+                    self._saldo_minimo_da(con, m["posizione_id"], m["data"]) < m["importo_cents"]):
                 raise ErroreCRM("lo storno lascerebbe il capitale negativo: storna prima i prelievi")
             cur = con.execute(
                 "INSERT INTO crm_movimenti (posizione_id, tipo, importo_cents, data, fonte, "
@@ -948,15 +1020,48 @@ class CRMStore:
             log.warning("CRM: crea_proposta fallita (%s): %s", self.db_path, e)
             raise ErroreCRM("database non disponibile: riprova tra poco") from None
 
+    def invii_recenti(self, minuti: int, con: Optional[sqlite3.Connection] = None) -> List[datetime]:
+        """Momenti degli invii degli ultimi `minuti` (per il tetto anti-blocco di WhatsApp).
+        Confronto fra datetime veri, non fra stringhe: regge il cambio dell'ora legale."""
+        soglia = self._orologio() - timedelta(minutes=max(1, int(minuti)))
+        sql = "SELECT inviata_il FROM crm_proposte WHERE inviata_il IS NOT NULL"
+        righe = (con.execute(sql).fetchall() if con is not None
+                 else [(r["inviata_il"],) for r in self._leggi(sql)])
+        out = []
+        for (ts,) in righe:
+            try:
+                quando = datetime.fromisoformat(str(ts))
+            except ValueError:
+                continue
+            if quando.tzinfo is None:
+                quando = quando.astimezone()
+            if quando >= soglia:
+                out.append(quando)
+        return sorted(out)
+
     def transiziona_proposta(self, proposta_id: int, nuovo_stato: str,
                              autore: str = "operatore", messaggio: Optional[str] = None,
-                             canale: Optional[str] = None) -> Dict[str, Any]:
+                             canale: Optional[str] = None,
+                             tetto_invii: Optional[Tuple[int, int]] = None) -> Dict[str, Any]:
         """Cambia lo stato di una proposta secondo TRANSIZIONI_PROPOSTA. `messaggio`
-        (solo da «da_approvare») salva il testo corretto dall'operatore prima dell'invio.
-        Ritorna la proposta aggiornata; solleva ErroreCRM se la transizione non è ammessa."""
+        (solo da «da_approvare») salva il testo corretto dall'operatore prima dell'invio;
+        nota sul rischio e riga STOP si rimettono sempre in fondo (V-2 bot #381, 2° giro).
+        `tetto_invii=(n, minuti)`: al massimo n invii in quei minuti (scaglioni, per non farsi
+        bloccare da WhatsApp), controllato dentro la transazione. Ritorna la proposta
+        aggiornata; solleva ErroreCRM se la transizione non è ammessa."""
         pid = _intero(proposta_id, "proposta_id", 1, 2**62)
         if nuovo_stato not in STATI_PROPOSTA:
             raise ErroreCRM("stato non valido")
+        grezzo: Optional[str] = None
+        if messaggio is not None:
+            if not isinstance(messaggio, str):
+                raise ErroreCRM("messaggio: deve essere testo")
+            from modules.crm.messaggi import completa_testo  # import tardivo: messaggi importa store
+            grezzo = messaggio.strip()
+            messaggio = completa_testo(messaggio)
+            if len(messaggio) > TESTO_MAX:
+                raise ErroreCRM(f"messaggio troppo lungo: con la nota e la riga STOP supera "
+                                f"{TESTO_MAX} caratteri, accorcialo di {len(messaggio) - TESTO_MAX}")
         msg = _testo(messaggio, "messaggio", TESTO_MAX)
         can = _testo(canale, "canale", 40)
         ora = self._ts()
@@ -970,6 +1075,11 @@ class CRMStore:
                 raise ErroreCRM(f"passaggio non ammesso: {attuale} → {nuovo_stato}")
             if msg is not None and attuale != "da_approvare":
                 raise ErroreCRM("il testo si cambia solo prima dell'invio")
+            # R-808-7: il testo rimandato IDENTICO a quello salvato (la pagina lo manda
+            # sempre) resta com'è: un testo neutro, nato di proposito senza la nota sul
+            # rischio, non se la vede aggiungere all'invio. Un testo cambiato dall'operatore
+            # riceve nota e riga STOP come sempre (V-1/V-2 bot #381).
+            testo_nuovo = msg if grezzo is None or grezzo != str(p["messaggio"] or "").strip() else None
             if nuovo_stato == "inviata":
                 # V-2 bot #381: STOP e consenso si ricontrollano DENTRO la transazione che
                 # segna l'invio (uno STOP arrivato un attimo prima, da un'altra scheda o dalla
@@ -984,11 +1094,19 @@ class CRMStore:
                     raise ErroreCRM("non si può inviare: manca il consenso ai messaggi promozionali")
                 if not c["telefono"]:
                     raise ErroreCRM("non si può inviare: manca il numero WhatsApp")
+                if tetto_invii is not None:
+                    n_max, minuti = tetto_invii
+                    recenti = self.invii_recenti(minuti, con)
+                    if len(recenti) >= max(1, n_max):
+                        libero = recenti[-max(1, n_max)] + timedelta(minutes=minuti)
+                        attesa = max(1, int((libero - self._orologio()).total_seconds() // 60) + 1)
+                        raise ErroreCRM(f"pausa anti-blocco di WhatsApp: già {len(recenti)} invii "
+                                        f"negli ultimi {minuti} minuti, riprova tra {attesa} min")
             sets = ["stato = ?", "aggiornata_il = ?"]
             args: List[Any] = [nuovo_stato, ora]
-            if msg is not None:
+            if testo_nuovo is not None:
                 sets.append("messaggio = ?")
-                args.append(msg)
+                args.append(testo_nuovo)
             if nuovo_stato == "inviata":
                 sets += ["inviata_il = ?", "canale = ?"]
                 args += [ora, can or "whatsapp"]
@@ -1007,6 +1125,59 @@ class CRMStore:
             nuova = con.execute("SELECT * FROM crm_proposte WHERE id = ?", (pid,)).fetchone()
             return dict(nuova)
         return self._scrivi(_fn)
+
+    def aggiorna_messaggio(self, proposta_id: int, testo: str, autore: str = "motore",
+                           nota: str = "testo riscritto") -> Dict[str, Any]:
+        """Sostituisce il testo di una proposta ANCORA da approvare (es. riscritto da Claude
+        Opus). Nota sul rischio e riga STOP rimesse in fondo. Solleva ErroreCRM."""
+        pid = _intero(proposta_id, "proposta_id", 1, 2**62)
+        if not isinstance(testo, str) or not testo.strip():
+            raise ErroreCRM("testo vuoto")
+        from modules.crm.messaggi import completa_testo  # import tardivo: messaggi importa store
+        completo = completa_testo(testo)
+        msg = _testo(completo, "messaggio", TESTO_MAX, obbligatorio=True)
+
+        def _fn(con: sqlite3.Connection) -> Dict[str, Any]:
+            cur = con.execute(
+                "UPDATE crm_proposte SET messaggio = ?, aggiornata_il = ? "
+                "WHERE id = ? AND stato = 'da_approvare'", (msg, self._ts(), pid))
+            if cur.rowcount != 1:
+                raise ErroreCRM("si può riscrivere solo una proposta ancora da approvare")
+            p = con.execute("SELECT * FROM crm_proposte WHERE id = ?", (pid,)).fetchone()
+            self._evento(con, p["cliente_id"], "proposta", f"Proposta #{pid}: {nota[:80]}", autore)
+            return dict(p)
+        return self._scrivi(_fn)
+
+    def conta_eventi_del_giorno(self, tipo: str, contiene: str) -> Optional[int]:
+        """Quanti eventi di oggi (orologio dello store) del `tipo` dato contengono `contiene`.
+        Il diario del CRM è immutabile, quindi il conto non si può abbassare. None se il DB
+        non risponde (chi chiama chiude: niente riscritture senza conto)."""
+        try:
+            with self._connect() as con:
+                r = con.execute(
+                    "SELECT COUNT(*) FROM crm_eventi WHERE tipo = ? AND substr(ts, 1, 10) = ? "
+                    "AND instr(descrizione, ?) > 0", (tipo, self._oggi(), contiene)).fetchone()
+                return int(r[0])
+        except (sqlite3.Error, OSError) as e:
+            log.warning("CRM: conto degli eventi fallito (%s): %s", self.db_path, e)
+            return None
+
+    def segna_evento_entro_tetto(self, tipo: str, descrizione: str, tetto: int,
+                                 cliente_id: Optional[int] = None,
+                                 motivo: str = "tetto di oggi raggiunto") -> int:
+        """Segna sul diario un evento di oggi del `tipo` dato SOLO se quelli già segnati
+        oggi sono meno di `tetto`; controllo e scrittura nella stessa transazione con
+        lucchetto (R-808-2: due riscritture in parallelo non superano il tetto). Ritorna
+        quanti sono con questo. Solleva ErroreCRM(`motivo`) a tetto raggiunto."""
+        def fn(con: sqlite3.Connection) -> int:
+            n = int(con.execute(
+                "SELECT COUNT(*) FROM crm_eventi WHERE tipo = ? AND substr(ts, 1, 10) = ?",
+                (tipo, self._oggi())).fetchone()[0])
+            if n >= tetto:
+                raise ErroreCRM(motivo)
+            self._evento(con, cliente_id, tipo, descrizione, "motore")
+            return n + 1
+        return int(self._scrivi(fn))
 
     def proposte(self, cliente_id: Optional[int] = None) -> List[Dict[str, Any]]:
         if cliente_id is None:
@@ -1033,6 +1204,31 @@ class CRMStore:
             return self._leggi("SELECT * FROM crm_eventi ORDER BY id DESC LIMIT ?", (n,))
         return self._leggi("SELECT * FROM crm_eventi WHERE cliente_id = ? ORDER BY id DESC LIMIT ?",
                            (cliente_id, n))
+
+    # ------------------------------------------------------------------ backup
+    def backup(self, dest_dir: Optional[Union[str, Path]] = None,
+               keep: int = BACKUP_KEEP) -> Optional[Path]:
+        """Copia coerente del DB (API di backup di SQLite, anche mentre il server scrive) in
+        `dest_dir` (default: `.gas_memory_crm_backup/` accanto al DB, nome protetto dal
+        cancello). Tiene le ultime `keep` copie. None se fallisce (§9: mai solleva)."""
+        try:
+            cartella = Path(dest_dir) if dest_dir else self.db_path.parent / BACKUP_DIRNAME
+            cartella.mkdir(parents=True, exist_ok=True)
+            nome = f"crm-{self._orologio().strftime('%Y%m%d-%H%M%S')}.db"
+            dest = cartella / nome
+            with self._connect() as src:
+                dst = sqlite3.connect(str(dest))
+                try:
+                    src.backup(dst)
+                finally:
+                    dst.close()
+            copie = sorted(cartella.glob("crm-*.db"))
+            for vecchia in copie[:-max(1, keep)]:
+                vecchia.unlink(missing_ok=True)
+            return dest
+        except (sqlite3.Error, OSError) as e:
+            log.warning("CRM: backup fallito (%s): %s", self.db_path, e)
+            return None
 
     # ------------------------------------------------------------------ fotografia
     def fotografia(self) -> Optional[Dict[str, List[Dict[str, Any]]]]:
@@ -1083,3 +1279,55 @@ def _spiega_integrity(msg: str) -> str:
 
 def default_db_path(root: Union[str, Path]) -> Path:
     return Path(root) / DEFAULT_DB_FILENAME
+
+
+def percorso_db(root: Union[str, Path]) -> Path:
+    """Il file dei dati veri: `GAS_CRM_DB` se impostata, altrimenti quello di default
+    accanto a Gas. Unica fonte del percorso per la riga di comando E per il kernel (che
+    deve riconoscere i clienti per la regola dei modelli)."""
+    env = os.environ.get("GAS_CRM_DB", "").strip()
+    return Path(env) if env else default_db_path(root)
+
+
+def identita_clienti(db_path: Union[str, Path]) -> Optional[List[Dict[str, Any]]]:
+    """Nome, telefono ed email di TUTTI i clienti del CRM, in SOLA LETTURA, nella forma dei
+    contatti della rubrica: servono al kernel per riconoscere i dati dei clienti e mandare
+    quei turni solo al cervello forte (regola dei modelli, R-803-4). `merged_into="crm"`
+    li fa trattare come le lapidi: usati solo per gli identificativi, mai elencati nel
+    blocco di memoria. File assente o senza tabella → [] (nessun cliente). Lettura fallita
+    → None: chi chiama chiude (fail-closed, tutto al forte). Mai solleva.
+
+    R-808-3: dopo un crash del CRM a metà scrittura resta un journal «caldo» e la sola
+    lettura (`mode=ro`) fallisce («readonly database»). Allora si riapre il file con una
+    connessione normale, usata SOLO per leggere: è SQLite stesso che annulla la scrittura
+    a metà (come farebbe il CRM alla prima apertura). Se fallisce anche così → None."""
+    p = Path(db_path)
+
+    def leggi(con: sqlite3.Connection) -> Optional[List[Any]]:
+        try:
+            c = con.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
+                            "AND name = 'crm_clienti'").fetchone()
+            if c is None:
+                return None
+            return con.execute("SELECT nome, telefono, email FROM crm_clienti").fetchall()
+        finally:
+            con.close()
+
+    try:
+        if not p.exists():
+            return []
+        try:
+            righe = leggi(sqlite3.connect(p.resolve().as_uri() + "?mode=ro", uri=True, timeout=5))
+        except sqlite3.OperationalError as e:
+            if not p.is_file():
+                raise
+            log.warning("CRM: lettura in sola lettura fallita (%s): riapro per ripristinare "
+                        "una scrittura interrotta", e)
+            righe = leggi(sqlite3.connect(str(p), timeout=5))
+    except (sqlite3.Error, OSError, ValueError) as e:
+        log.warning("CRM: identità dei clienti illeggibili (%s): %s", p, e)
+        return None
+    if righe is None:
+        return []
+    return [{"nome": r[0] or "", "chiave": r[2] or "", "contatto": r[1] or "",
+             "merged_into": "crm", "stato": "chiuso"} for r in righe]
