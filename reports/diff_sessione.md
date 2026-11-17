@@ -8,7 +8,8 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 - `modules/crm/messaggi.py`: testi WhatsApp fissi (senza promesse, con nota sul rischio e riga STOP) e link wa.me.
 - `modules/crm/server.py`, `modules/crm/web/*`: dashboard in tempo reale (SSE) solo su 127.0.0.1, token, cookie di sessione, CSP, anti-CSRF, controllo Host, blocco dei tentativi.
 - `modules/crm/__main__.py`, `modules/crm/demo.py`, `modules/crm/__init__.py`: riga di comando, dati dimostrativi in un file separato.
-- `tests/test_unit_crm.py`: suite nuova del CRM.
+- `tests/test_unit_crm.py`: suite nuova del CRM (101 test, comprese le regressioni dei giri #803/#806 e dei finding di bot e verifica esterna #381).
+- Correzioni dopo bot e verifica esterna #381: proposta scartata = «non ora» per il motore; movimenti incoerenti rifiutati; riga STOP sempre in fondo; controlli e scritture in una transazione `BEGIN IMMEDIATE`; `anticipa_apertura`.
 - `.github/workflows/ci.yml`: step «Run CRM suite».
 - `.gitignore`: DB dimostrativo.
 - `reports/crm.md` (nuovo), `reports/roadmap.md` (voce R11), `reports/*` di fine task, `.claude/agents/memoria_revisore.md`.

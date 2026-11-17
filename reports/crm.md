@@ -24,13 +24,15 @@ Stampa un link di accesso già pronto. Apri il link nel browser.
 
 I dati veri stanno in `.gas_memory.db` (lo stesso file della memoria di Gas): il backup che c'è già (`gas backup`) copre anche i clienti.
 
+**Come scrivere gli importi** (in dashboard, riga di comando e CSV): stile italiano. «1.500» è millecinquecento euro (il punto separa le migliaia), «1.500,50» ha i centesimi dopo la virgola, «0,50» sono cinquanta centesimi. Un numero ambiguo («1,234», «0.500») viene rifiutato invece di essere indovinato. Il registro non si riscrive, quindi rifiuta anche i movimenti incoerenti: prelievi più grandi del capitale, movimenti con data precedente all'apertura del servizio.
+
 Altri comandi: `scan` (una scansione del motore), `riepilogo`, `spiega ID` (perché il motore propone o no qualcosa a un cliente), `cliente`, `posizione`, `movimento`, `import file.csv` (movimenti da CSV: `telefono;servizio;tipo;importo;data;nota`; se una riga è sbagliata non scrive niente).
 
 ## 3. Cosa vedi
 
 - **Plancia**: commissioni del mese, profitto dei clienti, capitale gestito, clienti paganti, servizi per cliente (quanto sono diversificati), opportunità aperte col valore in euro al mese. Grafico degli ultimi 12 mesi, quota dei clienti in ogni servizio, imbuto delle proposte, attività in tempo reale.
 - **Clienti × Servizi**: una riga per cliente, una colonna per servizio. Ogni casella vuota è una vendita possibile; quella con «◎ da proporre» ha già il messaggio pronto. Clic su un cliente → la sua scheda: servizi, registro movimenti, proposte, storia, cosa farebbe il motore e perché.
-- **Opportunità**: da approvare (testo modificabile, «Approva e apri WhatsApp»), in attesa di risposta («Ha detto sì / no / STOP»), esiti.
+- **Opportunità**: da approvare (testo modificabile, «Approva e apri WhatsApp», «Scarta»: il motore lascia stare quel cliente per la pausa minima e non ripropone la stessa cosa per 30 giorni), in attesa di risposta («Ha detto sì / no / STOP»), esiti.
 - **Servizi**: il catalogo, con commissioni e numeri veri; le regole del motore.
 
 Tutto si aggiorna da solo: se Gas, la riga di comando o un'altra finestra cambiano qualcosa, la dashboard lo vede entro un paio di secondi.

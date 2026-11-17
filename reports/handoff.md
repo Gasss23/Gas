@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #381 (https://github.com/Gasss23/Gas/pull/381), dopo bot e verifica esterna. Verdetto del revisore con riserve (BASSE/COSMETICA): il merge lo decide l'operatore.
+1. Merge della PR #381 (https://github.com/Gasss23/Gas/pull/381), dopo il nuovo giro di bot e verifica esterna. Il merge lo decide l'operatore (riserve BASSE aperte; check verifica-bot neutral perché la PR tocca la CI). Oggi è BLOCCATO dal check required `unit-suite`, rosso per 7 test del sandbox del browser che falliscono anche su altri rami (vedi §6): serve prima una fetta separata su quel problema dei runner.
 2. I 4-5 servizi veri (nome, come guadagniamo, capitale minimo): oggi ci sono solo quelli della demo.
 3. Invio WhatsApp senza firma: oggi ogni messaggio lo approva l'operatore (principio del 19 ottobre). L'automatico richiede di cambiare quella regola e l'API WhatsApp Business con modelli approvati.
 4. Prima dei dati veri: consenso dei clienti raccolto davvero; verifica Consob con un consulente; decisione GDPR (anonimizzazione su richiesta, R-803-9); chiusura di R-803-4 (regola dei modelli).
@@ -17,6 +17,7 @@
 
 - **Fetta 1 — CRM clienti (modulo, motore, dashboard, test, CI)**: FATTA — commit 99d82f3f; review #803-CRM BOCCIATO → #804-CRM APPROVATO CON RISERVE. Guida: `reports/crm.md`.
 - **Fetta 1b — gate IP**: FATTA — il primo `fine_task_finale.sh` si è fermato sugli indirizzi d'esempio di `tests/test_unit_crm.py` (test che pretende il rifiuto dei bind non locali): marcatore `gasmerge-ip-ok` sulla riga, commit f1c109a7, review #805-CRM APPROVATO.
+- **Fetta 1c — finding del bot e della verifica esterna sulla PR #381**: FATTA — verifica esterna V-1 (MEDIA, proposta scartata ricreata subito) e V-2 (BASSA, movimenti incoerenti), bot V-1 (BASSA, testo corretto senza riga STOP) e V-2 (BASSA, STOP non ricontrollato nella transazione d'invio): commit c9daf955, review #806-CRM APPROVATO CON RISERVE; riserve R-806-1 (MEDIA, controlli non atomici), R-806-2, R-806-3 chiuse nel commit 72dcc9d2, review #807-CRM APPROVATO. V-3 (nota sugli importi) in `reports/crm.md`; V-4 (questo §3/§6) aggiornato qui.
 - **Invio automatico WhatsApp**: SALTATA — principio del 19 ottobre (firma per ciò che esce); servono numero business e modelli approvati.
 - **Strumento CRM per il modello di Gas** (sola lettura, solo cervello forte) e chiusura di R-803-4: DEFERITA — tocca `gas.py`, prossima fetta.
 - **Integrazioni (broker, risposte WhatsApp automatiche)**: DEFERITA — `reports/crm.md` §7.
@@ -26,28 +27,28 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |    7 +++
+ .claude/agents/memoria_revisore.md |   10 ++++
  .github/workflows/ci.yml           |    8 +++
  .gitignore                         |    4 ++
- modules/crm/__init__.py            |   18 +++++++
- modules/crm/__main__.py            |  342 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/analisi.py             |  389 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/demo.py                |  133 +++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/messaggi.py            |  116 +++++++++++++++++++++++++++++++++++++++++
- modules/crm/motore.py              |  415 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/server.py              |  830 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/store.py               | 1005 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/web/app.css            |  319 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/web/app.js             |  818 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/__init__.py            |   18 ++++++
+ modules/crm/__main__.py            |  353 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/analisi.py             |  389 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/demo.py                |  133 +++++++++++++++++++++++++++++++++++++++++
+ modules/crm/messaggi.py            |  129 ++++++++++++++++++++++++++++++++++++++++
+ modules/crm/motore.py              |  423 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/server.py              |  839 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/store.py               | 1085 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/web/app.css            |  319 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/web/app.js             |  829 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/web/favicon.svg        |    1 +
- modules/crm/web/index.html         |   17 +++++++
- reports/crm.md                     |  105 ++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |   16 ++++--
+ modules/crm/web/index.html         |   17 ++++++
+ reports/crm.md                     |  107 +++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |   17 ++++--
  reports/handoff.md                 |  n/d
  reports/roadmap.md                 |    1 +
- reports/stato_progetto.md          |    4 +-
- reports/ultimo_report.md           |   30 +++++++----
- tests/test_unit_crm.py             |  985 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |    5 +-
+ reports/ultimo_report.md           |   32 +++++++---
+ tests/test_unit_crm.py             | 1159 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -55,6 +56,12 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+72dcc9d2 fix(crm): controlli e scritture in una sola transazione (BEGIN IMMEDIATE), data di apertura anticipabile, errore chiaro sul testo lungo — review #807 APPROVATO
+83633433 chore(revisore): memoria review #807 — APPROVATO
+c9daf955 fix(crm): proposta scartata non ricreata, movimenti incoerenti rifiutati, riga STOP sui testi corretti, STOP ricontrollato all'invio — verifica esterna e bot #381, review #806 APPROVATO CON RISERVE
+8fdae653 chore(revisore): memoria review #806 — APPROVATO CON RISERVE
+772f993c docs(fine-task): handoff — marcatore gasmerge-ip-ok sulle righe d'esempio del verdetto #805
+939a2a12 docs(fine-task): handoff con review #805 e gate IP
 f1c109a7 test(crm): marcatore gasmerge-ip-ok sugli indirizzi d'esempio del test di bind — review #805 APPROVATO
 08b3387b chore(revisore): memoria review #805 — APPROVATO
 0286192c docs(fine-task): CRM clienti, prima bozza — report, handoff (review #803/#804), guida reports/crm.md, roadmap R11
@@ -63,11 +70,11 @@ ae5197d0 chore(revisore): memoria review #804 — APPROVATO CON RISERVE
 15368710 chore(revisore): memoria review #803 — BOCCIATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. I commit `docs(fine-task)` elencati sono le versioni precedenti di questo handoff (V-4 della verifica esterna #381).
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 99d82f3f: due giri sullo stesso diff staged; commit motore f1c109a7: terzo giro. Verdetti incollati per intero. NB: le citazioni `path:riga` della #803-CRM si riferiscono alla versione staged del primo giro (poi corretta); quelle della #804-CRM al codice committato.
+Commit motore 99d82f3f: due giri sullo stesso diff staged; commit motore f1c109a7: terzo giro; commit motore c9daf955: quarto giro; commit motore 72dcc9d2: quinto giro. Verdetti incollati per intero. NB: le citazioni `path:riga` della #803-CRM si riferiscono alla versione staged del primo giro (poi corretta); quelle della #804-CRM al codice committato.
 
 ### Review #803-CRM (1° giro)
 
@@ -322,9 +329,113 @@ Review #805-CRM, terzo giro: l'unica modifica è il commento `# gasmerge-ip-ok`,
 - Non ho creato `.claude/.review_ok` e non ho committato il diff.
 - Le riserve aperte restano quelle di #804: R-804-1, R-804-2, R-804-3, R-804-4, più R-803-4, R-803-9 e R-803-10.
 
+### Review #806-CRM (4° giro, commit c9daf955: finding di bot e verifica esterna #381)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #806-CRM, quarto giro. Un solo verdetto sull'insieme del diff staged (5 file, +150/−8): le correzioni V-1/V-2 della verifica esterna #381 più V-1/V-2 del bot #381.
+
+**Riserva principale (MEDIA):** i nuovi controlli su capitale e STOP non sono atomici. Con due operazioni concorrenti si aggirano: provato, due prelievi in parallelo portano il capitale a −1.000 € e uno STOP scritto nel mezzo non ferma l'invio. Si chiude con una riga (`BEGIN IMMEDIATE` in `_scrivi`), dettagli in R-806-1. Il resto delle correzioni è corretto e i test mordono.
+
+**Verifiche rieseguite da me:**
+- **Fail-before:** in una cartella con il codice di HEAD (f1c109a7) e il file di test staged, falliscono 5 test (`test_server_flusso_completo`, i due V-1/V-2 della verifica esterna, i due del bot), 92 passano.
+- **Codice staged:** 97 passed. mypy pulito.
+- **Demo:** si popola ancora con i vincoli nuovi (26 clienti, 456 movimenti).
+- **Perimetro:** kernel, brains/, memoria e cancello non toccati.
+
+### Riserve
+
+**R-806-1 — MEDIA — i controlli «dentro la transazione» non lo sono**
+- **Il problema.** Il sqlite3 di Python apre la transazione solo prima della prima INSERT/UPDATE (modalità «legacy», predefinita anche su 3.11 e 3.13). Quindi le SELECT di controllo girano in autocommit: `in_transaction` vale False nel momento del controllo, misurato in entrambi i casi sotto.
+- **Prova 1, capitale.** Due prelievi concorrenti da 1.000 € su un capitale di 1.000 € passano entrambi: capitale finale −1.000 €. Ho rallentato `_capitale` di 0,3 s per rendere deterministico l'intreccio.
+  - Riguarda `modules/crm/store.py:776`, dove la docstring di `_capitale` (`modules/crm/store.py:791`) dice «dentro la transazione».
+  - Stesso buco per lo storno di un deposito (`modules/crm/store.py:853`).
+- **Prova 2, STOP.** Ho usato una connessione con factory che scrive `opt_out = 1` da un'altra connessione subito prima dell'UPDATE della proposta. La scrittura passa senza attendere nessun lock e la proposta diventa «inviata», col link wa.me, per un cliente che ha appena chiesto STOP. Riguarda `modules/crm/store.py:939` e il controllo di `modules/crm/store.py:943`.
+- **Cosa resta valido.** Nel lotto (`registra_movimenti`) le righe dopo la prima girano davvero nella transazione, quindi il caso «i prelievi vedono i depositi delle righe prima» è corretto.
+- **Rispetto a prima.** Le correzioni riducono la finestra rispetto a HEAD, ma non la chiudono come dicono i commenti. Il test `test_v2_bot_381_stop_ricontrollato_nella_transazione_di_invio` prova che il controllo esiste, non che sia atomico.
+- **Rimedio.** `con.execute("BEGIN IMMEDIATE")` all'inizio di `_scrivi` (`modules/crm/store.py:483`), più un test con la stessa connessione factory: la scrittura concorrente deve aspettare o fallire, l'invio deve essere rifiutato.
+- **Perché MEDIA e non bloccante.** Serve un'operazione concorrente: doppio click, oppure dashboard e riga di comando insieme. Non peggiora nulla rispetto a HEAD, dove il controllo mancava del tutto.
+
+**R-806-2 — BASSA — una data di apertura sbagliata non si corregge più**
+- **Cosa è successo.** Il nuovo vincolo «data ≥ aperta_il» (`modules/crm/store.py:773`) rifiuta lo storico registrato su una posizione aperta oggi per errore. È il valore predefinito del form (`value: oggiIso()`).
+- **Prova.** «data 2026-01-02 prima dell'apertura del servizio (2026-11-17)».
+- **Perché è un vicolo cieco.** Non esiste un modo per correggere `aperta_il`: `apri_posizione` riattiva senza cambiare la data e la coppia cliente-servizio è unica. Per quella posizione lo storico non si registra mai, nemmeno con l'import.
+- **Rimedio.** Un metodo per spostare `aperta_il` all'indietro (la tabella posizioni non è immutabile), oppure almeno una riga in reports/crm.md: «apri il servizio con la data vera prima di caricare lo storico».
+
+**R-806-3 — COSMETICA — testo che sfora il limite dopo l'aggiunta**
+- `completa_testo` (`modules/crm/messaggi.py:111`) aggiunge nota e STOP dopo il testo dell'operatore. Un testo di circa 1.950 caratteri supera così TESTO_MAX e `transiziona_proposta` (`modules/crm/store.py:926`) risponde «troppo lungo (max 2000)», anche se l'operatore non l'ha scritto lungo.
+
+### Elementi del diff esaminati
+
+- **Scarto come «non ora» — ok.** `modules/crm/motore.py:170` ferma il cliente per `pausa_giorni` dopo uno scarto; `modules/crm/motore.py:236` ferma lo stesso obiettivo per `pausa_dopo_no_giorni`.
+  - Rischi esaminati: livello di insistenza alzato per errore; proposta ricreata 2 s dopo dal guardiano.
+  - Il livello resta basso: `negativi` non conta gli scarti. `esito_il` viene scritto alla transizione «scartata». Il test mostra che dopo la pausa arriva un obiettivo diverso.
+- **Data e capitale dentro il lotto — ok, salvo R-806-1 e R-806-2.** `modules/crm/store.py:773` controlla che la data non sia prima dell'apertura (confronto fra stringhe ISO); `modules/crm/store.py:776` che il prelievo non superi il capitale.
+  - `_capitale` esclude storni e movimenti stornati, come `analisi.costruisci`.
+  - Un errore dentro il lotto diventa «riga N» e annulla tutto (`modules/crm/store.py:831`).
+- **Nota e STOP rimessi in fondo — ok, salvo R-806-3.** `modules/crm/messaggi.py:111` (`completa_testo`) è usata dal server in `modules/crm/server.py:757`, che prima rifiuta un messaggio non testo (`modules/crm/server.py:755`).
+  - Rischio esaminato: doppioni o nota persa.
+  - È idempotente (test); se la nota è vuota per scelta non viene aggiunta; non c'è nessuna strada per inviare senza la riga STOP.
+- **Controlli d'invio nello store — ok come controllo, non come atomicità (R-806-1).** `modules/crm/store.py:939` ricontrolla stato, STOP, consenso e telefono anche fuori dal server, quindi vale anche per la riga di comando.
+- **Test cambiati — legittimi.** `test_proposte_transizioni_e_doppioni` ora dà il consenso al cliente, che l'invio pretende; `test_server_flusso_completo` pretende prefisso esatto e riga STOP finale, cioè un'asserzione più stretta. Nessun test indebolito.
+
+### Rischi esplicitamente NON verificati
+
+- La corsa di R-806-1 dal browser vero (doppio click sul pulsante): l'ho provata a livello di store con intrecci forzati, non dalla dashboard.
+- La demo con un «oggi» diverso dall'orologio reale: con `popola(oggi=2027-02-28)` fallisce per «data nel futuro», ma è un artefatto della mia prova (l'orologio dello store resta quello vero). In uso normale `oggi` è la data di sistema.
+- V-3 e V-4 della verifica esterna (reports/, fuori perimetro): non revisionati.
+
+### Note
+
+- **Memoria del revisore:** riga contatore #806-CRM più una lezione su sqlite3 e le transazioni, in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (commit 8fdae653). Il diff staged è intatto (5 file).
+- **Marcatore e commit:** non ho creato `.claude/.review_ok` e non ho committato il diff.
+- **Script delle prove**, riutilizzabili per il test di R-806-1:
+  - /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/rev/v2.py (prelievi concorrenti e posizione aperta oggi);
+  - /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/rev/v2bot.py (STOP scritto fra controllo e UPDATE).
+- **Da registrare in reports/stato_progetto.md:** R-806-1, R-806-2, R-806-3. Restano aperte anche R-804-1..4, R-803-4, R-803-9 e R-803-10.
+
+### Review #807-CRM (5° giro, commit 72dcc9d2: riserve R-806-1/2/3)
+
+## VERDETTO: APPROVATO
+
+Review #807-CRM, quinto giro: un solo verdetto su tutto il diff staged (5 file, +169/−5) dopo c9daf955. Le tre riserve di #806 sono chiuse, ognuna con un test che fallisce sul codice prima della correzione. Non ho trovato difetti nuovi di sostanza.
+
+**Verifiche rifatte da me:**
+- **Test nuovi contro il vecchio codice:** con i file di HEAD c9daf955 e il file di test staged falliscono esattamente i 4 test nuovi (`test_r806_1_stop_concorrente…`, `test_r806_1_prelievi_concorrenti…`, `test_r806_2_apertura…`, `test_r806_3_testo_lungo…`); gli altri 97 passano.
+- **Codice staged:** 101 passed, uguale in 3 esecuzioni. mypy pulito. `node --check modules/crm/web/app.js` ok.
+- **Le mie riproduzioni del giro #806, rieseguite sul codice nuovo:**
+  - STOP scritto fra il controllo e l'UPDATE: ora `in_transaction` vale True, la connessione concorrente trova il lucchetto occupato e l'invio non passa con lo STOP nel mezzo;
+  - due prelievi da 1.000 € su 1.000 € di capitale: il secondo viene rifiutato («maggiore del capitale (0,00 €)») e il capitale finale resta 0.
+- **Cosa non è toccato:** kernel, brains/, memoria e cancello.
+
+**Elementi del diff esaminati:**
+- `modules/crm/store.py:494` — `BEGIN IMMEDIATE` in `_scrivi`, prima di `fn(con)`. Esito: ok.
+  - Rischio esaminato: blocchi reciproci, cioè scritture da altre connessioni fatte dentro `fn`. Ho controllato i corpi `_fn`: usano solo la connessione ricevuta (`_evento`, `_capitale`, `_inserisci_movimento`), nessuno apre un'altra connessione per scrivere.
+  - Rischio esaminato: effetti sul kernel. Il lucchetto di scrittura sul file condiviso dura quanto la scrittura del CRM; il kernel aspetta col suo timeout di 10 s. Un lucchetto non ottenuto diventa «database non disponibile» (ErroreCRM, §9).
+  - Nota: `crea_proposta` resta fuori da `_scrivi`, ma lì non c'è un «controllo e poi scrittura»: decide l'indice unico.
+- `modules/crm/store.py:746` — `anticipa_apertura`: rifiuta le date future (`modules/crm/store.py:752`) e gli spostamenti in avanti (`modules/crm/store.py:762`); il cambio va nel diario del CRM (servizio e date, nessun nome). Esito: ok.
+  - Rischio esaminato: rompere la regola «nessun movimento prima dell'apertura». Spostando solo indietro, i movimenti già registrati restano tutti dopo l'apertura.
+  - Esposta in `modules/crm/server.py:640` (dopo autenticazione e controlli anti-CSRF comuni), nella CLI (`modules/crm/__main__.py:215`) e nel campo «dal» (`modules/crm/web/app.js:716`). Il campo costruisce il DOM con `el()`, niente HTML dai dati.
+- `modules/crm/server.py:760` — errore chiaro «accorcialo di N» quando nota più riga STOP fanno superare TESTO_MAX. Esito: ok. Il conteggio coincide con quello di `_testo`, perché `completa_testo` toglie già gli spazi ai bordi.
+- `tests/test_unit_crm.py:1085` e `tests/test_unit_crm.py:1107` — connessione spia (factory) che forza l'intreccio. Esito: ok.
+  - Rischio esaminato: un test che passa anche senza la correzione. Non succede: su HEAD falliscono entrambi.
+  - Nel verso corretto sono deterministici: il secondo scrittore aspetta il lucchetto, non un orologio.
+
+**Nota minore, non classificata come riserva:** `anticipa_apertura` con la stessa data accetta e scrive un evento «dal X al X» inutile. Il campo della dashboard lo evita; da CLI o API resta possibile.
+
+**Rischi esplicitamente NON verificati:**
+- Durata del lucchetto di scrittura con un import CSV molto grande (migliaia di righe in una transazione) mentre il kernel scrive in memoria: non misurata. Plausibilmente sotto il secondo, ma non provata.
+- Campo «dal» provato solo con `node --check`, non nel browser: mi fido della prova nel browser dichiarata dal chiamante.
+
+**Riserve che restano aperte (da giri precedenti, non toccate qui):** R-804-1, R-804-2, R-804-3, R-804-4, R-803-4, R-803-9, R-803-10.
+
+**Note:**
+- Ho aggiunto la riga contatore #807-CRM in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit 83633433). Il diff staged è intatto (5 file).
+- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_crm.py` (nuovo): 0 → **93 passed** (3 giri stabili). I 13 test `test_r803_*` sul codice staged prima delle correzioni: 12 failed, 1 passed (keep-alive normale, che deve passare in entrambi).
+- `tests/test_unit_crm.py` (nuovo): 0 → **101 passed** a 72dcc9d2 (3 giri stabili; 93 al commit 99d82f3f). Ogni test di regressione aggiunto dopo un verdetto fallisce sul codice precedente: 12 dei 13 `test_r803_*` sul primo staged, 5 test (i 4 `*_381` e `test_server_flusso_completo`) su f1c109a7, i 4 `test_r806_*` su c9daf955. I 13 test `test_r803_*` sul codice staged prima delle correzioni: 12 failed, 1 passed (keep-alive normale, che deve passare in entrambi).
 - Suite del kernel (`python tests/test_unit_kernel.py`, kernel non toccato):
 
 ```
@@ -336,18 +447,25 @@ Review #805-CRM, terzo giro: l'unica modifica è il commento `# gasmerge-ip-ok`,
 
 ## §6 STATO CI
 
-`gh run list` non usato (in questa sessione cloud GitHub si interroga con gli strumenti MCP). Run sul branch lette con `actions_list` alla scrittura dell'handoff:
+`gh run list` non usato (in questa sessione cloud GitHub si interroga con gli strumenti MCP). Run lette con `actions_list` / `list_workflow_jobs` alla scrittura dell'handoff:
 
 ```
-run 44163799980  CI            push                 99d82f3f  in_progress (alla scrittura)  2026-11-17T19:55:34Z
-run 44163850284  verifica-bot  pull_request_target  99d82f3f  completed / skipped (PR senza l'etichetta «verifica»)  2026-11-17T19:55:51Z
+run 44163799980  CI            push                 99d82f3f  completed / failure  (unit-suite: step «Run web suite» 7 failed, 747 passed; «Run CRM suite» success; handoff-check success)
+run 44163850284  verifica-bot  pull_request_target  99d82f3f  completed / skipped  (PR ancora senza l'etichetta «verifica»)
+run 44164393490  CI            push                 772f993c  completed / failure  (unit-suite: step «Run web suite» 7 failed, 747 passed; «Run CRM suite» 93 passed; handoff-check success)
+run 44164436879  verifica-bot  pull_request_target  772f993c  completed / success  (check verifica-bot: neutral — APPROVATO CON RISERVE, la PR tocca la CI)
+run 44155950606  CI            push                 adb0e188  completed / failure  (ALTRO ramo, claude/practical-tesla-ea9a9g, PR #380, senza CRM: stesso step «Run web suite» rosso)
+run 43312735169  CI            push (main)          01eb9f50  completed / success  (12 nov: «Run web suite» 754 passed)
 ```
+
+**Rosso della CI NON causato da questa PR (blocco ambientale, da trattare in una fetta a parte):** i 7 falliti sono tutti in `tests/test_unit_web_browser.py` (sandbox bwrap del browser: tmpfs non scrivibili, processi di prova che non partono) — `test_il_sandbox_non_ha_rete_e_scrive_solo_nei_tmpfs`, `test_tmp_dev_shm_e_profilo_hanno_un_tetto`, `test_gas_e_la_home_dentro_una_cartella_permessa_sono_coperte`, `test_una_permessa_che_e_un_collegamento_non_scopre_gas`, `test_ipc_e_processi_dell_host_non_si_vedono`, `test_morto_bwrap_muore_il_sandbox`, `test_ucciso_bwrap_muore_anche_chi_cambia_gruppo_e_ambiente`. Gli stessi test passavano su main il 12 nov (754 passed); oggi falliscono identici anche sul ramo di un'altra sessione che non contiene il CRM; in questo container, con bubblewrap 0.9.0 installato, l'intera suite web passa. Ipotesi (non dimostrata): cambio dell'immagine ubuntu-latest dei runner tra il 12 e il 17 nov. Finché resta, il check required `unit-suite` è rosso per ogni PR.
 
 Mappatura commit→run:
-- `15368710` (memoria revisore #803): nessuna run su questo SHA (pushato insieme a 99d82f3f).
-- `ae5197d0` (memoria revisore #804): nessuna run su questo SHA (pushato insieme a 99d82f3f).
-- `99d82f3f` (codice CRM): run CI 44163799980 (vedi blocco sopra; in corso alla scrittura).
-- `0286192c` (primo fine-task), `08b3387b` (memoria #805), `f1c109a7` (marcatore IP): mai pushati prima di questo fine-task → nessuna run su questi SHA; il push che porta questo handoff testa solo il commit di testa.
+- `15368710`, `ae5197d0`: nessuna run su questi SHA (pushati insieme a 99d82f3f).
+- `99d82f3f` (codice CRM): run CI 44163799980 (sopra).
+- `0286192c`, `08b3387b`, `f1c109a7`, `939a2a12`: nessuna run su questi SHA (pushati insieme a 772f993c).
+- `772f993c` (fine-task): run CI 44164393490 e verifica-bot 44164436879 (sopra).
+- `8fdae653`, `c9daf955`, `83633433`, `72dcc9d2`: mai pushati prima di questo fine-task → nessuna run su questi SHA; il push che porta questo handoff testa solo il commit di testa.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -359,3 +477,5 @@ Mappatura commit→run:
 - **R-804-2 (BASSA)**: la dashboard ricarica e il motore riscansiona anche alle scritture del kernel nel file condiviso.
 - **R-804-3 (BASSA)**: lo stesso CSV importato due volte raddoppia i movimenti.
 - **R-804-4 (COSMETICA)**: corpo chunked trattato come vuoto; BrokenPipe in do_POST su stderr.
+- Nota minore #807 (non riserva): `anticipa_apertura` con la stessa data scrive un evento inutile (la dashboard lo evita).
+- Chiuse in questa sessione: R-803-1/2/3/5/6/7/8/11; V-1/V-2 della verifica esterna #381 e V-1/V-2 del bot #381; R-806-1/2/3.
