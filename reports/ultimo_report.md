@@ -1,19 +1,22 @@
-# Ultimo report — 2026-11-17 — Presentazione clienti: prima bozza del PDF dell'ecosistema
+# Ultimo report — 2026-11-17 — Presentazione clienti: PDF dell'ecosistema con i dati reali del copy trading Forex
 
 ## DECISIONI UMANE RICHIESTE
 1. Prima di usare il PDF con i clienti farlo vedere a un legale: in Italia proporre al pubblico un «fondo» o rendimenti «garantiti» richiede autorizzazioni (CONSOB / Banca d'Italia). Nel PDF il servizio 1 si chiama «Rendimento Contrattuale» e la garanzia rimanda sempre al contratto.
-2. PR #380 (https://github.com/Gasss23/Gas/pull/380): NON mergiare finché la presentazione non ha i dati reali, salvo decisione dell'operatore.
-3. Mandare all'agente: PDF d'esempio, nome azienda/logo/contatti, dati dei servizi 1-3 (durata, ingresso minimo, pagamenti, durata del ciclo, storico mensile del copy trading e sua fonte), descrizione del servizio 4.
+2. PR #380 (https://github.com/Gasss23/Gas/pull/380): NON mergiare finché la presentazione non è completa, salvo decisione dell'operatore. In più oggi non è mergiabile: la CI è rossa per un problema dell'ambiente (vedi Anomalie).
+3. Confermare due differenze tra quanto detto a voce e il catalogo: lo storico verificato del copy trading è di 23 mesi (16.12.2024 – 09.11.2026), non 4 anni; lo stop sull'equity è 10% al livello del copy (1 su 10) e 30% al livello 3 del conto da cui vengono i numeri. Nel PDF ho usato i dati del catalogo.
+4. Decidere se nel PDF va il nome del fornitore della strategia («The Source Finance» / «TSF Forex Algo»): per ora non c'è.
+5. Mandare all'agente i dati ancora mancanti: nome azienda, logo e contatti; servizio 1 (durata, ingresso minimo, pagamenti); servizio 2 (durata del ciclo); capitale minimo e orizzonte del copy trading; servizio 4.
 
 ## Esito
-- **Fetta 1 — prima bozza del PDF (15 pagine, 16:9)**: FATTA — 83511a47. Copertina, chi siamo, ecosistema, confronto, 2 pagine per i servizi 1 e 2, 3 pagine per il servizio 3 (meccanismo, numeri e rischio, storico segnaposto), servizio 4 segnaposto, come iniziare, avvertenze, contatti. Grafici: crescita di 10.000 € al 20%, scaglioni da 3.000 €, schema illustrativo del ritorno alla media, righello del rischio (17% drawdown storico, equity stop 30%). Palette blu/verde acqua/oro validata con lo script della skill dataviz (tutti i controlli PASS). Pagine controllate a vista una per una.
-- **Fetta 2 — dati reali nel PDF**: DEFERITA — l'operatore deve ancora mandarli (bozza richiesta come «prova»).
-- **Fetta 3 — revisore / verifica esterna**: SALTATA — nessun diff nel perimetro di review (motore o macchina di controllo), né di sicurezza.
+- **Fetta 1 — prima bozza del PDF (15 pagine, 16:9)**: FATTA — 83511a47. Stile chiaro e neutro, palette blu/verde acqua/oro validata con lo script della skill dataviz.
+- **Fetta 2 — dati reali del copy trading Forex**: FATTA — 03466aae. Fonte: catalogo «The Source Finance – Catalogo servizi pre-lancio» (TSF-CAT-2026-0001), servizio 01 «TSF Forex Algo», che l'operatore usa oggi. Tenuti tutti i numeri: rendimento +165,12% in 23 mesi, max drawdown 17,92%, media mensile +4,31%, win rate 75,5%, profit factor 2,18, rendimento/DD 9,2x, 1.230 operazioni, durata media 11h 45m, rendimenti mensili 2025 (+70,35%) e 2026 (+55,59%), scheda (10 cross, TMGM, livello copy 1, livello dati 3, stop 10%/30%), condizioni (accesso gratuito, profit share 35% con high-water mark, calcolo settimanale), fonte (Myfxbook, Darwinex, 1:200, 100.000 $). Pagine nuove: numeri + curva (16 pagine in tutto), mese per mese + scheda + condizioni, rischio (livelli 1-10, righello del drawdown). Schema del meccanismo riscritto: riavvicinamento tra cross correlati. Avvertenze estese con «differenze tra conti» e «natura del copy trading». Curva di crescita calcolata dai rendimenti mensili (dà +165,1%, coerente col +165,12% Myfxbook).
+- **Fetta 3 — dati dei servizi 1, 2 e 4**: DEFERITA — l'operatore deve ancora mandarli.
+- **Fetta 4 — revisore / verifica esterna**: SALTATA — nessun diff nel perimetro di review né di sicurezza.
 - **reports/stato_progetto.md**: non aggiornato — il task è fuori dal motore di Gas.
 
 ## Test
-Nessuna modifica a gas.py/tests: suite del motore non rilanciata. Verifica del PDF: pdfinfo (15 pagine, 960x540 pt) + render a immagine di ogni pagina con pdftoppm.
+Nessuna modifica a gas.py/tests: suite del motore non rilanciata. Verifica del PDF: pdfinfo (16 pagine) + render a immagine di ogni pagina modificata con pdftoppm, controllate a vista.
 
 ## Anomalie
-- Il testo con riempimento sfumato (background-clip:text e <text> SVG sfumato) veniva reso come riquadri/rettangoli nel PDF: sostituito con tracciati vettoriali generati da fonttools+uharfbuzz (cache in `presentazione_clienti/titoli_svg.json`, così il build gira anche senza quelle librerie).
-- Il comando per pulire le anteprime con `rm -f $P/*` è stato bloccato dal controllo di sicurezza; rifatto con path letterale, nessuna cancellazione nel repo.
+- **CI rossa per l'ambiente, non per il branch**: run 44155605928 e 44155950606, job `unit-suite`, step «web suite»: 7 failed / 747 passed, tutti test del sandbox bwrap in `tests/test_unit_web_browser.py` (es. «bwrap: execvp sleep: No such file or directory»). Il branch non tocca codice; l'ultima CI verde su main è del 12/11 → probabile cambio dell'immagine del runner GitHub. Proposta all'operatore un'attività separata per sistemarla (tocca modules/ e tests/, serve il revisore).
+- Il testo con riempimento sfumato veniva reso come riquadri nel PDF: sostituito con tracciati vettoriali (fonttools + uharfbuzz, cache in `presentazione_clienti/titoli_svg.json`).
