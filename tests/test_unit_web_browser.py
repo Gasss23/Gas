@@ -392,6 +392,22 @@ def test_il_sandbox_non_ha_rete_e_scrive_solo_nei_tmpfs():
         fuori.close()
 
 
+def _catene_di_usr_bin() -> set:
+    """Collegamenti e file veri raggiunti seguendo i collegamenti di /usr/bin, sotto /usr o
+    /etc/alternatives (Ubuntu 26.04: sleep, cat… stanno in /usr/lib/cargo/…). Calcolato qui
+    dall'host, non dal codice: sono i soli file in più che il sandbox può mostrare."""
+    trovati = set()
+    for nome in os.listdir("/usr/bin"):
+        p = os.path.join("/usr/bin", nome)
+        for _ in range(16):
+            if not os.path.islink(p):
+                break
+            p = os.path.normpath(os.path.join(os.path.dirname(p), os.readlink(p)))
+            if p.startswith(("/usr/", "/etc/alternatives/")) and not p.startswith("/usr/local/"):
+                trovati.add(p)
+    return trovati
+
+
 def test_nel_sandbox_si_vedono_solo_i_file_permessi():
     """Fetta 35 (V-6 ve e V-2 bot #316, R-603-1/3): OGNI file visibile nel sandbox sta in una
     cartella dell'elenco scritto qui (non preso dal codice), e non c'è nessun socket né FIFO. Un
@@ -410,7 +426,7 @@ def test_nel_sandbox_si_vedono_solo_i_file_permessi():
                         "/etc/fonts/", "/gas/node/playwright/", "/gas/node/playwright-core/",
                         os.path.realpath(browser) + "/", casa + "/")
             esatti = {"/etc/ld.so.cache", "/etc/localtime", "/bin", "/sbin", "/lib", "/lib32", "/lib64",
-                      "/gas/bin/node", *glob.glob("/usr/lib/ld-linux*")}
+                      "/gas/bin/node", *glob.glob("/usr/lib/ld-linux*"), *_catene_di_usr_bin()}
             r = _nel_sandbox(casa, "find / \\( -path /proc -o -path /sys -o -path /dev \\) -prune "
                                    "-o ! -type d -printf '%y %p\\n'", timeout=180)
         righe = [x.split(" ", 1) for x in r.stdout.splitlines()]
@@ -426,6 +442,77 @@ def test_nel_sandbox_si_vedono_solo_i_file_permessi():
         assert segno_casa not in {p for _, p in righe}
     finally:
         os.unlink(segno_casa)
+
+
+def _catena_di_prova(base: str) -> tuple:
+    """bin/prova → fuori/alt/prova (collegamento) → fuori/vero/prova (script), più un file di
+    fuori/vero che nessun programma raggiunge."""
+    cartella_bin, fuori = os.path.join(base, "bin"), os.path.join(base, "fuori")
+    for d in (cartella_bin, os.path.join(fuori, "alt"), os.path.join(fuori, "vero")):
+        os.makedirs(d)
+    vero = os.path.join(fuori, "vero", "prova")
+    with open(vero, "w") as f:
+        f.write("#!/bin/sh\necho ESEGUITO\n")
+    os.chmod(vero, 0o755)
+    with open(os.path.join(fuori, "vero", "segreto"), "w") as f:
+        f.write("SEGRETO")
+    os.symlink("../vero/prova", os.path.join(fuori, "alt", "prova"))
+    os.symlink(os.path.join(fuori, "alt", "prova"), os.path.join(cartella_bin, "prova"))
+    return cartella_bin, fuori
+
+
+def test_programma_col_file_vero_fuori_si_esegue(monkeypatch):
+    """Ubuntu 26.04 (CI dal 2026-11-17): un programma della cartella dei programmi che è un
+    collegamento a un file fuori dalle cartelle permesse si esegue; del resto di quella
+    cartella esterna non si vede niente."""
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-progr-") as base, \
+            tempfile.TemporaryDirectory(prefix="gas-browser-prova-") as casa:
+        cartella_bin, fuori = _catena_di_prova(base)
+        monkeypatch.setattr(br, "_PERMESSE", br._PERMESSE + (cartella_bin,))
+        monkeypatch.setattr(br, "_CARTELLE_PROGRAMMI", br._CARTELLE_PROGRAMMI + (cartella_bin,))
+        monkeypatch.setattr(br, "_RADICI_PROGRAMMI", br._RADICI_PROGRAMMI + (fuori,))
+        r = _nel_sandbox(casa, f"{cartella_bin}/prova; [ -e {fuori}/vero/segreto ] && echo VISTO || echo NASCOSTO; "
+                               "sleep 0; echo SLEEP-OK")
+    assert r.stdout.split() == ["ESEGUITO", "NASCOSTO", "SLEEP-OK"], (r.stdout, r.stderr)
+
+
+def test_programmi_fuori_espone_solo_catene_ammesse(monkeypatch):
+    """La catena buona dà un --symlink per il collegamento intermedio e un --ro-bind del solo
+    file vero; non si espone niente per: file dentro Gas o la home, collegamento rotto,
+    destinazione fuori dalle radici ammesse, ciclo, cartella-collegamento non visibile, file non
+    eseguibile, cartella esclusa (come /usr/local)."""
+    with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-progr-") as base, \
+            tempfile.TemporaryDirectory(dir="/var/tmp", prefix="gas-altrove-") as altrove:
+        cartella_bin, fuori = _catena_di_prova(base)
+        protetto = os.path.join(fuori, "gas")
+        os.makedirs(protetto)
+        for f in (os.path.join(protetto, ".env"), os.path.join(altrove, "x")):
+            open(f, "w").close()
+            os.chmod(f, 0o755)  # R-804-1: eseguibili, così li ferma la regola provata e non il filtro +x
+        os.symlink(os.path.join(protetto, ".env"), os.path.join(cartella_bin, "dentro-gas"))
+        os.symlink(os.path.join(fuori, "manca"), os.path.join(cartella_bin, "rotto"))
+        os.symlink(os.path.join(altrove, "x"), os.path.join(cartella_bin, "fuori-radici"))
+        os.symlink(os.path.join(fuori, "c2"), os.path.join(fuori, "c1"))
+        os.symlink(os.path.join(fuori, "c1"), os.path.join(fuori, "c2"))
+        os.symlink(os.path.join(fuori, "c1"), os.path.join(cartella_bin, "ciclo"))
+        os.symlink(os.path.join(fuori, "vero"), os.path.join(fuori, "scorciatoia"))
+        os.symlink(os.path.join(fuori, "scorciatoia", "prova"), os.path.join(cartella_bin, "via-collegamento"))
+        os.symlink("prova", os.path.join(cartella_bin, "stessa"))  # passa dalla cartella visibile
+        with open(os.path.join(fuori, "vero", "dati"), "w") as f:  # R-803-2: non eseguibile
+            f.write("DATI")
+        os.symlink(os.path.join(fuori, "vero", "dati"), os.path.join(cartella_bin, "non-eseguibile"))
+        escluso = os.path.join(fuori, "locale")
+        os.makedirs(escluso)
+        with open(os.path.join(escluso, "x"), "w") as f:
+            f.write("#!/bin/sh\n")
+        os.chmod(os.path.join(escluso, "x"), 0o755)
+        os.symlink(os.path.join(escluso, "x"), os.path.join(cartella_bin, "da-locale"))
+        monkeypatch.setattr(br, "_CARTELLE_PROGRAMMI", (cartella_bin,))
+        monkeypatch.setattr(br, "_RADICI_PROGRAMMI", (fuori,))
+        monkeypatch.setattr(br, "_ESCLUSE_PROGRAMMI", (escluso,))
+        cmd = br._programmi_fuori([cartella_bin], [protetto])
+    vero, alt = os.path.join(fuori, "vero", "prova"), os.path.join(fuori, "alt", "prova")
+    assert cmd == ["--ro-bind", vero, vero, "--symlink", "../vero/prova", alt], cmd
 
 
 def test_tmp_dev_shm_e_profilo_hanno_un_tetto():
