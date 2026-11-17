@@ -13,10 +13,30 @@ HERE = Path(__file__).parent
 OUT = HERE / "presentazione.html"
 
 BRAND = "NOME AZIENDA"
-TOTAL = 15
+TOTAL = 16
 
 BLUE, TEAL, GOLD, SLATE = "#2F6BFF", "#0E9F8E", "#C7871F", "#64748B"
 GRAY_SERIES = "#A6AFBD"
+
+
+# ---------------------------------------------------------------- dati reali
+# Copy trading Forex: numeri del conto di riferimento (Myfxbook), presi dal catalogo
+# "The Source Finance - Catalogo servizi pre-lancio" (TSF-CAT-2026-0001, 11.11.2026),
+# servizio 01 "TSF Forex Algo". Vanno tenuti tutti come sono (operatore, 2026-11-17).
+FX = {
+    "rendimento": "+165,12%", "max_dd": "17,92%", "media_mensile": "+4,31%", "win_rate": "75,5%",
+    "profit_factor": "2,18", "rend_dd": "9,2x", "operazioni": "1.230", "durata_media": "11h 45m",
+}
+FX_MENSILI = {
+    2025: [2.45, 7.47, 8.21, -0.08, 15.80, 5.37, 4.75, 5.69, 1.98, 2.48, 1.37, 0.00],
+    2026: [7.56, 9.63, 5.84, 5.90, 3.39, 1.32, 0.45, 1.68, 2.07, 4.70, 2.96],
+}
+FX_ANNO = {2025: "+70,35%", 2026: "+55,59%"}
+FX_FONTE = ("Myfxbook · conto reale USD · Darwinex · leva 1:200 · deposito 100.000 $, nessun prelievo · "
+            "livello di rischio 3 · periodo 16.12.2024 – 09.11.2026 · track record verificato. "
+            "Valori 2025 per mese ricavati dalla curva di crescita Myfxbook.")
+FX_CONDIZIONI = ("Accesso gratuito: nessun costo fisso, di licenza o di attivazione. Profit share del 35% sui "
+                 "profitti netti, con high-water mark: si paga solo sui nuovi massimi del conto. Calcolo settimanale.")
 
 
 # ---------------------------------------------------------------- helpers
@@ -26,6 +46,11 @@ def eur(v: float) -> str:
 
 def num(v: float) -> str:
     return f"{v:,.0f}".replace(",", ".")
+
+
+def dec(v: float, d: int = 2) -> str:
+    """Numero all'italiana con d decimali (2,45)."""
+    return f"{v:.{d}f}".replace(".", ",")
 
 
 def ph(txt: str = "da inserire") -> str:
@@ -132,7 +157,7 @@ def top(eyebrow: str, n: int, color: str | None = None) -> str:
 
 RISK_LINE = (
     "I risultati passati non sono garanzia di risultati futuri. Ogni investimento comporta il rischio "
-    "di perdita, anche totale, del capitale. Leggi le Avvertenze a pag. 14."
+    "di perdita, anche totale, del capitale. Leggi le Avvertenze a pag. 15."
 )
 
 
@@ -272,7 +297,7 @@ def chart_mean_reversion() -> str:
     dn = [m - k for m in mean]
     band = line(up) + " " + " ".join(f"{X(i):.1f},{Y(dn[i]):.1f}" for i in reversed(range(N)))
     o = [f'<svg class="chart" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
-         'aria-label="Schema illustrativo della strategia di ritorno alla media">']
+         'aria-label="Schema illustrativo: lo spread tra due cross correlati si allontana dalla media e poi rientra">']
     o.append(f'<polygon points="{band}" fill="{BLUE}" opacity="0.07"/>')
     o.append(f'<polyline points="{line(up)}" fill="none" stroke="#C9D7FF" stroke-width="1"/>')
     o.append(f'<polyline points="{line(dn)}" fill="none" stroke="#C9D7FF" stroke-width="1"/>')
@@ -292,19 +317,71 @@ def chart_mean_reversion() -> str:
         ey = Y(price[e])
         ly = Y(max(price[e - 25:e + 25]) if above else min(price[e - 25:e + 25])) + (-26 if above else 30)
         o.append(f'<line x1="{X(e):.1f}" y1="{ey + (-8 if above else 8):.1f}" x2="{X(e):.1f}" y2="{ly + (6 if above else -16):.1f}" stroke="#0B1220" stroke-width="1"/>')
-        o.append(f'<text class="ann" x="{X(e):.1f}" y="{ly:.1f}" text-anchor="middle">Lontano dalla media → apertura</text>')
+        o.append(f'<text class="ann" x="{X(e):.1f}" y="{ly:.1f}" text-anchor="middle">Spread lontano dalla media → apertura</text>')
         xy = Y(price[x])
         ly2 = Y(dn[x] if above else up[x]) + (40 if above else -34)
         o.append(f'<line x1="{X(x):.1f}" y1="{xy + (8 if above else -8):.1f}" x2="{X(x):.1f}" y2="{ly2 + (-16 if above else 6):.1f}" stroke="{TEAL}" stroke-width="1"/>')
-        o.append(f'<text class="ann ann-teal" x="{X(x):.1f}" y="{ly2:.1f}" text-anchor="middle">Ritorno alla media → chiusura</text>')
+        o.append(f'<text class="ann ann-teal" x="{X(x):.1f}" y="{ly2:.1f}" text-anchor="middle">Riavvicinamento → chiusura</text>')
     o.append(f'<text class="tag" x="{W - mr}" y="12" text-anchor="end">SCHEMA ILLUSTRATIVO · NON SONO DATI REALI</text>')
     o.append("</svg>")
     return "".join(o)
 
 
+def chart_equity() -> str:
+    """Copy trading Forex: crescita cumulata a fine mese dai rendimenti mensili reali."""
+    W, H = 1080, 206
+    ml, mr, mt, mb = 46, 70, 10, 28
+    pw, phh = W - ml - mr, H - mt - mb
+    vals = [0.0]
+    g = 1.0
+    for anno in (2025, 2026):
+        for r in FX_MENSILI[anno]:
+            g *= 1 + r / 100
+            vals.append((g - 1) * 100)
+    n = len(vals) - 1
+    ymax = 200
+
+    def X(i: int) -> float:
+        return ml + pw * i / n
+
+    def Y(v: float) -> float:
+        return mt + phh * (1 - v / ymax)
+
+    o = [f'<svg class="chart" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+         'aria-label="Crescita cumulata del conto di riferimento a fine mese">']
+    for t in range(0, ymax + 1, 50):
+        o.append(f'<line class="{"base" if t == 0 else "grid"}" x1="{ml}" x2="{W - mr + 10}" y1="{Y(t):.1f}" y2="{Y(t):.1f}"/>')
+        o.append(f'<text class="tick" x="{ml - 10}" y="{Y(t) + 4:.1f}" text-anchor="end">{t}%</text>')
+    labels = {0: "12.2024", 6: "06.2025", 12: "12.2025", 18: "06.2026", n: "11.2026"}
+    for i, lab in labels.items():
+        o.append(f'<text class="tick" x="{X(i):.1f}" y="{H - 6}" text-anchor="middle">{lab}</text>')
+    pts = " ".join(f"{X(i):.1f},{Y(v):.1f}" for i, v in enumerate(vals))
+    o.append(f'<polygon points="{X(0):.1f},{Y(0):.1f} {pts} {X(n):.1f},{Y(0):.1f}" fill="{BLUE}" opacity="0.10"/>')
+    o.append(f'<polyline points="{pts}" fill="none" stroke="{BLUE}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>')
+    o.append(f'<circle cx="{X(n):.1f}" cy="{Y(vals[-1]):.1f}" r="5" fill="{BLUE}" stroke="#fff" stroke-width="2"/>')
+    o.append(f'<text class="endv" x="{X(n) + 12:.1f}" y="{Y(vals[-1]) + 5:.1f}">+{dec(vals[-1], 1)}%</text>')
+    o.append("</svg>")
+    return "".join(o)
+
+
+def heat_cell(v: float | None) -> str:
+    """Cella della tabella mensile: blu più intenso = mese migliore; negativo in rosso tenue."""
+    if v is None:
+        return "<div class='hm-c hm-na'></div>"
+    if v < 0:
+        bg, ink = "#FBE4E4", "#9B2C2C"
+    elif v == 0:
+        bg, ink = "#F0F1F4", "#475467"
+    else:
+        steps = [(2, "#DCE8FC", "#0B1220"), (4, "#B7D3F6", "#0B1220"), (6, "#86B6EF", "#0B1220"),
+                 (8, "#5598E7", "#0B1220"), (12, "#2A78D6", "#FFFFFF"), (99, "#1C5CAB", "#FFFFFF")]
+        bg, ink = next((b, i) for lim, b, i in steps if v < lim)
+    return f"<div class='hm-c' style='background:{bg};color:{ink}'>{dec(v)}</div>"
+
+
 def risk_ruler() -> str:
     """Servizio 03: righello della perdita, 0-100% del capitale."""
-    seg = [(17, "17%", "#2F6BFF", "#fff"), (13, "", "#A9C0FF", "#0B1220"), (70, "Area esclusa: oltre il 30% la copia si interrompe", "#EEF1F6", "#475467")]
+    seg = [(17.92, "17,92% · max drawdown", "#2F6BFF", "#fff"), (12.08, "", "#A9C0FF", "#0B1220"), (70, "Area esclusa: oltre il 30% (livello 3) lo stop chiude tutto", "#EEF1F6", "#475467")]
     parts, x = [], 0
     for w, lab, fill, ink in seg:
         parts.append(
@@ -315,7 +392,7 @@ def risk_ruler() -> str:
         '<div class="ruler">'
         + "".join(parts)
         + '<div class="stop" style="left:calc(30% - 2.5px)"><span>EQUITY STOP · 30%</span></div>'
-        + '<div class="ruler-axis"><span>0%</span><span style="left:17%">17%</span><span style="left:30%">30%</span>'
+        + '<div class="ruler-axis"><span>0%</span><span style="left:30%">30%</span>'
           '<span style="left:100%">100% del capitale</span></div>'
         + "</div>"
     )
@@ -416,7 +493,7 @@ def s_about() -> str:
     </div>
     <div class="about-r card">
       <div class="stat"><div class="stat-v">4</div><div class="stat-l">soluzioni in un unico ecosistema</div></div>
-      <div class="stat"><div class="stat-v">4+ <small>anni</small></div><div class="stat-l">di storico operativo sul copy trading</div></div>
+      <div class="stat"><div class="stat-v">23 <small>mesi</small></div><div class="stat-l">di track record verificato Myfxbook sul copy trading</div></div>
       <div class="stat"><div class="stat-v ph-v">{ph("00")}</div><div class="stat-l">clienti seguiti</div></div>
       <div class="stat"><div class="stat-v ph-v">{ph("0,0 M€")}</div><div class="stat-l">capitale complessivo seguito</div></div>
     </div>
@@ -439,7 +516,7 @@ def s_ecosystem() -> str:
     cards = "".join([
         svc_card("01", "shield", GOLD, "#FBF3E6", "Rendimento Contrattuale", "Capitale affidato con un contratto che fissa rendimento, durata e garanzie.", "20%", "rendimento annuo da contratto", "Profilo: stabilità"),
         svc_card("02", "swap", TEAL, "#E6F6F4", "Matched Trading", "Due conti con posizioni opposte: il risultato è calcolato prima di entrare.", "≈ 500 €", "medi ogni 3.000 € per ciclo", "Profilo: matematico"),
-        svc_card("03", "wave", BLUE, "#EAF0FF", "Copy Trading Algoritmico", "Un algoritmo non direzionale sul Forex che punta sul ritorno alla media.", "≈ 4%", "medio mensile (dato storico)", "Profilo: dinamico"),
+        svc_card("03", "wave", BLUE, "#EAF0FF", "Copy Trading Algoritmico", "Un algoritmo non direzionale su 10 cross Forex: punta sul riavvicinamento tra valute correlate.", FX["media_mensile"], "media mensile · 23 mesi verificati", "Profilo: dinamico"),
         svc_card("04", "plus", SLATE, "#F1F4F8", "Nuovo servizio", "Il quarto pilastro dell'ecosistema. Dettagli in arrivo.", ph("—"), "dato chiave da inserire", "Profilo: da definire", ghost=True),
     ])
     return f'''
@@ -455,11 +532,12 @@ def s_ecosystem() -> str:
 
 def s_compare() -> str:
     rows = [
-        ("Come funziona", "Capitale affidato in gestione con contratto", "Due conti collegati, prop firm + broker, con posizioni opposte", "Copia automatica di un algoritmo sulle coppie valutarie", ph()),
-        ("Rendimento indicativo", "<b>20% annuo</b>, fissato dal contratto", "<b>≈ 500 €</b> ogni 3.000 € per ciclo (media)", "<b>≈ 4% mensile</b> medio (dato storico)", ph()),
-        ("Protezione", "Garanzia prevista dal contratto", "Copertura matematica tra i due conti", "Equity stop al 30%, max drawdown storico 17%", ph()),
+        ("Come funziona", "Capitale affidato in gestione con contratto", "Due conti collegati, prop firm + broker, con posizioni opposte", "Copia automatica di un algoritmo su 10 cross Forex", ph()),
+        ("Rendimento indicativo", "<b>20% annuo</b>, fissato dal contratto", "<b>≈ 500 €</b> ogni 3.000 € per ciclo (media)", f"<b>{FX['media_mensile']} al mese</b> in media · {FX['rendimento']} in 23 mesi", ph()),
+        ("Protezione", "Garanzia prevista dal contratto", "Copertura matematica tra i due conti", f"Stop sull'equity al 10% · max drawdown storico {FX['max_dd']}", ph()),
         ("Capitale d'ingresso", ph(), "Scaglioni da 3.000 €", ph(), ph()),
         ("Orizzonte", ph("durata contratto"), ph("durata media del ciclo"), ph("orizzonte consigliato"), ph()),
+        ("Costi", ph(), ph(), "Gratuito · 35% sui nuovi profitti", ph()),
     ]
     head = "".join(
         f'<th style="--c:{c}"><span class="th-n">{n}</span>{t}</th>'
@@ -603,16 +681,16 @@ def s_svc3_a() -> str:
   {top("Servizio 03 · Copy Trading Algoritmico", 9, BLUE)}
   <div class="s3">
     <div class="s3-l">
-      <h2 class="md">Quando il prezzo si allontana dalla media, <span class="blue-text">l'algoritmo punta sul ritorno.</span></h2>
-      <p class="lead">Una strategia non direzionale sulle principali coppie valutarie del Forex. Non deve indovinare se il mercato salirà o scenderà: misura quanto il prezzo si è allontanato dalla sua media storica e apre un'operazione scommettendo sul rientro.</p>
+      <h2 class="md">Le valute si allontanano, <span class="blue-text">l'algoritmo punta sul rientro.</span></h2>
+      <p class="lead">Strategia algoritmica sul Forex, replicata in copy trading sul tuo conto. Non prova a prevedere la direzione del mercato: misura la distanza tra cross valutari che di solito si muovono insieme e, quando si allontana troppo dalla sua media storica, apre un'operazione puntando sul rientro.</p>
       <div class="feats">
-        {feat("arrows", "Non direzionale", "Lavora sia al rialzo sia al ribasso: conta la distanza dalla media.")}
-        {feat("cpu", "100% algoritmico", "Regole fisse, eseguite in automatico, senza emozioni.")}
-        {feat("globe", "Forex", "Il mercato più liquido al mondo, aperto 24 ore su 5 giorni.")}
+        {feat("arrows", "Non direzionale", "Conta la relazione statistica tra le valute, non se il mercato sale o scende.")}
+        {feat("cpu", "10 cross Forex", "Regole fisse, eseguite in automatico; cross attivabili singolarmente.")}
+        {feat("globe", "24 ore su 24", "Opera nei giorni di mercato, con monitoraggio da dashboard.")}
       </div>
     </div>
     <div class="card s3-chart">
-      <div class="legend sm"><span><i style="background:{BLUE}"></i>Prezzo</span><span><i style="background:#7C8494"></i>Media storica</span><span><i class="sq" style="background:#DCE6FF"></i>Fascia normale</span><span><i class="dotk" style="background:#0B1220"></i>Apertura</span><span><i class="dotk" style="background:{TEAL}"></i>Chiusura</span></div>
+      <div class="legend sm"><span><i style="background:{BLUE}"></i>Distanza tra due cross (spread)</span><span><i style="background:#7C8494"></i>Media storica</span><span><i class="sq" style="background:#DCE6FF"></i>Fascia normale</span><span><i class="dotk" style="background:#0B1220"></i>Apertura</span><span><i class="dotk" style="background:{TEAL}"></i>Chiusura</span></div>
       {chart_mean_reversion()}
     </div>
   </div>
@@ -620,26 +698,29 @@ def s_svc3_a() -> str:
 </section>'''
 
 
-def s_svc3_b() -> str:
-    tile = lambda v, l, extra="": f'<div class="card tile">{extra}<div class="tile-v">{v}</div><div class="tile-l">{l}</div></div>'
+def kpi(k: str, v: str, dd: bool = False) -> str:
+    cls = "card kpi dd" if dd else "card kpi"
+    return f'<div class="{cls}"><div class="kpi-k">{k}</div><div class="kpi-v">{v}</div></div>'
+
+
+def s_svc3_numbers() -> str:
     return f'''
 <section class="slide">
-  {top("Servizio 03 · Numeri e gestione del rischio", 10, BLUE)}
-  <h2 class="mt">Numeri solidi, <span class="blue-text">rischio con un limite preciso.</span></h2>
-  <div class="tiles">
-    {tile('≈ 4<span>%</span>', "rendimento medio mensile, dato storico")}
-    {tile('17<span>%</span>', "drawdown massimo registrato negli ultimi ~4 anni")}
-    {tile('30<span>%</span>', "equity stop: soglia di interruzione automatica")}
-    {tile(ph("dal 20XX"), "operativo con continuità da anni")}
+  {top("Servizio 03 · I numeri reali", 10, BLUE)}
+  <div class="h-row"><h2 class="mt sm2">{FX["rendimento"]} in 23 mesi, <span class="blue-text">su un conto reale verificato.</span></h2><span class="src-chip">TRACK RECORD · MYFXBOOK</span></div>
+  <div class="kpis">
+    {kpi("Rendimento", FX["rendimento"])}
+    {kpi("Max drawdown", FX["max_dd"], dd=True)}
+    {kpi("Media mensile", FX["media_mensile"])}
+    {kpi("Win rate", FX["win_rate"])}
+    {kpi("Profit factor", FX["profit_factor"])}
+    {kpi("Rendimento / drawdown", FX["rend_dd"])}
+    {kpi("Operazioni", FX["operazioni"])}
+    {kpi("Durata media", FX["durata_media"])}
   </div>
-  <div class="card ruler-card">
-    <div class="ruler-h"><h3>Fin dove può scendere il conto</h3><p>Perdita rispetto al capitale investito</p></div>
-    {risk_ruler()}
-    <div class="ruler-legend"><span><i style="background:{BLUE}"></i>Discesa massima registrata nello storico</span><span><i style="background:#A9C0FF"></i>Margine fino all'equity stop</span><span><i style="background:#E3E8EF"></i>Zona esclusa: la copia si ferma prima</span></div>
-  </div>
-  <div class="defs">
-    <p><b>Drawdown</b> · la discesa massima del conto dal suo punto più alto prima di risalire.</p>
-    <p><b>Equity stop</b> · il limite che chiude le operazioni se il conto perde il 30%. In condizioni estreme di mercato la perdita effettiva può superare la soglia.</p>
+  <div class="card eq-card">
+    <div class="chart-h"><div><h3>Crescita cumulata</h3><p>Conto di riferimento, a fine mese · calcolata dai rendimenti mensili Myfxbook</p></div></div>
+    {chart_equity()}
   </div>
   {foot()}
 </section>'''
@@ -648,28 +729,57 @@ def s_svc3_b() -> str:
 def s_svc3_track() -> str:
     months = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic", "Anno"]
     head = "<div class='hm-c hm-h'></div>" + "".join(f"<div class='hm-c hm-h'>{m}</div>" for m in months)
-    rows = "".join(
-        f"<div class='hm-c hm-y'>20XX</div>" + "".join("<div class='hm-c hm-e'>—</div>" for _ in months)
-        for _ in range(4)
-    )
+    rows = ""
+    for anno, vals in FX_MENSILI.items():
+        cells = "".join(heat_cell(vals[i] if i < len(vals) else None) for i in range(12))
+        rows += f"<div class='hm-c hm-y'>{anno}</div>{cells}<div class='hm-c hm-tot'>{FX_ANNO[anno]}</div>"
+    sc = [("Mercato", "Forex · 10 cross"), ("Stile", "Algoritmico, non direzionale"), ("Broker del copy", "TMGM"),
+          ("Livello del copy", "1 su 10, il più prudente"), ("Livello del conto dati", "3 su 10"),
+          ("Stop sull'equity", "10% (livello 1) · 30% (livello 3)"), ("Modalità", "Copy trading, conto intestato al cliente")]
+    scheda = "".join(f"<div class='sc-r'><span>{k}</span><b>{v}</b></div>" for k, v in sc)
     return f'''
 <section class="slide">
-  {top("Servizio 03 · Lo storico", 11, BLUE)}
-  <h2 class="mt">Anni di risultati, <span class="blue-text">mese per mese.</span></h2>
-  <p class="lead narrow">In questa pagina inseriremo il track record reale del servizio: la curva del conto e il rendimento di ogni singolo mese, così puoi verificare i numeri con i tuoi occhi.</p>
-  <div class="track">
-    <div class="card track-eq">
-      <div class="chart-h"><div><h3>Curva del conto</h3><p>Andamento del capitale dall'avvio · %</p></div></div>
-      <div class="eq-ghost"><svg width="100%" height="100%" viewBox="0 0 400 220" preserveAspectRatio="none" aria-hidden="true">
-        <line x1="0" y1="55" x2="400" y2="55" class="gl"/><line x1="0" y1="110" x2="400" y2="110" class="gl"/><line x1="0" y1="165" x2="400" y2="165" class="gl"/><line x1="0" y1="219" x2="400" y2="219" class="bl"/>
-      </svg><div class="eq-lab">{ph("dati reali in arrivo")}</div></div>
-    </div>
-    <div class="card track-hm">
-      <div class="chart-h"><div><h3>Rendimenti mensili</h3><p>Rendimento netto di ogni mese e totale annuo · %</p></div></div>
-      <div class="hm">{head}{rows}</div>
-      <p class="hm-src">Fonte dei dati: {ph("piattaforma / broker")} · Storico verificabile su richiesta.</p>
+  {top("Servizio 03 · Mese per mese", 11, BLUE)}
+  <h2 class="mt sm2">Mese per mese, <span class="blue-text">tutto verificabile.</span></h2>
+  <div class="card hm-card">
+    <div class="chart-h"><div><h3>Rendimento mensile %</h3><p>Conto di riferimento · più intenso il blu, migliore il mese · novembre 2026 parziale (al 09.11)</p></div></div>
+    <div class="hm">{head}{rows}</div>
+  </div>
+  <div class="two">
+    <div class="card scheda"><div class="sc-h">SCHEDA</div>{scheda}</div>
+    <div class="card cond">
+      <div class="cond-b"><div class="sc-h">CONDIZIONI</div><p>{FX_CONDIZIONI}</p></div>
+      <div class="cond-b"><div class="sc-h">FONTE DATI</div><p>{FX_FONTE}</p></div>
     </div>
   </div>
+  {foot()}
+</section>'''
+
+
+def s_svc3_risk() -> str:
+    lv = "".join(
+        f"<div class='lv{' lv-copy' if i == 1 else ''}{' lv-ref' if i == 3 else ''}'><span>{i}</span><em>{i * 10}%</em></div>"
+        for i in range(1, 11)
+    )
+    gl = [("Rendimento", "Crescita del conto nel periodo, al netto di depositi e prelievi."),
+          ("Max drawdown", "Perdita massima dal picco precedente: quanto si è dovuto sopportare."),
+          ("Profit factor", "Profitti lordi divisi per perdite lorde. Sopra 1 il sistema guadagna."),
+          ("Win rate", "Percentuale di operazioni chiuse in profitto. Va letto con vincita e perdita media.")]
+    gloss = "".join(f"<div class='gl'><h4>{t}</h4><p>{d}</p></div>" for t, d in gl)
+    return f'''
+<section class="slide">
+  {top("Servizio 03 · Gestione del rischio", 12, BLUE)}
+  <h2 class="mt sm2">Il rischio ha un limite, <span class="blue-text">deciso prima di iniziare.</span></h2>
+  <div class="card lv-card">
+    <div class="lv-h"><h3>Dieci livelli di aggressività</h3><p>Stop sull'equity pari al 10% per livello: chiude tutto se il conto perde quella quota</p></div>
+    <div class="lvs">{lv}</div>
+    <div class="lv-legend"><span><i class="lvk-copy"></i><b>Livello 1</b> · il copy dei clienti, il più prudente · stop al 10%</span><span><i class="lvk-ref"></i><b>Livello 3</b> · il conto da cui vengono i numeri · stop al 30%</span></div>
+  </div>
+  <div class="card ruler-card">
+    <div class="ruler-h"><h3>Conto di riferimento (livello 3): fin dove è sceso</h3><p>Perdita rispetto al capitale, dal picco precedente</p></div>
+    {risk_ruler()}
+  </div>
+  <div class="glossary">{gloss}</div>
   {foot()}
 </section>'''
 
@@ -677,7 +787,7 @@ def s_svc3_track() -> str:
 def s_svc4() -> str:
     return f'''
 <section class="slide">
-  {top("Servizio 04 · In arrivo", 12, SLATE)}
+  {top("Servizio 04 · In arrivo", 13, SLATE)}
   <div class="split">
     <div class="split-l">
       <h2>{ph("Nome del quarto servizio")}</h2>
@@ -714,7 +824,7 @@ def s_start() -> str:
     )
     return f'''
 <section class="slide">
-  {top("Come iniziare", 13)}
+  {top("Come iniziare", 14)}
   <h2 class="mt">Dal primo contatto all'operatività <span class="grad-text">in quattro passi.</span></h2>
   <p class="lead narrow">Un percorso semplice e accompagnato: in ogni fase sai cosa succede, chi se ne occupa e quali sono i numeri.</p>
   <div class="hsteps"><div class="hline"></div>{cells}</div>
@@ -731,11 +841,13 @@ def s_legal() -> str:
         ("Simulazioni ed esempi", "Grafici ed esempi numerici sono illustrativi, calcolati al lordo di costi, commissioni e imposte."),
         ("Contratti e garanzie", "Rendimenti, garanzie e condizioni di ogni servizio sono regolati esclusivamente dal relativo contratto, che prevale su questo documento."),
         ("Soggetti terzi", "Prop firm e broker sono soggetti terzi: regole, costi e condizioni possono cambiare e influire sui risultati."),
+        ("Differenze tra conti", "Broker, spread, commissioni, swap, latenza, leva e dimensione del conto possono dare risultati diversi dal conto di riferimento."),
+        ("Natura del copy trading", "Le operazioni della strategia sono replicate sul conto del cliente, che resta intestato a lui. Non è consulenza né gestione di patrimoni."),
     ]
     cells = "".join(f'<div class="li"><span class="li-n">{i + 1:02d}</span><div><h4>{t}</h4><p>{d}</p></div></div>' for i, (t, d) in enumerate(items))
     return f'''
 <section class="slide">
-  {top("Avvertenze importanti", 14)}
+  {top("Avvertenze importanti", 15)}
   <h2 class="mt">La trasparenza fa parte del metodo.</h2>
   <p class="lead narrow">Prima di scegliere è giusto conoscere i rischi. Ecco, in parole semplici, cosa tenere presente.</p>
   <div class="card legal">{cells}</div>
@@ -761,7 +873,7 @@ def s_close() -> str:
       {c("Sito", ph("www.azienda.it"))}
     </div>
   </div>
-  <p class="close-legal">Documento riservato, a scopo informativo. Non costituisce offerta né consulenza. Investire comporta il rischio di perdita del capitale: leggi le Avvertenze a pag. 14.</p>
+  <p class="close-legal">Documento riservato, a scopo informativo. Non costituisce offerta né consulenza. Investire comporta il rischio di perdita del capitale: leggi le Avvertenze a pag. 15.</p>
 </section>'''
 
 
@@ -898,17 +1010,17 @@ p { color:var(--ink2); }
 .spec-line::after { content:""; position:absolute; right:-2px; top:-4px; border-left:7px solid var(--blue); border-top:5px solid transparent; border-bottom:5px solid transparent; }
 
 /* table */
-.tbl-wrap { margin-top:28px; padding:8px 28px 6px; }
+.tbl-wrap { margin-top:22px; padding:4px 28px 2px; }
 .cmp { width:100%; border-collapse:collapse; table-layout:fixed; }
-.cmp th { text-align:left; font-size:14.5px; font-weight:600; padding:18px 16px 16px; vertical-align:bottom; position:relative; letter-spacing:-.01em; }
+.cmp th { text-align:left; font-size:14.5px; font-weight:600; padding:14px 16px 13px; vertical-align:bottom; position:relative; letter-spacing:-.01em; }
 .cmp th:first-child { width:170px; }
 .cmp th::after { content:""; position:absolute; left:16px; right:16px; bottom:0; height:2px; background:var(--c); border-radius:2px; }
 .cmp th:first-child::after { display:none; }
 .th-n { display:block; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--muted); font-weight:500; margin-bottom:6px; }
-.cmp td { padding:15px 16px; font-size:13.5px; line-height:1.45; color:var(--ink2); border-bottom:1px solid var(--line); vertical-align:top; }
+.cmp td { padding:11px 16px; font-size:13px; line-height:1.45; color:var(--ink2); border-bottom:1px solid var(--line); vertical-align:top; }
 .cmp tr:last-child td { border-bottom:0; }
 .cmp td b { color:var(--ink); font-weight:600; }
-.cmp td.rl { font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); padding-top:17px; }
+.cmp td.rl { font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); padding-top:13px; }
 .cmp td .ph { font-size:11px; }
 
 /* split layouts */
@@ -1048,6 +1160,49 @@ p { color:var(--ink2); }
 .hm-src { font-size:12px; color:var(--muted) !important; margin-top:auto; }
 .hm-src .ph { font-size:10.5px; }
 
+/* servizio 03: numeri reali */
+h2.sm2 { font-size:34px; }
+.h-row { display:flex; justify-content:space-between; align-items:flex-end; gap:20px; }
+.src-chip { font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.14em; color:var(--muted); white-space:nowrap; padding-bottom:6px; }
+.kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:22px; }
+.kpi { padding:14px 20px 15px; border-radius:16px; }
+.kpi-k { font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.kpi-v { font-family:'Inter Display','Inter'; font-size:30px; font-weight:600; letter-spacing:-.025em; margin-top:6px; line-height:1.05; }
+.kpi.dd { background:#FBF8F1; border-color:#EADFC8; }
+.kpi.dd .kpi-k { color:#8A6A2E; }
+.eq-card { margin-top:14px; padding:18px 26px 12px; }
+.eq-card .chart-h { margin-bottom:6px; }
+.hm-card { margin-top:20px; padding:18px 26px 20px; }
+.hm-card .hm { grid-template-columns:52px repeat(12, 1fr) 84px; }
+.hm-card .hm-c { height:38px; font-size:12.5px; font-weight:500; }
+.hm-card .hm-h { height:20px; font-weight:400; }
+.hm-tot { font-weight:700 !important; color:var(--ink); background:#F4F6F9; font-size:13px !important; }
+.hm-na { background:transparent; border:1px dashed #E1E5EB; }
+.two { display:grid; grid-template-columns:1fr 1.15fr; gap:16px; margin-top:16px; }
+.scheda { padding:16px 24px 10px; }
+.sc-h { font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:var(--muted); margin-bottom:6px; }
+.sc-r { display:flex; justify-content:space-between; gap:16px; padding:6px 0; border-bottom:1px solid var(--line); font-size:12.5px; }
+.sc-r:last-child { border-bottom:0; }
+.sc-r span { color:var(--ink2); }
+.sc-r b { font-weight:600; text-align:right; }
+.cond { padding:16px 24px; display:flex; flex-direction:column; gap:14px; }
+.cond p { font-size:12.5px; line-height:1.55; }
+.lv-card { margin-top:20px; padding:20px 26px 18px; }
+.lv-h { display:flex; align-items:baseline; gap:14px; }
+.lv-h h3 { font-size:16px; } .lv-h p { font-size:12.5px; color:var(--muted); }
+.lvs { display:grid; grid-template-columns:repeat(10,1fr); gap:6px; margin-top:16px; }
+.lv { height:46px; border-radius:8px; background:#F1F3F7; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+.lv span { font-size:14px; font-weight:600; color:var(--ink2); }
+.lv em { font-style:normal; font-size:10.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.lv-copy { background:var(--blue); } .lv-copy span, .lv-copy em { color:#fff; }
+.lv-ref { background:#fff; box-shadow:inset 0 0 0 2px #0B1220; } .lv-ref span { color:var(--ink); }
+.lv-legend { display:flex; gap:28px; margin-top:12px; font-size:12.5px; color:var(--ink2); }
+.lv-legend span { display:flex; align-items:center; gap:8px; } .lv-legend b { color:var(--ink); font-weight:600; }
+.lvk-copy, .lvk-ref { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.lvk-copy { background:var(--blue); } .lvk-ref { box-shadow:inset 0 0 0 2px #0B1220; }
+.glossary { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; margin-top:26px; }
+.gl h4 { font-size:13.5px; } .gl p { font-size:12px; line-height:1.45; margin-top:3px; }
+
 /* start */
 .hsteps { position:relative; display:grid; grid-template-columns:repeat(4,1fr); gap:28px; margin-top:58px; }
 .hline { position:absolute; left:0; right:0; top:58px; height:2px; background:linear-gradient(90deg, var(--blue), var(--teal)); opacity:.35; border-radius:2px; }
@@ -1062,13 +1217,13 @@ p { color:var(--ink2); }
 .mix .ic-box { width:46px; height:46px; }
 
 /* legal */
-.legal { margin-top:26px; padding:10px 30px; display:grid; grid-template-columns:1fr 1fr; column-gap:48px; }
-.li { display:flex; gap:16px; padding:19px 0; border-bottom:1px solid var(--line); }
+.legal { margin-top:20px; padding:6px 30px; display:grid; grid-template-columns:1fr 1fr; column-gap:48px; }
+.li { display:flex; gap:16px; padding:13px 0; border-bottom:1px solid var(--line); }
 .li:nth-last-child(-n+2) { border-bottom:0; }
 .li-n { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--muted); padding-top:3px; }
 .li h4 { font-size:14.5px; }
-.li p { font-size:12.8px; line-height:1.5; margin-top:3px; }
-.legal-foot { margin-top:18px; font-size:12px; line-height:1.55; color:var(--muted) !important; max-width:1050px; }
+.li p { font-size:12.5px; line-height:1.45; margin-top:2px; }
+.legal-foot { margin-top:14px; font-size:12px; line-height:1.55; color:var(--muted) !important; max-width:1050px; }
 """
 
 DEFS = """<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -1081,7 +1236,7 @@ DEFS = """<svg width="0" height="0" style="position:absolute" aria-hidden="true"
 
 def build() -> None:
     slides = [s_cover(), s_about(), s_ecosystem(), s_compare(), s_svc1_a(), s_svc1_b(), s_svc2_a(), s_svc2_b(),
-              s_svc3_a(), s_svc3_b(), s_svc3_track(), s_svc4(), s_start(), s_legal(), s_close()]
+              s_svc3_a(), s_svc3_numbers(), s_svc3_track(), s_svc3_risk(), s_svc4(), s_start(), s_legal(), s_close()]
     assert len(slides) == TOTAL, len(slides)
     html = (
         '<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">'
