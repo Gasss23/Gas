@@ -20,7 +20,13 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-X
+ .claude/agents/memoria_revisore.md |   3 +++
+ modules/voice/server.py            |  28 +++++++++++++++++++++++++++-
+ reports/diff_sessione.md           |   9 ++++-----
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   1 +
+ reports/ultimo_report.md           |  15 ++++++---------
+ tests/test_unit_voice_server.py    |  42 +++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -28,7 +34,11 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-Y
+75732f2f docs(fine-task): voce — parola di attivazione tolta (review #806/#807-M1coord)
+6e62dcde fix(voce): nel seguito il vocativo «Jarvis, …» resta (R-806-1) — review #807-M1coord
+f36758e9 chore(revisore): memoria review #807 — APPROVATO CON RISERVE
+1ae76716 fix(voce): la parola di attivazione (e le storpiature come «Jarways») non arriva più al cervello in testa alla richiesta — review #806-M1coord
+be95f7a6 chore(revisore): memoria review #806 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
