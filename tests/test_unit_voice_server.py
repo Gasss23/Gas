@@ -2857,3 +2857,12 @@ def test_il_cervello_riceve_la_richiesta_senza_la_parola():
     _voce_a_pezzi("Sono le dieci.", lambda frase, k, v: frase.encode(), turni=turni,
                   trascrizione="Jarways, che ore sono?")
     assert turni and turni[0]["_prompt"] == "che ore sono?"
+
+
+def test_nel_seguito_il_vocativo_resta():
+    # R-806-1: nel seguito il cervello decide se la frase è per Gas: il vocativo resta
+    turni = []
+    _voce_a_pezzi("Fatto.", lambda frase, k, v: frase.encode(), formato="audio+pezzi",
+                  turni=turni, intestazioni={"X-Gas-Seguito": "1"},
+                  trascrizione="Jarvis, accendi la luce")
+    assert turni and turni[0]["_prompt"].startswith("Jarvis, accendi la luce")

@@ -976,7 +976,10 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 log.info("seguito scartato senza cervello: frammento")
                 self._chiudi_seguito()
                 return
-            prompt = togli_parola_in_testa(prompt)  # 17/11: mai «Jarways» come nome al cervello
+            if not self._seguito():
+                # 17/11: mai «Jarways» come nome al cervello. Nel seguito no (R-806-1): lì il
+                # vocativo «Jarvis, …» è il segno più forte che la frase è per Gas
+                prompt = togli_parola_in_testa(prompt)
         else:
             try:
                 data: Dict[str, Any] = json.loads(raw) if raw else {}
