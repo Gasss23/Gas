@@ -1239,7 +1239,7 @@ def _voce_a_pezzi(kernel_testo, sintesi, formato="audio+testo+pezzi", chiave="k"
     class _K:
         def run_turn(self, prompt, **kw):
             if turni is not None:
-                turni.append(kw)
+                turni.append(dict(kw, _prompt=prompt))
             if anticipi is not None and kw.get("su_testo_voce"):
                 for t, finito in anticipi:  # voce rapida: testo in anticipo dal forte
                     kw["su_testo_voce"](t, finito)
@@ -2826,3 +2826,34 @@ def test_prima_frase_subito_compiti_finiti_arrivati_durante_il_turno():
     status, righe, frasi, presto = _voce_subito([("Uno. D", False)], "Uno. Due.",
                                                 finiti=["", "Ho finito il compito."])
     assert presto and _audio_righe(righe) == ["Uno.", "Ho finito il compito.", "Due."]
+
+
+# ── 17/11: la parola di attivazione in testa non arriva al cervello («Jarways» come nome) ──
+@pytest.mark.parametrize("detto,atteso", [
+    ("Hey Jarvis, che ore sono?", "che ore sono?"),
+    ("Jarways che tempo fa domani", "che tempo fa domani"),
+    ("hey jarvis hey jarvis ricordami il latte", "ricordami il latte"),
+    ("Ehi Gas, accendi la luce", "accendi la luce"),
+    ("Gas, dimmi", "dimmi"),
+    ("Giarvis, ciao", "ciao"),
+    ("Gas ha detto una cosa", "Gas ha detto una cosa"),      # «Gas» senza virgola: resta
+    ("Gasolio costa troppo", "Gasolio costa troppo"),
+    ("Che ore sono, Jarvis?", "Che ore sono, Jarvis?"),      # solo in testa
+    ("Jarvis.", "Jarvis."),                                  # da sola: la gestisce V13
+])
+def test_togli_parola_in_testa(detto, atteso):
+    from modules.voice.server import togli_parola_in_testa
+    assert togli_parola_in_testa(detto) == atteso
+
+
+def test_storpiatura_da_sola_e_solo_attivazione():
+    from modules.voice.server import _SOLO_ATTIVAZIONE
+    for t in ("Jarways.", "Hey Jarvais!", "Giarvis"):
+        assert _SOLO_ATTIVAZIONE.match(t), t
+
+
+def test_il_cervello_riceve_la_richiesta_senza_la_parola():
+    turni = []
+    _voce_a_pezzi("Sono le dieci.", lambda frase, k, v: frase.encode(), turni=turni,
+                  trascrizione="Jarways, che ore sono?")
+    assert turni and turni[0]["_prompt"] == "che ore sono?"

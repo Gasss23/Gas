@@ -134,10 +134,32 @@ _NON_HO_CAPITO = "Non ho capito bene, puoi ripetere?"
 # V14: niente «ok/okay» fra i saluti (V-1 bot #334: «Ok Gas.» può essere la conferma a una
 # domanda di Gas e deve arrivare al cervello); la parola ripetuta («Hey Jarvis, Hey Jarvis»,
 # Whisper la raddoppia spesso) vale ancora come sola attivazione (R-668-2-M2).
-_ATTIVAZIONE_UNA = r"(?:(?:ehi|ehy|hey|ei|ciao)\W+)?(?:jarvis|gas|gus)"
+# 17/11 (diario del Mac): Whisper scrive «Hey Jarvis» anche come «Jarways» e simili; il forte
+# l'ha preso per un nome e ha chiamato `ricorda` (un giro in più, ~3 s). Storpiature note.
+_NOME_JARVIS = r"(?:jarvis|jarvys|jarwis|jarways|jarvais|giarvis|djarvis)"
+_ATTIVAZIONE_UNA = rf"(?:(?:ehi|ehy|hey|ei|ciao)\W+)?(?:{_NOME_JARVIS}|gas|gus)"
 _SOLO_ATTIVAZIONE = re.compile(
     rf"^[^\w]*{_ATTIVAZIONE_UNA}(?:\W+{_ATTIVAZIONE_UNA})*[^\w]*$", re.IGNORECASE)
 _RISPOSTA_ATTIVAZIONE = "Dimmi."
+# 17/11: la parola di attivazione in testa a una richiesta non va al cervello (lì sembra un
+# nome da cercare). Si toglie «Hey/Ehi + Jarvis|Gas», «Jarvis» da solo (e storpiature), e
+# «Gas»/«Gus» da solo solo se seguito da punteggiatura («Gas, che ore sono?»): «Gas ha
+# detto…» resta com'è.
+_PAROLA_IN_TESTA = re.compile(
+    rf"^[^\w]*(?:(?:ehi|ehy|hey|ei|ciao)\W+(?:{_NOME_JARVIS}|gas|gus)\b|{_NOME_JARVIS}\b"
+    r"|(?:gas|gus)(?=\s*[,.!?:;]))[\W_]*", re.IGNORECASE)
+
+
+def togli_parola_in_testa(prompt: str) -> str:
+    """La richiesta senza la parola di attivazione (anche ripetuta) all'inizio; se resta
+    vuota, la richiesta com'era (la sola parola la gestisce _SOLO_ATTIVAZIONE)."""
+    resto = prompt
+    for _ in range(3):  # «Hey Jarvis, hey Jarvis, …»: Whisper la raddoppia spesso
+        nuovo = _PAROLA_IN_TESTA.sub("", resto, count=1)
+        if nuovo == resto:
+            break
+        resto = nuovo
+    return resto.strip() or prompt
 # V15 (contratto dell'operatore via M1, 5 nov, lato client la chat Mani): una trascrizione
 # PARLATA fatta solo di «pausa», «standby» o «basta così» (anche con la parola di attivazione
 # davanti, stessa normalizzazione del filtro «Dimmi.») non va al cervello: risposta fissa
@@ -954,6 +976,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 log.info("seguito scartato senza cervello: frammento")
                 self._chiudi_seguito()
                 return
+            prompt = togli_parola_in_testa(prompt)  # 17/11: mai «Jarways» come nome al cervello
         else:
             try:
                 data: Dict[str, Any] = json.loads(raw) if raw else {}
