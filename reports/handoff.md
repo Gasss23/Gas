@@ -56,6 +56,7 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2ae4b7a7 docs(fine-task): CRM — finding di bot e verifica esterna #381 chiusi (review #806/#807), CI rossa ambientale documentata
 72dcc9d2 fix(crm): controlli e scritture in una sola transazione (BEGIN IMMEDIATE), data di apertura anticipabile, errore chiaro sul testo lungo — review #807 APPROVATO
 83633433 chore(revisore): memoria review #807 — APPROVATO
 c9daf955 fix(crm): proposta scartata non ricreata, movimenti incoerenti rifiutati, riga STOP sui testi corretti, STOP ricontrollato all'invio — verifica esterna e bot #381, review #806 APPROVATO CON RISERVE
@@ -450,10 +451,12 @@ Review #807-CRM, quinto giro: un solo verdetto su tutto il diff staged (5 file, 
 `gh run list` non usato (in questa sessione cloud GitHub si interroga con gli strumenti MCP). Run lette con `actions_list` / `list_workflow_jobs` alla scrittura dell'handoff:
 
 ```
-run 44163799980  CI            push                 99d82f3f  completed / failure  (unit-suite: step «Run web suite» 7 failed, 747 passed; «Run CRM suite» success; handoff-check success)
+run 44163799980  CI            push                 99d82f3f  completed / failure  (unit-suite: step «Run web suite» 7 failed, 747 passed; «Run CRM suite» success; handoff-check FAILURE allo step «Run check_handoff»: atteso, a quel commit l'handoff non era ancora nel diff — V-1 verifica esterna #381, 2° giro)
 run 44163850284  verifica-bot  pull_request_target  99d82f3f  completed / skipped  (PR ancora senza l'etichetta «verifica»)
 run 44164393490  CI            push                 772f993c  completed / failure  (unit-suite: step «Run web suite» 7 failed, 747 passed; «Run CRM suite» 93 passed; handoff-check success)
 run 44164436879  verifica-bot  pull_request_target  772f993c  completed / success  (check verifica-bot: neutral — APPROVATO CON RISERVE, la PR tocca la CI)
+run 44167235199  CI            push                 2ae4b7a7  in_progress alla scrittura (handoff-check success; unit-suite in corso)
+run 44167242427  verifica-bot  pull_request_target  2ae4b7a7  in_progress alla scrittura
 run 44155950606  CI            push                 adb0e188  completed / failure  (ALTRO ramo, claude/practical-tesla-ea9a9g, PR #380, senza CRM: stesso step «Run web suite» rosso)
 run 43312735169  CI            push (main)          01eb9f50  completed / success  (12 nov: «Run web suite» 754 passed)
 ```
@@ -465,7 +468,8 @@ Mappatura commit→run:
 - `99d82f3f` (codice CRM): run CI 44163799980 (sopra).
 - `0286192c`, `08b3387b`, `f1c109a7`, `939a2a12`: nessuna run su questi SHA (pushati insieme a 772f993c).
 - `772f993c` (fine-task): run CI 44164393490 e verifica-bot 44164436879 (sopra).
-- `8fdae653`, `c9daf955`, `83633433`, `72dcc9d2`: mai pushati prima di questo fine-task → nessuna run su questi SHA; il push che porta questo handoff testa solo il commit di testa.
+- `8fdae653`, `c9daf955`, `83633433`, `72dcc9d2`: nessuna run su questi SHA (pushati insieme a 2ae4b7a7).
+- `2ae4b7a7` (fine-task): run CI 44167235199 e verifica-bot 44167242427, in corso alla scrittura.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -478,4 +482,5 @@ Mappatura commit→run:
 - **R-804-3 (BASSA)**: lo stesso CSV importato due volte raddoppia i movimenti.
 - **R-804-4 (COSMETICA)**: corpo chunked trattato come vuoto; BrokenPipe in do_POST su stderr.
 - Nota minore #807 (non riserva): `anticipa_apertura` con la stessa data scrive un evento inutile (la dashboard lo evita).
+- Verifica esterna #381, 2° giro (commento sulla PR, APPROVATO CON RISERVE, nessun difetto di codice): V-1 (questa riga del §6) corretta qui; V-2 = merge bloccato dalla CI ambientale; V-3 = R-804-3 e R-803-4 da chiudere prima dei dati veri; V-4 (BASSA) `_host_ammesso` accetta richieste senza header Host (non sfruttabile da browser; come il server vocale).
 - Chiuse in questa sessione: R-803-1/2/3/5/6/7/8/11; V-1/V-2 della verifica esterna #381 e V-1/V-2 del bot #381; R-806-1/2/3.
