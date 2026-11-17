@@ -166,6 +166,12 @@ def valuta_cliente(d: analisi.Dati, cliente_id: int, regole: Regole,
     sue = [p for p in d.proposte if int(p["cliente_id"]) == cliente_id]
     if any(p["stato"] in ("da_approvare", "inviata") for p in sue):
         return Decisione(esclusione="ha già una proposta aperta")
+    # V-1 verifica esterna #381: lo scarto dell'operatore vale come «non ora» per il cliente
+    scarti = [g for g in (_giorno(p.get("esito_il")) for p in sue if p["stato"] == "scartata")
+              if g is not None]
+    if scarti and (oggi - max(scarti)).days < regole.pausa_giorni:
+        return Decisione(esclusione=f"proposta scartata dall'operatore {(oggi - max(scarti)).days} "
+                                    f"giorni fa (pausa minima {regole.pausa_giorni})")
     invii = [g for g in (_giorno(p.get("inviata_il")) for p in sue) if g is not None]
     if invii:
         ultimo = max(invii)
@@ -226,7 +232,9 @@ def valuta_cliente(d: analisi.Dati, cliente_id: int, regole: Regole,
                 continue
             if posizione_id is not None and p["posizione_id"] != posizione_id:
                 continue
-            if p["stato"] in ("rifiutata", "senza_risposta") and _entro(p, regole.pausa_dopo_no_giorni):
+            # lo scarto dell'operatore ferma lo stesso obiettivo come un no (V-1 #381)
+            if (p["stato"] in ("rifiutata", "senza_risposta", "scartata")
+                    and _entro(p, regole.pausa_dopo_no_giorni)):
                 return True
             if p["stato"] == "accettata" and _entro(p, 30):
                 return True

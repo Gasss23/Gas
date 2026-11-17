@@ -108,6 +108,19 @@ def componi(tipo: str, livello: int, nome: str, mese_label: str, profitto_cents:
     return "\n\n".join(righe)
 
 
+def completa_testo(testo: str) -> str:
+    """Testo scritto o corretto dall'operatore → con la nota sul rischio (se configurata) e
+    la riga STOP in fondo, se mancano. L'invariante «sempre la riga per dire STOP» vale
+    anche quando il testo non è quello del motore (V-1 bot #381)."""
+    corpo = (testo or "").strip()
+    nota = nota_rischio()
+    if corpo.endswith(RIGA_STOP):
+        corpo = corpo[: -len(RIGA_STOP)].rstrip()
+    if nota and nota not in corpo:
+        corpo = f"{corpo}\n\n{nota}"
+    return f"{corpo}\n\n{RIGA_STOP}"
+
+
 def link_whatsapp(telefono: Optional[str], testo: str) -> Optional[str]:
     """Link che apre WhatsApp sul numero col messaggio già scritto: l'operatore lo rilegge
     e preme invio. None se il numero manca o non è in formato internazionale."""

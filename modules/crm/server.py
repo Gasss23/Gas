@@ -39,7 +39,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlsplit
 
 from modules.crm import analisi, motore
-from modules.crm.messaggi import link_whatsapp
+from modules.crm.messaggi import completa_testo, link_whatsapp
 from modules.crm.store import (CRMStore, ErroreCRM, normalizza_telefono, parse_importo,
                                parse_percentuale_bp, valida_data)
 
@@ -750,8 +750,12 @@ class CRMHandler(BaseHTTPRequestHandler):
             cliente = st.cliente(int(prop["cliente_id"])) or {}
             if motore.motivo_non_contattabile(cliente):
                 raise ErroreCRM(f"non si può inviare: {motore.motivo_non_contattabile(cliente)}")
-            nuova = st.transiziona_proposta(pid, "inviata", messaggio=d.get("messaggio") or None,
-                                            canale="whatsapp")
+            testo = d.get("messaggio") or None
+            if testo is not None:
+                if not isinstance(testo, str):
+                    raise ErroreCRM("messaggio: deve essere testo")
+                testo = completa_testo(testo)  # V-1 bot #381: STOP e nota sempre in fondo
+            nuova = st.transiziona_proposta(pid, "inviata", messaggio=testo, canale="whatsapp")
             return {"link_whatsapp": link_whatsapp(cliente.get("telefono"), nuova["messaggio"])}
         if azione == "scarta":
             st.transiziona_proposta(pid, "scartata")

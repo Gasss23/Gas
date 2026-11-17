@@ -249,7 +249,8 @@ def test_servizio_validazioni(st: CRMStore) -> None:
 
 
 def test_proposte_transizioni_e_doppioni(st: CRMStore) -> None:
-    cid = st.aggiungi_cliente("Anna", telefono="+390000000003")
+    # col consenso: l'invio lo ricontrolla dentro la transazione (V-2 bot #381)
+    cid = st.aggiungi_cliente("Anna", telefono="+390000000003", consenso_marketing=True)
     pid = st.crea_proposta(cid, "referral", "cliente:1", "motivo", "messaggio")
     assert pid is not None
     assert st.crea_proposta(cid, "referral", "cliente:1", "motivo", "altro") is None
@@ -677,7 +678,10 @@ def test_server_flusso_completo(avviato) -> None:
     codice, _, r = c.post("/api/proposte/azione", {"id": prop["id"], "azione": "invia",
                                                   "messaggio": "Ciao Mario, testo mio"})
     assert codice == 200
-    assert r["risultato"]["link_whatsapp"] == "https://wa.me/390000000001?text=Ciao%20Mario%2C%20testo%20mio"
+    link = r["risultato"]["link_whatsapp"]
+    assert link.startswith("https://wa.me/390000000001?text=Ciao%20Mario%2C%20testo%20mio")
+    from urllib.parse import quote
+    assert link.endswith(quote(messaggi.RIGA_STOP, safe=""))  # STOP rimessa (V-1 bot #381)
     assert c.post("/api/proposte/azione", {"id": prop["id"], "azione": "stop"})[0] == 200
     cli = c.get(f"/api/cliente?id={cid}")[2]
     assert cli["cliente"]["opt_out"] == 1
@@ -983,3 +987,70 @@ def test_r803_11_niente_link_prima_dell_invio_e_stream_chiuso_al_logout(avviato)
     resto = r.fp.read()  # il server chiude lo stream: read() torna invece di restare appeso
     assert b"event: cambio" not in resto
     con.close()
+
+
+# ---------------------------------------------------------------------- verifica esterna PR #381
+
+
+def test_v1_381_proposta_scartata_non_ricompare(st: CRMStore, orologio: Orologio) -> None:
+    """Scartare una proposta deve fermare il motore su quel cliente per la pausa, e sullo
+    stesso obiettivo per la pausa dopo un no (prima veniva ricreata alla scansione dopo)."""
+    srv = servizi_base(st)
+    cid, _ = cliente_contento(st, srv)
+    p1 = motore.scansiona(st, regole=REGOLE).create[0]
+    assert st.proposta(p1)["servizio_id"] == srv["segnali"]  # type: ignore[index]
+    st.transiziona_proposta(p1, "scartata")
+    esito = motore.scansiona(st, regole=REGOLE)
+    assert esito.create == [] and "scartat" in esito.esclusi[cid]
+    orologio.avanti(REGOLE.pausa_giorni + 1)  # sempre giugno: soglia ancora valida
+    p2 = st.proposta(motore.scansiona(st, regole=REGOLE).create[0])
+    assert p2 is not None and p2["cliente_id"] == cid
+    assert p2["servizio_id"] != srv["segnali"]  # l'obiettivo scartato resta in pausa
+
+
+def test_v2_381_movimenti_incoerenti_rifiutati(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid, pid = cliente_contento(st, srv)  # posizione aperta il 2026-04-01, capitale 20.000 €
+    with pytest.raises(ErroreCRM, match="capitale"):
+        st.registra_movimento(pid, "prelievo", 2_000_001, data="2026-06-01")
+    with pytest.raises(ErroreCRM, match="prima dell'apertura"):
+        st.registra_movimento(pid, "deposito", 100, data="2026-03-31")
+    with pytest.raises(ErroreCRM, match="prima dell'apertura"):
+        st.registra_movimenti([(pid, "profitto", 100, "2026-05-01", None),
+                               (pid, "profitto", 100, "0001-01-01", None)])
+    st.registra_movimento(pid, "prelievo", 2_000_000, data="2026-06-01")  # tutto il capitale: ok
+    primo_deposito = [m for m in st.movimenti(cid) if m["tipo"] == "deposito"][0]["id"]
+    with pytest.raises(ErroreCRM, match="capitale"):
+        st.storna_movimento(primo_deposito)  # lascerebbe il capitale negativo
+    # nel lotto i prelievi vedono i depositi delle righe prima
+    st.registra_movimenti([(pid, "deposito", 500, "2026-06-02", None),
+                           (pid, "prelievo", 500, "2026-06-02", None)])
+    with pytest.raises(ErroreCRM, match="capitale"):
+        st.registra_movimenti([(pid, "deposito", 500, "2026-06-02", None),
+                               (pid, "prelievo", 501, "2026-06-02", None)])
+    assert analisi.metriche_cliente(dati(st), cid).capitale_cents == 0
+
+
+def test_v1_bot_381_testo_corretto_tiene_stop_e_nota(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GAS_CRM_NOTA_RISCHIO", raising=False)
+    t = messaggi.completa_testo("  Ciao Anna, ti chiamo domani  ")
+    assert t == ("Ciao Anna, ti chiamo domani\n\n" + messaggi.NOTA_RISCHIO_DEFAULT
+                 + "\n\n" + messaggi.RIGA_STOP)
+    assert messaggi.completa_testo(t) == t  # idempotente: niente doppioni
+    monkeypatch.setenv("GAS_CRM_NOTA_RISCHIO", "")
+    assert messaggi.completa_testo("Ciao") == "Ciao\n\n" + messaggi.RIGA_STOP
+
+
+def test_v2_bot_381_stop_ricontrollato_nella_transazione_di_invio(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid, _ = cliente_contento(st, srv)
+    pid = motore.scansiona(st, regole=REGOLE).create[0]
+    # lo STOP arriva DOPO il controllo del server ma prima della transizione: scrittura
+    # diretta, come un'altra scheda o la riga di comando
+    con = sqlite3.connect(st.db_path)
+    con.execute("UPDATE crm_clienti SET opt_out = 1 WHERE id = ?", (cid,))
+    con.commit()
+    con.close()
+    with pytest.raises(ErroreCRM, match="STOP"):
+        st.transiziona_proposta(pid, "inviata")
+    assert st.proposta(pid)["stato"] == "da_approvare"  # type: ignore[index]

@@ -763,11 +763,20 @@ class CRMStore:
                              valori: Tuple[int, str, int, str, str, Optional[str]]) -> int:
         pid, tipo, imp, giorno, fonte, testo_nota = valori
         r = con.execute(
-            "SELECT p.cliente_id, s.nome FROM crm_posizioni p "
+            "SELECT p.cliente_id, p.aperta_il, s.nome FROM crm_posizioni p "
             "JOIN crm_servizi s ON s.id = p.servizio_id WHERE p.id = ?", (pid,),
         ).fetchone()
         if r is None:
             raise ErroreCRM("posizione inesistente")
+        # V-2 verifica esterna #381: il registro non si corregge, quindi niente movimenti
+        # incoerenti (prima dell'apertura del servizio, o prelievi oltre il capitale)
+        if giorno < str(r["aperta_il"]):
+            raise ErroreCRM(f"data {giorno} prima dell'apertura del servizio ({r['aperta_il']})")
+        if tipo == "prelievo":
+            capitale = self._capitale(con, pid)
+            if imp > capitale:
+                raise ErroreCRM(f"prelievo di {formatta_euro(imp)} maggiore del capitale "
+                                f"({formatta_euro(capitale)})")
         cur = con.execute(
             "INSERT INTO crm_movimenti (posizione_id, tipo, importo_cents, data, fonte, "
             "nota, storno_di, registrato_il) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)",
@@ -777,6 +786,18 @@ class CRMStore:
         self._evento(con, r["cliente_id"], "movimento",
                      f"{r['nome']}: {tipo} {formatta_euro(imp)} ({giorno})", autore)
         return _nuovo_id(cur)
+
+    @staticmethod
+    def _capitale(con: sqlite3.Connection, posizione_id: int) -> int:
+        """Capitale di una posizione dentro la transazione: depositi − prelievi validi."""
+        r = con.execute(
+            "SELECT COALESCE(SUM(CASE m.tipo WHEN 'deposito' THEN m.importo_cents "
+            "WHEN 'prelievo' THEN -m.importo_cents ELSE 0 END), 0) FROM crm_movimenti m "
+            "WHERE m.posizione_id = ? AND m.storno_di IS NULL "
+            "AND NOT EXISTS (SELECT 1 FROM crm_movimenti s WHERE s.storno_di = m.id)",
+            (posizione_id,),
+        ).fetchone()
+        return int(r[0])
 
     def registra_movimento(self, posizione_id: int, tipo: str, importo_cents: int,
                            data: Optional[str] = None, fonte: str = "operatore",
@@ -800,7 +821,16 @@ class CRMStore:
                 errori.append(f"riga {i}: {e}")
         if errori:
             raise ErroreCRM("; ".join(errori[:20]) + (" …" if len(errori) > 20 else ""))
-        return self._scrivi(lambda con: [self._inserisci_movimento(con, v) for v in valide])
+
+        def _fn(con: sqlite3.Connection) -> List[int]:
+            ids = []
+            for i, v in enumerate(valide, start=1):
+                try:
+                    ids.append(self._inserisci_movimento(con, v))
+                except ErroreCRM as e:  # rollback di tutto il lotto (context manager)
+                    raise ErroreCRM(f"riga {i}: {e}") from None
+            return ids
+        return self._scrivi(_fn)
 
     def storna_movimento(self, movimento_id: int, fonte: str = "operatore",
                          nota: Optional[str] = None) -> int:
@@ -820,6 +850,8 @@ class CRMStore:
                 raise ErroreCRM("movimento inesistente")
             if m["storno_di"] is not None:
                 raise ErroreCRM("questo è già uno storno: registra di nuovo il movimento giusto")
+            if m["tipo"] == "deposito" and self._capitale(con, m["posizione_id"]) < m["importo_cents"]:
+                raise ErroreCRM("lo storno lascerebbe il capitale negativo: storna prima i prelievi")
             cur = con.execute(
                 "INSERT INTO crm_movimenti (posizione_id, tipo, importo_cents, data, fonte, "
                 "nota, storno_di, registrato_il) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -904,6 +936,20 @@ class CRMStore:
                 raise ErroreCRM(f"passaggio non ammesso: {attuale} → {nuovo_stato}")
             if msg is not None and attuale != "da_approvare":
                 raise ErroreCRM("il testo si cambia solo prima dell'invio")
+            if nuovo_stato == "inviata":
+                # V-2 bot #381: STOP e consenso si ricontrollano DENTRO la transazione che
+                # segna l'invio (uno STOP arrivato un attimo prima, da un'altra scheda o dalla
+                # riga di comando, deve bloccarlo)
+                c = con.execute("SELECT stato, opt_out, consenso_marketing, telefono "
+                                "FROM crm_clienti WHERE id = ?", (p["cliente_id"],)).fetchone()
+                if c is None or c["stato"] != "attivo":
+                    raise ErroreCRM("non si può inviare: cliente non attivo")
+                if c["opt_out"]:
+                    raise ErroreCRM("non si può inviare: il cliente ha chiesto STOP")
+                if not c["consenso_marketing"]:
+                    raise ErroreCRM("non si può inviare: manca il consenso ai messaggi promozionali")
+                if not c["telefono"]:
+                    raise ErroreCRM("non si può inviare: manca il numero WhatsApp")
             sets = ["stato = ?", "aggiornata_il = ?"]
             args: List[Any] = [nuovo_stato, ora]
             if msg is not None:
