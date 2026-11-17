@@ -289,6 +289,8 @@ Il kernel, brains/, la memoria e il cancello restano non toccati. Nessuno slicin
 
 ### Review #805-CRM (3° giro, commit f1c109a7: solo il marcatore gasmerge-ip-ok)
 
+Unica aggiunta al testo del verdetto: il marcatore `# gasmerge-ip-ok` in fondo alle due righe con gli indirizzi d'esempio, richiesto dal gate IP su reports/ (stessa prassi dell'handoff della PR #126).
+
 ## VERDETTO: APPROVATO
 
 Review #805-CRM, terzo giro: l'unica modifica è il commento `# gasmerge-ip-ok`, è legittima e il gate IP passa.
@@ -303,8 +305,8 @@ Review #805-CRM, terzo giro: l'unica modifica è il commento `# gasmerge-ip-ok`,
 - `tests/test_unit_crm.py:584` — aggiunge il marcatore sulla riga del test negativo di `bind_locale`.
   - Rischio esaminato: che il marcatore copra un indirizzo reale (di una macchina o di una rete dell'operatore).
   - Esito: ok. I due indirizzi marcati sono input d'esempio che il test pretende siano RIFIUTATI con ValueError:
-    - `0.0.0.0` è l'indirizzo che vuol dire «tutte le interfacce»;
-    - `192.168.1.10` è un generico indirizzo di rete privata.
+    - `0.0.0.0` è l'indirizzo che vuol dire «tutte le interfacce»;  # gasmerge-ip-ok
+    - `192.168.1.10` è un generico indirizzo di rete privata.  # gasmerge-ip-ok
   - Il marcatore vale solo per quella riga, che contiene anche `127.0.0.1.nip.io` (un nome che inizia come un loopback, comunque esente).
 - `modules/crm/server.py:71` — `bind_locale`, il controllo che il test esercita.
   - Rischio esaminato: che il marcatore servisse a nascondere un indebolimento del controllo.
