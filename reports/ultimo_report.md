@@ -1,17 +1,14 @@
-# Ultimo report — 2026-11-12 notte — Voce: la prima frase parte appena pronta (M1)
+# Ultimo report — 2026-11-17 — Voce: la parola di attivazione non arriva più al cervello (M1)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione (riserve solo BASSE).
+1. Merge della PR (riserve BASSE).
 
 ## Esito
-- **Prima frase subito**: FATTA. Il server manda la voce della prima frase appena ElevenLabs l'ha pronta, mentre il cervello forte finisce; il resto arriva dopo, senza ripeterla. Solo per l'ascolto H24 (senza schermo), mai nei seguiti, mai con compiti finiti da annunciare, mai se la frase contiene «Jarvis». Errore del turno dopo la prima frase → bip d'errore.
-- Atteso sul Mac (tempi dell'11/11): prima frase da ~6,2 s a ~4 s dalla fine della richiesta. Da misurare.
-- Review #799-M1coord BOCCIATO (prefisso dei compiti) → #801-M1coord APPROVATO CON RISERVE (R-801-1, R-799-1 BASSE).
+- Il 17/11 alle 16:28 Whisper ha scritto «Hey Jarvis» come «Jarways» e il cervello forte l'ha cercato in memoria (`ricorda`): un giro in più, ~3 s. Ora il server toglie la parola di attivazione (e le storpiature note) dall'inizio della richiesta, tranne nei seguiti, dove il vocativo dice che la frase è per Gas. «Gas ha detto…» resta com'è.
+- Review #806 → #807-M1coord APPROVATO CON RISERVE (R-806-2, R-807-1 BASSE).
 
 ## Test
-voice_server 227 → 236 passed; voce_ascolto 332 → 334; kernel 1167 PASS.
+voice_server 236 → 249 passed (mirati dopo l'ultimo delta).
 
 ## Anomalie
-Nessuna. Non provato sul Mac.
-
-Merge di main (#378) nella #379: conflitti solo nei report; review #802-M1coord APPROVATO; voce_ascolto 346, voice_server 236 passed.
+CI rossa su tutti i branch per i test bwrap (runner ubuntu-26.04): correzione in un'altra chat.
