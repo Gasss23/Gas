@@ -30,6 +30,9 @@ Privacy:
     afplay, uno per frase, cancellato subito dopo.
   - Nel log dell'ascolto solo gli eventi (attivazione, invio, codici di errore), mai l'audio né il
     token.
+  - La verifica della voce (filtro addestrato con scripts/voce/registra_voce.py) si legge
+    SOLO da .gas_voce/verifica/<modello>_verifier.pkl, file tuo non scrivibile da altri:
+    openWakeWord lo carica con pickle, quindi mai da un percorso preso dall'ambiente.
 
 Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_VOICE_TOKEN        — token bearer del server voce  OBBLIGATORIO
@@ -52,6 +55,12 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_ASCOLTO_BLOCCHI_INTERRUZIONE — blocchi di fila per interrompere Gas, 1-5 (default 3)
     GAS_ASCOLTO_FORMATO    — formato della risposta chiesto al server (default
                              audio+pezzi, le frasi in fila; vuoto = un solo MP3)
+    GAS_ASCOLTO_VERIFICA   — 0 = niente verifica della voce anche se è stata addestrata
+                             (default 1: attiva se c'è .gas_voce/verifica/<modello>_verifier.pkl)
+    GAS_ASCOLTO_SOGLIA_VERIFICA — con la verifica attiva, soglia della parola al posto di
+                             GAS_ASCOLTO_SOGLIA, 0-1 (default 0.5)
+    GAS_ASCOLTO_SOGLIA_BASE — punteggio del modello della parola da cui il blocco passa
+                             alla verifica, 0.05-0.9 (default 0.25)
 
 Fail-safe §9: server giù o errore → bip di errore e si torna in ascolto; microfono che
 cade → nuovo tentativo dopo qualche secondo; nessuna eccezione esce dal ciclo.
@@ -76,6 +85,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import wave
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
@@ -130,9 +140,26 @@ MAX_TURNI_PREDEFINITO = 1
 # riconosciute (35 → 19 su 81), mentre la soglia 0,5 → 0,7 quasi non le toccava (37 → 35).
 # Le frasi comuni in italiano danno punteggio ~0 a qualunque soglia: i falsi «Hey Jarvis» dei
 # giorni scorsi venivano dalla soglia 0,35 rimasta nel .env. Quindi soglia 0,7 e 1 blocco.
-# Per tarare sulla voce vera: python3 scripts/voce/taratura_parola.py.
+# Per tarare sulla voce vera: .venv/bin/python scripts/voce/taratura_parola.py.
 SOGLIA_PREDEFINITA = 0.7
 BLOCCHI_PAROLA_PREDEFINITO = 1
+# Verifica della voce (passo 1 di reports/proposta_verifica_parlante.md, 17/11): misura sul
+# Mac col modello vero, la voce dell'operatore dà a «hey_jarvis» solo 0,37-0,43 (soglia 0,7:
+# quasi tutte le chiamate perse), e abbassare la sola soglia (0,35) faceva rispondere a TV e
+# persone. Con il «custom verifier» di openWakeWord addestrato sulla sua voce
+# (scripts/voce/registra_voce.py): ogni blocco in cui il modello della parola arriva a
+# SOGLIA_BASE_PREDEFINITA passa al verificatore, e il punteggio diventa la SUA probabilità
+# («è una persona registrata che dice la parola?»); sotto resta il punteggio del modello.
+# La parola allora vale con SOGLIA_VERIFICA_PREDEFINITA (0,5 = il confine naturale della
+# regressione logistica del verificatore) al posto di GAS_ASCOLTO_SOGLIA; la soglia della
+# verifica non scende mai sotto la soglia base, altrimenti un punteggio NON verificato
+# (sotto la base) potrebbe attivare.
+SOGLIA_BASE_PREDEFINITA = 0.25
+SOGLIA_VERIFICA_PREDEFINITA = 0.5
+# Solo da qui (mai da un percorso preso dall'ambiente): il file lo carica openWakeWord con
+# pickle, che esegue codice. Dentro: <modello>_verifier.pkl e <modello>_verifier.json.
+CARTELLA_VERIFICA = Path(".gas_voce") / "verifica"
+_NOME_MODELLO_SEMPLICE = re.compile(r"[a-z0-9_]{1,40}")
 # Bot #378 V-1: l'interruzione mentre Gas parla resta su 3 blocchi di fila (come dalla #371):
 # lì il rischio è l'eco della voce di Gas, che la misura del 12/11 non copre. Il blocco unico
 # vale per l'attesa della parola e per la finestra dopo un turno (spenta di default).
@@ -1307,23 +1334,147 @@ class Microfono:
             pass
 
 
-def rilevatore_openwakeword(modello: str) -> Tuple[Callable[[Blocco], float],
-                                                   Callable[[], None]]:
-    """(punteggio del blocco, azzera) col modello pronto di openWakeWord, in locale."""
+@dataclass
+class Verifica:
+    """Stato della verifica della voce (custom verifier di openWakeWord) deciso all'avvio."""
+    stato: str = "assente"          # attiva | assente | spenta | non caricata
+    persone: int = 0                # persone registrate (dal .json accanto al file)
+    percorso: Optional[Path] = None
+    soglia_base: float = SOGLIA_BASE_PREDEFINITA
+    motivo: str = ""
+
+    @property
+    def attiva(self) -> bool:
+        return self.stato == "attiva"
+
+    def descrivi(self) -> str:
+        if self.attiva:
+            persone = ("%d person%s" % (self.persone, "a" if self.persone == 1 else "e")
+                       if self.persone else "persone non note")
+            return "attiva (%s, soglia base %.2f)" % (persone, self.soglia_base)
+        if self.stato == "non caricata":
+            return "non caricata (%s): ascolto senza verifica" % (self.motivo or "errore")
+        return self.stato
+
+
+def percorso_verificatore(modello: str, radice: Optional[Path] = None) -> Optional[Path]:
+    """Il file del verificatore per `modello`, SOLO dentro CARTELLA_VERIFICA della root di
+    Gas e solo per un nome di modello semplice (lettere minuscole, cifre, «_»): niente
+    percorsi presi dall'ambiente, perché il file si carica con pickle. None = nome non
+    ammesso."""
+    if not _NOME_MODELLO_SEMPLICE.fullmatch(modello or ""):
+        return None
+    return (radice or _GAS_ROOT) / CARTELLA_VERIFICA / ("%s_verifier.pkl" % modello)
+
+
+def _file_fidato(p: Path) -> Optional[str]:
+    """Motivo per NON caricare il file con pickle: deve essere un file normale (non un
+    collegamento) tuo, che nessun altro può scrivere, in una cartella tua che nessun altro
+    può scrivere. None = va bene."""
+    try:
+        if p.is_symlink() or not p.is_file():
+            return "non è un file normale"
+        for q in (p, p.parent):
+            st = q.stat()
+            if hasattr(os, "getuid") and st.st_uid != os.getuid():
+                return "%s non è tuo" % q.name
+            if st.st_mode & 0o022:
+                return "%s scrivibile da altri" % q.name
+    except OSError as e:
+        return type(e).__name__
+    return None
+
+
+def _persone_registrate(p: Path) -> int:
+    """Persone del verificatore, dal .json scritto da scripts/voce/registra_voce.py
+    (0 = non si sa; mai un errore)."""
+    try:
+        dati = json.loads(p.with_suffix(".json").read_text(encoding="utf-8"))
+        persone = dati.get("persone") if isinstance(dati, dict) else None
+        return len(persone) if isinstance(persone, list) else 0
+    except (OSError, ValueError):
+        return 0
+
+
+def verifica_della_voce(modello: str, radice: Optional[Path] = None) -> Verifica:
+    """Decide se usare la verifica della voce: «spenta» con GAS_ASCOLTO_VERIFICA=0,
+    «assente» se il file non c'è (o il modello non ha un nome semplice), «non caricata»
+    se il file non è fidato, altrimenti «attiva». Non carica niente: lo fa
+    `rilevatore_con_verifica`."""
+    soglia_base = _numero("GAS_ASCOLTO_SOGLIA_BASE", SOGLIA_BASE_PREDEFINITA, 0.05, 0.9)
+    if os.environ.get("GAS_ASCOLTO_VERIFICA", "").strip() == "0":
+        return Verifica("spenta", soglia_base=soglia_base)
+    p = percorso_verificatore(modello, radice)
+    if p is None or not (p.exists() or p.is_symlink()):
+        return Verifica("assente", soglia_base=soglia_base)
+    motivo = _file_fidato(p)
+    if motivo:
+        log.warning("verifica della voce: %s non caricato (%s): ascolto senza verifica",
+                    p.name, motivo)
+        return Verifica("non caricata", percorso=p, soglia_base=soglia_base, motivo=motivo)
+    return Verifica("attiva", persone=_persone_registrate(p), percorso=p,
+                    soglia_base=soglia_base)
+
+
+def rilevatore_openwakeword(modello: str, verificatore: Optional[Path] = None,
+                            soglia_base: float = SOGLIA_BASE_PREDEFINITA
+                            ) -> Tuple[Callable[[Blocco], float], Callable[[], None]]:
+    """(punteggio del blocco, azzera) col modello pronto di openWakeWord, in locale.
+    Con `verificatore` (percorso già controllato da `verifica_della_voce`): quando il
+    modello arriva a `soglia_base` il punteggio del blocco diventa la probabilità del
+    verificatore (openwakeword/model.py, predict); sotto resta quello del modello."""
     import numpy as np
     from openwakeword.model import Model
-    m = Model(wakeword_models=[modello], inference_framework="onnx")
+    if verificatore is None:
+        m = Model(wakeword_models=[modello], inference_framework="onnx")
+    else:
+        m = Model(wakeword_models=[modello], inference_framework="onnx",
+                  custom_verifier_models={modello: str(verificatore)},
+                  custom_verifier_threshold=soglia_base)
 
     def punteggio(b: Blocco) -> float:
         risultati = m.predict(np.asarray(b, dtype=np.int16))
-        return max(risultati.values()) if risultati else 0.0
+        return float(max(risultati.values())) if risultati else 0.0
     return punteggio, m.reset
 
 
-def _regolazioni() -> Dict[str, Any]:
-    """Le regolazioni dell'ascolto lette una volta dal .env/ambiente, nei limiti."""
+def rilevatore_con_verifica(modello: str, verifica: Verifica
+                            ) -> Tuple[Callable[[Blocco], float], Callable[[], None]]:
+    """Il rilevatore con la verifica della voce se è attiva; se il file non si carica
+    (rotto, versione diversa di scikit-learn…) avviso nel log, `verifica` passa a «non
+    caricata» e si continua senza (§9: mai un crash per la verifica)."""
+    if verifica.attiva:
+        try:
+            return rilevatore_openwakeword(modello, verificatore=verifica.percorso,
+                                           soglia_base=verifica.soglia_base)
+        except ImportError as e:
+            if e.name in ("numpy", "openwakeword", "openwakeword.model"):
+                raise   # manca openWakeWord stesso: non è colpa della verifica (main lo dice)
+            log.warning("verifica della voce: file non caricato (%s): ascolto senza verifica",
+                        type(e).__name__)
+            verifica.stato, verifica.motivo = "non caricata", type(e).__name__
+        except Exception as e:  # §9
+            log.warning("verifica della voce: file non caricato (%s): ascolto senza verifica",
+                        type(e).__name__)
+            verifica.stato, verifica.motivo = "non caricata", type(e).__name__
+    return rilevatore_openwakeword(modello)
+
+
+def _regolazioni(verifica: Optional[Verifica] = None) -> Dict[str, Any]:
+    """Le regolazioni dell'ascolto lette una volta dal .env/ambiente, nei limiti. Con la
+    verifica della voce attiva la soglia della parola è GAS_ASCOLTO_SOGLIA_VERIFICA (una
+    probabilità del verificatore), mai sotto la soglia base; anche quella dell'interruzione
+    non scende sotto la base (sotto, il punteggio NON è verificato)."""
+    interruzione = soglia_interruzione()
+    if verifica is not None and verifica.attiva:
+        soglia = max(_numero("GAS_ASCOLTO_SOGLIA_VERIFICA", SOGLIA_VERIFICA_PREDEFINITA,
+                             0.05, 0.99), verifica.soglia_base)
+        if interruzione is not None:
+            interruzione = max(interruzione, verifica.soglia_base)
+    else:
+        soglia = _numero("GAS_ASCOLTO_SOGLIA", SOGLIA_PREDEFINITA, 0.05, 0.99)
     return {
-        "soglia": _numero("GAS_ASCOLTO_SOGLIA", SOGLIA_PREDEFINITA, 0.05, 0.99),
+        "soglia": soglia,
         "blocchi_parola": int(_numero("GAS_ASCOLTO_BLOCCHI_PAROLA",
                                       BLOCCHI_PAROLA_PREDEFINITO, 1, 5)),
         "voce_rms": _numero("GAS_ASCOLTO_VOCE_RMS", VOCE_RMS_PREDEFINITO, 10, 30000),
@@ -1332,24 +1483,34 @@ def _regolazioni() -> Dict[str, Any]:
         "seguito_max_s": _numero("GAS_VOICE_SEGUITO_MAX", SEGUITO_MAX_PREDEFINITO_S,
                                  3, REGISTRAZIONE_MAX_S),
         "max_turni": int(_numero("GAS_VOICE_MAX_TURNI", MAX_TURNI_PREDEFINITO, 1, 50)),
-        "soglia_interruzione": soglia_interruzione(),
+        "soglia_interruzione": interruzione,
         "blocchi_interruzione": int(_numero("GAS_ASCOLTO_BLOCCHI_INTERRUZIONE",
                                             BLOCCHI_INTERRUZIONE_PREDEFINITO, 1, 5)),
     }
 
 
-def _scrivi_regolazioni(r: Dict[str, Any]) -> None:
+def _scrivi_regolazioni(r: Dict[str, Any], verifica: Optional[Verifica] = None) -> None:
     """V-1 bot #371 su 5b27586: all'avvio il log dice i valori IN USO (il .env vince sui
     predefiniti: una GAS_ASCOLTO_SOGLIA=0.6 rimasta nel .env annulla la soglia 0,7), e
-    avvisa quando il .env rende la parola più facile dei predefiniti."""
+    avvisa quando il .env rende la parola più facile dei predefiniti. Dice anche lo stato
+    della verifica della voce: con la verifica attiva la soglia è quella della verifica."""
+    verifica = verifica or Verifica()
     interr = r["soglia_interruzione"]
     log.info("regolazioni in uso: soglia %.2f, blocchi di fila %d, turni %d, finestra %g s, "
-             "interruzione %s, voce %g", r["soglia"], r["blocchi_parola"], r["max_turni"],
+             "interruzione %s, voce %g, verifica della voce %s", r["soglia"],
+             r["blocchi_parola"], r["max_turni"],
              r["finestra_s"], "spenta" if interr is None else "%.2f su %d blocchi"
              % (interr, r.get("blocchi_interruzione", BLOCCHI_INTERRUZIONE_PREDEFINITO)),
-             r["voce_rms"])
+             r["voce_rms"], verifica.descrivi())
     piu_facile = []
-    if r["soglia"] < SOGLIA_PREDEFINITA:
+    if verifica.attiva:
+        if r["soglia"] < SOGLIA_VERIFICA_PREDEFINITA:
+            piu_facile.append("GAS_ASCOLTO_SOGLIA_VERIFICA=%g (predefinito %g)"
+                              % (r["soglia"], SOGLIA_VERIFICA_PREDEFINITA))
+        if (os.environ.get("GAS_ASCOLTO_SOGLIA") or "").strip():
+            log.info("GAS_ASCOLTO_SOGLIA non conta con la verifica della voce attiva: vale "
+                     "GAS_ASCOLTO_SOGLIA_VERIFICA (%.2f)", r["soglia"])
+    elif r["soglia"] < SOGLIA_PREDEFINITA:
         piu_facile.append("GAS_ASCOLTO_SOGLIA=%g (predefinito %g)"
                           % (r["soglia"], SOGLIA_PREDEFINITA))
     if r["blocchi_parola"] < BLOCCHI_PAROLA_PREDEFINITO:
@@ -1380,8 +1541,9 @@ def main() -> int:
         log.error("GAS_VOICE_URL: %s — l'ascolto non parte.", motivo)
         return 1
     modello = (os.environ.get("GAS_ASCOLTO_MODELLO") or "hey_jarvis").strip()
+    verifica = verifica_della_voce(modello)
     try:
-        punteggio, azzera = rilevatore_openwakeword(modello)
+        punteggio, azzera = rilevatore_con_verifica(modello, verifica)
     except Exception as e:
         log.error("openWakeWord non pronto (%s): installa con scripts/voce/installa.sh.",
                   type(e).__name__)
@@ -1396,8 +1558,9 @@ def main() -> int:
         except Exception as e:  # §9 (R-671-5): senza conferma resta il bip
             log.warning("conferma non avviata (%s): solo bip", type(e).__name__)
     log.info("ascolto pronto: parola «%s», server %s", modello, url)
-    regolazioni = _regolazioni()
-    _scrivi_regolazioni(regolazioni)
+    log.info("verifica della voce: %s", verifica.descrivi())
+    regolazioni = _regolazioni(verifica)
+    _scrivi_regolazioni(regolazioni, verifica)
     while True:
         mic = None
         try:
