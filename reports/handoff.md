@@ -40,6 +40,8 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9ee2da5f docs(fine-task): riferimenti esterni nel verdetto #804 in forma leggibile da check_verdetto
+02ec8635 docs(fine-task): §2/§3 handoff
 176ef263 docs(fine-task): voce — filtro sulla voce dell'operatore (review #804/#805-M1coord)
 53cb2a12 docs(voce): guida per usare Gas in giro (Telegram vocali, Comando Rapido iPhone)
 0e85b335 chore(revisore): memoria review #803 — BOCCIATO
