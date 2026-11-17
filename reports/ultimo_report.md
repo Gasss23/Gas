@@ -1,17 +1,17 @@
-# Ultimo report — 2026-11-12 notte — Voce: la prima frase parte appena pronta (M1)
+# Ultimo report — 2026-11-17 — Voce: filtro sulla voce dell'operatore (M1)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione (riserve solo BASSE).
+1. Merge della PR (solo R-804-3 COSMETICA aperta).
+2. Dopo il merge registrare la voce sul Mac (circa 5 minuti).
 
 ## Esito
-- **Prima frase subito**: FATTA. Il server manda la voce della prima frase appena ElevenLabs l'ha pronta, mentre il cervello forte finisce; il resto arriva dopo, senza ripeterla. Solo per l'ascolto H24 (senza schermo), mai nei seguiti, mai con compiti finiti da annunciare, mai se la frase contiene «Jarvis». Errore del turno dopo la prima frase → bip d'errore.
-- Atteso sul Mac (tempi dell'11/11): prima frase da ~6,2 s a ~4 s dalla fine della richiesta. Da misurare.
-- Review #799-M1coord BOCCIATO (prefisso dei compiti) → #801-M1coord APPROVATO CON RISERVE (R-801-1, R-799-1 BASSE).
+- **Causa del «non risponde» (taratura sul Mac del 17/11):** il modello hey_jarvis dà alla voce normale dell'operatore solo 0,37-0,43: nessuna soglia sicura basta.
+- **Verificatore della voce:** FATTO. `scripts/voce/registra_voce.py` registra 15 «Hey Jarvis» da posizioni diverse più parlato e TV (solo sul Mac, mai nel repo) e addestra un filtro. Con il filtro, soglia base 0,25 per prendere le chiamate deboli, filtro a 0,5 per scartare TV e altre persone. Senza il file del filtro tutto resta come prima. Review #804 APPROVATO CON RISERVE → #805 APPROVATO.
+- **Guida in giro:** `reports/guida_voce_in_giro.md` (Telegram vocali, Comando Rapido iPhone, Siri che legge le risposte).
+- **Data e ora nel prompt:** scartato (c'erano già), review #803 BOCCIATO.
 
 ## Test
-voice_server 227 → 236 passed; voce_ascolto 332 → 334; kernel 1167 PASS.
+voce_ascolto 346 → 373 passed; voice_server 236.
 
 ## Anomalie
-Nessuna. Non provato sul Mac.
-
-Merge di main (#378) nella #379: conflitti solo nei report; review #802-M1coord APPROVATO; voce_ascolto 346, voice_server 236 passed.
+Nessuna. Da provare sul Mac.

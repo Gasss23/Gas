@@ -1,34 +1,28 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-12 notte — Voce: la prima frase parte appena pronta (M1)
+**Sessione:** 2026-11-17 — Voce: filtro sulla voce dell'operatore per «Hey Jarvis» + guida in giro (M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa sessione (riserve solo BASSE).
+1. Merge della PR di questa sessione (nessuna riserva aperta oltre a R-804-3 COSMETICA).
+2. Dopo il merge: registrare la voce sul Mac (`scripts/voce/registra_voce.py`, circa 5 minuti) e riprovare Jarvis.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — prima frase subito** (sul Mac dei tempi dell'11/11: prima frase pronta ~3,7 s dopo la richiesta ma arrivata al client a ~6,2 s, a turno finito): FATTA — 59478461, review #799-M1coord BOCCIATO → #801-M1coord APPROVATO CON RISERVE. Solo client senza schermo (audio+pezzi), mai nei seguiti, mai con compiti finiti da annunciare, mai se la prima frase contiene la parola di attivazione.
-- **Fetta 2 — merge di main (#378) nella #379**: FATTA — review #802-M1coord APPROVATO.
+- **Fetta 1 — verificatore della voce** (taratura del 17/11 sul Mac: la voce normale dell'operatore arriva solo a 0,37-0,43 col modello hey_jarvis): FATTA — 3c25eeee, review #804-M1coord APPROVATO CON RISERVE; R-804-1/2 chiuse in 6219b621, review #805-M1coord APPROVATO.
+- **Fetta 2 — guida «Gas in giro»** (`reports/guida_voce_in_giro.md`, solo documento): FATTA — 53cb2a12.
+- **Fetta scartata — data e ora nel prompt a voce**: review #803-M1coord BOCCIATO (c'erano già dal V13, `modules/voice/server.py` `ora_per_voce`); codice non committato, resta solo la riga di memoria (0e85b335). Causa del giro in più del 17/11 16:28: da trovare con il diario.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- clients/voice/ascolto.py           |  11 ++++++++-
- modules/voice/server.py            | 118 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- reports/diff_sessione.md           |  13 +++++------
- reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  15 ++++++-------
- tests/test_unit_voce_ascolto.py    |  25 +++++++++++++++++++++
- tests/test_unit_voice_server.py    | 135 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+X
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -36,110 +30,68 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-37e729b8 docs(fine-task): handoff #379 dopo il merge di main
-9a0fb748 Merge origin/main (#378) nella #379 — review #802-M1coord APPROVATO
-e2766972 docs(fine-task): §2/§3 handoff
-f7053b3d docs(fine-task): voce — prima frase subito (review #799/#801-M1coord)
-59478461 perf(voce): la prima frase parte appena pronta, senza aspettare la fine del turno (~2 s prima) — review #799/#801-M1coord
-37654b0f chore(revisore): memoria review #801 — APPROVATO CON RISERVE
-382aae45 chore(revisore): memoria review #799 — BOCCIATO
+Y
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #799-M1coord (1° giro, diff staged poi corretto)
-
-## VERDETTO: BOCCIATO
-
-Review #799-M1coord: modifica staged su perf/voce-prima-frase-subito, base origin/main 3756c97. Letti prima CLAUDE.md (sezione 5), reports/stato_progetto.md e la memoria del revisore.
-
-**Motivo del blocco (MEDIA, verificato con una prova)**
-Con compiti finiti da annunciare (prefisso, fetta 3.2) la prima frase della risposta si sente due volte e l'annuncio finisce in mezzo alla risposta.
-- In `_do_pezzi_response` la prima frase si toglie solo se `frasi[0]` è uguale alla frase anticipata (modules/voice/server.py:1274). Con il prefisso `frasi` è prefisso + risposta (modules/voice/server.py:1238-1242), quindi `frasi[0]` è la frase del prefisso: il confronto fallisce.
-- I compiti finiti si leggono solo dopo il turno (modules/voice/server.py:1105), quando la prima frase è già partita.
-- Prova (spazio temporaneo, `_voce_subito` con `_compiti_finiti` = "Ho finito il compito."): audio `['Uno.', 'Ho finito il compito.', 'Uno.', 'Due.']`; la riga del testo dice `pezzi: 3`, gli audio sono 4.
-- Correzione suggerita: calcolare `_compiti_finiti()` prima di `run_turn` e passare `pronto=None` se ci sono compiti da annunciare; test col prefisso.
-
-**Elementi del diff esaminati**
-- modules/voice/server.py:691 — `_invia_anticipo`: blocca la frase con la parola di attivazione; sotto `_risposta_lock` scrive intestazioni e riga solo se lo stato è «attesa»; lo stato passa a «chiusa» prima della scrittura. Rischio: due fili sulla stessa connessione. Esito: ok (HTTP/1.0, una richiesta per gestore; errore di scrittura catturato in `_sintetizza`, modules/voice/server.py:467-471).
-- modules/voice/server.py:714 — `_prendi_risposta`. Rischio: una via di risposta che non passa da qui. Esito: ok con riserva: `_send_json` (modules/voice/server.py:726) e `_do_pezzi_response` (modules/voice/server.py:1271) ci passano; `_send_audio` (modules/voice/server.py:753) no, oggi irraggiungibile con l'anticipo acceso.
-- modules/voice/server.py:726-742 — errore dopo l'anticipo: riga `errore_voce` + `fine`, stato HTTP già 200. Esito: riserva R2.
-- modules/voice/server.py:1044-1047 — invio immediato solo con `_vuole_righe_senza_schermo()` e fuori dai seguiti (modules/voice/server.py:1041). Rischio: privacy. Esito: ok.
-- clients/voice/ascolto.py:727 (contesto) — controllo della parola a ogni pezzo; la frase anticipata per costruzione non contiene la parola; `test_regola_della_parola_uguale_al_client` (tests/test_unit_voice_server.py:2804). Esito: ok.
-
-**Riserve**
-- R1 (BASSA): se la risposta finale cambia rispetto alla frase anticipata si sente una frase in più (es. "Ecco\n\nIl resto."): da dichiarare.
-- R2 (MEDIA, esperienza): errore del turno dopo l'anticipo → nessun bip (prima, col 500, `_bip("errore")`); l'utente sente solo la prima frase e poi silenzio.
-- R3 (COSMETICA): `_send_audio` non passa da `_prendi_risposta`.
-
-**Test**: voice_server + voce_ascolto 567 passed (rieseguiti). Kernel non rieseguito (gas.py non toccato).
-
-**Non verificato**: tempi reali sul Mac, `claude -p` vero, ElevenLabs vero; scrittura lenta con client bloccato (lucchetto fino al timeout di 60 s del socket, ragionato).
-
-**Memoria**: riga #799-M1coord e una lezione (commit 382aae45).
-
-### Review #801-M1coord (2° giro, commit 59478461)
+### Review #804-M1coord (commit 3c25eeee)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #801-M1coord, secondo giro della #799. Diff staged riletto: 4 file, +277/-12. Il blocco della #799 è risolto: con un compito finito già pronto prima del turno la prova dà `['Ho finito il compito.', 'Uno.', 'Due.']` (prima `['Uno.', 'Ho finito il compito.', 'Uno.', 'Due.']`).
+Review #804-M1coord. Diff staged nella worktree del branch feat/voce-verifica-parlante (5 file). Letti prima CLAUDE.md, reports/stato_progetto.md (parti utili) e la memoria. Confronto col sorgente di openWakeWord 0.6.0 installato nell'area temporanea.
 
-**Elementi del diff esaminati**
-- modules/voice/server.py:1052 — con compiti da annunciare l'invio anticipato si spegne (`pronto=None`); solo senza schermo e mai nei seguiti (dentro `not self._seguito()`). Rischio: effetti della lettura prima del turno. Esito: ok — `_compiti_finiti` (modules/voice/server.py:1131) non solleva e scrive solo `_finiti_jobs`; la lettura dopo il turno (modules/voice/server.py:1115) lo sovrascrive; se i compiti spariscono `_segna_finiti_letti` non è chiamato (`n_prefisso` 0): innocuo.
-- modules/voice/server.py:1285 — dopo un anticipo la frase si cerca in `frasi[n_prefisso]` e si toglie solo quella; prefisso e `n_prefisso` invariati. Rischio: segno dei compiti letti, ripetizioni. Esito: ok; riserva sull'ordine (R-801-1).
-- modules/voice/server.py:754-759 — `_send_audio` passa da `_prendi_risposta`; dopo un anticipo `_send_json(500)` scrive la riga d'errore. Esito: ok (chiude R3).
-- modules/voice/server.py:726-737 — errore del turno dopo un anticipo con `"errore_turno": true`; clients/voice/ascolto.py:1035 lo registra; clients/voice/ascolto.py:754 suona `_bip("errore")` se almeno una frase è stata detta; errore della sola sintesi senza bip come prima; con 0 frasi resta il ramo vecchio (niente doppio bip). Esito: ok (chiude R2).
-- Sicurezza fra i due fili (`_invia_anticipo` modules/voice/server.py:691, `_prendi_risposta` modules/voice/server.py:717) invariata rispetto alla #799.
+**Punti del diff esaminati**
+- `clients/voice/ascolto.py:1370` — `_file_fidato` controlla file e cartella prima del caricamento con pickle. Rischi: symlink, proprietario diverso, file scrivibile da altri, TOCTOU. Percorso fisso (`percorso_verificatore`: radice + `.gas_voce/verifica` + nome `[a-z0-9_]{1,40}`): nessun path traversal. TOCTOU solo per chi può scrivere in `verifica`, che il controllo esclude: accettabile su un Mac a un utente. Esito: ok con riserva R-804-1. Mutanti: tolto il controllo symlink → 1 rosso; tolto il controllo permessi → 1 rosso; il controllo del proprietario (`if False`) e quello della cartella madre (`for q in (p,)`) **sopravvivono** (26 verdi).
+- `clients/voice/ascolto.py:1432` — `custom_verifier_models` e `custom_verifier_threshold=soglia_base` a `Model`. Rischio: punteggio non verificato che attiva. openwakeword/model.py:320-327: il verificatore sostituisce il punteggio solo dalla soglia base in su; con `clients/voice/ascolto.py:1470` (soglia della verifica mai sotto la base) un blocco non verificato non attiva. Esito: ok. Mutante `max(...,0.0)` → 1 rosso.
+- `clients/voice/ascolto.py:1473` — anche la soglia dell'interruzione non scende sotto la base. Rischio: risposte non richieste mentre Gas parla. Con la verifica attiva l'eco di Gas viene scartata dal filtro; prezzo: l'operatore interrompe più a fatica (rischio dichiarato). Esito: ok. Mutante → 1 rosso.
+- `clients/voice/ascolto.py:1441` — `rilevatore_con_verifica`: pkl che non si carica → fallback senza verifica (§9); numpy/openwakeword mancanti rilanciati come prima. In `main` lo stato passa a «non caricata» PRIMA di `_regolazioni` (soglia di nuovo 0,7). Un errore di `predict_proba` durante l'ascolto è catturato dal ciclo (`clients/voice/ascolto.py:490`): niente crash, ma Jarvis diventa sordo (direzione sicura), segnalato nel log. Esito: ok.
+- Senza pkl comportamento identico a oggi: stato «assente» → stessa `Model(wakeword_models=[modello], inference_framework="onnx")`, stessa `GAS_ASCOLTO_SOGLIA` 0,7, stessa interruzione; cambia solo la riga di log. Esito: ok.
+- `scripts/voce/registra_voce.py:306` — `MotoreOWW.blocchi` contro `get_reference_clip_features` (custom_verifier_model.py:30-86): stesso passo di 1280 campioni, stesso spostamento casuale 0-1280 con 5 ripetizioni, stesse feature `preprocessor.get_features(...)` che `predict` passa al verificatore. Negativi su tutti i blocchi (come `threshold=0.0`), positivi dalla soglia base invece che da 0,5; 1 s di silenzio in testa per i primi 5 blocchi azzerati; classificatore `train_verifier_model` della libreria. Esito: ok.
+- `scripts/voce/registra_voce.py:104` e `scripts/voce/registra_voce.py:118` — privacy: cartelle 0700, file 0600 scritti in modo atomico (mkstemp + replace); clip di `say` a 0600 in cartella 0700; `.gas_voce/` in `.gitignore` (riga 23) con test. Esito: ok.
+- Test: `tests/test_unit_voce_ascolto.py:3282` (file non fidato) e `tests/test_unit_voce_ascolto.py:3407` (verifica rotta/spenta/assente). Suite voce_ascolto rieseguita: 371 passed.
 
-**Test**: voice_server + voce_ascolto 570 passed (236 + 334); i 9 test della prima frase subito e i 2 nuovi del client passano anche da soli.
+**Riserve**
+- **R-804-1 BASSA**: proprietario (`st_uid`) e cartella madre (`clients/voice/ascolto.py:1377`) senza test (spegnerli lascia la suite verde).
+- **R-804-2 BASSA**: `verifica_della_voce` chiamata fuori dal try in `main` (`clients/voice/ascolto.py:1544`): su Python 3.11/3.12 `Path.exists()`/`is_symlink()` rilanciano PermissionError; con `.gas_voce` non attraversabile l'ascolto crasha all'avvio.
+- **R-804-3 COSMETICA**: la soglia base dell'addestramento è nel .json ma non confrontata a runtime.
 
-**Riserve (da segnare in stato_progetto.md)**
-- R-801-1 (BASSA): un compito che finisce durante il turno si annuncia dopo la prima frase della risposta, non prima (ordine diverso da quello della fetta 3.2), senza ripetizioni.
-- R-799-1 (BASSA): una frase in più se la risposta finale cambia rispetto alla frase anticipata.
+**Non verificato**: Mac reale (microfono, `say`, launchd); qualità reale del filtro sulla voce dell'operatore; pkl fra versioni di scikit-learn; LEGGIMI letto in parte.
 
-**Non verificato**: tempi reali sul Mac, `claude -p`, ElevenLabs e casse veri; suite del kernel (gas.py non toccato).
+Wall of Shame: nessuna violazione; guardrail del kernel non toccati. Memoria: riga #804-M1coord e una lezione (commit 1473e9c9).
 
-**Memoria**: riga #801-M1coord (commit 37654b0f).
-
-### Review #802-M1coord (merge di origin/main cb9ae3c, PR #378, nella #379)
+### Review #805-M1coord (commit 6219b621)
 
 ## VERDETTO: APPROVATO
 
-Review #802-M1coord: merge di origin/main cb9ae3c (PR #378) nella PR #379, branch perf/voce-prima-frase-subito. Letti CLAUDE.md §5, stato_progetto.md e la memoria del revisore.
+Review #805-M1coord: R-804-1 e R-804-2 chiuse, nessuna riserva nuova. Diff staged nella worktree (2 file, da 3c25eeee).
 
-**Nessun lato ha perso modifiche.** Confrontate le righe +/- di `git diff base..MERGE_HEAD` con `git diff HEAD --cached`, e di `git diff base..HEAD` con `git diff MERGE_HEAD --cached`: su `clients/voice/ascolto.py` e `tests/test_unit_voce_ascolto.py` coincidono in entrambe le direzioni. Il file in staging si analizza senza errori; cartella di lavoro = staging.
+- `clients/voice/ascolto.py:1408` — `exists()`/`is_symlink()` dentro `try/except OSError` → «non caricata» con avviso (`gas.ascolto`, riga 1414); il pkl non viene mai caricato in quel percorso; soglia di nuovo 0,7; solo OSError intercettato. Esito: ok, R-804-2 chiusa.
+- `tests/test_unit_voce_ascolto.py:3304` — test su proprietario diverso (`os.getuid` monkeypatchato) e cartella `verifica` 0o777; permessi ripristinati nel `finally`. Mutanti: `if False` → 1 failed; `for q in (p,)` → 1 failed. Esito: ok, R-804-1 chiusa.
+- `tests/test_unit_voce_ascolto.py:3323` — `Path.exists` che solleva PermissionError: stato, motivo e log controllati; mutante `except ZeroDivisionError` → 1 failed. Esito: ok.
+- Suite voce_ascolto: 373 passed (rieseguita).
 
-Elementi del diff esaminati:
-- `clients/voice/ascolto.py:829` — l'interruzione mentre Gas parla usa `self.blocchi_interruzione` (#378). Rischio: ritorno a `blocchi_parola` (1 blocco, eco delle casse). Esito: ok; contatore azzerato su errore e sotto soglia.
-- `clients/voice/ascolto.py:777` — bip d'errore se la prima frase è già detta e il turno fallisce (#379), dopo il `finally` del ciclo, fuori da `_ascolta_mentre_suona`. Rischio: interferenza con l'interruzione. Esito: ok — punti diversi; interrotto → `break`, il bip parte solo con `errore_turno` (impostato in `clients/voice/ascolto.py:1059`); con `suonati == 0` resta il bip esistente, niente doppio bip.
-- `clients/voice/ascolto.py:1336` — `_regolazioni()` legge `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` (1-5, default 3) e lo passa al costruttore (`clients/voice/ascolto.py:378`) via `**regolazioni`. Esito: ok.
-- `tests/test_unit_voce_ascolto.py:836` (test #379 su `errore_turno=True`) e `tests/test_unit_voce_ascolto.py:3224` (test #378 parola=1, interruzione=3) presenti. Esito: ok.
-- Wall of Shame: nessuno slicing della history, nessuna simulazione dei tool; motore non toccato.
-
-Test: `tests/test_unit_voce_ascolto.py` 346 passed (rilanciato dal revisore).
-
-Rischi esclusi: `tests/test_unit_voice_server.py` non rieseguito (timeout dell'ambiente; il merge non tocca il server: valgono i 236 passed del coordinatore); comportamento reale sul Mac non verificato. R-800-1 ancora aperta, ereditata.
-
-Memoria: riga #802-M1coord in .claude/agents/memoria_revisore.md, entrata nel commit di merge.
+Non verificato: cartella davvero senza permessi su Mac con Python 3.11/3.12 (qui 3.13; test con monkeypatch). R-804-3 COSMETICA resta aperta. Memoria: riga #805-M1coord (commit 2a32f67a).
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `python -B -m pytest -q tests/test_unit_voice_server.py` → 227 passed (main 3756c97) → 236 passed (59478461; 9 test nuovi, uno prova che la prima riga arriva a turno ancora aperto).
-- `tests/test_unit_voce_ascolto.py` → 332 → 334 passed → 346 passed dopo il merge di main (#378); voice_server 236 passed dopo il merge.
-- Kernel (`python -B tests/test_unit_kernel.py`): 1167 PASS, 0 FAIL (gas.py non toccato).
+- `python -B -m pytest -q tests/test_unit_voce_ascolto.py` → 346 passed (main 01eb9f5) → 371 (3c25eeee) → 373 passed (6219b621).
+- `tests/test_unit_voice_server.py`: 236 passed (agente, dopo 3c25eeee).
+- Resto di `tests/` (agente): 3812 passed, 33 failed tutti in `test_unit_web_browser.py` (bwrap assente nel container, identico su main).
+- Prova reale del verificatore (agente, modello vero, voci espeak): voce addestrata non vista 0,70-0,96; voci femminili/inglesi 0,19-0,34; 3 maschili italiane su 4 passano (0,83-0,93).
 
 ```
-236 passed
+373 passed
 ```
 
 ## §6 STATO CI
 
-CI letta con lo strumento GitHub sulla PR #379: e2766972 tutti i check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE). Run del merge non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA (gh assente): run della PR non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-801-1 BASSA — un compito finito arrivato durante il turno si annuncia dopo la prima frase, non prima.
-- R-799-1 BASSA — una frase in più se la risposta finale cambia rispetto a quella anticipata.
-- Non provato: tempi reali sul Mac (atteso circa 2 s in meno alla prima frase), `claude -p` ed ElevenLabs veri.
+- R-804-3 COSMETICA — la soglia base dell'addestramento non è confrontata a runtime.
+- Limiti dichiarati: voci maschili simili all'operatore passano; una registrazione dell'operatore riprodotta passa; pkl legato alla versione di scikit-learn (ritorna senza verifica, si rifà con `--solo-addestra`); `say` del Mac non provato su Mac reale; interruzione (0,8 × 3 blocchi) raggiunta di rado col verificatore.
+- Licenza CC BY-NC-SA di hey_jarvis: decisione dell'operatore ancora aperta.
