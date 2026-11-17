@@ -37,6 +37,7 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4786ce0c docs(fine-task): handoff col porting del fix bwrap (#808-M1coord)
 c87ea5e4 fix(web): sandbox del browser su Ubuntu 26.04 (porting di 605e154c dalla PR #380) — review #808-M1coord
 50fade22 chore(revisore): memoria review #808 — APPROVATO CON RISERVE
 4cab4326 docs(fine-task): §2/§3 handoff
