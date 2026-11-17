@@ -581,7 +581,7 @@ def avviato(st: CRMStore):
 
 def test_bind_solo_locale(st: CRMStore) -> None:
     stato = server.Stato(st, TOKEN, regole=REGOLE)
-    for host in ("0.0.0.0", "192.168.1.10", "example.com", "::1", "127.0.0.1.nip.io"):
+    for host in ("0.0.0.0", "192.168.1.10", "example.com", "::1", "127.0.0.1.nip.io"):  # gasmerge-ip-ok
         with pytest.raises(ValueError):
             server.crea_server(stato, host, 0)
     assert server.bind_locale("localhost") and server.bind_locale("127.0.0.1")
