@@ -16,6 +16,7 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 1 — CRM clienti (modulo, motore, dashboard, test, CI)**: FATTA — commit 99d82f3f; review #803-CRM BOCCIATO → #804-CRM APPROVATO CON RISERVE. Guida: `reports/crm.md`.
+- **Fetta 1b — gate IP**: FATTA — il primo `fine_task_finale.sh` si è fermato sugli indirizzi d'esempio di `tests/test_unit_crm.py` (test che pretende il rifiuto dei bind non locali): marcatore `gasmerge-ip-ok` sulla riga, commit f1c109a7, review #805-CRM APPROVATO.
 - **Invio automatico WhatsApp**: SALTATA — principio del 19 ottobre (firma per ciò che esce); servono numero business e modelli approvati.
 - **Strumento CRM per il modello di Gas** (sola lettura, solo cervello forte) e chiusura di R-803-4: DEFERITA — tocca `gas.py`, prossima fetta.
 - **Integrazioni (broker, risposte WhatsApp automatiche)**: DEFERITA — `reports/crm.md` §7.
@@ -25,7 +26,7 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |    6 +++
+ .claude/agents/memoria_revisore.md |    7 +++
  .github/workflows/ci.yml           |    8 +++
  .gitignore                         |    4 ++
  modules/crm/__init__.py            |   18 +++++++
@@ -45,7 +46,7 @@
  reports/handoff.md                 |  n/d
  reports/roadmap.md                 |    1 +
  reports/stato_progetto.md          |    4 +-
- reports/ultimo_report.md           |   29 +++++++----
+ reports/ultimo_report.md           |   30 +++++++----
  tests/test_unit_crm.py             |  985 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
@@ -54,6 +55,9 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f1c109a7 test(crm): marcatore gasmerge-ip-ok sugli indirizzi d'esempio del test di bind — review #805 APPROVATO
+08b3387b chore(revisore): memoria review #805 — APPROVATO
+0286192c docs(fine-task): CRM clienti, prima bozza — report, handoff (review #803/#804), guida reports/crm.md, roadmap R11
 99d82f3f feat(crm): CRM clienti, prima bozza — servizi, registro movimenti immutabile in centesimi, motore delle opportunità, dashboard in tempo reale — review #803 BOCCIATO → #804 APPROVATO CON RISERVE
 ae5197d0 chore(revisore): memoria review #804 — APPROVATO CON RISERVE
 15368710 chore(revisore): memoria review #803 — BOCCIATO
@@ -63,7 +67,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 99d82f3f: due giri sullo stesso diff staged. Verdetti incollati per intero. NB: le citazioni `path:riga` della #803-CRM si riferiscono alla versione staged del primo giro (poi corretta); quelle della #804-CRM al codice committato.
+Commit motore 99d82f3f: due giri sullo stesso diff staged; commit motore f1c109a7: terzo giro. Verdetti incollati per intero. NB: le citazioni `path:riga` della #803-CRM si riferiscono alla versione staged del primo giro (poi corretta); quelle della #804-CRM al codice committato.
 
 ### Review #803-CRM (1° giro)
 
@@ -283,6 +287,39 @@ Il kernel, brains/, la memoria e il cancello restano non toccati. Nessuno slicin
   - /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/rev/smug.py (login nascosto nel corpo).
 - **Da registrare in reports/stato_progetto.md:** le riserve R-804-1, R-804-2, R-804-3 e R-804-4.
 
+### Review #805-CRM (3° giro, commit f1c109a7: solo il marcatore gasmerge-ip-ok)
+
+## VERDETTO: APPROVATO
+
+Review #805-CRM, terzo giro: l'unica modifica è il commento `# gasmerge-ip-ok`, è legittima e il gate IP passa.
+
+**Controlli fatti:**
+- **Il commento è l'unica modifica.** `git diff --staged --numstat` dà `1 1 tests/test_unit_crm.py`: una riga tolta e una aggiunta. L'hunk aggiunge solo `  # gasmerge-ip-ok` in fondo alla riga, il resto è identico.
+- **Il commit 99d82f3f contiene il codice approvato in #804.** I blob di `modules/crm/server.py`, `store.py`, `__main__.py`, `messaggi.py` e `tests/test_unit_crm.py` a HEAD coincidono con quelli revisionati al secondo giro (4aa12e30, 5a407469, 3ef55e4e, 4e4b2de3, ea81e0e4).
+- **Il gate IP passa.** Ho simulato il gate sull'albero che nascerebbe dall'indice attuale (`git write-tree`), con la stessa regex e lo stesso filtro di loopback e marcatore dello script: 0 righe residue.
+- **La suite resta verde.** `test_bind_solo_locale`: 1 passed. Suite CRM: 93 passed.
+
+**Elementi esaminati:**
+- `tests/test_unit_crm.py:584` — aggiunge il marcatore sulla riga del test negativo di `bind_locale`.
+  - Rischio esaminato: che il marcatore copra un indirizzo reale (di una macchina o di una rete dell'operatore).
+  - Esito: ok. I due indirizzi marcati sono input d'esempio che il test pretende siano RIFIUTATI con ValueError:
+    - `0.0.0.0` è l'indirizzo che vuol dire «tutte le interfacce»;
+    - `192.168.1.10` è un generico indirizzo di rete privata.
+  - Il marcatore vale solo per quella riga, che contiene anche `127.0.0.1.nip.io` (un nome che inizia come un loopback, comunque esente).
+- `modules/crm/server.py:71` — `bind_locale`, il controllo che il test esercita.
+  - Rischio esaminato: che il marcatore servisse a nascondere un indebolimento del controllo.
+  - Esito: ok. Il file è invariato rispetto al blob approvato in #804 e il test continua a pretendere il rifiuto.
+- `scripts/fine_task_finale.sh:73` — la regex del gate (citazione di contesto, file non toccato).
+  - Rischio esaminato: che, dopo questa modifica, restino altri IP non marcati nell'albero.
+  - Esito: ok. Gli altri indirizzi del CRM sono tutti 127.0.0.1, quindi esenti come loopback.
+
+**Rischio esplicitamente escluso:** non ho eseguito `scripts/fine_task_finale.sh` per intero, perché fa push e merge e non spetta al revisore. Il gate l'ho simulato su un albero ottenuto con `git write-tree`: lo script lo fa invece sul tree di HEAD dopo il commit, quindi l'esito vero lo darà la sua esecuzione.
+
+**Note:**
+- Memoria: riga contatore #805-CRM aggiunta e committata da sola (commit 08b3387b). Il diff staged è intatto (1 file, 1/1).
+- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+- Le riserve aperte restano quelle di #804: R-804-1, R-804-2, R-804-3, R-804-4, più R-803-4, R-803-9 e R-803-10.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_crm.py` (nuovo): 0 → **93 passed** (3 giri stabili). I 13 test `test_r803_*` sul codice staged prima delle correzioni: 12 failed, 1 passed (keep-alive normale, che deve passare in entrambi).
@@ -307,7 +344,8 @@ run 44163850284  verifica-bot  pull_request_target  99d82f3f  completed / skippe
 Mappatura commit→run:
 - `15368710` (memoria revisore #803): nessuna run su questo SHA (pushato insieme a 99d82f3f).
 - `ae5197d0` (memoria revisore #804): nessuna run su questo SHA (pushato insieme a 99d82f3f).
-- `99d82f3f` (codice CRM): run CI 44163799980 (vedi blocco sopra).
+- `99d82f3f` (codice CRM): run CI 44163799980 (vedi blocco sopra; in corso alla scrittura).
+- `0286192c` (primo fine-task), `08b3387b` (memoria #805), `f1c109a7` (marcatore IP): mai pushati prima di questo fine-task → nessuna run su questi SHA; il push che porta questo handoff testa solo il commit di testa.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

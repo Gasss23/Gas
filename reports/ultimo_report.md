@@ -8,6 +8,7 @@
 
 ## Esito
 - **CRM clienti, fetta 1**: FATTA — commit 99d82f3f, review #803 BOCCIATO (R-803-1 ALTA: con la memoria collegata la dashboard riscriveva il file della memoria a ciclo; R-803-2 MEDIA: corpo non letto eseguito come richiesta; R-803-3 MEDIA: import CSV non atomico) → corretti, ognuno con un test che fallisce sul codice precedente → #804 APPROVATO CON RISERVE (R-804-1..4 BASSE/COSMETICA; R-803-4 MEDIA e R-803-10 BASSA tracciate). Modulo `modules/crm/`: clienti, servizi, posizioni, registro movimenti immutabile in centesimi, proposte, diario del CRM; motore delle opportunità deterministico (nuovo servizio → dopo un no aumento di capitale → presentazione di un amico; consenso, STOP, pause, tetti, insistenza crescente); testi WhatsApp fissi e link wa.me; dashboard in tempo reale su 127.0.0.1 con token; riga di comando e dati demo. Guida: `reports/crm.md`.
+- **Gate IP**: FATTA — indirizzi d'esempio di un test marcati `gasmerge-ip-ok` (commit f1c109a7, review #805 APPROVATO).
 - **Invio automatico su WhatsApp**: SALTATA — oggi esce solo con un click dell'operatore (principio del 19 ottobre); per l'API servono numero business e modelli approvati.
 - **Strumento CRM per il modello di Gas**: DEFERITA — sarà in sola lettura e solo col cervello forte (regola dei modelli); il kernel non è toccato in questa fetta.
 - **Integrazioni (broker, risposte WhatsApp automatiche)**: DEFERITE — prossime fette (`reports/crm.md` §7).
