@@ -22,7 +22,17 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-X
+ .claude/agents/memoria_revisore.md |   5 ++
+ clients/voice/ascolto.py           | 207 ++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ reports/diff_sessione.md           |  13 ++--
+ reports/guida_voce_in_giro.md      |  32 +++++++++
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   1 +
+ reports/ultimo_report.md           |  18 ++---
+ scripts/voce/LEGGIMI.md            |  65 +++++++++++++++++-
+ scripts/voce/registra_voce.py      | 573 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ scripts/voce/taratura_parola.py    |  65 ++++++++++++------
+ tests/test_unit_voce_ascolto.py    | 568 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -30,7 +40,13 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-Y
+176ef263 docs(fine-task): voce — filtro sulla voce dell'operatore (review #804/#805-M1coord)
+53cb2a12 docs(voce): guida per usare Gas in giro (Telegram vocali, Comando Rapido iPhone)
+0e85b335 chore(revisore): memoria review #803 — BOCCIATO
+6219b621 fix(voce): verifica della voce mai ferma all'avvio con cartella illeggibile; test su proprietario e cartella (R-804-1/2) — review #805-M1coord
+2a32f67a chore(revisore): memoria review #805 — APPROVATO
+3c25eeee feat(voce): filtro sulla voce dell'operatore per «Hey Jarvis» (verificatore openWakeWord) + registrazione guidata — review #804-M1coord
+1473e9c9 chore(revisore): memoria review #804 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
