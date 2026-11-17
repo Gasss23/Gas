@@ -1,61 +1,91 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-17 — CRM clienti, prima bozza (fetta 1): servizi, registro movimenti, motore delle opportunità, dashboard in tempo reale
+**Sessione:** 2026-11-17 — CRM clienti: fetta 1 (prima bozza: servizi, registro movimenti, motore delle opportunità, dashboard in tempo reale) e fetta 2 (risposte dell'operatore: follow-up mensile, selezione dei clienti, invii a scaglioni, testi riscritti da Opus, clienti del CRM solo al cervello forte)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #381 (https://github.com/Gasss23/Gas/pull/381), dopo il nuovo giro di bot e verifica esterna. Il merge lo decide l'operatore (riserve BASSE aperte; check verifica-bot neutral perché la PR tocca la CI). Oggi è BLOCCATO dal check required `unit-suite`, rosso per 7 test del sandbox del browser che falliscono anche su altri rami (vedi §6): serve prima una fetta separata su quel problema dei runner.
-2. I 4-5 servizi veri (nome, come guadagniamo, capitale minimo): oggi ci sono solo quelli della demo.
-3. Invio WhatsApp senza firma: oggi ogni messaggio lo approva l'operatore (principio del 19 ottobre). L'automatico richiede di cambiare quella regola e l'API WhatsApp Business con modelli approvati.
-4. Prima dei dati veri: consenso dei clienti raccolto davvero; verifica Consob con un consulente; decisione GDPR (anonimizzazione su richiesta, R-803-9); chiusura di R-803-4 (regola dei modelli).
+1. Merge della PR #381 (https://github.com/Gasss23/Gas/pull/381), dopo il nuovo giro di bot e verifica esterna. Il merge lo decide l'operatore: restano riserve BASSE aperte, e il check verifica-bot è neutral perché la PR tocca la CI. Oggi è BLOCCATO dal check required `unit-suite`, rosso per 7 test del sandbox del browser che falliscono anche su altri rami (vedi §6). Prima serve una fetta separata su quel problema dei runner.
+2. Le 4 domande aperte in `reports/crm/domande.md`:
+   - come guadagniamo su ogni servizio, e il capitale minimo;
+   - WhatsApp Business: app o API;
+   - Opus anche per le risposte di Gas in chat sui clienti (`GAS_MODEL_CLAUDE_FORTE`);
+   - collegare le chat tra loro.
+3. Prima dei dati veri:
+   - consenso dei clienti raccolto davvero;
+   - verifica Consob con un consulente;
+   - decisione GDPR: anonimizzazione su richiesta (R-803-9), estesa alle copie di sicurezza (R-808-6).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — CRM clienti (modulo, motore, dashboard, test, CI)**: FATTA — commit 99d82f3f; review #803-CRM BOCCIATO → #804-CRM APPROVATO CON RISERVE. Guida: `reports/crm.md`.
-- **Fetta 1b — gate IP**: FATTA — il primo `fine_task_finale.sh` si è fermato sugli indirizzi d'esempio di `tests/test_unit_crm.py` (test che pretende il rifiuto dei bind non locali): marcatore `gasmerge-ip-ok` sulla riga, commit f1c109a7, review #805-CRM APPROVATO.
-- **Fetta 1c — finding del bot e della verifica esterna sulla PR #381**: FATTA — verifica esterna V-1 (MEDIA, proposta scartata ricreata subito) e V-2 (BASSA, movimenti incoerenti), bot V-1 (BASSA, testo corretto senza riga STOP) e V-2 (BASSA, STOP non ricontrollato nella transazione d'invio): commit c9daf955, review #806-CRM APPROVATO CON RISERVE; riserve R-806-1 (MEDIA, controlli non atomici), R-806-2, R-806-3 chiuse nel commit 72dcc9d2, review #807-CRM APPROVATO. V-3 (nota sugli importi) in `reports/crm.md`; V-4 (questo §3/§6) aggiornato qui.
-- **Invio automatico WhatsApp**: SALTATA — principio del 19 ottobre (firma per ciò che esce); servono numero business e modelli approvati.
-- **Strumento CRM per il modello di Gas** (sola lettura, solo cervello forte) e chiusura di R-803-4: DEFERITA — tocca `gas.py`, prossima fetta.
-- **Integrazioni (broker, risposte WhatsApp automatiche)**: DEFERITA — `reports/crm.md` §7.
+- **Fetta 1 — CRM clienti (modulo, motore, dashboard, test, CI)**: FATTA.
+  - Commit 99d82f3f; review #803-CRM BOCCIATO → #804-CRM APPROVATO CON RISERVE.
+- **Fetta 1b — gate IP**: FATTA. Il primo `fine_task_finale.sh` si era fermato sugli indirizzi d'esempio di `tests/test_unit_crm.py`.
+  - Correzione: marcatore `gasmerge-ip-ok` sulla riga.
+  - Commit f1c109a7; review #805-CRM APPROVATO.
+- **Fetta 1c — finding del bot e della verifica esterna sulla PR #381**: FATTA.
+  - Commit c9daf955, review #806-CRM APPROVATO CON RISERVE.
+  - Riserve R-806-1/2/3 chiuse nel commit 72dcc9d2, review #807-CRM APPROVATO.
+- **Fetta 2 — risposte dell'operatore del 17 novembre** (`reports/crm/decisioni.md`): FATTA. Commit aa4bb422; review #808-CRM BOCCIATO → #809-CRM APPROVATO CON RISERVE.
+  - Cosa fa:
+    - file dedicato `.gas_memory_crm.db` con copie di sicurezza;
+    - follow-up mensile spegnibile per cliente; anzianità minima; niente proposte nel mese in perdita; servizi da consigliare;
+    - selezione manuale con testi neutri;
+    - invii a scaglioni;
+    - riscrittura SOLO con Claude Opus, nel conto e nel tetto del forte;
+    - i clienti del CRM entrano nel filtro della regola dei modelli (R-803-4 chiusa, `gas.py`).
+  - Il primo giro (#808) aveva trovato il filtro lento con molti clienti (R-808-1 ALTA). Ora è una regex unica in cache.
+  - Chiuse anche R-808-2/3/4/7 e le riserve BASSE di bot e verifica esterna #381, R-804-1 e R-804-3.
+- **Invio automatico WhatsApp**: DEFERITA. Decisione dell'operatore: «da sole, ma all'inizio col mio controllo». Servono l'API WhatsApp Business e i modelli approvati da Meta.
+- **Strumento CRM per il modello di Gas** (sola lettura, solo cervello forte): DEFERITA, prossima fetta (`reports/crm/guida.md` §7).
+- **Integrazioni (broker, risposte WhatsApp automatiche)**: DEFERITA (`reports/crm/guida.md` §7).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   10 ++++
- .github/workflows/ci.yml           |    8 +++
- .gitignore                         |    4 ++
- modules/crm/__init__.py            |   18 ++++++
- modules/crm/__main__.py            |  353 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/analisi.py             |  389 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/demo.py                |  133 +++++++++++++++++++++++++++++++++++++++++
- modules/crm/messaggi.py            |  129 ++++++++++++++++++++++++++++++++++++++++
- modules/crm/motore.py              |  423 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/server.py              |  839 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/store.py               | 1085 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/web/app.css            |  319 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/web/app.js             |  829 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |   15 ++++
+ .github/workflows/ci.yml           |    8 ++
+ .gitignore                         |    5 ++
+ gas.py                             |  264 ++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ modules/crm/__init__.py            |   18 +++++
+ modules/crm/__main__.py            |  380 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/analisi.py             |  391 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/demo.py                |  135 +++++++++++++++++++++++++++++++++
+ modules/crm/messaggi.py            |  152 +++++++++++++++++++++++++++++++++++++
+ modules/crm/motore.py              |  525 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/scrittore.py           |  224 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/server.py              |  876 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/store.py               | 1333 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/web/app.css            |  330 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/web/app.js             |  902 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/web/favicon.svg        |    1 +
- modules/crm/web/index.html         |   17 ++++++
- reports/crm.md                     |  107 +++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |   17 ++++--
- reports/handoff.md                 |  n/d
+ modules/crm/web/index.html         |   17 +++++
+ reports/crm/decisioni.md           |   24 ++++++
+ reports/crm/domande.md             |    8 ++
+ reports/crm/guida.md               |  120 +++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |   32 ++++++--
+ reports/handoff.md                 | n/d
  reports/roadmap.md                 |    1 +
- reports/stato_progetto.md          |    5 +-
- reports/ultimo_report.md           |   32 +++++++---
- tests/test_unit_crm.py             | 1159 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |    6 +-
+ reports/ultimo_report.md           |   43 ++++++++---
+ tests/test_unit_crm.py             | 1486 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          |  154 +++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
+NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Gli altri conteggi sono presi con i report già in stage. `reports/crm.md`, creato e poi spostato in `reports/crm/guida.md` nella stessa sessione, non compare nel diff rispetto a BASE.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+aa4bb422 feat(crm): fetta 2 — follow-up mensile, selezione clienti, invii a scaglioni, testi riscritti da Opus, clienti del CRM solo al cervello forte
+ec2383cd chore(revisore): memoria review #809 — APPROVATO CON RISERVE
+2bfbb803 chore(revisore): memoria review #808 — BOCCIATO
+48c0f114 docs(fine-task): handoff §6 — handoff-check di 99d82f3f era rosso (V-1 verifica esterna #381, 2° giro), CI e bot di 2ae4b7a7 in corso
 2ae4b7a7 docs(fine-task): CRM — finding di bot e verifica esterna #381 chiusi (review #806/#807), CI rossa ambientale documentata
 72dcc9d2 fix(crm): controlli e scritture in una sola transazione (BEGIN IMMEDIATE), data di apertura anticipabile, errore chiaro sul testo lungo — review #807 APPROVATO
 83633433 chore(revisore): memoria review #807 — APPROVATO
@@ -71,7 +101,7 @@ ae5197d0 chore(revisore): memoria review #804 — APPROVATO CON RISERVE
 15368710 chore(revisore): memoria review #803 — BOCCIATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. I commit `docs(fine-task)` elencati sono le versioni precedenti di questo handoff (V-4 della verifica esterna #381).
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -434,53 +464,270 @@ Review #807-CRM, quinto giro: un solo verdetto su tutto il diff staged (5 file, 
 - Ho aggiunto la riga contatore #807-CRM in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit 83633433). Il diff staged è intatto (5 file).
 - Non ho creato `.claude/.review_ok` e non ho committato il diff.
 
+### Review #808-CRM (6° giro, diff staged della fetta 2, prima delle correzioni)
+
+## VERDETTO: BOCCIATO
+
+Review #808-CRM del diff staged (14 file, +1090/−103, tocca anche gas.py), con la stessa severità del primo giro.
+
+**Motivo del blocco (R-808-1):** la protezione dei clienti funziona, ma rallenta ogni turno di Gas in proporzione al numero di clienti del CRM. Con 1 solo cliente nei test non si vede, come la demo nascondeva R-803-1. Dettagli e misure nel finding 1.
+
+**Verifiche rifatte da me:**
+- Kernel: `tests/test_unit_kernel.py` dà 1179 PASS, 0 FAIL. T116a1–g passano, T116b è il round-trip §7 (strumento → risposta finale).
+- CRM: 113 passed. I 14 test nuovi, rieseguiti contro il codice di HEAD 48c0f114, falliscono tutti e 14.
+- mypy pulito, `node --check` ok.
+- Il fail-before di T116 (6 falliti sul gas.py vecchio, 2 di guardia che passano) l'ho preso dal dato del chiamante, non l'ho rifatto.
+- Nessuno slicing della history e nessuna simulazione di tool. Il cap delle 10 iterazioni non è toccato.
+
+### Finding
+
+**1. R-808-1 — ALTA, bloccante — rallentamento del kernel proporzionale ai clienti del CRM.**
+- **Causa.** `gas.py:4049` mette tutti i clienti del CRM fra gli identificativi da cercare. `_contiene_identificativo` (`gas.py:205`) fa una `re.search` per ogni identificativo e per ogni testo. Oltre i 512 pattern che il modulo `re` tiene in cache, ogni ricerca ricompila la sua regex.
+- **Misura.** Finestra di 30 messaggi normali, senza dati di clienti, cioè il caso più comune:
+
+  | Clienti nel CRM | Identificativi | Tempo per scansione |
+  |---|---|---|
+  | 50 | 338 | 119 ms |
+  | 100 | 640 | 740 ms |
+  | 300 | 1769 | circa 2,0 s |
+  | 1500 | 8598 | 9,4 s |
+
+  Con 10 messaggi più un'uscita di strumento da 8k caratteri: 0,9 s a 300 clienti. Con la cache di `re` forzata a 100.000 (solo per capire la causa) si scende a 470 ms a 300 clienti. Quindi pesano sia le ricompilazioni sia la scansione lineare.
+- **Dove gira.** A ogni turno (`gas.py:5376`); a OGNI iterazione del ciclo per i cervelli non forti (`gas.py:5487`), quindi più volte per turno; nella riflessione (`gas.py:4417`); sulle righe del blocco di memoria (`gas.py:4176`).
+  - Con 300 clienti un turno con 2–3 strumenti su un gratuito costa alcuni secondi in più, anche per la voce.
+  - Nessun log lo collega al CRM: un rallentamento silenzioso.
+- **Rimedio.** Una sola regex compilata per elenco di identificativi (alternanza con gli stessi lookaround), tenuta in cache per turno; telefoni e indirizzi restano come sono. Più un test di tempo con circa 1000–1500 clienti (es. sotto i 100 ms) e i test di semantica esistenti (#789/#790), così il comportamento del filtro non cambia.
+
+**2. R-808-2 — MEDIA — le riscritture con Opus sfuggono al tetto giornaliero del cervello forte.**
+- **Il buco.** `modules/crm/scrittore.py:83` chiama `ClaudeCliClient` direttamente. Il costo equivalente che la risposta riporta non viene scritto in `.gas_claude_cli_uso.json` e non viene confrontato con `GAS_CLAUDE_CLI_TETTO_USD` (il tetto del kernel, `gas.py:5883`).
+- **Il tetto del CRM non lo sostituisce.** Conta solo le riscritture RIUSCITE (`modules/crm/scrittore.py:168`, l'evento si scrive dopo il successo), quindi i tentativi falliti o scartati non contano. Inoltre fa «controllo e poi chiamata» senza lucchetto.
+- **Effetto.** L'abbonamento del forte si consuma senza che il kernel lo veda, e un esaurimento ferma anche i turni con dati di clienti.
+- **Rimedio.** Usare lo stesso conto del kernel e contare i tentativi.
+
+**3. R-808-3 — BASSA — dopo un crash del CRM a metà scrittura, tutto va al forte.**
+- **Riprodotto.** Se resta un journal (crash del CRM durante una scrittura), `identita_clienti` in `mode=ro` (`modules/crm/store.py:1279`) fallisce con «attempt to write a readonly database» e restituisce None. Risultato: ogni turno va al forte, e col forte spento Gas rifiuta anche «che ore sono».
+- **Fino a quando.** Finché qualcuno riapre il file in scrittura: verificato che basta un `CRMStore(...)`, cioè un qualunque comando del CRM.
+- **Rimedio.** Recuperare automaticamente (una connessione normale usata solo per leggere ripristina il journal), oppure dirlo chiaramente nel messaggio di rifiuto.
+
+**4. R-808-4 — BASSA — se kernel e CRM guardano percorsi diversi, la protezione sparisce in silenzio.**
+- **Il caso.** Il kernel calcola il file dal proprio `self.root` (`gas.py:4049`), che per il terminale interattivo (`gas.py:6993`) è la cartella da cui lo si lancia. La riga di comando del CRM invece usa la cartella del modulo. Lo stesso succede se `GAS_CRM_DB` è esportata solo nella shell del CRM.
+- **Effetto.** «File assente → nessun cliente»: niente protezione, e nessun avviso.
+- **Rimedio.** Far usare al kernel la stessa radice di `modules/crm` (o il percorso del modulo); oppure avvisare se il file non c'è ma esiste quello predefinito nella cartella del repo.
+
+**5. R-808-5 — BASSA, da dichiarare all'operatore — più falsi allarmi, e col forte spento più turni fermati.**
+- **Misurato.** Con clienti dai cognomi comuni, «fammi i conti del mese», «quanto costa il server?» e «il leone ruggisce» vengono trattati come dati di clienti.
+- **Anche le email.** Le parole delle email entrano fra gli identificativi: un dominio aziendale come «trading» o «esempio» farebbe scattare il filtro.
+- **Conseguenza.** Il limite è già scritto nel codice, ma con il CRM cresce: col forte spento questi turni si fermano. Il verso è sicuro e coerente con la «massima riservatezza», ma va scritto in reports/crm/guida.md.
+
+**6. R-808-6 — BASSA — le 30 copie di sicurezza contengono i dati completi dei clienti.**
+- `modules/crm/store.py:1185` salva le copie in `.gas_memory_crm_backup/`. Un'eventuale anonimizzazione o cancellazione su richiesta (R-803-9) deve coprire anche loro. Va dichiarato.
+
+**7. R-808-7 — COSMETICA.**
+- I testi neutri nascono di proposito senza la nota sul rischio (`modules/crm/messaggi.py:108`). Ma all'invio `completa_testo` gliela aggiunge comunque, perché app.js manda sempre il testo.
+- Il `.gitignore` non copre più `.gas_crm_demo.db`. Un vecchio DB demo rimasto sul Mac diventa un file non tracciato e finisce negli snapshot (`git add -A`). Dati inventati, quindi innocuo.
+
+### Elementi del diff esaminati e trovati corretti
+
+- **Composizione fail-closed del filtro** (`gas.py:4044`, `gas.py:4055`): lettura dei lead None → None; lettura del CRM None o eccezione → None (tutto al forte). Esito: ok.
+- **Pseudo-contatti del CRM nel blocco di memoria:** con `merged_into="crm"` sono esclusi dall'elenco dei lead (filtro `merged_into is None`, `gas.py:4126`) ma usati per anonimizzare le righe del diario. T116a1 controlla che «Marco» non compaia in nessuna delle due versioni. Esito: ok.
+- **Lettura da parte del kernel** (`modules/crm/store.py:1268`): `identita_clienti` apre in sola lettura, non scrive mai; file assente → [], tabella assente → []. Esito: ok, salvo R-808-3 e R-808-4.
+- **File dei dati protetto:**
+  - `.gitignore` `.gas_memory_crm*` (verificato con `git check-ignore` su DB, journal, backup e demo): fuori dagli snapshot `git add -A`;
+  - il prefisso `.gas_memory` lo rende illeggibile agli strumenti di Gas (`_SAFE_PATH_DENY_PREFIXES` in gas.py e lista di lettura negata del cancello).
+
+  Esito: ok.
+- **Tetto degli invii** (`modules/crm/store.py:1090`): controllato dentro la transazione con lucchetto (`BEGIN IMMEDIATE` di #807); `invii_recenti` (`modules/crm/store.py:1023`) confronta datetime veri, non stringhe. Esito: ok.
+- **Saldo minimo** (`modules/crm/store.py:885`): `_saldo_minimo_da` guarda il saldo più basso dalla data del prelievo in poi; usato anche per lo storno di un deposito. Esito: ok.
+- **Solo Opus, senza strumenti:** `--model` passato davvero alla CLI (`brains/claude_cli.py:574`, con `--tools ""`). `modules/crm/scrittore.py:74` nega se il modello configurato non contiene «opus» o se il forte è spento, senza ripiego su altri provider. A Claude va solo il minimo (`modules/crm/scrittore.py:116`: nome di battesimo, servizi, risultato positivo). Nel log solo il tipo dell'eccezione. Esito: ok, salvo R-808-2.
+- **Selezione manuale** (`modules/crm/motore.py:172`, `modules/crm/motore.py:458`): salta soglia, primo pagamento, anzianità e interruttore del follow-up; restano le regole dure e il ritmo. Testo neutro, senza numeri, con profitto ≤ 0 (`modules/crm/messaggi.py:108`). Esito: ok.
+- **Altro lato server:**
+  - Host vuoto → 403 (`modules/crm/server.py:364`);
+  - la memoria di Gas si apre dal suo file (`modules/crm/__main__.py:114`);
+  - R-804-1 chiusa: il `.env` si legge prima del parser;
+  - R-804-3 chiusa: un CSV già importato si ferma, salvo `--forza`.
+
+  Esito: ok.
+- **Test cambiati:** le righe tolte sono sostituite da asserzioni più strette (riga STOP anche dallo store, valori predefiniti mensili), oppure da regole di test esplicite (`Regole(pausa_giorni=7, max_messaggi_30g=4)`). Nessun test indebolito.
+
+### Rischi esplicitamente NON verificati
+
+- Le misure di R-808-1 vengono dal container (Python 3.13) con nomi sintetici, non dal Mac né dal VPS; i valori assoluti cambieranno, l'andamento no. Non so quanti clienti abbia davvero l'operatore.
+- Il costo reale di una riscrittura con Opus sull'abbonamento (R-808-2): non misurato, la CLI qui non c'è.
+- Flusso nel browser (spunte, riscrittura, indicatore degli invii): non provato da me, mi fido della prova del chiamante.
+- Aspetti legali dei testi promozionali scritti da Opus: fuori dalla mia competenza.
+
+### Note
+
+- **Memoria del revisore:** riga contatore #808-CRM più 2 lezioni (filtri a regex con molte voci; `mode=ro` con un journal rimasto), committate da sole (commit 2bfbb803). Il diff staged è rimasto intatto (14 file).
+- **Marcatore e commit:** non ho creato `.claude/.review_ok` e non ho committato il diff.
+- **Script delle prove**, utili per il test di tempo:
+  - /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/rev/perf.py (1500 clienti e parole comuni);
+  - /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/rev/perf2.py (0/50/100/300 clienti e diagnosi della cache).
+- **Riserve ancora aperte da giri precedenti:** R-804-2, R-804-4, R-803-9, R-803-10. R-804-1 e R-804-3 sono chiuse in questo diff.
+- **Per l'approvazione** serve un nuovo giro con R-808-1 chiusa e il test di tempo che fallisca sul codice di questo giro. Le altre riserve possono restare tracciate in stato_progetto.
+
+### Review #809-CRM (7° giro, diff staged della fetta 2 con le correzioni: commit aa4bb422)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #809-CRM: secondo giro dopo il BOCCIATO #808, con la stessa severità. Diff staged: 14 file, +1543/−158, kernel compreso.
+
+**Esito in breve:** il blocco R-808-1 è chiuso, e lo sono anche le riserve R-808-2, 3, 4 e 7. Restano due riserve nuove BASSE (R-809-1, R-809-2), nessuna bloccante.
+
+**Come ho controllato:** ho ritrovato nel repo i blob esatti revisionati in #808 (gas.py 7c694843, store 5be60cf6, scrittore b9ea3d10, test del kernel e del CRM) e ho confrontato riga per riga solo i cambiamenti di questo giro.
+
+### Verifiche rifatte da me
+
+- **Test:**
+  - suite del kernel 1184 PASS, 0 FAIL;
+  - suite del CRM 116 passed; mypy pulito su modules/crm; `node --check` ok.
+- **I test nuovi mordono sul codice di #808:**
+  - kernel: T116j, T116h e il blocco T116 falliscono. T116j fallisce proprio con «NON DEVE ARRIVARE» arrivato a un gratuito, cioè la fuga che R-808-4 chiude. T116h misura 9978 / 9858 ms.
+  - CRM: falliscono i 4 test nuovi.
+  - Un T85 fallito in quella copia era un file mancante nella mia copia parziale, non legato al diff.
+- **Prestazioni, con i miei script:**
+
+  | Clienti | Prima (#808) | Ora, a freddo | Ora, in cache |
+  |---|---|---|---|
+  | 1500 | 9,4 s | 170 ms | 2 ms |
+  | 300 | circa 2,0 s | 28 ms | 2 ms |
+
+- **Equivalenza col filtro vecchio:** ho scritto una mia prova con dati realistici, diversi dal test T116i. Nomi accentati e con apostrofi, nomi attaccati o troncati o allungati, email dentro nomi di file, telefoni con trattini o tagliati. 8000 casi (6601 positivi): 0 differenze fra regex unica e ricerche una per una.
+- **Journal rimasto dopo un crash (R-808-3):** crash del CRM a metà scrittura riprodotto (`os._exit` durante una transazione). Ora `identita_clienti` riapre il file, SQLite annulla la scrittura interrotta, il cliente viene riconosciuto e il journal sparisce.
+- **Perimetro:** nessuno slicing della history, nessuna simulazione di tool, cap delle 10 iterazioni invariato.
+
+### Riserve nuove
+
+1. **R-809-1 — BASSA — attesa doppia quando il CRM tiene il file bloccato.**
+   - Il ripiego in lettura (`modules/crm/store.py:1321`) scatta su ogni `OperationalError`, anche «database is locked», non solo sul caso del journal rimasto.
+   - Misurato: con un lucchetto esclusivo tenuto, il turno del kernel aspetta 5 + 5 = 10,0 s prima di chiudere (fail-closed).
+   - Nell'uso normale accade di rado (le letture convivono con le scritture del CRM fino al commit), ma è un'attesa inutile in un passaggio che sta nel percorso di ogni turno.
+   - Rimedio: ripiegare solo sull'errore «readonly database».
+2. **R-809-2 — BASSA — tre suite di test leggerebbero i clienti veri.**
+   - La suite del kernel isola `_RADICE_REPO` e toglie `GAS_CRM_DB` dall'ambiente. Non lo fanno `tests/test_unit_notte.py`, `tests/test_unit_voice_contesto.py` e `tests/test_unit_manutenzione.py`, che pure costruiscono `GasKernel`.
+   - Su una macchina con un `.gas_memory_crm.db` vero nella cartella del repo (il Mac, il VPS) quelle suite leggono i clienti veri. Possibili esiti diversi, se un testo di prova contiene un nome o un cognome, e lettura di dati veri dentro un test.
+   - In CI non succede, perché lì il file non c'è.
+   - Rimedio: lo stesso isolamento in una fixture comune (`tests/conftest.py`).
+
+### Elementi del diff esaminati
+
+- **`gas.py:206` — `_trie_regex`:** un'alternanza a trie con prefissi in comune, preceduta e seguita dagli stessi lookaround di prima. Esito: ok.
+  - Rischi esaminati: esito diverso dalle ricerche una per una (prefissi l'uno dell'altro, lookahead che fallisce sul ramo lungo), backtracking esplosivo, ricorsione troppo profonda.
+  - Il backtracking prova tutti i rami e i gruppi opzionali sono greedy, quindi si prova prima il ramo lungo e poi il corto: stesso esito.
+  - Nessun quantificatore annidato: costo per posizione limitato alla profondità del trie.
+  - La ricorsione avviene solo dove il trie si dirama. `RecursionError` o `re.error` ripiegano sul codice di prima (T116i2).
+- **`gas.py:243` — `_confrontatore`:** cache di 4 elenchi, chiave tupla degli identificativi (ordinati, quindi stabile turno dopo turno). Esito: ok.
+  - Indirizzi uniti da uno spazio: gli identificativi senza spazi non possono scavalcare due pezzi, quindi stesso esito di «i in tok».
+  - Telefoni: per «tel in d» una regex sulle sequenze unite; per «d in tel» l'insieme delle sottostringhe da 7 cifre; i telefoni oltre 32 cifre si confrontano uno per uno.
+- **`gas.py:274` — `_contiene_identificativo`:** stesso risultato booleano. Cambia solo l'ordine dei controlli (prima tutte le parole, poi indirizzi, poi telefoni), che non incide sull'esito. Esito: ok.
+- **`gas.py:1406` e `gas.py:1418` — tetto e conto del forte diventati funzioni di modulo.** Esito: ok.
+  - Il comportamento del kernel resta identico: `_forte_senza_conto` rimane nel metodo; «già fermo» ritorna True come prima nel ramo `return` dentro il `with`.
+  - Il limite dichiarato (controllo prima della chiamata e fuori dal lucchetto) vale ora anche per il CRM, come per il bot e il giro di notte.
+- **`gas.py:4174` — il kernel legge il CRM sia dalla propria radice sia dalla cartella del repo** (`gas.py:577`), senza doppioni. Esito: ok.
+  - Basta un file illeggibile per restituire None, cioè fail-closed.
+  - Con `GAS_CRM_DB` impostata il percorso è uno solo.
+- **`modules/crm/store.py:1165` — `segna_evento_entro_tetto`:** controllo e scrittura nella stessa transazione con lucchetto (8 thread, tetto 3: ne passano esattamente 3). Esito: ok.
+  - Lo scrittore (`modules/crm/scrittore.py:191`, `modules/crm/scrittore.py:201`, `modules/crm/scrittore.py:221`) controlla il tetto del forte e segna il tentativo PRIMA della chiamata, che resta fuori da ogni transazione (nessun lucchetto tenuto durante i 180 s di attesa).
+  - Il costo viene registrato nel `finally`, anche quando la chiamata fallisce. I test usano sempre un `root` temporaneo, mai il conto vero del repo.
+- **`modules/crm/store.py:1082` — testo rimandato identico a quello salvato:** non viene riscritto, così il testo neutro parte senza nota. Esito: ok.
+  - La riga STOP resta sempre: ogni testo salvato nasce da `componi`, `aggiorna_messaggio` o da un testo cambiato, e tutti e tre la contengono.
+  - Il controllo di lunghezza avviene sul testo completato anche quando poi non viene usato: innocuo con i testi brevi del motore.
+
+### Rischi esplicitamente NON verificati
+
+- Prestazioni sul Mac e sul VPS e con un numero reale di clienti: misurate solo nel container (Python 3.13) con nomi sintetici.
+- Riscrittura con Claude Opus vera e costo reale per chiamata: qui la CLI non c'è, provata solo con il finto client dei test.
+- Documentazione di R-808-5 e R-808-6 in reports/crm/guida.md: fuori stage, ho controllato solo che le due voci ci siano (falsi allarmi su «Conti», «Costa», «trading»; copie di sicurezza da includere in un'eventuale cancellazione GDPR).
+
+### Note
+
+- Riserve ancora aperte da giri precedenti: R-804-2, R-804-4, R-803-9, R-803-10, più R-808-5 e R-808-6 (dichiarate in guida.md).
+- Memoria: ho aggiunto la riga contatore #809-CRM e una lezione in /home/user/Gas/.claude/agents/memoria_revisore.md e le ho committate da sole (commit ec2383cd). Il diff staged è intatto (14 file).
+- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+- Gli script delle prove sono in /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/rev/:
+  - perf.py e perf2.py: prestazioni del filtro;
+  - fuzz.py: equivalenza con dati realistici.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_crm.py` (nuovo): 0 → **101 passed** a 72dcc9d2 (3 giri stabili; 93 al commit 99d82f3f). Ogni test di regressione aggiunto dopo un verdetto fallisce sul codice precedente: 12 dei 13 `test_r803_*` sul primo staged, 5 test (i 4 `*_381` e `test_server_flusso_completo`) su f1c109a7, i 4 `test_r806_*` su c9daf955. I 13 test `test_r803_*` sul codice staged prima delle correzioni: 12 failed, 1 passed (keep-alive normale, che deve passare in entrambi).
-- Suite del kernel (`python tests/test_unit_kernel.py`, kernel non toccato):
+- **`tests/test_unit_crm.py` (nuovo):** 0 → 116 passed ad aa4bb422.
+  - Al commit 99d82f3f: 93; a 72dcc9d2: 101.
+  - Ogni test di regressione aggiunto dopo un verdetto fallisce sul codice precedente:
+    - 12 dei 13 `test_r803_*` sul primo staged;
+    - 5 test su f1c109a7;
+    - i 4 `test_r806_*` su c9daf955;
+    - i 14 test della fetta 2 su 48c0f114;
+    - i 4 test nuovi del giro #809 sullo staged di #808 (`test_testo_neutro_inviato_com_e`, `test_identita_dopo_crash_a_meta_scrittura`, `test_scrittore_opus`, `test_tetto_degli_eventi_atomico`).
+- **Suite del kernel** (`python tests/test_unit_kernel.py`): 1167 → 1184 PASS. Il kernel è toccato dalla fetta 2 (blocco T116 nuovo):
 
 ```
-=== RIEPILOGO: 1167 PASS, 0 FAIL ===
+=== RIEPILOGO: 1184 PASS, 0 FAIL ===
 ```
 
-- Suite pytest completa senza e2e (sulla prima versione del CRM, 80 test CRM): `33 failed, 4103 passed, 2 skipped in 578.16s (0:09:38)`. I 33 FAIL sono tutti in `tests/test_unit_web_browser.py` e fuori scope: identici sul commit di base 01eb9f50 (`33 failed, 11 passed` in una worktree pulita) perché nel container cloud manca `bwrap` (`bwrap: command not found`); la CI lo installa. Dopo le correzioni è cambiato solo `modules/crm` con la sua suite (93 passed).
-- mypy su `modules/crm`: `Success: no issues found in 8 source files`.
+  - Sul gas.py senza fetta 2 i T116 danno 6 FAIL (T116a1, b, c, e, f, g).
+  - Sul gas.py della review #808: `=== RIEPILOGO: 1180 PASS, 3 FAIL ===`. I 3 FAIL sono T116j, T116h (9855 ms → soglia 150 ms) e il blocco T116 (`_contiene_identificativo_uno_per_uno` assente).
+  - T116b è il round-trip §7: strumento → risposta finale col forte.
+- **Altre suite che costruiscono il kernel:** `tests/test_unit_claude_cli.py`, `test_unit_notte.py`, `test_unit_manutenzione.py`, `test_unit_sottofondo.py`, `test_unit_telegram_voce.py`, `test_unit_voice_server.py`, `test_unit_richieste.py`, `test_unit_gate.py`: `1607 passed in 309.26s (0:05:09)`.
+- **Suite web:** `tests/test_unit_web_browser.py` non rigirata qui, perché nel container manca `bwrap`. In CI è rossa per i 7 test ambientali del §6, uguali anche su altri rami.
+- **mypy** su `modules/crm`: 0 errori nel modulo. Le 76 segnalazioni di altri file (gas.py, modules/voice, modules/sottofondo…) sono le stesse di prima: vengono dall'import di `gas`.
 
 ## §6 STATO CI
 
-`gh run list` non usato (in questa sessione cloud GitHub si interroga con gli strumenti MCP). Run lette con `actions_list` / `list_workflow_jobs` alla scrittura dell'handoff:
+`gh run list` non usato: in questa sessione cloud GitHub si interroga con gli strumenti MCP. Run lette con `actions_list` / `list_workflow_jobs` alla scrittura dell'handoff:
 
 ```
 run 44163799980  CI            push                 99d82f3f  completed / failure  (unit-suite: step «Run web suite» 7 failed, 747 passed; «Run CRM suite» success; handoff-check FAILURE allo step «Run check_handoff»: atteso, a quel commit l'handoff non era ancora nel diff — V-1 verifica esterna #381, 2° giro)
 run 44163850284  verifica-bot  pull_request_target  99d82f3f  completed / skipped  (PR ancora senza l'etichetta «verifica»)
 run 44164393490  CI            push                 772f993c  completed / failure  (unit-suite: step «Run web suite» 7 failed, 747 passed; «Run CRM suite» 93 passed; handoff-check success)
-run 44164436879  verifica-bot  pull_request_target  772f993c  completed / success  (check verifica-bot: neutral — APPROVATO CON RISERVE, la PR tocca la CI)
-run 44167235199  CI            push                 2ae4b7a7  in_progress alla scrittura (handoff-check success; unit-suite in corso)
-run 44167242427  verifica-bot  pull_request_target  2ae4b7a7  in_progress alla scrittura
+run 44164436879  verifica-bot  pull_request_target  772f993c  completed / success
+run 44167235199  CI            push                 2ae4b7a7  completed / failure
+run 44167242427  verifica-bot  pull_request_target  2ae4b7a7  completed / success
+run 44167852645  CI            push                 48c0f114  completed / failure  (unit-suite: unico step rosso «Run web suite»; «Run unit suite», «Run CRM suite» e le altre suite success; handoff-check success)
+run 44167861014  verifica-bot  pull_request_target  48c0f114  completed / success
 run 44155950606  CI            push                 adb0e188  completed / failure  (ALTRO ramo, claude/practical-tesla-ea9a9g, PR #380, senza CRM: stesso step «Run web suite» rosso)
 run 43312735169  CI            push (main)          01eb9f50  completed / success  (12 nov: «Run web suite» 754 passed)
 ```
 
-**Rosso della CI NON causato da questa PR (blocco ambientale, da trattare in una fetta a parte):** i 7 falliti sono tutti in `tests/test_unit_web_browser.py` (sandbox bwrap del browser: tmpfs non scrivibili, processi di prova che non partono) — `test_il_sandbox_non_ha_rete_e_scrive_solo_nei_tmpfs`, `test_tmp_dev_shm_e_profilo_hanno_un_tetto`, `test_gas_e_la_home_dentro_una_cartella_permessa_sono_coperte`, `test_una_permessa_che_e_un_collegamento_non_scopre_gas`, `test_ipc_e_processi_dell_host_non_si_vedono`, `test_morto_bwrap_muore_il_sandbox`, `test_ucciso_bwrap_muore_anche_chi_cambia_gruppo_e_ambiente`. Gli stessi test passavano su main il 12 nov (754 passed); oggi falliscono identici anche sul ramo di un'altra sessione che non contiene il CRM; in questo container, con bubblewrap 0.9.0 installato, l'intera suite web passa. Ipotesi (non dimostrata): cambio dell'immagine ubuntu-latest dei runner tra il 12 e il 17 nov. Finché resta, il check required `unit-suite` è rosso per ogni PR.
+**Rosso della CI NON causato da questa PR (blocco ambientale, da trattare in una fetta a parte):**
+- I 7 falliti sono tutti in `tests/test_unit_web_browser.py`, cioè il sandbox bwrap del browser: tmpfs non scrivibili, processi di prova che non partono.
+- I test:
+  - `test_il_sandbox_non_ha_rete_e_scrive_solo_nei_tmpfs`
+  - `test_tmp_dev_shm_e_profilo_hanno_un_tetto`
+  - `test_gas_e_la_home_dentro_una_cartella_permessa_sono_coperte`
+  - `test_una_permessa_che_e_un_collegamento_non_scopre_gas`
+  - `test_ipc_e_processi_dell_host_non_si_vedono`
+  - `test_morto_bwrap_muore_il_sandbox`
+  - `test_ucciso_bwrap_muore_anche_chi_cambia_gruppo_e_ambiente`
+- Passavano su main il 12 nov. Oggi falliscono identici anche sul ramo di un'altra sessione, che non contiene il CRM.
+- Ipotesi (non dimostrata): cambio dell'immagine ubuntu-latest dei runner.
+- Finché resta, il check required `unit-suite` è rosso per ogni PR.
 
 Mappatura commit→run:
 - `15368710`, `ae5197d0`: nessuna run su questi SHA (pushati insieme a 99d82f3f).
-- `99d82f3f` (codice CRM): run CI 44163799980 (sopra).
+- `99d82f3f` (codice CRM, fetta 1): run CI 44163799980.
 - `0286192c`, `08b3387b`, `f1c109a7`, `939a2a12`: nessuna run su questi SHA (pushati insieme a 772f993c).
-- `772f993c` (fine-task): run CI 44164393490 e verifica-bot 44164436879 (sopra).
+- `772f993c`: run CI 44164393490 e verifica-bot 44164436879.
 - `8fdae653`, `c9daf955`, `83633433`, `72dcc9d2`: nessuna run su questi SHA (pushati insieme a 2ae4b7a7).
-- `2ae4b7a7` (fine-task): run CI 44167235199 e verifica-bot 44167242427, in corso alla scrittura.
+- `2ae4b7a7`: run CI 44167235199 e verifica-bot 44167242427.
+- `48c0f114`: run CI 44167852645 e verifica-bot 44167861014.
+- `2bfbb803`, `ec2383cd`, `aa4bb422` (codice della fetta 2): run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file, e la run testerà solo l'albero di quel commit.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-803-4 (MEDIA)**: il rilevatore della regola dei modelli (`gas.py`, nomi dalla rubrica lead) non conosce i clienti del CRM → condizione prima dei dati veri; si chiude nella fetta «Gas legge il CRM».
-- **R-803-9 (BASSA, decide l'operatore)**: GDPR — diario CRM immutabile (oggi senza nomi), anonimizzazione dell'anagrafica su richiesta da decidere.
-- **R-803-10 (BASSA)**: la protezione del cancello vale solo per i file `.gas_memory*`; la CLI avvisa se `GAS_CRM_DB` ha un altro nome.
-- **R-804-1 (BASSA)**: `GAS_CRM_PORT` nel `.env` ignorata (parser costruito prima di caricare il `.env`); dichiarato in `reports/crm.md`.
-- **R-804-2 (BASSA)**: la dashboard ricarica e il motore riscansiona anche alle scritture del kernel nel file condiviso.
-- **R-804-3 (BASSA)**: lo stesso CSV importato due volte raddoppia i movimenti.
-- **R-804-4 (COSMETICA)**: corpo chunked trattato come vuoto; BrokenPipe in do_POST su stderr.
-- Nota minore #807 (non riserva): `anticipa_apertura` con la stessa data scrive un evento inutile (la dashboard lo evita).
-- Verifica esterna #381, 2° giro (commento sulla PR, APPROVATO CON RISERVE, nessun difetto di codice): V-1 (questa riga del §6) corretta qui; V-2 = merge bloccato dalla CI ambientale; V-3 = R-804-3 e R-803-4 da chiudere prima dei dati veri; V-4 (BASSA) `_host_ammesso` accetta richieste senza header Host (non sfruttabile da browser; come il server vocale).
-- Chiuse in questa sessione: R-803-1/2/3/5/6/7/8/11; V-1/V-2 della verifica esterna #381 e V-1/V-2 del bot #381; R-806-1/2/3.
+- **R-809-1 (BASSA):** il ripiego di `identita_clienti` scatta anche su «database is locked». Con il CRM che tiene un lucchetto esclusivo, il turno aspetta 10 s prima di chiudere (fail-closed).
+- **R-809-2 (BASSA):** `tests/test_unit_notte.py`, `tests/test_unit_voice_contesto.py` e `tests/test_unit_manutenzione.py` costruiscono `GasKernel` senza isolare il CRM vero della cartella del repo. Rischio sul Mac e sul VPS, non in CI. Rimedio: una fixture in `tests/conftest.py`.
+- **R-808-5 (BASSA, dichiarata in `reports/crm/guida.md`):** falsi allarmi su cognomi comuni e parole delle email. Il verso è sicuro: quei turni vanno al forte.
+- **R-808-6 (BASSA, dichiarata):** le copie di sicurezza contengono i dati completi. Un'eventuale cancellazione GDPR deve coprirle.
+- **R-803-9 (BASSA, decide l'operatore):** GDPR. Il diario del CRM è immutabile e senza nomi; l'anonimizzazione dell'anagrafica su richiesta è da decidere.
+- **R-803-10 (BASSA):** la protezione del cancello vale solo per i file `.gas_memory*`. La CLI avvisa se `GAS_CRM_DB` ha un altro nome.
+- **R-804-2 (BASSA):** la dashboard ricarica e il motore riscansiona anche alle scritture del kernel nel file condiviso (oggi i file sono separati, quindi resta solo per chi punta `GAS_CRM_DB` alla memoria).
+- **R-804-4 (COSMETICA):** corpo chunked trattato come vuoto; BrokenPipe in do_POST su stderr.
+- **Nota minore #807 (non riserva):** `anticipa_apertura` con la stessa data scrive un evento inutile.
+- **Chiuse in questa sessione:**
+  - R-803-1/2/3/4/5/6/7/8/11;
+  - R-804-1, R-804-3;
+  - R-806-1/2/3;
+  - R-808-1/2/3/4/7;
+  - V-1/V-2 della verifica esterna #381 e V-1/V-2 del bot #381;
+  - V-4 della verifica esterna #381, 2° giro (Host vuoto ora rifiutato).

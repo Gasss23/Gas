@@ -1,15 +1,30 @@
-# Diff della sessione — 2026-11-17 — CRM clienti, prima bozza (fetta 1)
+# Diff della sessione — 2026-11-17 — CRM clienti (fetta 1 e fetta 2)
 
 Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/crm/store.py`: tabelle `crm_*` nel file della memoria; soldi in centesimi; registro movimenti e diario CRM immutabili (trigger), storno per correggere; una proposta aperta per cliente (indice unico parziale); orologio iniettabile.
-- `modules/crm/analisi.py`: conti puri (capitale, profitto per mese, commissioni, rendimento osservato, affinità tra servizi, panoramica della dashboard).
-- `modules/crm/motore.py`: il CRM che legge se stesso — proposte da approvare (nuovo servizio → dopo un no aumento di capitale → presentazione di un amico), consenso, STOP, pause, tetti, insistenza crescente.
-- `modules/crm/messaggi.py`: testi WhatsApp fissi (senza promesse, con nota sul rischio e riga STOP) e link wa.me.
-- `modules/crm/server.py`, `modules/crm/web/*`: dashboard in tempo reale (SSE) solo su 127.0.0.1, token, cookie di sessione, CSP, anti-CSRF, controllo Host, blocco dei tentativi.
-- `modules/crm/__main__.py`, `modules/crm/demo.py`, `modules/crm/__init__.py`: riga di comando, dati dimostrativi in un file separato.
-- `tests/test_unit_crm.py`: suite nuova del CRM (101 test, comprese le regressioni dei giri #803/#806 e dei finding di bot e verifica esterna #381).
-- Correzioni dopo bot e verifica esterna #381: proposta scartata = «non ora» per il motore; movimenti incoerenti rifiutati; riga STOP sempre in fondo; controlli e scritture in una transazione `BEGIN IMMEDIATE`; `anticipa_apertura`.
+## Fetta 1 — prima bozza
+- `modules/crm/store.py`: tabelle `crm_*`; soldi in centesimi; registro movimenti e diario CRM immutabili (trigger), storno per correggere; una proposta aperta per cliente; orologio iniettabile; `BEGIN IMMEDIATE` in ogni scrittura.
+- `modules/crm/analisi.py`: conti puri (capitale, profitto per mese, commissioni, rendimento osservato, affinità, panoramica).
+- `modules/crm/motore.py`: il CRM che legge se stesso (nuovo servizio → dopo un no aumento di capitale → presentazione), consenso, STOP, pause, tetti, insistenza crescente.
+- `modules/crm/messaggi.py`: testi WhatsApp fissi (senza promesse, nota sul rischio, riga STOP) e link wa.me.
+- `modules/crm/server.py`, `modules/crm/web/*`: dashboard in tempo reale (SSE) solo su 127.0.0.1, token, cookie, CSP, anti-CSRF, controllo Host, blocco dei tentativi.
+- `modules/crm/__main__.py`, `modules/crm/demo.py`, `modules/crm/__init__.py`: riga di comando e dati dimostrativi.
 - `.github/workflows/ci.yml`: step «Run CRM suite».
-- `.gitignore`: DB dimostrativo.
-- `reports/crm.md` (nuovo), `reports/roadmap.md` (voce R11), `reports/*` di fine task, `.claude/agents/memoria_revisore.md`.
+
+## Fetta 2 — risposte dell'operatore (`reports/crm/decisioni.md`)
+- `gas.py`: `_contatti_per_filtro` unisce ai lead i clienti del CRM (sola lettura, come lapidi): chi nomina un cliente parla solo col cervello forte (R-803-4).
+- `modules/crm/store.py`: file dedicato `.gas_memory_crm.db`, `percorso_db`, `identita_clienti`, `backup`; migrazione `followup_attivo` e `consigliato`; tetto degli invii a scaglioni nella transazione; `completa_testo` e saldo minimo dalla data del prelievo; apertura del servizio atomica col deposito.
+- `modules/crm/motore.py`: ritmo mensile, anzianità minima, niente proposte nel mese in perdita, servizi da consigliare, selezione manuale (`prepara_selezionati`).
+- `modules/crm/scrittore.py` (nuovo): testi riscritti da Claude Opus, mai da modelli gratuiti, con minimizzazione dei dati e tetto giornaliero.
+- `modules/crm/messaggi.py`: testi neutri senza numeri per la scelta manuale.
+- `modules/crm/server.py`, `modules/crm/web/*`: spunte e «Prepara messaggio», indicatore degli invii, «Riscrivi con Opus», interruttore del follow-up, servizi da consigliare, copia di sicurezza giornaliera, Host vuoto rifiutato.
+- `modules/crm/__main__.py`: `.env` letto prima del parser, comando `backup`, import CSV che ferma i file già importati (`--forza`).
+- `tests/test_unit_crm.py` (113 test), `tests/test_unit_kernel.py` (blocco T116).
+- `.gitignore`: `.gas_memory_crm*`.
+- `reports/crm/` (guida, decisioni, domande; la guida viene da `reports/crm.md`), `reports/roadmap.md`, `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.
+
+## Correzioni della review #808
+- `gas.py`: il controllo dei dati dei clienti usa una sola regex compilata e in cache invece di una ricerca per identificativo (R-808-1: con 1500 clienti da 9,4 s a 2 ms per finestra, stesso esito); il conto del cervello forte diventa funzioni di modulo (`registra_uso_claude_cli`, `tetto_claude_cli_superato`); i clienti del CRM si leggono anche dalla cartella del repo (R-808-4).
+- `modules/crm/scrittore.py`: le riscritture con Opus entrano nel conto e nel tetto del cervello forte del kernel; il tetto del CRM conta i tentativi, segnati prima della chiamata (R-808-2).
+- `modules/crm/store.py`: `segna_evento_entro_tetto` (controllo e scrittura insieme); `identita_clienti` ripara un salvataggio interrotto (R-808-3); testo neutro inviato identico resta senza nota (R-808-7).
+- `.gitignore`: di nuovo `.gas_crm_demo.db*`. `reports/crm/guida.md`: falsi allarmi, copie di sicurezza, conto di Opus (R-808-5/6).
