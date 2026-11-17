@@ -1054,3 +1054,106 @@ def test_v2_bot_381_stop_ricontrollato_nella_transazione_di_invio(st: CRMStore) 
     with pytest.raises(ErroreCRM, match="STOP"):
         st.transiziona_proposta(pid, "inviata")
     assert st.proposta(pid)["stato"] == "da_approvare"  # type: ignore[index]
+
+
+# ---------------------------------------------------------------------- review #806 (riserve)
+
+
+def _store_con_spia(st: CRMStore, prima_di: str, azione) -> CRMStore:
+    """Store le cui connessioni eseguono `azione()` una volta, subito prima del primo
+    comando SQL che inizia con `prima_di` (per forzare un intreccio concorrente)."""
+    stato = {"fatto": False}
+
+    class Spia(sqlite3.Connection):
+        def execute(self, sql, *a):  # type: ignore[override]
+            if not stato["fatto"] and sql.lstrip().startswith(prima_di):
+                stato["fatto"] = True
+                azione()
+            return super().execute(sql, *a)
+
+    spiato = CRMStore(st.db_path, orologio=st._orologio)
+
+    def connetti() -> sqlite3.Connection:
+        con = sqlite3.connect(str(spiato.db_path), timeout=10, factory=Spia)
+        con.row_factory = sqlite3.Row
+        con.execute("PRAGMA foreign_keys = ON")
+        return con
+    spiato._connect = connetti  # type: ignore[method-assign]
+    return spiato
+
+
+def test_r806_1_stop_concorrente_non_passa_tra_controllo_e_invio(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid, _ = cliente_contento(st, srv)
+    pid = motore.scansiona(st, regole=REGOLE).create[0]
+    esito: Dict[str, Any] = {}
+
+    def stop_da_un_altra_scheda() -> None:
+        con = sqlite3.connect(st.db_path, timeout=0.3)
+        try:
+            con.execute("UPDATE crm_clienti SET opt_out = 1 WHERE id = ?", (cid,))
+            con.commit()
+            esito["stop"] = "scritto"
+        except sqlite3.OperationalError:
+            esito["stop"] = "in attesa del lucchetto"
+        finally:
+            con.close()
+    spiato = _store_con_spia(st, "UPDATE crm_proposte", stop_da_un_altra_scheda)
+    spiato.transiziona_proposta(pid, "inviata")
+    # il controllo e l'invio sono UNA transazione: lo STOP arriva dopo, non in mezzo
+    assert esito["stop"] == "in attesa del lucchetto"
+
+
+def test_r806_1_prelievi_concorrenti_non_superano_il_capitale(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid = st.aggiungi_cliente("Anna", telefono="+390000000031")
+    pos = st.apri_posizione(cid, srv["oro"], data="2026-06-01")
+    st.registra_movimento(pos, "deposito", 100_000, data="2026-06-01")
+    errori: List[str] = []
+
+    def secondo_prelievo() -> None:
+        def corri() -> None:
+            try:
+                CRMStore(st.db_path, orologio=st._orologio).registra_movimento(
+                    pos, "prelievo", 100_000, data="2026-06-02")
+            except ErroreCRM as e:
+                errori.append(str(e))
+        filo = threading.Thread(target=corri)
+        filo.start()
+        secondo_prelievo.filo = filo  # type: ignore[attr-defined]
+        time.sleep(0.3)  # il secondo fa in tempo a controllare il capitale, se può
+    spiato = _store_con_spia(st, "INSERT INTO crm_movimenti", secondo_prelievo)
+    spiato.registra_movimento(pos, "prelievo", 100_000, data="2026-06-02")
+    secondo_prelievo.filo.join(timeout=15)  # type: ignore[attr-defined]
+    assert errori and "capitale" in errori[0]
+    assert analisi.metriche_cliente(dati(st), cid).capitale_cents == 0
+
+
+def test_r806_2_apertura_anticipabile_per_caricare_lo_storico(st: CRMStore, avviato) -> None:
+    srv = servizi_base(st)
+    cid = st.aggiungi_cliente("Anna", telefono="+390000000032")
+    pos = st.apri_posizione(cid, srv["oro"])  # aperta «oggi» per errore
+    with pytest.raises(ErroreCRM, match="prima dell'apertura"):
+        st.registra_movimento(pos, "deposito", 100, data="2026-01-02")
+    st.anticipa_apertura(pos, "2026-01-01")
+    st.registra_movimento(pos, "deposito", 100, data="2026-01-02")
+    with pytest.raises(ErroreCRM, match="indietro"):
+        st.anticipa_apertura(pos, "2026-02-01")  # in avanti escluderebbe lo storico
+    with pytest.raises(ErroreCRM, match="futuro"):
+        st.anticipa_apertura(pos, "2099-01-01")
+    _, c, _ = avviato
+    c.post("/api/login", {"token": TOKEN})
+    assert c.post("/api/posizioni/apertura", {"id": pos, "data": "2025-12-01"})[0] == 200
+    assert st.posizioni(cid)[0]["aperta_il"] == "2025-12-01"
+
+
+def test_r806_3_testo_lungo_errore_chiaro(st: CRMStore, avviato) -> None:
+    from modules.crm.store import TESTO_MAX
+    srv = servizi_base(st)
+    cliente_contento(st, srv)
+    pid = motore.scansiona(st, regole=REGOLE).create[0]
+    _, c, _ = avviato
+    c.post("/api/login", {"token": TOKEN})
+    codice, _, err = c.post("/api/proposte/azione",
+                            {"id": pid, "azione": "invia", "messaggio": "x" * (TESTO_MAX - 20)})
+    assert codice == 400 and "accorcialo" in err["errore"]

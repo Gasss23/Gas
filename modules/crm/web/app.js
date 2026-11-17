@@ -672,7 +672,7 @@ function cassetto(x) {
           el('span', {}, 'mese ', el('b', { class: p.profitto_mese_cents >= 0 ? 'su' : 'giu', testo: euroSegno(p.profitto_mese_cents) })),
           el('span', {}, 'totale ', el('b', { testo: euroSegno(p.profitto_totale_cents) })),
           el('span', {}, 'rende ', el('b', { testo: pct(p.roi_bp) + '/m' })),
-          el('span', {}, 'dal ', el('b', { testo: dataBreve(p.aperta_il) })))),
+          el('span', {}, 'dal ', dataApertura(p)))),
       el('div', { stile: { display: 'grid', gap: '6px', justifyItems: 'end' } }, sparkline(p.serie_profitto_cents, 110, 32), sel));
   });
 
@@ -712,6 +712,17 @@ function cassetto(x) {
       el('div', { class: 'blocco' }, el('h3', { testo: 'Storia' }),
         el('div', { class: 'linea-tempo' }, x.eventi.map((e) => el('div', { class: 'voce' }, el('span', { class: 'ora', testo: new Date(e.ts).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' }) }), el('span', { testo: e.descrizione })))))),
   ];
+}
+function dataApertura(p) {
+  // la data di apertura si può solo anticipare, per caricare lo storico (R-806-2)
+  const campo = el('input', { type: 'date', value: p.aperta_il, max: p.aperta_il, title: 'Anticipa la data di apertura per caricare movimenti più vecchi' });
+  campo.style.width = 'auto';
+  campo.style.padding = '2px 6px';
+  campo.addEventListener('change', () => {
+    if (!campo.value || campo.value === p.aperta_il) return;
+    esegui(() => api('/api/posizioni/apertura', { id: p.id, data: campo.value }), 'Data di apertura aggiornata').then(carica);
+  });
+  return campo;
 }
 function moduloMovimento(x) {
   if (!x.posizioni.length) return null;

@@ -481,9 +481,17 @@ class CRMStore:
         )
 
     def _scrivi(self, fn: Any) -> Any:
-        """Esegue `fn(con)` in una transazione; traduce gli errori del DB in ErroreCRM."""
+        """Esegue `fn(con)` in una transazione; traduce gli errori del DB in ErroreCRM.
+
+        R-806-1: la transazione si apre SUBITO con `BEGIN IMMEDIATE` (lucchetto di
+        scrittura preso prima dei controlli). Il sqlite3 di Python, da solo, la aprirebbe
+        solo alla prima INSERT/UPDATE: i controlli fatti prima (capitale, STOP, consenso)
+        girerebbero fuori e una scrittura concorrente potrebbe infilarsi in mezzo. Chi
+        scrive nello stesso momento aspetta (timeout della connessione) e poi vede i dati
+        aggiornati."""
         try:
             with self._connect() as con:
+                con.execute("BEGIN IMMEDIATE")
                 out = fn(con)
                 con.commit()
                 return out
@@ -735,6 +743,31 @@ class CRMStore:
             self._evento(con, r["cliente_id"], "servizio", f"{r['nome']}: posizione {stato}", autore)
         self._scrivi(_fn)
 
+    def anticipa_apertura(self, posizione_id: int, data: str, autore: str = "operatore") -> None:
+        """Sposta INDIETRO la data di apertura di una posizione (R-806-2): serve quando il
+        servizio è stato aperto con la data sbagliata e lo storico, più vecchio, verrebbe
+        rifiutato. Solo indietro: i movimenti già registrati restano tutti dopo l'apertura."""
+        pid = _intero(posizione_id, "posizione_id", 1, 2**62)
+        giorno = valida_data(data, "data di apertura")
+        if giorno > self._oggi():
+            raise ErroreCRM("data di apertura nel futuro")
+
+        def _fn(con: sqlite3.Connection) -> None:
+            r = con.execute(
+                "SELECT p.cliente_id, p.aperta_il, s.nome FROM crm_posizioni p "
+                "JOIN crm_servizi s ON s.id = p.servizio_id WHERE p.id = ?", (pid,),
+            ).fetchone()
+            if r is None:
+                raise ErroreCRM("posizione inesistente")
+            if giorno > str(r["aperta_il"]):
+                raise ErroreCRM("la data di apertura si sposta solo indietro "
+                                f"(oggi è {r['aperta_il']})")
+            con.execute("UPDATE crm_posizioni SET aperta_il = ?, aggiornato_il = ? WHERE id = ?",
+                        (giorno, self._ts(), pid))
+            self._evento(con, r["cliente_id"], "servizio",
+                         f"{r['nome']}: apertura anticipata dal {r['aperta_il']} al {giorno}", autore)
+        self._scrivi(_fn)
+
     def posizioni(self, cliente_id: Optional[int] = None) -> List[Dict[str, Any]]:
         if cliente_id is None:
             return self._leggi("SELECT * FROM crm_posizioni ORDER BY id")
@@ -789,7 +822,8 @@ class CRMStore:
 
     @staticmethod
     def _capitale(con: sqlite3.Connection, posizione_id: int) -> int:
-        """Capitale di una posizione dentro la transazione: depositi − prelievi validi."""
+        """Capitale di una posizione: depositi − prelievi validi. Chiamato dentro `_scrivi`,
+        cioè col lucchetto di scrittura già preso (R-806-1)."""
         r = con.execute(
             "SELECT COALESCE(SUM(CASE m.tipo WHEN 'deposito' THEN m.importo_cents "
             "WHEN 'prelievo' THEN -m.importo_cents ELSE 0 END), 0) FROM crm_movimenti m "

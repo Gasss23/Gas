@@ -40,8 +40,8 @@ from urllib.parse import parse_qs, urlsplit
 
 from modules.crm import analisi, motore
 from modules.crm.messaggi import completa_testo, link_whatsapp
-from modules.crm.store import (CRMStore, ErroreCRM, normalizza_telefono, parse_importo,
-                               parse_percentuale_bp, valida_data)
+from modules.crm.store import (TESTO_MAX, CRMStore, ErroreCRM, normalizza_telefono,
+                               parse_importo, parse_percentuale_bp, valida_data)
 
 log = logging.getLogger(__name__)
 
@@ -637,6 +637,8 @@ class CRMHandler(BaseHTTPRequestHandler):
             "/api/servizi/aggiorna": self._aggiorna_servizio,
             "/api/posizioni": self._nuova_posizione,
             "/api/posizioni/stato": self._stato_posizione,
+            "/api/posizioni/apertura": lambda d: self.stato.store.anticipa_apertura(
+                _id(d, "id"), str(d.get("data") or "")),
             "/api/movimenti": self._nuovo_movimento,
             "/api/movimenti/storno": self._storno,
             "/api/proposte/azione": self._azione_proposta,
@@ -755,6 +757,9 @@ class CRMHandler(BaseHTTPRequestHandler):
                 if not isinstance(testo, str):
                     raise ErroreCRM("messaggio: deve essere testo")
                 testo = completa_testo(testo)  # V-1 bot #381: STOP e nota sempre in fondo
+                if len(testo) > TESTO_MAX:  # R-806-3: l'aggiunta non deve dare un errore oscuro
+                    raise ErroreCRM(f"messaggio troppo lungo: con la nota e la riga STOP supera "
+                                    f"{TESTO_MAX} caratteri, accorcialo di {len(testo) - TESTO_MAX}")
             nuova = st.transiziona_proposta(pid, "inviata", messaggio=testo, canale="whatsapp")
             return {"link_whatsapp": link_whatsapp(cliente.get("telefono"), nuova["messaggio"])}
         if azione == "scarta":

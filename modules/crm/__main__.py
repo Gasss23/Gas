@@ -212,6 +212,13 @@ def cmd_posizione(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_apertura(a: argparse.Namespace) -> int:
+    st = _store(a.demo)
+    st.anticipa_apertura(_posizione(st, a.cliente, a.servizio), a.data)
+    print("Data di apertura aggiornata.")
+    return 0
+
+
 def cmd_movimento(a: argparse.Namespace) -> int:
     st = _store(a.demo)
     mid = st.registra_movimento(_posizione(st, a.cliente, a.servizio), a.tipo,
@@ -308,6 +315,10 @@ def parser() -> argparse.ArgumentParser:
     sp.add_argument("--importo", required=True)
     sp.add_argument("--data")
     sp.add_argument("--nota")
+    sp = nuovo("apertura", cmd_apertura, "anticipa la data di apertura di un servizio (per lo storico)")
+    sp.add_argument("--cliente", type=int, required=True)
+    sp.add_argument("--servizio", required=True)
+    sp.add_argument("--data", required=True)
     sp = nuovo("import", cmd_import, "importa movimenti da CSV")
     sp.add_argument("file")
     return p
