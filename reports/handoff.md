@@ -16,6 +16,7 @@
 - **Fetta 1 — verificatore della voce** (taratura del 17/11 sul Mac: la voce normale dell'operatore arriva solo a 0,37-0,43 col modello hey_jarvis): FATTA — 3c25eeee, review #804-M1coord APPROVATO CON RISERVE; R-804-1/2 chiuse in 6219b621, review #805-M1coord APPROVATO.
 - **Fetta 2 — guida «Gas in giro»** (`reports/guida_voce_in_giro.md`, solo documento): FATTA — 53cb2a12.
 - **Fetta scartata — data e ora nel prompt a voce**: review #803-M1coord BOCCIATO (c'erano già dal V13, `modules/voice/server.py` `ora_per_voce`); codice non committato, resta solo la riga di memoria (0e85b335). Causa del giro in più del 17/11 16:28: da trovare con il diario.
+- **Porting del fix bwrap (dalla PR #380, commit 605e154c)** per la CI su Ubuntu 26.04: FATTO — review #808-M1coord APPROVATO CON RISERVE (R-808-1 BASSA: meglio mergiare prima la #380).
 
 ---
 
@@ -24,6 +25,7 @@
 ```
  .claude/agents/memoria_revisore.md |   5 ++
  clients/voice/ascolto.py           | 207 ++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ modules/web/browser.py             |  93 ++++++++++++++++++++++++--
  reports/diff_sessione.md           |  13 ++--
  reports/guida_voce_in_giro.md      |  32 +++++++++
  reports/handoff.md                 | n/d
@@ -33,6 +35,7 @@
  scripts/voce/registra_voce.py      | 573 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  scripts/voce/taratura_parola.py    |  65 ++++++++++++------
  tests/test_unit_voce_ascolto.py    | 568 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_web_browser.py     |  89 ++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -40,6 +43,8 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ba62b507 fix(web): sandbox del browser su Ubuntu 26.04 (porting di 605e154c dalla PR #380) — review #808-M1coord
+84d1b770 docs(fine-task): §2/§3 handoff
 9ee2da5f docs(fine-task): riferimenti esterni nel verdetto #804 in forma leggibile da check_verdetto
 02ec8635 docs(fine-task): §2/§3 handoff
 176ef263 docs(fine-task): voce — filtro sulla voce dell'operatore (review #804/#805-M1coord)
@@ -95,6 +100,32 @@ Non verificato: cartella davvero senza permessi su Mac con Python 3.11/3.12 (qui
 
 NB: nel verdetto #804 i due riferimenti alla libreria esterna openWakeWord (non nel repo) sono scritti come «(righe N-M)» invece di «file:N-M», perché check_verdetto accetta solo file del repo; il testo è altrimenti integrale.
 
+### Review #808-M1coord (porting del fix bwrap di #380, commit 605e154c)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #808-M1coord. Porting del commit 605e154c (PR #380) in due branch: fix/voce-togli-parola e feat/voce-verifica-parlante. Letti prima CLAUDE.md, reports/stato_progetto.md e la memoria.
+
+**Porting identico nei due posti.** Tolte le righe index, i due diff staged e `git show 605e154c` hanno lo stesso SHA-256 (5969695a…); i file interi in staging coincidono con `605e154c:file` (browser.py dfeae8f8…, test f4bbae85…). Staged solo i 2 file (+177/-5).
+
+**Elementi esaminati**
+- modules/web/browser.py:283 — `_programmi_fuori` segue i collegamenti di /usr/bin al massimo 16 volte e monta in sola lettura solo il file vero, più un `--symlink` per ogni collegamento intermedio. Rischio: allargare il sandbox. Si blocca se il genitore è un collegamento, se il percorso è fuori dalle radici ammesse, dentro /usr/local, dentro Gas o la home (anche col percorso vero); collegamento rotto, ciclo o catena troppo lunga non espongono niente. — ok
+- modules/web/browser.py:278 — radici ammesse solo `/usr` e `/etc/alternatives`; /usr/local escluso; si espone file per file, mai cartelle. — ok
+- modules/web/browser.py:325 — solo un file vero ed eseguibile; una modifica a metà lettura finisce in `except OSError` e il programma viene saltato senza crash. — ok
+- modules/web/browser.py:397 — il controllo parte dopo i montaggi esposti e prima del tmpfs su Gas e home: i protetti restano coperti. — ok
+- tests/test_unit_web_browser.py:477 — `test_programmi_fuori_espone_solo_catene_ammesse`: 8 casi negativi più la catena buona; eseguito qui: PASS. — ok
+- tests/test_unit_web_browser.py:395 — `_catene_di_usr_bin` amplia l'elenco dei file permessi nel test, calcolato dall'host: allentamento voluto e proporzionato (solo /usr/ e /etc/alternatives/ fuori da /usr/local/). — ok
+
+**Test nel container (bwrap assente):** a HEAD 33 failed, 11 passed; col porting 34 failed, 12 passed (+1 test nuovo con bwrap, +1 senza). Gli altri fallimenti dipendono da bwrap assente.
+
+**Wall of Shame:** nessuna violazione; kernel non toccato.
+
+**Riserve:** R-808-1 BASSA — le due PR voce portano un fix del browser estraneo al loro tema: meglio mergiare prima la #380, poi riportare main (modifica identica, niente conflitti); nel report va detto che il fix arriva da #380.
+
+**Rischio escluso:** comportamento reale nel sandbox su Ubuntu 26.04 non verificato (bwrap assente): fa fede la CI di #380 (unit-suite success); merito del fix già revisionato nell'altra chat.
+
+**Memoria:** riga #808-M1coord e una lezione (commit 50fade22 su fix/voce-togli-parola).
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python -B -m pytest -q tests/test_unit_voce_ascolto.py` → 346 passed (main 01eb9f5) → 371 (3c25eeee) → 373 passed (6219b621).
@@ -112,6 +143,7 @@ CI NON VERIFICATA (gh assente): run della PR non ancora disponibile alla scrittu
 
 ## §7 RISERVE APERTE
 
+- R-808-1 BASSA — il fix bwrap della #380 viaggia anche qui: meglio mergiare prima la #380.
 - R-804-3 COSMETICA — la soglia base dell'addestramento non è confrontata a runtime.
 - Limiti dichiarati: voci maschili simili all'operatore passano; una registrazione dell'operatore riprodotta passa; pkl legato alla versione di scikit-learn (ritorna senza verifica, si rifà con `--solo-addestra`); `say` del Mac non provato su Mac reale; interruzione (0,8 × 3 blocchi) raggiunta di rado col verificatore.
 - Licenza CC BY-NC-SA di hey_jarvis: decisione dell'operatore ancora aperta.
