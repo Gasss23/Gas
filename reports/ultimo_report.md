@@ -1,22 +1,23 @@
-# Ultimo report — 2026-11-17 — Presentazione clienti: PDF dell'ecosistema con i dati reali del copy trading Forex
+# Ultimo report — 2026-11-17 — Presentazione clienti (versione 3, stile HUD) + CI rossa su Ubuntu 26.04
 
 ## DECISIONI UMANE RICHIESTE
-1. Prima di usare il PDF con i clienti farlo vedere a un legale: in Italia proporre al pubblico un «fondo» o rendimenti «garantiti» richiede autorizzazioni (CONSOB / Banca d'Italia). Nel PDF il servizio 1 si chiama «Rendimento Contrattuale» e la garanzia rimanda sempre al contratto.
-2. PR #380 (https://github.com/Gasss23/Gas/pull/380): NON mergiare finché la presentazione non è completa, salvo decisione dell'operatore. In più oggi non è mergiabile: la CI è rossa per un problema dell'ambiente (vedi Anomalie).
-3. Confermare due differenze tra quanto detto a voce e il catalogo: lo storico verificato del copy trading è di 23 mesi (16.12.2024 – 09.11.2026), non 4 anni; lo stop sull'equity è 10% al livello del copy (1 su 10) e 30% al livello 3 del conto da cui vengono i numeri. Nel PDF ho usato i dati del catalogo.
-4. Decidere se nel PDF va il nome del fornitore della strategia («The Source Finance» / «TSF Forex Algo»): per ora non c'è.
-5. Mandare all'agente i dati ancora mancanti: nome azienda, logo e contatti; servizio 1 (durata, ingresso minimo, pagamenti); servizio 2 (durata del ciclo); capitale minimo e orizzonte del copy trading; servizio 4.
+1. Prima di usare il PDF con i clienti farlo vedere a un legale: in Italia proporre al pubblico un «fondo» o rendimenti «garantiti» richiede autorizzazioni (CONSOB / Banca d'Italia).
+2. PR #380 (https://github.com/Gasss23/Gas/pull/380): contiene sia la correzione della CI (motore: modules/web, tests) sia la presentazione. La correzione va mergiata presto (sblocca la CI di tutte le PR); la presentazione è ancora una bozza con segnaposto. Merge secondo la regola di CLAUDE.md §10 (verdetto del bot di verifica sull'head + CI verde); la PR contiene anche la presentazione in bozza, quindi serve comunque il sì dell'operatore.
+3. Confermare: storico verificato del copy trading = 23 mesi (non 4 anni); stop sull'equity 10% al livello del copy (30% solo al livello 3 del conto dei dati).
+4. Decidere se citare nel PDF il fornitore della strategia («The Source Finance» / «TSF Forex Algo»).
+5. Valutare se fissare in CI `runs-on: ubuntu-26.04` (suggerimento del revisore, tocca ci.yml: decisione dell'operatore).
+6. Dati ancora mancanti: nome azienda, logo, contatti; servizio 1 (durata, ingresso minimo); servizio 2 (durata del ciclo); servizio 4.
 
 ## Esito
-- **Fetta 1 — prima bozza del PDF (15 pagine, 16:9)**: FATTA — 83511a47. Stile chiaro e neutro, palette blu/verde acqua/oro validata con lo script della skill dataviz.
-- **Fetta 2 — dati reali del copy trading Forex**: FATTA — 03466aae. Fonte: catalogo «The Source Finance – Catalogo servizi pre-lancio» (TSF-CAT-2026-0001), servizio 01 «TSF Forex Algo», che l'operatore usa oggi. Tenuti tutti i numeri: rendimento +165,12% in 23 mesi, max drawdown 17,92%, media mensile +4,31%, win rate 75,5%, profit factor 2,18, rendimento/DD 9,2x, 1.230 operazioni, durata media 11h 45m, rendimenti mensili 2025 (+70,35%) e 2026 (+55,59%), scheda (10 cross, TMGM, livello copy 1, livello dati 3, stop 10%/30%), condizioni (accesso gratuito, profit share 35% con high-water mark, calcolo settimanale), fonte (Myfxbook, Darwinex, 1:200, 100.000 $). Pagine nuove: numeri + curva (16 pagine in tutto), mese per mese + scheda + condizioni, rischio (livelli 1-10, righello del drawdown). Schema del meccanismo riscritto: riavvicinamento tra cross correlati. Avvertenze estese con «differenze tra conti» e «natura del copy trading». Curva di crescita calcolata dai rendimenti mensili (dà +165,1%, coerente col +165,12% Myfxbook).
-- **Fetta 3 — dati dei servizi 1, 2 e 4**: DEFERITA — l'operatore deve ancora mandarli.
-- **Fetta 4 — revisore / verifica esterna**: SALTATA — nessun diff nel perimetro di review né di sicurezza.
-- **reports/stato_progetto.md**: non aggiornato — il task è fuori dal motore di Gas.
+- **Fetta 1 — prima bozza del PDF (15 pagine)**: FATTA — 83511a47.
+- **Fetta 2 — dati reali del copy trading Forex (catalogo TSF, servizio 01)**: FATTA — 03466aae.
+- **Fetta 3 — versione 3 del PDF: stile HUD «tipo Jarvis», 8 pagine, linguaggio per chi investe la prima volta**: FATTA — b020cbfa. Per ogni servizio prima «cos'è» e «come funziona» in parole semplici (matched trading con lo schema dei due conti; copy trading con l'esempio dell'elastico), poi i numeri. Tutti i numeri del catalogo tenuti (pagina «I numeri reali»: curva, tabella mensile, win rate, profit factor, rendimento/DD, operazioni, fonte e condizioni). Palette HUD: ciano/verde/oro (validatore dataviz: normale ok, daltonismo 7,7 nella fascia ammessa con codifica secondaria — numero e nome del servizio sempre accanto al colore).
+- **Fetta 4 — CI rossa (attività «Fix CI web suite: bwrap sandbox tests fail», richiesta dall'operatore in sessione)**: FATTA nel codice, DA CONFERMARE sulla CI vera. Causa: `ubuntu-latest` passato da 24.04 a 26.04 tra il 12 e il 17/11; su 26.04 i coreutils di /usr/bin sono collegamenti a file fuori dalle cartelle permesse del sandbox → 7 test bwrap rossi. Correzione in `modules/web/browser.py` (`_programmi_fuori`) + test. Riprodotto in locale simulando il layout 26.04: prima 7 failed, dopo `tests/test_unit_web_*.py` 642 passed, 114 skipped (selectolax assente in locale) sia sul layout simulato sia su quello normale. Review #803 (chat practical-tesla) APPROVATO CON RISERVE (R-803-1..5 BASSE/COSMETICHE) → riserve applicate → #804 APPROVATO CON RISERVE (R-804-1 MEDIA: due casi del test resi vacui dal nuovo filtro +x; R-804-2 COSMETICA) → corretti → #805 APPROVATO, nessuna riserva aperta (verdetti integrali nell'handoff §4). Commit 605e154c.
+- **Fetta 5 — dati dei servizi 1, 2 e 4**: DEFERITA — l'operatore deve ancora mandarli.
 
 ## Test
-Nessuna modifica a gas.py/tests: suite del motore non rilanciata. Verifica del PDF: pdfinfo (16 pagine) + render a immagine di ogni pagina modificata con pdftoppm, controllate a vista.
+Motore: `tests/test_unit_web_*.py` 640 passed / 114 skipped (prima, layout normale) → 642 passed / 114 skipped (dopo, 2 test nuovi), con GAS_TEST_BROWSER_OBBLIGATORIO=1; sul layout 26.04 simulato 37 passed / 7 failed (prima, solo browser) → 642 passed / 114 skipped (dopo). PDF: 8 pagine, controllate a vista una per una.
 
 ## Anomalie
-- **CI rossa per l'ambiente, non per il branch**: run 44155605928 e 44155950606, job `unit-suite`, step «web suite»: 7 failed / 747 passed, tutti test del sandbox bwrap in `tests/test_unit_web_browser.py` (es. «bwrap: execvp sleep: No such file or directory»). Il branch non tocca codice; l'ultima CI verde su main è del 12/11 → probabile cambio dell'immagine del runner GitHub. Proposta all'operatore un'attività separata per sistemarla (tocca modules/ e tests/, serve il revisore).
-- Il testo con riempimento sfumato veniva reso come riquadri nel PDF: sostituito con tracciati vettoriali (fonttools + uharfbuzz, cache in `presentazione_clienti/titoli_svg.json`).
+- La correzione è provata su un layout 26.04 simulato, non sul runner vero: la CI va chiusa solo quando lo step «Run web suite» è verde sulla run del branch (condizione del revisore).
+- Il testo sfumato del PDF è reso con tracciati vettoriali (fonttools + uharfbuzz installati nella cartella di lavoro temporanea, non nel repo; cache in `presentazione_clienti/titoli_svg.json`).
