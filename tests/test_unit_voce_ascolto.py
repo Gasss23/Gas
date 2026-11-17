@@ -3301,6 +3301,39 @@ def test_verifica_file_non_fidato_non_si_carica(monkeypatch, tmp_path, caplog):
     assert v.attiva and v.persone == 0 and "persone non note" in v.descrivi()
 
 
+def test_verifica_file_di_un_altro_o_cartella_aperta_non_si_carica(monkeypatch, tmp_path):
+    # R-804-1: proprietario diverso → no; cartella «verifica» scrivibile da altri → no
+    _pulisci_verifica(monkeypatch)
+    p = _verificatore(tmp_path)
+    assert a.verifica_della_voce("hey_jarvis", tmp_path).attiva
+    mio = os.getuid()
+    monkeypatch.setattr(a.os, "getuid", lambda: mio + 1)
+    v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    assert v.stato == "non caricata" and "non è tuo" in v.motivo
+    monkeypatch.undo()
+    _pulisci_verifica(monkeypatch)
+    p.parent.chmod(0o777)
+    try:
+        v = a.verifica_della_voce("hey_jarvis", tmp_path)
+        assert v.stato == "non caricata" and "verifica scrivibile da altri" in v.motivo
+    finally:
+        p.parent.chmod(0o700)
+
+
+def test_verifica_cartella_illeggibile_non_ferma_l_ascolto(monkeypatch, tmp_path, caplog):
+    # R-804-2: un errore di permessi sul percorso → «non caricata», mai un'eccezione
+    _pulisci_verifica(monkeypatch)
+    _verificatore(tmp_path)
+
+    def vietato(self, *a_, **k):
+        raise PermissionError(13, "negato")
+    monkeypatch.setattr(a.Path, "exists", vietato)
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    assert v.stato == "non caricata" and v.motivo == "PermissionError"
+    assert "cartella illeggibile" in caplog.text
+
+
 class _ModelFinto:
     """openwakeword.model.Model finto: registra gli argomenti, punteggio fisso."""
     creati = []

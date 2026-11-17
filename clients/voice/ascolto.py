@@ -1405,8 +1405,16 @@ def verifica_della_voce(modello: str, radice: Optional[Path] = None) -> Verifica
     if os.environ.get("GAS_ASCOLTO_VERIFICA", "").strip() == "0":
         return Verifica("spenta", soglia_base=soglia_base)
     p = percorso_verificatore(modello, radice)
-    if p is None or not (p.exists() or p.is_symlink()):
-        return Verifica("assente", soglia_base=soglia_base)
+    try:
+        if p is None or not (p.exists() or p.is_symlink()):
+            return Verifica("assente", soglia_base=soglia_base)
+    except OSError as e:
+        # R-804-2: .gas_voce non attraversabile (PermissionError su Python 3.11/3.12):
+        # l'ascolto parte lo stesso, senza verifica (§9: mai fermo all'avvio)
+        log.warning("verifica della voce: cartella illeggibile (%s): ascolto senza verifica",
+                    type(e).__name__)
+        return Verifica("non caricata", percorso=p, soglia_base=soglia_base,
+                        motivo=type(e).__name__)
     motivo = _file_fidato(p)
     if motivo:
         log.warning("verifica della voce: %s non caricato (%s): ascolto senza verifica",
