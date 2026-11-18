@@ -13,7 +13,10 @@ Regole (fail-safe, CLAUDE.md §9):
     rimontato in sola lettura: del sistema si vedono SOLO, in sola lettura, le cartelle di
     _PERMESSE (programmi, librerie dell'architettura, font, cache del linker, fuso orario), il
     solo file di node, i soli pacchetti playwright e playwright-core (non tutto node_modules
-    né il prefisso di node, V-1 bot #316) e Chromium. Niente home, /root, /run, /var, /opt,
+    né il prefisso di node, V-1 bot #316) e Chromium; in più, per i programmi di /usr/bin che
+    sono collegamenti (Ubuntu 26.04), i soli file eseguibili veri sotto /usr (non /usr/local) e
+    i collegamenti intermedi delle loro catene (sotto /usr o /etc/alternatives), uno per uno;
+    un collegamento non espone contenuto (R-803-1, R-804-2). Niente home, /root, /run, /var, /opt,
     /etc intera, niente socket Unix di altri programmi (R-599-1, V-6 ve e V-2 bot #316); Gas e
     la home, se stanno dentro una cartella permessa, coperte da un tmpfs (anche nel percorso
     vero, R-600-1); rifiutato ri-esporre una cartella che le contenga (R-599-2);
@@ -86,7 +89,8 @@ _AMBIENTE = ("PATH", "NODE_PATH", "PLAYWRIGHT_BROWSERS_PATH", "LANG")
 _GAS = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Fetta 35 (V-6 ve e V-2 bot #316): la radice del sandbox è un tmpfs vuoto, rimontato in sola
 # lettura; del sistema si vede SOLO questo elenco (in sola lettura), quello che serve a sh, node
-# e Chromium: programmi, librerie dell'architettura, font, cache del linker, fuso orario.
+# e Chromium: programmi, librerie dell'architettura, font, cache del linker, fuso orario. In più
+# solo i file dei programmi di /usr/bin che stanno altrove (_programmi_fuori, R-803-1).
 _ARCH = sysconfig.get_config_var("MULTIARCH") or ""
 _PERMESSE = ("/usr/bin", f"/usr/lib/{_ARCH}" if _ARCH and os.path.isdir(f"/usr/lib/{_ARCH}")
              else "/usr/lib", "/usr/lib64", "/usr/share/fonts", "/usr/share/fontconfig",
@@ -265,11 +269,83 @@ def _radice() -> list:
     return cmd
 
 
+# Ubuntu 26.04 (runner CI dal 2026-11-17): i comandi di base (sleep, cat, touch…) in /usr/bin
+# sono collegamenti a file fuori dalle cartelle permesse (es. /usr/lib/cargo/bin/coreutils/…):
+# nel sandbox restavano collegamenti rotti («execvp sleep: No such file or directory»). Per ogni
+# programma di queste cartelle si rifanno i collegamenti intermedi e si monta in sola lettura il
+# solo file vero, se tutta la catena sta sotto _RADICI_PROGRAMMI e fuori da Gas e dalla home.
+_CARTELLE_PROGRAMMI = ("/usr/bin",)
+_RADICI_PROGRAMMI = ("/usr", "/etc/alternatives")
+_ESCLUSE_PROGRAMMI = ("/usr/local",)  # area dell'amministratore, non dei pacchetti (R-803-2)
+_MAX_SALTI = 16
+
+
+def _programmi_fuori(visibili: list, protetti: list) -> list:
+    """Argomenti bwrap che rendono eseguibili nel sandbox i programmi di _CARTELLE_PROGRAMMI il
+    cui file vero sta fuori dalle cartelle visibili: «--symlink» per ogni collegamento della
+    catena non visibile, «--ro-bind» del file vero. Una catena che esce da _RADICI_PROGRAMMI,
+    entra in Gas o nella home, passa da una cartella-collegamento non visibile, è rotta o troppo
+    lunga non si espone (il programma resta non eseguibile, come prima)."""
+    def _visibile(p: str) -> bool:
+        return any(_copre(v, p) for v in visibili)
+
+    def _ammesso(p: str) -> bool:
+        return (any(_copre(r, p) for r in _RADICI_PROGRAMMI)
+                and not any(_copre(e, p) for e in _ESCLUSE_PROGRAMMI)
+                and not any(_copre(prot, p) or _copre(prot, os.path.realpath(p)) for prot in protetti))
+
+    collegamenti: dict = {}
+    file_veri: dict = {}
+    for cartella in _CARTELLE_PROGRAMMI:
+        vera = os.path.realpath(cartella)
+        try:
+            nomi = sorted(os.listdir(vera)) if _visibile(vera) and os.path.isdir(vera) else []
+        except OSError:
+            nomi = []  # R-803-3: si va avanti senza i programmi di questa cartella
+        for nome in nomi:
+            corrente = os.path.join(vera, nome)
+            if not os.path.islink(corrente):
+                continue
+            catena, finale = {}, None
+            for _ in range(_MAX_SALTI):
+                try:
+                    dopo = os.path.normpath(os.path.join(os.path.dirname(corrente), os.readlink(corrente)))
+                except OSError:
+                    break
+                if not _visibile(dopo):
+                    genitore = os.path.dirname(dopo)
+                    if os.path.realpath(genitore) != genitore or not _ammesso(dopo):
+                        break
+                try:
+                    if os.path.islink(dopo):
+                        if not _visibile(dopo):
+                            catena[dopo] = os.readlink(dopo)
+                        corrente = dopo
+                        continue
+                    if os.path.isfile(dopo) and os.stat(dopo).st_mode & 0o111:  # R-803-2: solo eseguibili
+                        finale = dopo
+                except OSError:
+                    pass  # R-803-3: catena cambiata a metà lettura → programma saltato
+                break
+            if finale is None:
+                continue
+            collegamenti.update(catena)
+            if not _visibile(finale):
+                file_veri[finale] = None
+    cmd = []
+    for vero_file in file_veri:
+        cmd += ["--ro-bind", vero_file, vero_file]
+    for percorso, testo in collegamenti.items():
+        cmd += ["--symlink", testo, percorso]
+    return cmd
+
+
 def _comando_bwrap(casa: str, env: dict) -> list:
     """Prefisso bwrap (fino a «--»). Fetta 35: tutti i namespace nuovi, nessuna capability, la
     radice è un tmpfs vuoto rimontato in sola lettura alla fine; si vedono in sola lettura solo
-    le cartelle di _PERMESSE, il file di node, i due pacchetti di Playwright, Chromium e la
-    cartella della lettura. Scrivibili solo tmpfs con tetto: /tmp, /dev/shm e il profilo. Gas e
+    le cartelle di _PERMESSE, il file di node, i due pacchetti di Playwright, Chromium, i file
+    veri dei programmi di /usr/bin che stanno altrove (_programmi_fuori) e la cartella della
+    lettura. Scrivibili solo tmpfs con tetto: /tmp, /dev/shm e il profilo. Gas e
     la home, se stanno dentro una cartella permessa, si coprono con un tmpfs vuoto."""
     cmd = ["bwrap", "--unshare-all", "--cap-drop", "ALL", "--die-with-parent", "--new-session"]
     montate = []
@@ -310,6 +386,15 @@ def _comando_bwrap(casa: str, env: dict) -> list:
                                   "una cartella che scoprirebbe Gas o la home")
         cmd += ["--ro-bind", fuori, dentro]
         montate.append(fuori)
+    # Programmi di /usr/bin col file vero fuori dalle cartelle permesse (Ubuntu 26.04).
+    # Visibili = i percorsi montati al loro posto nel sandbox (non quelli dell'host montati
+    # altrove). /bin, /lib… (collegamenti, con /usr unito) sono contati sempre come visibili: se
+    # il loro bersaglio non lo è, il programma resta rotto (fail-closed, R-803-4, R-804-2).
+    visibili = [p for p in _PERMESSE if os.path.exists(p)]
+    visibili += [os.path.realpath(p) for p in _PERMESSE if os.path.islink(p)]
+    visibili += [dentro for _, dentro in esposti]
+    visibili += [v for v in _RADICE if os.path.islink(v) or os.path.isdir(v)]
+    cmd += _programmi_fuori(list(dict.fromkeys(visibili)), protetti)
     # Gas o la home dentro una cartella permessa (es. Gas in /usr/lib/…): coperti da un tmpfs.
     for protetto in protetti:
         if any(_copre(m, protetto) for m in montate):
