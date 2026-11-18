@@ -1271,6 +1271,61 @@ def test_identita_dopo_crash_a_meta_scrittura(tmp_path: Path) -> None:
     assert letti is not None and [c["nome"] for c in letti] == ["Marco Bianchi"]
 
 
+def test_v1_ve381_parole_vietate_non_si_aggirano() -> None:
+    """V-1 verifica esterna #381 (3° giro): spazi a larghezza zero, spazi doppi e lettere
+    staccate non aggirano più il filtro; le frasi normali passano."""
+    from modules.crm import scrittore
+    for furbo in ("rendimento garan\u200btito", "zero  rischi", "g a r a n t i t o",
+                  "SICURO AL 100 %", "nessun draw-down", "Solo   oggi!"):
+        with pytest.raises(ErroreCRM, match="testo scartato"):
+            scrittore.pulisci(furbo)
+    for buono in ("Ciao Mario, ottimo mese! Ti va di provare Segnali VIP? Ne parliamo?",
+                  "Sei sicuro alla fine? Ne parliamo con calma."):
+        assert scrittore.pulisci(buono) == buono
+
+
+def test_v2_ve381_avviso_scelta_manuale_di_chi_e_appena_entrato(st: CRMStore) -> None:
+    """V-2 verifica esterna #381 (3° giro): a mano non si blocca, ma il motivo della
+    proposta avverte l'operatore (decisione 9: attenzione a chi è appena entrato)."""
+    srv = servizi_base(st)
+    nuovo = st.aggiungi_cliente("Ada Neri", telefono="+390000000061", consenso_marketing=True)
+    st.apri_posizione(nuovo, srv["oro"], data="2026-06-10", capitale_iniziale_cents=500_000)
+    st.aggiorna_cliente(nuovo, followup_attivo=False)
+    vecchio, _ = cliente_contento(st, srv, nome="Ugo Blu", telefono="+390000000062")
+    esito = motore.prepara_selezionati(st, [nuovo, vecchio], regole=REGOLE)
+    motivi = {st.proposta(x)["cliente_id"]: st.proposta(x)["motivo"] for x in esito.create}  # type: ignore[index]
+    assert motivi[nuovo].startswith("⚠ ATTENZIONE: cliente da soli 10 giorni")
+    assert "non ha ancora pagato" in motivi[nuovo] and "follow-up spento" in motivi[nuovo]
+    assert "ATTENZIONE" not in motivi[vecchio]
+
+
+def test_r809_1_file_bloccato_non_riaperto(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-809-1: «database is locked» chiude subito (None), senza una seconda apertura che
+    raddoppierebbe l'attesa; si riapre solo per il journal rimasto («readonly»)."""
+    from modules.crm import store as modulo
+    db = tmp_path / ".gas_memory_crm.db"
+    CRMStore(db).aggiungi_cliente("Marco Bianchi", telefono="+393331234567")
+    aperture: List[str] = []
+    vero = modulo.sqlite3.connect
+
+    def finto(dove: Any, *a: Any, **kw: Any) -> Any:
+        aperture.append(str(dove))
+        if str(dove).endswith("mode=ro"):
+            raise sqlite3.OperationalError("database is locked")
+        return vero(dove, *a, **kw)
+
+    monkeypatch.setattr(modulo.sqlite3, "connect", finto)
+    assert modulo.identita_clienti(db) is None and len(aperture) == 1
+
+
+def test_v4_ve381_modello_opus_dalla_fonte_unica() -> None:
+    from brains import model_ids
+    from modules.crm import scrittore
+    assert scrittore.MODELLO_DEFAULT == model_ids.MODEL_CLAUDE_OPUS
+    assert model_ids.e_modello_opus(model_ids.MODEL_CLAUDE_OPUS)
+    assert not model_ids.e_modello_opus("claude-sonnet-5-5")
+
+
 def test_invio_a_scaglioni(st: CRMStore, orologio: Orologio) -> None:
     srv = servizi_base(st)
     ids = [cliente_contento(st, srv, nome=f"C{i}", telefono=f"+3900000001{i:02d}")[0] for i in range(3)]

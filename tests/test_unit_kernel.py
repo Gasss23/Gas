@@ -13503,6 +13503,92 @@ except Exception as _e116x:
     import traceback as _tb116
     check("T116 blocco senza eccezioni", False, repr(_e116x) + _tb116.format_exc()[-800:])
 
+# ---------- T117: dati di clienti → SOLO Claude Opus (decisione dell'operatore 2026-11-18) ----------
+print("--- T117: dati di clienti solo con Opus ---")
+try:
+    class _ScriptModello117(_Script115):
+        def __init__(self, risposte):
+            super().__init__(risposte)
+            self.modelli = []
+
+        def create(self, model=None, messages=None, **kw):
+            self.modelli.append(model)
+            return super().create(model=model, messages=messages, **kw)
+
+    def _turno117(k, prompt, forte, cervello=None):
+        _g, _f = _Script115([_r115("NON DEVE ARRIVARE")]), _ScriptModello117(forte)
+
+        class _OAI117:
+            def __init__(self, *a, **kw):
+                self.chat = SimpleNamespace(completions=_g)
+        for _kk in _ch115:
+            os.environ.pop(_kk, None)
+        os.environ["GEMINI_API_KEY"] = "finta-117"
+        _vo = gas.OpenAI
+        gas.OpenAI = _OAI117
+        try:
+            with forte_finto(_f):
+                return list(k.run_turn(prompt, cervello=cervello)), _g, _f
+        finally:
+            gas.OpenAI = _vo
+            _ripristina115()
+
+    _OPUS117 = gas.MODEL_CLAUDE_CLIENTI
+    _k117a = kernel_tmp()
+    _CRM116(_k117a.root / ".gas_memory_crm.db").aggiungi_cliente("Marco Bianchi",
+                                                              telefono="+393331234567")
+    _ev, _g, _f = _turno117(_k117a, "cosa propongo a Marco Bianchi?",
+                            [_r115(tool_calls=[_tc115("data_ora")]), _r115("La sala segnali.")])
+    check("T117a nome di un cliente: ogni chiamata del forte con Opus (round-trip tool → final), "
+          "gratuiti mai chiamati, modello dichiarato nel final",
+          "opus" in _OPUS117 and _f.modelli == [_OPUS117, _OPUS117] and not _g.visti
+          and _ev[-1].get("type") == "final" and _ev[-1].get("modello") == _OPUS117,
+          f"{_f.modelli} {str(_ev)[-200:]}")
+    _ev, _g, _f = _turno117(kernel_tmp(), "che ore sono?", [_r115("sono le 12")], cervello="forte")
+    check("T117b /forte senza dati di clienti: resta il modello del forte (non Opus)",
+          _f.modelli == [gas.MODEL_CLAUDE_FORTE] and _ev[-1].get("modello") == gas.MODEL_CLAUDE_FORTE,
+          str(_f.modelli))
+    _k117c = kernel_tmp()
+    _k117c.memory.upsert_contatto("giulia@acme.it", nome="Giulia Bianchi")
+    _ev, _g, _f = _turno117(_k117c, "dammi i lead", [
+        _r115(tool_calls=[_tc115("ricorda", '{"query": "lead"}')]), _r115("Hai un lead.")],
+        cervello="forte")
+    check("T117c /forte con i dati che arrivano a metà turno (ricorda): prima chiamata col forte, "
+          "dalla successiva Opus",
+          _f.modelli == [gas.MODEL_CLAUDE_FORTE, _OPUS117] and _ev[-1].get("type") == "final",
+          f"{_f.modelli} {str(_ev)[-200:]}")
+    _sv117 = gas.MODEL_CLAUDE_CLIENTI
+    gas.MODEL_CLAUDE_CLIENTI = "claude-sonnet-5-5"
+    try:
+        _ev, _g, _f = _turno117(_k117a, "scrivi a Marco Bianchi", [_r115("NON DEVE ARRIVARE")])
+    finally:
+        gas.MODEL_CLAUDE_CLIENTI = _sv117
+    check("T117d modello per i clienti non Opus: turno fermo dichiarato, nessuna chiamata",
+          not _f.modelli and not _g.visti and _ev and _ev[-1]["type"] == "error"
+          and "non è Opus" in _ev[-1]["content"] and "dati di clienti" in _ev[-1]["content"],
+          str(_ev)[-300:])
+    _f117e = _ScriptModello117([_r115(_RISP115)])
+    _vo117 = gas.OpenAI
+    try:
+        for _kk in _ch115:
+            os.environ.pop(_kk, None)
+        with forte_finto(_f117e):
+            _e117 = _k_con_ricorda().rifletti()
+        gas.MODEL_CLAUDE_CLIENTI = "claude-sonnet-5-5"
+        with forte_finto(_ScriptModello117([_r115(_RISP115)])):
+            _e117b = _k_con_ricorda().rifletti()
+    finally:
+        gas.MODEL_CLAUDE_CLIENTI = _sv117
+        gas.OpenAI = _vo117
+        _ripristina115()
+    check("T117e riflessione con dati di clienti: con Opus; modello non Opus → rimandata",
+          _e117["ok"] and _f117e.modelli == [_OPUS117]
+          and not _e117b["ok"] and "non è Opus" in (_e117b["errore"] or ""),
+          f"{_f117e.modelli} {_e117} {_e117b}")
+except Exception as _e117x:
+    import traceback as _tb117
+    check("T117 blocco senza eccezioni", False, repr(_e117x) + _tb117.format_exc()[-800:])
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

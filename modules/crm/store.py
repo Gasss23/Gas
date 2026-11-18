@@ -1319,7 +1319,9 @@ def identita_clienti(db_path: Union[str, Path]) -> Optional[List[Dict[str, Any]]
         try:
             righe = leggi(sqlite3.connect(p.resolve().as_uri() + "?mode=ro", uri=True, timeout=5))
         except sqlite3.OperationalError as e:
-            if not p.is_file():
+            # R-809-1: solo il caso del journal rimasto («readonly database»); un file
+            # bloccato dal CRM («database is locked») non si riapre: niente doppia attesa
+            if not p.is_file() or "readonly" not in str(e).lower():
                 raise
             log.warning("CRM: lettura in sola lettura fallita (%s): riapro per ripristinare "
                         "una scrittura interrotta", e)

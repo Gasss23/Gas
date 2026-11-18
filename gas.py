@@ -32,6 +32,7 @@ from modules.memory import VectorStore, default_vectors_path, EMBED_MODEL_NAME
 from brains.model_ids import (
     MODEL_GEMINI_LITE, MODEL_GEMINI_FLASH, MODEL_GROQ, MODEL_OPENROUTER, MODEL_OLLAMA,
     MODEL_CLAUDE_FORTE, GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
+    MODEL_CLAUDE_CLIENTI, e_modello_opus,
 )
 from brains.claude_cli import ClaudeCliClient
 from brains.claude_cli import stato_abbonamento as claude_cli_stato_abbonamento
@@ -599,6 +600,7 @@ TOOL_CAPABLE_MODELS = frozenset({
     GEMINI_FLASH_LITE_MODEL, GEMINI_FLASH_MODEL, GROQ_MODEL,
     OPENROUTER_FREE_MODEL, OLLAMA_MODEL,
     MODEL_CLAUDE_FORTE,  # via ClaudeCliClient: strumenti di Gas col formato JSON fisso
+    MODEL_CLAUDE_CLIENTI,  # lo stesso forte, con Opus quando ci sono dati di clienti
 })
 
 def _model_tool_capable(model: str) -> bool:
@@ -4602,6 +4604,15 @@ class GasKernel:
                                            "mai ai modelli gratuiti)")
                         logging.warning(f"riflessione: {esito['errore']} {_tetto}")
                         return esito
+                if name == "claude-cli" and solo_forte:
+                    # decisione dell'operatore (2026-11-18): dati di clienti SOLO con Opus
+                    model = MODEL_CLAUDE_CLIENTI
+                    if not e_modello_opus(model):
+                        esito["errore"] = ("riflessione rimandata: la trascrizione contiene dati "
+                                           f"di clienti e il modello configurato ({model}) non "
+                                           "è Opus (GAS_MODEL_CLAUDE_CLIENTI)")
+                        logging.warning(f"riflessione: {esito['errore']}")
+                        return esito
                 if esito["provider_atteso"] is None:
                     esito["provider_atteso"] = name  # primo rung disponibile (§8)
                 try:
@@ -5623,6 +5634,24 @@ class GasKernel:
                             if not _chiamato_rung:
                                 _turno_tentati.pop()
                             break
+                        # Decisione dell'operatore (2026-11-18): con dati di clienti nella
+                        # finestra il forte risponde SOLO con Claude Opus
+                        # (GAS_MODEL_CLAUDE_CLIENTI), anche nei turni /forte e quando i dati
+                        # arrivano a metà turno; modello configurato non Opus → turno fermo
+                        # dichiarato, mai un modello minore.
+                        _model_call = model
+                        if name == "claude-cli" and _finestra_ha_dati_lead(_window, _ident):
+                            _model_call = MODEL_CLAUDE_CLIENTI
+                            if not e_modello_opus(_model_call):
+                                logging.warning(f"dati di clienti: modello {_model_call} non Opus, "
+                                                "turno fermato")
+                                _motivi.append(f"claude-cli: il modello per i dati dei clienti "
+                                               f"({_model_call}) non è Opus "
+                                               "(GAS_MODEL_CLAUDE_CLIENTI)")
+                                _solo_forte_lead = True
+                                if not _chiamato_rung:
+                                    _turno_tentati.pop()
+                                break
                         # V-1 bot #222: conta anche il pin che mostra dati non fidati.
                         _finestra_contaminata = (self._finestra_e_contaminata(_window)
                                                  or getattr(self, "_pin_non_fidato", False))
@@ -5670,7 +5699,7 @@ class GasKernel:
                         _chiamate_turno += 1
                         try:
                             response = client.chat.completions.create(
-                                model=model, messages=payload, **_offerta
+                                model=_model_call, messages=payload, **_offerta
                             )
                         except Exception as e:
                             # R-496-1: una chiamata al forte fallita dopo il consumo
@@ -5705,7 +5734,7 @@ class GasKernel:
                                 raise
                         usage = getattr(response, "usage", None)
                         if usage:
-                            self._log_tokens(name, model,
+                            self._log_tokens(name, _model_call,
                                              getattr(usage, "prompt_tokens", 0) or 0,
                                              getattr(usage, "completion_tokens", 0) or 0)
                         if name == "claude-cli":
@@ -5850,7 +5879,7 @@ class GasKernel:
                             _salva()
                             _turno_provider = name  # Fetta B: provider che ha prodotto la risposta
                             _turno_final = True
-                            _info_fin = _info_ripiego(name, model, providers[0][0], _motivi)
+                            _info_fin = _info_ripiego(name, _model_call, providers[0][0], _motivi)
                             if _solo_forte_lead and name == "claude-cli":
                                 # V-2 bot #375 (§8): il passaggio al forte per i dati dei
                                 # clienti si dichiara (solo testo, mai a voce come le altre

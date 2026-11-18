@@ -11,6 +11,8 @@ solo modelli almeno Opus». Quindi:
 - Minimizzazione dei dati: a Claude vanno solo il nome di battesimo, i nomi dei servizi,
   il risultato del mese se positivo, da quanti mesi è cliente, tipo e livello della proposta
   e la bozza. Mai telefono, email, cognome, note, importi del capitale.
+- Il filtro delle parole vietate (promesse, urgenza, perdite) è una rete che si può
+  aggirare: la tutela vera è l'approvazione dell'operatore su ogni messaggio.
 - Tetto giornaliero di riscritture (`GAS_CRM_OPUS_GIORNO`, default 60): conta i TENTATIVI
   (anche falliti o scartati), segnati sul diario del CRM, che non si può riscrivere, prima
   della chiamata e nella stessa transazione del controllo (R-808-2).
@@ -26,16 +28,18 @@ from __future__ import annotations
 import logging
 import os
 import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from brains.model_ids import MODEL_CLAUDE_OPUS, e_modello_opus  # fonte unica degli ID (V-4 ve #381)
 from modules.crm import analisi
 from modules.crm.messaggi import NOTA_RISCHIO_DEFAULT, RIGA_STOP, nome_breve, nota_rischio
 from modules.crm.store import CRMStore, ErroreCRM, formatta_euro_tondo
 
 log = logging.getLogger(__name__)
 
-MODELLO_DEFAULT = "claude-opus-5-5"
+MODELLO_DEFAULT = MODEL_CLAUDE_OPUS
 TESTO_MAX_OPUS = 900
 OPUS_GIORNO_DEFAULT = 60
 NOTA_EVENTO = "testo riscritto da Claude Opus"
@@ -88,7 +92,7 @@ def disponibile() -> Optional[str]:
     """None se Claude si può usare; altrimenti il motivo (per l'operatore)."""
     if os.environ.get("GAS_CLAUDE_CLI", "").strip().lower() not in ("1", "true", "on", "yes", "si"):
         return "cervello forte spento (GAS_CLAUDE_CLI): resta il testo standard"
-    if "opus" not in modello().lower():
+    if not e_modello_opus(modello()):
         return f"il modello configurato ({modello()}) non è Opus: riscrittura negata"
     return None
 
@@ -121,11 +125,29 @@ def pulisci(testo: str) -> str:
         raise ErroreCRM("Claude ha risposto un testo vuoto")
     if len(t) > TESTO_MAX_OPUS:
         raise ErroreCRM("il testo di Claude è troppo lungo: resta quello di prima")
-    basso = t.lower()
     for v in _VIETATE:
-        if v in basso:
+        if _contiene_vietata(t, v):
             raise ErroreCRM(f"testo scartato: contiene «{v}» (promesse, urgenza o perdite non ammesse)")
     return t
+
+
+def _forme_confronto(testo: str) -> Tuple[str, str]:
+    """Due forme del testo per il filtro delle parole vietate (V-1 verifica esterna #381,
+    3° giro): (1) NFKC, senza caratteri invisibili di formato (spazi a larghezza zero…),
+    senza accenti, minuscolo, spazi compressi; (2) la stessa con sole lettere e cifre, così
+    anche «g a r a n t i t o» o «garan-tito» vengono visti. È una RETE, non la tutela:
+    la tutela è l'approvazione dell'operatore su ogni messaggio. Un falso allarme scarta
+    solo la riscrittura (resta il testo di prima). PURA."""
+    t = unicodedata.normalize("NFKC", testo or "")
+    t = "".join(ch for ch in t if unicodedata.category(ch) != "Cf")
+    t = "".join(ch for ch in unicodedata.normalize("NFKD", t) if not unicodedata.combining(ch))
+    t = " ".join(t.casefold().split())
+    return t, re.sub(r"[^a-z0-9]", "", t)
+
+
+def _contiene_vietata(testo: str, vietata: str) -> bool:
+    spazi, lettere = _forme_confronto(testo)
+    return vietata in spazi or re.sub(r"[^a-z0-9]", "", vietata) in lettere
 
 
 def contesto(store: CRMStore, proposta: Dict[str, Any]) -> Dict[str, Any]:

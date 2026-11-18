@@ -182,12 +182,25 @@ def valuta_cliente(d: analisi.Dati, cliente_id: int, regole: Regole,
         return Decisione(esclusione=duro)
     m = analisi.metriche_cliente(d, cliente_id)
     oggi = d.oggi
+    # V-2 verifica esterna #381 (3° giro): a mano le regole «morbide» non fermano, ma
+    # l'operatore le vede scritte in testa al motivo della proposta, prima di approvarla
+    # (decisione 9: attenzione a chi è appena entrato).
+    avvisi: List[str] = []
+    entrato = _entrato_il(d, cliente_id)
+    if manuale:
+        if entrato is not None and (oggi - entrato).days < regole.anzianita_min_giorni:
+            avvisi.append(f"cliente da soli {(oggi - entrato).days} giorni")
+        if m.pagamenti < regole.pagamenti_min:
+            avvisi.append("non ha ancora pagato la prima commissione")
+        if not cliente.get("followup_attivo", 1):
+            avvisi.append("follow-up spento per questo cliente")
+        if m.profitto_mese_cents < 0:
+            avvisi.append("mese in corso in perdita")
     if not manuale:
         if not cliente.get("followup_attivo", 1):
             return Decisione(esclusione="follow-up mensile spento per questo cliente")
         if m.pagamenti < regole.pagamenti_min:
             return Decisione(esclusione="non ha ancora pagato la prima commissione")
-        entrato = _entrato_il(d, cliente_id)
         if entrato is not None and (oggi - entrato).days < regole.anzianita_min_giorni:
             return Decisione(esclusione=f"cliente da {(oggi - entrato).days} giorni (si aspettano "
                                         f"almeno {regole.anzianita_min_giorni} giorni)")
@@ -257,6 +270,8 @@ def valuta_cliente(d: analisi.Dati, cliente_id: int, regole: Regole,
                        f"{len(attive)} su {sum(1 for s in d.servizi.values() if s['attivo'])}")
     if manuale and rif_profitto > 0:
         base_motivo = "scelta dell'operatore; " + base_motivo
+    if avvisi:
+        base_motivo = "⚠ ATTENZIONE: " + ", ".join(avvisi) + ". " + base_motivo
 
     no_recente_cross = any(p["tipo"] == "cross_sell" and p["stato"] == "rifiutata"
                            and _entro(p, regole.pausa_dopo_no_giorni) for p in sue)
@@ -437,7 +452,7 @@ def scansiona(store: CRMStore, oggi: Optional[date] = None,
             # chiave = cliente: al massimo UNA proposta aperta per cliente anche con due
             # scansioni concorrenti (indice unico parziale sul DB)
             nuovo = store.crea_proposta(
-                cliente_id=cid, tipo=a.tipo, chiave=f"cliente:{cid}", motivo=a.motivo,
+                cliente_id=cid, tipo=a.tipo, chiave=f"cliente:{cid}", motivo=a.motivo[:500],
                 messaggio=a.messaggio, valore_stimato_cents=a.valore_stimato_cents,
                 livello=a.livello, servizio_id=a.servizio_id, posizione_id=a.posizione_id,
                 autore=autore,
@@ -490,7 +505,7 @@ def prepara_selezionati(store: CRMStore, clienti_ids: List[int], oggi: Optional[
         a = dec.azione
         try:
             nuovo = store.crea_proposta(
-                cliente_id=cid, tipo=a.tipo, chiave=f"cliente:{cid}", motivo=a.motivo,
+                cliente_id=cid, tipo=a.tipo, chiave=f"cliente:{cid}", motivo=a.motivo[:500],
                 messaggio=a.messaggio, valore_stimato_cents=a.valore_stimato_cents,
                 livello=a.livello, servizio_id=a.servizio_id, posizione_id=a.posizione_id,
                 autore=autore)
