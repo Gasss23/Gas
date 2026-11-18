@@ -7,11 +7,14 @@ Apre il microfono per qualche secondo, fa girare lo stesso rilevatore dell'ascol
 punteggio massimo e quanti blocchi da 80 ms di fila ha passato le soglie 0,5 / 0,6 / 0,7 /
 0,8. Alla fine consiglia la regolazione più severa che avrebbe preso TUTTE le chiamate
 (GAS_ASCOLTO_SOGLIA e GAS_ASCOLTO_BLOCCHI_PAROLA nel .env).
+Con la verifica della voce addestrata (scripts/voce/registra_voce.py) usa lo stesso
+rilevatore dell'ascolto CON la verifica: i punteggi sono quelli della verifica e il
+consiglio è per GAS_ASCOLTO_SOGLIA_VERIFICA.
 
-Uso (sul Mac, dalla cartella di Gas, con l'ascolto acceso o spento: il microfono si può
-leggere in due):
-    python3 scripts/voce/taratura_parola.py               # 40 s: di' «Hey Jarvis» 5-6 volte
-    python3 scripts/voce/taratura_parola.py --secondi 60
+Uso (sul Mac, dalla cartella di Gas, col Python di Gas; l'ascolto acceso o spento: il
+microfono si può leggere in due):
+    .venv/bin/python scripts/voce/taratura_parola.py            # 40 s: di' «Hey Jarvis» 5-6 volte
+    .venv/bin/python scripts/voce/taratura_parola.py --secondi 60
 
 Privacy: l'audio resta in memoria e non si salva da nessuna parte; si stampano solo numeri.
 Exit 0 a fine prova, 1 se microfono o modello non sono pronti.
@@ -29,6 +32,7 @@ SOGLIA_SALITA = 0.3                      # da qui in su comincia una «salita» 
 SOGLIE = (0.5, 0.6, 0.7, 0.8)            # soglie provate
 BLOCCHI = (1, 2, 3)                      # blocchi di fila provati
 SOGLIA_PREDEFINITA = 0.7                 # = clients/voice/ascolto.py (test di uguaglianza)
+SOGLIA_VERIFICA_PREDEFINITA = 0.5        # idem, soglia con la verifica della voce attiva
 SEC_BLOCCO = 0.08
 # Prova col modello vero (12/11): un solo «Hey Jarvis» a volte dà due salite staccate da
 # 1-3 blocchi sotto 0,30. Una salita finisce solo dopo PAUSA_BLOCCHI blocchi di fila sotto
@@ -84,10 +88,14 @@ def descrivi(n: int, s: Salita) -> str:
             % (n, s.inizio_s, s.massimo, fila))
 
 
-def consiglio(trovate: Sequence[Salita], attese: int) -> List[str]:
+def consiglio(trovate: Sequence[Salita], attese: int, verifica: bool = False) -> List[str]:
     """La regolazione più severa che prende tutte le chiamate trovate (salite deboli escluse
     e dichiarate); avvisa se le salite sono meno o più delle chiamate attese e se la soglia
-    consigliata è più permissiva del predefinito."""
+    consigliata è più permissiva del predefinito. Con `verifica` (verifica della voce
+    attiva) i punteggi sono quelli della verifica: il consiglio è per
+    GAS_ASCOLTO_SOGLIA_VERIFICA."""
+    variabile, predefinita = (("GAS_ASCOLTO_SOGLIA_VERIFICA", SOGLIA_VERIFICA_PREDEFINITA)
+                              if verifica else ("GAS_ASCOLTO_SOGLIA", SOGLIA_PREDEFINITA))
     righe: List[str] = []
     if not trovate:
         return ["Nessuna salita del punteggio: il microfono non sente la parola (volume, "
@@ -124,22 +132,27 @@ def consiglio(trovate: Sequence[Salita], attese: int) -> List[str]:
     tutte = [(t, b) for (t, b, n) in tabella if n == len(trovate)]
     # la più severa: soglia più alta, poi più blocchi
     t, b = max(tutte, key=lambda tb: (tb[0], tb[1]))
-    righe.append("Consiglio: GAS_ASCOLTO_SOGLIA=%g e GAS_ASCOLTO_BLOCCHI_PAROLA=%d "
+    righe.append("Consiglio: %s=%g e GAS_ASCOLTO_BLOCCHI_PAROLA=%d "
                  "(prende tutte le chiamate). Nel .env, poi bash scripts/voce/installa.sh."
-                 % (t, b))
-    if t < SOGLIA_PREDEFINITA:
+                 % (variabile, t, b))
+    if t < predefinita:
         righe.append("Attenzione: soglia %g più permissiva del predefinito %g — più "
                      "rischio di risposte quando non lo chiami. Se una salita era un "
                      "rumore, rifai la prova in silenzio prima di cambiare il .env."
-                     % (t, SOGLIA_PREDEFINITA))
+                     % (t, predefinita))
     return righe
 
 
 def _punteggi_dal_microfono(secondi: float, modello: str
-                            ) -> Tuple[Iterator[float], Callable[[], None]]:
-    sys.path.insert(0, str(RADICE))
+                            ) -> Tuple[Iterator[float], Callable[[], None], bool]:
+    """(punteggi, chiudi, verifica della voce attiva) col rilevatore dell'ascolto."""
+    if str(RADICE) not in sys.path:
+        sys.path.insert(0, str(RADICE))
     from clients.voice import ascolto  # noqa: E402 — stesso rilevatore e microfono dell'ascolto
-    punteggio, _ = ascolto.rilevatore_openwakeword(modello)
+    ascolto._carica_dotenv(RADICE)      # GAS_ASCOLTO_VERIFICA e soglie come l'ascolto
+    verifica = ascolto.verifica_della_voce(modello)
+    punteggio, _ = ascolto.rilevatore_con_verifica(modello, verifica)
+    print("Verifica della voce: %s" % verifica.descrivi())
     mic = ascolto.Microfono()
     n = int(secondi / SEC_BLOCCO)
 
@@ -148,13 +161,21 @@ def _punteggi_dal_microfono(secondi: float, modello: str
             if i >= n:
                 return
             yield float(punteggio(b))
-    return gen(), mic.chiudi
+    return gen(), mic.chiudi, verifica.attiva
+
+
+def messaggio_modulo(e: ModuleNotFoundError) -> str:
+    """Taratura del 17/11: lanciato col python3 di sistema, «esegui installa.sh» era
+    fuorviante (le dipendenze c'erano, nel .venv di Gas)."""
+    return ("✗ manca il modulo «%s»: lancia lo script col Python di Gas, dalla cartella di "
+            "Gas: .venv/bin/python scripts/voce/taratura_parola.py (se .venv non c'è: bash "
+            "scripts/voce/installa.sh)" % (e.name or "?"))
 
 
 def main(argv: Optional[List[str]] = None,
-         sorgente: Optional[Callable[[float, str],
-                                     Tuple[Iterator[float], Callable[[], None]]]] = None
-         ) -> int:
+         sorgente: Optional[Callable[[float, str], Sequence]] = None) -> int:
+    """`sorgente(secondi, modello)` dà (punteggi, chiudi) o (punteggi, chiudi, verifica
+    attiva)."""
     ap = argparse.ArgumentParser(description="Taratura di «Hey Jarvis» sulla tua voce.")
     ap.add_argument("--secondi", type=float, default=40.0)
     ap.add_argument("--chiamate", type=int, default=0,
@@ -162,8 +183,12 @@ def main(argv: Optional[List[str]] = None,
     ap.add_argument("--modello", default="hey_jarvis")
     args = ap.parse_args(argv)
     try:
-        punteggi, chiudi = (sorgente or _punteggi_dal_microfono)(max(args.secondi, 1.0),
-                                                                 args.modello)
+        pronta = (sorgente or _punteggi_dal_microfono)(max(args.secondi, 1.0), args.modello)
+        punteggi, chiudi = pronta[0], pronta[1]
+        verifica = len(pronta) > 2 and bool(pronta[2])
+    except ModuleNotFoundError as e:   # python3 di sistema invece del .venv di Gas
+        print(messaggio_modulo(e), file=sys.stderr)
+        return 1
     except Exception as e:  # microfono o modello non pronti
         print("✗ microfono o modello non pronti (%s): esegui prima "
               "bash scripts/voce/installa.sh" % type(e).__name__, file=sys.stderr)
@@ -180,7 +205,7 @@ def main(argv: Optional[List[str]] = None,
     finally:
         chiudi()
     print()
-    for riga in consiglio(trovate, args.chiamate):
+    for riga in consiglio(trovate, args.chiamate, verifica=verifica):
         print(riga)
     return 0
 

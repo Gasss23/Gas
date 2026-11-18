@@ -91,6 +91,62 @@ minuto `.gas_voce/ascolto.log` dice «solo silenzio assoluto». In quel caso:
    esempio un'app che lo avvia). Finché non lo proviamo sul Mac, la voce H24 non è
    dichiarata funzionante.
 
+## Verifica della voce (Jarvis risponde a te, non alla TV)
+
+Il modello «hey_jarvis» dà alla tua voce punteggi bassi (0,37–0,43 nella misura del
+17/11): con la soglia 0,7 molte chiamate si perdono, e abbassarla fa rispondere a TV e
+persone. La verifica della voce è un piccolo filtro addestrato sulla tua voce: quando il
+modello sente qualcosa di simile alla parola (da 0,25 in su), il filtro decide se sei tu
+(o un'altra persona registrata) che dice «Hey Jarvis». Allora la parola vale con la soglia
+del filtro (`GAS_ASCOLTO_SOGLIA_VERIFICA`, 0,5) e `GAS_ASCOLTO_SOGLIA` non conta più.
+
+**Registrare (una volta, ~10 minuti):**
+
+```bash
+bash scripts/voce/pausa.sh                          # se no Jarvis risponde a ogni prova
+.venv/bin/python scripts/voce/registra_voce.py
+bash scripts/voce/riprendi.sh                       # l'ascolto carica il filtro
+```
+
+Lo script ti guida: 15 «Hey Jarvis», uno per bip, da posti diversi (vicino al Mac, a 3
+metri, dall'altra stanza, camminando, voce bassa); poi 60 s in cui parli normalmente
+SENZA dire la parola; poi, se vuoi, 60 s di TV accesa. Da solo prepara anche esempi di
+«altre persone» con le voci di sistema del Mac (comando `say`, in locale): servono al
+filtro per scartare chi non è registrato. Alla fine stampa un riepilogo (quanti tuoi
+«Hey Jarvis» passano, quante altre voci passano: meglio 0). Nel log dell'ascolto, all'avvio:
+«verifica della voce: attiva (1 persona, …)».
+
+- **Usa `.venv/bin/python`**, non `python3`: col Python di sistema mancano i moduli.
+- **Riaddestrare** (dopo aver cancellato clip venute male, o cambiato
+  `GAS_ASCOLTO_SOGLIA_BASE`): `.venv/bin/python scripts/voce/registra_voce.py --solo-addestra`.
+  Rilanciare lo script senza opzioni **aggiunge** altri «Hey Jarvis» ai precedenti.
+- **Un'altra persona:** `--persona nome` (es. `--persona giulia`). Il filtro le impara tutte
+  insieme: accetta «una delle persone registrate», non sa dire chi.
+- **Spegnerla:** `GAS_ASCOLTO_VERIFICA=0` nel `.env` e `bash scripts/voce/installa.sh`;
+  oppure cancella `.gas_voce/verifica/hey_jarvis_verifier.pkl`. Si torna alla soglia di prima.
+- **Se il filtro non si carica** (file rovinato, aggiornamento delle librerie) l'ascolto
+  NON si ferma: lo scrive nel log («verifica della voce: … non caricata») e continua
+  come prima, senza filtro. Riaddestra con `--solo-addestra`.
+- **Dopo**, se le tue chiamate si perdono ancora: `taratura_parola.py` usa anche lei il
+  filtro e consiglia `GAS_ASCOLTO_SOGLIA_VERIFICA`.
+- **Interrompere Gas mentre parla** usa anche lei il filtro (soglia 0,8 su 3 blocchi di
+  fila, come prima): se con il filtro non riesci più a interromperlo, prova
+  `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE=2`.
+
+**Limiti (da sapere):** non è una vera verifica del parlante (lo dice anche la
+documentazione di openWakeWord): è un filtro sopra la parola. Una voce simile alla tua (o
+una tua registrazione riprodotta da una cassa) può passare, quindi non usarla come
+sicurezza per azioni sensibili. Nella prova con voci sintetiche del 17/11 scartava le voci
+femminili e inglesi ma lasciava passare alcune voci maschili italiane simili. Eredita la
+licenza non commerciale di «hey_jarvis».
+
+**Privacy e sicurezza:** le registrazioni sono un dato biometrico: restano solo sul Mac,
+in `.gas_voce/verifica/` (fuori da git, cartelle leggibili solo da te), non vanno a nessun
+server. Il filtro è un file `pickle` che openWakeWord carica eseguendone il contenuto:
+l'ascolto lo legge SOLO da `.gas_voce/verifica/<modello>_verifier.pkl` (mai da un percorso
+preso dal `.env`), e solo se è un file tuo che nessun altro può scrivere. Non copiare lì
+file `.pkl` presi da altri.
+
 ## Spegnere
 
 ```bash
@@ -133,7 +189,8 @@ solo).
   (la mitigazione del 9/11), la soglia nuova 0,7 non vale: toglila. `GAS_VOICE_MAX_TURNI=1`
   ora è il predefinito e si può togliere. All'avvio `.gas_voce/ascolto.log` scrive
   «regolazioni in uso: …» e avvisa se il `.env` rende la parola più facile dei predefiniti.
-- Se la parola vera non scatta più: lancia `python3 scripts/voce/taratura_parola.py`
+- Se la parola vera non scatta più: prima di tutto la **verifica della voce** (sezione
+  sotto). Per tarare: `.venv/bin/python scripts/voce/taratura_parola.py`
   (dici «Hey Jarvis» qualche volta e lo script consiglia soglia e blocchi sulla tua voce,
   senza salvare audio), oppure abbassa `GAS_ASCOLTO_SOGLIA` (0.6). Se nel `.env` c'è
   `GAS_ASCOLTO_BLOCCHI_PAROLA=2` o `3`, toglilo: con la pronuncia italiana il picco della
@@ -143,7 +200,8 @@ solo).
 - Se dopo un bip di errore non sai se Gas ha fatto la cosa (il server può aver eseguito
   la richiesta e poi fallito la voce), chiediglielo invece di ripeterla.
 - La richiesta registrata resta in memoria e va solo al server voce. **Nessuna
-  registrazione viene salvata.**
+  registrazione delle richieste viene salvata.** Le sole registrazioni salvate sono quelle
+  che fai tu apposta per la verifica della voce (`.gas_voce/verifica/`, vedi sopra).
 - Il server voce manda l'audio a Groq per la trascrizione e il testo a ElevenLabs per la
   voce (vedi `modules/voice/server.py`): questo vale da quando dici la parola, non prima.
 - La risposta di Gas passa da un file temporaneo leggibile solo da te, cancellato appena
@@ -169,6 +227,9 @@ solo).
 | `GAS_VOICE_SEGUITO_MAX` | 15 | secondi massimi di una frase senza «Hey Jarvis» nella conversazione (3–30) |
 | `GAS_VOICE_MAX_TURNI` | 1 | turni dopo la parola, il primo compreso (1 = solo la richiesta dopo «Hey Jarvis»: per continuare si ripete la parola; 3 = la richiesta più 2 di seguito senza ripeterla) |
 | `GAS_ASCOLTO_MODELLO` | hey_jarvis | modello di openWakeWord |
+| `GAS_ASCOLTO_VERIFICA` | 1 | `0` = niente verifica della voce anche se è addestrata (si torna a `GAS_ASCOLTO_SOGLIA`) |
+| `GAS_ASCOLTO_SOGLIA_VERIFICA` | 0.5 | con la verifica attiva, sensibilità della parola al posto di `GAS_ASCOLTO_SOGLIA` (più alta = meno attivazioni per sbaglio; mai sotto `GAS_ASCOLTO_SOGLIA_BASE`) |
+| `GAS_ASCOLTO_SOGLIA_BASE` | 0.25 | con la verifica attiva, punteggio del modello della parola da cui un pezzo di audio passa alla verifica (0.05–0.9; se lo cambi, riaddestra con `--solo-addestra`) |
 | `GAS_ASCOLTO_FORMATO` | audio+pezzi | risposta a frasi in fila; vuoto = un solo audio alla fine, come prima |
 
 Dopo una modifica: `bash scripts/voce/installa.sh` (riavvia i servizi).
