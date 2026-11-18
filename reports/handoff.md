@@ -21,15 +21,13 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
+ .claude/agents/memoria_revisore.md |   6 ++++++
  modules/voice/server.py            |  28 +++++++++++++++++++++++++++-
- modules/web/browser.py             |  93 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- reports/diff_sessione.md           |   9 ++++-----
+ reports/diff_sessione.md           |  12 ++++--------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
  reports/ultimo_report.md           |  15 ++++++---------
  tests/test_unit_voice_server.py    |  42 +++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_web_browser.py     |  89 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -88,6 +86,30 @@ Review #807-M1coord, delta sulla #806. Id libero; riga contatore in f36758e9; di
 
 ### Review #808-M1coord (porting del fix bwrap di #380, commit 605e154c)
 
+## VERDETTO: APPROVATO
+
+Review #809-M1coord — merge di origin/main (PR #382) dentro fix/voce-togli-parola (PR #383), diff staged non ancora committato.
+
+**Elementi esaminati**
+- modules/voice/server.py:982 — `togli_parola_in_testa(prompt)` chiamata solo fuori dal seguito; funzione a modules/voice/server.py:153. Diff staged vs HEAD del branch per server.py e tests/test_unit_voice_server.py = 0 righe: il merge non l'ha toccata. — ok
+- clients/voice/ascolto.py:1399 — `verifica_della_voce` / caricamento verificatore (clients/voice/ascolto.py:1440) arrivano da main; blob staged identico a origin/main (diff vs origin/main su clients/ scripts/ tests/ modules/ mostra solo i 2 file propri di #383). Rischio di interferenza: le aggiunte in ascolto.py non toccano il protocollo/messaggi verso il server; ascolto.py non importa da modules/. Processi separati (client di ascolto vs server voce). — ok
+- tests/test_unit_voce_ascolto.py:3304 — test cartella madre del verificatore, identico a main; rieseguiti tests/test_unit_voce_ascolto.py + tests/test_unit_voice_server.py: **622 passed**. — ok
+
+**Unione memoria/stato**
+- .claude/agents/memoria_revisore.md e reports/stato_progetto.md: diff vs HEAD e vs origin/main sono SOLO aggiunte → unione pura, nessuna riga persa, nessun duplicato, zero marcatori.
+- Ordine in memoria: le righe #806-#808 del branch precedono #804/#805 di main (non cronologico) — cosmetico, non va toccato.
+- presentazione_clienti/* e reports/guida_voce_in_giro.md identici a main; unico avviso `git diff --check`: spazio a fine riga in reports/guida_voce_in_giro.md:20 (proveniente da main).
+
+**Non verificato**
+- Comportamento sul Mac (microfono vero, verificatore .pkl addestrato) — non riproducibile nel container.
+- Suite completa non lanciata (solo i due file voce); il resto lo copre la CI della PR.
+
+**Memoria**: aggiunta in coda a .claude/agents/memoria_revisore.md la riga «#809-M1coord — 2026-11-18 — APPROVATO — … nessuna lezione nuova».
+
+## §4bis VERDETTO DEL REVISORE SUL PORTING ORA IN MAIN (#808-M1coord)
+
+Il codice di questo verdetto (modules/web/browser.py e il suo test) è arrivato in main con la #380, mergiata il 18/11: dopo il merge di main nel branch non è più nel diff di questa PR, quindi il verdetto sta fuori dal §4 (che check_verdetto confronta col diff). Testo integrale, invariato:
+
 ## VERDETTO: APPROVATO CON RISERVE
 
 Review #808-M1coord. Porting del commit 605e154c (PR #380) in due branch: fix/voce-togli-parola e feat/voce-verifica-parlante. Letti prima CLAUDE.md, reports/stato_progetto.md e la memoria.
@@ -111,26 +133,6 @@ Review #808-M1coord. Porting del commit 605e154c (PR #380) in due branch: fix/vo
 **Rischio escluso:** comportamento reale nel sandbox su Ubuntu 26.04 non verificato (bwrap assente): fa fede la CI di #380 (unit-suite success); merito del fix già revisionato nell'altra chat.
 
 **Memoria:** riga #808-M1coord e una lezione (commit 50fade22 su fix/voce-togli-parola).
-
-## VERDETTO: APPROVATO
-
-Review #809-M1coord — merge di origin/main (PR #382) dentro fix/voce-togli-parola (PR #383), diff staged non ancora committato.
-
-**Elementi esaminati**
-- modules/voice/server.py:982 — `togli_parola_in_testa(prompt)` chiamata solo fuori dal seguito; funzione a modules/voice/server.py:153. Diff staged vs HEAD del branch per server.py e tests/test_unit_voice_server.py = 0 righe: il merge non l'ha toccata. — ok
-- clients/voice/ascolto.py:1399 — `verifica_della_voce` / caricamento verificatore (clients/voice/ascolto.py:1440) arrivano da main; blob staged identico a origin/main (diff vs origin/main su clients/ scripts/ tests/ modules/ mostra solo i 2 file propri di #383). Rischio di interferenza: le aggiunte in ascolto.py non toccano il protocollo/messaggi verso il server; ascolto.py non importa da modules/. Processi separati (client di ascolto vs server voce). — ok
-- tests/test_unit_voce_ascolto.py:3304 — test cartella madre del verificatore, identico a main; rieseguiti tests/test_unit_voce_ascolto.py + tests/test_unit_voice_server.py: **622 passed**. — ok
-
-**Unione memoria/stato**
-- .claude/agents/memoria_revisore.md e reports/stato_progetto.md: diff vs HEAD e vs origin/main sono SOLO aggiunte → unione pura, nessuna riga persa, nessun duplicato, zero marcatori.
-- Ordine in memoria: le righe #806-#808 del branch precedono #804/#805 di main (non cronologico) — cosmetico, non va toccato.
-- presentazione_clienti/* e reports/guida_voce_in_giro.md identici a main; unico avviso `git diff --check`: spazio a fine riga in reports/guida_voce_in_giro.md:20 (proveniente da main).
-
-**Non verificato**
-- Comportamento sul Mac (microfono vero, verificatore .pkl addestrato) — non riproducibile nel container.
-- Suite completa non lanciata (solo i due file voce); il resto lo copre la CI della PR.
-
-**Memoria**: aggiunta in coda a .claude/agents/memoria_revisore.md la riga «#809-M1coord — 2026-11-18 — APPROVATO — … nessuna lezione nuova».
 
 ## §5 DELTA TEST DEL MOTORE
 
