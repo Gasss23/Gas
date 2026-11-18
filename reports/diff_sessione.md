@@ -1,11 +1,10 @@
-# Diff della sessione — 2026-11-17 — voce: filtro sulla voce (M1)
+# Diff sessione — 2026-11-18 — Presentazione clienti: versione definitiva
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+File toccati (da `git diff --stat BASE..HEAD` + report di fine task):
 
-- `scripts/voce/registra_voce.py` (nuovo): registrazione guidata e addestramento del verificatore.
-- `clients/voice/ascolto.py`: verifica della voce (stato, caricamento sicuro del pkl, soglie base/verifica), fallback senza verifica, log.
-- `scripts/voce/taratura_parola.py`: stesso rilevatore, messaggio `.venv/bin/python`.
-- `scripts/voce/LEGGIMI.md`: sezione «Verifica della voce» e righe nuove della tabella.
-- `tests/test_unit_voce_ascolto.py`: 27 test nuovi.
-- `reports/guida_voce_in_giro.md` (nuovo).
-- `.claude/agents/memoria_revisore.md`, `reports/*`: righe #803-#805 e report.
+- `presentazione_clienti/build.py` — schema semplice del matched trading; niente grassetti nei paragrafi; titoli sfumati tutti ciano; segnaposto tenui; servizio 04 «Gruppo Privato» (pagina nuova, panoramica, copertina, avvertenze); 9 pagine.
+- `presentazione_clienti/Presentazione_Ecosistema.pdf` — il PDF definitivo consegnato all'operatore.
+- `reports/stato_progetto.md` — la CI rossa per Ubuntu 26.04 segnata come chiusa, con le note della verifica esterna #380.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
