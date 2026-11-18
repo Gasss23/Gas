@@ -1,39 +1,33 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-17 — Voce: filtro sulla voce dell'operatore per «Hey Jarvis» + guida in giro (M1)
+**Sessione:** 2026-11-17 — Voce: la parola di attivazione non arriva più al cervello (M1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa sessione (nessuna riserva aperta oltre a R-804-3 COSMETICA).
-2. Dopo il merge: registrare la voce sul Mac (`scripts/voce/registra_voce.py`, circa 5 minuti) e riprovare Jarvis.
+1. Merge della PR di questa sessione (riserve solo BASSE).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — verificatore della voce** (taratura del 17/11 sul Mac: la voce normale dell'operatore arriva solo a 0,37-0,43 col modello hey_jarvis): FATTA — 3c25eeee, review #804-M1coord APPROVATO CON RISERVE; R-804-1/2 chiuse in 6219b621, review #805-M1coord APPROVATO.
-- **Fetta 2 — guida «Gas in giro»** (`reports/guida_voce_in_giro.md`, solo documento): FATTA — 53cb2a12.
-- **Fetta scartata — data e ora nel prompt a voce**: review #803-M1coord BOCCIATO (c'erano già dal V13, `modules/voice/server.py` `ora_per_voce`); codice non committato, resta solo la riga di memoria (0e85b335). Causa del giro in più del 17/11 16:28: da trovare con il diario.
-- **Porting del fix bwrap (dalla PR #380, commit 605e154c)** per la CI su Ubuntu 26.04: FATTO — review #808-M1coord APPROVATO CON RISERVE (R-808-1 BASSA: meglio mergiare prima la #380). La #380 è stata mergiata il 18/11 e main è entrato nel branch: browser.py e il suo test ora coincidono con main e non sono più nel diff (R-808-1 chiusa).
+- **Fetta 1 — togliere «Hey Jarvis» e storpiature in testa alla richiesta** (diario del Mac 17/11 15:28:57Z: `ricorda` con query 'jarways', un giro in più): FATTA — 1ae76716, review #806-M1coord APPROVATO CON RISERVE (R-806-1 MEDIA).
+- **Fetta 2 — R-806-1: nel seguito il vocativo resta**: FATTA — 6e62dcde, review #807-M1coord APPROVATO CON RISERVE (R-807-1 BASSA).
+- **Porting del fix bwrap (dalla PR #380, commit 605e154c)** per la CI su Ubuntu 26.04: FATTO — review #808-M1coord APPROVATO CON RISERVE (R-808-1 BASSA: meglio mergiare prima la #380).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 ++
- clients/voice/ascolto.py           | 207 ++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- reports/diff_sessione.md           |  22 +++---
- reports/guida_voce_in_giro.md      |  32 +++++++++
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ modules/voice/server.py            |  28 +++++++++++++++++++++++++++-
+ reports/diff_sessione.md           |  12 ++++--------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  24 +++----
- scripts/voce/LEGGIMI.md            |  65 +++++++++++++++++-
- scripts/voce/registra_voce.py      | 573 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- scripts/voce/taratura_parola.py    |  65 ++++++++++++------
- tests/test_unit_voce_ascolto.py    | 568 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/ultimo_report.md           |  15 ++++++---------
+ tests/test_unit_voice_server.py    |  42 +++++++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -41,65 +35,76 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-2fe61b78 docs(fine-task): handoff col porting del fix bwrap (#808-M1coord)
-ba62b507 fix(web): sandbox del browser su Ubuntu 26.04 (porting di 605e154c dalla PR #380) — review #808-M1coord
-84d1b770 docs(fine-task): §2/§3 handoff
-9ee2da5f docs(fine-task): riferimenti esterni nel verdetto #804 in forma leggibile da check_verdetto
-02ec8635 docs(fine-task): §2/§3 handoff
-176ef263 docs(fine-task): voce — filtro sulla voce dell'operatore (review #804/#805-M1coord)
-53cb2a12 docs(voce): guida per usare Gas in giro (Telegram vocali, Comando Rapido iPhone)
-0e85b335 chore(revisore): memoria review #803 — BOCCIATO
-6219b621 fix(voce): verifica della voce mai ferma all'avvio con cartella illeggibile; test su proprietario e cartella (R-804-1/2) — review #805-M1coord
-2a32f67a chore(revisore): memoria review #805 — APPROVATO
-3c25eeee feat(voce): filtro sulla voce dell'operatore per «Hey Jarvis» (verificatore openWakeWord) + registrazione guidata — review #804-M1coord
-1473e9c9 chore(revisore): memoria review #804 — APPROVATO CON RISERVE
+4786ce0c docs(fine-task): handoff col porting del fix bwrap (#808-M1coord)
+c87ea5e4 fix(web): sandbox del browser su Ubuntu 26.04 (porting di 605e154c dalla PR #380) — review #808-M1coord
+50fade22 chore(revisore): memoria review #808 — APPROVATO CON RISERVE
+4cab4326 docs(fine-task): §2/§3 handoff
+75732f2f docs(fine-task): voce — parola di attivazione tolta (review #806/#807-M1coord)
+6e62dcde fix(voce): nel seguito il vocativo «Jarvis, …» resta (R-806-1) — review #807-M1coord
+f36758e9 chore(revisore): memoria review #807 — APPROVATO CON RISERVE
+1ae76716 fix(voce): la parola di attivazione (e le storpiature come «Jarways») non arriva più al cervello in testa alla richiesta — review #806-M1coord
+be95f7a6 chore(revisore): memoria review #806 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #804-M1coord (commit 3c25eeee)
+### Review #806-M1coord (commit 1ae76716)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #804-M1coord. Diff staged nella worktree del branch feat/voce-verifica-parlante (5 file). Letti prima CLAUDE.md, reports/stato_progetto.md (parti utili) e la memoria. Confronto col sorgente di openWakeWord 0.6.0 installato nell'area temporanea.
+Review #806-M1coord. L'id era libero (ultima voce in memoria #802-M1coord). Riga contatore e una lezione nel commit be95f7a6 (`.claude/agents/memoria_revisore.md`); diff staged intatto (2 file).
 
-**Punti del diff esaminati**
-- `clients/voice/ascolto.py:1370` — `_file_fidato` controlla file e cartella prima del caricamento con pickle. Rischi: symlink, proprietario diverso, file scrivibile da altri, TOCTOU. Percorso fisso (`percorso_verificatore`: radice + `.gas_voce/verifica` + nome `[a-z0-9_]{1,40}`): nessun path traversal. TOCTOU solo per chi può scrivere in `verifica`, che il controllo esclude: accettabile su un Mac a un utente. Esito: ok con riserva R-804-1. Mutanti: tolto il controllo symlink → 1 rosso; tolto il controllo permessi → 1 rosso; il controllo del proprietario (`if False`) e quello della cartella madre (`for q in (p,)`) **sopravvivono** (26 verdi).
-- `clients/voice/ascolto.py:1432` — `custom_verifier_models` e `custom_verifier_threshold=soglia_base` a `Model`. Rischio: punteggio non verificato che attiva. openwakeword/model.py (righe 320-327): il verificatore sostituisce il punteggio solo dalla soglia base in su; con `clients/voice/ascolto.py:1470` (soglia della verifica mai sotto la base) un blocco non verificato non attiva. Esito: ok. Mutante `max(...,0.0)` → 1 rosso.
-- `clients/voice/ascolto.py:1473` — anche la soglia dell'interruzione non scende sotto la base. Rischio: risposte non richieste mentre Gas parla. Con la verifica attiva l'eco di Gas viene scartata dal filtro; prezzo: l'operatore interrompe più a fatica (rischio dichiarato). Esito: ok. Mutante → 1 rosso.
-- `clients/voice/ascolto.py:1441` — `rilevatore_con_verifica`: pkl che non si carica → fallback senza verifica (§9); numpy/openwakeword mancanti rilanciati come prima. In `main` lo stato passa a «non caricata» PRIMA di `_regolazioni` (soglia di nuovo 0,7). Un errore di `predict_proba` durante l'ascolto è catturato dal ciclo (`clients/voice/ascolto.py:490`): niente crash, ma Jarvis diventa sordo (direzione sicura), segnalato nel log. Esito: ok.
-- Senza pkl comportamento identico a oggi: stato «assente» → stessa `Model(wakeword_models=[modello], inference_framework="onnx")`, stessa `GAS_ASCOLTO_SOGLIA` 0,7, stessa interruzione; cambia solo la riga di log. Esito: ok.
-- `scripts/voce/registra_voce.py:306` — `MotoreOWW.blocchi` contro `get_reference_clip_features` (custom_verifier_model.py (righe 30-86)): stesso passo di 1280 campioni, stesso spostamento casuale 0-1280 con 5 ripetizioni, stesse feature `preprocessor.get_features(...)` che `predict` passa al verificatore. Negativi su tutti i blocchi (come `threshold=0.0`), positivi dalla soglia base invece che da 0,5; 1 s di silenzio in testa per i primi 5 blocchi azzerati; classificatore `train_verifier_model` della libreria. Esito: ok.
-- `scripts/voce/registra_voce.py:104` e `scripts/voce/registra_voce.py:118` — privacy: cartelle 0700, file 0600 scritti in modo atomico (mkstemp + replace); clip di `say` a 0600 in cartella 0700; `.gas_voce/` in `.gitignore` (riga 23) con test. Esito: ok.
-- Test: `tests/test_unit_voce_ascolto.py:3282` (file non fidato) e `tests/test_unit_voce_ascolto.py:3407` (verifica rotta/spenta/assente). Suite voce_ascolto rieseguita: 371 passed.
+**Elementi del diff esaminati**
+- `modules/voice/server.py:139` — `_NOME_JARVIS` con le storpiature, usato in `_ATTIVAZIONE_UNA` (quindi anche `_SOLO_ATTIVAZIONE` e `_SOLO_PAUSA`). Rischio: parole italiane catturate. Esito: ok — «Giarvisio è un nome» e «Jarvisè qui» invariati (serve `\b` dopo il nome); «Jarways pausa» vale come pausa, giusto.
+- `modules/voice/server.py:148` — `_PAROLA_IN_TESTA`. Rischio: «Gas» come soggetto. Esito: ok — «Gas ha detto…» e «Gasolio…» invariati («Gas» da solo si toglie solo se seguito da punteggiatura). Riserva BASSA: «Ei, gas è salito» → «è salito»; «Gas: la bolletta del gas» → «la bolletta del gas» (rari).
+- `modules/voice/server.py:153` — `togli_parola_in_testa`. Rischi: ciclo e risultato vuoto. Esito: ok — al massimo 3 giri; vuota → originale; `re.sub` su str non solleva (§9); niente log, niente privacy.
+- `modules/voice/server.py:979` — solo nel ramo parlato, dopo i filtri pausa, solo attivazione e frammento, prima di `cervello_voce`. Rischio: interazione con «forte». Esito: ok, provato a mano: «Hey Jarvis, forte, riassumi i lead» → forte; «Jarways forte riassumi» → forte (miglioramento); «Gas forte riassumi» invariato → forte; «Gas, forte» → messaggio d'uso come prima. `self._capito` resta l'originale.
+- `modules/voice/server.py:1056` (contesto) — **R-806-1 MEDIA**: nel seguito il vocativo («Gas, accendi la luce», «Jarvis, spegni») è il segno più forte che la frase è per Gas e viene tolto PRIMA che il forte la veda con `ISTRUZIONE_SEGUITO`; con «nel dubbio, silenzio» «accendi la luce» da sola può finire in [NON_PER_ME]. Proposta: nel seguito non togliere la parola, o sostituire le storpiature con «Jarvis».
+- `tests/test_unit_voice_server.py:2844` — test parametrizzato con 10 casi, positivi e negativi. Esito: ok.
+- `tests/test_unit_voice_server.py:2855` — test end-to-end: il kernel riceve «che ore sono?». Esito: ok; il campo `_prompt` dell'helper non rompe altri test: 248 passed (rieseguito, 304 s).
 
-**Riserve**
-- **R-804-1 BASSA**: proprietario (`st_uid`) e cartella madre (`clients/voice/ascolto.py:1377`) senza test (spegnerli lascia la suite verde).
-- **R-804-2 BASSA**: `verifica_della_voce` chiamata fuori dal try in `main` (`clients/voice/ascolto.py:1544`): su Python 3.11/3.12 `Path.exists()`/`is_symlink()` rilanciano PermissionError; con `.gas_voce` non attraversabile l'ascolto crasha all'avvio.
-- **R-804-3 COSMETICA**: la soglia base dell'addestramento è nel .json ma non confrontata a runtime.
+**Riserve da tracciare**: R-806-1 MEDIA (vocativo tolto nel seguito); R-806-2 BASSA (falsi positivi rari «Ehi, gas …», «Gas: …»); nessun test sul seguito col vocativo.
 
-**Non verificato**: Mac reale (microfono, `say`, launchd); qualità reale del filtro sulla voce dell'operatore; pkl fra versioni di scikit-learn; LEGGIMI letto in parte.
+**Non verificato**: comportamento reale del forte nel seguito senza vocativo (serve `claude -p` sul Mac; R-806-1 è un'analisi); se il turno del 17/11 fosse un seguito; suite completa del kernel e del client.
 
-Wall of Shame: nessuna violazione; guardrail del kernel non toccati. Memoria: riga #804-M1coord e una lezione (commit 1473e9c9).
+### Review #807-M1coord (commit 6e62dcde)
 
-### Review #805-M1coord (commit 6219b621)
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #807-M1coord, delta sulla #806. Id libero; riga contatore in f36758e9; diff staged intatto (2 file, +13/-1).
+
+**Elementi del diff esaminati**
+- `modules/voice/server.py:979` — la parola in testa si toglie solo se `not self._seguito()`. Rischio: effetto sugli altri filtri: pausa, sola attivazione e frammenti del seguito stanno prima; ramo del testo scritto invariato. Esito: ok, **R-806-1 chiusa**.
+- `tests/test_unit_voice_server.py:2862` — `test_nel_seguito_il_vocativo_resta`. Rischio: test che passa senza la correzione. Controprova: condizione sostituita da `if True:` → 1 failed; file ripristinato, `git diff` vuoto. Esito: ok.
+- `tests/test_unit_voice_server.py:2855` — il caso fuori dal seguito («Jarways, che ore sono?» → «che ore sono?») passa ancora; 12 test mirati: 12 passed (rieseguiti). Esito: ok.
+
+**Riserve**: **R-807-1 (BASSA)** — nel seguito una storpiatura («Jarways, …») arriva ancora al forte, che può chiamare `ricorda`: il caso del 17/11 può ripetersi solo nel seguito; correzione possibile: sostituire la storpiatura con «Jarvis». Da tracciare con R-806-2.
+
+**Non verificato**: suite voice_server completa non rieseguita (la #806 dava 248 passed; il delta tocca una riga coperta dai test mirati); comportamento reale del forte nel seguito (serve `claude -p` sul Mac).
+
+### Review #808-M1coord (porting del fix bwrap di #380, commit 605e154c)
 
 ## VERDETTO: APPROVATO
 
-Review #805-M1coord: R-804-1 e R-804-2 chiuse, nessuna riserva nuova. Diff staged nella worktree (2 file, da 3c25eeee).
+Review #809-M1coord — merge di origin/main (PR #382) dentro fix/voce-togli-parola (PR #383), diff staged non ancora committato.
 
-- `clients/voice/ascolto.py:1408` — `exists()`/`is_symlink()` dentro `try/except OSError` → «non caricata» con avviso (`gas.ascolto`, riga 1414); il pkl non viene mai caricato in quel percorso; soglia di nuovo 0,7; solo OSError intercettato. Esito: ok, R-804-2 chiusa.
-- `tests/test_unit_voce_ascolto.py:3304` — test su proprietario diverso (`os.getuid` monkeypatchato) e cartella `verifica` 0o777; permessi ripristinati nel `finally`. Mutanti: `if False` → 1 failed; `for q in (p,)` → 1 failed. Esito: ok, R-804-1 chiusa.
-- `tests/test_unit_voce_ascolto.py:3323` — `Path.exists` che solleva PermissionError: stato, motivo e log controllati; mutante `except ZeroDivisionError` → 1 failed. Esito: ok.
-- Suite voce_ascolto: 373 passed (rieseguita).
+**Elementi esaminati**
+- modules/voice/server.py:982 — `togli_parola_in_testa(prompt)` chiamata solo fuori dal seguito; funzione a modules/voice/server.py:153. Diff staged vs HEAD del branch per server.py e tests/test_unit_voice_server.py = 0 righe: il merge non l'ha toccata. — ok
+- clients/voice/ascolto.py:1399 — `verifica_della_voce` / caricamento verificatore (clients/voice/ascolto.py:1440) arrivano da main; blob staged identico a origin/main (diff vs origin/main su clients/ scripts/ tests/ modules/ mostra solo i 2 file propri di #383). Rischio di interferenza: le aggiunte in ascolto.py non toccano il protocollo/messaggi verso il server; ascolto.py non importa da modules/. Processi separati (client di ascolto vs server voce). — ok
+- tests/test_unit_voce_ascolto.py:3304 — test cartella madre del verificatore, identico a main; rieseguiti tests/test_unit_voce_ascolto.py + tests/test_unit_voice_server.py: **622 passed**. — ok
 
-Non verificato: cartella davvero senza permessi su Mac con Python 3.11/3.12 (qui 3.13; test con monkeypatch). R-804-3 COSMETICA resta aperta. Memoria: riga #805-M1coord (commit 2a32f67a).
+**Unione memoria/stato**
+- .claude/agents/memoria_revisore.md e reports/stato_progetto.md: diff vs HEAD e vs origin/main sono SOLO aggiunte → unione pura, nessuna riga persa, nessun duplicato, zero marcatori.
+- Ordine in memoria: le righe #806-#808 del branch precedono #804/#805 di main (non cronologico) — cosmetico, non va toccato.
+- presentazione_clienti/* e reports/guida_voce_in_giro.md identici a main; unico avviso `git diff --check`: spazio a fine riga in reports/guida_voce_in_giro.md:20 (proveniente da main).
 
-NB: nel verdetto #804 i due riferimenti alla libreria esterna openWakeWord (non nel repo) sono scritti come «(righe N-M)» invece di «file:N-M», perché check_verdetto accetta solo file del repo; il testo è altrimenti integrale.
+**Non verificato**
+- Comportamento sul Mac (microfono vero, verificatore .pkl addestrato) — non riproducibile nel container.
+- Suite completa non lanciata (solo i due file voce); il resto lo copre la CI della PR.
 
-### Review #808-M1coord (porting del fix bwrap di #380, commit 605e154c)
+**Memoria**: aggiunta in coda a .claude/agents/memoria_revisore.md la riga «#809-M1coord — 2026-11-18 — APPROVATO — … nessuna lezione nuova».
 
 ## §4bis VERDETTO DEL REVISORE SUL PORTING ORA IN MAIN (#808-M1coord)
 
@@ -131,22 +136,19 @@ Review #808-M1coord. Porting del commit 605e154c (PR #380) in due branch: fix/vo
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `python -B -m pytest -q tests/test_unit_voce_ascolto.py` → 346 passed (main 01eb9f5) → 371 (3c25eeee) → 373 passed (6219b621).
-- `tests/test_unit_voice_server.py`: 236 passed (agente, dopo 3c25eeee).
-- Resto di `tests/` (agente): 3812 passed, 33 failed tutti in `test_unit_web_browser.py` (bwrap assente nel container, identico su main).
-- Prova reale del verificatore (agente, modello vero, voci espeak): voce addestrata non vista 0,70-0,96; voci femminili/inglesi 0,19-0,34; 3 maschili italiane su 4 passano (0,83-0,93).
+- `python -B -m pytest -q tests/test_unit_voice_server.py` → 236 passed (main 01eb9f5) → 248 passed (1ae76716) → 249 (6e62dcde; mirati 54 passed, suite completa non rilanciata dopo il delta).
+- Kernel non toccato.
 
 ```
-373 passed
+248 passed
 ```
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente): run della PR non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA (gh assente): run della PR non ancora disponibile. Nota: dal 17/11 i 7 test bwrap di `tests/test_unit_web_browser.py` falliscono su tutti i branch (runner ubuntu-26.04); la correzione è in un'altra chat («Ecosistema servizi investimento PDF»).
 
 ## §7 RISERVE APERTE
 
 - R-808-1 BASSA — il fix bwrap della #380 viaggia anche qui: meglio mergiare prima la #380.
-- R-804-3 COSMETICA — la soglia base dell'addestramento non è confrontata a runtime.
-- Limiti dichiarati: voci maschili simili all'operatore passano; una registrazione dell'operatore riprodotta passa; pkl legato alla versione di scikit-learn (ritorna senza verifica, si rifà con `--solo-addestra`); `say` del Mac non provato su Mac reale; interruzione (0,8 × 3 blocchi) raggiunta di rado col verificatore.
-- Licenza CC BY-NC-SA di hey_jarvis: decisione dell'operatore ancora aperta.
+- R-806-2 BASSA — falsi positivi rari: «Ehi, gas è salito» → «è salito»; «Gas: la bolletta…» → «la bolletta…».
+- R-807-1 BASSA — nel seguito una storpiatura («Jarways, …») arriva ancora al forte.
