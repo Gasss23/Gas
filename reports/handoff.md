@@ -16,7 +16,7 @@
 - **Fetta 1 — verificatore della voce** (taratura del 17/11 sul Mac: la voce normale dell'operatore arriva solo a 0,37-0,43 col modello hey_jarvis): FATTA — 3c25eeee, review #804-M1coord APPROVATO CON RISERVE; R-804-1/2 chiuse in 6219b621, review #805-M1coord APPROVATO.
 - **Fetta 2 — guida «Gas in giro»** (`reports/guida_voce_in_giro.md`, solo documento): FATTA — 53cb2a12.
 - **Fetta scartata — data e ora nel prompt a voce**: review #803-M1coord BOCCIATO (c'erano già dal V13, `modules/voice/server.py` `ora_per_voce`); codice non committato, resta solo la riga di memoria (0e85b335). Causa del giro in più del 17/11 16:28: da trovare con il diario.
-- **Porting del fix bwrap (dalla PR #380, commit 605e154c)** per la CI su Ubuntu 26.04: FATTO — review #808-M1coord APPROVATO CON RISERVE (R-808-1 BASSA: meglio mergiare prima la #380).
+- **Porting del fix bwrap (dalla PR #380, commit 605e154c)** per la CI su Ubuntu 26.04: FATTO — review #808-M1coord APPROVATO CON RISERVE (R-808-1 BASSA: meglio mergiare prima la #380). La #380 è stata mergiata il 18/11 e main è entrato nel branch: browser.py e il suo test ora coincidono con main e non sono più nel diff (R-808-1 chiusa).
 
 ---
 
@@ -25,17 +25,15 @@
 ```
  .claude/agents/memoria_revisore.md |   5 ++
  clients/voice/ascolto.py           | 207 ++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- modules/web/browser.py             |  93 ++++++++++++++++++++++++--
- reports/diff_sessione.md           |  13 ++--
+ reports/diff_sessione.md           |  22 +++---
  reports/guida_voce_in_giro.md      |  32 +++++++++
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  18 ++---
+ reports/ultimo_report.md           |  24 +++----
  scripts/voce/LEGGIMI.md            |  65 +++++++++++++++++-
  scripts/voce/registra_voce.py      | 573 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  scripts/voce/taratura_parola.py    |  65 ++++++++++++------
  tests/test_unit_voce_ascolto.py    | 568 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_web_browser.py     |  89 ++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -102,6 +100,10 @@ Non verificato: cartella davvero senza permessi su Mac con Python 3.11/3.12 (qui
 NB: nel verdetto #804 i due riferimenti alla libreria esterna openWakeWord (non nel repo) sono scritti come «(righe N-M)» invece di «file:N-M», perché check_verdetto accetta solo file del repo; il testo è altrimenti integrale.
 
 ### Review #808-M1coord (porting del fix bwrap di #380, commit 605e154c)
+
+## §4bis VERDETTO DEL REVISORE SUL PORTING ORA IN MAIN (#808-M1coord)
+
+Il codice di questo verdetto (modules/web/browser.py e il suo test) è arrivato in main con la #380, mergiata il 18/11: dopo il merge di main nel branch non è più nel diff di questa PR, quindi il verdetto sta fuori dal §4 (che check_verdetto confronta col diff). Testo integrale, invariato:
 
 ## VERDETTO: APPROVATO CON RISERVE
 
