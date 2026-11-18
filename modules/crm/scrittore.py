@@ -55,9 +55,12 @@ Chiedi = Callable[[str, List[Dict[str, str]]], Tuple[str, float]]
 # un consumo di questo processo che non si è potuto registrare: niente altre riscritture
 _senza_conto = False
 
-_VIETATE = ("garantit", "sicuro al 100", "senza rischi", "senza rischio", "zero rischi",
-            "ultimi posti", "solo oggi", "affrettati", "perdit", "drawdown", "rendimento certo",
-            "guadagno certo")
+_VIETATE = ("garantit", "garantisc", "garanzi", "assicurat", "sicuro al 100", "senza rischi",
+            "senza rischio", "zero rischi", "rischio zero", "capitale protetto",
+            "rendimento sicuro", "guadagno sicuro", "profitto sicuro", "investimento sicuro",
+            "rendimento certo", "guadagno certo", "profitto certo", "soldi facili",
+            "guadagni facili", "ultimi posti", "solo oggi", "solo per oggi", "affrettati",
+            "investi ora", "investi subito", "perdit", "drawdown")
 
 SISTEMA = """Sei il copywriter di un'attività italiana che offre servizi di trading ai propri clienti.
 Riscrivi la bozza di un messaggio WhatsApp per UN cliente: deve essere caldo, personale,

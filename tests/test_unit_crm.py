@@ -1276,7 +1276,11 @@ def test_v1_ve381_parole_vietate_non_si_aggirano() -> None:
     staccate non aggirano più il filtro; le frasi normali passano."""
     from modules.crm import scrittore
     for furbo in ("rendimento garan\u200btito", "zero  rischi", "g a r a n t i t o",
-                  "SICURO AL 100 %", "nessun draw-down", "Solo   oggi!"):
+                  "SICURO AL 100 %", "nessun draw-down", "Solo   oggi!",
+                  # V-3 verifica esterna #381 (4° giro): altre forme della stessa promessa
+                  "ti garantisco un bel mese", "garanzia di rendimento", "capitale protetto",
+                  "rendimento sicuro", "profitto assicurato", "soldi facili", "investi ora",
+                  "solo per oggi"):
         with pytest.raises(ErroreCRM, match="testo scartato"):
             scrittore.pulisci(furbo)
     for buono in ("Ciao Mario, ottimo mese! Ti va di provare Segnali VIP? Ne parliamo?",
