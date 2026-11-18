@@ -5655,7 +5655,12 @@ class GasKernel:
                         # V-1 bot #222: conta anche il pin che mostra dati non fidati.
                         _finestra_contaminata = (self._finestra_e_contaminata(_window)
                                                  or getattr(self, "_pin_non_fidato", False))
-                        _forte_rung = name == "claude-cli"
+                        # R-810-1 (regola «dati dei clienti SOLO su Opus», scelta A): il blocco
+                        # di memoria PIENO (nomi dei lead, lezioni e recap che li nominano) va
+                        # solo a una chiamata Opus; il forte con un altro modello riceve quello
+                        # anonimo, come i gratuiti. Se gli serve un lead lo chiede con ricorda:
+                        # da lì la finestra ha dati di clienti e la chiamata dopo è Opus.
+                        _forte_rung = name == "claude-cli" and e_modello_opus(_model_call)
                         _pin_rung = (mem_pin + lezioni_pin + recap_pin if _forte_rung else
                                      mem_pin_anonimo + lezioni_pin_anonimo + recap_pin_anonimo)
                         payload = [{"role": "system", "content": self.system_prompt + _pin_rung + turno_pin}] + _senza_segni_interni(_window)

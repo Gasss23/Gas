@@ -12976,37 +12976,53 @@ try:
           and not any(v in x for x in _tutti for v in ("Giulia", "Bianchi", "giulia@acme.it"))
           and all("2 lead attivi (dettagli solo al cervello forte)" in x for x in _tutti),
           str(_n))
-    # T114i: il cervello forte (claude-cli) riceve il pin PIENO (round-trip tool → final)
+    # T114i: il pin PIENO va solo a una chiamata Claude Opus; il forte con un altro modello
+    # riceve quello anonimo (R-810-1, regola «dati dei clienti SOLO su Opus») — round-trip
+    # tool → final con la CLI vera e il runner finto
     from brains.claude_cli import ClaudeCliClient as _CCC114
     import subprocess as _sp114
-    _reg114 = []
-    _it114 = iter([{"testo": "", "chiamate": [{"nome": "data_ora", "argomenti": {}}]},
-                   {"testo": "ok forte", "chiamate": []}])
 
-    def _run114(cmd, stdin, cwd, env, timeout):
-        _fs = cmd[cmd.index("--system-prompt-file") + 1]  # il pin vive nel file di sistema
-        _reg114.append(Path(_fs).read_text(encoding="utf-8"))
-        return _sp114.CompletedProcess(cmd, 0, stdout=json.dumps({
-            "type": "result", "subtype": "success", "is_error": False,
-            "structured_output": next(_it114),
-            "usage": {"input_tokens": 10, "output_tokens": 3}}), stderr="")
-    _orig114 = gas.ClaudeCliClient
-    gas.ClaudeCliClient = lambda timeout=None, **kw: _CCC114(timeout=timeout, binario="claude",
-                                                              runner=_run114)
-    os.environ["GAS_CLAUDE_CLI"] = "1"
-    try:
-        _ev = list(_k114f.run_turn("che lead abbiamo?", cervello="forte"))
-    finally:
-        gas.ClaudeCliClient = _orig114
-        if _sv114["GAS_CLAUDE_CLI"] is None:
-            os.environ.pop("GAS_CLAUDE_CLI", None)
-        else:
-            os.environ["GAS_CLAUDE_CLI"] = _sv114["GAS_CLAUDE_CLI"]
-    check("T114i il cervello forte riceve il pin pieno coi lead (round-trip tool → final)",
+    def _turno_forte114(modello_forte):
+        _reg, _mod = [], []
+        _it = iter([{"testo": "", "chiamate": [{"nome": "data_ora", "argomenti": {}}]},
+                    {"testo": "ok forte", "chiamate": []}])
+
+        def _run(cmd, stdin, cwd, env, timeout):
+            _fs = cmd[cmd.index("--system-prompt-file") + 1]  # il pin vive nel file di sistema
+            _reg.append(Path(_fs).read_text(encoding="utf-8"))
+            _mod.append(cmd[cmd.index("--model") + 1] if "--model" in cmd else None)
+            return _sp114.CompletedProcess(cmd, 0, stdout=json.dumps({
+                "type": "result", "subtype": "success", "is_error": False,
+                "structured_output": next(_it),
+                "usage": {"input_tokens": 10, "output_tokens": 3}}), stderr="")
+        _orig, _origm = gas.ClaudeCliClient, gas.MODEL_CLAUDE_FORTE
+        gas.ClaudeCliClient = lambda timeout=None, **kw: _CCC114(timeout=timeout, binario="claude",
+                                                                 runner=_run)
+        gas.MODEL_CLAUDE_FORTE = modello_forte
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+        try:
+            return list(_k114f.run_turn("che lead abbiamo?", cervello="forte")), _reg, _mod
+        finally:
+            gas.ClaudeCliClient, gas.MODEL_CLAUDE_FORTE = _orig, _origm
+            if _sv114["GAS_CLAUDE_CLI"] is None:
+                os.environ.pop("GAS_CLAUDE_CLI", None)
+            else:
+                os.environ["GAS_CLAUDE_CLI"] = _sv114["GAS_CLAUDE_CLI"]
+    _ev, _reg114, _mod114 = _turno_forte114("claude-sonnet-5-5")
+    check("T114i forte NON Opus: pin anonimo a ogni chiamata, mai i nomi dei lead "
+          "(round-trip tool → final; R-810-1)",
           [e["type"] for e in _ev] == ["tool_res", "final"] and len(_reg114) == 2
+          and _mod114 == ["claude-sonnet-5-5"] * 2
+          and not any(v in x for x in _reg114 for v in ("Giulia", "Bianchi", "giulia@acme.it"))
+          and all("2 lead attivi (dettagli solo al cervello forte)" in x for x in _reg114),
+          f"{_mod114} {str(_ev)[-300:]}")
+    _ev, _reg114, _mod114 = _turno_forte114(gas.MODEL_CLAUDE_CLIENTI)
+    check("T114i2 forte Opus: pin pieno coi lead (round-trip tool → final)",
+          [e["type"] for e in _ev] == ["tool_res", "final"] and len(_reg114) == 2
+          and _mod114 == [gas.MODEL_CLAUDE_CLIENTI] * 2
           and all("Giulia Bianchi" in x for x in _reg114)
           and not any("dettagli solo al cervello forte" in x for x in _reg114),
-          str(_ev)[-300:])
+          f"{_mod114} {str(_ev)[-300:]}")
 except Exception as _e114x:
     import traceback as _tb114
     check("T114 blocco senza eccezioni", False, repr(_e114x) + _tb114.format_exc()[-600:])
@@ -13287,17 +13303,27 @@ try:
           "Rispondi in modo conciso" in _sys_g and "usa sempre il lei" not in _sys_g
           and "preventivo per Giulia" not in _sys_g and "RECAP PERTINENTE" not in _sys_g,
           _sys_g[-600:])
-    _kd3 = _k115d()
-    _g3, _f3 = _Script115([]), _Script115([_r115("ok forte")])
-    os.environ["GEMINI_API_KEY"] = "finta-115"
-    try:
-        with forte_finto(_f3):
-            _ev = list(_kd3.run_turn("riprendiamo il preventivo", cervello="forte"))
-    finally:
-        _ripristina115()
-    _sys_f = _f3.visti[0] if _f3.visti else ""
-    check("T115d2 al forte: lezioni e recap pieni",
+    def _forte115d(modello_forte):
+        _kd3 = _k115d()
+        _f3 = _Script115([_r115("ok forte")])
+        os.environ["GEMINI_API_KEY"] = "finta-115"
+        _origm = gas.MODEL_CLAUDE_FORTE
+        gas.MODEL_CLAUDE_FORTE = modello_forte
+        try:
+            with forte_finto(_f3):
+                list(_kd3.run_turn("riprendiamo il preventivo", cervello="forte"))
+        finally:
+            gas.MODEL_CLAUDE_FORTE = _origm
+            _ripristina115()
+        return _f3.visti[0] if _f3.visti else ""
+    _sys_f = _forte115d(gas.MODEL_CLAUDE_CLIENTI)
+    check("T115d2 al forte Opus: lezioni e recap pieni",
           "usa sempre il lei" in _sys_f and "preventivo per Giulia" in _sys_f, _sys_f[-600:])
+    _sys_f2 = _forte115d("claude-sonnet-5-5")
+    check("T115d2b al forte NON Opus: lezione col nome e recap che lo nomina omessi, le altre "
+          "lezioni restano (R-810-1)",
+          "Rispondi in modo conciso" in _sys_f2 and "usa sempre il lei" not in _sys_f2
+          and "preventivo per Giulia" not in _sys_f2, _sys_f2[-600:])
     _kd4 = _k115d()
     _kd4.memory.leggi_contatti = lambda *a, **kw: None
     _ev, _g, _f = _turno115(_kd4, "riprendiamo il preventivo", [_r115("ok")])
