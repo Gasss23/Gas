@@ -79,9 +79,11 @@ Poi sceglie l'azione:
 - **Dati dei clienti protetti dagli strumenti di Gas**: stanno in `.gas_memory_crm.db`, che il cancello rende illeggibile agli strumenti del modello. Se cambi `GAS_CRM_DB`, usa un nome che inizia con `.gas_memory` (altrimenti il CRM avvisa).
 - **Diario del CRM senza nomi**: è immutabile, quindi contiene solo numeri di cliente, importi e servizi; nomi e recapiti stanno solo nell'anagrafica, che si potrà anonimizzare su richiesta dell'interessato (GDPR, da decidere prima dei dati veri). Le note scritte a mano possono contenere dati personali: scrivile pensando che restano.
 - **Copie di sicurezza**: una al giorno in `.gas_memory_crm_backup/` (le ultime 30, fuori da git). Contengono i dati completi dei clienti: un'eventuale cancellazione su richiesta di un cliente (GDPR) deve valere anche per loro.
+- **Scelta a mano**: le regole dure (consenso, STOP, una proposta alla volta, un messaggio al mese) valgono sempre; quelle morbide no, ma la proposta lo scrive in testa al motivo («⚠ ATTENZIONE: cliente da soli 10 giorni, follow-up spento…»), così lo vedi prima di approvare.
+- **Parole vietate nei testi di Opus** (promesse di guadagno, «senza rischi», urgenza finta, perdite): il testo che le contiene viene scartato, anche se scritte con spazi o caratteri strani. È una rete, non la tutela: la tutela vera è la tua approvazione su ogni messaggio.
 - **Testi neutri** (cliente scelto a mano senza un risultato da citare): niente numeri e niente nota sul rischio; se lo mandi così com'è parte identico. Se lo modifichi, il sistema aggiunge la nota e la riga STOP come per ogni testo scritto a mano.
 
-**Nota sul modello:** il cervello forte di Gas, per i messaggi in chat che nominano un cliente, usa il modello di `GAS_MODEL_CLAUDE_FORTE` (oggi Sonnet). Per avere Opus anche lì basta scrivere `GAS_MODEL_CLAUDE_FORTE=claude-opus-5-5` nel file delle chiavi (consuma di più dell'abbonamento).
+**Modello per i clienti (decisione del 18 novembre):** quando in chat, a voce o su Telegram la conversazione contiene dati di un cliente, Gas risponde SOLO con Claude Opus (`GAS_MODEL_CLAUDE_CLIENTI`, default Opus), anche nei turni `/forte` e quando i dati arrivano a metà turno; se il modello configurato non è Opus si ferma e lo dice. Le altre conversazioni restano col modello forte normale (`GAS_MODEL_CLAUDE_FORTE`, oggi Sonnet), che riceve la memoria di Gas senza nomi dei lead: i dati dei clienti li vede solo Opus. Opus consuma di più del tetto giornaliero del forte.
 
 ## 6. Impostazioni (file `.env`)
 
@@ -98,6 +100,7 @@ Poi sceglie l'azione:
 | `GAS_CRM_INVII_PER_LOTTO` | 10 | invii al massimo per scaglione… |
 | `GAS_CRM_LOTTO_MINUTI` | 60 | …in questi minuti (anti-blocco WhatsApp) |
 | `GAS_CRM_MODELLO` | `claude-opus-5-5` | modello per riscrivere i testi (deve essere Opus) |
+| `GAS_MODEL_CLAUDE_CLIENTI` | `claude-opus-5-5` | modello di Gas in chat quando ci sono dati di clienti (deve essere Opus) |
 | `GAS_CRM_OPUS_GIORNO` | 60 | riscritture con Opus al massimo al giorno |
 | `GAS_CRM_PAUSA_DOPO_NO_GIORNI` | 30 | prima di riproporre ciò a cui ha detto no |
 | `GAS_CRM_ATTESA_RISPOSTA_GIORNI` | 5 | dopo quanti giorni un messaggio è «senza risposta» |

@@ -1,4 +1,4 @@
-# Diff della sessione — 2026-11-17 — CRM clienti (fetta 1 e fetta 2)
+# Diff della sessione — 2026-11-17/18 — CRM clienti (fette 1, 2 e 3)
 
 Si riscrive a ogni sessione; la storia completa sta in git.
 
@@ -28,3 +28,12 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 - `modules/crm/scrittore.py`: le riscritture con Opus entrano nel conto e nel tetto del cervello forte del kernel; il tetto del CRM conta i tentativi, segnati prima della chiamata (R-808-2).
 - `modules/crm/store.py`: `segna_evento_entro_tetto` (controllo e scrittura insieme); `identita_clienti` ripara un salvataggio interrotto (R-808-3); testo neutro inviato identico resta senza nota (R-808-7).
 - `.gitignore`: di nuovo `.gas_crm_demo.db*`. `reports/crm/guida.md`: falsi allarmi, copie di sicurezza, conto di Opus (R-808-5/6).
+
+## Fetta 3 — dati dei clienti SOLO con Opus (decisione del 18-11) e note della verifica esterna #381
+- `brains/model_ids.py`: `MODEL_CLAUDE_OPUS`, `MODEL_CLAUDE_CLIENTI` (`GAS_MODEL_CLAUDE_CLIENTI`), `e_modello_opus` (fonte unica dell'ID, V-4).
+- `gas.py`: con dati di clienti nella finestra il forte chiama Opus (anche /forte, a metà turno, nella riflessione); modello non Opus → turno fermo; il blocco di memoria pieno solo alle chiamate Opus (R-810-1).
+- `modules/crm/scrittore.py`: filtro delle parole vietate su testo normalizzato (V-1); modello dal file unico.
+- `modules/crm/motore.py`: «⚠ ATTENZIONE» nel motivo delle scelte manuali (V-2).
+- `modules/crm/store.py`: ripiego in lettura solo sul journal rimasto (R-809-1).
+- `tests/conftest.py`: le suite pytest non leggono il file vero dei clienti (R-809-2); test nuovi in `tests/test_unit_crm.py`, `tests/test_unit_kernel.py` (T117, T114i/T114i2, T115d2/T115d2b), `tests/test_unit_notte.py`.
+- `CLAUDE.md` §2: regola «dati dei clienti SOLO su Claude Opus»; `reports/crm/` (decisioni 10-11, domanda 3 tolta, guida).

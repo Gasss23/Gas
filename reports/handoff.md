@@ -1,18 +1,21 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-17 — CRM clienti: fetta 1 (prima bozza: servizi, registro movimenti, motore delle opportunità, dashboard in tempo reale) e fetta 2 (risposte dell'operatore: follow-up mensile, selezione dei clienti, invii a scaglioni, testi riscritti da Opus, clienti del CRM solo al cervello forte)
+**Sessione:** 2026-11-17/18 — CRM clienti: fetta 1 (prima bozza: servizi, registro movimenti, motore delle opportunità, dashboard in tempo reale), fetta 2 (risposte dell'operatore: follow-up mensile, selezione dei clienti, invii a scaglioni, testi riscritti da Opus, clienti del CRM solo al cervello forte) e fetta 3 (dati dei clienti SOLO con Claude Opus anche nella chat di Gas; note della verifica esterna #381, 3° giro)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #381 (https://github.com/Gasss23/Gas/pull/381), dopo il nuovo giro di bot e verifica esterna. Il merge lo decide l'operatore: restano riserve BASSE aperte, e il check verifica-bot è neutral perché la PR tocca la CI. Oggi è BLOCCATO dal check required `unit-suite`, rosso per 7 test del sandbox del browser che falliscono anche su altri rami (vedi §6). Prima serve una fetta separata su quel problema dei runner.
-2. Le 4 domande aperte in `reports/crm/domande.md`:
+1. Merge della PR #381 (https://github.com/Gasss23/Gas/pull/381). Lo decide l'operatore: restano riserve BASSE e COSMETICHE aperte, e il check verifica-bot è neutral perché la PR tocca la CI.
+   - Oggi il merge è BLOCCATO dal check required `unit-suite`, rosso per 7 test del sandbox del browser che falliscono anche su altri rami (vedi §6). Prima serve una fetta separata su quel problema dei runner.
+   - Il bot di verifica su e126c65c non ha concluso: tutti i suoi modelli sono falliti e il check risulta cancelled (vedi §6). Riparte col push di questo commit.
+2. R-810-1, scelta dell'agente da confermare. Il forte con un modello diverso da Opus riceve la memoria di Gas SENZA nomi dei lead (A), così i dati dei clienti li vede solo Opus e non si consumano token in più.
+   - L'alternativa B è usare Opus a ogni turno del forte in cui la memoria contiene lead: consuma molto di più il tetto giornaliero.
+3. Le 3 domande ancora aperte in `reports/crm/domande.md`:
    - come guadagniamo su ogni servizio, e il capitale minimo;
    - WhatsApp Business: app o API;
-   - Opus anche per le risposte di Gas in chat sui clienti (`GAS_MODEL_CLAUDE_FORTE`);
    - collegare le chat tra loro.
-3. Prima dei dati veri:
+4. Prima dei dati veri:
    - consenso dei clienti raccolto davvero;
    - verifica Consob con un consulente;
    - decisione GDPR: anonimizzazione su richiesta (R-803-9), estesa alle copie di sicurezza (R-808-6).
@@ -39,6 +42,15 @@
     - i clienti del CRM entrano nel filtro della regola dei modelli (R-803-4 chiusa, `gas.py`).
   - Il primo giro (#808) aveva trovato il filtro lento con molti clienti (R-808-1 ALTA). Ora è una regex unica in cache.
   - Chiuse anche R-808-2/3/4/7 e le riserve BASSE di bot e verifica esterna #381, R-804-1 e R-804-3.
+- **Fetta 3 — dati dei clienti SOLO con Claude Opus, più le note della verifica esterna #381 (3° giro)**: FATTA.
+  - Decisione dell'operatore del 18-11, testo esatto: «sì SOLO opus in chat anche se tanto risponderà in modo predefinito, la conversazione completa la lascia a me».
+  - Commit d402a4f6, review #810-CRM APPROVATO CON RISERVE:
+    - ogni chiamata del forte con dati di clienti nella conversazione usa `GAS_MODEL_CLAUDE_CLIENTI` (default Opus), anche /forte, a metà turno e nella riflessione; modello non Opus → turno fermo dichiarato;
+    - V-1: filtro delle parole vietate normalizzato;
+    - V-2: avviso «⚠ ATTENZIONE» sulle scelte manuali;
+    - V-4: ID di Opus in `brains/model_ids.py`;
+    - R-809-1 e R-809-2 chiuse.
+  - Commit 6ef97624, review #811-CRM APPROVATO: R-810-1 chiusa con la scelta A. Il blocco di memoria pieno va solo alle chiamate Opus.
 - **Invio automatico WhatsApp**: DEFERITA. Decisione dell'operatore: «da sole, ma all'inizio col mio controllo». Servono l'API WhatsApp Business e i modelli approvati da Meta.
 - **Strumento CRM per il modello di Gas** (sola lettura, solo cervello forte): DEFERITA, prossima fetta (`reports/crm/guida.md` §7).
 - **Integrazioni (broker, risposte WhatsApp automatiche)**: DEFERITA (`reports/crm/guida.md` §7).
@@ -48,33 +60,37 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   15 ++++
+ .claude/agents/memoria_revisore.md |   18 +++++
  .github/workflows/ci.yml           |    8 ++
  .gitignore                         |    5 ++
- gas.py                             |  264 ++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ CLAUDE.md                          |    2 +-
+ brains/model_ids.py                |   11 +++
+ gas.py                             |  306 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
  modules/crm/__init__.py            |   18 +++++
- modules/crm/__main__.py            |  380 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/analisi.py             |  391 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/demo.py                |  135 +++++++++++++++++++++++++++++++++
- modules/crm/messaggi.py            |  152 +++++++++++++++++++++++++++++++++++++
- modules/crm/motore.py              |  525 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/scrittore.py           |  224 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/server.py              |  876 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/store.py               | 1333 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/web/app.css            |  330 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/web/app.js             |  902 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/__main__.py            |  380 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/analisi.py             |  391 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/demo.py                |  135 ++++++++++++++++++++++++++++++++
+ modules/crm/messaggi.py            |  152 ++++++++++++++++++++++++++++++++++++
+ modules/crm/motore.py              |  540 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/scrittore.py           |  246 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/server.py              |  876 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/store.py               | 1335 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/web/app.css            |  330 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/web/app.js             |  902 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/web/favicon.svg        |    1 +
- modules/crm/web/index.html         |   17 +++++
- reports/crm/decisioni.md           |   24 ++++++
- reports/crm/domande.md             |    8 ++
- reports/crm/guida.md               |  120 +++++++++++++++++++++++++++++
- reports/diff_sessione.md           |   32 ++++++--
+ modules/crm/web/index.html         |   17 ++++
+ reports/crm/decisioni.md           |   29 +++++++
+ reports/crm/domande.md             |    7 ++
+ reports/crm/guida.md               |  123 +++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |   41 ++++++++--
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |    1 +
  reports/stato_progetto.md          |    6 +-
- reports/ultimo_report.md           |   43 ++++++++---
- tests/test_unit_crm.py             | 1486 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_kernel.py          |  154 +++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |   58 +++++++++++---
+ tests/conftest.py                  |   23 ++++++
+ tests/test_unit_crm.py             | 1541 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          |  338 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ tests/test_unit_notte.py           |    7 ++
 ```
 
 NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Gli altri conteggi sono presi con i report già in stage. `reports/crm.md`, creato e poi spostato in `reports/crm/guida.md` nella stessa sessione, non compare nel diff rispetto a BASE.
@@ -82,6 +98,11 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6ef97624 fix(kernel): il blocco di memoria pieno (nomi dei lead) solo alle chiamate Claude Opus — R-810-1, scelta A
+f4217863 chore(revisore): memoria review #811 — APPROVATO
+d402a4f6 feat(crm): dati dei clienti SOLO con Claude Opus anche nella chat di Gas; note della verifica esterna #381 (3° giro)
+49149716 chore(revisore): memoria review #810 — APPROVATO CON RISERVE
+e126c65c docs(fine-task): CRM fetta 2 — report, handoff con le review #808/#809, guida in reports/crm/, riserve R-809-1/2
 aa4bb422 feat(crm): fetta 2 — follow-up mensile, selezione clienti, invii a scaglioni, testi riscritti da Opus, clienti del CRM solo al cervello forte
 ec2383cd chore(revisore): memoria review #809 — APPROVATO CON RISERVE
 2bfbb803 chore(revisore): memoria review #808 — BOCCIATO
@@ -648,28 +669,142 @@ Review #809-CRM: secondo giro dopo il BOCCIATO #808, con la stessa severità. Di
   - perf.py e perf2.py: prestazioni del filtro;
   - fuzz.py: equivalenza con dati realistici.
 
+### Review #810-CRM (8° giro, commit d402a4f6: Opus per i dati dei clienti, note della verifica esterna #381 3° giro, R-809-1/2)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #810-CRM sul diff staged (9 file, +261/−11), kernel compreso: decisione «SOLO Opus» per i dati dei clienti, note della verifica esterna #381 (3° giro), R-809-1 e R-809-2.
+
+**Esito in breve:** il diff fa quello che dichiara e non ha difetti bloccanti. La riserva principale è R-810-1 (MEDIA): il forte non Opus riceve comunque i dati dei lead tramite il blocco di memoria, e serve una decisione dell'operatore.
+
+### Verifiche rifatte da me
+
+- **Kernel:** `tests/test_unit_kernel.py` → 1189 PASS, 0 FAIL (T117a–e passano).
+- **Suite pytest coinvolte:** crm, notte, voice_contesto, manutenzione → 373 passed. mypy pulito su `modules/crm` e `brains/model_ids.py`.
+- **Fail-before:** quello dei T117 sul gas.py di HEAD l'ho preso dal chiamante, non l'ho rieseguito. Con il modello iniettato a mano falliscono T117a, T117c, T117d, T117e; passa T117b, che è il test di guardia.
+- **Prova del forte non Opus:** con un lead nella rubrica (riserva R-810-1).
+- **Prova del filtro delle parole vietate:** su 8 testi (riserva R-810-2).
+- **Perimetro:** nessuno slicing della history, nessuna simulazione di tool. Le 10 iterazioni e il tetto per turno sono invariati.
+
+### Riserve
+
+**1. R-810-1 — MEDIA, decide l'operatore — il forte non Opus riceve i dati dei lead dal blocco di memoria.**
+- Il passaggio a Opus guarda solo la FINESTRA (`gas.py:5644`). Al cervello forte invece va sempre il blocco di memoria pieno (`gas.py:5658`: `_forte_rung` → `mem_pin + lezioni_pin + recap_pin`), qualunque sia il modello della chiamata.
+- **Provato:** turno `/forte` «che ore sono?» con un lead in rubrica («Giulia Verdastri», prossima azione «richiamare per il conto gestito»). La chiamata parte con `claude-sonnet-5-5` e il system prompt contiene nome e prossima azione del lead. Succede in ogni turno del forte con la finestra pulita: `/forte`, seguiti a voce, compiti complessi.
+- **Contraddizione con la regola nuova:** la frase aggiunta in CLAUDE.md §2 («i dati dei clienti SOLO su Claude Opus: chat di Gas») è più larga del punto 10 di `reports/crm/decisioni.md`, che parla di dati «nella conversazione». Il codice segue la versione stretta, CLAUDE.md quella larga.
+- **Cosa NON è:** non è un'uscita verso i gratuiti. I dati restano sullo stesso fornitore e sullo stesso abbonamento: è una distanza dalla regola di qualità del modello.
+- **Due rimedi, da far scegliere all'operatore:**
+  - (A) il forte non Opus riceve il blocco anonimo, come i gratuiti. Costa poco: un'espressione in `gas.py:5658`. È quello che consiglio.
+  - (B) Opus ogni volta che il blocco pieno contiene dati di lead. Consuma molto di più il tetto giornaliero del forte.
+  - In entrambi i casi va allineata la frase di CLAUDE.md al punto 10.
+- La stessa cosa vale per la prima chiamata di T117c: Sonnet vede il blocco pieno prima che i dati arrivino nella finestra.
+
+**2. R-810-2 — COSMETICA, già dichiarata come «rete» — limiti del filtro delle parole vietate.**
+- **Funziona:** su `modules/crm/scrittore.py:134` e `modules/crm/scrittore.py:148` vengono scartati «garan​tito» (spazio invisibile), «g a r a n t i t o», «GARANTITO» e «certò».
+- **Passano ancora:**
+  - «gаrantito» scritto con una «а» cirillica, perché la seconda forma toglie le lettere non latine;
+  - varianti come «solo per oggi».
+- **Falsi allarmi:** «Per ditte come la tua» e «Nessuna perdita» vengono scartati. L'effetto è solo la perdita della riscrittura (resta il testo di prima), e il docstring dice che la tutela vera è l'approvazione dell'operatore.
+
+**3. R-810-3 — COSMETICA — l'isolamento nei test dipende dall'ordine degli import.**
+- La fixture di `tests/conftest.py:30` sposta `_RADICE_REPO` solo se `gas` è già importato quando parte il test.
+- Oggi va bene: notte, manutenzione e voice_contesto importano `gas` in cima al file.
+- Una suite futura che lo importasse dentro un test leggerebbe, al primo test, il file vero dei clienti del repo.
+
+### Elementi del diff esaminati
+
+- **`gas.py:5644` — modello della chiamata calcolato a ogni iterazione** (vale anche a metà turno e nei turni `/forte`). Esito: ok.
+  - Il controllo per i gratuiti, poco sopra, resta prima e indipendente: anche dopo il `break` del forte non Opus, ogni rung gratuito rimasto ricontrolla la finestra e passa al forte. Ho seguito la coda: rung gratuito → `_passa_al_forte` → coda troncata più il forte → `break` → fine; nessun ciclo infinito.
+  - Il modello usato per la chiamata vale anche per il conto dei token, il costo equivalente (calcolato dal client col modello vero, quindi prezzo di Opus) e il campo `modello` del final (`gas.py:5702`, `gas.py:5882`).
+  - Il retry di Gemini e i log d'errore usano ancora `model`, ma lì i due coincidono sempre.
+  - Con contatti illeggibili (`_ident` None) ogni chiamata del forte va su Opus: fail-closed corretto, ma consuma più tetto.
+- **`gas.py:4607` — riflessione con Opus.** Esito: ok.
+  - Senza dati di clienti la cascata è solo «complesso», quindi gratuiti con note filtrate: il forte non entra.
+  - Con modello non Opus la riflessione viene rimandata con il motivo.
+- **`brains/model_ids.py:14` e `brains/model_ids.py:17` — fonte unica dell'ID Opus** (V-4). Esito: ok.
+  - Il modello è sovrascrivibile da `GAS_MODEL_CLAUDE_CLIENTI`, e un valore non Opus ferma i turni (T117d).
+  - Il controllo cerca «opus» nel nome, quindi accetta anche l'alias `opus` della CLI.
+  - Il modello è aggiunto ai modelli che sanno usare gli strumenti.
+- **`modules/crm/motore.py:188` — avvisi «⚠ ATTENZIONE» in testa al motivo** quando l'operatore sceglie a mano. Esito: ok.
+  - Il motivo viene tagliato a 500 caratteri (`modules/crm/motore.py:455`, `modules/crm/motore.py:508`); gli avvisi sono all'inizio, quindi non vengono tagliati.
+  - `entrato` è calcolato una volta sola per entrambi i rami.
+- **`modules/crm/store.py:1324` — R-809-1 chiusa.** Esito: ok. Il ripiego scatta solo con «readonly» nel messaggio d'errore; un «database is locked» non provoca più la doppia attesa.
+
+### Rischi esplicitamente NON verificati
+
+- Comportamento e costo reali di Opus sul Mac: qui la CLI non c'è, e non ho misurato la latenza dei turni a voce con Opus. Opus consuma il tetto giornaliero del forte più in fretta: scelta già accettata dall'operatore.
+- Documenti fuori stage (decisioni 10–11, domande, guida, CLAUDE.md §2): ho letto solo la frase della regola, per R-810-1.
+
+### Note
+
+- **Riserve ancora aperte da giri precedenti:** R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6 (le ultime due dichiarate in guida.md).
+- **Memoria:** riga contatore #810-CRM e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (commit 49149716). Il diff staged è intatto (9 file).
+- **Marcatore e commit:** non ho creato `.claude/.review_ok` e non ho committato il diff.
+
+### Review #811-CRM (9° giro, commit 6ef97624: R-810-1, scelta A)
+
+## VERDETTO: APPROVATO
+
+Review #811-CRM sul diff staged (2 file, +68/−37), sopra d402a4f6. Chiude R-810-1 con il rimedio A: il blocco di memoria pieno va solo alle chiamate Opus.
+
+**Verifiche rifatte da me:**
+- Suite del kernel sul codice staged: `=== RIEPILOGO: 1191 PASS, 0 FAIL ===`.
+- Test nuovi contro il codice vecchio (gas.py di HEAD d402a4f6, in una copia temporanea poi cancellata): `1189 PASS, 2 FAIL`. Falliscono T114i (Sonnet riceveva i nomi dei lead) e T115d2b, come dichiarato.
+- Prova dal vero dello scenario che avevo usato per trovare R-810-1. Lead «Giulia Verdastri» in rubrica, prossima azione «richiamare per il conto gestito»:
+  - (1) `/forte` «che ore sono?» → chiamata `claude-sonnet-5-5`, nel system prompt né il nome né la prossima azione;
+  - (2) `/forte` con `ricorda` a metà turno → prima chiamata Sonnet senza il nome, seconda chiamata `claude-opus-5-5` col blocco pieno, final dichiarato Opus.
+- Perimetro: nessuno slicing della history, nessuna simulazione di tool. Le 10 iterazioni e il tetto per turno sono invariati.
+
+**Elementi del diff esaminati:**
+- `gas.py:5663` — `_forte_rung = name == "claude-cli" and e_modello_opus(_model_call)`: il blocco pieno (lead, lezioni, recap) va solo a una chiamata Opus; il forte con un altro modello riceve le varianti anonime, come i gratuiti.
+  - Rischio esaminato: effetti collaterali su altre decisioni del turno. È l'unico uso di `_forte_rung` (subito dopo, `gas.py:5664`), quindi cambia solo la scelta del blocco.
+  - Il segno di contaminazione `_pin_non_fidato` resta calcolato sul blocco pieno anche quando si manda l'anonimo: verso prudente, come già per i gratuiti.
+  - `_model_call` viene calcolato prima, nella stessa iterazione: se nella finestra entrano dati di clienti a metà turno, la chiamata successiva è Opus e riceve il blocco pieno.
+  - Esito: ok.
+- `tests/test_unit_kernel.py:12979` — T114i/T114i2. Usano la CLI vera con un runner finto, entrambi col round-trip tool → final, e controllano anche il `--model` passato al comando.
+  - Rischio esaminato: un test indebolito per farlo passare. Le asserzioni sul blocco pieno («Giulia Bianchi», nessun «dettagli solo al cervello forte») sono identiche in T114i2 per Opus. Per il non Opus se ne aggiungono di più strette (mai «Giulia», «Bianchi» né l'email). Il cambio di T114i segue la regola nuova, non è un indebolimento.
+  - Patchare `gas.MODEL_CLAUDE_FORTE` funziona: `_cascata_provider("forte")` legge la variabile del modulo al momento della chiamata.
+  - Esito: ok.
+- `tests/test_unit_kernel.py:13306` — T115d2/T115d2b: per Opus, lezioni e recap pieni come prima; per Sonnet, lezione col nome e recap che lo nomina omessi, le altre lezioni restano. Esito: ok.
+
+**Nota minore, non classificata come riserva:** il blocco anonimo dice «N lead attivi (dettagli solo al cervello forte)». Adesso lo riceve anche il forte quando è Sonnet: la frase può confonderlo («sono il forte ma non ho i dettagli»). Una formulazione tipo «dettagli solo a Claude Opus: chiedili con ricorda» lo guiderebbe meglio. Il meccanismo comunque funziona: nella mia prova `ricorda` porta a Opus.
+
+**Rischi esplicitamente NON verificati:**
+- Comportamento del Sonnet vero davanti al blocco anonimo, cioè se chiede davvero `ricorda` quando gli serve un lead: qui la CLI non c'è, provato solo con risposte scritte a mano.
+- Documenti fuori stage (decisioni.md punto 10, guida.md): non letti in questo giro.
+
+**Note:**
+- La scelta A è dell'agente, non una risposta esplicita dell'operatore. Va dichiarata nel riepilogo, con la B come alternativa, come annunciato.
+- Restano aperte, dai giri precedenti: R-810-2 e R-810-3 (cosmetiche), R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
+- Ho aggiunto la riga contatore #811-CRM a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit f4217863). Il diff staged è intatto (2 file).
+- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- **`tests/test_unit_crm.py` (nuovo):** 0 → 116 passed ad aa4bb422.
-  - Al commit 99d82f3f: 93; a 72dcc9d2: 101.
+- **`tests/test_unit_crm.py` (nuovo):** 0 → 120 passed a 6ef97624.
+  - Conteggi intermedi: 93 a 99d82f3f; 101 a 72dcc9d2; 116 ad aa4bb422.
   - Ogni test di regressione aggiunto dopo un verdetto fallisce sul codice precedente:
     - 12 dei 13 `test_r803_*` sul primo staged;
     - 5 test su f1c109a7;
     - i 4 `test_r806_*` su c9daf955;
     - i 14 test della fetta 2 su 48c0f114;
-    - i 4 test nuovi del giro #809 sullo staged di #808 (`test_testo_neutro_inviato_com_e`, `test_identita_dopo_crash_a_meta_scrittura`, `test_scrittore_opus`, `test_tetto_degli_eventi_atomico`).
-- **Suite del kernel** (`python tests/test_unit_kernel.py`): 1167 → 1184 PASS. Il kernel è toccato dalla fetta 2 (blocco T116 nuovo):
+    - 4 test dello staged #808;
+    - i 4 test della fetta 3 su e126c65c: `test_v1_ve381_*`, `test_v2_ve381_*`, `test_r809_1_*`, `test_v4_ve381_*`.
+  - Anche `tests/test_unit_notte.py::test_r809_2_*` fallisce col `tests/conftest.py` di e126c65c.
+- **Suite del kernel** (`python tests/test_unit_kernel.py`): 1167 → 1191 PASS. Il kernel è toccato dalle fette 2 e 3 (blocchi T116 e T117, T114i/T114i2, T115d2/T115d2b):
 
 ```
-=== RIEPILOGO: 1184 PASS, 0 FAIL ===
+=== RIEPILOGO: 1191 PASS, 0 FAIL ===
 ```
 
-  - Sul gas.py senza fetta 2 i T116 danno 6 FAIL (T116a1, b, c, e, f, g).
-  - Sul gas.py della review #808: `=== RIEPILOGO: 1180 PASS, 3 FAIL ===`. I 3 FAIL sono T116j, T116h (9855 ms → soglia 150 ms) e il blocco T116 (`_contiene_identificativo_uno_per_uno` assente).
-  - T116b è il round-trip §7: strumento → risposta finale col forte.
-- **Altre suite che costruiscono il kernel:** `tests/test_unit_claude_cli.py`, `test_unit_notte.py`, `test_unit_manutenzione.py`, `test_unit_sottofondo.py`, `test_unit_telegram_voce.py`, `test_unit_voice_server.py`, `test_unit_richieste.py`, `test_unit_gate.py`: `1607 passed in 309.26s (0:05:09)`.
+  - Sul gas.py senza fetta 2 i T116 danno 6 FAIL. Su quello della review #808: `=== RIEPILOGO: 1180 PASS, 3 FAIL ===`.
+  - Sul gas.py di e126c65c i T117 danno `=== RIEPILOGO: 1184 PASS, 1 FAIL ===` (attributo mancante). Con `gas.MODEL_CLAUDE_CLIENTI` iniettato a mano: `=== RIEPILOGO: 1185 PASS, 4 FAIL ===` (T117a/c/d/e; T117b è il test di guardia).
+  - Sul gas.py di d402a4f6 i T114i e T115d2b nuovi: `=== RIEPILOGO: 1189 PASS, 2 FAIL ===`.
+  - T116b, T117a, T114i e T114i2 sono round-trip §7 (strumento → risposta finale).
+  - T114i e T115d2 cambiano per la regola nuova: il blocco pieno lo vede solo Opus. Le asserzioni sul blocco pieno restano identiche nei casi Opus (T114i2, T115d2); per il forte non Opus se ne aggiungono di più strette.
+- **Altre suite che costruiscono il kernel:** claude_cli, notte, manutenzione, voice_contesto, sottofondo, gate, hooks → `1490 passed in 94.39s (0:01:34)` alla fetta 3. Alla fetta 2, con telegram_voce, voice_server e richieste: 1607 passed.
 - **Suite web:** `tests/test_unit_web_browser.py` non rigirata qui, perché nel container manca `bwrap`. In CI è rossa per i 7 test ambientali del §6, uguali anche su altri rami.
-- **mypy** su `modules/crm`: 0 errori nel modulo. Le 76 segnalazioni di altri file (gas.py, modules/voice, modules/sottofondo…) sono le stesse di prima: vengono dall'import di `gas`.
+- **mypy:** 0 errori in `modules/crm` e `brains/model_ids.py`. Le 76 segnalazioni di altri file (gas.py, modules/voice, modules/sottofondo…) vengono dall'import di `gas` e sono le stesse di prima.
 
 ## §6 STATO CI
 
@@ -684,6 +819,8 @@ run 44167235199  CI            push                 2ae4b7a7  completed / failur
 run 44167242427  verifica-bot  pull_request_target  2ae4b7a7  completed / success
 run 44167852645  CI            push                 48c0f114  completed / failure  (unit-suite: unico step rosso «Run web suite»; «Run unit suite», «Run CRM suite» e le altre suite success; handoff-check success)
 run 44167861014  verifica-bot  pull_request_target  48c0f114  completed / success
+run 44185069097  CI            push                 e126c65c  completed / failure  (unit-suite: unico step rosso «Run web suite»; «Run CRM suite» e le altre suite success; handoff-check success)
+run 44185075324  verifica-bot  pull_request_target  e126c65c  completed / success  (job «esito» success, MA il check verifica-bot è cancelled: «verifica NON conclusa … falliti prima claude-opus-5-5, claude-opus-4-8, claude-fable-5-1 (cascata dichiarata)», si può rilanciare)
 run 44155950606  CI            push                 adb0e188  completed / failure  (ALTRO ramo, claude/practical-tesla-ea9a9g, PR #380, senza CRM: stesso step «Run web suite» rosso)
 run 43312735169  CI            push (main)          01eb9f50  completed / success  (12 nov: «Run web suite» 754 passed)
 ```
@@ -710,18 +847,22 @@ Mappatura commit→run:
 - `8fdae653`, `c9daf955`, `83633433`, `72dcc9d2`: nessuna run su questi SHA (pushati insieme a 2ae4b7a7).
 - `2ae4b7a7`: run CI 44167235199 e verifica-bot 44167242427.
 - `48c0f114`: run CI 44167852645 e verifica-bot 44167861014.
-- `2bfbb803`, `ec2383cd`, `aa4bb422` (codice della fetta 2): run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file, e la run testerà solo l'albero di quel commit.
+- `2bfbb803`, `ec2383cd`, `aa4bb422` (codice della fetta 2): nessuna run su questi SHA (pushati insieme a e126c65c).
+- `e126c65c` (fine-task della fetta 2): run CI 44185069097 e verifica-bot 44185075324 (check cancelled, sopra).
+- `49149716`, `d402a4f6`, `f4217863`, `6ef97624` (fetta 3): run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file, e la run testerà solo l'albero di quel commit.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-809-1 (BASSA):** il ripiego di `identita_clienti` scatta anche su «database is locked». Con il CRM che tiene un lucchetto esclusivo, il turno aspetta 10 s prima di chiudere (fail-closed).
-- **R-809-2 (BASSA):** `tests/test_unit_notte.py`, `tests/test_unit_voice_contesto.py` e `tests/test_unit_manutenzione.py` costruiscono `GasKernel` senza isolare il CRM vero della cartella del repo. Rischio sul Mac e sul VPS, non in CI. Rimedio: una fixture in `tests/conftest.py`.
+- **R-810-2 (COSMETICA):** il filtro delle parole vietate è una rete. Passano ancora gli omoglifi cirillici («gаrantito») e varianti come «solo per oggi»; falsi allarmi su «per ditte» e «nessuna perdita», che scartano solo la riscrittura. La tutela vera è l'approvazione dell'operatore, dichiarata nella guida.
+- **R-810-3 (COSMETICA):** l'isolamento del CRM vero nei test pytest (`tests/conftest.py`) vale solo se `gas` è importato in cima al file di test.
+- **Nota minore #811 (non riserva):** il blocco anonimo dice «dettagli solo al cervello forte». Ora lo riceve anche il forte quando è Sonnet: una formulazione «dettagli solo a Claude Opus: chiedili con ricorda» lo guiderebbe meglio.
+- **R-810-1 (scelta A dell'agente):** chiusa nel codice. Resta la conferma dell'operatore (vedi §0 punto 2).
 - **R-808-5 (BASSA, dichiarata in `reports/crm/guida.md`):** falsi allarmi su cognomi comuni e parole delle email. Il verso è sicuro: quei turni vanno al forte.
 - **R-808-6 (BASSA, dichiarata):** le copie di sicurezza contengono i dati completi. Un'eventuale cancellazione GDPR deve coprirle.
-- **R-803-9 (BASSA, decide l'operatore):** GDPR. Il diario del CRM è immutabile e senza nomi; l'anonimizzazione dell'anagrafica su richiesta è da decidere.
+- **R-803-9 (BASSA, decide l'operatore):** GDPR. Anonimizzazione dell'anagrafica su richiesta, da decidere.
 - **R-803-10 (BASSA):** la protezione del cancello vale solo per i file `.gas_memory*`. La CLI avvisa se `GAS_CRM_DB` ha un altro nome.
-- **R-804-2 (BASSA):** la dashboard ricarica e il motore riscansiona anche alle scritture del kernel nel file condiviso (oggi i file sono separati, quindi resta solo per chi punta `GAS_CRM_DB` alla memoria).
+- **R-804-2 (BASSA):** la dashboard ricarica alle scritture nel suo file. Resta solo per chi punta `GAS_CRM_DB` alla memoria di Gas.
 - **R-804-4 (COSMETICA):** corpo chunked trattato come vuoto; BrokenPipe in do_POST su stderr.
 - **Nota minore #807 (non riserva):** `anticipa_apertura` con la stessa data scrive un evento inutile.
 - **Chiuse in questa sessione:**
@@ -729,5 +870,9 @@ Mappatura commit→run:
   - R-804-1, R-804-3;
   - R-806-1/2/3;
   - R-808-1/2/3/4/7;
-  - V-1/V-2 della verifica esterna #381 e V-1/V-2 del bot #381;
-  - V-4 della verifica esterna #381, 2° giro (Host vuoto ora rifiutato).
+  - R-809-1/2;
+  - R-810-1;
+  - V-1/V-2 della verifica esterna #381 (1° giro);
+  - V-1/V-2 del bot #381;
+  - V-4 della verifica esterna #381 (2° giro);
+  - V-1/V-2/V-3/V-4 della verifica esterna #381 (3° giro), commento https://github.com/Gasss23/Gas/pull/381#issuecomment-6962211510. V-3 è chiusa dalla decisione dell'operatore del 18-11: SOLO Opus.
