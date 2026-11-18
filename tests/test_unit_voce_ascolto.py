@@ -143,7 +143,7 @@ def test_voce_piana_passa_col_default():
     assert len(f.inviati) == 1 and _campioni(f.inviati[0]) == (10 + 10) * a.BLOCCO
 
 
-def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None):
+def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None, rilevatore=None):
     """Fa girare `main` con microfono, rilevatore, download e Ascolto finti e restituisce
     gli argomenti con cui ha costruito Ascolto. R-671-2: il finto usa k.get e il ciclo di
     riprova di main (§9) fa fallire subito il test invece di restare appeso."""
@@ -152,11 +152,14 @@ def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None):
     for k in ("GAS_ASCOLTO_VOCE_RMS", "GAS_ASCOLTO_CONFERMA", "GAS_ASCOLTO_INTERRUZIONE",
               "GAS_VOICE_FINESTRA", "GAS_VOICE_SEGUITO_MAX",
               "GAS_ASCOLTO_SOGLIA_INTERRUZIONE", "GAS_VOICE_URL", "GAS_VOICE_PORT",
-              "GAS_ASCOLTO_SOGLIA", "GAS_ASCOLTO_BLOCCHI_PAROLA", "GAS_VOICE_MAX_TURNI"):
+              "GAS_ASCOLTO_SOGLIA", "GAS_ASCOLTO_BLOCCHI_PAROLA", "GAS_VOICE_MAX_TURNI",
+              "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE", "GAS_ASCOLTO_VERIFICA",
+              "GAS_ASCOLTO_SOGLIA_VERIFICA", "GAS_ASCOLTO_SOGLIA_BASE", "GAS_ASCOLTO_MODELLO"):
         monkeypatch.delenv(k, raising=False)
     for k, v in ambiente.items():
         monkeypatch.setenv(k, v)
-    monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m: (lambda b: 0.0, lambda: None))
+    monkeypatch.setattr(a, "rilevatore_openwakeword",
+                        rilevatore or (lambda m: (lambda b: 0.0, lambda: None)))
     monkeypatch.setattr(a, "scarica_conferma", lambda url, token: b"SI")
     monkeypatch.setattr(a, "Conferma", conferma_cls or (lambda scarica: (lambda: scarica())))
     monkeypatch.setattr(a.time, "sleep",
@@ -3227,3 +3230,562 @@ def test_interruzione_resta_su_tre_blocchi_anche_con_la_parola_su_uno():
     b = a.Ascolto(iter(()), lambda b: 0.0, f.invia, f.riproduci, f.suona, blocchi_parola=2)
     assert b.blocchi_interruzione == 2
 
+
+
+# ── verifica della voce (passo 1 di reports/proposta_verifica_parlante.md, 17/11) ──
+
+def _verificatore(radice, persone=("operatore",), modo=0o600, modello="hey_jarvis"):
+    """Un file del verificatore finto (mai caricato davvero: il rilevatore è finto)."""
+    d = radice / ".gas_voce" / "verifica"
+    d.mkdir(parents=True, exist_ok=True)
+    d.chmod(0o700)
+    p = d / ("%s_verifier.pkl" % modello)
+    p.write_bytes(b"non un vero pickle")
+    p.chmod(modo)
+    p.with_suffix(".json").write_text(json.dumps({"persone": list(persone)}),
+                                      encoding="utf-8")
+    return p
+
+
+def _pulisci_verifica(monkeypatch):
+    for k in ("GAS_ASCOLTO_VERIFICA", "GAS_ASCOLTO_SOGLIA_VERIFICA", "GAS_ASCOLTO_SOGLIA_BASE"):
+        monkeypatch.delenv(k, raising=False)
+
+
+def test_verifica_assente_spenta_attiva(monkeypatch, tmp_path):
+    _pulisci_verifica(monkeypatch)
+    v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    assert v.stato == "assente" and not v.attiva and v.descrivi() == "assente"
+    p = _verificatore(tmp_path, persone=("operatore", "giulia"))
+    v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    assert v.attiva and v.percorso == p and v.persone == 2
+    assert v.soglia_base == a.SOGLIA_BASE_PREDEFINITA == 0.25
+    assert v.descrivi() == "attiva (2 persone, soglia base 0.25)"
+    monkeypatch.setenv("GAS_ASCOLTO_SOGLIA_BASE", "0.4")
+    assert a.verifica_della_voce("hey_jarvis", tmp_path).soglia_base == 0.4
+    monkeypatch.setenv("GAS_ASCOLTO_VERIFICA", "0")
+    assert a.verifica_della_voce("hey_jarvis", tmp_path).stato == "spenta"
+
+
+def test_verifica_solo_dalla_cartella_locale(monkeypatch, tmp_path):
+    """Il file si carica con pickle: mai da un percorso preso dall'ambiente (un modello
+    con un percorso non ha verifica), mai un file di altri o scrivibile da altri."""
+    _pulisci_verifica(monkeypatch)
+    _verificatore(tmp_path)
+    for modello in ("../hey_jarvis", "/tmp/x.onnx", "Hey Jarvis", ""):
+        assert a.percorso_verificatore(modello, tmp_path) is None
+        assert a.verifica_della_voce(modello, tmp_path).stato == "assente"
+    assert a.percorso_verificatore("hey_jarvis", tmp_path) == (
+        tmp_path / ".gas_voce" / "verifica" / "hey_jarvis_verifier.pkl")
+
+
+def test_verifica_file_non_fidato_non_si_carica(monkeypatch, tmp_path, caplog):
+    _pulisci_verifica(monkeypatch)
+    p = _verificatore(tmp_path, modo=0o666)
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    assert v.stato == "non caricata" and "scrivibile da altri" in v.motivo
+    assert "ascolto senza verifica" in caplog.text
+    # un collegamento al posto del file: no
+    p.unlink()
+    vero = tmp_path / "altrove.pkl"
+    vero.write_bytes(b"x")
+    vero.chmod(0o600)
+    p.symlink_to(vero)
+    assert a.verifica_della_voce("hey_jarvis", tmp_path).stato == "non caricata"
+    # json rovinato: la verifica resta attiva, persone «non note»
+    p.unlink()
+    _verificatore(tmp_path)
+    p.with_suffix(".json").write_text("{rotto", encoding="utf-8")
+    v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    assert v.attiva and v.persone == 0 and "persone non note" in v.descrivi()
+
+
+def test_verifica_file_di_un_altro_o_cartella_aperta_non_si_carica(monkeypatch, tmp_path):
+    # R-804-1: proprietario diverso → no; cartella «verifica» scrivibile da altri → no
+    _pulisci_verifica(monkeypatch)
+    p = _verificatore(tmp_path)
+    assert a.verifica_della_voce("hey_jarvis", tmp_path).attiva
+    mio = os.getuid()
+    monkeypatch.setattr(a.os, "getuid", lambda: mio + 1)
+    v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    assert v.stato == "non caricata" and "non è tuo" in v.motivo
+    monkeypatch.undo()
+    _pulisci_verifica(monkeypatch)
+    p.parent.chmod(0o777)
+    try:
+        v = a.verifica_della_voce("hey_jarvis", tmp_path)
+        assert v.stato == "non caricata" and "verifica scrivibile da altri" in v.motivo
+    finally:
+        p.parent.chmod(0o700)
+
+
+def test_verifica_cartella_illeggibile_non_ferma_l_ascolto(monkeypatch, tmp_path, caplog):
+    # R-804-2: un errore di permessi sul percorso → «non caricata», mai un'eccezione
+    _pulisci_verifica(monkeypatch)
+    _verificatore(tmp_path)
+
+    def vietato(self, *a_, **k):
+        raise PermissionError(13, "negato")
+    monkeypatch.setattr(a.Path, "exists", vietato)
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    assert v.stato == "non caricata" and v.motivo == "PermissionError"
+    assert "cartella illeggibile" in caplog.text
+
+
+class _ModelFinto:
+    """openwakeword.model.Model finto: registra gli argomenti, punteggio fisso."""
+    creati = []
+    rompi_verifica = False
+
+    def __init__(self, **k):
+        if k.get("custom_verifier_models") and _ModelFinto.rompi_verifica:
+            raise ValueError("pickle rotto")
+        _ModelFinto.creati.append(k)
+
+    def predict(self, x):
+        return {"hey_jarvis": 0.42}
+
+    def reset(self):
+        pass
+
+
+def _openwakeword_finto(monkeypatch, rompi=False):
+    import types
+    _ModelFinto.creati, _ModelFinto.rompi_verifica = [], rompi
+    pacchetto = types.ModuleType("openwakeword")
+    modulo = types.ModuleType("openwakeword.model")
+    modulo.Model = _ModelFinto
+    pacchetto.model = modulo
+    np_finto = types.ModuleType("numpy")
+    np_finto.int16 = "int16"
+    np_finto.asarray = lambda b, dtype=None: b
+    monkeypatch.setitem(sys.modules, "openwakeword", pacchetto)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", modulo)
+    monkeypatch.setitem(sys.modules, "numpy", np_finto)
+
+
+def test_rilevatore_carica_il_verificatore(monkeypatch, tmp_path):
+    _pulisci_verifica(monkeypatch)
+    _openwakeword_finto(monkeypatch)
+    p = _verificatore(tmp_path)
+    v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    punteggio, azzera = a.rilevatore_con_verifica("hey_jarvis", v)
+    assert punteggio([0] * a.BLOCCO) == 0.42 and v.attiva
+    assert _ModelFinto.creati == [{"wakeword_models": ["hey_jarvis"],
+                                   "inference_framework": "onnx",
+                                   "custom_verifier_models": {"hey_jarvis": str(p)},
+                                   "custom_verifier_threshold": 0.25}]
+    # senza verifica: come prima, nessun argomento del verificatore
+    _ModelFinto.creati = []
+    a.rilevatore_con_verifica("hey_jarvis", a.Verifica("assente"))
+    assert _ModelFinto.creati == [{"wakeword_models": ["hey_jarvis"],
+                                   "inference_framework": "onnx"}]
+
+
+def test_rilevatore_verificatore_rotto_continua_senza(monkeypatch, tmp_path, caplog):
+    """§9: un file del verificatore che non si carica non ferma l'ascolto."""
+    _pulisci_verifica(monkeypatch)
+    _openwakeword_finto(monkeypatch, rompi=True)
+    _verificatore(tmp_path)
+    v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        punteggio, _ = a.rilevatore_con_verifica("hey_jarvis", v)
+    assert punteggio([0] * a.BLOCCO) == 0.42
+    assert v.stato == "non caricata" and v.motivo == "ValueError"
+    assert "file non caricato (ValueError): ascolto senza verifica" in caplog.text
+    assert _ModelFinto.creati == [{"wakeword_models": ["hey_jarvis"],
+                                   "inference_framework": "onnx"}]
+
+
+def _rilevatore_registrato(visti):
+    def ril(modello, **k):
+        visti.append(k)
+        return (lambda b: 0.0), (lambda: None)
+    return ril
+
+
+def test_main_con_la_verifica_usa_la_sua_soglia(monkeypatch, tmp_path, caplog):
+    p = _verificatore(tmp_path)
+    visti = []
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.6"},
+                        rilevatore=_rilevatore_registrato(visti))
+    assert visti == [{"verificatore": p, "soglia_base": 0.25}]
+    assert a.SOGLIA_VERIFICA_PREDEFINITA == 0.5
+    assert k.get("soglia") == a.SOGLIA_VERIFICA_PREDEFINITA   # GAS_ASCOLTO_SOGLIA non conta
+    assert k.get("soglia_interruzione") == 0.8 and k.get("blocchi_interruzione") == 3
+    assert "verifica della voce: attiva (1 persona, soglia base 0.25)" in caplog.text
+    assert ("regolazioni in uso: soglia 0.50, blocchi di fila 1, turni 1, finestra 10 s, "
+            "interruzione 0.80 su 3 blocchi, voce 200, verifica della voce attiva "
+            "(1 persona, soglia base 0.25)") in caplog.text
+    assert "GAS_ASCOLTO_SOGLIA non conta con la verifica della voce attiva" in caplog.text
+    assert "più facile dei predefiniti" not in caplog.text
+
+
+def test_main_soglie_della_verifica_mai_sotto_la_base(monkeypatch, tmp_path, caplog):
+    """Sotto la soglia base il punteggio NON è verificato: né la parola né l'interruzione
+    possono scattare lì."""
+    _verificatore(tmp_path)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA_VERIFICA": "0.1",
+                                                "GAS_ASCOLTO_SOGLIA_INTERRUZIONE": "0.1",
+                                                "GAS_ASCOLTO_SOGLIA_BASE": "0.3"},
+                        rilevatore=_rilevatore_registrato([]))
+    assert k.get("soglia") == 0.3 and k.get("soglia_interruzione") == 0.3
+    assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.3 (predefinito 0.5)" in caplog.text
+
+
+def test_main_verifica_rotta_spenta_assente(monkeypatch, tmp_path, caplog):
+    _verificatore(tmp_path)
+
+    def rotto(modello, **k):
+        if k:
+            raise ValueError("pickle rotto")
+        return (lambda b: 0.0), (lambda: None)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        k = _main_finto(monkeypatch, tmp_path, {}, rilevatore=rotto)
+    assert k.get("soglia") == a.SOGLIA_PREDEFINITA
+    assert "verifica della voce: non caricata (ValueError): ascolto senza verifica" in caplog.text
+    caplog.clear()
+    visti = []
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_VERIFICA": "0"},
+                        rilevatore=_rilevatore_registrato(visti))
+    assert visti == [{}] and k.get("soglia") == a.SOGLIA_PREDEFINITA
+    assert "verifica della voce: spenta" in caplog.text
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        _main_finto(monkeypatch, tmp_path / "vuota", {})
+    assert "verifica della voce: assente" in caplog.text
+    assert "voce 200, verifica della voce assente" in caplog.text
+
+
+def test_leggimi_riporta_le_regolazioni_della_verifica():
+    testo = (RADICE / "scripts" / "voce" / "LEGGIMI.md").read_text(encoding="utf-8")
+    assert "| `GAS_ASCOLTO_VERIFICA` | 1 |" in testo
+    assert f"| `GAS_ASCOLTO_SOGLIA_VERIFICA` | {a.SOGLIA_VERIFICA_PREDEFINITA:g} |" in testo
+    assert f"| `GAS_ASCOLTO_SOGLIA_BASE` | {a.SOGLIA_BASE_PREDEFINITA:g} |" in testo
+    assert ".venv/bin/python scripts/voce/registra_voce.py --solo-addestra" in testo
+    assert "python3 scripts/voce/taratura_parola.py" not in testo
+
+
+def test_le_registrazioni_della_voce_restano_fuori_da_git():
+    righe = (RADICE / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert ".gas_voce/" in [r.strip() for r in righe]
+    assert str(a.CARTELLA_VERIFICA).startswith(".gas_voce")
+
+
+# ── registrazione e addestramento (scripts/voce/registra_voce.py) ──
+
+def _registra():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("registra_voce",
+                                                  VOCE_DIR / "registra_voce.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    prima, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.dont_write_bytecode = prima
+    return mod
+
+
+class _MicFinto:
+    """Microfono finto: dà i blocchi in fila (VOCE o SILENZIO), conta svuota e chiudi."""
+
+    def __init__(self, sequenza):
+        self.sequenza = list(sequenza)
+        self.svuotati = 0
+        self.chiuso = False
+
+    def blocchi(self):
+        while True:
+            yield self.sequenza.pop(0) if self.sequenza else VOCE
+
+    def svuota(self):
+        self.svuotati += 1
+
+    def chiudi(self):
+        self.chiuso = True
+
+
+def test_registra_salva_i_file_nelle_cartelle_giuste(tmp_path):
+    r = _registra()
+    n_clip = a.blocchi_per(r.SEC_CLIP)
+    # 3 clip: voce, silenzio (saltata), voce
+    mic = _MicFinto([VOCE] * n_clip + [SILENZIO] * n_clip + [VOCE] * n_clip)
+    bip, uscita = [], []
+    reg = r.Registratore(mic, tmp_path, "operatore", chiedi=lambda s: "",
+                         dorme=lambda s: None, bip=bip.append, stampa=uscita.append)
+    assert reg.positivi(gruppi=(("vicino", 2, 1.0), ("lontano", 1, 5.0))) == 2
+    base = tmp_path / ".gas_voce" / "verifica"
+    pos = sorted((base / "operatore" / "positivi").glob("*.wav"))
+    assert len(pos) == 2 and any("non ti ho sentito" in u for u in uscita)
+    with wave.open(str(pos[0])) as w:
+        assert (w.getframerate(), w.getnchannels(), w.getsampwidth()) == (16000, 1, 2)
+        assert w.getnframes() == n_clip * a.BLOCCO
+    # dato biometrico: file 0600, cartelle 0700 (fino a .gas_voce/verifica)
+    assert stat.S_IMODE(pos[0].stat().st_mode) == 0o600
+    for d in (base, base / "operatore", base / "operatore" / "positivi"):
+        assert stat.S_IMODE(d.stat().st_mode) == 0o700
+    assert bip == ["ok"] * 3 and mic.svuotati == 3
+    # negativi: parlato e, con «s», la TV
+    assert reg.negativi(1.0, tv=True) == 1   # chiedi="" → niente TV
+    reg.chiedi = lambda s: "s"
+    assert reg.negativi(1.0, tv=True) == 2
+    neg = sorted(p.name for p in (base / "operatore" / "negativi").glob("*.wav"))
+    assert len(neg) == 2 and neg[0].startswith("parlato_") and neg[1].startswith("tv_")
+    assert len(list((base / "operatore" / "negativi").glob("parlato_*"))) == 1  # stesso secondo
+
+
+class _MotoreFinto:
+    """Motore di addestramento finto: punteggi per nome del file, caratteristiche = nome."""
+
+    def __init__(self, modello="hey_jarvis"):
+        self.addestrato = None
+
+    def blocchi(self, wav, ripetizioni, imbottitura):
+        nome = wav.name
+        if "rotto" in nome:
+            raise _registra_mod.Errore("%s non è un WAV 16 kHz mono 16 bit" % nome)
+        if "debole" in nome:
+            return [(0.1, nome)] * ripetizioni
+        if wav.parent.name == "positivi":
+            return [(0.4, nome)] * ripetizioni + [(0.0, "silenzio")]
+        if "simile" in nome:      # un'altra voce che dice la parola
+            return [(0.9, nome), (0.0, "silenzio")]
+        return [(0.0, nome)] * 3 + [(0.3, nome)]
+
+    def addestra(self, positivi, negativi):
+        self.addestrato = (list(positivi), list(negativi))
+        return {"verificatore": "finto"}
+
+    def probabilita(self, verificatore, caratteristiche):
+        return [0.9 if "hey" in str(c) else 0.1 for c in caratteristiche]
+
+
+_registra_mod = _registra()
+
+
+def _clip_finte(radice, persona, positivi=(), negativi=(), altre=()):
+    base = radice / ".gas_voce" / "verifica"
+    for tipo, nomi, chi in (("positivi", positivi, persona), ("negativi", negativi, persona),
+                            ("negativi", altre, "_altre_voci")):
+        for n in nomi:
+            d = base / chi / tipo
+            d.mkdir(parents=True, exist_ok=True)
+            (d / n).write_bytes(b"RIFF")
+
+
+def test_addestra_unisce_le_persone_e_scrive_il_filtro(tmp_path):
+    r = _registra_mod
+    _clip_finte(tmp_path, "operatore", positivi=("hey1.wav", "hey2.wav", "debole.wav",
+                                                 "rotto.wav"),
+                negativi=("parlato.wav",), altre=("simile1.wav", "simile2.wav"))
+    _clip_finte(tmp_path, "giulia", positivi=("hey3.wav",), negativi=("tv.wav",))
+    m = _MotoreFinto()
+    rie = r.addestra(tmp_path, "hey_jarvis", 0.25, 0.5, m)
+    positivi, negativi = m.addestrato
+    # i positivi di TUTTE le persone, solo i blocchi da 0,25 in su, 5 ripetizioni
+    assert sorted(set(positivi)) == ["hey1.wav", "hey2.wav", "hey3.wav"]
+    assert len(positivi) == 3 * r.RIPETIZIONI_POSITIVI
+    # i negativi: tutti i blocchi del parlato/TV di tutti, più le altre voci
+    assert {"parlato.wav", "tv.wav", "simile1.wav", "simile2.wav"} <= set(negativi)
+    assert rie.persone == ["giulia", "operatore"]
+    assert [n for n, _ in rie.scartati] == ["operatore/debole.wav"]
+    assert any("rotto.wav" in s for s in rie.illeggibili)
+    assert rie.negativi == 2 and rie.riconosciuti == 3
+    assert rie.altre_voci == 2 and rie.altre_accettate == 0
+    assert rie.blocchi_al_filtro == 2 and rie.falsi == 0
+    pkl = tmp_path / ".gas_voce" / "verifica" / "hey_jarvis_verifier.pkl"
+    assert rie.percorso == pkl and stat.S_IMODE(pkl.stat().st_mode) == 0o600
+    import pickle
+    assert pickle.loads(pkl.read_bytes()) == {"verificatore": "finto"}
+    info = json.loads(pkl.with_suffix(".json").read_text(encoding="utf-8"))
+    assert info["persone"] == ["giulia", "operatore"] and info["soglia_base"] == 0.25
+    # il file scritto è quello che l'ascolto accetta
+    v = a.verifica_della_voce("hey_jarvis", tmp_path)
+    assert v.attiva and v.persone == 2
+    righe = "\n".join(r.descrivi(rie, tmp_path, 0.25, 0.5))
+    assert "2 persone (giulia, operatore)" in righe and "usati: 3 su 4" in righe
+    assert "altre voci (Mac) accettate: 0 su 2" in righe
+
+
+@pytest.mark.parametrize("positivi,negativi,messaggio", [
+    ((), ("parlato.wav",), "nessun «Hey Jarvis» registrato"),
+    (("hey1.wav", "hey2.wav", "hey3.wav"), (), "manca il parlato senza la parola"),
+    (("hey1.wav", "debole1.wav", "debole2.wav"), ("parlato.wav",), "solo 1 «Hey Jarvis»"),
+])
+def test_addestra_errori_chiari(tmp_path, positivi, negativi, messaggio):
+    r = _registra_mod
+    _clip_finte(tmp_path, "operatore", positivi=positivi, negativi=negativi)
+    with pytest.raises(r.Errore, match=messaggio):
+        r.addestra(tmp_path, "hey_jarvis", 0.25, 0.5, _MotoreFinto())
+    assert not (tmp_path / ".gas_voce" / "verifica" / "hey_jarvis_verifier.pkl").exists()
+
+
+def test_registra_main_completo_con_finti(tmp_path, capsys):
+    r = _registra_mod
+    mic = _MicFinto([])
+    altre = []
+    codice = r.main(["--senza-tv", "--secondi-negativi", "5"], microfono=lambda: mic,
+                    motore=_MotoreFinto, radice=tmp_path, chiedi=lambda s: "",
+                    dorme=lambda s: None, bip=lambda t: None,
+                    altre_voci=lambda rad: altre.append(rad) or 0)
+    out = capsys.readouterr()
+    assert codice == 0, out.err
+    base = tmp_path / ".gas_voce" / "verifica"
+    assert len(list((base / "operatore" / "positivi").glob("*.wav"))) == 15
+    assert len(list((base / "operatore" / "negativi").glob("*.wav"))) == 1
+    assert (base / "hey_jarvis_verifier.pkl").exists() and mic.chiuso
+    assert altre == [tmp_path]          # le altre voci mancavano: generate
+    assert "Verifica della voce addestrata: 1 persona (operatore)" in out.out
+    assert "comando `say` del Mac non disponibile" in out.out
+    # --solo-addestra: nessun microfono, le altre voci ci sono già → non si rigenerano
+    _clip_finte(tmp_path, "operatore", altre=("simile.wav",))
+    altre.clear()
+    codice = r.main(["--solo-addestra"], microfono=lambda: pytest.fail("microfono aperto"),
+                    motore=_MotoreFinto, radice=tmp_path, altre_voci=altre.append)
+    assert codice == 0 and altre == []
+
+
+def test_registra_main_errori_senza_traceback(tmp_path, capsys):
+    r = _registra_mod
+
+    def senza_modulo(modello):
+        raise ModuleNotFoundError("No module named 'openwakeword'", name="openwakeword")
+    assert r.main(["--solo-addestra"], motore=senza_modulo, radice=tmp_path) == 1
+    err = capsys.readouterr().err
+    assert "manca il modulo «openwakeword»" in err
+    assert ".venv/bin/python scripts/voce/registra_voce.py" in err and "Traceback" not in err
+
+    def senza_mic():
+        raise OSError("PortAudio")
+    assert r.main([], motore=_MotoreFinto, microfono=senza_mic, radice=tmp_path) == 1
+    assert "microfono non disponibile (OSError)" in capsys.readouterr().err
+
+    def modello_rotto(modello):
+        raise ValueError("modello mancante")
+    assert r.main(["--solo-addestra"], motore=modello_rotto, radice=tmp_path) == 1
+    assert "non pronto (ValueError)" in capsys.readouterr().err
+    # niente clip: errore chiaro
+    assert r.main(["--solo-addestra"], motore=_MotoreFinto, radice=tmp_path,
+                  altre_voci=lambda rad: 0) == 1
+    assert "nessun «Hey Jarvis» registrato" in capsys.readouterr().err
+    for cattiva in ("../x", "_altre_voci", "A" * 40):
+        assert r.main(["--persona", cattiva], radice=tmp_path) == 1
+    assert r.main(["--modello", "/tmp/x.onnx"], radice=tmp_path) == 1
+
+
+def test_voci_del_mac_e_generazione(tmp_path, monkeypatch):
+    r = _registra_mod
+    elenco = ("Alice               it_IT    # Ciao! Mi chiamo Alice.\n"
+              "Bells               en_US    # Time to wake up.\n"
+              "Eddy (Italiano (Italia)) it_IT    # Ciao! Mi chiamo Eddy.\n"
+              "Kyoko               ja_JP    # こんにちは\n"
+              "Samantha            en_US    # Hello, my name is Samantha.\n"
+              "riga strana\n")
+    assert r.voci_del_mac(elenco) == ["Alice", "Eddy (Italiano (Italia))", "Samantha"]
+    chiamate = []
+
+    class Esito:
+        def __init__(self, codice, stdout=""):
+            self.returncode, self.stdout = codice, stdout
+
+    def esegui(cmd, **k):
+        chiamate.append(cmd)
+        if cmd[1:] == ["-v", "?"]:
+            return Esito(0, elenco)
+        if cmd[2] == "Samantha":
+            return Esito(1)                  # una voce che non va: si salta
+        Path(cmd[cmd.index("-o") + 1]).write_bytes(b"RIFF")
+        return Esito(0)
+    n = r.genera_altre_voci(tmp_path, esegui=esegui, say="/usr/bin/say")
+    attese = 2 * len(r.TESTI_ALTRE_VOCI) * len(r.VELOCITA_ALTRE_VOCI)
+    assert n == attese
+    d = tmp_path / ".gas_voce" / "verifica" / "_altre_voci" / "negativi"
+    assert len(list(d.glob("*.wav"))) == attese
+    assert all("--data-format=LEI16@16000" in c for c in chiamate[1:])
+    # i file delle altre voci sono negativi, non una persona
+    assert r.persone(tmp_path) == [] and len(r.clip(tmp_path, "negativi")) == attese
+    assert r.clip(tmp_path, "positivi") == []
+    # senza `say` (non è un Mac): niente, nessun errore
+    monkeypatch.setattr(r.shutil, "which", lambda nome: None)
+    assert r.genera_altre_voci(tmp_path / "x", esegui=esegui) == 0
+    assert not (tmp_path / "x").exists()
+
+
+def test_taratura_messaggio_se_manca_un_modulo(capsys):
+    t = _taratura()
+
+    def senza_modulo(secondi, modello):
+        raise ModuleNotFoundError("No module named 'numpy'", name="numpy")
+    assert t.main([], sorgente=senza_modulo) == 1
+    err = capsys.readouterr().err
+    assert "manca il modulo «numpy»" in err
+    assert ".venv/bin/python scripts/voce/taratura_parola.py" in err
+    assert "esegui prima" not in err
+
+
+def test_taratura_con_la_verifica_consiglia_la_sua_soglia(capsys):
+    t = _taratura()
+    assert t.SOGLIA_VERIFICA_PREDEFINITA == a.SOGLIA_VERIFICA_PREDEFINITA
+
+    def sorgente(secondi, modello):
+        return iter([0.0, 0.9] + [0.0] * 6 + [0.88, 0.0]), lambda: None, True
+    assert t.main(["--secondi", "5"], sorgente=sorgente) == 0
+    out = capsys.readouterr().out
+    assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.8" in out
+    # 0,5 non è più permissiva del predefinito della verifica (0,5): nessun avviso
+    p = [0.0] * t.PAUSA_BLOCCHI
+    righe = t.consiglio(list(t.salite([0.0, 0.55] + p + [0.95, 0.0])), 0, verifica=True)
+    assert any("GAS_ASCOLTO_SOGLIA_VERIFICA=0.5" in r for r in righe)
+    assert not any("più permissiva" in r for r in righe)
+
+
+def test_taratura_usa_il_rilevatore_con_la_verifica(monkeypatch, tmp_path, capsys):
+    t = _taratura()
+    _pulisci_verifica(monkeypatch)
+    _verificatore(tmp_path)
+    monkeypatch.setattr(a, "_GAS_ROOT", tmp_path)
+    visti = []
+    monkeypatch.setattr(a, "rilevatore_openwakeword", _rilevatore_registrato(visti))
+
+    class Mic:
+        def blocchi(self):
+            while True:
+                yield [0] * a.BLOCCO
+
+        def chiudi(self):
+            pass
+    monkeypatch.setattr(a, "Microfono", Mic)
+    punteggi, chiudi, verifica = t._punteggi_dal_microfono(0.4, "hey_jarvis")
+    assert verifica is True and len(list(punteggi)) == 5
+    assert visti and visti[0]["soglia_base"] == 0.25
+    assert "Verifica della voce: attiva" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("nome,rilancia", [("openwakeword", True), ("numpy", True),
+                                           ("sklearn.linear_model._logistic", False),
+                                           ("openwakeword.custom_verifier_model", False)])
+def test_verifica_modulo_mancante(monkeypatch, tmp_path, nome, rilancia):
+    """Se manca openWakeWord stesso l'errore sale (main dice «installa»); se manca un modulo
+    dentro il file del verificatore (scikit-learn di un'altra versione) si continua senza."""
+    _pulisci_verifica(monkeypatch)
+    _verificatore(tmp_path)
+    v = a.verifica_della_voce("hey_jarvis", tmp_path)
+
+    def ril(modello, **k):
+        if k:
+            raise ModuleNotFoundError("manca", name=nome)
+        return (lambda b: 0.0), (lambda: None)
+    monkeypatch.setattr(a, "rilevatore_openwakeword", ril)
+    if rilancia:
+        with pytest.raises(ModuleNotFoundError):
+            a.rilevatore_con_verifica("hey_jarvis", v)
+    else:
+        a.rilevatore_con_verifica("hey_jarvis", v)
+        assert v.stato == "non caricata" and v.motivo == "ModuleNotFoundError"
