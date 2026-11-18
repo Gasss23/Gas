@@ -17,10 +17,10 @@ HERE = Path(__file__).parent
 OUT = HERE / "presentazione.html"
 
 BRAND = "NOME AZIENDA"
-TOTAL = 8
+TOTAL = 9
 
 # colori HUD: identità dei servizi (sempre accanto a numero e nome del servizio)
-CYAN, GREEN, GOLD, SLATE = "#4FD8FF", "#5BE38A", "#FFB547", "#8394AE"
+CYAN, GREEN, GOLD, VIOLET = "#4FD8FF", "#5BE38A", "#FFB547", "#C79BFF"
 
 # ---------------------------------------------------------------- dati reali
 # Copy trading Forex: numeri del conto di riferimento (Myfxbook), dal catalogo
@@ -120,7 +120,7 @@ def top(label: str, n: int, color: str = CYAN) -> str:
 
 def foot() -> str:
     return ('<footer class="foot"><span>Investire comporta rischi, anche di perdita del capitale. I risultati '
-            'passati non garantiscono quelli futuri. Leggi le avvertenze a pag. 7.</span>'
+            'passati non garantiscono quelli futuri. Leggi le avvertenze a pag. 8.</span>'
             '<span class="k">Documento riservato</span></footer>')
 
 
@@ -257,6 +257,38 @@ def chart_elastico() -> str:
     return "".join(o)
 
 
+def schema_matched() -> str:
+    """Schema semplice: 3.000 € → due conti con scommesse opposte → uno vince sempre → ≈ +500 €."""
+    W, H = 560, 206
+    g = GREEN
+    box = 'fill="#0C1E2C" stroke="{c}" stroke-opacity="{o}" stroke-width="1.3" rx="6"'
+    o = [f'<svg class="chart schema" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+         'aria-label="Schema del matched trading: due conti con scommesse opposte, uno vince sempre">']
+    # collegamenti
+    for d in ("M104,103 C130,103 126,42 152,42", "M104,103 C130,103 126,164 152,164",
+              "M398,42 C424,42 420,103 448,103", "M398,164 C424,164 420,103 448,103"):
+        o.append(f'<path d="{d}" fill="none" stroke="{g}" stroke-opacity=".55" stroke-width="1.5"/>')
+    for x, y in ((152, 42), (152, 164), (448, 103)):
+        o.append(f'<circle cx="{x}" cy="{y}" r="3.5" fill="{g}"/>')
+    # capitale
+    o.append(f'<rect x="1" y="74" width="103" height="58" {box.format(c=g, o=".7")}/>')
+    o.append('<text x="52" y="101" text-anchor="middle" class="sm-v">3.000 €</text>')
+    o.append('<text x="52" y="119" text-anchor="middle" class="sm-k">IL CAPITALE</text>')
+    # i due conti
+    for y, nome, freccia, punta, esito in ((4, "CONTO A · PROP FIRM", "▲", "punta sul rialzo", "se il prezzo sale, vince A"),
+                                           (126, "CONTO B · BROKER", "▼", "punta sul ribasso", "se il prezzo scende, vince B")):
+        o.append(f'<rect x="152" y="{y}" width="246" height="76" {box.format(c=g, o=".45")}/>')
+        o.append(f'<text x="168" y="{y + 22}" class="sm-k" fill="{g}">{nome}</text>')
+        o.append(f'<text x="168" y="{y + 45}" class="sm-t"><tspan fill="{g}">{freccia}</tspan> {punta}</text>')
+        o.append(f'<text x="168" y="{y + 64}" class="sm-s">{esito}</text>')
+    # risultato
+    o.append(f'<rect x="448" y="70" width="111" height="66" fill="rgba(91,227,138,.10)" stroke="{g}" stroke-width="1.5" rx="6"/>')
+    o.append(f'<text x="503" y="101" text-anchor="middle" class="sm-r" fill="{g}">≈ +500 €</text>')
+    o.append('<text x="503" y="121" text-anchor="middle" class="sm-k">IN MEDIA</text>')
+    o.append("</svg>")
+    return "".join(o)
+
+
 def reticle(size: int = 600, labels: bool = True) -> str:
     """Mirino HUD della copertina, con i quattro servizi."""
     c = size / 2
@@ -283,7 +315,7 @@ def reticle(size: int = 600, labels: bool = True) -> str:
         o.append(f'<text x="{c}" y="{c - 6}" text-anchor="middle" class="orb-c1">IL TUO</text>')
         o.append(f'<text x="{c}" y="{c + 16}" text-anchor="middle" class="orb-c2">capitale</text>')
     nodes = [(-148, "01", "Rendimento", "contrattuale", GOLD, 150), (-58, "02", "Matched", "trading", GREEN, 212),
-             (32, "03", "Copy", "trading", CYAN, 150), (122, "04", "Nuovo", "servizio", SLATE, 212)]
+             (32, "03", "Copy", "trading", CYAN, 150), (122, "04", "Gruppo", "privato", VIOLET, 212)]
     for deg, n, l1, l2, col, r in nodes:
         a = math.radians(deg)
         x, y = c + r * math.cos(a), c + r * math.sin(a)
@@ -315,7 +347,7 @@ def s_cover() -> str:
     <div class="wm">{logo(28)}<span>{BRAND}</span></div>
     <div class="k cov-k"><i class="pulse"></i>Ecosistema di investimento · 2026</div>
     <h1>Il tuo capitale,</h1>{grad_line("quattro motori.", 66)}
-    <p class="cov-sub">Quattro modi semplici per far lavorare i tuoi soldi. Per ognuno: cos'è, come funziona e i numeri.</p>
+    <p class="cov-sub">Quattro modi semplici per far lavorare i tuoi soldi. Per ognuno: cos'è, come funziona e cosa aspettarti.</p>
     <div class="k cov-st"><span>● 4 servizi</span><span>● dati verificati</span><span>● spiegati in modo semplice</span></div>
   </div>
   <div class="cover-r">{reticle()}</div>
@@ -339,14 +371,15 @@ def s_overview() -> str:
              "≈ 500 €", "in media ogni 3.000 €", "vuole un metodo matematico"),
         card("03", CYAN, "Copy Trading", "Il tuo conto copia in automatico un algoritmo sulle valute.",
              FX["media_mensile"], "al mese in media, su 23 mesi", "punta alla crescita"),
-        card("04", SLATE, "Nuovo servizio", "Il quarto motore dell'ecosistema.", ph("—"), "in arrivo", ph("da definire"), ghost=True),
+        card("04", VIOLET, "Gruppo Privato", "Ti scriviamo noi cosa fare. Tu lo copi sul tuo conto.",
+             "30 s", "per copiare un'operazione", "vuole gestire da solo i suoi soldi"),
     ])
     return f'''
 <section class="slide">{frame()}
   {top("Panoramica · in 30 secondi", 2)}
   <h2>Quattro servizi, <span class="hl">in parole semplici.</span></h2>
   <div class="svc-row">{cards}</div>
-  <div class="spectrum"><span class="k">Più stabilità</span><div class="spec-line"></div><span class="k">Più crescita</span></div>
+  <div class="spectrum"><span class="k">Puoi scegliere un solo servizio o combinarli</span><div class="spec-line"></div></div>
   {foot()}
 </section>'''
 
@@ -366,7 +399,7 @@ def s_svc1() -> str:
   <div class="cols">
     <div class="col-l">
       <div class="hud pan" style="--c:{GOLD}"><div class="k pk">01 · Cos'è</div>
-        <p class="big-p">Affidi un capitale per un periodo stabilito. Il contratto dice <b>in anticipo</b> quanto ricevi, quando lo ricevi e quali garanzie hai.</p></div>
+        <p class="big-p">Affidi un capitale per un periodo stabilito. Il contratto dice in anticipo quanto ricevi, quando lo ricevi e quali garanzie hai.</p></div>
       <div class="hud pan" style="--c:{GOLD}"><div class="k pk">02 · Come funziona</div><div class="steps">{steps}</div></div>
     </div>
     <div class="hud pan col-r" style="--c:{GOLD}"><div class="k pk">03 · I numeri</div>
@@ -374,7 +407,7 @@ def s_svc1() -> str:
         <div class="ex"><div class="k">Esempio</div><div class="ex-v">10.000 €</div><div class="ex-l">investiti</div>
           <div class="ex-arrow">↓</div><div class="ex-v gold">+2.000 €</div><div class="ex-l">ogni anno</div></div></div>
       <div class="facts"><div><span class="k">Reinvestendo, in 5 anni</span><b>24.883 €</b></div>
-        <div><span class="k">Durata</span>{ph()}</div><div><span class="k">Ingresso minimo</span>{ph()}</div></div>
+        <div><span class="k">Pagamenti</span>alle scadenze del contratto</div><div><span class="k">Garanzie</span>scritte nel contratto</div></div>
       <p class="note">Esempio al lordo di costi e imposte. Fanno fede rendimento e garanzie scritti nel contratto.</p>
     </div>
   </div>
@@ -392,22 +425,16 @@ def s_svc2() -> str:
   <div class="cols">
     <div class="col-l">
       <div class="hud pan" style="--c:{GREEN}"><div class="k pk">01 · Cos'è</div>
-        <p class="big-p">Usiamo <b>due conti collegati</b>: uno presso una <b>prop firm</b> (una società che affida il suo capitale a chi supera una prova) e uno presso un <b>broker</b>. Le due posizioni sono opposte e calcolate prima di iniziare.</p></div>
+        <p class="big-p">Due conti collegati fanno due scommesse opposte sullo stesso mercato: una delle due vince sempre. Uno sta presso una prop firm (una società che presta il suo capitale a chi supera una prova), l'altro presso un broker.</p></div>
       <div class="hud pan" style="--c:{GREEN}"><div class="k pk">02 · Come funziona</div>
-        <div class="mt-flow">
-          <div class="mt-acc"><div class="k" style="color:{GREEN}">Conto A · prop firm ▲</div><p>Fa la prova a pagamento sul capitale della prop firm.</p></div>
-          <div class="mt-vs">VS</div>
-          <div class="mt-acc"><div class="k" style="color:{GREEN}">Conto B · broker ▼</div><p>Fa l'operazione opposta, per coprire il conto A.</p></div>
-        </div>
-        <div class="mt-out"><div><b>Prova superata</b> → la prop firm paga i guadagni.</div>
-          <div><b>Prova non superata</b> → il conto B recupera il costo e lascia un margine.</div></div>
-        <div class="mt-res"><span class="k">In entrambi i casi</span><b>risultato medio ≈ +500 € ogni 3.000 €</b></div>
+        {schema_matched()}
+        <p class="mid-p mt-foot">Il calcolo fa in modo che il conto che vince guadagni più di quanto perde l'altro.</p>
       </div>
     </div>
     <div class="hud pan col-r" style="--c:{GREEN}"><div class="k pk">03 · I numeri</div>
       <div class="num-row">{ring(500 / 3000, GREEN, "≈ 16,7%", "per ciclo")}
         <div class="ex"><div class="k">In media</div><div class="ex-v green">+500 €</div><div class="ex-l">ogni 3.000 € impiegati</div>
-          <div class="ex-l2">Durata del ciclo: {ph()}</div></div></div>
+</div></div>
       <div class="k sub-k">Si cresce a scaglioni da 3.000 €</div>
       <div class="bars">{bars}</div>
       <p class="note">Media statistica, non garantita: dipende dalle regole delle prop firm e dai costi di esecuzione.</p>
@@ -429,9 +456,9 @@ def s_svc3() -> str:
   <div class="cols">
     <div class="col-l">
       <div class="hud pan" style="--c:{CYAN}"><div class="k pk">01 · Cos'è</div>
-        <p class="big-p">Il <b>tuo conto, a tuo nome</b>, copia in automatico le operazioni di un algoritmo che lavora sul <b>Forex</b>, il mercato delle valute. Non devi fare niente: le operazioni si replicano da sole.</p></div>
+        <p class="big-p">Il tuo conto, a tuo nome, copia in automatico le operazioni di un algoritmo che lavora sul Forex, il mercato delle valute. Non devi fare niente: le operazioni si replicano da sole.</p></div>
       <div class="hud pan" style="--c:{CYAN}"><div class="k pk">02 · Come funziona</div>
-        <p class="mid-p">Alcune valute si muovono quasi sempre insieme. Quando si allontanano più del normale, l'algoritmo scommette che torneranno vicine, <b>come un elastico</b>. Non deve indovinare se il mercato sale o scende.</p>
+        <p class="mid-p">Alcune valute si muovono quasi sempre insieme. Quando si allontanano più del normale, l'algoritmo scommette che torneranno vicine, come un elastico. Non deve indovinare se il mercato sale o scende.</p>
         <div class="legend"><span><i style="background:{CYAN}"></i>Valuta A</span><span><i style="background:#C8D6E6"></i>Valuta B</span><span><i class="sq"></i>distanza tra le due</span></div>
         {chart_elastico()}</div>
     </div>
@@ -439,6 +466,34 @@ def s_svc3() -> str:
       <div class="fxs">{facts}</div>
       <div class="teaser"><div class="k">Risultato del conto di riferimento</div><div class="teaser-v">{FX["rendimento"]}</div>
         <div class="ex-l">in 23 mesi · {FX["media_mensile"]} al mese in media · i numeri alla pagina seguente</div></div>
+    </div>
+  </div>
+  {foot()}
+</section>'''
+
+
+def s_svc4() -> str:
+    steps = "".join(f'<div class="st"><div class="st-n" style="--c:{VIOLET}">{i}</div><div class="st-t">{t}</div></div>'
+                    for i, t in ((1, "Ti arriva un messaggio nel gruppo privato"),
+                                 (2, "Copi l'operazione sul tuo conto: bastano 30 secondi"),
+                                 (3, "Ripeti ogni volta che arriva un nuovo messaggio")))
+    msg = "".join(f'<div class="msg-r"><span class="k">{k}</span><span>{v}</span></div>' for k, v in (
+        ("Cosa", "EUR/USD"), ("Come", "compra"), ("Quando", "adesso")))
+    return f'''
+<section class="slide">{frame()}
+  {svc_head("04", VIOLET, "Gruppo Privato", "Ti diciamo noi cosa fare. Tu copi e incolli.", 7)}
+  <div class="cols">
+    <div class="col-l">
+      <div class="hud pan" style="--c:{VIOLET}"><div class="k pk">01 · Cos'è</div>
+        <p class="big-p">Entri in un gruppo privatissimo. Lì ti scriviamo noi cosa fare, quando farlo e come. Tu lo ripeti sul tuo conto, in autonomia: i soldi restano tuoi.</p></div>
+      <div class="hud pan" style="--c:{VIOLET}"><div class="k pk">02 · Come funziona</div><div class="steps">{steps}</div></div>
+    </div>
+    <div class="hud pan col-r" style="--c:{VIOLET}"><div class="k pk">03 · In breve</div>
+      <div class="num-row">{ring(0.5, VIOLET, "30 s", "per operazione", 176)}
+        <div class="ex"><div class="k">Si parte da zero</div><div class="ex-v violet">Guida PDF</div><div class="ex-l">inclusa, passo passo</div>
+          <div class="ex-l2">Basta il telefono e un po' di attenzione ai messaggi durante il giorno.</div></div></div>
+      <div class="msg"><div class="msg-h"><i class="pulse" style="--c:{VIOLET}"></i><span class="k">Esempio di messaggio</span></div>{msg}</div>
+      <p class="note">Le indicazioni sono uguali per tutti i membri del gruppo e non sono una consulenza personalizzata: ogni operazione la decidi e la fai tu.</p>
     </div>
   </div>
   {foot()}
@@ -479,10 +534,10 @@ def s_legal() -> str:
                     for i, (t, d) in enumerate(items))
     return f'''
 <section class="slide">{frame()}
-  {top("Avvertenze", 7, GOLD)}
+  {top("Avvertenze", 8, GOLD)}
   <h2>Prima di iniziare, <span class="hl gold">in parole semplici.</span></h2>
   <div class="lgs">{cells}</div>
-  <p class="fine wide">Documento informativo: non è un'offerta al pubblico, una sollecitazione all'investimento né una consulenza personalizzata. Nel copy trading le operazioni sono replicate sul conto del cliente, che resta intestato a lui: non è gestione di patrimoni.</p>
+  <p class="fine wide">Documento informativo: non è un'offerta al pubblico, una sollecitazione all'investimento né una consulenza personalizzata. Nel copy trading le operazioni sono replicate sul conto del cliente, che resta intestato a lui: non è gestione di patrimoni. Le indicazioni del gruppo privato sono uguali per tutti: ogni decisione e ogni operazione restano del cliente.</p>
   {foot()}
 </section>'''
 
@@ -503,7 +558,7 @@ def s_close() -> str:
     <div class="css">{steps}</div>
     <div class="cts">{ct}</div>
   </div>
-  <p class="close-legal">Investire comporta rischi, anche di perdita del capitale. I risultati passati non garantiscono quelli futuri. Avvertenze a pag. 7.</p>
+  <p class="close-legal">Investire comporta rischi, anche di perdita del capitale. I risultati passati non garantiscono quelli futuri. Avvertenze a pag. 8.</p>
 </section>'''
 
 
@@ -511,7 +566,7 @@ def s_close() -> str:
 CSS = r"""
 @page { size: 1280px 720px; margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-:root { --cyan:#4FD8FF; --green:#5BE38A; --gold:#FFB547; --slate:#8394AE;
+:root { --cyan:#4FD8FF; --green:#5BE38A; --gold:#FFB547; --violet:#C79BFF;
         --txt:#E9F3FB; --txt2:#A3B6CA; --muted:#61768E; --line:rgba(120,200,255,.14); }
 html, body { background:#02050A; }
 body { font-family:'Inter', system-ui, sans-serif; color:var(--txt); -webkit-font-smoothing:antialiased; }
@@ -555,8 +610,7 @@ b { color:#F4FAFF; font-weight:600; }
 .hl { color:var(--cyan); } .hl.gold { color:var(--gold); }
 .gline { display:block; overflow:visible; }
 .gline-fb { font-family:'Inter Display','Inter',sans-serif; font-weight:600; color:var(--cyan); line-height:1.12; letter-spacing:-.03em; }
-.ph { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:.74em; letter-spacing:.04em; color:#7F93AA;
-  border:1px dashed rgba(127,147,170,.55); background:rgba(127,147,170,.07); border-radius:4px; padding:.1em .5em; vertical-align:middle; }
+.ph { color:#7F93AA; border-bottom:1px dotted rgba(127,147,170,.6); padding-bottom:1px; }
 
 /* pannelli HUD con angoli a staffa */
 .hud { position:relative; background:linear-gradient(180deg, rgba(20,40,64,.50), rgba(9,20,34,.55));
@@ -601,10 +655,10 @@ b { color:#F4FAFF; font-weight:600; }
 .svc-cap { font-size:12.5px; color:var(--txt2); margin-top:2px; }
 .svc-per { margin-top:16px; padding-top:12px; border-top:1px solid var(--line); font-size:13px; color:#F4FAFF; display:flex; flex-direction:column; gap:4px; }
 .svc-per .k { font-size:9.5px; color:var(--muted); }
-.spectrum { display:flex; align-items:center; gap:14px; margin-top:18px; width:calc(75% - 4px); }
+.spectrum { display:flex; align-items:center; gap:14px; margin-top:18px; }
 .spectrum .k { color:var(--muted); font-size:10px; }
-.spec-line { flex:1; height:2px; background:linear-gradient(90deg, var(--gold), var(--green), var(--cyan)); position:relative; opacity:.8; }
-.spec-line::after { content:""; position:absolute; right:-2px; top:-4px; border-left:7px solid var(--cyan); border-top:5px solid transparent; border-bottom:5px solid transparent; }
+.spec-line { flex:1; height:2px; background:linear-gradient(90deg, var(--gold), var(--green), var(--cyan), var(--violet)); position:relative; opacity:.8; }
+.spec-line::after { content:""; position:absolute; right:-2px; top:-4px; border-left:7px solid var(--violet); border-top:5px solid transparent; border-bottom:5px solid transparent; }
 
 /* pagine servizio */
 .sv-title { display:flex; align-items:center; gap:20px; margin-top:20px; }
@@ -648,6 +702,13 @@ b { color:#F4FAFF; font-weight:600; }
 .br-t { height:12px; background:rgba(255,255,255,.05); border-radius:3px; }
 .br-f { height:100%; background:var(--green); border-radius:0 3px 3px 0; box-shadow:0 0 10px rgba(91,227,138,.5); }
 .br-v { color:#F4FAFF; font-weight:600; }
+.schema { display:block; margin-top:4px; }
+.schema .sm-v { font-family:'Inter Display','Inter'; font-size:21px; font-weight:600; fill:#F4FAFF; }
+.schema .sm-r { font-family:'Inter Display','Inter'; font-size:23px; font-weight:600; }
+.schema .sm-k { font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.16em; fill:#73CDEB; }
+.schema .sm-t { font-size:15px; font-weight:600; fill:#F4FAFF; }
+.schema .sm-s { font-size:12.5px; fill:#A3B6CA; }
+.mt-foot { margin-top:10px; margin-bottom:0; }
 .mt-flow { display:flex; align-items:stretch; gap:10px; }
 .mt-acc { flex:1; border:1px solid var(--line); border-radius:5px; padding:10px 12px; background:rgba(91,227,138,.04); }
 .mt-acc p { font-size:13px; line-height:1.45; margin-top:6px; }
@@ -661,6 +722,13 @@ b { color:#F4FAFF; font-weight:600; }
 .legend span { display:flex; align-items:center; gap:7px; }
 .legend i { width:14px; height:3px; border-radius:2px; display:inline-block; }
 .legend i.sq { width:12px; height:10px; border-radius:2px; background:rgba(79,216,255,.25); }
+.ex-v.violet { color:var(--violet); text-shadow:0 0 18px rgba(199,155,255,.45); font-size:32px; }
+.msg { margin-top:16px; border:1px solid rgba(199,155,255,.35); border-radius:10px 10px 10px 2px; background:rgba(199,155,255,.06); padding:12px 16px; }
+.msg-h { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.msg-h .k { color:var(--violet); }
+.msg-r { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(199,155,255,.15); font-size:14px; color:#F4FAFF; }
+.msg-r:last-child { border-bottom:0; }
+.msg-r .k { color:var(--txt2); font-size:10px; }
 .fxs { display:flex; flex-direction:column; gap:14px; }
 .fx { display:flex; align-items:center; gap:18px; padding-bottom:14px; border-bottom:1px solid var(--line); }
 .fx-v { font-family:'Inter Display','Inter'; font-size:38px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; width:92px; flex:none;
@@ -725,14 +793,14 @@ b { color:#F4FAFF; font-weight:600; }
 """
 
 DEFS = f"""<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-<linearGradient id="g-title" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#9BE9FF"/><stop offset="1" stop-color="{CYAN}"/></linearGradient>
+<linearGradient id="g-title" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8FE6FF"/><stop offset=".45" stop-color="#6FDFFF"/><stop offset="1" stop-color="{CYAN}"/></linearGradient>
 <linearGradient id="g-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{CYAN}" stop-opacity=".32"/><stop offset="1" stop-color="{CYAN}" stop-opacity="0"/></linearGradient>
 <radialGradient id="g-glow"><stop offset="0" stop-color="{CYAN}" stop-opacity=".22"/><stop offset=".5" stop-color="#1A6E9A" stop-opacity=".08"/><stop offset="1" stop-color="#04070D" stop-opacity="0"/></radialGradient>
 </defs></svg>"""
 
 
 def build() -> None:
-    slides = [s_cover(), s_overview(), s_svc1(), s_svc2(), s_svc3(), s_svc3_numeri(), s_legal(), s_close()]
+    slides = [s_cover(), s_overview(), s_svc1(), s_svc2(), s_svc3(), s_svc3_numeri(), s_svc4(), s_legal(), s_close()]
     assert len(slides) == TOTAL, len(slides)
     html = ('<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">'
             f'<title>{BRAND} · Ecosistema di investimento</title><style>{CSS}</style></head>'
