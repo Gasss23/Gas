@@ -68,7 +68,7 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   20 +++++
+ .claude/agents/memoria_revisore.md |   22 ++++++
  .github/workflows/ci.yml           |    8 ++
  .gitignore                         |    5 ++
  CLAUDE.md                          |    2 +-
@@ -106,6 +106,8 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1a3dfa03 chore(revisore): memoria review #814 — APPROVATO
+b31aee09 docs(fine-task): CRM fetta 4 — main nel ramo (review #812), parole vietate allargate (#813), base della sessione 5cb2d2f8
 71ccb045 fix(crm): parole vietate nei testi di Opus — anche «ti garantisco», «capitale protetto», «rendimento sicuro», «soldi facili»… (V-3 verifica esterna #381, 4° giro) — review #813 APPROVATO
 9d718f0c chore(revisore): memoria review #813 — APPROVATO
 47df3c00 merge: porta main (#380, #382, #383) nel ramo del CRM; conflitti solo nei report (report di sessione: i nostri; memoria del revisore: unione) — review #812-CRM APPROVATO
@@ -791,7 +793,100 @@ Review #811-CRM sul diff staged (2 file, +68/−37), sopra d402a4f6. Chiude R-81
 - Ho aggiunto la riga contatore #811-CRM a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit f4217863). Il diff staged è intatto (2 file).
 - Non ho creato `.claude/.review_ok` e non ho committato il diff.
 
-### Review #812-CRM (10° giro, commit 47df3c00: merge di origin/main 5cb2d2f8 nel ramo)
+### Review #812-CRM RIEMESSO (#814-CRM, commit 47df3c00: merge di origin/main 5cb2d2f8 nel ramo)
+
+Verdetto riemesso dal revisore con le citazioni nella forma del gate (stesso esito dell'originale #812). L'originale, invariato, è nel §4bis: dopo il merge le sue citazioni puntano a file non più nel diff di sessione.
+
+## VERDETTO: APPROVATO
+
+Verdetto #812-CRM riemesso con le citazioni nella forma del gate (riga contatore #814-CRM). Esito e contenuto sono gli stessi dell'originale; cambiano solo le citazioni.
+
+Ho aggiunto citazioni di file NON .md che stanno nel diff di sessione `5cb2d2f8..HEAD`, verificate a HEAD b31aee09. Ho tenuto quelle di contesto dell'originale, con il percorso completo.
+
+Oggetto: merge di origin/main 5cb2d2f8 (PR #380, #382, #383) in claude/nifty-galileo-3k7kbm, revisionato non committato e poi committato come 47df3c00. HEAD del ramo prima del merge: cdee8f0d. Base: 01eb9f50.
+
+**Verifiche fatte nel giro #812, sull'indice del merge:**
+- **Conflitti:** `git ls-files -u` vuoto, nessun marcatore di conflitto. `git diff --cached --check` segnala solo uno spazio a fine riga in `reports/guida_voce_in_giro.md`, che arriva così da main.
+- **Lati separati:** i 15 file cambiati solo da main sono identici a MERGE_HEAD; i 26 file cambiati solo dal ramo sono identici a HEAD cdee8f0d (blob uguali, nessuno diverso). Nessun file toccato da nessuno dei due lati è cambiato.
+- **File toccati da entrambi i lati:** la memoria del revisore, `reports/diff_sessione.md`, `reports/handoff.md`, `reports/ultimo_report.md` (con conflitto) e `reports/stato_progetto.md` (fuso da git).
+- **Test sul risultato del merge:** suite del kernel `=== RIEPILOGO: 1191 PASS, 0 FAIL ===`. pytest su crm, voice_server, web_browser, voce_ascolto e notte: 988 passed.
+
+**Elementi esaminati — file del ramo:**
+
+Tutti questi file hanno lo stesso blob in cdee8f0d (prima del merge), in 47df3c00 (merge) e in b31aee09 (HEAD). Le righe le ho ricontrollate ora a b31aee09.
+
+- `gas.py:5644` — il forte usa `MODEL_CLAUDE_CLIENTI` (Opus) quando nella finestra ci sono dati di clienti; il blocco di memoria pieno va solo a una chiamata Opus (`gas.py:5663`).
+  - Rischio esaminato: che il merge alterasse il kernel del ramo, cioè la regola «dati dei clienti SOLO su Opus».
+  - In #812 il file è risultato identico a HEAD (verifica sul file intero), e main non tocca gas.py. Sul risultato del merge i test T117 e T114i del kernel passano (1191 PASS).
+  - Esito: ok.
+- `brains/model_ids.py:14` — `MODEL_CLAUDE_CLIENTI`, il modello per i dati dei clienti (default Opus).
+  - Rischio esaminato: un conflitto silenzioso con i modelli toccati da main. Main non tocca brains/; il file è identico a HEAD.
+  - Esito: ok.
+- `tests/test_unit_kernel.py:13568` — T117a, round-trip tool → final con Opus e gratuiti mai chiamati; insieme a T114i (`tests/test_unit_kernel.py:13012`).
+  - Rischio esaminato: test del ramo persi o cambiati nel merge.
+  - File identico a HEAD; i due test passano nella suite eseguita sul risultato del merge.
+  - Esito: ok.
+- `tests/conftest.py:30` — la fixture che isola il file vero del CRM nelle suite pytest (R-809-2).
+  - Rischio esaminato: che le suite di main (voice_server, web_browser, voce_ascolto), eseguite nello stesso processo pytest, leggano i clienti veri.
+  - Il file è identico a HEAD, la fixture è autouse, e le 988 prove sono passate col conftest del ramo.
+  - Esito: ok.
+- `modules/crm/store.py:1292` — `identita_clienti`, la lettura in sola lettura dei clienti per il kernel.
+  - Rischio esaminato: alterazioni nel merge. Main non tocca modules/crm; il file è identico a HEAD.
+  - Esito: ok.
+
+**Elementi esaminati — contesto (unione e fusione dei file condivisi):**
+- `.claude/agents/memoria_revisore.md:1572` — unione dei due blocchi: prima le righe di main (#806…#809-M1coord e practical-tesla), poi le nostre (#803-CRM…#811-CRM).
+  - 0 righe tolte rispetto a HEAD e a MERGE_HEAD. Le 16 righe in più rispetto a HEAD sono esattamente le aggiunte di main dalla base; le 18 in più rispetto a MERGE_HEAD sono esattamente le nostre.
+  - I 3 doppioni c'erano già, uguali, su entrambi i lati. Nessuno scontro di numeri, grazie ai suffissi.
+  - Esito: ok.
+- `reports/stato_progetto.md:9` — fusione automatica di git. Rispetto a HEAD: 0 righe tolte, 3 aggiunte, uguali alle aggiunte di main. Rispetto a MERGE_HEAD: 1 tolta e 4 aggiunte, uguali alle modifiche del ramo. Esito: ok.
+- `modules/voice/server.py:1` — arriva da main (aggiunge `togli_parola_in_testa`). Non tocca il kernel del ramo: nessun riferimento al filtro dei clienti, ai modelli del forte o al CRM. Esito: ok.
+- `reports/handoff.md:1`, `reports/ultimo_report.md:1`, `reports/diff_sessione.md:1` — nello stage identici a HEAD. Le versioni di main sono scartate, come da convenzione dei file di sessione. Esito: ok.
+
+**Rischio esplicitamente NON verificato:** il merito del codice arrivato da main (`presentazione_clienti/`, `scripts/voce/registra_voce.py`, `clients/voice/ascolto.py`, `modules/web/browser.py`). È già stato revisionato nelle sue PR; qui ne ho controllato solo l'integrità (identico a origin/main). Il contenuto del PDF di `presentazione_clienti/` non l'ho guardato.
+
+**Note:**
+- Riga contatore #814-CRM (riemissione di #812) e una lezione sulle citazioni nei verdetti di merge aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md e committate da sole (commit 1a3dfa03).
+- Non ho creato `.claude/.review_ok` e non ho committato codice.
+- Riserve ancora aperte dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
+
+### Review #813-CRM (11° giro, commit 71ccb045: parole vietate allargate, V-3 della verifica esterna #381 4° giro)
+
+## VERDETTO: APPROVATO
+
+Review #813-CRM sul diff staged (2 file, +11/−4), sopra il merge 47df3c00. Chiude la V-3 della verifica esterna #381 (4° giro). Il cambiamento è piccolo e corretto; i falsi allarmi che introduce scartano solo la riscrittura e sono già dichiarati in R-810-2.
+
+**Verifiche rifatte da me:**
+- Suite CRM: 120 passed.
+- Fail-before: con lo `scrittore.py` di HEAD 47df3c00 e il file di test nuovo, il test esteso fallisce (`1 failed`).
+- Prove a mano su 9 frasi (sotto).
+- Perimetro: kernel, brains e cancello non toccati; nessuno slicing della history, nessuna simulazione di tool.
+
+**Elementi del diff esaminati:**
+- `modules/crm/scrittore.py:58` — `_VIETATE` allargata («garantisc», «garanzi», «assicurat», «rischio zero», «capitale protetto», «… sicuro», «… certo», «soldi/guadagni facili», «solo per oggi», «investi ora/subito»). Il confronto resta quello di #810: forma normalizzata più forma con sole lettere e cifre.
+  - Rischio esaminato: che la nota sul rischio del sistema («I risultati passati non garantiscono quelli futuri.») faccia scartare ogni testo.
+  - Non succede: `pulisci` (`modules/crm/scrittore.py:120`) toglie nota e riga STOP con `_senza_coda` prima del controllo (`modules/crm/scrittore.py:126`). Provato: «Ciao Mario! <nota> Ne parliamo?» passa, e la nota viene tolta.
+  - Esito: ok.
+- Falsi allarmi nuovi, provati a mano: vengono scartati
+  - una nota riformulata da Claude («…non garantiscono i risultati futuri»),
+  - «Ti ho assicurato che ti richiamo»,
+  - «Investi ora un minuto per leggere?»,
+  - «Con la garanzia della massima trasparenza».
+
+  Sono nel verso sicuro: scartano solo la riscrittura e resta il testo di prima. Rientrano in R-810-2, già dichiarata. Un testo normale («Ciao Luca, ottimo mese! Ti va di provare la Sala Segnali? Ne parliamo?») passa. Esito: ok.
+- `tests/test_unit_crm.py:1274` — 8 frasi nuove della sonda nel test «non si aggirano»; le frasi buone restano invariate. Nessuna asserzione tolta. Esito: ok.
+
+**Rischio esplicitamente NON verificato:** quanto spesso Claude Opus vero produca testi che finiscono tra i falsi allarmi (per esempio riformulando un'avvertenza): non misurabile qui senza la CLI. L'effetto peggiore è perdere la riscrittura, mai un testo con promesse.
+
+**Note:**
+- Nota cosmetica, non classificata come riserva: quando la nota sta in mezzo al testo, toglierla lascia un doppio spazio («Ciao Mario!  Ne parliamo?»).
+- Restano aperte dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
+- Ho aggiunto la riga contatore #813-CRM a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit 9d718f0c). Il diff staged è intatto (2 file).
+- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+
+## §4bis VERDETTO ORIGINALE #812-CRM (merge di main, sostituito nel §4 dalla riemissione #814)
+
+Il verdetto originale del giro #812 cita `modules/voice/server.py` (arrivato da main, non più nel diff 5cb2d2f8..HEAD) e file `.md`. Per questo `check_verdetto` lo rifiuta come evidenza: le citazioni non sono verificabili sul diff di sessione. Il revisore l'ha riemesso con lo stesso esito (§4). Testo integrale, invariato:
 
 ## VERDETTO: APPROVATO
 
@@ -828,40 +923,6 @@ In breve: il merge non perde né altera righe di nessuno dei due lati, e la riso
 - Riga contatore #812-CRM aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e messa in stage con `git add`, senza commit: entra nel commit del merge, come chiesto. MERGE_HEAD è ancora presente; nello stage ci sono 17 file (+2503/−50, contando la memoria).
 - Non ho creato `.claude/.review_ok` e non ho committato.
 - Restano aperte, dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
-
-### Review #813-CRM (11° giro, commit 71ccb045: parole vietate allargate, V-3 della verifica esterna #381 4° giro)
-
-## VERDETTO: APPROVATO
-
-Review #813-CRM sul diff staged (2 file, +11/−4), sopra il merge 47df3c00. Chiude la V-3 della verifica esterna #381 (4° giro). Il cambiamento è piccolo e corretto; i falsi allarmi che introduce scartano solo la riscrittura e sono già dichiarati in R-810-2.
-
-**Verifiche rifatte da me:**
-- Suite CRM: 120 passed.
-- Fail-before: con lo `scrittore.py` di HEAD 47df3c00 e il file di test nuovo, il test esteso fallisce (`1 failed`).
-- Prove a mano su 9 frasi (sotto).
-- Perimetro: kernel, brains e cancello non toccati; nessuno slicing della history, nessuna simulazione di tool.
-
-**Elementi del diff esaminati:**
-- `modules/crm/scrittore.py:58` — `_VIETATE` allargata («garantisc», «garanzi», «assicurat», «rischio zero», «capitale protetto», «… sicuro», «… certo», «soldi/guadagni facili», «solo per oggi», «investi ora/subito»). Il confronto resta quello di #810: forma normalizzata più forma con sole lettere e cifre.
-  - Rischio esaminato: che la nota sul rischio del sistema («I risultati passati non garantiscono quelli futuri.») faccia scartare ogni testo.
-  - Non succede: `pulisci` (`modules/crm/scrittore.py:120`) toglie nota e riga STOP con `_senza_coda` prima del controllo (`modules/crm/scrittore.py:126`). Provato: «Ciao Mario! <nota> Ne parliamo?» passa, e la nota viene tolta.
-  - Esito: ok.
-- Falsi allarmi nuovi, provati a mano: vengono scartati
-  - una nota riformulata da Claude («…non garantiscono i risultati futuri»),
-  - «Ti ho assicurato che ti richiamo»,
-  - «Investi ora un minuto per leggere?»,
-  - «Con la garanzia della massima trasparenza».
-
-  Sono nel verso sicuro: scartano solo la riscrittura e resta il testo di prima. Rientrano in R-810-2, già dichiarata. Un testo normale («Ciao Luca, ottimo mese! Ti va di provare la Sala Segnali? Ne parliamo?») passa. Esito: ok.
-- `tests/test_unit_crm.py:1274` — 8 frasi nuove della sonda nel test «non si aggirano»; le frasi buone restano invariate. Nessuna asserzione tolta. Esito: ok.
-
-**Rischio esplicitamente NON verificato:** quanto spesso Claude Opus vero produca testi che finiscono tra i falsi allarmi (per esempio riformulando un'avvertenza): non misurabile qui senza la CLI. L'effetto peggiore è perdere la riscrittura, mai un testo con promesse.
-
-**Note:**
-- Nota cosmetica, non classificata come riserva: quando la nota sta in mezzo al testo, toglierla lascia un doppio spazio («Ciao Mario!  Ne parliamo?»).
-- Restano aperte dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
-- Ho aggiunto la riga contatore #813-CRM a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit 9d718f0c). Il diff staged è intatto (2 file).
-- Non ho creato `.claude/.review_ok` e non ho committato il diff.
 
 ## §5 DELTA TEST DEL MOTORE
 
@@ -932,7 +993,7 @@ Mappatura commit→run:
 - `e126c65c` (fine-task della fetta 2): run CI 44185069097 e verifica-bot 44185075324 (check cancelled, sopra).
 - `49149716`, `d402a4f6`, `f4217863`, `6ef97624` (fetta 3): nessuna run su questi SHA (pushati insieme a cdee8f0d).
 - `cdee8f0d` (fine-task della fetta 3): run CI 44422271498 e verifica-bot 44422276124 (check cancelled, sopra).
-- `47df3c00` (merge di main), `9d718f0c`, `71ccb045` (fetta 4): run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file, e la run testerà solo l'albero di quel commit.
+- `47df3c00` (merge di main), `9d718f0c`, `71ccb045` (fetta 4), `b31aee09` (fine-task, fermato dal gate sul verdetto #812), `1a3dfa03` (memoria del revisore, riemissione #814): run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file, e la run testerà solo l'albero di quel commit.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
