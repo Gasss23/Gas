@@ -1,18 +1,15 @@
-# Ultimo report — 2026-11-17/18 — CRM clienti: fetta 1 (prima bozza), fetta 2 (risposte dell'operatore), fetta 3 (dati dei clienti SOLO con Opus)
+# Ultimo report — 2026-11-17/19 — CRM clienti: fette 1-3, più fetta 4 (main nel ramo, parole vietate allargate)
 
 ## DECISIONI UMANE RICHIESTE
 1. Merge della PR #381: decide l'operatore (riserve BASSE e COSMETICHE aperte).
-   - Oggi è bloccato dalla CI rossa per 7 test del sandbox del browser, che falliscono anche su altri rami: un cambio dei runner GitHub, non il CRM. Serve una fetta separata.
-   - Il bot di verifica sull'ultimo push non ha concluso (tutti i suoi modelli sono falliti): si rilancia col prossimo push.
-2. Confermare la scelta A su R-810-1: il cervello forte, quando non è Opus, riceve la memoria di Gas senza i nomi dei clienti. Alternativa B: Opus a ogni turno del forte, che consuma molto di più.
-3. Le 3 domande aperte in `reports/crm/domande.md`:
-   - come guadagniamo su ogni servizio e capitale minimo;
-   - WhatsApp Business: app o API;
-   - collegare le chat tra loro.
-4. Prima dei dati veri:
-   - consenso dei clienti raccolto davvero;
-   - verifica Consob con un consulente;
-   - decisione GDPR: anonimizzazione su richiesta (R-803-9), estesa alle copie di sicurezza (R-808-6).
+   - Main è ora dentro il ramo, col fix della CI della PR #380: il rosso della CI dovrebbe sparire con questo push (esito nel §6 dell'handoff).
+2. Il bot di verifica su GitHub non conclude: due volte di fila tutti i suoi modelli sono falliti. È un problema del bot (quota, chiave o PR troppo grande), non del codice, e il suo check required resta senza esito.
+3. Confermare la scelta A su R-810-1: il cervello forte, quando non è Opus, riceve la memoria senza i nomi dei clienti. Alternativa B: Opus a ogni turno del forte, che consuma molto di più.
+4. Le 3 domande aperte in `reports/crm/domande.md`.
+5. Prima dei dati veri:
+   - consenso dei clienti;
+   - verifica Consob;
+   - decisione GDPR (R-803-9, R-808-6).
 
 ## Esito
 - **Fetta 1 — CRM clienti, prima bozza**: FATTA.
@@ -35,6 +32,9 @@
     - ID di Opus nel file unico dei modelli;
     - R-809-1 e R-809-2 chiuse.
   - Commit 6ef97624, review #811 APPROVATO (R-810-1, scelta A): il blocco di memoria coi nomi dei lead va solo alle chiamate Opus.
+- **Fetta 4 — main nel ramo e note della verifica esterna #381 (4° giro)**: FATTA.
+  - Merge 47df3c00 di main (PR #380, #382, #383), review #812 APPROVATO: conflitti solo nei report, fix della CI incluso.
+  - Commit 71ccb045, review #813 APPROVATO: parole vietate allargate («ti garantisco», «capitale protetto», «rendimento sicuro», «soldi facili»…).
 - **Invio automatico su WhatsApp**: DEFERITA. Decisione dell'operatore: «da sole, ma all'inizio col mio controllo». Oggi ogni invio lo conferma l'operatore. Per l'automatico servono l'API WhatsApp Business e i modelli approvati da Meta.
 - **Strumento CRM per il modello di Gas** («chi devo chiamare oggi?»): DEFERITA, prossima fetta.
 
@@ -43,15 +43,15 @@
   - 14 su 48c0f114;
   - 4 sullo staged di #808;
   - 4 su e126c65c.
-- Suite del kernel: `=== RIEPILOGO: 1191 PASS, 0 FAIL ===`. Fail-before:
+- Suite del kernel: `=== RIEPILOGO: 1191 PASS, 0 FAIL ===`. Era 1171 sulla base: prima l'handoff diceva 1167 per errore. Fail-before:
   - T117 su e126c65c: 4 FAIL col modello iniettato;
   - T114i e T115d2b su d402a4f6: 2 FAIL.
-- Altre suite che costruiscono il kernel: 1490 passed. mypy: 0 errori in `modules/crm` e `brains/model_ids.py`.
+- Altre suite che costruiscono il kernel: 1490 passed. Sul risultato del merge con main: crm, notte, web_browser (intera, col fix di #380), voice_server, manutenzione e voice_contesto danno 668 passed. mypy: 0 errori in `modules/crm` e `brains/model_ids.py`.
 
 ## Riserve aperte
-- R-810-2 e R-810-3: COSMETICHE (limiti del filtro delle parole vietate; isolamento dei test legato all'ordine degli import).
+- R-810-2 e R-810-3: COSMETICHE (limiti del filtro delle parole vietate; isolamento dei test legato all'ordine degli import). V-5 della verifica (COSMETICA): il controllo «è Opus» guarda solo il nome.
 - R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4: vedi `reports/stato_progetto.md`.
 
 ## Anomalie
-- CI rossa sullo step «Run web suite» (7 test bwrap del browser) su ogni ramo dal 17 nov: ambientale, dettagli nel §6 dell'handoff. Lo step «Run CRM suite» è verde.
-- Bot di verifica su e126c65c: check cancelled, perché i suoi modelli (claude-opus-5-5, claude-opus-4-8, claude-fable-5-1) sono falliti tutti. Si rilancia col push.
+- CI rossa sullo step «Run web suite» (7 test bwrap del browser) fino a cdee8f0d. Il fix era già su main (PR #380): l'handoff lo dava per «fetta separata», un errore segnalato dalla verifica esterna (V-1). Ora main è nel ramo.
+- Bot di verifica su e126c65c e su cdee8f0d: check cancelled tutte e due le volte, perché i suoi modelli (claude-opus-5-5, claude-opus-4-8, claude-fable-5-1) sono falliti tutti.

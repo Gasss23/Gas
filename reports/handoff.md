@@ -1,21 +1,24 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-17/18 — CRM clienti: fetta 1 (prima bozza: servizi, registro movimenti, motore delle opportunità, dashboard in tempo reale), fetta 2 (risposte dell'operatore: follow-up mensile, selezione dei clienti, invii a scaglioni, testi riscritti da Opus, clienti del CRM solo al cervello forte) e fetta 3 (dati dei clienti SOLO con Claude Opus anche nella chat di Gas; note della verifica esterna #381, 3° giro)
+**Sessione:** 2026-11-17/19 — CRM clienti:
+- fetta 1: prima bozza (servizi, registro movimenti, motore delle opportunità, dashboard in tempo reale);
+- fetta 2: risposte dell'operatore (follow-up mensile, selezione dei clienti, invii a scaglioni, testi riscritti da Opus, clienti del CRM solo al cervello forte);
+- fetta 3: dati dei clienti SOLO con Claude Opus anche nella chat di Gas;
+- fetta 4: main portato nel ramo (fix della CI incluso) e parole vietate allargate.
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #381 (https://github.com/Gasss23/Gas/pull/381). Lo decide l'operatore: restano riserve BASSE e COSMETICHE aperte, e il check verifica-bot è neutral perché la PR tocca la CI.
-   - Oggi il merge è BLOCCATO dal check required `unit-suite`, rosso per 7 test del sandbox del browser che falliscono anche su altri rami (vedi §6). Prima serve una fetta separata su quel problema dei runner.
-   - Il bot di verifica su e126c65c non ha concluso: tutti i suoi modelli sono falliti e il check risulta cancelled (vedi §6). Riparte col push di questo commit.
-2. R-810-1, scelta dell'agente da confermare. Il forte con un modello diverso da Opus riceve la memoria di Gas SENZA nomi dei lead (A), così i dati dei clienti li vede solo Opus e non si consumano token in più.
-   - L'alternativa B è usare Opus a ogni turno del forte in cui la memoria contiene lead: consuma molto di più il tetto giornaliero.
-3. Le 3 domande ancora aperte in `reports/crm/domande.md`:
+   - Main è ora dentro il ramo (merge 47df3c00): conflitti risolti e fix della CI di #380 incluso. Il rosso di `unit-suite` dovrebbe sparire con la run di questo push; esito in §6.
+2. Il bot di verifica non conclude: su e126c65c e cdee8f0d il check verifica-bot è cancelled, perché tutti i suoi modelli sono falliti (claude-opus-5-5, claude-opus-4-8, claude-fable-5-1). È un problema del bot, non del codice. Da guardare: quota, chiave o dimensione della PR. Il required `verifica-bot` resta senza success finché non conclude.
+3. R-810-1, scelta dell'agente da confermare (A): il forte con un modello diverso da Opus riceve la memoria SENZA nomi dei lead. L'alternativa B è usare Opus a ogni turno del forte con lead in memoria: consuma molto di più.
+4. Le 3 domande ancora aperte in `reports/crm/domande.md`:
    - come guadagniamo su ogni servizio, e il capitale minimo;
    - WhatsApp Business: app o API;
    - collegare le chat tra loro.
-4. Prima dei dati veri:
+5. Prima dei dati veri:
    - consenso dei clienti raccolto davvero;
    - verifica Consob con un consulente;
    - decisione GDPR: anonimizzazione su richiesta (R-803-9), estesa alle copie di sicurezza (R-808-6).
@@ -51,6 +54,11 @@
     - V-4: ID di Opus in `brains/model_ids.py`;
     - R-809-1 e R-809-2 chiuse.
   - Commit 6ef97624, review #811-CRM APPROVATO: R-810-1 chiusa con la scelta A. Il blocco di memoria pieno va solo alle chiamate Opus.
+- **Fetta 4 — main nel ramo e note della verifica esterna #381 (4° giro)**: FATTA.
+  - Commit 47df3c00, review #812-CRM APPROVATO. Merge di origin/main 5cb2d2f8 (PR #380, #382, #383): V-1 e V-2 della verifica, cioè fix della CI non incluso e PR in conflitto.
+    - Conflitti solo nei report: i report di sessione sono i nostri, la memoria del revisore è l'unione dei due lati.
+    - I file arrivati solo da main sono identici a main; i nostri restano identici a HEAD.
+  - Commit 71ccb045, review #813-CRM APPROVATO: parole vietate allargate (V-3).
 - **Invio automatico WhatsApp**: DEFERITA. Decisione dell'operatore: «da sole, ma all'inizio col mio controllo». Servono l'API WhatsApp Business e i modelli approvati da Meta.
 - **Strumento CRM per il modello di Gas** (sola lettura, solo cervello forte): DEFERITA, prossima fetta (`reports/crm/guida.md` §7).
 - **Integrazioni (broker, risposte WhatsApp automatiche)**: DEFERITA (`reports/crm/guida.md` §7).
@@ -60,7 +68,7 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   18 +++++
+ .claude/agents/memoria_revisore.md |   20 +++++
  .github/workflows/ci.yml           |    8 ++
  .gitignore                         |    5 ++
  CLAUDE.md                          |    2 +-
@@ -68,36 +76,40 @@
  gas.py                             |  306 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
  modules/crm/__init__.py            |   18 +++++
  modules/crm/__main__.py            |  380 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/analisi.py             |  391 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/analisi.py             |  391 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/demo.py                |  135 ++++++++++++++++++++++++++++++++
- modules/crm/messaggi.py            |  152 ++++++++++++++++++++++++++++++++++++
+ modules/crm/messaggi.py            |  152 +++++++++++++++++++++++++++++++++++
  modules/crm/motore.py              |  540 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/scrittore.py           |  246 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/scrittore.py           |  249 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/server.py              |  876 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/store.py               | 1335 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/crm/web/app.css            |  330 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/store.py               | 1335 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/web/app.css            |  330 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/web/app.js             |  902 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/web/favicon.svg        |    1 +
  modules/crm/web/index.html         |   17 ++++
  reports/crm/decisioni.md           |   29 +++++++
  reports/crm/domande.md             |    7 ++
  reports/crm/guida.md               |  123 +++++++++++++++++++++++++++++
- reports/diff_sessione.md           |   41 ++++++++--
+ reports/diff_sessione.md           |   44 ++++++++++-
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |    1 +
  reports/stato_progetto.md          |    6 +-
- reports/ultimo_report.md           |   58 +++++++++++---
+ reports/ultimo_report.md           |   55 +++++++++++--
  tests/conftest.py                  |   23 ++++++
- tests/test_unit_crm.py             | 1541 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_crm.py             | 1545 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_kernel.py          |  338 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  tests/test_unit_notte.py           |    7 ++
 ```
 
-NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Gli altri conteggi sono presi con i report già in stage. `reports/crm.md`, creato e poi spostato in `reports/crm/guida.md` nella stessa sessione, non compare nel diff rispetto a BASE.
+NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Gli altri conteggi sono presi con i report già in stage. Dopo il merge di main la base della sessione è 5cb2d2f8 (origin/main): il diff contiene solo i cambiamenti del ramo. `reports/crm.md`, creato e poi spostato in `reports/crm/guida.md` nella stessa sessione, non compare.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+71ccb045 fix(crm): parole vietate nei testi di Opus — anche «ti garantisco», «capitale protetto», «rendimento sicuro», «soldi facili»… (V-3 verifica esterna #381, 4° giro) — review #813 APPROVATO
+9d718f0c chore(revisore): memoria review #813 — APPROVATO
+47df3c00 merge: porta main (#380, #382, #383) nel ramo del CRM; conflitti solo nei report (report di sessione: i nostri; memoria del revisore: unione) — review #812-CRM APPROVATO
+cdee8f0d docs(fine-task): CRM fetta 3 — Opus per i dati dei clienti, review #810/#811, decisione del 18-11, riserve R-810-2/3
 6ef97624 fix(kernel): il blocco di memoria pieno (nomi dei lead) solo alle chiamate Claude Opus — R-810-1, scelta A
 f4217863 chore(revisore): memoria review #811 — APPROVATO
 d402a4f6 feat(crm): dati dei clienti SOLO con Claude Opus anche nella chat di Gas; note della verifica esterna #381 (3° giro)
@@ -779,6 +791,78 @@ Review #811-CRM sul diff staged (2 file, +68/−37), sopra d402a4f6. Chiude R-81
 - Ho aggiunto la riga contatore #811-CRM a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit f4217863). Il diff staged è intatto (2 file).
 - Non ho creato `.claude/.review_ok` e non ho committato il diff.
 
+### Review #812-CRM (10° giro, commit 47df3c00: merge di origin/main 5cb2d2f8 nel ramo)
+
+## VERDETTO: APPROVATO
+
+Review #812-CRM del merge non ancora committato di origin/main 5cb2d2f8 (PR #380, #382, #383) in claude/nifty-galileo-3k7kbm. HEAD cdee8f0d, base 01eb9f50.
+
+In breve: il merge non perde né altera righe di nessuno dei due lati, e la risoluzione dei conflitti è corretta.
+
+**Verifiche fatte da me, sull'indice:**
+- **Stato del merge.** `git ls-files -u` è vuoto (nessun conflitto aperto) e non ci sono marcatori di conflitto. `git diff --cached --check` segnala solo uno spazio in fondo a una riga di `reports/guida_voce_in_giro.md`, che arriva così da main.
+- **Lati separati.** Con base 01eb9f50: i 15 file cambiati solo da main sono identici a MERGE_HEAD (blob uguali, nessuno diverso). I 26 file cambiati solo dal ramo sono identici a HEAD. Nessun file toccato da nessuno dei due è cambiato.
+- **File toccati da entrambi:** sono 5. I 4 con conflitto (memoria del revisore, `reports/diff_sessione.md`, `reports/handoff.md`, `reports/ultimo_report.md`) più `reports/stato_progetto.md`, fuso da git senza conflitti.
+- **Test sul risultato del merge:** suite del kernel `=== RIEPILOGO: 1191 PASS, 0 FAIL ===`. pytest su crm, voice_server, web_browser, voce_ascolto e notte: 988 passed. La suite web passa intera col fix di #380.
+
+**Elementi esaminati:**
+- `.claude/agents/memoria_revisore.md:1572` — unione dei due blocchi: prima le righe di main (#806…#809-M1coord e practical-tesla), da riga 1589 le nostre (#803-CRM…#811-CRM).
+  - Rischio esaminato: righe perse o riscritte.
+  - Conti: 0 righe tolte rispetto a HEAD e a MERGE_HEAD. Le 16 righe in più rispetto a HEAD sono esattamente le aggiunte di main dalla base; le 18 in più rispetto a MERGE_HEAD sono esattamente le nostre.
+  - I 3 doppioni presenti esistevano già, uguali, su entrambi i lati.
+  - I numeri non si scontrano: suffissi diversi (-M1coord, practical-tesla, -CRM).
+  - Esito: ok.
+- `reports/stato_progetto.md:9` — fusione automatica.
+  - Rischio esaminato: una fusione automatica che tolga in silenzio righe di un lato.
+  - Rispetto a HEAD: 0 righe tolte e 3 aggiunte, uguali riga per riga alle aggiunte di main. Rispetto a MERGE_HEAD: 1 riga tolta e 4 aggiunte, uguali riga per riga alle nostre modifiche dalla base.
+  - Esito: ok.
+- `modules/voice/server.py:1` — arriva da main (aggiunge `togli_parola_in_testa` e le storpiature di «Jarvis»).
+  - Rischio esaminato: interazione con le parti del kernel cambiate dal ramo (modello Opus per i clienti, filtro dei nomi, blocco di memoria).
+  - Main non tocca gas.py, brains né modules/crm. Il server vocale cambia solo il testo della richiesta prima del turno: nessun riferimento a `_contatti_per_filtro`, ai modelli del forte o al CRM.
+  - Esito: ok.
+- **Report di sessione** `reports/handoff.md:1`, `reports/ultimo_report.md:1`, `reports/diff_sessione.md:1`: nello stage sono identici a HEAD. Le versioni di main vengono scartate, come prevede la convenzione dei file di sessione (si riscrivono a ogni sessione e la storia resta in git). Esito: ok.
+
+**Rischio esplicitamente NON verificato:** il merito del codice arrivato da main (`presentazione_clienti/`, `scripts/voce/registra_voce.py`, `clients/voice/ascolto.py`, `modules/web/browser.py`). È già stato revisionato nelle sue PR e qui ne ho controllato solo l'integrità (identico a origin/main). In particolare non ho guardato il contenuto di `presentazione_clienti/Presentazione_Ecosistema.pdf`.
+
+**Note:**
+- Riga contatore #812-CRM aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e messa in stage con `git add`, senza commit: entra nel commit del merge, come chiesto. MERGE_HEAD è ancora presente; nello stage ci sono 17 file (+2503/−50, contando la memoria).
+- Non ho creato `.claude/.review_ok` e non ho committato.
+- Restano aperte, dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
+
+### Review #813-CRM (11° giro, commit 71ccb045: parole vietate allargate, V-3 della verifica esterna #381 4° giro)
+
+## VERDETTO: APPROVATO
+
+Review #813-CRM sul diff staged (2 file, +11/−4), sopra il merge 47df3c00. Chiude la V-3 della verifica esterna #381 (4° giro). Il cambiamento è piccolo e corretto; i falsi allarmi che introduce scartano solo la riscrittura e sono già dichiarati in R-810-2.
+
+**Verifiche rifatte da me:**
+- Suite CRM: 120 passed.
+- Fail-before: con lo `scrittore.py` di HEAD 47df3c00 e il file di test nuovo, il test esteso fallisce (`1 failed`).
+- Prove a mano su 9 frasi (sotto).
+- Perimetro: kernel, brains e cancello non toccati; nessuno slicing della history, nessuna simulazione di tool.
+
+**Elementi del diff esaminati:**
+- `modules/crm/scrittore.py:58` — `_VIETATE` allargata («garantisc», «garanzi», «assicurat», «rischio zero», «capitale protetto», «… sicuro», «… certo», «soldi/guadagni facili», «solo per oggi», «investi ora/subito»). Il confronto resta quello di #810: forma normalizzata più forma con sole lettere e cifre.
+  - Rischio esaminato: che la nota sul rischio del sistema («I risultati passati non garantiscono quelli futuri.») faccia scartare ogni testo.
+  - Non succede: `pulisci` (`modules/crm/scrittore.py:120`) toglie nota e riga STOP con `_senza_coda` prima del controllo (`modules/crm/scrittore.py:126`). Provato: «Ciao Mario! <nota> Ne parliamo?» passa, e la nota viene tolta.
+  - Esito: ok.
+- Falsi allarmi nuovi, provati a mano: vengono scartati
+  - una nota riformulata da Claude («…non garantiscono i risultati futuri»),
+  - «Ti ho assicurato che ti richiamo»,
+  - «Investi ora un minuto per leggere?»,
+  - «Con la garanzia della massima trasparenza».
+
+  Sono nel verso sicuro: scartano solo la riscrittura e resta il testo di prima. Rientrano in R-810-2, già dichiarata. Un testo normale («Ciao Luca, ottimo mese! Ti va di provare la Sala Segnali? Ne parliamo?») passa. Esito: ok.
+- `tests/test_unit_crm.py:1274` — 8 frasi nuove della sonda nel test «non si aggirano»; le frasi buone restano invariate. Nessuna asserzione tolta. Esito: ok.
+
+**Rischio esplicitamente NON verificato:** quanto spesso Claude Opus vero produca testi che finiscono tra i falsi allarmi (per esempio riformulando un'avvertenza): non misurabile qui senza la CLI. L'effetto peggiore è perdere la riscrittura, mai un testo con promesse.
+
+**Note:**
+- Nota cosmetica, non classificata come riserva: quando la nota sta in mezzo al testo, toglierla lascia un doppio spazio («Ciao Mario!  Ne parliamo?»).
+- Restano aperte dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
+- Ho aggiunto la riga contatore #813-CRM a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit 9d718f0c). Il diff staged è intatto (2 file).
+- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - **`tests/test_unit_crm.py` (nuovo):** 0 → 120 passed a 6ef97624.
@@ -790,8 +874,11 @@ Review #811-CRM sul diff staged (2 file, +68/−37), sopra d402a4f6. Chiude R-81
     - i 14 test della fetta 2 su 48c0f114;
     - 4 test dello staged #808;
     - i 4 test della fetta 3 su e126c65c: `test_v1_ve381_*`, `test_v2_ve381_*`, `test_r809_1_*`, `test_v4_ve381_*`.
-  - Anche `tests/test_unit_notte.py::test_r809_2_*` fallisce col `tests/conftest.py` di e126c65c.
-- **Suite del kernel** (`python tests/test_unit_kernel.py`): 1167 → 1191 PASS. Il kernel è toccato dalle fette 2 e 3 (blocchi T116 e T117, T114i/T114i2, T115d2/T115d2b):
+  - Anche `tests/test_unit_notte.py::test_r809_2_*` fallisce col `tests/conftest.py` di e126c65c. `test_v1_ve381_*` con le frasi nuove di #813 fallisce con lo `scrittore.py` di 6ef97624 (1 failed).
+- **Sul risultato del merge con main** (fetta 4, qui `bwrap` c'è):
+  - kernel `=== RIEPILOGO: 1191 PASS, 0 FAIL ===`;
+  - `pytest tests/test_unit_crm.py tests/test_unit_notte.py tests/test_unit_web_browser.py tests/test_unit_voice_server.py tests/test_unit_manutenzione.py tests/test_unit_voice_contesto.py` → `668 passed in 334.53s (0:05:34)`. La suite web passa intera col fix di #380.
+- **Suite del kernel** (`python tests/test_unit_kernel.py`): 1171 → 1191 PASS. Il 1171 è misurato dalla verifica esterna #381 (4° giro) su 01eb9f50: prima l'handoff diceva 1167, sbagliato (V-4). Main 5cb2d2f8 non tocca gas.py, brains/ né la suite del kernel. Il kernel è toccato dalle fette 2 e 3 (blocchi T116 e T117, T114i/T114i2, T115d2/T115d2b):
 
 ```
 === RIEPILOGO: 1191 PASS, 0 FAIL ===
@@ -803,7 +890,7 @@ Review #811-CRM sul diff staged (2 file, +68/−37), sopra d402a4f6. Chiude R-81
   - T116b, T117a, T114i e T114i2 sono round-trip §7 (strumento → risposta finale).
   - T114i e T115d2 cambiano per la regola nuova: il blocco pieno lo vede solo Opus. Le asserzioni sul blocco pieno restano identiche nei casi Opus (T114i2, T115d2); per il forte non Opus se ne aggiungono di più strette.
 - **Altre suite che costruiscono il kernel:** claude_cli, notte, manutenzione, voice_contesto, sottofondo, gate, hooks → `1490 passed in 94.39s (0:01:34)` alla fetta 3. Alla fetta 2, con telegram_voce, voice_server e richieste: 1607 passed.
-- **Suite web:** `tests/test_unit_web_browser.py` non rigirata qui, perché nel container manca `bwrap`. In CI è rossa per i 7 test ambientali del §6, uguali anche su altri rami.
+- **Suite web:** prima del merge in CI era rossa per 7 test del sandbox (Ubuntu 26.04); dopo il merge, con il fix di #380, qui passa intera (sopra).
 - **mypy:** 0 errori in `modules/crm` e `brains/model_ids.py`. Le 76 segnalazioni di altri file (gas.py, modules/voice, modules/sottofondo…) vengono dall'import di `gas` e sono le stesse di prima.
 
 ## §6 STATO CI
@@ -821,23 +908,17 @@ run 44167852645  CI            push                 48c0f114  completed / failur
 run 44167861014  verifica-bot  pull_request_target  48c0f114  completed / success
 run 44185069097  CI            push                 e126c65c  completed / failure  (unit-suite: unico step rosso «Run web suite»; «Run CRM suite» e le altre suite success; handoff-check success)
 run 44185075324  verifica-bot  pull_request_target  e126c65c  completed / success  (job «esito» success, MA il check verifica-bot è cancelled: «verifica NON conclusa … falliti prima claude-opus-5-5, claude-opus-4-8, claude-fable-5-1 (cascata dichiarata)», si può rilanciare)
+run 44422271498  CI            push                 cdee8f0d  completed / failure  (unit-suite failure; handoff-check success)
+run 44422276124  verifica-bot  pull_request_target  cdee8f0d  completed / success  (job «esito» success, MA il check verifica-bot è di nuovo cancelled: «verifica NON conclusa … falliti prima claude-opus-5-5, claude-opus-4-8, claude-fable-5-1»)
 run 44155950606  CI            push                 adb0e188  completed / failure  (ALTRO ramo, claude/practical-tesla-ea9a9g, PR #380, senza CRM: stesso step «Run web suite» rosso)
 run 43312735169  CI            push (main)          01eb9f50  completed / success  (12 nov: «Run web suite» 754 passed)
 ```
 
-**Rosso della CI NON causato da questa PR (blocco ambientale, da trattare in una fetta a parte):**
-- I 7 falliti sono tutti in `tests/test_unit_web_browser.py`, cioè il sandbox bwrap del browser: tmpfs non scrivibili, processi di prova che non partono.
-- I test:
-  - `test_il_sandbox_non_ha_rete_e_scrive_solo_nei_tmpfs`
-  - `test_tmp_dev_shm_e_profilo_hanno_un_tetto`
-  - `test_gas_e_la_home_dentro_una_cartella_permessa_sono_coperte`
-  - `test_una_permessa_che_e_un_collegamento_non_scopre_gas`
-  - `test_ipc_e_processi_dell_host_non_si_vedono`
-  - `test_morto_bwrap_muore_il_sandbox`
-  - `test_ucciso_bwrap_muore_anche_chi_cambia_gruppo_e_ambiente`
-- Passavano su main il 12 nov. Oggi falliscono identici anche sul ramo di un'altra sessione, che non contiene il CRM.
-- Ipotesi (non dimostrata): cambio dell'immagine ubuntu-latest dei runner.
-- Finché resta, il check required `unit-suite` è rosso per ogni PR.
+**Rosso della CI NON causato da questa PR:**
+- Fino a cdee8f0d i 7 falliti erano tutti in `tests/test_unit_web_browser.py`, cioè il sandbox bwrap del browser su ubuntu-latest passato a Ubuntu 26.04. Falliscono anche su altri rami.
+- La verifica esterna #381 (4° giro, V-1) ha trovato che il fix c'era già su main: PR #380 mergiata il 18-11, c87ea5e4 «fix(web): sandbox del browser su Ubuntu 26.04».
+- Il merge 47df3c00 lo porta nel ramo. Qui, con bwrap, la suite web passa intera (§5).
+- L'esito in CI sul commit di fine-task di questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 Mappatura commit→run:
 - `15368710`, `ae5197d0`: nessuna run su questi SHA (pushati insieme a 99d82f3f).
@@ -849,13 +930,20 @@ Mappatura commit→run:
 - `48c0f114`: run CI 44167852645 e verifica-bot 44167861014.
 - `2bfbb803`, `ec2383cd`, `aa4bb422` (codice della fetta 2): nessuna run su questi SHA (pushati insieme a e126c65c).
 - `e126c65c` (fine-task della fetta 2): run CI 44185069097 e verifica-bot 44185075324 (check cancelled, sopra).
-- `49149716`, `d402a4f6`, `f4217863`, `6ef97624` (fetta 3): run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file, e la run testerà solo l'albero di quel commit.
+- `49149716`, `d402a4f6`, `f4217863`, `6ef97624` (fetta 3): nessuna run su questi SHA (pushati insieme a cdee8f0d).
+- `cdee8f0d` (fine-task della fetta 3): run CI 44422271498 e verifica-bot 44422276124 (check cancelled, sopra).
+- `47df3c00` (merge di main), `9d718f0c`, `71ccb045` (fetta 4): run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file, e la run testerà solo l'albero di quel commit.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-810-2 (COSMETICA):** il filtro delle parole vietate è una rete. Passano ancora gli omoglifi cirillici («gаrantito») e varianti come «solo per oggi»; falsi allarmi su «per ditte» e «nessuna perdita», che scartano solo la riscrittura. La tutela vera è l'approvazione dell'operatore, dichiarata nella guida.
+- **R-810-2 (COSMETICA):** il filtro delle parole vietate è una rete, allargato in #813.
+  - Passano ancora gli omoglifi cirillici («gаrantito») e le forme non in lista.
+  - Falsi allarmi possibili, che scartano solo la riscrittura: «per ditte», «nessuna perdita», «Ti ho assicurato…», «Investi ora un minuto…», «con la garanzia della…», un'avvertenza riformulata da Opus.
+  - La tutela vera è l'approvazione dell'operatore, dichiarata nella guida.
 - **R-810-3 (COSMETICA):** l'isolamento del CRM vero nei test pytest (`tests/conftest.py`) vale solo se `gas` è importato in cima al file di test.
+- **V-5 della verifica esterna #381, 4° giro (COSMETICA):** `e_modello_opus` cerca «opus» nel nome, quindi non distingue gli Opus vecchi. Nessun ID non Opus lo soddisfa.
+- **Nota minore #813 (non riserva):** togliere la nota sul rischio in mezzo al testo di Opus lascia un doppio spazio.
 - **Nota minore #811 (non riserva):** il blocco anonimo dice «dettagli solo al cervello forte». Ora lo riceve anche il forte quando è Sonnet: una formulazione «dettagli solo a Claude Opus: chiedili con ricorda» lo guiderebbe meglio.
 - **R-810-1 (scelta A dell'agente):** chiusa nel codice. Resta la conferma dell'operatore (vedi §0 punto 2).
 - **R-808-5 (BASSA, dichiarata in `reports/crm/guida.md`):** falsi allarmi su cognomi comuni e parole delle email. Il verso è sicuro: quei turni vanno al forte.
@@ -876,3 +964,4 @@ Mappatura commit→run:
   - V-1/V-2 del bot #381;
   - V-4 della verifica esterna #381 (2° giro);
   - V-1/V-2/V-3/V-4 della verifica esterna #381 (3° giro), commento https://github.com/Gasss23/Gas/pull/381#issuecomment-6962211510. V-3 è chiusa dalla decisione dell'operatore del 18-11: SOLO Opus.
+  - V-1/V-2/V-3/V-4 della verifica esterna #381 (4° giro), commento https://github.com/Gasss23/Gas/pull/381#issuecomment-6994943891: main nel ramo (47df3c00), parole vietate allargate (71ccb045), conteggio di partenza del kernel corretto in §5.

@@ -1,4 +1,4 @@
-# Diff della sessione — 2026-11-17/18 — CRM clienti (fette 1, 2 e 3)
+# Diff della sessione — 2026-11-17/19 — CRM clienti (fette 1-4)
 
 Si riscrive a ogni sessione; la storia completa sta in git.
 
@@ -37,3 +37,7 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 - `modules/crm/store.py`: ripiego in lettura solo sul journal rimasto (R-809-1).
 - `tests/conftest.py`: le suite pytest non leggono il file vero dei clienti (R-809-2); test nuovi in `tests/test_unit_crm.py`, `tests/test_unit_kernel.py` (T117, T114i/T114i2, T115d2/T115d2b), `tests/test_unit_notte.py`.
 - `CLAUDE.md` §2: regola «dati dei clienti SOLO su Claude Opus»; `reports/crm/` (decisioni 10-11, domanda 3 tolta, guida).
+
+## Fetta 4 — main nel ramo e parole vietate
+- Merge di origin/main 5cb2d2f8 (PR #380 fix della CI, #382, #383): i file di main arrivano identici; conflitti solo in `reports/` e nella memoria del revisore (unione). Il diff della sessione si misura ora da 5cb2d2f8.
+- `modules/crm/scrittore.py`, `tests/test_unit_crm.py`: parole vietate allargate (V-3 verifica esterna #381, 4° giro).
