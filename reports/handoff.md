@@ -1,33 +1,41 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-17 — Voce: la parola di attivazione non arriva più al cervello (M1)
+**Sessione:** 2026-11-19 — «PDF servizi ecosistema»: versione definitiva, contatti fuori dal repo (PR #384)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa sessione (riserve solo BASSE).
+1. Merge della PR #384 (https://github.com/Gasss23/Gas/pull/384) dopo il nuovo verdetto del bot di verifica — numero e URL dalla risposta reale dello strumento GitHub (create_pull_request / pull_request_read), non da `gh` (in questo ambiente cloud `gh` è riservato alla ricerca). L'operatore ha già detto «mergia pure»: si mergia quando i check obbligatori sono verdi.
+2. Il repo GitHub è PUBBLICO (verificato): valutare se renderlo privato; i due commit tolti dal branch con i contatti (adad6f0d, c8c24825) restano raggiungibili per SHA finché non si chiede la rimozione al supporto GitHub.
+3. Prima di usare il PDF con i clienti, farlo vedere a un legale: proporre al pubblico un «fondo» o rendimenti «garantiti» richiede autorizzazioni (CONSOB / Banca d'Italia).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — togliere «Hey Jarvis» e storpiature in testa alla richiesta** (diario del Mac 17/11 15:28:57Z: `ricorda` con query 'jarways', un giro in più): FATTA — 1ae76716, review #806-M1coord APPROVATO CON RISERVE (R-806-1 MEDIA).
-- **Fetta 2 — R-806-1: nel seguito il vocativo resta**: FATTA — 6e62dcde, review #807-M1coord APPROVATO CON RISERVE (R-807-1 BASSA).
-- **Porting del fix bwrap (dalla PR #380, commit 605e154c)** per la CI su Ubuntu 26.04: FATTO — review #808-M1coord APPROVATO CON RISERVE (R-808-1 BASSA: meglio mergiare prima la #380).
+- **Fetta 1 — PDF definitivo (18/11)**: FATTA — f6630a72.
+- **Fetta 2 — tutte le avvertenze del catalogo d'esempio**: FATTA — d588f0bb.
+- **Fetta 3 — merge di main (#383) nel branch**: FATTA — 27300187, review #815 APPROVATO.
+- **Fetta 4 — modifiche dell'operatore del 19/11 + riserve dei bot #384**: FATTA — 07fa1230. Niente nome azienda, niente bagliori, file rinominato, contatti solo in un file locale ignorato da git (PDF del repo senza contatti), pag. 4 e 7 riformulate, codice morto tolto, affermazione sulle immagini corretta.
+- **Fetta 6 — riserve del bot #384 su 2c8dceee**: FATTA — 9b5f1565. Contatti solo con `--con-contatti` e solo in privato/ (V-1 MEDIA); V-2..V-4 corrette.
+- **Fetta 5 — togliere i contatti dal branch (decisione dell'operatore)**: FATTA — push forzato con lease: c8c24825 → 07fa1230 sul branch remoto (adad6f0d e c8c24825 non sono più nel branch).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- modules/voice/server.py            |  28 +++++++++++++++++++++++++++-
- reports/diff_sessione.md           |  12 ++++--------
- reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  15 ++++++---------
- tests/test_unit_voice_server.py    |  42 +++++++++++++++++++++++++++++++++++++++++-
+ .claude/agents/memoria_revisore.md                                                 |   1 +
+ presentazione_clienti/.gitignore                                                   |   3 +++
+ presentazione_clienti/{Presentazione_Ecosistema.pdf => PDF servizi ecosistema.pdf} | Bin 1408521 -> 1440250 bytes
+ presentazione_clienti/build.py                                                     | 262 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------
+ presentazione_clienti/render.js                                                    |  15 +++++++++++++--
+ reports/diff_sessione.md                                                           |  17 ++++++++++++-----
+ reports/handoff.md                                                                 | n/d
+ reports/stato_progetto.md                                                          |   4 +++-
+ reports/stato_storico.md                                                           |   3 +++
+ reports/ultimo_report.md                                                           |  27 +++++++++++++++++++++------
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -35,120 +43,85 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-4786ce0c docs(fine-task): handoff col porting del fix bwrap (#808-M1coord)
-c87ea5e4 fix(web): sandbox del browser su Ubuntu 26.04 (porting di 605e154c dalla PR #380) — review #808-M1coord
-50fade22 chore(revisore): memoria review #808 — APPROVATO CON RISERVE
-4cab4326 docs(fine-task): §2/§3 handoff
-75732f2f docs(fine-task): voce — parola di attivazione tolta (review #806/#807-M1coord)
-6e62dcde fix(voce): nel seguito il vocativo «Jarvis, …» resta (R-806-1) — review #807-M1coord
-f36758e9 chore(revisore): memoria review #807 — APPROVATO CON RISERVE
-1ae76716 fix(voce): la parola di attivazione (e le storpiature come «Jarways») non arriva più al cervello in testa alla richiesta — review #806-M1coord
-be95f7a6 chore(revisore): memoria review #806 — APPROVATO CON RISERVE
+9b5f1565 presentazione clienti: contatti solo con --con-contatti e solo in privato/ (bot #384 V-1)
+2c8dceee docs(fine-task): report — «PDF servizi ecosistema» definitivo, contatti fuori dal repo pubblico (PR #384)
+07fa1230 presentazione clienti: «PDF servizi ecosistema» definitivo — niente nome azienda né bagliori; contatti fuori dal repo
+45f92c51 docs(fine-task): report — avvertenze complete nel PDF clienti e merge di main (PR #384)
+27300187 merge: porta main (#383) nel branch per la PR #384; conflitti solo nei report di sessione (i nostri) — review #815 (chat practical-tesla) APPROVATO
+d588f0bb presentazione clienti: tutte le avvertenze del catalogo d'esempio
+2142a3db docs(fine-task): report della presentazione clienti definitiva (PR #384)
+f6630a72 presentazione clienti: versione definitiva — schema semplice del matched trading, servizio 04 «Gruppo Privato», niente evidenziazioni
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #806-M1coord (commit 1ae76716)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #806-M1coord. L'id era libero (ultima voce in memoria #802-M1coord). Riga contatore e una lezione nel commit be95f7a6 (`.claude/agents/memoria_revisore.md`); diff staged intatto (2 file).
-
-**Elementi del diff esaminati**
-- `modules/voice/server.py:139` — `_NOME_JARVIS` con le storpiature, usato in `_ATTIVAZIONE_UNA` (quindi anche `_SOLO_ATTIVAZIONE` e `_SOLO_PAUSA`). Rischio: parole italiane catturate. Esito: ok — «Giarvisio è un nome» e «Jarvisè qui» invariati (serve `\b` dopo il nome); «Jarways pausa» vale come pausa, giusto.
-- `modules/voice/server.py:148` — `_PAROLA_IN_TESTA`. Rischio: «Gas» come soggetto. Esito: ok — «Gas ha detto…» e «Gasolio…» invariati («Gas» da solo si toglie solo se seguito da punteggiatura). Riserva BASSA: «Ei, gas è salito» → «è salito»; «Gas: la bolletta del gas» → «la bolletta del gas» (rari).
-- `modules/voice/server.py:153` — `togli_parola_in_testa`. Rischi: ciclo e risultato vuoto. Esito: ok — al massimo 3 giri; vuota → originale; `re.sub` su str non solleva (§9); niente log, niente privacy.
-- `modules/voice/server.py:979` — solo nel ramo parlato, dopo i filtri pausa, solo attivazione e frammento, prima di `cervello_voce`. Rischio: interazione con «forte». Esito: ok, provato a mano: «Hey Jarvis, forte, riassumi i lead» → forte; «Jarways forte riassumi» → forte (miglioramento); «Gas forte riassumi» invariato → forte; «Gas, forte» → messaggio d'uso come prima. `self._capito` resta l'originale.
-- `modules/voice/server.py:1056` (contesto) — **R-806-1 MEDIA**: nel seguito il vocativo («Gas, accendi la luce», «Jarvis, spegni») è il segno più forte che la frase è per Gas e viene tolto PRIMA che il forte la veda con `ISTRUZIONE_SEGUITO`; con «nel dubbio, silenzio» «accendi la luce» da sola può finire in [NON_PER_ME]. Proposta: nel seguito non togliere la parola, o sostituire le storpiature con «Jarvis».
-- `tests/test_unit_voice_server.py:2844` — test parametrizzato con 10 casi, positivi e negativi. Esito: ok.
-- `tests/test_unit_voice_server.py:2855` — test end-to-end: il kernel riceve «che ore sono?». Esito: ok; il campo `_prompt` dell'helper non rompe altri test: 248 passed (rieseguito, 304 s).
-
-**Riserve da tracciare**: R-806-1 MEDIA (vocativo tolto nel seguito); R-806-2 BASSA (falsi positivi rari «Ehi, gas …», «Gas: …»); nessun test sul seguito col vocativo.
-
-**Non verificato**: comportamento reale del forte nel seguito senza vocativo (serve `claude -p` sul Mac; R-806-1 è un'analisi); se il turno del 17/11 fosse un seguito; suite completa del kernel e del client.
-
-### Review #807-M1coord (commit 6e62dcde)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #807-M1coord, delta sulla #806. Id libero; riga contatore in f36758e9; diff staged intatto (2 file, +13/-1).
-
-**Elementi del diff esaminati**
-- `modules/voice/server.py:979` — la parola in testa si toglie solo se `not self._seguito()`. Rischio: effetto sugli altri filtri: pausa, sola attivazione e frammenti del seguito stanno prima; ramo del testo scritto invariato. Esito: ok, **R-806-1 chiusa**.
-- `tests/test_unit_voice_server.py:2862` — `test_nel_seguito_il_vocativo_resta`. Rischio: test che passa senza la correzione. Controprova: condizione sostituita da `if True:` → 1 failed; file ripristinato, `git diff` vuoto. Esito: ok.
-- `tests/test_unit_voice_server.py:2855` — il caso fuori dal seguito («Jarways, che ore sono?» → «che ore sono?») passa ancora; 12 test mirati: 12 passed (rieseguiti). Esito: ok.
-
-**Riserve**: **R-807-1 (BASSA)** — nel seguito una storpiatura («Jarways, …») arriva ancora al forte, che può chiamare `ricorda`: il caso del 17/11 può ripetersi solo nel seguito; correzione possibile: sostituire la storpiatura con «Jarvis». Da tracciare con R-806-2.
-
-**Non verificato**: suite voice_server completa non rieseguita (la #806 dava 248 passed; il delta tocca una riga coperta dai test mirati); comportamento reale del forte nel seguito (serve `claude -p` sul Mac).
-
-### Review #808-M1coord (porting del fix bwrap di #380, commit 605e154c)
+Nessun commit di questa sessione modifica il motore. Il merge 27300187 ha portato nel branch codice del motore già revisionato su main (#383); il gate ha chiesto la review del merge. Verdetto integrale:
 
 ## VERDETTO: APPROVATO
 
-Review #809-M1coord — merge di origin/main (PR #382) dentro fix/voce-togli-parola (PR #383), diff staged non ancora committato.
+Review #815 (chat practical-tesla). Oggetto: il merge in corso di origin/main 5cb2d2f8 (PR #383) nel branch claude/practical-tesla-ea9a9g (PR #384), sul diff staged.
 
-**Elementi esaminati**
-- modules/voice/server.py:982 — `togli_parola_in_testa(prompt)` chiamata solo fuori dal seguito; funzione a modules/voice/server.py:153. Diff staged vs HEAD del branch per server.py e tests/test_unit_voice_server.py = 0 righe: il merge non l'ha toccata. — ok
-- clients/voice/ascolto.py:1399 — `verifica_della_voce` / caricamento verificatore (clients/voice/ascolto.py:1440) arrivano da main; blob staged identico a origin/main (diff vs origin/main su clients/ scripts/ tests/ modules/ mostra solo i 2 file propri di #383). Rischio di interferenza: le aggiunte in ascolto.py non toccano il protocollo/messaggi verso il server; ascolto.py non importa da modules/. Processi separati (client di ascolto vs server voce). — ok
-- tests/test_unit_voce_ascolto.py:3304 — test cartella madre del verificatore, identico a main; rieseguiti tests/test_unit_voce_ascolto.py + tests/test_unit_voice_server.py: **622 passed**. — ok
+**Prima della review ho letto**: CLAUDE.md (sez. 1, 5, 8, 10), reports/stato_progetto.md (in parte, per le sezioni dei finding) e la mia memoria. Ho applicato le lezioni sui merge: #497, #514, #531 e #1129 (diff in entrambe le direzioni), #502 (la base del merge si sposta), #484, #493 (numero della review), #1200 (niente script di commit della memoria mentre il merge è in corso).
 
-**Unione memoria/stato**
-- .claude/agents/memoria_revisore.md e reports/stato_progetto.md: diff vs HEAD e vs origin/main sono SOLO aggiunte → unione pura, nessuna riga persa, nessun duplicato, zero marcatori.
-- Ordine in memoria: le righe #806-#808 del branch precedono #804/#805 di main (non cronologico) — cosmetico, non va toccato.
-- presentazione_clienti/* e reports/guida_voce_in_giro.md identici a main; unico avviso `git diff --check`: spazio a fine riga in reports/guida_voce_in_giro.md:20 (proveniente da main).
+**Prove raccolte**
+- **Insiemi di file.** Base del merge 381f5d3d.
+  - Il branch tocca solo presentazione_clienti/ (2 file) e reports/ (4 file).
+  - Main tocca memoria, modules/voice/server.py, tests/test_unit_voice_server.py e gli stessi 4 report.
+  - Nell'indice, rispetto a main, cambiano solo presentazione_clienti/ e reports/. Rispetto a HEAD cambiano solo memoria, server.py, il test e stato_progetto.
+- **File del motore identici a main.** I blob nell'indice coincidono con quelli di main, quindi non hai modificato nessun file del motore:
+  - modules/voice/server.py: 8c9ac070
+  - tests/test_unit_voice_server.py: f50ee4aa
+  - .claude/agents/memoria_revisore.md: 6b00e01f
+- **I tre report presi dal branch sono identici a HEAD.** Sono reports/diff_sessione.md, reports/handoff.md e reports/ultimo_report.md. Le righe scartate di main sono il report di sessione della #383. Restano nella storia di git, e le sue riserve aperte (R-806-2 e R-807-1, entrambe BASSE) sopravvivono nella voce di stato_progetto.
+- **stato_progetto.md è un'unione pura.** L'indice rispetto a HEAD aggiunge solo la riga portata da main. L'indice rispetto a main differisce solo per la voce del branch (CI 26.04 chiusa). Nessuna voce importata da main descrive come ancora aperta la CI che il branch chiude.
+- **Nessun marcatore di conflitto** nell'indice.
+- **Test.** tests/test_unit_voice_server.py: 246 passed, 3 failed. I 3 falliti dipendono dal container: manca il modulo `openai` (ModuleNotFoundError in gas.py:27), e la raccolta dell'intero repo dà 4 errori per la stessa causa. I file sono identici a main, e la CI di 5cb2d2f8 è verde (run 44357444098).
 
-**Non verificato**
-- Comportamento sul Mac (microfono vero, verificatore .pkl addestrato) — non riproducibile nel container.
-- Suite completa non lanciata (solo i due file voce); il resto lo copre la CI della PR.
+**Elementi del diff esaminati**
+- `modules/voice/server.py:153` — `togli_parola_in_testa` toglie la parola di attivazione all'inizio della richiesta. Rischio esaminato: ciclo senza limite, richiesta svuotata, tool simulati, slicing della history. Il ciclo è fermo a 3 giri (`modules/voice/server.py:157`); se la richiesta resta vuota torna quella originale; la history non viene toccata. Esito: ok.
+- `modules/voice/server.py:982` — la funzione si applica solo fuori dal seguito (`if not self._seguito()`), dopo i rami pausa, sola attivazione e frammento. Rischio esaminato: R-806-1, cioè il vocativo tolto nel seguito. È chiusa come nella #807. Esito: ok.
+- `tests/test_unit_voice_server.py:1242` — il finto kernel ora registra anche il prompt (`dict(kw, _prompt=prompt)`). Rischio esaminato: rompere i test che leggono `turni`. Nell'esecuzione i test di `_voce_a_pezzi` passano. Esito: ok.
+- `tests/test_unit_voice_server.py:2862` — test del vocativo che resta nel seguito, cioè il caso di R-806-1. Il mutante era già stato provato nella #807. Esito: ok.
 
-**Memoria**: aggiunta in coda a .claude/agents/memoria_revisore.md la riga «#809-M1coord — 2026-11-18 — APPROVATO — … nessuna lezione nuova».
+**Rischi esclusi**
+- Non ho rifatto i mutanti di `togli_parola_in_testa`: il codice è identico a main ed era già stato revisionato nella #806 e nella #807.
+- I 3 test che dipendono da `openai` non li ho potuti eseguire qui: fa fede la CI.
+- Non ho controllato il comportamento sul Mac.
 
-## §4bis VERDETTO DEL REVISORE SUL PORTING ORA IN MAIN (#808-M1coord)
+**Note operative (non sono riserve)**
+1. Per gate A e gate B, la tua prossima mossa: dopo il merge la base diventa 5cb2d2f8. Se metti nel commit di merge la mia riga di memoria, `.claude/agents/memoria_revisore.md` entra nel diff di sessione (origin/main...HEAD). Va quindi aggiunta al §2 di reports/handoff.md, altrimenti check_handoff (handoff-check) la segnala come omessa. Il §2 attuale è già vecchio nei numeri: dice build.py 132, oggi è 164 dopo d588f0bb. Rigeneralo dopo il merge.
+2. Dopo il merge server.py e il test escono dal diff di sessione, che resta fuori dal perimetro di review. Il gate B controlla solo che le citazioni esistano a HEAD, e le righe citate sopra esistono.
+3. Ho trovato reports/diff_sessione.md e reports/ultimo_report.md modificati solo nel working tree. Non sono modifiche mie, presumo siano tue in corso. Non fanno parte dell'indice revisionato.
 
-Il codice di questo verdetto (modules/web/browser.py e il suo test) è arrivato in main con la #380, mergiata il 18/11: dopo il merge di main nel branch non è più nel diff di questa PR, quindi il verdetto sta fuori dal §4 (che check_verdetto confronta col diff). Testo integrale, invariato:
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #808-M1coord. Porting del commit 605e154c (PR #380) in due branch: fix/voce-togli-parola e feat/voce-verifica-parlante. Letti prima CLAUDE.md, reports/stato_progetto.md e la memoria.
-
-**Porting identico nei due posti.** Tolte le righe index, i due diff staged e `git show 605e154c` hanno lo stesso SHA-256 (5969695a…); i file interi in staging coincidono con `605e154c:file` (browser.py dfeae8f8…, test f4bbae85…). Staged solo i 2 file (+177/-5).
-
-**Elementi esaminati**
-- modules/web/browser.py:283 — `_programmi_fuori` segue i collegamenti di /usr/bin al massimo 16 volte e monta in sola lettura solo il file vero, più un `--symlink` per ogni collegamento intermedio. Rischio: allargare il sandbox. Si blocca se il genitore è un collegamento, se il percorso è fuori dalle radici ammesse, dentro /usr/local, dentro Gas o la home (anche col percorso vero); collegamento rotto, ciclo o catena troppo lunga non espongono niente. — ok
-- modules/web/browser.py:278 — radici ammesse solo `/usr` e `/etc/alternatives`; /usr/local escluso; si espone file per file, mai cartelle. — ok
-- modules/web/browser.py:325 — solo un file vero ed eseguibile; una modifica a metà lettura finisce in `except OSError` e il programma viene saltato senza crash. — ok
-- modules/web/browser.py:397 — il controllo parte dopo i montaggi esposti e prima del tmpfs su Gas e home: i protetti restano coperti. — ok
-- tests/test_unit_web_browser.py:477 — `test_programmi_fuori_espone_solo_catene_ammesse`: 8 casi negativi più la catena buona; eseguito qui: PASS. — ok
-- tests/test_unit_web_browser.py:395 — `_catene_di_usr_bin` amplia l'elenco dei file permessi nel test, calcolato dall'host: allentamento voluto e proporzionato (solo /usr/ e /etc/alternatives/ fuori da /usr/local/). — ok
-
-**Test nel container (bwrap assente):** a HEAD 33 failed, 11 passed; col porting 34 failed, 12 passed (+1 test nuovo con bwrap, +1 senza). Gli altri fallimenti dipendono da bwrap assente.
-
-**Wall of Shame:** nessuna violazione; kernel non toccato.
-
-**Riserve:** R-808-1 BASSA — le due PR voce portano un fix del browser estraneo al loro tema: meglio mergiare prima la #380, poi riportare main (modifica identica, niente conflitti); nel report va detto che il fix arriva da #380.
-
-**Rischio escluso:** comportamento reale nel sandbox su Ubuntu 26.04 non verificato (bwrap assente): fa fede la CI di #380 (unit-suite success); merito del fix già revisionato nell'altra chat.
-
-**Memoria:** riga #808-M1coord e una lezione (commit 50fade22 su fix/voce-togli-parola).
+**Memoria del revisore**: ho aggiunto la riga `#815 (chat practical-tesla) — 2026-11-19 — APPROVATO — …` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree. L'indice del merge è intatto: i blob staged sono ancora 6b00e01f, 8c9ac070 e f50ee4aa. Ho usato #815 perché su origin/claude/nifty-galileo-3k7kbm la chat CRM è già arrivata a #814. Non ho lanciato commit_memoria_revisore.sh (lezione #1200): la riga va messa in staging da te e la porta il commit di merge.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `python -B -m pytest -q tests/test_unit_voice_server.py` → 236 passed (main 01eb9f5) → 248 passed (1ae76716) → 249 (6e62dcde; mirati 54 passed, suite completa non rilanciata dopo il delta).
-- Kernel non toccato.
-
-```
-248 passed
-```
+Nessuna modifica a gas.py/tests/ da parte di questa sessione (i file del motore arrivati col merge sono identici a main).
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente): run della PR non ancora disponibile. Nota: dal 17/11 i 7 test bwrap di `tests/test_unit_web_browser.py` falliscono su tutti i branch (runner ubuntu-26.04); la correzione è in un'altra chat («Ecosistema servizi investimento PDF»).
+`gh run list` non usato (in questo ambiente cloud `gh` è riservato alla ricerca). Output reale dello strumento GitHub `actions_list` (list_workflow_runs, workflow ci.yml, branch claude/practical-tesla-ea9a9g) alla scrittura:
+
+```
+CI  run 44562387855  #1966  push  in_progress        sha 07fa1230  https://github.com/Gasss23/Gas/actions/runs/44562387855
+CI  run 44559511497  #1965  push  completed/success  sha c8c24825  (commit tolto dal branch)
+```
+
+Mappatura commit→run:
+- f6630a72 → run 44346826214: success.
+- 2142a3db → run 44346944386: success.
+- d588f0bb, 27300187 → nessuna run su questi SHA (pushati insieme a 45f92c51).
+- 45f92c51 → run 44555724881: success.
+- 07fa1230 → run 44562387855: vedi GitHub (pushato prima del fine-task precedente).
+- 2c8dceee → run del push precedente; verifica-bot failure (V-1 MEDIA, ora corretta).
+- 9b5f1565 → nessuna run su questo SHA (pushato insieme al commit di fine-task).
+- commit di fine-task (questo file) → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-808-1 BASSA — il fix bwrap della #380 viaggia anche qui: meglio mergiare prima la #380.
-- R-806-2 BASSA — falsi positivi rari: «Ehi, gas è salito» → «è salito»; «Gas: la bolletta…» → «la bolletta…».
-- R-807-1 BASSA — nel seguito una storpiatura («Jarways, …») arriva ancora al forte.
+- Bot #384 su 2c8dceee: V-1 MEDIA (default dei contatti) e V-2..V-4 corrette in 9b5f1565.
+- Bot #384 su c8c24825: V-1 MEDIA (immagini interne del PDF) → affermazione corretta in report e docstring, resta da verificare a vista sul tablet dell'operatore; V-2 BASSA (contatti, repo pubblico) → contatti tolti dal repo, vedi §0.2; V-3 COSMETICA → corretta.
+- In stato_progetto.md: repo pubblico e dati personali; riserve del fix sandbox (agente-#380 V-2 e V-4, bot-#380 V-1 e V-2); numeri del PDF non verificati da gate; R-806-2 e R-807-1 BASSE (da main, #383).

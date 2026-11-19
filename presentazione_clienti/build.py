@@ -1,26 +1,32 @@
 #!/usr/bin/env python3
 """Genera presentazione.html (16:9, 1280x720 px per pagina, stile HUD scuro).
 
-Poi: node render.js  ->  Presentazione_Ecosistema.pdf
-Versione corta (8 pagine) per chi investe per la prima volta: per ogni servizio prima
+Poi: node render.js  ->  «PDF servizi ecosistema.pdf»
+Versione corta (9 pagine) per chi investe per la prima volta: per ogni servizio prima
 «cos'è» e «come funziona» in parole semplici, poi i numeri.
-I dati ancora mancanti sono marcati con ph() (riquadro tratteggiato «da inserire»).
+Niente ombre/bagliori CSS (text-shadow, box-shadow): nel PDF diventano immagini che alcuni
+lettori disegnano come riquadri sopra il testo (operatore, 19/11). Restano immagini interne per
+sfumature e trasparenze (sfondi, pannelli): pdfimages -list non le mostra, ma ci sono.
+Versione del repo (predefinita, senza contatti):  python3 build.py && node render.js
+Versione completa (fuori da git):  python3 build.py --con-contatti && node render.js
+(con i contatti render.js scrive solo in privato/ e rifiuta il PDF tracciato)
 """
 from __future__ import annotations
 
 import json
 import math
 import random
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).parent
 OUT = HERE / "presentazione.html"
 
-BRAND = "NOME AZIENDA"
-TOTAL = 8
+BRAND = "GasTradeFx"
+TOTAL = 9
 
 # colori HUD: identità dei servizi (sempre accanto a numero e nome del servizio)
-CYAN, GREEN, GOLD, SLATE = "#4FD8FF", "#5BE38A", "#FFB547", "#8394AE"
+CYAN, GREEN, GOLD, VIOLET = "#4FD8FF", "#5BE38A", "#FFB547", "#C79BFF"
 
 # ---------------------------------------------------------------- dati reali
 # Copy trading Forex: numeri del conto di riferimento (Myfxbook), dal catalogo
@@ -51,9 +57,6 @@ def dec(v: float, d: int = 2) -> str:
     return f"{v:.{d}f}".replace(".", ",")
 
 
-def ph(txt: str = "da inserire") -> str:
-    return f'<span class="ph">{txt}</span>'
-
 
 def logo(size: int = 22) -> str:
     return (
@@ -63,6 +66,25 @@ def logo(size: int = 22) -> str:
         '<circle cx="12" cy="12" r="1.8" fill="#BFF3FF"/>'
         '<path d="M12 0.5v3M12 20.5v3M0.5 12h3M20.5 12h3" stroke="#4FD8FF" stroke-width="1.3"/></svg>'
     )
+
+
+# Contatti della pagina finale: SOLO da un file locale ignorato da git (il repo è pubblico,
+# operatore 19/11). Formato: {"Referente": "...", "Telefono": "...", "Email": "..."}.
+# Predefinito SENZA contatti (versione del repo): entrano solo con --con-contatti, e allora
+# render.js scrive solo in privato/ (bot #384 V-1: un rendering «normale» non deve poterli
+# ripubblicare nel PDF tracciato).
+CONTATTI_FILE = HERE / "contatti.local.json"
+CON_CONTATTI = "--con-contatti" in sys.argv
+
+
+def contatti() -> list:
+    if not CON_CONTATTI:
+        return []
+    try:
+        dati = json.loads(CONTATTI_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [(str(k), str(v)) for k, v in dati.items() if v]
 
 
 FONT_TITLE = "/usr/share/fonts/opentype/inter/InterDisplay-SemiBold.otf"
@@ -114,13 +136,12 @@ def grad_line(text: str, size: int = 60, tracking_em: float = -0.03) -> str:
 
 def top(label: str, n: int, color: str = CYAN) -> str:
     return (f'<header class="top"><div class="k top-l"><i class="pulse" style="--c:{color}"></i>{label}</div>'
-            f'<div class="top-r"><span class="wm-mini">{logo(15)}{BRAND}</span>'
-            f'<span class="pg">{n:02d}<em>/{TOTAL:02d}</em></span></div></header><div class="rule"></div>')
+            f'<div class="top-r"><span class="pg">{n:02d}<em>/{TOTAL:02d}</em></span></div></header><div class="rule"></div>')
 
 
 def foot() -> str:
-    return ('<footer class="foot"><span>Investire comporta rischi, anche di perdita del capitale. I risultati '
-            'passati non garantiscono quelli futuri. Leggi le avvertenze a pag. 7.</span>'
+    return ('<footer class="foot"><span>Il trading con leva comporta il rischio di perdere il capitale. I risultati '
+            'passati non sono indicativi di quelli futuri. Avvertenze complete a pag. 8.</span>'
             '<span class="k">Documento riservato</span></footer>')
 
 
@@ -257,6 +278,38 @@ def chart_elastico() -> str:
     return "".join(o)
 
 
+def schema_matched() -> str:
+    """Schema semplice: 3.000 € → due conti con scommesse opposte → in media ≈ +500 € (non garantito)."""
+    W, H = 560, 206
+    g = GREEN
+    box = 'fill="#0C1E2C" stroke="{c}" stroke-opacity="{o}" stroke-width="1.3" rx="6"'
+    o = [f'<svg class="chart schema" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+         'aria-label="Schema del matched trading: due conti con scommesse opposte, in media il vincente guadagna più di quanto perde l\'altro">']
+    # collegamenti
+    for d in ("M104,103 C130,103 126,42 152,42", "M104,103 C130,103 126,164 152,164",
+              "M398,42 C424,42 420,103 448,103", "M398,164 C424,164 420,103 448,103"):
+        o.append(f'<path d="{d}" fill="none" stroke="{g}" stroke-opacity=".55" stroke-width="1.5"/>')
+    for x, y in ((152, 42), (152, 164), (448, 103)):
+        o.append(f'<circle cx="{x}" cy="{y}" r="3.5" fill="{g}"/>')
+    # capitale
+    o.append(f'<rect x="1" y="74" width="103" height="58" {box.format(c=g, o=".7")}/>')
+    o.append('<text x="52" y="101" text-anchor="middle" class="sm-v">3.000 €</text>')
+    o.append('<text x="52" y="119" text-anchor="middle" class="sm-k">IL CAPITALE</text>')
+    # i due conti
+    for y, nome, freccia, punta, esito in ((4, "CONTO A · PROP FIRM", "▲", "punta sul rialzo", "se supera la prova, paga la prop firm"),
+                                           (126, "CONTO B · BROKER", "▼", "punta sul ribasso", "se A non la supera, guadagna B")):
+        o.append(f'<rect x="152" y="{y}" width="246" height="76" {box.format(c=g, o=".45")}/>')
+        o.append(f'<text x="168" y="{y + 22}" class="sm-k" fill="{g}">{nome}</text>')
+        o.append(f'<text x="168" y="{y + 45}" class="sm-t"><tspan fill="{g}">{freccia}</tspan> {punta}</text>')
+        o.append(f'<text x="168" y="{y + 64}" class="sm-s">{esito}</text>')
+    # risultato
+    o.append(f'<rect x="448" y="70" width="111" height="66" fill="rgba(91,227,138,.10)" stroke="{g}" stroke-width="1.5" rx="6"/>')
+    o.append(f'<text x="503" y="101" text-anchor="middle" class="sm-r" fill="{g}">≈ +500 €</text>')
+    o.append('<text x="503" y="121" text-anchor="middle" class="sm-k">IN MEDIA</text>')
+    o.append("</svg>")
+    return "".join(o)
+
+
 def reticle(size: int = 600, labels: bool = True) -> str:
     """Mirino HUD della copertina, con i quattro servizi."""
     c = size / 2
@@ -283,7 +336,7 @@ def reticle(size: int = 600, labels: bool = True) -> str:
         o.append(f'<text x="{c}" y="{c - 6}" text-anchor="middle" class="orb-c1">IL TUO</text>')
         o.append(f'<text x="{c}" y="{c + 16}" text-anchor="middle" class="orb-c2">capitale</text>')
     nodes = [(-148, "01", "Rendimento", "contrattuale", GOLD, 150), (-58, "02", "Matched", "trading", GREEN, 212),
-             (32, "03", "Copy", "trading", CYAN, 150), (122, "04", "Nuovo", "servizio", SLATE, 212)]
+             (32, "03", "Copy", "trading", CYAN, 150), (122, "04", "Gruppo", "privato", VIOLET, 212)]
     for deg, n, l1, l2, col, r in nodes:
         a = math.radians(deg)
         x, y = c + r * math.cos(a), c + r * math.sin(a)
@@ -312,18 +365,17 @@ def s_cover() -> str:
     return f'''
 <section class="slide cover">{frame()}
   <div class="cover-l">
-    <div class="wm">{logo(28)}<span>{BRAND}</span></div>
     <div class="k cov-k"><i class="pulse"></i>Ecosistema di investimento · 2026</div>
     <h1>Il tuo capitale,</h1>{grad_line("quattro motori.", 66)}
-    <p class="cov-sub">Quattro modi semplici per far lavorare i tuoi soldi. Per ognuno: cos'è, come funziona e i numeri.</p>
-    <div class="k cov-st"><span>● 4 servizi</span><span>● dati verificati</span><span>● spiegati in modo semplice</span></div>
+    <p class="cov-sub">Quattro modi semplici per far lavorare i tuoi soldi. Per ognuno: cos'è, come funziona e cosa aspettarti.</p>
+    <div class="k cov-st"><span>● 4 servizi</span><span>● spiegati in modo semplice</span><span>● documento riservato</span></div>
   </div>
   <div class="cover-r">{reticle()}</div>
 </section>'''
 
 
-def card(n: str, color: str, name: str, cosa: str, fig: str, cap: str, per: str, ghost: bool = False) -> str:
-    return f'''<div class="hud svc{' ghost' if ghost else ''}" style="--c:{color}">
+def card(n: str, color: str, name: str, cosa: str, fig: str, cap: str, per: str) -> str:
+    return f'''<div class="hud svc" style="--c:{color}">
   <div class="svc-h"><span class="k" style="color:{color}">Servizio {n}</span><span class="svc-dot" style="background:{color};color:{color}"></span></div>
   <h3>{name}</h3><p class="svc-p">{cosa}</p>
   <div class="svc-fig">{fig}</div><div class="svc-cap">{cap}</div>
@@ -339,14 +391,16 @@ def s_overview() -> str:
              "≈ 500 €", "in media ogni 3.000 €", "vuole un metodo matematico"),
         card("03", CYAN, "Copy Trading", "Il tuo conto copia in automatico un algoritmo sulle valute.",
              FX["media_mensile"], "al mese in media, su 23 mesi", "punta alla crescita"),
-        card("04", SLATE, "Nuovo servizio", "Il quarto motore dell'ecosistema.", ph("—"), "in arrivo", ph("da definire"), ghost=True),
+        card("04", VIOLET, "Gruppo Privato", "Ti scriviamo noi cosa fare. Tu lo copi sul tuo conto.",
+             "30 s", "per copiare un'operazione", "vuole gestire da solo i suoi soldi"),
     ])
     return f'''
 <section class="slide">{frame()}
   {top("Panoramica · in 30 secondi", 2)}
   <h2>Quattro servizi, <span class="hl">in parole semplici.</span></h2>
   <div class="svc-row">{cards}</div>
-  <div class="spectrum"><span class="k">Più stabilità</span><div class="spec-line"></div><span class="k">Più crescita</span></div>
+  <div class="spectrum"><span class="k">Puoi scegliere un solo servizio o combinarli</span><div class="spec-line"></div></div>
+  <p class="fine">I servizi sono diversi per natura, conto, broker e periodo dei dati: i numeri non vanno confrontati tra loro senza leggere le note di ogni pagina.</p>
   {foot()}
 </section>'''
 
@@ -366,7 +420,7 @@ def s_svc1() -> str:
   <div class="cols">
     <div class="col-l">
       <div class="hud pan" style="--c:{GOLD}"><div class="k pk">01 · Cos'è</div>
-        <p class="big-p">Affidi un capitale per un periodo stabilito. Il contratto dice <b>in anticipo</b> quanto ricevi, quando lo ricevi e quali garanzie hai.</p></div>
+        <p class="big-p">Affidi un capitale per un periodo stabilito. Il contratto dice in anticipo quanto ricevi, quando lo ricevi e quali garanzie hai.</p></div>
       <div class="hud pan" style="--c:{GOLD}"><div class="k pk">02 · Come funziona</div><div class="steps">{steps}</div></div>
     </div>
     <div class="hud pan col-r" style="--c:{GOLD}"><div class="k pk">03 · I numeri</div>
@@ -374,7 +428,7 @@ def s_svc1() -> str:
         <div class="ex"><div class="k">Esempio</div><div class="ex-v">10.000 €</div><div class="ex-l">investiti</div>
           <div class="ex-arrow">↓</div><div class="ex-v gold">+2.000 €</div><div class="ex-l">ogni anno</div></div></div>
       <div class="facts"><div><span class="k">Reinvestendo, in 5 anni</span><b>24.883 €</b></div>
-        <div><span class="k">Durata</span>{ph()}</div><div><span class="k">Ingresso minimo</span>{ph()}</div></div>
+        <div><span class="k">Pagamenti</span>alle scadenze del contratto</div><div><span class="k">Garanzie</span>scritte nel contratto</div></div>
       <p class="note">Esempio al lordo di costi e imposte. Fanno fede rendimento e garanzie scritti nel contratto.</p>
     </div>
   </div>
@@ -392,22 +446,16 @@ def s_svc2() -> str:
   <div class="cols">
     <div class="col-l">
       <div class="hud pan" style="--c:{GREEN}"><div class="k pk">01 · Cos'è</div>
-        <p class="big-p">Usiamo <b>due conti collegati</b>: uno presso una <b>prop firm</b> (una società che affida il suo capitale a chi supera una prova) e uno presso un <b>broker</b>. Le due posizioni sono opposte e calcolate prima di iniziare.</p></div>
+        <p class="big-p">Due conti collegati fanno scommesse opposte sullo stesso mercato: quando uno perde, l'altro guadagna. Uno è presso una prop firm (presta capitale a chi supera una prova), l'altro presso un broker.</p></div>
       <div class="hud pan" style="--c:{GREEN}"><div class="k pk">02 · Come funziona</div>
-        <div class="mt-flow">
-          <div class="mt-acc"><div class="k" style="color:{GREEN}">Conto A · prop firm ▲</div><p>Fa la prova a pagamento sul capitale della prop firm.</p></div>
-          <div class="mt-vs">VS</div>
-          <div class="mt-acc"><div class="k" style="color:{GREEN}">Conto B · broker ▼</div><p>Fa l'operazione opposta, per coprire il conto A.</p></div>
-        </div>
-        <div class="mt-out"><div><b>Prova superata</b> → la prop firm paga i guadagni.</div>
-          <div><b>Prova non superata</b> → il conto B recupera il costo e lascia un margine.</div></div>
-        <div class="mt-res"><span class="k">In entrambi i casi</span><b>risultato medio ≈ +500 € ogni 3.000 €</b></div>
+        {schema_matched()}
+        <p class="mid-p mt-foot">Il calcolo punta a far guadagnare il conto vincente più di quanto perde l'altro. Non è garantito: in alcuni casi possono perdere entrambi (regole della prop firm, salti di prezzo).</p>
       </div>
     </div>
     <div class="hud pan col-r" style="--c:{GREEN}"><div class="k pk">03 · I numeri</div>
       <div class="num-row">{ring(500 / 3000, GREEN, "≈ 16,7%", "per ciclo")}
         <div class="ex"><div class="k">In media</div><div class="ex-v green">+500 €</div><div class="ex-l">ogni 3.000 € impiegati</div>
-          <div class="ex-l2">Durata del ciclo: {ph()}</div></div></div>
+</div></div>
       <div class="k sub-k">Si cresce a scaglioni da 3.000 €</div>
       <div class="bars">{bars}</div>
       <p class="note">Media statistica, non garantita: dipende dalle regole delle prop firm e dai costi di esecuzione.</p>
@@ -429,9 +477,9 @@ def s_svc3() -> str:
   <div class="cols">
     <div class="col-l">
       <div class="hud pan" style="--c:{CYAN}"><div class="k pk">01 · Cos'è</div>
-        <p class="big-p">Il <b>tuo conto, a tuo nome</b>, copia in automatico le operazioni di un algoritmo che lavora sul <b>Forex</b>, il mercato delle valute. Non devi fare niente: le operazioni si replicano da sole.</p></div>
+        <p class="big-p">Il tuo conto, a tuo nome, copia in automatico le operazioni di un algoritmo che lavora sul Forex, il mercato delle valute. Non devi fare niente: le operazioni si replicano da sole.</p></div>
       <div class="hud pan" style="--c:{CYAN}"><div class="k pk">02 · Come funziona</div>
-        <p class="mid-p">Alcune valute si muovono quasi sempre insieme. Quando si allontanano più del normale, l'algoritmo scommette che torneranno vicine, <b>come un elastico</b>. Non deve indovinare se il mercato sale o scende.</p>
+        <p class="mid-p">Alcune valute si muovono quasi sempre insieme. Quando si allontanano più del normale, l'algoritmo scommette che torneranno vicine, come un elastico. Non deve indovinare se il mercato sale o scende.</p>
         <div class="legend"><span><i style="background:{CYAN}"></i>Valuta A</span><span><i style="background:#C8D6E6"></i>Valuta B</span><span><i class="sq"></i>distanza tra le due</span></div>
         {chart_elastico()}</div>
     </div>
@@ -445,10 +493,38 @@ def s_svc3() -> str:
 </section>'''
 
 
+def s_svc4() -> str:
+    steps = "".join(f'<div class="st"><div class="st-n" style="--c:{VIOLET}">{i}</div><div class="st-t">{t}</div></div>'
+                    for i, t in ((1, "Ti arriva un messaggio nel gruppo privato"),
+                                 (2, "Copi l'operazione sul tuo conto: bastano 30 secondi"),
+                                 (3, "Ripeti ogni volta che arriva un nuovo messaggio")))
+    msg = "".join(f'<div class="msg-r"><span class="k">{k}</span><span>{v}</span></div>' for k, v in (
+        ("Cosa", "EUR/USD"), ("Come", "compra"), ("Quando", "adesso")))
+    return f'''
+<section class="slide">{frame()}
+  {svc_head("04", VIOLET, "Gruppo Privato", "Ti diciamo noi cosa fare. Tu copi e incolli.", 7)}
+  <div class="cols">
+    <div class="col-l">
+      <div class="hud pan" style="--c:{VIOLET}"><div class="k pk">01 · Cos'è</div>
+        <p class="big-p">Entri in un gruppo privatissimo. Lì ti scriviamo noi cosa fare, quando farlo e come. Tu lo ripeti sul tuo conto, in autonomia: i soldi restano tuoi.</p></div>
+      <div class="hud pan" style="--c:{VIOLET}"><div class="k pk">02 · Come funziona</div><div class="steps">{steps}</div></div>
+    </div>
+    <div class="hud pan col-r" style="--c:{VIOLET}"><div class="k pk">03 · In breve</div>
+      <div class="num-row">{ring(0.5, VIOLET, "30 s", "per operazione", 176)}
+        <div class="ex"><div class="k">Si parte da zero</div><div class="ex-v violet">Guida PDF</div><div class="ex-l">inclusa, passo passo</div>
+          <div class="ex-l2">Basta il telefono e un po' di attenzione ai messaggi durante il giorno.</div></div></div>
+      <div class="msg"><div class="msg-h"><i class="pulse" style="--c:{VIOLET}"></i><span class="k">Esempio di messaggio</span></div>{msg}</div>
+      <p class="note">Le indicazioni sono uguali per tutti e non sono una consulenza personalizzata: sei tu a scegliere se copiarle. Ogni operazione può andare in perdita.</p>
+    </div>
+  </div>
+  {foot()}
+</section>'''
+
+
 def s_svc3_numeri() -> str:
     stats = "".join(f'<div class="sr"><div class="sr-v">{v}</div><div class="sr-l"><b>{t}</b>{d}</div></div>' for v, t, d in (
         (FX["media_mensile"], "Guadagno medio al mese", ""),
-        (FX["max_dd"], "Discesa massima", " · il calo più grande dal punto più alto (max drawdown)"),
+        (FX["max_dd"], "Discesa massima", " · il primo numero da leggere: il calo più grande dal punto più alto (max drawdown)"),
         (FX["win_rate"], "Operazioni in guadagno", " · su 100 operazioni, 75 chiuse in positivo (win rate)"),
         (FX["profit_factor"], "Profit factor", " · per ogni 1 € perso, 2,18 € guadagnati"),
         (FX["rend_dd"], "Rendimento / discesa", " · guadagno totale diviso la discesa massima"),
@@ -469,20 +545,23 @@ def s_svc3_numeri() -> str:
 
 
 def s_legal() -> str:
-    items = [("Puoi perdere soldi", "Ogni investimento ha dei rischi: il capitale può scendere, in parte o del tutto."),
-             ("Il passato non è una promessa", "I risultati passati non garantiscono quelli futuri, che possono essere peggiori."),
-             ("La leva amplifica", "Forex e CFD con leva aumentano sia i guadagni sia le perdite."),
-             ("Conta il contratto", "Rendimenti e garanzie del servizio 01 sono solo quelli scritti nel contratto."),
-             ("Conti diversi, risultati diversi", "Broker, costi, leva e dimensione del conto possono cambiare i risultati rispetto al conto di riferimento."),
-             ("Soggetti terzi", "Prop firm e broker hanno regole e costi propri, che possono cambiare.")]
+    items = [("Perdita del capitale", "Il trading su Forex, oro, criptovalute e CFD con leva comporta un rischio elevato: si può perdere una parte o tutto il capitale investito."),
+             ("Solo quello che puoi perdere", "Investi solo somme di cui puoi sostenere la perdita totale."),
+             ("Risultati passati", "I numeri vengono da conti reali di riferimento in periodi specifici: non sono indicativi dei risultati futuri, che possono essere peggiori."),
+             ("La leva amplifica", "La leva aumenta sia i guadagni sia le perdite, anche in poco tempo."),
+             ("Differenze tra conti", "Broker, spread, commissioni, swap, latenza, leva e dimensione del conto possono dare risultati diversi dal conto di riferimento."),
+             ("Natura del servizio", "Copy trading e gruppo privato non sono consulenza finanziaria personalizzata né gestione di patrimoni per conto terzi: il conto resta intestato al cliente."),
+             ("Conta il contratto", "Rendimenti e garanzie del servizio 01 sono solo quelli scritti nel contratto. Gli esempi sono al lordo di costi e imposte."),
+             ("Soggetti terzi", "Prop firm e broker hanno regole e costi propri, che possono cambiare in ogni momento."),
+             ("Fonti", "Copy trading: Myfxbook, conto reale indicato a pagina 6, aggiornato alle date riportate lì.")]
     cells = "".join(f'<div class="hud lg" style="--c:{GOLD}"><div class="lg-n k">{i + 1:02d}</div><h4>{t}</h4><p>{d}</p></div>'
                     for i, (t, d) in enumerate(items))
     return f'''
 <section class="slide">{frame()}
-  {top("Avvertenze", 7, GOLD)}
-  <h2>Prima di iniziare, <span class="hl gold">in parole semplici.</span></h2>
+  {top("Avvertenze", 8, GOLD)}
+  <h2>Il rischio, <span class="hl gold">per intero.</span></h2>
   <div class="lgs">{cells}</div>
-  <p class="fine wide">Documento informativo: non è un'offerta al pubblico, una sollecitazione all'investimento né una consulenza personalizzata. Nel copy trading le operazioni sono replicate sul conto del cliente, che resta intestato a lui: non è gestione di patrimoni.</p>
+  <p class="fine wide">Documento informativo e riservato: non è un'offerta al pubblico né una sollecitazione all'investimento. Nel copy trading le operazioni della strategia sono replicate sul conto del cliente; le indicazioni del gruppo privato sono uguali per tutti, e ogni decisione e operazione restano del cliente.</p>
   {foot()}
 </section>'''
 
@@ -492,8 +571,7 @@ def s_close() -> str:
         ("01", "Una call di 30 minuti", "Capiamo obiettivi, tempi e quanto rischio sei disposto a prendere."),
         ("02", "Scegliamo insieme", "Uno o più servizi, con i numeri reali davanti."),
         ("03", "Attivazione e report", "Si parte, e ricevi aggiornamenti periodici sui risultati.")))
-    ct = "".join(f'<div class="ct"><div class="k">{k}</div><div class="ct-v">{v}</div></div>' for k, v in (
-        ("Referente", ph("nome e cognome")), ("Telefono", ph("+39 000 000 0000")), ("Email", ph("nome@azienda.it")), ("Sito", ph("www.azienda.it"))))
+    ct = "".join(f'<div class="ct"><div class="k">{k}</div><div class="ct-v">{v}</div></div>' for k, v in contatti())
     return f'''
 <section class="slide close">{frame()}
   <div class="close-r">{reticle(560, labels=False)}</div>
@@ -501,9 +579,9 @@ def s_close() -> str:
     <div class="wm">{logo(28)}<span>{BRAND}</span></div>
     <h1>Iniziare è</h1>{grad_line("semplice.", 66)}
     <div class="css">{steps}</div>
-    <div class="cts">{ct}</div>
+    {f'<div class="cts">{ct}</div>' if ct else ''}
   </div>
-  <p class="close-legal">Investire comporta rischi, anche di perdita del capitale. I risultati passati non garantiscono quelli futuri. Avvertenze a pag. 7.</p>
+  <p class="close-legal">Il trading con leva comporta il rischio di perdere il capitale. I risultati passati non sono indicativi di quelli futuri. Avvertenze complete a pag. 8. Documento riservato.</p>
 </section>'''
 
 
@@ -511,7 +589,7 @@ def s_close() -> str:
 CSS = r"""
 @page { size: 1280px 720px; margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-:root { --cyan:#4FD8FF; --green:#5BE38A; --gold:#FFB547; --slate:#8394AE;
+:root { --cyan:#4FD8FF; --green:#5BE38A; --gold:#FFB547; --violet:#C79BFF;
         --txt:#E9F3FB; --txt2:#A3B6CA; --muted:#61768E; --line:rgba(120,200,255,.14); }
 html, body { background:#02050A; }
 body { font-family:'Inter', system-ui, sans-serif; color:var(--txt); -webkit-font-smoothing:antialiased; }
@@ -532,16 +610,14 @@ body { font-family:'Inter', system-ui, sans-serif; color:var(--txt); -webkit-fon
     linear-gradient(var(--b),var(--b)) bottom left/22px 1.5px no-repeat, linear-gradient(var(--b),var(--b)) bottom left/1.5px 22px no-repeat,
     linear-gradient(var(--b),var(--b)) bottom right/22px 1.5px no-repeat, linear-gradient(var(--b),var(--b)) bottom right/1.5px 22px no-repeat; }
 .k { font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:#73CDEB; font-weight:500; }
-.pulse { width:8px; height:8px; border-radius:50%; display:inline-block; background:var(--c, var(--cyan));
-  box-shadow:0 0 0 3px color-mix(in srgb, var(--c, #4FD8FF) 25%, transparent), 0 0 12px var(--c, #4FD8FF); }
+.pulse { width:8px; height:8px; border-radius:50%; display:inline-block; background:var(--c, var(--cyan)); }
 .top { position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; height:22px; }
 .top-l { display:flex; align-items:center; gap:12px; }
 .top-r { display:flex; align-items:center; gap:22px; }
-.wm-mini { display:flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.22em; font-weight:600; color:var(--txt); }
 .pg { font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--cyan); font-weight:600; }
 .pg em { font-style:normal; color:var(--muted); }
 .rule { position:relative; height:1px; margin-top:12px; background:linear-gradient(90deg, rgba(79,216,255,.45), rgba(79,216,255,.08) 60%, transparent); }
-.rule::before { content:""; position:absolute; left:0; top:-1px; width:64px; height:3px; background:var(--cyan); box-shadow:0 0 10px var(--cyan); }
+.rule::before { content:""; position:absolute; left:0; top:-1px; width:64px; height:3px; background:var(--cyan); }
 .foot { position:absolute; left:64px; right:64px; bottom:24px; display:flex; justify-content:space-between; gap:30px;
   font-size:10px; color:var(--muted); border-top:1px solid rgba(120,200,255,.10); padding-top:10px; }
 .foot .k { font-size:9.5px; color:var(--muted); white-space:nowrap; }
@@ -555,8 +631,6 @@ b { color:#F4FAFF; font-weight:600; }
 .hl { color:var(--cyan); } .hl.gold { color:var(--gold); }
 .gline { display:block; overflow:visible; }
 .gline-fb { font-family:'Inter Display','Inter',sans-serif; font-weight:600; color:var(--cyan); line-height:1.12; letter-spacing:-.03em; }
-.ph { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:.74em; letter-spacing:.04em; color:#7F93AA;
-  border:1px dashed rgba(127,147,170,.55); background:rgba(127,147,170,.07); border-radius:4px; padding:.1em .5em; vertical-align:middle; }
 
 /* pannelli HUD con angoli a staffa */
 .hud { position:relative; background:linear-gradient(180deg, rgba(20,40,64,.50), rgba(9,20,34,.55));
@@ -574,7 +648,7 @@ b { color:#F4FAFF; font-weight:600; }
 .cover { display:flex; padding:56px 0 0 84px; }
 .cover-l { width:640px; position:relative; z-index:2; display:flex; flex-direction:column; }
 .wm { display:flex; align-items:center; gap:12px; font-size:14px; letter-spacing:.26em; font-weight:600; color:#F4FAFF; }
-.cov-k { display:flex; align-items:center; gap:12px; margin-top:110px; }
+.cov-k { display:flex; align-items:center; gap:14px; margin-top:150px; }
 .cover h1 { margin-top:22px; }
 .cov-sub { font-size:18px; line-height:1.6; margin-top:22px; max-width:520px; }
 .cov-st { margin-top:auto; margin-bottom:52px; display:flex; gap:26px; color:var(--muted); }
@@ -588,28 +662,23 @@ b { color:#F4FAFF; font-weight:600; }
 /* panoramica */
 .svc-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:28px; }
 .svc { padding:20px 20px 18px; height:398px; display:flex; flex-direction:column; }
-.svc::after { content:""; position:absolute; left:20px; right:20px; top:0; height:2px; background:var(--c); box-shadow:0 0 12px var(--c); opacity:.8; }
-.svc.ghost { background:rgba(10,20,34,.35); border-style:dashed; }
-.svc.ghost::after { display:none; }
+.svc::after { content:""; position:absolute; left:20px; right:20px; top:0; height:2px; background:var(--c); opacity:.8; }
 .svc-h { display:flex; justify-content:space-between; align-items:center; }
-.svc-dot { width:8px; height:8px; border-radius:50%; box-shadow:0 0 10px currentColor; }
+.svc-dot { width:8px; height:8px; border-radius:50%; }
 .svc h3 { margin-top:16px; }
 .svc-p { font-size:14.5px; line-height:1.5; margin-top:10px; }
-.svc-fig { margin-top:auto; font-family:'Inter Display','Inter'; font-size:46px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF;
-  text-shadow:0 0 24px color-mix(in srgb, var(--c) 45%, transparent); }
-.svc-fig .ph { font-size:20px; }
+.svc-fig { margin-top:auto; font-family:'Inter Display','Inter'; font-size:46px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; }
 .svc-cap { font-size:12.5px; color:var(--txt2); margin-top:2px; }
 .svc-per { margin-top:16px; padding-top:12px; border-top:1px solid var(--line); font-size:13px; color:#F4FAFF; display:flex; flex-direction:column; gap:4px; }
 .svc-per .k { font-size:9.5px; color:var(--muted); }
-.spectrum { display:flex; align-items:center; gap:14px; margin-top:18px; width:calc(75% - 4px); }
+.spectrum { display:flex; align-items:center; gap:14px; margin-top:18px; }
 .spectrum .k { color:var(--muted); font-size:10px; }
-.spec-line { flex:1; height:2px; background:linear-gradient(90deg, var(--gold), var(--green), var(--cyan)); position:relative; opacity:.8; }
-.spec-line::after { content:""; position:absolute; right:-2px; top:-4px; border-left:7px solid var(--cyan); border-top:5px solid transparent; border-bottom:5px solid transparent; }
+.spec-line { flex:1; height:2px; background:linear-gradient(90deg, var(--gold), var(--green), var(--cyan), var(--violet)); position:relative; opacity:.8; }
+.spec-line::after { content:""; position:absolute; right:-2px; top:-4px; border-left:7px solid var(--violet); border-top:5px solid transparent; border-bottom:5px solid transparent; }
 
 /* pagine servizio */
 .sv-title { display:flex; align-items:center; gap:20px; margin-top:20px; }
-.sv-n { font-family:'Inter Display','Inter'; font-size:64px; font-weight:600; letter-spacing:-.04em; line-height:1; opacity:.9;
-  text-shadow:0 0 28px currentColor; }
+.sv-n { font-family:'Inter Display','Inter'; font-size:64px; font-weight:600; letter-spacing:-.04em; line-height:1; opacity:.9; }
 .sv-h2 { margin-top:0; font-size:34px; }
 .sv-tag { font-size:16px; color:var(--txt2); margin-top:2px; }
 .cols { display:flex; gap:18px; margin-top:20px; height:470px; }
@@ -622,18 +691,18 @@ b { color:#F4FAFF; font-weight:600; }
 .col-l .pan:last-child { display:flex; flex-direction:column; }
 .st { display:flex; align-items:center; gap:16px; }
 .st-n { width:38px; height:38px; flex:none; border-radius:50%; display:grid; place-items:center; font-family:'JetBrains Mono', monospace;
-  font-weight:600; color:var(--c); border:1.5px solid var(--c); box-shadow:0 0 14px color-mix(in srgb, var(--c) 40%, transparent), inset 0 0 10px color-mix(in srgb, var(--c) 25%, transparent); }
+  font-weight:600; color:var(--c); border:1.5px solid var(--c); }
 .st-t { font-size:17px; color:#F4FAFF; }
 .num-row { display:flex; align-items:center; gap:22px; }
 .ring-w { position:relative; flex:none; }
 .ring-w svg { position:absolute; inset:0; }
 .ring-t { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
-.ring-v { font-family:'Inter Display','Inter'; font-size:36px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; text-shadow:0 0 20px rgba(255,255,255,.25); }
+.ring-v { font-family:'Inter Display','Inter'; font-size:36px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; }
 .ring-s { font-size:9.5px; margin-top:2px; color:var(--txt2); }
 .ex { display:flex; flex-direction:column; }
 .ex-v { font-family:'Inter Display','Inter'; font-size:30px; font-weight:600; letter-spacing:-.02em; color:#F4FAFF; margin-top:4px; }
-.ex-v.gold { color:var(--gold); text-shadow:0 0 18px rgba(255,181,71,.45); }
-.ex-v.green { color:var(--green); text-shadow:0 0 18px rgba(91,227,138,.45); font-size:40px; }
+.ex-v.gold { color:var(--gold); }
+.ex-v.green { color:var(--green); font-size:40px; }
 .ex-l { font-size:13px; color:var(--txt2); }
 .ex-l2 { font-size:12.5px; color:var(--txt2); margin-top:12px; }
 .ex-arrow { color:var(--muted); font-size:18px; margin:4px 0 -2px; }
@@ -646,28 +715,32 @@ b { color:#F4FAFF; font-weight:600; }
 .br { display:grid; grid-template-columns:76px 1fr 78px; align-items:center; gap:10px; font-size:13px; font-variant-numeric:tabular-nums; }
 .br-k { color:var(--txt2); text-align:right; }
 .br-t { height:12px; background:rgba(255,255,255,.05); border-radius:3px; }
-.br-f { height:100%; background:var(--green); border-radius:0 3px 3px 0; box-shadow:0 0 10px rgba(91,227,138,.5); }
+.br-f { height:100%; background:var(--green); border-radius:0 3px 3px 0; }
 .br-v { color:#F4FAFF; font-weight:600; }
-.mt-flow { display:flex; align-items:stretch; gap:10px; }
-.mt-acc { flex:1; border:1px solid var(--line); border-radius:5px; padding:10px 12px; background:rgba(91,227,138,.04); }
-.mt-acc p { font-size:13px; line-height:1.45; margin-top:6px; }
-.mt-vs { align-self:center; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--muted); }
-.mt-out { margin-top:12px; display:flex; flex-direction:column; gap:7px; font-size:13.5px; color:var(--txt2); }
-.mt-out div { padding-left:16px; position:relative; }
-.mt-out div::before { content:""; position:absolute; left:0; top:7px; width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); }
-.mt-res { margin-top:auto; display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border:1px solid rgba(91,227,138,.35); border-radius:5px; background:rgba(91,227,138,.06); font-size:14px; }
-.mt-res .k { color:var(--green); }
+.schema { display:block; margin-top:4px; }
+.schema .sm-v { font-family:'Inter Display','Inter'; font-size:21px; font-weight:600; fill:#F4FAFF; }
+.schema .sm-r { font-family:'Inter Display','Inter'; font-size:23px; font-weight:600; }
+.schema .sm-k { font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.16em; fill:#73CDEB; }
+.schema .sm-t { font-size:15px; font-weight:600; fill:#F4FAFF; }
+.schema .sm-s { font-size:12.5px; fill:#A3B6CA; }
+.mt-foot { margin-top:10px; margin-bottom:0; }
 .legend { display:flex; gap:16px; font-size:11.5px; color:var(--txt2); margin-top:4px; }
 .legend span { display:flex; align-items:center; gap:7px; }
 .legend i { width:14px; height:3px; border-radius:2px; display:inline-block; }
 .legend i.sq { width:12px; height:10px; border-radius:2px; background:rgba(79,216,255,.25); }
+.ex-v.violet { color:var(--violet); font-size:32px; }
+.msg { margin-top:16px; border:1px solid rgba(199,155,255,.35); border-radius:10px 10px 10px 2px; background:rgba(199,155,255,.06); padding:12px 16px; }
+.msg-h { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.msg-h .k { color:var(--violet); }
+.msg-r { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(199,155,255,.15); font-size:14px; color:#F4FAFF; }
+.msg-r:last-child { border-bottom:0; }
+.msg-r .k { color:var(--txt2); font-size:10px; }
 .fxs { display:flex; flex-direction:column; gap:14px; }
 .fx { display:flex; align-items:center; gap:18px; padding-bottom:14px; border-bottom:1px solid var(--line); }
-.fx-v { font-family:'Inter Display','Inter'; font-size:38px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; width:92px; flex:none;
-  text-shadow:0 0 20px rgba(79,216,255,.4); }
+.fx-v { font-family:'Inter Display','Inter'; font-size:38px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; width:92px; flex:none; }
 .fx-l { font-size:14px; line-height:1.45; color:var(--txt2); }
 .teaser { margin-top:auto; padding:16px 18px; border:1px solid rgba(79,216,255,.35); border-radius:6px; background:rgba(79,216,255,.06); }
-.teaser-v { font-family:'Inter Display','Inter'; font-size:46px; font-weight:600; letter-spacing:-.03em; color:var(--cyan); text-shadow:0 0 26px rgba(79,216,255,.55); margin-top:4px; }
+.teaser-v { font-family:'Inter Display','Inter'; font-size:46px; font-weight:600; letter-spacing:-.03em; color:var(--cyan); margin-top:4px; }
 
 /* numeri reali */
 .n-title { display:flex; justify-content:space-between; align-items:flex-end; }
@@ -702,40 +775,41 @@ b { color:#F4FAFF; font-weight:600; }
 .chart .tag { font-family:'JetBrains Mono', monospace; font-size:9px; letter-spacing:.14em; fill:#61768E; }
 
 /* avvertenze */
-.lgs { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:32px; }
-.lg { padding:22px 22px 24px; min-height:176px; }
+.lgs { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:20px; }
+.lg { padding:14px 18px 15px; min-height:126px; }
 .lg-n { color:var(--gold); }
 .lg h4 { margin-top:10px; font-size:16px; }
-.lg p { font-size:14.5px; line-height:1.55; margin-top:8px; }
-.lg h4 { font-size:17px !important; }
+.lg p { font-size:13px; line-height:1.45; margin-top:5px; }
+.lg h4 { font-size:15px !important; }
 
 /* chiusura */
 .close { padding:56px 84px 0; }
 .close-r { position:absolute; right:-150px; top:60px; opacity:.85; }
 .close-in { position:relative; z-index:2; }
 .close h1 { margin-top:70px; }
+.close .wm { letter-spacing:.02em; font-size:19px; }
 .css { display:grid; grid-template-columns:repeat(3, 250px); gap:14px; margin-top:34px; }
 .cs { padding:16px 18px 18px; }
 .cs-n { font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--cyan); font-weight:600; }
 .cs h4 { margin-top:8px; }
 .cs p { font-size:13px; line-height:1.45; margin-top:6px; }
-.cts { display:grid; grid-template-columns:repeat(4, 200px); gap:20px; margin-top:30px; }
+.cts { display:grid; grid-template-columns:repeat(3, auto); justify-content:start; column-gap:56px; margin-top:30px; }
 .ct-v { margin-top:8px; font-size:15px; }
 .close-legal { position:absolute; left:84px; right:84px; bottom:30px; font-size:10px; color:var(--muted); }
 """
 
 DEFS = f"""<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-<linearGradient id="g-title" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#9BE9FF"/><stop offset="1" stop-color="{CYAN}"/></linearGradient>
+<linearGradient id="g-title" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8FE6FF"/><stop offset=".45" stop-color="#6FDFFF"/><stop offset="1" stop-color="{CYAN}"/></linearGradient>
 <linearGradient id="g-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{CYAN}" stop-opacity=".32"/><stop offset="1" stop-color="{CYAN}" stop-opacity="0"/></linearGradient>
 <radialGradient id="g-glow"><stop offset="0" stop-color="{CYAN}" stop-opacity=".22"/><stop offset=".5" stop-color="#1A6E9A" stop-opacity=".08"/><stop offset="1" stop-color="#04070D" stop-opacity="0"/></radialGradient>
 </defs></svg>"""
 
 
 def build() -> None:
-    slides = [s_cover(), s_overview(), s_svc1(), s_svc2(), s_svc3(), s_svc3_numeri(), s_legal(), s_close()]
+    slides = [s_cover(), s_overview(), s_svc1(), s_svc2(), s_svc3(), s_svc3_numeri(), s_svc4(), s_legal(), s_close()]
     assert len(slides) == TOTAL, len(slides)
     html = ('<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">'
-            f'<title>{BRAND} · Ecosistema di investimento</title><style>{CSS}</style></head>'
+            f'<title>Ecosistema di investimento</title><style>{CSS}</style></head>'
             f'<body>{DEFS}{"".join(slides)}</body></html>')
     OUT.write_text(html, encoding="utf-8")
     print(f"scritto {OUT} ({len(html) // 1024} KB, {len(slides)} pagine)")
