@@ -64,3 +64,7 @@ AGENTS.md
 .gas_memory_crm*
 # R-808-7: DB demo della prima bozza (nome vecchio), se è rimasto sul Mac
 .gas_crm_demo.db*
+
+# Presentazione clienti: tenuta solo sul Mac dell'operatore (repo pubblico, 19/11). Mai rimetterla qui:
+# dentro ci sono contatti personali (contatti.local.json, privato/) e numeri non verificati da gate.
+presentazione_clienti/
