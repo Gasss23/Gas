@@ -119,8 +119,8 @@ def top(label: str, n: int, color: str = CYAN) -> str:
 
 
 def foot() -> str:
-    return ('<footer class="foot"><span>Investire comporta rischi, anche di perdita del capitale. I risultati '
-            'passati non garantiscono quelli futuri. Leggi le avvertenze a pag. 8.</span>'
+    return ('<footer class="foot"><span>Il trading con leva comporta il rischio di perdere il capitale. I risultati '
+            'passati non sono indicativi di quelli futuri. Avvertenze complete a pag. 8.</span>'
             '<span class="k">Documento riservato</span></footer>')
 
 
@@ -348,7 +348,7 @@ def s_cover() -> str:
     <div class="k cov-k"><i class="pulse"></i>Ecosistema di investimento · 2026</div>
     <h1>Il tuo capitale,</h1>{grad_line("quattro motori.", 66)}
     <p class="cov-sub">Quattro modi semplici per far lavorare i tuoi soldi. Per ognuno: cos'è, come funziona e cosa aspettarti.</p>
-    <div class="k cov-st"><span>● 4 servizi</span><span>● dati verificati</span><span>● spiegati in modo semplice</span></div>
+    <div class="k cov-st"><span>● 4 servizi</span><span>● spiegati in modo semplice</span><span>● documento riservato</span></div>
   </div>
   <div class="cover-r">{reticle()}</div>
 </section>'''
@@ -380,6 +380,7 @@ def s_overview() -> str:
   <h2>Quattro servizi, <span class="hl">in parole semplici.</span></h2>
   <div class="svc-row">{cards}</div>
   <div class="spectrum"><span class="k">Puoi scegliere un solo servizio o combinarli</span><div class="spec-line"></div></div>
+  <p class="fine">I servizi sono diversi per natura, conto, broker e periodo dei dati: i numeri non vanno confrontati tra loro senza leggere le note di ogni pagina.</p>
   {foot()}
 </section>'''
 
@@ -503,7 +504,7 @@ def s_svc4() -> str:
 def s_svc3_numeri() -> str:
     stats = "".join(f'<div class="sr"><div class="sr-v">{v}</div><div class="sr-l"><b>{t}</b>{d}</div></div>' for v, t, d in (
         (FX["media_mensile"], "Guadagno medio al mese", ""),
-        (FX["max_dd"], "Discesa massima", " · il calo più grande dal punto più alto (max drawdown)"),
+        (FX["max_dd"], "Discesa massima", " · il primo numero da leggere: il calo più grande dal punto più alto (max drawdown)"),
         (FX["win_rate"], "Operazioni in guadagno", " · su 100 operazioni, 75 chiuse in positivo (win rate)"),
         (FX["profit_factor"], "Profit factor", " · per ogni 1 € perso, 2,18 € guadagnati"),
         (FX["rend_dd"], "Rendimento / discesa", " · guadagno totale diviso la discesa massima"),
@@ -524,20 +525,23 @@ def s_svc3_numeri() -> str:
 
 
 def s_legal() -> str:
-    items = [("Puoi perdere soldi", "Ogni investimento ha dei rischi: il capitale può scendere, in parte o del tutto."),
-             ("Il passato non è una promessa", "I risultati passati non garantiscono quelli futuri, che possono essere peggiori."),
-             ("La leva amplifica", "Forex e CFD con leva aumentano sia i guadagni sia le perdite."),
-             ("Conta il contratto", "Rendimenti e garanzie del servizio 01 sono solo quelli scritti nel contratto."),
-             ("Conti diversi, risultati diversi", "Broker, costi, leva e dimensione del conto possono cambiare i risultati rispetto al conto di riferimento."),
-             ("Soggetti terzi", "Prop firm e broker hanno regole e costi propri, che possono cambiare.")]
+    items = [("Perdita del capitale", "Il trading su Forex, oro, criptovalute e CFD con leva comporta un rischio elevato: si può perdere una parte o tutto il capitale investito."),
+             ("Solo quello che puoi perdere", "Investi solo somme di cui puoi sostenere la perdita totale."),
+             ("Risultati passati", "I numeri vengono da conti reali di riferimento in periodi specifici: non sono indicativi dei risultati futuri, che possono essere peggiori."),
+             ("La leva amplifica", "La leva aumenta sia i guadagni sia le perdite, anche in poco tempo."),
+             ("Differenze tra conti", "Broker, spread, commissioni, swap, latenza, leva e dimensione del conto possono dare risultati diversi dal conto di riferimento."),
+             ("Natura del servizio", "Copy trading e gruppo privato non sono consulenza finanziaria personalizzata né gestione di patrimoni per conto terzi: il conto resta intestato al cliente."),
+             ("Conta il contratto", "Rendimenti e garanzie del servizio 01 sono solo quelli scritti nel contratto. Gli esempi sono al lordo di costi e imposte."),
+             ("Soggetti terzi", "Prop firm e broker hanno regole e costi propri, che possono cambiare in ogni momento."),
+             ("Fonti", "Copy trading: Myfxbook, conto reale indicato a pagina 6, aggiornato alle date riportate lì.")]
     cells = "".join(f'<div class="hud lg" style="--c:{GOLD}"><div class="lg-n k">{i + 1:02d}</div><h4>{t}</h4><p>{d}</p></div>'
                     for i, (t, d) in enumerate(items))
     return f'''
 <section class="slide">{frame()}
   {top("Avvertenze", 8, GOLD)}
-  <h2>Prima di iniziare, <span class="hl gold">in parole semplici.</span></h2>
+  <h2>Il rischio, <span class="hl gold">per intero.</span></h2>
   <div class="lgs">{cells}</div>
-  <p class="fine wide">Documento informativo: non è un'offerta al pubblico, una sollecitazione all'investimento né una consulenza personalizzata. Nel copy trading le operazioni sono replicate sul conto del cliente, che resta intestato a lui: non è gestione di patrimoni. Le indicazioni del gruppo privato sono uguali per tutti: ogni decisione e ogni operazione restano del cliente.</p>
+  <p class="fine wide">Documento informativo e riservato: non è un'offerta al pubblico né una sollecitazione all'investimento. Nel copy trading le operazioni della strategia sono replicate sul conto del cliente; le indicazioni del gruppo privato sono uguali per tutti, e ogni decisione e operazione restano del cliente.</p>
   {foot()}
 </section>'''
 
@@ -558,7 +562,7 @@ def s_close() -> str:
     <div class="css">{steps}</div>
     <div class="cts">{ct}</div>
   </div>
-  <p class="close-legal">Investire comporta rischi, anche di perdita del capitale. I risultati passati non garantiscono quelli futuri. Avvertenze a pag. 8.</p>
+  <p class="close-legal">Il trading con leva comporta il rischio di perdere il capitale. I risultati passati non sono indicativi di quelli futuri. Avvertenze complete a pag. 8. Documento riservato.</p>
 </section>'''
 
 
@@ -770,12 +774,12 @@ b { color:#F4FAFF; font-weight:600; }
 .chart .tag { font-family:'JetBrains Mono', monospace; font-size:9px; letter-spacing:.14em; fill:#61768E; }
 
 /* avvertenze */
-.lgs { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:32px; }
-.lg { padding:22px 22px 24px; min-height:176px; }
+.lgs { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:20px; }
+.lg { padding:14px 18px 15px; min-height:126px; }
 .lg-n { color:var(--gold); }
 .lg h4 { margin-top:10px; font-size:16px; }
-.lg p { font-size:14.5px; line-height:1.55; margin-top:8px; }
-.lg h4 { font-size:17px !important; }
+.lg p { font-size:13px; line-height:1.45; margin-top:5px; }
+.lg h4 { font-size:15px !important; }
 
 /* chiusura */
 .close { padding:56px 84px 0; }
