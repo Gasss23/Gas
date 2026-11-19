@@ -7,8 +7,9 @@ Versione corta (9 pagine) per chi investe per la prima volta: per ogni servizio 
 Niente ombre/bagliori CSS (text-shadow, box-shadow): nel PDF diventano immagini che alcuni
 lettori disegnano come riquadri sopra il testo (operatore, 19/11). Restano immagini interne per
 sfumature e trasparenze (sfondi, pannelli): pdfimages -list non le mostra, ma ci sono.
-Versione del repo:  python3 build.py --senza-contatti && node render.js "PDF servizi ecosistema.pdf"
-Versione completa:  python3 build.py && node render.js "privato/PDF servizi ecosistema.pdf"
+Versione del repo (predefinita, senza contatti):  python3 build.py && node render.js
+Versione completa (fuori da git):  python3 build.py --con-contatti && node render.js
+(con i contatti render.js scrive solo in privato/ e rifiuta il PDF tracciato)
 """
 from __future__ import annotations
 
@@ -69,13 +70,15 @@ def logo(size: int = 22) -> str:
 
 # Contatti della pagina finale: SOLO da un file locale ignorato da git (il repo è pubblico,
 # operatore 19/11). Formato: {"Referente": "...", "Telefono": "...", "Email": "..."}.
-# Con --senza-contatti (versione del repo) la riga dei contatti non c'è.
+# Predefinito SENZA contatti (versione del repo): entrano solo con --con-contatti, e allora
+# render.js scrive solo in privato/ (bot #384 V-1: un rendering «normale» non deve poterli
+# ripubblicare nel PDF tracciato).
 CONTATTI_FILE = HERE / "contatti.local.json"
-SENZA_CONTATTI = "--senza-contatti" in sys.argv
+CON_CONTATTI = "--con-contatti" in sys.argv
 
 
 def contatti() -> list:
-    if SENZA_CONTATTI:
+    if not CON_CONTATTI:
         return []
     try:
         dati = json.loads(CONTATTI_FILE.read_text(encoding="utf-8"))
@@ -276,12 +279,12 @@ def chart_elastico() -> str:
 
 
 def schema_matched() -> str:
-    """Schema semplice: 3.000 € → due conti con scommesse opposte → uno vince sempre → ≈ +500 €."""
+    """Schema semplice: 3.000 € → due conti con scommesse opposte → in media ≈ +500 € (non garantito)."""
     W, H = 560, 206
     g = GREEN
     box = 'fill="#0C1E2C" stroke="{c}" stroke-opacity="{o}" stroke-width="1.3" rx="6"'
     o = [f'<svg class="chart schema" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
-         'aria-label="Schema del matched trading: due conti con scommesse opposte, uno vince sempre">']
+         'aria-label="Schema del matched trading: due conti con scommesse opposte, in media il vincente guadagna più di quanto perde l\'altro">']
     # collegamenti
     for d in ("M104,103 C130,103 126,42 152,42", "M104,103 C130,103 126,164 152,164",
               "M398,42 C424,42 420,103 448,103", "M398,164 C424,164 420,103 448,103"):
@@ -371,8 +374,8 @@ def s_cover() -> str:
 </section>'''
 
 
-def card(n: str, color: str, name: str, cosa: str, fig: str, cap: str, per: str, ghost: bool = False) -> str:
-    return f'''<div class="hud svc{' ghost' if ghost else ''}" style="--c:{color}">
+def card(n: str, color: str, name: str, cosa: str, fig: str, cap: str, per: str) -> str:
+    return f'''<div class="hud svc" style="--c:{color}">
   <div class="svc-h"><span class="k" style="color:{color}">Servizio {n}</span><span class="svc-dot" style="background:{color};color:{color}"></span></div>
   <h3>{name}</h3><p class="svc-p">{cosa}</p>
   <div class="svc-fig">{fig}</div><div class="svc-cap">{cap}</div>
@@ -665,7 +668,6 @@ b { color:#F4FAFF; font-weight:600; }
 .svc h3 { margin-top:16px; }
 .svc-p { font-size:14.5px; line-height:1.5; margin-top:10px; }
 .svc-fig { margin-top:auto; font-family:'Inter Display','Inter'; font-size:46px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; }
-.svc-fig .ph { font-size:20px; }
 .svc-cap { font-size:12.5px; color:var(--txt2); margin-top:2px; }
 .svc-per { margin-top:16px; padding-top:12px; border-top:1px solid var(--line); font-size:13px; color:#F4FAFF; display:flex; flex-direction:column; gap:4px; }
 .svc-per .k { font-size:9.5px; color:var(--muted); }
@@ -807,7 +809,7 @@ def build() -> None:
     slides = [s_cover(), s_overview(), s_svc1(), s_svc2(), s_svc3(), s_svc3_numeri(), s_svc4(), s_legal(), s_close()]
     assert len(slides) == TOTAL, len(slides)
     html = ('<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">'
-            f'<title>{BRAND} · Ecosistema di investimento</title><style>{CSS}</style></head>'
+            f'<title>Ecosistema di investimento</title><style>{CSS}</style></head>'
             f'<body>{DEFS}{"".join(slides)}</body></html>')
     OUT.write_text(html, encoding="utf-8")
     print(f"scritto {OUT} ({len(html) // 1024} KB, {len(slides)} pagine)")
