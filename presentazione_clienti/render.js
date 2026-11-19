@@ -1,10 +1,10 @@
-// Uso: node render.js  ->  Presentazione_Ecosistema.pdf (accanto a presentazione.html)
+// Uso: node render.js [uscita.pdf]  (predefinito: «PDF servizi ecosistema.pdf», accanto a presentazione.html)
 const path = require('path');
 const { chromium } = require('playwright');
 
 (async () => {
   const html = path.resolve(__dirname, 'presentazione.html');
-  const out = path.resolve(__dirname, 'Presentazione_Ecosistema.pdf');
+  const out = path.resolve(__dirname, process.argv[2] || 'PDF servizi ecosistema.pdf');
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.goto('file://' + html, { waitUntil: 'networkidle' });

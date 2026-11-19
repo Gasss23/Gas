@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 """Genera presentazione.html (16:9, 1280x720 px per pagina, stile HUD scuro).
 
-Poi: node render.js  ->  Presentazione_Ecosistema.pdf
-Versione corta (8 pagine) per chi investe per la prima volta: per ogni servizio prima
+Poi: node render.js  ->  «PDF servizi ecosistema.pdf»
+Versione corta (9 pagine) per chi investe per la prima volta: per ogni servizio prima
 «cos'è» e «come funziona» in parole semplici, poi i numeri.
-I dati ancora mancanti sono marcati con ph() (riquadro tratteggiato «da inserire»).
+Niente ombre/bagliori CSS (text-shadow, box-shadow): nel PDF diventano immagini che alcuni
+lettori disegnano come riquadri sopra il testo (operatore, 19/11). Restano immagini interne per
+sfumature e trasparenze (sfondi, pannelli): pdfimages -list non le mostra, ma ci sono.
+Versione del repo:  python3 build.py --senza-contatti && node render.js "PDF servizi ecosistema.pdf"
+Versione completa:  python3 build.py && node render.js "privato/PDF servizi ecosistema.pdf"
 """
 from __future__ import annotations
 
 import json
 import math
 import random
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).parent
 OUT = HERE / "presentazione.html"
 
-BRAND = "NOME AZIENDA"
+BRAND = "GasTradeFx"
 TOTAL = 9
 
 # colori HUD: identità dei servizi (sempre accanto a numero e nome del servizio)
@@ -51,9 +56,6 @@ def dec(v: float, d: int = 2) -> str:
     return f"{v:.{d}f}".replace(".", ",")
 
 
-def ph(txt: str = "da inserire") -> str:
-    return f'<span class="ph">{txt}</span>'
-
 
 def logo(size: int = 22) -> str:
     return (
@@ -63,6 +65,23 @@ def logo(size: int = 22) -> str:
         '<circle cx="12" cy="12" r="1.8" fill="#BFF3FF"/>'
         '<path d="M12 0.5v3M12 20.5v3M0.5 12h3M20.5 12h3" stroke="#4FD8FF" stroke-width="1.3"/></svg>'
     )
+
+
+# Contatti della pagina finale: SOLO da un file locale ignorato da git (il repo è pubblico,
+# operatore 19/11). Formato: {"Referente": "...", "Telefono": "...", "Email": "..."}.
+# Con --senza-contatti (versione del repo) la riga dei contatti non c'è.
+CONTATTI_FILE = HERE / "contatti.local.json"
+SENZA_CONTATTI = "--senza-contatti" in sys.argv
+
+
+def contatti() -> list:
+    if SENZA_CONTATTI:
+        return []
+    try:
+        dati = json.loads(CONTATTI_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [(str(k), str(v)) for k, v in dati.items() if v]
 
 
 FONT_TITLE = "/usr/share/fonts/opentype/inter/InterDisplay-SemiBold.otf"
@@ -114,8 +133,7 @@ def grad_line(text: str, size: int = 60, tracking_em: float = -0.03) -> str:
 
 def top(label: str, n: int, color: str = CYAN) -> str:
     return (f'<header class="top"><div class="k top-l"><i class="pulse" style="--c:{color}"></i>{label}</div>'
-            f'<div class="top-r"><span class="wm-mini">{logo(15)}{BRAND}</span>'
-            f'<span class="pg">{n:02d}<em>/{TOTAL:02d}</em></span></div></header><div class="rule"></div>')
+            f'<div class="top-r"><span class="pg">{n:02d}<em>/{TOTAL:02d}</em></span></div></header><div class="rule"></div>')
 
 
 def foot() -> str:
@@ -275,8 +293,8 @@ def schema_matched() -> str:
     o.append('<text x="52" y="101" text-anchor="middle" class="sm-v">3.000 €</text>')
     o.append('<text x="52" y="119" text-anchor="middle" class="sm-k">IL CAPITALE</text>')
     # i due conti
-    for y, nome, freccia, punta, esito in ((4, "CONTO A · PROP FIRM", "▲", "punta sul rialzo", "se il prezzo sale, vince A"),
-                                           (126, "CONTO B · BROKER", "▼", "punta sul ribasso", "se il prezzo scende, vince B")):
+    for y, nome, freccia, punta, esito in ((4, "CONTO A · PROP FIRM", "▲", "punta sul rialzo", "se supera la prova, paga la prop firm"),
+                                           (126, "CONTO B · BROKER", "▼", "punta sul ribasso", "se A non la supera, guadagna B")):
         o.append(f'<rect x="152" y="{y}" width="246" height="76" {box.format(c=g, o=".45")}/>')
         o.append(f'<text x="168" y="{y + 22}" class="sm-k" fill="{g}">{nome}</text>')
         o.append(f'<text x="168" y="{y + 45}" class="sm-t"><tspan fill="{g}">{freccia}</tspan> {punta}</text>')
@@ -344,7 +362,6 @@ def s_cover() -> str:
     return f'''
 <section class="slide cover">{frame()}
   <div class="cover-l">
-    <div class="wm">{logo(28)}<span>{BRAND}</span></div>
     <div class="k cov-k"><i class="pulse"></i>Ecosistema di investimento · 2026</div>
     <h1>Il tuo capitale,</h1>{grad_line("quattro motori.", 66)}
     <p class="cov-sub">Quattro modi semplici per far lavorare i tuoi soldi. Per ognuno: cos'è, come funziona e cosa aspettarti.</p>
@@ -426,10 +443,10 @@ def s_svc2() -> str:
   <div class="cols">
     <div class="col-l">
       <div class="hud pan" style="--c:{GREEN}"><div class="k pk">01 · Cos'è</div>
-        <p class="big-p">Due conti collegati fanno due scommesse opposte sullo stesso mercato: una delle due vince sempre. Uno sta presso una prop firm (una società che presta il suo capitale a chi supera una prova), l'altro presso un broker.</p></div>
+        <p class="big-p">Due conti collegati fanno scommesse opposte sullo stesso mercato: quando uno perde, l'altro guadagna. Uno è presso una prop firm (presta capitale a chi supera una prova), l'altro presso un broker.</p></div>
       <div class="hud pan" style="--c:{GREEN}"><div class="k pk">02 · Come funziona</div>
         {schema_matched()}
-        <p class="mid-p mt-foot">Il calcolo fa in modo che il conto che vince guadagni più di quanto perde l'altro.</p>
+        <p class="mid-p mt-foot">Il calcolo punta a far guadagnare il conto vincente più di quanto perde l'altro. Non è garantito: in alcuni casi possono perdere entrambi (regole della prop firm, salti di prezzo).</p>
       </div>
     </div>
     <div class="hud pan col-r" style="--c:{GREEN}"><div class="k pk">03 · I numeri</div>
@@ -494,7 +511,7 @@ def s_svc4() -> str:
         <div class="ex"><div class="k">Si parte da zero</div><div class="ex-v violet">Guida PDF</div><div class="ex-l">inclusa, passo passo</div>
           <div class="ex-l2">Basta il telefono e un po' di attenzione ai messaggi durante il giorno.</div></div></div>
       <div class="msg"><div class="msg-h"><i class="pulse" style="--c:{VIOLET}"></i><span class="k">Esempio di messaggio</span></div>{msg}</div>
-      <p class="note">Le indicazioni sono uguali per tutti i membri del gruppo e non sono una consulenza personalizzata: ogni operazione la decidi e la fai tu.</p>
+      <p class="note">Le indicazioni sono uguali per tutti e non sono una consulenza personalizzata: sei tu a scegliere se copiarle. Ogni operazione può andare in perdita.</p>
     </div>
   </div>
   {foot()}
@@ -551,8 +568,7 @@ def s_close() -> str:
         ("01", "Una call di 30 minuti", "Capiamo obiettivi, tempi e quanto rischio sei disposto a prendere."),
         ("02", "Scegliamo insieme", "Uno o più servizi, con i numeri reali davanti."),
         ("03", "Attivazione e report", "Si parte, e ricevi aggiornamenti periodici sui risultati.")))
-    ct = "".join(f'<div class="ct"><div class="k">{k}</div><div class="ct-v">{v}</div></div>' for k, v in (
-        ("Referente", ph("nome e cognome")), ("Telefono", ph("+39 000 000 0000")), ("Email", ph("nome@azienda.it")), ("Sito", ph("www.azienda.it"))))
+    ct = "".join(f'<div class="ct"><div class="k">{k}</div><div class="ct-v">{v}</div></div>' for k, v in contatti())
     return f'''
 <section class="slide close">{frame()}
   <div class="close-r">{reticle(560, labels=False)}</div>
@@ -560,7 +576,7 @@ def s_close() -> str:
     <div class="wm">{logo(28)}<span>{BRAND}</span></div>
     <h1>Iniziare è</h1>{grad_line("semplice.", 66)}
     <div class="css">{steps}</div>
-    <div class="cts">{ct}</div>
+    {f'<div class="cts">{ct}</div>' if ct else ''}
   </div>
   <p class="close-legal">Il trading con leva comporta il rischio di perdere il capitale. I risultati passati non sono indicativi di quelli futuri. Avvertenze complete a pag. 8. Documento riservato.</p>
 </section>'''
@@ -591,16 +607,14 @@ body { font-family:'Inter', system-ui, sans-serif; color:var(--txt); -webkit-fon
     linear-gradient(var(--b),var(--b)) bottom left/22px 1.5px no-repeat, linear-gradient(var(--b),var(--b)) bottom left/1.5px 22px no-repeat,
     linear-gradient(var(--b),var(--b)) bottom right/22px 1.5px no-repeat, linear-gradient(var(--b),var(--b)) bottom right/1.5px 22px no-repeat; }
 .k { font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:#73CDEB; font-weight:500; }
-.pulse { width:8px; height:8px; border-radius:50%; display:inline-block; background:var(--c, var(--cyan));
-  box-shadow:0 0 0 3px color-mix(in srgb, var(--c, #4FD8FF) 25%, transparent), 0 0 12px var(--c, #4FD8FF); }
+.pulse { width:8px; height:8px; border-radius:50%; display:inline-block; background:var(--c, var(--cyan)); }
 .top { position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; height:22px; }
 .top-l { display:flex; align-items:center; gap:12px; }
 .top-r { display:flex; align-items:center; gap:22px; }
-.wm-mini { display:flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.22em; font-weight:600; color:var(--txt); }
 .pg { font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--cyan); font-weight:600; }
 .pg em { font-style:normal; color:var(--muted); }
 .rule { position:relative; height:1px; margin-top:12px; background:linear-gradient(90deg, rgba(79,216,255,.45), rgba(79,216,255,.08) 60%, transparent); }
-.rule::before { content:""; position:absolute; left:0; top:-1px; width:64px; height:3px; background:var(--cyan); box-shadow:0 0 10px var(--cyan); }
+.rule::before { content:""; position:absolute; left:0; top:-1px; width:64px; height:3px; background:var(--cyan); }
 .foot { position:absolute; left:64px; right:64px; bottom:24px; display:flex; justify-content:space-between; gap:30px;
   font-size:10px; color:var(--muted); border-top:1px solid rgba(120,200,255,.10); padding-top:10px; }
 .foot .k { font-size:9.5px; color:var(--muted); white-space:nowrap; }
@@ -614,7 +628,6 @@ b { color:#F4FAFF; font-weight:600; }
 .hl { color:var(--cyan); } .hl.gold { color:var(--gold); }
 .gline { display:block; overflow:visible; }
 .gline-fb { font-family:'Inter Display','Inter',sans-serif; font-weight:600; color:var(--cyan); line-height:1.12; letter-spacing:-.03em; }
-.ph { color:#7F93AA; border-bottom:1px dotted rgba(127,147,170,.6); padding-bottom:1px; }
 
 /* pannelli HUD con angoli a staffa */
 .hud { position:relative; background:linear-gradient(180deg, rgba(20,40,64,.50), rgba(9,20,34,.55));
@@ -632,7 +645,7 @@ b { color:#F4FAFF; font-weight:600; }
 .cover { display:flex; padding:56px 0 0 84px; }
 .cover-l { width:640px; position:relative; z-index:2; display:flex; flex-direction:column; }
 .wm { display:flex; align-items:center; gap:12px; font-size:14px; letter-spacing:.26em; font-weight:600; color:#F4FAFF; }
-.cov-k { display:flex; align-items:center; gap:12px; margin-top:110px; }
+.cov-k { display:flex; align-items:center; gap:14px; margin-top:150px; }
 .cover h1 { margin-top:22px; }
 .cov-sub { font-size:18px; line-height:1.6; margin-top:22px; max-width:520px; }
 .cov-st { margin-top:auto; margin-bottom:52px; display:flex; gap:26px; color:var(--muted); }
@@ -646,15 +659,12 @@ b { color:#F4FAFF; font-weight:600; }
 /* panoramica */
 .svc-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:28px; }
 .svc { padding:20px 20px 18px; height:398px; display:flex; flex-direction:column; }
-.svc::after { content:""; position:absolute; left:20px; right:20px; top:0; height:2px; background:var(--c); box-shadow:0 0 12px var(--c); opacity:.8; }
-.svc.ghost { background:rgba(10,20,34,.35); border-style:dashed; }
-.svc.ghost::after { display:none; }
+.svc::after { content:""; position:absolute; left:20px; right:20px; top:0; height:2px; background:var(--c); opacity:.8; }
 .svc-h { display:flex; justify-content:space-between; align-items:center; }
-.svc-dot { width:8px; height:8px; border-radius:50%; box-shadow:0 0 10px currentColor; }
+.svc-dot { width:8px; height:8px; border-radius:50%; }
 .svc h3 { margin-top:16px; }
 .svc-p { font-size:14.5px; line-height:1.5; margin-top:10px; }
-.svc-fig { margin-top:auto; font-family:'Inter Display','Inter'; font-size:46px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF;
-  text-shadow:0 0 24px color-mix(in srgb, var(--c) 45%, transparent); }
+.svc-fig { margin-top:auto; font-family:'Inter Display','Inter'; font-size:46px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; }
 .svc-fig .ph { font-size:20px; }
 .svc-cap { font-size:12.5px; color:var(--txt2); margin-top:2px; }
 .svc-per { margin-top:16px; padding-top:12px; border-top:1px solid var(--line); font-size:13px; color:#F4FAFF; display:flex; flex-direction:column; gap:4px; }
@@ -666,8 +676,7 @@ b { color:#F4FAFF; font-weight:600; }
 
 /* pagine servizio */
 .sv-title { display:flex; align-items:center; gap:20px; margin-top:20px; }
-.sv-n { font-family:'Inter Display','Inter'; font-size:64px; font-weight:600; letter-spacing:-.04em; line-height:1; opacity:.9;
-  text-shadow:0 0 28px currentColor; }
+.sv-n { font-family:'Inter Display','Inter'; font-size:64px; font-weight:600; letter-spacing:-.04em; line-height:1; opacity:.9; }
 .sv-h2 { margin-top:0; font-size:34px; }
 .sv-tag { font-size:16px; color:var(--txt2); margin-top:2px; }
 .cols { display:flex; gap:18px; margin-top:20px; height:470px; }
@@ -680,18 +689,18 @@ b { color:#F4FAFF; font-weight:600; }
 .col-l .pan:last-child { display:flex; flex-direction:column; }
 .st { display:flex; align-items:center; gap:16px; }
 .st-n { width:38px; height:38px; flex:none; border-radius:50%; display:grid; place-items:center; font-family:'JetBrains Mono', monospace;
-  font-weight:600; color:var(--c); border:1.5px solid var(--c); box-shadow:0 0 14px color-mix(in srgb, var(--c) 40%, transparent), inset 0 0 10px color-mix(in srgb, var(--c) 25%, transparent); }
+  font-weight:600; color:var(--c); border:1.5px solid var(--c); }
 .st-t { font-size:17px; color:#F4FAFF; }
 .num-row { display:flex; align-items:center; gap:22px; }
 .ring-w { position:relative; flex:none; }
 .ring-w svg { position:absolute; inset:0; }
 .ring-t { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
-.ring-v { font-family:'Inter Display','Inter'; font-size:36px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; text-shadow:0 0 20px rgba(255,255,255,.25); }
+.ring-v { font-family:'Inter Display','Inter'; font-size:36px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; }
 .ring-s { font-size:9.5px; margin-top:2px; color:var(--txt2); }
 .ex { display:flex; flex-direction:column; }
 .ex-v { font-family:'Inter Display','Inter'; font-size:30px; font-weight:600; letter-spacing:-.02em; color:#F4FAFF; margin-top:4px; }
-.ex-v.gold { color:var(--gold); text-shadow:0 0 18px rgba(255,181,71,.45); }
-.ex-v.green { color:var(--green); text-shadow:0 0 18px rgba(91,227,138,.45); font-size:40px; }
+.ex-v.gold { color:var(--gold); }
+.ex-v.green { color:var(--green); font-size:40px; }
 .ex-l { font-size:13px; color:var(--txt2); }
 .ex-l2 { font-size:12.5px; color:var(--txt2); margin-top:12px; }
 .ex-arrow { color:var(--muted); font-size:18px; margin:4px 0 -2px; }
@@ -704,7 +713,7 @@ b { color:#F4FAFF; font-weight:600; }
 .br { display:grid; grid-template-columns:76px 1fr 78px; align-items:center; gap:10px; font-size:13px; font-variant-numeric:tabular-nums; }
 .br-k { color:var(--txt2); text-align:right; }
 .br-t { height:12px; background:rgba(255,255,255,.05); border-radius:3px; }
-.br-f { height:100%; background:var(--green); border-radius:0 3px 3px 0; box-shadow:0 0 10px rgba(91,227,138,.5); }
+.br-f { height:100%; background:var(--green); border-radius:0 3px 3px 0; }
 .br-v { color:#F4FAFF; font-weight:600; }
 .schema { display:block; margin-top:4px; }
 .schema .sm-v { font-family:'Inter Display','Inter'; font-size:21px; font-weight:600; fill:#F4FAFF; }
@@ -713,20 +722,11 @@ b { color:#F4FAFF; font-weight:600; }
 .schema .sm-t { font-size:15px; font-weight:600; fill:#F4FAFF; }
 .schema .sm-s { font-size:12.5px; fill:#A3B6CA; }
 .mt-foot { margin-top:10px; margin-bottom:0; }
-.mt-flow { display:flex; align-items:stretch; gap:10px; }
-.mt-acc { flex:1; border:1px solid var(--line); border-radius:5px; padding:10px 12px; background:rgba(91,227,138,.04); }
-.mt-acc p { font-size:13px; line-height:1.45; margin-top:6px; }
-.mt-vs { align-self:center; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--muted); }
-.mt-out { margin-top:12px; display:flex; flex-direction:column; gap:7px; font-size:13.5px; color:var(--txt2); }
-.mt-out div { padding-left:16px; position:relative; }
-.mt-out div::before { content:""; position:absolute; left:0; top:7px; width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); }
-.mt-res { margin-top:auto; display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border:1px solid rgba(91,227,138,.35); border-radius:5px; background:rgba(91,227,138,.06); font-size:14px; }
-.mt-res .k { color:var(--green); }
 .legend { display:flex; gap:16px; font-size:11.5px; color:var(--txt2); margin-top:4px; }
 .legend span { display:flex; align-items:center; gap:7px; }
 .legend i { width:14px; height:3px; border-radius:2px; display:inline-block; }
 .legend i.sq { width:12px; height:10px; border-radius:2px; background:rgba(79,216,255,.25); }
-.ex-v.violet { color:var(--violet); text-shadow:0 0 18px rgba(199,155,255,.45); font-size:32px; }
+.ex-v.violet { color:var(--violet); font-size:32px; }
 .msg { margin-top:16px; border:1px solid rgba(199,155,255,.35); border-radius:10px 10px 10px 2px; background:rgba(199,155,255,.06); padding:12px 16px; }
 .msg-h { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
 .msg-h .k { color:var(--violet); }
@@ -735,11 +735,10 @@ b { color:#F4FAFF; font-weight:600; }
 .msg-r .k { color:var(--txt2); font-size:10px; }
 .fxs { display:flex; flex-direction:column; gap:14px; }
 .fx { display:flex; align-items:center; gap:18px; padding-bottom:14px; border-bottom:1px solid var(--line); }
-.fx-v { font-family:'Inter Display','Inter'; font-size:38px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; width:92px; flex:none;
-  text-shadow:0 0 20px rgba(79,216,255,.4); }
+.fx-v { font-family:'Inter Display','Inter'; font-size:38px; font-weight:600; letter-spacing:-.03em; color:#F4FAFF; width:92px; flex:none; }
 .fx-l { font-size:14px; line-height:1.45; color:var(--txt2); }
 .teaser { margin-top:auto; padding:16px 18px; border:1px solid rgba(79,216,255,.35); border-radius:6px; background:rgba(79,216,255,.06); }
-.teaser-v { font-family:'Inter Display','Inter'; font-size:46px; font-weight:600; letter-spacing:-.03em; color:var(--cyan); text-shadow:0 0 26px rgba(79,216,255,.55); margin-top:4px; }
+.teaser-v { font-family:'Inter Display','Inter'; font-size:46px; font-weight:600; letter-spacing:-.03em; color:var(--cyan); margin-top:4px; }
 
 /* numeri reali */
 .n-title { display:flex; justify-content:space-between; align-items:flex-end; }
@@ -786,12 +785,13 @@ b { color:#F4FAFF; font-weight:600; }
 .close-r { position:absolute; right:-150px; top:60px; opacity:.85; }
 .close-in { position:relative; z-index:2; }
 .close h1 { margin-top:70px; }
+.close .wm { letter-spacing:.02em; font-size:19px; }
 .css { display:grid; grid-template-columns:repeat(3, 250px); gap:14px; margin-top:34px; }
 .cs { padding:16px 18px 18px; }
 .cs-n { font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--cyan); font-weight:600; }
 .cs h4 { margin-top:8px; }
 .cs p { font-size:13px; line-height:1.45; margin-top:6px; }
-.cts { display:grid; grid-template-columns:repeat(4, 200px); gap:20px; margin-top:30px; }
+.cts { display:grid; grid-template-columns:repeat(3, auto); justify-content:start; column-gap:56px; margin-top:30px; }
 .ct-v { margin-top:8px; font-size:15px; }
 .close-legal { position:absolute; left:84px; right:84px; bottom:30px; font-size:10px; color:var(--muted); }
 """
