@@ -9,6 +9,10 @@
 
 ## Changelog sessioni (cronologico)
 
+> **2026-11-19 — voci chiuse spostate da stato_progetto.md (bot #385 V-4)**:
+- ✅ **Presentazione clienti TOLTA dal repo (19/11, decisione dell'operatore)**: niente PDF clienti né sorgenti su GitHub (repo pubblico). PDF e sorgenti (zip «PDF servizi ecosistema - sorgenti») stanno solo nelle cartelle del Mac dell'operatore: per modificarlo (es. aggiungere il sito) chiederli all'operatore. Revisione legale del PDF: fatta (operatore, 19/11). Le versioni precedenti restano nella storia di git di main.
+- ✅ (chiusa il 18/11: fix `_programmi_fuori` mergiato con la #380, «Run web suite» verde su ubuntu-26.04, run 44187987070) 🔴 **CI rossa per tutti i rami dal 17 nov (ambientale, non causata da codice)**: 7 test di `tests/test_unit_web_browser.py` (sandbox bwrap del browser: tmpfs non scrivibili, processi di prova che non partono) falliscono sui runner GitHub, sia sul ramo del CRM (PR #381) sia su quello della presentazione (PR #380); su main il 12 nov passavano (754 passed) e in locale con bubblewrap 0.9.0 passano. Il check required `unit-suite` blocca ogni merge finché non si capisce cosa è cambiato nell'immagine ubuntu-latest. Fetta separata da aprire (sicurezza: tocca il sandbox).
+
 > **2026-11-19 — finding chiuso spostato da stato_progetto.md (bot #384 V-3)**:
 - ✅ **CI rossa per ubuntu-latest → Ubuntu 26.04 — CHIUSA (18/11)**: fix `_programmi_fuori` in `modules/web/browser.py` (review #803 → #805 APPROVATO), mergiato con la PR #380; step «Run web suite» verde su ubuntu-26.04 vera (run 44187987070). Verifica esterna #380 APPROVATO CON RISERVE: V-2 BASSA (vengono montati anche file setuid o di dati con bit +x raggiunti da /usr/bin; restringere a cartelle bin/sbin/libexec o escludere setuid), V-4 COSMETICA (commenti «ubuntu-24.04» in .github/workflows/ci.yml righe 63/76). Da decidere (operatore): fissare `runs-on: ubuntu-26.04`.
 
