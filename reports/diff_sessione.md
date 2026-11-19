@@ -1,14 +1,9 @@
-# Diff sessione — 2026-11-19 — «PDF servizi ecosistema»: versione definitiva
+# Diff sessione — 2026-11-19 — Presentazione clienti tolta dal repo
 
 File toccati (da `git diff --stat BASE..HEAD` + report di fine task):
 
-- `presentazione_clienti/build.py` — niente nome azienda (solo «GasTradeFx» in chiusura), niente bagliori CSS, contatti letti solo da un file locale ignorato da git e solo con `--con-contatti` (predefinito: senza), pag. 4 e pag. 7 riformulate, tutte le avvertenze del catalogo d'esempio, codice e CSS morti tolti.
-- `presentazione_clienti/render.js` — con i contatti scrive solo in `privato/` e rifiuta il PDF tracciato; senza, scrive «PDF servizi ecosistema.pdf».
-- `presentazione_clienti/PDF servizi ecosistema.pdf` — PDF definitivo SENZA contatti (rinominato da Presentazione_Ecosistema.pdf).
-- `presentazione_clienti/.gitignore` — ignora `contatti.local.json` e `privato/` (dati personali, repo pubblico).
-- `reports/stato_progetto.md` — repo pubblico e dati personali; riserve del fix sandbox e del PDF; voce chiusa della CI tolta.
-- `reports/stato_storico.md` — voce chiusa della CI 26.04 archiviata.
-- `.claude/agents/memoria_revisore.md` — riga della review #815 (merge di main nel branch).
+- `presentazione_clienti/` (5 file) — tolti dal repo su decisione dell'operatore: PDF e sorgenti stanno sul suo Mac.
+- `reports/stato_progetto.md` — voce della presentazione: tolta dal repo, revisione legale fatta.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
