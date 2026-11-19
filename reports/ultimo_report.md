@@ -1,23 +1,22 @@
-# Ultimo report — 2026-11-18 — Presentazione clienti: versione definitiva (9 pagine)
+# Ultimo report — 2026-11-19 — Presentazione clienti: tutte le avvertenze del catalogo d'esempio
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione (solo presentazione e report: nessun file del motore).
+1. Merge della PR #384 (presentazione e report; il merge di main nel branch porta codice del motore già revisionato su main).
 2. Prima di usare il PDF con i clienti farlo vedere a un legale: in Italia proporre al pubblico un «fondo» o rendimenti «garantiti» richiede autorizzazioni (CONSOB / Banca d'Italia).
 3. Dati ancora da inserire nel PDF: nome dell'azienda e logo (oggi «NOME AZIENDA»), contatti della pagina finale.
 4. Confermare: storico verificato del copy trading = 23 mesi; stop sull'equity per i clienti = 10%; citare o no «The Source Finance».
 
 ## Esito
-- **Separare la correzione della CI in un'altra PR (richiesta dell'operatore)**: SALTATA — non più possibile né necessaria: la PR #380 (correzione della CI + PDF v3) era già stata mergiata dall'operatore il 18/11 alle 17:00. La correzione è in main e lo step «Run web suite» è verde su ubuntu-26.04 vera (run 44187987070). Branch di sessione ripartito da main aggiornato (381f5d3d), come da regola.
-- **PDF definitivo**: FATTA.
-  - Servizio 02 (matched trading): nuovo schema semplice — 3.000 € → conto A (prop firm, punta sul rialzo) e conto B (broker, punta sul ribasso) → «una delle due vince sempre» → ≈ +500 € in media.
-  - Testo evidenziato: tolte le parole in grassetto dentro i paragrafi; i titoli sfumati ora sono tutti ciano (prima metà parola bianca); i segnaposto rimasti (contatti) sono testo tenue, non più riquadri tratteggiati.
-  - Servizio 04 «Gruppo Privato» su una sola pagina, come gli altri: gruppo privato dove scriviamo noi cosa, quando e come; il cliente copia in 30 secondi sul suo conto, in autonomia; guida PDF inclusa per chi parte da zero; esempio di messaggio. Aggiunto alla panoramica, alla copertina e alle avvertenze (indicazioni uguali per tutti, non consulenza personalizzata).
-  - Servizio 01: tolte le righe «da inserire» (durata, ingresso minimo) al posto delle quali ora ci sono pagamenti e garanzie «scritti nel contratto».
-  - 9 pagine, controllate a vista una per una.
-- **reports/stato_progetto.md**: la riga della CI rossa ora è CHIUSA, con le note della verifica esterna #380 (V-2 BASSA, V-4 COSMETICA).
+- **PDF definitivo (18/11)**: FATTA — f6630a72 (schema semplice del matched trading, niente evidenziazioni, servizio 04 «Gruppo Privato», 9 pagine).
+- **Tutte le avvertenze del catalogo d'esempio (richiesta del 19/11)**: FATTA. Dal catalogo TSF, adattate ai nostri servizi:
+  - in fondo a ogni pagina la frase del catalogo: «Il trading con leva comporta il rischio di perdere il capitale. I risultati passati non sono indicativi di quelli futuri.»;
+  - pagina avvertenze «Il rischio, per intero.» con 9 riquadri: perdita del capitale (Forex, oro, criptovalute, CFD con leva), solo somme di cui si può sostenere la perdita totale, risultati passati da conti di riferimento in periodi specifici, la leva amplifica, differenze tra conti (broker, spread, commissioni, swap, latenza, leva, dimensione), natura del servizio (non consulenza né gestione di patrimoni, conto intestato al cliente), conta il contratto (esempi al lordo), soggetti terzi, fonti (Myfxbook, date della pagina 6);
+  - panoramica: i servizi sono diversi per natura, conto, broker e periodo, i numeri non vanno confrontati senza leggere le note;
+  - numeri reali: il drawdown è «il primo numero da leggere»; copertina e chiusura: «documento riservato».
+- **Merge di main nel branch** (conflitti della PR #384): conflitti solo nei report di sessione, risolti con la versione del branch; codice del motore entrato da main (#383) fatto rivedere dal revisore (vedi handoff §4).
 
 ## Test
-Nessuna modifica a gas.py, modules/ o tests/. PDF: pdfinfo 9 pagine; render a immagine di ogni pagina modificata.
+Nessuna modifica del branch a gas.py, modules/ o tests/ (quelle presenti arrivano da main). PDF: 9 pagine; pagine modificate controllate a vista.
 
 ## Anomalie
-- La PR #380 è stata mergiata mentre in chat la proponevo di dividere: nessun danno, la correzione della CI era già approvata e verde.
+Nessuna.
