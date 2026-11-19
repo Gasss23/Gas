@@ -2,8 +2,8 @@
 
 File toccati (da `git diff --stat BASE..HEAD` + report di fine task):
 
-- `presentazione_clienti/build.py` — niente nome azienda (solo «GasTradeFx» in chiusura), niente bagliori CSS, contatti letti solo da un file locale ignorato da git (`--senza-contatti` per la versione del repo), pag. 4 e pag. 7 riformulate, tutte le avvertenze del catalogo d'esempio, codice e CSS morti tolti.
-- `presentazione_clienti/render.js` — nome del PDF in uscita come argomento (predefinito «PDF servizi ecosistema.pdf»).
+- `presentazione_clienti/build.py` — niente nome azienda (solo «GasTradeFx» in chiusura), niente bagliori CSS, contatti letti solo da un file locale ignorato da git e solo con `--con-contatti` (predefinito: senza), pag. 4 e pag. 7 riformulate, tutte le avvertenze del catalogo d'esempio, codice e CSS morti tolti.
+- `presentazione_clienti/render.js` — con i contatti scrive solo in `privato/` e rifiuta il PDF tracciato; senza, scrive «PDF servizi ecosistema.pdf».
 - `presentazione_clienti/PDF servizi ecosistema.pdf` — PDF definitivo SENZA contatti (rinominato da Presentazione_Ecosistema.pdf).
 - `presentazione_clienti/.gitignore` — ignora `contatti.local.json` e `privato/` (dati personali, repo pubblico).
 - `reports/stato_progetto.md` — repo pubblico e dati personali; riserve del fix sandbox e del PDF; voce chiusa della CI tolta.

@@ -18,6 +18,7 @@
 - **Fetta 2 — tutte le avvertenze del catalogo d'esempio**: FATTA — d588f0bb.
 - **Fetta 3 — merge di main (#383) nel branch**: FATTA — 27300187, review #815 APPROVATO.
 - **Fetta 4 — modifiche dell'operatore del 19/11 + riserve dei bot #384**: FATTA — 07fa1230. Niente nome azienda, niente bagliori, file rinominato, contatti solo in un file locale ignorato da git (PDF del repo senza contatti), pag. 4 e 7 riformulate, codice morto tolto, affermazione sulle immagini corretta.
+- **Fetta 6 — riserve del bot #384 su 2c8dceee**: FATTA — 9b5f1565. Contatti solo con `--con-contatti` e solo in privato/ (V-1 MEDIA); V-2..V-4 corrette.
 - **Fetta 5 — togliere i contatti dal branch (decisione dell'operatore)**: FATTA — push forzato con lease: c8c24825 → 07fa1230 sul branch remoto (adad6f0d e c8c24825 non sono più nel branch).
 
 ---
@@ -27,14 +28,14 @@
 ```
  .claude/agents/memoria_revisore.md                                                 |   1 +
  presentazione_clienti/.gitignore                                                   |   3 +++
- presentazione_clienti/{Presentazione_Ecosistema.pdf => PDF servizi ecosistema.pdf} | Bin 1408521 -> 1440384 bytes
- presentazione_clienti/build.py                                                     | 252 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------
- presentazione_clienti/render.js                                                    |   4 ++--
+ presentazione_clienti/{Presentazione_Ecosistema.pdf => PDF servizi ecosistema.pdf} | Bin 1408521 -> 1440250 bytes
+ presentazione_clienti/build.py                                                     | 262 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------
+ presentazione_clienti/render.js                                                    |  15 +++++++++++++--
  reports/diff_sessione.md                                                           |  17 ++++++++++++-----
  reports/handoff.md                                                                 | n/d
  reports/stato_progetto.md                                                          |   4 +++-
  reports/stato_storico.md                                                           |   3 +++
- reports/ultimo_report.md                                                           |  26 ++++++++++++++++++++------
+ reports/ultimo_report.md                                                           |  27 +++++++++++++++++++++------
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -42,6 +43,8 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9b5f1565 presentazione clienti: contatti solo con --con-contatti e solo in privato/ (bot #384 V-1)
+2c8dceee docs(fine-task): report — «PDF servizi ecosistema» definitivo, contatti fuori dal repo pubblico (PR #384)
 07fa1230 presentazione clienti: «PDF servizi ecosistema» definitivo — niente nome azienda né bagliori; contatti fuori dal repo
 45f92c51 docs(fine-task): report — avvertenze complete nel PDF clienti e merge di main (PR #384)
 27300187 merge: porta main (#383) nel branch per la PR #384; conflitti solo nei report di sessione (i nostri) — review #815 (chat practical-tesla) APPROVATO
@@ -112,10 +115,13 @@ Mappatura commit→run:
 - 2142a3db → run 44346944386: success.
 - d588f0bb, 27300187 → nessuna run su questi SHA (pushati insieme a 45f92c51).
 - 45f92c51 → run 44555724881: success.
-- 07fa1230 → run 44562387855: in corso alla scrittura dell'handoff.
+- 07fa1230 → run 44562387855: vedi GitHub (pushato prima del fine-task precedente).
+- 2c8dceee → run del push precedente; verifica-bot failure (V-1 MEDIA, ora corretta).
+- 9b5f1565 → nessuna run su questo SHA (pushato insieme al commit di fine-task).
 - commit di fine-task (questo file) → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- Bot #384 su 2c8dceee: V-1 MEDIA (default dei contatti) e V-2..V-4 corrette in 9b5f1565.
 - Bot #384 su c8c24825: V-1 MEDIA (immagini interne del PDF) → affermazione corretta in report e docstring, resta da verificare a vista sul tablet dell'operatore; V-2 BASSA (contatti, repo pubblico) → contatti tolti dal repo, vedi §0.2; V-3 COSMETICA → corretta.
 - In stato_progetto.md: repo pubblico e dati personali; riserve del fix sandbox (agente-#380 V-2 e V-4, bot-#380 V-1 e V-2); numeri del PDF non verificati da gate; R-806-2 e R-807-1 BASSE (da main, #383).
