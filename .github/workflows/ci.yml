@@ -232,6 +232,14 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_manutenzione.py -v 2>&1 | tee "$RUNNER_TEMP/manutenzione_output.txt"
 
+      - name: Run CRM suite (pytest, zero token LLM)
+        # CRM clienti (2026-11-17): soldi in centesimi, registro immutabile, motore delle
+        # opportunità, dashboard su 127.0.0.1 con porta scelta dal sistema. Niente rete esterna.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_crm.py -v 2>&1 | tee "$RUNNER_TEMP/crm_output.txt"
+
       - name: Ingest delle fonti di studio (solo dentro knowledge/)
         # V-1 bot #228: le fonti di tipo file fuori da knowledge/ vanno rifiutate.
         if: always()
