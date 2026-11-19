@@ -13,6 +13,7 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 1 — togliere la presentazione clienti dal repo**: FATTA — 5e006dd2. PDF e sorgenti consegnati all'operatore in chat (zip) prima della rimozione; file locali con i contatti cancellati dal container.
+- **Fetta 3 — riserve del bot #385 (V-1 BASSA, V-2 COSMETICA)**: FATTA — a362b16f. Voce «repo pubblico» di stato_progetto riscritta: decisione presa (non privato), resta aperta solo la rimozione dei due commit via supporto GitHub.
 - **Fetta 2 — repo privato**: SALTATA — l'operatore ha scelto di togliere il PDF invece di rendere privato il repo.
 
 ---
@@ -27,7 +28,7 @@
  presentazione_clienti/titoli_svg.json            |  10 -----
  reports/diff_sessione.md                         |  11 ++---
  reports/handoff.md                               | n/d
- reports/stato_progetto.md                        |   2 +-
+ reports/stato_progetto.md                        |   4 +-
  reports/ultimo_report.md                         |  28 +++---------
 ```
 
@@ -36,6 +37,8 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a362b16f docs(stato): voce «repo pubblico» aggiornata dopo la rimozione della presentazione (bot #385 V-1/V-2)
+2add2b71 docs(fine-task): report — presentazione clienti tolta dal repo (PR #385)
 5e006dd2 presentazione clienti: tolta dal repo (decisione dell'operatore)
 ```
 
@@ -58,9 +61,10 @@ CI  run 44567130171  #1970  push  completed/success  sha 491c7ff3  https://githu
 ```
 
 Mappatura commit→run:
-- 5e006dd2 → run non ancora disponibile alla scrittura dell'handoff (appena pushato).
+- 5e006dd2 → run del push precedente (2add2b71 in testa).
+- a362b16f → nessuna run su questo SHA (pushato insieme al commit di fine-task).
 - commit di fine-task (questo file) → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-Nessuna nuova. Le riserve del bot #384 su build.py (V-2 durata del ciclo, V-3 contatti()) decadono con la rimozione dei file; V-1 (nota con il vecchio comando) chiusa dalla nuova voce di stato_progetto.
+Bot #385 V-1/V-2 chiuse in a362b16f. Nessuna nuova. Le riserve del bot #384 su build.py (V-2 durata del ciclo, V-3 contatti()) decadono con la rimozione dei file; V-1 (nota con il vecchio comando) chiusa dalla nuova voce di stato_progetto.
