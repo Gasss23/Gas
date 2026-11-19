@@ -2475,3 +2475,10 @@ def test_handle_update_forte_con_destinatario(monkeypatch):
     monkeypatch.setattr(_tg, "_BOT_USERNAME", None)
     _tg._handle_update("http://finto", upd("/forte@AltroBot analizza"), {7}, _K())
     assert len(visti) == 1 and "Uso: /forte" in inviati[-1]
+
+
+def test_r809_2_crm_vero_del_repo_isolato() -> None:
+    """R-809-2: nelle suite pytest il kernel non vede il file dei clienti del repo."""
+    from pathlib import Path
+    assert Path(gas._RADICE_REPO).resolve() != Path(gas.__file__).resolve().parent
+    assert "GAS_CRM_DB" not in os.environ

@@ -57,6 +57,10 @@ for _k_tg in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS"):
 # ogni doctor della suite lancerebbe il `claude` vero (`--version`/`auth status`).
 # I test che lo vogliono acceso lo mettono da sé.
 os.environ.pop("GAS_CLAUDE_CLI", None)
+# R-808-4: il kernel legge anche il CRM nella cartella del repo; la suite non deve vedere
+# i clienti veri dell'operatore (né un GAS_CRM_DB esportato dalla shell)
+os.environ.pop("GAS_CRM_DB", None)
+gas._RADICE_REPO = Path(tempfile.mkdtemp(prefix="gas_repo_finto_"))
 import urllib.request as _urlreq_erm
 import modules.telegram.bot as _tg_erm
 _TG_TENTATIVI: list = []        # chiamate al trasporto di default (bloccate)
@@ -12972,37 +12976,53 @@ try:
           and not any(v in x for x in _tutti for v in ("Giulia", "Bianchi", "giulia@acme.it"))
           and all("2 lead attivi (dettagli solo al cervello forte)" in x for x in _tutti),
           str(_n))
-    # T114i: il cervello forte (claude-cli) riceve il pin PIENO (round-trip tool → final)
+    # T114i: il pin PIENO va solo a una chiamata Claude Opus; il forte con un altro modello
+    # riceve quello anonimo (R-810-1, regola «dati dei clienti SOLO su Opus») — round-trip
+    # tool → final con la CLI vera e il runner finto
     from brains.claude_cli import ClaudeCliClient as _CCC114
     import subprocess as _sp114
-    _reg114 = []
-    _it114 = iter([{"testo": "", "chiamate": [{"nome": "data_ora", "argomenti": {}}]},
-                   {"testo": "ok forte", "chiamate": []}])
 
-    def _run114(cmd, stdin, cwd, env, timeout):
-        _fs = cmd[cmd.index("--system-prompt-file") + 1]  # il pin vive nel file di sistema
-        _reg114.append(Path(_fs).read_text(encoding="utf-8"))
-        return _sp114.CompletedProcess(cmd, 0, stdout=json.dumps({
-            "type": "result", "subtype": "success", "is_error": False,
-            "structured_output": next(_it114),
-            "usage": {"input_tokens": 10, "output_tokens": 3}}), stderr="")
-    _orig114 = gas.ClaudeCliClient
-    gas.ClaudeCliClient = lambda timeout=None, **kw: _CCC114(timeout=timeout, binario="claude",
-                                                              runner=_run114)
-    os.environ["GAS_CLAUDE_CLI"] = "1"
-    try:
-        _ev = list(_k114f.run_turn("che lead abbiamo?", cervello="forte"))
-    finally:
-        gas.ClaudeCliClient = _orig114
-        if _sv114["GAS_CLAUDE_CLI"] is None:
-            os.environ.pop("GAS_CLAUDE_CLI", None)
-        else:
-            os.environ["GAS_CLAUDE_CLI"] = _sv114["GAS_CLAUDE_CLI"]
-    check("T114i il cervello forte riceve il pin pieno coi lead (round-trip tool → final)",
+    def _turno_forte114(modello_forte):
+        _reg, _mod = [], []
+        _it = iter([{"testo": "", "chiamate": [{"nome": "data_ora", "argomenti": {}}]},
+                    {"testo": "ok forte", "chiamate": []}])
+
+        def _run(cmd, stdin, cwd, env, timeout):
+            _fs = cmd[cmd.index("--system-prompt-file") + 1]  # il pin vive nel file di sistema
+            _reg.append(Path(_fs).read_text(encoding="utf-8"))
+            _mod.append(cmd[cmd.index("--model") + 1] if "--model" in cmd else None)
+            return _sp114.CompletedProcess(cmd, 0, stdout=json.dumps({
+                "type": "result", "subtype": "success", "is_error": False,
+                "structured_output": next(_it),
+                "usage": {"input_tokens": 10, "output_tokens": 3}}), stderr="")
+        _orig, _origm = gas.ClaudeCliClient, gas.MODEL_CLAUDE_FORTE
+        gas.ClaudeCliClient = lambda timeout=None, **kw: _CCC114(timeout=timeout, binario="claude",
+                                                                 runner=_run)
+        gas.MODEL_CLAUDE_FORTE = modello_forte
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+        try:
+            return list(_k114f.run_turn("che lead abbiamo?", cervello="forte")), _reg, _mod
+        finally:
+            gas.ClaudeCliClient, gas.MODEL_CLAUDE_FORTE = _orig, _origm
+            if _sv114["GAS_CLAUDE_CLI"] is None:
+                os.environ.pop("GAS_CLAUDE_CLI", None)
+            else:
+                os.environ["GAS_CLAUDE_CLI"] = _sv114["GAS_CLAUDE_CLI"]
+    _ev, _reg114, _mod114 = _turno_forte114("claude-sonnet-5-5")
+    check("T114i forte NON Opus: pin anonimo a ogni chiamata, mai i nomi dei lead "
+          "(round-trip tool → final; R-810-1)",
           [e["type"] for e in _ev] == ["tool_res", "final"] and len(_reg114) == 2
+          and _mod114 == ["claude-sonnet-5-5"] * 2
+          and not any(v in x for x in _reg114 for v in ("Giulia", "Bianchi", "giulia@acme.it"))
+          and all("2 lead attivi (dettagli solo al cervello forte)" in x for x in _reg114),
+          f"{_mod114} {str(_ev)[-300:]}")
+    _ev, _reg114, _mod114 = _turno_forte114(gas.MODEL_CLAUDE_CLIENTI)
+    check("T114i2 forte Opus: pin pieno coi lead (round-trip tool → final)",
+          [e["type"] for e in _ev] == ["tool_res", "final"] and len(_reg114) == 2
+          and _mod114 == [gas.MODEL_CLAUDE_CLIENTI] * 2
           and all("Giulia Bianchi" in x for x in _reg114)
           and not any("dettagli solo al cervello forte" in x for x in _reg114),
-          str(_ev)[-300:])
+          f"{_mod114} {str(_ev)[-300:]}")
 except Exception as _e114x:
     import traceback as _tb114
     check("T114 blocco senza eccezioni", False, repr(_e114x) + _tb114.format_exc()[-600:])
@@ -13283,17 +13303,27 @@ try:
           "Rispondi in modo conciso" in _sys_g and "usa sempre il lei" not in _sys_g
           and "preventivo per Giulia" not in _sys_g and "RECAP PERTINENTE" not in _sys_g,
           _sys_g[-600:])
-    _kd3 = _k115d()
-    _g3, _f3 = _Script115([]), _Script115([_r115("ok forte")])
-    os.environ["GEMINI_API_KEY"] = "finta-115"
-    try:
-        with forte_finto(_f3):
-            _ev = list(_kd3.run_turn("riprendiamo il preventivo", cervello="forte"))
-    finally:
-        _ripristina115()
-    _sys_f = _f3.visti[0] if _f3.visti else ""
-    check("T115d2 al forte: lezioni e recap pieni",
+    def _forte115d(modello_forte):
+        _kd3 = _k115d()
+        _f3 = _Script115([_r115("ok forte")])
+        os.environ["GEMINI_API_KEY"] = "finta-115"
+        _origm = gas.MODEL_CLAUDE_FORTE
+        gas.MODEL_CLAUDE_FORTE = modello_forte
+        try:
+            with forte_finto(_f3):
+                list(_kd3.run_turn("riprendiamo il preventivo", cervello="forte"))
+        finally:
+            gas.MODEL_CLAUDE_FORTE = _origm
+            _ripristina115()
+        return _f3.visti[0] if _f3.visti else ""
+    _sys_f = _forte115d(gas.MODEL_CLAUDE_CLIENTI)
+    check("T115d2 al forte Opus: lezioni e recap pieni",
           "usa sempre il lei" in _sys_f and "preventivo per Giulia" in _sys_f, _sys_f[-600:])
+    _sys_f2 = _forte115d("claude-sonnet-5-5")
+    check("T115d2b al forte NON Opus: lezione col nome e recap che lo nomina omessi, le altre "
+          "lezioni restano (R-810-1)",
+          "Rispondi in modo conciso" in _sys_f2 and "usa sempre il lei" not in _sys_f2
+          and "preventivo per Giulia" not in _sys_f2, _sys_f2[-600:])
     _kd4 = _k115d()
     _kd4.memory.leggi_contatti = lambda *a, **kw: None
     _ev, _g, _f = _turno115(_kd4, "riprendiamo il preventivo", [_r115("ok")])
@@ -13348,6 +13378,242 @@ try:
 except Exception as _e115x:
     import traceback as _tb115
     check("T115 blocco senza eccezioni", False, repr(_e115x) + _tb115.format_exc()[-800:])
+
+# ---------- T116: clienti del CRM protetti come i lead (R-803-4, operatore 2026-11-17) ----------
+print("\n--- T116: clienti del CRM solo al cervello forte ---")
+try:
+    from modules.crm.store import CRMStore as _CRM116
+    from modules.crm.store import identita_clienti as _id_cli116
+
+    def _k_con_cliente116(nome="Marco Bianchi", telefono="+393331234567", email="marco@esempio.it"):
+        k = kernel_tmp()
+        _st = _CRM116(k.root / ".gas_memory_crm.db")
+        _st.aggiungi_cliente(nome, telefono=telefono, email=email)
+        return k
+
+    _k116a = _k_con_cliente116()
+    _cf116 = _k116a._contatti_per_filtro()
+    _p116, _a116 = _k116a._memoria_pin_varianti()
+    check("T116a1 i clienti del CRM entrano nel filtro come lapidi (solo identificativi)",
+          any(c.get("nome") == "Marco Bianchi" and c.get("merged_into") == "crm"
+              and c.get("contatto") == "+393331234567" for c in (_cf116 or []))
+          and "Marco" not in _p116 and "Marco" not in _a116 and "lead attivi" not in _a116,
+          str(_cf116)[:300])
+    check("T116a2 senza file del CRM nessun cliente; tabella assente → nessun cliente",
+          _id_cli116(kernel_tmp().root / ".gas_memory_crm.db") == [], "")
+
+    # round-trip §7: il nome del cliente nel testo dell'operatore → gratuiti saltati, il
+    # forte fa la chiamata allo strumento e chiude con la risposta finale
+    _ev, _g, _f = _turno115(_k_con_cliente116(), "Marco Bianchi ha fatto 2.000 euro, cosa gli propongo?",
+                            [_r115("NON DEVE ARRIVARE")],
+                            [_r115(tool_calls=[_tc115("data_ora")]), _r115("Proponi la sala segnali.")])
+    check("T116b nome di un cliente del CRM: solo il forte (round-trip tool → final), gratuiti mai chiamati",
+          [e["type"] for e in _ev] == ["tool_res", "final"] and not _g.visti
+          and len(_f.visti) == 2 and _ev[-1].get("provider") == "claude-cli", str(_ev)[-300:])
+    _ev, _g, _f = _turno115(_k_con_cliente116(), "richiama il 333 1234567 domani",
+                            [_r115("NON DEVE ARRIVARE")], [_r115("Fatto.")])
+    check("T116c telefono di un cliente del CRM (scritto con spazi): solo il forte",
+          _ev[-1].get("provider") == "claude-cli" and not _g.visti, str(_ev)[-200:])
+    _ev, _g, _f = _turno115(_k_con_cliente116(), "che ore sono?", [_r115("ok gratis")],
+                            [_r115("forte")])
+    check("T116d messaggio senza dati di clienti: risponde il gratuito (nessun falso blocco)",
+          _ev[-1].get("content") == "ok gratis" and not _f.visti, str(_ev)[-200:])
+    _ev, _g, _f = _turno115(_k_con_cliente116(), "scrivi a Marco Bianchi", [_r115("NON DEVE ARRIVARE")],
+                            forte_acceso=False)
+    check("T116e cliente del CRM col forte spento: turno fermo dichiarato, nessun gratuito",
+          len(_ev) == 1 and _ev[0]["type"] == "error" and "dati di clienti" in _ev[0]["content"]
+          and not _g.visti, str(_ev))
+    _k116f = kernel_tmp()
+    (_k116f.root / ".gas_memory_crm.db").mkdir()  # file del CRM illeggibile
+    _ev, _g, _f = _turno115(_k116f, "che ore sono?", [_r115("NON DEVE ARRIVARE")], [_r115("forte")])
+    check("T116f file del CRM illeggibile: fail-closed, tutto al forte",
+          _k116f._contatti_per_filtro() is None and _ev[-1].get("provider") == "claude-cli"
+          and not _g.visti, str(_ev)[-200:])
+    _k116g = kernel_tmp()
+    _altrove = Path(tempfile.mkdtemp(prefix="gas_crm_")) / ".gas_memory_crm_altrove.db"
+    _CRM116(_altrove).aggiungi_cliente("Elena Conti", telefono="+393339876543")
+    _sv116 = os.environ.get("GAS_CRM_DB")
+    os.environ["GAS_CRM_DB"] = str(_altrove)
+    try:
+        _ok116g = any(c.get("nome") == "Elena Conti" for c in (_k116g._contatti_per_filtro() or []))
+    finally:
+        if _sv116 is None:
+            os.environ.pop("GAS_CRM_DB", None)
+        else:
+            os.environ["GAS_CRM_DB"] = _sv116
+    check("T116g GAS_CRM_DB: il kernel legge lo stesso file della riga di comando", _ok116g, "")
+    # --- T116j (R-808-4): kernel avviato fuori dal repo, CRM nella cartella del repo ---
+    _rep116 = gas._RADICE_REPO
+    gas._RADICE_REPO = Path(tempfile.mkdtemp(prefix="gas_repo_crm_"))
+    try:
+        _CRM116(gas._RADICE_REPO / ".gas_memory_crm.db").aggiungi_cliente(
+            "Rita Fumagalli", telefono="+393337654321")
+        _k116j = kernel_tmp()
+        _ok116j = any(c.get("nome") == "Rita Fumagalli"
+                      for c in (_k116j._contatti_per_filtro() or []))
+        _ev, _g, _f = _turno115(_k116j, "scrivi a Rita Fumagalli", [_r115("NON DEVE ARRIVARE")],
+                                [_r115("forte")])
+        _ok116j = _ok116j and _ev[-1].get("provider") == "claude-cli" and not _g.visti
+        (gas._RADICE_REPO / ".gas_memory_crm.db").unlink()
+        (gas._RADICE_REPO / ".gas_memory_crm.db").mkdir()  # illeggibile → fail-closed
+        _ok116j2 = kernel_tmp()._contatti_per_filtro() is None
+    finally:
+        gas._RADICE_REPO = _rep116
+    check("T116j CRM nella cartella del repo e kernel avviato altrove: clienti letti lo "
+          "stesso, solo il forte; file illeggibile → fail-closed (R-808-4)",
+          _ok116j and _ok116j2, str(_ev)[-200:])
+    # --- T116h/i (R-808-1): filtro veloce con migliaia di clienti, stesso esito di prima ---
+    import random as _rnd116
+    import time as _t116
+    _r116 = _rnd116.Random(808)
+    _nomi116 = ["Marco", "Giulia", "Luca", "Sara", "Andrea", "Chiara", "Davide", "Elena"]
+    _cogn116 = ["Bianchi", "Romano", "Esposito", "Colombo", "Ricci", "Marino", "De Luca", "Costa"]
+    _cl116 = [{"nome": f"{_r116.choice(_nomi116)} {_r116.choice(_cogn116)} {i}",
+               "chiave": f"c{i}@esempio.it", "contatto": f"+39333{1000000 + i}",
+               "merged_into": "crm", "stato": "chiuso"} for i in range(1500)]
+    _id116 = gas._identificativi_contatti(_cl116)
+    _testo116 = ("Ok, domani controllo la posta e ti aggiorno sul progetto della voce; "
+                 "ricordami di sistemare il file config.yaml e il timer del 2026-11-17. ") * 3
+    _fin116 = [{"role": "user" if i % 2 == 0 else "assistant", "content": _testo116}
+               for i in range(30)]
+    _c0 = _t116.perf_counter()
+    _esito116a = gas._finestra_ha_dati_lead(_fin116, _id116)   # compresa la compilazione
+    _c1 = _t116.perf_counter()
+    _esito116b = gas._finestra_ha_dati_lead(_fin116, _id116)   # elenco uguale: in cache
+    _c2 = _t116.perf_counter()
+    check("T116h 1500 clienti: finestra di 30 messaggi sotto 150 ms (prima 9 s), compilazione "
+          "una volta sola sotto 3 s; nessun falso dato di cliente",
+          (_c2 - _c1) < 0.15 and (_c1 - _c0) < 3.0 and not _esito116a and not _esito116b,
+          f"{len(_id116)} identificativi, prima {1000 * (_c1 - _c0):.0f} ms, "
+          f"poi {1000 * (_c2 - _c1):.0f} ms")
+    _ultimo116 = _cl116[-1]
+    check("T116h2 1500 clienti: l'ultimo si riconosce ancora (nome, email, telefono con spazi)",
+          gas._finestra_ha_dati_lead([{"role": "user",
+                                       "content": f"scrivi a {_ultimo116['nome'].upper()}"}],
+                                     _id116)
+          and gas._contiene_identificativo("mail a c1499@esempio.it", _id116)
+          and gas._contiene_identificativo("chiama il 333 100 1499", _id116)
+          and gas._contiene_identificativo("il file C1499@ESEMPIO.IT.txt", _id116), "")
+    # equivalenza con le ricerche una per una (il codice di prima), su casi casuali fatti
+    # apposta per i bordi: prefissi in comune, lettere attaccate, indirizzi, cifre
+    _alfa116 = "aàbo r.@_1-"
+    _diversi116 = []
+    for _n in range(3000):
+        _ids = sorted({"".join(_r116.choice(_alfa116) for _ in range(_r116.randint(1, 6)))
+                       for _ in range(_r116.randint(1, 8))})
+        _ids = [gas._normalizza_confronto(x) for x in _ids if gas._normalizza_confronto(x)]
+        _ids += [gas._PREFISSO_TEL + "".join(_r116.choice("0123") for _ in range(7 + _n % 4))
+                 for _ in range(_n % 3)]
+        _tx = "".join(_r116.choice(_alfa116 + "0123 ") for _ in range(_r116.randint(0, 40)))
+        _veloce = gas._contiene_identificativo(_tx, _ids)
+        _lento = gas._contiene_identificativo_uno_per_uno(gas._normalizza_confronto(_tx), _ids)
+        if _veloce != _lento:
+            _diversi116.append((_tx, _ids, _veloce))
+    check("T116i regex unica = ricerche una per una su 3000 casi casuali (bordi di parola, "
+          "indirizzi, telefoni)", not _diversi116, str(_diversi116[:3]))
+    _orig116 = gas._trie_regex
+    def _rotto116(_parole):
+        raise RecursionError("elenco patologico")
+    gas._trie_regex = _rotto116
+    gas._confrontatore.cache_clear()
+    try:
+        _rip116 = (gas._confrontatore(("mario",)) is None
+                   and gas._contiene_identificativo("ciao Mario", ["mario"])
+                   and not gas._contiene_identificativo("ciao Luca", ["mario"]))
+    finally:
+        gas._trie_regex = _orig116
+        gas._confrontatore.cache_clear()
+    check("T116i2 regex non compilabile: ripiego sulle ricerche una per una, stesso esito, "
+          "nessun crash", _rip116, "")
+except Exception as _e116x:
+    import traceback as _tb116
+    check("T116 blocco senza eccezioni", False, repr(_e116x) + _tb116.format_exc()[-800:])
+
+# ---------- T117: dati di clienti → SOLO Claude Opus (decisione dell'operatore 2026-11-18) ----------
+print("--- T117: dati di clienti solo con Opus ---")
+try:
+    class _ScriptModello117(_Script115):
+        def __init__(self, risposte):
+            super().__init__(risposte)
+            self.modelli = []
+
+        def create(self, model=None, messages=None, **kw):
+            self.modelli.append(model)
+            return super().create(model=model, messages=messages, **kw)
+
+    def _turno117(k, prompt, forte, cervello=None):
+        _g, _f = _Script115([_r115("NON DEVE ARRIVARE")]), _ScriptModello117(forte)
+
+        class _OAI117:
+            def __init__(self, *a, **kw):
+                self.chat = SimpleNamespace(completions=_g)
+        for _kk in _ch115:
+            os.environ.pop(_kk, None)
+        os.environ["GEMINI_API_KEY"] = "finta-117"
+        _vo = gas.OpenAI
+        gas.OpenAI = _OAI117
+        try:
+            with forte_finto(_f):
+                return list(k.run_turn(prompt, cervello=cervello)), _g, _f
+        finally:
+            gas.OpenAI = _vo
+            _ripristina115()
+
+    _OPUS117 = gas.MODEL_CLAUDE_CLIENTI
+    _k117a = kernel_tmp()
+    _CRM116(_k117a.root / ".gas_memory_crm.db").aggiungi_cliente("Marco Bianchi",
+                                                              telefono="+393331234567")
+    _ev, _g, _f = _turno117(_k117a, "cosa propongo a Marco Bianchi?",
+                            [_r115(tool_calls=[_tc115("data_ora")]), _r115("La sala segnali.")])
+    check("T117a nome di un cliente: ogni chiamata del forte con Opus (round-trip tool → final), "
+          "gratuiti mai chiamati, modello dichiarato nel final",
+          "opus" in _OPUS117 and _f.modelli == [_OPUS117, _OPUS117] and not _g.visti
+          and _ev[-1].get("type") == "final" and _ev[-1].get("modello") == _OPUS117,
+          f"{_f.modelli} {str(_ev)[-200:]}")
+    _ev, _g, _f = _turno117(kernel_tmp(), "che ore sono?", [_r115("sono le 12")], cervello="forte")
+    check("T117b /forte senza dati di clienti: resta il modello del forte (non Opus)",
+          _f.modelli == [gas.MODEL_CLAUDE_FORTE] and _ev[-1].get("modello") == gas.MODEL_CLAUDE_FORTE,
+          str(_f.modelli))
+    _k117c = kernel_tmp()
+    _k117c.memory.upsert_contatto("giulia@acme.it", nome="Giulia Bianchi")
+    _ev, _g, _f = _turno117(_k117c, "dammi i lead", [
+        _r115(tool_calls=[_tc115("ricorda", '{"query": "lead"}')]), _r115("Hai un lead.")],
+        cervello="forte")
+    check("T117c /forte con i dati che arrivano a metà turno (ricorda): prima chiamata col forte, "
+          "dalla successiva Opus",
+          _f.modelli == [gas.MODEL_CLAUDE_FORTE, _OPUS117] and _ev[-1].get("type") == "final",
+          f"{_f.modelli} {str(_ev)[-200:]}")
+    _sv117 = gas.MODEL_CLAUDE_CLIENTI
+    gas.MODEL_CLAUDE_CLIENTI = "claude-sonnet-5-5"
+    try:
+        _ev, _g, _f = _turno117(_k117a, "scrivi a Marco Bianchi", [_r115("NON DEVE ARRIVARE")])
+    finally:
+        gas.MODEL_CLAUDE_CLIENTI = _sv117
+    check("T117d modello per i clienti non Opus: turno fermo dichiarato, nessuna chiamata",
+          not _f.modelli and not _g.visti and _ev and _ev[-1]["type"] == "error"
+          and "non è Opus" in _ev[-1]["content"] and "dati di clienti" in _ev[-1]["content"],
+          str(_ev)[-300:])
+    _f117e = _ScriptModello117([_r115(_RISP115)])
+    _vo117 = gas.OpenAI
+    try:
+        for _kk in _ch115:
+            os.environ.pop(_kk, None)
+        with forte_finto(_f117e):
+            _e117 = _k_con_ricorda().rifletti()
+        gas.MODEL_CLAUDE_CLIENTI = "claude-sonnet-5-5"
+        with forte_finto(_ScriptModello117([_r115(_RISP115)])):
+            _e117b = _k_con_ricorda().rifletti()
+    finally:
+        gas.MODEL_CLAUDE_CLIENTI = _sv117
+        gas.OpenAI = _vo117
+        _ripristina115()
+    check("T117e riflessione con dati di clienti: con Opus; modello non Opus → rimandata",
+          _e117["ok"] and _f117e.modelli == [_OPUS117]
+          and not _e117b["ok"] and "non è Opus" in (_e117b["errore"] or ""),
+          f"{_f117e.modelli} {_e117} {_e117b}")
+except Exception as _e117x:
+    import traceback as _tb117
+    check("T117 blocco senza eccezioni", False, repr(_e117x) + _tb117.format_exc()[-800:])
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

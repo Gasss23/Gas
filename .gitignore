@@ -59,3 +59,8 @@ AGENTS.md
 .gas_richieste_uso.json.*.tmp
 .gas_notifiche_uso.json
 .gas_notifiche_uso.json.*.tmp
+
+# CRM: dati dei clienti (file dedicato), copie di sicurezza e DB dimostrativo
+.gas_memory_crm*
+# R-808-7: DB demo della prima bozza (nome vecchio), se è rimasto sul Mac
+.gas_crm_demo.db*
