@@ -1,9 +1,8 @@
 # Ultimo report — 2026-11-17/19 — CRM clienti: fette 1-3, più fetta 4 (main nel ramo, parole vietate allargate)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #381: decide l'operatore (riserve BASSE e COSMETICHE aperte).
-   - Main è ora dentro il ramo, col fix della CI della PR #380: il rosso della CI dovrebbe sparire con questo push (esito nel §6 dell'handoff).
-2. Il bot di verifica su GitHub non conclude: due volte di fila tutti i suoi modelli sono falliti. È un problema del bot (quota, chiave o PR troppo grande), non del codice, e il suo check required resta senza esito.
+1. Merge della PR #381: l'operatore ha dato il via il 19-11. Lo fa l'agente con la CI verde su questo push. Sul push precedente la CI era tutta verde (anche la suite del browser) e il bot aveva dato APPROVATO CON RISERVE senza finding alti o medi.
+2. Bot di verifica: due volte non aveva concluso (modelli falliti), la terza sì. Se ricapita, da guardare.
 3. Confermare la scelta A su R-810-1: il cervello forte, quando non è Opus, riceve la memoria senza i nomi dei clienti. Alternativa B: Opus a ogni turno del forte, che consuma molto di più.
 4. Le 3 domande aperte in `reports/crm/domande.md`.
 5. Prima dei dati veri:
@@ -35,6 +34,8 @@
 - **Fetta 4 — main nel ramo e note della verifica esterna #381 (4° giro)**: FATTA.
   - Merge 47df3c00 di main (PR #380, #382, #383), review #812 APPROVATO: conflitti solo nei report, fix della CI incluso.
   - Commit 71ccb045, review #813 APPROVATO: parole vietate allargate («ti garantisco», «capitale protetto», «rendimento sicuro», «soldi facili»…).
+- **Fetta 5 — secondo merge di main** (PR #384, presentazione clienti): FATTA. Merge cce337bb: conflitti solo nei report, nessun file nel perimetro di review.
+- **Parole vietate, altre forme**: DEFERITA alla prossima fetta (scelta dell'operatore, 19-11).
 - **Invio automatico su WhatsApp**: DEFERITA. Decisione dell'operatore: «da sole, ma all'inizio col mio controllo». Oggi ogni invio lo conferma l'operatore. Per l'automatico servono l'API WhatsApp Business e i modelli approvati da Meta.
 - **Strumento CRM per il modello di Gas** («chi devo chiamare oggi?»): DEFERITA, prossima fetta.
 

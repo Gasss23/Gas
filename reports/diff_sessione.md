@@ -41,3 +41,4 @@ Si riscrive a ogni sessione; la storia completa sta in git.
 ## Fetta 4 — main nel ramo e parole vietate
 - Merge di origin/main 5cb2d2f8 (PR #380 fix della CI, #382, #383): i file di main arrivano identici; conflitti solo in `reports/` e nella memoria del revisore (unione). Il diff della sessione si misura ora da 5cb2d2f8.
 - `modules/crm/scrittore.py`, `tests/test_unit_crm.py`: parole vietate allargate (V-3 verifica esterna #381, 4° giro).
+- Secondo merge di main (PR #384, presentazione clienti): solo `presentazione_clienti/`, `reports/` e memoria del revisore; la base della sessione diventa origin/main.
