@@ -1,11 +1,14 @@
-# Diff sessione — 2026-11-19 — Presentazione clienti: avvertenze complete
+# Diff sessione — 2026-11-19 — «PDF servizi ecosistema»: versione definitiva
 
 File toccati (da `git diff --stat BASE..HEAD` + report di fine task):
 
-- `presentazione_clienti/build.py` — versione definitiva (schema semplice del matched trading, servizio 04 «Gruppo Privato», niente evidenziazioni) e tutte le avvertenze del catalogo d'esempio (piè di pagina, pagina «Il rischio, per intero.» con 9 riquadri, nota in panoramica, drawdown «primo numero da leggere», «documento riservato»).
-- `presentazione_clienti/Presentazione_Ecosistema.pdf` — il PDF consegnato all'operatore.
-- `reports/stato_progetto.md` — CI rossa per Ubuntu 26.04 segnata chiusa, con le note della verifica esterna #380.
+- `presentazione_clienti/build.py` — niente nome azienda (solo «GasTradeFx» in chiusura), niente bagliori CSS, contatti letti solo da un file locale ignorato da git (`--senza-contatti` per la versione del repo), pag. 4 e pag. 7 riformulate, tutte le avvertenze del catalogo d'esempio, codice e CSS morti tolti.
+- `presentazione_clienti/render.js` — nome del PDF in uscita come argomento (predefinito «PDF servizi ecosistema.pdf»).
+- `presentazione_clienti/PDF servizi ecosistema.pdf` — PDF definitivo SENZA contatti (rinominato da Presentazione_Ecosistema.pdf).
+- `presentazione_clienti/.gitignore` — ignora `contatti.local.json` e `privato/` (dati personali, repo pubblico).
+- `reports/stato_progetto.md` — repo pubblico e dati personali; riserve del fix sandbox e del PDF; voce chiusa della CI tolta.
+- `reports/stato_storico.md` — voce chiusa della CI 26.04 archiviata.
+- `.claude/agents/memoria_revisore.md` — riga della review #815 (merge di main nel branch).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
-- `.claude/agents/memoria_revisore.md` — riga della review #815 (merge di main nel branch, APPROVATO).
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

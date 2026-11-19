@@ -1,35 +1,40 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-19 — Presentazione clienti: tutte le avvertenze del catalogo d'esempio (PR #384)
+**Sessione:** 2026-11-19 — «PDF servizi ecosistema»: versione definitiva, contatti fuori dal repo (PR #384)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #384 (https://github.com/Gasss23/Gas/pull/384) — numero e URL dalla risposta reale dello strumento GitHub (create_pull_request / pull_request_read), non da `gh` (in questo ambiente cloud `gh` è riservato alla ricerca). Presentazione e report; main (#383) portato nel branch con review #815 APPROVATO.
-2. Prima di usare il PDF con i clienti, farlo vedere a un legale: proporre al pubblico un «fondo» o rendimenti «garantiti» richiede autorizzazioni (CONSOB / Banca d'Italia).
-3. Inserire nel PDF nome dell'azienda, logo e contatti; confermare 23 mesi di storico e stop al 10%; decidere se citare «The Source Finance».
+1. Merge della PR #384 (https://github.com/Gasss23/Gas/pull/384) dopo il nuovo verdetto del bot di verifica — numero e URL dalla risposta reale dello strumento GitHub (create_pull_request / pull_request_read), non da `gh` (in questo ambiente cloud `gh` è riservato alla ricerca). L'operatore ha già detto «mergia pure»: si mergia quando i check obbligatori sono verdi.
+2. Il repo GitHub è PUBBLICO (verificato): valutare se renderlo privato; i due commit tolti dal branch con i contatti (adad6f0d, c8c24825) restano raggiungibili per SHA finché non si chiede la rimozione al supporto GitHub.
+3. Prima di usare il PDF con i clienti, farlo vedere a un legale: proporre al pubblico un «fondo» o rendimenti «garantiti» richiede autorizzazioni (CONSOB / Banca d'Italia).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 1 — PDF definitivo (18/11)**: FATTA — f6630a72.
-- **Fetta 2 — tutte le avvertenze del catalogo d'esempio (19/11)**: FATTA — d588f0bb. Piè di pagina con la frase del catalogo, pagina «Il rischio, per intero.» con 9 riquadri, nota sul confronto dei numeri in panoramica, drawdown «primo numero da leggere», «documento riservato».
-- **Fetta 3 — merge di main (#383) nel branch per togliere i conflitti della PR #384**: FATTA — 27300187, conflitti solo nei report di sessione (presa la versione del branch), review #815 APPROVATO.
+- **Fetta 2 — tutte le avvertenze del catalogo d'esempio**: FATTA — d588f0bb.
+- **Fetta 3 — merge di main (#383) nel branch**: FATTA — 27300187, review #815 APPROVATO.
+- **Fetta 4 — modifiche dell'operatore del 19/11 + riserve dei bot #384**: FATTA — 07fa1230. Niente nome azienda, niente bagliori, file rinominato, contatti solo in un file locale ignorato da git (PDF del repo senza contatti), pag. 4 e 7 riformulate, codice morto tolto, affermazione sulle immagini corretta.
+- **Fetta 5 — togliere i contatti dal branch (decisione dell'operatore)**: FATTA — push forzato con lease: c8c24825 → 07fa1230 sul branch remoto (adad6f0d e c8c24825 non sono più nel branch).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md                 |   1 +
- presentazione_clienti/Presentazione_Ecosistema.pdf | Bin 1408521 -> 1581422 bytes
- presentazione_clienti/build.py                     | 164 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------
- reports/diff_sessione.md                           |  14 +++++++++-----
- reports/handoff.md                                 | n/d
- reports/stato_progetto.md                          |   2 +-
- reports/ultimo_report.md                           |  20 ++++++++++++++------
+ .claude/agents/memoria_revisore.md                                                 |   1 +
+ presentazione_clienti/.gitignore                                                   |   3 +++
+ presentazione_clienti/{Presentazione_Ecosistema.pdf => PDF servizi ecosistema.pdf} | Bin 1408521 -> 1440384 bytes
+ presentazione_clienti/build.py                                                     | 252 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------
+ presentazione_clienti/render.js                                                    |   4 ++--
+ reports/diff_sessione.md                                                           |  17 ++++++++++++-----
+ reports/handoff.md                                                                 | n/d
+ reports/stato_progetto.md                                                          |   4 +++-
+ reports/stato_storico.md                                                           |   3 +++
+ reports/ultimo_report.md                                                           |  26 ++++++++++++++++++++------
 ```
 
 NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al momento della scrittura; riga di totale tolta.
@@ -37,6 +42,8 @@ NB: regola «n/d» — il conteggio di reports/handoff.md non è misurabile al m
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+07fa1230 presentazione clienti: «PDF servizi ecosistema» definitivo — niente nome azienda né bagliori; contatti fuori dal repo
+45f92c51 docs(fine-task): report — avvertenze complete nel PDF clienti e merge di main (PR #384)
 27300187 merge: porta main (#383) nel branch per la PR #384; conflitti solo nei report di sessione (i nostri) — review #815 (chat practical-tesla) APPROVATO
 d588f0bb presentazione clienti: tutte le avvertenze del catalogo d'esempio
 2142a3db docs(fine-task): report della presentazione clienti definitiva (PR #384)
@@ -47,7 +54,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun commit di questa sessione modifica il motore. Il merge 27300187 ha portato nel branch codice del motore già revisionato su main (#383: modules/voice/server.py, tests/test_unit_voice_server.py); il gate ha chiesto la review del merge. Verdetto integrale:
+Nessun commit di questa sessione modifica il motore. Il merge 27300187 ha portato nel branch codice del motore già revisionato su main (#383); il gate ha chiesto la review del merge. Verdetto integrale:
 
 ## VERDETTO: APPROVATO
 
@@ -89,23 +96,26 @@ Review #815 (chat practical-tesla). Oggetto: il merge in corso di origin/main 5c
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/ da parte di questa sessione (i file del motore arrivati col merge sono identici a main, CI di main verde: run 44357444098 secondo il revisore).
+Nessuna modifica a gas.py/tests/ da parte di questa sessione (i file del motore arrivati col merge sono identici a main).
 
 ## §6 STATO CI
 
 `gh run list` non usato (in questo ambiente cloud `gh` è riservato alla ricerca). Output reale dello strumento GitHub `actions_list` (list_workflow_runs, workflow ci.yml, branch claude/practical-tesla-ea9a9g) alla scrittura:
 
 ```
-CI  run 44346944386  #1959  push  completed/success  sha 2142a3db  https://github.com/Gasss23/Gas/actions/runs/44346944386
-CI  run 44346826214  #1958  push  completed/success  sha f6630a72  https://github.com/Gasss23/Gas/actions/runs/44346826214
+CI  run 44562387855  #1966  push  in_progress        sha 07fa1230  https://github.com/Gasss23/Gas/actions/runs/44562387855
+CI  run 44559511497  #1965  push  completed/success  sha c8c24825  (commit tolto dal branch)
 ```
 
 Mappatura commit→run:
 - f6630a72 → run 44346826214: success.
 - 2142a3db → run 44346944386: success.
-- d588f0bb, 27300187 → nessuna run su questi SHA (non ancora pushati: partono col push del commit di fine-task, che testa solo l'albero di testa).
+- d588f0bb, 27300187 → nessuna run su questi SHA (pushati insieme a 45f92c51).
+- 45f92c51 → run 44555724881: success.
+- 07fa1230 → run 44562387855: in corso alla scrittura dell'handoff.
 - commit di fine-task (questo file) → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Nessuna nuova. Restano in reports/stato_progetto.md: verifica esterna #380 V-2 BASSA e V-4 COSMETICA; dalla #383 (main) R-806-2 e R-807-1 BASSE.
+- Bot #384 su c8c24825: V-1 MEDIA (immagini interne del PDF) → affermazione corretta in report e docstring, resta da verificare a vista sul tablet dell'operatore; V-2 BASSA (contatti, repo pubblico) → contatti tolti dal repo, vedi §0.2; V-3 COSMETICA → corretta.
+- In stato_progetto.md: repo pubblico e dati personali; riserve del fix sandbox (agente-#380 V-2 e V-4, bot-#380 V-1 e V-2); numeri del PDF non verificati da gate; R-806-2 e R-807-1 BASSE (da main, #383).
