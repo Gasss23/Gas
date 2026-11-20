@@ -1,12 +1,15 @@
-# Diff sessione — 2026-11-19 — Presentazione clienti tolta dal repo
+# Diff della sessione — 2026-11-19/20 — CRM fetta 6 (copia cifrata su iCloud)
 
-File toccati (da `git diff --stat BASE..HEAD` + report di fine task):
+Si riscrive a ogni sessione; la storia completa sta in git. La PR #381 (fette 1-5) è mergiata. Questa fotografia copre il ramo ripartito da main c4c8c31f.
 
-- `presentazione_clienti/` (5 file) — tolti dal repo su decisione dell'operatore: PDF e sorgenti stanno sul suo Mac.
-- `.gitignore` — ignora `presentazione_clienti/` (contatti personali, repo pubblico).
-- `reports/stato_progetto.md` — voce «repo pubblico» riscritta, intestazione al 19/11; voci chiuse spostate nello storico.
-- `reports/stato_storico.md` — voci chiuse: presentazione tolta dal repo, CI rossa 26.04.
-- `.claude/agents/memoria_revisore.md` — riga della review #816 (merge di main #381 nel branch).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
-
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+- `modules/crm/copia_cifrata.py` (nuovo): copia giornaliera cifrata fuori dal Mac (iCloud Drive), mai in chiaro; `ripristina` senza sovrascrivere, rifiuta i file di lavoro rimasti, integrità ricontrollata.
+- `modules/crm/server.py`: il guardiano lancia la copia cifrata in un thread a parte dopo la copia locale giornaliera.
+- `modules/crm/__main__.py`: `backup` fa anche la copia cifrata; nuovo comando `ripristina`; avviso ATTIVA/SPENTA all'avvio; `SCAN_MINUTI_DEFAULT = 720`.
+- `modules/crm/scrittore.py`: parole vietate con radici più larghe; spazi doppi tolti.
+- `modules/crm/__init__.py`: docstring corretta (file del CRM separato).
+- `requirements.txt`: `cryptography>=42.0`.
+- `tests/conftest.py`: le suite pytest non scrivono mai nell'iCloud vero.
+- `tests/test_unit_crm.py`: test della copia cifrata, del ripristino dopo un crash, del giro 720 e delle parole vietate.
+- `reports/crm/guida.md`, `reports/crm/decisioni.md` (punti 12-14), report di fine task, `.claude/agents/memoria_revisore.md`.
+- Rifiniture (17aee558): password NFC, una copia esterna al giorno, file 0600 (anche le copie locali in `store.py`), temporaneo unico per copia e pulizia dei vecchi, ripristino che toglie il file rovinato.
+- 7b652af1 / e2c6e95a: temporaneo in chiaro dentro try/finally; prova di scrittura all'avvio; `Stato.copia_esterna` in `/api/stato` e indicatore in testata (`app.js`, `app.css`); avviso Telegram se la copia fallisce; password di prima nel ripristino; segnaposto `.icloud`.

@@ -1,17 +1,46 @@
-# Ultimo report — 2026-11-19 — Presentazione clienti tolta dal repo
+# Ultimo report — 2026-11-19/20 — CRM: copia cifrata su iCloud Drive, giro 2 volte al giorno, parole vietate
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione (toglie `presentazione_clienti/`; nessun file del motore).
+1. Merge della PR #386.
+   - Sul commit ee38220c il bot aveva bocciato per un finding MEDIA (copia su iCloud che falliva senza avvisare), chiuso in e2c6e95a.
+   - Riserva aperta: R-820-1 BASSA (cartella di rete bloccata all'avvio). Fetta di sicurezza (cifratura dei dati dei clienti): secondo passaggio nella chat claude.ai col link della PR.
+2. Password delle copie cifrate: scriverla nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri) e salvarla anche nel gestore di password. Senza di lei le copie su iCloud non si aprono.
+3. Controllare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti: se quelle sono sincronizzate con iCloud, il database in chiaro finirebbe su iCloud.
+4. Server gratuito per avere il CRM dal telefono (Tailscale col Mac acceso, oppure Oracle Cloud «Always Free»): da decidere. Per ora il CRM resta sul Mac.
 
 ## Esito
-- **Togliere da GitHub il PDF clienti (richiesta dell'operatore)**: FATTA — 5e006dd2. Cartella `presentazione_clienti/` tolta dal repo (PDF, generatore, script). Prima della rimozione l'operatore ha ricevuto in chat lo zip con sorgenti e PDF, da tenere sul Mac: per modifiche future (es. il sito) vanno chiesti a lui. I file locali con i contatti nel container sono stati cancellati.
-- **Revisione legale del PDF**: fatta dall'operatore (19/11); pag. 4 lasciata com'è (decisione dell'operatore).
-- **Repo privato**: NON fatto — l'operatore ha scelto di togliere il PDF invece di rendere privato il repo.
-- **Merge di main (#381 CRM) nel branch** per togliere i conflitti della PR #385: FATTA — review #816 APPROVATO (file del motore identici a main).
-- **Riserve del bot #385**: FATTA — `presentazione_clienti/` aggiunta al .gitignore principale (V-1: i sorgenti dello zip con i contatti non possono più finire nel repo per sbaglio); voci chiuse (presentazione tolta, CI rossa 26.04 chiusa con la #380) spostate in stato_storico; intestazione di stato_progetto aggiornata al 19/11; riserva «numeri del PDF non verificati da gate» (agente-#380 V-3, ripresa come bot-#384 V-2) decaduta per il repo: il PDF non c'è più e la revisione legale l'ha fatta l'operatore.
+- **PR #381 (CRM, fette 1-5)**: MERGIATA il 19-11 (12633cb0), col via dell'operatore. CI verde e bot APPROVATO CON RISERVE senza finding ALTA/MEDIA.
+- **Fetta 6 — copia cifrata fuori dal Mac** (decisione del 19-11): FATTA, commit 32282b6f.
+  - Nuovo `modules/crm/copia_cifrata.py`: ogni giorno una copia CIFRATA in iCloud Drive (cartella «Gas CRM (copie cifrate)», ultime 30).
+    - Cifratura Fernet, con la chiave ricavata dalla password con scrypt n=2^17.
+    - Senza password, senza iCloud o senza la libreria `cryptography`: spenta, mai in chiaro.
+  - Comando `python -m modules.crm ripristina FILE`:
+    - non sovrascrive mai un database esistente;
+    - rifiuta se sono rimasti file di lavoro di un crash;
+    - ricontrolla l'integrità alla fine.
+  - All'avvio, `serve` dice se la copia è ATTIVA o SPENTA. Libreria `cryptography` aggiunta ai requisiti.
+  - Review #815 APPROVATO CON RISERVE (R-815-1 MEDIA: ripristino con un file di lavoro rimasto) → #816 APPROVATO CON RISERVE (R-815-1..4 chiuse; R-816-1 COSMETICA).
+- **Giro del motore 2 volte al giorno** (decisione del 19-11): FATTA. Default `GAS_CRM_SCAN_MINUTI` = 720. Restano il giro subito a ogni modifica e il pulsante «Scansiona». Il giro non usa token.
+- **Parole vietate più ampie** (rimandate alla fetta successiva il 19-11): FATTA. Radici «garant», «assicur», «al sicuro», «alcun/nessun rischio», «ultima occasione», «posti limitati»… Spazi doppi tolti.
+- **Docstring del pacchetto CRM** (V-1 del bot): FATTA.
+- **Rifiniture dopo bot e verifica esterna su #386**: FATTA, commit 17aee558. Review #817 (R-817-1 BASSA) → #818 APPROVATO.
+  - Password con accenti scritta in modi diversi.
+  - Una copia su iCloud al giorno, per 30 giorni.
+  - File leggibili solo dal proprietario.
+  - Nessun temporaneo lasciato.
+  - Il ripristino non lascia file rotti.
+- **Note della verifica esterna (2° giro) e del bot su #386**: FATTA, commit 7b652af1 (review #819 APPROVATO) ed e2c6e95a (review #820 APPROVATO CON RISERVE).
+  - Ripristino con disco pieno senza dati in chiaro.
+  - Prova vera di scrittura su iCloud all'avvio.
+  - In dashboard «☁ copia OK / spenta / NON riuscita», con avviso Telegram se fallisce.
+  - Password di prima nel ripristino.
+  - File iCloud non scaricato spiegato.
+- **Server per il CRM**: DEFERITA. L'operatore non vuole spendere per un server solo per il CRM; alternative gratuite da decidere (punto 4).
 
 ## Test
-Nessuna modifica a gas.py, modules/ o tests/.
+- `tests/test_unit_crm.py`: 131 passed. Su main falliscono i 6 test nuovi o cambiati; `test_r815_*` fallisce anche col `copia_cifrata.py` del giro #815.
+- notte, voice_contesto, manutenzione e hooks: 468 passed. mypy: 0 errori in `modules/crm`. Kernel e gas.py non toccati.
 
-## Anomalie
-Le versioni precedenti della presentazione (PR #380 e #384) restano nella storia di git di main; quella pubblicata con #384 non contiene contatti.
+## Riserve aperte
+- R-820-1 BASSA: una cartella di rete bloccata ferma l'avvio del CRM (con iCloud non succede).
+- Da prima: R-810-2 (filtro delle parole vietate, con falsi allarmi possibili), R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4 (vedi `reports/stato_progetto.md`).

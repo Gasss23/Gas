@@ -6,7 +6,9 @@ Comandi:
   riepilogo [--demo]             numeri principali in testo
   spiega ID [--demo]             perché il motore propone (o no) qualcosa a un cliente
   demo                           crea il DB dimostrativo (.gas_memory_crm_demo.db)
-  backup                         copia di sicurezza del DB in .gas_memory_crm_backup/
+  backup                         copia di sicurezza del DB in .gas_memory_crm_backup/ e,
+                                 con GAS_CRM_BACKUP_PASSWORD, copia CIFRATA su iCloud Drive
+  ripristina FILE.gascrm [--dest] rimette il DB da una copia cifrata (mai sovrascrive)
   servizio --codice C --nome N --modello M [--commissione 25] [--fissa 99] [--minimo 1000]
            [--rendimento 3] [--priorita 10]
   cliente --nome N [--telefono T] [--email E] [--consenso]
@@ -17,7 +19,8 @@ Comandi:
 Il DB vero è `.gas_memory_crm.db` nella cartella di Gas: un file SOLO del CRM, separato
 dalla memoria (decisione dell'operatore 2026-11-17), col prefisso che il cancello rende
 illeggibile agli strumenti di Gas; `GAS_CRM_DB` lo cambia. `--demo` usa
-`.gas_memory_crm_demo.db`. Il server fa una copia di sicurezza all'avvio e una al giorno.
+`.gas_memory_crm_demo.db`. Il server fa una copia di sicurezza all'avvio e una al giorno
+(cifrata anche fuori dal Mac, `modules/crm/copia_cifrata.py`).
 """
 from __future__ import annotations
 
@@ -35,6 +38,9 @@ from modules.crm.store import (CRMStore, ErroreCRM, formatta_euro, percorso_db,
                                normalizza_telefono, parse_importo, parse_percentuale_bp)
 
 ROOT = Path(__file__).resolve().parents[2]
+# giro automatico del motore: 2 al giorno (operatore 2026-11-19: «anche 1-2 al giorno va bene»);
+# a ogni cambio dei dati e col pulsante «Scansiona» il giro parte comunque subito
+SCAN_MINUTI_DEFAULT = 720
 
 
 def _env_int(nome: str, default: int, minimo: int, massimo: int) -> int:
@@ -110,7 +116,7 @@ def cmd_serve(a: argparse.Namespace) -> int:
         from modules.telegram.bot import invia_notifica
         avvisa = invia_notifica
     stato = server.Stato(st, token, demo=a.demo,
-                         scan_minuti=_env_int("GAS_CRM_SCAN_MINUTI", 10, 1, 1440),
+                         scan_minuti=_env_int("GAS_CRM_SCAN_MINUTI", SCAN_MINUTI_DEFAULT, 1, 1440),
                          avvisa=avvisa, memoria_db=None if a.demo else ROOT / ".gas_memory.db")
 
     def pronto(url: str) -> None:
@@ -119,6 +125,15 @@ def cmd_serve(a: argparse.Namespace) -> int:
             # solo in demo (dati inventati): link di accesso con il token nel frammento,
             # che il browser non manda al server
             print(f"Accesso demo: {url}#t={token}")
+        if not a.demo:
+            from modules.crm import copia_cifrata
+            spenta = copia_cifrata.motivo_spenta()
+            # V-1 bot #386: prova VERA di scrittura, non solo la configurazione
+            prova = None if spenta else copia_cifrata.prova_scrittura()
+            print("Copia cifrata giornaliera fuori dal Mac: "
+                  + (f"SPENTA ({spenta})" if spenta
+                     else f"NON FUNZIONA ({prova}): i dati restano solo sul Mac" if prova
+                     else f"ATTIVA in {copia_cifrata.cartella()} (prova di scrittura riuscita)"))
         print("Ctrl+C per fermare.")
     try:
         server.avvia(stato, host=host, porta=a.porta, pronto=pronto)
@@ -172,11 +187,45 @@ def cmd_spiega(a: argparse.Namespace) -> int:
 
 
 def cmd_backup(a: argparse.Namespace) -> int:
+    from modules.crm import copia_cifrata
     dest = _store(a.demo).backup()
     if dest is None:
         print("ERRORE: backup non riuscito (vedi gas_debug.log)")
         return 1
     print(f"Backup fatto: {dest}")
+    if a.demo:
+        return 0
+    fuori, motivo = copia_cifrata.copia_fuori(dest)
+    if fuori is not None:
+        print(f"Copia cifrata fuori dal Mac: {fuori}")
+    else:
+        print(f"Copia cifrata fuori dal Mac NON fatta: {motivo}")
+    return 0
+
+
+def cmd_ripristina(a: argparse.Namespace) -> int:
+    """Rimette il database del CRM da una copia cifrata (.gascrm), senza sovrascrivere."""
+    import getpass
+    from modules.crm import copia_cifrata
+    pw = copia_cifrata.password() or getpass.getpass("Password delle copie cifrate: ").strip()
+    dest = Path(a.dest).expanduser() if a.dest else percorso_db(ROOT)
+    try:
+        try:
+            fatto = copia_cifrata.ripristina(Path(a.file).expanduser(), dest, pw)
+        except ErroreCRM as e:
+            # V-2 bot #386: copia fatta con una password di prima → si può scrivere l'altra
+            if "password sbagliata" not in str(e) or not sys.stdin.isatty():
+                raise
+            altra = getpass.getpass("Password sbagliata. Se la copia è di prima di un cambio "
+                                    "di password, scrivi quella vecchia: ").strip()
+            fatto = copia_cifrata.ripristina(Path(a.file).expanduser(), dest, altra)
+    except (ErroreCRM, OSError) as e:
+        print(f"STOP: {e}")
+        return 1
+    except ImportError:
+        print("STOP: manca la libreria «cryptography»: pip install -r requirements.txt")
+        return 1
+    print(f"Database ripristinato in {fatto}")
     return 0
 
 
@@ -310,7 +359,10 @@ def parser() -> argparse.ArgumentParser:
     sp = nuovo("spiega", cmd_spiega, "spiega le scelte del motore su un cliente")
     sp.add_argument("id", type=int)
     sub.add_parser("demo", help="crea il DB dimostrativo").set_defaults(fn=cmd_demo)
-    nuovo("backup", cmd_backup, "copia di sicurezza del DB")
+    nuovo("backup", cmd_backup, "copia di sicurezza del DB (e copia cifrata fuori dal Mac)")
+    sp = nuovo("ripristina", cmd_ripristina, "rimette il DB da una copia cifrata .gascrm")
+    sp.add_argument("file", help="la copia cifrata (.gascrm), per esempio da iCloud Drive")
+    sp.add_argument("--dest", help="dove scrivere il DB (default: il DB del CRM, se non esiste)")
     sp = nuovo("servizio", cmd_servizio, "aggiungi un servizio")
     sp.add_argument("--codice", required=True)
     sp.add_argument("--nome", required=True)

@@ -32,13 +32,13 @@ import secrets
 import sqlite3
 import threading
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlsplit
 
-from modules.crm import analisi, motore, scrittore
+from modules.crm import analisi, copia_cifrata, motore, scrittore
 from modules.crm.messaggi import link_whatsapp
 from modules.crm.store import (CRMStore, ErroreCRM, normalizza_telefono,
                                parse_importo, parse_percentuale_bp, valida_data)
@@ -117,6 +117,11 @@ class Stato:
         self.ultimo_avviso = 0.0
         self.scan_lock = threading.Lock()
         self.ultimo_backup = 0.0  # monotonic: il guardiano fa una copia all'avvio e ogni giorno
+        # V-1 bot #386: esito dell'ultima copia CIFRATA fuori dal Mac, visibile in dashboard
+        # (prima un fallimento restava solo nel log e l'operatore continuava a credersi coperto)
+        spenta = None if demo else copia_cifrata.motivo_spenta()
+        self.copia_esterna: Dict[str, Any] = {"spenta": spenta is not None, "motivo": spenta,
+                                              "ok": None, "quando": None}
         # R-803-1: UN SOLO MemoryStore per processo. Aprirne uno rifà l'indice di ricerca
         # del diario e lo salva (una scrittura): farlo a ogni lettura della dashboard
         # innescava un ciclo «scrittura → cambio → rilettura → scrittura».
@@ -265,6 +270,25 @@ class Stato:
         return nuovo
 
 
+def _copia_esterna(stato: "Stato", copia: Any) -> None:
+    """Thread: copia cifrata fuori dal Mac; l'esito va in `stato.copia_esterna` (dashboard) e,
+    se fallisce, un avviso all'operatore (Telegram, se attivo: mai dati dei clienti)."""
+    spenta = copia_cifrata.motivo_spenta()
+    fuori, motivo = copia_cifrata.copia_fuori(copia)
+    ora = datetime.now().isoformat(timespec="minutes")
+    stato.copia_esterna = {"spenta": spenta is not None, "motivo": motivo,
+                           "ok": None if spenta is not None else fuori is not None, "quando": ora}
+    stato.segnala_cambio()
+    if fuori is None and spenta is None:
+        log.warning("CRM: copia cifrata esterna: %s", motivo)
+        if stato.avvisa is not None and not stato.demo:
+            try:
+                stato.avvisa(f"⚠️ CRM Gas: la copia cifrata su iCloud NON è riuscita ({motivo}). "
+                             "I dati sono ancora solo sul Mac: controlla dalla dashboard.")
+            except Exception as e:  # §9: un avviso fallito non ferma il CRM
+                log.warning("CRM: avviso della copia esterna fallito: %s", type(e).__name__)
+
+
 def _guardiano(stato: Stato) -> None:
     """Thread: si accorge dei cambi nel DB (anche fatti da altri processi) e programma le
     scansioni. Una connessione tenuta aperta: `PRAGMA data_version` cambia quando un'ALTRA
@@ -293,8 +317,16 @@ def _guardiano(stato: Stato) -> None:
         adesso = time.monotonic()
         if not stato.demo and (stato.ultimo_backup == 0.0 or adesso - stato.ultimo_backup >= BACKUP_OGNI_S):
             stato.ultimo_backup = adesso
-            if stato.store.backup() is None:
+            copia = stato.store.backup()
+            if copia is None:
                 log.warning("CRM: copia di sicurezza automatica non riuscita")
+            else:
+                # decisione dell'operatore 2026-11-19: una copia CIFRATA anche fuori dal Mac
+                # (iCloud Drive); spenta senza password, mai in chiaro
+                # R-815-4: in un thread a parte, così una cartella di rete appesa non ferma
+                # il guardiano (aggiornamenti in tempo reale e giri del motore)
+                threading.Thread(target=_copia_esterna, args=(stato, copia), name="crm-copia-cifrata",
+                                 daemon=True).start()
         dovuta = (adesso >= prossima_scan or stato.scan_richiesta.is_set()
                   or (scan_dopo_cambio is not None and adesso >= scan_dopo_cambio))
         if dovuta:
@@ -502,6 +534,7 @@ class CRMHandler(BaseHTTPRequestHandler):
                        "invii_per_lotto": r.invii_per_lotto, "lotto_minuti": r.lotto_minuti},
             "invii": self._invii(),
             "opus": {"motivo": scrittore.disponibile(), "modello": scrittore.modello()},
+            "copia_esterna": None if self.stato.demo else self.stato.copia_esterna,
         }
         corpo["lead_pronti"] = self.stato.lead_pronti()
         corpo["eventi"] = self.stato.store.eventi(n=40)

@@ -55,12 +55,14 @@ Chiedi = Callable[[str, List[Dict[str, str]]], Tuple[str, float]]
 # un consumo di questo processo che non si è potuto registrare: niente altre riscritture
 _senza_conto = False
 
-_VIETATE = ("garantit", "garantisc", "garanzi", "assicurat", "sicuro al 100", "senza rischi",
-            "senza rischio", "zero rischi", "rischio zero", "capitale protetto",
+_VIETATE = ("garant", "garanzi", "assicur", "al sicuro", "sicuro al 100", "100% sicuro",
+            "affare sicuro", "senza rischi", "senza rischio", "alcun rischio", "nessun rischio",
+            "zero rischi", "rischio zero", "rischio nullo", "capitale protetto",
             "rendimento sicuro", "guadagno sicuro", "profitto sicuro", "investimento sicuro",
             "rendimento certo", "guadagno certo", "profitto certo", "soldi facili",
-            "guadagni facili", "ultimi posti", "solo oggi", "solo per oggi", "affrettati",
-            "investi ora", "investi subito", "perdit", "drawdown")
+            "guadagni facili", "ultimi posti", "posti limitati", "ultima occasione",
+            "solo oggi", "solo per oggi", "affrettati", "investi ora", "investi subito",
+            "perdit", "perder", "drawdown")
 
 SISTEMA = """Sei il copywriter di un'attività italiana che offre servizi di trading ai propri clienti.
 Riscrivi la bozza di un messaggio WhatsApp per UN cliente: deve essere caldo, personale,
@@ -124,6 +126,7 @@ def pulisci(testo: str) -> str:
         t = t[1:-1].strip()
     t = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", t)
     t = _senza_coda(t)
+    t = "\n".join(re.sub(r"[ \t]{2,}", " ", riga).strip() for riga in t.split("\n")).strip()
     if not t:
         raise ErroreCRM("Claude ha risposto un testo vuoto")
     if len(t) > TESTO_MAX_OPUS:
