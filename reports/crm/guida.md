@@ -114,7 +114,7 @@ Poi sceglie l'azione:
 | `GAS_CRM_REFERRAL_GIORNI` | 60 | al massimo una richiesta di presentazione ogni… |
 | `GAS_CRM_SCAN_MINUTI` | 720 | ogni quanto il motore rilegge tutto da solo (2 volte al giorno; lo fa anche a ogni cambio e col pulsante «Scansiona»; zero token) |
 | `GAS_CRM_BACKUP_PASSWORD` | — | password delle copie cifrate fuori dal Mac (almeno 12 caratteri); senza, la copia esterna è spenta |
-| `GAS_CRM_BACKUP_CIFRATO_DIR` | iCloud Drive | dove mettere le copie cifrate, se non iCloud Drive |
+| `GAS_CRM_BACKUP_CIFRATO_DIR` | iCloud Drive | dove mettere le copie cifrate, se non iCloud Drive: percorso completo, che inizia con `/` o `~/` |
 | `GAS_CRM_NOTA_RISCHIO` | «I risultati passati…» | nota sotto i messaggi; vuota = nessuna nota |
 | `GAS_CRM_AVVISI_TELEGRAM` | spento | `1` = avviso all'operatore quando ci sono nuove opportunità |
 
