@@ -270,9 +270,11 @@ class Stato:
         return nuovo
 
 
-def _segna_copia(stato: "Stato", spenta: Optional[str], riuscita: bool, motivo: Optional[str]) -> None:
+def _segna_copia(stato: "Stato", spenta: Optional[str], riuscita: bool, motivo: Optional[str],
+                 locale: bool = False) -> None:
     """Esito della copia in `stato.copia_esterna` (dashboard) e, se fallisce davvero, avviso
-    all'operatore (Telegram, se attivo: mai dati dei clienti)."""
+    all'operatore (Telegram, se attivo: mai dati dei clienti). `locale`: è fallita già la
+    copia sul Mac (il motivo lo dice da sé)."""
     ora = datetime.now().isoformat(timespec="minutes")
     stato.copia_esterna = {"spenta": spenta is not None, "motivo": motivo,
                            "ok": None if spenta is not None else riuscita, "quando": ora}
@@ -281,11 +283,16 @@ def _segna_copia(stato: "Stato", spenta: Optional[str], riuscita: bool, motivo: 
         log.warning("CRM: copia cifrata esterna: %s", motivo)
         if stato.avvisa is not None and not stato.demo:
             try:
-                # R-824-2: a copia esterna spenta l'avviso parla della copia sul Mac
-                cosa = ("la copia di sicurezza sul Mac" if copia_cifrata.motivo_spenta()
-                        else "la copia cifrata su iCloud")
-                stato.avvisa(f"⚠️ CRM Gas: {cosa} NON è riuscita ({motivo}). "
-                             "I dati sono ancora solo sul Mac: controlla dalla dashboard.")
+                # R-824-2, R-825-1 e R-826-2: se è fallita la copia sul Mac l'avviso dice solo
+                # il motivo (che lo spiega già), senza «iCloud» fisso né «non è riuscita» doppio
+                if locale:
+                    testo = (f"⚠️ CRM Gas: {motivo}. Nessuna copia di sicurezza nuova: "
+                             "controlla dalla dashboard.")
+                else:
+                    testo = (f"⚠️ CRM Gas: la copia cifrata fuori dal Mac NON è riuscita "
+                             f"({motivo}). I dati sono ancora solo sul Mac: controlla dalla "
+                             "dashboard.")
+                stato.avvisa(testo)
             except Exception as e:  # §9: un avviso fallito non ferma il CRM
                 log.warning("CRM: avviso della copia esterna fallito: %s", type(e).__name__)
 
@@ -310,7 +317,7 @@ def _copia_giornaliera(stato: "Stato") -> None:
         # quando la copia esterna è spenta
         fuori = ("la copia fuori dal Mac è spenta" if copia_cifrata.motivo_spenta()
                  else "quindi nemmeno quella fuori dal Mac")
-        _segna_copia(stato, None, False, f"la copia sul Mac non è riuscita, {fuori}")
+        _segna_copia(stato, None, False, f"la copia sul Mac non è riuscita, {fuori}", locale=True)
         return
     threading.Thread(target=_copia_esterna, args=(stato, copia), name="crm-copia-cifrata",
                      daemon=True).start()

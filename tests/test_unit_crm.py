@@ -1822,7 +1822,8 @@ def test_v1_bot387b_ripristino_interrotto_non_resta_in_chiaro(
     # R-824-1/2: PID fuori misura o con cifre non ASCII: non solleva e il file non si tocca
     enorme = dest.with_name(f"{dest.name}.99999999999-1.ripristino.tmp")
     enorme.write_bytes(b"x")
-    arabo = dest.with_name(f"{dest.name}.\u0663-1.ripristino.tmp")
+    # R-825-1: nove «٩» = PID 999999999, morto: senza il filtro ASCII verrebbe tolto
+    arabo = dest.with_name(f"{dest.name}.{chr(0x669) * 9}-1.ripristino.tmp")
     arabo.write_bytes(b"x")
     assert copia_cifrata.ripristina(fuori, dest, "una-password-lunga-1") == dest
     assert not morto.exists()
@@ -1838,7 +1839,58 @@ def test_v1_bot387b_ripristino_interrotto_non_resta_in_chiaro(
     server._copia_giornaliera(stato)
     assert "è spenta" in stato.copia_esterna["motivo"]
     assert "nemmeno" not in stato.copia_esterna["motivo"]
-    assert len(avvisi) == 1 and "iCloud" not in avvisi[0] and "sul Mac NON" in avvisi[0]
+    assert len(avvisi) == 1 and "iCloud" not in avvisi[0]
+    assert avvisi[0].lower().count("non è riuscita") == 1
+
+
+def test_r825_2_cartella_non_valida_o_icloud_negato_il_crm_parte(
+        st: CRMStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-825-2: «~utente» inesistente in GAS_CRM_BACKUP_CIFRATO_DIR, o iCloud Drive che
+    macOS non lascia leggere: il CRM parte e la copia si vede in rosso (non «spenta»)."""
+    from modules.crm import copia_cifrata
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", "~utente_che_non_esiste_r825/copie")
+    stato = server.Stato(st, TOKEN, regole=REGOLE)  # prima: RuntimeError
+    assert stato.copia_esterna["spenta"] is False
+    assert copia_cifrata.esito_all_avvio().startswith("NON FUNZIONA")
+    # R-826-1: a un solo componente (manca la «/») o relativo: mai dentro la cartella di lavoro
+    lavoro = tmp_path / "lavoro"
+    lavoro.mkdir()
+    monkeypatch.chdir(lavoro)
+    for valore in ("~x_inesistente_r826", "copie"):
+        monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", valore)
+        esito = copia_cifrata.esito_all_avvio()
+        assert esito.startswith("NON FUNZIONA") and "percorso completo" in esito
+        fuori, motivo = copia_cifrata.copia_fuori(st.backup(tmp_path / "locali"))
+        assert fuori is None and "percorso completo" in (motivo or "")
+    assert list(lavoro.iterdir()) == []
+    # R-826-2: copia esterna ATTIVA e copia sul Mac fallita: avviso senza «iCloud» fisso né
+    # «non è riuscita» ripetuto
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(tmp_path / "copie"))
+    avvisi: List[str] = []
+    stato = server.Stato(st, TOKEN, regole=REGOLE, avvisa=lambda t: (avvisi.append(t) or (True, "")))
+    with monkeypatch.context() as m:
+        m.setattr(st, "backup", lambda *a, **kw: None)
+        server._copia_giornaliera(stato)
+    assert len(avvisi) == 1 and "iCloud" not in avvisi[0]
+    assert avvisi[0].lower().count("non è riuscita") == 1 and "nemmeno" in avvisi[0]
+    monkeypatch.delenv("GAS_CRM_BACKUP_CIFRATO_DIR")
+    vero_is_dir = Path.is_dir
+
+    def is_dir_negato(self: Path) -> bool:
+        if self == copia_cifrata.ICLOUD_DRIVE:
+            raise PermissionError(1, "Operation not permitted")
+        return vero_is_dir(self)
+
+    monkeypatch.setattr(Path, "is_dir", is_dir_negato)
+    assert copia_cifrata.cartella() == copia_cifrata.ICLOUD_DRIVE / copia_cifrata.NOME_CARTELLA
+    assert copia_cifrata.motivo_spenta() is None
+    assert copia_cifrata.esito_all_avvio().startswith("NON FUNZIONA")
+    stato = server.Stato(st, TOKEN, regole=REGOLE)
+    copia = st.backup()
+    assert copia is not None
+    server._copia_esterna(stato, copia)
+    assert stato.copia_esterna["ok"] is False and stato.copia_esterna["spenta"] is False
 
 
 def test_copia_cifrata_mai_in_chiaro_senza_libreria(tmp_path: Path,

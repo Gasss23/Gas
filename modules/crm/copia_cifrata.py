@@ -54,8 +54,18 @@ def cartella() -> Optional[Path]:
     c'è (Mac con iCloud Drive acceso). None = nessuna cartella esterna disponibile."""
     v = os.environ.get("GAS_CRM_BACKUP_CIFRATO_DIR", "").strip()
     if v:
-        return Path(v).expanduser()
-    if ICLOUD_DRIVE.is_dir():
+        try:
+            return Path(v).expanduser()
+        except RuntimeError:
+            # R-825-2: «~utente» che non esiste. Prima il CRM non partiva; ora il percorso
+            # resta com'è (non completo) e `_genitore_assente` lo rifiuta: copia in rosso
+            return Path(v)
+    try:
+        if ICLOUD_DRIVE.is_dir():
+            return ICLOUD_DRIVE / NOME_CARTELLA
+    except OSError:
+        # R-825-2: iCloud Drive c'è ma macOS ne nega la lettura (Python 3.11 solleva da
+        # is_dir): la copia fallirà e si vedrà in rosso, non «spenta», e il CRM parte
         return ICLOUD_DRIVE / NOME_CARTELLA
     return None
 
@@ -111,6 +121,11 @@ def _genitore_assente(dest_dir: Path) -> Optional[str]:
     contiene esiste già. Con un disco esterno non collegato (/Volumes/…) prima si creava la
     cartella sul disco del Mac e la copia «riusciva» senza uscire dal Mac. Mai solleva
     (V-1 bot #387: un permesso negato su `is_dir` ora è un motivo, non un'eccezione)."""
+    # R-826-1: un percorso non completo (es. «~GasCopie» con un utente che non c'è, o
+    # «copie») si legge dalla cartella di lavoro, cioè dentro ~/Gas: mai lì le copie
+    if not dest_dir.is_absolute():
+        return (f"la cartella {dest_dir} non è un percorso completo (deve iniziare con «/» o "
+                "«~/»): nessuna copia fuori dal Mac")
     try:
         if not dest_dir.parent.is_dir():
             # V-2 bot #387 (d809f5f1): non sempre è un disco staccato, può essere una
