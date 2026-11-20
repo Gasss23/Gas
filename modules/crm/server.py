@@ -301,7 +301,9 @@ def _copia_giornaliera(stato: "Stato") -> None:
     copia = stato.store.backup()
     if copia is None:
         log.warning("CRM: copia di sicurezza automatica non riuscita")
-        _segna_copia(stato, copia_cifrata.motivo_spenta(), False,
+        # R-821-1: fallimento della copia LOCALE sempre in rosso e con avviso, anche quando
+        # la copia esterna è spenta (prima l'indicatore restava «copia spenta»)
+        _segna_copia(stato, None, False,
                      "la copia sul Mac non è riuscita, quindi nemmeno quella fuori dal Mac")
         return
     threading.Thread(target=_copia_esterna, args=(stato, copia), name="crm-copia-cifrata",

@@ -1717,6 +1717,36 @@ def test_v2_bot386c_copia_locale_fallita_si_vede(st: CRMStore, monkeypatch: pyte
     assert len(avvisi) == 1
 
 
+def test_r821_1_copia_locale_fallita_in_rosso_anche_a_copia_spenta(
+        st: CRMStore, monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-821-1: con la copia esterna spenta (senza password) una copia LOCALE fallita è
+    comunque rossa e avvisa l'operatore."""
+    monkeypatch.delenv("GAS_CRM_BACKUP_PASSWORD", raising=False)
+    avvisi: List[str] = []
+    stato = server.Stato(st, TOKEN, regole=REGOLE, avvisa=lambda t: (avvisi.append(t) or (True, "")))
+    assert stato.copia_esterna["spenta"] is True
+    monkeypatch.setattr(st, "backup", lambda *a, **kw: None)
+    server._copia_giornaliera(stato)
+    assert stato.copia_esterna["ok"] is False and stato.copia_esterna["spenta"] is False
+    assert "sul Mac non è riuscita" in stato.copia_esterna["motivo"] and len(avvisi) == 1
+
+
+def test_r821_disco_esterno_staccato_con_punto_di_mount_vuoto(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Rischio del revisore #821: /Volumes/Disco resta come cartella vuota a disco staccato:
+    la copia non deve finire sul disco del Mac."""
+    from modules.crm import copia_cifrata
+    volumi = tmp_path / "Volumes"
+    (volumi / "Disco").mkdir(parents=True)  # cartella rimasta, ma non è un mount
+    monkeypatch.setattr(copia_cifrata, "VOLUMI", volumi)
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(volumi / "Disco" / "copie"))
+    assert "non è collegato" in (copia_cifrata.prova_scrittura() or "")
+    assert not (volumi / "Disco" / "copie").exists()
+    monkeypatch.setattr(copia_cifrata.os.path, "ismount", lambda p: True)  # disco collegato
+    assert copia_cifrata.prova_scrittura() is None
+
+
 def test_copia_cifrata_mai_in_chiaro_senza_libreria(tmp_path: Path,
                                                    monkeypatch: pytest.MonkeyPatch) -> None:
     import builtins

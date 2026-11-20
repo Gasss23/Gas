@@ -45,6 +45,7 @@ KEEP = 30
 ESTENSIONE = ".gascrm"
 NOME_CARTELLA = "Gas CRM (copie cifrate)"
 ICLOUD_DRIVE = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
+VOLUMI = Path("/Volumes")  # dischi esterni su macOS
 
 
 def cartella() -> Optional[Path]:
@@ -108,10 +109,18 @@ def _genitore_assente(dest_dir: Path) -> Optional[str]:
     """V-1 verifica #386 (3°): la cartella delle copie si crea SOLO se la cartella che la
     contiene esiste già. Con un disco esterno non collegato (/Volumes/…) prima si creava la
     cartella sul disco del Mac e la copia «riusciva» senza uscire dal Mac."""
-    if dest_dir.parent.is_dir():
+    if not dest_dir.parent.is_dir():
+        return (f"la cartella {dest_dir.parent} non c'è (disco non collegato?): nessuna copia "
+                "fuori dal Mac")
+    # rischio segnalato dal revisore #821: su macOS un punto di mount vuoto può restare in
+    # /Volumes anche a disco staccato; lì la cartella «esiste» ma è sul disco del Mac
+    try:
+        rel = Path(dest_dir).relative_to(VOLUMI)
+    except ValueError:
         return None
-    return (f"la cartella {dest_dir.parent} non c'è (disco non collegato?): nessuna copia fuori "
-            "dal Mac")
+    if rel.parts and not os.path.ismount(VOLUMI / rel.parts[0]):
+        return (f"il disco {VOLUMI / rel.parts[0]} non è collegato: nessuna copia fuori dal Mac")
+    return None
 
 
 def prova_scrittura() -> Optional[str]:
