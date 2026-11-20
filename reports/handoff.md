@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta: PR NON ancora creata alla prima scrittura dell'handoff (si apre dopo il push; numero e URL aggiunti nel giro successivo). Riserve: R-816-1 COSMETICA.
+1. Merge della PR #386 (https://github.com/Gasss23/Gas/pull/386), aperta dopo il push del commit 4cec29d0, con l'etichetta «verifica». Riserve: R-816-1 COSMETICA. Il merge lo decide l'operatore.
    - È una fetta di sicurezza (cifratura dei dati dei clienti): secondo passaggio nella chat claude.ai col link della PR.
 2. Password delle copie cifrate: nel `.env` del Mac `GAS_CRM_BACKUP_PASSWORD` (almeno 12 caratteri), salvata anche nel gestore di password.
 3. Verificare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti sincronizzate con iCloud.
@@ -48,6 +48,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4cec29d0 docs(fine-task): CRM fetta 6 — copia cifrata su iCloud, ripristino, giro 720 min; review #815/#816
 32282b6f feat(crm): copia di sicurezza CIFRATA su iCloud Drive e ripristino; giro del motore 2 volte al giorno; parole vietate più ampie
 f40aa49f chore(revisore): memoria review #816 — APPROVATO CON RISERVE
 be656bb7 chore(revisore): memoria review #815 — APPROVATO CON RISERVE
@@ -200,6 +201,7 @@ Review #816-CRM sul diff staged (8 file, +392/−14): secondo giro di #815, con 
 - Sul ramo ripartito da main questa è la prima fetta. Ultima run del ramo prima della ripartenza: 44598878073 su 1a177291 (PR #381), success.
 - Mappatura commit→run:
   - `be656bb7`, `f40aa49f`, `32282b6f`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file, e la run testerà solo l'albero di quel commit.
+  - `4cec29d0` (primo fine-task della fetta): run appena partita al push, esito non ancora disponibile alla scrittura dell'handoff.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

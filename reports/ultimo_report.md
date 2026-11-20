@@ -1,7 +1,7 @@
 # Ultimo report — 2026-11-19/20 — CRM: copia cifrata su iCloud Drive, giro 2 volte al giorno, parole vietate
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta. Riserve: R-816-1 COSMETICA. Fetta di sicurezza (cifratura dei dati dei clienti): secondo passaggio nella chat claude.ai col link della PR.
+1. Merge della PR #386. Riserve: R-816-1 COSMETICA. Fetta di sicurezza (cifratura dei dati dei clienti): secondo passaggio nella chat claude.ai col link della PR.
 2. Password delle copie cifrate: scriverla nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri) e salvarla anche nel gestore di password. Senza di lei le copie su iCloud non si aprono.
 3. Controllare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti: se quelle sono sincronizzate con iCloud, il database in chiaro finirebbe su iCloud.
 4. Server gratuito per avere il CRM dal telefono (Tailscale col Mac acceso, oppure Oracle Cloud «Always Free»): da decidere. Per ora il CRM resta sul Mac.
