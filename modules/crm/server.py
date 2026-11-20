@@ -270,16 +270,14 @@ class Stato:
         return nuovo
 
 
-def _copia_esterna(stato: "Stato", copia: Any) -> None:
-    """Thread: copia cifrata fuori dal Mac; l'esito va in `stato.copia_esterna` (dashboard) e,
-    se fallisce, un avviso all'operatore (Telegram, se attivo: mai dati dei clienti)."""
-    spenta = copia_cifrata.motivo_spenta()
-    fuori, motivo = copia_cifrata.copia_fuori(copia)
+def _segna_copia(stato: "Stato", spenta: Optional[str], riuscita: bool, motivo: Optional[str]) -> None:
+    """Esito della copia in `stato.copia_esterna` (dashboard) e, se fallisce davvero, avviso
+    all'operatore (Telegram, se attivo: mai dati dei clienti)."""
     ora = datetime.now().isoformat(timespec="minutes")
     stato.copia_esterna = {"spenta": spenta is not None, "motivo": motivo,
-                           "ok": None if spenta is not None else fuori is not None, "quando": ora}
+                           "ok": None if spenta is not None else riuscita, "quando": ora}
     stato.segnala_cambio()
-    if fuori is None and spenta is None:
+    if not riuscita and spenta is None:
         log.warning("CRM: copia cifrata esterna: %s", motivo)
         if stato.avvisa is not None and not stato.demo:
             try:
@@ -287,6 +285,27 @@ def _copia_esterna(stato: "Stato", copia: Any) -> None:
                              "I dati sono ancora solo sul Mac: controlla dalla dashboard.")
             except Exception as e:  # §9: un avviso fallito non ferma il CRM
                 log.warning("CRM: avviso della copia esterna fallito: %s", type(e).__name__)
+
+
+def _copia_esterna(stato: "Stato", copia: Any) -> None:
+    """Thread: copia cifrata fuori dal Mac e il suo esito (vedi `_segna_copia`)."""
+    spenta = copia_cifrata.motivo_spenta()
+    fuori, motivo = copia_cifrata.copia_fuori(copia)
+    _segna_copia(stato, spenta, fuori is not None, motivo)
+
+
+def _copia_giornaliera(stato: "Stato") -> None:
+    """Copia locale del giorno e, se riesce, quella cifrata fuori dal Mac in un thread a parte
+    (R-815-4). V-2 bot #386 (3°): se fallisce già la copia locale, anche l'indicatore della
+    copia esterna lo dice (prima restava «copia OK» del giorno prima)."""
+    copia = stato.store.backup()
+    if copia is None:
+        log.warning("CRM: copia di sicurezza automatica non riuscita")
+        _segna_copia(stato, copia_cifrata.motivo_spenta(), False,
+                     "la copia sul Mac non è riuscita, quindi nemmeno quella fuori dal Mac")
+        return
+    threading.Thread(target=_copia_esterna, args=(stato, copia), name="crm-copia-cifrata",
+                     daemon=True).start()
 
 
 def _guardiano(stato: Stato) -> None:
@@ -317,16 +336,8 @@ def _guardiano(stato: Stato) -> None:
         adesso = time.monotonic()
         if not stato.demo and (stato.ultimo_backup == 0.0 or adesso - stato.ultimo_backup >= BACKUP_OGNI_S):
             stato.ultimo_backup = adesso
-            copia = stato.store.backup()
-            if copia is None:
-                log.warning("CRM: copia di sicurezza automatica non riuscita")
-            else:
-                # decisione dell'operatore 2026-11-19: una copia CIFRATA anche fuori dal Mac
-                # (iCloud Drive); spenta senza password, mai in chiaro
-                # R-815-4: in un thread a parte, così una cartella di rete appesa non ferma
-                # il guardiano (aggiornamenti in tempo reale e giri del motore)
-                threading.Thread(target=_copia_esterna, args=(stato, copia), name="crm-copia-cifrata",
-                                 daemon=True).start()
+            # decisione dell'operatore 2026-11-19: copia locale e copia CIFRATA fuori dal Mac
+            _copia_giornaliera(stato)
         dovuta = (adesso >= prossima_scan or stato.scan_richiesta.is_set()
                   or (scan_dopo_cambio is not None and adesso >= scan_dopo_cambio))
         if dovuta:

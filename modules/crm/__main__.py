@@ -127,13 +127,8 @@ def cmd_serve(a: argparse.Namespace) -> int:
             print(f"Accesso demo: {url}#t={token}")
         if not a.demo:
             from modules.crm import copia_cifrata
-            spenta = copia_cifrata.motivo_spenta()
-            # V-1 bot #386: prova VERA di scrittura, non solo la configurazione
-            prova = None if spenta else copia_cifrata.prova_scrittura()
-            print("Copia cifrata giornaliera fuori dal Mac: "
-                  + (f"SPENTA ({spenta})" if spenta
-                     else f"NON FUNZIONA ({prova}): i dati restano solo sul Mac" if prova
-                     else f"ATTIVA in {copia_cifrata.cartella()} (prova di scrittura riuscita)"))
+            # V-1 bot #386: prova VERA di scrittura; R-820-1: con un tempo massimo
+            print("Copia cifrata giornaliera fuori dal Mac: " + copia_cifrata.esito_all_avvio())
         print("Ctrl+C per fermare.")
     try:
         server.avvia(stato, host=host, porta=a.porta, pronto=pronto)

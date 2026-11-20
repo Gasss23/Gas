@@ -1645,6 +1645,78 @@ def test_v2_bot386_ripristino_con_la_password_di_prima(tmp_path: Path,
     assert CRMStore(tmp_path / "r.db").clienti()[0]["nome"] == "Anna Verdi"
 
 
+def test_ve386c_note_del_terzo_giro(st: CRMStore, tmp_path: Path,
+                                   monkeypatch: pytest.MonkeyPatch) -> None:
+    """Note di bot e verifica esterna su #386 (3° giro): disco non collegato, copia locale
+    rovinata, temporaneo del ripristino unico ed esclusivo, file di lavoro come collegamento
+    pendente, prove interrotte ripulite, indicatore se fallisce la copia locale, prova
+    all'avvio con un tempo massimo (R-820-1)."""
+    import threading
+    import time as _t
+    from modules.crm import copia_cifrata
+    pw = "una-password-lunga-1"
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", pw)
+    # disco esterno non collegato: niente cartella creata sul Mac, nessuna copia «riuscita»
+    smontato = tmp_path / "Volumes" / "Disco" / "copie"
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(smontato))
+    assert "disco non collegato" in (copia_cifrata.prova_scrittura() or "")
+    st.aggiungi_cliente("Anna Verdi", telefono="+393330000001")
+    buona = st.backup(tmp_path / "locali")
+    assert buona is not None
+    fuori, motivo = copia_cifrata.copia_fuori(buona)
+    assert fuori is None and "disco non collegato" in (motivo or "") and not smontato.exists()
+    assert copia_cifrata.esito_all_avvio().startswith("NON FUNZIONA")
+    # copia locale rovinata: la copia buona del giorno resta
+    icloud = tmp_path / "icloud"
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(icloud))
+    giorno, _ = copia_cifrata.copia_fuori(buona)
+    assert giorno is not None
+    prima = giorno.read_bytes()
+    rotta = tmp_path / (buona.stem[:12] + "-235959.db")
+    rotta.write_bytes(b"non sono un database")
+    fuori, motivo = copia_cifrata.copia_fuori(rotta)
+    assert fuori is None and "non è integra" in (motivo or "") and giorno.read_bytes() == prima
+    # prove di scrittura interrotte (processo ucciso) ripulite alla copia dopo
+    vecchia_prova = icloud / ".prova-1-2.tmp"
+    vecchia_prova.write_bytes(b"x")
+    os.utime(vecchia_prova, (_t.time() - 7200, _t.time() - 7200))
+    copia_cifrata.copia_fuori(buona)
+    assert not vecchia_prova.exists()
+    assert copia_cifrata.esito_all_avvio().startswith("ATTIVA")
+    # ripristino: un collegamento simbolico al posto del temporaneo non viene seguito
+    vittima = tmp_path / "vittima.txt"
+    vittima.write_text("intatto")
+    dest = tmp_path / "nuovo.db"
+    previsto = dest.with_name(f"{dest.name}.{os.getpid()}-{threading.get_ident()}.ripristino.tmp")
+    previsto.symlink_to(vittima)
+    with pytest.raises(ErroreCRM, match="file .* accanto alla destinazione"):
+        copia_cifrata.ripristina(giorno, dest, pw)
+    assert vittima.read_text() == "intatto" and previsto.is_symlink() and not dest.exists()
+    previsto.unlink()
+    # file di lavoro come collegamento pendente: rifiutato
+    pendente = tmp_path / "altro.db-journal"
+    pendente.symlink_to(tmp_path / "manca")
+    with pytest.raises(ErroreCRM, match="file di lavoro"):
+        copia_cifrata.ripristina(giorno, tmp_path / "altro.db", pw)
+    # R-820-1: una cartella che non risponde non blocca l'avvio
+    monkeypatch.setattr(copia_cifrata, "prova_scrittura", lambda: _t.sleep(2) or None)
+    inizio = _t.monotonic()
+    assert copia_cifrata.esito_all_avvio(attesa_s=0.2).startswith("NON VERIFICATA")
+    assert _t.monotonic() - inizio < 1.5
+
+
+def test_v2_bot386c_copia_locale_fallita_si_vede(st: CRMStore, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", "/tmp")
+    avvisi: List[str] = []
+    stato = server.Stato(st, TOKEN, regole=REGOLE, avvisa=lambda t: (avvisi.append(t) or (True, "")))
+    stato.copia_esterna = {"spenta": False, "motivo": None, "ok": True, "quando": "ieri"}
+    monkeypatch.setattr(st, "backup", lambda *a, **kw: None)
+    server._copia_giornaliera(stato)
+    assert stato.copia_esterna["ok"] is False and "sul Mac non è riuscita" in stato.copia_esterna["motivo"]
+    assert len(avvisi) == 1
+
+
 def test_copia_cifrata_mai_in_chiaro_senza_libreria(tmp_path: Path,
                                                    monkeypatch: pytest.MonkeyPatch) -> None:
     import builtins

@@ -104,6 +104,16 @@ def _fernet(pw: str, sale: bytes):  # type: ignore[no-untyped-def]
     return Fernet(base64.urlsafe_b64encode(chiave))
 
 
+def _genitore_assente(dest_dir: Path) -> Optional[str]:
+    """V-1 verifica #386 (3°): la cartella delle copie si crea SOLO se la cartella che la
+    contiene esiste già. Con un disco esterno non collegato (/Volumes/…) prima si creava la
+    cartella sul disco del Mac e la copia «riusciva» senza uscire dal Mac."""
+    if dest_dir.parent.is_dir():
+        return None
+    return (f"la cartella {dest_dir.parent} non c'è (disco non collegato?): nessuna copia fuori "
+            "dal Mac")
+
+
 def prova_scrittura() -> Optional[str]:
     """V-1 bot #386: prova VERA che la copia esterna si può fare (non solo che è configurata):
     crea e toglie un piccolo file nella cartella. None se riesce, altrimenti il motivo.
@@ -114,8 +124,11 @@ def prova_scrittura() -> Optional[str]:
     dest_dir = cartella()
     assert dest_dir is not None
     prova = dest_dir / f".prova-{os.getpid()}-{threading.get_ident()}.tmp"
+    assente = _genitore_assente(dest_dir)
+    if assente:
+        return assente
     try:
-        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_dir.mkdir(exist_ok=True)
         _scrivi_privato(prova, os.urandom(32), esclusivo=True)
         return None
     except Exception as e:  # §9
@@ -125,6 +138,29 @@ def prova_scrittura() -> Optional[str]:
             prova.unlink(missing_ok=True)
         except OSError:
             pass
+
+
+PROVA_ATTESA_S = 5.0
+
+
+def esito_all_avvio(attesa_s: Optional[float] = None) -> str:
+    """Riga per l'avvio di `serve`: SPENTA, NON FUNZIONA, NON VERIFICATA o ATTIVA. La prova di
+    scrittura gira in un thread con un tempo massimo (R-820-1): una cartella di rete bloccata
+    non impedisce più al server di partire."""
+    spenta = motivo_spenta()
+    if spenta:
+        return f"SPENTA ({spenta})"
+    esito: dict = {}
+    filo = threading.Thread(target=lambda: esito.__setitem__("prova", prova_scrittura()),
+                            name="crm-prova-copia", daemon=True)
+    filo.start()
+    filo.join(PROVA_ATTESA_S if attesa_s is None else attesa_s)
+    if filo.is_alive():
+        return ("NON VERIFICATA (la cartella non risponde entro qualche secondo): controlla "
+                "l'indicatore in dashboard dopo la prima copia")
+    if esito.get("prova"):
+        return f"NON FUNZIONA ({esito['prova']}): i dati restano solo sul Mac"
+    return f"ATTIVA in {cartella()} (prova di scrittura riuscita)"
 
 
 def cifra(dati: bytes, pw: str) -> bytes:
@@ -155,8 +191,14 @@ def copia_fuori(copia_locale: Path, keep: int = KEEP) -> Tuple[Optional[Path], O
     pw = password()
     assert dest_dir is not None and pw is not None
     tmp: Optional[Path] = None
+    assente = _genitore_assente(dest_dir)
+    if assente:
+        return None, assente
+    # V-5 verifica #386 (3°): una copia locale rovinata non sostituisce la copia buona del giorno
+    if not _integro(Path(copia_locale)):
+        return None, "la copia locale non è integra: la copia del giorno fuori dal Mac resta quella di prima"
     try:
-        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_dir.mkdir(exist_ok=True)
         # V-1 bot #386: UNA copia esterna al giorno (quella del giorno si rinnova), così
         # le KEEP copie sono KEEP giorni anche se il CRM si riavvia spesso
         m = re.match(r"crm-\d{8}", Path(copia_locale).stem)
@@ -189,7 +231,9 @@ def _pulisci_tmp_vecchi(cartella_esterna: Path) -> None:
     """Toglie i `.gascrm.tmp` rimasti da copie interrotte (thread fermato, disco pieno)
     da più di un'ora: cifrati, ma inutili e si accumulerebbero su iCloud."""
     limite = time.time() - TMP_VECCHIO_S
-    for resto in cartella_esterna.glob("crm-*" + ESTENSIONE + ".*tmp"):
+    resti = list(cartella_esterna.glob("crm-*" + ESTENSIONE + ".*tmp"))
+    resti += list(cartella_esterna.glob(".prova-*.tmp"))  # verifica #386 (3°): prove interrotte
+    for resto in resti:
         try:
             if resto.stat().st_mtime < limite:
                 resto.unlink(missing_ok=True)
@@ -228,16 +272,24 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
         raise ErroreCRM(f"{dest} esiste già: non lo sovrascrivo (spostalo o scegli --dest)")
     for suffisso in _FILE_DI_LAVORO:
         resto = dest.with_name(dest.name + suffisso)
-        if resto.exists():
+        if resto.exists() or resto.is_symlink():  # V-4 verifica #386 (3°)
             raise ErroreCRM(f"accanto a {dest} è rimasto {resto.name}, un file di lavoro del "
                             "database di prima: spostalo insieme al database vecchio, poi riprova")
     dati = decifra(Path(sorgente).read_bytes(), pw)
-    tmp = dest.with_name(dest.name + ".ripristino.tmp")
+    # V-3 bot/verifica #386 (3°): temporaneo IN CHIARO con nome unico e creazione esclusiva
+    # (O_EXCL non segue un collegamento simbolico messo lì): mai scritto dentro un altro file
+    tmp = dest.with_name(f"{dest.name}.{os.getpid()}-{threading.get_ident()}.ripristino.tmp")
     creato = False
+    tmp_nostro = True
     try:
         # V-1 verifica #386 (2°): la scrittura del temporaneo IN CHIARO sta dentro il
         # try/finally, così un disco pieno a metà non lascia dati parziali dei clienti
-        _scrivi_privato(tmp, dati)
+        try:
+            _scrivi_privato(tmp, dati, esclusivo=True)
+        except FileExistsError:
+            tmp_nostro = False  # non è nostro: non si tocca
+            raise ErroreCRM(f"c'è già un file {tmp.name} accanto alla destinazione: spostalo e "
+                            "riprova") from None
         if not _integro(tmp):
             raise ErroreCRM("la copia decifrata non è un database del CRM integro")
         try:
@@ -262,7 +314,8 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
                 dest.unlink(missing_ok=True)
                 raise
     finally:
-        tmp.unlink(missing_ok=True)
+        if tmp_nostro:
+            tmp.unlink(missing_ok=True)
     # R-815-1: ricontrollo sul file vero, al suo posto. Se fallisce, il file creato da QUESTO
     # ripristino si toglie (V-2 verifica esterna #386): niente database rovinato lasciato lì
     if not _integro(dest):
