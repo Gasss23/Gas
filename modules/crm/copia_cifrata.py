@@ -123,7 +123,11 @@ def _consiglio_icloud(dest_dir: Path, e: BaseException) -> Optional[str]:
     try:
         if not isinstance(e, PermissionError):
             return None
-        if dest_dir != ICLOUD_DRIVE and ICLOUD_DRIVE not in dest_dir.parents:
+        # V-2 bot #388 (7cd7a2f0): percorso risolto e senza badare a maiuscole e minuscole,
+        # come `_genitore_assente` (collegamenti simbolici verso iCloud Drive riconosciuti)
+        vero = [x.casefold() for x in Path(os.path.realpath(dest_dir)).parts]
+        icloud = [x.casefold() for x in Path(os.path.realpath(ICLOUD_DRIVE)).parts]
+        if vero[:len(icloud)] != icloud:
             return None
         altrove = ("" if os.environ.get("GAS_CRM_BACKUP_CIFRATO_DIR", "").strip()
                    else ", oppure imposta GAS_CRM_BACKUP_CIFRATO_DIR su un'altra cartella")
@@ -323,7 +327,9 @@ def _pulisci_ripristini_interrotti(dest: Path) -> None:
     """V-1 bot #387 (d809f5f1): un ripristino ucciso a metà (kill -9, Mac spento) lascia
     accanto a `dest` il suo temporaneo IN CHIARO, con un nome unico che nessuno riusa.
     Si tolgono quelli dei processi che non ci sono più; mai un collegamento simbolico, mai
-    quelli del processo corrente o di un processo ancora vivo. Mai solleva."""
+    quelli del processo corrente o di un processo ancora vivo, salvo che siano più vecchi di
+    un'ora (V-1 bot #388, 7cd7a2f0: dopo un riavvio il PID può essere di un altro processo;
+    un ripristino dura pochi secondi). Mai solleva."""
     # R-824-2: solo cifre ASCII, al massimo 10 per il PID
     schema = re.compile(re.escape(dest.name) + r"\.([0-9]{1,10})-[0-9]+\.ripristino\.tmp")
     try:
@@ -336,7 +342,10 @@ def _pulisci_ripristini_interrotti(dest: Path) -> None:
             continue
         pid = int(m.group(1))
         try:
-            if pid == os.getpid() or _processo_vivo(pid) or resto.is_symlink():
+            if resto.is_symlink():
+                continue
+            vecchio = resto.stat().st_mtime < time.time() - TMP_VECCHIO_S
+            if not vecchio and (pid == os.getpid() or _processo_vivo(pid)):
                 continue
             if resto.is_file():
                 resto.unlink(missing_ok=True)
