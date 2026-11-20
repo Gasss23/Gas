@@ -1,7 +1,7 @@
-# Ultimo report — 2026-11-20 — CRM fetta 8: note basse sulla PR #387 chiuse
+# Ultimo report — 2026-11-20 — CRM fetta 8: note basse sulle PR #387 e #388 chiuse
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta: le riserve aperte sono solo BASSE o cosmetiche. Se il bot dà riserve, serve il sì dell'operatore in chat.
+1. Merge della PR #388: le riserve aperte sono solo BASSE o cosmetiche. Il bot aveva dato APPROVATO CON RISERVE su 0d946f08 (note chiuse in a565c7b6): serve il sì dell'operatore in chat, salvo un verdetto del bot pulito sul nuovo head.
 2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri), salvata anche nel gestore di password; poi `pip install -r requirements.txt` una volta.
 3. Controllare che la cartella di Gas sia `~/Gas` (`pwd`), fuori da Scrivania e Documenti sincronizzate.
 4. Secondo passaggio nella chat claude.ai col link della PR #387 e di questa PR (riservatezza delle copie dei clienti).
@@ -17,9 +17,13 @@
   - La bocciatura #826: con una cartella senza «/» le copie sarebbero finite nella cartella di lavoro. Ora i percorsi non completi vengono rifiutati.
   - Avviso della copia sul Mac fallita: solo il motivo, senza «iCloud» fisso né «non è riuscita» ripetuto.
 - **Guida**: `GAS_CRM_BACKUP_CIFRATO_DIR` deve essere un percorso completo.
+- **Correzione #828/#829 — note BASSE del bot sulla PR #388 (0d946f08)**: FATTA (a565c7b6, review #828 e #829 APPROVATO CON RISERVE).
+  - Se macOS nega a Gas la lettura o la scrittura di iCloud Drive, il motivo (all'avvio, in dashboard e nell'avviso) dice cosa fare: dare l'accesso ai file all'app da cui si avvia il CRM, oppure impostare un'altra cartella.
+  - Il file in chiaro di un ripristino interrotto viene tolto anche quando la destinazione esiste già.
+  - Resta R-829-1 COSMETICA: manca un test per gli errori diversi dal permesso negato.
 
 ## Test
-- `tests/test_unit_crm.py`: 136 su main d03e5bf2 → 138 passed. I test nuovi falliscono sul codice di prima della loro correzione.
+- `tests/test_unit_crm.py`: 136 su main d03e5bf2 → 138 passed (i test di a565c7b6 estendono quelli esistenti). I test nuovi falliscono sul codice di prima della loro correzione.
 - mypy: 0 errori in `modules/crm`. Kernel non toccato.
 
 ## Riserve aperte

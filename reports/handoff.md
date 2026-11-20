@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-20 — CRM fetta 8: note basse di bot e verifica esterna sulla PR #387 (d809f5f1) e riserve del revisore #824–#826
+**Sessione:** 2026-11-20 — CRM fetta 8: note basse di bot e verifica esterna sulle PR #387 (d809f5f1) e #388 (0d946f08) e riserve del revisore #824–#828
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #388 (https://github.com/Gasss23/Gas/pull/388), aperta dopo il push di 538a8948 con l'etichetta «verifica». Le riserve aperte sono solo BASSE/COSMETICHE; se il bot dà riserve serve il sì dell'operatore in chat (CLAUDE.md §10).
+1. Merge della PR #388 (https://github.com/Gasss23/Gas/pull/388), aperta dopo il push di 538a8948 con l'etichetta «verifica». Su 0d946f08: CI verde, bot APPROVATO CON RISERVE (V-1/V-2 BASSE, chiuse da a565c7b6), verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/388#issuecomment-7041948403). Le riserve aperte sono solo BASSE/COSMETICHE; senza un verdetto del bot pulito sul nuovo head serve il sì dell'operatore in chat (CLAUDE.md §10).
 2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`), salvata anche nel gestore di password; poi `pip install -r requirements.txt`.
 3. Verificare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti sincronizzate con iCloud.
 4. Secondo passaggio nella chat claude.ai col link della PR #387 e di questa PR (riservatezza delle copie dei clienti).
@@ -18,6 +18,9 @@
 - **PR #387**: MERGIATA il 20-11 (d03e5bf2) col via dell'operatore: CI verde, bot e verifica esterna (https://github.com/Gasss23/Gas/pull/387#issuecomment-7041110550) APPROVATO CON RISERVE senza ALTA/MEDIA.
 - **Fetta 8a — note basse su d809f5f1** (bot V-1 ripristino interrotto in chiaro, bot V-2 motivo «disco non collegato?» per una cartella mai creata, verifica esterna V-2 testo a copia spenta): FATTA, commit d62adafb. Review #824 APPROVATO CON RISERVE (R-824-1 BASSA, R-824-2 COSMETICA), corrette nello stesso diff e riviste in #825 APPROVATO CON RISERVE (R-825-1 COSMETICA, R-825-2 BASSA).
 - **Fetta 8b — R-825-1 e R-825-2**: FATTA, commit a9dbf6be. Review #826 BOCCIATO (R-826-1 MEDIA: con una cartella senza «/» le copie finivano nella cartella di lavoro con «ATTIVA» falso), corretto e rivisto in #827 APPROVATO.
+- **Fetta 8c — V-1/V-2 BASSE del bot su #388 (0d946f08)**: FATTA, commit a565c7b6. Review #828 APPROVATO CON RISERVE (R-828-1 BASSA, R-828-2 COSMETICA), corrette nello stesso diff e riviste in #829 APPROVATO CON RISERVE (R-829-1 COSMETICA).
+  - V-1: con iCloud Drive negato da macOS il motivo dice cosa fare (avvio, prova, copia del guardiano).
+  - V-2: il temporaneo in chiaro di un ripristino interrotto viene tolto anche se la destinazione esiste già.
 - **Non fatte (note del bot e della verifica esterna, BASSE/COSMETICHE):** verifica esterna V-4 (il thread della prova, dopo il tempo massimo, resta vivo: innocuo) — DEFERITA, cosmetica.
 
 ---
@@ -25,15 +28,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
- modules/crm/copia_cifrata.py       |  63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- modules/crm/server.py              |  25 +++++++++++++++++++------
+ .claude/agents/memoria_revisore.md |  11 +++++++++
+ modules/crm/copia_cifrata.py       |  93 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ modules/crm/server.py              |  25 ++++++++++++++++-----
  reports/crm/guida.md               |   2 +-
- reports/diff_sessione.md           |  19 ++++++++-----------
+ reports/diff_sessione.md           |  21 +++++++++--------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  37 ++++++++++++++++---------------------
- tests/test_unit_crm.py             | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ reports/ultimo_report.md           |  41 +++++++++++++++++----------------
+ tests/test_unit_crm.py             | 136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
 ```
 
 NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base della sessione: d03e5bf2 (origin/main, dopo il merge della PR #387).
@@ -41,6 +44,10 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a565c7b6 fix(crm): iCloud Drive negato da macOS dà un motivo che dice cosa fare; ripristino interrotto pulito anche se la destinazione esiste già (V-1/V-2 BASSE del bot su #388) — review #828 e #829 APPROVATO CON RISERVE
+19f5fe2d chore(revisore): memoria review #829 — APPROVATO CON RISERVE
+ab5d5f81 chore(revisore): memoria review #828 — APPROVATO CON RISERVE
+0d946f08 docs(fine-task): handoff — PR #388 aperta con l'etichetta verifica
 538a8948 docs(fine-task): CRM fetta 8 — note basse sulla PR #387 chiuse (review #824–#827); PR #387 mergiata
 a9dbf6be fix(crm): il CRM parte anche con la cartella delle copie scritta male o con iCloud bloccato da macOS; mai copie nella cartella di lavoro; avvisi senza «iCloud» fisso (R-825-1/2, R-826-1/2) — review #827 APPROVATO
 49ea2fb7 chore(revisore): memoria review #827 — APPROVATO
@@ -229,11 +236,112 @@ Review #827-CRM. È il secondo giro della #826 (BOCCIATO). Ho esaminato il diff 
 
 **Memoria del revisore:** riga `#827-CRM — 2026-11-20 — APPROVATO — …` aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con `scripts/commit_memoria_revisore.sh` (commit 49ea2fb7, solo quel file). Il diff staged resta intatto: 3 file, +86/−12. Come richiesto, non ho creato `.claude/.review_ok` e non ho committato il diff.
 
+### Review #828-CRM (diff poi committato in a565c7b6, con le correzioni riviste in #829)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #828-CRM del diff staged (2 file, +19/−2, sopra 0d946f08). Ho letto prima CLAUDE.md (sez. 1, 5, 8, 9), reports/stato_progetto.md (la parte sul CRM, fette 6-8) e la mia memoria (lezioni #815–#827). L'albero di lavoro è identico all'indice per entrambi i file.
+
+**Elementi del diff esaminati**
+
+- `modules/crm/copia_cifrata.py:148` — se `is_dir` sulla cartella di iCloud solleva OSError e quella cartella contiene la cartella delle copie, il motivo dice «iCloud Drive non è leggibile … dai a Terminale l'accesso … oppure imposta GAS_CRM_BACKUP_CIFRATO_DIR».
+  - Rischio esaminato: che il nuovo ramo possa sollevare, contro il «Mai solleva» di `_genitore_assente`; che finiscano percorsi o dati nel motivo; che il confronto funzioni con `ICLOUD_DRIVE` cambiato nei test.
+  - Il confronto fra Path non solleva. Il motivo non contiene nessun percorso. Il test va in rosso con la copia_cifrata di HEAD.
+  - Esito: ok, con R-828-1 e R-828-2 (sotto).
+- `modules/crm/copia_cifrata.py:357` — `_pulisci_ripristini_interrotti(dest)` è ora la prima cosa di `ripristina`, prima di ogni rifiuto e prima di `decifra`.
+  - Rischio esaminato: l'ordine diverso rispetto a #824, cioè una pulizia anche con la password sbagliata; un'eccezione della pulizia che uscirebbe prima; la perdita di dati unici.
+  - Provato su 3.12 e 3.13 (su 3.11 la libreria cryptography di sistema non si carica in questo ambiente):
+    - con la password sbagliata il resto morto viene tolto ed esce ErroreCRM;
+    - col segnaposto `.icloud` il resto viene tolto;
+    - con dest esistente e un resto collegato a dest, il resto sparisce e dest resta integro (`_integro` True);
+    - il resto di un processo vivo resta;
+    - dest in una cartella che non esiste, «.» e «/» danno solo ErroreCRM.
+  - La pulizia tocca solo temporanei in chiaro di processi morti. La copia cifrata di partenza non si tocca mai, quindi niente di unico va perso. Concordo che sia accettabile.
+  - Esito: ok.
+- `modules/crm/copia_cifrata.py:303` (contesto, file del diff) — il filtro della pulizia è invariato: PID solo [0-9]{1,10}, OverflowError trattato come vivo, mai collegamenti simbolici.
+  - Rischio: ora gira su più chiamate. Il caso già noto di un PID visto come morto da un altro spazio di processi (container) scatta più spesso, ma resta marginale.
+  - Esito: ok.
+- `tests/test_unit_crm.py:1834` — collega dest al nome di un resto (PID 999999996, morto su Linux e su macOS), poi «esiste già» e il controllo che il resto sia sparito e dest no. Il test morde: con la copia_cifrata di HEAD fallisce.
+  - Esito: ok.
+- `tests/test_unit_crm.py:1897` — controlla il motivo di iCloud e la variabile suggerita. Morde come sopra.
+  - Esito: ok.
+- `modules/crm/__main__.py:206` (contesto) — senza `--dest` la destinazione è il DB vero. La pulizia gira quindi nella cartella del repo, solo sui nomi `.gas_memory_crm.db.<pid>-<tid>.ripristino.tmp`.
+  - Esito: ok.
+
+**Verifiche rifatte da me**
+
+- Suite CRM sull'albero dell'indice: 138 passed.
+- Con la copia_cifrata.py di HEAD e i test nuovi: 2 failed / 136 passed. Falliscono `test_v1_bot387b_ripristino_interrotto_non_resta_in_chiaro` e `test_r825_2_cartella_non_valida_o_icloud_negato_il_crm_parte`.
+- mypy: 0 errori in modules/crm. I 78 errori segnalati stanno in altri file importati e c'erano già.
+- Il kernel non è toccato: il test di round-trip agentico (§7) non serve. Nessuno slicing della history, nessuna simulazione di tool.
+
+**Riserve**
+
+- **R-828-1 BASSA** — il motivo nuovo compare solo se fallisce lo stat della cartella di iCloud. Se macOS lascia passare lo stat e nega la scrittura (di solito i permessi di macOS sulle cartelle protette fanno così; non verificato su un Mac), il messaggio resta generico:
+  - all'avvio: «la cartella … non si può scrivere (PermissionError)» (`modules/crm/copia_cifrata.py:174`);
+  - nel guardiano: «copia cifrata non riuscita (PermissionError)».
+  - L'ho provato simulando un `mkdir` negato sotto iCloud.
+  - Rimedio proposto: lo stesso suggerimento nei rami d'eccezione di `prova_scrittura` e `copia_fuori` quando l'errore è PermissionError e la cartella sta dentro `ICLOUD_DRIVE`.
+- **R-828-2 COSMETICA** — se GAS_CRM_BACKUP_CIFRATO_DIR punta già a una cartella dentro iCloud Drive, il motivo dice comunque «oppure imposta GAS_CRM_BACKUP_CIFRATO_DIR». Provato.
+
+**Rischio escluso esplicitamente**
+
+Non ho verificato il comportamento reale dei permessi di macOS su `~/Library/Mobile Documents/com~apple~CloudDocs`, cioè se nega lo stat della cartella o solo il contenuto e la scrittura. Non si può riprodurre nel container Linux. Non ho verificato nemmeno se l'app da autorizzare sia davvero «Terminale» quando il CRM parte da un altro terminale (iTerm o simili). Su 3.11 non ho rifatto le prove a mano, per la libreria cryptography di sistema rotta in questo ambiente.
+
+**Memoria del revisore**
+
+- Ho aggiunto la riga `#828-CRM — 2026-11-20 — APPROVATO CON RISERVE — …` e una lezione nuova (il suggerimento legato a un solo ramo d'eccezione) in /home/user/Gas/.claude/agents/memoria_revisore.md.
+- L'ho committata con `bash scripts/commit_memoria_revisore.sh`: commit ab5d5f81, solo quel file. HEAD ora è ab5d5f81 e non più 0d946f08.
+- Il diff staged è intatto (2 file, +19/−2). Non ho creato `.claude/.review_ok` e non ho committato il diff.
+
+Le riserve R-828-1 e R-828-2 vanno registrate in reports/stato_progetto.md prima del commit.
+
+### Review #829-CRM (commit a565c7b6)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #829-CRM del diff staged (2 file, +65/−4, sopra ab5d5f81). Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), le righe del CRM in reports/stato_progetto.md e la coda della mia memoria (#821–#828 e le relative lezioni).
+
+**Elementi del diff esaminati**
+- `modules/crm/copia_cifrata.py:119`: la nuova `_consiglio_icloud` restituisce None se l'errore non è un PermissionError o se la cartella non è dentro `ICLOUD_DRIVE`. Rischi esaminati: che sollevi un'eccezione (no: il confronto è sul percorso scritto, dentro un try) e che dia il consiglio anche fuori da iCloud (no: il mutante «ogni percorso» fa fallire un test). Esito: ok.
+- `modules/crm/copia_cifrata.py:128`: R-828-2, la frase «oppure imposta» compare solo se la variabile non è impostata, con la stessa lettura di `cartella()` (strip). Senza la condizione il test fallisce. Esito: ok.
+- `modules/crm/copia_cifrata.py:166`: ramo d'eccezione di `_genitore_assente`, ora solo per PermissionError (prima per ogni OSError). Rischio: perdere il consiglio quando is_dir solleva. Non succede: senza la chiamata un test fallisce. Esito: ok.
+- `modules/crm/copia_cifrata.py:191` e `modules/crm/copia_cifrata.py:285`: consiglio nella prova all'avvio e nella copia del guardiano, quindi R-828-1 è chiusa. Rischio: che la scrittura negata non arrivi al ramo. Esito: ok.
+  - Togliendo il consiglio da una delle due chiamate, un test fallisce.
+  - Prova reale come utente nobody, con permesso negato vero dal sistema e cartella di iCloud finta: sia con la cartella senza scrittura (0555) sia con la cartella delle copie già esistente in sola lettura. Su 3.12 e 3.13 l'avvio, la copia e la prova con la variabile impostata danno il consiglio; una cartella fuori da iCloud dà il motivo generico.
+  - Nel log resta solo il tipo dell'errore. Il testo va anche nell'avviso Telegram (`modules/crm/server.py:289`), ma non contiene dati dei clienti.
+- `modules/crm/copia_cifrata.py:376`: la pulizia dei ripristini interrotti è già approvata in #828 e non è cambiata. Il test `tests/test_unit_crm.py:1832` funziona (PID 999999996 morto, `dest` intatto). Esito: ok.
+- `tests/test_unit_crm.py:1907`: mkdir negato sotto la cartella di iCloud finta, poi variabile impostata (`tests/test_unit_crm.py:1918`). Alla fine (`tests/test_unit_crm.py:1923`) `ICLOUD_DRIVE` resta quella finta, ma `is_dir_negato` la legge dal modulo al momento, quindi la parte finale prova ancora il permesso negato. Esito: ok.
+
+**Riserva**
+- **R-829-1 COSMETICA**: il restringimento «solo PermissionError» (`modules/crm/copia_cifrata.py:124`) non ha test. Col mutante «ogni eccezione» la suite resta a 138 passed: per esempio un disco pieno su iCloud direbbe «dai all'app l'accesso ai file». Rimedio: un caso con OSError(ENOSPC) o TimeoutError sotto la cartella di iCloud finta, che pretenda il motivo generico.
+
+**Verifiche rieseguite**
+- Suite CRM: 138 passed sull'albero dell'indice (Python 3.13).
+- Mutanti: senza consiglio nella prova, nella copia o nel ramo del genitore, «oppure» fisso, ogni percorso: 1 failed ciascuno. Il mutante «ogni eccezione» passa: è R-829-1.
+- mypy: 0 errori in modules/crm.
+- Non ho rifatto il confronto con l'indice di #828 (non è salvato). I mutanti coprono la stessa prova.
+
+**Note non classificate (già presenti, non vengono da questo diff)**
+- Il confronto con `ICLOUD_DRIVE` guarda il percorso così com'è scritto. Una variabile scritta con maiuscole diverse o passando da un collegamento simbolico riceve il motivo generico. Il percorso predefinito corrisponde sempre.
+- Con la libreria cryptography rotta (il Python 3.11 di questo container, dove manca `_cffi_backend`), pyo3 solleva un PanicException, che non è un Exception: esce da `copia_fuori`. È un difetto dell'installazione del container, non del Mac.
+
+**Rischi esplicitamente esclusi**
+- Il comportamento vero dei permessi di macOS non è verificato perché non si riproduce su Linux: non so se nega lo stat o la scrittura, se l'errore è EPERM o EACCES, né se la voce in Impostazioni di Sistema si chiama così. L'ho simulato con monkeypatch e con un EACCES vero come nobody.
+- Python 3.14 non è installato: non ho verificato se lì `Path.is_dir` smette di sollevare e quindi il ramo di `_genitore_assente` cambia motivo.
+- La prova reale su 3.11 non si fa: nel container manca un cryptography funzionante per 3.11.
+
+**Memoria**
+- Aggiunta la riga #829-CRM e una lezione nuova: quando un diff restringe una condizione serve un test del caso escluso.
+- Committata con `scripts/commit_memoria_revisore.sh` (commit 19f5fe2d).
+- Il diff staged è intatto: non ho creato `.claude/.review_ok` e non ho committato il diff.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - **`tests/test_unit_crm.py`:** 136 su main d03e5bf2 → 137 (d62adafb) → 138 passed (a9dbf6be).
   - d62adafb: `test_v1_bot387b_ripristino_interrotto_non_resta_in_chiaro` nuovo e `test_ve386c_note_del_terzo_giro` aggiornato falliscono sul codice di d809f5f1 (2 failed, 135 passed).
   - a9dbf6be: `test_r825_2_cartella_non_valida_o_icloud_negato_il_crm_parte` nuovo e `test_v1_bot387b…` aggiornato falliscono sul codice di d62adafb (2 failed, 136 passed); il caso a un componente fallisce sul diff bocciato #826 (1 failed, 137 passed).
+  - a565c7b6: nessun test nuovo (estesi `test_v1_bot387b…` e `test_r825_2…`); col codice di 0d946f08 falliscono quei 2 (136 passed), con la copia_cifrata approvata in #828 fallisce `test_r825_2…` (137 passed). Totale invariato: 138 passed.
 - **Kernel** (`gas.py`, `tests/test_unit_kernel.py`): non toccato.
 - **mypy:** 0 errori in `modules/crm`.
 
@@ -241,16 +349,21 @@ Review #827-CRM. È il secondo giro della #826 (BOCCIATO). Ho esaminato il diff 
 
 `gh run list` non usato: in questa sessione cloud GitHub si interroga con gli strumenti MCP.
 - PR #387 mergiata con CI verde su d809f5f1: unit-suite success e handoff-check success (run 44746651994), verifica-bot neutral (run 44746659372, verdetto APPROVATO CON RISERVE).
+- PR #388 su 0d946f08: unit-suite success e handoff-check success (run 44752577700), verifica-bot success (run 44752583500, verdetto APPROVATO CON RISERVE); su 538a8948 verifica-bot annullato (head cambiata).
 - Mappatura commit→run:
-  - `5e959f65`, `5d83286f`, `d62adafb`, `68e849ed`, `49ea2fb7`, `a9dbf6be`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa; i commit intermedi non avranno una run propria.
-  - `538a8948` (primo fine-task della fetta): run appena partita al push, esito non ancora disponibile alla scrittura dell'handoff.
+  - `5e959f65`, `5d83286f`, `d62adafb`, `68e849ed`, `49ea2fb7`, `a9dbf6be`: nessuna run su questi SHA (pushati insieme a 538a8948; l'albero testato è quello di 538a8948).
+  - `538a8948`: run CI del push (superata dal push di 0d946f08); verifica-bot annullato.
+  - `0d946f08`: run CI 44752577700 (unit-suite success, handoff-check success), verifica-bot 44752583500 success.
+  - `ab5d5f81`, `19f5fe2d`, `a565c7b6`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **Rischi non verificabili qui (revisori #825 e #827, non c'è un Mac):** macOS che blocca iCloud Drive (TCC), `os.path.ismount` sui dischi esterni, riuso dei PID dopo un riavvio (il resto viene tenuto: verso sicuro).
-- **Limite dichiarato (revisore #825, non riserva):** il temporaneo in chiaro di un ripristino interrotto viene tolto solo al ripristino seguente verso la stessa destinazione e se questa non c'è ancora.
+- **Limite dichiarato (revisore #825, ridotto in a565c7b6):** il temporaneo in chiaro di un ripristino interrotto viene tolto al ripristino seguente verso la stessa destinazione (ora anche se questa esiste già); con un'altra destinazione resta.
 - **Note cosmetiche (revisore #827, non riserve):** il motivo di `_genitore_assente` ripete «nessuna copia fuori dal Mac» dentro l'avviso della copia esterna. La guida ora dice che la cartella deve essere un percorso completo.
+- **R-829-1 (COSMETICA):** manca un test che il consiglio di iCloud NON compaia per errori diversi dal permesso negato (es. disco pieno).
+- **Note non classificate (revisore #829):** il confronto con `ICLOUD_DRIVE` guarda il percorso scritto (maiuscole diverse o collegamenti simbolici danno il motivo generico); una cryptography rotta che solleva PanicException esce da `copia_fuori` (difetto dell'installazione del container).
 - **Verifica esterna #387 V-4 (COSMETICA):** dopo il tempo massimo il thread della prova resta vivo; innocuo.
-- **Chiuse in questa sessione:** bot V-1/V-2 e verifica esterna V-2 su d809f5f1; R-824-1, R-824-2, R-825-1, R-825-2, R-826-1, R-826-2. La verifica esterna V-1 (il «sì» dell'operatore non verificabile da file) riguarda #387, già mergiata col via dato in chat; V-3 (§6 senza stato CI) è strutturale.
+- **Chiuse in questa sessione:** bot V-1/V-2 e verifica esterna V-2 su d809f5f1; R-824-1, R-824-2, R-825-1, R-825-2, R-826-1, R-826-2; bot V-1/V-2 su 0d946f08 (#388); R-828-1, R-828-2. Verifica esterna #388 (V-1 CI non conclusa: ora verde su 0d946f08; V-2 strutturale; V-3 = limite chiuso da a565c7b6). La verifica esterna V-1 (il «sì» dell'operatore non verificabile da file) riguarda #387, già mergiata col via dato in chat; V-3 (§6 senza stato CI) è strutturale.
 - **Ancora aperte da prima:** R-810-2, R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4 (vedi `reports/stato_progetto.md`).
