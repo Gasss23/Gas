@@ -1,229 +1,109 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-20 — CRM fetta 7: note basse della PR #386, R-821-1 e finding del bot sulla PR #387 (b098adf1)
+**Sessione:** 2026-11-20 — M1 — Voce: `registra_voce.py` tiene solo «Hey Jarvis» riconosciuti dal modello
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #387 (https://github.com/Gasss23/Gas/pull/387). L'operatore ha già dato il via in chat il 20-11 («ok mergia quando è tutto verde»): la mergia l'agente con CI verde e bot senza finding ALTA/MEDIA sul nuovo head.
-2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`), salvata anche nel gestore di password; poi `pip install -r requirements.txt`.
-3. Verificare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti sincronizzate con iCloud.
-4. Secondo passaggio nella chat claude.ai col link della PR #387 (riservatezza delle copie dei clienti).
+1. Merge della PR di questo ramo (fix/voce-registra-solo-parola): con riserve del bot serve il «mergia» dell'operatore; lo esegue l'agente.
+2. Dopo il merge, sul Mac: `git pull`, poi rifare la registrazione (`bash scripts/voce/pausa.sh`, `.venv/bin/python scripts/voce/registra_voce.py`, `bash scripts/voce/riprendi.sh`) e incollare il riepilogo.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 7 — note basse sull'ultimo commit della PR #386 (8a107c47) e R-820-1**: FATTA, commit 99e0dcb8. Review #821-CRM APPROVATO CON RISERVE (R-821-1 BASSA).
-  - Bot V-1 (guida), V-2 (indicatore se fallisce la copia locale), V-3 (temporaneo del ripristino).
-  - Verifica esterna #386 V-1 (disco non collegato), V-3, V-4 (file di lavoro come collegamento pendente), V-5 (copia locale rovinata); residuo `.prova-*.tmp`; R-820-1 (prova all'avvio con tempo massimo).
-- **Correzione #822 — R-821-1 e punto di mount vuoto in `/Volumes`**: FATTA, commit 4a442c4f. Review #822-CRM APPROVATO.
-- **Correzione #823 — V-1 MEDIA e V-2 del bot sulla PR #387 (b098adf1)**: FATTA, commit 2b4d32f2. Review #823-CRM APPROVATO.
-  - V-1: un permesso negato sulla cartella delle copie (PermissionError da `is_dir` fuori dal try) rompeva la copia e faceva dire «ATTIVA» all'avvio.
-  - V-2: `_integro` creava un file vuoto su un percorso inesistente; ora apre in sola lettura.
-  - Chiusa anche la nota minore del revisore #822 (collegamento simbolico verso `/Volumes`, «/volumes» minuscolo).
-- **Regola in CLAUDE.md §10** (doc): non fermarsi ad aspettare il merge (operatore, 20-11).
+- **Sonda (operatore, 20-11):** le tre clip «altra stanza / camminando / di spalle» ascoltate con `afplay` erano rumori della lavastoviglie e delle pentole, non «Hey Jarvis». Il controllo era solo sul volume.
+- **Fetta #810 — controllo della parola nella registrazione:** FATTA, commit 992cef9b. Review #810-M1coord APPROVATO CON RISERVE (R-810M1-1, R-810M1-2 BASSE).
+- **Fetta #811 — parola tagliata all'inizio della finestra:** FATTA, commit e27c655a. Review #811-M1coord APPROVATO (R-810M1-1 chiusa).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- CLAUDE.md                          |   1 +
- modules/crm/__main__.py            |   9 ++------
- modules/crm/copia_cifrata.py       |  98 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- modules/crm/server.py              |  47 ++++++++++++++++++++++++--------------
- reports/crm/guida.md               |   4 ++--
- reports/diff_sessione.md           |  25 ++++++++++----------
- reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  62 ++++++++++++++++++++------------------------------
- tests/test_unit_crm.py             | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+(da rigenerare)
 ```
-
-NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base della sessione: 0aa26672 (origin/main, dopo il merge della PR #386).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-2b4d32f2 fix(crm): permesso negato sulla cartella delle copie non rompe più la copia né dà ATTIVA all'avvio; controllo di integrità in sola lettura (V-1 MEDIA e V-2 del bot su #387) — review #823 APPROVATO
-5b815013 chore(revisore): memoria review #823 — APPROVATO
-4a442c4f fix(crm): indicatore rosso se fallisce la copia sul Mac anche a copia esterna spenta; disco esterno con punto di mount vuoto riconosciuto (R-821-1) — review #822 APPROVATO
-47188b59 chore(revisore): memoria review #822 — APPROVATO
-b098adf1 docs(fine-task): handoff — PR #387 aperta con l'etichetta verifica
-5f9d3c8c docs(fine-task): CRM fetta 7 — note basse della PR #386 chiuse, review #821; regola «non fermarsi ad aspettare il merge»
-99e0dcb8 fix(crm): copie fuori dal Mac più solide — disco non collegato, copia locale rovinata, temporaneo del ripristino esclusivo, avvio con tempo massimo, indicatore anche se fallisce la copia locale
-1307a80f chore(revisore): memoria review #821 — APPROVATO CON RISERVE
+(da rigenerare)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #821-CRM (commit 99e0dcb8)
+### Review #810-M1coord (commit 992cef9b)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #821-CRM sul diff staged (4 file, +162/−31). Ramo ripartito da main 0aa26672 (PR #386 mergiata).
+Review #810-M1coord — diff staged su fix/voce-registra-solo-parola (3 file, +118/−15). Suite `tests/test_unit_voce_ascolto.py` rieseguita: **375 passed**.
 
-Chiude le note BASSE del bot e della verifica esterna su 8a107c47 e la mia R-820-1. Resta una sola riserva BASSA: con la copia esterna spenta, un fallimento della copia locale non si vede (R-821-1).
+**Elementi del diff esaminati**
+- `scripts/voce/registra_voce.py:371` — `MotoreOWW.misura`: `oww.reset()` a ogni clip, poi 12 blocchi di silenzio prima della clip. Rischio: punteggio sporcato dalla clip precedente o dal ciclo degli esempi (`addestra` usa poi lo stesso modello). Esito ok: anche `blocchi()` fa reset a ogni ripetizione (`scripts/voce/registra_voce.py:358`); l'indice restituito non conta il silenzio, quindi è corretto; i blocchi del microfono sono liste di int, quindi `np.asarray(..., int16)` funziona. Differenza trascurabile: in `blocchi` il silenzio davanti è di 12,5 blocchi, qui di 12.
+- `scripts/voce/registra_voce.py:295` — taglio sul picco: `fine = min(len, i+1+6)`, `inizio = max(0, fine-38)`. Rischio: picco agli estremi della finestra. Esito: riserva.
+  - Picco a fine finestra: ok, si tengono gli ultimi 3 s.
+  - Picco nei primi blocchi: clip cortissima, fino a 7 blocchi (0,56 s) → R-810M1-1.
+  - Gruppi vicini (finestra di 3 s): ora anche lì la clip si accorcia, finendo 0,5 s dopo il picco. Innocuo: in addestramento la clip viene allungata con silenzio e il punteggio ricalcolato.
+- `scripts/voce/registra_voce.py:265` — ciclo delle prove. Esito: ok.
+  - Un bip per prova: il conteggio torna (4 bip e 4 svuotamenti nel test esistente, `tests/test_unit_voce_ascolto.py:3534`).
+  - `dorme(SEC_FRA_CLIP)` (`scripts/voce/registra_voce.py:268`) dopo ogni prova, riuscita o no, prima del bip successivo.
+  - `n` aumenta solo quando si salva (`scripts/voce/registra_voce.py:271`): nomi dei file consecutivi e senza buchi; «✓ n di totale» non arriva a 15 se si salta qualcosa, ed è giusto.
+  - Il `for/else` stampa «dopo 3 prove la salto» solo se nessuna prova va a segno. Cosmetico: variabile `prova` non usata.
+- `scripts/voce/registra_voce.py:593` — main passa `misura=getattr(m, "misura", None)` e `soglia_parola=soglia_base`. Rischio: soglia diversa da quella dell'addestramento. Esito ok: è la stessa soglia con cui `addestra` già scartava i blocchi, quindi una clip rifiutata qui non sarebbe servita comunque. Un'eccezione di onnx dentro `misura` finisce nel `except Exception` di main: messaggio, nessun traceback né crash, ma la registrazione si chiude tutta (le clip già salvate restano).
+- `tests/test_unit_voce_ascolto.py:3544` e `tests/test_unit_voce_ascolto.py:3563` — i due test nuovi (rumore scartato e saltato dopo 3 prove; finestra di 6 s e taglio sul picco) hanno verifiche precise. Esito: ok. Manca il caso del picco vicino all'inizio.
 
-**Verifiche rifatte da me:**
-- Suite CRM: 133 passed. mypy pulito su modules/crm.
-- Fail-before su main 0aa26672 col file di test nuovo: falliscono i 2 test nuovi, 131 passano.
-- Tre prove a mano (risultati sotto):
-  1. disco non collegato;
-  2. cartella che non risponde;
-  3. copia locale fallita con la copia esterna spenta.
-- Kernel non toccato. Nessuno slicing della history, nessuna simulazione di tool.
+**Riserve (BASSE, da segnare in stato_progetto.md)**
+- **R-810M1-1 BASSA**: picco nei primi blocchi della finestra lunga (parola cominciata prima che si aprisse) → clip di 0,56 s o poco più. In addestramento verrebbe scartata «sotto soglia», ma intanto conta come «✓» e consuma una delle 15 prese. Correzione: rifiutare con «rifallo» se il picco è troppo presto, con un test.
+- **R-810M1-2 BASSA**: il messaggio dice «ogni 7,5 s», ma il ciclo vero dura di più (bip, tempo di `misura`, svuotamento). Dall'altra stanza, senza bip, la parola può cadere nella pausa e quell'audio si butta. Le 3 prove attenuano; da verificare nella prova sul Mac.
 
-### Riserva
+**Coerenza col progetto**: va nella direzione giusta (niente rumori addestrati come «Hey Jarvis»). Non tocca kernel, cronologia né provider. Nessuna voce del Wall of Shame: il taglio `blocchi[inizio:fine]` lavora su campioni audio, non sulla cronologia. Nota: «camminando» e «di spalle» (attesa 5 s) restano sulla finestra di 3 s, che va bene solo perché lì il bip si sente; il controllo della parola vale comunque anche per loro.
 
-**1. R-821-1 — BASSA — con la copia esterna spenta, un fallimento della copia locale non si vede.**
-- **Prova:** senza password, cioè con la copia esterna spenta, `_copia_giornaliera` (`modules/crm/server.py:297`) segna l'esito come `{'spenta': True, 'ok': None, 'motivo': 'la copia sul Mac non è riuscita…'}`.
-- **Cosa vede l'operatore:** la dashboard mostra «☁ copia spenta», non il rosso. Il fallimento della copia locale compare solo nel title e nel log, e non parte nessun avviso.
-- **Perché pesa poco:** con la copia esterna attiva, cioè il caso scelto dall'operatore, il fallimento invece si vede e parte l'avviso: il V-2 del bot è chiuso.
-- **Rimedio:** un campo a parte per la copia locale, o il rosso anche quando la copia esterna è spenta.
+**Rischio escluso**: microfono vero e modello onnx sul Mac (tempo di `misura` per clip, punteggi reali della voce da 3 metri e dall'altra stanza rispetto alla soglia 0,25) non verificati: qui non ci sono né il microfono né openWakeWord. Mi fido della prova dichiarata con espeak (0,996 contro 0,07), senza averla rieseguita.
 
-### Elementi del diff esaminati
+Memoria aggiornata con la riga #810-M1coord e una lezione nuova (ritaglio attorno a un picco: controllare anche il picco vicino all'inizio), poi `scripts/commit_memoria_revisore.sh`.
 
-- **`modules/crm/copia_cifrata.py:107` — la cartella delle copie si crea solo se esiste quella che la contiene** (niente più `parents=True`), sia nella prova sia nella copia.
-  - Prova a mano: con la cartella su un disco «non collegato», l'avvio dice «NON FUNZIONA (… non c'è (disco non collegato?) …)» e non viene creata nessuna cartella sul disco del Mac.
-  - Rischio esaminato: una copia che «riesce» senza uscire dal Mac.
-  - Esito: ok.
-- **`modules/crm/copia_cifrata.py:198` — `_integro` sulla copia locale prima di cifrare.**
-  - Rischio esaminato: una copia locale rovinata che sostituisce la copia buona del giorno, visto che il nome è per giorno. Ora la copia del giorno resta quella di prima, e il test lo controlla.
-  - Esito: ok.
-- **`modules/crm/copia_cifrata.py:288` — temporaneo del ripristino unico e creato in esclusiva.**
-  - Con O_EXCL l'apertura fallisce anche su un collegamento simbolico, anche pendente, quindi non scrive mai dentro un altro file.
-  - Su `FileExistsError` il file non è nostro e il `finally` non lo tocca.
-  - Il controllo dei file di lavoro ora vede anche i collegamenti pendenti (`modules/crm/copia_cifrata.py:275`).
-  - I `.prova-*.tmp` più vecchi di un'ora vengono tolti (`modules/crm/copia_cifrata.py:235`).
-  - Esito: ok.
-- **`modules/crm/copia_cifrata.py:146` — `esito_all_avvio`:** la prova gira in un thread daemon con tempo massimo, e `serve` stampa solo la riga che ne esce (`modules/crm/__main__.py:131`).
-  - Prova a mano con una prova che dura 30 s: «NON VERIFICATA» dopo 1,0 s, e il server parte.
-  - Chiude R-820-1. Il thread bloccato resta daemon e non trattiene l'uscita del processo.
-  - Esito: ok.
-- **`modules/crm/server.py:297` — `_copia_giornaliera` e `_segna_copia`:** copia locale nel guardiano, copia esterna in un thread a parte (resta valida R-815-4).
-  - Se la copia locale fallisce, l'indicatore passa a «NON riuscita» e parte l'avviso, ma solo con la copia esterna attiva (vedi R-821-1).
-  - L'avviso non contiene dati dei clienti.
-  - Esito: ok, salvo R-821-1.
-- **`tests/test_unit_crm.py:1648` e `tests/test_unit_crm.py:1708`:** coprono disco non collegato, copia locale rovinata, `.prova` vecchia, collegamento simbolico al posto del temporaneo, journal pendente, prova lenta, copia locale fallita.
-  - Sul codice di main falliscono entrambi.
-  - Esito: ok.
-
-### Rischi esplicitamente NON verificati
-
-- Su macOS, a volte un punto di mount resta in `/Volumes` come cartella vuota anche a disco staccato. In quel caso `_genitore_assente` vedrebbe la cartella «che la contiene» e la copia finirebbe sul disco del Mac. Qui non è riproducibile, e il default (iCloud Drive) non è toccato. Per un disco esterno si potrebbe controllare che il percorso sia davvero un mount (`os.path.ismount`).
-- Comportamento vero di iCloud Drive e dei permessi di macOS: non c'è un Mac qui.
-- Documenti fuori stage (guida, frase di CLAUDE.md §10): non letti.
-
-### Note
-
-- Restano aperte dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
-- Riga contatore #821-CRM aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (commit 1307a80f). Il diff staged è intatto (4 file).
-- Non ho creato `.claude/.review_ok` e non ho committato il diff.
-
-### Review #822-CRM (commit 4a442c4f)
+### Review #811-M1coord (commit e27c655a)
 
 ## VERDETTO: APPROVATO
 
-Review #822-CRM sul diff staged (3 file, +45/−4), sopra b098adf1 (head della PR #387). Chiude la mia R-821-1 e il rischio che nel #821 avevo lasciato non verificato: il punto di mount vuoto in /Volumes.
+Review #811-M1coord — diff staged su fix/voce-registra-solo-parola (2 file, +22/−2).
 
-**Verifiche rifatte da me:**
-- Suite CRM: 135 passed. mypy pulito su modules/crm.
-- Fail-before: con il codice di b098adf1 e il file di test nuovo falliscono i 2 test nuovi (133 passati).
-- Kernel non toccato. Nessuno slicing della history, nessuna simulazione di tool.
+**Elementi del diff esaminati**
+1. `scripts/voce/registra_voce.py:296` — picco prima di `blocchi_per(SEC_PICCO_MINIMO)` (6 blocchi): clip scartata, «tagliato all'inizio», nuova prova.
+   - Rischio: indice contato sulla finestra registrata, non sul secondo di silenzio messo davanti da `misura`. In `scripts/voce/registra_voce.py:373` il silenzio passa prima di `enumerate(blocchi)`, quindi `i` parte da 0 sulla finestra.
+   - Rischio: confine stretto (`<`), l'indice 6 viene accettato; il test lo copre.
+   - 0,5 s invece di 32 blocchi è giusto per la finestra di 3 s dei gruppi vicini.
+   - Esito: ok, R-810M1-1 chiusa.
+2. `scripts/voce/registra_voce.py:266` — `prova` diventa `_prova` con `range(TENTATIVI_PAROLA)`: sempre 3 prove; «dopo %d prove la salto» usa la costante. Esito: ok.
+3. `tests/test_unit_voce_ascolto.py:3590` — test nuovo: indice 1 alla prima prova (scartata), 6 alla seconda (salvata); controlla il messaggio e una sola clip salvata. Esito: ok. Rieseguito sul sorgente senza la correzione (aggiungendo solo la costante): fallisce; con la correzione passa.
+4. `tests/test_unit_voce_ascolto.py:3555` — il test sul rumore usa l'indice 20 (prima 0, che con la regola nuova verrebbe scartato). Esito: ok.
 
-**Elementi del diff esaminati:**
-- `modules/crm/server.py:306` — se la copia LOCALE fallisce, `_segna_copia(stato, None, False, …)`: l'indicatore diventa rosso e parte l'avviso anche con la copia esterna spenta.
-  - Rischio esaminato: lo stato «falso rosso» che resta dopo. Alla copia locale successiva riuscita, `_copia_esterna` ricalcola `motivo_spenta()` e rimette lo stato reale (spenta oppure ok).
-  - Test: `tests/test_unit_crm.py:1720`, senza password: ok False, spenta False, motivo presente, 1 avviso.
-  - Esito: ok.
-- `modules/crm/copia_cifrata.py:108` — `_genitore_assente`: dopo il controllo della cartella che la contiene, per un percorso sotto `/Volumes` richiede che il primo livello sia un mount vero (`os.path.ismount`, `modules/crm/copia_cifrata.py:121`).
-  - Rischio esaminato: un disco staccato il cui punto di mount resta come cartella vuota sul disco del Mac. Ora la prova dice «non è collegato» e non crea nessuna cartella.
-  - Fuori da /Volumes (iCloud Drive) non cambia nulla: `relative_to` fallisce e la funzione ritorna None.
-  - Un `/Volumes/Macintosh HD`, che è un collegamento al disco del Mac, viene rifiutato: è il verso giusto, quella non è una copia fuori dal Mac.
-  - Test: `tests/test_unit_crm.py:1734`, con `VOLUMI` sostituita da una cartella temporanea; con `ismount` vero la prova riesce.
-  - Esito: ok.
+**Prove eseguite**: suite voce 376 passed (rieseguita). Nessuno slicing della storia, nessun output di tool simulato; `gas.py`/`brains` non toccati.
 
-**Nota minore, non classificata come riserva:** il controllo del mount guarda il percorso così com'è, senza risolverlo (`modules/crm/copia_cifrata.py:118`). Un collegamento simbolico che porta dentro /Volumes (per esempio `~/Backup` → `/Volumes/Disco/…`), oppure «/volumes» scritto in minuscolo su un disco che non distingue maiuscole e minuscole, salta il controllo. Basterebbe risolvere il percorso prima di `relative_to`.
+**Cosa non ho verificato**: con una voce vera il modello potrebbe dare il picco prima di 0,5 s a chi parla subito dopo il bip (rifiuti inutili, non clip sbagliate; le 3 prove attenuano). Serve il microfono del Mac. R-810M1-2 resta aperta.
 
-**Rischio esplicitamente NON verificato:** il comportamento vero di `os.path.ismount` sui dischi esterni di macOS (APFS, exFAT, dischi di rete montati in /Volumes). Qui non c'è un Mac; il test sostituisce `ismount`.
+**Incidente di procedura, già sistemato**: durante la prova ho usato `git stash` / `stash pop`, che ha rimesso le modifiche come non staged; le ho rimesse in stage con `git add` sui 2 file. Lo staged è identico (2 file, +22/−2, niente non staged).
 
-**Note:**
-- Questo commit resta locale fino al merge della #387, poi va in una PR nuova, come previsto.
-- Restano aperte dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
-- Ho aggiunto la riga contatore #822-CRM in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit 47188b59). Il diff staged è intatto (3 file).
-- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+**Memoria**: aggiunta la riga #811-M1coord e una lezione (niente `stash pop` senza `--index` per provare un test sullo staged); poi `bash scripts/commit_memoria_revisore.sh`.
 
-### Review #823-CRM (commit 2b4d32f2)
-
-## VERDETTO: APPROVATO
-
-Review #823-CRM sul diff staged (2 file, +90/−21), sopra 4a442c4f. Chiude la V-1 MEDIA del bot su b098adf1 (PR #387), la sua V-2 e la mia nota minore del #822; non ho trovato riserve nuove.
-
-**Verifiche rifatte da me:**
-- Suite CRM: 136 passed. mypy pulito su modules/crm.
-- Fail-before: col codice di 4a442c4f e il file di test nuovo, `test_v1_bot387_permesso_negato_non_rompe_la_copia` fallisce (1 failed, 135 passed).
-- Prove a mano su `_integro`, la funzione che controlla se il database è integro:
-  - percorso con spazi, `#` e `?` nel nome → True, quindi l'URI viene codificato correttamente;
-  - percorso inesistente → False, e nessun file viene creato;
-  - collegamento simbolico che punta a se stesso → False, nessuna eccezione.
-- Kernel non toccato. Nessuno slicing della history, nessuna simulazione di tool.
-
-**Elementi del diff esaminati:**
-- `modules/crm/copia_cifrata.py:108` — `_genitore_assente` ha tutto il corpo in try/except OSError (`modules/crm/copia_cifrata.py:129`), quindi un permesso negato su `is_dir` diventa un motivo leggibile e non un'eccezione. Il controllo del mount usa il percorso risolto (`modules/crm/copia_cifrata.py:121`) e confronta i primi livelli senza badare a maiuscole e minuscole, sia per la destinazione sia per `VOLUMI`.
-  - Rischi esaminati: una PermissionError che fa fallire `copia_fuori`, che deve invece non sollevare mai; un collegamento simbolico verso /Volumes, o «/volumes» minuscolo, che saltava il controllo (la mia nota #822).
-  - `os.path.ismount` gestisce già da sé i propri errori.
-  - Con il percorso risolto, `/Volumes/Macintosh HD/…` porta al disco del Mac e viene accettato come una qualunque cartella del Mac. È coerente: il controllo serve a scoprire i dischi staccati, non a vietare le cartelle locali.
-  - Esito: ok.
-- `modules/crm/copia_cifrata.py:221` — in `copia_fuori` il controllo della cartella e quello di integrità della copia locale ora stanno DENTRO il try. A quel punto `tmp` vale ancora None, quindi il `finally` non tocca niente. Così una copia fallita aggiorna di nuovo l'indicatore in dashboard e manda l'avviso.
-  - Esito: ok.
-- `modules/crm/copia_cifrata.py:172` — `esito_all_avvio` parte da «prova non conclusa per un errore inatteso», e il thread intercetta ogni eccezione. Solo una prova che finisce senza errori dà ATTIVA.
-  - Rischio esaminato: un «ATTIVA» stampato dopo un'eccezione nel thread.
-  - Esito: ok.
-- `modules/crm/copia_cifrata.py:278` — `_integro` apre il database in sola lettura (URI `mode=ro`), quindi un percorso inesistente non diventa un file vuoto. I tre chiamanti (copia locale appena fatta, `.ripristino.tmp` appena scritto, `dest` dopo il posizionamento) non hanno journal rimasti: il caso del journal è già rifiutato prima.
-  - Esito: ok.
-- `tests/test_unit_crm.py:1750` — copre permesso negato, prova che solleva un'eccezione, `_integro` su un percorso inesistente e collegamento simbolico verso un disco non montato.
-  - Esito: ok.
-
-**Rischio esplicitamente NON verificato:** il comportamento vero di macOS con TCC che nega `~/Library/Mobile Documents`. Qui il caso è simulato sostituendo `Path.is_dir`. Su Python 3.11 della CI `Path.resolve` passa da `os.path.realpath` e non solleva sui collegamenti ad anello; l'ho provato solo con Python 3.13 del container.
-
-**Note:**
-- Questi commit vanno sulla PR #387 insieme al #822, come previsto.
-- Restano aperte dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
-- Ho aggiunto la riga contatore #823-CRM in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit 5b815013). Il diff staged è intatto (2 file).
-- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- **`tests/test_unit_crm.py`:** 131 su main 0aa26672 → 133 (#821) → 135 (#822) → 136 passed (#823).
-  - #821: `test_ve386c_note_del_terzo_giro`, `test_v2_bot386c_copia_locale_fallita_si_vede` falliscono sul codice di main (2 failed, 131 passed).
-  - #822: i 2 test `test_r821_*` falliscono sul codice di b098adf1 (133 passati).
-  - #823: `test_v1_bot387_permesso_negato_non_rompe_la_copia` fallisce sul codice di 4a442c4f (1 failed, 135 passed).
+- **`tests/test_unit_voce_ascolto.py`:** 373 su main d03e5bf2 → 375 (#810) → 376 passed (#811). Il test di #811 fallisce sul codice di 992cef9b (rieseguito dal revisore).
+- **Prova col modello vero** (openWakeWord 0.6.0 in un venv locale): `MotoreOWW.misura` su «Hey Jarvis» di espeak → (0,996, blocco 38); su rumore casuale → 0,07.
 - **Kernel** (`gas.py`, `tests/test_unit_kernel.py`): non toccato.
-- **mypy:** 0 errori in `modules/crm`.
 
 ## §6 STATO CI
 
-`gh run list` non usato: in questa sessione cloud GitHub si interroga con gli strumenti MCP.
-- Head precedente della PR #387, b098adf1: handoff-check success (run 44745012051); unit-suite in corso alla scrittura dell'handoff; verifica-bot failure (run 44745017566: verdetto del bot BOCCIATO per V-1 MEDIA, chiusa da 2b4d32f2).
-- Mappatura commit→run:
-  - `1307a80f`, `99e0dcb8`: nessuna run su questi SHA (pushati insieme a 5f9d3c8c; l'albero testato è quello di 5f9d3c8c).
-  - `5f9d3c8c`: run CI 44744925231 (superata dal push di b098adf1); verifica-bot 44744965200 annullata.
-  - `b098adf1`: run CI 44745012051, verifica-bot 44745017566 (vedi sopra).
-  - `47188b59`, `4a442c4f`, `5b815013`, `2b4d32f2`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa.
-  - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+Run della PR non ancora disponibile alla scrittura dell'handoff: il ramo si pusha col commit di fine-task che contiene questo file, e una sola run testerà l'albero di testa.
 
 ## §7 RISERVE APERTE
 
-- **Rischi non verificabili qui (revisori #822 e #823, non c'è un Mac):** comportamento vero di `os.path.ismount` sui dischi esterni di macOS; blocco dei permessi di macOS (TCC) su `~/Library/Mobile Documents`, simulato nei test.
-- **Chiuse in questa sessione:**
-  - V-1/V-2/V-3 del bot su 8a107c47 (V-4 era documentale); V-1/V-3/V-4/V-5 della verifica esterna #386 (3° giro, https://github.com/Gasss23/Gas/pull/386#issuecomment-7026471536); R-820-1 (#821);
-  - R-821-1 e il rischio del punto di mount vuoto (#822);
-  - V-1 MEDIA e V-2 del bot su b098adf1, nota minore del revisore #822 (#823);
-  - V-1/V-2/V-3 della verifica esterna su #387 (https://github.com/Gasss23/Gas/pull/387#issuecomment-7040844433): chiuse da #822 e #823.
-- **Ancora aperte da prima:** R-810-2, R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4 (vedi `reports/stato_progetto.md`).
+- **R-810M1-2 BASSA:** tempi del messaggio «ogni N secondi» quando il bip non si sente: da verificare sul Mac.
+- **Non verificabile qui:** punteggi reali della voce dell'operatore da lontano col microfono del MacBook.
+- **Chiusa in questa sessione:** R-810M1-1 (#811).
+- **Dalle PR #382/#383 (note basse del bot):** ripiego del filtro durante l'ascolto e controllo delle cartelle sopra (#382 V-1/V-2); varianti di «Jarvis» in tutti i punti e «Dimmi.» su una variante nel seguito (#383 V-2/V-3).
