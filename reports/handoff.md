@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-20 — CRM fetta 8: note basse di bot e verifica esterna sulle PR #387 (d809f5f1) e #388 (0d946f08) e riserve del revisore #824–#828
+**Sessione:** 2026-11-20 — CRM fetta 8: note basse di bot e verifica esterna sulle PR #387 (d809f5f1) e #388 (0d946f08) e riserve del revisore #824–#829, più le note del bot su 7cd7a2f0
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #388 (https://github.com/Gasss23/Gas/pull/388), aperta dopo il push di 538a8948 con l'etichetta «verifica». Su 0d946f08: CI verde, bot APPROVATO CON RISERVE (V-1/V-2 BASSE, chiuse da a565c7b6), verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/388#issuecomment-7041948403). Le riserve aperte sono solo BASSE/COSMETICHE; senza un verdetto del bot pulito sul nuovo head serve il sì dell'operatore in chat (CLAUDE.md §10).
+1. Merge della PR #388 (https://github.com/Gasss23/Gas/pull/388), aperta dopo il push di 538a8948 con l'etichetta «verifica». Su 0d946f08: CI verde, bot APPROVATO CON RISERVE (V-1/V-2 BASSE, chiuse da a565c7b6), verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/388#issuecomment-7041948403). Su 7cd7a2f0: bot APPROVATO CON RISERVE (V-1 BASSA, V-2/V-3 COSMETICHE, chiuse da b0174be5), verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/388#issuecomment-7042376753). Le riserve aperte sono solo BASSE/COSMETICHE; senza un verdetto del bot pulito sul nuovo head serve il sì dell'operatore in chat (CLAUDE.md §10).
 2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`), salvata anche nel gestore di password; poi `pip install -r requirements.txt`.
 3. Verificare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti sincronizzate con iCloud.
 4. Secondo passaggio nella chat claude.ai col link della PR #387 e di questa PR (riservatezza delle copie dei clienti).
@@ -21,6 +21,9 @@
 - **Fetta 8c — V-1/V-2 BASSE del bot su #388 (0d946f08)**: FATTA, commit a565c7b6. Review #828 APPROVATO CON RISERVE (R-828-1 BASSA, R-828-2 COSMETICA), corrette nello stesso diff e riviste in #829 APPROVATO CON RISERVE (R-829-1 COSMETICA).
   - V-1: con iCloud Drive negato da macOS il motivo dice cosa fare (avvio, prova, copia del guardiano).
   - V-2: il temporaneo in chiaro di un ripristino interrotto viene tolto anche se la destinazione esiste già.
+- **Fetta 8d — note del bot su 7cd7a2f0**: FATTA, commit b0174be5. Review #830 APPROVATO CON RISERVE (R-830-1 BASSA).
+  - V-1: resti in chiaro più vecchi di un'ora tolti qualunque PID (riavvio); guida aggiornata.
+  - V-2: `_consiglio_icloud` col percorso risolto e casefold. V-3 (= R-829-1): test del disco pieno.
 - **Non fatte (note del bot e della verifica esterna, BASSE/COSMETICHE):** verifica esterna V-4 (il thread della prova, dopo il tempo massimo, resta vivo: innocuo) — DEFERITA, cosmetica.
 
 ---
@@ -28,15 +31,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 +++++++++
- modules/crm/copia_cifrata.py       |  93 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- modules/crm/server.py              |  25 ++++++++++++++++-----
- reports/crm/guida.md               |   2 +-
- reports/diff_sessione.md           |  21 +++++++++--------
+ .claude/agents/memoria_revisore.md |  13 ++++++++++
+ modules/crm/copia_cifrata.py       | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ modules/crm/server.py              |  25 ++++++++++++++-----
+ reports/crm/guida.md               |   4 ++--
+ reports/diff_sessione.md           |  22 ++++++++---------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  41 +++++++++++++++++----------------
- tests/test_unit_crm.py             | 136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ reports/ultimo_report.md           |  45 +++++++++++++++++++----------------
+ tests/test_unit_crm.py             | 167 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
 ```
 
 NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base della sessione: d03e5bf2 (origin/main, dopo il merge della PR #387).
@@ -44,6 +47,9 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b0174be5 fix(crm): resti in chiaro di ripristini interrotti tolti anche dopo un riavvio (più vecchi di un'ora); consiglio su iCloud anche via collegamento o con maiuscole diverse; test del disco pieno (note del bot su #388) — review #830 APPROVATO CON RISERVE
+cf6a897c chore(revisore): memoria review #830 — APPROVATO CON RISERVE
+7cd7a2f0 docs(fine-task): CRM fetta 8 — note basse del bot su #388 chiuse (review #828, #829)
 a565c7b6 fix(crm): iCloud Drive negato da macOS dà un motivo che dice cosa fare; ripristino interrotto pulito anche se la destinazione esiste già (V-1/V-2 BASSE del bot su #388) — review #828 e #829 APPROVATO CON RISERVE
 19f5fe2d chore(revisore): memoria review #829 — APPROVATO CON RISERVE
 ab5d5f81 chore(revisore): memoria review #828 — APPROVATO CON RISERVE
@@ -336,12 +342,44 @@ Review #829-CRM del diff staged (2 file, +65/−4, sopra ab5d5f81). Prima della 
 - Committata con `scripts/commit_memoria_revisore.sh` (commit 19f5fe2d).
 - Il diff staged è intatto: non ho creato `.claude/.review_ok` e non ho committato il diff.
 
+### Review #830-CRM (commit b0174be5)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #830-CRM. Diff staged di 3 file (+44/−4) sopra 7cd7a2f0, PR #388. SHA-256 del diff staged: 501ebdea9c033ddfb713925610507439f946bc74b7059840a2d43ad2dc92ccad.
+
+Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la voce «CRM fetta 6-8» di reports/stato_progetto.md e la coda della memoria del revisore (fino a #829-CRM, comprese le lezioni su PID, restringimenti e test che mordono).
+
+**Elementi del diff esaminati**
+1. `modules/crm/copia_cifrata.py:345`: il controllo «è un collegamento simbolico» viene ora prima di tutto, prima di stat e del PID. Rischio: che l'età letta tramite il collegamento faccia togliere un link o il suo bersaglio. Esito: ok. Tolto questo controllo, il test va in rosso. Nella mia prova su 3.11, 3.12 e 3.13 il link vecchio resta e il bersaglio non viene toccato.
+2. `modules/crm/copia_cifrata.py:347`: un resto più vecchio di TMP_VECCHIO_S (1 h) viene tolto qualunque sia il PID. Rischio: togliere il temporaneo di un ripristino ancora in corso. Esito: ok. Il temporaneo nasce con O_EXCL (mtime = adesso) e dopo la creazione restano solo `_integro` e `os.link`, cioè secondi. L'unica finestra è un Mac sospeso a metà ripristino con un secondo ripristino lanciato in parallelo. Anche lì niente danni: `os.link` dà FileNotFoundError, il codice ripiega sulla scrittura esclusiva dai dati in memoria e poi ricontrolla `_integro(dest)`. Mie prove: resto vecchio col PID 1 tolto; resto recente col PID 1 lasciato; mtime nel futuro lasciato (si decide col PID, come prima); hard link vecchio verso il database tolto, con `dest` intatto; una cartella con quel nome lasciata, senza eccezioni.
+3. `modules/crm/copia_cifrata.py:128` (confronto a `modules/crm/copia_cifrata.py:130`): `_consiglio_icloud` confronta i percorsi risolti, componente per componente, senza badare alle maiuscole. Rischio: falsi positivi per prefisso di stringa, eccezioni da realpath. Esito: ok. «icloud2/copie» dà None; un byte nullo dà None (finisce nell'except §9); `..` viene normalizzato. Ho provato un link verso iCloud con lstat negato dentro la cartella: il consiglio compare su 3.11, 3.12 e 3.13, perché il realpath non stretto ignora gli OSError. La lista tagliata qui è quella delle parti del percorso, non la cronologia: nessun antipattern.
+4. `tests/test_unit_crm.py:1944`, `tests/test_unit_crm.py:1949`, `tests/test_unit_crm.py:1950`: il caso ENOSPC (V-3, R-829-1), il collegamento e le maiuscole. Rischio: test che non mordono (lezione #825). Esito: ok. Ogni mutante manda in rosso un test: senza il controllo PermissionError, senza casefold, senza realpath, con «vecchio» sempre falso o sempre vero, senza is_symlink. Sopravvive solo il mutante senza `pid == os.getpid()`, ed è equivalente: `_processo_vivo(getpid)` dà già True.
+5. Prove rifatte da me: suite CRM 138 passed. Con la copia_cifrata di 7cd7a2f0 e i test nuovi: 2 failed / 136 passed. mypy: 0 errori in modules/crm. Nessuna riga oltre i 100 caratteri, `--check` pulito.
+
+**Riserve**
+- **R-830-1 BASSA**: resta una parte della V-1. Caso: Mac spento a metà ripristino, riavvio, nuovo tentativo ENTRO un'ora, e il vecchio PID ora appartiene a un processo vivo. Il resto in chiaro rimane anche dopo un ripristino riuscito, e nessun ripristino successivo lo toglierà più. Il comportamento è voluto e il test stesso lo fissa (`tests/test_unit_crm.py:1841`, `vivo.exists()`). La guida però promette «lo toglie il ripristino successivo nello stesso posto» (`reports/crm/guida.md:32`), e proprio nel caso che nomina («Mac spento a metà», riprovo subito, magari su un Mac nuovo appena acceso). Rimedio a scelta:
+  - (a) considerare morto ogni resto con mtime anteriore all'avvio del sistema;
+  - (b) almeno scrivere nella guida «se dopo il ripristino il file c'è ancora, cancellalo a mano».
+
+  Il danno è limitato: il file è 0600, sta sul Mac e contiene gli stessi dati del database accanto. È della stessa famiglia di R-808-6 (copie con dati completi).
+
+**Rischio escluso esplicitamente**
+- Non ho verificato su un Mac vero quanto spesso un PID viene riusato dopo il riavvio, né il comportamento reale di TCC (i permessi di macOS) su lstat e realpath dentro iCloud Drive: non si riproduce in un container Linux. I permessi negati li ho simulati con un lstat finto e come utente nobody.
+- Non ho rieseguito la suite del kernel: il diff non tocca gas.py né brains/.
+
+**Note per l'agente principale**
+- Memoria aggiornata (riga #830-CRM e una lezione nuova) e committata da sola con `bash scripts/commit_memoria_revisore.sh` (commit cf6a897c). È un commit locale sopra 7cd7a2f0 sul ramo claude/nifty-galileo-3k7kbm, NON pushato. Tienine conto per la regola «non pushare sulla #388 finché non è mergiata»: HEAD adesso è cf6a897c, non più 7cd7a2f0.
+- Il diff staged è intatto dopo il commit della memoria (stesso SHA qui sopra). `.claude/.review_ok` non creato, diff non committato.
+- In stato_progetto vanno segnate R-829-1 chiusa e R-830-1 aperta.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - **`tests/test_unit_crm.py`:** 136 su main d03e5bf2 → 137 (d62adafb) → 138 passed (a9dbf6be).
   - d62adafb: `test_v1_bot387b_ripristino_interrotto_non_resta_in_chiaro` nuovo e `test_ve386c_note_del_terzo_giro` aggiornato falliscono sul codice di d809f5f1 (2 failed, 135 passed).
   - a9dbf6be: `test_r825_2_cartella_non_valida_o_icloud_negato_il_crm_parte` nuovo e `test_v1_bot387b…` aggiornato falliscono sul codice di d62adafb (2 failed, 136 passed); il caso a un componente fallisce sul diff bocciato #826 (1 failed, 137 passed).
   - a565c7b6: nessun test nuovo (estesi `test_v1_bot387b…` e `test_r825_2…`); col codice di 0d946f08 falliscono quei 2 (136 passed), con la copia_cifrata approvata in #828 fallisce `test_r825_2…` (137 passed). Totale invariato: 138 passed.
+  - b0174be5: estesi `test_v1_bot387b…` e `test_r825_2…`; col codice di 7cd7a2f0 falliscono quei 2 (136 passed). Totale 138 passed.
 - **Kernel** (`gas.py`, `tests/test_unit_kernel.py`): non toccato.
 - **mypy:** 0 errori in `modules/crm`.
 
@@ -354,7 +392,9 @@ Review #829-CRM del diff staged (2 file, +65/−4, sopra ab5d5f81). Prima della 
   - `5e959f65`, `5d83286f`, `d62adafb`, `68e849ed`, `49ea2fb7`, `a9dbf6be`: nessuna run su questi SHA (pushati insieme a 538a8948; l'albero testato è quello di 538a8948).
   - `538a8948`: run CI del push (superata dal push di 0d946f08); verifica-bot annullato.
   - `0d946f08`: run CI 44752577700 (unit-suite success, handoff-check success), verifica-bot 44752583500 success.
-  - `ab5d5f81`, `19f5fe2d`, `a565c7b6`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa.
+  - `ab5d5f81`, `19f5fe2d`, `a565c7b6`: nessuna run su questi SHA (pushati insieme a 7cd7a2f0).
+  - `7cd7a2f0`: run CI del push (unit-suite e handoff-check), verifica-bot success (verdetto APPROVATO CON RISERVE); esito finale di unit-suite non letto alla scrittura dell'handoff.
+  - `cf6a897c`, `b0174be5`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -362,8 +402,8 @@ Review #829-CRM del diff staged (2 file, +65/−4, sopra ab5d5f81). Prima della 
 - **Rischi non verificabili qui (revisori #825 e #827, non c'è un Mac):** macOS che blocca iCloud Drive (TCC), `os.path.ismount` sui dischi esterni, riuso dei PID dopo un riavvio (il resto viene tenuto: verso sicuro).
 - **Limite dichiarato (revisore #825, ridotto in a565c7b6):** il temporaneo in chiaro di un ripristino interrotto viene tolto al ripristino seguente verso la stessa destinazione (ora anche se questa esiste già); con un'altra destinazione resta.
 - **Note cosmetiche (revisore #827, non riserve):** il motivo di `_genitore_assente` ripete «nessuna copia fuori dal Mac» dentro l'avviso della copia esterna. La guida ora dice che la cartella deve essere un percorso completo.
-- **R-829-1 (COSMETICA):** manca un test che il consiglio di iCloud NON compaia per errori diversi dal permesso negato (es. disco pieno).
+- **R-830-1 (BASSA):** dopo un riavvio, con un nuovo ripristino entro un'ora e il vecchio PID riassegnato a un processo vivo, il resto in chiaro rimane; la guida dice di cancellarlo a mano. Stessa famiglia di R-808-6.
 - **Note non classificate (revisore #829):** il confronto con `ICLOUD_DRIVE` guarda il percorso scritto (maiuscole diverse o collegamenti simbolici danno il motivo generico); una cryptography rotta che solleva PanicException esce da `copia_fuori` (difetto dell'installazione del container).
 - **Verifica esterna #387 V-4 (COSMETICA):** dopo il tempo massimo il thread della prova resta vivo; innocuo.
-- **Chiuse in questa sessione:** bot V-1/V-2 e verifica esterna V-2 su d809f5f1; R-824-1, R-824-2, R-825-1, R-825-2, R-826-1, R-826-2; bot V-1/V-2 su 0d946f08 (#388); R-828-1, R-828-2. Verifica esterna #388 (V-1 CI non conclusa: ora verde su 0d946f08; V-2 strutturale; V-3 = limite chiuso da a565c7b6). La verifica esterna V-1 (il «sì» dell'operatore non verificabile da file) riguarda #387, già mergiata col via dato in chat; V-3 (§6 senza stato CI) è strutturale.
+- **Chiuse in questa sessione:** bot V-1/V-2 e verifica esterna V-2 su d809f5f1; R-824-1, R-824-2, R-825-1, R-825-2, R-826-1, R-826-2; bot V-1/V-2 su 0d946f08 (#388); R-828-1, R-828-2; R-829-1; bot V-1/V-2/V-3 su 7cd7a2f0 (V-1 in parte: vedi R-830-1). Verifica esterna #388 (V-1 CI non conclusa: ora verde su 0d946f08; V-2 strutturale; V-3 = limite chiuso da a565c7b6). La verifica esterna V-1 (il «sì» dell'operatore non verificabile da file) riguarda #387, già mergiata col via dato in chat; V-3 (§6 senza stato CI) è strutturale.
 - **Ancora aperte da prima:** R-810-2, R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4 (vedi `reports/stato_progetto.md`).
