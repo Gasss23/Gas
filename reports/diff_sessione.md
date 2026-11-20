@@ -1,15 +1,14 @@
-# Diff della sessione — 2026-11-19/20 — CRM fetta 6 (copia cifrata su iCloud)
+# Diff della sessione — 2026-11-20 — CRM fetta 7 (note della PR #386 e del bot sulla PR #387)
 
-Si riscrive a ogni sessione; la storia completa sta in git. La PR #381 (fette 1-5) è mergiata. Questa fotografia copre il ramo ripartito da main c4c8c31f.
+Si riscrive a ogni sessione; la storia completa sta in git. Le PR #381 e #386 sono mergiate; questa fotografia copre il ramo ripartito da main 0aa26672 (PR #387).
 
-- `modules/crm/copia_cifrata.py` (nuovo): copia giornaliera cifrata fuori dal Mac (iCloud Drive), mai in chiaro; `ripristina` senza sovrascrivere, rifiuta i file di lavoro rimasti, integrità ricontrollata.
-- `modules/crm/server.py`: il guardiano lancia la copia cifrata in un thread a parte dopo la copia locale giornaliera.
-- `modules/crm/__main__.py`: `backup` fa anche la copia cifrata; nuovo comando `ripristina`; avviso ATTIVA/SPENTA all'avvio; `SCAN_MINUTI_DEFAULT = 720`.
-- `modules/crm/scrittore.py`: parole vietate con radici più larghe; spazi doppi tolti.
-- `modules/crm/__init__.py`: docstring corretta (file del CRM separato).
-- `requirements.txt`: `cryptography>=42.0`.
-- `tests/conftest.py`: le suite pytest non scrivono mai nell'iCloud vero.
-- `tests/test_unit_crm.py`: test della copia cifrata, del ripristino dopo un crash, del giro 720 e delle parole vietate.
-- `reports/crm/guida.md`, `reports/crm/decisioni.md` (punti 12-14), report di fine task, `.claude/agents/memoria_revisore.md`.
-- Rifiniture (17aee558): password NFC, una copia esterna al giorno, file 0600 (anche le copie locali in `store.py`), temporaneo unico per copia e pulizia dei vecchi, ripristino che toglie il file rovinato.
-- 7b652af1 / e2c6e95a: temporaneo in chiaro dentro try/finally; prova di scrittura all'avvio; `Stato.copia_esterna` in `/api/stato` e indicatore in testata (`app.js`, `app.css`); avviso Telegram se la copia fallisce; password di prima nel ripristino; segnaposto `.icloud`.
+- `modules/crm/copia_cifrata.py`:
+  - `_genitore_assente`: nessuna cartella creata se il disco esterno non c'è; punto di mount vuoto in `/Volumes` riconosciuto (#822); permesso negato e percorso risolto senza maiuscole/minuscole (#823);
+  - `copia_fuori`: copia locale controllata prima di sostituire quella del giorno; controlli dentro il try (#823);
+  - temporaneo del ripristino unico ed esclusivo; file di lavoro come collegamento pendente rifiutati; pulizia delle prove interrotte;
+  - `esito_all_avvio` con un tempo massimo, ATTIVA solo a prova finita (#823);
+  - `_integro` in sola lettura (#823).
+- `modules/crm/server.py`: `_segna_copia` e `_copia_giornaliera`; l'indicatore segna il fallimento della copia locale anche a copia esterna spenta (#822).
+- `modules/crm/__main__.py`: all'avvio usa `esito_all_avvio`.
+- `tests/test_unit_crm.py`: cinque test nuovi (#821, #822, #823).
+- `reports/crm/guida.md`, `CLAUDE.md` §10 (non fermarsi ad aspettare il merge), `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.

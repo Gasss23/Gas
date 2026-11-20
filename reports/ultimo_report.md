@@ -1,46 +1,32 @@
-# Ultimo report — 2026-11-19/20 — CRM: copia cifrata su iCloud Drive, giro 2 volte al giorno, parole vietate
+# Ultimo report — 2026-11-20 — CRM fetta 7: note della PR #386 e del bot sulla PR #387 chiuse
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #386.
-   - Sul commit ee38220c il bot aveva bocciato per un finding MEDIA (copia su iCloud che falliva senza avvisare), chiuso in e2c6e95a.
-   - Riserva aperta: R-820-1 BASSA (cartella di rete bloccata all'avvio). Fetta di sicurezza (cifratura dei dati dei clienti): secondo passaggio nella chat claude.ai col link della PR.
-2. Password delle copie cifrate: scriverla nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri) e salvarla anche nel gestore di password. Senza di lei le copie su iCloud non si aprono.
-3. Controllare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti: se quelle sono sincronizzate con iCloud, il database in chiaro finirebbe su iCloud.
-4. Server gratuito per avere il CRM dal telefono (Tailscale col Mac acceso, oppure Oracle Cloud «Always Free»): da decidere. Per ora il CRM resta sul Mac.
+1. Merge della PR #387: l'operatore ha già dato il via («mergia quando è tutto verde»). La mergia l'agente con CI verde e bot senza finding ALTA/MEDIA.
+2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri), salvata anche nel gestore di password; poi `pip install -r requirements.txt` una volta.
+3. Controllare che la cartella di Gas sia `~/Gas` (`pwd`), fuori da Scrivania e Documenti sincronizzate.
+4. Secondo passaggio nella chat claude.ai col link della PR #387 (fetta che tocca la riservatezza delle copie dei clienti).
 
 ## Esito
-- **PR #381 (CRM, fette 1-5)**: MERGIATA il 19-11 (12633cb0), col via dell'operatore. CI verde e bot APPROVATO CON RISERVE senza finding ALTA/MEDIA.
-- **Fetta 6 — copia cifrata fuori dal Mac** (decisione del 19-11): FATTA, commit 32282b6f.
-  - Nuovo `modules/crm/copia_cifrata.py`: ogni giorno una copia CIFRATA in iCloud Drive (cartella «Gas CRM (copie cifrate)», ultime 30).
-    - Cifratura Fernet, con la chiave ricavata dalla password con scrypt n=2^17.
-    - Senza password, senza iCloud o senza la libreria `cryptography`: spenta, mai in chiaro.
-  - Comando `python -m modules.crm ripristina FILE`:
-    - non sovrascrive mai un database esistente;
-    - rifiuta se sono rimasti file di lavoro di un crash;
-    - ricontrolla l'integrità alla fine.
-  - All'avvio, `serve` dice se la copia è ATTIVA o SPENTA. Libreria `cryptography` aggiunta ai requisiti.
-  - Review #815 APPROVATO CON RISERVE (R-815-1 MEDIA: ripristino con un file di lavoro rimasto) → #816 APPROVATO CON RISERVE (R-815-1..4 chiuse; R-816-1 COSMETICA).
-- **Giro del motore 2 volte al giorno** (decisione del 19-11): FATTA. Default `GAS_CRM_SCAN_MINUTI` = 720. Restano il giro subito a ogni modifica e il pulsante «Scansiona». Il giro non usa token.
-- **Parole vietate più ampie** (rimandate alla fetta successiva il 19-11): FATTA. Radici «garant», «assicur», «al sicuro», «alcun/nessun rischio», «ultima occasione», «posti limitati»… Spazi doppi tolti.
-- **Docstring del pacchetto CRM** (V-1 del bot): FATTA.
-- **Rifiniture dopo bot e verifica esterna su #386**: FATTA, commit 17aee558. Review #817 (R-817-1 BASSA) → #818 APPROVATO.
-  - Password con accenti scritta in modi diversi.
-  - Una copia su iCloud al giorno, per 30 giorni.
-  - File leggibili solo dal proprietario.
-  - Nessun temporaneo lasciato.
-  - Il ripristino non lascia file rotti.
-- **Note della verifica esterna (2° giro) e del bot su #386**: FATTA, commit 7b652af1 (review #819 APPROVATO) ed e2c6e95a (review #820 APPROVATO CON RISERVE).
-  - Ripristino con disco pieno senza dati in chiaro.
-  - Prova vera di scrittura su iCloud all'avvio.
-  - In dashboard «☁ copia OK / spenta / NON riuscita», con avviso Telegram se fallisce.
-  - Password di prima nel ripristino.
-  - File iCloud non scaricato spiegato.
-- **Server per il CRM**: DEFERITA. L'operatore non vuole spendere per un server solo per il CRM; alternative gratuite da decidere (punto 4).
+- **PR #386 (copia cifrata su iCloud)**: MERGIATA il 20-11 (0aa26672) col via dell'operatore.
+- **Fetta 7 — note basse del bot e della verifica esterna sull'ultimo commit di #386, più R-820-1**: FATTA (99e0dcb8, review #821 APPROVATO CON RISERVE).
+  - Disco esterno non collegato: non si crea più la cartella sul Mac (copia «riuscita» falsa).
+  - Una copia locale rovinata non sostituisce la copia buona del giorno.
+  - Temporaneo del ripristino con nome unico e creazione esclusiva; file di lavoro come collegamento pendente rifiutati; prove interrotte ripulite.
+  - Prova all'avvio con un tempo massimo di 5 secondi.
+  - Guida: niente promessa «spariscono dopo 30 giorni».
+- **Correzione #822 — R-821-1 e punto di mount vuoto**: FATTA (4a442c4f, review #822 APPROVATO).
+  - Se fallisce la copia sul Mac, l'indicatore diventa rosso e parte l'avviso anche con la copia esterna spenta.
+  - Un disco esterno staccato il cui punto di mount resta in `/Volumes` come cartella vuota viene riconosciuto («non è collegato»).
+- **Correzione #823 — V-1 MEDIA e V-2 del bot su #387 (b098adf1)**: FATTA (2b4d32f2, review #823 APPROVATO).
+  - Permesso negato sulla cartella delle copie (es. macOS che blocca iCloud Drive): non rompe più la copia e non fa più dire «ATTIVA» all'avvio.
+  - Il controllo di integrità apre il database in sola lettura: un percorso sbagliato non crea più un file vuoto.
+  - Collegamento simbolico verso `/Volumes` o «/volumes» minuscolo: ora controllati (nota del revisore #822).
+- **Regola nuova in CLAUDE.md** (operatore, 20-11): non fermarsi ad aspettare il merge.
 
 ## Test
-- `tests/test_unit_crm.py`: 131 passed. Su main falliscono i 6 test nuovi o cambiati; `test_r815_*` fallisce anche col `copia_cifrata.py` del giro #815.
-- notte, voice_contesto, manutenzione e hooks: 468 passed. mypy: 0 errori in `modules/crm`. Kernel e gas.py non toccati.
+- `tests/test_unit_crm.py`: 131 su main 0aa26672 → 136 passed. Ogni test nuovo fallisce sul codice di prima della sua correzione.
+- mypy: 0 errori in `modules/crm`. Kernel non toccato.
 
 ## Riserve aperte
-- R-820-1 BASSA: una cartella di rete bloccata ferma l'avvio del CRM (con iCloud non succede).
-- Da prima: R-810-2 (filtro delle parole vietate, con falsi allarmi possibili), R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4 (vedi `reports/stato_progetto.md`).
+- Non verificabili qui (non c'è un Mac): comportamento vero di `os.path.ismount` sui dischi esterni di macOS e del blocco dei permessi su iCloud Drive.
+- R-810-2 (filtro delle parole vietate: falsi allarmi e forme non in lista), R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4: vedi `reports/stato_progetto.md`.

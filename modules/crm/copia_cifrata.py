@@ -45,6 +45,7 @@ KEEP = 30
 ESTENSIONE = ".gascrm"
 NOME_CARTELLA = "Gas CRM (copie cifrate)"
 ICLOUD_DRIVE = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
+VOLUMI = Path("/Volumes")  # dischi esterni su macOS
 
 
 def cartella() -> Optional[Path]:
@@ -104,6 +105,32 @@ def _fernet(pw: str, sale: bytes):  # type: ignore[no-untyped-def]
     return Fernet(base64.urlsafe_b64encode(chiave))
 
 
+def _genitore_assente(dest_dir: Path) -> Optional[str]:
+    """V-1 verifica #386 (3°): la cartella delle copie si crea SOLO se la cartella che la
+    contiene esiste già. Con un disco esterno non collegato (/Volumes/…) prima si creava la
+    cartella sul disco del Mac e la copia «riusciva» senza uscire dal Mac. Mai solleva
+    (V-1 bot #387: un permesso negato su `is_dir` ora è un motivo, non un'eccezione)."""
+    try:
+        if not dest_dir.parent.is_dir():
+            return (f"la cartella {dest_dir.parent} non c'è (disco non collegato?): nessuna "
+                    "copia fuori dal Mac")
+        # rischio segnalato dal revisore #821: su macOS un punto di mount vuoto può restare
+        # in /Volumes anche a disco staccato; lì la cartella «esiste» ma è sul disco del Mac.
+        # Nota #822: si confronta il percorso RISOLTO (collegamenti simbolici) e senza
+        # badare a maiuscole e minuscole, come fa il disco del Mac
+        vero = Path(os.path.realpath(dest_dir)).parts
+        volumi = Path(os.path.realpath(VOLUMI)).parts
+        n = len(volumi)
+        if len(vero) > n and [x.casefold() for x in vero[:n]] == [x.casefold() for x in volumi]:
+            disco = Path(*vero[:n + 1])
+            if not os.path.ismount(disco):
+                return f"il disco {disco} non è collegato: nessuna copia fuori dal Mac"
+        return None
+    except OSError as e:
+        return (f"la cartella {dest_dir.parent} non è accessibile ({type(e).__name__}): "
+                "nessuna copia fuori dal Mac")
+
+
 def prova_scrittura() -> Optional[str]:
     """V-1 bot #386: prova VERA che la copia esterna si può fare (non solo che è configurata):
     crea e toglie un piccolo file nella cartella. None se riesce, altrimenti il motivo.
@@ -114,8 +141,11 @@ def prova_scrittura() -> Optional[str]:
     dest_dir = cartella()
     assert dest_dir is not None
     prova = dest_dir / f".prova-{os.getpid()}-{threading.get_ident()}.tmp"
+    assente = _genitore_assente(dest_dir)
+    if assente:
+        return assente
     try:
-        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_dir.mkdir(exist_ok=True)
         _scrivi_privato(prova, os.urandom(32), esclusivo=True)
         return None
     except Exception as e:  # §9
@@ -125,6 +155,37 @@ def prova_scrittura() -> Optional[str]:
             prova.unlink(missing_ok=True)
         except OSError:
             pass
+
+
+PROVA_ATTESA_S = 5.0
+
+
+def esito_all_avvio(attesa_s: Optional[float] = None) -> str:
+    """Riga per l'avvio di `serve`: SPENTA, NON FUNZIONA, NON VERIFICATA o ATTIVA. La prova di
+    scrittura gira in un thread con un tempo massimo (R-820-1): una cartella di rete bloccata
+    non impedisce più al server di partire."""
+    spenta = motivo_spenta()
+    if spenta:
+        return f"SPENTA ({spenta})"
+    # V-1 bot #387: si parte da un esito di FALLIMENTO; solo una prova finita bene lo cambia
+    # (prima un'eccezione nel thread lasciava l'esito vuoto e la riga diceva «ATTIVA»)
+    esito: dict = {"prova": "prova non conclusa per un errore inatteso"}
+
+    def _prova() -> None:
+        try:
+            esito["prova"] = prova_scrittura()
+        except Exception as e:  # §9
+            esito["prova"] = f"prova non riuscita ({type(e).__name__})"
+
+    filo = threading.Thread(target=_prova, name="crm-prova-copia", daemon=True)
+    filo.start()
+    filo.join(PROVA_ATTESA_S if attesa_s is None else attesa_s)
+    if filo.is_alive():
+        return ("NON VERIFICATA (la cartella non risponde entro qualche secondo): controlla "
+                "l'indicatore in dashboard dopo la prima copia")
+    if esito.get("prova"):
+        return f"NON FUNZIONA ({esito['prova']}): i dati restano solo sul Mac"
+    return f"ATTIVA in {cartella()} (prova di scrittura riuscita)"
 
 
 def cifra(dati: bytes, pw: str) -> bytes:
@@ -156,7 +217,15 @@ def copia_fuori(copia_locale: Path, keep: int = KEEP) -> Tuple[Optional[Path], O
     assert dest_dir is not None and pw is not None
     tmp: Optional[Path] = None
     try:
-        dest_dir.mkdir(parents=True, exist_ok=True)
+        # V-1 bot #387: anche questi controlli dentro il try, «copia_fuori non solleva mai»
+        assente = _genitore_assente(dest_dir)
+        if assente:
+            return None, assente
+        # V-5 verifica #386 (3°): una copia locale rovinata non sostituisce la copia buona
+        if not _integro(Path(copia_locale)):
+            return None, ("la copia locale non è integra: la copia del giorno fuori dal Mac "
+                          "resta quella di prima")
+        dest_dir.mkdir(exist_ok=True)
         # V-1 bot #386: UNA copia esterna al giorno (quella del giorno si rinnova), così
         # le KEEP copie sono KEEP giorni anche se il CRM si riavvia spesso
         m = re.match(r"crm-\d{8}", Path(copia_locale).stem)
@@ -189,7 +258,9 @@ def _pulisci_tmp_vecchi(cartella_esterna: Path) -> None:
     """Toglie i `.gascrm.tmp` rimasti da copie interrotte (thread fermato, disco pieno)
     da più di un'ora: cifrati, ma inutili e si accumulerebbero su iCloud."""
     limite = time.time() - TMP_VECCHIO_S
-    for resto in cartella_esterna.glob("crm-*" + ESTENSIONE + ".*tmp"):
+    resti = list(cartella_esterna.glob("crm-*" + ESTENSIONE + ".*tmp"))
+    resti += list(cartella_esterna.glob(".prova-*.tmp"))  # verifica #386 (3°): prove interrotte
+    for resto in resti:
         try:
             if resto.stat().st_mtime < limite:
                 resto.unlink(missing_ok=True)
@@ -201,8 +272,10 @@ _FILE_DI_LAVORO = ("-journal", "-wal", "-shm")
 
 
 def _integro(percorso: Path) -> bool:
+    """Database del CRM integro? In SOLA LETTURA (V-2 bot #387): un percorso che non esiste
+    non diventa un file vuoto."""
     try:
-        con = sqlite3.connect(str(percorso))
+        con = sqlite3.connect(Path(percorso).resolve().as_uri() + "?mode=ro", uri=True)
         try:
             ok = con.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
             return ok and con.execute("SELECT name FROM sqlite_master WHERE type='table' "
@@ -228,16 +301,24 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
         raise ErroreCRM(f"{dest} esiste già: non lo sovrascrivo (spostalo o scegli --dest)")
     for suffisso in _FILE_DI_LAVORO:
         resto = dest.with_name(dest.name + suffisso)
-        if resto.exists():
+        if resto.exists() or resto.is_symlink():  # V-4 verifica #386 (3°)
             raise ErroreCRM(f"accanto a {dest} è rimasto {resto.name}, un file di lavoro del "
                             "database di prima: spostalo insieme al database vecchio, poi riprova")
     dati = decifra(Path(sorgente).read_bytes(), pw)
-    tmp = dest.with_name(dest.name + ".ripristino.tmp")
+    # V-3 bot/verifica #386 (3°): temporaneo IN CHIARO con nome unico e creazione esclusiva
+    # (O_EXCL non segue un collegamento simbolico messo lì): mai scritto dentro un altro file
+    tmp = dest.with_name(f"{dest.name}.{os.getpid()}-{threading.get_ident()}.ripristino.tmp")
     creato = False
+    tmp_nostro = True
     try:
         # V-1 verifica #386 (2°): la scrittura del temporaneo IN CHIARO sta dentro il
         # try/finally, così un disco pieno a metà non lascia dati parziali dei clienti
-        _scrivi_privato(tmp, dati)
+        try:
+            _scrivi_privato(tmp, dati, esclusivo=True)
+        except FileExistsError:
+            tmp_nostro = False  # non è nostro: non si tocca
+            raise ErroreCRM(f"c'è già un file {tmp.name} accanto alla destinazione: spostalo e "
+                            "riprova") from None
         if not _integro(tmp):
             raise ErroreCRM("la copia decifrata non è un database del CRM integro")
         try:
@@ -262,7 +343,8 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
                 dest.unlink(missing_ok=True)
                 raise
     finally:
-        tmp.unlink(missing_ok=True)
+        if tmp_nostro:
+            tmp.unlink(missing_ok=True)
     # R-815-1: ricontrollo sul file vero, al suo posto. Se fallisce, il file creato da QUESTO
     # ripristino si toglie (V-2 verifica esterna #386): niente database rovinato lasciato lì
     if not _integro(dest):
