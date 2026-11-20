@@ -65,6 +65,13 @@ _PERSONA = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}")
 ALTRE_VOCI = "_altre_voci"    # cartella degli esempi «altre persone» (non è una persona)
 SEC_CLIP = 3.0                # durata di un «Hey Jarvis» registrato (la parola è ~1 s)
 SEC_FRA_CLIP = 1.5            # pausa dopo ogni clip, prima del bip successivo
+# 20/11: dall'altra stanza il bip non si sente e 3 s non bastavano: le clip «lontane»
+# erano solo rumori (lavastoviglie, pentole) salvate come «Hey Jarvis». Da lontano si
+# ascolta più a lungo, e ogni clip si tiene solo se il modello della parola la riconosce.
+SEC_CLIP_LONTANO = 6.0        # finestra per i gruppi con attesa lunga (lontano dal Mac)
+ATTESA_LONTANO_S = 6.0        # da quest'attesa in su il gruppo è «lontano»
+SEC_DOPO_PICCO = 0.5          # la clip tenuta finisce poco dopo il picco del punteggio
+TENTATIVI_PAROLA = 3          # prove per clip prima di saltarla
 SEC_NEGATIVI = 60.0
 # (dove e come, quante volte, secondi per mettersi in posizione dopo Invio): 15 in tutto
 GRUPPI: Tuple[Tuple[str, int, float], ...] = (
@@ -218,6 +225,10 @@ class Registratore:
     dorme: Callable[[float], None] = time.sleep
     bip: Callable[[str], None] = a.bip_di_sistema
     stampa: Callable[[str], None] = print
+    # (punteggio massimo del modello della parola, indice del blocco) per una clip appena
+    # registrata; None = nessun controllo (solo il volume, come prima)
+    misura: Optional[Callable[[List[Any]], Tuple[float, int]]] = None
+    soglia_parola: float = a.SOGLIA_BASE_PREDEFINITA
     salvati: List[Path] = field(default_factory=list)
 
     def _blocchi(self, secondi: float) -> List[Any]:
@@ -242,22 +253,48 @@ class Registratore:
         n = 0
         totale = sum(g[1] for g in gruppi)
         for dove, quante, attesa in gruppi:
+            lontano = attesa >= ATTESA_LONTANO_S
+            finestra = SEC_CLIP_LONTANO if lontano else SEC_CLIP
             self.chiedi("\n→ %s: %d volt%s. Premi Invio, poi hai %g s per metterti lì; a "
-                        "ogni bip di' «Hey Jarvis» una volta, come lo diresti di solito. "
-                        % (dove, quante, "a" if quante == 1 else "e", attesa))
+                        "ogni bip di' «Hey Jarvis» una volta, come lo diresti di solito.%s "
+                        % (dove, quante, "a" if quante == 1 else "e", attesa,
+                           " Se da lì non senti il bip, dillo ogni %g secondi circa."
+                           % (finestra + SEC_FRA_CLIP) if lontano else ""))
             self.dorme(attesa)
             for _ in range(quante):
-                self.bip("ok")
-                blocchi = self._blocchi(SEC_CLIP)
-                picco = max((a.rms(b) for b in blocchi), default=0.0)
-                if picco < a.VOCE_RMS_PREDEFINITO / 2:
-                    self.stampa("   (non ti ho sentito: questa la salto)")
-                else:
+                for prova in range(1, TENTATIVI_PAROLA + 1):
+                    self.bip("ok")
+                    clip_ok = self._una_clip(finestra)
+                    self.dorme(SEC_FRA_CLIP)
+                    if clip_ok is None:
+                        continue
                     n += 1
-                    self._salva("positivi", "hey_jarvis_%s_%02d.wav" % (quando, n), blocchi)
+                    self._salva("positivi", "hey_jarvis_%s_%02d.wav" % (quando, n), clip_ok)
                     self.stampa("   ✓ %d di %d" % (n, totale))
-                self.dorme(SEC_FRA_CLIP)
+                    break
+                else:
+                    self.stampa("   (dopo %d prove la salto)" % TENTATIVI_PAROLA)
         return n
+
+    def _una_clip(self, finestra: float) -> Optional[List[Any]]:
+        """Registra una finestra e tiene SOLO un «Hey Jarvis» vero: senza voce, o se il
+        modello della parola non lo riconosce (rumori, parole diverse), None e lo dice. Da
+        una finestra lunga tiene i SEC_CLIP secondi che finiscono poco dopo il picco."""
+        blocchi = self._blocchi(finestra)
+        picco = max((a.rms(b) for b in blocchi), default=0.0)
+        if picco < a.VOCE_RMS_PREDEFINITO / 2:
+            self.stampa("   (non ti ho sentito: rifallo)")
+            return None
+        if self.misura is None:
+            return blocchi
+        punteggio, i = self.misura(blocchi)
+        if punteggio < self.soglia_parola:
+            self.stampa("   (non ho riconosciuto «Hey Jarvis», punteggio %.2f: rifallo)"
+                        % punteggio)
+            return None
+        fine = min(len(blocchi), i + 1 + a.blocchi_per(SEC_DOPO_PICCO))
+        inizio = max(0, fine - a.blocchi_per(SEC_CLIP))
+        return blocchi[inizio:fine]
 
     def negativi(self, secondi: float, tv: bool) -> int:
         quando = time.strftime("%Y%m%d-%H%M%S")
@@ -325,6 +362,21 @@ class MotoreOWW:
                 f = self.oww.preprocessor.get_features(self.oww.model_inputs[self.nome])
                 out.append((p, f))
         return out
+
+    def misura(self, blocchi: List[Any]) -> Tuple[float, int]:
+        """(punteggio massimo del modello della parola, indice del blocco) su una clip
+        appena registrata, con il silenzio davanti come in `blocchi` (il modello è muto nei
+        primi blocchi)."""
+        np = self.np
+        self.oww.reset()
+        for _ in range(a.blocchi_per(IMBOTTITURA_PRIMA_S)):
+            self.oww.predict(np.zeros(a.BLOCCO, np.int16))
+        migliore, indice = 0.0, 0
+        for i, b in enumerate(blocchi):
+            p = float(self.oww.predict(np.asarray(b, dtype=np.int16))[self.nome])
+            if p > migliore:
+                migliore, indice = p, i
+        return migliore, indice
 
     def addestra(self, positivi: List[Any], negativi: List[Any]) -> Any:
         np = self.np
@@ -537,7 +589,8 @@ def main(argv: Optional[List[str]] = None, *,
                   "(bash scripts/voce/pausa.sh), altrimenti Jarvis risponde a ogni prova. "
                   "L'audio resta solo sul Mac, in %s." % (persona, a.CARTELLA_VERIFICA))
             reg = Registratore(mic, radice, persona, chiedi=chiedi, dorme=dorme,
-                               bip=bip or a.bip_di_sistema)
+                               bip=bip or a.bip_di_sistema,
+                               misura=getattr(m, "misura", None), soglia_parola=soglia_base)
             if reg.positivi() < 1:
                 raise Errore("nessun «Hey Jarvis» sentito: controlla il microfono e riprova")
             reg.negativi(max(args.secondi_negativi, 5.0), tv=not args.senza_tv)

@@ -3515,15 +3515,15 @@ class _MicFinto:
 def test_registra_salva_i_file_nelle_cartelle_giuste(tmp_path):
     r = _registra()
     n_clip = a.blocchi_per(r.SEC_CLIP)
-    # 3 clip: voce, silenzio (saltata), voce
+    # voce, silenzio (non salvato: si rifà), voce, voce
     mic = _MicFinto([VOCE] * n_clip + [SILENZIO] * n_clip + [VOCE] * n_clip)
     bip, uscita = [], []
     reg = r.Registratore(mic, tmp_path, "operatore", chiedi=lambda s: "",
                          dorme=lambda s: None, bip=bip.append, stampa=uscita.append)
-    assert reg.positivi(gruppi=(("vicino", 2, 1.0), ("lontano", 1, 5.0))) == 2
+    assert reg.positivi(gruppi=(("vicino", 2, 1.0), ("tre metri", 1, 5.0))) == 3
     base = tmp_path / ".gas_voce" / "verifica"
     pos = sorted((base / "operatore" / "positivi").glob("*.wav"))
-    assert len(pos) == 2 and any("non ti ho sentito" in u for u in uscita)
+    assert len(pos) == 3 and any("non ti ho sentito: rifallo" in u for u in uscita)
     with wave.open(str(pos[0])) as w:
         assert (w.getframerate(), w.getnchannels(), w.getsampwidth()) == (16000, 1, 2)
         assert w.getnframes() == n_clip * a.BLOCCO
@@ -3531,7 +3531,7 @@ def test_registra_salva_i_file_nelle_cartelle_giuste(tmp_path):
     assert stat.S_IMODE(pos[0].stat().st_mode) == 0o600
     for d in (base, base / "operatore", base / "operatore" / "positivi"):
         assert stat.S_IMODE(d.stat().st_mode) == 0o700
-    assert bip == ["ok"] * 3 and mic.svuotati == 3
+    assert bip == ["ok"] * 4 and mic.svuotati == 4
     # negativi: parlato e, con «s», la TV
     assert reg.negativi(1.0, tv=True) == 1   # chiedi="" → niente TV
     reg.chiedi = lambda s: "s"
@@ -3539,6 +3539,52 @@ def test_registra_salva_i_file_nelle_cartelle_giuste(tmp_path):
     neg = sorted(p.name for p in (base / "operatore" / "negativi").glob("*.wav"))
     assert len(neg) == 2 and neg[0].startswith("parlato_") and neg[1].startswith("tv_")
     assert len(list((base / "operatore" / "negativi").glob("parlato_*"))) == 1  # stesso secondo
+
+
+def test_registra_tiene_solo_hey_jarvis_riconosciuti(tmp_path):
+    """20/11: rumori forti (lavastoviglie, pentole) erano salvati come «Hey Jarvis».
+    Con `misura` una clip sotto la soglia della parola non si salva e si rifà; dopo
+    TENTATIVI_PAROLA prove si salta."""
+    r = _registra()
+    n_clip = a.blocchi_per(r.SEC_CLIP)
+    mic = _MicFinto([VOCE] * (n_clip * 10))
+    punteggi = iter([0.05, 0.6] + [0.0] * r.TENTATIVI_PAROLA)
+    uscita = []
+    reg = r.Registratore(mic, tmp_path, "operatore", chiedi=lambda s: "",
+                         dorme=lambda s: None, bip=lambda s: None, stampa=uscita.append,
+                         misura=lambda blocchi: (next(punteggi), 0), soglia_parola=0.25)
+    assert reg.positivi(gruppi=(("vicino", 2, 1.0),)) == 1
+    pos = list((tmp_path / ".gas_voce" / "verifica" / "operatore" / "positivi").glob("*.wav"))
+    assert len(pos) == 1
+    assert any("non ho riconosciuto «Hey Jarvis», punteggio 0.05: rifallo" in u for u in uscita)
+    assert any("dopo %d prove la salto" % r.TENTATIVI_PAROLA in u for u in uscita)
+
+
+def test_registra_da_lontano_ascolta_di_piu_e_taglia_sul_picco(tmp_path, monkeypatch):
+    """Dall'altra stanza il bip non si sente: finestra di SEC_CLIP_LONTANO secondi, e si
+    tiene la clip di SEC_CLIP secondi che finisce SEC_DOPO_PICCO dopo il picco."""
+    r = _registra()
+    n_lungo = a.blocchi_per(r.SEC_CLIP_LONTANO)
+    mic = _MicFinto([[i] * a.BLOCCO for i in range(1, n_lungo + 1)])
+    lunghezze, chieste = [], []
+    picco = n_lungo - 10
+
+    def misura(blocchi):
+        lunghezze.append(len(blocchi))
+        return 0.7, picco
+
+    reg = r.Registratore(mic, tmp_path, "operatore", chiedi=chieste.append,
+                         dorme=lambda s: None, bip=lambda s: None, stampa=lambda s: None,
+                         misura=misura)
+    reg._salva = lambda tipo, nome, blocchi: lunghezze.append(blocchi)
+    monkeypatch.setattr(a, "rms", lambda b: 10_000.0)
+    assert reg.positivi(gruppi=(("altra stanza", 1, r.ATTESA_LONTANO_S),)) == 1
+    assert lunghezze[0] == n_lungo
+    tenuti = lunghezze[1]
+    fine = picco + 1 + a.blocchi_per(r.SEC_DOPO_PICCO)
+    assert len(tenuti) == a.blocchi_per(r.SEC_CLIP)
+    assert tenuti[-1][0] == fine            # l'ultimo blocco tenuto: poco dopo il picco
+    assert "non senti il bip" in chieste[0]
 
 
 class _MotoreFinto:
