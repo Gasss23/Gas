@@ -104,6 +104,29 @@ def _fernet(pw: str, sale: bytes):  # type: ignore[no-untyped-def]
     return Fernet(base64.urlsafe_b64encode(chiave))
 
 
+def prova_scrittura() -> Optional[str]:
+    """V-1 bot #386: prova VERA che la copia esterna si può fare (non solo che è configurata):
+    crea e toglie un piccolo file nella cartella. None se riesce, altrimenti il motivo.
+    Il file di prova contiene byte casuali, mai dati."""
+    motivo = motivo_spenta()
+    if motivo:
+        return motivo
+    dest_dir = cartella()
+    assert dest_dir is not None
+    prova = dest_dir / f".prova-{os.getpid()}-{threading.get_ident()}.tmp"
+    try:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        _scrivi_privato(prova, os.urandom(32), esclusivo=True)
+        return None
+    except Exception as e:  # §9
+        return f"la cartella {dest_dir} non si può scrivere ({type(e).__name__})"
+    finally:
+        try:
+            prova.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def cifra(dati: bytes, pw: str) -> bytes:
     sale = os.urandom(SALE_BYTE)
     return MAGIA + sale + _fernet(pw, sale).encrypt(dati)
@@ -112,7 +135,8 @@ def cifra(dati: bytes, pw: str) -> bytes:
 def decifra(blob: bytes, pw: str) -> bytes:
     """Solleva ErroreCRM se il file non è una copia cifrata del CRM o la password è sbagliata."""
     if not blob.startswith(MAGIA) or len(blob) < len(MAGIA) + SALE_BYTE + 1:
-        raise ErroreCRM("il file non è una copia cifrata del CRM")
+        raise ErroreCRM("il file non è una copia cifrata del CRM (se sta su iCloud, aprilo prima "
+                        "dal Finder perché venga scaricato sul Mac)")
     sale = blob[len(MAGIA):len(MAGIA) + SALE_BYTE]
     from cryptography.fernet import InvalidToken
     try:
@@ -196,6 +220,10 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
     di lavoro di SQLite (`-journal`, `-wal`, `-shm`) di un database di prima: SQLite lo
     applicherebbe al file ripristinato rovinandolo (R-815-1). Ritorna `dest`."""
     dest = Path(dest)
+    nome = Path(sorgente).name
+    if nome.startswith(".") and nome.endswith(".icloud"):  # V-4 bot #386: segnaposto di iCloud
+        raise ErroreCRM("il file è ancora solo su iCloud (segnaposto «.icloud»): aprilo dal "
+                        "Finder per scaricarlo sul Mac, poi riprova col file vero")
     if dest.exists() or dest.is_symlink():  # V-2 verifica #386 (2°): anche un collegamento pendente
         raise ErroreCRM(f"{dest} esiste già: non lo sovrascrivo (spostalo o scegli --dest)")
     for suffisso in _FILE_DI_LAVORO:
@@ -220,15 +248,18 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
         except OSError:
             # file system senza collegamenti fisici: creazione esclusiva
             try:
-                _scrivi_privato(dest, dati, esclusivo=True)
-                creato = True
+                fd = os.open(str(dest), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             except FileExistsError:
                 raise ErroreCRM(f"{dest} è comparso durante il ripristino: non lo sovrascrivo") from None
+            creato = True  # nota #819: il file è nostro SOLO da qui (creato in esclusiva)
+            try:
+                with os.fdopen(fd, "wb") as f:
+                    f.write(dati)
+                os.chmod(dest, 0o600)
             except OSError:
                 # V-2 verifica esterna #386 / R-816-1: scrittura interrotta (disco pieno):
-                # si toglie il file incompleto appena creato, così si può riprovare
-                if dest.exists():
-                    dest.unlink(missing_ok=True)
+                # si toglie il file incompleto creato da noi, così si può riprovare
+                dest.unlink(missing_ok=True)
                 raise
     finally:
         tmp.unlink(missing_ok=True)

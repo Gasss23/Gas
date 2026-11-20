@@ -223,10 +223,20 @@ function barra(d) {
     id === 'opportunita' && k.opportunita_da_approvare ? el('span', { class: 'contatore', testo: String(k.opportunita_da_approvare) }) : null))),
     el('div', { class: 'spazio' }),
     d.server.demo ? el('span', { class: 'etichetta-demo', title: 'Dati inventati, nessun messaggio arriva a persone vere', testo: 'DEMO' }) : null,
+    copiaEsterna(d.server.copia_esterna),
     el('div', { class: 'vivo' + (S.live ? ' on' : ''), title: 'Aggiornamento in tempo reale' }, el('span', { class: 'punto' }), el('span', { testo: S.live ? 'LIVE' : 'OFFLINE' })),
     el('button', { class: 'btn piccolo', title: 'Il motore rilegge tutti i dati e cerca nuove opportunità', onclick: scansiona }, '⟳ Scansiona'),
     el('button', { class: 'btn primario piccolo', onclick: () => apriModale(modaleNuovoCliente) }, '+ Cliente'),
     el('button', { class: 'btn fantasma piccolo', title: 'Esci', onclick: esci }, '⏻'));
+}
+// V-1 bot #386: esito dell'ultima copia cifrata fuori dal Mac (iCloud), sempre in vista
+function copiaEsterna(c) {
+  if (!c) return null;
+  let classe = 'copia', testo = '☁ copia…', titolo = 'Copia cifrata su iCloud in corso';
+  if (c.spenta) { classe += ' spenta'; testo = '☁ copia spenta'; titolo = 'Copia fuori dal Mac spenta: ' + (c.motivo || ''); }
+  else if (c.ok === true) { classe += ' ok'; testo = '☁ copia OK'; titolo = 'Ultima copia cifrata su iCloud riuscita: ' + (c.quando || '').replace('T', ' '); }
+  else if (c.ok === false) { classe += ' ko'; testo = '☁ copia NON riuscita'; titolo = 'Ultima copia cifrata NON riuscita (' + (c.quando || '').replace('T', ' ') + '): ' + (c.motivo || '') + ' — i dati sono solo sul Mac'; }
+  return el('span', { class: classe, title: titolo, testo });
 }
 async function scansiona() {
   const r = await esegui(() => api('/api/scansiona', {}));

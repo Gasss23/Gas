@@ -127,10 +127,13 @@ def cmd_serve(a: argparse.Namespace) -> int:
             print(f"Accesso demo: {url}#t={token}")
         if not a.demo:
             from modules.crm import copia_cifrata
-            motivo = copia_cifrata.motivo_spenta()
+            spenta = copia_cifrata.motivo_spenta()
+            # V-1 bot #386: prova VERA di scrittura, non solo la configurazione
+            prova = None if spenta else copia_cifrata.prova_scrittura()
             print("Copia cifrata giornaliera fuori dal Mac: "
-                  + (f"ATTIVA in {copia_cifrata.cartella()}" if motivo is None
-                     else f"SPENTA ({motivo})"))
+                  + (f"SPENTA ({spenta})" if spenta
+                     else f"NON FUNZIONA ({prova}): i dati restano solo sul Mac" if prova
+                     else f"ATTIVA in {copia_cifrata.cartella()} (prova di scrittura riuscita)"))
         print("Ctrl+C per fermare.")
     try:
         server.avvia(stato, host=host, porta=a.porta, pronto=pronto)
@@ -207,7 +210,15 @@ def cmd_ripristina(a: argparse.Namespace) -> int:
     pw = copia_cifrata.password() or getpass.getpass("Password delle copie cifrate: ").strip()
     dest = Path(a.dest).expanduser() if a.dest else percorso_db(ROOT)
     try:
-        fatto = copia_cifrata.ripristina(Path(a.file).expanduser(), dest, pw)
+        try:
+            fatto = copia_cifrata.ripristina(Path(a.file).expanduser(), dest, pw)
+        except ErroreCRM as e:
+            # V-2 bot #386: copia fatta con una password di prima → si può scrivere l'altra
+            if "password sbagliata" not in str(e) or not sys.stdin.isatty():
+                raise
+            altra = getpass.getpass("Password sbagliata. Se la copia è di prima di un cambio "
+                                    "di password, scrivi quella vecchia: ").strip()
+            fatto = copia_cifrata.ripristina(Path(a.file).expanduser(), dest, altra)
     except (ErroreCRM, OSError) as e:
         print(f"STOP: {e}")
         return 1

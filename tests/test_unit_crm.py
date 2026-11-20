@@ -6,6 +6,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import sys
 import sqlite3
 import threading
 import time
@@ -1575,6 +1576,73 @@ def test_ve386b_ripristino_con_disco_pieno_non_lascia_dati_in_chiaro(
     pendente.symlink_to(tmp_path / "non_esiste")
     with pytest.raises(ErroreCRM, match="esiste già"):
         copia_cifrata.ripristina(copia, pendente, pw)
+
+
+def test_v1_bot386_copia_esterna_visibile(st: CRMStore, tmp_path: Path,
+                                         monkeypatch: pytest.MonkeyPatch) -> None:
+    """V-1 bot #386 (MEDIA): una copia esterna che fallisce non resta nascosta nel log. Prova
+    vera di scrittura all'avvio, esito dell'ultima copia in /api/stato, avviso all'operatore
+    (Telegram, senza dati dei clienti); V-2: ripristino con la password vecchia; V-4: segnaposto
+    «.icloud» spiegato."""
+    from modules.crm import copia_cifrata
+    pw = "una-password-lunga-1"
+    buona = tmp_path / "icloud"
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", pw)
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(buona))
+    assert copia_cifrata.prova_scrittura() is None
+    assert buona.is_dir() and not list(buona.iterdir())  # la prova non lascia file
+    finta = tmp_path / "non_una_cartella"
+    finta.write_bytes(b"sono un file")
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(finta))
+    assert "non si può scrivere" in (copia_cifrata.prova_scrittura() or "")
+    # esito nel server: fallita → ok False, motivo, avviso senza nomi; riuscita → ok True
+    st.aggiungi_cliente("Marco Bianchi", telefono="+393331234567")
+    avvisi: List[str] = []
+    stato = server.Stato(st, TOKEN, regole=REGOLE, avvisa=lambda t: (avvisi.append(t) or (True, "")))
+    assert stato.copia_esterna["spenta"] is False and stato.copia_esterna["ok"] is None
+    copia = st.backup(tmp_path / "locali")
+    assert copia is not None
+    server._copia_esterna(stato, copia)
+    assert stato.copia_esterna["ok"] is False and stato.copia_esterna["motivo"]
+    assert len(avvisi) == 1 and "NON è riuscita" in avvisi[0] and "Marco" not in avvisi[0]
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(buona))
+    server._copia_esterna(stato, copia)
+    assert stato.copia_esterna["ok"] is True and stato.copia_esterna["quando"]
+    assert len(avvisi) == 1  # nessun avviso quando riesce
+    # spenta (senza password): niente avviso, segnata come spenta
+    monkeypatch.delenv("GAS_CRM_BACKUP_PASSWORD")
+    server._copia_esterna(stato, copia)
+    assert stato.copia_esterna["spenta"] is True and stato.copia_esterna["ok"] is None
+    assert len(avvisi) == 1
+    # V-4: segnaposto di iCloud non scaricato
+    segnaposto = tmp_path / ".crm-20261120.gascrm.icloud"
+    segnaposto.write_bytes(b"bplist00")
+    with pytest.raises(ErroreCRM, match="ancora solo su iCloud"):
+        copia_cifrata.ripristina(segnaposto, tmp_path / "x.db", pw)
+
+
+def test_v1_bot386_esito_in_api_stato(avviato) -> None:
+    stato, c, _ = avviato
+    assert c.post("/api/login", {"token": TOKEN})[0] == 200
+    corpo = c.get("/api/stato")[2]
+    assert corpo["server"]["copia_esterna"] == stato.copia_esterna
+
+
+def test_v2_bot386_ripristino_con_la_password_di_prima(tmp_path: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    import argparse
+    import getpass
+    from modules.crm import copia_cifrata
+    from modules.crm import __main__ as cli
+    db = tmp_path / "vecchio.db"
+    CRMStore(db).aggiungi_cliente("Anna Verdi", telefono="+393330000001")
+    copia = tmp_path / "crm-20261101.gascrm"
+    copia.write_bytes(copia_cifrata.cifra(db.read_bytes(), "password-di-prima-1"))
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "password-di-adesso-2")
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(getpass, "getpass", lambda _p="": "password-di-prima-1")
+    assert cli.cmd_ripristina(argparse.Namespace(file=str(copia), dest=str(tmp_path / "r.db"))) == 0
+    assert CRMStore(tmp_path / "r.db").clienti()[0]["nome"] == "Anna Verdi"
 
 
 def test_copia_cifrata_mai_in_chiaro_senza_libreria(tmp_path: Path,
