@@ -1,7 +1,9 @@
 # Ultimo report — 2026-11-19/20 — CRM: copia cifrata su iCloud Drive, giro 2 volte al giorno, parole vietate
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #386. Bot e verifica esterna: APPROVATO CON RISERVE senza ALTA/MEDIA; le loro note sono chiuse in 17aee558. Fetta di sicurezza (cifratura dei dati dei clienti): secondo passaggio nella chat claude.ai col link della PR.
+1. Merge della PR #386.
+   - Sul commit ee38220c il bot aveva bocciato per un finding MEDIA (copia su iCloud che falliva senza avvisare), chiuso in e2c6e95a.
+   - Riserva aperta: R-820-1 BASSA (cartella di rete bloccata all'avvio). Fetta di sicurezza (cifratura dei dati dei clienti): secondo passaggio nella chat claude.ai col link della PR.
 2. Password delle copie cifrate: scriverla nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri) e salvarla anche nel gestore di password. Senza di lei le copie su iCloud non si aprono.
 3. Controllare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti: se quelle sono sincronizzate con iCloud, il database in chiaro finirebbe su iCloud.
 4. Server gratuito per avere il CRM dal telefono (Tailscale col Mac acceso, oppure Oracle Cloud «Always Free»): da decidere. Per ora il CRM resta sul Mac.
@@ -27,12 +29,18 @@
   - File leggibili solo dal proprietario.
   - Nessun temporaneo lasciato.
   - Il ripristino non lascia file rotti.
+- **Note della verifica esterna (2° giro) e del bot su #386**: FATTA, commit 7b652af1 (review #819 APPROVATO) ed e2c6e95a (review #820 APPROVATO CON RISERVE).
+  - Ripristino con disco pieno senza dati in chiaro.
+  - Prova vera di scrittura su iCloud all'avvio.
+  - In dashboard «☁ copia OK / spenta / NON riuscita», con avviso Telegram se fallisce.
+  - Password di prima nel ripristino.
+  - File iCloud non scaricato spiegato.
 - **Server per il CRM**: DEFERITA. L'operatore non vuole spendere per un server solo per il CRM; alternative gratuite da decidere (punto 4).
 
 ## Test
-- `tests/test_unit_crm.py`: 127 passed. Su main falliscono i 6 test nuovi o cambiati; `test_r815_*` fallisce anche col `copia_cifrata.py` del giro #815.
+- `tests/test_unit_crm.py`: 131 passed. Su main falliscono i 6 test nuovi o cambiati; `test_r815_*` fallisce anche col `copia_cifrata.py` del giro #815.
 - notte, voice_contesto, manutenzione e hooks: 468 passed. mypy: 0 errori in `modules/crm`. Kernel e gas.py non toccati.
 
 ## Riserve aperte
-- Nessuna riserva aperta della fetta (R-816-1 e R-817-1 chiuse).
+- R-820-1 BASSA: una cartella di rete bloccata ferma l'avvio del CRM (con iCloud non succede).
 - Da prima: R-810-2 (filtro delle parole vietate, con falsi allarmi possibili), R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4 (vedi `reports/stato_progetto.md`).
