@@ -709,6 +709,34 @@ class TestStorico:
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA"), _f("V-2", "COSMETICA")], testo)
         assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
 
+    def test_388_non_maiuscolo_a_inizio_frase_non_blocca(self):
+        # PR #388, head cfa0156a: check failure per «Non bloccante:» a inizio frase nella
+        # riga di un finding BASSA (la negazione valeva solo per «non» minuscolo).
+        testo = (
+            "VERIFICA ESTERNA #388 — APPROVATO CON RISERVE\nFINDING:\n"
+            "- V-1 (BASSA) — R-830-1, introdotta e già dichiarata da questa PR: dopo un "
+            "riavvio il temporaneo in chiaro resta. Non bloccante: sta in locale accanto al "
+            "DB già in chiaro. Non è grave.\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 (BASSA) — NON bloccante",                     # fix #388: tutto maiuscolo resta
+        "V-1 (BASSA) — Non è ALTA a parole",               # gravità maiuscola
+        "V-1 — Non mitigato: grave",                       # nega il difetto, non la gravità
+        "V-1 — Non solo lento ma bloccante",
+        "V-1 (MEDIA) — Non bloccante per l'operatore",     # la parentesi vince
+        # R-831-1: punteggiatura fra le parole e confine di parola (proprietà già dichiarate)
+        "V-1 (BASSA) — Non è più così: grave",
+        "V-1 (BASSA) — Canon grave",
+        "V-1 (BASSA) — canon grave",
+    ])
+    def test_388_non_maiuscolo_non_nasconde_gravita(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 f"{riga}\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
     @pytest.mark.parametrize("riga", [
         "V-1 (BASSA) — non solo lento ma grave",          # «non» non nega «grave»… resta visto
         "V-1 (BASSA) — non è ALTA a parole ma critica",    # maiuscolo e altra gravità
