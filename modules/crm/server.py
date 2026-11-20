@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlsplit
 
-from modules.crm import analisi, motore, scrittore
+from modules.crm import analisi, copia_cifrata, motore, scrittore
 from modules.crm.messaggi import link_whatsapp
 from modules.crm.store import (CRMStore, ErroreCRM, normalizza_telefono,
                                parse_importo, parse_percentuale_bp, valida_data)
@@ -265,6 +265,12 @@ class Stato:
         return nuovo
 
 
+def _copia_esterna(copia: Any) -> None:
+    fuori, motivo = copia_cifrata.copia_fuori(copia)
+    if fuori is None and motivo and not motivo.startswith("manca GAS_CRM_BACKUP_PASSWORD"):
+        log.warning("CRM: copia cifrata esterna: %s", motivo)
+
+
 def _guardiano(stato: Stato) -> None:
     """Thread: si accorge dei cambi nel DB (anche fatti da altri processi) e programma le
     scansioni. Una connessione tenuta aperta: `PRAGMA data_version` cambia quando un'ALTRA
@@ -293,8 +299,16 @@ def _guardiano(stato: Stato) -> None:
         adesso = time.monotonic()
         if not stato.demo and (stato.ultimo_backup == 0.0 or adesso - stato.ultimo_backup >= BACKUP_OGNI_S):
             stato.ultimo_backup = adesso
-            if stato.store.backup() is None:
+            copia = stato.store.backup()
+            if copia is None:
                 log.warning("CRM: copia di sicurezza automatica non riuscita")
+            else:
+                # decisione dell'operatore 2026-11-19: una copia CIFRATA anche fuori dal Mac
+                # (iCloud Drive); spenta senza password, mai in chiaro
+                # R-815-4: in un thread a parte, così una cartella di rete appesa non ferma
+                # il guardiano (aggiornamenti in tempo reale e giri del motore)
+                threading.Thread(target=_copia_esterna, args=(copia,), name="crm-copia-cifrata",
+                                 daemon=True).start()
         dovuta = (adesso >= prossima_scan or stato.scan_richiesta.is_set()
                   or (scan_dopo_cambio is not None and adesso >= scan_dopo_cambio))
         if dovuta:

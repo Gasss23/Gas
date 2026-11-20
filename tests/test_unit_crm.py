@@ -1280,7 +1280,12 @@ def test_v1_ve381_parole_vietate_non_si_aggirano() -> None:
                   # V-3 verifica esterna #381 (4° giro): altre forme della stessa promessa
                   "ti garantisco un bel mese", "garanzia di rendimento", "capitale protetto",
                   "rendimento sicuro", "profitto assicurato", "soldi facili", "investi ora",
-                  "solo per oggi"):
+                  "solo per oggi",
+                  # V-1 verifica esterna #381 (5° giro) e bot su f537d231: altre forme
+                  "Ti garantirò risultati", "Possiamo garantirti un ottimo servizio",
+                  "100% sicuro", "senza alcun rischio", "rischio nullo",
+                  "Il capitale è al sicuro", "ti assicuro", "non perderai nulla",
+                  "ultima occasione", "posti limitati", "affare sicuro"):
         with pytest.raises(ErroreCRM, match="testo scartato"):
             scrittore.pulisci(furbo)
     for buono in ("Ciao Mario, ottimo mese! Ti va di provare Segnali VIP? Ne parliamo?",
@@ -1328,6 +1333,137 @@ def test_v4_ve381_modello_opus_dalla_fonte_unica() -> None:
     assert scrittore.MODELLO_DEFAULT == model_ids.MODEL_CLAUDE_OPUS
     assert model_ids.e_modello_opus(model_ids.MODEL_CLAUDE_OPUS)
     assert not model_ids.e_modello_opus("claude-sonnet-5-5")
+
+
+def test_nota_tolta_senza_doppi_spazi() -> None:
+    """Nota minore #813: togliere la nota sul rischio in mezzo al testo non lascia spazi doppi."""
+    from modules.crm import scrittore
+    assert scrittore.pulisci("Ciao Mario! " + messaggi.NOTA_RISCHIO_DEFAULT + " Ne parliamo?") == \
+        "Ciao Mario! Ne parliamo?"
+
+
+def test_copia_cifrata_fuori_dal_mac(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Decisione dell'operatore 2026-11-19: copia giornaliera anche su iCloud Drive, SOLO
+    cifrata; senza password nessuna copia esce; ripristino senza mai sovrascrivere."""
+    from modules.crm import copia_cifrata
+    from modules.crm import __main__ as cli
+    import argparse
+    db = tmp_path / ".gas_memory_crm.db"
+    s = CRMStore(db)
+    s.aggiungi_cliente("Marco Bianchi", telefono="+393331234567", email="marco@esempio.it")
+    icloud = tmp_path / "icloud"
+    monkeypatch.setenv("GAS_CRM_DB", str(db))
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(icloud))
+    # senza password: spenta, niente esce
+    assert "GAS_CRM_BACKUP_PASSWORD" in (copia_cifrata.motivo_spenta() or "")
+    assert cli.cmd_backup(argparse.Namespace(demo=False)) == 0
+    assert not icloud.exists()
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "corta")
+    assert copia_cifrata.motivo_spenta() is not None  # troppo corta: spenta
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    assert copia_cifrata.motivo_spenta() is None
+    assert cli.cmd_backup(argparse.Namespace(demo=False)) == 0
+    copie = sorted(icloud.glob("crm-*.gascrm"))
+    assert len(copie) == 1
+    grezzo = copie[0].read_bytes()
+    assert grezzo.startswith(copia_cifrata.MAGIA)
+    for in_chiaro in (b"Marco", b"Bianchi", b"3331234567", b"marco@esempio", b"SQLite format"):
+        assert in_chiaro not in grezzo
+    # ripristino: in un posto nuovo sì, sopra un DB esistente mai
+    nuovo = tmp_path / "ripristinato.db"
+    assert copia_cifrata.ripristina(copie[0], nuovo, "una-password-lunga-1") == nuovo
+    assert CRMStore(nuovo).clienti()[0]["nome"] == "Marco Bianchi"
+    with pytest.raises(ErroreCRM, match="esiste già"):
+        copia_cifrata.ripristina(copie[0], db, "una-password-lunga-1")
+    with pytest.raises(ErroreCRM, match="password sbagliata"):
+        copia_cifrata.ripristina(copie[0], tmp_path / "altro.db", "password-sbagliata-123")
+    assert not (tmp_path / "altro.db").exists()
+    falso = tmp_path / "falso.gascrm"
+    falso.write_bytes(b"non sono una copia")
+    with pytest.raises(ErroreCRM, match="non è una copia cifrata"):
+        copia_cifrata.ripristina(falso, tmp_path / "x.db", "una-password-lunga-1")
+    # dalla riga di comando
+    assert cli.cmd_ripristina(argparse.Namespace(file=str(copie[0]),
+                                                 dest=str(tmp_path / "da_cli.db"))) == 0
+    assert cli.cmd_ripristina(argparse.Namespace(file=str(copie[0]), dest=None)) == 1  # DB c'è già
+    # tiene le ultime N copie
+    for i in range(4):
+        finta = tmp_path / f"crm-2026010{i}-000000.db"
+        finta.write_bytes(db.read_bytes())
+        copia_cifrata.copia_fuori(finta, keep=2)
+    assert len(list(icloud.glob("crm-*.gascrm"))) == 2
+
+
+def test_r815_ripristino_sicuro_dopo_un_crash(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-815-1: un DB va in crash a metà scrittura, l'operatore lo sposta ma il suo journal
+    resta lì: il ripristino rifiuta invece di consegnare un DB rovinato. R-815-2: un DB che
+    compare durante il ripristino non viene sovrascritto."""
+    import subprocess
+    import sys
+    from modules.crm import copia_cifrata
+    pw = "una-password-lunga-1"
+    buono = tmp_path / "buono.db"
+    CRMStore(buono).aggiungi_cliente("Anna Verdi", telefono="+393330000001")
+    copia = tmp_path / "crm-20260101-000000.gascrm"
+    copia.write_bytes(copia_cifrata.cifra(buono.read_bytes(), pw))
+    # il DB di lavoro, con altri clienti, va in crash a metà scrittura
+    db = tmp_path / ".gas_memory_crm.db"
+    st = CRMStore(db)
+    for i in range(50):
+        st.aggiungi_cliente(f"Cliente {i}", telefono=f"+3933300{i:05d}")
+    codice = ("import sqlite3, os; con = sqlite3.connect(%r); con.execute('PRAGMA cache_size=1'); "
+              "con.execute('BEGIN IMMEDIATE'); "
+              "con.execute(\"UPDATE crm_clienti SET nome = 'X' || hex(randomblob(4000))\"); "
+              "os._exit(0)") % str(db)
+    subprocess.run([sys.executable, "-c", codice], check=True)
+    journal = tmp_path / ".gas_memory_crm.db-journal"
+    assert journal.exists()
+    db.rename(tmp_path / "rotto.db")  # l'operatore sposta il DB rovinato; il journal resta
+    with pytest.raises(ErroreCRM, match="file di lavoro"):
+        copia_cifrata.ripristina(copia, db, pw)
+    assert not db.exists()
+    journal.rename(tmp_path / "rotto.db-journal")  # spostato anche lui: ora si può
+    copia_cifrata.ripristina(copia, db, pw)
+    assert [c["nome"] for c in CRMStore(db).clienti()] == ["Anna Verdi"]
+    # R-815-2: il DB nasce mentre si decifra (es. `serve` avviato nello stesso momento)
+    dest = tmp_path / "nuovo.db"
+    vero = copia_cifrata.decifra
+
+    def decifra_e_intanto_nasce(blob: bytes, password: str) -> bytes:
+        dest.write_bytes(b"DB creato nel frattempo")
+        return vero(blob, password)
+
+    monkeypatch.setattr(copia_cifrata, "decifra", decifra_e_intanto_nasce)
+    with pytest.raises(ErroreCRM, match="comparso durante il ripristino"):
+        copia_cifrata.ripristina(copia, dest, pw)
+    assert dest.read_bytes() == b"DB creato nel frattempo"
+    assert not list(tmp_path.glob("*.ripristino.tmp"))
+
+
+def test_copia_cifrata_mai_in_chiaro_senza_libreria(tmp_path: Path,
+                                                   monkeypatch: pytest.MonkeyPatch) -> None:
+    import builtins
+    from modules.crm import copia_cifrata
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(tmp_path / "icloud"))
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    vero = builtins.__import__
+
+    def senza(nome: str, *a: Any, **kw: Any) -> Any:
+        if nome.startswith("cryptography"):
+            raise ImportError(nome)
+        return vero(nome, *a, **kw)
+
+    monkeypatch.setattr(builtins, "__import__", senza)
+    copia = tmp_path / "crm-20260101-000000.db"
+    copia.write_bytes(b"dati")
+    fuori, motivo = copia_cifrata.copia_fuori(copia)
+    assert fuori is None and "cryptography" in (motivo or "")
+    assert not (tmp_path / "icloud").exists()
+
+
+def test_giro_automatico_due_volte_al_giorno() -> None:
+    from modules.crm import __main__ as cli
+    assert cli.SCAN_MINUTI_DEFAULT == 720
 
 
 def test_invio_a_scaglioni(st: CRMStore, orologio: Orologio) -> None:
@@ -1433,7 +1569,7 @@ def test_scrittore_opus(st: CRMStore, tmp_path: Path, monkeypatch: pytest.Monkey
     assert st.conta_eventi_del_giorno("proposta", scrittore.NOTA_EVENTO) == 1
     # R-808-2: il costo entra nel conto del cervello forte del kernel
     assert _uso_forte(conto) == pytest.approx(0.01)
-    with pytest.raises(ErroreCRM, match="garantit"):
+    with pytest.raises(ErroreCRM, match="contiene «garant»"):
         scrittore.riscrivi(st, pid, chiedi=_ClaudeFinto("Guadagno garantito, fidati!"), root=conto)
     assert st.proposta(pid)["messaggio"] == p["messaggio"]  # type: ignore[index]
     assert _uso_forte(conto) == pytest.approx(0.02)  # anche il testo scartato è consumo

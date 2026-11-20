@@ -7,3 +7,5 @@ fastembed==0.8.0
 pyyaml>=6.0
 # lettura del web con lexbor (modules/web/lexbor.py): resta SPENTA senza GAS_WEB_LEXBOR=1
 selectolax==1.0.2
+# CRM: copia di sicurezza CIFRATA fuori dal Mac (modules/crm/copia_cifrata.py)
+cryptography>=42.0

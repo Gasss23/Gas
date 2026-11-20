@@ -1,8 +1,10 @@
 """CRM clienti di Gas: chi è cliente, in quali servizi, quanto guadagna e cosa proporgli.
 
 Pezzi:
-- `store`     — tabelle `crm_*` (nello stesso file SQLite della memoria, così il backup
-                esistente le copre); registro dei movimenti IMMUTABILE, soldi in centesimi.
+- `store`     — tabelle `crm_*` in un file SOLO del CRM (`.gas_memory_crm.db`, separato
+                dalla memoria di Gas dal 17-11) con le sue copie di sicurezza; registro
+                dei movimenti IMMUTABILE, soldi in centesimi.
+- `copia_cifrata` — copia giornaliera CIFRATA fuori dal Mac (iCloud Drive) e ripristino.
 - `analisi`   — conti puri sui dati (capitale, profitto, commissioni, rendimento per
                 servizio, affinità fra servizi): nessuna scrittura.
 - `motore`    — il CRM che «legge se stesso»: trova le opportunità (nuovo servizio,
