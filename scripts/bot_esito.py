@@ -174,8 +174,10 @@ _APRE_GRAVE = re.compile(r"\s*(" + _GRAVI + r")\b", re.I)
 # Review #441: tra «non» e la gravità solo parole di una lista chiusa, senza punteggiatura
 # («non la considero più grave», «non è grave»); «non mitigato: grave», «non autenticato:
 # accesso critico» negano il difetto, non la gravità, e restano bloccanti.
+# Fix bot #388 (cfa0156a): «Non bloccante: …» a inizio frase (V-1 BASSA) bloccava come MEDIA.
+# Vale anche «Non» con la sola iniziale maiuscola; «NON» tutto maiuscolo resta bloccante.
 _GRAVITA_NEGATA = re.compile(
-    r"\bnon\s+(?:(?:è|era|sono|sia|più|la|lo|li|le|si|considero|ritengo|così|molto"
+    r"\b[Nn]on\s+(?:(?:è|era|sono|sia|più|la|lo|li|le|si|considero|ritengo|così|molto"
     r"|affatto|particolarmente|troppo|davvero|tanto|stato|stata)\s+){0,3}"
     r"(?:" + _GRAVI + r")\b")
 
