@@ -11,3 +11,4 @@ Si riscrive a ogni sessione; la storia completa sta in git. La PR #381 (fette 1-
 - `tests/conftest.py`: le suite pytest non scrivono mai nell'iCloud vero.
 - `tests/test_unit_crm.py`: test della copia cifrata, del ripristino dopo un crash, del giro 720 e delle parole vietate.
 - `reports/crm/guida.md`, `reports/crm/decisioni.md` (punti 12-14), report di fine task, `.claude/agents/memoria_revisore.md`.
+- Rifiniture (17aee558): password NFC, una copia esterna al giorno, file 0600 (anche le copie locali in `store.py`), temporaneo unico per copia e pulizia dei vecchi, ripristino che toglie il file rovinato.

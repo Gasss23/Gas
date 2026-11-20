@@ -1,12 +1,14 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-19/20 — CRM fetta 6: copia di sicurezza cifrata su iCloud Drive e ripristino, giro del motore 2 volte al giorno, parole vietate più ampie
+**Sessione:** 2026-11-19/20 — CRM fetta 6: copia di sicurezza cifrata su iCloud Drive e ripristino, giro del motore 2 volte al giorno, parole vietate più ampie; rifiniture dopo bot e verifica esterna su #386
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #386 (https://github.com/Gasss23/Gas/pull/386), aperta dopo il push del commit 4cec29d0, con l'etichetta «verifica». Riserve: R-816-1 COSMETICA. Il merge lo decide l'operatore.
+1. Merge della PR #386 (https://github.com/Gasss23/Gas/pull/386), aperta dopo il push del commit 4cec29d0, con l'etichetta «verifica». Il merge lo decide l'operatore.
+   - Su ebf645db: bot V-B APPROVATO CON RISERVE senza ALTA/MEDIA (check success); verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/386#issuecomment-7025881273).
+   - Le loro note sono chiuse in 17aee558 (review #817/#818). Nessuna riserva aperta della fetta.
    - È una fetta di sicurezza (cifratura dei dati dei clienti): secondo passaggio nella chat claude.ai col link della PR.
 2. Password delle copie cifrate: nel `.env` del Mac `GAS_CRM_BACKUP_PASSWORD` (almeno 12 caratteri), salvata anche nel gestore di password.
 3. Verificare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti sincronizzate con iCloud.
@@ -19,6 +21,13 @@
 - **Fetta 6a — copia cifrata fuori dal Mac (iCloud Drive) e ripristino**: FATTA, commit 32282b6f. Review #815-CRM APPROVATO CON RISERVE (R-815-1 MEDIA) → #816-CRM APPROVATO CON RISERVE (R-816-1 COSMETICA).
 - **Fetta 6b — giro del motore 2 volte al giorno**: FATTA (stesso commit).
 - **Fetta 6c — parole vietate più ampie e docstring** (note del bot e della verifica esterna #381 rimandate il 19-11): FATTA (stesso commit).
+- **Fetta 6d — rifiniture dopo bot e verifica esterna su #386** (V-1..V-4 della verifica, V-1..V-3 del bot, R-816-1): FATTA, commit 17aee558.
+  - Password in forma NFC.
+  - Una copia esterna al giorno, per 30 giorni.
+  - File 0600.
+  - Nessun temporaneo lasciato, con un nome temporaneo unico per ogni copia.
+  - Il ripristino toglie il file se il ricontrollo finale fallisce.
+  - Review #817-CRM APPROVATO CON RISERVE (R-817-1 BASSA: temporaneo condiviso fra due copie dello stesso giorno) → #818-CRM APPROVATO.
 - **Server per il CRM**: DEFERITA. Niente spese per un server solo per il CRM (decisione dell'operatore); alternative gratuite da decidere.
 
 ---
@@ -26,21 +35,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
+ .claude/agents/memoria_revisore.md |   6 ++++++
  modules/crm/__init__.py            |   6 ++++--
  modules/crm/__main__.py            |  49 +++++++++++++++++++++++++++++++++++++++++++++----
- modules/crm/copia_cifrata.py       | 176 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/crm/copia_cifrata.py       | 242 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/scrittore.py           |  11 +++++++----
  modules/crm/server.py              |  18 ++++++++++++++++--
+ modules/crm/store.py               |   1 +
  reports/crm/decisioni.md           |   6 ++++++
- reports/crm/guida.md               |  12 ++++++++++--
- reports/diff_sessione.md           |  21 +++++++++++----------
+ reports/crm/guida.md               |  14 +++++++++++---
+ reports/diff_sessione.md           |  22 ++++++++++++----------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  37 +++++++++++++++++++++++++++----------
+ reports/ultimo_report.md           |  41 +++++++++++++++++++++++++++++++----------
  requirements.txt                   |   2 ++
  tests/conftest.py                  |   4 ++++
- tests/test_unit_crm.py             | 140 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_crm.py             | 248 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
 ```
 
 NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base della sessione: c4c8c31f (origin/main, dopo il merge della PR #381).
@@ -48,6 +58,10 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+17aee558 fix(crm): copie cifrate rifinite — una al giorno, password NFC, file 0600, niente temporanei lasciati, ripristino che toglie il file rovinato
+37972ed5 chore(revisore): memoria review #818 — APPROVATO
+8b0b5b44 chore(revisore): memoria review #817 — APPROVATO CON RISERVE
+ebf645db docs(fine-task): handoff — PR #386 aperta con l'etichetta verifica; §2/§3 rigenerati
 4cec29d0 docs(fine-task): CRM fetta 6 — copia cifrata su iCloud, ripristino, giro 720 min; review #815/#816
 32282b6f feat(crm): copia di sicurezza CIFRATA su iCloud Drive e ripristino; giro del motore 2 volte al giorno; parole vietate più ampie
 f40aa49f chore(revisore): memoria review #816 — APPROVATO CON RISERVE
@@ -186,11 +200,89 @@ Review #816-CRM sul diff staged (8 file, +392/−14): secondo giro di #815, con 
 - Ho aggiunto la riga contatore #816-CRM a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit f40aa49f). Il diff staged è intatto (8 file).
 - Non ho creato `.claude/.review_ok` e non ho committato il diff.
 
+### Review #817-CRM (3° giro, diff staged delle rifiniture su #386)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #817-CRM sul diff staged (4 file, +143/−12), sopra ebf645db (head della PR #386). Chiude le note di bot e verifica esterna su #386 e R-816-1. Resta una riserva BASSA nuova (R-817-1), introdotta dal nome «una copia al giorno».
+
+**Verifiche rifatte da me:**
+- Suite CRM: 126 passed. mypy pulito su modules/crm.
+- Fail-before: con il codice di ebf645db e il file di test nuovo, `test_ve386_copie_cifrate_rifinite` fallisce (1 failed, 125 passed).
+- Prova di concorrenza su due copie dello stesso giorno (riserva R-817-1).
+- Kernel non toccato. Nessuno slicing della history, nessuna simulazione di tool.
+
+### Riserva
+
+**1. R-817-1 — BASSA — due copie dello stesso giorno in parallelo rovinano la copia del giorno.**
+- **Causa:** col nome per giorno (`modules/crm/copia_cifrata.py:137`), due copie dello stesso giorno usano anche lo STESSO file temporaneo `crm-AAAAMMGG.gascrm.tmp` (`modules/crm/copia_cifrata.py:140`), aperto senza esclusività. Prima i nomi avevano data e ora, quindi erano unici.
+- **Quando succede:** il thread del guardiano (all'avvio e ogni 24 ore) e il comando `python -m modules.crm backup` lanciato a mano nello stesso momento; oppure due server.
+- **Provato con un intreccio forzato:** le due scritture si mescolano. Una delle due risponde «riuscita», l'altra fallisce con FileNotFoundError. Il file del giorno rimasto in iCloud NON si decifra («password sbagliata o file rovinato»).
+- **Danno limitato:** le copie dei giorni precedenti restano buone, e la copia successiva sostituisce quella rovinata. La finestra è piccola: circa 0,4 s fra scrypt e scrittura.
+- **Rimedio:** un nome temporaneo unico (per esempio con pid e id del thread, o `tempfile.mkstemp` nella stessa cartella), con la pulizia dei `.tmp` vecchi allargata a quei nomi.
+
+### Elementi del diff esaminati
+
+- **Password normalizzata** (`modules/crm/copia_cifrata.py:81`): `_normalizza` (NFC più spazi tolti ai bordi) si usa sia in `password()` sia in `_fernet`, quindi cifratura e decifratura vedono la stessa forma. Il getpass del ripristino ora toglie gli spazi (`modules/crm/__main__.py:207`), che chiude la prima parte di R-816-1. Nessuna copia col formato precedente è uscita. Esito: ok.
+- **File leggibili solo dal proprietario** (`modules/crm/copia_cifrata.py:88`): `_scrivi_privato` crea i file con 0600 dall'inizio (`os.open`), più un `chmod`. Vale per il `.tmp` cifrato, il `.ripristino.tmp` in chiaro (`modules/crm/copia_cifrata.py:205`) e il ripiego di `dest`. Il `dest` creato con `os.link` condivide l'inode, quindi è 0600. Le copie locali passano a 0600 (`modules/crm/store.py:1225`). Esito: ok.
+  - Nota: il DB vivo `.gas_memory_crm.db` resta coi permessi predefiniti (di solito 0644). Su un Mac con un solo utente pesa poco.
+- **Una copia al giorno:** il nome viene dal nome della copia locale; la copia del giorno si rinnova con `os.replace`. La rotazione ordina `crm-AAAAMMGG.gascrm` per data e non prende i `.tmp`. Esito: ok, salvo R-817-1.
+- **File temporanei:** il `finally` toglie il `.tmp` se si fallisce prima di `os.replace`; `_pulisci_tmp_vecchi` (`modules/crm/copia_cifrata.py:161`) toglie quelli più vecchi di un'ora. Esito: ok.
+- **Ripristino** (`modules/crm/copia_cifrata.py:233`): se il ricontrollo finale fallisce, il file creato DA QUESTO ripristino (`creato`, `modules/crm/copia_cifrata.py:212` e `modules/crm/copia_cifrata.py:219`) viene tolto, insieme ai file di lavoro. Nel ripiego senza collegamenti fisici, una scrittura interrotta toglie il file a metà. L'ordine delle eccezioni è giusto: `FileExistsError` viene preso prima del generico `OSError`. Così si chiude la seconda parte di R-816-1. Esito: ok.
+- **Test nuovo** (`tests/test_unit_crm.py:1443`): copre NFC/NFD, due copie nello stesso giorno (in sequenza, non in parallelo), permessi 0600, `os.replace` rotto, `.tmp` vecchio di 2 ore, ripiego senza `os.link`, ricontrollo che fallisce. Esito: ok.
+
+### Rischi esplicitamente NON verificati
+
+- Comportamento di iCloud Drive con `os.replace` sullo stesso nome ogni giorno (versioni, conflitti di sincronizzazione fra dispositivi): qui non riproducibile.
+- Il ripiego senza collegamenti fisici su un file system vero (exFAT, cartella di rete): provato solo con `os.link` sostituito nel test.
+- Documenti fuori stage (guida con la nota GDPR estesa alle copie iCloud): non letti.
+
+### Note
+
+- La V-4 del bot (falsi allarmi a cavallo di due parole) resta dentro R-810-2, come dichiarato.
+- Restano aperte, dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6.
+- Ho aggiunto la riga contatore #817-CRM e una lezione (temporanei derivati da un nome condiviso) in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (commit 8b0b5b44). Il diff staged è intatto (4 file).
+- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+
+### Review #818-CRM (4° giro, commit 17aee558)
+
+## VERDETTO: APPROVATO
+
+Review #818-CRM sul diff staged (4 file, +188/−13; il messaggio diceva +190/−12, conta poco). R-817-1 è chiusa: ora ogni copia scrive il proprio file temporaneo, e due copie dello stesso giorno in parallelo riescono entrambe e producono un file decifrabile.
+
+**Verifiche rifatte da me:**
+- Suite CRM: 127 passed. mypy pulito su modules/crm.
+- Fail-before: ho ritrovato nel repo il `copia_cifrata.py` del giro #817 (blob 983f246f). Con quello al posto del nuovo, `test_r817_1_due_copie_dello_stesso_giorno_in_parallelo` fallisce (1 failed, 126 passed).
+- Ho rifatto la mia prova del giro #817 sul codice nuovo: due copie dello stesso giorno in parallelo, con le scritture intrecciate a metà. Ora riescono entrambe e il file del giorno si decifra in un database SQLite (`b'SQLite format 3'`); prima era indecifrabile.
+- Kernel non toccato. Nessuno slicing della history, nessuna simulazione di tool.
+
+**Elementi del diff esaminati:**
+- `modules/crm/copia_cifrata.py:143` — il temporaneo ha nome unico per processo e per thread (`{dest.name}.{pid}-{thread_ident}.tmp`); `modules/crm/copia_cifrata.py:144` lo crea in esclusiva (O_EXCL) con permessi 0600.
+  - Rischio esaminato: due scritture sullo stesso file temporaneo. Due thread vivi dello stesso processo non hanno mai lo stesso ident, e due processi hanno pid diversi.
+  - Se resta un temporaneo con lo stesso nome (thread morto e ident riusato entro un'ora), O_EXCL fa fallire solo quel tentativo, con un avviso nel log; il `finally` toglie il residuo.
+  - L'`os.replace` finale sulla copia del giorno è atomico: vince l'ultima, ed entrambe sono complete.
+  - Esito: ok.
+- `modules/crm/copia_cifrata.py:168` — la pulizia usa il glob `crm-*.gascrm.*tmp`, che prende sia `crm-AAAAMMGG.gascrm.tmp` (nome vecchio) sia i nomi nuovi con pid e thread.
+  - Rischio esaminato: cancellare il temporaneo di una copia in corso. Si tolgono solo quelli più vecchi di un'ora.
+  - Esito: ok.
+- `tests/test_unit_crm.py:1510` — il test sincronizza le due scritture con una Barrier e controlla quattro cose: temporanei diversi, entrambe le copie riuscite, file del giorno decifrabile in SQLite, nessun `.tmp` rimasto.
+  - Rischio esaminato: un test che passa per caso. Sul codice di #817 fallisce in modo deterministico, perché i due percorsi coincidono.
+  - Esito: ok.
+
+**Rischio esplicitamente NON verificato:** il comportamento di iCloud Drive vero con più file temporanei nella stessa cartella (sincronizzazione dei `.tmp` prima della rinomina). Qui non c'è un Mac; i file sono comunque cifrati e restano 0600.
+
+**Note:**
+- Restano aperte, dai giri precedenti: R-810-2, R-810-3, R-804-2, R-804-4, R-803-9, R-803-10, R-808-5, R-808-6. Resta anche la nota di #817: il DB vivo ha i permessi predefiniti (di solito 0644).
+- Ho aggiunto la riga contatore #818-CRM in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit 37972ed5). Il diff staged è intatto (4 file).
+- Non ho creato `.claude/.review_ok` e non ho committato il diff.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- **`tests/test_unit_crm.py`:** 118 test su main c4c8c31f (quelli che passano anche col codice vecchio) → 125 passed.
+- **`tests/test_unit_crm.py`:** 118 test su main c4c8c31f (quelli che passano anche col codice vecchio) → 125 passed a 32282b6f → 127 passed a 17aee558.
   - Con il codice di main falliscono i 6 test nuovi o cambiati: `test_v1_ve381_parole_vietate_non_si_aggirano`, `test_nota_tolta_senza_doppi_spazi`, `test_copia_cifrata_fuori_dal_mac`, `test_copia_cifrata_mai_in_chiaro_senza_libreria`, `test_giro_automatico_due_volte_al_giorno`, `test_scrittore_opus`.
   - `test_r815_ripristino_sicuro_dopo_un_crash` fallisce col `copia_cifrata.py` del giro #815 e passa ora.
+  - `test_ve386_copie_cifrate_rifinite` fallisce col codice di ebf645db (1 failed, 125 passed).
+  - `test_r817_1_due_copie_dello_stesso_giorno_in_parallelo` fallisce col `copia_cifrata.py` del giro #817 (1 failed).
 - **Kernel** (`gas.py`, `tests/test_unit_kernel.py`): non toccato.
 - **Suite che usano `tests/conftest.py`:** `pytest tests/test_unit_notte.py tests/test_unit_voice_contesto.py tests/test_unit_manutenzione.py tests/test_unit_hooks.py` → `468 passed in 86.11s (0:01:26)`.
 - **mypy:** 0 errori in `modules/crm`. **`node --check`** su `modules/crm/web/app.js`: ok (file non toccato).
@@ -198,21 +290,28 @@ Review #816-CRM sul diff staged (8 file, +392/−14): secondo giro di #815, con 
 ## §6 STATO CI
 
 `gh run list` non usato: in questa sessione cloud GitHub si interroga con gli strumenti MCP.
-- Sul ramo ripartito da main questa è la prima fetta. Ultima run del ramo prima della ripartenza: 44598878073 su 1a177291 (PR #381), success.
+- Run della PR #386, lette con gli strumenti MCP:
+
+```
+run 44642840640  CI            push                 ebf645db  vista in corso dalla verifica esterna (handoff-check success)
+run 44642844757  verifica-bot  pull_request_target  ebf645db  completed / success  (APPROVATO CON RISERVE senza ALTA/MEDIA, modello claude-opus-5-5)
+run 44642803000  verifica-bot  pull_request_target  4cec29d0  completed / cancelled  (head cambiata durante la verifica)
+```
 - Mappatura commit→run:
-  - `be656bb7`, `f40aa49f`, `32282b6f`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file, e la run testerà solo l'albero di quel commit.
-  - `4cec29d0` (primo fine-task della fetta): run appena partita al push, esito non ancora disponibile alla scrittura dell'handoff.
+  - `be656bb7`, `f40aa49f`, `32282b6f`: nessuna run su questi SHA (pushati insieme a 4cec29d0).
+  - `4cec29d0`: verifica-bot 44642803000 cancelled (head cambiata); per la CI vale la run di ebf645db, pushato subito dopo.
+  - `ebf645db`: CI 44642840640 e verifica-bot 44642844757 (sopra).
+  - `8b0b5b44`, `37972ed5`, `17aee558`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-816-1 (COSMETICA):**
-  - la password digitata con getpass in `ripristina` non viene ripulita dagli spazi ai bordi;
-  - il ripiego senza collegamenti fisici (`open(dest, "xb")`) non ha un test, e con disco pieno può lasciare un file incompleto, segnalato come «non usarlo».
-- **Chiuse in questa fetta:**
-  - R-815-1 (MEDIA, file di lavoro rimasto accanto al database da ripristinare);
-  - R-815-2 (sovrascrittura durante il ripristino);
-  - R-815-3 (parametri di scrypt);
-  - R-815-4 (cartella di rete appesa nel guardiano).
-  - Dalla PR #381: parole vietate (V-1 della verifica esterna, 5° giro, e V-1 del bot su f537d231), docstring (V-1 del bot su 1a177291), nota minore #813.
+- **Nessuna riserva aperta di questa fetta.** Chiuse in 17aee558:
+  - R-816-1;
+  - V-1..V-4 della verifica esterna #386;
+  - V-1..V-3 del bot su ebf645db;
+  - R-817-1.
+- **V-4 del bot su ebf645db (COSMETICA):** falsi allarmi del filtro a cavallo di due parole («per derivati» → «perder»). Resta dentro R-810-2, dichiarata: scarta solo la riscrittura.
+- **Nota di #817/#818 (non riserva):** il DB vivo `.gas_memory_crm.db` ha i permessi predefiniti (di solito 0644). Su un Mac con un solo utente pesa poco.
+- **Chiuse anche in questa fetta:** R-815-1 (MEDIA), R-815-2/3/4, e dalla PR #381 le note sulle parole vietate e sulla docstring.
 - **Ancora aperte da prima:** R-810-2, R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4 (vedi `reports/stato_progetto.md`).
