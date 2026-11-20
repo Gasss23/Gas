@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa correzione (numero dopo il push). Tocca la macchina del bot: il check `verifica-bot` dà neutral e il merge lo decide l'operatore, che in chat ha scelto questa strada («fai quello, sicurezza massima») e ha detto «ok avvisami quando hai mergiato».
+1. Merge della PR #389 (https://github.com/Gasss23/Gas/pull/389), aperta dopo il push di 723a3ccb con l'etichetta «verifica». Tocca la macchina del bot: il check `verifica-bot` dà neutral e il merge lo decide l'operatore, che in chat ha scelto questa strada («fai quello, sicurezza massima») e ha detto «ok avvisami quando hai mergiato».
 2. Da decidere: aggiungere a `_GRAVI` anche «alto», «severo», «serio», «elevato» (nota del revisore #831, fuori da questo diff).
 
 ---
@@ -37,6 +37,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+723a3ccb docs(fine-task): bot di verifica — falso rosso «Non bloccante» corretto (review #831, #832)
 4c982142 fix(bot): «Non bloccante» a inizio frase non è più letto come gravità MEDIA (falso rosso del bot sulla PR #388); «NON» maiuscolo resta bloccante — review #831 e #832 APPROVATO CON RISERVE
 a640fa0a chore(revisore): memoria review #832 — APPROVATO CON RISERVE
 7f8b52aa chore(revisore): memoria review #831 — APPROVATO CON RISERVE
@@ -137,6 +138,7 @@ Riga contatore scritta in /home/user/Gas/.claude/agents/memoria_revisore.md (#83
 `gh run list` non usato: GitHub si interroga con `gh api` REST.
 - Mappatura commit→run:
   - `7f8b52aa`, `a640fa0a`, `4c982142`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa.
+  - `723a3ccb` (primo fine-task): run appena partita al push, esito non ancora disponibile alla scrittura dell'handoff.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
