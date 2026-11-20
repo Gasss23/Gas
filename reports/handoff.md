@@ -37,6 +37,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e78bb323 docs(fine-task): handoff — PR #389 aperta con l'etichetta verifica
 723a3ccb docs(fine-task): bot di verifica — falso rosso «Non bloccante» corretto (review #831, #832)
 4c982142 fix(bot): «Non bloccante» a inizio frase non è più letto come gravità MEDIA (falso rosso del bot sulla PR #388); «NON» maiuscolo resta bloccante — review #831 e #832 APPROVATO CON RISERVE
 a640fa0a chore(revisore): memoria review #832 — APPROVATO CON RISERVE
@@ -130,7 +131,7 @@ Riga contatore scritta in /home/user/Gas/.claude/agents/memoria_revisore.md (#83
 
 ## §5 DELTA TEST DEL MOTORE
 
-- **`tests/test_unit_verifica_bot.py`:** 627 su main d03e5bf2 → 630 passed. `test_388_non_maiuscolo_a_inizio_frase_non_blocca` fallisce col `bot_esito.py` di main (1 failed, 626 passed). I casi di `test_388_non_maiuscolo_non_nasconde_gravita` uccidono i mutanti senza `\b`, con punteggiatura fra le parole, con `(?i:non)`.
+- **`tests/test_unit_verifica_bot.py`:** 621 su main d03e5bf2 → 630 passed (+9 casi: 1 test + 8 parametrizzati). `test_388_non_maiuscolo_a_inizio_frase_non_blocca` fallisce col `bot_esito.py` di main (1 failed, 629 passed). Corretto dopo il V-1 BASSA del bot su e78bb323: prima qui c'era «627 → 630» e «626 passed», i numeri dell'indice intermedio della review #831 (627 e 626 nei verdetti #831/#832 restano giusti per quell'indice). I casi di `test_388_non_maiuscolo_non_nasconde_gravita` uccidono i mutanti senza `\b`, con punteggiatura fra le parole, con `(?i:non)`.
 - **Kernel** (`gas.py`, `tests/test_unit_kernel.py`) e CRM: non toccati.
 
 ## §6 STATO CI
@@ -139,6 +140,7 @@ Riga contatore scritta in /home/user/Gas/.claude/agents/memoria_revisore.md (#83
 - Mappatura commit→run:
   - `7f8b52aa`, `a640fa0a`, `4c982142`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa.
   - `723a3ccb` (primo fine-task): run appena partita al push, esito non ancora disponibile alla scrittura dell'handoff.
+  - `e78bb323`: run CI 44797804234 (unit-suite success, handoff-check success), verifica-bot neutral (APPROVATO CON RISERVE: V-1 BASSA sui conteggi dei test, corretta qui; R-832-1).
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

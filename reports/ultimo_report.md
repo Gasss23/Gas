@@ -13,7 +13,7 @@
 - **Dopo il merge**: nuovo giro del bot sulla PR #388, che poi si mergia se è verde.
 
 ## Test
-- `tests/test_unit_verifica_bot.py`: 627 su main → 630 passed. Il test del caso reale fallisce col codice di main; i casi che devono restare bloccati uccidono i mutanti indicati dal revisore.
+- `tests/test_unit_verifica_bot.py`: 621 su main → 630 passed. Il test del caso reale fallisce col codice di main (1 failed, 629 passed); i casi che devono restare bloccati uccidono i mutanti indicati dal revisore.
 
 ## Riserve aperte
 - R-832-1 COSMETICA: nessun test per «Non: grave» (punteggiatura subito dopo «Non»); oggi il comportamento è giusto.
