@@ -108,19 +108,27 @@ def _fernet(pw: str, sale: bytes):  # type: ignore[no-untyped-def]
 def _genitore_assente(dest_dir: Path) -> Optional[str]:
     """V-1 verifica #386 (3°): la cartella delle copie si crea SOLO se la cartella che la
     contiene esiste già. Con un disco esterno non collegato (/Volumes/…) prima si creava la
-    cartella sul disco del Mac e la copia «riusciva» senza uscire dal Mac."""
-    if not dest_dir.parent.is_dir():
-        return (f"la cartella {dest_dir.parent} non c'è (disco non collegato?): nessuna copia "
-                "fuori dal Mac")
-    # rischio segnalato dal revisore #821: su macOS un punto di mount vuoto può restare in
-    # /Volumes anche a disco staccato; lì la cartella «esiste» ma è sul disco del Mac
+    cartella sul disco del Mac e la copia «riusciva» senza uscire dal Mac. Mai solleva
+    (V-1 bot #387: un permesso negato su `is_dir` ora è un motivo, non un'eccezione)."""
     try:
-        rel = Path(dest_dir).relative_to(VOLUMI)
-    except ValueError:
+        if not dest_dir.parent.is_dir():
+            return (f"la cartella {dest_dir.parent} non c'è (disco non collegato?): nessuna "
+                    "copia fuori dal Mac")
+        # rischio segnalato dal revisore #821: su macOS un punto di mount vuoto può restare
+        # in /Volumes anche a disco staccato; lì la cartella «esiste» ma è sul disco del Mac.
+        # Nota #822: si confronta il percorso RISOLTO (collegamenti simbolici) e senza
+        # badare a maiuscole e minuscole, come fa il disco del Mac
+        vero = Path(os.path.realpath(dest_dir)).parts
+        volumi = Path(os.path.realpath(VOLUMI)).parts
+        n = len(volumi)
+        if len(vero) > n and [x.casefold() for x in vero[:n]] == [x.casefold() for x in volumi]:
+            disco = Path(*vero[:n + 1])
+            if not os.path.ismount(disco):
+                return f"il disco {disco} non è collegato: nessuna copia fuori dal Mac"
         return None
-    if rel.parts and not os.path.ismount(VOLUMI / rel.parts[0]):
-        return (f"il disco {VOLUMI / rel.parts[0]} non è collegato: nessuna copia fuori dal Mac")
-    return None
+    except OSError as e:
+        return (f"la cartella {dest_dir.parent} non è accessibile ({type(e).__name__}): "
+                "nessuna copia fuori dal Mac")
 
 
 def prova_scrittura() -> Optional[str]:
@@ -159,9 +167,17 @@ def esito_all_avvio(attesa_s: Optional[float] = None) -> str:
     spenta = motivo_spenta()
     if spenta:
         return f"SPENTA ({spenta})"
-    esito: dict = {}
-    filo = threading.Thread(target=lambda: esito.__setitem__("prova", prova_scrittura()),
-                            name="crm-prova-copia", daemon=True)
+    # V-1 bot #387: si parte da un esito di FALLIMENTO; solo una prova finita bene lo cambia
+    # (prima un'eccezione nel thread lasciava l'esito vuoto e la riga diceva «ATTIVA»)
+    esito: dict = {"prova": "prova non conclusa per un errore inatteso"}
+
+    def _prova() -> None:
+        try:
+            esito["prova"] = prova_scrittura()
+        except Exception as e:  # §9
+            esito["prova"] = f"prova non riuscita ({type(e).__name__})"
+
+    filo = threading.Thread(target=_prova, name="crm-prova-copia", daemon=True)
     filo.start()
     filo.join(PROVA_ATTESA_S if attesa_s is None else attesa_s)
     if filo.is_alive():
@@ -200,13 +216,15 @@ def copia_fuori(copia_locale: Path, keep: int = KEEP) -> Tuple[Optional[Path], O
     pw = password()
     assert dest_dir is not None and pw is not None
     tmp: Optional[Path] = None
-    assente = _genitore_assente(dest_dir)
-    if assente:
-        return None, assente
-    # V-5 verifica #386 (3°): una copia locale rovinata non sostituisce la copia buona del giorno
-    if not _integro(Path(copia_locale)):
-        return None, "la copia locale non è integra: la copia del giorno fuori dal Mac resta quella di prima"
     try:
+        # V-1 bot #387: anche questi controlli dentro il try, «copia_fuori non solleva mai»
+        assente = _genitore_assente(dest_dir)
+        if assente:
+            return None, assente
+        # V-5 verifica #386 (3°): una copia locale rovinata non sostituisce la copia buona
+        if not _integro(Path(copia_locale)):
+            return None, ("la copia locale non è integra: la copia del giorno fuori dal Mac "
+                          "resta quella di prima")
         dest_dir.mkdir(exist_ok=True)
         # V-1 bot #386: UNA copia esterna al giorno (quella del giorno si rinnova), così
         # le KEEP copie sono KEEP giorni anche se il CRM si riavvia spesso
@@ -254,8 +272,10 @@ _FILE_DI_LAVORO = ("-journal", "-wal", "-shm")
 
 
 def _integro(percorso: Path) -> bool:
+    """Database del CRM integro? In SOLA LETTURA (V-2 bot #387): un percorso che non esiste
+    non diventa un file vuoto."""
     try:
-        con = sqlite3.connect(str(percorso))
+        con = sqlite3.connect(Path(percorso).resolve().as_uri() + "?mode=ro", uri=True)
         try:
             ok = con.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
             return ok and con.execute("SELECT name FROM sqlite_master WHERE type='table' "
