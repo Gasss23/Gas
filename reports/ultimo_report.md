@@ -1,12 +1,13 @@
 # Ultimo report — 2026-11-20 — CRM fetta 8: note basse sulle PR #387 e #388 chiuse
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #388: le riserve aperte sono solo BASSE o cosmetiche. Il bot aveva dato APPROVATO CON RISERVE su 0d946f08 e su 7cd7a2f0 (note chiuse in a565c7b6 e b0174be5): serve il sì dell'operatore in chat, salvo un verdetto del bot pulito sul nuovo head.
+1. Merge della PR #388 (dopo il nuovo giro del bot sul merge di main 7d6a6865): le riserve aperte sono solo BASSE o cosmetiche. Il bot aveva dato APPROVATO CON RISERVE su 0d946f08 e su 7cd7a2f0 (note chiuse in a565c7b6 e b0174be5): serve il sì dell'operatore in chat, salvo un verdetto del bot pulito sul nuovo head.
 2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri), salvata anche nel gestore di password; poi `pip install -r requirements.txt` una volta.
 3. Controllare che la cartella di Gas sia `~/Gas` (`pwd`), fuori da Scrivania e Documenti sincronizzate.
 4. Secondo passaggio nella chat claude.ai col link della PR #387 e di questa PR (riservatezza delle copie dei clienti).
 
 ## Esito
+- **PR #389 (correzione del bot)**: MERGIATA il 20-11 (09e112f5). Il bot sulla #388 aveva dato rosso per errore: leggeva «Non bloccante» come gravità MEDIA. Main portato nel ramo della #388 (merge 7d6a6865, review #833 APPROVATO) per un nuovo giro del bot.
 - **PR #387**: MERGIATA il 20-11 (d03e5bf2) col via dell'operatore («mergia quando è tutto verde»): CI verde, bot e verifica esterna APPROVATO CON RISERVE senza finding ALTA/MEDIA.
 - **Correzione #824/#825 — note basse di bot e verifica esterna su d809f5f1**: FATTA (d62adafb, review #824 e #825 APPROVATO CON RISERVE).
   - Un ripristino interrotto (kill, Mac spento) non lascia più per sempre il file in chiaro accanto alla destinazione: al ripristino seguente si tolgono quelli dei processi morti. Mai i collegamenti simbolici, mai quelli di altre destinazioni.

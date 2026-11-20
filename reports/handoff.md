@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #388 (https://github.com/Gasss23/Gas/pull/388), aperta dopo il push di 538a8948 con l'etichetta «verifica». Su 0d946f08: CI verde, bot APPROVATO CON RISERVE (V-1/V-2 BASSE, chiuse da a565c7b6), verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/388#issuecomment-7041948403). Su 7cd7a2f0: bot APPROVATO CON RISERVE (V-1 BASSA, V-2/V-3 COSMETICHE, chiuse da b0174be5), verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/388#issuecomment-7042376753). Le riserve aperte sono solo BASSE/COSMETICHE; senza un verdetto del bot pulito sul nuovo head serve il sì dell'operatore in chat (CLAUDE.md §10).
+1. Merge della PR #388 (https://github.com/Gasss23/Gas/pull/388), aperta dopo il push di 538a8948 con l'etichetta «verifica». Su cfa0156a il bot ha dato failure per un falso positivo del suo classificatore («Non bloccante» letto come MEDIA, verdetto testuale APPROVATO CON RISERVE con il solo V-1 BASSA): corretto nella PR #389, mergiata (09e112f5) col via dell'operatore («fai quello, sicurezza massima», «ok avvisami quando hai mergiato»); main portato nel ramo (merge 7d6a6865) per un nuovo giro del bot. Su 0d946f08: CI verde, bot APPROVATO CON RISERVE (V-1/V-2 BASSE, chiuse da a565c7b6), verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/388#issuecomment-7041948403). Su 7cd7a2f0: bot APPROVATO CON RISERVE (V-1 BASSA, V-2/V-3 COSMETICHE, chiuse da b0174be5), verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/388#issuecomment-7042376753). Le riserve aperte sono solo BASSE/COSMETICHE; senza un verdetto del bot pulito sul nuovo head serve il sì dell'operatore in chat (CLAUDE.md §10).
 2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`), salvata anche nel gestore di password; poi `pip install -r requirements.txt`.
 3. Verificare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti sincronizzate con iCloud.
 4. Secondo passaggio nella chat claude.ai col link della PR #387 e di questa PR (riservatezza delle copie dei clienti).
@@ -24,6 +24,7 @@
 - **Fetta 8d — note del bot su 7cd7a2f0**: FATTA, commit b0174be5. Review #830 APPROVATO CON RISERVE (R-830-1 BASSA).
   - V-1: resti in chiaro più vecchi di un'ora tolti qualunque PID (riavvio); guida aggiornata.
   - V-2: `_consiglio_icloud` col percorso risolto e casefold. V-3 (= R-829-1): test del disco pieno.
+- **Merge di main (PR #389) nel ramo**: FATTO, commit 7d6a6865. Review #833 APPROVATO: codice del CRM identico a cfa0156a, `scripts/bot_esito.py` e il suo test identici a main, conflitti dei report risolti per unione.
 - **Non fatte (note del bot e della verifica esterna, BASSE/COSMETICHE):** verifica esterna V-4 (il thread della prova, dopo il tempo massimo, resta vivo: innocuo) — DEFERITA, cosmetica.
 
 ---
@@ -31,22 +32,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  13 ++++++++++
- modules/crm/copia_cifrata.py       | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- modules/crm/server.py              |  25 ++++++++++++++-----
+ .claude/agents/memoria_revisore.md |  14 +++++++++++
+ modules/crm/copia_cifrata.py       | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ modules/crm/server.py              |  25 +++++++++++++++-----
  reports/crm/guida.md               |   4 ++--
- reports/diff_sessione.md           |  22 ++++++++---------
+ reports/diff_sessione.md           |  17 ++++++++++----
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  45 +++++++++++++++++++----------------
- tests/test_unit_crm.py             | 167 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  39 ++++++++++++++++++++++---------
+ tests/test_unit_crm.py             | 167 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
 ```
 
-NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base della sessione: d03e5bf2 (origin/main, dopo il merge della PR #387).
+NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base della sessione: 09e112f5 (origin/main dopo il merge della PR #389, entrato nel ramo col merge 7d6a6865); i file della #389 escono quindi dal diff.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7d6a6865 Merge origin/main (PR #389, correzione del bot) nel ramo della PR #388 — review #833 APPROVATO
+cfa0156a docs(fine-task): CRM fetta 8 — note del bot su 7cd7a2f0 chiuse (review #830); guida sui resti dei ripristini
 b0174be5 fix(crm): resti in chiaro di ripristini interrotti tolti anche dopo un riavvio (più vecchi di un'ora); consiglio su iCloud anche via collegamento o con maiuscole diverse; test del disco pieno (note del bot su #388) — review #830 APPROVATO CON RISERVE
 cf6a897c chore(revisore): memoria review #830 — APPROVATO CON RISERVE
 7cd7a2f0 docs(fine-task): CRM fetta 8 — note basse del bot su #388 chiuse (review #828, #829)
@@ -373,6 +376,35 @@ Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la voce «CRM fetta 6
 - Il diff staged è intatto dopo il commit della memoria (stesso SHA qui sopra). `.claude/.review_ok` non creato, diff non committato.
 - In stato_progetto vanno segnate R-829-1 chiusa e R-830-1 aperta.
 
+### Review #833-MERGE (commit 7d6a6865)
+
+## VERDETTO: APPROVATO
+
+Review #833-MERGE: merge in corso di origin/main 09e112f5 (merge della PR #389) nel ramo `claude/nifty-galileo-3k7kbm`, con HEAD cfa0156a (PR #388) e base comune d03e5bf2. Prima della review ho letto CLAUDE.md (sezione 5), `reports/stato_progetto.md` e la mia memoria. Ho applicato la lezione del 2026-11-19: dopo il merge i file arrivati da main escono dal diff della sessione, quindi le citazioni di file del diff sono di codice del ramo.
+
+**Elementi esaminati**
+- `modules/crm/copia_cifrata.py:345` — salta i resti del ripristino che sono collegamenti simbolici (codice della review #830). Rischio: il merge altera il codice CRM del ramo. Il blob è identico a HEAD nell'indice (9f87484f42) ed è diverso da main, quindi è la versione del ramo. Esito: ok.
+- `modules/crm/copia_cifrata.py:128` — confronta il percorso risolto senza badare a maiuscole in `_consiglio_icloud`. Rischio come sopra. È identico a HEAD. Lo stesso vale per `modules/crm/server.py` (c3b6984745) e `reports/crm/guida.md`. Esito: ok.
+- `tests/test_unit_crm.py:1944` — test del disco pieno (ENOSPC, nessun consiglio su iCloud). Rischio: test del ramo persi o mescolati con quelli di main. Il blob è identico a HEAD (36129da12a). Esito: ok.
+- Contesto: `scripts/bot_esito.py:180` — la regola che riconosce «non» e «Non» (`\b[Nn]on`) davanti a una gravità. Rischio: la correzione della #389 alterata nel merge. Blob identico a main: indice = main = aa0d4a497c. Rispetto a HEAD cambiano solo `[Nn]on` e le due righe di commento. Esito: ok.
+- Contesto: `tests/test_unit_verifica_bot.py:730` — casi R-831-1 («Non è più così: grave», «Canon grave»). Blob identico a main (edb9ad75fb). Esito: ok.
+- Merge in generale: nessun conflitto rimasto (`git ls-files -u` vuoto), nessun marcatore di conflitto nei 7 file coinvolti, `git diff --cached --check` pulito. L'albero di lavoro è uguale all'indice. `handoff.md`, `ultimo_report.md` e `diff_sessione.md` sono identici a HEAD, come dichiarato. `git diff --cached origin/main` tocca solo i 9 file della PR #388, gli stessi che il ramo cambia dalla base. Esito: ok.
+- Memoria del revisore: ho rifatto il confronto riga per riga in Python. Il risultato è esatto: base + righe #824–#830 del ramo (13) + righe #831–#832 di main (3) = 1640 righe. Nessuna riga persa da nessuno dei due lati, numerazione in ordine. Esito: ok.
+- `reports/stato_progetto.md`: l'indice è uguale a main con la riga CRM del ramo inserita dopo la riga «Bot di verifica…». La riga di main è copiata alla lettera, il resto del file non cambia. Esito: ok.
+- Test: ho estratto l'indice in una cartella a parte e lanciato `tests/test_unit_verifica_bot.py` + `tests/test_unit_crm.py`: **768 passed**, come nel tuo conteggio.
+
+**Nota per il fine-task (non è una riserva sul merge)**: la riga del bot in `reports/stato_progetto.md` dice ancora «Corretto … sul ramo `claude/fix-bot-non-maiuscolo`». Dopo il merge va scritto «PR #389 MERGIATA il 20-11 (09e112f5)».
+
+**Rischi esclusi**
+- Non ho lanciato la suite completa (kernel, voce, gate), solo i due file di test toccati. Main cambia solo `bot_esito.py`, il suo test e i report; il ramo cambia solo il CRM e i report. Non vedo punti di contatto, ma l'albero unito l'ho provato solo su quei due file.
+- Non ho verificato che il bot di verifica, rigirando sul nuovo SHA, dia davvero success. Il controllo lo pubblica la GitHub App e qui non si può riprodurre.
+
+**Riga contatore e commit**
+- Ho aggiunto la riga `#833-MERGE — 2026-11-20 — APPROVATO — … Nessuna lezione nuova.` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`: hai chiesto di non committare, e durante un merge git rifiuta il commit di un solo file (lezione #802).
+- La riga è solo nell'albero di lavoro (stato `MM`). Prima del commit del merge va messa in staging con `git add .claude/agents/memoria_revisore.md`, poi `bash scripts/segna_review_ok.sh`: il diff staged cambia, quindi il marcatore va creato dopo.
+- Non ho creato `.claude/.review_ok` e non ho committato niente.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - **`tests/test_unit_crm.py`:** 136 su main d03e5bf2 → 137 (d62adafb) → 138 passed (a9dbf6be).
@@ -394,7 +426,9 @@ Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la voce «CRM fetta 6
   - `0d946f08`: run CI 44752577700 (unit-suite success, handoff-check success), verifica-bot 44752583500 success.
   - `ab5d5f81`, `19f5fe2d`, `a565c7b6`: nessuna run su questi SHA (pushati insieme a 7cd7a2f0).
   - `7cd7a2f0`: run CI del push (unit-suite e handoff-check), verifica-bot success (verdetto APPROVATO CON RISERVE); esito finale di unit-suite non letto alla scrittura dell'handoff.
-  - `cf6a897c`, `b0174be5`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa.
+  - `cf6a897c`, `b0174be5`: nessuna run su questi SHA (pushati insieme a cfa0156a).
+  - `cfa0156a`: run CI 44757988571 (unit-suite success, handoff-check success); verifica-bot failure (falso positivo «Non bloccante», corretto dalla PR #389).
+  - `7d6a6865` (merge di main): run non ancora disponibile alla scrittura dell'handoff. Sarà pushato insieme al commit di fine-task che contiene questo file.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

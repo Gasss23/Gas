@@ -1,6 +1,6 @@
 # Diff della sessione — 2026-11-20 — CRM fetta 8 (note basse sulle PR #387 e #388)
 
-Si riscrive a ogni sessione; la storia completa sta in git. Le PR #381, #386 e #387 sono mergiate; questa fotografia copre il ramo ripartito da main d03e5bf2.
+Si riscrive a ogni sessione; la storia completa sta in git. Le PR #381, #386 e #387 sono mergiate; questa fotografia copre il ramo ripartito da main d03e5bf2, con main (PR #389, correzione del bot) portato dentro col merge 7d6a6865.
 
 - `modules/crm/copia_cifrata.py`:
   - `_pulisci_ripristini_interrotti` e `_processo_vivo`: tolgono i temporanei in chiaro dei ripristini di processi morti;
