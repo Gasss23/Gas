@@ -1,7 +1,7 @@
 # Ultimo report — 2026-11-20 — CRM fetta 7: note basse della PR #386 chiuse
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta (numero nell'handoff dopo l'apertura).
+1. Merge della PR #387: l'operatore ha già dato il via («mergia quando è tutto verde»).
 2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri), salvata anche nel gestore di password; poi `pip install -r requirements.txt` una volta.
 3. Controllare che la cartella di Gas sia `~/Gas` (`pwd`), fuori da Scrivania e Documenti sincronizzate.
 

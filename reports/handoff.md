@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta. L'operatore ha già dato il via in chat il 20-11 («ok mergia quando è tutto verde»): la mergia l'agente con CI e bot verdi. PR NON ancora creata alla prima scrittura dell'handoff; numero e URL aggiunti nel giro successivo.
+1. Merge della PR di questa fetta. L'operatore ha già dato il via in chat il 20-11 («ok mergia quando è tutto verde»): la mergia l'agente con CI e bot verdi. PR #387 (https://github.com/Gasss23/Gas/pull/387), aperta dopo il push di 5f9d3c8c con l'etichetta «verifica».
 2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`), salvata anche nel gestore di password.
 3. Verificare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti sincronizzate con iCloud.
 
@@ -31,14 +31,14 @@
  .claude/agents/memoria_revisore.md |   1 +
  CLAUDE.md                          |   1 +
  modules/crm/__main__.py            |   9 ++------
- modules/crm/copia_cifrata.py       |  67 +++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- modules/crm/server.py              |  45 ++++++++++++++++++++++++----------------
+ modules/crm/copia_cifrata.py       |  67 +++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ modules/crm/server.py              |  45 ++++++++++++++++++++++++---------------
  reports/crm/guida.md               |   4 ++--
  reports/diff_sessione.md           |  26 +++++++++++------------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  56 ++++++++++++++++----------------------------------
- tests/test_unit_crm.py             |  72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  56 ++++++++++++++++---------------------------------
+ tests/test_unit_crm.py             |  72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base della sessione: 0aa26672 (origin/main, dopo il merge della PR #386).
@@ -46,6 +46,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5f9d3c8c docs(fine-task): CRM fetta 7 — note basse della PR #386 chiuse, review #821; regola «non fermarsi ad aspettare il merge»
 99e0dcb8 fix(crm): copie fuori dal Mac più solide — disco non collegato, copia locale rovinata, temporaneo del ripristino esclusivo, avvio con tempo massimo, indicatore anche se fallisce la copia locale
 1307a80f chore(revisore): memoria review #821 — APPROVATO CON RISERVE
 ```
@@ -130,6 +131,7 @@ Chiude le note BASSE del bot e della verifica esterna su 8a107c47 e la mia R-820
 - La PR #386 è mergiata, con CI verde su 8a107c47: unit-suite 44646271307 success, handoff-check success, verifica-bot success.
 - Mappatura commit→run:
   - `1307a80f`, `99e0dcb8`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file.
+  - `5f9d3c8c` (primo fine-task della fetta): run appena partita al push, esito non ancora disponibile alla scrittura dell'handoff.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
