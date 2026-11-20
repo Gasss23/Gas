@@ -23,6 +23,7 @@ Funzioni pure o fail-safe (§9): `copia_fuori` non solleva mai, ritorna il motiv
 from __future__ import annotations
 
 import base64
+import glob
 import logging
 import os
 import re
@@ -112,8 +113,10 @@ def _genitore_assente(dest_dir: Path) -> Optional[str]:
     (V-1 bot #387: un permesso negato su `is_dir` ora è un motivo, non un'eccezione)."""
     try:
         if not dest_dir.parent.is_dir():
-            return (f"la cartella {dest_dir.parent} non c'è (disco non collegato?): nessuna "
-                    "copia fuori dal Mac")
+            # V-2 bot #387 (d809f5f1): non sempre è un disco staccato, può essere una
+            # cartella mai creata (es. ~/Dropbox/Gas/copie): il motivo dice tutte e due
+            return (f"la cartella {dest_dir.parent} non c'è: creala, o collega il disco se è "
+                    "su un disco esterno; nessuna copia fuori dal Mac")
         # rischio segnalato dal revisore #821: su macOS un punto di mount vuoto può restare
         # in /Volumes anche a disco staccato; lì la cartella «esiste» ma è sul disco del Mac.
         # Nota #822: si confronta il percorso RISOLTO (collegamenti simbolici) e senza
@@ -268,6 +271,42 @@ def _pulisci_tmp_vecchi(cartella_esterna: Path) -> None:
             pass
 
 
+def _processo_vivo(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except (OSError, OverflowError):  # PermissionError: c'è ma è di un altro utente;
+        return True  # R-824-1: nel dubbio (anche un PID fuori misura) il file non si tocca
+    return True
+
+
+def _pulisci_ripristini_interrotti(dest: Path) -> None:
+    """V-1 bot #387 (d809f5f1): un ripristino ucciso a metà (kill -9, Mac spento) lascia
+    accanto a `dest` il suo temporaneo IN CHIARO, con un nome unico che nessuno riusa.
+    Si tolgono quelli dei processi che non ci sono più; mai un collegamento simbolico, mai
+    quelli del processo corrente o di un processo ancora vivo. Mai solleva."""
+    # R-824-2: solo cifre ASCII, al massimo 10 per il PID
+    schema = re.compile(re.escape(dest.name) + r"\.([0-9]{1,10})-[0-9]+\.ripristino\.tmp")
+    try:
+        resti = list(dest.parent.glob(f"{glob.escape(dest.name)}.*.ripristino.tmp"))
+    except OSError:
+        return
+    for resto in resti:
+        m = schema.fullmatch(resto.name)
+        if not m:
+            continue
+        pid = int(m.group(1))
+        try:
+            if pid == os.getpid() or _processo_vivo(pid) or resto.is_symlink():
+                continue
+            if resto.is_file():
+                resto.unlink(missing_ok=True)
+                log.warning("CRM: tolto un ripristino interrotto rimasto accanto alla destinazione")
+        except OSError:
+            pass
+
+
 _FILE_DI_LAVORO = ("-journal", "-wal", "-shm")
 
 
@@ -305,6 +344,7 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
             raise ErroreCRM(f"accanto a {dest} è rimasto {resto.name}, un file di lavoro del "
                             "database di prima: spostalo insieme al database vecchio, poi riprova")
     dati = decifra(Path(sorgente).read_bytes(), pw)
+    _pulisci_ripristini_interrotti(dest)
     # V-3 bot/verifica #386 (3°): temporaneo IN CHIARO con nome unico e creazione esclusiva
     # (O_EXCL non segue un collegamento simbolico messo lì): mai scritto dentro un altro file
     tmp = dest.with_name(f"{dest.name}.{os.getpid()}-{threading.get_ident()}.ripristino.tmp")

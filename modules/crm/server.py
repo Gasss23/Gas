@@ -281,7 +281,10 @@ def _segna_copia(stato: "Stato", spenta: Optional[str], riuscita: bool, motivo: 
         log.warning("CRM: copia cifrata esterna: %s", motivo)
         if stato.avvisa is not None and not stato.demo:
             try:
-                stato.avvisa(f"⚠️ CRM Gas: la copia cifrata su iCloud NON è riuscita ({motivo}). "
+                # R-824-2: a copia esterna spenta l'avviso parla della copia sul Mac
+                cosa = ("la copia di sicurezza sul Mac" if copia_cifrata.motivo_spenta()
+                        else "la copia cifrata su iCloud")
+                stato.avvisa(f"⚠️ CRM Gas: {cosa} NON è riuscita ({motivo}). "
                              "I dati sono ancora solo sul Mac: controlla dalla dashboard.")
             except Exception as e:  # §9: un avviso fallito non ferma il CRM
                 log.warning("CRM: avviso della copia esterna fallito: %s", type(e).__name__)
@@ -303,8 +306,11 @@ def _copia_giornaliera(stato: "Stato") -> None:
         log.warning("CRM: copia di sicurezza automatica non riuscita")
         # R-821-1: fallimento della copia LOCALE sempre in rosso e con avviso, anche quando
         # la copia esterna è spenta (prima l'indicatore restava «copia spenta»)
-        _segna_copia(stato, None, False,
-                     "la copia sul Mac non è riuscita, quindi nemmeno quella fuori dal Mac")
+        # V-2 verifica esterna #387: il motivo non dice «nemmeno quella fuori dal Mac»
+        # quando la copia esterna è spenta
+        fuori = ("la copia fuori dal Mac è spenta" if copia_cifrata.motivo_spenta()
+                 else "quindi nemmeno quella fuori dal Mac")
+        _segna_copia(stato, None, False, f"la copia sul Mac non è riuscita, {fuori}")
         return
     threading.Thread(target=_copia_esterna, args=(stato, copia), name="crm-copia-cifrata",
                      daemon=True).start()

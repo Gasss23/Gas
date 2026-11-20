@@ -1659,12 +1659,13 @@ def test_ve386c_note_del_terzo_giro(st: CRMStore, tmp_path: Path,
     # disco esterno non collegato: niente cartella creata sul Mac, nessuna copia «riuscita»
     smontato = tmp_path / "Volumes" / "Disco" / "copie"
     monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(smontato))
-    assert "disco non collegato" in (copia_cifrata.prova_scrittura() or "")
+    assert "non c'è: creala, o collega il disco" in (copia_cifrata.prova_scrittura() or "")
     st.aggiungi_cliente("Anna Verdi", telefono="+393330000001")
     buona = st.backup(tmp_path / "locali")
     assert buona is not None
     fuori, motivo = copia_cifrata.copia_fuori(buona)
-    assert fuori is None and "disco non collegato" in (motivo or "") and not smontato.exists()
+    assert fuori is None and "non c'è: creala, o collega il disco" in (motivo or "")
+    assert not smontato.exists()
     assert copia_cifrata.esito_all_avvio().startswith("NON FUNZIONA")
     # copia locale rovinata: la copia buona del giorno resta
     icloud = tmp_path / "icloud"
@@ -1794,6 +1795,50 @@ def test_v1_bot387_permesso_negato_non_rompe_la_copia(st: CRMStore, tmp_path: Pa
     monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
     monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(scorciatoia / "copie"))
     assert "non è collegato" in (copia_cifrata.prova_scrittura() or "")
+
+
+def test_v1_bot387b_ripristino_interrotto_non_resta_in_chiaro(
+        st: CRMStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """V-1 bot #387 (d809f5f1): il temporaneo IN CHIARO di un ripristino ucciso a metà viene
+    tolto al ripristino successivo; mai quello di un processo vivo né un collegamento
+    simbolico. V-2: motivo giusto anche a copia esterna spenta (verifica esterna #387)."""
+    from modules.crm import copia_cifrata
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(tmp_path / "copie"))
+    st.aggiungi_cliente("Anna Verdi", telefono="+393330000001")
+    fuori, _ = copia_cifrata.copia_fuori(st.backup(tmp_path / "locali"))
+    assert fuori is not None
+    dest = tmp_path / "ripristinato.db"
+    morto = dest.with_name(f"{dest.name}.999999999-1.ripristino.tmp")
+    morto.write_bytes(b"dati in chiaro di un ripristino interrotto")
+    vivo = dest.with_name(f"{dest.name}.{os.getppid()}-1.ripristino.tmp")
+    vivo.write_bytes(b"ripristino in corso in un altro processo")
+    vittima = tmp_path / "vittima.txt"
+    vittima.write_text("da non toccare")
+    link = dest.with_name(f"{dest.name}.999999998-1.ripristino.tmp")
+    link.symlink_to(vittima)
+    altro = tmp_path / "altro.db.999999997-1.ripristino.tmp"  # di un'altra destinazione
+    altro.write_bytes(b"x")
+    # R-824-1/2: PID fuori misura o con cifre non ASCII: non solleva e il file non si tocca
+    enorme = dest.with_name(f"{dest.name}.99999999999-1.ripristino.tmp")
+    enorme.write_bytes(b"x")
+    arabo = dest.with_name(f"{dest.name}.\u0663-1.ripristino.tmp")
+    arabo.write_bytes(b"x")
+    assert copia_cifrata.ripristina(fuori, dest, "una-password-lunga-1") == dest
+    assert not morto.exists()
+    assert vivo.exists() and link.is_symlink() and vittima.read_text() == "da non toccare"
+    assert altro.exists() and enorme.exists() and arabo.exists()
+    assert copia_cifrata._processo_vivo(2 ** 40) is True  # OverflowError: nel dubbio vivo
+    # V-2 verifica esterna #387: a copia esterna spenta il motivo non parla di «fuori dal Mac»
+    monkeypatch.delenv("GAS_CRM_BACKUP_PASSWORD")
+    stato = server.Stato(st, TOKEN, regole=REGOLE)
+    monkeypatch.setattr(st, "backup", lambda *a, **kw: None)
+    avvisi: List[str] = []
+    stato.avvisa = lambda t: (avvisi.append(t) or (True, ""))
+    server._copia_giornaliera(stato)
+    assert "è spenta" in stato.copia_esterna["motivo"]
+    assert "nemmeno" not in stato.copia_esterna["motivo"]
+    assert len(avvisi) == 1 and "iCloud" not in avvisi[0] and "sul Mac NON" in avvisi[0]
 
 
 def test_copia_cifrata_mai_in_chiaro_senza_libreria(tmp_path: Path,
