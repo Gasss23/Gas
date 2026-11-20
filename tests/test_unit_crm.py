@@ -1829,6 +1829,13 @@ def test_v1_bot387b_ripristino_interrotto_non_resta_in_chiaro(
     assert not morto.exists()
     assert vivo.exists() and link.is_symlink() and vittima.read_text() == "da non toccare"
     assert altro.exists() and enorme.exists() and arabo.exists()
+    # V-2 bot #388: ripristino ucciso fra os.link e la cancellazione del temporaneo: `dest`
+    # esiste, il nuovo ripristino si ferma su «esiste già» ma il temporaneo in chiaro sparisce
+    resto_link = dest.with_name(f"{dest.name}.999999996-1.ripristino.tmp")
+    os.link(dest, resto_link)
+    with pytest.raises(ErroreCRM, match="esiste già"):
+        copia_cifrata.ripristina(fuori, dest, "una-password-lunga-1")
+    assert not resto_link.exists() and dest.exists()
     assert copia_cifrata._processo_vivo(2 ** 40) is True  # OverflowError: nel dubbio vivo
     # V-2 verifica esterna #387: a copia esterna spenta il motivo non parla di «fuori dal Mac»
     monkeypatch.delenv("GAS_CRM_BACKUP_PASSWORD")
@@ -1885,7 +1892,35 @@ def test_r825_2_cartella_non_valida_o_icloud_negato_il_crm_parte(
     monkeypatch.setattr(Path, "is_dir", is_dir_negato)
     assert copia_cifrata.cartella() == copia_cifrata.ICLOUD_DRIVE / copia_cifrata.NOME_CARTELLA
     assert copia_cifrata.motivo_spenta() is None
-    assert copia_cifrata.esito_all_avvio().startswith("NON FUNZIONA")
+    esito = copia_cifrata.esito_all_avvio()
+    # V-1 bot #388: il motivo dice che è iCloud Drive a non essere leggibile e cosa fare
+    assert esito.startswith("NON FUNZIONA") and "iCloud Drive non è leggibile" in esito
+    assert "GAS_CRM_BACKUP_CIFRATO_DIR" in esito
+    monkeypatch.setattr(Path, "is_dir", vero_is_dir)
+    # R-828-1: macOS lascia leggere iCloud Drive ma ne nega la scrittura: stesso consiglio,
+    # all'avvio e nella copia. R-828-2: non suggerisce la variabile se è già impostata
+    finto_icloud = tmp_path / "icloud"
+    finto_icloud.mkdir()
+    monkeypatch.setattr(copia_cifrata, "ICLOUD_DRIVE", finto_icloud)
+    vero_mkdir = Path.mkdir
+
+    def mkdir_negato(self: Path, *a: Any, **kw: Any) -> None:
+        if finto_icloud in self.parents:
+            raise PermissionError(1, "Operation not permitted")
+        vero_mkdir(self, *a, **kw)
+
+    monkeypatch.setattr(Path, "mkdir", mkdir_negato)
+    esito = copia_cifrata.esito_all_avvio()
+    assert esito.startswith("NON FUNZIONA") and "iCloud Drive non è leggibile" in esito
+    assert "oppure imposta GAS_CRM_BACKUP_CIFRATO_DIR" in esito
+    fuori, motivo = copia_cifrata.copia_fuori(st.backup(tmp_path / "locali_icloud"))
+    assert fuori is None and "iCloud Drive non è leggibile" in (motivo or "")
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(finto_icloud / "copie"))
+    motivo = copia_cifrata.prova_scrittura() or ""
+    assert "iCloud Drive non è leggibile" in motivo and "oppure imposta" not in motivo
+    monkeypatch.setattr(Path, "mkdir", vero_mkdir)
+    monkeypatch.delenv("GAS_CRM_BACKUP_CIFRATO_DIR")
+    monkeypatch.setattr(Path, "is_dir", is_dir_negato)
     stato = server.Stato(st, TOKEN, regole=REGOLE)
     copia = st.backup()
     assert copia is not None

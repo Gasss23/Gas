@@ -116,6 +116,24 @@ def _fernet(pw: str, sale: bytes):  # type: ignore[no-untyped-def]
     return Fernet(base64.urlsafe_b64encode(chiave))
 
 
+def _consiglio_icloud(dest_dir: Path, e: BaseException) -> Optional[str]:
+    """V-1 bot #388, R-828-1/2: un permesso negato su iCloud Drive (macOS lo nega all'app che
+    non ha l'accesso ai file) dà un motivo che dice cosa fare, sia che fallisca la lettura
+    sia la scrittura. None se l'errore non è questo. Mai solleva."""
+    try:
+        if not isinstance(e, PermissionError):
+            return None
+        if dest_dir != ICLOUD_DRIVE and ICLOUD_DRIVE not in dest_dir.parents:
+            return None
+        altrove = ("" if os.environ.get("GAS_CRM_BACKUP_CIFRATO_DIR", "").strip()
+                   else ", oppure imposta GAS_CRM_BACKUP_CIFRATO_DIR su un'altra cartella")
+        return (f"iCloud Drive non è leggibile o scrivibile ({type(e).__name__}): dai all'app "
+                "da cui avvii il CRM (Terminale o simili) l'accesso ai file in Impostazioni di "
+                f"Sistema → Privacy e sicurezza{altrove}; nessuna copia fuori dal Mac")
+    except Exception:  # §9
+        return None
+
+
 def _genitore_assente(dest_dir: Path) -> Optional[str]:
     """V-1 verifica #386 (3°): la cartella delle copie si crea SOLO se la cartella che la
     contiene esiste già. Con un disco esterno non collegato (/Volumes/…) prima si creava la
@@ -145,6 +163,9 @@ def _genitore_assente(dest_dir: Path) -> Optional[str]:
                 return f"il disco {disco} non è collegato: nessuna copia fuori dal Mac"
         return None
     except OSError as e:
+        consiglio = _consiglio_icloud(dest_dir, e)  # V-1 bot #388: dove guardare
+        if consiglio:
+            return consiglio
         return (f"la cartella {dest_dir.parent} non è accessibile ({type(e).__name__}): "
                 "nessuna copia fuori dal Mac")
 
@@ -167,7 +188,8 @@ def prova_scrittura() -> Optional[str]:
         _scrivi_privato(prova, os.urandom(32), esclusivo=True)
         return None
     except Exception as e:  # §9
-        return f"la cartella {dest_dir} non si può scrivere ({type(e).__name__})"
+        return (_consiglio_icloud(dest_dir, e)  # R-828-1
+                or f"la cartella {dest_dir} non si può scrivere ({type(e).__name__})")
     finally:
         try:
             prova.unlink(missing_ok=True)
@@ -260,7 +282,8 @@ def copia_fuori(copia_locale: Path, keep: int = KEEP) -> Tuple[Optional[Path], O
         return dest, None
     except Exception as e:  # §9: il CRM continua; nel log solo il tipo, mai dati
         log.warning("CRM: copia cifrata esterna non riuscita: %s", type(e).__name__)
-        return None, f"copia cifrata non riuscita ({type(e).__name__})"
+        return None, (_consiglio_icloud(dest_dir, e)  # R-828-1
+                      or f"copia cifrata non riuscita ({type(e).__name__})")
     finally:
         if tmp is not None:  # V-3 bot/verifica #386: niente .tmp lasciati in giro
             try:
@@ -347,6 +370,10 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
     di lavoro di SQLite (`-journal`, `-wal`, `-shm`) di un database di prima: SQLite lo
     applicherebbe al file ripristinato rovinandolo (R-815-1). Ritorna `dest`."""
     dest = Path(dest)
+    # V-2 bot #388: la pulizia prima di ogni rifiuto. Un ripristino ucciso fra os.link e la
+    # cancellazione del temporaneo lascia `dest` (che fermerebbe tutto qui sotto) e il
+    # temporaneo IN CHIARO, che così sparisce anche se `dest` esiste ancora
+    _pulisci_ripristini_interrotti(dest)
     nome = Path(sorgente).name
     if nome.startswith(".") and nome.endswith(".icloud"):  # V-4 bot #386: segnaposto di iCloud
         raise ErroreCRM("il file è ancora solo su iCloud (segnaposto «.icloud»): aprilo dal "
@@ -359,7 +386,6 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
             raise ErroreCRM(f"accanto a {dest} è rimasto {resto.name}, un file di lavoro del "
                             "database di prima: spostalo insieme al database vecchio, poi riprova")
     dati = decifra(Path(sorgente).read_bytes(), pw)
-    _pulisci_ripristini_interrotti(dest)
     # V-3 bot/verifica #386 (3°): temporaneo IN CHIARO con nome unico e creazione esclusiva
     # (O_EXCL non segue un collegamento simbolico messo lì): mai scritto dentro un altro file
     tmp = dest.with_name(f"{dest.name}.{os.getpid()}-{threading.get_ident()}.ripristino.tmp")
