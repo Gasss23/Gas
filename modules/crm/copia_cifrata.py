@@ -10,7 +10,9 @@ Regole:
   (`GAS_CRM_BACKUP_PASSWORD`, almeno PASSWORD_MIN caratteri) o senza la libreria
   `cryptography` la copia esterna resta SPENTA e lo si dice; non si ripiega mai sul chiaro.
 - **Dove:** `GAS_CRM_BACKUP_CIFRATO_DIR` se impostata, altrimenti, se esiste, la cartella
-  «Gas CRM (copie cifrate)» dentro iCloud Drive del Mac. Tiene le ultime KEEP copie.
+  «Gas CRM (copie cifrate)» dentro iCloud Drive del Mac. Una copia al giorno (quella del
+  giorno si rinnova a ogni copia), tiene gli ultimi KEEP giorni. File leggibili solo dal
+  proprietario (0600).
 - **Ripristino:** `python -m modules.crm ripristina FILE` rimette il database da una copia,
   senza mai sovrascrivere un database che c'è già.
 - La password sta nel file delle chiavi del Mac: va salvata ANCHE altrove (gestore di
@@ -23,7 +25,11 @@ from __future__ import annotations
 import base64
 import logging
 import os
+import re
 import sqlite3
+import threading
+import time
+import unicodedata
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -54,7 +60,7 @@ def cartella() -> Optional[Path]:
 
 def password() -> Optional[str]:
     """La password senza spazi ai bordi: la stessa misura il minimo e ricava la chiave (R-815-3)."""
-    v = os.environ.get("GAS_CRM_BACKUP_PASSWORD", "").strip()
+    v = _normalizza(os.environ.get("GAS_CRM_BACKUP_PASSWORD", ""))
     return v if len(v) >= PASSWORD_MIN else None
 
 
@@ -73,10 +79,28 @@ def motivo_spenta() -> Optional[str]:
     return None
 
 
+def _normalizza(pw: str) -> str:
+    """V-1 verifica esterna #386: la stessa password con accenti può arrivare in forme Unicode
+    diverse (NFC dal .env, NFD digitata altrove): si confronta sempre in NFC, senza spazi ai
+    bordi."""
+    return unicodedata.normalize("NFC", pw).strip()
+
+
+def _scrivi_privato(percorso: Path, dati: bytes, esclusivo: bool = False) -> None:
+    """Scrive il file leggibile solo dal proprietario (0600): dati dei clienti, anche se
+    cifrati (V-4 verifica esterna #386). `esclusivo`: fallisce se il file esiste già."""
+    flag = os.O_WRONLY | os.O_CREAT | (os.O_EXCL if esclusivo else os.O_TRUNC)
+    fd = os.open(str(percorso), flag, 0o600)
+    with os.fdopen(fd, "wb") as f:
+        f.write(dati)
+    os.chmod(percorso, 0o600)
+
+
 def _fernet(pw: str, sale: bytes):  # type: ignore[no-untyped-def]
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-    chiave = Scrypt(salt=sale, length=32, n=SCRYPT_N, r=8, p=1).derive(pw.encode("utf-8"))
+    chiave = Scrypt(salt=sale, length=32, n=SCRYPT_N, r=8, p=1).derive(
+        _normalizza(pw).encode("utf-8"))
     return Fernet(base64.urlsafe_b64encode(chiave))
 
 
@@ -106,18 +130,47 @@ def copia_fuori(copia_locale: Path, keep: int = KEEP) -> Tuple[Optional[Path], O
     dest_dir = cartella()
     pw = password()
     assert dest_dir is not None and pw is not None
+    tmp: Optional[Path] = None
     try:
         dest_dir.mkdir(parents=True, exist_ok=True)
-        dest = dest_dir / (Path(copia_locale).stem + ESTENSIONE)
-        tmp = dest.with_name(dest.name + ".tmp")
-        tmp.write_bytes(cifra(Path(copia_locale).read_bytes(), pw))
+        # V-1 bot #386: UNA copia esterna al giorno (quella del giorno si rinnova), così
+        # le KEEP copie sono KEEP giorni anche se il CRM si riavvia spesso
+        m = re.match(r"crm-\d{8}", Path(copia_locale).stem)
+        dest = dest_dir / ((m.group(0) if m else Path(copia_locale).stem) + ESTENSIONE)
+        _pulisci_tmp_vecchi(dest_dir)
+        # R-817-1: temporaneo UNICO per ogni copia (processo e thread): due copie dello
+        # stesso giorno in parallelo (guardiano e `backup` a mano) non si mescolano
+        tmp = dest.with_name(f"{dest.name}.{os.getpid()}-{threading.get_ident()}.tmp")
+        _scrivi_privato(tmp, cifra(Path(copia_locale).read_bytes(), pw), esclusivo=True)
         os.replace(tmp, dest)
+        tmp = None
         for vecchia in sorted(dest_dir.glob("crm-*" + ESTENSIONE))[:-max(1, keep)]:
             vecchia.unlink(missing_ok=True)
         return dest, None
     except Exception as e:  # §9: il CRM continua; nel log solo il tipo, mai dati
         log.warning("CRM: copia cifrata esterna non riuscita: %s", type(e).__name__)
         return None, f"copia cifrata non riuscita ({type(e).__name__})"
+    finally:
+        if tmp is not None:  # V-3 bot/verifica #386: niente .tmp lasciati in giro
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+TMP_VECCHIO_S = 3600.0
+
+
+def _pulisci_tmp_vecchi(cartella_esterna: Path) -> None:
+    """Toglie i `.gascrm.tmp` rimasti da copie interrotte (thread fermato, disco pieno)
+    da più di un'ora: cifrati, ma inutili e si accumulerebbero su iCloud."""
+    limite = time.time() - TMP_VECCHIO_S
+    for resto in cartella_esterna.glob("crm-*" + ESTENSIONE + ".*tmp"):
+        try:
+            if resto.stat().st_mtime < limite:
+                resto.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 _FILE_DI_LAVORO = ("-journal", "-wal", "-shm")
@@ -152,25 +205,38 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
                             "database di prima: spostalo insieme al database vecchio, poi riprova")
     dati = decifra(Path(sorgente).read_bytes(), pw)
     tmp = dest.with_name(dest.name + ".ripristino.tmp")
-    tmp.write_bytes(dati)
+    _scrivi_privato(tmp, dati)
+    creato = False
     try:
         if not _integro(tmp):
             raise ErroreCRM("la copia decifrata non è un database del CRM integro")
         try:
             os.link(tmp, dest)  # fallisce da solo se dest esiste nel frattempo
+            creato = True
         except FileExistsError:
             raise ErroreCRM(f"{dest} è comparso durante il ripristino: non lo sovrascrivo") from None
         except OSError:
-            # file system senza collegamenti fisici: creazione esclusiva ("x")
+            # file system senza collegamenti fisici: creazione esclusiva
             try:
-                with open(dest, "xb") as f:
-                    f.write(dati)
+                _scrivi_privato(dest, dati, esclusivo=True)
+                creato = True
             except FileExistsError:
                 raise ErroreCRM(f"{dest} è comparso durante il ripristino: non lo sovrascrivo") from None
+            except OSError:
+                # V-2 verifica esterna #386 / R-816-1: scrittura interrotta (disco pieno):
+                # si toglie il file incompleto appena creato, così si può riprovare
+                if dest.exists():
+                    dest.unlink(missing_ok=True)
+                raise
     finally:
         tmp.unlink(missing_ok=True)
-    # R-815-1: ricontrollo sul file vero, al suo posto
+    # R-815-1: ricontrollo sul file vero, al suo posto. Se fallisce, il file creato da QUESTO
+    # ripristino si toglie (V-2 verifica esterna #386): niente database rovinato lasciato lì
     if not _integro(dest):
-        raise ErroreCRM(f"il database ripristinato in {dest} non risulta integro: non usarlo, "
+        if creato:
+            dest.unlink(missing_ok=True)
+            for suffisso in _FILE_DI_LAVORO:
+                dest.with_name(dest.name + suffisso).unlink(missing_ok=True)
+        raise ErroreCRM(f"il database ripristinato in {dest} non risulta integro: l'ho tolto, "
                         "controlla i file accanto e riprova")
     return dest

@@ -204,7 +204,7 @@ def cmd_ripristina(a: argparse.Namespace) -> int:
     """Rimette il database del CRM da una copia cifrata (.gascrm), senza sovrascrivere."""
     import getpass
     from modules.crm import copia_cifrata
-    pw = copia_cifrata.password() or getpass.getpass("Password delle copie cifrate: ")
+    pw = copia_cifrata.password() or getpass.getpass("Password delle copie cifrate: ").strip()
     dest = Path(a.dest).expanduser() if a.dest else percorso_db(ROOT)
     try:
         fatto = copia_cifrata.ripristina(Path(a.file).expanduser(), dest, pw)

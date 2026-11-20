@@ -1222,6 +1222,7 @@ class CRMStore:
                     src.backup(dst)
                 finally:
                     dst.close()
+            os.chmod(dest, 0o600)  # V-4 verifica esterna #386: dati dei clienti, solo il proprietario
             copie = sorted(cartella.glob("crm-*.db"))
             for vecchia in copie[:-max(1, keep)]:
                 vecchia.unlink(missing_ok=True)

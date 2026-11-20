@@ -1440,6 +1440,114 @@ def test_r815_ripristino_sicuro_dopo_un_crash(tmp_path: Path, monkeypatch: pytes
     assert not list(tmp_path.glob("*.ripristino.tmp"))
 
 
+def test_ve386_copie_cifrate_rifinite(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Note di bot e verifica esterna #386: password in forme Unicode diverse, una copia al
+    giorno, niente .tmp lasciati, file leggibili solo dal proprietario, ripristino che toglie
+    il file se il ricontrollo finale fallisce, ripiego senza collegamenti fisici."""
+    import stat
+    import time as _t
+    import unicodedata
+    from modules.crm import copia_cifrata
+    # V-1 verifica: «Città» scritta in NFC (dal .env) o NFD (digitata altrove) è la stessa password
+    nfc = unicodedata.normalize("NFC", "Città-della-pace-2026")
+    nfd = unicodedata.normalize("NFD", nfc)
+    assert nfc != nfd
+    assert copia_cifrata.decifra(copia_cifrata.cifra(b"dati", nfc), nfd) == b"dati"
+    db = tmp_path / ".gas_memory_crm.db"
+    st = CRMStore(db)
+    st.aggiungi_cliente("Anna Verdi", telefono="+393330000001")
+    icloud = tmp_path / "icloud"
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(icloud))
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "  una-password-lunga-1  ")
+    # V-1 bot: due copie dello stesso giorno → UNA copia esterna (quella del giorno si rinnova)
+    for ora in ("080000", "200000"):
+        locale = tmp_path / f"crm-20261120-{ora}.db"
+        locale.write_bytes(db.read_bytes())
+        fuori, motivo = copia_cifrata.copia_fuori(locale)
+        assert motivo is None and fuori is not None and fuori.name == "crm-20261120.gascrm"
+    assert [f.name for f in icloud.glob("*.gascrm")] == ["crm-20261120.gascrm"]
+    # V-4 verifica: solo il proprietario legge (copia esterna e copia locale)
+    assert stat.S_IMODE(fuori.stat().st_mode) == 0o600
+    locale_vera = st.backup(tmp_path / "locali")
+    assert locale_vera is not None and stat.S_IMODE(locale_vera.stat().st_mode) == 0o600
+    # V-3: una copia che fallisce non lascia .tmp; i .tmp vecchi di copie interrotte spariscono
+    vecchio = icloud / "crm-20261101.gascrm.tmp"
+    vecchio.write_bytes(b"resto cifrato")
+    os.utime(vecchio, (_t.time() - 7200, _t.time() - 7200))
+    vero_replace = os.replace
+
+    def replace_rotto(a: Any, b: Any) -> None:
+        raise OSError("disco pieno")
+
+    monkeypatch.setattr(copia_cifrata.os, "replace", replace_rotto)
+    fuori2, motivo2 = copia_cifrata.copia_fuori(tmp_path / "crm-20261120-080000.db")
+    monkeypatch.setattr(copia_cifrata.os, "replace", vero_replace)
+    assert fuori2 is None and "non riuscita" in (motivo2 or "")
+    assert not list(icloud.glob("*.tmp"))
+    # ripristino: file 0600; senza collegamenti fisici il ripiego crea il file in modo esclusivo
+    pw = "una-password-lunga-1"
+    rip = copia_cifrata.ripristina(fuori, tmp_path / "ripristinato.db", pw)
+    assert stat.S_IMODE(rip.stat().st_mode) == 0o600
+    vero_link = os.link
+
+    def link_assente(a: Any, b: Any) -> None:
+        raise OSError(1, "collegamenti fisici non supportati")
+
+    monkeypatch.setattr(copia_cifrata.os, "link", link_assente)
+    rip2 = copia_cifrata.ripristina(fuori, tmp_path / "senza_link.db", pw)
+    assert stat.S_IMODE(rip2.stat().st_mode) == 0o600
+    assert CRMStore(rip2).clienti()[0]["nome"] == "Anna Verdi"
+    monkeypatch.setattr(copia_cifrata.os, "link", vero_link)
+    # V-2 verifica: se il ricontrollo finale fallisce, il file creato da questo ripristino sparisce
+    esiti = iter([True, False])
+    monkeypatch.setattr(copia_cifrata, "_integro", lambda _p: next(esiti))
+    with pytest.raises(ErroreCRM, match="l'ho tolto"):
+        copia_cifrata.ripristina(fuori, tmp_path / "rovinato.db", pw)
+    assert not (tmp_path / "rovinato.db").exists()
+    assert not list(tmp_path.glob("*.ripristino.tmp"))
+
+
+def test_r817_1_due_copie_dello_stesso_giorno_in_parallelo(tmp_path: Path,
+                                                         monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-817-1: guardiano e `backup` a mano nello stesso istante, stesso giorno: ognuno scrive
+    il SUO temporaneo, e la copia del giorno resta decifrabile."""
+    import threading
+    from modules.crm import copia_cifrata
+    db = tmp_path / ".gas_memory_crm.db"
+    CRMStore(db).aggiungi_cliente("Anna Verdi", telefono="+393330000001")
+    icloud = tmp_path / "icloud"
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(icloud))
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    copie = []
+    for ora in ("080000", "080001"):
+        c = tmp_path / f"crm-20261120-{ora}.db"
+        c.write_bytes(db.read_bytes())
+        copie.append(c)
+    tutti_e_due = threading.Barrier(2, timeout=10)
+    usati: List[Path] = []
+    vero = copia_cifrata._scrivi_privato
+
+    def scrivi_insieme(percorso: Path, dati: bytes, esclusivo: bool = False) -> None:
+        if percorso.name.endswith("tmp") and percorso.parent == icloud:
+            usati.append(percorso)
+            tutti_e_due.wait()  # le due copie scrivono nello stesso momento
+        vero(percorso, dati, esclusivo)
+
+    monkeypatch.setattr(copia_cifrata, "_scrivi_privato", scrivi_insieme)
+    esiti: List[Any] = []
+    fili = [threading.Thread(target=lambda c=c: esiti.append(copia_cifrata.copia_fuori(c)))
+            for c in copie]
+    for f in fili:
+        f.start()
+    for f in fili:
+        f.join()
+    assert len(usati) == 2 and usati[0] != usati[1]
+    assert all(fuori is not None for fuori, _ in esiti)
+    giorno = icloud / "crm-20261120.gascrm"
+    assert copia_cifrata.decifra(giorno.read_bytes(), "una-password-lunga-1").startswith(b"SQLite format")
+    assert not list(icloud.glob("*tmp"))
+
+
 def test_copia_cifrata_mai_in_chiaro_senza_libreria(tmp_path: Path,
                                                    monkeypatch: pytest.MonkeyPatch) -> None:
     import builtins
