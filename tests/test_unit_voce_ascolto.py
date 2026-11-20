@@ -3552,7 +3552,7 @@ def test_registra_tiene_solo_hey_jarvis_riconosciuti(tmp_path):
     uscita = []
     reg = r.Registratore(mic, tmp_path, "operatore", chiedi=lambda s: "",
                          dorme=lambda s: None, bip=lambda s: None, stampa=uscita.append,
-                         misura=lambda blocchi: (next(punteggi), 0), soglia_parola=0.25)
+                         misura=lambda blocchi: (next(punteggi), 20), soglia_parola=0.25)
     assert reg.positivi(gruppi=(("vicino", 2, 1.0),)) == 1
     pos = list((tmp_path / ".gas_voce" / "verifica" / "operatore" / "positivi").glob("*.wav"))
     assert len(pos) == 1
@@ -3585,6 +3585,22 @@ def test_registra_da_lontano_ascolta_di_piu_e_taglia_sul_picco(tmp_path, monkeyp
     assert len(tenuti) == a.blocchi_per(r.SEC_CLIP)
     assert tenuti[-1][0] == fine            # l'ultimo blocco tenuto: poco dopo il picco
     assert "non senti il bip" in chieste[0]
+
+
+def test_registra_parola_tagliata_all_inizio_si_rifa(tmp_path):
+    """R-810M1-1: un picco nei primi SEC_PICCO_MINIMO secondi vuol dire che la parola è
+    cominciata prima della finestra: la clip sarebbe cortissima, si rifà."""
+    r = _registra()
+    mic = _MicFinto([VOCE] * (a.blocchi_per(r.SEC_CLIP) * 4))
+    indici = iter([1, a.blocchi_per(r.SEC_PICCO_MINIMO)])
+    uscita, salvate = [], []
+    reg = r.Registratore(mic, tmp_path, "operatore", chiedi=lambda s: "",
+                         dorme=lambda s: None, bip=lambda s: None, stampa=uscita.append,
+                         misura=lambda blocchi: (0.8, next(indici)))
+    reg._salva = lambda tipo, nome, blocchi: salvate.append(blocchi)
+    assert reg.positivi(gruppi=(("vicino", 1, 1.0),)) == 1
+    assert any("tagliato all'inizio" in u for u in uscita)
+    assert len(salvate) == 1
 
 
 class _MotoreFinto:

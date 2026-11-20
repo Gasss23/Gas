@@ -72,6 +72,7 @@ SEC_CLIP_LONTANO = 6.0        # finestra per i gruppi con attesa lunga (lontano 
 ATTESA_LONTANO_S = 6.0        # da quest'attesa in su il gruppo è «lontano»
 SEC_DOPO_PICCO = 0.5          # la clip tenuta finisce poco dopo il picco del punteggio
 TENTATIVI_PAROLA = 3          # prove per clip prima di saltarla
+SEC_PICCO_MINIMO = 0.5        # picco prima di così: la parola è iniziata prima della finestra
 SEC_NEGATIVI = 60.0
 # (dove e come, quante volte, secondi per mettersi in posizione dopo Invio): 15 in tutto
 GRUPPI: Tuple[Tuple[str, int, float], ...] = (
@@ -262,7 +263,7 @@ class Registratore:
                            % (finestra + SEC_FRA_CLIP) if lontano else ""))
             self.dorme(attesa)
             for _ in range(quante):
-                for prova in range(1, TENTATIVI_PAROLA + 1):
+                for _prova in range(TENTATIVI_PAROLA):
                     self.bip("ok")
                     clip_ok = self._una_clip(finestra)
                     self.dorme(SEC_FRA_CLIP)
@@ -291,6 +292,9 @@ class Registratore:
         if punteggio < self.soglia_parola:
             self.stampa("   (non ho riconosciuto «Hey Jarvis», punteggio %.2f: rifallo)"
                         % punteggio)
+            return None
+        if i < a.blocchi_per(SEC_PICCO_MINIMO):   # R-810M1-1: parola tagliata all'inizio
+            self.stampa("   («Hey Jarvis» tagliato all'inizio: rifallo dopo il bip)")
             return None
         fine = min(len(blocchi), i + 1 + a.blocchi_per(SEC_DOPO_PICCO))
         inizio = max(0, fine - a.blocchi_per(SEC_CLIP))
