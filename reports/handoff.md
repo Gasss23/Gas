@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta (numero dopo il push, vedi sotto). Le riserve aperte sono solo BASSE/COSMETICHE; se il bot dà riserve serve il sì dell'operatore in chat (CLAUDE.md §10).
+1. Merge della PR #388 (https://github.com/Gasss23/Gas/pull/388), aperta dopo il push di 538a8948 con l'etichetta «verifica». Le riserve aperte sono solo BASSE/COSMETICHE; se il bot dà riserve serve il sì dell'operatore in chat (CLAUDE.md §10).
 2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`), salvata anche nel gestore di password; poi `pip install -r requirements.txt`.
 3. Verificare che la cartella di Gas sia `~/Gas`, fuori da Scrivania e Documenti sincronizzate con iCloud.
 4. Secondo passaggio nella chat claude.ai col link della PR #387 e di questa PR (riservatezza delle copie dei clienti).
@@ -33,7 +33,7 @@
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   2 +-
  reports/ultimo_report.md           |  37 ++++++++++++++++---------------------
- tests/test_unit_crm.py             | 101 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_crm.py             | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
 ```
 
 NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base della sessione: d03e5bf2 (origin/main, dopo il merge della PR #387).
@@ -41,6 +41,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+538a8948 docs(fine-task): CRM fetta 8 — note basse sulla PR #387 chiuse (review #824–#827); PR #387 mergiata
 a9dbf6be fix(crm): il CRM parte anche con la cartella delle copie scritta male o con iCloud bloccato da macOS; mai copie nella cartella di lavoro; avvisi senza «iCloud» fisso (R-825-1/2, R-826-1/2) — review #827 APPROVATO
 49ea2fb7 chore(revisore): memoria review #827 — APPROVATO
 68e849ed chore(revisore): memoria review #826 — BOCCIATO
@@ -242,6 +243,7 @@ Review #827-CRM. È il secondo giro della #826 (BOCCIATO). Ho esaminato il diff 
 - PR #387 mergiata con CI verde su d809f5f1: unit-suite success e handoff-check success (run 44746651994), verifica-bot neutral (run 44746659372, verdetto APPROVATO CON RISERVE).
 - Mappatura commit→run:
   - `5e959f65`, `5d83286f`, `d62adafb`, `68e849ed`, `49ea2fb7`, `a9dbf6be`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa; i commit intermedi non avranno una run propria.
+  - `538a8948` (primo fine-task della fetta): run appena partita al push, esito non ancora disponibile alla scrittura dell'handoff.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
