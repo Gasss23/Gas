@@ -196,7 +196,7 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
     di lavoro di SQLite (`-journal`, `-wal`, `-shm`) di un database di prima: SQLite lo
     applicherebbe al file ripristinato rovinandolo (R-815-1). Ritorna `dest`."""
     dest = Path(dest)
-    if dest.exists():
+    if dest.exists() or dest.is_symlink():  # V-2 verifica #386 (2°): anche un collegamento pendente
         raise ErroreCRM(f"{dest} esiste già: non lo sovrascrivo (spostalo o scegli --dest)")
     for suffisso in _FILE_DI_LAVORO:
         resto = dest.with_name(dest.name + suffisso)
@@ -205,9 +205,11 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
                             "database di prima: spostalo insieme al database vecchio, poi riprova")
     dati = decifra(Path(sorgente).read_bytes(), pw)
     tmp = dest.with_name(dest.name + ".ripristino.tmp")
-    _scrivi_privato(tmp, dati)
     creato = False
     try:
+        # V-1 verifica #386 (2°): la scrittura del temporaneo IN CHIARO sta dentro il
+        # try/finally, così un disco pieno a metà non lascia dati parziali dei clienti
+        _scrivi_privato(tmp, dati)
         if not _integro(tmp):
             raise ErroreCRM("la copia decifrata non è un database del CRM integro")
         try:

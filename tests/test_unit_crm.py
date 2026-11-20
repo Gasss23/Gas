@@ -1548,6 +1548,35 @@ def test_r817_1_due_copie_dello_stesso_giorno_in_parallelo(tmp_path: Path,
     assert not list(icloud.glob("*tmp"))
 
 
+def test_ve386b_ripristino_con_disco_pieno_non_lascia_dati_in_chiaro(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """V-1 verifica esterna #386 (2° giro): disco pieno mentre si scrive il temporaneo in
+    chiaro → nessun file con dati parziali dei clienti resta; V-2: un collegamento pendente
+    al posto di dest dà «esiste già»."""
+    import errno
+    from modules.crm import copia_cifrata
+    pw = "una-password-lunga-1"
+    db = tmp_path / "buono.db"
+    CRMStore(db).aggiungi_cliente("Anna Verdi", telefono="+393330000001")
+    copia = tmp_path / "crm-20261120.gascrm"
+    copia.write_bytes(copia_cifrata.cifra(db.read_bytes(), pw))
+    vero = copia_cifrata._scrivi_privato
+
+    def disco_pieno(percorso: Path, dati: bytes, esclusivo: bool = False) -> None:
+        vero(percorso, dati[: len(dati) // 2], esclusivo)  # metà scritta, poi pieno
+        raise OSError(errno.ENOSPC, "No space left on device")
+
+    monkeypatch.setattr(copia_cifrata, "_scrivi_privato", disco_pieno)
+    with pytest.raises(OSError):
+        copia_cifrata.ripristina(copia, tmp_path / "nuovo.db", pw)
+    assert not list(tmp_path.glob("*.ripristino.tmp")) and not (tmp_path / "nuovo.db").exists()
+    monkeypatch.setattr(copia_cifrata, "_scrivi_privato", vero)
+    pendente = tmp_path / "pendente.db"
+    pendente.symlink_to(tmp_path / "non_esiste")
+    with pytest.raises(ErroreCRM, match="esiste già"):
+        copia_cifrata.ripristina(copia, pendente, pw)
+
+
 def test_copia_cifrata_mai_in_chiaro_senza_libreria(tmp_path: Path,
                                                    monkeypatch: pytest.MonkeyPatch) -> None:
     import builtins
