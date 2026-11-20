@@ -1,32 +1,19 @@
-# Ultimo report — 2026-11-20 — CRM fetta 7: note della PR #386 e del bot sulla PR #387 chiuse
+# Ultimo report — 2026-11-20 — Bot di verifica: falso rosso «Non bloccante» corretto
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #387: l'operatore ha già dato il via («mergia quando è tutto verde»). La mergia l'agente con CI verde e bot senza finding ALTA/MEDIA.
-2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri), salvata anche nel gestore di password; poi `pip install -r requirements.txt` una volta.
-3. Controllare che la cartella di Gas sia `~/Gas` (`pwd`), fuori da Scrivania e Documenti sincronizzate.
-4. Secondo passaggio nella chat claude.ai col link della PR #387 (fetta che tocca la riservatezza delle copie dei clienti).
+1. Merge della PR di questa correzione: tocca la macchina del bot, quindi il check `verifica-bot` è neutral e il merge lo decide l'operatore. L'operatore ha scelto questa strada in chat («fai quello, sicurezza massima», poi «ok avvisami quando hai mergiato»).
+2. Da decidere: aggiungere al bot come gravi anche «alto», «severo», «serio», «elevato» (nota del revisore #831, fuori da questa correzione).
+3. Restano quelli della PR #388 (password delle copie, `pip install`, `pwd`, secondo passaggio su claude.ai).
 
 ## Esito
-- **PR #386 (copia cifrata su iCloud)**: MERGIATA il 20-11 (0aa26672) col via dell'operatore.
-- **Fetta 7 — note basse del bot e della verifica esterna sull'ultimo commit di #386, più R-820-1**: FATTA (99e0dcb8, review #821 APPROVATO CON RISERVE).
-  - Disco esterno non collegato: non si crea più la cartella sul Mac (copia «riuscita» falsa).
-  - Una copia locale rovinata non sostituisce la copia buona del giorno.
-  - Temporaneo del ripristino con nome unico e creazione esclusiva; file di lavoro come collegamento pendente rifiutati; prove interrotte ripulite.
-  - Prova all'avvio con un tempo massimo di 5 secondi.
-  - Guida: niente promessa «spariscono dopo 30 giorni».
-- **Correzione #822 — R-821-1 e punto di mount vuoto**: FATTA (4a442c4f, review #822 APPROVATO).
-  - Se fallisce la copia sul Mac, l'indicatore diventa rosso e parte l'avviso anche con la copia esterna spenta.
-  - Un disco esterno staccato il cui punto di mount resta in `/Volumes` come cartella vuota viene riconosciuto («non è collegato»).
-- **Correzione #823 — V-1 MEDIA e V-2 del bot su #387 (b098adf1)**: FATTA (2b4d32f2, review #823 APPROVATO).
-  - Permesso negato sulla cartella delle copie (es. macOS che blocca iCloud Drive): non rompe più la copia e non fa più dire «ATTIVA» all'avvio.
-  - Il controllo di integrità apre il database in sola lettura: un percorso sbagliato non crea più un file vuoto.
-  - Collegamento simbolico verso `/Volumes` o «/volumes» minuscolo: ora controllati (nota del revisore #822).
-- **Regola nuova in CLAUDE.md** (operatore, 20-11): non fermarsi ad aspettare il merge.
+- **Correzione del bot**: FATTA (4c982142, review #831 e #832 APPROVATO CON RISERVE).
+  - Sulla PR #388 il bot aveva messo il check in rosso con «finding MEDIA», ma il suo verdetto era APPROVATO CON RISERVE con una sola nota BASSA. La frase «Non bloccante:» a inizio frase veniva letta come gravità, perché la negazione valeva solo per «non» minuscolo.
+  - Ora vale anche «Non» con l'iniziale maiuscola. «NON» tutto maiuscolo, le gravità maiuscole e quelle tra parentesi restano bloccanti come prima.
+  - Prova del revisore: 648.144 frasi generate, nessuna differenza tra «Non …» e «non …».
+- **Dopo il merge**: nuovo giro del bot sulla PR #388, che poi si mergia se è verde.
 
 ## Test
-- `tests/test_unit_crm.py`: 131 su main 0aa26672 → 136 passed. Ogni test nuovo fallisce sul codice di prima della sua correzione.
-- mypy: 0 errori in `modules/crm`. Kernel non toccato.
+- `tests/test_unit_verifica_bot.py`: 627 su main → 630 passed. Il test del caso reale fallisce col codice di main; i casi che devono restare bloccati uccidono i mutanti indicati dal revisore.
 
 ## Riserve aperte
-- Non verificabili qui (non c'è un Mac): comportamento vero di `os.path.ismount` sui dischi esterni di macOS e del blocco dei permessi su iCloud Drive.
-- R-810-2 (filtro delle parole vietate: falsi allarmi e forme non in lista), R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4: vedi `reports/stato_progetto.md`.
+- R-832-1 COSMETICA: nessun test per «Non: grave» (punteggiatura subito dopo «Non»); oggi il comportamento è giusto.
