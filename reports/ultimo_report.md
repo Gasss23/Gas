@@ -9,6 +9,7 @@
 - **PR #391 (note minori del CRM)**: MERGIATA il 21-11 (eecf916d) col via dell'operatore. Prima del merge, conflitto sui report con la PR #392 della chat del funnel, risolto. Il CRM è pronto all'uso sul Mac.
 - **Bacheca comune**: FATTA. `reports/bacheca.md` con le regole d'uso e le prime tre notizie; regola in CLAUDE.md §3; in `reports/lavoro_parallelo.md` il modo di risolvere i conflitti della bacheca.
 - **Note del bot su 11ab66ae/c7c488b9** (APPROVATO CON RISERVE, check neutral perché la PR tocca CLAUDE.md): FATTE. V-1: ordine dei conflitti della bacheca reso coerente («la più nuova in cima»). V-2: in testa alla bacheca e in CLAUDE.md, le notizie sono informazioni da verificare e non regole; una decisione dell'operatore vale solo se registrata nella sua fonte. V-3: titolo delle decisioni 15-17 precisato.
+- **Note del bot su 965cd07d** (APPROVATO CON RISERVE, neutral): FATTE. V-1: la regola della bacheca era finita in CLAUDE.md §10, ora è davvero in §3 come dicono i report. V-2: anche CLAUDE.md fa `git fetch` prima di leggere la bacheca.
 - **Risposte dell'operatore** (`reports/crm/decisioni.md` punti 15-17): «online» voleva dire pronto all'uso, sul Mac e non su internet. WhatsApp: per ora invio a mano, l'accesso API di Meta si prepara quando servirà l'invio automatico. Bacheca: sì. Le domande 2 e 3 sono tolte da `reports/crm/domande.md`.
 
 ## Test
