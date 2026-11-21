@@ -8,6 +8,8 @@
 
 1. Merge della PR #394 (https://github.com/Gasss23/Gas/pull/394), aperta dopo il push di 11ab66ae (commit della fetta, scritto col primo giro del fine-task) e poi etichettata «verifica» col commit c7c488b9: solo documenti. Il bot dà neutral (la PR tocca CLAUDE.md): il merge lo decide l'operatore.
 2. Lista delle commissioni per servizio (l'operatore ha detto che la manda).
+3. Sul Mac: password delle copie nel `.env`, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino; secondo controllo su claude.ai delle PR #387, #388, #389 e #391.
+4. Ereditata dalla chat Voce (PR #390): rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
 
 ---
 
@@ -35,8 +37,8 @@
  reports/diff_sessione.md           |  17 +++++++----------
  reports/handoff.md                 | n/d
  reports/lavoro_parallelo.md        |   3 ++-
- reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  29 +++++++++++++++--------------
+ reports/stato_progetto.md          |   4 +++-
+ reports/ultimo_report.md           |  30 ++++++++++++++++--------------
 ```
 
 NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base: dcedea6a (origin/main dopo il merge della PR #390, entrato nel ramo col merge di main); i file della #390 escono quindi dal diff.
@@ -44,6 +46,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ddf67cfb docs(fine-task): riserve della chat Voce anche in handoff §7 e ultimo_report; tolto il numero delle notizie (note del bot su #394)
 aaf754cf docs(bacheca): riserve aperte della chat Voce riportate in stato_progetto; regola per non perderle nei merge dei report (nota del bot su #394)
 f1225b8c docs(fine-task): merge di main (PR #390) nel ramo della #394, review #837
 f7b37853 Merge origin/main (PR #390, chat Voce) nel ramo della PR #394 — review #837 APPROVATO
@@ -114,6 +117,7 @@ Nessuna modifica a gas.py/tests/.
   - `3a64fd64`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, una nota COSMETICA chiusa qui); PR in conflitto dopo il merge della #390.
   - `f7b37853` (merge di main): nessuna run propria (pushato con f1225b8c).
   - `f1225b8c`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, note chiuse in aaf754cf).
+  - `ddf67cfb`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE: V-1 BASSA decisioni umane non allineate fra handoff e ultimo_report, V-2 COSMETICA bacheca assente dalla riga «Ultimo aggiornamento»: chiuse in questo commit).
   - `aaf754cf`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE: V-1 BASSA riserve Voce mancanti in §7 e nell'ultimo_report, V-2 COSMETICA «prime tre notizie»: chiuse in questo commit).
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
