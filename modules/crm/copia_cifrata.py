@@ -28,6 +28,7 @@ import logging
 import os
 import re
 import sqlite3
+import subprocess
 import threading
 import time
 import unicodedata
@@ -287,7 +288,8 @@ def copia_fuori(copia_locale: Path, keep: int = KEEP) -> Tuple[Optional[Path], O
     except Exception as e:  # §9: il CRM continua; nel log solo il tipo, mai dati
         log.warning("CRM: copia cifrata esterna non riuscita: %s", type(e).__name__)
         return None, (_consiglio_icloud(dest_dir, e)  # R-828-1
-                      or f"copia cifrata non riuscita ({type(e).__name__})")
+                      # bot #388 (71137d27) V-3: senza «non riuscita», che l'avviso dice già
+                      or f"errore durante la copia cifrata ({type(e).__name__})")
     finally:
         if tmp is not None:  # V-3 bot/verifica #386: niente .tmp lasciati in giro
             try:
@@ -323,19 +325,62 @@ def _processo_vivo(pid: int) -> bool:
     return True
 
 
+def _leggi_boottime(testo: str) -> Optional[float]:
+    """Secondi dell'avvio da `sysctl -n kern.boottime` di macOS («{ sec = 1700000000, usec =
+    … } …»). None se il testo non è in quella forma."""
+    m = re.search(r"\{\s*sec\s*=\s*([0-9]{1,12})\b", testo)
+    return float(m.group(1)) if m else None
+
+
+def _avvio_sistema() -> Optional[float]:
+    """Ora (epoch) dell'ultimo avvio del sistema, o None se non si sa (allora si decide solo
+    col PID e con l'età). Linux: `btime` di /proc/stat; macOS: `sysctl kern.boottime`, con
+    un tempo massimo di 2 s. Un valore fuori da (0, adesso] non vale (nota #834: un'ora
+    di avvio nel futuro farebbe togliere anche un ripristino in corso). Mai solleva."""
+    valore: Optional[float] = None
+    try:
+        with open("/proc/stat", encoding="ascii") as f:
+            for riga in f:
+                if riga.startswith("btime "):
+                    valore = float(riga.split()[1])
+                    break
+    except (OSError, ValueError, IndexError):
+        pass
+    if valore is None:
+        try:
+            # percorso completo: niente dipendenza dal PATH (nota #834)
+            esito = subprocess.run(["/usr/sbin/sysctl", "-n", "kern.boottime"],
+                                   capture_output=True, text=True, timeout=2, check=False)
+            valore = _leggi_boottime(esito.stdout)
+        except Exception:  # §9
+            valore = None
+    if valore is None or not 0 < valore <= time.time():
+        return None
+    return valore
+
+
+MARGINE_AVVIO_S = 60.0
+
+
 def _pulisci_ripristini_interrotti(dest: Path) -> None:
     """V-1 bot #387 (d809f5f1): un ripristino ucciso a metà (kill -9, Mac spento) lascia
     accanto a `dest` il suo temporaneo IN CHIARO, con un nome unico che nessuno riusa.
     Si tolgono quelli dei processi che non ci sono più; mai un collegamento simbolico, mai
     quelli del processo corrente o di un processo ancora vivo, salvo che siano più vecchi di
     un'ora (V-1 bot #388, 7cd7a2f0: dopo un riavvio il PID può essere di un altro processo;
-    un ripristino dura pochi secondi). Mai solleva."""
+    un ripristino dura pochi secondi), o salvo che siano di prima dell'ultimo avvio del
+    sistema (R-830-1: dopo un riavvio nessun ripristino di prima può essere ancora in corso).
+    Gira prima di ogni controllo di `ripristina`, password compresa (verifica esterna #388,
+    V-1): toglie solo resti di ripristini finiti male, cosa che chiunque abbia accesso alla
+    cartella può già fare. Mai solleva."""
     # R-824-2: solo cifre ASCII, al massimo 10 per il PID
     schema = re.compile(re.escape(dest.name) + r"\.([0-9]{1,10})-[0-9]+\.ripristino\.tmp")
     try:
         resti = list(dest.parent.glob(f"{glob.escape(dest.name)}.*.ripristino.tmp"))
     except OSError:
         return
+    avvio: Optional[float] = None
+    avvio_letto = False
     for resto in resti:
         m = schema.fullmatch(resto.name)
         if not m:
@@ -344,9 +389,13 @@ def _pulisci_ripristini_interrotti(dest: Path) -> None:
         try:
             if resto.is_symlink():
                 continue
-            vecchio = resto.stat().st_mtime < time.time() - TMP_VECCHIO_S
+            mtime = resto.stat().st_mtime
+            vecchio = mtime < time.time() - TMP_VECCHIO_S
             if not vecchio and (pid == os.getpid() or _processo_vivo(pid)):
-                continue
+                if not avvio_letto:  # solo se serve: su macOS è un sysctl
+                    avvio, avvio_letto = _avvio_sistema(), True
+                if avvio is None or mtime >= avvio - MARGINE_AVVIO_S:
+                    continue
             if resto.is_file():
                 resto.unlink(missing_ok=True)
                 log.warning("CRM: tolto un ripristino interrotto rimasto accanto alla destinazione")
@@ -394,7 +443,12 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
         if resto.exists() or resto.is_symlink():  # V-4 verifica #386 (3°)
             raise ErroreCRM(f"accanto a {dest} è rimasto {resto.name}, un file di lavoro del "
                             "database di prima: spostalo insieme al database vecchio, poi riprova")
-    dati = decifra(Path(sorgente).read_bytes(), pw)
+    try:
+        blob = Path(sorgente).read_bytes()
+    except OSError as e:  # verifica esterna #388, V-2: un messaggio che dice cosa controllare
+        raise ErroreCRM(f"non riesco a leggere {sorgente} ({type(e).__name__}): controlla il "
+                        "percorso del file .gascrm") from None
+    dati = decifra(blob, pw)
     # V-3 bot/verifica #386 (3°): temporaneo IN CHIARO con nome unico e creazione esclusiva
     # (O_EXCL non segue un collegamento simbolico messo lì): mai scritto dentro un altro file
     tmp = dest.with_name(f"{dest.name}.{os.getpid()}-{threading.get_ident()}.ripristino.tmp")

@@ -730,6 +730,9 @@ class TestStorico:
         "V-1 (BASSA) — Non è più così: grave",
         "V-1 (BASSA) — Canon grave",
         "V-1 (BASSA) — canon grave",
+        # R-832-1: punteggiatura subito dopo «Non»
+        "V-1 (BASSA) — Non: grave",
+        "V-1 (BASSA) — Non, grave",
     ])
     def test_388_non_maiuscolo_non_nasconde_gravita(self, riga):
         testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
