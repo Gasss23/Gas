@@ -3,7 +3,7 @@
 ## DECISIONI UMANE RICHIESTE
 1. Merge della PR di questa fetta: solo documenti (bacheca, regola in CLAUDE.md, decisioni del CRM).
 2. Lista delle commissioni per servizio (l'operatore la manda): percentuale sui profitti, percentuale annua sul capitale o abbonamento, più il capitale minimo.
-3. Restano: password delle copie nel `.env` del Mac, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino sul Mac.
+3. Restano: password delle copie nel `.env` del Mac, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino sul Mac, secondo controllo su claude.ai delle PR #387, #388, #389 e #391 (non ancora fatto).
 
 ## Esito
 - **PR #391 (note minori del CRM)**: MERGIATA il 21-11 (eecf916d) col via dell'operatore. Prima del merge, conflitto sui report con la PR #392 della chat del funnel, risolto. Il CRM è pronto all'uso sul Mac.
