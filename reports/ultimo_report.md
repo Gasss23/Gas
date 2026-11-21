@@ -1,36 +1,29 @@
-# Ultimo report — 2026-11-20 — CRM fetta 8: note basse sulle PR #387 e #388 chiuse
+# ULTIMO REPORT — Funnel community: analisi competitor, funnel v2, tasto collaboratori
+
+**Data:** 21 novembre 2026
+**Branch:** claude/funnel-community
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #388 (dopo il nuovo giro del bot sul merge di main 7d6a6865): le riserve aperte sono solo BASSE o cosmetiche. Il bot aveva dato APPROVATO CON RISERVE su 0d946f08 e su 7cd7a2f0 (note chiuse in a565c7b6 e b0174be5): serve il sì dell'operatore in chat, salvo un verdetto del bot pulito sul nuovo head.
-2. Password delle copie cifrate nel `.env` del Mac (`GAS_CRM_BACKUP_PASSWORD`, almeno 12 caratteri), salvata anche nel gestore di password; poi `pip install -r requirements.txt` una volta.
-3. Controllare che la cartella di Gas sia `~/Gas` (`pwd`), fuori da Scrivania e Documenti sincronizzate.
-4. Secondo passaggio nella chat claude.ai col link della PR #387 e di questa PR (riservatezza delle copie dei clienti).
 
-## Esito
-- **PR #389 (correzione del bot)**: MERGIATA il 20-11 (09e112f5). Il bot sulla #388 aveva dato rosso per errore: leggeva «Non bloccante» come gravità MEDIA. Main portato nel ramo della #388 (merge 7d6a6865, review #833 APPROVATO) per un nuovo giro del bot.
-- **PR #387**: MERGIATA il 20-11 (d03e5bf2) col via dell'operatore («mergia quando è tutto verde»): CI verde, bot e verifica esterna APPROVATO CON RISERVE senza finding ALTA/MEDIA.
-- **Correzione #824/#825 — note basse di bot e verifica esterna su d809f5f1**: FATTA (d62adafb, review #824 e #825 APPROVATO CON RISERVE).
-  - Un ripristino interrotto (kill, Mac spento) non lascia più per sempre il file in chiaro accanto alla destinazione: al ripristino seguente si tolgono quelli dei processi morti. Mai i collegamenti simbolici, mai quelli di altre destinazioni.
-  - Cartella delle copie mai creata: il motivo dice «creala, o collega il disco», non più solo «disco non collegato?».
-  - A copia esterna spenta, motivo e avviso non parlano più di «fuori dal Mac» o «iCloud».
-- **Correzione #826/#827 — riserve #825**: FATTA (a9dbf6be). Review #826 BOCCIATO, poi #827 APPROVATO.
-  - Con `GAS_CRM_BACKUP_CIFRATO_DIR` scritta male («~utente» inesistente) o con iCloud Drive bloccato da macOS il CRM ora parte; la copia si vede in rosso.
-  - La bocciatura #826: con una cartella senza «/» le copie sarebbero finite nella cartella di lavoro. Ora i percorsi non completi vengono rifiutati.
-  - Avviso della copia sul Mac fallita: solo il motivo, senza «iCloud» fisso né «non è riuscita» ripetuto.
-- **Guida**: `GAS_CRM_BACKUP_CIFRATO_DIR` deve essere un percorso completo.
-- **Correzione #828/#829 — note BASSE del bot sulla PR #388 (0d946f08)**: FATTA (a565c7b6, review #828 e #829 APPROVATO CON RISERVE).
-  - Se macOS nega a Gas la lettura o la scrittura di iCloud Drive, il motivo (all'avvio, in dashboard e nell'avviso) dice cosa fare: dare l'accesso ai file all'app da cui si avvia il CRM, oppure impostare un'altra cartella.
-  - Il file in chiaro di un ripristino interrotto viene tolto anche quando la destinazione esiste già.
-  - R-829-1 (test per gli errori diversi dal permesso negato) chiusa in b0174be5.
-- **Correzione #830 — note del bot sulla PR #388 (7cd7a2f0)**: FATTA (b0174be5, review #830 APPROVATO CON RISERVE).
-  - I resti in chiaro di un ripristino interrotto più vecchi di un'ora si tolgono qualunque sia il numero del processo (dopo un riavvio può essere riassegnato).
-  - Il consiglio su iCloud vale anche se la cartella ci arriva da un collegamento o con maiuscole diverse.
-  - Resta R-830-1 BASSA: entro un'ora dal riavvio il resto può restare; la guida dice di cancellarlo a mano.
+1. **Privacy di `analisi_competitor.md`** (V-4 verifica esterna, secondo giro): il file cita testi della chat privata con «LEO SUPPORTO» e nomi di canali/persone, e il repo è PUBBLICO; è sul branch dal primo commit, quindi toglierlo dopo il merge non lo ritira dalla cronologia. Decidere PRIMA del merge: lasciare così, oppure anonimizzare e riscrivere la storia del branch.
+2. **Consegnare il pacchetto allo sviluppatore del bot** (scelta dell'operatore del 21/11): `reports/funnel/tasto_collaboratori.md` (tasto «I miei link» nel Pannello + /linkmiei) e `reports/funnel/funnel_v2.md` (Bozza B, candidatura a 3 passaggi confermata dall'operatore).
+3. **Far controllare i testi del funnel a un esperto di promozione finanziaria/privacy** prima dell'uso (raccomandazione della verifica esterna #392).
+4. Merge della PR di questa sessione (vedi handoff §0).
 
-## Test
-- `tests/test_unit_crm.py`: 136 su main d03e5bf2 → 138 passed (i test di a565c7b6 estendono quelli esistenti). I test nuovi falliscono sul codice di prima della loro correzione.
-- mypy: 0 errori in `modules/crm`. Kernel non toccato.
+## Esito fette
 
-## Riserve aperte
-- Non verificabili qui (non c'è un Mac): comportamento vero di macOS che blocca iCloud Drive e di `os.path.ismount` sui dischi esterni.
-- R-810-2, R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4: vedi `reports/stato_progetto.md`.
+- **Fetta 1 — Mappatura funnel attuale (bot Inizia Ora · Accesso)**: FATTA. Ricostruito dal test del 18/11 nella cronologia: presentazione, 7 domande, ultimo passo, scheda lead, guida agenti, /pannello. Il pannello web (mini app) non si apre dall'automazione: non bloccante.
+- **Fetta 2 — Analisi competitor su Telegram**: FATTA (9 canali della cartella «Competitor»: LEO TRADING, Cedric Fx, Luke World, ALE STARK, IN MOMO VERITAS, DISTRICT AUREX, The Edge, Nick and Leonard/Callisto FX, La vita di Shmek). Risultato in `reports/funnel/analisi_competitor.md`.
+- **Fetta 3 — Due bozze di funnel migliorato (vocale vs messaggi)**: FATTA. Copy completo in `reports/funnel/funnel_v2.md`.
+- **Fetta 4 — Tasto con i 2 link per i collaboratori**: FATTA COME SPECIFICA (`reports/funnel/tasto_collaboratori.md`). Il codice del bot non è né sul Mac né nei repo GitHub dell'account: l'implementazione va fatta da chi mantiene il bot.
+- **Fetta 5 — Scrivere ai competitor fingendosi clienti**: SALTATA — limite di sicurezza dell'agente: niente messaggi a persone reali sotto falsa identità. Compensata con: bot automatici dei competitor + cronologia GIÀ esistente delle chat dell'operatore (quella con LEO SUPPORTO contiene il loro intero processo di vendita). Nessun messaggio inviato. Precisione (V-6 bot): l'unica bozza cancellata è quella che il link «ENTRA ORA» di Luke World ha generato da sé nel campo messaggio quando l'ho aperto (creata dal mio stesso clic, mai inviata); la bozza preesistente nella chat «LEO SUPPORTO» è stata lasciata com'era.
+- **Fetta 8 — Decisioni dell'operatore e pacchetto di consegna**: FATTA. L'operatore ha scelto: candidatura a 3 passaggi (capitale 500 $, consenso, nome) e consegna allo sviluppatore del bot. `tasto_collaboratori.md` riscritto con il tasto «🔗 I miei link» DENTRO il Pannello (2 link per agente: percorso completo e sala segnali diretta, card pronte da inoltrare, contatori per link; tutele 18+/rischio/compenso/consenso valide anche nel diretto). Corretti i finding del secondo giro del bot: V-1 (tutele nel percorso diretto), V-2 (testi rimasti vecchi allineati), V-3 («ti ho tenuto il posto» tolto), V-5 (compenso nel copione della Bozza A).
+- **Fetta 7 — Secondo passaggio su Telegram (richiesta dell'operatore)**: FATTA. (a) Il NOSTRO funnel rifatto DAL VIVO con /cancellami + /start: due fasi (community: lingua+18enni, interessi, conto; candidatura VIP: 5 passaggi), tutte le opzioni di risposta catturate — «Li avrò a breve» e il consenso esplicito esistono GIÀ; bozze e analisi corrette di conseguenza. (b) Altri funnel competitor visti: Gold Signals, LTD-CAPITAL, CNS VIP, Shmek, Invest360; il bot di ALE STARK provato dal vivo: dopo il «Sì» subentra un umano («aspetta che ti faccio un audio» → vocale di 1:08 → «dimmi il tuo nome»), lì mi sono fermato (regola: niente conversazioni con umani sotto falsa identità). (c) Il vecchio bot «Inizia Ora – welcome REF» non risponde più a /links e /stats: i link dei collaboratori vanno nel bot nuovo.
+- **Fetta 6 — Scelta della bozza e correzioni della verifica esterna**: FATTA. L'operatore ha scelto la Bozza B (messaggi). Corretti i finding MEDI del bot sulla PR #392: V-1 (tolta la scarsità finta dal sollecito +72 h; regola «solo numeri veri» estesa), V-2 (avviso di rischio e trasparenza sul compenso in presentazione, ultimo passo e card dei collaboratori), V-3 (consenso esplicito agli aggiornamenti con bottoni Sì/No), V-4 (merge di main nel branch, review #834-MERGE APPROVATO).
+
+## Anomalie / cose da sapere
+
+- Il test dal vivo ha usato /cancellami: lo stato dell'operatore nel bot ora è «Candidato — pronto per la VIP» (prima era «accesso attivo»). Per rimettere lo stato di prima: bottoni «Conto aperto» / «In VIP» sulla scheda nella chat del bot.
+- Nella chat «ALE STARK Manager» c'è un loro vocale di 1:08 non ascoltato e la domanda «dimmi il tuo nome»: nessuna risposta inviata, decide l'operatore.
+- Il bottone «Pannello» (mini app Telegram) non si apre con l'automazione; per i dati del pannello serve l'operatore o /mielead.
+- Nella chat «LEO SUPPORTO» c'è una bozza non inviata nel campo messaggio (già presente); lasciata com'era.

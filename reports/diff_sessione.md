@@ -1,14 +1,14 @@
-# Diff della sessione — 2026-11-20 — CRM fetta 8 (note basse sulle PR #387 e #388)
+# DIFF SESSIONE — 21 novembre 2026 (funnel community)
 
-Si riscrive a ogni sessione; la storia completa sta in git. Le PR #381, #386 e #387 sono mergiate; questa fotografia copre il ramo ripartito da main d03e5bf2, con main (PR #389, correzione del bot) portato dentro col merge 7d6a6865.
+> Questo file si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/crm/copia_cifrata.py`:
-  - `_pulisci_ripristini_interrotti` e `_processo_vivo`: tolgono i temporanei in chiaro dei ripristini di processi morti;
-  - `_genitore_assente`: rifiuta i percorsi non completi; motivo «creala, o collega il disco»;
-  - `cartella()`: non solleva più con «~utente» inesistente o con iCloud bloccato;
-  - `_consiglio_icloud`: permesso negato su iCloud Drive → motivo che dice cosa fare (avvio, prova, copia);
-  - `ripristina`: la pulizia dei ripristini interrotti è la prima cosa, prima di ogni rifiuto; i resti più vecchi di un'ora si tolgono qualunque PID;
-  - `_consiglio_icloud`: percorso risolto e senza maiuscole/minuscole.
-- `modules/crm/server.py`: `_segna_copia(locale=…)`; motivi e avvisi giusti a copia esterna spenta o con copia sul Mac fallita.
-- `tests/test_unit_crm.py`: due test nuovi e due asserzioni aggiornate.
-- `reports/crm/guida.md` (percorso completo), `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.
+File toccati (tutti doc, nessun file del motore):
+
+- `reports/funnel/analisi_competitor.md` — NUOVO: mappa del funnel attuale del bot «Inizia Ora · Accesso» + analisi di 9 competitor Telegram + gli 8 schemi ricorrenti.
+- `reports/funnel/funnel_v2.md` — NUOVO: due bozze pronte del funnel candidatura VIP (A: video/vocale + 3 domande; B: solo messaggi, 4 domande), regole comuni (follow-up, reazioni calde, spiegazione semplice) e confronto per decidere.
+- `reports/funnel/tasto_collaboratori.md` — NUOVO: specifica del comando /linkmiei (2 link per agente: percorso completo e accesso diretto sala segnali) da consegnare a chi mantiene il bot.
+- `reports/stato_progetto.md` — riga di aggiornamento in testa.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — reporting canonico di fine task.
+- Secondo giro (stessa sessione): merge di `origin/main` nel branch (V-4 bot, review #834-MERGE APPROVATO, con `.claude/agents/memoria_revisore.md` aggiornato dal revisore); correzioni dei finding del bot nei testi del funnel (V-1 scarsità, V-2 rischio/compenso, V-3 consenso) e scelta della Bozza B registrata in `funnel_v2.md`.
+- Quarto giro (stessa sessione): scelte dell'operatore (3 passaggi; consegna allo sviluppatore); `tasto_collaboratori.md` riscritto col tasto «I miei link» nel Pannello; finding del 2° verdetto del bot corretti (V-1 tutele nel link diretto, V-2 testi vecchi, V-3 scarsità residua, V-5 copione A).
+- Terzo giro (stessa sessione): funnel nostro rifatto dal vivo su Telegram e altri 6 funnel competitor visti; `analisi_competitor.md` §1 riscritta con le due fasi reali e tutte le opzioni, tabella competitor ampliata (ALE STARK bot→umano col vocale, Shmek, Invest360, Gold Signals, LTD, CNS); Bozza B ristrutturata sulla candidatura reale (da 5 passaggi a 3).
