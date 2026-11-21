@@ -33,6 +33,7 @@
   .kb button{flex:1;background:var(--btn);border:1px solid var(--btnbord);color:#9fc0e0;padding:9px 8px;border-radius:9px;font-size:13.5px;cursor:pointer}
   .kb button:hover{background:#1f2c39}
   .kb button.sel{background:#24415e;border-color:var(--accent);color:#fff}
+  .kb button:disabled{opacity:.55;cursor:default}
   .typing{align-self:flex-start;color:var(--dim);font-size:12.5px;padding:2px 8px}
   .inputrow{display:flex;gap:6px;align-self:stretch}
   .inputrow input{flex:1;background:var(--btn);border:1px solid var(--btnbord);border-radius:9px;color:var(--txt);padding:9px 10px;font-size:14px}
@@ -63,7 +64,7 @@
   <div id="bar"><div class="ava">IO</div><div><div class="t">Inizia Ora · Accesso</div><div class="s">bot</div></div></div>
   <div id="chat"></div>
 </div>
-<footer>Testi da <b>funnel_v2.md</b> (Bozza B) e <b>tasto_collaboratori.md</b>. La fase 1 community è quella di oggi, invariata.<br><button class="restart" onclick="start(mode)">↺ Ricomincia questa simulazione</button></footer>
+<footer>Testi da <b>funnel_v2.md</b> (Bozza B), <b>tasto_collaboratori.md</b> e, per la fase 1 di oggi, <b>analisi_competitor.md</b> §1. Le sole righe proposte dall'agente (non fissate dalle specifiche) sono marcate con * nel riquadro grigio che le precede.<br><button class="restart" onclick="start(mode)">↺ Ricomincia questa simulazione</button></footer>
 
 <script>
 const chat = document.getElementById('chat');
@@ -72,28 +73,37 @@ let nome = 'Marco';
 const AG = 'Gaspare';
 const RISCHIO = '⚠ Il trading comporta un rischio reale di perdere il capitale: usa solo soldi che puoi permetterti di perdere. I risultati passati non garantiscono quelli futuri.';
 
+// V-1 verifica-bot #393: contatore di generazione — cambiare scheda o ricominciare
+// invalida il flusso in corso (ogni helper rifiuta dopo l'await se gen è cambiato).
+let gen = 0;
+const STALE = Symbol('stale');
+function chk(g){ if(g!==gen) throw STALE; }
+
 function el(cls, html){ const d=document.createElement('div'); d.className=cls; d.innerHTML=html; chat.appendChild(d); chat.scrollTop=chat.scrollHeight; return d; }
-function bot(t){ return el('msg bot', t); }
-function user(t){ return el('msg user', t); }
+// V-3 verifica-bot #393: i messaggi (che possono contenere l'input dell'utente) usano textContent, non innerHTML.
+function msgEl(cls, t){ const d=document.createElement('div'); d.className=cls; d.textContent=t; chat.appendChild(d); chat.scrollTop=chat.scrollHeight; return d; }
+function bot(t){ return msgEl('msg bot', t); }
+function user(t){ return msgEl('msg user', t); }
 function sys(t){ return el('sys', t); }
 function clearChat(){ chat.innerHTML=''; }
 
-function typing(ms){ return new Promise(r=>{ const d=el('typing','Inizia Ora · Accesso sta scrivendo…'); setTimeout(()=>{d.remove();r();}, ms); }); }
-async function botSay(t, ms=700){ await typing(ms); bot(t); }
+function typing(g, ms){ return new Promise((res,rej)=>{ const d=el('typing','Inizia Ora · Accesso sta scrivendo…'); setTimeout(()=>{ d.remove(); if(g!==gen) rej(STALE); else res(); }, ms); }); }
+async function botSay(g, t, ms=700){ await typing(g, ms); chk(g); bot(t); }
 
-// Inline keyboard: rows = [[{t:label, v:value}...]...]; multi = selezione multipla con "Continua"
-function kb(rows, {multi=false, done='Continua →'}={}){
-  return new Promise(resolve=>{
+// Inline keyboard: rows = [[{t:label}...]...]; multi = selezione multipla con "Continua"
+function kb(g, rows, {multi=false, done='Continua →'}={}){
+  return new Promise((resolve,reject)=>{
     const wrap=el('kb','');
     const picked=new Set();
+    const guard=fn=>()=>{ if(g!==gen){ wrap.remove(); reject(STALE); return; } fn(); };
     rows.forEach(r=>{
       const row=document.createElement('div'); row.className='row';
       r.forEach(o=>{
         const b=document.createElement('button'); b.textContent=o.t;
-        b.onclick=()=>{
+        b.onclick=guard(()=>{
           if(multi){ b.classList.toggle('sel'); b.classList.contains('sel')?picked.add(o.t):picked.delete(o.t); return; }
-          wrap.remove(); user(o.t); resolve(o.v??o.t);
-        };
+          wrap.remove(); user(o.t); resolve(o.t);
+        });
         row.appendChild(b);
       });
       wrap.appendChild(row);
@@ -101,117 +111,149 @@ function kb(rows, {multi=false, done='Continua →'}={}){
     if(multi){
       const row=document.createElement('div'); row.className='row';
       const b=document.createElement('button'); b.textContent=done;
-      b.onclick=()=>{ if(!picked.size) return; wrap.remove(); user([...picked].join(' + ')); resolve([...picked]); };
+      b.onclick=guard(()=>{ if(!picked.size) return; wrap.remove(); user([...picked].join(' + ')); resolve([...picked].join(' + ')); });
       row.appendChild(b); wrap.appendChild(row);
     }
     chat.scrollTop=chat.scrollHeight;
   });
 }
-function askText(ph){
-  return new Promise(resolve=>{
+function askText(g, ph){
+  return new Promise((resolve,reject)=>{
     const wrap=el('inputrow','');
     const i=document.createElement('input'); i.placeholder=ph;
     const b=document.createElement('button'); b.textContent='Invia';
-    const send=()=>{ const v=i.value.trim(); if(!v) return; wrap.remove(); user(v); resolve(v); };
+    const send=()=>{ if(g!==gen){ wrap.remove(); reject(STALE); return; } const v=i.value.trim(); if(!v) return; wrap.remove(); user(v); resolve(v); };
     b.onclick=send; i.onkeydown=e=>{ if(e.key==='Enter') send(); };
     wrap.appendChild(i); wrap.appendChild(b); i.focus(); chat.scrollTop=chat.scrollHeight;
   });
 }
 
-async function start(m){
+function start(m){
+  gen++;                       // invalida ogni flusso in corso (V-1)
+  const g = gen;
   mode=m;
   ['tabA','tabB','tabC'].forEach(id=>document.getElementById(id).classList.remove('on'));
   document.getElementById(m==='completo'?'tabA':m==='diretto'?'tabB':'tabC').classList.add('on');
   clearChat();
-  if(m==='completo') return flussoCompleto();
-  if(m==='diretto') return flussoDiretto();
-  return pannello();
+  const run = m==='completo' ? flussoCompleto(g) : m==='diretto' ? flussoDiretto(g) : pannello(g);
+  Promise.resolve(run).catch(e=>{ if(e!==STALE) throw e; });
 }
 
-/* ---------- FASE 1 COMMUNITY (oggi, invariata) ---------- */
-async function fase1(){
+/* ---------- FASE 1 COMMUNITY (oggi, invariata — analisi_competitor.md §1) ---------- */
+async function fase1(g){
   sys('Il lead apre t.me/&lt;bot&gt;?start=&lt;codice_agente&gt; e preme AVVIA');
   user('/start');
-  await botSay('👋 Ciao! Da quale community arrivi?');
-  await kb([[{t:'Inizia Ora'}]]);
-  await botSay('🌍 In che lingua preferisci continuare?\n\nToccando confermi di avere almeno 18 anni.');
-  await kb([[{t:'🇮🇹 Italiano'},{t:'🇬🇧 English'}]]);
-  await botSay('Benvenuto in Inizia Ora, '+nome+'. Due domande veloci e ti do l\'accesso alla community.\n\n🎯 Cosa ti interessa? Puoi sceglierne più di una');
-  await kb([[{t:'📈 Copy trading automatico'}],[{t:'📊 Sale segnali'}],[{t:'🎓 Imparare a farlo da solo'}]],{multi:true});
-  await botSay('🏦 Hai già un conto di trading?');
-  await kb([[{t:'No, non ancora'}],[{t:'Sì, con il vostro broker'}],[{t:'Sì, con un altro broker'}]]);
+  await botSay(g, '👋 Ciao! Da quale community arrivi?');
+  await kb(g, [[{t:'Inizia Ora'}]]);
+  await botSay(g, '🌍 In che lingua preferisci continuare?\n\nToccando confermi di avere almeno 18 anni.');
+  await kb(g, [[{t:'🇮🇹 Italiano'},{t:'🇬🇧 English'}]]);
+  await botSay(g, 'Benvenuto in Inizia Ora, '+nome+'. Due domande veloci e ti do l\'accesso alla community.\n\n🎯 Cosa ti interessa? Puoi sceglierne più di una');
+  await kb(g, [[{t:'📈 Copy trading automatico'}],[{t:'📊 Sale segnali'}],[{t:'🎓 Imparare a farlo da solo'}]],{multi:true});
+  await botSay(g, '🏦 Hai già un conto di trading?');
+  await kb(g, [[{t:'No, non ancora'}],[{t:'Sì, con il vostro broker'}],[{t:'Sì, con un altro broker'}]]);
   sys('📇 La scheda lead parte all\'agente (come oggi) — «Entrato da: codice agente»');
-  await botSay('✅ Sei già nella community! Quando vuoi, puoi candidarti alla sala VIP.');
-  await kb([[{t:'🎯 Candidati alla VIP'}]]);
+  await botSay(g, '✅ Sei già nella community! Quando vuoi, puoi candidarti alla sala VIP.');
+  await kb(g, [[{t:'🎯 Candidati alla VIP'}]]);
 }
 
-/* ---------- FASE 2 — BOZZA B (3 passaggi) ---------- */
-async function bozzaB(){
-  await botSay('Ciao '+nome+' 👋 Questa è la tua candidatura alla sala VIP di Inizia Ora.\n\nFunziona così: ogni giorno ricevi i segnali completi — un messaggio con tre numeri: dove entrare, dove fermarti, dove incassare — e li gestiamo in diretta con te, con una persona vera al tuo fianco.\n\n💶 Non paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati: il compenso ce lo riconosce il broker). I soldi restano sul tuo conto, sempre tuoi.\n\n'+RISCHIO+'\n\n3 passaggi e ci siamo (1 minuto).', 900);
-  await kb([[{t:'Iniziamo →'}]]);
+/* ---------- FASE 2 — BOZZA B (3 passaggi, funnel_v2.md) ---------- */
+async function bozzaB(g){
+  await botSay(g, 'Ciao '+nome+' 👋 Questa è la tua candidatura alla sala VIP di Inizia Ora.\n\nFunziona così: ogni giorno ricevi i segnali completi — un messaggio con tre numeri: dove entrare, dove fermarti, dove incassare — e li gestiamo in diretta con te, con una persona vera al tuo fianco.\n\n💶 Non paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati: il compenso ce lo riconosce il broker). I soldi restano sul tuo conto, sempre tuoi.\n\n'+RISCHIO+'\n\n3 passaggi e ci siamo (1 minuto).', 900);
+  await kb(g, [[{t:'Iniziamo →'}]]);
 
-  await botSay('💶 1/3 — Per la sala VIP serve un conto con almeno 500 $, che restano tuoi sul tuo conto al broker. Ce l\'hai già?');
-  const cap = await kb([[{t:'Sì, ce l\'ho'}],[{t:'Li avrò a breve'}],[{t:'Non ancora'}]]);
-  if(cap==='Sì, ce l\'ho') await botSay('Ottima scelta 👌 Sei già a metà strada.');
-  else await botSay('Perfetto, nessun problema: intanto completa la candidatura, parti quando sei pronto 👌');
+  await botSay(g, '💶 1/3 — Per la sala VIP serve un conto con almeno 500 $, che restano tuoi sul tuo conto al broker. Ce l\'hai già?');
+  const cap = await kb(g, [[{t:'Sì, ce l\'ho'}],[{t:'Li avrò a breve'}],[{t:'Non ancora'}]]);
+  if(cap==='Sì, ce l\'ho'){ sys('* reazione calda: testo proposto dall\'agente (la spec fissa solo l\'esempio «Ottima scelta 👌»)'); await botSay(g, 'Ottima scelta 👌'); }
+  else await botSay(g, 'Perfetto, nessun problema: intanto completa la candidatura, parti quando sei pronto 👌');
 
-  await botSay('📣 2/3 — Ti va di ricevere qui aggiornamenti e novità della community?');
-  const cons = await kb([[{t:'Sì, volentieri'},{t:'No grazie'}]]);
-  await botSay(cons==='Sì, volentieri' ? 'Grande 🤝 (puoi revocarlo quando vuoi scrivendo STOP)' : 'Nessun problema: nessun messaggio promozionale, solo il tuo percorso.');
+  await botSay(g, '📣 2/3 — Ti va di ricevere qui aggiornamenti e novità della community?');
+  const cons = await kb(g, [[{t:'Sì, volentieri'},{t:'No grazie'}]]);
+  sys('* reazione calda: testo proposto dall\'agente (la spec chiede una reazione a ogni risposta senza fissarne il testo; lo STOP è da spec)');
+  await botSay(g, cons==='Sì, volentieri' ? 'Perfetto 🤝 (puoi revocarlo quando vuoi scrivendo STOP)' : 'Nessun problema: nessun messaggio promozionale.');
 
-  await botSay('✍ 3/3 — Ultima cosa: nome e cognome, così '+AG+' sa chi sei');
-  nome = (await askText('Nome e cognome')).split(' ')[0] || nome;
+  await botSay(g, '✍ 3/3 — Ultima cosa: nome e cognome, così '+AG+' sa chi sei');
+  nome = (await askText(g, 'Nome e cognome')).split(' ')[0] || nome;
 
-  await botSay('✅ Candidatura accettata, '+nome+'! L\'ultimo passo lo fai con '+AG+': premi qui sotto e manda il messaggio già pronto — ti risponde a breve e ti attiva. Intanto segui i segnali gratuiti nel canale.\n\n🔒 '+AG+' non ti chiede mai soldi: i fondi restano sul tuo conto.\n'+RISCHIO, 900);
+  await botSay(g, '✅ Candidatura accettata, '+nome+'! L\'ultimo passo lo fai con '+AG+': premi qui sotto e manda il messaggio già pronto. Intanto segui i segnali gratuiti nel canale.\n\n🔒 '+AG+' non ti chiede mai soldi: i fondi restano sul tuo conto.\n'+RISCHIO, 900);
   sys('📇 Scheda completa all\'agente: «pronto per la VIP» (bottoni Conto aperto / In VIP / Apri chat)');
-  const fin = await kb([[{t:'💬 Scrivi a '+AG}],[{t:'⏩ Simula: il lead NON preme e sparisce'}]]);
+  const fin = await kb(g, [[{t:'💬 Scrivi a '+AG}],[{t:'⏩ Simula: il lead NON preme e sparisce'}]]);
   if(fin==='💬 Scrivi a '+AG){
     sys('Si apre la chat con l\'agente, messaggio precompilato. Fine del funnel 🎉');
   } else {
-    await followUp();
+    await followUp(g, 'completo');
   }
 }
 
-async function followUp(){
+async function followUp(g, tipo){
   sys('… passano 24 ore senza risposta …');
-  await botSay('Ciao '+nome+' 🤝 Ti mancano 30 secondi di candidatura: riprendiamo da dove eri?');
-  const r1 = await kb([[{t:'Riprendi'}],[{t:'⏩ Ignora anche questo'}]]);
+  if(tipo==='completo'){
+    await botSay(g, 'Ciao '+nome+' 🤝 Ti mancano 30 secondi di candidatura: riprendiamo da dove eri?');
+  } else {
+    sys('* testo proposto dall\'agente: la spec (tasto_collaboratori §4.3) dice «stessi 2 solleciti» ma il lead diretto non ha una candidatura da completare');
+    await botSay(g, 'Ciao '+nome+' 🤝 Ti manca solo l\'ultimo passo: scrivi a '+AG+' e ti attiva. Lo facciamo ora?');
+  }
+  const r1 = await kb(g, [[{t:'Riprendi'}],[{t:'⏩ Ignora anche questo'}]]);
   if(r1==='Riprendi'){ sys('Il lead riprende dall\'ultimo passo. Recuperato ✅'); return; }
   sys('… passano altre 48 ore …');
-  await botSay('Vuoi completare la candidatura o la chiudo? Se preferisci, riprendila quando vuoi.');
-  const r2 = await kb([[{t:'Riprendila'},{t:'Chiudila'}]]);
+  await botSay(g, 'Vuoi completare la candidatura o la chiudo? Se preferisci, riprendila quando vuoi.');
+  const r2 = await kb(g, [[{t:'Riprendila'},{t:'Chiudila'}]]);
   sys(r2==='Riprendila' ? 'Recuperato al 2° sollecito ✅' : 'Chiusa. Da qui in poi: SILENZIO (mai più di 2 solleciti, niente promozione senza consenso).');
 }
 
-async function flussoCompleto(){ await fase1(); await bozzaB(); }
+async function flussoCompleto(g){ await fase1(g); await bozzaB(g); }
 
-/* ---------- ACCESSO DIRETTO (-vip) ---------- */
-async function flussoDiretto(){
+/* ---------- ACCESSO DIRETTO (-vip, tasto_collaboratori.md §3) ---------- */
+async function flussoDiretto(g){
   sys('Il contatto caldo apre t.me/&lt;bot&gt;?start=&lt;codice_agente&gt;-vip');
   user('/start');
-  await botSay('🌍 In che lingua preferisci continuare?\n\nToccando confermi di avere almeno 18 anni.');
-  await kb([[{t:'🇮🇹 Italiano'},{t:'🇬🇧 English'}]]);
-  await botSay('⚡ Benvenuto, '+nome+'. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta.\n\nNon paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto.\n\n⚠ Il trading comporta un rischio reale di perdere il capitale.\n\nUltimo passo: scrivi a '+AG+', ti attiva lui.', 900);
+  await botSay(g, '🌍 In che lingua preferisci continuare?\n\nToccando confermi di avere almeno 18 anni.');
+  await kb(g, [[{t:'🇮🇹 Italiano'},{t:'🇬🇧 English'}]]);
+  await botSay(g, '⚡ Benvenuto, '+nome+'. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta.\n\nNon paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto.\n\n⚠ Il trading comporta un rischio reale di perdere il capitale.\n\nUltimo passo: scrivi a '+AG+', ti attiva lui.', 900);
   sys('📇 Scheda all\'agente con etichetta «⚡ accesso diretto», campi mancanti = «da chiedere in chat»');
-  await botSay('Ti va di ricevere qui aggiornamenti della community?');
-  await kb([[{t:'Sì, volentieri'},{t:'No grazie'}]]);
-  const fin = await kb([[{t:'💬 Scrivi a '+AG}],[{t:'⏩ Simula: non preme'}]]);
-  if(fin==='💬 Scrivi a '+AG) sys('Chat con l\'agente aperta. Nessuna domanda in mezzo: il caldo arriva subito 🎉');
-  else { await followUp(); }
+
+  // Come da spec §3.1: [Scrivi a {agente}] attaccato al messaggio e, SOTTO, la domanda del consenso.
+  const esito = await ctaConConsenso(g);
+  if(esito==='scrivi') sys('Chat con l\'agente aperta. Nessuna domanda in mezzo: il caldo arriva subito 🎉');
+  else await followUp(g, 'diretto');
   sys('NB: il suffisso -vip NON attiva nulla da solo — l\'accesso lo dà sempre lo staff (Conto aperto / In VIP).');
 }
 
-/* ---------- PANNELLO AGENTE ---------- */
-async function pannello(){
+// CTA e consenso visibili INSIEME (ordine della spec): il consenso si può toccare
+// prima o dopo, la CTA chiude il passo.
+function ctaConConsenso(g){
+  return new Promise((resolve,reject)=>{
+    const wrap=el('kb','');
+    const guard=fn=>()=>{ if(g!==gen){ wrap.remove(); reject(STALE); return; } fn(); };
+    const row1=document.createElement('div'); row1.className='row';
+    const bScrivi=document.createElement('button'); bScrivi.textContent='💬 Scrivi a '+AG;
+    const bSkip=document.createElement('button'); bSkip.textContent='⏩ Simula: non preme';
+    row1.appendChild(bScrivi); row1.appendChild(bSkip); wrap.appendChild(row1);
+    const q=document.createElement('div'); q.className='msg bot'; q.textContent='Ti va di ricevere qui aggiornamenti della community?'; wrap.appendChild(q);
+    const row2=document.createElement('div'); row2.className='row';
+    ['Sì, volentieri','No grazie'].forEach(t=>{
+      const b=document.createElement('button'); b.textContent=t;
+      b.onclick=guard(()=>{ row2.querySelectorAll('button').forEach(x=>x.disabled=true); b.classList.add('sel'); user(t); });
+      row2.appendChild(b);
+    });
+    wrap.appendChild(row2);
+    bScrivi.onclick=guard(()=>{ wrap.remove(); user('💬 Scrivi a '+AG); resolve('scrivi'); });
+    bSkip.onclick=guard(()=>{ wrap.remove(); resolve('skip'); });
+    chat.scrollTop=chat.scrollHeight;
+  });
+}
+
+/* ---------- PANNELLO AGENTE (tasto_collaboratori.md §1) ---------- */
+function pannello(g){
   sys('Il COLLABORATORE apre il Pannello (bottone blu in basso a sinistra) → «🔗 I miei link»');
   const c1=el('card','');
   c1.innerHTML='<h4>🧲 Percorso completo</h4><div class="hint">per chi è freddo: domande + scheda completa</div><div class="mono">https://t.me/&lt;bot&gt;?start=MARIO23</div><div class="cnt">Completo: 41 lead</div><div class="cardbtns"><button onclick="copia(this)">Copia</button><button onclick="inoltra(\'completo\')">Inoltra la card</button></div>';
   const c2=el('card','');
   c2.innerHTML='<h4>⚡ Sala segnali diretto</h4><div class="hint">per chi è già caldo: niente domande, subito l\'ultimo passo</div><div class="mono">https://t.me/&lt;bot&gt;?start=MARIO23-vip</div><div class="cnt">Diretto: 12 lead</div><div class="cardbtns"><button onclick="copia(this)">Copia</button><button onclick="inoltra(\'diretto\')">Inoltra la card</button></div>';
-  sys('Contatori per link: ogni agente vede quale rende. Prova i bottoni «Inoltra la card» ↑');
+  sys('Contatori per link: ogni agente vede quale rende (numeri d\'esempio). Prova i bottoni «Inoltra la card» ↑');
 }
 function copia(b){ b.textContent='Copiato ✓'; setTimeout(()=>b.textContent='Copia',1200); }
-async function inoltra(tipo){
+function inoltra(tipo){
+  if(mode!=='pannello') return;
   sys('Il bot manda in chat la card già pronta: l\'agente la INOLTRA al contatto (zero testi da scrivere)');
   if(tipo==='completo')
     bot('🎯 Vuoi entrare nella VIP di Inizia Ora? Candidati qui, ci vuole 1 minuto:\n\n[ Candidati ora ]\n\n⚠ Il trading comporta un rischio reale di perdere il capitale. L\'accesso si attiva aprendo un conto col broker partner, che ci riconosce un compenso.');
