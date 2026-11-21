@@ -125,6 +125,10 @@ Cosa non ho verificato: test non rieseguiti (mi baso sui 1144 passed dichiarati;
 
 Memoria: aggiunta la riga #812-M1coord, non committata (la aggiunge l'agente allo staged). Nessuna lezione nuova.
 
+## §4bis VERDETTO DEL REVISORE SUL SECONDO MERGE DI MAIN (#814-M1coord)
+
+Il merge porta solo codice di main (CRM, già revisionato in #834–#836) e non cambia nessun file proprio della PR: quasi tutte le citazioni del verdetto puntano a file che, dopo il merge, non sono nel diff della PR (check_verdetto le confronta col diff). Per questo il verdetto sta fuori dal §4. Testo integrale, invariato:
+
 ### Review #814-M1coord (secondo merge di origin/main eecf916d nel branch)
 
 ## VERDETTO: APPROVATO
