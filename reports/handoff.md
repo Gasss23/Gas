@@ -24,7 +24,7 @@
  reports/diff_sessione.md           |  16 ++++++----------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  24 +++++++++++-------------
+ reports/ultimo_report.md           |  26 +++++++++++++-------------
  scripts/voce/LEGGIMI.md            |   4 +++-
  scripts/voce/registra_voce.py      |  18 ++++++++++++++++--
  tests/test_unit_voce_ascolto.py    |  50 ++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -33,6 +33,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+241a4128 docs(fine-task): note del bot su #395 — R-810M1-2 attenuata (da misurare sul Mac), riserve di #382/#383 rimesse in traccia
+cba9a316 docs(fine-task): §2/§3 handoff
 6adf1d7f docs(fine-task): report della correzione #813 (microfono muto, secondi del messaggio)
 b46fde99 fix(voce): registra_voce si ferma subito col microfono muto; «ogni 9 secondi» col margine del ciclo (V-1/V-2 bot #390, R-810M1-2) — review #813-M1coord APPROVATO CON RISERVE
 ca88c976 chore(revisore): memoria review #813 — APPROVATO CON RISERVE
