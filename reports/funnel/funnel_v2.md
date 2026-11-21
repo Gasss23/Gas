@@ -14,7 +14,7 @@ Il funnel attuale è GIÀ in due fasi: fase 1 community (lingua + 18enni, intere
 - **Dopo ogni risposta il bot reagisce con una riga calda**, come una persona: «Ottima scelta 👌», «Nessun problema: ti guidiamo noi dal primo passo».
 - **Spiegazione a prova di principiante** (va detta PRIMA delle domande): «Ogni giorno ricevi un messaggio con tre numeri: dove entrare, dove fermarti se va male, dove incassare. Noi stiamo sul grafico, tu copi.»
 - **Follow-up automatici** se il lead si ferma (a metà domande o senza premere «Scrivi a …»):
-  - +24 h: «Ti ho tenuto il posto 🤝 Ti mancano 30 secondi: riprendiamo da dove eri?» [Riprendi]
+  - +24 h: «Ciao {nome} 🤝 Ti mancano 30 secondi di candidatura: riprendiamo da dove eri?» [Riprendi]
   - +72 h: «Vuoi completare la candidatura o la chiudo? Se preferisci, riprendila quando vuoi.» [Riprendila] [Chiudila]
   - Oltre: silenzio (mai più di 2 solleciti).
   - I solleciti partono SOLO per chi ha iniziato la candidatura e non l'ha finita (riguardano il suo percorso, non sono promozione a freddo).
@@ -29,7 +29,7 @@ Il funnel attuale è GIÀ in due fasi: fase 1 community (lingua + 18enni, intere
 
 **Passo 0 — /start**: il bot manda UN video-messaggio (o vocale) di Gaspare, registrato una volta, uguale per tutti, 30–45 secondi:
 
-> «Ciao, sono Gaspare 👋 Benvenuto. Ti spiego in trenta secondi come funziona: ogni giorno in sala VIP ricevi i segnali completi — dove entrare, dove mettere lo stop, dove incassare — e li gestiamo in diretta con te. Non ci paghi nessun abbonamento: l'accesso si attiva aprendo un conto dal nostro link col broker partner, e i soldi restano SUL TUO conto, sempre tuoi. Rispondi a tre domande veloci così so come seguirti, e ci sentiamo di là.»
+> «Ciao, sono Gaspare 👋 Benvenuto. Ti spiego in trenta secondi come funziona: ogni giorno in sala VIP ricevi i segnali completi — dove entrare, dove mettere lo stop, dove incassare — e li gestiamo in diretta con te. Non ci paghi nessun abbonamento: l'accesso si attiva aprendo un conto dal nostro link col broker partner — è così che veniamo pagati, il compenso ce lo dà il broker — e i soldi restano SUL TUO conto, sempre tuoi. Rispondi a tre domande veloci così so come seguirti, e ci sentiamo di là.»
 
 Sotto il video, testo breve (per chi non ascolta): le stesse 3 righe + «3 domande, 1 minuto».
 
@@ -44,7 +44,7 @@ Sotto il video, testo breve (per chi non ascolta): le stesse 3 righe + «3 doman
 > [💬 Scrivi a {agente}]
 > «Ti va di ricevere qui aggiornamenti e novità della community?» [Sì, volentieri] [No grazie]
 
-**Perché così**: il vocale crea il rapporto (come LEO/MOMO), il modulo scende da 7 a 3 passaggi, la qualifica vera (capitale 500 $, esperienza) la fa l'agente a voce in DM, dove un «non ancora» si recupera invece di restare freddo su una scheda.
+**Perché così**: il vocale crea il rapporto (come LEO/MOMO) e la qualifica vera (esperienza, costanza) la fa l'agente a voce in DM, dove un «non ancora» si recupera invece di restare freddo su una scheda.
 **Cosa serve dall'operatore**: UN video-messaggio o vocale registrato da Gaspare (meglio video rotondo, più personale; si registra dal telefono in chat con il bot e si riusa per sempre).
 
 ## Bozza B — solo messaggi (SCELTA dall'operatore il 21/11)
@@ -67,14 +67,6 @@ La fase 1 (community) resta com'è. Cambia la candidatura VIP:
 
 **Differenze vs oggi, in sintesi**: candidatura da 5 passaggi a 3; reazioni calde del bot a ogni risposta; rischio e compenso dichiarati; follow-up automatici su chi si ferma; spiegazione «tre numeri» nella presentazione; esperienza e costanza spostate alla chat con l'agente (dove un «prima voglio capire» si recupera parlando).
 
-## Confronto rapido per decidere
+## Decisione
 
-| | Bozza A (voce) | Bozza B (messaggi) |
-|---|---|---|
-| Rapporto umano | ⭐⭐⭐ sente la voce al msg 1 | ⭐ solo testo |
-| Attrito | 3 domande | 4 domande |
-| Qualifica nel bot | più morbida (500 $ li chiede l'agente) | più dura (500 $ nel modulo) |
-| Lavoro per partire | registrare 1 video/vocale | zero |
-| Rischio | tono del vocale da azzeccare | resta «un modulo» |
-
-Proposta dell'agente: partire con A; se il bot gestisce i gruppi di prova, A/B per 2 settimane sulla % che preme «Scrivi a {agente}».
+**Si parte con la Bozza B** (operatore, 21/11), **candidatura a 3 passaggi** (operatore, 21/11, seconda conferma). La Bozza A resta come riferimento per un eventuale test futuro: se si vorrà provarla, basterà aggiungere il video in testa alla candidatura della B, senza cambiare i passaggi.

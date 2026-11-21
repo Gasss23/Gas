@@ -59,4 +59,4 @@ Comandi agente: /pannello, /mielead, /guida. NB: il vecchio bot «Inizia Ora –
 
 ## 4. Conclusione
 
-Il nostro impianto (scheda, tracking, trasparenza) è il migliore del lotto; a perdere clienti è il PRIMO minuto (modulo freddo di 7 domande) e l'ASSENZA di recupero. Le due bozze operative sono in `funnel_v2.md`; il tasto con i due link per i collaboratori è in `tasto_collaboratori.md`.
+Il nostro impianto (scheda, tracking, trasparenza, due fasi) è il migliore del lotto; a perdere clienti sono il TONO (tutto testo freddo, zero volto/voce, zero reazioni) e l'ASSENZA di recupero di chi si ferma. Le due bozze operative sono in `funnel_v2.md`; il tasto con i due link per i collaboratori è in `tasto_collaboratori.md`.
