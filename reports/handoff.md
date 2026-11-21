@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #PENDING (URL dopo il push).
+1. Merge della PR #393 (https://github.com/Gasss23/Gas/pull/393), aperta con l'etichetta «verifica». La PR tocca anche un file fuori dalla lista bianca dei log (`simulazione_funnel.html`): serve il verdetto testuale del bot; merge autonomo solo con APPROVATO pulito, altrimenti decide l'operatore.
 2. Provare la simulazione `reports/funnel/simulazione_funnel.html` e decidere lì eventuali ritocchi ai testi prima della consegna allo sviluppatore.
 3. Consegnare allo sviluppatore del bot: `reports/funnel/tasto_collaboratori.md`, `reports/funnel/funnel_v2.md`, più la simulazione come riferimento visivo.
 4. Far controllare i testi del funnel a un esperto di promozione finanziaria/privacy prima dell'uso (verifica esterna #392).
