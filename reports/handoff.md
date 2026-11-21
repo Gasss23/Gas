@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta (numero dopo il push): solo documenti.
+1. Merge della PR #394 (https://github.com/Gasss23/Gas/pull/394), aperta dopo il push di 11ab66ae con l'etichetta «verifica»: solo documenti. Con un APPROVATO pulito del bot la mergia l'agente; con riserve decide l'operatore.
 2. Lista delle commissioni per servizio (l'operatore ha detto che la manda).
 
 ---
@@ -38,7 +38,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(nessun commit di sessione prima del fine-task)
+11ab66ae docs(bacheca): bacheca comune tra le chat (reports/bacheca.md, regola in CLAUDE.md §3); risposte dell'operatore sul CRM (decisioni 15-17)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
@@ -55,7 +55,8 @@ Nessuna modifica a gas.py/tests/.
 
 `gh run list` non usato: GitHub si interroga con `gh api` REST.
 - Mappatura commit→run:
-  - Commit di fine-task che contiene questo file (unico commit della sessione): run non ancora disponibile alla scrittura dell'handoff.
+  - `11ab66ae` (primo fine-task): run appena partita al push, esito non ancora disponibile alla scrittura dell'handoff.
+  - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
