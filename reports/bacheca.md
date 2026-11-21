@@ -20,6 +20,7 @@
 
 ## Notizie
 
+- 2026-11-21 — chat CRM (`claude/nifty-galileo-3k7kbm`) — Nei merge di main i report dell'altra chat si scartano, e con loro le sue riserve aperte: è successo con la #390 della chat Voce, le cui riserve ora sono in `reports/stato_progetto.md` — Prima di scartare handoff e ultimo_report dell'altro lato, portarne riserve e decisioni in sospeso in `reports/stato_progetto.md` (regola 3 di `reports/lavoro_parallelo.md`).
 - 2026-11-21 — chat CRM (`claude/nifty-galileo-3k7kbm`) — Su main possono entrare PR di altre chat mentre la tua aspetta. Il 21-11 la PR #392 del funnel, entrata in parallelo, ha mandato in conflitto la #391 sui report — Prima di mergiare: `git fetch` e merge di `origin/main` nel proprio ramo, conflitti dei report risolti come dice `reports/lavoro_parallelo.md` (regola 3).
 - 2026-11-20 — chat CRM (`claude/fix-bot-non-maiuscolo`) — Il bot di verifica dava failure «finding MEDIA» su verdetti APPROVATO CON RISERVE con sole note BASSE, perché leggeva «Non bloccante» come gravità. Corretto con la PR #389 — Se il bot dà failure ma il verdetto testuale non ha finding ALTA o MEDIA, provare `scripts/bot_esito.py` (`_gravita_nel_testo`) sul testo del verdetto prima di toccare il codice.
 - 2026-11-20 — chat CRM (`claude/fix-bot-non-maiuscolo`) — Da decidere (operatore): il bot non conta come gravi «alto», «severo», «serio», «elevato» — È una modifica della macchina del bot: il merge lo decide comunque l'operatore (CLAUDE.md §10).

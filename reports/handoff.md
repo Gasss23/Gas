@@ -19,6 +19,7 @@
 - **Note del bot su 965cd07d** (APPROVATO CON RISERVE: V-1 BASSA regola in §10 e non in §3, V-2 COSMETICA fetch mancante in CLAUDE.md): FATTE, regola spostata in §3 col fetch.
 - **Note del bot su dfd7edb3** (APPROVATO CON RISERVE: V-1 BASSA «secondo controllo su claude.ai» sparito dall'ultimo_report, V-2/V-3 COSMETICHE etichetta di 11ab66ae e ramo mancante in una notizia): FATTE.
 - **Merge di main (PR #390, chat Voce) nel ramo**: FATTO, review #837 APPROVATO. Conflitti solo nei report (tenuti quelli del ramo). Il codice della voce che entra è identico a main.
+- **Note del bot su 3a64fd64** (COSMETICA: riga mancante nell'ultimo_report) e **su f1225b8c** (APPROVATO CON RISERVE: V-1 BASSA riserve aperte della chat Voce perse nel merge dei report; V-2 COSMETICA questa riga mancante qui): FATTE. Le riserve della chat Voce sono in `reports/stato_progetto.md`; la regola 3 di `reports/lavoro_parallelo.md` dice di riportarle prima di scartare i report dell'altro lato; notizia in bacheca.
 - **PR #391**: MERGIATA prima di questa fetta (eecf916d).
 
 ---
@@ -28,14 +29,14 @@
 ```
  .claude/agents/memoria_revisore.md |   1 +
  CLAUDE.md                          |   1 +
- reports/bacheca.md                 |  29 +++++++++++++++++++++++++++++
+ reports/bacheca.md                 |  30 ++++++++++++++++++++++++++++++
  reports/crm/decisioni.md           |   6 ++++++
  reports/crm/domande.md             |   4 +---
  reports/diff_sessione.md           |  17 +++++++----------
  reports/handoff.md                 | n/d
- reports/lavoro_parallelo.md        |   1 +
- reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  28 ++++++++++++----------------
+ reports/lavoro_parallelo.md        |   3 ++-
+ reports/stato_progetto.md          |   2 ++
+ reports/ultimo_report.md           |  29 +++++++++++++----------------
 ```
 
 NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base: dcedea6a (origin/main dopo il merge della PR #390, entrato nel ramo col merge di main); i file della #390 escono quindi dal diff.
@@ -43,6 +44,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f1225b8c docs(fine-task): merge di main (PR #390) nel ramo della #394, review #837
 f7b37853 Merge origin/main (PR #390, chat Voce) nel ramo della PR #394 — review #837 APPROVATO
 3a64fd64 docs(bacheca): note del bot su dfd7edb3 — secondo controllo su claude.ai rimesso tra le cose da fare, ramo in tutte le notizie, etichette dei commit precisate
 dfd7edb3 docs(bacheca): regola spostata davvero in CLAUDE.md §3, con git fetch prima di leggere (note del bot su #394)
@@ -109,7 +111,8 @@ Nessuna modifica a gas.py/tests/.
   - `965cd07d`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, note chiuse in questo commit).
   - `dfd7edb3`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, note chiuse in questo commit).
   - `3a64fd64`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, una nota COSMETICA chiusa qui); PR in conflitto dopo il merge della #390.
-  - Merge di main: run non ancora disponibile alla scrittura dell'handoff.
+  - `f7b37853` (merge di main): nessuna run propria (pushato con f1225b8c).
+  - `f1225b8c`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, note chiuse in questo commit).
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
