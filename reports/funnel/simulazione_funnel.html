@@ -132,6 +132,7 @@ function start(m){
   gen++;                       // invalida ogni flusso in corso (V-1)
   const g = gen;
   mode=m;
+  nome='Marco';                // il nome scritto in una simulazione non trapela nell'altra (V-3 2° verdetto)
   ['tabA','tabB','tabC'].forEach(id=>document.getElementById(id).classList.remove('on'));
   document.getElementById(m==='completo'?'tabA':m==='diretto'?'tabB':'tabC').classList.add('on');
   clearChat();
@@ -174,7 +175,7 @@ async function bozzaB(g){
   await botSay(g, '✍ 3/3 — Ultima cosa: nome e cognome, così '+AG+' sa chi sei');
   nome = (await askText(g, 'Nome e cognome')).split(' ')[0] || nome;
 
-  await botSay(g, '✅ Candidatura accettata, '+nome+'! L\'ultimo passo lo fai con '+AG+': premi qui sotto e manda il messaggio già pronto. Intanto segui i segnali gratuiti nel canale.\n\n🔒 '+AG+' non ti chiede mai soldi: i fondi restano sul tuo conto.\n'+RISCHIO, 900);
+  await botSay(g, '✅ Candidatura accettata, '+nome+'. Ultimo passo: premi qui sotto e manda il messaggio già pronto a '+AG+' — ti risponde a breve e ti attiva. Intanto segui i segnali gratuiti nel canale. 🔒 '+AG+' non ti chiede mai soldi: i fondi restano sul tuo conto.\n'+RISCHIO, 900);
   sys('📇 Scheda completa all\'agente: «pronto per la VIP» (bottoni Conto aperto / In VIP / Apri chat)');
   const fin = await kb(g, [[{t:'💬 Scrivi a '+AG}],[{t:'⏩ Simula: il lead NON preme e sparisce'}]]);
   if(fin==='💬 Scrivi a '+AG){
@@ -232,7 +233,7 @@ function ctaConConsenso(g){
     const row2=document.createElement('div'); row2.className='row';
     ['Sì, volentieri','No grazie'].forEach(t=>{
       const b=document.createElement('button'); b.textContent=t;
-      b.onclick=guard(()=>{ row2.querySelectorAll('button').forEach(x=>x.disabled=true); b.classList.add('sel'); user(t); });
+      b.onclick=guard(()=>{ row2.querySelectorAll('button').forEach(x=>x.disabled=true); b.classList.add('sel'); const d=document.createElement('div'); d.className='msg user'; d.textContent=t; wrap.before(d); chat.scrollTop=chat.scrollHeight; });
       row2.appendChild(b);
     });
     wrap.appendChild(row2);
