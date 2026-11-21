@@ -1,14 +1,8 @@
-# Diff della sessione — 2026-11-20 — CRM fetta 8 (note basse sulle PR #387 e #388)
+# Diff della sessione — 2026-11-21 — CRM: note minori
 
-Si riscrive a ogni sessione; la storia completa sta in git. Le PR #381, #386 e #387 sono mergiate; questa fotografia copre il ramo ripartito da main d03e5bf2, con main (PR #389, correzione del bot) portato dentro col merge 7d6a6865.
+Si riscrive a ogni sessione; la storia completa sta in git. Le PR #388 e #389 sono mergiate; ramo ripartito da main f75e09a2.
 
-- `modules/crm/copia_cifrata.py`:
-  - `_pulisci_ripristini_interrotti` e `_processo_vivo`: tolgono i temporanei in chiaro dei ripristini di processi morti;
-  - `_genitore_assente`: rifiuta i percorsi non completi; motivo «creala, o collega il disco»;
-  - `cartella()`: non solleva più con «~utente» inesistente o con iCloud bloccato;
-  - `_consiglio_icloud`: permesso negato su iCloud Drive → motivo che dice cosa fare (avvio, prova, copia);
-  - `ripristina`: la pulizia dei ripristini interrotti è la prima cosa, prima di ogni rifiuto; i resti più vecchi di un'ora si tolgono qualunque PID;
-  - `_consiglio_icloud`: percorso risolto e senza maiuscole/minuscole.
-- `modules/crm/server.py`: `_segna_copia(locale=…)`; motivi e avvisi giusti a copia esterna spenta o con copia sul Mac fallita.
-- `tests/test_unit_crm.py`: due test nuovi e due asserzioni aggiornate.
-- `reports/crm/guida.md` (percorso completo), `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.
+- `modules/crm/copia_cifrata.py`: `_avvio_sistema` e `_leggi_boottime` (ora di avvio da /proc/stat o `/usr/sbin/sysctl`); `_pulisci_ripristini_interrotti` toglie anche i resti di prima dell'avvio; `ripristina` dà un messaggio chiaro se il file non si legge; motivo «errore durante la copia cifrata».
+- `tests/test_unit_crm.py`: `test_note_minori_388`; due asserzioni aggiornate al nuovo motivo.
+- `tests/test_unit_verifica_bot.py`: casi «Non: grave» e «Non, grave».
+- `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.
