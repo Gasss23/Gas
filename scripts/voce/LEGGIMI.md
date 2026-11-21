@@ -119,7 +119,9 @@ filtro per scartare chi non è registrato. Alla fine stampa un riepilogo (quanti
 - **Ogni «Hey Jarvis» si tiene solo se il riconoscitore lo sente** (dal 20/11): un rumore
   (lavastoviglie, pentole) o una parola non riconosciuta non si salva e lo script dice
   «rifallo» (al massimo 3 prove). Da lontano (3 metri, altra stanza) ascolta 6 secondi
-  dopo il bip: se il bip non lo senti, di' «Hey Jarvis» ogni 7-8 secondi.
+  dopo il bip: se il bip non lo senti, di' «Hey Jarvis» ogni 9 secondi circa.
+  Se il microfono non dà nessun suono (permesso negato), lo script si ferma alla prima
+  clip e dice di controllare il permesso del microfono.
 - **Usa `.venv/bin/python`**, non `python3`: col Python di sistema mancano i moduli.
 - **Riaddestrare** (dopo aver cancellato clip venute male, o cambiato
   `GAS_ASCOLTO_SOGLIA_BASE`): `.venv/bin/python scripts/voce/registra_voce.py --solo-addestra`.

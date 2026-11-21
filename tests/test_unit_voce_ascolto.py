@@ -4,6 +4,7 @@ import http.server
 import io
 import json
 import logging
+import math
 import os
 import plistlib
 import stat
@@ -3601,6 +3602,55 @@ def test_registra_parola_tagliata_all_inizio_si_rifa(tmp_path):
     assert reg.positivi(gruppi=(("vicino", 1, 1.0),)) == 1
     assert any("tagliato all'inizio" in u for u in uscita)
     assert len(salvate) == 1
+
+
+def test_registra_microfono_muto_si_ferma_subito(tmp_path):
+    """V-1 bot #390: un microfono che dà solo silenzio (permesso negato senza errore)
+    ferma la registrazione dopo TENTATIVI_PAROLA bip, non dopo 15 × 3."""
+    r = _registra()
+    mic = _MicFinto([])
+    bip = []
+
+    def blocchi():
+        while True:
+            yield SILENZIO
+    mic.blocchi = blocchi
+    reg = r.Registratore(mic, tmp_path, "operatore", chiedi=lambda s: "",
+                         dorme=lambda s: None, bip=bip.append, stampa=lambda s: None)
+    with pytest.raises(r.Errore, match="permesso"):
+        reg.positivi()
+    assert len(bip) == r.TENTATIVI_PAROLA
+
+
+def test_registra_silenzio_dopo_un_suono_non_ferma(tmp_path):
+    """Una volta sentito un suono il microfono è vivo: le prove mute dopo (es. dall'altra
+    stanza) si saltano senza fermare la registrazione."""
+    r = _registra()
+    n_clip = a.blocchi_per(r.SEC_CLIP)
+    mic = _MicFinto([])
+    sequenza = iter([VOCE] * n_clip)
+
+    def blocchi():
+        while True:
+            yield next(sequenza, SILENZIO)
+    mic.blocchi = blocchi
+    reg = r.Registratore(mic, tmp_path, "operatore", chiedi=lambda s: "",
+                         dorme=lambda s: None, bip=lambda s: None, stampa=lambda s: None)
+    assert reg.positivi(gruppi=(("vicino", 3, 1.0),)) == 1
+
+
+def test_registra_messaggio_lontano_con_secondi_interi(tmp_path):
+    """V-2 bot #390 e R-810M1-2: «ogni N secondi» intero (niente «7.5») e con il margine
+    del ciclo vero."""
+    r = _registra()
+    chieste = []
+    reg = r.Registratore(_MicFinto([VOCE] * 500), tmp_path, "operatore",
+                         chiedi=chieste.append, dorme=lambda s: None, bip=lambda s: None,
+                         stampa=lambda s: None)
+    reg.positivi(gruppi=(("altra stanza", 1, r.ATTESA_LONTANO_S),))
+    atteso = math.ceil(r.SEC_CLIP_LONTANO + r.SEC_FRA_CLIP + r.MARGINE_CICLO_S)
+    assert "dillo ogni %d secondi circa" % atteso in chieste[0]
+    assert "7.5" not in chieste[0]
 
 
 class _MotoreFinto:
