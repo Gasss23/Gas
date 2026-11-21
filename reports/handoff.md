@@ -6,7 +6,10 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-(da completare dopo il push)
+1. Merge della PR #392 (https://github.com/Gasss23/Gas/pull/392).
+2. Scegliere la bozza del funnel (A vocale / B messaggi / test A/B) — `reports/funnel/funnel_v2.md`.
+3. Se A: registrare il video-messaggio di 30–45 s col copione proposto.
+4. Consegnare `reports/funnel/tasto_collaboratori.md` e la bozza scelta a chi mantiene il bot «Inizia Ora · Accesso» (non è nel repo Gas).
 
 ---
 
