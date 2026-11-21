@@ -1,23 +1,24 @@
-# Ultimo report — 2026-11-21 — CRM: note minori chiuse
+# ULTIMO REPORT — Simulazione cliccabile del funnel + conteggi vecchi nei report
+
+**Data:** 21 novembre 2026
+**Branch:** claude/simulazione-funnel
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta (l'operatore ha chiesto «sistema anche le note minori»). Il test del bot tocca la macchina del bot: verifica-bot sarà neutral e il merge lo decide l'operatore.
-2. Restano per l'operatore: password delle copie nel `.env` del Mac, `pip install -r requirements.txt`, `pwd` della cartella di Gas, secondo controllo su claude.ai.
-3. Da decidere: aggiungere al bot come gravi «alto», «severo», «serio», «elevato».
 
-## Esito
-- **PR #388 e #389**: MERGIATE il 20-11 (f75e09a2, 09e112f5).
-- **Note minori**: FATTE (cd46a249, f126fbd5; review #834, #835, #836 APPROVATO CON RISERVE).
-  - Un file in chiaro rimasto da un ripristino interrotto viene tolto anche subito dopo un riavvio del Mac, quando il numero del processo è stato riassegnato: conta l'ora di avvio del sistema.
-  - Ripristino di un file che non si legge: messaggio che dice di controllare il percorso.
-  - La pulizia dei resti avviene anche con la password sbagliata: ora è scritto nel codice.
-  - Avviso della copia esterna fallita senza «riuscita» ripetuto.
-  - Bot: test per «Non: grave» e «Non, grave».
+1. **Provare la simulazione del funnel** (`reports/funnel/simulazione_funnel.html`): aprirla e cliccare i tre percorsi; ogni modifica ai testi si decide lì sopra prima della consegna allo sviluppatore.
+2. **Merge della PR di questa sessione** (vedi handoff §0).
+3. **Consegnare il pacchetto allo sviluppatore del bot** (scelta dell'operatore del 21/11, su main): `reports/funnel/tasto_collaboratori.md` (tasto «I miei link» nel Pannello), `reports/funnel/funnel_v2.md` (Bozza B, 3 passaggi) e la simulazione come riferimento visivo.
+4. **Far controllare i testi del funnel a un esperto di promozione finanziaria/privacy** prima dell'uso (raccomandazione della verifica esterna #392).
+5. **Ripristinare lo stato dell'operatore nel bot** «Inizia Ora · Accesso» (il test dal vivo lo ha portato a «Candidato — pronto per la VIP»): bottoni «Conto aperto» / «In VIP» sulla scheda.
 
-## Test
-- `tests/test_unit_crm.py`: 138 su main → 139 passed; `tests/test_unit_verifica_bot.py`: 630 → 632 passed. I test nuovi falliscono sul codice di prima e uccidono i mutanti indicati dal revisore.
-- mypy: 0 errori in `modules/crm`. Kernel non toccato.
+**Ancora aperte dalla sessione CRM (PR #391, mergiata)**: password delle copie nel `.env` del Mac; `pip install -r requirements.txt`; `pwd` della cartella di Gas; secondo controllo su claude.ai; da decidere se aggiungere al bot come gravi «alto», «severo», «serio», «elevato». (Dettagli nel report della #391 in git e in `stato_progetto.md`.)
 
-## Riserve aperte
-- R-836-1 COSMETICA: nel test, se manca un parametro del sysctl il messaggio di errore è meno chiaro (il test fallisce comunque).
-- Non verificabile qui: formato vero di `sysctl -n kern.boottime` su un Mac.
+## Esito fette
+
+- **Fetta 1 — Simulazione cliccabile del funnel (richiesta dell'operatore del 21/11)**: FATTA. `reports/funnel/simulazione_funnel.html`: pagina autonoma (HTML+JS, zero dipendenze, nessun dato inviato) che simula la chat Telegram del bot in tre percorsi — lead col percorso completo (fase 1 di oggi invariata + candidatura Bozza B a 3 passaggi, reazioni calde, follow-up +24 h/+72 h), lead con link diretto `-vip` (tutele incluse), e vista agente del Pannello «I miei link» (2 link, contatori, card da inoltrare). Testi presi alla lettera da `funnel_v2.md` e `tasto_collaboratori.md`. Provata dal vivo dall'agente: tutti e tre i percorsi funzionano fino in fondo. Copia privata pubblicata come pagina claude.ai per il test comodo dell'operatore (il file nel repo resta la fonte unica).
+- **Fetta 2 — Nota bassa del 3° verdetto del bot sulla PR #392 (conteggi vecchi «7 domande»/«4 domande» nei report)**: FATTA/SUPERATA. Mentre questa sessione partiva, la PR #391 (CRM) è stata mergiata e ha riscritto i tre report di sessione su main: i conteggi vecchi su main NON esistono più (verificato con grep su origin/main). I report di QUESTA sessione li sostituiscono di nuovo come fotografia più recente, senza riproporre i testi sbagliati; la descrizione corretta del funnel (due fasi) sta nei file canonici `reports/funnel/analisi_competitor.md` §1 e `funnel_v2.md`.
+
+## Anomalie / cose da sapere
+
+- Sessione parallela: la PR #391 (CRM) è andata su main tra il merge della #392 e questa PR; questo branch riparte da main eecf916, nessun conflitto rimasto.
+- Nessun file del motore toccato in questa sessione.
