@@ -22,6 +22,7 @@ Sotto, **due card già pronte da inoltrare** (una per link), con testo di presen
 
 - Card 1 (completo): «🎯 Vuoi entrare nella VIP di Inizia Ora? Candidati qui, 1 minuto:» [Candidati ora]
 - Card 2 (diretto): «⚡ Accesso diretto alla sala segnali — segnali completi ogni giorno, gestiti in diretta:» [Entra nella sala]
+- Entrambe le card portano in coda la riga: «⚠ Il trading comporta un rischio reale di perdere il capitale. L'accesso si attiva aprendo un conto col broker partner, che ci riconosce un compenso.» (V-2 verifica esterna #392: rischio e compenso dichiarati anche nei materiali che girano i collaboratori; testi da far controllare a un esperto di promozione finanziaria prima dell'uso).
 
 ## Cosa fa ciascun link
 
