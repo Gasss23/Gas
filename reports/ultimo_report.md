@@ -14,6 +14,7 @@
 - **Note del bot su dfd7edb3 e 3a64fd64** (APPROVATO CON RISERVE, neutral): FATTE quelle su dfd7edb3: il secondo controllo su claude.ai è di nuovo nella lista, il ramo è in tutte le notizie, le etichette dei commit sono precisate. Su 3a64fd64 restava solo questa riga mancante (COSMETICA).
 - **Merge di main (PR #390 della chat Voce) nel ramo**: FATTO (review #837 APPROVATO). Il codice della voce che entra è identico a main.
 - **Note del bot su f1225b8c**: FATTE. Le riserve aperte della chat Voce, perse quando ho tenuto i miei report nel merge, sono di nuovo in `reports/stato_progetto.md`. In `reports/lavoro_parallelo.md` e in bacheca c'è la regola per non perderle più.
+- **Note del bot su aaf754cf, ddf67cfb e 73dbff1b**: FATTE. Riserve della voce anche nell'handoff, decisioni umane allineate, una notizia aperta non si cancella per sola età. Su 73dbff1b il check era rosso per errore: la parola «gravi», citata come argomento, è stata letta come gravità; ora la notizia dice «parole di gravità» e in bacheca c'è l'avviso.
 - **Risposte dell'operatore** (`reports/crm/decisioni.md` punti 15-17): «online» voleva dire pronto all'uso, sul Mac e non su internet. WhatsApp: per ora invio a mano, l'accesso API di Meta si prepara quando servirà l'invio automatico. Bacheca: sì. Le domande 2 e 3 sono tolte da `reports/crm/domande.md`.
 
 ## Test
