@@ -123,6 +123,23 @@ Cosa non ho verificato: test non rieseguiti (mi baso sui 1144 passed dichiarati;
 
 Memoria: aggiunta la riga #812-M1coord, non committata (la aggiunge l'agente allo staged). Nessuna lezione nuova.
 
+### Review #814-M1coord (secondo merge di origin/main eecf916d nel branch)
+
+## VERDETTO: APPROVATO
+
+Review #814-M1coord. Secondo merge di origin/main (eecf916d, PR #388/#389/#392) nel branch fix/voce-registra-solo-parola (HEAD aaf60d4f, PR #390), base 7cf52359, staged e non ancora committato.
+
+**Elementi del diff esaminati**
+- `modules/crm/copia_cifrata.py:335` — `_avvio_sistema` (sysctl con percorso completo a `modules/crm/copia_cifrata.py:352`) arriva da main. Rischio: versione fusa diversa da main. Esito ok: `git diff --cached origin/main` su questo file, `tests/test_unit_crm.py` e `tests/test_unit_verifica_bot.py` è vuoto, quindi sono byte-identici a main, già revisionati in #834–#836.
+- `scripts/voce/registra_voce.py:40` — codice proprio di #390. Rischio: il merge lo altera. Esito ok: `git diff --cached HEAD` su scripts/voce e `tests/test_unit_voce_ascolto.py` è vuoto; il diff contro origin/main su modules/scripts/tests/clients contiene solo i 3 file di #390 (registra_voce.py, LEGGIMI.md, test_unit_voce_ascolto.py).
+- `.claude/agents/memoria_revisore.md:1646` e `reports/stato_progetto.md:9` — righe fuse automaticamente (#834-CRM…#836-CRM e la riga «CRM, note minori»). Rischio: righe perse o duplicate. Esito ok: righe contate con le ripetizioni su versione fusa, base, HEAD e main: entrambi sono l'unione a tre vie esatta, 0 perse e 0 in più.
+
+**Altri controlli**: nessun file in conflitto rimasto (`ls-files -u` vuoto), 0 marcatori, `--check` pulito, albero di lavoro uguale all'indice. handoff, ultimo_report e diff_sessione identici a HEAD. Interferenza con #390: nessuna; da 7cf52359 main ha toccato copia_cifrata.py, i due test CRM/bot e file di reports/memoria, #390 solo scripts/voce e il test della voce, gruppi disgiunti. Wall of Shame: non applicabile (gas.py e brains non toccati).
+
+**Cosa NON ho verificato**: test non rieseguiti (codice identico a main e a HEAD; mi baso sui 1147 passed dichiarati); CI su eecf916d da guardare dopo il push.
+
+**Memoria**: riga #814-M1coord aggiunta, solo nell'albero di lavoro. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - **`tests/test_unit_voce_ascolto.py`:** 373 su main d03e5bf2 → 375 (#810) → 376 passed (#811). Il test di #811 fallisce sul codice di 992cef9b (rieseguito dal revisore).
