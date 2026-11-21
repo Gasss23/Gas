@@ -1,23 +1,14 @@
-# Ultimo report — 2026-11-21 — CRM: note minori chiuse
+# Ultimo report — 2026-11-21 — Bacheca comune tra le chat; risposte dell'operatore sul CRM
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta (l'operatore ha chiesto «sistema anche le note minori»). Il test del bot tocca la macchina del bot: verifica-bot sarà neutral e il merge lo decide l'operatore.
-2. Restano per l'operatore: password delle copie nel `.env` del Mac, `pip install -r requirements.txt`, `pwd` della cartella di Gas, secondo controllo su claude.ai.
-3. Da decidere: aggiungere al bot come gravi «alto», «severo», «serio», «elevato».
+1. Merge della PR di questa fetta: solo documenti (bacheca, regola in CLAUDE.md, decisioni del CRM).
+2. Lista delle commissioni per servizio (l'operatore la manda): percentuale sui profitti, percentuale annua sul capitale o abbonamento, più il capitale minimo.
+3. Restano: password delle copie nel `.env` del Mac, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino sul Mac.
 
 ## Esito
-- **PR #388 e #389**: MERGIATE il 20-11 (f75e09a2, 09e112f5).
-- **Note minori**: FATTE (cd46a249, f126fbd5; review #834, #835, #836 APPROVATO CON RISERVE).
-  - Un file in chiaro rimasto da un ripristino interrotto viene tolto anche subito dopo un riavvio del Mac, quando il numero del processo è stato riassegnato: conta l'ora di avvio del sistema.
-  - Ripristino di un file che non si legge: messaggio che dice di controllare il percorso.
-  - La pulizia dei resti avviene anche con la password sbagliata: ora è scritto nel codice.
-  - Avviso della copia esterna fallita senza «riuscita» ripetuto.
-  - Bot: test per «Non: grave» e «Non, grave».
+- **PR #391 (note minori del CRM)**: MERGIATA il 21-11 (eecf916d) col via dell'operatore. Prima del merge, conflitto sui report con la PR #392 della chat del funnel, risolto. Il CRM è pronto all'uso sul Mac.
+- **Bacheca comune**: FATTA. `reports/bacheca.md` con le regole d'uso e le prime tre notizie; regola in CLAUDE.md §3; in `reports/lavoro_parallelo.md` il modo di risolvere i conflitti della bacheca.
+- **Risposte dell'operatore** (`reports/crm/decisioni.md` punti 15-17): «online» voleva dire pronto all'uso, sul Mac e non su internet. WhatsApp: per ora invio a mano, l'accesso API di Meta si prepara quando servirà l'invio automatico. Bacheca: sì. Le domande 2 e 3 sono tolte da `reports/crm/domande.md`.
 
 ## Test
-- `tests/test_unit_crm.py`: 138 su main → 139 passed; `tests/test_unit_verifica_bot.py`: 630 → 632 passed. I test nuovi falliscono sul codice di prima e uccidono i mutanti indicati dal revisore.
-- mypy: 0 errori in `modules/crm`. Kernel non toccato.
-
-## Riserve aperte
-- R-836-1 COSMETICA: nel test, se manca un parametro del sysctl il messaggio di errore è meno chiaro (il test fallisce comunque).
-- Non verificabile qui: formato vero di `sysctl -n kern.boottime` su un Mac.
+- Nessun codice toccato.
