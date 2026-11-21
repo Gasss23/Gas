@@ -1483,7 +1483,7 @@ def test_ve386_copie_cifrate_rifinite(tmp_path: Path, monkeypatch: pytest.Monkey
     monkeypatch.setattr(copia_cifrata.os, "replace", replace_rotto)
     fuori2, motivo2 = copia_cifrata.copia_fuori(tmp_path / "crm-20261120-080000.db")
     monkeypatch.setattr(copia_cifrata.os, "replace", vero_replace)
-    assert fuori2 is None and "non riuscita" in (motivo2 or "")
+    assert fuori2 is None and "errore durante la copia cifrata" in (motivo2 or "")
     assert not list(icloud.glob("*.tmp"))
     # ripristino: file 0600; senza collegamenti fisici il ripiego crea il file in modo esclusivo
     pw = "una-password-lunga-1"
@@ -1940,7 +1940,7 @@ def test_r825_2_cartella_non_valida_o_icloud_negato_il_crm_parte(
     monkeypatch.setattr(Path, "mkdir", mkdir_pieno)
     fuori, motivo = copia_cifrata.copia_fuori(st.backup(tmp_path / "locali_pieno"))
     assert fuori is None and "iCloud Drive non è leggibile" not in (motivo or "")
-    assert "non riuscita" in (motivo or "")
+    assert "errore durante la copia cifrata" in (motivo or "")
     assert copia_cifrata._consiglio_icloud(finto_icloud / "x", OSError(errno.ENOSPC, "x")) is None
     # V-2 bot #388: collegamento simbolico verso iCloud Drive e maiuscole diverse riconosciuti
     scorciatoia = tmp_path / "scorciatoia"
@@ -1957,6 +1957,94 @@ def test_r825_2_cartella_non_valida_o_icloud_negato_il_crm_parte(
     assert copia is not None
     server._copia_esterna(stato, copia)
     assert stato.copia_esterna["ok"] is False and stato.copia_esterna["spenta"] is False
+
+
+def test_note_minori_388(st: CRMStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Note minori su #388 (71137d27): R-830-1 (resto di prima dell'ultimo avvio tolto anche
+    se il PID è di nuovo vivo), V-2 verifica esterna (sorgente che non c'è: messaggio che dice
+    cosa controllare), V-3 bot (avviso senza «non riuscita» doppio)."""
+    from modules.crm import copia_cifrata
+    avvio_vero = copia_cifrata._avvio_sistema
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(tmp_path / "copie"))
+    st.aggiungi_cliente("Anna Verdi", telefono="+393330000001")
+    fuori, _ = copia_cifrata.copia_fuori(st.backup(tmp_path / "locali"))
+    assert fuori is not None
+    dest = tmp_path / "ripristinato.db"
+    # R-830-1: PID vivo (il padre), file di 10 minuti fa, sistema avviato 5 minuti fa
+    prima = dest.with_name(f"{dest.name}.{os.getppid()}-3.ripristino.tmp")
+    prima.write_bytes(b"dati in chiaro di prima del riavvio")
+    os.utime(prima, (time.time() - 600,) * 2)
+    dopo = dest.with_name(f"{dest.name}.{os.getppid()}-4.ripristino.tmp")
+    dopo.write_bytes(b"ripristino in corso dopo l'avvio")
+    # R-834-2b: dentro il margine di 60 s prima dell'avvio il resto resta
+    margine = dest.with_name(f"{dest.name}.{os.getppid()}-6.ripristino.tmp")
+    margine.write_bytes(b"x")
+    avvio_finto = time.time() - 300
+    os.utime(margine, (avvio_finto - 30,) * 2)
+    monkeypatch.setattr(copia_cifrata, "_avvio_sistema", lambda: avvio_finto)
+    assert copia_cifrata.ripristina(fuori, dest, "una-password-lunga-1") == dest
+    assert not prima.exists() and dopo.exists() and margine.exists()
+    # ora di avvio sconosciuta: si decide come prima (PID vivo e file recente → resta)
+    os.unlink(dest)
+    ignoto = dest.with_name(f"{dest.name}.{os.getppid()}-5.ripristino.tmp")
+    ignoto.write_bytes(b"x")
+    os.utime(ignoto, (time.time() - 600,) * 2)
+    monkeypatch.setattr(copia_cifrata, "_avvio_sistema", lambda: None)
+    assert copia_cifrata.ripristina(fuori, dest, "una-password-lunga-1") == dest
+    assert ignoto.exists()
+    # lettura dell'ora di avvio di macOS e di questo sistema
+    assert copia_cifrata._leggi_boottime(
+        "{ sec = 1732000000, usec = 123456 } Wed Nov 20 10:00:00 2026") == 1732000000.0
+    assert copia_cifrata._leggi_boottime("{ usec = 5, sec = 7 }") is None
+    assert copia_cifrata._leggi_boottime("") is None
+    monkeypatch.setattr(copia_cifrata, "_avvio_sistema", avvio_vero)
+    # R-834-1: la lettura vera dell'ora di avvio. Su Linux /proc/stat c'è sempre
+    avvio = copia_cifrata._avvio_sistema()
+    if Path("/proc/stat").exists():
+        assert avvio is not None and 0 < avvio <= time.time()
+    # ramo di macOS: /proc/stat che non si apre e un sysctl finto (percorso completo)
+    def proc_assente(*a: Any, **kw: Any) -> Any:
+        raise FileNotFoundError(2, "No such file or directory")
+
+    chiamate: List[List[str]] = []
+
+    def sysctl_finto(argomenti: List[str], **kw: Any) -> Any:
+        # R-835-1: anche gli argomenti con nome (uscita catturata come testo, tempo massimo)
+        assert kw.get("capture_output") and kw.get("text") and kw.get("timeout") == 2
+        chiamate.append(argomenti)
+        return copia_cifrata.subprocess.CompletedProcess(
+            argomenti, 0, stdout="{ sec = 1732000000, usec = 5 } Wed Nov 20 10:00:00 2026\n")
+
+    with monkeypatch.context() as m:
+        m.setattr(copia_cifrata, "open", proc_assente, raising=False)
+        m.setattr(copia_cifrata.subprocess, "run", sysctl_finto)
+        assert copia_cifrata._avvio_sistema() == 1732000000.0
+        assert chiamate == [["/usr/sbin/sysctl", "-n", "kern.boottime"]]
+
+        # nota #834: un'ora di avvio nel futuro non vale
+        def sysctl_futuro(argomenti: List[str], **kw: Any) -> Any:
+            return copia_cifrata.subprocess.CompletedProcess(
+                argomenti, 0, stdout=f"{{ sec = {int(time.time()) + 3600}, usec = 0 }}")
+
+        m.setattr(copia_cifrata.subprocess, "run", sysctl_futuro)
+        assert copia_cifrata._avvio_sistema() is None
+    # V-2 verifica esterna: sorgente che non c'è
+    with pytest.raises(ErroreCRM, match="non riesco a leggere"):
+        copia_cifrata.ripristina(tmp_path / "non_esiste.gascrm", tmp_path / "x.db",
+                                 "una-password-lunga-1")
+    # V-3 bot: copia esterna fallita per un errore qualsiasi, «riuscita» una volta sola
+    avvisi: List[str] = []
+    stato = server.Stato(st, TOKEN, regole=REGOLE,
+                         avvisa=lambda t: (avvisi.append(t) or (True, "")))
+
+    def scrittura_rotta(*a: Any, **kw: Any) -> None:
+        raise OSError(5, "Input/output error")
+
+    monkeypatch.setattr(copia_cifrata, "_scrivi_privato", scrittura_rotta)
+    server._copia_esterna(stato, st.backup(tmp_path / "locali2"))
+    assert stato.copia_esterna["ok"] is False and len(avvisi) == 1
+    assert avvisi[0].lower().count("riuscita") == 1
 
 
 def test_copia_cifrata_mai_in_chiaro_senza_libreria(tmp_path: Path,
