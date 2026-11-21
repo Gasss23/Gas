@@ -1,14 +1,11 @@
-# Diff della sessione — 2026-11-20 — CRM fetta 7 (note della PR #386 e del bot sulla PR #387)
+# DIFF SESSIONE — 21 novembre 2026 (funnel community)
 
-Si riscrive a ogni sessione; la storia completa sta in git. Le PR #381 e #386 sono mergiate; questa fotografia copre il ramo ripartito da main 0aa26672 (PR #387).
+> Questo file si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/crm/copia_cifrata.py`:
-  - `_genitore_assente`: nessuna cartella creata se il disco esterno non c'è; punto di mount vuoto in `/Volumes` riconosciuto (#822); permesso negato e percorso risolto senza maiuscole/minuscole (#823);
-  - `copia_fuori`: copia locale controllata prima di sostituire quella del giorno; controlli dentro il try (#823);
-  - temporaneo del ripristino unico ed esclusivo; file di lavoro come collegamento pendente rifiutati; pulizia delle prove interrotte;
-  - `esito_all_avvio` con un tempo massimo, ATTIVA solo a prova finita (#823);
-  - `_integro` in sola lettura (#823).
-- `modules/crm/server.py`: `_segna_copia` e `_copia_giornaliera`; l'indicatore segna il fallimento della copia locale anche a copia esterna spenta (#822).
-- `modules/crm/__main__.py`: all'avvio usa `esito_all_avvio`.
-- `tests/test_unit_crm.py`: cinque test nuovi (#821, #822, #823).
-- `reports/crm/guida.md`, `CLAUDE.md` §10 (non fermarsi ad aspettare il merge), `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.
+File toccati (tutti doc, nessun file del motore):
+
+- `reports/funnel/analisi_competitor.md` — NUOVO: mappa del funnel attuale del bot «Inizia Ora · Accesso» + analisi di 9 competitor Telegram + gli 8 schemi ricorrenti.
+- `reports/funnel/funnel_v2.md` — NUOVO: due bozze pronte del funnel candidatura VIP (A: video/vocale + 3 domande; B: solo messaggi, 4 domande), regole comuni (follow-up, reazioni calde, spiegazione semplice) e confronto per decidere.
+- `reports/funnel/tasto_collaboratori.md` — NUOVO: specifica del comando /linkmiei (2 link per agente: percorso completo e accesso diretto sala segnali) da consegnare a chi mantiene il bot.
+- `reports/stato_progetto.md` — riga di aggiornamento in testa.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — reporting canonico di fine task.
