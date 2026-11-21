@@ -18,6 +18,7 @@
 
 - **Fetta 1 — Simulazione cliccabile del funnel (richiesta dell'operatore)**: FATTA. `reports/funnel/simulazione_funnel.html`, pagina autonoma stile Telegram con tre percorsi: lead completo (fase 1 di oggi invariata + candidatura Bozza B a 3 passaggi, reazioni calde, follow-up +24/+72 h), lead diretto `-vip` (tutele 18+/rischio/compenso/consenso incluse), vista agente del Pannello «I miei link» (2 link, contatori, card da inoltrare). Testi presi dalle fonti (`funnel_v2.md`, `tasto_collaboratori.md` e, per la fase 1 di oggi, `analisi_competitor.md` §1); le poche righe NON fissate dalle specifiche (reazioni calde a capitale/consenso, sollecito del percorso diretto) sono proposte dell'agente, marcate con * nella pagina stessa; l'«ultimo passo» usa il testo della Bozza A di `funnel_v2.md` più la riga sul rischio (V-1/V-2 del 2° verdetto). Provata dal vivo dall'agente nel browser: tutti e tre i percorsi completati, follow-up compresi. Copia privata pubblicata come pagina claude.ai per il test dell'operatore; fonte unica = il file nel repo.
 - **Fetta 3 — Correzioni del 1° verdetto del bot sulla PR #393 (secondo giro)**: FATTA. V-1 BASSA: contatore di generazione in `start()`, ogni helper (typing/kb/askText) rifiuta dopo l'await se la generazione è cambiata — niente più percorsi mescolati cambiando scheda a metà «sta scrivendo…»; verificato dal vivo. V-2 BASSA: il claim «testi alla lettera» è stato corretto nei report; le righe proposte dall'agente (reazioni calde a capitale/consenso, sollecito del diretto, «ultimo passo» ricostruito da `analisi_competitor.md` §1 e Bozza A perché funnel_v2 dice solo «come oggi») sono marcate con * nella pagina; percorso diretto riallineato alla spec §3.1: [Scrivi a {agente}] attaccato al messaggio, consenso SOTTO, visibili insieme; il sollecito del diretto non parla più di «candidatura». V-3 COSMETICA: messaggi con textContent al posto di innerHTML (input del nome compreso). Pagina ripubblicata e riverificata nel browser.
+- **Fetta 5 — Correzioni del 3° verdetto del bot (quarto giro)**: FATTA. V-1 BASSA: `followUp()` ora ramifica anche il sollecito a +72 h su `tipo` — nel diretto niente «candidatura» (testo marcato con *, bottoni Riprendi/Chiudi); verificato dal vivo nel browser. V-2 COSMETICA: testi riallineati alle fonti — tolta la numerazione «1/3-2/3-3/3», tolta l'emoji aggiunta a «Imparare a farlo da solo», «Sei già nella community.» come in `analisi_competitor.md` §1. Pagina ripubblicata.
 - **Fetta 2 — Nota bassa del 3° verdetto del bot sulla PR #392 (conteggi vecchi)**: FATTA/SUPERATA. La PR #391 (CRM), mergiata nel frattempo, ha riscritto i report di sessione su main: «7 domande»/«4 domande» su origin/main NON esistono più (grep vuoto, verificato). I report di questa sessione li sostituiscono come fotografia più recente senza riproporli; la descrizione corretta (due fasi) sta in `analisi_competitor.md` §1 e `funnel_v2.md`.
 - **Fetta 4 — Correzioni del 2° verdetto del bot + merge di main (terzo giro)**: FATTA. V-1 BASSA (claim «alla lettera» rimasto nella Fetta 1 di questo handoff): allineato al testo di `ultimo_report.md`. V-2 BASSA («ultimo passo» non marcato con * nella pagina): adottata l'opzione suggerita dal bot — il messaggio ora usa il testo della Bozza A (`funnel_v2.md`) più la riga sul rischio, quindi non serve il marcatore. V-3 COSMETICA: la bolla della risposta al consenso nel percorso diretto compare sopra la tastiera (wrap.before) e `nome` si azzera a ogni `start()` (niente nome che trapela tra le schede). In più: merge di origin/main (PR #390 fix voce) nel branch per il conflitto sui report canonici, risolto tenendo la versione del ramo (vedi §4); pagina ripubblicata e riverificata.
 
@@ -31,10 +32,10 @@ BASE = dcedea6a7a9432940fe0591f5a89133ef8b48f10 (merge-base con origin/main = ma
 
 ```
  .claude/agents/memoria_revisore.md     |   1 +
- reports/diff_sessione.md               |  19 +++++++++----------
- reports/funnel/simulazione_funnel.html | 268 ++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md               |  20 ++++++++++----------
+ reports/funnel/simulazione_funnel.html | 275 +++++++++++++++++++++++++++++++++
  reports/handoff.md                     | n/d
- reports/ultimo_report.md               |  46 ++++++++++++++++++++++--------------------
+ reports/ultimo_report.md               |  48 ++++++++++++++++++++++++--------------------
 ```
 
 NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso e il suo conteggio finale non è misurabile alla scrittura. La CI confronta solo i path. `.claude/agents/memoria_revisore.md` è la riga #837-MERGE aggiunta dal revisore.
@@ -42,13 +43,14 @@ NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è t
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+444d08a docs(funnel): simulazione — corretti i finding del 2° verdetto del bot (V-1 handoff, V-2 ultimo passo da funnel_v2, V-3 bolla consenso e nome); merge di main nel branch
 019c6c8 Merge remote-tracking branch 'origin/main' into claude/simulazione-funnel
 6185f33 docs(funnel): simulazione — corretti i finding del 1° verdetto del bot sulla #393 (V-1 generazioni, V-2 testi marcati e ordine del diretto, V-3 textContent)
 0de4046 docs(fine-task): handoff — PR #393 aperta con l'etichetta verifica
 55bab38 docs(funnel): simulazione cliccabile del funnel (Bozza B, link diretto, Pannello «I miei link»); nota bassa del bot sulla #392 superata
 ```
 
-NB: il commit di fine-task di QUESTO giro (il quinto del branch, che contiene questo file) non compare in questo log, per costruzione; il suo hash è nel `git log` del branch dopo il push. Dei commit sopra, 0de4046 e 6185f33 erano i commit di fine-task dei giri precedenti; 019c6c8 è il merge di main (review #837-MERGE, §4).
+NB: il commit di fine-task di QUESTO giro (il sesto del branch, che contiene questo file) non compare in questo log, per costruzione; il suo hash è nel `git log` del branch dopo il push. Dei commit sopra, 0de4046, 6185f33 e 444d08a erano i commit di fine-task dei giri precedenti; 019c6c8 è il merge di main (review #837-MERGE, §4).
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -94,17 +96,18 @@ Nessuna modifica a gas.py/tests/.
 Output reale di `gh run list -L 3` alla scrittura:
 
 ```
-in_progress		docs: bacheca comune tra le chat; risposte dell'operatore sul CRM	verifica-bot	claude/nifty-galileo-3k7kbm	pull_request_target	44954142137	53s	2026-11-21T21:56:52Z
-in_progress		docs(bacheca): riserve aperte della chat Voce riportate in stato_prog…	CI	claude/nifty-galileo-3k7kbm	push	44954140606	54s	2026-11-21T21:56:51Z
-completed	success	docs: bacheca comune tra le chat; risposte dell'operatore sul CRM	verifica-bot	claude/nifty-galileo-3k7kbm	pull_request_target	44953852988	2m48s	2026-11-21T21:53:19Z
+completed	success	docs: bacheca comune tra le chat; risposte dell'operatore sul CRM	verifica-bot	claude/nifty-galileo-3k7kbm	pull_request_target	44954979298	2m10s	2026-11-21T22:06:22Z
+completed	success	docs(bacheca): una notizia aperta non si cancella per sola età; avvis…	CI	claude/nifty-galileo-3k7kbm	push	44954975747	11m36s	2026-11-21T22:06:20Z
+completed	success	docs: bacheca comune tra le chat; risposte dell'operatore sul CRM	verifica-bot	claude/nifty-galileo-3k7kbm	pull_request_target	44954654510	2m31s	2026-11-21T22:02:48Z
 ```
 
-Mappatura commit→run: sull'head del 1° giro (0de4046) run CI 44951186868 e verifica-bot 44951189268, entrambe success (unit-suite 12m14s pass; 1° verdetto APPROVATO CON RISERVE senza ALTA/MEDIA); 55bab38 senza run propria completata (push superato pochi secondi dopo). Sull'head del 2° giro (6185f33) run CI 44952713972 e verifica-bot 44952716514, entrambe success (unit-suite 14m14s pass; 2° verdetto APPROVATO CON RISERVE senza ALTA/MEDIA). 019c6c8 (merge di main) e il commit di fine-task di questo 3° giro: run non ancora disponibile alla scrittura dell'handoff (parte col push). Le run elencate sopra sono di un altro branch (CRM/bacheca). La copertura pre-merge è garantita da `gh pr checks` prima del merge.
+Mappatura commit→run: sull'head del 1° giro (0de4046) run CI 44951186868 e verifica-bot 44951189268, entrambe success (unit-suite 12m14s pass; 1° verdetto APPROVATO CON RISERVE senza ALTA/MEDIA); 55bab38 senza run propria completata (push superato pochi secondi dopo). Sull'head del 2° giro (6185f33) run CI 44952713972 e verifica-bot 44952716514, entrambe success (unit-suite 14m14s pass; 2° verdetto APPROVATO CON RISERVE senza ALTA/MEDIA). Sull'head del 3° giro (444d08a) run CI 44954281947 e verifica-bot 44954284114, entrambe success (unit-suite 11m55s pass; 3° verdetto APPROVATO CON RISERVE senza ALTA/MEDIA); 019c6c8 (merge di main) senza run propria (pushato insieme a 444d08a, testato nel suo albero). Il commit di fine-task di questo 4° giro: run non ancora disponibile alla scrittura dell'handoff (parte col push). Le run elencate sopra sono di un altro branch (CRM/bacheca). La copertura pre-merge è garantita da `gh pr checks` prima del merge.
 
 ## §7 RISERVE APERTE
 
 - 1° verdetto del bot su PR #393 (0de4046): V-1/V-2/V-3 CORRETTE (Fetta 3); il 2° verdetto (su 6185f33) le dà chiuse (V-1 e V-3 «CHIUSA», V-2 «parzialmente», completata nel terzo giro).
-- 2° verdetto del bot su PR #393 (6185f33, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (claim nell'handoff), V-2 BASSA («ultimo passo» non marcato), V-3 COSMETICA (bolla del consenso, nome che trapela) — CORRETTE in questo giro (Fetta 4); serve il verdetto del bot sul nuovo head.
+- 2° verdetto del bot su PR #393 (6185f33, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1/V-2/V-3 CORRETTE (Fetta 4); il 3° verdetto (su 444d08a) le dà chiuse.
+- 3° verdetto del bot su PR #393 (444d08a, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (+72 h del diretto con «candidatura»), V-2 COSMETICA (ritocchi non marcati: numerazione, emoji, esclamativo) — CORRETTE in questo giro (Fetta 5); serve il verdetto del bot sul nuovo head. L'operatore ha scelto in chat «Prima i fix» (quindi merge dopo questo giro, col suo via se restano riserve).
 - Nota bassa del 3° verdetto bot su PR #392 (conteggi vecchi nei report): SUPERATA — vedi Fetta 2 (già assenti su main dopo la #391; non riproposti qui).
 - RESTA APERTA: far controllare i testi del funnel a un esperto di promozione finanziaria/privacy prima dell'uso.
 - R-836-1 COSMETICA (sessione CRM #391, fuori da questa sessione): messaggio d'errore del test sysctl meno chiaro se manca un parametro.

@@ -22,6 +22,8 @@
 
 - **Fetta 4 — Correzioni del 2° verdetto del bot + merge di main (terzo giro)**: FATTA. V-1 BASSA (claim «alla lettera» rimasto nell'handoff): allineato. V-2 BASSA («ultimo passo» non marcato): adottato il testo della Bozza A di `funnel_v2.md` + riga sul rischio, come suggerito dal bot. V-3 COSMETICA: bolla del consenso nel diretto sopra la tastiera; `nome` azzerato a ogni `start()` (non trapela tra le schede). In più: merge di origin/main nel branch (la PR #390 fix voce aveva messo la PR in conflitto sui report canonici), risolto tenendo la versione del ramo — review #837-MERGE APPROVATO, perimetro byte-identico a main. Pagina ripubblicata e riverificata.
 
+- **Fetta 5 — Correzioni del 3° verdetto del bot (quarto giro)**: FATTA. V-1 BASSA: anche il sollecito a +72 h del percorso diretto ora ha un testo suo senza «candidatura» (marcato con *, bottoni Riprendi/Chiudi); verificato dal vivo. V-2 COSMETICA: tolti i ritocchi non marcati — via la numerazione «1/3-2/3-3/3» dai passaggi, via l'emoji aggiunta a «Imparare a farlo da solo», «Sei già nella community.» come nella fonte.
+
 ## Anomalie / cose da sapere
 
 - Sessioni parallele: le PR #391 (CRM) e #390 (fix voce) sono andate su main durante questa sessione; branch ripartito da eecf916 e poi merge di main (019c6c8) per il conflitto sui report. Nessun conflitto rimasto.

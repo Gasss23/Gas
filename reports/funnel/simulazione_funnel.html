@@ -149,11 +149,11 @@ async function fase1(g){
   await botSay(g, '🌍 In che lingua preferisci continuare?\n\nToccando confermi di avere almeno 18 anni.');
   await kb(g, [[{t:'🇮🇹 Italiano'},{t:'🇬🇧 English'}]]);
   await botSay(g, 'Benvenuto in Inizia Ora, '+nome+'. Due domande veloci e ti do l\'accesso alla community.\n\n🎯 Cosa ti interessa? Puoi sceglierne più di una');
-  await kb(g, [[{t:'📈 Copy trading automatico'}],[{t:'📊 Sale segnali'}],[{t:'🎓 Imparare a farlo da solo'}]],{multi:true});
+  await kb(g, [[{t:'📈 Copy trading automatico'}],[{t:'📊 Sale segnali'}],[{t:'Imparare a farlo da solo'}]],{multi:true});
   await botSay(g, '🏦 Hai già un conto di trading?');
   await kb(g, [[{t:'No, non ancora'}],[{t:'Sì, con il vostro broker'}],[{t:'Sì, con un altro broker'}]]);
   sys('📇 La scheda lead parte all\'agente (come oggi) — «Entrato da: codice agente»');
-  await botSay(g, '✅ Sei già nella community! Quando vuoi, puoi candidarti alla sala VIP.');
+  await botSay(g, 'Sei già nella community. Quando vuoi, puoi candidarti alla sala VIP.');
   await kb(g, [[{t:'🎯 Candidati alla VIP'}]]);
 }
 
@@ -162,17 +162,17 @@ async function bozzaB(g){
   await botSay(g, 'Ciao '+nome+' 👋 Questa è la tua candidatura alla sala VIP di Inizia Ora.\n\nFunziona così: ogni giorno ricevi i segnali completi — un messaggio con tre numeri: dove entrare, dove fermarti, dove incassare — e li gestiamo in diretta con te, con una persona vera al tuo fianco.\n\n💶 Non paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati: il compenso ce lo riconosce il broker). I soldi restano sul tuo conto, sempre tuoi.\n\n'+RISCHIO+'\n\n3 passaggi e ci siamo (1 minuto).', 900);
   await kb(g, [[{t:'Iniziamo →'}]]);
 
-  await botSay(g, '💶 1/3 — Per la sala VIP serve un conto con almeno 500 $, che restano tuoi sul tuo conto al broker. Ce l\'hai già?');
+  await botSay(g, '💶 Per la sala VIP serve un conto con almeno 500 $, che restano tuoi sul tuo conto al broker. Ce l\'hai già?');
   const cap = await kb(g, [[{t:'Sì, ce l\'ho'}],[{t:'Li avrò a breve'}],[{t:'Non ancora'}]]);
   if(cap==='Sì, ce l\'ho'){ sys('* reazione calda: testo proposto dall\'agente (la spec fissa solo l\'esempio «Ottima scelta 👌»)'); await botSay(g, 'Ottima scelta 👌'); }
   else await botSay(g, 'Perfetto, nessun problema: intanto completa la candidatura, parti quando sei pronto 👌');
 
-  await botSay(g, '📣 2/3 — Ti va di ricevere qui aggiornamenti e novità della community?');
+  await botSay(g, '📣 Ti va di ricevere qui aggiornamenti e novità della community?');
   const cons = await kb(g, [[{t:'Sì, volentieri'},{t:'No grazie'}]]);
   sys('* reazione calda: testo proposto dall\'agente (la spec chiede una reazione a ogni risposta senza fissarne il testo; lo STOP è da spec)');
   await botSay(g, cons==='Sì, volentieri' ? 'Perfetto 🤝 (puoi revocarlo quando vuoi scrivendo STOP)' : 'Nessun problema: nessun messaggio promozionale.');
 
-  await botSay(g, '✍ 3/3 — Ultima cosa: nome e cognome, così '+AG+' sa chi sei');
+  await botSay(g, '✍ Ultima cosa: nome e cognome, così '+AG+' sa chi sei');
   nome = (await askText(g, 'Nome e cognome')).split(' ')[0] || nome;
 
   await botSay(g, '✅ Candidatura accettata, '+nome+'. Ultimo passo: premi qui sotto e manda il messaggio già pronto a '+AG+' — ti risponde a breve e ti attiva. Intanto segui i segnali gratuiti nel canale. 🔒 '+AG+' non ti chiede mai soldi: i fondi restano sul tuo conto.\n'+RISCHIO, 900);
@@ -196,9 +196,16 @@ async function followUp(g, tipo){
   const r1 = await kb(g, [[{t:'Riprendi'}],[{t:'⏩ Ignora anche questo'}]]);
   if(r1==='Riprendi'){ sys('Il lead riprende dall\'ultimo passo. Recuperato ✅'); return; }
   sys('… passano altre 48 ore …');
-  await botSay(g, 'Vuoi completare la candidatura o la chiudo? Se preferisci, riprendila quando vuoi.');
-  const r2 = await kb(g, [[{t:'Riprendila'},{t:'Chiudila'}]]);
-  sys(r2==='Riprendila' ? 'Recuperato al 2° sollecito ✅' : 'Chiusa. Da qui in poi: SILENZIO (mai più di 2 solleciti, niente promozione senza consenso).');
+  let r2;
+  if(tipo==='completo'){
+    await botSay(g, 'Vuoi completare la candidatura o la chiudo? Se preferisci, riprendila quando vuoi.');
+    r2 = await kb(g, [[{t:'Riprendila'},{t:'Chiudila'}]]);
+  } else {
+    sys('* testo proposto dall\'agente (la spec dice solo «stessi 2 solleciti» per il diretto, che però non ha una candidatura)');
+    await botSay(g, 'Vuoi fare l\'ultimo passo o chiudo qui? Se preferisci, riprendi quando vuoi.');
+    r2 = await kb(g, [[{t:'Riprendi'},{t:'Chiudi'}]]);
+  }
+  sys(r2.startsWith('Riprendi') ? 'Recuperato al 2° sollecito ✅' : 'Chiusa. Da qui in poi: SILENZIO (mai più di 2 solleciti, niente promozione senza consenso).');
 }
 
 async function flussoCompleto(g){ await fase1(g); await bozzaB(g); }
