@@ -1,188 +1,164 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-21 — CRM: note minori dopo le PR #388 e #389
+**Sessione:** 2026-11-20 — M1 — Voce: `registra_voce.py` tiene solo «Hey Jarvis» riconosciuti dal modello
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #391 (https://github.com/Gasss23/Gas/pull/391), aperta dopo il push di ef51e72b con l'etichetta «verifica». L'operatore ha detto in chat «sì, mergia la #391». Su 1d29e7b6 CI verde, bot neutral (APPROVATO CON RISERVE), verifica esterna APPROVATO CON RISERVE (https://github.com/Gasss23/Gas/pull/391#issuecomment-7067488956); poi conflitto coi report di main dopo la PR #392 (funnel, solo documenti), risolto col merge ba074391. L'operatore ha chiesto «sistema anche le note minori». Il test del bot tocca la macchina del bot: verifica-bot sarà neutral e il merge lo decide l'operatore.
-2. Da decidere: aggiungere a `_GRAVI` del bot anche «alto», «severo», «serio», «elevato» (nota del revisore #831).
+1. Merge della PR di questo ramo (fix/voce-registra-solo-parola): con riserve del bot serve il «mergia» dell'operatore; lo esegue l'agente.
+2. Dopo il merge, sul Mac: `git pull`, poi rifare la registrazione (`bash scripts/voce/pausa.sh`, `.venv/bin/python scripts/voce/registra_voce.py`, `bash scripts/voce/riprendi.sh`) e incollare il riepilogo.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Note minori**: FATTA, commit cd46a249 (review #834 APPROVATO CON RISERVE, riserve corrette nello stesso diff e riviste in #835 APPROVATO CON RISERVE) e f126fbd5 (R-835-1, review #836 APPROVATO CON RISERVE).
-  - R-830-1 (bot #388 cfa0156a V-1): resto in chiaro di prima dell'ultimo avvio tolto anche col PID riusato.
-  - Verifica esterna #388 (71137d27) V-1: pulizia prima della password documentata; V-2: file da ripristinare illeggibile → ErroreCRM con un messaggio chiaro (il CLI prendeva già OSError: il guadagno è il testo).
-  - Bot #388 (71137d27) V-3: motivo «errore durante la copia cifrata (X)», avviso senza «riuscita» doppio. V-2 (nota del revisore superata nell'handoff): l'handoff si riscrive a ogni sessione.
-  - R-832-1: test del bot per «Non: grave» e «Non, grave».
-- **Merge di main (PR #392, solo documenti del funnel) nel ramo**: FATTO, commit ba074391. Conflitti solo nei report: tenuti quelli del ramo, memoria del revisore unita. Nessun file del perimetro di review toccato dal merge.
-- **Non fatte**: R-836-1 COSMETICA (messaggio d'errore del test meno chiaro); verifica esterna #387/#388 V-4 (thread della prova vivo dopo il tempo massimo: innocuo, non si può fermare una chiamata di sistema bloccata) — DEFERITE.
+- **Sonda (operatore, 20-11):** le tre clip «altra stanza / camminando / di spalle» ascoltate con `afplay` erano rumori della lavastoviglie e delle pentole, non «Hey Jarvis». Il controllo era solo sul volume.
+- **Fetta #810 — controllo della parola nella registrazione:** FATTA, commit 992cef9b. Review #810-M1coord APPROVATO CON RISERVE (R-810M1-1, R-810M1-2 BASSE).
+- **Fetta #811 — parola tagliata all'inizio della finestra:** FATTA, commit e27c655a. Review #811-M1coord APPROVATO (R-810M1-1 chiusa).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- modules/crm/copia_cifrata.py       |  64 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- reports/diff_sessione.md           |  18 ++++++------------
+ .claude/agents/memoria_revisore.md |   6 +++++
+ reports/diff_sessione.md           |  16 +++++++-----
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  42 ++++++++++++++++++------------------------
- tests/test_unit_crm.py             |  92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- tests/test_unit_verifica_bot.py    |   3 +++
+ reports/stato_progetto.md          |   2 +-
+ reports/ultimo_report.md           |  29 ++++++++++-----------
+ scripts/voce/LEGGIMI.md            |   4 +++
+ scripts/voce/registra_voce.py      |  79 +++++++++++++++++++++++++++++++++++++++++++++++++--------
+ tests/test_unit_voce_ascolto.py    |  70 +++++++++++++++++++++++++++++++++++++++++++++++---
 ```
-
-NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base: 7cf52359 (origin/main dopo il merge della PR #392, entrato nel ramo col merge ba074391); i file della #392 escono quindi dal diff.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-ba074391 Merge origin/main (PR #392, funnel: solo documenti) nel ramo della PR #391 — conflitti dei report risolti
-1d29e7b6 docs(fine-task): handoff — PR #391 aperta con l'etichetta verifica
-ef51e72b docs(fine-task): CRM note minori chiuse (review #834–#836); PR #388 e #389 mergiate
-f126fbd5 test(crm): il finto sysctl controlla anche uscita catturata, testo e tempo massimo (R-835-1) — review #836 APPROVATO CON RISERVE
-3dbbf34d chore(revisore): memoria review #836 — APPROVATO CON RISERVE
-cd46a249 fix(crm): note minori — resto in chiaro di prima del riavvio tolto anche col PID riusato, messaggio chiaro se il file da ripristinare non si legge, avviso senza «riuscita» doppio; test del bot per «Non: grave» — review #834 e #835 APPROVATO CON RISERVE
-07c8cedf chore(revisore): memoria review #835 — APPROVATO CON RISERVE
-cad98727 chore(revisore): memoria review #834 — APPROVATO CON RISERVE
+8cb558bd merge: porta main (eecf916d, PR #388/#389/#392) nella PR #390; conflitti solo nei report (i nostri) — review #814-M1coord APPROVATO
+aaf60d4f docs(fine-task): §2/§3 handoff dopo il merge di main
+02b60959 merge: porta main (7cf52359) nella PR #390; conflitti solo nei report (i nostri) e unione di memoria e stato — review #812-M1coord APPROVATO
+c95ea806 docs(fine-task): §2/§3 handoff
+520e6ca4 docs(fine-task): report della correzione di registra_voce (review #810/#811-M1coord)
+e27c655a fix(voce): parola tagliata all'inizio della finestra si rifà (R-810M1-1) — review #811-M1coord APPROVATO
+0dad979f chore(revisore): memoria review #811 — APPROVATO
+992cef9b fix(voce): registra_voce tiene solo «Hey Jarvis» riconosciuti dal modello; da lontano finestra di 6 s — review #810-M1coord APPROVATO CON RISERVE
+c49d271c chore(revisore): memoria review #810 — APPROVATO CON RISERVE
+(il commit di fine-task che aggiorna §2/§3 è escluso per costruzione)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #834 (diff poi committato in cd46a249, con le correzioni riviste in #835)
+### Review #810-M1coord (commit 992cef9b)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #834. Ho controllato il diff STAGED con `git diff --cached`: 3 file, +109/−7 sopra f75e09a2 (= origin/main), sha256 del diff 6f208bc1…. Prima della review ho letto CLAUDE.md §5/§8/§10, stato_progetto.md (le parti sul CRM) e la mia memoria (#824–#833). Il diff non tocca la history, `_get_window`, il tetto di 10 iterazioni né il tetto di 8k.
+Review #810-M1coord — diff staged su fix/voce-registra-solo-parola (3 file, +118/−15). Suite `tests/test_unit_voce_ascolto.py` rieseguita: **375 passed**.
 
 **Elementi del diff esaminati**
-- `modules/crm/copia_cifrata.py:347` — `subprocess.run(["sysctl","-n","kern.boottime"], capture_output, text, timeout=2, check=False)`. Rischi controllati: shell, iniezione, blocco, eccezioni. Gli argomenti sono fissi e non c'è shell. L'eccezione è presa da `except Exception` e la funzione ritorna None. Ho provato con un `sysctl` finto che si blocca: None in 2,0 s. Con un sysctl finto nel formato macOS il valore torna giusto. Su Linux senza /proc, il sysctl vero scrive l'errore su stderr (catturato), stdout resta vuoto e la funzione dà None. Senza sysctl nel PATH, None. — **ok**
-- `modules/crm/copia_cifrata.py:386` — regola dell'avvio, letta solo se serve e una volta sola (`avvio_letto`). Rischio controllato: togliere il temporaneo di un ripristino IN CORSO. La regola aggiunge cancellazioni solo nei primi ~59 minuti dopo l'avvio, e solo per file con mtime più vecchio di 60 s rispetto all'avvio. Un ripristino in corso può avere un mtime così solo se l'orologio salta avanti oltre (uptime al momento della scrittura + 60 s), oppure se il file sta su un disco di rete con l'orologio indietro. In più servono due ripristini contemporanei sullo stesso dest. Anche allora il danno è solo un ripristino fallito: il .gascrm resta intatto. Prova completa sul ramo macOS (sysctl finto, /proc nascosto): resto di 120 s prima dell'avvio con PID vivo → tolto; 30 s prima → resta (margine); file nuovo → resta; PID morto → tolto. Con l'avvio sconosciuto si decide come prima. — **ok**
-- `modules/crm/copia_cifrata.py:439` — read_bytes in try, `ErroreCRM(...) from None`. Rischio: la premessa di V-2. Il CLI prendeva GIÀ OSError a `modules/crm/__main__.py:217`. Ho rieseguito il comando a HEAD: stampa «STOP: [Errno 2] No such file or directory…», rc=1, nessun traceback. Nell'indice: «STOP: non riesco a leggere … controlla il percorso», rc=1. La modifica è innocua e il messaggio migliora. — **riserva cosmetica** (R-834-2a)
-- `modules/crm/copia_cifrata.py:292` — motivo «errore durante la copia cifrata (X)». Rischi: testi che dipendono dalla vecchia frase, dashboard. L'avviso Telegram (`modules/crm/server.py:292`) ora contiene «riuscita» una sola volta. Anche il titolo in `modules/crm/web/app.js:238` torna coerente. Nessun altro uso della vecchia frase in modules/ e tests/. — **ok**
-- `tests/test_unit_crm.py:1997` — `assert avvio is None or 0 < avvio <= time.time()`. Rischio: la lettura vera dell'ora di avvio non è difesa da nessun test. Mutanti: «_avvio_sistema ritorna sempre None» → 139 passed; «senza ramo /proc» → 139 passed. — **riserva** (R-834-1)
-- `tests/test_unit_crm.py:1982` — `prima` tolto e `dopo` lasciato. Mutanti sulla regola dell'avvio: «regola tolta» → failed; «None = cancella» → failed (`tests/test_unit_crm.py:1990`). Gli altri mutanti uccisi: «V-2 tolto» → failed; «V-3 rimesso com'era» → failed. Sopravvivono «margine col segno sbagliato» e «margine a 0», e anche «avvio letto sempre», che riguarda solo i tempi ed è accettabile. — **riserva cosmetica** (R-834-2b)
-- `tests/test_unit_verifica_bot.py:734` — casi «Non: grave» e «Non, grave». Mutanti su `scripts/bot_esito.py:180`: `[\s:,]+` → 2 failed; `\W+` → 2 failed; `[\s:]+` → 1 failed; `[\s,]+` → 1 failed. R-832-1 è CHIUSA. — **ok**
+- `scripts/voce/registra_voce.py:371` — `MotoreOWW.misura`: `oww.reset()` a ogni clip, poi 12 blocchi di silenzio prima della clip. Rischio: punteggio sporcato dalla clip precedente o dal ciclo degli esempi (`addestra` usa poi lo stesso modello). Esito ok: anche `blocchi()` fa reset a ogni ripetizione (`scripts/voce/registra_voce.py:358`); l'indice restituito non conta il silenzio, quindi è corretto; i blocchi del microfono sono liste di int, quindi `np.asarray(..., int16)` funziona. Differenza trascurabile: in `blocchi` il silenzio davanti è di 12,5 blocchi, qui di 12.
+- `scripts/voce/registra_voce.py:295` — taglio sul picco: `fine = min(len, i+1+6)`, `inizio = max(0, fine-38)`. Rischio: picco agli estremi della finestra. Esito: riserva.
+  - Picco a fine finestra: ok, si tengono gli ultimi 3 s.
+  - Picco nei primi blocchi: clip cortissima, fino a 7 blocchi (0,56 s) → R-810M1-1.
+  - Gruppi vicini (finestra di 3 s): ora anche lì la clip si accorcia, finendo 0,5 s dopo il picco. Innocuo: in addestramento la clip viene allungata con silenzio e il punteggio ricalcolato.
+- `scripts/voce/registra_voce.py:265` — ciclo delle prove. Esito: ok.
+  - Un bip per prova: il conteggio torna (4 bip e 4 svuotamenti nel test esistente, `tests/test_unit_voce_ascolto.py:3534`).
+  - `dorme(SEC_FRA_CLIP)` (`scripts/voce/registra_voce.py:268`) dopo ogni prova, riuscita o no, prima del bip successivo.
+  - `n` aumenta solo quando si salva (`scripts/voce/registra_voce.py:271`): nomi dei file consecutivi e senza buchi; «✓ n di totale» non arriva a 15 se si salta qualcosa, ed è giusto.
+  - Il `for/else` stampa «dopo 3 prove la salto» solo se nessuna prova va a segno. Cosmetico: variabile `prova` non usata.
+- `scripts/voce/registra_voce.py:593` — main passa `misura=getattr(m, "misura", None)` e `soglia_parola=soglia_base`. Rischio: soglia diversa da quella dell'addestramento. Esito ok: è la stessa soglia con cui `addestra` già scartava i blocchi, quindi una clip rifiutata qui non sarebbe servita comunque. Un'eccezione di onnx dentro `misura` finisce nel `except Exception` di main: messaggio, nessun traceback né crash, ma la registrazione si chiude tutta (le clip già salvate restano).
+- `tests/test_unit_voce_ascolto.py:3544` e `tests/test_unit_voce_ascolto.py:3563` — i due test nuovi (rumore scartato e saltato dopo 3 prove; finestra di 6 s e taglio sul picco) hanno verifiche precise. Esito: ok. Manca il caso del picco vicino all'inizio.
 
-**Esecuzioni** (su copia dell'indice, Python 3.13)
-- Suite CRM + verifica_bot: 771 passed.
-- Con la copia_cifrata di HEAD: 3 failed / 136 passed (test_ve386, test_r825_2, test_note_minori_388).
-- mypy su modules/crm: 0 errori, come a HEAD.
-- Nessuna riga aggiunta supera i 100 caratteri.
+**Riserve (BASSE, da segnare in stato_progetto.md)**
+- **R-810M1-1 BASSA**: picco nei primi blocchi della finestra lunga (parola cominciata prima che si aprisse) → clip di 0,56 s o poco più. In addestramento verrebbe scartata «sotto soglia», ma intanto conta come «✓» e consuma una delle 15 prese. Correzione: rifiutare con «rifallo» se il picco è troppo presto, con un test.
+- **R-810M1-2 BASSA**: il messaggio dice «ogni 7,5 s», ma il ciclo vero dura di più (bip, tempo di `misura`, svuotamento). Dall'altra stanza, senza bip, la parola può cadere nella pausa e quell'audio si butta. Le 3 prove attenuano; da verificare nella prova sul Mac.
 
-**Riserve** (da tracciare in stato_progetto.md)
-- **R-834-1 BASSA**: nessun test controlla la lettura vera dell'ora di avvio. Se `_avvio_sistema` si rompe e dà sempre None, la suite resta verde e sul Mac la correzione R-830-1 sparisce senza segnali. Rimedio:
-  - su Linux con /proc/stat leggibile, pretendere `avvio is not None`;
-  - provare il ramo macOS con un `sysctl` finto in un PATH di tmp_path e `open("/proc/stat")` che solleva (l'ho provato: funziona).
-- **R-834-2 COSMETICA**:
-  - (a) il commento a `modules/crm/copia_cifrata.py:440` e la docstring del test dicono «niente traceback», ma il traceback non c'era. Nei report scrivere «messaggio più chiaro», NON «il CLI prendeva solo ErroreCRM». La premessa del brief e di V-2 è falsa: la verifica esterna citava la riga 419 del `main()` di modules/crm/__main__.py, non `cmd_ripristina`.
-  - (b) il margine di 60 s non è difeso da un test: basterebbe un caso con mtime = avvio − 30 che deve restare.
-  - (c) ci sono 3 righe vuote prima di `test_note_minori_388` (`tests/test_unit_crm.py:1963`) e 1 sola dopo (PEP8 E303/E302).
+**Coerenza col progetto**: va nella direzione giusta (niente rumori addestrati come «Hey Jarvis»). Non tocca kernel, cronologia né provider. Nessuna voce del Wall of Shame: il taglio `blocchi[inizio:fine]` lavora su campioni audio, non sulla cronologia. Nota: «camminando» e «di spalle» (attesa 5 s) restano sulla finestra di 3 s, che va bene solo perché lì il bip si sente; il controllo della parola vale comunque anche per loro.
 
-**Nota, non riserva**: manca un controllo «0 < avvio ≤ adesso». Un sysctl finto che dà un'ora nel futuro toglie anche il temporaneo di un ripristino in corso (provato), ma serve il controllo del PATH, che equivale già a poter eseguire codice. Con `/usr/sbin/sysctl` scritto per intero sparirebbe anche la dipendenza dal PATH.
+**Rischio escluso**: microfono vero e modello onnx sul Mac (tempo di `misura` per clip, punteggi reali della voce da 3 metri e dall'altra stanza rispetto alla soglia 0,25) non verificati: qui non ci sono né il microfono né openWakeWord. Mi fido della prova dichiarata con espeak (0,996 contro 0,07), senza averla rieseguita.
 
-**Rischio escluso**: non ho verificato l'output vero di `sysctl -n kern.boottime` su un Mac, né se kern.boottime resta stabile dopo sospensione o cambio d'ora: qui è un container Linux, senza macOS. Ho provato il parser e il ramo con un binario finto nel formato documentato. Non ho rieseguito su 3.11/3.12, che qui non hanno pytest. Il test del bot tocca la macchina del bot, quindi verifica-bot sarà neutral e il merge lo decide l'operatore.
+Memoria aggiornata con la riga #810-M1coord e una lezione nuova (ritaglio attorno a un picco: controllare anche il picco vicino all'inizio), poi `scripts/commit_memoria_revisore.sh`.
 
-**Esito**: commit consentito con riserve R-834-1 (BASSA) e R-834-2 (COSMETICA). Come richiesto, non ho creato `.claude/.review_ok` e non ho committato il diff.
+### Review #811-M1coord (commit e27c655a)
 
-Memoria: riga #834 e 2 lezioni aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con `scripts/commit_memoria_revisore.sh` (cad98727). L'indice staged non è cambiato: lo sha256 è ancora 6f208bc1….
+## VERDETTO: APPROVATO
 
-### Review #835 (commit cd46a249)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #835. Ho esaminato il diff staged: 3 file, +150/−7, sopra cad98727, sha256 del diff 1cdf136b. È il secondo giro della #834. Letti CLAUDE.md (sez. 1, 4, 5, 8, 9), reports/stato_progetto.md (in parte) e la mia memoria fino alla #834.
+Review #811-M1coord — diff staged su fix/voce-registra-solo-parola (2 file, +22/−2).
 
 **Elementi del diff esaminati**
-1. `modules/crm/copia_cifrata.py:357` — un'ora di avvio fuori da (0, adesso] diventa None. Rischio esaminato: un'ora di avvio nel futuro, che toglierebbe anche un ripristino ancora in corso. Il mutante senza «≤ adesso» fa fallire 1 test. Il mutante senza «0 <» è equivalente: con avvio = 0 il resto non si toglie mai. **ok**
-2. `modules/crm/copia_cifrata.py:352` — sysctl chiamato col percorso completo `/usr/sbin/sysctl`, senza shell e con timeout di 2 s. Rischio esaminato: dipendenza dal PATH. Il mutante con «sysctl» senza percorso fa fallire 1 test. Però gli argomenti con nome non sono controllati (vedi R-835-1). **riserva**
-3. `modules/crm/copia_cifrata.py:397` — un resto con PID vivo e recente si toglie solo se mtime < avvio − 60 s. Rischio esaminato: margine nullo o col segno sbagliato. Margine a 0, segno invertito e regola dell'avvio tolta fanno fallire 1 test ciascuno. L'ora di avvio si legge una volta per chiamata e solo se serve (`modules/crm/copia_cifrata.py:395`). **ok**
-4. `tests/test_unit_crm.py:2004` — su Linux con /proc/stat il test pretende `0 < avvio ≤ adesso`. Rischio esaminato: R-834-1, cioè una correzione che sparisce in silenzio. I mutanti «sempre None» e «senza /proc» fanno fallire 1 test ciascuno. **ok, R-834-1 chiusa**
-5. `tests/test_unit_crm.py:1980` — un resto con mtime = avvio − 30 s resta. Chiude R-834-2b. **ok**
-6. `tests/test_unit_crm.py:2012` — il ramo macOS usa un `subprocess.run` finto. Controlla la lista degli argomenti (`tests/test_unit_crm.py:2021`) ma non i `**kw`. **riserva**
-7. `modules/crm/copia_cifrata.py:449` — sorgente che non si legge: ErroreCRM con un messaggio che dice cosa controllare. Il testo non dice più «niente traceback» (R-834-2a chiusa). Il chiamante `modules/crm/__main__.py:217` prende già ErroreCRM e OSError. Il mutante «solo FileNotFoundError» sopravvive, ma l'effetto è solo sul testo del messaggio. **ok**
-8. `modules/crm/copia_cifrata.py:292` — motivo «errore durante la copia cifrata (…)». Con l'avviso di `modules/crm/server.py:292`, «riuscita» compare una volta sola (`tests/test_unit_crm.py:2045`). Il mutante col messaggio vecchio fa fallire 3 test. **ok**
-9. `tests/test_unit_verifica_bot.py:734` — aggiunti «Non: grave» e «Non, grave». Mutanti su `scripts/bot_esito.py:180`: `[\s:]+` e `[\s,]+` fanno fallire 1 test, `[\s:,]+` ne fa fallire 2. **ok, R-832-1 chiusa**
-10. `tests/test_unit_crm.py:1814` (contesto) — il test #830 usa l'ora di avvio vera. Rischio esaminato: un runner CI appena avviato rende il test instabile. Escluso: il file `vivo` è scritto durante il test, quindi mtime ≥ avvio. **ok**
+1. `scripts/voce/registra_voce.py:296` — picco prima di `blocchi_per(SEC_PICCO_MINIMO)` (6 blocchi): clip scartata, «tagliato all'inizio», nuova prova.
+   - Rischio: indice contato sulla finestra registrata, non sul secondo di silenzio messo davanti da `misura`. In `scripts/voce/registra_voce.py:373` il silenzio passa prima di `enumerate(blocchi)`, quindi `i` parte da 0 sulla finestra.
+   - Rischio: confine stretto (`<`), l'indice 6 viene accettato; il test lo copre.
+   - 0,5 s invece di 32 blocchi è giusto per la finestra di 3 s dei gruppi vicini.
+   - Esito: ok, R-810M1-1 chiusa.
+2. `scripts/voce/registra_voce.py:266` — `prova` diventa `_prova` con `range(TENTATIVI_PAROLA)`: sempre 3 prove; «dopo %d prove la salto» usa la costante. Esito: ok.
+3. `tests/test_unit_voce_ascolto.py:3590` — test nuovo: indice 1 alla prima prova (scartata), 6 alla seconda (salvata); controlla il messaggio e una sola clip salvata. Esito: ok. Rieseguito sul sorgente senza la correzione (aggiungendo solo la costante): fallisce; con la correzione passa.
+4. `tests/test_unit_voce_ascolto.py:3555` — il test sul rumore usa l'indice 20 (prima 0, che con la regola nuova verrebbe scartato). Esito: ok.
 
-**Prove rieseguite da me** su una copia dell'indice (albero di lavoro uguale all'indice):
-- test CRM e bot: 771 passed;
-- tutti i mutanti dichiarati dal chiamante falliscono (rieseguiti uno per uno);
-- mypy: 0 errori in modules/crm (i 78 errori segnalati sono in altri file importati);
-- `git diff --cached --check` pulito;
-- nessuno slicing della history; il kernel non è toccato (`_get_window`, tetto delle 10 iterazioni e test di round-trip non si applicano);
-- il sysctl finto è un sostituto di un binario di sistema in un test, non una simulazione dei tool del modello;
-- le righe vuote attorno a `test_note_minori_388` sono corrette.
+**Prove eseguite**: suite voce 376 passed (rieseguita). Nessuno slicing della storia, nessun output di tool simulato; `gas.py`/`brains` non toccati.
 
-**Riserve**
-- **R-835-1 COSMETICA**: gli argomenti con nome di `subprocess.run` (`capture_output`, `text`, `timeout`) non sono controllati dal test. I tre mutanti che li tolgono restano a 139 passed. Conseguenze sul Mac: senza `capture_output` o `text` l'ora di avvio torna None in silenzio (si ritorna alla vecchia regola); senza `timeout` un sysctl bloccato blocca il ripristino. Rimedio: in `sysctl_finto` aggiungere `assert kw.get("capture_output") and kw.get("text") and kw.get("timeout") == 2`.
+**Cosa non ho verificato**: con una voce vera il modello potrebbe dare il picco prima di 0,5 s a chi parla subito dopo il bip (rifiuti inutili, non clip sbagliate; le 3 prove attenuano). Serve il microfono del Mac. R-810M1-2 resta aperta.
 
-**Rischi esplicitamente esclusi**
-- Comportamento reale su macOS non verificato, perché qui non c'è un Mac: presenza di `/usr/sbin/sysctl`, formato di `kern.boottime` e il suo aggiornamento quando l'orologio cambia.
-- Resti su cartelle di rete con l'orologio del server sfasato di oltre 60 s: non provato, è un caso limite.
+**Incidente di procedura, già sistemato**: durante la prova ho usato `git stash` / `stash pop`, che ha rimesso le modifiche come non staged; le ho rimesse in stage con `git add` sui 2 file. Lo staged è identico (2 file, +22/−2, niente non staged).
 
-**Memoria**: riga #835-CRM e una lezione (con un `subprocess.run` finto si controllano anche gli argomenti con nome) committate solo in `/home/user/Gas/.claude/agents/memoria_revisore.md`, commit 07c8cedf. Non ho creato `.claude/.review_ok`; il diff resta in staging e non è committato.
+**Memoria**: aggiunta la riga #811-M1coord e una lezione (niente `stash pop` senza `--index` per provare un test sullo staged); poi `bash scripts/commit_memoria_revisore.sh`.
 
-### Review #836 (commit f126fbd5)
+---
 
-## VERDETTO: APPROVATO CON RISERVE
+### Review #812-M1coord (merge di origin/main 7cf52359 nel branch)
 
-Review #836 del diff in staging (`git diff --cached`, 1 file: tests/test_unit_crm.py, +2/−0, sha256 del diff 98312c7f, sopra cd46a249). Ho letto prima CLAUDE.md (sez. 5), reports/stato_progetto.md (solo le parti che servono) e .claude/agents/memoria_revisore.md.
+## VERDETTO: APPROVATO
+
+Merge in corso di origin/main (7cf52359) in fix/voce-registra-solo-parola (HEAD c95ea806, PR #390, base comune d03e5bf2): pulito. `git ls-files -u` vuoto, nessun marcatore di conflitto, `git diff --cached --check` pulito, albero di lavoro uguale all'indice.
+
+Elementi esaminati:
+- `scripts/voce/registra_voce.py:280` — `_una_clip` (tiene solo le clip riconosciute dal modello). Rischio: che il merge abbia alterato la modifica di #390. Esito ok: `git diff --cached HEAD` su scripts/voce e sul test della voce è vuoto; contro origin/main cambiano solo i 3 file propri di #390 (+138/−15).
+- `tests/test_unit_voce_ascolto.py:3811` — test della taratura con la verifica. Rischio: interferenza col codice di main. Esito ok: da d03e5bf2 a main cambiano solo modules/crm, scripts/bot_esito.py, tests/test_unit_crm.py e tests/test_unit_verifica_bot.py; insiemi di file disgiunti, nessun file di main cita registra_voce.
+- `scripts/bot_esito.py:180` e `modules/crm/server.py:273` — codice di main già revisionato (#822–#833). Rischio: risoluzione sbagliata. Esito ok: questi blob, più `modules/crm/copia_cifrata.py`, `tests/test_unit_crm.py` e `tests/test_unit_verifica_bot.py`, sono identici a MERGE_HEAD.
+- `.claude/agents/memoria_revisore.md` — confronto a tre vie per conteggio delle righe (base, branch, main). Rischio: righe perse o duplicate. Esito ok: 0 mancanti, 0 in più; entrano #824–#834 di main; i doppioni #746/#747 (chat M3) c'erano già prima del merge.
+- `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» fusa. Rischio: perdere una versione. Esito ok: è l'unica differenza rispetto all'unione attesa; ordine 21/11 funnel, 20/11 voce, poi lo storico; le code di HEAD e di main ci sono entrambe; le altre righe (bot, CRM) sono quelle di main.
+- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: identici a HEAD, cioè alla versione del branch come dichiarato.
+
+Cosa non ho verificato: test non rieseguiti (mi baso sui 1144 passed dichiarati; codice identico ai due genitori e file non sovrapposti). reports/funnel/* e reports/crm/guida.md non letti nel contenuto: documenti fuori dal perimetro, arrivano da main.
+
+Memoria: aggiunta la riga #812-M1coord, non committata (la aggiunge l'agente allo staged). Nessuna lezione nuova.
+
+## §4bis VERDETTO DEL REVISORE SUL SECONDO MERGE DI MAIN (#814-M1coord)
+
+Il merge porta solo codice di main (CRM, già revisionato in #834–#836) e non cambia nessun file proprio della PR: quasi tutte le citazioni del verdetto puntano a file che, dopo il merge, non sono nel diff della PR (check_verdetto le confronta col diff). Per questo il verdetto sta fuori dal §4. Testo integrale, invariato:
+
+### Review #814-M1coord (secondo merge di origin/main eecf916d nel branch)
+
+## VERDETTO: APPROVATO
+
+Review #814-M1coord. Secondo merge di origin/main (eecf916d, PR #388/#389/#392) nel branch fix/voce-registra-solo-parola (HEAD aaf60d4f, PR #390), base 7cf52359, staged e non ancora committato.
 
 **Elementi del diff esaminati**
+- `modules/crm/copia_cifrata.py:335` — `_avvio_sistema` (sysctl con percorso completo a `modules/crm/copia_cifrata.py:352`) arriva da main. Rischio: versione fusa diversa da main. Esito ok: `git diff --cached origin/main` su questo file, `tests/test_unit_crm.py` e `tests/test_unit_verifica_bot.py` è vuoto, quindi sono byte-identici a main, già revisionati in #834–#836.
+- `scripts/voce/registra_voce.py:40` — codice proprio di #390. Rischio: il merge lo altera. Esito ok: `git diff --cached HEAD` su scripts/voce e `tests/test_unit_voce_ascolto.py` è vuoto; il diff contro origin/main su modules/scripts/tests/clients contiene solo i 3 file di #390 (registra_voce.py, LEGGIMI.md, test_unit_voce_ascolto.py).
+- `.claude/agents/memoria_revisore.md:1646` e `reports/stato_progetto.md:9` — righe fuse automaticamente (#834-CRM…#836-CRM e la riga «CRM, note minori»). Rischio: righe perse o duplicate. Esito ok: righe contate con le ripetizioni su versione fusa, base, HEAD e main: entrambi sono l'unione a tre vie esatta, 0 perse e 0 in più.
 
-- `tests/test_unit_crm.py:2014` — dentro `sysctl_finto` controlla che `subprocess.run` riceva `capture_output`, `text` e `timeout == 2`.
-  - Rischio esaminato: che i mutanti di R-835-1 sopravvivano ancora.
-  - Esito: ok. Ho rieseguito tutto su una copia dell'indice. Con i quattro mutanti (senza `capture_output`, senza `text`, senza `timeout`, `timeout=5`) fallisce 1 test ciascuno. Il mutante `check=True` sopravvive, ma è equivalente: se sysctl fallisce, `_avvio_sistema` restituisce None in entrambi i casi.
-- `tests/test_unit_crm.py:2022` — è la riga che fallisce davvero quando il controllo dei parametri non passa.
-  - Rischio esaminato: un messaggio di errore che porta fuori strada.
-  - Esito: riserva R-836-1 COSMETICA (sotto).
-- `tests/test_unit_crm.py:2013` — commento «R-835-1: …».
-  - Esito: ok. La riga è lunga 92 caratteri. Nel repo non c'è configurazione di lint e il file ha già 56 righe oltre i 100 caratteri.
-- Contesto, file non toccato: `modules/crm/copia_cifrata.py:352` — la chiamata vera, `subprocess.run(["/usr/sbin/sysctl", ...], capture_output=True, text=True, timeout=2, check=False)`. Ora è bloccata nei tre parametri con nome che contano.
-- Contesto, file non toccato: `modules/crm/copia_cifrata.py:354` — `except Exception: valore = None` (regola §9). È il blocco che inghiotte l'`AssertionError` del finto.
+**Altri controlli**: nessun file in conflitto rimasto (`ls-files -u` vuoto), 0 marcatori, `--check` pulito, albero di lavoro uguale all'indice. handoff, ultimo_report e diff_sessione identici a HEAD. Interferenza con #390: nessuna; da 7cf52359 main ha toccato copia_cifrata.py, i due test CRM/bot e file di reports/memoria, #390 solo scripts/voce e il test della voce, gruppi disgiunti. Wall of Shame: non applicabile (gas.py e brains non toccati).
 
-**Suite:** tests/test_unit_crm.py 139 passed su una copia dell'indice nello scratchpad (rieseguito da me).
+**Cosa NON ho verificato**: test non rieseguiti (codice identico a main e a HEAD; mi baso sui 1147 passed dichiarati); CI su eecf916d da guardare dopo il push.
 
-**Riserva R-836-1 COSMETICA**
-- L'assert sta dentro il finto, che il codice di produzione chiama dentro il `try/except Exception` di `_avvio_sistema`. Quando il controllo fallisce, l'`AssertionError` viene inghiottito e il test fallisce solo dopo, con `assert None == 1732000000.0` alla riga `tests/test_unit_crm.py:2022`. Il messaggio non dice quale parametro manca: chi lo legge può pensare che si sia rotta la lettura dell'ora di avvio.
-- Il blocco dei parametri funziona comunque: i mutanti muoiono.
-- Rimedio: nel finto salvare `kw` in una lista e asserire su `capture_output`, `text` e `timeout` dopo la chiamata a `_avvio_sistema()`.
-- È la stessa lezione già in memoria dal 2026-11-05 («usare k.get e asserire dopo»).
-
-**Wall of Shame:** niente da segnalare. Il diff tocca solo un test: nessun taglio diretto della cronologia, nessun output di tool simulato (`subprocess.run` finto in un test unitario, come già accettato in #835). Guardrail (10 iterazioni, 8k di output, `_get_window`) non toccati.
-
-**Rischio escluso:** non ho verificato il comportamento su un Mac vero (`/usr/sbin/sysctl -n kern.boottime` e il suo formato reale). Non si può riprodurre in questo ambiente Linux. Il test prova solo che gli argomenti passati sono quelli giusti e che il formato atteso viene letto, non che macOS risponda in quel formato.
-
-**Memoria:** riga `#836-CRM` aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata con `scripts/commit_memoria_revisore.sh` (commit 3dbbf34d, solo quel file). Il diff in staging è rimasto intatto (tests/test_unit_crm.py +2). Nessuna lezione nuova.
-
-Come richiesto, non ho creato `.claude/.review_ok` e non ho committato il diff sotto review.
+**Memoria**: riga #814-M1coord aggiunta, solo nell'albero di lavoro. Nessuna lezione nuova.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- **`tests/test_unit_crm.py`:** 138 su main f75e09a2 → 139 passed (`test_note_minori_388`). Col `modules/crm` di main falliscono 3 test (il nuovo e 2 per il testo del motivo).
-- **`tests/test_unit_verifica_bot.py`:** 630 → 632 passed (casi «Non: grave», «Non, grave»; il mutante `\b[Nn]on[\s:,]+` li fa fallire).
-- **Kernel** (`gas.py`, `tests/test_unit_kernel.py`): non toccato. **mypy:** 0 errori in `modules/crm`.
+- **`tests/test_unit_voce_ascolto.py`:** 373 su main d03e5bf2 → 375 (#810) → 376 passed (#811). Il test di #811 fallisce sul codice di 992cef9b (rieseguito dal revisore).
+- **Prova col modello vero** (openWakeWord 0.6.0 in un venv locale): `MotoreOWW.misura` su «Hey Jarvis» di espeak → (0,996, blocco 38); su rumore casuale → 0,07.
+- **Kernel** (`gas.py`, `tests/test_unit_kernel.py`): non toccato.
 
 ## §6 STATO CI
 
-`gh run list` non usato: GitHub si interroga con `gh api` REST.
-- Mappatura commit→run:
-  - `cad98727`, `07c8cedf`, `cd46a249`, `3dbbf34d`, `f126fbd5`: nessuna run su questi SHA (pushati insieme a ef51e72b).
-  - `ef51e72b`: run CI del push (superata da 1d29e7b6); verifica-bot annullato.
-  - `1d29e7b6`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE).
-  - `ba074391` (merge di main): run non ancora disponibile alla scrittura dell'handoff.
-  - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+Run della PR non ancora disponibile alla scrittura dell'handoff: il ramo si pusha col commit di fine-task che contiene questo file, e una sola run testerà l'albero di testa.
 
 ## §7 RISERVE APERTE
 
-- **R-836-1 (COSMETICA):** l'assert del sysctl finto sta dentro il try di `_avvio_sistema`: se manca un parametro il test fallisce comunque, ma con un messaggio meno chiaro.
-- **Rischi esclusi (revisori #834–#836):** formato vero di `sysctl -n kern.boottime` e presenza di `/usr/sbin/sysctl` su un Mac; resti su cartelle di rete con l'orologio sfasato.
-- **Chiuse in questa sessione:** R-830-1, R-832-1, R-834-1, R-834-2, R-835-1; verifica esterna #388 V-1/V-2; bot #388 (71137d27) V-2/V-3.
-- **Ancora aperte da prima:** R-810-2, R-810-3, R-808-5, R-808-6, R-803-9, R-803-10, R-804-2, R-804-4 (vedi `reports/stato_progetto.md`).
+- **R-810M1-2 BASSA:** tempi del messaggio «ogni N secondi» quando il bip non si sente: da verificare sul Mac.
+- **Non verificabile qui:** punteggi reali della voce dell'operatore da lontano col microfono del MacBook.
+- **Chiusa in questa sessione:** R-810M1-1 (#811).
+- **Dalle PR #382/#383 (note basse del bot):** ripiego del filtro durante l'ascolto e controllo delle cartelle sopra (#382 V-1/V-2); varianti di «Jarvis» in tutti i punti e «Dimmi.» su una variante nel seguito (#383 V-2/V-3).
