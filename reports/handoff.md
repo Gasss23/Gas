@@ -36,7 +36,7 @@
  reports/handoff.md                 | n/d
  reports/lavoro_parallelo.md        |   3 ++-
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  29 +++++++++++++----------------
+ reports/ultimo_report.md           |  29 +++++++++++++++--------------
 ```
 
 NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base: dcedea6a (origin/main dopo il merge della PR #390, entrato nel ramo col merge di main); i file della #390 escono quindi dal diff.
@@ -44,6 +44,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+aaf754cf docs(bacheca): riserve aperte della chat Voce riportate in stato_progetto; regola per non perderle nei merge dei report (nota del bot su #394)
 f1225b8c docs(fine-task): merge di main (PR #390) nel ramo della #394, review #837
 f7b37853 Merge origin/main (PR #390, chat Voce) nel ramo della PR #394 — review #837 APPROVATO
 3a64fd64 docs(bacheca): note del bot su dfd7edb3 — secondo controllo su claude.ai rimesso tra le cose da fare, ramo in tutte le notizie, etichette dei commit precisate
@@ -112,9 +113,11 @@ Nessuna modifica a gas.py/tests/.
   - `dfd7edb3`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, note chiuse in questo commit).
   - `3a64fd64`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, una nota COSMETICA chiusa qui); PR in conflitto dopo il merge della #390.
   - `f7b37853` (merge di main): nessuna run propria (pushato con f1225b8c).
-  - `f1225b8c`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, note chiuse in questo commit).
+  - `f1225b8c`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, note chiuse in aaf754cf).
+  - `aaf754cf`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE: V-1 BASSA riserve Voce mancanti in §7 e nell'ultimo_report, V-2 COSMETICA «prime tre notizie»: chiuse in questo commit).
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Nessuna nuova. Dal CRM resta R-836-1 COSMETICA (vedi `reports/stato_progetto.md`).
+- Nessuna nuova di questa fetta. Dal CRM resta R-836-1 COSMETICA.
+- **Riserve della chat Voce ereditate dal merge della #390** (riportate in `reports/stato_progetto.md`): R-810M1-2 BASSA (messaggio «ogni N secondi» senza bip e analisi, da verificare sul Mac); punteggi reali della voce da lontano non verificati; note basse del bot #382 V-1/V-2 e #383 V-2/V-3.
