@@ -1,12 +1,8 @@
-# Diff della sessione — 2026-11-20 — Voce: registrazione solo con «Hey Jarvis» veri
+# Diff della sessione — 2026-11-21 — Voce: microfono muto e secondi del messaggio
 
-Si riscrive a ogni sessione; la storia completa sta in git. Ramo fix/voce-registra-solo-parola da main d03e5bf2.
+Si riscrive a ogni sessione; la storia completa sta in git. Ramo fix/voce-registra-microfono-muto-2 da main dcedea6a (PR #390 mergiata).
 
-- `scripts/voce/registra_voce.py`:
-  - `Registratore._una_clip`: volume, poi punteggio del modello della parola (`misura`); sotto soglia o picco nei primi 0,5 s → «rifallo»; taglio a 3 s sul picco;
-  - `Registratore.positivi`: fino a 3 prove per clip; finestra di 6 s per i gruppi lontani, con istruzione se il bip non si sente;
-  - `MotoreOWW.misura`: punteggio massimo e indice, col modello già caricato;
-  - `main`: passa `misura` e la soglia base al registratore.
-- `scripts/voce/LEGGIMI.md`: come funziona il controllo della parola.
-- `tests/test_unit_voce_ascolto.py`: test esistente adeguato; tre test nuovi (rumore scartato, finestra lontana e taglio sul picco, parola tagliata all'inizio).
-- `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md` (commit del revisore).
+- `scripts/voce/registra_voce.py`: `Registratore.sentito_suono`; stop con `Errore` sul permesso del microfono se le prime prove di una clip non hanno mai sentito un suono; messaggio «ogni %d secondi» con `MARGINE_CICLO_S`.
+- `scripts/voce/LEGGIMI.md`: 9 secondi e il comportamento col microfono muto.
+- `tests/test_unit_voce_ascolto.py`: tre test nuovi (microfono muto, silenzio dopo un suono, messaggio con secondi interi).
+- `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.
