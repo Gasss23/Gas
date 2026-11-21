@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta (numero dopo il push). L'operatore ha chiesto «sistema anche le note minori». Il test del bot tocca la macchina del bot: verifica-bot sarà neutral e il merge lo decide l'operatore.
+1. Merge della PR #391 (https://github.com/Gasss23/Gas/pull/391), aperta dopo il push di ef51e72b con l'etichetta «verifica». L'operatore ha chiesto «sistema anche le note minori». Il test del bot tocca la macchina del bot: verifica-bot sarà neutral e il merge lo decide l'operatore.
 2. Da decidere: aggiungere a `_GRAVI` del bot anche «alto», «severo», «serio», «elevato» (nota del revisore #831).
 
 ---
@@ -26,12 +26,12 @@
 
 ```
  .claude/agents/memoria_revisore.md |   6 +++++
- modules/crm/copia_cifrata.py       |  64 ++++++++++++++++++++++++++++++++++++++++++++++----
+ modules/crm/copia_cifrata.py       |  64 +++++++++++++++++++++++++++++++++++++++++++++----
  reports/diff_sessione.md           |  18 +++++---------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  41 +++++++++++---------------------
- tests/test_unit_crm.py             |  92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ reports/ultimo_report.md           |  41 +++++++++++--------------------
+ tests/test_unit_crm.py             |  92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
  tests/test_unit_verifica_bot.py    |   3 +++
 ```
 
@@ -40,6 +40,7 @@ NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è mis
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ef51e72b docs(fine-task): CRM note minori chiuse (review #834–#836); PR #388 e #389 mergiate
 f126fbd5 test(crm): il finto sysctl controlla anche uscita catturata, testo e tempo massimo (R-835-1) — review #836 APPROVATO CON RISERVE
 3dbbf34d chore(revisore): memoria review #836 — APPROVATO CON RISERVE
 cd46a249 fix(crm): note minori — resto in chiaro di prima del riavvio tolto anche col PID riusato, messaggio chiaro se il file da ripristinare non si legge, avviso senza «riuscita» doppio; test del bot per «Non: grave» — review #834 e #835 APPROVATO CON RISERVE
@@ -171,6 +172,7 @@ Come richiesto, non ho creato `.claude/.review_ok` e non ho committato il diff s
 `gh run list` non usato: GitHub si interroga con `gh api` REST.
 - Mappatura commit→run:
   - `cad98727`, `07c8cedf`, `cd46a249`, `3dbbf34d`, `f126fbd5`: run non ancora disponibile alla scrittura dell'handoff. Saranno pushati insieme al commit di fine-task che contiene questo file: una sola run testerà l'albero di testa.
+  - `ef51e72b` (primo fine-task): run appena partita al push, esito non ancora disponibile alla scrittura dell'handoff.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
