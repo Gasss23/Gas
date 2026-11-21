@@ -34,7 +34,7 @@
 13. **Niente spese per un server solo per il CRM** («non vorrei spendere soldi per un crm»). → per ora resta sul Mac con la copia su iCloud; il CRM andrà sul server di Gas quando arriva (R5, che serve comunque a Gas), senza costi in più. Alternative gratuite valutate: accesso dal telefono con Tailscale (gratis, Mac acceso) o un server gratuito tipo Oracle Cloud «Always Free» (regione europea; da decidere).
 14. **Il giro del motore ogni 10 minuti non serve**: basta 1-2 al giorno, più l'aggiornamento a richiesta. → `GAS_CRM_SCAN_MINUTI` di default 720 (2 al giorno); resta il giro subito a ogni cambio e col pulsante «Scansiona». Il giro non usa token.
 
-## 21 novembre 2026 — risposte alle domande 2 e 3
+## 21 novembre 2026 — «pronto all'uso» e risposte alle domande 2 e 3
 
 15. **«Online» voleva dire «pronto all'uso»**: il CRM si usa sul Mac, dal browser del Mac; non va pubblicato su internet. → nessuna modifica; per aprirlo dal telefono la strada gratuita e privata resta Tailscale, da decidere.
 16. **WhatsApp Business: l'operatore non sa come avere l'accesso API.** → per ora i messaggi li scrive il CRM e li manda l'operatore a mano, dopo averli approvati (com'era già deciso). L'accesso API di Meta si prepara solo quando si vorrà l'invio automatico, con una guida passo passo.

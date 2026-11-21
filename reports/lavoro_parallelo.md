@@ -23,7 +23,7 @@ Se alla chat Voce serve una modifica nella zona del Motore (per esempio un aggan
    - `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: tenere la versione del **proprio** ramo (sono i log della propria sessione).
    - `reports/stato_progetto.md`: unire **a mano**, tenendo le righe di entrambi.
    - `.claude/agents/memoria_revisore.md`: tenere **entrambe** le righe nuove, in ordine di numero.
-   - `reports/bacheca.md` (dal 2026-11-21): tenere le notizie di **entrambi** i lati, in ordine di data.
+   - `reports/bacheca.md` (dal 2026-11-21): tenere le notizie di **entrambi** i lati, in ordine di data, la più nuova in cima.
 4. **Numeri delle review**: possono sovrapporsi tra le due chat. Nei report si scrive sempre «review #N (chat Motore)» o «review #N (chat Voce)».
 5. Tutte le altre regole di `CLAUDE.md` valgono per entrambe: revisore prima di ogni commit nel perimetro, verifica esterna a fine fetta, merge solo con l'ok dell'operatore o con un APPROVATO pulito del bot, risposte brevi.
 
