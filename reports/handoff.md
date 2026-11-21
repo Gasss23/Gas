@@ -103,6 +103,24 @@ Review #811-M1coord — diff staged su fix/voce-registra-solo-parola (2 file, +2
 
 ---
 
+### Review #812-M1coord (merge di origin/main 7cf52359 nel branch)
+
+## VERDETTO: APPROVATO
+
+Merge in corso di origin/main (7cf52359) in fix/voce-registra-solo-parola (HEAD c95ea806, PR #390, base comune d03e5bf2): pulito. `git ls-files -u` vuoto, nessun marcatore di conflitto, `git diff --cached --check` pulito, albero di lavoro uguale all'indice.
+
+Elementi esaminati:
+- `scripts/voce/registra_voce.py:280` — `_una_clip` (tiene solo le clip riconosciute dal modello). Rischio: che il merge abbia alterato la modifica di #390. Esito ok: `git diff --cached HEAD` su scripts/voce e sul test della voce è vuoto; contro origin/main cambiano solo i 3 file propri di #390 (+138/−15).
+- `tests/test_unit_voce_ascolto.py:3811` — test della taratura con la verifica. Rischio: interferenza col codice di main. Esito ok: da d03e5bf2 a main cambiano solo modules/crm, scripts/bot_esito.py, tests/test_unit_crm.py e tests/test_unit_verifica_bot.py; insiemi di file disgiunti, nessun file di main cita registra_voce.
+- `scripts/bot_esito.py:180` e `modules/crm/server.py:273` — codice di main già revisionato (#822–#833). Rischio: risoluzione sbagliata. Esito ok: questi blob, più `modules/crm/copia_cifrata.py`, `tests/test_unit_crm.py` e `tests/test_unit_verifica_bot.py`, sono identici a MERGE_HEAD.
+- `.claude/agents/memoria_revisore.md` — confronto a tre vie per conteggio delle righe (base, branch, main). Rischio: righe perse o duplicate. Esito ok: 0 mancanti, 0 in più; entrano #824–#834 di main; i doppioni #746/#747 (chat M3) c'erano già prima del merge.
+- `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» fusa. Rischio: perdere una versione. Esito ok: è l'unica differenza rispetto all'unione attesa; ordine 21/11 funnel, 20/11 voce, poi lo storico; le code di HEAD e di main ci sono entrambe; le altre righe (bot, CRM) sono quelle di main.
+- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: identici a HEAD, cioè alla versione del branch come dichiarato.
+
+Cosa non ho verificato: test non rieseguiti (mi baso sui 1144 passed dichiarati; codice identico ai due genitori e file non sovrapposti). reports/funnel/* e reports/crm/guida.md non letti nel contenuto: documenti fuori dal perimetro, arrivano da main.
+
+Memoria: aggiunta la riga #812-M1coord, non committata (la aggiunge l'agente allo staged). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - **`tests/test_unit_voce_ascolto.py`:** 373 su main d03e5bf2 → 375 (#810) → 376 passed (#811). Il test di #811 fallisce sul codice di 992cef9b (rieseguito dal revisore).

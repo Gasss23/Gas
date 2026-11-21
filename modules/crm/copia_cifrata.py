@@ -23,6 +23,7 @@ Funzioni pure o fail-safe (§9): `copia_fuori` non solleva mai, ritorna il motiv
 from __future__ import annotations
 
 import base64
+import glob
 import logging
 import os
 import re
@@ -53,8 +54,18 @@ def cartella() -> Optional[Path]:
     c'è (Mac con iCloud Drive acceso). None = nessuna cartella esterna disponibile."""
     v = os.environ.get("GAS_CRM_BACKUP_CIFRATO_DIR", "").strip()
     if v:
-        return Path(v).expanduser()
-    if ICLOUD_DRIVE.is_dir():
+        try:
+            return Path(v).expanduser()
+        except RuntimeError:
+            # R-825-2: «~utente» che non esiste. Prima il CRM non partiva; ora il percorso
+            # resta com'è (non completo) e `_genitore_assente` lo rifiuta: copia in rosso
+            return Path(v)
+    try:
+        if ICLOUD_DRIVE.is_dir():
+            return ICLOUD_DRIVE / NOME_CARTELLA
+    except OSError:
+        # R-825-2: iCloud Drive c'è ma macOS ne nega la lettura (Python 3.11 solleva da
+        # is_dir): la copia fallirà e si vedrà in rosso, non «spenta», e il CRM parte
         return ICLOUD_DRIVE / NOME_CARTELLA
     return None
 
@@ -105,15 +116,44 @@ def _fernet(pw: str, sale: bytes):  # type: ignore[no-untyped-def]
     return Fernet(base64.urlsafe_b64encode(chiave))
 
 
+def _consiglio_icloud(dest_dir: Path, e: BaseException) -> Optional[str]:
+    """V-1 bot #388, R-828-1/2: un permesso negato su iCloud Drive (macOS lo nega all'app che
+    non ha l'accesso ai file) dà un motivo che dice cosa fare, sia che fallisca la lettura
+    sia la scrittura. None se l'errore non è questo. Mai solleva."""
+    try:
+        if not isinstance(e, PermissionError):
+            return None
+        # V-2 bot #388 (7cd7a2f0): percorso risolto e senza badare a maiuscole e minuscole,
+        # come `_genitore_assente` (collegamenti simbolici verso iCloud Drive riconosciuti)
+        vero = [x.casefold() for x in Path(os.path.realpath(dest_dir)).parts]
+        icloud = [x.casefold() for x in Path(os.path.realpath(ICLOUD_DRIVE)).parts]
+        if vero[:len(icloud)] != icloud:
+            return None
+        altrove = ("" if os.environ.get("GAS_CRM_BACKUP_CIFRATO_DIR", "").strip()
+                   else ", oppure imposta GAS_CRM_BACKUP_CIFRATO_DIR su un'altra cartella")
+        return (f"iCloud Drive non è leggibile o scrivibile ({type(e).__name__}): dai all'app "
+                "da cui avvii il CRM (Terminale o simili) l'accesso ai file in Impostazioni di "
+                f"Sistema → Privacy e sicurezza{altrove}; nessuna copia fuori dal Mac")
+    except Exception:  # §9
+        return None
+
+
 def _genitore_assente(dest_dir: Path) -> Optional[str]:
     """V-1 verifica #386 (3°): la cartella delle copie si crea SOLO se la cartella che la
     contiene esiste già. Con un disco esterno non collegato (/Volumes/…) prima si creava la
     cartella sul disco del Mac e la copia «riusciva» senza uscire dal Mac. Mai solleva
     (V-1 bot #387: un permesso negato su `is_dir` ora è un motivo, non un'eccezione)."""
+    # R-826-1: un percorso non completo (es. «~GasCopie» con un utente che non c'è, o
+    # «copie») si legge dalla cartella di lavoro, cioè dentro ~/Gas: mai lì le copie
+    if not dest_dir.is_absolute():
+        return (f"la cartella {dest_dir} non è un percorso completo (deve iniziare con «/» o "
+                "«~/»): nessuna copia fuori dal Mac")
     try:
         if not dest_dir.parent.is_dir():
-            return (f"la cartella {dest_dir.parent} non c'è (disco non collegato?): nessuna "
-                    "copia fuori dal Mac")
+            # V-2 bot #387 (d809f5f1): non sempre è un disco staccato, può essere una
+            # cartella mai creata (es. ~/Dropbox/Gas/copie): il motivo dice tutte e due
+            return (f"la cartella {dest_dir.parent} non c'è: creala, o collega il disco se è "
+                    "su un disco esterno; nessuna copia fuori dal Mac")
         # rischio segnalato dal revisore #821: su macOS un punto di mount vuoto può restare
         # in /Volumes anche a disco staccato; lì la cartella «esiste» ma è sul disco del Mac.
         # Nota #822: si confronta il percorso RISOLTO (collegamenti simbolici) e senza
@@ -127,6 +167,9 @@ def _genitore_assente(dest_dir: Path) -> Optional[str]:
                 return f"il disco {disco} non è collegato: nessuna copia fuori dal Mac"
         return None
     except OSError as e:
+        consiglio = _consiglio_icloud(dest_dir, e)  # V-1 bot #388: dove guardare
+        if consiglio:
+            return consiglio
         return (f"la cartella {dest_dir.parent} non è accessibile ({type(e).__name__}): "
                 "nessuna copia fuori dal Mac")
 
@@ -149,7 +192,8 @@ def prova_scrittura() -> Optional[str]:
         _scrivi_privato(prova, os.urandom(32), esclusivo=True)
         return None
     except Exception as e:  # §9
-        return f"la cartella {dest_dir} non si può scrivere ({type(e).__name__})"
+        return (_consiglio_icloud(dest_dir, e)  # R-828-1
+                or f"la cartella {dest_dir} non si può scrivere ({type(e).__name__})")
     finally:
         try:
             prova.unlink(missing_ok=True)
@@ -242,7 +286,8 @@ def copia_fuori(copia_locale: Path, keep: int = KEEP) -> Tuple[Optional[Path], O
         return dest, None
     except Exception as e:  # §9: il CRM continua; nel log solo il tipo, mai dati
         log.warning("CRM: copia cifrata esterna non riuscita: %s", type(e).__name__)
-        return None, f"copia cifrata non riuscita ({type(e).__name__})"
+        return None, (_consiglio_icloud(dest_dir, e)  # R-828-1
+                      or f"copia cifrata non riuscita ({type(e).__name__})")
     finally:
         if tmp is not None:  # V-3 bot/verifica #386: niente .tmp lasciati in giro
             try:
@@ -264,6 +309,47 @@ def _pulisci_tmp_vecchi(cartella_esterna: Path) -> None:
         try:
             if resto.stat().st_mtime < limite:
                 resto.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _processo_vivo(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except (OSError, OverflowError):  # PermissionError: c'è ma è di un altro utente;
+        return True  # R-824-1: nel dubbio (anche un PID fuori misura) il file non si tocca
+    return True
+
+
+def _pulisci_ripristini_interrotti(dest: Path) -> None:
+    """V-1 bot #387 (d809f5f1): un ripristino ucciso a metà (kill -9, Mac spento) lascia
+    accanto a `dest` il suo temporaneo IN CHIARO, con un nome unico che nessuno riusa.
+    Si tolgono quelli dei processi che non ci sono più; mai un collegamento simbolico, mai
+    quelli del processo corrente o di un processo ancora vivo, salvo che siano più vecchi di
+    un'ora (V-1 bot #388, 7cd7a2f0: dopo un riavvio il PID può essere di un altro processo;
+    un ripristino dura pochi secondi). Mai solleva."""
+    # R-824-2: solo cifre ASCII, al massimo 10 per il PID
+    schema = re.compile(re.escape(dest.name) + r"\.([0-9]{1,10})-[0-9]+\.ripristino\.tmp")
+    try:
+        resti = list(dest.parent.glob(f"{glob.escape(dest.name)}.*.ripristino.tmp"))
+    except OSError:
+        return
+    for resto in resti:
+        m = schema.fullmatch(resto.name)
+        if not m:
+            continue
+        pid = int(m.group(1))
+        try:
+            if resto.is_symlink():
+                continue
+            vecchio = resto.stat().st_mtime < time.time() - TMP_VECCHIO_S
+            if not vecchio and (pid == os.getpid() or _processo_vivo(pid)):
+                continue
+            if resto.is_file():
+                resto.unlink(missing_ok=True)
+                log.warning("CRM: tolto un ripristino interrotto rimasto accanto alla destinazione")
         except OSError:
             pass
 
@@ -293,6 +379,10 @@ def ripristina(sorgente: Path, dest: Path, pw: str) -> Path:
     di lavoro di SQLite (`-journal`, `-wal`, `-shm`) di un database di prima: SQLite lo
     applicherebbe al file ripristinato rovinandolo (R-815-1). Ritorna `dest`."""
     dest = Path(dest)
+    # V-2 bot #388: la pulizia prima di ogni rifiuto. Un ripristino ucciso fra os.link e la
+    # cancellazione del temporaneo lascia `dest` (che fermerebbe tutto qui sotto) e il
+    # temporaneo IN CHIARO, che così sparisce anche se `dest` esiste ancora
+    _pulisci_ripristini_interrotti(dest)
     nome = Path(sorgente).name
     if nome.startswith(".") and nome.endswith(".icloud"):  # V-4 bot #386: segnaposto di iCloud
         raise ErroreCRM("il file è ancora solo su iCloud (segnaposto «.icloud»): aprilo dal "
