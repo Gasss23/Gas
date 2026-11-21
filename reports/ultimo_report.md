@@ -6,6 +6,7 @@
 ## DECISIONI UMANE RICHIESTE
 
 1. **Provare la simulazione del funnel** (`reports/funnel/simulazione_funnel.html`): aprirla e cliccare i tre percorsi; ogni modifica ai testi si decide lì sopra prima della consegna allo sviluppatore.
+1bis. **Scegliere il trigger unico dei solleciti** (incoerenza nelle fonti scoperta dal 4° verdetto del bot): `funnel_v2.md` dice sia «chi si ferma a metà candidatura» (regole comuni) sia «chi non preme Scrivi a {agente}» (Bozza B). Se il sollecito parte dopo la candidatura accettata, il testo «Ti mancano 30 secondi di candidatura» è incoerente. Proposta dell'agente: entrambi i trigger, con due testi — a metà candidatura il testo attuale; dopo l'accettazione «Ti manca solo l'ultimo passo: scrivi a {agente}» (come nel diretto). Da fissare in `funnel_v2.md` dopo il merge.
 2. **Merge della PR di questa sessione** (vedi handoff §0).
 3. **Consegnare il pacchetto allo sviluppatore del bot** (scelta dell'operatore del 21/11, su main): `reports/funnel/tasto_collaboratori.md` (tasto «I miei link» nel Pannello), `reports/funnel/funnel_v2.md` (Bozza B, 3 passaggi) e la simulazione come riferimento visivo.
 4. **Far controllare i testi del funnel a un esperto di promozione finanziaria/privacy** prima dell'uso (raccomandazione della verifica esterna #392).
@@ -23,6 +24,8 @@
 - **Fetta 4 — Correzioni del 2° verdetto del bot + merge di main (terzo giro)**: FATTA. V-1 BASSA (claim «alla lettera» rimasto nell'handoff): allineato. V-2 BASSA («ultimo passo» non marcato): adottato il testo della Bozza A di `funnel_v2.md` + riga sul rischio, come suggerito dal bot. V-3 COSMETICA: bolla del consenso nel diretto sopra la tastiera; `nome` azzerato a ogni `start()` (non trapela tra le schede). In più: merge di origin/main nel branch (la PR #390 fix voce aveva messo la PR in conflitto sui report canonici), risolto tenendo la versione del ramo — review #837-MERGE APPROVATO, perimetro byte-identico a main. Pagina ripubblicata e riverificata.
 
 - **Fetta 5 — Correzioni del 3° verdetto del bot (quarto giro)**: FATTA. V-1 BASSA: anche il sollecito a +72 h del percorso diretto ora ha un testo suo senza «candidatura» (marcato con *, bottoni Riprendi/Chiudi); verificato dal vivo. V-2 COSMETICA: tolti i ritocchi non marcati — via la numerazione «1/3-2/3-3/3» dai passaggi, via l'emoji aggiunta a «Imparare a farlo da solo», «Sei già nella community.» come nella fonte.
+
+- **Fetta 6 — Correzioni del 4° verdetto del bot (quinto giro)**: FATTA. V-1 BASSA (incoerenza dei solleciti del percorso completo dopo la candidatura accettata — difetto che viene dalle FONTI, non dalla pagina): nella pagina ora una nota * dichiara l'incoerenza e rimanda alla decisione dell'operatore (punto 1bis qui sopra); i testi di funnel_v2 restano invariati in attesa della scelta. V-2 COSMETICA (riga superata nella Fetta 3 dell'handoff): riscritta al passato con rimando alla Fetta 4.
 
 ## Anomalie / cose da sapere
 

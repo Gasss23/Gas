@@ -188,6 +188,7 @@ async function bozzaB(g){
 async function followUp(g, tipo){
   sys('… passano 24 ore senza risposta …');
   if(tipo==='completo'){
+    sys('* nota per l\'operatore: le fonti divergono sul trigger dei solleciti (funnel_v2, regole comuni: «chi si ferma a metà»; Bozza B: «chi non preme Scrivi a»). Qui il sollecito parte DOPO la candidatura accettata, quindi «30 secondi di candidatura» è incoerente: da decidere nella spec (vedi ultimo_report).');
     await botSay(g, 'Ciao '+nome+' 🤝 Ti mancano 30 secondi di candidatura: riprendiamo da dove eri?');
   } else {
     sys('* testo proposto dall\'agente: la spec (tasto_collaboratori §4.3) dice «stessi 2 solleciti» ma il lead diretto non ha una candidatura da completare');
