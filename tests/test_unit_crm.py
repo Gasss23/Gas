@@ -2010,6 +2010,8 @@ def test_note_minori_388(st: CRMStore, tmp_path: Path, monkeypatch: pytest.Monke
     chiamate: List[List[str]] = []
 
     def sysctl_finto(argomenti: List[str], **kw: Any) -> Any:
+        # R-835-1: anche gli argomenti con nome (uscita catturata come testo, tempo massimo)
+        assert kw.get("capture_output") and kw.get("text") and kw.get("timeout") == 2
         chiamate.append(argomenti)
         return copia_cifrata.subprocess.CompletedProcess(
             argomenti, 0, stdout="{ sec = 1732000000, usec = 5 } Wed Nov 20 10:00:00 2026\n")
