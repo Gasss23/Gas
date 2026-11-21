@@ -22,19 +22,21 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 +++
- reports/diff_sessione.md           |  22 +++++++--------
+ .claude/agents/memoria_revisore.md |   5 +++++
+ reports/diff_sessione.md           |  22 ++++++++++------------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  38 ++++++++++----------------
- scripts/voce/LEGGIMI.md            |   4 +++
- scripts/voce/registra_voce.py      |  79 +++++++++++++++++++++++++++++++++++++++++++++--------
- tests/test_unit_voce_ascolto.py    |  70 ++++++++++++++++++++++++++++++++++++++++++++---
+ reports/ultimo_report.md           |  41 +++++++++++++++++-----------------------
+ scripts/voce/LEGGIMI.md            |   4 ++++
+ scripts/voce/registra_voce.py      |  79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ tests/test_unit_voce_ascolto.py    |  70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+02b60959 merge: porta main (7cf52359) nella PR #390; conflitti solo nei report (i nostri) e unione di memoria e stato — review #812-M1coord APPROVATO
+c95ea806 docs(fine-task): §2/§3 handoff
 520e6ca4 docs(fine-task): report della correzione di registra_voce (review #810/#811-M1coord)
 e27c655a fix(voce): parola tagliata all'inizio della finestra si rifà (R-810M1-1) — review #811-M1coord APPROVATO
 0dad979f chore(revisore): memoria review #811 — APPROVATO
