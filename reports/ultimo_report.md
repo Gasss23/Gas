@@ -5,7 +5,7 @@
 
 ## Esito
 - **PR #390 (registrazione solo con «Hey Jarvis» veri): MERGIATA** il 21-11 (dcedea6a) col via dell'operatore.
-- **Correzione #813 (b46fde99, review #813-M1coord APPROVATO CON RISERVE)**: chiude V-1/V-2 del bot su #390 e R-810M1-2.
+- **Correzione #813 (b46fde99, review #813-M1coord APPROVATO CON RISERVE)**: chiude V-1/V-2 del bot su #390; R-810M1-2 attenuata (valore stimato, resta da misurare sul Mac).
   - Microfono muto senza errore (permesso negato): la registrazione si ferma dopo le prime 3 prove con il messaggio sul permesso del microfono, invece di 45 bip a vuoto.
   - Gruppi lontani: «dillo ogni 9 secondi circa» (numero intero, con il margine del ciclo vero: bip, analisi, pausa).
   - LEGGIMI aggiornato.
@@ -17,4 +17,6 @@
 ## Riserve aperte
 - **R-813M1-1 BASSA:** manca un test «suono forte non riconosciuto 3 volte → la registrazione non si ferma».
 - **Bot #390 (ultimo giro), BASSE:** V-1 nessun test di main() con un motore che ha `misura`; V-2 soglia di 0,5 s per la parola tagliata all'inizio forse troppo larga (verso 1 s, o energia dei primi blocchi); V-3 clip da vicino accorciate dal taglio sul picco.
+- **R-810M1-2 BASSA (attenuata):** il margine di 1 s del messaggio «ogni 9 secondi» è stimato: da misurare sul Mac.
+- **Dalle PR #382/#383 (note basse del bot, ancora aperte):** #382 V-1 il filtro della voce non torna da solo all'ascolto senza filtro se si rompe durante l'ascolto; #382 V-2 il controllo di sicurezza del file non guarda le cartelle sopra `.gas_voce/verifica`; #383 V-2 le varianti di «Jarvis» sono tolte solo in testa alla richiesta (mancano in `_PAROLA_FORTE`, `_PAROLA_NELLA_FRASE`, nel client e coi prefissi «senti/ok»); #383 V-3 una variante isolata nel seguito ora riceve «Dimmi.» senza test.
 - Non verificabile qui: comportamento di macOS col permesso del microfono negato (silenzio puro o rumore minimo).

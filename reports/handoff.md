@@ -13,7 +13,7 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **PR #390:** MERGIATA il 21-11 (dcedea6a) col via dell'operatore («ok mergia quando è tutto verde»).
-- **Fetta #813 — note del bot su #390 (V-1 microfono muto, V-2 «7.5») e R-810M1-2:** FATTA, commit b46fde99 (cherry-pick di 5eb5780f su main dcedea6a, stesso diff: SHA-256 31c92e5c). Review #813-M1coord APPROVATO CON RISERVE (R-813M1-1 BASSA).
+- **Fetta #813 — note del bot su #390 (V-1 microfono muto, V-2 «7.5») e R-810M1-2 (attenuata):** FATTA, commit b46fde99 (cherry-pick di 5eb5780f su main dcedea6a, stesso diff: SHA-256 31c92e5c). Review #813-M1coord APPROVATO CON RISERVE (R-813M1-1 BASSA).
 
 ---
 
@@ -85,4 +85,6 @@ Run della PR non ancora disponibile alla scrittura dell'handoff: il ramo si push
 
 - **R-813M1-1 BASSA:** test mancante sul flag `sentito_suono` (vedi §4).
 - **Bot #390, ultimo giro (BASSE):** V-1 nessun test di main() con un motore che ha `misura`; V-2 soglia 0,5 s della parola tagliata forse larga; V-3 clip da vicino accorciate dal taglio sul picco.
-- **Chiuse:** V-1/V-2 del bot su #390 (giro su c95ea806), R-810M1-2.
+- **R-810M1-2 BASSA (attenuata, non chiusa):** «ogni 9 secondi» usa un margine stimato (`MARGINE_CICLO_S` = 1 s); la durata vera del ciclo (bip con afplay, analisi, svuotamento) va misurata sul Mac.
+- **Dalle PR #382/#383 (note basse del bot, ancora aperte):** #382 V-1 il filtro della voce non torna da solo all'ascolto senza filtro se si rompe durante l'ascolto; #382 V-2 il controllo di sicurezza del file non guarda le cartelle sopra `.gas_voce/verifica`; #383 V-2 le varianti di «Jarvis» sono tolte solo in testa alla richiesta (mancano in `_PAROLA_FORTE`, `_PAROLA_NELLA_FRASE`, nel client e coi prefissi «senti/ok»); #383 V-3 una variante isolata nel seguito ora riceve «Dimmi.» senza test.
+- **Chiuse:** V-1/V-2 del bot su #390 (giro su c95ea806).
