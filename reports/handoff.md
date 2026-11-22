@@ -24,6 +24,7 @@
 - **Note del bot su 3a64fd64** (COSMETICA: riga mancante nell'ultimo_report) e **su f1225b8c** (APPROVATO CON RISERVE: V-1 BASSA riserve aperte della chat Voce perse nel merge dei report; V-2 COSMETICA questa riga mancante qui): FATTE. Le riserve della chat Voce sono in `reports/stato_progetto.md`; la regola 3 di `reports/lavoro_parallelo.md` dice di riportarle prima di scartare i report dell'altro lato; notizia in bacheca.
 - **Note del bot su aaf754cf, ddf67cfb e 73dbff1b**: FATTE. Riserve Voce in §7 e nell'ultimo_report; numero delle notizie tolto; decisioni umane allineate; bacheca nella riga «Ultimo aggiornamento»; regola 5 della bacheca (una notizia aperta non si cancella per sola età); ordine e date dei commit in §6.
 - **Falso rosso del bot su 73dbff1b**: il verdetto era APPROVATO CON RISERVE senza ALTA/MEDIA, ma il classificatore ha letto «i termini gravi del bot» come gravità. Notizia in bacheca; la notizia che lo provocava ora dice «parole di gravità».
+- **Merge di main (PR #393, funnel: solo documenti) nel ramo**: FATTO. Conflitti solo nei report e nella memoria del revisore (unione); prima di scartare i report del funnel, le sue decisioni in sospeso sono state portate in `reports/stato_progetto.md` (regola 3 di `reports/lavoro_parallelo.md`). L'operatore ha detto in chat «sì, mergia la #394».
 - **PR #391**: MERGIATA prima di questa fetta (eecf916d).
 
 ---
@@ -36,18 +37,20 @@
  reports/bacheca.md                 |  31 +++++++++++++++++++++++++++++++
  reports/crm/decisioni.md           |   6 ++++++
  reports/crm/domande.md             |   4 +---
- reports/diff_sessione.md           |  17 +++++++----------
+ reports/diff_sessione.md           |  18 +++++++-----------
  reports/handoff.md                 | n/d
  reports/lavoro_parallelo.md        |   3 ++-
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  31 +++++++++++++++++--------------
+ reports/stato_progetto.md          |   5 ++++-
+ reports/ultimo_report.md           |  55 ++++++++++++++++++++++++-------------------------------
 ```
 
-NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base: dcedea6a (origin/main dopo il merge della PR #390, entrato nel ramo col merge di main); i file della #390 escono quindi dal diff.
+NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base: a98a11cf (origin/main dopo il merge della PR #393, entrato nel ramo col merge di main); i file della #390 e della #393 escono quindi dal diff.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e08ad233 Merge origin/main (PR #393, funnel: solo documenti) nel ramo della PR #394 — decisioni in sospeso del funnel riportate in stato_progetto
+bcce124b docs(bacheca): una notizia aperta non si cancella per sola età; avviso sul falso rosso «gravi»; date dei commit in §6 (note del bot su #394)
 73dbff1b docs(fine-task): decisioni umane allineate fra handoff e ultimo_report (con la registrazione della voce); bacheca nella riga «Ultimo aggiornamento» (note del bot su #394)
 ddf67cfb docs(fine-task): riserve della chat Voce anche in handoff §7 e ultimo_report; tolto il numero delle notizie (note del bot su #394)
 aaf754cf docs(bacheca): riserve aperte della chat Voce riportate in stato_progetto; regola per non perderle nei merge dei report (nota del bot su #394)
@@ -123,6 +126,8 @@ Nessuna modifica a gas.py/tests/.
   - `aaf754cf`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE: V-1 BASSA riserve Voce mancanti in §7 e nell'ultimo_report, V-2 COSMETICA «prime tre notizie»: chiuse in ddf67cfb).
   - `ddf67cfb`: handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE: V-1 BASSA decisioni umane non allineate fra handoff e ultimo_report, V-2 COSMETICA bacheca assente dalla riga «Ultimo aggiornamento»: chiuse in 73dbff1b).
   - `73dbff1b`: handoff-check success; verifica-bot failure per un falso positivo del classificatore (verdetto APPROVATO CON RISERVE con V-1 BASSA e V-2 COSMETICA; la parola «gravi», citata come argomento, letta come gravità): note chiuse in questo commit.
+  - `bcce124b`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, una nota COSMETICA sulla regola 5); poi conflitto dopo il merge della #393 su main.
+  - Merge di main (PR #393): run non ancora disponibile alla scrittura dell'handoff.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
