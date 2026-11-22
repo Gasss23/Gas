@@ -25,6 +25,7 @@
 - **Note del bot su aaf754cf, ddf67cfb e 73dbff1b**: FATTE. Riserve Voce in §7 e nell'ultimo_report; numero delle notizie tolto; decisioni umane allineate; bacheca nella riga «Ultimo aggiornamento»; regola 5 della bacheca (una notizia aperta non si cancella per sola età); ordine e date dei commit in §6.
 - **Falso rosso del bot su 73dbff1b**: il verdetto era APPROVATO CON RISERVE senza ALTA/MEDIA, ma il classificatore ha letto «i termini gravi del bot» come gravità. Notizia in bacheca; la notizia che lo provocava ora dice «parole di gravità».
 - **Merge di main (PR #393, funnel: solo documenti) nel ramo**: FATTO. Conflitti solo nei report e nella memoria del revisore (unione); prima di scartare i report del funnel, le sue decisioni in sospeso sono state portate in `reports/stato_progetto.md` (regola 3 di `reports/lavoro_parallelo.md`). L'operatore ha detto in chat «sì, mergia la #394».
+- **Merge di main (PR #395, chat Voce) nel ramo**: FATTO, review #838-MERGE (chat CRM) APPROVATO CON RISERVE (R-838M-1 COSMETICA, chiusa). Codice della voce identico a main; riserve della voce aggiornate in `reports/stato_progetto.md`.
 - **PR #391**: MERGIATA prima di questa fetta (eecf916d).
 
 ---
@@ -32,23 +33,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
+ .claude/agents/memoria_revisore.md |   3 +++
  CLAUDE.md                          |   1 +
  reports/bacheca.md                 |  31 +++++++++++++++++++++++++++++++
  reports/crm/decisioni.md           |   6 ++++++
  reports/crm/domande.md             |   4 +---
- reports/diff_sessione.md           |  18 +++++++-----------
+ reports/diff_sessione.md           |  13 +++++++------
  reports/handoff.md                 | n/d
  reports/lavoro_parallelo.md        |   3 ++-
  reports/stato_progetto.md          |   5 ++++-
- reports/ultimo_report.md           |  55 ++++++++++++++++++++++++-------------------------------
+ reports/ultimo_report.md           |  33 +++++++++++++++++++--------------
 ```
 
-NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base: a98a11cf (origin/main dopo il merge della PR #393, entrato nel ramo col merge di main); i file della #390 e della #393 escono quindi dal diff.
+NB (regola «n/d», 2026-10-24): il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive, quindi la sua riga dice `n/d` e la riga di totale è tolta. Base: 9a9d0036 (origin/main dopo il merge della PR #395, entrato nel ramo col merge di main); i file delle PR #390, #393 e #395 escono quindi dal diff.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8fc05971 Merge origin/main (PR #395, chat Voce) nel ramo della PR #394 — review #838-MERGE (chat CRM) APPROVATO CON RISERVE
+7682133e docs(fine-task): merge di main (PR #393) nel ramo della #394; via dell'operatore al merge
 e08ad233 Merge origin/main (PR #393, funnel: solo documenti) nel ramo della PR #394 — decisioni in sospeso del funnel riportate in stato_progetto
 bcce124b docs(bacheca): una notizia aperta non si cancella per sola età; avviso sul falso rosso «gravi»; date dei commit in §6 (note del bot su #394)
 73dbff1b docs(fine-task): decisioni umane allineate fra handoff e ultimo_report (con la registrazione della voce); bacheca nella riga «Ultimo aggiornamento» (note del bot su #394)
@@ -108,6 +111,41 @@ Prima della review ho letto CLAUDE.md (sezioni 1, 5, 8 e 10), l'inizio di report
 
 Nessuna lezione nuova.
 
+### Review #838-MERGE (chat CRM, commit di merge della PR #395)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #838-MERGE (chat CRM). Ho controllato il merge in corso di origin/main 9a9d0036 (PR #395, voce) nel ramo `claude/nifty-galileo-3k7kbm` (HEAD 7682133e, PR #394, solo documenti). La base è a98a11cf. Il merge non perde codice e non lo altera. Nello stato non manca nessuna riga, ma la riga «Voce, riserve aperte», riscritta, ha perso una voce (riserva sotto).
+
+**Controlli meccanici (rieseguiti da me)**
+- Nessun file in conflitto (`git ls-files -u` vuoto), nessun marcatore di conflitto, `git diff --cached --check` pulito, albero di lavoro uguale all'indice.
+- Nel perimetro di review, l'indice differisce da main solo nella memoria del revisore.
+- Sono rimasti identici a HEAD: handoff, ultimo_report, diff_sessione, CLAUDE.md, bacheca, crm/decisioni, crm/domande, lavoro_parallelo. È corretto per la regola 3 di `reports/lavoro_parallelo.md`.
+
+**Elementi del diff esaminati**
+1. `scripts/voce/registra_voce.py:277`: se il microfono non ha mai dato suono, dopo le 3 prove (`TENTATIVI_PAROLA`) della prima clip lo script si ferma con un errore. Rischio esaminato: che il codice entrato col merge sia diverso da quello revisionato in #813-M1coord. I tre file della voce sono identici a main. Il loro diff staged ha sha256 31c92e5c, lo stesso di b46fde99 e di base..MERGE_HEAD. L'errore lo cattura `scripts/voce/registra_voce.py:625` e viene stampato senza traceback. Esito: ok.
+2. `scripts/voce/registra_voce.py:302`: `sentito_suono` diventa vero solo dopo il controllo del volume. Rischio esaminato: un mutante che sposta il flag. È R-813M1-1, già aperta e riportata nello stato, quindi niente di nuovo. Esito: ok.
+3. `tests/test_unit_voce_ascolto.py:3607`: test nuovi sul microfono muto, sul silenzio dopo un suono (`tests/test_unit_voce_ascolto.py:3625`) e sui secondi interi del messaggio. Rischio esaminato: che i test non girino sull'albero unito. Ho rieseguito la suite su una copia dell'indice: **379 passed**. Esito: ok.
+4. `scripts/voce/LEGGIMI.md:122`: la guida dice «ogni 9 secondi circa» e spiega cosa succede col permesso negato. È coerente con `scripts/voce/registra_voce.py:268` (arrotondamento per eccesso di 6 + 1,5 + 1 = 9). Esito: ok.
+5. `.claude/agents/memoria_revisore.md`: rischio esaminato, righe perse nell'unione. Ho confrontato le quattro versioni (base, HEAD, main, indice) riga per riga, dividendo solo su `\n`. `splitlines()` dava numeri falsi per via di caratteri speciali. L'unione è esatta: 0 righe perse, 0 in più. Si aggiungono #837-MERGE del ramo, #813-M1coord di main e la sua lezione, che resta subito dopo la sua riga. L'ordine relativo di ciascun lato è rispettato. Esito: ok.
+6. `reports/stato_progetto.md:4`: rischio esaminato, che il ramo o main perdano qualcosa nella riga «Ultimo aggiornamento». Ho provato che la riga dell'indice è esattamente quella di main con in testa il frammento del ramo sulla bacheca («bacheca comune tra le chat in `reports/bacheca.md`, regola in CLAUDE.md §3; »). Gli altri 4 segmenti sono identici. Le righe 9 e 11 sono uguali a HEAD, le 978 righe totali sono come in HEAD, e cambiano solo la 4 e la 10. Esito: ok.
+7. `reports/stato_progetto.md:10`: la riga «Voce, riserve aperte» è riscritta dalla sezione «Riserve aperte» dell'ultimo_report di main. Ci sono R-813M1-1, le V-1/V-2/V-3 del bot su #390, R-810M1-2 attenuata, le note di #382/#383, il limite «non verificabile qui» sul permesso negato e la cosa da fare (rifare la registrazione sul Mac). Rischio esaminato: voci della riga precedente cadute. Esito: **riserva** (sotto).
+
+**Riserve**
+- **R-838M-1 (COSMETICA)**: la nuova `reports/stato_progetto.md:10` perde la voce della riga vecchia «punteggi reali della voce dell'operatore da lontano (3 m, altra stanza) col microfono del Mac non verificati». Veniva dal «Non verificato qui» del report della #390 (dcedea6a). Nel report della #395 manca perché ultimo_report riguarda un solo task, non perché la cosa sia stata verificata. Il danno è basso, perché resta «rifare la registrazione della voce sul Mac e incollare il riepilogo», che produrrà quei punteggi. Rimedio: rimettere una frase, per esempio «punteggi reali da lontano non verificati: li darà il riepilogo della nuova registrazione».
+
+**Note per il fine-task (non bloccanti)**
+- `reports/handoff.md:136` e `reports/ultimo_report.md:26` sono le versioni del ramo, tenute per regola. Elencano ancora le riserve voce vecchie: R-810M1-2 «senza bip e analisi», niente R-813M1-1, niente V-1/V-2/V-3 del bot su #390. Vanno allineate alla riga 10 dello stato.
+- In `reports/stato_progetto.md:4` la data dice ancora 2026-11-21, mentre le righe 9 e 10 dicono 22-11.
+
+**Cosa non ho verificato e perché**
+- La suite completa: ho rieseguito solo `tests/test_unit_voce_ascolto.py`. Nel perimetro l'albero unito è identico a main, salvo la memoria, quindi il resto del codice non cambia rispetto a main. Lo stato della CI su main 9a9d0036 non l'ho controllato.
+- Il comportamento reale su macOS col permesso del microfono negato (silenzio puro o rumore minimo): non si riproduce qui. È già dichiarato nell'ultimo_report di main.
+
+**Citazioni per il controllo del verdetto (`check_verdetto.py`)**: dopo il merge il diff di sessione del ramo contiene solo .md fuori dal perimetro, quindi il minimo di 2 citazioni non si applica. Tutte le citazioni sopra esistono a HEAD dopo il merge, compresi i file della voce che arrivano da main.
+
+**Memoria**: ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #838-MERGE e una lezione nuova: quando un merge riscrive la riga «riserve aperte» di un'altra chat, confrontarla voce per voce con quella che sostituisce. Le due righe sono solo nell'albero di lavoro, non in staging: le aggiungi tu all'indice prima del commit di merge. Non ho lanciato `scripts/commit_memoria_revisore.sh`, perché il suo commit del solo file a merge in corso concluderebbe il merge (lezione del 2026-11-02) e perché me l'hai chiesto. Non ho creato `.claude/.review_ok` e non ho committato.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py/tests/.
@@ -128,9 +166,12 @@ Nessuna modifica a gas.py/tests/.
   - `73dbff1b`: handoff-check success; verifica-bot failure per un falso positivo del classificatore (verdetto APPROVATO CON RISERVE con V-1 BASSA e V-2 COSMETICA; la parola «gravi», citata come argomento, letta come gravità): note chiuse in questo commit.
   - `bcce124b`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, una nota COSMETICA sulla regola 5); poi conflitto dopo il merge della #393 su main.
   - Merge di main (PR #393): run non ancora disponibile alla scrittura dell'handoff.
+  - `7682133e`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE); poi conflitto dopo il merge della #395.
+  - Merge di main (PR #395): run non ancora disponibile alla scrittura dell'handoff.
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - Nessuna nuova di questa fetta. Dal CRM resta R-836-1 COSMETICA.
-- **Riserve della chat Voce ereditate dal merge della #390** (riportate in `reports/stato_progetto.md`): R-810M1-2 BASSA (messaggio «ogni N secondi» senza bip e analisi, da verificare sul Mac); punteggi reali della voce da lontano non verificati; note basse del bot #382 V-1/V-2 e #383 V-2/V-3.
+- **Riserve della chat Voce ereditate dai merge della #390 e della #395** (in `reports/stato_progetto.md`): R-813M1-1 BASSA (manca un test «suono forte non riconosciuto 3 volte»), note basse del bot #390 (V-1/V-2/V-3), R-810M1-2 BASSA attenuata (margine di 1 s da misurare sul Mac), note basse #382 V-1/V-2 e #383 V-2/V-3, punteggi della voce da lontano non verificati.
+- **R-838M-1 (COSMETICA, review #838-MERGE chat CRM):** nella riga «Voce, riserve aperte» mancavano i punteggi da lontano: rimessi.

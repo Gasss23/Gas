@@ -16,6 +16,7 @@
 - **Note del bot su f1225b8c**: FATTE. Le riserve aperte della chat Voce, perse quando ho tenuto i miei report nel merge, sono di nuovo in `reports/stato_progetto.md`. In `reports/lavoro_parallelo.md` e in bacheca c'è la regola per non perderle più.
 - **Note del bot su aaf754cf, ddf67cfb e 73dbff1b**: FATTE. Riserve della voce anche nell'handoff, decisioni umane allineate, una notizia aperta non si cancella per sola età. Su 73dbff1b il check era rosso per errore: la parola «gravi», citata come argomento, è stata letta come gravità; ora la notizia dice «parole di gravità» e in bacheca c'è l'avviso.
 - **Merge di main (PR #393 del funnel) nel ramo**: FATTO prima del merge della #394, col via dell'operatore. Le decisioni del funnel ancora in sospeso sono in `reports/stato_progetto.md`.
+- **Merge di main (PR #395 della chat Voce) nel ramo**: FATTO (review #838-MERGE chat CRM). Riserve della voce aggiornate in `reports/stato_progetto.md`.
 - **Risposte dell'operatore** (`reports/crm/decisioni.md` punti 15-17): «online» voleva dire pronto all'uso, sul Mac e non su internet. WhatsApp: per ora invio a mano, l'accesso API di Meta si prepara quando servirà l'invio automatico. Bacheca: sì. Le domande 2 e 3 sono tolte da `reports/crm/domande.md`.
 
 ## Test
@@ -23,4 +24,4 @@
 
 ## Riserve aperte
 - Dal CRM: R-836-1 COSMETICA.
-- Ereditate dalla chat Voce col merge della #390 (in `reports/stato_progetto.md`): R-810M1-2 BASSA, punteggi della voce da lontano non verificati, note basse del bot #382 V-1/V-2 e #383 V-2/V-3.
+- Ereditate dalla chat Voce coi merge della #390 e della #395 (in `reports/stato_progetto.md`): R-813M1-1 BASSA (manca un test «suono forte non riconosciuto 3 volte»), note basse del bot #390 (V-1/V-2/V-3), R-810M1-2 BASSA attenuata (margine di 1 s da misurare sul Mac), note basse #382 V-1/V-2 e #383 V-2/V-3, punteggi della voce da lontano non verificati.
