@@ -1,13 +1,8 @@
-# DIFF SESSIONE — 21 novembre 2026 (simulazione funnel + conteggi vecchi)
+# Diff della sessione — 2026-11-21 — Voce: microfono muto e secondi del messaggio
 
-> Questo file si riscrive a ogni sessione; la storia completa sta in git.
-> Sessione-bis dopo il merge della PR #392 (funnel community); branch ripartito da main eecf916 (dopo il merge della PR #391, CRM).
+Si riscrive a ogni sessione; la storia completa sta in git. Ramo fix/voce-registra-microfono-muto-2 da main dcedea6a (PR #390 mergiata).
 
-File toccati (tutti doc, nessun file del motore):
-
-- `reports/funnel/simulazione_funnel.html` — NUOVO: simulazione cliccabile stile Telegram del funnel Bozza B (3 passaggi), del link diretto `-vip` e del Pannello «I miei link»; testi presi da `funnel_v2.md` e `tasto_collaboratori.md`; provata dal vivo in tutti e tre i percorsi.
-- Secondo giro (stessa sessione): corretti i finding del 1° verdetto del bot sulla PR #393 — V-1 (contatore di generazione: niente percorsi mescolati cambiando scheda), V-2 (righe proposte dall'agente marcate con * e dichiarate nei report; percorso diretto riallineato alla spec §3.1; claim «alla lettera» corretto), V-3 (textContent al posto di innerHTML). Pagina ripubblicata e riverificata.
-- Terzo giro (stessa sessione): corretti i finding del 2° verdetto del bot — V-1 (claim «alla lettera» allineato anche nell'handoff), V-2 («ultimo passo» col testo della Bozza A di funnel_v2 + riga sul rischio), V-3 (bolla del consenso sopra la tastiera; nome azzerato a ogni start) — e merge di origin/main nel branch (019c6c8, conflitto creato dalla PR #390 sui report canonici; review #837-MERGE APPROVATO, perimetro byte-identico a main).
-- Quarto giro (stessa sessione): corretti i finding del 3° verdetto del bot — V-1 (sollecito +72 h del diretto senza «candidatura», ramificato su tipo), V-2 (testi riallineati alle fonti: via numerazione 1/3-2/3-3/3, emoji ed esclamativo aggiunti). Pagina ripubblicata e riverificata.
-- Quinto giro (stessa sessione): trattati i finding del 4° verdetto — V-1 (incoerenza dei solleciti nelle FONTI, dichiarata con nota * nella pagina + decisione per l'operatore in ultimo_report 1bis), V-2 (riga superata dell'handoff riscritta). Pagina ripubblicata.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — riscritti per questa sessione (fotografia dell'ultima sessione). La nota bassa del bot sulla #392 (conteggi «7 domande»/«4 domande») è superata: la riscrittura dei report fatta dalla PR #391 li aveva già tolti da main, e questi non li ripropongono.
+- `scripts/voce/registra_voce.py`: `Registratore.sentito_suono`; stop con `Errore` sul permesso del microfono se le prime prove di una clip non hanno mai sentito un suono; messaggio «ogni %d secondi» con `MARGINE_CICLO_S`.
+- `scripts/voce/LEGGIMI.md`: 9 secondi e il comportamento col microfono muto.
+- `tests/test_unit_voce_ascolto.py`: tre test nuovi (microfono muto, silenzio dopo un suono, messaggio con secondi interi).
+- `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.

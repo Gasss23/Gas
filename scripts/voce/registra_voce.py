@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import pickle
 import re
@@ -73,6 +74,9 @@ ATTESA_LONTANO_S = 6.0        # da quest'attesa in su il gruppo è «lontano»
 SEC_DOPO_PICCO = 0.5          # la clip tenuta finisce poco dopo il picco del punteggio
 TENTATIVI_PAROLA = 3          # prove per clip prima di saltarla
 SEC_PICCO_MINIMO = 0.5        # picco prima di così: la parola è iniziata prima della finestra
+# un ciclo vero dura più di finestra + pausa (bip, analisi, svuotamento): margine per
+# il messaggio «dillo ogni N secondi» quando il bip non si sente (R-810M1-2)
+MARGINE_CICLO_S = 1.0
 SEC_NEGATIVI = 60.0
 # (dove e come, quante volte, secondi per mettersi in posizione dopo Invio): 15 in tutto
 GRUPPI: Tuple[Tuple[str, int, float], ...] = (
@@ -231,6 +235,7 @@ class Registratore:
     misura: Optional[Callable[[List[Any]], Tuple[float, int]]] = None
     soglia_parola: float = a.SOGLIA_BASE_PREDEFINITA
     salvati: List[Path] = field(default_factory=list)
+    sentito_suono: bool = False   # almeno una finestra con un suono (microfono vivo)
 
     def _blocchi(self, secondi: float) -> List[Any]:
         self.mic.svuota()   # niente audio vecchio (né il bip appena suonato)
@@ -259,8 +264,9 @@ class Registratore:
             self.chiedi("\n→ %s: %d volt%s. Premi Invio, poi hai %g s per metterti lì; a "
                         "ogni bip di' «Hey Jarvis» una volta, come lo diresti di solito.%s "
                         % (dove, quante, "a" if quante == 1 else "e", attesa,
-                           " Se da lì non senti il bip, dillo ogni %g secondi circa."
-                           % (finestra + SEC_FRA_CLIP) if lontano else ""))
+                           " Se da lì non senti il bip, dillo ogni %d secondi circa."
+                           % math.ceil(finestra + SEC_FRA_CLIP + MARGINE_CICLO_S)
+                           if lontano else ""))
             self.dorme(attesa)
             for _ in range(quante):
                 for _prova in range(TENTATIVI_PAROLA):
@@ -268,6 +274,13 @@ class Registratore:
                     clip_ok = self._una_clip(finestra)
                     self.dorme(SEC_FRA_CLIP)
                     if clip_ok is None:
+                        if not self.sentito_suono and _prova == TENTATIVI_PAROLA - 1:
+                            # V-1 bot #390: microfono muto senza errore (permesso negato):
+                            # fermarsi subito invece di 15 × 3 bip a vuoto
+                            raise Errore(
+                                "il microfono non dà nessun suono: controlla il permesso "
+                                "del microfono per il Terminale (Impostazioni di Sistema → "
+                                "Privacy e sicurezza → Microfono) e il microfono scelto")
                         continue
                     n += 1
                     self._salva("positivi", "hey_jarvis_%s_%02d.wav" % (quando, n), clip_ok)
@@ -286,6 +299,7 @@ class Registratore:
         if picco < a.VOCE_RMS_PREDEFINITO / 2:
             self.stampa("   (non ti ho sentito: rifallo)")
             return None
+        self.sentito_suono = True
         if self.misura is None:
             return blocchi
         punteggio, i = self.misura(blocchi)
