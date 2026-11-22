@@ -21,10 +21,10 @@
 
 ```
  .claude/agents/memoria_revisore.md |   2 ++
- reports/diff_sessione.md           |  16 ++++++----------
+ reports/diff_sessione.md           |  17 ++++++-----------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  26 +++++++++++++-------------
+ reports/ultimo_report.md           |  51 ++++++++++++++++++++-------------------------------
  scripts/voce/LEGGIMI.md            |   4 +++-
  scripts/voce/registra_voce.py      |  18 ++++++++++++++++--
  tests/test_unit_voce_ascolto.py    |  50 ++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -33,6 +33,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8682aac7 merge: porta main nella PR #395 (solo report e memoria; conflitti: report di sessione i nostri, memoria in unione)
+14a701c5 docs(fine-task): §2/§3 handoff
 241a4128 docs(fine-task): note del bot su #395 — R-810M1-2 attenuata (da misurare sul Mac), riserve di #382/#383 rimesse in traccia
 cba9a316 docs(fine-task): §2/§3 handoff
 6adf1d7f docs(fine-task): report della correzione #813 (microfono muto, secondi del messaggio)
