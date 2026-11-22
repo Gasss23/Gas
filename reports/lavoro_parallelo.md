@@ -20,9 +20,10 @@ Se alla chat Voce serve una modifica nella zona del Motore (per esempio un aggan
 1. **Un ramo per chat**, una PR per fetta. Mai lavorare sul ramo dell'altra chat.
 2. **Prima di iniziare e dopo ogni merge dell'altra chat**: `git fetch origin main` e merge di `origin/main` nel proprio ramo.
 3. **File condivisi che vanno in conflitto** a ogni merge, e come risolverli:
-   - `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: tenere la versione del **proprio** ramo (sono i log della propria sessione).
+   - `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: tenere la versione del **proprio** ramo (sono i log della propria sessione). **Prima di scartare quelle dell'altro lato** (dal 2026-11-21, nota del bot su #394): le sue riserve aperte e le sue «decisioni umane richieste» si riportano in `reports/stato_progetto.md`, se non ci sono già, sennò si perdono.
    - `reports/stato_progetto.md`: unire **a mano**, tenendo le righe di entrambi.
    - `.claude/agents/memoria_revisore.md`: tenere **entrambe** le righe nuove, in ordine di numero.
+   - `reports/bacheca.md` (dal 2026-11-21): tenere le notizie di **entrambi** i lati, in ordine di data, la più nuova in cima.
 4. **Numeri delle review**: possono sovrapporsi tra le due chat. Nei report si scrive sempre «review #N (chat Motore)» o «review #N (chat Voce)».
 5. Tutte le altre regole di `CLAUDE.md` valgono per entrambe: revisore prima di ogni commit nel perimetro, verifica esterna a fine fetta, merge solo con l'ok dell'operatore o con un APPROVATO pulito del bot, risposte brevi.
 

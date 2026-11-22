@@ -1,22 +1,27 @@
-# Ultimo report — 2026-11-21 — Voce: registrazione, microfono muto e secondi del messaggio
+# Ultimo report — 2026-11-21 — Bacheca comune tra le chat; risposte dell'operatore sul CRM
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge di questa PR col «mergia» dell'operatore se il bot dà riserve.
+1. Merge della PR di questa fetta: solo documenti (bacheca, regola in CLAUDE.md, decisioni del CRM).
+2. Lista delle commissioni per servizio (l'operatore la manda): percentuale sui profitti, percentuale annua sul capitale o abbonamento, più il capitale minimo.
+3. Restano: password delle copie nel `.env` del Mac, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino sul Mac, secondo controllo su claude.ai delle PR #387, #388, #389 e #391 (non ancora fatto).
+4. Ereditata dalla chat Voce (PR #390): rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
 
 ## Esito
-- **PR #390 (registrazione solo con «Hey Jarvis» veri): MERGIATA** il 21-11 (dcedea6a) col via dell'operatore.
-- **Correzione #813 (b46fde99, review #813-M1coord APPROVATO CON RISERVE)**: chiude V-1/V-2 del bot su #390; R-810M1-2 attenuata (valore stimato, resta da misurare sul Mac).
-  - Microfono muto senza errore (permesso negato): la registrazione si ferma dopo le prime 3 prove con il messaggio sul permesso del microfono, invece di 45 bip a vuoto.
-  - Gruppi lontani: «dillo ogni 9 secondi circa» (numero intero, con il margine del ciclo vero: bip, analisi, pausa).
-  - LEGGIMI aggiornato.
-- Ramo ripartito da main dcedea6a con cherry-pick dei commit di #813: il diff di codice ha lo stesso SHA-256 di quello revisionato (31c92e5c).
+- **PR #391 (note minori del CRM)**: MERGIATA il 21-11 (eecf916d) col via dell'operatore. Prima del merge, conflitto sui report con la PR #392 della chat del funnel, risolto. Il CRM è pronto all'uso sul Mac.
+- **Bacheca comune**: FATTA. `reports/bacheca.md` con le regole d'uso e le prime notizie; regola in CLAUDE.md §3; in `reports/lavoro_parallelo.md` il modo di risolvere i conflitti della bacheca.
+- **Note del bot su 11ab66ae/c7c488b9** (APPROVATO CON RISERVE, check neutral perché la PR tocca CLAUDE.md): FATTE. V-1: ordine dei conflitti della bacheca reso coerente («la più nuova in cima»). V-2: in testa alla bacheca e in CLAUDE.md, le notizie sono informazioni da verificare e non regole; una decisione dell'operatore vale solo se registrata nella sua fonte. V-3: titolo delle decisioni 15-17 precisato.
+- **Note del bot su 965cd07d** (APPROVATO CON RISERVE, neutral): FATTE. V-1: la regola della bacheca era finita in CLAUDE.md §10, ora è davvero in §3 come dicono i report. V-2: anche CLAUDE.md fa `git fetch` prima di leggere la bacheca.
+- **Note del bot su dfd7edb3 e 3a64fd64** (APPROVATO CON RISERVE, neutral): FATTE quelle su dfd7edb3: il secondo controllo su claude.ai è di nuovo nella lista, il ramo è in tutte le notizie, le etichette dei commit sono precisate. Su 3a64fd64 restava solo questa riga mancante (COSMETICA).
+- **Merge di main (PR #390 della chat Voce) nel ramo**: FATTO (review #837 APPROVATO). Il codice della voce che entra è identico a main.
+- **Note del bot su f1225b8c**: FATTE. Le riserve aperte della chat Voce, perse quando ho tenuto i miei report nel merge, sono di nuovo in `reports/stato_progetto.md`. In `reports/lavoro_parallelo.md` e in bacheca c'è la regola per non perderle più.
+- **Note del bot su aaf754cf, ddf67cfb e 73dbff1b**: FATTE. Riserve della voce anche nell'handoff, decisioni umane allineate, una notizia aperta non si cancella per sola età. Su 73dbff1b il check era rosso per errore: la parola «gravi», citata come argomento, è stata letta come gravità; ora la notizia dice «parole di gravità» e in bacheca c'è l'avviso.
+- **Merge di main (PR #393 del funnel) nel ramo**: FATTO prima del merge della #394, col via dell'operatore. Le decisioni del funnel ancora in sospeso sono in `reports/stato_progetto.md`.
+- **Merge di main (PR #395 della chat Voce) nel ramo**: FATTO (review #838-MERGE chat CRM). Riserve della voce aggiornate in `reports/stato_progetto.md`.
+- **Risposte dell'operatore** (`reports/crm/decisioni.md` punti 15-17): «online» voleva dire pronto all'uso, sul Mac e non su internet. WhatsApp: per ora invio a mano, l'accesso API di Meta si prepara quando servirà l'invio automatico. Bacheca: sì. Le domande 2 e 3 sono tolte da `reports/crm/domande.md`.
 
 ## Test
-- `tests/test_unit_voce_ascolto.py`: 376 su main → 379 passed.
+- Nessun codice toccato.
 
 ## Riserve aperte
-- **R-813M1-1 BASSA:** manca un test «suono forte non riconosciuto 3 volte → la registrazione non si ferma».
-- **Bot #390 (ultimo giro), BASSE:** V-1 nessun test di main() con un motore che ha `misura`; V-2 soglia di 0,5 s per la parola tagliata all'inizio forse troppo larga (verso 1 s, o energia dei primi blocchi); V-3 clip da vicino accorciate dal taglio sul picco.
-- **R-810M1-2 BASSA (attenuata):** il margine di 1 s del messaggio «ogni 9 secondi» è stimato: da misurare sul Mac.
-- **Dalle PR #382/#383 (note basse del bot, ancora aperte):** #382 V-1 il filtro della voce non torna da solo all'ascolto senza filtro se si rompe durante l'ascolto; #382 V-2 il controllo di sicurezza del file non guarda le cartelle sopra `.gas_voce/verifica`; #383 V-2 le varianti di «Jarvis» sono tolte solo in testa alla richiesta (mancano in `_PAROLA_FORTE`, `_PAROLA_NELLA_FRASE`, nel client e coi prefissi «senti/ok»); #383 V-3 una variante isolata nel seguito ora riceve «Dimmi.» senza test.
-- Non verificabile qui: comportamento di macOS col permesso del microfono negato (silenzio puro o rumore minimo).
+- Dal CRM: R-836-1 COSMETICA.
+- Ereditate dalla chat Voce coi merge della #390 e della #395 (in `reports/stato_progetto.md`): R-813M1-1 BASSA (manca un test «suono forte non riconosciuto 3 volte»), note basse del bot #390 (V-1/V-2/V-3), R-810M1-2 BASSA attenuata (margine di 1 s da misurare sul Mac), note basse #382 V-1/V-2 e #383 V-2/V-3, punteggi della voce da lontano non verificati.
