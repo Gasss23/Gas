@@ -6,6 +6,9 @@
      tempo dalla prima creazione, avviso su Telegram), senza aspettare la prima interazione.
      Aspetta la rete fino a 120 s (GAS_SOTTOFONDO_ATTESA_RETE); senza rete non tocca il compito,
      che riparte alla prima interazione con Gas.
+     Con «Sempre Opus» (default) serve il cervello forte: launchd ha un PATH minimo, quindi
+     metti nel .env GAS_CLAUDE_BIN col percorso completo di claude (`which claude`), come per
+     il giro di notte. Senza, il compito non viene toccato e riparte alla prima interazione.
      Niente KeepAlive: non resta acceso. AbandonProcessGroup: il compito ripreso non viene
      chiuso da launchd quando il comando finisce.
      Installazione: sostituisci TUO_UTENTE col tuo nome utente del Mac, poi

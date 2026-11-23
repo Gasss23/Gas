@@ -1350,3 +1350,50 @@ def test_boot_riavvio_non_partito_e_errore(tmp_path, monkeypatch, _niente_ripres
     monkeypatch.setattr(sf, "_avvia_ripresa", _fallisce)
     ok, frase = sf.riprendi_al_boot(tmp_path, _avvisi()[1], rete=_rete_si)
     assert not ok and "ripresa non avviata" in frase
+
+
+# ---- Bot #398 (ea78c51b) V-1: cervello forte non trovato da launchd; verifica esterna V-1 ----
+
+def test_boot_senza_cervello_forte_non_tocca_la_coda(tmp_path, monkeypatch, _niente_riprese_vere):
+    """Con «Sempre Opus» acceso (default di produzione) e `claude` non trovabile, il compito
+    ripreso finirebbe «ko» per sempre: la coda non si tocca, ripresa al primo turno."""
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    monkeypatch.setenv("GAS_SOLO_OPUS", "1")
+    monkeypatch.delenv("GAS_CLAUDE_BIN", raising=False)
+    monkeypatch.setenv("PATH", str(tmp_path / "vuota"))
+    ident, c = _morto(tmp_path)
+    prima = {f.name: f.read_bytes() for f in c.iterdir()}
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa, rete=_rete_si)
+    assert not ok and "Cervello forte non trovato" in frase and "GAS_CLAUDE_BIN" in frase
+    assert {f.name: f.read_bytes() for f in c.iterdir()} == prima
+    assert _niente_riprese_vere == [] and inviati == []
+
+
+def test_forte_trovabile(tmp_path, monkeypatch):
+    monkeypatch.setenv("GAS_SOLO_OPUS", "1")
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.delenv("GAS_CLAUDE_BIN", raising=False)
+    assert sf._forte_trovabile() is False
+    exe = tmp_path / "claude"
+    exe.write_text("#!/bin/sh\n")
+    exe.chmod(0o700)
+    assert sf._forte_trovabile() is True  # trovato nel PATH
+    monkeypatch.setenv("PATH", "/nessuna")
+    monkeypatch.setenv("GAS_CLAUDE_BIN", str(exe))
+    assert sf._forte_trovabile() is True  # percorso completo nel .env
+    monkeypatch.setenv("GAS_CLAUDE_BIN", str(tmp_path / "manca"))
+    assert sf._forte_trovabile() is False
+    monkeypatch.setenv("GAS_SOLO_OPUS", "0")  # altri cervelli disponibili
+    assert sf._forte_trovabile() is True
+
+
+def test_boot_compito_gia_finito_niente_attese(tmp_path, monkeypatch, _niente_riprese_vere):
+    """Verifica esterna #398 (ea78c51b) V-1: un compito già «ok» non aspetta la rete né
+    cerca il forte: si chiude da sé e la frase dice «già finito»."""
+    ident, _ = _morto(tmp_path, stato="ok")
+    chiamate = []
+    ok, frase = sf.riprendi_al_boot(tmp_path, _avvisi()[1],
+                                    rete=lambda: chiamate.append("rete") or False,
+                                    forte=lambda: chiamate.append("forte") or False)
+    assert ok and "già finito" in frase and chiamate == []

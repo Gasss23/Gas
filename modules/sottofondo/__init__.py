@@ -22,6 +22,7 @@ import re
 import math
 import os
 import secrets
+import shutil
 import signal
 import socket
 import subprocess
@@ -345,10 +346,28 @@ def _aspetta_rete(rete: Callable[[], bool], dormi: Callable[[float], Any] = time
         dormi(5)
 
 
+def _forte_trovabile() -> bool:
+    """Bot #398 (ea78c51b) V-1: con «Sempre Opus» (GAS_SOLO_OPUS acceso, default) il compito
+    ripreso va solo al cervello forte (`claude`). Da launchd il PATH è minimo: se il binario
+    non si trova (stessa ricerca di brains/claude_cli.py: GAS_CLAUDE_BIN, poi PATH), il
+    figlio fallirebbe e il compito finirebbe «ko» per sempre. Con l'interruttore spento
+    ci sono gli altri cervelli: True. Mai eccezioni."""
+    try:
+        if os.environ.get("GAS_SOLO_OPUS", "1").strip().lower() in ("0", "false", "no", "off"):
+            return True
+        binario = os.environ.get("GAS_CLAUDE_BIN") or "claude"
+        if os.sep in binario:
+            return os.path.isfile(binario) and os.access(binario, os.X_OK)
+        return shutil.which(binario) is not None
+    except Exception:
+        return False
+
+
 def riprendi_al_boot(root: Path,
                      avvisa: Optional[Callable[[str, Path], Any]] = None,
                      rete: Optional[Callable[[], bool]] = None,
-                     dormi: Callable[[float], Any] = time.sleep) -> Tuple[bool, str]:
+                     dormi: Callable[[float], Any] = time.sleep,
+                     forte: Optional[Callable[[], bool]] = None) -> Tuple[bool, str]:
     """R7 fetta 2: `gas.py sottofondo-riprendi`, lanciato all'avvio del computer (launchd oggi,
     systemd sul server). Fa lo stesso controllo dell'inizio turno (`controlla`): un compito il
     cui processo è morto col riavvio riparte subito, senza aspettare la prima interazione;
@@ -368,7 +387,18 @@ def riprendi_al_boot(root: Path,
         # ripreso fallirebbe subito e verrebbe chiuso «ko» per sempre: si aspetta la rete
         # (con un tetto) e, se non arriva, non si tocca la coda: il compito riparte alla
         # prima interazione con Gas, come prima di questa fetta.
-        if ident and not _aspetta_rete(rete or _rete_pronta, dormi):
+        # Verifica esterna #398 (ea78c51b) V-1: attese e controlli solo se il compito è
+        # ancora aperto (uno già finito si chiude da sé, anche senza rete)
+        aperto = bool(ident) and (_leggi(percorso) or {}).get("stato") in ("in_coda", "in_corso")
+        if aperto and not (forte or _forte_trovabile)():
+            # Bot #398 (ea78c51b) V-1: senza cervello forte raggiungibile la coda non si tocca
+            logging.warning("sottofondo %s: cervello forte non trovato all'avvio, ripresa "
+                            "rimandata", ident)
+            return False, (f"Cervello forte non trovato (claude non è nel PATH di questo avvio): "
+                           f"compito {ident} non toccato, riparte alla prima interazione con "
+                           "Gas. Per la ripresa all'avvio metti GAS_CLAUDE_BIN (percorso "
+                           "completo di claude) nel .env.")
+        if aperto and not _aspetta_rete(rete or _rete_pronta, dormi):
             logging.warning("sottofondo %s: rete non pronta all'avvio, ripresa rimandata", ident)
             return False, (f"Rete non pronta: compito {ident} non toccato, riparte alla prima "
                            "interazione con Gas.")
