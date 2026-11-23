@@ -6,12 +6,11 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #397 (https://github.com/Gasss23/Gas/pull/397). Fetta di sicurezza (cancello delle firme, scelta del modello): secondo controllo su claude.ai col link della PR.
-2. **R-840-2 (MEDIA), falsi allarmi del filtro «solo Opus»**: un messaggio con «clienti», «commissione», «versato», «deposito» o un numero lungo che inizia con 0 o 3 va solo a Opus; col cervello forte spento o al tetto quel turno, e quello dopo, si fermano con «contiene dati di clienti». Scelte: tenere così (privacy prima), togliere qualche parola, o un messaggio più chiaro.
-3. **V-1 (MEDIA) della verifica esterna #397, clienti nuovi**: i dati di un cliente NUOVO scritti senza parole del CRM («aggiungi Anna Neri», «metti 2000 euro a Giulia», un'email) arrivano prima al modello del turno, anche gratuito, contro la regola «dati dei clienti solo su Opus» (CLAUDE.md §2); quel modello non può usare il CRM e, se ci prova, il turno passa a Opus. Scelte: (a) accettare il limite e scrivere «cliente»; (b) allargare il filtro a email e cifre in euro (più falsi allarmi, stessa scelta di R-840-2; oggi farebbe fallire T115c6 e T80ad, scritti contro i blocchi inutili); (c) tutta la chat con Gas su Opus.
-4. Privacy, da sapere e confermare: le conversazioni con Gas sui clienti restano nella storia di Gas (`.gas_history.json`), le richieste di firma nella sua memoria (`.gas_memory.db`); i messaggi passano da Telegram come la chat di oggi; a voce i dati passano da Groq (trascrizione) ed ElevenLabs (voce). Nel diario di Gas non vanno nomi né cifre dei clienti.
-5. Restano dalle fette prima: lista delle commissioni per servizio; sul Mac password delle copie nel `.env`, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino; secondo controllo su claude.ai delle PR #387, #388, #389 e #391; decisione sulle parole di gravità del bot («alto», «severo», «serio», «elevato»).
-6. Ereditata dalla chat Voce: rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
+1. Merge della PR #397 (https://github.com/Gasss23/Gas/pull/397): l'operatore ha dato il via in chat («ok avvisami quando hai mergiato»). Fetta di sicurezza: secondo controllo su claude.ai col link della PR consigliato.
+2. Da sapere (decisione 19 «Sempre Opus»): se Opus non c'è (forte spento o tetto del giorno finito) Gas non risponde finché non torna; il tetto giornaliero del forte si consuma prima; a voce l'audio passa comunque da Groq (trascrizione) e la risposta da ElevenLabs. Per tornare al filtro per parole: `GAS_SOLO_OPUS=0` nel `.env`.
+3. Privacy, da sapere: le conversazioni con Gas sui clienti restano nella storia di Gas (`.gas_history.json`), le richieste di firma nella sua memoria (`.gas_memory.db`); i messaggi passano da Telegram come la chat di oggi. Nel diario di Gas non vanno nomi né cifre dei clienti.
+4. Restano dalle fette prima: lista delle commissioni per servizio; sul Mac password delle copie nel `.env`, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino; secondo controllo su claude.ai delle PR #387, #388, #389 e #391; decisione sulle parole di gravità del bot («alto», «severo», «serio», «elevato»).
+5. Ereditata dalla chat Voce: rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
 
 ---
 
@@ -27,7 +26,8 @@
 - **Bot di verifica su 82afe955**: failure per verdetto incoerente (APPROVATO CON RISERVE con «FINDING: nessuno»), non per il codice.
 - **Allargamento del filtro a email ed euro**: SALTATO — fa fallire T115c6 e T80ad (scritti contro i blocchi inutili); è la scelta di R-840-2, la decide l'operatore.
 - **R-843-1** (df54672d e commento): la correzione provata è stata BOCCIATA (#845-CRM: perdeva telefoni col «+» e i trattini) e tolta; R-843-1 resta BASSA, dichiarata (#846-CRM); motivo del commento corretto (#847-CRM).
-- **R-840-2**: DEFERITA — decisione dell'operatore (§0 punto 2).
+- **Decisione 19 «Sempre Opus»**: FATTA. L'operatore, fra tre opzioni spiegate in chat, ha scelto «Sempre Opus». `GAS_SOLO_OPUS` acceso di default (d409cc8a, review #848-CRM APPROVATO CON RISERVE), R-848-1 MEDIA sulla voce corretta nei documenti (d814eb3d). Superano V-1 della verifica esterna e R-840-2, che restano solo con `GAS_SOLO_OPUS=0`.
+- **Bot di verifica su ea67777b**: APPROVATO CON RISERVE con V-1 MEDIA (superata dalla decisione 19) e V-2 COSMETICA (guida, corretta in d409cc8a).
 - **Prova su Mac, Telegram e `claude -p` veri**: SALTATA — non raggiungibili da qui; provato con client finti.
 - **Anomalia durante il fine-task**: un primo tentativo di scrivere questo file con un heredoc non quotato ha fatto eseguire alla shell i testi tra apici inversi della prosa (tra cui `pip install -r requirements.txt` nel container, la suite del kernel e `claude -p` senza input, che ha dato errore). Il file non è stato scritto; nel repo nessun commit, nessun push, cambiati solo log e cache ignorati da git. Riscritto con file temporanei e heredoc quotato.
 
@@ -36,21 +36,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  22 +++++++++++
- gas.py                             | 182 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ .claude/agents/memoria_revisore.md |  25 ++++++++++++
+ CLAUDE.md                          |   2 +-
+ gas.py                             | 215 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
  modules/crm/agente.py              | 776 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/store.py               | 187 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  modules/gate/gate.py               |   7 ++++
  modules/telegram/bot.py            |  49 +++++++++++++++++++++++
- reports/bacheca.md                 |   1 +
- reports/crm/decisioni.md           |   4 ++
- reports/crm/guida.md               |  13 +++++-
- reports/diff_sessione.md           |  17 ++++----
+ reports/bacheca.md                 |   2 +
+ reports/crm/decisioni.md           |   5 +++
+ reports/crm/guida.md               |  17 +++++++-
+ reports/diff_sessione.md           |  20 ++++++----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           |  44 ++++++++++++---------
+ reports/ultimo_report.md           |  45 ++++++++++++---------
+ tests/conftest.py                  |   4 ++
  tests/test_unit_crm.py             | 304 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_kernel.py          | 297 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_kernel.py          | 375 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -58,6 +60,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d814eb3d docs: R-848-1 — a voce l'audio passa comunque da Groq ed ElevenLabs; GAS_SOLO_OPUS nella tabella della guida
+d409cc8a feat(gas): «Sempre Opus» — GAS_SOLO_OPUS acceso di default, tutto quello che l'operatore scrive o dice va solo a Opus (decisione 19, review #848-CRM)
+ea67777b docs(fine-task): verifica esterna #397, bot, review #845-#847-CRM; V-1 e R-840-2 all'operatore
 bfd183e6 docs(gas): motivo esatto di R-843-1 nel commento del filtro (review #847-CRM)
 df54672d docs(gas): V-1 verifica esterna #397 e R-843-1 dichiarati nel commento del filtro e nella guida (review #845-CRM BOCCIATO → #846-CRM)
 82afe955 docs(fine-task): handoff col verdetto #841 riemesso senza IP e la review #844-CRM; memoria del revisore
@@ -515,17 +520,62 @@ Review #847-CRM del diff staged su claude/nifty-galileo-3k7kbm, sopra df54672d: 
 
 File utili: `/home/user/Gas/gas.py`, `/home/user/Gas/.claude/agents/memoria_revisore.md`, `/home/user/Gas/reports/crm/guida.md`. L'output dei test è in `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/kernel.out`.
 
+---
+
+Review #848-CRM, commit d409cc8a (verdetto integrale incollato):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #848-CRM. Diff staged: 7 file, +115/−9, sopra ea67777b, sha256 del diff 7c4add8c. Letture fatte: CLAUDE.md (sez. 1, 2, 5, 8, 9, 10), reports/stato_progetto.md (righe 1-40) e la memoria del revisore (lezioni #839-#847).
+
+**Elementi del diff esaminati**
+- `gas.py:378`: `_solo_opus_sempre()` legge `GAS_SOLO_OPUS` a ogni chiamata. Con variabile assente, vuota o con un valore non riconosciuto l'interruttore è acceso; si spegne solo con 0/false/no/off. Rischio esaminato: un errore di scrittura nel `.env` che spegne l'interruttore. Il valore sbagliato porta sempre verso l'acceso (T119a). Non può sollevare eccezioni e i type hint ci sono. Esito: ok.
+- `gas.py:403`: `_finestra_ha_dati_lead` restituisce True per ogni finestra con un messaggio dell'operatore. Rischio esaminato: effetti su chi usa la funzione per altro. La funzione si usa solo in 4 punti, tutti in gas.py: inizio di `run_turn` (`gas.py:5695`), i due controlli del ciclo dei cervelli (`gas.py:5806`, `gas.py:5817`) e la riflessione (`gas.py:4697`). Nessun modulo esterno la usa. Il blocco di memoria pieno dipende da `_forte_rung`, cioè da una chiamata Opus, non da questa funzione. Le lezioni non filtrate della riflessione vanno solo a Opus. `_get_window` non è toccata e non c'è slicing della storia. Esito: ok.
+- `gas.py:6073`: la riga «↪ risposta dal cervello forte: … dati di clienti» non compare più con l'interruttore acceso. Rischio esaminato: §8, il cambio di modello deve essere dichiarato. Il primo cervello della cascata è claude-cli, quindi non c'è ripiego da dichiarare, e il final porta comunque `modello`. Esito: ok (il mutante che toglie la condizione viene ucciso da T119b).
+- `gas.py:6133`: nuovo messaggio quando il turno si ferma («Rispondo solo con Claude Opus …»). Rischio esaminato: un turno che si ferma senza dire perché. Esito: ok (T119d).
+- `tests/conftest.py:15` e `tests/test_unit_kernel.py:56`: l'interruttore è spento (`GAS_SOLO_OPUS=0`) nelle suite che provano la cascata. Rischio esaminato: che lo spegnimento nasconda un difetto. Ho misurato cosa succede senza: 30 test falliscono in notte, sottofondo, telegram_voce e voice_server, e la suite del kernel si interrompe a T80. Le suite dipendono davvero dallo spegnimento, quindi la notizia in bacheca è giusta. Esito: ok, con R-848-3.
+- `tests/test_unit_kernel.py:13962`: T119e prova la riflessione con l'interruttore acceso. Rischio esaminato: un test che passa anche se la riflessione ignora l'interruttore. Ho costruito un mutante in cui la riflessione valuta il filtro con l'interruttore spento: T119e lo uccide. Esito: ok.
+
+**Prove rifatte sulla copia dell'indice**
+- Suite del kernel: 1212 PASS, 0 FAIL.
+- 12 suite pytest (notte, sottofondo, telegram_voce, voice_server, voice_contesto, manutenzione, gate, crm, avvisa_operatore, claude_cli, richieste, dotenv): 1834 passed.
+- 4 mutanti su 4 uccisi: default «0» (T119a), senza `.strip()` (T119a), riga d'avviso senza interruttore (T119b), riflessione che ignora l'interruttore (T119e).
+- Sonda con forte e gratuiti finti, interruttore acceso: turno normale, `/forte`, `voce=True` ed `effimero=True` usano tutti e solo `claude-opus-5-5`. I gratuiti non vengono mai chiamati.
+
+**Risposte alle tue 4 domande**
+1. **Strade verso un modello minore con l'interruttore acceso.** Le uniche chiamate a modelli linguistici nel repo sono `run_turn` (`gas.py:5790`), `rifletti` (`gas.py:4763`), il ping del doctor (testo fisso «ping») e lo scrittore del CRM (solo Opus). Telegram, voce, terminale, notte e sottofondo passano tutti da `run_turn` o `rifletti`. La compressione della storia non usa modelli e gli embedding sono locali (fastembed). Nessuna strada porta il testo a un modello minore. L'eccezione è la voce: l'audio va a Groq Whisper e la risposta a ElevenLabs (vedi R-848-1).
+2. **Effetti del True su altri usi della funzione.** Pin di memoria, lezioni e recap non cambiano. Restano solo testi diventati inesatti (cosmetiche sotto).
+3. **Default acceso, CI e suite fuori da pytest.** In CI la suite del kernel gira come script e si spegne da sola (`tests/test_unit_kernel.py:56`). Tutti gli altri passi sono pytest dentro tests/, quindi passano da conftest. Nessuno script fuori dai test costruisce `GasKernel`, e i sottoprocessi dei test ereditano l'ambiente.
+4. **Test esistenti.** Il diff non modifica test esistenti: in test_unit_kernel.py nessuna riga tolta, solo lo spegnimento in testa e il blocco T119. T119 rimette la variabile com'era nel `finally`.
+
+**Riserve**
+- **R-848-1 MEDIA** — una promessa di privacy che non vale per la voce. `CLAUDE.md:8`, `reports/crm/decisioni.md:46`, la notizia in bacheca e la guida (riga 96) dicono che tutto quello che l'operatore scrive **o dice** lo legge solo Claude Opus. A voce non è vero: l'audio, nomi dei clienti compresi, va a Groq Whisper per la trascrizione (`modules/voice/stt.py:16`, anche i vocali di Telegram in `modules/telegram/bot.py:176`), e la risposta va a ElevenLabs. La guida lo dice solo due righe sotto (`reports/crm/guida.md:98`). L'operatore ha scelto un'opzione presentata come «Nessun nome di cliente può mai finire ai modelli gratuiti». Rimedio: aggiungere in CLAUDE.md, nella decisione 19 e in bacheca «a voce l'audio passa comunque da Groq (trascrizione) e la risposta da ElevenLabs», e dirlo all'operatore. Non è una regressione: la trascrizione esisteva già.
+- **R-848-2 BASSA** — il doctor non avvisa. Scrive «Cervello forte: OK, spento» (`gas.py:6219`), ma con l'interruttore acceso, che è il default, e il forte spento Gas non risponde a nessun messaggio. Stesso caso quando `GAS_MODEL_CLAUDE_CLIENTI` non è Opus: ogni turno si ferma. Su un'installazione nuova il doctor è verde e Gas resta muto. Rimedio: un WARN in questi due casi.
+- **R-848-3 BASSA** — il comportamento di produzione è provato solo nel kernel (T119). Tutte le suite pytest dei canali (notte, sottofondo, voce, Telegram) girano con l'interruttore spento. Rimedio: almeno un test con l'interruttore acceso per notte e voce (per esempio: forte spento → errore, gratuiti mai chiamati).
+
+**Cosmetiche**
+- Con l'interruttore acceso e il forte spento, la riflessione scrive «la trascrizione contiene dati di clienti» (`gas.py:4699`).
+- `/forte` ed effimero col forte spento danno «Pipeline esausta» e non il messaggio nuovo, perché `_solo_forte_lead` vale solo se il compito non è già «forte». Nessun dato va ai gratuiti.
+- Nella tabella §6 della guida manca `GAS_SOLO_OPUS`, e `GAS_MODEL_CLAUDE_CLIENTI` è ancora descritto come il modello «quando ci sono dati di clienti».
+- I compiti della notte dopo la mezzanotte consumano il tetto giornaliero del forte dello stesso giorno: la chat di giorno può fermarsi prima. La decisione 19 lo dice solo in generale.
+
+**Rischio escluso**
+- Non ho verificato il comportamento reale di `claude -p` con Opus (latenza a voce, regole d'uso dell'abbonamento Max, il parametro `--model claude-opus-5-5` accettato dalla CLI) né il `.env` sul Mac: qui non ci sono né la CLI né il Mac.
+- Non ho rieseguito le suite hooks, web, handoff e verifica-bot: non toccano il kernel.
+
+Memoria aggiornata con la riga #848-CRM e 2 lezioni in `/home/user/Gas/.claude/agents/memoria_revisore.md` (senza IP). Il file non è in staging e il diff staged resta 7c4add8c. Commit della memoria non eseguito e `.claude/.review_ok` non creato, come hai chiesto.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `python tests/test_unit_kernel.py`: 1191 PASS → 1206 PASS, 0 FAIL. Nuovi T118a, T118b, T118c, T118c2, T118d, T118e, T118e2, T118f, T118f2, T118g. Adattati alla regola nuova T80 (testo «per il cliente Rossi» → «per Rossi») e T116h («ricordami» → «poi sistemo»); il revisore (#840-CRM) li giudica coerenti.
+- `python tests/test_unit_kernel.py`: 1191 PASS → 1212 PASS, 0 FAIL. Nuovi T118a, T118b, T118c, T118c2, T118d, T118e, T118e2, T118f, T118f2, T118g, T119a-f. In testa alla suite `GAS_SOLO_OPUS=0` (prova la cascata); T119 prova l'interruttore acceso. Adattati alla regola nuova T80 (testo «per il cliente Rossi» → «per Rossi») e T116h («ricordami» → «poi sistemo»); il revisore (#840-CRM) li giudica coerenti.
 
 ```
-=== RIEPILOGO: 1206 PASS, 0 FAIL ===
+=== RIEPILOGO: 1212 PASS, 0 FAIL ===
 ```
 
 - Con gli UUID delle firme forzati ad avere 7 cifre di fila (script del revisore `run_uuid_cifre.py`): 1206 PASS, 0 FAIL.
 - `pytest tests/test_unit_crm.py`: 139 → 150 passed.
-- Altre suite pytest della CI sull'albero di 0afc1a79: 3512 passed. 070e7ad3 cambia solo un commento in `gas.py`, test del kernel e guida.
+- Altre suite pytest della CI con «Sempre Opus» (spento da `tests/conftest.py`): 3512 passed.
 
 ## §6 STATO CI
 
@@ -540,12 +590,16 @@ File utili: `/home/user/Gas/gas.py`, `/home/user/Gas/.claude/agents/memoria_revi
   - `e98be2cc`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
   - `82afe955` (secondo commit di fine-task): unit-suite success, handoff-check success, verifica-bot failure (verdetto del bot incoerente: APPROVATO CON RISERVE con «FINDING: nessuno»).
   - `df54672d` e `bfd183e6`: nessuna run propria (pushati insieme al commit di fine-task).
+  - `ea67777b` (terzo commit di fine-task): unit-suite success, handoff-check success, verifica-bot failure (APPROVATO CON RISERVE con V-1 MEDIA, superata dalla decisione 19).
+  - `d409cc8a`, `d814eb3d`: nessuna run propria (pushati insieme al commit di fine-task).
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-840-2 MEDIA, decide l'operatore**: falsi allarmi del filtro «solo Opus» (§0 punto 2).
-- **V-1 MEDIA della verifica esterna #397, decide l'operatore**: clienti nuovi senza parole del CRM (§0 punto 3). V-2 BASSA («20 mila», «1 500» ammettono più cifre; la firma mostra quella vera) e V-3 BASSA (CI dell'ultimo commit non pronta alla scrittura dell'handoff).
+- **R-848-2 BASSA**: il doctor non avvisa che con `GAS_SOLO_OPUS` acceso e il forte spento (o un modello per i clienti non Opus) Gas non risponde.
+- **R-848-3 BASSA**: lo «Sempre Opus» è provato solo nella suite del kernel (T119); le suite pytest dei canali girano con l'interruttore spento.
+- COSMETICHE #848: messaggio della riflessione col forte spento («dati di clienti»), `/forte` ed effimero col forte spento danno «Pipeline esausta», notte e tetto del giorno.
+- **R-840-2 e V-1 della verifica esterna #397**: superate dalla decisione 19; valgono solo con `GAS_SOLO_OPUS=0`. V-2/V-3 BASSE della verifica esterna: nessun cambio. V-2 BASSA («20 mila», «1 500» ammettono più cifre; la firma mostra quella vera) e V-3 BASSA (CI dell'ultimo commit non pronta alla scrittura dell'handoff).
 - **R-846-2 BASSA**: questo handoff e lo stato ora riportano V-1 come voce a sé e R-843-1 come dichiarata (chiusa con questo commit).
 - **R-842-2 BASSA** (dichiarata in guida e commento): formati di telefono non riconosciuti («333.123.4567», «02 12 34 56 78», «tel.3331234567», «(333) 1234567»).
 - **R-842-3 BASSA** (dichiarata): numeri di 7-12 cifre che iniziano con 0 o 3 presi per telefoni (PID, «3000000 visualizzazioni», righe di free/df).
