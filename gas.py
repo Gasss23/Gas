@@ -375,6 +375,16 @@ def _contiene_identificativo_uno_per_uno(t: str, identificativi: List[str]) -> b
     return False
 
 
+def _solo_opus_sempre() -> bool:
+    """Decisione dell'operatore del 2026-11-23 (punto 19 di `reports/crm/decisioni.md`):
+    TUTTO quello che l'operatore scrive o dice a Gas lo legge solo Claude Opus, così nessun
+    dato di un cliente (anche nuovo, anche scritto senza le parole del CRM) passa da un
+    modello minore. Interruttore `GAS_SOLO_OPUS`, ACCESO di default (anche vuoto o scritto
+    male: verso sicuro); «0», «false», «no», «off» tornano alla scelta per parole
+    (`_RE_RICHIESTA_CRM` e nomi dei clienti). Letto a ogni chiamata (vale anche dal .env)."""
+    return os.environ.get("GAS_SOLO_OPUS", "1").strip().lower() not in ("0", "false", "no", "off")
+
+
 def _finestra_ha_dati_lead(messaggi: List[Dict[str, Any]],
                            identificativi: Optional[List[str]]) -> bool:
     """True se i messaggi contengono dati di lead (blocco esteso dei nomi, operatore
@@ -384,8 +394,13 @@ def _finestra_ha_dati_lead(messaggi: List[Dict[str, Any]],
     nome e argomenti delle chiamate a strumento, anche inventati). Con `identificativi`
     None (lettura dei contatti fallita) i nomi dei lead non si possono riconoscere:
     True (fail-closed, V-1 bot #375), così la conversazione va solo al forte e, se il
-    forte non c'è, si aspetta (CLAUDE.md §2: mai ai gratuiti). PURA."""
+    forte non c'è, si aspetta (CLAUDE.md §2: mai ai gratuiti). Con `GAS_SOLO_OPUS` acceso
+    (default, decisione dell'operatore del 2026-11-23) ogni finestra con un messaggio
+    dell'operatore conta come «con dati di clienti»: tutto va solo a Opus. Pura a parte
+    la lettura dell'interruttore."""
     if identificativi is None:
+        return True
+    if _solo_opus_sempre() and any(m.get("role") == "user" for m in messaggi):
         return True
     for m in messaggi:
         if m.get("role") == "tool" and m.get("name") in _TOOL_DATI_LEAD:
@@ -6055,10 +6070,13 @@ class GasKernel:
                             _turno_provider = name  # Fetta B: provider che ha prodotto la risposta
                             _turno_final = True
                             _info_fin = _info_ripiego(name, _model_call, providers[0][0], _motivi)
-                            if _solo_forte_lead and name == "claude-cli":
+                            if (_solo_forte_lead and name == "claude-cli"
+                                    and not _solo_opus_sempre()):
                                 # V-2 bot #375 (§8): il passaggio al forte per i dati dei
                                 # clienti si dichiara (solo testo, mai a voce come le altre
-                                # righe di avviso): consuma il tetto del forte.
+                                # righe di avviso): consuma il tetto del forte. Con
+                                # GAS_SOLO_OPUS acceso (23-11) Opus è la strada normale di
+                                # ogni turno: la riga sarebbe su ogni risposta, e falsa.
                                 _info_fin["avviso_ripiego"] = (
                                     "↪ risposta dal cervello forte: nella conversazione ci "
                                     "sono dati di clienti (mai ai modelli gratuiti)")
@@ -6113,9 +6131,12 @@ class GasKernel:
             if _solo_forte_lead:
                 # Blocco esteso dei nomi: mai ai gratuiti, motivo dichiarato all'operatore
                 yield {"type": "error",
-                       "content": ("Questa richiesta contiene dati di clienti: rispondo solo "
-                                   "col cervello forte, che ora non è disponibile. "
-                                   f"Dettagli: {_dettaglio}.")}
+                       "content": (("Rispondo solo con Claude Opus (scelta dell'operatore, "
+                                    "GAS_SOLO_OPUS), che ora non è disponibile. "
+                                    if _solo_opus_sempre() else
+                                    "Questa richiesta contiene dati di clienti: rispondo solo "
+                                    "col cervello forte, che ora non è disponibile. ")
+                                   + f"Dettagli: {_dettaglio}.")}
                 return
             if _solo_forte_seguito:  # R-683-2-M2: l'operatore sa perché niente gratuiti
                 _dettaglio += ("; turno solo sul cervello forte perché nella conversazione "

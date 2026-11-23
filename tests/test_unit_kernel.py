@@ -51,6 +51,9 @@ from brains.model_ids import MODEL_GROQ
 #    invio riuscito installano esplicitamente _TgFinto);
 # 3) cintura: urlopen verso api.telegram.org bloccato e contato (T76).
 os.environ["GAS_NO_DOTENV"] = "1"  # prova reale 2026-10-11: main() carica il .env
+# GAS_SOLO_OPUS (decisione dell'operatore 2026-11-23) è acceso di default: la suite prova la
+# cascata dei cervelli, quindi lo spegne; T119 prova il caso acceso.
+os.environ["GAS_SOLO_OPUS"] = "0"
 for _k_tg in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS"):
     os.environ.pop(_k_tg, None)
 # R-635-1 (review #635-M2): l'interruttore del forte non si eredita dalla shell, altrimenti
@@ -13905,6 +13908,81 @@ try:
 except Exception as _e118x:
     import traceback as _tb118
     check("T118 blocco senza eccezioni", False, repr(_e118x) + _tb118.format_exc()[-800:])
+
+# ---------- T119: GAS_SOLO_OPUS, tutto a Opus (decisione dell'operatore 2026-11-23) ----------
+print("--- T119: tutto quello che l'operatore scrive o dice va solo a Opus ---")
+_sv119 = os.environ.get("GAS_SOLO_OPUS")
+try:
+    _vals119 = {}
+    for _v in ("", "1", "si", "acceso", "0", "false", "NO", " off "):
+        os.environ["GAS_SOLO_OPUS"] = _v
+        _vals119[_v] = gas._solo_opus_sempre()
+    os.environ.pop("GAS_SOLO_OPUS", None)
+    _def119 = gas._solo_opus_sempre()
+    check("T119a interruttore acceso di default e con valori vuoti o strani; spento solo con "
+          "0/false/no/off",
+          _def119 and _vals119[""] and _vals119["1"] and _vals119["si"] and _vals119["acceso"]
+          and not _vals119["0"] and not _vals119["false"] and not _vals119["NO"]
+          and not _vals119[" off "], str(_vals119))
+    os.environ["GAS_SOLO_OPUS"] = "1"
+    _ev, _g, _f = _turno117(kernel_tmp(), "che ore sono?", [_r115("Sono le 12.")])
+    check("T119b acceso: anche «che ore sono?» va solo a Opus, gratuiti mai chiamati",
+          _f.modelli == [_OPUS117] and not _g.visti and _ev[-1]["type"] == "final"
+          and _ev[-1].get("modello") == _OPUS117
+          and _ev[-1].get("avviso_ripiego") == "",  # niente riga «dati di clienti» su ogni risposta
+          f"{_f.modelli} {str(_ev)[-200:]}")
+    _ev, _g, _f = _turno117(kernel_tmp(), "aggiungi Anna Neri", [
+        _r115(tool_calls=[_tc115("data_ora")]), _r115("Fatto.")])
+    check("T119c acceso: un cliente nuovo scritto senza parole del CRM va a Opus dalla prima "
+          "chiamata (round-trip tool → final)",
+          _f.modelli == [_OPUS117, _OPUS117] and not _g.visti and _ev[-1]["type"] == "final",
+          f"{_f.modelli} {str(_ev)[-200:]}")
+    os.environ["GAS_SOLO_OPUS"] = "1"
+    _k119d = kernel_tmp()
+    _g119d = _Script115([_r115("NON DEVE ARRIVARE")])
+
+    class _OAI119:
+        def __init__(self, *a, **kw):
+            self.chat = SimpleNamespace(completions=_g119d)
+    for _kk in _ch115:
+        os.environ.pop(_kk, None)
+    os.environ["GEMINI_API_KEY"] = "finta-119"
+    _vo119 = gas.OpenAI
+    gas.OpenAI = _OAI119
+    try:
+        _ev = list(_k119d.run_turn("che ore sono?"))  # forte spento (GAS_CLAUDE_CLI assente)
+    finally:
+        gas.OpenAI = _vo119
+        _ripristina115()
+    check("T119d acceso col forte spento: turno fermo dichiarato, gratuiti mai chiamati",
+          not _g119d.visti and _ev and _ev[-1]["type"] == "error"
+          and _ev[-1]["content"].startswith("Rispondo solo con Claude Opus (scelta "
+                                            "dell'operatore, GAS_SOLO_OPUS)"),
+          str(_ev)[-300:])
+    os.environ["GAS_SOLO_OPUS"] = "1"
+    _f119e = _ScriptModello117([_r115(_RISP115)])
+    try:
+        for _kk in _ch115:
+            os.environ.pop(_kk, None)
+        os.environ["GAS_SOLO_OPUS"] = "1"
+        with forte_finto(_f119e):
+            _e119e = _k80_con_storia().rifletti()
+    finally:
+        _ripristina115()
+    check("T119e acceso: la riflessione di fine conversazione (senza clienti) usa solo Opus",
+          _e119e["ok"] and _f119e.modelli == [_OPUS117], f"{_f119e.modelli} {_e119e}")
+    os.environ["GAS_SOLO_OPUS"] = "0"
+    _ev, _g, _f = _turno115(kernel_tmp(), "che ore sono?", [_r115("ok gratis")], [_r115("forte")])
+    check("T119f spento (GAS_SOLO_OPUS=0): torna la cascata, «che ore sono?» al gratuito",
+          _ev[-1].get("content") == "ok gratis" and not _f.visti, str(_ev)[-200:])
+except Exception as _e119x:
+    import traceback as _tb119
+    check("T119 blocco senza eccezioni", False, repr(_e119x) + _tb119.format_exc()[-800:])
+finally:
+    if _sv119 is None:
+        os.environ.pop("GAS_SOLO_OPUS", None)
+    else:
+        os.environ["GAS_SOLO_OPUS"] = _sv119
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

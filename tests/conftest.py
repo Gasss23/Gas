@@ -9,6 +9,10 @@ collect_ignore = ["test_unit_kernel.py"]
 # Nella suite pytest no: niente chiavi/token reali nei test (stessa linea di R-c4b1-1).
 import os as _os
 _os.environ["GAS_NO_DOTENV"] = "1"
+# Decisione dell'operatore del 2026-11-23: GAS_SOLO_OPUS è acceso di default (tutto a Opus).
+# Le suite provano la cascata dei cervelli, quindi lo spengono; il caso acceso lo provano
+# i test che lo accendono da sé (kernel T119).
+_os.environ["GAS_SOLO_OPUS"] = "0"
 
 
 # R-809-2: il kernel legge i clienti del CRM anche dalla cartella del repo
