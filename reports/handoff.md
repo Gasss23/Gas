@@ -24,21 +24,71 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +
- clients/voice/ascolto.py           |  90 +++++++++++++++++------
- reports/diff_sessione.md           |  21 +++---
+ .claude/agents/memoria_revisore.md                                     |   5 +
+ clients/voice/ascolto.py                                               |  96 ++++++++++++++-----
+ reports/diff_sessione.md                                               |  22 ++---
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  50 ++++++-------
- scripts/voce/LEGGIMI.md            |  13 ++--
- scripts/voce/registra_voce.py      |  11 ++-
- scripts/voce/taratura_parola.py    |   5 +-
- tests/test_unit_voce_ascolto.py    |  74 +++++++++++++++++--
+ reports/stato_progetto.md                                              |   2 +-
+ reports/ultimo_report.md                                               |  52 +++++-----
+ reports/voce_simulazione_2026-11-23/.gitignore                         |   8 ++
+ reports/voce_simulazione_2026-11-23/LEGGIMI.md                         |  50 ++++++++++
+ reports/voce_simulazione_2026-11-23/risultati/diff_ascolto.patch       | 161 +++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/risultati/diff_registra.patch      |  23 +++++
+ reports/voce_simulazione_2026-11-23/risultati/diff_test_ascolto.patch  | 110 +++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/risultati/sweep1.txt               |  48 ++++++++++
+ reports/voce_simulazione_2026-11-23/risultati/sweep2.txt               |  44 +++++++++
+ reports/voce_simulazione_2026-11-23/risultati/sweep3.txt               |  32 +++++++
+ reports/voce_simulazione_2026-11-23/risultati/sweep4.txt               |   8 ++
+ reports/voce_simulazione_2026-11-23/risultati/sweep5.txt               |  15 +++
+ reports/voce_simulazione_2026-11-23/risultati/val_tr_nover.txt         |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/val_tr_ver.txt           |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/val_vero_nover.txt       |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/val_vero_ver.txt         |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d3_A_chiamate.json |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d3_B_parlato.json  |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d3_C_tv.json       |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d3_D_altri.json    |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d4_A_chiamate.json |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d4_B_parlato.json  |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d4_C_tv.json       |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d4_D_altri.json    |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d5_A_chiamate.json |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d5_B_parlato.json  |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d5_C_tv.json       |   1 +
+ reports/voce_simulazione_2026-11-23/risultati/vero4/d5_D_altri.json    |   1 +
+ reports/voce_simulazione_2026-11-23/script/analisi_prob.py             |  21 +++++
+ reports/voce_simulazione_2026-11-23/script/calib.py                    |  21 +++++
+ reports/voce_simulazione_2026-11-23/script/fase.py                     |  16 ++++
+ reports/voce_simulazione_2026-11-23/script/fase2.py                    |  14 +++
+ reports/voce_simulazione_2026-11-23/script/gen_flussi.py               | 128 +++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/interr.py                   |  30 ++++++
+ reports/voce_simulazione_2026-11-23/script/lib_sim.py                  | 163 ++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/scan2.py                    |  16 ++++
+ reports/voce_simulazione_2026-11-23/script/scegli_operatore.py         |  34 +++++++
+ reports/voce_simulazione_2026-11-23/script/sim_ascolto.py              | 123 ++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sim_registra.py             | 157 ++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep.py                    |  43 +++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep2.py                   |  83 ++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep3.py                   |  83 ++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep4.py                   |  83 ++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep5.py                   |  28 ++++++
+ reports/voce_simulazione_2026-11-23/script/traccia.py                  |  36 +++++++
+ reports/voce_simulazione_2026-11-23/script/traccia2.py                 |  36 +++++++
+ reports/voce_simulazione_2026-11-23/script/traccia_fasi.py             |  30 ++++++
+ reports/voce_simulazione_2026-11-23/script/train_varianti.py           |  94 ++++++++++++++++++
+ scripts/voce/LEGGIMI.md                                                |  13 ++-
+ scripts/voce/registra_voce.py                                          |  11 ++-
+ scripts/voce/taratura_parola.py                                        |   5 +-
+ tests/test_unit_voce_ascolto.py                                        |  89 +++++++++++++++--
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2e3ba3c5 docs(fine-task): verdetto #817 e note del bot su #400; sim/ nel .gitignore della simulazione (R-817-1)
+27d33851 fix(voce): dati della simulazione nel repo, test dell'avviso col filtro, ambiente dei test, docstring (V-1..V-4 bot #400) — review #817-M1coord APPROVATO CON RISERVE
+32f25f95 chore(revisore): memoria review #817 — APPROVATO CON RISERVE
+b992e1cc docs(fine-task): §2/§3 handoff
 90d85369 docs(fine-task): report della simulazione e delle correzioni voce (review #815/#816-M1coord)
 8faff652 fix(voce): taratura con le stesse fasi dell'ascolto, avviso dei blocchi d'interruzione col filtro, LEGGIMI e test (R-815-1..4) — review #816-M1coord APPROVATO CON RISERVE
 7a70ccb5 chore(revisore): memoria review #816 — APPROVATO CON RISERVE
