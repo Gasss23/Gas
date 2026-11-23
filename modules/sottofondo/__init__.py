@@ -49,6 +49,7 @@ RIPRESE_DEFAULT = 2   # riprese automatiche di un compito il cui processo è mor
 RIPRESE_TETTO = 5     # tetto duro, qualunque valore dica l'ambiente
 PASSI_MAX = 50        # nomi di strumenti tenuti come progressi
 LOCK = ".lock"
+TETTO_TIMER_S = 30 * 86400  # attesa massima del timer del tetto duro (R-852R7-3)
 ATTESA_RETE_S_DEFAULT = 120  # ripresa al boot: attesa massima della rete (GAS_SOTTOFONDO_ATTESA_RETE)
 ATTESA_RETE_S_TETTO = 600
 HOST_RETE = (("api.anthropic.com", 443), ("generativelanguage.googleapis.com", 443),
@@ -807,6 +808,41 @@ def esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
         return 1
 
 
+def _arma_tetto(secondi: float, alla_scadenza: Callable[[], None]) -> Any:
+    """Punto unico del timer del tetto duro (i test lo sostituiscono). Thread demone.
+    R-852R7-3: attesa limitata a TETTO_TIMER_S (oltre, Timer muore in silenzio per
+    OverflowError con valori enormi di GAS_SOTTOFONDO_MAX_MIN)."""
+    timer = threading.Timer(min(max(0.0, secondi), TETTO_TIMER_S), alla_scadenza)
+    timer.daemon = True
+    timer.start()
+    return timer
+
+
+def _termina_processo() -> None:
+    """R7 fetta 4: ferma questo processo e i figli del suo gruppo (i comandi di
+    run_command). Il processo in sottofondo è capo del proprio gruppo (start_new_session in
+    `avvia`): il SIGTERM al gruppo ferma anche lui (uscita −15); `os._exit` è solo la
+    riserva se il segnale non arriva (R-852R7-4). LIMITE (R-852R7-1): `claude -p` e il
+    browser partono in un gruppo proprio e non vengono fermati qui; muoiono quando provano
+    a scrivere al padre morto, ma la richiesta in corso arriva in fondo. I test lo
+    sostituiscono."""
+    try:
+        if os.getpgid(0) == os.getpid():
+            os.killpg(os.getpid(), signal.SIGTERM)
+    except Exception as e:
+        logging.warning("sottofondo: arresto del gruppo non riuscito: %s", e)
+    os._exit(1)
+
+
+def _secondi_rimasti(job: Dict[str, Any]) -> float:
+    """Tempo rimasto prima della durata massima, contata dalla PRIMA creazione del compito
+    (tetto totale anche dopo le riprese). Con la data nel futuro (orologio indietro) vale
+    la durata intera."""
+    if _nel_futuro(job):
+        return _durata_max_s()
+    return _durata_max_s() - (time.time() - _creato(job))
+
+
 def _esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
             avvisa: Optional[Callable[[str, Path], Any]]) -> int:
     cartella = _cartella(root)
@@ -829,6 +865,35 @@ def _esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
         # si chiude senza eseguire; l'avviso «fermato» è già partito da ferma()
         annulla(root, ident, "fermato dall'operatore")
         return 1
+    # R7 fetta 4: tetto di tempo DURO. Prima il tetto valeva solo quando un altro processo
+    # faceva il controllo (inizio turno, boot); ora il processo stesso si ferma alla durata
+    # massima, anche se resta appeso dentro una chiamata al modello o uno strumento.
+    rimasti = _secondi_rimasti(job)
+    if rimasti <= 0:
+        if annulla(root, ident, "oltre la durata massima"):
+            _avvisa(root, f"Il compito in sottofondo «{_breve(job['compito'], 80)}» non è "
+                          "finito: oltre la durata massima.", ident, avvisa)
+        return 1
+
+    # R-852R7-2: chi chiude per primo (timer o fine del turno) vince; l'altro non scrive
+    # un secondo esito né un secondo avviso, e il timer non ferma un processo già chiuso.
+    esito_lock = threading.Lock()
+    chiusura = {"fatta": False}
+
+    def _scaduto() -> None:
+        with esito_lock:
+            if chiusura["fatta"]:
+                return
+            chiusura["fatta"] = True
+        try:
+            logging.warning("sottofondo %s: durata massima raggiunta, compito fermato", ident)
+            if annulla(root, ident, "oltre la durata massima, fermato"):
+                _avvisa(root, f"Il compito in sottofondo «{_breve(job['compito'], 80)}» non "
+                              "è finito: oltre la durata massima, fermato.", ident, avvisa)
+        finally:
+            _termina_processo()
+
+    tetto = _arma_tetto(rimasti, _scaduto)
     risposta, errore = "", ""
     turno = None
     riprese = _riprese(job) if job.get("riprese") else 0
@@ -858,6 +923,17 @@ def _esegui(root: Path, ident: str, kernel_factory: Callable[[], Any],
                 close()
             except Exception:
                 pass
+    try:
+        tetto.cancel()
+    except Exception:
+        pass
+    with esito_lock:
+        gia_chiuso = chiusura["fatta"]
+        chiusura["fatta"] = True
+    if gia_chiuso:
+        # il timer ha già chiuso il compito «ko», avvisato e sta fermando il processo
+        logging.warning("sottofondo %s: tetto scaduto a fine turno, esito ignorato", ident)
+        return 1
     ok = bool(risposta.strip()) and not errore
     attuale = _leggi(percorso)
     if attuale and attuale.get("stato") == "ko":
