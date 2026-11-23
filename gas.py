@@ -7151,6 +7151,11 @@ def main():
         _ok, _frase = sottofondo.ferma(Path.cwd())
         print(_frase)
         sys.exit(0 if _ok else 1)
+    if len(sys.argv) > 1 and sys.argv[1] == "sottofondo-riprendi":  # R7 fetta 2: al boot
+        from modules import sottofondo
+        _ok, _frase = sottofondo.riprendi_al_boot(Path.cwd())
+        print(_frase)
+        sys.exit(0 if _ok else 1)
     if len(sys.argv) > 2 and sys.argv[1] == "sottofondo":  # fetta 3: processo separato
         from modules import sottofondo
         _root = Path.cwd()

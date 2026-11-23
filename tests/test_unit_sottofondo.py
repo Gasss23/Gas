@@ -1209,3 +1209,83 @@ def test_ferma_usa_il_lock_e_rilegge_il_pid(tmp_path, monkeypatch):
     monkeypatch.setattr(sf.os, "killpg", lambda pid, sig: uccisi.append(pid))
     ok, frase = sf.ferma(tmp_path, _avvisi()[1])
     assert ok and preso == [True] and uccisi == [4242] and "potrebbe" not in frase
+
+
+# ---- R7 fetta 2: ripresa al boot (`gas.py sottofondo-riprendi`) ----
+
+def test_boot_riprende_il_compito_morto(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path)
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa)
+    assert ok and f"Compito {ident} ripreso (ripresa 1 di 2)" in frase
+    assert "sottofondo-ferma" in frase and "confronta" not in frase  # mai il testo del compito
+    assert _niente_riprese_vere == [ident] and len(inviati) == 1
+    # lanciato due volte (boot + primo turno): nessun secondo avvio
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa)
+    assert ok and "ancora in corso" in frase and _niente_riprese_vere == [ident]
+
+
+def test_boot_riprese_finite_dice_non_ripreso(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path, riprese=2)
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa)
+    assert ok and f"Compito {ident} non ripreso" in frase and "interrotto" in frase
+    assert _niente_riprese_vere == [] and len(inviati) == 1
+
+
+def test_boot_compito_fermato_non_riparte(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path)
+    (c / f"{ident}.ferma").write_text("{}", encoding="utf-8")
+    ok, frase = sf.riprendi_al_boot(tmp_path, _avvisi()[1])
+    assert ok and "fermato dall'operatore" in frase and _niente_riprese_vere == []
+
+
+def test_boot_compito_vivo_non_si_tocca(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, _ = sf.accoda(tmp_path, "uno")  # appena accodato: il processo ha 120 s
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa)
+    assert ok and "ancora in corso" in frase and _niente_riprese_vere == [] and inviati == []
+
+
+def test_boot_senza_compiti(tmp_path):
+    (tmp_path / sf.CARTELLA).mkdir()
+    assert sf.riprendi_al_boot(tmp_path) == (True, "Nessun compito in sottofondo da riprendere.")
+    ok, frase = sf.riprendi_al_boot(tmp_path / "altrove")
+    assert not ok and "cartella di Gas" in frase
+    (tmp_path / "altrove").mkdir()
+    (tmp_path / "altrove" / "gas.py").write_text("")
+    assert sf.riprendi_al_boot(tmp_path / "altrove")[0]
+
+
+def test_boot_errore_interno_mai_crash(tmp_path, monkeypatch):
+    (tmp_path / sf.CARTELLA).mkdir()
+    monkeypatch.setattr(sf, "_leggi", lambda p: (_ for _ in ()).throw(RuntimeError("x")))
+    ok, frase = sf.riprendi_al_boot(tmp_path)
+    assert not ok and "RuntimeError" in frase
+
+
+def test_comando_gas_sottofondo_riprendi(tmp_path):
+    """Il comando vero esce pulito in una cartella senza coda (niente processi avviati)."""
+    import subprocess
+    gas_py = Path(__file__).resolve().parents[1] / "gas.py"
+    r = subprocess.run([sys.executable, str(gas_py), "sottofondo-riprendi"],
+                       cwd=tmp_path, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 1 and "cartella di Gas" in r.stdout and "Traceback" not in r.stderr
+
+
+def test_boot_compito_gia_finito_e_file_sparito(tmp_path, monkeypatch, _niente_riprese_vere):
+    """Review #839 R-839-2: i rami «già finito» e «stato non leggibile»."""
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path, stato="ok")
+    ok, frase = sf.riprendi_al_boot(tmp_path, _avvisi()[1])
+    assert ok and frase == f"Compito {ident} già finito: niente da riprendere."
+    assert _niente_riprese_vere == []
+    (tmp_path / "b").mkdir()
+    ident, c = _morto(tmp_path / "b")
+    (tmp_path / "b" / sf.CARTELLA / f"{ident}.json").unlink()
+    ok, frase = sf.riprendi_al_boot(tmp_path / "b", _avvisi()[1])
+    assert not ok and "stato non leggibile" in frase and _niente_riprese_vere == []

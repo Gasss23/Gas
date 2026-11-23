@@ -315,6 +315,44 @@ def ferma(root: Path, avvisa: Optional[Callable[[str, Path], Any]] = None) -> Tu
         return False, f"Arresto non riuscito ({type(e).__name__}): vedi gas_debug.log."
 
 
+def riprendi_al_boot(root: Path,
+                     avvisa: Optional[Callable[[str, Path], Any]] = None) -> Tuple[bool, str]:
+    """R7 fetta 2: `gas.py sottofondo-riprendi`, lanciato all'avvio del computer (launchd oggi,
+    systemd sul server). Fa lo stesso controllo dell'inizio turno (`controlla`): un compito il
+    cui processo è morto col riavvio riparte subito, senza aspettare la prima interazione;
+    riprese finite, oltre la durata o fermato → «ko» con avviso, come sempre. Nella frase per il
+    terminale (e per il log di launchd) solo l'id e lo stato, mai il testo del compito.
+    Ritorna (riuscito, frase). Mai eccezioni (§9)."""
+    try:
+        cartella = Path(root) / CARTELLA
+        if not cartella.is_dir():
+            if (Path(root) / "gas.py").is_file():
+                return True, "Nessun compito in sottofondo da riprendere."
+            return False, (f"Nessuna coda dei compiti in {Path(root).resolve()}: lancia il "
+                           "comando dalla cartella di Gas (cd ~/Gas).")
+        ident = str((_leggi(cartella / ATTIVO) or {}).get("id") or "")
+        percorso = cartella / f"{Path(ident).name}.json"
+        prima = _riprese(_leggi(percorso) or {}) if ident else 0
+        controlla(root, avvisa)
+        if not ident:
+            return True, "Nessun compito in sottofondo da riprendere."
+        job = _leggi(percorso) or {}
+        posto = _leggi(cartella / ATTIVO) or {}
+        if str(posto.get("id") or "") == ident and job.get("stato") in ("in_coda", "in_corso"):
+            if _riprese(job) > prima:
+                return True, (f"Compito {ident} ripreso (ripresa {_riprese(job)} di "
+                              f"{_riprese_max()}). Per fermarlo: python gas.py sottofondo-ferma")
+            return True, f"Compito {ident} ancora in corso: niente da riprendere."
+        if job.get("stato") == "ko":
+            return True, f"Compito {ident} non ripreso: {_breve(job.get('errore', ''), 120)}."
+        if job.get("stato") == "ok":
+            return True, f"Compito {ident} già finito: niente da riprendere."
+        return False, f"Compito {ident}: stato non leggibile, vedi gas_debug.log."
+    except Exception as e:  # §9
+        logging.warning("sottofondo: ripresa al boot non riuscita: %s", e)
+        return False, f"Ripresa non riuscita ({type(e).__name__}): vedi gas_debug.log."
+
+
 def _avvia_ripresa(root: Path, ident: str) -> None:
     """Punto unico di avvio della ripresa (i test lo sostituiscono: niente processi veri)."""
     avvia(root, ident)
