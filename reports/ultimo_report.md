@@ -18,11 +18,13 @@
 - **Correzione #816 (8faff652, review #816-M1coord APPROVATO CON RISERVE):** R-815-1 (la taratura usa le stesse fasi dell'ascolto), R-815-2, R-815-3 (LEGGIMI: togliere una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8` dal `.env`), R-815-4.
 - Prova col modello vero (voce chiara): 4 fasi danno 0,998 a ogni sfasamento.
 
+- **Correzione #817 (27d33851, review #817-M1coord APPROVATO CON RISERVE):** finding del bot su #400. V-1 MEDIA: script e risultati della simulazione ora in `reports/voce_simulazione_2026-11-23/`; V-2 test dell'avviso col filtro; V-3 ambiente dei test; V-4 docstring. R-817-1 (`sim/` nel `.gitignore`) chiusa nei documenti.
+
 ## Test
-- `tests/test_unit_voce_ascolto.py`: 379 su main → 382 passed; `pytest tests/ -k voce` 538 passed (revisore).
+- `tests/test_unit_voce_ascolto.py`: 379 su main → 383 passed; `pytest tests/ -k voce` 538 passed (revisore).
 
 ## Riserve aperte
-- **R-816-1 BASSA:** manca un test sull'avviso dei blocchi d'interruzione col filtro attivo.
+- **Da provare sul Mac:** auto-interruzione con la voce vera di Gas e CPU con 4 fasi.
 - Simulazione con voci sintetiche: i valori assoluti non valgono per la voce e il microfono veri; CPU con 4 fasi sul Mac da verificare.
 - Interruzione mentre la voce di Gas copre la chiamata: ancora 0/180 in simulazione; funziona solo nelle pause.
 - Aperte da prima: R-813M1-1, R-810M1-2, note bot #390/#395, #382 V-1/V-2, #383 V-2/V-3 (vedi `reports/stato_progetto.md`).

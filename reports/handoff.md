@@ -17,6 +17,7 @@
 - **Sonda — simulazione end-to-end (subagente, 23/11):** voci espeak a −6/−12/−20 dB con riverbero, rumore e TV; codice vero di `registra_voce.main` e `Ascolto.gira` su flussi di 30 minuti. Trovati 3 bug (fasi della griglia, interruzione spenta col filtro, griglia diversa in addestramento) e il limite di pronuncia (hey_jarvis: 0,90 all'inglese, 0,40 all'italiana). Script e risultati nello scratchpad `sim_voce`.
 - **Fetta #815 — 4 fasi, interruzione col filtro, griglia in registra_voce:** FATTA, commit ce04e9c7. Review #815-M1coord APPROVATO CON RISERVE.
 - **Fetta #816 — riserve R-815-1..4:** FATTA, commit 8faff652. Review #816-M1coord APPROVATO CON RISERVE (R-816-1 BASSA).
+- **Fetta #817 — finding del bot su #400 (b992e1cc, V-1 MEDIA: dati della simulazione fuori dal repo; V-2..V-4):** FATTA, commit 27d33851. Review #817-M1coord APPROVATO CON RISERVE; R-817-1 (sim/ nel .gitignore) chiusa subito nei documenti.
 
 ---
 
@@ -102,11 +103,33 @@ Non verificato: il comportamento reale col microfono sul Mac (taratura a 4 fasi 
 
 Memoria aggiornata (#816-M1coord) e committata con `scripts/commit_memoria_revisore.sh` (commit 7a70ccb5).
 
+### Review #817-M1coord (commit 27d33851)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+I quattro finding del bot (V-1..V-4, PR #400) risultano chiusi. Resta una riserva BASSA sul `.gitignore` della simulazione.
+
+**Elementi del diff esaminati**
+- `tests/test_unit_voce_ascolto.py:2983` — nuovo test sull'avviso dei blocchi d'interruzione col filtro della voce attivo. Rischio: che il test passi anche senza filtro. Il test controlla «verifica della voce: attiva» e `blocchi_interruzione == 1`, e richiede che nessuna riga di log nomini la variabile. Il confronto di `clients/voice/ascolto.py:1574-1578` usa il predefinito 1 col filtro attivo; rimettendo 3 viene fuori l'avviso «predefinito 3» e il test fallisce. Rilanciati i 15 test mirati: passano. — **ok**
+- `tests/test_unit_voce_ascolto.py:158` — `_main_finto` pulisce anche `GAS_ASCOLTO_FASI` (V-3): i test non dipendono più dalle variabili d'ambiente di chi li lancia. — **ok**
+- `clients/voice/ascolto.py:54-57` — docstring dei predefiniti con e senza filtro (V-4), coerente col codice di `clients/voice/ascolto.py:1519-1527`: col filtro la soglia d'interruzione è quella della parola (mai sotto la base) e i blocchi sono 1, e la variabile d'ambiente prevale (`clients/voice/ascolto.py:1541`). Il ritorno indietro con `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE=3`, dichiarato in `reports/voce_simulazione_2026-11-23/LEGGIMI.md:36` e in `scripts/voce/LEGGIMI.md:233`, funziona davvero. — **ok**
+- `reports/voce_simulazione_2026-11-23/.gitignore:1` — esclude `script/cache`, `runs`, `flussi`, `tracce*`, `varianti`, `vero4` e `__pycache__`. Seguiti tutti i percorsi di scrittura degli script: tracce, cache, flussi, varianti e i wav di `runs/` finiscono in cartelle ignorate. Nel diff staged nessun file audio, modello o pickle; la cartella pesa 244 KB. — **ok**
+- `reports/voce_simulazione_2026-11-23/script/sim_registra.py:17` — gli script cercano la copia del repo in `SIM = QUI.parent / "sim"`, cioè `reports/voce_simulazione_2026-11-23/sim/`; lo stesso in `reports/voce_simulazione_2026-11-23/script/sim_ascolto.py:19`, `train_varianti.py` e `fase.py` (`../sim`). Quella cartella **non** è nel `.gitignore` e il LEGGIMI (`reports/voce_simulazione_2026-11-23/LEGGIMI.md:39`) parla di «una copia del repo» senza dire dove metterla: chi rifà la simulazione rischia di committare un'intera copia del repo, col suo `.env` e i dati della voce, al primo `git add -A`. — **riserva**
+
+**Segreti, percorsi personali, dati biometrici**: nessun `/home/`, `/Users/`, token o chiave negli script né nei `.patch`. Voci sintetiche espeak; l'«operatore» è simulato (`reports/voce_simulazione_2026-11-23/script/sim_registra.py:37`). Niente audio vero nel diff. — ok
+
+**Riserva da tracciare**
+- **R-817-1 BASSA**: aggiungere `sim/` al `.gitignore` di `reports/voce_simulazione_2026-11-23/` e scrivere nel LEGGIMI che la copia del repo va in `sim/`, accanto a `script/`.
+
+**Rischio escluso**: la simulazione non l'ho rieseguita (servono openwakeword 0.6.0, espeak-ng e alcune ore) e non ho verificato che i numeri in `risultati/` derivino davvero dagli script: presi come dati dichiarati. Interruzione con la voce vera di Gas e CPU con 4 fasi sul Mac non verificabili qui; il LEGGIMI li dichiara correttamente non misurati.
+
+Memoria: riga #817-M1coord e una lezione nuova, committata (32f25f95).
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- **`tests/test_unit_voce_ascolto.py`:** 379 su main 1b4954e2 → 382 passed (#815) → 382 passed (#816, test rafforzati). `pytest tests/ -k voce`: 538 passed (revisore #816).
+- **`tests/test_unit_voce_ascolto.py`:** 379 su main 1b4954e2 → 382 passed (#815) → 382 passed (#816, test rafforzati) → 383 passed (#817). `pytest tests/ -k voce`: 538 passed (revisore #816).
 - **Prova col modello vero** (openWakeWord 0.6.0, venv locale): «Hey Jarvis» di espeak con sfasamento 0/320/640/960 campioni → 4 fasi 0,998 ogni volta.
 - **Kernel** (`gas.py`, `tests/test_unit_kernel.py`): non toccato.
 
@@ -116,7 +139,7 @@ Run della PR non ancora disponibile alla scrittura dell'handoff: il ramo si push
 
 ## §7 RISERVE APERTE
 
-- **R-816-1 BASSA:** test mancante sull'avviso dei blocchi d'interruzione col filtro attivo.
 - **Simulazione:** voci sintetiche, valori assoluti non trasferibili alla voce e al microfono veri; CPU con 4 fasi sul Mac da verificare; interruzione mentre la voce di Gas copre la chiamata ancora 0/180 (funziona solo nelle pause).
-- **Chiuse:** R-815-1, R-815-2, R-815-3, R-815-4 (#816).
+- **Chiuse:** R-815-1, R-815-2, R-815-3, R-815-4 (#816); R-816-1 e V-1..V-4 del bot su #400 (#817); R-817-1 (documenti).
+- **Da provare sul Mac:** auto-interruzione con la voce vera di Gas e CPU con 4 fasi (dichiarati non misurati in `reports/voce_simulazione_2026-11-23/LEGGIMI.md`).
 - **Aperte da prima:** R-813M1-1, R-810M1-2, note bot #390/#395, #382 V-1/V-2, #383 V-2/V-3 (vedi `reports/stato_progetto.md`).

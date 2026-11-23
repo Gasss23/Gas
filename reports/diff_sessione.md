@@ -8,3 +8,4 @@ Si riscrive a ogni sessione; la storia completa sta in git. Ramo fix/voce-fasi-i
 - `scripts/voce/LEGGIMI.md`: `GAS_ASCOLTO_FASI`, interruzione col filtro, vecchia soglia 0.8 da togliere.
 - `tests/test_unit_voce_ascolto.py`: test delle fasi, dell'interruzione col filtro, della taratura; test esistenti aggiornati.
 - `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.
+- `reports/voce_simulazione_2026-11-23/`: LEGGIMI con metodo, risultati e limiti; script della simulazione; risultati; `.gitignore` per audio, cache e copia del repo (`sim/`).

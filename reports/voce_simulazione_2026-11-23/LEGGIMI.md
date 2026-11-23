@@ -36,7 +36,7 @@ Prova end-to-end di «Hey Jarvis» con voci sintetiche, fatta per non chiedere a
 - **Non misurati**: l'auto-interruzione con la voce vera di Gas (ElevenLabs) dalle casse del Mac, e la CPU con 4 fasi sul Mac. Vanno provati sul Mac; se l'interruzione scatta da sola, `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE=3` nel `.env` torna al comportamento di prima.
 
 ## Rifare la simulazione
-Serve un ambiente con openwakeword 0.6.0, onnxruntime, scipy, scikit-learn, espeak-ng e sox o ffmpeg. Dalla cartella `script/`, su una **copia** del repo (gli script importano `clients/voice` e `scripts/voce` da lì):
+Serve un ambiente con openwakeword 0.6.0, onnxruntime, scipy, scikit-learn, espeak-ng e sox o ffmpeg. Metti una **copia** del repo in `sim/`, accanto a `script/` (gli script importano `clients/voice` e `scripts/voce` da lì; `sim/` è nel `.gitignore`, così non finisce in git per sbaglio). Poi, dalla cartella `script/`:
 
 ```
 python sim_registra.py runs/r0 0
