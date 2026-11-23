@@ -24,20 +24,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md                                     |   5 +
- clients/voice/ascolto.py                                               |  96 ++++++++++++++-----
- reports/diff_sessione.md                                               |  22 ++---
+ .claude/agents/memoria_revisore.md                                     |   7 ++
+ clients/voice/ascolto.py                                               |  96 ++++++++++++-----
+ reports/diff_sessione.md                                               |  22 ++--
  reports/handoff.md                 | n/d
  reports/stato_progetto.md                                              |   2 +-
- reports/ultimo_report.md                                               |  52 +++++-----
+ reports/ultimo_report.md                                               |  54 +++++-----
  reports/voce_simulazione_2026-11-23/.gitignore                         |   8 ++
- reports/voce_simulazione_2026-11-23/LEGGIMI.md                         |  50 ++++++++++
- reports/voce_simulazione_2026-11-23/risultati/diff_ascolto.patch       | 161 +++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/LEGGIMI.md                         |  57 ++++++++++
+ reports/voce_simulazione_2026-11-23/risultati/diff_ascolto.patch       | 161 +++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/risultati/diff_registra.patch      |  23 +++++
- reports/voce_simulazione_2026-11-23/risultati/diff_test_ascolto.patch  | 110 +++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/risultati/sweep1.txt               |  48 ++++++++++
- reports/voce_simulazione_2026-11-23/risultati/sweep2.txt               |  44 +++++++++
- reports/voce_simulazione_2026-11-23/risultati/sweep3.txt               |  32 +++++++
+ reports/voce_simulazione_2026-11-23/risultati/diff_test_ascolto.patch  | 110 ++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/risultati/interr_1fase.txt         |  48 +++++++++
+ reports/voce_simulazione_2026-11-23/risultati/interr_f4.txt            |  10 ++
+ reports/voce_simulazione_2026-11-23/risultati/sweep1.txt               |  48 +++++++++
+ reports/voce_simulazione_2026-11-23/risultati/sweep2.txt               |  44 ++++++++
+ reports/voce_simulazione_2026-11-23/risultati/sweep3.txt               |  32 ++++++
  reports/voce_simulazione_2026-11-23/risultati/sweep4.txt               |   8 ++
  reports/voce_simulazione_2026-11-23/risultati/sweep5.txt               |  15 +++
  reports/voce_simulazione_2026-11-23/risultati/val_tr_nover.txt         |   1 +
@@ -56,35 +58,40 @@
  reports/voce_simulazione_2026-11-23/risultati/vero4/d5_B_parlato.json  |   1 +
  reports/voce_simulazione_2026-11-23/risultati/vero4/d5_C_tv.json       |   1 +
  reports/voce_simulazione_2026-11-23/risultati/vero4/d5_D_altri.json    |   1 +
- reports/voce_simulazione_2026-11-23/script/analisi_prob.py             |  21 +++++
- reports/voce_simulazione_2026-11-23/script/calib.py                    |  21 +++++
- reports/voce_simulazione_2026-11-23/script/fase.py                     |  16 ++++
+ reports/voce_simulazione_2026-11-23/script/analisi_prob.py             |  21 ++++
+ reports/voce_simulazione_2026-11-23/script/calib.py                    |  21 ++++
+ reports/voce_simulazione_2026-11-23/script/fase.py                     |  16 +++
  reports/voce_simulazione_2026-11-23/script/fase2.py                    |  14 +++
- reports/voce_simulazione_2026-11-23/script/gen_flussi.py               | 128 +++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/gen_flussi.py               | 128 +++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/script/interr.py                   |  30 ++++++
- reports/voce_simulazione_2026-11-23/script/lib_sim.py                  | 163 ++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/script/scan2.py                    |  16 ++++
- reports/voce_simulazione_2026-11-23/script/scegli_operatore.py         |  34 +++++++
- reports/voce_simulazione_2026-11-23/script/sim_ascolto.py              | 123 ++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/script/sim_registra.py             | 157 ++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/script/sweep.py                    |  43 +++++++++
- reports/voce_simulazione_2026-11-23/script/sweep2.py                   |  83 ++++++++++++++++
- reports/voce_simulazione_2026-11-23/script/sweep3.py                   |  83 ++++++++++++++++
- reports/voce_simulazione_2026-11-23/script/sweep4.py                   |  83 ++++++++++++++++
- reports/voce_simulazione_2026-11-23/script/sweep5.py                   |  28 ++++++
+ reports/voce_simulazione_2026-11-23/script/interr_f4.py                |  42 ++++++++
+ reports/voce_simulazione_2026-11-23/script/lib_sim.py                  | 163 +++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/scan2.py                    |  16 +++
+ reports/voce_simulazione_2026-11-23/script/scegli_operatore.py         |  34 ++++++
+ reports/voce_simulazione_2026-11-23/script/sim_ascolto.py              | 123 ++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sim_registra.py             | 157 ++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep.py                    |  43 ++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep2.py                   |  83 +++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep3.py                   |  83 +++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep4.py                   |  83 +++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/sweep5.py                   |  28 +++++
  reports/voce_simulazione_2026-11-23/script/traccia.py                  |  36 +++++++
  reports/voce_simulazione_2026-11-23/script/traccia2.py                 |  36 +++++++
  reports/voce_simulazione_2026-11-23/script/traccia_fasi.py             |  30 ++++++
- reports/voce_simulazione_2026-11-23/script/train_varianti.py           |  94 ++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/script/train_varianti.py           |  94 +++++++++++++++++
  scripts/voce/LEGGIMI.md                                                |  13 ++-
- scripts/voce/registra_voce.py                                          |  11 ++-
+ scripts/voce/registra_voce.py                                          |  11 +-
  scripts/voce/taratura_parola.py                                        |   5 +-
- tests/test_unit_voce_ascolto.py                                        |  89 +++++++++++++++--
+ tests/test_unit_voce_ascolto.py                                        |  89 ++++++++++++++--
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+417eec1a docs(fine-task): verdetto #818, R-818-1 (comando completo per rifare la prova)
+b2779464 docs(voce): interruzione misurata con 4 fasi e filtro (V-1 bot #400 su b1ca6dc9), riferimenti alla simulazione nel repo — review #818-M1coord APPROVATO CON RISERVE
+8b64a649 chore(revisore): memoria review #818 — APPROVATO CON RISERVE
+b1ca6dc9 docs(fine-task): §2/§3 handoff
 2e3ba3c5 docs(fine-task): verdetto #817 e note del bot su #400; sim/ nel .gitignore della simulazione (R-817-1)
 27d33851 fix(voce): dati della simulazione nel repo, test dell'avviso col filtro, ambiente dei test, docstring (V-1..V-4 bot #400) — review #817-M1coord APPROVATO CON RISERVE
 32f25f95 chore(revisore): memoria review #817 — APPROVATO CON RISERVE
