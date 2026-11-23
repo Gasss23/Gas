@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 23 novembre 2026 — R7 fetta 2: ripresa al boot del compito in sottofondo (sotto-chat di M1) — terzo giro: merge di main (PR #397, CRM e «Sempre Opus»)
+**Sessione:** 23 novembre 2026 — R7 fetta 2: ripresa al boot del compito in sottofondo (sotto-chat di M1) — quarto giro: merge di main (PR #397) e V-1 MEDIA del bot su ea78c51b
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #398 (https://github.com/Gasss23/Gas/pull/398), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore. Verdetti del bot: eafdb49a BOCCIATO (V-1 MEDIA, corretta nel 2° giro); e9a08526 APPROVATO CON RISERVE senza ALTA/MEDIA, check neutral (la PR tocca `.claude/perimetro_review.txt`, macchina del bot): il merge lo decide l'operatore.
+1. Merge della PR #398 (https://github.com/Gasss23/Gas/pull/398), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore. Verdetti del bot: eafdb49a BOCCIATO (V-1 MEDIA, corretta nel 2° giro); e9a08526 APPROVATO CON RISERVE, check neutral; ea78c51b BOCCIATO (V-1 MEDIA: senza `claude` nel PATH di launchd il compito ripreso finiva «ko»), corretto in 3ad51b10. La PR tocca `.claude/perimetro_review.txt` (macchina del bot): il merge lo decide comunque l'operatore.
 2. (Facoltativo) Installare sul Mac `scripts/sottofondo/com.gas.sottofondo.plist` (istruzioni nel commento del file; serve `~/Gas/.venv`).
 
 Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `398`, `https://github.com/Gasss23/Gas/pull/398` (`gh pr` non disponibile in questo ambiente, solo REST).
@@ -18,6 +18,7 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 - **Fetta 2 R7 — ripresa al boot**: FATTA. `riprendi_al_boot` (riusa `controlla`, stessi guardrail della fetta 1, nel terminale solo id e stato), comando `python gas.py sottofondo-riprendi`, plist launchd solo RunAtLoad che pretende `~/Gas/.venv`, `scripts/sottofondo/` nel perimetro, 8 test nuovi. Review #839 → correzioni R-839-1/R-839-2 → review #840.
 - **Correzioni del 1° verdetto del bot sulla PR #398 (eafdb49a, BOCCIATO)**: FATTA. V-1 MEDIA: `riprendi_al_boot` aspetta la rete (TCP verso uno dei servizi usati, tetto `GAS_SOTTOFONDO_ATTESA_RETE` 120 s, max 600) e senza rete non tocca la coda (ripresa al primo turno, come prima). V-2 BASSA documentata nel codice (solo testo). V-3 BASSA: riavvio non partito → exit 1. R-840-1 (commento del plist) corretta. 5 test nuovi (126). Review #841.
 - **Merge di origin/main (PR #397, chat CRM) nel ramo (terzo giro)**: FATTO (4114b631) per il conflitto sui report: tenuti i report di questo ramo (regola 3 di `reports/lavoro_parallelo.md`; riserve CRM già in `stato_progetto.md`). Review #849-MERGE-R7 APPROVATO CON RISERVE (R-849-1 BASSA: con «Sempre Opus» il compito ripreso al boot va solo a Opus, serve `GAS_CLAUDE_BIN` nel `.env` se `claude` non è nel PATH di launchd). Test: sottofondo 126 passed, kernel «=== RIEPILOGO: 1208 PASS, 0 FAIL ===».
+- **V-1 MEDIA del bot su ea78c51b (quarto giro)**: FATTA (3ad51b10). Con «Sempre Opus» il compito ripreso va solo a `claude`: al boot, se `claude` non si trova (GAS_CLAUDE_BIN o PATH, come brains/claude_cli.py), la coda non si tocca e la frase dice di mettere GAS_CLAUDE_BIN nel `.env` (istruzioni anche nel plist). In più attese e controlli solo se il compito è ancora aperto (verifica esterna V-1). 3 test nuovi (129). Review #850-R7 APPROVATO CON RISERVE.
 - **Fetta 3 R7 — lista dei lavori ricorrenti con stato**: FATTA in un'altra PR (#399, ramo `claude/r7-lavori-ricorrenti`).
 - **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — dopo la 3.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — dopo la 4.
@@ -27,16 +28,16 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md          |   7 ++++
- .claude/perimetro_review.txt                |   2 ++
+ .claude/agents/memoria_revisore.md          |   9 +++++
+ .claude/perimetro_review.txt                |   2 +
  gas.py                                      |   5 +++
- modules/sottofondo/__init__.py              |  85 +++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md                    |  22 +++++-------
+ modules/sottofondo/__init__.py              | 115 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md                    |  22 +++++------
  reports/handoff.md                          | n/d
  reports/stato_progetto.md                   |   3 +-
- reports/ultimo_report.md                    |  52 ++++++++++-----------------
- scripts/sottofondo/com.gas.sottofondo.plist |  36 +++++++++++++++++++
- tests/test_unit_sottofondo.py               | 141 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md                    |  53 ++++++++++-----------------
+ scripts/sottofondo/com.gas.sottofondo.plist |  39 ++++++++++++++++++++
+ tests/test_unit_sottofondo.py               | 188 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path. Dopo il merge di main (4114b631) la base del ramo è il main nuovo (1b4954e2).
@@ -44,6 +45,9 @@ NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è t
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3ad51b10 fix(sottofondo): bot #398 V-1 — al boot senza cervello forte trovabile la coda non si tocca; niente attese per compiti già finiti
+e9030add chore(revisore): memoria review #850 — APPROVATO CON RISERVE
+ea78c51b docs(fine-task): PR #398 terzo giro — merge di main (PR #397), review #849-MERGE-R7
 4114b631 Merge origin/main (PR #397, CRM) nel ramo della PR #398 — review #849-MERGE-R7 APPROVATO CON RISERVE
 e9a08526 docs(fine-task): PR #398 secondo giro — correzioni del verdetto del bot, review #841
 c87c9467 fix(sottofondo): verdetto bot #398 — al boot aspetta la rete, senza rete non tocca la coda
@@ -58,7 +62,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 8b12f585 (motore): due verdetti sullo stesso diff, #839 sul primo staged e #840 dopo le correzioni di R-839-1 e R-839-2. Commit c87c9467 (motore, correzioni del verdetto del bot): review #841. Merge 4114b631: review #849-MERGE-R7. Incollati integrali.
+Commit 8b12f585 (motore): due verdetti sullo stesso diff, #839 sul primo staged e #840 dopo le correzioni di R-839-1 e R-839-2. Commit c87c9467 (motore, correzioni del verdetto del bot): review #841. Merge 4114b631: review #849-MERGE-R7. Commit 3ad51b10 (motore): review #850-R7. Incollati integrali.
 
 ### Review #839
 
@@ -194,16 +198,45 @@ Review #849-MERGE-R7. Oggetto: il merge in corso di origin/main (PR #397, che po
 
 **Memoria**: le righe #849-MERGE-R7 e una lezione nuova sono in coda a /home/user/Gas398/.claude/agents/memoria_revisore.md, solo nel working tree e non in stage. Non ho lanciato `scripts/commit_memoria_revisore.sh` perché c'è un merge in corso. Mettila in stage e committala tu col merge, o subito dopo.
 
+### Review #850-R7 (commit 3ad51b10)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #850-R7. Diff staged in /home/user/Gas398 (branch claude/r7-ripresa-al-boot, PR #398): 3 file, +82/−2, sha256 del diff `e52938b9…`. Ho letto prima CLAUDE.md (sezione 5), reports/stato_progetto.md (R7 fetta 2) e la mia memoria. La riga della memoria è committata (e9030add, solo quel file) e l'index del diff è rimasto com'era.
+
+**Cosa ho controllato nel diff**
+
+1. `modules/sottofondo/__init__.py:349` — `_forte_trovabile()`: con GAS_SOLO_OPUS spento risponde True. Altrimenti usa GAS_CLAUDE_BIN; se contiene un separatore controlla che il file esista e sia eseguibile, se no lo cerca con `shutil.which`. Ho confrontato la ricerca con quella del cervello in `brains/claude_cli.py:556`: segue lo stesso ordine (prima GAS_CLAUDE_BIN, poi which). Riconosce gli stessi valori di «spento» di `gas.py:378` (`_solo_opus_sempre`). Un'eccezione restituisce False, cioè la scelta sicura: la coda non si tocca. — **ok**
+2. `modules/sottofondo/__init__.py:392` — la variabile `aperto` si basa sullo stato `in_coda`/`in_corso`, letto fuori dal lock. Se lo stato cambia nel frattempo non succede nulla di grave, perché la ripresa vera resta protetta dal lock di `_riprendi`. Il controllo del cervello forte viene PRIMA dell'attesa di rete, quindi non si perdono 120 secondi inutili. Un compito già «ok» o «ko» non aspetta e va dritto a `controlla`, che non usa la rete: la V-1 BASSA della verifica esterna è chiusa. — **ok**
+3. `modules/sottofondo/__init__.py:396` — la frase di uscita contiene solo l'id del compito, mai il testo. Viene scritto un `logging.warning` e il comando esce con codice 1, come per il caso «senza rete». — **ok** (vedi R-850-2)
+4. `scripts/sottofondo/com.gas.sottofondo.plist:9` — spiega di mettere GAS_CLAUDE_BIN nel .env. Il .env viene davvero caricato prima del comando `sottofondo-riprendi`: in `gas.py:7297` c'è `_carica_dotenv()` e lo smistamento dei comandi viene dopo, in `gas.py:7347`. — **ok**
+5. `tests/test_unit_sottofondo.py:1357`, `tests/test_unit_sottofondo.py:1373` e `tests/test_unit_sottofondo.py:1390` — 129 PASS rieseguiti da me. Ho ragionato su cosa succederebbe col codice vecchio. Senza il controllo del forte, con 2 riprese ammesse, `_avvia_ripresa` verrebbe chiamata e la lista `_niente_riprese_vere` non sarebbe vuota: il test cade. Con l'attesa non condizionata, la lambda `rete` verrebbe chiamata: anche l'altro test cade. Ho anche verificato che `tests/conftest.py:15` imposti `GAS_SOLO_OPUS=0` per i test vecchi, come dichiarato. — **ok**
+
+**Riserve**
+
+- **R-850-1 BASSA**: `_forte_trovabile` controlla solo il binario. Non vede l'interruttore GAS_CLAUDE_CLI (la regola della cascata «forte» in `gas.py:1309` vuole GAS_CLAUDE_CLI=1) né il tetto giornaliero del forte. Con «Sempre Opus» acceso e GAS_CLAUDE_CLI spento, il compito ripreso al boot finirebbe comunque «ko». Non è un problema solo del boot (la ripresa alla prima interazione fallirebbe allo stesso modo), quindi non blocca. Basterebbe aggiungere il controllo dell'interruttore, letto dal .env.
+- **R-850-2 COSMETICA**: la frase dice «claude non è nel PATH di questo avvio» anche quando GAS_CLAUDE_BIN c'è ma punta a un file inesistente o non eseguibile. Meglio distinguere i due casi.
+
+**Cosa NON ho verificato**
+
+- Il comportamento reale sotto launchd sul Mac (PATH minimo, AbandonProcessGroup): non si può riprodurre in questo ambiente Linux.
+- La suite completa del kernel: non l'ho rieseguita, perché il diff non tocca gas.py né brains/.
+- I valori di GAS_CLAUDE_BIN con `~` (tilde): falliscono sia qui sia nel cervello, quindi in modo coerente, ma non li ho provati.
+
+Lezione aggiunta in memoria: un controllo «prerequisito trovabile» che copia la ricerca di un altro modulo va tenuto allineato a quella, e il .env deve essere caricato prima del comando che usa il controllo.
+
+File: /home/user/Gas398/modules/sottofondo/__init__.py, /home/user/Gas398/scripts/sottofondo/com.gas.sottofondo.plist, /home/user/Gas398/tests/test_unit_sottofondo.py, /home/user/Gas398/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_sottofondo.py`: 113 → 126 (8 test della ripresa al boot + 5 delle correzioni del bot), tutti verdi in locale: `126 passed in 6.00s`.
+- `tests/test_unit_sottofondo.py`: 113 → 129 (8 della ripresa al boot + 5 + 3 delle correzioni del bot), tutti verdi in locale: `129 passed in 6.36s`.
 - `tests/test_unit_kernel.py` (round-trip agentico, kernel non toccato salvo il comando nuovo in `main`), eseguito in locale, riga reale:
 
 ```
 === RIEPILOGO: 1187 PASS, 0 FAIL ===
 ```
 
-Nessun FAIL. Rieseguito DOPO il merge di main (4114b631): «=== RIEPILOGO: 1208 PASS, 0 FAIL ===»; sottofondo dopo il merge: 126 passed. La suite `pytest tests/` completa in locale è stata fermata dopo ~5 minuti senza esito (non conclusa); la CI esegue le suite per file.
+Nessun FAIL. Rieseguito DOPO il merge di main (4114b631): «=== RIEPILOGO: 1208 PASS, 0 FAIL ===»; sottofondo dopo il merge: 126 passed (129 dopo 3ad51b10, che tocca solo `modules/sottofondo/`, i suoi test e il plist). La suite `pytest tests/` completa in locale è stata fermata dopo ~5 minuti senza esito (non conclusa); la CI esegue le suite per file.
 
 ## §6 STATO CI
 
@@ -232,6 +265,8 @@ Mappatura commit→run:
 - eafdb49a: CI 45215968921 success; verifica-bot 45216004004: check `verifica-bot` failure sullo SHA (1° verdetto BOCCIATO, V-1 MEDIA corretta in c87c9467); 45215981231 skipped.
 - e9a08526: CI 45217965677 success; verifica-bot 45217975784: check neutral (2° verdetto APPROVATO CON RISERVE senza ALTA/MEDIA; la PR tocca la macchina del bot).
 - 48aacb44, 94189a8b, a469161a, c87c9467, 4114b631: nessuna run propria (pushati insieme al commit di testa o non ancora pushati).
+- ea78c51b: CI 45222037744 in_progress alla scrittura; verifica-bot 45222047615: il job è success, il check `verifica-bot` pubblicato sullo SHA è failure (3° verdetto BOCCIATO, V-1 MEDIA corretta in 3ad51b10).
+- e9030add, 3ad51b10: nessuna run propria (pushati col commit di fine-task di questo giro).
 - Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -239,7 +274,10 @@ Mappatura commit→run:
 - 1° verdetto del bot su PR #398 (eafdb49a, BOCCIATO): V-1 MEDIA (al boot senza rete il compito veniva chiuso «ko» per sempre) CORRETTA; V-2 BASSA («prima» letto fuori dal lock, solo testo) DOCUMENTATA nel codice; V-3 BASSA (riavvio non partito con exit 0) CORRETTA. Serve il verdetto del bot sul nuovo head.
 - Verifica esterna sulla PR #398 (eafdb49a, [commento](https://github.com/Gasss23/Gas/pull/398#issuecomment-7107123430)): V-1 = R-839-3 CHIUSA da questo giro; V-2 = R-840-1 CHIUSA; V-3 COSMETICA (`TUO_UTENTE` nei log del plist, documentato) aperta; V-4 BASSA («ancora in corso» con lock non disponibile, solo testo) aperta.
 - R-841-1 BASSA — `_rete_pronta` apre un socket diretto e ignora `HTTPS_PROXY`: su una macchina che esce solo via proxy la ripresa al boot non parte mai (il compito riparte al primo turno); DNS fuori dal timeout; nessun test della funzione. Da rivedere con l'unità systemd del server. Aperta.
-- R-849-1 BASSA — con «Sempre Opus» (PR #397) il compito ripreso al boot va solo a Opus: se `claude` non è nel PATH di launchd serve `GAS_CLAUDE_BIN` nel `.env` (come per la notte), altrimenti il compito ripreso finisce «ko». Aperta.
+- V-1 MEDIA del bot su ea78c51b (= R-849-1 rivalutata): CHIUSA (3ad51b10, #850-R7): senza forte trovabile la coda non si tocca.
+- R-850-1 BASSA — `_forte_trovabile` controlla solo il binario, non l'interruttore GAS_CLAUDE_CLI né il tetto del giorno del forte (stesso limite della ripresa al primo turno). Aperta.
+- R-850-2 COSMETICA — la frase dice «non nel PATH» anche con GAS_CLAUDE_BIN sbagliato. Aperta.
+- Verifica esterna su ea78c51b ([commento](https://github.com/Gasss23/Gas/pull/398#issuecomment-7107946940)): V-1 BASSA (attese anche per compiti già finiti) CHIUSA; V-2 BASSA (captive portal: rete «pronta» senza servizio) = R-841-1, aperta; V-3 = R-849-1, chiusa.
 - Verifica esterna su e9a08526 ([commento](https://github.com/Gasss23/Gas/pull/398#issuecomment-7107364671)): V-1 = R-841-1; V-2 = R-841-2; V-3 COSMETICA (NB doppio nel §2) corretta. Bot su e9a08526: V-1 COSMETICA (descrizione della PR ferma al primo giro) corretta; V-2 COSMETICA (attesa della rete anche con .ferma/riprese finite, frase «riparte» falsa in quel caso) aperta, parte di R-841-2.
 - R-841-2 COSMETICA — attesa della rete anche col processo ancora vivo: offline «Rete non pronta» ed exit 1 senza niente da riprendere. Aperta.
 - R-839-1, R-839-2, R-839-3, R-840-1: CHIUSE.
