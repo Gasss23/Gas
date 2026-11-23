@@ -2656,3 +2656,63 @@ def test_r7f3_niente_potatura_con_catalogo_in_parte_rotto(dirs, monkeypatch):
     _scrivi(cat, "compiti:\n  - nome: a\n    prompt: a\n  - 7\n")
     assert _giro_esito(root, cat)[1] == ["a"]
     assert set(_lavori(root)) == {"a", "b"}
+
+
+# ── verdetti su PR #399: verifica esterna V-1, bot V-1/V-2 ──────────────────
+
+class _KErrore(_KEsito):
+    def __init__(self, visti, errore):
+        super().__init__(visti)
+        self.errore = errore
+
+    def run_turn(self, prompt):
+        self.visti.append(prompt)
+        yield {"type": "error", "content": self.errore}
+
+
+@pytest.mark.parametrize("errore", [
+    "Pipeline esausta: nessun cervello ha risposto. gemini: QUOTA.",
+    "Budget giornaliero esaurito: $1.0000 spesi (limite $1.00 USD).",
+    "Cervello forte fermo: usati $5 equivalenti oggi.",
+    "Questa richiesta contiene dati di clienti: rispondo solo col cervello forte."])
+def test_r7f3_guasto_esterno_non_conta(dirs, monkeypatch, errore):
+    """Verifica esterna #399 V-1: tre notti di provider giù non mettono in pausa il lavoro."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    _giro_esito(root, cat, ko={"c"})  # un ko vero prima
+    for _ in range(4):
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KErrore([], errore))
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "fallito" and lav["ko_di_fila"] == 1 and lav["esterno"] is True
+    assert "guasto esterno" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert _giro_esito(root, cat)[1] == ["c"]  # mai in pausa
+    assert "esterno" not in _lavori(root)["c"]
+
+
+def test_r7f3_sezione_mostra_anche_i_saltati_per_crash(dirs, monkeypatch):
+    """Bot #399 V-1."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    (nd / notte.IN_CORSO).write_text(json.dumps(
+        {"lungo": {"tentativi": notte.MAX_TENTATIVI, "inizio": "x"}}))
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([], crash=False))
+    testo = (nd / "ultimo_giro.md").read_text()
+    assert "- breve: fatto" in testo and "- lungo: mai eseguito" in testo
+
+
+def test_r7f3_dopo_la_pausa_un_ko_basta_e_l_avviso_dice_il_conto(dirs, monkeypatch):
+    """Bot #399 V-2: dopo la pausa il conto resta (un tentativo a settimana) e l'avviso
+    riporta i ko di fila reali."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    for _ in range(3):
+        _giro_esito(root, cat, ko={"c"})
+    _giro_esito(root, cat, ko={"c"}, solo="c")  # rilancio a mano che fallisce
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "da_non_ritentare" and lav["ko_di_fila"] == 4
+    assert "fallito 4 volte di fila" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
