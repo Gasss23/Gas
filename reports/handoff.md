@@ -8,9 +8,10 @@
 
 1. Merge della PR #397 (https://github.com/Gasss23/Gas/pull/397). Fetta di sicurezza (cancello delle firme, scelta del modello): secondo controllo su claude.ai col link della PR.
 2. **R-840-2 (MEDIA), falsi allarmi del filtro «solo Opus»**: un messaggio con «clienti», «commissione», «versato», «deposito» o un numero lungo che inizia con 0 o 3 va solo a Opus; col cervello forte spento o al tetto quel turno, e quello dopo, si fermano con «contiene dati di clienti». Scelte: tenere così (privacy prima), togliere qualche parola, o un messaggio più chiaro.
-3. Privacy, da sapere e confermare: le conversazioni con Gas sui clienti restano nella storia di Gas (`.gas_history.json`), le richieste di firma nella sua memoria (`.gas_memory.db`); i messaggi passano da Telegram come la chat di oggi; a voce i dati passano da Groq (trascrizione) ed ElevenLabs (voce). Nel diario di Gas non vanno nomi né cifre dei clienti.
-4. Restano dalle fette prima: lista delle commissioni per servizio; sul Mac password delle copie nel `.env`, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino; secondo controllo su claude.ai delle PR #387, #388, #389 e #391; decisione sulle parole di gravità del bot («alto», «severo», «serio», «elevato»).
-5. Ereditata dalla chat Voce: rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
+3. **V-1 (MEDIA) della verifica esterna #397, clienti nuovi**: i dati di un cliente NUOVO scritti senza parole del CRM («aggiungi Anna Neri», «metti 2000 euro a Giulia», un'email) arrivano prima al modello del turno, anche gratuito, contro la regola «dati dei clienti solo su Opus» (CLAUDE.md §2); quel modello non può usare il CRM e, se ci prova, il turno passa a Opus. Scelte: (a) accettare il limite e scrivere «cliente»; (b) allargare il filtro a email e cifre in euro (più falsi allarmi, stessa scelta di R-840-2; oggi farebbe fallire T115c6 e T80ad, scritti contro i blocchi inutili); (c) tutta la chat con Gas su Opus.
+4. Privacy, da sapere e confermare: le conversazioni con Gas sui clienti restano nella storia di Gas (`.gas_history.json`), le richieste di firma nella sua memoria (`.gas_memory.db`); i messaggi passano da Telegram come la chat di oggi; a voce i dati passano da Groq (trascrizione) ed ElevenLabs (voce). Nel diario di Gas non vanno nomi né cifre dei clienti.
+5. Restano dalle fette prima: lista delle commissioni per servizio; sul Mac password delle copie nel `.env`, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino; secondo controllo su claude.ai delle PR #387, #388, #389 e #391; decisione sulle parole di gravità del bot («alto», «severo», «serio», «elevato»).
+6. Ereditata dalla chat Voce: rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
 
 ---
 
@@ -22,6 +23,10 @@
 - **Riserve #840** (0afc1a79): FATTA. Review #841-CRM BOCCIATO (R-841-1 ALTA: il nuovo controllo dei telefoni scattava dentro gli UUID delle firme) → corretto → #842-CRM APPROVATO CON RISERVE.
 - **Riserve #842** (070e7ad3): FATTA, review #843-CRM APPROVATO CON RISERVE (resta R-843-1 BASSA).
 - **Gate IP del fine-task** (e98be2cc): FATTA. Il primo giro del fine-task (a34bcc4b) è stato fermato dal Gate IP: un IP privato di prova nel test T118e2 e lo stesso IP citato nel verdetto #841-CRM. Marcatore `# gasmerge-ip-ok` sulla riga del test (review #844-CRM APPROVATO) e verdetto #841 riemesso dal revisore con «<IP-redatto>».
+- **Verifica esterna #397** (commento sulla PR): APPROVATO CON RISERVE. V-1 MEDIA (clienti nuovi senza parole del CRM): DEFERITA all'operatore (§0 punto 3), limite dichiarato nel commento di `gas.py` e nella guida; l'affermazione «la frase sulla parola cliente non è nella guida» è falsa (c'è, alla riga 96, con «cliente NUOVO» maiuscolo). V-2/V-3 BASSE: nessun cambio.
+- **Bot di verifica su 82afe955**: failure per verdetto incoerente (APPROVATO CON RISERVE con «FINDING: nessuno»), non per il codice.
+- **Allargamento del filtro a email ed euro**: SALTATO — fa fallire T115c6 e T80ad (scritti contro i blocchi inutili); è la scelta di R-840-2, la decide l'operatore.
+- **R-843-1** (df54672d e commento): la correzione provata è stata BOCCIATA (#845-CRM: perdeva telefoni col «+» e i trattini) e tolta; R-843-1 resta BASSA, dichiarata (#846-CRM); motivo del commento corretto (#847-CRM).
 - **R-840-2**: DEFERITA — decisione dell'operatore (§0 punto 2).
 - **Prova su Mac, Telegram e `claude -p` veri**: SALTATA — non raggiungibili da qui; provato con client finti.
 - **Anomalia durante il fine-task**: un primo tentativo di scrivere questo file con un heredoc non quotato ha fatto eseguire alla shell i testi tra apici inversi della prosa (tra cui `pip install -r requirements.txt` nel container, la suite del kernel e `claude -p` senza input, che ha dato errore). Il file non è stato scritto; nel repo nessun commit, nessun push, cambiati solo log e cache ignorati da git. Riscritto con file temporanei e heredoc quotato.
@@ -31,8 +36,8 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  17 ++++++++
- gas.py                             | 173 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ .claude/agents/memoria_revisore.md |  22 +++++++++++
+ gas.py                             | 182 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
  modules/crm/agente.py              | 776 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/store.py               | 187 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  modules/gate/gate.py               |   7 ++++
@@ -43,7 +48,7 @@
  reports/diff_sessione.md           |  17 ++++----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           |  40 ++++++++++---------
+ reports/ultimo_report.md           |  44 ++++++++++++---------
  tests/test_unit_crm.py             | 304 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_kernel.py          | 297 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
 ```
@@ -53,6 +58,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bfd183e6 docs(gas): motivo esatto di R-843-1 nel commento del filtro (review #847-CRM)
+df54672d docs(gas): V-1 verifica esterna #397 e R-843-1 dichiarati nel commento del filtro e nella guida (review #845-CRM BOCCIATO → #846-CRM)
+82afe955 docs(fine-task): handoff col verdetto #841 riemesso senza IP e la review #844-CRM; memoria del revisore
 e98be2cc test(gas): marcatore gasmerge-ip-ok sull'IP di prova di T118e2 (review #844-CRM)
 a34bcc4b docs(fine-task): Gas usa il CRM — report, handoff e stato; review #839-#843-CRM e memoria del revisore
 070e7ad3 test(gas): R-842-1 — casi limite del filtro dei telefoni provati; limiti R-842-2/3 dichiarati (review #843-CRM)
@@ -398,6 +406,115 @@ Ho aggiunto la riga #844-CRM e una lezione in coda a /home/user/Gas/.claude/agen
 
 Lezione nuova: un verdetto finisce integrale nell'handoff, quindi nell'albero del ramo. Un IP di esempio citato in un verdetto fa scattare il Gate IP: nei verdetti va scritto «<IP-redatto>» o a parole.
 
+---
+
+Review #845-CRM sul primo diff dopo la verifica esterna (non committato; la modifica della regex è stata tolta), verdetto integrale incollato:
+
+## VERDETTO: BOCCIATO
+
+Review #845-CRM — diff staged sul ramo claude/nifty-galileo-3k7kbm sopra 82afe955 (3 file, +8/−2, sha256 del diff c48f0c8c…). Letti prima: CLAUDE.md (§2, §5, §8), reports/stato_progetto.md (testa, voce «Gas usa il CRM»), memoria del revisore (#840–#844-CRM).
+
+**Elementi del diff esaminati**
+1. `gas.py:163` — nuova esclusione «data dopo il +» (separatori . / -, chiusa da `(?![0-9])`) — rischio: falsi negativi sui telefoni col «+» — **blocco** (R-845-1). Il `(?![0-9])` finale accetta un separatore seguito da altre cifre: in «+44-20-7946-0958» il pezzo «+44-20-7946» passa per una data e il telefono non conta più.
+2. `gas.py:164` — esclusione delle migliaia estesa al «+» (chiusura di R-843-1) — stesso rischio — **blocco** (concorre a R-845-1): in «+39.333.1234567» il pezzo «+39.333» passa per migliaia. I tre negativi di R-843-1 («+1.500.000 di fatturato», «+03.11.2026», «crescita +3.000.000») sono invece chiusi davvero.
+3. `gas.py:169` — commento sul limite di V-1 e rinvio all'operatore — rischio: rinvio non motivato — **ok**: T115c6 (`tests/test_unit_kernel.py:13247`, «che ore sono? costa 333 euro») e T80ad (`tests/test_unit_kernel.py:9106`) esistono come dichiarato; è la stessa scelta falsi positivi/falsi negativi di R-840-2, giusto che la decida l'operatore.
+4. `tests/test_unit_kernel.py:13802` — due negativi nuovi in T118e2 — **ok** per i negativi, ma i positivi (`tests/test_unit_kernel.py:13793`) hanno il «+» solo con gli spazi: la regressione di R-845-1 è invisibile alla suite (**riserva**, parte di R-845-1).
+5. `reports/crm/guida.md:96` — elenco esplicito di cosa passa prima dal modello normale — **riserva**: promette «oppure col «+»; anche con spazi, punti, trattini o barre», falso dopo questo diff; vedi anche R-845-2/3.
+
+Contesto (file non toccati dal diff): `gas.py:5787` (a metà turno si passa a Opus solo se la finestra contiene dati di clienti) e `gas.py:137` (`_TOOL_DATI_LEAD`, gli strumenti che fanno scattare il passaggio).
+
+**Misure (su una copia dell'indice)**
+- Kernel: 1206 PASS, 0 FAIL (T118e2 PASS).
+- 0 su 20.000 UUID (uuid4 nella frase della firma), 0 su 20.000 sha256.
+- Telefoni col «+» presi a HEAD e NON più presi con il diff (11 su 20 provati): «+39-02-1234-5678», «+39.02.1234.5678», «+39/02/1234/5678», «+39.333.1234567», «+39.333.123.4567», «+44-20-7946-0958», «+44.20.7946.0958», «+49.30.1234.5678», «+41-44-123-45-67», «+43/1/234/5678», e un numero francese a sei gruppi separati da punti. Ancora presi: quelli con gli spazi, «+39-333-1234567», «+1-555-123-4567», «+393331234567».
+- Prova sulla funzione che decide l'instradamento: `_finestra_ha_dati_lead` sul messaggio «aggiungi Anna Neri, +39-02-1234-5678» con rubrica vuota → True a HEAD, False con il diff (lo stesso con «+39.333.1234567»). È proprio il caso per cui esiste il ramo del telefono (R-840-1: cliente nuovo con recapito): torna al modello gratuito alla prima chiamata.
+
+**MOTIVO BLOCCANTE**
+- **R-845-1 MEDIA, bloccante**: il diff introduce falsi negativi nel verso dei dati ai gratuiti (contro la regola «dati dei clienti solo su Opus», CLAUDE.md §2) per chiudere una BASSA nel verso opposto (R-843-1, che costava solo una chiamata a Opus), e rende falsa la frase della guida scritta nello stesso diff. La correzione è piccola ed è già misurata, quindi conviene un altro giro.
+  Rimedio provato (NON è nel diff):
+  - `gas.py:163`: chiudere con `(?![0-9]|[./\-][0-9])` invece di `(?![0-9])`;
+  - `gas.py:164`: chiudere con `(?![0-9]|[./][0-9])` (senza trattino, così gli intervalli «30.000.000-35.000.000 euro» e «+1.500.000-2.000.000» restano esclusi).
+  Esito: 0 telefoni mancati sui 15 positivi (gli 11 sopra, più quelli con gli spazi e «333 1234567»); tutti i negativi di T118e2 e i tre di R-843-1 ancora esclusi; unico falso positivo nuovo «+01.01.2026-31.12.2026» (raro, costa una chiamata a Opus); 0 su 20.000 UUID e sha256; kernel 1206 PASS. Effetto collaterale: «333.123.4567» diventa preso, quindi va tolto dai limiti nella guida e nel commento `gas.py:156`. Aggiungere ai positivi di T118e2 almeno «+39-02-1234-5678», «+39.02.1234.5678», «+39.333.1234567», «+44-20-7946-0958», e controllare che rimettendo `(?![0-9])` il test fallisca.
+
+**Riserve** (da tracciare se il prossimo giro le lascia aperte)
+- **R-845-2 BASSA** — guida: «subito dopo il turno passa a Opus» è vero solo se il modello normale chiama uno strumento del CRM o dei contatti (`gas.py:137` → `gas.py:5787`). Se risponde a parole (per esempio chiede i dettagli), il turno resta suo, e lo stesso vale per il messaggio successivo senza parole del CRM. Scrivere «se prova a usare il CRM, il turno passa a Opus».
+- **R-845-3 COSMETICA** — «Rossi ha tolto 500» e «segna Bianchi come perso» (guida e commento `gas.py:172`) restano fuori solo se Rossi o Bianchi non sono già nel CRM: il cognome di un cliente esistente è un identificativo (`gas.py:215`) e va a Opus. Nella guida, sotto «cliente NUOVO», si capisce; nel commento no. Inoltre «Col cervello forte spento quei messaggi si fermano» ora segue l'elenco dei messaggi che NON vanno a Opus: è ambiguo.
+
+**Rischi esplicitamente esclusi**
+- Comportamento reale dei modelli (Gemini, Groq, Opus) davanti a «aggiungi Anna Neri»: non ho provato se chiamano uno strumento del CRM, perché qui non ci sono chiavi. R-845-2 è dedotta dal codice.
+- Suite del CRM (modules/crm) e mypy non rieseguiti: il diff non tocca modules/crm e in gas.py cambia solo una costante di regex.
+- Frequenza reale dei formati col «+» e i separatori nei messaggi dell'operatore: qui non è misurabile. Il peso di R-845-1 lo do sul principio (dati dei clienti solo a Opus) e sul fatto che la regressione nasce da questo diff, non su un conteggio.
+- Gate IP: questo verdetto non contiene IP letterali (provato con la regex di scripts/fine_task_finale.sh).
+
+Memoria: riga #845-CRM e una lezione aggiunte in coda a .claude/agents/memoria_revisore.md. Commit della memoria NON eseguito, come chiesto dal chiamante. .claude/.review_ok non creato.
+
+---
+
+Review #846-CRM, commit df54672d (verdetto integrale incollato):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #846-CRM: secondo giro della #845-CRM. Diff staged su claude/nifty-galileo-3k7kbm sopra 82afe955: 2 file, +9/−1, sha256 del diff 8b28aede.
+
+Letture obbligatorie fatte: CLAUDE.md §5/§2/§8/§9, riga 9 di reports/stato_progetto.md, coda di .claude/agents/memoria_revisore.md (compresa la #845-CRM BOCCIATO).
+
+**Elementi del diff esaminati**
+- `gas.py:168` — commento R-843-1 sopra `_RE_RICHIESTA_CRM`. Rischio: che il ritiro della regex lasci un cambio di codice nascosto. AST di gas.py staged identico a HEAD (righe aggiunte: solo commenti, gas.py:168-175); tests/ identico a HEAD. **Esito: ok.** R-845-1 è chiusa perché la modifica è stata tolta. Sulla copia dell'indice tornano presi tutti gli 11 telefoni col «+» persi in #845, tra cui «+39-02-1234-5678», «+44-20-7946-0958», «+39.333.1234567», «+39/02/1234/5678», «+33.1.23.45.67.89». È preso anche «aggiungi Anna Neri, +39-02-1234-5678». Su 20.000 UUID e 20.000 sha256: 0 presi per telefoni.
+- `gas.py:169` — motivo dichiarato: «Escluderlo fa perdere telefoni veri». Rischio: affermazione falsa in un commento del perimetro (stessa classe del V-1 della verifica esterna #397). **Esito: riserva R-846-1.** Vale solo per l'esclusione del primo giro. Ho rifatto ora quella corretta (`\+?` nelle migliaia, chiusa con `(?![0-9]|[./][0-9])`): 0 telefoni persi su 12 positivi, «+1.500.000» e «crescita +3.000.000» esclusi, 0 UUID e 0 sha256 presi. Lasciare il falso positivo è una scelta legittima (verso sicuro), ma il commento deve dire «rinviata per prudenza», non «impossibile senza perdere telefoni».
+- `gas.py:171` — rinvio del V-1 della verifica esterna #397 all'operatore. Rischio: che le prove citate non esistano. Esistono: «costa 333 euro» in tests/test_unit_kernel.py:13249 (T115c6) e T80ad in tests/test_unit_kernel.py:9106. Gli esempi «aggiungi Anna Neri», «Rossi ha tolto 500» e l'email da sola non sono presi, come scritto. **Esito: ok.**
+- `reports/crm/guida.md:96` — R-845-2 («se prova a usarlo, il turno passa a Opus»). Verificato sul codice: la chiamata a uno strumento del CRM fatta dal modello normale fa scattare `_finestra_ha_dati_lead` (gas.py:399), poi il passaggio al forte prima della chiamata successiva (gas.py:5790). Col forte spento il turno si ferma con «contiene dati di clienti» (gas.py:6114). R-845-3: la frase sul forte spento ora sta prima dell'elenco e vale per «i messaggi che vanno a Opus»; c'è anche «se quei nomi non sono già nel CRM». R-843-1 è dichiarata. La promessa «col «+»; anche con spazi, punti, trattini o barre» torna vera. **Esito: ok.**
+
+**Test:** `python tests/test_unit_kernel.py` sulla copia dell'indice → 1206 PASS, 0 FAIL (rieseguito da me).
+
+**Riserve**
+- **R-846-1 BASSA**: motivo inesatto in gas.py:169 (vedi sopra). Rimedio: «l'esclusione provata in #845 perdeva telefoni; una versione corretta esiste, rinviata per prudenza».
+- **R-846-2 BASSA (da tracciare nel fine-task)**: reports/stato_progetto.md:9 dice ancora «R-843-1 … non dichiarato nella guida» e dà R-840-1 come chiusa. Il V-1 della verifica esterna #397 resta aperto: nome, cifra ed email di un cliente nuovo vanno prima a un modello gratuito, contro la regola di CLAUDE.md §2. Va in §0 DECISIONI UMANE dell'handoff come voce a sé, non solo dentro R-840-2: il compromesso tra falsi negativi e falsi positivi è lo stesso, ma l'operatore deve leggere chiaramente che oggi dati di clienti nuovi possono passare da un gratuito.
+- **COSMETICHE**: gas.py:169 dice «costa una chiamata a Opus» ma non «col forte spento ferma il turno» (la guida lo copre); «+03.11.2026» (data col «+», caso irrealistico) è preso come telefono ma non è dichiarato.
+
+**Rischio escluso:** non ho verificato il comportamento reale con Telegram, la voce e `claude -p` veri, né cosa fa un modello gratuito reale davanti a «aggiungi Anna Neri» (prova a usare lo strumento o risponde a parole?). Non è riproducibile qui senza provider veri: la descrizione «se prova a usarlo» l'ho verificata solo sul codice. Non ho riverificato il contenuto di T80ad contro un'ipotetica regex per le email, che non esiste nel codice.
+
+Note per il chiamante:
+- Memoria aggiornata: riga `#846-CRM` più una lezione in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza IP letterali (controllato). Commit della memoria NON eseguito, come richiesto. `.claude/.review_ok` non creato.
+- File rilevanti: /home/user/Gas/gas.py, /home/user/Gas/reports/crm/guida.md, /home/user/Gas/reports/stato_progetto.md
+
+---
+
+Review #847-CRM, commit bfd183e6 (verdetto integrale incollato):
+
+## VERDETTO: APPROVATO
+
+Review #847-CRM del diff staged su claude/nifty-galileo-3k7kbm, sopra df54672d: 1 file, gas.py +3/−2, sha256 del diff 5ffb249a. Prima della review ho letto CLAUDE.md §5, reports/stato_progetto.md (righe 1-14) e la mia memoria.
+
+**Elementi del diff esaminati**
+- `gas.py:168` — il commento di R-843-1 ora dice anche «col forte spento, ferma il turno». Rischio esaminato: che la frase sia falsa. Esito: ok. Il percorso è stato verificato: il controllo della regex sui messaggi dell'operatore (`gas.py:394`) fa saltare i modelli minori e, se il forte manca, il turno si ferma con «contiene dati di clienti» (`gas.py:6116`). La frase è coerente con `gas.py:159` e con `reports/crm/guida.md:96`.
+- `gas.py:170` — il nuovo motivo: «la prima esclusione provata (#845) perdeva telefoni… una versione corretta esiste (#846-CRM), rinviata per prudenza». Rischio esaminato: un motivo di nuovo inesatto (era R-846-1). Esito: ok, e R-846-1 è chiusa. Ho rifatto la prova:
+  - la regex attuale prende ancora «+1.500.000 euro» e «crescita +3.000.000», quindi il limite dichiarato è vero;
+  - la versione corretta di #846 interviene sull'esclusione delle migliaia di `gas.py:163`: aggiunge `\+?` e chiude con `(?![0-9]|[./][0-9])`. Risultato: 0 telefoni persi su 15 (tutti col «+» e coi separatori), 0 dei negativi presi, 0 su 20.000 UUID e 0 su 20.000 sha256. Quindi «esiste» è vero;
+  - «il verso sicuro è questo» è vero: un falso positivo costa una chiamata a Opus o ferma il turno, ma non manda mai dati a un modello minore.
+- `gas.py:171` — nessun cambio di codice. Rischio esaminato: una modifica nascosta alla regex o allo spostamento di riga. Esito: ok.
+  - L'AST di HEAD e quello dell'indice sono identici (dump sha 28e4f3fefe7f su entrambi).
+  - Anche i token escluso i commenti sono identici.
+  - `git diff --cached --check` è pulito e le righe nuove sono lunghe al massimo 91 caratteri, come il resto del blocco.
+  - Test del kernel sulla copia dell'indice: 1206 PASS, 0 FAIL (37 s). Nessun test legge il testo di gas.py in modo che il commento conti.
+
+**Rischi esplicitamente esclusi**
+- Non ho rieseguito la suite del CRM né le altre suite: il codice è byte-identico come AST, quindi non possono cambiare esiti.
+- Non ho verificato l'handoff né stato_progetto: sono fuori dal diff.
+
+**Note (non bloccanti, già aperte da #846)**
+1. R-846-2 BASSA, tracciamento, resta aperta e tocca a te nei reports:
+   - stato_progetto riga 9 dice R-843-1 «non dichiarata nella guida», ma ora è dichiarata;
+   - V-1 della verifica esterna #397 va nel §0 DECISIONI UMANE dell'handoff come voce a sé.
+2. Cosmetica: «+03.11.2026» (una data col «+») viene ancora presa come telefono e non è dichiarata né nel commento né nella guida.
+3. Il commento cita le review #845-CRM e #846-CRM, ma le loro righe in `.claude/agents/memoria_revisore.md` non sono ancora committate: a HEAD ce ne sono 0. Committa la memoria nel fine-task, altrimenti il rimando non si può verificare.
+
+**Memoria**
+- Ho aggiunto la riga contatore `#847-CRM — 2026-11-23 — APPROVATO — …` in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, senza IP letterali e senza lezioni nuove.
+- Come richiesto, non ho eseguito `commit_memoria_revisore.sh` e non ho creato `.claude/.review_ok`.
+- L'indice contiene ancora solo gas.py.
+
+File utili: `/home/user/Gas/gas.py`, `/home/user/Gas/.claude/agents/memoria_revisore.md`, `/home/user/Gas/reports/crm/guida.md`. L'output dei test è in `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/kernel.out`.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python tests/test_unit_kernel.py`: 1191 PASS → 1206 PASS, 0 FAIL. Nuovi T118a, T118b, T118c, T118c2, T118d, T118e, T118e2, T118f, T118f2, T118g. Adattati alla regola nuova T80 (testo «per il cliente Rossi» → «per Rossi») e T116h («ricordami» → «poi sistemo»); il revisore (#840-CRM) li giudica coerenti.
@@ -421,14 +538,19 @@ Lezione nuova: un verdetto finisce integrale nell'handoff, quindi nell'albero de
   - `070e7ad3`: unit-suite in corso alla scrittura dell'handoff; handoff-check failure (stesso motivo); verifica-bot non partito (l'etichetta «verifica» si mette dopo questo commit di fine-task).
   - `a34bcc4b` (primo commit di fine-task, fermato dal Gate IP prima del push): nessuna run su questo SHA.
   - `e98be2cc`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
+  - `82afe955` (secondo commit di fine-task): unit-suite success, handoff-check success, verifica-bot failure (verdetto del bot incoerente: APPROVATO CON RISERVE con «FINDING: nessuno»).
+  - `df54672d` e `bfd183e6`: nessuna run propria (pushati insieme al commit di fine-task).
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-840-2 MEDIA, decide l'operatore**: falsi allarmi del filtro «solo Opus» (§0 punto 2).
+- **V-1 MEDIA della verifica esterna #397, decide l'operatore**: clienti nuovi senza parole del CRM (§0 punto 3). V-2 BASSA («20 mila», «1 500» ammettono più cifre; la firma mostra quella vera) e V-3 BASSA (CI dell'ultimo commit non pronta alla scrittura dell'handoff).
+- **R-846-2 BASSA**: questo handoff e lo stato ora riportano V-1 come voce a sé e R-843-1 come dichiarata (chiusa con questo commit).
 - **R-842-2 BASSA** (dichiarata in guida e commento): formati di telefono non riconosciuti («333.123.4567», «02 12 34 56 78», «tel.3331234567», «(333) 1234567»).
 - **R-842-3 BASSA** (dichiarata): numeri di 7-12 cifre che iniziano con 0 o 3 presi per telefoni (PID, «3000000 visualizzazioni», righe di free/df).
-- **R-843-1 BASSA** (non dichiarata nella guida): «+» seguito da un numero con le migliaia («+1.500.000») preso per telefono; effetto una chiamata a Opus in più, mai un dato a un modello minore.
+- **R-843-1 BASSA** (dichiarata nella guida e nel commento): «+» seguito da un numero con le migliaia («+1.500.000») preso per telefono; effetto una chiamata a Opus in più, mai un dato a un modello minore. Una correzione esatta esiste (#846-CRM), rinviata per prudenza.
+- COSMETICA #846: «+03.11.2026» preso per telefono, non dichiarato.
 - COSMETICHE dei verdetti #842/#843: mutanti vivi sui bordi del filtro dei telefoni, «CRM: passo a Claude Opus.» anche quando il turno poi si ferma, il taglio del promemoria duplica `tronca_visibile`, `.gas_memory_crm.db` vuoto creato dal bot dove il CRM non c'è.
 - Non verificato: Telegram, voce e `claude -p` veri (solo client finti).
 - Dal CRM: R-836-1 COSMETICA.

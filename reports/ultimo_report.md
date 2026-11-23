@@ -3,9 +3,10 @@
 ## DECISIONI UMANE RICHIESTE
 1. Merge della PR #397 (codice di Gas: cancello delle firme, scelta del modello, strumenti nuovi). È una fetta di sicurezza: secondo controllo su claude.ai col link della PR.
 2. Falsi allarmi del filtro «solo Opus» (R-840-2, decidi tu): un messaggio con «clienti», «commissione», «versato», «deposito» o un numero lungo che inizia con 0 o 3 va solo a Opus; se il cervello forte è spento o al tetto, quel turno (e il successivo) si ferma con «contiene dati di clienti». Scelte: tenere così (privacy prima), togliere qualche parola, o un messaggio più chiaro.
-3. Privacy, da sapere e confermare: le conversazioni con Gas sui clienti restano nella storia di Gas (`.gas_history.json`), le richieste di firma nella sua memoria (`.gas_memory.db`), e i messaggi passano da Telegram come la chat di oggi. Nel diario di Gas non vanno nomi né cifre dei clienti. A voce i dati passano da Groq (trascrizione) ed ElevenLabs (voce).
-4. Restano dalle fette prima: lista delle commissioni per servizio; sul Mac password delle copie nel `.env`, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino; secondo controllo su claude.ai delle PR #387, #388, #389 e #391; decisione sulle parole di gravità del bot («alto», «severo», «serio», «elevato»).
-5. Ereditata dalla chat Voce: rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
+3. **Clienti nuovi (V-1 MEDIA della verifica esterna, decidi tu)**: se scrivi i dati di un cliente NUOVO senza parole del CRM («aggiungi Anna Neri», «metti 2000 euro a Giulia», un'email), quel messaggio lo legge prima il modello normale (anche gratuito), che non può usare il CRM; se prova a usarlo il turno passa a Opus. Scelte: (a) lasciare così e scrivere «cliente» nei messaggi; (b) allargare il filtro a email e cifre in euro (più messaggi qualunque andranno a Opus o si fermeranno col forte spento); (c) tutta la chat con Gas su Opus.
+4. Privacy, da sapere e confermare: le conversazioni con Gas sui clienti restano nella storia di Gas (`.gas_history.json`), le richieste di firma nella sua memoria (`.gas_memory.db`), e i messaggi passano da Telegram come la chat di oggi. Nel diario di Gas non vanno nomi né cifre dei clienti. A voce i dati passano da Groq (trascrizione) ed ElevenLabs (voce).
+5. Restano dalle fette prima: lista delle commissioni per servizio; sul Mac password delle copie nel `.env`, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino; secondo controllo su claude.ai delle PR #387, #388, #389 e #391; decisione sulle parole di gravità del bot («alto», «severo», «serio», «elevato»).
+6. Ereditata dalla chat Voce: rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
 
 ## Esito
 - **Richiesta dell'operatore** («posso usare il mio agente IA e dargli comandi per utilizzare il crm? aggiungere, togliere, ricordarmi»), con la proposta scelta «Sì, fallo tu qui»: registrata come decisione 18 in `reports/crm/decisioni.md`; notizia in `reports/bacheca.md` (questa chat tocca `gas.py`, cancello e bot Telegram).
@@ -18,6 +19,9 @@
   - Niente modifiche dai compiti in sottofondo; diario e progressi su Telegram senza dati dei clienti.
   - Promemoria su Telegram dal giro di ogni minuto del bot.
 - **Guida**: `reports/crm/guida.md` spiega come usare il CRM parlando con Gas.
+- **Verifica esterna PR #397**: APPROVATO CON RISERVE (commento sulla PR). V-1 MEDIA: i dati di un cliente nuovo senza parole del CRM passano prima dal modello normale → dichiarato e rinviato a te (decisione 3); la sua affermazione che la frase «usa la parola cliente» mancasse nella guida era sbagliata (c'era, l'ha cercata alla lettera). V-2 BASSA: «20 mila» o «1 500» ammettono più cifre (la firma mostra quella vera). V-3 BASSA: CI dell'ultimo commit non ancora pronta alla scrittura dell'handoff.
+- **Bot di verifica su 82afe955**: failure, ma per un verdetto incoerente del bot (APPROVATO CON RISERVE con «FINDING: nessuno»), non per il codice. Riparte sul commit nuovo.
+- **Dopo la verifica esterna**: provato ad allargare il filtro a email ed euro → fa fallire due test vecchi scritti contro i blocchi inutili (T115c6, T80ad): lasciato a te. Correzione di R-843-1 → review #845-CRM BOCCIATO (perdeva telefoni col «+» e i trattini): tolta, R-843-1 dichiarata (#846-CRM); commento corretto (#847-CRM).
 - **Anomalia nel fine-task**: un primo tentativo di scrivere l'handoff ha fatto eseguire alla shell i testi tra apici inversi (tra cui `pip install -r requirements.txt` nel container, la suite del kernel e `claude -p` senza input, finito in errore). Nessun file scritto, nessun commit né push; cambiati solo log e cache ignorati da git. Rifatto con file temporanei.
 
 ## Test
@@ -26,6 +30,6 @@
 - Le altre suite della CI (pytest): 3512 passed (sull'albero di 0afc1a79; 070e7ad3 cambia solo un commento in gas.py, test e guida).
 
 ## Riserve aperte
-- **R-840-2 MEDIA, decide l'operatore** (vedi decisione 2). R-842-2 BASSA (formati di telefono non riconosciuti, dichiarati), R-842-3 BASSA (numeri lunghi che iniziano con 0 o 3 presi per telefoni, dichiarato), R-843-1 BASSA («+1.500.000» preso per telefono, non dichiarato). Cosmetiche nei verdetti #842/#843. Non verificato: Telegram, voce e `claude -p` veri.
+- **R-840-2 MEDIA e V-1 MEDIA della verifica esterna, decide l'operatore** (decisioni 2 e 3). R-842-2 BASSA (formati di telefono non riconosciuti, dichiarati), R-842-3 BASSA (numeri lunghi che iniziano con 0 o 3 presi per telefoni, dichiarato), R-843-1 BASSA («+1.500.000» preso per telefono, dichiarato; correzione rinviata per prudenza). V-2/V-3 BASSE della verifica esterna. Cosmetiche nei verdetti #842/#843. Non verificato: Telegram, voce e `claude -p` veri.
 - Dal CRM: R-836-1 COSMETICA.
 - Ereditate dalla chat Voce (in `reports/stato_progetto.md`): R-813M1-1 BASSA, note basse del bot #390 (V-1/V-2/V-3), R-810M1-2 BASSA attenuata, note basse #382 V-1/V-2 e #383 V-2/V-3, punteggi della voce da lontano non verificati.
