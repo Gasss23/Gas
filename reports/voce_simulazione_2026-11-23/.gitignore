@@ -1,0 +1,7 @@
+script/cache/
+script/runs/
+script/flussi/
+script/tracce*/
+script/varianti/
+script/vero4/
+__pycache__/

@@ -51,8 +51,10 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_ASCOLTO_SILENZIO   — secondi di silenzio che chiudono la richiesta (default 0.8)
     GAS_ASCOLTO_INTERRUZIONE — 0 = la parola non interrompe Gas mentre parla (default 1)
     GAS_ASCOLTO_CONFERMA   — 0 = dopo la parola solo il bip, senza «Sì, signore?» (default 1)
-    GAS_ASCOLTO_SOGLIA_INTERRUZIONE — soglia della parola mentre Gas parla, 0-1 (default 0.8)
-    GAS_ASCOLTO_BLOCCHI_INTERRUZIONE — blocchi di fila per interrompere Gas, 1-5 (default 3)
+    GAS_ASCOLTO_SOGLIA_INTERRUZIONE — soglia della parola mentre Gas parla, 0-1 (default 0.8;
+                             con la verifica della voce attiva: la soglia della parola)
+    GAS_ASCOLTO_BLOCCHI_INTERRUZIONE — blocchi di fila per interrompere Gas, 1-5 (default 3;
+                             con la verifica della voce attiva: 1)
     GAS_ASCOLTO_FORMATO    — formato della risposta chiesto al server (default
                              audio+pezzi, le frasi in fila; vuoto = un solo MP3)
     GAS_ASCOLTO_VERIFICA   — 0 = niente verifica della voce anche se è stata addestrata

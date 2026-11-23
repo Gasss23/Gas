@@ -155,7 +155,8 @@ def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None, rilevatore=N
               "GAS_ASCOLTO_SOGLIA_INTERRUZIONE", "GAS_VOICE_URL", "GAS_VOICE_PORT",
               "GAS_ASCOLTO_SOGLIA", "GAS_ASCOLTO_BLOCCHI_PAROLA", "GAS_VOICE_MAX_TURNI",
               "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE", "GAS_ASCOLTO_VERIFICA",
-              "GAS_ASCOLTO_SOGLIA_VERIFICA", "GAS_ASCOLTO_SOGLIA_BASE", "GAS_ASCOLTO_MODELLO"):
+              "GAS_ASCOLTO_SOGLIA_VERIFICA", "GAS_ASCOLTO_SOGLIA_BASE", "GAS_ASCOLTO_MODELLO",
+              "GAS_ASCOLTO_FASI"):   # V-3 bot #400
         monkeypatch.delenv(k, raising=False)
     for k, v in ambiente.items():
         monkeypatch.setenv(k, v)
@@ -2978,6 +2979,18 @@ def test_main_avvisa_se_il_env_rende_la_parola_piu_facile(monkeypatch, tmp_path,
     assert "GAS_ASCOLTO_BLOCCHI_PAROLA" not in avvisi[0]
     assert "interruzione spenta" in caplog.text
 
+
+def test_avviso_blocchi_interruzione_col_filtro_confronta_con_1(monkeypatch, tmp_path, caplog):
+    """R-816-1 / V-2 bot #400: col filtro della voce il predefinito dei blocchi
+    d'interruzione è 1: =1 nel .env non è «più facile» (nessun avviso), e il confronto non
+    torna mai a 3."""
+    _verificatore(tmp_path)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_BLOCCHI_INTERRUZIONE": "1"},
+                        rilevatore=_rilevatore_registrato([]))
+    assert "verifica della voce: attiva" in caplog.text
+    assert k.get("blocchi_interruzione") == 1
+    assert "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE" not in caplog.text
 
 # ── «parola quasi sentita» (sera dell'11/11: chiamate vere scartate senza traccia) ──
 
