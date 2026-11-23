@@ -98,7 +98,7 @@ Il modello «hey_jarvis» dà alla tua voce punteggi bassi (0,37–0,43 nella mi
 persone. La verifica della voce è un piccolo filtro addestrato sulla tua voce: quando il
 modello sente qualcosa di simile alla parola (da 0,25 in su), il filtro decide se sei tu
 (o un'altra persona registrata) che dice «Hey Jarvis». Allora la parola vale con la soglia
-del filtro (`GAS_ASCOLTO_SOGLIA_VERIFICA`, 0,5) e `GAS_ASCOLTO_SOGLIA` non conta più.
+del filtro (`GAS_ASCOLTO_SOGLIA_VERIFICA`, 0,6) e `GAS_ASCOLTO_SOGLIA` non conta più.
 
 **Registrare (una volta, ~10 minuti):**
 
@@ -236,8 +236,8 @@ solo).
 | `GAS_VOICE_MAX_TURNI` | 1 | turni dopo la parola, il primo compreso (1 = solo la richiesta dopo «Hey Jarvis»: per continuare si ripete la parola; 3 = la richiesta più 2 di seguito senza ripeterla) |
 | `GAS_ASCOLTO_MODELLO` | hey_jarvis | modello di openWakeWord |
 | `GAS_ASCOLTO_VERIFICA` | 1 | `0` = niente verifica della voce anche se è addestrata (si torna a `GAS_ASCOLTO_SOGLIA`) |
-| `GAS_ASCOLTO_SOGLIA_VERIFICA` | 0.5 | con la verifica attiva, sensibilità della parola al posto di `GAS_ASCOLTO_SOGLIA` (più alta = meno attivazioni per sbaglio; mai sotto `GAS_ASCOLTO_SOGLIA_BASE`) |
-| `GAS_ASCOLTO_FASI` | 4 | quanti modelli della parola, sfalsati di 20 ms, ascoltano insieme (il punteggio di «Hey Jarvis» cambia molto con la posizione della parola sui blocchi da 80 ms); 1 = un modello solo, come prima |
+| `GAS_ASCOLTO_SOGLIA_VERIFICA` | 0.6 | con la verifica attiva, sensibilità della parola al posto di `GAS_ASCOLTO_SOGLIA` (più alta = meno attivazioni per sbaglio; mai sotto `GAS_ASCOLTO_SOGLIA_BASE`) |
+| `GAS_ASCOLTO_FASI` | 4 col filtro della voce, 1 senza | quanti modelli della parola, sfalsati di 20 ms, ascoltano insieme (il punteggio di «Hey Jarvis» cambia molto con la posizione della parola sui blocchi da 80 ms); 1 = un modello solo, come prima |
 | `GAS_ASCOLTO_SOGLIA_BASE` | 0.25 | con la verifica attiva, punteggio del modello della parola da cui un pezzo di audio passa alla verifica (0.05–0.9; se lo cambi, riaddestra con `--solo-addestra`) |
 | `GAS_ASCOLTO_FORMATO` | audio+pezzi | risposta a frasi in fila; vuoto = un solo audio alla fine, come prima |
 

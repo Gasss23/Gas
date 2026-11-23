@@ -3424,16 +3424,16 @@ def test_main_con_la_verifica_usa_la_sua_soglia(monkeypatch, tmp_path, caplog):
     p = _verificatore(tmp_path)
     visti = []
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
-        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.6"},
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.4"},
                         rilevatore=_rilevatore_registrato(visti))
     assert visti == [{"verificatore": p, "soglia_base": 0.25, "fasi": a.FASI_PREDEFINITE}]
-    assert a.SOGLIA_VERIFICA_PREDEFINITA == 0.5
+    assert a.SOGLIA_VERIFICA_PREDEFINITA == 0.6   # V-1 bot #400: 0,6 con le 4 fasi
     assert k.get("soglia") == a.SOGLIA_VERIFICA_PREDEFINITA   # GAS_ASCOLTO_SOGLIA non conta
     # simulazione 23/11: con la verifica 0,8 su 3 blocchi non scattava quasi mai
-    assert k.get("soglia_interruzione") == 0.5 and k.get("blocchi_interruzione") == 1
+    assert k.get("soglia_interruzione") == 0.6 and k.get("blocchi_interruzione") == 1
     assert "verifica della voce: attiva (1 persona, soglia base 0.25)" in caplog.text
-    assert ("regolazioni in uso: soglia 0.50, blocchi di fila 1, turni 1, finestra 10 s, "
-            "interruzione 0.50 su 1 blocchi, voce 200, verifica della voce attiva "
+    assert ("regolazioni in uso: soglia 0.60, blocchi di fila 1, turni 1, finestra 10 s, "
+            "interruzione 0.60 su 1 blocchi, voce 200, verifica della voce attiva "
             "(1 persona, soglia base 0.25)") in caplog.text
     assert "GAS_ASCOLTO_SOGLIA non conta con la verifica della voce attiva" in caplog.text
     assert "più facile dei predefiniti" not in caplog.text
@@ -3449,7 +3449,7 @@ def test_main_soglie_della_verifica_mai_sotto_la_base(monkeypatch, tmp_path, cap
                                                 "GAS_ASCOLTO_SOGLIA_BASE": "0.3"},
                         rilevatore=_rilevatore_registrato([]))
     assert k.get("soglia") == 0.3 and k.get("soglia_interruzione") == 0.3
-    assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.3 (predefinito 0.5)" in caplog.text
+    assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.3 (predefinito 0.6)" in caplog.text
 
 
 def test_main_verifica_rotta_spenta_assente(monkeypatch, tmp_path, caplog):
@@ -3468,7 +3468,8 @@ def test_main_verifica_rotta_spenta_assente(monkeypatch, tmp_path, caplog):
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_VERIFICA": "0"},
                         rilevatore=_rilevatore_registrato(visti))
-    assert visti == [{"fasi": a.FASI_PREDEFINITE}] and k.get("soglia") == a.SOGLIA_PREDEFINITA
+    # V-2 bot #400: senza verifica attiva una fase sola (niente «fasi»)
+    assert visti == [{}] and k.get("soglia") == a.SOGLIA_PREDEFINITA
     assert "verifica della voce: spenta" in caplog.text
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
@@ -3865,12 +3866,26 @@ def test_taratura_con_la_verifica_consiglia_la_sua_soglia(capsys):
     assert t.main(["--secondi", "5"], sorgente=sorgente) == 0
     out = capsys.readouterr().out
     assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.8" in out
-    # 0,5 non è più permissiva del predefinito della verifica (0,5): nessun avviso
+    # 0,6 non è più permissiva del predefinito della verifica (0,6): nessun avviso
     p = [0.0] * t.PAUSA_BLOCCHI
-    righe = t.consiglio(list(t.salite([0.0, 0.55] + p + [0.95, 0.0])), 0, verifica=True)
-    assert any("GAS_ASCOLTO_SOGLIA_VERIFICA=0.5" in r for r in righe)
+    righe = t.consiglio(list(t.salite([0.0, 0.65] + p + [0.95, 0.0])), 0, verifica=True)
+    assert any("GAS_ASCOLTO_SOGLIA_VERIFICA=0.6" in r for r in righe)
     assert not any("più permissiva" in r for r in righe)
+    # 0,5 sì (V-1 bot #400: col massimo su 4 fasi 0,5 fa scattare di più)
+    righe = t.consiglio(list(t.salite([0.0, 0.55] + p + [0.95, 0.0])), 0, verifica=True)
+    assert any("più permissiva" in r for r in righe)
 
+
+def test_fasi_predefinite_solo_con_la_verifica(monkeypatch):
+    """V-2 bot #400: 4 fasi solo col filtro della voce attivo (senza, alzano i falsi);
+    GAS_ASCOLTO_FASI vince sempre."""
+    monkeypatch.delenv("GAS_ASCOLTO_FASI", raising=False)
+    assert a.fasi_predefinite(None) == 1
+    assert a.fasi_predefinite(a.Verifica("assente")) == 1
+    attiva = a.Verifica("attiva")
+    assert attiva.attiva and a.fasi_predefinite(attiva) == a.FASI_PREDEFINITE == 4
+    monkeypatch.setenv("GAS_ASCOLTO_FASI", "2")
+    assert a.fasi_predefinite(None) == 2 and a.fasi_predefinite(attiva) == 2
 
 def test_taratura_usa_il_rilevatore_con_la_verifica(monkeypatch, tmp_path, capsys):
     t = _taratura()

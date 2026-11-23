@@ -64,7 +64,7 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_ASCOLTO_SOGLIA_BASE — punteggio del modello della parola da cui il blocco passa
                              alla verifica, 0.05-0.9 (default 0.25)
     GAS_ASCOLTO_FASI       — modelli della parola sfalsati sulla griglia da 80 ms, 1-4
-                             (default 4; 1 = come prima)
+                             (default 4 con la verifica della voce attiva, 1 senza)
 
 Fail-safe §9: server giù o errore → bip di errore e si torna in ascolto; microfono che
 cade → nuovo tentativo dopo qualche secondo; nessuna eccezione esce dal ciclo.
@@ -154,17 +154,28 @@ BLOCCHI_PAROLA_PREDEFINITO = 1
 # (scripts/voce/registra_voce.py): ogni blocco in cui il modello della parola arriva a
 # SOGLIA_BASE_PREDEFINITA passa al verificatore, e il punteggio diventa la SUA probabilità
 # («è una persona registrata che dice la parola?»); sotto resta il punteggio del modello.
-# La parola allora vale con SOGLIA_VERIFICA_PREDEFINITA (0,5 = il confine naturale della
-# regressione logistica del verificatore) al posto di GAS_ASCOLTO_SOGLIA; la soglia della
+# La parola allora vale con SOGLIA_VERIFICA_PREDEFINITA al posto di GAS_ASCOLTO_SOGLIA
+# (0,6 dal 23/11, V-1 bot #400: con le 4 fasi è la regolazione migliore della simulazione su
+# tutti i numeri rispetto a 1 fase e 0,5 — vicino 89→96%, −12 dB 28→41%, falsi/ora sul
+# parlato 2,0→1,3 e sulla TV 6,0→4,7; con 4 fasi e 0,5 i falsi salivano a 6,6/8,7,
+# reports/voce_simulazione_2026-11-23/risultati/sweep5.txt); la soglia della
 # verifica non scende mai sotto la soglia base, altrimenti un punteggio NON verificato
 # (sotto la base) potrebbe attivare.
 SOGLIA_BASE_PREDEFINITA = 0.25
-SOGLIA_VERIFICA_PREDEFINITA = 0.5
-# Simulazione del 23/11 (reports/voce_simulazione_2026-11-23/): il punteggio di «Hey Jarvis» dipende molto da
-# dove cade la parola sulla griglia da 80 ms (stessa clip: 0,06-0,48). Con 4 modelli sfalsati
-# di 20 ms e il massimo, a parità di falsi le chiamate prese salgono (vicino 89→96%, 3 m
-# 28→41%). Costo: 4 volte il calcolo del modello (ritardo in più < 80 ms).
+SOGLIA_VERIFICA_PREDEFINITA = 0.6
+# Simulazione del 23/11 (reports/voce_simulazione_2026-11-23/): il punteggio di «Hey Jarvis»
+# dipende molto da dove cade la parola sulla griglia da 80 ms (stessa clip: 0,06-0,48). Con 4
+# modelli sfalsati di 20 ms e il massimo, insieme alla soglia della verifica 0,6, si prendono
+# più chiamate con meno falsi (numeri sopra). SOLO con la verifica della voce attiva (V-2 bot
+# #400): senza, le 4 fasi alzano i falsi (soglia 0,7: parlato 33,9→45,9/ora), quindi 1 fase.
+# Costo: 4 volte il calcolo del modello (ritardo in più < 80 ms).
 FASI_PREDEFINITE = 4
+
+
+def fasi_predefinite(verifica: Optional["Verifica"]) -> int:
+    """GAS_ASCOLTO_FASI se c'è; altrimenti 4 con la verifica della voce attiva, 1 senza."""
+    pred = FASI_PREDEFINITE if verifica is not None and verifica.attiva else 1
+    return int(_numero("GAS_ASCOLTO_FASI", pred, 1, 4))
 # Con la verifica attiva il punteggio è la probabilità del verificatore, che quasi mai arriva
 # a 0,8 per 3 blocchi di fila (simulazione: 4 chiamate su 180): l'interruzione era spenta di
 # fatto. Senza valori nel .env vale la soglia della parola su 1 blocco: la voce di Gas è
@@ -1599,7 +1610,7 @@ def main() -> int:
         return 1
     modello = (os.environ.get("GAS_ASCOLTO_MODELLO") or "hey_jarvis").strip()
     verifica = verifica_della_voce(modello)
-    fasi = int(_numero("GAS_ASCOLTO_FASI", FASI_PREDEFINITE, 1, 4))
+    fasi = fasi_predefinite(verifica)
     try:
         punteggio, azzera = rilevatore_con_verifica(modello, verifica, fasi=fasi)
     except Exception as e:
