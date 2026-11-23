@@ -21,6 +21,7 @@
 - **Tappa 2, aggancio a Gas + riserve #839** (c8d4f977): FATTA, review #840-CRM APPROVATO CON RISERVE. Strumenti `crm_consulta`/`crm_modifica`, cancello, solo Opus, importi dal messaggio del turno, promemoria su Telegram.
 - **Riserve #840** (0afc1a79): FATTA. Review #841-CRM BOCCIATO (R-841-1 ALTA: il nuovo controllo dei telefoni scattava dentro gli UUID delle firme) → corretto → #842-CRM APPROVATO CON RISERVE.
 - **Riserve #842** (070e7ad3): FATTA, review #843-CRM APPROVATO CON RISERVE (resta R-843-1 BASSA).
+- **Gate IP del fine-task** (e98be2cc): FATTA. Il primo giro del fine-task (a34bcc4b) è stato fermato dal Gate IP: un IP privato di prova nel test T118e2 e lo stesso IP citato nel verdetto #841-CRM. Marcatore `# gasmerge-ip-ok` sulla riga del test (review #844-CRM APPROVATO) e verdetto #841 riemesso dal revisore con «<IP-redatto>».
 - **R-840-2**: DEFERITA — decisione dell'operatore (§0 punto 2).
 - **Prova su Mac, Telegram e `claude -p` veri**: SALTATA — non raggiungibili da qui; provato con client finti.
 - **Anomalia durante il fine-task**: un primo tentativo di scrivere questo file con un heredoc non quotato ha fatto eseguire alla shell i testi tra apici inversi della prosa (tra cui `pip install -r requirements.txt` nel container, la suite del kernel e `claude -p` senza input, che ha dato errore). Il file non è stato scritto; nel repo nessun commit, nessun push, cambiati solo log e cache ignorati da git. Riscritto con file temporanei e heredoc quotato.
@@ -30,7 +31,7 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  15 +++++++
+ .claude/agents/memoria_revisore.md |  17 ++++++++
  gas.py                             | 173 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
  modules/crm/agente.py              | 776 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  modules/crm/store.py               | 187 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
@@ -42,7 +43,7 @@
  reports/diff_sessione.md           |  17 ++++----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           |  39 +++++++++---------
+ reports/ultimo_report.md           |  40 ++++++++++---------
  tests/test_unit_crm.py             | 304 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_kernel.py          | 297 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
 ```
@@ -52,6 +53,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e98be2cc test(gas): marcatore gasmerge-ip-ok sull'IP di prova di T118e2 (review #844-CRM)
+a34bcc4b docs(fine-task): Gas usa il CRM — report, handoff e stato; review #839-#843-CRM e memoria del revisore
 070e7ad3 test(gas): R-842-1 — casi limite del filtro dei telefoni provati; limiti R-842-2/3 dichiarati (review #843-CRM)
 0afc1a79 fix(gas): riserve #840-CRM e BOCCIATO #841-CRM — filtro delle richieste del CRM senza falsi telefoni negli UUID (review #842-CRM)
 c8d4f977 feat(gas): Gas usa il CRM, tappa 2 — crm_consulta e crm_modifica con firma, solo Opus, promemoria su Telegram (review #840-CRM)
@@ -195,7 +198,7 @@ Review #840-CRM. Diff staged sul ramo claude/nifty-galileo-3k7kbm sopra a7f74ff8
 
 ---
 
-Review #841-CRM sul primo diff delle riserve #840 (non committato; corretto e riesaminato in #842-CRM), verdetto integrale incollato:
+Review #841-CRM sul primo diff delle riserve #840 (non committato; corretto e riesaminato in #842-CRM). Verdetto RIEMESSO dal revisore (review #844-CRM) identico all'originale salvo l'indirizzo IP di prova scritto «<IP-redatto>», perché il Gate IP di scripts/fine_task_finale.sh rifiuta gli IP nell'albero del ramo:
 
 ## VERDETTO: BOCCIATO
 
@@ -223,7 +226,7 @@ Review #841-CRM, 2026-11-23. Diff staged: 6 file, +114/−11, sopra c8d4f977, sh
   - `client\w*` prende l'inglese «client»: «il client voce sul Mac non parte», «client.chat.completions»;
   - `versa\w*` prende «un copy versatile», «il versante nord», «versa l'acqua»;
   - date col punto «17.11.2026» e «17 11 2026», anche se il commento dice «non date»;
-  - numeri grandi «1.000.000 di visualizzazioni», l'IP «192.168.1.10», il timestamp «1732000000».
+  - numeri grandi «1.000.000 di visualizzazioni», l'IP «<IP-redatto>», il timestamp «1732000000».
   - Col forte spento questi messaggi fermano il turno e i successivi. Proposta: `client[ei]\w*` (prende cliente, clienti, clientela, non l'inglese) e forme precise di «versare». Altrimenti questi esempi vanno nelle DECISIONI UMANE accanto a R-840-2.
 - **R-841-3 BASSA, chiusure non provate dai test.**
   - Il taglio a 1500 di modules/telegram/bot.py:489 non è pinnato: il mutante che torna a `rendi_visibili` senza taglio passa (1205 PASS). Il testo del test, tests/test_unit_kernel.py:13852, è `"x‮" * 250` = 500 caratteri, che diventano 2250 dopo `rendi_visibili`: resta sotto 4096 anche senza taglio. Usare `"‮" * 500`, che è al massimo consentito e fa circa 4180 senza taglio.
@@ -351,6 +354,50 @@ Review #843-CRM. Diff staged: 3 file, +14/−2, sopra 0afc1a79. sha256 di `git d
 - Memoria aggiornata in `/home/user/Gas/.claude/agents/memoria_revisore.md`: la riga contatore #843-CRM e una lezione (un'esclusione messa in testa a un'alternanza viene saltata dai rami con un prefisso diverso). Non l'ho committata, come hai chiesto: nel file restano non committate anche le voci #839-#842.
 - Script dei mutanti: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/tools/mutanti.py`.
 
+---
+
+Review #844-CRM, commit e98be2cc (verdetto integrale incollato):
+
+## VERDETTO: APPROVATO
+
+Review #844-CRM, 2026-11-23. Ramo claude/nifty-galileo-3k7kbm, HEAD a34bcc4b. Diff staged: 1 file, +1/−1, sha256 df357623. Ho letto CLAUDE.md (sez. 5, 8 e 10), reports/stato_progetto.md (la parte che serve) e la mia memoria (precedenti #121, #172 e #805-CRM: stesso tipo di marcatore).
+
+**Elementi del diff esaminati**
+
+- tests/test_unit_kernel.py:13804 — aggiunge `# gasmerge-ip-ok` in coda alla riga della lista negativa di T118e2 che contiene l'IP privato di prova. Ho cercato due rischi: che il marcatore cambi il contenuto del test, e che finisca dentro una stringa. L'albero sintattico (AST) del file nell'indice è identico a quello di HEAD. È cambiata solo la riga 13804 e il numero di righe resta 13913. Il marcatore è un commento Python dopo la virgola, fuori da ogni stringa. Esito: ok.
+- tests/test_unit_kernel.py:13808 — `_fl_no` usa ancora la lista `_tel_no` con l'IP, quindi il caso negativo resta attivo. Rischio esaminato: un falso verde. Ho rieseguito la suite del kernel su una copia dell'indice: 1206 PASS, 0 FAIL, con T118e2 PASS (mancati [], falsi []). Esito: ok.
+- Contesto: scripts/fine_task_finale.sh:100 — il passo «allowlist» del Gate IP (`--and --not -e 'gasmerge-ip-ok'`). Ho copiato la logica delle righe 63-129 in uno script del mio scratchpad e l'ho fatta girare su tre alberi:
+  - albero di HEAD: 2 righe rifiutate (la riga del test e la riga di reports/handoff.md col mio verdetto #841-CRM);
+  - albero dell'indice: resta solo la riga di reports/handoff.md;
+  - albero dell'indice più l'handoff con «<IP-redatto>»: Gate IP OK (FILTER_RC=1).
+
+  Nel tree non resta nessun altro IP che il gate rifiuterebbe. L'altra riga marcata del file (tests/test_unit_kernel.py:5174) era già marcata.
+
+**Punto 2: verdetto #841-CRM riemesso**
+
+Fatto. Il file è /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/verdetto_841_riemesso.md.
+- Ho prima verificato che l'originale /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/verdetto_841.md coincide byte per byte con la copia incollata nel §4 dell'handoff.
+- `diff` tra originale e riemesso: cambia solo la riga 27, dove ora c'è «l'IP «<IP-redatto>»». Il resto è identico: esito BOCCIATO, riserve R-841-1..4, cosmetiche, note e prima riga `## VERDETTO: BOCCIATO`.
+- Le 17 citazioni `path:riga` sono le stesse dell'originale, controllate con la regex di scripts/check_verdetto.py. Nel testo riemesso non resta nessun IP.
+
+**Rischi esclusi (non verificati)**
+
+- Non ho eseguito il vero scripts/fine_task_finale.sh, perché alla fine fa il push. Ho replicato solo il Gate IP. Non ho fatto girare neanche il gate di scripts/gasmerge.sh sul ramo remoto: usa la stessa regex, ma non l'ho eseguito.
+- Le altre suite (CRM, pytest): non le ho rieseguite, perché il diff tocca solo un commento con AST identico.
+
+**Note per te**
+
+1. Il Gate IP controlla l'albero di HEAD. Quindi il marcatore, l'handoff col verdetto riemesso e la memoria vanno committati prima di rilanciare fine_task_finale.sh. Va sistemata anche la riga che introduce il verdetto #841-CRM nell'handoff (oggi dice «verdetto integrale incollato»): va dichiarato come riemesso.
+2. Il vecchio `.claude/.review_ok` (inizia con a7a287a0) non corrisponde al diff attuale (df357623), quindi non apre il cancello. Non l'ho creato, come hai chiesto: serve `bash scripts/segna_review_ok.sh`.
+3. In questo verdetto l'IP non compare mai, quindi puoi incollarlo così nel §4.
+4. Per la simulazione ho usato un indice temporaneo nello scratchpad. Il tuo indice non è cambiato (staged: solo tests/test_unit_kernel.py). `git hash-object -w` ha lasciato nel repo un oggetto git non referenziato, innocuo.
+
+**Memoria**
+
+Ho aggiunto la riga #844-CRM e una lezione in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Le modifiche sono solo nell'albero di lavoro, non in staging. Le righe nuove non contengono IP (verificato con la regex del gate). Come hai chiesto, non ho committato nulla, nemmeno la memoria con commit_memoria_revisore.sh.
+
+Lezione nuova: un verdetto finisce integrale nell'handoff, quindi nell'albero del ramo. Un IP di esempio citato in un verdetto fa scattare il Gate IP: nei verdetti va scritto «<IP-redatto>» o a parole.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python tests/test_unit_kernel.py`: 1191 PASS → 1206 PASS, 0 FAIL. Nuovi T118a, T118b, T118c, T118c2, T118d, T118e, T118e2, T118f, T118f2, T118g. Adattati alla regola nuova T80 (testo «per il cliente Rossi» → «per Rossi») e T116h («ricordami» → «poi sistemo»); il revisore (#840-CRM) li giudica coerenti.
@@ -372,6 +419,8 @@ Review #843-CRM. Diff staged: 3 file, +14/−2, sopra 0afc1a79. sha256 di `git d
   - `c8d4f977`: unit-suite success; handoff-check failure (stesso motivo).
   - `0afc1a79`: unit-suite in corso alla scrittura dell'handoff; handoff-check failure (stesso motivo).
   - `070e7ad3`: unit-suite in corso alla scrittura dell'handoff; handoff-check failure (stesso motivo); verifica-bot non partito (l'etichetta «verifica» si mette dopo questo commit di fine-task).
+  - `a34bcc4b` (primo commit di fine-task, fermato dal Gate IP prima del push): nessuna run su questo SHA.
+  - `e98be2cc`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
