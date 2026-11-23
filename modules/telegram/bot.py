@@ -483,9 +483,17 @@ MAX_PROMEMORIA_GIRO = 10
 
 def componi_promemoria(r: Dict[str, Any], nome_cliente: Optional[str]) -> str:
     """Testo del promemoria del CRM (solo informativo). Il testo è dell'operatore, ma
-    passa da rendi_visibili come ogni testo salvato."""
+    passa da rendi_visibili come ogni testo salvato; R-840-6: tagliato, così il messaggio
+    sta SEMPRE nel limite di Telegram (un promemoria troppo lungo bloccherebbe la coda)."""
+    testo = rendi_visibili(str(r.get("testo") or ""))  # gli a capo del promemoria restano
+    if len(testo) > 1500:
+        testo = testo[:1500]
+        k = testo.rfind("<", max(0, len(testo) - 10))  # niente «<U+XX» spezzati
+        if k != -1 and ">" not in testo[k:]:
+            testo = testo[:k]
+        testo += "…"
     righe = [f"⏰ Promemoria #{r.get('id')} (per il {tronca_visibile(r.get('quando') or '', 20)})",
-             rendi_visibili(str(r.get("testo") or ""))]
+             testo]
     if nome_cliente:
         righe.append(f"Cliente: {tronca_visibile(nome_cliente, 120)} (#{r.get('cliente_id')})")
     return "\n".join(righe)

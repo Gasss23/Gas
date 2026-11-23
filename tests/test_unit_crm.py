@@ -2434,6 +2434,7 @@ def test_agente_aggiorna_cliente_e_permessi(st: CRMStore) -> None:
                                     "presentato_da": "luca"}, "")
     assert can["campi"] == {"telefono": "+393330001111", "opt_out": True, "presentato_da": ref}
     assert "STOP ai messaggi" in desc and "«Luca Verdi»" in desc
+    assert "telefono: «+393330001111» (prima: «+390000000001»)" in desc  # R-839-7
     agente.applica(st, can)
     c = st.cliente(cid)
     assert c is not None and c["opt_out"] == 1 and c["telefono"] == "+393330001111"
@@ -2459,6 +2460,8 @@ def test_promemoria_store_reclamo_unico_e_diario_senza_testo(st: CRMStore,
     assert "chiamare Mario" in agente.consulta(st, "cliente", "Mario")
     orologio.avanti(2)  # 22-06 alle 10:00
     [scaduto] = st.promemoria_scaduti()
+    assert scaduto["id"] == 1 and st.reclama_promemoria(True) is False  # type: ignore[arg-type]
+    assert [r["id"] for r in st.promemoria_scaduti()] == [1]  # True non è l'id 1
     assert st.reclama_promemoria(scaduto["id"]) is True
     assert st.reclama_promemoria(scaduto["id"]) is False  # mai due invii
     assert st.promemoria_scaduti() == []
@@ -2532,6 +2535,12 @@ def test_agente_riserve_839(st: CRMStore) -> None:
         agente.prepara(st, dict(stato, cliente="mario ross"), "")
     can, desc = agente.prepara(st, dict(stato, cliente="MARIANNA"), "")
     assert can["cliente_id"] == ma and "somiglianza" in desc
+    # nomi con apostrofo: «amico» trova «D'Amico» (per somiglianza, detto nella firma)
+    dam = st.aggiungi_cliente("Gino D'Amico")
+    can, desc = agente.prepara(st, dict(stato, cliente="amico"), "")
+    assert can["cliente_id"] == dam and "somiglianza" in desc
+    can, _ = agente.prepara(st, dict(stato, cliente="d'amico"), "")  # anche la ricerca si divide
+    assert can["cliente_id"] == dam
     # omonimi anche con gli accenti
     st.aggiungi_cliente("Nicolò Ferrè")
     _, desc = agente.prepara(st, {"azione": "nuovo_cliente", "nome": "Nicolo Ferre"}, "")

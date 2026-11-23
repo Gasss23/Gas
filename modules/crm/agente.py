@@ -147,9 +147,10 @@ def _norm(testo: str) -> str:
 def _parole_a_inizio(cerca: str, nome: str) -> bool:
     """Ogni parola cercata è l'INIZIO di una parola del nome («ross» → «Mario Rossi»),
     mai un pezzo in mezzo (R-839-1: «Anna» non deve trovare «Marianna»)."""
-    parole_nome = nome.split()
-    return bool(cerca.split()) and all(any(pn.startswith(p) for pn in parole_nome)
-                                       for p in cerca.split())
+    # parole divise anche da apostrofi e trattini: «amico» trova «D'Amico»
+    parole_nome = [x for x in re.split(r"[^\w]+", nome) if x]
+    parole = [x for x in re.split(r"[^\w]+", cerca) if x]
+    return bool(parole) and all(any(pn.startswith(p) for pn in parole_nome) for p in parole)
 
 
 def _rif_id(rif: Any, campo: str) -> Optional[int]:

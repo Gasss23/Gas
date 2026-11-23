@@ -141,10 +141,30 @@ _TOOL_DATI_LEAD: frozenset = frozenset({"salva_contatto", "imposta_stato_contatt
 # dell'operatore che parla di clienti, promemoria o soldi del CRM manda il turno SOLO a
 # Opus dalla prima chiamata, anche senza il nome di un cliente già noto («aggiungi il
 # cliente Anna Neri»). Falsi positivi dichiarati («deposito bagagli», «ricordami il
-# latte»): costano una chiamata a Opus, mai un dato a un modello minore.
+# latte»): costano una chiamata a Opus, mai un dato a un modello minore; col forte spento
+# quei turni si fermano dichiarati (R-840-2, la scelta delle parole è dell'operatore).
+# R-840-1: radici larghe (depositato, prelevato, versamento, bonifico…) e un numero di
+# telefono contato come dato personale. Limite dichiarato: un cliente NUOVO nominato
+# senza queste parole né recapito va prima al modello del turno; Gas lo dice nella guida
+# («per un cliente nuovo usa la parola cliente») e gli strumenti del CRM restano comunque
+# solo di Opus. R-841-2: «cliente» sì, l'inglese «client» no; «versare» solo nelle forme
+# dei soldi (versato, versamento…), non «versatile», «versante», «versa l'acqua».
+# R-841-1/R-841-4: il telefono è un numero italiano (inizia con 0 o 3, 7-12 cifre) o con
+# il «+»; separatori spazio, punto, trattino o barra; MAI dentro una parola (gli UUID
+# delle firme e gli hash hanno cifre di fila fra le lettere), mai una data
+# («03.11.2026», «03/11/2026»), mai un numero con le migliaia («3.500.000»).
+_RE_TELEFONO = (
+    r"(?<![\w.,/\-])"
+    r"(?![0-9]{1,2}[ ./\-][0-9]{1,2}[ ./\-][0-9]{2,4}(?![0-9]))"
+    r"(?![0-9]{1,3}(?:[.,][0-9]{3})+(?![0-9]))"
+    r"(?:\+[0-9](?:[ ./\-]?[0-9]){6,14}"
+    r"|\(0[0-9]{1,3}\)\s?[0-9](?:[ ./\-]?[0-9]){4,9}"
+    r"|[03][0-9](?:[ ./\-]?[0-9]){5,10})"
+    r"(?![\w/\-])")
 _RE_RICHIESTA_CRM = re.compile(
-    r"\b(?:crm|client[ei]|promemoria|ricordami|ricordarmi|deposit[oi]|preliev[oi]|"
-    r"versat[oaie]|commission[ei])\b", re.IGNORECASE)
+    r"\b(?:crm|client[ei]\w*|promemoria|ricordam\w*|ricordarm\w*|deposit\w*|prel[ei]v\w*|"
+    r"vers(?:at[oaie]|ament[oi]|are|erà|eranno)|bonific\w*|commission\w*)\b"
+    r"|" + _RE_TELEFONO, re.IGNORECASE)
 IDENTIFICATIVO_MIN_CHARS = 3   # campo intero o parola: sotto non si cerca
 # Confronto SEMPRE a parola intera (V-1 bot #375 su 17378b0): «contenuto in» faceva
 # combaciare «Conte» con «contesto», «Rita» con «ritardo». Un cognome che è anche una
@@ -6008,6 +6028,8 @@ class GasKernel:
                                        # (Telegram ne mostra un pezzo)
                                        "output": (("CRM consultato." if not out.startswith(
                                            ("Errore eseguendo", "Operazione negata"))
+                                           else "CRM: passo a Claude Opus."
+                                           if self._CRM_SOLO_OPUS in out
                                            else "CRM: consultazione non riuscita.")
                                            if tc.function.name == "crm_consulta" else out),
                                        "cancello": _cancello,

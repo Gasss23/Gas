@@ -93,12 +93,14 @@ Poi sceglie l'azione:
 
 **Usare il CRM parlando con Gas (decisione 18 del 23 novembre)**: su Telegram o a voce puoi dire a Gas, per esempio, «quanti clienti ho?», «com'è messo Mario Rossi?», «Mario Rossi ha versato 1.500 euro», «aggiungi il cliente Anna Neri, 333 1234567», «togli Luca Verdi», «ricordami domani alle 10 di chiamare Anna».
 - **Leggere**: Gas legge il CRM da solo (strumento `crm_consulta`), sempre e solo con Claude Opus.
+- **Solo Opus, come funziona**: un messaggio con le parole del CRM (cliente, promemoria, ricordami, deposito, prelievo, versato, versamento, bonifico, commissione…), un numero di telefono (italiano, che inizia con 0 o 3, oppure col «+»; anche con spazi, punti, trattini o barre) o il nome di un cliente già nel CRM va solo a Opus fin dall'inizio. Non contano le date, i numeri con le migliaia, l'inglese «client» né «versatile». Per un cliente NUOVO usa la parola «cliente» («aggiungi il cliente Anna Neri»): senza, il primo passaggio lo fa il modello normale, che non può comunque leggere né cambiare il CRM. Col cervello forte spento quei messaggi si fermano con un avviso (anche il messaggio dopo, finché resta nella conversazione recente).
+- **A voce**: la voce passa da Groq (trascrizione) e la risposta da ElevenLabs (sintesi), come ogni comando a voce: se non vuoi che i dati dei clienti passino da lì, usa Telegram scritto.
 - **Scrivere**: ogni modifica (`crm_modifica`) arriva prima su Telegram come richiesta di firma, che dice per esteso cosa cambierà («Registra per «Mario Rossi» (cliente #3), servizio «Copy Oro»: DEPOSITO di 1.500,00 € in data …»). Si scrive solo se premi Approva. Se Gas ha trovato il cliente per somiglianza (hai scritto «Ross» e c'è «Mario Rossi»), la firma lo dice con «ATTENZIONE».
 - **Soldi**: Gas usa solo cifre che hai scritto o detto TU in quel messaggio, in numeri («1.500», «1500,50», «5 mila»). Se la cifra manca, o l'ha presa da altrove, la richiesta non parte e Gas te la chiede. Date, ore e numeri come «#12» non contano come cifre.
 - **Niente cancellazioni**: «togli» o «elimina» un cliente vuol dire archiviarlo (stato «perso»); lo storico resta.
 - **Promemoria**: arrivano su Telegram all'ora scelta (controllo una volta al minuto, quindi anche con un minuto di ritardo). Di norma arrivano una volta sola; due casi limite rari: se Gas si spegne proprio mentre manda il promemoria, quel promemoria si perde; se Telegram risponde tardi ma il messaggio è arrivato lo stesso, può arrivare due volte.
 - **Dove restano i dati**: la conversazione con Gas sui clienti resta nella storia di Gas (`.gas_history.json`) e le richieste di firma nella sua memoria (`.gas_memory.db`), come ogni conversazione; i messaggi passano da Telegram come la chat di oggi. Nel diario di Gas non vanno nomi né cifre dei clienti.
-- **Non dai compiti in sottofondo**: le modifiche del CRM si chiedono in chat, mai da un compito lungo.
+- **Non dai compiti in sottofondo**: le modifiche del CRM si chiedono in chat, non da un compito in sottofondo. I compiti della notte possono preparare una richiesta di firma come oggi: senza il tuo Approva non si scrive niente.
 
 ## 6. Impostazioni (file `.env`)
 
