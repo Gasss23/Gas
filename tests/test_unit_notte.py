@@ -2716,3 +2716,97 @@ def test_r7f3_dopo_la_pausa_un_ko_basta_e_l_avviso_dice_il_conto(dirs, monkeypat
     lav = _lavori(root)["c"]
     assert lav["stato"] == "da_non_ritentare" and lav["ko_di_fila"] == 4
     assert "fallito 4 volte di fila" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+
+
+# ── review #844-MERGE R-844M-1, verifica esterna #399 (3b188028) V-1, R-843-1 ──
+
+def test_r7f3_sempre_opus_col_forte_giu_e_guasto_esterno(dirs, monkeypatch):
+    """R-844M-1: con GAS_SOLO_OPUS acceso (default di produzione) e il forte assente il
+    kernel VERO dà un errore che la notte deve riconoscere come guasto esterno."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    monkeypatch.setenv("GAS_SOLO_OPUS", "1")
+    for k in ("GAS_CLAUDE_CLI", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: conta\n")
+    script = _Script({"conta": ["42"]})
+    for _ in range(4):
+        assert _giro(monkeypatch, root, cat, script) == 1
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "fallito" and lav["ko_di_fila"] == 0 and lav["esterno"] is True
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "Rispondo solo con Claude Opus" in testo and "guasto esterno" in testo
+
+
+def test_r7f3_troppi_guasti_esterni_di_fila_pausa(dirs, monkeypatch):
+    """Verifica esterna #399 (3b188028) V-1: un «guasto esterno» che dipende dal prompt non
+    fa ritentare per sempre: dopo ESTERNI_DI_FILA_PAUSA notti, pausa con avviso."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    err = "Pipeline esausta: nessun cervello ha risposto."
+    for i in range(notte.ESTERNI_DI_FILA_PAUSA):
+        assert _lavori(root)["c"]["stato"] == "fallito" if i else True
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KErrore([], err))
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "da_non_ritentare" and lav["esterni_di_fila"] == 14
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "fallito 14 volte di fila per guasti esterni" in testo
+    assert _giro_esito(root, cat)[1] == []  # fermo
+    # un ok azzera tutto
+    _giro_esito(root, cat, solo="c")
+    assert _lavori(root)["c"]["stato"] == "fatto" and "esterni_di_fila" not in _lavori(root)["c"]
+
+
+def test_r7f3_guasto_esterno_in_pausa_non_la_toglie(dirs, monkeypatch):
+    """R-843-1: rilancio a mano di un lavoro in pausa che fallisce per un guasto esterno:
+    la pausa resta, nessun nuovo avviso di pausa."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    for _ in range(3):
+        _giro_esito(root, cat, ko={"c"})
+    fino = _lavori(root)["c"]["fino_a"]
+    esegui_notte(str(root), catalogo=cat, solo="c",
+                 kernel_factory=lambda r: _KErrore([], "Budget giornaliero esaurito: x"))
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "da_non_ritentare" and lav["fino_a"] == fino and lav["ko_di_fila"] == 3
+    assert "da non ritentare per 7 giorni" not in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert _giro_esito(root, cat)[1] == []
+
+
+# ── review #845-R7: R-845R7-1 e R-845R7-2 ───────────────────────────────────
+
+def _voce_lavoro(prompt, **kw):
+    v = {"stato": "fallito", "ultimo": "x", "ko_di_fila": 0, "fino_a": 0.0,
+         "impronta": notte._impronta(prompt)}
+    v.update(kw)
+    return v
+
+
+def test_r7f3_pausa_da_guasti_esterni_non_si_allunga():
+    """R-845R7-1: pausa nata da 14 guasti esterni + rilancio a mano con un altro guasto
+    esterno: la pausa resta quella di prima."""
+    import time as _t
+    adesso = _t.time()
+    c = {"nome": "c", "prompt": "c"}
+    lav = {"c": _voce_lavoro("c", stato="da_non_ritentare", esterno=True,
+                             esterni_di_fila=14, fino_a=adesso + 3600)}
+    notte._aggiorna_lavoro(lav, c, {"esito": "ko", "errore": "Pipeline esausta: x"}, adesso)
+    assert lav["c"]["stato"] == "da_non_ritentare" and lav["c"]["fino_a"] == adesso + 3600
+    assert lav["c"]["esterni_di_fila"] == 15
+
+
+def test_r7f3_esterni_ripartono_col_prompt_nuovo_e_pausa_scaduta_non_resta():
+    """R-845R7-2: (M6) prompt cambiato → il conto dei guasti esterni riparte da 1;
+    (M7) un guasto esterno non conserva una pausa già scaduta."""
+    import time as _t
+    adesso = _t.time()
+    c = {"nome": "c", "prompt": "nuovo"}
+    lav = {"c": _voce_lavoro("vecchio", esterno=True, esterni_di_fila=13)}
+    notte._aggiorna_lavoro(lav, c, {"esito": "ko", "errore": "Pipeline esausta: x"}, adesso)
+    assert lav["c"]["esterni_di_fila"] == 1 and lav["c"]["stato"] == "fallito"
+    c = {"nome": "c", "prompt": "c"}
+    lav = {"c": _voce_lavoro("c", stato="da_non_ritentare", ko_di_fila=3, fino_a=adesso - 10)}
+    notte._aggiorna_lavoro(lav, c, {"esito": "ko", "errore": "Pipeline esausta: x"}, adesso)
+    assert lav["c"]["stato"] == "fallito" and lav["c"]["fino_a"] == 0.0

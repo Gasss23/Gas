@@ -856,6 +856,9 @@ def _leggi_stato_lavori(notte_dir: Path) -> Dict[str, Dict[str, Any]]:
         }
         if v.get("esterno") is True:
             pulito[nome]["esterno"] = True
+        est = v.get("esterni_di_fila")
+        if type(est) is int and 0 < est <= 1000:
+            pulito[nome]["esterni_di_fila"] = est
     return pulito
 
 
@@ -890,7 +893,16 @@ def _aggiorna_lavoro(lavori: Dict[str, Dict[str, Any]], c: Dict[str, Any],
         # verifica esterna #399 V-1: provider giù, budget o cervello forte fermo non
         # dicono niente del lavoro: «fallito», ma il conto dei ko di fila non cambia
         # (tre notti di guasto non mettono in pausa tutti i lavori)
-        voce.update(stato="fallito", ko_di_fila=ko_prima, esterno=True)
+        esterni = (prima.get("esterni_di_fila", 0) if prima.get("impronta") == impronta else 0) + 1
+        voce.update(stato="fallito", ko_di_fila=ko_prima, esterno=True, esterni_di_fila=esterni)
+        if (prima.get("stato") == "da_non_ritentare" and prima.get("impronta") == impronta
+                and prima.get("fino_a", 0) > adesso):
+            # R-843-1: un guasto esterno durante la pausa (rilancio a mano) non la toglie;
+            # R-845R7-1: controllato PRIMA della soglia, così vale anche per una pausa nata
+            # da guasti esterni (niente pausa allungata né avviso ripetuto)
+            voce.update(stato="da_non_ritentare", fino_a=prima["fino_a"])
+        elif esterni >= ESTERNI_DI_FILA_PAUSA:  # verifica esterna #399 (3b188028) V-1
+            voce.update(stato="da_non_ritentare", fino_a=adesso + GIORNI_PAUSA * 86400)
     elif esito.get("esito") == "ok":
         voce.update(stato="in_sospeso" if esito.get("in_attesa") else "fatto", ko_di_fila=0)
     else:
@@ -913,11 +925,23 @@ def _giorno(ts: float) -> str:
 
 # Inizi dei testi d'errore del kernel (gas.py run_turn) che vengono da fuori del lavoro.
 _ERRORI_ESTERNI = ("Pipeline esausta", "Budget giornaliero esaurito", "Cervello forte fermo",
-                   "Questa richiesta contiene dati di clienti")
+                   "Questa richiesta contiene dati di clienti",
+                   # review #844-MERGE R-844M-1: «Sempre Opus» (GAS_SOLO_OPUS, PR #397)
+                   "Rispondo solo con Claude Opus")
+# verifica esterna #399 (3b188028) V-1: un guasto «esterno» può dipendere dal prompt (ogni
+# notte uguale): dopo tanti di fila il lavoro va in pausa lo stesso, con lo stesso avviso
+ESTERNI_DI_FILA_PAUSA = 14
 
 
 def _ko_esterno(esito: Dict[str, Any]) -> bool:
     return str(esito.get("errore", "")).startswith(_ERRORI_ESTERNI)
+
+
+def _volte(info: Dict[str, Any]) -> str:
+    """Perché un lavoro è fermo: ko veri di fila, oppure guasti esterni di fila."""
+    if info.get("esterno") and info.get("esterni_di_fila", 0) >= ESTERNI_DI_FILA_PAUSA:
+        return f"{info['esterni_di_fila']} volte di fila per guasti esterni"
+    return f"{info['ko_di_fila']} volte di fila"
 
 
 _ETICHETTE_LAVORO = {"fatto": "fatto", "in_sospeso": "in sospeso (aspetta la tua firma)",
@@ -937,11 +961,12 @@ def righe_lavori(compiti_catalogo: List[Dict[str, Any]],
         testo = f"{c['nome']}: {_ETICHETTE_LAVORO[info['stato']]} (ultimo giro {info['ultimo']})"
         if info["stato"] == "fallito":
             if info.get("esterno"):
-                testo += " per un guasto esterno (provider, budget o cervello forte), non contato"
+                testo += (" per un guasto esterno (provider, budget o cervello forte), non "
+                          f"contato ({info.get('esterni_di_fila', 1)} di fila)")
             testo += f", ko di fila: {info['ko_di_fila']}"
         elif info["stato"] == "da_non_ritentare":
             fino = _giorno(info["fino_a"])
-            testo += (f", {info['ko_di_fila']} ko di fila: fermo fino al {fino} "
+            testo += (f", fallito {_volte(info)}: fermo fino al {fino} "
                       f"(rilancialo a mano: python3 gas.py notte {c['nome']})")
         righe.append(testo)
     return righe
@@ -1010,7 +1035,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
             for c in [c for c in compiti if _in_pausa(c, lavori, adesso)]:
                 fino = _giorno(lavori[c["nome"]]["fino_a"])
                 avvisi.append(f"compito '{c['nome']}' da non ritentare (fallito "
-                              f"{lavori[c['nome']]['ko_di_fila']} volte di fila): fermo fino "
+                              f"{_volte(lavori[c['nome']])}): fermo fino "
                               f"al {fino}; per rilanciarlo: python3 gas.py notte {c['nome']}")
             compiti = [c for c in compiti if not _in_pausa(c, lavori, adesso)]
         if _env_budget() <= 0.0:
@@ -1068,12 +1093,15 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
             esiti.append(esito_c)
             if c["nome"] in in_corso:  # rete di sicurezza: al_termine non è stato chiamato
                 _finito()
+            pausa_prima = lavori.get(c["nome"], {}).get("fino_a", 0.0)
             _aggiorna_lavoro(lavori, c, esito_c, time.time())
             _scrivi_stato_lavori(notte_dir, lavori)
-            if lavori[c["nome"]]["stato"] == "da_non_ritentare":
-                # bot #399 V-2: il conto reale (dopo una pausa basta un ko per la successiva)
-                avvisi.append(f"compito '{c['nome']}' fallito {lavori[c['nome']]['ko_di_fila']} "
-                              f"volte di fila: da non ritentare per {GIORNI_PAUSA} giorni (si "
+            info_l = lavori[c["nome"]]
+            if info_l["stato"] == "da_non_ritentare" and info_l["fino_a"] != pausa_prima:
+                # bot #399 V-2: il conto reale (dopo una pausa basta un ko per la successiva);
+                # R-843-1: nessun avviso se la pausa in corso è solo rimasta com'era
+                avvisi.append(f"compito '{c['nome']}' fallito {_volte(info_l)}: da non "
+                              f"ritentare per {GIORNI_PAUSA} giorni (si "
                               f"rilancia a mano con python3 gas.py notte {c['nome']})")
                 logging.warning("notte: %s", avvisi[-1])
         scadute = _chiudi_firme_scadute(root)

@@ -10,7 +10,9 @@ l'ultimo esito — «fatto», «in sospeso» (ha lasciato azioni in attesa della
 (avviso nel riepilogo e su Telegram), poi riprova da solo; il conto non si azzera con la pausa, quindi
 se fallisce ancora si ferma subito per altri 7 giorni (un tentativo a settimana) finché non riesce una
 volta. I fallimenti dovuti a cause esterne (provider giù, budget del giorno finito, cervello forte
-fermo) restano «fallito» ma non contano. Per rilanciarlo prima:
+fermo, Claude Opus non disponibile con «Sempre Opus») restano «fallito» ma non contano tra i
+fallimenti; dopo 14 guasti esterni di fila però il compito si ferma lo stesso per 7 giorni (un
+guasto che dipende dal prompt non deve ripetersi ogni notte per sempre). Per rilanciarlo prima:
 `python3 gas.py notte <nome>`; se cambi il suo prompt nel catalogo la pausa decade. Il riepilogo
 ha la sezione «Lavori ricorrenti (stato)» con tutti i compiti attivi (anche quelli saltati per crash ripetuti).
 
