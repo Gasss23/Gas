@@ -176,6 +176,8 @@ def fasi_predefinite(verifica: Optional["Verifica"]) -> int:
     """GAS_ASCOLTO_FASI se c'è; altrimenti 4 con la verifica della voce attiva, 1 senza."""
     pred = FASI_PREDEFINITE if verifica is not None and verifica.attiva else 1
     return int(_numero("GAS_ASCOLTO_FASI", pred, 1, 4))
+
+
 # Con la verifica attiva il punteggio è la probabilità del verificatore, che quasi mai arriva
 # a 0,8 per 3 blocchi di fila (simulazione: 4 chiamate su 180): l'interruzione era spenta di
 # fatto. Senza valori nel .env vale la soglia della parola su 1 blocco: la voce di Gas è
@@ -1518,6 +1520,10 @@ def rilevatore_con_verifica(modello: str, verifica: Verifica, fasi: int = 1
             log.warning("verifica della voce: file non caricato (%s): ascolto senza verifica",
                         type(e).__name__)
             verifica.stato, verifica.motivo = "non caricata", type(e).__name__
+    # R-819-1: il filtro non si è caricato (o non c'è): senza filtro le 4 fasi alzano i
+    # falsi (V-2 bot #400), quindi 1 fase, salvo GAS_ASCOLTO_FASI esplicita nel .env
+    if not (os.environ.get("GAS_ASCOLTO_FASI") or "").strip():
+        extra = {}
     return rilevatore_openwakeword(modello, **extra)
 
 

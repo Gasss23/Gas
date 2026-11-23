@@ -3455,13 +3455,18 @@ def test_main_soglie_della_verifica_mai_sotto_la_base(monkeypatch, tmp_path, cap
 def test_main_verifica_rotta_spenta_assente(monkeypatch, tmp_path, caplog):
     _verificatore(tmp_path)
 
+    chiamate = []
+
     def rotto(modello, **k):
+        chiamate.append(dict(k))
         if k.get("verificatore"):
             raise ValueError("pickle rotto")
         return (lambda b: 0.0), (lambda: None)
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         k = _main_finto(monkeypatch, tmp_path, {}, rilevatore=rotto)
     assert k.get("soglia") == a.SOGLIA_PREDEFINITA
+    # R-819-1: il ripiego senza filtro gira a 1 fase (niente «fasi»), non a 4
+    assert chiamate[0].get("fasi") == a.FASI_PREDEFINITE and chiamate[-1] == {}
     assert "verifica della voce: non caricata (ValueError): ascolto senza verifica" in caplog.text
     caplog.clear()
     visti = []
@@ -3886,6 +3891,7 @@ def test_fasi_predefinite_solo_con_la_verifica(monkeypatch):
     assert attiva.attiva and a.fasi_predefinite(attiva) == a.FASI_PREDEFINITE == 4
     monkeypatch.setenv("GAS_ASCOLTO_FASI", "2")
     assert a.fasi_predefinite(None) == 2 and a.fasi_predefinite(attiva) == 2
+
 
 def test_taratura_usa_il_rilevatore_con_la_verifica(monkeypatch, tmp_path, capsys):
     t = _taratura()
