@@ -256,6 +256,31 @@ Memoria: riga #820-M1coord, committata (cbb0feae).
 
 ---
 
+## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (#821-M1coord)
+
+Il merge porta solo codice di main (PR #398, già revisionata nella sua chat) e non cambia i file propri della PR: sta fuori dal §4, che check_verdetto confronta col diff. Testo integrale:
+
+## VERDETTO: APPROVATO
+
+Review #821-M1coord: merge di origin/main (d13d4342), con dentro la PR #398, nel branch fix/voce-fasi-interruzione (PR #400). Merge in staging, non ancora committato.
+
+**Elementi del diff esaminati:**
+- `gas.py:7347` — comando `sottofondo-riprendi` portato da #398. Rischio: che il merge l'abbia alterato. Il blob in staging è identico a origin/main, e così `modules/sottofondo/__init__.py`, `scripts/sottofondo/com.gas.sottofondo.plist`, `tests/test_unit_sottofondo.py` e `.claude/perimetro_review.txt` (confronto con `git rev-parse`). Esito: ok.
+- `clients/voice/ascolto.py:1523` — ripiego R-819-1 (1 fase se il filtro non si carica). Rischio: che il merge abbia toccato i file della voce. Questo file, `scripts/voce/registra_voce.py`, `scripts/voce/taratura_parola.py`, `scripts/voce/LEGGIMI.md` e `tests/test_unit_voce_ascolto.py` sono identici a HEAD. Il diff contro origin/main su gas.py, modules, scripts, tests, clients, .claude e brains contiene solo questi 5 file più la memoria. Esito: ok.
+- `.claude/agents/memoria_revisore.md:1686` — unione dei due lati del conflitto: rispetto a HEAD aggiunge solo le righe da #839 a #850-R7 di main, rispetto a main solo quelle da #815 a #820-M1coord del branch. Nessuna riga persa o doppia, nessun marcatore (`git ls-files -u` vuoto, `git diff --cached --check` pulito, indice uguale alla cartella di lavoro). Esito: ok.
+- `reports/stato_progetto.md:4` — il word-diff contro HEAD mostra solo aggiunte (la voce R7 nella riga «Ultimo aggiornamento» e la riga 🟡 R7 fetta 2); contro main cambia solo la riga 4, quindi la riga doppia è fusa in una senza perdite. Esito: ok.
+- `reports/ultimo_report.md:23` — 158/180 a 0,6 corrisponde alla riga 7 di `reports/voce_simulazione_2026-11-23/risultati/interr_f4.txt` (`A_chiamate 4 fasi + filtro, soglia 0.6 su 1 blocchi: prese 158/180`). Esito: ok.
+
+**Interferenza tra #398 e la voce:** nessuna. Il branch non tocca gas.py né modules (`git diff origin/main...HEAD` vuoto su quei percorsi) e #398 non tocca clients/voice né scripts/voce; nei file della voce «sottofondo» compare solo nei commenti e come parametro di riproduzione, senza legame col modulo.
+
+**Test rieseguiti:** test_unit_voce_ascolto.py + test_unit_sottofondo.py: 513 passed. Nessun git stash.
+
+**Rischi esclusi:** suite completa e kernel non rieseguiti dopo il merge (basta la byte-identità: i file di #398 sono quelli revisionati nella loro chat, #839–#850, e quelli della voce sono quelli di #820); comportamento sul Mac (launchd, microfono) non verificabile qui; restano aperte, ereditate, R-849-1 e R-850-1/2 di #398 e R-816-1 della voce.
+
+**Memoria:** riga #821-M1coord in coda alla memoria (nessuna lezione nuova), lasciata fuori dallo staging come richiesto.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
 - **`tests/test_unit_voce_ascolto.py`:** 379 su main 1b4954e2 → 382 passed (#815) → 382 passed (#816, test rafforzati) → 383 passed (#817) → 384 passed (#819, #820). `pytest tests/ -k voce`: 538 passed (revisore #816).
