@@ -39,3 +39,7 @@
 15. **«Online» voleva dire «pronto all'uso»**: il CRM si usa sul Mac, dal browser del Mac; non va pubblicato su internet. → nessuna modifica; per aprirlo dal telefono la strada gratuita e privata resta Tailscale, da decidere.
 16. **WhatsApp Business: l'operatore non sa come avere l'accesso API.** → per ora i messaggi li scrive il CRM e li manda l'operatore a mano, dopo averli approvati (com'era già deciso). L'accesso API di Meta si prepara solo quando si vorrà l'invio automatico, con una guida passo passo.
 17. **Bacheca comune tra le chat: sì** («sarebbe veramente utile»). → `reports/bacheca.md`, con la regola in CLAUDE.md §3: ogni chat la legge all'avvio e ci scrive le notizie che toccano anche le altre.
+
+## 23 novembre 2026 — usare il CRM parlando con Gas
+
+18. **L'operatore vuole dare comandi al CRM tramite Gas** (Telegram e voce): aggiungere, togliere, farsi ricordare le cose. Ha scelto la proposta «Sì, fallo tu qui». → Gas può **leggere** il CRM quando serve; **scrive solo dopo il «sì» dell'operatore** (firma su Telegram, che mostra per esteso cosa cambierà). Gli **importi** li prende solo dai messaggi dell'operatore: se la cifra non c'è, Gas la chiede e non la inventa. **Niente cancellazioni**: «togliere» un cliente vuol dire archiviarlo (stato «perso»), i dati restano. I **promemoria** arrivano su Telegram all'ora scelta. I dati dei clienti, anche qui, li vede **solo Opus** (punto 10).

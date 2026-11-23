@@ -2286,3 +2286,223 @@ def test_server_selezione_scaglioni_e_difese_nuove(avviato, monkeypatch: pytest.
     assert st.cliente(cid)["followup_attivo"] == 0  # type: ignore[index]
     codice, _, err = c.post("/api/proposte/riscrivi", {"id": r["risultato"]["create"][0]})
     assert codice == 400 and "spento" in err["errore"]  # Claude spento: mai un altro modello
+
+
+# ---------------------------------------------------------------------- Gas usa il CRM
+# Decisione 18 del 23-11 (`reports/crm/decisioni.md`): Gas legge il CRM; scrive solo con
+# la firma dell'operatore; gli importi solo se l'operatore li ha detti; niente
+# cancellazioni; promemoria su Telegram.
+from modules.crm import agente  # noqa: E402
+
+
+def _conta(st: CRMStore, tabella: str) -> int:
+    with sqlite3.connect(st.db_path) as con:
+        return int(con.execute(f"SELECT COUNT(*) FROM {tabella}").fetchone()[0])
+
+
+def test_agente_importi_nel_testo() -> None:
+    t = "ha versato 1.500 euro, poi 250,50 e 3 mila; il 23/11 anche 2k. Mille no."
+    trovati = agente.importi_nel_testo(t)
+    for cents in (150_000, 25_050, 300_000, 200_000, 2_300, 1_100):
+        assert cents in trovati
+    assert 100_000 not in trovati  # «Mille» a parole non conta: il modello chiede la cifra
+    assert agente.importi_nel_testo(None) == set()  # type: ignore[arg-type]
+    assert agente.importi_nel_testo("nessuna cifra") == set()
+
+
+def test_agente_movimento_solo_con_importo_detto_e_firma(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid, pid = cliente_contento(st, srv)
+    prima = (_conta(st, "crm_movimenti"), _conta(st, "crm_eventi"))
+    args = {"azione": "movimento", "cliente": "mario", "tipo": "deposito", "importo": "1.500"}
+    with pytest.raises(ErroreCRM, match="non compare nei messaggi"):
+        agente.prepara(st, args, "metti un deposito per Mario")
+    with pytest.raises(ErroreCRM, match="non compare nei messaggi"):
+        agente.prepara(st, args, None)
+    can, desc = agente.prepara(st, args, "Mario ha versato 1500 euro")
+    # la preparazione NON scrive: si scrive solo dopo la firma
+    assert (_conta(st, "crm_movimenti"), _conta(st, "crm_eventi")) == prima
+    assert can == {"v": 1, "azione": "movimento", "cliente_id": cid, "posizione_id": pid,
+                   "tipo": "deposito", "importo_cents": 150_000, "data": "2026-06-20"}
+    assert "«Mario Rossi» (cliente #" in desc and "DEPOSITO" in desc and "1.500,00 €" in desc
+    assert agente.applica(st, json.loads(json.dumps(can))).startswith("Movimento registrato")
+    assert _conta(st, "crm_movimenti") == prima[0] + 1
+
+
+def test_agente_il_modello_non_salta_i_controlli(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid, pid = cliente_contento(st, srv)
+    # la forma canonica (id, centesimi) la scrive solo `prepara`: il modello non può darla
+    with pytest.raises(ErroreCRM, match="non previsti"):
+        agente.prepara(st, {"azione": "movimento", "cliente_id": cid, "posizione_id": pid,
+                            "tipo": "deposito", "importo_cents": 999}, "999")
+    # e `applica` accetta SOLO la forma canonica
+    for finto in ({"azione": "movimento", "cliente": "Mario", "tipo": "deposito",
+                   "importo": "10"},
+                  {"v": 2, "azione": "stato_cliente", "cliente_id": cid, "stato": "perso"},
+                  {"v": 1, "azione": "cancella_cliente", "cliente_id": cid},
+                  "non un dizionario"):
+        with pytest.raises(ErroreCRM):
+            agente.applica(st, finto)
+    # posizione di un altro cliente: rifiutata anche se la forma è canonica
+    altro = st.aggiungi_cliente("Luca Verdi", telefono="+390000000077")
+    with pytest.raises(ErroreCRM, match="non è di questo cliente"):
+        agente.applica(st, {"v": 1, "azione": "movimento", "cliente_id": altro,
+                            "posizione_id": pid, "tipo": "deposito",
+                            "importo_cents": 100, "data": "2026-06-20"})
+    with pytest.raises(ErroreCRM, match="azione non valida"):
+        agente.prepara(st, {"azione": "cancella_cliente", "cliente": "Mario"}, "")
+
+
+def test_agente_togliere_un_cliente_vuol_dire_archiviarlo(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid, _ = cliente_contento(st, srv)
+    assert "cancella" not in " ".join(agente.AZIONI)
+    can, desc = agente.prepara(st, {"azione": "stato_cliente", "cliente": f"#{cid}",
+                                    "stato": "perso"}, "")
+    assert "non si cancella nulla" in desc
+    agente.applica(st, can)
+    c = st.cliente(cid)
+    assert c is not None and c["stato"] == "perso" and _conta(st, "crm_clienti") == 1
+    assert _conta(st, "crm_movimenti") > 0  # lo storico resta
+    with pytest.raises(ErroreCRM, match="già nello stato"):
+        agente.prepara(st, {"azione": "stato_cliente", "cliente": f"#{cid}", "stato": "perso"}, "")
+
+
+def test_agente_nomi_ambigui_e_servizio_da_scegliere(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    a, _ = cliente_contento(st, srv, nome="Mario Rossi")
+    b, _ = cliente_contento(st, srv, nome="Mario Bianchi", telefono="+390000000002")
+    with pytest.raises(ErroreCRM, match="più clienti") as e:
+        agente.prepara(st, {"azione": "stato_cliente", "cliente": "mario", "stato": "in_pausa"}, "")
+    assert f"#{a}" in str(e.value) and f"#{b}" in str(e.value)
+    with pytest.raises(ErroreCRM, match="nessun cliente"):
+        agente.prepara(st, {"azione": "stato_cliente", "cliente": "Giulia", "stato": "in_pausa"}, "")
+    # il nome uguale vince sul pezzo di nome
+    can, _ = agente.prepara(st, {"azione": "stato_cliente", "cliente": " mario  ROSSI ",
+                                 "stato": "in_pausa"}, "")
+    assert can["cliente_id"] == a
+    st.apri_posizione(a, srv["segnali"], data="2026-05-01")
+    args = {"azione": "movimento", "cliente": f"#{a}", "tipo": "commissione", "importo": "99"}
+    with pytest.raises(ErroreCRM, match="più servizi"):
+        agente.prepara(st, args, "99 euro")
+    can, desc = agente.prepara(st, dict(args, servizio="segnali"), "99 euro")
+    assert "Segnali VIP" in desc and can["importo_cents"] == 9_900
+    with pytest.raises(ErroreCRM, match="non è nel servizio"):
+        agente.prepara(st, dict(args, cliente=f"#{b}", servizio="segnali"), "99 euro")
+
+
+def test_agente_errori_detti_prima_della_firma(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid, _ = cliente_contento(st, srv)
+    casi = [
+        ({"azione": "nuovo_cliente", "nome": "Anna", "telefono": "+390000000001"}, "già del cliente"),
+        ({"azione": "nuovo_cliente", "nome": "Anna", "email": "non-una-mail"}, "email non valida"),
+        ({"azione": "nuovo_cliente", "nome": "  "}, "nome"),
+        ({"azione": "movimento", "cliente": f"#{cid}", "tipo": "deposito", "importo": "10",
+          "data": "2026-07-01"}, "futuro"),
+        ({"azione": "movimento", "cliente": f"#{cid}", "tipo": "deposito", "importo": "10",
+          "data": "2026-03-01"}, "prima dell'apertura"),
+        ({"azione": "movimento", "cliente": f"#{cid}", "tipo": "regalo", "importo": "10"}, "tipo"),
+        ({"azione": "apri_servizio", "cliente": f"#{cid}", "servizio": "oro"}, "già nel servizio"),
+        ({"azione": "apri_servizio", "cliente": f"#{cid}", "servizio": "gestito",
+          "data": "2026-12-01"}, "futuro"),
+        ({"azione": "promemoria", "testo": "x", "quando": "2026-06-20 09:00"}, "già passata"),
+        ({"azione": "promemoria", "testo": "x", "quando": "2029-01-01 09:00"}, "troppo lontano"),
+        ({"azione": "promemoria", "testo": "x", "quando": "domani alle 9"}, "AAAA-MM-GG HH:MM"),
+        ({"azione": "aggiorna_cliente", "cliente": f"#{cid}"}, "niente da cambiare"),
+        ({"azione": "aggiorna_cliente", "cliente": f"#{cid}", "opt_out": "sì"}, "true o false"),
+        ({"azione": "annulla_promemoria", "promemoria": "#99"}, "nessun promemoria"),
+    ]
+    prima = _conta(st, "crm_eventi")
+    for args, attesa in casi:
+        with pytest.raises(ErroreCRM, match=attesa):
+            agente.prepara(st, args, "10")
+    assert _conta(st, "crm_eventi") == prima
+
+
+def test_agente_aggiorna_cliente_e_permessi(st: CRMStore) -> None:
+    srv = servizi_base(st)
+    cid, _ = cliente_contento(st, srv)
+    ref = st.aggiungi_cliente("Luca Verdi", telefono="+390000000077")
+    can, desc = agente.prepara(st, {"azione": "aggiorna_cliente", "cliente": "Mario Rossi",
+                                    "opt_out": True, "telefono": "333 000 1111",
+                                    "presentato_da": "luca"}, "")
+    assert can["campi"] == {"telefono": "+393330001111", "opt_out": True, "presentato_da": ref}
+    assert "STOP ai messaggi" in desc and "«Luca Verdi»" in desc
+    agente.applica(st, can)
+    c = st.cliente(cid)
+    assert c is not None and c["opt_out"] == 1 and c["telefono"] == "+393330001111"
+    assert c["presentato_da"] == ref
+    with pytest.raises(ErroreCRM, match="se stesso"):
+        agente.applica(st, {"v": 1, "azione": "aggiorna_cliente", "cliente_id": cid,
+                            "campi": {"presentato_da": cid}})
+
+
+def test_promemoria_store_reclamo_unico_e_diario_senza_testo(st: CRMStore,
+                                                             orologio: Orologio) -> None:
+    cid = st.aggiungi_cliente("Mario Rossi")
+    can, desc = agente.prepara(st, {"azione": "promemoria", "testo": "chiamare Mario per il bonifico",
+                                    "quando": "2026-06-22 09:30", "cliente": "Mario"}, "")
+    assert "lunedì 22-06-2026 alle 09:30" in desc and "«Mario Rossi»" in desc
+    assert _conta(st, "crm_promemoria") == 0  # niente scritto prima della firma
+    agente.applica(st, can)
+    [p] = st.promemoria()
+    assert p["cliente_id"] == cid and st.promemoria_scaduti() == []
+    # il testo (può contenere nomi) non va nel diario del CRM, che non si anonimizza
+    assert all("bonifico" not in e["descrizione"] for e in st.eventi())
+    assert "Promemoria in attesa: 1" in agente.consulta(st, "promemoria")
+    assert "chiamare Mario" in agente.consulta(st, "cliente", "Mario")
+    orologio.avanti(2)  # 22-06 alle 10:00
+    [scaduto] = st.promemoria_scaduti()
+    assert st.reclama_promemoria(scaduto["id"]) is True
+    assert st.reclama_promemoria(scaduto["id"]) is False  # mai due invii
+    assert st.promemoria_scaduti() == []
+    st.rilascia_promemoria(scaduto["id"])  # invio fallito: torna in coda
+    assert [r["id"] for r in st.promemoria_scaduti()] == [scaduto["id"]]
+    assert st.reclama_promemoria(scaduto["id"]) is True
+    assert st.promemoria() == [] and len(st.promemoria(solo_in_attesa=False)) == 1
+    assert st.reclama_promemoria("x") is False  # type: ignore[arg-type]  # mai solleva
+
+
+def test_promemoria_firma_in_ritardo_e_annullo(st: CRMStore, orologio: Orologio) -> None:
+    can, _ = agente.prepara(st, {"azione": "promemoria", "testo": "fattura",
+                                 "quando": "2026-06-20 11:00"}, "")
+    orologio.ora = orologio.ora + timedelta(hours=3)  # la firma arriva dopo l'ora scelta
+    agente.applica(st, can)  # si salva lo stesso e parte subito
+    assert len(st.promemoria_scaduti()) == 1
+    pid = st.aggiungi_promemoria("rinnovo", "2026-07-01 09:00")
+    can, desc = agente.prepara(st, {"azione": "annulla_promemoria", "promemoria": pid}, "")
+    assert "«rinnovo»" in desc
+    agente.applica(st, can)
+    assert [r["testo"] for r in st.promemoria()] == ["fattura"]
+    with pytest.raises(ErroreCRM, match="nessun promemoria"):
+        agente.applica(st, can)  # già annullato
+    with pytest.raises(ErroreCRM, match="già annullato"):
+        st.annulla_promemoria(pid)
+    [scaduto] = st.promemoria_scaduti()
+    st.reclama_promemoria(scaduto["id"])
+    with pytest.raises(ErroreCRM, match="già mandato"):
+        st.annulla_promemoria(scaduto["id"])
+
+
+def test_agente_consulta_mai_solleva_e_resta_corta(st: CRMStore, tmp_path: Path) -> None:
+    srv = servizi_base(st)
+    cliente_contento(st, srv)
+    assert agente.consulta(st, "boh").startswith("Errore: cosa non valida")
+    assert agente.consulta(st, "cliente", None).startswith("Errore: cliente")
+    assert agente.consulta(st, "cliente", "#999").startswith("Errore:")
+    r = agente.consulta(st, "riepilogo")
+    assert "Clienti attivi: 1" in r and "Capitale gestito" in r
+    assert "#1 Mario Rossi" in agente.consulta(st, "clienti")
+    assert "oro" in agente.consulta(st, "servizi")
+    assert agente.consulta(st, "proposte").startswith(("Nessuna", "Proposte"))
+    for i in range(150):
+        st.aggiungi_cliente(f"Cliente {i:03d} " + "x" * 80)
+    lungo = agente.consulta(st, "clienti")
+    assert len(lungo) <= agente.USCITA_MAX + 60 and "tagliato" in lungo
+    rotto = CRMStore(tmp_path / "manca" / "crm.db")
+    rotto.db_path = tmp_path  # una cartella al posto del file: ogni lettura fallisce
+    assert agente.consulta(rotto, "riepilogo").startswith("Errore:")
+    # una lettura fallita non si scambia per «nessun promemoria»
+    assert agente.consulta(rotto, "promemoria").startswith("Errore: database")
