@@ -206,11 +206,53 @@ Rischi esclusi:
 
 Memoria: riga #818-M1coord e una lezione, committate (8b64a649).
 
+### Review #819-M1coord (commit 8c4728c0)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #819-M1coord sul diff staged del branch fix/voce-fasi-interruzione (PR #400). Letti CLAUDE.md §5, stato_progetto.md (ricerca mirata) e la memoria. Suite: tests/test_unit_voce_ascolto.py 384 passed.
+
+**Elementi del diff esaminati**
+- `clients/voice/ascolto.py:166` — `SOGLIA_VERIFICA_PREDEFINITA = 0.6`. Numeri del commento confrontati con i dati: in sweep5.txt la riga 7 (1 fase, 0,5) dà 89%, 28%, 2,0 e 6,0; la riga 14 (4 fasi, 0,6) 96%, 41%, 1,3 e 4,7; la riga 13 (4 fasi, 0,5) 6,6 e 8,7; le righe 2 e 6 danno 33,9 e 45,9. Tutto coincide. Giusto anche il 158/180 dell'interruzione (interr_f4.txt, riga A_chiamate a 0,6 su 1 blocco). Esito: ok.
+- `clients/voice/ascolto.py:175` — `fasi_predefinite` è definita prima dell'uso in `main` (`clients/voice/ascolto.py:1613`) e nella taratura (`scripts/voce/taratura_parola.py:156`). Usa `_numero`, definita più in basso (`clients/voice/ascolto.py:307`) ma chiamata solo a runtime: va bene. `"Verifica"` come stringa nell'annotazione è corretta. `GAS_ASCOLTO_FASI` vince sempre. Esito: ok.
+- `clients/voice/ascolto.py:1521` (contesto: il ripiego di `rilevatore_con_verifica`, riga non toccata) — **R-819-1 BASSA**. `main` calcola le fasi PRIMA di caricare il filtro: se il file del filtro è rotto lo stato passa a «non caricata», ma il ripiego `rilevatore_openwakeword(modello, **extra)` riusa `fasi=4` e gira 4 fasi SENZA filtro, proprio il caso che V-2 voleva evitare. Riprodotto: chiamate `[{'verificatore':'x', ..., 'fasi':4}, {'fasi':4}]`, stato finale «non caricata».
+  - L'affermazione «col filtro non caricato si passa a 1 fase» è quindi **falsa**.
+  - Il test `tests/test_unit_voce_ascolto.py:3458` (`rotto`) non registra gli argomenti del ripiego, per questo non se ne accorge.
+  - Il `[{}]` di `tests/test_unit_voce_ascolto.py:3472` è corretto, ma copre solo `GAS_ASCOLTO_VERIFICA=0` (filtro spento).
+  - Correzione suggerita: nel ripiego ricalcolare le fasi con `fasi_predefinite(verifica)` quando `GAS_ASCOLTO_FASI` non è impostata, oppure far passare a `main` le fasi come `None` = «predefinito»; poi controllare nel test `rotto` il `{}` del ripiego.
+- `scripts/voce/registra_voce.py:591` (contesto) — usa `a.SOGLIA_VERIFICA_PREDEFINITA` per il riepilogo: ora mostra 0,6, coerente con l'ascolto. Esito: ok.
+- `tests/test_unit_voce_ascolto.py:3427` — portare `GAS_ASCOLTO_SOGLIA` a 0,4 distingue davvero il valore d'ambiente dal predefinito 0,6. Il nuovo caso della taratura (0,55 → «più permissiva») controlla davvero il cambio di soglia. Esito: ok.
+- `scripts/voce/taratura_parola.py:35` — la copia 0,6 della soglia è allineata con ascolto.py; un test controlla che i due valori siano uguali. Esito: ok.
+
+**Note cosmetiche, non bloccanti**: dopo `fasi_predefinite` il commento «Con la verifica attiva… interruzione» resta attaccato alla funzione senza riga vuota; prima di `test_taratura_usa_il_rilevatore_con_la_verifica` c'è una sola riga vuota, ne servono due.
+
+Guardrail e antipattern: nessuno slicing della history, nessuna simulazione di tool; gas.py e brains non toccati; §9 rispettato (il ripiego resta senza crash).
+
+**Rischio escluso:** comportamento reale sul Mac (microfono, latenza delle 4 fasi) non verificato, simulazione non rieseguita; controllato solo che i numeri citati corrispondano ai file in risultati/.
+
+Memoria: riga #819-M1coord e una lezione, committata con lo script (b9f7ec6e).
+
+### Review #820-M1coord (commit b1cf2c4e)
+
+## VERDETTO: APPROVATO
+
+La correzione chiude R-819-1.
+
+- `clients/voice/ascolto.py:1523` — nel ripiego (filtro non caricato o assente), se `GAS_ASCOLTO_FASI` non è nel `.env`, `extra` si azzera e il rilevatore gira a 1 fase senza filtro. Rischio: un chiamante che passa `fasi>1` di proposito scavalcato in silenzio. Esito: ok. Gli unici chiamanti sono `clients/voice/ascolto.py:1621` (main) e `scripts/voce/taratura_parola.py:157`, ed entrambi ricavano `fasi` da `fasi_predefinite`: l'override coincide con ciò che darebbe `fasi_predefinite(None)`. Con `GAS_ASCOLTO_FASI` nel `.env` la scelta esplicita è rispettata. Dopo la chiamata `main` non legge più `fasi` (niente log o stato che dica ancora 4 fasi). §9: le eccezioni restano intercettate prima.
+- `tests/test_unit_voce_ascolto.py:3469` — controlla che la prima chiamata (col filtro) abbia `fasi == FASI_PREDEFINITE` e che il ripiego sia `{}`. Rischio: un test che non distingue le due chiamate. Esito: ok, `chiamate[0]` e `chiamate[-1]` le separano; l'autore dichiara di averlo visto fallire togliendo la correzione.
+- `clients/voice/ascolto.py:179` — due righe vuote prima del commento, PEP8 (cosmetica). Esito: ok.
+
+Suite eseguita: `tests/test_unit_voce_ascolto.py`, 384 passed.
+
+**Rischio escluso:** comportamento reale dell'ascolto sul Mac col filtro rotto non riproducibile qui; non verificato `GAS_ASCOLTO_FASI` non numerico nel `.env` (il ripiego tiene le `fasi` già calcolate, 4 se all'inizio il filtro risultava attivo): marginale, non una riserva.
+
+Memoria: riga #820-M1coord, committata (cbb0feae).
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- **`tests/test_unit_voce_ascolto.py`:** 379 su main 1b4954e2 → 382 passed (#815) → 382 passed (#816, test rafforzati) → 383 passed (#817). `pytest tests/ -k voce`: 538 passed (revisore #816).
+- **`tests/test_unit_voce_ascolto.py`:** 379 su main 1b4954e2 → 382 passed (#815) → 382 passed (#816, test rafforzati) → 383 passed (#817) → 384 passed (#819, #820). `pytest tests/ -k voce`: 538 passed (revisore #816).
 - **Prova col modello vero** (openWakeWord 0.6.0, venv locale): «Hey Jarvis» di espeak con sfasamento 0/320/640/960 campioni → 4 fasi 0,998 ogni volta.
 - **Kernel** (`gas.py`, `tests/test_unit_kernel.py`): non toccato.
 
@@ -221,6 +263,6 @@ Run della PR non ancora disponibile alla scrittura dell'handoff: il ramo si push
 ## §7 RISERVE APERTE
 
 - **Simulazione:** voci sintetiche, valori assoluti non trasferibili alla voce e al microfono veri; CPU con 4 fasi sul Mac da verificare; interruzione mentre la voce di Gas copre la chiamata ancora 0/180 (funziona solo nelle pause).
-- **Chiuse:** R-815-1, R-815-2, R-815-3, R-815-4 (#816); R-816-1 e V-1..V-4 del bot su #400 (#817); R-817-1 (documenti).
+- **Chiuse:** R-815-1, R-815-2, R-815-3, R-815-4 (#816); R-816-1 e V-1..V-4 del bot su #400 (#817); R-817-1 (documenti); V-1/V-2 del bot su 58fc7ed7 (#819); R-819-1 (#820).
 - **Da provare sul Mac:** auto-interruzione con la voce vera di Gas e CPU con 4 fasi (dichiarati non misurati in `reports/voce_simulazione_2026-11-23/LEGGIMI.md`).
 - **Aperte da prima:** R-813M1-1, R-810M1-2, note bot #390/#395, #382 V-1/V-2, #383 V-2/V-3 (vedi `reports/stato_progetto.md`).

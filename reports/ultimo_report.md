@@ -22,8 +22,10 @@
 
 - **Interruzione con 4 fasi misurata (risposta a V-1 bot #400 su b1ca6dc9):** nella configurazione predefinita (filtro + 4 fasi, 0,5 su 1 blocco) prese 170/180 nelle pause, 0 auto-interruzioni all'ora dalla voce di Gas simulata; con 0,8 su 3 blocchi 8/180. Script `interr_f4.py` e risultati `interr_f4.txt`, `interr_1fase.txt` in `reports/voce_simulazione_2026-11-23/`.
 
+- **Correzioni #819/#820 (8c4728c0, b1cf2c4e; review #819-M1coord APPROVATO CON RISERVE, #820-M1coord APPROVATO):** finding del bot su 58fc7ed7. Soglia della verifica 0,6, la regolazione misurata con le 4 fasi: vicino 96%, −12 dB 41%, 1,3/4,7 falsi all'ora (con 0,5 e 4 fasi salivano a 6,6/8,7). 4 fasi solo col filtro della voce attivo, anche nel ripiego se il filtro non si carica.
+
 ## Test
-- `tests/test_unit_voce_ascolto.py`: 379 su main → 383 passed; `pytest tests/ -k voce` 538 passed (revisore).
+- `tests/test_unit_voce_ascolto.py`: 379 su main → 384 passed; `pytest tests/ -k voce` 538 passed (revisore).
 
 ## Riserve aperte
 - **Da provare sul Mac:** auto-interruzione con la voce vera di Gas e CPU con 4 fasi.
