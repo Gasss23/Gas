@@ -165,6 +165,14 @@ _RE_TELEFONO = (
     r"|\(0[0-9]{1,3}\)\s?[0-9](?:[ ./\-]?[0-9]){4,9}"
     r"|[03][0-9](?:[ ./\-]?[0-9]){5,10})"
     r"(?![\w/\-])")
+# R-843-1 (BASSA, dichiarata): dopo il «+» un numero con le migliaia («+1.500.000») conta
+# come telefono: costa una chiamata a Opus. Escluderlo fa perdere telefoni veri come
+# «+44-20-7946-0958» (review #845-CRM), quindi resta così.
+# V-1 verifica esterna #397: allargare a email e cifre in euro prenderebbe più clienti
+# nuovi ma fermerebbe anche «costa 333 euro» (T115c6) e le email lette (T80ad): è la
+# stessa scelta di R-840-2, la decide l'operatore. Oggi, se nel messaggio non c'è un
+# cliente già nel CRM, restano fuori «aggiungi Anna Neri», «Rossi ha tolto 500», un'email
+# da sola (dichiarato nella guida).
 _RE_RICHIESTA_CRM = re.compile(
     r"\b(?:crm|client[ei]\w*|promemoria|ricordam\w*|ricordarm\w*|deposit\w*|prel[ei]v\w*|"
     r"vers(?:at[oaie]|ament[oi]|are|erà|eranno)|bonific\w*|commission\w*)\b"
