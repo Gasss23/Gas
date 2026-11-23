@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 23 novembre 2026 — R7 fetta 2: ripresa al boot del compito in sottofondo (sotto-chat di M1) — secondo giro: correzioni del verdetto del bot
+**Sessione:** 23 novembre 2026 — R7 fetta 2: ripresa al boot del compito in sottofondo (sotto-chat di M1) — terzo giro: merge di main (PR #397, CRM e «Sempre Opus»)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #398 (https://github.com/Gasss23/Gas/pull/398), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore. Il 1° verdetto del bot (eafdb49a) era BOCCIATO (V-1 MEDIA): corretto in questo giro, serve il verdetto sul nuovo head.
+1. Merge della PR #398 (https://github.com/Gasss23/Gas/pull/398), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore. Verdetti del bot: eafdb49a BOCCIATO (V-1 MEDIA, corretta nel 2° giro); e9a08526 APPROVATO CON RISERVE senza ALTA/MEDIA, check neutral (la PR tocca `.claude/perimetro_review.txt`, macchina del bot): il merge lo decide l'operatore.
 2. (Facoltativo) Installare sul Mac `scripts/sottofondo/com.gas.sottofondo.plist` (istruzioni nel commento del file; serve `~/Gas/.venv`).
 
 Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `398`, `https://github.com/Gasss23/Gas/pull/398` (`gh pr` non disponibile in questo ambiente, solo REST).
@@ -17,6 +17,7 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 
 - **Fetta 2 R7 — ripresa al boot**: FATTA. `riprendi_al_boot` (riusa `controlla`, stessi guardrail della fetta 1, nel terminale solo id e stato), comando `python gas.py sottofondo-riprendi`, plist launchd solo RunAtLoad che pretende `~/Gas/.venv`, `scripts/sottofondo/` nel perimetro, 8 test nuovi. Review #839 → correzioni R-839-1/R-839-2 → review #840.
 - **Correzioni del 1° verdetto del bot sulla PR #398 (eafdb49a, BOCCIATO)**: FATTA. V-1 MEDIA: `riprendi_al_boot` aspetta la rete (TCP verso uno dei servizi usati, tetto `GAS_SOTTOFONDO_ATTESA_RETE` 120 s, max 600) e senza rete non tocca la coda (ripresa al primo turno, come prima). V-2 BASSA documentata nel codice (solo testo). V-3 BASSA: riavvio non partito → exit 1. R-840-1 (commento del plist) corretta. 5 test nuovi (126). Review #841.
+- **Merge di origin/main (PR #397, chat CRM) nel ramo (terzo giro)**: FATTO (4114b631) per il conflitto sui report: tenuti i report di questo ramo (regola 3 di `reports/lavoro_parallelo.md`; riserve CRM già in `stato_progetto.md`). Review #849-MERGE-R7 APPROVATO CON RISERVE (R-849-1 BASSA: con «Sempre Opus» il compito ripreso al boot va solo a Opus, serve `GAS_CLAUDE_BIN` nel `.env` se `claude` non è nel PATH di launchd). Test: sottofondo 126 passed, kernel «=== RIEPILOGO: 1208 PASS, 0 FAIL ===».
 - **Fetta 3 R7 — lista dei lavori ricorrenti con stato**: FATTA in un'altra PR (#399, ramo `claude/r7-lavori-ricorrenti`).
 - **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — dopo la 3.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — dopo la 4.
@@ -26,25 +27,25 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md          |   5 +++++
+ .claude/agents/memoria_revisore.md          |   7 ++++
  .claude/perimetro_review.txt                |   2 ++
- gas.py                                      |   5 +++++
- modules/sottofondo/__init__.py              |  85 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md                    |  19 +++++++++----------
+ gas.py                                      |   5 +++
+ modules/sottofondo/__init__.py              |  85 +++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md                    |  22 +++++-------
  reports/handoff.md                          | n/d
- reports/stato_progetto.md                   |   3 ++-
- reports/ultimo_report.md                    |  27 ++++++++++++---------------
- scripts/sottofondo/com.gas.sottofondo.plist |  36 ++++++++++++++++++++++++++++++++++++
- tests/test_unit_sottofondo.py               | 141 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md                   |   3 +-
+ reports/ultimo_report.md                    |  52 ++++++++++-----------------
+ scripts/sottofondo/com.gas.sottofondo.plist |  36 +++++++++++++++++++
+ tests/test_unit_sottofondo.py               | 141 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
-
-NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
+NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path. Dopo il merge di main (4114b631) la base del ramo è il main nuovo (1b4954e2).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4114b631 Merge origin/main (PR #397, CRM) nel ramo della PR #398 — review #849-MERGE-R7 APPROVATO CON RISERVE
+e9a08526 docs(fine-task): PR #398 secondo giro — correzioni del verdetto del bot, review #841
 c87c9467 fix(sottofondo): verdetto bot #398 — al boot aspetta la rete, senza rete non tocca la coda
 a469161a chore(revisore): memoria review #841 — APPROVATO CON RISERVE
 eafdb49a docs(fine-task): R7 fetta 2 — report, handoff con review #839/#840, stato_progetto
@@ -57,7 +58,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 8b12f585 (motore): due verdetti sullo stesso diff, #839 sul primo staged e #840 dopo le correzioni di R-839-1 e R-839-2. Commit c87c9467 (motore, correzioni del verdetto del bot): review #841. Incollati integrali.
+Commit 8b12f585 (motore): due verdetti sullo stesso diff, #839 sul primo staged e #840 dopo le correzioni di R-839-1 e R-839-2. Commit c87c9467 (motore, correzioni del verdetto del bot): review #841. Merge 4114b631: review #849-MERGE-R7. Incollati integrali.
 
 ### Review #839
 
@@ -162,6 +163,37 @@ Review n. 841. Oggetto: il diff staged in /home/user/Gas398, sul ramo claude/r7-
 
 **Memoria del revisore**: aggiunta la riga #841 e una lezione (il controllo «c'è rete?» fatto con socket diretto ignora il proxy). Committata da sola con `scripts/commit_memoria_revisore.sh` in /home/user/Gas398, commit a469161a. Il diff staged del motore non è stato toccato: index ancora 3 file, +120/−10.
 
+### Review #849-MERGE-R7 (merge 4114b631)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #849-MERGE-R7. Oggetto: il merge in corso di origin/main (PR #397, che porta il CRM e «Sempre Opus») nel ramo claude/r7-ripresa-al-boot (PR #398), nella worktree /home/user/Gas398. Ho letto: CLAUDE.md (§5, §8, §9, roadmap), la riga «Ultimo aggiornamento» e la sezione motore di reports/stato_progetto.md, e la coda della memoria del revisore.
+
+**Elementi del diff esaminati**
+- `gas.py:7347` — il ramo `sottofondo-riprendi` in main(). È l'unica differenza di gas.py rispetto a MERGE_HEAD (+5 righe). Sta dopo `_carica_dotenv()` (`gas.py:7297`) e dopo `sottofondo-ferma`. Rischio esaminato: righe di main perse o duplicate nell'auto-merge di gas.py. L'AST si legge, l'albero di lavoro coincide con l'indice e `git diff --cached MERGE_HEAD -- gas.py` mostra solo queste 5 righe. Esito: ok.
+- `gas.py:385` — `_solo_opus_sempre()`, acceso di default. In `gas.py:403`, `_finestra_ha_dati_lead` diventa vero quando nella finestra c'è un messaggio user. Il kernel del compito in sottofondo (`gas.py:5254`, `per_sottofondo`) riceve il compito come messaggio user, quindi ogni compito ripreso al boot va SOLO a claude-cli. Se Opus non c'è, il turno finisce con l'errore di `gas.py:6134` («Rispondo solo con Claude Opus… non disponibile») e non ripiega su Gemini. Rischio esaminato: la ripresa da launchd. Esito: riserva (R-849-1, sotto).
+- `gas.py:3847` — `crm_modifica` è negata con `nel_sottofondo`, e `gas.py:5594` azzera il testo dell'operatore del turno nel sottofondo. Rischio esaminato: un compito ripreso al boot che cambia il CRM senza firma. Esito: ok, il CRM di main non si apre al sottofondo.
+- `modules/sottofondo/__init__.py:53` — `HOST_RETE` controlla prima api.anthropic.com, poi googleapis, poi telegram. Rischio esaminato: con «Sempre Opus», l'host del cervello usato deve essere tra quelli controllati. Esito: ok, Anthropic è il primo. Resta aperto il limite del controllo via socket con il proxy, già registrato in #841.
+- `scripts/sottofondo/com.gas.sottofondo.plist:23` — il plist usa `/bin/zsh -c` senza login, quindi il PATH è quello minimo di launchd. `brains/claude_cli.py:556` (contesto) cerca il binario così: GAS_CLAUDE_BIN, poi `shutil.which("claude")`, poi "claude". Esito: riserva (R-849-1).
+- `tests/conftest.py:15` — imposta `GAS_SOLO_OPUS="0"` per tutta la suite. Rischio esaminato: i test di R7 cambiano con «Sempre Opus»? No: la suite gira con la cascata spenta-Opus come prima. Il mio rerun di tests/test_unit_sottofondo.py dà 126 passed. Esito: ok. Effetto collaterale: nessun test prova la ripresa al boot con «Sempre Opus» acceso, già segnalato in #848-CRM per gli altri canali.
+
+**Conflitti**
+- `git ls-files -u` è vuoto, `git diff --check --cached HEAD` è pulito, 0 marcatori di conflitto.
+- reports/handoff.md, ultimo_report.md e diff_sessione.md hanno lo stesso blob di HEAD: tenuti dal tuo ramo come vuole la regola 3. Le riserve CRM restano nella riga del motore di stato_progetto.md.
+- La riga «Ultimo aggiornamento» è unita: R7 #398, CRM #397, funnel #396, voce/bacheca 22-11.
+- La memoria del revisore ha entrambi i lati: #839-CRM…#848-CRM di main e #839/#840/#841 del ramo. I numeri si ripetono, ma i suffissi li distinguono e le righe restano univoche.
+- `git diff --cached MERGE_HEAD` sul perimetro contiene solo le aggiunte R7: gas.py, modules/sottofondo, plist, test, perimetro_review e memoria. Nessuna modifica di main è andata persa.
+
+**Riserve**
+- **R-849-1 BASSA**: prima di #397, se `claude` non era nel PATH, il compito ripreso da launchd ripiegava sui gratuiti. Con «Sempre Opus» acceso fallisce, a meno che il .env abbia GAS_CLAUDE_BIN. Il .env viene caricato prima del comando, quindi una voce lì basta, e il giro notturno la richiede già: per questo la riserva è BASSA. Correzione: una riga nel commento del plist e nella guida («serve GAS_CLAUDE_BIN nel .env, come per la notte»). In alternativa, `gas.py doctor` può già segnalarlo. Va tracciata in stato_progetto.md.
+
+**Rischi esclusi**
+- La ripresa reale da launchd sul Mac non l'ho verificata: qui non c'è macOS né il binario `claude`.
+- Non ho rieseguito tests/test_unit_kernel.py (mi fido del tuo «1208 PASS, 0 FAIL»).
+- Non ho rivisto il codice CRM di #397: è già passato da #839-#848-CRM, e qui ho controllato solo che arrivasse intatto.
+
+**Memoria**: le righe #849-MERGE-R7 e una lezione nuova sono in coda a /home/user/Gas398/.claude/agents/memoria_revisore.md, solo nel working tree e non in stage. Non ho lanciato `scripts/commit_memoria_revisore.sh` perché c'è un merge in corso. Mettila in stage e committala tu col merge, o subito dopo.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_sottofondo.py`: 113 → 126 (8 test della ripresa al boot + 5 delle correzioni del bot), tutti verdi in locale: `126 passed in 6.00s`.
@@ -171,33 +203,35 @@ Review n. 841. Oggetto: il diff staged in /home/user/Gas398, sul ramo claude/r7-
 === RIEPILOGO: 1187 PASS, 0 FAIL ===
 ```
 
-Nessun FAIL (eseguito nel primo giro; il secondo giro tocca solo `modules/sottofondo/` e i suoi test). La suite `pytest tests/` completa in locale è stata fermata dopo ~5 minuti senza esito (non conclusa); la CI esegue le suite per file.
+Nessun FAIL. Rieseguito DOPO il merge di main (4114b631): «=== RIEPILOGO: 1208 PASS, 0 FAIL ===»; sottofondo dopo il merge: 126 passed. La suite `pytest tests/` completa in locale è stata fermata dopo ~5 minuti senza esito (non conclusa); la CI esegue le suite per file.
 
 ## §6 STATO CI
 
-Output reale di `gh run list -L 3` alla scrittura (le righe sono anche di altri rami):
+Output reale di `gh run list -L 3` alla scrittura (righe di un altro ramo):
 
 ```
-completed	cancelled	R7 fetta 3: stato dei lavori ricorrenti del giro di notte	verifica-bot	claude/r7-lavori-ricorrenti	pull_request_target	45217587661	32s	2026-11-23T16:32:05Z
-in_progress		R7 fetta 3: stato dei lavori ricorrenti del giro di notte	verifica-bot	claude/r7-lavori-ricorrenti	pull_request_target	45217586568	1m38s	2026-11-23T16:32:05Z
-in_progress		docs(fine-task): R7 fetta 3 — report, handoff con review #839-F3/#842…	CI	claude/r7-lavori-ricorrenti	push	45217578563	1m41s	2026-11-23T16:32:02Z
+in_progress		R7 fetta 3: stato dei lavori ricorrenti del giro di notte	verifica-bot	claude/r7-lavori-ricorrenti	pull_request_target	45221379881	3m9s	2026-11-23T16:52:30Z
+in_progress		docs(fine-task): PR #399 terzo giro — merge di main, «Sempre Opus», V…	CI	claude/r7-lavori-ricorrenti	push	45221370319	3m12s	2026-11-23T16:52:27Z
+completed	success	R7 fetta 3: stato dei lavori ricorrenti del giro di notte	verifica-bot	claude/r7-lavori-ricorrenti	pull_request_target	45218772891	3m10s	2026-11-23T16:38:24Z
 ```
 
 Run di questo branch (`gh api .../actions/runs?branch=claude/r7-ripresa-al-boot`, output reale):
 
 ```
+45217975784 e9a08526 verifica-bot pull_request_target completed/success
+45217965677 e9a08526 CI push completed/success
 45216004004 eafdb49a verifica-bot pull_request_target completed/success
 45215981231 eafdb49a verifica-bot pull_request_target completed/skipped
-45215968921 eafdb49a CI push in_progress/null
+45215968921 eafdb49a CI push completed/success
 45215689561 8b12f585 verifica-bot pull_request_target completed/skipped
-45215603377 8b12f585 CI push in_progress/null
+45215603377 8b12f585 CI push completed/failure
 ```
 
 Mappatura commit→run:
-- 8b12f585: run CI 45215603377 ancora in_progress alla scrittura; verifica-bot 45215689561 skipped (PR senza etichetta).
-- eafdb49a: run CI 45215968921 ancora in_progress alla scrittura; verifica-bot 45216004004 completata (il check `verifica-bot` pubblicato sullo SHA è failure: 1° verdetto BOCCIATO, V-1 MEDIA, corretta in c87c9467); 45215981231 skipped.
-- 94189a8b, 48aacb44 (memoria): nessuna run su questi SHA.
-- a469161a e c87c9467: nessuna run propria (pushati insieme al commit di fine-task di questo giro, che ha la run di testa).
+- 8b12f585: CI 45215603377 failure (atteso: commit di codice senza handoff, handoff-check rosso; unit-suite verde); verifica-bot 45215689561 skipped.
+- eafdb49a: CI 45215968921 success; verifica-bot 45216004004: check `verifica-bot` failure sullo SHA (1° verdetto BOCCIATO, V-1 MEDIA corretta in c87c9467); 45215981231 skipped.
+- e9a08526: CI 45217965677 success; verifica-bot 45217975784: check neutral (2° verdetto APPROVATO CON RISERVE senza ALTA/MEDIA; la PR tocca la macchina del bot).
+- 48aacb44, 94189a8b, a469161a, c87c9467, 4114b631: nessuna run propria (pushati insieme al commit di testa o non ancora pushati).
 - Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -205,6 +239,8 @@ Mappatura commit→run:
 - 1° verdetto del bot su PR #398 (eafdb49a, BOCCIATO): V-1 MEDIA (al boot senza rete il compito veniva chiuso «ko» per sempre) CORRETTA; V-2 BASSA («prima» letto fuori dal lock, solo testo) DOCUMENTATA nel codice; V-3 BASSA (riavvio non partito con exit 0) CORRETTA. Serve il verdetto del bot sul nuovo head.
 - Verifica esterna sulla PR #398 (eafdb49a, [commento](https://github.com/Gasss23/Gas/pull/398#issuecomment-7107123430)): V-1 = R-839-3 CHIUSA da questo giro; V-2 = R-840-1 CHIUSA; V-3 COSMETICA (`TUO_UTENTE` nei log del plist, documentato) aperta; V-4 BASSA («ancora in corso» con lock non disponibile, solo testo) aperta.
 - R-841-1 BASSA — `_rete_pronta` apre un socket diretto e ignora `HTTPS_PROXY`: su una macchina che esce solo via proxy la ripresa al boot non parte mai (il compito riparte al primo turno); DNS fuori dal timeout; nessun test della funzione. Da rivedere con l'unità systemd del server. Aperta.
+- R-849-1 BASSA — con «Sempre Opus» (PR #397) il compito ripreso al boot va solo a Opus: se `claude` non è nel PATH di launchd serve `GAS_CLAUDE_BIN` nel `.env` (come per la notte), altrimenti il compito ripreso finisce «ko». Aperta.
+- Verifica esterna su e9a08526 ([commento](https://github.com/Gasss23/Gas/pull/398#issuecomment-7107364671)): V-1 = R-841-1; V-2 = R-841-2; V-3 COSMETICA (NB doppio nel §2) corretta. Bot su e9a08526: V-1 COSMETICA (descrizione della PR ferma al primo giro) corretta; V-2 COSMETICA (attesa della rete anche con .ferma/riprese finite, frase «riparte» falsa in quel caso) aperta, parte di R-841-2.
 - R-841-2 COSMETICA — attesa della rete anche col processo ancora vivo: offline «Rete non pronta» ed exit 1 senza niente da riprendere. Aperta.
 - R-839-1, R-839-2, R-839-3, R-840-1: CHIUSE.
 - Riserve delle altre chat: in `reports/stato_progetto.md`, non toccate qui.
