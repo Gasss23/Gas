@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 23 novembre 2026 — R7 fetta 3: stato dei lavori ricorrenti del giro di notte (sotto-chat di M1) — secondo giro: riserve di bot e verifica esterna
+**Sessione:** 23 novembre 2026 — R7 fetta 3: stato dei lavori ricorrenti del giro di notte (sotto-chat di M1) — terzo giro: merge di main (PR #397), «Sempre Opus», V-1 MEDIA del bot e riserve della verifica esterna
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #399 (https://github.com/Gasss23/Gas/pull/399), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore. Il 1° verdetto del bot (492f7e20) era APPROVATO CON RISERVE (solo BASSE): corrette in questo giro, serve il verdetto sul nuovo head.
+1. Merge della PR #399 (https://github.com/Gasss23/Gas/pull/399), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore. Verdetti del bot: 492f7e20 APPROVATO CON RISERVE (solo BASSE, corrette nel 2° giro); 3b188028 APPROVATO CON RISERVE con V-1 MEDIA (check failure), corretta in questo giro (7b05ccf2); serve il verdetto sul nuovo head. Le verifiche esterne finora: APPROVATO CON RISERVE (BASSE/COSMETICHE).
 
 Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `399`, `https://github.com/Gasss23/Gas/pull/399` (`gh pr` non disponibile in questo ambiente, solo REST).
 
@@ -16,6 +16,9 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 
 - **Fetta 3 R7 — lista dei lavori ricorrenti con stato**: FATTA. Registro `.gas_notte/stato_lavori.json` (fatto / in sospeso / fallito / da non ritentare), 3 ko di fila → fermo 7 giorni nei giri completi, rilancio a mano con `gas notte <nome>`, pausa decaduta col prompt cambiato, sezione nel riepilogo, doc in `reports/setup_notte.md`. Review #839-F3 → correzioni R-839-1/R-839-2 → review #842.
 - **Correzioni delle riserve sulla PR #399 (secondo giro)**: FATTA. Verifica esterna V-1 BASSA: i guasti esterni (provider giù, budget, cervello forte fermo, dati di clienti senza forte) lasciano «fallito» ma non contano tra i ko di fila. Bot V-1 BASSA: la sezione mostra anche i compiti saltati per crash. Bot V-2 BASSA: l'avviso dice il conto reale; ritmo dopo la prima pausa documentato. 6 test nuovi (215). Review #843.
+- **Merge di origin/main (PR #397 della chat CRM) nel ramo (terzo giro)**: FATTO (73277ba0), conflitti dei report risolti come dice `reports/lavoro_parallelo.md` regola 3 (riserve CRM già in `stato_progetto.md`). Review #844-MERGE: R-844M-1 MEDIA (con «Sempre Opus» il testo d'errore «Rispondo solo con Claude Opus…» non era riconosciuto come guasto esterno).
+- **Correzioni del terzo giro**: FATTA (87006476). R-844M-1 (prefisso aggiunto + test col kernel vero e GAS_SOLO_OPUS=1); verifica esterna #399 (3b188028) V-1 (dopo 14 guasti esterni di fila pausa di 7 giorni); R-843-1 (un guasto esterno non toglie né allunga una pausa in corso); R-845R7-1/2. Review #845-R7 → #846-R7 APPROVATO. 220 test.
+- **V-1 MEDIA del bot su 3b188028**: FATTA (7b05ccf2). «Pipeline esausta» (e gli errori col dettaglio dei motivi, anche con «Sempre Opus») copriva motivi nati dal lavoro: tetto delle chiamate per turno, risposta vuota, 10 iterazioni senza risposta finale. Ora contano come ko veri; test col kernel vero che arriva al tetto e test con i testi veri di «Sempre Opus». Review #847-R7 BOCCIATO (valeva solo con «Sempre Opus» spento) → #848-R7 APPROVATO. 230 test.
 - **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — prossima PR.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — dopo la 4.
 
@@ -24,15 +27,17 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- modules/notte/notte.py             | 167 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- reports/diff_sessione.md           |  17 +++++++----------
+ .claude/agents/memoria_revisore.md |  13 ++++++
+ modules/notte/notte.py             | 210 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/diff_sessione.md           |  21 ++++-----
  reports/handoff.md                 | n/d
- reports/setup_notte.md             |  10 ++++++++++
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  26 +++++++++++---------------
- tests/test_unit_notte.py           | 234 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/setup_notte.md             |  15 +++++++
+ reports/stato_progetto.md          |   3 +-
+ reports/ultimo_report.md           |  52 ++++++++--------------
+ tests/test_unit_notte.py           | 372 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
+
+NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path. Dopo il merge di main (73277ba0) la base del ramo è il main nuovo (1b4954e2): i file della PR #397 non compaiono.
 
 NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
 
@@ -41,6 +46,14 @@ NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è t
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7b05ccf2 fix(notte): bot #399 V-1 — tetto di chiamate, risposta vuota e iterazioni finite sono ko del lavoro, anche con «Sempre Opus»
+f78682bf chore(revisore): memoria review #848 — APPROVATO
+26a27136 chore(revisore): memoria review #847 — BOCCIATO
+87006476 fix(notte): R-844M-1 «Sempre Opus» è guasto esterno; tetto dei guasti esterni di fila; pausa non tolta né allungata
+3599a7d4 chore(revisore): memoria review #846 — APPROVATO
+49ce5f74 chore(revisore): memoria review #845 — APPROVATO CON RISERVE
+73277ba0 Merge origin/main (PR #397, CRM) nel ramo della PR #399 — review #844-MERGE APPROVATO CON RISERVE
+3b188028 docs(fine-task): PR #399 secondo giro — riserve di bot e verifica esterna, review #843
 f3a6168e fix(notte): riserve su PR #399 — guasti esterni non contano, sezione con tutti i compiti, avviso col conto reale
 ba513ece chore(revisore): memoria review #843 — APPROVATO CON RISERVE
 492f7e20 docs(fine-task): R7 fetta 3 — report, handoff con review #839-F3/#842, stato_progetto
@@ -53,7 +66,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit b7ae5d42 (motore): due verdetti sullo stesso diff, #839-F3 sul primo staged e #842 dopo le correzioni di R-839-1 e R-839-2. Commit f3a6168e (motore, riserve di bot e verifica esterna): review #843. Incollati integrali.
+Commit b7ae5d42 (motore): due verdetti sullo stesso diff, #839-F3 sul primo staged e #842 dopo le correzioni di R-839-1 e R-839-2. Commit f3a6168e (motore, riserve di bot e verifica esterna): review #843. Merge 73277ba0: review #844-MERGE. Commit 87006476 (motore): review #845-R7 e #846-R7. Commit 7b05ccf2 (motore): review #847-R7 e #848-R7. Incollati integrali.
 
 ### Review #839-F3
 
@@ -213,48 +226,273 @@ Prima della review ho letto CLAUDE.md §5, reports/stato_progetto.md (lettura mi
 
 Riga contatore #843 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (ba513ece) con `scripts/commit_memoria_revisore.sh`.
 
+### Review #844-MERGE (merge 73277ba0)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #844-MERGE. Riguarda il merge di `origin/main` (PR #397, «Gas usa il CRM») nel ramo `claude/r7-lavori-ricorrenti` (PR #399). Ho letto quello che è in stage con `git diff --cached HEAD` e l'ho confrontato con `git diff --cached origin/main`.
+
+**Elementi del diff che ho esaminato**
+
+1. `modules/notte/notte.py:915` — `_ERRORI_ESTERNI` elenca gli inizi dei testi d'errore di run_turn che indicano un guasto esterno, cioè un guasto che non va contato contro il lavoro. Ho controllato se è coerente con «Sempre Opus» arrivato con main. Esito: **riserva MEDIA (R-844M-1)**, spiegata sotto.
+2. `modules/notte/notte.py:919` — `_ko_esterno` fa un semplice `startswith` su quei prefissi. L'ho provato con `GAS_SOLO_OPUS=1`. Il testo «Rispondo solo con Claude Opus (scelta dell'operatore, GAS_SOLO_OPUS), che ora non è disponibile. Dettagli: …» restituisce **False**. Il vecchio testo «Questa richiesta contiene dati di clienti…» restituisce True. Esito: riserva, fa parte di R-844M-1.
+3. `gas.py:6131-6137` (contesto: identico a origin/main) — è il ramo `_solo_forte_lead` di run_turn. Con `_solo_opus_sempre()` acceso produce il nuovo testo, che non comincia con nessuno dei prefissi. `gas.py:403` rende vera `_finestra_ha_dati_lead` per ogni finestra che contiene un messaggio user, quindi anche per il prompt di un compito della notte senza `cervello: forte`. La notizia del 23-11 in `reports/bacheca.md` dice lo stesso («notte … vanno solo a Claude Opus»). Gli altri error event restano coperti: «Cervello forte fermo» (`gas.py:5636`), «Budget giornaliero esaurito» (`gas.py:5640` e `gas.py:5737`), «Pipeline esausta» (`gas.py:6144`).
+4. `tests/test_unit_notte.py:2673-2677` — il test che parametrizza i guasti esterni usa una lista di stringhe scritte a mano, senza legame con i testi veri di gas.py. Per questo è rimasto verde (215 passed, rigirato da me) anche se la classificazione si è rotta. In più `tests/conftest.py:15` spegne `GAS_SOLO_OPUS`, quindi nessun test prova la notte nella configurazione di produzione. Esito: riserva, fa parte di R-844M-1.
+5. Risoluzione dei conflitti. Esito: **ok**.
+   - `gas.py`, `modules/crm/agente.py`, `modules/crm/store.py`, `modules/gate/gate.py`, `modules/telegram/bot.py`, `tests/conftest.py`, `tests/test_unit_crm.py`, `tests/test_unit_kernel.py` e `CLAUDE.md` sono identici a origin/main.
+   - Rispetto a main cambiano solo i file della fetta 3 e i report del ramo. handoff, ultimo_report e diff_sessione sono tenuti dal ramo, come vuole la regola 3.
+   - `reports/stato_progetto.md:4`: la riga «Ultimo aggiornamento» unisce le due voci. `reports/stato_progetto.md:9` porta la voce CRM di main.
+   - `.claude/agents/memoria_revisore.md` è un'unione pulita: tutte le righe di main fino a #848-CRM, più #839, #842 e #843 del ramo in coda, senza perdite né doppioni.
+
+**R-844M-1 MEDIA — da chiudere prima del merge della PR #399**
+
+Con `GAS_SOLO_OPUS` acceso, che è il default in produzione, se Opus è giù o `GAS_CLAUDE_CLI` manca, ogni compito della notte finisce con «Rispondo solo con Claude Opus…». Il testo non è riconosciuto come esterno, quindi:
+- dopo 3 notti il lavoro va in `da_non_ritentare` per 7 giorni;
+- il riepilogo non dice «guasto esterno».
+
+È esattamente il caso che la fetta 3 (V-1 della verifica esterna #399) voleva evitare. Non c'è conflitto testuale: è un conflitto di significato introdotto dal merge.
+
+Correzione proposta:
+- aggiungere `"Rispondo solo con Claude Opus"` a `_ERRORI_ESTERNI`;
+- aggiungere un test che produca l'errore VERO con un `GasKernel` reale, `GAS_SOLO_OPUS=1` e il forte assente (monkeypatch dell'env dentro il test), e verifichi `_ko_esterno(...) is True`. Così una prossima modifica ai testi di gas.py non passa in silenzio.
+
+**Nota cosmetica:** in `reports/stato_progetto.md:4` la voce CRM dice «review #839-#843-CRM», ma main è arrivato a #848-CRM. Il testo è ereditato da main.
+
+**Cosa non ho verificato**
+- Non ho rigirato `tests/test_unit_kernel.py` (1208 PASS è un dato tuo). Il codice del kernel è identico a origin/main, già revisionato in #839-#848-CRM.
+- Non ho provato un giro di notte vero con Opus giù sul Mac: in questo ambiente il forte non è configurato. La riserva viene dalla lettura del codice e dalla prova di `_ko_esterno`.
+- Non ho controllato la CI della PR #399 dopo il merge.
+
+**Memoria del revisore**
+- Ho scritto la riga contatore `#844-MERGE` e una lezione in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- `scripts/commit_memoria_revisore.sh` è uscito con 0 ma non ha committato: git rifiuta i commit parziali durante un merge («cannot do a partial commit during a merge», avviso scritto in gas_debug.log).
+- La modifica è nel working tree e NON è in stage. Fai `git add .claude/agents/memoria_revisore.md` prima di chiudere il merge. Questo cambia lo SHA-256 del diff in stage, quindi rilancia `scripts/segna_review_ok.sh` dopo l'add.
+
+### Review #845-R7 (commit 87006476, primo staged)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #845-R7. Ri-review di claude/r7-lavori-ricorrenti, PR #399, dopo il merge di main 73277ba0. Il diff staged tocca 3 file (+95/−10), sha256 del diff `bcecd14c`. Prima della review ho letto CLAUDE.md (sezione 5), reports/stato_progetto.md (voce R7 fetta 3) e .claude/agents/memoria_revisore.md (#842, #843, #844-MERGE).
+
+**Cosa ho verificato**
+- **Test:** 218 passed su `tests/test_unit_notte.py`, eseguiti su una copia dell'indice (`git checkout-index`).
+- **Mutanti:** ne ho provati 7, i test ne uccidono 5. Uccisi:
+  - M1: tolto il prefisso «Rispondo solo con Claude Opus»;
+  - M2: soglia dei 14 disattivata;
+  - M3: ramo R-843-1 disattivato;
+  - M4: tolta la guardia `fino_a != pausa_prima` sull'avviso;
+  - M5: il loader non rilegge `esterni_di_fila`.
+- **Simulazione diretta di `_aggiorna_lavoro`:** confermati i casi descritti nei finding.
+
+**Elementi del diff esaminati**
+1. `modules/notte/notte.py:928` — aggiunge «Rispondo solo con Claude Opus» ai prefissi di `_ERRORI_ESTERNI`. Rischio esaminato: il testo deve coincidere con quello prodotto da gas.py, «Rispondo solo con Claude Opus (scelta dell'operatore, GAS_SOLO_OPUS)…», in `gas.py:6134`. Coincide, e il mutante M1 viene ucciso da `tests/test_unit_notte.py:2723`. Quel test usa il GasKernel VERO con GAS_SOLO_OPUS=1 e il cervello forte assente: dopo 4 giri il lavoro è ancora «fallito» con ko_di_fila 0 ed esterno True. **R-844M-1 CHIUSA.** Esito: ok.
+2. `modules/notte/notte.py:896` e `modules/notte/notte.py:898` — contatore `esterni_di_fila`, che riparte da zero se cambia il prompt. A `ESTERNI_DI_FILA_PAUSA` = 14 (`modules/notte/notte.py:931`) il lavoro va in pausa per 7 giorni. Rischi esaminati:
+   - il contatore deve azzerarsi con un ok o con un ko vero: si azzera, perché in quei rami la voce viene ricostruita senza il campo (verificato dal test a `tests/test_unit_notte.py:2741`);
+   - la pausa deve ripartire subito dopo la scadenza, come per i ko: succede, coerente con «il conto non si azzera con la pausa».
+   **V-1 della verifica esterna #399 CHIUSA.** Esito: ok, con la riserva R-845R7-1.
+3. `modules/notte/notte.py:859` — il loader accetta `esterni_di_fila` solo se è un intero tra 1 e 1000, altrimenti lo scarta. Rischio esaminato: un file alterato. Un valore anomalo viene scartato e il contatore riparte da zero, senza eccezioni (mutante M5 ucciso). Esito: ok.
+4. `modules/notte/notte.py:902` — un guasto esterno durante una pausa ancora valida, con lo stesso prompt, conserva lo stato e `fino_a`. `modules/notte/notte.py:1098` manda l'avviso solo se `fino_a` è cambiato. Rischio esaminato: avviso duplicato o pausa tolta. Per la pausa nata da ko veri il comportamento è corretto: `_volte` dice «3 volte di fila», verificato in simulazione e dal test a `tests/test_unit_notte.py:2761`. **R-843-1 CHIUSA per la pausa da ko.** Esito: ok.
+5. `modules/notte/notte.py:938` — `_volte` sceglie il testo dell'avviso: «N volte di fila per guasti esterni» oppure «N volte di fila». Rischio esaminato: una chiave mancante. `ko_di_fila` è sempre presente, perché il loader e tutti i rami lo scrivono. Esito: ok.
+6. `reports/setup_notte.md:14` — la documentazione è coerente con il codice (14 guasti esterni di fila, poi 7 giorni). Esito: ok.
+
+**Finding**
+- **R-845R7-1 BASSA.** Caso: la pausa è nata da 14 guasti esterni, l'operatore rilancia il lavoro a mano (`gas.py notte c`) e arriva un altro guasto esterno.
+  - Il contatore sale a 15, quindi il primo ramo (`modules/notte/notte.py:898`) prevale su quello di R-843-1 (`modules/notte/notte.py:902`).
+  - Effetto: la pausa si ALLUNGA (`fino_a` riparte da adesso; in simulazione +87 s) e l'avviso torna, «fallito 15 volte di fila per guasti esterni».
+  - In pratica R-843-1 è chiusa solo per la pausa nata da ko veri.
+  - Rimedio: nel caso di pausa ancora valida, controllare il ramo «pausa in corso» prima della soglia.
+- **R-845R7-2 BASSA, sui test.** Due mutanti sopravvivono:
+  - M6: il contatore NON si azzera al cambio di prompt (`modules/notte/notte.py:896`);
+  - M7: un guasto esterno conserva anche una pausa già scaduta (`modules/notte/notte.py:902`), che finirebbe mostrata come «fermo fino al <data passata>», cosa già vista in R-839-3.
+  Il codice è corretto, ma nessun test lo protegge.
+
+**Antipattern (sezione 5 di CLAUDE.md)**
+- Nessuno slicing della cronologia.
+- Il test di R-844M-1 usa il kernel vero, non un errore simulato, come chiedeva la lezione #844-MERGE.
+- `_KErrore` negli altri due test è un doppio di prova del kernel, non simula l'output di un tool.
+- Il diff non tocca guardrail (tetto delle 10 iterazioni, `_get_window`, tetti di output).
+
+**Cosa NON ho verificato**
+- Il comportamento reale sulla VPS: se lì Claude Opus non è configurato per il giro di notte, con GAS_SOLO_OPUS acceso di default ogni lavoro fallirebbe per guasto esterno. Dopo 14 notti finirebbero tutti in pausa, poi un tentativo a settimana. È il comportamento voluto da V-1, ma non è riproducibile in sviluppo, quindi non l'ho provato.
+- La suite del kernel (`tests/test_unit_kernel.py`): il diff non tocca gas.py e non l'ho eseguita.
+
+**Riserve da tracciare in stato_progetto.md:** R-845R7-1 e R-845R7-2.
+
+**Memoria del revisore:** riga #845-R7 più una lezione nuova («un secondo motivo di pausa deve ereditare le eccezioni scritte per il primo»), committate in 49ce5f74 tramite scripts/commit_memoria_revisore.sh. Ho usato il suffisso «-R7» perché sulla chat CRM esiste già #845-CRM.
+
+File rilevanti: /home/user/Gas/modules/notte/notte.py, /home/user/Gas/tests/test_unit_notte.py, /home/user/Gas/reports/setup_notte.md, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #846-R7 (commit 87006476)
+
+## VERDETTO: APPROVATO
+
+Review #846-R7, secondo giro della #845-R7 sulla PR #399 (ramo claude/r7-lavori-ricorrenti). Le due riserve del giro precedente sono chiuse e il codice non mostra problemi nuovi. Diff staged: 3 file, +134/−10, sha256 del diff `b397abb4`. Letture obbligatorie già fatte in questa sessione (CLAUDE.md sez. 5, stato_progetto.md, memoria_revisore.md).
+
+**Cosa ho verificato**
+- **Test:** 220 passati in tests/test_unit_notte.py, su una copia dell'indice (`git checkout-index`).
+- **Mutanti, 8 su 8 uccisi:**
+  - M1: tolto il prefisso «Rispondo solo con Claude Opus».
+  - M2: soglia dei 14 disattivata.
+  - M3: ramo della pausa in corso disattivato (2 test falliscono).
+  - M4: tolto il confronto con `pausa_prima` sull'avviso.
+  - M5: il caricamento ignora `esterni_di_fila`.
+  - M6: il conto non riparte al cambio di prompt. Era sopravvissuto al giro #845-R7, ora è ucciso.
+  - M7: tenuta anche una pausa già scaduta. Era sopravvissuto al giro #845-R7, ora è ucciso.
+  - M8: ordine dei rami invertito, cioè il codice del giro #845-R7. Ora un test lo ferma.
+
+**Elementi del diff esaminati**
+1. `modules/notte/notte.py:898` — il ramo «pausa in corso» (stesso prompt, `fino_a` ancora nel futuro) ora viene controllato PRIMA della soglia (`modules/notte/notte.py:904`).
+   - Rischio esaminato: una pausa nata da 14 guasti esterni che si allunga, con l'avviso che torna, dopo un rilancio a mano.
+   - Esito: ok. `fino_a` resta quello di prima, quindi `modules/notte/notte.py:1096` vede `pausa_prima` uguale e non rimanda l'avviso. Il conto sale a 15, ed è giusto così: alla scadenza un altro guasto esterno rimette subito in pausa, come per i fallimenti veri. **R-845R7-1 CHIUSA.**
+2. `tests/test_unit_notte.py:2787` — test diretto su `_aggiorna_lavoro` con una pausa nata da guasti esterni e `fino_a` nel futuro.
+   - Rischio esaminato: che il test non fermi il codice vecchio.
+   - Esito: ok. Uccide M8 (l'ordine del giro #845-R7) e controlla che `fino_a` non cambi e che il conto vada a 15.
+3. `tests/test_unit_notte.py:2800` — test diretto con due casi: prompt cambiato con 13 guasti esterni registrati (il conto riparte da 1, stato «fallito»); pausa scaduta più un guasto esterno (stato «fallito», `fino_a` 0).
+   - Rischio esaminato: le due righe che nel giro precedente nessun test proteggeva (M6 e M7).
+   - Esito: ok, entrambi i mutanti ora vengono uccisi. **R-845R7-2 CHIUSA.**
+4. `modules/notte/notte.py:930` e `tests/test_unit_notte.py:2723` — non cambiano rispetto al giro #845-R7: R-844M-1 resta chiusa (M1 ucciso, test col GasKernel vero).
+
+**Wall of Shame (CLAUDE.md sez. 5)**
+- Nessun taglio diretto della cronologia.
+- Nessuna simulazione dell'output dei tool: i due test nuovi costruiscono a mano le voci dello stato e chiamano la funzione vera.
+- Nessun guardrail toccato.
+
+**Cosa NON ho verificato**
+- Il comportamento sulla VPS con «Sempre Opus» acceso e Opus non configurato, cioè tutti i lavori in pausa dopo 14 notti e poi un tentativo a settimana: non è riproducibile in sviluppo.
+- La suite del kernel (tests/test_unit_kernel.py): il diff non tocca gas.py.
+
+**Riserve:** nessuna.
+
+**Memoria del revisore:** aggiunta la riga #846-R7 (nessuna lezione nuova), committata in 3599a7d4 con scripts/commit_memoria_revisore.sh.
+
+**File:**
+- /home/user/Gas/modules/notte/notte.py
+- /home/user/Gas/tests/test_unit_notte.py
+- /home/user/Gas/reports/setup_notte.md
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #847-R7 (commit 7b05ccf2, primo staged)
+
+## VERDETTO: BOCCIATO
+
+Review #847-R7, PR #399, ramo claude/r7-lavori-ricorrenti. Diff staged: 2 file, +39/−1, sha256 del diff `a3b68d9a`. Letture obbligatorie già fatte in questa sessione: CLAUDE.md sez. 5, stato_progetto.md, memoria_revisore.md. Su una copia dell'indice passano 224 test.
+
+**Motivo del blocco:** la correzione chiude V-1 del bot (3b188028) solo con «Sempre Opus» spento, cioè nella configurazione dei test. Con l'impostazione di produzione V-1 resta aperta, quindi il diff non raggiunge lo scopo dichiarato.
+
+**Elementi del diff esaminati**
+1. `modules/notte/notte.py:945` — `_ko_esterno` tratta come ko vero un errore solo se **inizia con «Pipeline esausta»** e contiene uno dei `_MOTIVI_DEL_LAVORO`. Rischio esaminato: gli altri errori del kernel che portano lo stesso dettaglio. Esito: **blocco (R-847R7-1)**.
+2. `modules/notte/notte.py:939` — i tre motivi coincidono con i testi di gas.py: `gas.py:5771` (tetto, testo spezzato su due righe ma contiguo), `gas.py:5874`, `gas.py:6095` e `gas.py:6098`. Rischio esaminato: un testo copiato che non coincide. Esito: ok.
+3. `tests/test_unit_notte.py:2817` — test col kernel vero che arriva al tetto delle chiamate: dopo 3 notti il lavoro è in pausa, senza il segno «esterno». Rischio esaminato: se copre la configurazione di produzione. Gira con `GAS_SOLO_OPUS=0`, che `tests/conftest.py:15` imposta per tutta la suite, e quindi non vede il caso del finding 1. Esito: riserva, legata al blocco.
+4. `tests/test_unit_notte.py:2836` — test parametrizzato sui tre motivi più un caso QUOTA che resta esterno. Usa solo testi che iniziano con «Pipeline esausta». Esito: ok, ma ha lo stesso buco del punto 3.
+
+**Finding**
+- **R-847R7-1 MEDIA, bloccante.** «Sempre Opus» (GAS_SOLO_OPUS) è acceso di default, `gas.py:385`.
+  - Così ogni turno passa al forte e `_solo_forte_lead` vale True (`gas.py:6126`). Quando il turno si esaurisce, run_turn non dà «Pipeline esausta» ma «Rispondo solo con Claude Opus (scelta dell'operatore, GAS_SOLO_OPUS), che ora non è disponibile. Dettagli: …» (`gas.py:6134`).
+  - Prova sulla copia dell'indice: `_ko_esterno` restituisce **True** con «…Dettagli: gemini: saltato (…); claude-cli: tetto di 10 chiamate al modello per turno raggiunto.» e con «…Dettagli: claude-cli: 10 iterazioni senza risposta finale.».
+  - Effetto: in produzione un lavoro che gira a vuoto conta ancora come guasto esterno. Va in pausa solo dopo 14 notti, non dopo 3. È la stessa trappola di R-844M-1.
+  - Rimedio proposto:
+    - applicare il controllo sui `_MOTIVI_DEL_LAVORO` a ogni errore che porta il dettaglio dei motivi, cioè anche «Rispondo solo con Claude Opus» e «Questa richiesta contiene dati di clienti», non solo a «Pipeline esausta»;
+    - aggiungere lo stesso test col kernel vero con `GAS_SOLO_OPUS=1`, oppure, se il forte non si riesce a simulare, un test parametrizzato con i testi veri di `gas.py:6134`.
+- **R-847R7-2 BASSA.** Basta un solo «risposta vuota» in un guasto misto (es. «gemini: risposta vuota; groq: QUOTA (HTTP 429); openrouter: KO (HTTP 503)») perché valga come ko vero (provato: `_ko_esterno` dà False). È un compromesso accettabile, perché servono 3 notti così, ma va dichiarato in reports/setup_notte.md.
+
+**Wall of Shame:** nessun taglio diretto della cronologia, nessuna simulazione dell'output dei tool, nessun guardrail toccato.
+
+**Cosa NON ho verificato**
+- Il percorso con claude-cli vero: non è simulabile qui. Il testo dell'errore viene dalla lettura di `gas.py:6126-6137`, e la classificazione l'ho provata chiamando `_ko_esterno` su quei testi.
+- Non ho eseguito la suite del kernel: il diff non tocca gas.py.
+
+**Memoria del revisore:** riga #847-R7 più una lezione nuova («conftest spegne GAS_SOLO_OPUS: pretendere la variante con GAS_SOLO_OPUS=1»), committate in 26a27136.
+
+**File:**
+- /home/user/Gas/modules/notte/notte.py
+- /home/user/Gas/tests/test_unit_notte.py
+- /home/user/Gas/tests/conftest.py
+- /home/user/Gas/gas.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #848-R7 (commit 7b05ccf2)
+
+## VERDETTO: APPROVATO
+
+Review #848-R7, secondo giro della #847-R7, PR #399, ramo claude/r7-lavori-ricorrenti. Le due riserve della #847-R7 sono chiuse; nessuna riserva aperta. Diff staged: 3 file, +64/−2, sha256 `ed652379`. Letture obbligatorie (CLAUDE.md sez. 5, stato_progetto.md, memoria del revisore) già fatte in questa sessione.
+
+**Prove eseguite**
+- `tests/test_unit_notte.py` su una copia dell'indice: 230 passano.
+- Mutanti: 3 su 3 uccisi.
+  - N1, cioè tornare al controllo solo su «Pipeline esausta» (il codice bocciato in #847-R7): 6 test falliscono.
+  - N2, togliere «risposta vuota» dall'elenco dei motivi: 3 test falliscono.
+  - N3, spegnere il controllo dei motivi: 10 test falliscono.
+
+**Elementi del diff esaminati**
+1. `modules/notte/notte.py:950` — il controllo dei `_MOTIVI_DEL_LAVORO` ora vale per ogni errore, prima del confronto coi prefissi esterni.
+   - Rischio esaminato: errori esterni scambiati per ko veri. I tre testi cercati compaiono in gas.py solo nei motivi del turno (`gas.py:5771`, `gas.py:5874`, `gas.py:6095`, `gas.py:6098`). Il «risposta vuota» di `gas.py:1180` sta in `_analizza_riflessione`, che non arriva agli errori del turno. Gli errori «Cervello forte fermo» e «Budget giornaliero esaurito» (`gas.py:5636`, `gas.py:5641`) non contengono quei testi. I messaggi del cervello forte (`_motivo_forte`, `gas.py:781`) vengono da brains/claude_cli.py, dove quei testi non ci sono.
+   - Per gli errori che non sono esterni il controllo non cambia niente: erano già ko veri.
+   - Esito: ok. **R-847R7-1 CHIUSA.**
+2. `tests/test_unit_notte.py:2852` — test parametrizzato (2 inizi di messaggio × 3 motivi) con i testi veri di `gas.py:6134`. Copre il caso di produzione con «Sempre Opus» acceso, che conftest spegne nei test (`tests/conftest.py:15`). Controlla anche che «claude-cli: KO (RuntimeError)» resti un guasto esterno. Rischio esaminato: test che passa anche col codice bocciato. Uccide N1. Esito: ok.
+3. `reports/setup_notte.md:18` e il commento a `modules/notte/notte.py:941` dichiarano il compromesso: un guasto misto (un motivo che nasce dal compito, più un guasto di provider) conta come fallimento vero. Esito: ok. **R-847R7-2 CHIUSA** (dichiarata, come chiesto).
+4. `tests/test_unit_notte.py:2817` (test col kernel vero, tetto delle chiamate, pausa dopo 3 notti) non è cambiato rispetto a #847-R7. Gira ancora con GAS_SOLO_OPUS=0, ma ora il caso «Sempre Opus» è coperto dal punto 2. Esito: ok.
+
+**Wall of Shame:** nessun taglio diretto della cronologia, nessun output di tool simulato, nessun guardrail toccato.
+
+**Cosa NON ho verificato**
+- Il percorso con claude-cli vero (Opus reale che arriva al tetto): qui non è riproducibile. La classificazione è provata sui testi letti in `gas.py:6131-6137`.
+- La suite del kernel: il diff non tocca gas.py.
+- I testi dei messaggi di Claude CLI li ho controllati solo con una ricerca su brains/. Se in futuro un messaggio del CLI contenesse «risposta vuota», un guasto del forte conterebbe come ko vero. Oggi non succede.
+
+**Memoria:** aggiunta la riga #848-R7 (nessuna lezione nuova), committata in f78682bf.
+
+**File:**
+- /home/user/Gas/modules/notte/notte.py
+- /home/user/Gas/tests/test_unit_notte.py
+- /home/user/Gas/reports/setup_notte.md
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_notte.py`: 200 → 215 (9 test della fetta + 6 delle riserve), tutti verdi in locale: `215 passed in 5.39s`.
-- `tests/test_unit_kernel.py` (round-trip agentico), eseguito in locale sul ramo di questa PR nel primo giro (il secondo tocca solo `modules/notte/` e i suoi test), riga reale:
+- `tests/test_unit_notte.py`: 200 → 230 (9 della fetta + 6 del 2° giro + 15 del 3° giro), tutti verdi in locale: `230 passed in 5.89s`.
+- `tests/test_unit_kernel.py` (round-trip agentico), eseguito in locale DOPO il merge di main (73277ba0, prima dei commit 87006476 e 7b05ccf2 che toccano solo `modules/notte/` e i suoi test), riga reale:
 
 ```
-=== RIEPILOGO: 1187 PASS, 0 FAIL ===
+=== RIEPILOGO: 1208 PASS, 0 FAIL ===
 ```
 
 Nessun FAIL.
 
 ## §6 STATO CI
 
-Output reale di `gh run list -L 3` alla scrittura (righe di altri rami):
+Output reale di `gh run list -L 3` alla scrittura:
 
 ```
-in_progress		Merge pull request #397 from Gasss23/claude/nifty-galileo-3k7kbm — Ga…	CI	claude/nifty-galileo-3k7kbm	push	45217979161	3m44s	2026-11-23T16:34:13Z
-in_progress		R7 fetta 2: ripresa al boot del compito in sottofondo	verifica-bot	claude/r7-ripresa-al-boot	pull_request_target	45217975784	3m45s	2026-11-23T16:34:12Z
-in_progress		docs(fine-task): PR #398 secondo giro — correzioni del verdetto del b…	CI	claude/r7-ripresa-al-boot	push	45217965677	3m49s	2026-11-23T16:34:08Z
+completed	success	R7 fetta 3: stato dei lavori ricorrenti del giro di notte	verifica-bot	claude/r7-lavori-ricorrenti	pull_request_target	45218772891	3m10s	2026-11-23T16:38:24Z
+completed	success	docs(fine-task): PR #399 secondo giro — riserve di bot e verifica est…	CI	claude/r7-lavori-ricorrenti	push	45218765483	11m47s	2026-11-23T16:38:22Z
+completed	success	Merge pull request #397 from Gasss23/claude/nifty-galileo-3k7kbm — Ga…	CI	claude/nifty-galileo-3k7kbm	push	45217979161	12m8s	2026-11-23T16:34:13Z
 ```
 
 Run di questo branch (`gh api .../actions/runs?branch=claude/r7-lavori-ricorrenti`, output reale):
 
 ```
+45218772891 3b188028 verifica-bot pull_request_target completed/success
+45218765483 3b188028 CI push completed/success
 45217587661 492f7e20 verifica-bot pull_request_target completed/cancelled
 45217586568 b7ae5d42 verifica-bot pull_request_target completed/success
-45217578563 492f7e20 CI push in_progress/null
+45217578563 492f7e20 CI push completed/success
 45217179154 b7ae5d42 verifica-bot pull_request_target completed/skipped
-45217146013 b7ae5d42 CI push in_progress/null
+45217146013 b7ae5d42 CI push completed/failure
 ```
 
 Mappatura commit→run:
-- b7ae5d42: run CI 45217146013 in_progress alla scrittura; verifica-bot 45217179154 skipped.
-- 492f7e20: run CI 45217578563 in_progress alla scrittura (handoff-check success); verifica-bot: la run 45217586568 (registrata dall'API con head b7ae5d42) ha pubblicato sul 492f7e20 il check `verifica-bot` success col 1° verdetto APPROVATO CON RISERVE (solo BASSE); 45217587661 cancelled (doppione).
-- 113a2fde, 2246dd88, ba513ece (memoria) e f3a6168e: nessuna run propria (pushati insieme al commit di testa).
+- b7ae5d42: CI 45217146013 failure (atteso: commit di codice senza handoff aggiornato, handoff-check rosso); verifica-bot 45217179154 skipped.
+- 492f7e20: CI 45217578563 success; verifica-bot 45217586568 (registrata con head b7ae5d42) ha pubblicato il check success sul 492f7e20 (1° verdetto, solo BASSE); 45217587661 cancelled.
+- 3b188028: CI 45218765483 success; verifica-bot 45218772891: il job è success, ma il check `verifica-bot` pubblicato sullo SHA è failure (2° verdetto, V-1 MEDIA, corretta in 7b05ccf2).
+- 113a2fde, 2246dd88, ba513ece, f3a6168e, 73277ba0, 49ce5f74, 3599a7d4, 87006476, 26a27136, f78682bf, 7b05ccf2: nessuna run propria (pushati insieme al commit di testa, o non ancora pushati).
 - Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- 1° verdetto del bot su PR #399 (492f7e20, APPROVATO CON RISERVE, solo BASSE): V-1 (sezione senza i compiti saltati per crash) e V-2 (conto non azzerato dopo la pausa, avviso col numero fisso) CORRETTE in questo giro. Serve il verdetto sul nuovo head.
-- Verifica esterna sulla PR #399 (492f7e20, [commento](https://github.com/Gasss23/Gas/pull/399#issuecomment-7107349754)): V-1 BASSA (guasti dei provider contati come ko) CORRETTA; V-2 COSMETICA (CI dichiarata per b7ae5d42 e non per l'head) superata da questo §6; V-3 = R-839-3.
-- R-843-1 BASSA — un guasto esterno su un lavoro «da non ritentare» (rilancio a mano o pausa scaduta) toglie la pausa: finché durano i guasti si ritenta ogni notte; costo nullo, al primo ko vero torna in pausa. Aperta.
+- V-1 MEDIA del bot su 3b188028 ([review](https://github.com/Gasss23/Gas/pull/399), «Pipeline esausta» copriva motivi del lavoro): CHIUSA (7b05ccf2, #848-R7). R-847R7-1 MEDIA e R-847R7-2 BASSA (compromesso dichiarato in `reports/setup_notte.md`): CHIUSE.
+- R-844M-1 MEDIA (#844-MERGE): CHIUSA (87006476, #845-R7). R-843-1 BASSA: CHIUSA. R-845R7-1/2 BASSE: CHIUSE (#846-R7 APPROVATO, nessuna riserva).
+- Verifica esterna #399 su 3b188028 ([commento](https://github.com/Gasss23/Gas/pull/399#issuecomment-7107495837)): V-1 BASSA (guasti esterni deterministici ritentati per sempre) CHIUSA con il tetto dei 14; V-2 COSMETICA (rilancio a mano con guasto esterno toglieva la pausa) CHIUSA con R-843-1; V-3 = R-839-3.
+- Verdetti precedenti (bot e verifica esterna su 492f7e20; #839-F3, #842, #843): chiusi nel 2° giro, salvo R-839-3.
 - R-839-3 COSMETICA — kernel non creato: stato non aggiornato; «fermo fino al» con data passata o 01/01. Aperta.
-- R-839-1 MEDIA e R-839-2 BASSA della #839-F3: CHIUSE (review #842).
-- Riserve delle altre chat e della PR #398: in `reports/stato_progetto.md` e sul ramo della #398.
+- Da sapere (non verificato, dalle review #845/#846-R7): sulla VPS con «Sempre Opus» acceso e Opus non configurato, ogni lavoro della notte fallisce per guasto esterno; dopo 14 notti vanno tutti in pausa, poi un tentativo a settimana.
+- Riserve delle altre chat (CRM, Voce) e della PR #398: in `reports/stato_progetto.md` e sul ramo della #398.
