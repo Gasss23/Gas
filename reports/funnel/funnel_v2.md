@@ -13,14 +13,17 @@ Il funnel attuale è GIÀ in due fasi: fase 1 community (lingua + 18enni, intere
 - **Dalla candidatura si tolgono**: esperienza e «costanza». L'esperienza vera la chiede l'AGENTE in DM come fanno i competitor migliori (LEO la chiede a voce); la domanda sulla costanza seleziona ma non recupera. Il consenso aggiornamenti RESTA com'è oggi (esplicito, con bottoni). Risultato: candidatura da 5 passaggi a 3 (capitale, consenso, nome).
 - **Dopo ogni risposta il bot reagisce con una riga calda**, come una persona: «Ottima scelta 👌», «Nessun problema: ti guidiamo noi dal primo passo».
 - **Spiegazione a prova di principiante** (va detta PRIMA delle domande): «Ogni giorno ricevi un messaggio con tre numeri: dove entrare, dove fermarti se va male, dove incassare. Noi stiamo sul grafico, tu copi.»
-- **Follow-up automatici** se il lead si ferma (a metà domande o senza premere «Scrivi a …»):
-  - +24 h: «Ciao {nome} 🤝 Ti mancano 30 secondi di candidatura: riprendiamo da dove eri?» [Riprendi]
-  - +72 h: «Vuoi completare la candidatura o la chiudo? Se preferisci, riprendila quando vuoi.» [Riprendila] [Chiudila]
-  - Oltre: silenzio (mai più di 2 solleciti).
-  - I solleciti partono SOLO per chi ha iniziato la candidatura e non l'ha finita (riguardano il suo percorso, non sono promozione a freddo).
+- **Follow-up automatici** — DUE trigger, ognuno col suo testo (decisione dell'operatore, 23/11/2026; chiude l'incoerenza segnalata dal 4° verdetto del bot sulla PR #393):
+  - **Caso A — il lead si ferma a metà dei passaggi della candidatura:**
+    - +24 h: «Ciao {nome} 🤝 Ti mancano 30 secondi di candidatura: riprendiamo da dove eri?» [Riprendi]
+    - +72 h: «Vuoi completare la candidatura o la chiudo? Se preferisci, riprendila quando vuoi.» [Riprendila] [Chiudila]
+  - **Caso B — il lead non preme «Scrivi a {agente}»** dopo la candidatura accettata (o, nel percorso diretto di `tasto_collaboratori.md`, dopo il messaggio unico: il diretto ha solo questo caso):
+    - +24 h: «Ciao {nome} 🤝 Ti manca solo l'ultimo passo: scrivi a {agente} e ti attiva. Lo facciamo ora?» [Riprendi]
+    - +72 h: «Vuoi fare l'ultimo passo o chiudo qui? Se preferisci, riprendi quando vuoi.» [Riprendi] [Chiudi]
+  - Regole per entrambi i casi: oltre il 2° sollecito, silenzio (mai più di 2); partono SOLO per chi ha iniziato il percorso e riguardano solo il suo completamento — non sono promozione a freddo e non dipendono dal consenso aggiornamenti.
 - **Niente scarsità finta** (V-1 verifica esterna #392): frasi come «posti quasi pieni» sono ammesse SOLO se il bot le lega a un numero reale di posti configurato e aggiornato; altrimenti non si scrivono. Vale anche per la prova sociale: nel messaggio di presentazione una riga vera e aggiornabile (es. «Questa settimana sono entrate N persone») — solo numeri veri.
 - **Rischio e compenso, sempre detti** (V-2 verifica esterna #392): nella presentazione e nell'«ultimo passo» compare la riga «⚠ Il trading comporta un rischio reale di perdere il capitale: usa solo soldi che puoi permetterti di perdere. I risultati passati non garantiscono quelli futuri.» E al posto del solo «non paghi nessun abbonamento» si dice anche come guadagniamo: «il nostro compenso ce lo riconosce il broker partner quando apri il conto dal nostro link».
-- **Consenso esplicito agli aggiornamenti** (V-3 verifica esterna #392): resta ESATTAMENTE come nel bot di oggi — domanda con bottoni «Ti va di ricevere qui aggiornamenti e novità della community?» [Sì, volentieri] [No grazie] — mai consenso presunto. Senza il sì, nessun messaggio promozionale; il sì si revoca scrivendo STOP. I 2 solleciti di chi si ferma a metà riguardano solo il completamento del percorso iniziato, non sono promozione.
+- **Consenso esplicito agli aggiornamenti** (V-3 verifica esterna #392): resta ESATTAMENTE come nel bot di oggi — domanda con bottoni «Ti va di ricevere qui aggiornamenti e novità della community?» [Sì, volentieri] [No grazie] — mai consenso presunto. Senza il sì, nessun messaggio promozionale; il sì si revoca scrivendo STOP. I 2 solleciti (casi A e B qui sopra) riguardano solo il completamento del percorso iniziato, non sono promozione.
 - La **scheda per l'agente resta identica** (campi mancanti = «da chiedere in chat»), così il pannello non cambia.
 
 ## Bozza A — «prima la voce» (NON scelta; resta come riferimento per un test futuro)
@@ -63,7 +66,7 @@ La fase 1 (community) resta com'è. Cambia la candidatura VIP:
 2. «📣 Ti va di ricevere qui aggiornamenti e novità della community?» → [Sì, volentieri] [No grazie] (come oggi)
 3. «✍ Ultima cosa: nome e cognome, così {agente} sa chi sei» → testo libero
 
-**Ultimo passo**: come oggi («Candidatura accettata… premi invio» + [💬 Scrivi a {agente}] + «{agente} non ti chiede mai soldi»), con in più la riga sul rischio (regole comuni) e i follow-up a +24 h/+72 h per chi non preme «Scrivi a {agente}».
+**Ultimo passo**: come oggi («Candidatura accettata… premi invio» + [💬 Scrivi a {agente}] + «{agente} non ti chiede mai soldi»), con in più la riga sul rischio (regole comuni) e i follow-up del caso B (regole comuni) per chi non preme «Scrivi a {agente}».
 
 **Differenze vs oggi, in sintesi**: candidatura da 5 passaggi a 3; reazioni calde del bot a ogni risposta; rischio e compenso dichiarati; follow-up automatici su chi si ferma; spiegazione «tre numeri» nella presentazione; esperienza e costanza spostate alla chat con l'agente (dove un «prima voglio capire» si recupera parlando).
 

@@ -40,7 +40,7 @@ Risponde SOLO agli agenti registrati (agli altri: «Questo comando è per i coll
 
 1. Il link completo è QUELLO DI OGGI: nessun cambiamento per i link già in giro; il diretto è solo un suffisso in più sullo stesso parametro `start`.
 2. Ogni lead resta legato all'agente del link, qualunque dei due usi; «Entrato da: {codice}» come oggi, più il flag completo/diretto per i contatori.
-3. Il follow-up a +24/+72 h (vedi `funnel_v2.md`) vale anche per il diretto: se non preme «Scrivi a {agente}», stessi 2 solleciti.
+3. Se non preme «Scrivi a {agente}», partono i 2 solleciti del **caso B** di `funnel_v2.md` (regole comuni): «Ti manca solo l'ultimo passo…» a +24 h, «Vuoi fare l'ultimo passo o chiudo qui?» a +72 h. Il diretto ha solo quel caso (non c'è una candidatura da completare).
 4. Niente altri schermi nuovi: la voce del Pannello è una lista con 2 link e 2 bottoni d'inoltro.
 5. Le tutele valgono ANCHE nel percorso diretto (V-1 verifica esterna #392, secondo giro): conferma 18 anni e lingua restano obbligatorie (passo 3.1), la riga sul rischio e quella sul compenso del broker stanno nel messaggio unico, il consenso aggiornamenti resta coi bottoni Sì/No. Il link diretto accorcia le domande, MAI le tutele.
 
