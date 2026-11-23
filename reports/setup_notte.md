@@ -4,6 +4,13 @@ Cosa fa: ogni notte alle 03:00 il Mac lancia `python3 gas.py notte`. Gas legge
 `~/.gas_notte.yaml`, esegue i compiti uno alla volta (ognuno da zero) e scrive il
 riepilogo in `~/Gas/.gas_notte/ultimo_giro.md`. Nel diario va una riga per compito.
 
+Stato dei lavori (R7, dal 2026-11-23): `.gas_notte/stato_lavori.json` tiene per ogni compito
+l'ultimo esito — «fatto», «in sospeso» (ha lasciato azioni in attesa della tua firma),
+«fallito», «da non ritentare». Dopo 3 fallimenti di fila un compito si ferma per 7 giorni
+(avviso nel riepilogo e su Telegram), poi riprova da solo. Per rilanciarlo prima:
+`python3 gas.py notte <nome>`; se cambi il suo prompt nel catalogo la pausa decade. Il riepilogo
+ha la sezione «Lavori ricorrenti (stato)» con tutti i compiti attivi.
+
 Ogni compito ha una cronologia sua (`.gas_notte/storia_<nome>.json`), separata dalla
 tua conversazione: il giro non legge `.gas_history.json`, non la sposta se è rovinata e
 non la copia nelle fotografie di sicurezza (snapshot). Eccezione: se approvi su Telegram un'azione parcheggiata di notte,

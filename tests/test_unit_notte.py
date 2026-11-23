@@ -2482,3 +2482,177 @@ def test_r809_2_crm_vero_del_repo_isolato() -> None:
     from pathlib import Path
     assert Path(gas._RADICE_REPO).resolve() != Path(gas.__file__).resolve().parent
     assert "GAS_CRM_DB" not in os.environ
+
+
+# ── R7 fetta 3: stato dei lavori ricorrenti ─────────────────────────────────
+
+class _KEsito:
+    """Kernel finto: il compito il cui prompt è in `ko` dà errore, in `firma` lascia
+    un'azione in attesa della firma, gli altri finiscono bene."""
+    def __init__(self, visti, ko=(), firma=()):
+        self.visti, self.ko, self.firma, self.history = visti, set(ko), set(firma), []
+
+    def _diario_log(self, *a, **k):
+        pass
+
+    def run_turn(self, prompt):
+        self.visti.append(prompt)
+        if prompt in self.firma:
+            yield {"type": "tool_res", "output": "x", "cancello": "in_attesa"}
+        if prompt in self.ko:
+            yield {"type": "error", "content": "provider giù"}
+            return
+        yield {"type": "final", "content": "fatto"}
+
+
+def _giro_esito(root, cat, ko=(), firma=(), solo=None):
+    visti = []
+    rc = esegui_notte(str(root), catalogo=cat, solo=solo,
+                      kernel_factory=lambda r: _KEsito(visti, ko, firma))
+    return rc, visti
+
+
+def _lavori(root):
+    return json.loads((root / ".gas_notte" / notte.STATO_LAVORI).read_text())
+
+
+def test_r7f3_stati_fatto_in_sospeso_fallito(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: a\n"
+                  "  - nome: b\n    prompt: b\n  - nome: c\n    prompt: c\n")
+    rc, _ = _giro_esito(root, cat, ko={"c"}, firma={"b"})
+    assert rc == 1
+    lav = _lavori(root)
+    assert lav["a"]["stato"] == "fatto" and lav["b"]["stato"] == "in_sospeso"
+    assert lav["c"]["stato"] == "fallito" and lav["c"]["ko_di_fila"] == 1
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "## Lavori ricorrenti (stato)" in testo
+    assert "- a: fatto" in testo and "- b: in sospeso" in testo
+    assert "- c: fallito" in testo and "ko di fila: 1" in testo
+
+
+def test_r7f3_tre_ko_di_fila_da_non_ritentare_poi_a_mano(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: a\n"
+                  "  - nome: c\n    prompt: c\n")
+    for _ in range(notte.KO_DI_FILA_PAUSA):
+        _giro_esito(root, cat, ko={"c"})
+    lav = _lavori(root)
+    assert lav["c"]["stato"] == "da_non_ritentare" and lav["c"]["ko_di_fila"] == 3
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "da non ritentare per 7 giorni" in testo and "gas.py notte c" in testo
+    # giro dopo: «c» fermo (avviso), «a» gira; non è un ko del giro
+    rc, visti = _giro_esito(root, cat, ko={"c"})
+    assert visti == ["a"] and rc == 0
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "'c' da non ritentare" in testo and "fermo fino al" in testo
+    # rilanciato a mano: gira; se va bene torna «fatto» e riparte nei giri
+    rc, visti = _giro_esito(root, cat, solo="c")
+    assert visti == ["c"] and rc == 0 and _lavori(root)["c"]["stato"] == "fatto"
+    assert _giro_esito(root, cat)[1] == ["a", "c"]
+
+
+def test_r7f3_un_ok_azzera_i_ko(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    _giro_esito(root, cat, ko={"c"})
+    _giro_esito(root, cat, ko={"c"})
+    _giro_esito(root, cat)
+    _giro_esito(root, cat, ko={"c"})
+    assert _lavori(root)["c"] == {**_lavori(root)["c"], "stato": "fallito", "ko_di_fila": 1}
+
+
+def test_r7f3_prompt_cambiato_toglie_la_pausa(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    for _ in range(3):
+        _giro_esito(root, cat, ko={"c"})
+    assert _giro_esito(root, cat)[1] == []
+    _scrivi(cat, "compiti:\n  - nome: c\n    prompt: c2\n")
+    rc, visti = _giro_esito(root, cat, ko={"c2"})
+    assert visti == ["c2"] and _lavori(root)["c"]["ko_di_fila"] == 1  # conto ripartito
+
+
+def test_r7f3_pausa_scaduta_o_assurda_si_ritenta(dirs, monkeypatch):
+    import time as _t
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    base = {"stato": "da_non_ritentare", "ultimo": "x", "ko_di_fila": 3,
+            "impronta": notte._impronta("c")}
+    for fino in (_t.time() - 10, _t.time() + 400 * 86400):  # scaduta / troppo lontana
+        (nd / notte.STATO_LAVORI).write_text(json.dumps({"c": {**base, "fino_a": fino}}))
+        assert _giro_esito(root, cat)[1] == ["c"]
+
+
+def test_r7f3_registro_rovinato_non_ferma_il_giro(dirs, monkeypatch, caplog):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    (nd / notte.STATO_LAVORI).write_text("{rotto")
+    assert _giro_esito(root, cat) == (0, ["c"])
+    assert "illeggibile" in caplog.text and _lavori(root)["c"]["stato"] == "fatto"
+    # voci alterate: scartate o riportate a valori sicuri
+    (nd / notte.STATO_LAVORI).write_text(json.dumps({
+        "../x": {"stato": "fatto"}, "c": {"stato": "boh"},
+        "d": {"stato": "fallito", "ko_di_fila": True, "fino_a": "domani"}}))
+    assert notte._leggi_stato_lavori(nd) == {
+        "d": {"stato": "fallito", "ultimo": "", "ko_di_fila": 0, "fino_a": 0.0, "impronta": ""}}
+
+
+def test_r7f3_lavori_tolti_dal_catalogo_potati(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: a\n"
+                  "  - nome: b\n    prompt: b\n")
+    _giro_esito(root, cat)
+    _scrivi(cat, "compiti:\n  - nome: a\n    prompt: a\n")
+    _giro_esito(root, cat)
+    assert set(_lavori(root)) == {"a"}
+    # catalogo rovinato per un momento: niente potatura
+    _scrivi(cat, ": : :\n  - [")
+    _giro_esito(root, cat)
+    assert set(_lavori(root)) == {"a"}
+
+
+def test_r7f3_data_enorme_non_rompe_il_giro(dirs, monkeypatch):
+    """Review #839-F3 R-839-1: fino_a finita ma enorme + kernel che non parte (la voce
+    non viene riscritta): niente «giro interrotto», riepilogo scritto."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    for fino in (1e20, 1e12, -5):
+        (nd / notte.STATO_LAVORI).write_text(json.dumps({"c": {
+            "stato": "da_non_ritentare", "ultimo": "x", "ko_di_fila": 3, "fino_a": fino,
+            "impronta": notte._impronta("c")}}))
+        assert notte._leggi_stato_lavori(nd)["c"]["fino_a"] == 0.0
+
+        def _rotto(r):
+            raise RuntimeError("kernel giù")
+        assert esegui_notte(str(root), catalogo=cat, kernel_factory=_rotto) == 1
+        testo = (nd / "ultimo_giro.md").read_text()
+        assert "## Lavori ricorrenti (stato)" in testo and "- c: da non ritentare" in testo
+    assert notte._giorno(1e20) == "?"
+
+
+def test_r7f3_niente_potatura_con_catalogo_in_parte_rotto(dirs, monkeypatch):
+    """Review #839-F3 R-839-2: un compito valido più una voce rotta (avviso) → il compito
+    gira e il registro si riscrive, ma la voce del lavoro sparito resta."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: a\n"
+                  "  - nome: b\n    prompt: b\n")
+    _giro_esito(root, cat)
+    _scrivi(cat, "compiti:\n  - nome: a\n    prompt: a\n  - 7\n")
+    assert _giro_esito(root, cat)[1] == ["a"]
+    assert set(_lavori(root)) == {"a", "b"}
