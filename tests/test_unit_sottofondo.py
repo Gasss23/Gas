@@ -1209,3 +1209,191 @@ def test_ferma_usa_il_lock_e_rilegge_il_pid(tmp_path, monkeypatch):
     monkeypatch.setattr(sf.os, "killpg", lambda pid, sig: uccisi.append(pid))
     ok, frase = sf.ferma(tmp_path, _avvisi()[1])
     assert ok and preso == [True] and uccisi == [4242] and "potrebbe" not in frase
+
+
+# ---- R7 fetta 2: ripresa al boot (`gas.py sottofondo-riprendi`) ----
+
+def _rete_si():
+    return True
+
+
+def test_boot_riprende_il_compito_morto(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path)
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa, rete=_rete_si)
+    assert ok and f"Compito {ident} ripreso (ripresa 1 di 2)" in frase
+    assert "sottofondo-ferma" in frase and "confronta" not in frase  # mai il testo del compito
+    assert _niente_riprese_vere == [ident] and len(inviati) == 1
+    # lanciato due volte (boot + primo turno): nessun secondo avvio
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa, rete=_rete_si)
+    assert ok and "ancora in corso" in frase and _niente_riprese_vere == [ident]
+
+
+def test_boot_riprese_finite_dice_non_ripreso(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path, riprese=2)
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa, rete=_rete_si)
+    assert ok and f"Compito {ident} non ripreso" in frase and "interrotto" in frase
+    assert _niente_riprese_vere == [] and len(inviati) == 1
+
+
+def test_boot_compito_fermato_non_riparte(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path)
+    (c / f"{ident}.ferma").write_text("{}", encoding="utf-8")
+    ok, frase = sf.riprendi_al_boot(tmp_path, _avvisi()[1], rete=_rete_si)
+    assert ok and "fermato dall'operatore" in frase and _niente_riprese_vere == []
+
+
+def test_boot_compito_vivo_non_si_tocca(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, _ = sf.accoda(tmp_path, "uno")  # appena accodato: il processo ha 120 s
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa, rete=_rete_si)
+    assert ok and "ancora in corso" in frase and _niente_riprese_vere == [] and inviati == []
+
+
+def test_boot_senza_compiti(tmp_path):
+    (tmp_path / sf.CARTELLA).mkdir()
+    assert sf.riprendi_al_boot(tmp_path) == (True, "Nessun compito in sottofondo da riprendere.")
+    ok, frase = sf.riprendi_al_boot(tmp_path / "altrove")
+    assert not ok and "cartella di Gas" in frase
+    (tmp_path / "altrove").mkdir()
+    (tmp_path / "altrove" / "gas.py").write_text("")
+    assert sf.riprendi_al_boot(tmp_path / "altrove")[0]
+
+
+def test_boot_errore_interno_mai_crash(tmp_path, monkeypatch):
+    (tmp_path / sf.CARTELLA).mkdir()
+    monkeypatch.setattr(sf, "_leggi", lambda p: (_ for _ in ()).throw(RuntimeError("x")))
+    ok, frase = sf.riprendi_al_boot(tmp_path)
+    assert not ok and "RuntimeError" in frase
+
+
+def test_comando_gas_sottofondo_riprendi(tmp_path):
+    """Il comando vero esce pulito in una cartella senza coda (niente processi avviati)."""
+    import subprocess
+    gas_py = Path(__file__).resolve().parents[1] / "gas.py"
+    r = subprocess.run([sys.executable, str(gas_py), "sottofondo-riprendi"],
+                       cwd=tmp_path, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 1 and "cartella di Gas" in r.stdout and "Traceback" not in r.stderr
+
+
+def test_boot_compito_gia_finito_e_file_sparito(tmp_path, monkeypatch, _niente_riprese_vere):
+    """Review #839 R-839-2: i rami «già finito» e «stato non leggibile»."""
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path, stato="ok")
+    ok, frase = sf.riprendi_al_boot(tmp_path, _avvisi()[1], rete=_rete_si)
+    assert ok and frase == f"Compito {ident} già finito: niente da riprendere."
+    assert _niente_riprese_vere == []
+    (tmp_path / "b").mkdir()
+    ident, c = _morto(tmp_path / "b")
+    (tmp_path / "b" / sf.CARTELLA / f"{ident}.json").unlink()
+    ok, frase = sf.riprendi_al_boot(tmp_path / "b", _avvisi()[1], rete=_rete_si)
+    assert not ok and "stato non leggibile" in frase and _niente_riprese_vere == []
+
+
+# ---- Bot #398 (eafdb49a): V-1 rete non pronta al boot, V-3 riavvio non partito ----
+
+def test_boot_senza_rete_non_tocca_la_coda(tmp_path, monkeypatch, _niente_riprese_vere):
+    """V-1 (MEDIA): senza rete la ripresa al boot non parte (il figlio fallirebbe e il
+    compito verrebbe chiuso «ko» per sempre): coda intatta, ripresa al primo turno."""
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    monkeypatch.setenv("GAS_SOTTOFONDO_ATTESA_RETE", "0")
+    ident, c = _morto(tmp_path)
+    prima = {f.name: f.read_bytes() for f in c.iterdir()}
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa, rete=lambda: False)
+    assert not ok and "Rete non pronta" in frase and ident in frase
+    assert {f.name: f.read_bytes() for f in c.iterdir()} == prima
+    assert _niente_riprese_vere == [] and inviati == []
+    # al primo turno (rete tornata) il compito riparte come sempre
+    sf.controlla(tmp_path, avvisa)
+    assert _niente_riprese_vere == [ident]
+
+
+def test_boot_aspetta_la_rete_che_arriva(tmp_path, monkeypatch, _niente_riprese_vere):
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, _ = _morto(tmp_path)
+    risposte, attese = iter([False, False, True]), []
+    ok, frase = sf.riprendi_al_boot(tmp_path, _avvisi()[1], rete=lambda: next(risposte),
+                                    dormi=attese.append)
+    assert ok and "ripreso" in frase and attese == [5, 5] and _niente_riprese_vere == [ident]
+
+
+def test_boot_attesa_della_rete_con_tetto(monkeypatch):
+    import itertools
+    orologio = itertools.count(0, 50)
+    monkeypatch.setattr(sf.time, "monotonic", lambda: next(orologio))
+    monkeypatch.setenv("GAS_SOTTOFONDO_ATTESA_RETE", "100000")  # oltre il tetto di 600 s
+    attese = []
+    assert sf._aspetta_rete(lambda: False, attese.append) is False
+    assert 0 < len(attese) <= sf.ATTESA_RETE_S_TETTO // 50
+
+
+def test_boot_niente_attesa_senza_compito(tmp_path):
+    (tmp_path / sf.CARTELLA).mkdir()
+    chiamate = []
+    assert sf.riprendi_al_boot(tmp_path, rete=lambda: chiamate.append(1) or False)[0]
+    assert chiamate == []
+
+
+def test_boot_riavvio_non_partito_e_errore(tmp_path, monkeypatch, _niente_riprese_vere):
+    """V-3: ripresa preparata ma processo non avviato → exit 1 (errore del meccanismo)."""
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    ident, c = _morto(tmp_path)
+
+    def _fallisce(root, i):
+        raise OSError("niente processo")
+    monkeypatch.setattr(sf, "_avvia_ripresa", _fallisce)
+    ok, frase = sf.riprendi_al_boot(tmp_path, _avvisi()[1], rete=_rete_si)
+    assert not ok and "ripresa non avviata" in frase
+
+
+# ---- Bot #398 (ea78c51b) V-1: cervello forte non trovato da launchd; verifica esterna V-1 ----
+
+def test_boot_senza_cervello_forte_non_tocca_la_coda(tmp_path, monkeypatch, _niente_riprese_vere):
+    """Con «Sempre Opus» acceso (default di produzione) e `claude` non trovabile, il compito
+    ripreso finirebbe «ko» per sempre: la coda non si tocca, ripresa al primo turno."""
+    monkeypatch.setenv("GAS_SOTTOFONDO_RIPRESE", "2")
+    monkeypatch.setenv("GAS_SOLO_OPUS", "1")
+    monkeypatch.delenv("GAS_CLAUDE_BIN", raising=False)
+    monkeypatch.setenv("PATH", str(tmp_path / "vuota"))
+    ident, c = _morto(tmp_path)
+    prima = {f.name: f.read_bytes() for f in c.iterdir()}
+    inviati, avvisa = _avvisi()
+    ok, frase = sf.riprendi_al_boot(tmp_path, avvisa, rete=_rete_si)
+    assert not ok and "Cervello forte non trovato" in frase and "GAS_CLAUDE_BIN" in frase
+    assert {f.name: f.read_bytes() for f in c.iterdir()} == prima
+    assert _niente_riprese_vere == [] and inviati == []
+
+
+def test_forte_trovabile(tmp_path, monkeypatch):
+    monkeypatch.setenv("GAS_SOLO_OPUS", "1")
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.delenv("GAS_CLAUDE_BIN", raising=False)
+    assert sf._forte_trovabile() is False
+    exe = tmp_path / "claude"
+    exe.write_text("#!/bin/sh\n")
+    exe.chmod(0o700)
+    assert sf._forte_trovabile() is True  # trovato nel PATH
+    monkeypatch.setenv("PATH", "/nessuna")
+    monkeypatch.setenv("GAS_CLAUDE_BIN", str(exe))
+    assert sf._forte_trovabile() is True  # percorso completo nel .env
+    monkeypatch.setenv("GAS_CLAUDE_BIN", str(tmp_path / "manca"))
+    assert sf._forte_trovabile() is False
+    monkeypatch.setenv("GAS_SOLO_OPUS", "0")  # altri cervelli disponibili
+    assert sf._forte_trovabile() is True
+
+
+def test_boot_compito_gia_finito_niente_attese(tmp_path, monkeypatch, _niente_riprese_vere):
+    """Verifica esterna #398 (ea78c51b) V-1: un compito già «ok» non aspetta la rete né
+    cerca il forte: si chiude da sé e la frase dice «già finito»."""
+    ident, _ = _morto(tmp_path, stato="ok")
+    chiamate = []
+    ok, frase = sf.riprendi_al_boot(tmp_path, _avvisi()[1],
+                                    rete=lambda: chiamate.append("rete") or False,
+                                    forte=lambda: chiamate.append("forte") or False)
+    assert ok and "già finito" in frase and chiamate == []
