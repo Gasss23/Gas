@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 23 novembre 2026 — R7 fetta 2: ripresa al boot del compito in sottofondo (sotto-chat di M1)
+**Sessione:** 23 novembre 2026 — R7 fetta 2: ripresa al boot del compito in sottofondo (sotto-chat di M1) — secondo giro: correzioni del verdetto del bot
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #398 (https://github.com/Gasss23/Gas/pull/398), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore.
+1. Merge della PR #398 (https://github.com/Gasss23/Gas/pull/398), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore. Il 1° verdetto del bot (eafdb49a) era BOCCIATO (V-1 MEDIA): corretto in questo giro, serve il verdetto sul nuovo head.
 2. (Facoltativo) Installare sul Mac `scripts/sottofondo/com.gas.sottofondo.plist` (istruzioni nel commento del file; serve `~/Gas/.venv`).
 
 Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `398`, `https://github.com/Gasss23/Gas/pull/398` (`gh pr` non disponibile in questo ambiente, solo REST).
@@ -16,7 +16,8 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 2 R7 — ripresa al boot**: FATTA. `riprendi_al_boot` (riusa `controlla`, stessi guardrail della fetta 1, nel terminale solo id e stato), comando `python gas.py sottofondo-riprendi`, plist launchd solo RunAtLoad che pretende `~/Gas/.venv`, `scripts/sottofondo/` nel perimetro, 8 test nuovi. Review #839 → correzioni R-839-1/R-839-2 → review #840.
-- **Fetta 3 R7 — lista dei lavori ricorrenti con stato**: DEFERITA — prossima PR (una fetta per PR).
+- **Correzioni del 1° verdetto del bot sulla PR #398 (eafdb49a, BOCCIATO)**: FATTA. V-1 MEDIA: `riprendi_al_boot` aspetta la rete (TCP verso uno dei servizi usati, tetto `GAS_SOTTOFONDO_ATTESA_RETE` 120 s, max 600) e senza rete non tocca la coda (ripresa al primo turno, come prima). V-2 BASSA documentata nel codice (solo testo). V-3 BASSA: riavvio non partito → exit 1. R-840-1 (commento del plist) corretta. 5 test nuovi (126). Review #841.
+- **Fetta 3 R7 — lista dei lavori ricorrenti con stato**: FATTA in un'altra PR (#399, ramo `claude/r7-lavori-ricorrenti`).
 - **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — dopo la 3.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — dopo la 4.
 
@@ -25,23 +26,28 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md          |   3 +++
+ .claude/agents/memoria_revisore.md          |   5 +++++
  .claude/perimetro_review.txt                |   2 ++
  gas.py                                      |   5 +++++
- modules/sottofondo/__init__.py              |  38 ++++++++++++++++++++++++++++++++++++++
+ modules/sottofondo/__init__.py              |  85 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md                    |  19 +++++++++----------
  reports/handoff.md                          | n/d
  reports/stato_progetto.md                   |   3 ++-
- reports/ultimo_report.md                    |  26 +++++++++++---------------
- scripts/sottofondo/com.gas.sottofondo.plist |  34 ++++++++++++++++++++++++++++++++++
- tests/test_unit_sottofondo.py               |  80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md                    |  27 ++++++++++++---------------
+ scripts/sottofondo/com.gas.sottofondo.plist |  36 ++++++++++++++++++++++++++++++++++++
+ tests/test_unit_sottofondo.py               | 141 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
+
+NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
 
 NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c87c9467 fix(sottofondo): verdetto bot #398 — al boot aspetta la rete, senza rete non tocca la coda
+a469161a chore(revisore): memoria review #841 — APPROVATO CON RISERVE
+eafdb49a docs(fine-task): R7 fetta 2 — report, handoff con review #839/#840, stato_progetto
 8b12f585 feat(sottofondo): R7 fetta 2 — ripresa al boot (gas.py sottofondo-riprendi + plist launchd)
 94189a8b chore(revisore): memoria review #840 — APPROVATO CON RISERVE
 48aacb44 chore(revisore): memoria review #839 — APPROVATO CON RISERVE
@@ -51,7 +57,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 8b12f585 (motore). Due verdetti sullo stesso diff: #839 sul primo staged, #840 dopo le correzioni di R-839-1 e R-839-2. Incollati integrali.
+Commit 8b12f585 (motore): due verdetti sullo stesso diff, #839 sul primo staged e #840 dopo le correzioni di R-839-1 e R-839-2. Commit c87c9467 (motore, correzioni del verdetto del bot): review #841. Incollati integrali.
 
 ### Review #839
 
@@ -116,35 +122,89 @@ File:
 - /home/user/Gas/gas.py
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #841 (commit c87c9467)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review n. 841. Oggetto: il diff staged in /home/user/Gas398, sul ramo claude/r7-ripresa-al-boot (base eafdb49a). Tocca 3 file, +120/−10. Lo SHA-256 del diff è 2df9a2ac…. Ho letto prima CLAUDE.md (§5, §8, §9), il punto R7 di reports/stato_progetto.md (riga 400) e la memoria del revisore (#839, #840).
+
+**Elementi del diff esaminati**
+1. `modules/sottofondo/__init__.py:371`: chiama `_aspetta_rete` solo se c'è un compito attivo. Lo fa PRIMA di leggere «prima» (riga 375) e PRIMA di chiamare `controlla`, quindi senza rete la coda non viene toccata, non si consuma nessuna ripresa e non parte nessun avviso. Rischio esaminato: il compito chiuso «ko» per sempre quando al boot manca la rete. Esito: **ok**, V-1 chiusa. Lettura di «prima» dopo l'attesa: se nei 120 s il primo turno riprende il compito, il boot risponde «ancora in corso» e non lo avvia una seconda volta.
+2. `modules/sottofondo/__init__.py:337`: il tetto dell'attesa è `min(600, max(0, _numero_env(...)))`. Con inf, nan o testo non numerico `_numero_env` torna al default (`modules/sottofondo/__init__.py:98`), con valori negativi l'attesa è 0. Rischio esaminato: un valore dell'ambiente che blocca il boot. Esito: **ok**.
+3. `modules/sottofondo/__init__.py:323`: `_rete_pronta` apre una connessione TCP diretta verso 3 servizi, timeout di 3 s, `OSError` intercettato e nessun dato inviato. Rischio esaminato: proxy, DNS, copertura dei test. Esito: **riserva R-841-1**.
+4. `modules/sottofondo/__init__.py:393`: V-3, se il riavvio non parte («ripresa non avviata», scritto da `annulla` alla riga 466) il comando esce con 1. Gli altri casi «ko» (riprese finite, compito fermato, durata superata) restano exit 0. Esito: **ok**.
+5. `modules/sottofondo/__init__.py:383`: il commento V-2 è corretto. Il doppio avvio resta impedito dal lock di `_riprendi`, quindi l'errore possibile riguarda solo il testo. Esito: **ok**.
+6. `scripts/sottofondo/com.gas.sottofondo.plist:4`: il commento ora dice `python gas.py` (venv) e la riga 7 documenta l'attesa della rete. Esito: **ok**, R-840-1 chiusa.
+7. `tests/test_unit_sottofondo.py:1300`: senza rete i file della coda restano identici byte per byte, nessun avviso parte e al primo turno il compito riparte. Gli altri test: `tests/test_unit_sottofondo.py:1317` (la rete arriva al terzo tentativo, attese [5, 5]), `tests/test_unit_sottofondo.py:1326` (tetto con un orologio finto), `tests/test_unit_sottofondo.py:1336` (nessuna attesa senza compito), `tests/test_unit_sottofondo.py:1343` (V-3). Esito: **ok**.
+8. Contesto, `gas.py:7156`: il chiamante passa solo `Path.cwd()`, quindi in produzione si usano il controllo vero della rete e la vera attesa. I test che esistevano già e chiamano senza `rete=` (righe 1260-1271) escono prima dell'attesa, quindi non toccano la rete. Esito: **ok**.
+
+**Verifiche eseguite**
+- tests/test_unit_sottofondo.py: 126 passed, rieseguito da me.
+- Mutanti che fanno fallire almeno un test (rosso):
+  - attesa tolta;
+  - attesa anche senza compito;
+  - tetto tolto;
+  - V-3 sempre `True`;
+  - `dormi(0)`.
+- Mutante che sopravvive: «`_rete_pronta` sempre True», nessun test se ne accorge (vedi R-841-1).
+- Il modulo è stato ripristinato e la worktree coincide con l'index (controllato con `git diff --quiet`).
+
+**Antipattern (§5, §8, §9)**: niente slicing della history, niente simulazione dei tool, il limite di 10 iterazioni e `_get_window` non sono toccati. La regola «mai eccezioni» resta rispettata: c'è l'`except Exception` esterno e `_rete_pronta` intercetta `OSError`. R-839-3 (rete al login) è chiusa da questa fetta.
+
+**Riserve**
+- **R-841-1 BASSA**: `_rete_pronta` (`modules/sottofondo/__init__.py:323`) apre un socket diretto e ignora `HTTPS_PROXY`. Su una macchina che esce su internet solo tramite proxy (per esempio la VPS futura) dà sempre «no rete»: la ripresa al boot non parte mai, ogni avvio aspetta 120 s ed esce con 1. Il danno resta contenuto perché il compito riparte comunque al primo turno, come prima di questa fetta. Inoltre la risoluzione DNS di `create_connection` non rispetta il timeout di 3 s, quindi l'attesa può superare un po' il tetto, e `_rete_pronta` non ha test (il mutante «sempre True» sopravvive). Da riguardare quando si costruisce l'unità systemd per il server.
+- **R-841-2 COSMETICA**: l'attesa della rete avviene anche quando il processo del compito è ancora vivo (nuovo login senza riavvio). Offline il comando risponde «Rete non pronta…» ed esce con 1 anche se non c'era niente da riprendere. Effetto innocuo: compare solo nel log di launchd.
+
+**Rischi esclusi (non verificati)**
+- Comportamento reale sotto launchd sul Mac (rete al login, DNS offline, tempi reali): non è riproducibile in questo ambiente Linux.
+- La connessione TCP vera verso i tre servizi: qui l'uscita passa da un proxy, quindi la connessione diretta non è indicativa.
+- Il percorso systemd sulla VPS: non esiste ancora.
+
+**Memoria del revisore**: aggiunta la riga #841 e una lezione (il controllo «c'è rete?» fatto con socket diretto ignora il proxy). Committata da sola con `scripts/commit_memoria_revisore.sh` in /home/user/Gas398, commit a469161a. Il diff staged del motore non è stato toccato: index ancora 3 file, +120/−10.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_sottofondo.py`: 113 → 121 (8 test nuovi della ripresa al boot), tutti verdi in locale: `121 passed in 7.33s`.
+- `tests/test_unit_sottofondo.py`: 113 → 126 (8 test della ripresa al boot + 5 delle correzioni del bot), tutti verdi in locale: `126 passed in 6.00s`.
 - `tests/test_unit_kernel.py` (round-trip agentico, kernel non toccato salvo il comando nuovo in `main`), eseguito in locale, riga reale:
 
 ```
 === RIEPILOGO: 1187 PASS, 0 FAIL ===
 ```
 
-Nessun FAIL. La suite `pytest tests/` completa in locale è stata fermata dopo ~5 minuti senza esito (non conclusa); la CI esegue le suite per file.
+Nessun FAIL (eseguito nel primo giro; il secondo giro tocca solo `modules/sottofondo/` e i suoi test). La suite `pytest tests/` completa in locale è stata fermata dopo ~5 minuti senza esito (non conclusa); la CI esegue le suite per file.
 
 ## §6 STATO CI
 
-Output reale di `gh run list -L 3` alla scrittura:
+Output reale di `gh run list -L 3` alla scrittura (le righe sono anche di altri rami):
 
 ```
-completed	skipped	R7 fetta 2: ripresa al boot del compito in sottofondo	verifica-bot	claude/r7-ripresa-al-boot	pull_request_target	45215689561	2s	2026-11-23T16:22:05Z
-in_progress		feat(sottofondo): R7 fetta 2 — ripresa al boot (gas.py sottofondo-rip…	CI	claude/r7-ripresa-al-boot	push	45215603377	1m32s	2026-11-23T16:21:37Z
-in_progress		Gas usa il CRM: comandi da Telegram e voce, con firma e solo Opus	verifica-bot	claude/nifty-galileo-3k7kbm	pull_request_target	45215520653	2m0s	2026-11-23T16:21:09Z
+completed	cancelled	R7 fetta 3: stato dei lavori ricorrenti del giro di notte	verifica-bot	claude/r7-lavori-ricorrenti	pull_request_target	45217587661	32s	2026-11-23T16:32:05Z
+in_progress		R7 fetta 3: stato dei lavori ricorrenti del giro di notte	verifica-bot	claude/r7-lavori-ricorrenti	pull_request_target	45217586568	1m38s	2026-11-23T16:32:05Z
+in_progress		docs(fine-task): R7 fetta 3 — report, handoff con review #839-F3/#842…	CI	claude/r7-lavori-ricorrenti	push	45217578563	1m41s	2026-11-23T16:32:02Z
+```
+
+Run di questo branch (`gh api .../actions/runs?branch=claude/r7-ripresa-al-boot`, output reale):
+
+```
+45216004004 eafdb49a verifica-bot pull_request_target completed/success
+45215981231 eafdb49a verifica-bot pull_request_target completed/skipped
+45215968921 eafdb49a CI push in_progress/null
+45215689561 8b12f585 verifica-bot pull_request_target completed/skipped
+45215603377 8b12f585 CI push in_progress/null
 ```
 
 Mappatura commit→run:
-- 8b12f585 (motore): run CI 45215603377 in corso alla scrittura (esito non ancora disponibile); verifica-bot 45215689561 skipped (PR aperta senza etichetta, l'etichetta «verifica» si mette dopo questo commit).
-- 94189a8b e 48aacb44 (memoria del revisore): nessuna run su questi SHA (pushati insieme a 8b12f585, la run testa solo l'albero di testa).
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 8b12f585: run CI 45215603377 ancora in_progress alla scrittura; verifica-bot 45215689561 skipped (PR senza etichetta).
+- eafdb49a: run CI 45215968921 ancora in_progress alla scrittura; verifica-bot 45216004004 completata (il check `verifica-bot` pubblicato sullo SHA è failure: 1° verdetto BOCCIATO, V-1 MEDIA, corretta in c87c9467); 45215981231 skipped.
+- 94189a8b, 48aacb44 (memoria): nessuna run su questi SHA.
+- a469161a e c87c9467: nessuna run propria (pushati insieme al commit di fine-task di questo giro, che ha la run di testa).
+- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-839-3 BASSA — al login la rete può non essere pronta: avviso Telegram della ripresa perso (solo nel log) e ripresa consumata; danno limitato dal tetto di riprese. Aperta.
-- R-840-1 COSMETICA — commento del plist (riga 4) dice `python3`, il comando usa `python` del venv. Aperta.
-- R-839-1 e R-839-2: CHIUSE (review #840).
+- 1° verdetto del bot su PR #398 (eafdb49a, BOCCIATO): V-1 MEDIA (al boot senza rete il compito veniva chiuso «ko» per sempre) CORRETTA; V-2 BASSA («prima» letto fuori dal lock, solo testo) DOCUMENTATA nel codice; V-3 BASSA (riavvio non partito con exit 0) CORRETTA. Serve il verdetto del bot sul nuovo head.
+- Verifica esterna sulla PR #398 (eafdb49a, [commento](https://github.com/Gasss23/Gas/pull/398#issuecomment-7107123430)): V-1 = R-839-3 CHIUSA da questo giro; V-2 = R-840-1 CHIUSA; V-3 COSMETICA (`TUO_UTENTE` nei log del plist, documentato) aperta; V-4 BASSA («ancora in corso» con lock non disponibile, solo testo) aperta.
+- R-841-1 BASSA — `_rete_pronta` apre un socket diretto e ignora `HTTPS_PROXY`: su una macchina che esce solo via proxy la ripresa al boot non parte mai (il compito riparte al primo turno); DNS fuori dal timeout; nessun test della funzione. Da rivedere con l'unità systemd del server. Aperta.
+- R-841-2 COSMETICA — attesa della rete anche col processo ancora vivo: offline «Rete non pronta» ed exit 1 senza niente da riprendere. Aperta.
+- R-839-1, R-839-2, R-839-3, R-840-1: CHIUSE.
 - Riserve delle altre chat: in `reports/stato_progetto.md`, non toccate qui.
