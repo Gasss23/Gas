@@ -48,7 +48,9 @@ python gen_flussi.py
 python traccia.py <flusso> <pkl…>
 python sweep2.py ; python sweep5.py
 FASI=4 python sim_ascolto.py A_chiamate --modo vero --soglia 0.6 --pkl varianti/d4_orig.pkl
-python interr.py ; python traccia_fasi.py E_sopra_gas 4 varianti/d3_orig.pkl varianti/d4_orig.pkl varianti/d5_orig.pkl ; python interr_f4.py
+python interr.py
+for f in E_sopra_gas A_chiamate; do python traccia_fasi.py $f 4 varianti/d3_orig.pkl varianti/d4_orig.pkl varianti/d5_orig.pkl; done
+python interr_f4.py
 python fase2.py <copia del repo> runs/*
 ```
 

@@ -175,6 +175,30 @@ I quattro finding del bot (V-1..V-4, PR #400) risultano chiusi. Resta una riserv
 
 Memoria: riga #817-M1coord e una lezione nuova, committata (32f25f95).
 
+### Review #818-M1coord (commit dopo 27d33851: interruzione misurata con 4 fasi)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+La risposta a V-1 MEDIA del bot (#400) regge. `interr_f4.py` misura davvero la configurazione predefinita: 4 fasi, filtro della voce e il punteggio massimo tra le fasi, con soglia della parola 0,5 su 1 blocco. I numeri del LEGGIMI coincidono riga per riga con i due file di risultati. Nessun antipattern della Wall of Shame. L'unico codice toccato è un commento.
+
+Elementi esaminati:
+- `reports/voce_simulazione_2026-11-23/script/interr_f4.py:18` — carica `tracce_f4_ver/<flusso>.npz` per E ed A. Rischio: che misuri le tracce a 1 fase o senza filtro. Esito: ok. Le tracce vengono da `reports/voce_simulazione_2026-11-23/script/traccia_fasi.py:22-27`: punteggio grezzo sotto 0,25, probabilità del filtro sopra, poi il massimo sulle 4 fasi. È la stessa logica della produzione (`clients/voice/ascolto.py:1461` usa `custom_verifier_threshold=soglia_base`; `clients/voice/ascolto.py:1474-1479` prende il massimo sulle fasi). `FASI_PREDEFINITE = 4` è a `clients/voice/ascolto.py:167`.
+- `reports/voce_simulazione_2026-11-23/script/interr_f4.py:21` — regolazioni (0,5/1), (0,6/1), (0,8/3), (0,5/2), (0,5/3). Rischio: che quella dichiarata «predefinita» non sia quella reale. Esito: ok. Col filtro attivo e niente nel .env la soglia d'interruzione è quella della parola, 0,5 (`clients/voice/ascolto.py:162`, `clients/voice/ascolto.py:1522-1525`), su 1 blocco (`clients/voice/ascolto.py:172`).
+- `reports/voce_simulazione_2026-11-23/script/interr_f4.py:33-38` — conta gli scatti fuori dalle chiamate, una volta per serie di blocchi sopra soglia; ore = blocchi × 0,08 s × 3 filtri. Rischio: metodo diverso da `interr.py`, quindi 1 e 4 fasi non confrontabili. Esito: ok, stesso metodo di `reports/voce_simulazione_2026-11-23/script/interr.py:22-29`; il totale torna (60 chiamate × 3 filtri = 180).
+- `reports/voce_simulazione_2026-11-23/LEGGIMI.md:29-32` — numeri confrontati con `risultati/interr_1fase.txt` e `risultati/interr_f4.txt`. Esito: ok. A 1 fase 4/180 e 156/180; a 4 fasi 8/180, 170/180, 158/180 e 99/180; 0 scatti all'ora ovunque; nel flusso E 0/180 prese.
+- `reports/voce_simulazione_2026-11-23/LEGGIMI.md:51` — comando per rifare la prova. Esito: riserva R-818-1.
+- `clients/voice/ascolto.py:163` — commento che ora punta a `reports/voce_simulazione_2026-11-23/`. Esito: ok (chiude V-2 COSMETICA).
+
+Riserve:
+- **R-818-1 BASSA**: il LEGGIMI a riga 51 genera la traccia a 4 fasi solo per `E_sopra_gas`, ma `interr_f4.py` legge anche `tracce_f4_ver/A_chiamate.npz`. Va aggiunto `python traccia_fasi.py A_chiamate 4 varianti/d3_orig.pkl varianti/d4_orig.pkl varianti/d5_orig.pkl`, altrimenti il 170/180 non si può rifare con le istruzioni scritte.
+
+Rischi esclusi:
+- `traccia_fasi.py` e `interr_f4.py` non rieseguiti: audio, tracce e modelli non sono in git. Controllata la coerenza tra script, risultati e LEGGIMI, non i numeri in sé.
+- In produzione le 4 fasi usano una coda con ritardo all'indietro, la simulazione uno spostamento in avanti: giudicate equivalenti a meno di un blocco, senza prova numerica.
+- L'eco reale della voce di Gas dall'altoparlante non è coperta: qui la voce di Gas è simulata.
+
+Memoria: riga #818-M1coord e una lezione, committate (8b64a649).
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
