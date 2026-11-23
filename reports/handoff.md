@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 23 novembre 2026 — R7 fetta 3: stato dei lavori ricorrenti del giro di notte (sotto-chat di M1) — terzo giro: merge di main (PR #397), «Sempre Opus», V-1 MEDIA del bot e riserve della verifica esterna
+**Sessione:** 23 novembre 2026 — R7 fetta 3: stato dei lavori ricorrenti del giro di notte (sotto-chat di M1) — quarto giro: merge di main dopo la #398, via al merge dell'operatore
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #399 (https://github.com/Gasss23/Gas/pull/399), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore. Verdetti del bot: 492f7e20 APPROVATO CON RISERVE (solo BASSE, corrette nel 2° giro); 3b188028 APPROVATO CON RISERVE con V-1 MEDIA (check failure), corretta in questo giro (7b05ccf2); serve il verdetto sul nuovo head. Le verifiche esterne finora: APPROVATO CON RISERVE (BASSE/COSMETICHE).
+1. Merge della PR #399 (https://github.com/Gasss23/Gas/pull/399), etichetta «verifica». L'operatore ha dato il via («sì, mergia 398 e 399», riferito dal coordinatore M1; la #398 è già mergiata): dopo CI e bot verdi sull'head nuovo il merge lo fa l'agente. Ultimo verdetto del bot (ae2ea9e0): APPROVATO CON RISERVE senza ALTA/MEDIA.
 
 Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `399`, `https://github.com/Gasss23/Gas/pull/399` (`gh pr` non disponibile in questo ambiente, solo REST).
 
@@ -19,6 +19,7 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 - **Merge di origin/main (PR #397 della chat CRM) nel ramo (terzo giro)**: FATTO (73277ba0), conflitti dei report risolti come dice `reports/lavoro_parallelo.md` regola 3 (riserve CRM già in `stato_progetto.md`). Review #844-MERGE: R-844M-1 MEDIA (con «Sempre Opus» il testo d'errore «Rispondo solo con Claude Opus…» non era riconosciuto come guasto esterno).
 - **Correzioni del terzo giro**: FATTA (87006476). R-844M-1 (prefisso aggiunto + test col kernel vero e GAS_SOLO_OPUS=1); verifica esterna #399 (3b188028) V-1 (dopo 14 guasti esterni di fila pausa di 7 giorni); R-843-1 (un guasto esterno non toglie né allunga una pausa in corso); R-845R7-1/2. Review #845-R7 → #846-R7 APPROVATO. 220 test.
 - **V-1 MEDIA del bot su 3b188028**: FATTA (7b05ccf2). «Pipeline esausta» (e gli errori col dettaglio dei motivi, anche con «Sempre Opus») copriva motivi nati dal lavoro: tetto delle chiamate per turno, risposta vuota, 10 iterazioni senza risposta finale. Ora contano come ko veri; test col kernel vero che arriva al tetto e test con i testi veri di «Sempre Opus». Review #847-R7 BOCCIATO (valeva solo con «Sempre Opus» spento) → #848-R7 APPROVATO. 230 test.
+- **Merge di origin/main dopo la PR #398 (quarto giro)**: FATTO (bc7d08df), conflitti solo nei report (regola 3). Review #851-MERGE-R7 APPROVATO. notte + sottofondo: 359 passed.
 - **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — prossima PR.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — dopo la 4.
 
@@ -27,25 +28,23 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  13 ++++++
- modules/notte/notte.py             | 210 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- reports/diff_sessione.md           |  21 ++++-----
+ .claude/agents/memoria_revisore.md |  14 +++++++++
+ modules/notte/notte.py             | 210 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ reports/diff_sessione.md           |  13 ++++----
  reports/handoff.md                 | n/d
- reports/setup_notte.md             |  15 +++++++
+ reports/setup_notte.md             |  15 ++++++++++
  reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           |  52 ++++++++--------------
- tests/test_unit_notte.py           | 372 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  26 ++++++++--------
+ tests/test_unit_notte.py           | 372 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path. Dopo il merge di main (73277ba0) la base del ramo è il main nuovo (1b4954e2): i file della PR #397 non compaiono.
-
-NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
-
-NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
+NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path. Dopo il merge bc7d08df la base del ramo è il main con la #398 (d13d4342).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bc7d08df Merge origin/main (PR #398 mergiata) nel ramo della PR #399 — review #851-MERGE-R7 APPROVATO
+ae2ea9e0 docs(fine-task): PR #399 terzo giro — merge di main, «Sempre Opus», V-1 MEDIA del bot; review #844-MERGE, #845…#848-R7
 7b05ccf2 fix(notte): bot #399 V-1 — tetto di chiamate, risposta vuota e iterazioni finite sono ko del lavoro, anche con «Sempre Opus»
 f78682bf chore(revisore): memoria review #848 — APPROVATO
 26a27136 chore(revisore): memoria review #847 — BOCCIATO
@@ -66,7 +65,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit b7ae5d42 (motore): due verdetti sullo stesso diff, #839-F3 sul primo staged e #842 dopo le correzioni di R-839-1 e R-839-2. Commit f3a6168e (motore, riserve di bot e verifica esterna): review #843. Merge 73277ba0: review #844-MERGE. Commit 87006476 (motore): review #845-R7 e #846-R7. Commit 7b05ccf2 (motore): review #847-R7 e #848-R7. Incollati integrali.
+Commit b7ae5d42 (motore): due verdetti sullo stesso diff, #839-F3 sul primo staged e #842 dopo le correzioni di R-839-1 e R-839-2. Commit f3a6168e (motore, riserve di bot e verifica esterna): review #843. Merge 73277ba0: review #844-MERGE. Commit 87006476 (motore): review #845-R7 e #846-R7. Commit 7b05ccf2 (motore): review #847-R7 e #848-R7. Merge bc7d08df: review #851-MERGE-R7. Incollati integrali.
 
 ### Review #839-F3
 
@@ -447,8 +446,36 @@ Review #848-R7, secondo giro della #847-R7, PR #399, ramo claude/r7-lavori-ricor
 - /home/user/Gas/reports/setup_notte.md
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #851-MERGE-R7 (merge bc7d08df)
+
+## VERDETTO: APPROVATO
+
+Revisione #851-MERGE-R7: merge in corso di origin/main (PR #398, R7 fetta 2) dentro claude/r7-lavori-ricorrenti (PR #399). Ho confrontato quello che è in stage con HEAD: 7 file, +360/−1, impronta sha256 del diff e0e75617.
+
+**Elementi del diff esaminati**
+- `gas.py:7347` — nuovo comando `sottofondo-riprendi` che chiama `riprendi_al_boot`. Rischio esaminato: che venga intercettato da un comando precedente o vada in collisione con `notte` (`gas.py:7340`) o con `sottofondo-ferma` (`gas.py:7342`). Ogni ramo confronta il nome esatto, il nuovo comando sta prima di `sottofondo <id>` (che richiede almeno 2 argomenti) e il file è identico a origin/main. Esito: ok.
+- `modules/sottofondo/__init__.py:366` — `riprendi_al_boot`, con i controlli già visti prima di riprendere: compito ancora aperto, cervello forte trovabile (`modules/sottofondo/__init__.py:349`), rete pronta, avvio protetto contro le eccezioni. Rischio esaminato: interferenze con la fetta 3. Il sottofondo usa la cartella `.gas_sottofondo` (`modules/sottofondo/__init__.py:40`) e la notte usa `.gas_notte` (`modules/notte/notte.py:98`). Nessuno dei due moduli cita l'altro (grep incrociato vuoto) e il merge non tocca `modules/notte/notte.py`. Esito: ok.
+- `scripts/sottofondo/com.gas.sottofondo.plist:30` — parte solo all'avvio (RunAtLoad), niente riavvio continuo (KeepAlive). File identico a origin/main. Esito: ok.
+- `tests/test_unit_sottofondo.py:1` — i test della fetta 2, identici a origin/main. Ho rilanciato insieme `tests/test_unit_notte.py` e `tests/test_unit_sottofondo.py`: **359 passed**. Esito: ok.
+- `.claude/perimetro_review.txt:33` — aggiunge `scripts/sottofondo/` al perimetro di review. Lo rafforza, non lo indebolisce. Esito: ok.
+
+**Risoluzione dei conflitti**
+1. Il codice è identico a origin/main: il confronto tra stage e origin/main è vuoto per gas.py, modules/sottofondo, plist, test e perimetro. Le uniche differenze rispetto a main sono i file propri del ramo (`modules/notte/notte.py`, `tests/test_unit_notte.py`, report).
+2. `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono uguali a HEAD (diff vuoto): tenuti dal ramo come vuole la regola 3.
+3. Riga «Ultimo aggiornamento» di `reports/stato_progetto.md` (riga 4): tutte le voci del ramo ci sono. La voce di main sulla fetta 2 c'è anch'essa, solo aggiornata con «PR #398 mergiata». Le voci R7 fetta 3 (riga 401) e R7 fetta 2 (riga 402) sono entrambe presenti; quella della fetta 2 è identica a main.
+4. `.claude/agents/memoria_revisore.md`: nessuna riga persa né da main né da HEAD (1694 + 1698 righe confluite in 1707, 1685 in comune). Le righe #839, #840, #841, #849-MERGE-R7 e #850-R7 della fetta 2 compaiono prima di quelle della fetta 3. I numeri #839 ripetuti nei due rami erano già noti (nei report del ramo si chiamano «#839-F3»).
+5. Nessun marcatore di conflitto rimasto nei file uniti.
+
+**Rischi esclusi (non verificati)**
+- Il comportamento vero all'avvio sul Mac (launchd, PATH ridotto, rete non ancora pronta) non l'ho provato: non si riproduce qui. È coperto solo dai test unitari e dalle review #839-#850-R7.
+- Non ho controllato la concorrenza a runtime tra il giro di notte e un compito in sottofondo ripreso nello stesso momento, cioè due kernel attivi insieme. Non dipende da questo merge (le due fette non condividono file) e c'era già prima.
+- Non ho rilanciato la suite completa: solo i due file di test indicati.
+
+**Memoria del revisore**: ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore `#851-MERGE-R7 — 2026-11-23 — APPROVATO — … Nessuna lezione nuova.` È solo nel working tree, NON in stage e NON committata, perché il merge è in corso. Va messa in stage o committata dopo il commit di merge, per esempio con `bash scripts/commit_memoria_revisore.sh`. L'impronta del diff in stage non è cambiata (e0e75617 prima e dopo la scrittura).
+
 ## §5 DELTA TEST DEL MOTORE
 
+- Dopo il merge bc7d08df: `tests/test_unit_notte.py` + `tests/test_unit_sottofondo.py` 359 passed.
 - `tests/test_unit_notte.py`: 200 → 230 (9 della fetta + 6 del 2° giro + 15 del 3° giro), tutti verdi in locale: `230 passed in 5.89s`.
 - `tests/test_unit_kernel.py` (round-trip agentico), eseguito in locale DOPO il merge di main (73277ba0, prima dei commit 87006476 e 7b05ccf2 che toccano solo `modules/notte/` e i suoi test), riga reale:
 
@@ -485,7 +512,8 @@ Mappatura commit→run:
 - 492f7e20: CI 45217578563 success; verifica-bot 45217586568 (registrata con head b7ae5d42) ha pubblicato il check success sul 492f7e20 (1° verdetto, solo BASSE); 45217587661 cancelled.
 - 3b188028: CI 45218765483 success; verifica-bot 45218772891: il job è success, ma il check `verifica-bot` pubblicato sullo SHA è failure (2° verdetto, V-1 MEDIA, corretta in 7b05ccf2).
 - 113a2fde, 2246dd88, ba513ece, f3a6168e, 73277ba0, 49ce5f74, 3599a7d4, 87006476, 26a27136, f78682bf, 7b05ccf2: nessuna run propria (pushati insieme al commit di testa, o non ancora pushati).
-- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
+- ae2ea9e0: CI success (unit-suite, handoff-check); check `verifica-bot` success col 3° verdetto APPROVATO CON RISERVE senza ALTA/MEDIA.
+- bc7d08df e il commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -495,4 +523,5 @@ Mappatura commit→run:
 - Verdetti precedenti (bot e verifica esterna su 492f7e20; #839-F3, #842, #843): chiusi nel 2° giro, salvo R-839-3.
 - R-839-3 COSMETICA — kernel non creato: stato non aggiornato; «fermo fino al» con data passata o 01/01. Aperta.
 - Da sapere (non verificato, dalle review #845/#846-R7): sulla VPS con «Sempre Opus» acceso e Opus non configurato, ogni lavoro della notte fallisce per guasto esterno; dopo 14 notti vanno tutti in pausa, poi un tentativo a settimana.
-- Riserve delle altre chat (CRM, Voce) e della PR #398: in `reports/stato_progetto.md` e sul ramo della #398.
+- Bot su ae2ea9e0 (APPROVATO CON RISERVE): V-1 BASSA (un compito tagliato dal tetto di tempo del GIRO conta come fallimento suo) aperta; V-2 COSMETICA (descrizione della PR e §2/§6 dell'handoff non aggiornati) corretta. Verifica esterna su ae2ea9e0 ([commento](https://github.com/Gasss23/Gas/pull/399#issuecomment-7107847945)): V-1 BASSA («ko di fila» non azzerato dai guasti esterni) e V-2 BASSA (filtro per sottostringa) aperte; V-3 COSMETICA (NB triplo) corretta.
+- Riserve delle altre chat (CRM, Voce) e della PR #398: in `reports/stato_progetto.md`.

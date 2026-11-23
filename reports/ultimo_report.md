@@ -5,8 +5,8 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR #399** (vedi handoff §0): tocca il motore; merge autonomo solo con verdetto del bot APPROVATO pulito, altrimenti decide l'operatore.
-2. **PR #398 (fetta 2, ripresa al boot)**: ancora aperta, sul suo ramo; il suo stato è nel report di quel ramo.
+1. **Merge della PR #399**: via dell'operatore già dato («sì, mergia 398 e 399», riferito da M1); lo fa l'agente con CI e bot verdi sul nuovo head.
+2. **PR #398**: mergiata da M1 il 23/11 (17:45 UTC).
 
 ## Esito fette
 
@@ -14,6 +14,7 @@
 - **Correzioni delle riserve (bot e verifica esterna) sulla PR #399**: FATTA. Guasti esterni non contati tra i ko di fila, sezione con tutti i compiti, avviso col conto reale e ritmo documentato. 6 test nuovi (215). Review #843 APPROVATO CON RISERVE (R-843-1 BASSA).
 - **Merge di main (PR #397, CRM) e correzioni del terzo giro**: FATTA. Merge 73277ba0 (review #844-MERGE: R-844M-1 MEDIA, con «Sempre Opus» acceso l'errore «Rispondo solo con Claude Opus» non era un guasto esterno). Correzione 87006476: prefisso aggiunto con test col kernel vero; tetto di 14 guasti esterni di fila (verifica esterna V-1); pausa in corso non tolta né allungata (R-843-1, R-845R7-1/2). Review #846-R7 APPROVATO. 220 test.
 - **V-1 MEDIA del bot su 3b188028**: FATTA (7b05ccf2). Tetto delle chiamate, risposta vuota e 10 iterazioni senza risposta contano come fallimenti del lavoro (non guasti esterni), anche con «Sempre Opus». Review #847-R7 BOCCIATO → #848-R7 APPROVATO. 230 test.
+- **Merge di main dopo la #398 (mergiata dal coordinatore col via dell'operatore)**: FATTO (bc7d08df), review #851-MERGE-R7 APPROVATO.
 - **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — prossima PR.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — dopo la 4.
 

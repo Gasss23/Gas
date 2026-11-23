@@ -6,5 +6,5 @@ Questo file si riscrive a ogni sessione; la storia completa sta in git.
 - `tests/test_unit_notte.py`: 9 test (stati, pausa e rilancio a mano, ok che azzera, prompt cambiato, pausa scaduta o assurda, registro rovinato, potatura, data enorme, catalogo in parte rotto) + 6 delle riserve (4 guasti esterni, saltati per crash, conto dopo la pausa).
 - Merge di origin/main (PR #397, chat CRM) in 73277ba0: dopo il merge il punto di partenza del ramo è il main nuovo, quindi i file della #397 non compaiono in questo diff.
 - `reports/setup_notte.md`: paragrafo sullo stato dei lavori per l'operatore.
-- `.claude/agents/memoria_revisore.md`: righe delle review #839-F3, #842, #843, #844-MERGE, #845-R7…#848-R7; più quelle della chat CRM arrivate col merge di main.
+- `.claude/agents/memoria_revisore.md`: righe delle review #839-F3, #842, #843, #844-MERGE, #845-R7…#848-R7, #851-MERGE-R7; più quelle della chat CRM arrivate col merge di main.
 - `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
