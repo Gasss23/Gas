@@ -448,6 +448,9 @@ Review #848-R7, secondo giro della #847-R7, PR #399, ramo claude/r7-lavori-ricor
 
 ### Review #851-MERGE-R7 (merge bc7d08df)
 
+Verdetto originale (respinto dal gate B: dopo il merge i file citati non sono più nel diff di sessione), incollato invariato in un blocco di testo:
+
+```text
 ## VERDETTO: APPROVATO
 
 Revisione #851-MERGE-R7: merge in corso di origin/main (PR #398, R7 fetta 2) dentro claude/r7-lavori-ricorrenti (PR #399). Ho confrontato quello che è in stage con HEAD: 7 file, +360/−1, impronta sha256 del diff e0e75617.
@@ -472,6 +475,38 @@ Revisione #851-MERGE-R7: merge in corso di origin/main (PR #398, R7 fetta 2) den
 - Non ho rilanciato la suite completa: solo i due file di test indicati.
 
 **Memoria del revisore**: ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore `#851-MERGE-R7 — 2026-11-23 — APPROVATO — … Nessuna lezione nuova.` È solo nel working tree, NON in stage e NON committata, perché il merge è in corso. Va messa in stage o committata dopo il commit di merge, per esempio con `bash scripts/commit_memoria_revisore.sh`. L'impronta del diff in stage non è cambiata (e0e75617 prima e dopo la scrittura).
+```
+
+### Review #851-MERGE-R7 — verdetto RIEMESSO dal revisore con le citazioni nella forma del gate (stesso esito)
+
+## VERDETTO: APPROVATO
+
+Revisione #851-MERGE-R7, riemessa con le citazioni che chiede il gate B: merge in corso di origin/main (PR #398, R7 fetta 2) dentro claude/r7-lavori-ricorrenti (PR #399). Stesso esito e stesso contenuto del primo verdetto. Ho confrontato quello che è in stage con HEAD: 7 file, +360/−1, impronta sha256 del diff e0e75617.
+
+**Elementi del diff di sessione esaminati (fetta 3, controllati per l'assenza di interferenze col codice portato da main)**
+- `modules/notte/notte.py:98` — `NOTTE_DIR = ".gas_notte"`: il giro di notte salva tutto il suo stato in questa cartella. Rischio esaminato: che condivida file o cartelle con il sottofondo arrivato da main, che usa `.gas_sottofondo` (`modules/sottofondo/__init__.py:40`). Nessuno dei due moduli cita l'altro (grep incrociato vuoto). Esito: ok.
+- `modules/notte/notte.py:123` — `STATO_LAVORI = "stato_lavori.json"`, letto da `_leggi_stato_lavori` (`modules/notte/notte.py:826`) e scritto da `_scrivi_stato_lavori` (`modules/notte/notte.py:865`). Rischio esaminato: che la ripresa al boot (`riprendi_al_boot`, `modules/sottofondo/__init__.py:366`) tocchi o sovrascriva lo stato dei lavori notturni. Il sottofondo lavora solo dentro `.gas_sottofondo/` (file `<id>.json` e il file del compito attivo). Il merge non modifica `modules/notte/notte.py`. Esito: ok.
+- `tests/test_unit_notte.py:2852` — `test_r7f3_motivi_del_lavoro_anche_con_sempre_opus`, il test sulla classificazione degli errori con «Sempre Opus» acceso. Rischio esaminato: che i test della fetta 3 dipendano da qualcosa che il merge cambia in gas.py. Il merge aggiunge a gas.py solo il ramo `sottofondo-riprendi`. Ho rilanciato insieme `tests/test_unit_notte.py` e `tests/test_unit_sottofondo.py`: **359 passed**. Esito: ok.
+- `tests/test_unit_notte.py:2817` — `test_r7f3_tetto_di_chiamate_del_lavoro_conta_come_ko`, verde nella stessa esecuzione dopo il merge. Esito: ok.
+
+**Codice portato da main (contesto, identico a origin/main)**
+- `gas.py:7347` — nuovo comando `sottofondo-riprendi`. Ogni ramo di gas.py confronta il nome esatto del comando, quindi non va in collisione con `notte` (`gas.py:7340`) né con `sottofondo-ferma` (`gas.py:7342`). Esito: ok.
+- `modules/sottofondo/__init__.py:349` — `_forte_trovabile`, e `scripts/sottofondo/com.gas.sottofondo.plist:30` (parte solo all'avvio, RunAtLoad): identici a origin/main. Esito: ok.
+- `.claude/perimetro_review.txt:33` — aggiunge `scripts/sottofondo/` al perimetro di review. Lo rafforza, non lo indebolisce. Esito: ok.
+
+**Risoluzione dei conflitti**
+1. Il codice è identico a origin/main: il confronto tra stage e origin/main è vuoto per gas.py, modules/sottofondo, plist, tests/test_unit_sottofondo.py e perimetro.
+2. `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono uguali a HEAD: tenuti dal ramo come vuole la regola 3 di `reports/lavoro_parallelo.md`.
+3. Riga «Ultimo aggiornamento» di `reports/stato_progetto.md` (riga 4): tutte le voci del ramo ci sono. La voce di main sulla fetta 2 c'è anch'essa, solo aggiornata con «PR #398 mergiata». Le voci R7 fetta 3 (riga 401) e R7 fetta 2 (riga 402) sono entrambe presenti; quella della fetta 2 è identica a main.
+4. `.claude/agents/memoria_revisore.md`: nessuna riga persa né da main né da HEAD (1694 + 1698 righe confluite in 1707, 1685 in comune).
+5. Nessun marcatore di conflitto rimasto nei file uniti.
+
+**Rischi esclusi (non verificati)**
+- Il comportamento vero all'avvio sul Mac (launchd, PATH ridotto, rete non ancora pronta) non l'ho provato: non si riproduce qui. È coperto solo dai test unitari e dalle review #839-#850-R7.
+- Non ho controllato la concorrenza a runtime tra il giro di notte e un compito in sottofondo ripreso nello stesso momento (due kernel attivi insieme). Non dipende da questo merge e c'era già prima.
+- Non ho rilanciato la suite completa: solo i due file di test indicati.
+
+**Memoria del revisore**: la riga contatore `#851-MERGE-R7 … APPROVATO … Nessuna lezione nuova.` è già scritta in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`. È solo nel working tree, NON in stage e NON committata, perché il merge è in corso. Va committata dopo il commit di merge, per esempio con `bash scripts/commit_memoria_revisore.sh`. Per questa riemissione non ho modificato nessun file.
 
 ## §5 DELTA TEST DEL MOTORE
 
