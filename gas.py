@@ -135,7 +135,16 @@ def _campo_pin(text: Any) -> str:
 # Blocco esteso (operatore 2026-11-10 notte): i loro messaggi nella finestra (chiamata o
 # risultato) mandano il turno SOLO al cervello forte.
 _TOOL_DATI_LEAD: frozenset = frozenset({"salva_contatto", "imposta_stato_contatto",
-                                        "unisci_contatti", "ricorda"})
+                                        "unisci_contatti", "ricorda",
+                                        "crm_consulta", "crm_modifica"})
+# Decisione 18 del 23-11 (comandi del CRM a Gas, «solo modelli almeno Opus»): un messaggio
+# dell'operatore che parla di clienti, promemoria o soldi del CRM manda il turno SOLO a
+# Opus dalla prima chiamata, anche senza il nome di un cliente già noto («aggiungi il
+# cliente Anna Neri»). Falsi positivi dichiarati («deposito bagagli», «ricordami il
+# latte»): costano una chiamata a Opus, mai un dato a un modello minore.
+_RE_RICHIESTA_CRM = re.compile(
+    r"\b(?:crm|client[ei]|promemoria|ricordami|ricordarmi|deposit[oi]|preliev[oi]|"
+    r"versat[oaie]|commission[ei])\b", re.IGNORECASE)
 IDENTIFICATIVO_MIN_CHARS = 3   # campo intero o parola: sotto non si cerca
 # Confronto SEMPRE a parola intera (V-1 bot #375 su 17378b0): «contenuto in» faceva
 # combaciare «Conte» con «contesto», «Rita» con «ritardo». Un cognome che è anche una
@@ -337,7 +346,8 @@ def _finestra_ha_dati_lead(messaggi: List[Dict[str, Any]],
                            identificativi: Optional[List[str]]) -> bool:
     """True se i messaggi contengono dati di lead (blocco esteso dei nomi, operatore
     2026-11-10 notte): una chiamata o un risultato di uno strumento dei contatti
-    (_TOOL_DATI_LEAD), oppure un identificativo noto in un testo qualunque (contenuto,
+    (_TOOL_DATI_LEAD), un messaggio dell'operatore che chiede il CRM (_RE_RICHIESTA_CRM,
+    decisione 18 del 23-11), oppure un identificativo noto in un testo qualunque (contenuto,
     nome e argomenti delle chiamate a strumento, anche inventati). Con `identificativi`
     None (lettura dei contatti fallita) i nomi dei lead non si possono riconoscere:
     True (fail-closed, V-1 bot #375), così la conversazione va solo al forte e, se il
@@ -346,6 +356,10 @@ def _finestra_ha_dati_lead(messaggi: List[Dict[str, Any]],
         return True
     for m in messaggi:
         if m.get("role") == "tool" and m.get("name") in _TOOL_DATI_LEAD:
+            return True
+        _c = m.get("content")
+        if m.get("role") == "user" and _c and _RE_RICHIESTA_CRM.search(
+                _c if isinstance(_c, str) else str(_c)):
             return True
         testi = [m.get("content")]
         for tc in m.get("tool_calls") or []:
@@ -364,13 +378,20 @@ _NON_LETTI = object()  # sentinella: «contatti non ancora letti in questo turno
 
 _GAS_SYSTEM_PROMPT_BASE = (
     "REGOLE TASSATIVE:\n"
-    "- Hai 13 tool nativi: read_file, elenca_cartella, leggi_righe, cerca_testo, conta_file, "
+    "- Hai 15 tool nativi: read_file, elenca_cartella, leggi_righe, cerca_testo, conta_file, "
     "data_ora, write_file, calcola, ricorda, salva_contatto, imposta_stato_contatto, "
-    "richiedi_sviluppo, avvisa_operatore. "
+    "richiedi_sviluppo, avvisa_operatore, crm_consulta, crm_modifica. "
     "Invocali davvero e aspetta il risultato reale: non inventare, descrivere o simulare mai l'output.\n"
     "- Se un tool fallisce o viene negato dal kernel, DICHIARA esplicitamente che non puoi eseguire "
     "quell'operazione. Non simulare né inventare mai un output alternativo, qualunque sia il contesto.\n"
     "- Priorità assoluta alla robustezza: se qualcosa fallisce, gestisci l'errore senza bloccarti.\n"
+    "- CRM DEI CLIENTI: crm_consulta per leggerlo, crm_modifica per cambiarlo. Ogni modifica va "
+    "alla FIRMA dell'operatore su Telegram: non chiedere conferma prima, chiama lo strumento e "
+    "digli che la firma è in arrivo. Importi SOLO come li ha scritti o detti l'operatore in "
+    "questo messaggio, mai stimati né calcolati: se manca la cifra, chiedila. «Togliere» o "
+    "«eliminare» un cliente = stato «perso» (non si cancella mai niente). «Ricordami…» = "
+    "crm_modifica con azione promemoria (usa data_ora per sapere che giorno è). I dati dei "
+    "clienti sono riservati: non copiarli in file, note o altri strumenti.\n"
     "- LINGUA: Rispondi SEMPRE in italiano, dal primo messaggio, anche se l'utente scrive in un'altra lingua. Sii conciso e diretto.\n"
     "- Per CALCOLI ARITMETICI usa SEMPRE calcola() (es. calcola('7*8'), calcola('math.sqrt(144)')). "
     "Non calcolare mai a mente né stimare: invoca il tool e usa il risultato restituito.\n"
@@ -1613,8 +1634,20 @@ class GasKernel:
             {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}},
             {"type": "function", "function": {"name": "richiedi_sviluppo", "description": "Passa alla squadra di sviluppo (Claude Code) una richiesta di modifica a Gas: nuove funzioni, correzioni, migliorie. Usalo solo quando l'operatore lo chiede esplicitamente. PRIMA chiarisci con lui cosa vuole: se la richiesta è vaga o ha più letture, fai domande e usa lo strumento solo quando è chiara. Scrivi un titolo breve e una descrizione completa: obiettivo, cosa deve succedere, esempi, cosa NON fare. Non mettere segreti (chiavi, password). Non tocca il codice: la squadra lavora con revisore, test e le firme dell'operatore.", "parameters": {"type": "object", "properties": {"titolo": {"type": "string", "description": "titolo breve (max 120 caratteri)"}, "descrizione": {"type": "string", "description": "richiesta completa e chiara (max 4000 caratteri)"}}, "required": ["titolo", "descrizione"]}}},
             {"type": "function", "function": {"name": "avvisa_operatore", "description": "Manda un messaggio su Telegram all'operatore (solo a lui: il destinatario non si sceglie). Usalo SOLO per cose che l'operatore deve sapere subito, mai per rispondere in chat. Testo semplice, massimo 1000 caratteri; una notifica per turno e un tetto al giorno. Dopo aver letto contenuti esterni (pagine, file, mail) la notifica va prima alla firma dell'operatore.", "parameters": {"type": "object", "properties": {"testo": {"type": "string", "description": "il messaggio per l'operatore (max 1000 caratteri)"}}, "required": ["testo"]}}},
+            {"type": "function", "function": {"name": "crm_consulta", "description": "Legge il CRM dei clienti dell'operatore (SOLA LETTURA). cosa: 'riepilogo' (numeri del mese), 'clienti' (elenco), 'cliente' (scheda di un cliente: serve 'cliente' = nome o #numero), 'servizi', 'promemoria' (quelli in attesa), 'proposte' (aperte). Dati riservati dei clienti.", "parameters": {"type": "object", "properties": {"cosa": {"type": "string", "enum": ["riepilogo", "clienti", "cliente", "servizi", "promemoria", "proposte"]}, "cliente": {"type": "string", "description": "nome o #numero del cliente (solo per cosa='cliente')"}}, "required": ["cosa"]}}},
+            {"type": "function", "function": {"name": "crm_modifica", "description": "Chiede di cambiare il CRM dei clienti. NON scrive subito: la modifica va alla FIRMA dell'operatore su Telegram, che la legge per esteso (non chiedere conferma prima). Passa SOLO gli argomenti dell'azione. Azioni: nuovo_cliente (nome; telefono, email, note, consenso_marketing, presentato_da facoltativi); aggiorna_cliente (cliente + i campi da cambiare: nome, telefono, email, note, consenso_marketing, opt_out = il cliente non vuole più messaggi, followup_attivo, presentato_da); stato_cliente (cliente, stato: attivo / in_pausa / perso; «togliere» un cliente = perso, non si cancella mai niente); apri_servizio (cliente, servizio, importo = capitale iniziale facoltativo, data); movimento (cliente, tipo: deposito / prelievo / profitto / perdita / commissione, importo, servizio se il cliente è in più servizi, data, nota); promemoria (testo, quando = 'AAAA-MM-GG HH:MM' ora locale, cliente facoltativo); annulla_promemoria (promemoria = numero). Importi SOLO come li ha detti l'operatore in questo messaggio, scritti in cifre. Date 'AAAA-MM-GG' (se manca: oggi).", "parameters": {"type": "object", "properties": {"azione": {"type": "string", "enum": ["nuovo_cliente", "aggiorna_cliente", "stato_cliente", "apri_servizio", "movimento", "promemoria", "annulla_promemoria"]}, "cliente": {"type": "string", "description": "nome o #numero del cliente"}, "nome": {"type": "string"}, "telefono": {"type": "string"}, "email": {"type": "string"}, "note": {"type": "string"}, "consenso_marketing": {"type": "boolean"}, "opt_out": {"type": "boolean"}, "followup_attivo": {"type": "boolean"}, "presentato_da": {"type": "string", "description": "nome o #numero del cliente che l'ha presentato"}, "stato": {"type": "string", "enum": ["attivo", "in_pausa", "perso"]}, "servizio": {"type": "string", "description": "nome o codice del servizio"}, "tipo": {"type": "string", "enum": ["deposito", "prelievo", "profitto", "perdita", "commissione"]}, "importo": {"type": "string", "description": "in cifre, come l'ha detto l'operatore (es. 1.500 o 1500,50)"}, "data": {"type": "string", "description": "AAAA-MM-GG"}, "nota": {"type": "string"}, "testo": {"type": "string", "description": "testo del promemoria"}, "quando": {"type": "string", "description": "AAAA-MM-GG HH:MM, ora locale"}, "promemoria": {"type": "string", "description": "numero del promemoria da annullare"}}, "required": ["azione"]}}},
             {"type": "function", "function": {"name": "calcola", "description": "Valuta un'espressione aritmetica pura (+ - * / // % **) e funzioni math (sqrt, floor, ceil, log, log2, log10, sin, cos, tan, fabs, factorial) e costanti (math.pi, math.e). ZERO accesso a shell o file. Usalo per qualsiasi calcolo numerico preciso.", "parameters": {"type": "object", "properties": {"expr": {"type": "string", "description": "espressione aritmetica, es. '7*8', 'math.sqrt(144)', '(3+5)*2'"}}, "required": ["expr"]}}}
         ]
+        # CRM dei clienti (decisione 18 del 23-11): lo stesso file della riga di comando e
+        # della dashboard (cartella del repo, o GAS_CRM_DB). I test lo puntano altrove.
+        try:
+            from modules.crm.store import percorso_db as _crm_percorso
+            self.crm_db_path: Optional[Path] = _crm_percorso(_RADICE_REPO)
+        except Exception as e:  # §9: senza modulo del CRM gli strumenti rispondono «non disponibile»
+            logging.warning("CRM: percorso non calcolabile (%s)", type(e).__name__)
+            self.crm_db_path = None
+        self._chiamata_opus = False  # la chiamata al modello in corso è Claude Opus?
+        self._testo_operatore_turno: Optional[str] = None
         # FETTA 1 PR B: allowlist vuota → run_command non offerto al modello.
         if not self.SHELL_ALLOWLIST:
             self.tools_schema = [t for t in self.tools_schema
@@ -2860,6 +2893,10 @@ class GasKernel:
         if name == "unisci_contatti":
             return (f"da={str(args.get('chiave_da', ''))[:80]!r} "
                     f"verso={str(args.get('chiave_verso', ''))[:80]!r}")
+        if name == "crm_consulta":  # 23-11: niente nomi di clienti nel diario
+            return f"cosa={str(args.get('cosa', '') or '')[:20]!r}"
+        if name == "crm_modifica":
+            return f"azione={str(args.get('azione', '') or '')[:30]!r}"
         if name == "ricorda":
             return (f"query={str(args.get('query', '') or '')[:60]!r} "
                     f"contatto={str(args.get('contatto', '') or '')[:60]!r}"
@@ -2885,6 +2922,9 @@ class GasKernel:
         negativo = s.startswith("Errore eseguendo") or s.startswith("Operazione negata")
         if name == "ricorda":
             return "[KO]" if negativo else f"[OK] {getattr(self, '_ricorda_n', 0)} risultati restituiti"
+        if name in ("crm_consulta", "crm_modifica"):
+            # 23-11: l'output ha nomi e cifre dei clienti → nel diario solo l'esito
+            return "[KO]" if negativo else "[OK]"
         if name == "manutenzione":
             # V-1/V-2 bot #363: gli esiti negativi del modulo iniziano con «[KO]»; nel diario
             # solo l'esito (l'azione è negli argomenti), mai l'output (doctor, log, git, pip).
@@ -3734,6 +3774,55 @@ class GasKernel:
                             type(e).__name__)
             return None, "impossibile preparare la richiesta di firma per questo file"
 
+    # Decisione 18 del 23-11: dati e modifiche del CRM solo con Claude Opus. Il diniego
+    # porta lo strumento nella finestra, e allora la chiamata dopo è già Opus.
+    _CRM_SOLO_OPUS = ("i dati del CRM li legge e li cambia solo Claude Opus: richiama lo "
+                      "strumento, il turno prosegue con Opus")
+
+    def crm_store(self) -> Any:
+        """Il CRM dei clienti (`crm_db_path`). None se non si apre. Mai solleva."""
+        try:
+            if self.crm_db_path is None:
+                return None
+            from modules.crm.store import CRMStore
+            st = CRMStore(self.crm_db_path)
+            return st if st.available else None
+        except Exception as e:
+            logging.warning("CRM non apribile (%s)", type(e).__name__)
+            return None
+
+    def _prepara_crm(self, tool_args: Any) -> Tuple[Optional[str], str]:
+        """crm_modifica al cancello: controlla la modifica SENZA scrivere (modules/crm/agente)
+        e la rende canonica (id, centesimi). Ritorna (argomenti canonici JSON, azione
+        leggibile per la firma) oppure (None, motivo del diniego). Gli importi devono
+        comparire nel messaggio dell'operatore di QUESTO turno. Mai solleva."""
+        if getattr(self, "nel_sottofondo", False):
+            return None, ("le modifiche del CRM non partono dai compiti in sottofondo: "
+                          "chiedile in chat")
+        if not getattr(self, "_chiamata_opus", False):
+            return None, self._CRM_SOLO_OPUS
+        try:
+            from modules.crm import agente as _crm_agente
+            from modules.crm.store import ErroreCRM
+        except Exception as e:
+            logging.warning("CRM: modulo non caricabile (%s)", type(e).__name__)
+            return None, "CRM non disponibile"
+        try:
+            args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
+            st = self.crm_store()
+            if st is None:
+                return None, "CRM non disponibile"
+            canonici, desc = _crm_agente.prepara(st, args,
+                                                 getattr(self, "_testo_operatore_turno", None))
+            return (json.dumps(canonici, ensure_ascii=False, sort_keys=True),
+                    "CRM — " + _tg_bot.rendi_visibili(desc, a_capo=False))
+        except ErroreCRM as e:
+            return None, str(e)
+        except Exception as e:
+            logging.warning("CRM: preparazione della firma fallita (%s) — diniego",
+                            type(e).__name__)
+            return None, "impossibile preparare la modifica del CRM"
+
     def _parcheggia_e_notifica(self, tool_name: str, tool_args: str,
                                turno_id: Optional[str]) -> Tuple[str, str]:
         """C4a/C4b-1: parcheggia un'azione IRREVERSIBLE (o UNCERTAIN+contaminata)
@@ -3757,6 +3846,13 @@ class GasKernel:
                 return f"Operazione negata: {diff_o_motivo}.", "firma-codice-negata"
             tool_args, diff_firma = tool_args_firma, diff_o_motivo
             azione = "Modifica un file delicato (livello 2)"
+        elif tool_name == "crm_modifica":
+            # Decisione 18 del 23-11: si firma la forma CANONICA (id e centesimi) con la
+            # descrizione a parole; il modello non può saltare i controlli.
+            canonici_crm, azione_o_motivo = self._prepara_crm(tool_args)
+            if canonici_crm is None:
+                return f"Operazione negata: {azione_o_motivo}.", "crm-negata"
+            tool_args, azione = canonici_crm, azione_o_motivo
         elif tool_name == "write_file" and self._ha_chiavi_riservate(tool_args):
             # Review #262: impronta/percorso firmati li scrive SOLO il kernel; in un
             # parcheggio di livello 1 verrebbero creduti all'esecuzione firmata.
@@ -5355,6 +5451,31 @@ class GasKernel:
                 # giù non brucia in un turno tutti i posti del giorno.
                 if not firmata and prenotato:
                     self._avvisi_turno = getattr(self, "_avvisi_turno", 0) + 1
+            elif name == "crm_consulta":
+                if not firmata and not getattr(self, "_chiamata_opus", False):
+                    return f"Operazione negata: {self._CRM_SOLO_OPUS}."
+                from modules.crm import agente as _crm_agente
+                a = args if isinstance(args, dict) else {}
+                st = self.crm_store()
+                if st is None:
+                    return "Errore eseguendo crm_consulta: CRM non disponibile."
+                out = _crm_agente.consulta(st, a.get("cosa"), a.get("cliente"))
+                if out.startswith("Errore:"):
+                    out = "Errore eseguendo crm_consulta:" + out[len("Errore:"):]
+            elif name == "crm_modifica":
+                # Solo dopo la firma (applica_firma), mai dal loop: è IRREVERSIBLE.
+                if not firmata:
+                    return ("Operazione negata: le modifiche del CRM si fanno solo con la "
+                            "firma dell'operatore su Telegram.")
+                from modules.crm import agente as _crm_agente
+                from modules.crm.store import ErroreCRM
+                st = self.crm_store()
+                if st is None:
+                    return "Errore eseguendo crm_modifica: CRM non disponibile."
+                try:
+                    out = _crm_agente.applica(st, args)
+                except ErroreCRM as e:
+                    return f"Errore eseguendo crm_modifica: {e}"
             else:
                 # unisci_contatti NON è più un tool autopilot: il merge di lead è
                 # mutante e irreversibile (lossy), quindi è MANUTENZIONE UMANA e non
@@ -5420,6 +5541,11 @@ class GasKernel:
         _lead_nuovi = 0  # V-1 bot #225 (2° giro): lead creati dopo una lettura
         self._file_delicati_turno = []  # R-223-2: file nuovi delicati, avviso a fine turno
         self._avvisi_turno = 0  # avvisa_operatore: una notifica per turno
+        # CRM (23-11): gli importi valgono solo se sono nel messaggio di QUESTO turno; i
+        # compiti in sottofondo non cambiano il CRM (testo None)
+        self._testo_operatore_turno = (None if getattr(self, "nel_sottofondo", False)
+                                       else user_prompt)
+        self._chiamata_opus = False
         # Fetta 3: in_sottofondo vale solo nei turni parlati non effimeri
         self._turno_voce = bool(voce and not effimero)
         if not getattr(self, "nel_sottofondo", False):
@@ -5702,6 +5828,8 @@ class GasKernel:
                             break
                         _chiamato_rung = True
                         _chiamate_turno += 1
+                        # CRM (23-11): gli strumenti del CRM rispondono solo a una chiamata Opus
+                        self._chiamata_opus = name == "claude-cli" and e_modello_opus(_model_call)
                         try:
                             response = client.chat.completions.create(
                                 model=_model_call, messages=payload, **_offerta
@@ -5875,7 +6003,14 @@ class GasKernel:
                                 # contaminazione si ricalcolava solo all'iterazione dopo).
                                 if tc.function.name in UNTRUSTED_INPUT_TOOLS:
                                     _finestra_contaminata = True
-                                yield {"type": "tool_res", "output": out, "cancello": _cancello,
+                                yield {"type": "tool_res",
+                                       # 23-11: i dati del CRM non finiscono nei progressi
+                                       # (Telegram ne mostra un pezzo)
+                                       "output": (("CRM consultato." if not out.startswith(
+                                           ("Errore eseguendo", "Operazione negata"))
+                                           else "CRM: consultazione non riuscita.")
+                                           if tc.function.name == "crm_consulta" else out),
+                                       "cancello": _cancello,
                                        "nome": tc.function.name}  # R7 fetta 1: progressi
                             _salva()
                             # continua il loop per ottenere la risposta finale
@@ -5961,6 +6096,8 @@ class GasKernel:
             self._invia_avvisi_lead(_avvisi_lead, _lead_nuovi)
             self._invia_avvisi_file(self._file_delicati_turno)
             self._file_delicati_turno = []
+            self._chiamata_opus = False
+            self._testo_operatore_turno = None
 
 def doctor(root_dir: Optional[str] = None) -> int:
     """Auto-diagnosi di Gas: check di integrità senza consumare token LLM

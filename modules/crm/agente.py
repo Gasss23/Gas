@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 import re
+import unicodedata
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -36,6 +37,7 @@ from modules.crm.store import (
 log = logging.getLogger(__name__)
 
 VERSIONE_CANONICA = 1
+ID_MAX = 2**62  # come lo store: oltre, un id non è valido (R-839-6)
 CONSULTE: Tuple[str, ...] = ("riepilogo", "clienti", "cliente", "servizi", "promemoria",
                              "proposte")
 AZIONI: Tuple[str, ...] = ("nuovo_cliente", "aggiorna_cliente", "stato_cliente",
@@ -82,15 +84,28 @@ _STATO_A_PAROLE = {"attivo": "attivo", "in_pausa": "in pausa",
 # --------------------------------------------------------------------- importi detti
 _RE_NUMERO = re.compile(r"(?<![0-9])[0-9](?:[0-9.,]*[0-9])?")
 _RE_MILA = re.compile(r"(?<![0-9.,])([0-9]{1,4}(?:[.,][0-9]{1,3})?)\s*(mila|k)\b", re.IGNORECASE)
+# R-839-4: numeri che NON sono importi, tolti prima di cercarli: date («20/06»,
+# «20-06-2026», «2026-06-20»), ore («15:30», «alle 15.30») e numeri di cliente o di
+# promemoria («#12»).
+_RE_NON_IMPORTI = re.compile(
+    r"(?<![0-9])[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}(?![0-9])"
+    r"|(?<![0-9.,])[0-9]{1,2}[/-][0-9]{1,2}(?:[/-][0-9]{2,4})?(?![0-9])"
+    r"|(?<![0-9])[0-9]{1,2}:[0-9]{2}(?![0-9])"
+    r"|\b(?:alle|dalle|ore|entro le)\s+[0-9]{1,2}[.,][0-9]{2}\b"
+    r"|#\s*[0-9]+", re.IGNORECASE)
 
 
 def importi_nel_testo(testo: str) -> Set[int]:
     """Tutti gli importi (in centesimi) che si leggono nel testo dell'operatore: cifre
     («1.500», «1500,50») e «N mila» / «Nk». Le parole («mille») non contano: in quel
-    caso il modello chiede la cifra. Mai solleva."""
+    caso il modello chiede la cifra. Date, ore e «#numeri» non contano (R-839-4).
+    LIMITE dichiarato: gli altri numeri del messaggio (un telefono, una quantità) contano
+    ancora come importi possibili; la barriera vera resta la firma, che mostra la cifra
+    per esteso. Mai solleva."""
     trovati: Set[int] = set()
     if not isinstance(testo, str):
         return trovati
+    testo = _RE_NON_IMPORTI.sub(" ", testo)
     for m in _RE_NUMERO.finditer(testo):
         try:
             trovati.add(parse_importo(m.group(0)))
@@ -123,7 +138,18 @@ def _controlla_importo_detto(cents: int, testo_operatore: Optional[str]) -> None
 
 # --------------------------------------------------------------------- ricerca
 def _norm(testo: str) -> str:
-    return " ".join(testo.casefold().split())
+    """Per confrontare i nomi: maiuscole, spazi e accenti a parte («Nicolò» = «nicolo»)."""
+    senza = "".join(ch for ch in unicodedata.normalize("NFKD", testo)
+                    if not unicodedata.combining(ch))
+    return " ".join(senza.casefold().split())
+
+
+def _parole_a_inizio(cerca: str, nome: str) -> bool:
+    """Ogni parola cercata è l'INIZIO di una parola del nome («ross» → «Mario Rossi»),
+    mai un pezzo in mezzo (R-839-1: «Anna» non deve trovare «Marianna»)."""
+    parole_nome = nome.split()
+    return bool(cerca.split()) and all(any(pn.startswith(p) for pn in parole_nome)
+                                       for p in cerca.split())
 
 
 def _rif_id(rif: Any, campo: str) -> Optional[int]:
@@ -131,6 +157,8 @@ def _rif_id(rif: Any, campo: str) -> Optional[int]:
     if isinstance(rif, bool):
         raise ErroreCRM(f"{campo}: valore non valido")
     if isinstance(rif, int):
+        if rif > ID_MAX:
+            raise ErroreCRM(f"{campo}: numero troppo grande")
         return rif if rif > 0 else None
     if isinstance(rif, str):
         m = re.fullmatch(r"\s*#?\s*([0-9]{1,12})\s*", rif)
@@ -140,8 +168,16 @@ def _rif_id(rif: Any, campo: str) -> Optional[int]:
 
 
 def trova_cliente(store: CRMStore, rif: Any, campo: str = "cliente") -> Dict[str, Any]:
-    """Il cliente indicato da `rif` (id o nome). Il nome vale se identifica UN cliente:
-    prima il nome uguale (maiuscole e spazi a parte), poi un pezzo di nome. Se più
+    """Il cliente indicato da `rif` (id o nome): vedi `cerca_cliente`."""
+    return cerca_cliente(store, rif, campo)[0]
+
+
+def cerca_cliente(store: CRMStore, rif: Any,
+                  campo: str = "cliente") -> Tuple[Dict[str, Any], Optional[str]]:
+    """Il cliente indicato da `rif` (id o nome) e, se trovato per somiglianza, l'avviso da
+    mettere nella firma. Il nome vale se identifica UN cliente: prima il nome uguale
+    (maiuscole, spazi e accenti a parte), poi le parole cercate come INIZIO delle parole
+    del nome («mario ross» → «Mario Rossi»; mai «Anna» → «Marianna», R-839-1). Se più
     clienti corrispondono → errore coi candidati, per far scegliere l'operatore."""
     if rif is None or (isinstance(rif, str) and not rif.strip()):
         raise ErroreCRM(f"{campo}: indica il cliente (nome o #numero)")
@@ -150,15 +186,17 @@ def trova_cliente(store: CRMStore, rif: Any, campo: str = "cliente") -> Dict[str
         c = store.cliente(cid)
         if c is None:
             raise ErroreCRM(f"{campo}: nessun cliente #{cid}")
-        return c
+        return c, None
     if not isinstance(rif, str) or len(rif) > NOME_MAX:
         raise ErroreCRM(f"{campo}: valore non valido")
     cerca = _norm(rif)
     tutti = store.clienti()
     uguali = [c for c in tutti if _norm(str(c["nome"])) == cerca]
-    candidati = uguali or [c for c in tutti if cerca in _norm(str(c["nome"]))]
+    candidati = uguali or [c for c in tutti if _parole_a_inizio(cerca, _norm(str(c["nome"])))]
     if len(candidati) == 1:
-        return candidati[0]
+        avviso = None if uguali else (f"ATTENZIONE: hai indicato «{rif.strip()}», trovato per "
+                                      f"somiglianza {_nome(candidati[0])}")
+        return candidati[0], avviso
     if not candidati:
         raise ErroreCRM(f"{campo}: nessun cliente si chiama «{rif.strip()}»")
     elenco = ", ".join(f"#{c['id']} {c['nome']}" for c in candidati[:10])
@@ -264,7 +302,22 @@ def prepara(store: CRMStore, args: Any,
     if azione not in AZIONI:
         raise ErroreCRM(f"azione non valida (ammesse: {', '.join(AZIONI)})")
     _controlla_chiavi(args, _ARGOMENTI[azione], azione)
+    out, desc, avvisi = _prepara_azione(store, azione, args, testo_operatore)
+    if avvisi:
+        desc += ". " + ". ".join(avvisi)
+    return out, desc
+
+
+def _prepara_azione(store: CRMStore, azione: str, args: Dict[str, Any],
+                    testo_operatore: Optional[str]) -> Tuple[Dict[str, Any], str, List[str]]:
     out: Dict[str, Any] = {"v": VERSIONE_CANONICA, "azione": azione}
+    avvisi: List[str] = []
+
+    def trova(rif: Any, campo: str = "cliente") -> Dict[str, Any]:
+        c, avviso = cerca_cliente(store, rif, campo)
+        if avviso:
+            avvisi.append(avviso)
+        return c
 
     if azione == "nuovo_cliente":
         nome = normalizza_anagrafica("nome", _str_arg(args.get("nome"), "nome"))
@@ -279,7 +332,7 @@ def prepara(store: CRMStore, args: Any,
             out["consenso_marketing"] = _bool_arg(args["consenso_marketing"], "consenso_marketing")
         pres = None
         if args.get("presentato_da") not in (None, ""):
-            pres = trova_cliente(store, args["presentato_da"], "presentato_da")
+            pres = trova(args["presentato_da"], "presentato_da")
             out["presentato_da_id"] = int(pres["id"])
         _valida_canonico(store, out)
         parti = [f"Aggiungi il nuovo cliente «{nome}»"]
@@ -293,12 +346,12 @@ def prepara(store: CRMStore, args: Any,
         desc = ", ".join(parti)
         omonimi = [c for c in store.clienti() if _norm(str(c["nome"])) == _norm(nome)]
         if omonimi:
-            desc += (". ATTENZIONE: esiste già un cliente con questo nome ("
-                     + ", ".join(f"#{c['id']}" for c in omonimi) + ")")
-        return out, desc
+            avvisi.append("ATTENZIONE: esiste già un cliente con questo nome ("
+                          + ", ".join(f"#{c['id']}" for c in omonimi) + ")")
+        return out, desc, avvisi
 
     if azione == "aggiorna_cliente":
-        cli = trova_cliente(store, args.get("cliente"))
+        cli = trova(args.get("cliente"))
         campi: Dict[str, Any] = {}
         for k in CAMPI_CLIENTE:
             if k not in args:
@@ -309,7 +362,7 @@ def prepara(store: CRMStore, args: Any,
                 if args[k] in (None, ""):
                     campi[k] = None
                 else:
-                    campi[k] = int(trova_cliente(store, args[k], "presentato_da")["id"])
+                    campi[k] = int(trova(args[k], "presentato_da")["id"])
             else:
                 campi[k] = normalizza_anagrafica(k, _str_arg(args[k], k))
         if "telefono" in campi:
@@ -319,40 +372,53 @@ def prepara(store: CRMStore, args: Any,
         out.update(cliente_id=int(cli["id"]), campi=campi)
         _valida_canonico(store, out)
         return out, f"Aggiorna {_nome(cli)}: " + "; ".join(
-            _campo_a_parole(store, k, v) for k, v in campi.items())
+            _campo_a_parole(store, k, v, cli.get(k)) for k, v in campi.items()), avvisi
 
     if azione == "stato_cliente":
-        cli = trova_cliente(store, args.get("cliente"))
-        stato = args.get("stato")
+        cli = trova(args.get("cliente"))
+        stato = str(args.get("stato"))
         out.update(cliente_id=int(cli["id"]), stato=stato)
         _valida_canonico(store, out)
         if cli["stato"] == stato:
             raise ErroreCRM(f"il cliente è già nello stato «{stato}»")
         return out, (f"Cambia lo stato di {_nome(cli)}: da {cli['stato']} a "
-                     f"{_STATO_A_PAROLE[stato]}")
+                     f"{_STATO_A_PAROLE[stato]}"), avvisi
 
     if azione == "apri_servizio":
-        cli = trova_cliente(store, args.get("cliente"))
+        cli = trova(args.get("cliente"))
         srv = trova_servizio(store, args.get("servizio"))
         out.update(cliente_id=int(cli["id"]), servizio_id=int(srv["id"]),
                    data=valida_data(args.get("data") or store.oggi().isoformat(),
                                     "data di apertura"))
         if out["data"] > store.oggi().isoformat():
             raise ErroreCRM("data di apertura nel futuro")
-        for pos in store.posizioni(int(cli["id"])):
-            if int(pos["servizio_id"]) == int(srv["id"]) and pos["stato"] == "attiva":
-                raise ErroreCRM(f"il cliente è già nel servizio {srv['nome']}")
+        vecchia = next((pos for pos in store.posizioni(int(cli["id"]))
+                        if int(pos["servizio_id"]) == int(srv["id"])), None)
+        if vecchia is not None and vecchia["stato"] == "attiva":
+            raise ErroreCRM(f"il cliente è già nel servizio {srv['nome']}")
         if args.get("importo") not in (None, ""):
             out["importo_cents"] = _importo_arg(args["importo"])
             _controlla_importo_detto(out["importo_cents"], testo_operatore)
         _valida_canonico(store, out)
+        if vecchia is not None:
+            # R-839-3: lo store RIATTIVA la posizione di prima, che resta aperta dalla sua
+            # data; il deposito non può essere datato prima di quella
+            if "importo_cents" in out and out["data"] < str(vecchia["aperta_il"]):
+                raise ErroreCRM(f"data {out['data']} prima dell'apertura del servizio "
+                                f"({vecchia['aperta_il']})")
+            desc = (f"Riattiva {_nome(cli)} nel servizio «{srv['nome']}» (era {vecchia['stato']}, "
+                    f"aperto dal {vecchia['aperta_il']})")
+            if "importo_cents" in out:
+                desc += (f", con DEPOSITO di {formatta_euro(out['importo_cents'])} "
+                         f"in data {out['data']}")
+            return out, desc, avvisi
         desc = f"Metti {_nome(cli)} nel servizio «{srv['nome']}» dal {out['data']}"
         if "importo_cents" in out:
             desc += f", con capitale iniziale (DEPOSITO) di {formatta_euro(out['importo_cents'])}"
-        return out, desc
+        return out, desc, avvisi
 
     if azione == "movimento":
-        cli = trova_cliente(store, args.get("cliente"))
+        cli = trova(args.get("cliente"))
         pos, srv = _posizione_per_movimento(store, int(cli["id"]), args.get("servizio"))
         if args.get("importo") in (None, ""):
             raise ErroreCRM("importo: obbligatorio (chiedilo all'operatore)")
@@ -370,22 +436,29 @@ def prepara(store: CRMStore, args: Any,
         if out["data"] < str(pos["aperta_il"]):
             raise ErroreCRM(f"data {out['data']} prima dell'apertura del servizio "
                             f"({pos['aperta_il']})")
+        if out["tipo"] == "prelievo":
+            capitale = store.capitale_minimo_dal(out["posizione_id"], out["data"])
+            if capitale is None:
+                raise ErroreCRM("database del CRM non disponibile")
+            if cents > capitale:
+                raise ErroreCRM(f"prelievo di {formatta_euro(cents)} maggiore del capitale "
+                                f"disponibile dal {out['data']} ({formatta_euro(capitale)})")
         return out, (f"Registra per {_nome(cli)}, servizio «{srv['nome']}»: "
                      f"{_TIPO_A_PAROLE[out['tipo']]} di {formatta_euro(cents)} "
-                     f"in data {out['data']}")
+                     f"in data {out['data']}"), avvisi
 
     if azione == "promemoria":
         testo, quando = store.valida_promemoria(args.get("testo"), args.get("quando"))
         out.update(testo=testo, quando=quando)
-        cli = None
+        collegato: Optional[Dict[str, Any]] = None
         if args.get("cliente") not in (None, ""):
-            cli = trova_cliente(store, args["cliente"])
-            out["cliente_id"] = int(cli["id"])
+            collegato = trova(args["cliente"])
+            out["cliente_id"] = int(collegato["id"])
         _valida_canonico(store, out)
         desc = f"Promemoria per {_giorno_a_parole(out['quando'])}: «{testo}»"
-        if cli is not None:
-            desc += f", collegato a {_nome(cli)}"
-        return out, desc
+        if collegato is not None:
+            desc += f", collegato a {_nome(collegato)}"
+        return out, desc, avvisi
 
     # annulla_promemoria
     pid = _rif_id(args.get("promemoria"), "promemoria")
@@ -393,10 +466,12 @@ def prepara(store: CRMStore, args: Any,
         raise ErroreCRM("promemoria: indica il numero del promemoria (#id)")
     out["promemoria_id"] = pid
     pr = _valida_canonico(store, out)
-    return out, f"Annulla il promemoria #{pid} del {pr['quando']}: «{pr['testo']}»"
+    if pr is None:  # non succede: _valida_canonico solleva prima
+        raise ErroreCRM("promemoria non trovato")
+    return out, f"Annulla il promemoria #{pid} del {pr['quando']}: «{pr['testo']}»", avvisi
 
 
-def _campo_a_parole(store: CRMStore, k: str, v: Any) -> str:
+def _campo_a_parole(store: CRMStore, k: str, v: Any, prima: Any = None) -> str:
     if k == "consenso_marketing":
         return "consenso marketing " + ("DATO" if v else "TOLTO")
     if k == "opt_out":
@@ -409,7 +484,12 @@ def _campo_a_parole(store: CRMStore, k: str, v: Any) -> str:
             return "presentato da: nessuno"
         c = store.cliente(int(v))
         return "presentato da " + (_nome(c) if c else f"#{v}")
-    return f"{k}: " + ("(vuoto)" if v is None else f"«{v}»")
+    # R-839-7: il valore nuovo SOSTITUISCE quello di prima, che la firma deve mostrare
+    vecchio = "(vuoto)" if prima in (None, "") else f"«{prima}»"
+    nuovo = "(vuoto)" if v is None else f"«{v}»"
+    if k == "note":
+        return f"note: SOSTITUISCE la nota attuale {vecchio} con {nuovo}"
+    return f"{k}: {nuovo} (prima: {vecchio})"
 
 
 # --------------------------------------------------------------------- forma canonica
@@ -425,7 +505,7 @@ def _valida_canonico(store: CRMStore, c: Any) -> Optional[Dict[str, Any]]:
 
     def intero(k: str) -> int:
         v = c.get(k)
-        if isinstance(v, bool) or not isinstance(v, int) or v < 1:
+        if isinstance(v, bool) or not isinstance(v, int) or not 1 <= v <= ID_MAX:
             raise ErroreCRM(f"{k}: id non valido")
         return v
 
@@ -436,7 +516,9 @@ def _valida_canonico(store: CRMStore, c: Any) -> Optional[Dict[str, Any]]:
         return cli
 
     if azione in ("nuovo_cliente", "aggiorna_cliente"):
-        campi_testo = c if azione == "nuovo_cliente" else (c.get("campi") or {})
+        campi_testo = c if azione == "nuovo_cliente" else c.get("campi")
+        if not isinstance(campi_testo, dict):
+            raise ErroreCRM("campi da aggiornare non validi")
         if azione == "nuovo_cliente" and "nome" not in c:
             raise ErroreCRM("nome: obbligatorio")
         for k in ("nome", "telefono", "email", "note"):
@@ -497,7 +579,7 @@ def _valida_canonico(store: CRMStore, c: Any) -> Optional[Dict[str, Any]]:
 
 
 def intero_di(v: Any) -> int:
-    if isinstance(v, bool) or not isinstance(v, int) or v < 1:
+    if isinstance(v, bool) or not isinstance(v, int) or not 1 <= v <= ID_MAX:
         raise ErroreCRM("id non valido")
     return v
 
@@ -690,4 +772,4 @@ def _scheda_cliente(store: CRMStore, p: Dict[str, Any], cid: int) -> str:
 
 
 __all__ = ["CONSULTE", "AZIONI", "consulta", "prepara", "applica", "importi_nel_testo",
-           "trova_cliente", "trova_servizio"]
+           "trova_cliente", "cerca_cliente", "trova_servizio"]

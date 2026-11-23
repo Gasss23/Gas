@@ -478,6 +478,46 @@ def avvisa_firme_scadute(memory: Any) -> int:
         return 0
 
 
+MAX_PROMEMORIA_GIRO = 10
+
+
+def componi_promemoria(r: Dict[str, Any], nome_cliente: Optional[str]) -> str:
+    """Testo del promemoria del CRM (solo informativo). Il testo è dell'operatore, ma
+    passa da rendi_visibili come ogni testo salvato."""
+    righe = [f"⏰ Promemoria #{r.get('id')} (per il {tronca_visibile(r.get('quando') or '', 20)})",
+             rendi_visibili(str(r.get("testo") or ""))]
+    if nome_cliente:
+        righe.append(f"Cliente: {tronca_visibile(nome_cliente, 120)} (#{r.get('cliente_id')})")
+    return "\n".join(righe)
+
+
+def invia_promemoria_crm(kernel: Any) -> int:
+    """Promemoria del CRM arrivati all'ora (decisione 18 del 23-11): ognuno è segnato come
+    mandato PRIMA dell'invio (mai due volte) e, se l'invio fallisce, rimesso in coda per
+    il giro dopo. Ritorna quanti ne ha mandati. Fail-safe §9: mai eccezioni."""
+    try:
+        apri = getattr(kernel, "crm_store", None)
+        st = apri() if callable(apri) else None
+        if st is None:
+            return 0
+        inviati = 0
+        for r in st.promemoria_scaduti()[:MAX_PROMEMORIA_GIRO]:
+            if not st.reclama_promemoria(r["id"]):
+                continue
+            cli = st.cliente(int(r["cliente_id"])) if r.get("cliente_id") is not None else None
+            ok, motivo = invia_notifica(componi_promemoria(r, cli["nome"] if cli else None))
+            if not ok:
+                st.rilascia_promemoria(r["id"])
+                log.warning("promemoria #%s non inviato (%s): riprovo al prossimo giro",
+                            r["id"], motivo)
+                break
+            inviati += 1
+        return inviati
+    except Exception as e:
+        log.warning("promemoria del CRM: controllo fallito (%s)", type(e).__name__)
+        return 0
+
+
 # ─────────────────────────────────────────── entry point ──
 
 def run_bot(root_dir: Optional[str] = None) -> int:
@@ -541,6 +581,7 @@ def run_bot(root_dir: Optional[str] = None) -> int:
             if time.monotonic() - ultimo_controllo_scadute >= 60:
                 ultimo_controllo_scadute = time.monotonic()
                 avvisa_firme_scadute(getattr(kernel, "memory", None))
+                invia_promemoria_crm(kernel)  # CRM (23-11): promemoria arrivati all'ora
                 _raccogli_giri()
             # allowed_updates esplicito: Telegram ricorda l'ultimo valore usato,
             # senza callback_query i bottoni di firma resterebbero muti.

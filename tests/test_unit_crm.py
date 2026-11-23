@@ -2303,9 +2303,13 @@ def _conta(st: CRMStore, tabella: str) -> int:
 def test_agente_importi_nel_testo() -> None:
     t = "ha versato 1.500 euro, poi 250,50 e 3 mila; il 23/11 anche 2k. Mille no."
     trovati = agente.importi_nel_testo(t)
-    for cents in (150_000, 25_050, 300_000, 200_000, 2_300, 1_100):
+    for cents in (150_000, 25_050, 300_000, 200_000):
         assert cents in trovati
     assert 100_000 not in trovati  # «Mille» a parole non conta: il modello chiede la cifra
+    # R-839-4: date, ore e #numeri non sono importi
+    assert 2_300 not in trovati and 1_100 not in trovati
+    assert agente.importi_nel_testo("oggi 20/06 alle 15:30, il #12, il 2026-06-20, "
+                                    "il 20-06-2026, alle 9.45") == set()
     assert agente.importi_nel_testo(None) == set()  # type: ignore[arg-type]
     assert agente.importi_nel_testo("nessuna cifra") == set()
 
@@ -2506,3 +2510,74 @@ def test_agente_consulta_mai_solleva_e_resta_corta(st: CRMStore, tmp_path: Path)
     assert agente.consulta(rotto, "riepilogo").startswith("Errore:")
     # una lettura fallita non si scambia per «nessun promemoria»
     assert agente.consulta(rotto, "promemoria").startswith("Errore: database")
+
+
+def test_agente_riserve_839(st: CRMStore) -> None:
+    """Riserve della review #839-CRM: ricerca per nome solo a inizio parola (R-839-1),
+    controlli prima della firma (R-839-2/3), id enormi (R-839-6), firma che mostra il
+    valore sostituito (R-839-7)."""
+    srv = servizi_base(st)
+    ma, pma = cliente_contento(st, srv, nome="Marianna Verdi", telefono="+390000000011")
+    ro, _ = cliente_contento(st, srv, nome="Mario Rossi", telefono="+390000000012")
+    ri, _ = cliente_contento(st, srv, nome="Mario Rossini", telefono="+390000000013")
+    stato = {"azione": "stato_cliente", "stato": "in_pausa"}
+    # R-839-1: «Anna» non trova «Marianna»; il nome uguale vince; la somiglianza si dice
+    with pytest.raises(ErroreCRM, match="nessun cliente"):
+        agente.prepara(st, dict(stato, cliente="Anna"), "")
+    can, desc = agente.prepara(st, dict(stato, cliente="mario rossi"), "")
+    assert can["cliente_id"] == ro and "ATTENZIONE" not in desc
+    can, desc = agente.prepara(st, dict(stato, cliente="rossin"), "")
+    assert can["cliente_id"] == ri and "trovato per somiglianza «Mario Rossini»" in desc
+    with pytest.raises(ErroreCRM, match="più clienti"):
+        agente.prepara(st, dict(stato, cliente="mario ross"), "")
+    can, desc = agente.prepara(st, dict(stato, cliente="MARIANNA"), "")
+    assert can["cliente_id"] == ma and "somiglianza" in desc
+    # omonimi anche con gli accenti
+    st.aggiungi_cliente("Nicolò Ferrè")
+    _, desc = agente.prepara(st, {"azione": "nuovo_cliente", "nome": "Nicolo Ferre"}, "")
+    assert "esiste già un cliente con questo nome" in desc
+    # R-839-2: importo detto anche per apri_servizio; telefono già usato in aggiorna
+    args = {"azione": "apri_servizio", "cliente": f"#{ro}", "servizio": "gestito",
+            "importo": "5.000"}
+    with pytest.raises(ErroreCRM, match="non compare"):
+        agente.prepara(st, args, "mettilo nel conto gestito")
+    assert agente.prepara(st, args, "con 5000 euro")[0]["importo_cents"] == 500_000
+    with pytest.raises(ErroreCRM, match="già del cliente"):
+        agente.prepara(st, {"azione": "aggiorna_cliente", "cliente": f"#{ro}",
+                            "telefono": "+390000000011"}, "")
+    can, _ = agente.prepara(st, {"azione": "aggiorna_cliente", "cliente": f"#{ro}",
+                                 "telefono": "+390000000012"}, "")  # il suo: va bene
+    can, _ = agente.prepara(st, {"azione": "nuovo_cliente", "nome": "Gina Neri",
+                                 "consenso_marketing": True}, "")
+    nuovo = int(agente.applica(st, can).split("#")[1].rstrip("."))
+    assert st.cliente(nuovo)["consenso_marketing"] == 1  # type: ignore[index]
+    # R-839-3: prelievo oltre il capitale e riattivazione detti PRIMA della firma
+    with pytest.raises(ErroreCRM, match="maggiore del capitale"):
+        agente.prepara(st, {"azione": "movimento", "cliente": f"#{ma}", "tipo": "prelievo",
+                            "importo": "50.000"}, "preleva 50.000")
+    st.cambia_stato_posizione(pma, "chiusa")
+    args = {"azione": "apri_servizio", "cliente": f"#{ma}", "servizio": "oro",
+            "importo": "200", "data": "2026-03-01"}
+    with pytest.raises(ErroreCRM, match="prima dell'apertura"):
+        agente.prepara(st, args, "200")
+    can, desc = agente.prepara(st, dict(args, data="2026-06-10"), "200")
+    assert desc.startswith("Riattiva «Marianna Verdi»") and "aperto dal 2026-04-01" in desc
+    agente.applica(st, can)
+    # R-839-6: id enormi → ErroreCRM, mai OverflowError
+    with pytest.raises(ErroreCRM):
+        agente.prepara(st, dict(stato, cliente=2**70), "")
+    with pytest.raises(ErroreCRM):
+        agente.applica(st, {"v": 1, "azione": "stato_cliente", "cliente_id": 2**70,
+                            "stato": "perso"})
+    with pytest.raises(ErroreCRM, match="campi"):
+        agente.applica(st, {"v": 1, "azione": "aggiorna_cliente", "cliente_id": ro,
+                            "campi": "nome"})
+    # R-839-7: la firma mostra la nota che viene sostituita
+    st.aggiorna_cliente(ro, note="paga sempre puntuale")
+    _, desc = agente.prepara(st, {"azione": "aggiorna_cliente", "cliente": f"#{ro}",
+                                  "note": "ha chiamato"}, "")
+    assert "SOSTITUISCE la nota attuale «paga sempre puntuale» con «ha chiamato»" in desc
+    # promemoria annullato: mai reclamato; id non interi rifiutati
+    pid = st.aggiungi_promemoria("x", "2020-01-01 09:00", nel_passato=True)
+    st.annulla_promemoria(pid)
+    assert st.reclama_promemoria(pid) is False and st.reclama_promemoria(True) is False

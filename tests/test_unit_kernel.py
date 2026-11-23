@@ -8747,7 +8747,9 @@ def _setup80(risposte: dict) -> None:
 def _k80_con_storia(contaminata: bool = False) -> GasKernel:
     k_ = kernel_tmp()
     k_.history = [
-        {"role": "user", "content": "calcola il preventivo per il cliente Rossi"},
+        # 23-11: senza la parola «cliente», che ora manda la conversazione solo a Opus
+        # (decisione 18, T118e): qui si prova la riflessione coi cervelli normali
+        {"role": "user", "content": "calcola il preventivo per Rossi"},
         {"role": "assistant", "content": None, "tool_calls": [
             {"id": "c1", "type": "function",
              "function": {"name": "read_file" if contaminata else "calcola",
@@ -8794,7 +8796,7 @@ try:
     check("T80d chiamata di riflessione SENZA tool, trascrizione avvolta come dato",
           _Rif80.chiamate[0][2] is None and len(_Rif80.chiamate[0][1]) == 2
           and "10.000 token" in _sys80 and "Cosa abbiamo imparato" in _sys80
-          and _usr80.startswith("<trascrizione_dati>") and "preventivo per il cliente Rossi" in _usr80
+          and _usr80.startswith("<trascrizione_dati>") and "preventivo per Rossi" in _usr80
           and "[assistant → tool calcola]" in _usr80, _usr80[:300])
     check("T80e la riflessione NON tocca la cronologia", len(_k80.history) == 4)
 
@@ -13472,8 +13474,10 @@ try:
                "chiave": f"c{i}@esempio.it", "contatto": f"+39333{1000000 + i}",
                "merged_into": "crm", "stato": "chiuso"} for i in range(1500)]
     _id116 = gas._identificativi_contatti(_cl116)
+    # 23-11: «ricordami» ora manda il turno a Opus (richiesta del CRM, decisione 18, T118e):
+    # il testo di questa prova di velocità dice «poi sistemo», così resta senza dati di clienti
     _testo116 = ("Ok, domani controllo la posta e ti aggiorno sul progetto della voce; "
-                 "ricordami di sistemare il file config.yaml e il timer del 2026-11-17. ") * 3
+                 "poi sistemo il file config.yaml e il timer del 2026-11-17. ") * 3
     _fin116 = [{"role": "user" if i % 2 == 0 else "assistant", "content": _testo116}
                for i in range(30)]
     _c0 = _t116.perf_counter()
@@ -13614,6 +13618,185 @@ try:
 except Exception as _e117x:
     import traceback as _tb117
     check("T117 blocco senza eccezioni", False, repr(_e117x) + _tb117.format_exc()[-800:])
+
+# ---------- T118: Gas usa il CRM (decisione 18 del 23-11) ----------
+print("--- T118: comandi del CRM da Gas (firma, solo Opus, importi detti, promemoria) ---")
+try:
+    from modules.crm.store import CRMStore as _CRM118
+    import modules.telegram.bot as _tgbot118
+
+    def _k118():
+        k = kernel_tmp()
+        k.crm_db_path = Path(k.root) / ".gas_memory_crm.db"
+        st = _CRM118(k.crm_db_path)
+        sid = st.aggiungi_servizio("oro", "Copy Oro", "percentuale_profitto", commissione_bp=2500)
+        cid = st.aggiungi_cliente("Mario Rossi", telefono="+393330000001")
+        pid = st.apri_posizione(cid, sid, data="2026-01-01")
+        return k, st, cid, pid
+
+    def _diario118(k):
+        return " ".join(str(r.get("descrizione")) for r in k.memory.diario_recente(50))
+
+    # T118a — «quanti clienti ho?»: niente nomi noti nel messaggio, ma è una richiesta
+    # del CRM → Opus dalla prima chiamata; round-trip consulta → risposta (§7)
+    _k, _st, _cid, _pid = _k118()
+    _ev, _g, _f = _turno117(_k, "quanti clienti ho?", [
+        _r115(tool_calls=[_tc115("crm_consulta", '{"cosa": "riepilogo"}')]),
+        _r115("Hai un cliente attivo.")])
+    _tm = [m for m in _k.history if m.get("role") == "tool" and m.get("name") == "crm_consulta"]
+    _prog = [e.get("output") for e in _ev if e["type"] == "tool_res"]
+    check("T118a richiesta del CRM: Opus a ogni chiamata, gratuiti mai, round-trip tool → final",
+          _f.modelli == [_OPUS117, _OPUS117] and not _g.visti and _ev[-1]["type"] == "final"
+          and _tm and "Clienti attivi: 1" in _tm[0]["content"], f"{_f.modelli} {str(_ev)[-300:]}")
+    check("T118a i dati del CRM non vanno nei progressi né nel diario",
+          _prog == ["CRM consultato."] and "Mario" not in _diario118(_k)
+          and "Clienti attivi" not in _diario118(_k), f"{_prog} {_diario118(_k)[-300:]}")
+
+    # T118b — movimento detto dall'operatore: firma con la descrizione, poi applica_firma
+    _k, _st, _cid, _pid = _k118()
+    _rb118: list = []
+    _orig_rb118 = gas._tg_bot.invia_read_back
+    gas._tg_bot.invia_read_back = (
+        lambda testo, approval_id=None: (_rb118.append((testo, approval_id)), (True, ""))[1])
+    try:
+        _ev, _g, _f = _turno117(_k, "Mario Rossi ha versato 1.500 euro oggi", [
+            _r115(tool_calls=[_tc115("crm_modifica", json.dumps(
+                {"azione": "movimento", "cliente": "Mario Rossi", "tipo": "deposito",
+                 "importo": "1500"}))]),
+            _r115("Ti ho mandato la richiesta di firma.")])
+    finally:
+        gas._tg_bot.invia_read_back = _orig_rb118
+    _pend = _k.memory.get_pending_approvals()
+    _testo_rb = _rb118[0][0] if _rb118 else ""
+    check("T118b crm_modifica al cancello: nessuna scrittura, read-back con descrizione e "
+          "argomenti canonici, modello Opus",
+          len(_pend) == 1 and _pend[0]["tool_name"] == "crm_modifica"
+          and len(_st.movimenti(_cid)) == 0 and _f.modelli == [_OPUS117, _OPUS117]
+          and "CRM — Registra per «Mario Rossi»" in _testo_rb and "1.500,00 €" in _testo_rb
+          and '"importo_cents": 150000' in _testo_rb and "Mario" not in _diario118(_k),
+          f"{_pend} {_testo_rb[:400]}")
+    _aid = _pend[0]["id"] if _pend else ""
+    _sv_ids = os.environ.get("TELEGRAM_ALLOWED_IDS")
+    os.environ["TELEGRAM_ALLOWED_IDS"] = "4242"
+    try:
+        _k.memory.resolve_approval(_aid, "approved", telegram_user_id=4242)
+        _r = _k.applica_firma(_aid)
+    finally:
+        if _sv_ids is None:
+            os.environ.pop("TELEGRAM_ALLOWED_IDS", None)
+        else:
+            os.environ["TELEGRAM_ALLOWED_IDS"] = _sv_ids
+    _mov = _st.movimenti(_cid)
+    check("T118b dopo la firma: movimento scritto una volta, 1.500 € dall'operatore",
+          _r["eseguita"] is True and len(_mov) == 1 and _mov[0]["importo_cents"] == 150_000
+          and _mov[0]["fonte"] == "operatore" and "Mario" not in _diario118(_k),
+          f"{_r} {_mov}")
+
+    # T118c — cifra non detta dall'operatore: diniego, niente firma, niente scrittura
+    _k, _st, _cid, _pid = _k118()
+    _rb118.clear()
+    gas._tg_bot.invia_read_back = (
+        lambda testo, approval_id=None: (_rb118.append((testo, approval_id)), (True, ""))[1])
+    try:
+        _ev, _g, _f = _turno117(_k, "Mario Rossi ha versato un po' di soldi", [
+            _r115(tool_calls=[_tc115("crm_modifica", json.dumps(
+                {"azione": "movimento", "cliente": "Mario Rossi", "tipo": "deposito",
+                 "importo": "2000"}))]),
+            _r115("Quanto ha versato?")])
+    finally:
+        gas._tg_bot.invia_read_back = _orig_rb118
+    _out = [e.get("output") for e in _ev if e["type"] == "tool_res"]
+    check("T118c importo non detto: «Operazione negata», nessuna firma né scrittura",
+          not _rb118 and not _k.memory.get_pending_approvals() and not _st.movimenti(_cid)
+          and _out and _out[0].startswith("Operazione negata") and "non compare" in _out[0],
+          str(_out))
+
+    # T118c2 — R-839-5: le cifre lette nel CRM (risultato di crm_consulta) non valgono come
+    # importi detti: conta solo il messaggio dell'operatore di questo turno
+    _k, _st, _cid, _pid = _k118()
+    _st.registra_movimento(_pid, "deposito", 300_000, data="2026-01-02")
+    _rb118.clear()
+    gas._tg_bot.invia_read_back = (
+        lambda testo, approval_id=None: (_rb118.append((testo, approval_id)), (True, ""))[1])
+    try:
+        _ev, _g, _f = _turno117(_k, "Mario Rossi preleva tutto il suo capitale", [
+            _r115(tool_calls=[_tc115("crm_consulta", '{"cosa": "cliente", "cliente": "Mario Rossi"}')]),
+            _r115(tool_calls=[_tc115("crm_modifica", json.dumps(
+                {"azione": "movimento", "cliente": "Mario Rossi", "tipo": "prelievo",
+                 "importo": "3.000"}), i=1)]),
+            _r115("Dimmi la cifra.")])
+    finally:
+        gas._tg_bot.invia_read_back = _orig_rb118
+    _out = [e.get("output") for e in _ev if e["type"] == "tool_res"]
+    _tm = [m for m in _k.history if m.get("role") == "tool" and m.get("name") == "crm_consulta"]
+    check("T118c2 cifra letta nel CRM, non detta dall'operatore: diniego, niente firma",
+          _tm and "3.000,00 €" in _tm[0]["content"] and len(_out) == 2
+          and _out[1].startswith("Operazione negata") and "non compare" in _out[1]
+          and not _rb118 and not _k.memory.get_pending_approvals(), str(_out))
+
+    # T118d — difese dirette: senza Opus niente dati; senza firma niente modifiche;
+    # dal sottofondo niente modifiche; la forma canonica non si passa da fuori
+    _k, _st, _cid, _pid = _k118()
+    _k._chiamata_opus = False
+    _o1 = _k.execute_tool_call("crm_consulta", '{"cosa": "clienti"}')
+    _o2 = _k.execute_tool_call("crm_modifica", json.dumps(
+        {"v": 1, "azione": "stato_cliente", "cliente_id": _cid, "stato": "perso"}))
+    _p1 = _k._prepara_crm('{"azione": "stato_cliente", "cliente": "Mario Rossi", "stato": "perso"}')
+    _k._chiamata_opus = True
+    _k.nel_sottofondo = True
+    _p2 = _k._prepara_crm('{"azione": "stato_cliente", "cliente": "Mario Rossi", "stato": "perso"}')
+    _k.nel_sottofondo = False
+    _p3 = _k._prepara_crm(json.dumps({"v": 1, "azione": "stato_cliente", "cliente_id": _cid,
+                                      "stato": "perso"}))
+    _p4 = _k._prepara_crm('{"azione": "stato_cliente", "cliente": "Mario Rossi", "stato": "perso"}')
+    _o3 = _k.execute_tool_call("crm_consulta", '{"cosa": "cliente", "cliente": "Mario"}')
+    check("T118d solo Opus legge, solo la firma scrive, mai dal sottofondo, mai forma canonica "
+          "dal modello",
+          _o1.startswith("Operazione negata") and "Mario" not in _o1
+          and _o2.startswith("Operazione negata") and _st.cliente(_cid)["stato"] == "attivo"
+          and _p1[0] is None and "Opus" in _p1[1] and _p2[0] is None and "sottofondo" in _p2[1]
+          and _p3[0] is None and "non previsti" in _p3[1]
+          and _p4[0] is not None and _p4[1].startswith("CRM — Cambia lo stato di «Mario Rossi»")
+          and "Cliente #1: Mario Rossi" in _o3,
+          f"{_o1[:80]} | {_o2[:80]} | {_p1} | {_p2} | {_p3} | {_p4} | {_o3[:60]}")
+    check("T118d il cancello: crm_consulta SAFE, crm_modifica sempre alla firma",
+          gas.gate_classify("crm_consulta", '{"cosa": "clienti"}') == gas.GateClass.SAFE
+          and gas.gate_classify("crm_modifica", '{"azione": "promemoria"}')
+          == gas.GateClass.IRREVERSIBLE)
+
+    # T118e — una richiesta del CRM nella finestra vale come dati di clienti
+    _fl = gas._finestra_ha_dati_lead
+    check("T118e parole del CRM nei messaggi dell'operatore → solo Opus; altrove no",
+          _fl([{"role": "user", "content": "Ricordami di chiamare domani"}], [])
+          and _fl([{"role": "user", "content": "aggiungi il cliente Anna Neri"}], [])
+          and _fl([{"role": "tool", "name": "crm_modifica", "content": "x"}], [])
+          and not _fl([{"role": "user", "content": "che ore sono?"}], [])
+          and not _fl([{"role": "assistant", "content": "i tuoi clienti"}], []))
+
+    # T118f — promemoria su Telegram: uno per volta, mai due invii, invio fallito → in coda
+    _k, _st, _cid, _pid = _k118()
+    _st.aggiungi_promemoria("chiama Mario per il bonifico", "2020-01-01 10:00", _cid,
+                            nel_passato=True)
+    _inviati118: list = []
+    _orig_n118 = _tgbot118.invia_notifica
+    _tgbot118.invia_notifica = lambda testo: (_inviati118.append(testo), (True, ""))[1]
+    try:
+        _n1 = _tgbot118.invia_promemoria_crm(_k)
+        _n2 = _tgbot118.invia_promemoria_crm(_k)
+        _st.aggiungi_promemoria("rinnovo", "2020-01-02 10:00", nel_passato=True)
+        _tgbot118.invia_notifica = lambda testo: (False, "rete giù")
+        _n3 = _tgbot118.invia_promemoria_crm(_k)
+        _n4 = _tgbot118.invia_promemoria_crm(object())  # kernel senza CRM: 0, mai eccezioni
+    finally:
+        _tgbot118.invia_notifica = _orig_n118
+    check("T118f promemoria mandato una volta col nome del cliente; invio fallito → resta in coda",
+          _n1 == 1 and _n2 == 0 and _n3 == 0 and _n4 == 0 and len(_inviati118) == 1
+          and "chiama Mario per il bonifico" in _inviati118[0] and "Mario Rossi" in _inviati118[0]
+          and [r["testo"] for r in _st.promemoria_scaduti()] == ["rinnovo"],
+          f"{_n1} {_n2} {_n3} {_inviati118}")
+except Exception as _e118x:
+    import traceback as _tb118
+    check("T118 blocco senza eccezioni", False, repr(_e118x) + _tb118.format_exc()[-800:])
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

@@ -941,6 +941,17 @@ class CRMStore:
                 minimo = min(minimo, saldo)
         return minimo
 
+    def capitale_minimo_dal(self, posizione_id: int, giorno: str) -> Optional[int]:
+        """Il capitale più basso della posizione da `giorno` in poi, in SOLA LETTURA: quanto
+        si può prelevare in quella data (stesso conto del controllo nella scrittura; lo usa
+        la firma dei comandi di Gas per dirlo PRIMA, R-839-3). None se il DB non risponde."""
+        try:
+            with self._connect() as con:
+                return self._saldo_minimo_da(con, int(posizione_id), valida_data(giorno))
+        except (sqlite3.Error, OSError) as e:
+            log.warning("CRM: capitale non leggibile (%s): %s", self.db_path, e)
+            return None
+
     def registra_movimento(self, posizione_id: int, tipo: str, importo_cents: int,
                            data: Optional[str] = None, fonte: str = "operatore",
                            nota: Optional[str] = None) -> int:
@@ -1302,7 +1313,13 @@ class CRMStore:
     def reclama_promemoria(self, promemoria_id: int) -> bool:
         """Segna il promemoria come mandato PRIMA dell'invio, solo se nessuno l'ha già
         fatto (UPDATE condizionato: due giri insieme non lo mandano due volte). Se l'invio
-        poi fallisce, `rilascia_promemoria` lo rimette in coda. Mai solleva: errore → False."""
+        poi fallisce, `rilascia_promemoria` lo rimette in coda. Mai solleva: errore → False.
+
+        R-839-5, garanzia dichiarata: di norma UNA volta. Due casi limite: un crash del
+        processo fra reclamo e invio perde il promemoria (resta segnato come mandato); un
+        invio dato per fallito (tempo scaduto) ma arrivato lo stesso si ripete al giro dopo."""
+        if isinstance(promemoria_id, bool) or not isinstance(promemoria_id, int):
+            return False
         try:
             with self._connect() as con:
                 cur = con.execute(
@@ -1317,6 +1334,8 @@ class CRMStore:
 
     def rilascia_promemoria(self, promemoria_id: int) -> None:
         """Rimette in coda un promemoria reclamato ma non mandato. Mai solleva."""
+        if isinstance(promemoria_id, bool) or not isinstance(promemoria_id, int):
+            return
         try:
             with self._connect() as con:
                 con.execute("UPDATE crm_promemoria SET avvisato_il = NULL WHERE id = ? "
