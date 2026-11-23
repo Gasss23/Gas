@@ -22,7 +22,9 @@ import re
 import math
 import os
 import secrets
+import shutil
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -47,6 +49,10 @@ RIPRESE_DEFAULT = 2   # riprese automatiche di un compito il cui processo è mor
 RIPRESE_TETTO = 5     # tetto duro, qualunque valore dica l'ambiente
 PASSI_MAX = 50        # nomi di strumenti tenuti come progressi
 LOCK = ".lock"
+ATTESA_RETE_S_DEFAULT = 120  # ripresa al boot: attesa massima della rete (GAS_SOTTOFONDO_ATTESA_RETE)
+ATTESA_RETE_S_TETTO = 600
+HOST_RETE = (("api.anthropic.com", 443), ("generativelanguage.googleapis.com", 443),
+             ("api.telegram.org", 443))
 _NOME_STRUMENTO = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
 StatoAttivo = Optional[Dict[str, Any]]
@@ -313,6 +319,115 @@ def ferma(root: Path, avvisa: Optional[Callable[[str, Path], Any]] = None) -> Tu
     except Exception as e:  # §9
         logging.warning("sottofondo: arresto non riuscito: %s", e)
         return False, f"Arresto non riuscito ({type(e).__name__}): vedi gas_debug.log."
+
+
+def _rete_pronta() -> bool:
+    """Bot #398 V-1: c'è rete se almeno un servizio che Gas usa risponde (connessione TCP,
+    niente dati inviati). Mai eccezioni."""
+    for host, porta in HOST_RETE:
+        try:
+            socket.create_connection((host, porta), timeout=3).close()
+            return True
+        except OSError:
+            continue
+    return False
+
+
+def _aspetta_rete(rete: Callable[[], bool], dormi: Callable[[float], Any] = time.sleep) -> bool:
+    """Aspetta la rete fino a GAS_SOTTOFONDO_ATTESA_RETE secondi (default 120, tetto 600)."""
+    attesa = min(float(ATTESA_RETE_S_TETTO),
+                 max(0.0, _numero_env("GAS_SOTTOFONDO_ATTESA_RETE", ATTESA_RETE_S_DEFAULT)))
+    fine = time.monotonic() + attesa
+    while True:
+        if rete():
+            return True
+        if time.monotonic() >= fine:
+            return False
+        dormi(5)
+
+
+def _forte_trovabile() -> bool:
+    """Bot #398 (ea78c51b) V-1: con «Sempre Opus» (GAS_SOLO_OPUS acceso, default) il compito
+    ripreso va solo al cervello forte (`claude`). Da launchd il PATH è minimo: se il binario
+    non si trova (stessa ricerca di brains/claude_cli.py: GAS_CLAUDE_BIN, poi PATH), il
+    figlio fallirebbe e il compito finirebbe «ko» per sempre. Con l'interruttore spento
+    ci sono gli altri cervelli: True. Mai eccezioni."""
+    try:
+        if os.environ.get("GAS_SOLO_OPUS", "1").strip().lower() in ("0", "false", "no", "off"):
+            return True
+        binario = os.environ.get("GAS_CLAUDE_BIN") or "claude"
+        if os.sep in binario:
+            return os.path.isfile(binario) and os.access(binario, os.X_OK)
+        return shutil.which(binario) is not None
+    except Exception:
+        return False
+
+
+def riprendi_al_boot(root: Path,
+                     avvisa: Optional[Callable[[str, Path], Any]] = None,
+                     rete: Optional[Callable[[], bool]] = None,
+                     dormi: Callable[[float], Any] = time.sleep,
+                     forte: Optional[Callable[[], bool]] = None) -> Tuple[bool, str]:
+    """R7 fetta 2: `gas.py sottofondo-riprendi`, lanciato all'avvio del computer (launchd oggi,
+    systemd sul server). Fa lo stesso controllo dell'inizio turno (`controlla`): un compito il
+    cui processo è morto col riavvio riparte subito, senza aspettare la prima interazione;
+    riprese finite, oltre la durata o fermato → «ko» con avviso, come sempre. Nella frase per il
+    terminale (e per il log di launchd) solo l'id e lo stato, mai il testo del compito.
+    Ritorna (riuscito, frase). Mai eccezioni (§9)."""
+    try:
+        cartella = Path(root) / CARTELLA
+        if not cartella.is_dir():
+            if (Path(root) / "gas.py").is_file():
+                return True, "Nessun compito in sottofondo da riprendere."
+            return False, (f"Nessuna coda dei compiti in {Path(root).resolve()}: lancia il "
+                           "comando dalla cartella di Gas (cd ~/Gas).")
+        ident = str((_leggi(cartella / ATTIVO) or {}).get("id") or "")
+        percorso = cartella / f"{Path(ident).name}.json"
+        # Bot #398 V-1: al login la rete può non esserci ancora. Senza rete il compito
+        # ripreso fallirebbe subito e verrebbe chiuso «ko» per sempre: si aspetta la rete
+        # (con un tetto) e, se non arriva, non si tocca la coda: il compito riparte alla
+        # prima interazione con Gas, come prima di questa fetta.
+        # Verifica esterna #398 (ea78c51b) V-1: attese e controlli solo se il compito è
+        # ancora aperto (uno già finito si chiude da sé, anche senza rete)
+        aperto = bool(ident) and (_leggi(percorso) or {}).get("stato") in ("in_coda", "in_corso")
+        if aperto and not (forte or _forte_trovabile)():
+            # Bot #398 (ea78c51b) V-1: senza cervello forte raggiungibile la coda non si tocca
+            logging.warning("sottofondo %s: cervello forte non trovato all'avvio, ripresa "
+                            "rimandata", ident)
+            return False, (f"Cervello forte non trovato (claude non è nel PATH di questo avvio): "
+                           f"compito {ident} non toccato, riparte alla prima interazione con "
+                           "Gas. Per la ripresa all'avvio metti GAS_CLAUDE_BIN (percorso "
+                           "completo di claude) nel .env.")
+        if aperto and not _aspetta_rete(rete or _rete_pronta, dormi):
+            logging.warning("sottofondo %s: rete non pronta all'avvio, ripresa rimandata", ident)
+            return False, (f"Rete non pronta: compito {ident} non toccato, riparte alla prima "
+                           "interazione con Gas.")
+        prima = _riprese(_leggi(percorso) or {}) if ident else 0
+        controlla(root, avvisa)
+        if not ident:
+            return True, "Nessun compito in sottofondo da riprendere."
+        job = _leggi(percorso) or {}
+        posto = _leggi(cartella / ATTIVO) or {}
+        if str(posto.get("id") or "") == ident and job.get("stato") in ("in_coda", "in_corso"):
+            if _riprese(job) > prima:
+                # Bot #398 V-2: «prima» è letto fuori dal lock; se nello stesso istante il
+                # primo turno ha ripreso il compito, la frase se ne attribuisce la ripresa
+                # (solo testo: il doppio avvio lo impedisce il lock di _riprendi)
+                return True, (f"Compito {ident} ripreso (ripresa {_riprese(job)} di "
+                              f"{_riprese_max()}). Per fermarlo: python gas.py sottofondo-ferma")
+            return True, f"Compito {ident} ancora in corso: niente da riprendere."
+        if job.get("stato") == "ko":
+            # Bot #398 V-3: un riavvio non partito è un errore del meccanismo (exit 1), non
+            # un «non ripreso» normale (riprese finite, fermato, oltre la durata)
+            errore = str(job.get("errore", ""))
+            return (not errore.startswith("ripresa non avviata"),
+                    f"Compito {ident} non ripreso: {_breve(errore, 120)}.")
+        if job.get("stato") == "ok":
+            return True, f"Compito {ident} già finito: niente da riprendere."
+        return False, f"Compito {ident}: stato non leggibile, vedi gas_debug.log."
+    except Exception as e:  # §9
+        logging.warning("sottofondo: ripresa al boot non riuscita: %s", e)
+        return False, f"Ripresa non riuscita ({type(e).__name__}): vedi gas_debug.log."
 
 
 def _avvia_ripresa(root: Path, ident: str) -> None:
