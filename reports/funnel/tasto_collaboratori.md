@@ -1,7 +1,7 @@
 # Tasto «I miei link» nel Pannello — specifica pronta da applicare
 
 > 21 novembre 2026, seconda stesura dopo la decisione dell'operatore: il tasto vive nel PANNELLO
-> (il bottone blu in basso a sinistra nella chat del bot «Inizia Ora · Accesso»), più /linkmiei come scorciatoia in chat.
+> (il bottone blu in basso nella chat del bot «Inizia Ora · Accesso»), più /linkmiei come scorciatoia in chat.
 > Tutto riusa ciò che il bot ha già: codice agente, tracking «Entrato da», scheda lead, pannello.
 
 ## 1. Cosa vede il collaboratore nel Pannello
@@ -12,7 +12,7 @@ Nuova voce/scheda **«🔗 I miei link»** (in cima o accanto a «I tuoi lead»)
 `https://t.me/<bot>?start=<codice_agente>`
 [Copia] [Inoltra la card]
 
-**⚡ Sala segnali diretto** — *per chi è già caldo: niente domande, subito l'ultimo passo*
+**⚡ Sala segnali diretto** — *per chi è già caldo: solo nome e cognome, subito l'ultimo passo*
 `https://t.me/<bot>?start=<codice_agente>-vip`
 [Copia] [Inoltra la card]
 
@@ -30,7 +30,7 @@ Risponde SOLO agli agenti registrati (agli altri: «Questo comando è per i coll
 
 ## 3. Cosa fa il link diretto (`start=<codice>-vip`)
 
-1. NIENTE domande a bottoni (decisione dell'operatore, 23/11/2026: nel diretto si chiede SOLO nome e cognome). Un solo messaggio breve —
+1. NIENTE domande a bottoni (decisione dell'operatore, 23/11/2026: nel diretto si chiede SOLO nome e cognome). **Lingua**: il bot parla la lingua del Telegram del lead (`language_code`: italiano o inglese, le due già supportate); se manca o non è supportata, italiano — la domanda della lingua non si fa. Un solo messaggio breve —
    > «⚡ Benvenuto in Inizia Ora. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta. Non paghi nessun abbonamento: l'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto. ⚠ Il trading comporta un rischio reale di perdere il capitale.»
    poi UN solo campo di testo —
    > «✍ Scrivimi nome e cognome e ti metto subito in contatto con {agente}.
@@ -46,7 +46,7 @@ Risponde SOLO agli agenti registrati (agli altri: «Questo comando è per i coll
 2. Ogni lead resta legato all'agente del link, qualunque dei due usi; «Entrato da: {codice}» come oggi, più il flag completo/diretto per i contatori.
 3. Se non preme «Scrivi a {agente}», partono i 2 solleciti del **caso B** di `funnel_v2.md` (regole comuni): «Ti manca solo l'ultimo passo…» a +24 h, «Vuoi fare l'ultimo passo o chiudo qui?» a +72 h. Il diretto ha solo quel caso (non c'è una candidatura da completare).
 4. Niente altri schermi nuovi: la voce del Pannello è una lista con 2 link e 2 bottoni d'inoltro.
-5. Le tutele valgono ANCHE nel percorso diretto (V-1 verifica esterna #392, secondo giro; forma aggiornata il 23/11/2026 con la decisione «solo nome e cognome»): la conferma dei 18 anni e l'autorizzazione a rispondere stanno nella riga sotto il campo del nome («Inviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui»); la riga sul rischio e quella sul compenso del broker stanno nel messaggio unico; il consenso aggiornamenti non si chiede e quindi a quei lead NIENTE promozione finché un sì non viene raccolto (mai consenso presunto, V-3 #392). Il link diretto accorcia le domande, MAI le tutele.
+5. Le tutele valgono ANCHE nel percorso diretto (V-1 verifica esterna #392, secondo giro; forma aggiornata il 23/11/2026 con la decisione «solo nome e cognome»): la conferma dei 18 anni e l'autorizzazione a rispondere stanno nella riga sotto il campo del nome («Inviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui»), mostrata nella lingua del lead (punto 3.1: `language_code` di Telegram, altrimenti italiano); la riga sul rischio e quella sul compenso del broker stanno nel messaggio unico; il consenso aggiornamenti non si chiede e quindi a quei lead NIENTE promozione finché un sì non viene raccolto (mai consenso presunto, V-3 #392). Il link diretto accorcia le domande, MAI le tutele.
 6. **Requisito Pannello (operatore, 23/11/2026, confermato su screenshot)**: la voce «I miei link», le card e ogni link dell'agente si aprono DENTRO il Pannello già esistente — il bottone blu «Pannello» in basso nella chat del bot «Inizia Ora · Accesso» — nessuna app, pagina o bot nuovo.
 
 ## 5. Perché due link

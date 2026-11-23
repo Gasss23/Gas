@@ -202,7 +202,7 @@ async function flussoCompleto(g){ await fase1(g); await bozzaB(g); }
 
 /* ---------- ACCESSO DIRETTO (-vip, tasto_collaboratori.md §3 — dal 23/11 SOLO nome e cognome) ---------- */
 async function flussoDiretto(g){
-  sys('Il contatto caldo apre t.me/&lt;bot&gt;?start=&lt;codice_agente&gt;-vip');
+  sys('Il contatto caldo apre t.me/&lt;bot&gt;?start=&lt;codice_agente&gt;-vip. Lingua: quella del Telegram del lead (language_code, IT/EN; altrimenti italiano) — nessuna domanda della lingua');
   user('/start');
   await botSay(g, '⚡ Benvenuto in Inizia Ora. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta.\n\nNon paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto.\n\n⚠ Il trading comporta un rischio reale di perdere il capitale.', 900);
   await botSay(g, '✍ Scrivimi nome e cognome e ti metto subito in contatto con '+AG+'.\n\nInviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui.');
@@ -221,7 +221,7 @@ function pannello(g){
   const c1=el('card','');
   c1.innerHTML='<h4>🧲 Percorso completo</h4><div class="hint">per chi è freddo: domande + scheda completa</div><div class="mono">https://t.me/&lt;bot&gt;?start=MARIO23</div><div class="cnt">Completo: 41 lead</div><div class="cardbtns"><button onclick="copia(this)">Copia</button><button onclick="inoltra(\'completo\')">Inoltra la card</button></div>';
   const c2=el('card','');
-  c2.innerHTML='<h4>⚡ Sala segnali diretto</h4><div class="hint">per chi è già caldo: niente domande, subito l\'ultimo passo</div><div class="mono">https://t.me/&lt;bot&gt;?start=MARIO23-vip</div><div class="cnt">Diretto: 12 lead</div><div class="cardbtns"><button onclick="copia(this)">Copia</button><button onclick="inoltra(\'diretto\')">Inoltra la card</button></div>';
+  c2.innerHTML='<h4>⚡ Sala segnali diretto</h4><div class="hint">per chi è già caldo: solo nome e cognome, subito l\'ultimo passo</div><div class="mono">https://t.me/&lt;bot&gt;?start=MARIO23-vip</div><div class="cnt">Diretto: 12 lead</div><div class="cardbtns"><button onclick="copia(this)">Copia</button><button onclick="inoltra(\'diretto\')">Inoltra la card</button></div>';
   sys('Contatori per link: ogni agente vede quale rende (numeri d\'esempio). Prova i bottoni «Inoltra la card» ↑');
 }
 function copia(b){ b.textContent='Copiato ✓'; setTimeout(()=>b.textContent='Copia',1200); }
