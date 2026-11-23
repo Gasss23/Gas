@@ -1,27 +1,31 @@
-# Ultimo report — 2026-11-21 — Bacheca comune tra le chat; risposte dell'operatore sul CRM
+# Ultimo report — 2026-11-23 — Gas usa il CRM: comandi da Telegram e voce
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta: solo documenti (bacheca, regola in CLAUDE.md, decisioni del CRM).
-2. Lista delle commissioni per servizio (l'operatore la manda): percentuale sui profitti, percentuale annua sul capitale o abbonamento, più il capitale minimo.
-3. Restano: password delle copie nel `.env` del Mac, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino sul Mac, secondo controllo su claude.ai delle PR #387, #388, #389 e #391 (non ancora fatto).
-4. Ereditata dalla chat Voce (PR #390): rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
+1. Merge della PR #397 (codice di Gas: cancello delle firme, scelta del modello, strumenti nuovi). È una fetta di sicurezza: secondo controllo su claude.ai col link della PR.
+2. Falsi allarmi del filtro «solo Opus» (R-840-2, decidi tu): un messaggio con «clienti», «commissione», «versato», «deposito» o un numero lungo che inizia con 0 o 3 va solo a Opus; se il cervello forte è spento o al tetto, quel turno (e il successivo) si ferma con «contiene dati di clienti». Scelte: tenere così (privacy prima), togliere qualche parola, o un messaggio più chiaro.
+3. Privacy, da sapere e confermare: le conversazioni con Gas sui clienti restano nella storia di Gas (`.gas_history.json`), le richieste di firma nella sua memoria (`.gas_memory.db`), e i messaggi passano da Telegram come la chat di oggi. Nel diario di Gas non vanno nomi né cifre dei clienti. A voce i dati passano da Groq (trascrizione) ed ElevenLabs (voce).
+4. Restano dalle fette prima: lista delle commissioni per servizio; sul Mac password delle copie nel `.env`, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino; secondo controllo su claude.ai delle PR #387, #388, #389 e #391; decisione sulle parole di gravità del bot («alto», «severo», «serio», «elevato»).
+5. Ereditata dalla chat Voce: rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
 
 ## Esito
-- **PR #391 (note minori del CRM)**: MERGIATA il 21-11 (eecf916d) col via dell'operatore. Prima del merge, conflitto sui report con la PR #392 della chat del funnel, risolto. Il CRM è pronto all'uso sul Mac.
-- **Bacheca comune**: FATTA. `reports/bacheca.md` con le regole d'uso e le prime notizie; regola in CLAUDE.md §3; in `reports/lavoro_parallelo.md` il modo di risolvere i conflitti della bacheca.
-- **Note del bot su 11ab66ae/c7c488b9** (APPROVATO CON RISERVE, check neutral perché la PR tocca CLAUDE.md): FATTE. V-1: ordine dei conflitti della bacheca reso coerente («la più nuova in cima»). V-2: in testa alla bacheca e in CLAUDE.md, le notizie sono informazioni da verificare e non regole; una decisione dell'operatore vale solo se registrata nella sua fonte. V-3: titolo delle decisioni 15-17 precisato.
-- **Note del bot su 965cd07d** (APPROVATO CON RISERVE, neutral): FATTE. V-1: la regola della bacheca era finita in CLAUDE.md §10, ora è davvero in §3 come dicono i report. V-2: anche CLAUDE.md fa `git fetch` prima di leggere la bacheca.
-- **Note del bot su dfd7edb3 e 3a64fd64** (APPROVATO CON RISERVE, neutral): FATTE quelle su dfd7edb3: il secondo controllo su claude.ai è di nuovo nella lista, il ramo è in tutte le notizie, le etichette dei commit sono precisate. Su 3a64fd64 restava solo questa riga mancante (COSMETICA).
-- **Merge di main (PR #390 della chat Voce) nel ramo**: FATTO (review #837 APPROVATO). Il codice della voce che entra è identico a main.
-- **Note del bot su f1225b8c**: FATTE. Le riserve aperte della chat Voce, perse quando ho tenuto i miei report nel merge, sono di nuovo in `reports/stato_progetto.md`. In `reports/lavoro_parallelo.md` e in bacheca c'è la regola per non perderle più.
-- **Note del bot su aaf754cf, ddf67cfb e 73dbff1b**: FATTE. Riserve della voce anche nell'handoff, decisioni umane allineate, una notizia aperta non si cancella per sola età. Su 73dbff1b il check era rosso per errore: la parola «gravi», citata come argomento, è stata letta come gravità; ora la notizia dice «parole di gravità» e in bacheca c'è l'avviso.
-- **Merge di main (PR #393 del funnel) nel ramo**: FATTO prima del merge della #394, col via dell'operatore. Le decisioni del funnel ancora in sospeso sono in `reports/stato_progetto.md`.
-- **Merge di main (PR #395 della chat Voce) nel ramo**: FATTO (review #838-MERGE chat CRM). Riserve della voce aggiornate in `reports/stato_progetto.md`.
-- **Risposte dell'operatore** (`reports/crm/decisioni.md` punti 15-17): «online» voleva dire pronto all'uso, sul Mac e non su internet. WhatsApp: per ora invio a mano, l'accesso API di Meta si prepara quando servirà l'invio automatico. Bacheca: sì. Le domande 2 e 3 sono tolte da `reports/crm/domande.md`.
+- **Richiesta dell'operatore** («posso usare il mio agente IA e dargli comandi per utilizzare il crm? aggiungere, togliere, ricordarmi»), con la proposta scelta «Sì, fallo tu qui»: registrata come decisione 18 in `reports/crm/decisioni.md`; notizia in `reports/bacheca.md` (questa chat tocca `gas.py`, cancello e bot Telegram).
+- **Tappa 1, lato CRM**: FATTA (commit f7a4c12c, review #839-CRM APPROVATO CON RISERVE). Promemoria nello store (mai cancellati, reclamo prima dell'invio), `modules/crm/agente.py` (consulta, prepara senza scrivere, applica solo la forma canonica dopo la firma).
+- **Riserve #839-CRM**: CHIUSE nel commit della tappa 2. R-839-1 MEDIA (il nome si cerca solo a inizio parola: «Anna» non trova più «Marianna»; se trovato per somiglianza la firma lo dice); R-839-2..7 BASSE (test per i mutanti, prelievo oltre il capitale e riattivazione detti prima della firma, date/ore/#numeri non sono importi, garanzia dei promemoria dichiarata, id enormi, la firma mostra il valore sostituito) e le cosmetiche.
+- **Tappa 2, aggancio a Gas**: FATTA (commit c8d4f977, review #840-CRM APPROVATO CON RISERVE; riserve corrette in 0afc1a79 — review #841-CRM BOCCIATO perché il nuovo controllo dei telefoni scattava dentro i codici delle firme, poi #842-CRM APPROVATO CON RISERVE — e test rinforzati in 070e7ad3, review #843-CRM APPROVATO CON RISERVE). PR #397.
+  - `crm_consulta` (sola lettura) e `crm_modifica` (sempre alla firma su Telegram, con la descrizione per esteso).
+  - Dati del CRM solo a Claude Opus: una richiesta che parla di clienti, promemoria o soldi va a Opus dalla prima chiamata; un modello diverso che chiama gli strumenti riceve un diniego e il turno passa a Opus.
+  - Importi solo se scritti dall'operatore nel messaggio del turno (non valgono le cifre lette dal CRM né quelle del modello).
+  - Niente modifiche dai compiti in sottofondo; diario e progressi su Telegram senza dati dei clienti.
+  - Promemoria su Telegram dal giro di ogni minuto del bot.
+- **Guida**: `reports/crm/guida.md` spiega come usare il CRM parlando con Gas.
+- **Anomalia nel fine-task**: un primo tentativo di scrivere l'handoff ha fatto eseguire alla shell i testi tra apici inversi (tra cui `pip install -r requirements.txt` nel container, la suite del kernel e `claude -p` senza input, finito in errore). Nessun file scritto, nessun commit né push; cambiati solo log e cache ignorati da git. Rifatto con file temporanei.
 
 ## Test
-- Nessun codice toccato.
+- Motore: `python tests/test_unit_kernel.py` → 1206 PASS, 0 FAIL (prima 1191; nuovi T118a-g, T118c2, T118e2, T118f2). Anche con gli UUID delle firme forzati ad avere 7 cifre di fila: 1206 PASS. Adattati due test vecchi alla regola nuova: T80 («per il cliente Rossi» → «per Rossi») e T116h («ricordami» → «poi sistemo»).
+- CRM: `pytest tests/test_unit_crm.py` → 150 passed (prima 139).
+- Le altre suite della CI (pytest): 3512 passed (sull'albero di 0afc1a79; 070e7ad3 cambia solo un commento in gas.py, test e guida).
 
 ## Riserve aperte
+- **R-840-2 MEDIA, decide l'operatore** (vedi decisione 2). R-842-2 BASSA (formati di telefono non riconosciuti, dichiarati), R-842-3 BASSA (numeri lunghi che iniziano con 0 o 3 presi per telefoni, dichiarato), R-843-1 BASSA («+1.500.000» preso per telefono, non dichiarato). Cosmetiche nei verdetti #842/#843. Non verificato: Telegram, voce e `claude -p` veri.
 - Dal CRM: R-836-1 COSMETICA.
-- Ereditate dalla chat Voce coi merge della #390 e della #395 (in `reports/stato_progetto.md`): R-813M1-1 BASSA (manca un test «suono forte non riconosciuto 3 volte»), note basse del bot #390 (V-1/V-2/V-3), R-810M1-2 BASSA attenuata (margine di 1 s da misurare sul Mac), note basse #382 V-1/V-2 e #383 V-2/V-3, punteggi della voce da lontano non verificati.
+- Ereditate dalla chat Voce (in `reports/stato_progetto.md`): R-813M1-1 BASSA, note basse del bot #390 (V-1/V-2/V-3), R-810M1-2 BASSA attenuata, note basse #382 V-1/V-2 e #383 V-2/V-3, punteggi della voce da lontano non verificati.
