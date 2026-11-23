@@ -3878,6 +3878,8 @@ def test_taratura_usa_il_rilevatore_con_la_verifica(monkeypatch, tmp_path, capsy
     punteggi, chiudi, verifica = t._punteggi_dal_microfono(0.4, "hey_jarvis")
     assert verifica is True and len(list(punteggi)) == 5
     assert visti and visti[0]["soglia_base"] == 0.25
+    # R-815-1: la taratura misura con le stesse fasi dell'ascolto
+    assert visti[0].get("fasi") == a.FASI_PREDEFINITE
     assert "Verifica della voce: attiva" in capsys.readouterr().out
 
 
@@ -3952,3 +3954,10 @@ def test_rilevatore_a_fasi_sfalsate(monkeypatch):
         assert list(ultimo) == list(flusso[2 * a.BLOCCO - rit: 3 * a.BLOCCO - rit])
     azzera()
     assert all(v[-1] == "reset" for v in visti)
+    # R-815-4: azzera svuota anche la coda: dopo, i modelli in ritardo vedono silenzio
+    # davanti al blocco nuovo, non l'audio di prima
+    nuovo = np.full(a.BLOCCO, 7, dtype=np.int16)
+    punteggio(nuovo)
+    for f in range(1, 4):
+        rit = f * a.BLOCCO // 4
+        assert list(visti[f][-1][:rit]) == [0] * rit

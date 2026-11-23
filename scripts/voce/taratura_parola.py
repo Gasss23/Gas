@@ -151,7 +151,10 @@ def _punteggi_dal_microfono(secondi: float, modello: str
     from clients.voice import ascolto  # noqa: E402 — stesso rilevatore e microfono dell'ascolto
     ascolto._carica_dotenv(RADICE)      # GAS_ASCOLTO_VERIFICA e soglie come l'ascolto
     verifica = ascolto.verifica_della_voce(modello)
-    punteggio, _ = ascolto.rilevatore_con_verifica(modello, verifica)
+    # R-815-1: le stesse fasi dell'ascolto (GAS_ASCOLTO_FASI), così i punteggi misurati
+    # sono quelli che l'ascolto vede davvero
+    fasi = int(ascolto._numero("GAS_ASCOLTO_FASI", ascolto.FASI_PREDEFINITE, 1, 4))
+    punteggio, _ = ascolto.rilevatore_con_verifica(modello, verifica, fasi=fasi)
     print("Verifica della voce: %s" % verifica.descrivi())
     mic = ascolto.Microfono()
     n = int(secondi / SEC_BLOCCO)

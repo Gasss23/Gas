@@ -1568,11 +1568,13 @@ def _scrivi_regolazioni(r: Dict[str, Any], verifica: Optional[Verifica] = None) 
     if r["blocchi_parola"] < BLOCCHI_PAROLA_PREDEFINITO:
         piu_facile.append("GAS_ASCOLTO_BLOCCHI_PAROLA=%d (predefinito %d)"
                           % (r["blocchi_parola"], BLOCCHI_PAROLA_PREDEFINITO))
-    if r.get("blocchi_interruzione", BLOCCHI_INTERRUZIONE_PREDEFINITO) < \
-            BLOCCHI_INTERRUZIONE_PREDEFINITO and \
+    # R-815-2: col filtro della voce attivo il predefinito dei blocchi d'interruzione è 1
+    blocchi_int_pred = (BLOCCHI_INTERRUZIONE_VERIFICA if verifica is not None
+                        and verifica.attiva else BLOCCHI_INTERRUZIONE_PREDEFINITO)
+    if r.get("blocchi_interruzione", blocchi_int_pred) < blocchi_int_pred and \
             (os.environ.get("GAS_ASCOLTO_BLOCCHI_INTERRUZIONE") or "").strip():
         piu_facile.append("GAS_ASCOLTO_BLOCCHI_INTERRUZIONE=%d (predefinito %d)"
-                          % (r["blocchi_interruzione"], BLOCCHI_INTERRUZIONE_PREDEFINITO))
+                          % (r["blocchi_interruzione"], blocchi_int_pred))
     if r["max_turni"] > MAX_TURNI_PREDEFINITO:
         piu_facile.append("GAS_VOICE_MAX_TURNI=%d (predefinito %d)"
                           % (r["max_turni"], MAX_TURNI_PREDEFINITO))
