@@ -27,6 +27,8 @@
 - **Allargamento del filtro a email ed euro**: SALTATO — fa fallire T115c6 e T80ad (scritti contro i blocchi inutili); è la scelta di R-840-2, la decide l'operatore.
 - **R-843-1** (df54672d e commento): la correzione provata è stata BOCCIATA (#845-CRM: perdeva telefoni col «+» e i trattini) e tolta; R-843-1 resta BASSA, dichiarata (#846-CRM); motivo del commento corretto (#847-CRM).
 - **Decisione 19 «Sempre Opus»**: FATTA. L'operatore, fra tre opzioni spiegate in chat, ha scelto «Sempre Opus». `GAS_SOLO_OPUS` acceso di default (d409cc8a, review #848-CRM APPROVATO CON RISERVE), R-848-1 MEDIA sulla voce corretta nei documenti (d814eb3d). Superano V-1 della verifica esterna e R-840-2, che restano solo con `GAS_SOLO_OPUS=0`.
+- **Bot di verifica su a92c5c1a**: APPROVATO CON RISERVE, check neutral (CLAUDE.md è macchina del bot: decide l'operatore, che ha dato il via); V-1 COSMETICA sul «3512 passed» detto senza «con l'interruttore spento»: corretta in questo commit.
+- **Merge di main (PR #396, funnel, solo documenti)** (cc066e1e): FATTO per il conflitto sui report. Report del ramo tenuti; in `reports/stato_progetto.md` la riga aggiornata del funnel di main, con le sue decisioni aperte (consegna del pacchetto allo sviluppatore del bot, stato dell'operatore nel bot da ripristinare), e la riga «Ultimo aggiornamento» unita (regola 3 di `reports/lavoro_parallelo.md`).
 - **Bot di verifica su ea67777b**: APPROVATO CON RISERVE con V-1 MEDIA (superata dalla decisione 19) e V-2 COSMETICA (guida, corretta in d409cc8a).
 - **Prova su Mac, Telegram e `claude -p` veri**: SALTATA — non raggiungibili da qui; provato con client finti.
 - **Anomalia durante il fine-task**: un primo tentativo di scrivere questo file con un heredoc non quotato ha fatto eseguire alla shell i testi tra apici inversi della prosa (tra cui `pip install -r requirements.txt` nel container, la suite del kernel e `claude -p` senza input, che ha dato errore). Il file non è stato scritto; nel repo nessun commit, nessun push, cambiati solo log e cache ignorati da git. Riscritto con file temporanei e heredoc quotato.
@@ -46,10 +48,10 @@
  reports/bacheca.md                 |   2 +
  reports/crm/decisioni.md           |   5 +++
  reports/crm/guida.md               |  17 +++++++-
- reports/diff_sessione.md           |  20 ++++++----
+ reports/diff_sessione.md           |  23 ++++++-----
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           |  45 ++++++++++++---------
+ reports/ultimo_report.md           |  60 ++++++++++++++++------------
  tests/conftest.py                  |   4 ++
  tests/test_unit_crm.py             | 304 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_kernel.py          | 375 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
@@ -60,6 +62,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+cc066e1e Merge origin/main (PR #396, funnel: solo documenti) nel ramo della PR #397 — conflitti solo nei report
+a92c5c1a docs(fine-task): decisione 19 «Sempre Opus», review #848-CRM, via dell'operatore al merge
 d814eb3d docs: R-848-1 — a voce l'audio passa comunque da Groq ed ElevenLabs; GAS_SOLO_OPUS nella tabella della guida
 d409cc8a feat(gas): «Sempre Opus» — GAS_SOLO_OPUS acceso di default, tutto quello che l'operatore scrive o dice va solo a Opus (decisione 19, review #848-CRM)
 ea67777b docs(fine-task): verifica esterna #397, bot, review #845-#847-CRM; V-1 e R-840-2 all'operatore
@@ -575,7 +579,7 @@ Memoria aggiornata con la riga #848-CRM e 2 lezioni in `/home/user/Gas/.claude/a
 
 - Con gli UUID delle firme forzati ad avere 7 cifre di fila (script del revisore `run_uuid_cifre.py`): 1206 PASS, 0 FAIL.
 - `pytest tests/test_unit_crm.py`: 139 → 150 passed.
-- Altre suite pytest della CI con «Sempre Opus» (spento da `tests/conftest.py`): 3512 passed.
+- Altre suite pytest della CI: 3512 passed, con l'interruttore «Sempre Opus» SPENTO da `tests/conftest.py`; il caso acceso lo prova solo T119 (R-848-3).
 
 ## §6 STATO CI
 
@@ -592,6 +596,8 @@ Memoria aggiornata con la riga #848-CRM e 2 lezioni in `/home/user/Gas/.claude/a
   - `df54672d` e `bfd183e6`: nessuna run propria (pushati insieme al commit di fine-task).
   - `ea67777b` (terzo commit di fine-task): unit-suite success, handoff-check success, verifica-bot failure (APPROVATO CON RISERVE con V-1 MEDIA, superata dalla decisione 19).
   - `d409cc8a`, `d814eb3d`: nessuna run propria (pushati insieme al commit di fine-task).
+  - `a92c5c1a` (quarto commit di fine-task): handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, una COSMETICA), unit-suite in corso alla scrittura dell'handoff; poi PR in conflitto dopo il merge della #396.
+  - `cc066e1e` (merge di main): nessuna run propria (pushato insieme al commit di fine-task).
   - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
