@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- R7 fetta 2 — ripresa al boot del compito in sottofondo (launchd, Mac).
-     All'accesso al Mac lancia UNA volta `python3 gas.py sottofondo-riprendi`: se un compito in
+     All'accesso al Mac lancia UNA volta `python gas.py sottofondo-riprendi` (venv): se un compito in
      sottofondo era a metà quando il Mac si è spento, riparte subito (riprese contate, tetto di
      tempo dalla prima creazione, avviso su Telegram), senza aspettare la prima interazione.
+     Aspetta la rete fino a 120 s (GAS_SOTTOFONDO_ATTESA_RETE); senza rete non tocca il compito,
+     che riparte alla prima interazione con Gas.
      Niente KeepAlive: non resta acceso. AbandonProcessGroup: il compito ripreso non viene
      chiuso da launchd quando il comando finisce.
      Installazione: sostituisci TUO_UTENTE col tuo nome utente del Mac, poi
