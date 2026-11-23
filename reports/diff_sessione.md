@@ -1,12 +1,15 @@
-# DIFF SESSIONE — 23 novembre 2026 (trigger dei solleciti)
+# Diff della sessione — 2026-11-23 — Gas usa il CRM (comandi da Telegram e voce)
 
-> Questo file si riscrive a ogni sessione; la storia completa sta in git.
-> Branch claude/trigger-solleciti da main bf42844 (post PR #394, bacheca).
+Si riscrive a ogni sessione; la storia completa sta in git. Ramo ripartito da main bf428441 (PR #394 mergiata).
 
-File toccati (tutti doc, nessun file del motore):
-
-- `reports/funnel/funnel_v2.md` — regole comuni: la regola dei follow-up ora definisce DUE trigger con testi propri (caso A: fermo a metà candidatura; caso B: candidatura accettata ma «Scrivi a {agente}» non premuto), decisione dell'operatore del 23/11 che chiude l'incoerenza del 4° verdetto bot sulla #393; rimandi aggiornati (consenso, Bozza B, percorso diretto).
-- `reports/funnel/simulazione_funnel.html` — `followUp()` unificato sui testi del caso B (l'unico simulato), senza più note di proposta; riga che spiega dove vale il caso A. Provata dal vivo e ripubblicata (pagina ora pubblica, condivisa dall'operatore il 22/11).
-- Secondo giro (stessa sessione, finding del 1° verdetto bot su #396): `reports/funnel/tasto_collaboratori.md` §4.3 riscritto (rimando esplicito ai 2 solleciti del caso B), caso B di funnel_v2 esteso al percorso diretto, `reports/stato_progetto.md` aggiornato (trigger deciso, esperto fatto; restano consegna e ripristino stato bot).
-- Terzo giro (V-1 del 2° verdetto bot su #396): `reports/handoff.md` §6 — mappatura commit→run di 9549d20 riscritta con le run reali (prima citava una run di verifica-bot come se fosse la CI).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — riscritti per questa sessione; le decisioni aperte della sessione precedente (#394) sono riportate in ultimo_report.
+- `modules/crm/agente.py` (nuovo): consulta (sola lettura), prepara (controlli senza scrivere, forma canonica con id e centesimi, importo solo se detto dall'operatore, nome cercato a inizio parola con avviso), applica (solo forma canonica, dopo la firma).
+- `modules/crm/store.py`: tabella dei promemoria (mai cancellati; reclamo prima dell'invio, rilascio se fallisce), controlli dell'anagrafica condivisi, capitale prelevabile in sola lettura.
+- `gas.py`: strumenti `crm_consulta` e `crm_modifica`; richieste e strumenti del CRM solo a Opus; modifica parcheggiata alla firma nella forma canonica, importi solo dal messaggio del turno, mai dal sottofondo; diario e progressi senza dati dei clienti; filtro delle parole e dei telefoni.
+- `gas.py` (decisione 19): interruttore `GAS_SOLO_OPUS`, acceso di default: ogni turno va solo a Opus.
+- `tests/conftest.py`: `GAS_SOLO_OPUS=0` per le suite che provano la cascata dei cervelli.
+- `CLAUDE.md` §2: decisione «Sempre Opus» registrata.
+- `modules/gate/gate.py`: `crm_consulta` SAFE (lettura non fidata), `crm_modifica` IRREVERSIBLE.
+- `modules/telegram/bot.py`: promemoria del CRM mandati su Telegram ogni minuto.
+- `tests/test_unit_crm.py`, `tests/test_unit_kernel.py`: test nuovi (T118, riserve #839-#842); T80 e T116h adattati alla regola nuova.
+- `.claude/agents/memoria_revisore.md`: review #839-#848 e lezioni.
+- `reports/crm/decisioni.md` (punti 18 e 19), `reports/crm/guida.md`, `reports/bacheca.md`, `reports/stato_progetto.md`, report di fine task.

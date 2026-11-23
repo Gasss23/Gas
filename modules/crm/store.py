@@ -78,6 +78,9 @@ NOME_MAX = 120
 _RE_DATA = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 _RE_CODICE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 _RE_EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s]{2,}$")
+_RE_QUANDO = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}$")
+PROMEMORIA_TESTO_MAX = 500
+PROMEMORIA_ANNI_MAX = 2  # un promemoria oltre 2 anni è quasi sempre un anno sbagliato
 
 
 class ErroreCRM(ValueError):
@@ -222,6 +225,20 @@ _SCHEMA: Tuple[str, ...] = (
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_crm_eventi_cliente ON crm_eventi(cliente_id)",
+    # promemoria dell'operatore (decisione 18 del 23-11): Gas li manda su Telegram all'ora
+    # scelta. `quando` è ora locale «AAAA-MM-GG HH:MM»; avvisato/annullato non si cancellano
+    """
+    CREATE TABLE IF NOT EXISTS crm_promemoria (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        cliente_id  INTEGER REFERENCES crm_clienti(id),
+        testo       TEXT    NOT NULL,
+        quando      TEXT    NOT NULL,
+        creato_il   TEXT    NOT NULL,
+        avvisato_il TEXT,
+        annullato_il TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_crm_promemoria_quando ON crm_promemoria(quando)",
     """
     CREATE TRIGGER IF NOT EXISTS crm_eventi_no_update
     BEFORE UPDATE ON crm_eventi
@@ -257,6 +274,18 @@ def valida_data(valore: Any, campo: str = "data") -> str:
         date.fromisoformat(v)
     except ValueError:
         raise ErroreCRM(f"{campo}: data inesistente ({v})") from None
+    return v
+
+
+def valida_quando(valore: Any, campo: str = "quando") -> str:
+    """Data e ora «AAAA-MM-GG HH:MM» reali (ora locale del Mac). Solleva ErroreCRM."""
+    if not isinstance(valore, str) or not _RE_QUANDO.match(valore.strip()):
+        raise ErroreCRM(f"{campo}: serve data e ora nel formato AAAA-MM-GG HH:MM")
+    v = valore.strip()
+    try:
+        datetime.strptime(v, "%Y-%m-%d %H:%M")
+    except ValueError:
+        raise ErroreCRM(f"{campo}: data o ora inesistente ({v})") from None
     return v
 
 
@@ -409,6 +438,24 @@ def _testo(valore: Any, campo: str, massimo: int = TESTO_MAX,
     if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", v):
         raise ErroreCRM(f"{campo}: contiene caratteri non ammessi")
     return v
+
+
+def normalizza_anagrafica(campo: str, valore: Any) -> Optional[str]:
+    """Controlli e forma pulita di nome, telefono, email e note di un cliente: gli stessi
+    per chi scrive (aggiungi/aggiorna_cliente) e per chi controlla prima di scrivere
+    (la firma dei comandi di Gas, `modules/crm/agente.py`). Solleva ErroreCRM."""
+    if campo == "nome":
+        return _testo(valore, "nome", NOME_MAX, obbligatorio=True)
+    if campo == "telefono":
+        return normalizza_telefono(valore)
+    if campo == "email":
+        mail = _testo(valore, "email", 320)
+        if mail is not None and not _RE_EMAIL.match(mail):
+            raise ErroreCRM("email non valida")
+        return mail
+    if campo == "note":
+        return _testo(valore, "note")
+    raise ErroreCRM(f"campo dell'anagrafica sconosciuto: {campo}")
 
 
 def _bool01(valore: Any, campo: str) -> int:
@@ -619,13 +666,11 @@ class CRMStore:
                          presentato_da: Optional[int] = None,
                          contatto_id: Optional[int] = None, note: Optional[str] = None,
                          autore: str = "operatore") -> int:
-        nom = _testo(nome, "nome", NOME_MAX, obbligatorio=True)
-        tel = normalizza_telefono(telefono)
-        mail = _testo(email, "email", 320)
-        if mail is not None and not _RE_EMAIL.match(mail):
-            raise ErroreCRM("email non valida")
+        nom = normalizza_anagrafica("nome", nome)
+        tel = normalizza_anagrafica("telefono", telefono)
+        mail = normalizza_anagrafica("email", email)
         cons = _bool01(consenso_marketing, "consenso_marketing")
-        nota = _testo(note, "note")
+        nota = normalizza_anagrafica("note", note)
         pres = None if presentato_da is None else _intero(presentato_da, "presentato_da", 1, 2**62)
         cid = None if contatto_id is None else _intero(contatto_id, "contatto_id", 1, 2**62)
         ora = self._ts()
@@ -658,16 +703,8 @@ class CRMStore:
         note_diario: List[str] = []
         ora = self._ts()
         for k, v in campi.items():
-            if k == "nome":
-                v = _testo(v, "nome", NOME_MAX, obbligatorio=True)
-            elif k == "telefono":
-                v = normalizza_telefono(v)
-            elif k == "email":
-                v = _testo(v, "email", 320)
-                if v is not None and not _RE_EMAIL.match(v):
-                    raise ErroreCRM("email non valida")
-            elif k == "note":
-                v = _testo(v, "note")
+            if k in ("nome", "telefono", "email", "note"):
+                v = normalizza_anagrafica(k, v)
             elif k == "stato":
                 if v not in STATI_CLIENTE:
                     raise ErroreCRM(f"stato non valido (ammessi: {', '.join(STATI_CLIENTE)})")
@@ -903,6 +940,17 @@ class CRMStore:
                 saldo += int(delta)
                 minimo = min(minimo, saldo)
         return minimo
+
+    def capitale_minimo_dal(self, posizione_id: int, giorno: str) -> Optional[int]:
+        """Il capitale più basso della posizione da `giorno` in poi, in SOLA LETTURA: quanto
+        si può prelevare in quella data (stesso conto del controllo nella scrittura; lo usa
+        la firma dei comandi di Gas per dirlo PRIMA, R-839-3). None se il DB non risponde."""
+        try:
+            with self._connect() as con:
+                return self._saldo_minimo_da(con, int(posizione_id), valida_data(giorno))
+        except (sqlite3.Error, OSError) as e:
+            log.warning("CRM: capitale non leggibile (%s): %s", self.db_path, e)
+            return None
 
     def registra_movimento(self, posizione_id: int, tipo: str, importo_cents: int,
                            data: Optional[str] = None, fonte: str = "operatore",
@@ -1188,6 +1236,113 @@ class CRMStore:
     def proposta(self, proposta_id: int) -> Optional[Dict[str, Any]]:
         r = self._leggi("SELECT * FROM crm_proposte WHERE id = ?", (proposta_id,))
         return r[0] if r else None
+
+    # ------------------------------------------------------------------ promemoria
+    def adesso_minuto(self) -> str:
+        """Ora locale dello store al minuto, «AAAA-MM-GG HH:MM» (come `quando`)."""
+        return self._orologio().strftime("%Y-%m-%d %H:%M")
+
+    def valida_promemoria(self, testo: Any, quando: Any,
+                          nel_passato: bool = False) -> Tuple[str, str]:
+        """Controlli di un promemoria SENZA scrivere (li usa anche la firma dei comandi di
+        Gas prima di chiedere il «sì»). Ritorna (testo, quando) puliti; solleva ErroreCRM."""
+        txt = _testo(testo, "testo del promemoria", PROMEMORIA_TESTO_MAX, obbligatorio=True)
+        assert txt is not None
+        ora_q = valida_quando(quando)
+        adesso = self.adesso_minuto()
+        if ora_q <= adesso and not nel_passato:
+            raise ErroreCRM(f"l'ora del promemoria ({ora_q}) è già passata (ora sono le {adesso})")
+        limite = self._orologio().replace(tzinfo=None) + timedelta(days=366 * PROMEMORIA_ANNI_MAX)
+        if ora_q > limite.strftime("%Y-%m-%d %H:%M"):
+            raise ErroreCRM(f"promemoria troppo lontano (oltre {PROMEMORIA_ANNI_MAX} anni): "
+                            "controlla l'anno")
+        return txt, ora_q
+
+    def aggiungi_promemoria(self, testo: str, quando: str, cliente_id: Optional[int] = None,
+                            autore: str = "operatore", nel_passato: bool = False) -> int:
+        """Promemoria per l'operatore all'ora locale `quando` («AAAA-MM-GG HH:MM»).
+        Nel passato si rifiuta, salvo `nel_passato=True`: serve quando la firma arriva dopo
+        l'ora scelta, e allora il promemoria parte subito. Nel diario del CRM va solo l'id,
+        mai il testo (può contenere nomi: il diario non si anonimizza)."""
+        txt, ora_q = self.valida_promemoria(testo, quando, nel_passato)
+        cid = None if cliente_id is None else _intero(cliente_id, "cliente_id", 1, 2**62)
+
+        def _fn(con: sqlite3.Connection) -> int:
+            if cid is not None and con.execute(
+                    "SELECT 1 FROM crm_clienti WHERE id = ?", (cid,)).fetchone() is None:
+                raise ErroreCRM("cliente inesistente")
+            cur = con.execute(
+                "INSERT INTO crm_promemoria (cliente_id, testo, quando, creato_il) "
+                "VALUES (?, ?, ?, ?)", (cid, txt, ora_q, self._ts()))
+            nuovo = _nuovo_id(cur)
+            self._evento(con, cid, "promemoria", f"Promemoria #{nuovo} per il {ora_q}", autore)
+            return nuovo
+        return self._scrivi(_fn)
+
+    def annulla_promemoria(self, promemoria_id: int, autore: str = "operatore") -> None:
+        """Annulla un promemoria non ancora mandato (resta nel DB, segnato annullato)."""
+        pid = _intero(promemoria_id, "promemoria_id", 1, 2**62)
+
+        def _fn(con: sqlite3.Connection) -> None:
+            r = con.execute("SELECT cliente_id, avvisato_il, annullato_il FROM crm_promemoria "
+                            "WHERE id = ?", (pid,)).fetchone()
+            if r is None:
+                raise ErroreCRM("promemoria inesistente")
+            if r["annullato_il"] is not None:
+                raise ErroreCRM("promemoria già annullato")
+            if r["avvisato_il"] is not None:
+                raise ErroreCRM("promemoria già mandato: non c'è più niente da annullare")
+            con.execute("UPDATE crm_promemoria SET annullato_il = ? WHERE id = ?",
+                        (self._ts(), pid))
+            self._evento(con, r["cliente_id"], "promemoria", f"Promemoria #{pid} annullato", autore)
+        self._scrivi(_fn)
+
+    def promemoria(self, solo_in_attesa: bool = True) -> List[Dict[str, Any]]:
+        """Promemoria in ordine di ora; di default solo quelli ancora da mandare."""
+        if solo_in_attesa:
+            return self._leggi("SELECT * FROM crm_promemoria WHERE avvisato_il IS NULL "
+                               "AND annullato_il IS NULL ORDER BY quando, id")
+        return self._leggi("SELECT * FROM crm_promemoria ORDER BY quando, id")
+
+    def promemoria_scaduti(self) -> List[Dict[str, Any]]:
+        """Promemoria arrivati all'ora e non ancora mandati né annullati."""
+        return self._leggi("SELECT * FROM crm_promemoria WHERE avvisato_il IS NULL "
+                           "AND annullato_il IS NULL AND quando <= ? ORDER BY quando, id",
+                           (self.adesso_minuto(),))
+
+    def reclama_promemoria(self, promemoria_id: int) -> bool:
+        """Segna il promemoria come mandato PRIMA dell'invio, solo se nessuno l'ha già
+        fatto (UPDATE condizionato: due giri insieme non lo mandano due volte). Se l'invio
+        poi fallisce, `rilascia_promemoria` lo rimette in coda. Mai solleva: errore → False.
+
+        R-839-5, garanzia dichiarata: di norma UNA volta. Due casi limite: un crash del
+        processo fra reclamo e invio perde il promemoria (resta segnato come mandato); un
+        invio dato per fallito (tempo scaduto) ma arrivato lo stesso si ripete al giro dopo."""
+        if isinstance(promemoria_id, bool) or not isinstance(promemoria_id, int):
+            return False
+        try:
+            with self._connect() as con:
+                cur = con.execute(
+                    "UPDATE crm_promemoria SET avvisato_il = ? WHERE id = ? "
+                    "AND avvisato_il IS NULL AND annullato_il IS NULL",
+                    (self._ts(), int(promemoria_id)))
+                con.commit()
+                return cur.rowcount == 1
+        except (sqlite3.Error, OSError, ValueError, TypeError) as e:
+            log.warning("CRM: promemoria %s non reclamabile (%s)", promemoria_id, e)
+            return False
+
+    def rilascia_promemoria(self, promemoria_id: int) -> None:
+        """Rimette in coda un promemoria reclamato ma non mandato. Mai solleva."""
+        if isinstance(promemoria_id, bool) or not isinstance(promemoria_id, int):
+            return
+        try:
+            with self._connect() as con:
+                con.execute("UPDATE crm_promemoria SET avvisato_il = NULL WHERE id = ? "
+                            "AND annullato_il IS NULL", (int(promemoria_id),))
+                con.commit()
+        except (sqlite3.Error, OSError, ValueError, TypeError) as e:
+            log.warning("CRM: promemoria %s non rilasciato (%s)", promemoria_id, e)
 
     # ------------------------------------------------------------------ diario
     def annota(self, cliente_id: Optional[int], descrizione: str,

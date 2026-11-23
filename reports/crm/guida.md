@@ -91,6 +91,18 @@ Poi sceglie l'azione:
 
 **Modello per i clienti (decisione del 18 novembre):** quando in chat, a voce o su Telegram la conversazione contiene dati di un cliente, Gas risponde SOLO con Claude Opus (`GAS_MODEL_CLAUDE_CLIENTI`, default Opus), anche nei turni `/forte` e quando i dati arrivano a metà turno; se il modello configurato non è Opus si ferma e lo dice. Le altre conversazioni restano col modello forte normale (`GAS_MODEL_CLAUDE_FORTE`, oggi Sonnet), che riceve la memoria di Gas senza nomi dei lead: i dati dei clienti li vede solo Opus. Opus consuma di più del tetto giornaliero del forte.
 
+**Usare il CRM parlando con Gas (decisione 18 del 23 novembre)**: su Telegram o a voce puoi dire a Gas, per esempio, «quanti clienti ho?», «com'è messo Mario Rossi?», «Mario Rossi ha versato 1.500 euro», «aggiungi il cliente Anna Neri, 333 1234567», «togli Luca Verdi», «ricordami domani alle 10 di chiamare Anna».
+- **Leggere**: Gas legge il CRM da solo (strumento `crm_consulta`), sempre e solo con Claude Opus.
+- **Sempre Opus (decisione 19, dal 23 novembre)**: tutto quello che scrivi o dici a Gas lo legge solo Claude Opus (`GAS_SOLO_OPUS`, acceso di default). Se Opus non c'è (cervello forte spento o tetto del giorno finito), Gas non risponde e lo dice. A voce l'audio passa comunque da Groq (trascrizione) e la risposta da ElevenLabs (voce): per i dati dei clienti è più riservato scrivere su Telegram. Il filtro qui sotto vale solo se scrivi `GAS_SOLO_OPUS=0` nel `.env`.
+- **Solo Opus col filtro per parole (solo con `GAS_SOLO_OPUS=0`)**: un messaggio con le parole del CRM (cliente, promemoria, ricordami, deposito, prelievo, versato, versamento, bonifico, commissione…), un numero di telefono (italiano, che inizia con 0 o 3, oppure col «+»; anche con spazi, punti, trattini o barre) o il nome di un cliente già nel CRM va solo a Opus fin dall'inizio. Non contano le date, i numeri con le migliaia, l'inglese «client» né «versatile». Limiti: alcuni modi di scrivere il telefono non vengono riconosciuti («333.123.4567», «02 12 34 56 78», «tel.3331234567» col punto attaccato, «(333) 1234567»): scrivilo come «333 1234567» o metti la parola «cliente». Al contrario, un numero lungo che inizia con 0 o 3 (per esempio «3000000 visualizzazioni») o un «+» davanti a un numero con le migliaia («+1.500.000») viene trattato come un telefono e va a Opus. Col cervello forte spento i messaggi che vanno a Opus si fermano con un avviso (anche il messaggio dopo, finché resta nella conversazione recente). Per un cliente NUOVO usa la parola «cliente» («aggiungi il cliente Anna Neri»): senza («aggiungi Anna Neri», «Rossi ha tolto 500», «segna Bianchi come perso», un'email da sola, «metti 2000 euro a Giulia», se quei nomi non sono già nel CRM), il messaggio lo legge prima il modello normale, che non può leggere né cambiare il CRM; se prova a usarlo, il turno passa a Opus.
+- **A voce**: la voce passa da Groq (trascrizione) e la risposta da ElevenLabs (sintesi), come ogni comando a voce: se non vuoi che i dati dei clienti passino da lì, usa Telegram scritto.
+- **Scrivere**: ogni modifica (`crm_modifica`) arriva prima su Telegram come richiesta di firma, che dice per esteso cosa cambierà («Registra per «Mario Rossi» (cliente #3), servizio «Copy Oro»: DEPOSITO di 1.500,00 € in data …»). Si scrive solo se premi Approva. Se Gas ha trovato il cliente per somiglianza (hai scritto «Ross» e c'è «Mario Rossi»), la firma lo dice con «ATTENZIONE».
+- **Soldi**: Gas usa solo cifre che hai scritto o detto TU in quel messaggio, in numeri («1.500», «1500,50», «5 mila»). Se la cifra manca, o l'ha presa da altrove, la richiesta non parte e Gas te la chiede. Date, ore e numeri come «#12» non contano come cifre.
+- **Niente cancellazioni**: «togli» o «elimina» un cliente vuol dire archiviarlo (stato «perso»); lo storico resta.
+- **Promemoria**: arrivano su Telegram all'ora scelta (controllo una volta al minuto, quindi anche con un minuto di ritardo). Di norma arrivano una volta sola; due casi limite rari: se Gas si spegne proprio mentre manda il promemoria, quel promemoria si perde; se Telegram risponde tardi ma il messaggio è arrivato lo stesso, può arrivare due volte.
+- **Dove restano i dati**: la conversazione con Gas sui clienti resta nella storia di Gas (`.gas_history.json`) e le richieste di firma nella sua memoria (`.gas_memory.db`), come ogni conversazione; i messaggi passano da Telegram come la chat di oggi. Nel diario di Gas non vanno nomi né cifre dei clienti.
+- **Non dai compiti in sottofondo**: le modifiche del CRM si chiedono in chat, non da un compito in sottofondo. Anche i compiti della notte, per il CRM, si fermano a una richiesta di firma: senza il tuo Approva non si scrive niente.
+
 ## 6. Impostazioni (file `.env`)
 
 | Variabile | Default | Cosa fa |
@@ -106,7 +118,8 @@ Poi sceglie l'azione:
 | `GAS_CRM_INVII_PER_LOTTO` | 10 | invii al massimo per scaglione… |
 | `GAS_CRM_LOTTO_MINUTI` | 60 | …in questi minuti (anti-blocco WhatsApp) |
 | `GAS_CRM_MODELLO` | `claude-opus-5-5` | modello per riscrivere i testi (deve essere Opus) |
-| `GAS_MODEL_CLAUDE_CLIENTI` | `claude-opus-5-5` | modello di Gas in chat quando ci sono dati di clienti (deve essere Opus) |
+| `GAS_SOLO_OPUS` | acceso | tutto quello che scrivi o dici a Gas lo legge solo Opus (decisione 19); `0` per tornare al filtro per parole |
+| `GAS_MODEL_CLAUDE_CLIENTI` | `claude-opus-5-5` | il modello Opus usato per i dati dei clienti e, con `GAS_SOLO_OPUS` acceso, per ogni turno (deve essere Opus) |
 | `GAS_CRM_OPUS_GIORNO` | 60 | riscritture con Opus al massimo al giorno |
 | `GAS_CRM_PAUSA_DOPO_NO_GIORNI` | 30 | prima di riproporre ciò a cui ha detto no |
 | `GAS_CRM_ATTESA_RISPOSTA_GIORNI` | 5 | dopo quanti giorni un messaggio è «senza risposta» |
@@ -122,7 +135,7 @@ Poi sceglie l'azione:
 
 1. **Invio automatico su WhatsApp Business** (piattaforma ufficiale di Meta, «Cloud API»): serve l'accesso API del numero business e i modelli di messaggio approvati da Meta (per i messaggi promozionali il testo libero non è ammesso). All'inizio con la firma dell'operatore su ogni invio (decisione del 17 novembre).
 2. **Risposte automatiche**: il «sì / no / STOP» del cliente letto da WhatsApp invece che cliccato a mano.
-3. **Gas legge il CRM** (strumento in sola lettura, solo col cervello forte): «Gas, chi devo chiamare oggi?» da voce e Telegram.
+3. ~~**Gas legge il CRM**~~: fatto il 23 novembre, anche con le modifiche firmate e i promemoria (vedi sopra).
 4. **Import automatico dei risultati** dal broker o dalla piattaforma dei servizi, al posto dell'inserimento a mano.
 5. **Accesso da telefono** sul server (R5) passando da un tunnel sicuro.
 
