@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 23 novembre 2026 — R7 fetta 3: stato dei lavori ricorrenti del giro di notte (sotto-chat di M1)
+**Sessione:** 23 novembre 2026 — R7 fetta 3: stato dei lavori ricorrenti del giro di notte (sotto-chat di M1) — secondo giro: riserve di bot e verifica esterna
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #399 (https://github.com/Gasss23/Gas/pull/399), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore.
+1. Merge della PR #399 (https://github.com/Gasss23/Gas/pull/399), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; altrimenti decide l'operatore. Il 1° verdetto del bot (492f7e20) era APPROVATO CON RISERVE (solo BASSE): corrette in questo giro, serve il verdetto sul nuovo head.
 
 Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `399`, `https://github.com/Gasss23/Gas/pull/399` (`gh pr` non disponibile in questo ambiente, solo REST).
 
@@ -15,6 +15,7 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 3 R7 — lista dei lavori ricorrenti con stato**: FATTA. Registro `.gas_notte/stato_lavori.json` (fatto / in sospeso / fallito / da non ritentare), 3 ko di fila → fermo 7 giorni nei giri completi, rilancio a mano con `gas notte <nome>`, pausa decaduta col prompt cambiato, sezione nel riepilogo, doc in `reports/setup_notte.md`. Review #839-F3 → correzioni R-839-1/R-839-2 → review #842.
+- **Correzioni delle riserve sulla PR #399 (secondo giro)**: FATTA. Verifica esterna V-1 BASSA: i guasti esterni (provider giù, budget, cervello forte fermo, dati di clienti senza forte) lasciano «fallito» ma non contano tra i ko di fila. Bot V-1 BASSA: la sezione mostra anche i compiti saltati per crash. Bot V-2 BASSA: l'avviso dice il conto reale; ritmo dopo la prima pausa documentato. 6 test nuovi (215). Review #843.
 - **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — prossima PR.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — dopo la 4.
 
@@ -23,21 +24,26 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/notte/notte.py             | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ .claude/agents/memoria_revisore.md |   5 +++++
+ modules/notte/notte.py             | 167 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
  reports/diff_sessione.md           |  17 +++++++----------
  reports/handoff.md                 | n/d
- reports/setup_notte.md             |   7 +++++++
+ reports/setup_notte.md             |  10 ++++++++++
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  25 ++++++++++---------------
- tests/test_unit_notte.py           | 174 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  26 +++++++++++---------------
+ tests/test_unit_notte.py           | 234 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
+
+NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
 
 NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f3a6168e fix(notte): riserve su PR #399 — guasti esterni non contano, sezione con tutti i compiti, avviso col conto reale
+ba513ece chore(revisore): memoria review #843 — APPROVATO CON RISERVE
+492f7e20 docs(fine-task): R7 fetta 3 — report, handoff con review #839-F3/#842, stato_progetto
 b7ae5d42 feat(notte): R7 fetta 3 — stato dei lavori ricorrenti (fatto, in sospeso, fallito, da non ritentare)
 2246dd88 chore(revisore): memoria review #842 — APPROVATO CON RISERVE
 113a2fde chore(revisore): memoria review #839 — APPROVATO CON RISERVE
@@ -47,7 +53,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit b7ae5d42 (motore). Due verdetti sullo stesso diff: #839-F3 sul primo staged, #842 dopo le correzioni di R-839-1 e R-839-2. Incollati integrali.
+Commit b7ae5d42 (motore): due verdetti sullo stesso diff, #839-F3 sul primo staged e #842 dopo le correzioni di R-839-1 e R-839-2. Commit f3a6168e (motore, riserve di bot e verifica esterna): review #843. Incollati integrali.
 
 ### Review #839-F3
 
@@ -161,10 +167,56 @@ Seconda review della fetta 3 di R7 sul branch claude/r7-lavori-ricorrenti. In me
 **Memoria del revisore.** Riga #842 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da `scripts/commit_memoria_revisore.sh` (commit 2246dd88). Nessuna lezione nuova.
 - Su questo ramo la riga della review precedente si chiama ancora «#839». Se il ramo dell'altra PR (#398) porta anch'esso una riga #839, al merge i due numeri si scontrano: va tenuto presente quando si uniscono le memorie.
 
+### Review #843 (commit f3a6168e)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #843, nuova revisione del diff STAGED sul ramo claude/r7-lavori-ricorrenti (PR #399). Il diff tocca 3 file (+91/−7), sha256 del diff 9f0ee46f.
+
+Prima della review ho letto CLAUDE.md §5, reports/stato_progetto.md (lettura mirata) e la mia memoria (ultime voci #839 e #842 di questo ramo).
+
+**Elementi esaminati**
+- `modules/notte/notte.py:889` — nuovo ramo di `_aggiorna_lavoro`: se l'esito non è ok e l'errore viene da fuori del lavoro, lo stato diventa «fallito» con `esterno=True` e `ko_di_fila=ko_prima`.
+  - Rischio esaminato: che il modello o l'output di un tool possano falsificare un «guasto esterno» e così evitare la pausa.
+  - Verificato: `esito["errore"]` arriva solo dagli eventi `type: error` del kernel (`modules/notte/notte.py:312`); l'output dei tool va in un altro campo (`modules/notte/notte.py:296`).
+  - Esito: ok.
+- `modules/notte/notte.py:915` — `_ERRORI_ESTERNI` e `_ko_esterno`, con type hints presenti.
+  - Rischio esaminato: un prefisso mancante o sbagliato. Ho confrontato i prefissi con tutti e 5 gli eventi d'errore di `run_turn`: `gas.py:5461` («Cervello forte fermo»), `gas.py:5466` («Budget giornaliero esaurito a metà turno», coperto dal prefisso), `gas.py:5563`, `gas.py:5945` («Questa richiesta contiene dati di clienti»), `gas.py:5953` («Pipeline esausta»). Corrispondono tutti.
+  - Il caso «dati di clienti» non messo mai in pausa è coerente con la regola dei modelli («aspettano in coda, mai ai gratuiti») e non spende token.
+  - `str()` protegge da un errore che non è una stringa.
+  - Esito: ok.
+- `modules/notte/notte.py:995` — `da_mostrare = list(compiti)` adesso viene calcolato PRIMA di `_ordina_riprese`, quindi la sezione dello stato mostra anche i compiti saltati per crash.
+  - Rischio esaminato: che la potatura, che usa ancora il `compiti` filtrato, cancelli lo stato dei compiti saltati. Non succede: il salto aggiunge sempre un avviso (`modules/notte/notte.py:800`), e la potatura gira solo con `not avvisi`.
+  - Esito: ok.
+- `modules/notte/notte.py:1073` — l'avviso di pausa riporta `ko_di_fila` reale. Coerente con la nuova documentazione in `reports/setup_notte.md:10` (un tentativo a settimana dopo la prima pausa). Esito: ok.
+- `tests/test_unit_notte.py:2675`, `tests/test_unit_notte.py:2693`, `tests/test_unit_notte.py:2707` — 6 test nuovi (4 casi parametrizzati più 2).
+  - Senza il ramo esterno, il primo test fallirebbe: con 4 guasti dopo un ko vero il conto diventerebbe 5 e il lavoro andrebbe in pausa.
+  - Con `da_mostrare` messo dopo `_ordina_riprese`, il secondo fallirebbe: sparisce «lungo: mai eseguito».
+  - Mutanti ragionati, non eseguiti.
+  - Il kernel finto emette eventi d'errore veri, non output di tool simulati: nessuna violazione del §5.
+  - Esito: ok.
+- Prova eseguita: **215 passed** in `tests/test_unit_notte.py`, su una copia dell'indice (`git checkout-index`).
+- Wall of Shame: nessuno slicing della history e nessuna simulazione di tool. Non vengono toccati `_get_window`, il cap di 10 iterazioni né il cap di output.
+
+**Riserve**
+- **R-843-1 BASSA**: un guasto esterno su un lavoro «da non ritentare» toglie la pausa, perché `fino_a` torna a 0 (`modules/notte/notte.py:889`). Succede in due casi:
+  - con un rilancio a mano (`gas notte <nome>`) durante la pausa;
+  - a pausa scaduta.
+
+  Il conto resta ≥3, quindi al primo ko vero il lavoro torna subito in pausa. Ma finché durano i guasti esterni viene ritentato ogni notte invece che una volta a settimana. Il costo è nullo (i guasti esterni non spendono token) e non c'è rischio di crash. Correzione possibile: nel ramo esterno conservare `stato`/`fino_a` se il lavoro era già `da_non_ritentare`. Va tracciata, non blocca.
+- **R-839-3 COSMETICA** (dalle review precedenti): resta aperta, questo diff non la tocca.
+
+**Rischi esplicitamente esclusi**
+- Non ho verificato se anche «tempo scaduto» (`modules/notte/notte.py:316`) debba contare come guasto esterno: un provider lento può far scadere il tempo e oggi conta come ko vero. È una scelta di progetto fuori dalle riserve corrette qui; non l'ho riprodotto.
+- Non ho verificato il giro su VPS o Mac con provider veri: in dev non si riproduce.
+- I mutanti non li ho eseguiti, solo ragionati.
+
+Riga contatore #843 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (ba513ece) con `scripts/commit_memoria_revisore.sh`.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_notte.py`: 200 → 209 (9 test nuovi), tutti verdi in locale: `209 passed in 5.63s`.
-- `tests/test_unit_kernel.py` (round-trip agentico), eseguito in locale sul ramo di questa PR, riga reale:
+- `tests/test_unit_notte.py`: 200 → 215 (9 test della fetta + 6 delle riserve), tutti verdi in locale: `215 passed in 5.39s`.
+- `tests/test_unit_kernel.py` (round-trip agentico), eseguito in locale sul ramo di questa PR nel primo giro (il secondo tocca solo `modules/notte/` e i suoi test), riga reale:
 
 ```
 === RIEPILOGO: 1187 PASS, 0 FAIL ===
@@ -174,21 +226,35 @@ Nessun FAIL.
 
 ## §6 STATO CI
 
-Output reale di `gh run list -L 3` alla scrittura:
+Output reale di `gh run list -L 3` alla scrittura (righe di altri rami):
 
 ```
-completed	skipped	R7 fetta 3: stato dei lavori ricorrenti del giro di notte	verifica-bot	claude/r7-lavori-ricorrenti	pull_request_target	45217179154	8s	2026-11-23T16:29:57Z
-in_progress		feat(notte): R7 fetta 3 — stato dei lavori ricorrenti (fatto, in sosp…	CI	claude/r7-lavori-ricorrenti	push	45217146013	1m17s	2026-11-23T16:29:46Z
-completed	success	R7 fetta 2: ripresa al boot del compito in sottofondo	verifica-bot	claude/r7-ripresa-al-boot	pull_request_target	45216004004	2m34s	2026-11-23T16:23:44Z
+in_progress		Merge pull request #397 from Gasss23/claude/nifty-galileo-3k7kbm — Ga…	CI	claude/nifty-galileo-3k7kbm	push	45217979161	3m44s	2026-11-23T16:34:13Z
+in_progress		R7 fetta 2: ripresa al boot del compito in sottofondo	verifica-bot	claude/r7-ripresa-al-boot	pull_request_target	45217975784	3m45s	2026-11-23T16:34:12Z
+in_progress		docs(fine-task): PR #398 secondo giro — correzioni del verdetto del b…	CI	claude/r7-ripresa-al-boot	push	45217965677	3m49s	2026-11-23T16:34:08Z
+```
+
+Run di questo branch (`gh api .../actions/runs?branch=claude/r7-lavori-ricorrenti`, output reale):
+
+```
+45217587661 492f7e20 verifica-bot pull_request_target completed/cancelled
+45217586568 b7ae5d42 verifica-bot pull_request_target completed/success
+45217578563 492f7e20 CI push in_progress/null
+45217179154 b7ae5d42 verifica-bot pull_request_target completed/skipped
+45217146013 b7ae5d42 CI push in_progress/null
 ```
 
 Mappatura commit→run:
-- b7ae5d42 (motore): run CI 45217146013 in corso alla scrittura (esito non ancora disponibile); verifica-bot 45217179154 skipped (PR senza etichetta: la «verifica» si mette dopo questo commit).
-- 2246dd88 e 113a2fde (memoria del revisore): nessuna run su questi SHA (pushati insieme a b7ae5d42, la run testa solo l'albero di testa).
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- b7ae5d42: run CI 45217146013 in_progress alla scrittura; verifica-bot 45217179154 skipped.
+- 492f7e20: run CI 45217578563 in_progress alla scrittura (handoff-check success); verifica-bot: la run 45217586568 (registrata dall'API con head b7ae5d42) ha pubblicato sul 492f7e20 il check `verifica-bot` success col 1° verdetto APPROVATO CON RISERVE (solo BASSE); 45217587661 cancelled (doppione).
+- 113a2fde, 2246dd88, ba513ece (memoria) e f3a6168e: nessuna run propria (pushati insieme al commit di testa).
+- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-839-3 COSMETICA (review #839-F3, allargata dalla #842) — kernel non creato: lo stato del lavoro non si aggiorna; voce «da non ritentare» con pausa azzerata o scaduta mostra «fermo fino al» una data passata o 01/01 (il lavoro non viene saltato). Aperta.
+- 1° verdetto del bot su PR #399 (492f7e20, APPROVATO CON RISERVE, solo BASSE): V-1 (sezione senza i compiti saltati per crash) e V-2 (conto non azzerato dopo la pausa, avviso col numero fisso) CORRETTE in questo giro. Serve il verdetto sul nuovo head.
+- Verifica esterna sulla PR #399 (492f7e20, [commento](https://github.com/Gasss23/Gas/pull/399#issuecomment-7107349754)): V-1 BASSA (guasti dei provider contati come ko) CORRETTA; V-2 COSMETICA (CI dichiarata per b7ae5d42 e non per l'head) superata da questo §6; V-3 = R-839-3.
+- R-843-1 BASSA — un guasto esterno su un lavoro «da non ritentare» (rilancio a mano o pausa scaduta) toglie la pausa: finché durano i guasti si ritenta ogni notte; costo nullo, al primo ko vero torna in pausa. Aperta.
+- R-839-3 COSMETICA — kernel non creato: stato non aggiornato; «fermo fino al» con data passata o 01/01. Aperta.
 - R-839-1 MEDIA e R-839-2 BASSA della #839-F3: CHIUSE (review #842).
 - Riserve delle altre chat e della PR #398: in `reports/stato_progetto.md` e sul ramo della #398.

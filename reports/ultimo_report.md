@@ -11,6 +11,7 @@
 ## Esito fette
 
 - **Fetta 3 R7 — lista dei lavori ricorrenti con stato**: FATTA. Registro `.gas_notte/stato_lavori.json` in `modules/notte/notte.py` (fatto / in sospeso / fallito / da non ritentare), aggiornato dopo ogni compito eseguito; 3 ko di fila → fermo 7 giorni nei giri completi (avviso, non è un ko del giro); `python3 gas.py notte <nome>` lo rilancia sempre; prompt cambiato o data assurda → la pausa decade; potatura solo a catalogo sano (come R-407-1); sezione «Lavori ricorrenti (stato)» nel riepilogo; doc in `reports/setup_notte.md`. 9 test nuovi (209 in `tests/test_unit_notte.py`). Review #839-F3 → correzioni R-839-1 MEDIA e R-839-2 BASSA → review #842 APPROVATO CON RISERVE.
+- **Correzioni delle riserve (bot e verifica esterna) sulla PR #399**: FATTA. Guasti esterni non contati tra i ko di fila, sezione con tutti i compiti, avviso col conto reale e ritmo documentato. 6 test nuovi (215). Review #843 APPROVATO CON RISERVE (R-843-1 BASSA).
 - **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — prossima PR.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — dopo la 4.
 
