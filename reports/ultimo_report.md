@@ -6,7 +6,7 @@
 3. Decisione aperta: se anche così i punteggi restano bassi, un modello «ehi Jarvis» addestrato apposta (circa 1 giorno + 2-4 ore di GPU in cloud; non fattibile da questo ambiente, Hugging Face bloccato).
 
 ## Esito
-- **Simulazione end-to-end (23/11)**, script e risultati nello scratchpad `sim_voce`:
+- **Simulazione end-to-end (23/11)**, script e risultati in `reports/voce_simulazione_2026-11-23/`:
   - voci espeak a varie distanze (−6/−12/−20 dB), riverbero, rumore, TV;
   - gira il codice vero: `registra_voce.main` (microfono finto, `misura` e `addestra` veri) e `Ascolto.gira` su flussi di 30 minuti;
   - numeri: prima (verifica 0,5) vicino 89–93%, −12 dB 28–41%, 2–13 attivazioni sbagliate/ora; con le 4 fasi vicino 96%, −12 dB 41%, 1,3–4,7/ora (soglia 0,6);
@@ -19,6 +19,8 @@
 - Prova col modello vero (voce chiara): 4 fasi danno 0,998 a ogni sfasamento.
 
 - **Correzione #817 (27d33851, review #817-M1coord APPROVATO CON RISERVE):** finding del bot su #400. V-1 MEDIA: script e risultati della simulazione ora in `reports/voce_simulazione_2026-11-23/`; V-2 test dell'avviso col filtro; V-3 ambiente dei test; V-4 docstring. R-817-1 (`sim/` nel `.gitignore`) chiusa nei documenti.
+
+- **Interruzione con 4 fasi misurata (risposta a V-1 bot #400 su b1ca6dc9):** nella configurazione predefinita (filtro + 4 fasi, 0,5 su 1 blocco) prese 170/180 nelle pause, 0 auto-interruzioni all'ora dalla voce di Gas simulata; con 0,8 su 3 blocchi 8/180. Script `interr_f4.py` e risultati `interr_f4.txt`, `interr_1fase.txt` in `reports/voce_simulazione_2026-11-23/`.
 
 ## Test
 - `tests/test_unit_voce_ascolto.py`: 379 su main → 383 passed; `pytest tests/ -k voce` 538 passed (revisore).

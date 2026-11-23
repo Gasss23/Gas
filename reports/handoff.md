@@ -14,7 +14,7 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Sonda — simulazione end-to-end (subagente, 23/11):** voci espeak a −6/−12/−20 dB con riverbero, rumore e TV; codice vero di `registra_voce.main` e `Ascolto.gira` su flussi di 30 minuti. Trovati 3 bug (fasi della griglia, interruzione spenta col filtro, griglia diversa in addestramento) e il limite di pronuncia (hey_jarvis: 0,90 all'inglese, 0,40 all'italiana). Script e risultati nello scratchpad `sim_voce`.
+- **Sonda — simulazione end-to-end (subagente, 23/11):** voci espeak a −6/−12/−20 dB con riverbero, rumore e TV; codice vero di `registra_voce.main` e `Ascolto.gira` su flussi di 30 minuti. Trovati 3 bug (fasi della griglia, interruzione spenta col filtro, griglia diversa in addestramento) e il limite di pronuncia (hey_jarvis: 0,90 all'inglese, 0,40 all'italiana). Script e risultati in `reports/voce_simulazione_2026-11-23/` (dalla fetta #817).
 - **Fetta #815 — 4 fasi, interruzione col filtro, griglia in registra_voce:** FATTA, commit ce04e9c7. Review #815-M1coord APPROVATO CON RISERVE.
 - **Fetta #816 — riserve R-815-1..4:** FATTA, commit 8faff652. Review #816-M1coord APPROVATO CON RISERVE (R-816-1 BASSA).
 - **Fetta #817 — finding del bot su #400 (b992e1cc, V-1 MEDIA: dati della simulazione fuori dal repo; V-2..V-4):** FATTA, commit 27d33851. Review #817-M1coord APPROVATO CON RISERVE; R-817-1 (sim/ nel .gitignore) chiusa subito nei documenti.

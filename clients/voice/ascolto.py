@@ -160,7 +160,7 @@ BLOCCHI_PAROLA_PREDEFINITO = 1
 # (sotto la base) potrebbe attivare.
 SOGLIA_BASE_PREDEFINITA = 0.25
 SOGLIA_VERIFICA_PREDEFINITA = 0.5
-# Simulazione del 23/11 (scratchpad sim_voce): il punteggio di «Hey Jarvis» dipende molto da
+# Simulazione del 23/11 (reports/voce_simulazione_2026-11-23/): il punteggio di «Hey Jarvis» dipende molto da
 # dove cade la parola sulla griglia da 80 ms (stessa clip: 0,06-0,48). Con 4 modelli sfalsati
 # di 20 ms e il massimo, a parità di falsi le chiamate prese salgono (vicino 89→96%, 3 m
 # 28→41%). Costo: 4 volte il calcolo del modello (ritardo in più < 80 ms).

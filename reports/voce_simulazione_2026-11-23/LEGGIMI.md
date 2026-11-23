@@ -25,7 +25,11 @@ Prova end-to-end di «Hey Jarvis» con voci sintetiche, fatta per non chiedere a
 - 2 blocchi di fila dimezzano sempre le chiamate prese.
 - Latenza: 0,2–0,45 s dalla fine della parola.
 - **Fasi** (`script/fase.py`): la stessa clip va da 0,06 a 0,48 di punteggio a seconda di dove cade sulla griglia da 80 ms.
-- **Interruzione col filtro** (`script/interr.py`, `script/analisi_prob.py`): con 0,8 su 3 blocchi scattava 4 volte su 180. Con la soglia della parola su 1 blocco le prese sono 83–87% in pulito, con 0 auto-interruzioni dalla voce di Gas simulata. Quando la voce di Gas copre la chiamata (flusso E) le prese sono 0/180: funziona solo nelle pause tra le frasi.
+- **Interruzione col filtro**: chiamate vicino/−6 dB, 3 filtri addestrati, 180 prove.
+  - Una fase (`script/interr.py` → `risultati/interr_1fase.txt`): 0,8 su 3 blocchi 4/180 (2%); soglia della parola 0,5 su 1 blocco 156/180 (87%).
+  - **4 fasi, cioè la configurazione predefinita della PR #400** (`script/interr_f4.py` sulle tracce `tracce_f4_ver` di `script/traccia_fasi.py` → `risultati/interr_f4.txt`): 0,8 su 3 blocchi 8/180 (4%); 0,5 su 1 blocco **170/180 (94%)**; 0,5 su 2 blocchi 158/180; 0,5 su 3 blocchi 99/180.
+  - Auto-interruzioni dalla voce di Gas simulata (flusso E, Gas che parla di continuo): **0 all'ora** in tutte le regolazioni, con 1 e con 4 fasi.
+  - Quando la voce di Gas copre la chiamata (flusso E) le prese sono 0/180 in tutte le regolazioni: funziona solo nelle pause tra le frasi.
 - **Griglia in addestramento** (`script/fase2.py`): clip buone scartate 4/74 → 0/74.
 - **Pronuncia**: la stessa voce sintetica dà 0,90 a «HEY JARVIS» all'inglese e 0,40 a «ehi jarvis» all'italiana. A −12 dB solo il 27–40% delle chiamate arriva a 0,25 (soglia base del filtro): è il «risponde solo vicino al Mac».
 - **Varianti di addestramento del filtro** (`script/train_varianti.py`): nessuna migliore dell'attuale.
@@ -44,7 +48,8 @@ python gen_flussi.py
 python traccia.py <flusso> <pkl…>
 python sweep2.py ; python sweep5.py
 FASI=4 python sim_ascolto.py A_chiamate --modo vero --soglia 0.6 --pkl varianti/d4_orig.pkl
-python interr.py ; python fase2.py <copia del repo> runs/*
+python interr.py ; python traccia_fasi.py E_sopra_gas 4 varianti/d3_orig.pkl varianti/d4_orig.pkl varianti/d5_orig.pkl ; python interr_f4.py
+python fase2.py <copia del repo> runs/*
 ```
 
 Audio generato, cache e registrazioni restano fuori da git (`.gitignore` di questa cartella). In `risultati/` ci sono i numeri delle griglie (`sweep*.txt`), i confronti tracce/rilevatore vero (`val_*.txt`), le prove col rilevatore vero (`vero4/`) e i diff originali (`diff_*.patch`).
