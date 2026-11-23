@@ -933,8 +933,23 @@ _ERRORI_ESTERNI = ("Pipeline esausta", "Budget giornaliero esaurito", "Cervello 
 ESTERNI_DI_FILA_PAUSA = 14
 
 
+# Bot #399 (3b188028) V-1: «Pipeline esausta» (e gli altri errori col dettaglio dei motivi)
+# copre anche motivi che nascono dal lavoro stesso (gas.py run_turn: tetto di chiamate per
+# turno, risposta vuota, 10 iterazioni senza risposta finale). Con uno di questi nel
+# dettaglio il ko conta come un ko vero, anche se insieme c'è un guasto di provider
+# (R-847R7-2: compromesso dichiarato in reports/setup_notte.md).
+_MOTIVI_DEL_LAVORO = ("chiamate al modello per turno", "risposta vuota",
+                      "iterazioni senza risposta finale")
+
+
 def _ko_esterno(esito: Dict[str, Any]) -> bool:
-    return str(esito.get("errore", "")).startswith(_ERRORI_ESTERNI)
+    errore = str(esito.get("errore", ""))
+    # R-847R7-1: il dettaglio dei motivi c'è anche in «Rispondo solo con Claude Opus…» e in
+    # «Questa richiesta contiene dati di clienti…» (gas.py, ramo _solo_forte_lead): il
+    # controllo vale per ogni errore, non solo per «Pipeline esausta»
+    if any(m in errore for m in _MOTIVI_DEL_LAVORO):
+        return False
+    return errore.startswith(_ERRORI_ESTERNI)
 
 
 def _volte(info: Dict[str, Any]) -> str:

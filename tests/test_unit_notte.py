@@ -2810,3 +2810,47 @@ def test_r7f3_esterni_ripartono_col_prompt_nuovo_e_pausa_scaduta_non_resta():
     lav = {"c": _voce_lavoro("c", stato="da_non_ritentare", ko_di_fila=3, fino_a=adesso - 10)}
     notte._aggiorna_lavoro(lav, c, {"esito": "ko", "errore": "Pipeline esausta: x"}, adesso)
     assert lav["c"]["stato"] == "fallito" and lav["c"]["fino_a"] == 0.0
+
+
+# ── bot #399 (3b188028) V-1: «Pipeline esausta» causata dal lavoro stesso ────
+
+def test_r7f3_tetto_di_chiamate_del_lavoro_conta_come_ko(dirs, monkeypatch):
+    """Un compito che fa girare il modello fino al tetto (kernel VERO): «Pipeline esausta»
+    col tetto delle chiamate nel dettaglio è un ko vero, e dopo 3 notti va in pausa."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: gira\n")
+    giri = [[("calcola", json.dumps({"expr": "1+1"}))]] * 40
+    script = _Script({"gira": giri})
+    for _ in range(3):
+        _giro(monkeypatch, root, cat, script)
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "Pipeline esausta" in testo
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "da_non_ritentare" and lav["ko_di_fila"] == 3 and "esterno" not in lav
+
+
+@pytest.mark.parametrize("motivo", [
+    "tetto di 10 chiamate al modello per turno raggiunto: groq e successivi non provati",
+    "gemini-flash: risposta vuota", "groq: 10 iterazioni senza risposta finale"])
+def test_r7f3_motivi_del_lavoro_non_sono_esterni(motivo):
+    assert not notte._ko_esterno({"errore": f"Pipeline esausta: nessun cervello ha risposto. "
+                                            f"{motivo}."})
+    assert notte._ko_esterno({"errore": "Pipeline esausta: nessun cervello ha risposto. "
+                                        "gemini-flash: QUOTA (HTTP 429)."})
+
+
+@pytest.mark.parametrize("testa", [
+    "Rispondo solo con Claude Opus (scelta dell'operatore, GAS_SOLO_OPUS), che ora non è "
+    "disponibile. Dettagli: ",
+    "Questa richiesta contiene dati di clienti: rispondo solo col cervello forte, che ora non "
+    "è disponibile. Dettagli: "])
+@pytest.mark.parametrize("motivo", [
+    "gemini: saltato (dati di clienti nella conversazione); claude-cli: tetto di 10 chiamate "
+    "al modello per turno raggiunto",
+    "claude-cli: 10 iterazioni senza risposta finale", "claude-cli: risposta vuota"])
+def test_r7f3_motivi_del_lavoro_anche_con_sempre_opus(testa, motivo):
+    """R-847R7-1: con «Sempre Opus» (default di produzione) l'errore non inizia con «Pipeline
+    esausta» ma porta lo stesso dettaglio: un lavoro che gira a vuoto resta un ko vero."""
+    assert not notte._ko_esterno({"errore": f"{testa}{motivo}."})
+    assert notte._ko_esterno({"errore": f"{testa}claude-cli: KO (RuntimeError)."})

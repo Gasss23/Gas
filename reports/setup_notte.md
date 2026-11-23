@@ -12,7 +12,10 @@ se fallisce ancora si ferma subito per altri 7 giorni (un tentativo a settimana)
 volta. I fallimenti dovuti a cause esterne (provider giù, budget del giorno finito, cervello forte
 fermo, Claude Opus non disponibile con «Sempre Opus») restano «fallito» ma non contano tra i
 fallimenti; dopo 14 guasti esterni di fila però il compito si ferma lo stesso per 7 giorni (un
-guasto che dipende dal prompt non deve ripetersi ogni notte per sempre). Per rilanciarlo prima:
+guasto che dipende dal prompt non deve ripetersi ogni notte per sempre). Non sono esterni, e contano come
+fallimenti veri, il tetto delle chiamate al modello per turno, la risposta vuota e le 10
+iterazioni senza risposta finale: nascono dal compito. Se nella stessa notte uno di questi si
+somma a un guasto di provider, conta come fallimento vero (compromesso voluto). Per rilanciarlo prima:
 `python3 gas.py notte <nome>`; se cambi il suo prompt nel catalogo la pausa decade. Il riepilogo
 ha la sezione «Lavori ricorrenti (stato)» con tutti i compiti attivi (anche quelli saltati per crash ripetuti).
 
