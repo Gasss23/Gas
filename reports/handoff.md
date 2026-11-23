@@ -23,13 +23,27 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-(da rigenerare)
+ .claude/agents/memoria_revisore.md |   3 +
+ clients/voice/ascolto.py           |  90 +++++++++++++++++------
+ reports/diff_sessione.md           |  21 +++---
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   2 +-
+ reports/ultimo_report.md           |  50 ++++++-------
+ scripts/voce/LEGGIMI.md            |  13 ++--
+ scripts/voce/registra_voce.py      |  11 ++-
+ scripts/voce/taratura_parola.py    |   5 +-
+ tests/test_unit_voce_ascolto.py    |  74 +++++++++++++++++--
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(da rigenerare)
+90d85369 docs(fine-task): report della simulazione e delle correzioni voce (review #815/#816-M1coord)
+8faff652 fix(voce): taratura con le stesse fasi dell'ascolto, avviso dei blocchi d'interruzione col filtro, LEGGIMI e test (R-815-1..4) — review #816-M1coord APPROVATO CON RISERVE
+7a70ccb5 chore(revisore): memoria review #816 — APPROVATO CON RISERVE
+ce04e9c7 fix(voce): 4 fasi sfalsate per «Hey Jarvis», interruzione che funziona col filtro della voce, griglia coerente in registra_voce — review #815-M1coord APPROVATO CON RISERVE
+d8056e2c chore(revisore): memoria review #815 — APPROVATO CON RISERVE
+(il commit di fine-task che aggiorna §2/§3 è escluso per costruzione)
 ```
 
 ---
