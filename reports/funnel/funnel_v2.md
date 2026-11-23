@@ -17,7 +17,7 @@ Il funnel attuale è GIÀ in due fasi: fase 1 community (lingua + 18enni, intere
   - **Caso A — il lead si ferma a metà dei passaggi della candidatura:**
     - +24 h: «Ciao {nome} 🤝 Ti mancano 30 secondi di candidatura: riprendiamo da dove eri?» [Riprendi]
     - +72 h: «Vuoi completare la candidatura o la chiudo? Se preferisci, riprendila quando vuoi.» [Riprendila] [Chiudila]
-  - **Caso B — candidatura accettata ma il lead non preme «Scrivi a {agente}»** (il percorso diretto di `tasto_collaboratori.md` ha solo questo caso):
+  - **Caso B — il lead non preme «Scrivi a {agente}»** dopo la candidatura accettata (o, nel percorso diretto di `tasto_collaboratori.md`, dopo il messaggio unico: il diretto ha solo questo caso):
     - +24 h: «Ciao {nome} 🤝 Ti manca solo l'ultimo passo: scrivi a {agente} e ti attiva. Lo facciamo ora?» [Riprendi]
     - +72 h: «Vuoi fare l'ultimo passo o chiudo qui? Se preferisci, riprendi quando vuoi.» [Riprendi] [Chiudi]
   - Regole per entrambi i casi: oltre il 2° sollecito, silenzio (mai più di 2); partono SOLO per chi ha iniziato il percorso e riguardano solo il suo completamento — non sono promozione a freddo e non dipendono dal consenso aggiornamenti.
