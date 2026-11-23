@@ -2482,3 +2482,375 @@ def test_r809_2_crm_vero_del_repo_isolato() -> None:
     from pathlib import Path
     assert Path(gas._RADICE_REPO).resolve() != Path(gas.__file__).resolve().parent
     assert "GAS_CRM_DB" not in os.environ
+
+
+# ── R7 fetta 3: stato dei lavori ricorrenti ─────────────────────────────────
+
+class _KEsito:
+    """Kernel finto: il compito il cui prompt è in `ko` dà errore, in `firma` lascia
+    un'azione in attesa della firma, gli altri finiscono bene."""
+    def __init__(self, visti, ko=(), firma=()):
+        self.visti, self.ko, self.firma, self.history = visti, set(ko), set(firma), []
+
+    def _diario_log(self, *a, **k):
+        pass
+
+    def run_turn(self, prompt):
+        self.visti.append(prompt)
+        if prompt in self.firma:
+            yield {"type": "tool_res", "output": "x", "cancello": "in_attesa"}
+        if prompt in self.ko:
+            yield {"type": "error", "content": "provider giù"}
+            return
+        yield {"type": "final", "content": "fatto"}
+
+
+def _giro_esito(root, cat, ko=(), firma=(), solo=None):
+    visti = []
+    rc = esegui_notte(str(root), catalogo=cat, solo=solo,
+                      kernel_factory=lambda r: _KEsito(visti, ko, firma))
+    return rc, visti
+
+
+def _lavori(root):
+    return json.loads((root / ".gas_notte" / notte.STATO_LAVORI).read_text())
+
+
+def test_r7f3_stati_fatto_in_sospeso_fallito(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: a\n"
+                  "  - nome: b\n    prompt: b\n  - nome: c\n    prompt: c\n")
+    rc, _ = _giro_esito(root, cat, ko={"c"}, firma={"b"})
+    assert rc == 1
+    lav = _lavori(root)
+    assert lav["a"]["stato"] == "fatto" and lav["b"]["stato"] == "in_sospeso"
+    assert lav["c"]["stato"] == "fallito" and lav["c"]["ko_di_fila"] == 1
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "## Lavori ricorrenti (stato)" in testo
+    assert "- a: fatto" in testo and "- b: in sospeso" in testo
+    assert "- c: fallito" in testo and "ko di fila: 1" in testo
+
+
+def test_r7f3_tre_ko_di_fila_da_non_ritentare_poi_a_mano(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: a\n"
+                  "  - nome: c\n    prompt: c\n")
+    for _ in range(notte.KO_DI_FILA_PAUSA):
+        _giro_esito(root, cat, ko={"c"})
+    lav = _lavori(root)
+    assert lav["c"]["stato"] == "da_non_ritentare" and lav["c"]["ko_di_fila"] == 3
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "da non ritentare per 7 giorni" in testo and "gas.py notte c" in testo
+    # giro dopo: «c» fermo (avviso), «a» gira; non è un ko del giro
+    rc, visti = _giro_esito(root, cat, ko={"c"})
+    assert visti == ["a"] and rc == 0
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "'c' da non ritentare" in testo and "fermo fino al" in testo
+    # rilanciato a mano: gira; se va bene torna «fatto» e riparte nei giri
+    rc, visti = _giro_esito(root, cat, solo="c")
+    assert visti == ["c"] and rc == 0 and _lavori(root)["c"]["stato"] == "fatto"
+    assert _giro_esito(root, cat)[1] == ["a", "c"]
+
+
+def test_r7f3_un_ok_azzera_i_ko(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    _giro_esito(root, cat, ko={"c"})
+    _giro_esito(root, cat, ko={"c"})
+    _giro_esito(root, cat)
+    _giro_esito(root, cat, ko={"c"})
+    assert _lavori(root)["c"] == {**_lavori(root)["c"], "stato": "fallito", "ko_di_fila": 1}
+
+
+def test_r7f3_prompt_cambiato_toglie_la_pausa(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    for _ in range(3):
+        _giro_esito(root, cat, ko={"c"})
+    assert _giro_esito(root, cat)[1] == []
+    _scrivi(cat, "compiti:\n  - nome: c\n    prompt: c2\n")
+    rc, visti = _giro_esito(root, cat, ko={"c2"})
+    assert visti == ["c2"] and _lavori(root)["c"]["ko_di_fila"] == 1  # conto ripartito
+
+
+def test_r7f3_pausa_scaduta_o_assurda_si_ritenta(dirs, monkeypatch):
+    import time as _t
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    base = {"stato": "da_non_ritentare", "ultimo": "x", "ko_di_fila": 3,
+            "impronta": notte._impronta("c")}
+    for fino in (_t.time() - 10, _t.time() + 400 * 86400):  # scaduta / troppo lontana
+        (nd / notte.STATO_LAVORI).write_text(json.dumps({"c": {**base, "fino_a": fino}}))
+        assert _giro_esito(root, cat)[1] == ["c"]
+
+
+def test_r7f3_registro_rovinato_non_ferma_il_giro(dirs, monkeypatch, caplog):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    (nd / notte.STATO_LAVORI).write_text("{rotto")
+    assert _giro_esito(root, cat) == (0, ["c"])
+    assert "illeggibile" in caplog.text and _lavori(root)["c"]["stato"] == "fatto"
+    # voci alterate: scartate o riportate a valori sicuri
+    (nd / notte.STATO_LAVORI).write_text(json.dumps({
+        "../x": {"stato": "fatto"}, "c": {"stato": "boh"},
+        "d": {"stato": "fallito", "ko_di_fila": True, "fino_a": "domani"}}))
+    assert notte._leggi_stato_lavori(nd) == {
+        "d": {"stato": "fallito", "ultimo": "", "ko_di_fila": 0, "fino_a": 0.0, "impronta": ""}}
+
+
+def test_r7f3_lavori_tolti_dal_catalogo_potati(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: a\n"
+                  "  - nome: b\n    prompt: b\n")
+    _giro_esito(root, cat)
+    _scrivi(cat, "compiti:\n  - nome: a\n    prompt: a\n")
+    _giro_esito(root, cat)
+    assert set(_lavori(root)) == {"a"}
+    # catalogo rovinato per un momento: niente potatura
+    _scrivi(cat, ": : :\n  - [")
+    _giro_esito(root, cat)
+    assert set(_lavori(root)) == {"a"}
+
+
+def test_r7f3_data_enorme_non_rompe_il_giro(dirs, monkeypatch):
+    """Review #839-F3 R-839-1: fino_a finita ma enorme + kernel che non parte (la voce
+    non viene riscritta): niente «giro interrotto», riepilogo scritto."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    for fino in (1e20, 1e12, -5):
+        (nd / notte.STATO_LAVORI).write_text(json.dumps({"c": {
+            "stato": "da_non_ritentare", "ultimo": "x", "ko_di_fila": 3, "fino_a": fino,
+            "impronta": notte._impronta("c")}}))
+        assert notte._leggi_stato_lavori(nd)["c"]["fino_a"] == 0.0
+
+        def _rotto(r):
+            raise RuntimeError("kernel giù")
+        assert esegui_notte(str(root), catalogo=cat, kernel_factory=_rotto) == 1
+        testo = (nd / "ultimo_giro.md").read_text()
+        assert "## Lavori ricorrenti (stato)" in testo and "- c: da non ritentare" in testo
+    assert notte._giorno(1e20) == "?"
+
+
+def test_r7f3_niente_potatura_con_catalogo_in_parte_rotto(dirs, monkeypatch):
+    """Review #839-F3 R-839-2: un compito valido più una voce rotta (avviso) → il compito
+    gira e il registro si riscrive, ma la voce del lavoro sparito resta."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: a\n"
+                  "  - nome: b\n    prompt: b\n")
+    _giro_esito(root, cat)
+    _scrivi(cat, "compiti:\n  - nome: a\n    prompt: a\n  - 7\n")
+    assert _giro_esito(root, cat)[1] == ["a"]
+    assert set(_lavori(root)) == {"a", "b"}
+
+
+# ── verdetti su PR #399: verifica esterna V-1, bot V-1/V-2 ──────────────────
+
+class _KErrore(_KEsito):
+    def __init__(self, visti, errore):
+        super().__init__(visti)
+        self.errore = errore
+
+    def run_turn(self, prompt):
+        self.visti.append(prompt)
+        yield {"type": "error", "content": self.errore}
+
+
+@pytest.mark.parametrize("errore", [
+    "Pipeline esausta: nessun cervello ha risposto. gemini: QUOTA.",
+    "Budget giornaliero esaurito: $1.0000 spesi (limite $1.00 USD).",
+    "Cervello forte fermo: usati $5 equivalenti oggi.",
+    "Questa richiesta contiene dati di clienti: rispondo solo col cervello forte."])
+def test_r7f3_guasto_esterno_non_conta(dirs, monkeypatch, errore):
+    """Verifica esterna #399 V-1: tre notti di provider giù non mettono in pausa il lavoro."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    _giro_esito(root, cat, ko={"c"})  # un ko vero prima
+    for _ in range(4):
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KErrore([], errore))
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "fallito" and lav["ko_di_fila"] == 1 and lav["esterno"] is True
+    assert "guasto esterno" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert _giro_esito(root, cat)[1] == ["c"]  # mai in pausa
+    assert "esterno" not in _lavori(root)["c"]
+
+
+def test_r7f3_sezione_mostra_anche_i_saltati_per_crash(dirs, monkeypatch):
+    """Bot #399 V-1."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    (nd / notte.IN_CORSO).write_text(json.dumps(
+        {"lungo": {"tentativi": notte.MAX_TENTATIVI, "inizio": "x"}}))
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([], crash=False))
+    testo = (nd / "ultimo_giro.md").read_text()
+    assert "- breve: fatto" in testo and "- lungo: mai eseguito" in testo
+
+
+def test_r7f3_dopo_la_pausa_un_ko_basta_e_l_avviso_dice_il_conto(dirs, monkeypatch):
+    """Bot #399 V-2: dopo la pausa il conto resta (un tentativo a settimana) e l'avviso
+    riporta i ko di fila reali."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    for _ in range(3):
+        _giro_esito(root, cat, ko={"c"})
+    _giro_esito(root, cat, ko={"c"}, solo="c")  # rilancio a mano che fallisce
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "da_non_ritentare" and lav["ko_di_fila"] == 4
+    assert "fallito 4 volte di fila" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+
+
+# ── review #844-MERGE R-844M-1, verifica esterna #399 (3b188028) V-1, R-843-1 ──
+
+def test_r7f3_sempre_opus_col_forte_giu_e_guasto_esterno(dirs, monkeypatch):
+    """R-844M-1: con GAS_SOLO_OPUS acceso (default di produzione) e il forte assente il
+    kernel VERO dà un errore che la notte deve riconoscere come guasto esterno."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    monkeypatch.setenv("GAS_SOLO_OPUS", "1")
+    for k in ("GAS_CLAUDE_CLI", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: conta\n")
+    script = _Script({"conta": ["42"]})
+    for _ in range(4):
+        assert _giro(monkeypatch, root, cat, script) == 1
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "fallito" and lav["ko_di_fila"] == 0 and lav["esterno"] is True
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "Rispondo solo con Claude Opus" in testo and "guasto esterno" in testo
+
+
+def test_r7f3_troppi_guasti_esterni_di_fila_pausa(dirs, monkeypatch):
+    """Verifica esterna #399 (3b188028) V-1: un «guasto esterno» che dipende dal prompt non
+    fa ritentare per sempre: dopo ESTERNI_DI_FILA_PAUSA notti, pausa con avviso."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    err = "Pipeline esausta: nessun cervello ha risposto."
+    for i in range(notte.ESTERNI_DI_FILA_PAUSA):
+        assert _lavori(root)["c"]["stato"] == "fallito" if i else True
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KErrore([], err))
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "da_non_ritentare" and lav["esterni_di_fila"] == 14
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "fallito 14 volte di fila per guasti esterni" in testo
+    assert _giro_esito(root, cat)[1] == []  # fermo
+    # un ok azzera tutto
+    _giro_esito(root, cat, solo="c")
+    assert _lavori(root)["c"]["stato"] == "fatto" and "esterni_di_fila" not in _lavori(root)["c"]
+
+
+def test_r7f3_guasto_esterno_in_pausa_non_la_toglie(dirs, monkeypatch):
+    """R-843-1: rilancio a mano di un lavoro in pausa che fallisce per un guasto esterno:
+    la pausa resta, nessun nuovo avviso di pausa."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    for _ in range(3):
+        _giro_esito(root, cat, ko={"c"})
+    fino = _lavori(root)["c"]["fino_a"]
+    esegui_notte(str(root), catalogo=cat, solo="c",
+                 kernel_factory=lambda r: _KErrore([], "Budget giornaliero esaurito: x"))
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "da_non_ritentare" and lav["fino_a"] == fino and lav["ko_di_fila"] == 3
+    assert "da non ritentare per 7 giorni" not in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert _giro_esito(root, cat)[1] == []
+
+
+# ── review #845-R7: R-845R7-1 e R-845R7-2 ───────────────────────────────────
+
+def _voce_lavoro(prompt, **kw):
+    v = {"stato": "fallito", "ultimo": "x", "ko_di_fila": 0, "fino_a": 0.0,
+         "impronta": notte._impronta(prompt)}
+    v.update(kw)
+    return v
+
+
+def test_r7f3_pausa_da_guasti_esterni_non_si_allunga():
+    """R-845R7-1: pausa nata da 14 guasti esterni + rilancio a mano con un altro guasto
+    esterno: la pausa resta quella di prima."""
+    import time as _t
+    adesso = _t.time()
+    c = {"nome": "c", "prompt": "c"}
+    lav = {"c": _voce_lavoro("c", stato="da_non_ritentare", esterno=True,
+                             esterni_di_fila=14, fino_a=adesso + 3600)}
+    notte._aggiorna_lavoro(lav, c, {"esito": "ko", "errore": "Pipeline esausta: x"}, adesso)
+    assert lav["c"]["stato"] == "da_non_ritentare" and lav["c"]["fino_a"] == adesso + 3600
+    assert lav["c"]["esterni_di_fila"] == 15
+
+
+def test_r7f3_esterni_ripartono_col_prompt_nuovo_e_pausa_scaduta_non_resta():
+    """R-845R7-2: (M6) prompt cambiato → il conto dei guasti esterni riparte da 1;
+    (M7) un guasto esterno non conserva una pausa già scaduta."""
+    import time as _t
+    adesso = _t.time()
+    c = {"nome": "c", "prompt": "nuovo"}
+    lav = {"c": _voce_lavoro("vecchio", esterno=True, esterni_di_fila=13)}
+    notte._aggiorna_lavoro(lav, c, {"esito": "ko", "errore": "Pipeline esausta: x"}, adesso)
+    assert lav["c"]["esterni_di_fila"] == 1 and lav["c"]["stato"] == "fallito"
+    c = {"nome": "c", "prompt": "c"}
+    lav = {"c": _voce_lavoro("c", stato="da_non_ritentare", ko_di_fila=3, fino_a=adesso - 10)}
+    notte._aggiorna_lavoro(lav, c, {"esito": "ko", "errore": "Pipeline esausta: x"}, adesso)
+    assert lav["c"]["stato"] == "fallito" and lav["c"]["fino_a"] == 0.0
+
+
+# ── bot #399 (3b188028) V-1: «Pipeline esausta» causata dal lavoro stesso ────
+
+def test_r7f3_tetto_di_chiamate_del_lavoro_conta_come_ko(dirs, monkeypatch):
+    """Un compito che fa girare il modello fino al tetto (kernel VERO): «Pipeline esausta»
+    col tetto delle chiamate nel dettaglio è un ko vero, e dopo 3 notti va in pausa."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: gira\n")
+    giri = [[("calcola", json.dumps({"expr": "1+1"}))]] * 40
+    script = _Script({"gira": giri})
+    for _ in range(3):
+        _giro(monkeypatch, root, cat, script)
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "Pipeline esausta" in testo
+    lav = _lavori(root)["c"]
+    assert lav["stato"] == "da_non_ritentare" and lav["ko_di_fila"] == 3 and "esterno" not in lav
+
+
+@pytest.mark.parametrize("motivo", [
+    "tetto di 10 chiamate al modello per turno raggiunto: groq e successivi non provati",
+    "gemini-flash: risposta vuota", "groq: 10 iterazioni senza risposta finale"])
+def test_r7f3_motivi_del_lavoro_non_sono_esterni(motivo):
+    assert not notte._ko_esterno({"errore": f"Pipeline esausta: nessun cervello ha risposto. "
+                                            f"{motivo}."})
+    assert notte._ko_esterno({"errore": "Pipeline esausta: nessun cervello ha risposto. "
+                                        "gemini-flash: QUOTA (HTTP 429)."})
+
+
+@pytest.mark.parametrize("testa", [
+    "Rispondo solo con Claude Opus (scelta dell'operatore, GAS_SOLO_OPUS), che ora non è "
+    "disponibile. Dettagli: ",
+    "Questa richiesta contiene dati di clienti: rispondo solo col cervello forte, che ora non "
+    "è disponibile. Dettagli: "])
+@pytest.mark.parametrize("motivo", [
+    "gemini: saltato (dati di clienti nella conversazione); claude-cli: tetto di 10 chiamate "
+    "al modello per turno raggiunto",
+    "claude-cli: 10 iterazioni senza risposta finale", "claude-cli: risposta vuota"])
+def test_r7f3_motivi_del_lavoro_anche_con_sempre_opus(testa, motivo):
+    """R-847R7-1: con «Sempre Opus» (default di produzione) l'errore non inizia con «Pipeline
+    esausta» ma porta lo stesso dettaglio: un lavoro che gira a vuoto resta un ko vero."""
+    assert not notte._ko_esterno({"errore": f"{testa}{motivo}."})
+    assert notte._ko_esterno({"errore": f"{testa}claude-cli: KO (RuntimeError)."})

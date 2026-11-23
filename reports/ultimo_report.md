@@ -1,25 +1,25 @@
-# ULTIMO REPORT — R7 fetta 2: ripresa al boot del compito in sottofondo
+# ULTIMO REPORT — R7 fetta 3: stato dei lavori ricorrenti del giro di notte
 
 **Data:** 23 novembre 2026
-**Branch:** claude/r7-ripresa-al-boot (sotto-chat di M1)
+**Branch:** claude/r7-lavori-ricorrenti (sotto-chat di M1)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR #398** (il bot dà «neutral»: tocca la macchina del bot, decide l'operatore) (vedi handoff §0): tocca il motore; merge autonomo solo con verdetto del bot APPROVATO pulito, altrimenti decide l'operatore. Il 1° verdetto del bot era BOCCIATO (V-1 MEDIA), corretto in questo giro.
-2. **(Facoltativo) Installare il servizio di ripresa al boot sul Mac** (serve anche GAS_CLAUDE_BIN nel `.env`, percorso completo di `claude`): sostituire `TUO_UTENTE` in `scripts/sottofondo/com.gas.sottofondo.plist`, poi `cp ~/Gas/scripts/sottofondo/com.gas.sottofondo.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.gas.sottofondo.plist`. Serve `~/Gas/.venv`.
+1. **Merge della PR #399**: via dell'operatore già dato («sì, mergia 398 e 399», riferito da M1); lo fa l'agente con CI e bot verdi sul nuovo head.
+2. **PR #398**: mergiata da M1 il 23/11 (17:45 UTC).
 
 ## Esito fette
 
-- **Fetta 2 R7 — ripresa al boot**: FATTA. `riprendi_al_boot` in `modules/sottofondo/__init__.py` (riusa `controlla`: stessi guardrail della fetta 1; nel terminale solo id e stato), comando `python gas.py sottofondo-riprendi`, plist launchd (solo RunAtLoad, AbandonProcessGroup, pretende `.venv`), `scripts/sottofondo/` nel perimetro di review, 8 test nuovi (121 in `tests/test_unit_sottofondo.py`). Review #839 e #840 APPROVATO CON RISERVE; chiuse R-839-1 e R-839-2.
-- **Correzioni del 1° verdetto del bot (eafdb49a, BOCCIATO)**: FATTA. V-1 MEDIA: al boot `riprendi_al_boot` aspetta la rete (tetto 120 s, `GAS_SOTTOFONDO_ATTESA_RETE`) e senza rete non tocca la coda, così il compito riparte al primo turno invece di finire «ko» per sempre; V-2 documentata; V-3 exit 1 se il riavvio non parte; commento del plist allineato. 5 test nuovi (126). Review #841 APPROVATO CON RISERVE (R-841-1 BASSA: il controllo della rete ignora il proxy; R-841-2 COSMETICA).
-- **Merge di main (PR #397) nel ramo**: FATTO (4114b631), review #849-MERGE-R7 APPROVATO CON RISERVE (R-849-1 BASSA: con «Sempre Opus» serve `GAS_CLAUDE_BIN` nel `.env` se launchd non trova `claude`).
-- **V-1 MEDIA del bot su ea78c51b**: FATTA (3ad51b10). Al boot, con «Sempre Opus», se `claude` non si trova la coda non si tocca (serve GAS_CLAUDE_BIN nel `.env`); niente attese per compiti già finiti. Review #850-R7 APPROVATO CON RISERVE. 129 test.
-- **Fetta 3 R7 — lista dei lavori ricorrenti con stato**: FATTA nella PR #399.
-- **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — dopo la 3.
+- **Fetta 3 R7 — lista dei lavori ricorrenti con stato**: FATTA. Registro `.gas_notte/stato_lavori.json` in `modules/notte/notte.py` (fatto / in sospeso / fallito / da non ritentare), aggiornato dopo ogni compito eseguito; 3 ko di fila → fermo 7 giorni nei giri completi (avviso, non è un ko del giro); `python3 gas.py notte <nome>` lo rilancia sempre; prompt cambiato o data assurda → la pausa decade; potatura solo a catalogo sano (come R-407-1); sezione «Lavori ricorrenti (stato)» nel riepilogo; doc in `reports/setup_notte.md`. 9 test nuovi (209 in `tests/test_unit_notte.py`). Review #839-F3 → correzioni R-839-1 MEDIA e R-839-2 BASSA → review #842 APPROVATO CON RISERVE.
+- **Correzioni delle riserve (bot e verifica esterna) sulla PR #399**: FATTA. Guasti esterni non contati tra i ko di fila, sezione con tutti i compiti, avviso col conto reale e ritmo documentato. 6 test nuovi (215). Review #843 APPROVATO CON RISERVE (R-843-1 BASSA).
+- **Merge di main (PR #397, CRM) e correzioni del terzo giro**: FATTA. Merge 73277ba0 (review #844-MERGE: R-844M-1 MEDIA, con «Sempre Opus» acceso l'errore «Rispondo solo con Claude Opus» non era un guasto esterno). Correzione 87006476: prefisso aggiunto con test col kernel vero; tetto di 14 guasti esterni di fila (verifica esterna V-1); pausa in corso non tolta né allungata (R-843-1, R-845R7-1/2). Review #846-R7 APPROVATO. 220 test.
+- **V-1 MEDIA del bot su 3b188028**: FATTA (7b05ccf2). Tetto delle chiamate, risposta vuota e 10 iterazioni senza risposta contano come fallimenti del lavoro (non guasti esterni), anche con «Sempre Opus». Review #847-R7 BOCCIATO → #848-R7 APPROVATO. 230 test.
+- **Merge di main dopo la #398 (mergiata dal coordinatore col via dell'operatore)**: FATTO (bc7d08df), review #851-MERGE-R7 APPROVATO.
+- **Fetta 4 R7 — tetti di tempo duri**: DEFERITA — prossima PR.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — dopo la 4.
 
 ## Anomalie / cose da sapere
 
-- La suite completa `pytest tests/` in locale non è arrivata in fondo (fermata dopo ~5 minuti); la CI esegue le suite per file. Eseguite in locale: `tests/test_unit_sottofondo.py` (121 passati) e `tests/test_unit_kernel.py` (esito nel §5 dell'handoff).
-- Launchd non provato dal vero (ambiente Linux): solo plist valido e comando simulato in bash.
-- Letta `reports/bacheca.md`: niente che blocchi questa fetta, niente da aggiungere.
+- Numerazione delle review: sul ramo di questa PR il revisore ha registrato la prima review come «#839», numero già usato dalla review della PR #398 sull'altro ramo. Nei report la chiamo «#839-F3»; la seconda è #842. Al merge delle memorie le due righe #839 vanno tenute entrambe.
+- Le PR #398 e #399 toccano entrambe `.claude/agents/memoria_revisore.md` e i report: al secondo merge ci sarà un conflitto da risolvere tenendo le righe di entrambi i lati.
+- Letta `reports/bacheca.md`: niente che blocchi questa fetta.
