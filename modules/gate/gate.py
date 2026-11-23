@@ -78,6 +78,10 @@ GATE_ALLOWLIST: dict[str, GateClass] = {
     # azione fuori lista → DENY.
     "manutenzione":           GateClass.UNCERTAIN,
     "run_command":            GateClass.UNCERTAIN,   # see §8e override below
+    # CRM dei clienti (decisione 18 del 23-11): leggere è libero (il kernel lo fa solo con
+    # Opus); ogni modifica va SEMPRE alla firma dell'operatore, che la legge per esteso.
+    "crm_consulta":           GateClass.SAFE,
+    "crm_modifica":           GateClass.IRREVERSIBLE,
     "browser_scrape":         GateClass.UNCERTAIN,
     "send_email":             GateClass.IRREVERSIBLE,
     "send_dm":                GateClass.IRREVERSIBLE,
@@ -97,6 +101,9 @@ UNTRUSTED_INPUT_TOOLS: frozenset[str] = frozenset({
     "ricorda", "read_file", "run_command", "browser_scrape", "fetch_email",
     # FETTA 1 PR A: portano nella finestra contenuti e nomi di file come read_file.
     "elenca_cartella", "leggi_righe", "cerca_testo", "conta_file",
+    # CRM (23-11): note e nomi li scrive l'operatore, ma possono venire da messaggi dei
+    # clienti copiati: dopo una lettura del CRM i tool UNCERTAIN vanno alla firma.
+    "crm_consulta",
 })
 
 # Tool che leggono un percorso: stesso controllo per NOME di read_file (_check_path_arg).
