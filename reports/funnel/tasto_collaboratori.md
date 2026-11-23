@@ -35,7 +35,7 @@ Risponde SOLO agli agenti registrati (agli altri: «Questo comando è per i coll
    poi UN solo campo di testo —
    > «✍ Scrivimi nome e cognome e ti metto subito in contatto con {agente}.
    > Inviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui.»
-   e dopo il nome: «Perfetto, {nome} 🤝 Ultimo passo: premi qui sotto, il messaggio è già pronto — {agente} ti attiva.» [💬 Scrivi a {agente}].
+   e dopo il nome: «Perfetto, {nome} 🤝 Ultimo passo: premi qui sotto, il messaggio è già pronto — {agente} ti attiva. 🔒 {agente} non ti chiede mai soldi: i fondi restano sul tuo conto. ⚠ Il trading comporta un rischio reale di perdere il capitale: usa solo soldi che puoi permetterti di perdere. I risultati passati non garantiscono quelli futuri.» [💬 Scrivi a {agente}] — la riga sul rischio sta ANCHE nell'ultimo passo, come chiede la regola comune (V-2 verifica esterna #392).
    Il consenso aggiornamenti NON si chiede nel diretto: senza un sì esplicito nessun messaggio promozionale a quel lead (se serve lo raccoglie l'agente in chat); i 2 solleciti del caso B riguardano solo il completamento e non sono promozione.
 2. La scheda lead arriva all'agente COME OGGI, con etichetta «⚡ accesso diretto» e i campi non raccolti segnati «da chiedere in chat».
 3. L'accesso alla sala lo dà sempre lo staff come oggi («Conto aperto» / «In VIP»): il suffisso -vip NON attiva nulla da solo.

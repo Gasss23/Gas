@@ -13,11 +13,12 @@
 
 ## Esito fette
 
-- **Fetta unica — Tre ritocchi chiesti dall'operatore il 23/11 dopo la prova della simulazione** (percorso completo e link agente «ok»/«perfetti», con tre richieste): FATTA.
+- **Fetta 1 — Tre ritocchi chiesti dall'operatore il 23/11 dopo la prova della simulazione** (percorso completo e link agente «ok»/«perfetti», con tre richieste): FATTA.
   1. **Via la domanda «Da quale community arrivi?»** dal percorso completo (fase 1): il bot parte dalla domanda della lingua (che porta la conferma dei 18 anni). Scritto in `funnel_v2.md` (prima regola comune + i due rimandi «fase 1 resta com'è») e nella simulazione.
   2. **Percorso diretto: solo nome e cognome.** Niente più domanda della lingua né bottoni del consenso: messaggio unico (con rischio e compenso), poi un solo campo «Scrivimi nome e cognome» con la riga «Inviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui» (testo steso dall'agente su mandato dell'operatore), poi [Scrivi a {agente}]. Il consenso aggiornamenti NON si chiede nel diretto: senza un sì, niente promozione (lo raccoglie l'agente in chat se serve); i solleciti del caso B non sono promozione. Aggiornati `tasto_collaboratori.md` §3.1 e §4.5 e la simulazione (funzione `ctaConConsenso` rimossa).
   3. **Requisito Pannello blu**: la voce «I miei link», le card e i link dell'agente si aprono DENTRO il Pannello esistente (bottone blu «Pannello» nella chat del bot, confermato dall'operatore su screenshot) — nessuna app o pagina nuova. Scritto in `tasto_collaboratori.md` §4.6 e nella scheda agente della simulazione.
 - **Fetta 2 — Correzioni del 1° verdetto del bot sulla PR #401 («Sistema prima» dell'operatore)**: FATTA. Lingua del diretto dichiarata (quella del Telegram del lead, IT/EN, altrimenti italiano — anche per la riga dei 18 anni); §3/§6 dell'handoff coi commit reali; card del diretto «solo nome e cognome»; rimando all'eccezione del diretto nella regola del consenso di `funnel_v2.md`. Simulazione ripubblicata.
+- **Fetta 3 — Correzioni del 2° verdetto del bot sulla PR #401 + merge di main**: FATTA. Riga sul rischio aggiunta all'ultimo passo del diretto (spec + simulazione); descrizione della fase 1 di oggi con la domanda della community; «Fetta 1» al posto di «Fetta unica»; merge di origin/main nel ramo per la PR #398 (chat Voce). Simulazione ripubblicata.
 - Simulazione ripubblicata sulla pagina pubblica claude.ai e PROVATA dal vivo nel browser dopo la ripubblicazione: percorso completo parte dalla lingua; diretto mostra messaggio unico → campo nome con la riga dei 18 anni → reazione calda → CTA; scheda agente con la nota del Pannello blu.
 
 ## Anomalie / cose da sapere

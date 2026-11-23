@@ -6,7 +6,7 @@
 
 ## Com'è oggi (verificato dal vivo il 21/11)
 
-Il funnel attuale è GIÀ in due fasi: fase 1 community (lingua + 18enni, interessi, conto: 2 domande vere) → scheda lead → fase 2 candidatura VIP (presentazione + 5 passaggi: esperienza, costanza, capitale 500 $ con l'opzione «Li avrò a breve» GIÀ presente, consenso aggiornamenti GIÀ esplicito, nome e cognome) → «ultimo passo» con messaggio precompilato all'agente. Dettaglio completo in `analisi_competitor.md` §1. Le bozze qui sotto cambiano SOLO la fase 2 e aggiungono le regole comuni; la fase 1 resta com'è, tranne la domanda «Da quale community arrivi?», tolta (prima regola comune).
+Il funnel attuale è GIÀ in due fasi: fase 1 community («Da quale community arrivi?», lingua + 18enni, interessi, conto) → scheda lead → fase 2 candidatura VIP (presentazione + 5 passaggi: esperienza, costanza, capitale 500 $ con l'opzione «Li avrò a breve» GIÀ presente, consenso aggiornamenti GIÀ esplicito, nome e cognome) → «ultimo passo» con messaggio precompilato all'agente. Dettaglio completo in `analisi_competitor.md` §1. Le bozze qui sotto cambiano SOLO la fase 2 e aggiungono le regole comuni; la fase 1 resta com'è, tranne la domanda «Da quale community arrivi?», tolta (prima regola comune).
 
 ## Regole comuni (valgono per entrambe)
 

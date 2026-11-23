@@ -14,13 +14,15 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta unica — Tre ritocchi chiesti dall'operatore il 23/11 dopo la prova della simulazione**: FATTA.
+- **Fetta 1 — Tre ritocchi chiesti dall'operatore il 23/11 dopo la prova della simulazione**: FATTA.
   1. Via la domanda «Da quale community arrivi?» dalla fase 1 del percorso completo: si parte dalla lingua (con la conferma dei 18 anni). `funnel_v2.md` (prima regola comune + due rimandi allineati) e simulazione.
   2. Percorso diretto SOLO nome e cognome: messaggio unico (rischio+compenso), campo «Scrivimi nome e cognome» con la riga «Inviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui», poi [Scrivi a {agente}]. Consenso aggiornamenti non chiesto nel diretto: senza sì niente promozione (lo raccoglie l'agente in chat); i solleciti del caso B non sono promozione (restano indipendenti dal consenso come da regole comuni). `tasto_collaboratori.md` §3.1 e §4.5, simulazione (rimossa `ctaConConsenso`).
   3. Requisito Pannello blu (confermato dall'operatore su screenshot): «I miei link», card e link dell'agente si aprono DENTRO il Pannello esistente (bottone blu «Pannello» della chat del bot), nessuna app o pagina nuova. `tasto_collaboratori.md` §4.6, simulazione (scheda agente).
   La simulazione è stata ripubblicata sulla pagina pubblica claude.ai e PROVATA dal vivo nel browser dopo la ripubblicazione (le tre schede).
 
 - **Fetta 2 — Correzioni del 1° verdetto del bot sulla PR #401 (secondo giro, scelta dell'operatore «Sistema prima»)**: FATTA. V-1 BASSA: dichiarata la lingua del diretto (`language_code` di Telegram, IT/EN, altrimenti italiano; la riga dei 18 anni segue la lingua del lead) in `tasto_collaboratori.md` §3.1 e §4.5 e nella simulazione. V-2 BASSA: §3/§6 di questo handoff aggiornati coi commit reali. V-3 COSMETICA: card del diretto «solo nome e cognome, subito l'ultimo passo» (spec §1 + simulazione) e «in basso nella chat» uniformato nell'intestazione. V-4 COSMETICA: la regola del consenso in `funnel_v2.md` ora rimanda all'eccezione del diretto. Simulazione ripubblicata.
+
+- **Fetta 3 — Correzioni del 2° verdetto del bot sulla PR #401 (terzo giro) + merge di main**: FATTA. V-1 BASSA: la riga sul rischio (e quella «non ti chiede mai soldi») ora sta ANCHE nel messaggio dell'ultimo passo del diretto (`tasto_collaboratori.md` §3.1 + simulazione), come chiede la regola comune V-2 #392. V-2 COSMETICA: in `funnel_v2.md` la descrizione della fase 1 di oggi cita anche la domanda della community. V-3 COSMETICA: «Fetta unica» rinominata «Fetta 1» qui e in ultimo_report. In più: merge di origin/main nel ramo (era entrata la PR #398 della chat Voce, conflitto sui report canonici risolto come da regola 3 di `lavoro_parallelo.md`). Simulazione ripubblicata.
 
 Contesto: PR #396 (trigger solleciti) mergiata oggi col via dell'operatore dopo il 3° verdetto (APPROVATO CON RISERVE senza ALTA/MEDIA); la sua V-1 COSMETICA residua (nome «Fetta unica» accanto a «Fetta 2/3» nei log) è superata dalla riscrittura dei report per questa sessione. `reports/bacheca.md` letta prima del giro: nessuna notizia bloccante, niente da aggiungere.
 
@@ -74,5 +76,6 @@ Mappatura commit→run: fb0f84af e 500cfa39 sono stati pushati insieme → una s
 ## §7 RISERVE APERTE
 
 - V-1 COSMETICA del 3° verdetto bot sulla PR #396 (nome «Fetta unica» accanto a «Fetta 2/3» nei log di quella sessione): SUPERATA — i report sono riscritti per questa sessione.
-- 1° verdetto del bot su PR #401 (500cfa39, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (lingua del diretto non dichiarata), V-2 BASSA (§3/§6 dell'handoff con «un solo commit»), V-3 COSMETICA (card «niente domande», «in basso a sinistra»), V-4 COSMETICA (eccezione del diretto assente dalla regola del consenso in funnel_v2) — CORRETTE in questo 2° giro (Fetta 2); serve il verdetto del bot sul nuovo head.
+- 1° verdetto del bot su PR #401 (500cfa39, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (lingua del diretto non dichiarata), V-2 BASSA (§3/§6 dell'handoff con «un solo commit»), V-3 COSMETICA (card «niente domande», «in basso a sinistra»), V-4 COSMETICA (eccezione del diretto assente dalla regola del consenso in funnel_v2) — CORRETTE nel 2° giro (Fetta 2); il 2° verdetto le ha date per chiuse.
+- 2° verdetto del bot su PR #401 (ee275e38, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (riga del rischio assente dall'ultimo passo del diretto), V-2 COSMETICA (descrizione della fase 1 di oggi senza la domanda della community), V-3 COSMETICA («Fetta unica» accanto a «Fetta 2») — CORRETTE in questo 3° giro (Fetta 3); serve il verdetto del bot sul nuovo head.
 - Riserve delle altre chat (CRM #397, Voce): tracciate in `reports/stato_progetto.md`, non toccate qui.

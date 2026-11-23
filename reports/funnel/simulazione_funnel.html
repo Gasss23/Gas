@@ -208,7 +208,7 @@ async function flussoDiretto(g){
   await botSay(g, '✍ Scrivimi nome e cognome e ti metto subito in contatto con '+AG+'.\n\nInviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui.');
   nome = (await askText(g, 'Nome e cognome')).split(' ')[0] || nome;
   sys('📇 Scheda all\'agente con etichetta «⚡ accesso diretto», campi mancanti = «da chiedere in chat». Il consenso aggiornamenti qui NON si chiede: senza un sì, nessuna promozione (se serve lo chiede l\'agente in chat; i solleciti del caso B non sono promozione)');
-  await botSay(g, 'Perfetto, '+nome+' 🤝 Ultimo passo: premi qui sotto, il messaggio è già pronto — '+AG+' ti attiva.');
+  await botSay(g, 'Perfetto, '+nome+' 🤝 Ultimo passo: premi qui sotto, il messaggio è già pronto — '+AG+' ti attiva. 🔒 '+AG+' non ti chiede mai soldi: i fondi restano sul tuo conto.\n'+RISCHIO);
   const fin = await kb(g, [[{t:'💬 Scrivi a '+AG}],[{t:'⏩ Simula: non preme'}]]);
   if(fin==='💬 Scrivi a '+AG) sys('Chat con l\'agente aperta. Nessuna domanda in mezzo: il caldo arriva subito 🎉');
   else await followUp(g);
