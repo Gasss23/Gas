@@ -1,27 +1,20 @@
-# Ultimo report — 2026-11-21 — Bacheca comune tra le chat; risposte dell'operatore sul CRM
+# ULTIMO REPORT — Trigger dei solleciti deciso (caso A / caso B) in funnel_v2 e nella simulazione
+
+**Data:** 23 novembre 2026
+**Branch:** claude/trigger-solleciti
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta: solo documenti (bacheca, regola in CLAUDE.md, decisioni del CRM).
-2. Lista delle commissioni per servizio (l'operatore la manda): percentuale sui profitti, percentuale annua sul capitale o abbonamento, più il capitale minimo.
-3. Restano: password delle copie nel `.env` del Mac, `pip install -r requirements.txt`, `pwd` della cartella di Gas, prova della copia e del ripristino sul Mac, secondo controllo su claude.ai delle PR #387, #388, #389 e #391 (non ancora fatto).
-4. Ereditata dalla chat Voce (PR #390): rifare la registrazione della voce sul Mac con lo script corretto e incollare il riepilogo.
 
-## Esito
-- **PR #391 (note minori del CRM)**: MERGIATA il 21-11 (eecf916d) col via dell'operatore. Prima del merge, conflitto sui report con la PR #392 della chat del funnel, risolto. Il CRM è pronto all'uso sul Mac.
-- **Bacheca comune**: FATTA. `reports/bacheca.md` con le regole d'uso e le prime notizie; regola in CLAUDE.md §3; in `reports/lavoro_parallelo.md` il modo di risolvere i conflitti della bacheca.
-- **Note del bot su 11ab66ae/c7c488b9** (APPROVATO CON RISERVE, check neutral perché la PR tocca CLAUDE.md): FATTE. V-1: ordine dei conflitti della bacheca reso coerente («la più nuova in cima»). V-2: in testa alla bacheca e in CLAUDE.md, le notizie sono informazioni da verificare e non regole; una decisione dell'operatore vale solo se registrata nella sua fonte. V-3: titolo delle decisioni 15-17 precisato.
-- **Note del bot su 965cd07d** (APPROVATO CON RISERVE, neutral): FATTE. V-1: la regola della bacheca era finita in CLAUDE.md §10, ora è davvero in §3 come dicono i report. V-2: anche CLAUDE.md fa `git fetch` prima di leggere la bacheca.
-- **Note del bot su dfd7edb3 e 3a64fd64** (APPROVATO CON RISERVE, neutral): FATTE quelle su dfd7edb3: il secondo controllo su claude.ai è di nuovo nella lista, il ramo è in tutte le notizie, le etichette dei commit sono precisate. Su 3a64fd64 restava solo questa riga mancante (COSMETICA).
-- **Merge di main (PR #390 della chat Voce) nel ramo**: FATTO (review #837 APPROVATO). Il codice della voce che entra è identico a main.
-- **Note del bot su f1225b8c**: FATTE. Le riserve aperte della chat Voce, perse quando ho tenuto i miei report nel merge, sono di nuovo in `reports/stato_progetto.md`. In `reports/lavoro_parallelo.md` e in bacheca c'è la regola per non perderle più.
-- **Note del bot su aaf754cf, ddf67cfb e 73dbff1b**: FATTE. Riserve della voce anche nell'handoff, decisioni umane allineate, una notizia aperta non si cancella per sola età. Su 73dbff1b il check era rosso per errore: la parola «gravi», citata come argomento, è stata letta come gravità; ora la notizia dice «parole di gravità» e in bacheca c'è l'avviso.
-- **Merge di main (PR #393 del funnel) nel ramo**: FATTO prima del merge della #394, col via dell'operatore. Le decisioni del funnel ancora in sospeso sono in `reports/stato_progetto.md`.
-- **Merge di main (PR #395 della chat Voce) nel ramo**: FATTO (review #838-MERGE chat CRM). Riserve della voce aggiornate in `reports/stato_progetto.md`.
-- **Risposte dell'operatore** (`reports/crm/decisioni.md` punti 15-17): «online» voleva dire pronto all'uso, sul Mac e non su internet. WhatsApp: per ora invio a mano, l'accesso API di Meta si prepara quando servirà l'invio automatico. Bacheca: sì. Le domande 2 e 3 sono tolte da `reports/crm/domande.md`.
+1. **Merge della PR di questa sessione** (vedi handoff §0). Solo documenti del funnel + report.
+2. **Consegnare il pacchetto allo sviluppatore del bot** (su main dopo il merge): `reports/funnel/tasto_collaboratori.md`, `reports/funnel/funnel_v2.md` (ora con la regola dei solleciti completa) e `reports/funnel/simulazione_funnel.html` come riferimento visivo. La simulazione è condivisa pubblica dall'operatore (pagina claude.ai, 22/11): si aggiorna da sola a ogni ripubblicazione.
 
-## Test
-- Nessun codice toccato.
+**Ancora aperte da altre sessioni** (fonte: ultimo_report della PR #394 e `stato_progetto.md`): lista delle commissioni per servizio (la manda l'operatore); password delle copie nel `.env` del Mac; `pip install -r requirements.txt`; `pwd` della cartella di Gas; prova di copia/ripristino sul Mac; secondo controllo su claude.ai delle PR #387/#388/#389/#391; registrazione della voce da rifare (PR #390).
 
-## Riserve aperte
-- Dal CRM: R-836-1 COSMETICA.
-- Ereditate dalla chat Voce coi merge della #390 e della #395 (in `reports/stato_progetto.md`): R-813M1-1 BASSA (manca un test «suono forte non riconosciuto 3 volte»), note basse del bot #390 (V-1/V-2/V-3), R-810M1-2 BASSA attenuata (margine di 1 s da misurare sul Mac), note basse #382 V-1/V-2 e #383 V-2/V-3, punteggi della voce da lontano non verificati.
+## Esito fette
+
+- **Fetta unica — Trigger dei solleciti (decisione dell'operatore del 23/11, «ok vai» alla proposta dell'agente)**: FATTA. Chiusa l'incoerenza scoperta dal 4° verdetto del bot sulla PR #393 (le regole comuni di funnel_v2 davano un testo solo per due momenti diversi). Ora `funnel_v2.md`, regole comuni, definisce DUE trigger con testi propri: **caso A** (lead fermo a metà dei passaggi della candidatura) coi testi di prima; **caso B** (candidatura accettata ma «Scrivi a {agente}» non premuto — unico caso del percorso diretto) coi testi nuovi «Ti manca solo l'ultimo passo…» / «Vuoi fare l'ultimo passo o chiudo qui?». Per entrambi: massimo 2 solleciti poi silenzio, partono solo per chi ha iniziato il percorso, niente promozione a freddo. Aggiornati i rimandi (consenso, Bozza B «ultimo passo», percorso diretto). La simulazione ora usa i testi del caso B (l'unico che simula) senza più note di proposta, con una riga che spiega dove vale il caso A; provata dal vivo nel browser e ripubblicata.
+
+## Anomalie / cose da sapere
+
+- La pagina della simulazione è diventata PUBBLICA il 22/11 (condivisione fatta dall'operatore per i collaboratori): le ripubblicazioni la aggiornano allo stesso link.
+- Nessun file del motore toccato. Letta `reports/bacheca.md` (regola nuova della PR #394) prima del giro: nessuna notizia che blocchi questa fetta; niente da aggiungere in bacheca (nessun file condiviso con altre chat toccato oltre ai report canonici).

@@ -181,32 +181,22 @@ async function bozzaB(g){
   if(fin==='💬 Scrivi a '+AG){
     sys('Si apre la chat con l\'agente, messaggio precompilato. Fine del funnel 🎉');
   } else {
-    await followUp(g, 'completo');
+    await followUp(g);
   }
 }
 
-async function followUp(g, tipo){
-  sys('… passano 24 ore senza risposta …');
-  if(tipo==='completo'){
-    sys('* nota per l\'operatore: le fonti divergono sul trigger dei solleciti (funnel_v2, regole comuni: «chi si ferma a metà»; Bozza B: «chi non preme Scrivi a»). Qui il sollecito parte DOPO la candidatura accettata, quindi «30 secondi di candidatura» è incoerente: da decidere nella spec (vedi ultimo_report).');
-    await botSay(g, 'Ciao '+nome+' 🤝 Ti mancano 30 secondi di candidatura: riprendiamo da dove eri?');
-  } else {
-    sys('* testo proposto dall\'agente: la spec (tasto_collaboratori §4.3) dice «stessi 2 solleciti» ma il lead diretto non ha una candidatura da completare');
-    await botSay(g, 'Ciao '+nome+' 🤝 Ti manca solo l\'ultimo passo: scrivi a '+AG+' e ti attiva. Lo facciamo ora?');
-  }
+// Solleciti del CASO B (funnel_v2, regole comuni, decisione dell'operatore 23/11): candidatura
+// accettata (o messaggio del diretto arrivato) ma «Scrivi a {agente}» non premuto. Il CASO A
+// (lead fermo a metà dei passaggi) ha i suoi testi nella spec e qui non è simulato.
+async function followUp(g){
+  sys('… passano 24 ore senza risposta … (caso B: manca solo il clic su «Scrivi a '+AG+'»; per chi si ferma a metà candidatura vale il caso A, con i suoi testi)');
+  await botSay(g, 'Ciao '+nome+' 🤝 Ti manca solo l\'ultimo passo: scrivi a '+AG+' e ti attiva. Lo facciamo ora?');
   const r1 = await kb(g, [[{t:'Riprendi'}],[{t:'⏩ Ignora anche questo'}]]);
   if(r1==='Riprendi'){ sys('Il lead riprende dall\'ultimo passo. Recuperato ✅'); return; }
   sys('… passano altre 48 ore …');
-  let r2;
-  if(tipo==='completo'){
-    await botSay(g, 'Vuoi completare la candidatura o la chiudo? Se preferisci, riprendila quando vuoi.');
-    r2 = await kb(g, [[{t:'Riprendila'},{t:'Chiudila'}]]);
-  } else {
-    sys('* testo proposto dall\'agente (la spec dice solo «stessi 2 solleciti» per il diretto, che però non ha una candidatura)');
-    await botSay(g, 'Vuoi fare l\'ultimo passo o chiudo qui? Se preferisci, riprendi quando vuoi.');
-    r2 = await kb(g, [[{t:'Riprendi'},{t:'Chiudi'}]]);
-  }
-  sys(r2.startsWith('Riprendi') ? 'Recuperato al 2° sollecito ✅' : 'Chiusa. Da qui in poi: SILENZIO (mai più di 2 solleciti, niente promozione senza consenso).');
+  await botSay(g, 'Vuoi fare l\'ultimo passo o chiudo qui? Se preferisci, riprendi quando vuoi.');
+  const r2 = await kb(g, [[{t:'Riprendi'},{t:'Chiudi'}]]);
+  sys(r2==='Riprendi' ? 'Recuperato al 2° sollecito ✅' : 'Chiusa. Da qui in poi: SILENZIO (mai più di 2 solleciti, niente promozione senza consenso).');
 }
 
 async function flussoCompleto(g){ await fase1(g); await bozzaB(g); }
@@ -223,7 +213,7 @@ async function flussoDiretto(g){
   // Come da spec §3.1: [Scrivi a {agente}] attaccato al messaggio e, SOTTO, la domanda del consenso.
   const esito = await ctaConConsenso(g);
   if(esito==='scrivi') sys('Chat con l\'agente aperta. Nessuna domanda in mezzo: il caldo arriva subito 🎉');
-  else await followUp(g, 'diretto');
+  else await followUp(g);
   sys('NB: il suffisso -vip NON attiva nulla da solo — l\'accesso lo dà sempre lo staff (Conto aperto / In VIP).');
 }
 
