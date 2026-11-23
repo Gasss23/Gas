@@ -1,15 +1,12 @@
-# Diff della sessione — 2026-11-23 — Gas usa il CRM (comandi da Telegram e voce)
+# DIFF SESSIONE — 23 novembre 2026 (ritocchi finali del funnel)
 
-Si riscrive a ogni sessione; la storia completa sta in git. Ramo ripartito da main bf428441 (PR #394 mergiata).
+> Questo file si riscrive a ogni sessione; la storia completa sta in git.
+> Branch claude/ritocchi-simulazione da main (post merge PR #396 funnel e #397 CRM).
 
-- `modules/crm/agente.py` (nuovo): consulta (sola lettura), prepara (controlli senza scrivere, forma canonica con id e centesimi, importo solo se detto dall'operatore, nome cercato a inizio parola con avviso), applica (solo forma canonica, dopo la firma).
-- `modules/crm/store.py`: tabella dei promemoria (mai cancellati; reclamo prima dell'invio, rilascio se fallisce), controlli dell'anagrafica condivisi, capitale prelevabile in sola lettura.
-- `gas.py`: strumenti `crm_consulta` e `crm_modifica`; richieste e strumenti del CRM solo a Opus; modifica parcheggiata alla firma nella forma canonica, importi solo dal messaggio del turno, mai dal sottofondo; diario e progressi senza dati dei clienti; filtro delle parole e dei telefoni.
-- `gas.py` (decisione 19): interruttore `GAS_SOLO_OPUS`, acceso di default: ogni turno va solo a Opus.
-- `tests/conftest.py`: `GAS_SOLO_OPUS=0` per le suite che provano la cascata dei cervelli.
-- `CLAUDE.md` §2: decisione «Sempre Opus» registrata.
-- `modules/gate/gate.py`: `crm_consulta` SAFE (lettura non fidata), `crm_modifica` IRREVERSIBLE.
-- `modules/telegram/bot.py`: promemoria del CRM mandati su Telegram ogni minuto.
-- `tests/test_unit_crm.py`, `tests/test_unit_kernel.py`: test nuovi (T118, riserve #839-#842); T80 e T116h adattati alla regola nuova.
-- `.claude/agents/memoria_revisore.md`: review #839-#848 e lezioni.
-- `reports/crm/decisioni.md` (punti 18 e 19), `reports/crm/guida.md`, `reports/bacheca.md`, `reports/stato_progetto.md`, report di fine task.
+File toccati (tutti doc, nessun file del motore):
+
+- `reports/funnel/funnel_v2.md` — nuova prima regola comune: via la domanda «Da quale community arrivi?» dalla fase 1 (decisione dell'operatore 23/11); allineati i due punti che dicevano «la fase 1 resta com'è».
+- `reports/funnel/tasto_collaboratori.md` — §3.1 riscritto: percorso diretto SOLO nome e cognome, con la riga «confermi 18 anni e ci autorizzi a risponderti»; §4.5 tutele aggiornate (consenso promo non chiesto nel diretto → niente promozione senza sì); §4.6 nuovo requisito: «I miei link» vive DENTRO il Pannello blu esistente.
+- `reports/funnel/simulazione_funnel.html` — fase 1 senza la domanda della community; flusso diretto rifatto (messaggio unico → campo nome con riga 18 anni → CTA), funzione `ctaConConsenso` rimossa perché non più usata; nota del Pannello blu nella scheda agente. Ripubblicata sulla pagina pubblica e provata dal vivo.
+- `reports/stato_progetto.md` — voce Funnel aggiornata (PR #396 mergiata, i tre ritocchi, cosa resta).
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — riscritti per questa sessione.

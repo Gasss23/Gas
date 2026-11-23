@@ -6,10 +6,11 @@
 
 ## Com'è oggi (verificato dal vivo il 21/11)
 
-Il funnel attuale è GIÀ in due fasi: fase 1 community (lingua + 18enni, interessi, conto: 2 domande vere) → scheda lead → fase 2 candidatura VIP (presentazione + 5 passaggi: esperienza, costanza, capitale 500 $ con l'opzione «Li avrò a breve» GIÀ presente, consenso aggiornamenti GIÀ esplicito, nome e cognome) → «ultimo passo» con messaggio precompilato all'agente. Dettaglio completo in `analisi_competitor.md` §1. Le bozze qui sotto cambiano SOLO la fase 2 e aggiungono le regole comuni; la fase 1 resta com'è.
+Il funnel attuale è GIÀ in due fasi: fase 1 community (lingua + 18enni, interessi, conto: 2 domande vere) → scheda lead → fase 2 candidatura VIP (presentazione + 5 passaggi: esperienza, costanza, capitale 500 $ con l'opzione «Li avrò a breve» GIÀ presente, consenso aggiornamenti GIÀ esplicito, nome e cognome) → «ultimo passo» con messaggio precompilato all'agente. Dettaglio completo in `analisi_competitor.md` §1. Le bozze qui sotto cambiano SOLO la fase 2 e aggiungono le regole comuni; la fase 1 resta com'è, tranne la domanda «Da quale community arrivi?», tolta (prima regola comune).
 
 ## Regole comuni (valgono per entrambe)
 
+- **Dalla fase 1 si toglie la domanda «Da quale community arrivi?»** (decisione dell'operatore, 23/11/2026, dopo la prova della simulazione): il bot parte direttamente dalla domanda della lingua (che porta anche la conferma dei 18 anni). Il resto della fase 1 resta com'è.
 - **Dalla candidatura si tolgono**: esperienza e «costanza». L'esperienza vera la chiede l'AGENTE in DM come fanno i competitor migliori (LEO la chiede a voce); la domanda sulla costanza seleziona ma non recupera. Il consenso aggiornamenti RESTA com'è oggi (esplicito, con bottoni). Risultato: candidatura da 5 passaggi a 3 (capitale, consenso, nome).
 - **Dopo ogni risposta il bot reagisce con una riga calda**, come una persona: «Ottima scelta 👌», «Nessun problema: ti guidiamo noi dal primo passo».
 - **Spiegazione a prova di principiante** (va detta PRIMA delle domande): «Ogni giorno ricevi un messaggio con tre numeri: dove entrare, dove fermarti se va male, dove incassare. Noi stiamo sul grafico, tu copi.»
@@ -52,7 +53,7 @@ Sotto il video, testo breve (per chi non ascolta): le stesse 3 righe + «3 doman
 
 ## Bozza B — solo messaggi (SCELTA dall'operatore il 21/11)
 
-La fase 1 (community) resta com'è. Cambia la candidatura VIP:
+La fase 1 (community) resta com'è, meno la domanda della community (regole comuni). Cambia la candidatura VIP:
 
 **Presentazione** (al posto di quella attuale):
 > «Ciao {nome} 👋 Questa è la tua candidatura alla sala VIP di Inizia Ora.
