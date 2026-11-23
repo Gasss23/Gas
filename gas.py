@@ -166,8 +166,9 @@ _RE_TELEFONO = (
     r"|[03][0-9](?:[ ./\-]?[0-9]){5,10})"
     r"(?![\w/\-])")
 # R-843-1 (BASSA, dichiarata): dopo il «+» un numero con le migliaia («+1.500.000») conta
-# come telefono: costa una chiamata a Opus. Escluderlo fa perdere telefoni veri come
-# «+44-20-7946-0958» (review #845-CRM), quindi resta così.
+# come telefono: costa una chiamata a Opus e, col forte spento, ferma il turno. La prima
+# esclusione provata (review #845-CRM) perdeva telefoni veri come «+44-20-7946-0958»; una
+# versione corretta esiste (#846-CRM), rinviata per prudenza: qui il verso sicuro è questo.
 # V-1 verifica esterna #397: allargare a email e cifre in euro prenderebbe più clienti
 # nuovi ma fermerebbe anche «costa 333 euro» (T115c6) e le email lette (T80ad): è la
 # stessa scelta di R-840-2, la decide l'operatore. Oggi, se nel messaggio non c'è un
