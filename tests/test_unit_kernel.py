@@ -13791,8 +13791,14 @@ try:
     # MAI le cifre dentro un UUID di firma o un hash, le date, le migliaia, un IP, un
     # timestamp, l'inglese «client», «versatile»/«versante»/«versa l'acqua»
     _tel_si = ["aggiungi Anna Neri, 333 1234567", "+39 333 123 4567", "tel:3331234567",
-               "02.1234567", "(02) 12345678", "333-1234567", "333/1234567"]
+               "02.1234567", "(02) 12345678", "333-1234567", "333/1234567",
+               "+44 20 7946 0958"]
+    # R-842-1: UUID con le cifre che iniziano con 3 o 0 attaccate a un trattino (provano i
+    # confini), migliaia che iniziano con 3 e un numero di 6 cifre (prova la soglia)
     _tel_no = ["Esito della firma 07e094fd-6b43-40bd-b78e-622b2625969b: approvata",
+               "firma 34581227-a1dd-4359-908c-8e4b2c260fea approvata",
+               "firma 7ef47c36-9a54-4687-9715-069192094992 approvata",
+               "30.000.000 di visualizzazioni", "350000 euro di fatturato",
                "commit 3f2a9c1234567ab e c8d4f977", "17.11.2026", "17 11 2026", "03.11.2026",
                "03/11/2026", "17/11/2026 15.30", "1.000.000 di visualizzazioni",
                "3.500.000 euro", "192.168.1.10", "1732000000",
@@ -13885,6 +13891,8 @@ try:
           "Telegram e reso visibile; al massimo 10 per giro",
           _n5 == 0 and len(_tentativi118) == 1 and _coda5 == 13
           and _tgbot118.lunghezza_telegram(_lungo) <= _tgbot118.TELEGRAM_MAX_CHARS
+          and "riga uno\nriga due" in _tgbot118.componi_promemoria(
+              {"id": 2, "quando": "x", "testo": "riga uno\nriga due", "cliente_id": None}, None)
           and "<U+202E>" in _lungo and "\u202e" not in _lungo and _lungo.endswith(
               "<U+202E>…\nCliente: " + "N" * 120 + "… (#1)")
           and _n6 == 10 and len(_st2.promemoria_scaduti()) == 3,

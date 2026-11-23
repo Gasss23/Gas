@@ -153,6 +153,10 @@ _TOOL_DATI_LEAD: frozenset = frozenset({"salva_contatto", "imposta_stato_contatt
 # il «+»; separatori spazio, punto, trattino o barra; MAI dentro una parola (gli UUID
 # delle firme e gli hash hanno cifre di fila fra le lettere), mai una data
 # («03.11.2026», «03/11/2026»), mai un numero con le migliaia («3.500.000»).
+# Limiti dichiarati (R-842-2/3, anche nella guida): NON presi «333.123.4567», «02 12 34 56
+# 78», «tel.3331234567» (punto o virgola attaccati), «(333) 1234567»; presi per errore
+# numeri di 7-12 cifre che iniziano con 0 o 3 (un PID, «3000000 visualizzazioni», righe
+# di free/df): costano una chiamata a Opus, col forte spento fermano il turno.
 _RE_TELEFONO = (
     r"(?<![\w.,/\-])"
     r"(?![0-9]{1,2}[ ./\-][0-9]{1,2}[ ./\-][0-9]{2,4}(?![0-9]))"
