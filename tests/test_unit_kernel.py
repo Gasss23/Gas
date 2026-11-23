@@ -13801,7 +13801,7 @@ try:
                "30.000.000 di visualizzazioni", "350000 euro di fatturato",
                "commit 3f2a9c1234567ab e c8d4f977", "17.11.2026", "17 11 2026", "03.11.2026",
                "03/11/2026", "17/11/2026 15.30", "1.000.000 di visualizzazioni",
-               "3.500.000 euro", "192.168.1.10", "1732000000",
+               "3.500.000 euro", "192.168.1.10", "1732000000",  # gasmerge-ip-ok
                "il client voce sul Mac non parte", "client.chat.completions",
                "un copy versatile", "il versante nord", "versa l'acqua"]
     _fl_si = [s for s in _tel_si if not _fl([{"role": "user", "content": s}], [])]
