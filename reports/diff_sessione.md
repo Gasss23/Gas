@@ -1,15 +1,11 @@
-# Diff della sessione — 2026-11-23 — Gas usa il CRM (comandi da Telegram e voce)
+# DIFF DI SESSIONE — 23 novembre 2026, R7 fetta 2 (ripresa al boot)
 
-Si riscrive a ogni sessione; la storia completa sta in git. Ramo ripartito da main bf428441 (PR #394 mergiata).
+Questo file si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/crm/agente.py` (nuovo): consulta (sola lettura), prepara (controlli senza scrivere, forma canonica con id e centesimi, importo solo se detto dall'operatore, nome cercato a inizio parola con avviso), applica (solo forma canonica, dopo la firma).
-- `modules/crm/store.py`: tabella dei promemoria (mai cancellati; reclamo prima dell'invio, rilascio se fallisce), controlli dell'anagrafica condivisi, capitale prelevabile in sola lettura.
-- `gas.py`: strumenti `crm_consulta` e `crm_modifica`; richieste e strumenti del CRM solo a Opus; modifica parcheggiata alla firma nella forma canonica, importi solo dal messaggio del turno, mai dal sottofondo; diario e progressi senza dati dei clienti; filtro delle parole e dei telefoni.
-- `gas.py` (decisione 19): interruttore `GAS_SOLO_OPUS`, acceso di default: ogni turno va solo a Opus.
-- `tests/conftest.py`: `GAS_SOLO_OPUS=0` per le suite che provano la cascata dei cervelli.
-- `CLAUDE.md` §2: decisione «Sempre Opus» registrata.
-- `modules/gate/gate.py`: `crm_consulta` SAFE (lettura non fidata), `crm_modifica` IRREVERSIBLE.
-- `modules/telegram/bot.py`: promemoria del CRM mandati su Telegram ogni minuto.
-- `tests/test_unit_crm.py`, `tests/test_unit_kernel.py`: test nuovi (T118, riserve #839-#842); T80 e T116h adattati alla regola nuova.
-- `.claude/agents/memoria_revisore.md`: review #839-#848 e lezioni.
-- `reports/crm/decisioni.md` (punti 18 e 19), `reports/crm/guida.md`, `reports/bacheca.md`, `reports/stato_progetto.md`, report di fine task.
+- `modules/sottofondo/__init__.py`: nuova `riprendi_al_boot` — controllo dell'inizio turno lanciato all'avvio, frase con solo id/stato, mai eccezioni; attesa della rete con tetto prima di toccare la coda (bot #398 V-1), exit 1 se il riavvio non parte (V-3); senza cervello forte trovabile (con «Sempre Opus») la coda non si tocca; attese solo per compiti aperti.
+- `gas.py`: comando `sottofondo-riprendi`.
+- `scripts/sottofondo/com.gas.sottofondo.plist`: servizio launchd solo RunAtLoad che lancia il comando; pretende `~/Gas/.venv` (R-839-1).
+- `.claude/perimetro_review.txt`: `scripts/sottofondo/` nel perimetro di review.
+- `tests/test_unit_sottofondo.py`: 8 test della ripresa al boot (ripresa, doppio lancio, riprese finite, fermato, vivo, nessun compito/fuori cartella, errore interno, già finito/file sparito, comando vero) + 5 delle correzioni del bot (senza rete, rete che arriva, tetto dell'attesa, niente attesa senza compito, riavvio non partito).
+- `.claude/agents/memoria_revisore.md`: righe delle review #839, #840, #841, #849-MERGE-R7 e #850-R7; più quelle della chat CRM arrivate col merge di main (4114b631). Dopo il merge la base del ramo è il main nuovo: i file della #397 non compaiono in questo diff.
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
