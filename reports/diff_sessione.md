@@ -1,15 +1,10 @@
-# Diff della sessione — 2026-11-23 — Gas usa il CRM (comandi da Telegram e voce)
+# Diff della sessione — 2026-11-23 — Voce: 4 fasi, interruzione col filtro, griglia coerente
 
-Si riscrive a ogni sessione; la storia completa sta in git. Ramo ripartito da main bf428441 (PR #394 mergiata).
+Si riscrive a ogni sessione; la storia completa sta in git. Ramo fix/voce-fasi-interruzione da main 1b4954e2.
 
-- `modules/crm/agente.py` (nuovo): consulta (sola lettura), prepara (controlli senza scrivere, forma canonica con id e centesimi, importo solo se detto dall'operatore, nome cercato a inizio parola con avviso), applica (solo forma canonica, dopo la firma).
-- `modules/crm/store.py`: tabella dei promemoria (mai cancellati; reclamo prima dell'invio, rilascio se fallisce), controlli dell'anagrafica condivisi, capitale prelevabile in sola lettura.
-- `gas.py`: strumenti `crm_consulta` e `crm_modifica`; richieste e strumenti del CRM solo a Opus; modifica parcheggiata alla firma nella forma canonica, importi solo dal messaggio del turno, mai dal sottofondo; diario e progressi senza dati dei clienti; filtro delle parole e dei telefoni.
-- `gas.py` (decisione 19): interruttore `GAS_SOLO_OPUS`, acceso di default: ogni turno va solo a Opus.
-- `tests/conftest.py`: `GAS_SOLO_OPUS=0` per le suite che provano la cascata dei cervelli.
-- `CLAUDE.md` §2: decisione «Sempre Opus» registrata.
-- `modules/gate/gate.py`: `crm_consulta` SAFE (lettura non fidata), `crm_modifica` IRREVERSIBLE.
-- `modules/telegram/bot.py`: promemoria del CRM mandati su Telegram ogni minuto.
-- `tests/test_unit_crm.py`, `tests/test_unit_kernel.py`: test nuovi (T118, riserve #839-#842); T80 e T116h adattati alla regola nuova.
-- `.claude/agents/memoria_revisore.md`: review #839-#848 e lezioni.
-- `reports/crm/decisioni.md` (punti 18 e 19), `reports/crm/guida.md`, `reports/bacheca.md`, `reports/stato_progetto.md`, report di fine task.
+- `clients/voice/ascolto.py`: `rilevatore_openwakeword(..., fasi)` con coda di 2 blocchi e 4 modelli sfalsati; `rilevatore_con_verifica(..., fasi)`; `GAS_ASCOLTO_FASI` in `main`; `_regolazioni`: col filtro attivo l'interruzione usa la soglia della parola su 1 blocco (se il `.env` non dice altro); avviso «più facile» coerente.
+- `scripts/voce/registra_voce.py`: `MotoreOWW.blocchi` sulla stessa griglia di `misura`.
+- `scripts/voce/taratura_parola.py`: stesse fasi dell'ascolto.
+- `scripts/voce/LEGGIMI.md`: `GAS_ASCOLTO_FASI`, interruzione col filtro, vecchia soglia 0.8 da togliere.
+- `tests/test_unit_voce_ascolto.py`: test delle fasi, dell'interruzione col filtro, della taratura; test esistenti aggiornati.
+- `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.
