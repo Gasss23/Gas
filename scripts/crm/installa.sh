@@ -23,7 +23,9 @@ stop() { echo "STOP: $*" >&2; exit 1; }
 # R-853-1: dopo aver scritto il plist, ogni STOP toglie anche il servizio (se no al login
 # launchd lo ricarica senza i controlli di questo script)
 togli_servizio() {
-  rm -f "$PLIST"  # prima il plist (R-855-1): anche se la pulizia si interrompe, al login non riparte
+  # prima il plist (R-855-1): anche se la pulizia si interrompe, al login non riparte; se non si
+  # toglie lo si dice e si fa comunque il bootout (R-856-2: con set -e il resto saltava)
+  rm -f "$PLIST" || echo "ATTENZIONE: non riesco a togliere $PLIST: toglilo a mano" >&2
   launchctl bootout "gui/$(id -u)/$SERVIZIO" 2>/dev/null || true
 }
 

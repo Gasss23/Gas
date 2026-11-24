@@ -2666,7 +2666,15 @@ _FINTI_CRM = {
     "launchctl": ('echo "launchctl $*" >> "$REGISTRO"\n'
                   'case "$1" in\n'
                   '  print) [ -f "$REGISTRO.caricato" ] ;;\n'
-                  '  bootout) rm -f "$REGISTRO.caricato" ;;\n'
+                  '  bootout)\n'
+                  '    # R-856-1: al bootout il plist deve essere già tolto (si registra com\'è)\n'
+                  '    [ -f "$HOME/Library/LaunchAgents/com.gas.crm.plist" ] && echo "bootout-plist si" >> "$REGISTRO" \\\n'
+                  '      || echo "bootout-plist no" >> "$REGISTRO"\n'
+                  '    # CTRLC2=si: secondo Ctrl+C mentre la pulizia fa il bootout\n'
+                  '    if [ "${CTRLC2:-no}" = si ] && [ -f "$REGISTRO.ctrlc" ] && [ ! -f "$REGISTRO.ctrlc2" ]; then\n'
+                  '      touch "$REGISTRO.ctrlc2"; kill -INT -- "-$PPID"\n'
+                  '    fi\n'
+                  '    rm -f "$REGISTRO.caricato" ;;\n'
                   '  bootstrap)\n'
                   '    if [ "${LC_BOOT:-ok}" != ok ]; then echo "Bootstrap failed: 5" >&2; exit 5; fi\n'
                   '    touch "$REGISTRO.caricato"\n'
@@ -2674,6 +2682,11 @@ _FINTI_CRM = {
                   '    exit 0 ;;\n'
                   'esac'),
     "plutil": 'echo "plutil $*" >> "$REGISTRO"; [ "${PLUTIL:-ok}" = ok ]',
+    # RM_KO=si: il plist non si riesce a togliere (cartella non scrivibile); il resto passa a /bin/rm
+    "rm": ('if [ "${RM_KO:-no}" = si ]; then\n'
+           '  for a in "$@"; do case "$a" in *com.gas.crm.plist) exit 1 ;; esac; done\n'
+           'fi\n'
+           'exec /bin/rm "$@"'),
     # la dashboard risponde solo col servizio caricato (DASH=ok) o sempre (DASH=occupata)
     "curl": ('case "${DASH:-ok}" in occupata) exit 0 ;; ok) [ -f "$REGISTRO.caricato" ] ;;'
              ' *) exit 7 ;; esac'),
@@ -2733,6 +2746,15 @@ def _plist_crm(casa: Path) -> Path:
 
 def _caricato(tmp_path: Path) -> bool:
     return (tmp_path / "registro.txt.caricato").exists()
+
+
+def _bootout_col_plist_gia_tolto(registro: str) -> bool:
+    """R-856-1: nella pulizia il plist si toglie PRIMA del bootout (se la pulizia si
+    interrompe, al login launchd non lo ricarica)."""
+    righe = registro.splitlines()
+    scritto = next(i for i, x in enumerate(righe) if x.startswith("plutil"))
+    dopo = [x for x in righe[scritto:] if x.startswith("bootout-plist")]
+    return bool(dopo) and all(x == "bootout-plist no" for x in dopo)
 
 
 def test_installa_crm_arriva_in_fondo(tmp_path: Path) -> None:
@@ -2799,6 +2821,7 @@ def test_installa_crm_ogni_stop_dopo_il_plist_toglie_il_servizio(
     assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
     assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
     assert not (casa / "Desktop/CRM Gas.webloc").exists()
+    assert _bootout_col_plist_gia_tolto(registro)
     if extra.get("LC_BOOT"):
         righe = registro.splitlines()
         assert sum(x.startswith("launchctl bootstrap") for x in righe) == 3
@@ -2810,9 +2833,31 @@ def test_installa_crm_ctrl_c_mentre_aspetta_toglie_il_servizio(tmp_path: Path) -
     """R-854-1: Ctrl+C durante l'attesa della dashboard lasciava il servizio caricato e il
     plist al suo posto, senza nessun controllo."""
     gas, finti, casa = _gas_crm_finto(tmp_path)
-    r, _ = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", CTRLC="si")
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", CTRLC="si")
     assert (tmp_path / "registro.txt.ctrlc").exists()
     assert r.returncode == 130 and "interrotto, servizio tolto" in r.stderr, r.stdout + r.stderr
+    assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
+    assert _bootout_col_plist_gia_tolto(registro)
+
+
+def test_installa_crm_plist_che_non_si_toglie_lo_dice_e_fa_il_bootout(tmp_path: Path) -> None:
+    """R-856-2: con set -e un rm del plist fallito chiudeva la pulizia prima del bootout:
+    servizio ancora caricato e nessun messaggio."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", RM_KO="si")
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "non riesco a togliere" in r.stderr and "la dashboard non risponde" in r.stderr
+    assert not _caricato(tmp_path)
+
+
+def test_installa_crm_secondo_ctrl_c_non_interrompe_la_pulizia(tmp_path: Path) -> None:
+    """R-855-1 / R-856-1: un secondo Ctrl+C mentre la pulizia fa il bootout la interrompeva
+    a metà: servizio ancora caricato e «servizio tolto» scritto due volte (falso)."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", CTRLC="si", CTRLC2="si")
+    assert (tmp_path / "registro.txt.ctrlc2").exists()
+    assert r.returncode == 130, r.stdout + r.stderr
+    assert r.stderr.count("servizio tolto") == 1
     assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
 
 
