@@ -6,8 +6,8 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #404 (https://github.com/Gasss23/Gas/pull/404): tocca `.claude/perimetro_review.txt` e `scripts/`, quindi il bot dà `neutral` e il merge lo decide l'operatore.
-2. Sul Mac, una volta sola dopo il merge: `cd ~/Gas && git pull && bash scripts/crm/installa.sh`; controllare che l'ultima riga dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA».
+1. Merge della PR #404 (https://github.com/Gasss23/Gas/pull/404). Tocca `.claude/perimetro_review.txt` e `scripts/`, quindi il bot dà `neutral` e il merge lo decide l'operatore.
+2. Sul Mac, una volta sola dopo il merge: `cd ~/Gas && git pull && bash scripts/crm/installa.sh`; controllare che l'ultima riga dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA». Prova in più consigliata dai verificatori (bash 3.2 del Mac): rilanciarlo, premere Ctrl+C mentre dice «Aspetto che la dashboard risponda», poi `launchctl print gui/$(id -u)/com.gas.crm` deve dire che il servizio non c'è; infine rilanciare l'installazione normale.
 3. Dalla chat Voce (#400): controllare nel `.env` del Mac che non ci sia una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`.
 
 ---
@@ -22,6 +22,8 @@
   - Verifica esterna su ca2fc64b (APPROVATO CON RISERVE, commento https://github.com/Gasss23/Gas/pull/404#issuecomment-7139788043): V-1 BASSA (orologio indietro: la copia appena fatta veniva cancellata) chiusa in 5b75c850; V-2 BASSA (ramo indietro rispetto a main) chiusa dal merge 1b61ec43; V-3 BASSA (= R-854-1/R-853-3) chiusa in 5b75c850/8fbd65a3; V-4 COSMETICA (§6 senza verde finale) superata, vedi §6.
   - Bot su dfe8fbee (APPROVATO CON RISERVE, neutral): V-1 BASSA (copie a mano fuori formato) chiusa in 5b75c850; V-2 BASSA (unit-suite non ancora finita) superata: unit-suite success su dfe8fbee.
   - R-854-1 (Ctrl+C durante l'attesa) e R-853-3 (test degli script) chiuse in 5b75c850 (review #855, #856) e 8fbd65a3 (review #857).
+- **Note della 2ª verifica esterna e del bot su 94184b2c** (entrambi APPROVATO CON RISERVE, solo BASSE; verifica: https://github.com/Gasss23/Gas/pull/404#issuecomment-7140497038): FATTE. V-3 bot / V-1 verifica (copie con data nel futuro) e V-2 bot (trap EXIT con `if`) in 8acae43c (review #858); R-858-1 (stessa protezione per le copie cifrate su iCloud) e R-858-2 (test del margine) in b176a489 (review #859). V-1 bot / V-2 verifica (CI non finita) superate: unit-suite success su 94184b2c. V-3 verifica (17 contro 18 test): il conteggio è con `-k "installa_crm or spegni_crm"`.
+- **R-859-1** (test del margine delle copie cifrate) e **R-859-2** (cosmetica): NON FATTE, aperte.
 - **R-854-2** (KeepAlive senza tetto, registro senza rotazione): NON FATTA, resta aperta.
 - **Prova su un Mac vero**: SALTATA — il Mac non è raggiungibile da qui; script provati con comandi finti (test del repo e simulazioni del revisore), bash 5.2.
 
@@ -30,18 +32,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  13 ++
+ .claude/agents/memoria_revisore.md |  18 ++
  .claude/perimetro_review.txt       |   3 +
- modules/crm/store.py               |  30 +++-
+ modules/crm/copia_cifrata.py       |  29 ++-
+ modules/crm/store.py               |  44 ++++-
  reports/bacheca.md                 |   4 +-
  reports/crm/decisioni.md           |   4 +
  reports/crm/guida.md               |   4 +-
- reports/diff_sessione.md           |  27 ++--
+ reports/diff_sessione.md           |  28 ++-
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   6 +-
- reports/ultimo_report.md           |  55 ++++---
- scripts/crm/installa.sh            |  30 +++-
- tests/test_unit_crm.py             | 309 ++++++++++++++++++++++++++++++++++++-
+ reports/ultimo_report.md           |  57 +++---
+ scripts/crm/installa.sh            |  31 ++-
+ tests/test_unit_crm.py             | 390 ++++++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale. Base: merge-base con main 7231d92d (main 96d5ae99 a inizio sessione, poi il merge della #401).
@@ -57,6 +60,9 @@ a83ca616 docs(fine-task): handoff e diff_sessione col merge di main (PR #401) �
 dfe8fbee docs(bacheca): scripts/crm/ nel perimetro di review (decisione 20); chiusa la notizia sul collegamento di Gas al CRM — PR #404
 5b75c850 fix(crm): copia appena fatta mai cancellata, copie a mano ignorate, Ctrl+C durante l'installazione toglie il servizio, test degli script con comandi finti (V-1 verifica esterna #404, V-1 bot #404, R-854-1, R-853-3, R-855; review #855, #856)
 8fbd65a3 fix(crm): pulizia dell'installer che regge un rm fallito, test del secondo Ctrl+C e dell'ordine plist/bootout (R-856-1, R-856-2; review #857)
+94184b2c docs(fine-task): note dei verificatori sulla #404 chiuse — report, handoff (review #853–#857) e stato
+8acae43c fix(crm): copie locali con data nel futuro non accorciano la storia, trap EXIT dell'installer sempre con 0 (V-3 e V-2 bot #404, V-1 2ª verifica esterna #404; review #858)
+b176a489 fix(crm): copie cifrate fuori dal Mac protette come quelle locali (copia appena fatta, nomi a mano, date nel futuro), test del margine di un giorno (R-858-1, R-858-2; review #859)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
@@ -285,9 +291,113 @@ Letture obbligatorie fatte: CLAUDE.md (sezione 5 e guardrail), reports/stato_pro
 
 **Memoria**: aggiunta in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #857 con una lezione nuova (provare il finto passthrough col mutante «senza il finto»; il finto eredita il SIG_IGN del `trap ''` del padre). Il file è fuori stage e NON committato, come da tua richiesta: `scripts/commit_memoria_revisore.sh` non l'ho lanciato. Non ho creato `.claude/.review_ok` e non ho committato nulla. Lo staged è invariato (sha256 a157fd19…).
 
+### Commit 8acae43c — review #858 (verdetto integrale)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #858. Diff staged sul ramo claude/nifty-galileo-3k7kbm, sopra 94184b2c: 3 file, +39/−3, sha256 bd1434fa. L'hash è lo stesso prima e dopo la review. Prima della review ho letto CLAUDE.md (sez. 5), l'intestazione e la voce CRM di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Cosa ho rieseguito**
+- `python3 -m pytest -q tests/test_unit_crm.py`: 171 passed.
+- mypy su modules/crm/store.py pulito; `bash -n` ok; `git diff --staged --check` pulito.
+- I 18 test di installa/spegni girati 3 volte di fila: sempre verdi.
+
+**Elementi del diff esaminati**
+- `modules/crm/store.py:1394` — il limite è il nome della copia calcolato su `adesso + 1 giorno`, confrontato come stringa.
+  - Rischio esaminato: fuso orario dell'orologio e confronto tra orologio con o senza fuso.
+  - Il nome ha lunghezza fissa ed è controllato da `_NOME_COPIA`, quindi l'ordine delle stringhe è l'ordine del tempo. Non si confrontano mai due datetime, quindi niente TypeError tra le due forme.
+  - Ho provato orologio senza fuso, con fuso fisso (`astimezone()`, il predefinito), con fuso Europe/Rome nelle ore dei due cambi d'ora (anche l'ora ripetuta) e Kiritimati +14: in tutti i casi la copia appena fatta esiste.
+  - Il margine di 1 giorno copre il cambio d'ora e ogni fuso raggiungibile dall'Italia (al massimo 13 ore).
+  - Esito: ok.
+- `modules/crm/store.py:1399` e `modules/crm/store.py:1409` — contano e si cancellano solo le copie entro il limite; quelle oltre restano.
+  - Rischio esaminato: copie nel futuro che crescono senza limite.
+  - Nascono solo mentre l'orologio è avanti, e in quel periodo la regola normale le riduce a 30 giorni + 10 copie: il numero resta limitato.
+  - Orologio tornato al 2001 dopo 40 giorni veri: i 30 giorni veri restano tutti e le copie del 2001 ruotano tra loro (10). È un miglioramento rispetto a prima.
+  - L'avviso finisce in gas_debug.log (`modules/crm/__main__.py:413`).
+  - Esito: ok.
+- `modules/crm/store.py:1408` — `tenere.add(dest)`.
+  - Rischio esaminato: la copia appena fatta trattata come «nel futuro».
+  - Il suo nome è sempre minore del limite (ora attuale contro ora attuale + 1 giorno), quindi sta tra le copie che contano ed è protetta.
+  - Esito: ok.
+- `tests/test_unit_crm.py:2639` — test nuovo.
+  - Col codice di HEAD è rosso (provato).
+  - Mutanti uccisi 3 su 6: filtro tolto, copie nel futuro cancellate, avviso tolto.
+  - Sopravvivono: margine 0 giorni, margine 40 giorni, e `>=` al posto di `>` (equivalente).
+  - Esito: riserva (R-858-2).
+- `scripts/crm/installa.sh:100` — trap EXIT con `if … then togli_servizio; fi`.
+  - Rischio esaminato: riaprire i casi di #855–#857.
+  - Su bash 5.2 la forma vecchia e la nuova danno lo stesso codice d'uscita in 20 combinazioni: exit 0/1, fine normale, errore con set -e, SIGINT → 130, pulizia sì/no.
+  - I 18 test sono verdi con la forma nuova e anche con quella vecchia. Quindi i casi rc 0/1/130, secondo Ctrl+C e rm fallito restano coperti, ma il cambio è solo difensivo.
+  - Esito: ok.
+- Contesto: `modules/crm/copia_cifrata.py:285` — la rotazione delle copie cifrate fuori dal Mac (iCloud), gemella di quella locale. Non è nel diff. Esito: riserva (R-858-1).
+
+**Riserve**
+- **R-858-1 BASSA** (fuori dal diff, c'era già): le copie cifrate su iCloud ruotano ancora per nome senza limite (`modules/crm/copia_cifrata.py:285`).
+  - Provato in simulazione: 30 giorni con l'orologio nel 2030, poi orologio corretto. La copia cifrata appena fatta viene cancellata subito; `copia_fuori` restituisce un percorso che non esiste con motivo None, quindi la dashboard dice «copia OK» anche se di oggi non c'è nessuna copia fuori dal Mac.
+  - Con pochi giorni nel futuro, quelle copie occupano posti tra le 30 (lo stesso problema V-3 del bot, ma sulla copia esterna).
+  - V-3 del bot è chiusa solo per le copie locali.
+- **R-858-2 BASSA**: nessun test fissa il margine di 1 giorno. Il test usa un salto di 3 anni, quindi un margine di 40 giorni passerebbe e riaprirebbe V-3 per salti più brevi. Manca un test vicino al bordo, per esempio una copia avanti di 2 giorni che non conta e una avanti di qualche ora che conta senza avviso.
+
+**Cosmetiche**
+- Il commento di `scripts/crm/installa.sh:99` presenta come correzione un cambio solo difensivo: su bash 5.2 non è riproducibile, e dal codice sorgente di bash il codice d'uscita viene conservato anche nella 3.2.
+- In `backup()` resta un OverflowError teorico con l'orologio al 31-12-9999: non è dentro l'except, contro il «mai solleva» della docstring.
+- La docstring di `backup()` non parla delle copie nel futuro.
+
+**Cosa NON ho verificato**
+- Il comportamento col /bin/bash 3.2 del Mac: qui c'è solo bash 5.2 e il Mac non si raggiunge. Per la 3.2 ho ragionato sul codice sorgente di bash, senza eseguirlo.
+- launchd vero e iCloud vero: non riproducibili qui; ho usato solo una cartella locale come destinazione cifrata.
+
+**Memoria**
+- La riga #858 e una lezione sono in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, fuori dallo stage e NON committate, come mi hai chiesto.
+- Non ho creato `.claude/.review_ok`. Ce n'è già uno vecchio (18:15, hash 838d0dcd, diverso da bd1434fa): non apre il gate per questo diff.
+
+File toccati da me: /home/user/Gas/.claude/agents/memoria_revisore.md. Le prove sono in /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/r858.
+
+### Commit b176a489 — review #859 (verdetto integrale)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #859: secondo giro della #858, diff staged sul ramo claude/nifty-galileo-3k7kbm sopra 8acae43c. 4 file, +85/−4, sha256 del diff b134ff23 (lo hash è lo stesso all'inizio e alla fine della review). Prima ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la parte di reports/stato_progetto.md che serviva e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+
+1. `modules/crm/copia_cifrata.py:256` — nuova `_ruota`: contano solo i nomi `crm-AAAAMMGG.gascrm`. Rischio esaminato: copie fatte a mano e file `.tmp` contati o cancellati. Il glob `crm-*.gascrm` esclude i `.tmp`, perché il loro nome finisce in `.tmp`. Lo scenario #858 l'ho riprovato con una sonda diretta: 30 copie del 2030, più 5 vere, keep=3. La copia di oggi resta, le copie del 2030 restano intatte e ruotano solo quelle vere. Esito: **ok**.
+2. `modules/crm/copia_cifrata.py:264` — limite = giorno di `dest` + 1, dentro un `try` che prende solo `except ValueError` (`modules/crm/copia_cifrata.py:265`). Rischio esaminato: `_ruota` che solleva dopo `os.replace` (`modules/crm/copia_cifrata.py:311`) e fa diventare «non riuscita» una copia riuscita. L'unico modo nuovo è `crm-99991231`: `strptime` va bene, ma la somma `+ timedelta` dà OverflowError, che `except ValueError` non prende. Provato: la copia viene scritta ma la risposta è `(None, "errore durante la copia cifrata (OverflowError)")`. Dai chiamanti attuali il caso non si raggiunge: sia `modules/crm/server.py:303` sia `modules/crm/__main__.py:193` passano l'uscita di `backup()`, e `backup()` al 9999-12-31 solleva prima (provato: OverflowError esce da `backup()` con la copia locale già scritta; è la COSMETICA #858, ancora aperta). Gli altri modi di sollevare (glob, unlink su iCloud) c'erano già con lo slicing vecchio, sempre dentro lo stesso `try`. La regola §9 regge: `copia_fuori` non solleva mai, l'except generico prende tutto. Esito: **riserva cosmetica (R-859-2)**.
+3. `modules/crm/copia_cifrata.py:276` — `vecchia != dest`: la copia appena fatta non si cancella mai. Rischio esaminato: orologio tornato indietro con keep=1. Il mutante che toglie la guardia diventa rosso. Esito: **ok**.
+4. `tests/test_unit_crm.py:1399` — asserzione adattata in `test_copia_cifrata_fuori_dal_mac`. Rischio esaminato: che nasconda una regressione. Col codice nuovo i file in tutto sono 3 (le due finte più la copia di oggi, che per le finte è nel futuro). L'asserzione vecchia «2 in tutto» con il codice di HEAD dava `[0103, oggi]`. La nuova resta discriminante: con HEAD è rossa, e sono rossi anche i mutanti «filtro tolto» e «filtro spento». Che le copie nel futuro non si cancellino lo controlla il test nuovo (30 copie del 2030 dopo la prima chiamata). Non nasconde regressioni, ma ha due buchi:
+   - non controlla che la copia di oggi resti;
+   - non guarda il ritorno di `copia_fuori` per `crm-20260100` (giorno 00), che passa per il ramo ValueError. Per questo il mutante «senza except ValueError» resta verde.
+
+   Esito: **cosmetica**.
+5. `tests/test_unit_crm.py:2699` — test del margine della copia locale (R-858-2). Esito: **ok**, R-858-2 chiusa per la copia locale.
+6. `modules/crm/store.py:1373` (docstring) e `scripts/crm/installa.sh:99` (commento «solo difensivo»). Le cosmetiche della #858 sono chiuse. `bash -n` ok. Esito: **ok**.
+
+**Soglia «giorno dopo dest» rispetto alla regola locale.** Il contesto è `modules/crm/store.py:1396`: per le copie locali il limite è adesso + 24 h, al secondo. Nella cifrata il giorno di `dest` è il giorno dell'orologio al momento di `backup()`, perché entrambi i chiamanti passano la copia appena fatta. Quindi il margine della cifrata va da 24 a 48 ore, al giorno. Nella sostanza è coerente: c'è una sola copia cifrata al giorno e la copia appena fatta è comunque protetta. La docstring di store dice «fino a domani», ma intende fino alla stessa ora di domani (cosmetica).
+
+**Rieseguito su una copia dell'indice:** 173 passed, mypy pulito su store.py e copia_cifrata.py, `bash -n` ok. Col codice di HEAD in copia_cifrata.py i 2 test toccati sono rossi.
+
+**Mutanti di `_ruota` (suite intera):**
+- uccisi: filtro tolto, guardia su `dest` tolta, avviso tolto, filtro spento per tutti, codice di HEAD;
+- sopravvivono: margine 0 giorni, margine 40 giorni, filtro `<` al posto di `<=` (tutti 173 passed), oltre al conteggio `>=` nell'avviso, al mutante senza except ValueError e a quello che conta tutti i nomi (quasi equivalente).
+
+**Riserve**
+- **R-859-1 BASSA** — nessun test fissa il margine della gemella cifrata: R-858-2 è stata corretta solo per la copia locale. Correzione provata: `_ruota` con `dest` 1124, copie 1122, 1123, 1125, 1126 e keep=3 deve lasciare 1123–1126. Questo test uccide i mutanti 0 giorni, 40 giorni e `<`.
+- **R-859-2 COSMETICA** — `except (ValueError, OverflowError)` a `modules/crm/copia_cifrata.py:265`. Oggi non si raggiunge dai chiamanti.
+- **COSMETICHE**:
+  - test adattato (punto 4): aggiungere il controllo sulla lista completa e sul ritorno per `crm-20260100`;
+  - docstring di store: «fino alla stessa ora di domani»;
+  - preesistente: un errore di rotazione dopo `os.replace` (unlink su iCloud) dà «non riuscita» anche se la copia c'è. Va nel verso del falso allarme, mai del falso «copia OK».
+
+**Wall of Shame:** nessuna violazione. `copie[:-max(1, keep)]` taglia una lista di file, non la storia dei messaggi. Nessuna simulazione di tool.
+
+**Rischio escluso:** non ho verificato il comportamento reale su iCloud Drive (file non ancora scaricati, unlink e glob con errori di rete o di sincronizzazione), perché in dev su Linux non si riproduce. Non ho guardato /bin/bash 3.2 del Mac, perché installa.sh cambia solo in un commento.
+
+- Riga contatore #859 e 2 lezioni nuove scritte in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, fuori dallo stage. Come richiesto non ho fatto commit e non ho creato .claude/.review_ok.
+- Sonde e mutanti sono in /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sonda/ (sonda.py, margine.py).
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_crm.py`: 150 → 170 passed. Nuovi: 3 test delle copie locali (riavvii nello stesso giorno, orologio indietro, copie a mano) e 17 test di `installa.sh`/`spegni.sh` con comandi finti; `test_identita_clienti_e_backup` ora con `keep=2, ultime=2`.
+- `tests/test_unit_crm.py`: 150 → 173 passed. Nuovi: 5 test delle copie locali (riavvii nello stesso giorno, orologio indietro, copie a mano, copie nel futuro, margine di un giorno), 1 delle copie cifrate (orologio sbagliato) e 17 test di `installa.sh`/`spegni.sh` con comandi finti; `test_identita_clienti_e_backup` ora con `keep=2, ultime=2`.
 - `tests/test_unit_hooks.py -k "perimetro or gate"`: 128 passed (rieseguito dal revisore #853).
 - Suite del kernel non toccata (gas.py e test del kernel invariati).
 
@@ -299,10 +409,14 @@ Letture obbligatorie fatte: CLAUDE.md (sezione 5 e guardrail), reports/stato_pro
   - `ca2fc64b`: handoff-check success; verifica-bot annullato (head cambiata durante la verifica).
   - `1b61ec43`: nessuna run propria (pushato con a83ca616). `a83ca616`: verifica-bot annullato (head cambiata).
   - `dfe8fbee`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, solo BASSE; PR sulla macchina del bot).
-  - `5b75c850`, `8fbd65a3` e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+  - `5b75c850`, `8fbd65a3`: nessuna run propria (pushati con 94184b2c).
+  - `94184b2c`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, solo BASSE).
+  - `8acae43c`, `b176a489` e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- R-859-1 BASSA: nessun test fissa il margine di un giorno delle copie cifrate.
+- R-859-2 COSMETICA: `OverflowError` non preso in `_ruota` (non raggiungibile oggi).
 - R-854-2 BASSA: KeepAlive senza tetto, registro senza rotazione, nessun avviso (parte restante di R-853-2).
 - COSMETICHE #853/#854/#856/#857: in `reports/stato_progetto.md` (tra cui `spegni.sh` fa il bootout prima del rm, ordine opposto a R-855-1).
 - R-852M-1 BASSA (voce, `.env` sul Mac) e riserve della #401 (funnel): in `reports/stato_progetto.md`.
