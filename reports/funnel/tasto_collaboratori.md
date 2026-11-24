@@ -32,7 +32,7 @@ Risponde SOLO agli agenti registrati (agli altri: «Questo comando è per i coll
 
 1. NIENTE domande a bottoni (decisione dell'operatore, 23/11/2026: nel diretto si chiede SOLO nome e cognome). **Lingua**: il bot parla la lingua del Telegram del lead (`language_code`: italiano o inglese, le due già supportate); se manca o non è supportata, italiano — la domanda della lingua non si fa. Un solo messaggio breve —
    > «🔞 Questo servizio è riservato ai maggiorenni: proseguendo confermi di avere almeno 18 anni.
-   > ⚡ Benvenuto in Inizia Ora. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta. Non paghi nessun abbonamento: l'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto. ⚠ Il trading comporta un rischio reale di perdere il capitale.»
+   > ⚡ Benvenuto in Inizia Ora. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta. Non paghi nessun abbonamento: l'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto. ⚠ Il trading comporta un rischio reale di perdere il capitale: usa solo soldi che puoi permetterti di perdere. I risultati passati non garantiscono quelli futuri.»
    La riga dei maggiorenni sta IN TESTA, prima di ogni contenuto commerciale (nota del 3° verdetto bot #401, scelta dell'operatore 24/11: come su main la conferma precede l'offerta).
    poi UN solo campo di testo —
    > «✍ Scrivimi nome e cognome e ti metto subito in contatto con {agente}.
