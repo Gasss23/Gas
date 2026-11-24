@@ -33,6 +33,10 @@ CONSENTITI='^[A-Za-z0-9/._ -]+$'
 #    (V-3 bot #403: le variabili esportate nel Terminale qui non contano)
 PORTA="$(cd "$GAS" && env -i HOME="$HOME" PATH=/usr/bin:/bin .venv/bin/python - <<'PY'
 import sys
+try:  # V-2 bot #403: se Gas non si importa, il .env non si legge: lo si dice, non «manca il token»
+    import gas  # noqa: F401
+except Exception:
+    sys.exit(4)
 from modules.crm import __main__ as cli, server
 cli._carica_chiavi()
 import os
@@ -47,6 +51,7 @@ PY
   case $? in
     2) stop "manca GAS_CRM_TOKEN (almeno 16 caratteri) nel file .env di Gas: senza token il CRM non parte" ;;
     3) stop "nel .env c'è GAS_CRM_BIND diverso da 127.0.0.1: il CRM sempre acceso deve restare solo su questo Mac (togli quella riga)" ;;
+    4) stop "Gas non si avvia con le sue dipendenze: nella .venv lancia 'pip install -r requirements.txt' e rilancia" ;;
     *) stop "controllo del CRM non riuscito (Python o dipendenze): prova 'pip install -r requirements.txt' nella .venv" ;;
   esac
 }
@@ -98,7 +103,9 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 if ! risponde; then
+  # V-1 bot #403: via anche il plist, se no al login successivo launchd lo ricarica
   launchctl bootout "$DOMINIO/$SERVIZIO" 2>/dev/null || true
+  rm -f "$PLIST"
   stop "la dashboard non risponde su $URL: servizio tolto; guarda $GAS/.gas_memory_crm_server.log"
 fi
 
