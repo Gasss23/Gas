@@ -1,0 +1,15 @@
+fasi 1 noVER soglia 0.50 blocchi 1 | vicino  47% -6dB  33% -12dB   3% -20dB   0% | FP/h parlato  37.9 TV  62.0 | altre voci  42% | lat 0.45
+fasi 1 noVER soglia 0.70 blocchi 1 | vicino  23% -6dB  33% -12dB   3% -20dB   0% | FP/h parlato  33.9 TV  54.0 | altre voci  40% | lat 0.44
+fasi 2 noVER soglia 0.50 blocchi 1 | vicino  53% -6dB  43% -12dB   3% -20dB   0% | FP/h parlato  41.9 TV  66.0 | altre voci  45% | lat 0.42
+fasi 2 noVER soglia 0.70 blocchi 1 | vicino  40% -6dB  37% -12dB   3% -20dB   0% | FP/h parlato  39.9 TV  56.0 | altre voci  42% | lat 0.42
+fasi 4 noVER soglia 0.50 blocchi 1 | vicino  63% -6dB  47% -12dB   3% -20dB   3% | FP/h parlato  47.9 TV  72.0 | altre voci  52% | lat 0.39
+fasi 4 noVER soglia 0.70 blocchi 1 | vicino  60% -6dB  43% -12dB   3% -20dB   0% | FP/h parlato  45.9 TV  66.0 | altre voci  48% | lat 0.40
+fasi 1 VER   soglia 0.50 blocchi 1 | vicino  89% -6dB  71% -12dB  28% -20dB  23% | FP/h parlato   2.0 TV   6.0 | altre voci  16% | lat 0.35
+fasi 1 VER   soglia 0.60 blocchi 1 | vicino  78% -6dB  57% -12dB  27% -20dB  20% | FP/h parlato   0.0 TV   3.3 | altre voci  10% | lat 0.41
+fasi 1 VER   soglia 0.70 blocchi 1 | vicino  36% -6dB  44% -12dB  17% -20dB  12% | FP/h parlato   0.0 TV   2.0 | altre voci   8% | lat 0.45
+fasi 2 VER   soglia 0.50 blocchi 1 | vicino  96% -6dB  81% -12dB  38% -20dB  24% | FP/h parlato   2.7 TV   7.3 | altre voci  18% | lat 0.29
+fasi 2 VER   soglia 0.60 blocchi 1 | vicino  89% -6dB  67% -12dB  33% -20dB  20% | FP/h parlato   0.7 TV   3.3 | altre voci  14% | lat 0.40
+fasi 2 VER   soglia 0.70 blocchi 1 | vicino  56% -6dB  51% -12dB  22% -20dB  14% | FP/h parlato   0.0 TV   2.0 | altre voci   8% | lat 0.41
+fasi 4 VER   soglia 0.50 blocchi 1 | vicino  98% -6dB  91% -12dB  50% -20dB  30% | FP/h parlato   6.6 TV   8.7 | altre voci  18% | lat 0.19
+fasi 4 VER   soglia 0.60 blocchi 1 | vicino  96% -6dB  80% -12dB  41% -20dB  27% | FP/h parlato   1.3 TV   4.7 | altre voci  15% | lat 0.30
+fasi 4 VER   soglia 0.70 blocchi 1 | vicino  69% -6dB  61% -12dB  29% -20dB  18% | FP/h parlato   0.7 TV   2.7 | altre voci   8% | lat 0.39

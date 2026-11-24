@@ -4,6 +4,21 @@ Cosa fa: ogni notte alle 03:00 il Mac lancia `python3 gas.py notte`. Gas legge
 `~/.gas_notte.yaml`, esegue i compiti uno alla volta (ognuno da zero) e scrive il
 riepilogo in `~/Gas/.gas_notte/ultimo_giro.md`. Nel diario va una riga per compito.
 
+Stato dei lavori (R7, dal 2026-11-23): `.gas_notte/stato_lavori.json` tiene per ogni compito
+l'ultimo esito — «fatto», «in sospeso» (ha lasciato azioni in attesa della tua firma),
+«fallito», «da non ritentare». Dopo 3 fallimenti di fila un compito si ferma per 7 giorni
+(avviso nel riepilogo e su Telegram), poi riprova da solo; il conto non si azzera con la pausa, quindi
+se fallisce ancora si ferma subito per altri 7 giorni (un tentativo a settimana) finché non riesce una
+volta. I fallimenti dovuti a cause esterne (provider giù, budget del giorno finito, cervello forte
+fermo, Claude Opus non disponibile con «Sempre Opus») restano «fallito» ma non contano tra i
+fallimenti; dopo 14 guasti esterni di fila però il compito si ferma lo stesso per 7 giorni (un
+guasto che dipende dal prompt non deve ripetersi ogni notte per sempre). Non sono esterni, e contano come
+fallimenti veri, il tetto delle chiamate al modello per turno, la risposta vuota e le 10
+iterazioni senza risposta finale: nascono dal compito. Se nella stessa notte uno di questi si
+somma a un guasto di provider, conta come fallimento vero (compromesso voluto). Per rilanciarlo prima:
+`python3 gas.py notte <nome>`; se cambi il suo prompt nel catalogo la pausa decade. Il riepilogo
+ha la sezione «Lavori ricorrenti (stato)» con tutti i compiti attivi (anche quelli saltati per crash ripetuti).
+
 Ogni compito ha una cronologia sua (`.gas_notte/storia_<nome>.json`), separata dalla
 tua conversazione: il giro non legge `.gas_history.json`, non la sposta se è rovinata e
 non la copia nelle fotografie di sicurezza (snapshot). Eccezione: se approvi su Telegram un'azione parcheggiata di notte,

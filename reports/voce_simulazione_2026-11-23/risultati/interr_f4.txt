@@ -1,0 +1,10 @@
+E_sopra_gas 4 fasi + filtro, soglia 0.5 su 1 blocchi: prese 0/180 (0%), scatti fuori dalle chiamate/ora 0.0
+E_sopra_gas 4 fasi + filtro, soglia 0.6 su 1 blocchi: prese 0/180 (0%), scatti fuori dalle chiamate/ora 0.0
+E_sopra_gas 4 fasi + filtro, soglia 0.8 su 3 blocchi: prese 0/180 (0%), scatti fuori dalle chiamate/ora 0.0
+E_sopra_gas 4 fasi + filtro, soglia 0.5 su 2 blocchi: prese 0/180 (0%), scatti fuori dalle chiamate/ora 0.0
+E_sopra_gas 4 fasi + filtro, soglia 0.5 su 3 blocchi: prese 0/180 (0%), scatti fuori dalle chiamate/ora 0.0
+A_chiamate 4 fasi + filtro, soglia 0.5 su 1 blocchi: prese 170/180 (94%), scatti fuori dalle chiamate/ora 0.0
+A_chiamate 4 fasi + filtro, soglia 0.6 su 1 blocchi: prese 158/180 (88%), scatti fuori dalle chiamate/ora 0.0
+A_chiamate 4 fasi + filtro, soglia 0.8 su 3 blocchi: prese 8/180 (4%), scatti fuori dalle chiamate/ora 0.0
+A_chiamate 4 fasi + filtro, soglia 0.5 su 2 blocchi: prese 158/180 (88%), scatti fuori dalle chiamate/ora 0.0
+A_chiamate 4 fasi + filtro, soglia 0.5 su 3 blocchi: prese 99/180 (55%), scatti fuori dalle chiamate/ora 0.0

@@ -155,12 +155,13 @@ def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None, rilevatore=N
               "GAS_ASCOLTO_SOGLIA_INTERRUZIONE", "GAS_VOICE_URL", "GAS_VOICE_PORT",
               "GAS_ASCOLTO_SOGLIA", "GAS_ASCOLTO_BLOCCHI_PAROLA", "GAS_VOICE_MAX_TURNI",
               "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE", "GAS_ASCOLTO_VERIFICA",
-              "GAS_ASCOLTO_SOGLIA_VERIFICA", "GAS_ASCOLTO_SOGLIA_BASE", "GAS_ASCOLTO_MODELLO"):
+              "GAS_ASCOLTO_SOGLIA_VERIFICA", "GAS_ASCOLTO_SOGLIA_BASE", "GAS_ASCOLTO_MODELLO",
+              "GAS_ASCOLTO_FASI"):   # V-3 bot #400
         monkeypatch.delenv(k, raising=False)
     for k, v in ambiente.items():
         monkeypatch.setenv(k, v)
     monkeypatch.setattr(a, "rilevatore_openwakeword",
-                        rilevatore or (lambda m: (lambda b: 0.0, lambda: None)))
+                        rilevatore or (lambda m, **k: (lambda b: 0.0, lambda: None)))
     monkeypatch.setattr(a, "scarica_conferma", lambda url, token: b"SI")
     monkeypatch.setattr(a, "Conferma", conferma_cls or (lambda scarica: (lambda: scarica())))
     monkeypatch.setattr(a.time, "sleep",
@@ -1742,7 +1743,7 @@ def test_main_usa_la_porta_del_server(monkeypatch, tmp_path):
     monkeypatch.delenv("GAS_VOICE_URL", raising=False)
     monkeypatch.setenv("GAS_VOICE_PORT", "9001")
     visti = []
-    monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m: (lambda b: 0.0, lambda: None))
+    monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m, **k: (lambda b: 0.0, lambda: None))
     monkeypatch.setattr(a, "invia_al_server",
                         lambda url, token, timeout, seguito=False:
                         (visti.append((url, seguito)), lambda wav: (False, None, ""))[1])
@@ -2979,6 +2980,18 @@ def test_main_avvisa_se_il_env_rende_la_parola_piu_facile(monkeypatch, tmp_path,
     assert "interruzione spenta" in caplog.text
 
 
+def test_avviso_blocchi_interruzione_col_filtro_confronta_con_1(monkeypatch, tmp_path, caplog):
+    """R-816-1 / V-2 bot #400: col filtro della voce il predefinito dei blocchi
+    d'interruzione è 1: =1 nel .env non è «più facile» (nessun avviso), e il confronto non
+    torna mai a 3."""
+    _verificatore(tmp_path)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_BLOCCHI_INTERRUZIONE": "1"},
+                        rilevatore=_rilevatore_registrato([]))
+    assert "verifica della voce: attiva" in caplog.text
+    assert k.get("blocchi_interruzione") == 1
+    assert "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE" not in caplog.text
+
 # ── «parola quasi sentita» (sera dell'11/11: chiamate vere scartate senza traccia) ──
 
 def _ascolto_quasi(valori, soglia=0.7, blocchi_parola=3, n_blocchi=None):
@@ -3411,15 +3424,16 @@ def test_main_con_la_verifica_usa_la_sua_soglia(monkeypatch, tmp_path, caplog):
     p = _verificatore(tmp_path)
     visti = []
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
-        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.6"},
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.4"},
                         rilevatore=_rilevatore_registrato(visti))
-    assert visti == [{"verificatore": p, "soglia_base": 0.25}]
-    assert a.SOGLIA_VERIFICA_PREDEFINITA == 0.5
+    assert visti == [{"verificatore": p, "soglia_base": 0.25, "fasi": a.FASI_PREDEFINITE}]
+    assert a.SOGLIA_VERIFICA_PREDEFINITA == 0.6   # V-1 bot #400: 0,6 con le 4 fasi
     assert k.get("soglia") == a.SOGLIA_VERIFICA_PREDEFINITA   # GAS_ASCOLTO_SOGLIA non conta
-    assert k.get("soglia_interruzione") == 0.8 and k.get("blocchi_interruzione") == 3
+    # simulazione 23/11: con la verifica 0,8 su 3 blocchi non scattava quasi mai
+    assert k.get("soglia_interruzione") == 0.6 and k.get("blocchi_interruzione") == 1
     assert "verifica della voce: attiva (1 persona, soglia base 0.25)" in caplog.text
-    assert ("regolazioni in uso: soglia 0.50, blocchi di fila 1, turni 1, finestra 10 s, "
-            "interruzione 0.80 su 3 blocchi, voce 200, verifica della voce attiva "
+    assert ("regolazioni in uso: soglia 0.60, blocchi di fila 1, turni 1, finestra 10 s, "
+            "interruzione 0.60 su 1 blocchi, voce 200, verifica della voce attiva "
             "(1 persona, soglia base 0.25)") in caplog.text
     assert "GAS_ASCOLTO_SOGLIA non conta con la verifica della voce attiva" in caplog.text
     assert "più facile dei predefiniti" not in caplog.text
@@ -3435,25 +3449,31 @@ def test_main_soglie_della_verifica_mai_sotto_la_base(monkeypatch, tmp_path, cap
                                                 "GAS_ASCOLTO_SOGLIA_BASE": "0.3"},
                         rilevatore=_rilevatore_registrato([]))
     assert k.get("soglia") == 0.3 and k.get("soglia_interruzione") == 0.3
-    assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.3 (predefinito 0.5)" in caplog.text
+    assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.3 (predefinito 0.6)" in caplog.text
 
 
 def test_main_verifica_rotta_spenta_assente(monkeypatch, tmp_path, caplog):
     _verificatore(tmp_path)
 
+    chiamate = []
+
     def rotto(modello, **k):
-        if k:
+        chiamate.append(dict(k))
+        if k.get("verificatore"):
             raise ValueError("pickle rotto")
         return (lambda b: 0.0), (lambda: None)
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         k = _main_finto(monkeypatch, tmp_path, {}, rilevatore=rotto)
     assert k.get("soglia") == a.SOGLIA_PREDEFINITA
+    # R-819-1: il ripiego senza filtro gira a 1 fase (niente «fasi»), non a 4
+    assert chiamate[0].get("fasi") == a.FASI_PREDEFINITE and chiamate[-1] == {}
     assert "verifica della voce: non caricata (ValueError): ascolto senza verifica" in caplog.text
     caplog.clear()
     visti = []
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_VERIFICA": "0"},
                         rilevatore=_rilevatore_registrato(visti))
+    # V-2 bot #400: senza verifica attiva una fase sola (niente «fasi»)
     assert visti == [{}] and k.get("soglia") == a.SOGLIA_PREDEFINITA
     assert "verifica della voce: spenta" in caplog.text
     caplog.clear()
@@ -3851,11 +3871,26 @@ def test_taratura_con_la_verifica_consiglia_la_sua_soglia(capsys):
     assert t.main(["--secondi", "5"], sorgente=sorgente) == 0
     out = capsys.readouterr().out
     assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.8" in out
-    # 0,5 non è più permissiva del predefinito della verifica (0,5): nessun avviso
+    # 0,6 non è più permissiva del predefinito della verifica (0,6): nessun avviso
     p = [0.0] * t.PAUSA_BLOCCHI
-    righe = t.consiglio(list(t.salite([0.0, 0.55] + p + [0.95, 0.0])), 0, verifica=True)
-    assert any("GAS_ASCOLTO_SOGLIA_VERIFICA=0.5" in r for r in righe)
+    righe = t.consiglio(list(t.salite([0.0, 0.65] + p + [0.95, 0.0])), 0, verifica=True)
+    assert any("GAS_ASCOLTO_SOGLIA_VERIFICA=0.6" in r for r in righe)
     assert not any("più permissiva" in r for r in righe)
+    # 0,5 sì (V-1 bot #400: col massimo su 4 fasi 0,5 fa scattare di più)
+    righe = t.consiglio(list(t.salite([0.0, 0.55] + p + [0.95, 0.0])), 0, verifica=True)
+    assert any("più permissiva" in r for r in righe)
+
+
+def test_fasi_predefinite_solo_con_la_verifica(monkeypatch):
+    """V-2 bot #400: 4 fasi solo col filtro della voce attivo (senza, alzano i falsi);
+    GAS_ASCOLTO_FASI vince sempre."""
+    monkeypatch.delenv("GAS_ASCOLTO_FASI", raising=False)
+    assert a.fasi_predefinite(None) == 1
+    assert a.fasi_predefinite(a.Verifica("assente")) == 1
+    attiva = a.Verifica("attiva")
+    assert attiva.attiva and a.fasi_predefinite(attiva) == a.FASI_PREDEFINITE == 4
+    monkeypatch.setenv("GAS_ASCOLTO_FASI", "2")
+    assert a.fasi_predefinite(None) == 2 and a.fasi_predefinite(attiva) == 2
 
 
 def test_taratura_usa_il_rilevatore_con_la_verifica(monkeypatch, tmp_path, capsys):
@@ -3877,6 +3912,8 @@ def test_taratura_usa_il_rilevatore_con_la_verifica(monkeypatch, tmp_path, capsy
     punteggi, chiudi, verifica = t._punteggi_dal_microfono(0.4, "hey_jarvis")
     assert verifica is True and len(list(punteggi)) == 5
     assert visti and visti[0]["soglia_base"] == 0.25
+    # R-815-1: la taratura misura con le stesse fasi dell'ascolto
+    assert visti[0].get("fasi") == a.FASI_PREDEFINITE
     assert "Verifica della voce: attiva" in capsys.readouterr().out
 
 
@@ -3901,3 +3938,60 @@ def test_verifica_modulo_mancante(monkeypatch, tmp_path, nome, rilancia):
     else:
         a.rilevatore_con_verifica("hey_jarvis", v)
         assert v.stato == "non caricata" and v.motivo == "ModuleNotFoundError"
+
+
+def test_interruzione_con_la_verifica_rispetta_il_env(monkeypatch, tmp_path):
+    """Con valori nel .env per l'interruzione valgono quelli (mai sotto la base)."""
+    _verificatore(tmp_path)
+    k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA_INTERRUZIONE": "0.7",
+                                            "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE": "2"},
+                    rilevatore=_rilevatore_registrato([]))
+    assert k.get("soglia_interruzione") == 0.7 and k.get("blocchi_interruzione") == 2
+
+
+def test_senza_verifica_l_interruzione_resta_0_8_su_3(monkeypatch, tmp_path):
+    k = _main_finto(monkeypatch, tmp_path, {}, rilevatore=_rilevatore_registrato([]))
+    assert k.get("soglia_interruzione") == 0.8 and k.get("blocchi_interruzione") == 3
+
+
+def test_rilevatore_a_fasi_sfalsate(monkeypatch):
+    """GAS_ASCOLTO_FASI: N modelli, ognuno riceve blocchi da 80 ms sfalsati di BLOCCO/N
+    campioni (in ritardo, mai in anticipo); il punteggio è il massimo; azzera li azzera tutti."""
+    import sys
+    import types
+    np = pytest.importorskip("numpy")
+    visti = []
+
+    class Finto:
+        def __init__(self, **k):
+            self.i = len(visti)
+            visti.append([])
+
+        def predict(self, x):
+            visti[self.i].append(np.array(x))
+            return {"hey_jarvis": 0.1 * (self.i + 1)}
+
+        def reset(self):
+            visti[self.i].append("reset")
+    mod = types.ModuleType("openwakeword.model")
+    mod.Model = Finto
+    monkeypatch.setitem(sys.modules, "openwakeword", types.ModuleType("openwakeword"))
+    monkeypatch.setitem(sys.modules, "openwakeword.model", mod)
+    punteggio, azzera = a.rilevatore_openwakeword("hey_jarvis", fasi=4)
+    flusso = np.arange(3 * a.BLOCCO, dtype=np.int16)
+    for i in range(3):
+        assert punteggio(flusso[i * a.BLOCCO:(i + 1) * a.BLOCCO]) == pytest.approx(0.4)
+    for f in range(4):
+        ultimo = visti[f][-1]
+        assert len(ultimo) == a.BLOCCO
+        rit = f * a.BLOCCO // 4
+        assert list(ultimo) == list(flusso[2 * a.BLOCCO - rit: 3 * a.BLOCCO - rit])
+    azzera()
+    assert all(v[-1] == "reset" for v in visti)
+    # R-815-4: azzera svuota anche la coda: dopo, i modelli in ritardo vedono silenzio
+    # davanti al blocco nuovo, non l'audio di prima
+    nuovo = np.full(a.BLOCCO, 7, dtype=np.int16)
+    punteggio(nuovo)
+    for f in range(1, 4):
+        rit = f * a.BLOCCO // 4
+        assert list(visti[f][-1][:rit]) == [0] * rit

@@ -98,7 +98,7 @@ Il modello «hey_jarvis» dà alla tua voce punteggi bassi (0,37–0,43 nella mi
 persone. La verifica della voce è un piccolo filtro addestrato sulla tua voce: quando il
 modello sente qualcosa di simile alla parola (da 0,25 in su), il filtro decide se sei tu
 (o un'altra persona registrata) che dice «Hey Jarvis». Allora la parola vale con la soglia
-del filtro (`GAS_ASCOLTO_SOGLIA_VERIFICA`, 0,5) e `GAS_ASCOLTO_SOGLIA` non conta più.
+del filtro (`GAS_ASCOLTO_SOGLIA_VERIFICA`, 0,6) e `GAS_ASCOLTO_SOGLIA` non conta più.
 
 **Registrare (una volta, ~10 minuti):**
 
@@ -135,9 +135,11 @@ filtro per scartare chi non è registrato. Alla fine stampa un riepilogo (quanti
   come prima, senza filtro. Riaddestra con `--solo-addestra`.
 - **Dopo**, se le tue chiamate si perdono ancora: `taratura_parola.py` usa anche lei il
   filtro e consiglia `GAS_ASCOLTO_SOGLIA_VERIFICA`.
-- **Interrompere Gas mentre parla** usa anche lei il filtro (soglia 0,8 su 3 blocchi di
-  fila, come prima): se con il filtro non riesci più a interromperlo, prova
-  `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE=2`.
+- **Interrompere Gas mentre parla** con il filtro attivo usa la stessa soglia della
+  parola su 1 blocco (dal 23/11: con 0,8 su 3 blocchi non scattava quasi mai, perché il
+  filtro dà raramente più di 0,8). Funziona nelle pause tra le frasi di Gas; mentre la sua
+  voce è sopra la tua, di solito no. `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` e
+  `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` nel `.env` valgono comunque.
 
 **Limiti (da sapere):** non è una vera verifica del parlante (lo dice anche la
 documentazione di openWakeWord): è un filtro sopra la parola. Una voce simile alla tua (o
@@ -227,14 +229,15 @@ solo).
 | `GAS_ASCOLTO_SILENZIO` | 0.8 | secondi di silenzio che chiudono la richiesta |
 | `GAS_ASCOLTO_CONFERMA` | 1 | `0` = dopo la parola solo il bip, senza «Sì, signore?» |
 | `GAS_ASCOLTO_INTERRUZIONE` | 1 | `0` = la parola non interrompe Gas mentre parla |
-| `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | 0.8 | sensibilità della parola mentre Gas parla (più bassa = la sente meglio, ma rischia di attivarsi con la voce di Gas) |
-| `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` | 3 | blocchi da 80 ms di fila per interrompere Gas mentre parla (1–5; resta 3 contro l'eco della sua voce, anche ora che la parola vale con 1) |
+| `GAS_ASCOLTO_SOGLIA_INTERRUZIONE` | 0.8 | sensibilità della parola mentre Gas parla (più bassa = la sente meglio, ma rischia di attivarsi con la voce di Gas). Con il filtro della voce attivo, se non è nel `.env` vale la soglia della parola: **togli dal `.env` una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`**, altrimenti col filtro l'interruzione non scatta quasi mai |
+| `GAS_ASCOLTO_BLOCCHI_INTERRUZIONE` | 3 | blocchi da 80 ms di fila per interrompere Gas mentre parla (1–5). Senza filtro della voce il predefinito è 3, contro l'eco della voce di Gas; con il filtro attivo è 1, perché il filtro scarta già la voce di Gas (simulazione del 23/11, `reports/voce_simulazione_2026-11-23/`). Se Gas si interrompe da solo, metti 3 |
 | `GAS_VOICE_FINESTRA` | 10 | secondi di silenzio dopo i quali la conversazione si chiude (0–120; `0` = niente finestra. La stessa variabile vale per la pagina web della voce, che accetta solo da più di 0 fino a 120: se usi anche quella, non mettere 0) |
 | `GAS_VOICE_SEGUITO_MAX` | 15 | secondi massimi di una frase senza «Hey Jarvis» nella conversazione (3–30) |
 | `GAS_VOICE_MAX_TURNI` | 1 | turni dopo la parola, il primo compreso (1 = solo la richiesta dopo «Hey Jarvis»: per continuare si ripete la parola; 3 = la richiesta più 2 di seguito senza ripeterla) |
 | `GAS_ASCOLTO_MODELLO` | hey_jarvis | modello di openWakeWord |
 | `GAS_ASCOLTO_VERIFICA` | 1 | `0` = niente verifica della voce anche se è addestrata (si torna a `GAS_ASCOLTO_SOGLIA`) |
-| `GAS_ASCOLTO_SOGLIA_VERIFICA` | 0.5 | con la verifica attiva, sensibilità della parola al posto di `GAS_ASCOLTO_SOGLIA` (più alta = meno attivazioni per sbaglio; mai sotto `GAS_ASCOLTO_SOGLIA_BASE`) |
+| `GAS_ASCOLTO_SOGLIA_VERIFICA` | 0.6 | con la verifica attiva, sensibilità della parola al posto di `GAS_ASCOLTO_SOGLIA` (più alta = meno attivazioni per sbaglio; mai sotto `GAS_ASCOLTO_SOGLIA_BASE`) |
+| `GAS_ASCOLTO_FASI` | 4 col filtro della voce, 1 senza | quanti modelli della parola, sfalsati di 20 ms, ascoltano insieme (il punteggio di «Hey Jarvis» cambia molto con la posizione della parola sui blocchi da 80 ms); 1 = un modello solo, come prima |
 | `GAS_ASCOLTO_SOGLIA_BASE` | 0.25 | con la verifica attiva, punteggio del modello della parola da cui un pezzo di audio passa alla verifica (0.05–0.9; se lo cambi, riaddestra con `--solo-addestra`) |
 | `GAS_ASCOLTO_FORMATO` | audio+pezzi | risposta a frasi in fila; vuoto = un solo audio alla fine, come prima |
 
