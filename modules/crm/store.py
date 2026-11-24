@@ -1370,6 +1370,8 @@ class CRMStore:
         cancello). Tiene la copia più recente di ognuno degli ultimi `keep` GIORNI più le ultime
         `ultime` copie (R-853-2: con «le ultime 30 copie» un CRM che si riavvia a
         ripetizione, una copia per avvio, cancellava in pochi minuti i giorni prima).
+        Contano solo i nomi `crm-AAAAMMGG-HHMMSS.db` fino a domani: la copia appena fatta, le
+        copie fatte a mano e quelle con una data nel futuro non si cancellano mai.
         None se fallisce (§9: mai solleva)."""
         try:
             cartella = Path(dest_dir) if dest_dir else self.db_path.parent / BACKUP_DIRNAME

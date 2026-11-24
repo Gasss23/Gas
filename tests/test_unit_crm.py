@@ -1396,7 +1396,42 @@ def test_copia_cifrata_fuori_dal_mac(tmp_path: Path, monkeypatch: pytest.MonkeyP
         finta = tmp_path / f"crm-2026010{i}-000000.db"
         finta.write_bytes(db.read_bytes())
         copia_cifrata.copia_fuori(finta, keep=2)
-    assert len(list(icloud.glob("crm-*.gascrm"))) == 2
+    # le finte di gennaio ruotano tra loro; la copia di oggi fatta sopra è «nel futuro» per
+    # loro e non si tocca (R-858-1)
+    assert sorted(p.name for p in icloud.glob("crm-202601*.gascrm")) == [
+        "crm-20260102.gascrm", "crm-20260103.gascrm"]
+
+
+def test_r858_copie_cifrate_orologio_sbagliato(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                              caplog: pytest.LogCaptureFixture) -> None:
+    """R-858-1: la copia cifrata appena fatta veniva cancellata se c'erano copie con una data
+    più avanti (orologio del Mac andato nel futuro e poi corretto), e la dashboard diceva
+    «copia OK» senza nessuna copia di oggi fuori dal Mac."""
+    from modules.crm import copia_cifrata
+    icloud = tmp_path / "icloud"
+    icloud.mkdir()
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(icloud))
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    db = tmp_path / "crm.db"
+    CRMStore(db).aggiungi_cliente("Mario Rossi")
+    for g in range(1, 31):  # 30 copie fatte con l'orologio nel 2030
+        (icloud / f"crm-203001{g:02d}.gascrm").write_bytes(b"x")
+    a_mano = icloud / "crm-prima-import.gascrm"
+    a_mano.write_bytes(b"copia a mano")
+    oggi = tmp_path / "crm-20261124-090000.db"
+    oggi.write_bytes(db.read_bytes())
+    with caplog.at_level("WARNING"):
+        fuori, motivo = copia_cifrata.copia_fuori(oggi, keep=30)
+    assert motivo is None and fuori is not None and fuori.exists()
+    assert len(list(icloud.glob("crm-2030*.gascrm"))) == 30  # non si toccano
+    assert a_mano.read_bytes() == b"copia a mano"
+    assert "data nel futuro" in caplog.text
+    # orologio tornato indietro di poco: la copia di oggi resta anche se non è l'ultima
+    (icloud / "crm-20261125.gascrm").write_bytes(b"x")
+    ieri = tmp_path / "crm-20261123-090000.db"
+    ieri.write_bytes(db.read_bytes())
+    fuori, motivo = copia_cifrata.copia_fuori(ieri, keep=1)
+    assert motivo is None and fuori is not None and fuori.exists()
 
 
 def test_r815_ripristino_sicuro_dopo_un_crash(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -2659,6 +2694,25 @@ def test_backup_copie_nel_futuro_non_accorciano_la_storia(tmp_path: Path,
     giorni_veri = sorted({n[4:12] for n in nomi if n.startswith("crm-2026")})
     assert len(giorni_veri) == 30  # i 30 giorni veri restano tutti
     assert "data nel futuro" in caplog.text
+
+
+def test_backup_margine_del_futuro_e_di_un_giorno(tmp_path: Path,
+                                                 caplog: pytest.LogCaptureFixture) -> None:
+    """R-858-2: una copia avanti di qualche ora (cambio d'ora, fuso) conta come le altre; una
+    avanti di 2 giorni è «nel futuro»: non conta e non si cancella."""
+    orologio = Orologio(datetime(2026, 11, 24, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    cartella.mkdir()
+    for nome in ("crm-20261123-090000.db", "crm-20261124-200000.db", "crm-20261126-100000.db"):
+        (cartella / nome).write_text("copia")
+    with caplog.at_level("WARNING"):
+        assert st.backup(cartella, keep=1, ultime=1) is not None
+    nomi = sorted(p.name for p in cartella.glob("crm-*.db"))
+    # quella di stasera conta (è la più recente del giorno) e fa togliere quella di ieri
+    assert nomi == ["crm-20261124-090000.db", "crm-20261124-200000.db", "crm-20261126-100000.db"]
+    assert "1 copie locali con una data nel futuro" in caplog.text
 
 
 def test_backup_ignora_le_copie_fatte_a_mano(tmp_path: Path) -> None:
