@@ -195,7 +195,7 @@ async function followUp(g){
   sys('… passano altre 48 ore …');
   await botSay(g, 'Vuoi fare l\'ultimo passo o chiudo qui? Se preferisci, riprendi quando vuoi.');
   const r2 = await kb(g, [[{t:'Riprendi'},{t:'Chiudi'}]]);
-  sys(r2==='Riprendi' ? 'Recuperato al 2° sollecito ✅' : 'Chiusa. Da qui in poi: SILENZIO (mai più di 2 solleciti, niente promozione senza consenso).');
+  sys(r2==='Riprendi' ? 'Recuperato al 2° sollecito ✅' : ('Chiusa. Da qui in poi: SILENZIO (mai più di 2 solleciti' + (mode==='diretto' ? '; ai lead del diretto il bot non manda mai promozione).' : ', niente promozione senza consenso).')));
 }
 
 async function flussoCompleto(g){ await fase1(g); await bozzaB(g); }

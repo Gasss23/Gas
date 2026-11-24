@@ -28,23 +28,25 @@
 
 - **Fetta 5 — Correzioni del 4° verdetto del bot sulla PR #401 (quinto giro)**: FATTA. V-1 BASSA: «il bot non manda MAI promozione ai lead del diretto» allineato anche in `stato_progetto.md` (riga Funnel) e nelle frasi di Fetta 1 di handoff/ultimo_report. V-2 BASSA: riga del rischio COMPLETA (costante RISCHIO) anche nel messaggio unico del diretto (spec §3.1 + simulazione). V-3 COSMETICA: intestazione di `diff_sessione.md` con la base reale post-merge (af0215de). Simulazione ripubblicata.
 
+- **Fetta 6 — V-1 del 5° verdetto (sesto giro) + 3° merge di main**: FATTA. La didascalia di chiusura dei solleciti nella simulazione ora distingue il diretto («ai lead del diretto il bot non manda mai promozione») dal completo («niente promozione senza consenso»). Terzo merge di origin/main (era entrata la PR #403, CRM dashboard): conflitti come i precedenti (3 report `--ours`, memoria a unione), review #853-MERGE APPROVATO, perimetro byte-identico a main. Simulazione ripubblicata.
+
 Contesto: PR #396 (trigger solleciti) mergiata oggi col via dell'operatore dopo il 3° verdetto (APPROVATO CON RISERVE senza ALTA/MEDIA); la sua V-1 COSMETICA residua (nome «Fetta unica» accanto a «Fetta 2/3» nei log) è superata dalla riscrittura dei report per questa sessione. `reports/bacheca.md` letta prima del giro: nessuna notizia bloccante, niente da aggiungere.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
-BASE = af0215de3491c5d6cae4f76183640d2d39063091 (merge-base con origin/main = main dopo il merge della PR #400, aggiornata dal 2° merge di main nel ramo al 4° giro).
+BASE = 96d5ae99fcdc72bc14f13120e5f42b43c7f8300f (merge-base con origin/main = main dopo il merge della PR #403, aggiornata dal 3° merge di main nel ramo al 6° giro).
 
 ```
- .claude/agents/memoria_revisore.md     |   2 ++
- reports/diff_sessione.md               |  23 ++++++++++++++---------
+ .claude/agents/memoria_revisore.md     |   3 +++
+ reports/diff_sessione.md               |  24 +++++++++++++++---------
  reports/funnel/funnel_v2.md            |   7 ++++---
- reports/funnel/simulazione_funnel.html |  54 ++++++++++++++---------------------------------------
+ reports/funnel/simulazione_funnel.html |  56 +++++++++++++++-----------------------------------------
  reports/funnel/tasto_collaboratori.md  |  19 +++++++++++++------
  reports/handoff.md                     | n/d
  reports/stato_progetto.md              |   2 +-
- reports/ultimo_report.md               |  60 ++++++++++++++++++++++++++++-------------------------------
+ reports/ultimo_report.md               |  49 +++++++++++++++++++++++++++++--------------------
 ```
 
 NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso e il suo conteggio finale non è misurabile alla scrittura. La CI confronta solo i path.
@@ -52,6 +54,8 @@ NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è t
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7ea06526 Merge remote-tracking branch 'origin/main' into claude/ritocchi-simulazione
+56ca77a4 docs(funnel): corrette le note del 4° verdetto su #401 — mai promozione ai lead del diretto ovunque, riga del rischio completa nel messaggio unico, base nell'intestazione del diff
 f994650d docs(fine-task): 4° giro PR #401 — fix del 3° verdetto, 2° merge di main (review #852-MERGE), handoff aggiornato
 e8f539a3 Merge remote-tracking branch 'origin/main' into claude/ritocchi-simulazione
 05721612 docs(funnel): corrette le note del 3° verdetto su #401 — conferma 18 anni in testa al messaggio del diretto, niente promozioni del bot ai lead del diretto
@@ -63,7 +67,7 @@ ee275e38 docs(funnel): corrette le note del 1° verdetto su #401 — lingua del 
 fb0f84af docs(funnel): ritocchi dell'operatore dopo la prova — via la domanda community, diretto solo nome e cognome con riga 18 anni, requisito Pannello blu per I miei link
 ```
 
-NB: il commit di fine-task di QUESTO 5° giro (quello che contiene questo file) non compare in questo log, per costruzione; il suo hash è nel `git log` del branch dopo il push. fb0f84af = fetta + fine-task 1° giro; 500cfa39 = §0 dopo l'apertura della PR; ee275e38 = 2° giro; b926745a = 3° giro; 71dee2da = 1° merge di main (#851-MERGE); 35ca0faf = fine-task 3° giro; 05721612 = 4° giro; e8f539a3 = 2° merge di main (#852-MERGE); f994650d = fine-task 4° giro.
+NB: il commit di fine-task di QUESTO 6° giro (quello che contiene questo file) non compare in questo log, per costruzione; il suo hash è nel `git log` del branch dopo il push. fb0f84af = fetta + fine-task 1° giro; 500cfa39 = §0 dopo l'apertura della PR; ee275e38 = 2° giro; b926745a = 3° giro; 71dee2da = 1° merge di main (#851-MERGE); 35ca0faf = fine-task 3° giro; 05721612 = 4° giro; e8f539a3 = 2° merge di main (#852-MERGE); f994650d = fine-task 4° giro; 56ca77a4 = 5° giro (fix 4° verdetto); 7ea06526 = 3° merge di main (#853-MERGE).
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -111,21 +115,39 @@ Rischio escluso: non ho rilanciato la suite dei test. Il codice del perimetro è
 
 NB: dopo il verdetto la riga #852-MERGE della memoria è stata messa in stage col commit di merge: il diff della memoria contro main è di 2 righe (#851-MERGE e #852-MERGE), come annunciato dal revisore.
 
+Terzo merge di origin/main (7ea06526, porta dentro la PR #403 CRM): review #853-MERGE, verdetto INTEGRALE:
+
+```
+## VERDETTO: APPROVATO
+
+Ho rifatto io tutti i controlli. Commit di merge pulito: nel perimetro di review l'unica differenza rispetto a main sono le 2 righe della memoria.
+
+Elementi del diff esaminati:
+- `.claude/agents/memoria_revisore.md:1724` — riga #851-MERGE di questa catena, aggiunta per unione — rischio: righe di main perse nella risoluzione del conflitto — ok. `git show origin/main:.claude/agents/memoria_revisore.md | diff - .claude/agents/memoria_revisore.md` (prima che aggiungessi la mia riga) mostra solo `1723a1724,1725`: 2 righe aggiunte, nessuna tolta.
+- `.claude/agents/memoria_revisore.md:1725` — riga #852-MERGE di questa sessione — rischio: si confonde con il #852-MERGE della chat CRM — ok. Il #852-MERGE della chat CRM sta alla riga 1721, questo alla 1725: il numero coincide ma sono righe distinte, nessuna sovrascrive l'altra.
+- `scripts/crm/installa.sh:1` (con `scripts/crm/spegni.sh:1` e `scripts/crm/com.gas.crm.plist:1`) — file nuovi arrivati da main con la PR #403 — rischio: modifiche fatte durante il merge su codice del perimetro — ok. `git diff --cached origin/main --stat -- gas.py brains/ modules/ tests/ scripts/ .claude/ .github/ clients/` mostra solo `.claude/agents/memoria_revisore.md | 2 ++`, quindi `scripts/crm/` è identico byte per byte a main.
+- `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» — rischio: doppia intestazione o voce CRM persa — ok. Rispetto a main cambia solo la riga Funnel (1 aggiunta, 1 tolta).
+
+Altri controlli: `git ls-files -u` 0; marcatori di conflitto 0; `git diff --cached --check origin/main` pulito; `.git/MERGE_HEAD` presente; handoff/ultimo_report/diff_sessione uguali a HEAD (`--ours`); rispetto a HEAD entrano solo le modifiche di #403 più la memoria.
+
+Rischio escluso: non ho guardato il contenuto di `scripts/crm/installa.sh` né l'ho fatto girare: questo merge non lo cambia (byte-identico a main), la review spetta alla PR #403. Non ho riletto per intero le parti Funnel già approvate nei verdetti precedenti di PR #401.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-Output reale di `gh run list -L 3` alla scrittura del 5° giro (righe della sessione CRM, attiva in parallelo):
+Output reale di `gh run list -L 3` alla scrittura del 6° giro:
 
 ```
-in_progress		CRM: dashboard sempre accesa sul Mac, icona sulla Scrivania	verifica-bot	claude/nifty-galileo-3k7kbm	pull_request_target	45399268365	3m4s	2026-11-24T13:01:58Z
-in_progress		docs(fine-task): note del bot su 67f4dc34 corrette (PR #403)	CI	claude/nifty-galileo-3k7kbm	push	45399264386	3m6s	2026-11-24T13:01:56Z
-completed	success	CRM: dashboard sempre accesa sul Mac, icona sulla Scrivania	verifica-bot	claude/nifty-galileo-3k7kbm	pull_request_target	45398679430	2m34s	2026-11-24T12:58:24Z
+in_progress		Merge pull request #403 from Gasss23/claude/nifty-galileo-3k7kbm — CR…	CI	claude/nifty-galileo-3k7kbm	push	45401598296	4m34s	2026-11-24T13:15:42Z
+in_progress		Merge pull request #403 from Gasss23/claude/nifty-galileo-3k7kbm — CR…	CI	main	push	45401576193	4m41s	2026-11-24T13:15:35Z
+completed	success	Funnel: ritocchi finali dell'operatore (via domanda community, diretto solo nome, Pannello blu)	verifica-bot	claude/ritocchi-simulazione	pull_request_target	45399925689	2m26s	2026-11-24T13:05:55Z
 ```
 
-Mappatura commit→run: fb0f84af e 500cfa39 pushati insieme → una sola run CI 45228489192 success sull'albero di 500cfa39 (fb0f84af senza run propria, contenuto incluso nell'albero testato); verifica-bot del 1° verdetto su 500cfa39 success. ee275e38 (head 2° giro): run CI 45231282200 success + verifica-bot del 2° verdetto success. b926745a, 71dee2da e 35ca0faf: pushati insieme → run CI 45233853494 success (unit-suite 11m46s) sull'albero di 35ca0faf (head 3° giro; i due commit intermedi senza run propria) + verifica-bot del 3° verdetto success. 05721612, e8f539a3 e f994650d: pushati insieme → run CI 45397659451 success (unit-suite 11m23s) sull'albero di f994650d (head 4° giro; i due commit intermedi senza run propria) + verifica-bot del 4° verdetto success. Il commit di fine-task di questo 5° giro: run non ancora disponibile alla scrittura dell'handoff (parte col push). La copertura pre-merge è garantita da `gh pr checks` prima del merge.
+Mappatura commit→run: fb0f84af e 500cfa39 pushati insieme → una sola run CI 45228489192 success sull'albero di 500cfa39 (fb0f84af senza run propria, contenuto incluso nell'albero testato); verifica-bot del 1° verdetto su 500cfa39 success. ee275e38 (head 2° giro): run CI 45231282200 success + verifica-bot del 2° verdetto success. b926745a, 71dee2da e 35ca0faf: pushati insieme → run CI 45233853494 success (unit-suite 11m46s) sull'albero di 35ca0faf (head 3° giro; i due commit intermedi senza run propria) + verifica-bot del 3° verdetto success. 05721612, e8f539a3 e f994650d: pushati insieme → run CI 45397659451 success sull'albero di f994650d (head 4° giro; commit intermedi senza run propria) + verifica-bot del 4° verdetto success. 56ca77a4 (head 5° giro): run CI 45399914797 success (unit-suite 10m48s) + verifica-bot del 5° verdetto success (run 45399925689). 7ea06526: nessuna run su questo SHA alla scrittura (va col push del commit di fine-task di questo 6° giro, che avrà la run sull'albero di testa). La copertura pre-merge è garantita da `gh pr checks` prima del merge.
 
 ## §7 RISERVE APERTE
 
@@ -133,5 +155,6 @@ Mappatura commit→run: fb0f84af e 500cfa39 pushati insieme → una sola run CI 
 - 1° verdetto del bot su PR #401 (500cfa39, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (lingua del diretto non dichiarata), V-2 BASSA (§3/§6 dell'handoff con «un solo commit»), V-3 COSMETICA (card «niente domande», «in basso a sinistra»), V-4 COSMETICA (eccezione del diretto assente dalla regola del consenso in funnel_v2) — CORRETTE nel 2° giro (Fetta 2); il 2° verdetto le ha date per chiuse.
 - 2° verdetto del bot su PR #401 (ee275e38, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (riga del rischio assente dall'ultimo passo del diretto), V-2 COSMETICA (descrizione della fase 1 di oggi senza la domanda della community), V-3 COSMETICA («Fetta unica» accanto a «Fetta 2») — CORRETTE nel 3° giro (Fetta 3).
 - 3° verdetto del bot su PR #401 (35ca0faf, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (conferma 18 anni dopo la presentazione commerciale nel diretto), V-2 BASSA (consenso promo del diretto non tracciato) — CORRETTE nel 4° giro (Fetta 4) con la proposta dell'agente approvata dall'operatore.
-- 4° verdetto del bot su PR #401 (f994650d, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (decisione «mai promozione» non riportata in stato_progetto e nelle frasi di Fetta 1), V-2 BASSA (riga del rischio corta nel messaggio unico del diretto), V-3 COSMETICA (base nell'intestazione di diff_sessione) — CORRETTE in questo 5° giro (Fetta 5); serve il verdetto del bot sul nuovo head.
+- 4° verdetto del bot su PR #401 (f994650d, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (decisione «mai promozione» non riportata in stato_progetto e nelle frasi di Fetta 1), V-2 BASSA (riga del rischio corta nel messaggio unico del diretto), V-3 COSMETICA (base nell'intestazione di diff_sessione) — CORRETTE nel 5° giro (Fetta 5).
+- 5° verdetto del bot su PR #401 (56ca77a4, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (didascalia di chiusura dei solleciti condivisa tra completo e diretto nella simulazione) — CORRETTA in questo 6° giro (Fetta 6); serve il verdetto del bot sul nuovo head. Dopo questo giro, con un verdetto senza ALTA/MEDIA, si mergia (via dell'operatore «avvisami quando è mergiata», 24/11).
 - Riserve delle altre chat (CRM #397, Voce): tracciate in `reports/stato_progetto.md`, non toccate qui.
