@@ -1,34 +1,22 @@
-# Ultimo report — 2026-11-23 — Voce: simulazione completa, 4 fasi e interruzione col filtro
+# Ultimo report — 2026-11-24 — Dashboard del CRM sempre accesa sul Mac
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR (fix/voce-fasi-interruzione) col «mergia» dell'operatore se il bot dà riserve.
-2. Dopo il merge, una sola prova sul Mac: `taratura_parola.py --chiamate 6` pronunciando «HEY JARVIS» all'inglese. Niente nuove registrazioni finché non si vede l'esito.
-3. Decisione aperta: se anche così i punteggi restano bassi, un modello «ehi Jarvis» addestrato apposta (circa 1 giorno + 2-4 ore di GPU in cloud; non fattibile da questo ambiente, Hugging Face bloccato).
+1. Merge della PR di questa fetta (solo script per il Mac e guida, nessun codice del motore).
+2. Sul Mac, una volta sola dopo il merge: `cd ~/Gas && git pull && bash scripts/crm/installa.sh`; poi controllare che l'ultima riga stampata dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA».
+3. Da decidere: mettere `scripts/crm/` nel perimetro di review (come `scripts/voce/`), R-852M-2.
+4. Dalla chat Voce (#400): controllare nel `.env` del Mac che non ci sia una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`.
 
 ## Esito
-- **Simulazione end-to-end (23/11)**, script e risultati in `reports/voce_simulazione_2026-11-23/`:
-  - voci espeak a varie distanze (−6/−12/−20 dB), riverbero, rumore, TV;
-  - gira il codice vero: `registra_voce.main` (microfono finto, `misura` e `addestra` veri) e `Ascolto.gira` su flussi di 30 minuti;
-  - numeri: prima (verifica 0,5) vicino 89–93%, −12 dB 28–41%, 2–13 attivazioni sbagliate/ora; con le 4 fasi vicino 96%, −12 dB 41%, 1,3–4,7/ora (soglia 0,6);
-  - scoperta: il modello hey_jarvis dà 0,90 a «HEY JARVIS» all'inglese e 0,40 a «ehi jarvis» all'italiana (stessa voce sintetica). È il limite vero da lontano.
-- **Correzione #815 (ce04e9c7, review #815-M1coord APPROVATO CON RISERVE):**
-  - 4 modelli della parola sfalsati di 20 ms, si prende il massimo (`GAS_ASCOLTO_FASI`, default 4): il punteggio dipendeva molto dalla posizione della parola sui blocchi da 80 ms;
-  - interruzione col filtro attivo: soglia della parola su 1 blocco (prima 0,8 su 3, non scattava quasi mai);
-  - `registra_voce`: silenzio in blocchi interi e prima ripetizione senza spostamento (clip buone scartate 4/74 → 0/74).
-- **Correzione #816 (8faff652, review #816-M1coord APPROVATO CON RISERVE):** R-815-1 (la taratura usa le stesse fasi dell'ascolto), R-815-2, R-815-3 (LEGGIMI: togliere una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8` dal `.env`), R-815-4.
-- Prova col modello vero (voce chiara): 4 fasi danno 0,998 a ogni sfasamento.
-
-- **Correzione #817 (27d33851, review #817-M1coord APPROVATO CON RISERVE):** finding del bot su #400. V-1 MEDIA: script e risultati della simulazione ora in `reports/voce_simulazione_2026-11-23/`; V-2 test dell'avviso col filtro; V-3 ambiente dei test; V-4 docstring. R-817-1 (`sim/` nel `.gitignore`) chiusa nei documenti.
-
-- **Interruzione con 4 fasi misurata (risposta a V-1 bot #400 su b1ca6dc9):** nella configurazione predefinita (filtro + 4 fasi; dopo #819 l'interruzione vale 0,6 su 1 blocco) prese 158/180 nelle pause (170/180 a 0,5), 0 auto-interruzioni all'ora dalla voce di Gas simulata; con 0,8 su 3 blocchi 8/180. Script `interr_f4.py` e risultati `interr_f4.txt`, `interr_1fase.txt` in `reports/voce_simulazione_2026-11-23/`.
-
-- **Correzioni #819/#820 (8c4728c0, b1cf2c4e; review #819-M1coord APPROVATO CON RISERVE, #820-M1coord APPROVATO):** finding del bot su 58fc7ed7. Soglia della verifica 0,6, la regolazione misurata con le 4 fasi: vicino 96%, −12 dB 41%, 1,3/4,7 falsi all'ora (con 0,5 e 4 fasi salivano a 6,6/8,7). 4 fasi solo col filtro della voce attivo, anche nel ripiego se il filtro non si carica.
+- **Richiesta dell'operatore** («vorrei mettere da qualche parte questa dashboard… che non dipenda da Claude o dall'IA… accessibile anche offline e in modo facile»): FATTA. `scripts/crm/com.gas.crm.plist` (LaunchAgent: parte all'avvio del Mac, si riavvia se si chiude), `scripts/crm/installa.sh` (controlla Mac, `.venv`, `GAS_CRM_TOKEN` e porta libera, carica il servizio, aspetta la risposta, mette l'icona «CRM Gas» sulla Scrivania senza il token), `scripts/crm/spegni.sh`. Guida aggiornata (`reports/crm/guida.md` §2).
+- **Note del bot su 51d446c4** (APPROVATO CON RISERVE, check rosso per V-1 MEDIA): FATTE in 20791587. V-1 MEDIA attesa dopo il bootout e 3 tentativi di bootstrap (come lo script della voce provato sul Mac); V-2 cartella con soli caratteri sicuri; V-3 servizio tolto se la dashboard non parte e stop se `GAS_CRM_BIND` non è 127.0.0.1; V-4 `spegni.sh` toglie l'icona. Guida: il login va rifatto se il CRM si riavvia; controllo della copia cifrata dopo l'installazione.
+- **Note del bot su 67f4dc34** (APPROVATO CON RISERVE, V-1 MEDIA): FATTE. V-1 il registro del server era bufferizzato e l'esito della copia cifrata non compariva: `PYTHONUNBUFFERED=1` nel plist e l'installer aspetta la riga di QUESTO avvio; V-2 l'installer usciva con 1 dopo «OK»; V-3 il controllo del `.env` ora usa l'ambiente pulito che vedrà launchd e distingue gli errori.
+- **Merge di main (PR #398, #399, #400 di altre chat) nel ramo**: FATTO (f4381a2e, review #852-MERGE APPROVATO CON RISERVE). Codice identico a main; decisioni e riserve della #400 riportate in `reports/stato_progetto.md`.
+- La dashboard già non usava l'IA (solo «Riscrivi con Opus») e funziona senza internet.
+- **PR #397**: MERGIATA il 23-11 (1b4954e2) col via dell'operatore; sul Mac il codice è aggiornato e il bot Telegram risponde («quanti clienti ho?» → zero, corretto).
 
 ## Test
-- `tests/test_unit_voce_ascolto.py`: 379 su main → 384 passed; `pytest tests/ -k voce` 538 passed (revisore).
+- Nessun codice del motore toccato. `bash -n` sugli script, plist valido, prova del controllo del token e della porta col codice vero del CRM (senza token → stop; con token → porta 8770). Non provato su un Mac vero (launchctl, Scrivania): da qui non è raggiungibile.
 
 ## Riserve aperte
-- **Da provare sul Mac:** auto-interruzione con la voce vera di Gas e CPU con 4 fasi.
-- Simulazione con voci sintetiche: i valori assoluti non valgono per la voce e il microfono veri; CPU con 4 fasi sul Mac da verificare.
-- Interruzione mentre la voce di Gas copre la chiamata: ancora 0/180 in simulazione; funziona solo nelle pause.
-- Aperte da prima: R-813M1-1, R-810M1-2, note bot #390/#395, #382 V-1/V-2, #383 V-2/V-3 (vedi `reports/stato_progetto.md`).
+- Dalla PR #397: R-848-2 BASSA (il doctor non avvisa che col forte spento Gas resta muto), R-848-3 BASSA (lo «Sempre Opus» provato solo nella suite del kernel), V-3 BASSA della verifica esterna (commento di `importi_nel_testo` impreciso), cosmetiche #848. R-836-1 COSMETICA.
+- Ereditate dalla chat Voce (in `reports/stato_progetto.md`).
