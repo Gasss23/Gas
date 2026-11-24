@@ -7,8 +7,8 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #405 (https://github.com/Gasss23/Gas/pull/405). Il revisore ha dato APPROVATO CON RISERVE: serve il «mergia» dell'operatore, salvo verdetto pulito del bot.
-2. R-854-1: col modello italiano il filtro della voce dell'operatore, legato a hey_jarvis, resta spento.  avvisa. Per tornare indietro:  nel .
-3. Prova sul Mac con la voce vera, dopo Already up to date. e .
+2. R-854-1: col modello italiano il filtro della voce dell'operatore, legato a hey_jarvis, resta spento. `installa.sh` avvisa. Per tornare indietro: `GAS_ASCOLTO_MODELLO=hey_jarvis` nel `.env`.
+3. Prova sul Mac con la voce vera, dopo `git pull` e `bash scripts/voce/installa.sh`.
 
 ---
 
@@ -23,8 +23,8 @@
   | hey_jarvis | 23 / 33 / 3 / 0% | 50 / 40 / 40 / 20% | 1,06 | 0,47 |
 
 - **Fetta 2 — Integrazione**: FATTA.
-  - Modello da file fidato in , con ripiego su hey_jarvis.
-  - Passo 3b in .
+  - Modello da file fidato in `clients/voice/ascolto.py`, con ripiego su hey_jarvis.
+  - Passo 3b in `scripts/voce/installa.sh`.
   - Nuovi test.
   - Prova con openWakeWord vero: 1,00 su «ehi jarvis» (hey_jarvis 0,49), 0,00 su una frase neutra.
 - **Fetta 3 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
@@ -85,6 +85,7 @@ NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+21a68a4f docs(fine-task): handoff modello ehi_jarvis_it, review #854/#855
 d6a980a5 feat(voce): modello «ehi jarvis» con accento italiano (ehi_jarvis_it)
 b650558a chore(revisore): memoria review #855 — APPROVATO CON RISERVE
 5291bca4 chore(revisore): memoria review #854 — APPROVATO CON RISERVE
@@ -181,10 +182,10 @@ Il commit è consentito.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- : 384 → 388 passed (4 test nuovi; 3 test esistenti adattati).
+- `tests/test_unit_voce_ascolto.py`: 384 → 388 passed (4 test nuovi; 3 test esistenti adattati).
 - Suite completa su questo container: 35 failed, 4285 passed, 2 skipped (riepilogo reale: «35 failed, 4285 passed, 2 skipped in 579.99s», prima delle correzioni R-854).
-  - I FAIL sono fuori scope: 34 in  e 1 in , per bwrap assente nel container ().
-  - Su origin/main  fallisce allo stesso modo (verificato con -x). Il test di  non l'ho riprovato su main.
+  - I FAIL sono fuori scope: 34 in `tests/test_unit_web_browser.py` e 1 in `tests/test_unit_voice_server.py`, per bwrap assente nel container (`FileNotFoundError: ... 'bwrap'`).
+  - Su origin/main `tests/test_unit_web_browser.py` fallisce allo stesso modo (verificato con -x). Il test di `tests/test_unit_voice_server.py` non l'ho riprovato su main.
   - Nessuno dei due file è nel diff.
 
 ## §6 STATO CI
@@ -200,13 +201,14 @@ completed	success	Merge pull request #404 from Gasss23/claude/nifty-galileo-3k7k
 Mappatura commit→run:
 - d6a980a5: run CI 45513013196 (push), in corso alla scrittura.
 - 5291bca4 e b650558a: pushati insieme a d6a980a5, quindi nessuna run su questi SHA; il loro contenuto è nell'albero testato.
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- 21a68a4f (primo commit di fine-task, con l'handoff rovinato dalla shell e corretto in questo commit): run CI partita col suo push; esito non ancora disponibile alla scrittura dell'handoff.
+- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-854-1: decisione dell'operatore (modello italiano senza filtro della voce). Avviso aggiunto in .
+- R-854-1: decisione dell'operatore (modello italiano senza filtro della voce). Avviso aggiunto in `installa.sh`.
 - R-854-2: CHIUSA con il ripiego su hey_jarvis (review #855).
 - R-854-3 BASSA: interruzione col modello nuovo non misurata.
 - R-855-1 COSMETICA: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto.
 - Lacuna di copertura BASSA (#855): manca il test «nessun avviso» senza filtro.
-- Riserve delle altre chat: in , non toccate qui.
+- Riserve delle altre chat: in `reports/stato_progetto.md`, non toccate qui.
