@@ -6,10 +6,11 @@
 
 ## Com'è oggi (verificato dal vivo il 21/11)
 
-Il funnel attuale è GIÀ in due fasi: fase 1 community (lingua + 18enni, interessi, conto: 2 domande vere) → scheda lead → fase 2 candidatura VIP (presentazione + 5 passaggi: esperienza, costanza, capitale 500 $ con l'opzione «Li avrò a breve» GIÀ presente, consenso aggiornamenti GIÀ esplicito, nome e cognome) → «ultimo passo» con messaggio precompilato all'agente. Dettaglio completo in `analisi_competitor.md` §1. Le bozze qui sotto cambiano SOLO la fase 2 e aggiungono le regole comuni; la fase 1 resta com'è.
+Il funnel attuale è GIÀ in due fasi: fase 1 community («Da quale community arrivi?», lingua + 18enni, interessi, conto) → scheda lead → fase 2 candidatura VIP (presentazione + 5 passaggi: esperienza, costanza, capitale 500 $ con l'opzione «Li avrò a breve» GIÀ presente, consenso aggiornamenti GIÀ esplicito, nome e cognome) → «ultimo passo» con messaggio precompilato all'agente. Dettaglio completo in `analisi_competitor.md` §1. Le bozze qui sotto cambiano SOLO la fase 2 e aggiungono le regole comuni; la fase 1 resta com'è, tranne la domanda «Da quale community arrivi?», tolta (prima regola comune).
 
 ## Regole comuni (valgono per entrambe)
 
+- **Dalla fase 1 si toglie la domanda «Da quale community arrivi?»** (decisione dell'operatore, 23/11/2026, dopo la prova della simulazione): il bot parte direttamente dalla domanda della lingua (che porta anche la conferma dei 18 anni). Il resto della fase 1 resta com'è.
 - **Dalla candidatura si tolgono**: esperienza e «costanza». L'esperienza vera la chiede l'AGENTE in DM come fanno i competitor migliori (LEO la chiede a voce); la domanda sulla costanza seleziona ma non recupera. Il consenso aggiornamenti RESTA com'è oggi (esplicito, con bottoni). Risultato: candidatura da 5 passaggi a 3 (capitale, consenso, nome).
 - **Dopo ogni risposta il bot reagisce con una riga calda**, come una persona: «Ottima scelta 👌», «Nessun problema: ti guidiamo noi dal primo passo».
 - **Spiegazione a prova di principiante** (va detta PRIMA delle domande): «Ogni giorno ricevi un messaggio con tre numeri: dove entrare, dove fermarti se va male, dove incassare. Noi stiamo sul grafico, tu copi.»
@@ -23,7 +24,7 @@ Il funnel attuale è GIÀ in due fasi: fase 1 community (lingua + 18enni, intere
   - Regole per entrambi i casi: oltre il 2° sollecito, silenzio (mai più di 2); partono SOLO per chi ha iniziato il percorso e riguardano solo il suo completamento — non sono promozione a freddo e non dipendono dal consenso aggiornamenti.
 - **Niente scarsità finta** (V-1 verifica esterna #392): frasi come «posti quasi pieni» sono ammesse SOLO se il bot le lega a un numero reale di posti configurato e aggiornato; altrimenti non si scrivono. Vale anche per la prova sociale: nel messaggio di presentazione una riga vera e aggiornabile (es. «Questa settimana sono entrate N persone») — solo numeri veri.
 - **Rischio e compenso, sempre detti** (V-2 verifica esterna #392): nella presentazione e nell'«ultimo passo» compare la riga «⚠ Il trading comporta un rischio reale di perdere il capitale: usa solo soldi che puoi permetterti di perdere. I risultati passati non garantiscono quelli futuri.» E al posto del solo «non paghi nessun abbonamento» si dice anche come guadagniamo: «il nostro compenso ce lo riconosce il broker partner quando apri il conto dal nostro link».
-- **Consenso esplicito agli aggiornamenti** (V-3 verifica esterna #392): resta ESATTAMENTE come nel bot di oggi — domanda con bottoni «Ti va di ricevere qui aggiornamenti e novità della community?» [Sì, volentieri] [No grazie] — mai consenso presunto. Senza il sì, nessun messaggio promozionale; il sì si revoca scrivendo STOP. I 2 solleciti (casi A e B qui sopra) riguardano solo il completamento del percorso iniziato, non sono promozione.
+- **Consenso esplicito agli aggiornamenti** (V-3 verifica esterna #392): resta ESATTAMENTE come nel bot di oggi — domanda con bottoni «Ti va di ricevere qui aggiornamenti e novità della community?» [Sì, volentieri] [No grazie] — mai consenso presunto. Senza il sì, nessun messaggio promozionale; il sì si revoca scrivendo STOP. Unica eccezione di forma: nel percorso diretto di `tasto_collaboratori.md` il consenso non si chiede affatto e il bot a quei lead non manda MAI promozione (decisione dell'operatore, 24/11/2026) — ogni comunicazione la fa l'agente in chat. Stesso principio: mai consenso presunto. I 2 solleciti (casi A e B qui sopra) riguardano solo il completamento del percorso iniziato, non sono promozione.
 - La **scheda per l'agente resta identica** (campi mancanti = «da chiedere in chat»), così il pannello non cambia.
 
 ## Bozza A — «prima la voce» (NON scelta; resta come riferimento per un test futuro)
@@ -52,7 +53,7 @@ Sotto il video, testo breve (per chi non ascolta): le stesse 3 righe + «3 doman
 
 ## Bozza B — solo messaggi (SCELTA dall'operatore il 21/11)
 
-La fase 1 (community) resta com'è. Cambia la candidatura VIP:
+La fase 1 (community) resta com'è, meno la domanda della community (regole comuni). Cambia la candidatura VIP:
 
 **Presentazione** (al posto di quella attuale):
 > «Ciao {nome} 👋 Questa è la tua candidatura alla sala VIP di Inizia Ora.
