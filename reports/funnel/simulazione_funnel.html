@@ -140,12 +140,11 @@ function start(m){
   Promise.resolve(run).catch(e=>{ if(e!==STALE) throw e; });
 }
 
-/* ---------- FASE 1 COMMUNITY (oggi, invariata — analisi_competitor.md §1) ---------- */
+/* ---------- FASE 1 COMMUNITY (oggi, MENO la domanda «Da quale community arrivi?»,
+   tolta su decisione dell'operatore del 23/11 — analisi_competitor.md §1) ---------- */
 async function fase1(g){
-  sys('Il lead apre t.me/&lt;bot&gt;?start=&lt;codice_agente&gt; e preme AVVIA');
+  sys('Il lead apre t.me/&lt;bot&gt;?start=&lt;codice_agente&gt; e preme AVVIA (niente più «Da quale community arrivi?»: si parte dalla lingua)');
   user('/start');
-  await botSay(g, '👋 Ciao! Da quale community arrivi?');
-  await kb(g, [[{t:'Inizia Ora'}]]);
   await botSay(g, '🌍 In che lingua preferisci continuare?\n\nToccando confermi di avere almeno 18 anni.');
   await kb(g, [[{t:'🇮🇹 Italiano'},{t:'🇬🇧 English'}]]);
   await botSay(g, 'Benvenuto in Inizia Ora, '+nome+'. Due domande veloci e ti do l\'accesso alla community.\n\n🎯 Cosa ti interessa? Puoi sceglierne più di una');
@@ -196,58 +195,33 @@ async function followUp(g){
   sys('… passano altre 48 ore …');
   await botSay(g, 'Vuoi fare l\'ultimo passo o chiudo qui? Se preferisci, riprendi quando vuoi.');
   const r2 = await kb(g, [[{t:'Riprendi'},{t:'Chiudi'}]]);
-  sys(r2==='Riprendi' ? 'Recuperato al 2° sollecito ✅' : 'Chiusa. Da qui in poi: SILENZIO (mai più di 2 solleciti, niente promozione senza consenso).');
+  sys(r2==='Riprendi' ? 'Recuperato al 2° sollecito ✅' : ('Chiusa. Da qui in poi: SILENZIO (mai più di 2 solleciti' + (mode==='diretto' ? '; ai lead del diretto il bot non manda mai promozione).' : ', niente promozione senza consenso).')));
 }
 
 async function flussoCompleto(g){ await fase1(g); await bozzaB(g); }
 
-/* ---------- ACCESSO DIRETTO (-vip, tasto_collaboratori.md §3) ---------- */
+/* ---------- ACCESSO DIRETTO (-vip, tasto_collaboratori.md §3 — dal 23/11 SOLO nome e cognome) ---------- */
 async function flussoDiretto(g){
-  sys('Il contatto caldo apre t.me/&lt;bot&gt;?start=&lt;codice_agente&gt;-vip');
+  sys('Il contatto caldo apre t.me/&lt;bot&gt;?start=&lt;codice_agente&gt;-vip. Lingua: quella del Telegram del lead (language_code, IT/EN; altrimenti italiano) — nessuna domanda della lingua');
   user('/start');
-  await botSay(g, '🌍 In che lingua preferisci continuare?\n\nToccando confermi di avere almeno 18 anni.');
-  await kb(g, [[{t:'🇮🇹 Italiano'},{t:'🇬🇧 English'}]]);
-  await botSay(g, '⚡ Benvenuto, '+nome+'. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta.\n\nNon paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto.\n\n⚠ Il trading comporta un rischio reale di perdere il capitale.\n\nUltimo passo: scrivi a '+AG+', ti attiva lui.', 900);
-  sys('📇 Scheda all\'agente con etichetta «⚡ accesso diretto», campi mancanti = «da chiedere in chat»');
-
-  // Come da spec §3.1: [Scrivi a {agente}] attaccato al messaggio e, SOTTO, la domanda del consenso.
-  const esito = await ctaConConsenso(g);
-  if(esito==='scrivi') sys('Chat con l\'agente aperta. Nessuna domanda in mezzo: il caldo arriva subito 🎉');
+  await botSay(g, '🔞 Questo servizio è riservato ai maggiorenni: proseguendo confermi di avere almeno 18 anni.\n\n⚡ Benvenuto in Inizia Ora. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta.\n\nNon paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto.\n\n'+RISCHIO, 900);
+  await botSay(g, '✍ Scrivimi nome e cognome e ti metto subito in contatto con '+AG+'.\n\nInviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui.');
+  nome = (await askText(g, 'Nome e cognome')).split(' ')[0] || nome;
+  sys('📇 Scheda all\'agente con etichetta «⚡ accesso diretto», campi mancanti = «da chiedere in chat». Il consenso aggiornamenti qui NON si chiede né si registra: ai lead del diretto il bot non manda MAI promozione — ogni comunicazione la fa l\'agente in chat (i solleciti del caso B non sono promozione)');
+  await botSay(g, 'Perfetto, '+nome+' 🤝 Ultimo passo: premi qui sotto, il messaggio è già pronto — '+AG+' ti attiva. 🔒 '+AG+' non ti chiede mai soldi: i fondi restano sul tuo conto.\n'+RISCHIO);
+  const fin = await kb(g, [[{t:'💬 Scrivi a '+AG}],[{t:'⏩ Simula: non preme'}]]);
+  if(fin==='💬 Scrivi a '+AG) sys('Chat con l\'agente aperta. Nessuna domanda in mezzo: il caldo arriva subito 🎉');
   else await followUp(g);
   sys('NB: il suffisso -vip NON attiva nulla da solo — l\'accesso lo dà sempre lo staff (Conto aperto / In VIP).');
 }
 
-// CTA e consenso visibili INSIEME (ordine della spec): il consenso si può toccare
-// prima o dopo, la CTA chiude il passo.
-function ctaConConsenso(g){
-  return new Promise((resolve,reject)=>{
-    const wrap=el('kb','');
-    const guard=fn=>()=>{ if(g!==gen){ wrap.remove(); reject(STALE); return; } fn(); };
-    const row1=document.createElement('div'); row1.className='row';
-    const bScrivi=document.createElement('button'); bScrivi.textContent='💬 Scrivi a '+AG;
-    const bSkip=document.createElement('button'); bSkip.textContent='⏩ Simula: non preme';
-    row1.appendChild(bScrivi); row1.appendChild(bSkip); wrap.appendChild(row1);
-    const q=document.createElement('div'); q.className='msg bot'; q.textContent='Ti va di ricevere qui aggiornamenti della community?'; wrap.appendChild(q);
-    const row2=document.createElement('div'); row2.className='row';
-    ['Sì, volentieri','No grazie'].forEach(t=>{
-      const b=document.createElement('button'); b.textContent=t;
-      b.onclick=guard(()=>{ row2.querySelectorAll('button').forEach(x=>x.disabled=true); b.classList.add('sel'); const d=document.createElement('div'); d.className='msg user'; d.textContent=t; wrap.before(d); chat.scrollTop=chat.scrollHeight; });
-      row2.appendChild(b);
-    });
-    wrap.appendChild(row2);
-    bScrivi.onclick=guard(()=>{ wrap.remove(); user('💬 Scrivi a '+AG); resolve('scrivi'); });
-    bSkip.onclick=guard(()=>{ wrap.remove(); resolve('skip'); });
-    chat.scrollTop=chat.scrollHeight;
-  });
-}
-
 /* ---------- PANNELLO AGENTE (tasto_collaboratori.md §1) ---------- */
 function pannello(g){
-  sys('Il COLLABORATORE apre il Pannello (bottone blu in basso a sinistra) → «🔗 I miei link»');
+  sys('Il COLLABORATORE apre il Pannello (lo stesso bottone BLU «Pannello» già in uso, in basso nella chat del bot) → «🔗 I miei link». Requisito dell\'operatore 23/11: tutto vive lì dentro, nessuna app o pagina nuova');
   const c1=el('card','');
   c1.innerHTML='<h4>🧲 Percorso completo</h4><div class="hint">per chi è freddo: domande + scheda completa</div><div class="mono">https://t.me/&lt;bot&gt;?start=MARIO23</div><div class="cnt">Completo: 41 lead</div><div class="cardbtns"><button onclick="copia(this)">Copia</button><button onclick="inoltra(\'completo\')">Inoltra la card</button></div>';
   const c2=el('card','');
-  c2.innerHTML='<h4>⚡ Sala segnali diretto</h4><div class="hint">per chi è già caldo: niente domande, subito l\'ultimo passo</div><div class="mono">https://t.me/&lt;bot&gt;?start=MARIO23-vip</div><div class="cnt">Diretto: 12 lead</div><div class="cardbtns"><button onclick="copia(this)">Copia</button><button onclick="inoltra(\'diretto\')">Inoltra la card</button></div>';
+  c2.innerHTML='<h4>⚡ Sala segnali diretto</h4><div class="hint">per chi è già caldo: solo nome e cognome, subito l\'ultimo passo</div><div class="mono">https://t.me/&lt;bot&gt;?start=MARIO23-vip</div><div class="cnt">Diretto: 12 lead</div><div class="cardbtns"><button onclick="copia(this)">Copia</button><button onclick="inoltra(\'diretto\')">Inoltra la card</button></div>';
   sys('Contatori per link: ogni agente vede quale rende (numeri d\'esempio). Prova i bottoni «Inoltra la card» ↑');
 }
 function copia(b){ b.textContent='Copiato ✓'; setTimeout(()=>b.textContent='Copia',1200); }

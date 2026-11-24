@@ -1,22 +1,31 @@
-# Ultimo report — 2026-11-24 — Dashboard del CRM sempre accesa sul Mac
+# ULTIMO REPORT — Ritocchi finali del funnel dopo la prova dell'operatore
+
+**Data:** 23 novembre 2026
+**Branch:** claude/ritocchi-simulazione
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta (solo script per il Mac e guida, nessun codice del motore).
-2. Sul Mac, una volta sola dopo il merge: `cd ~/Gas && git pull && bash scripts/crm/installa.sh`; poi controllare che l'ultima riga stampata dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA».
-3. Da decidere: mettere `scripts/crm/` nel perimetro di review (come `scripts/voce/`), R-852M-2.
-4. Dalla chat Voce (#400): controllare nel `.env` del Mac che non ci sia una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`.
 
-## Esito
-- **Richiesta dell'operatore** («vorrei mettere da qualche parte questa dashboard… che non dipenda da Claude o dall'IA… accessibile anche offline e in modo facile»): FATTA. `scripts/crm/com.gas.crm.plist` (LaunchAgent: parte all'avvio del Mac, si riavvia se si chiude), `scripts/crm/installa.sh` (controlla Mac, `.venv`, `GAS_CRM_TOKEN` e porta libera, carica il servizio, aspetta la risposta, mette l'icona «CRM Gas» sulla Scrivania senza il token), `scripts/crm/spegni.sh`. Guida aggiornata (`reports/crm/guida.md` §2).
-- **Note del bot su 51d446c4** (APPROVATO CON RISERVE, check rosso per V-1 MEDIA): FATTE in 20791587. V-1 MEDIA attesa dopo il bootout e 3 tentativi di bootstrap (come lo script della voce provato sul Mac); V-2 cartella con soli caratteri sicuri; V-3 servizio tolto se la dashboard non parte e stop se `GAS_CRM_BIND` non è 127.0.0.1; V-4 `spegni.sh` toglie l'icona. Guida: il login va rifatto se il CRM si riavvia; controllo della copia cifrata dopo l'installazione.
-- **Note del bot su 67f4dc34** (APPROVATO CON RISERVE, V-1 MEDIA): FATTE. V-1 il registro del server era bufferizzato e l'esito della copia cifrata non compariva: `PYTHONUNBUFFERED=1` nel plist e l'installer aspetta la riga di QUESTO avvio; V-2 l'installer usciva con 1 dopo «OK»; V-3 il controllo del `.env` ora usa l'ambiente pulito che vedrà launchd e distingue gli errori.
-- **Merge di main (PR #398, #399, #400 di altre chat) nel ramo**: FATTO (f4381a2e, review #852-MERGE APPROVATO CON RISERVE). Codice identico a main; decisioni e riserve della #400 riportate in `reports/stato_progetto.md`.
-- La dashboard già non usava l'IA (solo «Riscrivi con Opus») e funziona senza internet.
-- **PR #397**: MERGIATA il 23-11 (1b4954e2) col via dell'operatore; sul Mac il codice è aggiornato e il bot Telegram risponde («quanti clienti ho?» → zero, corretto).
+1. **Merge della PR di questa sessione** (vedi handoff §0). Solo documenti del funnel + report.
+2. **Consegnare il pacchetto allo sviluppatore del bot** (su main dopo il merge): `reports/funnel/tasto_collaboratori.md`, `reports/funnel/funnel_v2.md`, `reports/funnel/simulazione_funnel.html`. La simulazione pubblica su claude.ai è già aggiornata coi ritocchi.
+3. **Ripristinare nel bot «Inizia Ora · Accesso» lo stato dell'operatore** (test del 21/11: portato a «Candidato — pronto per la VIP»): bottoni «Conto aperto» / «In VIP» sulla scheda.
 
-## Test
-- Nessun codice del motore toccato. `bash -n` sugli script, plist valido, prova del controllo del token e della porta col codice vero del CRM (senza token → stop; con token → porta 8770). Non provato su un Mac vero (launchctl, Scrivania): da qui non è raggiungibile.
+**Ancora aperte da altre sessioni**: in `reports/stato_progetto.md` (sessione CRM PR #397, chat Voce).
 
-## Riserve aperte
-- Dalla PR #397: R-848-2 BASSA (il doctor non avvisa che col forte spento Gas resta muto), R-848-3 BASSA (lo «Sempre Opus» provato solo nella suite del kernel), V-3 BASSA della verifica esterna (commento di `importi_nel_testo` impreciso), cosmetiche #848. R-836-1 COSMETICA.
-- Ereditate dalla chat Voce (in `reports/stato_progetto.md`).
+## Esito fette
+
+- **Fetta 1 — Tre ritocchi chiesti dall'operatore il 23/11 dopo la prova della simulazione** (percorso completo e link agente «ok»/«perfetti», con tre richieste): FATTA.
+  1. **Via la domanda «Da quale community arrivi?»** dal percorso completo (fase 1): il bot parte dalla domanda della lingua (che porta la conferma dei 18 anni). Scritto in `funnel_v2.md` (prima regola comune + i due rimandi «fase 1 resta com'è») e nella simulazione.
+  2. **Percorso diretto: solo nome e cognome.** Niente più domanda della lingua né bottoni del consenso: messaggio unico (con rischio e compenso), poi un solo campo «Scrivimi nome e cognome» con la riga «Inviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui» (testo steso dall'agente su mandato dell'operatore), poi [Scrivi a {agente}]. Il consenso aggiornamenti NON si chiede nel diretto: il bot a quei lead non manda MAI promozione, ogni comunicazione la fa l'agente in chat (regola definitiva della Fetta 4); i solleciti del caso B non sono promozione. Aggiornati `tasto_collaboratori.md` §3.1 e §4.5 e la simulazione (funzione `ctaConConsenso` rimossa).
+  3. **Requisito Pannello blu**: la voce «I miei link», le card e i link dell'agente si aprono DENTRO il Pannello esistente (bottone blu «Pannello» nella chat del bot, confermato dall'operatore su screenshot) — nessuna app o pagina nuova. Scritto in `tasto_collaboratori.md` §4.6 e nella scheda agente della simulazione.
+- **Fetta 2 — Correzioni del 1° verdetto del bot sulla PR #401 («Sistema prima» dell'operatore)**: FATTA. Lingua del diretto dichiarata (quella del Telegram del lead, IT/EN, altrimenti italiano — anche per la riga dei 18 anni); §3/§6 dell'handoff coi commit reali; card del diretto «solo nome e cognome»; rimando all'eccezione del diretto nella regola del consenso di `funnel_v2.md`. Simulazione ripubblicata.
+- **Fetta 3 — Correzioni del 2° verdetto del bot sulla PR #401 + merge di main**: FATTA. Riga sul rischio aggiunta all'ultimo passo del diretto (spec + simulazione); descrizione della fase 1 di oggi con la domanda della community; «Fetta 1» al posto di «Fetta unica»; merge di origin/main nel ramo per la PR #398 (chat Voce). Simulazione ripubblicata.
+- **Fetta 4 — Correzioni del 3° verdetto del bot sulla PR #401 (ok dell'operatore alla proposta, 24/11) + 2° merge di main**: FATTA. Conferma dei maggiorenni in testa al messaggio unico del diretto (prima di ogni contenuto commerciale); dichiarato che ai lead del diretto il bot non manda MAI promozione (tutto passa dall'agente in chat; per promozioni future servirà un consenso registrato). Merge di origin/main (PR #399 e #400). Simulazione ripubblicata.
+- **Fetta 5 — Correzioni del 4° verdetto del bot sulla PR #401**: FATTA. «Mai promozione ai lead del diretto» allineato in stato_progetto e nei report; riga del rischio completa anche nel messaggio unico del diretto; base corretta nell'intestazione di diff_sessione. Simulazione ripubblicata.
+- **Fetta 6 — V-1 del 5° verdetto + 3° merge di main (PR #403)**: FATTA. Didascalia dei solleciti distinta per il diretto nella simulazione; review #853-MERGE APPROVATO. Simulazione ripubblicata.
+- Simulazione ripubblicata sulla pagina pubblica claude.ai e PROVATA dal vivo nel browser dopo la ripubblicazione: percorso completo parte dalla lingua; diretto mostra messaggio unico → campo nome con la riga dei 18 anni → reazione calda → CTA; scheda agente con la nota del Pannello blu.
+
+## Anomalie / cose da sapere
+
+- `reports/stato_progetto.md`: aggiornata la voce Funnel (PR #396 mergiata, ritocchi, cosa resta).
+- Riserva ereditata dalla PR #396 (3° verdetto, V-1 COSMETICA): nei log di quella sessione la prima fetta si chiamava «Fetta unica» accanto a «Fetta 2/3» — superata: i report sono stati riscritti per questa sessione.
+- Letta `reports/bacheca.md` prima del giro: nessuna notizia bloccante; niente da aggiungere (toccati solo file del funnel e report canonici).
