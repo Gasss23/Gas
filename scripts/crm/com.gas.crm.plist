@@ -16,6 +16,12 @@
     <string>-c</string>
     <string>cd "CARTELLA_GAS" &amp;&amp; source .venv/bin/activate &amp;&amp; exec python -m modules.crm serve</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- V-1 bot #403: senza, Python tiene le righe nel buffer e il registro resta vuoto -->
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+  </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>

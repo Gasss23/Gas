@@ -29,8 +29,9 @@ CONSENTITI='^[A-Za-z0-9/._ -]+$'
   || stop "la cartella di Gas ($GAS) ha caratteri non ammessi: usa solo lettere, cifre, / . _ - e spazi"
 [ -x "$GAS/.venv/bin/python" ] || stop "manca .venv in $GAS: prima installa Gas (pip install -r requirements.txt)"
 
-# 1. token e porta letti con lo stesso codice del CRM (.env compreso)
-PORTA="$(cd "$GAS" && .venv/bin/python - <<'PY'
+# 1. token e porta letti con lo stesso codice del CRM e SOLO dal .env, come li vedrà launchd
+#    (V-3 bot #403: le variabili esportate nel Terminale qui non contano)
+PORTA="$(cd "$GAS" && env -i HOME="$HOME" PATH=/usr/bin:/bin .venv/bin/python - <<'PY'
 import sys
 from modules.crm import __main__ as cli, server
 cli._carica_chiavi()
@@ -44,8 +45,9 @@ print(cli._env_int("GAS_CRM_PORT", 8770, 1024, 65535))
 PY
 )" || {
   case $? in
+    2) stop "manca GAS_CRM_TOKEN (almeno 16 caratteri) nel file .env di Gas: senza token il CRM non parte" ;;
     3) stop "nel .env c'è GAS_CRM_BIND diverso da 127.0.0.1: il CRM sempre acceso deve restare solo su questo Mac (togli quella riga)" ;;
-    *) stop "manca GAS_CRM_TOKEN (almeno 16 caratteri) nel file .env di Gas: senza token il CRM non parte" ;;
+    *) stop "controllo del CRM non riuscito (Python o dipendenze): prova 'pip install -r requirements.txt' nella .venv" ;;
   esac
 }
 case "$PORTA" in ''|*[!0-9]*) stop "porta del CRM non valida: $PORTA" ;; esac
@@ -74,6 +76,8 @@ if risponde; then
 fi
 
 # 3. plist con la cartella vera (| come separatore: il percorso contiene /)
+LOG="$GAS/.gas_memory_crm_server.log"
+RIGHE_PRIMA="$( { wc -l < "$LOG"; } 2>/dev/null || echo 0)"  # le righe nuove arrivano da qui in poi
 ESC="$(printf '%s' "$GAS" | sed -e 's/[\\|&]/\\&/g')"
 sed "s|CARTELLA_GAS|$ESC|g" "$QUI/$SERVIZIO.plist" > "$PLIST"
 plutil -lint "$PLIST" >/dev/null || stop "plist non valido: $PLIST"
@@ -115,5 +119,16 @@ echo "OK: il CRM è acceso e partirà da solo a ogni avvio del Mac."
 echo "Aprilo col doppio clic su «CRM Gas» sulla Scrivania (oppure $URL)."
 echo "Al primo accesso il browser chiede il token: è GAS_CRM_TOKEN nel file .env."
 # la copia cifrata su iCloud sotto launchd potrebbe non avere il permesso di macOS: si mostra
-COPIA="$(grep -a "Copia cifrata giornaliera" "$GAS/.gas_memory_crm_server.log" 2>/dev/null | tail -1 || true)"
-[ -n "$COPIA" ] && echo "$COPIA"
+# l'esito di QUESTO avvio (V-1 bot #403), aspettando la prova di scrittura (al massimo 20 s)
+COPIA=""
+for _ in $(seq 1 20); do
+  COPIA="$(tail -n +"$((RIGHE_PRIMA + 1))" "$LOG" 2>/dev/null | grep -a "Copia cifrata giornaliera" | tail -1 || true)"
+  [ -n "$COPIA" ] && break
+  sleep 1
+done
+if [ -n "$COPIA" ]; then
+  echo "$COPIA"
+else
+  echo "Esito della copia cifrata non ancora nel registro: guardalo più tardi in $LOG"
+fi
+exit 0
