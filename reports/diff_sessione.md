@@ -1,10 +1,11 @@
-# DIFF DI SESSIONE — 23 novembre 2026, R7 fetta 3 (stato dei lavori ricorrenti)
+# Diff della sessione — 2026-11-23 — Voce: 4 fasi, interruzione col filtro, griglia coerente
 
-Questo file si riscrive a ogni sessione; la storia completa sta in git.
+Si riscrive a ogni sessione; la storia completa sta in git. Ramo fix/voce-fasi-interruzione da main 1b4954e2.
 
-- `modules/notte/notte.py`: registro dello stato dei lavori (lettura difensiva, scrittura atomica, pausa di 7 giorni dopo 3 ko di fila, sezione nel riepilogo, `_giorno` senza eccezioni; guasti esterni non contati, sezione con tutti i compiti, avviso col conto reale; «Sempre Opus» come guasto esterno, tetto di 14 guasti esterni di fila, pausa in corso conservata; motivi del lavoro dentro «Pipeline esausta» contati come ko veri).
-- `tests/test_unit_notte.py`: 9 test (stati, pausa e rilancio a mano, ok che azzera, prompt cambiato, pausa scaduta o assurda, registro rovinato, potatura, data enorme, catalogo in parte rotto) + 6 delle riserve (4 guasti esterni, saltati per crash, conto dopo la pausa).
-- Merge di origin/main (PR #397, chat CRM) in 73277ba0: dopo il merge il punto di partenza del ramo è il main nuovo, quindi i file della #397 non compaiono in questo diff.
-- `reports/setup_notte.md`: paragrafo sullo stato dei lavori per l'operatore.
-- `.claude/agents/memoria_revisore.md`: righe delle review #839-F3, #842, #843, #844-MERGE, #845-R7…#848-R7, #851-MERGE-R7; più quelle della chat CRM arrivate col merge di main.
-- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+- `clients/voice/ascolto.py`: `rilevatore_openwakeword(..., fasi)` con coda di 2 blocchi e 4 modelli sfalsati; `rilevatore_con_verifica(..., fasi)`; `GAS_ASCOLTO_FASI` in `main`; `_regolazioni`: col filtro attivo l'interruzione usa la soglia della parola su 1 blocco (se il `.env` non dice altro); avviso «più facile» coerente.
+- `scripts/voce/registra_voce.py`: `MotoreOWW.blocchi` sulla stessa griglia di `misura`.
+- `scripts/voce/taratura_parola.py`: stesse fasi dell'ascolto.
+- `scripts/voce/LEGGIMI.md`: `GAS_ASCOLTO_FASI`, interruzione col filtro, vecchia soglia 0.8 da togliere.
+- `tests/test_unit_voce_ascolto.py`: test delle fasi, dell'interruzione col filtro, della taratura; test esistenti aggiornati.
+- `reports/stato_progetto.md`, report di fine task, `.claude/agents/memoria_revisore.md`.
+- `reports/voce_simulazione_2026-11-23/`: LEGGIMI con metodo, risultati e limiti; script della simulazione; risultati; `.gitignore` per audio, cache e copia del repo (`sim/`).

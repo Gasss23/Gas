@@ -32,7 +32,7 @@ SOGLIA_SALITA = 0.3                      # da qui in su comincia una «salita» 
 SOGLIE = (0.5, 0.6, 0.7, 0.8)            # soglie provate
 BLOCCHI = (1, 2, 3)                      # blocchi di fila provati
 SOGLIA_PREDEFINITA = 0.7                 # = clients/voice/ascolto.py (test di uguaglianza)
-SOGLIA_VERIFICA_PREDEFINITA = 0.5        # idem, soglia con la verifica della voce attiva
+SOGLIA_VERIFICA_PREDEFINITA = 0.6        # idem, soglia con la verifica della voce attiva
 SEC_BLOCCO = 0.08
 # Prova col modello vero (12/11): un solo «Hey Jarvis» a volte dà due salite staccate da
 # 1-3 blocchi sotto 0,30. Una salita finisce solo dopo PAUSA_BLOCCHI blocchi di fila sotto
@@ -151,7 +151,10 @@ def _punteggi_dal_microfono(secondi: float, modello: str
     from clients.voice import ascolto  # noqa: E402 — stesso rilevatore e microfono dell'ascolto
     ascolto._carica_dotenv(RADICE)      # GAS_ASCOLTO_VERIFICA e soglie come l'ascolto
     verifica = ascolto.verifica_della_voce(modello)
-    punteggio, _ = ascolto.rilevatore_con_verifica(modello, verifica)
+    # R-815-1: le stesse fasi dell'ascolto (GAS_ASCOLTO_FASI), così i punteggi misurati
+    # sono quelli che l'ascolto vede davvero
+    fasi = ascolto.fasi_predefinite(verifica)
+    punteggio, _ = ascolto.rilevatore_con_verifica(modello, verifica, fasi=fasi)
     print("Verifica della voce: %s" % verifica.descrivi())
     mic = ascolto.Microfono()
     n = int(secondi / SEC_BLOCCO)

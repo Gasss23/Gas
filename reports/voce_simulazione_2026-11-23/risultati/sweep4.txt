@@ -1,0 +1,8 @@
+o15    base 0.15 soglia 0.40 blocchi 1 | vicino 100% -6dB  93% -12dB  64% -20dB  41% | FP/h parlato  16.0 TV  15.3 | altre voci  30% | lat 0.15 s | interrompe 10/180
+o15    base 0.15 soglia 0.50 blocchi 1 | vicino  98% -6dB  92% -12dB  62% -20dB  33% | FP/h parlato  12.0 TV  10.0 | altre voci  21% | lat 0.19 s | interrompe 10/180
+o15    base 0.15 soglia 0.60 blocchi 1 | vicino  91% -6dB  81% -12dB  50% -20dB  32% | FP/h parlato   6.0 TV   6.0 | altre voci  11% | lat 0.25 s | interrompe 10/180
+o15    base 0.15 soglia 0.70 blocchi 1 | vicino  60% -6dB  64% -12dB  43% -20dB  27% | FP/h parlato   3.3 TV   2.7 | altre voci   8% | lat 0.36 s | interrompe 10/180
+o15aug base 0.15 soglia 0.40 blocchi 1 | vicino 100% -6dB  97% -12dB  73% -20dB  50% | FP/h parlato  23.9 TV  29.3 | altre voci  32% | lat 0.14 s | interrompe 35/180
+o15aug base 0.15 soglia 0.50 blocchi 1 | vicino  98% -6dB  94% -12dB  73% -20dB  50% | FP/h parlato  19.9 TV  22.7 | altre voci  25% | lat 0.16 s | interrompe 35/180
+o15aug base 0.15 soglia 0.60 blocchi 1 | vicino  96% -6dB  93% -12dB  73% -20dB  49% | FP/h parlato  15.3 TV  16.7 | altre voci  15% | lat 0.20 s | interrompe 35/180
+o15aug base 0.15 soglia 0.70 blocchi 1 | vicino  78% -6dB  92% -12dB  70% -20dB  49% | FP/h parlato  10.0 TV  11.3 | altre voci   9% | lat 0.33 s | interrompe 35/180
