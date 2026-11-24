@@ -131,6 +131,26 @@ openwakeword.utils.download_models(["hey_jarvis_v0.1"])
 PY
 echo "3/6 modello hey_jarvis: OK"
 
+# 3b. modello «ehi jarvis» con accento italiano (clients/voice/modelli/LEGGIMI.md): copiato
+# nella cartella fidata .gas_voce/modelli (700, file 600), l'unica da cui ascolto.py lo carica.
+# Se il .env non sceglie già un modello, si sceglie questo (si torna indietro con
+# GAS_ASCOLTO_MODELLO=hey_jarvis).
+mkdir -p "$GAS/.gas_voce/modelli"
+chmod 700 "$GAS/.gas_voce" "$GAS/.gas_voce/modelli"
+install -m 600 "$GAS/clients/voice/modelli/ehi_jarvis_it.onnx" "$GAS/.gas_voce/modelli/ehi_jarvis_it.onnx" \
+  || stop "non riesco a copiare il modello ehi_jarvis_it in .gas_voce/modelli."
+if valore_env GAS_ASCOLTO_MODELLO >/dev/null; then
+  echo "     GAS_ASCOLTO_MODELLO è già nel .env: lo lascio com'è (il modello italiano è ehi_jarvis_it)."
+else
+  printf '\n# Aggiunto da scripts/voce/installa.sh: parola di attivazione con accento italiano.\nGAS_ASCOLTO_MODELLO=ehi_jarvis_it\n' >> "$GAS/.env"
+  echo "     GAS_ASCOLTO_MODELLO=ehi_jarvis_it scritto nel .env."
+  # R-854-1: il filtro della tua voce è legato a hey_jarvis e col modello italiano si spegne.
+  if [ -f "$GAS/.gas_voce/verifica/hey_jarvis_verifier.pkl" ]; then
+    echo "AVVISO: col modello italiano il filtro della tua voce (fatto per hey_jarvis) resta spento: Jarvis risponde a chiunque dica «ehi Jarvis». Per riaverlo: GAS_ASCOLTO_MODELLO=hey_jarvis nel .env."
+  fi
+fi
+echo "3b/6 modello italiano ehi_jarvis_it: OK"
+
 # 4. plist con la cartella vera
 mkdir -p "$AGENTI" "$GAS/.gas_voce"
 chmod 700 "$GAS/.gas_voce"

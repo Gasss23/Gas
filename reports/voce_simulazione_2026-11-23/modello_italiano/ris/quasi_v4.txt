@@ -1,0 +1,10 @@
+## hey_jarvis
+  positivi «ehi jarvis»        n= 16  ≥0.5:  75%  ≥0.7:  75%  ≥0.9:  56%
+  quasi-omofoni nuovi          n=112  ≥0.5:  12%  ≥0.7:  12%  ≥0.9:  10%
+  frasi con «jarvis» dentro    n=  8  ≥0.5:  12%  ≥0.7:  12%  ≥0.9:  12%
+  quasi-omofoni simulazione    n= 80  ≥0.5:  10%  ≥0.7:  10%  ≥0.9:  10%
+## v4_d128_ami
+  positivi «ehi jarvis»        n= 16  ≥0.5: 100%  ≥0.7: 100%  ≥0.9: 100%
+  quasi-omofoni nuovi          n=112  ≥0.5:  30%  ≥0.7:  29%  ≥0.9:  27%
+  frasi con «jarvis» dentro    n=  8  ≥0.5:  50%  ≥0.7:  50%  ≥0.9:  38%
+  quasi-omofoni simulazione    n= 80  ≥0.5:  34%  ≥0.7:  30%  ≥0.9:  29%

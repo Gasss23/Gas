@@ -44,7 +44,9 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_VOICE_SEGUITO_MAX  — secondi massimi di una richiesta di seguito, senza parola
                              (default 15): chi parla più a lungo non sta parlando a Gas
     GAS_VOICE_MAX_TURNI    — turni dopo la parola, il primo compreso (default 1: nessun seguito)
-    GAS_ASCOLTO_MODELLO    — modello di openWakeWord (default hey_jarvis)
+    GAS_ASCOLTO_MODELLO    — modello di openWakeWord (default hey_jarvis): il nome di un
+                             modello pronto, oppure il nome di un modello addestrato da noi
+                             in .gas_voce/modelli/<nome>.onnx (es. ehi_jarvis_it)
     GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.7)
     GAS_ASCOLTO_BLOCCHI_PAROLA — blocchi da 80 ms di fila sopra soglia per la parola, 1-5 (default 1)
     GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 200, campioni int16)
@@ -186,6 +188,10 @@ BLOCCHI_INTERRUZIONE_VERIFICA = 1
 # Solo da qui (mai da un percorso preso dall'ambiente): il file lo carica openWakeWord con
 # pickle, che esegue codice. Dentro: <modello>_verifier.pkl e <modello>_verifier.json.
 CARTELLA_VERIFICA = Path(".gas_voce") / "verifica"
+# Modelli della parola addestrati da noi (es. ehi_jarvis_it.onnx, «ehi jarvis» con accento
+# italiano): solo da qui e solo per nome semplice, come il verificatore.
+CARTELLA_MODELLI = Path(".gas_voce") / "modelli"
+MODELLO_DI_RISERVA = "hey_jarvis"
 _NOME_MODELLO_SEMPLICE = re.compile(r"[a-z0-9_]{1,40}")
 # Bot #378 V-1: l'interruzione mentre Gas parla resta su 3 blocchi di fila (come dalla #371):
 # lì il rischio è l'eco della voce di Gas, che la misura del 12/11 non copre. Il blocco unico
@@ -1423,6 +1429,30 @@ def _persone_registrate(p: Path) -> int:
         return 0
 
 
+def modello_della_parola(modello: str, radice: Optional[Path] = None) -> str:
+    """Cosa passare a openWakeWord: il file .gas_voce/modelli/<modello>.onnx se c'è ed è
+    fidato (modello addestrato da noi); se c'è ma non è fidato, hey_jarvis; altrimenti
+    il nome così com'è (modello pronto).
+    openWakeWord chiama il modello col nome del file senza .onnx, cioè `modello`: le
+    previsioni e il verificatore restano sotto lo stesso nome."""
+    if not _NOME_MODELLO_SEMPLICE.fullmatch(modello or ""):
+        return modello
+    p = (radice or _GAS_ROOT) / CARTELLA_MODELLI / ("%s.onnx" % modello)
+    try:
+        if not (p.exists() or p.is_symlink()):
+            return modello
+    except OSError:
+        return modello
+    motivo = _file_fidato(p)
+    if motivo:
+        # R-854-2: il nome nudo non è un modello pronto e openWakeWord si fermerebbe:
+        # si ripiega sul modello pronto, così l'ascolto resta acceso (§9).
+        log.warning("modello della parola: %s non caricato (%s): uso %s",
+                    p.name, motivo, MODELLO_DI_RISERVA)
+        return MODELLO_DI_RISERVA
+    return str(p)
+
+
 def verifica_della_voce(modello: str, radice: Optional[Path] = None) -> Verifica:
     """Decide se usare la verifica della voce: «spenta» con GAS_ASCOLTO_VERIFICA=0,
     «assente» se il file non c'è (o il modello non ha un nome semplice), «non caricata»
@@ -1465,11 +1495,12 @@ def rilevatore_openwakeword(modello: str, verificatore: Optional[Path] = None,
     23/11: stessa clip da 0,06 a 0,48), e la griglia del microfono è casuale."""
     import numpy as np
     from openwakeword.model import Model
+    sorgente = modello_della_parola(modello)
 
     def nuovo() -> Any:
         if verificatore is None:
-            return Model(wakeword_models=[modello], inference_framework="onnx")
-        return Model(wakeword_models=[modello], inference_framework="onnx",
+            return Model(wakeword_models=[sorgente], inference_framework="onnx")
+        return Model(wakeword_models=[sorgente], inference_framework="onnx",
                      custom_verifier_models={modello: str(verificatore)},
                      custom_verifier_threshold=soglia_base)
     fasi = max(1, int(fasi))

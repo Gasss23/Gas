@@ -1915,6 +1915,8 @@ def _gas_finto(tmp_path, nome="Gas", env="GAS_VOICE_TOKEN=segreto-di-prova\n"):
         (gas / "scripts" / "voce" / f.name).write_bytes(f.read_bytes())
     (gas / "clients" / "voice").mkdir(parents=True)
     (gas / "clients/voice/requirements-ascolto.txt").write_text("")
+    (gas / "clients" / "voice" / "modelli").mkdir()
+    (gas / "clients/voice/modelli/ehi_jarvis_it.onnx").write_bytes(b"onnx-finto")
     (gas / "requirements.txt").write_text("")
     (gas / "gas.py").write_text("")
     (gas / ".env").write_text(env)
@@ -1938,6 +1940,42 @@ def _installa(gas, finti, casa, tmp_path, **extra):
     r = subprocess.run(["bash", str(gas / "scripts/voce/installa.sh")], capture_output=True,
                        text=True, timeout=60, env=env)
     return r, registro.read_text() if registro.exists() else ""
+
+
+def test_installa_copia_il_modello_italiano_e_lo_sceglie(tmp_path):
+    """Modello ehi_jarvis_it: copiato nella cartella fidata (700, file 600); il .env lo
+    sceglie solo se non sceglie già un modello."""
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    f = gas / ".gas_voce/modelli/ehi_jarvis_it.onnx"
+    assert f.read_bytes() == b"onnx-finto"
+    assert stat.S_IMODE(f.stat().st_mode) == 0o600
+    assert stat.S_IMODE(f.parent.stat().st_mode) == 0o700
+    assert (gas / ".env").read_text().count("GAS_ASCOLTO_MODELLO=ehi_jarvis_it") == 1
+    r, _ = _installa(gas, finti, casa, tmp_path)   # seconda volta: non si raddoppia
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (gas / ".env").read_text().count("GAS_ASCOLTO_MODELLO") == 1
+
+
+def test_installa_avvisa_che_il_filtro_hey_jarvis_si_spegne(tmp_path):
+    """R-854-1: chi ha già il filtro della voce per hey_jarvis viene avvisato."""
+    gas, finti, casa = _gas_finto(tmp_path)
+    (gas / ".gas_voce" / "verifica").mkdir(parents=True)
+    (gas / ".gas_voce/verifica/hey_jarvis_verifier.pkl").write_bytes(b"x")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "filtro della tua voce" in r.stdout
+
+
+def test_installa_lascia_il_modello_scelto_nel_env(tmp_path):
+    gas, finti, casa = _gas_finto(
+        tmp_path, env="GAS_VOICE_TOKEN=segreto-di-prova\nGAS_ASCOLTO_MODELLO=hey_jarvis\n")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    testo = (gas / ".env").read_text()
+    assert "GAS_ASCOLTO_MODELLO=hey_jarvis" in testo and "ehi_jarvis_it" not in testo
+    assert (gas / ".gas_voce/modelli/ehi_jarvis_it.onnx").exists()
 
 
 def test_installa_arriva_in_fondo_senza_porta_nel_env(tmp_path):
@@ -2190,22 +2228,25 @@ def test_installa_scrive_gas_claude_bin(tmp_path):
 
 
 def test_installa_non_tocca_un_gas_claude_bin_esistente(tmp_path):
-    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_CLAUDE_BIN=/opt/c\n")
+    # GAS_ASCOLTO_MODELLO già scelto: il .env deve restare identico, byte per byte
+    pieno = "GAS_VOICE_TOKEN=x\nGAS_ASCOLTO_MODELLO=hey_jarvis\nGAS_CLAUDE_BIN=/opt/c\n"
+    gas, finti, casa = _gas_finto(tmp_path, env=pieno)
     (finti / "claude").write_text("#!/bin/bash\nexit 0\n")
     (finti / "claude").chmod(0o755)
     r, _ = _installa(gas, finti, casa, tmp_path)
-    assert r.returncode == 0 and (gas / ".env").read_text() == "GAS_VOICE_TOKEN=x\nGAS_CLAUDE_BIN=/opt/c\n"
+    assert r.returncode == 0 and (gas / ".env").read_text() == pieno
 
 
 @pytest.mark.parametrize("riga", ["GAS_CLAUDE_BIN=", "GAS_CLAUDE_BIN= # da mettere"])
 def test_installa_gas_claude_bin_vuoto_avvisa_e_non_raddoppia(tmp_path, riga):
     """R-624-3: una riga vuota non si raddoppia (vale la prima) e si avvisa."""
-    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\n" + riga + "\n")
+    pieno = "GAS_VOICE_TOKEN=x\nGAS_ASCOLTO_MODELLO=hey_jarvis\n" + riga + "\n"
+    gas, finti, casa = _gas_finto(tmp_path, env=pieno)
     (finti / "claude").write_text("#!/bin/bash\nexit 0\n")
     (finti / "claude").chmod(0o755)
     r, _ = _installa(gas, finti, casa, tmp_path)
     assert r.returncode == 0 and "GAS_CLAUDE_BIN è vuoto" in r.stdout
-    assert (gas / ".env").read_text() == "GAS_VOICE_TOKEN=x\n" + riga + "\n"
+    assert (gas / ".env").read_text() == pieno
 
 
 def test_installa_avvisa_se_claude_manca(tmp_path):
@@ -3291,6 +3332,23 @@ def test_verifica_solo_dalla_cartella_locale(monkeypatch, tmp_path):
         assert a.verifica_della_voce(modello, tmp_path).stato == "assente"
     assert a.percorso_verificatore("hey_jarvis", tmp_path) == (
         tmp_path / ".gas_voce" / "verifica" / "hey_jarvis_verifier.pkl")
+
+
+def test_modello_della_parola_da_file_locale(monkeypatch, tmp_path):
+    """GAS_ASCOLTO_MODELLO=<nome>: il file .gas_voce/modelli/<nome>.onnx se c'è ed è
+    fidato, altrimenti il nome (modello pronto); mai un percorso preso dall'ambiente."""
+    assert a.modello_della_parola("hey_jarvis", tmp_path) == "hey_jarvis"
+    d = tmp_path / ".gas_voce" / "modelli"
+    d.mkdir(parents=True, mode=0o700)
+    os.chmod(tmp_path / ".gas_voce", 0o700)
+    f = d / "ehi_jarvis_it.onnx"
+    f.write_bytes(b"onnx")
+    os.chmod(f, 0o600)
+    assert a.modello_della_parola("ehi_jarvis_it", tmp_path) == str(f)
+    for modello in ("../ehi_jarvis_it", "/tmp/x.onnx", "Ehi Jarvis", ""):
+        assert a.modello_della_parola(modello, tmp_path) == modello
+    os.chmod(f, 0o666)   # scrivibile da altri: non si carica, si ripiega su hey_jarvis
+    assert a.modello_della_parola("ehi_jarvis_it", tmp_path) == "hey_jarvis"
 
 
 def test_verifica_file_non_fidato_non_si_carica(monkeypatch, tmp_path, caplog):
