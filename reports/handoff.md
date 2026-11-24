@@ -1,119 +1,157 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-24 — Dashboard del CRM sempre accesa sul Mac
+**Sessione:** 2026-11-24 — Revisione in più sugli script del CRM
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #403 (https://github.com/Gasss23/Gas/pull/403). Script per il Mac e guida; il merge di main porta solo codice già su main.
+1. Merge della PR di questa fetta: tocca `.claude/perimetro_review.txt` e `scripts/`, quindi il bot darà `neutral` e il merge lo decide l'operatore.
 2. Sul Mac, una volta sola dopo il merge: `cd ~/Gas && git pull && bash scripts/crm/installa.sh`; controllare che l'ultima riga dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA».
-3. Da decidere (R-852M-2): mettere `scripts/crm/` nel perimetro di review come `scripts/voce/`.
-4. Dalla chat Voce (#400): controllare nel `.env` del Mac che non ci sia una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`.
+3. Dalla chat Voce (#400): controllare nel `.env` del Mac che non ci sia una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Dashboard del CRM sempre accesa** (richiesta dell'operatore: «vorrei mettere da qualche parte questa dashboard… che non dipenda da Claude o dall'IA… accessibile anche offline e in modo facile»): FATTA (5d5911b4). LaunchAgent `com.gas.crm`, `scripts/crm/installa.sh` e `spegni.sh`, icona «CRM Gas» sulla Scrivania (il token non finisce in nessun file), guida aggiornata.
-- **Note del bot su 51d446c4** (APPROVATO CON RISERVE, V-1 MEDIA): FATTE (20791587). V-1 attesa dopo il bootout e 3 tentativi di bootstrap; V-2 cartella con soli caratteri sicuri; V-3 servizio tolto se la dashboard non parte e stop se `GAS_CRM_BIND` non è 127.0.0.1; V-4 `spegni.sh` toglie l'icona; guida (login da rifare dopo un riavvio, controllo della copia cifrata).
-- **Note del bot su 67f4dc34** (APPROVATO CON RISERVE, V-1 MEDIA): FATTE. V-1 registro non bufferizzato (`PYTHONUNBUFFERED=1`) e attesa della riga della copia cifrata di questo avvio; V-2 uscita con 0; V-3 controllo del `.env` con `env -i` (come lo vedrà launchd) ed errori distinti.
-- **Merge di main (PR #398, #399, #400)** (f4381a2e): FATTO, review #852-MERGE APPROVATO CON RISERVE. Codice identico a main; report del ramo tenuti; decisioni e riserve della #400 (anche quelle dell'ultimo verdetto del bot, R-852M-1) in `reports/stato_progetto.md`.
-- **Prova su un Mac vero** (launchctl, Scrivania, iCloud sotto launchd): SALTATA — il Mac non è raggiungibile da qui.
+- **`scripts/crm/` nel perimetro di review** (richiesta dell'operatore: «ci sta comunque una revisione in più, dato che comunque sono dati personali dei clienti e non dobbiamo fare assolutamente neanche un errore»; decisione 20): FATTA (d54a09ad, review #853 APPROVATO CON RISERVE). R-852M-2 chiusa.
+- **Note del bot sulla #403 rimaste aperte** (V-1 plist lasciato se la dashboard non parte; V-2 errore di import scambiato per token mancante): FATTE (d54a09ad).
+- **R-853-1 e R-853-2 (parte delle copie)**: FATTE (75dbd9d9, review #854 APPROVATO CON RISERVE). `togli_servizio` a ogni STOP dell'installer; copie locali per giorno (30 giorni più le ultime 10).
+- **R-853-2, parte KeepAlive senza tetto** (ora R-854-2): NON FATTA, resta aperta.
+- **Prova su un Mac vero**: SALTATA — il Mac non è raggiungibile da qui; provata dal revisore su Linux con comandi finti.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- reports/crm/guida.md               |   2 ++
- reports/diff_sessione.md           |  18 +++++++++---------
+ .claude/agents/memoria_revisore.md |  6 ++++++
+ .claude/perimetro_review.txt       |  3 +++
+ modules/crm/store.py               | 22 ++++++++++++++++------
+ reports/crm/decisioni.md           |  4 ++++
+ reports/crm/guida.md               |  4 ++--
+ reports/diff_sessione.md           | 17 +++++++++--------
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  40 ++++++++++++++--------------------------
- scripts/crm/com.gas.crm.plist      |  36 ++++++++++++++++++++++++++++++++++++
- scripts/crm/installa.sh            | 134 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- scripts/crm/spegni.sh              |  10 ++++++++++
+ reports/stato_progetto.md          |  4 ++--
+ reports/ultimo_report.md           | 30 ++++++++++++++++--------------
+ scripts/crm/installa.sh            | 18 +++++++++++++++---
+ tests/test_unit_crm.py             | 29 ++++++++++++++++++++++++++---
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale. Base: main 96d5ae99.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-71a7f12c fix(crm): note del bot su 67f4dc34 — registro non bufferizzato (esito della copia cifrata visibile), installer esce con 0, controllo del .env con l'ambiente pulito di launchd
-67f4dc34 docs(fine-task): note del bot sulla #403 corrette, merge di main (#398-#400), review #852-MERGE
-20791587 fix(crm): note del bot sulla #403 — attesa dopo il bootout e 3 tentativi di bootstrap, cartella con soli caratteri sicuri, servizio tolto se la dashboard non parte, stop se GAS_CRM_BIND non è 127.0.0.1, spegni toglie l'icona
-f4381a2e Merge origin/main (PR #398, #399, #400) nel ramo della PR #403 — review #852-MERGE APPROVATO CON RISERVE
-51d446c4 docs(fine-task): CRM sempre acceso sul Mac — report, handoff e stato (PR #403)
-5d5911b4 feat(crm): dashboard sempre accesa sul Mac — LaunchAgent com.gas.crm, installa/spegni e icona sulla Scrivania
+75dbd9d9 fix(crm): copie locali per giorno (30 giorni più le ultime 10) e servizio tolto a ogni STOP dell'installer (R-853-1/2, review #854)
+d54a09ad chore(perimetro): scripts/crm/ passa dal revisore (decisione 20); installer: plist tolto se la dashboard non parte, errore di import distinto (review #853)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore nel diff di sessione (solo `scripts/crm/`, report e memoria del revisore). Il merge di main (f4381a2e) portava codice già su main ed è stato revisionato; verdetto integrale incollato:
+### Commit d54a09ad — review #853 (verdetto integrale)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #852-MERGE. Oggetto: merge in corso (non committato) di origin/main af0215de, che porta le PR #398, #399 e #400, nel ramo claude/nifty-galileo-3k7kbm (PR #403, HEAD 51d446c4). Prima della review ho letto CLAUDE.md (§5, §8, §10), `reports/stato_progetto.md` (ricerca mirata) e la memoria. Ho controllato anche che origin/main non si sia mosso dopo il fetch: è ancora af0215de.
+Review #853. Diff staged sul ramo claude/nifty-galileo-3k7kbm, sopra main 96d5ae99: 3 file, +14 righe, hash_diff_staged 7ea45b74. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le parti sul CRM) e la mia memoria (la #852-MERGE con R-852M-2). Ho letto per intero tutti i file di scripts/crm/.
 
 **Elementi del diff esaminati**
-- `gas.py:7347`: comando `sottofondo-riprendi` portato dalla #398. Rischio: che il merge l'abbia alterato. Ho confrontato col diff indice contro origin/main tutto il perimetro (ogni riga di `.claude/perimetro_review.txt`): risultato vuoto. Esito: ok.
-- `modules/notte/notte.py:927`: `_ERRORI_ESTERNI` e `_ko_esterno` (`modules/notte/notte.py:945`) della #399, file identico a main. Esito: ok.
-- `clients/voice/ascolto.py:165`: `SOGLIA_VERIFICA_PREDEFINITA = 0.6` della #400, file identico a main. Esito: ok. Collegata a R-852M-1 qui sotto.
-- `modules/sottofondo/__init__.py:366`: `riprendi_al_boot` della #398, identico, come `scripts/sottofondo/com.gas.sottofondo.plist` e i test. Esito: ok.
-- `.claude/perimetro_review.txt:33`: `scripts/sottofondo/` portato da main, identico. Il perimetro non contiene `scripts/crm/`: vedi R-852M-2.
-- `.claude/agents/memoria_revisore.md:1720`: il blob nell'indice è quello di main (b844fa75). Righe di HEAD mancanti: 0. Il ramo non ha toccato la memoria dopo la #397. Esito: ok.
-- `reports/stato_progetto.md:4`: la riga «Ultimo aggiornamento» nell'indice è byte per byte la riga di main con il frammento del 24-11 in testa. La riga di HEAD è quella della base più lo stesso frammento, quindi niente si perde. Esito: ok.
-- `reports/stato_progetto.md:9-10`: rispetto a main ci sono solo 2 righe in più (CRM sempre acceso e #400). Le righe di main mancanti sono 0: l'unica riga che cambia è la 4, fusa come sopra. Le righe R7 fetta 2 e fetta 3 restano. La riga della #400 è fedele all'ultimo_report di main: prova di taratura, decisione sul modello «ehi Jarvis», cose da provare sul Mac, 0/180, voci sintetiche. Le «aperte da prima» sono già nella riga «Voce, riserve aperte». Esito: ok, salvo R-852M-1.
-- `reports/voce_simulazione_2026-11-23/LEGGIMI.md:52`: i 49 file della simulazione sono identici a main, `traccia_fasi.py` e `train_varianti.py` compresi, e R-818-1 è chiusa. Gli spazi a fine riga trovati da `--check` stanno solo nei `.patch` di main. Esito: ok.
+- `.claude/perimetro_review.txt:36`: aggiunge `scripts/crm/` come cartella (la riga finisce con /).
+  - Rischio: che il gate non riconosca la riga, o che il perimetro si restringa.
+  - Esito: ok. Ho controllato con `_nel_perimetro` di scripts/check_verdetto.py: installa.sh e il plist ora sono nel perimetro; `scripts/crmx.sh` e reports/crm/ no. Ho rieseguito `pytest tests/test_unit_hooks.py -k "perimetro or gate"`: 128 passed. R-852M-2 è chiusa.
+  - Nota: la PR tocca il file del perimetro e scripts/, che stanno nell'elenco della macchina del bot (`scripts/bot_esito.py:69`). Il bot darà quindi `neutral` e il merge lo decide l'operatore: niente merge automatico.
+- `scripts/crm/installa.sh:36`: tenta `import gas` dentro un try ed esce con 4 se fallisce (V-2 del bot).
+  - Rischio: un `import gas` che scrive su stdout sporcherebbe PORTA. Oppure il codice 4 potrebbe non arrivare al `case`.
+  - Esito: ok. Il logging di gas.py va su stderr e nel file. L'ho provato con finti uname/launchctl/plutil/curl/sleep e una copia del repo. Con gas.py rotto (modulo inesistente) esce 1 con «Gas non si avvia con le sue dipendenze». Lo stesso caso con installa.sh di HEAD diceva «manca GAS_CRM_TOKEN»: la correzione serve davvero. Anche i casi token mancante, token solo esportato (exit 2) e GAS_CRM_BIND diverso (exit 3) restano giusti.
+- `scripts/crm/installa.sh:54`: nuovo ramo `4)` del `case`. Esito: ok, il messaggio arriva (vedi sopra).
+- `scripts/crm/installa.sh:108`: `rm -f "$PLIST"` dopo il bootout, quando la dashboard non risponde (V-1 del bot).
+  - Rischio: il percorso cancellato e il plist che launchd ricarica al login.
+  - Esito: ok. PLIST è fisso e tra virgolette. In simulazione, con curl sempre muto, ~/Library/LaunchAgents resta vuota ed esce 1. Il percorso riuscito arriva in fondo con exit 0, icona creata e riga della copia cifrata mostrata.
+- `reports/crm/decisioni.md:50`: punto 20, coerente con la decisione riportata dal chiamante.
+- Contesto, file non toccati:
+  - `modules/crm/server.py:906`: il server rifiuta da sé un indirizzo non locale. Un GAS_CRM_BIND messo in ~/.zshenv (che `zsh -c` legge e l'installer no) non apre il CRM in rete: lo fa solo fallire.
+  - `modules/crm/server.py:921`: `pronto` (prova della copia cifrata, tetto di 5 s) gira prima di `serve_forever`. I 30 s di attesa dell'installer bastano.
 
-**Controlli meccanici**
-- `git ls-files -u` vuoto, nessun marcatore di conflitto.
-- Il diff dell'indice contro origin/main contiene solo gli 8 file della #403: `scripts/crm/` (3 file), `reports/crm/guida.md` e 4 report.
-- handoff, ultimo_report e diff_sessione sono uguali a HEAD (regola 3).
-- `bacheca.md` è uguale a main.
-- `bash -n` dei due script del CRM ok, plist valido (plistlib). `.gas_memory_crm_server.log` è coperto dal `.gitignore`.
-- Test: 893 passed (crm, notte, sottofondo, voce_ascolto) su una copia dell'indice.
+**Riserve (nessuna bloccante)**
+- **R-853-1 BASSA** (`scripts/crm/installa.sh:97`): dopo 3 bootstrap falliti il plist resta in ~/Library/LaunchAgents. L'ho provato con un launchctl finto che risponde «Input/output error».
+  - Effetto: al login launchd lo carica (RunAtLoad + KeepAlive) senza il controllo della dashboard. È la stessa classe di problema di V-1, ma la correzione copre un solo ramo.
+  - Stesso caso, innocuo, dopo `plutil` a `scripts/crm/installa.sh:88`: il plist non valido resta lì ma non si carica.
+  - Proposta: una funzione unica «togli servizio» (bootout + rm del plist) per ogni stop dopo `scripts/crm/installa.sh:87`.
+- **R-853-2 BASSA** (c'era già prima, ora è nel perimetro; `scripts/crm/com.gas.crm.plist:27`): KeepAlive true con ThrottleInterval 10 e nessun tetto.
+  - Se dopo l'installazione il CRM non parte (token tolto dal .env, porta presa da un altro programma, DB non apribile), launchd lo rilancia ogni 10 s per sempre.
+  - Ogni rilancio costa un `import gas`, misurato ~1 s di CPU in ambiente pulito, e scrive una riga in `.gas_memory_crm_server.log`, che non ruota. Nessuno avvisa l'operatore.
+  - Caso raro (non ho trovato un crollo realistico dopo l'avvio), ma con dati dei clienti: ogni partenza riuscita fa una copia locale (`modules/crm/server.py:352`, nome al secondo a `modules/crm/store.py:1372`) e ne tiene 30. Con un ciclo di crolli dopo l'avvio, in ~5 minuti spariscono le copie dei giorni prima.
+  - Proposte: un'attesa lunga prima di uscire sugli STOP quando il CRM gira sotto launchd, e la copia all'avvio solo se l'ultima è vecchia.
+- **R-853-3 BASSA**: scripts/crm/ non ha nessun test. La voce invece prova il suo installer con comandi finti (`tests/test_unit_voce_ascolto.py:1938`). V-1 e V-2 sono provate solo dalla mia simulazione manuale.
+- **COSMETICHE**: l'uscita 4 non dice quale modulo manca (nel messaggio di un ImportError non ci sono segreti); se il servizio viene tolto, l'icona «CRM Gas» di un'installazione precedente resta sulla Scrivania; CARTELLA_GAS viene sostituita anche nel commento di `scripts/crm/com.gas.crm.plist:5` (un percorso con «--», ammesso da CONSENTITI, renderebbe l'XML non valido e farebbe fermare lo script a plutil); spegni.sh non aspetta che il bootout finisca.
+
+**Wall of Shame e guardrail**: in scripts/crm/ non c'è history, non ci sono tool simulati e non si toccano `_get_window`, il tetto di 10 iterazioni o quello degli 8k token. I finti comandi esistono solo nella mia simulazione, che non è nel diff.
+
+**Rischi esclusi (non verificati)**:
+- Comportamento su un Mac vero: launchd reale, permessi di macOS per Scrivania e iCloud (scrivere l'icona può essere negato al Terminale, e con `set -e` lo script finirebbe con un errore di bash dopo aver già acceso il servizio), `plutil` e `wc` di BSD. Ho provato solo su Linux con comandi finti.
+- La citazione dell'operatore nel punto 20: non è verificabile dal repo.
+- modules/crm/ non l'ho ri-revisionato oltre ai punti citati: è già nel perimetro.
+
+**Note per il chiamante**:
+- Ho aggiunto la riga #853 e due lezioni in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza indirizzi IP. Il file è modificato ma NON in stage e NON committato. Il primo tentativo con `scripts/commit_memoria_revisore.sh` è stato negato dal permesso automatico, coerente col tuo «non committare»: va committato a fine task.
+- L'indice staged è intatto (3 file, +14). Non ho creato .claude/.review_ok.
+- R-852M-1 (il .env della voce sul Mac) e le nuove R-853-1..4 vanno scritte in reports/stato_progetto.md: oggi non ci sono.
+
+### Commit 75dbd9d9 — review #854 (verdetto integrale)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #854. Diff staged sul ramo claude/nifty-galileo-3k7kbm, sopra d54a09ad: 4 file, +53/−15, sha256 del diff c17b3830. Prima ho letto CLAUDE.md, la testa di reports/stato_progetto.md (riserve R-852M/R-853) e la memoria del revisore, compresa la riga #853 e le sue due lezioni.
+
+**Elementi del diff esaminati**
+- `modules/crm/store.py:1388` — per ogni giorno tiene la copia più recente, usando il nome `crm-AAAAMMGG-HHMMSS`, cioè `name[4:12]`. Rischio esaminato: nomi non in ordine di tempo, chiave del giorno sbagliata, eccezioni nuove fuori dal `try`. Esito: ok. Ho fatto 8 modifiche apposta al codice per vedere se i test se ne accorgono: vecchia regola, niente `ultime`, copia più vecchia del giorno, giorni più vecchi, niente giorni, giorno troncato al mese, `keep+1`, `ultime+1`. Su una copia dell'indice i test le hanno fatte fallire tutte e 8.
+- `modules/crm/store.py:1389` — `tenere` = le ultime `ultime` copie più gli ultimi `keep` giorni; `max(1, …)` protegge da 0 e dai negativi. Rischio esaminato: un altro chiamante che usa ancora il vecchio significato di `keep`. Esito: ok. Gli unici chiamanti di `CRMStore.backup` sono `modules/crm/server.py:311` e `modules/crm/__main__.py:186`, entrambi coi valori predefiniti. `modules/crm/copia_cifrata.py:285` non è toccato e tiene già una copia cifrata al giorno. Le altre `backup(..., keep=)` del repo sono di `modules/memory/store.py`, un'altra classe. Nessuna lezione dell'elenco degli errori vietati violata: lo slicing è sull'elenco dei file, non sulla cronologia dei messaggi.
+- `tests/test_unit_crm.py:2596` — test nuovo: 40 giorni più 60 riavvii nello stesso giorno. Ho rifatto il conto: restano i giorni dal 12-10 al 10-11, 10 copie di oggi, totale 29+10. Esito: ok. Con il codice vecchio il test fallisce.
+- `tests/test_unit_crm.py:2133` — il test esistente passa `keep=2, ultime=2`. Tre copie nello stesso giorno, ne restano 2. Esito: ok.
+- `scripts/crm/installa.sh:25` — `togli_servizio` fa lo stesso bootout e la stessa rimozione di `scripts/crm/spegni.sh`. Esito: ok.
+- `scripts/crm/installa.sh:94`, `scripts/crm/installa.sh:103`, `scripts/crm/installa.sh:113` — i tre punti di STOP dopo la scrittura del plist (controllo con plutil fallito, 3 caricamenti falliti, dashboard che non risponde). Li ho simulati con comandi finti (uname, launchctl, plutil, curl, sleep): in tutti e tre il plist viene tolto e il bootout parte dopo l'ultimo tentativo di caricamento. Nel caso riuscito restano plist e icona, uscita 0. Esito: ok, R-853-1 chiusa.
+- `reports/crm/guida.md:29` e `reports/crm/guida.md:89` — la guida ora descrive la regola nuova. Nel codice e nella guida non resta nessun «ultime 30» riferito alle copie locali. Esito: ok.
+
+Ho rieseguito: `pytest tests/test_unit_crm.py` 151 passed, mypy pulito su store.py, `bash -n` ok.
 
 **Riserve**
-- **R-852M-1 BASSA**: le riserve finali della #400 non sono scritte in nessun file del repo. L'ultimo verdetto del bot sull'head mergiata (f1b29b68) è APPROVATO CON RISERVE, letto con `gh api pulls/400/reviews` ed emesso dopo l'handoff. Contiene:
-  - V-1 BASSA: una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8` rimasta nel `.env` tiene l'interruzione quasi spenta (8/180) senza nessun avviso nel log. Il bot raccomanda di controllare il `.env` sul Mac dopo il merge.
-  - V-2 COSMETICA: «prima 8/180» invece di 4/180; il LEGGIMI della simulazione alla riga 30 mette in grassetto 170/180 (soglia 0,5) invece di 158/180 (soglia 0,6).
-  - V-3 COSMETICA: l'handoff si contraddice su R-816-1.
-  - Correzione: aggiungere V-1 e il controllo del `.env` alla riga della #400 in `reports/stato_progetto.md:10`.
-- **R-852M-2 BASSA (fuori dal merge, riguarda la PR #403)**: `scripts/crm/com.gas.crm.plist:20` installa un LaunchAgent con KeepAlive, ma `scripts/crm/` non è nel perimetro di review. È la stessa categoria per cui ci sono già `scripts/voce/` (V-4 della verifica esterna #323) e `scripts/sottofondo/`. Decide l'operatore. Allargare il perimetro passa comunque dal revisore.
-- **COSMETICA**: la riga «Ultimo aggiornamento» (testo di main) dice «aperte BASSE R-816-1», ma R-816-1 è chiusa in #817 (§7 dell'handoff della #400 e claim 7 del bot).
+- **R-854-1 BASSA**: dopo il caricamento l'installer aspetta la dashboard fino a 30 secondi senza scrivere nulla (`scripts/crm/installa.sh:107`). Se l'operatore preme Ctrl+C in quel momento, plist e servizio restano installati, senza nessun controllo. L'ho provato in simulazione: uscita 130, plist presente, servizio caricato. Nello script non c'è nessun `trap`. Correzione proposta: un `trap togli_servizio INT TERM` tra la scrittura del plist e l'«OK», più una riga «aspetto la dashboard (fino a 30 s)…».
+- **R-854-2 BASSA (va scritta giusta in stato_progetto)**: R-853-2 è chiusa **solo per la parte delle copie**. Resta aperta la parte sul KeepAlive senza tetto (`scripts/crm/com.gas.crm.plist:27`): un CRM che non parte si riavvia ogni 10 secondi per sempre, il registro cresce senza rotazione e nessuno viene avvisato. Non segnarla chiusa per intero.
+- **R-853-3 BASSA** resta aperta, come hai detto: nessun test degli script del CRM con comandi finti.
+- **COSMETICA (c'era già prima)**: un file `crm-*.db` con un nome che non è una data, per esempio una copia fatta a mano, prende il posto di un giorno e di una delle «ultime» e non viene mai cancellato.
 
-**Avviso importante**: durante la review sono comparse nel working tree modifiche NON in staging a `scripts/crm/installa.sh`, `scripts/crm/com.gas.crm.plist`, `scripts/crm/spegni.sh` e `reports/crm/guida.md` (correzioni V-2/V-3 del bot #403, +54/−8). Non le ho revisionate. Il verdetto vale solo per l'indice. Un `git commit` senza `-a` non le include.
+**Rischi esclusi (non verificati)**
+- Comportamento su un Mac vero (launchd vero, bootout asincrono, permessi della Scrivania): qui non si può riprodurre, la prova è solo simulata.
+- Orologio del Mac che torna indietro: la copia appena fatta può essere cancellata subito e `backup()` restituisce un percorso che non esiste più. Succedeva già con la regola vecchia; non l'ho analizzato oltre.
+- Il cambio d'ora non l'ho provato: tocca al massimo l'ordine dentro un'ora, non i giorni.
 
-**Rischi esclusi**
-- Suite del kernel e pytest completa non rieseguite: il perimetro è identico byte per byte a main, e su f1b29b68 `unit-suite` risulta success.
-- Comportamento sul Mac (launchd, microfono, iCloud) non verificabile qui.
-- Le modifiche al working tree comparse durante la review: vedi l'avviso sopra.
+**Memoria**
+In `/home/user/Gas/.claude/agents/memoria_revisore.md` ho aggiunto la riga #854 e 2 lezioni (Ctrl+C e `trap` negli installer; riserve composte chiuse solo in parte). **Non l'ho committata**, come in #853: hai chiesto di non committare, e l'hook del gate blocca i comandi di commit finché manca `.claude/.review_ok` (ha bloccato anche un mio comando di sola lettura che nominava lo script di commit). Anche la riga #853 è ancora solo nel working tree. Il file va committato col fine-task. Non ho creato `.claude/.review_ok` e il diff staged non è cambiato.
 
-**Memoria**: in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` ho aggiunto la riga #852-MERGE (senza IP letterali) e 2 lezioni (regola 3: leggere l'ultimo verdetto del bot sull'head mergiata; servizi launchd fuori dal perimetro). Non sono in staging e non le ho committate, come richiesto: `commit_memoria_revisore.sh` non l'ho lanciato perché il merge è in corso. `.claude/.review_ok` non l'ho creato.
+File della simulazione: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sim/run.sh` (comandi finti in `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sim/bin`). Script delle prove con le modifiche: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/mut.py`.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/ da questo ramo (il codice del merge è identico a main).
+- `tests/test_unit_crm.py`: 150 → 151 passed (nuovo `test_backup_tiene_i_giorni_anche_con_tanti_riavvii`; `test_identita_clienti_e_backup` ora con `keep=2, ultime=2`).
+- `tests/test_unit_hooks.py -k "perimetro or gate"`: 128 passed (rieseguito dal revisore #853).
+- Suite del kernel non toccata (gas.py e test del kernel invariati).
 
 ## §6 STATO CI
 
 `gh run list` non usato: GitHub si interroga con `gh api` REST.
 - Mappatura commit→run:
-  - `5d5911b4`: nessuna run propria (pushato insieme a 51d446c4).
-  - `51d446c4`: handoff-check success, verifica-bot failure (APPROVATO CON RISERVE con V-1 MEDIA, chiusa in 20791587), unit-suite in corso alla lettura; poi PR in conflitto dopo i merge delle #398-#400.
-  - `f4381a2e`, `20791587`: nessuna run propria (pushati insieme al commit di fine-task).
-  - `67f4dc34` (fine-task precedente): handoff-check success, verifica-bot failure (APPROVATO CON RISERVE con V-1 MEDIA, chiusa nel commit dopo).
-  - Commit della correzione e di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+  - `d54a09ad`, `75dbd9d9`: nessuna run propria (pushati insieme al commit di fine-task).
+  - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- Ultima run nota su main 96d5ae99 (merge della #403): CI verde al merge.
 
 ## §7 RISERVE APERTE
 
-- R-852M-2 BASSA (decide l'operatore): `scripts/crm/` fuori dal perimetro di review.
-- R-852M-1 BASSA: riportata in `reports/stato_progetto.md` (riga della #400). COSMETICA #852: la riga «Ultimo aggiornamento» di main cita R-816-1 come aperta, ma è chiusa.
-- Script non provati su un Mac vero.
+- R-854-1 BASSA: Ctrl+C durante l'attesa della dashboard lascia il servizio installato (serve `trap togli_servizio INT TERM`).
+- R-854-2 BASSA: KeepAlive senza tetto, registro senza rotazione, nessun avviso (parte restante di R-853-2).
+- R-853-3 BASSA: nessun test degli script del CRM con comandi finti.
+- COSMETICHE #853/#854: in `reports/stato_progetto.md`.
+- R-852M-1 BASSA (voce, `.env` sul Mac): in `reports/stato_progetto.md`.
 - Dalla PR #397: R-848-2 BASSA, R-848-3 BASSA, V-3 BASSA della verifica esterna, cosmetiche #848; R-836-1 COSMETICA.
+- Script non provati su un Mac vero.

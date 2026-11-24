@@ -1,22 +1,24 @@
-# Ultimo report — 2026-11-24 — Dashboard del CRM sempre accesa sul Mac
+# Ultimo report — 2026-11-24 — Revisione in più sugli script del CRM
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta (solo script per il Mac e guida, nessun codice del motore).
-2. Sul Mac, una volta sola dopo il merge: `cd ~/Gas && git pull && bash scripts/crm/installa.sh`; poi controllare che l'ultima riga stampata dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA».
-3. Da decidere: mettere `scripts/crm/` nel perimetro di review (come `scripts/voce/`), R-852M-2.
-4. Dalla chat Voce (#400): controllare nel `.env` del Mac che non ci sia una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`.
+1. Merge della PR di questa fetta: tocca il file del perimetro e `scripts/`, quindi il bot darà `neutral` e il merge lo decide l'operatore.
+2. Sul Mac, una volta sola dopo il merge: `cd ~/Gas && git pull && bash scripts/crm/installa.sh`; controllare che l'ultima riga dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA».
+3. Dalla chat Voce (#400): controllare nel `.env` del Mac che non ci sia una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`.
 
 ## Esito
-- **Richiesta dell'operatore** («vorrei mettere da qualche parte questa dashboard… che non dipenda da Claude o dall'IA… accessibile anche offline e in modo facile»): FATTA. `scripts/crm/com.gas.crm.plist` (LaunchAgent: parte all'avvio del Mac, si riavvia se si chiude), `scripts/crm/installa.sh` (controlla Mac, `.venv`, `GAS_CRM_TOKEN` e porta libera, carica il servizio, aspetta la risposta, mette l'icona «CRM Gas» sulla Scrivania senza il token), `scripts/crm/spegni.sh`. Guida aggiornata (`reports/crm/guida.md` §2).
-- **Note del bot su 51d446c4** (APPROVATO CON RISERVE, check rosso per V-1 MEDIA): FATTE in 20791587. V-1 MEDIA attesa dopo il bootout e 3 tentativi di bootstrap (come lo script della voce provato sul Mac); V-2 cartella con soli caratteri sicuri; V-3 servizio tolto se la dashboard non parte e stop se `GAS_CRM_BIND` non è 127.0.0.1; V-4 `spegni.sh` toglie l'icona. Guida: il login va rifatto se il CRM si riavvia; controllo della copia cifrata dopo l'installazione.
-- **Note del bot su 67f4dc34** (APPROVATO CON RISERVE, V-1 MEDIA): FATTE. V-1 il registro del server era bufferizzato e l'esito della copia cifrata non compariva: `PYTHONUNBUFFERED=1` nel plist e l'installer aspetta la riga di QUESTO avvio; V-2 l'installer usciva con 1 dopo «OK»; V-3 il controllo del `.env` ora usa l'ambiente pulito che vedrà launchd e distingue gli errori.
-- **Merge di main (PR #398, #399, #400 di altre chat) nel ramo**: FATTO (f4381a2e, review #852-MERGE APPROVATO CON RISERVE). Codice identico a main; decisioni e riserve della #400 riportate in `reports/stato_progetto.md`.
-- La dashboard già non usava l'IA (solo «Riscrivi con Opus») e funziona senza internet.
-- **PR #397**: MERGIATA il 23-11 (1b4954e2) col via dell'operatore; sul Mac il codice è aggiornato e il bot Telegram risponde («quanti clienti ho?» → zero, corretto).
+- **Richiesta dell'operatore** («ci sta comunque una revisione in più, dato che comunque sono dati personali dei clienti e non dobbiamo fare assolutamente neanche un errore»): FATTA. `scripts/crm/` è nel perimetro di review (`.claude/perimetro_review.txt`), decisione 20 in `reports/crm/decisioni.md`. R-852M-2 chiusa. Commit d54a09ad, review #853 APPROVATO CON RISERVE.
+- **Note del bot sulla #403 rimaste aperte** (V-1 plist lasciato se la dashboard non parte, V-2 errore di import confuso con il token mancante): FATTE in d54a09ad.
+- **Riserve della review #853**: R-853-1 (plist lasciato dopo 3 caricamenti falliti o plutil fallito) chiusa con una funzione unica `togli_servizio` usata a ogni STOP; R-853-2 chiusa SOLO per la parte delle copie: le copie locali del CRM ora tengono la più recente di ognuno degli ultimi 30 giorni più le ultime 10, così tanti riavvii nello stesso giorno non cancellano più i giorni prima. Commit 75dbd9d9, review #854 APPROVATO CON RISERVE.
+- Guida aggiornata (`reports/crm/guida.md`) con la regola nuova delle copie.
 
 ## Test
-- Nessun codice del motore toccato. `bash -n` sugli script, plist valido, prova del controllo del token e della porta col codice vero del CRM (senza token → stop; con token → porta 8770). Non provato su un Mac vero (launchctl, Scrivania): da qui non è raggiungibile.
+- `pytest tests/test_unit_crm.py`: 151 passed (nuovo `test_backup_tiene_i_giorni_anche_con_tanti_riavvii`: 40 giorni più 60 riavvii → 30 giorni e 10 copie di oggi). Il revisore ha fatto 8 modifiche apposta al codice delle copie: i test le hanno fatte fallire tutte.
+- `tests/test_unit_hooks.py -k "perimetro or gate"`: 128 passed. mypy pulito su `modules/crm/store.py`, `bash -n` sugli script.
+- Installer provato dal revisore su Linux con comandi finti (uname, launchctl, plutil, curl, sleep): servizio tolto in tutti e tre i punti di STOP, caso riuscito con uscita 0. Non provato su un Mac vero.
 
 ## Riserve aperte
-- Dalla PR #397: R-848-2 BASSA (il doctor non avvisa che col forte spento Gas resta muto), R-848-3 BASSA (lo «Sempre Opus» provato solo nella suite del kernel), V-3 BASSA della verifica esterna (commento di `importi_nel_testo` impreciso), cosmetiche #848. R-836-1 COSMETICA.
-- Ereditate dalla chat Voce (in `reports/stato_progetto.md`).
+- R-854-1 BASSA: Ctrl+C durante l'attesa della dashboard (fino a 30 s) lascia il servizio installato; serve un `trap`.
+- R-854-2 BASSA: parte restante di R-853-2, KeepAlive senza tetto (un CRM che non parte si riavvia ogni 10 s per sempre, registro senza rotazione, nessun avviso).
+- R-853-3 BASSA: nessun test degli script del CRM con comandi finti.
+- COSMETICHE #853/#854 (in `reports/stato_progetto.md`).
+- Dalla PR #397: R-848-2 BASSA, R-848-3 BASSA, V-3 BASSA della verifica esterna, cosmetiche #848; R-836-1 COSMETICA. R-852M-1 (voce) in `reports/stato_progetto.md`.
