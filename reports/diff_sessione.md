@@ -4,6 +4,7 @@ Si riscrive a ogni sessione; la storia completa sta in git. Ramo ripartito da ma
 
 - `.claude/perimetro_review.txt`: aggiunta `scripts/crm/` (decisione 20: dati personali dei clienti, revisione in più).
 - `reports/crm/decisioni.md`: punto 20.
+- `reports/bacheca.md`: notizia per le altre chat (`scripts/crm/` nel perimetro); chiusa la notizia del 23-11 sul collegamento di Gas al CRM (PR #397 mergiata).
 - `scripts/crm/installa.sh`: funzione `togli_servizio` (bootout + rimozione del plist) a ogni STOP dopo la scrittura del plist; prova di `import gas` con uscita 4 e messaggio distinto.
 - `modules/crm/store.py`: `CRMStore.backup` tiene la copia più recente di ognuno degli ultimi 30 giorni più le ultime 10 (prima: le ultime 30, che tanti riavvii in un giorno potevano consumare).
 - `tests/test_unit_crm.py`: test nuovo sulla regola delle copie; test esistente adattato (`keep=2, ultime=2`).

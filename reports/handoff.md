@@ -29,6 +29,7 @@
  .claude/agents/memoria_revisore.md |  6 ++++++
  .claude/perimetro_review.txt       |  3 +++
  modules/crm/store.py               | 22 ++++++++++++++++------
+ reports/bacheca.md | 4 ++--
  reports/crm/decisioni.md           |  4 ++++
  reports/crm/guida.md               |  4 ++--
  reports/diff_sessione.md           | 17 +++++++++--------
