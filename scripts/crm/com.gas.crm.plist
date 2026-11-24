@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- CRM di Gas sul Mac (launchd), richiesta dell'operatore del 24-11: la dashboard sempre
+     accesa, senza Terminale e senza IA. NON modificare a mano la copia in
+     ~/Library/LaunchAgents: la scrive scripts/crm/installa.sh (CARTELLA_GAS sostituita).
+     Avvia `python -m modules.crm serve`: resta su 127.0.0.1 (l'installer si ferma se GAS_CRM_BIND dice
+     altro), token GAS_CRM_TOKEN dal .env.
+     KeepAlive: se cade, launchd lo riavvia (al massimo una volta ogni 10 s). -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.gas.crm</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>cd "CARTELLA_GAS" &amp;&amp; source .venv/bin/activate &amp;&amp; exec python -m modules.crm serve</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- V-1 bot #403: senza, Python tiene le righe nel buffer e il registro resta vuoto -->
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>CARTELLA_GAS/.gas_memory_crm_server.log</string>
+  <key>StandardErrorPath</key>
+  <string>CARTELLA_GAS/.gas_memory_crm_server.log</string>
+</dict>
+</plist>
