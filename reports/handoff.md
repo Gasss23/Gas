@@ -18,6 +18,7 @@
 - **Note del bot sulla #403 rimaste aperte** (V-1 plist lasciato se la dashboard non parte; V-2 errore di import scambiato per token mancante): FATTE (d54a09ad).
 - **R-853-1 e R-853-2 (parte delle copie)**: FATTE (75dbd9d9, review #854 APPROVATO CON RISERVE). `togli_servizio` a ogni STOP dell'installer; copie locali per giorno (30 giorni più le ultime 10).
 - **R-853-2, parte KeepAlive senza tetto** (ora R-854-2): NON FATTA, resta aperta.
+- **Merge di main (PR #401 del funnel, altra chat)** (1b61ec43): FATTO. Conflitti solo sui report e sulla memoria del revisore: report del ramo tenuti, righe della memoria unite, riserve dell'ultimo verdetto del bot sulla #401 (V-1 BASSA, V-2 COSMETICA) riportate in `reports/stato_progetto.md` (regola 3). Nessun file del perimetro nel merge: niente review.
 - **Prova su un Mac vero**: SALTATA — il Mac non è raggiungibile da qui; provata dal revisore su Linux con comandi finti.
 
 ---
@@ -45,6 +46,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ```
 75dbd9d9 fix(crm): copie locali per giorno (30 giorni più le ultime 10) e servizio tolto a ogni STOP dell'installer (R-853-1/2, review #854)
 d54a09ad chore(perimetro): scripts/crm/ passa dal revisore (decisione 20); installer: plist tolto se la dashboard non parte, errore di import distinto (review #853)
+ca2fc64b docs(fine-task): scripts/crm/ nel perimetro di review e copie locali per giorno — report, handoff (review #853, #854) e stato
+1b61ec43 Merge origin/main (PR #401 funnel) nel ramo della PR #404 — report del ramo tenuti, riserve dell'ultimo verdetto del bot sulla #401 in stato_progetto (regola 3)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.

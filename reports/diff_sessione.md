@@ -9,4 +9,5 @@ Si riscrive a ogni sessione; la storia completa sta in git. Ramo ripartito da ma
 - `tests/test_unit_crm.py`: test nuovo sulla regola delle copie; test esistente adattato (`keep=2, ultime=2`).
 - `reports/crm/guida.md`: regola nuova delle copie.
 - `.claude/agents/memoria_revisore.md`: review #853 e #854.
+- Merge di main (PR #401 del funnel): report del ramo tenuti, memoria unita, riserve della #401 in `reports/stato_progetto.md`.
 - `reports/stato_progetto.md`, report di fine task.
