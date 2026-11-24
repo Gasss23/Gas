@@ -1,31 +1,30 @@
-# ULTIMO REPORT — Ritocchi finali del funnel dopo la prova dell'operatore
-
-**Data:** 23 novembre 2026
-**Branch:** claude/ritocchi-simulazione
+# Ultimo report — 2026-11-24 — Revisione in più sugli script del CRM e note dei verificatori
 
 ## DECISIONI UMANE RICHIESTE
+1. Merge della PR #404: tocca il file del perimetro e `scripts/`, quindi il bot dà `neutral` e il merge lo decide l'operatore.
+2. Sul Mac, una volta sola dopo il merge: `cd ~/Gas && git pull && bash scripts/crm/installa.sh`; controllare che l'ultima riga dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA». Prova in più consigliata dai verificatori: rilanciarlo, premere Ctrl+C mentre dice «Aspetto che la dashboard risponda», poi `launchctl print gui/$(id -u)/com.gas.crm` deve dire che il servizio non c'è; infine rilanciare l'installazione normale.
+3. Dalla chat Voce (#400): controllare nel `.env` del Mac che non ci sia una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`.
 
-1. **Merge della PR di questa sessione** (vedi handoff §0). Solo documenti del funnel + report.
-2. **Consegnare il pacchetto allo sviluppatore del bot** (su main dopo il merge): `reports/funnel/tasto_collaboratori.md`, `reports/funnel/funnel_v2.md`, `reports/funnel/simulazione_funnel.html`. La simulazione pubblica su claude.ai è già aggiornata coi ritocchi.
-3. **Ripristinare nel bot «Inizia Ora · Accesso» lo stato dell'operatore** (test del 21/11: portato a «Candidato — pronto per la VIP»): bottoni «Conto aperto» / «In VIP» sulla scheda.
+## Esito
+- **Richiesta dell'operatore** («ci sta comunque una revisione in più, dato che comunque sono dati personali dei clienti e non dobbiamo fare assolutamente neanche un errore»): FATTA. `scripts/crm/` è nel perimetro di review, decisione 20 in `reports/crm/decisioni.md`. Commit d54a09ad, review #853.
+- **Riserve della #853**: R-853-1 e R-853-2 (parte delle copie) FATTE in 75dbd9d9 (review #854): servizio tolto a ogni STOP dell'installer; copie locali per giorno (30 giorni più le ultime 10).
+- **Merge di main (PR #401 del funnel)**: FATTO (1b61ec43), solo report; riserve della #401 in `reports/stato_progetto.md`.
+- **Note dei verificatori sulla #404** (verifica esterna: APPROVATO CON RISERVE, https://github.com/Gasss23/Gas/pull/404#issuecomment-7139788043; bot su dfe8fbee: APPROVATO CON RISERVE, neutral): FATTE in 5b75c850 (review #855, #856) e nel commit di correzione delle riserve #856 (review #857).
+  - V-1 verifica esterna: la copia appena fatta non si cancella mai, anche con l'orologio del Mac indietro.
+  - V-1 bot: le copie fatte a mano con un nome fuori formato non contano e non si toccano.
+  - R-854-1: Ctrl+C (o un'uscita qualsiasi) durante l'attesa della dashboard toglie il servizio; un secondo Ctrl+C non interrompe la pulizia; il plist si toglie prima del bootout.
+  - R-853-3: test di `installa.sh` e `spegni.sh` con comandi finti (17 test con `-k "installa_crm or spegni_crm"`).
+- **Note della 2ª verifica esterna e del bot su 94184b2c** (entrambi APPROVATO CON RISERVE, solo BASSE; verifica: https://github.com/Gasss23/Gas/pull/404#issuecomment-7140497038): FATTE in 8acae43c (review #858) e b176a489 (review #859). Copie locali e cifrate con data nel futuro non accorciano più la storia; la copia cifrata appena fatta non si cancella mai; trap dell'installer sempre con 0. Da provare sul Mac: Ctrl+C durante «Aspetto che la dashboard risponda» (bash 3.2).
+- Bacheca: notizia per le altre chat (`scripts/crm/` nel perimetro).
 
-**Ancora aperte da altre sessioni**: in `reports/stato_progetto.md` (sessione CRM PR #397, chat Voce).
+## Test
+- `pytest tests/test_unit_crm.py`: 151 → 173 passed. I test nuovi falliscono col codice di prima (provato) e prendono i mutanti dei trap (provati da me e dal revisore).
+- `tests/test_unit_hooks.py -k "perimetro or gate"`: 128 passed (review #853). mypy pulito su `modules/crm/store.py`, `bash -n` sugli script.
+- CI della PR #404 su dfe8fbee e 94184b2c: unit-suite e handoff-check verdi.
+- Non provato su un Mac vero (launchctl, Scrivania, bash 3.2).
 
-## Esito fette
-
-- **Fetta 1 — Tre ritocchi chiesti dall'operatore il 23/11 dopo la prova della simulazione** (percorso completo e link agente «ok»/«perfetti», con tre richieste): FATTA.
-  1. **Via la domanda «Da quale community arrivi?»** dal percorso completo (fase 1): il bot parte dalla domanda della lingua (che porta la conferma dei 18 anni). Scritto in `funnel_v2.md` (prima regola comune + i due rimandi «fase 1 resta com'è») e nella simulazione.
-  2. **Percorso diretto: solo nome e cognome.** Niente più domanda della lingua né bottoni del consenso: messaggio unico (con rischio e compenso), poi un solo campo «Scrivimi nome e cognome» con la riga «Inviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui» (testo steso dall'agente su mandato dell'operatore), poi [Scrivi a {agente}]. Il consenso aggiornamenti NON si chiede nel diretto: il bot a quei lead non manda MAI promozione, ogni comunicazione la fa l'agente in chat (regola definitiva della Fetta 4); i solleciti del caso B non sono promozione. Aggiornati `tasto_collaboratori.md` §3.1 e §4.5 e la simulazione (funzione `ctaConConsenso` rimossa).
-  3. **Requisito Pannello blu**: la voce «I miei link», le card e i link dell'agente si aprono DENTRO il Pannello esistente (bottone blu «Pannello» nella chat del bot, confermato dall'operatore su screenshot) — nessuna app o pagina nuova. Scritto in `tasto_collaboratori.md` §4.6 e nella scheda agente della simulazione.
-- **Fetta 2 — Correzioni del 1° verdetto del bot sulla PR #401 («Sistema prima» dell'operatore)**: FATTA. Lingua del diretto dichiarata (quella del Telegram del lead, IT/EN, altrimenti italiano — anche per la riga dei 18 anni); §3/§6 dell'handoff coi commit reali; card del diretto «solo nome e cognome»; rimando all'eccezione del diretto nella regola del consenso di `funnel_v2.md`. Simulazione ripubblicata.
-- **Fetta 3 — Correzioni del 2° verdetto del bot sulla PR #401 + merge di main**: FATTA. Riga sul rischio aggiunta all'ultimo passo del diretto (spec + simulazione); descrizione della fase 1 di oggi con la domanda della community; «Fetta 1» al posto di «Fetta unica»; merge di origin/main nel ramo per la PR #398 (chat Voce). Simulazione ripubblicata.
-- **Fetta 4 — Correzioni del 3° verdetto del bot sulla PR #401 (ok dell'operatore alla proposta, 24/11) + 2° merge di main**: FATTA. Conferma dei maggiorenni in testa al messaggio unico del diretto (prima di ogni contenuto commerciale); dichiarato che ai lead del diretto il bot non manda MAI promozione (tutto passa dall'agente in chat; per promozioni future servirà un consenso registrato). Merge di origin/main (PR #399 e #400). Simulazione ripubblicata.
-- **Fetta 5 — Correzioni del 4° verdetto del bot sulla PR #401**: FATTA. «Mai promozione ai lead del diretto» allineato in stato_progetto e nei report; riga del rischio completa anche nel messaggio unico del diretto; base corretta nell'intestazione di diff_sessione. Simulazione ripubblicata.
-- **Fetta 6 — V-1 del 5° verdetto + 3° merge di main (PR #403)**: FATTA. Didascalia dei solleciti distinta per il diretto nella simulazione; review #853-MERGE APPROVATO. Simulazione ripubblicata.
-- Simulazione ripubblicata sulla pagina pubblica claude.ai e PROVATA dal vivo nel browser dopo la ripubblicazione: percorso completo parte dalla lingua; diretto mostra messaggio unico → campo nome con la riga dei 18 anni → reazione calda → CTA; scheda agente con la nota del Pannello blu.
-
-## Anomalie / cose da sapere
-
-- `reports/stato_progetto.md`: aggiornata la voce Funnel (PR #396 mergiata, ritocchi, cosa resta).
-- Riserva ereditata dalla PR #396 (3° verdetto, V-1 COSMETICA): nei log di quella sessione la prima fetta si chiamava «Fetta unica» accanto a «Fetta 2/3» — superata: i report sono stati riscritti per questa sessione.
-- Letta `reports/bacheca.md` prima del giro: nessuna notizia bloccante; niente da aggiungere (toccati solo file del funnel e report canonici).
+## Riserve aperte
+- R-859-1 BASSA: manca un test sul margine di un giorno delle copie cifrate. R-859-2 COSMETICA: `OverflowError` non preso in `_ruota` (non raggiungibile oggi).
+- R-854-2 BASSA: KeepAlive senza tetto, registro senza rotazione, nessun avviso.
+- COSMETICHE #853/#854/#856 (in `reports/stato_progetto.md`).
+- Dalla PR #397: R-848-2 BASSA, R-848-3 BASSA, V-3 BASSA della verifica esterna, cosmetiche #848; R-836-1 COSMETICA. R-852M-1 (voce) e riserve della #401 (funnel) in `reports/stato_progetto.md`.
