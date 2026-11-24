@@ -1429,20 +1429,37 @@ def _persone_registrate(p: Path) -> int:
         return 0
 
 
+def _modelli_pronti() -> set:
+    """Nomi dei modelli pronti di openWakeWord (vuoto se il pacchetto non c'è: allora
+    nessun nome è «pronto» e un nostro modello senza file ripiega su hey_jarvis)."""
+    try:
+        import openwakeword
+        return set(getattr(openwakeword, "MODELS", {}) or {})
+    except Exception:
+        return set()
+
+
 def modello_della_parola(modello: str, radice: Optional[Path] = None) -> str:
     """Cosa passare a openWakeWord: il file .gas_voce/modelli/<modello>.onnx se c'è ed è
-    fidato (modello addestrato da noi); se c'è ma non è fidato, hey_jarvis; altrimenti
-    il nome così com'è (modello pronto).
+    fidato (modello addestrato da noi); se c'è ma non è fidato, hey_jarvis; se non c'è,
+    il nome così com'è quando è un modello pronto, altrimenti hey_jarvis.
     openWakeWord chiama il modello col nome del file senza .onnx, cioè `modello`: le
     previsioni e il verificatore restano sotto lo stesso nome."""
     if not _NOME_MODELLO_SEMPLICE.fullmatch(modello or ""):
         return modello
     p = (radice or _GAS_ROOT) / CARTELLA_MODELLI / ("%s.onnx" % modello)
     try:
-        if not (p.exists() or p.is_symlink()):
-            return modello
+        assente = not (p.exists() or p.is_symlink())
     except OSError:
-        return modello
+        assente = True
+    if assente:
+        # V-4 ve #405: un nostro modello senza file (installa.sh non rieseguito) non è un
+        # modello pronto e openWakeWord si fermerebbe: si ripiega, l'ascolto resta acceso.
+        if modello in _modelli_pronti() or modello == MODELLO_DI_RISERVA:
+            return modello
+        log.warning("modello della parola: %s non c'è in %s: uso %s",
+                    p.name, CARTELLA_MODELLI, MODELLO_DI_RISERVA)
+        return MODELLO_DI_RISERVA
     motivo = _file_fidato(p)
     if motivo:
         # R-854-2: il nome nudo non è un modello pronto e openWakeWord si fermerebbe:

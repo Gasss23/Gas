@@ -1933,11 +1933,12 @@ def _gas_finto(tmp_path, nome="Gas", env="GAS_VOICE_TOKEN=segreto-di-prova\n"):
     return gas, finti, casa
 
 
-def _installa(gas, finti, casa, tmp_path, **extra):
+def _installa(gas, finti, casa, tmp_path, *argomenti, **extra):
     registro = tmp_path / "registro.txt"
     env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(registro),
            **extra}
-    r = subprocess.run(["bash", str(gas / "scripts/voce/installa.sh")], capture_output=True,
+    r = subprocess.run(["bash", str(gas / "scripts/voce/installa.sh"), *argomenti],
+                       capture_output=True,
                        text=True, timeout=60, env=env)
     return r, registro.read_text() if registro.exists() else ""
 
@@ -1956,16 +1957,45 @@ def test_installa_copia_il_modello_italiano_e_lo_sceglie(tmp_path):
     r, _ = _installa(gas, finti, casa, tmp_path)   # seconda volta: non si raddoppia
     assert r.returncode == 0, r.stdout + r.stderr
     assert (gas / ".env").read_text().count("GAS_ASCOLTO_MODELLO") == 1
+    assert (gas / ".env").read_text().count("GAS_ASCOLTO_SOGLIA=0.5") == 1
 
 
-def test_installa_avvisa_che_il_filtro_hey_jarvis_si_spegne(tmp_path):
-    """R-854-1: chi ha già il filtro della voce per hey_jarvis viene avvisato."""
+def test_installa_non_tocca_una_soglia_gia_scelta(tmp_path):
+    """V-1 ve #405: la soglia 0.5 si scrive solo se il .env non ne ha già una; senza il
+    filtro hey_jarvis nessun avviso sul filtro (lacuna #855)."""
+    gas, finti, casa = _gas_finto(
+        tmp_path, env="GAS_VOICE_TOKEN=segreto-di-prova\nGAS_ASCOLTO_SOGLIA=0.6\n")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    testo = (gas / ".env").read_text()
+    assert "GAS_ASCOLTO_SOGLIA=0.6" in testo and "GAS_ASCOLTO_SOGLIA=0.5" not in testo
+    assert "GAS_ASCOLTO_MODELLO=ehi_jarvis_it" in testo
+    assert "filtro della tua voce" not in r.stdout
+
+
+def test_installa_col_filtro_hey_jarvis_cambia_modello_solo_con_italiano(tmp_path):
+    """V-1 bot #405: col filtro della voce per hey_jarvis il modello italiano (che lo
+    spegne) si sceglie solo con --italiano, scelta esplicita dell'operatore."""
     gas, finti, casa = _gas_finto(tmp_path)
     (gas / ".gas_voce" / "verifica").mkdir(parents=True)
     (gas / ".gas_voce/verifica/hey_jarvis_verifier.pkl").write_bytes(b"x")
     r, _ = _installa(gas, finti, casa, tmp_path)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "filtro della tua voce" in r.stdout
+    assert "GAS_ASCOLTO" not in (gas / ".env").read_text()
+    assert "--italiano" in r.stdout
+    assert (gas / ".gas_voce/modelli/ehi_jarvis_it.onnx").exists()
+    r, _ = _installa(gas, finti, casa, tmp_path, "--italiano")
+    assert r.returncode == 0, r.stdout + r.stderr
+    testo = (gas / ".env").read_text()
+    assert "GAS_ASCOLTO_MODELLO=ehi_jarvis_it" in testo and "GAS_ASCOLTO_SOGLIA=0.5" in testo
+    assert "filtro della tua voce" in r.stdout and "GAS_ASCOLTO_SOGLIA=0.5" in r.stdout
+
+
+def test_installa_opzione_sconosciuta_si_ferma(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, _ = _installa(gas, finti, casa, tmp_path, "--boh")
+    assert r.returncode == 1 and "opzione sconosciuta" in r.stderr
+    assert "GAS_ASCOLTO" not in (gas / ".env").read_text()
 
 
 def test_installa_lascia_il_modello_scelto_nel_env(tmp_path):
@@ -3338,6 +3368,10 @@ def test_modello_della_parola_da_file_locale(monkeypatch, tmp_path):
     """GAS_ASCOLTO_MODELLO=<nome>: il file .gas_voce/modelli/<nome>.onnx se c'è ed è
     fidato, altrimenti il nome (modello pronto); mai un percorso preso dall'ambiente."""
     assert a.modello_della_parola("hey_jarvis", tmp_path) == "hey_jarvis"
+    # V-4 ve #405: nostro modello senza file → hey_jarvis; modello pronto → il suo nome
+    monkeypatch.setattr(a, "_modelli_pronti", lambda: {"hey_jarvis", "alexa"})
+    assert a.modello_della_parola("ehi_jarvis_it", tmp_path) == "hey_jarvis"
+    assert a.modello_della_parola("alexa", tmp_path) == "alexa"
     d = tmp_path / ".gas_voce" / "modelli"
     d.mkdir(parents=True, mode=0o700)
     os.chmod(tmp_path / ".gas_voce", 0o700)
@@ -3436,6 +3470,21 @@ def _openwakeword_finto(monkeypatch, rompi=False):
     monkeypatch.setitem(sys.modules, "openwakeword", pacchetto)
     monkeypatch.setitem(sys.modules, "openwakeword.model", modulo)
     monkeypatch.setitem(sys.modules, "numpy", np_finto)
+
+
+def test_rilevatore_passa_a_openwakeword_il_file_fidato(monkeypatch, tmp_path):
+    """V-3 bot #405: col modello da file fidato Model() riceve il percorso del file."""
+    _openwakeword_finto(monkeypatch)
+    monkeypatch.setattr(a, "_GAS_ROOT", tmp_path)
+    d = tmp_path / ".gas_voce" / "modelli"
+    d.mkdir(parents=True, mode=0o700)
+    os.chmod(tmp_path / ".gas_voce", 0o700)
+    f = d / "ehi_jarvis_it.onnx"
+    f.write_bytes(b"onnx")
+    os.chmod(f, 0o600)
+    a.rilevatore_openwakeword("ehi_jarvis_it")
+    assert _ModelFinto.creati == [{"wakeword_models": [str(f)],
+                                   "inference_framework": "onnx"}]
 
 
 def test_rilevatore_carica_il_verificatore(monkeypatch, tmp_path):

@@ -1,6 +1,6 @@
 #!/bin/bash
 # R8 voce H24 — installa in un colpo solo l'ascolto sempre attivo di Gas sul Mac.
-# Uso (dalla cartella di Gas):  bash scripts/voce/installa.sh
+# Uso (dalla cartella di Gas):  bash scripts/voce/installa.sh [--italiano]
 # Spegnere tutto:               bash scripts/voce/spegni.sh   (vedi scripts/voce/LEGGIMI.md)
 #
 # Cosa fa, nell'ordine (si FERMA al primo errore, senza toccare niente dopo):
@@ -8,6 +8,9 @@
 #      se manca GAS_CLAUDE_BIN e `claude` c'è, lo AGGIUNGE in coda al .env;
 #   2. usa .venv (lo crea se manca) e installa requirements.txt + requirements-ascolto.txt;
 #   3. scarica il modello pronto della parola di attivazione (hey_jarvis) di openWakeWord;
+#   3b. copia il modello italiano ehi_jarvis_it in .gas_voce/modelli e, se il .env non sceglie
+#       già un modello, lo sceglie (con GAS_ASCOLTO_SOGLIA=0.5); se c'è il filtro della voce
+#       fatto per hey_jarvis, solo con --italiano;
 #   4. scrive i due plist in ~/Library/LaunchAgents con la cartella vera di Gas;
 #   5. li carica con launchctl (prima toglie le copie vecchie);
 #   6. controllo finale: i due servizi girano e il server voce risponde su 127.0.0.1.
@@ -19,6 +22,15 @@ AGENTI="$HOME/Library/LaunchAgents"
 SERVIZI=(com.gas.voce.server com.gas.ascolto)
 
 stop() { echo "STOP: $*" >&2; exit 1; }
+
+# --italiano: scelta esplicita del modello italiano anche se c'è il filtro hey_jarvis (passo 3b).
+ITALIANO=no
+for arg in "$@"; do
+  case "$arg" in
+    --italiano) ITALIANO=si ;;
+    *) stop "opzione sconosciuta: $arg (l'unica è --italiano)." ;;
+  esac
+done
 
 # V-1/V-2 bot #328: il .env si legge come lo legge Gas (gas._carica_dotenv): vale la PRIMA
 # riga della chiave, spazi tolti intorno a chiave e valore, `export ` davanti ammesso,
@@ -133,20 +145,31 @@ echo "3/6 modello hey_jarvis: OK"
 
 # 3b. modello «ehi jarvis» con accento italiano (clients/voice/modelli/LEGGIMI.md): copiato
 # nella cartella fidata .gas_voce/modelli (700, file 600), l'unica da cui ascolto.py lo carica.
-# Se il .env non sceglie già un modello, si sceglie questo (si torna indietro con
-# GAS_ASCOLTO_MODELLO=hey_jarvis).
+# Si sceglie nel .env (con la soglia 0.5 dei suoi numeri) solo se il .env non sceglie già un
+# modello E (V-1 bot #405) se non c'è il filtro della voce fatto per hey_jarvis, che col
+# modello italiano si spegnerebbe: in quel caso decide l'operatore, con --italiano.
 mkdir -p "$GAS/.gas_voce/modelli"
 chmod 700 "$GAS/.gas_voce" "$GAS/.gas_voce/modelli"
 install -m 600 "$GAS/clients/voice/modelli/ehi_jarvis_it.onnx" "$GAS/.gas_voce/modelli/ehi_jarvis_it.onnx" \
   || stop "non riesco a copiare il modello ehi_jarvis_it in .gas_voce/modelli."
+FILTRO="$GAS/.gas_voce/verifica/hey_jarvis_verifier.pkl"
 if valore_env GAS_ASCOLTO_MODELLO >/dev/null; then
   echo "     GAS_ASCOLTO_MODELLO è già nel .env: lo lascio com'è (il modello italiano è ehi_jarvis_it)."
+elif [ -f "$FILTRO" ] && [ "$ITALIANO" != si ]; then
+  echo "AVVISO: hai il filtro della tua voce, fatto per hey_jarvis: resto su hey_jarvis. Per passare al modello italiano (senza filtro: risponde a chiunque dica «ehi Jarvis») rilancia: bash scripts/voce/installa.sh --italiano"
 else
   printf '\n# Aggiunto da scripts/voce/installa.sh: parola di attivazione con accento italiano.\nGAS_ASCOLTO_MODELLO=ehi_jarvis_it\n' >> "$GAS/.env"
   echo "     GAS_ASCOLTO_MODELLO=ehi_jarvis_it scritto nel .env."
-  # R-854-1: il filtro della tua voce è legato a hey_jarvis e col modello italiano si spegne.
-  if [ -f "$GAS/.gas_voce/verifica/hey_jarvis_verifier.pkl" ]; then
-    echo "AVVISO: col modello italiano il filtro della tua voce (fatto per hey_jarvis) resta spento: Jarvis risponde a chiunque dica «ehi Jarvis». Per riaverlo: GAS_ASCOLTO_MODELLO=hey_jarvis nel .env."
+  # V-1 ve #405: i numeri del modello italiano sono misurati a soglia 0,5 (quella
+  # predefinita è 0,7, tarata su hey_jarvis). Una soglia già scelta resta com'è.
+  if valore_env GAS_ASCOLTO_SOGLIA >/dev/null; then
+    echo "     GAS_ASCOLTO_SOGLIA è già nel .env: la lascio (per il modello italiano è misurata 0.5)."
+  else
+    printf 'GAS_ASCOLTO_SOGLIA=0.5\n' >> "$GAS/.env"
+    echo "     GAS_ASCOLTO_SOGLIA=0.5 scritto nel .env (soglia misurata per il modello italiano)."
+  fi
+  if [ -f "$FILTRO" ]; then
+    echo "AVVISO: col modello italiano il filtro della tua voce (fatto per hey_jarvis) resta spento: Jarvis risponde a chiunque dica «ehi Jarvis». Per riaverlo: nel .env GAS_ASCOLTO_MODELLO=hey_jarvis e togli GAS_ASCOLTO_SOGLIA=0.5."
   fi
 fi
 echo "3b/6 modello italiano ehi_jarvis_it: OK"

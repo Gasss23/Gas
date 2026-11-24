@@ -57,7 +57,5 @@ Flussi A–D: simulazione del 23/11. G: 160 chiamate di voci tenute fuori. H: 5,
   - riccardo (M-AILABS): licenza «vedi URL», di tipo BSD.
 - **Strumenti usati solo per generare i dati, non distribuiti**: piper-tts 1.8 GPL-3.0, espeak-ng GPL-3.0. openWakeWord: codice Apache-2.0, modelli pronti CC BY-NC-SA.
 
-## Per usarlo (dopo aver applicato `ascolto_modello_da_file.diff`, NON applicato al repo)
-`mkdir -m 700 -p ~/Gas/.gas_voce/modelli && cp ehi_jarvis_it.onnx ~/Gas/.gas_voce/modelli/ && chmod 600 ~/Gas/.gas_voce/modelli/ehi_jarvis_it.onnx`, poi nel `.env`: `GAS_ASCOLTO_MODELLO=ehi_jarvis_it` e `GAS_ASCOLTO_SOGLIA=0.5`.
-
-Il diff aggiunge `modello_della_parola()`: prende solo il file `.gas_voce/modelli/<nome>.onnx`, con nome semplice e file fidato, come il filtro; niente percorsi dall'ambiente; altrimenti usa il nome del modello pronto. Aggiunge anche un test. Su una copia del repo: 385 test di `tests/test_unit_voce_ascolto.py` passati.
+## Per usarlo
+Il caricamento da file è nel repo: `GAS_ASCOLTO_MODELLO` in `clients/voice/ascolto.py`. Modello, soglia e istruzioni sono in `clients/voice/modelli/LEGGIMI.md`; l'installazione la fa `bash scripts/voce/installa.sh`, con `--italiano` se c'è il filtro della voce di hey_jarvis.
