@@ -2,8 +2,11 @@
 
 ## DECISIONI UMANE RICHIESTE
 1. Merge della PR (verdetto del revisore APPROVATO CON RISERVE: serve il «mergia» dell'operatore, salvo verdetto pulito del bot).
-2. R-854-1: col modello italiano il filtro della voce dell'operatore (fatto per hey_jarvis) resta spento. `installa.sh` sceglie il modello italiano e avvisa. Per tornare indietro: `GAS_ASCOLTO_MODELLO=hey_jarvis` nel `.env`.
-3. Una prova sul Mac con la voce vera dopo `git pull` e `bash scripts/voce/installa.sh`.
+2. R-854-1, scelta tra due opzioni:
+   - modello italiano: prende molte più chiamate, ma risponde a chiunque dica «ehi Jarvis» e fa più falsi sui quasi-omofoni (flusso B 49,8/h contro 33,9). Si sceglie con `bash scripts/voce/installa.sh --italiano`;
+   - hey_jarvis col filtro della voce: è quello che resta se si lancia senza `--italiano`.
+3. Licenza del modello CC BY-NC-SA (uso personale) in un repo pubblico: è la stessa di hey_jarvis, ma la decisione resta dell'operatore (V-3 della verifica esterna #405).
+4. Prova sul Mac con la voce vera.
 
 ## Esito
 - **Fetta 1 — Addestramento del modello** (agente in background, solo scratchpad): FATTA. Modello `ehi_jarvis_it.onnx` (sha256 88430a55…). Rete e ricetta di openWakeWord, riscritte in JAX perché download.pytorch.org è bloccato. Esportato in ONNX: stessi punteggi del modello JAX.
@@ -35,9 +38,17 @@
   | «ehi jarvis, accendi la luce» | 1,00 | 0,49 |
   | frase neutra | 0,00 | 0,00 |
 
-- **Fetta 3 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
+- **Fetta 3 — Riserve di verifica esterna e bot su #405**: FATTA (review #856/#857).
+  - V-1 ve: `GAS_ASCOLTO_SOGLIA=0.5` scritta insieme al modello.
+  - V-4 ve: ripiego su hey_jarvis anche col file mancante.
+  - V-1 bot: col filtro hey_jarvis il modello si sceglie solo con `--italiano`.
+  - V-3 bot: test del collegamento rilevatore→file.
+  - V-2 ve, V-2 e V-4 bot: limiti e documenti riscritti.
+  - R-856-1: chiusa.
+- **Fetta 4 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
 
 ## Anomalie
-- Suite completa: 35 FAIL, tutti in `tests/test_unit_web_browser.py` (34) e `tests/test_unit_voice_server.py` (1). Causa: bwrap non c'è in questo container. Su origin/main `tests/test_unit_web_browser.py` fallisce allo stesso modo; il test di `tests/test_unit_voice_server.py` non l'ho riprovato su main. I file della modifica non c'entrano. `tests/test_unit_voce_ascolto.py`: 388 passed.
+- Suite completa: 35 FAIL, tutti in `tests/test_unit_web_browser.py` (34) e `tests/test_unit_voice_server.py` (1). Causa: bwrap non c'è in questo container. Su origin/main `tests/test_unit_web_browser.py` fallisce allo stesso modo; il test di `tests/test_unit_voice_server.py` non l'ho riprovato su main. I file della modifica non c'entrano. `tests/test_unit_voce_ascolto.py`: 391 passed.
 - La prima review è stata interrotta dal limite d'uso ed è stata ripresa dopo il reset.
 - L'agente di addestramento ha aggiunto all'ambiente cloud «Gas» l'host `us.aws.cdn.hf.co` (CDN di Hugging Face), con l'approvazione dell'operatore.
+- Il primo handoff (21a68a4f) è uscito rovinato: la shell ha interpretato i backtick e ha lanciato `git pull` (già aggiornato) e `installa.sh` (fermato da sé: «solo per il Mac»). Nessun danno; testo corretto in d63cb6f5.

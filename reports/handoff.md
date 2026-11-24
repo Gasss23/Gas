@@ -1,48 +1,57 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-24 — Voce: modello «ehi jarvis» con accento italiano (ehi_jarvis_it)
+**Sessione:** 2026-11-24 — Voce: modello «ehi jarvis» con accento italiano (ehi_jarvis_it), PR #405
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #405 (https://github.com/Gasss23/Gas/pull/405). Il revisore ha dato APPROVATO CON RISERVE: serve il «mergia» dell'operatore, salvo verdetto pulito del bot.
-2. R-854-1: col modello italiano il filtro della voce dell'operatore, legato a hey_jarvis, resta spento. `installa.sh` avvisa. Per tornare indietro: `GAS_ASCOLTO_MODELLO=hey_jarvis` nel `.env`.
-3. Prova sul Mac con la voce vera, dopo `git pull` e `bash scripts/voce/installa.sh`.
+1. Merge della PR #405 (https://github.com/Gasss23/Gas/pull/405). Revisore, verifica esterna e bot hanno dato APPROVATO CON RISERVE / NON approvata (finding corretti in 908f430b): serve il verdetto del bot sul nuovo head e il «mergia» dell'operatore.
+2. R-854-1, scelta dell'operatore:
+   - modello italiano: più chiamate prese, ma risponde a chiunque dica «ehi Jarvis» e fa più falsi sui quasi-omofoni (flusso B 49,8/h contro 33,9). Si sceglie con `bash scripts/voce/installa.sh --italiano`;
+   - hey_jarvis col filtro della voce: resta tale lanciando `installa.sh` senza opzione.
+3. Licenza del modello CC BY-NC-SA (uso personale) in un repo pubblico (V-3 della verifica esterna). È la stessa di hey_jarvis; la decisione è dell'operatore.
+4. Prova sul Mac con la voce vera.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Addestramento del modello **: FATTA. Lavoro nello scratchpad; nel repo vanno il modello, gli script e i risultati.
-  Risultati della simulazione (1 fase, prese a vicino / −6 / −12 / −20 dB):
+- **Fetta 1 — Addestramento del modello `ehi_jarvis_it`**: FATTA.
+  - Lavoro nello scratchpad; nel repo vanno il modello, gli script e i risultati.
+  - Simulazione a soglia 0,5, 1 fase, prese a vicino / −6 / −12 / −20 dB:
 
-  | | voci della simulazione | voci mai viste | falsi/ora, parlato italiano | falsi/ora, audio generico |
-  |---|---|---|---|---|
-  | ehi_jarvis_it | 100 / 100 / 87 / 47% | 90 / 75 / 70 / 58% | 0,35 | 0 |
-  | hey_jarvis | 23 / 33 / 3 / 0% | 50 / 40 / 40 / 20% | 1,06 | 0,47 |
+    | | voci della simulazione | voci mai viste | falsi/ora, parlato letto | falsi/ora, audio generico | falsi/ora, flusso B con quasi-omofoni |
+    |---|---|---|---|---|---|
+    | ehi_jarvis_it | 100 / 100 / 87 / 47% | 90 / 75 / 70 / 58% | 0,35 | 0 | 49,8 |
+    | hey_jarvis | 23 / 33 / 3 / 0% | 50 / 40 / 40 / 20% | 1,06 | 0,47 | 33,9 |
 
 - **Fetta 2 — Integrazione**: FATTA.
-  - Modello da file fidato in `clients/voice/ascolto.py`, con ripiego su hey_jarvis.
+  - Modello da file fidato in `clients/voice/ascolto.py`.
   - Passo 3b in `scripts/voce/installa.sh`.
-  - Nuovi test.
   - Prova con openWakeWord vero: 1,00 su «ehi jarvis» (hey_jarvis 0,49), 0,00 su una frase neutra.
-- **Fetta 3 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
+- **Fetta 3 — Riserve di verifica esterna e bot su #405**: FATTA (908f430b, review #856/#857).
+  - Soglia 0,5 scritta insieme al modello.
+  - Ripiego su hey_jarvis col file assente.
+  - Opzione `--italiano` quando c'è il filtro hey_jarvis.
+  - Test del collegamento rilevatore→file.
+  - Documenti con i limiti.
+- **Fetta 4 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md                                                             |   4 +++
- clients/voice/ascolto.py                                                                       |  37 ++++++++++++++++++--
- clients/voice/modelli/LEGGIMI.md                                                               |  26 ++++++++++++++
+ .claude/agents/memoria_revisore.md                                                             |   7 ++++
+ clients/voice/ascolto.py                                                                       |  54 ++++++++++++++++++++++++++--
+ clients/voice/modelli/LEGGIMI.md                                                               |  27 ++++++++++++++
  clients/voice/modelli/ehi_jarvis_it.onnx                                                       | Bin 0 -> 856178 bytes
  reports/diff_sessione.md                                                                       |  26 ++++++--------
  reports/handoff.md | n/d
  reports/stato_progetto.md                                                                      |   3 +-
- reports/ultimo_report.md                                                                       |  70 ++++++++++++++++++++++---------------
- reports/voce_simulazione_2026-11-23/modello_italiano/LEGGIMI.md                                |  63 +++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md                                                                       |  81 +++++++++++++++++++++++++++---------------
+ reports/voce_simulazione_2026-11-23/modello_italiano/LEGGIMI.md                                |  61 ++++++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/ehi_jarvis_it.addestramento.json          | 574 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_ens67_f1.json                 |   1 +
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f1.json          |   1 +
@@ -76,8 +85,8 @@
  reports/voce_simulazione_2026-11-23/modello_italiano/script/testi.py                           | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/script/valuta.py                          | 139 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  scripts/voce/LEGGIMI.md                                                                        |   2 +-
- scripts/voce/installa.sh                                                                       |  20 +++++++++++
- tests/test_unit_voce_ascolto.py                                                                |  66 ++++++++++++++++++++++++++++++++---
+ scripts/voce/installa.sh                                                                       |  45 +++++++++++++++++++++++-
+ tests/test_unit_voce_ascolto.py                                                                | 119 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
 ```
 
 NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre lo si scrive; la riga di totale è tolta.
@@ -85,6 +94,10 @@ NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+908f430b fix(voce): installa.sh sceglie il modello italiano col filtro solo con --italiano; soglia 0.5; ripiego col file assente
+dcee5f24 chore(revisore): memoria review #857 — APPROVATO CON RISERVE
+c0c30f2f chore(revisore): memoria review #856 — APPROVATO CON RISERVE
+d63cb6f5 docs(fine-task): handoff ripulito (testo perso nella shell)
 21a68a4f docs(fine-task): handoff modello ehi_jarvis_it, review #854/#855
 d6a980a5 feat(voce): modello «ehi jarvis» con accento italiano (ehi_jarvis_it)
 b650558a chore(revisore): memoria review #855 — APPROVATO CON RISERVE
@@ -95,7 +108,11 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Il commit d6a980a5 tocca  (perimetro). Sotto ci sono i due verdetti INTEGRALI: #854 sul primo diff e #855 sul delta con le correzioni R-854-1/R-854-2.
+I commit d6a980a5 e 908f430b toccano `tests/test_unit_voce_ascolto.py` (perimetro). Sotto ci sono i quattro verdetti INTEGRALI, in ordine:
+- #854: primo diff;
+- #855: correzioni R-854-1 e R-854-2;
+- #856: correzioni della verifica esterna;
+- #857: delta finale, con le correzioni del bot.
 
 ```
 ## VERDETTO: APPROVATO CON RISERVE
@@ -180,35 +197,118 @@ Review #855: ho ricontrollato solo il delta rispetto alla #854. L'indice è come
 Il commit è consentito.
 ```
 
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #856: ho ricontrollato solo il delta staged dopo la verifica esterna della PR #405 (4 file, +53/−9). Rieseguita tutta tests/test_unit_voce_ascolto.py: 389 passati. Non ho usato git stash; l'indice è intatto.
+
+**Elementi esaminati**
+
+1. `clients/voice/ascolto.py:1432` — `_modelli_pronti()` legge i nomi da `openwakeword.MODELS`. Ho controllato nel pacchetto installato: le chiavi sono `alexa`, `hey_mycroft`, `hey_jarvis`, `hey_rhasspy`…. Restituisce un insieme vuoto se c'è un'eccezione.
+   - Rischio: insieme vuoto che fa ripiegare anche un modello pronto.
+   - Esito: ok. `rilevatore_openwakeword` importa `openwakeword.model` prima di chiamare `modello_della_parola`, quindi a runtime il pacchetto c'è sempre. Nota cosmetica: il tipo di ritorno è `set` nudo invece di `Set[str]`.
+2. `clients/voice/ascolto.py:1458` — se il file manca e il nome non è un modello pronto (né `hey_jarvis`), ripiega su `hey_jarvis` con un warning; un modello pronto passa col suo nome.
+   - Rischio: un nome nudo che openWakeWord non trova e che ferma l'ascolto.
+   - Esito: ok, V-4 della verifica esterna è chiusa. L'unico effetto collaterale è voluto: un nome parziale come `jarvis`, che prima openWakeWord accettava confrontando un pezzo del nome, ora finisce su hey_jarvis, che è comunque il modello giusto.
+3. `scripts/voce/installa.sh:149` — `GAS_ASCOLTO_SOGLIA=0.5` si scrive solo nel ramo che scrive anche `ehi_jarvis_it`, e solo se `valore_env` non trova già una soglia. Una chiave presente anche vuota resta intatta.
+   - Esito: ok, V-1 della verifica esterna è chiusa ed è coerente con `clients/voice/modelli/LEGGIMI.md:8`. Una seconda esecuzione non scrive di nuovo, perché la chiave del modello c'è già.
+4. `tests/test_unit_voce_ascolto.py:1962` — test nuovo: una soglia già scelta (0.6) resta intatta, il modello viene scritto e l'avviso sul filtro non compare se il file del filtro manca.
+   - Esito: ok, chiude la lacuna di copertura segnalata nella #855.
+5. `tests/test_unit_voce_ascolto.py:3351` — il ripiego col file assente è provato con `_modelli_pronti` finto (`ehi_jarvis_it` → `hey_jarvis`, `alexa` → `alexa`).
+   - Esito: ok.
+
+**Riserve (da tracciare in stato_progetto.md)**
+
+- **R-856-1 BASSA** (`scripts/voce/installa.sh:157`): l'AVVISO dice di tornare indietro con `GAS_ASCOLTO_MODELLO=hey_jarvis`, ma non nomina la `GAS_ASCOLTO_SOGLIA=0.5` scritta insieme. Chi torna a hey_jarvis senza filtro resta a 0,5 invece di 0,7, quindi con più attivazioni per sbaglio. Con il filtro attivo la soglia che conta è un'altra (`GAS_ASCOLTO_SOGLIA_VERIFICA`), quindi l'effetto c'è solo senza filtro. Correzione: aggiungere all'avviso «e togli GAS_ASCOLTO_SOGLIA=0.5», e fare lo stesso nella riga «tornare indietro» del LEGGIMI.
+- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata.
+- **R-855-1 COSMETICA**, ancora aperta: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto e non quello usato.
+
+**Rischi esclusi (non verificati)**
+
+- La prova con openWakeWord vero (1,00 contro 0,49 di hey_jarvis): non l'ho ripetuta, mi fido della tua.
+- Il comportamento sul Mac: in questo container non si può riprodurre.
+- Il resto della PR, fuori da questo delta: era già coperto dalle review #854 e #855.
+
+**Memoria**: aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md la riga #856 e una lezione (quando l'installer scrive due chiavi legate nel .env, le istruzioni per tornare indietro devono nominarle entrambe). Già committate da sole (c0c30f2f).
+
+Il commit è consentito.
+```
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #857: ho riletto tutto il `git diff --cached` (6 file, +114/−26). Rieseguita tests/test_unit_voce_ascolto.py: 391 passati. Non ho usato git stash; l'indice è intatto.
+
+**Elementi esaminati**
+
+1. `scripts/voce/installa.sh:28` — lettura delle opzioni: `--italiano` accende la scelta, qualunque altra opzione chiama `stop`.
+   - Rischio: uno stop arrivato dopo aver già scritto qualcosa.
+   - Esito: ok. Il ciclo gira prima del passo 1, quindi niente è stato ancora toccato. `tests/test_unit_voce_ascolto.py:1994` controlla l'uscita con 1 e il `.env` senza `GAS_ASCOLTO`. Nessun altro script chiama installa.sh con opzioni.
+2. `scripts/voce/installa.sh:158` — se esiste il filtro della voce per hey_jarvis e manca `--italiano`, il `.env` non viene toccato e lo script spiega come scegliere. Il file del modello viene copiato lo stesso.
+   - Rischio: filtro spento in silenzio (V-1 MEDIA del bot).
+   - Esito: ok, V-1 è chiusa. La scelta passa all'operatore. `tests/test_unit_voce_ascolto.py:1976` prova prima la versione senza opzione (nessuna scrittura) e poi quella con `--italiano` (modello, soglia e avviso scritti).
+3. `scripts/voce/installa.sh:172` — l'avviso spiega di tornare a `GAS_ASCOLTO_MODELLO=hey_jarvis` e di togliere anche `GAS_ASCOLTO_SOGLIA=0.5`.
+   - Esito: ok, R-856-1 è chiusa. Lo stesso testo è in `clients/voice/modelli/LEGGIMI.md`.
+4. `tests/test_unit_voce_ascolto.py:3475` — test nuovo: con openWakeWord finto e il file fidato, `Model()` riceve `wakeword_models=[str(f)]`.
+   - Esito: ok, V-3 è chiusa. È il collegamento che mancava tra `rilevatore_openwakeword` e il file.
+5. `clients/voice/ascolto.py:1458` — ripiego su hey_jarvis se il file manca e il nome non è un modello pronto (`_modelli_pronti` in `clients/voice/ascolto.py:1432`). Era già esaminato nella #856; nel diff contro HEAD non è cambiato.
+   - Esito: ok.
+
+**Riserve (da tracciare in stato_progetto.md)**
+
+- **R-857-1 COSMETICA**: con `GAS_ASCOLTO_MODELLO` già nel `.env`, `--italiano` non cambia niente. Il messaggio dice «lo lascio com'è», ma non dice che l'opzione è stata ignorata.
+- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata.
+- **R-855-1 COSMETICA**, ancora aperta: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto e non quello usato.
+- **Numeri peggiori** (V-2 del bot): il LEGGIMI ora dichiara più falsi di hey_jarvis sui flussi pieni di parole simili (49,8 contro 33,9 all'ora) e più chiamate prese da altre voci (75% contro 40%). È un compromesso dichiarato, non un difetto del codice. La scelta resta dell'operatore, ed è il motivo per cui `--italiano` è giusto.
+
+**Rischi esclusi (non verificati)**
+
+- Il comportamento sul Mac (installer vero, voce dell'operatore): in questo container non si può riprodurre.
+- La correttezza dei numeri riscritti nei LEGGIMI: non li ho ricalcolati dai file grezzi in `reports/voce_simulazione_2026-11-23/modello_italiano/ris/`. Ho controllato solo che i documenti siano coerenti tra loro.
+- I fallimenti di tests/test_unit_web_browser.py: fuori dal diff e, secondo te, identici su main.
+
+**Memoria**: aggiunta la riga #857 in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata da sola (dcee5f24).
+
+Il commit è consentito.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_voce_ascolto.py`: 384 → 388 passed (4 test nuovi; 3 test esistenti adattati).
-- Suite completa su questo container: 35 failed, 4285 passed, 2 skipped (riepilogo reale: «35 failed, 4285 passed, 2 skipped in 579.99s», prima delle correzioni R-854).
-  - I FAIL sono fuori scope: 34 in `tests/test_unit_web_browser.py` e 1 in `tests/test_unit_voice_server.py`, per bwrap assente nel container (`FileNotFoundError: ... 'bwrap'`).
-  - Su origin/main `tests/test_unit_web_browser.py` fallisce allo stesso modo (verificato con -x). Il test di `tests/test_unit_voice_server.py` non l'ho riprovato su main.
-  - Nessuno dei due file è nel diff.
+- `tests/test_unit_voce_ascolto.py`: 384 → 391 passed (7 test nuovi; 3 test esistenti adattati).
+- Suite completa su questo container, prima delle correzioni: 35 failed, 4285 passed, 2 skipped. Riepilogo reale: «35 failed, 4285 passed, 2 skipped in 579.99s».
+- I FAIL sono fuori scope:
+  - 34 in `tests/test_unit_web_browser.py` e 1 in `tests/test_unit_voice_server.py`;
+  - causa: bwrap assente nel container (`FileNotFoundError: ... 'bwrap'`);
+  - su origin/main `tests/test_unit_web_browser.py` fallisce allo stesso modo; il test di `tests/test_unit_voice_server.py` non l'ho riprovato su main;
+  - nessuno dei due file è nel diff.
 
 ## §6 STATO CI
 
-Output reale delle ultime 3 run (via API, alla scrittura):
+Output reale (API, run del branch) alla scrittura:
 
 ```
-in_progress		Voce: «ehi Jarvis» con accento italiano (modello ehi_jarvis_it)	verifica-bot	feat/voce-modello-italiano	pull_request_target	45513021640	5s	2026-11-24T23:48:26Z
-in_progress		feat(voce): modello «ehi jarvis» con accento italiano (ehi_jarvis_it)	CI	feat/voce-modello-italiano	push	45513013196	8s	2026-11-24T23:48:23Z
-completed	success	Merge pull request #404 from Gasss23/claude/nifty-galileo-3k7kbm	CI	main	push	45511193577	11m54s	2026-11-24T23:35:00Z
+completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45513186908	d63cb6f5	2026-11-24T23:49:40Z
+completed	skipped	verifica-bot	feat/voce-modello-italiano	pull_request_target	45513172656	d63cb6f5	2026-11-24T23:49:34Z
+in_progress		CI	feat/voce-modello-italiano	push	45513166119	d63cb6f5	2026-11-24T23:49:31Z
+completed	skipped	verifica-bot	feat/voce-modello-italiano	pull_request_target	45513100353	21a68a4f	2026-11-24T23:49:01Z
 ```
 
 Mappatura commit→run:
-- d6a980a5: run CI 45513013196 (push), in corso alla scrittura.
-- 5291bca4 e b650558a: pushati insieme a d6a980a5, quindi nessuna run su questi SHA; il loro contenuto è nell'albero testato.
-- 21a68a4f (primo commit di fine-task, con l'handoff rovinato dalla shell e corretto in questo commit): run CI partita col suo push; esito non ancora disponibile alla scrittura dell'handoff.
+- d6a980a5: run CI propria del push.
+- 21a68a4f: run propria.
+- d63cb6f5: run CI propria; unit-suite in corso al momento della verifica esterna; verifica-bot failure (V-1 MEDIA, corretta in 908f430b).
+- 5291bca4, b650558a, c0c30f2f, dcee5f24, 908f430b: nessuna run su questi SHA (pushati insieme ad altri commit, o non ancora pushati); il loro contenuto è nell'albero testato dal commit di testa.
 - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-854-1: decisione dell'operatore (modello italiano senza filtro della voce). Avviso aggiunto in `installa.sh`.
-- R-854-2: CHIUSA con il ripiego su hey_jarvis (review #855).
+- R-854-1: decisione dell'operatore (modello italiano senza filtro o hey_jarvis col filtro), ora esplicita con `--italiano`.
+- V-3 della verifica esterna: licenza CC BY-NC-SA, decisione dell'operatore.
 - R-854-3 BASSA: interruzione col modello nuovo non misurata.
 - R-855-1 COSMETICA: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto.
-- Lacuna di copertura BASSA (#855): manca il test «nessun avviso» senza filtro.
+- R-857-1 COSMETICA: `--italiano` ignorato in silenzio se il modello è già scelto nel `.env`.
+- Chiuse in questa sessione:
+  - R-854-2, R-856-1;
+  - verifica esterna #405: V-1, V-2 (documenti), V-4, V-5 (test «nessun avviso»), V-6 (handoff riscritto);
+  - bot #405: V-1, V-2, V-3, V-4.
 - Riserve delle altre chat: in `reports/stato_progetto.md`, non toccate qui.
