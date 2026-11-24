@@ -120,6 +120,10 @@ GIRO_OCCUPATO = "giro_occupato"  # valore di `interrotto` quando il lock è già
 MAX_AVVISI_TELEGRAM = 5          # avvisi riportati nel messaggio del mattino
 MAX_AVVISO_CHARS = 200           # lunghezza di ciascun avviso nel messaggio
 GIORNI_LEAD_FERMO = 7            # lead attivo senza aggiornamenti da tanti giorni = fermo
+STATO_LAVORI = "stato_lavori.json"  # R7 fetta 3: stato dei lavori ricorrenti
+KO_DI_FILA_PAUSA = 3             # ko di fila dopo i quali un lavoro va «da non ritentare»
+GIORNI_PAUSA = 7                 # giorni di pausa di un lavoro «da non ritentare»
+STATI_LAVORO = ("fatto", "in_sospeso", "fallito", "da_non_ritentare")
 _NOME_RE = re.compile(r"[a-z0-9_-]{1,40}")
 _NEGATA = "Operazione negata"
 _IN_ATTESA = "Azione in attesa di approvazione umana"  # gas.py _parcheggia_e_notifica
@@ -344,7 +348,8 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
 
 
 def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
-                       avvisi: List[str], stato: Optional[Dict[str, Any]] = None) -> str:
+                       avvisi: List[str], stato: Optional[Dict[str, Any]] = None,
+                       lavori: Optional[List[str]] = None) -> str:
     ok = sum(1 for e in esiti if e["esito"] == "ok")
     righe = [f"# Giro notturno di Gas — {inizio}", "",
              f"Catalogo: `{catalogo}` — compiti eseguiti: {len(esiti)}, ok: {ok}, "
@@ -354,6 +359,8 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
         righe += ["## Stato (calcolato dal kernel)", ""] + [f"- {r}" for r in righe_stato] + [""]
     if avvisi:
         righe += ["## Avvisi", ""] + [f"- {a}" for a in avvisi] + [""]
+    if lavori:  # R7 fetta 3
+        righe += ["## Lavori ricorrenti (stato)", ""] + [f"- {r}" for r in lavori] + [""]
     for e in esiti:
         ripreso = " — ripreso dopo un'interruzione" if e.get("ripreso") else ""  # R-406-3
         righe += [f"## {e['nome']} — {e['esito'].upper()} "
@@ -810,6 +817,176 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
     return altri + ripresi + in_coda, saltati
 
 
+def _impronta(prompt: str) -> str:
+    """R7 fetta 3: impronta del prompt; se l'operatore lo cambia, la pausa decade."""
+    import hashlib
+    return hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
+
+
+def _leggi_stato_lavori(notte_dir: Path) -> Dict[str, Dict[str, Any]]:
+    """R7 fetta 3: lo stato dei lavori ricorrenti, {nome: {stato, ultimo, ko_di_fila,
+    fino_a, impronta}}. Mai eccezioni: assente → {}; illeggibile o rovinato → {} con
+    avviso nel log (un registro rotto non ferma il giro: al peggio si ritenta)."""
+    try:
+        dati = json.loads((notte_dir / STATO_LAVORI).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except Exception as e:
+        logging.warning("notte: %s illeggibile (%s): stato dei lavori azzerato", STATO_LAVORI, e)
+        return {}
+    if not isinstance(dati, dict):
+        return {}
+    pulito: Dict[str, Dict[str, Any]] = {}
+    for nome, v in dati.items():
+        if not (isinstance(nome, str) and _NOME_RE.fullmatch(nome) and isinstance(v, dict)
+                and v.get("stato") in STATI_LAVORO):
+            continue
+        ko = v.get("ko_di_fila")
+        fino = v.get("fino_a")
+        pulito[nome] = {
+            "stato": v["stato"],
+            "ultimo": str(v.get("ultimo", ""))[:40],
+            "ko_di_fila": ko if type(ko) is int and 0 <= ko <= 1000 else 0,
+            # review #839-F3 R-839-1: solo date plausibili (oltre la pausa massima da
+            # adesso → 0, la pausa non vale): una data enorme non arriva a fromtimestamp
+            "fino_a": (float(fino) if isinstance(fino, (int, float)) and not isinstance(fino, bool)
+                       and math.isfinite(fino)
+                       and 0 <= fino <= time.time() + GIORNI_PAUSA * 86400 + 60 else 0.0),
+            "impronta": str(v.get("impronta", ""))[:16],
+        }
+        if v.get("esterno") is True:
+            pulito[nome]["esterno"] = True
+        est = v.get("esterni_di_fila")
+        if type(est) is int and 0 < est <= 1000:
+            pulito[nome]["esterni_di_fila"] = est
+    return pulito
+
+
+def _scrivi_stato_lavori(notte_dir: Path, lavori: Dict[str, Dict[str, Any]]) -> None:
+    """Scrittura atomica; mai eccezioni (avviso nel log)."""
+    try:
+        _scrivi_atomico(notte_dir / STATO_LAVORI, json.dumps(lavori, ensure_ascii=False))
+    except Exception as e:
+        logging.warning("notte: %s non scritto (%s)", STATO_LAVORI, e)
+
+
+def _in_pausa(c: Dict[str, Any], lavori: Dict[str, Dict[str, Any]], adesso: float) -> bool:
+    """Un lavoro «da non ritentare» resta fermo fino a `fino_a`, salvo prompt cambiato.
+    Una data oltre GIORNI_PAUSA da adesso (orologio portato indietro, file alterato) non
+    vale: il lavoro si ritenta invece di restare fermo per sempre."""
+    info = lavori.get(c["nome"])
+    return bool(info and info["stato"] == "da_non_ritentare"
+                and info["impronta"] == _impronta(c["prompt"])
+                and adesso < info["fino_a"] <= adesso + GIORNI_PAUSA * 86400 + 60)
+
+
+def _aggiorna_lavoro(lavori: Dict[str, Dict[str, Any]], c: Dict[str, Any],
+                     esito: Dict[str, Any], adesso: float) -> None:
+    """R7 fetta 3: ok senza firme in sospeso → «fatto»; ok con azioni in attesa della
+    firma → «in_sospeso»; ko → «fallito», e dopo KO_DI_FILA_PAUSA ko di fila
+    «da_non_ritentare» per GIORNI_PAUSA giorni (avviso nel riepilogo)."""
+    prima = lavori.get(c["nome"], {})
+    impronta = _impronta(c["prompt"])
+    ko_prima = prima.get("ko_di_fila", 0) if prima.get("impronta") == impronta else 0
+    voce: Dict[str, Any] = {"ultimo": _ora_locale(), "impronta": impronta, "fino_a": 0.0}
+    if esito.get("esito") != "ok" and _ko_esterno(esito):
+        # verifica esterna #399 V-1: provider giù, budget o cervello forte fermo non
+        # dicono niente del lavoro: «fallito», ma il conto dei ko di fila non cambia
+        # (tre notti di guasto non mettono in pausa tutti i lavori)
+        esterni = (prima.get("esterni_di_fila", 0) if prima.get("impronta") == impronta else 0) + 1
+        voce.update(stato="fallito", ko_di_fila=ko_prima, esterno=True, esterni_di_fila=esterni)
+        if (prima.get("stato") == "da_non_ritentare" and prima.get("impronta") == impronta
+                and prima.get("fino_a", 0) > adesso):
+            # R-843-1: un guasto esterno durante la pausa (rilancio a mano) non la toglie;
+            # R-845R7-1: controllato PRIMA della soglia, così vale anche per una pausa nata
+            # da guasti esterni (niente pausa allungata né avviso ripetuto)
+            voce.update(stato="da_non_ritentare", fino_a=prima["fino_a"])
+        elif esterni >= ESTERNI_DI_FILA_PAUSA:  # verifica esterna #399 (3b188028) V-1
+            voce.update(stato="da_non_ritentare", fino_a=adesso + GIORNI_PAUSA * 86400)
+    elif esito.get("esito") == "ok":
+        voce.update(stato="in_sospeso" if esito.get("in_attesa") else "fatto", ko_di_fila=0)
+    else:
+        ko = ko_prima + 1
+        voce["ko_di_fila"] = ko
+        if ko >= KO_DI_FILA_PAUSA:
+            voce.update(stato="da_non_ritentare", fino_a=adesso + GIORNI_PAUSA * 86400)
+        else:
+            voce["stato"] = "fallito"
+    lavori[c["nome"]] = voce
+
+
+def _giorno(ts: float) -> str:
+    """gg/mm di una data; mai eccezioni (review #839-F3 R-839-1)."""
+    try:
+        return datetime.fromtimestamp(ts).strftime("%d/%m")
+    except (OverflowError, OSError, ValueError):
+        return "?"
+
+
+# Inizi dei testi d'errore del kernel (gas.py run_turn) che vengono da fuori del lavoro.
+_ERRORI_ESTERNI = ("Pipeline esausta", "Budget giornaliero esaurito", "Cervello forte fermo",
+                   "Questa richiesta contiene dati di clienti",
+                   # review #844-MERGE R-844M-1: «Sempre Opus» (GAS_SOLO_OPUS, PR #397)
+                   "Rispondo solo con Claude Opus")
+# verifica esterna #399 (3b188028) V-1: un guasto «esterno» può dipendere dal prompt (ogni
+# notte uguale): dopo tanti di fila il lavoro va in pausa lo stesso, con lo stesso avviso
+ESTERNI_DI_FILA_PAUSA = 14
+
+
+# Bot #399 (3b188028) V-1: «Pipeline esausta» (e gli altri errori col dettaglio dei motivi)
+# copre anche motivi che nascono dal lavoro stesso (gas.py run_turn: tetto di chiamate per
+# turno, risposta vuota, 10 iterazioni senza risposta finale). Con uno di questi nel
+# dettaglio il ko conta come un ko vero, anche se insieme c'è un guasto di provider
+# (R-847R7-2: compromesso dichiarato in reports/setup_notte.md).
+_MOTIVI_DEL_LAVORO = ("chiamate al modello per turno", "risposta vuota",
+                      "iterazioni senza risposta finale")
+
+
+def _ko_esterno(esito: Dict[str, Any]) -> bool:
+    errore = str(esito.get("errore", ""))
+    # R-847R7-1: il dettaglio dei motivi c'è anche in «Rispondo solo con Claude Opus…» e in
+    # «Questa richiesta contiene dati di clienti…» (gas.py, ramo _solo_forte_lead): il
+    # controllo vale per ogni errore, non solo per «Pipeline esausta»
+    if any(m in errore for m in _MOTIVI_DEL_LAVORO):
+        return False
+    return errore.startswith(_ERRORI_ESTERNI)
+
+
+def _volte(info: Dict[str, Any]) -> str:
+    """Perché un lavoro è fermo: ko veri di fila, oppure guasti esterni di fila."""
+    if info.get("esterno") and info.get("esterni_di_fila", 0) >= ESTERNI_DI_FILA_PAUSA:
+        return f"{info['esterni_di_fila']} volte di fila per guasti esterni"
+    return f"{info['ko_di_fila']} volte di fila"
+
+
+_ETICHETTE_LAVORO = {"fatto": "fatto", "in_sospeso": "in sospeso (aspetta la tua firma)",
+                     "fallito": "fallito", "da_non_ritentare": "da non ritentare"}
+
+
+def righe_lavori(compiti_catalogo: List[Dict[str, Any]],
+                 lavori: Dict[str, Dict[str, Any]]) -> List[str]:
+    """Una riga per lavoro attivo del catalogo: nome, stato, ultimo giro. Solo metadati
+    del kernel (mai testo del modello)."""
+    righe = []
+    for c in compiti_catalogo:
+        info = lavori.get(c["nome"])
+        if not info:
+            righe.append(f"{c['nome']}: mai eseguito")
+            continue
+        testo = f"{c['nome']}: {_ETICHETTE_LAVORO[info['stato']]} (ultimo giro {info['ultimo']})"
+        if info["stato"] == "fallito":
+            if info.get("esterno"):
+                testo += (" per un guasto esterno (provider, budget o cervello forte), non "
+                          f"contato ({info.get('esterni_di_fila', 1)} di fila)")
+            testo += f", ko di fila: {info['ko_di_fila']}"
+        elif info["stato"] == "da_non_ritentare":
+            fino = _giorno(info["fino_a"])
+            testo += (f", fallito {_volte(info)}: fermo fino al {fino} "
+                      f"(rilancialo a mano: python3 gas.py notte {c['nome']})")
+        righe.append(testo)
+    return righe
+
+
 def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None,
                  kernel_factory: Optional[Callable[[str], Any]] = None,
                  solo: Optional[str] = None) -> int:
@@ -853,12 +1030,29 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 nome_vis = solo if _NOME_RE.fullmatch(str(solo)) else "(nome non valido)"
                 avvisi.append(f"compito '{nome_vis}' non trovato tra i compiti attivi del catalogo")
         catalogo_ko = bool(avvisi) and not compiti  # solo il catalogo decide l'exit code
+        # bot #399 V-1: nella sezione dello stato TUTTI i compiti attivi, anche quelli che
+        # _ordina_riprese salta per crash ripetuti
+        da_mostrare = list(compiti)
         in_corso = _leggi_in_corso(notte_dir)  # R7: ripresa dei compiti rimasti a metà
         letto = dict(in_corso)
         compiti, saltati_r7 = _ordina_riprese(compiti, in_corso, avvisi,
                                               a_mano=solo is not None, pota=not avvisi)
         if in_corso != letto:
             _scrivi_in_corso(notte_dir, in_corso)  # conto azzerato dei compiti saltati
+        # R7 fetta 3: stato dei lavori ricorrenti. In un giro completo un lavoro
+        # «da non ritentare» resta fermo (avviso); `gas notte <nome>` lo rilancia sempre.
+        lavori = _leggi_stato_lavori(notte_dir)
+        if solo is None and not avvisi:  # come R-407-1: si pota solo a catalogo sano
+            for vecchio in [n for n in lavori if n not in {c["nome"] for c in compiti}]:
+                del lavori[vecchio]
+        adesso = time.time()
+        if solo is None:
+            for c in [c for c in compiti if _in_pausa(c, lavori, adesso)]:
+                fino = _giorno(lavori[c["nome"]]["fino_a"])
+                avvisi.append(f"compito '{c['nome']}' da non ritentare (fallito "
+                              f"{_volte(lavori[c['nome']])}): fermo fino "
+                              f"al {fino}; per rilanciarlo: python3 gas.py notte {c['nome']}")
+            compiti = [c for c in compiti if not _in_pausa(c, lavori, adesso)]
         if _env_budget() <= 0.0:
             os.environ["GAS_DAILY_TOKEN_BUDGET"] = BUDGET_NOTTE_DEFAULT_USD
             avvisi.append(f"GAS_DAILY_TOKEN_BUDGET non impostato: tetto di spesa del giro "
@@ -914,13 +1108,25 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
             esiti.append(esito_c)
             if c["nome"] in in_corso:  # rete di sicurezza: al_termine non è stato chiamato
                 _finito()
+            pausa_prima = lavori.get(c["nome"], {}).get("fino_a", 0.0)
+            _aggiorna_lavoro(lavori, c, esito_c, time.time())
+            _scrivi_stato_lavori(notte_dir, lavori)
+            info_l = lavori[c["nome"]]
+            if info_l["stato"] == "da_non_ritentare" and info_l["fino_a"] != pausa_prima:
+                # bot #399 V-2: il conto reale (dopo una pausa basta un ko per la successiva);
+                # R-843-1: nessun avviso se la pausa in corso è solo rimasta com'era
+                avvisi.append(f"compito '{c['nome']}' fallito {_volte(info_l)}: da non "
+                              f"ritentare per {GIORNI_PAUSA} giorni (si "
+                              f"rilancia a mano con python3 gas.py notte {c['nome']})")
+                logging.warning("notte: %s", avvisi[-1])
         scadute = _chiudi_firme_scadute(root)
         if scadute:
             avvisi.append(f"{scadute} richiesta/e di firma scaduta/e senza risposta: "
                           f"chiuse, NON eseguite")
             logging.warning("notte: %s", avvisi[-1])  # R-417-1: anche in gas_debug.log
         stato = stato_mattino(kernel)
-        testo = _componi_riepilogo(inizio, catalogo, esiti, avvisi, stato)
+        testo = _componi_riepilogo(inizio, catalogo, esiti, avvisi, stato,
+                                   righe_lavori(da_mostrare, lavori))
         try:
             _scrivi_atomico(notte_dir / RIEPILOGO, testo)
         except Exception as e:

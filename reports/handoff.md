@@ -283,6 +283,32 @@ Review #821-M1coord: merge di origin/main (d13d4342), con dentro la PR #398, nel
 
 ---
 
+## §4ter VERDETTO DEL REVISORE SUL SECONDO MERGE DI MAIN (#822-M1coord)
+
+Il merge porta solo codice di main (PR #399, già revisionata nella sua chat) e non cambia i file propri della PR. Testo integrale:
+
+## VERDETTO: APPROVATO
+
+Review #822-M1coord: merge di origin/main (PR #399, R7 fetta 3) nel branch fix/voce-fasi-interruzione (PR #400), da committare. Rispetto a HEAD lo stage ha 5 file, +611/−3.
+
+**Cosa ho controllato nel diff:**
+- `modules/notte/notte.py:945` — `_ko_esterno` e `_MOTIVI_DEL_LAVORO` (`modules/notte/notte.py:941`) vengono dalla #399. Controllato che il merge non li cambi: `git diff --staged origin/main` su `modules/notte`, `tests/test_unit_notte.py` e `reports/setup_notte.md` è vuoto, quindi sono byte-identici a main. Esito: ok.
+- `tests/test_unit_notte.py:2852` — il test con «Sempre Opus» della #399: arrivato intero (file identico a origin/main) e passa insieme ai test della voce. Esito: ok.
+- `clients/voice/ascolto.py:154` — blocco di modifiche proprie della #400. Rispetto a origin/main il codice differisce solo nei 5 file della voce (`clients/voice/ascolto.py`, `scripts/voce/LEGGIMI.md`, `scripts/voce/registra_voce.py`, `scripts/voce/taratura_parola.py`, `tests/test_unit_voce_ascolto.py`). Gli import di `modules/notte/notte.py` sono solo librerie standard: nessun legame con la voce. Esito: ok.
+
+**Conflitti risolti:**
+1. Marcatori di conflitto: zero nei 7 file controllati (memoria, stato, handoff, ultimo_report, diff_sessione, notte.py, test_unit_notte.py).
+2. `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: uguali a HEAD, cioè la versione del branch.
+3. `.claude/agents/memoria_revisore.md`: nessuna riga persa né da main né da HEAD. Le 3 righe doppie (#746 e #747 di M3, lezione del 2026-11-10) erano già doppie su main, non vengono dal merge.
+4. `reports/stato_progetto.md`: niente perso da nessuno dei due lati. La riga «Ultimo aggiornamento» è una sola: la voce del branch in testa, poi tutta la coda di main da «R7 fetta 3» in giù; aggiunta la voce R7 fetta 3.
+5. Test: 614 passed (`tests/test_unit_voce_ascolto.py` + `tests/test_unit_notte.py`), working tree uguale all'indice; git stash non usato.
+
+**Cosa NON ho verificato:** suite completa e comportamento sul Mac (microfono vero, timer della notte). Il merge non cambia codice rispetto alle due PR già revisionate: basta la prova dei due file di test toccati.
+
+**Memoria:** riga #822-M1coord in fondo alla memoria, senza stage né commit come richiesto. Nessuna lezione nuova.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
 - **`tests/test_unit_voce_ascolto.py`:** 379 su main 1b4954e2 → 382 passed (#815) → 382 passed (#816, test rafforzati) → 383 passed (#817) → 384 passed (#819, #820). `pytest tests/ -k voce`: 538 passed (revisore #816).
