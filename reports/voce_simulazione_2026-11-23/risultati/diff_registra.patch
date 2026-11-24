@@ -1,0 +1,23 @@
+--- a/scripts/voce/registra_voce.py	2026-11-23 17:06:30.853991430 +0000
++++ b/scripts/voce/registra_voce.py	2026-11-23 17:06:30.864439972 +0000
+@@ -369,12 +369,17 @@
+         if freq != a.FREQ or dati.dtype != np.int16 or dati.ndim != 1:
+             raise Errore("%s non è un WAV 16 kHz mono 16 bit" % wav.name)
+         if imbottitura:
+-            dati = np.concatenate([np.zeros(int(IMBOTTITURA_PRIMA_S * a.FREQ), np.int16), dati,
++            # silenzio in blocchi interi, come in misura(): la clip resta sulla stessa griglia
++            # da 80 ms su cui la registrazione l'ha misurata (1 s = 12,5 blocchi la spostava
++            # di mezzo blocco, e il punteggio cambia molto con la griglia: simulazione 23/11)
++            dati = np.concatenate([np.zeros(a.blocchi_per(IMBOTTITURA_PRIMA_S) * a.BLOCCO,
++                                            np.int16), dati,
+                                    np.zeros(int(IMBOTTITURA_DOPO_S * a.FREQ), np.int16)])
+         out: List[Tuple[float, Any]] = []
+-        for _ in range(ripetizioni):
++        for n in range(ripetizioni):
+             self.oww.reset()
+-            d = dati[int(self._caso.integers(0, a.BLOCCO)):] if ripetizioni > 1 else dati
++            # la prima ripetizione senza spostamento: quella che la registrazione ha misurato
++            d = dati[int(self._caso.integers(0, a.BLOCCO)):] if n > 0 else dati
+             for i in range(0, d.shape[0] - a.BLOCCO, a.BLOCCO):
+                 p = float(self.oww.predict(d[i:i + a.BLOCCO])[self.nome])
+                 f = self.oww.preprocessor.get_features(self.oww.model_inputs[self.nome])
