@@ -17,6 +17,7 @@
 
 - **Dashboard del CRM sempre accesa** (richiesta dell'operatore: «vorrei mettere da qualche parte questa dashboard… che non dipenda da Claude o dall'IA… accessibile anche offline e in modo facile»): FATTA (5d5911b4). LaunchAgent `com.gas.crm`, `scripts/crm/installa.sh` e `spegni.sh`, icona «CRM Gas» sulla Scrivania (il token non finisce in nessun file), guida aggiornata.
 - **Note del bot su 51d446c4** (APPROVATO CON RISERVE, V-1 MEDIA): FATTE (20791587). V-1 attesa dopo il bootout e 3 tentativi di bootstrap; V-2 cartella con soli caratteri sicuri; V-3 servizio tolto se la dashboard non parte e stop se `GAS_CRM_BIND` non è 127.0.0.1; V-4 `spegni.sh` toglie l'icona; guida (login da rifare dopo un riavvio, controllo della copia cifrata).
+- **Note del bot su 67f4dc34** (APPROVATO CON RISERVE, V-1 MEDIA): FATTE. V-1 registro non bufferizzato (`PYTHONUNBUFFERED=1`) e attesa della riga della copia cifrata di questo avvio; V-2 uscita con 0; V-3 controllo del `.env` con `env -i` (come lo vedrà launchd) ed errori distinti.
 - **Merge di main (PR #398, #399, #400)** (f4381a2e): FATTO, review #852-MERGE APPROVATO CON RISERVE. Codice identico a main; report del ramo tenuti; decisioni e riserve della #400 (anche quelle dell'ultimo verdetto del bot, R-852M-1) in `reports/stato_progetto.md`.
 - **Prova su un Mac vero** (launchctl, Scrivania, iCloud sotto launchd): SALTATA — il Mac non è raggiungibile da qui.
 
@@ -30,9 +31,9 @@
  reports/diff_sessione.md           |  18 +++++++++---------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  39 +++++++++++++--------------------------
- scripts/crm/com.gas.crm.plist      |  30 ++++++++++++++++++++++++++++++
- scripts/crm/installa.sh            | 119 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  40 ++++++++++++++--------------------------
+ scripts/crm/com.gas.crm.plist      |  36 ++++++++++++++++++++++++++++++++++++
+ scripts/crm/installa.sh            | 134 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  scripts/crm/spegni.sh              |  10 ++++++++++
 ```
 
@@ -41,6 +42,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+71a7f12c fix(crm): note del bot su 67f4dc34 — registro non bufferizzato (esito della copia cifrata visibile), installer esce con 0, controllo del .env con l'ambiente pulito di launchd
+67f4dc34 docs(fine-task): note del bot sulla #403 corrette, merge di main (#398-#400), review #852-MERGE
 20791587 fix(crm): note del bot sulla #403 — attesa dopo il bootout e 3 tentativi di bootstrap, cartella con soli caratteri sicuri, servizio tolto se la dashboard non parte, stop se GAS_CRM_BIND non è 127.0.0.1, spegni toglie l'icona
 f4381a2e Merge origin/main (PR #398, #399, #400) nel ramo della PR #403 — review #852-MERGE APPROVATO CON RISERVE
 51d446c4 docs(fine-task): CRM sempre acceso sul Mac — report, handoff e stato (PR #403)
@@ -105,7 +108,8 @@ Nessuna modifica a gas.py/tests/ da questo ramo (il codice del merge è identico
   - `5d5911b4`: nessuna run propria (pushato insieme a 51d446c4).
   - `51d446c4`: handoff-check success, verifica-bot failure (APPROVATO CON RISERVE con V-1 MEDIA, chiusa in 20791587), unit-suite in corso alla lettura; poi PR in conflitto dopo i merge delle #398-#400.
   - `f4381a2e`, `20791587`: nessuna run propria (pushati insieme al commit di fine-task).
-  - Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+  - `67f4dc34` (fine-task precedente): handoff-check success, verifica-bot failure (APPROVATO CON RISERVE con V-1 MEDIA, chiusa nel commit dopo).
+  - Commit della correzione e di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
