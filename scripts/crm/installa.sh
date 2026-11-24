@@ -20,6 +20,12 @@ SERVIZIO=com.gas.crm
 PLIST="$AGENTI/$SERVIZIO.plist"
 
 stop() { echo "STOP: $*" >&2; exit 1; }
+# R-853-1: dopo aver scritto il plist, ogni STOP toglie anche il servizio (se no al login
+# launchd lo ricarica senza i controlli di questo script)
+togli_servizio() {
+  launchctl bootout "gui/$(id -u)/$SERVIZIO" 2>/dev/null || true
+  rm -f "$PLIST"
+}
 
 [ "$(uname -s)" = "Darwin" ] || stop "questo script è per il Mac"
 # V-2 bot #403 (come R-615-3 della voce): la cartella finisce in `zsh -c 'cd "…"'` e nell'XML
@@ -85,7 +91,7 @@ LOG="$GAS/.gas_memory_crm_server.log"
 RIGHE_PRIMA="$( { wc -l < "$LOG"; } 2>/dev/null || echo 0)"  # le righe nuove arrivano da qui in poi
 ESC="$(printf '%s' "$GAS" | sed -e 's/[\\|&]/\\&/g')"
 sed "s|CARTELLA_GAS|$ESC|g" "$QUI/$SERVIZIO.plist" > "$PLIST"
-plutil -lint "$PLIST" >/dev/null || stop "plist non valido: $PLIST"
+plutil -lint "$PLIST" >/dev/null || { togli_servizio; stop "plist non valido (tolto): $PLIST"; }
 CARICATO=no
 for tentativo in 1 2 3; do
   if launchctl bootstrap "$DOMINIO" "$PLIST"; then CARICATO=si; break; fi
@@ -94,7 +100,7 @@ for tentativo in 1 2 3; do
     sleep 1
   fi
 done
-[ "$CARICATO" = si ] || stop "launchctl non carica $SERVIZIO (3 tentativi)"
+[ "$CARICATO" = si ] || { togli_servizio; stop "launchctl non carica $SERVIZIO (3 tentativi): servizio tolto, rilancia tra qualche secondo"; }
 
 # 4. aspetta la dashboard (al massimo 30 s); se non risponde, il servizio si toglie
 #    (V-3 bot #403: niente riavvii ogni 10 s di un CRM che non parte)
@@ -104,8 +110,7 @@ for _ in $(seq 1 30); do
 done
 if ! risponde; then
   # V-1 bot #403: via anche il plist, se no al login successivo launchd lo ricarica
-  launchctl bootout "$DOMINIO/$SERVIZIO" 2>/dev/null || true
-  rm -f "$PLIST"
+  togli_servizio
   stop "la dashboard non risponde su $URL: servizio tolto; guarda $GAS/.gas_memory_crm_server.log"
 fi
 

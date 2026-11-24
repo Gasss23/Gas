@@ -39,7 +39,8 @@ log = logging.getLogger(__name__)
 # illeggibili agli strumenti del modello tutti i file che iniziano così.
 DEFAULT_DB_FILENAME = ".gas_memory_crm.db"
 BACKUP_DIRNAME = ".gas_memory_crm_backup"
-BACKUP_KEEP = 30
+BACKUP_KEEP = 30         # giorni di copie locali tenute (la più recente di ogni giorno)
+BACKUP_ULTIME = 10       # in più si tengono sempre le ultime 10 copie, anche dello stesso giorno
 
 MODELLI_COMMISSIONE: Tuple[str, ...] = (
     "percentuale_profitto",       # commissione_bp sul profitto netto del mese
@@ -1362,10 +1363,13 @@ class CRMStore:
 
     # ------------------------------------------------------------------ backup
     def backup(self, dest_dir: Optional[Union[str, Path]] = None,
-               keep: int = BACKUP_KEEP) -> Optional[Path]:
+               keep: int = BACKUP_KEEP, ultime: int = BACKUP_ULTIME) -> Optional[Path]:
         """Copia coerente del DB (API di backup di SQLite, anche mentre il server scrive) in
         `dest_dir` (default: `.gas_memory_crm_backup/` accanto al DB, nome protetto dal
-        cancello). Tiene le ultime `keep` copie. None se fallisce (§9: mai solleva)."""
+        cancello). Tiene la copia più recente di ognuno degli ultimi `keep` GIORNI più le ultime
+        `ultime` copie (R-853-2: con «le ultime 30 copie» un CRM che si riavvia a
+        ripetizione, una copia per avvio, cancellava in pochi minuti i giorni prima).
+        None se fallisce (§9: mai solleva)."""
         try:
             cartella = Path(dest_dir) if dest_dir else self.db_path.parent / BACKUP_DIRNAME
             cartella.mkdir(parents=True, exist_ok=True)
@@ -1378,9 +1382,15 @@ class CRMStore:
                 finally:
                     dst.close()
             os.chmod(dest, 0o600)  # V-4 verifica esterna #386: dati dei clienti, solo il proprietario
-            copie = sorted(cartella.glob("crm-*.db"))
-            for vecchia in copie[:-max(1, keep)]:
-                vecchia.unlink(missing_ok=True)
+            copie = sorted(cartella.glob("crm-*.db"))  # nome crm-AAAAMMGG-HHMMSS: ordine di tempo
+            per_giorno: Dict[str, Path] = {}
+            for c in copie:
+                per_giorno[c.name[4:12]] = c  # resta la più recente del giorno
+            tenere = set(copie[-max(1, ultime):])
+            tenere.update(per_giorno[g] for g in sorted(per_giorno)[-max(1, keep):])
+            for vecchia in copie:
+                if vecchia not in tenere:
+                    vecchia.unlink(missing_ok=True)
             return dest
         except (sqlite3.Error, OSError) as e:
             log.warning("CRM: backup fallito (%s): %s", self.db_path, e)

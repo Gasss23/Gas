@@ -2129,12 +2129,13 @@ def test_identita_clienti_e_backup(st: CRMStore, tmp_path: Path) -> None:
     cartella.mkdir()
     assert identita_clienti(cartella) is None
     copie = tmp_path / "copie"
-    primo = st.backup(copie, keep=2)
+    # R-853-2: `keep` conta i giorni; `ultime` le copie più recenti dello stesso giorno
+    primo = st.backup(copie, keep=2, ultime=2)
     assert primo is not None and CRMStore(primo).clienti()[0]["nome"] == "Marco Bianchi"
     st._orologio = lambda: INIZIO + timedelta(seconds=1)  # type: ignore[assignment]
-    st.backup(copie, keep=2)
+    st.backup(copie, keep=2, ultime=2)
     st._orologio = lambda: INIZIO + timedelta(seconds=2)  # type: ignore[assignment]
-    st.backup(copie, keep=2)
+    st.backup(copie, keep=2, ultime=2)
     assert len(list(copie.glob("crm-*.db"))) == 2
 
 
@@ -2590,3 +2591,25 @@ def test_agente_riserve_839(st: CRMStore) -> None:
     pid = st.aggiungi_promemoria("x", "2020-01-01 09:00", nel_passato=True)
     st.annulla_promemoria(pid)
     assert st.reclama_promemoria(pid) is False and st.reclama_promemoria(True) is False
+
+
+def test_backup_tiene_i_giorni_anche_con_tanti_riavvii(tmp_path: Path) -> None:
+    """R-853-2: un CRM che si riavvia a ripetizione fa una copia per avvio; prima si
+    tenevano solo le ultime 30 copie e in pochi minuti sparivano i giorni prima."""
+    orologio = Orologio(datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    for _ in range(40):  # una copia al giorno per 40 giorni
+        assert st.backup(cartella) is not None
+        orologio.avanti(1)
+    for i in range(60):  # poi 60 riavvii nello stesso giorno, uno al secondo
+        orologio.ora = orologio.ora + timedelta(seconds=1)
+        assert st.backup(cartella) is not None
+    copie = sorted(p.name for p in cartella.glob("crm-*.db"))
+    giorni = sorted({c[4:12] for c in copie})
+    assert len(giorni) == 30  # gli ultimi 30 giorni restano tutti
+    assert giorni[0] == "20261012" and giorni[-1] == "20261110"  # 41 giorni, restano gli ultimi 30
+    oggi = [c for c in copie if c[4:12] == "20261110"]
+    assert len(oggi) == 10  # dello stesso giorno solo le ultime 10
+    assert len(copie) == 29 + 10
