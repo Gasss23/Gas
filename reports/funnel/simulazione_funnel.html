@@ -204,10 +204,10 @@ async function flussoCompleto(g){ await fase1(g); await bozzaB(g); }
 async function flussoDiretto(g){
   sys('Il contatto caldo apre t.me/&lt;bot&gt;?start=&lt;codice_agente&gt;-vip. Lingua: quella del Telegram del lead (language_code, IT/EN; altrimenti italiano) — nessuna domanda della lingua');
   user('/start');
-  await botSay(g, '⚡ Benvenuto in Inizia Ora. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta.\n\nNon paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto.\n\n⚠ Il trading comporta un rischio reale di perdere il capitale.', 900);
+  await botSay(g, '🔞 Questo servizio è riservato ai maggiorenni: proseguendo confermi di avere almeno 18 anni.\n\n⚡ Benvenuto in Inizia Ora. Sala segnali VIP: ogni giorno i segnali completi — dove entrare, dove fermarti, dove incassare — gestiti in diretta.\n\nNon paghi nessun abbonamento: l\'accesso si attiva aprendo il conto dal nostro link col broker partner (è così che veniamo pagati). I soldi restano sul tuo conto.\n\n⚠ Il trading comporta un rischio reale di perdere il capitale.', 900);
   await botSay(g, '✍ Scrivimi nome e cognome e ti metto subito in contatto con '+AG+'.\n\nInviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui.');
   nome = (await askText(g, 'Nome e cognome')).split(' ')[0] || nome;
-  sys('📇 Scheda all\'agente con etichetta «⚡ accesso diretto», campi mancanti = «da chiedere in chat». Il consenso aggiornamenti qui NON si chiede: senza un sì, nessuna promozione (se serve lo chiede l\'agente in chat; i solleciti del caso B non sono promozione)');
+  sys('📇 Scheda all\'agente con etichetta «⚡ accesso diretto», campi mancanti = «da chiedere in chat». Il consenso aggiornamenti qui NON si chiede né si registra: ai lead del diretto il bot non manda MAI promozione — ogni comunicazione la fa l\'agente in chat (i solleciti del caso B non sono promozione)');
   await botSay(g, 'Perfetto, '+nome+' 🤝 Ultimo passo: premi qui sotto, il messaggio è già pronto — '+AG+' ti attiva. 🔒 '+AG+' non ti chiede mai soldi: i fondi restano sul tuo conto.\n'+RISCHIO);
   const fin = await kb(g, [[{t:'💬 Scrivi a '+AG}],[{t:'⏩ Simula: non preme'}]]);
   if(fin==='💬 Scrivi a '+AG) sys('Chat con l\'agente aperta. Nessuna domanda in mezzo: il caldo arriva subito 🎉');
