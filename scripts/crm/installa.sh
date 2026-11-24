@@ -96,7 +96,8 @@ ESC="$(printf '%s' "$GAS" | sed -e 's/[\\|&]/\\&/g')"
 # imprevisto di set -e) toglie il servizio: niente CRM caricato senza il controllo del passo 4
 # (R-855-1: durante la pulizia un secondo Ctrl+C non la interrompe a metà)
 DA_PULIRE=si
-trap 'trap "" INT TERM; [ "$DA_PULIRE" = si ] && togli_servizio' EXIT
+# (V-2 bot #404: con `if` il trap finisce sempre con 0, anche col /bin/bash 3.2 del Mac)
+trap 'trap "" INT TERM; if [ "$DA_PULIRE" = si ]; then togli_servizio; fi' EXIT
 trap 'echo "STOP: interrotto, servizio tolto" >&2; exit 130' INT TERM
 sed "s|CARTELLA_GAS|$ESC|g" "$QUI/$SERVIZIO.plist" > "$PLIST"
 plutil -lint "$PLIST" >/dev/null || { togli_servizio; stop "plist non valido (tolto): $PLIST"; }

@@ -2636,6 +2636,31 @@ def test_backup_con_orologio_indietro_non_cancella_la_copia_appena_fatta(tmp_pat
     assert len(list(cartella.glob("crm-*.db"))) == 11  # le ultime 10 più quella appena fatta
 
 
+def test_backup_copie_nel_futuro_non_accorciano_la_storia(tmp_path: Path,
+                                                         caplog: pytest.LogCaptureFixture) -> None:
+    """V-3 bot / V-1 verifica esterna #404 (2° giro): con l'orologio andato nel 2030 e poi
+    corretto, quelle copie occupavano le «ultime 10» e un giorno dei 30 finché l'orologio non
+    le raggiungeva. Ora non contano, non si cancellano e lo si scrive nel registro."""
+    orologio = Orologio(datetime(2030, 1, 1, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    for _ in range(12):
+        orologio.ora = orologio.ora + timedelta(seconds=1)
+        assert st.backup(cartella) is not None
+    orologio.ora = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+    with caplog.at_level("WARNING"):
+        for _ in range(40):
+            assert st.backup(cartella) is not None
+            orologio.avanti(1)
+    nomi = sorted(p.name for p in cartella.glob("crm-*.db"))
+    # nel 2030 la regola normale ne ha tenute 10; dopo, con l'orologio giusto, non si toccano
+    assert len([n for n in nomi if n.startswith("crm-2030")]) == 10
+    giorni_veri = sorted({n[4:12] for n in nomi if n.startswith("crm-2026")})
+    assert len(giorni_veri) == 30  # i 30 giorni veri restano tutti
+    assert "data nel futuro" in caplog.text
+
+
 def test_backup_ignora_le_copie_fatte_a_mano(tmp_path: Path) -> None:
     """V-1 bot #404: «crm-prima-import.db» dava il giorno «prima-im», dopo ogni data: occupava
     per sempre uno dei 30 giorni e ne restavano 29 veri. Ora i nomi fuori formato non contano

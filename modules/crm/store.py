@@ -1374,7 +1374,8 @@ class CRMStore:
         try:
             cartella = Path(dest_dir) if dest_dir else self.db_path.parent / BACKUP_DIRNAME
             cartella.mkdir(parents=True, exist_ok=True)
-            nome = f"crm-{self._orologio().strftime('%Y%m%d-%H%M%S')}.db"
+            adesso = self._orologio()
+            nome = f"crm-{adesso.strftime('%Y%m%d-%H%M%S')}.db"
             dest = cartella / nome
             with self._connect() as src:
                 dst = sqlite3.connect(str(dest))
@@ -1386,7 +1387,16 @@ class CRMStore:
             # nome crm-AAAAMMGG-HHMMSS: ordine di tempo. V-1 bot #404: solo i nomi in questo
             # formato; una copia fatta a mano (crm-prima-import.db) non prende il posto di un
             # giorno e non viene mai toccata
-            copie = sorted(c for c in cartella.glob("crm-*.db") if _NOME_COPIA.fullmatch(c.name))
+            tutte = sorted(c for c in cartella.glob("crm-*.db") if _NOME_COPIA.fullmatch(c.name))
+            # V-3 bot / V-1 verifica esterna #404 (2° giro): copie con data oltre domani (orologio
+            # del Mac andato avanti e poi corretto) non occupano giorni né «ultime» e non si
+            # cancellano: lo si scrive nel registro; tornano normali quando l'orologio le raggiunge
+            limite = f"crm-{(adesso + timedelta(days=1)).strftime('%Y%m%d-%H%M%S')}.db"
+            futuro = [c for c in tutte if c.name > limite]
+            if futuro:
+                log.warning("CRM: %d copie locali con una data nel futuro (orologio del Mac "
+                            "sbagliato?) in %s: non contano e non si cancellano", len(futuro), cartella)
+            copie = [c for c in tutte if c.name <= limite]
             per_giorno: Dict[str, Path] = {}
             for c in copie:
                 per_giorno[c.name[4:12]] = c  # resta la più recente del giorno
