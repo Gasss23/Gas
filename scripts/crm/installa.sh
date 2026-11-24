@@ -23,8 +23,8 @@ stop() { echo "STOP: $*" >&2; exit 1; }
 # R-853-1: dopo aver scritto il plist, ogni STOP toglie anche il servizio (se no al login
 # launchd lo ricarica senza i controlli di questo script)
 togli_servizio() {
+  rm -f "$PLIST"  # prima il plist (R-855-1): anche se la pulizia si interrompe, al login non riparte
   launchctl bootout "gui/$(id -u)/$SERVIZIO" 2>/dev/null || true
-  rm -f "$PLIST"
 }
 
 [ "$(uname -s)" = "Darwin" ] || stop "questo script è per il Mac"
@@ -90,6 +90,12 @@ fi
 LOG="$GAS/.gas_memory_crm_server.log"
 RIGHE_PRIMA="$( { wc -l < "$LOG"; } 2>/dev/null || echo 0)"  # le righe nuove arrivano da qui in poi
 ESC="$(printf '%s' "$GAS" | sed -e 's/[\\|&]/\\&/g')"
+# R-854-1: da qui fino alla dashboard che risponde, un'uscita qualsiasi (Ctrl+C, kill, errore
+# imprevisto di set -e) toglie il servizio: niente CRM caricato senza il controllo del passo 4
+# (R-855-1: durante la pulizia un secondo Ctrl+C non la interrompe a metà)
+DA_PULIRE=si
+trap 'trap "" INT TERM; [ "$DA_PULIRE" = si ] && togli_servizio' EXIT
+trap 'echo "STOP: interrotto, servizio tolto" >&2; exit 130' INT TERM
 sed "s|CARTELLA_GAS|$ESC|g" "$QUI/$SERVIZIO.plist" > "$PLIST"
 plutil -lint "$PLIST" >/dev/null || { togli_servizio; stop "plist non valido (tolto): $PLIST"; }
 CARICATO=no
@@ -104,6 +110,7 @@ done
 
 # 4. aspetta la dashboard (al massimo 30 s); se non risponde, il servizio si toglie
 #    (V-3 bot #403: niente riavvii ogni 10 s di un CRM che non parte)
+echo "   Aspetto che la dashboard risponda (fino a 30 s)…"
 for _ in $(seq 1 30); do
   risponde && break
   sleep 1
@@ -113,6 +120,9 @@ if ! risponde; then
   togli_servizio
   stop "la dashboard non risponde su $URL: servizio tolto; guarda $GAS/.gas_memory_crm_server.log"
 fi
+# la dashboard risponde: il servizio è provato e resta, anche se dopo qualcosa va storto
+trap - INT TERM
+DA_PULIRE=no
 
 # 5. icona sulla Scrivania (solo l'indirizzo: il token NON finisce in nessun file)
 ICONA="$HOME/Desktop/CRM Gas.webloc"

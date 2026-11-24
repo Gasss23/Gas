@@ -41,6 +41,7 @@ DEFAULT_DB_FILENAME = ".gas_memory_crm.db"
 BACKUP_DIRNAME = ".gas_memory_crm_backup"
 BACKUP_KEEP = 30         # giorni di copie locali tenute (la più recente di ogni giorno)
 BACKUP_ULTIME = 10       # in più si tengono sempre le ultime 10 copie, anche dello stesso giorno
+_NOME_COPIA = re.compile(r"crm-[0-9]{8}-[0-9]{6}\.db")  # copie fatte da backup()
 
 MODELLI_COMMISSIONE: Tuple[str, ...] = (
     "percentuale_profitto",       # commissione_bp sul profitto netto del mese
@@ -1382,12 +1383,19 @@ class CRMStore:
                 finally:
                     dst.close()
             os.chmod(dest, 0o600)  # V-4 verifica esterna #386: dati dei clienti, solo il proprietario
-            copie = sorted(cartella.glob("crm-*.db"))  # nome crm-AAAAMMGG-HHMMSS: ordine di tempo
+            # nome crm-AAAAMMGG-HHMMSS: ordine di tempo. V-1 bot #404: solo i nomi in questo
+            # formato; una copia fatta a mano (crm-prima-import.db) non prende il posto di un
+            # giorno e non viene mai toccata
+            copie = sorted(c for c in cartella.glob("crm-*.db") if _NOME_COPIA.fullmatch(c.name))
             per_giorno: Dict[str, Path] = {}
             for c in copie:
                 per_giorno[c.name[4:12]] = c  # resta la più recente del giorno
             tenere = set(copie[-max(1, ultime):])
             tenere.update(per_giorno[g] for g in sorted(per_giorno)[-max(1, keep):])
+            # V-1 verifica esterna #404: con l'orologio tornato indietro la copia appena fatta
+            # ha un nome «più vecchio» delle altre; non va mai cancellata (e il server non deve
+            # dire «copia OK» su un file che non c'è)
+            tenere.add(dest)
             for vecchia in copie:
                 if vecchia not in tenere:
                     vecchia.unlink(missing_ok=True)
