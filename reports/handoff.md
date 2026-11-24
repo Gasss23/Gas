@@ -1,160 +1,212 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 23 novembre 2026 — Ritocchi finali del funnel dopo la prova dell'operatore (solo doc)
+**Sessione:** 2026-11-24 — Voce: modello «ehi jarvis» con accento italiano (ehi_jarvis_it)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #401 (https://github.com/Gasss23/Gas/pull/401), aperta con l'etichetta «verifica». Tocca file fuori dalla lista bianca dei log (funnel): serve il verdetto testuale del bot; merge autonomo solo con APPROVATO pulito, altrimenti decide l'operatore (che ha già chiesto di procedere coi ritocchi).
-2. Consegnare allo sviluppatore del bot (su main dopo il merge): `reports/funnel/tasto_collaboratori.md`, `reports/funnel/funnel_v2.md`, `reports/funnel/simulazione_funnel.html`.
-3. Ripristinare nel bot «Inizia Ora · Accesso» lo stato dell'operatore (bottoni «Conto aperto» / «In VIP»).
+1. Merge della PR #405 (https://github.com/Gasss23/Gas/pull/405). Il revisore ha dato APPROVATO CON RISERVE: serve il «mergia» dell'operatore, salvo verdetto pulito del bot.
+2. R-854-1: col modello italiano il filtro della voce dell'operatore, legato a hey_jarvis, resta spento.  avvisa. Per tornare indietro:  nel .
+3. Prova sul Mac con la voce vera, dopo Already up to date. e .
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Tre ritocchi chiesti dall'operatore il 23/11 dopo la prova della simulazione**: FATTA.
-  1. Via la domanda «Da quale community arrivi?» dalla fase 1 del percorso completo: si parte dalla lingua (con la conferma dei 18 anni). `funnel_v2.md` (prima regola comune + due rimandi allineati) e simulazione.
-  2. Percorso diretto SOLO nome e cognome: messaggio unico (rischio+compenso), campo «Scrivimi nome e cognome» con la riga «Inviando confermi di avere almeno 18 anni e ci autorizzi a risponderti qui», poi [Scrivi a {agente}]. Consenso aggiornamenti non chiesto nel diretto: il bot a quei lead non manda MAI promozione, ogni comunicazione la fa l'agente in chat (regola definitiva della Fetta 4); i solleciti del caso B non sono promozione (restano indipendenti dal consenso come da regole comuni). `tasto_collaboratori.md` §3.1 e §4.5, simulazione (rimossa `ctaConConsenso`).
-  3. Requisito Pannello blu (confermato dall'operatore su screenshot): «I miei link», card e link dell'agente si aprono DENTRO il Pannello esistente (bottone blu «Pannello» della chat del bot), nessuna app o pagina nuova. `tasto_collaboratori.md` §4.6, simulazione (scheda agente).
-  La simulazione è stata ripubblicata sulla pagina pubblica claude.ai e PROVATA dal vivo nel browser dopo la ripubblicazione (le tre schede).
+- **Fetta 1 — Addestramento del modello **: FATTA. Lavoro nello scratchpad; nel repo vanno il modello, gli script e i risultati.
+  Risultati della simulazione (1 fase, prese a vicino / −6 / −12 / −20 dB):
 
-- **Fetta 2 — Correzioni del 1° verdetto del bot sulla PR #401 (secondo giro, scelta dell'operatore «Sistema prima»)**: FATTA. V-1 BASSA: dichiarata la lingua del diretto (`language_code` di Telegram, IT/EN, altrimenti italiano; la riga dei 18 anni segue la lingua del lead) in `tasto_collaboratori.md` §3.1 e §4.5 e nella simulazione. V-2 BASSA: §3/§6 di questo handoff aggiornati coi commit reali. V-3 COSMETICA: card del diretto «solo nome e cognome, subito l'ultimo passo» (spec §1 + simulazione) e «in basso nella chat» uniformato nell'intestazione. V-4 COSMETICA: la regola del consenso in `funnel_v2.md` ora rimanda all'eccezione del diretto. Simulazione ripubblicata.
+  | | voci della simulazione | voci mai viste | falsi/ora, parlato italiano | falsi/ora, audio generico |
+  |---|---|---|---|---|
+  | ehi_jarvis_it | 100 / 100 / 87 / 47% | 90 / 75 / 70 / 58% | 0,35 | 0 |
+  | hey_jarvis | 23 / 33 / 3 / 0% | 50 / 40 / 40 / 20% | 1,06 | 0,47 |
 
-- **Fetta 3 — Correzioni del 2° verdetto del bot sulla PR #401 (terzo giro) + merge di main**: FATTA. V-1 BASSA: la riga sul rischio (e quella «non ti chiede mai soldi») ora sta ANCHE nel messaggio dell'ultimo passo del diretto (`tasto_collaboratori.md` §3.1 + simulazione), come chiede la regola comune V-2 #392. V-2 COSMETICA: in `funnel_v2.md` la descrizione della fase 1 di oggi cita anche la domanda della community. V-3 COSMETICA: «Fetta unica» rinominata «Fetta 1» qui e in ultimo_report. In più: merge di origin/main nel ramo (era entrata la PR #398 della chat Voce; conflitto solo sui 3 report canonici, risolto `--ours`; `stato_progetto.md` auto-mergiato con le voci di entrambi i lati; review #851-MERGE APPROVATO, perimetro byte-identico a main — §4). Simulazione ripubblicata.
-
-- **Fetta 4 — Correzioni del 3° verdetto del bot sulla PR #401 (quarto giro, proposta dell'agente approvata dall'operatore «riprendi pure», 24/11) + merge di main**: FATTA. V-1 BASSA: la conferma dei maggiorenni ora sta IN TESTA al messaggio unico del diretto, prima di ogni contenuto commerciale (e resta anche nella riga sotto il campo del nome) — `tasto_collaboratori.md` §3.1 e §4.5 + simulazione. V-2 BASSA: dichiarato che ai lead del diretto il bot non manda MAI promozione (nessun consenso chiesto né registrato; ogni comunicazione la fa l'agente in chat; per promozioni future servirà prima un bottone di consenso registrato) — §3.1, §4.5, regola del consenso di `funnel_v2.md`, simulazione. In più: secondo merge di origin/main nel ramo (erano entrate le PR #399 e #400; conflitti: 3 report canonici `--ours`, memoria del revisore a unione senza perdite; review #852-MERGE APPROVATO, perimetro byte-identico a main — §4). Simulazione ripubblicata.
-
-- **Fetta 5 — Correzioni del 4° verdetto del bot sulla PR #401 (quinto giro)**: FATTA. V-1 BASSA: «il bot non manda MAI promozione ai lead del diretto» allineato anche in `stato_progetto.md` (riga Funnel) e nelle frasi di Fetta 1 di handoff/ultimo_report. V-2 BASSA: riga del rischio COMPLETA (costante RISCHIO) anche nel messaggio unico del diretto (spec §3.1 + simulazione). V-3 COSMETICA: intestazione di `diff_sessione.md` con la base reale post-merge (af0215de). Simulazione ripubblicata.
-
-- **Fetta 6 — V-1 del 5° verdetto (sesto giro) + 3° merge di main**: FATTA. La didascalia di chiusura dei solleciti nella simulazione ora distingue il diretto («ai lead del diretto il bot non manda mai promozione») dal completo («niente promozione senza consenso»). Terzo merge di origin/main (era entrata la PR #403, CRM dashboard): conflitti come i precedenti (3 report `--ours`, memoria a unione), review #853-MERGE APPROVATO, perimetro byte-identico a main. Simulazione ripubblicata.
-
-Contesto: PR #396 (trigger solleciti) mergiata oggi col via dell'operatore dopo il 3° verdetto (APPROVATO CON RISERVE senza ALTA/MEDIA); la sua V-1 COSMETICA residua (nome «Fetta unica» accanto a «Fetta 2/3» nei log) è superata dalla riscrittura dei report per questa sessione. `reports/bacheca.md` letta prima del giro: nessuna notizia bloccante, niente da aggiungere.
+- **Fetta 2 — Integrazione**: FATTA.
+  - Modello da file fidato in , con ripiego su hey_jarvis.
+  - Passo 3b in .
+  - Nuovi test.
+  - Prova con openWakeWord vero: 1,00 su «ehi jarvis» (hey_jarvis 0,49), 0,00 su una frase neutra.
+- **Fetta 3 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
-BASE = 96d5ae99fcdc72bc14f13120e5f42b43c7f8300f (merge-base con origin/main = main dopo il merge della PR #403, aggiornata dal 3° merge di main nel ramo al 6° giro).
-
 ```
- .claude/agents/memoria_revisore.md     |   3 +++
- reports/diff_sessione.md               |  24 +++++++++++++++---------
- reports/funnel/funnel_v2.md            |   7 ++++---
- reports/funnel/simulazione_funnel.html |  56 +++++++++++++++-----------------------------------------
- reports/funnel/tasto_collaboratori.md  |  19 +++++++++++++------
- reports/handoff.md                     | n/d
- reports/stato_progetto.md              |   2 +-
- reports/ultimo_report.md               |  49 +++++++++++++++++++++++++++++--------------------
+ .claude/agents/memoria_revisore.md                                                             |   4 +++
+ clients/voice/ascolto.py                                                                       |  37 ++++++++++++++++++--
+ clients/voice/modelli/LEGGIMI.md                                                               |  26 ++++++++++++++
+ clients/voice/modelli/ehi_jarvis_it.onnx                                                       | Bin 0 -> 856178 bytes
+ reports/diff_sessione.md                                                                       |  26 ++++++--------
+ reports/handoff.md | n/d
+ reports/stato_progetto.md                                                                      |   3 +-
+ reports/ultimo_report.md                                                                       |  70 ++++++++++++++++++++++---------------
+ reports/voce_simulazione_2026-11-23/modello_italiano/LEGGIMI.md                                |  63 +++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ehi_jarvis_it.addestramento.json          | 574 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_ens67_f1.json                 |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f1.json          |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f4.json          |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_f1.json            |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_f4.json            |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v4_G.json                     |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v4_d128_ami_f1.json           |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v6_d128_nomi_H_f1.json        |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v6_d128_nomi_f1.json          |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_H_f1.json |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f1.json   |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f4.json   |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v4.txt                          |  10 ++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v6.txt                          |   5 +++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v7.txt                          |   5 +++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/ris_validazione_heyjarvis.txt         |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v4.txt                    |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v6_v7.txt                 |   3 ++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/addestra.py                        | 272 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/feature.py                         | 193 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/flussi_nuovi.py                    | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/frasi_test.py                      |  25 +++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/genera.py                          | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/lib_sim.py                         | 163 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/mls.py                             |  30 ++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/quasi_test.py                      |  64 ++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/rifai_tutto.sh                     |  51 +++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/scarica.sh                         |  46 ++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/tabella.py                         |  24 +++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/testi.py                           | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/valuta.py                          | 139 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ scripts/voce/LEGGIMI.md                                                                        |   2 +-
+ scripts/voce/installa.sh                                                                       |  20 +++++++++++
+ tests/test_unit_voce_ascolto.py                                                                |  66 ++++++++++++++++++++++++++++++++---
 ```
 
-NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso e il suo conteggio finale non è misurabile alla scrittura. La CI confronta solo i path.
+NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre lo si scrive; la riga di totale è tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-7ea06526 Merge remote-tracking branch 'origin/main' into claude/ritocchi-simulazione
-56ca77a4 docs(funnel): corrette le note del 4° verdetto su #401 — mai promozione ai lead del diretto ovunque, riga del rischio completa nel messaggio unico, base nell'intestazione del diff
-f994650d docs(fine-task): 4° giro PR #401 — fix del 3° verdetto, 2° merge di main (review #852-MERGE), handoff aggiornato
-e8f539a3 Merge remote-tracking branch 'origin/main' into claude/ritocchi-simulazione
-05721612 docs(funnel): corrette le note del 3° verdetto su #401 — conferma 18 anni in testa al messaggio del diretto, niente promozioni del bot ai lead del diretto
-35ca0faf docs(fine-task): 3° giro PR #401 — fix del 2° verdetto, merge di main (review #851-MERGE), handoff aggiornato
-71dee2da Merge remote-tracking branch 'origin/main' into claude/ritocchi-simulazione
-b926745a docs(funnel): corrette le note del 2° verdetto su #401 — riga del rischio nell'ultimo passo del diretto, fase 1 di oggi con la domanda community, Fetta 1
-ee275e38 docs(funnel): corrette le note del 1° verdetto su #401 — lingua del diretto dichiarata, handoff coi commit reali, card e rimandi allineati
-500cfa39 docs(fine-task): handoff §0 — PR #401 aperta con l'etichetta verifica
-fb0f84af docs(funnel): ritocchi dell'operatore dopo la prova — via la domanda community, diretto solo nome e cognome con riga 18 anni, requisito Pannello blu per I miei link
+d6a980a5 feat(voce): modello «ehi jarvis» con accento italiano (ehi_jarvis_it)
+b650558a chore(revisore): memoria review #855 — APPROVATO CON RISERVE
+5291bca4 chore(revisore): memoria review #854 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task di QUESTO 6° giro (quello che contiene questo file) non compare in questo log, per costruzione; il suo hash è nel `git log` del branch dopo il push. fb0f84af = fetta + fine-task 1° giro; 500cfa39 = §0 dopo l'apertura della PR; ee275e38 = 2° giro; b926745a = 3° giro; 71dee2da = 1° merge di main (#851-MERGE); 35ca0faf = fine-task 3° giro; 05721612 = 4° giro; e8f539a3 = 2° merge di main (#852-MERGE); f994650d = fine-task 4° giro; 56ca77a4 = 5° giro (fix 4° verdetto); 7ea06526 = 3° merge di main (#853-MERGE).
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore scritto da questa sessione (solo `reports/funnel/` e report canonici). Il commit di merge di origin/main (71dee2da, porta dentro la PR #398) tocca file del perimetro presi IDENTICI da main: review #851-MERGE, verdetto INTEGRALE:
+Il commit d6a980a5 tocca  (perimetro). Sotto ci sono i due verdetti INTEGRALI: #854 sul primo diff e #855 sul delta con le correzioni R-854-1/R-854-2.
 
 ```
-## VERDETTO: APPROVATO
+## VERDETTO: APPROVATO CON RISERVE
 
-Review #851-MERGE: merge di origin/main (d13d4342, con dentro la PR #398 R7) nel ramo claude/ritocchi-simulazione (PR #401).
+Review #854. Diff staged su feat/voce-modello-italiano: 39 file, +2214/−8. Ho letto CLAUDE.md, la memoria del revisore e le voci sulla voce in stato_progetto.md (letto con grep mirato). I 73 test `-k "modello or installa"` di tests/test_unit_voce_ascolto.py passano. `git diff --cached --check` è pulito. Lo sha256 del file .onnx corrisponde a quello scritto nel LEGGIMI. I `__pycache__` sotto reports/ non sono nell'indice. Nessun antipattern del Wall of Shame: nessun taglio diretto della history e nessun output dei tool simulato. Il motore (gas.py, brains/) non è toccato.
 
-Ho letto CLAUDE.md §5, reports/stato_progetto.md (solo le parti trovate con grep: R7 e Funnel) e la mia memoria (coda fino a #850-R7).
+**Elementi esaminati**
 
-Comandi eseguiti ed esiti:
-1. `git diff --cached origin/main --stat -- gas.py brains/ modules/ tests/ scripts/ .claude/ .github/` non mostra niente: i file del perimetro sono identici byte per byte a origin/main. MERGE_HEAD = origin/main = d13d4342.
-2. `git ls-files -u` dà 0 righe (nessun UU). `git diff --cached --check` è pulito. grep dei marcatori di conflitto (`<<<<<<<` e `>>>>>>>`) su reports/*.md: nessuno.
-3. `git diff --cached HEAD --stat` su handoff.md, ultimo_report.md, diff_sessione.md e reports/funnel/ non mostra niente: la risoluzione `--ours` è confermata. `git diff` (albero rispetto all'indice) è vuoto.
-4. `git diff --cached origin/main --stat` cambia solo file di reports/: 3 report canonici, 3 file del funnel e 1 riga di stato_progetto.md.
+1. `clients/voice/ascolto.py:1431` — `modello_della_parola`
+   - Cosa fa: con un nome semplice (regex `[a-z0-9_]{1,40}` di `clients/voice/ascolto.py:194`) costruisce il percorso solo dentro `.gas_voce/modelli` sotto `_GAS_ROOT`. `exists()` e `is_symlink()` stanno dentro un try su OSError. Il file passa da `_file_fidato` (`clients/voice/ascolto.py:1402`): niente symlink, proprietario l'utente, file e cartella non scrivibili da altri.
+   - Rischio: percorso preso dall'ambiente, symlink, permessi deboli.
+   - Esito: ok. Il nome non entra mai nel percorso se contiene `/` o `..`, e lo copre `tests/test_unit_voce_ascolto.py:3327`.
 
-Elementi esaminati:
-- reports/stato_progetto.md:10 — voce Funnel aggiornata da questa sessione. Rischio esaminato: che il merge automatico perdesse le voci dell'altro lato. Rispetto a origin/main cambia solo questa riga. Esito: ok.
-- reports/stato_progetto.md:401 — voce «R7 fetta 2 — ripresa al boot … PR #398» presente, e c'è anche la riga 4 «Ultimo aggiornamento» che cita la #398. Rischio esaminato: decisioni e riserve della #398 perse. Esito: ok.
-- reports/funnel/funnel_v2.md:9 — la fase 1 di oggi descritta con la domanda della community, che viene tolta nelle regole comuni (riga 13). Rischio esaminato: contraddizione tra «com'è oggi» e la bozza. È coerente. Esito: ok.
-- reports/ultimo_report.md:21 — la Fetta 3 dichiara il merge di origin/main. Rischio esaminato: un report che non racconta il merge. Esito: ok.
+2. `clients/voice/ascolto.py:1494` — `sorgente` passata a `Model(wakeword_models=[sorgente])`, mentre `custom_verifier_models={modello: ...}` resta sotto il nome.
+   - Rischio: chiave delle previsioni diversa dal nome.
+   - Esito: ok. openWakeWord, in openwakeword/model.py righe 91-92 del pacchetto installato, chiama il modello con `splitext(basename(percorso))[0]`, cioè `ehi_jarvis_it`, uguale al nome.
 
-Rischio escluso: non ho rivisto il contenuto di reports/funnel/simulazione_funnel.html (54 righe cambiate) né la correttezza di marketing e legale dei testi del funnel. Sono documenti fuori dal perimetro del motore, già passati dal bot sulla #401. Non ho rifatto girare i test della #398: il perimetro è identico a main, già verificato in #849/#850.
+3. `clients/voice/ascolto.py:1644` — effetti di contesto con `GAS_ASCOLTO_MODELLO=ehi_jarvis_it`.
+   - `verifica_della_voce` cerca `ehi_jarvis_it_verifier.pkl`, non lo trova e dà «assente». Quindi 1 fase (`clients/voice/ascolto.py:177`), soglia `GAS_ASCOLTO_SOGLIA` 0,7 e interruzione a 0,8 su 3 blocchi (`clients/voice/ascolto.py:198`).
+   - Esito: ok, coerente con quanto dichiarato. Vedi però R-854-1 e R-854-3.
+
+4. `scripts/voce/installa.sh:138` — passo 3b.
+   - Cosa fa: `mkdir -p`, chmod 700 sulle due cartelle, `install -m 600` (che sostituisce il file, anche un symlink, invece di scriverci dentro), `stop` se la copia fallisce. Il `.env` si aggiorna solo se `valore_env` non trova la chiave; una chiave presente anche vuota resta intatta.
+   - Rischio: idempotenza, doppioni nel `.env`, `.env` senza a capo finale (il printf inizia con `\n`).
+   - Esito: ok. Lo provano `tests/test_unit_voce_ascolto.py:1945` (seconda esecuzione senza doppioni) e `tests/test_unit_voce_ascolto.py:1961` (modello già scelto lasciato com'è).
+
+5. `tests/test_unit_voce_ascolto.py:2221` — i test del `.env` «byte per byte» ora partono con `GAS_ASCOLTO_MODELLO` già presente.
+   - Rischio: test indeboliti.
+   - Esito: ok. Verificano ancora che il `.env` resti identico; il caso «chiave assente» è coperto dal test nuovo.
+
+**Riserve (da tracciare in stato_progetto.md)**
+
+- **R-854-1 MEDIA** (`scripts/voce/installa.sh:142`): rieseguire installa.sh su un `.env` senza `GAS_ASCOLTO_MODELLO` (probabile sul Mac dell'operatore) passa a `ehi_jarvis_it` e spegne in silenzio il filtro della voce già addestrato. Quel filtro è il file `.gas_voce/verifica/hey_jarvis_verifier.pkl`, legato al nome hey_jarvis. Inoltre `registra_voce.py` accetta solo modelli pronti, quindi oggi il filtro non si può rifare per ehi_jarvis_it. Il LEGGIMI lo dice, l'installer no. Proposta: se il filtro hey_jarvis esiste, non cambiare modello (o almeno avvisare a terminale) e lasciare la scelta all'operatore. La decisione «modello italiano senza filtro» contro «hey_jarvis col filtro» spetta all'operatore.
+- **R-854-2 BASSA** (`clients/voice/ascolto.py:1446`): se il file del modello c'è ma non è fidato, la funzione restituisce il nome nudo. openWakeWord non trova un modello pronto con quel nome e alza ValueError. `main` scrive «openWakeWord non pronto… installa» ed esce con 1, e launchd lo riavvia ogni 10 s. Non va in crash, ma l'ascolto resta fermo e il messaggio porta fuori strada. Ripiegare su hey_jarvis con un avviso nel log terrebbe l'ascolto acceso (§9).
+- **R-854-3 BASSA**: l'interruzione col modello nuovo (0,8 per 3 blocchi di fila, voce di Gas in sottofondo) non è stata misurata. Il LEGGIMI riporta solo attivazioni e falsi.
+- **Nota (già prima, nessun peggioramento)**: openWakeWord prova `os.path.exists(nome)` rispetto alla cartella corrente. Un `GAS_ASCOLTO_MODELLO` con un percorso, che non passa la regex, arriva com'è a `Model()` e carica quel file ONNX, come prima della modifica.
+
+**Rischi esclusi (non verificati)**
+
+- Qualità reale del modello sulla voce dell'operatore e sul microfono del Mac: in questo container non si può riprodurre. Fa fede la prova del chiamante con openWakeWord vero.
+- Contenuto del file .onnx: non l'ho ispezionato. È ONNX, non pickle, quindi non esegue codice al caricamento.
+- Script di addestramento in reports/: letti solo per cercare percorsi o segreti, nessuno trovato.
+- Licenza CC BY-NC-SA in un repo pubblico: rilevante, ma è una scelta dell'operatore e non un controllo tecnico.
+- Comportamento di `install` BSD su macOS: dato per buono senza prova sul Mac.
+- I fallimenti della suite completa (34 in tests/test_unit_web_browser.py e 1 in tests/test_unit_voice_server.py, per bwrap assente) riguardano file fuori dal diff: non li ho riverificati, come mi hai indicato.
+
+**Memoria**: riga #854 e 2 lezioni aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, già committate da sole (5291bca4). L'indice staged è intatto (39 file); git stash non usato.
 ```
 
-Secondo merge di origin/main (e8f539a3, porta dentro le PR #399 e #400): review #852-MERGE, verdetto INTEGRALE:
-
 ```
-## VERDETTO: APPROVATO
+## VERDETTO: APPROVATO CON RISERVE
 
-Review #852-MERGE: secondo merge di origin/main (af0215de, con le PR #399 R7 fetta 3 e #400 voce) in claude/ritocchi-simulazione (PR #401, solo documenti).
+Review #855: ho ricontrollato solo il delta rispetto alla #854. L'indice è come lo hai descritto: 39 file, +2232/−8. Rieseguiti i test `-k "modello or installa"` di tests/test_unit_voce_ascolto.py: 74 passati. Non ho usato git stash.
 
-Comandi ed esiti:
-1. `git diff --cached origin/main --stat -- gas.py brains/ modules/ tests/ scripts/ .claude/ .github/ clients/` → solo `.claude/agents/memoria_revisore.md | 1 +`. Il resto del perimetro è identico byte per byte a main, compresi modules/notte, clients/voice e i test di #399/#400.
-2. `git ls-files -u | wc -l` → 0. Grep dei marcatori su handoff, ultimo_report, diff_sessione, memoria e stato_progetto → nessun risultato.
-3. `git show origin/main:.claude/agents/memoria_revisore.md | diff - <(git show :.claude/agents/memoria_revisore.md)` → una sola riga aggiunta (la #851-MERGE), nessuna riga tolta. Le righe di main #848-R7, #851-MERGE-R7 e #822-M1coord ci sono. È un'unione senza perdite.
-4. `git diff --cached --quiet HEAD -- reports/{handoff,ultimo_report,diff_sessione}.md` → tutti e tre identici a HEAD (risolti `--ours`, regola 3).
-5. `git diff --cached origin/main -- reports/stato_progetto.md` → cambia solo la voce Funnel (1 riga tolta, 1 aggiunta). C'è una sola riga `^> Ultimo aggiornamento`.
-6. `git diff --cached --check origin/main` → pulito (gli spazi in coda nei `.patch` di reports/voce_simulazione_2026-11-23/ arrivano da main identici: il merge non li introduce).
+**Elementi esaminati**
 
-Rischio escluso: non ho rilanciato la suite dei test. Il codice del perimetro è identico a origin/main, quindi il risultato dei test è quello di main, già verificato da #848-R7 e #822-M1coord. Non ho riletto nel merito i file della voce né i documenti del funnel: fuori dal perimetro di questa review di merge.
-```
+1. `clients/voice/ascolto.py:1452` — se il file del modello c'è ma non è fidato, ora la funzione restituisce `MODELLO_DI_RISERVA` (`clients/voice/ascolto.py:194`, vale "hey_jarvis") e scrive un avviso nel log.
+   - Rischio: il nome del modello caricato diventa diverso da `modello`, la chiave del verificatore.
+   - Esito: ok. Il verificatore si cerca per `ehi_jarvis_it_verifier.pkl`, che non esiste, quindi va col nome giusto. Se ci fosse un verificatore con la chiave sbagliata, l'errore lo prende il try di `rilevatore_con_verifica`. Il punteggio è il massimo dei valori, quindi la chiave non conta. R-854-2 è chiusa: l'ascolto non si ferma più.
+2. `clients/voice/ascolto.py:1498` — la sorgente si calcola una volta sola, prima di creare i modelli.
+   - Esito: ok.
+3. `scripts/voce/installa.sh:149` — l'avviso compare solo quando lo script scrive `GAS_ASCOLTO_MODELLO=ehi_jarvis_it` e `.gas_voce/verifica/hey_jarvis_verifier.pkl` esiste. Dice che il filtro della voce resta spento e come riaverlo.
+   - Esito: ok. R-854-1 è risolta con un avviso. La scelta (modello italiano senza filtro) è dell'operatore e va registrata come sua decisione in stato_progetto.md.
+4. `tests/test_unit_voce_ascolto.py:1961` — test nuovo dell'avviso.
+   - Esito: ok, ma controlla solo che l'avviso ci sia. Manca il controllo opposto: nessun avviso senza il file del filtro, o quando la chiave era già nel `.env`. Lacuna di copertura BASSA, non blocca.
+5. `tests/test_unit_voce_ascolto.py:3351` — col file non fidato il test ora si aspetta "hey_jarvis".
+   - Esito: ok.
 
-NB: dopo il verdetto la riga #852-MERGE della memoria è stata messa in stage col commit di merge: il diff della memoria contro main è di 2 righe (#851-MERGE e #852-MERGE), come annunciato dal revisore.
+**Riserve (da tracciare in stato_progetto.md)**
 
-Terzo merge di origin/main (7ea06526, porta dentro la PR #403 CRM): review #853-MERGE, verdetto INTEGRALE:
+- **R-854-1, decisione dell'operatore**: col modello italiano il filtro della sua voce resta spento. L'installer lo avvisa, ma la scelta va registrata come sua.
+- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata (soglia 0,8 su 3 blocchi di fila, con la voce di Gas in sottofondo).
+- **R-855-1 COSMETICA**: dopo il ripiego su hey_jarvis, la riga di log «ascolto pronto: parola «ehi_jarvis_it»» (`clients/voice/ascolto.py:1663`) indica ancora il nome chiesto, non il modello usato. L'avviso del ripiego compare prima nel log, quindi la cosa si capisce.
 
-```
-## VERDETTO: APPROVATO
+**Rischi esclusi (non verificati)**
 
-Ho rifatto io tutti i controlli. Commit di merge pulito: nel perimetro di review l'unica differenza rispetto a main sono le 2 righe della memoria.
+- Il comportamento sul Mac: la qualità del modello, l'avviso letto dall'operatore, `install` di macOS. Non si può riprodurre in questo container.
+- I fallimenti di tests/test_unit_web_browser.py: non li ho riverificati. Li dai come identici su origin/main per bwrap assente, e sono fuori dal diff.
 
-Elementi del diff esaminati:
-- `.claude/agents/memoria_revisore.md:1724` — riga #851-MERGE di questa catena, aggiunta per unione — rischio: righe di main perse nella risoluzione del conflitto — ok. `git show origin/main:.claude/agents/memoria_revisore.md | diff - .claude/agents/memoria_revisore.md` (prima che aggiungessi la mia riga) mostra solo `1723a1724,1725`: 2 righe aggiunte, nessuna tolta.
-- `.claude/agents/memoria_revisore.md:1725` — riga #852-MERGE di questa sessione — rischio: si confonde con il #852-MERGE della chat CRM — ok. Il #852-MERGE della chat CRM sta alla riga 1721, questo alla 1725: il numero coincide ma sono righe distinte, nessuna sovrascrive l'altra.
-- `scripts/crm/installa.sh:1` (con `scripts/crm/spegni.sh:1` e `scripts/crm/com.gas.crm.plist:1`) — file nuovi arrivati da main con la PR #403 — rischio: modifiche fatte durante il merge su codice del perimetro — ok. `git diff --cached origin/main --stat -- gas.py brains/ modules/ tests/ scripts/ .claude/ .github/ clients/` mostra solo `.claude/agents/memoria_revisore.md | 2 ++`, quindi `scripts/crm/` è identico byte per byte a main.
-- `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» — rischio: doppia intestazione o voce CRM persa — ok. Rispetto a main cambia solo la riga Funnel (1 aggiunta, 1 tolta).
+**Memoria**: aggiunta la riga #855 in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata da sola (b650558a). L'indice staged è rimasto intatto.
 
-Altri controlli: `git ls-files -u` 0; marcatori di conflitto 0; `git diff --cached --check origin/main` pulito; `.git/MERGE_HEAD` presente; handoff/ultimo_report/diff_sessione uguali a HEAD (`--ours`); rispetto a HEAD entrano solo le modifiche di #403 più la memoria.
-
-Rischio escluso: non ho guardato il contenuto di `scripts/crm/installa.sh` né l'ho fatto girare: questo merge non lo cambia (byte-identico a main), la review spetta alla PR #403. Non ho riletto per intero le parti Funnel già approvate nei verdetti precedenti di PR #401.
+Il commit è consentito.
 ```
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/.
+- : 384 → 388 passed (4 test nuovi; 3 test esistenti adattati).
+- Suite completa su questo container: 35 failed, 4285 passed, 2 skipped (riepilogo reale: «35 failed, 4285 passed, 2 skipped in 579.99s», prima delle correzioni R-854).
+  - I FAIL sono fuori scope: 34 in  e 1 in , per bwrap assente nel container ().
+  - Su origin/main  fallisce allo stesso modo (verificato con -x). Il test di  non l'ho riprovato su main.
+  - Nessuno dei due file è nel diff.
 
 ## §6 STATO CI
 
-Output reale di `gh run list -L 3` alla scrittura del 6° giro:
+Output reale delle ultime 3 run (via API, alla scrittura):
 
 ```
-in_progress		Merge pull request #403 from Gasss23/claude/nifty-galileo-3k7kbm — CR…	CI	claude/nifty-galileo-3k7kbm	push	45401598296	4m34s	2026-11-24T13:15:42Z
-in_progress		Merge pull request #403 from Gasss23/claude/nifty-galileo-3k7kbm — CR…	CI	main	push	45401576193	4m41s	2026-11-24T13:15:35Z
-completed	success	Funnel: ritocchi finali dell'operatore (via domanda community, diretto solo nome, Pannello blu)	verifica-bot	claude/ritocchi-simulazione	pull_request_target	45399925689	2m26s	2026-11-24T13:05:55Z
+in_progress		Voce: «ehi Jarvis» con accento italiano (modello ehi_jarvis_it)	verifica-bot	feat/voce-modello-italiano	pull_request_target	45513021640	5s	2026-11-24T23:48:26Z
+in_progress		feat(voce): modello «ehi jarvis» con accento italiano (ehi_jarvis_it)	CI	feat/voce-modello-italiano	push	45513013196	8s	2026-11-24T23:48:23Z
+completed	success	Merge pull request #404 from Gasss23/claude/nifty-galileo-3k7kbm	CI	main	push	45511193577	11m54s	2026-11-24T23:35:00Z
 ```
 
-Mappatura commit→run: fb0f84af e 500cfa39 pushati insieme → una sola run CI 45228489192 success sull'albero di 500cfa39 (fb0f84af senza run propria, contenuto incluso nell'albero testato); verifica-bot del 1° verdetto su 500cfa39 success. ee275e38 (head 2° giro): run CI 45231282200 success + verifica-bot del 2° verdetto success. b926745a, 71dee2da e 35ca0faf: pushati insieme → run CI 45233853494 success (unit-suite 11m46s) sull'albero di 35ca0faf (head 3° giro; i due commit intermedi senza run propria) + verifica-bot del 3° verdetto success. 05721612, e8f539a3 e f994650d: pushati insieme → run CI 45397659451 success sull'albero di f994650d (head 4° giro; commit intermedi senza run propria) + verifica-bot del 4° verdetto success. 56ca77a4 (head 5° giro): run CI 45399914797 success (unit-suite 10m48s) + verifica-bot del 5° verdetto success (run 45399925689). 7ea06526: nessuna run su questo SHA alla scrittura (va col push del commit di fine-task di questo 6° giro, che avrà la run sull'albero di testa). La copertura pre-merge è garantita da `gh pr checks` prima del merge.
+Mappatura commit→run:
+- d6a980a5: run CI 45513013196 (push), in corso alla scrittura.
+- 5291bca4 e b650558a: pushati insieme a d6a980a5, quindi nessuna run su questi SHA; il loro contenuto è nell'albero testato.
+- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- V-1 COSMETICA del 3° verdetto bot sulla PR #396 (nome «Fetta unica» accanto a «Fetta 2/3» nei log di quella sessione): SUPERATA — i report sono riscritti per questa sessione.
-- 1° verdetto del bot su PR #401 (500cfa39, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (lingua del diretto non dichiarata), V-2 BASSA (§3/§6 dell'handoff con «un solo commit»), V-3 COSMETICA (card «niente domande», «in basso a sinistra»), V-4 COSMETICA (eccezione del diretto assente dalla regola del consenso in funnel_v2) — CORRETTE nel 2° giro (Fetta 2); il 2° verdetto le ha date per chiuse.
-- 2° verdetto del bot su PR #401 (ee275e38, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (riga del rischio assente dall'ultimo passo del diretto), V-2 COSMETICA (descrizione della fase 1 di oggi senza la domanda della community), V-3 COSMETICA («Fetta unica» accanto a «Fetta 2») — CORRETTE nel 3° giro (Fetta 3).
-- 3° verdetto del bot su PR #401 (35ca0faf, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (conferma 18 anni dopo la presentazione commerciale nel diretto), V-2 BASSA (consenso promo del diretto non tracciato) — CORRETTE nel 4° giro (Fetta 4) con la proposta dell'agente approvata dall'operatore.
-- 4° verdetto del bot su PR #401 (f994650d, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (decisione «mai promozione» non riportata in stato_progetto e nelle frasi di Fetta 1), V-2 BASSA (riga del rischio corta nel messaggio unico del diretto), V-3 COSMETICA (base nell'intestazione di diff_sessione) — CORRETTE nel 5° giro (Fetta 5).
-- 5° verdetto del bot su PR #401 (56ca77a4, APPROVATO CON RISERVE senza ALTA/MEDIA): V-1 BASSA (didascalia di chiusura dei solleciti condivisa tra completo e diretto nella simulazione) — CORRETTA in questo 6° giro (Fetta 6); serve il verdetto del bot sul nuovo head. Dopo questo giro, con un verdetto senza ALTA/MEDIA, si mergia (via dell'operatore «avvisami quando è mergiata», 24/11).
-- Riserve delle altre chat (CRM #397, Voce): tracciate in `reports/stato_progetto.md`, non toccate qui.
+- R-854-1: decisione dell'operatore (modello italiano senza filtro della voce). Avviso aggiunto in .
+- R-854-2: CHIUSA con il ripiego su hey_jarvis (review #855).
+- R-854-3 BASSA: interruzione col modello nuovo non misurata.
+- R-855-1 COSMETICA: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto.
+- Lacuna di copertura BASSA (#855): manca il test «nessun avviso» senza filtro.
+- Riserve delle altre chat: in , non toccate qui.

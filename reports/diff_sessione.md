@@ -1,17 +1,13 @@
-# DIFF SESSIONE — 23 novembre 2026 (ritocchi finali del funnel)
+# Diff della sessione — 2026-11-24 — modello «ehi jarvis» italiano
 
-> Questo file si riscrive a ogni sessione; la storia completa sta in git.
-> Branch claude/ritocchi-simulazione partito da main post #396/#397; dopo i due merge di main nel ramo la base è af0215de (post PR #400), come dice l'handoff §2.
+Si riscrive a ogni sessione; la storia completa sta in git. Base: 7231d92d (origin/main).
 
-File toccati (tutti doc, nessun file del motore):
-
-- `reports/funnel/funnel_v2.md` — nuova prima regola comune: via la domanda «Da quale community arrivi?» dalla fase 1 (decisione dell'operatore 23/11); allineati i due punti che dicevano «la fase 1 resta com'è».
-- `reports/funnel/tasto_collaboratori.md` — §3.1 riscritto: percorso diretto SOLO nome e cognome, con la riga «confermi 18 anni e ci autorizzi a risponderti»; §4.5 tutele aggiornate (consenso promo non chiesto nel diretto → niente promozione senza sì); §4.6 nuovo requisito: «I miei link» vive DENTRO il Pannello blu esistente.
-- `reports/funnel/simulazione_funnel.html` — fase 1 senza la domanda della community; flusso diretto rifatto (messaggio unico → campo nome con riga 18 anni → CTA), funzione `ctaConConsenso` rimossa perché non più usata; nota del Pannello blu nella scheda agente. Ripubblicata sulla pagina pubblica e provata dal vivo.
-- `reports/stato_progetto.md` — voce Funnel aggiornata (PR #396 mergiata, i tre ritocchi, cosa resta).
-- Secondo giro (note del 1° verdetto bot su #401): lingua del diretto dichiarata in `tasto_collaboratori.md` (§3.1, §4.5) e nella simulazione; card «solo nome e cognome»; rimando all'eccezione del diretto nella regola del consenso di `funnel_v2.md`; handoff §3/§6 coi commit reali.
-- Terzo giro (note del 2° verdetto bot su #401): riga sul rischio nell'ultimo passo del diretto (spec + simulazione); fase 1 di oggi descritta con la domanda della community; «Fetta 1» al posto di «Fetta unica». Merge di origin/main (PR #398, chat Voce) nel ramo: conflitto sui 3 report canonici risolto coi nostri, perimetro identico a main (review #851-MERGE APPROVATO); `.claude/agents/memoria_revisore.md` con la riga #851.
-- Quarto giro (note del 3° verdetto bot su #401, ok dell'operatore 24/11): conferma 18 anni in testa al messaggio unico del diretto; «ai lead del diretto il bot non manda MAI promozione» in spec, funnel_v2 e simulazione; 2° merge di origin/main (PR #399 e #400).
-- Quinto giro (note del 4° verdetto bot su #401): «mai promozione ai lead del diretto» allineato in stato_progetto e report; riga del rischio completa nel messaggio unico del diretto (spec + simulazione); base corretta in questa intestazione.
-- Sesto giro (V-1 del 5° verdetto bot su #401): didascalia di chiusura dei solleciti distinta per il diretto nella simulazione; 3° merge di origin/main (PR #403 CRM, review #853-MERGE).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — riscritti per questa sessione.
+- `clients/voice/ascolto.py`: `modello_della_parola()` e `MODELLO_DI_RISERVA`; `rilevatore_openwakeword` carica il modello da file se fidato.
+- `clients/voice/modelli/ehi_jarvis_it.onnx`: modello addestrato (accento italiano).
+- `clients/voice/modelli/LEGGIMI.md`: risultati, limiti, licenza CC BY-NC-SA, attribuzioni.
+- `scripts/voce/installa.sh`: passo 3b, copia del modello, scelta nel `.env` se assente, avviso sul filtro hey_jarvis.
+- `scripts/voce/LEGGIMI.md`: riga di `GAS_ASCOLTO_MODELLO` aggiornata.
+- `tests/test_unit_voce_ascolto.py`: test per il modello da file, il ripiego, la copia, la scelta e l'avviso; i test «.env byte per byte» partono col modello già scelto.
+- `reports/voce_simulazione_2026-11-23/modello_italiano/`: script di addestramento e valutazione, risultati grezzi, rapporto (LEGGIMI), metriche.
+- `.claude/agents/memoria_revisore.md`: review #854/#855.
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
