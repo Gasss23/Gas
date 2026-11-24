@@ -3,7 +3,8 @@
 <!-- CRM di Gas sul Mac (launchd), richiesta dell'operatore del 24-11: la dashboard sempre
      accesa, senza Terminale e senza IA. NON modificare a mano la copia in
      ~/Library/LaunchAgents: la scrive scripts/crm/installa.sh (CARTELLA_GAS sostituita).
-     Avvia `python -m modules.crm serve`: resta su 127.0.0.1, token GAS_CRM_TOKEN dal .env.
+     Avvia `python -m modules.crm serve`: resta su 127.0.0.1 (l'installer si ferma se GAS_CRM_BIND dice
+     altro), token GAS_CRM_TOKEN dal .env.
      KeepAlive: se cade, launchd lo riavvia (al massimo una volta ogni 10 s). -->
 <plist version="1.0">
 <dict>

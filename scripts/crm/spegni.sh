@@ -5,5 +5,6 @@ set -uo pipefail
 SERVIZIO=com.gas.crm
 launchctl bootout "gui/$(id -u)/$SERVIZIO" 2>/dev/null || true
 rm -f "$HOME/Library/LaunchAgents/$SERVIZIO.plist"
+rm -f "$HOME/Desktop/CRM Gas.webloc"
 echo "OK: CRM spento e tolto dall'avvio. I dati dei clienti non sono stati toccati."
 echo "Per riaccenderlo: bash scripts/crm/installa.sh"
