@@ -36,6 +36,7 @@
   - Opzione `--italiano` quando c'è il filtro hey_jarvis.
   - Test del collegamento rilevatore→file.
   - Documenti con i limiti.
+- **Fetta 3b — CI rossa su d6a980a5**: FATTA. Rinominati gli script `*_test.py` della simulazione, che pytest prendeva per test.
 - **Fetta 4 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
 
 ---
@@ -74,11 +75,11 @@
  reports/voce_simulazione_2026-11-23/modello_italiano/script/addestra.py                        | 272 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/script/feature.py                         | 193 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/script/flussi_nuovi.py                    | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/frasi_test.py                      |  25 +++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/frasi_prova.py                     |  25 +++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/script/genera.py                          | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/script/lib_sim.py                         | 163 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/script/mls.py                             |  30 ++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/quasi_test.py                      |  64 ++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/quasi_prova.py                     |  64 ++++++++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/script/rifai_tutto.sh                     |  51 +++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/script/scarica.sh                         |  46 ++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/script/tabella.py                         |  24 +++++++++++++
@@ -94,6 +95,7 @@ NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3b407738 docs(fine-task): handoff con le correzioni di verifica esterna e bot #405 (review #856/#857)
 908f430b fix(voce): installa.sh sceglie il modello italiano col filtro solo con --italiano; soglia 0.5; ripiego col file assente
 dcee5f24 chore(revisore): memoria review #857 — APPROVATO CON RISERVE
 c0c30f2f chore(revisore): memoria review #856 — APPROVATO CON RISERVE
@@ -276,21 +278,20 @@ Il commit è consentito.
 
 - `tests/test_unit_voce_ascolto.py`: 384 → 391 passed (7 test nuovi; 3 test esistenti adattati).
 - Suite completa su questo container, prima delle correzioni: 35 failed, 4285 passed, 2 skipped. Riepilogo reale: «35 failed, 4285 passed, 2 skipped in 579.99s».
-- I FAIL sono fuori scope:
-  - 34 in `tests/test_unit_web_browser.py` e 1 in `tests/test_unit_voice_server.py`;
-  - causa: bwrap assente nel container (`FileNotFoundError: ... 'bwrap'`);
-  - su origin/main `tests/test_unit_web_browser.py` fallisce allo stesso modo; il test di `tests/test_unit_voice_server.py` non l'ho riprovato su main;
-  - nessuno dei due file è nel diff.
+- Correzione: non tutti i FAIL erano fuori scope.
+  - 34 in `tests/test_unit_web_browser.py` dipendono da bwrap, assente nel container (`FileNotFoundError: ... 'bwrap'`); su origin/main falliscono allo stesso modo. Il file non è nel diff.
+  - 1 in `tests/test_unit_voice_server.py` (`test_collection_dell_intero_repo_non_esplode`) era invece di questa PR, e la CI l'ha trovato: lo `unit-suite` di d6a980a5 è rosso. Due script della simulazione si chiamavano `frasi_test.py` e `quasi_test.py`, pytest li prendeva per test e cadeva su `import openwakeword`.
+  - Rinominati in `frasi_prova.py` e `quasi_prova.py`, con il riferimento corretto in `rifai_tutto.sh`. Dopo la correzione il test passa in locale («1 passed»).
 
 ## §6 STATO CI
 
 Output reale (API, run del branch) alla scrittura:
 
 ```
+in_progress		verifica-bot	feat/voce-modello-italiano	pull_request_target	45514300490	3b407738	2026-11-24T23:58:01Z
+in_progress		CI	feat/voce-modello-italiano	push	45514297230	3b407738	2026-11-24T23:57:59Z
 completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45513186908	d63cb6f5	2026-11-24T23:49:40Z
 completed	skipped	verifica-bot	feat/voce-modello-italiano	pull_request_target	45513172656	d63cb6f5	2026-11-24T23:49:34Z
-in_progress		CI	feat/voce-modello-italiano	push	45513166119	d63cb6f5	2026-11-24T23:49:31Z
-completed	skipped	verifica-bot	feat/voce-modello-italiano	pull_request_target	45513100353	21a68a4f	2026-11-24T23:49:01Z
 ```
 
 Mappatura commit→run:

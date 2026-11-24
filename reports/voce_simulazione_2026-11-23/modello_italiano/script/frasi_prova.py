@@ -1,5 +1,5 @@
 """Punteggio massimo di un modello su ogni frase dei flussi della simulazione (espeak it+m3 e
-altre voci), per capire QUALI frasi fanno scattare i falsi. Uso: python frasi_test.py <modello>..."""
+altre voci), per capire QUALI frasi fanno scattare i falsi. Uso: python frasi_prova.py <modello>..."""
 import sys
 from pathlib import Path
 import numpy as np

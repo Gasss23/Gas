@@ -45,7 +45,7 @@ if [ -n "${GAS_REPO:-}" ]; then
     done
   done
   $PY "$QUI/valuta.py" validazione dati hey_jarvis modelli/ehi_jarvis_it.onnx
-  $PY "$QUI/quasi_test.py" dati hey_jarvis modelli/ehi_jarvis_it.onnx
+  $PY "$QUI/quasi_prova.py" dati hey_jarvis modelli/ehi_jarvis_it.onnx
   $PY "$QUI/tabella.py" ris/griglia_*.json
 fi
 echo "fatto: $W/modelli/ehi_jarvis_it.onnx"

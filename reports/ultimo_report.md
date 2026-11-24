@@ -48,7 +48,7 @@
 - **Fetta 4 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
 
 ## Anomalie
-- Suite completa: 35 FAIL, tutti in `tests/test_unit_web_browser.py` (34) e `tests/test_unit_voice_server.py` (1). Causa: bwrap non c'è in questo container. Su origin/main `tests/test_unit_web_browser.py` fallisce allo stesso modo; il test di `tests/test_unit_voice_server.py` non l'ho riprovato su main. I file della modifica non c'entrano. `tests/test_unit_voce_ascolto.py`: 391 passed.
+- Suite completa: 35 FAIL. I 34 di `tests/test_unit_web_browser.py` vengono da bwrap, assente nel container, e su origin/main falliscono allo stesso modo. Il FAIL di `tests/test_unit_voice_server.py` (`test_collection_dell_intero_repo_non_esplode`) era invece di questa PR, e l'avevo attribuito per errore a bwrap. Causa: gli script `frasi_test.py` e `quasi_test.py` della simulazione, che pytest prende per test. La CI l'ha trovato (unit-suite rosso su d6a980a5). Li ho rinominati in `*_prova.py` e il test ora passa.
 - La prima review è stata interrotta dal limite d'uso ed è stata ripresa dopo il reset.
 - L'agente di addestramento ha aggiunto all'ambiente cloud «Gas» l'host `us.aws.cdn.hf.co` (CDN di Hugging Face), con l'approvazione dell'operatore.
 - Il primo handoff (21a68a4f) è uscito rovinato: la shell ha interpretato i backtick e ha lanciato `git pull` (già aggiornato) e `installa.sh` (fermato da sé: «solo per il Mac»). Nessun danno; testo corretto in d63cb6f5.

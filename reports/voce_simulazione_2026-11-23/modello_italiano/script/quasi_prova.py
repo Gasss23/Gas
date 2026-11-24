@@ -3,7 +3,7 @@ quelli della simulazione del 23/11 («ehi gianni», «hey jervis»…), detti da
 parte (espeak it+m3, piper riccardo, 2 parlanti libritts di valutazione), vicino al Mac.
 Per confronto le stesse voci dicono «ehi jarvis». Punteggio = massimo sul flusso, 4 sfasamenti.
 
-Uso: python quasi_test.py <dati> <modello>...  (stampa la frazione di frasi sopra soglia)"""
+Uso: python quasi_prova.py <dati> <modello>...  (stampa la frazione di frasi sopra soglia)"""
 from __future__ import annotations
 
 import random
