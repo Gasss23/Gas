@@ -1397,3 +1397,125 @@ def test_boot_compito_gia_finito_niente_attese(tmp_path, monkeypatch, _niente_ri
                                     rete=lambda: chiamate.append("rete") or False,
                                     forte=lambda: chiamate.append("forte") or False)
     assert ok and "già finito" in frase and chiamate == []
+
+
+# ---- R7 fetta 4: tetto di tempo DURO del processo in sottofondo ----
+
+class _Tetto:
+    def __init__(self):
+        self.secondi, self.fn, self.annullato = None, None, False
+
+    def arma(self, secondi, fn):
+        self.secondi, self.fn = secondi, fn
+        return self
+
+    def cancel(self):
+        self.annullato = True
+
+
+@pytest.fixture
+def _tetto(monkeypatch):
+    t = _Tetto()
+    terminati = []
+    monkeypatch.setattr(sf, "_arma_tetto", t.arma)
+    monkeypatch.setattr(sf, "_termina_processo", lambda: terminati.append(1))
+    t.terminati = terminati
+    return t
+
+
+def test_tetto_armato_col_tempo_rimasto_e_tolto_a_fine_compito(tmp_path, monkeypatch, _tetto):
+    monkeypatch.setenv("GAS_SOTTOFONDO_MAX_MIN", "60")
+    ident, _ = sf.accoda(tmp_path, "uno")
+    assert sf.esegui(tmp_path, ident, lambda: _Kernel(), _avvisi()[1]) == 0
+    assert 3500 < _tetto.secondi <= 3600 and _tetto.annullato and _tetto.terminati == []
+
+
+def test_tetto_scaduto_ferma_il_compito_con_avviso(tmp_path, monkeypatch, _tetto):
+    """Il processo appeso dentro il turno: alla scadenza il compito diventa «ko», l'operatore
+    è avvisato e il processo si ferma (con i figli)."""
+    ident, _ = sf.accoda(tmp_path, "lungo")
+    c = tmp_path / sf.CARTELLA
+    inviati, avvisa = _avvisi()
+
+    class _Appeso:
+        def run_turn(self, prompt, **kw):
+            _tetto.fn()  # scade mentre il turno è in corso
+            yield {"type": "final", "content": "tardi"}
+
+    assert sf.esegui(tmp_path, ident, lambda: _Appeso(), avvisa) == 1
+    job = json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))
+    assert job["stato"] == "ko" and job["errore"] == "oltre la durata massima, fermato"
+    assert _tetto.terminati == [1] and len(inviati) == 1
+    assert "oltre la durata massima, fermato" in inviati[0]
+    assert sf.attivo(tmp_path) is None
+
+
+def test_tetto_gia_superato_alla_partenza(tmp_path, monkeypatch, _tetto):
+    """Ripresa partita quando il tempo totale (dalla prima creazione) è già finito: niente
+    turno, «ko» con avviso."""
+    import time as _t
+    ident, _ = sf.accoda(tmp_path, "vecchio")
+    c = tmp_path / sf.CARTELLA
+    job = json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))
+    job["creato"] = _t.time() - sf._durata_max_s() - 10
+    (c / f"{ident}.json").write_text(json.dumps(job), encoding="utf-8")
+    k = _Kernel()
+    inviati, avvisa = _avvisi()
+    assert sf.esegui(tmp_path, ident, lambda: k, avvisa) == 1
+    assert k.chiamate == [] and _tetto.fn is None
+    assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ko"
+    assert len(inviati) == 1 and "durata massima" in inviati[0]
+
+
+def test_tetto_dopo_esito_ok_non_cambia_niente(tmp_path, _tetto):
+    """Il timer che scatta dopo che il compito è finito «ok» non lo chiude «ko» né avvisa."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    inviati, avvisa = _avvisi()
+    assert sf.esegui(tmp_path, ident, lambda: _Kernel(), avvisa) == 0
+    _tetto.fn()
+    assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ok"
+    assert len(inviati) == 1 and "Ho finito" in inviati[0]
+
+
+def test_tetto_con_orologio_indietro_vale_la_durata_intera(monkeypatch):
+    import time as _t
+    assert sf._secondi_rimasti({"creato": _t.time() + 10_000}) == sf._durata_max_s()
+
+
+def test_timer_vero_scatta(monkeypatch):
+    import threading as _th
+    fatto = _th.Event()
+    t = sf._arma_tetto(0.01, fatto.set)
+    assert fatto.wait(2) and t.daemon
+
+
+def test_tetto_e_fine_turno_un_solo_esito(tmp_path, _tetto):
+    """R-852R7-2: il timer scatta, poi il turno finisce comunque «ok»: resta «ko», un solo
+    avviso; e il timer dopo la chiusura del turno non ferma il processo."""
+    ident, _ = sf.accoda(tmp_path, "uno")
+    c = tmp_path / sf.CARTELLA
+    inviati, avvisa = _avvisi()
+
+    class _ScadeEPoiFinisce:
+        def run_turn(self, prompt, **kw):
+            yield {"type": "tool_res", "output": "x"}
+            _tetto.fn()
+            yield {"type": "final", "content": "fatto comunque"}
+
+    assert sf.esegui(tmp_path, ident, lambda: _ScadeEPoiFinisce(), avvisa) == 1
+    assert json.loads((c / f"{ident}.json").read_text(encoding="utf-8"))["stato"] == "ko"
+    assert len(inviati) == 1 and _tetto.terminati == [1]
+    ident2, _ = sf.accoda(tmp_path, "due")
+    assert sf.esegui(tmp_path, ident2, lambda: _Kernel(), avvisa) == 0
+    _tetto.fn()  # dopo la chiusura: niente arresto
+    assert _tetto.terminati == [1] and len(inviati) == 2
+
+
+def test_timer_con_attesa_enorme_non_muore(monkeypatch):
+    """R-852R7-3: valori enormi non fanno morire il Timer per OverflowError."""
+    t = sf._arma_tetto(1e12, lambda: None)
+    try:
+        assert t.interval == sf.TETTO_TIMER_S and t.is_alive()
+    finally:
+        t.cancel()
