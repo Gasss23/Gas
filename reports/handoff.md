@@ -1,424 +1,214 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-24 — Revisione in più sugli script del CRM e note dei verificatori (PR #404)
+**Sessione:** 2026-11-25 — Dashboard del CRM anche dal telefono (decisione 21)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #404 (https://github.com/Gasss23/Gas/pull/404). Tocca `.claude/perimetro_review.txt` e `scripts/`, quindi il bot dà `neutral` e il merge lo decide l'operatore.
-2. Sul Mac, una volta sola dopo il merge: `cd ~/Gas && git pull && bash scripts/crm/installa.sh`; controllare che l'ultima riga dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA». Prova in più consigliata dai verificatori (bash 3.2 del Mac): rilanciarlo, premere Ctrl+C mentre dice «Aspetto che la dashboard risponda», poi `launchctl print gui/$(id -u)/com.gas.crm` deve dire che il servizio non c'è; infine rilanciare l'installazione normale.
-3. Dalla chat Voce (#400): controllare nel `.env` del Mac che non ci sia una vecchia `GAS_ASCOLTO_SOGLIA_INTERRUZIONE=0.8`.
+1. Merge della PR di questa fetta: tocca `scripts/` e il codice del CRM, quindi il bot dà `neutral` e il merge lo decide l'operatore. Fetta di sicurezza: secondo passaggio consigliato nella chat claude.ai.
+2. Sul Mac, dopo il merge: app **Tailscale** (Mac App Store) con accesso; sul telefono la stessa app con lo **stesso account**; poi `cd ~/Gas && git pull && bash scripts/crm/telefono.sh`. La prima volta Tailscale può stampare un link per attivare HTTPS: aprirlo, premere «Enable» e rilanciare. Sul telefono aprire l'indirizzo stampato, inserire il token, salvarlo nella schermata Home.
+3. Dalla fetta precedente: `bash scripts/crm/installa.sh` sul Mac (se non già fatto) e il controllo del `.env` della voce (`GAS_ASCOLTO_SOGLIA_INTERRUZIONE`).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **`scripts/crm/` nel perimetro di review** (richiesta dell'operatore: «ci sta comunque una revisione in più, dato che comunque sono dati personali dei clienti e non dobbiamo fare assolutamente neanche un errore»; decisione 20): FATTA (d54a09ad, review #853 APPROVATO CON RISERVE). R-852M-2 chiusa. Note V-1/V-2 del bot sulla #403 chiuse nello stesso commit.
-- **R-853-1 e R-853-2 (parte delle copie)**: FATTE (75dbd9d9, review #854 APPROVATO CON RISERVE). `togli_servizio` a ogni STOP dell'installer; copie locali per giorno (30 giorni più le ultime 10).
-- **Merge di main (PR #401 del funnel, altra chat)** (1b61ec43): FATTO. Conflitti solo sui report e sulla memoria del revisore: report del ramo tenuti, righe della memoria unite, riserve dell'ultimo verdetto del bot sulla #401 (V-1 BASSA, V-2 COSMETICA) riportate in `reports/stato_progetto.md` (regola 3). Nessun file del perimetro nel merge: niente review.
-- **Bacheca** (dfe8fbee): notizia per le altre chat (`scripts/crm/` nel perimetro); chiusa la notizia del 23-11 sul collegamento di Gas al CRM.
-- **Note dei verificatori sulla #404**: FATTE.
-  - Verifica esterna su ca2fc64b (APPROVATO CON RISERVE, commento https://github.com/Gasss23/Gas/pull/404#issuecomment-7139788043): V-1 BASSA (orologio indietro: la copia appena fatta veniva cancellata) chiusa in 5b75c850; V-2 BASSA (ramo indietro rispetto a main) chiusa dal merge 1b61ec43; V-3 BASSA (= R-854-1/R-853-3) chiusa in 5b75c850/8fbd65a3; V-4 COSMETICA (§6 senza verde finale) superata, vedi §6.
-  - Bot su dfe8fbee (APPROVATO CON RISERVE, neutral): V-1 BASSA (copie a mano fuori formato) chiusa in 5b75c850; V-2 BASSA (unit-suite non ancora finita) superata: unit-suite success su dfe8fbee.
-  - R-854-1 (Ctrl+C durante l'attesa) e R-853-3 (test degli script) chiuse in 5b75c850 (review #855, #856) e 8fbd65a3 (review #857).
-- **Note della 2ª verifica esterna e del bot su 94184b2c** (entrambi APPROVATO CON RISERVE, solo BASSE; verifica: https://github.com/Gasss23/Gas/pull/404#issuecomment-7140497038): FATTE. V-3 bot / V-1 verifica (copie con data nel futuro) e V-2 bot (trap EXIT con `if`) in 8acae43c (review #858); R-858-1 (stessa protezione per le copie cifrate su iCloud) e R-858-2 (test del margine) in b176a489 (review #859). V-1 bot / V-2 verifica (CI non finita) superate: unit-suite success su 94184b2c. V-3 verifica (17 contro 18 test): il conteggio è con `-k "installa_crm or spegni_crm"`.
-- **R-859-1** (test del margine delle copie cifrate) e **R-859-2** (cosmetica): NON FATTE, aperte.
-- **R-854-2** (KeepAlive senza tetto, registro senza rotazione): NON FATTA, resta aperta.
-- **Prova su un Mac vero**: SALTATA — il Mac non è raggiungibile da qui; script provati con comandi finti (test del repo e simulazioni del revisore), bash 5.2.
+- **Dashboard anche dal telefono** (richiesta dell'operatore: «sì fallo, voglio vederla anche dal telefono. magari qua sul mac mettimi pure un collegamento diretto al desktop»; decisione 21): FATTA (e970daef, review #860 e #861 APPROVATO CON RISERVE). `scripts/crm/telefono.sh` con `tailscale serve`; il server accetta solo il nome `*.ts.net` del Mac sulla 443 e rifiuta il funnel; cookie `Secure`; `spegni.sh` spegne anche il telefono. R-860-1 MEDIA (funnel accettato) e R-860-2..5 chiuse in e970daef.
+- **R-861-1 e R-861-2** (spegni che diceva «OK» con il collegamento ancora attivo; test sui collegamenti di altri servizi): FATTE in 23773556 (review #862).
+- **Collegamento sulla Scrivania del Mac**: c'era già (icona «CRM Gas» creata da `installa.sh`); nessuna modifica.
+- **Prova con un Tailscale vero, launchd vero e bash 3.2 del Mac**: SALTATA — il Mac non è raggiungibile da qui; comandi della CLI controllati sul sorgente di Tailscale v1.106.1 e provati con un Tailscale finto.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  18 ++
- .claude/perimetro_review.txt       |   3 +
- modules/crm/copia_cifrata.py       |  29 ++-
- modules/crm/store.py               |  44 ++++-
- reports/bacheca.md                 |   4 +-
+ .claude/agents/memoria_revisore.md |   8 +
+ modules/crm/__main__.py            |   6 +-
+ modules/crm/server.py              |  50 +++++-
  reports/crm/decisioni.md           |   4 +
- reports/crm/guida.md               |   4 +-
- reports/diff_sessione.md           |  28 ++-
+ reports/crm/guida.md               |   9 ++
+ reports/diff_sessione.md           |  21 ++-
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   6 +-
- reports/ultimo_report.md           |  57 +++---
- scripts/crm/installa.sh            |  31 ++-
- tests/test_unit_crm.py             | 390 ++++++++++++++++++++++++++++++++++++-
+ reports/stato_progetto.md          |   3 +-
+ reports/ultimo_report.md           |  37 ++---
+ scripts/crm/spegni.sh              |   7 +
+ scripts/crm/telefono.sh            | 277 ++++++++++++++++++++++++++++++++
+ tests/test_unit_crm.py             | 312 +++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale. Base: merge-base con main 7231d92d (main 96d5ae99 a inizio sessione, poi il merge della #401).
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale. Base: main b100f8d4.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-d54a09ad chore(perimetro): scripts/crm/ passa dal revisore (decisione 20); installer: plist tolto se la dashboard non parte, errore di import distinto (review #853)
-75dbd9d9 fix(crm): copie locali per giorno (30 giorni più le ultime 10) e servizio tolto a ogni STOP dell'installer (R-853-1/2, review #854)
-ca2fc64b docs(fine-task): scripts/crm/ nel perimetro di review e copie locali per giorno — report, handoff (review #853, #854) e stato
-1b61ec43 Merge origin/main (PR #401 funnel) nel ramo della PR #404 — report del ramo tenuti, riserve dell'ultimo verdetto del bot sulla #401 in stato_progetto (regola 3)
-a83ca616 docs(fine-task): handoff e diff_sessione col merge di main (PR #401) — PR #404
-dfe8fbee docs(bacheca): scripts/crm/ nel perimetro di review (decisione 20); chiusa la notizia sul collegamento di Gas al CRM — PR #404
-5b75c850 fix(crm): copia appena fatta mai cancellata, copie a mano ignorate, Ctrl+C durante l'installazione toglie il servizio, test degli script con comandi finti (V-1 verifica esterna #404, V-1 bot #404, R-854-1, R-853-3, R-855; review #855, #856)
-8fbd65a3 fix(crm): pulizia dell'installer che regge un rm fallito, test del secondo Ctrl+C e dell'ordine plist/bootout (R-856-1, R-856-2; review #857)
-94184b2c docs(fine-task): note dei verificatori sulla #404 chiuse — report, handoff (review #853–#857) e stato
-8acae43c fix(crm): copie locali con data nel futuro non accorciano la storia, trap EXIT dell'installer sempre con 0 (V-3 e V-2 bot #404, V-1 2ª verifica esterna #404; review #858)
-b176a489 fix(crm): copie cifrate fuori dal Mac protette come quelle locali (copia appena fatta, nomi a mano, date nel futuro), test del margine di un giorno (R-858-1, R-858-2; review #859)
+e970daef feat(crm): dashboard anche dal telefono, solo nella rete privata Tailscale (decisione 21) — nome *.ts.net ammesso solo sulla 443, richieste dal funnel rifiutate, cookie Secure, scripts/crm/telefono.sh (review #860, #861)
+23773556 fix(crm): telefono.sh spegni non dice «OK» se qualcosa resta acceso (uscita 2, riavvio anche senza porta), test sui collegamenti di altri servizi (R-861-1, R-861-2; review #862)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Commit d54a09ad — review #853 (verdetto integrale)
+### Commit e970daef — review #860 (verdetto integrale, primo giro)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #853. Diff staged sul ramo claude/nifty-galileo-3k7kbm, sopra main 96d5ae99: 3 file, +14 righe, hash_diff_staged 7ea45b74. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le parti sul CRM) e la mia memoria (la #852-MERGE con R-852M-2). Ho letto per intero tutti i file di scripts/crm/.
+Review #860. Ho controllato il diff staged del ramo claude/nifty-galileo-3k7kbm sopra b100f8d4: 6 file, +451/−5, sha256 57f581755f05…, ricalcolato e identico al tuo prima e dopo la review. Ho letto CLAUDE.md (sez. 1, 5, 8, 9 e 10), le parti di `reports/stato_progetto.md` sul CRM e le lezioni della memoria su Host, CSRF, `.env`, `set -e`/pipefail e installer. Nella memoria ho aggiunto la riga #860 e due lezioni: il file è fuori dallo stage e non è committato, come hai chiesto. Non ho creato `.claude/.review_ok`. Non ho trovato violazioni del Wall of Shame: il kernel non è toccato, non c'è slicing della history e non c'è simulazione di tool. Le eccezioni del server finiscono in gas_debug.log come prima, e un nome non valido viene scartato con un warning, senza crash.
 
 **Elementi del diff esaminati**
-- `.claude/perimetro_review.txt:36`: aggiunge `scripts/crm/` come cartella (la riga finisce con /).
-  - Rischio: che il gate non riconosca la riga, o che il perimetro si restringa.
-  - Esito: ok. Ho controllato con `_nel_perimetro` di scripts/check_verdetto.py: installa.sh e il plist ora sono nel perimetro; `scripts/crmx.sh` e reports/crm/ no. Ho rieseguito `pytest tests/test_unit_hooks.py -k "perimetro or gate"`: 128 passed. R-852M-2 è chiusa.
-  - Nota: la PR tocca il file del perimetro e scripts/, che stanno nell'elenco della macchina del bot (`scripts/bot_esito.py:69`). Il bot darà quindi `neutral` e il merge lo decide l'operatore: niente merge automatico.
-- `scripts/crm/installa.sh:36`: tenta `import gas` dentro un try ed esce con 4 se fallisce (V-2 del bot).
-  - Rischio: un `import gas` che scrive su stdout sporcherebbe PORTA. Oppure il codice 4 potrebbe non arrivare al `case`.
-  - Esito: ok. Il logging di gas.py va su stderr e nel file. L'ho provato con finti uname/launchctl/plutil/curl/sleep e una copia del repo. Con gas.py rotto (modulo inesistente) esce 1 con «Gas non si avvia con le sue dipendenze». Lo stesso caso con installa.sh di HEAD diceva «manca GAS_CRM_TOKEN»: la correzione serve davvero. Anche i casi token mancante, token solo esportato (exit 2) e GAS_CRM_BIND diverso (exit 3) restano giusti.
-- `scripts/crm/installa.sh:54`: nuovo ramo `4)` del `case`. Esito: ok, il messaggio arriva (vedi sopra).
-- `scripts/crm/installa.sh:108`: `rm -f "$PLIST"` dopo il bootout, quando la dashboard non risponde (V-1 del bot).
-  - Rischio: il percorso cancellato e il plist che launchd ricarica al login.
-  - Esito: ok. PLIST è fisso e tra virgolette. In simulazione, con curl sempre muto, ~/Library/LaunchAgents resta vuota ed esce 1. Il percorso riuscito arriva in fondo con exit 0, icona creata e riga della copia cifrata mostrata.
-- `reports/crm/decisioni.md:50`: punto 20, coerente con la decisione riportata dal chiamante.
-- Contesto, file non toccati:
-  - `modules/crm/server.py:906`: il server rifiuta da sé un indirizzo non locale. Un GAS_CRM_BIND messo in ~/.zshenv (che `zsh -c` legge e l'installer no) non apre il CRM in rete: lo fa solo fallire.
-  - `modules/crm/server.py:921`: `pronto` (prova della copia cifrata, tetto di 5 s) gira prima di `serve_forever`. I 30 s di attesa dell'installer bastano.
-
-**Riserve (nessuna bloccante)**
-- **R-853-1 BASSA** (`scripts/crm/installa.sh:97`): dopo 3 bootstrap falliti il plist resta in ~/Library/LaunchAgents. L'ho provato con un launchctl finto che risponde «Input/output error».
-  - Effetto: al login launchd lo carica (RunAtLoad + KeepAlive) senza il controllo della dashboard. È la stessa classe di problema di V-1, ma la correzione copre un solo ramo.
-  - Stesso caso, innocuo, dopo `plutil` a `scripts/crm/installa.sh:88`: il plist non valido resta lì ma non si carica.
-  - Proposta: una funzione unica «togli servizio» (bootout + rm del plist) per ogni stop dopo `scripts/crm/installa.sh:87`.
-- **R-853-2 BASSA** (c'era già prima, ora è nel perimetro; `scripts/crm/com.gas.crm.plist:27`): KeepAlive true con ThrottleInterval 10 e nessun tetto.
-  - Se dopo l'installazione il CRM non parte (token tolto dal .env, porta presa da un altro programma, DB non apribile), launchd lo rilancia ogni 10 s per sempre.
-  - Ogni rilancio costa un `import gas`, misurato ~1 s di CPU in ambiente pulito, e scrive una riga in `.gas_memory_crm_server.log`, che non ruota. Nessuno avvisa l'operatore.
-  - Caso raro (non ho trovato un crollo realistico dopo l'avvio), ma con dati dei clienti: ogni partenza riuscita fa una copia locale (`modules/crm/server.py:352`, nome al secondo a `modules/crm/store.py:1372`) e ne tiene 30. Con un ciclo di crolli dopo l'avvio, in ~5 minuti spariscono le copie dei giorni prima.
-  - Proposte: un'attesa lunga prima di uscire sugli STOP quando il CRM gira sotto launchd, e la copia all'avvio solo se l'ultima è vecchia.
-- **R-853-3 BASSA**: scripts/crm/ non ha nessun test. La voce invece prova il suo installer con comandi finti (`tests/test_unit_voce_ascolto.py:1938`). V-1 e V-2 sono provate solo dalla mia simulazione manuale.
-- **COSMETICHE**: l'uscita 4 non dice quale modulo manca (nel messaggio di un ImportError non ci sono segreti); se il servizio viene tolto, l'icona «CRM Gas» di un'installazione precedente resta sulla Scrivania; CARTELLA_GAS viene sostituita anche nel commento di `scripts/crm/com.gas.crm.plist:5` (un percorso con «--», ammesso da CONSENTITI, renderebbe l'XML non valido e farebbe fermare lo script a plutil); spegni.sh non aspetta che il bootout finisca.
-
-**Wall of Shame e guardrail**: in scripts/crm/ non c'è history, non ci sono tool simulati e non si toccano `_get_window`, il tetto di 10 iterazioni o quello degli 8k token. I finti comandi esistono solo nella mia simulazione, che non è nel diff.
-
-**Rischi esclusi (non verificati)**:
-- Comportamento su un Mac vero: launchd reale, permessi di macOS per Scrivania e iCloud (scrivere l'icona può essere negato al Terminale, e con `set -e` lo script finirebbe con un errore di bash dopo aver già acceso il servizio), `plutil` e `wc` di BSD. Ho provato solo su Linux con comandi finti.
-- La citazione dell'operatore nel punto 20: non è verificabile dal repo.
-- modules/crm/ non l'ho ri-revisionato oltre ai punti citati: è già nel perimetro.
-
-**Note per il chiamante**:
-- Ho aggiunto la riga #853 e due lezioni in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza indirizzi IP. Il file è modificato ma NON in stage e NON committato. Il primo tentativo con `scripts/commit_memoria_revisore.sh` è stato negato dal permesso automatico, coerente col tuo «non committare»: va committato a fine task.
-- L'indice staged è intatto (3 file, +14). Non ho creato .claude/.review_ok.
-- R-852M-1 (il .env della voce sul Mac) e le nuove R-853-1..4 vanno scritte in reports/stato_progetto.md: oggi non ci sono.
-
-### Commit 75dbd9d9 — review #854 (verdetto integrale)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #854. Diff staged sul ramo claude/nifty-galileo-3k7kbm, sopra d54a09ad: 4 file, +53/−15, sha256 del diff c17b3830. Prima ho letto CLAUDE.md, la testa di reports/stato_progetto.md (riserve R-852M/R-853) e la memoria del revisore, compresa la riga #853 e le sue due lezioni.
-
-**Elementi del diff esaminati**
-- `modules/crm/store.py:1388` — per ogni giorno tiene la copia più recente, usando il nome `crm-AAAAMMGG-HHMMSS`, cioè `name[4:12]`. Rischio esaminato: nomi non in ordine di tempo, chiave del giorno sbagliata, eccezioni nuove fuori dal `try`. Esito: ok. Ho fatto 8 modifiche apposta al codice per vedere se i test se ne accorgono: vecchia regola, niente `ultime`, copia più vecchia del giorno, giorni più vecchi, niente giorni, giorno troncato al mese, `keep+1`, `ultime+1`. Su una copia dell'indice i test le hanno fatte fallire tutte e 8.
-- `modules/crm/store.py:1389` — `tenere` = le ultime `ultime` copie più gli ultimi `keep` giorni; `max(1, …)` protegge da 0 e dai negativi. Rischio esaminato: un altro chiamante che usa ancora il vecchio significato di `keep`. Esito: ok. Gli unici chiamanti di `CRMStore.backup` sono `modules/crm/server.py:311` e `modules/crm/__main__.py:186`, entrambi coi valori predefiniti. `modules/crm/copia_cifrata.py:285` non è toccato e tiene già una copia cifrata al giorno. Le altre `backup(..., keep=)` del repo sono di `modules/memory/store.py`, un'altra classe. Nessuna lezione dell'elenco degli errori vietati violata: lo slicing è sull'elenco dei file, non sulla cronologia dei messaggi.
-- `tests/test_unit_crm.py:2596` — test nuovo: 40 giorni più 60 riavvii nello stesso giorno. Ho rifatto il conto: restano i giorni dal 12-10 al 10-11, 10 copie di oggi, totale 29+10. Esito: ok. Con il codice vecchio il test fallisce.
-- `tests/test_unit_crm.py:2133` — il test esistente passa `keep=2, ultime=2`. Tre copie nello stesso giorno, ne restano 2. Esito: ok.
-- `scripts/crm/installa.sh:25` — `togli_servizio` fa lo stesso bootout e la stessa rimozione di `scripts/crm/spegni.sh`. Esito: ok.
-- `scripts/crm/installa.sh:94`, `scripts/crm/installa.sh:103`, `scripts/crm/installa.sh:113` — i tre punti di STOP dopo la scrittura del plist (controllo con plutil fallito, 3 caricamenti falliti, dashboard che non risponde). Li ho simulati con comandi finti (uname, launchctl, plutil, curl, sleep): in tutti e tre il plist viene tolto e il bootout parte dopo l'ultimo tentativo di caricamento. Nel caso riuscito restano plist e icona, uscita 0. Esito: ok, R-853-1 chiusa.
-- `reports/crm/guida.md:29` e `reports/crm/guida.md:89` — la guida ora descrive la regola nuova. Nel codice e nella guida non resta nessun «ultime 30» riferito alle copie locali. Esito: ok.
-
-Ho rieseguito: `pytest tests/test_unit_crm.py` 151 passed, mypy pulito su store.py, `bash -n` ok.
+- `modules/crm/server.py:450` — ammette il nome Tailscale solo se è uguale, carattere per carattere, a quello dichiarato. Rischio esaminato: DNS rebinding e nomi vicini. Ho fatto la prova sul server staged. Danno 403: `x.NOME`, `NOME.evil.example`, `tail1234.ts.net`, `ts.net`, `NOME.` (col punto finale), `NOME:1:2`. Le maiuscole vengono ridotte e il nome passa. Il bind resta solo loopback (`modules/crm/server.py:936`, invariato). Una richiesta con Origin di un'altra macchina della stessa tailnet riceve 403. — **ok**, salvo la porta e il funnel (R-860-1).
+- `modules/crm/server.py:78` — `nome_tailscale_da_env`: regex completa, lunghezza massima 253, minuscolo, punto finale tolto; un nome non valido dà None e un warning senza valori. Rischio esaminato: un dominio pubblico o una regex lenta. Le etichette non contengono punti, quindi la regex non torna indietro all'infinito. Il `.env` viene caricato prima (`modules/crm/__main__.py:121`, dopo `_carica_chiavi` in `main`). — **ok**
+- `modules/crm/server.py:464` — mette `; Secure` sul cookie di login e di logout solo quando l'Host è il nome Tailscale. Rischio esaminato: cookie in chiaro. Il mutante «Secure sempre» viene preso dai test; sul Mac, in loopback, il cookie resta come prima. — **ok**
+- `scripts/crm/telefono.sh:160` — controlla il funnel solo all'accensione, solo sulla porta 443 e solo nella configurazione `--bg` principale. Rischio esaminato: che il funnel resti acceso. — **riserva** R-860-1.
+- `scripts/crm/telefono.sh:144` — il ramo `spegni`. Rischio esaminato: «spegni» che non spegne. — **riserva** R-860-2.
+- `scripts/crm/telefono.sh:74` — `stato_serve`: se la lettura del JSON fallisce, la risposta diventa «libero». — **riserva** R-860-5.
+- `scripts/crm/telefono.sh:94` — `scrivi_env`. Segue il symlink con realpath, scrive prima un file temporaneo con permessi 0600, poi applica i permessi originali, toglie anche le righe `export`. Rischi esaminati: segreti, permessi, symlink. Provato: il token non compare mai in output né nel registro (anche il test lo controlla). — **ok** con note cosmetiche.
+- `scripts/crm/telefono.sh:180` — dopo `serve` rilegge la configurazione e, se non è quella attesa, toglie tutto. È l'unica protezione nel caso reale in cui la CLI esce con codice 0 senza applicare nulla. — **ok** come codice, ma senza test (R-860-4).
+- `tests/test_unit_crm.py:3000` e `tests/test_unit_crm.py:3094` — coprono nomi ammessi e rifiutati, Host estranei, Secure, accendi/stato/spegni e `.env` collegato. Sulla CI Ubuntu i comandi finti sono nel PATH e il python è indicato con percorso assoluto, senza rete né attese vere: niente di fragile. — **ok**
+- Contesto, file non toccato: `scripts/crm/spegni.sh:6` toglie il servizio ma non tocca `tailscale serve`. — **riserva** R-860-3.
 
 **Riserve**
-- **R-854-1 BASSA**: dopo il caricamento l'installer aspetta la dashboard fino a 30 secondi senza scrivere nulla (`scripts/crm/installa.sh:107`). Se l'operatore preme Ctrl+C in quel momento, plist e servizio restano installati, senza nessun controllo. L'ho provato in simulazione: uscita 130, plist presente, servizio caricato. Nello script non c'è nessun `trap`. Correzione proposta: un `trap togli_servizio INT TERM` tra la scrittura del plist e l'«OK», più una riga «aspetto la dashboard (fino a 30 s)…».
-- **R-854-2 BASSA (va scritta giusta in stato_progetto)**: R-853-2 è chiusa **solo per la parte delle copie**. Resta aperta la parte sul KeepAlive senza tetto (`scripts/crm/com.gas.crm.plist:27`): un CRM che non parte si riavvia ogni 10 secondi per sempre, il registro cresce senza rotazione e nessuno viene avvisato. Non segnarla chiusa per intero.
-- **R-853-3 BASSA** resta aperta, come hai detto: nessun test degli script del CRM con comandi finti.
-- **COSMETICA (c'era già prima)**: un file `crm-*.db` con un nome che non è una data, per esempio una copia fatta a mano, prende il posto di un giorno e di una delle «ultime» e non viene mai cancellato.
-
-**Rischi esclusi (non verificati)**
-- Comportamento su un Mac vero (launchd vero, bootout asincrono, permessi della Scrivania): qui non si può riprodurre, la prova è solo simulata.
-- Orologio del Mac che torna indietro: la copia appena fatta può essere cancellata subito e `backup()` restituisce un percorso che non esiste più. Succedeva già con la regola vecchia; non l'ho analizzato oltre.
-- Il cambio d'ora non l'ho provato: tocca al massimo l'ordine dentro un'ora, non i giorni.
-
-**Memoria**
-In `/home/user/Gas/.claude/agents/memoria_revisore.md` ho aggiunto la riga #854 e 2 lezioni (Ctrl+C e `trap` negli installer; riserve composte chiuse solo in parte). **Non l'ho committata**, come in #853: hai chiesto di non committare, e l'hook del gate blocca i comandi di commit finché manca `.claude/.review_ok` (ha bloccato anche un mio comando di sola lettura che nominava lo script di commit). Anche la riga #853 è ancora solo nel working tree. Il file va committato col fine-task. Non ho creato `.claude/.review_ok` e il diff staged non è cambiato.
-
-File della simulazione: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sim/run.sh` (comandi finti in `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sim/bin`). Script delle prove con le modifiche: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/mut.py`.
-
-### Commit 5b75c850 — review #855 (verdetto integrale, primo giro)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #855. Ramo claude/nifty-galileo-3k7kbm sopra dfe8fbee. Diff staged: 4 file, +247/−2, sha256 del diff che inizia con e9b23a29. Letture fatte: CLAUDE.md (sez. 1, 5, 8, 9, 10), stato_progetto (Grep mirato), memoria del revisore (lezioni #853 e #854 applicate).
-
-**Elementi del diff esaminati**
-- `modules/crm/store.py:1398` — `tenere.add(dest)`: la copia appena fatta non si cancella mai. Rischi esaminati: che il Path non coincida con quello del glob (coincide, stessa `cartella`) e cosa succede con l'orologio indietro (al massimo 11 copie). **ok**
-  - Il test nuovo è rosso col codice di HEAD (provato su un export dell'indice).
-  - Il mutante «senza add» è ucciso.
-- `modules/crm/store.py:44` e `modules/crm/store.py:1389` — filtro `_NOME_COPIA.fullmatch`. Rischio esaminato: un cambio di comportamento sui nomi standard. Non c'è: `[0-9]` accetta solo cifre ASCII, e il formato coincide con lo strftime di `modules/crm/store.py:1375`. **ok**
-  - I test di backup già esistenti passano.
-  - Il mutante «senza filtro» è ucciso. Quello «match al posto di fullmatch» sopravvive, ma è equivalente: il glob pretende già `.db` in fondo.
-  - Chiamanti di contesto invariati: `modules/crm/server.py:311` e `modules/crm/__main__.py:186`.
-- `scripts/crm/installa.sh:96` — trap EXIT `[ "$DA_PULIRE" = si ] && togli_servizio`. Rischi esaminati con `set -euo pipefail`: **ok**
-  - Il test falso dentro una lista `&&` non fa scattare errexit.
-  - Lo stato d'uscita si conserva: 0 in fondo, 1 sugli STOP. La doppia pulizia (togli_servizio esplicito, poi il trap) è idempotente.
-  - Provato a mano su bash 5.2 con un sleep finto che manda il segnale al gruppo, durante l'attesa: INT e TERM danno rc 130, plist e servizio tolti; HUP (finestra del Terminale chiusa) toglie anche lui; QUIT è ignorato da bash e si chiude sullo STOP della dashboard.
-- `scripts/crm/installa.sh:124` — `DA_PULIRE=no` più `trap - INT TERM` dopo la dashboard. Provato: INT, TERM e HUP dopo la dashboard lasciano il servizio. **ok, con riserva R-855-2**
-- `scripts/crm/installa.sh:97` — trap INT/TERM con `exit 130`. **riserva R-855-1**
-- `tests/test_unit_crm.py:2713` — `_esegui_crm`. Rischi esaminati, tutti senza problemi: **ok, con riserva R-855-3**
-  - Rete: nessuna (curl finto).
-  - File toccati: solo sotto tmp_path (HOME finta, cartella di Gas copiata, registro).
-  - Ambiente: env ricostruito da zero, niente BASH_ENV.
-  - Nessuno sleep vero; `start_new_session` fa di installa.sh il capogruppo, quindi `kill -INT -- "-$PPID"` (`tests/test_unit_crm.py:2684`) colpisce solo il suo gruppo.
-- Robustezza dei test: 15 giri da 16 test, tutti verdi (circa 1 s a giro); 18 giri paralleli dei test Ctrl+C, tutti verdi.
-- Prova del chiamante confermata: sui test di installa e spegni il codice di HEAD dà 2 failed (percorso completo e Ctrl+C durante l'attesa).
-- Mutanti su installa.sh: 5 uccisi su 6.
-  - Uccisi: «senza DA_PULIRE=no» (fa fallire anche il percorso completo), «senza trap EXIT», «senza trap INT/TERM», «senza DA_PULIRE=si», «senza la riga Aspetto».
-  - Sopravvive «senza `trap - INT TERM`» (vedi R-855-2).
-- Rieseguiti: `pytest tests/test_unit_crm.py` (168 passed), mypy su store.py (pulito), `bash -n` (ok), `git diff --staged --check` (pulito).
-
-**Riserve**
-- **R-855-1 BASSA** — un secondo Ctrl+C durante la pulizia lascia il servizio installato.
-  - Cosa succede: il secondo SIGINT arriva mentre il trap EXIT esegue `launchctl bootout`. Il trap INT fa `exit 130`, bash esce dentro il trap EXIT e salta `rm -f "$PLIST"`.
-  - Effetto: plist e servizio restano, e «STOP: interrotto, servizio tolto» compare due volte, quindi è falso.
-  - Provato 3 volte su 3 con un launchctl finto che manda SIGINT al gruppo durante il bootout.
-  - È lo stesso caso di R-854-1, ristretto a un operatore impaziente.
-  - Correzione provata (scenario chiuso e 16/16 test di installa e spegni verdi): `trap 'trap "" INT TERM; [ "$DA_PULIRE" = si ] && togli_servizio' EXIT`. In alternativa, `rm -f "$PLIST"` prima del bootout.
-- **R-855-2 BASSA** — sopravvive il mutante «senza `trap - INT TERM`».
-  - Con quel mutante, un Ctrl+C dopo la dashboard stampa «servizio tolto» ma il servizio resta.
-  - `tests/test_unit_crm.py:2812` non guarda lo stderr. Basta aggiungere `assert "servizio tolto" not in r.stderr`.
-- **R-855-3 BASSA** — rosso falso dei test Ctrl+C se pytest parte con SIGINT ignorato.
-  - Succede con `nohup` o con `&` in uno script senza job control: bash non può intercettare un segnale ignorato all'ingresso.
-  - Provato: 2 failed.
-  - La CI di GitHub lancia pytest in primo piano dentro una pipeline, quindi lì va bene.
-  - Correzione: in `_esegui_crm`, `preexec_fn=lambda: signal.signal(signal.SIGINT, signal.SIG_DFL)`, oppure uno skip esplicito.
+- **R-860-1 MEDIA** — Il server accetta il nome Tailscale anche dal traffico funnel, cioè da internet, su qualsiasi porta. Provato: Host `NOME:8443` con `Tailscale-Funnel-Request: ?1` dà login 200 e `/api/stato` 200. Prima di questo diff qualunque funnel verso il CRM prendeva 403 sull'Host. Lo script vede solo `AllowFunnel["NOME:443"]` in `--bg`, e solo al momento dell'accensione: non vede un `tailscale funnel 8770` lanciato in primo piano (che è il comportamento normale della CLI e finisce in `Foreground`), né i funnel su altre porte o accesi dopo. Resterebbe solo il token, con il limite tentativi condiviso: chiunque da internet potrebbe bloccare l'operatore per 15 minuti. Correzione da una riga, da fare in questa fetta prima del merge: 403 e log per ogni richiesta che porta l'header `Tailscale-Funnel-Request`, più un test. tailscaled mette quell'header su ogni richiesta funnel e cancella quelli finti, varianti con `_` comprese (l'ho verificato nel sorgente v1.106.1, `ipn/ipnlocal/serve.go`, righe 1162-1175). Facoltativo: accettare il nome solo senza porta o con `:443`. Resterebbe scoperto il funnel TCP grezzo (`--tcp`): va dichiarato nella guida.
+- **R-860-2 BASSA** — `spegni` è fragile, in tre modi:
+  - (a) Prima di fare qualsiasi cosa vuole Tailscale acceso, collegato e col nome valido. Provato con `TS_STATO=Stopped`: rc 1 e la riga resta nel `.env`, mentre la configurazione `--bg` resta salvata in Tailscale e torna attiva al login successivo.
+  - (b) `nostro)` non riconosce lo stato `nostro pubblico`. Provato: serve e funnel restano accesi e lo script stampa «OK: accesso dal telefono spento». I dati restano protetti solo perché, dopo il riavvio, il CRM rifiuta l'Host.
+  - (c) Se `serve ... off` fallisce, con `set -e` lo script esce senza messaggio e senza togliere la riga.
+  - Correzione: togliere sempre la riga e riavviare comunque, usare il pattern `nostro*`, mettere `|| echo ATTENZIONE`.
+- **R-860-3 BASSA** — `scripts/crm/spegni.sh` lascia sia `tailscale serve` (che punta alla porta del CRM in loopback) sia la riga nel `.env`. Qualunque programma ascolti dopo su quella porta (la demo, un `serve` lanciato a mano, un altro programma) diventa visibile alla tailnet, e la guida non lo dice.
+- **R-860-4 BASSA** — Manca il test per il primo avvio reale: con HTTPS non attivo e `!ShouldWait`, la CLI stampa il link ed esce 0 senza applicare nulla (sorgente: `serve_legacy.go`, righe 829-834). L'ho provato: rollback corretto, ma il mutante che toglie il controllo di `scripts/crm/telefono.sh:180` sopravvive (21 passed). Inoltre il messaggio «non è quella attesa (libero)» non dice di attivare HTTPS e rilanciare, mentre la guida promette «prosegue da solo».
+- **R-860-5 BASSA** — Se il JSON di `serve status` non si legge, il risultato è «libero» invece di «errore», quindi il controllo sul funnel lascia passare. Provato con un testo di prova davanti al JSON: rc 0 e `serve --bg` eseguito. Il danno è attenuato perché il vero `serve --https=443` toglie il funnel su quella porta (`serve_v2.go`, righe 1369-1381).
 - **COSMETICHE**
-  - Gli import a metà del modulo di test (plistlib, shutil, signal, subprocess) violano la regola E402 di PEP 8; in CI non c'è linter.
-  - Ci sono due micro-finestre in cui un Ctrl+C dà il messaggio sbagliato: tra `scripts/crm/installa.sh:97` e la riga 98, e tra la riga 124 e la 125.
-  - In `reports/crm/guida.md:89`, «con un altro nome»: una copia messa a mano col nome nel formato standard viene gestita (e quindi ruotata) come quelle automatiche.
+  - Il filtro del `.env` è più stretto del caricatore del kernel: provato, una riga `GAS_CRM_NOME_TAILSCALE = x` sopravvive a `spegni`, e col «vince la prima riga» batterebbe quella aggiunta.
+  - Nessun fsync prima di `os.replace` sul file che contiene tutti i segreti.
+  - `spegni` senza `.env` ne crea uno vuoto.
+  - Il mutante «senza chmod» sopravvive: lo 0600 di mkstemp va nella direzione sicura.
+  - `curl | grep -q` con pipefail alla riga 190 (lezione R-615-7): al massimo dà un falso ATTENZIONE.
+  - Col nome Tailscale è ammesso anche un Origin `http://`: il CSRF resta bloccato da X-Gas-CRM e dall'assenza di risposta a OPTIONS.
+  - Se ts.net è nella Public Suffix List, le macchine della tailnet sono lo stesso «sito»: SameSite=Strict non le separa, la difesa sono Origin e X-Gas-CRM (provato 403); un'altra macchina potrebbe coprire il cookie di sessione, cioè impedire di restare collegati, senza rubare nulla.
+  - La guida potrebbe citare Tailnet Lock, perché chi entra nella tailnet lo decide il server di coordinamento di Tailscale.
+
+Le tue affermazioni sul sorgente Tailscale v1.106.1 le ho verificate tutte: Host conservato (`serve.go:1008`), X-Forwarded-Proto, `serve status --json` che stampa la ServeConfig, `serve` e `off` che tolgono il funnel su quella porta. Ho rieseguito io: 184 passed (186 con le mie 2 sonde), `bash -n` ok, mypy 0 errori in `modules/crm` (77 in tutto, come a HEAD). Mutanti: 6 su 8 uccisi.
 
 **Rischi esplicitamente esclusi**
-- Comportamento con il `/bin/bash` 3.2 del Mac: non verificato, qui c'è solo bash 5.2. In particolare non so se il trap EXIT parte anche su HUP. INT e TERM invece passano dal trap esplicito con `exit` e valgono in ogni versione.
-- Tempi reali di `launchctl bootout` e `bootstrap` su macOS: non riproducibili in dev.
-- R-854-2 (KeepAlive senza tetto, registro senza rotazione): fuori scope, resta aperta.
-- Orologio spostato in avanti e poi riportato indietro (copie col nome «nel futuro» che occupano le ultime 10): non è un effetto di questo diff, non approfondito.
+- Lo script non l'ho eseguito con bash 3.2 di macOS (`#!/bin/bash` sul Mac): qui c'è solo bash 5.2. Lo stesso costrutto heredoc dentro `$( )` è già in `scripts/crm/installa.sh`.
+- Non ho usato un Tailscale reale né `launchctl kickstart -k` vero (i tempi del riavvio): ho solo il sorgente e i comandi finti.
+- Non ho verificato che ts.net sia nella Public Suffix List.
+- Non ho potuto controllare dove la CLI stampa l'avviso di versione diversa (stdout o stderr), che riguarda R-860-5: il sorgente scaricato contiene solo `cmd/` e `ipn/`.
 
-Nessun antipattern del Wall of Shame: niente slicing della history, niente simulazione di output dei tool (i comandi finti stanno solo nei test, come per la voce). Guardrail del motore non toccati.
+File utili:
+- /home/user/Gas/.claude/agents/memoria_revisore.md (riga #860 in coda, non nello stage)
+- /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/r860/test_sonde_860.py (sonde su Host, funnel, CSRF e blocco tentativi)
+- /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/r860/test_sonde_script_860.py (sonde su HTTPS non attivo, spegni con funnel o con Tailscale spento, JSON illeggibile, forma `CHIAVE = v`)
+- /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/r860/mutanti.sh (gli 8 mutanti, girati su una copia dell'indice)
 
-Memoria: in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` ho aggiunto la riga #855 e 2 lezioni (pulizia interrotta da un secondo Ctrl+C; test SIGINT con SIGINT ignorato). Il file è fuori dallo stage e NON è committato, come chiesto: niente `commit_memoria_revisore.sh`, niente `.claude/.review_ok`. L'indice è intatto: restano in stage solo i 4 file del diff.
-
-### Commit 5b75c850 — review #856 (verdetto integrale, secondo giro sullo stesso commit)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #856 (secondo giro della #855) sul diff staged del ramo claude/nifty-galileo-3k7kbm, sopra dfe8fbee: 4 file, +256/−3, sha256 del diff 25d93d3f, invariato dopo la review.
-
-Letture fatte: CLAUDE.md (sez. 1, 5, 8, 10), reports/stato_progetto.md (voce CRM e riserve R-853/854/855) e la memoria del revisore (le lezioni su trap, installer e launchd).
-
-Ho rieseguito tutto su una copia dell'indice nello scratchpad: `pytest tests/test_unit_crm.py` dà 168 passed, `git diff --cached --check` è pulito. Ho provato 7 mutanti su installa.sh e scritto 3 sonde mie, che non sono nel repo.
-
-**Elementi del diff esaminati**
-- `scripts/crm/installa.sh:97` — il trap EXIT ora parte con `trap "" INT TERM`. Rischio esaminato: un secondo Ctrl+C mentre la pulizia fa il bootout. Ho provato con un launchctl finto che, durante il bootout della pulizia, manda un secondo SIGINT a tutto il gruppo. Col codice staged: rc 130, plist tolto, servizio scaricato, «servizio tolto» stampato una volta sola. Col mutante senza `trap ""` il servizio resta caricato e il messaggio esce due volte, cioè il difetto R-855-1. Percorso riuscito: rc 0, plist e servizio al loro posto, nel registro c'è solo il bootout del passo 2, quindi il trap EXIT non pulisce e `trap ""` non cambia nulla. Esito: ok.
-- `scripts/crm/installa.sh:26` — `togli_servizio` toglie prima il plist e poi fa il bootout. Rischio esaminato: un passo che fallisce sotto `set -e`. L'ho provato con uno script giocattolo in cui `rm -f` fallisce: la funzione si chiude subito, il bootout non parte e si perde anche il messaggio STOP, sia nel ramo STOP sia nel trap EXIT. Con l'ordine vecchio il bootout partiva comunque. Esito: riserva (R-856-2).
-- `scripts/crm/installa.sh:124` — `trap - INT TERM` viene prima di `DA_PULIRE=no`. Rischio esaminato: la micro-finestra fra le due righe. Ho messo un `kill -INT $$` fra le due righe. Ordine staged: il servizio viene tolto senza messaggio (scelta sicura, rc -2). Ordine della #855: stampava «servizio tolto» e lasciava il servizio. Esito: ok.
-- `tests/test_unit_crm.py:2826` — il test controlla che nello stderr non compaia «servizio tolto». Rischio esaminato: il mutante R-855-2. Il mutante «senza `trap - INT TERM`» ora fa fallire 1 test. Ctrl+C dopo la dashboard: rc -2 sia con sia senza `trap ""`, quindi nessun effetto sullo stato d'uscita. Esito: ok.
-- `tests/test_unit_crm.py:2726` — `preexec_fn=_segnali_normali` (definita a `tests/test_unit_crm.py:2712`). Rischio esaminato: i rossi falsi se pytest parte con i segnali ignorati. Con pytest lanciato con SIGINT e SIGTERM ignorati: 2 passed; togliendo `preexec_fn`: 2 failed. Esito: ok.
-- Stati d'uscita e pulizia ripetuta, riverificati con le nuove posizioni dei trap: 0 / 1 / 130, la pulizia doppia sugli STOP funziona. I mutanti «senza trap EXIT», «senza trap INT» e «senza DA_PULIRE=no» vengono tutti presi dai test. `reports/crm/guida.md:89` è coerente con il controllo del nome di `modules/crm/store.py:44`. Esito: ok.
-- Contesto: `scripts/crm/spegni.sh:7` non è toccato e non ha `set -e`, quindi lì un `rm` che fallisce non blocca nulla. Esito: ok.
-
-**Riserve**
-- **R-856-1 BASSA**: nessun test del repo fissa la correzione di R-855-1. Due mutanti passano i 16 test di installa/spegni: «senza `trap ""` nel trap EXIT» e «bootout prima di rm». Per il primo basta un test col launchctl finto che, al bootout della pulizia (quando esiste già `registro.txt.ctrlc`), manda `kill -INT` al gruppo; poi si controlla rc 130, «servizio tolto» una sola volta, servizio non caricato. La mia sonda fa esattamente questo e boccia il mutante. Per il secondo mutante basta che il launchctl finto scriva nel registro se il plist esiste ancora al momento del bootout.
-- **R-856-2 BASSA**: in `scripts/crm/installa.sh:26` il riordino rende il primo comando quello che può far saltare il resto. Se `rm -f "$PLIST"` fallisce (caso raro: ~/Library/LaunchAgents non scrivibile con un plist già esistente e scrivibile), sotto `set -e` la funzione si chiude prima del bootout: il servizio resta caricato e l'operatore non vede il messaggio STOP. Correzione proposta: `rm -f "$PLIST" || echo "ATTENZIONE: non riesco a togliere $PLIST, toglilo a mano" >&2`.
-- **COSMETICA**: con INT e TERM ignorati, un bootout lento (launchd aspetta che il CRM esca, fino a 20 s di default) non si ferma con Ctrl+C; è voluto, va solo saputo. Un HUP durante la pulizia (Terminale chiuso) non è ignorato, ma col plist già tolto al massimo il servizio resta caricato fino al logout.
-
-**Cosa non ho verificato**
-- Il comportamento con /bin/bash 3.2 di macOS: ho provato tutto con bash 5.2 su Linux, e su questo dipende da come bash esegue il trap EXIT quando muore per un segnale. Non è riproducibile qui.
-- Il launchctl vero (bootout per etichetta senza il file plist, attesa di ExitTimeOut): solo comandi finti.
-
-**Memoria**: aggiunta in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #856, più una lezione nuova («riordinare una pulizia sotto `set -e` cambia cosa si salta»). Il file non è in stage e non l'ho committato, come avevi chiesto; non ho creato `.claude/.review_ok`.
-
-### Commit 8fbd65a3 — review #857 (verdetto integrale)
-
-## VERDETTO: APPROVATO
-
-Review #857: è il terzo giro sulle riserve della #855. Ho esaminato il diff staged su claude/nifty-galileo-3k7kbm, sopra 5b75c850. Sono 2 file, +50/−3, e lo sha256 del diff staged è a157fd19… (ricalcolato prima e dopo la review: è lo stesso).
-
-Letture obbligatorie fatte: CLAUDE.md (sezione 5 e guardrail), reports/stato_progetto.md (letto per le parti che servono) e la coda di .claude/agents/memoria_revisore.md. Ho applicato le lezioni #853-#856: ogni passo della pulizia deve reggersi da solo sotto set -e, il secondo Ctrl+C durante la pulizia, SIGINT ignorato all'ingresso.
-
-**Elementi del diff esaminati**
-- `scripts/crm/installa.sh:28`: `rm -f "$PLIST" || echo "ATTENZIONE…" >&2` prima del bootout.
-  - Rischio esaminato: con set -e un rm che fallisce chiudeva togli_servizio prima del bootout (R-856-2). Sia da STOP sia dal trap EXIT il rm sta ora dentro una lista `||` e quindi non fa scattare set -e.
-  - Prova: con RM_KO=si escono rc 1, l'ATTENZIONE e lo STOP «la dashboard non risponde»; il servizio non è caricato e il plist resta (il rm finto ha davvero rifiutato). I tre bootout registrati sono uno «no» (quello prima dell'installazione) e due «si».
-  - Esito: ok. R-856-2 chiusa.
-- `scripts/crm/installa.sh:99`: `trap "" INT TERM` in testa al trap EXIT.
-  - Rischio esaminato: che il nuovo test lo fissi davvero (R-856-1).
-  - Mutanti: «senza `trap ""`» → 1 rosso (test del secondo Ctrl+C); «solo `trap "" TERM`» → 1 rosso; «bootout prima del rm» → 4 rossi (i 3 STOP e il Ctrl+C durante l'attesa).
-  - Esito: ok. R-856-1 chiusa.
-- `tests/test_unit_crm.py:2686`: `rm` finto nel PATH; passa a `/bin/rm` salvo RM_KO.
-  - Rischio esaminato: che alteri gli altri test (launchctl finto, `spegni.sh`).
-  - Prova: senza RM_KO nessun argomento cade nel ramo che fallisce. Il launchctl finto toglie `registro.txt.caricato`, che non corrisponde a `*com.gas.crm.plist`. `exec` conserva il codice d'uscita. Mutante «senza l'rm finto»: fallisce solo il test RM_KO, gli altri 16 test degli script restano identici.
-  - Esito: ok.
-- `tests/test_unit_crm.py:2674`: il launchctl finto manda il secondo SIGINT al gruppo durante il bootout della pulizia.
-  - Rischio esaminato: test fragile sulla CI Ubuntu.
-  - Non c'è nessun sleep né corsa di tempi: il finto nasce dopo il `trap ""`, eredita SIG_IGN e sopravvive al proprio kill. Col mutante muore prima di togliere `.caricato`, come farebbe il launchctl vero. `start_new_session` tiene pytest fuori dal gruppo e `preexec_fn` rimette SIG_DFL.
-  - Prova: test dei segnali 25/25 in serie, 6/6 in 6 esecuzioni parallele, verdi anche lanciati con nohup. Bash 5.2 e la CI è ubuntu-latest con Python 3.11 (`tests/test_unit_crm.py` gira in CI).
-  - Esito: ok.
-- `tests/test_unit_crm.py:2751`: `_bootout_col_plist_gia_tolto` richiede almeno un bootout dopo plutil, tutti «bootout-plist no». Il bootout di prima dell'installazione resta escluso.
-  - Esito: ok. Un `next()` senza riga plutil darebbe StopIteration, ma è comunque un test rosso.
-- `tests/test_unit_crm.py:2853`: test del secondo Ctrl+C. Controlla che il file `.ctrlc2` esista (il secondo SIGINT è partito davvero), rc 130, «servizio tolto» una sola volta, plist tolto e servizio scaricato.
-  - Prova: eseguito a mano ho ottenuto stderr `STOP: interrotto, servizio tolto` una sola volta e due bootout entrambi «no».
-  - Esito: ok.
-- `tests/test_unit_crm.py:2843`: test RM_KO.
-  - Mutanti: «rm nudo» → rosso; «rm `|| true` senza messaggio» → rosso.
-  - Esito: ok.
-
-**Rieseguito su una copia dell'indice (contenuto staged)**: `python3 -m pytest -q tests/test_unit_crm.py` 170 passed (17 sui soli script del CRM), `bash -n` ok, `git diff --staged --check` ok. Nessun IP letterale nel diff.
-
-**Coerenza col progetto**: la modifica rende la pulizia dell'installer più solida e va nella direzione «zero crash, niente servizio lasciato acceso senza controlli». Non tocca kernel, provider, `_get_window` né i tetti. Wall of Shame: niente slicing della storia; i comandi finti sono controfigure di comandi di sistema nei test, non output inventato dei tool LLM. Non applicabile.
-
-**Note COSMETICHE (non bloccanti, nessuna da tracciare per forza)**
-1. Con RM_KO l'ATTENZIONE esce due volte (togli_servizio esplicito + trap EXIT) e in mezzo lo STOP dice «servizio tolto» col plist ancora al suo posto. L'ultima riga a schermo resta comunque l'ATTENZIONE. «toglilo a mano» non dice come farlo. Lo scenario richiede LaunchAgents diventata non scrivibile subito dopo averci scritto il plist.
-2. Sopravvive il mutante «solo `trap "" INT`»: TERM durante la pulizia non è provato.
-3. Nel finto il percorso `/bin/rm` è scritto a mano: va bene su Ubuntu e sul Mac.
-4. Fuori dal diff, c'era già prima: `scripts/crm/spegni.sh:6` fa il bootout PRIMA del rm, cioè l'ordine opposto a R-855-1. Senza set -e, se il rm fallisce scrive comunque «OK: CRM spento e tolto dall'avvio».
-
-**Cosa NON ho verificato**: il comportamento sul Mac vero. Non è riproducibile qui: launchctl/launchd sono finti. In particolare non ho provato quanto dura un bootout reale con INT/TERM ignorati né se `rm` sul plist possa fallire davvero in ~/Library/LaunchAgents (permessi, SIP, iCloud). Non ho provato nemmeno bash 3.2 di macOS: i test girano con /bin/bash di Linux 5.2.
-
-**Memoria**: aggiunta in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #857 con una lezione nuova (provare il finto passthrough col mutante «senza il finto»; il finto eredita il SIG_IGN del `trap ''` del padre). Il file è fuori stage e NON committato, come da tua richiesta: `scripts/commit_memoria_revisore.sh` non l'ho lanciato. Non ho creato `.claude/.review_ok` e non ho committato nulla. Lo staged è invariato (sha256 a157fd19…).
-
-### Commit 8acae43c — review #858 (verdetto integrale)
+### Commit e970daef — review #861 (verdetto integrale, secondo giro sullo stesso commit)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #858. Diff staged sul ramo claude/nifty-galileo-3k7kbm, sopra 94184b2c: 3 file, +39/−3, sha256 bd1434fa. L'hash è lo stesso prima e dopo la review. Prima della review ho letto CLAUDE.md (sez. 5), l'intestazione e la voce CRM di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+Review #861. Ramo claude/nifty-galileo-3k7kbm sopra b100f8d4, diff in stage: 7 file, +611/−6, sha256 ea7d48d4… (ricontrollato a fine review, invariato). Prima della review ho letto CLAUDE.md, le parti di reports/stato_progetto.md che riguardano la fetta e la memoria del revisore (lezioni su pipefail e set -e, #860).
 
-**Cosa ho rieseguito**
-- `python3 -m pytest -q tests/test_unit_crm.py`: 171 passed.
-- mypy su modules/crm/store.py pulito; `bash -n` ok; `git diff --staged --check` pulito.
-- I 18 test di installa/spegni girati 3 volte di fila: sempre verdi.
+Le correzioni di R-860-1…5 ci sono e sono provate. I rilievi rimasti sono tutti BASSI: niente si apre a internet, l'esposizione residua resta dentro la rete Tailscale e il token resta necessario. Le due riserve riguardano lo spegnimento, che in alcuni casi lascia il collegamento attivo e stampa lo stesso «OK».
 
-**Elementi del diff esaminati**
-- `modules/crm/store.py:1394` — il limite è il nome della copia calcolato su `adesso + 1 giorno`, confrontato come stringa.
-  - Rischio esaminato: fuso orario dell'orologio e confronto tra orologio con o senza fuso.
-  - Il nome ha lunghezza fissa ed è controllato da `_NOME_COPIA`, quindi l'ordine delle stringhe è l'ordine del tempo. Non si confrontano mai due datetime, quindi niente TypeError tra le due forme.
-  - Ho provato orologio senza fuso, con fuso fisso (`astimezone()`, il predefinito), con fuso Europe/Rome nelle ore dei due cambi d'ora (anche l'ora ripetuta) e Kiritimati +14: in tutti i casi la copia appena fatta esiste.
-  - Il margine di 1 giorno copre il cambio d'ora e ogni fuso raggiungibile dall'Italia (al massimo 13 ore).
-  - Esito: ok.
-- `modules/crm/store.py:1399` e `modules/crm/store.py:1409` — contano e si cancellano solo le copie entro il limite; quelle oltre restano.
-  - Rischio esaminato: copie nel futuro che crescono senza limite.
-  - Nascono solo mentre l'orologio è avanti, e in quel periodo la regola normale le riduce a 30 giorni + 10 copie: il numero resta limitato.
-  - Orologio tornato al 2001 dopo 40 giorni veri: i 30 giorni veri restano tutti e le copie del 2001 ruotano tra loro (10). È un miglioramento rispetto a prima.
-  - L'avviso finisce in gas_debug.log (`modules/crm/__main__.py:413`).
-  - Esito: ok.
-- `modules/crm/store.py:1408` — `tenere.add(dest)`.
-  - Rischio esaminato: la copia appena fatta trattata come «nel futuro».
-  - Il suo nome è sempre minore del limite (ora attuale contro ora attuale + 1 giorno), quindi sta tra le copie che contano ed è protetta.
-  - Esito: ok.
-- `tests/test_unit_crm.py:2639` — test nuovo.
-  - Col codice di HEAD è rosso (provato).
-  - Mutanti uccisi 3 su 6: filtro tolto, copie nel futuro cancellate, avviso tolto.
-  - Sopravvivono: margine 0 giorni, margine 40 giorni, e `>=` al posto di `>` (equivalente).
-  - Esito: riserva (R-858-2).
-- `scripts/crm/installa.sh:100` — trap EXIT con `if … then togli_servizio; fi`.
-  - Rischio esaminato: riaprire i casi di #855–#857.
-  - Su bash 5.2 la forma vecchia e la nuova danno lo stesso codice d'uscita in 20 combinazioni: exit 0/1, fine normale, errore con set -e, SIGINT → 130, pulizia sì/no.
-  - I 18 test sono verdi con la forma nuova e anche con quella vecchia. Quindi i casi rc 0/1/130, secondo Ctrl+C e rm fallito restano coperti, ma il cambio è solo difensivo.
-  - Esito: ok.
-- Contesto: `modules/crm/copia_cifrata.py:285` — la rotazione delle copie cifrate fuori dal Mac (iCloud), gemella di quella locale. Non è nel diff. Esito: riserva (R-858-1).
+### Elementi del diff esaminati
+- `modules/crm/server.py:441` — rifiuta ogni richiesta che ha l'header `Tailscale-Funnel-Request`, prima del controllo dell'Host. Rischio esaminato: traffico funnel con Host falsificato (nome Tailscale, loopback, IP). Ho controllato che `headers.get` non distingue maiuscole e minuscole e che un valore vuoto viene rifiutato. I test provano il 403 sia col nome sia con loopback. — ok
+- `modules/crm/server.py:457` — accetta il nome Tailscale solo senza porta o con `:443`. Rischio esaminato: il nome servito su un'altra porta (`:8443` → 403, testato) e il cookie `Secure` collegato al nome. — ok
+- `scripts/crm/telefono.sh:191` — `leggi_nome || case $? in …`. Rischio esaminato: che `$?` sia davvero quello di `leggi_nome`. L'ho provato a parte sotto `set -euo pipefail` (i codici 3, 5 e gli altri finiscono in rami distinti, 141 in «altro»). Il mutante «`return 2` al posto di `return $?`» viene ucciso. Dentro le funzioni chiamate in `if` o `||` errexit è spento: ogni passo di `leggi_nome` (`scripts/crm/telefono.sh:80`) e di `leggi_porta` ha il suo `|| return` esplicito. `local j` è separato dall'assegnazione, quindi l'exit code non si perde. — ok
+- `scripts/crm/telefono.sh:160` — `spegni` con la porta illeggibile. Rischio esaminato: CRM che resta acceso col nome e collegamento lasciato. Provato coi comandi finti (python che esce 4 su `import gas`): la riga del .env viene tolta, ma il CRM non viene riavviato (kickstart 0, anche se `kickstart -k` non ha bisogno della porta) e il collegamento resta. Lo script stampa «ATTENZIONE: non riesco a leggere la porta», poi «OK: accesso dal telefono spento» ed esce 0. — riserva (R-861-1)
+- `scripts/crm/telefono.sh:180` — `serve off` che fallisce. Provato: stampa ATTENZIONE, poi lo stesso «OK…» ed esce 0, col collegamento ancora attivo. Stesso esito con `errore` (`scripts/crm/telefono.sh:182`). `scripts/crm/spegni.sh:14` si basa sull'exit code e quindi non avvisa. — riserva (R-861-1)
+- `scripts/crm/telefono.sh:134` — riconosce il collegamento «nostro» (`bool(dest)`, un solo gestore `/`, Proxy uguale alla destinazione). Rischio esaminato: che lo spegnimento tolga un collegamento non del CRM. Con il codice com'è, provato coi finti: un'altra porta, il nostro più un secondo gestore, la porta come prefisso (87700), un sotto-percorso e `https+insecure` non vengono toccati. Anche un gestore di testo con la porta illeggibile viene lasciato. — ok nel comportamento; riserva sui test (R-861-2)
+- `scripts/crm/telefono.sh:129` — `pubblico` controlla AllowFunnel su ogni porta del nome, anche nelle configurazioni Foreground. Il JSON illeggibile o non oggetto dà «errore» (`scripts/crm/telefono.sh:121`). Rischio esaminato: tipi annidati sbagliati, per esempio `Web` come lista non vuota. In quel caso Python va in traceback e `set -e` ferma lo script. All'accensione (`scripts/crm/telefono.sh:214`) si ferma prima di toccare qualcosa; con un tailscaled vero non può succedere. — ok (cosmetica)
+- `scripts/crm/telefono.sh:54` — il filtro del .env toglie anche le forme `export ` e `CHIAVE = v`. L'ho confrontato con `gas.py:984` (`_carica_dotenv`): le regole coincidono. fsync e `os.replace` ok, il .env collegato resta collegato, senza .env non ne crea uno. — ok
+- `scripts/crm/telefono.sh:238` — se dopo `serve` la configurazione non è la nostra, toglie tutto e dice di rilanciare (R-860-4); il test è `tests/test_unit_crm.py:3231`. Il ramo «nostro pubblico» (`scripts/crm/telefono.sh:240`) è senza test: il mutante sopravvive, ma il caso si presenta solo se qualcosa cambia la configurazione fra due letture ravvicinate. — ok (cosmetica)
+- `scripts/crm/spegni.sh:12` — dopo il bootout chiama `telefono.sh spegni` se nel .env c'è la riga o se Tailscale è installato; il test è `tests/test_unit_crm.py:3241`. — ok
+- Codice vero di `leggi_porta` (nei test è sostituito dal python finto): eseguito su questa macchina con `env -i`, stampa solo «8770» e nient'altro su stdout. — ok
 
-**Riserve**
-- **R-858-1 BASSA** (fuori dal diff, c'era già): le copie cifrate su iCloud ruotano ancora per nome senza limite (`modules/crm/copia_cifrata.py:285`).
-  - Provato in simulazione: 30 giorni con l'orologio nel 2030, poi orologio corretto. La copia cifrata appena fatta viene cancellata subito; `copia_fuori` restituisce un percorso che non esiste con motivo None, quindi la dashboard dice «copia OK» anche se di oggi non c'è nessuna copia fuori dal Mac.
-  - Con pochi giorni nel futuro, quelle copie occupano posti tra le 30 (lo stesso problema V-3 del bot, ma sulla copia esterna).
-  - V-3 del bot è chiusa solo per le copie locali.
-- **R-858-2 BASSA**: nessun test fissa il margine di 1 giorno. Il test usa un salto di 3 anni, quindi un margine di 40 giorni passerebbe e riaprirebbe V-3 per salti più brevi. Manca un test vicino al bordo, per esempio una copia avanti di 2 giorni che non conta e una avanti di qualche ora che conta senza avviso.
+### Riserve
+- **R-861-1 BASSA** — `spegni` stampa «OK: accesso dal telefono spento» ed esce 0 anche quando il collegamento resta: `serve off` fallito, configurazione illeggibile, porta illeggibile. Con la porta illeggibile il CRM non viene nemmeno riavviato, quindi tiene il nome in memoria finché non riparte. Correzione proposta:
+  1. con la porta illeggibile fare comunque `launchctl kickstart -k`;
+  2. in quei casi niente «OK» finale ed exit diverso da 0, così `spegni.sh` avvisa.
+- **R-861-2 BASSA** — la condizione `bool(dest)` (`scripts/crm/telefono.sh:134`) è proprio quella che impedisce a `spegni`, con la porta illeggibile, di togliere un collegamento di un altro servizio. Non ha test. Mutante provato: con «senza `bool(dest)`» e un gestore di solo testo `off` viene chiamato e la configurazione dell'altro sparisce, eppure i 28 test di telefono.sh restano verdi. Restano vivi anche i mutanti «`"/" in gestori`» e «`startswith` al posto di `==`». Serve un test con porta illeggibile e gestore senza Proxy, più un caso con due gestori.
 
-**Cosmetiche**
-- Il commento di `scripts/crm/installa.sh:99` presenta come correzione un cambio solo difensivo: su bash 5.2 non è riproducibile, e dal codice sorgente di bash il codice d'uscita viene conservato anche nella 3.2.
-- In `backup()` resta un OverflowError teorico con l'orologio al 31-12-9999: non è dentro l'except, contro il «mai solleva» della docstring.
-- La docstring di `backup()` non parla delle copie nel futuro.
+### Note cosmetiche
+- `spegni` non avvisa quando sulla 443 c'è un altro servizio, nemmeno se è un vecchio collegamento del CRM a una porta poi cambiata.
+- Con un nome non `ts.net` dice «Tailscale è spento».
+- Dopo un cambio di nome del Mac il collegamento sotto il vecchio nome resta, con «OK». È innocuo: il vecchio nome non risolve più e il CRM non lo accetta.
+- `stato` dice «Acceso» anche dopo uno `spegni` fatto con Tailscale spento (.env già pulito, il CRM risponde 403).
+- Lanciato da `spegni.sh`, il messaggio parla dell'icona «CRM Gas» appena tolta.
+- Attraverso `serve` un dispositivo della rete Tailscale che usa curl può mettere un IP nell'Host e superare quel controllo, che protegge dal DNS rebinding e non dagli accessi. Restano il token e il limite ai tentativi; il messaggio «il CRM rifiuta già il telefono» vale per il browser.
 
-**Cosa NON ho verificato**
-- Il comportamento col /bin/bash 3.2 del Mac: qui c'è solo bash 5.2 e il Mac non si raggiunge. Per la 3.2 ho ragionato sul codice sorgente di bash, senza eseguirlo.
-- launchd vero e iCloud vero: non riproducibili qui; ho usato solo una cartella locale come destinazione cifrata.
+### Altri controlli
+- `python3 -m pytest -q tests/test_unit_crm.py`: 191 passed.
+- `bash -n` ok su telefono.sh e spegni.sh.
+- mypy: 0 errori in modules/crm (i 77 segnalati stanno in altri file e c'erano già).
+- Miei mutanti su copie degli script, con un controllo letale che li ha confermati validi: uccisi «return 2», «spegni senza riavvio», «spegni senza off»; vivi M3 `bool(dest)`, M6 un solo gestore, M7 uguale→startswith, M11 rollback di «nostro pubblico» dopo `serve`.
 
-**Memoria**
-- La riga #858 e una lezione sono in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, fuori dallo stage e NON committate, come mi hai chiesto.
-- Non ho creato `.claude/.review_ok`. Ce n'è già uno vecchio (18:15, hash 838d0dcd, diverso da bd1434fa): non apre il gate per questo diff.
+### Rischio esplicitamente escluso
+Non ho verificato:
+- **Tailscale vero sul Mac**: app del Mac App Store, formato reale di `serve status --json` sulla versione dell'operatore, link per attivare HTTPS, certificato, curl dal Mac verso il proprio nome. Qui non è riproducibile: solo comandi finti.
+- **La bash 3.2 di macOS**: qui c'è solo la 5.2. Il rischio è attenuato perché si usano gli stessi costrutti di `scripts/crm/installa.sh` (heredoc dentro `$( )`, regex senza virgolette).
+- **launchd vero.**
+- **Il sorgente di tailscaled**: non l'ho riletto. Che l'header funnel venga tolto dalle richieste non funnel e che l'Host resti quello originale lo prendo dalla lettura di #860.
 
-File toccati da me: /home/user/Gas/.claude/agents/memoria_revisore.md. Le prove sono in /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/r858.
+### Memoria
+- Riga #861 e due lezioni aggiunte in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, fuori stage.
+- NON ho committato, come richiesto, quindi `scripts/commit_memoria_revisore.sh` non è stato eseguito.
+- Nessun `.claude/.review_ok` creato.
 
-### Commit b176a489 — review #859 (verdetto integrale)
+File di prova usati: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/mutanti.sh`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prova_m3.py`.
+
+### Commit 23773556 — review #862 (verdetto integrale)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #859: secondo giro della #858, diff staged sul ramo claude/nifty-galileo-3k7kbm sopra 8acae43c. 4 file, +85/−4, sha256 del diff b134ff23 (lo hash è lo stesso all'inizio e alla fine della review). Prima ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la parte di reports/stato_progetto.md che serviva e la coda di .claude/agents/memoria_revisore.md.
+Review #862: secondo giro della #861 sul ramo claude/nifty-galileo-3k7kbm, sopra e970daef. Il diff staged è quello indicato: 2 file, +68/−20, sha256 6a42d4d3, ricontrollato prima e dopo la review. Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 10), la voce «Dashboard del CRM anche dal telefono» di reports/stato_progetto.md e le lezioni della mia memoria sugli script shell, `set -e` e gli spegnimenti.
+
+**Prove fatte**
+- Su una copia dell'indice (checkout-index nello scratchpad): `pytest tests/test_unit_crm.py` dà 195 passed; `bash -n` ok.
+- 12 mutanti eseguiti, più un mutante di controllo noto letale (ucciso). Ne è sopravvissuto uno solo (vedi R-862-1).
+- Sonde a mano con i comandi finti dei test: spegni.sh con Tailscale spento e con il telefono acceso, spegni senza Tailscale, porta illeggibile con o senza Tailscale, configurazione illeggibile, «nostro pubblico», tipi errati nel JSON, porta illeggibile con il CRM non installato, kickstart fallito.
 
 **Elementi del diff esaminati**
-
-1. `modules/crm/copia_cifrata.py:256` — nuova `_ruota`: contano solo i nomi `crm-AAAAMMGG.gascrm`. Rischio esaminato: copie fatte a mano e file `.tmp` contati o cancellati. Il glob `crm-*.gascrm` esclude i `.tmp`, perché il loro nome finisce in `.tmp`. Lo scenario #858 l'ho riprovato con una sonda diretta: 30 copie del 2030, più 5 vere, keep=3. La copia di oggi resta, le copie del 2030 restano intatte e ruotano solo quelle vere. Esito: **ok**.
-2. `modules/crm/copia_cifrata.py:264` — limite = giorno di `dest` + 1, dentro un `try` che prende solo `except ValueError` (`modules/crm/copia_cifrata.py:265`). Rischio esaminato: `_ruota` che solleva dopo `os.replace` (`modules/crm/copia_cifrata.py:311`) e fa diventare «non riuscita» una copia riuscita. L'unico modo nuovo è `crm-99991231`: `strptime` va bene, ma la somma `+ timedelta` dà OverflowError, che `except ValueError` non prende. Provato: la copia viene scritta ma la risposta è `(None, "errore durante la copia cifrata (OverflowError)")`. Dai chiamanti attuali il caso non si raggiunge: sia `modules/crm/server.py:303` sia `modules/crm/__main__.py:193` passano l'uscita di `backup()`, e `backup()` al 9999-12-31 solleva prima (provato: OverflowError esce da `backup()` con la copia locale già scritta; è la COSMETICA #858, ancora aperta). Gli altri modi di sollevare (glob, unlink su iCloud) c'erano già con lo slicing vecchio, sempre dentro lo stesso `try`. La regola §9 regge: `copia_fuori` non solleva mai, l'except generico prende tutto. Esito: **riserva cosmetica (R-859-2)**.
-3. `modules/crm/copia_cifrata.py:276` — `vecchia != dest`: la copia appena fatta non si cancella mai. Rischio esaminato: orologio tornato indietro con keep=1. Il mutante che toglie la guardia diventa rosso. Esito: **ok**.
-4. `tests/test_unit_crm.py:1399` — asserzione adattata in `test_copia_cifrata_fuori_dal_mac`. Rischio esaminato: che nasconda una regressione. Col codice nuovo i file in tutto sono 3 (le due finte più la copia di oggi, che per le finte è nel futuro). L'asserzione vecchia «2 in tutto» con il codice di HEAD dava `[0103, oggi]`. La nuova resta discriminante: con HEAD è rossa, e sono rossi anche i mutanti «filtro tolto» e «filtro spento». Che le copie nel futuro non si cancellino lo controlla il test nuovo (30 copie del 2030 dopo la prima chiamata). Non nasconde regressioni, ma ha due buchi:
-   - non controlla che la copia di oggi resti;
-   - non guarda il ritorno di `copia_fuori` per `crm-20260100` (giorno 00), che passa per il ramo ValueError. Per questo il mutante «senza except ValueError» resta verde.
-
-   Esito: **cosmetica**.
-5. `tests/test_unit_crm.py:2699` — test del margine della copia locale (R-858-2). Esito: **ok**, R-858-2 chiusa per la copia locale.
-6. `modules/crm/store.py:1373` (docstring) e `scripts/crm/installa.sh:99` (commento «solo difensivo»). Le cosmetiche della #858 sono chiuse. `bash -n` ok. Esito: **ok**.
-
-**Soglia «giorno dopo dest» rispetto alla regola locale.** Il contesto è `modules/crm/store.py:1396`: per le copie locali il limite è adesso + 24 h, al secondo. Nella cifrata il giorno di `dest` è il giorno dell'orologio al momento di `backup()`, perché entrambi i chiamanti passano la copia appena fatta. Quindi il margine della cifrata va da 24 a 48 ore, al giorno. Nella sostanza è coerente: c'è una sola copia cifrata al giorno e la copia appena fatta è comunque protetta. La docstring di store dice «fino a domani», ma intende fino alla stessa ora di domani (cosmetica).
-
-**Rieseguito su una copia dell'indice:** 173 passed, mypy pulito su store.py e copia_cifrata.py, `bash -n` ok. Col codice di HEAD in copia_cifrata.py i 2 test toccati sono rossi.
-
-**Mutanti di `_ruota` (suite intera):**
-- uccisi: filtro tolto, guardia su `dest` tolta, avviso tolto, filtro spento per tutti, codice di HEAD;
-- sopravvivono: margine 0 giorni, margine 40 giorni, filtro `<` al posto di `<=` (tutti 173 passed), oltre al conteggio `>=` nell'avviso, al mutante senza except ValueError e a quello che conta tutti i nomi (quasi equivalente).
+- `scripts/crm/telefono.sh:159` — `PARZIALE=no` in testa al ramo spegni e uscita 2 a scripts/crm/telefono.sh:200. Rischio: un «OK» detto quando qualcosa resta acceso. PARZIALE viene alzato in sei punti: porta illeggibile, `serve off` fallito, configurazione illeggibile, funnel, Tailscale spento o senza accesso, nome non ts.net. Mutanti uccisi: «PARZIALE tolto» su porta, off, funnel e Tailscale spento; «exit 2 → 0»; «PARZIALE=si iniziale». — ok
+- `scripts/crm/telefono.sh:169` — senza porta: avviso, PARZIALE e `launchctl kickstart -k` con `|| echo` (scripts/crm/telefono.sh:171), senza attendere la porta. Rischio: `set -e` che ferma lo script, oppure un riavvio mancato. Provato: kickstart fallito → due avvisi e uscita 2; CRM non installato → nessun kickstart e uscita 2. Il mutante «senza kickstart» è ucciso dal test. — ok
+- `scripts/crm/telefono.sh:184` — ramo `errore` (configurazione di Tailscale illeggibile) che alza PARZIALE. Rischio: ramo senza test. Il mutante «errore senza PARZIALE» resta VIVO (34 passed). A mano il comportamento è giusto: avviso e uscita 2. — riserva (R-862-1)
+- `scripts/crm/telefono.sh:202` — il nuovo messaggio OK finale dà l'indirizzo locale invece dell'icona. Rischio: messaggio falso. Nel flusso di spegni.sh è falso: provato, stampa «la dashboard resta su …:8770/» e subito dopo spegni.sh scrive «OK: CRM spento e tolto dall'avvio». — riserva cosmetica
+- `tests/test_unit_crm.py:3077` — il python finto esce 4 sulla lettura della porta se esiste `$HOME/porta_ko`. Rischio: un'altra chiamata intercettata per errore. scrivi_env non contiene «import gas», stato_serve e leggi_nome usano `-c`, e HOME passa a leggi_porta con `env -i HOME=`. — ok
+- `tests/test_unit_crm.py:3257` — test con tre casi (gestore di testo con porta illeggibile; nostro più un secondo gestore; porta 87700 come prefisso). Rischio: guardie senza test. Uccisi «senza bool(dest)», «"/" in gestori» e «startswith». I casi 2 e 3 però non controllano il codice di uscita (atteso 0). — ok, con nota cosmetica
+- `tests/test_unit_crm.py:3276` — test con `serve off` fallito. Rischio: test che passa a vuoto se la sostituzione nel finto non combacia. Non succede: in quel caso l'off riesce, l'uscita è 0 e il test diventa rosso. Il mutante «off fallito senza PARZIALE» è ucciso. — ok
+- `tests/test_unit_crm.py:3191` e `tests/test_unit_crm.py:3204` — test esistenti aggiornati da uscita 0 a uscita 2 (Tailscale spento; funnel). Sono i soli rami cambiati di proposito. Gli altri casi già approvati restano a 0: tests/test_unit_crm.py:3122 (spegni dopo l'accensione), tests/test_unit_crm.py:3212 (senza .env), tests/test_unit_crm.py:3251 (spegni.sh). Provato anche il caso senza Tailscale con porta leggibile: uscita 0. — ok
+- Contesto, file non toccato: `scripts/crm/spegni.sh:14` — `set -uo pipefail` senza `-e` (scripts/crm/spegni.sh:4), poi `telefono.sh spegni || echo ATTENZIONE`. Provato con Tailscale spento: telefono.sh esce 2, spegni.sh stampa «ATTENZIONE: accesso dal telefono non spento», poi l'OK del CRM, e chiude con uscita 0. Reagisce bene. — ok
 
 **Riserve**
-- **R-859-1 BASSA** — nessun test fissa il margine della gemella cifrata: R-858-2 è stata corretta solo per la copia locale. Correzione provata: `_ruota` con `dest` 1124, copie 1122, 1123, 1125, 1126 e keep=3 deve lasciare 1123–1126. Questo test uccide i mutanti 0 giorni, 40 giorni e `<`.
-- **R-859-2 COSMETICA** — `except (ValueError, OverflowError)` a `modules/crm/copia_cifrata.py:265`. Oggi non si raggiunge dai chiamanti.
-- **COSMETICHE**:
-  - test adattato (punto 4): aggiungere il controllo sulla lista completa e sul ritorno per `crm-20260100`;
-  - docstring di store: «fino alla stessa ora di domani»;
-  - preesistente: un errore di rotazione dopo `os.replace` (unlink su iCloud) dà «non riuscita» anche se la copia c'è. Va nel verso del falso allarme, mai del falso «copia OK».
+- R-862-1 BASSA: il ramo `errore` dello spegni (scripts/crm/telefono.sh:184) non ha test; il mutante che toglie il PARZIALE sopravvive. Correzione: un caso di spegni con il contenuto `"Warning\n{}"` in `registro.txt.serve` che si aspetti uscita 2 e «non riesco a leggere la configurazione».
+- COSMETICA (la cosmetica dell'icona della #861 resta aperta in altra forma): l'OK di scripts/crm/telefono.sh:202 dice che la dashboard resta sull'indirizzo locale anche quando lo lancia spegni.sh, che ha appena spento il CRM. Correzione: dirlo solo se `crm_installato`.
+- COSMETICA: con Tailscale installato ma spento, spegni.sh dà sempre tre avvisi («il collegamento resta salvato», «SOLO IN PARTE», «non spento»), anche se il telefono non è mai stato acceso. La prudenza è giusta perché lo script non può saperlo, ma il testo afferma invece di dire «se c'è».
+- COSMETICA: con «nostro pubblico» e il funnel solo sulla 443, dopo `serve off` lo script avvisa comunque del funnel ed esce 2. Nel finto la configurazione dopo l'off è `null`; il fatto che off tolga anche il funnel di quella porta l'avevo ricavato dal sorgente di Tailscale nella #860. È un falso allarme nella direzione prudente; correzione: rileggere `stato_serve` dopo l'off.
+- COSMETICA, già nella #861: con tipi annidati errati nel JSON (es. `Handlers` lista) esce un traceback, uscita 1 senza «SOLO IN PARTE». spegni.sh avvisa comunque, e la riga del .env è già tolta.
 
-**Wall of Shame:** nessuna violazione. `copie[:-max(1, keep)]` taglia una lista di file, non la storia dei messaggi. Nessuna simulazione di tool.
+**Rischio escluso**: Tailscale vero e la bash 3.2 del Mac non sono provati, perché l'ambiente è Linux con comandi finti. Rispetto alla #861 non entrano costrutti nuovi di bash 4: solo `if !`, `case` annidati e `||`. Non ho riletto modules/crm/server.py, che non è nel diff.
 
-**Rischio escluso:** non ho verificato il comportamento reale su iCloud Drive (file non ancora scaricati, unlink e glob con errori di rete o di sincronizzazione), perché in dev su Linux non si riproduce. Non ho guardato /bin/bash 3.2 del Mac, perché installa.sh cambia solo in un commento.
+Nessun antipattern del Wall of Shame (né slicing della storia né simulazione di tool). Gas.py, i provider e i guardrail non sono toccati.
 
-- Riga contatore #859 e 2 lezioni nuove scritte in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, fuori dallo stage. Come richiesto non ho fatto commit e non ho creato .claude/.review_ok.
-- Sonde e mutanti sono in /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sonda/ (sonda.py, margine.py).
+Memoria: in coda a /home/user/Gas/.claude/agents/memoria_revisore.md ho aggiunto la riga contatore #862 e una lezione nuova (il messaggio finale di uno script richiamato da un altro va provato nell'output combinato). Il file è fuori stage e NON committato, come hai chiesto. Lo stage è invariato (sha256 6a42d4d3). Non ho creato .claude/.review_ok e non ci sono IP letterali né qui né nella memoria.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_crm.py`: 150 → 173 passed. Nuovi: 5 test delle copie locali (riavvii nello stesso giorno, orologio indietro, copie a mano, copie nel futuro, margine di un giorno), 1 delle copie cifrate (orologio sbagliato) e 17 test di `installa.sh`/`spegni.sh` con comandi finti; `test_identita_clienti_e_backup` ora con `keep=2, ultime=2`.
-- `tests/test_unit_hooks.py -k "perimetro or gate"`: 128 passed (rieseguito dal revisore #853).
+- `tests/test_unit_crm.py`: 173 → 195 passed. Nuovi: nomi Tailscale ammessi e rifiutati, Host del funnel e su porte diverse da 443 rifiutati, cookie `Secure`, e 20 casi di `telefono.sh`/`spegni.sh` con comandi finti (accendi, stato, spegni, funnel, altri servizi, JSON illeggibile, HTTPS da attivare, serve fallito, .env collegato, porta illeggibile).
 - Suite del kernel non toccata (gas.py e test del kernel invariati).
 
 ## §6 STATO CI
 
-`gh run list` non usato: GitHub si interroga con `gh api` REST (`commits/SHA/check-runs`).
+`gh run list` non usato: GitHub si interroga con `gh api` REST.
 - Mappatura commit→run:
-  - `d54a09ad`, `75dbd9d9`: nessuna run propria (pushati insieme a ca2fc64b).
-  - `ca2fc64b`: handoff-check success; verifica-bot annullato (head cambiata durante la verifica).
-  - `1b61ec43`: nessuna run propria (pushato con a83ca616). `a83ca616`: verifica-bot annullato (head cambiata).
-  - `dfe8fbee`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, solo BASSE; PR sulla macchina del bot).
-  - `5b75c850`, `8fbd65a3`: nessuna run propria (pushati con 94184b2c).
-  - `94184b2c`: unit-suite success, handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, solo BASSE).
-  - `8acae43c`, `b176a489` e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+  - Commit della sessione e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (il ramo si pusha col commit di fine-task).
+- Ultima run nota su main b100f8d4 (merge della #404): CI verde al merge.
 
 ## §7 RISERVE APERTE
 
-- R-859-1 BASSA: nessun test fissa il margine di un giorno delle copie cifrate.
-- R-859-2 COSMETICA: `OverflowError` non preso in `_ruota` (non raggiungibile oggi).
-- R-854-2 BASSA: KeepAlive senza tetto, registro senza rotazione, nessun avviso (parte restante di R-853-2).
-- COSMETICHE #853/#854/#856/#857: in `reports/stato_progetto.md` (tra cui `spegni.sh` fa il bootout prima del rm, ordine opposto a R-855-1).
-- R-852M-1 BASSA (voce, `.env` sul Mac) e riserve della #401 (funnel): in `reports/stato_progetto.md`.
-- Dalla PR #397: R-848-2 BASSA, R-848-3 BASSA, V-3 BASSA della verifica esterna, cosmetiche #848; R-836-1 COSMETICA.
-- Script non provati su un Mac vero né con bash 3.2.
+- R-862-1 BASSA: nessun test per il ramo «configurazione illeggibile» dello spegni.
+- COSMETICHE #860/#861/#862: in `reports/stato_progetto.md`.
+- Dalla PR #404: V-1/V-2 BASSE e V-3 COSMETICA del bot, V-1 BASSA della 3ª verifica esterna, R-859-1 BASSA, R-859-2 COSMETICA, R-854-2 BASSA: in `reports/stato_progetto.md`.
+- R-852M-1 BASSA (voce) e riserve della #401 (funnel): in `reports/stato_progetto.md`.
+- Script non provati con un Tailscale vero, launchd vero e bash 3.2.
