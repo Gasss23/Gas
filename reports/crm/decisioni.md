@@ -48,3 +48,7 @@
 ## 24 novembre 2026 — CRM sempre acceso e revisione in più
 
 20. **Gli script del CRM passano dal revisore** («ci sta comunque una revisione in più, dato che comunque sono dati personali dei clienti e non dobbiamo fare assolutamente neanche un errore»). → `scripts/crm/` entra nel perimetro di review (`.claude/perimetro_review.txt`), come `scripts/voce/`.
+
+## 25 novembre 2026 — dashboard anche dal telefono
+
+21. **La dashboard si deve vedere anche dal telefono** («sì fallo, voglio vederla anche dal telefono»; scelta dopo la proposta di una rete privata tra i dispositivi; era la domanda aperta del punto 15). → Tailscale con `tailscale serve`: il CRM resta su 127.0.0.1 e non si apre a internet; il telefono entra solo dalla rete privata dell'operatore, in HTTPS, col token. Il server accetta, oltre a `localhost` e agli IP, solo il nome `*.ts.net` del Mac dichiarato in `GAS_CRM_NOME_TAILSCALE`, e da lì il cookie è `Secure`. Mai il funnel (pubblico): `scripts/crm/telefono.sh` si ferma se lo trova. Sul Mac resta l'icona «CRM Gas» della Scrivania (fatta da `installa.sh`).
