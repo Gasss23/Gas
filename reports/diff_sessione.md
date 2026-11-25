@@ -6,7 +6,10 @@ Si riscrive a ogni sessione; la storia completa sta in git.
   - log distinto per il «fine» sul primo turno;
   - ripiego su hey_jarvis per un nome non semplice;
   - `descrivi_modello()` per il log di avvio;
-  - nome del modello normalizzato in `main`.
-- `tests/test_unit_voce_ascolto.py`: 3 test nuovi e 1 aggiornato.
-- `.claude/agents/memoria_revisore.md`: review #864/#865.
+  - nome del modello normalizzato in `main`;
+  - modelli pronti anche col nome del file;
+  - avviso di ripiego dato una volta sola.
+- `scripts/voce/LEGGIMI.md`: riga di `GAS_ASCOLTO_MODELLO` con pulizia del nome e ripiego.
+- `tests/test_unit_voce_ascolto.py`: 4 test nuovi e 2 aggiornati.
+- `.claude/agents/memoria_revisore.md`: review #864–#867.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`: report di fine task.

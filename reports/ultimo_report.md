@@ -11,10 +11,15 @@ Nessuna nuova. Merge della PR: se il bot dà APPROVATO pulito lo fa l'agente, al
   - Un nome non semplice in `GAS_ASCOLTO_MODELLO` (un percorso, un nome strano) ripiega su hey_jarvis: chiude V-1 del bot #405.
   - In `main` il nome si normalizza: «Hey Jarvis» vale hey_jarvis, filtro della voce compreso (R-864-1).
 - **Fetta 3 — Log di avvio**: FATTA. «ascolto pronto» dice il modello davvero in uso: dal file, oppure ripiego (R-855-1).
-- Test: `tests/test_unit_voce_ascolto.py` da 391 a 394 passed.
-- Review: #864 e #865, APPROVATO CON RISERVE.
+- **Fetta 4 — Riserve del bot #407**: FATTA.
+  - I modelli pronti passano col nome esatto, anche quello del file con la versione (alexa_v0.1): chiude V-1 e R-866-1.
+  - L'avviso di ripiego compare una volta sola (R-864-2).
+  - Docstring e LEGGIMI aggiornati (V-2).
+  - Il test controlla il nome passato al rilevatore (V-3).
+- Test: `tests/test_unit_voce_ascolto.py` da 391 a 395 passed.
+- Review: #864–#867, APPROVATO CON RISERVE.
 
 ## Riserve aperte
-- R-864-2 COSMETICA: all'avvio l'avviso di ripiego compare due volte.
+- R-867 BASSA, che c'era già prima: un modello pronto non scaricato (es. alexa) fa uscire l'ascolto invece di ripiegare.
 - R-854-3 BASSA: interruzione col modello italiano non misurata.
 - Ripiego su hey_jarvis con la soglia 0,5: aperta, BASSA.
