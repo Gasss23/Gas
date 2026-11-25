@@ -1,25 +1,20 @@
-# Ultimo report — 2026-11-25 — Scheda clienti da leggere offline
+# ULTIMO REPORT — R7 fetta 4 bis: tetto di tempo duro del giro di notte
+
+**Data:** 25 novembre 2026
+**Branch:** claude/r7-tetto-duro-notte (sotto-chat di M1)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa fetta (codice del CRM e `requirements.txt`; il bot dà `neutral` se tocca la sua macchina, altrimenti decide il verdetto).
-2. Sul Mac, dopo il merge: `cd ~/Gas && git pull && source .venv/bin/activate && pip install -r requirements.txt`; nel `.env` aggiungere `GAS_CRM_SCHEDA_PASSWORD=` con una password NUOVA di almeno 16 caratteri (diversa da quella delle copie) e salvarla nel gestore di password; poi `python -m modules.crm scheda --forza`.
-3. Sull'iPhone: app File → iCloud Drive → «Gas CRM (copie cifrate)» → tieni premuto «Scheda clienti.pdf» → «Mantieni scaricato»; aprirla una volta con la password per provarla.
-4. Dalla fetta di ieri (se non già fatto): `bash scripts/crm/installa.sh` e `bash scripts/crm/telefono.sh` con l'app Tailscale su Mac e telefono.
-5. Dalla chat Voce (#405, regola 3): scelta tra modello italiano e hey_jarvis, licenza CC BY-NC-SA, prova sul Mac (in `reports/stato_progetto.md`).
 
-## Esito
-- **Richiesta dell'operatore** («per forza tailscale? … posso accederci eventualmente offline … mi serve solo un dato al volo»; scelte: «Sì, fai la scheda» e «Scheda ora, modifiche col server»): FATTA, decisione 22.
-  - `modules/crm/scheda.py` (nuovo): «Scheda clienti.pdf» protetta da password (AES-256) nella cartella iCloud delle copie cifrate; per cliente contatti, servizi e capitale, profitto del mese, ultimi 3 movimenti, promemoria. PDF scritto senza librerie esterne, cifrato con `pypdf`.
-  - Si rifà solo quando cambiano i dati (impronta del contenuto), zero token; il server la rifà 2 minuti dopo l'ultimo cambio e la ricontrolla una volta al giorno, in un thread a parte.
-  - Password solo sua (`GAS_CRM_SCHEDA_PASSWORD`, almeno 16 caratteri, diversa da quella delle copie: R-864-1 MEDIA chiusa), riletta dal `.env` a ogni scrittura (R-865-1 MEDIA chiusa).
-  - Comando `python -m modules.crm scheda [--forza]`; guida e decisione 22 aggiornate.
-- **Modifiche fatte senza connessione** (l'operatore le vuole salvate «al 100% senza errori»): NON in questa fetta, per scelta dell'operatore; si costruiscono col server di Gas (coda sul telefono, identificativo unico, rifiuti mostrati e mai persi).
-- **Merge di main** (PR #405 Voce e #406): ramo riallineato con avanzamento veloce, nessun conflitto; riserve dell'ultimo verdetto del bot sulla #405 riportate in `reports/stato_progetto.md`.
+1. **Merge della PR #408**: l'operatore ha detto «mergia 408» (riferito da M1); la mergia l'agente con CI e bot verdi sull'head nuovo.
+2. **PR #402** (fetta 4, sottofondo): mergiata da M1 col «mergia» dell'operatore.
 
-## Test
-- `pytest tests/test_unit_crm.py`: 195 → 211 passed (cifratura, nessun dato in chiaro nel file, password propria e diversa, rilettura del `.env`, riscrittura solo su cambio, temporanei, stornati e movimenti futuri esclusi, guardiano: riprova, mai due insieme, ricontrollo giornaliero). Mutanti dei punti critici presi dai test.
-- Non provato su un iPhone vero né su iCloud vero.
+## Esito fette
 
-## Riserve aperte
-- R-866-1 BASSA, R-866-2 BASSA, R-864-7 BASSA, cosmetiche #864–#866 (in `reports/stato_progetto.md`).
-- Dalle fette precedenti e dalle altre chat: in `reports/stato_progetto.md`.
+- **Fetta 4 bis R7 — tetto di tempo duro del giro di notte**: FATTA. Oltre GAS_NOTTE_MAX_SEC_GIRO + 300 s il giro manda «INTERROTTO» su Telegram e si ferma da solo (prima un compito appeso dentro una chiamata bloccava la notte); il compito a metà resta in in_corso.json e il giro dopo lo riprende o lo salta; un solo avviso tra timer e fine giro; nome del compito appeso nel log; attesa del timer limitata a 30 giorni. 8 test nuovi (238). Review #866-R7 → #867-R7 APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
+- **Merge di main dopo la #402**: FATTO (fa2fc877), review #868-MERGE-R7 APPROVATO. Verifica esterna su aa8e56ce: APPROVATO CON RISERVE, unica MEDIA (PR in conflitto) chiusa col merge.
+- **Merge di main dopo la #410**: FATTO (6d5adc51), review #869-MERGE-R7 APPROVATO CON RISERVE (voce doppia in stato_progetto, corretta).
+- **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — prossima PR.
+
+## Anomalie / cose da sapere
+
+- Letta `reports/bacheca.md` (main del 25/11): niente che blocchi questa fetta. Non toccati `clients/voice/` né `scripts/voce/` (ci lavora M1).

@@ -85,6 +85,7 @@ import logging
 import math
 import os
 import re
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -116,6 +117,9 @@ BUDGET_NOTTE_DEFAULT_USD = "1.0"  # tetto di spesa 24h se l'operatore non ne ha 
 MAX_SEC_COMPITO_DEFAULT = 900    # tetto di tempo per compito (env GAS_NOTTE_MAX_SEC_COMPITO)
 MAX_SEC_GIRO_DEFAULT = 7200      # tetto di tempo del giro (env GAS_NOTTE_MAX_SEC_GIRO)
 MIN_SEC = 30                     # sotto questo valore l'env viene alzato
+MARGINE_DURO_S = 300             # R7 fetta 4: oltre il tetto del giro + margine, arresto duro
+TETTO_DURO_NOTTE = "tetto di tempo duro del giro superato: processo fermato"
+TETTO_TIMER_NOTTE_S = 30 * 86400  # attesa massima del timer (R-866R7-3: niente OverflowError)
 GIRO_OCCUPATO = "giro_occupato"  # valore di `interrotto` quando il lock è già preso
 MAX_AVVISI_TELEGRAM = 5          # avvisi riportati nel messaggio del mattino
 MAX_AVVISO_CHARS = 200           # lunghezza di ciascun avviso nel messaggio
@@ -987,6 +991,53 @@ def righe_lavori(compiti_catalogo: List[Dict[str, Any]],
     return righe
 
 
+def _arma_tetto_giro(secondi: float, alla_scadenza: Callable[[], None]) -> Any:
+    """R7 fetta 4: timer demone del tetto DURO del giro (i test lo sostituiscono).
+    R-866R7-3: attesa limitata a TETTO_TIMER_NOTTE_S (30 giorni, molto oltre ogni giro)."""
+    timer = threading.Timer(min(max(0.0, secondi), TETTO_TIMER_NOTTE_S), alla_scadenza)
+    timer.daemon = True
+    timer.start()
+    return timer
+
+
+def _termina_giro() -> None:
+    """Uscita immediata del processo del giro (i test la sostituiscono). Il lock del giro
+    (flock) lo libera il sistema all'uscita; il compito a metà resta in in_corso.json e
+    il giro dopo lo riprende (per ultimo se è già caduto altre volte) o lo salta dopo
+    MAX_TENTATIVI interruzioni. LIMITI dichiarati (R-866R7-1/4): i figli non vengono
+    fermati qui — `claude -p` e il browser hanno una sessione propria e possono finire la
+    richiesta in corso; un compito che si appende sempre consuma il giro per MAX_TENTATIVI
+    notti prima di essere saltato."""
+    os._exit(1)
+
+
+def _nuova_guardia() -> Dict[str, Any]:
+    """R-866R7-2: stato condiviso tra il timer del tetto duro e la fine normale del giro:
+    chi chiude per primo vince (un solo avviso, niente uscita a metà riepilogo)."""
+    return {"lock": threading.Lock(), "chiuso": False, "compito": None}
+
+
+def _giro_scaduto(guardia: Optional[Dict[str, Any]] = None) -> None:
+    """Il giro è oltre `GAS_NOTTE_MAX_SEC_GIRO` + MARGINE_DURO_S: un compito è appeso dentro
+    una chiamata (modello o strumento) e il controllo tra un evento e l'altro non arriva
+    mai. L'operatore riceve il testo fisso «INTERROTTO», poi il processo si ferma."""
+    guardia = guardia if guardia is not None else _nuova_guardia()
+    with guardia["lock"]:
+        if guardia["chiuso"]:
+            return  # il giro è già finito da solo
+        guardia["chiuso"] = True
+    try:
+        # R-866R7-4: il nome viene dal catalogo dell'operatore (mai testo del modello)
+        logging.warning("notte: %s (compito in corso: %s)", TETTO_DURO_NOTTE,
+                        guardia.get("compito") or "nessuno")
+        _stampa_sicura(f"Giro notturno interrotto: {TETTO_DURO_NOTTE}")
+        _notifica_telegram(_ora_locale(), [], [], TETTO_DURO_NOTTE)
+    except Exception as e:  # §9: l'arresto avviene comunque
+        logging.warning("notte: avviso del tetto duro non inviato: %s", type(e).__name__)
+    finally:
+        _termina_giro()
+
+
 def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None,
                  kernel_factory: Optional[Callable[[str], Any]] = None,
                  solo: Optional[str] = None) -> int:
@@ -1003,6 +1054,8 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
     notte_dir = root / NOTTE_DIR
     lock_f = None
     da_notificare: Optional[Tuple[Any, ...]] = None
+    tetto_duro: Any = None
+    guardia: Optional[Dict[str, Any]] = None
     try:
         notte_dir.mkdir(parents=True, exist_ok=True)
         try:
@@ -1066,6 +1119,12 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         max_compito = _env_secondi("GAS_NOTTE_MAX_SEC_COMPITO", MAX_SEC_COMPITO_DEFAULT)
         max_giro = _env_secondi("GAS_NOTTE_MAX_SEC_GIRO", MAX_SEC_GIRO_DEFAULT)
         t_giro = time.monotonic()
+        # R7 fetta 4: tetto DURO. Il tetto del giro e quello del compito si controllano tra un
+        # evento e l'altro; un compito appeso dentro una chiamata li scavalca. Oltre il tetto
+        # del giro più un margine il processo si ferma da solo, con l'avviso «INTERROTTO».
+        guardia = _nuova_guardia()
+        tetto_duro = _arma_tetto_giro(max_giro + MARGINE_DURO_S,
+                                      lambda: _giro_scaduto(guardia))
         tempo_finito = False
         esiti: List[Dict[str, Any]] = []
         kernel: Any = None
@@ -1092,6 +1151,8 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 avvisi.append(f"compito '{c['nome']}' ripreso: il giro precedente si era "
                               f"interrotto a metà{extra}")
                 logging.warning("notte: %s", avvisi[-1])  # R-416-1: anche nella scatola nera
+            if guardia is not None:
+                guardia["compito"] = c["nome"]
             info_prima = in_corso.get(c["nome"], {})
             prima = info_prima.get("tentativi", 0)
             in_corso[c["nome"]] = {"tentativi": prima + 1, "inizio": _ora_locale()}
@@ -1149,6 +1210,23 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                          [], [], type(e).__name__)
         return 1
     finally:
+        if tetto_duro is not None:
+            try:
+                tetto_duro.cancel()
+            except Exception:
+                pass
+            if guardia is not None:
+                with guardia["lock"]:
+                    gia_scaduto = guardia["chiuso"]
+                    guardia["chiuso"] = True
+                if gia_scaduto:
+                    # R-866R7-2: il timer è già partito: niente secondo avviso; si aspetta
+                    # che finisca il suo (poi ferma il processo)
+                    da_notificare = None
+                    try:
+                        tetto_duro.join(60)
+                    except Exception:
+                        pass
         if lock_f is not None:
             try:
                 lock_f.close()
