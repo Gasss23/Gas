@@ -3426,6 +3426,13 @@ def test_modello_della_parola_da_file_locale(monkeypatch, tmp_path):
     f.write_bytes(b"onnx")
     os.chmod(f, 0o600)
     assert a.modello_della_parola("ehi_jarvis_it", tmp_path) == str(f)
+    # V-1 bot su 0d433dfc: un nostro file col nome di un modello pronto resta la prima scelta
+    g = d / "hey_jarvis.onnx"
+    g.write_bytes(b"onnx")
+    os.chmod(g, 0o600)
+    monkeypatch.setattr(a, "_modelli_pronti", lambda: {"hey_jarvis"})
+    assert a.modello_della_parola("hey_jarvis", tmp_path) == str(g)
+    g.unlink()
     # V-1 bot #407 / R-866-1: un modello pronto col nome esatto (anche il nome del file con
     # la versione) passa com'è. Nomi e percorsi come quelli veri di openwakeword 0.6.0.
     import types

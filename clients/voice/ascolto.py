@@ -1475,15 +1475,17 @@ def modello_della_parola(modello: str, radice: Optional[Path] = None) -> str:
     semplice (un percorso, maiuscole, vuoto) dà hey_jarvis: mai un file preso dall'ambiente.
     openWakeWord chiama il modello col nome del file senza .onnx, cioè `modello`: le
     previsioni e il verificatore restano sotto lo stesso nome."""
-    if modello in _modelli_pronti():
-        # V-1 bot #407: un modello pronto di openWakeWord col suo nome esatto (anche con la
-        # versione, es. alexa_v0.1) passa com'è, come prima.
-        return modello
     if not _NOME_MODELLO_SEMPLICE.fullmatch(modello or ""):
+        if modello in _modelli_pronti():
+            # V-1 bot #407: un modello pronto col nome esatto del suo file (con la
+            # versione, es. alexa_v0.1) passa com'è. V-1 bot su 0d433dfc: solo per i nomi
+            # non semplici, così un nostro file con un nome semplice resta la prima scelta.
+            return modello
         # V-1 bot #405 (f51a58c7): un percorso o un nome strano preso dall'ambiente non
         # arriva a openWakeWord: si ripiega sul modello pronto, l'ascolto resta acceso.
         _avvisa_una_volta("modello della parola: nome non valido in GAS_ASCOLTO_MODELLO "
-                    "(solo lettere minuscole, cifre e _): uso %s", MODELLO_DI_RISERVA)
+                          "(%r: solo lettere minuscole, cifre e _): uso %s",
+                          modello[:60], MODELLO_DI_RISERVA)
         return MODELLO_DI_RISERVA
     p = (radice or _GAS_ROOT) / CARTELLA_MODELLI / ("%s.onnx" % modello)
     try:
