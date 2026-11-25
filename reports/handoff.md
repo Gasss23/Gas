@@ -1,418 +1,241 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-24 — Voce: modello «ehi jarvis» con accento italiano (ehi_jarvis_it), PR #405
+**Sessione:** 2026-11-25 — Scheda clienti da leggere offline (decisione 22)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #405 (https://github.com/Gasss23/Gas/pull/405).
-   - Revisore: APPROVATO CON RISERVE.
-   - Bot sul giro 05df3ae7: APPROVATO CON RISERVE senza ALTA/MEDIA, check neutral: decide l'operatore.
-   - Verifica esterna su 3b407738: APPROVATO CON RISERVE, con V-1 MEDIA (conflitto con main), risolta col merge c85490e5.
-   - L'operatore ha dato il «mergia» il 25/11, prima del 2° merge di main (PR #406, solo report in conflitto, review #863-MERGE APPROVATO).
-2. R-854-1, scelta dell'operatore:
-   - modello italiano: più chiamate prese, ma risponde a chiunque dica «ehi Jarvis» e fa più falsi sui quasi-omofoni (flusso B 49,8/h contro 33,9). Si sceglie con `bash scripts/voce/installa.sh --italiano`;
-   - hey_jarvis col filtro della voce: resta tale lanciando `installa.sh` senza opzione.
-   - Senza il file del filtro (`.gas_voce/verifica/hey_jarvis_verifier.pkl`), `installa.sh` sceglie da solo il modello italiano, se il `.env` non ne sceglie già uno (V-2 della 2ª verifica esterna).
-3. Licenza del modello CC BY-NC-SA (uso personale) in un repo pubblico (V-3 della verifica esterna). È la stessa di hey_jarvis; la decisione è dell'operatore.
-4. Prova sul Mac con la voce vera.
+1. Merge della PR di questa fetta.
+2. Sul Mac, dopo il merge: `cd ~/Gas && git pull && source .venv/bin/activate && pip install -r requirements.txt`; nel `.env` aggiungere `GAS_CRM_SCHEDA_PASSWORD=` con una password NUOVA di almeno 16 caratteri, diversa da quella delle copie, salvata nel gestore di password; poi `python -m modules.crm scheda --forza`.
+3. Sull'iPhone: app File → iCloud Drive → «Gas CRM (copie cifrate)» → «Scheda clienti.pdf» → «Mantieni scaricato»; aprirla una volta con la password.
+4. Dalla chat Voce (#405, regola 3): scelta del modello, licenza CC BY-NC-SA, prova sul Mac (in `reports/stato_progetto.md`).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Addestramento del modello `ehi_jarvis_it`**: FATTA.
-  - Lavoro nello scratchpad; nel repo vanno il modello, gli script e i risultati.
-  - Simulazione a soglia 0,5, 1 fase, prese a vicino / −6 / −12 / −20 dB:
-
-    | | voci della simulazione | voci mai viste | falsi/ora, parlato letto | falsi/ora, audio generico | falsi/ora, flusso B con quasi-omofoni |
-    |---|---|---|---|---|---|
-    | ehi_jarvis_it | 100 / 100 / 87 / 47% | 90 / 75 / 70 / 58% | 0,35 | 0 | 49,8 |
-    | hey_jarvis | 23 / 33 / 3 / 0% | 50 / 40 / 40 / 20% | 1,06 | 0,47 | 33,9 |
-
-- **Fetta 2 — Integrazione**: FATTA.
-  - Modello da file fidato in `clients/voice/ascolto.py`.
-  - Passo 3b in `scripts/voce/installa.sh`.
-  - Prova con openWakeWord vero: 1,00 su «ehi jarvis» (hey_jarvis 0,49), 0,00 su una frase neutra.
-- **Fetta 3 — Riserve di verifica esterna e bot su #405**: FATTA (908f430b, review #856/#857).
-  - Soglia 0,5 scritta insieme al modello.
-  - Ripiego su hey_jarvis col file assente.
-  - Opzione `--italiano` quando c'è il filtro hey_jarvis.
-  - Test del collegamento rilevatore→file.
-  - Documenti con i limiti.
-- **Fetta 3b — CI rossa su d6a980a5**: FATTA. Rinominati gli script `*_test.py` della simulazione, che pytest prendeva per test.
-- **Fetta 3c — Conflitto con main (PR #404 CRM)**: FATTA. Merge c85490e5: report del ramo tenuti, stato e memoria uniti, file di main identici (review #860-MERGE APPROVATO).
-- **Fetta 3d — 2° conflitto con main (PR #406 CRM)**: FATTA (review #863-MERGE APPROVATO).
-- **Fetta 4 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
+- **Scheda clienti da leggere offline** (richiesta dell'operatore: «per forza tailscale? … posso accederci eventualmente offline … mi serve solo un dato al volo»; scelte: «Sì, fai la scheda», «Scheda ora, modifiche col server»; decisione 22): FATTA (36587824, review #864, #865, #866 APPROVATO CON RISERVE). R-864-1 MEDIA (password delle copie riusata) e R-865-1 MEDIA (password cambiata ignorata dal servizio) chiuse prima del commit.
+- **Modifiche offline salvate al ritorno della rete**: NON FATTE in questa fetta per scelta dell'operatore («modifiche col server»).
+- **Riallineamento a main** (PR #405 Voce e #406): avanzamento veloce, nessun conflitto; riserve dell'ultimo verdetto del bot sulla #405 (V-1, V-2 BASSE) riportate in `reports/stato_progetto.md` (regola 3).
+- **Prova su iPhone e iCloud veri**: SALTATA — non raggiungibili da qui.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md                                                             |   9 +++++
- clients/voice/ascolto.py                                                                       |  54 ++++++++++++++++++++++++++--
- clients/voice/modelli/LEGGIMI.md                                                               |  27 ++++++++++++++
- clients/voice/modelli/ehi_jarvis_it.onnx                                                       | Bin 0 -> 856178 bytes
- reports/diff_sessione.md                                                                       |  21 +++++------
- reports/handoff.md | n/d
- reports/stato_progetto.md                                                                      |   3 +-
- reports/ultimo_report.md                                                                       |  72 +++++++++++++++++++++++++++-----------
- reports/voce_simulazione_2026-11-23/modello_italiano/LEGGIMI.md                                |  61 ++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/ehi_jarvis_it.addestramento.json          | 574 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_ens67_f1.json                 |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f1.json          |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f4.json          |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_f1.json            |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_f4.json            |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v4_G.json                     |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v4_d128_ami_f1.json           |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v6_d128_nomi_H_f1.json        |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v6_d128_nomi_f1.json          |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_H_f1.json |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f1.json   |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f4.json   |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v4.txt                          |  10 ++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v6.txt                          |   5 +++
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v7.txt                          |   5 +++
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/ris_validazione_heyjarvis.txt         |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v4.txt                    |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v6_v7.txt                 |   3 ++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/addestra.py                        | 272 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/feature.py                         | 193 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/flussi_nuovi.py                    | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/frasi_prova.py                     |  25 +++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/genera.py                          | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/lib_sim.py                         | 163 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/mls.py                             |  30 ++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/quasi_prova.py                     |  64 ++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/rifai_tutto.sh                     |  51 +++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/scarica.sh                         |  46 ++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/tabella.py                         |  24 +++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/testi.py                           | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/valuta.py                          | 139 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- scripts/voce/LEGGIMI.md                                                                        |   2 +-
- scripts/voce/installa.sh                                                                       |  45 +++++++++++++++++++++++-
- tests/test_unit_voce_ascolto.py                                                                | 119 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ .claude/agents/memoria_revisore.md |   9 +
+ modules/crm/__main__.py            |  16 ++
+ modules/crm/scheda.py              | 363 +++++++++++++++++++++++++++++++++++++
+ modules/crm/server.py              |  42 +++++
+ reports/crm/decisioni.md           |   1 +
+ reports/crm/guida.md               |   3 +
+ reports/diff_sessione.md           |  22 +--
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   7 +-
+ reports/ultimo_report.md           |  73 +++-----
+ requirements.txt                   |   2 +
+ tests/conftest.py                  |   1 +
+ tests/test_unit_crm.py             | 356 ++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre lo si scrive; la riga di totale è tolta.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale. Base: main b7182a7c.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-1068914b Merge origin/main (PR #406 CRM) nel ramo della PR #405 — report del ramo tenuti, stato e memoria uniti (review #863-MERGE)
-ad58e167 docs(fine-task): handoff dopo il merge di main (review #860-MERGE) e i verdetti del 2° giro sulla #405
-c85490e5 Merge origin/main (PR #404 CRM) nel ramo della PR #405 — report del ramo tenuti, stato e memoria uniti (review #860-MERGE)
-05df3ae7 fix(report): script della simulazione rinominati *_prova.py (pytest li raccoglieva: unit-suite rosso); handoff corretto
-3b407738 docs(fine-task): handoff con le correzioni di verifica esterna e bot #405 (review #856/#857)
-908f430b fix(voce): installa.sh sceglie il modello italiano col filtro solo con --italiano; soglia 0.5; ripiego col file assente
-dcee5f24 chore(revisore): memoria review #857 — APPROVATO CON RISERVE
-c0c30f2f chore(revisore): memoria review #856 — APPROVATO CON RISERVE
-d63cb6f5 docs(fine-task): handoff ripulito (testo perso nella shell)
-21a68a4f docs(fine-task): handoff modello ehi_jarvis_it, review #854/#855
-d6a980a5 feat(voce): modello «ehi jarvis» con accento italiano (ehi_jarvis_it)
-b650558a chore(revisore): memoria review #855 — APPROVATO CON RISERVE
-5291bca4 chore(revisore): memoria review #854 — APPROVATO CON RISERVE
+36587824 feat(crm): scheda clienti da leggere offline — PDF con password propria (AES-256) su iCloud Drive, rifatta solo quando cambiano i dati, zero token (decisione 22; review #864, #865, #866)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-I commit d6a980a5 e 908f430b toccano `tests/test_unit_voce_ascolto.py` (perimetro). Sotto ci sono i quattro verdetti INTEGRALI, in ordine:
-- #854: primo diff;
-- #855: correzioni R-854-1 e R-854-2;
-- #856: correzioni della verifica esterna;
-- #857: delta finale, con le correzioni del bot.
+### Commit 36587824 — review #864 (verdetto integrale, primo giro)
 
-```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #854. Diff staged su feat/voce-modello-italiano: 39 file, +2214/−8. Ho letto CLAUDE.md, la memoria del revisore e le voci sulla voce in stato_progetto.md (letto con grep mirato). I 73 test `-k "modello or installa"` di tests/test_unit_voce_ascolto.py passano. `git diff --cached --check` è pulito. Lo sha256 del file .onnx corrisponde a quello scritto nel LEGGIMI. I `__pycache__` sotto reports/ non sono nell'indice. Nessun antipattern del Wall of Shame: nessun taglio diretto della history e nessun output dei tool simulato. Il motore (gas.py, brains/) non è toccato.
+Review #864. Diff staged su claude/nifty-galileo-3k7kbm sopra b7182a7c: 7 file, +446, sha256 01cfc6e2 (lo hash era lo stesso prima e dopo la review). Ho letto, nell'ordine, CLAUDE.md (sez. 5, 8, 9 e 10), reports/stato_progetto.md (le parti sul CRM) e la mia memoria (lezioni da #803 a #863-MERGE). Applicate in particolare due lezioni: quella del 2026-11-17 (nessuna scrittura nel DB nel percorso del guardiano) e quella del 2026-10-21 (l'impronta avanza solo dopo una scrittura riuscita), più il precedente R-815-4. Nessuno slicing della history e nessuna simulazione di tool: il diff non tocca il kernel.
 
-**Elementi esaminati**
+**Elementi del diff esaminati**
+- modules/crm/scheda.py:183 — il PDF scritto a mano (xref, offset, /Length) — rischio: file illeggibile o lunghezze sbagliate — **ok**. Ho controllato a parte che ogni voce xref sia di 20 byte e punti a «N 0 obj», e che /Length + 1 cada su «\nendstream». pypdf lo legge in `strict=True` senza un avviso.
+- modules/crm/scheda.py:138 — escaping di `\ ( )` dopo la codifica cp1252 — rischio: un nome che rompe il PDF — **ok**. Provati: «endstream endobj xref trailer %%EOF», «BT ET Tj /F1 99 Tf», parentesi non bilanciate, `\` finale, NUL e controlli, CR/LF/VT/FF, C1, surrogato isolato, emoji, cinese, ebraico, BOM, U+2028, 500 caratteri senza spazi. Nessun errore, e il testo si estrae uguale.
+- modules/crm/scheda.py:195 — cifratura AES-256 — rischio: che sia la R5 deprecata — **ok**: è R6/V5. pypdf 6.17 applica SASLprep. La password sbagliata viene rifiutata.
+- modules/crm/scheda.py:242 — temporaneo creato in esclusiva, poi os.replace (modules/crm/scheda.py:243) — rischio: dati in chiaro su iCloud — **ok**: su disco vanno solo byte già cifrati, il chiaro resta in memoria. Nessuna parola del contenuto compare nel file. I nomi dei file non contengono dati. In iCloud, dopo 3 riscritture, c'è solo «Scheda clienti.pdf».
+- modules/crm/scheda.py:245 — impronta scritta dopo il replace — rischio: impronta avanzata senza file nuovo — **ok** nel codice, ma il test non lo fissa (vedi R-864-5). L'impronta è 0600, sta accanto al DB e non su iCloud. Il prefisso .gas_memory la nega ai tool del modello (gas.py:2476) ed è coperta da `.gas_memory_crm*` nel .gitignore.
+- modules/crm/scheda.py:206 — HMAC con la password come chiave — rischio: l'impronta come oracolo della password — **ok**. Per sfruttarla servono le righe (cioè il DB), e il DB sta sullo stesso Mac del .env, dove la password è già in chiaro: nessun rischio in più.
+- modules/crm/scheda.py:88 — filtro dei movimenti stornati — rischio: mostrare un movimento annullato — **ok**: provato con un deposito stornato, che non compare. Però nessun test lo fissa: il mutante che toglie il filtro sopravvive (R-864-5).
+- modules/crm/server.py:387 — la scheda nel guardiano — rischio: rallentare o bloccare il server, o un ciclo continuo — **riserva** (R-864-3). La scheda non scrive nel DB: data_version, letto da un'altra connessione, resta uguale dopo 3 forza=True, quindi niente ciclo. Il §9 regge: c'è un try attorno alla chiamata. Tempi: 1000 clienti con 20 movimenti l'uno = 0,25 s (580 KiB); «invariata» = 0,10 s.
+- tests/test_unit_crm.py:3299 — la fixture toglie GAS_CRM_SCHEDA_PASSWORD — rischio: test che scrivono nell'iCloud vero — **riserva**: vale solo dentro la fixture (R-864-2).
 
-1. `clients/voice/ascolto.py:1431` — `modello_della_parola`
-   - Cosa fa: con un nome semplice (regex `[a-z0-9_]{1,40}` di `clients/voice/ascolto.py:194`) costruisce il percorso solo dentro `.gas_voce/modelli` sotto `_GAS_ROOT`. `exists()` e `is_symlink()` stanno dentro un try su OSError. Il file passa da `_file_fidato` (`clients/voice/ascolto.py:1402`): niente symlink, proprietario l'utente, file e cartella non scrivibili da altri.
-   - Rischio: percorso preso dall'ambiente, symlink, permessi deboli.
-   - Esito: ok. Il nome non entra mai nel percorso se contiene `/` o `..`, e lo copre `tests/test_unit_voce_ascolto.py:3327`.
+Prove rieseguite da me: `pytest tests/test_unit_crm.py` sulla copia dell'indice dà 201 passed; mypy non dà errori in modules/crm (i 79 errori riportati sono in altri file). 15 mutanti:
+- uccisi (6 più il controllo letale): impronta senza password, senza dest.exists, senza escaping, senza riarmo al cambio, ripiego della password corta, dati non cifrati;
+- vivi: vedi R-864-5.
 
-2. `clients/voice/ascolto.py:1494` — `sorgente` passata a `Model(wakeword_models=[sorgente])`, mentre `custom_verifier_models={modello: ...}` resta sotto il nome.
-   - Rischio: chiave delle previsioni diversa dal nome.
-   - Esito: ok. openWakeWord, in openwakeword/model.py righe 91-92 del pacchetto installato, chiama il modello con `splitext(basename(percorso))[0]`, cioè `ehi_jarvis_it`, uguale al nome.
+**Riserve**
+- **R-864-1 MEDIA** — modules/crm/scheda.py:46: senza GAS_CRM_SCHEDA_PASSWORD la scheda usa la password delle copie .gascrm. Misurato: PDF R6 1,06 ms a tentativo, scrypt 2^17 353 ms a tentativo (modules/crm/copia_cifrata.py:46), circa 330 volte in CPU; su GPU il divario cresce perché scrypt usa molta memoria (non misurato). Chi prende la cartella iCloud indovina la password dal PDF e apre tutte le copie complete del DB: si annulla l'effetto di R-815-3. Correzione: password propria obbligatoria e rifiutata se uguale a quella delle copie, oppure una scelta esplicita dell'operatore scritta nella decisione 22 e nella guida (oggi la guida presenta il ripiego come una comodità). Va chiusa prima del merge, o decisa dall'operatore.
+- **R-864-2 BASSA** — tests/conftest.py:38: toglie BACKUP_PASSWORD e CIFRATO_DIR, ma non GAS_CRM_SCHEDA_PASSWORD, e il .env dell'operatore è esportato in ogni terminale. Provato con una HOME finta che ha un iCloud finto e la variabile esportata: un test che chiama `scheda.aggiorna` senza fixture scrive i dati di prova in «Gas CRM (copie cifrate)/Scheda clienti.pdf». Dopo, il server vero confronta la propria impronta, la trova uguale e dice «invariata», quindi la scheda con i clienti finti resta fino al prossimo cambio vero. Oggi nessun test lo fa (suite intera girata così, nessun file scritto). Correzione: una riga `delenv` in conftest.
+- **R-864-3 BASSA** — modules/crm/server.py:387: la scheda gira sincrona nel thread del guardiano, mentre la copia esterna da R-815-4 gira in un thread a parte (modules/crm/server.py:344). Con una cartella di rete o un disco esterno appeso (GAS_CRM_BACKUP_CIFRATO_DIR) si fermano gli eventi «cambio» della dashboard, le scansioni e le copie giornaliere. iCloud Drive è un disco locale, quindi non è il caso normale.
+- **R-864-4 BASSA** (dati mostrati) — modules/crm/scheda.py:115: «Ultimi movimenti» non scarta i movimenti con data dopo oggi, mentre il capitale li scarta (analisi.costruisci). Provato con l'orologio avanti al momento della registrazione: compare «15/12/2026 deposito 500,00 €» con capitale 1.000,00 € che non lo conta. Inoltre «profitto del mese» (modules/crm/scheda.py:113) non dice di quale mese e, al cambio di mese senza cambi nei dati, resta quello vecchio: il ricalcolo darebbe 0,00 €, il file resta su +70,00 €. La data in testata attenua.
+- **R-864-5 BASSA** — mutanti vivi:
+  - filtro degli stornati (richiesto esplicitamente);
+  - guardia `not stato.demo` (modules/crm/server.py:383): se sparisse, i dati della demo finirebbero nella scheda vera su iCloud;
+  - impronta scritta prima del replace;
+  - riprova dopo 1 h (modules/crm/server.py:391);
+  - MOVIMENTI_PER_CLIENTE = 1;
+  - `cmd_scheda` che restituisce sempre 0;
+  - `_genitore_assente` tolto (equivale, perché mkdir senza parents fallisce comunque).
+- **R-864-6 BASSA** — modules/crm/scheda.py:241: il `.Scheda clienti.pdf.<pid>-<tid>.tmp` lasciato da un kill o da un Mac spento a metà non lo toglie `_pulisci_tmp_vecchi` (modules/crm/copia_cifrata.py:333 guarda solo crm-*.gascrm.*tmp e .prova-*.tmp). È cifrato, ma si accumula su iCloud.
+- **R-864-7 BASSA** — modules/crm/__main__.py:139: all'avvio dice «ATTIVA» senza nessuna prova di scrittura, e «(iCloud Drive)» anche se la cartella è un'altra. Un fallimento della scheda si vede solo come warning in gas_debug.log, non in dashboard né in /api/stato.
 
-3. `clients/voice/ascolto.py:1644` — effetti di contesto con `GAS_ASCOLTO_MODELLO=ehi_jarvis_it`.
-   - `verifica_della_voce` cerca `ehi_jarvis_it_verifier.pkl`, non lo trova e dà «assente». Quindi 1 fase (`clients/voice/ascolto.py:177`), soglia `GAS_ASCOLTO_SOGLIA` 0,7 e interruzione a 0,8 su 3 blocchi (`clients/voice/ascolto.py:198`).
-   - Esito: ok, coerente con quanto dichiarato. Vedi però R-854-1 e R-854-3.
-
-4. `scripts/voce/installa.sh:138` — passo 3b.
-   - Cosa fa: `mkdir -p`, chmod 700 sulle due cartelle, `install -m 600` (che sostituisce il file, anche un symlink, invece di scriverci dentro), `stop` se la copia fallisce. Il `.env` si aggiorna solo se `valore_env` non trova la chiave; una chiave presente anche vuota resta intatta.
-   - Rischio: idempotenza, doppioni nel `.env`, `.env` senza a capo finale (il printf inizia con `\n`).
-   - Esito: ok. Lo provano `tests/test_unit_voce_ascolto.py:1945` (seconda esecuzione senza doppioni) e `tests/test_unit_voce_ascolto.py:1961` (modello già scelto lasciato com'è).
-
-5. `tests/test_unit_voce_ascolto.py:2221` — i test del `.env` «byte per byte» ora partono con `GAS_ASCOLTO_MODELLO` già presente.
-   - Rischio: test indeboliti.
-   - Esito: ok. Verificano ancora che il `.env` resti identico; il caso «chiave assente» è coperto dal test nuovo.
-
-**Riserve (da tracciare in stato_progetto.md)**
-
-- **R-854-1 MEDIA** (`scripts/voce/installa.sh:142`): rieseguire installa.sh su un `.env` senza `GAS_ASCOLTO_MODELLO` (probabile sul Mac dell'operatore) passa a `ehi_jarvis_it` e spegne in silenzio il filtro della voce già addestrato. Quel filtro è il file `.gas_voce/verifica/hey_jarvis_verifier.pkl`, legato al nome hey_jarvis. Inoltre `registra_voce.py` accetta solo modelli pronti, quindi oggi il filtro non si può rifare per ehi_jarvis_it. Il LEGGIMI lo dice, l'installer no. Proposta: se il filtro hey_jarvis esiste, non cambiare modello (o almeno avvisare a terminale) e lasciare la scelta all'operatore. La decisione «modello italiano senza filtro» contro «hey_jarvis col filtro» spetta all'operatore.
-- **R-854-2 BASSA** (`clients/voice/ascolto.py:1446`): se il file del modello c'è ma non è fidato, la funzione restituisce il nome nudo. openWakeWord non trova un modello pronto con quel nome e alza ValueError. `main` scrive «openWakeWord non pronto… installa» ed esce con 1, e launchd lo riavvia ogni 10 s. Non va in crash, ma l'ascolto resta fermo e il messaggio porta fuori strada. Ripiegare su hey_jarvis con un avviso nel log terrebbe l'ascolto acceso (§9).
-- **R-854-3 BASSA**: l'interruzione col modello nuovo (0,8 per 3 blocchi di fila, voce di Gas in sottofondo) non è stata misurata. Il LEGGIMI riporta solo attivazioni e falsi.
-- **Nota (già prima, nessun peggioramento)**: openWakeWord prova `os.path.exists(nome)` rispetto alla cartella corrente. Un `GAS_ASCOLTO_MODELLO` con un percorso, che non passa la regex, arriva com'è a `Model()` e carica quel file ONNX, come prima della modifica.
-
-**Rischi esclusi (non verificati)**
-
-- Qualità reale del modello sulla voce dell'operatore e sul microfono del Mac: in questo container non si può riprodurre. Fa fede la prova del chiamante con openWakeWord vero.
-- Contenuto del file .onnx: non l'ho ispezionato. È ONNX, non pickle, quindi non esegue codice al caricamento.
-- Script di addestramento in reports/: letti solo per cercare percorsi o segreti, nessuno trovato.
-- Licenza CC BY-NC-SA in un repo pubblico: rilevante, ma è una scelta dell'operatore e non un controllo tecnico.
-- Comportamento di `install` BSD su macOS: dato per buono senza prova sul Mac.
-- I fallimenti della suite completa (34 in tests/test_unit_web_browser.py e 1 in tests/test_unit_voice_server.py, per bwrap assente) riguardano file fuori dal diff: non li ho riverificati, come mi hai indicato.
-
-**Memoria**: riga #854 e 2 lezioni aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, già committate da sole (5291bca4). L'indice staged è intatto (39 file); git stash non usato.
-```
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #855: ho ricontrollato solo il delta rispetto alla #854. L'indice è come lo hai descritto: 39 file, +2232/−8. Rieseguiti i test `-k "modello or installa"` di tests/test_unit_voce_ascolto.py: 74 passati. Non ho usato git stash.
-
-**Elementi esaminati**
-
-1. `clients/voice/ascolto.py:1452` — se il file del modello c'è ma non è fidato, ora la funzione restituisce `MODELLO_DI_RISERVA` (`clients/voice/ascolto.py:194`, vale "hey_jarvis") e scrive un avviso nel log.
-   - Rischio: il nome del modello caricato diventa diverso da `modello`, la chiave del verificatore.
-   - Esito: ok. Il verificatore si cerca per `ehi_jarvis_it_verifier.pkl`, che non esiste, quindi va col nome giusto. Se ci fosse un verificatore con la chiave sbagliata, l'errore lo prende il try di `rilevatore_con_verifica`. Il punteggio è il massimo dei valori, quindi la chiave non conta. R-854-2 è chiusa: l'ascolto non si ferma più.
-2. `clients/voice/ascolto.py:1498` — la sorgente si calcola una volta sola, prima di creare i modelli.
-   - Esito: ok.
-3. `scripts/voce/installa.sh:149` — l'avviso compare solo quando lo script scrive `GAS_ASCOLTO_MODELLO=ehi_jarvis_it` e `.gas_voce/verifica/hey_jarvis_verifier.pkl` esiste. Dice che il filtro della voce resta spento e come riaverlo.
-   - Esito: ok. R-854-1 è risolta con un avviso. La scelta (modello italiano senza filtro) è dell'operatore e va registrata come sua decisione in stato_progetto.md.
-4. `tests/test_unit_voce_ascolto.py:1961` — test nuovo dell'avviso.
-   - Esito: ok, ma controlla solo che l'avviso ci sia. Manca il controllo opposto: nessun avviso senza il file del filtro, o quando la chiave era già nel `.env`. Lacuna di copertura BASSA, non blocca.
-5. `tests/test_unit_voce_ascolto.py:3351` — col file non fidato il test ora si aspetta "hey_jarvis".
-   - Esito: ok.
-
-**Riserve (da tracciare in stato_progetto.md)**
-
-- **R-854-1, decisione dell'operatore**: col modello italiano il filtro della sua voce resta spento. L'installer lo avvisa, ma la scelta va registrata come sua.
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata (soglia 0,8 su 3 blocchi di fila, con la voce di Gas in sottofondo).
-- **R-855-1 COSMETICA**: dopo il ripiego su hey_jarvis, la riga di log «ascolto pronto: parola «ehi_jarvis_it»» (`clients/voice/ascolto.py:1663`) indica ancora il nome chiesto, non il modello usato. L'avviso del ripiego compare prima nel log, quindi la cosa si capisce.
-
-**Rischi esclusi (non verificati)**
-
-- Il comportamento sul Mac: la qualità del modello, l'avviso letto dall'operatore, `install` di macOS. Non si può riprodurre in questo container.
-- I fallimenti di tests/test_unit_web_browser.py: non li ho riverificati. Li dai come identici su origin/main per bwrap assente, e sono fuori dal diff.
-
-**Memoria**: aggiunta la riga #855 in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata da sola (b650558a). L'indice staged è rimasto intatto.
-
-Il commit è consentito.
-```
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #856: ho ricontrollato solo il delta staged dopo la verifica esterna della PR #405 (4 file, +53/−9). Rieseguita tutta tests/test_unit_voce_ascolto.py: 389 passati. Non ho usato git stash; l'indice è intatto.
-
-**Elementi esaminati**
-
-1. `clients/voice/ascolto.py:1432` — `_modelli_pronti()` legge i nomi da `openwakeword.MODELS`. Ho controllato nel pacchetto installato: le chiavi sono `alexa`, `hey_mycroft`, `hey_jarvis`, `hey_rhasspy`…. Restituisce un insieme vuoto se c'è un'eccezione.
-   - Rischio: insieme vuoto che fa ripiegare anche un modello pronto.
-   - Esito: ok. `rilevatore_openwakeword` importa `openwakeword.model` prima di chiamare `modello_della_parola`, quindi a runtime il pacchetto c'è sempre. Nota cosmetica: il tipo di ritorno è `set` nudo invece di `Set[str]`.
-2. `clients/voice/ascolto.py:1458` — se il file manca e il nome non è un modello pronto (né `hey_jarvis`), ripiega su `hey_jarvis` con un warning; un modello pronto passa col suo nome.
-   - Rischio: un nome nudo che openWakeWord non trova e che ferma l'ascolto.
-   - Esito: ok, V-4 della verifica esterna è chiusa. L'unico effetto collaterale è voluto: un nome parziale come `jarvis`, che prima openWakeWord accettava confrontando un pezzo del nome, ora finisce su hey_jarvis, che è comunque il modello giusto.
-3. `scripts/voce/installa.sh:149` — `GAS_ASCOLTO_SOGLIA=0.5` si scrive solo nel ramo che scrive anche `ehi_jarvis_it`, e solo se `valore_env` non trova già una soglia. Una chiave presente anche vuota resta intatta.
-   - Esito: ok, V-1 della verifica esterna è chiusa ed è coerente con `clients/voice/modelli/LEGGIMI.md:8`. Una seconda esecuzione non scrive di nuovo, perché la chiave del modello c'è già.
-4. `tests/test_unit_voce_ascolto.py:1962` — test nuovo: una soglia già scelta (0.6) resta intatta, il modello viene scritto e l'avviso sul filtro non compare se il file del filtro manca.
-   - Esito: ok, chiude la lacuna di copertura segnalata nella #855.
-5. `tests/test_unit_voce_ascolto.py:3351` — il ripiego col file assente è provato con `_modelli_pronti` finto (`ehi_jarvis_it` → `hey_jarvis`, `alexa` → `alexa`).
-   - Esito: ok.
-
-**Riserve (da tracciare in stato_progetto.md)**
-
-- **R-856-1 BASSA** (`scripts/voce/installa.sh:157`): l'AVVISO dice di tornare indietro con `GAS_ASCOLTO_MODELLO=hey_jarvis`, ma non nomina la `GAS_ASCOLTO_SOGLIA=0.5` scritta insieme. Chi torna a hey_jarvis senza filtro resta a 0,5 invece di 0,7, quindi con più attivazioni per sbaglio. Con il filtro attivo la soglia che conta è un'altra (`GAS_ASCOLTO_SOGLIA_VERIFICA`), quindi l'effetto c'è solo senza filtro. Correzione: aggiungere all'avviso «e togli GAS_ASCOLTO_SOGLIA=0.5», e fare lo stesso nella riga «tornare indietro» del LEGGIMI.
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata.
-- **R-855-1 COSMETICA**, ancora aperta: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto e non quello usato.
-
-**Rischi esclusi (non verificati)**
-
-- La prova con openWakeWord vero (1,00 contro 0,49 di hey_jarvis): non l'ho ripetuta, mi fido della tua.
-- Il comportamento sul Mac: in questo container non si può riprodurre.
-- Il resto della PR, fuori da questo delta: era già coperto dalle review #854 e #855.
-
-**Memoria**: aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md la riga #856 e una lezione (quando l'installer scrive due chiavi legate nel .env, le istruzioni per tornare indietro devono nominarle entrambe). Già committate da sole (c0c30f2f).
-
-Il commit è consentito.
-```
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #857: ho riletto tutto il `git diff --cached` (6 file, +114/−26). Rieseguita tests/test_unit_voce_ascolto.py: 391 passati. Non ho usato git stash; l'indice è intatto.
-
-**Elementi esaminati**
-
-1. `scripts/voce/installa.sh:28` — lettura delle opzioni: `--italiano` accende la scelta, qualunque altra opzione chiama `stop`.
-   - Rischio: uno stop arrivato dopo aver già scritto qualcosa.
-   - Esito: ok. Il ciclo gira prima del passo 1, quindi niente è stato ancora toccato. `tests/test_unit_voce_ascolto.py:1994` controlla l'uscita con 1 e il `.env` senza `GAS_ASCOLTO`. Nessun altro script chiama installa.sh con opzioni.
-2. `scripts/voce/installa.sh:158` — se esiste il filtro della voce per hey_jarvis e manca `--italiano`, il `.env` non viene toccato e lo script spiega come scegliere. Il file del modello viene copiato lo stesso.
-   - Rischio: filtro spento in silenzio (V-1 MEDIA del bot).
-   - Esito: ok, V-1 è chiusa. La scelta passa all'operatore. `tests/test_unit_voce_ascolto.py:1976` prova prima la versione senza opzione (nessuna scrittura) e poi quella con `--italiano` (modello, soglia e avviso scritti).
-3. `scripts/voce/installa.sh:172` — l'avviso spiega di tornare a `GAS_ASCOLTO_MODELLO=hey_jarvis` e di togliere anche `GAS_ASCOLTO_SOGLIA=0.5`.
-   - Esito: ok, R-856-1 è chiusa. Lo stesso testo è in `clients/voice/modelli/LEGGIMI.md`.
-4. `tests/test_unit_voce_ascolto.py:3475` — test nuovo: con openWakeWord finto e il file fidato, `Model()` riceve `wakeword_models=[str(f)]`.
-   - Esito: ok, V-3 è chiusa. È il collegamento che mancava tra `rilevatore_openwakeword` e il file.
-5. `clients/voice/ascolto.py:1458` — ripiego su hey_jarvis se il file manca e il nome non è un modello pronto (`_modelli_pronti` in `clients/voice/ascolto.py:1432`). Era già esaminato nella #856; nel diff contro HEAD non è cambiato.
-   - Esito: ok.
-
-**Riserve (da tracciare in stato_progetto.md)**
-
-- **R-857-1 COSMETICA**: con `GAS_ASCOLTO_MODELLO` già nel `.env`, `--italiano` non cambia niente. Il messaggio dice «lo lascio com'è», ma non dice che l'opzione è stata ignorata.
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata.
-- **R-855-1 COSMETICA**, ancora aperta: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto e non quello usato.
-- **Numeri peggiori** (V-2 del bot): il LEGGIMI ora dichiara più falsi di hey_jarvis sui flussi pieni di parole simili (49,8 contro 33,9 all'ora) e più chiamate prese da altre voci (75% contro 40%). È un compromesso dichiarato, non un difetto del codice. La scelta resta dell'operatore, ed è il motivo per cui `--italiano` è giusto.
-
-**Rischi esclusi (non verificati)**
-
-- Il comportamento sul Mac (installer vero, voce dell'operatore): in questo container non si può riprodurre.
-- La correttezza dei numeri riscritti nei LEGGIMI: non li ho ricalcolati dai file grezzi in `reports/voce_simulazione_2026-11-23/modello_italiano/ris/`. Ho controllato solo che i documenti siano coerenti tra loro.
-- I fallimenti di tests/test_unit_web_browser.py: fuori dal diff e, secondo te, identici su main.
-
-**Memoria**: aggiunta la riga #857 in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata da sola (dcee5f24).
-
-Il commit è consentito.
-```
-
-## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (c85490e5)
-
-```
-## VERDETTO: APPROVATO
-
-Review #860-MERGE: merge di origin/main b100f8d4 (PR #404 CRM) in feat/voce-modello-italiano (PR #405, HEAD 05df3ae7). Il merge è in staging e non ancora committato; MERGE_HEAD è uguale a origin/main. Non ho usato git stash.
-
-Controlli generali:
-- `git ls-files -u` è vuoto: nessun conflitto lasciato aperto.
-- `git diff --cached --check HEAD` è pulito e non ci sono marcatori di conflitto.
-- Rispetto a HEAD entrano 10 file (+510/−23).
-- I test CRM più quelli della voce passano: 564 passati.
-
-**Elementi esaminati**
-
-1. `modules/crm/store.py:1`, `modules/crm/copia_cifrata.py:1`, `tests/test_unit_crm.py:1`, `scripts/crm/installa.sh:1`, `.claude/perimetro_review.txt:1`, oltre a `reports/bacheca.md` e `reports/crm/`: questi sono i file del perimetro presi da main.
-   - Rischio: un file di main modificato o incompleto.
-   - Esito: ok. `git diff --cached origin/main` su questi percorsi è vuoto, quindi sono uguali a main byte per byte.
-2. `scripts/voce/installa.sh:158`, `clients/voice/ascolto.py:1458`, `tests/test_unit_voce_ascolto.py:3475`, oltre a `reports/voce_simulazione_2026-11-23/`: questi sono i file nostri.
-   - Rischio: un file del ramo perso nel merge.
-   - Esito: ok. `git diff --cached HEAD` su questi percorsi è vuoto. I soli file cambiati sia dal ramo sia da main sono memoria e stato_progetto, entrambi uniti e controllati sotto.
-3. `reports/handoff.md:1`, `reports/ultimo_report.md:1`, `reports/diff_sessione.md:1`: tenuti uguali a HEAD (`--ours`).
-   - Esito: ok, come vuole la regola per i report di sessione del ramo.
-4. `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» ha in testa la nostra voce e in coda la riga di main intera (verificato confrontando le stringhe). Nell'indice c'è una sola riga di questo tipo. `reports/stato_progetto.md:392` aggiunge la voce del modello italiano. Rispetto a main cambiano solo queste 2 righe (+2/−1).
-   - Esito: ok.
-5. `.claude/agents/memoria_revisore.md:1` — unione delle due parti: rispetto a HEAD entrano le righe della chat CRM (#858/#859 e le loro lezioni), rispetto a main entrano le nostre (#854–#857 e 3 lezioni). Nessuna riga persa né di HEAD né di main.
-   - Esito: ok.
-
-**Note COSMETICHE (contenuto del ramo, non del merge)**
-
-- `reports/stato_progetto.md:4` cita le review «#854/#855» e dà R-854-1 come decisione dell'operatore. Dopo la #857 è già gestita con `--italiano`. R-857-1 non è tracciata in stato_progetto.md; la riga 392 dice correttamente #854–#857.
+**Cosmetiche**
+- `git diff --staged --check`: riga vuota a fine file in reports/crm/decisioni.md.
+- «(chiusa, dal …)» si legge come data di chiusura, ma è la data di apertura.
+- Righe da 100 caratteri larghi (maiuscole) escono dal margine.
+- /Count delle pagine e /Length degli stream sono in chiaro: lasciano capire all'incirca quanti sono i clienti.
+- La scheda vecchia resta su iCloud quando la funzione si spegne o la cartella cambia.
+- In `aggiorna` l'assert sta fuori dal try.
 
 **Rischi esclusi**
+- Apertura del PDF R6 sull'iPhone (app File e «Mantieni scaricato»): non riproducibile qui, nessun dispositivo iOS.
+- Comportamento di iCloud con i file che iniziano con il punto e con le sostituzioni durante la sincronizzazione: non verificabile su Linux.
+- SASLprep con pypdf 5.1, il minimo ammesso da requirements: ho verificato solo la 6.17.
+- Velocità d'attacco su GPU: non misurata, ho citato solo i tempi CPU.
 
-- La suite completa: ho eseguito solo i test CRM e voce. Gli altri file di test non sono toccati dal merge, e i fallimenti di tests/test_unit_web_browser.py dovuti a bwrap assente sono noti.
-- Il comportamento sul Mac di scripts/crm/installa.sh: non si può riprodurre qui. È già stato revisionato dalla chat CRM (#858/#859).
+**Note per il chiamante**
+- Contatore: #863 c'è solo come #863-MERGE, sia nel ramo sia su origin/main; ho usato #864.
+- La riga #864 e 2 lezioni sono in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, fuori stage e NON committate, come da tua richiesta (non ho lanciato commit_memoria_revisore.sh).
+- Non ho creato `.claude/.review_ok`. Ce n'è uno residuo, delle 13:39, con SHA edd64299 diverso dal diff attuale: non apre il gate.
+- File principali: /home/user/Gas/modules/crm/scheda.py, /home/user/Gas/modules/crm/server.py, /home/user/Gas/tests/conftest.py.
 
-**Memoria**: aggiunta la riga #860-MERGE in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree. Non l'ho messa in staging né committata, perché un commit del solo file chiuderebbe il merge. Fai tu `git add .claude/agents/memoria_revisore.md` prima di committare il merge.
+### Commit 36587824 — review #865 (verdetto integrale, secondo giro)
 
-Il commit del merge è consentito.
-```
+## VERDETTO: APPROVATO CON RISERVE
 
-## §4ter VERDETTO DEL REVISORE SUL 2° MERGE DI MAIN
+Review #865: secondo giro della #864. Diff STAGED sul ramo claude/nifty-galileo-3k7kbm sopra main b7182a7c: 8 file, +591. Lo sha256 del diff è e7239fb6…, ricontrollato prima e dopo la review, ed è invariato. Ho letto CLAUDE.md, reports/stato_progetto.md (le parti sul CRM) e la mia memoria. Non ho committato, non ho creato .claude/.review_ok e la memoria resta fuori dallo stage.
 
-```
-## VERDETTO: APPROVATO
+**Cosa ho rieseguito (su una copia dell'indice)**
+- `pytest tests/test_unit_crm.py`: 205 passed.
+- mypy: 0 errori in modules/crm (79 errori, tutti fuori da modules/crm, per esempio in gas.py).
+- `git diff --cached --check`: pulito.
+- Nel diff non ci sono IP letterali.
 
-Review #863-MERGE: merge di origin/main 3b624d77 (PR #406, CRM dal telefono) in feat/voce-modello-italiano (PR #405, HEAD ad58e167). Il merge è in staging e non ancora committato; MERGE_HEAD è uguale a origin/main. Non ho usato git stash.
+**Elementi del diff esaminati**
+1. `modules/crm/scheda.py:49` — `password()` accetta solo `GAS_CRM_SCHEDA_PASSWORD`, normalizzata, di almeno 16 caratteri; il ripiego è tolto. Rischio esaminato: riuso della password delle copie. Esito: ok, R-864-1 chiusa per l'uguaglianza esatta.
+2. `modules/crm/scheda.py:56` — confronto a tempo costante con `GAS_CRM_BACKUP_PASSWORD` normalizzata. Esito: ok, con riserva R-865-2.
+3. `tests/conftest.py:40` — toglie la variabile nella fixture autouse. Provato con HOME finta, un iCloud finto e la password esportata: la scheda è spenta e nella cartella non viene scritto niente. Esito: ok, R-864-2 chiusa.
+4. `modules/crm/server.py:407` — la scheda gira in un thread a parte; se il precedente è ancora vivo, si rimanda (`modules/crm/server.py:408`). L'ho provato col guardiano vero e un `aggiorna` finto lento, con un cambio dei dati mentre la scheda girava: 2 esecuzioni, mai 2 insieme, il cambio è stato ripreso dopo. Esito: ok, nessuna doppia esecuzione e nessuna richiesta persa.
+5. `modules/crm/server.py:402` — riprova dopo un esito «non riuscita». Provato con esito fallito e con eccezione: la riprova parte sempre. Esito: ok nel comportamento, con riserva sul registro (R-865-4).
+6. `modules/crm/scheda.py:105` — esclude stornati e movimenti datati dopo oggi, con lo stesso filtro di `modules/crm/analisi.py:106`. In `modules/crm/scheda.py:131` il profitto porta il nome del mese. Esito: ok, R-864-4 chiusa.
+7. `modules/crm/scheda.py:279` e `modules/crm/scheda.py:281` — prima la sostituzione del file, poi l'impronta. Il mutante che le inverte viene ucciso. `modules/crm/scheda.py:227` toglie i temporanei vecchi; i mutanti «toglili tutti» e «senza pulizia nel finally» vengono uccisi. Esito: ok, R-864-6 chiusa.
+8. `modules/crm/scheda.py:224` e `modules/crm/scheda.py:271` — l'impronta è calcolata con la password come chiave, quindi un riavvio con una password nuova riscrive la scheda. Esito: blocco evitato, ma riserva R-865-1 (sotto).
 
-Controlli generali:
-- `git ls-files -u` è vuoto: nessun conflitto lasciato aperto.
-- Rispetto a HEAD entrano 9 file (+669/−7).
-- I test CRM più voce passano: 586 passati (rieseguiti da me).
+**Riserve**
+- **R-865-1 MEDIA** (la tua domanda sul cambio della password). Il servizio launchd legge il `.env` una volta sola, all'avvio (`modules/crm/__main__.py:435`). La riga di comando invece legge la password nuova.
+  - Provato: con la password nuova, `scheda --forza` scrive un PDF che si apre con la nuova. Poi il server, con l'ambiente vecchio e senza nessun cambio dei dati, lo riscrive («aggiornata»): ora si apre con la VECCHIA e non con la nuova. Succede al primo giro del server: cambio dei dati, ricontrollo giornaliero o riprova.
+  - Alla prima accensione il server resta «spenta» finché non viene riavviato, e il PDF fatto con `--forza` resta vecchio senza nessun avviso.
+  - `reports/crm/guida.md:37` non dice di riavviare il CRM dopo aver messo o cambiato la password.
+  - Correzione minima: riavvio scritto nella guida, e un avviso da `cmd_scheda` se il CRM è acceso. Meglio ancora: rileggere la password dal `.env` a ogni scrittura. Va chiusa prima del merge.
+- **R-865-2 BASSA**. Se `GAS_CRM_BACKUP_PASSWORD` viene portata uguale alla password della scheda, la scheda si spegne ma il PDF già su iCloud resta, e si apre con la password delle copie (provato). Si ricrea così il rischio di R-864-1. Inoltre le varianti (password delle copie più un suffisso) sono ammesse.
+- **R-865-3 BASSA**. La logica nuova del guardiano non ha test: R-864-5 è chiusa solo per i mutanti che hai elencato. Mutanti vivi, provati da me (10 passed ciascuno, il controllo letale viene ucciso):
+  - senza riprova;
+  - senza il controllo del thread vivo;
+  - richiesta persa quando il thread è vivo;
+  - registro scritto a ogni esito;
+  - senza il ricontrollo giornaliero;
+  - `>=` invece di `>` (sparirebbero i movimenti di oggi);
+  - uguaglianza senza normalizzare la password delle copie.
+- **R-865-4 BASSA**. Il commento dice «nel registro solo i cambi di esito», ma `modules/crm/server.py:405` rimette l'esito a «da riprovare», così ogni riprova scrive di nuovo lo stesso avviso (provato: 3 riprove, 3 righe uguali). Sono 1 all'ora, più la riga di scheda.py sulle eccezioni: non è un ciclo stretto. Inoltre «aggiornata» e «spenta» sono INFO e non arrivano mai in gas_debug.log (`modules/crm/__main__.py:433`, livello WARNING), mentre il messaggio d'avvio dice «esito nel registro gas_debug.log» (`modules/crm/__main__.py:140`). R-864-7 resta aperta.
+- **Cosmetiche** (3):
+  - se iCloud blocca il thread, il guardiano rimanda ogni 120 s per sempre, senza avviso;
+  - tre righe vuote prima della sezione nuova dei test (`tests/test_unit_crm.py:3287`);
+  - restano quelle già dichiarate: /Count e /Length in chiaro, la scheda vecchia che resta se si spegne.
 
-**Elementi esaminati**
+**Rischi esclusi (non verificati)**
+- Cosa fa iCloud della versione vecchia sostituita da `os.replace` (cestino o versioni su iCloud.com) e della copia «Mantieni scaricato» sull'iPhone offline: non si può riprodurre fuori da un Mac con iCloud.
+- L'apertura reale del PDF R6 nell'app File di iOS.
+- Il ritmo «giornaliero» di `time.monotonic` col Mac in stop: preesistente, è lo stesso timer delle copie.
 
-1. `modules/crm/server.py:71`, `modules/crm/__main__.py:1`, `scripts/crm/telefono.sh:1`, `scripts/crm/spegni.sh:1`, `tests/test_unit_crm.py:1`, oltre a `reports/crm/`: sono i file presi da main.
-   - Rischio: un file di main modificato nel merge.
-   - Esito: ok. `git diff --cached origin/main` su questi percorsi è vuoto, quindi sono identici a main.
-   - L'unica nota di `--check` (riga vuota a fine file, `tests/test_unit_crm.py:3286`) arriva già così da main, non dal merge.
-2. `scripts/voce/installa.sh:158`, `clients/voice/ascolto.py:1458`, `tests/test_unit_voce_ascolto.py:3475`, `reports/voce_simulazione_2026-11-23/`, più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` (tenuti `--ours`).
-   - Rischio: un file del ramo perso nel merge.
-   - Esito: ok. `git diff --cached HEAD` su questi percorsi è vuoto. I soli file cambiati sia dal ramo sia da main sono memoria e stato_progetto, entrambi uniti e controllati sotto.
-3. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento».
-   - Ho verificato confrontando le stringhe che la riga nell'indice è esattamente così: la prima voce di main (25/11), poi la nostra voce del 24/11, poi il resto della riga di main.
-   - Nell'indice c'è una sola riga di questo tipo. Rispetto a main cambia solo, in più, la voce del modello italiano.
-   - Esito: ok.
-4. `.claude/agents/memoria_revisore.md:1752` — memoria unita: nessuna riga persa né di HEAD né di main.
-   - `#860-MERGE` (nostra) e `#860` della chat CRM sono righe distinte che convivono.
-   - Esito: ok.
+**Memoria del revisore**
+Ho scritto la riga #865 e due lezioni in /home/user/Gas/.claude/agents/memoria_revisore.md. Il file è modificato nel working tree, NON in stage e NON committato, come mi hai chiesto: lo script `commit_memoria_revisore.sh` non è stato lanciato.
 
-**Rischi esclusi**
+File utili:
+- /home/user/Gas/modules/crm/scheda.py
+- /home/user/Gas/modules/crm/server.py
+- /home/user/Gas/modules/crm/__main__.py
+- /home/user/Gas/reports/crm/guida.md
+- /home/user/Gas/tests/test_unit_crm.py
+- le sonde che ho usato: /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sonde/password.py, /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sonde/guardiano.py, /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sonde/mutanti.py
 
-- Il contenuto della PR #406 (dashboard del CRM dal telefono via Tailscale): non l'ho revisionato nel merito, perché entra identico a main ed è già passato dalle review #860–#862 della chat CRM.
-- Il comportamento sul Mac e su Tailscale: non si può riprodurre qui.
-- La suite completa: ho eseguito solo i test CRM e voce.
+### Commit 36587824 — review #866 (verdetto integrale, terzo giro)
 
-**Memoria**: ho aggiunto la riga #863-MERGE in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree, non in staging e non committata. Va messa in staging da te prima di committare il merge.
+## VERDETTO: APPROVATO CON RISERVE
 
-Il commit del merge è consentito.
-```
+Review #866: il diff staged sul ramo claude/nifty-galileo-3k7kbm sopra b7182a7c. 8 file, +784 righe; lo sha256 del diff inizia con 5729e0c2 e coincide con quello dichiarato. Prima di cominciare ho letto CLAUDE.md, stato_progetto e la mia memoria. La riga #866 è in coda a `.claude/agents/memoria_revisore.md`, fuori dallo stage e non committata, come hai chiesto. Non ho creato `.claude/.review_ok`. Wall of Shame: il diff non tocca né la storia dei messaggi né `_get_window()`, e non simula output di tool.
+
+**Elementi del diff esaminati**
+
+- `modules/crm/scheda.py:50` — `_leggi_env_file` rilegge il `.env` con le regole del kernel. Rischio: che il parsing diverga da `gas._carica_dotenv`. Ho confrontato i due lettori su 8000 file `.env` generati a caso (BOM, `export`, virgolette, commenti, righe ripetute, CRLF): 0 differenze. Un mutante di controllo («vince l'ultima riga») ne dà 525, quindi il confronto sa vederle. Esito: ok.
+- `modules/crm/scheda.py:89` — `_valore`: il `.env` vince sull'ambiente, al contrario del kernel; una chiave venuta dal `.env` all'avvio e poi tolta vale «vuota». Rischio: che la rotazione della password non funzioni (R-865-1). L'ho provata con due processi veri che passano da `_carica_chiavi`. Primo passo: la scheda scritta con la vecchia password. Poi il `.env` cambiato e `scheda --forza` lanciato con la vecchia ancora esportata nell'ambiente: scrive con la nuova. Il «server», che ha ancora la vecchia nell'ambiente, risponde «invariata» e dopo un cambio dei dati riscrive con la nuova. Il PDF finale si apre solo con la nuova. Esito: ok, R-865-1 chiusa.
+- `modules/crm/scheda.py:111` — controlla che la password della scheda sia diversa da quella delle copie cifrate. Rischio: che il confronto usi una fonte diversa da quella delle copie. Le copie cifrano con il valore dell'ambiente letto all'avvio (`modules/crm/copia_cifrata.py:78`, contesto). Il confronto invece usa il `.env` di adesso. Esito: riserva R-866-1.
+- `modules/crm/scheda.py:283` — `_togli_scheda_vecchia` (R-865-2). La rimozione funziona (mutante L ucciso) e il test con gli spazi ai bordi uccide il mutante M. Ma scrive l'avviso «tolta» anche quando non c'era nessun file: 3 giri, 3 righe, cartella vuota. Esito: ok, con una cosmetica.
+- `modules/crm/server.py:404` e `modules/crm/server.py:409` — riprova dopo un errore e controllo che la scheda precedente sia finita; ricontrollo giornaliero a `modules/crm/server.py:401`; avviso solo al cambio d'esito a `modules/crm/server.py:361`. Ho rifatto i tuoi mutanti e sono tutti uccisi: senza riprova, senza controllo del thread vivo, senza ricontrollo giornaliero, avviso a ogni esito, `>=` sulla data di oggi, senza rilettura del `.env`. Esito: ok, R-865-3 chiusa; R-865-4 chiusa per l'avviso del server.
+- `tests/test_unit_crm.py:3529` — il test toglie `GAS_NO_DOTENV` e a `tests/test_unit_crm.py:3530` sposta `_RADICE` in una cartella temporanea. Rischio: che i test leggano il `.env` vero dell'operatore. `tests/conftest.py:11` (contesto) accende `GAS_NO_DOTENV` per tutta la suite, e nessun altro test del CRM lo spegne. Ho simulato il Mac: HOME finta con iCloud Drive, un `.env` con password nella radice del checkout, la password esportata nella shell, poi la suite CRM intera. 211 passed e iCloud finto vuoto. Esito: ok.
+- `modules/crm/__main__.py:426` (contesto) — `_carica_chiavi` importa `gas` nel thread principale dentro `main()`, prima del parser e del server. Rischio: effetti collaterali dell'`import gas` fatto dal thread della scheda. Nel thread l'import trova il modulo già caricato e non riesegue nulla. Se il kernel non si importa, l'import viene riprovato a ogni lettura; fallisce sugli import iniziali di gas.py, prima che venga aperto il file di log (gas.py:66), quindi produce solo avvisi. Esito: ok.
+
+**Rieseguito sulla copia dell'indice:** 211 passed su `tests/test_unit_crm.py`; mypy 0 errori dentro `modules/crm` (gli errori elencati stanno in gas.py, che mypy legge seguendo gli import); `git diff --cached --check` pulito; nessun IP letterale nel diff.
+
+**Riserve**
+
+- **R-866-1 BASSA** — Il confronto con la password delle copie (`modules/crm/scheda.py:111`) legge il `.env`, mentre le copie cifrano con il valore dell'ambiente all'avvio (`modules/crm/copia_cifrata.py:78`). Provato: ambiente con Z, `.env` cambiato con X, scheda con password Z → la scheda viene scritta con la stessa password che le copie usano davvero. Correzione: rifiutare se la password della scheda è uguale al valore del `.env` oppure a `copia_cifrata.password()`. Pesa poco: serve riusare la vecchia password delle copie, e le copie già fatte con quella restano comunque su iCloud.
+- **R-866-2 BASSA** — Restano mutanti vivi:
+  - H: senza il controllo di `GAS_NO_DOTENV` dentro `_leggi_env_file`. Sul Mac simulato fa fallire 9 test, quindi si vede; sul CI passa.
+  - I: `_RADICE` calcolata con `parents[1]`. In produzione R-865-1 si riaprirebbe senza nessun test rosso. Basta un test che fissi `scheda._RADICE` uguale a `ROOT` di `__main__`.
+  - G: chiave presente solo nell'ambiente, con il `.env` presente.
+  - K: la riprova rimanda di un'ora un cambio dei dati già in attesa.
+  - J è equivalente: il flag `scheda_riprova` non decide mai nulla.
+
+**Cosmetiche**
+
+- L'avviso «scheda clienti tolta» compare in gas_debug.log a ogni giro con le password uguali, anche senza file.
+- `modules/crm/scheda.py:355` scrive un avviso a ogni riprova: con la riprova oraria sono 24 righe al giorno. R-865-4 è chiusa solo per l'avviso del server.
+- Con il `.env` illeggibile, o con il kernel che non si importa, escono 5 avvisi a ogni giro.
+- Da un terminale aperto prima della modifica, `scheda --forza` riscrive la scheda con la password tolta dal `.env` ma ancora esportata (come fa il kernel, ma il server la dà per spenta).
+- Nel test l'ordine di ripristino (`delenv` prima di `setattr`) lascia un istante con `GAS_NO_DOTENV` spento e la `_RADICE` vera: va invertito.
+- La guida dice che la scheda «viene tolta», ma succede solo al giro successivo (cambio dei dati, giro giornaliero, riavvio o `scheda`).
+
+**Cosa NON ho verificato e perché**
+
+- macOS vero non è riproducibile qui: launchd, accesso a iCloud Drive, e l'app File dell'iPhone che apre il PDF AES-256.
+- La concorrenza su `CRMStore` dal thread della scheda non l'ho riprovata: accettata nel giro #865 e non toccata da questo diff.
+- La password dentro `EnvironmentVariables` del plist è esclusa: lo script `scripts/crm/installa.sh` non la usa.
+
+**Lezioni nuove in memoria (2)**
+
+1. Un confronto tra due segreti va fatto contro la fonte che il modulo usa davvero (meglio contro entrambe le fonti).
+2. Un nuovo lettore del `.env` con la sua barriera per i test va provato su un Mac simulato: sul CI, senza `.env`, il mutante «senza barriera» sopravvive sempre.
+
+**File**
+- `/home/user/Gas/.claude/agents/memoria_revisore.md` (riga #866, non staged, non committata)
+- Script delle prove: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/diff_env.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/mutanti.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/sonde.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/mac_finto.sh`
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_voce_ascolto.py`: 384 → 391 passed (7 test nuovi; 3 test esistenti adattati).
-- Dopo il merge di main: `tests/test_unit_crm.py`, `tests/test_unit_voce_ascolto.py` e `test_collection_dell_intero_repo_non_esplode` danno 565 passed.
-- Suite completa su questo container, prima delle correzioni: 35 failed, 4285 passed, 2 skipped. Riepilogo reale: «35 failed, 4285 passed, 2 skipped in 579.99s».
-- Correzione: non tutti i FAIL erano fuori scope.
-  - 34 in `tests/test_unit_web_browser.py` dipendono da bwrap, assente nel container (`FileNotFoundError: ... 'bwrap'`); su origin/main falliscono allo stesso modo. Il file non è nel diff.
-  - 1 in `tests/test_unit_voice_server.py` (`test_collection_dell_intero_repo_non_esplode`) era invece di questa PR, e la CI l'ha trovato: lo `unit-suite` di d6a980a5 è rosso. Due script della simulazione si chiamavano `frasi_test.py` e `quasi_test.py`, pytest li prendeva per test e cadeva su `import openwakeword`.
-  - Rinominati in `frasi_prova.py` e `quasi_prova.py`, con il riferimento corretto in `rifai_tutto.sh`. Dopo la correzione il test passa in locale («1 passed»).
+- `tests/test_unit_crm.py`: 195 → 211 passed. Nuovi: 16 test della scheda e del guardiano (cifratura e nessun dato in chiaro, password propria/corta/uguale/cambiata nel `.env`/tolta, riscrittura solo su cambio, file tolto, temporanei vecchi, stornati e movimenti futuri esclusi, ultimi 3 movimenti, mese del profitto, demo che non scrive, comando che esce 1, guardiano con riprova, mai due insieme, ricontrollo giornaliero).
+- `tests/conftest.py`: toglie anche `GAS_CRM_SCHEDA_PASSWORD`.
+- Suite del kernel non toccata.
 
 ## §6 STATO CI
 
-Output reale (API, run del branch) alla scrittura:
-
-```
-completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45515477257	ad58e167	2026-11-25T00:06:45Z
-completed	success	CI	feat/voce-modello-italiano	push	45515470801	ad58e167	2026-11-25T00:06:42Z
-completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45514562040	05df3ae7	2026-11-25T00:00:05Z
-completed	success	CI	feat/voce-modello-italiano	push	45514556378	05df3ae7	2026-11-25T00:00:03Z
-```
-
-Mappatura commit→run:
-- d6a980a5: run CI propria del push.
-- 21a68a4f: run propria.
-- d63cb6f5: run CI propria; unit-suite in corso al momento della verifica esterna; verifica-bot failure (V-1 MEDIA, corretta in 908f430b).
-- 5291bca4, b650558a, c0c30f2f, dcee5f24, 908f430b: nessuna run su questi SHA (pushati insieme ad altri commit, o non ancora pushati); il loro contenuto è nell'albero testato dal commit di testa.
-- 05df3ae7: CI e bot propri (bot APPROVATO CON RISERVE, neutral).
-- ad58e167: CI verde (unit-suite, handoff-check success), verifica-bot neutral.
-- c85490e5: nessuna run propria (pushato insieme ad ad58e167).
-- Commit del 2° merge di main e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+`gh run list` non usato: GitHub si interroga con `gh api` REST.
+- Mappatura commit→run:
+  - `36587824` e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme).
+- Ultima run nota su main b7182a7c (merge della #405): CI verde al merge.
 
 ## §7 RISERVE APERTE
 
-- R-854-1: decisione dell'operatore (modello italiano senza filtro o hey_jarvis col filtro), ora esplicita con `--italiano`.
-- V-3 della verifica esterna: licenza CC BY-NC-SA, decisione dell'operatore.
-- R-854-3 BASSA: interruzione col modello nuovo non misurata.
-- R-855-1 COSMETICA: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto.
-- R-857-1 COSMETICA: `--italiano` ignorato in silenzio se il modello è già scelto nel `.env`.
-- Chiuse in questa sessione:
-  - R-854-2, R-856-1;
-  - verifica esterna #405: V-1, V-2 (documenti), V-4, V-5 (test «nessun avviso»), V-6 (handoff riscritto);
-  - bot #405: V-1, V-2, V-3, V-4.
-- Bot su 05df3ae7, V-1 BASSA: nel ripiego su hey_jarvis restano la soglia 0,5 e niente filtro. Aperta; c'è il warning nel log.
-- 2ª verifica esterna (commento https://github.com/Gasss23/Gas/pull/405#issuecomment-7148094095):
-  - V-1 MEDIA (conflitto con main): chiusa col merge c85490e5.
-  - V-2 BASSA (scelta automatica senza filtro): dichiarata in §0.
-  - V-3 BASSA: manca l'hash del modello valutato in `ris/`, quindi il legame tra il `.onnx` e le griglie non si prova dal repo. Aperta.
-  - V-4 COSMETICA (§6 vecchio): riscritto.
-- Riserve delle altre chat: in `reports/stato_progetto.md`, non toccate qui.
+- R-866-1 BASSA, R-866-2 BASSA, R-864-7 BASSA, cosmetiche #864–#866: in `reports/stato_progetto.md`.
+- Dalla PR #406 (bot e verifica esterna) e dalle fette precedenti del CRM: in `reports/stato_progetto.md`.
+- Dalla chat Voce (#405): V-1/V-2 BASSE dell'ultimo verdetto del bot e le riserve già registrate, in `reports/stato_progetto.md`.
+- Scheda non provata su iPhone e iCloud veri.
