@@ -1,12 +1,13 @@
-# Diff della sessione — 2026-11-25 — Dashboard del CRM anche dal telefono
+# Diff della sessione — 2026-11-24 — modello «ehi jarvis» italiano
 
-Si riscrive a ogni sessione; la storia completa sta in git. Ramo ripartito da main b100f8d4 (PR #404 mergiata).
+Si riscrive a ogni sessione; la storia completa sta in git. Base: b100f8d4 (origin/main, dopo il merge della PR #404 in c85490e5).
 
-- `modules/crm/server.py`: `nome_tailscale_da_env` (solo nomi `*.ts.net`); `_host_ammesso` accetta il nome del Mac solo sulla 443 e rifiuta ogni richiesta con l'header del funnel; cookie `Secure` dal nome Tailscale.
-- `modules/crm/__main__.py`: passa il nome allo stato del server e stampa l'indirizzo per il telefono.
-- `scripts/crm/telefono.sh` (nuovo): accende, spegne e controlla l'accesso dal telefono con `tailscale serve`.
-- `scripts/crm/spegni.sh`: spegne anche l'accesso dal telefono.
-- `tests/test_unit_crm.py`: test del server e degli script con un Tailscale finto.
-- `reports/crm/guida.md`, `reports/crm/decisioni.md` (punto 21).
-- `.claude/agents/memoria_revisore.md`: review #860–#862.
-- `reports/stato_progetto.md`, report di fine task.
+- `clients/voice/ascolto.py`: `modello_della_parola()` e `MODELLO_DI_RISERVA`, `_modelli_pronti()` (ripiego col file assente o non fidato); `rilevatore_openwakeword` carica il modello da file se fidato.
+- `clients/voice/modelli/ehi_jarvis_it.onnx`: modello addestrato (accento italiano).
+- `clients/voice/modelli/LEGGIMI.md`: risultati, limiti, licenza CC BY-NC-SA, attribuzioni.
+- `scripts/voce/installa.sh`: opzione `--italiano`; passo 3b, copia del modello; scelta nel `.env` (modello + soglia 0.5) se assente, e se c'è il filtro hey_jarvis solo con `--italiano`.
+- `scripts/voce/LEGGIMI.md`: riga di `GAS_ASCOLTO_MODELLO` aggiornata.
+- `tests/test_unit_voce_ascolto.py`: test per il modello da file, il ripiego, la copia, la scelta e l'avviso; i test «.env byte per byte» partono col modello già scelto.
+- `reports/voce_simulazione_2026-11-23/modello_italiano/`: script (`frasi_prova.py` e `quasi_prova.py`: niente `_test` nel nome, se no pytest li raccoglie) di addestramento e valutazione, risultati grezzi, rapporto (LEGGIMI), metriche.
+- `.claude/agents/memoria_revisore.md`: review #854–#857.
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.

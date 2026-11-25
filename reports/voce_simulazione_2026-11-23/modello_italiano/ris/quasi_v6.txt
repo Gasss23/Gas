@@ -1,0 +1,5 @@
+## v6_d128_nomi
+  positivi «ehi jarvis»        n= 16  ≥0.5:  94%  ≥0.7:  94%  ≥0.9:  94%
+  quasi-omofoni nuovi          n=112  ≥0.5:   8%  ≥0.7:   6%  ≥0.9:   4%
+  frasi con «jarvis» dentro    n=  8  ≥0.5:  50%  ≥0.7:  50%  ≥0.9:  50%
+  quasi-omofoni simulazione    n= 80  ≥0.5:  12%  ≥0.7:  12%  ≥0.9:  12%

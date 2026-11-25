@@ -1,214 +1,418 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-25 — Dashboard del CRM anche dal telefono (decisione 21)
+**Sessione:** 2026-11-24 — Voce: modello «ehi jarvis» con accento italiano (ehi_jarvis_it), PR #405
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta: tocca `scripts/` e il codice del CRM, quindi il bot dà `neutral` e il merge lo decide l'operatore. Fetta di sicurezza: secondo passaggio consigliato nella chat claude.ai.
-2. Sul Mac, dopo il merge: app **Tailscale** (Mac App Store) con accesso; sul telefono la stessa app con lo **stesso account**; poi `cd ~/Gas && git pull && bash scripts/crm/telefono.sh`. La prima volta Tailscale può stampare un link per attivare HTTPS: aprirlo, premere «Enable» e rilanciare. Sul telefono aprire l'indirizzo stampato, inserire il token, salvarlo nella schermata Home.
-3. Dalla fetta precedente: `bash scripts/crm/installa.sh` sul Mac (se non già fatto) e il controllo del `.env` della voce (`GAS_ASCOLTO_SOGLIA_INTERRUZIONE`).
+1. Merge della PR #405 (https://github.com/Gasss23/Gas/pull/405).
+   - Revisore: APPROVATO CON RISERVE.
+   - Bot sul giro 05df3ae7: APPROVATO CON RISERVE senza ALTA/MEDIA, check neutral: decide l'operatore.
+   - Verifica esterna su 3b407738: APPROVATO CON RISERVE, con V-1 MEDIA (conflitto con main), risolta col merge c85490e5.
+   - L'operatore ha dato il «mergia» il 25/11, prima del 2° merge di main (PR #406, solo report in conflitto, review #863-MERGE APPROVATO).
+2. R-854-1, scelta dell'operatore:
+   - modello italiano: più chiamate prese, ma risponde a chiunque dica «ehi Jarvis» e fa più falsi sui quasi-omofoni (flusso B 49,8/h contro 33,9). Si sceglie con `bash scripts/voce/installa.sh --italiano`;
+   - hey_jarvis col filtro della voce: resta tale lanciando `installa.sh` senza opzione.
+   - Senza il file del filtro (`.gas_voce/verifica/hey_jarvis_verifier.pkl`), `installa.sh` sceglie da solo il modello italiano, se il `.env` non ne sceglie già uno (V-2 della 2ª verifica esterna).
+3. Licenza del modello CC BY-NC-SA (uso personale) in un repo pubblico (V-3 della verifica esterna). È la stessa di hey_jarvis; la decisione è dell'operatore.
+4. Prova sul Mac con la voce vera.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Dashboard anche dal telefono** (richiesta dell'operatore: «sì fallo, voglio vederla anche dal telefono. magari qua sul mac mettimi pure un collegamento diretto al desktop»; decisione 21): FATTA (e970daef, review #860 e #861 APPROVATO CON RISERVE). `scripts/crm/telefono.sh` con `tailscale serve`; il server accetta solo il nome `*.ts.net` del Mac sulla 443 e rifiuta il funnel; cookie `Secure`; `spegni.sh` spegne anche il telefono. R-860-1 MEDIA (funnel accettato) e R-860-2..5 chiuse in e970daef.
-- **R-861-1 e R-861-2** (spegni che diceva «OK» con il collegamento ancora attivo; test sui collegamenti di altri servizi): FATTE in 23773556 (review #862).
-- **Collegamento sulla Scrivania del Mac**: c'era già (icona «CRM Gas» creata da `installa.sh`); nessuna modifica.
-- **Prova con un Tailscale vero, launchd vero e bash 3.2 del Mac**: SALTATA — il Mac non è raggiungibile da qui; comandi della CLI controllati sul sorgente di Tailscale v1.106.1 e provati con un Tailscale finto.
+- **Fetta 1 — Addestramento del modello `ehi_jarvis_it`**: FATTA.
+  - Lavoro nello scratchpad; nel repo vanno il modello, gli script e i risultati.
+  - Simulazione a soglia 0,5, 1 fase, prese a vicino / −6 / −12 / −20 dB:
+
+    | | voci della simulazione | voci mai viste | falsi/ora, parlato letto | falsi/ora, audio generico | falsi/ora, flusso B con quasi-omofoni |
+    |---|---|---|---|---|---|
+    | ehi_jarvis_it | 100 / 100 / 87 / 47% | 90 / 75 / 70 / 58% | 0,35 | 0 | 49,8 |
+    | hey_jarvis | 23 / 33 / 3 / 0% | 50 / 40 / 40 / 20% | 1,06 | 0,47 | 33,9 |
+
+- **Fetta 2 — Integrazione**: FATTA.
+  - Modello da file fidato in `clients/voice/ascolto.py`.
+  - Passo 3b in `scripts/voce/installa.sh`.
+  - Prova con openWakeWord vero: 1,00 su «ehi jarvis» (hey_jarvis 0,49), 0,00 su una frase neutra.
+- **Fetta 3 — Riserve di verifica esterna e bot su #405**: FATTA (908f430b, review #856/#857).
+  - Soglia 0,5 scritta insieme al modello.
+  - Ripiego su hey_jarvis col file assente.
+  - Opzione `--italiano` quando c'è il filtro hey_jarvis.
+  - Test del collegamento rilevatore→file.
+  - Documenti con i limiti.
+- **Fetta 3b — CI rossa su d6a980a5**: FATTA. Rinominati gli script `*_test.py` della simulazione, che pytest prendeva per test.
+- **Fetta 3c — Conflitto con main (PR #404 CRM)**: FATTA. Merge c85490e5: report del ramo tenuti, stato e memoria uniti, file di main identici (review #860-MERGE APPROVATO).
+- **Fetta 3d — 2° conflitto con main (PR #406 CRM)**: FATTA (review #863-MERGE APPROVATO).
+- **Fetta 4 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 +
- modules/crm/__main__.py            |   6 +-
- modules/crm/server.py              |  50 +++++-
- reports/crm/decisioni.md           |   4 +
- reports/crm/guida.md               |   9 ++
- reports/diff_sessione.md           |  21 ++-
- reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           |  37 ++---
- scripts/crm/spegni.sh              |   7 +
- scripts/crm/telefono.sh            | 277 ++++++++++++++++++++++++++++++++
- tests/test_unit_crm.py             | 312 +++++++++++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md                                                             |   9 +++++
+ clients/voice/ascolto.py                                                                       |  54 ++++++++++++++++++++++++++--
+ clients/voice/modelli/LEGGIMI.md                                                               |  27 ++++++++++++++
+ clients/voice/modelli/ehi_jarvis_it.onnx                                                       | Bin 0 -> 856178 bytes
+ reports/diff_sessione.md                                                                       |  21 +++++------
+ reports/handoff.md | n/d
+ reports/stato_progetto.md                                                                      |   3 +-
+ reports/ultimo_report.md                                                                       |  72 +++++++++++++++++++++++++++-----------
+ reports/voce_simulazione_2026-11-23/modello_italiano/LEGGIMI.md                                |  61 ++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ehi_jarvis_it.addestramento.json          | 574 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_ens67_f1.json                 |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f1.json          |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f4.json          |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_f1.json            |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_f4.json            |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v4_G.json                     |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v4_d128_ami_f1.json           |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v6_d128_nomi_H_f1.json        |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v6_d128_nomi_f1.json          |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_H_f1.json |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f1.json   |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f4.json   |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v4.txt                          |  10 ++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v6.txt                          |   5 +++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v7.txt                          |   5 +++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/ris_validazione_heyjarvis.txt         |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v4.txt                    |   1 +
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v6_v7.txt                 |   3 ++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/addestra.py                        | 272 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/feature.py                         | 193 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/flussi_nuovi.py                    | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/frasi_prova.py                     |  25 +++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/genera.py                          | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/lib_sim.py                         | 163 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/mls.py                             |  30 ++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/quasi_prova.py                     |  64 ++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/rifai_tutto.sh                     |  51 +++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/scarica.sh                         |  46 ++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/tabella.py                         |  24 +++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/testi.py                           | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/valuta.py                          | 139 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ scripts/voce/LEGGIMI.md                                                                        |   2 +-
+ scripts/voce/installa.sh                                                                       |  45 +++++++++++++++++++++++-
+ tests/test_unit_voce_ascolto.py                                                                | 119 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale. Base: main b100f8d4.
+NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre lo si scrive; la riga di totale è tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-e970daef feat(crm): dashboard anche dal telefono, solo nella rete privata Tailscale (decisione 21) — nome *.ts.net ammesso solo sulla 443, richieste dal funnel rifiutate, cookie Secure, scripts/crm/telefono.sh (review #860, #861)
-23773556 fix(crm): telefono.sh spegni non dice «OK» se qualcosa resta acceso (uscita 2, riavvio anche senza porta), test sui collegamenti di altri servizi (R-861-1, R-861-2; review #862)
+1068914b Merge origin/main (PR #406 CRM) nel ramo della PR #405 — report del ramo tenuti, stato e memoria uniti (review #863-MERGE)
+ad58e167 docs(fine-task): handoff dopo il merge di main (review #860-MERGE) e i verdetti del 2° giro sulla #405
+c85490e5 Merge origin/main (PR #404 CRM) nel ramo della PR #405 — report del ramo tenuti, stato e memoria uniti (review #860-MERGE)
+05df3ae7 fix(report): script della simulazione rinominati *_prova.py (pytest li raccoglieva: unit-suite rosso); handoff corretto
+3b407738 docs(fine-task): handoff con le correzioni di verifica esterna e bot #405 (review #856/#857)
+908f430b fix(voce): installa.sh sceglie il modello italiano col filtro solo con --italiano; soglia 0.5; ripiego col file assente
+dcee5f24 chore(revisore): memoria review #857 — APPROVATO CON RISERVE
+c0c30f2f chore(revisore): memoria review #856 — APPROVATO CON RISERVE
+d63cb6f5 docs(fine-task): handoff ripulito (testo perso nella shell)
+21a68a4f docs(fine-task): handoff modello ehi_jarvis_it, review #854/#855
+d6a980a5 feat(voce): modello «ehi jarvis» con accento italiano (ehi_jarvis_it)
+b650558a chore(revisore): memoria review #855 — APPROVATO CON RISERVE
+5291bca4 chore(revisore): memoria review #854 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Commit e970daef — review #860 (verdetto integrale, primo giro)
+I commit d6a980a5 e 908f430b toccano `tests/test_unit_voce_ascolto.py` (perimetro). Sotto ci sono i quattro verdetti INTEGRALI, in ordine:
+- #854: primo diff;
+- #855: correzioni R-854-1 e R-854-2;
+- #856: correzioni della verifica esterna;
+- #857: delta finale, con le correzioni del bot.
 
+```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #860. Ho controllato il diff staged del ramo claude/nifty-galileo-3k7kbm sopra b100f8d4: 6 file, +451/−5, sha256 57f581755f05…, ricalcolato e identico al tuo prima e dopo la review. Ho letto CLAUDE.md (sez. 1, 5, 8, 9 e 10), le parti di `reports/stato_progetto.md` sul CRM e le lezioni della memoria su Host, CSRF, `.env`, `set -e`/pipefail e installer. Nella memoria ho aggiunto la riga #860 e due lezioni: il file è fuori dallo stage e non è committato, come hai chiesto. Non ho creato `.claude/.review_ok`. Non ho trovato violazioni del Wall of Shame: il kernel non è toccato, non c'è slicing della history e non c'è simulazione di tool. Le eccezioni del server finiscono in gas_debug.log come prima, e un nome non valido viene scartato con un warning, senza crash.
+Review #854. Diff staged su feat/voce-modello-italiano: 39 file, +2214/−8. Ho letto CLAUDE.md, la memoria del revisore e le voci sulla voce in stato_progetto.md (letto con grep mirato). I 73 test `-k "modello or installa"` di tests/test_unit_voce_ascolto.py passano. `git diff --cached --check` è pulito. Lo sha256 del file .onnx corrisponde a quello scritto nel LEGGIMI. I `__pycache__` sotto reports/ non sono nell'indice. Nessun antipattern del Wall of Shame: nessun taglio diretto della history e nessun output dei tool simulato. Il motore (gas.py, brains/) non è toccato.
 
-**Elementi del diff esaminati**
-- `modules/crm/server.py:450` — ammette il nome Tailscale solo se è uguale, carattere per carattere, a quello dichiarato. Rischio esaminato: DNS rebinding e nomi vicini. Ho fatto la prova sul server staged. Danno 403: `x.NOME`, `NOME.evil.example`, `tail1234.ts.net`, `ts.net`, `NOME.` (col punto finale), `NOME:1:2`. Le maiuscole vengono ridotte e il nome passa. Il bind resta solo loopback (`modules/crm/server.py:936`, invariato). Una richiesta con Origin di un'altra macchina della stessa tailnet riceve 403. — **ok**, salvo la porta e il funnel (R-860-1).
-- `modules/crm/server.py:78` — `nome_tailscale_da_env`: regex completa, lunghezza massima 253, minuscolo, punto finale tolto; un nome non valido dà None e un warning senza valori. Rischio esaminato: un dominio pubblico o una regex lenta. Le etichette non contengono punti, quindi la regex non torna indietro all'infinito. Il `.env` viene caricato prima (`modules/crm/__main__.py:121`, dopo `_carica_chiavi` in `main`). — **ok**
-- `modules/crm/server.py:464` — mette `; Secure` sul cookie di login e di logout solo quando l'Host è il nome Tailscale. Rischio esaminato: cookie in chiaro. Il mutante «Secure sempre» viene preso dai test; sul Mac, in loopback, il cookie resta come prima. — **ok**
-- `scripts/crm/telefono.sh:160` — controlla il funnel solo all'accensione, solo sulla porta 443 e solo nella configurazione `--bg` principale. Rischio esaminato: che il funnel resti acceso. — **riserva** R-860-1.
-- `scripts/crm/telefono.sh:144` — il ramo `spegni`. Rischio esaminato: «spegni» che non spegne. — **riserva** R-860-2.
-- `scripts/crm/telefono.sh:74` — `stato_serve`: se la lettura del JSON fallisce, la risposta diventa «libero». — **riserva** R-860-5.
-- `scripts/crm/telefono.sh:94` — `scrivi_env`. Segue il symlink con realpath, scrive prima un file temporaneo con permessi 0600, poi applica i permessi originali, toglie anche le righe `export`. Rischi esaminati: segreti, permessi, symlink. Provato: il token non compare mai in output né nel registro (anche il test lo controlla). — **ok** con note cosmetiche.
-- `scripts/crm/telefono.sh:180` — dopo `serve` rilegge la configurazione e, se non è quella attesa, toglie tutto. È l'unica protezione nel caso reale in cui la CLI esce con codice 0 senza applicare nulla. — **ok** come codice, ma senza test (R-860-4).
-- `tests/test_unit_crm.py:3000` e `tests/test_unit_crm.py:3094` — coprono nomi ammessi e rifiutati, Host estranei, Secure, accendi/stato/spegni e `.env` collegato. Sulla CI Ubuntu i comandi finti sono nel PATH e il python è indicato con percorso assoluto, senza rete né attese vere: niente di fragile. — **ok**
-- Contesto, file non toccato: `scripts/crm/spegni.sh:6` toglie il servizio ma non tocca `tailscale serve`. — **riserva** R-860-3.
+**Elementi esaminati**
 
-**Riserve**
-- **R-860-1 MEDIA** — Il server accetta il nome Tailscale anche dal traffico funnel, cioè da internet, su qualsiasi porta. Provato: Host `NOME:8443` con `Tailscale-Funnel-Request: ?1` dà login 200 e `/api/stato` 200. Prima di questo diff qualunque funnel verso il CRM prendeva 403 sull'Host. Lo script vede solo `AllowFunnel["NOME:443"]` in `--bg`, e solo al momento dell'accensione: non vede un `tailscale funnel 8770` lanciato in primo piano (che è il comportamento normale della CLI e finisce in `Foreground`), né i funnel su altre porte o accesi dopo. Resterebbe solo il token, con il limite tentativi condiviso: chiunque da internet potrebbe bloccare l'operatore per 15 minuti. Correzione da una riga, da fare in questa fetta prima del merge: 403 e log per ogni richiesta che porta l'header `Tailscale-Funnel-Request`, più un test. tailscaled mette quell'header su ogni richiesta funnel e cancella quelli finti, varianti con `_` comprese (l'ho verificato nel sorgente v1.106.1, `ipn/ipnlocal/serve.go`, righe 1162-1175). Facoltativo: accettare il nome solo senza porta o con `:443`. Resterebbe scoperto il funnel TCP grezzo (`--tcp`): va dichiarato nella guida.
-- **R-860-2 BASSA** — `spegni` è fragile, in tre modi:
-  - (a) Prima di fare qualsiasi cosa vuole Tailscale acceso, collegato e col nome valido. Provato con `TS_STATO=Stopped`: rc 1 e la riga resta nel `.env`, mentre la configurazione `--bg` resta salvata in Tailscale e torna attiva al login successivo.
-  - (b) `nostro)` non riconosce lo stato `nostro pubblico`. Provato: serve e funnel restano accesi e lo script stampa «OK: accesso dal telefono spento». I dati restano protetti solo perché, dopo il riavvio, il CRM rifiuta l'Host.
-  - (c) Se `serve ... off` fallisce, con `set -e` lo script esce senza messaggio e senza togliere la riga.
-  - Correzione: togliere sempre la riga e riavviare comunque, usare il pattern `nostro*`, mettere `|| echo ATTENZIONE`.
-- **R-860-3 BASSA** — `scripts/crm/spegni.sh` lascia sia `tailscale serve` (che punta alla porta del CRM in loopback) sia la riga nel `.env`. Qualunque programma ascolti dopo su quella porta (la demo, un `serve` lanciato a mano, un altro programma) diventa visibile alla tailnet, e la guida non lo dice.
-- **R-860-4 BASSA** — Manca il test per il primo avvio reale: con HTTPS non attivo e `!ShouldWait`, la CLI stampa il link ed esce 0 senza applicare nulla (sorgente: `serve_legacy.go`, righe 829-834). L'ho provato: rollback corretto, ma il mutante che toglie il controllo di `scripts/crm/telefono.sh:180` sopravvive (21 passed). Inoltre il messaggio «non è quella attesa (libero)» non dice di attivare HTTPS e rilanciare, mentre la guida promette «prosegue da solo».
-- **R-860-5 BASSA** — Se il JSON di `serve status` non si legge, il risultato è «libero» invece di «errore», quindi il controllo sul funnel lascia passare. Provato con un testo di prova davanti al JSON: rc 0 e `serve --bg` eseguito. Il danno è attenuato perché il vero `serve --https=443` toglie il funnel su quella porta (`serve_v2.go`, righe 1369-1381).
-- **COSMETICHE**
-  - Il filtro del `.env` è più stretto del caricatore del kernel: provato, una riga `GAS_CRM_NOME_TAILSCALE = x` sopravvive a `spegni`, e col «vince la prima riga» batterebbe quella aggiunta.
-  - Nessun fsync prima di `os.replace` sul file che contiene tutti i segreti.
-  - `spegni` senza `.env` ne crea uno vuoto.
-  - Il mutante «senza chmod» sopravvive: lo 0600 di mkstemp va nella direzione sicura.
-  - `curl | grep -q` con pipefail alla riga 190 (lezione R-615-7): al massimo dà un falso ATTENZIONE.
-  - Col nome Tailscale è ammesso anche un Origin `http://`: il CSRF resta bloccato da X-Gas-CRM e dall'assenza di risposta a OPTIONS.
-  - Se ts.net è nella Public Suffix List, le macchine della tailnet sono lo stesso «sito»: SameSite=Strict non le separa, la difesa sono Origin e X-Gas-CRM (provato 403); un'altra macchina potrebbe coprire il cookie di sessione, cioè impedire di restare collegati, senza rubare nulla.
-  - La guida potrebbe citare Tailnet Lock, perché chi entra nella tailnet lo decide il server di coordinamento di Tailscale.
+1. `clients/voice/ascolto.py:1431` — `modello_della_parola`
+   - Cosa fa: con un nome semplice (regex `[a-z0-9_]{1,40}` di `clients/voice/ascolto.py:194`) costruisce il percorso solo dentro `.gas_voce/modelli` sotto `_GAS_ROOT`. `exists()` e `is_symlink()` stanno dentro un try su OSError. Il file passa da `_file_fidato` (`clients/voice/ascolto.py:1402`): niente symlink, proprietario l'utente, file e cartella non scrivibili da altri.
+   - Rischio: percorso preso dall'ambiente, symlink, permessi deboli.
+   - Esito: ok. Il nome non entra mai nel percorso se contiene `/` o `..`, e lo copre `tests/test_unit_voce_ascolto.py:3327`.
 
-Le tue affermazioni sul sorgente Tailscale v1.106.1 le ho verificate tutte: Host conservato (riga 1008 di ipn/ipnlocal/serve.go del sorgente di Tailscale), X-Forwarded-Proto, `serve status --json` che stampa la ServeConfig, `serve` e `off` che tolgono il funnel su quella porta. Ho rieseguito io: 184 passed (186 con le mie 2 sonde), `bash -n` ok, mypy 0 errori in `modules/crm` (77 in tutto, come a HEAD). Mutanti: 6 su 8 uccisi.
+2. `clients/voice/ascolto.py:1494` — `sorgente` passata a `Model(wakeword_models=[sorgente])`, mentre `custom_verifier_models={modello: ...}` resta sotto il nome.
+   - Rischio: chiave delle previsioni diversa dal nome.
+   - Esito: ok. openWakeWord, in openwakeword/model.py righe 91-92 del pacchetto installato, chiama il modello con `splitext(basename(percorso))[0]`, cioè `ehi_jarvis_it`, uguale al nome.
 
-**Rischi esplicitamente esclusi**
-- Lo script non l'ho eseguito con bash 3.2 di macOS (`#!/bin/bash` sul Mac): qui c'è solo bash 5.2. Lo stesso costrutto heredoc dentro `$( )` è già in `scripts/crm/installa.sh`.
-- Non ho usato un Tailscale reale né `launchctl kickstart -k` vero (i tempi del riavvio): ho solo il sorgente e i comandi finti.
-- Non ho verificato che ts.net sia nella Public Suffix List.
-- Non ho potuto controllare dove la CLI stampa l'avviso di versione diversa (stdout o stderr), che riguarda R-860-5: il sorgente scaricato contiene solo `cmd/` e `ipn/`.
+3. `clients/voice/ascolto.py:1644` — effetti di contesto con `GAS_ASCOLTO_MODELLO=ehi_jarvis_it`.
+   - `verifica_della_voce` cerca `ehi_jarvis_it_verifier.pkl`, non lo trova e dà «assente». Quindi 1 fase (`clients/voice/ascolto.py:177`), soglia `GAS_ASCOLTO_SOGLIA` 0,7 e interruzione a 0,8 su 3 blocchi (`clients/voice/ascolto.py:198`).
+   - Esito: ok, coerente con quanto dichiarato. Vedi però R-854-1 e R-854-3.
 
-File utili:
-- /home/user/Gas/.claude/agents/memoria_revisore.md (riga #860 in coda, non nello stage)
-- /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/r860/test_sonde_860.py (sonde su Host, funnel, CSRF e blocco tentativi)
-- /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/r860/test_sonde_script_860.py (sonde su HTTPS non attivo, spegni con funnel o con Tailscale spento, JSON illeggibile, forma `CHIAVE = v`)
-- /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/r860/mutanti.sh (gli 8 mutanti, girati su una copia dell'indice)
+4. `scripts/voce/installa.sh:138` — passo 3b.
+   - Cosa fa: `mkdir -p`, chmod 700 sulle due cartelle, `install -m 600` (che sostituisce il file, anche un symlink, invece di scriverci dentro), `stop` se la copia fallisce. Il `.env` si aggiorna solo se `valore_env` non trova la chiave; una chiave presente anche vuota resta intatta.
+   - Rischio: idempotenza, doppioni nel `.env`, `.env` senza a capo finale (il printf inizia con `\n`).
+   - Esito: ok. Lo provano `tests/test_unit_voce_ascolto.py:1945` (seconda esecuzione senza doppioni) e `tests/test_unit_voce_ascolto.py:1961` (modello già scelto lasciato com'è).
 
-### Commit e970daef — review #861 (verdetto integrale, secondo giro sullo stesso commit)
+5. `tests/test_unit_voce_ascolto.py:2221` — i test del `.env` «byte per byte» ora partono con `GAS_ASCOLTO_MODELLO` già presente.
+   - Rischio: test indeboliti.
+   - Esito: ok. Verificano ancora che il `.env` resti identico; il caso «chiave assente» è coperto dal test nuovo.
 
+**Riserve (da tracciare in stato_progetto.md)**
+
+- **R-854-1 MEDIA** (`scripts/voce/installa.sh:142`): rieseguire installa.sh su un `.env` senza `GAS_ASCOLTO_MODELLO` (probabile sul Mac dell'operatore) passa a `ehi_jarvis_it` e spegne in silenzio il filtro della voce già addestrato. Quel filtro è il file `.gas_voce/verifica/hey_jarvis_verifier.pkl`, legato al nome hey_jarvis. Inoltre `registra_voce.py` accetta solo modelli pronti, quindi oggi il filtro non si può rifare per ehi_jarvis_it. Il LEGGIMI lo dice, l'installer no. Proposta: se il filtro hey_jarvis esiste, non cambiare modello (o almeno avvisare a terminale) e lasciare la scelta all'operatore. La decisione «modello italiano senza filtro» contro «hey_jarvis col filtro» spetta all'operatore.
+- **R-854-2 BASSA** (`clients/voice/ascolto.py:1446`): se il file del modello c'è ma non è fidato, la funzione restituisce il nome nudo. openWakeWord non trova un modello pronto con quel nome e alza ValueError. `main` scrive «openWakeWord non pronto… installa» ed esce con 1, e launchd lo riavvia ogni 10 s. Non va in crash, ma l'ascolto resta fermo e il messaggio porta fuori strada. Ripiegare su hey_jarvis con un avviso nel log terrebbe l'ascolto acceso (§9).
+- **R-854-3 BASSA**: l'interruzione col modello nuovo (0,8 per 3 blocchi di fila, voce di Gas in sottofondo) non è stata misurata. Il LEGGIMI riporta solo attivazioni e falsi.
+- **Nota (già prima, nessun peggioramento)**: openWakeWord prova `os.path.exists(nome)` rispetto alla cartella corrente. Un `GAS_ASCOLTO_MODELLO` con un percorso, che non passa la regex, arriva com'è a `Model()` e carica quel file ONNX, come prima della modifica.
+
+**Rischi esclusi (non verificati)**
+
+- Qualità reale del modello sulla voce dell'operatore e sul microfono del Mac: in questo container non si può riprodurre. Fa fede la prova del chiamante con openWakeWord vero.
+- Contenuto del file .onnx: non l'ho ispezionato. È ONNX, non pickle, quindi non esegue codice al caricamento.
+- Script di addestramento in reports/: letti solo per cercare percorsi o segreti, nessuno trovato.
+- Licenza CC BY-NC-SA in un repo pubblico: rilevante, ma è una scelta dell'operatore e non un controllo tecnico.
+- Comportamento di `install` BSD su macOS: dato per buono senza prova sul Mac.
+- I fallimenti della suite completa (34 in tests/test_unit_web_browser.py e 1 in tests/test_unit_voice_server.py, per bwrap assente) riguardano file fuori dal diff: non li ho riverificati, come mi hai indicato.
+
+**Memoria**: riga #854 e 2 lezioni aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, già committate da sole (5291bca4). L'indice staged è intatto (39 file); git stash non usato.
+```
+
+```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #861. Ramo claude/nifty-galileo-3k7kbm sopra b100f8d4, diff in stage: 7 file, +611/−6, sha256 ea7d48d4… (ricontrollato a fine review, invariato). Prima della review ho letto CLAUDE.md, le parti di reports/stato_progetto.md che riguardano la fetta e la memoria del revisore (lezioni su pipefail e set -e, #860).
+Review #855: ho ricontrollato solo il delta rispetto alla #854. L'indice è come lo hai descritto: 39 file, +2232/−8. Rieseguiti i test `-k "modello or installa"` di tests/test_unit_voce_ascolto.py: 74 passati. Non ho usato git stash.
 
-Le correzioni di R-860-1…5 ci sono e sono provate. I rilievi rimasti sono tutti BASSI: niente si apre a internet, l'esposizione residua resta dentro la rete Tailscale e il token resta necessario. Le due riserve riguardano lo spegnimento, che in alcuni casi lascia il collegamento attivo e stampa lo stesso «OK».
+**Elementi esaminati**
 
-### Elementi del diff esaminati
-- `modules/crm/server.py:441` — rifiuta ogni richiesta che ha l'header `Tailscale-Funnel-Request`, prima del controllo dell'Host. Rischio esaminato: traffico funnel con Host falsificato (nome Tailscale, loopback, IP). Ho controllato che `headers.get` non distingue maiuscole e minuscole e che un valore vuoto viene rifiutato. I test provano il 403 sia col nome sia con loopback. — ok
-- `modules/crm/server.py:457` — accetta il nome Tailscale solo senza porta o con `:443`. Rischio esaminato: il nome servito su un'altra porta (`:8443` → 403, testato) e il cookie `Secure` collegato al nome. — ok
-- `scripts/crm/telefono.sh:191` — `leggi_nome || case $? in …`. Rischio esaminato: che `$?` sia davvero quello di `leggi_nome`. L'ho provato a parte sotto `set -euo pipefail` (i codici 3, 5 e gli altri finiscono in rami distinti, 141 in «altro»). Il mutante «`return 2` al posto di `return $?`» viene ucciso. Dentro le funzioni chiamate in `if` o `||` errexit è spento: ogni passo di `leggi_nome` (`scripts/crm/telefono.sh:80`) e di `leggi_porta` ha il suo `|| return` esplicito. `local j` è separato dall'assegnazione, quindi l'exit code non si perde. — ok
-- `scripts/crm/telefono.sh:160` — `spegni` con la porta illeggibile. Rischio esaminato: CRM che resta acceso col nome e collegamento lasciato. Provato coi comandi finti (python che esce 4 su `import gas`): la riga del .env viene tolta, ma il CRM non viene riavviato (kickstart 0, anche se `kickstart -k` non ha bisogno della porta) e il collegamento resta. Lo script stampa «ATTENZIONE: non riesco a leggere la porta», poi «OK: accesso dal telefono spento» ed esce 0. — riserva (R-861-1)
-- `scripts/crm/telefono.sh:180` — `serve off` che fallisce. Provato: stampa ATTENZIONE, poi lo stesso «OK…» ed esce 0, col collegamento ancora attivo. Stesso esito con `errore` (`scripts/crm/telefono.sh:182`). `scripts/crm/spegni.sh:14` si basa sull'exit code e quindi non avvisa. — riserva (R-861-1)
-- `scripts/crm/telefono.sh:134` — riconosce il collegamento «nostro» (`bool(dest)`, un solo gestore `/`, Proxy uguale alla destinazione). Rischio esaminato: che lo spegnimento tolga un collegamento non del CRM. Con il codice com'è, provato coi finti: un'altra porta, il nostro più un secondo gestore, la porta come prefisso (87700), un sotto-percorso e `https+insecure` non vengono toccati. Anche un gestore di testo con la porta illeggibile viene lasciato. — ok nel comportamento; riserva sui test (R-861-2)
-- `scripts/crm/telefono.sh:129` — `pubblico` controlla AllowFunnel su ogni porta del nome, anche nelle configurazioni Foreground. Il JSON illeggibile o non oggetto dà «errore» (`scripts/crm/telefono.sh:121`). Rischio esaminato: tipi annidati sbagliati, per esempio `Web` come lista non vuota. In quel caso Python va in traceback e `set -e` ferma lo script. All'accensione (`scripts/crm/telefono.sh:214`) si ferma prima di toccare qualcosa; con un tailscaled vero non può succedere. — ok (cosmetica)
-- `scripts/crm/telefono.sh:54` — il filtro del .env toglie anche le forme `export ` e `CHIAVE = v`. L'ho confrontato con `gas.py:984` (`_carica_dotenv`): le regole coincidono. fsync e `os.replace` ok, il .env collegato resta collegato, senza .env non ne crea uno. — ok
-- `scripts/crm/telefono.sh:238` — se dopo `serve` la configurazione non è la nostra, toglie tutto e dice di rilanciare (R-860-4); il test è `tests/test_unit_crm.py:3231`. Il ramo «nostro pubblico» (`scripts/crm/telefono.sh:240`) è senza test: il mutante sopravvive, ma il caso si presenta solo se qualcosa cambia la configurazione fra due letture ravvicinate. — ok (cosmetica)
-- `scripts/crm/spegni.sh:12` — dopo il bootout chiama `telefono.sh spegni` se nel .env c'è la riga o se Tailscale è installato; il test è `tests/test_unit_crm.py:3241`. — ok
-- Codice vero di `leggi_porta` (nei test è sostituito dal python finto): eseguito su questa macchina con `env -i`, stampa solo «8770» e nient'altro su stdout. — ok
+1. `clients/voice/ascolto.py:1452` — se il file del modello c'è ma non è fidato, ora la funzione restituisce `MODELLO_DI_RISERVA` (`clients/voice/ascolto.py:194`, vale "hey_jarvis") e scrive un avviso nel log.
+   - Rischio: il nome del modello caricato diventa diverso da `modello`, la chiave del verificatore.
+   - Esito: ok. Il verificatore si cerca per `ehi_jarvis_it_verifier.pkl`, che non esiste, quindi va col nome giusto. Se ci fosse un verificatore con la chiave sbagliata, l'errore lo prende il try di `rilevatore_con_verifica`. Il punteggio è il massimo dei valori, quindi la chiave non conta. R-854-2 è chiusa: l'ascolto non si ferma più.
+2. `clients/voice/ascolto.py:1498` — la sorgente si calcola una volta sola, prima di creare i modelli.
+   - Esito: ok.
+3. `scripts/voce/installa.sh:149` — l'avviso compare solo quando lo script scrive `GAS_ASCOLTO_MODELLO=ehi_jarvis_it` e `.gas_voce/verifica/hey_jarvis_verifier.pkl` esiste. Dice che il filtro della voce resta spento e come riaverlo.
+   - Esito: ok. R-854-1 è risolta con un avviso. La scelta (modello italiano senza filtro) è dell'operatore e va registrata come sua decisione in stato_progetto.md.
+4. `tests/test_unit_voce_ascolto.py:1961` — test nuovo dell'avviso.
+   - Esito: ok, ma controlla solo che l'avviso ci sia. Manca il controllo opposto: nessun avviso senza il file del filtro, o quando la chiave era già nel `.env`. Lacuna di copertura BASSA, non blocca.
+5. `tests/test_unit_voce_ascolto.py:3351` — col file non fidato il test ora si aspetta "hey_jarvis".
+   - Esito: ok.
 
-### Riserve
-- **R-861-1 BASSA** — `spegni` stampa «OK: accesso dal telefono spento» ed esce 0 anche quando il collegamento resta: `serve off` fallito, configurazione illeggibile, porta illeggibile. Con la porta illeggibile il CRM non viene nemmeno riavviato, quindi tiene il nome in memoria finché non riparte. Correzione proposta:
-  1. con la porta illeggibile fare comunque `launchctl kickstart -k`;
-  2. in quei casi niente «OK» finale ed exit diverso da 0, così `spegni.sh` avvisa.
-- **R-861-2 BASSA** — la condizione `bool(dest)` (`scripts/crm/telefono.sh:134`) è proprio quella che impedisce a `spegni`, con la porta illeggibile, di togliere un collegamento di un altro servizio. Non ha test. Mutante provato: con «senza `bool(dest)`» e un gestore di solo testo `off` viene chiamato e la configurazione dell'altro sparisce, eppure i 28 test di telefono.sh restano verdi. Restano vivi anche i mutanti «`"/" in gestori`» e «`startswith` al posto di `==`». Serve un test con porta illeggibile e gestore senza Proxy, più un caso con due gestori.
+**Riserve (da tracciare in stato_progetto.md)**
 
-### Note cosmetiche
-- `spegni` non avvisa quando sulla 443 c'è un altro servizio, nemmeno se è un vecchio collegamento del CRM a una porta poi cambiata.
-- Con un nome non `ts.net` dice «Tailscale è spento».
-- Dopo un cambio di nome del Mac il collegamento sotto il vecchio nome resta, con «OK». È innocuo: il vecchio nome non risolve più e il CRM non lo accetta.
-- `stato` dice «Acceso» anche dopo uno `spegni` fatto con Tailscale spento (.env già pulito, il CRM risponde 403).
-- Lanciato da `spegni.sh`, il messaggio parla dell'icona «CRM Gas» appena tolta.
-- Attraverso `serve` un dispositivo della rete Tailscale che usa curl può mettere un IP nell'Host e superare quel controllo, che protegge dal DNS rebinding e non dagli accessi. Restano il token e il limite ai tentativi; il messaggio «il CRM rifiuta già il telefono» vale per il browser.
+- **R-854-1, decisione dell'operatore**: col modello italiano il filtro della sua voce resta spento. L'installer lo avvisa, ma la scelta va registrata come sua.
+- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata (soglia 0,8 su 3 blocchi di fila, con la voce di Gas in sottofondo).
+- **R-855-1 COSMETICA**: dopo il ripiego su hey_jarvis, la riga di log «ascolto pronto: parola «ehi_jarvis_it»» (`clients/voice/ascolto.py:1663`) indica ancora il nome chiesto, non il modello usato. L'avviso del ripiego compare prima nel log, quindi la cosa si capisce.
 
-### Altri controlli
-- `python3 -m pytest -q tests/test_unit_crm.py`: 191 passed.
-- `bash -n` ok su telefono.sh e spegni.sh.
-- mypy: 0 errori in modules/crm (i 77 segnalati stanno in altri file e c'erano già).
-- Miei mutanti su copie degli script, con un controllo letale che li ha confermati validi: uccisi «return 2», «spegni senza riavvio», «spegni senza off»; vivi M3 `bool(dest)`, M6 un solo gestore, M7 uguale→startswith, M11 rollback di «nostro pubblico» dopo `serve`.
+**Rischi esclusi (non verificati)**
 
-### Rischio esplicitamente escluso
-Non ho verificato:
-- **Tailscale vero sul Mac**: app del Mac App Store, formato reale di `serve status --json` sulla versione dell'operatore, link per attivare HTTPS, certificato, curl dal Mac verso il proprio nome. Qui non è riproducibile: solo comandi finti.
-- **La bash 3.2 di macOS**: qui c'è solo la 5.2. Il rischio è attenuato perché si usano gli stessi costrutti di `scripts/crm/installa.sh` (heredoc dentro `$( )`, regex senza virgolette).
-- **launchd vero.**
-- **Il sorgente di tailscaled**: non l'ho riletto. Che l'header funnel venga tolto dalle richieste non funnel e che l'Host resti quello originale lo prendo dalla lettura di #860.
+- Il comportamento sul Mac: la qualità del modello, l'avviso letto dall'operatore, `install` di macOS. Non si può riprodurre in questo container.
+- I fallimenti di tests/test_unit_web_browser.py: non li ho riverificati. Li dai come identici su origin/main per bwrap assente, e sono fuori dal diff.
 
-### Memoria
-- Riga #861 e due lezioni aggiunte in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, fuori stage.
-- NON ho committato, come richiesto, quindi `scripts/commit_memoria_revisore.sh` non è stato eseguito.
-- Nessun `.claude/.review_ok` creato.
+**Memoria**: aggiunta la riga #855 in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata da sola (b650558a). L'indice staged è rimasto intatto.
 
-File di prova usati: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/mutanti.sh`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prova_m3.py`.
+Il commit è consentito.
+```
 
-### Commit 23773556 — review #862 (verdetto integrale)
-
+```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #862: secondo giro della #861 sul ramo claude/nifty-galileo-3k7kbm, sopra e970daef. Il diff staged è quello indicato: 2 file, +68/−20, sha256 6a42d4d3, ricontrollato prima e dopo la review. Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 10), la voce «Dashboard del CRM anche dal telefono» di reports/stato_progetto.md e le lezioni della mia memoria sugli script shell, `set -e` e gli spegnimenti.
+Review #856: ho ricontrollato solo il delta staged dopo la verifica esterna della PR #405 (4 file, +53/−9). Rieseguita tutta tests/test_unit_voce_ascolto.py: 389 passati. Non ho usato git stash; l'indice è intatto.
 
-**Prove fatte**
-- Su una copia dell'indice (checkout-index nello scratchpad): `pytest tests/test_unit_crm.py` dà 195 passed; `bash -n` ok.
-- 12 mutanti eseguiti, più un mutante di controllo noto letale (ucciso). Ne è sopravvissuto uno solo (vedi R-862-1).
-- Sonde a mano con i comandi finti dei test: spegni.sh con Tailscale spento e con il telefono acceso, spegni senza Tailscale, porta illeggibile con o senza Tailscale, configurazione illeggibile, «nostro pubblico», tipi errati nel JSON, porta illeggibile con il CRM non installato, kickstart fallito.
+**Elementi esaminati**
 
-**Elementi del diff esaminati**
-- `scripts/crm/telefono.sh:159` — `PARZIALE=no` in testa al ramo spegni e uscita 2 a scripts/crm/telefono.sh:200. Rischio: un «OK» detto quando qualcosa resta acceso. PARZIALE viene alzato in sei punti: porta illeggibile, `serve off` fallito, configurazione illeggibile, funnel, Tailscale spento o senza accesso, nome non ts.net. Mutanti uccisi: «PARZIALE tolto» su porta, off, funnel e Tailscale spento; «exit 2 → 0»; «PARZIALE=si iniziale». — ok
-- `scripts/crm/telefono.sh:169` — senza porta: avviso, PARZIALE e `launchctl kickstart -k` con `|| echo` (scripts/crm/telefono.sh:171), senza attendere la porta. Rischio: `set -e` che ferma lo script, oppure un riavvio mancato. Provato: kickstart fallito → due avvisi e uscita 2; CRM non installato → nessun kickstart e uscita 2. Il mutante «senza kickstart» è ucciso dal test. — ok
-- `scripts/crm/telefono.sh:184` — ramo `errore` (configurazione di Tailscale illeggibile) che alza PARZIALE. Rischio: ramo senza test. Il mutante «errore senza PARZIALE» resta VIVO (34 passed). A mano il comportamento è giusto: avviso e uscita 2. — riserva (R-862-1)
-- `scripts/crm/telefono.sh:202` — il nuovo messaggio OK finale dà l'indirizzo locale invece dell'icona. Rischio: messaggio falso. Nel flusso di spegni.sh è falso: provato, stampa «la dashboard resta su …:8770/» e subito dopo spegni.sh scrive «OK: CRM spento e tolto dall'avvio». — riserva cosmetica
-- `tests/test_unit_crm.py:3077` — il python finto esce 4 sulla lettura della porta se esiste `$HOME/porta_ko`. Rischio: un'altra chiamata intercettata per errore. scrivi_env non contiene «import gas», stato_serve e leggi_nome usano `-c`, e HOME passa a leggi_porta con `env -i HOME=`. — ok
-- `tests/test_unit_crm.py:3257` — test con tre casi (gestore di testo con porta illeggibile; nostro più un secondo gestore; porta 87700 come prefisso). Rischio: guardie senza test. Uccisi «senza bool(dest)», «"/" in gestori» e «startswith». I casi 2 e 3 però non controllano il codice di uscita (atteso 0). — ok, con nota cosmetica
-- `tests/test_unit_crm.py:3276` — test con `serve off` fallito. Rischio: test che passa a vuoto se la sostituzione nel finto non combacia. Non succede: in quel caso l'off riesce, l'uscita è 0 e il test diventa rosso. Il mutante «off fallito senza PARZIALE» è ucciso. — ok
-- `tests/test_unit_crm.py:3191` e `tests/test_unit_crm.py:3204` — test esistenti aggiornati da uscita 0 a uscita 2 (Tailscale spento; funnel). Sono i soli rami cambiati di proposito. Gli altri casi già approvati restano a 0: tests/test_unit_crm.py:3122 (spegni dopo l'accensione), tests/test_unit_crm.py:3212 (senza .env), tests/test_unit_crm.py:3251 (spegni.sh). Provato anche il caso senza Tailscale con porta leggibile: uscita 0. — ok
-- Contesto, file non toccato: `scripts/crm/spegni.sh:14` — `set -uo pipefail` senza `-e` (scripts/crm/spegni.sh:4), poi `telefono.sh spegni || echo ATTENZIONE`. Provato con Tailscale spento: telefono.sh esce 2, spegni.sh stampa «ATTENZIONE: accesso dal telefono non spento», poi l'OK del CRM, e chiude con uscita 0. Reagisce bene. — ok
+1. `clients/voice/ascolto.py:1432` — `_modelli_pronti()` legge i nomi da `openwakeword.MODELS`. Ho controllato nel pacchetto installato: le chiavi sono `alexa`, `hey_mycroft`, `hey_jarvis`, `hey_rhasspy`…. Restituisce un insieme vuoto se c'è un'eccezione.
+   - Rischio: insieme vuoto che fa ripiegare anche un modello pronto.
+   - Esito: ok. `rilevatore_openwakeword` importa `openwakeword.model` prima di chiamare `modello_della_parola`, quindi a runtime il pacchetto c'è sempre. Nota cosmetica: il tipo di ritorno è `set` nudo invece di `Set[str]`.
+2. `clients/voice/ascolto.py:1458` — se il file manca e il nome non è un modello pronto (né `hey_jarvis`), ripiega su `hey_jarvis` con un warning; un modello pronto passa col suo nome.
+   - Rischio: un nome nudo che openWakeWord non trova e che ferma l'ascolto.
+   - Esito: ok, V-4 della verifica esterna è chiusa. L'unico effetto collaterale è voluto: un nome parziale come `jarvis`, che prima openWakeWord accettava confrontando un pezzo del nome, ora finisce su hey_jarvis, che è comunque il modello giusto.
+3. `scripts/voce/installa.sh:149` — `GAS_ASCOLTO_SOGLIA=0.5` si scrive solo nel ramo che scrive anche `ehi_jarvis_it`, e solo se `valore_env` non trova già una soglia. Una chiave presente anche vuota resta intatta.
+   - Esito: ok, V-1 della verifica esterna è chiusa ed è coerente con `clients/voice/modelli/LEGGIMI.md:8`. Una seconda esecuzione non scrive di nuovo, perché la chiave del modello c'è già.
+4. `tests/test_unit_voce_ascolto.py:1962` — test nuovo: una soglia già scelta (0.6) resta intatta, il modello viene scritto e l'avviso sul filtro non compare se il file del filtro manca.
+   - Esito: ok, chiude la lacuna di copertura segnalata nella #855.
+5. `tests/test_unit_voce_ascolto.py:3351` — il ripiego col file assente è provato con `_modelli_pronti` finto (`ehi_jarvis_it` → `hey_jarvis`, `alexa` → `alexa`).
+   - Esito: ok.
 
-**Riserve**
-- R-862-1 BASSA: il ramo `errore` dello spegni (scripts/crm/telefono.sh:184) non ha test; il mutante che toglie il PARZIALE sopravvive. Correzione: un caso di spegni con il contenuto `"Warning\n{}"` in `registro.txt.serve` che si aspetti uscita 2 e «non riesco a leggere la configurazione».
-- COSMETICA (la cosmetica dell'icona della #861 resta aperta in altra forma): l'OK di scripts/crm/telefono.sh:202 dice che la dashboard resta sull'indirizzo locale anche quando lo lancia spegni.sh, che ha appena spento il CRM. Correzione: dirlo solo se `crm_installato`.
-- COSMETICA: con Tailscale installato ma spento, spegni.sh dà sempre tre avvisi («il collegamento resta salvato», «SOLO IN PARTE», «non spento»), anche se il telefono non è mai stato acceso. La prudenza è giusta perché lo script non può saperlo, ma il testo afferma invece di dire «se c'è».
-- COSMETICA: con «nostro pubblico» e il funnel solo sulla 443, dopo `serve off` lo script avvisa comunque del funnel ed esce 2. Nel finto la configurazione dopo l'off è `null`; il fatto che off tolga anche il funnel di quella porta l'avevo ricavato dal sorgente di Tailscale nella #860. È un falso allarme nella direzione prudente; correzione: rileggere `stato_serve` dopo l'off.
-- COSMETICA, già nella #861: con tipi annidati errati nel JSON (es. `Handlers` lista) esce un traceback, uscita 1 senza «SOLO IN PARTE». spegni.sh avvisa comunque, e la riga del .env è già tolta.
+**Riserve (da tracciare in stato_progetto.md)**
 
-**Rischio escluso**: Tailscale vero e la bash 3.2 del Mac non sono provati, perché l'ambiente è Linux con comandi finti. Rispetto alla #861 non entrano costrutti nuovi di bash 4: solo `if !`, `case` annidati e `||`. Non ho riletto modules/crm/server.py, che non è nel diff.
+- **R-856-1 BASSA** (`scripts/voce/installa.sh:157`): l'AVVISO dice di tornare indietro con `GAS_ASCOLTO_MODELLO=hey_jarvis`, ma non nomina la `GAS_ASCOLTO_SOGLIA=0.5` scritta insieme. Chi torna a hey_jarvis senza filtro resta a 0,5 invece di 0,7, quindi con più attivazioni per sbaglio. Con il filtro attivo la soglia che conta è un'altra (`GAS_ASCOLTO_SOGLIA_VERIFICA`), quindi l'effetto c'è solo senza filtro. Correzione: aggiungere all'avviso «e togli GAS_ASCOLTO_SOGLIA=0.5», e fare lo stesso nella riga «tornare indietro» del LEGGIMI.
+- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata.
+- **R-855-1 COSMETICA**, ancora aperta: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto e non quello usato.
 
-Nessun antipattern del Wall of Shame (né slicing della storia né simulazione di tool). Gas.py, i provider e i guardrail non sono toccati.
+**Rischi esclusi (non verificati)**
 
-Memoria: in coda a /home/user/Gas/.claude/agents/memoria_revisore.md ho aggiunto la riga contatore #862 e una lezione nuova (il messaggio finale di uno script richiamato da un altro va provato nell'output combinato). Il file è fuori stage e NON committato, come hai chiesto. Lo stage è invariato (sha256 6a42d4d3). Non ho creato .claude/.review_ok e non ci sono IP letterali né qui né nella memoria.
+- La prova con openWakeWord vero (1,00 contro 0,49 di hey_jarvis): non l'ho ripetuta, mi fido della tua.
+- Il comportamento sul Mac: in questo container non si può riprodurre.
+- Il resto della PR, fuori da questo delta: era già coperto dalle review #854 e #855.
+
+**Memoria**: aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md la riga #856 e una lezione (quando l'installer scrive due chiavi legate nel .env, le istruzioni per tornare indietro devono nominarle entrambe). Già committate da sole (c0c30f2f).
+
+Il commit è consentito.
+```
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #857: ho riletto tutto il `git diff --cached` (6 file, +114/−26). Rieseguita tests/test_unit_voce_ascolto.py: 391 passati. Non ho usato git stash; l'indice è intatto.
+
+**Elementi esaminati**
+
+1. `scripts/voce/installa.sh:28` — lettura delle opzioni: `--italiano` accende la scelta, qualunque altra opzione chiama `stop`.
+   - Rischio: uno stop arrivato dopo aver già scritto qualcosa.
+   - Esito: ok. Il ciclo gira prima del passo 1, quindi niente è stato ancora toccato. `tests/test_unit_voce_ascolto.py:1994` controlla l'uscita con 1 e il `.env` senza `GAS_ASCOLTO`. Nessun altro script chiama installa.sh con opzioni.
+2. `scripts/voce/installa.sh:158` — se esiste il filtro della voce per hey_jarvis e manca `--italiano`, il `.env` non viene toccato e lo script spiega come scegliere. Il file del modello viene copiato lo stesso.
+   - Rischio: filtro spento in silenzio (V-1 MEDIA del bot).
+   - Esito: ok, V-1 è chiusa. La scelta passa all'operatore. `tests/test_unit_voce_ascolto.py:1976` prova prima la versione senza opzione (nessuna scrittura) e poi quella con `--italiano` (modello, soglia e avviso scritti).
+3. `scripts/voce/installa.sh:172` — l'avviso spiega di tornare a `GAS_ASCOLTO_MODELLO=hey_jarvis` e di togliere anche `GAS_ASCOLTO_SOGLIA=0.5`.
+   - Esito: ok, R-856-1 è chiusa. Lo stesso testo è in `clients/voice/modelli/LEGGIMI.md`.
+4. `tests/test_unit_voce_ascolto.py:3475` — test nuovo: con openWakeWord finto e il file fidato, `Model()` riceve `wakeword_models=[str(f)]`.
+   - Esito: ok, V-3 è chiusa. È il collegamento che mancava tra `rilevatore_openwakeword` e il file.
+5. `clients/voice/ascolto.py:1458` — ripiego su hey_jarvis se il file manca e il nome non è un modello pronto (`_modelli_pronti` in `clients/voice/ascolto.py:1432`). Era già esaminato nella #856; nel diff contro HEAD non è cambiato.
+   - Esito: ok.
+
+**Riserve (da tracciare in stato_progetto.md)**
+
+- **R-857-1 COSMETICA**: con `GAS_ASCOLTO_MODELLO` già nel `.env`, `--italiano` non cambia niente. Il messaggio dice «lo lascio com'è», ma non dice che l'opzione è stata ignorata.
+- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata.
+- **R-855-1 COSMETICA**, ancora aperta: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto e non quello usato.
+- **Numeri peggiori** (V-2 del bot): il LEGGIMI ora dichiara più falsi di hey_jarvis sui flussi pieni di parole simili (49,8 contro 33,9 all'ora) e più chiamate prese da altre voci (75% contro 40%). È un compromesso dichiarato, non un difetto del codice. La scelta resta dell'operatore, ed è il motivo per cui `--italiano` è giusto.
+
+**Rischi esclusi (non verificati)**
+
+- Il comportamento sul Mac (installer vero, voce dell'operatore): in questo container non si può riprodurre.
+- La correttezza dei numeri riscritti nei LEGGIMI: non li ho ricalcolati dai file grezzi in `reports/voce_simulazione_2026-11-23/modello_italiano/ris/`. Ho controllato solo che i documenti siano coerenti tra loro.
+- I fallimenti di tests/test_unit_web_browser.py: fuori dal diff e, secondo te, identici su main.
+
+**Memoria**: aggiunta la riga #857 in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata da sola (dcee5f24).
+
+Il commit è consentito.
+```
+
+## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (c85490e5)
+
+```
+## VERDETTO: APPROVATO
+
+Review #860-MERGE: merge di origin/main b100f8d4 (PR #404 CRM) in feat/voce-modello-italiano (PR #405, HEAD 05df3ae7). Il merge è in staging e non ancora committato; MERGE_HEAD è uguale a origin/main. Non ho usato git stash.
+
+Controlli generali:
+- `git ls-files -u` è vuoto: nessun conflitto lasciato aperto.
+- `git diff --cached --check HEAD` è pulito e non ci sono marcatori di conflitto.
+- Rispetto a HEAD entrano 10 file (+510/−23).
+- I test CRM più quelli della voce passano: 564 passati.
+
+**Elementi esaminati**
+
+1. `modules/crm/store.py:1`, `modules/crm/copia_cifrata.py:1`, `tests/test_unit_crm.py:1`, `scripts/crm/installa.sh:1`, `.claude/perimetro_review.txt:1`, oltre a `reports/bacheca.md` e `reports/crm/`: questi sono i file del perimetro presi da main.
+   - Rischio: un file di main modificato o incompleto.
+   - Esito: ok. `git diff --cached origin/main` su questi percorsi è vuoto, quindi sono uguali a main byte per byte.
+2. `scripts/voce/installa.sh:158`, `clients/voice/ascolto.py:1458`, `tests/test_unit_voce_ascolto.py:3475`, oltre a `reports/voce_simulazione_2026-11-23/`: questi sono i file nostri.
+   - Rischio: un file del ramo perso nel merge.
+   - Esito: ok. `git diff --cached HEAD` su questi percorsi è vuoto. I soli file cambiati sia dal ramo sia da main sono memoria e stato_progetto, entrambi uniti e controllati sotto.
+3. `reports/handoff.md:1`, `reports/ultimo_report.md:1`, `reports/diff_sessione.md:1`: tenuti uguali a HEAD (`--ours`).
+   - Esito: ok, come vuole la regola per i report di sessione del ramo.
+4. `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» ha in testa la nostra voce e in coda la riga di main intera (verificato confrontando le stringhe). Nell'indice c'è una sola riga di questo tipo. `reports/stato_progetto.md:392` aggiunge la voce del modello italiano. Rispetto a main cambiano solo queste 2 righe (+2/−1).
+   - Esito: ok.
+5. `.claude/agents/memoria_revisore.md:1` — unione delle due parti: rispetto a HEAD entrano le righe della chat CRM (#858/#859 e le loro lezioni), rispetto a main entrano le nostre (#854–#857 e 3 lezioni). Nessuna riga persa né di HEAD né di main.
+   - Esito: ok.
+
+**Note COSMETICHE (contenuto del ramo, non del merge)**
+
+- `reports/stato_progetto.md:4` cita le review «#854/#855» e dà R-854-1 come decisione dell'operatore. Dopo la #857 è già gestita con `--italiano`. R-857-1 non è tracciata in stato_progetto.md; la riga 392 dice correttamente #854–#857.
+
+**Rischi esclusi**
+
+- La suite completa: ho eseguito solo i test CRM e voce. Gli altri file di test non sono toccati dal merge, e i fallimenti di tests/test_unit_web_browser.py dovuti a bwrap assente sono noti.
+- Il comportamento sul Mac di scripts/crm/installa.sh: non si può riprodurre qui. È già stato revisionato dalla chat CRM (#858/#859).
+
+**Memoria**: aggiunta la riga #860-MERGE in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree. Non l'ho messa in staging né committata, perché un commit del solo file chiuderebbe il merge. Fai tu `git add .claude/agents/memoria_revisore.md` prima di committare il merge.
+
+Il commit del merge è consentito.
+```
+
+## §4ter VERDETTO DEL REVISORE SUL 2° MERGE DI MAIN
+
+```
+## VERDETTO: APPROVATO
+
+Review #863-MERGE: merge di origin/main 3b624d77 (PR #406, CRM dal telefono) in feat/voce-modello-italiano (PR #405, HEAD ad58e167). Il merge è in staging e non ancora committato; MERGE_HEAD è uguale a origin/main. Non ho usato git stash.
+
+Controlli generali:
+- `git ls-files -u` è vuoto: nessun conflitto lasciato aperto.
+- Rispetto a HEAD entrano 9 file (+669/−7).
+- I test CRM più voce passano: 586 passati (rieseguiti da me).
+
+**Elementi esaminati**
+
+1. `modules/crm/server.py:71`, `modules/crm/__main__.py:1`, `scripts/crm/telefono.sh:1`, `scripts/crm/spegni.sh:1`, `tests/test_unit_crm.py:1`, oltre a `reports/crm/`: sono i file presi da main.
+   - Rischio: un file di main modificato nel merge.
+   - Esito: ok. `git diff --cached origin/main` su questi percorsi è vuoto, quindi sono identici a main.
+   - L'unica nota di `--check` (riga vuota a fine file, `tests/test_unit_crm.py:3286`) arriva già così da main, non dal merge.
+2. `scripts/voce/installa.sh:158`, `clients/voice/ascolto.py:1458`, `tests/test_unit_voce_ascolto.py:3475`, `reports/voce_simulazione_2026-11-23/`, più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` (tenuti `--ours`).
+   - Rischio: un file del ramo perso nel merge.
+   - Esito: ok. `git diff --cached HEAD` su questi percorsi è vuoto. I soli file cambiati sia dal ramo sia da main sono memoria e stato_progetto, entrambi uniti e controllati sotto.
+3. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento».
+   - Ho verificato confrontando le stringhe che la riga nell'indice è esattamente così: la prima voce di main (25/11), poi la nostra voce del 24/11, poi il resto della riga di main.
+   - Nell'indice c'è una sola riga di questo tipo. Rispetto a main cambia solo, in più, la voce del modello italiano.
+   - Esito: ok.
+4. `.claude/agents/memoria_revisore.md:1752` — memoria unita: nessuna riga persa né di HEAD né di main.
+   - `#860-MERGE` (nostra) e `#860` della chat CRM sono righe distinte che convivono.
+   - Esito: ok.
+
+**Rischi esclusi**
+
+- Il contenuto della PR #406 (dashboard del CRM dal telefono via Tailscale): non l'ho revisionato nel merito, perché entra identico a main ed è già passato dalle review #860–#862 della chat CRM.
+- Il comportamento sul Mac e su Tailscale: non si può riprodurre qui.
+- La suite completa: ho eseguito solo i test CRM e voce.
+
+**Memoria**: ho aggiunto la riga #863-MERGE in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree, non in staging e non committata. Va messa in staging da te prima di committare il merge.
+
+Il commit del merge è consentito.
+```
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_crm.py`: 173 → 195 passed. Nuovi: nomi Tailscale ammessi e rifiutati, Host del funnel e su porte diverse da 443 rifiutati, cookie `Secure`, e 20 casi di `telefono.sh`/`spegni.sh` con comandi finti (accendi, stato, spegni, funnel, altri servizi, JSON illeggibile, HTTPS da attivare, serve fallito, .env collegato, porta illeggibile).
-- Suite del kernel non toccata (gas.py e test del kernel invariati).
+- `tests/test_unit_voce_ascolto.py`: 384 → 391 passed (7 test nuovi; 3 test esistenti adattati).
+- Dopo il merge di main: `tests/test_unit_crm.py`, `tests/test_unit_voce_ascolto.py` e `test_collection_dell_intero_repo_non_esplode` danno 565 passed.
+- Suite completa su questo container, prima delle correzioni: 35 failed, 4285 passed, 2 skipped. Riepilogo reale: «35 failed, 4285 passed, 2 skipped in 579.99s».
+- Correzione: non tutti i FAIL erano fuori scope.
+  - 34 in `tests/test_unit_web_browser.py` dipendono da bwrap, assente nel container (`FileNotFoundError: ... 'bwrap'`); su origin/main falliscono allo stesso modo. Il file non è nel diff.
+  - 1 in `tests/test_unit_voice_server.py` (`test_collection_dell_intero_repo_non_esplode`) era invece di questa PR, e la CI l'ha trovato: lo `unit-suite` di d6a980a5 è rosso. Due script della simulazione si chiamavano `frasi_test.py` e `quasi_test.py`, pytest li prendeva per test e cadeva su `import openwakeword`.
+  - Rinominati in `frasi_prova.py` e `quasi_prova.py`, con il riferimento corretto in `rifai_tutto.sh`. Dopo la correzione il test passa in locale («1 passed»).
 
 ## §6 STATO CI
 
-`gh run list` non usato: GitHub si interroga con `gh api` REST.
-- Mappatura commit→run:
-  - Commit della sessione e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (il ramo si pusha col commit di fine-task).
-- Ultima run nota su main b100f8d4 (merge della #404): CI verde al merge.
+Output reale (API, run del branch) alla scrittura:
+
+```
+completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45515477257	ad58e167	2026-11-25T00:06:45Z
+completed	success	CI	feat/voce-modello-italiano	push	45515470801	ad58e167	2026-11-25T00:06:42Z
+completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45514562040	05df3ae7	2026-11-25T00:00:05Z
+completed	success	CI	feat/voce-modello-italiano	push	45514556378	05df3ae7	2026-11-25T00:00:03Z
+```
+
+Mappatura commit→run:
+- d6a980a5: run CI propria del push.
+- 21a68a4f: run propria.
+- d63cb6f5: run CI propria; unit-suite in corso al momento della verifica esterna; verifica-bot failure (V-1 MEDIA, corretta in 908f430b).
+- 5291bca4, b650558a, c0c30f2f, dcee5f24, 908f430b: nessuna run su questi SHA (pushati insieme ad altri commit, o non ancora pushati); il loro contenuto è nell'albero testato dal commit di testa.
+- 05df3ae7: CI e bot propri (bot APPROVATO CON RISERVE, neutral).
+- ad58e167: CI verde (unit-suite, handoff-check success), verifica-bot neutral.
+- c85490e5: nessuna run propria (pushato insieme ad ad58e167).
+- Commit del 2° merge di main e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-862-1 BASSA: nessun test per il ramo «configurazione illeggibile» dello spegni.
-- COSMETICHE #860/#861/#862: in `reports/stato_progetto.md`.
-- Dalla PR #404: V-1/V-2 BASSE e V-3 COSMETICA del bot, V-1 BASSA della 3ª verifica esterna, R-859-1 BASSA, R-859-2 COSMETICA, R-854-2 BASSA: in `reports/stato_progetto.md`.
-- R-852M-1 BASSA (voce) e riserve della #401 (funnel): in `reports/stato_progetto.md`.
-- Script non provati con un Tailscale vero, launchd vero e bash 3.2.
+- R-854-1: decisione dell'operatore (modello italiano senza filtro o hey_jarvis col filtro), ora esplicita con `--italiano`.
+- V-3 della verifica esterna: licenza CC BY-NC-SA, decisione dell'operatore.
+- R-854-3 BASSA: interruzione col modello nuovo non misurata.
+- R-855-1 COSMETICA: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto.
+- R-857-1 COSMETICA: `--italiano` ignorato in silenzio se il modello è già scelto nel `.env`.
+- Chiuse in questa sessione:
+  - R-854-2, R-856-1;
+  - verifica esterna #405: V-1, V-2 (documenti), V-4, V-5 (test «nessun avviso»), V-6 (handoff riscritto);
+  - bot #405: V-1, V-2, V-3, V-4.
+- Bot su 05df3ae7, V-1 BASSA: nel ripiego su hey_jarvis restano la soglia 0,5 e niente filtro. Aperta; c'è il warning nel log.
+- 2ª verifica esterna (commento https://github.com/Gasss23/Gas/pull/405#issuecomment-7148094095):
+  - V-1 MEDIA (conflitto con main): chiusa col merge c85490e5.
+  - V-2 BASSA (scelta automatica senza filtro): dichiarata in §0.
+  - V-3 BASSA: manca l'hash del modello valutato in `ris/`, quindi il legame tra il `.onnx` e le griglie non si prova dal repo. Aperta.
+  - V-4 COSMETICA (§6 vecchio): riscritto.
+- Riserve delle altre chat: in `reports/stato_progetto.md`, non toccate qui.
