@@ -17,7 +17,8 @@ Nessuna nuova. Merge della PR: se il bot dà APPROVATO pulito lo fa l'agente, al
   - Docstring e LEGGIMI aggiornati (V-2).
   - Il test controlla il nome passato al rilevatore (V-3).
 - Test: `tests/test_unit_voce_ascolto.py` da 391 a 395 passed.
-- Review: #864–#867, APPROVATO CON RISERVE.
+- **Fetta 5 — Riserve del bot su 0d433dfc**: FATTA. Il nostro file del modello resta la prima scelta anche se ha il nome di un modello pronto; l'avviso dice il valore rifiutato.
+- Review: #864–#867 APPROVATO CON RISERVE, #869 APPROVATO.
 
 ## Riserve aperte
 - R-867-1 BASSA, che c'era già prima: un modello pronto non scaricato (es. alexa) fa uscire l'ascolto invece di ripiegare.

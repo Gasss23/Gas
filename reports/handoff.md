@@ -45,6 +45,9 @@ NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+63a28b4a fix(voce): il nostro file del modello resta la prima scelta anche col nome di un modello pronto; avviso col valore rifiutato (V-1/V-2 bot su 0d433dfc)
+bb542081 chore(revisore): memoria review #869 — APPROVATO
+0d433dfc docs(fine-task): handoff col merge di main (PR #402, review #868-MERGE)
 fb60ae2e Merge origin/main (PR #402 R7) nel ramo della PR #407 — report del ramo tenuti, memoria unita (review #868-MERGE)
 7cba139c docs(report): riserve aperte della #407 tracciate in stato_progetto con id regolari (V-1 bot su 3d12ee08)
 3d12ee08 docs(fine-task): report con le riserve del bot #407 chiuse (review #866/#867)
@@ -65,7 +68,8 @@ I commit c46b0b86 e 434e0966 toccano `tests/test_unit_voce_ascolto.py`, che è n
 - #864: primo diff;
 - #865: R-864-1 e R-864-2;
 - #866: riserve del bot #407;
-- #867: R-866-1.
+- #867: R-866-1;
+- #869: V-1/V-2 del bot su 0d433dfc (il nostro file resta la prima scelta, avviso col valore).
 
 ```
 ## VERDETTO: APPROVATO CON RISERVE
@@ -218,6 +222,39 @@ Review #867, solo il delta rispetto alla #866 (PR #407; l'indice ora vale 3 file
 Il commit è consentito.
 ```
 
+```
+## VERDETTO: APPROVATO
+
+Review #869 della PR #407, dopo il bot su 0d433dfc: `git diff --cached` (2 file, +14/−5). Le due note del bot sono chiuse. La suite tests/test_unit_voce_ascolto.py passa: 395 test, rieseguiti da me. Non ho usato git stash e l'indice è intatto.
+
+**Elementi esaminati**
+
+1. `clients/voice/ascolto.py:1479` — il controllo dei modelli pronti ora sta dentro il ramo dei nomi non semplici.
+   - Rischio controllato: un nostro file `.gas_voce/modelli/<nome>.onnx` ignorato perché ha lo stesso nome di un modello pronto (V-1 del bot).
+   - Esito: ok, V-1 chiusa. Per i nomi semplici si cerca di nuovo prima il file, come su main.
+   - Se il file manca, il ramo «assente → pronto» di `clients/voice/ascolto.py:1498` torna raggiungibile. «alexa_v0.1», che ha un punto, passa sempre dal ramo dei pronti.
+   - L'elenco dei modelli pronti viene dal pacchetto, mai dall'ambiente.
+2. `clients/voice/ascolto.py:1488` — l'avviso riporta il valore rifiutato come `%r` di `modello[:60]`.
+   - Rischio controllato: un valore con a capo o molto lungo scritto nel log.
+   - Esito: ok, V-2 chiusa. `%r` scrive gli a capo come `\n` e il valore è tagliato a 60 caratteri. `main` passa sempre una stringa, quindi tagliarlo è sicuro.
+3. `tests/test_unit_voce_ascolto.py:3430` — test nuovo: un nostro `hey_jarvis.onnx` fidato vince sul modello pronto. Il file viene poi rimosso, così le asserzioni che seguono non cambiano.
+   - Esito: ok.
+
+**Note aperte (non nuove, già tracciate)**
+
+- **R-854-3 BASSA**: l'interruzione col modello italiano non è misurata.
+- **Nota BASSA della #867**: i modelli pronti non scaricati (es. «alexa») fanno fallire l'avvio invece di ripiegare su hey_jarvis.
+
+**Rischi esclusi**
+
+- Non ho provato con openWakeWord vero che un nostro `hey_jarvis.onnx` venga caricato dal percorso. Qui il pacchetto non è installato nell'ambiente dei test; la parte che passa il percorso a `Model()` è già coperta dal test della V-3 (#857).
+- Il comportamento sul Mac: non riproducibile qui.
+
+**Memoria**: riga #869 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e già committata da sola (bb542081).
+
+Il commit è consentito.
+```
+
 ## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (PR #402)
 
 ```
@@ -273,7 +310,8 @@ Il commit del merge è consentito.
   - job «esito» in failure: GitHub ha risposto con un errore quando il bot ha pubblicato la recensione (`gh api … pulls/407/reviews` exit 1), non per un difetto della PR.
 - 434e0966, 94f19a67 e 20e3ded4: nessuna run propria, vanno col push di questo commit.
 - 3d12ee08: verifica-bot neutral (APPROVATO CON RISERVE, solo V-1 BASSA sui report, corretta in 7cba139c).
-- 7cba139c e il merge di main (PR #402, review #868-MERGE APPROVATO): pushati insieme a questo commit, run non ancora disponibile alla scrittura dell'handoff.
+- 0d433dfc (merge di main, review #868-MERGE APPROVATO): verifica-bot neutral, APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA), corrette in questo giro.
+- Commit della correzione e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -284,4 +322,5 @@ Il commit del merge è consentito.
   - V-1 (§6): riscritto.
   - V-2 (nomi con la versione): chiusa.
   - V-3 COSMETICA: il log «chiesto «…»» riporta il valore grezzo. Aperta.
+- Chiuse anche V-1/V-2 del bot su 0d433dfc (review #869).
 - Chiuse: V-1 bot #405, R-855-1, R-864-1, R-864-2, R-866-1, V-1/V-2/V-3 bot #407.
