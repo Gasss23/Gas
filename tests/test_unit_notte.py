@@ -2854,3 +2854,113 @@ def test_r7f3_motivi_del_lavoro_anche_con_sempre_opus(testa, motivo):
     esausta» ma porta lo stesso dettaglio: un lavoro che gira a vuoto resta un ko vero."""
     assert not notte._ko_esterno({"errore": f"{testa}{motivo}."})
     assert notte._ko_esterno({"errore": f"{testa}claude-cli: KO (RuntimeError)."})
+
+
+# ── R7 fetta 4: tetto di tempo DURO del giro ────────────────────────────────
+
+class _TettoGiro:
+    def __init__(self):
+        self.secondi, self.fn, self.annullato = None, None, False
+
+    def arma(self, secondi, fn):
+        self.secondi, self.fn = secondi, fn
+        return self
+
+    def cancel(self):
+        self.annullato = True
+
+
+def test_r7f4_tetto_duro_armato_e_tolto_a_fine_giro(dirs, monkeypatch):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    monkeypatch.setenv("GAS_NOTTE_MAX_SEC_GIRO", "600")
+    t = _TettoGiro()
+    monkeypatch.setattr(notte, "_arma_tetto_giro", t.arma)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    assert _giro_esito(root, cat)[0] == 0
+    assert t.secondi == 600 + notte.MARGINE_DURO_S and callable(t.fn)
+    assert t.annullato
+
+
+def test_r7f4_tetto_duro_tolto_anche_se_il_giro_si_rompe(dirs, monkeypatch):
+    """Un errore dopo l'avvio dei compiti (giro «interrotto»): il timer si toglie lo stesso."""
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    t = _TettoGiro()
+    monkeypatch.setattr(notte, "_arma_tetto_giro", t.arma)
+    monkeypatch.setattr(notte, "_chiudi_firme_scadute",
+                        lambda root: (_ for _ in ()).throw(RuntimeError("rotto")))
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: c\n    prompt: c\n")
+    assert _giro_esito(root, cat)[0] == 1
+    assert callable(t.fn) and t.annullato
+
+
+def test_r7f4_tetto_duro_scaduto_avvisa_e_ferma(monkeypatch):
+    inviati, fermati = [], []
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: inviati.append(a))
+    monkeypatch.setattr(notte, "_termina_giro", lambda: fermati.append(1))
+    notte._giro_scaduto()
+    assert fermati == [1] and len(inviati) == 1 and inviati[0][3] == notte.TETTO_DURO_NOTTE
+    # anche se l'avviso fallisce, il processo si ferma
+    monkeypatch.setattr(notte, "_notifica_telegram",
+                        lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("rete")))
+    notte._giro_scaduto()
+    assert fermati == [1, 1]
+
+
+def test_r7f4_testo_interrotto_su_telegram(monkeypatch):
+    """Il testo fisso «INTERROTTO» col motivo del tetto duro (nessun testo del modello)."""
+    inviati = []
+    monkeypatch.setattr(_tg, "invia_notifica", lambda testo: (inviati.append(testo), (True, ""))[1])
+    notte._notifica_telegram("2026-11-25 03:00", [], [], notte.TETTO_DURO_NOTTE)
+    assert inviati and "INTERROTTO" in inviati[0] and notte.TETTO_DURO_NOTTE in inviati[0]
+
+
+def test_r7f4_timer_vero_scatta():
+    import threading as _th
+    fatto = _th.Event()
+    t = notte._arma_tetto_giro(0.01, fatto.set)
+    assert fatto.wait(2) and t.daemon
+
+
+
+def test_r7f4_timer_e_fine_giro_un_solo_avviso(dirs, monkeypatch):
+    """R-866R7-2: il timer scatta mentre l'ultimo compito gira: un solo avviso
+    («INTERROTTO»), niente riepilogo normale; e dopo la fine del giro il timer non ferma."""
+    inviati, fermati = [], []
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: inviati.append(a))
+    monkeypatch.setattr(notte, "_termina_giro", lambda: fermati.append(1))
+    t = _TettoGiro()
+    t.join = lambda s=None: None
+    monkeypatch.setattr(notte, "_arma_tetto_giro", t.arma)
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: lento\n    prompt: lento\n")
+
+    class _K(_KEsito):
+        def run_turn(self, prompt):
+            t.fn()  # scade durante il compito
+            yield {"type": "final", "content": "fatto"}
+
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K([]))
+    assert fermati == [1] and len(inviati) == 1 and inviati[0][3] == notte.TETTO_DURO_NOTTE
+    inviati.clear()
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KEsito([]))
+    t.fn()  # dopo la fine del giro
+    assert fermati == [1] and len(inviati) == 1 and inviati[0][3] is None
+
+
+def test_r7f4_nome_del_compito_appeso_nel_log(monkeypatch, caplog):
+    monkeypatch.setattr(notte, "_notifica_telegram", lambda *a, **kw: None)
+    monkeypatch.setattr(notte, "_termina_giro", lambda: None)
+    g = notte._nuova_guardia()
+    g["compito"] = "rassegna"
+    notte._giro_scaduto(g)
+    assert "compito in corso: rassegna" in caplog.text
+
+
+def test_r7f4_timer_con_attesa_enorme():
+    t = notte._arma_tetto_giro(1e12, lambda: None)
+    try:
+        assert t.interval == notte.TETTO_TIMER_NOTTE_S and t.is_alive()
+    finally:
+        t.cancel()

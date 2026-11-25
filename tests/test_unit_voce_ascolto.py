@@ -190,6 +190,17 @@ def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None, rilevatore=N
     return visti[0]
 
 
+def test_main_normalizza_il_nome_del_modello(monkeypatch, tmp_path, caplog):
+    """R-864-1: «Hey Jarvis» nel .env vale hey_jarvis, senza ripiego né avviso."""
+    visti = []
+    rilevatore = lambda m, **k: (visti.append(m), (lambda b: 0.0, lambda: None))[1]
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_MODELLO": " Hey  Jarvis "},
+                    rilevatore=rilevatore)
+    assert "parola «hey_jarvis»" in caplog.text and "non valido" not in caplog.text
+    assert visti == ["hey_jarvis"]   # V-3 bot #407: anche il rilevatore riceve il nome pulito
+
+
 @pytest.mark.parametrize("valore,atteso", [(None, 200.0), ("350", 350.0), ("abc", 200.0)])
 def test_main_passa_la_soglia_della_voce(monkeypatch, tmp_path, valore, atteso):
     """`main` passa ad Ascolto GAS_ASCOLTO_VOCE_RMS, e senza variabile il default 200."""
@@ -542,6 +553,16 @@ def test_comando_fine_chiude_la_conversazione_senza_bip(caplog):
     assert f.tipi == ["parola", "seguito"] and f.riprodotti == [b"A"] and f.bip == ["ok"]
     # chiusa per il comando del server, non come un errore
     assert "non rivolto a Gas" in caplog.text and "non riuscito" not in caplog.text
+
+
+def test_comando_fine_sul_primo_turno_non_parla_di_seguito(caplog):
+    """Prova del 25/11: «fine» sul primo turno (trascrizione vuota) non è un seguito."""
+    f = FintiSeguito([(True, None, "", "fine")])
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        f.ascolto(_blocchi(PAROLA, *RICHIESTA, (SILENZIO, _sec(50)))).gira()
+    assert f.tipi == ["parola"] and f.riprodotti == []
+    assert "richiesta scartata dal server" in caplog.text
+    assert "non rivolto a Gas" not in caplog.text
 
 
 def test_comando_pausa_suona_va_bene_e_chiude():
@@ -3364,9 +3385,35 @@ def test_verifica_solo_dalla_cartella_locale(monkeypatch, tmp_path):
         tmp_path / ".gas_voce" / "verifica" / "hey_jarvis_verifier.pkl")
 
 
+def test_avviso_di_ripiego_una_volta_sola(monkeypatch, tmp_path, caplog):
+    """R-864-2: due chiamate all'avvio, un avviso solo."""
+    monkeypatch.setattr(a, "_modelli_pronti", lambda: {"hey_jarvis"})
+    monkeypatch.setattr(a, "_AVVISI_DATI", set())
+    with caplog.at_level(logging.WARNING, logger="gas.ascolto"):
+        a.modello_della_parola("ehi_jarvis_it", tmp_path)
+        a.modello_della_parola("ehi_jarvis_it", tmp_path)
+    assert caplog.text.count("ehi_jarvis_it.onnx non c'è") == 1
+
+
+def test_descrivi_modello_dice_il_modello_in_uso(monkeypatch, tmp_path):
+    """R-855-1: il log di avvio dice se il modello viene dal file o è un ripiego."""
+    monkeypatch.setattr(a, "_modelli_pronti", lambda: {"hey_jarvis"})
+    d_ = lambda m: a.descrivi_modello(m, a.modello_della_parola(m, tmp_path))
+    assert d_("hey_jarvis") == "hey_jarvis"
+    assert "ripiego" in d_("ehi_jarvis_it")
+    d = tmp_path / ".gas_voce" / "modelli"
+    d.mkdir(parents=True, mode=0o700)
+    os.chmod(tmp_path / ".gas_voce", 0o700)
+    f = d / "ehi_jarvis_it.onnx"
+    f.write_bytes(b"onnx")
+    os.chmod(f, 0o600)
+    assert d_("ehi_jarvis_it") == "ehi_jarvis_it (dal file ehi_jarvis_it.onnx)"
+
+
 def test_modello_della_parola_da_file_locale(monkeypatch, tmp_path):
     """GAS_ASCOLTO_MODELLO=<nome>: il file .gas_voce/modelli/<nome>.onnx se c'è ed è
     fidato, altrimenti il nome (modello pronto); mai un percorso preso dall'ambiente."""
+    vero_modelli_pronti = a._modelli_pronti
     assert a.modello_della_parola("hey_jarvis", tmp_path) == "hey_jarvis"
     # V-4 ve #405: nostro modello senza file → hey_jarvis; modello pronto → il suo nome
     monkeypatch.setattr(a, "_modelli_pronti", lambda: {"hey_jarvis", "alexa"})
@@ -3379,8 +3426,29 @@ def test_modello_della_parola_da_file_locale(monkeypatch, tmp_path):
     f.write_bytes(b"onnx")
     os.chmod(f, 0o600)
     assert a.modello_della_parola("ehi_jarvis_it", tmp_path) == str(f)
+    # V-1 bot su 0d433dfc: un nostro file col nome di un modello pronto resta la prima scelta
+    g = d / "hey_jarvis.onnx"
+    g.write_bytes(b"onnx")
+    os.chmod(g, 0o600)
+    monkeypatch.setattr(a, "_modelli_pronti", lambda: {"hey_jarvis"})
+    assert a.modello_della_parola("hey_jarvis", tmp_path) == str(g)
+    g.unlink()
+    # V-1 bot #407 / R-866-1: un modello pronto col nome esatto (anche il nome del file con
+    # la versione) passa com'è. Nomi e percorsi come quelli veri di openwakeword 0.6.0.
+    import types
+    finto = types.ModuleType("openwakeword")
+    finto.MODELS = {"alexa": {}, "hey_jarvis": {}}
+    finto.get_pretrained_model_paths = lambda fw="tflite": [
+        "/x/openwakeword/resources/models/alexa_v0.1.onnx",
+        "/x/openwakeword/resources/models/hey_jarvis_v0.1.onnx"]
+    monkeypatch.setitem(sys.modules, "openwakeword", finto)
+    assert vero_modelli_pronti() == {"alexa", "hey_jarvis", "alexa_v0.1", "hey_jarvis_v0.1"}
+    monkeypatch.setattr(a, "_modelli_pronti", vero_modelli_pronti)
+    assert a.modello_della_parola("alexa_v0.1", tmp_path) == "alexa_v0.1"
+    monkeypatch.setattr(a, "_modelli_pronti", lambda: {"hey_jarvis"})
+    # V-1 bot #405: un nome non semplice non arriva mai a openWakeWord
     for modello in ("../ehi_jarvis_it", "/tmp/x.onnx", "Ehi Jarvis", ""):
-        assert a.modello_della_parola(modello, tmp_path) == modello
+        assert a.modello_della_parola(modello, tmp_path) == "hey_jarvis"
     os.chmod(f, 0o666)   # scrivibile da altri: non si carica, si ripiega su hey_jarvis
     assert a.modello_della_parola("ehi_jarvis_it", tmp_path) == "hey_jarvis"
 
