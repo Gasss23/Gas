@@ -30,14 +30,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 ++
- clients/voice/ascolto.py           |  70 +++++++++++++++++++++++----
- reports/diff_sessione.md           |  24 +++++-----
+ .claude/agents/memoria_revisore.md |   9 +++
+ clients/voice/ascolto.py           |  72 +++++++++++++++++++---
+ reports/diff_sessione.md           |  19 ++++--
  reports/handoff.md | n/d
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  73 +++++++++-------------------
+ reports/ultimo_report.md           |  38 +++++++-----
  scripts/voce/LEGGIMI.md            |   2 +-
- tests/test_unit_voce_ascolto.py    |  63 ++++++++++++++++++++++++-
+ tests/test_unit_voce_ascolto.py    |  70 ++++++++++++++++++++-
 ```
 
 NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre lo si scrive; la riga di totale è tolta.
@@ -45,6 +45,8 @@ NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3fde7e08 Merge origin/main (PR #408 R7) nel ramo della PR #407 — report del ramo tenuti, memoria unita (review #871-MERGE)
+f8f1f66b docs(fine-task): handoff col merge di main (PR #410, review #870-MERGE)
 46dfb8f9 Merge origin/main (PR #410 CRM) nel ramo della PR #407 — report del ramo tenuti, stato e memoria uniti (review #870-MERGE, R-870M-1 chiusa)
 dbd0d167 docs(fine-task): report col giro sulle note del bot su 0d433dfc (review #869)
 63a28b4a fix(voce): il nostro file del modello resta la prima scelta anche col nome di un modello pronto; avviso col valore rifiutato (V-1/V-2 bot su 0d433dfc)
@@ -343,6 +345,43 @@ Controlli generali: `git ls-files -u` vuoto e `--check` pulito. Rispetto a HEAD 
 **Memoria**: riga #870-MERGE aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree (non in staging, non committata). Contiene anche la lezione: quando si riscrive a mano una voce di stato durante un merge, confrontare uno per uno i finding aperti delle due versioni. Mettila in staging tu prima del commit del merge.
 ```
 
+## §4quater VERDETTO DEL REVISORE SUL MERGE DI MAIN (PR #408)
+
+```
+## VERDETTO: APPROVATO
+
+Review #871-MERGE: merge di origin/main b1b1644f (PR #408, R7 fetta 4 bis: tetto di tempo duro del giro di notte) nel ramo fix/voce-log-e-modello (PR #407, HEAD f8f1f66b). Il merge è in staging e non è stato committato; MERGE_HEAD coincide con origin/main. Non ho usato git stash.
+
+Controlli generali: `git ls-files -u` è vuoto e `--check` è pulito. Rispetto a HEAD entrano 4 file (+196/−1). I test notte più voce passano: 633, rieseguiti da me.
+
+**Elementi esaminati**
+
+1. `modules/notte/notte.py:1` e `tests/test_unit_notte.py:1` — file presi da main.
+   - Rischio: una modifica introdotta durante il merge.
+   - Esito: ok, `git diff --cached origin/main` è vuoto.
+2. I nostri file — `clients/voice/ascolto.py:1479`, `tests/test_unit_voce_ascolto.py:3430`, scripts/ — più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` tenuti col lato del ramo (`--ours`).
+   - Esito: ok, `git diff --cached HEAD` è vuoto su questi percorsi. Gli unici file cambiati da entrambi i lati sono la memoria e stato_progetto.
+3. `.claude/agents/memoria_revisore.md:1` — memoria unita.
+   - Esito: ok, nessuna riga persa né di HEAD né di main.
+4. `reports/stato_progetto.md:4` è identica a main, `reports/stato_progetto.md:394` (voce del modello italiano) è identica a HEAD, `reports/stato_progetto.md:406` è la voce R7 4 bis di main. C'è una sola riga «Ultimo aggiornamento».
+   - Esito: ok.
+5. `reports/stato_progetto.md:394` — finding aperti confrontati uno per uno, come dice la lezione della #870. I 4 elementi che compaiono solo nella versione di main sono tutti coperti:
+   - V-2 BASSA del bot su f51a58c7 (§6 dell'handoff della #405): presente nell'indice, riformulata.
+   - V-1 BASSA del bot su 05df3ae7 (ripiego che tiene `GAS_ASCOLTO_SOGLIA=0.5`): presente, «ancora aperta».
+   - V-3 della 2ª verifica esterna #405 (hash del modello): presente.
+   - V-1 BASSA del bot su f51a58c7 (nomi non semplici): data per chiusa, ed è corretto.
+   - Esito: ok, nessun finding perso. La R-870M-1 della review precedente risulta sistemata.
+
+**Rischi esclusi**
+
+- Il contenuto della PR #408 (tetto duro del giro di notte): non l'ho rivisto nel merito, perché entra identico a main dopo le review #866-R7 e #867-R7.
+- La suite completa: ho eseguito solo i test notte e voce.
+
+**Memoria**: riga #871-MERGE aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree: non in staging e non committata. Mettila in staging tu prima del commit del merge.
+
+Il commit del merge è consentito.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_voce_ascolto.py`: 391 → 395 passed (4 test nuovi, 2 aggiornati).
@@ -359,7 +398,8 @@ Controlli generali: `git ls-files -u` vuoto e `--check` pulito. Rispetto a HEAD 
 - 3d12ee08: verifica-bot neutral (APPROVATO CON RISERVE, solo V-1 BASSA sui report, corretta in 7cba139c).
 - 0d433dfc (merge di main, review #868-MERGE APPROVATO): verifica-bot neutral, APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA), corrette in questo giro.
 - dbd0d167: CI verde (unit-suite e handoff-check success), verifica-bot neutral (APPROVATO CON RISERVE, una BASSA e una COSMETICA sul testo dei log, rimandate).
-- Merge di main (PR #410) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- f8f1f66b (merge di main PR #410): CI verde, verifica-bot neutral (APPROVATO CON RISERVE, V-1 BASSA log grezzo = R-ve407-3, V-2 BASSA conteggi di §2, rigenerati qui).
+- Merge di main (PR #408) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
