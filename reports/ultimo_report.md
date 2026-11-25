@@ -20,6 +20,6 @@ Nessuna nuova. Merge della PR: se il bot dà APPROVATO pulito lo fa l'agente, al
 - Review: #864–#867, APPROVATO CON RISERVE.
 
 ## Riserve aperte
-- R-867 BASSA, che c'era già prima: un modello pronto non scaricato (es. alexa) fa uscire l'ascolto invece di ripiegare.
+- R-867-1 BASSA, che c'era già prima: un modello pronto non scaricato (es. alexa) fa uscire l'ascolto invece di ripiegare.
 - R-854-3 BASSA: interruzione col modello italiano non misurata.
 - Ripiego su hey_jarvis con la soglia 0,5: aperta, BASSA.

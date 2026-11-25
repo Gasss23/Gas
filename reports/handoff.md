@@ -232,7 +232,7 @@ Il commit è consentito.
 
 ## §7 RISERVE APERTE
 
-- Nota BASSA preesistente (#867): un modello pronto elencato ma non scaricato (es. alexa) fa uscire l'ascolto invece di ripiegare.
+- R-867-1 BASSA preesistente: un modello pronto elencato ma non scaricato (es. alexa) fa uscire l'ascolto invece di ripiegare.
 - R-854-3 BASSA: interruzione col modello italiano non misurata.
 - Ripiego su hey_jarvis con la soglia 0,5 (bot #405): BASSA, aperta.
 - Verifica esterna #407 (https://github.com/Gasss23/Gas/pull/407#issuecomment-7167530017):
