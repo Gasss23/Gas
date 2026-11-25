@@ -1,13 +1,8 @@
-# Diff della sessione — 2026-11-24 — modello «ehi jarvis» italiano
+# DIFF DI SESSIONE — 25 novembre 2026, R7 fetta 4 bis (tetto duro del giro di notte)
 
-Si riscrive a ogni sessione; la storia completa sta in git. Base: b100f8d4 (origin/main, dopo il merge della PR #404 in c85490e5).
+Questo file si riscrive a ogni sessione; la storia completa sta in git.
 
-- `clients/voice/ascolto.py`: `modello_della_parola()` e `MODELLO_DI_RISERVA`, `_modelli_pronti()` (ripiego col file assente o non fidato); `rilevatore_openwakeword` carica il modello da file se fidato.
-- `clients/voice/modelli/ehi_jarvis_it.onnx`: modello addestrato (accento italiano).
-- `clients/voice/modelli/LEGGIMI.md`: risultati, limiti, licenza CC BY-NC-SA, attribuzioni.
-- `scripts/voce/installa.sh`: opzione `--italiano`; passo 3b, copia del modello; scelta nel `.env` (modello + soglia 0.5) se assente, e se c'è il filtro hey_jarvis solo con `--italiano`.
-- `scripts/voce/LEGGIMI.md`: riga di `GAS_ASCOLTO_MODELLO` aggiornata.
-- `tests/test_unit_voce_ascolto.py`: test per il modello da file, il ripiego, la copia, la scelta e l'avviso; i test «.env byte per byte» partono col modello già scelto.
-- `reports/voce_simulazione_2026-11-23/modello_italiano/`: script (`frasi_prova.py` e `quasi_prova.py`: niente `_test` nel nome, se no pytest li raccoglie) di addestramento e valutazione, risultati grezzi, rapporto (LEGGIMI), metriche.
-- `.claude/agents/memoria_revisore.md`: review #854–#857.
+- `modules/notte/notte.py`: `_arma_tetto_giro` (timer demone, attesa massima 30 giorni), `_termina_giro` (os._exit, limiti dichiarati), `_nuova_guardia` e `_giro_scaduto` (lock e flag condivisi con la fine del giro, avviso «INTERROTTO», nome del compito nel log); in `esegui_notte` timer armato a max_giro + 300 s e tolto nel finally, senza riepilogo doppio.
+- `tests/test_unit_notte.py`: 8 test del tetto duro (armato e tolto, giro che si rompe, scadenza con avviso e arresto, testo su Telegram, timer vero, un solo avviso, nome nel log, attesa enorme).
+- `.claude/agents/memoria_revisore.md`: righe delle review #866-R7 e #867-R7.
 - `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
