@@ -1,20 +1,25 @@
-# ULTIMO REPORT — R7 fetta 4: tetto di tempo duro del compito in sottofondo
-
-**Data:** 23 novembre 2026
-**Branch:** claude/r7-tetti-di-tempo (sotto-chat di M1)
+# Ultimo report — 2026-11-25 — Scheda clienti da leggere offline
 
 ## DECISIONI UMANE RICHIESTE
+1. Merge della PR di questa fetta (codice del CRM e `requirements.txt`; il bot dà `neutral` se tocca la sua macchina, altrimenti decide il verdetto).
+2. Sul Mac, dopo il merge: `cd ~/Gas && git pull && source .venv/bin/activate && pip install -r requirements.txt`; nel `.env` aggiungere `GAS_CRM_SCHEDA_PASSWORD=` con una password NUOVA di almeno 16 caratteri (diversa da quella delle copie) e salvarla nel gestore di password; poi `python -m modules.crm scheda --forza`.
+3. Sull'iPhone: app File → iCloud Drive → «Gas CRM (copie cifrate)» → tieni premuto «Scheda clienti.pdf» → «Mantieni scaricato»; aprirla una volta con la password per provarla.
+4. Dalla fetta di ieri (se non già fatto): `bash scripts/crm/installa.sh` e `bash scripts/crm/telefono.sh` con l'app Tailscale su Mac e telefono.
+5. Dalla chat Voce (#405, regola 3): scelta tra modello italiano e hey_jarvis, licenza CC BY-NC-SA, prova sul Mac (in `reports/stato_progetto.md`).
 
-1. **Merge della PR #402** (vedi handoff §0): tocca il motore; con verdetto del bot con riserve la PR resta aperta e il merge lo chiede M1 all'operatore.
+## Esito
+- **Richiesta dell'operatore** («per forza tailscale? … posso accederci eventualmente offline … mi serve solo un dato al volo»; scelte: «Sì, fai la scheda» e «Scheda ora, modifiche col server»): FATTA, decisione 22.
+  - `modules/crm/scheda.py` (nuovo): «Scheda clienti.pdf» protetta da password (AES-256) nella cartella iCloud delle copie cifrate; per cliente contatti, servizi e capitale, profitto del mese, ultimi 3 movimenti, promemoria. PDF scritto senza librerie esterne, cifrato con `pypdf`.
+  - Si rifà solo quando cambiano i dati (impronta del contenuto), zero token; il server la rifà 2 minuti dopo l'ultimo cambio e la ricontrolla una volta al giorno, in un thread a parte.
+  - Password solo sua (`GAS_CRM_SCHEDA_PASSWORD`, almeno 16 caratteri, diversa da quella delle copie: R-864-1 MEDIA chiusa), riletta dal `.env` a ogni scrittura (R-865-1 MEDIA chiusa).
+  - Comando `python -m modules.crm scheda [--forza]`; guida e decisione 22 aggiornate.
+- **Modifiche fatte senza connessione** (l'operatore le vuole salvate «al 100% senza errori»): NON in questa fetta, per scelta dell'operatore; si costruiscono col server di Gas (coda sul telefono, identificativo unico, rifiuti mostrati e mai persi).
+- **Merge di main** (PR #405 Voce e #406): ramo riallineato con avanzamento veloce, nessun conflitto; riserve dell'ultimo verdetto del bot sulla #405 riportate in `reports/stato_progetto.md`.
 
-## Esito fette
+## Test
+- `pytest tests/test_unit_crm.py`: 195 → 211 passed (cifratura, nessun dato in chiaro nel file, password propria e diversa, rilettura del `.env`, riscrittura solo su cambio, temporanei, stornati e movimenti futuri esclusi, guardiano: riprova, mai due insieme, ricontrollo giornaliero). Mutanti dei punti critici presi dai test.
+- Non provato su un iPhone vero né su iCloud vero.
 
-- **Fetta 4 R7 — tetti di tempo duri (parte sottofondo)**: FATTA. Il processo in sottofondo arma un timer col tempo rimasto (contato dalla prima creazione): alla scadenza il compito diventa «ko» («oltre la durata massima, fermato»), parte l'avviso su Telegram e il gruppo di processi si ferma. Tempo già finito alla partenza → «ko» senza eseguire. Un solo esito tra timer e fine del turno (lock). Attesa del timer limitata a 30 giorni. Limite dichiarato: `claude -p` e il browser stanno in un gruppo proprio e finiscono la richiesta in corso. 8 test nuovi (137). Review #852-R7 → #853-R7 APPROVATO CON RISERVE (solo BASSE).
-- **Merge di main (#401, #404, #405, #406) nel ramo, 25/11**: FATTO (b7150a1a), review #864-MERGE-R7 APPROVATO; kernel 1208 PASS, sottofondo 137 passed.
-- **Tetto duro del compito del giro di notte**: DEFERITA — oggi il tetto per compito è controllato tra un evento e l'altro; serve un altro meccanismo (il giro gira nel processo principale). Prossima PR.
-- **Fetta 5 R7 — piano scritto dal modello**: DEFERITA.
-- **PR #398 e #399 (fette 2 e 3)**: mergiate da M1 col via dell'operatore. Il merge della #399 da questa sessione era stato negato dal controllo dei permessi (via arrivato da un'altra sessione).
-
-## Anomalie / cose da sapere
-
-- Letta `reports/bacheca.md`: niente che blocchi questa fetta.
+## Riserve aperte
+- R-866-1 BASSA, R-866-2 BASSA, R-864-7 BASSA, cosmetiche #864–#866 (in `reports/stato_progetto.md`).
+- Dalle fette precedenti e dalle altre chat: in `reports/stato_progetto.md`.

@@ -1,214 +1,302 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 23 novembre 2026 — R7 fetta 4: tetto di tempo duro del compito in sottofondo (sotto-chat di M1) — secondo giro: merge di main (#401, #404, #405, #406)
+**Sessione:** 2026-11-25 — Scheda clienti da leggere offline (decisione 22)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #402 (https://github.com/Gasss23/Gas/pull/402), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; con riserve la PR resta aperta e il merge lo chiede M1 all'operatore.
-
-Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `402` (`gh pr` non disponibile in questo ambiente, solo REST).
+1. Merge della PR di questa fetta.
+2. Sul Mac, dopo il merge: `cd ~/Gas && git pull && source .venv/bin/activate && pip install -r requirements.txt`; nel `.env` aggiungere `GAS_CRM_SCHEDA_PASSWORD=` con una password NUOVA di almeno 16 caratteri, diversa da quella delle copie, salvata nel gestore di password; poi `python -m modules.crm scheda --forza`.
+3. Sull'iPhone: app File → iCloud Drive → «Gas CRM (copie cifrate)» → «Scheda clienti.pdf» → «Mantieni scaricato»; aprirla una volta con la password.
+4. Dalla chat Voce (#405, regola 3): scelta del modello, licenza CC BY-NC-SA, prova sul Mac (in `reports/stato_progetto.md`).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 4 R7 — tetti di tempo duri (parte sottofondo)**: FATTA. Timer demone col tempo rimasto (dalla prima creazione): alla scadenza «ko», avviso, arresto del gruppo di processi; «ko» subito se il tempo è già finito; un solo esito tra timer e fine turno; attesa del timer limitata a 30 giorni. Review #852-R7 → #853-R7.
-- **Merge di origin/main (PR #401, #404, #405, #406 di altre chat) nel ramo (25/11)**: FATTO (b7150a1a), conflitti solo nei report (regola 3; riserve di Voce e CRM già in `stato_progetto.md`). Review #864-MERGE-R7 APPROVATO. Test dopo il merge: sottofondo 137 passed, kernel «=== RIEPILOGO: 1208 PASS, 0 FAIL ===».
-- **Tetto duro del compito del giro di notte**: DEFERITA — prossima PR (il giro gira nel processo principale: serve un altro meccanismo).
-- **Fetta 5 R7 — piano scritto dal modello**: DEFERITA.
-- **Anomalia di sessione**: nel primo tentativo di scrivere questo handoff un heredoc non quotato ha fatto eseguire alla shell alcuni testi tra backtick (solo comandi di lettura o falliti: una GET sulle PR, `gh pr` rifiutato, `claude -p` uscito subito per input mancante). Nessuna scrittura; il commit 12ab9019 è partito con l'handoff vecchio, corretto dal commit successivo.
+- **Scheda clienti da leggere offline** (richiesta dell'operatore: «per forza tailscale? … posso accederci eventualmente offline … mi serve solo un dato al volo»; scelte: «Sì, fai la scheda», «Scheda ora, modifiche col server»; decisione 22): FATTA (36587824, review #864, #865, #866 APPROVATO CON RISERVE). R-864-1 MEDIA (password delle copie riusata) e R-865-1 MEDIA (password cambiata ignorata dal servizio) chiuse prima del commit.
+- **Modifiche offline salvate al ritorno della rete**: NON FATTE in questa fetta per scelta dell'operatore («modifiche col server»).
+- **Riallineamento a main** (PR #405 Voce e #406): avanzamento veloce, nessun conflitto; riserve dell'ultimo verdetto del bot sulla #405 (V-1, V-2 BASSE) riportate in `reports/stato_progetto.md` (regola 3).
+- **Merge di main (PR #402, R7 fetta 4) dopo l'apertura della PR** (3b8737b5; V-1 MEDIA della verifica esterna e V-1 del bot: PR in conflitto): FATTO, review #867-MERGE APPROVATO. Conflitti solo nei report e nella memoria; report del ramo tenuti, stato e memoria uniti, V-1 COSMETICA dell'ultimo verdetto del bot sulla #402 riportata in stato (regola 3). Sottofondo identico a main.
+- **Note della verifica esterna e del bot sulla #410** (07b0da7f; verifica: APPROVATO CON RISERVE, https://github.com/Gasss23/Gas/pull/410#issuecomment-7168393340; bot: APPROVATO CON RISERVE, success): V-1 conflitto chiuso dal merge; aperte BASSE V-2 bot (lock solo dentro un processo: CLI e server insieme possono lasciare la scheda vecchia con l'impronta nuova), V-3 bot COSMETICA (a capo fisso a 95 caratteri), V-3 verifica (lunghezza minima ma non entropia della password: consigliata una frase lunga e casuale), V-5 verifica COSMETICA.
+- **Prova su iPhone e iCloud veri**: SALTATA — non raggiungibili da qui.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-.claude/agents/memoria_revisore.md |   5 ++++
- modules/sottofondo/__init__.py     |  76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  15 ++++--------
+ .claude/agents/memoria_revisore.md |  10 +
+ modules/crm/__main__.py            |  16 ++
+ modules/crm/scheda.py              | 363 +++++++++++++++++++++++++++++++++++++
+ modules/crm/server.py              |  42 +++++
+ reports/crm/decisioni.md           |   1 +
+ reports/crm/guida.md               |   3 +
+ reports/diff_sessione.md           |  17 +-
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  61 ++++++++++-------------------------------------
- tests/test_unit_sottofondo.py      | 122 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   9 +-
+ reports/ultimo_report.md           |  35 ++--
+ requirements.txt                   |   2 +
+ tests/conftest.py                  |   1 +
+ tests/test_unit_crm.py             | 356 ++++++++++++++++++++++++++++++++++++
 ```
 
-NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale. Base: main 86a23f56 (dopo il merge della #402; la sessione era partita da b7182a7c).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-b7150a1a Merge origin/main (PR #401, #404, #405, #406) nel ramo della PR #402 — review #864-MERGE-R7 APPROVATO
-42941adb docs(fine-task): R7 fetta 4 — handoff con review #852-R7/#853-R7 (corregge il commit precedente partito con l'handoff vecchio)
-12ab9019 docs(fine-task): R7 fetta 4 — report, handoff con review #852-R7/#853-R7, stato_progetto
-a56e9df9 feat(sottofondo): R7 fetta 4 — tetto di tempo duro: il processo in sottofondo si ferma da solo alla durata massima
-ba75ec24 chore(revisore): memoria review #853 — APPROVATO CON RISERVE
-36f1c779 chore(revisore): memoria review #852 — APPROVATO CON RISERVE
+36587824 feat(crm): scheda clienti da leggere offline — PDF con password propria (AES-256) su iCloud Drive, rifatta solo quando cambiano i dati, zero token (decisione 22; review #864, #865, #866)
+07b0da7f docs(fine-task): scheda clienti offline — report, handoff (review #864–#866), stato con le riserve della #405 (regola 3)
+3b8737b5 Merge origin/main (PR #402 R7 fetta 4) nel ramo della PR #410 — report del ramo tenuti, stato e memoria uniti, V-1 del bot sulla #402 in stato (regola 3; review #867-MERGE APPROVATO)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit a56e9df9 (motore): review #852-R7 sul primo staged e #853-R7 dopo le correzioni di R-852R7-2/3 (e della docstring per R-852R7-1/4). Merge b7150a1a: review #864-MERGE-R7. Incollati integrali.
-
-### Review #852-R7
+### Commit 36587824 — review #864 (verdetto integrale, primo giro)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #852-R7: R7 fetta 4, «tetto di tempo duro» del compito in sottofondo. Branch claude/r7-tetti-di-tempo, diff staged di 2 file (+144/−0), sha256 del diff cbf6d709.
-
-Ho letto CLAUDE.md (sez. 5, 8, 9), lo stato del progetto e la memoria del revisore (numero libero dopo #851). Ho controllato il Wall of Shame: nel diff non c'è slicing della history e non c'è simulazione di output dei tool. Il diff non tocca il cap di 10 iterazioni, `_get_window` né i provider.
-
-**Verifiche eseguite**
-- Test: 135 passed in tests/test_unit_sottofondo.py, su una copia dell'indice.
-- Mutanti: 5 su 5 uccisi:
-  - ramo «tempo già finito» spento;
-  - `tetto.cancel()` tolto;
-  - `_termina_processo` non chiamato;
-  - `_nel_futuro` ignorato;
-  - `annulla` tolto da `_scaduto`.
-- Prova reale da capo a fondo, senza mock su timer e uscita:
-  - setup: processo lanciato con start_new_session, turno appeso in `time.sleep(100)`, un figlio `sleep 100` nello stesso gruppo, 3 s rimasti al tetto;
-  - risultato: processo fermato in 3,5 s con codice d'uscita −15; compito «ko» con «oltre la durata massima, fermato»; avviso inviato; riga scritta su file nel log; figlio `sleep` morto.
+Review #864. Diff staged su claude/nifty-galileo-3k7kbm sopra b7182a7c: 7 file, +446, sha256 01cfc6e2 (lo hash era lo stesso prima e dopo la review). Ho letto, nell'ordine, CLAUDE.md (sez. 5, 8, 9 e 10), reports/stato_progetto.md (le parti sul CRM) e la mia memoria (lezioni da #803 a #863-MERGE). Applicate in particolare due lezioni: quella del 2026-11-17 (nessuna scrittura nel DB nel percorso del guardiano) e quella del 2026-10-21 (l'impronta avanza solo dopo una scrittura riuscita), più il precedente R-815-4. Nessuno slicing della history e nessuna simulazione di tool: il diff non tocca il kernel.
 
 **Elementi del diff esaminati**
-1. `modules/sottofondo/__init__.py:880` — arma il timer demone col tempo rimasto, mentre il generatore del kernel è in corso nel thread principale. Rischio: un thread che chiude il processo mentre il generatore è a metà. Esito **ok**. `os._exit` salta la pulizia, ma `_save_history` scrive su file temporaneo e poi fa `os.replace` (gas.py:1938), quindi è atomica, e SQLite è protetto dal journal. Il timer gira anche se il thread principale è bloccato in I/O, perché l'I/O bloccante rilascia il GIL.
-2. `modules/sottofondo/__init__.py:824` — `killpg` del proprio gruppo, poi `os._exit`. Rischio: perdere log non scritti. Esito **ok**: il RotatingFileHandler (gas.py:67) scrive su disco a ogni riga, e la prova reale lo conferma. Rischio: colpire un gruppo che non è il nostro. Esito **ok**: l'unico chiamante è gas.py:7355, il processo separato lanciato da `avvia` (`modules/sottofondo/__init__.py:733`, start_new_session).
-3. `modules/sottofondo/__init__.py:818` — la docstring promette di fermare anche i figli `claude -p`. Esito **riserva**, vedi R-852R7-1.
-4. `modules/sottofondo/__init__.py:871` — `_scaduto`, cioè `annulla` + avviso + uscita in `finally`. Rischio: corsa con la scrittura dell'esito. Esito **riserva**, vedi R-852R7-2. Quando il timer scatta DOPO un «ok», `annulla` non riscrive il compito: è provato da `tests/test_unit_sottofondo.py:1470` → **ok**.
-5. `modules/sottofondo/__init__.py:864` — tempo rimasto contato dalla prima creazione; se è già finito alla partenza, il compito chiude «ko» con avviso. Esito **ok**, coperto da `tests/test_unit_sottofondo.py:1453`. Con un controllo esterno in parallelo (`controlla` / `attivo`) non c'è doppio avviso, perché `annulla` restituisce True una volta sola.
-6. `modules/sottofondo/__init__.py:812` — `threading.Timer(max(0.0, secondi))` senza tetto superiore. Esito **riserva**, vedi R-852R7-3.
-7. `tests/test_unit_sottofondo.py:1433` — il test fa scattare il timer in modo sincrono dentro il generatore e sostituisce `_termina_processo`. Rischio: un test che non esercita il thread vero né l'uscita vera. Esito **ok**: copre lo stato, e il thread vero l'ho provato a mano (sopra), insieme a `tests/test_unit_sottofondo.py:1486`.
+- modules/crm/scheda.py:183 — il PDF scritto a mano (xref, offset, /Length) — rischio: file illeggibile o lunghezze sbagliate — **ok**. Ho controllato a parte che ogni voce xref sia di 20 byte e punti a «N 0 obj», e che /Length + 1 cada su «\nendstream». pypdf lo legge in `strict=True` senza un avviso.
+- modules/crm/scheda.py:138 — escaping di `\ ( )` dopo la codifica cp1252 — rischio: un nome che rompe il PDF — **ok**. Provati: «endstream endobj xref trailer %%EOF», «BT ET Tj /F1 99 Tf», parentesi non bilanciate, `\` finale, NUL e controlli, CR/LF/VT/FF, C1, surrogato isolato, emoji, cinese, ebraico, BOM, U+2028, 500 caratteri senza spazi. Nessun errore, e il testo si estrae uguale.
+- modules/crm/scheda.py:195 — cifratura AES-256 — rischio: che sia la R5 deprecata — **ok**: è R6/V5. pypdf 6.17 applica SASLprep. La password sbagliata viene rifiutata.
+- modules/crm/scheda.py:242 — temporaneo creato in esclusiva, poi os.replace (modules/crm/scheda.py:243) — rischio: dati in chiaro su iCloud — **ok**: su disco vanno solo byte già cifrati, il chiaro resta in memoria. Nessuna parola del contenuto compare nel file. I nomi dei file non contengono dati. In iCloud, dopo 3 riscritture, c'è solo «Scheda clienti.pdf».
+- modules/crm/scheda.py:245 — impronta scritta dopo il replace — rischio: impronta avanzata senza file nuovo — **ok** nel codice, ma il test non lo fissa (vedi R-864-5). L'impronta è 0600, sta accanto al DB e non su iCloud. Il prefisso .gas_memory la nega ai tool del modello (gas.py:2476) ed è coperta da `.gas_memory_crm*` nel .gitignore.
+- modules/crm/scheda.py:206 — HMAC con la password come chiave — rischio: l'impronta come oracolo della password — **ok**. Per sfruttarla servono le righe (cioè il DB), e il DB sta sullo stesso Mac del .env, dove la password è già in chiaro: nessun rischio in più.
+- modules/crm/scheda.py:88 — filtro dei movimenti stornati — rischio: mostrare un movimento annullato — **ok**: provato con un deposito stornato, che non compare. Però nessun test lo fissa: il mutante che toglie il filtro sopravvive (R-864-5).
+- modules/crm/server.py:387 — la scheda nel guardiano — rischio: rallentare o bloccare il server, o un ciclo continuo — **riserva** (R-864-3). La scheda non scrive nel DB: data_version, letto da un'altra connessione, resta uguale dopo 3 forza=True, quindi niente ciclo. Il §9 regge: c'è un try attorno alla chiamata. Tempi: 1000 clienti con 20 movimenti l'uno = 0,25 s (580 KiB); «invariata» = 0,10 s.
+- tests/test_unit_crm.py:3299 — la fixture toglie GAS_CRM_SCHEDA_PASSWORD — rischio: test che scrivono nell'iCloud vero — **riserva**: vale solo dentro la fixture (R-864-2).
 
-**Riserve (da tracciare in stato_progetto.md)**
-- **R-852R7-1 BASSA** — `claude -p` e il browser restano vivi dopo lo stop.
-  - Causa: `claude -p` (`brains/claude_cli.py:428`) e il browser/Chromium (`modules/web/browser.py:496`) partono con start_new_session=True, quindi in un gruppo proprio. Il `killpg` di `modules/sottofondo/__init__.py:824` non li raggiunge, e il loro timer interno muore con il processo padre. La docstring di `modules/sottofondo/__init__.py:818` dice il contrario.
-  - Danno limitato: `claude -p` ha `--tools ""`, quindi nessun effetto collaterale, e muore su EPIPE quando prova a scrivere. Però finisce la richiesta in corso e consuma l'abbonamento. I comandi di `run_command` invece stanno nello stesso gruppo (gas.py:5361) e vengono fermati.
-  - Correzione: sistemare la docstring e dichiarare il limite, oppure registrare i pgid dei figli e fermarli prima di uscire.
-- **R-852R7-2 BASSA** — corsa tra il timer e la fine del turno.
-  - Causa: non c'è mutua esclusione tra `_scaduto` (`modules/sottofondo/__init__.py:871`) e la parte finale di `_esegui` (`modules/sottofondo/__init__.py:915` fino a `modules/sottofondo/__init__.py:941`). Se il timer parte nei pochi ms in cui il turno finisce, si può avere:
-    - «ok» scritto sopra «ko»;
-    - due avvisi contraddittori;
-    - oppure «ok» scritto e poi `os._exit` durante l'invio di «Ho finito», con l'avviso perso.
-  - Correzione: un `threading.Lock` più un flag «esito scritto», presi sia da `_scaduto` sia dal thread principale prima di `cancel()`.
-- **R-852R7-3 BASSA** — tetto duro spento in silenzio con valori enormi.
-  - Prova: con GAS_SOTTOFONDO_MAX_MIN ≥ circa 1,5e8 (provato 1e9; threading.TIMEOUT_MAX = 9,2e9 s) il thread del Timer muore subito con OverflowError. Lo stderr va su DEVNULL e in gas_debug.log non resta nulla: §9 non rispettato.
-  - Resta attivo solo il controllo vecchio, quello fatto da un altro processo.
-  - Correzione: `min(secondi, threading.TIMEOUT_MAX)` oppure un limite superiore in `_durata_max_s`.
-- **R-852R7-4 COSMETICA** — il SIGTERM al proprio gruppo uccide anche il processo stesso, quindi esce con codice −15 e `os._exit(1)` (`modules/sottofondo/__init__.py:827`) serve solo come riserva. Va bene, ma la docstring e il commento dovrebbero dirlo.
+Prove rieseguite da me: `pytest tests/test_unit_crm.py` sulla copia dell'indice dà 201 passed; mypy non dà errori in modules/crm (i 79 errori riportati sono in altri file). 15 mutanti:
+- uccisi (6 più il controllo letale): impronta senza password, senza dest.exists, senza escaping, senza riarmo al cambio, ripiego della password corta, dati non cifrati;
+- vivi: vedi R-864-5.
 
-**Rischi esclusi (non verificati)**
-- Comportamento su macOS/launchd e su VPS: provato solo su Linux nel container.
-- Orfano `claude -p` reale con la CLI vera: CLI non disponibile in dev, ricavato solo dal codice.
-- Durata dell'avviso Telegram dentro `_scaduto`: non ho verificato il timeout di rete di `avvisa_operatore_esito`. Se Telegram resta appeso, ritarda solo l'uscita.
+**Riserve**
+- **R-864-1 MEDIA** — modules/crm/scheda.py:46: senza GAS_CRM_SCHEDA_PASSWORD la scheda usa la password delle copie .gascrm. Misurato: PDF R6 1,06 ms a tentativo, scrypt 2^17 353 ms a tentativo (modules/crm/copia_cifrata.py:46), circa 330 volte in CPU; su GPU il divario cresce perché scrypt usa molta memoria (non misurato). Chi prende la cartella iCloud indovina la password dal PDF e apre tutte le copie complete del DB: si annulla l'effetto di R-815-3. Correzione: password propria obbligatoria e rifiutata se uguale a quella delle copie, oppure una scelta esplicita dell'operatore scritta nella decisione 22 e nella guida (oggi la guida presenta il ripiego come una comodità). Va chiusa prima del merge, o decisa dall'operatore.
+- **R-864-2 BASSA** — tests/conftest.py:38: toglie BACKUP_PASSWORD e CIFRATO_DIR, ma non GAS_CRM_SCHEDA_PASSWORD, e il .env dell'operatore è esportato in ogni terminale. Provato con una HOME finta che ha un iCloud finto e la variabile esportata: un test che chiama `scheda.aggiorna` senza fixture scrive i dati di prova in «Gas CRM (copie cifrate)/Scheda clienti.pdf». Dopo, il server vero confronta la propria impronta, la trova uguale e dice «invariata», quindi la scheda con i clienti finti resta fino al prossimo cambio vero. Oggi nessun test lo fa (suite intera girata così, nessun file scritto). Correzione: una riga `delenv` in conftest.
+- **R-864-3 BASSA** — modules/crm/server.py:387: la scheda gira sincrona nel thread del guardiano, mentre la copia esterna da R-815-4 gira in un thread a parte (modules/crm/server.py:344). Con una cartella di rete o un disco esterno appeso (GAS_CRM_BACKUP_CIFRATO_DIR) si fermano gli eventi «cambio» della dashboard, le scansioni e le copie giornaliere. iCloud Drive è un disco locale, quindi non è il caso normale.
+- **R-864-4 BASSA** (dati mostrati) — modules/crm/scheda.py:115: «Ultimi movimenti» non scarta i movimenti con data dopo oggi, mentre il capitale li scarta (analisi.costruisci). Provato con l'orologio avanti al momento della registrazione: compare «15/12/2026 deposito 500,00 €» con capitale 1.000,00 € che non lo conta. Inoltre «profitto del mese» (modules/crm/scheda.py:113) non dice di quale mese e, al cambio di mese senza cambi nei dati, resta quello vecchio: il ricalcolo darebbe 0,00 €, il file resta su +70,00 €. La data in testata attenua.
+- **R-864-5 BASSA** — mutanti vivi:
+  - filtro degli stornati (richiesto esplicitamente);
+  - guardia `not stato.demo` (modules/crm/server.py:383): se sparisse, i dati della demo finirebbero nella scheda vera su iCloud;
+  - impronta scritta prima del replace;
+  - riprova dopo 1 h (modules/crm/server.py:391);
+  - MOVIMENTI_PER_CLIENTE = 1;
+  - `cmd_scheda` che restituisce sempre 0;
+  - `_genitore_assente` tolto (equivale, perché mkdir senza parents fallisce comunque).
+- **R-864-6 BASSA** — modules/crm/scheda.py:241: il `.Scheda clienti.pdf.<pid>-<tid>.tmp` lasciato da un kill o da un Mac spento a metà non lo toglie `_pulisci_tmp_vecchi` (modules/crm/copia_cifrata.py:333 guarda solo crm-*.gascrm.*tmp e .prova-*.tmp). È cifrato, ma si accumula su iCloud.
+- **R-864-7 BASSA** — modules/crm/__main__.py:139: all'avvio dice «ATTIVA» senza nessuna prova di scrittura, e «(iCloud Drive)» anche se la cartella è un'altra. Un fallimento della scheda si vede solo come warning in gas_debug.log, non in dashboard né in /api/stato.
 
-**Memoria**
-- Riga contatore #852-R7 e una lezione nuova aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (36f1c779).
-- Il diff staged sotto review è intatto.
+**Cosmetiche**
+- `git diff --staged --check`: riga vuota a fine file in reports/crm/decisioni.md.
+- «(chiusa, dal …)» si legge come data di chiusura, ma è la data di apertura.
+- Righe da 100 caratteri larghi (maiuscole) escono dal margine.
+- /Count delle pagine e /Length degli stream sono in chiaro: lasciano capire all'incirca quanti sono i clienti.
+- La scheda vecchia resta su iCloud quando la funzione si spegne o la cartella cambia.
+- In `aggiorna` l'assert sta fuori dal try.
 
-File rilevanti:
-- /home/user/Gas/modules/sottofondo/__init__.py
-- /home/user/Gas/tests/test_unit_sottofondo.py
-- /home/user/Gas/brains/claude_cli.py
-- /home/user/Gas/modules/web/browser.py
+**Rischi esclusi**
+- Apertura del PDF R6 sull'iPhone (app File e «Mantieni scaricato»): non riproducibile qui, nessun dispositivo iOS.
+- Comportamento di iCloud con i file che iniziano con il punto e con le sostituzioni durante la sincronizzazione: non verificabile su Linux.
+- SASLprep con pypdf 5.1, il minimo ammesso da requirements: ho verificato solo la 6.17.
+- Velocità d'attacco su GPU: non misurata, ho citato solo i tempi CPU.
 
-### Review #853-R7
+**Note per il chiamante**
+- Contatore: #863 c'è solo come #863-MERGE, sia nel ramo sia su origin/main; ho usato #864.
+- La riga #864 e 2 lezioni sono in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, fuori stage e NON committate, come da tua richiesta (non ho lanciato commit_memoria_revisore.sh).
+- Non ho creato `.claude/.review_ok`. Ce n'è uno residuo, delle 13:39, con SHA edd64299 diverso dal diff attuale: non apre il gate.
+- File principali: /home/user/Gas/modules/crm/scheda.py, /home/user/Gas/modules/crm/server.py, /home/user/Gas/tests/conftest.py.
+
+### Commit 36587824 — review #865 (verdetto integrale, secondo giro)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #853-R7, secondo giro di #852-R7. Branch claude/r7-tetti-di-tempo. Il diff staged tocca 2 file (+198/−0), sha256 del diff 084f4c5b.
+Review #865: secondo giro della #864. Diff STAGED sul ramo claude/nifty-galileo-3k7kbm sopra main b7182a7c: 8 file, +591. Lo sha256 del diff è e7239fb6…, ricontrollato prima e dopo la review, ed è invariato. Ho letto CLAUDE.md, reports/stato_progetto.md (le parti sul CRM) e la mia memoria. Non ho committato, non ho creato .claude/.review_ok e la memoria resta fuori dallo stage.
 
-Prima della review ho riletto CLAUDE.md sez. 5/8/9 e la memoria (fatto in #852). Il diff non contiene slicing della history né simulazione di tool. Non tocca i provider, il cap delle 10 iterazioni né `_get_window`.
-
-**Verifiche eseguite**
-- Test: 137 passed (tests/test_unit_sottofondo.py, su una copia dell'indice).
-- Prova reale da capo a fondo ripetuta, con processo figlio, gruppo proprio e turno appeso: il processo si ferma in 3,5 s con rc −15, il compito va in «ko» con «oltre la durata massima, fermato», l'avviso parte.
-- Mutanti: 2 uccisi su 3.
-  - Il timer che ignora il flag: ucciso.
-  - Il tetto del Timer tolto: ucciso.
-  - Il thread principale che ignora `gia_chiuso`: **sopravvive**. Il test è sincrono e il timer ha già scritto «ko» prima che il turno finisca, quindi lo ferma la vecchia guardia R-697-2 (modules/sottofondo/__init__.py:943), non il nuovo ramo.
+**Cosa ho rieseguito (su una copia dell'indice)**
+- `pytest tests/test_unit_crm.py`: 205 passed.
+- mypy: 0 errori in modules/crm (79 errori, tutti fuori da modules/crm, per esempio in gas.py).
+- `git diff --cached --check`: pulito.
+- Nel diff non ci sono IP letterali.
 
 **Elementi del diff esaminati**
-1. `modules/sottofondo/__init__.py:880`: lock più flag `chiusura` condivisi da `_scaduto` e dalla fine di `_esegui`. Rischio esaminato: due esiti o due avvisi, oppure `os._exit` durante l'avviso «Ho finito». Esito **ok**, R-852R7-2 chiusa. Il flag si prende sotto lock in `modules/sottofondo/__init__.py:885` e in `modules/sottofondo/__init__.py:931`, e il lock non resta tenuto durante l'I/O, quindi niente deadlock. Se il turno chiude per primo, il timer non ferma il processo (coperto da `tests/test_unit_sottofondo.py:1493`).
-2. `modules/sottofondo/__init__.py:933`: ramo `gia_chiuso`, il thread principale cede al timer e fa `return 1`. Esito **riserva**, vedi R-853R7-2.
-3. `modules/sottofondo/__init__.py:815`: attesa del Timer limitata a `TETTO_TIMER_S` (`modules/sottofondo/__init__.py:52`, 30 giorni). Rischio esaminato: OverflowError silenzioso. Esito **ok**, R-852R7-3 chiusa (`tests/test_unit_sottofondo.py:1515`). Però cambia il significato del tetto: vedi R-853R7-1.
-4. `modules/sottofondo/__init__.py:821`: la docstring di `_termina_processo` ora dichiara tre cose: uscita −15, `os._exit` solo come riserva, `claude -p` e browser non fermati perché in un gruppo proprio (`brains/claude_cli.py:428`, `modules/web/browser.py:496`). Esito **ok**: R-852R7-1 e R-852R7-4 sono dichiarate. Il limite resta: un `claude -p` già partito porta a termine la richiesta in corso.
+1. `modules/crm/scheda.py:49` — `password()` accetta solo `GAS_CRM_SCHEDA_PASSWORD`, normalizzata, di almeno 16 caratteri; il ripiego è tolto. Rischio esaminato: riuso della password delle copie. Esito: ok, R-864-1 chiusa per l'uguaglianza esatta.
+2. `modules/crm/scheda.py:56` — confronto a tempo costante con `GAS_CRM_BACKUP_PASSWORD` normalizzata. Esito: ok, con riserva R-865-2.
+3. `tests/conftest.py:40` — toglie la variabile nella fixture autouse. Provato con HOME finta, un iCloud finto e la password esportata: la scheda è spenta e nella cartella non viene scritto niente. Esito: ok, R-864-2 chiusa.
+4. `modules/crm/server.py:407` — la scheda gira in un thread a parte; se il precedente è ancora vivo, si rimanda (`modules/crm/server.py:408`). L'ho provato col guardiano vero e un `aggiorna` finto lento, con un cambio dei dati mentre la scheda girava: 2 esecuzioni, mai 2 insieme, il cambio è stato ripreso dopo. Esito: ok, nessuna doppia esecuzione e nessuna richiesta persa.
+5. `modules/crm/server.py:402` — riprova dopo un esito «non riuscita». Provato con esito fallito e con eccezione: la riprova parte sempre. Esito: ok nel comportamento, con riserva sul registro (R-865-4).
+6. `modules/crm/scheda.py:105` — esclude stornati e movimenti datati dopo oggi, con lo stesso filtro di `modules/crm/analisi.py:106`. In `modules/crm/scheda.py:131` il profitto porta il nome del mese. Esito: ok, R-864-4 chiusa.
+7. `modules/crm/scheda.py:279` e `modules/crm/scheda.py:281` — prima la sostituzione del file, poi l'impronta. Il mutante che le inverte viene ucciso. `modules/crm/scheda.py:227` toglie i temporanei vecchi; i mutanti «toglili tutti» e «senza pulizia nel finally» vengono uccisi. Esito: ok, R-864-6 chiusa.
+8. `modules/crm/scheda.py:224` e `modules/crm/scheda.py:271` — l'impronta è calcolata con la password come chiave, quindi un riavvio con una password nuova riscrive la scheda. Esito: blocco evitato, ma riserva R-865-1 (sotto).
 
-**Riserve, tutte BASSE (da tracciare in stato_progetto.md)**
-- **R-853R7-1 BASSA: il tetto può scattare prima della durata configurata e dirlo in modo falso.** Con GAS_SOTTOFONDO_MAX_MIN oltre 43200 (più di 30 giorni) il timer scatta a 30 giorni e ferma il compito con «oltre la durata massima». È falso rispetto al valore configurato e diverso da `attivo()`, che usa la durata vera. Il default è 1 h (`modules/sottofondo/__init__.py:45`), quindi in pratica è irrilevante. Correzione: alla scadenza `_scaduto` ricalcola `_secondi_rimasti` e, se resta tempo, riarma il timer; in alternativa basta dichiararlo.
-- **R-853R7-2 BASSA: l'avviso del timer può andare perso.** Nel ramo `gia_chiuso` (`modules/sottofondo/__init__.py:936`) il thread principale torna e gas.py:7355 fa `sys.exit`. Se in quel momento il timer, thread demone, sta ancora facendo `annulla`/`_avvisa`, Python lo congela all'uscita: l'avviso si perde e il «ko» può restare non scritto. Il compito poi si recupera dal controllo esterno o dalla ripresa, che chiude subito «ko» per tempo finito (`modules/sottofondo/__init__.py:871`). Correzione di una riga: nel ramo, `tetto.join(60)` prima del return (tanto il timer finisce con `os._exit`).
-- **R-853R7-3 BASSA: la finestra della corsa non ha un test.** Manca un test del caso «flag preso dal timer, esito non ancora scritto», ed è il motivo per cui il mutante del punto 2 sopravvive. Si può aggiungere un test con un `_tetto.fn` che prende solo il flag, per esempio con un Event che sospende `annulla`.
+**Riserve**
+- **R-865-1 MEDIA** (la tua domanda sul cambio della password). Il servizio launchd legge il `.env` una volta sola, all'avvio (`modules/crm/__main__.py:435`). La riga di comando invece legge la password nuova.
+  - Provato: con la password nuova, `scheda --forza` scrive un PDF che si apre con la nuova. Poi il server, con l'ambiente vecchio e senza nessun cambio dei dati, lo riscrive («aggiornata»): ora si apre con la VECCHIA e non con la nuova. Succede al primo giro del server: cambio dei dati, ricontrollo giornaliero o riprova.
+  - Alla prima accensione il server resta «spenta» finché non viene riavviato, e il PDF fatto con `--forza` resta vecchio senza nessun avviso.
+  - `reports/crm/guida.md:37` non dice di riavviare il CRM dopo aver messo o cambiato la password.
+  - Correzione minima: riavvio scritto nella guida, e un avviso da `cmd_scheda` se il CRM è acceso. Meglio ancora: rileggere la password dal `.env` a ogni scrittura. Va chiusa prima del merge.
+- **R-865-2 BASSA**. Se `GAS_CRM_BACKUP_PASSWORD` viene portata uguale alla password della scheda, la scheda si spegne ma il PDF già su iCloud resta, e si apre con la password delle copie (provato). Si ricrea così il rischio di R-864-1. Inoltre le varianti (password delle copie più un suffisso) sono ammesse.
+- **R-865-3 BASSA**. La logica nuova del guardiano non ha test: R-864-5 è chiusa solo per i mutanti che hai elencato. Mutanti vivi, provati da me (10 passed ciascuno, il controllo letale viene ucciso):
+  - senza riprova;
+  - senza il controllo del thread vivo;
+  - richiesta persa quando il thread è vivo;
+  - registro scritto a ogni esito;
+  - senza il ricontrollo giornaliero;
+  - `>=` invece di `>` (sparirebbero i movimenti di oggi);
+  - uguaglianza senza normalizzare la password delle copie.
+- **R-865-4 BASSA**. Il commento dice «nel registro solo i cambi di esito», ma `modules/crm/server.py:405` rimette l'esito a «da riprovare», così ogni riprova scrive di nuovo lo stesso avviso (provato: 3 riprove, 3 righe uguali). Sono 1 all'ora, più la riga di scheda.py sulle eccezioni: non è un ciclo stretto. Inoltre «aggiornata» e «spenta» sono INFO e non arrivano mai in gas_debug.log (`modules/crm/__main__.py:433`, livello WARNING), mentre il messaggio d'avvio dice «esito nel registro gas_debug.log» (`modules/crm/__main__.py:140`). R-864-7 resta aperta.
+- **Cosmetiche** (3):
+  - se iCloud blocca il thread, il guardiano rimanda ogni 120 s per sempre, senza avviso;
+  - tre righe vuote prima della sezione nuova dei test (`tests/test_unit_crm.py:3287`);
+  - restano quelle già dichiarate: /Count e /Length in chiaro, la scheda vecchia che resta se si spegne.
 
 **Rischi esclusi (non verificati)**
-- Comportamento su macOS/launchd e VPS: provato solo su Linux nel container.
-- Orfano `claude -p` con la CLI vera: CLI non disponibile in dev.
-- Timeout di rete dell'avviso Telegram dentro `_scaduto`: non verificato.
+- Cosa fa iCloud della versione vecchia sostituita da `os.replace` (cestino o versioni su iCloud.com) e della copia «Mantieni scaricato» sull'iPhone offline: non si può riprodurre fuori da un Mac con iCloud.
+- L'apertura reale del PDF R6 nell'app File di iOS.
+- Il ritmo «giornaliero» di `time.monotonic` col Mac in stop: preesistente, è lo stesso timer delle copie.
 
 **Memoria del revisore**
-- Riga contatore #853-R7 più una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (ba75ec24).
-- Il diff staged è intatto: 2 file, +198.
+Ho scritto la riga #865 e due lezioni in /home/user/Gas/.claude/agents/memoria_revisore.md. Il file è modificato nel working tree, NON in stage e NON committato, come mi hai chiesto: lo script `commit_memoria_revisore.sh` non è stato lanciato.
 
-File rilevanti:
-- /home/user/Gas/modules/sottofondo/__init__.py
-- /home/user/Gas/tests/test_unit_sottofondo.py
+File utili:
+- /home/user/Gas/modules/crm/scheda.py
+- /home/user/Gas/modules/crm/server.py
+- /home/user/Gas/modules/crm/__main__.py
+- /home/user/Gas/reports/crm/guida.md
+- /home/user/Gas/tests/test_unit_crm.py
+- le sonde che ho usato: /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sonde/password.py, /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sonde/guardiano.py, /tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/sonde/mutanti.py
 
-### Review #864-MERGE-R7 (merge b7150a1a)
+### Commit 36587824 — review #866 (verdetto integrale, terzo giro)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #866: il diff staged sul ramo claude/nifty-galileo-3k7kbm sopra b7182a7c. 8 file, +784 righe; lo sha256 del diff inizia con 5729e0c2 e coincide con quello dichiarato. Prima di cominciare ho letto CLAUDE.md, stato_progetto e la mia memoria. La riga #866 è in coda a `.claude/agents/memoria_revisore.md`, fuori dallo stage e non committata, come hai chiesto. Non ho creato `.claude/.review_ok`. Wall of Shame: il diff non tocca né la storia dei messaggi né `_get_window()`, e non simula output di tool.
+
+**Elementi del diff esaminati**
+
+- `modules/crm/scheda.py:50` — `_leggi_env_file` rilegge il `.env` con le regole del kernel. Rischio: che il parsing diverga da `gas._carica_dotenv`. Ho confrontato i due lettori su 8000 file `.env` generati a caso (BOM, `export`, virgolette, commenti, righe ripetute, CRLF): 0 differenze. Un mutante di controllo («vince l'ultima riga») ne dà 525, quindi il confronto sa vederle. Esito: ok.
+- `modules/crm/scheda.py:89` — `_valore`: il `.env` vince sull'ambiente, al contrario del kernel; una chiave venuta dal `.env` all'avvio e poi tolta vale «vuota». Rischio: che la rotazione della password non funzioni (R-865-1). L'ho provata con due processi veri che passano da `_carica_chiavi`. Primo passo: la scheda scritta con la vecchia password. Poi il `.env` cambiato e `scheda --forza` lanciato con la vecchia ancora esportata nell'ambiente: scrive con la nuova. Il «server», che ha ancora la vecchia nell'ambiente, risponde «invariata» e dopo un cambio dei dati riscrive con la nuova. Il PDF finale si apre solo con la nuova. Esito: ok, R-865-1 chiusa.
+- `modules/crm/scheda.py:111` — controlla che la password della scheda sia diversa da quella delle copie cifrate. Rischio: che il confronto usi una fonte diversa da quella delle copie. Le copie cifrano con il valore dell'ambiente letto all'avvio (`modules/crm/copia_cifrata.py:78`, contesto). Il confronto invece usa il `.env` di adesso. Esito: riserva R-866-1.
+- `modules/crm/scheda.py:283` — `_togli_scheda_vecchia` (R-865-2). La rimozione funziona (mutante L ucciso) e il test con gli spazi ai bordi uccide il mutante M. Ma scrive l'avviso «tolta» anche quando non c'era nessun file: 3 giri, 3 righe, cartella vuota. Esito: ok, con una cosmetica.
+- `modules/crm/server.py:404` e `modules/crm/server.py:409` — riprova dopo un errore e controllo che la scheda precedente sia finita; ricontrollo giornaliero a `modules/crm/server.py:401`; avviso solo al cambio d'esito a `modules/crm/server.py:361`. Ho rifatto i tuoi mutanti e sono tutti uccisi: senza riprova, senza controllo del thread vivo, senza ricontrollo giornaliero, avviso a ogni esito, `>=` sulla data di oggi, senza rilettura del `.env`. Esito: ok, R-865-3 chiusa; R-865-4 chiusa per l'avviso del server.
+- `tests/test_unit_crm.py:3529` — il test toglie `GAS_NO_DOTENV` e a `tests/test_unit_crm.py:3530` sposta `_RADICE` in una cartella temporanea. Rischio: che i test leggano il `.env` vero dell'operatore. `tests/conftest.py:11` (contesto) accende `GAS_NO_DOTENV` per tutta la suite, e nessun altro test del CRM lo spegne. Ho simulato il Mac: HOME finta con iCloud Drive, un `.env` con password nella radice del checkout, la password esportata nella shell, poi la suite CRM intera. 211 passed e iCloud finto vuoto. Esito: ok.
+- `modules/crm/__main__.py:426` (contesto) — `_carica_chiavi` importa `gas` nel thread principale dentro `main()`, prima del parser e del server. Rischio: effetti collaterali dell'`import gas` fatto dal thread della scheda. Nel thread l'import trova il modulo già caricato e non riesegue nulla. Se il kernel non si importa, l'import viene riprovato a ogni lettura; fallisce sugli import iniziali di gas.py, prima che venga aperto il file di log (gas.py:66), quindi produce solo avvisi. Esito: ok.
+
+**Rieseguito sulla copia dell'indice:** 211 passed su `tests/test_unit_crm.py`; mypy 0 errori dentro `modules/crm` (gli errori elencati stanno in gas.py, che mypy legge seguendo gli import); `git diff --cached --check` pulito; nessun IP letterale nel diff.
+
+**Riserve**
+
+- **R-866-1 BASSA** — Il confronto con la password delle copie (`modules/crm/scheda.py:111`) legge il `.env`, mentre le copie cifrano con il valore dell'ambiente all'avvio (`modules/crm/copia_cifrata.py:78`). Provato: ambiente con Z, `.env` cambiato con X, scheda con password Z → la scheda viene scritta con la stessa password che le copie usano davvero. Correzione: rifiutare se la password della scheda è uguale al valore del `.env` oppure a `copia_cifrata.password()`. Pesa poco: serve riusare la vecchia password delle copie, e le copie già fatte con quella restano comunque su iCloud.
+- **R-866-2 BASSA** — Restano mutanti vivi:
+  - H: senza il controllo di `GAS_NO_DOTENV` dentro `_leggi_env_file`. Sul Mac simulato fa fallire 9 test, quindi si vede; sul CI passa.
+  - I: `_RADICE` calcolata con `parents[1]`. In produzione R-865-1 si riaprirebbe senza nessun test rosso. Basta un test che fissi `scheda._RADICE` uguale a `ROOT` di `__main__`.
+  - G: chiave presente solo nell'ambiente, con il `.env` presente.
+  - K: la riprova rimanda di un'ora un cambio dei dati già in attesa.
+  - J è equivalente: il flag `scheda_riprova` non decide mai nulla.
+
+**Cosmetiche**
+
+- L'avviso «scheda clienti tolta» compare in gas_debug.log a ogni giro con le password uguali, anche senza file.
+- `modules/crm/scheda.py:355` scrive un avviso a ogni riprova: con la riprova oraria sono 24 righe al giorno. R-865-4 è chiusa solo per l'avviso del server.
+- Con il `.env` illeggibile, o con il kernel che non si importa, escono 5 avvisi a ogni giro.
+- Da un terminale aperto prima della modifica, `scheda --forza` riscrive la scheda con la password tolta dal `.env` ma ancora esportata (come fa il kernel, ma il server la dà per spenta).
+- Nel test l'ordine di ripristino (`delenv` prima di `setattr`) lascia un istante con `GAS_NO_DOTENV` spento e la `_RADICE` vera: va invertito.
+- La guida dice che la scheda «viene tolta», ma succede solo al giro successivo (cambio dei dati, giro giornaliero, riavvio o `scheda`).
+
+**Cosa NON ho verificato e perché**
+
+- macOS vero non è riproducibile qui: launchd, accesso a iCloud Drive, e l'app File dell'iPhone che apre il PDF AES-256.
+- La concorrenza su `CRMStore` dal thread della scheda non l'ho riprovata: accettata nel giro #865 e non toccata da questo diff.
+- La password dentro `EnvironmentVariables` del plist è esclusa: lo script `scripts/crm/installa.sh` non la usa.
+
+**Lezioni nuove in memoria (2)**
+
+1. Un confronto tra due segreti va fatto contro la fonte che il modulo usa davvero (meglio contro entrambe le fonti).
+2. Un nuovo lettore del `.env` con la sua barriera per i test va provato su un Mac simulato: sul CI, senza `.env`, il mutante «senza barriera» sopravvive sempre.
+
+**File**
+- `/home/user/Gas/.claude/agents/memoria_revisore.md` (riga #866, non staged, non committata)
+- Script delle prove: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/diff_env.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/mutanti.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/sonde.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/mac_finto.sh`
+
+### Commit 3b8737b5 — review #867-MERGE (verdetto integrale, riemesso con le citazioni dei file della fetta)
 
 ## VERDETTO: APPROVATO
 
-Review #864-MERGE-R7. Merge in corso di origin/main (PR #401, #404, #405, #406) in claude/r7-tetti-di-tempo (PR #402). Confronto: indice contro HEAD, 108 file.
+Review #867-MERGE: il merge di origin/main 86a23f56 (PR #402, tetto di tempo duro del sottofondo) nel ramo claude/nifty-galileo-3k7kbm (PR #410, HEAD prima del merge 07b0da7f) è a posto.
+- Lo sha256 del diff dell'indice contro HEAD è cb2b2801…: coincide con quello dichiarato. Indice: 4 file, +205/−1.
+- Il commit di merge 3b8737b5 (genitori 07b0da7f e 86a23f56) ha lo stesso diff contro 07b0da7f: sha256 cb2b2801, ricalcolato. Il commit dopo, 3b61c965, tocca solo report e memoria e resta fuori da questa review.
+- Letti prima della review: CLAUDE.md (sezione 5, sezione 8, roadmap), la testa di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
 
-**Elementi esaminati**
-- `modules/sottofondo/__init__.py:880`: il lock `esito_lock` con il flag `chiusura`, preso in `_scaduto` e in `_esegui` (`modules/sottofondo/__init__.py:931`). Rischio: che il merge abbia alterato la fetta, oppure che main abbia cambiato il sottofondo, run_turn o il cancello. Il diff tra indice e HEAD su modules/sottofondo, tests/test_unit_sottofondo.py, gas.py e brains è vuoto. Dalla merge-base main non tocca gas.py, brains né il sottofondo. L'unico `start_new_session=True` nuovo di main sta nel test del CRM (`_esegui_crm`), non in un processo che il sottofondo lancia, quindi R-852R7-1 non si allarga. Esito: ok.
-- `modules/sottofondo/__init__.py:811` (`_arma_tetto`, attesa limitata a TETTO_TIMER_S), `modules/sottofondo/__init__.py:821` (`_termina_processo`, killpg solo da capo gruppo con `os._exit` di riserva) e `modules/sottofondo/__init__.py:837` (`_secondi_rimasti`). Rischio: divergenza rispetto a quanto già revisionato in #852-R7 e #853-R7. Il codice è identico a HEAD e le riserve note restano quelle già scritte in stato. Esito: ok.
-- `tests/test_unit_sottofondo.py:1420`: la fixture `_tetto` sostituisce `_arma_tetto` e `_termina_processo`. I test vanno da `tests/test_unit_sottofondo.py:1426` a `tests/test_unit_sottofondo.py:1517` (tetto armato col tempo rimasto, scaduto, già superato, orologio indietro, un solo esito, timer enorme). L'ho rieseguito sul working tree, che è identico all'indice: 137 passed. Esito: ok.
-- Risoluzione dei conflitti:
-  - `git ls-files -u` è vuoto e non ci sono marcatori.
-  - Tutti i file in stage sono byte-identici a origin/main tranne `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md`. Il codice portato da main è quindi identico a main.
-  - handoff, ultimo_report e diff_sessione sono uguali a HEAD (regola 3).
-  - Memoria: è l'unione dei due lati. Contando le righe non ne manca nessuna di HEAD né di main e non ce ne sono di estranee. Le righe #852-R7 e #853-R7 sono in coda.
-  - Stato: rispetto a main cambiano solo la riga «Ultimo aggiornamento», unita con la voce R7 in testa e le voci del 25/11 e del 24/11 di main conservate, e la voce nuova «R7 fetta 4».
-  - Le riserve e le decisioni dell'ultimo_report di main (la Voce, PR #405) sono già in stato. R-854-1 compare 3 volte. La licenza CC BY-NC-SA è a riga 393. R-856-1 è chiusa secondo quel report. Il telefono del CRM (decisione 21) è nella riga 4.
-  - Esito: ok.
+**File della PR #410 (diff di sessione contro main)**
 
-**Rischio escluso**: non ho rieseguito la suite kernel né le suite CRM e voce di main. Il codice portato è identico a origin/main, già revisionato in quelle chat, e la suite kernel la sta eseguendo il chiamante. Non ho verificato nemmeno l'ultimo verdetto del bot sulle head mergiate di #405 e #406 (lezione del 2026-11-24), che sta solo su GitHub e non ho interrogato.
+Le righe da `tests/conftest.py:40` in giù le ho rilette quando ho riemesso il verdetto, a HEAD 3b61c965. Il confronto dei file interi con HEAD l'avevo fatto nella review.
 
-Nessuna lezione nuova. Ho scritto la riga contatore #864-MERGE-R7 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. È nel working tree, non è in stage e non l'ho committata, perché il merge è in corso. Va committata dopo la chiusura del merge, per esempio con `bash scripts/commit_memoria_revisore.sh` oppure nel passo 4 di fine-task.
+1. `tests/conftest.py:40` — `monkeypatch.delenv("GAS_CRM_SCHEDA_PASSWORD", raising=False)` nella fixture `_crm_vero_isolato`, accanto ai delenv di `tests/conftest.py:38` e `tests/conftest.py:39`. È l'unica riga che la #410 aggiunge al conftest (`git diff` base→HEAD). Rischio esaminato: che cambi i test del sottofondo arrivati da main. Toglie solo una variabile del CRM e il sottofondo non la legge (grep: nessun «crm» né «scheda» nel modulo). Prova: 348 passed (sottofondo + crm) su una copia dell'indice. Esito: ok.
+2. `modules/crm/scheda.py:50` — `_leggi_env_file`, rilegge il `.env` per la password della scheda; `_RADICE` è a `modules/crm/scheda.py:47`. Rischio esaminato: che la risoluzione abbia preso righe di main o perso righe del ramo. `git diff --cached HEAD -- modules/crm/scheda.py` è vuoto nell'indice. Dopo il commit, il file a 3b61c965 è uguale a 07b0da7f. Esito: ok.
+3. `modules/crm/server.py:351` — `_scheda_offline`, chiamata dal guardiano; costanti di attesa a `modules/crm/server.py:71` e `modules/crm/server.py:72`. Stesso rischio, stesso controllo: diff vuoto contro HEAD nell'indice e contro 07b0da7f a 3b61c965. Esito: ok.
+4. `modules/crm/__main__.py:210` — `cmd_scheda` (comando `scheda [--forza]`). Stesso controllo. Esito: ok.
+5. `tests/test_unit_crm.py:3311` — `test_scheda_cifrata_solo_quando_cambiano_i_dati` e i test della scheda che seguono. Il file è uguale a HEAD e i test girano verdi dentro i 348 passed. Esito: ok.
+
+**File portati da main**
+
+6. `modules/sottofondo/__init__.py:821` — `_termina_processo`, e `modules/sottofondo/__init__.py:880` — lock e flag condivisi tra `_scaduto` e la fine del turno. Rischio esaminato: che la risoluzione abbia alterato il codice di main o mischiato righe del ramo. `git diff --cached MERGE_HEAD -- modules/sottofondo/__init__.py` è vuoto, quindi il file è identico a main. Il modulo non nomina mai «crm» né «scheda» (grep), quindi non tocca il CRM. Esito: ok.
+7. `tests/test_unit_sottofondo.py:1493` — `test_tetto_e_fine_turno_un_solo_esito`, insieme agli altri test del tetto da `tests/test_unit_sottofondo.py:1426`. Rischio esaminato: test di main persi o rotti dal merge. Il file è identico a main (diff vuoto). Prova: 348 passed (sottofondo + crm) e 51 passed (manutenzione) su una copia dell'indice estratta con `git checkout-index`. Esito: ok.
+8. `.claude/agents/memoria_revisore.md:1762` — inizio delle righe aggiunte. Rischio esaminato: righe perse o duplicate. L'indice contiene le righe comuni (base) + le 5 righe di main + le 9 del ramo, in quest'ordine, confrontato a stringa: 0 righe perse da HEAD, 0 perse da main, 0 righe estranee. Esito: ok.
+
+**Report (contesto)**
+
+9. `reports/stato_progetto.md:4`
+   - La riga «Ultimo aggiornamento» è il frammento R7 di main, con «ancora aperta» cambiato in «MERGIATA il 25-11, 86a23f56», seguito dalla riga intera del ramo (uguaglianza verificata a stringa). Data e SHA tornano con `git log`.
+   - C'è una sola riga `> Ultimo aggiornamento`.
+   - Le altre righe di main che sembravano «perse» sono la riga Voce (`reports/stato_progetto.md:394`) e la riga Dashboard (`reports/stato_progetto.md:10`), che solo il ramo aveva cambiato rispetto alla base: è giusto che resti la versione del ramo.
+   - Esito: ok.
+10. `reports/stato_progetto.md:406` — la riga R7 di main è intatta (933 caratteri, prefisso identico); in coda è aggiunta la V-1 COSMETICA. Ho riscontrato la V-1 nel check-run `verifica-bot` su af6e5078 (APPROVATA, success, una sola riserva COSMETICA sulla docstring). Regola 3 di `reports/lavoro_parallelo.md`:
+    - l'unica «decisione umana» del lato main (il merge della #402) è già fatta;
+    - le riserve R-852R7-1/2/4 e R-853R7-1/2/3 sono presenti nello stato.
+    - Esito: ok.
+
+**Controlli sul resto del merge**
+- `git ls-files -u` è vuoto: non restano file in conflitto.
+- Nessun marcatore di conflitto nei file staged, e `git diff --cached --check` è pulito.
+- Nessun file non tracciato.
+- `git diff --cached MERGE_HEAD --name-only`: l'indice differisce da main solo sui file della #410 (modules/crm/__main__.py, modules/crm/scheda.py, modules/crm/server.py, reports/crm/, requirements.txt, tests/conftest.py, tests/test_unit_crm.py), sulla memoria, sullo stato e sui tre log di sessione.
+- Tutti i file della #410, compresi handoff/ultimo_report/diff_sessione, sono identici a HEAD. Il comportamento della #410 non cambia.
+- Antipattern: il diff non taglia la storia dei messaggi e non simula l'output dei tool. Non indebolisce nessun guardrail (gas.py e brains non sono toccati da nessuno dei due lati).
+
+**Cosa NON ho verificato**
+- La suite completa del kernel (tests/test_unit_kernel.py) e le altre suite della CI non le ho rilanciate. gas.py e brains sono identici su entrambi i lati e il sottofondo è uguale a main, che è già passato in CI. Fa fede la CI sul commit di merge.
+- La correttezza del tetto duro in sé e quella della scheda non le ho riviste: sono già state revisionate in #852-R7/#853-R7 e #864–#866, e il codice arriva dai due lati senza modifiche.
+- Il comportamento su Mac o VPS: non riproducibile qui.
+
+**Riserve:** nessuna.
+
+**Memoria:** riga #867-MERGE già scritta con la prima emissione; come avete chiesto, non ho toccato né la memoria né lo stage e non ho committato.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_sottofondo.py`: 129 → 137 (8 test nuovi), tutti verdi in locale: `137 passed in 6.61s`.
-- Dopo il merge b7150a1a: `tests/test_unit_kernel.py` «=== RIEPILOGO: 1208 PASS, 0 FAIL ===»; sottofondo 137 passed.
-- Prima del merge `tests/test_unit_kernel.py` non era stato rieseguito: il diff non tocca gas.py né il kernel (solo `modules/sottofondo/` e i suoi test). Il revisore ha fatto una prova reale con processo, gruppo e figlio veri (rc −15, «ko», avviso).
+- `tests/test_unit_crm.py`: 195 → 211 passed. Nuovi: 16 test della scheda e del guardiano (cifratura e nessun dato in chiaro, password propria/corta/uguale/cambiata nel `.env`/tolta, riscrittura solo su cambio, file tolto, temporanei vecchi, stornati e movimenti futuri esclusi, ultimi 3 movimenti, mese del profitto, demo che non scrive, comando che esce 1, guardiano con riprova, mai due insieme, ricontrollo giornaliero).
+- `tests/conftest.py`: toglie anche `GAS_CRM_SCHEDA_PASSWORD`.
+- Suite del kernel non toccata.
 
 ## §6 STATO CI
 
-Output reale di `gh run list -L 3` alla scrittura:
-
-```
-in_progress		Merge pull request #405 from Gasss23/feat/voce-modello-italiano	CI	main	push	45648167715	10m44s	2026-11-25T15:42:20Z
-completed	success	Voce: «ehi Jarvis» con accento italiano (modello ehi_jarvis_it)	verifica-bot	feat/voce-modello-italiano	pull_request_target	45645375855	14m26s	2026-11-25T15:27:29Z
-completed	success	docs(fine-task): handoff col 2° merge di main (review #863-MERGE)	CI	feat/voce-modello-italiano	push	45645367321	12m1s	2026-11-25T15:27:26Z
-```
-
-Run di questo branch (`gh api .../actions/runs?branch=claude/r7-tetti-di-tempo`, output reale):
-
-```
-45235701779 42941adb verifica-bot pull_request_target completed/success
-45235689297 42941adb verifica-bot pull_request_target completed/skipped
-45235681642 42941adb CI push completed/success
-45235412646 a56e9df9 verifica-bot pull_request_target completed/skipped
-45235404850 a56e9df9 CI push completed/failure
-```
-
-Mappatura commit→run: a56e9df9: CI con head a56e9df9 sopra; verifica-bot skipped (senza etichetta). 42941adb: CI success (unit-suite, handoff-check); verifica-bot cancelled (va rilanciato sul nuovo head). 12ab9019, 36f1c779, ba75ec24, b7150a1a: nessuna run propria. Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
+`gh run list` non usato: GitHub si interroga con `gh api` REST.
+- Mappatura commit→run:
+  - `36587824`: nessuna run propria (pushato con 07b0da7f).
+  - `07b0da7f`: handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE), unit-suite in corso alla scrittura; PR poi in conflitto con main.
+  - `3b8737b5` (merge di main) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- Ultima run nota su main b7182a7c (merge della #405): CI verde al merge.
 
 ## §7 RISERVE APERTE
 
-- R-853R7-1 BASSA — con GAS_SOTTOFONDO_MAX_MIN oltre 30 giorni il timer scatta a 30 giorni e dice «oltre la durata massima» (default 1 h: irrilevante in pratica). Aperta.
-- R-853R7-2 BASSA — nel ramo «già chiuso dal timer» il processo può uscire prima che l'avviso del timer parta (manca `tetto.join`); il compito si recupera dal controllo esterno. Aperta.
-- R-853R7-3 BASSA — la finestra della corsa «flag preso dal timer, esito non ancora scritto» non ha un test. Aperta.
-- R-852R7-1 BASSA (dichiarata nel codice) — `claude -p` e il browser, in un gruppo proprio, finiscono la richiesta in corso dopo l'arresto. R-852R7-4 COSMETICA dichiarata. R-852R7-2/3: CHIUSE.
-- Riserve delle altre chat: in `reports/stato_progetto.md`.
+- R-866-1 BASSA, R-866-2 BASSA, R-864-7 BASSA, cosmetiche #864–#866: in `reports/stato_progetto.md`.
+- Dalla #410: V-2 BASSA del bot (lock solo dentro un processo), V-3 BASSA della verifica (entropia della password), V-3 bot e V-5 verifica COSMETICHE: in `reports/stato_progetto.md`.
+- Dalla PR #406 (bot e verifica esterna) e dalle fette precedenti del CRM: in `reports/stato_progetto.md`.
+- Dalla chat Voce (#405): V-1/V-2 BASSE dell'ultimo verdetto del bot e le riserve già registrate, in `reports/stato_progetto.md`.
+- Scheda non provata su iPhone e iCloud veri.
