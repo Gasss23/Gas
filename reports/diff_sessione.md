@@ -1,6 +1,6 @@
 # Diff della sessione — 2026-11-24 — modello «ehi jarvis» italiano
 
-Si riscrive a ogni sessione; la storia completa sta in git. Base: 7231d92d (origin/main).
+Si riscrive a ogni sessione; la storia completa sta in git. Base: b100f8d4 (origin/main, dopo il merge della PR #404 in c85490e5).
 
 - `clients/voice/ascolto.py`: `modello_della_parola()` e `MODELLO_DI_RISERVA`, `_modelli_pronti()` (ripiego col file assente o non fidato); `rilevatore_openwakeword` carica il modello da file se fidato.
 - `clients/voice/modelli/ehi_jarvis_it.onnx`: modello addestrato (accento italiano).
