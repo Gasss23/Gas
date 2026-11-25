@@ -6,10 +6,10 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR # (https://github.com/Gasss23/Gas/pull/), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; con riserve la PR resta aperta e il «mergia» lo chiede M1 all'operatore.
+1. Merge della PR #408 (https://github.com/Gasss23/Gas/pull/408), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; con riserve la PR resta aperta e il «mergia» lo chiede M1 all'operatore.
 2. Merge della PR #402 (fetta 4, sottofondo): pronta, stesso flusso.
 
-Numero della PR preso dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `` (`gh pr` non disponibile in questo ambiente, solo REST).
+Numero della PR preso dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `408` (il primo tentativo di creazione nello script non aveva restituito il numero; ricreata a mano) (`gh pr` non disponibile in questo ambiente, solo REST).
 
 ---
 
@@ -37,6 +37,7 @@ NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è t
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+adfe10a3 docs(fine-task): R7 fetta 4 bis — report, handoff con review #866-R7/#867-R7, stato_progetto
 76655c0a feat(notte): R7 fetta 4 bis — tetto di tempo duro del giro di notte
 336e9064 chore(revisore): memoria review #867 — APPROVATO CON RISERVE
 8b7bea3b chore(revisore): memoria review #866 — APPROVATO CON RISERVE
@@ -180,7 +181,7 @@ Run di questo branch (`gh api .../actions/runs?branch=claude/r7-tetto-duro-notte
 45651971850 76655c0a CI push in_progress/null
 ```
 
-Mappatura commit→run: 76655c0a è il commit di testa del primo push (run con head 76655c0a sopra, se presenti; verifica-bot parte con l'etichetta, messa dopo questo commit). 8b7bea3b e 336e9064 (memoria): nessuna run propria (pushati insieme). Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura commit→run: 76655c0a è il commit di testa del primo push (run con head 76655c0a sopra, se presenti; verifica-bot parte con l'etichetta, messa dopo questo commit). 8b7bea3b e 336e9064 (memoria): nessuna run propria (pushati insieme). adfe10a3 (primo fine-task, numero della PR mancante nei report): run del suo push. Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

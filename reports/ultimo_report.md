@@ -5,7 +5,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR #** (vedi handoff §0): tocca il motore; con verdetto del bot con riserve la PR resta aperta e il «mergia» lo chiede M1 all'operatore.
+1. **Merge della PR #408** (vedi handoff §0): tocca il motore; con verdetto del bot con riserve la PR resta aperta e il «mergia» lo chiede M1 all'operatore.
 2. **Merge della PR #402** (fetta 4, sottofondo): pronta, CI verde, bot APPROVATO CON RISERVE (una nota cosmetica); stesso flusso.
 
 ## Esito fette
