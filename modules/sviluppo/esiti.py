@@ -42,7 +42,7 @@ _VUOTI = frozenset("\u115f\u1160\u3164\uffa0\u2800") | frozenset(
 RIGA_MAX = 300       # caratteri di un testo libero (verifica esterna, riserva, riassunto)
 RISERVE_MAX = 5      # righe RISERVA tenute
 COMMENTO_MAX = 8000  # un commento più lungo non è un esito
-PR_MAX = 10_000_000
+PR_MAX = 9_999_999  # bot #409-quater V-2: le regex accettano al massimo 7 cifre
 _RIGA = re.compile(r"^([A-Z_]{2,20}):[ \t]*(.*)$")
 _PR = re.compile(r"^#?([1-9][0-9]{0,6})$")
 _COMANDO = re.compile(r"^(MERGIA|NO) #([1-9][0-9]{0,6})$")
@@ -156,6 +156,8 @@ def scrivi_esito(esito: str, riassunto: str, pr: Optional[int] = None, ci: str =
     righe += [f"RISERVA: {r}" for r in pulite]
     righe.append(f"RIASSUNTO: {_pulisci(riassunto)}")
     testo = "\n".join(righe)
+    if len(testo) > COMMENTO_MAX:  # bot #409-quater V-3: messaggio giusto
+        raise ValueError(f"commento oltre {COMMENTO_MAX} caratteri: troppe riserve o troppo lunghe")
     if leggi_esito(testo) is None:
         raise ValueError("esito non valido (manca il riassunto o la PR)")
     return testo

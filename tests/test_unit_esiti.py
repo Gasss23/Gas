@@ -179,3 +179,18 @@ def test_verifica_esterna_fuori_elenco_niente_domanda_r867_2():
     f = e.frase_esito(7, "x", {"esito": "pronta", "riassunto": "x", "pr": 5, "ci": "verde",
                                "bot": "APPROVATO", "verifica_esterna": "boh"})
     assert "mergia" not in f
+
+
+def test_confine_pr_max_scritto_e_riletto_bot409quater_v2():
+    assert e.PR_MAX == 9_999_999
+    assert e.leggi_comando(e.scrivi_comando("MERGIA", e.PR_MAX)) == ("MERGIA", e.PR_MAX)
+    assert e.leggi_esito(_esito(pr=e.PR_MAX))["pr"] == e.PR_MAX
+    with pytest.raises(ValueError):
+        e.scrivi_comando("MERGIA", e.PR_MAX + 1)
+    with pytest.raises(ValueError):
+        _esito(pr=e.PR_MAX + 1)
+
+
+def test_commento_troppo_lungo_messaggio_giusto_bot409quater_v3():
+    with pytest.raises(ValueError, match="oltre"):
+        _esito(riserve=["x" * 290] * 40)
