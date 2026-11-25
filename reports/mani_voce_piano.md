@@ -4,7 +4,7 @@
 > un compito complesso in autonomia e, a fine lavoro, avvisa l'operatore con cosa ha fatto, il
 > risultato e gli esiti dei controlli (revisore, CI, bot, verifica esterna), così che lui decida
 > se mergiare. Il merge resta suo, salvo la regola di merge autonomo (CLAUDE.md §10).
-> Stato: **piano, nessun codice ancora**. Sotto-chat di M1, ramo `claude/mani-voce-piano`.
+> Stato: **piano; fatta solo F2** (`modules/sviluppo/esiti.py`, PR #409). Sotto-chat di M1, ramo `claude/mani-voce-piano`.
 
 ## 1. Cosa esiste (verificato nel codice il 25/11)
 
@@ -64,7 +64,7 @@ esecutore (scatto dopo) ──ricontrolla §10 (PR aperta, CI, bot, conflitti)�
 | # | Fetta | Tocca | Rischio | Serve il via? |
 |---|---|---|---|---|
 | F1 | **Via libera a voce**: `richiedi_sviluppo` nei turni a voce va alla firma Telegram (come le azioni `IRREVERSIBLE`); a testo da Telegram resta com'è (è già l'operatore). Alla firma Gas aggiunge l'etichetta `via-libera`. | `gas.py`, `modules/sviluppo/` | basso | sì (cambia come si comporta la voce) |
-| F2 | **Formato fisso dei commenti** (`ESITO`, `MERGIA #N`, `NO #N`, `MERGIATA`) e parser stretto in `modules/sviluppo/` (righe con chiave fissa, numero di PR intero, niente testo libero eseguito). Solo codice + test, nessuna credenziale. | `modules/sviluppo/`, `tests/` | basso | no |
+| F2 | **Formato fisso dei commenti** (`ESITO`, `MERGIA #N`, `NO #N`; `MERGIATA` si aggiunge in F5) e parser stretto in `modules/sviluppo/` (righe con chiave fissa, numero di PR intero, niente testo libero eseguito). Solo codice + test, nessuna credenziale. | `modules/sviluppo/`, `tests/` | basso | no |
 | F3 | **Gas legge gli esiti**: controllo periodico (nel giro già esistente del server voce/bot, o un timer) dei commenti nuovi sulle issue `da-gas`, SOLO di autori ammessi, e avviso Telegram + lettura a voce come i compiti in sottofondo. | `modules/sviluppo/`, `modules/telegram/`, `modules/voice/server.py` | medio (ogni controllo è una chiamata GitHub col token dedicato) | sì |
 | F4 | **Risposta dell'operatore**: comando «mergia N» / «no N» su Telegram (a voce solo con firma) → commento `MERGIA #N`. | `modules/telegram/`, `gas.py` | medio | sì |
 | F5 | **Esecutore nel cloud**: scheduled task (una sessione nuova a ogni scatto) con un prompt fisso nel repo (`.claude/esecutore_richieste.md`, lo cambia solo l'operatore). Ogni scatto: legge la bacheca, prende UNA issue `da-gas`+`via-libera` senza esito, controlla l'autore, lavora come una sotto-chat (tutte le regole di CLAUDE.md), scrive `ESITO`; poi gestisce i `MERGIA #N` rispettando §10. | trigger, ambiente cloud, accesso al repo delle richieste | **alto** (spesa ricorrente, lavoro autonomo) | sì |
@@ -81,8 +81,8 @@ un audio riprodotto, può dettarla. Difese:
 - l'esecutore tratta la descrizione come richiesta dell'operatore **dentro i vincoli di sempre**:
   CLAUDE.md, perimetro di review, revisore, mai push su main, mai segreti nei file, mai toccare la
   macchina di controllo (hook, gate, bot, CI, `verifica_esterna.md`, `revisore.md`) né le
-  credenziali; una richiesta che chiede queste cose → l'esecutore si ferma e scrive `ESITO: serve
-  l'operatore` invece di lavorare;
+  credenziali; una richiesta che chiede queste cose → l'esecutore si ferma e scrive `ESITO: ferma` (con il motivo nel
+  `RIASSUNTO`) invece di lavorare;
 - l'esecutore lavora solo issue con autore = l'account del token di Gas (o l'operatore) E con
   l'etichetta `via-libera`; ignora le altre.
 
