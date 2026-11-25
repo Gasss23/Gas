@@ -46,6 +46,7 @@
   - V-2 ve, V-2 e V-4 bot: limiti e documenti riscritti.
   - R-856-1: chiusa.
 - **Fetta 3c — Conflitto con main (PR #404 CRM)**: FATTA. Merge c85490e5 (review #860-MERGE APPROVATO).
+- **Fetta 3d — 2° conflitto con main (PR #406 CRM)**: FATTA (review #863-MERGE APPROVATO).
 - **Fetta 4 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
 
 ## Anomalie

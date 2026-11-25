@@ -10,7 +10,7 @@
    - Revisore: APPROVATO CON RISERVE.
    - Bot sul giro 05df3ae7: APPROVATO CON RISERVE senza ALTA/MEDIA, check neutral: decide l'operatore.
    - Verifica esterna su 3b407738: APPROVATO CON RISERVE, con V-1 MEDIA (conflitto con main), risolta col merge c85490e5.
-   - Serve il «mergia» dell'operatore.
+   - L'operatore ha dato il «mergia» il 25/11, prima del 2° merge di main (PR #406, solo report in conflitto, review #863-MERGE APPROVATO).
 2. R-854-1, scelta dell'operatore:
    - modello italiano: più chiamate prese, ma risponde a chiunque dica «ehi Jarvis» e fa più falsi sui quasi-omofoni (flusso B 49,8/h contro 33,9). Si sceglie con `bash scripts/voce/installa.sh --italiano`;
    - hey_jarvis col filtro della voce: resta tale lanciando `installa.sh` senza opzione.
@@ -43,6 +43,7 @@
   - Documenti con i limiti.
 - **Fetta 3b — CI rossa su d6a980a5**: FATTA. Rinominati gli script `*_test.py` della simulazione, che pytest prendeva per test.
 - **Fetta 3c — Conflitto con main (PR #404 CRM)**: FATTA. Merge c85490e5: report del ramo tenuti, stato e memoria uniti, file di main identici (review #860-MERGE APPROVATO).
+- **Fetta 3d — 2° conflitto con main (PR #406 CRM)**: FATTA (review #863-MERGE APPROVATO).
 - **Fetta 4 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
 
 ---
@@ -50,16 +51,16 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md                                                             |   8 ++++
- clients/voice/ascolto.py                                                                       |  54 ++++++++++++++++++++++++--
- clients/voice/modelli/LEGGIMI.md                                                               |  27 +++++++++++++
+ .claude/agents/memoria_revisore.md                                                             |   9 +++++
+ clients/voice/ascolto.py                                                                       |  54 ++++++++++++++++++++++++++--
+ clients/voice/modelli/LEGGIMI.md                                                               |  27 ++++++++++++++
  clients/voice/modelli/ehi_jarvis_it.onnx                                                       | Bin 0 -> 856178 bytes
- reports/diff_sessione.md                                                                       |  24 ++++++------
+ reports/diff_sessione.md                                                                       |  21 +++++------
  reports/handoff.md | n/d
  reports/stato_progetto.md                                                                      |   3 +-
- reports/ultimo_report.md                                                                       |  77 +++++++++++++++++++++++-------------
- reports/voce_simulazione_2026-11-23/modello_italiano/LEGGIMI.md                                |  61 +++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/ehi_jarvis_it.addestramento.json          | 574 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md                                                                       |  72 +++++++++++++++++++++++++++-----------
+ reports/voce_simulazione_2026-11-23/modello_italiano/LEGGIMI.md                                |  61 ++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ehi_jarvis_it.addestramento.json          | 574 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_ens67_f1.json                 |   1 +
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f1.json          |   1 +
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f4.json          |   1 +
@@ -72,28 +73,28 @@
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_H_f1.json |   1 +
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f1.json   |   1 +
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f4.json   |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v4.txt                          |  10 +++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v4.txt                          |  10 ++++++
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v6.txt                          |   5 +++
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v7.txt                          |   5 +++
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/ris_validazione_heyjarvis.txt         |   1 +
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v4.txt                    |   1 +
  reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v6_v7.txt                 |   3 ++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/addestra.py                        | 272 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/feature.py                         | 193 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/flussi_nuovi.py                    | 102 ++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/frasi_prova.py                     |  25 ++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/genera.py                          | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/lib_sim.py                         | 163 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/mls.py                             |  30 ++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/quasi_prova.py                     |  64 ++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/rifai_tutto.sh                     |  51 ++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/scarica.sh                         |  46 ++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/tabella.py                         |  24 ++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/testi.py                           | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/valuta.py                          | 139 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/addestra.py                        | 272 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/feature.py                         | 193 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/flussi_nuovi.py                    | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/frasi_prova.py                     |  25 +++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/genera.py                          | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/lib_sim.py                         | 163 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/mls.py                             |  30 ++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/quasi_prova.py                     |  64 ++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/rifai_tutto.sh                     |  51 +++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/scarica.sh                         |  46 ++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/tabella.py                         |  24 +++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/testi.py                           | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/voce_simulazione_2026-11-23/modello_italiano/script/valuta.py                          | 139 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  scripts/voce/LEGGIMI.md                                                                        |   2 +-
- scripts/voce/installa.sh                                                                       |  45 ++++++++++++++++++++-
- tests/test_unit_voce_ascolto.py                                                                | 119 +++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ scripts/voce/installa.sh                                                                       |  45 +++++++++++++++++++++++-
+ tests/test_unit_voce_ascolto.py                                                                | 119 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
 ```
 
 NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre lo si scrive; la riga di totale è tolta.
@@ -101,6 +102,8 @@ NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1068914b Merge origin/main (PR #406 CRM) nel ramo della PR #405 — report del ramo tenuti, stato e memoria uniti (review #863-MERGE)
+ad58e167 docs(fine-task): handoff dopo il merge di main (review #860-MERGE) e i verdetti del 2° giro sulla #405
 c85490e5 Merge origin/main (PR #404 CRM) nel ramo della PR #405 — report del ramo tenuti, stato e memoria uniti (review #860-MERGE)
 05df3ae7 fix(report): script della simulazione rinominati *_prova.py (pytest li raccoglieva: unit-suite rosso); handoff corretto
 3b407738 docs(fine-task): handoff con le correzioni di verifica esterna e bot #405 (review #856/#857)
@@ -324,6 +327,46 @@ Controlli generali:
 Il commit del merge è consentito.
 ```
 
+## §4ter VERDETTO DEL REVISORE SUL 2° MERGE DI MAIN
+
+```
+## VERDETTO: APPROVATO
+
+Review #863-MERGE: merge di origin/main 3b624d77 (PR #406, CRM dal telefono) in feat/voce-modello-italiano (PR #405, HEAD ad58e167). Il merge è in staging e non ancora committato; MERGE_HEAD è uguale a origin/main. Non ho usato git stash.
+
+Controlli generali:
+- `git ls-files -u` è vuoto: nessun conflitto lasciato aperto.
+- Rispetto a HEAD entrano 9 file (+669/−7).
+- I test CRM più voce passano: 586 passati (rieseguiti da me).
+
+**Elementi esaminati**
+
+1. `modules/crm/server.py:71`, `modules/crm/__main__.py:1`, `scripts/crm/telefono.sh:1`, `scripts/crm/spegni.sh:1`, `tests/test_unit_crm.py:1`, oltre a `reports/crm/`: sono i file presi da main.
+   - Rischio: un file di main modificato nel merge.
+   - Esito: ok. `git diff --cached origin/main` su questi percorsi è vuoto, quindi sono identici a main.
+   - L'unica nota di `--check` (riga vuota a fine file, `tests/test_unit_crm.py:3286`) arriva già così da main, non dal merge.
+2. `scripts/voce/installa.sh:158`, `clients/voice/ascolto.py:1458`, `tests/test_unit_voce_ascolto.py:3475`, `reports/voce_simulazione_2026-11-23/`, più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` (tenuti `--ours`).
+   - Rischio: un file del ramo perso nel merge.
+   - Esito: ok. `git diff --cached HEAD` su questi percorsi è vuoto. I soli file cambiati sia dal ramo sia da main sono memoria e stato_progetto, entrambi uniti e controllati sotto.
+3. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento».
+   - Ho verificato confrontando le stringhe che la riga nell'indice è esattamente così: la prima voce di main (25/11), poi la nostra voce del 24/11, poi il resto della riga di main.
+   - Nell'indice c'è una sola riga di questo tipo. Rispetto a main cambia solo, in più, la voce del modello italiano.
+   - Esito: ok.
+4. `.claude/agents/memoria_revisore.md:1752` — memoria unita: nessuna riga persa né di HEAD né di main.
+   - `#860-MERGE` (nostra) e `#860` della chat CRM sono righe distinte che convivono.
+   - Esito: ok.
+
+**Rischi esclusi**
+
+- Il contenuto della PR #406 (dashboard del CRM dal telefono via Tailscale): non l'ho revisionato nel merito, perché entra identico a main ed è già passato dalle review #860–#862 della chat CRM.
+- Il comportamento sul Mac e su Tailscale: non si può riprodurre qui.
+- La suite completa: ho eseguito solo i test CRM e voce.
+
+**Memoria**: ho aggiunto la riga #863-MERGE in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree, non in staging e non committata. Va messa in staging da te prima di committare il merge.
+
+Il commit del merge è consentito.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_voce_ascolto.py`: 384 → 391 passed (7 test nuovi; 3 test esistenti adattati).
@@ -339,10 +382,10 @@ Il commit del merge è consentito.
 Output reale (API, run del branch) alla scrittura:
 
 ```
+completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45515477257	ad58e167	2026-11-25T00:06:45Z
+completed	success	CI	feat/voce-modello-italiano	push	45515470801	ad58e167	2026-11-25T00:06:42Z
 completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45514562040	05df3ae7	2026-11-25T00:00:05Z
-in_progress		CI	feat/voce-modello-italiano	push	45514556378	05df3ae7	2026-11-25T00:00:03Z
-completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45514300490	3b407738	2026-11-24T23:58:01Z
-in_progress		CI	feat/voce-modello-italiano	push	45514297230	3b407738	2026-11-24T23:57:59Z
+completed	success	CI	feat/voce-modello-italiano	push	45514556378	05df3ae7	2026-11-25T00:00:03Z
 ```
 
 Mappatura commit→run:
@@ -351,7 +394,9 @@ Mappatura commit→run:
 - d63cb6f5: run CI propria; unit-suite in corso al momento della verifica esterna; verifica-bot failure (V-1 MEDIA, corretta in 908f430b).
 - 5291bca4, b650558a, c0c30f2f, dcee5f24, 908f430b: nessuna run su questi SHA (pushati insieme ad altri commit, o non ancora pushati); il loro contenuto è nell'albero testato dal commit di testa.
 - 05df3ae7: CI e bot propri (bot APPROVATO CON RISERVE, neutral).
-- c85490e5 (merge di main) e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- ad58e167: CI verde (unit-suite, handoff-check success), verifica-bot neutral.
+- c85490e5: nessuna run propria (pushato insieme ad ad58e167).
+- Commit del 2° merge di main e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
