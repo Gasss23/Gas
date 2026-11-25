@@ -46,7 +46,10 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_VOICE_MAX_TURNI    — turni dopo la parola, il primo compreso (default 1: nessun seguito)
     GAS_ASCOLTO_MODELLO    — modello di openWakeWord (default hey_jarvis): il nome di un
                              modello pronto, oppure il nome di un modello addestrato da noi
-                             in .gas_voce/modelli/<nome>.onnx (es. ehi_jarvis_it)
+                             in .gas_voce/modelli/<nome>.onnx (es. ehi_jarvis_it). Il nome si
+                             pulisce (minuscole, spazi → _); un nome che non è né un modello
+                             pronto né semplice ([a-z0-9_]), o un file che manca, ripiega su
+                             hey_jarvis con un avviso nel log
     GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.7)
     GAS_ASCOLTO_BLOCCHI_PAROLA — blocchi da 80 ms di fila sopra soglia per la parola, 1-5 (default 1)
     GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 200, campioni int16)
@@ -770,7 +773,14 @@ class Ascolto:
         except Exception as e:  # §9
             ok, risposta, motivo = False, None, f"errore ({type(e).__name__})"
         if comando == "fine":
-            log.info("turno di seguito non rivolto a Gas: chiudo la conversazione")
+            # Prova del 25/11: lo stesso «fine» arriva anche sul primo turno, quando la
+            # trascrizione è vuota o una frase tipica di Whisper (richiesta troppo corta):
+            # il log lo dice, invece di parlare di un seguito che non c'era.
+            if seguito:
+                log.info("turno di seguito non rivolto a Gas: chiudo la conversazione")
+            else:
+                log.info("richiesta scartata dal server (trascrizione vuota o non chiara, "
+                         "di solito una richiesta troppo corta): torno in attesa")
             self.chiudi = True
             self._svuota()
             return False
@@ -1434,19 +1444,49 @@ def _modelli_pronti() -> set:
     nessun nome è «pronto» e un nostro modello senza file ripiega su hey_jarvis)."""
     try:
         import openwakeword
-        return set(getattr(openwakeword, "MODELS", {}) or {})
+        nomi = set(getattr(openwakeword, "MODELS", {}) or {})
+        # R-866-1: anche i nomi dei file con la versione (alexa_v0.1, hey_jarvis_v0.1)
+        try:
+            for p in openwakeword.get_pretrained_model_paths("onnx"):
+                nomi.add(os.path.splitext(os.path.basename(p))[0])
+        except Exception:
+            pass
+        return nomi
     except Exception:
         return set()
+
+
+_AVVISI_DATI: set = set()
+
+
+def _avvisa_una_volta(formato: str, *argomenti: Any) -> None:
+    """R-864-2: modello_della_parola si chiama all'avvio dal rilevatore e dal log di
+    «ascolto pronto»: lo stesso avviso di ripiego si scrive una volta sola."""
+    testo = formato % argomenti
+    if testo not in _AVVISI_DATI:
+        _AVVISI_DATI.add(testo)
+        log.warning(testo)
 
 
 def modello_della_parola(modello: str, radice: Optional[Path] = None) -> str:
     """Cosa passare a openWakeWord: il file .gas_voce/modelli/<modello>.onnx se c'è ed è
     fidato (modello addestrato da noi); se c'è ma non è fidato, hey_jarvis; se non c'è,
-    il nome così com'è quando è un modello pronto, altrimenti hey_jarvis.
+    il nome così com'è quando è un modello pronto, altrimenti hey_jarvis. Un nome non
+    semplice (un percorso, maiuscole, vuoto) dà hey_jarvis: mai un file preso dall'ambiente.
     openWakeWord chiama il modello col nome del file senza .onnx, cioè `modello`: le
     previsioni e il verificatore restano sotto lo stesso nome."""
     if not _NOME_MODELLO_SEMPLICE.fullmatch(modello or ""):
-        return modello
+        if modello in _modelli_pronti():
+            # V-1 bot #407: un modello pronto col nome esatto del suo file (con la
+            # versione, es. alexa_v0.1) passa com'è. V-1 bot su 0d433dfc: solo per i nomi
+            # non semplici, così un nostro file con un nome semplice resta la prima scelta.
+            return modello
+        # V-1 bot #405 (f51a58c7): un percorso o un nome strano preso dall'ambiente non
+        # arriva a openWakeWord: si ripiega sul modello pronto, l'ascolto resta acceso.
+        _avvisa_una_volta("modello della parola: nome non valido in GAS_ASCOLTO_MODELLO "
+                          "(%r: solo lettere minuscole, cifre e _): uso %s",
+                          modello[:60], MODELLO_DI_RISERVA)
+        return MODELLO_DI_RISERVA
     p = (radice or _GAS_ROOT) / CARTELLA_MODELLI / ("%s.onnx" % modello)
     try:
         assente = not (p.exists() or p.is_symlink())
@@ -1457,17 +1497,28 @@ def modello_della_parola(modello: str, radice: Optional[Path] = None) -> str:
         # modello pronto e openWakeWord si fermerebbe: si ripiega, l'ascolto resta acceso.
         if modello in _modelli_pronti() or modello == MODELLO_DI_RISERVA:
             return modello
-        log.warning("modello della parola: %s non c'è in %s: uso %s",
+        _avvisa_una_volta("modello della parola: %s non c'è in %s: uso %s",
                     p.name, CARTELLA_MODELLI, MODELLO_DI_RISERVA)
         return MODELLO_DI_RISERVA
     motivo = _file_fidato(p)
     if motivo:
         # R-854-2: il nome nudo non è un modello pronto e openWakeWord si fermerebbe:
         # si ripiega sul modello pronto, così l'ascolto resta acceso (§9).
-        log.warning("modello della parola: %s non caricato (%s): uso %s",
+        _avvisa_una_volta("modello della parola: %s non caricato (%s): uso %s",
                     p.name, motivo, MODELLO_DI_RISERVA)
         return MODELLO_DI_RISERVA
     return str(p)
+
+
+def descrivi_modello(modello: str, usato: str) -> str:
+    """R-855-1: per il log di avvio, il modello davvero in uso (`usato`, il risultato di
+    modello_della_parola: file nostro o ripiego), non solo quello chiesto nel .env.
+    R-864-2: riceve il risultato già calcolato, così l'avviso del ripiego non si ripete."""
+    if usato == modello:
+        return modello
+    if usato == MODELLO_DI_RISERVA:
+        return "%s (chiesto «%s», non disponibile: ripiego)" % (usato, modello)
+    return "%s (dal file %s)" % (modello, Path(usato).name)
 
 
 def verifica_della_voce(modello: str, radice: Optional[Path] = None) -> Verifica:
@@ -1662,7 +1713,9 @@ def main() -> int:
     if motivo:
         log.error("GAS_VOICE_URL: %s — l'ascolto non parte.", motivo)
         return 1
-    modello = (os.environ.get("GAS_ASCOLTO_MODELLO") or "hey_jarvis").strip()
+    # R-864-1: «Hey Jarvis» o «hey jarvis» nel .env valgono hey_jarvis (filtro compreso)
+    modello = re.sub(r"\s+", "_",
+                     (os.environ.get("GAS_ASCOLTO_MODELLO") or "hey_jarvis").strip().lower())
     verifica = verifica_della_voce(modello)
     fasi = fasi_predefinite(verifica)
     try:
@@ -1680,7 +1733,8 @@ def main() -> int:
             conferma = Conferma(lambda: scarica_conferma(url, token))
         except Exception as e:  # §9 (R-671-5): senza conferma resta il bip
             log.warning("conferma non avviata (%s): solo bip", type(e).__name__)
-    log.info("ascolto pronto: parola «%s», server %s", modello, url)
+    log.info("ascolto pronto: parola «%s», server %s",
+             descrivi_modello(modello, modello_della_parola(modello)), url)
     log.info("verifica della voce: %s", verifica.descrivi())
     regolazioni = _regolazioni(verifica)
     _scrivi_regolazioni(regolazioni, verifica)
