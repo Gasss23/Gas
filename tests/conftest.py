@@ -37,6 +37,7 @@ def _crm_vero_isolato(monkeypatch, _radice_repo_finta):
     # ~/.zshrc esporta il .env in ogni terminale): senza password resta spenta
     monkeypatch.delenv("GAS_CRM_BACKUP_PASSWORD", raising=False)
     monkeypatch.delenv("GAS_CRM_BACKUP_CIFRATO_DIR", raising=False)
+    monkeypatch.delenv("GAS_CRM_SCHEDA_PASSWORD", raising=False)  # R-864-2: anche la scheda offline
     gas = _sys.modules.get("gas")
     if gas is not None and hasattr(gas, "_RADICE_REPO"):
         monkeypatch.setattr(gas, "_RADICE_REPO", _radice_repo_finta)

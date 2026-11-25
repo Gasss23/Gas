@@ -68,6 +68,9 @@ BLOCCO_S = 900.0
 MAX_STREAM = 16
 AVVISO_MIN_S = 3600.0
 BACKUP_OGNI_S = 24 * 3600.0
+SCHEDA_PRIMA_S = 10.0       # prima prova della scheda offline dopo l'avvio
+SCHEDA_ATTESA_S = 120.0     # la scheda offline si rifà 2 minuti dopo l'ultimo cambio
+SCHEDA_RIPROVA_S = 3600.0   # se non riesce, si riprova dopo un'ora
 
 Invia = Callable[[str], Tuple[bool, str]]
 
@@ -136,6 +139,9 @@ class Stato:
         self.ultimo_avviso = 0.0
         self.scan_lock = threading.Lock()
         self.ultimo_backup = 0.0  # monotonic: il guardiano fa una copia all'avvio e ogni giorno
+        self.scheda_thread: Optional[threading.Thread] = None  # decisione 22, R-864-3
+        self.esito_scheda = ""
+        self.scheda_riprova = False  # R-865-4: riprova già armata per l'esito «non riuscita»
         # V-1 bot #386: esito dell'ultima copia CIFRATA fuori dal Mac, visibile in dashboard
         # (prima un fallimento restava solo nel log e l'operatore continuava a credersi coperto)
         spenta = None if demo else copia_cifrata.motivo_spenta()
@@ -342,6 +348,21 @@ def _copia_giornaliera(stato: "Stato") -> None:
                      daemon=True).start()
 
 
+def _scheda_offline(stato: "Stato") -> None:
+    """Decisione 22: riscrive la scheda clienti offline (solo se i dati sono cambiati), in un
+    thread a parte come la copia esterna (R-864-3: una cartella lenta non ferma il guardiano).
+    Mai solleva; nel registro solo i cambi di esito."""
+    try:
+        from modules.crm import scheda
+        esito, _ = scheda.aggiorna(stato.store)
+    except Exception as e:  # §9
+        esito = f"non riuscita: {type(e).__name__}"
+    if esito != stato.esito_scheda and esito != "invariata":
+        (log.warning if esito.startswith("non riuscita") else log.info)(
+            "CRM: scheda clienti offline: %s", esito)
+    stato.esito_scheda = esito
+
+
 def _guardiano(stato: Stato) -> None:
     """Thread: si accorge dei cambi nel DB (anche fatti da altri processi) e programma le
     scansioni. Una connessione tenuta aperta: `PRAGMA data_version` cambia quando un'ALTRA
@@ -350,6 +371,9 @@ def _guardiano(stato: Stato) -> None:
     ultima_v: Optional[int] = None
     prossima_scan = time.monotonic() + 1.0
     scan_dopo_cambio: Optional[float] = None
+    # decisione 22: scheda clienti da leggere offline, rifatta solo dopo un cambio dei dati
+    # (prima prova poco dopo l'avvio; poi SCHEDA_ATTESA_S dopo l'ultimo cambio)
+    scheda_dopo: Optional[float] = time.monotonic() + SCHEDA_PRIMA_S
     while not stato.stop.is_set():
         try:
             if con is None:
@@ -358,6 +382,7 @@ def _guardiano(stato: Stato) -> None:
             if ultima_v is not None and v != ultima_v:
                 stato.segnala_cambio()
                 scan_dopo_cambio = time.monotonic() + 2.0
+                scheda_dopo = time.monotonic() + SCHEDA_ATTESA_S
             ultima_v = v
         except sqlite3.Error as e:
             log.warning("CRM: guardiano del DB: %s", e)
@@ -372,6 +397,23 @@ def _guardiano(stato: Stato) -> None:
             stato.ultimo_backup = adesso
             # decisione dell'operatore 2026-11-19: copia locale e copia CIFRATA fuori dal Mac
             _copia_giornaliera(stato)
+            # R-864-4: una volta al giorno si ricontrolla anche la scheda (cambio del mese)
+            if scheda_dopo is None:
+                scheda_dopo = adesso + SCHEDA_ATTESA_S
+        if (not stato.demo and stato.esito_scheda.startswith("non riuscita")
+                and not stato.scheda_riprova and scheda_dopo is None
+                and stato.scheda_thread is not None and not stato.scheda_thread.is_alive()):
+            stato.scheda_riprova = True
+            scheda_dopo = adesso + SCHEDA_RIPROVA_S  # iCloud negato o disco staccato: si riprova
+        if not stato.demo and scheda_dopo is not None and adesso >= scheda_dopo:
+            if stato.scheda_thread is not None and stato.scheda_thread.is_alive():
+                scheda_dopo = adesso + SCHEDA_ATTESA_S  # la precedente non ha finito: dopo
+            else:
+                scheda_dopo = None
+                stato.scheda_riprova = False
+                stato.scheda_thread = threading.Thread(
+                    target=_scheda_offline, args=(stato,), name="crm-scheda", daemon=True)
+                stato.scheda_thread.start()
         dovuta = (adesso >= prossima_scan or stato.scan_richiesta.is_set()
                   or (scan_dopo_cambio is not None and adesso >= scan_dopo_cambio))
         if dovuta:

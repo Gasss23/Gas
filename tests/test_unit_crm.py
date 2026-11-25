@@ -3284,3 +3284,359 @@ def test_telefono_spegni_off_fallito_non_dice_ok(tmp_path: Path) -> None:
     r, _ = _telefono(gas, finti, casa, tmp_path, "spegni")
     assert r.returncode == 2 and "OK:" not in r.stdout and "non riesco a togliere" in r.stderr
 
+
+# ---------------------------------------- scheda clienti da leggere offline (decisione 22)
+PW_SCHEDA = "una-password-lunga-1"
+
+
+@pytest.fixture
+def ambiente_scheda(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    icloud = tmp_path / "icloud"
+    icloud.mkdir()
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(icloud))
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "password-delle-copie-1")
+    monkeypatch.setenv("GAS_CRM_SCHEDA_PASSWORD", PW_SCHEDA)
+    return icloud
+
+
+def _leggi_scheda(percorso: Path, pw: str) -> str:
+    import io as _io
+    from pypdf import PdfReader
+    r = PdfReader(_io.BytesIO(percorso.read_bytes()))
+    assert r.is_encrypted
+    assert r.decrypt(pw) != 0
+    return "\n".join(p.extract_text() for p in r.pages)
+
+
+def test_scheda_cifrata_solo_quando_cambiano_i_dati(tmp_path: Path, ambiente_scheda: Path) -> None:
+    from modules.crm import scheda
+    st = CRMStore(tmp_path / "crm.db")
+    cid = st.aggiungi_cliente("Mario Rossi", telefono="+393331234567")
+    esito, dest = scheda.aggiorna(st)
+    assert esito == "aggiornata" and dest == ambiente_scheda / "Scheda clienti.pdf"
+    assert dest.stat().st_mode & 0o777 == 0o600
+    grezzo = dest.read_bytes()
+    assert b"Mario" not in grezzo and b"3331234567" not in grezzo  # senza password non si legge
+    testo = _leggi_scheda(dest, PW_SCHEDA)
+    assert "Mario Rossi" in testo and "+393331234567" in testo and "solo da leggere" in testo
+    with pytest.raises(Exception):
+        _leggi_scheda(dest, "password-sbagliata-123")
+    # niente cambi → niente riscrittura (zero lavoro inutile)
+    assert scheda.aggiorna(st) == ("invariata", dest) and dest.read_bytes() == grezzo
+    # un cliente nuovo → si riscrive
+    st.aggiungi_cliente("Luisa Verdi")
+    assert scheda.aggiorna(st)[0] == "aggiornata" and "Luisa Verdi" in _leggi_scheda(dest, PW_SCHEDA)
+    # file tolto da iCloud → si rifà anche se i dati sono uguali
+    dest.unlink()
+    assert scheda.aggiorna(st)[0] == "aggiornata" and dest.exists()
+    assert scheda.aggiorna(st, forza=True)[0] == "aggiornata"
+    assert cid > 0
+
+
+def test_scheda_solo_con_una_password_propria(tmp_path: Path, ambiente_scheda: Path,
+                                              monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-864-1: il PDF si prova molto più in fretta di una copia .gascrm: la scheda vuole una
+    password SUA, lunga, diversa da quella delle copie; altrimenti resta spenta."""
+    from modules.crm import scheda
+    st = CRMStore(tmp_path / "crm.db")
+    st.aggiungi_cliente("Mario Rossi")
+    assert scheda.aggiorna(st)[0] == "aggiornata"
+    monkeypatch.setenv("GAS_CRM_SCHEDA_PASSWORD", "altra-password-della-scheda")
+    esito, dest = scheda.aggiorna(st)
+    assert esito == "aggiornata" and dest is not None  # password cambiata → si riscrive
+    assert "Mario Rossi" in _leggi_scheda(dest, "altra-password-della-scheda")
+    for pw, motivo in (("password-delle-copie-1", "uguale a GAS_CRM_BACKUP_PASSWORD"),
+                       (" password-delle-copie-1 ", "uguale a GAS_CRM_BACKUP_PASSWORD"),
+                       ("corta-15-chars!", "più corta"), ("", "manca GAS_CRM_SCHEDA_PASSWORD")):
+        monkeypatch.setenv("GAS_CRM_SCHEDA_PASSWORD", pw)
+        esito, dest = scheda.aggiorna(st)
+        assert esito.startswith("spenta") and motivo in esito and dest is None, (pw, esito)
+
+
+def test_scheda_spenta_senza_password_o_cartella(tmp_path: Path, ambiente_scheda: Path,
+                                                monkeypatch: pytest.MonkeyPatch) -> None:
+    from modules.crm import scheda
+    st = CRMStore(tmp_path / "crm.db")
+    st.aggiungi_cliente("Mario Rossi")
+    monkeypatch.delenv("GAS_CRM_SCHEDA_PASSWORD")  # resta quella delle copie: non basta
+    esito, dest = scheda.aggiorna(st)
+    assert esito.startswith("spenta") and dest is None
+    assert not list(ambiente_scheda.iterdir())  # mai in chiaro, mai senza password
+    monkeypatch.setenv("GAS_CRM_SCHEDA_PASSWORD", PW_SCHEDA)
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(tmp_path / "disco-staccato" / "copie"))
+    esito, dest = scheda.aggiorna(st)
+    assert esito.startswith("non riuscita") and dest is None
+    assert not (tmp_path / "disco-staccato").exists()
+
+
+def test_scheda_nomi_strani_e_tante_pagine(tmp_path: Path, ambiente_scheda: Path) -> None:
+    from modules.crm import scheda
+    st = CRMStore(tmp_path / "crm.db")
+    st.aggiungi_cliente("Anna (la zia) \\ D'Amico")
+    st.aggiungi_cliente("Сергей Иванов")  # fuori da WinAnsi: diventa «?» ma il PDF resta valido
+    for i in range(80):
+        st.aggiungi_cliente(f"Cliente {i:02d} Prova")
+    esito, dest = scheda.aggiorna(st)
+    assert esito == "aggiornata" and dest is not None
+    testo = _leggi_scheda(dest, PW_SCHEDA)
+    assert "Anna (la zia) \\ D'Amico" in testo and "Cliente 79 Prova" in testo
+    from pypdf import PdfReader
+    r = PdfReader(str(dest))
+    r.decrypt(PW_SCHEDA)
+    assert len(r.pages) >= 3
+
+
+def test_scheda_saldi_movimenti_e_promemoria(tmp_path: Path, ambiente_scheda: Path) -> None:
+    from modules.crm import scheda
+    orologio = Orologio(datetime(2026, 11, 20, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    sid = st.aggiungi_servizio("conto", "Conto Gestito", "percentuale_profitto", commissione_bp=2000)
+    cid = st.aggiungi_cliente("Mario Rossi")
+    pid = st.apri_posizione(cid, sid, data="2026-11-01")
+    st.registra_movimento(pid, "deposito", 150000, data="2026-11-02")
+    st.registra_movimento(pid, "prelievo", 20000, data="2026-11-10")
+    st.aggiungi_promemoria("chiamare Mario", "2026-11-22 10:30", cliente_id=cid)
+    esito, dest = scheda.aggiorna(st)
+    assert esito == "aggiornata" and dest is not None
+    testo = _leggi_scheda(dest, PW_SCHEDA)
+    assert "capitale 1.300,00 €" in testo and "Capitale totale: 1.300,00 €" in testo
+    assert "10/11/2026 prelievo 200,00 €" in testo
+    assert "Promemoria: 22/11/2026 10:30 - chiamare Mario" in testo
+
+
+def test_scheda_comando_e_server(tmp_path: Path, ambiente_scheda: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Il server la rifà da solo dopo l'avvio e dopo un cambio dei dati; la riga di comando
+    `scheda` la riscrive a richiesta."""
+    import argparse
+    from modules.crm import __main__ as cli
+    db = tmp_path / ".gas_memory_crm.db"
+    monkeypatch.setenv("GAS_CRM_DB", str(db))
+    st = CRMStore(db)
+    st.aggiungi_cliente("Mario Rossi")
+    monkeypatch.setattr(server, "SCHEDA_PRIMA_S", 0.1)
+    monkeypatch.setattr(server, "SCHEDA_ATTESA_S", 0.2)
+    stato = server.Stato(st, TOKEN, regole=REGOLE)
+    srv = _avvia_server(stato)
+    guardiano = threading.Thread(target=server._guardiano, args=(stato,), daemon=True)
+    guardiano.start()
+    dest = ambiente_scheda / "Scheda clienti.pdf"
+    try:
+        limite = time.monotonic() + 15
+        while not dest.exists() and time.monotonic() < limite:
+            time.sleep(0.1)
+        assert dest.exists() and "Mario Rossi" in _leggi_scheda(dest, PW_SCHEDA)
+        CRMStore(db).aggiungi_cliente("Luisa Verdi")  # un'altra connessione, come la CLI
+        limite = time.monotonic() + 15
+        while time.monotonic() < limite:
+            if "Luisa Verdi" in _leggi_scheda(dest, PW_SCHEDA):
+                break
+            time.sleep(0.2)
+        assert "Luisa Verdi" in _leggi_scheda(dest, PW_SCHEDA)
+    finally:
+        _ferma(stato, srv)
+        guardiano.join(timeout=10)
+    assert cli.cmd_scheda(argparse.Namespace(forza=True)) == 0
+
+
+def test_scheda_dati_giusti_stornati_futuri_e_mese(tmp_path: Path, ambiente_scheda: Path) -> None:
+    """R-864-4/5: i movimenti come i saldi (niente stornati né datati dopo oggi), solo gli
+    ultimi 3, e il mese del profitto scritto."""
+    from modules.crm import scheda
+    orologio = Orologio(datetime(2026, 11, 20, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    sid = st.aggiungi_servizio("conto", "Conto Gestito", "percentuale_profitto", commissione_bp=2000)
+    cid = st.aggiungi_cliente("Mario Rossi")
+    pid = st.apri_posizione(cid, sid, data="2026-11-01")
+    st.registra_movimento(pid, "deposito", 100000, data="2026-11-02")
+    st.registra_movimento(pid, "deposito", 1000, data="2026-11-03")
+    st.registra_movimento(pid, "deposito", 2000, data="2026-11-04")
+    st.registra_movimento(pid, "deposito", 3000, data="2026-11-05")
+    sbagliato = st.registra_movimento(pid, "deposito", 77700, data="2026-11-06")
+    st.storna_movimento(sbagliato)
+    orologio.avanti(30)  # registrato «nel futuro» rispetto alla scheda di prima
+    st.registra_movimento(pid, "deposito", 50000, data="2026-12-15")
+    orologio.ora = datetime(2026, 11, 20, 9, 0, tzinfo=timezone.utc)
+    esito, dest = scheda.aggiorna(st)
+    assert esito == "aggiornata" and dest is not None
+    testo = " ".join(_leggi_scheda(dest, PW_SCHEDA).split())  # senza gli a capo del PDF
+    assert "777,00" not in testo and "15/12/2026" not in testo and "500,00 €" not in testo
+    assert "05/11/2026 deposito 30,00 €; 04/11/2026 deposito 20,00 €; 03/11/2026 deposito 10,00 €" in testo
+    assert "02/11/2026" not in testo  # solo gli ultimi 3
+    assert "profitto di" in testo and "2026" in testo and "aperto il 01/11/2026" in testo
+
+
+def test_scheda_impronta_solo_dopo_una_scrittura_riuscita(tmp_path: Path, ambiente_scheda: Path,
+                                                          monkeypatch: pytest.MonkeyPatch) -> None:
+    from modules.crm import scheda
+    st = CRMStore(tmp_path / "crm.db")
+    st.aggiungi_cliente("Mario Rossi")
+
+    def rotto(*_a: Any, **_k: Any) -> None:
+        raise OSError("disco pieno")
+    monkeypatch.setattr(scheda.os, "replace", rotto)
+    esito, dest = scheda.aggiorna(st)
+    assert esito.startswith("non riuscita") and dest is None
+    assert not (tmp_path / scheda.IMPRONTA_FILE).exists()
+    assert not list(ambiente_scheda.glob(".*.tmp"))  # niente temporanei lasciati
+    monkeypatch.undo()
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(ambiente_scheda))
+    monkeypatch.setenv("GAS_CRM_SCHEDA_PASSWORD", PW_SCHEDA)
+    assert scheda.aggiorna(st)[0] == "aggiornata"
+
+
+def test_scheda_toglie_i_temporanei_vecchi(tmp_path: Path, ambiente_scheda: Path) -> None:
+    """R-864-6: i temporanei lasciati da un'interruzione da più di un'ora si tolgono."""
+    from modules.crm import scheda
+    st = CRMStore(tmp_path / "crm.db")
+    st.aggiungi_cliente("Mario Rossi")
+    vecchio = ambiente_scheda / ".Scheda clienti.pdf.123-456.tmp"
+    nuovo = ambiente_scheda / ".Scheda clienti.pdf.789-1.tmp"
+    for f in (vecchio, nuovo):
+        f.write_bytes(b"cifrato")
+    passato = time.time() - 2 * 3600
+    os.utime(vecchio, (passato, passato))
+    assert scheda.aggiorna(st)[0] == "aggiornata"
+    assert not vecchio.exists() and nuovo.exists()
+
+
+def test_scheda_mai_dalla_demo_e_comando_che_fallisce(tmp_path: Path, ambiente_scheda: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-864-5: la demo (dati inventati) non scrive mai la scheda vera; il comando dice 1 se
+    la scheda non riesce."""
+    import argparse
+    from modules.crm import __main__ as cli
+    st = CRMStore(tmp_path / "demo.db")
+    st.aggiungi_cliente("Cliente Finto")
+    monkeypatch.setattr(server, "SCHEDA_PRIMA_S", 0.0)
+    stato = server.Stato(st, TOKEN, demo=True, regole=REGOLE)
+    guardiano = threading.Thread(target=server._guardiano, args=(stato,), daemon=True)
+    guardiano.start()
+    time.sleep(1.5)
+    stato.stop.set()
+    guardiano.join(timeout=10)
+    assert not (ambiente_scheda / "Scheda clienti.pdf").exists()
+    monkeypatch.setenv("GAS_CRM_DB", str(tmp_path / "vero.db"))
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(tmp_path / "disco-staccato" / "copie"))
+    assert cli.cmd_scheda(argparse.Namespace(forza=False)) == 1
+
+
+def test_scheda_password_cambiata_nel_env_col_crm_acceso(tmp_path: Path, ambiente_scheda: Path,
+                                                         monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-865-1: il CRM sotto launchd legge il .env solo all'avvio; la scheda rilegge la
+    password ogni volta, così una password cambiata vale subito (e una tolta spegne)."""
+    import gas
+    from modules.crm import scheda
+    monkeypatch.delenv("GAS_NO_DOTENV")
+    monkeypatch.setattr(scheda, "_RADICE", tmp_path)
+    env = tmp_path / ".env"
+    env.write_text('export GAS_CRM_SCHEDA_PASSWORD="nuova-password-della-scheda" # cambiata\n'
+                   "GAS_CRM_SCHEDA_PASSWORD=riga-ripetuta-che-non-vale\n")
+    st = CRMStore(tmp_path / "crm.db")
+    st.aggiungi_cliente("Mario Rossi")
+    esito, dest = scheda.aggiorna(st)  # nell'ambiente c'è ancora la vecchia (PW_SCHEDA)
+    assert esito == "aggiornata" and dest is not None
+    assert "Mario Rossi" in _leggi_scheda(dest, "nuova-password-della-scheda")
+    # tolta dal .env (era venuta da lì all'avvio): la scheda si spegne
+    env.write_text("ALTRO=1\n")
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", {"GAS_CRM_SCHEDA_PASSWORD"})
+    assert scheda.aggiorna(st)[0].startswith("spenta")
+
+
+def test_scheda_password_uguale_toglie_quella_gia_scritta(tmp_path: Path, ambiente_scheda: Path,
+                                                         monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-865-2: se la password delle copie diventa uguale a quella della scheda, la scheda
+    già su iCloud (che si aprirebbe con la password delle copie) si toglie."""
+    from modules.crm import scheda
+    st = CRMStore(tmp_path / "crm.db")
+    st.aggiungi_cliente("Mario Rossi")
+    esito, dest = scheda.aggiorna(st)
+    assert esito == "aggiornata" and dest is not None and dest.exists()
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", f"  {PW_SCHEDA}  ")  # anche con spazi ai bordi
+    assert "uguale" in scheda.aggiorna(st)[0]
+    assert not dest.exists()
+
+
+def test_scheda_movimento_di_oggi_compare(tmp_path: Path, ambiente_scheda: Path) -> None:
+    from modules.crm import scheda
+    orologio = Orologio(datetime(2026, 11, 20, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    sid = st.aggiungi_servizio("conto", "Conto Gestito", "percentuale_profitto", commissione_bp=2000)
+    pid = st.apri_posizione(st.aggiungi_cliente("Mario Rossi"), sid, data="2026-11-01")
+    st.registra_movimento(pid, "deposito", 12300, data="2026-11-20")
+    _, dest = scheda.aggiorna(st)
+    assert dest is not None and "20/11/2026 deposito 123,00 €" in " ".join(_leggi_scheda(dest, PW_SCHEDA).split())
+
+
+def _guardiano_con_scheda_finta(st: CRMStore, monkeypatch: pytest.MonkeyPatch, esiti: List[str],
+                                durata: float = 0.0) -> Tuple["server.Stato", threading.Thread, Dict[str, int]]:
+    from modules.crm import scheda
+    conto = {"chiamate": 0, "insieme": 0, "max_insieme": 0}
+    blocco = threading.Lock()
+
+    def finta(_st: CRMStore, forza: bool = False) -> Tuple[str, Optional[Path]]:
+        with blocco:
+            conto["chiamate"] += 1
+            conto["insieme"] += 1
+            conto["max_insieme"] = max(conto["max_insieme"], conto["insieme"])
+        time.sleep(durata)
+        with blocco:
+            conto["insieme"] -= 1
+        return (esiti[min(conto["chiamate"], len(esiti)) - 1], None)
+    monkeypatch.setattr(scheda, "aggiorna", finta)
+    monkeypatch.setattr(server, "SCHEDA_PRIMA_S", 0.0)
+    monkeypatch.setattr(server, "SCHEDA_ATTESA_S", 0.2)
+    monkeypatch.setattr(server, "SCHEDA_RIPROVA_S", 0.3)
+    stato = server.Stato(st, TOKEN, regole=REGOLE, scan_minuti=60)
+    g = threading.Thread(target=server._guardiano, args=(stato,), daemon=True)
+    g.start()
+    return stato, g, conto
+
+
+def test_guardiano_riprova_la_scheda_dopo_un_errore(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                                    caplog: pytest.LogCaptureFixture) -> None:
+    """R-865-3/4: dopo «non riuscita» si riprova da soli; l'avviso nel registro solo quando
+    l'esito cambia (non a ogni riprova)."""
+    st = CRMStore(tmp_path / "crm.db")
+    with caplog.at_level("WARNING"):
+        stato, g, conto = _guardiano_con_scheda_finta(st, monkeypatch, ["non riuscita: disco staccato"])
+        limite = time.monotonic() + 10
+        while conto["chiamate"] < 3 and time.monotonic() < limite:
+            time.sleep(0.05)
+        stato.stop.set()
+        g.join(timeout=10)
+    assert conto["chiamate"] >= 3
+    assert caplog.text.count("scheda clienti offline: non riuscita") == 1
+
+
+def test_guardiano_scheda_mai_due_insieme_e_cambio_non_perso(tmp_path: Path,
+                                                            monkeypatch: pytest.MonkeyPatch) -> None:
+    db = tmp_path / "crm.db"
+    st = CRMStore(db)
+    stato, g, conto = _guardiano_con_scheda_finta(st, monkeypatch, ["aggiornata"], durata=3.0)
+    try:
+        time.sleep(0.4)  # la prima è in corso (e lo resta oltre il giro del guardiano)
+        CRMStore(db).aggiungi_cliente("Luisa Verdi")  # cambio mentre gira
+        limite = time.monotonic() + 10
+        while conto["chiamate"] < 2 and time.monotonic() < limite:
+            time.sleep(0.05)
+    finally:
+        stato.stop.set()
+        g.join(timeout=10)
+    assert conto["chiamate"] >= 2 and conto["max_insieme"] == 1
+
+
+def test_guardiano_ricontrolla_la_scheda_ogni_giorno(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-864-4: anche senza cambi dei dati, una volta al giorno (col giro delle copie)."""
+    st = CRMStore(tmp_path / "crm.db")
+    monkeypatch.setattr(server, "BACKUP_OGNI_S", 0.5)
+    monkeypatch.setattr(server, "_copia_giornaliera", lambda _s: None)
+    stato, g, conto = _guardiano_con_scheda_finta(st, monkeypatch, ["invariata"])
+    try:
+        limite = time.monotonic() + 10
+        while conto["chiamate"] < 3 and time.monotonic() < limite:
+            time.sleep(0.05)
+    finally:
+        stato.stop.set()
+        g.join(timeout=10)
+    assert conto["chiamate"] >= 3
+
