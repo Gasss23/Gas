@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #407 (https://github.com/Gasss23/Gas/pull/407).
+1. Merge della PR #407 (https://github.com/Gasss23/Gas/pull/407): «mergia» dell'operatore dato il 25/11.
    - Con APPROVATO pulito del bot sul nuovo head la mergia l'agente.
    - Altrimenti serve il «mergia» dell'operatore.
 
@@ -45,6 +45,8 @@ NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+46dfb8f9 Merge origin/main (PR #410 CRM) nel ramo della PR #407 — report del ramo tenuti, stato e memoria uniti (review #870-MERGE, R-870M-1 chiusa)
+dbd0d167 docs(fine-task): report col giro sulle note del bot su 0d433dfc (review #869)
 63a28b4a fix(voce): il nostro file del modello resta la prima scelta anche col nome di un modello pronto; avviso col valore rifiutato (V-1/V-2 bot su 0d433dfc)
 bb542081 chore(revisore): memoria review #869 — APPROVATO
 0d433dfc docs(fine-task): handoff col merge di main (PR #402, review #868-MERGE)
@@ -296,6 +298,51 @@ Review #868-MERGE: merge di origin/main 86a23f56 (PR #402, R7 fetta 4) nel ramo 
 Il commit del merge è consentito.
 ```
 
+## §4ter VERDETTO DEL REVISORE SUL MERGE DI MAIN (PR #410)
+
+R-870M-1 chiusa nello stesso commit del merge: entrambe le voci sono ora in stato_progetto.
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #870-MERGE: merge di origin/main 5a0f9dbc (PR #410, scheda CRM offline) nel ramo fix/voce-log-e-modello (PR #407, HEAD dbd0d167). Il merge è in staging e non committato; MERGE_HEAD coincide con origin/main. Codice e test sono a posto. La fusione di stato_progetto ha perso due finding aperti: vanno rimessi prima di committare (R-870M-1). Non ho usato git stash.
+
+Controlli generali: `git ls-files -u` vuoto e `--check` pulito. Rispetto a HEAD entrano 10 file (+799/−4). Test CRM più voce: 606 passati, rieseguiti da me.
+
+**Elementi esaminati**
+
+1. `requirements.txt:1` e `tests/conftest.py:1`, i due file che toccano tutta la suite.
+   - Rischio: una modifica fatta durante il merge che cambia l'ambiente di tutti i test.
+   - Esito: ok. `git diff --cached origin/main` è vuoto, quindi sono identici a main. Rispetto a HEAD entrano solo `pypdf>=5.1` (con il suo commento) e `monkeypatch.delenv("GAS_CRM_SCHEDA_PASSWORD", raising=False)`.
+2. `modules/crm/scheda.py:1`, `modules/crm/server.py:1`, `modules/crm/__main__.py:1`, `tests/test_unit_crm.py:1`, più `reports/crm/`.
+   - Esito: ok, identici a origin/main.
+3. I nostri file: `clients/voice/ascolto.py:1479`, `tests/test_unit_voce_ascolto.py:3430`, scripts/, più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` tenuti col lato del ramo (`--ours`).
+   - Esito: ok, `git diff --cached HEAD` su questi percorsi è vuoto. Gli unici file cambiati da entrambi i lati sono memoria e stato_progetto.
+4. `.claude/agents/memoria_revisore.md:1`: memoria unita, nessuna riga persa né di HEAD né di main.
+   - Esito: ok.
+5. `reports/stato_progetto.md:4`: la riga è identica a quella di main e c'è una sola riga «Ultimo aggiornamento».
+   - Esito: ok.
+6. `reports/stato_progetto.md:394`, voce del modello italiano.
+   - Bene: la V-3 della 2ª verifica esterna #405 (manca l'hash del modello valutato in ris/) è riportata, e c'è anche la licenza CC BY-NC-SA come decisione dell'operatore.
+   - Esito: riserva, vedi R-870M-1.
+
+**Riserva da sistemare prima del commit del merge**
+
+- **R-870M-1** (`reports/stato_progetto.md:394`): nella versione di main, la stessa voce elenca due finding aperti che nell'indice non ci sono più (controllato con grep su tutto il file: 0 occorrenze).
+  - **V-2 BASSA del bot su f51a58c7**: «§6 dell'handoff della #405 con esiti CI non allineati a gh run list».
+  - **V-1 BASSA del bot su 05df3ae7**: «ripiego su hey_jarvis che tiene la soglia 0,5 senza filtro». È ancora vera: il ripiego non tocca la soglia.
+
+  La V-1 del bot su f51a58c7 è invece giustamente data per chiusa (nomi non semplici → ripiego). Basta aggiungere le due voci nell'elenco «aperte» della riga 394. Il file è fuori dal perimetro, quindi non serve un'altra review: rimettile, metti in staging e committa.
+
+**Rischi esclusi**
+
+- Il contenuto della PR #410 (scheda PDF cifrata): non l'ho rivisto nel merito. Entra identico a main, revisionato dalla chat CRM.
+- Il comportamento di pypdf sul Mac: non verificato qui.
+- La suite completa: ho eseguito solo i test CRM e voce. conftest.py cambia per tutti solo con un `delenv`, che ha rischio nullo.
+
+**Memoria**: riga #870-MERGE aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree (non in staging, non committata). Contiene anche la lezione: quando si riscrive a mano una voce di stato durante un merge, confrontare uno per uno i finding aperti delle due versioni. Mettila in staging tu prima del commit del merge.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_voce_ascolto.py`: 391 → 395 passed (4 test nuovi, 2 aggiornati).
@@ -311,7 +358,8 @@ Il commit del merge è consentito.
 - 434e0966, 94f19a67 e 20e3ded4: nessuna run propria, vanno col push di questo commit.
 - 3d12ee08: verifica-bot neutral (APPROVATO CON RISERVE, solo V-1 BASSA sui report, corretta in 7cba139c).
 - 0d433dfc (merge di main, review #868-MERGE APPROVATO): verifica-bot neutral, APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA), corrette in questo giro.
-- Commit della correzione e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- dbd0d167: CI verde (unit-suite e handoff-check success), verifica-bot neutral (APPROVATO CON RISERVE, una BASSA e una COSMETICA sul testo dei log, rimandate).
+- Merge di main (PR #410) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
