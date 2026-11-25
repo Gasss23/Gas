@@ -156,6 +156,7 @@ DESTINAZIONE=""
 # --- spegni: prima di tutto il CRM smette di accettare il nome Tailscale (R-860-2), poi,
 #     se Tailscale risponde, si toglie il collegamento
 if [ "$AZIONE" = spegni ]; then
+  PARZIALE=no  # R-861-1: se qualcosa resta acceso niente «OK» e uscita 2 (spegni.sh avvisa)
   scrivi_env "" || stop "non riesco a togliere GAS_CRM_NOME_TAILSCALE dal file .env: toglila a mano"
   if leggi_porta; then
     DESTINAZIONE="http://127.0.0.1:$PORTA"
@@ -163,26 +164,42 @@ if [ "$AZIONE" = spegni ]; then
       riavvia_crm || echo "ATTENZIONE: il CRM non risponde dopo il riavvio: rilancia bash scripts/crm/installa.sh" >&2
     fi
   else
-    echo "ATTENZIONE: non riesco a leggere la porta del CRM: se il CRM è acceso, riavvialo (bash scripts/crm/installa.sh)" >&2
+    # senza porta non si riconosce il collegamento, ma il CRM si riavvia comunque senza il nome
+    echo "ATTENZIONE: non riesco a leggere la porta del CRM: il collegamento di Tailscale (se c'è) resta" >&2
+    PARZIALE=si
+    if crm_installato; then
+      launchctl kickstart -k "$DOMINIO/$SERVIZIO" >/dev/null 2>&1 \
+        || echo "ATTENZIONE: non riesco a riavviare il CRM: rilancia bash scripts/crm/installa.sh" >&2
+    fi
   fi
-  if [ -z "$TS" ]; then
-    echo "OK: accesso dal telefono spento (Tailscale non è installato)."
-    exit 0
+  if [ -n "$TS" ]; then
+    if leggi_nome; then
+      STATO="$(stato_serve)"
+      case "$STATO" in
+        nostro*)
+          if ! "$TS" serve --yes --https=443 off >/dev/null; then
+            echo "ATTENZIONE: non riesco a togliere il collegamento: $TS serve --https=443 off" >&2
+            PARZIALE=si
+          fi ;;
+        errore)
+          echo "ATTENZIONE: non riesco a leggere la configurazione di Tailscale: controlla con $TS serve status" >&2
+          PARZIALE=si ;;
+      esac
+      case "$STATO" in *pubblico*)
+        echo "ATTENZIONE: sul nome del Mac c'è un funnel PUBBLICO (internet): spegnilo con '$TS funnel reset'" >&2
+        PARZIALE=si ;;
+      esac
+    else
+      echo "ATTENZIONE: Tailscale è spento o senza accesso: il CRM rifiuta già il nome del Mac, ma il collegamento" >&2
+      echo "resta salvato in Tailscale. Quando riaccendi Tailscale, rilancia: bash scripts/crm/telefono.sh spegni" >&2
+      PARZIALE=si
+    fi
   fi
-  if ! leggi_nome; then
-    echo "ATTENZIONE: Tailscale è spento o senza accesso: il CRM rifiuta già il telefono, ma il collegamento" >&2
-    echo "resta salvato in Tailscale. Quando riaccendi Tailscale, rilancia: bash scripts/crm/telefono.sh spegni" >&2
-    exit 0
+  if [ "$PARZIALE" = si ]; then
+    echo "Accesso dal telefono spento SOLO IN PARTE: leggi gli avvisi sopra." >&2
+    exit 2
   fi
-  STATO="$(stato_serve)"
-  case "$STATO" in
-    nostro*)
-      "$TS" serve --yes --https=443 off >/dev/null \
-        || echo "ATTENZIONE: non riesco a togliere il collegamento: $TS serve --https=443 off" >&2 ;;
-    errore) echo "ATTENZIONE: non riesco a leggere la configurazione di Tailscale: controlla con $TS serve status" >&2 ;;
-  esac
-  case "$STATO" in *pubblico*) echo "ATTENZIONE: sul nome del Mac c'è un funnel PUBBLICO (internet): spegnilo con '$TS funnel reset'" >&2 ;; esac
-  echo "OK: accesso dal telefono spento. La dashboard si apre solo dal Mac (icona «CRM Gas»)."
+  echo "OK: accesso dal telefono spento. Sul Mac la dashboard resta su http://127.0.0.1:$PORTA/."
   exit 0
 fi
 

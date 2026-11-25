@@ -3074,7 +3074,7 @@ def _gas_ts_finto(tmp_path: Path, env: str = "GAS_CRM_TOKEN=segreto-di-prova-lun
     py = gas / ".venv/bin/python"
     py.write_text('#!/bin/bash\n'
                   'for a in "$@"; do if [ "$a" = "-" ]; then\n'
-                  '  s="$(cat)"; case "$s" in *"import gas"*) echo 8770; exit 0 ;; esac\n'
+                  '  s="$(cat)"; case "$s" in *"import gas"*) [ -f "$HOME/porta_ko" ] && exit 4; echo 8770; exit 0 ;; esac\n'
                   f'  printf "%s" "$s" | exec {sys.executable} "$@"\n'
                   'fi; done\n'
                   f'exec {sys.executable} "$@"\n')
@@ -3188,7 +3188,7 @@ def test_telefono_spegni_anche_con_tailscale_spento(tmp_path: Path) -> None:
                                                     f"GAS_CRM_NOME_TAILSCALE = {NOME_TS}\n"
                                                     f"export GAS_CRM_NOME_TAILSCALE={NOME_TS}\n")
     r, registro = _telefono(gas, finti, casa, tmp_path, "spegni", TS_STATO="Stopped")
-    assert r.returncode == 0, r.stdout + r.stderr
+    assert r.returncode == 2 and "SOLO IN PARTE" in r.stderr, r.stdout + r.stderr
     assert "rilancia: bash scripts/crm/telefono.sh spegni" in r.stderr
     assert (gas / ".env").read_text() == "GAS_CRM_TOKEN=segreto-di-prova-lungo\n"
     assert "launchctl kickstart" in registro and "serve --yes --https=443 off" not in registro
@@ -3201,7 +3201,7 @@ def test_telefono_spegni_toglie_anche_se_c_e_un_funnel(tmp_path: Path) -> None:
         "Web": {f"{NOME_TS}:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8770"}}}},
         "AllowFunnel": {f"{NOME_TS}:443": True}}))
     r, registro = _telefono(gas, finti, casa, tmp_path, "spegni")
-    assert r.returncode == 0 and "serve --yes --https=443 off" in registro
+    assert r.returncode == 2 and "serve --yes --https=443 off" in registro
     assert "funnel PUBBLICO" in r.stderr
 
 
@@ -3252,4 +3252,35 @@ def test_spegni_crm_spegne_anche_il_telefono(tmp_path: Path) -> None:
     nuovo = (tmp_path / "registro.txt").read_text()[registro_prima:]
     assert "tailscale serve --yes --https=443 off" in nuovo
     assert "GAS_CRM_NOME_TAILSCALE" not in (gas / ".env").read_text()
+
+
+@pytest.mark.parametrize("gestori, porta_ko", [
+    ({"/": {"Text": "ciao"}}, True),  # porta illeggibile e un gestore di testo (R-861-2)
+    ({"/": {"Proxy": "http://127.0.0.1:8770"}, "/altro": {"Proxy": "http://127.0.0.1:3000"}}, False),
+    ({"/": {"Proxy": "http://127.0.0.1:87700"}}, False),  # la nostra porta come prefisso
+])
+def test_telefono_spegni_non_tocca_i_collegamenti_di_altri(tmp_path: Path, gestori: Dict[str, Any],
+                                                          porta_ko: bool) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    configurazione = {"Web": {f"{NOME_TS}:443": {"Handlers": gestori}}}
+    (tmp_path / "registro.txt.serve").write_text(json.dumps(configurazione))
+    if porta_ko:
+        (casa / "porta_ko").touch()
+    r, registro = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert "serve --yes --https=443 off" not in registro, r.stdout + r.stderr
+    assert json.loads((tmp_path / "registro.txt.serve").read_text()) == configurazione
+    if porta_ko:  # senza porta: niente «OK», uscita 2, ma il CRM si riavvia senza il nome
+        assert r.returncode == 2 and "launchctl kickstart" in registro
+
+
+def test_telefono_spegni_off_fallito_non_dice_ok(tmp_path: Path) -> None:
+    """R-861-1: se il collegamento non si toglie, niente «OK» e uscita diversa da 0."""
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    r, _ = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0
+    (finti / "tailscale").write_text((finti / "tailscale").read_text().replace(
+        'if [ "$u" = off ]; then echo null > "$REGISTRO.serve"; exit 0; fi',
+        'if [ "$u" = off ]; then exit 1; fi'))
+    r, _ = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert r.returncode == 2 and "OK:" not in r.stdout and "non riesco a togliere" in r.stderr
 
