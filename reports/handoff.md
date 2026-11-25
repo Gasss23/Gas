@@ -224,42 +224,59 @@ Review #866: il diff staged sul ramo claude/nifty-galileo-3k7kbm sopra b7182a7c.
 - `/home/user/Gas/.claude/agents/memoria_revisore.md` (riga #866, non staged, non committata)
 - Script delle prove: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/diff_env.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/mutanti.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/sonde.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/mac_finto.sh`
 
-### Commit 3b8737b5 — review #867-MERGE (verdetto integrale)
+### Commit 3b8737b5 — review #867-MERGE (verdetto integrale, riemesso con le citazioni dei file della fetta)
 
 ## VERDETTO: APPROVATO
 
-Review #867-MERGE: il merge in corso di origin/main 86a23f56 (PR #402, tetto di tempo duro del sottofondo) nel ramo claude/nifty-galileo-3k7kbm (PR #410, HEAD 07b0da7f) è a posto. Lo sha256 del diff dell'indice contro HEAD è cb2b2801…: coincide con quello dichiarato e la mia riga in memoria non l'ha cambiato. Indice: 4 file, +205/−1. Letti prima della review: CLAUDE.md (sezione 5, sezione 8, roadmap), la testa di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+Review #867-MERGE: il merge di origin/main 86a23f56 (PR #402, tetto di tempo duro del sottofondo) nel ramo claude/nifty-galileo-3k7kbm (PR #410, HEAD prima del merge 07b0da7f) è a posto.
+- Lo sha256 del diff dell'indice contro HEAD è cb2b2801…: coincide con quello dichiarato. Indice: 4 file, +205/−1.
+- Il commit di merge 3b8737b5 (genitori 07b0da7f e 86a23f56) ha lo stesso diff contro 07b0da7f: sha256 cb2b2801, ricalcolato. Il commit dopo, 3b61c965, tocca solo report e memoria e resta fuori da questa review.
+- Letti prima della review: CLAUDE.md (sezione 5, sezione 8, roadmap), la testa di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
 
-**Cosa ho controllato nel diff**
-1. `modules/sottofondo/__init__.py:821` — `_termina_processo`, e `modules/sottofondo/__init__.py:880` — `_scaduto` con lock e flag. Rischio esaminato: che la risoluzione abbia alterato il codice di main o mischiato righe del ramo. `git diff --cached MERGE_HEAD -- modules/sottofondo/__init__.py` è vuoto, quindi il file è identico a main. Il modulo non nomina mai «crm» né «scheda» (grep), quindi non tocca il CRM. Esito: ok.
-2. `tests/test_unit_sottofondo.py:1493` — `test_tetto_e_fine_turno_un_solo_esito` (con gli altri test del tetto, da riga 1426). Rischio esaminato: test di main persi o tenuti in un modo che li rompe. Il file è identico a main (diff vuoto). Il `tests/conftest.py` del ramo aggiunge solo il delenv di `GAS_CRM_SCHEDA_PASSWORD` e non cambia il comportamento dei test del sottofondo: 348 passed (sottofondo + crm) e 51 passed (manutenzione) su una copia dell'indice estratta con `git checkout-index`. Esito: ok.
-3. `.claude/agents/memoria_revisore.md:1762` — inizio delle righe aggiunte. Rischio esaminato: righe perse o duplicate. L'indice contiene le righe comuni (base) + le 5 righe di main + le 9 del ramo, in quest'ordine, confrontato a stringa: 0 righe perse da HEAD, 0 perse da main, 0 righe estranee. Esito: ok.
-4. `reports/stato_progetto.md:4` (contesto, file di report).
+**File della PR #410 (diff di sessione contro main)**
+
+Le righe da `tests/conftest.py:40` in giù le ho rilette quando ho riemesso il verdetto, a HEAD 3b61c965. Il confronto dei file interi con HEAD l'avevo fatto nella review.
+
+1. `tests/conftest.py:40` — `monkeypatch.delenv("GAS_CRM_SCHEDA_PASSWORD", raising=False)` nella fixture `_crm_vero_isolato`, accanto ai delenv di `tests/conftest.py:38` e `tests/conftest.py:39`. È l'unica riga che la #410 aggiunge al conftest (`git diff` base→HEAD). Rischio esaminato: che cambi i test del sottofondo arrivati da main. Toglie solo una variabile del CRM e il sottofondo non la legge (grep: nessun «crm» né «scheda» nel modulo). Prova: 348 passed (sottofondo + crm) su una copia dell'indice. Esito: ok.
+2. `modules/crm/scheda.py:50` — `_leggi_env_file`, rilegge il `.env` per la password della scheda; `_RADICE` è a `modules/crm/scheda.py:47`. Rischio esaminato: che la risoluzione abbia preso righe di main o perso righe del ramo. `git diff --cached HEAD -- modules/crm/scheda.py` è vuoto nell'indice. Dopo il commit, il file a 3b61c965 è uguale a 07b0da7f. Esito: ok.
+3. `modules/crm/server.py:351` — `_scheda_offline`, chiamata dal guardiano; costanti di attesa a `modules/crm/server.py:71` e `modules/crm/server.py:72`. Stesso rischio, stesso controllo: diff vuoto contro HEAD nell'indice e contro 07b0da7f a 3b61c965. Esito: ok.
+4. `modules/crm/__main__.py:210` — `cmd_scheda` (comando `scheda [--forza]`). Stesso controllo. Esito: ok.
+5. `tests/test_unit_crm.py:3311` — `test_scheda_cifrata_solo_quando_cambiano_i_dati` e i test della scheda che seguono. Il file è uguale a HEAD e i test girano verdi dentro i 348 passed. Esito: ok.
+
+**File portati da main**
+
+6. `modules/sottofondo/__init__.py:821` — `_termina_processo`, e `modules/sottofondo/__init__.py:880` — lock e flag condivisi tra `_scaduto` e la fine del turno. Rischio esaminato: che la risoluzione abbia alterato il codice di main o mischiato righe del ramo. `git diff --cached MERGE_HEAD -- modules/sottofondo/__init__.py` è vuoto, quindi il file è identico a main. Il modulo non nomina mai «crm» né «scheda» (grep), quindi non tocca il CRM. Esito: ok.
+7. `tests/test_unit_sottofondo.py:1493` — `test_tetto_e_fine_turno_un_solo_esito`, insieme agli altri test del tetto da `tests/test_unit_sottofondo.py:1426`. Rischio esaminato: test di main persi o rotti dal merge. Il file è identico a main (diff vuoto). Prova: 348 passed (sottofondo + crm) e 51 passed (manutenzione) su una copia dell'indice estratta con `git checkout-index`. Esito: ok.
+8. `.claude/agents/memoria_revisore.md:1762` — inizio delle righe aggiunte. Rischio esaminato: righe perse o duplicate. L'indice contiene le righe comuni (base) + le 5 righe di main + le 9 del ramo, in quest'ordine, confrontato a stringa: 0 righe perse da HEAD, 0 perse da main, 0 righe estranee. Esito: ok.
+
+**Report (contesto)**
+
+9. `reports/stato_progetto.md:4`
    - La riga «Ultimo aggiornamento» è il frammento R7 di main, con «ancora aperta» cambiato in «MERGIATA il 25-11, 86a23f56», seguito dalla riga intera del ramo (uguaglianza verificata a stringa). Data e SHA tornano con `git log`.
    - C'è una sola riga `> Ultimo aggiornamento`.
-   - Le altre righe di main che sembravano «perse» sono le righe Voce (393) e Dashboard (9), che solo il ramo aveva cambiato rispetto alla base: è giusto che resti la versione del ramo.
+   - Le altre righe di main che sembravano «perse» sono la riga Voce (`reports/stato_progetto.md:394`) e la riga Dashboard (`reports/stato_progetto.md:10`), che solo il ramo aveva cambiato rispetto alla base: è giusto che resti la versione del ramo.
    - Esito: ok.
-5. `reports/stato_progetto.md:406` (contesto). La riga R7 di main è intatta (933 caratteri, prefisso identico); in coda è aggiunta la V-1 COSMETICA. Ho riscontrato la V-1 nel check-run `verifica-bot` su af6e5078 (APPROVATA, success, una sola riserva COSMETICA sulla docstring). Regola 3 di `reports/lavoro_parallelo.md`:
-   - l'unica «decisione umana» del lato main (il merge della #402) è già fatta;
-   - le riserve R-852R7-1/2/4 e R-853R7-1/2/3 sono presenti nello stato.
-   - Esito: ok.
+10. `reports/stato_progetto.md:406` — la riga R7 di main è intatta (933 caratteri, prefisso identico); in coda è aggiunta la V-1 COSMETICA. Ho riscontrato la V-1 nel check-run `verifica-bot` su af6e5078 (APPROVATA, success, una sola riserva COSMETICA sulla docstring). Regola 3 di `reports/lavoro_parallelo.md`:
+    - l'unica «decisione umana» del lato main (il merge della #402) è già fatta;
+    - le riserve R-852R7-1/2/4 e R-853R7-1/2/3 sono presenti nello stato.
+    - Esito: ok.
 
 **Controlli sul resto del merge**
 - `git ls-files -u` è vuoto: non restano file in conflitto.
 - Nessun marcatore di conflitto nei file staged, e `git diff --cached --check` è pulito.
 - Nessun file non tracciato.
-- `git diff --cached MERGE_HEAD --name-only`: l'indice differisce da main solo sui file della #410 (modules/crm/__main__.py, scheda.py, server.py, reports/crm/, requirements.txt, tests/conftest.py, tests/test_unit_crm.py), sulla memoria, sullo stato e sui tre log di sessione.
+- `git diff --cached MERGE_HEAD --name-only`: l'indice differisce da main solo sui file della #410 (modules/crm/__main__.py, modules/crm/scheda.py, modules/crm/server.py, reports/crm/, requirements.txt, tests/conftest.py, tests/test_unit_crm.py), sulla memoria, sullo stato e sui tre log di sessione.
 - Tutti i file della #410, compresi handoff/ultimo_report/diff_sessione, sono identici a HEAD. Il comportamento della #410 non cambia.
 - Antipattern: il diff non taglia la storia dei messaggi e non simula l'output dei tool. Non indebolisce nessun guardrail (gas.py e brains non sono toccati da nessuno dei due lati).
 
 **Cosa NON ho verificato**
 - La suite completa del kernel (tests/test_unit_kernel.py) e le altre suite della CI non le ho rilanciate. gas.py e brains sono identici su entrambi i lati e il sottofondo è uguale a main, che è già passato in CI. Fa fede la CI sul commit di merge.
-- La correttezza del tetto duro in sé non l'ho rivista: è stata già revisionata in #852-R7/#853-R7 e il codice arriva da main senza modifiche.
+- La correttezza del tetto duro in sé e quella della scheda non le ho riviste: sono già state revisionate in #852-R7/#853-R7 e #864–#866, e il codice arriva dai due lati senza modifiche.
 - Il comportamento su Mac o VPS: non riproducibile qui.
 
 **Riserve:** nessuna.
 
-**Memoria:** riga #867-MERGE aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree (fuori stage), nessuna lezione nuova. `scripts/commit_memoria_revisore.sh` NON eseguito, come avete chiesto (merge in corso). Il marcatore .claude/.review_ok NON è stato creato.
+**Memoria:** riga #867-MERGE già scritta con la prima emissione; come avete chiesto, non ho toccato né la memoria né lo stage e non ho committato.
 
 ## §5 DELTA TEST DEL MOTORE
 
