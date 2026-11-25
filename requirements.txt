@@ -9,3 +9,5 @@ pyyaml>=6.0
 selectolax==1.0.2
 # CRM: copia di sicurezza CIFRATA fuori dal Mac (modules/crm/copia_cifrata.py)
 cryptography>=42.0
+# CRM: scheda clienti da leggere offline, PDF con password AES-256 (modules/crm/scheda.py)
+pypdf>=5.1
