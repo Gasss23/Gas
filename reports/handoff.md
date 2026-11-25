@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 23 novembre 2026 — R7 fetta 4: tetto di tempo duro del compito in sottofondo (sotto-chat di M1)
+**Sessione:** 23 novembre 2026 — R7 fetta 4: tetto di tempo duro del compito in sottofondo (sotto-chat di M1) — secondo giro: merge di main (#401, #404, #405, #406)
 
 ---
 
@@ -15,6 +15,7 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 4 R7 — tetti di tempo duri (parte sottofondo)**: FATTA. Timer demone col tempo rimasto (dalla prima creazione): alla scadenza «ko», avviso, arresto del gruppo di processi; «ko» subito se il tempo è già finito; un solo esito tra timer e fine turno; attesa del timer limitata a 30 giorni. Review #852-R7 → #853-R7.
+- **Merge di origin/main (PR #401, #404, #405, #406 di altre chat) nel ramo (25/11)**: FATTO (b7150a1a), conflitti solo nei report (regola 3; riserve di Voce e CRM già in `stato_progetto.md`). Review #864-MERGE-R7 APPROVATO. Test dopo il merge: sottofondo 137 passed, kernel «=== RIEPILOGO: 1208 PASS, 0 FAIL ===».
 - **Tetto duro del compito del giro di notte**: DEFERITA — prossima PR (il giro gira nel processo principale: serve un altro meccanismo).
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA.
 - **Anomalia di sessione**: nel primo tentativo di scrivere questo handoff un heredoc non quotato ha fatto eseguire alla shell alcuni testi tra backtick (solo comandi di lettura o falliti: una GET sulle PR, `gh pr` rifiutato, `claude -p` uscito subito per input mancante). Nessuna scrittura; il commit 12ab9019 è partito con l'handoff vecchio, corretto dal commit successivo.
@@ -24,13 +25,13 @@ Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POS
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-.claude/agents/memoria_revisore.md |   4 ++++
- modules/sottofondo/__init__.py     |  76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  10 ++++------
+.claude/agents/memoria_revisore.md |   5 ++++
+ modules/sottofondo/__init__.py     |  76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  15 ++++--------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  20 +++++++-------------
- tests/test_unit_sottofondo.py      | 122 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  61 ++++++++++-------------------------------------
+ tests/test_unit_sottofondo.py      | 122 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
@@ -38,6 +39,8 @@ NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è t
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b7150a1a Merge origin/main (PR #401, #404, #405, #406) nel ramo della PR #402 — review #864-MERGE-R7 APPROVATO
+42941adb docs(fine-task): R7 fetta 4 — handoff con review #852-R7/#853-R7 (corregge il commit precedente partito con l'handoff vecchio)
 12ab9019 docs(fine-task): R7 fetta 4 — report, handoff con review #852-R7/#853-R7, stato_progetto
 a56e9df9 feat(sottofondo): R7 fetta 4 — tetto di tempo duro: il processo in sottofondo si ferma da solo alla durata massima
 ba75ec24 chore(revisore): memoria review #853 — APPROVATO CON RISERVE
@@ -48,7 +51,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit a56e9df9 (motore): review #852-R7 sul primo staged e #853-R7 dopo le correzioni di R-852R7-2/3 (e della docstring per R-852R7-1/4). Incollati integrali.
+Commit a56e9df9 (motore): review #852-R7 sul primo staged e #853-R7 dopo le correzioni di R-852R7-2/3 (e della docstring per R-852R7-1/4). Merge b7150a1a: review #864-MERGE-R7. Incollati integrali.
 
 ### Review #852-R7
 
@@ -151,29 +154,56 @@ File rilevanti:
 - /home/user/Gas/modules/sottofondo/__init__.py
 - /home/user/Gas/tests/test_unit_sottofondo.py
 
+### Review #864-MERGE-R7 (merge b7150a1a)
+
+## VERDETTO: APPROVATO
+
+Review #864-MERGE-R7. Merge in corso di origin/main (PR #401, #404, #405, #406) in claude/r7-tetti-di-tempo (PR #402). Confronto: indice contro HEAD, 108 file.
+
+**Elementi esaminati**
+- `modules/sottofondo/__init__.py:880`: il lock `esito_lock` con il flag `chiusura`, preso in `_scaduto` e in `_esegui` (`modules/sottofondo/__init__.py:931`). Rischio: che il merge abbia alterato la fetta, oppure che main abbia cambiato il sottofondo, run_turn o il cancello. Il diff tra indice e HEAD su modules/sottofondo, tests/test_unit_sottofondo.py, gas.py e brains è vuoto. Dalla merge-base main non tocca gas.py, brains né il sottofondo. L'unico `start_new_session=True` nuovo di main sta nel test del CRM (`_esegui_crm`), non in un processo che il sottofondo lancia, quindi R-852R7-1 non si allarga. Esito: ok.
+- `modules/sottofondo/__init__.py:811` (`_arma_tetto`, attesa limitata a TETTO_TIMER_S), `modules/sottofondo/__init__.py:821` (`_termina_processo`, killpg solo da capo gruppo con `os._exit` di riserva) e `modules/sottofondo/__init__.py:837` (`_secondi_rimasti`). Rischio: divergenza rispetto a quanto già revisionato in #852-R7 e #853-R7. Il codice è identico a HEAD e le riserve note restano quelle già scritte in stato. Esito: ok.
+- `tests/test_unit_sottofondo.py:1420`: la fixture `_tetto` sostituisce `_arma_tetto` e `_termina_processo`. I test vanno da `tests/test_unit_sottofondo.py:1426` a `tests/test_unit_sottofondo.py:1517` (tetto armato col tempo rimasto, scaduto, già superato, orologio indietro, un solo esito, timer enorme). L'ho rieseguito sul working tree, che è identico all'indice: 137 passed. Esito: ok.
+- Risoluzione dei conflitti:
+  - `git ls-files -u` è vuoto e non ci sono marcatori.
+  - Tutti i file in stage sono byte-identici a origin/main tranne `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md`. Il codice portato da main è quindi identico a main.
+  - handoff, ultimo_report e diff_sessione sono uguali a HEAD (regola 3).
+  - Memoria: è l'unione dei due lati. Contando le righe non ne manca nessuna di HEAD né di main e non ce ne sono di estranee. Le righe #852-R7 e #853-R7 sono in coda.
+  - Stato: rispetto a main cambiano solo la riga «Ultimo aggiornamento», unita con la voce R7 in testa e le voci del 25/11 e del 24/11 di main conservate, e la voce nuova «R7 fetta 4».
+  - Le riserve e le decisioni dell'ultimo_report di main (la Voce, PR #405) sono già in stato. R-854-1 compare 3 volte. La licenza CC BY-NC-SA è a riga 393. R-856-1 è chiusa secondo quel report. Il telefono del CRM (decisione 21) è nella riga 4.
+  - Esito: ok.
+
+**Rischio escluso**: non ho rieseguito la suite kernel né le suite CRM e voce di main. Il codice portato è identico a origin/main, già revisionato in quelle chat, e la suite kernel la sta eseguendo il chiamante. Non ho verificato nemmeno l'ultimo verdetto del bot sulle head mergiate di #405 e #406 (lezione del 2026-11-24), che sta solo su GitHub e non ho interrogato.
+
+Nessuna lezione nuova. Ho scritto la riga contatore #864-MERGE-R7 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. È nel working tree, non è in stage e non l'ho committata, perché il merge è in corso. Va committata dopo la chiusura del merge, per esempio con `bash scripts/commit_memoria_revisore.sh` oppure nel passo 4 di fine-task.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_sottofondo.py`: 129 → 137 (8 test nuovi), tutti verdi in locale: `137 passed in 6.61s`.
-- `tests/test_unit_kernel.py` non rieseguito: il diff non tocca gas.py né il kernel (solo `modules/sottofondo/` e i suoi test). Il revisore ha fatto una prova reale con processo, gruppo e figlio veri (rc −15, «ko», avviso).
+- Dopo il merge b7150a1a: `tests/test_unit_kernel.py` «=== RIEPILOGO: 1208 PASS, 0 FAIL ===»; sottofondo 137 passed.
+- Prima del merge `tests/test_unit_kernel.py` non era stato rieseguito: il diff non tocca gas.py né il kernel (solo `modules/sottofondo/` e i suoi test). Il revisore ha fatto una prova reale con processo, gruppo e figlio veri (rc −15, «ko», avviso).
 
 ## §6 STATO CI
 
 Output reale di `gh run list -L 3` alla scrittura:
 
 ```
-completed	skipped	R7 fetta 4: tetto di tempo duro del compito in sottofondo	verifica-bot	claude/r7-tetti-di-tempo	pull_request_target	45235412646	2s	2026-11-23T18:09:50Z
-in_progress		feat(sottofondo): R7 fetta 4 — tetto di tempo duro: il processo in so…	CI	claude/r7-tetti-di-tempo	push	45235404850	1m16s	2026-11-23T18:09:48Z
-in_progress		Merge pull request #399 from Gasss23/claude/r7-lavori-ricorrenti	CI	main	push	45234199070	7m57s	2026-11-23T18:03:07Z
+in_progress		Merge pull request #405 from Gasss23/feat/voce-modello-italiano	CI	main	push	45648167715	10m44s	2026-11-25T15:42:20Z
+completed	success	Voce: «ehi Jarvis» con accento italiano (modello ehi_jarvis_it)	verifica-bot	feat/voce-modello-italiano	pull_request_target	45645375855	14m26s	2026-11-25T15:27:29Z
+completed	success	docs(fine-task): handoff col 2° merge di main (review #863-MERGE)	CI	feat/voce-modello-italiano	push	45645367321	12m1s	2026-11-25T15:27:26Z
 ```
 
 Run di questo branch (`gh api .../actions/runs?branch=claude/r7-tetti-di-tempo`, output reale):
 
 ```
+45235701779 42941adb verifica-bot pull_request_target completed/success
+45235689297 42941adb verifica-bot pull_request_target completed/skipped
+45235681642 42941adb CI push completed/success
 45235412646 a56e9df9 verifica-bot pull_request_target completed/skipped
-45235404850 a56e9df9 CI push in_progress/null
+45235404850 a56e9df9 CI push completed/failure
 ```
 
-Mappatura commit→run: a56e9df9 (testa del primo push): run CI e verifica-bot sopra con head a56e9df9 (verifica-bot skipped: PR ancora senza etichetta). 12ab9019: le run con quell'head, se presenti sopra; altrimenti nessuna run su questo SHA. 36f1c779 e ba75ec24 (memoria): nessuna run propria (pushati insieme a a56e9df9). Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura commit→run: a56e9df9: CI con head a56e9df9 sopra; verifica-bot skipped (senza etichetta). 42941adb: CI success (unit-suite, handoff-check); verifica-bot cancelled (va rilanciato sul nuovo head). 12ab9019, 36f1c779, ba75ec24, b7150a1a: nessuna run propria. Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
