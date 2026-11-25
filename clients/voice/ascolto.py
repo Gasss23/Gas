@@ -46,7 +46,10 @@ Variabili d'ambiente (lette anche da .env nella root di Gas):
     GAS_VOICE_MAX_TURNI    — turni dopo la parola, il primo compreso (default 1: nessun seguito)
     GAS_ASCOLTO_MODELLO    — modello di openWakeWord (default hey_jarvis): il nome di un
                              modello pronto, oppure il nome di un modello addestrato da noi
-                             in .gas_voce/modelli/<nome>.onnx (es. ehi_jarvis_it)
+                             in .gas_voce/modelli/<nome>.onnx (es. ehi_jarvis_it). Il nome si
+                             pulisce (minuscole, spazi → _); un nome che non è né un modello
+                             pronto né semplice ([a-z0-9_]), o un file che manca, ripiega su
+                             hey_jarvis con un avviso nel log
     GAS_ASCOLTO_SOGLIA     — soglia della parola di attivazione, 0-1 (default 0.7)
     GAS_ASCOLTO_BLOCCHI_PAROLA — blocchi da 80 ms di fila sopra soglia per la parola, 1-5 (default 1)
     GAS_ASCOLTO_VOCE_RMS   — energia sopra cui c'è voce (default 200, campioni int16)
@@ -1441,9 +1444,28 @@ def _modelli_pronti() -> set:
     nessun nome è «pronto» e un nostro modello senza file ripiega su hey_jarvis)."""
     try:
         import openwakeword
-        return set(getattr(openwakeword, "MODELS", {}) or {})
+        nomi = set(getattr(openwakeword, "MODELS", {}) or {})
+        # R-866-1: anche i nomi dei file con la versione (alexa_v0.1, hey_jarvis_v0.1)
+        try:
+            for p in openwakeword.get_pretrained_model_paths("onnx"):
+                nomi.add(os.path.splitext(os.path.basename(p))[0])
+        except Exception:
+            pass
+        return nomi
     except Exception:
         return set()
+
+
+_AVVISI_DATI: set = set()
+
+
+def _avvisa_una_volta(formato: str, *argomenti: Any) -> None:
+    """R-864-2: modello_della_parola si chiama all'avvio dal rilevatore e dal log di
+    «ascolto pronto»: lo stesso avviso di ripiego si scrive una volta sola."""
+    testo = formato % argomenti
+    if testo not in _AVVISI_DATI:
+        _AVVISI_DATI.add(testo)
+        log.warning(testo)
 
 
 def modello_della_parola(modello: str, radice: Optional[Path] = None) -> str:
@@ -1453,10 +1475,14 @@ def modello_della_parola(modello: str, radice: Optional[Path] = None) -> str:
     semplice (un percorso, maiuscole, vuoto) dà hey_jarvis: mai un file preso dall'ambiente.
     openWakeWord chiama il modello col nome del file senza .onnx, cioè `modello`: le
     previsioni e il verificatore restano sotto lo stesso nome."""
+    if modello in _modelli_pronti():
+        # V-1 bot #407: un modello pronto di openWakeWord col suo nome esatto (anche con la
+        # versione, es. alexa_v0.1) passa com'è, come prima.
+        return modello
     if not _NOME_MODELLO_SEMPLICE.fullmatch(modello or ""):
         # V-1 bot #405 (f51a58c7): un percorso o un nome strano preso dall'ambiente non
         # arriva a openWakeWord: si ripiega sul modello pronto, l'ascolto resta acceso.
-        log.warning("modello della parola: nome non valido in GAS_ASCOLTO_MODELLO "
+        _avvisa_una_volta("modello della parola: nome non valido in GAS_ASCOLTO_MODELLO "
                     "(solo lettere minuscole, cifre e _): uso %s", MODELLO_DI_RISERVA)
         return MODELLO_DI_RISERVA
     p = (radice or _GAS_ROOT) / CARTELLA_MODELLI / ("%s.onnx" % modello)
@@ -1469,14 +1495,14 @@ def modello_della_parola(modello: str, radice: Optional[Path] = None) -> str:
         # modello pronto e openWakeWord si fermerebbe: si ripiega, l'ascolto resta acceso.
         if modello in _modelli_pronti() or modello == MODELLO_DI_RISERVA:
             return modello
-        log.warning("modello della parola: %s non c'è in %s: uso %s",
+        _avvisa_una_volta("modello della parola: %s non c'è in %s: uso %s",
                     p.name, CARTELLA_MODELLI, MODELLO_DI_RISERVA)
         return MODELLO_DI_RISERVA
     motivo = _file_fidato(p)
     if motivo:
         # R-854-2: il nome nudo non è un modello pronto e openWakeWord si fermerebbe:
         # si ripiega sul modello pronto, così l'ascolto resta acceso (§9).
-        log.warning("modello della parola: %s non caricato (%s): uso %s",
+        _avvisa_una_volta("modello della parola: %s non caricato (%s): uso %s",
                     p.name, motivo, MODELLO_DI_RISERVA)
         return MODELLO_DI_RISERVA
     return str(p)
