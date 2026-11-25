@@ -133,6 +133,11 @@ def cmd_serve(a: argparse.Namespace) -> int:
             from modules.crm import copia_cifrata
             # V-1 bot #386: prova VERA di scrittura; R-820-1: con un tempo massimo
             print("Copia cifrata giornaliera fuori dal Mac: " + copia_cifrata.esito_all_avvio())
+            from modules.crm import scheda
+            spenta = scheda.motivo_spenta()  # decisione 22
+            print("Scheda clienti da leggere offline (nella cartella delle copie cifrate): "
+                  + (f"SPENTA ({spenta})" if spenta else
+                     "accesa, si rifà quando cambiano i dati (se non riesce, avviso in gas_debug.log)"))
         print("Ctrl+C per fermare.")
     try:
         server.avvia(stato, host=host, porta=a.porta, pronto=pronto)
@@ -200,6 +205,14 @@ def cmd_backup(a: argparse.Namespace) -> int:
     else:
         print(f"Copia cifrata fuori dal Mac NON fatta: {motivo}")
     return 0
+
+
+def cmd_scheda(a: argparse.Namespace) -> int:
+    """Decisione 22: riscrive la scheda clienti offline (PDF con password su iCloud Drive)."""
+    from modules.crm import scheda
+    esito, dest = scheda.aggiorna(_store(False), forza=a.forza)
+    print(f"Scheda clienti: {esito}" + (f" ({dest})" if dest else ""))
+    return 1 if esito.startswith("non riuscita") else 0
 
 
 def cmd_ripristina(a: argparse.Namespace) -> int:
@@ -359,6 +372,9 @@ def parser() -> argparse.ArgumentParser:
     sp.add_argument("id", type=int)
     sub.add_parser("demo", help="crea il DB dimostrativo").set_defaults(fn=cmd_demo)
     nuovo("backup", cmd_backup, "copia di sicurezza del DB (e copia cifrata fuori dal Mac)")
+    sp = sub.add_parser("scheda", help="scheda clienti offline (PDF con password su iCloud Drive)")
+    sp.add_argument("--forza", action="store_true", help="riscrivila anche se i dati non sono cambiati")
+    sp.set_defaults(fn=cmd_scheda)
     sp = nuovo("ripristina", cmd_ripristina, "rimette il DB da una copia cifrata .gascrm")
     sp.add_argument("file", help="la copia cifrata (.gascrm), per esempio da iCloud Drive")
     sp.add_argument("--dest", help="dove scrivere il DB (default: il DB del CRM, se non esiste)")
