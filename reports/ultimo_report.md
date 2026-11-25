@@ -8,7 +8,7 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-pian
 2. Canale dell'avviso di fine lavoro: commenti sulla issue letti da Gas sul Mac (proposta) oppure Telegram diretto dal cloud.
 3. F5 (esecutore come scheduled task cloud): frequenza e ore (proposta: ogni ora, 8-20, feriali), massimo 2 richieste al giorno, modello.
 4. Con `MERGIA #N` mergia l'esecutore (proposta) oppure resta M1.
-5. Merge della PR #409: l'operatore ha detto «mergia 409» (via M1); lo faccio io con CI e bot verdi e nessun finding ALTA/MEDIA nuovo.
+5. Merge della PR #409: il «mergia 409» dell'operatore è arrivato prima della modifica a `.github/workflows/ci.yml`; con il bot NEUTRAL serve la sua conferma esplicita (chiesta da M1). Non mergio finché M1 non me la gira.
 
 ## Esito per fetta
 
@@ -20,6 +20,7 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-pian
 - **Merge di main (PR #402, R7 fetta 4) nel ramo**: FATTO (08875514), revisore #869-MERGE APPROVATO; 198 test di sottofondo + esiti passati. Bot sul head 0b039727: APPROVATO CON RISERVE (check success; V-1 BASSA altri invisibili Default_Ignorable come U+034F passano il filtro; V-2/V-3 COSMETICHE commenti vecchi e descrizione della PR, aggiornata). unit-suite success su 0b039727.
 - **Secondo merge di main (PR #410, scheda clienti offline)**: FATTO (dc5cb637), dopo il «mergia 409» dell'operatore via M1; revisore #870-MERGE APPROVATO CON RISERVE (R-870M-1 BASSA: numeri di review doppi fra chat). 272 test esiti + CRM passati.
 - **Terza correzione dopo il bot (head 72adde68, finding MEDIA)**: FATTA (b2e78370). I test di esiti non giravano in CI: aggiunto il passo «Run esiti suite» in `.github/workflows/ci.yml`; PR_MAX a 7 cifre come le regex; messaggio giusto per commento troppo lungo. Revisore #871 APPROVATO. 63 test. Merge fermato finché CI e bot non sono verdi.
+- **Terzo merge di main (PR #407 voce, #408 R7 notte)**: FATTO (2ef67f30), revisore #872-MERGE APPROVATO; 696 test passati. CI verde su 0dc4ccd1 (unit-suite con il passo «Run esiti suite» success); bot NEUTRAL (la PR tocca ci.yml, macchina del bot): serve il sì esplicito dell'operatore, chiesto da M1.
 - **F1, F3, F4, F5**: DEFERITE — aspettano il via dell'operatore (toccano voce, credenziali, trigger o spesa ricorrente).
 
 ## Anomalie
