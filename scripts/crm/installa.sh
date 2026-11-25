@@ -20,6 +20,14 @@ SERVIZIO=com.gas.crm
 PLIST="$AGENTI/$SERVIZIO.plist"
 
 stop() { echo "STOP: $*" >&2; exit 1; }
+# R-853-1: dopo aver scritto il plist, ogni STOP toglie anche il servizio (se no al login
+# launchd lo ricarica senza i controlli di questo script)
+togli_servizio() {
+  # prima il plist (R-855-1): anche se la pulizia si interrompe, al login non riparte; se non si
+  # toglie lo si dice e si fa comunque il bootout (R-856-2: con set -e il resto saltava)
+  rm -f "$PLIST" || echo "ATTENZIONE: non riesco a togliere $PLIST: toglilo a mano" >&2
+  launchctl bootout "gui/$(id -u)/$SERVIZIO" 2>/dev/null || true
+}
 
 [ "$(uname -s)" = "Darwin" ] || stop "questo script è per il Mac"
 # V-2 bot #403 (come R-615-3 della voce): la cartella finisce in `zsh -c 'cd "…"'` e nell'XML
@@ -33,6 +41,10 @@ CONSENTITI='^[A-Za-z0-9/._ -]+$'
 #    (V-3 bot #403: le variabili esportate nel Terminale qui non contano)
 PORTA="$(cd "$GAS" && env -i HOME="$HOME" PATH=/usr/bin:/bin .venv/bin/python - <<'PY'
 import sys
+try:  # V-2 bot #403: se Gas non si importa, il .env non si legge: lo si dice, non «manca il token»
+    import gas  # noqa: F401
+except Exception:
+    sys.exit(4)
 from modules.crm import __main__ as cli, server
 cli._carica_chiavi()
 import os
@@ -47,6 +59,7 @@ PY
   case $? in
     2) stop "manca GAS_CRM_TOKEN (almeno 16 caratteri) nel file .env di Gas: senza token il CRM non parte" ;;
     3) stop "nel .env c'è GAS_CRM_BIND diverso da 127.0.0.1: il CRM sempre acceso deve restare solo su questo Mac (togli quella riga)" ;;
+    4) stop "Gas non si avvia con le sue dipendenze: nella .venv lancia 'pip install -r requirements.txt' e rilancia" ;;
     *) stop "controllo del CRM non riuscito (Python o dipendenze): prova 'pip install -r requirements.txt' nella .venv" ;;
   esac
 }
@@ -79,8 +92,15 @@ fi
 LOG="$GAS/.gas_memory_crm_server.log"
 RIGHE_PRIMA="$( { wc -l < "$LOG"; } 2>/dev/null || echo 0)"  # le righe nuove arrivano da qui in poi
 ESC="$(printf '%s' "$GAS" | sed -e 's/[\\|&]/\\&/g')"
+# R-854-1: da qui fino alla dashboard che risponde, un'uscita qualsiasi (Ctrl+C, kill, errore
+# imprevisto di set -e) toglie il servizio: niente CRM caricato senza il controllo del passo 4
+# (R-855-1: durante la pulizia un secondo Ctrl+C non la interrompe a metà)
+DA_PULIRE=si
+# (V-2 bot #404, solo difensivo: con `if` il trap finisce sempre con 0, qualunque versione di bash)
+trap 'trap "" INT TERM; if [ "$DA_PULIRE" = si ]; then togli_servizio; fi' EXIT
+trap 'echo "STOP: interrotto, servizio tolto" >&2; exit 130' INT TERM
 sed "s|CARTELLA_GAS|$ESC|g" "$QUI/$SERVIZIO.plist" > "$PLIST"
-plutil -lint "$PLIST" >/dev/null || stop "plist non valido: $PLIST"
+plutil -lint "$PLIST" >/dev/null || { togli_servizio; stop "plist non valido (tolto): $PLIST"; }
 CARICATO=no
 for tentativo in 1 2 3; do
   if launchctl bootstrap "$DOMINIO" "$PLIST"; then CARICATO=si; break; fi
@@ -89,18 +109,23 @@ for tentativo in 1 2 3; do
     sleep 1
   fi
 done
-[ "$CARICATO" = si ] || stop "launchctl non carica $SERVIZIO (3 tentativi)"
+[ "$CARICATO" = si ] || { togli_servizio; stop "launchctl non carica $SERVIZIO (3 tentativi): servizio tolto, rilancia tra qualche secondo"; }
 
 # 4. aspetta la dashboard (al massimo 30 s); se non risponde, il servizio si toglie
 #    (V-3 bot #403: niente riavvii ogni 10 s di un CRM che non parte)
+echo "   Aspetto che la dashboard risponda (fino a 30 s)…"
 for _ in $(seq 1 30); do
   risponde && break
   sleep 1
 done
 if ! risponde; then
-  launchctl bootout "$DOMINIO/$SERVIZIO" 2>/dev/null || true
+  # V-1 bot #403: via anche il plist, se no al login successivo launchd lo ricarica
+  togli_servizio
   stop "la dashboard non risponde su $URL: servizio tolto; guarda $GAS/.gas_memory_crm_server.log"
 fi
+# la dashboard risponde: il servizio è provato e resta, anche se dopo qualcosa va storto
+trap - INT TERM
+DA_PULIRE=no
 
 # 5. icona sulla Scrivania (solo l'indirizzo: il token NON finisce in nessun file)
 ICONA="$HOME/Desktop/CRM Gas.webloc"

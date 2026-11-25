@@ -6,6 +6,10 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import plistlib
+import shutil
+import signal
+import subprocess
 import sys
 import sqlite3
 import threading
@@ -1392,7 +1396,42 @@ def test_copia_cifrata_fuori_dal_mac(tmp_path: Path, monkeypatch: pytest.MonkeyP
         finta = tmp_path / f"crm-2026010{i}-000000.db"
         finta.write_bytes(db.read_bytes())
         copia_cifrata.copia_fuori(finta, keep=2)
-    assert len(list(icloud.glob("crm-*.gascrm"))) == 2
+    # le finte di gennaio ruotano tra loro; la copia di oggi fatta sopra è «nel futuro» per
+    # loro e non si tocca (R-858-1)
+    assert sorted(p.name for p in icloud.glob("crm-202601*.gascrm")) == [
+        "crm-20260102.gascrm", "crm-20260103.gascrm"]
+
+
+def test_r858_copie_cifrate_orologio_sbagliato(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                              caplog: pytest.LogCaptureFixture) -> None:
+    """R-858-1: la copia cifrata appena fatta veniva cancellata se c'erano copie con una data
+    più avanti (orologio del Mac andato nel futuro e poi corretto), e la dashboard diceva
+    «copia OK» senza nessuna copia di oggi fuori dal Mac."""
+    from modules.crm import copia_cifrata
+    icloud = tmp_path / "icloud"
+    icloud.mkdir()
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(icloud))
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    db = tmp_path / "crm.db"
+    CRMStore(db).aggiungi_cliente("Mario Rossi")
+    for g in range(1, 31):  # 30 copie fatte con l'orologio nel 2030
+        (icloud / f"crm-203001{g:02d}.gascrm").write_bytes(b"x")
+    a_mano = icloud / "crm-prima-import.gascrm"
+    a_mano.write_bytes(b"copia a mano")
+    oggi = tmp_path / "crm-20261124-090000.db"
+    oggi.write_bytes(db.read_bytes())
+    with caplog.at_level("WARNING"):
+        fuori, motivo = copia_cifrata.copia_fuori(oggi, keep=30)
+    assert motivo is None and fuori is not None and fuori.exists()
+    assert len(list(icloud.glob("crm-2030*.gascrm"))) == 30  # non si toccano
+    assert a_mano.read_bytes() == b"copia a mano"
+    assert "data nel futuro" in caplog.text
+    # orologio tornato indietro di poco: la copia di oggi resta anche se non è l'ultima
+    (icloud / "crm-20261125.gascrm").write_bytes(b"x")
+    ieri = tmp_path / "crm-20261123-090000.db"
+    ieri.write_bytes(db.read_bytes())
+    fuori, motivo = copia_cifrata.copia_fuori(ieri, keep=1)
+    assert motivo is None and fuori is not None and fuori.exists()
 
 
 def test_r815_ripristino_sicuro_dopo_un_crash(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -2129,12 +2168,13 @@ def test_identita_clienti_e_backup(st: CRMStore, tmp_path: Path) -> None:
     cartella.mkdir()
     assert identita_clienti(cartella) is None
     copie = tmp_path / "copie"
-    primo = st.backup(copie, keep=2)
+    # R-853-2: `keep` conta i giorni; `ultime` le copie più recenti dello stesso giorno
+    primo = st.backup(copie, keep=2, ultime=2)
     assert primo is not None and CRMStore(primo).clienti()[0]["nome"] == "Marco Bianchi"
     st._orologio = lambda: INIZIO + timedelta(seconds=1)  # type: ignore[assignment]
-    st.backup(copie, keep=2)
+    st.backup(copie, keep=2, ultime=2)
     st._orologio = lambda: INIZIO + timedelta(seconds=2)  # type: ignore[assignment]
-    st.backup(copie, keep=2)
+    st.backup(copie, keep=2, ultime=2)
     assert len(list(copie.glob("crm-*.db"))) == 2
 
 
@@ -2590,3 +2630,345 @@ def test_agente_riserve_839(st: CRMStore) -> None:
     pid = st.aggiungi_promemoria("x", "2020-01-01 09:00", nel_passato=True)
     st.annulla_promemoria(pid)
     assert st.reclama_promemoria(pid) is False and st.reclama_promemoria(True) is False
+
+
+def test_backup_tiene_i_giorni_anche_con_tanti_riavvii(tmp_path: Path) -> None:
+    """R-853-2: un CRM che si riavvia a ripetizione fa una copia per avvio; prima si
+    tenevano solo le ultime 30 copie e in pochi minuti sparivano i giorni prima."""
+    orologio = Orologio(datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    for _ in range(40):  # una copia al giorno per 40 giorni
+        assert st.backup(cartella) is not None
+        orologio.avanti(1)
+    for i in range(60):  # poi 60 riavvii nello stesso giorno, uno al secondo
+        orologio.ora = orologio.ora + timedelta(seconds=1)
+        assert st.backup(cartella) is not None
+    copie = sorted(p.name for p in cartella.glob("crm-*.db"))
+    giorni = sorted({c[4:12] for c in copie})
+    assert len(giorni) == 30  # gli ultimi 30 giorni restano tutti
+    assert giorni[0] == "20261012" and giorni[-1] == "20261110"  # 41 giorni, restano gli ultimi 30
+    oggi = [c for c in copie if c[4:12] == "20261110"]
+    assert len(oggi) == 10  # dello stesso giorno solo le ultime 10
+    assert len(copie) == 29 + 10
+
+
+def test_backup_con_orologio_indietro_non_cancella_la_copia_appena_fatta(tmp_path: Path) -> None:
+    """V-1 verifica esterna #404: 12 copie nello stesso giorno, poi l'orologio del Mac torna
+    indietro di un'ora. La copia nuova ha un nome «più vecchio» delle ultime 10 e veniva
+    cancellata subito: backup() restituiva un percorso che non esisteva più."""
+    orologio = Orologio(datetime(2026, 11, 24, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    for _ in range(12):
+        orologio.ora = orologio.ora + timedelta(seconds=1)
+        assert st.backup(cartella) is not None
+    orologio.ora = orologio.ora - timedelta(hours=1)
+    nuova = st.backup(cartella)
+    assert nuova is not None and nuova.exists()
+    assert len(list(cartella.glob("crm-*.db"))) == 11  # le ultime 10 più quella appena fatta
+
+
+def test_backup_copie_nel_futuro_non_accorciano_la_storia(tmp_path: Path,
+                                                         caplog: pytest.LogCaptureFixture) -> None:
+    """V-3 bot / V-1 verifica esterna #404 (2° giro): con l'orologio andato nel 2030 e poi
+    corretto, quelle copie occupavano le «ultime 10» e un giorno dei 30 finché l'orologio non
+    le raggiungeva. Ora non contano, non si cancellano e lo si scrive nel registro."""
+    orologio = Orologio(datetime(2030, 1, 1, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    for _ in range(12):
+        orologio.ora = orologio.ora + timedelta(seconds=1)
+        assert st.backup(cartella) is not None
+    orologio.ora = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+    with caplog.at_level("WARNING"):
+        for _ in range(40):
+            assert st.backup(cartella) is not None
+            orologio.avanti(1)
+    nomi = sorted(p.name for p in cartella.glob("crm-*.db"))
+    # nel 2030 la regola normale ne ha tenute 10; dopo, con l'orologio giusto, non si toccano
+    assert len([n for n in nomi if n.startswith("crm-2030")]) == 10
+    giorni_veri = sorted({n[4:12] for n in nomi if n.startswith("crm-2026")})
+    assert len(giorni_veri) == 30  # i 30 giorni veri restano tutti
+    assert "data nel futuro" in caplog.text
+
+
+def test_backup_margine_del_futuro_e_di_un_giorno(tmp_path: Path,
+                                                 caplog: pytest.LogCaptureFixture) -> None:
+    """R-858-2: una copia avanti di qualche ora (cambio d'ora, fuso) conta come le altre; una
+    avanti di 2 giorni è «nel futuro»: non conta e non si cancella."""
+    orologio = Orologio(datetime(2026, 11, 24, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    cartella.mkdir()
+    for nome in ("crm-20261123-090000.db", "crm-20261124-200000.db", "crm-20261126-100000.db"):
+        (cartella / nome).write_text("copia")
+    with caplog.at_level("WARNING"):
+        assert st.backup(cartella, keep=1, ultime=1) is not None
+    nomi = sorted(p.name for p in cartella.glob("crm-*.db"))
+    # quella di stasera conta (è la più recente del giorno) e fa togliere quella di ieri
+    assert nomi == ["crm-20261124-090000.db", "crm-20261124-200000.db", "crm-20261126-100000.db"]
+    assert "1 copie locali con una data nel futuro" in caplog.text
+
+
+def test_backup_ignora_le_copie_fatte_a_mano(tmp_path: Path) -> None:
+    """V-1 bot #404: «crm-prima-import.db» dava il giorno «prima-im», dopo ogni data: occupava
+    per sempre uno dei 30 giorni e ne restavano 29 veri. Ora i nomi fuori formato non contano
+    e non si toccano."""
+    orologio = Orologio(datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    cartella.mkdir()
+    a_mano = cartella / "crm-prima-import.db"
+    a_mano.write_text("copia fatta a mano")
+    for _ in range(31):
+        assert st.backup(cartella) is not None
+        orologio.avanti(1)
+    giorni = sorted({c.name[4:12] for c in cartella.glob("crm-2*.db")})
+    assert len(giorni) == 30 and giorni[0] == "20261002"
+    assert a_mano.read_text() == "copia fatta a mano"
+
+
+# ---------------------------------------------------------------- script del CRM sul Mac
+# R-853-3: installa.sh e spegni.sh provati con comandi finti (uname, launchctl, plutil, curl,
+# sleep e il python della .venv), come l'installer della voce in test_unit_voce_ascolto.py.
+
+CRM_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "scripts" / "crm"
+
+_FINTI_CRM = {
+    "uname": 'echo "${UNAME_FINTO:-Darwin}"',
+    "launchctl": ('echo "launchctl $*" >> "$REGISTRO"\n'
+                  'case "$1" in\n'
+                  '  print) [ -f "$REGISTRO.caricato" ] ;;\n'
+                  '  bootout)\n'
+                  '    # R-856-1: al bootout il plist deve essere già tolto (si registra com\'è)\n'
+                  '    [ -f "$HOME/Library/LaunchAgents/com.gas.crm.plist" ] && echo "bootout-plist si" >> "$REGISTRO" \\\n'
+                  '      || echo "bootout-plist no" >> "$REGISTRO"\n'
+                  '    # CTRLC2=si: secondo Ctrl+C mentre la pulizia fa il bootout\n'
+                  '    if [ "${CTRLC2:-no}" = si ] && [ -f "$REGISTRO.ctrlc" ] && [ ! -f "$REGISTRO.ctrlc2" ]; then\n'
+                  '      touch "$REGISTRO.ctrlc2"; kill -INT -- "-$PPID"\n'
+                  '    fi\n'
+                  '    rm -f "$REGISTRO.caricato" ;;\n'
+                  '  bootstrap)\n'
+                  '    if [ "${LC_BOOT:-ok}" != ok ]; then echo "Bootstrap failed: 5" >&2; exit 5; fi\n'
+                  '    touch "$REGISTRO.caricato"\n'
+                  '    [ -n "${RIGA_COPIA:-}" ] && echo "$RIGA_COPIA" >> "$LOG_CRM"\n'
+                  '    exit 0 ;;\n'
+                  'esac'),
+    "plutil": 'echo "plutil $*" >> "$REGISTRO"; [ "${PLUTIL:-ok}" = ok ]',
+    # RM_KO=si: il plist non si riesce a togliere (cartella non scrivibile); il resto passa a /bin/rm
+    "rm": ('if [ "${RM_KO:-no}" = si ]; then\n'
+           '  for a in "$@"; do case "$a" in *com.gas.crm.plist) exit 1 ;; esac; done\n'
+           'fi\n'
+           'exec /bin/rm "$@"'),
+    # la dashboard risponde solo col servizio caricato (DASH=ok) o sempre (DASH=occupata)
+    "curl": ('case "${DASH:-ok}" in occupata) exit 0 ;; ok) [ -f "$REGISTRO.caricato" ] ;;'
+             ' *) exit 7 ;; esac'),
+    # CTRLC=si: al primo sleep col servizio caricato, Ctrl+C a tutto il gruppo (come nel Terminale)
+    "sleep": ('echo "sleep $*" >> "$REGISTRO"\n'
+              'if [ "${CTRLC:-no}" = si ] && [ -f "$REGISTRO.caricato" ] && [ ! -f "$REGISTRO.ctrlc" ]; then\n'
+              '  touch "$REGISTRO.ctrlc"; kill -INT -- "-$PPID"\n'
+              'fi\n'
+              'exit 0'),
+}
+
+
+def _gas_crm_finto(tmp_path: Path, nome: str = "Gas", esito_python: int = 0) -> Tuple[Path, Path, Path]:
+    gas = tmp_path / nome
+    (gas / "scripts" / "crm").mkdir(parents=True)
+    for f in CRM_SCRIPT_DIR.iterdir():
+        shutil.copy2(f, gas / "scripts" / "crm" / f.name)
+    casa = tmp_path / "casa"
+    (casa / "Desktop").mkdir(parents=True)
+    # il controllo del .env gira con `env -i HOME=… PATH=…`: il python finto legge l'esito da HOME
+    (casa / "python_esito").write_text(str(esito_python))
+    (gas / ".venv" / "bin").mkdir(parents=True)
+    py = gas / ".venv/bin/python"
+    py.write_text('#!/bin/bash\ncat > /dev/null\ne="$(cat "$HOME/python_esito")"\n'
+                  '[ "$e" = 0 ] && echo 8770\nexit "$e"\n')
+    py.chmod(0o755)
+    finti = tmp_path / "finti"
+    finti.mkdir()
+    for nome_cmd, corpo in _FINTI_CRM.items():
+        p = finti / nome_cmd
+        p.write_text("#!/bin/bash\n" + corpo + "\n")
+        p.chmod(0o755)
+    return gas, finti, casa
+
+
+def _segnali_normali() -> None:
+    """R-855-3: se pytest parte con SIGINT ignorato (nohup, & senza job control) bash non
+    potrebbe intercettarlo e i test del Ctrl+C darebbero un rosso falso."""
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+
+def _esegui_crm(gas: Path, finti: Path, casa: Path, tmp_path: Path, script: str = "installa.sh",
+                **extra: str) -> Tuple[subprocess.CompletedProcess, str]:
+    registro = tmp_path / "registro.txt"
+    env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(registro),
+           "LOG_CRM": str(gas / ".gas_memory_crm_server.log"), **extra}
+    r = subprocess.run(["bash", str(gas / "scripts/crm" / script)], capture_output=True,
+                       text=True, timeout=60, env=env, start_new_session=True,
+                       preexec_fn=_segnali_normali)
+    return r, registro.read_text() if registro.exists() else ""
+
+
+def _plist_crm(casa: Path) -> Path:
+    return casa / "Library/LaunchAgents/com.gas.crm.plist"
+
+
+def _caricato(tmp_path: Path) -> bool:
+    return (tmp_path / "registro.txt.caricato").exists()
+
+
+def _bootout_col_plist_gia_tolto(registro: str) -> bool:
+    """R-856-1: nella pulizia il plist si toglie PRIMA del bootout (se la pulizia si
+    interrompe, al login launchd non lo ricarica)."""
+    righe = registro.splitlines()
+    scritto = next(i for i, x in enumerate(righe) if x.startswith("plutil"))
+    dopo = [x for x in righe[scritto:] if x.startswith("bootout-plist")]
+    return bool(dopo) and all(x == "bootout-plist no" for x in dopo)
+
+
+def test_installa_crm_arriva_in_fondo(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    log = gas / ".gas_memory_crm_server.log"
+    log.write_text("Copia cifrata giornaliera fuori dal Mac: RIGA VECCHIA\n")
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path,
+                              RIGA_COPIA="Copia cifrata giornaliera fuori dal Mac: ATTIVA")
+    assert r.returncode == 0, r.stdout + r.stderr
+    p = plistlib.loads(_plist_crm(casa).read_bytes())
+    assert p["Label"] == "com.gas.crm" and str(gas) in str(p) and "CARTELLA_GAS" not in str(p)
+    assert _caricato(tmp_path) and f"launchctl bootstrap gui/{os.getuid()}" in registro
+    icona = plistlib.loads((casa / "Desktop/CRM Gas.webloc").read_bytes())
+    assert icona == {"URL": "http://127.0.0.1:8770/"}  # solo l'indirizzo, niente token
+    assert "Aspetto che la dashboard risponda" in r.stdout
+    # si mostra l'esito della copia cifrata di QUESTO avvio, non una riga vecchia del registro
+    assert "fuori dal Mac: ATTIVA" in r.stdout and "RIGA VECCHIA" not in r.stdout
+
+
+@pytest.mark.parametrize("esito, messaggio", [
+    (2, "manca GAS_CRM_TOKEN"),
+    (3, "GAS_CRM_BIND diverso da 127.0.0.1"),
+    (4, "Gas non si avvia con le sue dipendenze"),
+    (1, "controllo del CRM non riuscito"),
+])
+def test_installa_crm_controllo_del_env_si_ferma_prima_del_servizio(
+        tmp_path: Path, esito: int, messaggio: str) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path, esito_python=esito)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert not _plist_crm(casa).exists() and "bootstrap" not in registro
+
+
+def test_installa_crm_solo_sul_mac(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, UNAME_FINTO="Linux")
+    assert r.returncode == 1 and "per il Mac" in r.stderr and registro == ""
+
+
+def test_installa_crm_cartella_con_caratteri_non_ammessi(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path, nome="Gas'x")
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and "caratteri non ammessi" in r.stderr and registro == ""
+
+
+def test_installa_crm_porta_gia_occupata(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, DASH="occupata")
+    assert r.returncode == 1 and "risponde già qualcosa" in r.stderr
+    assert not _plist_crm(casa).exists() and "bootstrap" not in registro
+
+
+@pytest.mark.parametrize("extra, messaggio", [
+    ({"PLUTIL": "ko"}, "plist non valido"),
+    ({"LC_BOOT": "ko"}, "3 tentativi"),
+    ({"DASH": "muta"}, "la dashboard non risponde"),
+])
+def test_installa_crm_ogni_stop_dopo_il_plist_toglie_il_servizio(
+        tmp_path: Path, extra: Dict[str, str], messaggio: str) -> None:
+    """R-853-1: dopo la scrittura del plist ogni STOP lo toglie, se no al login launchd
+    ricarica il CRM senza il controllo della dashboard."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, **extra)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
+    assert not (casa / "Desktop/CRM Gas.webloc").exists()
+    assert _bootout_col_plist_gia_tolto(registro)
+    if extra.get("LC_BOOT"):
+        righe = registro.splitlines()
+        assert sum(x.startswith("launchctl bootstrap") for x in righe) == 3
+        ultimo = max(i for i, x in enumerate(righe) if x.startswith("launchctl bootstrap"))
+        assert any(x.startswith("launchctl bootout") for x in righe[ultimo:])
+
+
+def test_installa_crm_ctrl_c_mentre_aspetta_toglie_il_servizio(tmp_path: Path) -> None:
+    """R-854-1: Ctrl+C durante l'attesa della dashboard lasciava il servizio caricato e il
+    plist al suo posto, senza nessun controllo."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", CTRLC="si")
+    assert (tmp_path / "registro.txt.ctrlc").exists()
+    assert r.returncode == 130 and "interrotto, servizio tolto" in r.stderr, r.stdout + r.stderr
+    assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
+    assert _bootout_col_plist_gia_tolto(registro)
+
+
+def test_installa_crm_plist_che_non_si_toglie_lo_dice_e_fa_il_bootout(tmp_path: Path) -> None:
+    """R-856-2: con set -e un rm del plist fallito chiudeva la pulizia prima del bootout:
+    servizio ancora caricato e nessun messaggio."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", RM_KO="si")
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "non riesco a togliere" in r.stderr and "la dashboard non risponde" in r.stderr
+    assert not _caricato(tmp_path)
+
+
+def test_installa_crm_secondo_ctrl_c_non_interrompe_la_pulizia(tmp_path: Path) -> None:
+    """R-855-1 / R-856-1: un secondo Ctrl+C mentre la pulizia fa il bootout la interrompeva
+    a metà: servizio ancora caricato e «servizio tolto» scritto due volte (falso)."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", CTRLC="si", CTRLC2="si")
+    assert (tmp_path / "registro.txt.ctrlc2").exists()
+    assert r.returncode == 130, r.stdout + r.stderr
+    assert r.stderr.count("servizio tolto") == 1
+    assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
+
+
+def test_installa_crm_ctrl_c_dopo_la_dashboard_lascia_il_servizio(tmp_path: Path) -> None:
+    """Con la dashboard che risponde il servizio è provato: un Ctrl+C mentre si aspetta
+    l'esito della copia cifrata non lo toglie."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path, CTRLC="si")
+    assert (tmp_path / "registro.txt.ctrlc").exists()
+    assert r.returncode in (130, -signal.SIGINT), r.stdout + r.stderr
+    assert "servizio tolto" not in r.stderr  # R-855-2: niente messaggio falso
+    assert _plist_crm(casa).exists() and _caricato(tmp_path)
+
+
+def test_installa_crm_seconda_volta_aspetta_lo_spegnimento(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    (tmp_path / "registro.txt.caricato").touch()  # CRM già acceso da un'installazione prima
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    righe = registro.splitlines()
+    fuori = righe.index(f"launchctl bootout gui/{os.getuid()}/com.gas.crm")
+    dentro = next(i for i, x in enumerate(righe) if x.startswith("launchctl bootstrap"))
+    assert fuori < dentro and f"launchctl print gui/{os.getuid()}/com.gas.crm" in righe[fuori:dentro]
+
+
+def test_spegni_crm_toglie_servizio_e_icona_e_lascia_i_dati(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path)
+    assert r.returncode == 0
+    dati = gas / ".gas_memory_crm.db"
+    dati.write_text("dati dei clienti")
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, script="spegni.sh")
+    assert r.returncode == 0 and "CRM spento" in r.stdout
+    assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
+    assert not (casa / "Desktop/CRM Gas.webloc").exists() and dati.read_text() == "dati dei clienti"
