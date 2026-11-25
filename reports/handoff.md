@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 25 novembre 2026 — R7 fetta 4 bis: tetto di tempo duro del giro di notte (sotto-chat di M1) — secondo giro: merge di main dopo la #402
+**Sessione:** 25 novembre 2026 — R7 fetta 4 bis: tetto di tempo duro del giro di notte (sotto-chat di M1) — terzo giro: merge di main dopo la #410, via al merge dell'operatore
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #408 (https://github.com/Gasss23/Gas/pull/408), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; con riserve la PR resta aperta e il «mergia» lo chiede M1 all'operatore.
+1. Merge della PR #408 (https://github.com/Gasss23/Gas/pull/408), etichetta «verifica». L'operatore ha detto «mergia 408» (riferito da M1): dopo CI e bot verdi sull'head nuovo, senza finding ALTA/MEDIA nuovi, la mergia l'agente.
 2. PR #402 (fetta 4, sottofondo): mergiata da M1 col «mergia» dell'operatore (25/11).
 
 Numero della PR preso dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `408` (il primo tentativo di creazione nello script non aveva restituito il numero; ricreata a mano) (`gh pr` non disponibile in questo ambiente, solo REST).
@@ -17,6 +17,7 @@ Numero della PR preso dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, cre
 
 - **Fetta 4 bis R7 — tetto di tempo duro del giro di notte**: FATTA. Timer a GAS_NOTTE_MAX_SEC_GIRO + 300 s: avviso «INTERROTTO» e arresto del processo; un solo avviso tra timer e fine giro; nome del compito appeso nel log; attesa limitata a 30 giorni. Review #866-R7 → #867-R7.
 - **Merge di origin/main dopo la #402 (secondo giro)**: FATTO (fa2fc877), conflitti solo nei report (regola 3). Review #868-MERGE-R7 APPROVATO. notte + sottofondo: 375 passed.
+- **Merge di origin/main dopo la #410 (terzo giro)**: FATTO (6d5adc51), conflitti solo nei report (regola 3). Review #869-MERGE-R7 APPROVATO CON RISERVE: R-869M-1 MEDIA (voce «R7 fetta 4» doppia in `stato_progetto.md`) corretta prima del commit del merge. notte + sottofondo + crm: 586 passed.
 - **Fetta 5 R7 — piano scritto dal modello**: DEFERITA — prossima PR.
 
 ---
@@ -24,13 +25,13 @@ Numero della PR preso dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, cre
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-.claude/agents/memoria_revisore.md |   4 ++++
- modules/notte/notte.py             |  78 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |   8 ++++----
+.claude/agents/memoria_revisore.md |   6 ++++++
+ modules/notte/notte.py             |  78 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  17 ++++++----------
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  18 ++++++++----------
- tests/test_unit_notte.py           | 110 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  34 +++++++++++++------------------
+ tests/test_unit_notte.py           | 110 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
@@ -38,6 +39,8 @@ NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è t
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6d5adc51 Merge origin/main (PR #410, CRM) nel ramo della PR #408 — review #869-MERGE-R7 APPROVATO CON RISERVE (voce doppia in stato_progetto tolta)
+2cd5c14a docs(fine-task): PR #408 secondo giro — merge di main dopo la #402, review #868-MERGE-R7, verifica esterna
 fa2fc877 Merge origin/main (PR #402 mergiata) nel ramo della PR #408 — review #868-MERGE-R7 APPROVATO
 aa8e56ce docs(fine-task): R7 fetta 4 bis — numero della PR #408 nei report (lo script di creazione non l'aveva restituito)
 adfe10a3 docs(fine-task): R7 fetta 4 bis — report, handoff con review #866-R7/#867-R7, stato_progetto
@@ -50,7 +53,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 76655c0a (motore): review #866-R7 sul primo staged e #867-R7 dopo le correzioni di R-866R7-2/3/4. Merge fa2fc877: review #868-MERGE-R7. Incollati integrali.
+Commit 76655c0a (motore): review #866-R7 sul primo staged e #867-R7 dopo le correzioni di R-866R7-2/3/4. Merge fa2fc877: review #868-MERGE-R7. Merge 6d5adc51: review #869-MERGE-R7. Incollati integrali.
 
 ### Review #866-R7
 
@@ -185,8 +188,57 @@ Revisione del merge in corso di origin/main (porta la PR #402, R7 fetta 4: tetto
 
 **Memoria**: ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga `#868-MERGE-R7 — 2026-11-25 — APPROVATO — … Nessuna lezione nuova.` Il numero 868 è il primo libero dopo #867-R7. La riga è solo nel working tree, NON in stage e NON committata. Non ho lanciato commit_memoria_revisore.sh, come hai chiesto. Nota: la versione della memoria già in stage (quella unita) resta nell'index, mentre la nuova riga è solo su disco. Prima di committare il merge va fatto `git add` della memoria.
 
+### Review #869-MERGE-R7 (merge 6d5adc51)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #869-MERGE-R7 (chat Motore, sotto-chat R7). Ho esaminato il merge in corso di origin/main 5a0f9dbc (PR #410, chat CRM, scheda clienti offline) in claude/r7-tetto-duro-notte (PR #408). Il diff staged rispetto a HEAD tocca 10 file, +799/−3.
+
+**Riserva da correggere PRIMA di `segna_review_ok.sh`**
+- **R-869M-1 (MEDIA, documentazione)**: in `reports/stato_progetto.md` la voce «R7 fetta 4 — tetto di tempo duro del compito in sottofondo» compare **due volte**, alle righe 407 e 408 della versione in stage.
+  - La riga 407 è quella del ramo (945 caratteri).
+  - La riga 408 è quella di main: identica alla 407 più la coda «PR #402 MERGIATA il 25-11 (86a23f56); … V-1 COSMETICA — docstring di `_termina_processo`…».
+  - Come correggere: togliere la riga 407 e tenere la 408. Va fatto prima di `segna_review_ok.sh`, perché cambia lo SHA del diff in stage.
+  - Il file è fuori dal perimetro e la correzione non tocca codice, quindi non serve un nuovo giro di review se cambia solo questo. Lo SHA però cambia: il marcatore va creato dopo la correzione.
+
+**Elementi esaminati**
+- `modules/notte/notte.py:994`: `_arma_tetto_giro` della fetta 4 bis. Rischio: il merge ha toccato il tetto duro o la PR #410 lo usa. Il diff tra stage e HEAD su `modules/notte/notte.py` è vuoto, e `grep crm|scheda` in `modules/notte/` non trova niente. Esito: ok.
+- `modules/notte/notte.py:1014`: `_nuova_guardia`, cioè la guardia lock+flag tra il timer e la fine normale. Riguarda R-866R7-2, chiusa in #867-R7. Rischio: la chiusura persa nella risoluzione dei conflitti. Il codice è uguale a HEAD e le righe 1020 (`_giro_scaduto`) e 1222 (`if gia_scaduto:`) sono intatte. Esito: ok.
+- `tests/test_unit_notte.py:2898`: `test_r7f4_tetto_duro_scaduto_avvisa_e_ferma`. Rischio: i test della 4 bis persi o alterati, oppure rotti dal nuovo `tests/conftest.py`. Il diff rispetto a HEAD è vuoto e i test passano. Esito: ok.
+- `tests/conftest.py`: aggiunge solo `delenv("GAS_CRM_SCHEDA_PASSWORD")` (R-864-2), identico a origin/main. Rischio: effetti sui test di notte e sottofondo. Nessuno, perché toglie una variabile segreta e basta. Esito: ok.
+- Codice portato da main: `modules/crm/__main__.py`, `modules/crm/scheda.py`, `modules/crm/server.py`, `requirements.txt`, `tests/test_unit_crm.py`, `reports/crm/decisioni.md`, `reports/crm/guida.md`. Per tutti il diff tra stage e origin/main è vuoto, quindi sono identici a main. `modules/crm/` non nomina `notte`. Esito: ok.
+
+**Conflitti**
+- `git ls-files -u` è vuoto, non ci sono marcatori di conflitto e `git diff --cached --check` è pulito.
+- `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono uguali a HEAD (diff vuoto), come chiede la regola 3.
+- Le decisioni e le riserve dell'ultimo_report di main sono già nello stato in stage:
+  - `GAS_CRM_SCHEDA_PASSWORD`;
+  - `pip install -r requirements.txt`;
+  - «Mantieni scaricato» sull'iPhone e `scheda --forza`;
+  - `telefono.sh`;
+  - R-866-1, R-866-2 e R-864-7;
+  - per la Voce #405: R-854-1, la licenza CC BY-NC-SA e la V-1 BASSA `modello_della_parola`.
+- C'è una sola riga «Ultimo aggiornamento», unita correttamente: la voce «4 bis» del ramo, poi «PR #402 MERGIATA il 25-11, 86a23f56», poi la scheda clienti (decisione 22) e il resto di main.
+- Memoria del revisore: è l'unione dei due lati. Nessuna riga persa né da HEAD né da main, nessuna riga estranea. L'ordine è base, poi le righe di main (#864–#866, #867-MERGE), poi quelle del ramo (#866-R7, #867-R7, #868-MERGE-R7).
+
+**Test**
+- `pytest` su `tests/test_unit_notte.py`, `tests/test_unit_sottofondo.py` e `tests/test_unit_crm.py`: 586 passed (375 notte + sottofondo, 211 crm).
+
+**Cosa NON ho verificato**
+- Il funzionamento reale della scheda PDF su iCloud e iPhone: non si riproduce in questo ambiente, ed era già escluso nelle review #864–#866 della chat CRM.
+- Il codice della #410 non l'ho rivisto nel merito: era già stato revisionato lì. Ho controllato solo che sia identico a origin/main.
+- Non ho rilanciato la suite completa: solo le tre suite qui sopra.
+
+**Memoria del revisore**
+- Ho aggiunto la riga contatore #869-MERGE-R7, con una lezione nuova: contare le intestazioni delle voci dello stato su HEAD, main e indice per trovare i duplicati da merge ripetuti.
+- La memoria è rimasta nel working tree, **non in stage e non committata**, come richiesto durante il merge: va aggiunta allo stage insieme al resto.
+- File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
+File rilevanti: /home/user/Gas/reports/stato_progetto.md (righe 407–408 nella versione in stage), /home/user/Gas/modules/notte/notte.py, /home/user/Gas/tests/test_unit_notte.py
+
 ## §5 DELTA TEST DEL MOTORE
 
+- Dopo il merge 6d5adc51: notte + sottofondo 375 passed (revisore: + crm, 586 passed).
 - Dopo il merge fa2fc877: notte + sottofondo 375 passed.
 - `tests/test_unit_notte.py`: 230 → 238 (8 test nuovi), tutti verdi in locale: `238 passed in 5.22s`.
 - `tests/test_unit_kernel.py` non rieseguito: il diff tocca solo `modules/notte/notte.py` e i suoi test. Il revisore ha fatto una prova reale con processo separato e kernel appeso (rc 1 in 3 s, messaggio nel log, lock liberato, compito in in_corso.json).
@@ -196,26 +248,30 @@ Revisione del merge in corso di origin/main (porta la PR #402, R7 fetta 4: tetto
 Output reale di `gh run list -L 3` alla scrittura:
 
 ```
-in_progress		Voce: log chiari sul turno scartato e nome del modello sicuro	verifica-bot	fix/voce-log-e-modello	pull_request_target	45652429189	2m44s	2026-11-25T16:17:57Z
-in_progress		docs(fine-task): handoff col merge di main (PR #402, review #868-MERGE)	CI	fix/voce-log-e-modello	push	45652426057	2m46s	2026-11-25T16:17:55Z
-in_progress		docs(mani-voce): piano per dare le mani alla voce (esecutore richiest…	CI	claude/mani-voce-piano	push	45652287445	3m57s	2026-11-25T16:16:44Z
+in_progress		Merge pull request #410 from Gasss23/claude/nifty-galileo-3k7kbm	CI	main	push	45669536431	8m32s	2026-11-25T17:53:52Z
+completed	success	Mani alla voce: piano + formato fisso dei commenti ESITO/COMANDO (F2)	verifica-bot	claude/mani-voce-piano	pull_request_target	45659374696	3m15s	2026-11-25T16:56:38Z
+completed	success	docs(fine-task): report e handoff dopo il merge di main (PR #409)	CI	claude/mani-voce-piano	push	45659361079	10m48s	2026-11-25T16:56:33Z
 ```
 
 Run di questo branch (`gh api .../actions/runs?branch=claude/r7-tetto-duro-notte`, output reale):
 
 ```
-45652195333 aa8e56ce verifica-bot pull_request_target completed/cancelled
+45652810690 2cd5c14a verifica-bot pull_request_target completed/success
+45652795085 2cd5c14a CI push completed/success
 45652195774 aa8e56ce verifica-bot pull_request_target completed/failure
-45652192077 aa8e56ce CI push in_progress/null
+45652195333 aa8e56ce verifica-bot pull_request_target completed/cancelled
+45652192077 aa8e56ce CI push completed/success
 45652144236 adfe10a3 verifica-bot pull_request_target completed/skipped
-45652118621 adfe10a3 CI push in_progress/null
-45651971850 76655c0a CI push in_progress/null
+45652118621 adfe10a3 CI push completed/success
+45651971850 76655c0a CI push completed/failure
 ```
 
-Mappatura commit→run: le righe sopra danno per ogni SHA le run reali (CI push e verifica-bot). aa8e56ce: verifica-bot una run annullata (doppione) e una completata; la PR era in conflitto dopo il merge della #402. 8b7bea3b, 336e9064, fa2fc877: nessuna run propria. Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura commit→run: le righe sopra danno per ogni SHA le run reali. 2cd5c14a: CI success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE). 6d5adc51: nessuna run propria. Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- Bot su 2cd5c14a (APPROVATO CON RISERVE): V-1 BASSA (docstring in testa a `modules/notte/notte.py` dice ancora «tetto non duro»), V-2 BASSA (se l'invio Telegram del timer si appende il processo non si ferma), V-3 BASSA (manca un test sulla finestra dopo l'ultimo compito). Aperte.
+- R-869M-1 MEDIA (voce doppia in `stato_progetto.md`): CHIUSA prima del commit del merge.
 - R-867R7-1 BASSA — timer già partito e invio Telegram oltre 60 s (es. DNS appeso): il giro può finire senza «INTERROTTO» né riepilogo. Aperta.
 - COSMETICHE #867-R7: il nome del compito resta dopo il ciclo (log «compito in corso» sbagliato se il blocco è nella fase finale); con GAS_NOTTE_MAX_SEC_GIRO oltre 30 giorni il tetto scatta a 30 giorni. Aperte.
 - R-866R7-1 BASSA (dichiarata nel codice): figli `claude -p` e browser non fermati. Limite dichiarato: un compito sempre appeso consuma il giro per 3 notti. R-866R7-2/3/4: CHIUSE.
