@@ -26,6 +26,14 @@ Stampa un link di accesso già pronto. Apri il link nel browser.
 
 **Sempre acceso, senza Terminale (dal 24 novembre).** Una volta sola, nel Terminale dalla cartella di Gas: `bash scripts/crm/installa.sh`. Il CRM parte da solo a ogni accensione del Mac (e si riavvia se si chiude) e sulla Scrivania compare l'icona «CRM Gas»: doppio clic e si apre la dashboard. Al primo accesso il browser chiede il token (`GAS_CRM_TOKEN` del `.env`), poi lo ricorda per 12 ore (o finché il CRM non si riavvia). Non serve internet né l'IA: solo il pulsante «Riscrivi con Opus» usa Claude. Per spegnerlo: `bash scripts/crm/spegni.sh` (toglie anche l'icona; i dati restano). Registro del server: `.gas_memory_crm_server.log` nella cartella di Gas. Dopo l'installazione controlla che l'ultima riga stampata dica «Copia cifrata giornaliera fuori dal Mac: ATTIVA»: se macOS nega iCloud Drive al servizio, la copia si ferma (guarda il registro).
 
+**Anche dal telefono (dal 25 novembre, decisione 21).** La dashboard resta chiusa a internet: il telefono ci entra solo attraverso una rete privata tra i tuoi dispositivi, **Tailscale** (gratis). Una volta sola:
+1. Sul Mac installa l'app **Tailscale** dal Mac App Store e accedi (con Google o Apple; meglio con la verifica in due passaggi attiva).
+2. Sul telefono installa l'app **Tailscale** e accedi con lo **stesso account**.
+3. Nel Terminale, dalla cartella di Gas (con il CRM già installato da `installa.sh`): `bash scripts/crm/telefono.sh`. La prima volta Tailscale può stampare un link per attivare HTTPS: aprilo, premi «Enable» e rilancia lo stesso comando. Alla fine stampa l'indirizzo, del tipo `https://nome-del-mac.tuarete.ts.net/`.
+4. Sul telefono, con l'app Tailscale accesa, apri quell'indirizzo in Safari, inserisci il token (`GAS_CRM_TOKEN`) e salvala con Condividi → «Aggiungi alla schermata Home»: avrai l'icona come un'app.
+
+Cosa vuol dire in pratica: il Mac deve essere acceso; il collegamento è cifrato da un capo all'altro e lo vedono solo i dispositivi entrati nel tuo account Tailscale (Tailscale non vede i dati del CRM); il token serve comunque. Non accendere mai il «funnel» di Tailscale (pubblica su internet): lo script si ferma se lo trova acceso sul nome del Mac, e il CRM rifiuta comunque ogni richiesta che arriva dal funnel (resterebbe scoperto solo un funnel «grezzo» `--tcp` fatto a mano). Per una protezione in più si può attivare il Tailnet Lock nel pannello di Tailscale (decidi tu quali dispositivi entrano). Se perdi il telefono, toglilo dal pannello di Tailscale (login.tailscale.com → Machines). Sul Mac l'icona «CRM Gas» della Scrivania resta il modo più rapido. Per spegnere l'accesso dal telefono: `bash scripts/crm/telefono.sh spegni` (lo fa anche `spegni.sh` quando spegni tutto il CRM); per sapere se è acceso: `bash scripts/crm/telefono.sh stato`. Da sapere: i tentativi di token sbagliati dal telefono e dal Mac contano insieme (10 in 10 minuti bloccano l'accesso per 15 minuti); il nome del Mac e della tua rete Tailscale finiscono nei registri pubblici dei certificati HTTPS (solo i nomi, nessun dato).
+
 I dati veri stanno in un file SOLO del CRM, `.gas_memory_crm.db`, separato dalla memoria di Gas (decisione dell'operatore). Il nome che inizia con `.gas_memory` lo rende illeggibile agli strumenti del modello. Copie di sicurezza: il server ne fa una all'avvio e una al giorno in `.gas_memory_crm_backup/` (tiene la più recente di ognuno degli ultimi 30 giorni, più le ultime 10); a mano con `python -m modules.crm backup`.
 
 **Copia fuori dal Mac (iCloud Drive, decisione del 19 novembre).** Se il Mac si rompe o si perde, il gestionale non va perso:
@@ -111,6 +119,7 @@ Poi sceglie l'azione:
 |---|---|---|
 | `GAS_CRM_TOKEN` | — (obbligatoria) | token di accesso alla dashboard, almeno 16 caratteri |
 | `GAS_CRM_PORT` | 8770 | porta della dashboard |
+| `GAS_CRM_NOME_TAILSCALE` | — | nome Tailscale del Mac (`….ts.net`) da cui il telefono apre la dashboard; lo scrive e lo toglie `scripts/crm/telefono.sh` (decisione 21) |
 | `GAS_CRM_DB` | `.gas_memory_crm.db` | file del database (usa un nome che inizia con `.gas_memory`) |
 | `GAS_CRM_SOGLIA_EURO` | 1000 | profitto nel mese che fa scattare una proposta |
 | `GAS_CRM_PAGAMENTI_MIN` | 1 | commissioni già pagate prima di proporre altro |
