@@ -18,6 +18,8 @@
 - **Scheda clienti da leggere offline** (richiesta dell'operatore: «per forza tailscale? … posso accederci eventualmente offline … mi serve solo un dato al volo»; scelte: «Sì, fai la scheda», «Scheda ora, modifiche col server»; decisione 22): FATTA (36587824, review #864, #865, #866 APPROVATO CON RISERVE). R-864-1 MEDIA (password delle copie riusata) e R-865-1 MEDIA (password cambiata ignorata dal servizio) chiuse prima del commit.
 - **Modifiche offline salvate al ritorno della rete**: NON FATTE in questa fetta per scelta dell'operatore («modifiche col server»).
 - **Riallineamento a main** (PR #405 Voce e #406): avanzamento veloce, nessun conflitto; riserve dell'ultimo verdetto del bot sulla #405 (V-1, V-2 BASSE) riportate in `reports/stato_progetto.md` (regola 3).
+- **Merge di main (PR #402, R7 fetta 4) dopo l'apertura della PR** (3b8737b5; V-1 MEDIA della verifica esterna e V-1 del bot: PR in conflitto): FATTO, review #867-MERGE APPROVATO. Conflitti solo nei report e nella memoria; report del ramo tenuti, stato e memoria uniti, V-1 COSMETICA dell'ultimo verdetto del bot sulla #402 riportata in stato (regola 3). Sottofondo identico a main.
+- **Note della verifica esterna e del bot sulla #410** (07b0da7f; verifica: APPROVATO CON RISERVE, https://github.com/Gasss23/Gas/pull/410#issuecomment-7168393340; bot: APPROVATO CON RISERVE, success): V-1 conflitto chiuso dal merge; aperte BASSE V-2 bot (lock solo dentro un processo: CLI e server insieme possono lasciare la scheda vecchia con l'impronta nuova), V-3 bot COSMETICA (a capo fisso a 95 caratteri), V-3 verifica (lunghezza minima ma non entropia della password: consigliata una frase lunga e casuale), V-5 verifica COSMETICA.
 - **Prova su iPhone e iCloud veri**: SALTATA — non raggiungibili da qui.
 
 ---
@@ -25,27 +27,29 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +
+ .claude/agents/memoria_revisore.md |  10 +
  modules/crm/__main__.py            |  16 ++
  modules/crm/scheda.py              | 363 +++++++++++++++++++++++++++++++++++++
  modules/crm/server.py              |  42 +++++
  reports/crm/decisioni.md           |   1 +
  reports/crm/guida.md               |   3 +
- reports/diff_sessione.md           |  22 +--
+ reports/diff_sessione.md           |  17 +-
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |   7 +-
- reports/ultimo_report.md           |  73 +++-----
+ reports/stato_progetto.md          |   9 +-
+ reports/ultimo_report.md           |  35 ++--
  requirements.txt                   |   2 +
  tests/conftest.py                  |   1 +
  tests/test_unit_crm.py             | 356 ++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale. Base: main b7182a7c.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale. Base: main 86a23f56 (dopo il merge della #402; la sessione era partita da b7182a7c).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
 36587824 feat(crm): scheda clienti da leggere offline — PDF con password propria (AES-256) su iCloud Drive, rifatta solo quando cambiano i dati, zero token (decisione 22; review #864, #865, #866)
+07b0da7f docs(fine-task): scheda clienti offline — report, handoff (review #864–#866), stato con le riserve della #405 (regola 3)
+3b8737b5 Merge origin/main (PR #402 R7 fetta 4) nel ramo della PR #410 — report del ramo tenuti, stato e memoria uniti, V-1 del bot sulla #402 in stato (regola 3; review #867-MERGE APPROVATO)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
@@ -220,6 +224,43 @@ Review #866: il diff staged sul ramo claude/nifty-galileo-3k7kbm sopra b7182a7c.
 - `/home/user/Gas/.claude/agents/memoria_revisore.md` (riga #866, non staged, non committata)
 - Script delle prove: `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/diff_env.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/mutanti.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/sonde.py`, `/tmp/claude-0/-home-user-Gas/16f9e0da-27ed-55e3-a7eb-e49dca6663b0/scratchpad/prove/mac_finto.sh`
 
+### Commit 3b8737b5 — review #867-MERGE (verdetto integrale)
+
+## VERDETTO: APPROVATO
+
+Review #867-MERGE: il merge in corso di origin/main 86a23f56 (PR #402, tetto di tempo duro del sottofondo) nel ramo claude/nifty-galileo-3k7kbm (PR #410, HEAD 07b0da7f) è a posto. Lo sha256 del diff dell'indice contro HEAD è cb2b2801…: coincide con quello dichiarato e la mia riga in memoria non l'ha cambiato. Indice: 4 file, +205/−1. Letti prima della review: CLAUDE.md (sezione 5, sezione 8, roadmap), la testa di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Cosa ho controllato nel diff**
+1. `modules/sottofondo/__init__.py:821` — `_termina_processo`, e `modules/sottofondo/__init__.py:880` — `_scaduto` con lock e flag. Rischio esaminato: che la risoluzione abbia alterato il codice di main o mischiato righe del ramo. `git diff --cached MERGE_HEAD -- modules/sottofondo/__init__.py` è vuoto, quindi il file è identico a main. Il modulo non nomina mai «crm» né «scheda» (grep), quindi non tocca il CRM. Esito: ok.
+2. `tests/test_unit_sottofondo.py:1493` — `test_tetto_e_fine_turno_un_solo_esito` (con gli altri test del tetto, da riga 1426). Rischio esaminato: test di main persi o tenuti in un modo che li rompe. Il file è identico a main (diff vuoto). Il `tests/conftest.py` del ramo aggiunge solo il delenv di `GAS_CRM_SCHEDA_PASSWORD` e non cambia il comportamento dei test del sottofondo: 348 passed (sottofondo + crm) e 51 passed (manutenzione) su una copia dell'indice estratta con `git checkout-index`. Esito: ok.
+3. `.claude/agents/memoria_revisore.md:1762` — inizio delle righe aggiunte. Rischio esaminato: righe perse o duplicate. L'indice contiene le righe comuni (base) + le 5 righe di main + le 9 del ramo, in quest'ordine, confrontato a stringa: 0 righe perse da HEAD, 0 perse da main, 0 righe estranee. Esito: ok.
+4. `reports/stato_progetto.md:4` (contesto, file di report).
+   - La riga «Ultimo aggiornamento» è il frammento R7 di main, con «ancora aperta» cambiato in «MERGIATA il 25-11, 86a23f56», seguito dalla riga intera del ramo (uguaglianza verificata a stringa). Data e SHA tornano con `git log`.
+   - C'è una sola riga `> Ultimo aggiornamento`.
+   - Le altre righe di main che sembravano «perse» sono le righe Voce (393) e Dashboard (9), che solo il ramo aveva cambiato rispetto alla base: è giusto che resti la versione del ramo.
+   - Esito: ok.
+5. `reports/stato_progetto.md:406` (contesto). La riga R7 di main è intatta (933 caratteri, prefisso identico); in coda è aggiunta la V-1 COSMETICA. Ho riscontrato la V-1 nel check-run `verifica-bot` su af6e5078 (APPROVATA, success, una sola riserva COSMETICA sulla docstring). Regola 3 di `reports/lavoro_parallelo.md`:
+   - l'unica «decisione umana» del lato main (il merge della #402) è già fatta;
+   - le riserve R-852R7-1/2/4 e R-853R7-1/2/3 sono presenti nello stato.
+   - Esito: ok.
+
+**Controlli sul resto del merge**
+- `git ls-files -u` è vuoto: non restano file in conflitto.
+- Nessun marcatore di conflitto nei file staged, e `git diff --cached --check` è pulito.
+- Nessun file non tracciato.
+- `git diff --cached MERGE_HEAD --name-only`: l'indice differisce da main solo sui file della #410 (modules/crm/__main__.py, scheda.py, server.py, reports/crm/, requirements.txt, tests/conftest.py, tests/test_unit_crm.py), sulla memoria, sullo stato e sui tre log di sessione.
+- Tutti i file della #410, compresi handoff/ultimo_report/diff_sessione, sono identici a HEAD. Il comportamento della #410 non cambia.
+- Antipattern: il diff non taglia la storia dei messaggi e non simula l'output dei tool. Non indebolisce nessun guardrail (gas.py e brains non sono toccati da nessuno dei due lati).
+
+**Cosa NON ho verificato**
+- La suite completa del kernel (tests/test_unit_kernel.py) e le altre suite della CI non le ho rilanciate. gas.py e brains sono identici su entrambi i lati e il sottofondo è uguale a main, che è già passato in CI. Fa fede la CI sul commit di merge.
+- La correttezza del tetto duro in sé non l'ho rivista: è stata già revisionata in #852-R7/#853-R7 e il codice arriva da main senza modifiche.
+- Il comportamento su Mac o VPS: non riproducibile qui.
+
+**Riserve:** nessuna.
+
+**Memoria:** riga #867-MERGE aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree (fuori stage), nessuna lezione nuova. `scripts/commit_memoria_revisore.sh` NON eseguito, come avete chiesto (merge in corso). Il marcatore .claude/.review_ok NON è stato creato.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_crm.py`: 195 → 211 passed. Nuovi: 16 test della scheda e del guardiano (cifratura e nessun dato in chiaro, password propria/corta/uguale/cambiata nel `.env`/tolta, riscrittura solo su cambio, file tolto, temporanei vecchi, stornati e movimenti futuri esclusi, ultimi 3 movimenti, mese del profitto, demo che non scrive, comando che esce 1, guardiano con riprova, mai due insieme, ricontrollo giornaliero).
@@ -230,12 +271,15 @@ Review #866: il diff staged sul ramo claude/nifty-galileo-3k7kbm sopra b7182a7c.
 
 `gh run list` non usato: GitHub si interroga con `gh api` REST.
 - Mappatura commit→run:
-  - `36587824` e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (si pushano insieme).
+  - `36587824`: nessuna run propria (pushato con 07b0da7f).
+  - `07b0da7f`: handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE), unit-suite in corso alla scrittura; PR poi in conflitto con main.
+  - `3b8737b5` (merge di main) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 - Ultima run nota su main b7182a7c (merge della #405): CI verde al merge.
 
 ## §7 RISERVE APERTE
 
 - R-866-1 BASSA, R-866-2 BASSA, R-864-7 BASSA, cosmetiche #864–#866: in `reports/stato_progetto.md`.
+- Dalla #410: V-2 BASSA del bot (lock solo dentro un processo), V-3 BASSA della verifica (entropia della password), V-3 bot e V-5 verifica COSMETICHE: in `reports/stato_progetto.md`.
 - Dalla PR #406 (bot e verifica esterna) e dalle fette precedenti del CRM: in `reports/stato_progetto.md`.
 - Dalla chat Voce (#405): V-1/V-2 BASSE dell'ultimo verdetto del bot e le riserve già registrate, in `reports/stato_progetto.md`.
 - Scheda non provata su iPhone e iCloud veri.
