@@ -89,7 +89,7 @@ Review #860. Ho controllato il diff staged del ramo claude/nifty-galileo-3k7kbm 
   - Se ts.net è nella Public Suffix List, le macchine della tailnet sono lo stesso «sito»: SameSite=Strict non le separa, la difesa sono Origin e X-Gas-CRM (provato 403); un'altra macchina potrebbe coprire il cookie di sessione, cioè impedire di restare collegati, senza rubare nulla.
   - La guida potrebbe citare Tailnet Lock, perché chi entra nella tailnet lo decide il server di coordinamento di Tailscale.
 
-Le tue affermazioni sul sorgente Tailscale v1.106.1 le ho verificate tutte: Host conservato (`serve.go:1008`), X-Forwarded-Proto, `serve status --json` che stampa la ServeConfig, `serve` e `off` che tolgono il funnel su quella porta. Ho rieseguito io: 184 passed (186 con le mie 2 sonde), `bash -n` ok, mypy 0 errori in `modules/crm` (77 in tutto, come a HEAD). Mutanti: 6 su 8 uccisi.
+Le tue affermazioni sul sorgente Tailscale v1.106.1 le ho verificate tutte: Host conservato (riga 1008 di ipn/ipnlocal/serve.go del sorgente di Tailscale), X-Forwarded-Proto, `serve status --json` che stampa la ServeConfig, `serve` e `off` che tolgono il funnel su quella porta. Ho rieseguito io: 184 passed (186 con le mie 2 sonde), `bash -n` ok, mypy 0 errori in `modules/crm` (77 in tutto, come a HEAD). Mutanti: 6 su 8 uccisi.
 
 **Rischi esplicitamente esclusi**
 - Lo script non l'ho eseguito con bash 3.2 di macOS (`#!/bin/bash` sul Mac): qui c'è solo bash 5.2. Lo stesso costrutto heredoc dentro `$( )` è già in `scripts/crm/installa.sh`.
