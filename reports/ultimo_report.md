@@ -8,7 +8,7 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-pian
 2. Canale dell'avviso di fine lavoro: commenti sulla issue letti da Gas sul Mac (proposta) oppure Telegram diretto dal cloud.
 3. F5 (esecutore come scheduled task cloud): frequenza e ore (proposta: ogni ora, 8-20, feriali), massimo 2 richieste al giorno, modello.
 4. Con `MERGIA #N` mergia l'esecutore (proposta) oppure resta M1.
-5. Merge della PR di questa fetta (riserve BASSE del revisore aperte).
+5. Merge della PR #409: l'operatore ha detto «mergia 409» (via M1); lo faccio io con CI e bot verdi e nessun finding ALTA/MEDIA nuovo.
 
 ## Esito per fetta
 
@@ -18,6 +18,7 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-pian
 - **Correzione dopo bot e verifica esterna (#409)**: FATTA. Il bot era rosso per due caratteri bidi (U+202E) veri nel file di test: sostituiti con l'escape e aggiunto un test che li vieta. Inoltre VERIFICA_ESTERNA a valori fissi (niente domanda di merge se BOCCIATO), tolti i riempitivi che sembrano vuoti (R-865-1), docstring e piano corretti (`ESITO: ferma`, `MERGIATA` spostato in F5). Revisore #866: APPROVATO. 55 test.
 - **Seconda correzione dopo il bot (head 35c67d25, finding MEDIA)**: FATTA. La domanda di merge ora compare solo con PR valida, CI verde, bot APPROVATO/APPROVATO CON RISERVE e verifica esterna non BOCCIATO (prima una riga BOT mancante la lasciava passare); riserve vuote scartate, riserve in più contate («+N altre»), riserve elencate a parte. Revisore #867 APPROVATO CON RISERVE → R-867-1 e R-867-2 corrette nello stesso commit. 61 test.
 - **Merge di main (PR #402, R7 fetta 4) nel ramo**: FATTO (08875514), revisore #869-MERGE APPROVATO; 198 test di sottofondo + esiti passati. Bot sul head 0b039727: APPROVATO CON RISERVE (check success; V-1 BASSA altri invisibili Default_Ignorable come U+034F passano il filtro; V-2/V-3 COSMETICHE commenti vecchi e descrizione della PR, aggiornata). unit-suite success su 0b039727.
+- **Secondo merge di main (PR #410, scheda clienti offline)**: FATTO (dc5cb637), dopo il «mergia 409» dell'operatore via M1; revisore #870-MERGE APPROVATO CON RISERVE (R-870M-1 BASSA: numeri di review doppi fra chat). 272 test esiti + CRM passati.
 - **F1, F3, F4, F5**: DEFERITE — aspettano il via dell'operatore (toccano voce, credenziali, trigger o spesa ricorrente).
 
 ## Anomalie
