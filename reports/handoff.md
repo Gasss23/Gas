@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-25 — Mani alla voce: piano + formato fisso dei commenti ESITO/COMANDO (F2) + due correzioni dopo bot/verifica esterna, PR #409
+**Sessione:** 2026-11-25 — Mani alla voce: piano + formato fisso dei commenti ESITO/COMANDO (F2) + due correzioni dopo bot/verifica esterna + merge di main, PR #409
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #409 (https://github.com/Gasss23/Gas/pull/409). Revisore #868 APPROVATO sull'ultima correzione, ma verifica esterna APPROVATO CON RISERVE (solo BASSE) e bot da rifare sul nuovo head (sul head 35c67d25 aveva un finding MEDIA, corretto in 13eaa1a2): il merge lo decide l'operatore (CLAUDE.md §10).
+1. Merge della PR #409 (https://github.com/Gasss23/Gas/pull/409). Revisore #868 APPROVATO sull'ultima correzione, ma verifica esterna APPROVATO CON RISERVE (solo BASSE) e bot sul head 0b039727 APPROVATO CON RISERVE (check success, solo BASSE/COSMETICHE); dopo il merge di main servono di nuovo CI e bot sul nuovo head: il merge lo decide l'operatore (CLAUDE.md §10).
 2. F1: a voce `richiedi_sviluppo` passa dalla firma su Telegram? (proposta: sì).
 3. Canale dell'avviso: commenti sulla issue letti da Gas sul Mac (proposta) oppure Telegram diretto dal cloud.
 4. F5: frequenza e ore della scheduled task (proposta: ogni ora, 8-20, feriali), massimo 2 richieste al giorno, modello.
@@ -21,6 +21,7 @@
 - **F2 — formato fisso ESITO/COMANDO**: `FATTA` — `modules/sviluppo/esiti.py` + `tests/test_unit_esiti.py` (46 test), revisore #864 → #865 APPROVATO CON RISERVE.
 - **Correzione dopo bot e verifica esterna**: `FATTA` — caratteri bidi veri tolti dai test (causa del bot rosso), VERIFICA_ESTERNA a valori fissi, riempitivi vuoti tolti (R-865-1), piano corretto; revisore #866 APPROVATO.
 - **Seconda correzione dopo il bot (finding MEDIA sul head 35c67d25)**: `FATTA` — domanda di merge solo con PR valida, CI verde, bot APPROVATO/APPROVATO CON RISERVE e verifica esterna nell'elenco e non BOCCIATO; riserve vuote scartate e in più contate; revisore #867 → #868 APPROVATO. 61 test.
+- **Merge di main (PR #402, R7 fetta 4)**: `FATTA` — conflitti solo nei report e nella memoria, risolti con la regola 3 di `reports/lavoro_parallelo.md`; revisore #869-MERGE APPROVATO.
 - **F1 — firma a voce per `richiedi_sviluppo`**: `DEFERITA — aspetta il via dell'operatore`.
 - **F3 — Gas legge gli esiti dalle issue**: `DEFERITA — aspetta il via dell'operatore`.
 - **F4 — «mergia N» da Telegram**: `DEFERITA — aspetta il via dell'operatore`.
@@ -31,14 +32,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 ++++++
- modules/sviluppo/esiti.py          | 233 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  19 +++++++--------
+ .claude/agents/memoria_revisore.md |   8 ++++++++
+ modules/sviluppo/esiti.py          | 233 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  14 ++++++++------
  reports/handoff.md                 | n/d
- reports/mani_voce_piano.md         | 123 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/stato_progetto.md          |   1 +
- reports/ultimo_report.md           |  69 ++++++++++++++++---------------------------------------
- tests/test_unit_esiti.py           | 181 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/mani_voce_piano.md         | 123 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   3 ++-
+ reports/ultimo_report.md           |  32 ++++++++++++++++++++------------
+ tests/test_unit_esiti.py           | 181 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -46,6 +47,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+08875514 merge: origin/main (PR #402, R7 fetta 4) in claude/mani-voce-piano
+0b039727 docs(fine-task): report e handoff — seconda correzione dopo il bot (PR #409)
 13eaa1a2 fix(sviluppo): domanda di merge solo con tutti i controlli buoni, riserve vuote scartate e in più contate (bot #409-bis, R-867-1/2)
 4606d48c chore(revisore): memoria review #868 — APPROVATO
 edb5de4f chore(revisore): memoria review #867 — APPROVATO CON RISERVE
@@ -170,6 +173,29 @@ Rischio escluso: non ho lanciato la suite completa né la CI sul nuovo head, sol
 
 Memoria: ho aggiunto la riga #868 («nessuna lezione nuova») in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (4606d48c). Il diff staged è rimasto intatto.
 
+## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (08875514)
+
+Merge di origin/main (PR #402, R7 fetta 4) nel ramo: verdetto integrale #869-MERGE.
+
+## VERDETTO: APPROVATO
+
+Review #869-MERGE: merge in corso di origin/main (PR #402, R7 fetta 4) nel ramo claude/mani-voce-piano (PR #409), visto con `git diff --cached HEAD` e `git diff --cached MERGE_HEAD`.
+
+**Cosa ho controllato nel diff:**
+1. `modules/sottofondo/__init__.py:883` — `_scaduto` del tetto di tempo, arrivato da main (con `modules/sottofondo/__init__.py:815`, il Timer col tetto `TETTO_TIMER_S`, e `modules/sottofondo/__init__.py:933`, il ramo `gia_chiuso`). Rischio esaminato: una risoluzione del conflitto che altera il codice di R7. Esito: ok. Il diff contro MERGE_HEAD è vuoto, quindi il file è identico a origin/main.
+2. `tests/test_unit_sottofondo.py:1433` — test `test_tetto_scaduto_ferma_il_compito_con_avviso` (con i vicini a `tests/test_unit_sottofondo.py:1426` e `tests/test_unit_sottofondo.py:1453`). Rischio esaminato: test persi o mescolati. Esito: ok. Anche qui il diff contro MERGE_HEAD è vuoto.
+3. `.claude/agents/memoria_revisore.md:1762` — righe di main inserite dopo #863-MERGE (#852-R7 alla riga 1762, #853-R7 alla 1764, #864-MERGE-R7 alla 1766), poi le nostre #864..#868 (righe 1767-1773). Rischio esaminato: righe perse in una delle due parti. Esito: ok. Sia il diff contro HEAD sia quello contro MERGE_HEAD contengono solo aggiunte (5 righe di main, 7 nostre), nessuna riga tolta. Ci sono 5 caratteri invisibili, ma sono già presenti in entrambe le versioni (sono le citazioni delle lezioni), quindi non li ha introdotti il merge.
+4. `reports/stato_progetto.md:406` — voce R7 fetta 4 con R-852R7-1/4 dichiarate e le riserve aperte R-853R7-1, R-853R7-2 e R-853R7-3. Esito: ok. Le riserve di R7 di main sono tracciate. La voce «Mani alla voce» è alla `reports/stato_progetto.md:393`. La testata di `reports/stato_progetto.md:4` è quella di main e contiene per intero la nostra (controllato con un confronto di sottostringa).
+5. File di sessione: `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` hanno diff vuoto contro HEAD, quindi è tenuto il nostro lato come dice la regola 3 di `reports/lavoro_parallelo.md`. Esito: ok.
+
+Non c'è nessun marcatore di conflitto e `git ls-files -u` è vuoto. `python -m pytest -q tests/test_unit_sottofondo.py tests/test_unit_esiti.py` dà 198 passed.
+
+Nota COSMETICA: la testata presa da main dice «PR #402 ancora aperta», che non è più vero dopo questo merge. Conviene aggiornarla al prossimo giro dei report.
+
+**Cosa non ho verificato:** non ho rieseguito la suite completa del motore, ma solo le due suite toccate. Il codice di R7 è identico a main e lì è già stato revisionato (#852-R7, #853-R7, #864-MERGE-R7). Non ho rifatto la review di merito di `modules/sviluppo/esiti.py`, che il merge non tocca (giri #864..#868).
+
+**Memoria:** ho aggiunto la riga contatore #869-MERGE in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, senza lezioni nuove. È NON committata e NON in staging: lo stato è `MM` e va aggiunta al commit di merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - File nuovo `tests/test_unit_esiti.py`: 0 → 46 test (81c751fa) → 55 test (3f7a0075) → 61 test (13eaa1a2), tutti passati (`python -m pytest -q tests/test_unit_esiti.py` → `61 passed in 0.11s`).
@@ -189,17 +215,20 @@ FAILED tests/test_unit_web_browser.py::test_testo_scritto_dal_javascript - as...
 Check run per SHA (da `gh api repos/Gasss23/Gas/commits/<sha>/check-runs`; `gh run list` non è disponibile qui):
 
 ```
-35c67d25: verifica-bot completed failure | esito completed success | verifica completed success | smista completed success | unit-suite in_progress null | handoff-check completed success
-ec8a1d7a: unit-suite completed success
+0b039727: verifica-bot completed success | esito completed success | verifica completed success | smista completed success | handoff-check completed success | unit-suite completed success
+35c67d25: verifica-bot completed failure | handoff-check completed success
+ec8a1d7a: unit-suite completed success | verifica-bot completed failure
 ```
 
 - 93090a56: run CI success.
 - 0656fc0d, 62a1adcc: nessuna run su questo SHA (pushati insieme a 81c751fa).
 - 81c751fa: run CI avviata; esito non riletto (superata da ec8a1d7a, stesso codice motore).
-- ec8a1d7a: unit-suite success; handoff-check success; verifica-bot failure («controlli bidi nel testo»: caratteri U+202E veri nel test, corretti in 3f7a0075).
+- ec8a1d7a: unit-suite success; verifica-bot failure («controlli bidi nel testo», corretto in 3f7a0075).
 - a8ab5efd, 3f7a0075: nessuna run su questi SHA (pushati insieme a 35c67d25).
-- 35c67d25: handoff-check success; unit-suite in corso alla scrittura; verifica-bot failure (finding MEDIA: riga BOT mancante → domanda di merge; corretto in 13eaa1a2).
-- edb5de4f, 4606d48c, 13eaa1a2 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- 35c67d25: handoff-check success; verifica-bot failure (finding MEDIA, corretto in 13eaa1a2).
+- edb5de4f, 4606d48c, 13eaa1a2: nessuna run su questi SHA (pushati insieme a 0b039727).
+- 0b039727: unit-suite success, handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE).
+- 08875514 (merge di main) e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -209,5 +238,8 @@ ec8a1d7a: unit-suite completed success
 - Cosmetica 5 — i commenti scartati non lasciano traccia nel log (da fare in F3).
 - Cosmetica (#865) — U+200D tolto: le emoji composte escono spezzate.
 - Cosmetiche #868: C-1 messaggio di ValueError fuorviante con troppe riserve; C-2 `frase_esito` non ripulisce le riserve di un dizionario fatto a mano.
+- Bot sul head 0b039727 V-1 BASSA — altri invisibili Default_Ignorable (U+034F, U+17B4, U+17B5, U+180B-180D, U+180F) passano `_pulisci`; V-2 COSMETICA — commenti vecchi in esiti.py (righe 14 e 42); V-3 COSMETICA — descrizione della PR (aggiornata).
+- Verifica esterna #409-ter V-1 BASSA — `frase_esito` non ripulisce un dict fatto a mano; V-4 COSMETICA — doppio spazio con riassunto vuoto.
+- Revisore #869-MERGE COSMETICA — testata di stato_progetto «PR #402 ancora aperta»: corretta in questo giro.
 - Chiuse: R-865-1, bot #409 V-1…V-4 (3f7a0075); bot #409-bis V-1 MEDIA, V-2…V-4, R-867-1, R-867-2, verifica esterna #409-bis V-1 (13eaa1a2).
 - Fuori scope: `tests/test_unit_web_browser.py::test_testo_scritto_dal_javascript` rosso nel container.
