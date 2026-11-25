@@ -45,6 +45,9 @@ NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fb60ae2e Merge origin/main (PR #402 R7) nel ramo della PR #407 — report del ramo tenuti, memoria unita (review #868-MERGE)
+7cba139c docs(report): riserve aperte della #407 tracciate in stato_progetto con id regolari (V-1 bot su 3d12ee08)
+3d12ee08 docs(fine-task): report con le riserve del bot #407 chiuse (review #866/#867)
 434e0966 fix(voce): modelli pronti col nome del file (alexa_v0.1), avviso di ripiego una volta sola, docstring e LEGGIMI (V-1/V-2/V-3 bot #407, R-864-2, R-866-1)
 94f19a67 chore(revisore): memoria review #867 — APPROVATO CON RISERVE
 20e3ded4 chore(revisore): memoria review #866 — APPROVATO CON RISERVE
@@ -215,6 +218,47 @@ Review #867, solo il delta rispetto alla #866 (PR #407; l'indice ora vale 3 file
 Il commit è consentito.
 ```
 
+## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (PR #402)
+
+```
+## VERDETTO: APPROVATO
+
+Review #868-MERGE: merge di origin/main 86a23f56 (PR #402, R7 fetta 4) nel ramo fix/voce-log-e-modello (PR #407, HEAD 7cba139c). Il merge è in staging e non committato; MERGE_HEAD coincide con origin/main. Non ho usato git stash.
+
+- Nessun conflitto rimasto (`git ls-files -u` vuoto) e `--check` pulito.
+- Rispetto a HEAD entrano 4 file (+205/−1).
+- I test sottofondo più voce passano: 532 test, rieseguiti da me.
+
+**Elementi esaminati**
+
+1. `modules/sottofondo/__init__.py:17` e `tests/test_unit_sottofondo.py:1`: i file presi da main.
+   - Rischio: modifiche non volute nel codice che arriva da main.
+   - Esito: ok. `git diff --cached origin/main` su questi file è vuoto, quindi sono identici a main.
+2. `clients/voice/ascolto.py:1442`, `tests/test_unit_voce_ascolto.py:3431`, `scripts/voce/LEGGIMI.md:237`, più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` tenuti col lato del ramo (`--ours`).
+   - Rischio: un file nostro perso nel merge.
+   - Esito: ok. `git diff --cached HEAD` su questi percorsi è vuoto. Gli unici file cambiati da entrambi i lati sono memoria e stato_progetto, uniti come descritto sotto.
+3. `reports/stato_progetto.md:4` e `reports/stato_progetto.md:405`: unione automatica.
+   - Rispetto a main cambia solo la riga 393 della voce, cioè la nostra versione (+1/−1).
+   - Rispetto a HEAD entrano la riga 4 di main, con la voce R7 del 25/11 in testa, e la voce R7 alla riga 405 (+2/−1).
+   - La riga «Ultimo aggiornamento» compare una sola volta.
+   - Esito: ok.
+4. `.claude/agents/memoria_revisore.md:1`: memoria unita, nessuna riga persa né di HEAD né di main.
+   - Esito: ok.
+
+**Nota COSMETICA (viene da main, non da questo merge)**
+
+- `reports/stato_progetto.md:4` dice «PR #402 ancora aperta», ma ora è mergiata. Si può aggiornare nel prossimo giro dei report.
+
+**Rischi esclusi**
+
+- Il contenuto della R7 fetta 4 (tetto di tempo duro del sottofondo): non l'ho rivisto nel merito, perché entra identico a main dopo le review #852-R7 e #853-R7.
+- La suite completa: ho eseguito solo i test sottofondo e voce.
+
+**Memoria**: ho aggiunto la riga #868-MERGE in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree (non in staging, non committata). Va messa in staging da te prima del commit del merge.
+
+Il commit del merge è consentito.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_voce_ascolto.py`: 391 → 395 passed (4 test nuovi, 2 aggiornati).
@@ -228,7 +272,8 @@ Il commit è consentito.
   - verifica-bot: success, verdetto APPROVATO CON RISERVE (V-1 BASSA, V-2 e V-3 COSMETICHE);
   - job «esito» in failure: GitHub ha risposto con un errore quando il bot ha pubblicato la recensione (`gh api … pulls/407/reviews` exit 1), non per un difetto della PR.
 - 434e0966, 94f19a67 e 20e3ded4: nessuna run propria, vanno col push di questo commit.
-- Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 3d12ee08: verifica-bot neutral (APPROVATO CON RISERVE, solo V-1 BASSA sui report, corretta in 7cba139c).
+- 7cba139c e il merge di main (PR #402, review #868-MERGE APPROVATO): pushati insieme a questo commit, run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
