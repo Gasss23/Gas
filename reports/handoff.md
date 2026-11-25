@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #409 (https://github.com/Gasss23/Gas/pull/409): l'operatore ha detto «mergia 409» (via M1, 25/11). Lo faccio io con CI e bot verdi sul nuovo head e nessun finding ALTA/MEDIA nuovo (CLAUDE.md §10).
+1. Merge della PR #409 (https://github.com/Gasss23/Gas/pull/409): l'operatore ha detto «mergia 409» (via M1, 25/11), ma sull'head 72adde68 il bot ha trovato una MEDIA nuova (test di esiti non in CI), corretta in b2e78370. Mergio io solo con CI e bot verdi sul nuovo head e nessun finding ALTA/MEDIA nuovo (CLAUDE.md §10, istruzione di M1).
 2. F1: a voce `richiedi_sviluppo` passa dalla firma su Telegram? (proposta: sì).
 3. Canale dell'avviso: commenti sulla issue letti da Gas sul Mac (proposta) oppure Telegram diretto dal cloud.
 4. F5: frequenza e ore della scheduled task (proposta: ogni ora, 8-20, feriali), massimo 2 richieste al giorno, modello.
@@ -23,6 +23,7 @@
 - **Seconda correzione dopo il bot (finding MEDIA sul head 35c67d25)**: `FATTA` — domanda di merge solo con PR valida, CI verde, bot APPROVATO/APPROVATO CON RISERVE e verifica esterna nell'elenco e non BOCCIATO; riserve vuote scartate e in più contate; revisore #867 → #868 APPROVATO. 61 test.
 - **Merge di main (PR #402, R7 fetta 4)**: `FATTA` — conflitti solo nei report e nella memoria, risolti con la regola 3 di `reports/lavoro_parallelo.md`; revisore #869-MERGE APPROVATO.
 - **Secondo merge di main (PR #410)**: `FATTA` — conflitti solo nei report e nella memoria, regola 3; revisore #870-MERGE APPROVATO CON RISERVE (R-870M-1 BASSA).
+- **Terza correzione dopo il bot (head 72adde68)**: `FATTA` — test di esiti in CI (`.github/workflows/ci.yml`), PR_MAX a 7 cifre, messaggio per commento troppo lungo; revisore #871 APPROVATO. 63 test.
 - **F1 — firma a voce per `richiedi_sviluppo`**: `DEFERITA — aspetta il via dell'operatore`.
 - **F3 — Gas legge gli esiti dalle issue**: `DEFERITA — aspetta il via dell'operatore`.
 - **F4 — «mergia N» da Telegram**: `DEFERITA — aspetta il via dell'operatore`.
@@ -33,14 +34,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
- modules/sviluppo/esiti.py          | 233 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  19 ++++++++----------
+ .claude/agents/memoria_revisore.md |  10 +++++++++
+ .github/workflows/ci.yml           |   8 +++++++
+ modules/sviluppo/esiti.py          | 235 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  20 ++++++++---------
  reports/handoff.md                 | n/d
- reports/mani_voce_piano.md         | 123 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/mani_voce_piano.md         | 123 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  44 +++++++++++++++++++++-------------------
- tests/test_unit_esiti.py           | 181 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  45 ++++++++++++++++++++-----------------
+ tests/test_unit_esiti.py           | 196 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -48,6 +50,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b2e78370 fix(ci): test_unit_esiti.py nella CI; PR_MAX a 7 cifre; messaggio giusto per commento troppo lungo (bot #409 su 72adde68)
+a9291ba4 chore(revisore): memoria review #871 — APPROVATO
+72adde68 docs(fine-task): report e handoff dopo il 2° merge di main (PR #409)
 dc5cb637 merge: origin/main (PR #410, scheda clienti offline) in claude/mani-voce-piano
 3429dfa1 docs(fine-task): report e handoff dopo il merge di main (PR #409)
 08875514 merge: origin/main (PR #402, R7 fetta 4) in claude/mani-voce-piano
@@ -69,7 +74,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 81c751fa: verdetto integrale del secondo giro (#865), che copre il codice di quel commit (il primo giro #864 era su una versione precedente, poi corretta). Commit motore 3f7a0075: verdetto #866, riemesso dal revisore con gli escape scritti come testo (la prima emissione conteneva un carattere U+202E vero che avrebbe fatto fallire il bot); stessa sostanza ed esito. Commit motore 13eaa1a2: verdetti #867 (APPROVATO CON RISERVE, con R-867-1 e R-867-2) e #868 (APPROVATO, dopo la correzione di quelle due riserve nello stesso diff staged). Le righe citate dai verdetti più vecchi si riferiscono al file del loro commit: dopo i commit successivi alcune sono slittate.
+Commit motore 81c751fa: verdetto integrale del secondo giro (#865), che copre il codice di quel commit (il primo giro #864 era su una versione precedente, poi corretta). Commit motore 3f7a0075: verdetto #866, riemesso dal revisore con gli escape scritti come testo (la prima emissione conteneva un carattere U+202E vero che avrebbe fatto fallire il bot); stessa sostanza ed esito. Commit motore b2e78370 (ci.yml + esiti): verdetto #871, in fondo a questa sezione. Commit motore 13eaa1a2: verdetti #867 (APPROVATO CON RISERVE, con R-867-1 e R-867-2) e #868 (APPROVATO, dopo la correzione di quelle due riserve nello stesso diff staged). Le righe citate dai verdetti più vecchi si riferiscono al file del loro commit: dopo i commit successivi alcune sono slittate.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -176,6 +181,31 @@ Rischio escluso: non ho lanciato la suite completa né la CI sul nuovo head, sol
 
 Memoria: ho aggiunto la riga #868 («nessuna lezione nuova») in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (4606d48c). Il diff staged è rimasto intatto.
 
+## VERDETTO: APPROVATO
+
+Review #871. Riguarda il 6° giro della PR #409, cioè la correzione dopo il bot sull'head 72adde68. Il diff staged è su claude/mani-voce-piano e tocca 3 file (+26/−1). Prima della review ho letto CLAUDE.md (sez. 1, 5, 8, 10), la voce «mani alla voce» in reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md. Ho letto anche il verdetto del bot (check-run 139407757636).
+
+Elementi del diff esaminati:
+1. `.github/workflows/ci.yml:207` — aggiunge il passo «Run esiti suite» con `if: always()`, `set -o pipefail` e il tee in `$RUNNER_TEMP/esiti_output.txt`. È identico al passo di richieste alla riga 200.
+   - Rischio esaminato: che la macchina di controllo si indebolisca o che un test fallito non faccia fallire il job.
+   - Esito: ok. Con pipefail, se pytest fallisce fallisce lo step, e quindi fallisce `unit-suite`. Nessun altro passo è toccato e non ci sono `paths-ignore`. L'output del passo non serve nel riepilogo finale: lo step «Job summary» (`.github/workflows/ci.yml:258`) è solo informativo e non legge nemmeno i file di richieste e avvisa_operatore. Lo YAML si carica senza errori.
+2. `modules/sviluppo/esiti.py:45` — `PR_MAX = 9_999_999`.
+   - Rischio esaminato: un numero di PR che lo scrittore accetta e il lettore rifiuta.
+   - Esito: ok. Il valore coincide con le regex a 7 cifre (`[1-9][0-9]{0,6}`). Lo stesso confine vale in tutti e quattro i controlli (`modules/sviluppo/esiti.py:110`, `modules/sviluppo/esiti.py:144`, `modules/sviluppo/esiti.py:188`, `modules/sviluppo/esiti.py:221`). Il test `tests/test_unit_esiti.py:184` prova il valore massimo e il valore massimo +1, sia per il comando sia per l'esito.
+3. `modules/sviluppo/esiti.py:159` — un commento oltre `COMMENTO_MAX` ora dà «commento oltre N caratteri».
+   - Rischio esaminato: confini diversi tra scrittore e lettore, oppure un controllo messo dopo `leggi_esito`.
+   - Esito: ok. Il controllo viene prima di `leggi_esito` e usa lo stesso `>` del lettore (`modules/sviluppo/esiti.py:67`). Il test `tests/test_unit_esiti.py:194` lo verifica: 40 riserve da 290 caratteri superano 8000 e restano sotto RIGA_MAX.
+
+Verifiche eseguite:
+- Ho rieseguito la suite su una copia dell'indice: 63 passed.
+- Nei tre file non ci sono caratteri di controllo o invisibili (categoria Unicode C*) a parte a capo e tab.
+
+Rischio escluso: non ho verificato l'esecuzione reale su GitHub Actions. Che il nuovo passo giri davvero e che `unit-suite` diventi rosso con un test rotto lo dirà la run CI sul nuovo head, che dal sandbox non posso riprodurre. Non ho rieseguito il bot.
+
+Finding: nessuno. I tre finding del bot sono chiusi: V-1 MEDIA, V-2 BASSA, V-3 COSMETICA.
+
+Memoria: ho scritto la riga #871 (nessuna lezione nuova) e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit a9291ba4). L'index staged del diff resta intatto. Il file è /home/user/Gas/.claude/agents/memoria_revisore.md.
+
 ## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (08875514)
 
 Merge di origin/main (PR #402, R7 fetta 4) nel ramo: verdetto integrale #869-MERGE.
@@ -238,7 +268,7 @@ Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga 
 
 ## §5 DELTA TEST DEL MOTORE
 
-- File nuovo `tests/test_unit_esiti.py`: 0 → 46 test (81c751fa) → 55 test (3f7a0075) → 61 test (13eaa1a2), tutti passati (`python -m pytest -q tests/test_unit_esiti.py` → `61 passed in 0.11s`).
+- File nuovo `tests/test_unit_esiti.py`: 0 → 46 test (81c751fa) → 55 test (3f7a0075) → 61 test (13eaa1a2) → 63 test (b2e78370, ora anche in CI), tutti passati (`python -m pytest -q tests/test_unit_esiti.py` → `61 passed in 0.11s`).
 - `tests/test_unit_sottofondo.py` + `tests/test_unit_richieste.py`: `154 passed in 6.14s` (dopo `pip install -r requirements.txt`; prima 3 rossi per `openai` mancante nel container).
 - Suite completa locale, `python -m pytest -q -x tests` (lanciata prima delle correzioni):
 
@@ -270,7 +300,9 @@ ec8a1d7a: unit-suite completed success | verifica-bot completed failure
 - 0b039727: unit-suite success, handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE).
 - 08875514: nessuna run su questo SHA (pushato insieme a 3429dfa1).
 - 3429dfa1: unit-suite success, handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE).
-- dc5cb637 (2° merge di main) e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- dc5cb637: nessuna run su questo SHA (pushato insieme a 72adde68).
+- 72adde68: verifica-bot failure (finding MEDIA: test di esiti non in CI; corretto in b2e78370); unit-suite non riletta.
+- a9291ba4, b2e78370 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
