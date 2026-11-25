@@ -2972,3 +2972,284 @@ def test_spegni_crm_toglie_servizio_e_icona_e_lascia_i_dati(tmp_path: Path) -> N
     assert r.returncode == 0 and "CRM spento" in r.stdout
     assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
     assert not (casa / "Desktop/CRM Gas.webloc").exists() and dati.read_text() == "dati dei clienti"
+
+
+# ------------------------------------------------- dashboard dal telefono (decisione 21)
+# Il CRM resta su 127.0.0.1; `tailscale serve` lo porta nella rete privata col nome del Mac.
+
+NOME_TS = "mac-di-gas.tail1234.ts.net"
+
+
+def test_nome_tailscale_solo_nomi_ts_net(monkeypatch: pytest.MonkeyPatch) -> None:
+    for grezzo, atteso in ((NOME_TS, NOME_TS), ("Mac-Di-Gas.Tail1234.TS.NET.", NOME_TS),
+                           ("", None), ("crm.example.com", None), ("ts.net", None),
+                           ("mac.ts.net.example.com", None), ("mac..ts.net", None),
+                           ("-mac.tail1234.ts.net", None), ("mac tail.ts.net", None)):
+        monkeypatch.setenv("GAS_CRM_NOME_TAILSCALE", grezzo)
+        assert server.nome_tailscale_da_env() == atteso, grezzo
+
+
+@pytest.fixture
+def avviato_ts(st: CRMStore):
+    stato = server.Stato(st, TOKEN, regole=REGOLE, nome_tailscale=NOME_TS)
+    srv = _avvia_server(stato)
+    yield stato, Client(srv.server_address[1])
+    _ferma(stato, srv)
+
+
+def test_dal_telefono_solo_col_nome_tailscale(avviato_ts, st: CRMStore) -> None:
+    _, c = avviato_ts
+    assert c.get("/api/sessione", intestazioni={"Host": NOME_TS})[0] == 200
+    for estraneo in ("altro.tail1234.ts.net", "evil.example", f"{NOME_TS}.evil.example"):
+        assert c.get("/api/sessione", intestazioni={"Host": estraneo})[0] == 403, estraneo
+    # login da HTTPS (tailscale serve): Origin uguale all'Host e cookie solo cifrato
+    codice, head, _ = c.post("/api/login", {"token": TOKEN}, intestazioni={
+        "Host": NOME_TS, "Origin": f"https://{NOME_TS}"})
+    assert codice == 200 and "; Secure" in head["set-cookie"]
+    assert c.get("/api/stato", intestazioni={"Host": NOME_TS})[0] == 200
+    codice, head, _ = c.post("/api/logout", {}, intestazioni={"Host": NOME_TS, "Origin": f"https://{NOME_TS}"})
+    assert codice == 200 and "; Secure" in head["set-cookie"]
+    # sul Mac resta com'era: niente Secure su http://127.0.0.1
+    c2 = Client(c.porta)
+    codice, head, _ = c2.post("/api/login", {"token": TOKEN})
+    assert codice == 200 and "Secure" not in head["set-cookie"]
+    # R-860-1: mai dal funnel (internet), e il nome solo sulla 443 di tailscale serve
+    assert c.get("/api/sessione", intestazioni={"Host": NOME_TS, "Tailscale-Funnel-Request": "?1"})[0] == 403
+    assert c.get("/api/sessione", intestazioni={"Host": "127.0.0.1", "Tailscale-Funnel-Request": "?1"})[0] == 403
+    assert c.post("/api/login", {"token": TOKEN}, intestazioni={
+        "Host": NOME_TS, "Origin": f"https://{NOME_TS}", "Tailscale-Funnel-Request": "?1"})[0] == 403
+    assert c.get("/api/sessione", intestazioni={"Host": f"{NOME_TS}:8443"})[0] == 403
+    assert c.get("/api/sessione", intestazioni={"Host": f"{NOME_TS}:443"})[0] == 200
+    # senza il nome dichiarato, il nome Tailscale non entra
+    stato_senza = server.Stato(st, TOKEN, regole=REGOLE)
+    srv = _avvia_server(stato_senza)
+    try:
+        assert Client(srv.server_address[1]).get("/api/sessione", intestazioni={"Host": NOME_TS})[0] == 403
+    finally:
+        _ferma(stato_senza, srv)
+
+
+# script telefono.sh con comandi finti (tailscale, launchctl, curl, sleep, uname) e un python
+# della .venv che finge solo la lettura della porta (il resto lo fa il python vero)
+_FINTI_TS = {
+    "uname": 'echo Darwin',
+    "sleep": 'exit 0',
+    "launchctl": ('echo "launchctl $*" >> "$REGISTRO"\n'
+                  'case "$1" in\n'
+                  '  print) [ "${CRM_INSTALLATO:-si}" = si ] ;;\n'
+                  '  kickstart) [ "${CRM_RIPARTE:-si}" = si ] && touch "$REGISTRO.su"; exit 0 ;;\n'
+                  'esac'),
+    "curl": ('for a in "$@"; do u="$a"; done\n'
+             'case "$u" in\n'
+             '  http://127.0.0.1:*) [ -f "$REGISTRO.su" ] ;;\n'
+             '  https://*/api/sessione) grep -q Proxy "$REGISTRO.serve" 2>/dev/null && echo \'{"autenticato": false}\' ;;\n'
+             '  *) exit 7 ;;\n'
+             'esac'),
+    "tailscale": ('echo "tailscale $*" >> "$REGISTRO"\n'
+                  'if [ "$1" = status ]; then\n'
+                  '  echo "{\\"BackendState\\": \\"${TS_STATO:-Running}\\", \\"Self\\": {\\"DNSName\\": \\"${TS_NOME:-mac-di-gas.tail1234.ts.net.}\\"}}"; exit 0\n'
+                  'fi\n'
+                  'if [ "$1 $2" = "serve status" ]; then cat "$REGISTRO.serve" 2>/dev/null || echo null; exit 0; fi\n'
+                  'if [ "$1" = serve ]; then\n'
+                  '  for a in "$@"; do u="$a"; done\n'
+                  '  if [ "$u" = off ]; then echo null > "$REGISTRO.serve"; exit 0; fi\n'
+                  '  [ "${TS_SERVE_KO:-no}" = si ] && { echo "Serve is not enabled on your tailnet." >&2; exit 1; }\n'
+                  '  [ "${TS_SERVE_NULLA:-no}" = si ] && { echo "To enable, visit: https://login.tailscale.com/f/serve"; exit 0; }\n'
+                  '  n="${TS_NOME:-mac-di-gas.tail1234.ts.net.}"; n="${n%.}"\n'
+                  '  echo "{\\"Web\\": {\\"$n:443\\": {\\"Handlers\\": {\\"/\\": {\\"Proxy\\": \\"$u\\"}}}}}" > "$REGISTRO.serve"\n'
+                  '  exit 0\n'
+                  'fi\n'
+                  'exit 1'),
+}
+
+
+def _gas_ts_finto(tmp_path: Path, env: str = "GAS_CRM_TOKEN=segreto-di-prova-lungo\n") -> Tuple[Path, Path, Path]:
+    gas = tmp_path / "Gas"
+    (gas / "scripts" / "crm").mkdir(parents=True)
+    for f in CRM_SCRIPT_DIR.iterdir():
+        shutil.copy2(f, gas / "scripts" / "crm" / f.name)
+    (gas / ".env").write_text(env)
+    (gas / ".env").chmod(0o600)
+    (gas / ".venv" / "bin").mkdir(parents=True)
+    py = gas / ".venv/bin/python"
+    py.write_text('#!/bin/bash\n'
+                  'for a in "$@"; do if [ "$a" = "-" ]; then\n'
+                  '  s="$(cat)"; case "$s" in *"import gas"*) echo 8770; exit 0 ;; esac\n'
+                  f'  printf "%s" "$s" | exec {sys.executable} "$@"\n'
+                  'fi; done\n'
+                  f'exec {sys.executable} "$@"\n')
+    py.chmod(0o755)
+    finti = tmp_path / "finti"
+    finti.mkdir()
+    for nome_cmd, corpo in _FINTI_TS.items():
+        p = finti / nome_cmd
+        p.write_text("#!/bin/bash\n" + corpo + "\n")
+        p.chmod(0o755)
+    casa = tmp_path / "casa"
+    casa.mkdir()
+    return gas, finti, casa
+
+
+def _telefono(gas: Path, finti: Path, casa: Path, tmp_path: Path, *argomenti: str,
+              **extra: str) -> Tuple[subprocess.CompletedProcess, str]:
+    registro = tmp_path / "registro.txt"
+    env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(registro), **extra}
+    r = subprocess.run(["bash", str(gas / "scripts/crm/telefono.sh"), *argomenti],
+                       capture_output=True, text=True, timeout=60, env=env)
+    return r, registro.read_text() if registro.exists() else ""
+
+
+def test_telefono_accende_solo_nella_rete_privata(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path, env="GAS_CRM_TOKEN=segreto-di-prova-lungo\nALTRO=1\n")
+    r, registro = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert f"https://{NOME_TS}/" in r.stdout
+    righe = (gas / ".env").read_text().splitlines()
+    assert righe == ["GAS_CRM_TOKEN=segreto-di-prova-lungo", "ALTRO=1", f"GAS_CRM_NOME_TAILSCALE={NOME_TS}"]
+    assert (gas / ".env").stat().st_mode & 0o777 == 0o600  # il file delle chiavi resta privato
+    assert "tailscale serve --bg --yes --https=443 http://127.0.0.1:8770" in registro
+    assert "funnel" not in registro  # mai il funnel (internet)
+    assert f"launchctl kickstart -k gui/{os.getuid()}/com.gas.crm" in registro
+    assert "segreto-di-prova-lungo" not in r.stdout + r.stderr + registro
+    # di nuovo: niente doppioni nel .env e serve già a posto non si rifà
+    r, registro2 = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and (gas / ".env").read_text().count("GAS_CRM_NOME_TAILSCALE") == 1
+    assert registro2[len(registro):].count("serve --bg") == 0
+    # stato e spegnimento: via il collegamento e la riga, il resto del .env intatto
+    r, _ = _telefono(gas, finti, casa, tmp_path, "stato")
+    assert r.returncode == 0 and "Acceso" in r.stdout
+    r, registro3 = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert r.returncode == 0 and "tailscale serve --yes --https=443 off" in registro3
+    assert (gas / ".env").read_text().splitlines() == ["GAS_CRM_TOKEN=segreto-di-prova-lungo", "ALTRO=1"]
+    r, _ = _telefono(gas, finti, casa, tmp_path, "stato")
+    assert "Spento" in r.stdout
+
+
+@pytest.mark.parametrize("extra, messaggio", [
+    ({"TS_STATO": "NeedsLogin"}, "accedi"),
+    ({"TS_NOME": "mac.local."}, "non è un nome *.ts.net"),
+    ({"CRM_INSTALLATO": "no"}, "prima lancia bash scripts/crm/installa.sh"),
+])
+def test_telefono_si_ferma_prima_di_toccare_qualcosa(tmp_path: Path, extra: Dict[str, str],
+                                                    messaggio: str) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path, **extra)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert (gas / ".env").read_text() == prima and "serve --bg" not in registro
+
+
+def test_telefono_senza_tailscale(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (finti / "tailscale").unlink()
+    r, _ = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and "Mac App Store" in r.stderr
+
+
+@pytest.mark.parametrize("configurazione, messaggio", [
+    ({"AllowFunnel": {f"{NOME_TS}:443": True}}, "funnel PUBBLICO"),
+    ({"Web": {f"{NOME_TS}:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:3000"}}}}}, "un altro servizio"),
+])
+def test_telefono_non_tocca_un_funnel_o_un_altro_servizio(tmp_path: Path, configurazione: Dict[str, Any],
+                                                         messaggio: str) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (tmp_path / "registro.txt.serve").write_text(json.dumps(configurazione))
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert (gas / ".env").read_text() == prima and "serve --bg" not in registro
+    assert json.loads((tmp_path / "registro.txt.serve").read_text()) == configurazione
+
+
+def test_telefono_serve_fallito_rimette_tutto_com_era(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path, TS_SERVE_KO="si")
+    assert r.returncode == 1 and "tailscale serve non riuscito" in r.stderr
+    assert (gas / ".env").read_text() == prima
+    assert registro.count("launchctl kickstart") == 2  # col nome e di nuovo senza
+
+
+def test_telefono_env_collegato_resta_collegato(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    vero = tmp_path / "chiavi.env"
+    vero.write_text((gas / ".env").read_text())
+    (gas / ".env").unlink()
+    (gas / ".env").symlink_to(vero)
+    r, _ = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (gas / ".env").is_symlink() and f"GAS_CRM_NOME_TAILSCALE={NOME_TS}" in vero.read_text()
+
+
+def test_telefono_spegni_anche_con_tailscale_spento(tmp_path: Path) -> None:
+    """R-860-2 (a): spegni toglie SEMPRE la riga dal .env e riavvia il CRM, anche se
+    Tailscale è spento; poi dice di rilanciare per togliere il collegamento salvato."""
+    gas, finti, casa = _gas_ts_finto(tmp_path, env=f"GAS_CRM_TOKEN=segreto-di-prova-lungo\n"
+                                                    f"GAS_CRM_NOME_TAILSCALE = {NOME_TS}\n"
+                                                    f"export GAS_CRM_NOME_TAILSCALE={NOME_TS}\n")
+    r, registro = _telefono(gas, finti, casa, tmp_path, "spegni", TS_STATO="Stopped")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "rilancia: bash scripts/crm/telefono.sh spegni" in r.stderr
+    assert (gas / ".env").read_text() == "GAS_CRM_TOKEN=segreto-di-prova-lungo\n"
+    assert "launchctl kickstart" in registro and "serve --yes --https=443 off" not in registro
+
+
+def test_telefono_spegni_toglie_anche_se_c_e_un_funnel(tmp_path: Path) -> None:
+    """R-860-2 (b): con «nostro pubblico» il collegamento si toglie e si avvisa del funnel."""
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (tmp_path / "registro.txt.serve").write_text(json.dumps({
+        "Web": {f"{NOME_TS}:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8770"}}}},
+        "AllowFunnel": {f"{NOME_TS}:443": True}}))
+    r, registro = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert r.returncode == 0 and "serve --yes --https=443 off" in registro
+    assert "funnel PUBBLICO" in r.stderr
+
+
+def test_telefono_spegni_senza_env_non_lo_crea(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (gas / ".env").unlink()
+    r, _ = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not (gas / ".env").exists()
+
+
+@pytest.mark.parametrize("contenuto, messaggio", [
+    # funnel acceso in primo piano su un'altra porta (R-860-1)
+    (json.dumps({"Foreground": {"sessione": {"AllowFunnel": {f"{NOME_TS}:8443": True}}}}), "funnel PUBBLICO"),
+    # JSON illeggibile: «errore», non «libero» (R-860-5)
+    ("Warning: client version differs\n{}", "non riesco a leggere"),
+])
+def test_telefono_funnel_ovunque_e_json_illeggibile(tmp_path: Path, contenuto: str, messaggio: str) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (tmp_path / "registro.txt.serve").write_text(contenuto)
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert (gas / ".env").read_text() == prima and "serve --bg" not in registro
+
+
+def test_telefono_https_da_attivare_rimette_tutto_e_lo_dice(tmp_path: Path) -> None:
+    """R-860-4: la prima volta Tailscale stampa un link ed esce 0 senza collegare."""
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path, TS_SERVE_NULLA="si")
+    assert r.returncode == 1 and "Enable" in r.stderr and "rilancia" in r.stderr, r.stdout + r.stderr
+    assert (gas / ".env").read_text() == prima
+    assert registro.count("launchctl kickstart") == 2
+
+
+def test_spegni_crm_spegne_anche_il_telefono(tmp_path: Path) -> None:
+    """R-860-3: spegni.sh toglie anche l'accesso dal telefono."""
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    r, _ = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    r, registro = _telefono(gas, finti, casa, tmp_path)  # stessa preparazione, poi spegni.sh
+    registro_prima = len(registro)
+    env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(tmp_path / "registro.txt")}
+    r = subprocess.run(["bash", str(gas / "scripts/crm/spegni.sh")], capture_output=True, text=True,
+                       timeout=60, env=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    nuovo = (tmp_path / "registro.txt").read_text()[registro_prima:]
+    assert "tailscale serve --yes --https=443 off" in nuovo
+    assert "GAS_CRM_NOME_TAILSCALE" not in (gas / ".env").read_text()
+

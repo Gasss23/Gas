@@ -117,10 +117,14 @@ def cmd_serve(a: argparse.Namespace) -> int:
         avvisa = invia_notifica
     stato = server.Stato(st, token, demo=a.demo,
                          scan_minuti=_env_int("GAS_CRM_SCAN_MINUTI", SCAN_MINUTI_DEFAULT, 1, 1440),
-                         avvisa=avvisa, memoria_db=None if a.demo else ROOT / ".gas_memory.db")
+                         avvisa=avvisa, memoria_db=None if a.demo else ROOT / ".gas_memory.db",
+                         nome_tailscale=server.nome_tailscale_da_env())
 
     def pronto(url: str) -> None:
         print(f"CRM Gas {'(DEMO) ' if a.demo else ''}in ascolto su {url}")
+        if stato.nome_tailscale:
+            # decisione 21: dal telefono, solo nella rete privata Tailscale
+            print(f"Dal telefono (rete privata Tailscale): https://{stato.nome_tailscale}/")
         if nuovo:
             # solo in demo (dati inventati): link di accesso con il token nel frammento,
             # che il browser non manda al server
