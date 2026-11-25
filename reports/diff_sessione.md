@@ -1,13 +1,8 @@
-# Diff della sessione — 2026-11-24 — modello «ehi jarvis» italiano
+# DIFF DI SESSIONE — 23 novembre 2026, R7 fetta 4 (tetto di tempo duro del sottofondo)
 
-Si riscrive a ogni sessione; la storia completa sta in git. Base: b100f8d4 (origin/main, dopo il merge della PR #404 in c85490e5).
+Questo file si riscrive a ogni sessione; la storia completa sta in git.
 
-- `clients/voice/ascolto.py`: `modello_della_parola()` e `MODELLO_DI_RISERVA`, `_modelli_pronti()` (ripiego col file assente o non fidato); `rilevatore_openwakeword` carica il modello da file se fidato.
-- `clients/voice/modelli/ehi_jarvis_it.onnx`: modello addestrato (accento italiano).
-- `clients/voice/modelli/LEGGIMI.md`: risultati, limiti, licenza CC BY-NC-SA, attribuzioni.
-- `scripts/voce/installa.sh`: opzione `--italiano`; passo 3b, copia del modello; scelta nel `.env` (modello + soglia 0.5) se assente, e se c'è il filtro hey_jarvis solo con `--italiano`.
-- `scripts/voce/LEGGIMI.md`: riga di `GAS_ASCOLTO_MODELLO` aggiornata.
-- `tests/test_unit_voce_ascolto.py`: test per il modello da file, il ripiego, la copia, la scelta e l'avviso; i test «.env byte per byte» partono col modello già scelto.
-- `reports/voce_simulazione_2026-11-23/modello_italiano/`: script (`frasi_prova.py` e `quasi_prova.py`: niente `_test` nel nome, se no pytest li raccoglie) di addestramento e valutazione, risultati grezzi, rapporto (LEGGIMI), metriche.
-- `.claude/agents/memoria_revisore.md`: review #854–#857.
+- `modules/sottofondo/__init__.py`: `_arma_tetto` (timer demone, attesa massima 30 giorni), `_termina_processo` (SIGTERM al proprio gruppo, poi os._exit di riserva), `_secondi_rimasti` (dalla prima creazione); in `_esegui` timer armato col tempo rimasto, «ko» subito se il tempo è già finito, lock perché timer e fine del turno scrivano un solo esito.
+- `tests/test_unit_sottofondo.py`: 8 test del tetto duro (armato e tolto, scadenza con avviso, tempo già finito, scadenza dopo «ok», orologio indietro, timer vero, un solo esito, attesa enorme).
+- `.claude/agents/memoria_revisore.md`: righe delle review #852-R7, #853-R7 e #864-MERGE-R7 (più quelle delle altre chat arrivate col merge di main b7150a1a).
 - `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.

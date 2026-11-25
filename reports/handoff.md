@@ -1,418 +1,214 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-24 — Voce: modello «ehi jarvis» con accento italiano (ehi_jarvis_it), PR #405
+**Sessione:** 23 novembre 2026 — R7 fetta 4: tetto di tempo duro del compito in sottofondo (sotto-chat di M1) — secondo giro: merge di main (#401, #404, #405, #406)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #405 (https://github.com/Gasss23/Gas/pull/405).
-   - Revisore: APPROVATO CON RISERVE.
-   - Bot sul giro 05df3ae7: APPROVATO CON RISERVE senza ALTA/MEDIA, check neutral: decide l'operatore.
-   - Verifica esterna su 3b407738: APPROVATO CON RISERVE, con V-1 MEDIA (conflitto con main), risolta col merge c85490e5.
-   - L'operatore ha dato il «mergia» il 25/11, prima del 2° merge di main (PR #406, solo report in conflitto, review #863-MERGE APPROVATO).
-2. R-854-1, scelta dell'operatore:
-   - modello italiano: più chiamate prese, ma risponde a chiunque dica «ehi Jarvis» e fa più falsi sui quasi-omofoni (flusso B 49,8/h contro 33,9). Si sceglie con `bash scripts/voce/installa.sh --italiano`;
-   - hey_jarvis col filtro della voce: resta tale lanciando `installa.sh` senza opzione.
-   - Senza il file del filtro (`.gas_voce/verifica/hey_jarvis_verifier.pkl`), `installa.sh` sceglie da solo il modello italiano, se il `.env` non ne sceglie già uno (V-2 della 2ª verifica esterna).
-3. Licenza del modello CC BY-NC-SA (uso personale) in un repo pubblico (V-3 della verifica esterna). È la stessa di hey_jarvis; la decisione è dell'operatore.
-4. Prova sul Mac con la voce vera.
+1. Merge della PR #402 (https://github.com/Gasss23/Gas/pull/402), etichetta «verifica». Tocca il motore: merge autonomo solo con verdetto testuale del bot APPROVATO senza finding V-x, CI verde e niente conflitti; con riserve la PR resta aperta e il merge lo chiede M1 all'operatore.
+
+Numero e URL della PR presi dall'output di `gh api repos/Gasss23/Gas/pulls` (POST, creazione): `402` (`gh pr` non disponibile in questo ambiente, solo REST).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Addestramento del modello `ehi_jarvis_it`**: FATTA.
-  - Lavoro nello scratchpad; nel repo vanno il modello, gli script e i risultati.
-  - Simulazione a soglia 0,5, 1 fase, prese a vicino / −6 / −12 / −20 dB:
-
-    | | voci della simulazione | voci mai viste | falsi/ora, parlato letto | falsi/ora, audio generico | falsi/ora, flusso B con quasi-omofoni |
-    |---|---|---|---|---|---|
-    | ehi_jarvis_it | 100 / 100 / 87 / 47% | 90 / 75 / 70 / 58% | 0,35 | 0 | 49,8 |
-    | hey_jarvis | 23 / 33 / 3 / 0% | 50 / 40 / 40 / 20% | 1,06 | 0,47 | 33,9 |
-
-- **Fetta 2 — Integrazione**: FATTA.
-  - Modello da file fidato in `clients/voice/ascolto.py`.
-  - Passo 3b in `scripts/voce/installa.sh`.
-  - Prova con openWakeWord vero: 1,00 su «ehi jarvis» (hey_jarvis 0,49), 0,00 su una frase neutra.
-- **Fetta 3 — Riserve di verifica esterna e bot su #405**: FATTA (908f430b, review #856/#857).
-  - Soglia 0,5 scritta insieme al modello.
-  - Ripiego su hey_jarvis col file assente.
-  - Opzione `--italiano` quando c'è il filtro hey_jarvis.
-  - Test del collegamento rilevatore→file.
-  - Documenti con i limiti.
-- **Fetta 3b — CI rossa su d6a980a5**: FATTA. Rinominati gli script `*_test.py` della simulazione, che pytest prendeva per test.
-- **Fetta 3c — Conflitto con main (PR #404 CRM)**: FATTA. Merge c85490e5: report del ramo tenuti, stato e memoria uniti, file di main identici (review #860-MERGE APPROVATO).
-- **Fetta 3d — 2° conflitto con main (PR #406 CRM)**: FATTA (review #863-MERGE APPROVATO).
-- **Fetta 4 — Prova sul Mac con la voce dell'operatore**: DEFERITA. Il Mac non è raggiungibile da questa sessione.
+- **Fetta 4 R7 — tetti di tempo duri (parte sottofondo)**: FATTA. Timer demone col tempo rimasto (dalla prima creazione): alla scadenza «ko», avviso, arresto del gruppo di processi; «ko» subito se il tempo è già finito; un solo esito tra timer e fine turno; attesa del timer limitata a 30 giorni. Review #852-R7 → #853-R7.
+- **Merge di origin/main (PR #401, #404, #405, #406 di altre chat) nel ramo (25/11)**: FATTO (b7150a1a), conflitti solo nei report (regola 3; riserve di Voce e CRM già in `stato_progetto.md`). Review #864-MERGE-R7 APPROVATO. Test dopo il merge: sottofondo 137 passed, kernel «=== RIEPILOGO: 1208 PASS, 0 FAIL ===».
+- **Tetto duro del compito del giro di notte**: DEFERITA — prossima PR (il giro gira nel processo principale: serve un altro meccanismo).
+- **Fetta 5 R7 — piano scritto dal modello**: DEFERITA.
+- **Anomalia di sessione**: nel primo tentativo di scrivere questo handoff un heredoc non quotato ha fatto eseguire alla shell alcuni testi tra backtick (solo comandi di lettura o falliti: una GET sulle PR, `gh pr` rifiutato, `claude -p` uscito subito per input mancante). Nessuna scrittura; il commit 12ab9019 è partito con l'handoff vecchio, corretto dal commit successivo.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md                                                             |   9 +++++
- clients/voice/ascolto.py                                                                       |  54 ++++++++++++++++++++++++++--
- clients/voice/modelli/LEGGIMI.md                                                               |  27 ++++++++++++++
- clients/voice/modelli/ehi_jarvis_it.onnx                                                       | Bin 0 -> 856178 bytes
- reports/diff_sessione.md                                                                       |  21 +++++------
- reports/handoff.md | n/d
- reports/stato_progetto.md                                                                      |   3 +-
- reports/ultimo_report.md                                                                       |  72 +++++++++++++++++++++++++++-----------
- reports/voce_simulazione_2026-11-23/modello_italiano/LEGGIMI.md                                |  61 ++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/ehi_jarvis_it.addestramento.json          | 574 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_ens67_f1.json                 |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f1.json          |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_H_f4.json          |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_f1.json            |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_hey_jarvis_f4.json            |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v4_G.json                     |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v4_d128_ami_f1.json           |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v6_d128_nomi_H_f1.json        |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v6_d128_nomi_f1.json          |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_H_f1.json |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f1.json   |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/griglia_v7_d128_nomi_neg384_f4.json   |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v4.txt                          |  10 ++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v6.txt                          |   5 +++
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/quasi_v7.txt                          |   5 +++
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/ris_validazione_heyjarvis.txt         |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v4.txt                    |   1 +
- reports/voce_simulazione_2026-11-23/modello_italiano/ris/validazione_v6_v7.txt                 |   3 ++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/addestra.py                        | 272 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/feature.py                         | 193 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/flussi_nuovi.py                    | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/frasi_prova.py                     |  25 +++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/genera.py                          | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/lib_sim.py                         | 163 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/mls.py                             |  30 ++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/quasi_prova.py                     |  64 ++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/rifai_tutto.sh                     |  51 +++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/scarica.sh                         |  46 ++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/tabella.py                         |  24 +++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/testi.py                           | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/voce_simulazione_2026-11-23/modello_italiano/script/valuta.py                          | 139 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- scripts/voce/LEGGIMI.md                                                                        |   2 +-
- scripts/voce/installa.sh                                                                       |  45 +++++++++++++++++++++++-
- tests/test_unit_voce_ascolto.py                                                                | 119 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+.claude/agents/memoria_revisore.md |   5 ++++
+ modules/sottofondo/__init__.py     |  76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  15 ++++--------
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |   3 ++-
+ reports/ultimo_report.md           |  61 ++++++++++-------------------------------------
+ tests/test_unit_sottofondo.py      | 122 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre lo si scrive; la riga di totale è tolta.
+NB: il conteggio righe di `reports/handoff.md` è `n/d` e la riga di totale è tolta (regola del 2026-10-24): il file conta se stesso. La CI confronta solo i path.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-1068914b Merge origin/main (PR #406 CRM) nel ramo della PR #405 — report del ramo tenuti, stato e memoria uniti (review #863-MERGE)
-ad58e167 docs(fine-task): handoff dopo il merge di main (review #860-MERGE) e i verdetti del 2° giro sulla #405
-c85490e5 Merge origin/main (PR #404 CRM) nel ramo della PR #405 — report del ramo tenuti, stato e memoria uniti (review #860-MERGE)
-05df3ae7 fix(report): script della simulazione rinominati *_prova.py (pytest li raccoglieva: unit-suite rosso); handoff corretto
-3b407738 docs(fine-task): handoff con le correzioni di verifica esterna e bot #405 (review #856/#857)
-908f430b fix(voce): installa.sh sceglie il modello italiano col filtro solo con --italiano; soglia 0.5; ripiego col file assente
-dcee5f24 chore(revisore): memoria review #857 — APPROVATO CON RISERVE
-c0c30f2f chore(revisore): memoria review #856 — APPROVATO CON RISERVE
-d63cb6f5 docs(fine-task): handoff ripulito (testo perso nella shell)
-21a68a4f docs(fine-task): handoff modello ehi_jarvis_it, review #854/#855
-d6a980a5 feat(voce): modello «ehi jarvis» con accento italiano (ehi_jarvis_it)
-b650558a chore(revisore): memoria review #855 — APPROVATO CON RISERVE
-5291bca4 chore(revisore): memoria review #854 — APPROVATO CON RISERVE
+b7150a1a Merge origin/main (PR #401, #404, #405, #406) nel ramo della PR #402 — review #864-MERGE-R7 APPROVATO
+42941adb docs(fine-task): R7 fetta 4 — handoff con review #852-R7/#853-R7 (corregge il commit precedente partito con l'handoff vecchio)
+12ab9019 docs(fine-task): R7 fetta 4 — report, handoff con review #852-R7/#853-R7, stato_progetto
+a56e9df9 feat(sottofondo): R7 fetta 4 — tetto di tempo duro: il processo in sottofondo si ferma da solo alla durata massima
+ba75ec24 chore(revisore): memoria review #853 — APPROVATO CON RISERVE
+36f1c779 chore(revisore): memoria review #852 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-I commit d6a980a5 e 908f430b toccano `tests/test_unit_voce_ascolto.py` (perimetro). Sotto ci sono i quattro verdetti INTEGRALI, in ordine:
-- #854: primo diff;
-- #855: correzioni R-854-1 e R-854-2;
-- #856: correzioni della verifica esterna;
-- #857: delta finale, con le correzioni del bot.
+Commit a56e9df9 (motore): review #852-R7 sul primo staged e #853-R7 dopo le correzioni di R-852R7-2/3 (e della docstring per R-852R7-1/4). Merge b7150a1a: review #864-MERGE-R7. Incollati integrali.
 
-```
+### Review #852-R7
+
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #854. Diff staged su feat/voce-modello-italiano: 39 file, +2214/−8. Ho letto CLAUDE.md, la memoria del revisore e le voci sulla voce in stato_progetto.md (letto con grep mirato). I 73 test `-k "modello or installa"` di tests/test_unit_voce_ascolto.py passano. `git diff --cached --check` è pulito. Lo sha256 del file .onnx corrisponde a quello scritto nel LEGGIMI. I `__pycache__` sotto reports/ non sono nell'indice. Nessun antipattern del Wall of Shame: nessun taglio diretto della history e nessun output dei tool simulato. Il motore (gas.py, brains/) non è toccato.
+Review #852-R7: R7 fetta 4, «tetto di tempo duro» del compito in sottofondo. Branch claude/r7-tetti-di-tempo, diff staged di 2 file (+144/−0), sha256 del diff cbf6d709.
 
-**Elementi esaminati**
+Ho letto CLAUDE.md (sez. 5, 8, 9), lo stato del progetto e la memoria del revisore (numero libero dopo #851). Ho controllato il Wall of Shame: nel diff non c'è slicing della history e non c'è simulazione di output dei tool. Il diff non tocca il cap di 10 iterazioni, `_get_window` né i provider.
 
-1. `clients/voice/ascolto.py:1431` — `modello_della_parola`
-   - Cosa fa: con un nome semplice (regex `[a-z0-9_]{1,40}` di `clients/voice/ascolto.py:194`) costruisce il percorso solo dentro `.gas_voce/modelli` sotto `_GAS_ROOT`. `exists()` e `is_symlink()` stanno dentro un try su OSError. Il file passa da `_file_fidato` (`clients/voice/ascolto.py:1402`): niente symlink, proprietario l'utente, file e cartella non scrivibili da altri.
-   - Rischio: percorso preso dall'ambiente, symlink, permessi deboli.
-   - Esito: ok. Il nome non entra mai nel percorso se contiene `/` o `..`, e lo copre `tests/test_unit_voce_ascolto.py:3327`.
+**Verifiche eseguite**
+- Test: 135 passed in tests/test_unit_sottofondo.py, su una copia dell'indice.
+- Mutanti: 5 su 5 uccisi:
+  - ramo «tempo già finito» spento;
+  - `tetto.cancel()` tolto;
+  - `_termina_processo` non chiamato;
+  - `_nel_futuro` ignorato;
+  - `annulla` tolto da `_scaduto`.
+- Prova reale da capo a fondo, senza mock su timer e uscita:
+  - setup: processo lanciato con start_new_session, turno appeso in `time.sleep(100)`, un figlio `sleep 100` nello stesso gruppo, 3 s rimasti al tetto;
+  - risultato: processo fermato in 3,5 s con codice d'uscita −15; compito «ko» con «oltre la durata massima, fermato»; avviso inviato; riga scritta su file nel log; figlio `sleep` morto.
 
-2. `clients/voice/ascolto.py:1494` — `sorgente` passata a `Model(wakeword_models=[sorgente])`, mentre `custom_verifier_models={modello: ...}` resta sotto il nome.
-   - Rischio: chiave delle previsioni diversa dal nome.
-   - Esito: ok. openWakeWord, in openwakeword/model.py righe 91-92 del pacchetto installato, chiama il modello con `splitext(basename(percorso))[0]`, cioè `ehi_jarvis_it`, uguale al nome.
-
-3. `clients/voice/ascolto.py:1644` — effetti di contesto con `GAS_ASCOLTO_MODELLO=ehi_jarvis_it`.
-   - `verifica_della_voce` cerca `ehi_jarvis_it_verifier.pkl`, non lo trova e dà «assente». Quindi 1 fase (`clients/voice/ascolto.py:177`), soglia `GAS_ASCOLTO_SOGLIA` 0,7 e interruzione a 0,8 su 3 blocchi (`clients/voice/ascolto.py:198`).
-   - Esito: ok, coerente con quanto dichiarato. Vedi però R-854-1 e R-854-3.
-
-4. `scripts/voce/installa.sh:138` — passo 3b.
-   - Cosa fa: `mkdir -p`, chmod 700 sulle due cartelle, `install -m 600` (che sostituisce il file, anche un symlink, invece di scriverci dentro), `stop` se la copia fallisce. Il `.env` si aggiorna solo se `valore_env` non trova la chiave; una chiave presente anche vuota resta intatta.
-   - Rischio: idempotenza, doppioni nel `.env`, `.env` senza a capo finale (il printf inizia con `\n`).
-   - Esito: ok. Lo provano `tests/test_unit_voce_ascolto.py:1945` (seconda esecuzione senza doppioni) e `tests/test_unit_voce_ascolto.py:1961` (modello già scelto lasciato com'è).
-
-5. `tests/test_unit_voce_ascolto.py:2221` — i test del `.env` «byte per byte» ora partono con `GAS_ASCOLTO_MODELLO` già presente.
-   - Rischio: test indeboliti.
-   - Esito: ok. Verificano ancora che il `.env` resti identico; il caso «chiave assente» è coperto dal test nuovo.
+**Elementi del diff esaminati**
+1. `modules/sottofondo/__init__.py:880` — arma il timer demone col tempo rimasto, mentre il generatore del kernel è in corso nel thread principale. Rischio: un thread che chiude il processo mentre il generatore è a metà. Esito **ok**. `os._exit` salta la pulizia, ma `_save_history` scrive su file temporaneo e poi fa `os.replace` (gas.py:1938), quindi è atomica, e SQLite è protetto dal journal. Il timer gira anche se il thread principale è bloccato in I/O, perché l'I/O bloccante rilascia il GIL.
+2. `modules/sottofondo/__init__.py:824` — `killpg` del proprio gruppo, poi `os._exit`. Rischio: perdere log non scritti. Esito **ok**: il RotatingFileHandler (gas.py:67) scrive su disco a ogni riga, e la prova reale lo conferma. Rischio: colpire un gruppo che non è il nostro. Esito **ok**: l'unico chiamante è gas.py:7355, il processo separato lanciato da `avvia` (`modules/sottofondo/__init__.py:733`, start_new_session).
+3. `modules/sottofondo/__init__.py:818` — la docstring promette di fermare anche i figli `claude -p`. Esito **riserva**, vedi R-852R7-1.
+4. `modules/sottofondo/__init__.py:871` — `_scaduto`, cioè `annulla` + avviso + uscita in `finally`. Rischio: corsa con la scrittura dell'esito. Esito **riserva**, vedi R-852R7-2. Quando il timer scatta DOPO un «ok», `annulla` non riscrive il compito: è provato da `tests/test_unit_sottofondo.py:1470` → **ok**.
+5. `modules/sottofondo/__init__.py:864` — tempo rimasto contato dalla prima creazione; se è già finito alla partenza, il compito chiude «ko» con avviso. Esito **ok**, coperto da `tests/test_unit_sottofondo.py:1453`. Con un controllo esterno in parallelo (`controlla` / `attivo`) non c'è doppio avviso, perché `annulla` restituisce True una volta sola.
+6. `modules/sottofondo/__init__.py:812` — `threading.Timer(max(0.0, secondi))` senza tetto superiore. Esito **riserva**, vedi R-852R7-3.
+7. `tests/test_unit_sottofondo.py:1433` — il test fa scattare il timer in modo sincrono dentro il generatore e sostituisce `_termina_processo`. Rischio: un test che non esercita il thread vero né l'uscita vera. Esito **ok**: copre lo stato, e il thread vero l'ho provato a mano (sopra), insieme a `tests/test_unit_sottofondo.py:1486`.
 
 **Riserve (da tracciare in stato_progetto.md)**
-
-- **R-854-1 MEDIA** (`scripts/voce/installa.sh:142`): rieseguire installa.sh su un `.env` senza `GAS_ASCOLTO_MODELLO` (probabile sul Mac dell'operatore) passa a `ehi_jarvis_it` e spegne in silenzio il filtro della voce già addestrato. Quel filtro è il file `.gas_voce/verifica/hey_jarvis_verifier.pkl`, legato al nome hey_jarvis. Inoltre `registra_voce.py` accetta solo modelli pronti, quindi oggi il filtro non si può rifare per ehi_jarvis_it. Il LEGGIMI lo dice, l'installer no. Proposta: se il filtro hey_jarvis esiste, non cambiare modello (o almeno avvisare a terminale) e lasciare la scelta all'operatore. La decisione «modello italiano senza filtro» contro «hey_jarvis col filtro» spetta all'operatore.
-- **R-854-2 BASSA** (`clients/voice/ascolto.py:1446`): se il file del modello c'è ma non è fidato, la funzione restituisce il nome nudo. openWakeWord non trova un modello pronto con quel nome e alza ValueError. `main` scrive «openWakeWord non pronto… installa» ed esce con 1, e launchd lo riavvia ogni 10 s. Non va in crash, ma l'ascolto resta fermo e il messaggio porta fuori strada. Ripiegare su hey_jarvis con un avviso nel log terrebbe l'ascolto acceso (§9).
-- **R-854-3 BASSA**: l'interruzione col modello nuovo (0,8 per 3 blocchi di fila, voce di Gas in sottofondo) non è stata misurata. Il LEGGIMI riporta solo attivazioni e falsi.
-- **Nota (già prima, nessun peggioramento)**: openWakeWord prova `os.path.exists(nome)` rispetto alla cartella corrente. Un `GAS_ASCOLTO_MODELLO` con un percorso, che non passa la regex, arriva com'è a `Model()` e carica quel file ONNX, come prima della modifica.
+- **R-852R7-1 BASSA** — `claude -p` e il browser restano vivi dopo lo stop.
+  - Causa: `claude -p` (`brains/claude_cli.py:428`) e il browser/Chromium (`modules/web/browser.py:496`) partono con start_new_session=True, quindi in un gruppo proprio. Il `killpg` di `modules/sottofondo/__init__.py:824` non li raggiunge, e il loro timer interno muore con il processo padre. La docstring di `modules/sottofondo/__init__.py:818` dice il contrario.
+  - Danno limitato: `claude -p` ha `--tools ""`, quindi nessun effetto collaterale, e muore su EPIPE quando prova a scrivere. Però finisce la richiesta in corso e consuma l'abbonamento. I comandi di `run_command` invece stanno nello stesso gruppo (gas.py:5361) e vengono fermati.
+  - Correzione: sistemare la docstring e dichiarare il limite, oppure registrare i pgid dei figli e fermarli prima di uscire.
+- **R-852R7-2 BASSA** — corsa tra il timer e la fine del turno.
+  - Causa: non c'è mutua esclusione tra `_scaduto` (`modules/sottofondo/__init__.py:871`) e la parte finale di `_esegui` (`modules/sottofondo/__init__.py:915` fino a `modules/sottofondo/__init__.py:941`). Se il timer parte nei pochi ms in cui il turno finisce, si può avere:
+    - «ok» scritto sopra «ko»;
+    - due avvisi contraddittori;
+    - oppure «ok» scritto e poi `os._exit` durante l'invio di «Ho finito», con l'avviso perso.
+  - Correzione: un `threading.Lock` più un flag «esito scritto», presi sia da `_scaduto` sia dal thread principale prima di `cancel()`.
+- **R-852R7-3 BASSA** — tetto duro spento in silenzio con valori enormi.
+  - Prova: con GAS_SOTTOFONDO_MAX_MIN ≥ circa 1,5e8 (provato 1e9; threading.TIMEOUT_MAX = 9,2e9 s) il thread del Timer muore subito con OverflowError. Lo stderr va su DEVNULL e in gas_debug.log non resta nulla: §9 non rispettato.
+  - Resta attivo solo il controllo vecchio, quello fatto da un altro processo.
+  - Correzione: `min(secondi, threading.TIMEOUT_MAX)` oppure un limite superiore in `_durata_max_s`.
+- **R-852R7-4 COSMETICA** — il SIGTERM al proprio gruppo uccide anche il processo stesso, quindi esce con codice −15 e `os._exit(1)` (`modules/sottofondo/__init__.py:827`) serve solo come riserva. Va bene, ma la docstring e il commento dovrebbero dirlo.
 
 **Rischi esclusi (non verificati)**
+- Comportamento su macOS/launchd e su VPS: provato solo su Linux nel container.
+- Orfano `claude -p` reale con la CLI vera: CLI non disponibile in dev, ricavato solo dal codice.
+- Durata dell'avviso Telegram dentro `_scaduto`: non ho verificato il timeout di rete di `avvisa_operatore_esito`. Se Telegram resta appeso, ritarda solo l'uscita.
 
-- Qualità reale del modello sulla voce dell'operatore e sul microfono del Mac: in questo container non si può riprodurre. Fa fede la prova del chiamante con openWakeWord vero.
-- Contenuto del file .onnx: non l'ho ispezionato. È ONNX, non pickle, quindi non esegue codice al caricamento.
-- Script di addestramento in reports/: letti solo per cercare percorsi o segreti, nessuno trovato.
-- Licenza CC BY-NC-SA in un repo pubblico: rilevante, ma è una scelta dell'operatore e non un controllo tecnico.
-- Comportamento di `install` BSD su macOS: dato per buono senza prova sul Mac.
-- I fallimenti della suite completa (34 in tests/test_unit_web_browser.py e 1 in tests/test_unit_voice_server.py, per bwrap assente) riguardano file fuori dal diff: non li ho riverificati, come mi hai indicato.
+**Memoria**
+- Riga contatore #852-R7 e una lezione nuova aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (36f1c779).
+- Il diff staged sotto review è intatto.
 
-**Memoria**: riga #854 e 2 lezioni aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, già committate da sole (5291bca4). L'indice staged è intatto (39 file); git stash non usato.
-```
+File rilevanti:
+- /home/user/Gas/modules/sottofondo/__init__.py
+- /home/user/Gas/tests/test_unit_sottofondo.py
+- /home/user/Gas/brains/claude_cli.py
+- /home/user/Gas/modules/web/browser.py
 
-```
+### Review #853-R7
+
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #855: ho ricontrollato solo il delta rispetto alla #854. L'indice è come lo hai descritto: 39 file, +2232/−8. Rieseguiti i test `-k "modello or installa"` di tests/test_unit_voce_ascolto.py: 74 passati. Non ho usato git stash.
+Review #853-R7, secondo giro di #852-R7. Branch claude/r7-tetti-di-tempo. Il diff staged tocca 2 file (+198/−0), sha256 del diff 084f4c5b.
 
-**Elementi esaminati**
+Prima della review ho riletto CLAUDE.md sez. 5/8/9 e la memoria (fatto in #852). Il diff non contiene slicing della history né simulazione di tool. Non tocca i provider, il cap delle 10 iterazioni né `_get_window`.
 
-1. `clients/voice/ascolto.py:1452` — se il file del modello c'è ma non è fidato, ora la funzione restituisce `MODELLO_DI_RISERVA` (`clients/voice/ascolto.py:194`, vale "hey_jarvis") e scrive un avviso nel log.
-   - Rischio: il nome del modello caricato diventa diverso da `modello`, la chiave del verificatore.
-   - Esito: ok. Il verificatore si cerca per `ehi_jarvis_it_verifier.pkl`, che non esiste, quindi va col nome giusto. Se ci fosse un verificatore con la chiave sbagliata, l'errore lo prende il try di `rilevatore_con_verifica`. Il punteggio è il massimo dei valori, quindi la chiave non conta. R-854-2 è chiusa: l'ascolto non si ferma più.
-2. `clients/voice/ascolto.py:1498` — la sorgente si calcola una volta sola, prima di creare i modelli.
-   - Esito: ok.
-3. `scripts/voce/installa.sh:149` — l'avviso compare solo quando lo script scrive `GAS_ASCOLTO_MODELLO=ehi_jarvis_it` e `.gas_voce/verifica/hey_jarvis_verifier.pkl` esiste. Dice che il filtro della voce resta spento e come riaverlo.
-   - Esito: ok. R-854-1 è risolta con un avviso. La scelta (modello italiano senza filtro) è dell'operatore e va registrata come sua decisione in stato_progetto.md.
-4. `tests/test_unit_voce_ascolto.py:1961` — test nuovo dell'avviso.
-   - Esito: ok, ma controlla solo che l'avviso ci sia. Manca il controllo opposto: nessun avviso senza il file del filtro, o quando la chiave era già nel `.env`. Lacuna di copertura BASSA, non blocca.
-5. `tests/test_unit_voce_ascolto.py:3351` — col file non fidato il test ora si aspetta "hey_jarvis".
-   - Esito: ok.
+**Verifiche eseguite**
+- Test: 137 passed (tests/test_unit_sottofondo.py, su una copia dell'indice).
+- Prova reale da capo a fondo ripetuta, con processo figlio, gruppo proprio e turno appeso: il processo si ferma in 3,5 s con rc −15, il compito va in «ko» con «oltre la durata massima, fermato», l'avviso parte.
+- Mutanti: 2 uccisi su 3.
+  - Il timer che ignora il flag: ucciso.
+  - Il tetto del Timer tolto: ucciso.
+  - Il thread principale che ignora `gia_chiuso`: **sopravvive**. Il test è sincrono e il timer ha già scritto «ko» prima che il turno finisca, quindi lo ferma la vecchia guardia R-697-2 (modules/sottofondo/__init__.py:943), non il nuovo ramo.
 
-**Riserve (da tracciare in stato_progetto.md)**
+**Elementi del diff esaminati**
+1. `modules/sottofondo/__init__.py:880`: lock più flag `chiusura` condivisi da `_scaduto` e dalla fine di `_esegui`. Rischio esaminato: due esiti o due avvisi, oppure `os._exit` durante l'avviso «Ho finito». Esito **ok**, R-852R7-2 chiusa. Il flag si prende sotto lock in `modules/sottofondo/__init__.py:885` e in `modules/sottofondo/__init__.py:931`, e il lock non resta tenuto durante l'I/O, quindi niente deadlock. Se il turno chiude per primo, il timer non ferma il processo (coperto da `tests/test_unit_sottofondo.py:1493`).
+2. `modules/sottofondo/__init__.py:933`: ramo `gia_chiuso`, il thread principale cede al timer e fa `return 1`. Esito **riserva**, vedi R-853R7-2.
+3. `modules/sottofondo/__init__.py:815`: attesa del Timer limitata a `TETTO_TIMER_S` (`modules/sottofondo/__init__.py:52`, 30 giorni). Rischio esaminato: OverflowError silenzioso. Esito **ok**, R-852R7-3 chiusa (`tests/test_unit_sottofondo.py:1515`). Però cambia il significato del tetto: vedi R-853R7-1.
+4. `modules/sottofondo/__init__.py:821`: la docstring di `_termina_processo` ora dichiara tre cose: uscita −15, `os._exit` solo come riserva, `claude -p` e browser non fermati perché in un gruppo proprio (`brains/claude_cli.py:428`, `modules/web/browser.py:496`). Esito **ok**: R-852R7-1 e R-852R7-4 sono dichiarate. Il limite resta: un `claude -p` già partito porta a termine la richiesta in corso.
 
-- **R-854-1, decisione dell'operatore**: col modello italiano il filtro della sua voce resta spento. L'installer lo avvisa, ma la scelta va registrata come sua.
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata (soglia 0,8 su 3 blocchi di fila, con la voce di Gas in sottofondo).
-- **R-855-1 COSMETICA**: dopo il ripiego su hey_jarvis, la riga di log «ascolto pronto: parola «ehi_jarvis_it»» (`clients/voice/ascolto.py:1663`) indica ancora il nome chiesto, non il modello usato. L'avviso del ripiego compare prima nel log, quindi la cosa si capisce.
-
-**Rischi esclusi (non verificati)**
-
-- Il comportamento sul Mac: la qualità del modello, l'avviso letto dall'operatore, `install` di macOS. Non si può riprodurre in questo container.
-- I fallimenti di tests/test_unit_web_browser.py: non li ho riverificati. Li dai come identici su origin/main per bwrap assente, e sono fuori dal diff.
-
-**Memoria**: aggiunta la riga #855 in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata da sola (b650558a). L'indice staged è rimasto intatto.
-
-Il commit è consentito.
-```
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #856: ho ricontrollato solo il delta staged dopo la verifica esterna della PR #405 (4 file, +53/−9). Rieseguita tutta tests/test_unit_voce_ascolto.py: 389 passati. Non ho usato git stash; l'indice è intatto.
-
-**Elementi esaminati**
-
-1. `clients/voice/ascolto.py:1432` — `_modelli_pronti()` legge i nomi da `openwakeword.MODELS`. Ho controllato nel pacchetto installato: le chiavi sono `alexa`, `hey_mycroft`, `hey_jarvis`, `hey_rhasspy`…. Restituisce un insieme vuoto se c'è un'eccezione.
-   - Rischio: insieme vuoto che fa ripiegare anche un modello pronto.
-   - Esito: ok. `rilevatore_openwakeword` importa `openwakeword.model` prima di chiamare `modello_della_parola`, quindi a runtime il pacchetto c'è sempre. Nota cosmetica: il tipo di ritorno è `set` nudo invece di `Set[str]`.
-2. `clients/voice/ascolto.py:1458` — se il file manca e il nome non è un modello pronto (né `hey_jarvis`), ripiega su `hey_jarvis` con un warning; un modello pronto passa col suo nome.
-   - Rischio: un nome nudo che openWakeWord non trova e che ferma l'ascolto.
-   - Esito: ok, V-4 della verifica esterna è chiusa. L'unico effetto collaterale è voluto: un nome parziale come `jarvis`, che prima openWakeWord accettava confrontando un pezzo del nome, ora finisce su hey_jarvis, che è comunque il modello giusto.
-3. `scripts/voce/installa.sh:149` — `GAS_ASCOLTO_SOGLIA=0.5` si scrive solo nel ramo che scrive anche `ehi_jarvis_it`, e solo se `valore_env` non trova già una soglia. Una chiave presente anche vuota resta intatta.
-   - Esito: ok, V-1 della verifica esterna è chiusa ed è coerente con `clients/voice/modelli/LEGGIMI.md:8`. Una seconda esecuzione non scrive di nuovo, perché la chiave del modello c'è già.
-4. `tests/test_unit_voce_ascolto.py:1962` — test nuovo: una soglia già scelta (0.6) resta intatta, il modello viene scritto e l'avviso sul filtro non compare se il file del filtro manca.
-   - Esito: ok, chiude la lacuna di copertura segnalata nella #855.
-5. `tests/test_unit_voce_ascolto.py:3351` — il ripiego col file assente è provato con `_modelli_pronti` finto (`ehi_jarvis_it` → `hey_jarvis`, `alexa` → `alexa`).
-   - Esito: ok.
-
-**Riserve (da tracciare in stato_progetto.md)**
-
-- **R-856-1 BASSA** (`scripts/voce/installa.sh:157`): l'AVVISO dice di tornare indietro con `GAS_ASCOLTO_MODELLO=hey_jarvis`, ma non nomina la `GAS_ASCOLTO_SOGLIA=0.5` scritta insieme. Chi torna a hey_jarvis senza filtro resta a 0,5 invece di 0,7, quindi con più attivazioni per sbaglio. Con il filtro attivo la soglia che conta è un'altra (`GAS_ASCOLTO_SOGLIA_VERIFICA`), quindi l'effetto c'è solo senza filtro. Correzione: aggiungere all'avviso «e togli GAS_ASCOLTO_SOGLIA=0.5», e fare lo stesso nella riga «tornare indietro» del LEGGIMI.
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata.
-- **R-855-1 COSMETICA**, ancora aperta: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto e non quello usato.
+**Riserve, tutte BASSE (da tracciare in stato_progetto.md)**
+- **R-853R7-1 BASSA: il tetto può scattare prima della durata configurata e dirlo in modo falso.** Con GAS_SOTTOFONDO_MAX_MIN oltre 43200 (più di 30 giorni) il timer scatta a 30 giorni e ferma il compito con «oltre la durata massima». È falso rispetto al valore configurato e diverso da `attivo()`, che usa la durata vera. Il default è 1 h (`modules/sottofondo/__init__.py:45`), quindi in pratica è irrilevante. Correzione: alla scadenza `_scaduto` ricalcola `_secondi_rimasti` e, se resta tempo, riarma il timer; in alternativa basta dichiararlo.
+- **R-853R7-2 BASSA: l'avviso del timer può andare perso.** Nel ramo `gia_chiuso` (`modules/sottofondo/__init__.py:936`) il thread principale torna e gas.py:7355 fa `sys.exit`. Se in quel momento il timer, thread demone, sta ancora facendo `annulla`/`_avvisa`, Python lo congela all'uscita: l'avviso si perde e il «ko» può restare non scritto. Il compito poi si recupera dal controllo esterno o dalla ripresa, che chiude subito «ko» per tempo finito (`modules/sottofondo/__init__.py:871`). Correzione di una riga: nel ramo, `tetto.join(60)` prima del return (tanto il timer finisce con `os._exit`).
+- **R-853R7-3 BASSA: la finestra della corsa non ha un test.** Manca un test del caso «flag preso dal timer, esito non ancora scritto», ed è il motivo per cui il mutante del punto 2 sopravvive. Si può aggiungere un test con un `_tetto.fn` che prende solo il flag, per esempio con un Event che sospende `annulla`.
 
 **Rischi esclusi (non verificati)**
+- Comportamento su macOS/launchd e VPS: provato solo su Linux nel container.
+- Orfano `claude -p` con la CLI vera: CLI non disponibile in dev.
+- Timeout di rete dell'avviso Telegram dentro `_scaduto`: non verificato.
 
-- La prova con openWakeWord vero (1,00 contro 0,49 di hey_jarvis): non l'ho ripetuta, mi fido della tua.
-- Il comportamento sul Mac: in questo container non si può riprodurre.
-- Il resto della PR, fuori da questo delta: era già coperto dalle review #854 e #855.
+**Memoria del revisore**
+- Riga contatore #853-R7 più una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (ba75ec24).
+- Il diff staged è intatto: 2 file, +198.
 
-**Memoria**: aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md la riga #856 e una lezione (quando l'installer scrive due chiavi legate nel .env, le istruzioni per tornare indietro devono nominarle entrambe). Già committate da sole (c0c30f2f).
+File rilevanti:
+- /home/user/Gas/modules/sottofondo/__init__.py
+- /home/user/Gas/tests/test_unit_sottofondo.py
 
-Il commit è consentito.
-```
+### Review #864-MERGE-R7 (merge b7150a1a)
 
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #857: ho riletto tutto il `git diff --cached` (6 file, +114/−26). Rieseguita tests/test_unit_voce_ascolto.py: 391 passati. Non ho usato git stash; l'indice è intatto.
-
-**Elementi esaminati**
-
-1. `scripts/voce/installa.sh:28` — lettura delle opzioni: `--italiano` accende la scelta, qualunque altra opzione chiama `stop`.
-   - Rischio: uno stop arrivato dopo aver già scritto qualcosa.
-   - Esito: ok. Il ciclo gira prima del passo 1, quindi niente è stato ancora toccato. `tests/test_unit_voce_ascolto.py:1994` controlla l'uscita con 1 e il `.env` senza `GAS_ASCOLTO`. Nessun altro script chiama installa.sh con opzioni.
-2. `scripts/voce/installa.sh:158` — se esiste il filtro della voce per hey_jarvis e manca `--italiano`, il `.env` non viene toccato e lo script spiega come scegliere. Il file del modello viene copiato lo stesso.
-   - Rischio: filtro spento in silenzio (V-1 MEDIA del bot).
-   - Esito: ok, V-1 è chiusa. La scelta passa all'operatore. `tests/test_unit_voce_ascolto.py:1976` prova prima la versione senza opzione (nessuna scrittura) e poi quella con `--italiano` (modello, soglia e avviso scritti).
-3. `scripts/voce/installa.sh:172` — l'avviso spiega di tornare a `GAS_ASCOLTO_MODELLO=hey_jarvis` e di togliere anche `GAS_ASCOLTO_SOGLIA=0.5`.
-   - Esito: ok, R-856-1 è chiusa. Lo stesso testo è in `clients/voice/modelli/LEGGIMI.md`.
-4. `tests/test_unit_voce_ascolto.py:3475` — test nuovo: con openWakeWord finto e il file fidato, `Model()` riceve `wakeword_models=[str(f)]`.
-   - Esito: ok, V-3 è chiusa. È il collegamento che mancava tra `rilevatore_openwakeword` e il file.
-5. `clients/voice/ascolto.py:1458` — ripiego su hey_jarvis se il file manca e il nome non è un modello pronto (`_modelli_pronti` in `clients/voice/ascolto.py:1432`). Era già esaminato nella #856; nel diff contro HEAD non è cambiato.
-   - Esito: ok.
-
-**Riserve (da tracciare in stato_progetto.md)**
-
-- **R-857-1 COSMETICA**: con `GAS_ASCOLTO_MODELLO` già nel `.env`, `--italiano` non cambia niente. Il messaggio dice «lo lascio com'è», ma non dice che l'opzione è stata ignorata.
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata.
-- **R-855-1 COSMETICA**, ancora aperta: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto e non quello usato.
-- **Numeri peggiori** (V-2 del bot): il LEGGIMI ora dichiara più falsi di hey_jarvis sui flussi pieni di parole simili (49,8 contro 33,9 all'ora) e più chiamate prese da altre voci (75% contro 40%). È un compromesso dichiarato, non un difetto del codice. La scelta resta dell'operatore, ed è il motivo per cui `--italiano` è giusto.
-
-**Rischi esclusi (non verificati)**
-
-- Il comportamento sul Mac (installer vero, voce dell'operatore): in questo container non si può riprodurre.
-- La correttezza dei numeri riscritti nei LEGGIMI: non li ho ricalcolati dai file grezzi in `reports/voce_simulazione_2026-11-23/modello_italiano/ris/`. Ho controllato solo che i documenti siano coerenti tra loro.
-- I fallimenti di tests/test_unit_web_browser.py: fuori dal diff e, secondo te, identici su main.
-
-**Memoria**: aggiunta la riga #857 in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata da sola (dcee5f24).
-
-Il commit è consentito.
-```
-
-## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (c85490e5)
-
-```
 ## VERDETTO: APPROVATO
 
-Review #860-MERGE: merge di origin/main b100f8d4 (PR #404 CRM) in feat/voce-modello-italiano (PR #405, HEAD 05df3ae7). Il merge è in staging e non ancora committato; MERGE_HEAD è uguale a origin/main. Non ho usato git stash.
-
-Controlli generali:
-- `git ls-files -u` è vuoto: nessun conflitto lasciato aperto.
-- `git diff --cached --check HEAD` è pulito e non ci sono marcatori di conflitto.
-- Rispetto a HEAD entrano 10 file (+510/−23).
-- I test CRM più quelli della voce passano: 564 passati.
+Review #864-MERGE-R7. Merge in corso di origin/main (PR #401, #404, #405, #406) in claude/r7-tetti-di-tempo (PR #402). Confronto: indice contro HEAD, 108 file.
 
 **Elementi esaminati**
+- `modules/sottofondo/__init__.py:880`: il lock `esito_lock` con il flag `chiusura`, preso in `_scaduto` e in `_esegui` (`modules/sottofondo/__init__.py:931`). Rischio: che il merge abbia alterato la fetta, oppure che main abbia cambiato il sottofondo, run_turn o il cancello. Il diff tra indice e HEAD su modules/sottofondo, tests/test_unit_sottofondo.py, gas.py e brains è vuoto. Dalla merge-base main non tocca gas.py, brains né il sottofondo. L'unico `start_new_session=True` nuovo di main sta nel test del CRM (`_esegui_crm`), non in un processo che il sottofondo lancia, quindi R-852R7-1 non si allarga. Esito: ok.
+- `modules/sottofondo/__init__.py:811` (`_arma_tetto`, attesa limitata a TETTO_TIMER_S), `modules/sottofondo/__init__.py:821` (`_termina_processo`, killpg solo da capo gruppo con `os._exit` di riserva) e `modules/sottofondo/__init__.py:837` (`_secondi_rimasti`). Rischio: divergenza rispetto a quanto già revisionato in #852-R7 e #853-R7. Il codice è identico a HEAD e le riserve note restano quelle già scritte in stato. Esito: ok.
+- `tests/test_unit_sottofondo.py:1420`: la fixture `_tetto` sostituisce `_arma_tetto` e `_termina_processo`. I test vanno da `tests/test_unit_sottofondo.py:1426` a `tests/test_unit_sottofondo.py:1517` (tetto armato col tempo rimasto, scaduto, già superato, orologio indietro, un solo esito, timer enorme). L'ho rieseguito sul working tree, che è identico all'indice: 137 passed. Esito: ok.
+- Risoluzione dei conflitti:
+  - `git ls-files -u` è vuoto e non ci sono marcatori.
+  - Tutti i file in stage sono byte-identici a origin/main tranne `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md`. Il codice portato da main è quindi identico a main.
+  - handoff, ultimo_report e diff_sessione sono uguali a HEAD (regola 3).
+  - Memoria: è l'unione dei due lati. Contando le righe non ne manca nessuna di HEAD né di main e non ce ne sono di estranee. Le righe #852-R7 e #853-R7 sono in coda.
+  - Stato: rispetto a main cambiano solo la riga «Ultimo aggiornamento», unita con la voce R7 in testa e le voci del 25/11 e del 24/11 di main conservate, e la voce nuova «R7 fetta 4».
+  - Le riserve e le decisioni dell'ultimo_report di main (la Voce, PR #405) sono già in stato. R-854-1 compare 3 volte. La licenza CC BY-NC-SA è a riga 393. R-856-1 è chiusa secondo quel report. Il telefono del CRM (decisione 21) è nella riga 4.
+  - Esito: ok.
 
-1. `modules/crm/store.py:1`, `modules/crm/copia_cifrata.py:1`, `tests/test_unit_crm.py:1`, `scripts/crm/installa.sh:1`, `.claude/perimetro_review.txt:1`, oltre a `reports/bacheca.md` e `reports/crm/`: questi sono i file del perimetro presi da main.
-   - Rischio: un file di main modificato o incompleto.
-   - Esito: ok. `git diff --cached origin/main` su questi percorsi è vuoto, quindi sono uguali a main byte per byte.
-2. `scripts/voce/installa.sh:158`, `clients/voice/ascolto.py:1458`, `tests/test_unit_voce_ascolto.py:3475`, oltre a `reports/voce_simulazione_2026-11-23/`: questi sono i file nostri.
-   - Rischio: un file del ramo perso nel merge.
-   - Esito: ok. `git diff --cached HEAD` su questi percorsi è vuoto. I soli file cambiati sia dal ramo sia da main sono memoria e stato_progetto, entrambi uniti e controllati sotto.
-3. `reports/handoff.md:1`, `reports/ultimo_report.md:1`, `reports/diff_sessione.md:1`: tenuti uguali a HEAD (`--ours`).
-   - Esito: ok, come vuole la regola per i report di sessione del ramo.
-4. `reports/stato_progetto.md:4` — la riga «Ultimo aggiornamento» ha in testa la nostra voce e in coda la riga di main intera (verificato confrontando le stringhe). Nell'indice c'è una sola riga di questo tipo. `reports/stato_progetto.md:392` aggiunge la voce del modello italiano. Rispetto a main cambiano solo queste 2 righe (+2/−1).
-   - Esito: ok.
-5. `.claude/agents/memoria_revisore.md:1` — unione delle due parti: rispetto a HEAD entrano le righe della chat CRM (#858/#859 e le loro lezioni), rispetto a main entrano le nostre (#854–#857 e 3 lezioni). Nessuna riga persa né di HEAD né di main.
-   - Esito: ok.
+**Rischio escluso**: non ho rieseguito la suite kernel né le suite CRM e voce di main. Il codice portato è identico a origin/main, già revisionato in quelle chat, e la suite kernel la sta eseguendo il chiamante. Non ho verificato nemmeno l'ultimo verdetto del bot sulle head mergiate di #405 e #406 (lezione del 2026-11-24), che sta solo su GitHub e non ho interrogato.
 
-**Note COSMETICHE (contenuto del ramo, non del merge)**
-
-- `reports/stato_progetto.md:4` cita le review «#854/#855» e dà R-854-1 come decisione dell'operatore. Dopo la #857 è già gestita con `--italiano`. R-857-1 non è tracciata in stato_progetto.md; la riga 392 dice correttamente #854–#857.
-
-**Rischi esclusi**
-
-- La suite completa: ho eseguito solo i test CRM e voce. Gli altri file di test non sono toccati dal merge, e i fallimenti di tests/test_unit_web_browser.py dovuti a bwrap assente sono noti.
-- Il comportamento sul Mac di scripts/crm/installa.sh: non si può riprodurre qui. È già stato revisionato dalla chat CRM (#858/#859).
-
-**Memoria**: aggiunta la riga #860-MERGE in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree. Non l'ho messa in staging né committata, perché un commit del solo file chiuderebbe il merge. Fai tu `git add .claude/agents/memoria_revisore.md` prima di committare il merge.
-
-Il commit del merge è consentito.
-```
-
-## §4ter VERDETTO DEL REVISORE SUL 2° MERGE DI MAIN
-
-```
-## VERDETTO: APPROVATO
-
-Review #863-MERGE: merge di origin/main 3b624d77 (PR #406, CRM dal telefono) in feat/voce-modello-italiano (PR #405, HEAD ad58e167). Il merge è in staging e non ancora committato; MERGE_HEAD è uguale a origin/main. Non ho usato git stash.
-
-Controlli generali:
-- `git ls-files -u` è vuoto: nessun conflitto lasciato aperto.
-- Rispetto a HEAD entrano 9 file (+669/−7).
-- I test CRM più voce passano: 586 passati (rieseguiti da me).
-
-**Elementi esaminati**
-
-1. `modules/crm/server.py:71`, `modules/crm/__main__.py:1`, `scripts/crm/telefono.sh:1`, `scripts/crm/spegni.sh:1`, `tests/test_unit_crm.py:1`, oltre a `reports/crm/`: sono i file presi da main.
-   - Rischio: un file di main modificato nel merge.
-   - Esito: ok. `git diff --cached origin/main` su questi percorsi è vuoto, quindi sono identici a main.
-   - L'unica nota di `--check` (riga vuota a fine file, `tests/test_unit_crm.py:3286`) arriva già così da main, non dal merge.
-2. `scripts/voce/installa.sh:158`, `clients/voice/ascolto.py:1458`, `tests/test_unit_voce_ascolto.py:3475`, `reports/voce_simulazione_2026-11-23/`, più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` (tenuti `--ours`).
-   - Rischio: un file del ramo perso nel merge.
-   - Esito: ok. `git diff --cached HEAD` su questi percorsi è vuoto. I soli file cambiati sia dal ramo sia da main sono memoria e stato_progetto, entrambi uniti e controllati sotto.
-3. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento».
-   - Ho verificato confrontando le stringhe che la riga nell'indice è esattamente così: la prima voce di main (25/11), poi la nostra voce del 24/11, poi il resto della riga di main.
-   - Nell'indice c'è una sola riga di questo tipo. Rispetto a main cambia solo, in più, la voce del modello italiano.
-   - Esito: ok.
-4. `.claude/agents/memoria_revisore.md:1752` — memoria unita: nessuna riga persa né di HEAD né di main.
-   - `#860-MERGE` (nostra) e `#860` della chat CRM sono righe distinte che convivono.
-   - Esito: ok.
-
-**Rischi esclusi**
-
-- Il contenuto della PR #406 (dashboard del CRM dal telefono via Tailscale): non l'ho revisionato nel merito, perché entra identico a main ed è già passato dalle review #860–#862 della chat CRM.
-- Il comportamento sul Mac e su Tailscale: non si può riprodurre qui.
-- La suite completa: ho eseguito solo i test CRM e voce.
-
-**Memoria**: ho aggiunto la riga #863-MERGE in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree, non in staging e non committata. Va messa in staging da te prima di committare il merge.
-
-Il commit del merge è consentito.
-```
+Nessuna lezione nuova. Ho scritto la riga contatore #864-MERGE-R7 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. È nel working tree, non è in stage e non l'ho committata, perché il merge è in corso. Va committata dopo la chiusura del merge, per esempio con `bash scripts/commit_memoria_revisore.sh` oppure nel passo 4 di fine-task.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_voce_ascolto.py`: 384 → 391 passed (7 test nuovi; 3 test esistenti adattati).
-- Dopo il merge di main: `tests/test_unit_crm.py`, `tests/test_unit_voce_ascolto.py` e `test_collection_dell_intero_repo_non_esplode` danno 565 passed.
-- Suite completa su questo container, prima delle correzioni: 35 failed, 4285 passed, 2 skipped. Riepilogo reale: «35 failed, 4285 passed, 2 skipped in 579.99s».
-- Correzione: non tutti i FAIL erano fuori scope.
-  - 34 in `tests/test_unit_web_browser.py` dipendono da bwrap, assente nel container (`FileNotFoundError: ... 'bwrap'`); su origin/main falliscono allo stesso modo. Il file non è nel diff.
-  - 1 in `tests/test_unit_voice_server.py` (`test_collection_dell_intero_repo_non_esplode`) era invece di questa PR, e la CI l'ha trovato: lo `unit-suite` di d6a980a5 è rosso. Due script della simulazione si chiamavano `frasi_test.py` e `quasi_test.py`, pytest li prendeva per test e cadeva su `import openwakeword`.
-  - Rinominati in `frasi_prova.py` e `quasi_prova.py`, con il riferimento corretto in `rifai_tutto.sh`. Dopo la correzione il test passa in locale («1 passed»).
+- `tests/test_unit_sottofondo.py`: 129 → 137 (8 test nuovi), tutti verdi in locale: `137 passed in 6.61s`.
+- Dopo il merge b7150a1a: `tests/test_unit_kernel.py` «=== RIEPILOGO: 1208 PASS, 0 FAIL ===»; sottofondo 137 passed.
+- Prima del merge `tests/test_unit_kernel.py` non era stato rieseguito: il diff non tocca gas.py né il kernel (solo `modules/sottofondo/` e i suoi test). Il revisore ha fatto una prova reale con processo, gruppo e figlio veri (rc −15, «ko», avviso).
 
 ## §6 STATO CI
 
-Output reale (API, run del branch) alla scrittura:
+Output reale di `gh run list -L 3` alla scrittura:
 
 ```
-completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45515477257	ad58e167	2026-11-25T00:06:45Z
-completed	success	CI	feat/voce-modello-italiano	push	45515470801	ad58e167	2026-11-25T00:06:42Z
-completed	success	verifica-bot	feat/voce-modello-italiano	pull_request_target	45514562040	05df3ae7	2026-11-25T00:00:05Z
-completed	success	CI	feat/voce-modello-italiano	push	45514556378	05df3ae7	2026-11-25T00:00:03Z
+in_progress		Merge pull request #405 from Gasss23/feat/voce-modello-italiano	CI	main	push	45648167715	10m44s	2026-11-25T15:42:20Z
+completed	success	Voce: «ehi Jarvis» con accento italiano (modello ehi_jarvis_it)	verifica-bot	feat/voce-modello-italiano	pull_request_target	45645375855	14m26s	2026-11-25T15:27:29Z
+completed	success	docs(fine-task): handoff col 2° merge di main (review #863-MERGE)	CI	feat/voce-modello-italiano	push	45645367321	12m1s	2026-11-25T15:27:26Z
 ```
 
-Mappatura commit→run:
-- d6a980a5: run CI propria del push.
-- 21a68a4f: run propria.
-- d63cb6f5: run CI propria; unit-suite in corso al momento della verifica esterna; verifica-bot failure (V-1 MEDIA, corretta in 908f430b).
-- 5291bca4, b650558a, c0c30f2f, dcee5f24, 908f430b: nessuna run su questi SHA (pushati insieme ad altri commit, o non ancora pushati); il loro contenuto è nell'albero testato dal commit di testa.
-- 05df3ae7: CI e bot propri (bot APPROVATO CON RISERVE, neutral).
-- ad58e167: CI verde (unit-suite, handoff-check success), verifica-bot neutral.
-- c85490e5: nessuna run propria (pushato insieme ad ad58e167).
-- Commit del 2° merge di main e commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+Run di questo branch (`gh api .../actions/runs?branch=claude/r7-tetti-di-tempo`, output reale):
+
+```
+45235701779 42941adb verifica-bot pull_request_target completed/success
+45235689297 42941adb verifica-bot pull_request_target completed/skipped
+45235681642 42941adb CI push completed/success
+45235412646 a56e9df9 verifica-bot pull_request_target completed/skipped
+45235404850 a56e9df9 CI push completed/failure
+```
+
+Mappatura commit→run: a56e9df9: CI con head a56e9df9 sopra; verifica-bot skipped (senza etichetta). 42941adb: CI success (unit-suite, handoff-check); verifica-bot cancelled (va rilanciato sul nuovo head). 12ab9019, 36f1c779, ba75ec24, b7150a1a: nessuna run propria. Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-854-1: decisione dell'operatore (modello italiano senza filtro o hey_jarvis col filtro), ora esplicita con `--italiano`.
-- V-3 della verifica esterna: licenza CC BY-NC-SA, decisione dell'operatore.
-- R-854-3 BASSA: interruzione col modello nuovo non misurata.
-- R-855-1 COSMETICA: dopo il ripiego, il log «ascolto pronto» mostra il nome chiesto.
-- R-857-1 COSMETICA: `--italiano` ignorato in silenzio se il modello è già scelto nel `.env`.
-- Chiuse in questa sessione:
-  - R-854-2, R-856-1;
-  - verifica esterna #405: V-1, V-2 (documenti), V-4, V-5 (test «nessun avviso»), V-6 (handoff riscritto);
-  - bot #405: V-1, V-2, V-3, V-4.
-- Bot su 05df3ae7, V-1 BASSA: nel ripiego su hey_jarvis restano la soglia 0,5 e niente filtro. Aperta; c'è il warning nel log.
-- 2ª verifica esterna (commento https://github.com/Gasss23/Gas/pull/405#issuecomment-7148094095):
-  - V-1 MEDIA (conflitto con main): chiusa col merge c85490e5.
-  - V-2 BASSA (scelta automatica senza filtro): dichiarata in §0.
-  - V-3 BASSA: manca l'hash del modello valutato in `ris/`, quindi il legame tra il `.onnx` e le griglie non si prova dal repo. Aperta.
-  - V-4 COSMETICA (§6 vecchio): riscritto.
-- Riserve delle altre chat: in `reports/stato_progetto.md`, non toccate qui.
+- R-853R7-1 BASSA — con GAS_SOTTOFONDO_MAX_MIN oltre 30 giorni il timer scatta a 30 giorni e dice «oltre la durata massima» (default 1 h: irrilevante in pratica). Aperta.
+- R-853R7-2 BASSA — nel ramo «già chiuso dal timer» il processo può uscire prima che l'avviso del timer parta (manca `tetto.join`); il compito si recupera dal controllo esterno. Aperta.
+- R-853R7-3 BASSA — la finestra della corsa «flag preso dal timer, esito non ancora scritto» non ha un test. Aperta.
+- R-852R7-1 BASSA (dichiarata nel codice) — `claude -p` e il browser, in un gruppo proprio, finiscono la richiesta in corso dopo l'arresto. R-852R7-4 COSMETICA dichiarata. R-852R7-2/3: CHIUSE.
+- Riserve delle altre chat: in `reports/stato_progetto.md`.
