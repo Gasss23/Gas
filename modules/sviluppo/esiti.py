@@ -10,7 +10,7 @@ e l'esecutore (sessione cloud). Due tipi di commento, ciascuno con un marcatore 
       PR: #412
       CI: verde | rossa | in corso | assente
       BOT: APPROVATO | APPROVATO CON RISERVE | BOCCIATO | assente
-      VERIFICA_ESTERNA: <una riga>
+      VERIFICA_ESTERNA: APPROVATO | APPROVATO CON RISERVE | BOCCIATO | assente
       RISERVA: <una riga per finding ALTA/MEDIA, al massimo RISERVE_MAX>
       RIASSUNTO: <una riga: cosa è stato fatto>
 - COMANDO, scritto da Gas per conto dell'operatore:
@@ -20,7 +20,8 @@ e l'esecutore (sessione cloud). Due tipi di commento, ciascuno con un marcatore 
 Regole: chiavi e valori ammessi FISSI, numero di PR intero, testi liberi ripuliti dai caratteri
 di controllo e tagliati; un commento che non rispetta il formato è ignorato (None), mai
 interpretato. Qui non si legge l'autore: chi chiama controlla che il commento venga da un
-account ammesso (fetta F3). Niente rete, niente file. Fail-safe §9: nessuna eccezione esce.
+account ammesso (fetta F3). Niente rete, niente file. Fail-safe §9: dai lettori non esce
+nessuna eccezione (None); gli scrittori danno ValueError per un valore non ammesso.
 """
 from __future__ import annotations
 
@@ -33,6 +34,11 @@ MARCA_COMANDO = "<!-- gas-comando v1 -->"
 ESITI = ("pronta", "ferma", "fallita")
 CI = ("verde", "rossa", "in corso", "assente")
 BOT = ("APPROVATO", "APPROVATO CON RISERVE", "BOCCIATO", "assente")
+VERIFICA = BOT  # bot #409 V-2: anche la verifica esterna a valori fissi
+# R-865-1: caratteri che si vedono vuoti ma non sono di categoria C* (riempitivi Hangul,
+# braille vuoto, selettori di variante)
+_VUOTI = frozenset("\u115f\u1160\u3164\uffa0\u2800") | frozenset(
+    chr(c) for c in [*range(0xFE00, 0xFE10), *range(0xE0100, 0xE01F0)])
 RIGA_MAX = 300       # caratteri di un testo libero (verifica esterna, riserva, riassunto)
 RISERVE_MAX = 5      # righe RISERVA tenute
 COMMENTO_MAX = 8000  # un commento più lungo non è un esito
@@ -50,7 +56,8 @@ def _pulisci(testo: Any, n: int = RIGA_MAX) -> str:
     """Una riga: niente caratteri di controllo o invisibili, spazi compressi, al massimo n.
     R-864-1: via tutte le categorie Unicode C* (Cc, Cf come U+FEFF/U+2060/«tag», Co, Cs, Cn),
     come scripts/bot_esito.py, al posto di un elenco a mano."""
-    t = "".join(" " if unicodedata.category(c).startswith("C") else c for c in str(testo or ""))
+    t = "".join(" " if unicodedata.category(c).startswith("C") or c in _VUOTI else c
+                for c in str(testo or ""))
     t = " ".join(t.split())
     return t if len(t) <= n else t[: n - 1].rstrip() + "…"
 
@@ -106,6 +113,10 @@ def leggi_esito(corpo: Any) -> Optional[Dict[str, Any]]:
                 if valore not in BOT:
                     return None
                 esito[nome] = valore
+            elif nome == "verifica_esterna":
+                if valore not in VERIFICA:
+                    return None
+                esito[nome] = valore
             else:
                 esito[nome] = _pulisci(valore)
         if "esito" not in esito or not esito.get("riassunto"):
@@ -118,12 +129,12 @@ def leggi_esito(corpo: Any) -> Optional[Dict[str, Any]]:
 
 
 def scrivi_esito(esito: str, riassunto: str, pr: Optional[int] = None, ci: str = "assente",
-                 bot: str = "assente", verifica_esterna: str = "",
+                 bot: str = "assente", verifica_esterna: str = "assente",
                  riserve: Optional[List[str]] = None) -> str:
     """Il commento ESITO nel formato fisso (per l'esecutore e per i test). ValueError se un
     valore non è ammesso: meglio nessun commento che uno che Gas poi ignora."""
-    if esito not in ESITI or ci not in CI or bot not in BOT:
-        raise ValueError("valore di ESITO/CI/BOT non ammesso")
+    if esito not in ESITI or ci not in CI or bot not in BOT or verifica_esterna not in VERIFICA:
+        raise ValueError("valore di ESITO/CI/BOT/VERIFICA_ESTERNA non ammesso")
     if pr is not None and (isinstance(pr, bool) or not isinstance(pr, int)
                            or not 0 < pr <= PR_MAX):
         raise ValueError("numero di PR non valido")
@@ -131,8 +142,7 @@ def scrivi_esito(esito: str, riassunto: str, pr: Optional[int] = None, ci: str =
     if pr is not None:
         righe.append(f"PR: #{pr}")
     righe += [f"CI: {ci}", f"BOT: {bot}"]
-    if _pulisci(verifica_esterna):
-        righe.append(f"VERIFICA_ESTERNA: {_pulisci(verifica_esterna)}")
+    righe.append(f"VERIFICA_ESTERNA: {verifica_esterna}")
     if riserve is not None and not isinstance(riserve, list):
         raise ValueError("riserve deve essere una lista di righe")
     pulite = [_pulisci(r) for r in (riserve or []) if _pulisci(r)]
@@ -158,12 +168,13 @@ def frase_esito(numero_richiesta: int, titolo: str, esito: Dict[str, Any]) -> st
         controlli = [f"CI {esito.get('ci', 'assente')}", f"bot: {esito.get('bot', 'assente')}"]
         if esito.get("riserve"):
             controlli[-1] += " (" + "; ".join(esito["riserve"]) + ")"
-        if esito.get("verifica_esterna"):
+        if esito.get("verifica_esterna", "assente") != "assente":
             controlli.append(f"verifica esterna: {esito['verifica_esterna']}")
         testo = f"{testa}: fatta. {corpo} PR #{pr}, " + ", ".join(controlli) + "."
-        # R-864-2: la domanda sul merge solo con CI verde e bot non BOCCIATO (il merge vero
-        # lo decide comunque CLAUDE.md §10)
-        if esito.get("ci") != "verde" or esito.get("bot") in ("BOCCIATO", "assente"):
+        # R-864-2: la domanda sul merge solo con CI verde, bot non BOCCIATO/assente e verifica
+        # esterna non BOCCIATO (bot #409 V-2); il merge vero lo decide comunque CLAUDE.md §10
+        if (esito.get("ci") != "verde" or esito.get("bot") in ("BOCCIATO", "assente")
+                or esito.get("verifica_esterna") == "BOCCIATO"):
             return testo + " Controlli non verdi: niente merge per ora."
         return testo + f" Vuoi che la mergi? Rispondi «mergia {pr}» oppure «no {pr}»."
     except Exception:  # §9

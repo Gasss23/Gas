@@ -57,10 +57,10 @@ def test_formato_non_rispettato_e_ignorato(corpo):
 
 
 def test_testi_liberi_ripuliti_e_tagliati():
-    corpo = (e.MARCA_ESITO + "\nESITO: ferma\nRIASSUNTO: a‮b\x07c " + "z" * 500
+    corpo = (e.MARCA_ESITO + "\nESITO: ferma\nRIASSUNTO: a\u202eb\x07c " + "z" * 500
              + "\n" + "\n".join(f"RISERVA: r{i}" for i in range(9)))
     out = e.leggi_esito(corpo)
-    assert "‮" not in out["riassunto"] and "\x07" not in out["riassunto"]
+    assert "\u202e" not in out["riassunto"] and "\x07" not in out["riassunto"]
     assert len(out["riassunto"]) <= e.RIGA_MAX and len(out["riserve"]) == e.RISERVE_MAX
 
 
@@ -119,3 +119,27 @@ def test_riserve_deve_essere_lista_e_vuote_scartate_prima_del_taglio():
 ])
 def test_bom_e_chiave_minuscola_ignorati(corpo):
     assert e.leggi_esito(corpo) is None
+
+
+@pytest.mark.parametrize("car", ["\u3164", "\u2800", "\u115f", "\u1160", "\uffa0", "\ufe0f",
+                                 "\U000e0100"])
+def test_riempitivi_che_sembrano_vuoti_tolti_r865_1(car):
+    assert e.leggi_esito(e.MARCA_ESITO + f"\nESITO: ferma\nRIASSUNTO: {car}") is None
+    assert e.leggi_esito(e.MARCA_ESITO + f"\nESITO: ferma\nRIASSUNTO: a{car}b")["riassunto"] == "a b"
+
+
+def test_verifica_esterna_a_valori_fissi_e_bocciato_senza_domanda():
+    assert e.leggi_esito(e.MARCA_ESITO + "\nESITO: ferma\nVERIFICA_ESTERNA: ok\nRIASSUNTO: x") is None
+    with pytest.raises(ValueError):
+        _esito(verifica_esterna="testo libero")
+    f = e.frase_esito(7, "x", e.leggi_esito(_esito(bot="APPROVATO", verifica_esterna="BOCCIATO")))
+    assert "verifica esterna: BOCCIATO" in f and "mergia" not in f
+    f = e.frase_esito(7, "x", e.leggi_esito(_esito(verifica_esterna="assente")))
+    assert "verifica esterna" not in f and "«mergia 412»" in f
+
+
+def test_file_senza_caratteri_invisibili_veri():
+    import unicodedata
+    for p in (Path(e.__file__), Path(__file__)):
+        testo = p.read_text(encoding="utf-8")
+        assert not [c for c in testo if unicodedata.category(c) == "Cf"], p
