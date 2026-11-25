@@ -9,7 +9,9 @@ Sicurezza (stessa linea del server vocale, R8):
     Il login scambia il token con un cookie di sessione `HttpOnly; SameSite=Strict`
     (12 ore); le integrazioni possono usare `Authorization: Bearer <token>`;
   * confronto del token a tempo costante; tetto ai tentativi sbagliati per IP;
-  * header Host solo «localhost» o un IP (contro il DNS rebinding);
+  * header Host solo «localhost», un IP o il nome privato Tailscale del Mac dichiarato in
+    `GAS_CRM_NOME_TAILSCALE` (contro il DNS rebinding; dal telefono si entra con `tailscale
+    serve`, che resta nella rete privata e fa HTTPS: decisione 21, `scripts/crm/telefono.sh`);
   * ogni POST vuole `Content-Type: application/json` e l'header `X-Gas-CRM: 1` (una
     pagina estranea non può aggiungerlo senza preflight), e un eventuale Origin uguale
     all'Host (contro il CSRF);
@@ -69,6 +71,21 @@ BACKUP_OGNI_S = 24 * 3600.0
 
 Invia = Callable[[str], Tuple[bool, str]]
 
+# Nome Tailscale del Mac (es. «mac-di-gas.tail1234.ts.net»): solo nomi della rete privata
+_NOME_TS = re.compile(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+ts\.net")
+
+
+def nome_tailscale_da_env() -> Optional[str]:
+    """Decisione 21: il nome con cui il telefono apre la dashboard tramite `tailscale serve`.
+    Solo un nome `*.ts.net` (mai un dominio pubblico); altrimenti None e un avviso."""
+    grezzo = os.environ.get("GAS_CRM_NOME_TAILSCALE", "").strip().lower().rstrip(".")
+    if not grezzo:
+        return None
+    if len(grezzo) > 253 or not _NOME_TS.fullmatch(grezzo):
+        log.warning("CRM: GAS_CRM_NOME_TAILSCALE ignorato: non è un nome Tailscale (*.ts.net)")
+        return None
+    return grezzo
+
 
 def bind_locale(bind: str) -> bool:
     """Solo loopback IPv4 o «localhost» (il server è solo IPv4)."""
@@ -94,9 +111,11 @@ class Stato:
     def __init__(self, store: CRMStore, token: str, demo: bool = False,
                  regole: Optional[motore.Regole] = None, scan_minuti: int = 10,
                  avvisa: Optional[Invia] = None, memoria_db: Optional[Path] = None,
-                 oggi: Optional[Callable[[], date]] = None) -> None:
+                 oggi: Optional[Callable[[], date]] = None,
+                 nome_tailscale: Optional[str] = None) -> None:
         self.store = store
         self.token = token
+        self.nome_tailscale = nome_tailscale  # decisione 21: unico nome non locale ammesso
         self.demo = demo
         self.regole = regole or motore.Regole.da_env()
         self.scan_s = max(1, scan_minuti) * 60.0
@@ -417,23 +436,44 @@ class CRMHandler(BaseHTTPRequestHandler):
 
     # ---------------------------------------------------------------- controlli
     def _host_ammesso(self) -> bool:
+        # R-860-1: una richiesta arrivata dal «funnel» di Tailscale viene da INTERNET: mai.
+        # tailscaled mette questo header su ogni richiesta funnel e toglie quelli finti.
+        if self.headers.get("Tailscale-Funnel-Request") is not None:
+            log.warning("CRM: RIFIUTATA richiesta dal funnel di Tailscale (internet)")
+            return False
         host = (self.headers.get("Host") or "").strip().lower()
         if not host:
             return False  # V-3 bot #381 (2° giro): niente eccezioni alla difesa dal DNS rebinding
+        porta = ""
         if host.startswith("["):
             nome = host[1:host.find("]")] if "]" in host else host
         elif host.count(":") == 1:
-            nome = host.split(":", 1)[0]
+            nome, porta = host.split(":", 1)
         else:
             nome = host
         if nome == "localhost":
             return True
+        # decisione 21: il nome Tailscale del Mac solo dall'HTTPS di `tailscale serve` (porta 443)
+        if self.stato.nome_tailscale and nome == self.stato.nome_tailscale:
+            if porta in ("", "443"):
+                return True
+            log.warning("CRM HOST RIFIUTATO: nome Tailscale su una porta diversa da 443")
+            return False
         try:
             ipaddress.ip_address(nome)
             return True
         except ValueError:
             log.warning("CRM HOST RIFIUTATO ip=%s", self.client_address[0])
             return False
+
+    def _da_tailscale(self) -> bool:
+        """La richiesta arriva dal nome Tailscale, cioè via HTTPS di `tailscale serve`."""
+        nome = (self.headers.get("Host") or "").strip().lower().split(":", 1)[0]
+        return bool(self.stato.nome_tailscale) and nome == self.stato.nome_tailscale
+
+    def _attributi_cookie(self) -> str:
+        # decisione 21: da HTTPS il cookie viaggia solo cifrato
+        return "HttpOnly; SameSite=Strict; Path=/" + ("; Secure" if self._da_tailscale() else "")
 
     def _cookie(self) -> str:
         grezzo = self.headers.get("Cookie") or ""
@@ -696,7 +736,7 @@ class CRMHandler(BaseHTTPRequestHandler):
             sid = self.stato.nuova_sessione()
             return self._json(200, {"ok": True}, [(
                 "Set-Cookie",
-                f"{COOKIE}={sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSIONE_S}")])
+                f"{COOKIE}={sid}; {self._attributi_cookie()}; Max-Age={SESSIONE_S}")])
         if not self._autenticato():
             if self.stato.ip_bloccato(ip):
                 return self._errore(429, "troppi tentativi: riprova più tardi")
@@ -706,7 +746,7 @@ class CRMHandler(BaseHTTPRequestHandler):
             with self.stato.cambio:
                 self.stato.cambio.notify_all()  # gli stream di quella sessione si chiudono
             return self._json(200, {"ok": True}, [(
-                "Set-Cookie", f"{COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")])
+                "Set-Cookie", f"{COOKIE}=; {self._attributi_cookie()}; Max-Age=0")])
         dati = self._leggi_json()
         if dati is None:
             return

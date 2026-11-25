@@ -39,7 +39,9 @@ log = logging.getLogger(__name__)
 # illeggibili agli strumenti del modello tutti i file che iniziano così.
 DEFAULT_DB_FILENAME = ".gas_memory_crm.db"
 BACKUP_DIRNAME = ".gas_memory_crm_backup"
-BACKUP_KEEP = 30
+BACKUP_KEEP = 30         # giorni di copie locali tenute (la più recente di ogni giorno)
+BACKUP_ULTIME = 10       # in più si tengono sempre le ultime 10 copie, anche dello stesso giorno
+_NOME_COPIA = re.compile(r"crm-[0-9]{8}-[0-9]{6}\.db")  # copie fatte da backup()
 
 MODELLI_COMMISSIONE: Tuple[str, ...] = (
     "percentuale_profitto",       # commissione_bp sul profitto netto del mese
@@ -1362,14 +1364,20 @@ class CRMStore:
 
     # ------------------------------------------------------------------ backup
     def backup(self, dest_dir: Optional[Union[str, Path]] = None,
-               keep: int = BACKUP_KEEP) -> Optional[Path]:
+               keep: int = BACKUP_KEEP, ultime: int = BACKUP_ULTIME) -> Optional[Path]:
         """Copia coerente del DB (API di backup di SQLite, anche mentre il server scrive) in
         `dest_dir` (default: `.gas_memory_crm_backup/` accanto al DB, nome protetto dal
-        cancello). Tiene le ultime `keep` copie. None se fallisce (§9: mai solleva)."""
+        cancello). Tiene la copia più recente di ognuno degli ultimi `keep` GIORNI più le ultime
+        `ultime` copie (R-853-2: con «le ultime 30 copie» un CRM che si riavvia a
+        ripetizione, una copia per avvio, cancellava in pochi minuti i giorni prima).
+        Contano solo i nomi `crm-AAAAMMGG-HHMMSS.db` fino a domani: la copia appena fatta, le
+        copie fatte a mano e quelle con una data nel futuro non si cancellano mai.
+        None se fallisce (§9: mai solleva)."""
         try:
             cartella = Path(dest_dir) if dest_dir else self.db_path.parent / BACKUP_DIRNAME
             cartella.mkdir(parents=True, exist_ok=True)
-            nome = f"crm-{self._orologio().strftime('%Y%m%d-%H%M%S')}.db"
+            adesso = self._orologio()
+            nome = f"crm-{adesso.strftime('%Y%m%d-%H%M%S')}.db"
             dest = cartella / nome
             with self._connect() as src:
                 dst = sqlite3.connect(str(dest))
@@ -1378,9 +1386,31 @@ class CRMStore:
                 finally:
                     dst.close()
             os.chmod(dest, 0o600)  # V-4 verifica esterna #386: dati dei clienti, solo il proprietario
-            copie = sorted(cartella.glob("crm-*.db"))
-            for vecchia in copie[:-max(1, keep)]:
-                vecchia.unlink(missing_ok=True)
+            # nome crm-AAAAMMGG-HHMMSS: ordine di tempo. V-1 bot #404: solo i nomi in questo
+            # formato; una copia fatta a mano (crm-prima-import.db) non prende il posto di un
+            # giorno e non viene mai toccata
+            tutte = sorted(c for c in cartella.glob("crm-*.db") if _NOME_COPIA.fullmatch(c.name))
+            # V-3 bot / V-1 verifica esterna #404 (2° giro): copie con data oltre domani (orologio
+            # del Mac andato avanti e poi corretto) non occupano giorni né «ultime» e non si
+            # cancellano: lo si scrive nel registro; tornano normali quando l'orologio le raggiunge
+            limite = f"crm-{(adesso + timedelta(days=1)).strftime('%Y%m%d-%H%M%S')}.db"
+            futuro = [c for c in tutte if c.name > limite]
+            if futuro:
+                log.warning("CRM: %d copie locali con una data nel futuro (orologio del Mac "
+                            "sbagliato?) in %s: non contano e non si cancellano", len(futuro), cartella)
+            copie = [c for c in tutte if c.name <= limite]
+            per_giorno: Dict[str, Path] = {}
+            for c in copie:
+                per_giorno[c.name[4:12]] = c  # resta la più recente del giorno
+            tenere = set(copie[-max(1, ultime):])
+            tenere.update(per_giorno[g] for g in sorted(per_giorno)[-max(1, keep):])
+            # V-1 verifica esterna #404: con l'orologio tornato indietro la copia appena fatta
+            # ha un nome «più vecchio» delle altre; non va mai cancellata (e il server non deve
+            # dire «copia OK» su un file che non c'è)
+            tenere.add(dest)
+            for vecchia in copie:
+                if vecchia not in tenere:
+                    vecchia.unlink(missing_ok=True)
             return dest
         except (sqlite3.Error, OSError) as e:
             log.warning("CRM: backup fallito (%s): %s", self.db_path, e)

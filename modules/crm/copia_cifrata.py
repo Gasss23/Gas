@@ -32,6 +32,7 @@ import subprocess
 import threading
 import time
 import unicodedata
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -45,6 +46,7 @@ PASSWORD_MIN = 12
 SCRYPT_N = 2 ** 17       # R-815-3: per file che un attaccante può provare offline (OWASP)
 KEEP = 30
 ESTENSIONE = ".gascrm"
+_NOME_CIFRATA = re.compile(r"crm-[0-9]{8}" + re.escape(ESTENSIONE))  # una al giorno
 NOME_CARTELLA = "Gas CRM (copie cifrate)"
 ICLOUD_DRIVE = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
 VOLUMI = Path("/Volumes")  # dischi esterni su macOS
@@ -251,6 +253,30 @@ def decifra(blob: bytes, pw: str) -> bytes:
         raise ErroreCRM("password sbagliata o file rovinato") from None
 
 
+def _ruota(dest_dir: Path, dest: Path, keep: int) -> None:
+    """Tiene le ultime `keep` copie esterne (una al giorno). R-858-1 (come le copie locali,
+    V-1/V-3 #404): contano solo i nomi `crm-AAAAMMGG.gascrm`; la copia appena fatta non si
+    cancella mai (orologio tornato indietro); le copie con data oltre domani (orologio andato
+    avanti e poi corretto) non contano e non si cancellano, con un avviso nel registro."""
+    copie = sorted(c for c in dest_dir.glob("crm-*" + ESTENSIONE) if _NOME_CIFRATA.fullmatch(c.name))
+    if _NOME_CIFRATA.fullmatch(dest.name):
+        try:
+            domani = datetime.strptime(dest.name[4:12], "%Y%m%d") + timedelta(days=1)
+        except ValueError:
+            domani = None
+        if domani is not None:
+            limite = f"crm-{domani.strftime('%Y%m%d')}{ESTENSIONE}"
+            futuro = [c for c in copie if c.name > limite]
+            if futuro:
+                log.warning("CRM: %d copie cifrate fuori dal Mac con una data nel futuro "
+                            "(orologio del Mac sbagliato?): non contano e non si cancellano",
+                            len(futuro))
+            copie = [c for c in copie if c.name <= limite]
+    for vecchia in copie[:-max(1, keep)]:
+        if vecchia != dest:
+            vecchia.unlink(missing_ok=True)
+
+
 def copia_fuori(copia_locale: Path, keep: int = KEEP) -> Tuple[Optional[Path], Optional[str]]:
     """Cifra una copia locale (fatta da CRMStore.backup) e la mette nella cartella esterna.
     Ritorna (percorso, None) se riuscita, (None, motivo) altrimenti. Mai solleva (§9)."""
@@ -282,8 +308,7 @@ def copia_fuori(copia_locale: Path, keep: int = KEEP) -> Tuple[Optional[Path], O
         _scrivi_privato(tmp, cifra(Path(copia_locale).read_bytes(), pw), esclusivo=True)
         os.replace(tmp, dest)
         tmp = None
-        for vecchia in sorted(dest_dir.glob("crm-*" + ESTENSIONE))[:-max(1, keep)]:
-            vecchia.unlink(missing_ok=True)
+        _ruota(dest_dir, dest, keep)
         return dest, None
     except Exception as e:  # §9: il CRM continua; nel log solo il tipo, mai dati
         log.warning("CRM: copia cifrata esterna non riuscita: %s", type(e).__name__)

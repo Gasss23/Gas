@@ -6,6 +6,10 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import plistlib
+import shutil
+import signal
+import subprocess
 import sys
 import sqlite3
 import threading
@@ -1392,7 +1396,42 @@ def test_copia_cifrata_fuori_dal_mac(tmp_path: Path, monkeypatch: pytest.MonkeyP
         finta = tmp_path / f"crm-2026010{i}-000000.db"
         finta.write_bytes(db.read_bytes())
         copia_cifrata.copia_fuori(finta, keep=2)
-    assert len(list(icloud.glob("crm-*.gascrm"))) == 2
+    # le finte di gennaio ruotano tra loro; la copia di oggi fatta sopra è «nel futuro» per
+    # loro e non si tocca (R-858-1)
+    assert sorted(p.name for p in icloud.glob("crm-202601*.gascrm")) == [
+        "crm-20260102.gascrm", "crm-20260103.gascrm"]
+
+
+def test_r858_copie_cifrate_orologio_sbagliato(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                              caplog: pytest.LogCaptureFixture) -> None:
+    """R-858-1: la copia cifrata appena fatta veniva cancellata se c'erano copie con una data
+    più avanti (orologio del Mac andato nel futuro e poi corretto), e la dashboard diceva
+    «copia OK» senza nessuna copia di oggi fuori dal Mac."""
+    from modules.crm import copia_cifrata
+    icloud = tmp_path / "icloud"
+    icloud.mkdir()
+    monkeypatch.setenv("GAS_CRM_BACKUP_CIFRATO_DIR", str(icloud))
+    monkeypatch.setenv("GAS_CRM_BACKUP_PASSWORD", "una-password-lunga-1")
+    db = tmp_path / "crm.db"
+    CRMStore(db).aggiungi_cliente("Mario Rossi")
+    for g in range(1, 31):  # 30 copie fatte con l'orologio nel 2030
+        (icloud / f"crm-203001{g:02d}.gascrm").write_bytes(b"x")
+    a_mano = icloud / "crm-prima-import.gascrm"
+    a_mano.write_bytes(b"copia a mano")
+    oggi = tmp_path / "crm-20261124-090000.db"
+    oggi.write_bytes(db.read_bytes())
+    with caplog.at_level("WARNING"):
+        fuori, motivo = copia_cifrata.copia_fuori(oggi, keep=30)
+    assert motivo is None and fuori is not None and fuori.exists()
+    assert len(list(icloud.glob("crm-2030*.gascrm"))) == 30  # non si toccano
+    assert a_mano.read_bytes() == b"copia a mano"
+    assert "data nel futuro" in caplog.text
+    # orologio tornato indietro di poco: la copia di oggi resta anche se non è l'ultima
+    (icloud / "crm-20261125.gascrm").write_bytes(b"x")
+    ieri = tmp_path / "crm-20261123-090000.db"
+    ieri.write_bytes(db.read_bytes())
+    fuori, motivo = copia_cifrata.copia_fuori(ieri, keep=1)
+    assert motivo is None and fuori is not None and fuori.exists()
 
 
 def test_r815_ripristino_sicuro_dopo_un_crash(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -2129,12 +2168,13 @@ def test_identita_clienti_e_backup(st: CRMStore, tmp_path: Path) -> None:
     cartella.mkdir()
     assert identita_clienti(cartella) is None
     copie = tmp_path / "copie"
-    primo = st.backup(copie, keep=2)
+    # R-853-2: `keep` conta i giorni; `ultime` le copie più recenti dello stesso giorno
+    primo = st.backup(copie, keep=2, ultime=2)
     assert primo is not None and CRMStore(primo).clienti()[0]["nome"] == "Marco Bianchi"
     st._orologio = lambda: INIZIO + timedelta(seconds=1)  # type: ignore[assignment]
-    st.backup(copie, keep=2)
+    st.backup(copie, keep=2, ultime=2)
     st._orologio = lambda: INIZIO + timedelta(seconds=2)  # type: ignore[assignment]
-    st.backup(copie, keep=2)
+    st.backup(copie, keep=2, ultime=2)
     assert len(list(copie.glob("crm-*.db"))) == 2
 
 
@@ -2590,3 +2630,657 @@ def test_agente_riserve_839(st: CRMStore) -> None:
     pid = st.aggiungi_promemoria("x", "2020-01-01 09:00", nel_passato=True)
     st.annulla_promemoria(pid)
     assert st.reclama_promemoria(pid) is False and st.reclama_promemoria(True) is False
+
+
+def test_backup_tiene_i_giorni_anche_con_tanti_riavvii(tmp_path: Path) -> None:
+    """R-853-2: un CRM che si riavvia a ripetizione fa una copia per avvio; prima si
+    tenevano solo le ultime 30 copie e in pochi minuti sparivano i giorni prima."""
+    orologio = Orologio(datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    for _ in range(40):  # una copia al giorno per 40 giorni
+        assert st.backup(cartella) is not None
+        orologio.avanti(1)
+    for i in range(60):  # poi 60 riavvii nello stesso giorno, uno al secondo
+        orologio.ora = orologio.ora + timedelta(seconds=1)
+        assert st.backup(cartella) is not None
+    copie = sorted(p.name for p in cartella.glob("crm-*.db"))
+    giorni = sorted({c[4:12] for c in copie})
+    assert len(giorni) == 30  # gli ultimi 30 giorni restano tutti
+    assert giorni[0] == "20261012" and giorni[-1] == "20261110"  # 41 giorni, restano gli ultimi 30
+    oggi = [c for c in copie if c[4:12] == "20261110"]
+    assert len(oggi) == 10  # dello stesso giorno solo le ultime 10
+    assert len(copie) == 29 + 10
+
+
+def test_backup_con_orologio_indietro_non_cancella_la_copia_appena_fatta(tmp_path: Path) -> None:
+    """V-1 verifica esterna #404: 12 copie nello stesso giorno, poi l'orologio del Mac torna
+    indietro di un'ora. La copia nuova ha un nome «più vecchio» delle ultime 10 e veniva
+    cancellata subito: backup() restituiva un percorso che non esisteva più."""
+    orologio = Orologio(datetime(2026, 11, 24, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    for _ in range(12):
+        orologio.ora = orologio.ora + timedelta(seconds=1)
+        assert st.backup(cartella) is not None
+    orologio.ora = orologio.ora - timedelta(hours=1)
+    nuova = st.backup(cartella)
+    assert nuova is not None and nuova.exists()
+    assert len(list(cartella.glob("crm-*.db"))) == 11  # le ultime 10 più quella appena fatta
+
+
+def test_backup_copie_nel_futuro_non_accorciano_la_storia(tmp_path: Path,
+                                                         caplog: pytest.LogCaptureFixture) -> None:
+    """V-3 bot / V-1 verifica esterna #404 (2° giro): con l'orologio andato nel 2030 e poi
+    corretto, quelle copie occupavano le «ultime 10» e un giorno dei 30 finché l'orologio non
+    le raggiungeva. Ora non contano, non si cancellano e lo si scrive nel registro."""
+    orologio = Orologio(datetime(2030, 1, 1, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    for _ in range(12):
+        orologio.ora = orologio.ora + timedelta(seconds=1)
+        assert st.backup(cartella) is not None
+    orologio.ora = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+    with caplog.at_level("WARNING"):
+        for _ in range(40):
+            assert st.backup(cartella) is not None
+            orologio.avanti(1)
+    nomi = sorted(p.name for p in cartella.glob("crm-*.db"))
+    # nel 2030 la regola normale ne ha tenute 10; dopo, con l'orologio giusto, non si toccano
+    assert len([n for n in nomi if n.startswith("crm-2030")]) == 10
+    giorni_veri = sorted({n[4:12] for n in nomi if n.startswith("crm-2026")})
+    assert len(giorni_veri) == 30  # i 30 giorni veri restano tutti
+    assert "data nel futuro" in caplog.text
+
+
+def test_backup_margine_del_futuro_e_di_un_giorno(tmp_path: Path,
+                                                 caplog: pytest.LogCaptureFixture) -> None:
+    """R-858-2: una copia avanti di qualche ora (cambio d'ora, fuso) conta come le altre; una
+    avanti di 2 giorni è «nel futuro»: non conta e non si cancella."""
+    orologio = Orologio(datetime(2026, 11, 24, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    cartella.mkdir()
+    for nome in ("crm-20261123-090000.db", "crm-20261124-200000.db", "crm-20261126-100000.db"):
+        (cartella / nome).write_text("copia")
+    with caplog.at_level("WARNING"):
+        assert st.backup(cartella, keep=1, ultime=1) is not None
+    nomi = sorted(p.name for p in cartella.glob("crm-*.db"))
+    # quella di stasera conta (è la più recente del giorno) e fa togliere quella di ieri
+    assert nomi == ["crm-20261124-090000.db", "crm-20261124-200000.db", "crm-20261126-100000.db"]
+    assert "1 copie locali con una data nel futuro" in caplog.text
+
+
+def test_backup_ignora_le_copie_fatte_a_mano(tmp_path: Path) -> None:
+    """V-1 bot #404: «crm-prima-import.db» dava il giorno «prima-im», dopo ogni data: occupava
+    per sempre uno dei 30 giorni e ne restavano 29 veri. Ora i nomi fuori formato non contano
+    e non si toccano."""
+    orologio = Orologio(datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc))
+    st = CRMStore(tmp_path / "crm.db", orologio=orologio)
+    st.aggiungi_cliente("Mario Rossi")
+    cartella = tmp_path / "copie"
+    cartella.mkdir()
+    a_mano = cartella / "crm-prima-import.db"
+    a_mano.write_text("copia fatta a mano")
+    for _ in range(31):
+        assert st.backup(cartella) is not None
+        orologio.avanti(1)
+    giorni = sorted({c.name[4:12] for c in cartella.glob("crm-2*.db")})
+    assert len(giorni) == 30 and giorni[0] == "20261002"
+    assert a_mano.read_text() == "copia fatta a mano"
+
+
+# ---------------------------------------------------------------- script del CRM sul Mac
+# R-853-3: installa.sh e spegni.sh provati con comandi finti (uname, launchctl, plutil, curl,
+# sleep e il python della .venv), come l'installer della voce in test_unit_voce_ascolto.py.
+
+CRM_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "scripts" / "crm"
+
+_FINTI_CRM = {
+    "uname": 'echo "${UNAME_FINTO:-Darwin}"',
+    "launchctl": ('echo "launchctl $*" >> "$REGISTRO"\n'
+                  'case "$1" in\n'
+                  '  print) [ -f "$REGISTRO.caricato" ] ;;\n'
+                  '  bootout)\n'
+                  '    # R-856-1: al bootout il plist deve essere già tolto (si registra com\'è)\n'
+                  '    [ -f "$HOME/Library/LaunchAgents/com.gas.crm.plist" ] && echo "bootout-plist si" >> "$REGISTRO" \\\n'
+                  '      || echo "bootout-plist no" >> "$REGISTRO"\n'
+                  '    # CTRLC2=si: secondo Ctrl+C mentre la pulizia fa il bootout\n'
+                  '    if [ "${CTRLC2:-no}" = si ] && [ -f "$REGISTRO.ctrlc" ] && [ ! -f "$REGISTRO.ctrlc2" ]; then\n'
+                  '      touch "$REGISTRO.ctrlc2"; kill -INT -- "-$PPID"\n'
+                  '    fi\n'
+                  '    rm -f "$REGISTRO.caricato" ;;\n'
+                  '  bootstrap)\n'
+                  '    if [ "${LC_BOOT:-ok}" != ok ]; then echo "Bootstrap failed: 5" >&2; exit 5; fi\n'
+                  '    touch "$REGISTRO.caricato"\n'
+                  '    [ -n "${RIGA_COPIA:-}" ] && echo "$RIGA_COPIA" >> "$LOG_CRM"\n'
+                  '    exit 0 ;;\n'
+                  'esac'),
+    "plutil": 'echo "plutil $*" >> "$REGISTRO"; [ "${PLUTIL:-ok}" = ok ]',
+    # RM_KO=si: il plist non si riesce a togliere (cartella non scrivibile); il resto passa a /bin/rm
+    "rm": ('if [ "${RM_KO:-no}" = si ]; then\n'
+           '  for a in "$@"; do case "$a" in *com.gas.crm.plist) exit 1 ;; esac; done\n'
+           'fi\n'
+           'exec /bin/rm "$@"'),
+    # la dashboard risponde solo col servizio caricato (DASH=ok) o sempre (DASH=occupata)
+    "curl": ('case "${DASH:-ok}" in occupata) exit 0 ;; ok) [ -f "$REGISTRO.caricato" ] ;;'
+             ' *) exit 7 ;; esac'),
+    # CTRLC=si: al primo sleep col servizio caricato, Ctrl+C a tutto il gruppo (come nel Terminale)
+    "sleep": ('echo "sleep $*" >> "$REGISTRO"\n'
+              'if [ "${CTRLC:-no}" = si ] && [ -f "$REGISTRO.caricato" ] && [ ! -f "$REGISTRO.ctrlc" ]; then\n'
+              '  touch "$REGISTRO.ctrlc"; kill -INT -- "-$PPID"\n'
+              'fi\n'
+              'exit 0'),
+}
+
+
+def _gas_crm_finto(tmp_path: Path, nome: str = "Gas", esito_python: int = 0) -> Tuple[Path, Path, Path]:
+    gas = tmp_path / nome
+    (gas / "scripts" / "crm").mkdir(parents=True)
+    for f in CRM_SCRIPT_DIR.iterdir():
+        shutil.copy2(f, gas / "scripts" / "crm" / f.name)
+    casa = tmp_path / "casa"
+    (casa / "Desktop").mkdir(parents=True)
+    # il controllo del .env gira con `env -i HOME=… PATH=…`: il python finto legge l'esito da HOME
+    (casa / "python_esito").write_text(str(esito_python))
+    (gas / ".venv" / "bin").mkdir(parents=True)
+    py = gas / ".venv/bin/python"
+    py.write_text('#!/bin/bash\ncat > /dev/null\ne="$(cat "$HOME/python_esito")"\n'
+                  '[ "$e" = 0 ] && echo 8770\nexit "$e"\n')
+    py.chmod(0o755)
+    finti = tmp_path / "finti"
+    finti.mkdir()
+    for nome_cmd, corpo in _FINTI_CRM.items():
+        p = finti / nome_cmd
+        p.write_text("#!/bin/bash\n" + corpo + "\n")
+        p.chmod(0o755)
+    return gas, finti, casa
+
+
+def _segnali_normali() -> None:
+    """R-855-3: se pytest parte con SIGINT ignorato (nohup, & senza job control) bash non
+    potrebbe intercettarlo e i test del Ctrl+C darebbero un rosso falso."""
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+
+def _esegui_crm(gas: Path, finti: Path, casa: Path, tmp_path: Path, script: str = "installa.sh",
+                **extra: str) -> Tuple[subprocess.CompletedProcess, str]:
+    registro = tmp_path / "registro.txt"
+    env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(registro),
+           "LOG_CRM": str(gas / ".gas_memory_crm_server.log"), **extra}
+    r = subprocess.run(["bash", str(gas / "scripts/crm" / script)], capture_output=True,
+                       text=True, timeout=60, env=env, start_new_session=True,
+                       preexec_fn=_segnali_normali)
+    return r, registro.read_text() if registro.exists() else ""
+
+
+def _plist_crm(casa: Path) -> Path:
+    return casa / "Library/LaunchAgents/com.gas.crm.plist"
+
+
+def _caricato(tmp_path: Path) -> bool:
+    return (tmp_path / "registro.txt.caricato").exists()
+
+
+def _bootout_col_plist_gia_tolto(registro: str) -> bool:
+    """R-856-1: nella pulizia il plist si toglie PRIMA del bootout (se la pulizia si
+    interrompe, al login launchd non lo ricarica)."""
+    righe = registro.splitlines()
+    scritto = next(i for i, x in enumerate(righe) if x.startswith("plutil"))
+    dopo = [x for x in righe[scritto:] if x.startswith("bootout-plist")]
+    return bool(dopo) and all(x == "bootout-plist no" for x in dopo)
+
+
+def test_installa_crm_arriva_in_fondo(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    log = gas / ".gas_memory_crm_server.log"
+    log.write_text("Copia cifrata giornaliera fuori dal Mac: RIGA VECCHIA\n")
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path,
+                              RIGA_COPIA="Copia cifrata giornaliera fuori dal Mac: ATTIVA")
+    assert r.returncode == 0, r.stdout + r.stderr
+    p = plistlib.loads(_plist_crm(casa).read_bytes())
+    assert p["Label"] == "com.gas.crm" and str(gas) in str(p) and "CARTELLA_GAS" not in str(p)
+    assert _caricato(tmp_path) and f"launchctl bootstrap gui/{os.getuid()}" in registro
+    icona = plistlib.loads((casa / "Desktop/CRM Gas.webloc").read_bytes())
+    assert icona == {"URL": "http://127.0.0.1:8770/"}  # solo l'indirizzo, niente token
+    assert "Aspetto che la dashboard risponda" in r.stdout
+    # si mostra l'esito della copia cifrata di QUESTO avvio, non una riga vecchia del registro
+    assert "fuori dal Mac: ATTIVA" in r.stdout and "RIGA VECCHIA" not in r.stdout
+
+
+@pytest.mark.parametrize("esito, messaggio", [
+    (2, "manca GAS_CRM_TOKEN"),
+    (3, "GAS_CRM_BIND diverso da 127.0.0.1"),
+    (4, "Gas non si avvia con le sue dipendenze"),
+    (1, "controllo del CRM non riuscito"),
+])
+def test_installa_crm_controllo_del_env_si_ferma_prima_del_servizio(
+        tmp_path: Path, esito: int, messaggio: str) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path, esito_python=esito)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert not _plist_crm(casa).exists() and "bootstrap" not in registro
+
+
+def test_installa_crm_solo_sul_mac(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, UNAME_FINTO="Linux")
+    assert r.returncode == 1 and "per il Mac" in r.stderr and registro == ""
+
+
+def test_installa_crm_cartella_con_caratteri_non_ammessi(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path, nome="Gas'x")
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and "caratteri non ammessi" in r.stderr and registro == ""
+
+
+def test_installa_crm_porta_gia_occupata(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, DASH="occupata")
+    assert r.returncode == 1 and "risponde già qualcosa" in r.stderr
+    assert not _plist_crm(casa).exists() and "bootstrap" not in registro
+
+
+@pytest.mark.parametrize("extra, messaggio", [
+    ({"PLUTIL": "ko"}, "plist non valido"),
+    ({"LC_BOOT": "ko"}, "3 tentativi"),
+    ({"DASH": "muta"}, "la dashboard non risponde"),
+])
+def test_installa_crm_ogni_stop_dopo_il_plist_toglie_il_servizio(
+        tmp_path: Path, extra: Dict[str, str], messaggio: str) -> None:
+    """R-853-1: dopo la scrittura del plist ogni STOP lo toglie, se no al login launchd
+    ricarica il CRM senza il controllo della dashboard."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, **extra)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
+    assert not (casa / "Desktop/CRM Gas.webloc").exists()
+    assert _bootout_col_plist_gia_tolto(registro)
+    if extra.get("LC_BOOT"):
+        righe = registro.splitlines()
+        assert sum(x.startswith("launchctl bootstrap") for x in righe) == 3
+        ultimo = max(i for i, x in enumerate(righe) if x.startswith("launchctl bootstrap"))
+        assert any(x.startswith("launchctl bootout") for x in righe[ultimo:])
+
+
+def test_installa_crm_ctrl_c_mentre_aspetta_toglie_il_servizio(tmp_path: Path) -> None:
+    """R-854-1: Ctrl+C durante l'attesa della dashboard lasciava il servizio caricato e il
+    plist al suo posto, senza nessun controllo."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", CTRLC="si")
+    assert (tmp_path / "registro.txt.ctrlc").exists()
+    assert r.returncode == 130 and "interrotto, servizio tolto" in r.stderr, r.stdout + r.stderr
+    assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
+    assert _bootout_col_plist_gia_tolto(registro)
+
+
+def test_installa_crm_plist_che_non_si_toglie_lo_dice_e_fa_il_bootout(tmp_path: Path) -> None:
+    """R-856-2: con set -e un rm del plist fallito chiudeva la pulizia prima del bootout:
+    servizio ancora caricato e nessun messaggio."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", RM_KO="si")
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "non riesco a togliere" in r.stderr and "la dashboard non risponde" in r.stderr
+    assert not _caricato(tmp_path)
+
+
+def test_installa_crm_secondo_ctrl_c_non_interrompe_la_pulizia(tmp_path: Path) -> None:
+    """R-855-1 / R-856-1: un secondo Ctrl+C mentre la pulizia fa il bootout la interrompeva
+    a metà: servizio ancora caricato e «servizio tolto» scritto due volte (falso)."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path, DASH="muta", CTRLC="si", CTRLC2="si")
+    assert (tmp_path / "registro.txt.ctrlc2").exists()
+    assert r.returncode == 130, r.stdout + r.stderr
+    assert r.stderr.count("servizio tolto") == 1
+    assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
+
+
+def test_installa_crm_ctrl_c_dopo_la_dashboard_lascia_il_servizio(tmp_path: Path) -> None:
+    """Con la dashboard che risponde il servizio è provato: un Ctrl+C mentre si aspetta
+    l'esito della copia cifrata non lo toglie."""
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path, CTRLC="si")
+    assert (tmp_path / "registro.txt.ctrlc").exists()
+    assert r.returncode in (130, -signal.SIGINT), r.stdout + r.stderr
+    assert "servizio tolto" not in r.stderr  # R-855-2: niente messaggio falso
+    assert _plist_crm(casa).exists() and _caricato(tmp_path)
+
+
+def test_installa_crm_seconda_volta_aspetta_lo_spegnimento(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    (tmp_path / "registro.txt.caricato").touch()  # CRM già acceso da un'installazione prima
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    righe = registro.splitlines()
+    fuori = righe.index(f"launchctl bootout gui/{os.getuid()}/com.gas.crm")
+    dentro = next(i for i, x in enumerate(righe) if x.startswith("launchctl bootstrap"))
+    assert fuori < dentro and f"launchctl print gui/{os.getuid()}/com.gas.crm" in righe[fuori:dentro]
+
+
+def test_spegni_crm_toglie_servizio_e_icona_e_lascia_i_dati(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_crm_finto(tmp_path)
+    r, _ = _esegui_crm(gas, finti, casa, tmp_path)
+    assert r.returncode == 0
+    dati = gas / ".gas_memory_crm.db"
+    dati.write_text("dati dei clienti")
+    r, registro = _esegui_crm(gas, finti, casa, tmp_path, script="spegni.sh")
+    assert r.returncode == 0 and "CRM spento" in r.stdout
+    assert not _plist_crm(casa).exists() and not _caricato(tmp_path)
+    assert not (casa / "Desktop/CRM Gas.webloc").exists() and dati.read_text() == "dati dei clienti"
+
+
+# ------------------------------------------------- dashboard dal telefono (decisione 21)
+# Il CRM resta su 127.0.0.1; `tailscale serve` lo porta nella rete privata col nome del Mac.
+
+NOME_TS = "mac-di-gas.tail1234.ts.net"
+
+
+def test_nome_tailscale_solo_nomi_ts_net(monkeypatch: pytest.MonkeyPatch) -> None:
+    for grezzo, atteso in ((NOME_TS, NOME_TS), ("Mac-Di-Gas.Tail1234.TS.NET.", NOME_TS),
+                           ("", None), ("crm.example.com", None), ("ts.net", None),
+                           ("mac.ts.net.example.com", None), ("mac..ts.net", None),
+                           ("-mac.tail1234.ts.net", None), ("mac tail.ts.net", None)):
+        monkeypatch.setenv("GAS_CRM_NOME_TAILSCALE", grezzo)
+        assert server.nome_tailscale_da_env() == atteso, grezzo
+
+
+@pytest.fixture
+def avviato_ts(st: CRMStore):
+    stato = server.Stato(st, TOKEN, regole=REGOLE, nome_tailscale=NOME_TS)
+    srv = _avvia_server(stato)
+    yield stato, Client(srv.server_address[1])
+    _ferma(stato, srv)
+
+
+def test_dal_telefono_solo_col_nome_tailscale(avviato_ts, st: CRMStore) -> None:
+    _, c = avviato_ts
+    assert c.get("/api/sessione", intestazioni={"Host": NOME_TS})[0] == 200
+    for estraneo in ("altro.tail1234.ts.net", "evil.example", f"{NOME_TS}.evil.example"):
+        assert c.get("/api/sessione", intestazioni={"Host": estraneo})[0] == 403, estraneo
+    # login da HTTPS (tailscale serve): Origin uguale all'Host e cookie solo cifrato
+    codice, head, _ = c.post("/api/login", {"token": TOKEN}, intestazioni={
+        "Host": NOME_TS, "Origin": f"https://{NOME_TS}"})
+    assert codice == 200 and "; Secure" in head["set-cookie"]
+    assert c.get("/api/stato", intestazioni={"Host": NOME_TS})[0] == 200
+    codice, head, _ = c.post("/api/logout", {}, intestazioni={"Host": NOME_TS, "Origin": f"https://{NOME_TS}"})
+    assert codice == 200 and "; Secure" in head["set-cookie"]
+    # sul Mac resta com'era: niente Secure su http://127.0.0.1
+    c2 = Client(c.porta)
+    codice, head, _ = c2.post("/api/login", {"token": TOKEN})
+    assert codice == 200 and "Secure" not in head["set-cookie"]
+    # R-860-1: mai dal funnel (internet), e il nome solo sulla 443 di tailscale serve
+    assert c.get("/api/sessione", intestazioni={"Host": NOME_TS, "Tailscale-Funnel-Request": "?1"})[0] == 403
+    assert c.get("/api/sessione", intestazioni={"Host": "127.0.0.1", "Tailscale-Funnel-Request": "?1"})[0] == 403
+    assert c.post("/api/login", {"token": TOKEN}, intestazioni={
+        "Host": NOME_TS, "Origin": f"https://{NOME_TS}", "Tailscale-Funnel-Request": "?1"})[0] == 403
+    assert c.get("/api/sessione", intestazioni={"Host": f"{NOME_TS}:8443"})[0] == 403
+    assert c.get("/api/sessione", intestazioni={"Host": f"{NOME_TS}:443"})[0] == 200
+    # senza il nome dichiarato, il nome Tailscale non entra
+    stato_senza = server.Stato(st, TOKEN, regole=REGOLE)
+    srv = _avvia_server(stato_senza)
+    try:
+        assert Client(srv.server_address[1]).get("/api/sessione", intestazioni={"Host": NOME_TS})[0] == 403
+    finally:
+        _ferma(stato_senza, srv)
+
+
+# script telefono.sh con comandi finti (tailscale, launchctl, curl, sleep, uname) e un python
+# della .venv che finge solo la lettura della porta (il resto lo fa il python vero)
+_FINTI_TS = {
+    "uname": 'echo Darwin',
+    "sleep": 'exit 0',
+    "launchctl": ('echo "launchctl $*" >> "$REGISTRO"\n'
+                  'case "$1" in\n'
+                  '  print) [ "${CRM_INSTALLATO:-si}" = si ] ;;\n'
+                  '  kickstart) [ "${CRM_RIPARTE:-si}" = si ] && touch "$REGISTRO.su"; exit 0 ;;\n'
+                  'esac'),
+    "curl": ('for a in "$@"; do u="$a"; done\n'
+             'case "$u" in\n'
+             '  http://127.0.0.1:*) [ -f "$REGISTRO.su" ] ;;\n'
+             '  https://*/api/sessione) grep -q Proxy "$REGISTRO.serve" 2>/dev/null && echo \'{"autenticato": false}\' ;;\n'
+             '  *) exit 7 ;;\n'
+             'esac'),
+    "tailscale": ('echo "tailscale $*" >> "$REGISTRO"\n'
+                  'if [ "$1" = status ]; then\n'
+                  '  echo "{\\"BackendState\\": \\"${TS_STATO:-Running}\\", \\"Self\\": {\\"DNSName\\": \\"${TS_NOME:-mac-di-gas.tail1234.ts.net.}\\"}}"; exit 0\n'
+                  'fi\n'
+                  'if [ "$1 $2" = "serve status" ]; then cat "$REGISTRO.serve" 2>/dev/null || echo null; exit 0; fi\n'
+                  'if [ "$1" = serve ]; then\n'
+                  '  for a in "$@"; do u="$a"; done\n'
+                  '  if [ "$u" = off ]; then echo null > "$REGISTRO.serve"; exit 0; fi\n'
+                  '  [ "${TS_SERVE_KO:-no}" = si ] && { echo "Serve is not enabled on your tailnet." >&2; exit 1; }\n'
+                  '  [ "${TS_SERVE_NULLA:-no}" = si ] && { echo "To enable, visit: https://login.tailscale.com/f/serve"; exit 0; }\n'
+                  '  n="${TS_NOME:-mac-di-gas.tail1234.ts.net.}"; n="${n%.}"\n'
+                  '  echo "{\\"Web\\": {\\"$n:443\\": {\\"Handlers\\": {\\"/\\": {\\"Proxy\\": \\"$u\\"}}}}}" > "$REGISTRO.serve"\n'
+                  '  exit 0\n'
+                  'fi\n'
+                  'exit 1'),
+}
+
+
+def _gas_ts_finto(tmp_path: Path, env: str = "GAS_CRM_TOKEN=segreto-di-prova-lungo\n") -> Tuple[Path, Path, Path]:
+    gas = tmp_path / "Gas"
+    (gas / "scripts" / "crm").mkdir(parents=True)
+    for f in CRM_SCRIPT_DIR.iterdir():
+        shutil.copy2(f, gas / "scripts" / "crm" / f.name)
+    (gas / ".env").write_text(env)
+    (gas / ".env").chmod(0o600)
+    (gas / ".venv" / "bin").mkdir(parents=True)
+    py = gas / ".venv/bin/python"
+    py.write_text('#!/bin/bash\n'
+                  'for a in "$@"; do if [ "$a" = "-" ]; then\n'
+                  '  s="$(cat)"; case "$s" in *"import gas"*) [ -f "$HOME/porta_ko" ] && exit 4; echo 8770; exit 0 ;; esac\n'
+                  f'  printf "%s" "$s" | exec {sys.executable} "$@"\n'
+                  'fi; done\n'
+                  f'exec {sys.executable} "$@"\n')
+    py.chmod(0o755)
+    finti = tmp_path / "finti"
+    finti.mkdir()
+    for nome_cmd, corpo in _FINTI_TS.items():
+        p = finti / nome_cmd
+        p.write_text("#!/bin/bash\n" + corpo + "\n")
+        p.chmod(0o755)
+    casa = tmp_path / "casa"
+    casa.mkdir()
+    return gas, finti, casa
+
+
+def _telefono(gas: Path, finti: Path, casa: Path, tmp_path: Path, *argomenti: str,
+              **extra: str) -> Tuple[subprocess.CompletedProcess, str]:
+    registro = tmp_path / "registro.txt"
+    env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(registro), **extra}
+    r = subprocess.run(["bash", str(gas / "scripts/crm/telefono.sh"), *argomenti],
+                       capture_output=True, text=True, timeout=60, env=env)
+    return r, registro.read_text() if registro.exists() else ""
+
+
+def test_telefono_accende_solo_nella_rete_privata(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path, env="GAS_CRM_TOKEN=segreto-di-prova-lungo\nALTRO=1\n")
+    r, registro = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert f"https://{NOME_TS}/" in r.stdout
+    righe = (gas / ".env").read_text().splitlines()
+    assert righe == ["GAS_CRM_TOKEN=segreto-di-prova-lungo", "ALTRO=1", f"GAS_CRM_NOME_TAILSCALE={NOME_TS}"]
+    assert (gas / ".env").stat().st_mode & 0o777 == 0o600  # il file delle chiavi resta privato
+    assert "tailscale serve --bg --yes --https=443 http://127.0.0.1:8770" in registro
+    assert "funnel" not in registro  # mai il funnel (internet)
+    assert f"launchctl kickstart -k gui/{os.getuid()}/com.gas.crm" in registro
+    assert "segreto-di-prova-lungo" not in r.stdout + r.stderr + registro
+    # di nuovo: niente doppioni nel .env e serve già a posto non si rifà
+    r, registro2 = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0 and (gas / ".env").read_text().count("GAS_CRM_NOME_TAILSCALE") == 1
+    assert registro2[len(registro):].count("serve --bg") == 0
+    # stato e spegnimento: via il collegamento e la riga, il resto del .env intatto
+    r, _ = _telefono(gas, finti, casa, tmp_path, "stato")
+    assert r.returncode == 0 and "Acceso" in r.stdout
+    r, registro3 = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert r.returncode == 0 and "tailscale serve --yes --https=443 off" in registro3
+    assert (gas / ".env").read_text().splitlines() == ["GAS_CRM_TOKEN=segreto-di-prova-lungo", "ALTRO=1"]
+    r, _ = _telefono(gas, finti, casa, tmp_path, "stato")
+    assert "Spento" in r.stdout
+
+
+@pytest.mark.parametrize("extra, messaggio", [
+    ({"TS_STATO": "NeedsLogin"}, "accedi"),
+    ({"TS_NOME": "mac.local."}, "non è un nome *.ts.net"),
+    ({"CRM_INSTALLATO": "no"}, "prima lancia bash scripts/crm/installa.sh"),
+])
+def test_telefono_si_ferma_prima_di_toccare_qualcosa(tmp_path: Path, extra: Dict[str, str],
+                                                    messaggio: str) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path, **extra)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert (gas / ".env").read_text() == prima and "serve --bg" not in registro
+
+
+def test_telefono_senza_tailscale(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (finti / "tailscale").unlink()
+    r, _ = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and "Mac App Store" in r.stderr
+
+
+@pytest.mark.parametrize("configurazione, messaggio", [
+    ({"AllowFunnel": {f"{NOME_TS}:443": True}}, "funnel PUBBLICO"),
+    ({"Web": {f"{NOME_TS}:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:3000"}}}}}, "un altro servizio"),
+])
+def test_telefono_non_tocca_un_funnel_o_un_altro_servizio(tmp_path: Path, configurazione: Dict[str, Any],
+                                                         messaggio: str) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (tmp_path / "registro.txt.serve").write_text(json.dumps(configurazione))
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert (gas / ".env").read_text() == prima and "serve --bg" not in registro
+    assert json.loads((tmp_path / "registro.txt.serve").read_text()) == configurazione
+
+
+def test_telefono_serve_fallito_rimette_tutto_com_era(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path, TS_SERVE_KO="si")
+    assert r.returncode == 1 and "tailscale serve non riuscito" in r.stderr
+    assert (gas / ".env").read_text() == prima
+    assert registro.count("launchctl kickstart") == 2  # col nome e di nuovo senza
+
+
+def test_telefono_env_collegato_resta_collegato(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    vero = tmp_path / "chiavi.env"
+    vero.write_text((gas / ".env").read_text())
+    (gas / ".env").unlink()
+    (gas / ".env").symlink_to(vero)
+    r, _ = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (gas / ".env").is_symlink() and f"GAS_CRM_NOME_TAILSCALE={NOME_TS}" in vero.read_text()
+
+
+def test_telefono_spegni_anche_con_tailscale_spento(tmp_path: Path) -> None:
+    """R-860-2 (a): spegni toglie SEMPRE la riga dal .env e riavvia il CRM, anche se
+    Tailscale è spento; poi dice di rilanciare per togliere il collegamento salvato."""
+    gas, finti, casa = _gas_ts_finto(tmp_path, env=f"GAS_CRM_TOKEN=segreto-di-prova-lungo\n"
+                                                    f"GAS_CRM_NOME_TAILSCALE = {NOME_TS}\n"
+                                                    f"export GAS_CRM_NOME_TAILSCALE={NOME_TS}\n")
+    r, registro = _telefono(gas, finti, casa, tmp_path, "spegni", TS_STATO="Stopped")
+    assert r.returncode == 2 and "SOLO IN PARTE" in r.stderr, r.stdout + r.stderr
+    assert "rilancia: bash scripts/crm/telefono.sh spegni" in r.stderr
+    assert (gas / ".env").read_text() == "GAS_CRM_TOKEN=segreto-di-prova-lungo\n"
+    assert "launchctl kickstart" in registro and "serve --yes --https=443 off" not in registro
+
+
+def test_telefono_spegni_toglie_anche_se_c_e_un_funnel(tmp_path: Path) -> None:
+    """R-860-2 (b): con «nostro pubblico» il collegamento si toglie e si avvisa del funnel."""
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (tmp_path / "registro.txt.serve").write_text(json.dumps({
+        "Web": {f"{NOME_TS}:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8770"}}}},
+        "AllowFunnel": {f"{NOME_TS}:443": True}}))
+    r, registro = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert r.returncode == 2 and "serve --yes --https=443 off" in registro
+    assert "funnel PUBBLICO" in r.stderr
+
+
+def test_telefono_spegni_senza_env_non_lo_crea(tmp_path: Path) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (gas / ".env").unlink()
+    r, _ = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not (gas / ".env").exists()
+
+
+@pytest.mark.parametrize("contenuto, messaggio", [
+    # funnel acceso in primo piano su un'altra porta (R-860-1)
+    (json.dumps({"Foreground": {"sessione": {"AllowFunnel": {f"{NOME_TS}:8443": True}}}}), "funnel PUBBLICO"),
+    # JSON illeggibile: «errore», non «libero» (R-860-5)
+    ("Warning: client version differs\n{}", "non riesco a leggere"),
+])
+def test_telefono_funnel_ovunque_e_json_illeggibile(tmp_path: Path, contenuto: str, messaggio: str) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    (tmp_path / "registro.txt.serve").write_text(contenuto)
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 1 and messaggio in r.stderr, r.stdout + r.stderr
+    assert (gas / ".env").read_text() == prima and "serve --bg" not in registro
+
+
+def test_telefono_https_da_attivare_rimette_tutto_e_lo_dice(tmp_path: Path) -> None:
+    """R-860-4: la prima volta Tailscale stampa un link ed esce 0 senza collegare."""
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    prima = (gas / ".env").read_text()
+    r, registro = _telefono(gas, finti, casa, tmp_path, TS_SERVE_NULLA="si")
+    assert r.returncode == 1 and "Enable" in r.stderr and "rilancia" in r.stderr, r.stdout + r.stderr
+    assert (gas / ".env").read_text() == prima
+    assert registro.count("launchctl kickstart") == 2
+
+
+def test_spegni_crm_spegne_anche_il_telefono(tmp_path: Path) -> None:
+    """R-860-3: spegni.sh toglie anche l'accesso dal telefono."""
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    r, _ = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    r, registro = _telefono(gas, finti, casa, tmp_path)  # stessa preparazione, poi spegni.sh
+    registro_prima = len(registro)
+    env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(tmp_path / "registro.txt")}
+    r = subprocess.run(["bash", str(gas / "scripts/crm/spegni.sh")], capture_output=True, text=True,
+                       timeout=60, env=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    nuovo = (tmp_path / "registro.txt").read_text()[registro_prima:]
+    assert "tailscale serve --yes --https=443 off" in nuovo
+    assert "GAS_CRM_NOME_TAILSCALE" not in (gas / ".env").read_text()
+
+
+@pytest.mark.parametrize("gestori, porta_ko", [
+    ({"/": {"Text": "ciao"}}, True),  # porta illeggibile e un gestore di testo (R-861-2)
+    ({"/": {"Proxy": "http://127.0.0.1:8770"}, "/altro": {"Proxy": "http://127.0.0.1:3000"}}, False),
+    ({"/": {"Proxy": "http://127.0.0.1:87700"}}, False),  # la nostra porta come prefisso
+])
+def test_telefono_spegni_non_tocca_i_collegamenti_di_altri(tmp_path: Path, gestori: Dict[str, Any],
+                                                          porta_ko: bool) -> None:
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    configurazione = {"Web": {f"{NOME_TS}:443": {"Handlers": gestori}}}
+    (tmp_path / "registro.txt.serve").write_text(json.dumps(configurazione))
+    if porta_ko:
+        (casa / "porta_ko").touch()
+    r, registro = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert "serve --yes --https=443 off" not in registro, r.stdout + r.stderr
+    assert json.loads((tmp_path / "registro.txt.serve").read_text()) == configurazione
+    if porta_ko:  # senza porta: niente «OK», uscita 2, ma il CRM si riavvia senza il nome
+        assert r.returncode == 2 and "launchctl kickstart" in registro
+
+
+def test_telefono_spegni_off_fallito_non_dice_ok(tmp_path: Path) -> None:
+    """R-861-1: se il collegamento non si toglie, niente «OK» e uscita diversa da 0."""
+    gas, finti, casa = _gas_ts_finto(tmp_path)
+    r, _ = _telefono(gas, finti, casa, tmp_path)
+    assert r.returncode == 0
+    (finti / "tailscale").write_text((finti / "tailscale").read_text().replace(
+        'if [ "$u" = off ]; then echo null > "$REGISTRO.serve"; exit 0; fi',
+        'if [ "$u" = off ]; then exit 1; fi'))
+    r, _ = _telefono(gas, finti, casa, tmp_path, "spegni")
+    assert r.returncode == 2 and "OK:" not in r.stdout and "non riesco a togliere" in r.stderr
+

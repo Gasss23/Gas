@@ -155,12 +155,13 @@ def _main_finto(monkeypatch, tmp_path, ambiente, conferma_cls=None, rilevatore=N
               "GAS_ASCOLTO_SOGLIA_INTERRUZIONE", "GAS_VOICE_URL", "GAS_VOICE_PORT",
               "GAS_ASCOLTO_SOGLIA", "GAS_ASCOLTO_BLOCCHI_PAROLA", "GAS_VOICE_MAX_TURNI",
               "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE", "GAS_ASCOLTO_VERIFICA",
-              "GAS_ASCOLTO_SOGLIA_VERIFICA", "GAS_ASCOLTO_SOGLIA_BASE", "GAS_ASCOLTO_MODELLO"):
+              "GAS_ASCOLTO_SOGLIA_VERIFICA", "GAS_ASCOLTO_SOGLIA_BASE", "GAS_ASCOLTO_MODELLO",
+              "GAS_ASCOLTO_FASI"):   # V-3 bot #400
         monkeypatch.delenv(k, raising=False)
     for k, v in ambiente.items():
         monkeypatch.setenv(k, v)
     monkeypatch.setattr(a, "rilevatore_openwakeword",
-                        rilevatore or (lambda m: (lambda b: 0.0, lambda: None)))
+                        rilevatore or (lambda m, **k: (lambda b: 0.0, lambda: None)))
     monkeypatch.setattr(a, "scarica_conferma", lambda url, token: b"SI")
     monkeypatch.setattr(a, "Conferma", conferma_cls or (lambda scarica: (lambda: scarica())))
     monkeypatch.setattr(a.time, "sleep",
@@ -1742,7 +1743,7 @@ def test_main_usa_la_porta_del_server(monkeypatch, tmp_path):
     monkeypatch.delenv("GAS_VOICE_URL", raising=False)
     monkeypatch.setenv("GAS_VOICE_PORT", "9001")
     visti = []
-    monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m: (lambda b: 0.0, lambda: None))
+    monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m, **k: (lambda b: 0.0, lambda: None))
     monkeypatch.setattr(a, "invia_al_server",
                         lambda url, token, timeout, seguito=False:
                         (visti.append((url, seguito)), lambda wav: (False, None, ""))[1])
@@ -1914,6 +1915,8 @@ def _gas_finto(tmp_path, nome="Gas", env="GAS_VOICE_TOKEN=segreto-di-prova\n"):
         (gas / "scripts" / "voce" / f.name).write_bytes(f.read_bytes())
     (gas / "clients" / "voice").mkdir(parents=True)
     (gas / "clients/voice/requirements-ascolto.txt").write_text("")
+    (gas / "clients" / "voice" / "modelli").mkdir()
+    (gas / "clients/voice/modelli/ehi_jarvis_it.onnx").write_bytes(b"onnx-finto")
     (gas / "requirements.txt").write_text("")
     (gas / "gas.py").write_text("")
     (gas / ".env").write_text(env)
@@ -1930,13 +1933,79 @@ def _gas_finto(tmp_path, nome="Gas", env="GAS_VOICE_TOKEN=segreto-di-prova\n"):
     return gas, finti, casa
 
 
-def _installa(gas, finti, casa, tmp_path, **extra):
+def _installa(gas, finti, casa, tmp_path, *argomenti, **extra):
     registro = tmp_path / "registro.txt"
     env = {"PATH": f"{finti}:/usr/bin:/bin", "HOME": str(casa), "REGISTRO": str(registro),
            **extra}
-    r = subprocess.run(["bash", str(gas / "scripts/voce/installa.sh")], capture_output=True,
+    r = subprocess.run(["bash", str(gas / "scripts/voce/installa.sh"), *argomenti],
+                       capture_output=True,
                        text=True, timeout=60, env=env)
     return r, registro.read_text() if registro.exists() else ""
+
+
+def test_installa_copia_il_modello_italiano_e_lo_sceglie(tmp_path):
+    """Modello ehi_jarvis_it: copiato nella cartella fidata (700, file 600); il .env lo
+    sceglie solo se non sceglie già un modello."""
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    f = gas / ".gas_voce/modelli/ehi_jarvis_it.onnx"
+    assert f.read_bytes() == b"onnx-finto"
+    assert stat.S_IMODE(f.stat().st_mode) == 0o600
+    assert stat.S_IMODE(f.parent.stat().st_mode) == 0o700
+    assert (gas / ".env").read_text().count("GAS_ASCOLTO_MODELLO=ehi_jarvis_it") == 1
+    r, _ = _installa(gas, finti, casa, tmp_path)   # seconda volta: non si raddoppia
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (gas / ".env").read_text().count("GAS_ASCOLTO_MODELLO") == 1
+    assert (gas / ".env").read_text().count("GAS_ASCOLTO_SOGLIA=0.5") == 1
+
+
+def test_installa_non_tocca_una_soglia_gia_scelta(tmp_path):
+    """V-1 ve #405: la soglia 0.5 si scrive solo se il .env non ne ha già una; senza il
+    filtro hey_jarvis nessun avviso sul filtro (lacuna #855)."""
+    gas, finti, casa = _gas_finto(
+        tmp_path, env="GAS_VOICE_TOKEN=segreto-di-prova\nGAS_ASCOLTO_SOGLIA=0.6\n")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    testo = (gas / ".env").read_text()
+    assert "GAS_ASCOLTO_SOGLIA=0.6" in testo and "GAS_ASCOLTO_SOGLIA=0.5" not in testo
+    assert "GAS_ASCOLTO_MODELLO=ehi_jarvis_it" in testo
+    assert "filtro della tua voce" not in r.stdout
+
+
+def test_installa_col_filtro_hey_jarvis_cambia_modello_solo_con_italiano(tmp_path):
+    """V-1 bot #405: col filtro della voce per hey_jarvis il modello italiano (che lo
+    spegne) si sceglie solo con --italiano, scelta esplicita dell'operatore."""
+    gas, finti, casa = _gas_finto(tmp_path)
+    (gas / ".gas_voce" / "verifica").mkdir(parents=True)
+    (gas / ".gas_voce/verifica/hey_jarvis_verifier.pkl").write_bytes(b"x")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "GAS_ASCOLTO" not in (gas / ".env").read_text()
+    assert "--italiano" in r.stdout
+    assert (gas / ".gas_voce/modelli/ehi_jarvis_it.onnx").exists()
+    r, _ = _installa(gas, finti, casa, tmp_path, "--italiano")
+    assert r.returncode == 0, r.stdout + r.stderr
+    testo = (gas / ".env").read_text()
+    assert "GAS_ASCOLTO_MODELLO=ehi_jarvis_it" in testo and "GAS_ASCOLTO_SOGLIA=0.5" in testo
+    assert "filtro della tua voce" in r.stdout and "GAS_ASCOLTO_SOGLIA=0.5" in r.stdout
+
+
+def test_installa_opzione_sconosciuta_si_ferma(tmp_path):
+    gas, finti, casa = _gas_finto(tmp_path)
+    r, _ = _installa(gas, finti, casa, tmp_path, "--boh")
+    assert r.returncode == 1 and "opzione sconosciuta" in r.stderr
+    assert "GAS_ASCOLTO" not in (gas / ".env").read_text()
+
+
+def test_installa_lascia_il_modello_scelto_nel_env(tmp_path):
+    gas, finti, casa = _gas_finto(
+        tmp_path, env="GAS_VOICE_TOKEN=segreto-di-prova\nGAS_ASCOLTO_MODELLO=hey_jarvis\n")
+    r, _ = _installa(gas, finti, casa, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    testo = (gas / ".env").read_text()
+    assert "GAS_ASCOLTO_MODELLO=hey_jarvis" in testo and "ehi_jarvis_it" not in testo
+    assert (gas / ".gas_voce/modelli/ehi_jarvis_it.onnx").exists()
 
 
 def test_installa_arriva_in_fondo_senza_porta_nel_env(tmp_path):
@@ -2189,22 +2258,25 @@ def test_installa_scrive_gas_claude_bin(tmp_path):
 
 
 def test_installa_non_tocca_un_gas_claude_bin_esistente(tmp_path):
-    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\nGAS_CLAUDE_BIN=/opt/c\n")
+    # GAS_ASCOLTO_MODELLO già scelto: il .env deve restare identico, byte per byte
+    pieno = "GAS_VOICE_TOKEN=x\nGAS_ASCOLTO_MODELLO=hey_jarvis\nGAS_CLAUDE_BIN=/opt/c\n"
+    gas, finti, casa = _gas_finto(tmp_path, env=pieno)
     (finti / "claude").write_text("#!/bin/bash\nexit 0\n")
     (finti / "claude").chmod(0o755)
     r, _ = _installa(gas, finti, casa, tmp_path)
-    assert r.returncode == 0 and (gas / ".env").read_text() == "GAS_VOICE_TOKEN=x\nGAS_CLAUDE_BIN=/opt/c\n"
+    assert r.returncode == 0 and (gas / ".env").read_text() == pieno
 
 
 @pytest.mark.parametrize("riga", ["GAS_CLAUDE_BIN=", "GAS_CLAUDE_BIN= # da mettere"])
 def test_installa_gas_claude_bin_vuoto_avvisa_e_non_raddoppia(tmp_path, riga):
     """R-624-3: una riga vuota non si raddoppia (vale la prima) e si avvisa."""
-    gas, finti, casa = _gas_finto(tmp_path, env="GAS_VOICE_TOKEN=x\n" + riga + "\n")
+    pieno = "GAS_VOICE_TOKEN=x\nGAS_ASCOLTO_MODELLO=hey_jarvis\n" + riga + "\n"
+    gas, finti, casa = _gas_finto(tmp_path, env=pieno)
     (finti / "claude").write_text("#!/bin/bash\nexit 0\n")
     (finti / "claude").chmod(0o755)
     r, _ = _installa(gas, finti, casa, tmp_path)
     assert r.returncode == 0 and "GAS_CLAUDE_BIN è vuoto" in r.stdout
-    assert (gas / ".env").read_text() == "GAS_VOICE_TOKEN=x\n" + riga + "\n"
+    assert (gas / ".env").read_text() == pieno
 
 
 def test_installa_avvisa_se_claude_manca(tmp_path):
@@ -2979,6 +3051,18 @@ def test_main_avvisa_se_il_env_rende_la_parola_piu_facile(monkeypatch, tmp_path,
     assert "interruzione spenta" in caplog.text
 
 
+def test_avviso_blocchi_interruzione_col_filtro_confronta_con_1(monkeypatch, tmp_path, caplog):
+    """R-816-1 / V-2 bot #400: col filtro della voce il predefinito dei blocchi
+    d'interruzione è 1: =1 nel .env non è «più facile» (nessun avviso), e il confronto non
+    torna mai a 3."""
+    _verificatore(tmp_path)
+    with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_BLOCCHI_INTERRUZIONE": "1"},
+                        rilevatore=_rilevatore_registrato([]))
+    assert "verifica della voce: attiva" in caplog.text
+    assert k.get("blocchi_interruzione") == 1
+    assert "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE" not in caplog.text
+
 # ── «parola quasi sentita» (sera dell'11/11: chiamate vere scartate senza traccia) ──
 
 def _ascolto_quasi(valori, soglia=0.7, blocchi_parola=3, n_blocchi=None):
@@ -3280,6 +3364,27 @@ def test_verifica_solo_dalla_cartella_locale(monkeypatch, tmp_path):
         tmp_path / ".gas_voce" / "verifica" / "hey_jarvis_verifier.pkl")
 
 
+def test_modello_della_parola_da_file_locale(monkeypatch, tmp_path):
+    """GAS_ASCOLTO_MODELLO=<nome>: il file .gas_voce/modelli/<nome>.onnx se c'è ed è
+    fidato, altrimenti il nome (modello pronto); mai un percorso preso dall'ambiente."""
+    assert a.modello_della_parola("hey_jarvis", tmp_path) == "hey_jarvis"
+    # V-4 ve #405: nostro modello senza file → hey_jarvis; modello pronto → il suo nome
+    monkeypatch.setattr(a, "_modelli_pronti", lambda: {"hey_jarvis", "alexa"})
+    assert a.modello_della_parola("ehi_jarvis_it", tmp_path) == "hey_jarvis"
+    assert a.modello_della_parola("alexa", tmp_path) == "alexa"
+    d = tmp_path / ".gas_voce" / "modelli"
+    d.mkdir(parents=True, mode=0o700)
+    os.chmod(tmp_path / ".gas_voce", 0o700)
+    f = d / "ehi_jarvis_it.onnx"
+    f.write_bytes(b"onnx")
+    os.chmod(f, 0o600)
+    assert a.modello_della_parola("ehi_jarvis_it", tmp_path) == str(f)
+    for modello in ("../ehi_jarvis_it", "/tmp/x.onnx", "Ehi Jarvis", ""):
+        assert a.modello_della_parola(modello, tmp_path) == modello
+    os.chmod(f, 0o666)   # scrivibile da altri: non si carica, si ripiega su hey_jarvis
+    assert a.modello_della_parola("ehi_jarvis_it", tmp_path) == "hey_jarvis"
+
+
 def test_verifica_file_non_fidato_non_si_carica(monkeypatch, tmp_path, caplog):
     _pulisci_verifica(monkeypatch)
     p = _verificatore(tmp_path, modo=0o666)
@@ -3367,6 +3472,21 @@ def _openwakeword_finto(monkeypatch, rompi=False):
     monkeypatch.setitem(sys.modules, "numpy", np_finto)
 
 
+def test_rilevatore_passa_a_openwakeword_il_file_fidato(monkeypatch, tmp_path):
+    """V-3 bot #405: col modello da file fidato Model() riceve il percorso del file."""
+    _openwakeword_finto(monkeypatch)
+    monkeypatch.setattr(a, "_GAS_ROOT", tmp_path)
+    d = tmp_path / ".gas_voce" / "modelli"
+    d.mkdir(parents=True, mode=0o700)
+    os.chmod(tmp_path / ".gas_voce", 0o700)
+    f = d / "ehi_jarvis_it.onnx"
+    f.write_bytes(b"onnx")
+    os.chmod(f, 0o600)
+    a.rilevatore_openwakeword("ehi_jarvis_it")
+    assert _ModelFinto.creati == [{"wakeword_models": [str(f)],
+                                   "inference_framework": "onnx"}]
+
+
 def test_rilevatore_carica_il_verificatore(monkeypatch, tmp_path):
     _pulisci_verifica(monkeypatch)
     _openwakeword_finto(monkeypatch)
@@ -3411,15 +3531,16 @@ def test_main_con_la_verifica_usa_la_sua_soglia(monkeypatch, tmp_path, caplog):
     p = _verificatore(tmp_path)
     visti = []
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
-        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.6"},
+        k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.4"},
                         rilevatore=_rilevatore_registrato(visti))
-    assert visti == [{"verificatore": p, "soglia_base": 0.25}]
-    assert a.SOGLIA_VERIFICA_PREDEFINITA == 0.5
+    assert visti == [{"verificatore": p, "soglia_base": 0.25, "fasi": a.FASI_PREDEFINITE}]
+    assert a.SOGLIA_VERIFICA_PREDEFINITA == 0.6   # V-1 bot #400: 0,6 con le 4 fasi
     assert k.get("soglia") == a.SOGLIA_VERIFICA_PREDEFINITA   # GAS_ASCOLTO_SOGLIA non conta
-    assert k.get("soglia_interruzione") == 0.8 and k.get("blocchi_interruzione") == 3
+    # simulazione 23/11: con la verifica 0,8 su 3 blocchi non scattava quasi mai
+    assert k.get("soglia_interruzione") == 0.6 and k.get("blocchi_interruzione") == 1
     assert "verifica della voce: attiva (1 persona, soglia base 0.25)" in caplog.text
-    assert ("regolazioni in uso: soglia 0.50, blocchi di fila 1, turni 1, finestra 10 s, "
-            "interruzione 0.80 su 3 blocchi, voce 200, verifica della voce attiva "
+    assert ("regolazioni in uso: soglia 0.60, blocchi di fila 1, turni 1, finestra 10 s, "
+            "interruzione 0.60 su 1 blocchi, voce 200, verifica della voce attiva "
             "(1 persona, soglia base 0.25)") in caplog.text
     assert "GAS_ASCOLTO_SOGLIA non conta con la verifica della voce attiva" in caplog.text
     assert "più facile dei predefiniti" not in caplog.text
@@ -3435,25 +3556,31 @@ def test_main_soglie_della_verifica_mai_sotto_la_base(monkeypatch, tmp_path, cap
                                                 "GAS_ASCOLTO_SOGLIA_BASE": "0.3"},
                         rilevatore=_rilevatore_registrato([]))
     assert k.get("soglia") == 0.3 and k.get("soglia_interruzione") == 0.3
-    assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.3 (predefinito 0.5)" in caplog.text
+    assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.3 (predefinito 0.6)" in caplog.text
 
 
 def test_main_verifica_rotta_spenta_assente(monkeypatch, tmp_path, caplog):
     _verificatore(tmp_path)
 
+    chiamate = []
+
     def rotto(modello, **k):
-        if k:
+        chiamate.append(dict(k))
+        if k.get("verificatore"):
             raise ValueError("pickle rotto")
         return (lambda b: 0.0), (lambda: None)
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         k = _main_finto(monkeypatch, tmp_path, {}, rilevatore=rotto)
     assert k.get("soglia") == a.SOGLIA_PREDEFINITA
+    # R-819-1: il ripiego senza filtro gira a 1 fase (niente «fasi»), non a 4
+    assert chiamate[0].get("fasi") == a.FASI_PREDEFINITE and chiamate[-1] == {}
     assert "verifica della voce: non caricata (ValueError): ascolto senza verifica" in caplog.text
     caplog.clear()
     visti = []
     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
         k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_VERIFICA": "0"},
                         rilevatore=_rilevatore_registrato(visti))
+    # V-2 bot #400: senza verifica attiva una fase sola (niente «fasi»)
     assert visti == [{}] and k.get("soglia") == a.SOGLIA_PREDEFINITA
     assert "verifica della voce: spenta" in caplog.text
     caplog.clear()
@@ -3851,11 +3978,26 @@ def test_taratura_con_la_verifica_consiglia_la_sua_soglia(capsys):
     assert t.main(["--secondi", "5"], sorgente=sorgente) == 0
     out = capsys.readouterr().out
     assert "GAS_ASCOLTO_SOGLIA_VERIFICA=0.8" in out
-    # 0,5 non è più permissiva del predefinito della verifica (0,5): nessun avviso
+    # 0,6 non è più permissiva del predefinito della verifica (0,6): nessun avviso
     p = [0.0] * t.PAUSA_BLOCCHI
-    righe = t.consiglio(list(t.salite([0.0, 0.55] + p + [0.95, 0.0])), 0, verifica=True)
-    assert any("GAS_ASCOLTO_SOGLIA_VERIFICA=0.5" in r for r in righe)
+    righe = t.consiglio(list(t.salite([0.0, 0.65] + p + [0.95, 0.0])), 0, verifica=True)
+    assert any("GAS_ASCOLTO_SOGLIA_VERIFICA=0.6" in r for r in righe)
     assert not any("più permissiva" in r for r in righe)
+    # 0,5 sì (V-1 bot #400: col massimo su 4 fasi 0,5 fa scattare di più)
+    righe = t.consiglio(list(t.salite([0.0, 0.55] + p + [0.95, 0.0])), 0, verifica=True)
+    assert any("più permissiva" in r for r in righe)
+
+
+def test_fasi_predefinite_solo_con_la_verifica(monkeypatch):
+    """V-2 bot #400: 4 fasi solo col filtro della voce attivo (senza, alzano i falsi);
+    GAS_ASCOLTO_FASI vince sempre."""
+    monkeypatch.delenv("GAS_ASCOLTO_FASI", raising=False)
+    assert a.fasi_predefinite(None) == 1
+    assert a.fasi_predefinite(a.Verifica("assente")) == 1
+    attiva = a.Verifica("attiva")
+    assert attiva.attiva and a.fasi_predefinite(attiva) == a.FASI_PREDEFINITE == 4
+    monkeypatch.setenv("GAS_ASCOLTO_FASI", "2")
+    assert a.fasi_predefinite(None) == 2 and a.fasi_predefinite(attiva) == 2
 
 
 def test_taratura_usa_il_rilevatore_con_la_verifica(monkeypatch, tmp_path, capsys):
@@ -3877,6 +4019,8 @@ def test_taratura_usa_il_rilevatore_con_la_verifica(monkeypatch, tmp_path, capsy
     punteggi, chiudi, verifica = t._punteggi_dal_microfono(0.4, "hey_jarvis")
     assert verifica is True and len(list(punteggi)) == 5
     assert visti and visti[0]["soglia_base"] == 0.25
+    # R-815-1: la taratura misura con le stesse fasi dell'ascolto
+    assert visti[0].get("fasi") == a.FASI_PREDEFINITE
     assert "Verifica della voce: attiva" in capsys.readouterr().out
 
 
@@ -3901,3 +4045,60 @@ def test_verifica_modulo_mancante(monkeypatch, tmp_path, nome, rilancia):
     else:
         a.rilevatore_con_verifica("hey_jarvis", v)
         assert v.stato == "non caricata" and v.motivo == "ModuleNotFoundError"
+
+
+def test_interruzione_con_la_verifica_rispetta_il_env(monkeypatch, tmp_path):
+    """Con valori nel .env per l'interruzione valgono quelli (mai sotto la base)."""
+    _verificatore(tmp_path)
+    k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA_INTERRUZIONE": "0.7",
+                                            "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE": "2"},
+                    rilevatore=_rilevatore_registrato([]))
+    assert k.get("soglia_interruzione") == 0.7 and k.get("blocchi_interruzione") == 2
+
+
+def test_senza_verifica_l_interruzione_resta_0_8_su_3(monkeypatch, tmp_path):
+    k = _main_finto(monkeypatch, tmp_path, {}, rilevatore=_rilevatore_registrato([]))
+    assert k.get("soglia_interruzione") == 0.8 and k.get("blocchi_interruzione") == 3
+
+
+def test_rilevatore_a_fasi_sfalsate(monkeypatch):
+    """GAS_ASCOLTO_FASI: N modelli, ognuno riceve blocchi da 80 ms sfalsati di BLOCCO/N
+    campioni (in ritardo, mai in anticipo); il punteggio è il massimo; azzera li azzera tutti."""
+    import sys
+    import types
+    np = pytest.importorskip("numpy")
+    visti = []
+
+    class Finto:
+        def __init__(self, **k):
+            self.i = len(visti)
+            visti.append([])
+
+        def predict(self, x):
+            visti[self.i].append(np.array(x))
+            return {"hey_jarvis": 0.1 * (self.i + 1)}
+
+        def reset(self):
+            visti[self.i].append("reset")
+    mod = types.ModuleType("openwakeword.model")
+    mod.Model = Finto
+    monkeypatch.setitem(sys.modules, "openwakeword", types.ModuleType("openwakeword"))
+    monkeypatch.setitem(sys.modules, "openwakeword.model", mod)
+    punteggio, azzera = a.rilevatore_openwakeword("hey_jarvis", fasi=4)
+    flusso = np.arange(3 * a.BLOCCO, dtype=np.int16)
+    for i in range(3):
+        assert punteggio(flusso[i * a.BLOCCO:(i + 1) * a.BLOCCO]) == pytest.approx(0.4)
+    for f in range(4):
+        ultimo = visti[f][-1]
+        assert len(ultimo) == a.BLOCCO
+        rit = f * a.BLOCCO // 4
+        assert list(ultimo) == list(flusso[2 * a.BLOCCO - rit: 3 * a.BLOCCO - rit])
+    azzera()
+    assert all(v[-1] == "reset" for v in visti)
+    # R-815-4: azzera svuota anche la coda: dopo, i modelli in ritardo vedono silenzio
+    # davanti al blocco nuovo, non l'audio di prima
+    nuovo = np.full(a.BLOCCO, 7, dtype=np.int16)
+    punteggio(nuovo)
+    for f in range(1, 4):
+        rit = f * a.BLOCCO // 4
+        assert list(visti[f][-1][:rit]) == [0] * rit

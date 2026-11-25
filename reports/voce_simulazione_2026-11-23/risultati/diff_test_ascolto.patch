@@ -1,0 +1,110 @@
+--- ../sim_voce/test_orig.py	2026-11-23 17:03:27.905328228 +0000
++++ tests/test_unit_voce_ascolto.py	2026-11-23 17:05:33.262243576 +0000
+@@ -160,7 +160,7 @@
+     for k, v in ambiente.items():
+         monkeypatch.setenv(k, v)
+     monkeypatch.setattr(a, "rilevatore_openwakeword",
+-                        rilevatore or (lambda m: (lambda b: 0.0, lambda: None)))
++                        rilevatore or (lambda m, **k: (lambda b: 0.0, lambda: None)))
+     monkeypatch.setattr(a, "scarica_conferma", lambda url, token: b"SI")
+     monkeypatch.setattr(a, "Conferma", conferma_cls or (lambda scarica: (lambda: scarica())))
+     monkeypatch.setattr(a.time, "sleep",
+@@ -1742,7 +1742,7 @@
+     monkeypatch.delenv("GAS_VOICE_URL", raising=False)
+     monkeypatch.setenv("GAS_VOICE_PORT", "9001")
+     visti = []
+-    monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m: (lambda b: 0.0, lambda: None))
++    monkeypatch.setattr(a, "rilevatore_openwakeword", lambda m, **k: (lambda b: 0.0, lambda: None))
+     monkeypatch.setattr(a, "invia_al_server",
+                         lambda url, token, timeout, seguito=False:
+                         (visti.append((url, seguito)), lambda wav: (False, None, ""))[1])
+@@ -3413,13 +3413,14 @@
+     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+         k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA": "0.6"},
+                         rilevatore=_rilevatore_registrato(visti))
+-    assert visti == [{"verificatore": p, "soglia_base": 0.25}]
++    assert visti == [{"verificatore": p, "soglia_base": 0.25, "fasi": a.FASI_PREDEFINITE}]
+     assert a.SOGLIA_VERIFICA_PREDEFINITA == 0.5
+     assert k.get("soglia") == a.SOGLIA_VERIFICA_PREDEFINITA   # GAS_ASCOLTO_SOGLIA non conta
+-    assert k.get("soglia_interruzione") == 0.8 and k.get("blocchi_interruzione") == 3
++    # simulazione 23/11: con la verifica 0,8 su 3 blocchi non scattava quasi mai
++    assert k.get("soglia_interruzione") == 0.5 and k.get("blocchi_interruzione") == 1
+     assert "verifica della voce: attiva (1 persona, soglia base 0.25)" in caplog.text
+     assert ("regolazioni in uso: soglia 0.50, blocchi di fila 1, turni 1, finestra 10 s, "
+-            "interruzione 0.80 su 3 blocchi, voce 200, verifica della voce attiva "
++            "interruzione 0.50 su 1 blocchi, voce 200, verifica della voce attiva "
+             "(1 persona, soglia base 0.25)") in caplog.text
+     assert "GAS_ASCOLTO_SOGLIA non conta con la verifica della voce attiva" in caplog.text
+     assert "più facile dei predefiniti" not in caplog.text
+@@ -3442,7 +3443,7 @@
+     _verificatore(tmp_path)
+ 
+     def rotto(modello, **k):
+-        if k:
++        if k.get("verificatore"):
+             raise ValueError("pickle rotto")
+         return (lambda b: 0.0), (lambda: None)
+     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+@@ -3454,7 +3455,7 @@
+     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+         k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_VERIFICA": "0"},
+                         rilevatore=_rilevatore_registrato(visti))
+-    assert visti == [{}] and k.get("soglia") == a.SOGLIA_PREDEFINITA
++    assert visti == [{"fasi": a.FASI_PREDEFINITE}] and k.get("soglia") == a.SOGLIA_PREDEFINITA
+     assert "verifica della voce: spenta" in caplog.text
+     caplog.clear()
+     with caplog.at_level(logging.INFO, logger="gas.ascolto"):
+@@ -3901,3 +3902,53 @@
+     else:
+         a.rilevatore_con_verifica("hey_jarvis", v)
+         assert v.stato == "non caricata" and v.motivo == "ModuleNotFoundError"
++
++
++def test_interruzione_con_la_verifica_rispetta_il_env(monkeypatch, tmp_path):
++    """Con valori nel .env per l'interruzione valgono quelli (mai sotto la base)."""
++    _verificatore(tmp_path)
++    k = _main_finto(monkeypatch, tmp_path, {"GAS_ASCOLTO_SOGLIA_INTERRUZIONE": "0.7",
++                                            "GAS_ASCOLTO_BLOCCHI_INTERRUZIONE": "2"},
++                    rilevatore=_rilevatore_registrato([]))
++    assert k.get("soglia_interruzione") == 0.7 and k.get("blocchi_interruzione") == 2
++
++
++def test_senza_verifica_l_interruzione_resta_0_8_su_3(monkeypatch, tmp_path):
++    k = _main_finto(monkeypatch, tmp_path, {}, rilevatore=_rilevatore_registrato([]))
++    assert k.get("soglia_interruzione") == 0.8 and k.get("blocchi_interruzione") == 3
++
++
++def test_rilevatore_a_fasi_sfalsate(monkeypatch):
++    """GAS_ASCOLTO_FASI: N modelli, ognuno riceve blocchi da 80 ms sfalsati di BLOCCO/N
++    campioni (in ritardo, mai in anticipo); il punteggio è il massimo; azzera li azzera tutti."""
++    import sys
++    import types
++    np = pytest.importorskip("numpy")
++    visti = []
++
++    class Finto:
++        def __init__(self, **k):
++            self.i = len(visti)
++            visti.append([])
++
++        def predict(self, x):
++            visti[self.i].append(np.array(x))
++            return {"hey_jarvis": 0.1 * (self.i + 1)}
++
++        def reset(self):
++            visti[self.i].append("reset")
++    mod = types.ModuleType("openwakeword.model")
++    mod.Model = Finto
++    monkeypatch.setitem(sys.modules, "openwakeword", types.ModuleType("openwakeword"))
++    monkeypatch.setitem(sys.modules, "openwakeword.model", mod)
++    punteggio, azzera = a.rilevatore_openwakeword("hey_jarvis", fasi=4)
++    flusso = np.arange(3 * a.BLOCCO, dtype=np.int16)
++    for i in range(3):
++        assert punteggio(flusso[i * a.BLOCCO:(i + 1) * a.BLOCCO]) == pytest.approx(0.4)
++    for f in range(4):
++        ultimo = visti[f][-1]
++        assert len(ultimo) == a.BLOCCO
++        rit = f * a.BLOCCO // 4
++        assert list(ultimo) == list(flusso[2 * a.BLOCCO - rit: 3 * a.BLOCCO - rit])
++    azzera()
++    assert all(v[-1] == "reset" for v in visti)
