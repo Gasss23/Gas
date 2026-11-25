@@ -26,7 +26,7 @@ def test_andata_e_ritorno():
 def test_frase_con_pr_controlli_e_domanda():
     f = e.frase_esito(7, "Report lead", e.leggi_esito(_esito()))
     assert "#7" in f and "PR #412" in f and "CI verde" in f
-    assert "APPROVATO CON RISERVE (V-1 MEDIA manca un test)" in f
+    assert "bot: APPROVATO CON RISERVE" in f and "riserve: V-1 MEDIA manca un test" in f
     assert "verifica esterna: APPROVATO" in f and "«mergia 412»" in f and "«no 412»" in f
 
 
@@ -143,3 +143,39 @@ def test_file_senza_caratteri_invisibili_veri():
     for p in (Path(e.__file__), Path(__file__)):
         testo = p.read_text(encoding="utf-8")
         assert not [c for c in testo if unicodedata.category(c) == "Cf"], p
+
+
+@pytest.mark.parametrize("corpo", [
+    e.MARCA_ESITO + "\nESITO: pronta\nPR: #5\nCI: verde\nRIASSUNTO: x",        # senza BOT
+    e.MARCA_ESITO + "\nESITO: pronta\nPR: #5\nBOT: APPROVATO\nRIASSUNTO: x",   # senza CI
+])
+def test_righe_mancanti_niente_domanda_di_merge_bot409bis_v1(corpo):
+    f = e.frase_esito(7, "x", e.leggi_esito(corpo))
+    assert "mergia" not in f and "niente merge" in f
+
+
+def test_frase_senza_pr_niente_mergia_none():
+    f = e.frase_esito(7, "x", {"esito": "pronta", "riassunto": "x", "ci": "verde",
+                               "bot": "APPROVATO"})
+    assert "None" not in f and "mergia" not in f and "PR mancante" in f
+
+
+def test_riserva_solo_invisibile_scartata_e_riserve_in_piu_contate():
+    corpo = (e.MARCA_ESITO + "\nESITO: ferma\nRIASSUNTO: x\nRISERVA: \u200b\n"
+             + "\n".join(f"RISERVA: r{i}" for i in range(7)))
+    out = e.leggi_esito(corpo)
+    assert out["riserve"] == [f"r{i}" for i in range(5)] and out["riserve_altre"] == 2
+    f = e.frase_esito(7, "x", e.leggi_esito(_esito(bot="APPROVATO CON RISERVE")) | {
+        "riserve": ["a"], "riserve_altre": 3})
+    assert "riserve: a; +3 altre" in f and "()" not in f
+
+
+def test_scrivi_esito_tutte_le_riserve_il_lettore_conta_le_altre_r867_1():
+    out = e.leggi_esito(_esito(riserve=[f"r{i}" for i in range(8)]))
+    assert out["riserve"] == [f"r{i}" for i in range(5)] and out["riserve_altre"] == 3
+
+
+def test_verifica_esterna_fuori_elenco_niente_domanda_r867_2():
+    f = e.frase_esito(7, "x", {"esito": "pronta", "riassunto": "x", "pr": 5, "ci": "verde",
+                               "bot": "APPROVATO", "verifica_esterna": "boh"})
+    assert "mergia" not in f

@@ -89,8 +89,13 @@ def leggi_esito(corpo: Any) -> Optional[Dict[str, Any]]:
                 return None
             chiave, valore = m.group(1), m.group(2).strip()
             if chiave == "RISERVA":
-                if valore and len(esito["riserve"]) < RISERVE_MAX:
-                    esito["riserve"].append(_pulisci(valore))
+                # bot #409-bis V-2: prima si pulisce, poi si scarta la riga vuota;
+                # V-3: le riserve oltre RISERVE_MAX si contano, non spariscono in silenzio
+                pulita = _pulisci(valore)
+                if pulita and len(esito["riserve"]) < RISERVE_MAX:
+                    esito["riserve"].append(pulita)
+                elif pulita:
+                    esito["riserve_altre"] = esito.get("riserve_altre", 0) + 1
                 continue
             nome = {"ESITO": "esito", "PR": "pr", "CI": "ci", "BOT": "bot",
                     "VERIFICA_ESTERNA": "verifica_esterna", "RIASSUNTO": "riassunto"}.get(chiave)
@@ -146,7 +151,9 @@ def scrivi_esito(esito: str, riassunto: str, pr: Optional[int] = None, ci: str =
     if riserve is not None and not isinstance(riserve, list):
         raise ValueError("riserve deve essere una lista di righe")
     pulite = [_pulisci(r) for r in (riserve or []) if _pulisci(r)]
-    righe += [f"RISERVA: {r}" for r in pulite[:RISERVE_MAX]]
+    # R-867-1: si scrivono tutte (il commento resta sotto COMMENTO_MAX, altrimenti
+    # ValueError sotto); il lettore ne tiene RISERVE_MAX e conta le altre
+    righe += [f"RISERVA: {r}" for r in pulite]
     righe.append(f"RIASSUNTO: {_pulisci(riassunto)}")
     testo = "\n".join(righe)
     if leggi_esito(testo) is None:
@@ -165,16 +172,26 @@ def frase_esito(numero_richiesta: int, titolo: str, esito: Dict[str, Any]) -> st
         if esito.get("esito") == "ferma":
             return f"{testa}: mi sono fermato, serve te. {corpo}"
         pr = esito.get("pr")
-        controlli = [f"CI {esito.get('ci', 'assente')}", f"bot: {esito.get('bot', 'assente')}"]
-        if esito.get("riserve"):
-            controlli[-1] += " (" + "; ".join(esito["riserve"]) + ")"
-        if esito.get("verifica_esterna", "assente") != "assente":
-            controlli.append(f"verifica esterna: {esito['verifica_esterna']}")
-        testo = f"{testa}: fatta. {corpo} PR #{pr}, " + ", ".join(controlli) + "."
-        # R-864-2: la domanda sul merge solo con CI verde, bot non BOCCIATO/assente e verifica
-        # esterna non BOCCIATO (bot #409 V-2); il merge vero lo decide comunque CLAUDE.md §10
-        if (esito.get("ci") != "verde" or esito.get("bot") in ("BOCCIATO", "assente")
-                or esito.get("verifica_esterna") == "BOCCIATO"):
+        ci = esito.get("ci") or "assente"
+        bot = esito.get("bot") or "assente"
+        verifica = esito.get("verifica_esterna") or "assente"
+        controlli = [f"CI {ci}", f"bot: {bot}"]
+        if verifica != "assente":
+            controlli.append(f"verifica esterna: {verifica}")
+        riserve = list(esito.get("riserve") or [])
+        if esito.get("riserve_altre"):
+            riserve.append(f"+{esito['riserve_altre']} altre")
+        if riserve:
+            controlli.append("riserve: " + "; ".join(riserve))
+        pr_ok = isinstance(pr, int) and not isinstance(pr, bool) and 0 < pr <= PR_MAX
+        testo = (f"{testa}: fatta. {corpo} "
+                 + (f"PR #{pr}, " if pr_ok else "PR mancante, ") + ", ".join(controlli) + ".")
+        # R-864-2: la domanda sul merge SOLO con PR valida, CI verde, bot APPROVATO o APPROVATO
+        # CON RISERVE e verifica esterna non BOCCIATO (bot #409 V-2). Elenco dei valori buoni,
+        # non dei cattivi (bot #409-bis V-1: riga BOT mancante = niente domanda); il merge
+        # vero lo decide comunque CLAUDE.md §10
+        if (not pr_ok or ci != "verde" or bot not in ("APPROVATO", "APPROVATO CON RISERVE")
+                or verifica not in VERIFICA or verifica == "BOCCIATO"):  # R-867-2
             return testo + " Controlli non verdi: niente merge per ora."
         return testo + f" Vuoi che la mergi? Rispondi «mergia {pr}» oppure «no {pr}»."
     except Exception:  # §9
