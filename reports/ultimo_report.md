@@ -1,20 +1,25 @@
-# Ultimo report — 2026-11-26 — Mani alla voce: decisioni dell'operatore + F2-bis
+# Ultimo report — 2026-11-26 — Mani alla voce F3: avviso, annullo, esiti su Telegram
 
-Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f3` (da main 17cba359, dopo la PR #409 mergiata).
+Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f3-avvisi` (sopra `claude/mani-voce-f3`, PR #411, in attesa del «mergia» dell'operatore).
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta: con verdetto pulito del bot la mergio io (CLAUDE.md §10), altrimenti M1 chiede all'operatore.
+1. Merge della PR di questa fetta (dopo la #411): revisore APPROVATO CON RISERVE (R-881MV-1 bassa), quindi decide l'operatore (CLAUDE.md §10).
+2. Sul Mac, dopo il merge: nel `.env` mettere `GAS_RICHIESTE_AUTORI=` con il login GitHub di chi scriverà gli esiti (l'account con cui lavora l'esecutore; per ora il proprio, es. `Gasss23`). Senza, Gas non legge nessun esito (è voluto: fail-closed). Opzionali: `GAS_RICHIESTE_CONTROLLO_MIN` (default 5), `GAS_RICHIESTE_ESITI_GIORNO` (default 20). Poi riavviare il bot Telegram.
 
 ## Esito per fetta
 
-- **Merge della PR #409**: FATTO il 26/11 (17cba359) col sì dell'operatore via M1, dopo aver ricontrollato PR aperta, nessun conflitto, CI verde, bot neutral senza che bloccano il merge.
-- **Decisioni dell'operatore nel piano** (`reports/mani_voce_piano.md` §4bis e §5): FATTA. F1 rifiutata; compensazioni: avviso subito alla creazione della richiesta, «annulla richiesta N» con 30 minuti di attesa prima che l'esecutore parta, max 2 richieste lavorate al giorno.
-- **F2-bis — riserve basse di F2**: FATTA (887fcc0d). `frase_esito` riscritta: parti fisse prima, testi liberi tra «» con le «» interne tolte (R-864-3), niente domanda di merge con righe RISERVA (ve #409 V-2), PR e CI anche per fallita/ferma, valori fuori elenco = assente; `_pulisci` vuota un testo senza nulla di visibile e toglie altri invisibili; «mergia N» solo ASCII. 79 test. Revisore #873-MV APPROVATO CON RISERVE → #874-MV APPROVATO.
-- **Correzione dopo la verifica esterna (#411 V-1 BASSA)**: FATTA (93f7650f). Una riga RISERVA fatta solo di invisibili veniva scartata e la domanda di merge ricompariva: ora ogni riga RISERVA conta, anche illeggibile o vuota. 88 test. Revisore #875-MV APPROVATO CON RISERVE (R-875MV-1: spazi Unicode tolti da strip) → #876-MV APPROVATO.
-- **Correzione dopo il bot (head e6d30207)**: FATTA (80d1e2b5). Il check era un falso rosso (la parola di gravità della mia frase citata in un finding basso); corretti comunque i finding bassi del bot: regola unica `propone_merge`, fail-closed anche su dizionari fatti a mano; virgolette simili a «» tolte; la frase dice «riserve aperte: N». 101 test. Revisore #877-MV → #878-MV APPROVATO CON RISERVE (R-877MV-2 cosmetica).
-- **F3, F4, F5**: DEFERITE — prossime fette, in quest'ordine.
+- **F3 — Gas avvisa e legge gli esiti**: FATTA (6fce9e43).
+  - Avviso su Telegram APPENA una richiesta di sviluppo è accodata, con «annulla richiesta N» (al posto della firma a voce rifiutata dall'operatore il 26/11). Se l'avviso non parte, la richiesta resta e il modello lo dice.
+  - «annulla richiesta N» dal bot Telegram, prima del modello, solo da messaggio nuovo: chiude la issue con l'etichetta `annullata` (solo issue aperte `da-gas` nel repo privato).
+  - Ogni 5 minuti il bot legge i commenti nuovi del repo delle richieste e manda all'operatore la frase degli ESITO validi di autori ammessi su issue `da-gas`; tetto 5 per controllo e 20 al giorno; paginazione; esiti di autori non (ancora) ammessi tenuti in sospeso; ricorda la PR per cui la domanda di merge è stata fatta davvero (R-873MV-1, per F4). Il thread sta in `cassetta.py`, non nel bot (guardia T78p rispettata).
+  - Chiuse anche la V-1 della verifica esterna #411 (tutte le virgolette Pi/Pf) e la cosmetica 5 (commenti scartati nel log).
+  - Test: `tests/test_unit_cassetta.py` (71) + esiti + richieste = 197 passati; kernel 1210 PASS 0 FAIL (T100c/T100d: round-trip con l'avviso). Nuovo passo CI «Run cassetta suite».
+  - Revisore #879-MV APPROVATO CON RISERVE → #880-MV BOCCIATO (perdita di esiti con la pagina piena, vera) → #881-MV APPROVATO CON RISERVE.
+- **F3b — esiti letti a voce**: DEFERITA — prossima fetta piccola.
+- **F4, F5**: DEFERITE — dopo.
 
 ## Anomalie
 
-- Riserva nuova R-873MV-1 BASSA (a voce le «» non si sentono): da chiudere in F3.
+- Il lavoro di F3 è stato messo da parte (copia nello scratchpad, mai `git stash`) per committare la correzione della #411 dalla worktree `/home/user/Gas-411`, perché il gate guarda sempre la cartella principale; poi rimesso e riallineato sulla #411.
+- Riserve aperte: R-881MV-1 BASSA, R-881MV-2 COSMETICA, R-873MV-1 BASSA (per F4), R-877MV-2 COSMETICA.

@@ -1,24 +1,23 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-26 — Mani alla voce: decisioni dell'operatore nel piano + F2-bis (riserve basse di F2), PR #411
+**Sessione:** 2026-11-26 — Mani alla voce F3: avviso subito alla richiesta, «annulla richiesta N», esiti dalle issue su Telegram, PR #412 (contiene anche la PR #411, F2-bis)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #411 (https://github.com/Gasss23/Gas/pull/411). Numero e URL dall'output di `gh api repos/Gasss23/Gas/pulls -X POST` (qui `gh pr` non è disponibile). Revisore #874-MV APPROVATO: se il bot dà APPROVATO pulito mergia l'agente (CLAUDE.md §10), altrimenti decide l'operatore via M1.
+1. Merge della PR #411 (https://github.com/Gasss23/Gas/pull/411), F2-bis: CI e bot verdi, verdetto del bot APPROVATO CON RISERVE (V-1 BASSA: §0 del suo handoff fermo a #874-MV, l'ultimo revisore è #878-MV APPROVATO CON RISERVE; V-2 COSMETICA: descrizione, aggiornata): decide l'operatore.
+2. Merge della PR #412 (https://github.com/Gasss23/Gas/pull/412), F3, DOPO la #411. Numero e URL dall'output di `gh api repos/Gasss23/Gas/pulls -X POST` (qui `gh pr` non c'è). Revisore #881-MV APPROVATO CON RISERVE: decide l'operatore (CLAUDE.md §10).
+3. Sul Mac, dopo il merge della #412: `GAS_RICHIESTE_AUTORI=<login GitHub di chi scrive gli esiti>` nel `.env`, poi riavvio del bot Telegram. Senza, Gas non legge nessun esito (fail-closed).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge della PR #409**: `FATTA` — 17cba359, col sì dell'operatore via M1.
-- **Decisioni dell'operatore nel piano**: `FATTA` — `reports/mani_voce_piano.md` §4bis e §5 (F1 rifiutata, compensazioni).
-- **F2-bis — riserve basse di F2**: `FATTA` — 887fcc0d; revisore #873-MV → #874-MV APPROVATO; 79 test.
-- **Correzione dopo la verifica esterna (#411 V-1)**: `FATTA` — 93f7650f, ogni riga RISERVA conta; revisore #875-MV → #876-MV APPROVATO.
-- **Correzione dopo il bot (head e6d30207)**: `FATTA` — 80d1e2b5; check del bot falso rosso (parola di gravità della mia frase citata in un finding basso), finding bassi corretti; revisore #877-MV → #878-MV APPROVATO CON RISERVE.
-- **F3 — avviso subito, annullo, lettura degli esiti**: `DEFERITA — prossima fetta`.
-- **F4 — «mergia N» / «no N» da Telegram**: `DEFERITA — dopo F3`.
+- **F2-bis (PR #411)**: `FATTA` — commit 887fcc0d, 93f7650f, 80d1e2b5; revisore #873-MV … #878-MV (dettaglio nel §4).
+- **F3 — avviso, annullo, esiti su Telegram**: `FATTA` — 6fce9e43; revisore #879-MV → #880-MV BOCCIATO → #881-MV APPROVATO CON RISERVE; 197 test, kernel 1210 PASS.
+- **F3b — esiti letti a voce**: `DEFERITA — prossima fetta`.
+- **F4 — «mergia N» / «no N» da Telegram**: `DEFERITA — dopo F3b`.
 - **F5 — esecutore nel cloud**: `DEFERITA — dopo F4`.
 
 ---
@@ -26,14 +25,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- modules/sviluppo/esiti.py          | 136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
- reports/diff_sessione.md           |  13 ++++++------
+ .claude/agents/memoria_revisore.md |  13 ++++++++++
+ .github/workflows/ci.yml           |   8 ++++++
+ .gitignore                         |   2 ++
+ gas.py                             |  22 +++++++++++++++-
+ modules/sviluppo/cassetta.py       | 437 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/sviluppo/esiti.py          | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------
+ modules/sviluppo/richieste.py      |  20 ++++++++++++---
+ modules/telegram/bot.py            |  29 +++++++++++++++++++++
+ reports/diff_sessione.md           |  22 +++++++++-------
  reports/handoff.md                 | n/d
- reports/mani_voce_piano.md         |  64 ++++++++++++++++++++++++++++++++++++++++++++--------------
- reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  31 ++++++++++-------------------
- tests/test_unit_esiti.py           | 125 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ reports/mani_voce_piano.md         |  65 ++++++++++++++++++++++++++++++++++++-----------
+ reports/stato_progetto.md          |   4 +--
+ reports/ultimo_report.md           |  36 +++++++++++---------------
+ tests/test_unit_cassetta.py        | 497 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_esiti.py           | 125 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ tests/test_unit_kernel.py          |  29 +++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -41,6 +48,11 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6fce9e43 feat(sviluppo): mani alla voce F3 — avviso subito alla richiesta, «annulla richiesta N», esiti dalle issue su Telegram
+a518d9e5 chore(revisore): memoria review #881 — APPROVATO CON RISERVE
+f692ce6d chore(revisore): memoria review #880 — BOCCIATO
+020059f7 chore(revisore): memoria review #879 — APPROVATO CON RISERVE
+5af3680e docs(fine-task): report e handoff dopo la correzione del bot (PR #411)
 80d1e2b5 fix(sviluppo): propone_merge unica e fail-closed anche a mano, virgolette simili a «», niente parole di gravità nei testi (bot #411 su e6d30207)
 02592fd1 chore(revisore): memoria review #878 — APPROVATO CON RISERVE
 2f99753e chore(revisore): memoria review #877 — APPROVATO CON RISERVE
@@ -60,7 +72,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
+Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -220,27 +232,125 @@ Cosa non ho verificato: non ho eseguito il classificatore del bot sul nuovo head
 
 Memoria: ho aggiunto la riga #878-MV a /home/user/Gas-411/.claude/agents/memoria_revisore.md e l'ho committata (02592fd1). Il diff staged è rimasto com'era.
 
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #879-MV. Ho guardato il diff staged su claude/mani-voce-f3-avvisi: 7 file, +823/−4. Ho letto prima CLAUDE.md (§5, §8, §9), reports/stato_progetto.md, la memoria del revisore e reports/mani_voce_piano.md (§3, §4bis, riga F3).
+
+Elementi del diff esaminati:
+- gas.py:5264 — `_avvisa_richiesta_accodata` manda l'avviso con `invia_notifica`, fuori dal tetto di avvisa_operatore. Controllato: eccezioni, flag della voce, numero di avvisi. Esito ok: ogni eccezione finisce in un warning e torna False, il flag `_turno_voce` viene letto con getattr, e gli avvisi sono limitati da GAS_RICHIESTE_MAX_GIORNO (20 al giorno). Il collegamento è a gas.py:5494.
+- modules/sviluppo/richieste.py:186 — chiama `avvisa` dopo che la issue esiste. Se l'avviso fallisce, la richiesta resta creata e il testo lo dice al modello; un'eccezione nella callback viene presa sul posto. Se manca l'etichetta (successo parziale) non parte nessun avviso, ed è giusto: l'esecutore quella issue non la vede. Esito ok.
+- modules/telegram/bot.py:979 — «annulla richiesta N» viene intercettato prima del modello. Viene dopo il controllo della chat ammessa e dopo i comandi giro e clear, vale solo da un messaggio nuovo, e un vocale non lo raggiunge (passa da `_gestisci_parlato`). Esito ok. Nota minore: ogni testo ora importa `cassetta`, quindi se quell'import si rompe tutti i messaggi di testo vengono ignorati, senza crash (è lo stesso schema dell'import di `brains.router` subito sotto).
+- modules/telegram/bot.py:594 e modules/telegram/bot.py:626 — il loop chiama il controllo una volta al minuto, protetto da try/except. Esito ok.
+- modules/sviluppo/cassetta.py:346 — il thread demone ha try/finally e rimette `in_corso` a False; la partenza è protetta e il cronometro viene toccato solo dal thread principale. Le chiamate GitHub hanno un timeout (TIMEOUT_SEC), quindi il thread non può restare appeso. Esito ok.
+- Guardia T78p, valutazione richiesta: secondo me rispetta lo scopo della guardia, non la aggira. La guardia serve a gestire «un click alla volta» update e firme; il thread non vede update, firme né kernel, e invia solo tramite `invia_notifica`, che passa da `_invia_a_tutti`, il pool già ammesso dalla guardia. T78p PASS.
+- modules/sviluppo/cassetta.py:268 — sicurezza in caso di errore su autori, issue e formato. Elenco autori vuoto: non legge niente (modules/sviluppo/cassetta.py:227). Login con regex, confronto in minuscolo. Commenti di issue non da-gas o di PR vengono scartati e scritti nel log. Esito ok, salvo R-879MV-3.
+- modules/sviluppo/cassetta.py:119 — `annulla`: numero tra 1 e PR_MAX (bool escluso), repo privato, solo issue con da-gas e non PR, issue già chiusa trattata a parte; se l'etichetta c'è ma la chiusura fallisce, il testo dice il vero. Esito ok.
+- Token: un `controlla_esiti` vero con il token "tok-SEGRETO" non lo scrive mai in gas_debug.log (provato). L'unico `%s e` nuovo, in bot.py:626, riceve un'eccezione che non contiene mai il token. Esito ok.
+- Lunghezza: il caso peggiore di `frase_esito` (titolo, riassunto e 5 riserve tutte di emoji) vale 3980 unità UTF-16 contro un limite di 4096. Quindi «testo oltre il limite» non può bloccare la coda per sempre. Esito ok, ma il margine è stretto e nessun test lo fissa.
+- tests/test_unit_kernel.py:11697 — T100c e T100d fanno il giro completo (§7) con avviso riuscito e fallito. Esito ok.
+
+Test eseguiti su una copia dell'indice:
+- cassetta, esiti e richieste: 177 passed. La suite cassetta ne conta 51, non 53.
+- tests/test_unit_kernel.py: 1210 PASS, 0 FAIL (T78p, T100c e T100d PASS).
+- Caratteri invisibili veri: 0 nei 5 file toccati.
+
+Finding:
+1. R-879MV-1 BASSA: modules/sviluppo/cassetta.py:44 — `.gas_richieste_esiti.json` e i suoi file temporanei NON sono in .gitignore (`git check-ignore` dà rc=1). Il file fratello `.gas_richieste_uso.json` invece sì (.gitignore:58). Sul Mac comparirebbe come file non tracciato nella radice. Basta aggiungere le due righe come per il fratello.
+2. R-879MV-2 BASSA: modules/sviluppo/cassetta.py:290 — gli esiti partono con `invia_notifica` senza nessun tetto. reports/mani_voce_piano.md:109 dice invece che il tetto giornaliero di avvisa_operatore vale anche qui. Un esecutore ammesso che va fuori controllo può mandare fino a 100 avvisi a ogni controllo. Serve una delle due cose: un tetto per controllo o al giorno, oppure correggere il piano.
+3. R-879MV-3 BASSA: modules/sviluppo/cassetta.py:193 — `_numero_issue` confronta il prefisso del repo distinguendo maiuscole e minuscole. Se GAS_RICHIESTE_REPO ha maiuscole diverse dal nome vero, tutti gli esiti vengono scartati come «issue non riconosciuta» e messi tra i visti, quindi restano persi anche dopo aver corretto la configurazione (provato: `{'visti': [1]}`, 0 avvisi). Lo stesso vale per un esito scritto da un autore dimenticato nell'elenco. Va confrontato in minuscolo.
+4. R-879MV-4 BASSA: modules/sviluppo/cassetta.py:258 — un commento già visto non fa avanzare `ultimo`. In più `since` di GitHub filtra per data di modifica (updated_at), mentre l'ordine è per data di creazione. Se una pagina contiene 100 commenti già visti (finestra di 120 s molto piena, o vecchi commenti modificati), `since` non si muove più e la lettura si blocca. Probabilità bassa.
+5. R-879MV-5 COSMETICA: il conteggio dei test è 51, non 53. Il filtro dei login (modules/sviluppo/cassetta.py:50) rifiuta i login «nome[bot]»: se in F5 l'esecutore scrive come GitHub App, non sarà ammissibile (nota per F5). Con GAS_RICHIESTE_AUTORI vuoto c'è un warning ogni 5 minuti, circa 288 righe al giorno nel log.
+
+Rischi esclusi:
+- Non ho verificato le API GitHub reali: che il POST `/labels` crei da solo l'etichetta `annullata` con un token fine-grained «solo Issues», e che `since` si comporti come ho descritto sopra. Questa sandbox non ha il repo privato né il token.
+- Non ho verificato il comportamento sul Mac con il bot vivo (thread insieme al polling reale).
+- Non ho controllato il percorso a voce (F3b non c'è ancora).
+
+Memoria: ho aggiunto la riga #879-MV e due lezioni (scarti dovuti alla configurazione che si perdono tra i visti; file di stato nuovi da confrontare con .gitignore) in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con lo script in 020059f7. Il diff staged del motore è intatto (7 file).
+
+## VERDETTO: BOCCIATO
+
+Review #880-MV, secondo giro di F3 sul diff staged di claude/mani-voce-f3-avvisi (9 file, +982/−6; ora ci sono anche .gitignore e modules/sviluppo/esiti.py). Il motivo è uno solo: la correzione di R-879MV-4 introduce una perdita silenziosa degli esiti, e l'ho riprodotta.
+
+Elementi del diff esaminati:
+- modules/sviluppo/cassetta.py:363 — con la pagina piena, «since» passa al massimo delle date della pagina senza margine. Rischio esaminato: commenti saltati. **Blocco**, vedi il finding 1.
+- modules/sviluppo/cassetta.py:201 — `_numero_issue` ora confronta in minuscolo, quindi un repo scritto con maiuscole diverse non scarta più gli esiti. Esito ok: R-879MV-3, parte sul repo, chiusa.
+- modules/sviluppo/cassetta.py:320 — un esito di un autore che non è nell'elenco resta «in sospeso» e non entra tra i visti. Viene riletto a ogni controllo (modules/sviluppo/cassetta.py:288), al massimo 20, e un commento cancellato (404) esce dalla lista. Il rischio è lo spam da parte di un collaboratore del repo privato: al massimo 20 letture GitHub a controllo. Esito ok. Il più vecchio oltre i 20 si perde, ma intanto è finito nel log.
+- modules/sviluppo/cassetta.py:326 — tetto di 5 avvisi a controllo e di 20 al giorno (massimo 100). Quando scatta, il ciclo si ferma e «since» non avanza, quindi i commenti restano per i controlli dopo. Il conto del giorno sta nello stato. Esito ok: R-879MV-2 chiusa, ora coerente con il piano §4.
+- modules/sviluppo/cassetta.py:51 — i login «nome[bot]» sono ammessi; il warning per l'elenco autori vuoto esce una volta per processo (modules/sviluppo/cassetta.py:258). Esito ok: R-879MV-5 chiusa.
+- .gitignore:60 — coperti .gas_richieste_esiti.json e i suoi .tmp.*, e un test lo prova con git check-ignore (tests/test_unit_cassetta.py:365). Esito ok: R-879MV-1 chiusa.
+- modules/sviluppo/esiti.py:79 — `_virgolette_simili`: i caratteri Pi/Pf, i Ps/Pe non ASCII e U+FF02 diventano virgolette dritte; unicodedata è già importato. Esito ok: ve #411 V-1 chiusa. Resta una nota cosmetica (finding 2).
+
+Prove eseguite su una copia dell'indice:
+- cassetta, esiti e richieste: 194 passed (cassetta 68).
+- tests/test_unit_kernel.py: 1210 PASS, 0 FAIL.
+- Caratteri invisibili veri nei tre file toccati: 0.
+
+Finding:
+1. R-880MV-1, motivo del blocco: perdita silenziosa di esiti, in modules/sviluppo/cassetta.py:363 insieme a modules/sviluppo/cassetta.py:305.
+   - Il problema: l'API filtra `since` per data di modifica (updated_at), ma `sort=created` ordina per data di creazione. Con la pagina piena, «since» diventa il massimo di max(updated_at, created_at) di tutta la pagina. Se uno dei primi 100 commenti è vecchio ma modificato di recente, «since» salta oltre la data di creazione dei commenti dal 101° in poi, e quelli non tornano mai più.
+   - Prova: GitHub finto con 150 commenti dal 20/11, il primo modificato il 26/11 alle 12:00, un ESITO valido al 131°. Dopo 4 controlli: since=2026-11-26T12:00:00Z e 0 avvisi.
+   - Quando succede: Gas spento per giorni (più di 100 commenti accumulati) e un commento modificato. È proprio il caso «l'esito arriva alla riaccensione» del piano.
+   - Correzione: con la pagina piena usare il created_at dell'ultimo elemento della pagina (è sicuro perché updated_at ≥ created_at; i doppioni dello stesso secondo li toglie l'elenco dei visti). Il massimo delle date con margine resta solo per la pagina non piena.
+   - Test da aggiungere: proprio lo scenario sopra. Oggi tests/test_unit_cassetta.py:419 prova solo che la lettura non si blocca, non che non si perde niente.
+2. R-880MV-2, cosmetica: modules/sviluppo/esiti.py:79 cambia anche l'apostrofo tipografico U+2019 (Pf, molto comune dalle tastiere del telefono) e le parentesi larghe: «l’operatore （nota）» diventa «l"operatore "nota"». Proposta: mappare Pi/Pf di tipo singolo su «'» e lasciare le parentesi, che non somigliano a «».
+
+Rischi esclusi:
+- Il comportamento reale di `since` e `sort` sull'API GitHub (pagine, ordine a parità di secondo) non l'ho verificato: mi baso sulla documentazione e su un GitHub finto, perché qui non ho il repo privato né il token.
+- Non ho verificato il thread con il bot vivo sul Mac.
+
+Memoria: ho aggiunto la riga #880-MV e una lezione (con la pagina piena l'unico punto di ripresa sicuro è il created_at dell'ultimo elemento) in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con lo script in f692ce6d. Il diff staged del motore è intatto.
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #881-MV, terzo giro di F3 sul diff staged completo di claude/mani-voce-f3-avvisi (9 file, +1058/−7). La perdita di esiti segnalata in #880 non c'è più; restano una riserva bassa e due note cosmetiche, nessuna blocca il commit.
+
+Elementi del diff esaminati:
+- modules/sviluppo/cassetta.py:368 — paginazione. Con la pagina piena «since» resta fermo e si legge la pagina dopo; con la pagina non piena «since» avanza al massimo delle date lette meno il margine e la pagina torna a 1; oltre PAGINE_MAX si riparte da adesso con un warning. Rischi esaminati: commenti saltati e lettura bloccata. Esito ok, con la riserva R-881MV-1.
+  - Lo scenario di #880 l'ho rifatto a mano con un GitHub finto che filtra su updated_at, ordina per created_at e pagina (250 commenti, il primo modificato il 26/11, ESITO al 131°): l'avviso arriva e alla fine si ha since=2026-11-26T11:58:00Z, pagina 1.
+  - Un «since» più basso del necessario è sempre sicuro, e la pagina non piena usa il massimo delle date lette meno il margine.
+  - Le modifiche di commenti vecchi fatte durante la paginazione spostano gli elementi a destra, quindi danno solo doppioni, che i visti tolgono.
+- modules/sviluppo/cassetta.py:281 — una pagina salvata non valida torna a 1. Con lo stato azzerato (since non valido) la pagina resta quella vecchia, ma una pagina vuota rimette pagina a 1 senza far avanzare since, quindi non si perde niente. Esito ok.
+- modules/sviluppo/cassetta.py:331 — tetto per controllo e al giorno. Quando scatta, il giro si interrompe e pagina e since restano come sono. Esito ok.
+- modules/sviluppo/esiti.py:88 — gli apostrofi singoli (U+2018, U+2019, U+201A, U+201B) diventano «'», le altre Pi/Pf «"», e le parentesi generiche restano (provato: «l’op» diventa «l'op», le parentesi larghe restano; ‹› e 「」 diventano «"»). Esito ok: R-880MV-2 chiusa.
+- tests/test_unit_cassetta.py:449 — test dello scenario di #880. tests/test_unit_cassetta.py:486 — test delle troppe pagine. Esito ok.
+
+Prove su una copia dell'indice:
+- cassetta, esiti e richieste: 197 passed.
+- tests/test_unit_kernel.py: 1210 PASS, 0 FAIL.
+- Caratteri invisibili veri nei 4 file toccati di modules/sviluppo e tests: 0.
+
+Finding:
+1. R-881MV-1 BASSA: se un commento più vecchio viene cancellato tra la lettura della pagina N e quella della N+1, tutta la lista scorre di uno verso sinistra. Il primo commento della pagina N+1 finisce in coda alla pagina N, che è già stata letta, e non viene mai letto (modules/sviluppo/cassetta.py:369). L'ho provato: 250 commenti, uno cancellato dopo la prima pagina, l'ESITO al 101° non arriva mai. Serve un arretrato di più pagine più una cancellazione, quindi è raro. Due strade: (a) dichiararlo nel docstring e nel piano; (b) quando una pagina piena si chiude senza interruzioni, rileggere al giro dopo l'ultima pagina piena oltre a quella nuova. Così uno slittamento di un elemento torna nella finestra, e i visti tolgono i doppioni.
+2. R-881MV-2 COSMETICA, due note:
+   - Con un numero di commenti multiplo esatto di 100 e nessun commento nuovo, la pagina 2 è vuota, «since» non avanza e ogni due controlli si rilegge la pagina 1. Nessuna perdita, solo letture inutili, finché non arriva un commento nuovo (provato).
+   - L'elenco delle virgolette simili a «» non è ancora completo: passano ⪡⪢ (U+2AA1/U+2AA2) e ⋘⋙. Il confine vero resta nelle parti fisse e in F4 (R-873MV-1), come già detto per R-877MV-2.
+
+Rischi esclusi:
+- Il comportamento reale dell'API GitHub su `page`, `since` e `sort=created` (ordine a parità di secondo, limiti di paginazione) non l'ho verificato: qui non ho il repo privato né il token, quindi ho usato solo un GitHub finto costruito secondo la documentazione.
+- Non ho verificato il thread con il bot vivo sul Mac.
+
+Memoria: ho aggiunto la riga #881-MV e una lezione (la paginazione per numero di pagina perde un elemento a ogni cancellazione tra due letture) in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con lo script in a518d9e5. Il diff staged del motore è intatto.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_esiti.py`: 63 → 79 test (887fcc0d) → 88 test (93f7650f) → 101 test (80d1e2b5), tutti passati (`python -m pytest -q tests/test_unit_esiti.py` → `101 passed in 0.22s`). Il file gira in CI nel passo «Run esiti suite» di `unit-suite`.
-- Nessun altro file del motore toccato: il modulo non è collegato a nulla.
+- `tests/test_unit_esiti.py`: 63 → 101 (PR #411) → 103 test con F3 (virgolette Pi/Pf e apostrofi).
+- `tests/test_unit_cassetta.py`: nuovo, 71 test. Comando: `python -m pytest -q tests/test_unit_cassetta.py tests/test_unit_esiti.py tests/test_unit_richieste.py` → `197 passed in 0.29s`.
+- `tests/test_unit_kernel.py` (script): T100c e T100d nuovi (round-trip §7 con l'avviso riuscito e fallito); `=== RIEPILOGO: 1210 PASS, 0 FAIL ===`.
+- CI: passo nuovo «Run cassetta suite» in `.github/workflows/ci.yml`.
 
 ## §6 STATO CI
 
-Da `gh api repos/Gasss23/Gas/commits/<sha>/check-runs` (`gh run list` non è disponibile qui):
-
-- 03d3f4c3, a853b27f, 887fcc0d, 40decd9b: nessuna run su questi SHA (pushati insieme a e01e0c55).
-- e01e0c55: verifica-bot failure («controlli bidi»: carattere invisibile vero citato dal bot).
-- 89e57942, 1382ec22, 93f7650f, 2ee37f96: nessuna run conclusa su questi SHA (superati da e6d30207; il bot su 2ee37f96 è stato annullato perché la head è cambiata).
-- e6d30207: verifica-bot failure, falso rosso del classificatore (verdetto testuale APPROVATO CON RISERVE con soli finding bassi e cosmetici).
-- 2f99753e, 02592fd1, 80d1e2b5 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- Commit della PR #411 (fino a 5af3680e): sul head 5af3680e unit-suite, handoff-check e verifica-bot success (verdetto del bot APPROVATO CON RISERVE).
+- 020059f7, f692ce6d, a518d9e5, 6fce9e43 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
 
 ## §7 RISERVE APERTE
 
-- R-873MV-1 BASSA — a voce le «» non si sentono: un riassunto ostile può farsi sentire come domanda di merge. In F3 «mergia N» vale solo per la PR di un esito con la domanda vera sulla stessa issue.
-- Chiuse in 93f7650f: verifica esterna #411 V-1 BASSA (riga RISERVA illeggibile scartata in silenzio) e R-875MV-1 BASSA (riga RISERVA vuota o di soli spazi Unicode). Verifica esterna #411 V-2 COSMETICA (numero_richiesta=True stampa #1): chiamante fidato.
-- R-877MV-2 COSMETICA — virgolette simili a «» non tutte coperte (︽︾, ⸨⸩, << >>); il confine vero è il lettore del comando in F3.
-- Classificatore del bot (`scripts/bot_esito.py` `_gravita_nel_testo`): legge le parole di gravità anche dentro citazioni in un finding basso (falso rosso su e6d30207). È la macchina del bot: decide l'operatore.
-- R-870M-1 BASSA — numeri di review doppi fra chat parallele: da qui le review di questa chat hanno il suffisso -MV.
-- Cosmetica #874-MV — con `numero_richiesta=True` il ripiego stampa «#True» (chiamante fidato).
-- Cosmetica 5 — commenti scartati senza log (in F3). Cosmetica U+200D — emoji composte spezzate.
+- R-881MV-1 BASSA — un commento cancellato fra la lettura della pagina N e della N+1 fa perdere il primo della pagina N+1 (serve un arretrato di più pagine: raro).
+- R-881MV-2 COSMETICA — rilettura inutile con commenti multipli esatti di 100; ⪡⪢ ⋘⋙ non coperte nelle citazioni.
+- R-873MV-1 BASSA — a voce le «» non si sentono: in F4 «mergia N» varrà solo per la PR ricordata da F3 (`cassetta.domanda_aperta`).
+- R-877MV-2 COSMETICA — virgolette simili non tutte coperte (in parte chiusa da F3).
+- Bot della #411: V-1 BASSA (§0 del suo handoff fermo a #874-MV), V-2 COSMETICA (descrizione, aggiornata).
+- Classificatore del bot (`scripts/bot_esito.py` `_gravita_nel_testo`): falso rosso sulla #411 per una parola di gravità dentro una citazione; macchina del bot, decide l'operatore.
+- R-870M-1 BASSA — numeri di review doppi fra chat (da qui suffisso -MV).
+- Cosmetica U+200D — emoji composte spezzate.
