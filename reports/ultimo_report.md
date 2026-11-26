@@ -15,6 +15,7 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f3b`
   - Avviso alla creazione: «scrivimi o dimmi «annulla richiesta N»» (ve #412 V-2).
   - Un esito in sospeso scartato in modo definitivo esce dai sospesi (bot #412 V-1).
   - Revisore #884-MV APPROVATO CON RISERVE (R-884MV-1 di gravità media, vera: server voce e bot scrivevano lo stesso file senza lock) → corretta con un file a parte per i letti a voce → #885-MV APPROVATO.
+- **Correzione dopo il bot sulla #414 (BOCCIATO su 8f6787a6)**: FATTA (0338ed09). Due test di cassetta dipendevano dalla data reale (dal 27/11 alle 15:00 UTC sarebbero diventati rossi su main per tutti): ora no. Annullo con lo stesso ordine sul Mac e su Telegram («forte annulla …» non annulla), numero detto in lettere → risposta fissa invece del modello, «n. 12» accettato, frase a voce salvata con lo stato prima dell'invio. 105 test di cassetta. Revisore #886-MV → #887-MV APPROVATO.
 - **F4 — «mergia N» / «no N»**: DEFERITA — prossima fetta. Deve chiudere R-883MV-1 (conferma del numero della PR).
 - **F5 — esecutore nel cloud**: DEFERITA.
 

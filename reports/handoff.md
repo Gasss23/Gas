@@ -26,23 +26,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  20 ++++++++++
+ .claude/agents/memoria_revisore.md |  23 ++++++++++
  .github/workflows/ci.yml           |   8 ++++
  .gitignore                         |   4 ++
- gas.py                             |  22 ++++++++++-
- modules/sviluppo/cassetta.py       | 577 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/sviluppo/esiti.py          | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
- modules/sviluppo/richieste.py      |  20 ++++++++--
- modules/telegram/bot.py            |  40 +++++++++++++++++++
- modules/voice/server.py            |  59 ++++++++++++++++++++++------
- reports/diff_sessione.md           |  21 +++++-----
+ gas.py                             |  22 +++++++++-
+ modules/sviluppo/cassetta.py       | 592 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/sviluppo/esiti.py          | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++---------------
+ modules/sviluppo/richieste.py      |  20 +++++++--
+ modules/telegram/bot.py            |  41 ++++++++++++++++++
+ modules/voice/server.py            |  59 ++++++++++++++++++++------
+ reports/diff_sessione.md           |  21 +++++----
  reports/handoff.md                 | n/d
- reports/mani_voce_piano.md         |  71 +++++++++++++++++++++++++--------
+ reports/mani_voce_piano.md         |  78 ++++++++++++++++++++++++++--------
  reports/stato_progetto.md          |   4 +-
- reports/ultimo_report.md           |  34 +++++++---------
- tests/test_unit_cassetta.py        | 768 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_esiti.py           | 125 +++++++++++++++++++++++++++++++++++++++++++++++++++-------
- tests/test_unit_kernel.py          |  29 ++++++++++++++
+ reports/ultimo_report.md           |  35 ++++++---------
+ tests/test_unit_cassetta.py        | 831 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_esiti.py           | 125 ++++++++++++++++++++++++++++++++++++++++++++++++------
+ tests/test_unit_kernel.py          |  29 +++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -50,6 +50,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0338ed09 fix(sviluppo): test di cassetta indipendenti dalla data, annullo con lo stesso ordine sul Mac e su Telegram, frase a voce salvata con lo stato (bot #414)
+d99f9ad4 chore(revisore): memoria review #887 — APPROVATO
+46422736 chore(revisore): memoria review #886 — APPROVATO CON RISERVE
+8f6787a6 docs(fine-task): report e handoff — mani alla voce F3b (PR #414)
 28947ffc feat(voce): mani alla voce F3b — esiti detti a voce (solo parti fisse), «annulla richiesta N» anche a voce
 cb31b806 chore(revisore): memoria review #885 — APPROVATO
 2edfc3fb chore(revisore): memoria review #884 — APPROVATO CON RISERVE
@@ -82,7 +86,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. Commit motore 28947ffc (F3b): verdetti #884-MV e #885-MV, dopo #883-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
+Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. Commit motore 28947ffc (F3b): verdetti #884-MV e #885-MV, dopo #883-MV. Commit motore 0338ed09 (dopo il bot sulla #414): verdetti #886-MV e #887-MV, dopo #885-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -462,21 +466,90 @@ Review #885-MV, secondo giro di F3b sul diff staged del ramo claude/mani-voce-f3
 
 Memoria aggiornata con la riga #885-MV e committata (cb31b806): /home/user/Gas/.claude/agents/memoria_revisore.md
 
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #886-MV. Ramo claude/mani-voce-f3b, PR #414, diff staged su `modules/sviluppo/cassetta.py`, `modules/telegram/bot.py` e `tests/test_unit_cassetta.py` (+78/−17). Prima della review ho letto CLAUDE.md (§5), lo stato del progetto e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `tests/test_unit_cassetta.py:704` — l'accodo ora usa datetime.now prima di `_compiti_finiti` e di `da_leggere_voce` chiamati senza data. Rischio cercato: altri test che accodano con una data fissa e poi leggono con l'orologio vero. Ho elencato tutte le chiamate senza `adesso=`: restano solo le righe 708-742, tutte dopo un accodo fatto con l'ora vera. Le altre chiamate a `controlla_esiti` e `da_leggere_voce` passano la data fissa da entrambi i lati. Il test con la data futura (`tests/test_unit_cassetta.py:773`) passa. — ok, bot V-1 chiusa.
+- `modules/sviluppo/cassetta.py:396` — la frase da dire a voce entra nello stato prima della scrittura che precede l'invio. Ho verificato il ripristino:
+  - lo stato di partenza include ora `da_leggere`, ed è la lista vecchia (la nuova è un oggetto distinto, quindi la copia non viene toccata);
+  - se la scrittura fallisce, il ripristino rimette la lista vecchia;
+  - se l'invio fallisce (`modules/sviluppo/cassetta.py:416`) la lista vecchia torna in memoria, e la scrittura finale dopo il `break` (`modules/sviluppo/cassetta.py:449`) la riporta sul disco.
+
+  Il test che lascia riuscire solo la prima scrittura (`tests/test_unit_cassetta.py:807`) prova che la frase sopravvive anche se la scrittura finale fallisce. — ok, bot V-3 chiusa.
+- `modules/telegram/bot.py:1067` — nei vocali l'annullo si controlla su tutto il trascritto, PRIMA di `cervello_voce`, come sul Mac (`modules/voice/server.py:1172`, contesto). Rischio cercato: «forte annulla richiesta 7» che annulla davvero. Non annulla (`tests/test_unit_cassetta.py:790`), e il caso positivo resta coperto (`tests/test_unit_cassetta.py:674`). — ok, bot V-2 chiusa.
+- `modules/sviluppo/cassetta.py:73` — la regex per «annulla richiesta» senza numero. L'ho provata su frasi vere. Prende come previsto «annulla richiesta dodici» e «annulla la richiesta numero dodici per favore». Non prende «annullare la richiesta», «annulla richieste», «annulla richiesta 12 e 13» e «annulla richiesta n. 12» (le ultime due vanno al modello). Prende però anche frasi normali. — riserva (finding 1).
+
+**Finding**
+1. R-886MV-1 (gravità bassa): la regex scatta su ogni frase che comincia con «annulla (la) richiesta» e non contiene cifre, fino a 80 caratteri. Esempi provati: «annulla la richiesta che ti ho fatto prima», «Annulla la richiesta di ferie per domani mattina.». Queste frasi ricevono la risposta fissa («mi serve il numero in cifre») invece del turno del modello. Il danno è nullo (va nel verso sicuro), ma è fastidioso, e su Telegram vale per tutti i vocali. Proposta: scattare solo se dopo «richiesta» c'è al più «numero» più una o due parole, oppure con un elenco dei numeri scritti in lettere.
+2. Nota minore: la risposta fissa non dice «richiesta di sviluppo», quindi chi intendeva un'altra cosa non capisce il motivo.
+3. Nota minore: «annulla richiesta n. 12» (forma possibile nella trascrizione) va ancora al modello.
+4. Nota minore: il test «forte» controlla solo che l'annullo non sia partito, non che il turno parta davvero (il commento nel test lo dice).
+5. Nota minore, stessa famiglia di R-883MV-1: con un crash fra la scrittura e l'invio, sul disco resta una frase a voce che rimanda a un avviso Telegram mai arrivato.
+
+Wall of Shame: nessun taglio della cronologia dei messaggi (`da_voce[-LETTURE_MAX:]` è una lista di stato, non la cronologia della chat) e nessun output dei tool simulato. Le eccezioni restano intercettate (§9): `annulla_parlato` dentro il try, e nel bot l'annullo è in try con il log e il turno normale come ripiego.
+
+**Esecuzione**
+- 101 passed in `tests/test_unit_cassetta.py`.
+- 424 passed su cassetta, voice_server e telegram_voce insieme (circa 5 minuti).
+- 0 caratteri invisibili (categorie Cf/Cc) e 0 parole di gravità maiuscole nel diff.
+
+**Cosa non ho verificato**
+- I test con l'orologio davvero spostato (faketime): non installato. L'indipendenza dalla data l'ho verificata leggendo tutte le chiamate senza `adesso=`.
+- La trascrizione reale di Groq per «annulla richiesta dodici» o «n. 12»: serve un audio vero, non riproducibile qui.
+
+La riga contatore #886-MV e una lezione sono in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate da sole con `scripts/commit_memoria_revisore.sh` (commit 46422736).
+
+## VERDETTO: APPROVATO
+
+Review #887-MV: rivisto tutto il diff staged sul ramo claude/mani-voce-f3b (PR #414), +97/−18. Prima della review ho letto CLAUDE.md (§5), lo stato del progetto e la memoria del revisore. R-886MV-1 e le note 2 e 3 della #886-MV sono chiuse; nessun finding bloccante.
+
+**Elementi del diff esaminati**
+- `modules/sviluppo/cassetta.py:75` — la nuova regex del caso «senza numero»: dopo «annulla (la) richiesta (numero)» ammette al più due parole di sole lettere ASCII. Rischio esaminato: che prenda ancora frasi normali. Ho provato 13 frasi:
+  - vanno al modello: «annulla la richiesta che ti ho fatto prima» (troppe parole), «Annulla la richiesta di ferie per domani mattina.», «annulla la richiesta di ferie» (c'è «di»), «annulla la richiesta più vecchia» («più» non è ASCII);
+  - ricevono la risposta fissa: «annulla richiesta dodici», «annulla la richiesta numero dodici», «annulla richiesta ventidue.».
+  — ok, R-886MV-1 chiusa.
+- `modules/sviluppo/cassetta.py:583` — il controllo delle parole di legame (di, che, per, ecc.) e il limite di 60 caratteri. La risposta ora dice «una richiesta di sviluppo». Il blocco resta dentro il try con il log (regola §9). — ok, nota 2 chiusa.
+- `modules/sviluppo/cassetta.py:79` — la regex del comando accetta ora «n. 12» e «n.12». Rischio esaminato: si allarga anche l'annullo da messaggio di testo su Telegram, perché lì si usa la stessa funzione (`modules/telegram/bot.py:979`, contesto). La frase deve restare intera, in ASCII, con un numero da 1 a 7 cifre: allargamento accettabile. — ok, nota 3 chiusa.
+- `tests/test_unit_cassetta.py:826` e `tests/test_unit_cassetta.py:830` — test nuovi: le tre frasi normali vanno al modello e c'è il caso «n. 12». — ok.
+- Le correzioni del giro precedente sono invariate: frase a voce scritta prima dell'invio e tolta se l'invio fallisce (`modules/sviluppo/cassetta.py:400`, `modules/sviluppo/cassetta.py:420`); annullo dei vocali prima di cervello_voce (`modules/telegram/bot.py:1067`); test che non dipendono dalla data (`tests/test_unit_cassetta.py:704`). — ok.
+
+**Note minori (non bloccano)**
+- «annulla la richiesta numero dodici per favore» va al modello per via di «per»: il caso del bot V-2 (il modello che potrebbe dire di aver annullato) resta aperto solo per questa forma.
+- «annulla la richiesta prima» e «annulla la richiesta di.» ricevono la risposta fissa: «di.» col punto attaccato sfugge al controllo, perché le parole si separano solo sugli spazi. Il danno è nullo.
+
+**Esecuzione e controlli**
+- 105 passed in `tests/test_unit_cassetta.py`, 74 passed in `tests/test_unit_telegram_voce.py`.
+- 0 caratteri invisibili e 0 parole di gravità maiuscole nel diff.
+- Wall of Shame: nessun taglio della cronologia e nessun output dei tool simulato.
+
+**Cosa non ho verificato**
+- Il file `tests/test_unit_voice_server.py` non l'ho rilanciato: il server voce non è nel diff e chiama la stessa funzione già provata qui (424 passed nella #886-MV).
+- Le trascrizioni reali di Groq: servono audio veri, non riproducibili qui.
+
+Ho aggiunto la riga #887-MV in `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata da sola (commit d99f9ad4).
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_esiti.py`: 63 → 103 test (PR #411 e F3).
-- `tests/test_unit_cassetta.py`: nuovo, 71 (6fce9e43) → 80 (9f4650d6) → 95 (28947ffc). `python -m pytest -q tests/test_unit_cassetta.py` → `95 passed in 0.42s`.
-- voice_server + telegram_voce + cassetta + esiti + richieste: `542 passed in 295.01s` (prima degli ultimi due test di F3b); corsa completa sul commit 28947ffc in corso alla scrittura.
-- `tests/test_unit_kernel.py` (script): `=== RIEPILOGO: 1210 PASS, 0 FAIL ===` su 9f4650d6; F3b non tocca il kernel.
+- `tests/test_unit_esiti.py`: 63 → 101 test (PR #411 e F3; verifica esterna #414 V-1: prima avevo scritto 103).
+- `tests/test_unit_cassetta.py`: nuovo, 71 (6fce9e43) → 80 (9f4650d6) → 95 (28947ffc) → 105 (0338ed09). `python -m pytest -q tests/test_unit_cassetta.py` → `105 passed in 0.40s`.
+- voice_server + telegram_voce + cassetta + esiti + richieste sul commit 28947ffc: `544 passed in 293.19s`.
+- `tests/test_unit_kernel.py` (script): `=== RIEPILOGO: 1210 PASS, 0 FAIL ===` su 28947ffc (F3b non tocca il kernel).
 
 ## §6 STATO CI
 
 - Commit della PR #411 (fino a 5af3680e): sul head 5af3680e unit-suite, handoff-check e verifica-bot success.
 - Commit della PR #412 (fino a 179cde04): sul head 179cde04 unit-suite e handoff-check success, verifica-bot neutral (la PR tocca ci.yml).
-- 2edfc3fb, cb31b806, 28947ffc e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
+- 2edfc3fb, cb31b806, 28947ffc: nessuna run su questi SHA (pushati insieme a 8f6787a6).
+- 8f6787a6: handoff-check success; verifica-bot failure (BOCCIATO: test dipendenti dalla data, gravità media vera, corretta in 0338ed09).
+- 46422736, d99f9ad4, 0338ed09 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
 
 ## §7 RISERVE APERTE
 
+- Limite dichiarato (verifica esterna #414 V-2): un numero sentito male a voce annulla la richiesta sbagliata, senza conferma (si riapre a mano togliendo `annullata`).
+- Verifica esterna #414 V-4 COSMETICA: gli esiti si credono sulla parola dell'autore ammesso; il merge vero lo decide §10 (F4/F5).
+- Note minori #887-MV: «annulla la richiesta numero dodici per favore» va al modello; «annulla la richiesta di.» riceve la risposta fissa.
 - Chiuse da F3b: R-873MV-1 per la voce (frase solo con parti fisse), R-884MV-1 (file dei letti a voce con un solo scrittore), R-884MV-2 (test), ve #412 V-2 (avviso «scrivimi o dimmi», annullo dai vocali), bot #412 V-1 (sospesi scartati tolti).
 - Cosmetiche #885-MV: due richieste a voce in parallelo possono ridire un esito una volta; file dei letti illeggibile → si ridicono al massimo 5 esiti.
 

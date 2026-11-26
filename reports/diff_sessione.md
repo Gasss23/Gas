@@ -8,7 +8,7 @@
 - `modules/sviluppo/esiti.py`, `modules/sviluppo/richieste.py`, `gas.py` — (#411, F3).
 - `.gitignore` — file di stato degli esiti e dei letti a voce.
 - `.github/workflows/ci.yml` — (F3) passo «Run cassetta suite».
-- `tests/test_unit_cassetta.py` (95), `tests/test_unit_esiti.py`, `tests/test_unit_kernel.py` — test.
+- `tests/test_unit_cassetta.py` (105), `tests/test_unit_esiti.py`, `tests/test_unit_kernel.py` — test.
 - `reports/mani_voce_piano.md` — decisioni, F3, F3b.
-- `.claude/agents/memoria_revisore.md` — righe #873-MV … #885-MV.
+- `.claude/agents/memoria_revisore.md` — righe #873-MV … #887-MV.
 - `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.

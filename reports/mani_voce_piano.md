@@ -126,6 +126,13 @@ firma, tre difese, nessuna delle quali chiede un passo in più all'operatore qua
    coda per i giorni dopo. Il tetto lato Gas (`GAS_RICHIESTE_MAX_GIORNO`, oggi 20 issue al giorno)
    resta come limite alle issue create.
 
+Limite dichiarato (verifica esterna #414 V-2): l'annullo a voce dipende dalla trascrizione. Un numero
+sentito male (2 al posto di 12) annulla la richiesta sbagliata, senza conferma. Difese: vale solo per
+issue aperte `da-gas` nel repo privato, solo con la frase intera e un numero in cifre, e la risposta
+ripete il numero («Richiesta #N annullata»); una richiesta annullata per sbaglio si riapre a mano su
+GitHub togliendo l'etichetta `annullata`. Un numero detto in lettere riceve «mi serve il numero in
+cifre» invece di andare al modello.
+
 Restano valide le difese di §4 sui contenuti: l'esecutore non tocca mai macchina di controllo e
 credenziali, e una richiesta che lo chiede finisce con `ESITO: ferma`.
 
