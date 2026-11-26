@@ -9,7 +9,7 @@
 - `modules/telegram/bot.py` — «annulla richiesta N» prima del modello; controllo periodico degli esiti delegato a `cassetta`.
 - `.gitignore` — file di stato degli esiti.
 - `.github/workflows/ci.yml` — passo «Run cassetta suite».
-- `tests/test_unit_cassetta.py` — nuovo (71 test); `tests/test_unit_kernel.py` — T100c/T100d; `tests/test_unit_esiti.py` — (#411).
+- `tests/test_unit_cassetta.py` — nuovo (80 test); `tests/test_unit_kernel.py` — T100c/T100d; `tests/test_unit_esiti.py` — (#411).
 - `reports/mani_voce_piano.md` — decisioni dell'operatore, F3 e F3b.
-- `.claude/agents/memoria_revisore.md` — righe #873-MV … #881-MV.
+- `.claude/agents/memoria_revisore.md` — righe #873-MV … #883-MV.
 - `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.

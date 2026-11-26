@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #411 (https://github.com/Gasss23/Gas/pull/411), F2-bis: CI e bot verdi, verdetto del bot APPROVATO CON RISERVE (V-1 BASSA: §0 del suo handoff fermo a #874-MV, l'ultimo revisore è #878-MV APPROVATO CON RISERVE; V-2 COSMETICA: descrizione, aggiornata): decide l'operatore.
-2. Merge della PR #412 (https://github.com/Gasss23/Gas/pull/412), F3, DOPO la #411. Numero e URL dall'output di `gh api repos/Gasss23/Gas/pulls -X POST` (qui `gh pr` non c'è). Revisore #881-MV APPROVATO CON RISERVE: decide l'operatore (CLAUDE.md §10).
+2. Merge della PR #412 (https://github.com/Gasss23/Gas/pull/412), F3, DOPO la #411. Numero e URL dall'output di `gh api repos/Gasss23/Gas/pulls -X POST` (qui `gh pr` non c'è). Revisore #883-MV APPROVATO CON RISERVE e il bot dà neutral perché la PR tocca ci.yml: decide l'operatore (CLAUDE.md §10).
 3. Sul Mac, dopo il merge della #412: `GAS_RICHIESTE_AUTORI=<login GitHub di chi scrive gli esiti>` nel `.env`, poi riavvio del bot Telegram. Senza, Gas non legge nessun esito (fail-closed).
 
 ---
@@ -16,6 +16,7 @@
 
 - **F2-bis (PR #411)**: `FATTA` — commit 887fcc0d, 93f7650f, 80d1e2b5; revisore #873-MV … #878-MV (dettaglio nel §4).
 - **F3 — avviso, annullo, esiti su Telegram**: `FATTA` — 6fce9e43; revisore #879-MV → #880-MV BOCCIATO → #881-MV APPROVATO CON RISERVE; 197 test, kernel 1210 PASS.
+- **Correzione dopo verifica esterna e bot sulla #412**: `FATTA` — 9f4650d6; revisore #882-MV → #883-MV APPROVATO CON RISERVE.
 - **F3b — esiti letti a voce**: `DEFERITA — prossima fetta`.
 - **F4 — «mergia N» / «no N» da Telegram**: `DEFERITA — dopo F3b`.
 - **F5 — esecutore nel cloud**: `DEFERITA — dopo F4`.
@@ -25,22 +26,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  13 ++++++++++
- .github/workflows/ci.yml           |   8 ++++++
+ .claude/agents/memoria_revisore.md |  17 +++++++++++
+ .github/workflows/ci.yml           |   8 +++++
  .gitignore                         |   2 ++
- gas.py                             |  22 +++++++++++++++-
- modules/sviluppo/cassetta.py       | 437 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/sviluppo/esiti.py          | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------
- modules/sviluppo/richieste.py      |  20 ++++++++++++---
- modules/telegram/bot.py            |  29 +++++++++++++++++++++
- reports/diff_sessione.md           |  22 +++++++++-------
+ gas.py                             |  22 +++++++++++++-
+ modules/sviluppo/cassetta.py       | 477 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/sviluppo/esiti.py          | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------
+ modules/sviluppo/richieste.py      |  20 ++++++++++--
+ modules/telegram/bot.py            |  29 ++++++++++++++++++
+ reports/diff_sessione.md           |  22 ++++++++------
  reports/handoff.md                 | n/d
- reports/mani_voce_piano.md         |  65 ++++++++++++++++++++++++++++++++++++-----------
+ reports/mani_voce_piano.md         |  71 ++++++++++++++++++++++++++++++++-----------
  reports/stato_progetto.md          |   4 +--
- reports/ultimo_report.md           |  36 +++++++++++---------------
- tests/test_unit_cassetta.py        | 497 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_esiti.py           | 125 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
- tests/test_unit_kernel.py          |  29 +++++++++++++++++++++
+ reports/ultimo_report.md           |  37 ++++++++++-------------
+ tests/test_unit_cassetta.py        | 595 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_esiti.py           | 125 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ tests/test_unit_kernel.py          |  29 ++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -48,6 +49,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9f4650d6 fix(sviluppo): stato scritto prima dell'invio, issue sparita non blocca, repo privato anche in lettura, domanda di merge solo da esiti più recenti (ve/bot #412)
+5b2c904a chore(revisore): memoria review #883 — APPROVATO CON RISERVE
+816716c7 chore(revisore): memoria review #882 — APPROVATO CON RISERVE
+45f739d8 docs(fine-task): report e handoff — mani alla voce F3 (PR #412)
 6fce9e43 feat(sviluppo): mani alla voce F3 — avviso subito alla richiesta, «annulla richiesta N», esiti dalle issue su Telegram
 a518d9e5 chore(revisore): memoria review #881 — APPROVATO CON RISERVE
 f692ce6d chore(revisore): memoria review #880 — BOCCIATO
@@ -72,7 +77,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
+Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -332,20 +337,92 @@ Rischi esclusi:
 
 Memoria: ho aggiunto la riga #881-MV e una lezione (la paginazione per numero di pagina perde un elemento a ogni cancellazione tra due letture) in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con lo script in a518d9e5. Il diff staged del motore è intatto.
 
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #882-MV. È il 4° giro di F3 (le «mani alla voce»: Gas avvisa l'operatore su Telegram quando arriva l'esito di una richiesta), dopo la verifica esterna e il bot sulla #412 (head 45f739d8). Ho guardato il diff staged su claude/mani-voce-f3-avvisi: modules/sviluppo/cassetta.py e tests/test_unit_cassetta.py, +100/−11. Ho letto CLAUDE.md, lo stato del progetto (la parte su F3) e la mia memoria (lezioni #877-#881).
+
+**Le quattro verifiche che mi hai chiesto**
+- **Stato non scrivibile, nessun avviso ripetuto: confermato.** Con il file di stato non scrivibile non parte mai niente; il test fa 4 controlli e non esce nessun testo.
+- **Invio fallito, l'esito non si perde: confermato.** Si annulla il segno di «già visto» e si riprova al controllo dopo. Resta un caso, dichiarato nel docstring: se fallisce anche la scrittura finale, l'avviso si perde (consegna al più una volta).
+- **since e pagina non rotti dall'uscita anticipata: confermato.** Sia l'uscita per stato non scrivibile sia quella per invio fallito saltano l'aggiornamento di since e pagina, quindi al giro dopo si rilegge la stessa pagina. Nessuna perdita e nessun doppione.
+- **Le domande non regrediscono: solo in parte.** Due casi le fanno ancora regredire, provati con test scritti apposta (R-882MV-1 e R-882MV-2 sotto).
+
+**Elementi del diff esaminati**
+1. modules/sviluppo/cassetta.py:369 — lo stato si scrive prima dell'invio; se la scrittura fallisce si ripristinano visti e conto del giorno e si esce senza inviare. Rischio esaminato: avviso ripetuto a ogni controllo. Esito: ok.
+2. modules/sviluppo/cassetta.py:376 — se l'invio fallisce si annulla il segno e si esce dal ciclo, senza aggiornare since e pagina. Rischio esaminato: esito perso o tetto consumato. Esito: ok (test tests/test_unit_cassetta.py:546).
+3. modules/sviluppo/cassetta.py:350 — issue sparita (404/410) scartata; gli altri errori fermano il ciclo e si riprova. Rischio esaminato: la fila si blocca. Esito: ok (test tests/test_unit_cassetta.py:512).
+4. modules/sviluppo/cassetta.py:270 — gli esiti si leggono solo se il repo è privato, e se il controllo non riesce non si leggono (fail-closed). Rischio esaminato: lettura da un repo pubblico. Esito: ok. Costa una chiamata HTTP in più a ogni controllo.
+5. modules/sviluppo/cassetta.py:390 — un esito più recente senza proposta di merge cancella la domanda. Rischio esaminato: regressione delle domande. Esito: riserva (R-882MV-1).
+6. modules/sviluppo/cassetta.py:223 — domanda_aperta legge sia il formato nuovo {"pr","quando"} sia il vecchio (numero intero). Esito: ok.
+
+**Finding**
+- **R-882MV-1 BASSA (va chiusa prima di F4, che oggi non esiste).** La correzione per il bot V-3 copre solo metà dei casi. Quando l'esito più recente non propone il merge, la domanda viene cancellata e con lei la data «quando». Poi un esito vecchio recuperato dai sospesi la riapre. Provato: esito vecchio con PR 400 in sospeso, poi un esito più recente con CI rossa chiude la domanda, poi si aggiunge l'autore e domanda_aperta torna 400. Correzione: invece di cancellare, salvare una lapide `{"pr": None, "quando": creato}`; domanda_aperta già ritorna None in quel caso.
+- **R-882MV-2 BASSA.** Se lo stato diventa non scrivibile a metà controllo (uscita a modules/sviluppo/cassetta.py:374), oppure se c'è un crash tra invio e scrittura finale, la domanda degli esiti già inviati non si salva. Provato: l'operatore riceve l'avviso per la PR 500, ma domanda_aperta resta 400 finché un giro sano non la aggiorna. Correzione per F4: togliere la domanda di quella richiesta già nella scrittura prima dell'invio (fail-closed), oppure salvare comunque le domande prima di uscire.
+- **R-882MV-3 COSMETICA.**
+  - In modules/sviluppo/cassetta.py:360 il commento contiene una parola di gravità in maiuscolo (quella dopo «ve #412 V-1»). Il bot può citarla e ridare il falso rosso, come in #877: meglio scriverla in minuscolo.
+  - Per una issue sparita il log dice «issue non da-gas», che è fuorviante.
+  - Con il repo non privato o irraggiungibile esce un warning a ogni controllo, cioè ogni 5 minuti.
+
+**Altri controlli**
+- 203 test passati (cassetta, esiti e richieste; cassetta da sola 77).
+- 0 caratteri invisibili nel diff.
+- Nessun taglio della cronologia: visti[-VISTI_MAX:] taglia una lista di id di commenti, non la history dei messaggi.
+
+**Cosa NON ho verificato**
+- **La suite completa:** l'ho lanciata ma non è finita entro i tempi; vale solo il risultato sui tre moduli toccati.
+- **GitHub vero:** come si comporta quando una issue viene trasferita (risposta 301) e la rete reale non sono provati, perché il GitHub dei test è finto.
+- **Il piano:** reports/mani_voce_piano.md è modificato solo nel working tree, fuori dal perimetro di review, e non l'ho letto.
+
+La memoria è committata: 816716c7, con riga contatore e una lezione nuova. Il diff staged è rimasto com'era.
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #883-MV, 5° giro di F3 su claude/mani-voce-f3-avvisi. Ho guardato il diff staged: modules/sviluppo/cassetta.py e tests/test_unit_cassetta.py, +150/−12, uguali al working tree. R-882MV-1, R-882MV-2 e le cosmetiche sono chiuse. I miei test di riproduzione R1 e R2 ora passano. Ne resta uno nuovo, basso, da tenere per F4.
+
+**Riserve aperte**
+1. **R-883MV-1 BASSA (per F4).** Oggi la domanda nuova si scrive già nella scrittura prima dell'invio. Se poi l'avviso non arriva, sul disco resta una domanda fantasma. Succede in due casi: un crash tra scrittura e invio, oppure l'invio che fallisce e subito dopo fallisce anche la scrittura finale. Provato con il test R3 nello scratchpad: domanda_aperta dà 500 senza che l'avviso della 500 sia mai partito. In questi casi l'esito si perde, come dichiarato («al più una volta»). Il rischio vero è un «sì» dell'operatore dato alla domanda vecchia (PR 400) e applicato alla 500. Due modi di chiuderlo:
+   - nella scrittura prima dell'invio mettere la lapide (pr None) e scrivere la PR solo dopo l'invio riuscito;
+   - oppure far confermare a F4 il numero della PR.
+2. **COSMETICA.** Le lapidi restano per sempre, una per richiesta: crescita piccola, limitata dal numero di richieste.
+- Il warning ogni 5 minuti con il repo non privato lo lasci così: accetto la motivazione, è un guasto vero e conviene che si veda.
+
+**Elementi del diff esaminati**
+- modules/sviluppo/cassetta.py:372 — un esito è «vecchio» se c'è già una data e la sua è più vecchia o manca. Rischio: la domanda regredisce. Esito: ok. Nella riproduzione R1 la domanda resta None dopo il recupero del sospeso.
+- modules/sviluppo/cassetta.py:375 — un esito senza domanda lascia la lapide; domanda_aperta (modules/sviluppo/cassetta.py:223) la legge come None. Rischio: un esito vecchio riapre la domanda. Esito: ok.
+- modules/sviluppo/cassetta.py:383 — la domanda si scrive insieme al segno di visto prima dell'invio; se la scrittura fallisce si ripristinano visti, conto e domande. Rischio: domanda vecchia dopo un avviso nuovo. Esito: ok. Nella riproduzione R2 domanda_aperta dà 500 subito dopo l'avviso della 500.
+- modules/sviluppo/cassetta.py:394 — invio fallito: le domande tornano come prima in memoria. Rischio: domanda fantasma. Esito: riserva (R-883MV-1).
+- modules/sviluppo/cassetta.py:357 — il log ora dice «issue sparita o non da-gas». Esito: ok.
+
+**Controlli fatti**
+- 206 test passati (cassetta, esiti, richieste).
+- 0 caratteri invisibili e nessuna parola di gravità maiuscola nel diff.
+- Nessun taglio della cronologia: visti[-VISTI_MAX:] taglia una lista di id, non la history dei messaggi.
+
+**Cosa NON ho verificato**
+- La suite completa del kernel: non è stata rilanciata in questo giro.
+- Il comportamento di GitHub vero (301 sulle issue trasferite, rete reale): nei test GitHub è finto.
+- Il piano: reports/mani_voce_piano.md è fuori dal perimetro di review e non l'ho letto.
+
+La memoria è committata (5b2c904a, con riga contatore e una lezione nuova). Il diff staged è rimasto com'era.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_esiti.py`: 63 → 101 (PR #411) → 103 test con F3 (virgolette Pi/Pf e apostrofi).
-- `tests/test_unit_cassetta.py`: nuovo, 71 test. Comando: `python -m pytest -q tests/test_unit_cassetta.py tests/test_unit_esiti.py tests/test_unit_richieste.py` → `197 passed in 0.29s`.
+- `tests/test_unit_cassetta.py`: nuovo, 71 test (6fce9e43) → 80 test (9f4650d6). Comando: `python -m pytest -q tests/test_unit_cassetta.py tests/test_unit_esiti.py tests/test_unit_richieste.py` → `206 passed in 0.42s`.
 - `tests/test_unit_kernel.py` (script): T100c e T100d nuovi (round-trip §7 con l'avviso riuscito e fallito); `=== RIEPILOGO: 1210 PASS, 0 FAIL ===`.
 - CI: passo nuovo «Run cassetta suite» in `.github/workflows/ci.yml`.
 
 ## §6 STATO CI
 
 - Commit della PR #411 (fino a 5af3680e): sul head 5af3680e unit-suite, handoff-check e verifica-bot success (verdetto del bot APPROVATO CON RISERVE).
-- 020059f7, f692ce6d, a518d9e5, 6fce9e43 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
+- 020059f7, f692ce6d, a518d9e5, 6fce9e43: nessuna run su questi SHA (pushati insieme a 45f739d8).
+- 45f739d8: handoff-check success, verifica-bot neutral (la PR tocca ci.yml; verdetto testuale APPROVATO CON RISERVE senza finding bloccanti); la verifica esterna ha trovato la V-1 di gravità media corretta in 9f4650d6.
+- 816716c7, 5b2c904a, 9f4650d6 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
 
 ## §7 RISERVE APERTE
 
+- R-883MV-1 BASSA — domanda «fantasma» se l'avviso non parte dopo la scrittura dello stato: F4 farà confermare il numero della PR.
+- Verifica esterna #412 V-1 BASSA del bot (commento modificato non riletto): regola per F5, un ESITO è sempre un commento nuovo (nel docstring).
 - R-881MV-1 BASSA — un commento cancellato fra la lettura della pagina N e della N+1 fa perdere il primo della pagina N+1 (serve un arretrato di più pagine: raro).
 - R-881MV-2 COSMETICA — rilettura inutile con commenti multipli esatti di 100; ⪡⪢ ⋘⋙ non coperte nelle citazioni.
 - R-873MV-1 BASSA — a voce le «» non si sentono: in F4 «mergia N» varrà solo per la PR ricordata da F3 (`cassetta.domanda_aperta`).

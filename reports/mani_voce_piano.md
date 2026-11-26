@@ -105,8 +105,10 @@ costa quanto una sotto-chat di sviluppo. Tetto: al massimo N richieste lavorate 
 `add_repo`. Da verificare prima di F5: che le sessioni nate dalla scheduled task abbiano accesso a
 tutti e due i repo e i permessi per aprire PR ed etichettarle `verifica`.
 
-**Avvisi persi.** Se Gas sul Mac è spento, l'esito resta nella issue e arriva alla riaccensione. Il
-tetto giornaliero di `avvisa_operatore` vale anche qui (un avviso per esito).
+**Avvisi persi.** Se Gas sul Mac è spento, l'esito resta nella issue e arriva alla riaccensione.
+Gli avvisi di esito hanno un tetto loro (F3): 5 per controllo e `GAS_RICHIESTE_ESITI_GIORNO` al
+giorno (default 20), separato da quello di `avvisa_operatore`. Un ESITO è sempre un commento nuovo
+(un commento modificato non si rilegge).
 
 ## 4bis. Al posto di F1: compensazioni (decisione dell'operatore del 26/11)
 
