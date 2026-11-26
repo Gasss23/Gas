@@ -423,7 +423,8 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                 break  # in ordine: questo e i successivi al prossimo controllo
             inviati += 1
             if not vecchio and pr_domanda is not None:
-                domande[str(numero)] = {"pr": pr_domanda, "quando": creato}
+                # bot #415 V-1: «chiesto» = quando Gas ha fatto la domanda (per la scadenza)
+                domande[str(numero)] = {"pr": pr_domanda, "quando": creato, "chiesto": _iso(ora)}
             if cid in sospesi:
                 sospesi.remove(cid)
         else:
@@ -601,6 +602,7 @@ def annulla_parlato(testo: Any, root: Path) -> Optional[str]:
 
 COMANDI_FILENAME = ".gas_richieste_comandi.json"  # scritto SOLO dal bot Telegram (thread principale)
 COMANDI_MAX = 200
+DOMANDA_GIORNI = 7  # bot #415 V-1: dopo 7 giorni la domanda di merge scade (si rifà con un esito nuovo)
 RISPOSTA_SOLO_TELEGRAM = ("Il merge me lo confermi su Telegram: scrivimi «mergia N» o «no N». "
                           "A voce dal Mac non lo prendo.")
 
@@ -638,10 +640,23 @@ def _scrivi_comandi(root: Path, dati: List[Dict[str, Any]]) -> bool:
         return False
 
 
-def richiesta_della_pr(root: Path, pr: int) -> Optional[Tuple[int, str]]:
-    """La richiesta (numero, quando) per cui Gas ha chiesto davvero il merge della PR `pr`, se
-    la domanda è ancora aperta e nessun comando le ha già risposto. Mai eccezioni."""
+def _domanda_fresca(v: Dict[str, Any], adesso: datetime) -> bool:
+    """bot #415 V-1: la domanda vale solo per DOMANDA_GIORNI dal momento in cui Gas l'ha fatta.
+    Senza data leggibile, o con una data nel futuro, non vale (fail-closed)."""
     try:
+        t = datetime.strptime(str(v.get("chiesto")), "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc)
+    except ValueError:
+        return False
+    return timedelta(minutes=-5) <= adesso - t <= timedelta(days=DOMANDA_GIORNI)
+
+
+def richiesta_della_pr(root: Path, pr: int,
+                       adesso: Optional[datetime] = None) -> Optional[Tuple[int, str]]:
+    """La richiesta (numero, quando) per cui Gas ha chiesto davvero il merge della PR `pr`, se
+    la domanda è ancora aperta, non scaduta e nessun comando le ha già risposto. Mai eccezioni."""
+    try:
+        ora = adesso or datetime.now(timezone.utc)
         dati = _comandi(root)
         if dati is None:
             return None
@@ -649,29 +664,33 @@ def richiesta_della_pr(root: Path, pr: int) -> Optional[Tuple[int, str]]:
         for k, v in (_leggi_stato(Path(root)).get("domande") or {}).items():
             if (isinstance(v, dict) and isinstance(v.get("pr"), int)
                     and not isinstance(v.get("pr"), bool) and v.get("pr") == pr and k.isdigit()
-                    and (int(k), v.get("quando")) not in risposte):
+                    and (int(k), v.get("quando")) not in risposte and _domanda_fresca(v, ora)):
                 return int(k), str(v.get("quando") or "")
         return None
     except Exception:
         return None
 
 
-def rispondi_merge(testo: Any, root: Path, http: Optional[Http] = None) -> Optional[str]:
+def rispondi_merge(testo: Any, root: Path, http: Optional[Http] = None,
+                   adesso: Optional[datetime] = None) -> Optional[str]:
     """F4: «mergia N» / «no N» dall'operatore su Telegram. None se il testo non è il comando.
     Vale SOLO se N è la PR per cui Gas ha chiesto davvero il merge (R-873MV-1, R-883MV-1) e la
     domanda non ha già avuto risposta. Allora scrive il commento COMANDO a formato fisso sulla
     issue: il merge vero lo fa l'esecutore (F5), che ricontrolla CLAUDE.md §10 (verdetto letto,
-    CI verde, nessun conflitto). Mai eccezioni."""
+    CI verde, nessun conflitto). La domanda scade dopo DOMANDA_GIORNI. Lo stato della PR (aperta,
+    non già mergiata) qui NON si controlla: il token delle richieste vede solo le issue; lo
+    ricontrolla l'esecutore (F5, §10) prima di mergiare. Mai eccezioni."""
     http = http or _http
     try:
         cmd = esiti.comando_operatore(testo)
         if cmd is None:
             return None
         azione, pr = cmd
-        trovata = richiesta_della_pr(root, pr)
+        trovata = richiesta_della_pr(root, pr, adesso)
         if trovata is None:
-            return (f"Non ti ho chiesto il merge della PR #{pr}, oppure mi hai già risposto: "
-                    "niente fatto. Guarda l'ultimo avviso su Telegram per il numero giusto.")
+            return (f"Non ti ho chiesto il merge della PR #{pr}, oppure mi hai già risposto, "
+                    f"oppure la domanda ha più di {DOMANDA_GIORNI} giorni: niente fatto. "
+                    "Guarda l'ultimo avviso su Telegram per il numero giusto.")
         numero, quando = trovata
         repo, token = _repo(), _token()
         if not repo or not token:

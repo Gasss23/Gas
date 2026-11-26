@@ -2,7 +2,7 @@
 HTTP e Telegram finti, più il comando «annulla richiesta N» nel bot."""
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -767,8 +767,17 @@ def test_annullo_a_voce_solo_fuori_dal_seguito_r884mv_2():
                 if isinstance(figlio, ast.Call) and getattr(figlio.func, "attr", "") == "_annulla_richiesta":
                     trovate.append(fuori_seguito)
     assert any(trovate)  # almeno un «if» che la racchiude è «fuori dal seguito»
-    assert sum(1 for n in ast.walk(albero) if isinstance(n, ast.Call)
-               and getattr(n.func, "attr", "") == "_annulla_richiesta") == 1
+
+    def chiamate(nodi):
+        return sum(1 for x in nodi for n in ast.walk(x) if isinstance(n, ast.Call)
+                   and getattr(n.func, "attr", "") == "_annulla_richiesta")
+    # bot #415 V-2: la seconda chiamata è nel ramo del testo scritto (JSON, non audio): il ramo
+    # «else» dell'«if» che contiene il controllo del seguito
+    rami_json = [n.orelse for n in ast.walk(albero) if isinstance(n, ast.If) and any(
+        isinstance(f, ast.Call) and getattr(f.func, "attr", "") == "_seguito"
+        for b in n.body for f in ast.walk(b))]
+    assert chiamate(albero.body) == 2
+    assert any(chiamate(r) == 1 for r in rami_json)
 
 
 
@@ -851,7 +860,8 @@ class HttpCommenti(Http):
 def _con_domanda(env, pr=412):
     h, inv = HttpCommenti(), Invia()
     h.commenti = [_commento(1, _esito_pulito(pr=pr))]
-    _due_controlli(env, h, inv)
+    # bot #415 V-1: la domanda scade dopo 7 giorni da quando è fatta: niente data fissa
+    _due_controlli(env, h, inv, adesso=datetime.now(timezone.utc))
     assert c.domanda_aperta(env, 7) == pr
     return h
 
@@ -908,7 +918,7 @@ def test_esito_nuovo_dopo_il_comando_riapre_la_domanda(env):
     h = _con_domanda(env, pr=412)
     c.rispondi_merge("no 412", env, http=h)
     h.commenti.append(_commento(2, _esito_pulito(pr=413), quando="2026-11-26T15:30:00Z"))
-    c.controlla_esiti(env, http=h, invia=Invia(), adesso=ADESSO)
+    c.controlla_esiti(env, http=h, invia=Invia(), adesso=datetime.now(timezone.utc))
     assert "mergiare la PR #413" in c.rispondi_merge("mergia 413", env, http=h)
 
 
@@ -987,3 +997,42 @@ def test_pr_booleana_nello_stato_non_vale(env):
     stato = {"since": "2026-11-26T14:58:00Z", "domande": {"7": {"pr": True, "quando": "x"}}}
     (env / c.STATO_FILENAME).write_text(json.dumps(stato), encoding="utf-8")
     assert c.richiesta_della_pr(env, 1) is None
+
+
+def test_domanda_scaduta_dopo_sette_giorni_bot415_v1(env):
+    h = _con_domanda(env)
+    dopo = datetime.now(timezone.utc) + timedelta(days=c.DOMANDA_GIORNI, minutes=1)
+    out = c.rispondi_merge("mergia 412", env, http=h, adesso=dopo)
+    assert "più di 7 giorni" in out and h.scritti == []
+    prima = datetime.now(timezone.utc) + timedelta(days=c.DOMANDA_GIORNI - 1)
+    assert "Fatto" in c.rispondi_merge("mergia 412", env, http=h, adesso=prima)
+
+
+def test_domanda_senza_data_non_vale_bot415_v1(env):
+    stato = {"since": "2026-11-26T14:58:00Z", "domande": {"7": {"pr": 412, "quando": "x"}}}
+    (env / c.STATO_FILENAME).write_text(json.dumps(stato), encoding="utf-8")
+    assert c.richiesta_della_pr(env, 412) is None
+    stato["domande"]["7"]["chiesto"] = "2099-01-01T00:00:00Z"  # nel futuro: non vale
+    (env / c.STATO_FILENAME).write_text(json.dumps(stato), encoding="utf-8")
+    assert c.richiesta_della_pr(env, 412) is None
+
+
+def test_server_voce_testo_dal_mac_merge_e_annullo_prima_del_modello_bot415_v2(env):
+    h = _handler_con_root(env)
+    # il ramo JSON chiama lo stesso controllo del parlato, prima del cervello
+    import inspect
+    from modules.voice import server
+    sorgente = inspect.getsource(server.VoiceHandler.do_POST)
+    ramo_json = sorgente.split("Campo 'prompt' mancante")[1].split("cervello_voce(")[0]
+    assert "_annulla_richiesta(prompt)" in ramo_json
+    seguito = sorgente.split("elif self._merge_dal_mac(prompt):")[1].split("else:")[0]
+    assert "RISPOSTA_SOLO_TELEGRAM" in seguito
+    assert h._merge_dal_mac("no 412") and not h._merge_dal_mac("ciao")
+    assert h._annulla_richiesta("mergia 412") == c.RISPOSTA_SOLO_TELEGRAM
+
+
+def test_regola_f4_nel_prompt_di_base_bot415_v3():
+    import gas
+    base = gas._GAS_SYSTEM_PROMPT_BASE
+    assert "RICHIESTE DI SVILUPPO" in base and "lo fa SOLO il codice di Gas" in base
+    assert "Non dire mai di aver annullato, mergiato o rifiutato" in base

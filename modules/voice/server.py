@@ -987,6 +987,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 if annullo is not None:
                     self._rispondi_senza_turno(annullo, "annulla")
                     return
+            elif self._merge_dal_mac(prompt):
+                # bot #415 V-2: nel seguito l'annullo no (parlato della stanza), ma «mergia N»
+                # riceve lo stesso la risposta fissa invece di arrivare al modello
+                from modules.sviluppo.cassetta import RISPOSTA_SOLO_TELEGRAM
+                self._rispondi_senza_turno(RISPOSTA_SOLO_TELEGRAM, "annulla")
+                return
         else:
             try:
                 data: Dict[str, Any] = json.loads(raw) if raw else {}
@@ -1005,6 +1011,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 return
             if len(prompt) > _MAX_PROMPT_CHAR:
                 self._send_json(413, {"error": f"Testo troppo lungo (oltre {_MAX_PROMPT_CHAR} caratteri)"})
+                return
+            # bot #415 V-2: anche il testo scritto dal client del Mac passa dall'annullo e dal
+            # rifiuto del merge, prima del modello (come su Telegram)
+            annullo = self._annulla_richiesta(prompt)
+            if annullo is not None:
+                self._rispondi_senza_turno(annullo, "annulla")
                 return
 
         # R-ve269-2 + V1: «/forte», «forte …» parlato o GAS_VOCE_FORTE → solo forte, mai ai gratuiti
@@ -1160,6 +1172,15 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(200, out)
             # R-711-2-M2: a testo il client lo mostra; segnati DOPO l'invio riuscito
             self._segna_finiti_letti()
+
+    def _merge_dal_mac(self, prompt: str) -> bool:
+        """True se il testo è «mergia N» / «no N» (bot #415 V-2). Fail-safe §9: False."""
+        try:
+            from modules.sviluppo import cassetta
+            return cassetta.e_comando_merge(prompt)
+        except Exception as exc:
+            log.warning("controllo del merge a voce non riuscito: %s", exc)
+            return False
 
     def _annulla_richiesta(self, prompt: str) -> Optional[str]:
         """F3b: il testo da dire se il parlato è «annulla richiesta N», altrimenti None.
