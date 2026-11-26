@@ -897,6 +897,7 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self._tempi = {}
         self._capito = None  # V-3 bot #318: mai il «capito» di un'altra richiesta (keep-alive)
         self._finiti_jobs = None  # R-711-3-M2: mai i compiti di un'altra richiesta
+        self._esiti_voce = None  # F3b: idem per gli esiti delle richieste di sviluppo
         self._anticipo: Optional[AnticipoVoce] = None  # voce rapida: mai quello di un'altra
         # Prima frase subito (notte 11-12/11): stato della risposta condiviso col filo della
         # sintesi anticipata. «attesa» = nessuna risposta ancora; «anticipata» = intestazioni
@@ -980,6 +981,12 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 # 17/11: mai «Jarways» come nome al cervello. Nel seguito no (R-806-1): lì il
                 # vocativo «Jarvis, …» è il segno più forte che la frase è per Gas
                 prompt = togli_parola_in_testa(prompt)
+                # Mani alla voce F3b: «annulla richiesta N» dopo la parola di attivazione (mai
+                # nel seguito, parlato della stanza): risponde il codice, nessun turno
+                annullo = self._annulla_richiesta(prompt)
+                if annullo is not None:
+                    self._rispondi_senza_turno(annullo, "annulla")
+                    return
         else:
             try:
                 data: Dict[str, Any] = json.loads(raw) if raw else {}
@@ -1154,6 +1161,19 @@ class VoiceHandler(BaseHTTPRequestHandler):
             # R-711-2-M2: a testo il client lo mostra; segnati DOPO l'invio riuscito
             self._segna_finiti_letti()
 
+    def _annulla_richiesta(self, prompt: str) -> Optional[str]:
+        """F3b: il testo da dire se il parlato è «annulla richiesta N», altrimenti None.
+        Fail-safe §9: un errore dà None e il turno parte normale."""
+        try:
+            root = getattr(self.kernel, "root", None)
+            if root is None:
+                return None
+            from modules.sviluppo import cassetta
+            return cassetta.annulla_parlato(prompt, root)
+        except Exception as exc:
+            log.warning("annullo a voce non riuscito: %s", exc)
+            return None
+
     def _compiti_finiti(self) -> str:
         """Fetta 3.2 (chat M2, 7 nov): la frase sui compiti in sottofondo finiti e non ancora
         letti (al massimo 2, ultime 24 ore), da dire PRIMA della risposta; "" se non ce ne
@@ -1165,13 +1185,21 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if root is None:
                 return ""
             jobs = sottofondo.da_leggere(root)
-            if not jobs:
-                return ""
-            frase = sottofondo.frase_finiti(jobs)
+            frase = sottofondo.frase_finiti(jobs) if jobs else ""
             # Ve #350 V-1: segnati letti solo DOPO la consegna (_segna_finiti_letti): se la
             # sintesi fallisce o il client chiude, li si ridice alla prossima attivazione
-            self._finiti_jobs = jobs
-            return frase.strip()
+            self._finiti_jobs = jobs or None
+            # Mani alla voce F3b: anche gli esiti delle richieste di sviluppo (solo parti fisse)
+            esiti_voce = []
+            try:
+                from modules.sviluppo import cassetta
+                esiti_voce = cassetta.da_leggere_voce(root)
+            except Exception as exc:  # §9: i compiti in sottofondo si dicono lo stesso
+                log.warning("esiti delle richieste non letti a voce: %s", exc)
+            self._esiti_voce = esiti_voce or None
+            frasi = [frase.strip()] if frase.strip() else []
+            frasi += [x["frase"] for x in esiti_voce]
+            return " ".join(frasi).strip()
         except Exception as exc:
             log.warning("compiti finiti non letti a voce: %s", exc)
             return ""
@@ -1181,13 +1209,20 @@ class VoiceHandler(BaseHTTPRequestHandler):
         consegna è riuscita. Una volta sola; mai eccezioni (§9)."""
         jobs = getattr(self, "_finiti_jobs", None)
         self._finiti_jobs = None
-        if not jobs:
-            return
-        try:
-            from modules import sottofondo
-            sottofondo.segna_letti(getattr(self.kernel, "root", None), jobs)
-        except Exception as exc:
-            log.warning("segno di lettura dei compiti non scritto: %s", exc)
+        esiti_voce = getattr(self, "_esiti_voce", None)
+        self._esiti_voce = None
+        if jobs:
+            try:
+                from modules import sottofondo
+                sottofondo.segna_letti(getattr(self.kernel, "root", None), jobs)
+            except Exception as exc:
+                log.warning("segno di lettura dei compiti non scritto: %s", exc)
+        if esiti_voce:  # F3b
+            try:
+                from modules.sviluppo import cassetta
+                cassetta.segna_letti_voce(getattr(self.kernel, "root", None), esiti_voce)
+            except Exception as exc:
+                log.warning("segno di lettura degli esiti non scritto: %s", exc)
 
     def _rispondi_senza_turno(self, testo: str, segno: str, prefisso: str = "") -> None:
         """Risposta parlata fissa senza lavoro del kernel («uso», «non ho capito», «dimmi»), nel

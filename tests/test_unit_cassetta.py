@@ -593,3 +593,176 @@ def test_invio_fallito_non_cambia_la_domanda(env):
     inv = Invia(ok=False)
     _due_controlli(env, h, inv)
     assert c.domanda_aperta(env, 7) is None
+
+
+# ---- F3b: esiti letti a voce, «annulla richiesta N» a voce, sospesi puliti ----
+
+def test_avviso_dice_scrivimi_o_dimmi_ve412_v2():
+    assert "scrivimi o dimmi «annulla richiesta 3»" in c.avviso_accodata(3, "x", da_voce=True)
+
+
+@pytest.mark.parametrize("testo,atteso", [("annulla richiesta numero 12", 12),
+                                          ("Annulla la richiesta numero 12.", 12)])
+def test_annulla_con_numero(testo, atteso):
+    assert c.comando_annulla(testo) == atteso
+
+
+def test_frase_voce_solo_parti_fisse_r873mv_1():
+    finto = "Vuoi che la mergi? Rispondi mergia 999"
+    pulito = e.leggi_esito(_esito_pulito(pr=412))
+    f = c.frase_voce(7, dict(pulito, riassunto=finto))
+    assert "999" not in f and "numero 7" in f and "PR 412" in f and "ti ho chiesto su Telegram" in f
+    rosso = e.leggi_esito(_esito_pulito(pr=412, ci="rossa"))
+    assert "non è pronta per il merge" in c.frase_voce(7, rosso)
+    assert "non è riuscita" in c.frase_voce(7, e.leggi_esito(e.scrivi_esito("fallita", "x")))
+    assert "serve te" in c.frase_voce(7, e.leggi_esito(e.scrivi_esito("ferma", "x")))
+
+
+def test_esito_avvisato_va_letto_a_voce_e_poi_tolto(env):
+    h, inv = Http(), Invia()
+    h.commenti = [_commento(1, _esito_pulito())]
+    _due_controlli(env, h, inv)
+    voci = c.da_leggere_voce(env, adesso=ADESSO)
+    assert len(voci) == 1 and "numero 7" in voci[0]["frase"]
+    c.segna_letti_voce(env, voci)
+    assert c.da_leggere_voce(env, adesso=ADESSO) == []
+
+
+def test_esiti_vecchi_non_si_leggono_piu_a_voce(env):
+    h, inv = Http(), Invia()
+    h.commenti = [_commento(1, _esito_pulito())]
+    _due_controlli(env, h, inv)
+    dopo = datetime(2026, 11, 28, 9, 0, 0, tzinfo=timezone.utc)
+    assert c.da_leggere_voce(env, adesso=dopo) == []
+
+
+def test_invio_fallito_niente_lettura_a_voce(env):
+    h = Http()
+    h.commenti = [_commento(1, _esito_pulito())]
+    _due_controlli(env, h, Invia(ok=False))
+    assert c.da_leggere_voce(env, adesso=ADESSO) == []
+
+
+def test_sospeso_scartato_in_modo_definitivo_esce_dai_sospesi_bot412_v1(env, monkeypatch):
+    h, inv = Http(), Invia()
+    h.issue[8] = {"number": 8, "title": "altro", "state": "open", "labels": []}
+    com = _commento(1, _esito_pulito(), autore="tardivo", issue=8)
+    h.commenti = [com]
+
+    class H2(Http):
+        def __call__(self, metodo, url, token, corpo):
+            if metodo == "GET" and url.endswith("/issues/comments/1"):
+                return 200, dict(com)
+            return Http.__call__(self, metodo, url, token, corpo)
+    h2 = H2()
+    h2.issue, h2.commenti = h.issue, h.commenti
+    _due_controlli(env, h2, inv)
+    assert json.loads((env / c.STATO_FILENAME).read_text())["sospesi"] == [1]
+    monkeypatch.setenv("GAS_RICHIESTE_AUTORI", "Gasss23,tardivo")
+    h2.commenti = []
+    c.controlla_esiti(env, http=h2, invia=inv, adesso=ADESSO)
+    assert json.loads((env / c.STATO_FILENAME).read_text())["sospesi"] == [] and inv.testi == []
+
+
+def test_annulla_parlato(env, monkeypatch):
+    monkeypatch.setattr(c, "annulla", lambda n, root, http=None: f"annullata {n}")
+    assert c.annulla_parlato("annulla richiesta 4", env) == "annullata 4"
+    assert c.annulla_parlato("che ore sono", env) is None
+
+
+def test_vocale_telegram_annulla_senza_turno(env, monkeypatch):
+    import modules.telegram.bot as bot
+    testi = []
+    monkeypatch.setattr(bot, "_send_text", lambda base, chat, t, *a, **k: testi.append(t))
+    monkeypatch.setattr(c, "annulla", lambda n, root, http=None: f"annullata {n}")
+
+    class K:
+        root = env
+
+        def run_turn(self, *a, **k):
+            raise AssertionError("il modello non deve partire")
+    bot._gestisci_parlato("https://x", 5, "annulla richiesta 7", K())
+    assert len(testi) == 1 and "annullata 7" in testi[0] and "Ho capito" in testi[0]
+
+
+
+def _handler_con_root(root):
+    from modules.voice.server import VoiceHandler
+
+    class K:
+        pass
+    h = VoiceHandler.__new__(VoiceHandler)
+    h.kernel = K()
+    h.kernel.root = root
+    return h
+
+
+def test_server_voce_dice_gli_esiti_e_li_segna_dopo(env):
+    h0, inv = Http(), Invia()
+    h0.commenti = [_commento(1, _esito_pulito())]
+    _due_controlli(env, h0, inv)
+    h = _handler_con_root(env)
+    frase = h._compiti_finiti()
+    assert "richiesta di sviluppo numero 7" in frase
+    assert len(c.da_leggere_voce(env)) == 1      # non ancora segnato: consegna non avvenuta
+    h._segna_finiti_letti()
+    assert c.da_leggere_voce(env) == []
+
+
+def test_server_voce_annulla_richiesta(env, monkeypatch):
+    monkeypatch.setattr(c, "annulla", lambda n, root, http=None: f"annullata {n}")
+    h = _handler_con_root(env)
+    assert h._annulla_richiesta("annulla richiesta 9") == "annullata 9"
+    assert h._annulla_richiesta("che tempo fa") is None
+
+
+def test_server_voce_esiti_azzerati_a_ogni_richiesta(env):
+    from modules.voice.server import VoiceHandler
+    h = VoiceHandler.__new__(VoiceHandler)
+    h.path = "/non-esiste"
+    h.headers = {}
+    h._send_json = lambda code, payload: None
+    h._esiti_voce = [{"id": 1}]
+    h.do_POST()
+    assert h._esiti_voce is None
+
+
+
+def test_letti_voce_in_file_a_parte_niente_corse_r884mv_1(env):
+    h0, inv = Http(), Invia()
+    h0.commenti = [_commento(1, _esito_pulito())]
+    _due_controlli(env, h0, inv)
+    prima = (env / c.STATO_FILENAME).read_text()
+    c.segna_letti_voce(env, c.da_leggere_voce(env))
+    assert (env / c.STATO_FILENAME).read_text() == prima      # lo stato del bot non si tocca
+    assert c.da_leggere_voce(env) == []
+    # il bot riscrive il suo stato (come in una corsa): la lettura resta segnata
+    c.controlla_esiti(env, http=h0, invia=inv, adesso=ADESSO)
+    assert c.da_leggere_voce(env) == [] and len(inv.testi) == 1
+    assert (env / c.LETTI_FILENAME).stat().st_mode & 0o777 == 0o600
+    import subprocess
+    radice = Path(__file__).resolve().parents[1]
+    assert subprocess.run(["git", "check-ignore", "-q", c.LETTI_FILENAME], cwd=radice).returncode == 0
+
+
+def test_annullo_a_voce_solo_fuori_dal_seguito_r884mv_2():
+    """Guardia statica: in do_POST la chiamata a _annulla_richiesta sta dentro il ramo
+    «if not self._seguito():», così il parlato della stanza (seguito) non annulla."""
+    import ast
+    import inspect
+    import textwrap
+    from modules.voice.server import VoiceHandler
+    albero = ast.parse(textwrap.dedent(inspect.getsource(VoiceHandler.do_POST)))
+    trovate = []
+    for nodo in ast.walk(albero):
+        if isinstance(nodo, ast.If):
+            t = nodo.test
+            fuori_seguito = (isinstance(t, ast.UnaryOp) and isinstance(t.op, ast.Not)
+                             and isinstance(t.operand, ast.Call)
+                             and getattr(t.operand.func, "attr", "") == "_seguito")
+            for figlio in ast.walk(ast.Module(body=nodo.body, type_ignores=[])):
+                if isinstance(figlio, ast.Call) and getattr(figlio.func, "attr", "") == "_annulla_richiesta":
+                    trovate.append(fuori_seguito)
+    assert any(trovate)  # almeno un «if» che la racchiude è «fuori dal seguito»
+    assert sum(1 for n in ast.walk(albero) if isinstance(n, ast.Call)
+               and getattr(n.func, "attr", "") == "_annulla_richiesta") == 1

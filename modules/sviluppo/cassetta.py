@@ -59,8 +59,16 @@ ESITI_GIORNO_DEFAULT = 20     # GAS_RICHIESTE_ESITI_GIORNO
 SOSPESI_MAX = 20              # esiti di autori non (ancora) ammessi, riprovati
 PAGINE_MAX = 50               # pagine lette con lo stesso «since» (5000 commenti) prima di ripartire
 _AVVISATO_SENZA_AUTORI = False
+LETTURE_MAX = 5               # esiti in attesa di essere detti a voce
+LETTURE_ORE = 24              # oltre, non si dicono più a voce (restano su Telegram)
+LETTI_PER_TURNO = 2           # esiti detti a voce in un turno
+# R-884MV-1: i «già detti a voce» stanno in un file a parte, scritto SOLO dal server voce;
+# .gas_richieste_esiti.json lo scrive SOLO il thread del bot. Un file, uno scrittore: niente
+# corse fra i due processi (che riporterebbero indietro visti, domande o letture).
+LETTI_FILENAME = ".gas_richieste_letti_voce.json"
+LETTI_MEMORIA = 100           # id ricordati come già detti
 # «annulla richiesta 12», «annulla la richiesta #12»: frase intera, solo ASCII (come «mergia N»)
-_ANNULLA_RE = re.compile(r"^\s*annulla\s+(?:la\s+)?richiesta\s+#?([1-9][0-9]{0,6})\s*[.!]?\s*$",
+_ANNULLA_RE = re.compile(r"^\s*annulla\s+(?:la\s+)?richiesta\s+(?:numero\s+)?#?([1-9][0-9]{0,6})\s*[.!]?\s*$",
                          re.IGNORECASE | re.ASCII)
 
 Invia = Callable[[str], Tuple[bool, str]]
@@ -97,7 +105,7 @@ def avviso_accodata(numero: int, titolo: Any, da_voce: bool) -> str:
     origine = "Arrivata a voce." if da_voce else "Arrivata da Telegram o dal terminale."
     return (f"📨 Richiesta di sviluppo #{int(numero)} accodata: «{esiti._citato(titolo, 120)}». "
             f"{origine} L'esecutore non la prende prima di {ATTESA_ESECUTORE_MIN} minuti. "
-            f"Se non è tua, rispondi «annulla richiesta {int(numero)}».")
+            f"Se non è tua, scrivimi o dimmi «annulla richiesta {int(numero)}».")
 
 
 # ---------------------------------------------------------------- 2. annullo
@@ -330,6 +338,8 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                 log.warning("cassetta: commento %s scartato (%s)", cid,
                             "issue non riconosciuta" if numero is None else "formato non valido")
                 visti.append(cid); gia.add(cid)
+                if cid in sospesi:  # bot #412 V-1: uno scarto definitivo esce dai sospesi
+                    sospesi.remove(cid)
                 continue
             if autore not in ammessi:
                 if cid not in sospesi:
@@ -357,6 +367,8 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                 log.warning("cassetta: commento %s su #%s scartato (issue sparita o non da-gas)",
                             cid, numero)
                 visti.append(cid); gia.add(cid)
+                if cid in sospesi:
+                    sospesi.remove(cid)
                 continue
             # ve #412 V-1 (gravità media): PRIMA si scrive lo stato con il commento già visto, il
             # conto del giorno e la domanda nuova, POI si invia. Se lo stato non si scrive non si
@@ -394,6 +406,10 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                 domande.clear(); domande.update(domande_prima)
                 break  # in ordine: questo e i successivi al prossimo controllo
             inviati += 1
+            # F3b: la frase corta a voce (solo parti fisse) per il primo turno a voce dopo
+            da_voce = [x for x in stato.get("da_leggere") or [] if isinstance(x, dict)]
+            da_voce.append({"id": cid, "frase": frase_voce(numero, esito), "quando": _iso(ora)})
+            stato["da_leggere"] = da_voce[-LETTURE_MAX:]
             if cid in sospesi:
                 sospesi.remove(cid)
         else:
@@ -475,3 +491,87 @@ def controllo_in_sottofondo(root: Path,
         _CRONO.in_corso = False
         log.warning("cassetta: controllo non avviato (%s)", type(e).__name__)
         return False
+
+
+# ---------------------------------------------------------------- F3b: esiti letti a voce
+
+def frase_voce(numero: int, esito: Dict[str, Any]) -> str:
+    """La frase CORTA da dire a voce: SOLO parti fisse (numero, stato, PR, controlli), MAI i testi
+    liberi dell'esecutore (R-873MV-1: a voce le «» non si sentono, quindi niente testo che possa
+    imitare una domanda). I dettagli stanno su Telegram."""
+    try:
+        n = int(numero)
+        stato = esito.get("esito")
+        pr = esito.get("pr")
+        pr_txt = f", PR {pr}" if isinstance(pr, int) and not isinstance(pr, bool) else ""
+        if stato == "pronta":
+            if esiti.propone_merge(esito):
+                coda = "controlli a posto: ti ho chiesto su Telegram se mergiarla"
+            else:
+                coda = "ma non è pronta per il merge, i dettagli sono su Telegram"
+            return f"La richiesta di sviluppo numero {n} è fatta{pr_txt}, {coda}."
+        if stato == "fallita":
+            return f"La richiesta di sviluppo numero {n} non è riuscita{pr_txt}. Dettagli su Telegram."
+        return f"Sulla richiesta di sviluppo numero {n} l'esecutore si è fermato: serve te. Dettagli su Telegram."
+    except Exception:  # §9
+        return "C'è un esito nuovo di una richiesta di sviluppo: dettagli su Telegram."
+
+
+def _letti_voce(root: Path) -> List[int]:
+    try:
+        d = json.loads((Path(root) / LETTI_FILENAME).read_text(encoding="utf-8"))
+        return [x for x in d.get("letti") or [] if isinstance(x, int)] if isinstance(d, dict) else []
+    except FileNotFoundError:
+        return []
+    except Exception as e:
+        log.warning("cassetta: letti a voce illeggibili (%s)", type(e).__name__)
+        return []
+
+
+def da_leggere_voce(root: Path, adesso: Optional[datetime] = None) -> List[Dict[str, Any]]:
+    """Gli esiti non ancora detti a voce, delle ultime LETTURE_ORE, i più vecchi prima, al massimo
+    LETTI_PER_TURNO. Legge lo stato del bot e il file dei letti (solo lettura). Mai eccezioni."""
+    try:
+        ora = adesso or datetime.now(timezone.utc)
+        limite = _iso(ora - timedelta(hours=LETTURE_ORE))
+        letti = set(_letti_voce(root))
+        voci = [x for x in _leggi_stato(Path(root)).get("da_leggere") or []
+                if isinstance(x, dict) and isinstance(x.get("id"), int)
+                and isinstance(x.get("frase"), str) and isinstance(x.get("quando"), str)
+                and x["quando"] >= limite and x["id"] not in letti]
+        return voci[:LETTI_PER_TURNO]
+    except Exception as e:
+        log.warning("cassetta: esiti da leggere a voce non letti (%s)", type(e).__name__)
+        return []
+
+
+def segna_letti_voce(root: Path, voci: List[Dict[str, Any]]) -> None:
+    """Segna come detti a voce gli esiti appena consegnati, nel file a parte (R-884MV-1: mai
+    nello stato del bot). Mai eccezioni."""
+    try:
+        ids = [x.get("id") for x in voci if isinstance(x, dict) and isinstance(x.get("id"), int)]
+        if not ids:
+            return
+        letti = _letti_voce(root)
+        letti += [i for i in ids if i not in letti]
+        p = Path(root) / LETTI_FILENAME
+        tmp = p.with_suffix(f".tmp.{os.getpid()}.{secrets.token_hex(4)}")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump({"letti": letti[-LETTI_MEMORIA:]}, f)
+        os.replace(tmp, p)
+    except Exception as e:
+        log.warning("cassetta: segno di lettura a voce non scritto (%s)", type(e).__name__)
+
+
+def annulla_parlato(testo: Any, root: Path) -> Optional[str]:
+    """F3b: «annulla richiesta N» detto a voce (microfono del Mac o vocale Telegram). None se
+    la frase non è il comando; altrimenti il testo da dire o scrivere. Mai eccezioni."""
+    try:
+        numero = comando_annulla(testo)
+        if numero is None:
+            return None
+        return annulla(numero, Path(root))
+    except Exception as e:  # §9
+        log.warning("cassetta: annullo a voce non riuscito (%s)", type(e).__name__)
+        return "Operazione negata: annullo non riuscito (errore interno, dettagli nel log)."
