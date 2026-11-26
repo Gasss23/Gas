@@ -495,3 +495,101 @@ def test_troppe_pagine_riparte_da_adesso(env, monkeypatch, caplog):
     stato = json.loads((env / c.STATO_FILENAME).read_text())
     assert stato["pagina"] == 1 and stato["since"] == "2026-11-26T14:58:00Z"
     assert "riparto da adesso" in caplog.text
+
+
+# ---- verifica esterna e bot sulla #412 (head 45f739d8) ----
+
+def test_stato_non_scrivibile_niente_avvisi_ripetuti_ve412_v1(env, monkeypatch, caplog):
+    h, inv = Http(), Invia()
+    h.commenti = [_commento(1, _esito_pulito())]
+    c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO)  # punto di partenza
+    monkeypatch.setattr(c, "_scrivi_stato", lambda root, stato: False)
+    for _ in range(4):
+        c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO)
+    assert inv.testi == [] and "NON avvisato" in caplog.text
+
+
+def test_issue_sparita_non_blocca_la_fila_ve412_v2(env):
+    h, inv = Http(), Invia()
+    h.commenti = [_commento(1, _esito_pulito(), issue=99, quando="2026-11-26T15:01:00Z"),
+                  _commento(2, _esito_pulito(), issue=7, quando="2026-11-26T15:02:00Z")]
+    assert _due_controlli(env, h, inv) == 1 and "#7" in inv.testi[0]
+
+
+def test_errore_transitorio_sulla_issue_aspetta(env):
+    h, inv = Http(), Invia()
+    h.codici[("GET", "/issues/7")] = 502
+    h.commenti = [_commento(1, _esito_pulito())]
+    assert _due_controlli(env, h, inv) == 0
+    del h.codici[("GET", "/issues/7")]
+    assert c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO) == 1
+
+
+def test_repo_non_privato_niente_esiti_ve412_v4(env, caplog):
+    h, inv = Http(privato=False), Invia()
+    h.commenti = [_commento(1, _esito_pulito())]
+    assert _due_controlli(env, h, inv) == 0 and "non è PRIVATO" in caplog.text
+
+
+def test_esito_vecchio_non_riscrive_la_domanda_bot412_v3(env):
+    h, inv = Http(), Invia()
+    h.commenti = [_commento(2, _esito_pulito(pr=500), quando="2026-11-26T15:20:00Z")]
+    _due_controlli(env, h, inv)
+    assert c.domanda_aperta(env, 7) == 500
+    # un esito più vecchio (recuperato tardi) non la cambia
+    h.commenti.append(_commento(1, _esito_pulito(pr=400), quando="2026-11-26T15:10:00Z"))
+    c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO)
+    assert c.domanda_aperta(env, 7) == 500
+
+
+def test_invio_fallito_non_consuma_il_tetto(env, monkeypatch):
+    monkeypatch.setenv("GAS_RICHIESTE_ESITI_GIORNO", "1")
+    h = Http()
+    h.commenti = [_commento(1, _esito_pulito())]
+    inv = Invia(ok=False)
+    _due_controlli(env, h, inv)
+    inv.ok = True
+    assert c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO) == 1
+
+
+def test_lapide_esito_vecchio_non_riapre_la_domanda_r882mv_1(env, monkeypatch):
+    h, inv = Http(), Invia()
+    vecchio = _commento(1, _esito_pulito(pr=400), autore="tardivo", quando="2026-11-26T15:01:00Z")
+    h.commenti = [vecchio, _commento(2, _esito_pulito(pr=500, ci="rossa"),
+                                     quando="2026-11-26T15:05:00Z")]
+
+    class H2(Http):
+        def __call__(self, metodo, url, token, corpo):
+            if metodo == "GET" and url.endswith("/issues/comments/1"):
+                return 200, dict(vecchio)
+            return Http.__call__(self, metodo, url, token, corpo)
+    h2 = H2()
+    h2.commenti = h.commenti
+    _due_controlli(env, h2, inv)               # il vecchio in sospeso, il nuovo chiude
+    assert c.domanda_aperta(env, 7) is None
+    monkeypatch.setenv("GAS_RICHIESTE_AUTORI", "Gasss23,tardivo")
+    c.controlla_esiti(env, http=h2, invia=inv, adesso=ADESSO)   # il vecchio recuperato
+    assert c.domanda_aperta(env, 7) is None    # la lapide non lo lascia riaprire
+
+
+def test_domanda_salvata_prima_dell_invio_r882mv_2(env, monkeypatch):
+    h, inv = Http(), Invia()
+    h.commenti = [_commento(1, _esito_pulito(pr=500))]
+    c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO)
+    vero = c._scrivi_stato
+    scritture = []
+
+    def una_sola(root, stato):  # la scrittura prima dell'invio riesce, la finale no
+        scritture.append(1)
+        return vero(root, stato) if len(scritture) == 1 else False
+    monkeypatch.setattr(c, "_scrivi_stato", una_sola)
+    assert c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO) == 1
+    assert c.domanda_aperta(env, 7) == 500
+
+
+def test_invio_fallito_non_cambia_la_domanda(env):
+    h = Http()
+    h.commenti = [_commento(1, _esito_pulito(pr=500))]
+    inv = Invia(ok=False)
+    _due_controlli(env, h, inv)
+    assert c.domanda_aperta(env, 7) is None

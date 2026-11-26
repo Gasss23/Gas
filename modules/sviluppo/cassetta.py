@@ -21,6 +21,10 @@ Tre cose, tutte col token DEDICATO delle richieste (`modules/sviluppo/richieste.
 Fail-safe §9: nessuna eccezione esce; ogni errore è un testo «Operazione negata: …» o un
 controllo saltato, scritto in gas_debug.log (mai il token). Un commento scartato si scrive nel
 log (cosmetica 5 di #409).
+
+Regola per l'esecutore (F5, bot #412 V-1): un ESITO è sempre un commento NUOVO. Un commento già
+letto e poi modificato non viene riletto. Consegna: al più una volta (lo stato si scrive prima
+dell'invio).
 """
 from __future__ import annotations
 
@@ -215,7 +219,8 @@ def domanda_aperta(root: Path, numero_richiesta: int) -> Optional[int]:
     """La PR per cui Gas ha chiesto davvero «vuoi che la mergi?» sulla richiesta, o None.
     Per F4 (R-873MV-1). Mai eccezioni."""
     try:
-        pr = (_leggi_stato(root).get("domande") or {}).get(str(int(numero_richiesta)))
+        voce = (_leggi_stato(root).get("domande") or {}).get(str(int(numero_richiesta)))
+        pr = voce.get("pr") if isinstance(voce, dict) else voce
         return pr if isinstance(pr, int) and not isinstance(pr, bool) else None
     except Exception:
         return None
@@ -262,13 +267,17 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                 _AVVISATO_SENZA_AUTORI = True
             return 0
         root = Path(root)
+        motivo_repo = _privato(repo, token, http)  # ve #412 V-4: come annulla, fail-closed
+        if motivo_repo:
+            log.warning("cassetta: esiti non letti: %s", motivo_repo)
+            return 0
         ora = adesso or datetime.now(timezone.utc)
         oggi = ora.date().isoformat()
         stato = _leggi_stato(root)
         visti: List[int] = [x for x in stato.get("visti") or [] if isinstance(x, int)]
         sospesi: List[int] = [x for x in stato.get("sospesi") or [] if isinstance(x, int)]
-        domande: Dict[str, int] = {k: v for k, v in (stato.get("domande") or {}).items()
-                                   if isinstance(k, str) and isinstance(v, int)}
+        domande: Dict[str, Any] = {k: v for k, v in (stato.get("domande") or {}).items()
+                                   if isinstance(k, str) and isinstance(v, (int, dict))}
         uso = stato.get("uso") if isinstance(stato.get("uso"), dict) else {}
         n_oggi = uso.get("n") if uso.get("giorno") == oggi and isinstance(uso.get("n"), int) else 0
         since = stato.get("since")
@@ -337,26 +346,54 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                 titoli[numero] = ((str(issue.get("title") or ""),
                                    ETICHETTA in _etichette(issue)
                                    and issue.get("pull_request") is None)
-                                  if ci == 200 and isinstance(issue, dict) else None)
+                                  if ci == 200 and isinstance(issue, dict)
+                                  else ("", False) if ci in (404, 410) else None)
             info = titoli[numero]
             if info is None:
-                break  # issue non letta: si riprova al prossimo controllo, in ordine
+                break  # errore transitorio (rete, 5xx, 403): si riprova al prossimo controllo
+            # ve #412 V-2: issue sparita (404/410) = scarto definitivo, non blocca la fila
             titolo, nostra = info
             if not nostra:
-                log.warning("cassetta: commento %s su #%s scartato (issue non da-gas)", cid, numero)
+                log.warning("cassetta: commento %s su #%s scartato (issue sparita o non da-gas)",
+                            cid, numero)
                 visti.append(cid); gia.add(cid)
                 continue
+            # ve #412 V-1 (gravità media): PRIMA si scrive lo stato con il commento già visto, il
+            # conto del giorno e la domanda nuova, POI si invia. Se lo stato non si scrive non si
+            # invia niente: con il file non scrivibile niente avvisi ripetuti (al più una
+            # consegna: un crash fra scrittura e invio perde l'avviso invece di duplicarlo).
+            # bot #412 V-3 e R-882MV-1/2: la domanda ricordata cambia solo per un esito PIÙ
+            # RECENTE; un esito senza domanda lascia una «lapide» con la data (pr None), così un
+            # esito vecchio recuperato dopo non la riapre; e la domanda va nello stato insieme al
+            # segno di visto, prima dell'invio.
+            creato = c.get("created_at") if isinstance(c.get("created_at"), str) else ""
+            voce = domande.get(str(numero))
+            prec = voce.get("quando") if isinstance(voce, dict) else None
+            vecchio = isinstance(prec, str) and bool(prec) and (not creato or creato < prec)
+            domande_prima = dict(domande)
+            if not vecchio:
+                domande[str(numero)] = {"pr": esito["pr"] if esiti.propone_merge(esito) else None,
+                                        "quando": creato}
+            visti.append(cid); gia.add(cid)
+            n_oggi += 1
+            prima = {k: stato.get(k) for k in ("visti", "uso", "domande")}
+            stato["visti"] = visti[-VISTI_MAX:]
+            stato["uso"] = {"giorno": oggi, "n": n_oggi}
+            stato["domande"] = domande
+            if not _scrivi_stato(root, stato):
+                log.warning("cassetta: stato non scrivibile: esito %s NON avvisato (niente "
+                            "ripetizioni)", cid)
+                visti.pop(); gia.discard(cid); n_oggi -= 1
+                domande.clear(); domande.update(domande_prima)
+                stato.update(prima)
+                return inviati
             ok, motivo = invia(esiti.frase_esito(numero, titolo, esito))
             if not ok:
                 log.warning("cassetta: avviso dell'esito %s non partito (%s): riprovo", cid, motivo)
+                visti.pop(); gia.discard(cid); n_oggi -= 1
+                domande.clear(); domande.update(domande_prima)
                 break  # in ordine: questo e i successivi al prossimo controllo
             inviati += 1
-            n_oggi += 1
-            if esiti.propone_merge(esito):
-                domande[str(numero)] = esito["pr"]
-            else:
-                domande.pop(str(numero), None)  # un esito nuovo senza domanda la chiude
-            visti.append(cid); gia.add(cid)
             if cid in sospesi:
                 sospesi.remove(cid)
         else:
@@ -381,6 +418,9 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                     except ValueError:
                         pass
         stato["visti"] = visti[-VISTI_MAX:]
+        if len(sospesi) > SOSPESI_MAX:  # ve #412 V-3: il taglio lascia traccia
+            log.warning("cassetta: %s esiti in sospeso scartati (oltre %s)",
+                        len(sospesi) - SOSPESI_MAX, SOSPESI_MAX)
         stato["sospesi"] = sospesi[-SOSPESI_MAX:]
         stato["domande"] = domande
         stato["uso"] = {"giorno": oggi, "n": n_oggi}
