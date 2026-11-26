@@ -212,6 +212,14 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_esiti.py -v 2>&1 | tee "$RUNNER_TEMP/esiti_output.txt"
 
+      - name: Run cassetta suite (pytest, zero token LLM)
+        # Mani alla voce F3 (2026-11-26): avviso alla creazione, «annulla richiesta N»,
+        # lettura degli esiti dalle issue (modules/sviluppo/cassetta.py), HTTP finto.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_cassetta.py -v 2>&1 | tee "$RUNNER_TEMP/cassetta_output.txt"
+
       - name: Run avvisa_operatore suite (pytest, zero token LLM)
         # Notifica all'operatore su Telegram (R6, 2026-11-02): invio finto, tetto e cancello.
         if: always()

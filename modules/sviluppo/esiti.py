@@ -70,17 +70,32 @@ def _pulisci(testo: Any, n: int = RIGA_MAX) -> str:
     return t if len(t) <= n else t[: n - 1].rstrip() + "…"
 
 
-# Bot #411 V-2: anche le virgolette che a schermo somigliano a «» (≪≫, 《》, 〈〉, ‹›, ⟨⟩, ⟪⟫)
+# Bot #411 V-2: anche le virgolette che a schermo somigliano a «» (≪≫, 《》, 〈〉, ‹›, ⟨⟩, ⟪⟫,
+# e, R-880MV-1 della review #880-MV e ve #411, ︽︾ ⸨⸩ ❮❯ ❬❭ 「」 『』 〝〞〟)
 _SIMILI_A_CAPORALI = str.maketrans({c: '"' for c in
                                     "\u00ab\u00bb\u226a\u226b\u300a\u300b\u3008\u3009"
-                                    "\u2039\u203a\u2329\u232a\u27e8\u27e9\u27ea\u27eb"})
+                                    "\u2039\u203a\u2329\u232a\u27e8\u27e9\u27ea\u27eb\uff02"
+                                    "\ufe3d\ufe3e\u2e28\u2e29\u276e\u276f\u276c\u276d"
+                                    "\u300c\u300d\u300e\u300f\ufe41\ufe42\ufe43\ufe44"
+                                    "\u301d\u301e\u301f\uff62\uff63"})
+
+
+def _virgolette_simili(testo: str) -> str:
+    """Ve #411 (5af3680e) V-1: oltre all'elenco, ogni virgoletta d'apertura o chiusura
+    (categorie Unicode Pi/Pf) diventa una virgoletta dritta, e le parentesi angolari o doppie
+    dell'elenco anche: nessun carattere che a schermo somiglia a «» resta nella citazione."""
+    # R-880MV-2: gli apostrofi tipografici singoli (frequenti dal telefono) diventano «'», e le
+    # parentesi restano parentesi (non somigliano a «»: le angolari sono nell'elenco sopra)
+    return "".join("'" if c in "\u2018\u2019\u201a\u201b"
+                   else '"' if unicodedata.category(c) in ("Pi", "Pf") else c
+                   for c in testo.translate(_SIMILI_A_CAPORALI))
 
 
 def _citato(testo: Any, n: int = RIGA_MAX) -> str:
     """Un testo libero da mostrare all'operatore tra «»: senza «» (né virgolette che le
     somigliano) dentro, così non può chiudere la citazione e sembrare una frase di Gas
     (R-864-3, bot #409 V-1, bot #411 V-2)."""
-    return _pulisci(str(testo or "").translate(_SIMILI_A_CAPORALI), n)
+    return _pulisci(_virgolette_simili(str(testo or "")), n)
 
 
 def _righe(corpo: Any, marca: str) -> Optional[List[str]]:

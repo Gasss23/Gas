@@ -126,9 +126,13 @@ def _registra_uso(p: Path, n: int) -> bool:
 
 
 def crea_richiesta(titolo: Any, descrizione: Any, root: Path,
-                   http: Optional[Http] = None) -> str:
+                   http: Optional[Http] = None,
+                   avvisa: Optional[Callable[[int, str], bool]] = None) -> str:
     """Crea la issue con l'etichetta `da-gas`. Ritorna il testo per il modello:
-    «Successo: …» col numero della richiesta, oppure «Operazione negata: …»."""
+    «Successo: …» col numero della richiesta, oppure «Operazione negata: …».
+    Mani alla voce F3 (26/11, al posto della firma a voce rifiutata dall'operatore): con
+    `avvisa`, appena la issue esiste l'operatore riceve SUBITO un avviso con il comando per
+    annullarla; un avviso fallito non annulla la richiesta ma il testo lo dice."""
     http = http or _http  # letto a ogni chiamata: i test lo sostituiscono
     try:
         titolo = " ".join(str(titolo or "").split())
@@ -178,8 +182,18 @@ def crea_richiesta(titolo: Any, descrizione: Any, root: Path,
             return (f"Successo parziale: richiesta #{info['number']} creata ma SENZA l'etichetta "
                     f"«{ETICHETTA}» (permessi del token?): avvisa l'operatore, la chat di "
                     "sviluppo potrebbe non vederla.")
+        avviso = ""
+        if avvisa is not None:
+            try:
+                ok = avvisa(info["number"], titolo)
+            except Exception as e:  # §9
+                log.warning("richieste: avviso della #%s fallito (%s)", info["number"],
+                            type(e).__name__)
+                ok = False
+            avviso = (" L'operatore è stato avvisato su Telegram (può annullarla)." if ok else
+                      " ATTENZIONE: l'avviso su Telegram NON è partito: dillo all'operatore.")
         return (f"Successo: richiesta di sviluppo #{info['number']} registrata "
-                f"(«{titolo}»). La chat di sviluppo la prende in carico.")
+                f"(«{titolo}»). La chat di sviluppo la prende in carico.{avviso}")
     except Exception as e:
         log.warning("richieste: errore inatteso (%s)", type(e).__name__)
         return "Operazione negata: richiesta non creata (errore interno, dettagli nel log)."
