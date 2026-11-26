@@ -11694,6 +11694,35 @@ try:
         check("T100b finestra contaminata: richiedi_sviluppo va al cancello, nessuna chiamata GitHub",
               _chiamate100 == [] and len(_c100b) == 2 and _c100b[1] in ("in_attesa", "negata"),
               str(_ev100b)[:400])
+        # T100c mani alla voce F3 (26/11): avviso SUBITO all'operatore con il comando per
+        # annullare (al posto della firma a voce); round-trip: il turno arriva alla risposta
+        import modules.telegram.bot as _tg100
+        _avvisi100 = []
+        _orig_inv100 = _tg100.invia_notifica
+        _tg100.invia_notifica = lambda t: (_avvisi100.append(t) or (True, ""))
+        try:
+            _chiamate100.clear()
+            _k100c = kernel_tmp()
+            _ev100c = run_turn_scriptato(_k100c, "fai aggiungere i lead al report",
+                                         [[("richiedi_sviluppo", _a100)], "Fatto."])
+            _o100c = [e["output"] for e in _ev100c if e["type"] == "tool_res"]
+            check("T100c avviso subito alla creazione, con «annulla richiesta 42», e turno chiuso",
+                  len(_avvisi100) == 1 and "#42" in _avvisi100[0]
+                  and "«annulla richiesta 42»" in _avvisi100[0]
+                  and "Arrivata da Telegram o dal terminale" in _avvisi100[0]
+                  and len(_o100c) == 1 and "avvisato su Telegram" in _o100c[0]
+                  and [e["content"] for e in _ev100c if e["type"] == "final"] == ["Fatto."],
+                  str(_ev100c)[:300] + str(_avvisi100))
+            _tg100.invia_notifica = lambda t: (False, "rete giù")
+            _k100d = kernel_tmp()
+            _ev100d = run_turn_scriptato(_k100d, "fai aggiungere i lead al report",
+                                         [[("richiedi_sviluppo", _a100)], "Fatto."])
+            _o100d = [e["output"] for e in _ev100d if e["type"] == "tool_res"]
+            check("T100d avviso fallito: richiesta creata lo stesso, il testo lo dice al modello",
+                  len(_o100d) == 1 and _o100d[0].startswith("Successo: ")
+                  and "NON è partito" in _o100d[0], str(_o100d))
+        finally:
+            _tg100.invia_notifica = _orig_inv100
     finally:
         _r100._http = _orig100
         for _kk, _v in _saved100.items():
