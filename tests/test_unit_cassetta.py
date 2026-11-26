@@ -306,7 +306,8 @@ def test_bot_annulla_richiesta_senza_turno(env, monkeypatch):
         def run_turn(self, *a, **k):
             raise AssertionError("il modello non deve partire")
 
-    upd = {"update_id": 1, "message": {"chat": {"id": 5}, "text": "annulla richiesta 7"}}
+    upd = {"update_id": 1, "message": {"chat": {"id": 5}, "from": {"id": 5},
+                                       "text": "annulla richiesta 7"}}
     bot._handle_update("https://x", upd, {5}, K())
     assert chiamate == [7] and testi == ["annullata!"]
     # da un messaggio modificato no
@@ -684,7 +685,7 @@ def test_vocale_telegram_annulla_senza_turno(env, monkeypatch):
 
         def run_turn(self, *a, **k):
             raise AssertionError("il modello non deve partire")
-    bot._gestisci_parlato("https://x", 5, "annulla richiesta 7", K())
+    bot._gestisci_parlato("https://x", 5, "annulla richiesta 7", K(), comandi_ok=True)
     assert len(testi) == 1 and "annullata 7" in testi[0] and "Ho capito" in testi[0]
 
 
@@ -934,9 +935,9 @@ def test_bot_mergia_da_testo_e_da_vocale(env, monkeypatch):
 
         def run_turn(self, *a, **k):
             raise AssertionError("il modello non deve partire")
-    bot._handle_update("https://x", {"update_id": 1, "message": {"chat": {"id": 5},
+    bot._handle_update("https://x", {"update_id": 1, "message": {"chat": {"id": 5}, "from": {"id": 5},
                                                                   "text": "mergia 412"}}, {5}, K())
-    bot._gestisci_parlato("https://x", 5, "mergia 412", K())
+    bot._gestisci_parlato("https://x", 5, "mergia 412", K(), comandi_ok=True)
     assert testi[0] == "risposto" and "risposto" in testi[1]
     bot._handle_update("https://x", {"update_id": 2, "edited_message": {"chat": {"id": 5},
                                                                          "text": "mergia 412"}},
@@ -1036,3 +1037,70 @@ def test_regola_f4_nel_prompt_di_base_bot415_v3():
     base = gas._GAS_SYSTEM_PROMPT_BASE
     assert "RICHIESTE DI SVILUPPO" in base and "lo fa SOLO il codice di Gas" in base
     assert "Non dire mai di aver annullato, mergiato o rifiutato" in base
+
+
+def test_merge_e_annullo_solo_dal_mittente_ammesso_e_non_inoltrati_bot415_v1(env, monkeypatch):
+    """Il solo chat_id non basta: in una chat di gruppo ammessa un altro membro, o un messaggio
+    inoltrato, non annulla e non fa mergiare (come per la firma, che guarda from.id)."""
+    import modules.telegram.bot as bot
+    testi, fatti = [], []
+    monkeypatch.setattr(bot, "_send_text", lambda base, chat, t, *a, **k: testi.append(t))
+    monkeypatch.setattr(c, "rispondi_merge", lambda t, root, http=None: fatti.append(t) or "fatto")
+    monkeypatch.setattr(c, "annulla", lambda n, root, http=None: fatti.append(n) or "fatto")
+
+    class K:
+        root = env
+
+        def run_turn(self, *a, **k):
+            raise AssertionError("il modello non deve partire")
+    casi = [{"chat": {"id": -100}, "from": {"id": 9}},                      # altro membro
+            {"chat": {"id": -100}},                                         # senza mittente
+            {"chat": {"id": -100}, "from": {"id": True}},                   # id booleano
+            {"chat": {"id": -100}, "from": {"id": 5}, "forward_origin": {"type": "user"}},
+            {"chat": {"id": -100}, "from": {"id": 5}, "forward_date": 1700000000}]
+    for i, m in enumerate(casi):
+        for t in ("mergia 412", "annulla richiesta 7"):
+            bot._handle_update("https://x", {"update_id": i, "message": dict(m, text=t)},
+                               {-100, 5}, K())
+            assert testi[-1] == bot._COMANDO_SOLO_TUO
+    assert fatti == []
+    # il vocale senza il via del mittente: niente comando
+    bot._gestisci_parlato("https://x", -100, "mergia 412", K())
+    assert bot._COMANDO_SOLO_TUO in testi[-1] and fatti == []
+    # il mittente ammesso, messaggio suo: vale
+    bot._handle_update("https://x", {"update_id": 99, "message": {
+        "chat": {"id": -100}, "from": {"id": 5}, "text": "mergia 412"}}, {-100, 5}, K())
+    assert testi[-1] == "fatto" and fatti == ["mergia 412"]
+
+
+def test_vocale_passa_il_mittente_al_parlato_bot415_v1(env, monkeypatch):
+    import modules.telegram.bot as bot
+    visti = []
+    monkeypatch.setattr(bot, "_send_typing", lambda *a, **k: None)
+    monkeypatch.setattr(bot, "testo_da_vocale", lambda base, v: ("mergia 412", None))
+    monkeypatch.setattr(bot, "_gestisci_parlato",
+                        lambda base, chat, t, k, comandi_ok=False: visti.append(comandi_ok))
+    voce = {"file_id": "x", "duration": 2}
+    bot._handle_update("https://x", {"update_id": 1, "message": {
+        "chat": {"id": 5}, "from": {"id": 5}, "voice": voce}}, {5}, object())
+    bot._handle_update("https://x", {"update_id": 2, "message": {
+        "chat": {"id": 5}, "from": {"id": 5}, "voice": voce, "forward_origin": {}}}, {5}, object())
+    bot._handle_update("https://x", {"update_id": 3, "message": {
+        "chat": {"id": 5}, "from": {"id": 5}, "voice": voce,
+        "forward_origin": {"type": "hidden_user"}}}, {5}, object())
+    assert visti == [True, False, False]  # anche un forward_origin vuoto è un inoltro
+
+
+def test_domanda_su_disco_subito_dopo_l_invio_bot415_v4(env, monkeypatch):
+    h, inv = Http(), Invia()
+    h.commenti = [_commento(1, _esito_pulito(pr=500))]
+    c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO)
+    vero = c._scrivi_stato
+    scritture = []
+
+    def due_sole(root, stato):  # prima dell'invio e subito dopo riescono, la finale no
+        scritture.append(1)
+        return vero(root, stato) if len(scritture) <= 2 else False
+    monkeypatch.setattr(c, "_scrivi_stato", due_sole)
+    assert c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO) == 1
+    assert c.domanda_aperta(env, 7) == 500 and len(scritture) == 3

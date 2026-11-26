@@ -425,6 +425,12 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
             if not vecchio and pr_domanda is not None:
                 # bot #415 V-1: «chiesto» = quando Gas ha fatto la domanda (per la scadenza)
                 domande[str(numero)] = {"pr": pr_domanda, "quando": creato, "chiesto": _iso(ora)}
+                # bot #415 V-4: la domanda va su disco SUBITO dopo l'invio riuscito, non solo alla
+                # fine del controllo (un'uscita anticipata non la perde)
+                stato["domande"] = domande
+                if not _scrivi_stato(root, stato):
+                    log.warning("cassetta: domanda di merge per #%s non salvata ora: riprovo "
+                                "alla fine", numero)
             if cid in sospesi:
                 sospesi.remove(cid)
         else:

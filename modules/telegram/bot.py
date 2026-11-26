@@ -938,7 +938,8 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
             if trascritto is None:
                 _send_text(base_url, chat_id, errore)
                 return
-            _gestisci_parlato(base_url, chat_id, trascritto, kernel)
+            _gestisci_parlato(base_url, chat_id, trascritto, kernel,
+                              comandi_ok=_comandi_dal_mittente(msg, allowed))
             return
 
         giro = comando_giro(text)
@@ -983,6 +984,9 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
             if not upd.get("message"):
                 _send_text(base_url, chat_id, "Questo comando non vale da un messaggio "
                            "modificato: mandalo come messaggio nuovo.")
+                return
+            if not _comandi_dal_mittente(msg, allowed):
+                _send_text(base_url, chat_id, _COMANDO_SOLO_TUO)
                 return
         risposta_fissa = (cassetta.annulla_parlato(text, Path(root))
                           or cassetta.rispondi_merge(text, Path(root)))
@@ -1051,7 +1055,27 @@ def _turno_con_finale(kernel: Any, chat_id: int, text: str,
     return testo, finale
 
 
-def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any) -> None:
+_COMANDO_SOLO_TUO = ("Questo comando vale solo da un messaggio tuo, scritto o detto da te: "
+                     "non da un messaggio inoltrato né da un altro membro della chat.")
+
+
+def _comandi_dal_mittente(msg: Dict[str, Any], allowed: set) -> bool:
+    """Bot #415 V-1: annullo e merge valgono solo se il MITTENTE (from.id, come per la firma)
+    è ammesso e il messaggio non è inoltrato. Il solo chat_id non basta (chat di gruppo).
+    Fail-closed: un dato strano dà False."""
+    try:
+        uid = (msg.get("from") or {}).get("id")
+        if not _id_intero(uid) or uid not in allowed:
+            return False
+        inoltro = ("forward_origin", "forward_from", "forward_from_chat", "forward_date",
+                   "forward_sender_name", "is_automatic_forward")
+        return not any(k in msg for k in inoltro)  # la sola presenza basta (anche vuoto)
+    except Exception:
+        return False
+
+
+def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any,
+                      comandi_ok: bool = False) -> None:
     """Il testo di un vocale va a Gas come il parlato della voce di casa: «forte …» detto
     all'inizio vale «/forte» (stessa regola del server voce, cervello_voce); i comandi
     (/clear, /notte) non valgono a voce. In cima alla risposta la trascrizione, così
@@ -1068,8 +1092,12 @@ def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any)
     try:
         from modules.sviluppo import cassetta
         root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
-        annullo = (cassetta.annulla_parlato(trascritto, Path(root))
-                   or cassetta.rispondi_merge(trascritto, Path(root)))  # F4: dalla chat dell'operatore
+        if not comandi_ok and (cassetta.comando_annulla(trascritto) is not None
+                               or cassetta.e_comando_merge(trascritto)):
+            annullo = _COMANDO_SOLO_TUO  # bot #415 V-1: vocale inoltrato o di un altro membro
+        else:
+            annullo = (cassetta.annulla_parlato(trascritto, Path(root))
+                       or cassetta.rispondi_merge(trascritto, Path(root)))  # F4
     except Exception as e:  # §9: il vocale va al turno normale
         log.warning("vocale: annullo non controllato (%s)", type(e).__name__)
         annullo = None
