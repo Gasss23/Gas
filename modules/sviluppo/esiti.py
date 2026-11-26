@@ -11,7 +11,8 @@ e l'esecutore (sessione cloud). Due tipi di commento, ciascuno con un marcatore 
       CI: verde | rossa | in corso | assente
       BOT: APPROVATO | APPROVATO CON RISERVE | BOCCIATO | assente
       VERIFICA_ESTERNA: APPROVATO | APPROVATO CON RISERVE | BOCCIATO | assente
-      RISERVA: <una riga per finding ALTA/MEDIA, al massimo RISERVE_MAX>
+      RISERVA: <una riga per finding ALTA/MEDIA; il lettore ne tiene RISERVE_MAX e conta
+               le altre>
       RIASSUNTO: <una riga: cosa è stato fatto>
 - COMANDO, scritto da Gas per conto dell'operatore:
       <!-- gas-comando v1 -->
@@ -37,9 +38,14 @@ BOT = ("APPROVATO", "APPROVATO CON RISERVE", "BOCCIATO", "assente")
 VERIFICA = BOT  # bot #409 V-2: anche la verifica esterna a valori fissi
 # R-865-1: caratteri che si vedono vuoti ma non sono di categoria C* (riempitivi Hangul,
 # braille vuoto, selettori di variante)
-_VUOTI = frozenset("\u115f\u1160\u3164\uffa0\u2800") | frozenset(
-    chr(c) for c in [*range(0xFE00, 0xFE10), *range(0xE0100, 0xE01F0)])
-RIGA_MAX = 300       # caratteri di un testo libero (verifica esterna, riserva, riassunto)
+# Bot #409 su 0b039727 e 20fddc0c V-1: anche gli invisibili «Default_Ignorable» di categoria Mn
+# (U+034F, U+17B4, U+17B5, U+180B-U+180F); in più un testo libero senza nessuna lettera,
+# cifra, punteggiatura o simbolo conta come vuoto (_pulisci), qualunque cosa contenga.
+_VUOTI = frozenset("\u115f\u1160\u3164\uffa0\u2800\u034f\u17b4\u17b5") | frozenset(
+    chr(c) for c in [*range(0x180B, 0x1810), *range(0xFE00, 0xFE10),
+                     *range(0xE0100, 0xE01F0)])
+_VISIBILI = ("L", "N", "P", "S")
+RIGA_MAX = 300       # caratteri di un testo libero (riserva, riassunto, titolo)
 RISERVE_MAX = 5      # righe RISERVA tenute
 COMMENTO_MAX = 8000  # un commento più lungo non è un esito
 PR_MAX = 9_999_999  # bot #409-quater V-2: le regex accettano al massimo 7 cifre
@@ -49,7 +55,7 @@ _COMANDO = re.compile(r"^(MERGIA|NO) #([1-9][0-9]{0,6})$")
 # Dall'operatore (Telegram): «mergia 412», «mergia la #412», «no 412», «non mergiare 412»
 _COMANDO_OPERATORE = re.compile(
     r"^\s*(mergia|mergiala|no|non mergiare)\s+(?:la\s+)?(?:pr\s+)?#?([1-9][0-9]{0,6})\s*[.!]?\s*$",
-    re.IGNORECASE)
+    re.IGNORECASE | re.ASCII)  # ve #409 V-1: niente «ı» turca né spazi Unicode (U+00A0)
 
 
 def _pulisci(testo: Any, n: int = RIGA_MAX) -> str:
@@ -59,7 +65,15 @@ def _pulisci(testo: Any, n: int = RIGA_MAX) -> str:
     t = "".join(" " if unicodedata.category(c).startswith("C") or c in _VUOTI else c
                 for c in str(testo or ""))
     t = " ".join(t.split())
+    if not any(unicodedata.category(c)[0] in _VISIBILI for c in t):
+        return ""  # solo spazi o segni senza base: a schermo sembra vuoto
     return t if len(t) <= n else t[: n - 1].rstrip() + "…"
+
+
+def _citato(testo: Any, n: int = RIGA_MAX) -> str:
+    """Un testo libero da mostrare all'operatore tra «»: senza le virgolette «» dentro, così
+    non può chiudere la citazione e sembrare una frase di Gas (R-864-3, bot #409 V-1)."""
+    return _pulisci(str(testo or "").replace("«", '"').replace("»", '"'), n)
 
 
 def _righe(corpo: Any, marca: str) -> Optional[List[str]]:
@@ -164,40 +178,54 @@ def scrivi_esito(esito: str, riassunto: str, pr: Optional[int] = None, ci: str =
 
 
 def frase_esito(numero_richiesta: int, titolo: str, esito: Dict[str, Any]) -> str:
-    """Il testo per l'operatore (Telegram e voce): cosa è stato fatto, PR, controlli e, se la
-    PR è pronta, la domanda sul merge con la risposta da dare."""
+    """Il testo per l'operatore (Telegram e voce). Prima le parti FISSE scritte da Gas (stato,
+    PR, controlli a valori fissi), poi i testi liberi dell'esecutore tra «» con un'etichetta
+    (R-864-3, bot #409 V-1: un riassunto non può imitare i controlli né la domanda). La domanda
+    sul merge solo con PR valida, CI verde, bot APPROVATO o APPROVATO CON RISERVE, verifica
+    esterna non BOCCIATO e NESSUNA riga RISERVA (ve #409 V-2: le RISERVA sono i finding
+    ALTA/MEDIA). Il merge vero lo decide comunque CLAUDE.md §10."""
     try:
-        testa = f"Richiesta di sviluppo #{numero_richiesta} «{_pulisci(titolo, 80)}»"
-        corpo = _pulisci(esito.get("riassunto"))
-        if esito.get("esito") == "fallita":
-            return f"{testa}: non riuscita. {corpo}"
-        if esito.get("esito") == "ferma":
-            return f"{testa}: mi sono fermato, serve te. {corpo}"
+        try:
+            n = int(numero_richiesta)
+        except (TypeError, ValueError):
+            n = 0
+        testa = f"Richiesta di sviluppo #{n} «{_citato(titolo, 80)}»"
+        stato = esito.get("esito")
         pr = esito.get("pr")
-        ci = esito.get("ci") or "assente"
-        bot = esito.get("bot") or "assente"
-        verifica = esito.get("verifica_esterna") or "assente"
-        controlli = [f"CI {ci}", f"bot: {bot}"]
-        if verifica != "assente":
-            controlli.append(f"verifica esterna: {verifica}")
-        riserve = list(esito.get("riserve") or [])
-        if esito.get("riserve_altre"):
-            riserve.append(f"+{esito['riserve_altre']} altre")
-        if riserve:
-            controlli.append("riserve: " + "; ".join(riserve))
         pr_ok = isinstance(pr, int) and not isinstance(pr, bool) and 0 < pr <= PR_MAX
-        testo = (f"{testa}: fatta. {corpo} "
-                 + (f"PR #{pr}, " if pr_ok else "PR mancante, ") + ", ".join(controlli) + ".")
-        # R-864-2: la domanda sul merge SOLO con PR valida, CI verde, bot APPROVATO o APPROVATO
-        # CON RISERVE e verifica esterna non BOCCIATO (bot #409 V-2). Elenco dei valori buoni,
-        # non dei cattivi (bot #409-bis V-1: riga BOT mancante = niente domanda); il merge
-        # vero lo decide comunque CLAUDE.md §10
+        # ve #409-ter V-1: un dizionario fatto a mano non porta valori fuori elenco
+        ci = esito.get("ci") if esito.get("ci") in CI else "assente"
+        bot = esito.get("bot") if esito.get("bot") in BOT else "assente"
+        verifica_ok = esito.get("verifica_esterna", "assente") in VERIFICA  # R-867-2
+        verifica = esito.get("verifica_esterna", "assente") if verifica_ok else "assente"
+        riserve = [_citato(x) for x in (esito.get("riserve") or []) if _citato(x)]
+        altre = esito.get("riserve_altre")
+        altre = altre if isinstance(altre, int) and not isinstance(altre, bool) and altre > 0 else 0
+        n_riserve = len(riserve) + altre
+        stato_txt = {"pronta": "fatta", "fallita": "non riuscita",
+                     "ferma": "mi sono fermato, serve te"}.get(stato, "esito non chiaro")
+        fissi = [f"PR #{pr}" if pr_ok else "nessuna PR", f"CI {ci}", f"bot {bot}"]
+        if verifica != "assente":
+            fissi.append(f"verifica esterna {verifica}")
+        if n_riserve:
+            fissi.append(f"riserve ALTA/MEDIA: {n_riserve}")
+        testo = f"{testa}: {stato_txt}. " + ", ".join(fissi) + "."
+        riassunto = _citato(esito.get("riassunto"))
+        if riassunto:
+            testo += f" Dice l'esecutore: «{riassunto}»."
+        if riserve:
+            testo += " Riserve: " + "; ".join(f"«{x}»" for x in riserve)
+            testo += (f" (+{altre} altre)." if altre else ".")
+        if stato != "pronta":
+            return testo
         if (not pr_ok or ci != "verde" or bot not in ("APPROVATO", "APPROVATO CON RISERVE")
-                or verifica not in VERIFICA or verifica == "BOCCIATO"):  # R-867-2
-            return testo + " Controlli non verdi: niente merge per ora."
+                or not verifica_ok or verifica == "BOCCIATO" or n_riserve):
+            return testo + " Niente merge per ora."
         return testo + f" Vuoi che la mergi? Rispondi «mergia {pr}» oppure «no {pr}»."
     except Exception:  # §9
-        return f"Richiesta di sviluppo #{numero_richiesta}: c'è un esito, guardalo sulla issue."
+        # R-873MV-2: niente valore grezzo nel ripiego
+        n = numero_richiesta if isinstance(numero_richiesta, int) else 0
+        return f"Richiesta di sviluppo #{n}: c'è un esito, guardalo sulla issue."
 
 
 def comando_operatore(testo: Any) -> Optional[Tuple[str, int]]:
