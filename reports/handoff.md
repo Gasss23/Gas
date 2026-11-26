@@ -15,6 +15,7 @@
 - **Merge della PR #409**: `FATTA` — 17cba359, col sì dell'operatore via M1.
 - **Decisioni dell'operatore nel piano**: `FATTA` — `reports/mani_voce_piano.md` §4bis e §5 (F1 rifiutata, compensazioni).
 - **F2-bis — riserve basse di F2**: `FATTA` — 887fcc0d; revisore #873-MV → #874-MV APPROVATO; 79 test.
+- **Correzione dopo la verifica esterna (#411 V-1)**: `FATTA` — 93f7650f, ogni riga RISERVA conta; revisore #875-MV → #876-MV APPROVATO.
 - **F3 — avviso subito, annullo, lettura degli esiti**: `DEFERITA — prossima fetta`.
 - **F4 — «mergia N» / «no N» da Telegram**: `DEFERITA — dopo F3`.
 - **F5 — esecutore nel cloud**: `DEFERITA — dopo F4`.
@@ -24,14 +25,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
- modules/sviluppo/esiti.py          | 92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------
- reports/diff_sessione.md           | 13 ++++++-------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ modules/sviluppo/esiti.py          |  97 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------
+ reports/diff_sessione.md           |  13 ++++++-------
  reports/handoff.md                 | n/d
- reports/mani_voce_piano.md         | 60 +++++++++++++++++++++++++++++++++++++++++++++++-------------
- reports/stato_progetto.md          |  4 ++--
- reports/ultimo_report.md           | 29 ++++++++---------------------
- tests/test_unit_esiti.py           | 65 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ reports/mani_voce_piano.md         |  60 ++++++++++++++++++++++++++++++++++++++++++++++-------------
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  30 +++++++++---------------------
+ tests/test_unit_esiti.py           |  86 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -39,6 +40,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+93f7650f fix(sviluppo): ogni riga RISERVA conta, anche illeggibile o vuota (ve #411 V-1, R-875MV-1)
+1382ec22 chore(revisore): memoria review #876 — APPROVATO
+89e57942 chore(revisore): memoria review #875 — APPROVATO CON RISERVE
+e01e0c55 docs(fine-task): report e handoff — mani alla voce F2-bis (PR #411)
 40decd9b docs(mani-voce): decisioni dell'operatore del 26/11 nel piano; F1 rifiutata e compensazioni (avviso subito, annullo con 30 minuti, tetto di 2 al giorno)
 887fcc0d fix(sviluppo): riserve basse di F2 chiuse prima di F3 (mani alla voce F2-bis)
 a853b27f chore(revisore): memoria review #874 — APPROVATO
@@ -49,7 +54,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged).
+Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -102,21 +107,81 @@ Review #874-MV, secondo giro della fetta F2-bis. Ho controllato tutto il diff st
 
 **Memoria**: corretto nella riga #873-MV il riferimento da `:220` a `:222`. Aggiunta la riga #874-MV in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata da sola con `scripts/commit_memoria_revisore.sh` (commit a853b27f). Il diff staged è intatto.
 
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #875-MV. È il 3° giro della F2-bis dopo la verifica esterna sulla #411 (V-1). Diff staged sul ramo claude/mani-voce-f3: modules/sviluppo/esiti.py e tests/test_unit_esiti.py, +21/−2. Prima della review ho letto CLAUDE.md (sez. 5), reports/stato_progetto.md (voce «Mani alla voce», riga 394) e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- modules/sviluppo/esiti.py:111 — `elif pulita or valore:` conta in riserve_altre una riga RISERVA che non è vuota ma diventa vuota dopo la pulizia. Rischi esaminati: fail-open, doppio conteggio con le riserve oltre RISERVE_MAX, crash. Esito **ok**: la riga illeggibile non entra nella lista ma alza n_riserve, e frase_esito risponde «Niente merge per ora». Il ramo oltre RISERVE_MAX non cambia, l'eccezione resta catturata dal §9 alla riga 148. Rispetta il principio «robustezza prima di tutto»: nel dubbio, si ferma.
+- tests/test_unit_esiti.py:244 — test parametrizzato su U+200B, U+0300 doppio e U+3164. Verifica `riserve == []`, `riserve_altre == 1`, nessun «mergia» e la frase «riserve ALTA/MEDIA: 1». Esito **ok**.
+- tests/test_unit_esiti.py:253 — una riga «RISERVA:» vuota non conta e il merge viene proposto. Esito **riserva**: vedi R-875MV-1.
+- tests/test_unit_esiti.py:167 — il test esistente passa da `riserve_altre == 2` a `== 3`. L'aggiornamento è coerente con la nuova regola. Esito **ok**.
+
+**Caccia ad altri casi fail-open (richiesta del chiamante)**
+- ESITO, PR, CI, BOT e VERIFICA_ESTERNA accettano solo valori fissi, quindi un valore illeggibile fa scartare tutto il commento (None). Provato a mano con VERIFICA_ESTERNA fatta solo di U+200B: risultato None. **Chiude bene.**
+- Un RIASSUNTO illeggibile diventa vuoto dopo la pulizia, e la riga 143 scarta il commento (None). Provato a mano. **Chiude bene.**
+- **R-875MV-1 BASSA (residuo della stessa classe)**: alla riga 103 c'è `valore = m.group(2).strip()`, e lo strip() di Python toglie anche gli spazi Unicode.
+  - Quindi una riga RISERVA seguita solo da U+00A0, U+3000, U+2003, \x0b o U+2028 arriva come stringa vuota: non conta, e frase_esito propone il merge. Provato a mano: `riserve_altre=0` e «mergia» presente in tutti e cinque i casi.
+  - È coerente con la scelta «RISERVA: vuota non conta», ma è la scelta stessa a essere fail-open: scrivi_esito non scrive mai una RISERVA vuota (filtra prima), quindi una riga RISERVA vuota in un commento vuol dire qualcosa di anomalo.
+  - Contraddice anche la docstring di frase_esito («NESSUNA riga RISERVA»).
+  - Proposta: contare OGNI riga RISERVA, anche vuota (`else:` al posto di `elif pulita or valore:`), e invertire il test alla riga 253. Impatto basso: il merge vero lo decide comunque CLAUDE.md §10, con il bot e la CI.
+- Le righe fuori formato (minuscole, «RISERVA :») non corrispondono a `_RIGA`, quindi il commento viene scartato (None). **Chiude bene.**
+
+**Verifiche eseguite**: 83 passed su tests/test_unit_esiti.py; zero caratteri di categoria C* (esclusi \n e \t) nei due file; prove a mano sui casi elencati sopra.
+
+**Rischio escluso**: non ho verificato il comportamento in F3, cioè il lettore dei commenti della issue con il controllo dell'autore e il comando «mergia N». Non esiste ancora; R-873MV-1 resta aperta per quella fetta.
+
+**Memoria**: aggiunta la riga #875-MV, con la riserva e una lezione (guardare cosa toglie lo strip() prima del controllo «vuoto»). Committata da sola con scripts/commit_memoria_revisore.sh (commit 89e57942); il diff staged sotto review è rimasto intatto. File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
+R-875MV-1 va registrata in /home/user/Gas/reports/stato_progetto.md (voce «Mani alla voce»), oppure chiusa subito con la modifica di una riga indicata sopra e una nuova review.
+
+## VERDETTO: APPROVATO
+
+Review #876-MV. È il 4° giro della F2-bis sul ramo claude/mani-voce-f3 (PR #411). Il diff staged completo tocca modules/sviluppo/esiti.py e tests/test_unit_esiti.py, +23/−2. Questo verdetto sostituisce #875-MV (APPROVATO CON RISERVE): R-875MV-1 è chiusa.
+
+**Finding:** nessuno.
+
+**Elementi del diff esaminati**
+1. modules/sviluppo/esiti.py:111 — `else:` al posto di `elif pulita:`: ogni riga RISERVA che non entra nella lista conta in riserve_altre, che sia piena oltre RISERVE_MAX, illeggibile, vuota o fatta solo di spazi Unicode tolti dallo strip(). Rischi esaminati: fail-open, falso blocco di un commento valido, crash. Esito **ok**.
+   - Fail-open chiuso: n_riserve > 0, quindi frase_esito risponde «Niente merge per ora».
+   - Nessun falso blocco: scrivi_esito scarta le riserve che diventano vuote dopo la pulizia, quindi non scrive mai una RISERVA vuota. Provato a mano: con riserve `['<U+200B>', '  ']` il commento ha 0 righe RISERVA e il merge viene proposto.
+   - Nessun crash: resta il §9 alla riga 148.
+   - Ora è vera la docstring di frase_esito alla riga 188 («NESSUNA riga RISERVA»).
+2. tests/test_unit_esiti.py:253 — test parametrizzato su "", U+00A0, U+3000, U+2003, \x0b e U+2028. Per ognuno verifica `riserve_altre == 1` e che non ci sia «mergia». Copre proprio i casi della riserva #875-MV, provati a mano in quella review. Esito **ok**.
+3. tests/test_unit_esiti.py:243 — test parametrizzato su U+200B, U+0300 doppio e U+3164: riga illeggibile contata, domanda di merge bloccata. Esito **ok**.
+4. tests/test_unit_esiti.py:167 — il test esistente passa da `riserve_altre == 2` a `== 3`, coerente con la nuova regola. Esito **ok**.
+
+**Altre chiavi (già verificate in #875-MV, codice invariato)**
+- ESITO, PR, CI, BOT e VERIFICA_ESTERNA accettano solo valori fissi: un valore illeggibile fa scartare tutto il commento (None).
+- Un RIASSUNTO illeggibile diventa vuoto e la riga 143 scarta il commento (None).
+- Le righe fuori formato non corrispondono a `_RIGA` e il commento viene scartato (None).
+- Non resta nessun caso fail-open noto in leggi_esito.
+
+**Verifiche eseguite:** 88 passed su tests/test_unit_esiti.py; 0 caratteri di categoria C* (esclusi \n e \t) nei due file. Nessun antipattern della sezione 5 di CLAUDE.md: niente history né tool toccati.
+
+**Rischio escluso:** non ho verificato il comportamento in F3, cioè il lettore dei commenti della issue con il controllo dell'autore e il comando «mergia N». Non esiste ancora; R-873MV-1 resta aperta per quella fetta.
+
+**Memoria:** aggiunta la riga #876-MV (nessuna lezione nuova), committata da sola con scripts/commit_memoria_revisore.sh (commit 1382ec22). La memoria di #875-MV era già nel commit 89e57942. Il diff staged è rimasto intatto (esiti.py e il test ancora in staging). File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
+In /home/user/Gas/reports/stato_progetto.md (riga 394) R-875MV-1 va segnata come chiusa e la review aggiornata a #876-MV APPROVATO.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_esiti.py`: 63 → 79 test, tutti passati (`python -m pytest -q tests/test_unit_esiti.py` → `79 passed in 0.17s`). Il file gira in CI nel passo «Run esiti suite» di `unit-suite`.
+- `tests/test_unit_esiti.py`: 63 → 79 test (887fcc0d) → 88 test (93f7650f), tutti passati (`python -m pytest -q tests/test_unit_esiti.py` → `88 passed in 0.15s`). Il file gira in CI nel passo «Run esiti suite» di `unit-suite`.
 - Nessun altro file del motore toccato: il modulo non è collegato a nulla.
 
 ## §6 STATO CI
 
-- 03d3f4c3, a853b27f, 887fcc0d, 40decd9b: nessuna run su questi SHA (pushati insieme al commit di fine-task).
-- commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Da `gh api repos/Gasss23/Gas/commits/<sha>/check-runs` (`gh run list` non è disponibile qui):
 
-CI non ancora verificata su questo ramo alla scrittura (`gh run list` non è disponibile qui; si legge con `gh api` dopo il push).
+- 03d3f4c3, a853b27f, 887fcc0d, 40decd9b: nessuna run su questi SHA (pushati insieme a e01e0c55).
+- e01e0c55: handoff-check success e smista success alla verifica esterna; unit-suite e verifica-bot non ancora conclusi (superati da questo push).
+- 89e57942, 1382ec22, 93f7650f e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-873MV-1 BASSA — a voce le «» non si sentono: un riassunto ostile può farsi sentire come domanda di merge. In F3 «mergia N» vale solo per la PR di un esito con la domanda vera sulla stessa issue.
+- Chiuse in 93f7650f: verifica esterna #411 V-1 BASSA (riga RISERVA illeggibile scartata in silenzio) e R-875MV-1 BASSA (riga RISERVA vuota o di soli spazi Unicode). Verifica esterna #411 V-2 COSMETICA (numero_richiesta=True stampa #1): chiamante fidato.
 - R-870M-1 BASSA — numeri di review doppi fra chat parallele: da qui le review di questa chat hanno il suffisso -MV.
 - Cosmetica #874-MV — con `numero_richiesta=True` il ripiego stampa «#True» (chiamante fidato).
 - Cosmetica 5 — commenti scartati senza log (in F3). Cosmetica U+200D — emoji composte spezzate.
