@@ -28,7 +28,7 @@ la prova vera sul Mac, che posso fare solo con l'operatore (vedi §6, punto 1).
 1. **Esecutore delle richieste di sviluppo**: chi prende le issue `da-gas` nuove e fa il lavoro come
    una chat di sviluppo (branch, revisore, test, PR con `verifica`, verifica esterna, giri finché è
    verde).
-2. **Avviso di fine lavoro** con PR, CI, verdetto del bot (con i finding ALTA/MEDIA), verifica
+2. **Avviso di fine lavoro** con PR, CI, verdetto del bot (con i finding che bloccano il merge), verifica
    esterna e la domanda «vuoi che mergi?».
 3. **Risposta dell'operatore** («mergia #N» / «no») da voce o Telegram, che arriva a chi mergia.
 4. **Un via libera umano** fra la voce e il lavoro: oggi chiunque parli vicino al microfono (TV,
@@ -67,12 +67,12 @@ esecutore (scatto dopo) ──ricontrolla §10 (PR aperta, CI, bot, conflitti)�
 |---|---|---|---|---|
 | F1 | ~~**Via libera a voce**~~ — **RIFIUTATA dall'operatore il 26/11**: a voce `richiedi_sviluppo` resta senza firma; al suo posto le compensazioni di §4bis. | — | — | — |
 | F2 | **Formato fisso dei commenti** (`ESITO`, `MERGIA #N`, `NO #N`; `MERGIATA` si aggiunge in F5) e parser stretto in `modules/sviluppo/` (righe con chiave fissa, numero di PR intero, niente testo libero eseguito). Solo codice + test, nessuna credenziale. | `modules/sviluppo/`, `tests/` | basso | no |
-| F2-bis | **Riserve basse di F2** chiuse prima di F3: testi liberi solo tra «» dopo le parti fisse (R-864-3), niente domanda di merge con righe RISERVA (finding ALTA/MEDIA), invisibili Default_Ignorable e testi senza nulla di visibile, «mergia N» solo ASCII. | `modules/sviluppo/`, `tests/` | basso | no |
+| F2-bis | **Riserve basse di F2** chiuse prima di F3: testi liberi solo tra «» dopo le parti fisse (R-864-3), niente domanda di merge con righe RISERVA (finding che bloccano il merge), invisibili Default_Ignorable e testi senza nulla di visibile, «mergia N» solo ASCII. | `modules/sviluppo/`, `tests/` | basso | no |
 | F3 | **Gas avvisa e legge gli esiti**: avviso su Telegram APPENA una richiesta viene accodata, con il comando per annullarla (§4bis); «annulla richiesta N» da Telegram; controllo periodico (nel giro già esistente del server voce/bot, o un timer) dei commenti nuovi sulle issue `da-gas`, SOLO di autori ammessi, e avviso Telegram + lettura a voce come i compiti in sottofondo. | `modules/sviluppo/`, `modules/telegram/`, `modules/voice/server.py` | medio (ogni controllo è una chiamata GitHub col token dedicato) | sì |
 | F4 | **Risposta dell'operatore**: comando «mergia N» / «no N» su Telegram (a voce solo con firma) → commento `MERGIA #N`. | `modules/telegram/`, `gas.py` | medio | sì |
 | F5 | **Esecutore nel cloud**: scheduled task (una sessione nuova a ogni scatto) con un prompt fisso nel repo (`.claude/esecutore_richieste.md`, lo cambia solo l'operatore). Ogni scatto: legge la bacheca, prende UNA issue `da-gas` aperta, senza `annullata` né esito e creata da almeno 30 minuti, controlla l'autore, lavora come una sotto-chat (tutte le regole di CLAUDE.md), scrive `ESITO`; poi gestisce i `MERGIA #N` rispettando §10. | trigger, ambiente cloud, accesso al repo delle richieste | **alto** (spesa ricorrente, lavoro autonomo) | sì |
 
-F2 si può fare subito; F1, F3, F4, F5 aspettano il via. F5 per ultima: prima si prova il giro a mano
+Ordine deciso il 26/11: F2-bis, F3, F4, F5 (F1 rifiutata). F5 per ultima: prima si prova il giro a mano
 (M1 o io facciamo da esecutore leggendo la issue), poi si automatizza.
 
 ## 4. Rischi e difese

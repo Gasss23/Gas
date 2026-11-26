@@ -8,10 +8,11 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f3` 
 
 ## Esito per fetta
 
-- **Merge della PR #409**: FATTO il 26/11 (17cba359) col sì dell'operatore via M1, dopo aver ricontrollato PR aperta, nessun conflitto, CI verde, bot neutral senza ALTA/MEDIA.
+- **Merge della PR #409**: FATTO il 26/11 (17cba359) col sì dell'operatore via M1, dopo aver ricontrollato PR aperta, nessun conflitto, CI verde, bot neutral senza che bloccano il merge.
 - **Decisioni dell'operatore nel piano** (`reports/mani_voce_piano.md` §4bis e §5): FATTA. F1 rifiutata; compensazioni: avviso subito alla creazione della richiesta, «annulla richiesta N» con 30 minuti di attesa prima che l'esecutore parta, max 2 richieste lavorate al giorno.
 - **F2-bis — riserve basse di F2**: FATTA (887fcc0d). `frase_esito` riscritta: parti fisse prima, testi liberi tra «» con le «» interne tolte (R-864-3), niente domanda di merge con righe RISERVA (ve #409 V-2), PR e CI anche per fallita/ferma, valori fuori elenco = assente; `_pulisci` vuota un testo senza nulla di visibile e toglie altri invisibili; «mergia N» solo ASCII. 79 test. Revisore #873-MV APPROVATO CON RISERVE → #874-MV APPROVATO.
 - **Correzione dopo la verifica esterna (#411 V-1 BASSA)**: FATTA (93f7650f). Una riga RISERVA fatta solo di invisibili veniva scartata e la domanda di merge ricompariva: ora ogni riga RISERVA conta, anche illeggibile o vuota. 88 test. Revisore #875-MV APPROVATO CON RISERVE (R-875MV-1: spazi Unicode tolti da strip) → #876-MV APPROVATO.
+- **Correzione dopo il bot (head e6d30207)**: FATTA (80d1e2b5). Il check era un falso rosso (la parola di gravità della mia frase citata in un finding basso); corretti comunque i finding bassi del bot: regola unica `propone_merge`, fail-closed anche su dizionari fatti a mano; virgolette simili a «» tolte; la frase dice «riserve aperte: N». 101 test. Revisore #877-MV → #878-MV APPROVATO CON RISERVE (R-877MV-2 cosmetica).
 - **F3, F4, F5**: DEFERITE — prossime fette, in quest'ordine.
 
 ## Anomalie

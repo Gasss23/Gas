@@ -16,6 +16,7 @@
 - **Decisioni dell'operatore nel piano**: `FATTA` — `reports/mani_voce_piano.md` §4bis e §5 (F1 rifiutata, compensazioni).
 - **F2-bis — riserve basse di F2**: `FATTA` — 887fcc0d; revisore #873-MV → #874-MV APPROVATO; 79 test.
 - **Correzione dopo la verifica esterna (#411 V-1)**: `FATTA` — 93f7650f, ogni riga RISERVA conta; revisore #875-MV → #876-MV APPROVATO.
+- **Correzione dopo il bot (head e6d30207)**: `FATTA` — 80d1e2b5; check del bot falso rosso (parola di gravità della mia frase citata in un finding basso), finding bassi corretti; revisore #877-MV → #878-MV APPROVATO CON RISERVE.
 - **F3 — avviso subito, annullo, lettura degli esiti**: `DEFERITA — prossima fetta`.
 - **F4 — «mergia N» / «no N» da Telegram**: `DEFERITA — dopo F3`.
 - **F5 — esecutore nel cloud**: `DEFERITA — dopo F4`.
@@ -25,14 +26,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/sviluppo/esiti.py          |  97 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------
- reports/diff_sessione.md           |  13 ++++++-------
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ modules/sviluppo/esiti.py          | 136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
+ reports/diff_sessione.md           |  13 ++++++------
  reports/handoff.md                 | n/d
- reports/mani_voce_piano.md         |  60 ++++++++++++++++++++++++++++++++++++++++++++++-------------
+ reports/mani_voce_piano.md         |  64 ++++++++++++++++++++++++++++++++++++++++++++--------------
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  30 +++++++++---------------------
- tests/test_unit_esiti.py           |  86 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ reports/ultimo_report.md           |  31 ++++++++++-------------------
+ tests/test_unit_esiti.py           | 125 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -40,6 +41,11 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+80d1e2b5 fix(sviluppo): propone_merge unica e fail-closed anche a mano, virgolette simili a «», niente parole di gravità nei testi (bot #411 su e6d30207)
+02592fd1 chore(revisore): memoria review #878 — APPROVATO CON RISERVE
+2f99753e chore(revisore): memoria review #877 — APPROVATO CON RISERVE
+e6d30207 docs(fine-task): handoff — dichiarato l'invisibile reso come testo nel verdetto #876-MV (PR #411)
+2ee37f96 docs(fine-task): report e handoff dopo la correzione della verifica esterna (PR #411)
 93f7650f fix(sviluppo): ogni riga RISERVA conta, anche illeggibile o vuota (ve #411 V-1, R-875MV-1)
 1382ec22 chore(revisore): memoria review #876 — APPROVATO
 89e57942 chore(revisore): memoria review #875 — APPROVATO CON RISERVE
@@ -54,7 +60,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
+Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -165,9 +171,58 @@ Review #876-MV. È il 4° giro della F2-bis sul ramo claude/mani-voce-f3 (PR #41
 
 In /home/user/Gas/reports/stato_progetto.md (riga 394) R-875MV-1 va segnata come chiusa e la review aggiornata a #876-MV APPROVATO.
 
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #877-MV. È il 5° giro di F2-bis, sul diff staged in /home/user/Gas-411, ramo claude/mani-voce-f3, PR #411. Il diff tocca modules/sviluppo/esiti.py e tests/test_unit_esiti.py (+89/−17). Prima della review ho letto CLAUDE.md sez. 5, reports/stato_progetto.md (in modo mirato) e la memoria del revisore.
+
+Ho confermato il falso rosso: nel verdetto del bot su e6d30207 l'unica parola di gravità bloccante sta dentro V-1, che è BASSA. Lì il bot cita tra virgolette la vecchia asserzione del test. Gli altri finding sono V-2 BASSA, V-3 e V-4 COSMETICHE.
+
+Elementi del diff esaminati:
+1. modules/sviluppo/esiti.py:244 — `propone_merge` è la regola unica della domanda di merge. Rischio esaminato: che la frase e la regola non vadano d'accordo sui dizionari fatti a mano. Ho fatto una prova a mano su 14580 combinazioni (riserve None/[]/()/""/["a"]/["U+200B"]/"ab"/{}/[None], riserve_altre assente/0/None/1/True/False/"0"/0.0/-1, verifica, pr, ci, esito): 0 casi in cui la frase chiede il merge e la funzione dice di no, o il contrario. Ogni eccezione dà False. — ok
+2. modules/sviluppo/esiti.py:218 — ora conta tutti gli elementi di riserve, anche quelli illeggibili; una riserva che non è una lista vale come un elemento. Rischio esaminato: falsi blocchi sul percorso normale. leggi_esito con zero riserve continua a proporre il merge (lo verifica il test a tests/test_unit_esiti.py:278). Una tupla vuota o una stringa vuota toglie la domanda senza contare riserve: è prudente. — ok
+3. modules/sviluppo/esiti.py:235 — frase_esito ora chiama propone_merge al posto della vecchia condizione scritta dentro la funzione. Rischio esaminato: perdere il controllo che la verifica esterna sia in elenco. Il controllo è stato spostato a riga 263 e nei dintorni (verifica in VERIFICA e diversa da BOCCIATO), e il ripiego §9 non è cambiato. — ok
+4. modules/sviluppo/esiti.py:74 — la tabella che sostituisce le virgolette simili a «» (≪≫ 《》 〈〉 ‹› ⟨⟩ ⟪⟫, comprese U+2329/U+232A). Rischio esaminato: virgolette simili che restano fuori. Restano fuori ︽︾ (U+FE3D/FE3E), ⸨⸩ e << >> in ASCII (provato a mano). Non c'è nessuna normalizzazione NFKC che le trasformi dopo. — riserva cosmetica (R-877MV-2)
+5. modules/sviluppo/esiti.py:42 — commento su U+180E. Ho verificato con unicodedata: U+180B-U+180D e U+180F sono Mn, U+180E è Cf. — ok (riga oltre i 100 caratteri, cosmetico)
+6. tests/test_unit_esiti.py:273 e tests/test_unit_esiti.py:290 — test parametrizzati per bot #411 V-1 e V-2. Coprono gli stessi casi descritti dal bot. — ok
+7. tests/test_unit_esiti.py:241 — il test che prima diceva che una riserva illeggibile non conta ora dice che conta come 1, in linea con il lettore. — ok
+
+Riserve:
+- R-877MV-1 BASSA: la fixture a tests/test_unit_esiti.py:14 contiene ancora una parola di gravità media scritta in maiuscolo, nel testo della riserva d'esempio «V-1 …». Se il bot la cita, il classificatore può dare di nuovo un falso rosso. Il punto debole vero è in scripts/bot_esito.py, funzione `_gravita_nel_testo`, che legge le parole di gravità anche dentro citazioni lunghe. È fuori da questo diff e fa parte della macchina del bot, quindi decide l'operatore. Va tracciata in stato_progetto.md.
+- R-877MV-2 COSMETICA: l'elenco delle virgolette simili non le copre tutte (vedi punto 4). Il confine vero resta il lettore del comando in F3, come previsto da R-873MV-1, che resta aperta.
+
+Wall of Shame: nessuno slicing della history e nessuna simulazione dei tool. Il diff non tocca il kernel, il cap di 10 iterazioni, il cap di 8k né `_get_window`. Il §9 è rispettato: propone_merge non lancia mai eccezioni.
+
+Verifiche fatte: 101 passed su una copia dell'indice staged (checkout-index nella scratchpad); 0 caratteri C* (esclusi a capo e tab) nei due file.
+
+Cosa non ho verificato: non ho rilanciato il bot né eseguito scripts/bot_esito.py sul nuovo testo, quindi non so se il prossimo giro del bot sarà verde. Ho solo letto il codice del classificatore, non l'ho cambiato né provato. Non ho eseguito la suite completa né la CI, solo tests/test_unit_esiti.py.
+
+Memoria: ho aggiunto la riga #877-MV con la lezione (nel codice e nei testi che il bot cita, evitare le parole di gravità in maiuscolo) a /home/user/Gas-411/.claude/agents/memoria_revisore.md e l'ho committata (2f99753e). Il diff staged è rimasto com'era.
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #878-MV, verdetto finale sul diff staged completo in /home/user/Gas-411 (ramo claude/mani-voce-f3, PR #411): modules/sviluppo/esiti.py e tests/test_unit_esiti.py, +91/−19. R-877MV-1 è chiusa. Resta una sola riserva, cosmetica.
+
+Elementi del diff esaminati:
+1. tests/test_unit_esiti.py:14 — la riserva d'esempio della fixture ora è «V-1 manca un test». Rischio esaminato: che il bot la citi e il classificatore dia di nuovo un falso rosso. Ho cercato con grep le parole di gravità in maiuscolo (le quattro del vocabolario e le varianti inglesi) in tests/test_unit_esiti.py e in modules/sviluppo/esiti.py: nessuna. — ok
+2. tests/test_unit_esiti.py:22 e tests/test_unit_esiti.py:30 — l'andata e ritorno e la frase usano lo stesso testo nuovo, e l'asserzione dice «riserve aperte: 1». Rischio esaminato: un test rimasto disallineato. Passano tutti e 101. — ok
+3. modules/sviluppo/esiti.py:244 — propone_merge, la regola unica della domanda di merge. Rispetto a #877-MV, dove ho trovato 0 differenze tra frase e regola su 14580 dizionari fatti a mano, la parte di esiti.py non è cambiata. Rischio esaminato: una regressione nascosta in staging. Il diff è identico, tocca solo il test. — ok
+4. modules/sviluppo/esiti.py:74 — la tabella delle virgolette simili a «». — riserva cosmetica (sotto)
+
+Riserve:
+- R-877MV-2 COSMETICA (resta aperta, da scrivere in stato_progetto.md): l'elenco delle virgolette simili non le copre tutte. Passano ancora ︽︾ (U+FE3D/FE3E), ⸨⸩ e << >> in ASCII. Il confine vero resta il lettore del comando in F3, insieme a R-873MV-1.
+- Fuori dal diff: la fragilità vera è nel classificatore del bot (scripts/bot_esito.py, `_gravita_nel_testo`), che legge le parole di gravità anche dentro le citazioni lunghe. È la macchina del bot, quindi decide l'operatore.
+
+Wall of Shame: nessuno slicing della history e nessuna simulazione dei tool. Il diff non tocca kernel, cap delle iterazioni, cap di 8k, `_get_window` né guardrail. Il §9 è rispettato.
+
+Verifiche: 101 passed su una copia dell'indice staged; 0 caratteri invisibili o di controllo (esclusi a capo e tab) nei due file.
+
+Cosa non ho verificato: non ho eseguito il classificatore del bot sul nuovo head, quindi non so se il prossimo giro del bot sarà verde. Ho eseguito solo tests/test_unit_esiti.py, non la suite completa né la CI.
+
+Memoria: ho aggiunto la riga #878-MV a /home/user/Gas-411/.claude/agents/memoria_revisore.md e l'ho committata (02592fd1). Il diff staged è rimasto com'era.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_esiti.py`: 63 → 79 test (887fcc0d) → 88 test (93f7650f), tutti passati (`python -m pytest -q tests/test_unit_esiti.py` → `88 passed in 0.15s`). Il file gira in CI nel passo «Run esiti suite» di `unit-suite`.
+- `tests/test_unit_esiti.py`: 63 → 79 test (887fcc0d) → 88 test (93f7650f) → 101 test (80d1e2b5), tutti passati (`python -m pytest -q tests/test_unit_esiti.py` → `101 passed in 0.22s`). Il file gira in CI nel passo «Run esiti suite» di `unit-suite`.
 - Nessun altro file del motore toccato: il modulo non è collegato a nulla.
 
 ## §6 STATO CI
@@ -175,13 +230,17 @@ In /home/user/Gas/reports/stato_progetto.md (riga 394) R-875MV-1 va segnata come
 Da `gh api repos/Gasss23/Gas/commits/<sha>/check-runs` (`gh run list` non è disponibile qui):
 
 - 03d3f4c3, a853b27f, 887fcc0d, 40decd9b: nessuna run su questi SHA (pushati insieme a e01e0c55).
-- e01e0c55: handoff-check success e smista success alla verifica esterna; unit-suite e verifica-bot non ancora conclusi (superati da questo push).
-- 89e57942, 1382ec22, 93f7650f e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- e01e0c55: verifica-bot failure («controlli bidi»: carattere invisibile vero citato dal bot).
+- 89e57942, 1382ec22, 93f7650f, 2ee37f96: nessuna run conclusa su questi SHA (superati da e6d30207; il bot su 2ee37f96 è stato annullato perché la head è cambiata).
+- e6d30207: verifica-bot failure, falso rosso del classificatore (verdetto testuale APPROVATO CON RISERVE con soli finding bassi e cosmetici).
+- 2f99753e, 02592fd1, 80d1e2b5 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-873MV-1 BASSA — a voce le «» non si sentono: un riassunto ostile può farsi sentire come domanda di merge. In F3 «mergia N» vale solo per la PR di un esito con la domanda vera sulla stessa issue.
 - Chiuse in 93f7650f: verifica esterna #411 V-1 BASSA (riga RISERVA illeggibile scartata in silenzio) e R-875MV-1 BASSA (riga RISERVA vuota o di soli spazi Unicode). Verifica esterna #411 V-2 COSMETICA (numero_richiesta=True stampa #1): chiamante fidato.
+- R-877MV-2 COSMETICA — virgolette simili a «» non tutte coperte (︽︾, ⸨⸩, << >>); il confine vero è il lettore del comando in F3.
+- Classificatore del bot (`scripts/bot_esito.py` `_gravita_nel_testo`): legge le parole di gravità anche dentro citazioni in un finding basso (falso rosso su e6d30207). È la macchina del bot: decide l'operatore.
 - R-870M-1 BASSA — numeri di review doppi fra chat parallele: da qui le review di questa chat hanno il suffisso -MV.
 - Cosmetica #874-MV — con `numero_richiesta=True` il ripiego stampa «#True» (chiamante fidato).
 - Cosmetica 5 — commenti scartati senza log (in F3). Cosmetica U+200D — emoji composte spezzate.
