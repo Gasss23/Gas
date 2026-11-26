@@ -168,7 +168,8 @@ def test_riserva_solo_invisibile_scartata_e_riserve_in_piu_contate():
     corpo = (e.MARCA_ESITO + "\nESITO: ferma\nRIASSUNTO: x\nRISERVA: \u200b\n"
              + "\n".join(f"RISERVA: r{i}" for i in range(7)))
     out = e.leggi_esito(corpo)
-    assert out["riserve"] == [f"r{i}" for i in range(5)] and out["riserve_altre"] == 2
+    # la riga di soli invisibili non occupa un posto ma si conta (ve #411 V-1)
+    assert out["riserve"] == [f"r{i}" for i in range(5)] and out["riserve_altre"] == 3
     f = e.frase_esito(7, "x", e.leggi_esito(_esito(bot="APPROVATO CON RISERVE")) | {
         "riserve": ["a"], "riserve_altre": 3})
     assert "riserve ALTA/MEDIA: 4" in f and "Riserve: «a» (+3 altre)." in f and "mergia" not in f
@@ -237,3 +238,21 @@ def test_dict_a_mano_valori_fuori_elenco_ripuliti_ve409ter_v1():
                                "bot": "APPROVATO\u202e", "riserve": ["\u200b"]})
     assert "CI assente" in f and "bot assente" in f and "\u202e" not in f and "mergia" not in f
     assert "riserve ALTA/MEDIA" not in f
+
+
+@pytest.mark.parametrize("riga", ["RISERVA: \u200b", "RISERVA: \u0300\u0300", "RISERVA: \u3164"])
+def test_riserva_illeggibile_blocca_la_domanda_ve411_v1(riga):
+    corpo = (e.MARCA_ESITO + "\nESITO: pronta\nPR: #5\nCI: verde\nBOT: APPROVATO\n"
+             + riga + "\nRIASSUNTO: x")
+    out = e.leggi_esito(corpo)
+    assert out["riserve"] == [] and out["riserve_altre"] == 1
+    f = e.frase_esito(7, "x", out)
+    assert "mergia" not in f and "riserve ALTA/MEDIA: 1" in f
+
+
+@pytest.mark.parametrize("coda", ["", "\u00a0", "\u3000", "\u2003", "\x0b", "\u2028"])
+def test_riserva_vuota_conta_lo_stesso_r875mv_1(coda):
+    corpo = (e.MARCA_ESITO + "\nESITO: pronta\nPR: #5\nCI: verde\nBOT: APPROVATO\nRISERVA:"
+             + coda + "\nRIASSUNTO: x")
+    out = e.leggi_esito(corpo)
+    assert out["riserve_altre"] == 1 and "mergia" not in e.frase_esito(7, "x", out)

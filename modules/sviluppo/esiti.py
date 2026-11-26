@@ -108,7 +108,10 @@ def leggi_esito(corpo: Any) -> Optional[Dict[str, Any]]:
                 pulita = _pulisci(valore)
                 if pulita and len(esito["riserve"]) < RISERVE_MAX:
                     esito["riserve"].append(pulita)
-                elif pulita:
+                else:
+                    # ve #411 V-1, R-875MV-1: OGNI riga RISERVA è un finding dichiarato, anche se
+                    # illeggibile o vuota (scrivi_esito non ne scrive mai di vuote): si conta, così
+                    # blocca la domanda di merge (fail-closed)
                     esito["riserve_altre"] = esito.get("riserve_altre", 0) + 1
                 continue
             nome = {"ESITO": "esito", "PR": "pr", "CI": "ci", "BOT": "bot",
