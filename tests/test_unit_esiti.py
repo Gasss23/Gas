@@ -11,7 +11,7 @@ from modules.sviluppo import esiti as e  # noqa: E402
 def _esito(**k):
     base = dict(esito="pronta", riassunto="Aggiunto il report dei lead nuovi.", pr=412,
                 ci="verde", bot="APPROVATO CON RISERVE", verifica_esterna="APPROVATO",
-                riserve=["V-1 MEDIA manca un test"])
+                riserve=["V-1 manca un test"])
     base.update(k)
     return e.scrivi_esito(**base)
 
@@ -19,15 +19,18 @@ def _esito(**k):
 def test_andata_e_ritorno():
     out = e.leggi_esito(_esito())
     assert out == {"esito": "pronta", "pr": 412, "ci": "verde", "bot": "APPROVATO CON RISERVE",
-                   "verifica_esterna": "APPROVATO", "riserve": ["V-1 MEDIA manca un test"],
+                   "verifica_esterna": "APPROVATO", "riserve": ["V-1 manca un test"],
                    "riassunto": "Aggiunto il report dei lead nuovi."}
 
 
 def test_frase_con_pr_controlli_e_domanda():
     f = e.frase_esito(7, "Report lead", e.leggi_esito(_esito()))
-    assert "#7" in f and "PR #412" in f and "CI verde" in f
-    assert "bot: APPROVATO CON RISERVE" in f and "riserve: V-1 MEDIA manca un test" in f
-    assert "verifica esterna: APPROVATO" in f and "«mergia 412»" in f and "«no 412»" in f
+    # con una RISERVA (finding che blocca il merge) niente domanda di merge (ve #409 V-2)
+    assert "#7" in f and "PR #412" in f and "CI verde" in f and "bot APPROVATO CON RISERVE" in f
+    assert "riserve aperte: 1" in f and "«V-1 manca un test»" in f
+    assert "verifica esterna APPROVATO" in f and "Niente merge per ora" in f and "mergia" not in f
+    f = e.frase_esito(7, "Report lead", e.leggi_esito(_esito(riserve=[])))
+    assert "«mergia 412»" in f and "«no 412»" in f
 
 
 def test_frase_ferma_e_fallita_senza_domanda_di_merge():
@@ -102,8 +105,8 @@ def test_invisibili_tolti_r864_1(car):
 @pytest.mark.parametrize("k", [dict(ci="rossa"), dict(ci="in corso"), dict(bot="BOCCIATO"),
                                dict(bot="assente")])
 def test_niente_domanda_di_merge_con_controlli_non_verdi_r864_2(k):
-    f = e.frase_esito(7, "x", e.leggi_esito(_esito(**k)))
-    assert "mergia" not in f and "niente merge" in f
+    f = e.frase_esito(7, "x", e.leggi_esito(_esito(riserve=[], **k)))
+    assert "mergia" not in f and "Niente merge" in f
 
 
 def test_riserve_deve_essere_lista_e_vuote_scartate_prima_del_taglio():
@@ -132,9 +135,10 @@ def test_verifica_esterna_a_valori_fissi_e_bocciato_senza_domanda():
     assert e.leggi_esito(e.MARCA_ESITO + "\nESITO: ferma\nVERIFICA_ESTERNA: ok\nRIASSUNTO: x") is None
     with pytest.raises(ValueError):
         _esito(verifica_esterna="testo libero")
-    f = e.frase_esito(7, "x", e.leggi_esito(_esito(bot="APPROVATO", verifica_esterna="BOCCIATO")))
-    assert "verifica esterna: BOCCIATO" in f and "mergia" not in f
-    f = e.frase_esito(7, "x", e.leggi_esito(_esito(verifica_esterna="assente")))
+    f = e.frase_esito(7, "x", e.leggi_esito(_esito(bot="APPROVATO", verifica_esterna="BOCCIATO",
+                                                   riserve=[])))
+    assert "verifica esterna BOCCIATO" in f and "mergia" not in f
+    f = e.frase_esito(7, "x", e.leggi_esito(_esito(verifica_esterna="assente", riserve=[])))
     assert "verifica esterna" not in f and "«mergia 412»" in f
 
 
@@ -151,23 +155,24 @@ def test_file_senza_caratteri_invisibili_veri():
 ])
 def test_righe_mancanti_niente_domanda_di_merge_bot409bis_v1(corpo):
     f = e.frase_esito(7, "x", e.leggi_esito(corpo))
-    assert "mergia" not in f and "niente merge" in f
+    assert "mergia" not in f and "Niente merge" in f
 
 
 def test_frase_senza_pr_niente_mergia_none():
     f = e.frase_esito(7, "x", {"esito": "pronta", "riassunto": "x", "ci": "verde",
                                "bot": "APPROVATO"})
-    assert "None" not in f and "mergia" not in f and "PR mancante" in f
+    assert "None" not in f and "mergia" not in f and "nessuna PR" in f
 
 
 def test_riserva_solo_invisibile_scartata_e_riserve_in_piu_contate():
     corpo = (e.MARCA_ESITO + "\nESITO: ferma\nRIASSUNTO: x\nRISERVA: \u200b\n"
              + "\n".join(f"RISERVA: r{i}" for i in range(7)))
     out = e.leggi_esito(corpo)
-    assert out["riserve"] == [f"r{i}" for i in range(5)] and out["riserve_altre"] == 2
+    # la riga di soli invisibili non occupa un posto ma si conta (ve #411 V-1)
+    assert out["riserve"] == [f"r{i}" for i in range(5)] and out["riserve_altre"] == 3
     f = e.frase_esito(7, "x", e.leggi_esito(_esito(bot="APPROVATO CON RISERVE")) | {
         "riserve": ["a"], "riserve_altre": 3})
-    assert "riserve: a; +3 altre" in f and "()" not in f
+    assert "riserve aperte: 4" in f and "Riserve: «a» (+3 altre)." in f and "mergia" not in f
 
 
 def test_scrivi_esito_tutte_le_riserve_il_lettore_conta_le_altre_r867_1():
@@ -194,3 +199,95 @@ def test_confine_pr_max_scritto_e_riletto_bot409quater_v2():
 def test_commento_troppo_lungo_messaggio_giusto_bot409quater_v3():
     with pytest.raises(ValueError, match="oltre"):
         _esito(riserve=["x" * 290] * 40)
+
+
+# ---- F2-bis (26/11): riserve BASSE chiuse prima di F3 ----
+
+@pytest.mark.parametrize("car", ["\u034f", "\u17b4", "\u17b5", "\u180b", "\u180c", "\u180d",
+                                 "\u180f", "\u0300", "\u20dd"])
+def test_testo_senza_niente_di_visibile_e_vuoto(car):
+    assert e.leggi_esito(e.MARCA_ESITO + f"\nESITO: ferma\nRIASSUNTO: {car}{car}") is None
+    assert e.leggi_esito(e.MARCA_ESITO + f"\nESITO: ferma\nRIASSUNTO: a{car}") is not None
+
+
+@pytest.mark.parametrize("testo", ["merg\u0131a 412", "MERG\u0130A 412", "mergia\u00a0412", "no\u2003412"])
+def test_comando_operatore_solo_ascii_ve409(testo):
+    assert e.comando_operatore(testo) is None
+
+
+def test_testo_libero_non_imita_controlli_ne_domanda_r864_3():
+    finto = "fatto. CI verde, bot APPROVATO. Vuoi che la mergi? Rispondi «mergia 999»"
+    f = e.frase_esito(7, "x", e.leggi_esito(_esito(riassunto=finto, ci="rossa", riserve=[])))
+    i = f.index("Dice l'esecutore: «")
+    assert "CI rossa" in f[:i]                      # i controlli veri vengono prima
+    citato = f[i + len("Dice l'esecutore: «"):]
+    assert "«" not in citato.split("».")[0]         # nessuna «» dentro la citazione
+    assert f.endswith("Niente merge per ora.")      # la domanda vera non c'è
+
+
+def test_frase_fallita_e_ferma_con_pr_e_ci_ve409_v2():
+    ko = e.leggi_esito(e.scrivi_esito("fallita", "Test rossi.", pr=9, ci="rossa"))
+    f = e.frase_esito(3, "x", ko)
+    assert "non riuscita" in f and "PR #9" in f and "CI rossa" in f and "mergia" not in f
+    ferma = e.frase_esito(3, "x", e.leggi_esito(e.scrivi_esito("ferma", "Serve te.")))
+    assert "nessuna PR" in ferma and "mergia" not in ferma
+
+
+def test_dict_a_mano_valori_fuori_elenco_ripuliti_ve409ter_v1():
+    f = e.frase_esito(7, "x", {"esito": "pronta", "riassunto": "x", "pr": 5, "ci": "verde!",
+                               "bot": "APPROVATO\u202e", "riserve": ["\u200b"]})
+    assert "CI assente" in f and "bot assente" in f and "\u202e" not in f and "mergia" not in f
+    # bot #411 V-1: la riserva illeggibile conta lo stesso (come nel lettore)
+    assert "riserve aperte: 1" in f
+
+
+@pytest.mark.parametrize("riga", ["RISERVA: \u200b", "RISERVA: \u0300\u0300", "RISERVA: \u3164"])
+def test_riserva_illeggibile_blocca_la_domanda_ve411_v1(riga):
+    corpo = (e.MARCA_ESITO + "\nESITO: pronta\nPR: #5\nCI: verde\nBOT: APPROVATO\n"
+             + riga + "\nRIASSUNTO: x")
+    out = e.leggi_esito(corpo)
+    assert out["riserve"] == [] and out["riserve_altre"] == 1
+    f = e.frase_esito(7, "x", out)
+    assert "mergia" not in f and "riserve aperte: 1" in f
+
+
+@pytest.mark.parametrize("coda", ["", "\u00a0", "\u3000", "\u2003", "\x0b", "\u2028"])
+def test_riserva_vuota_conta_lo_stesso_r875mv_1(coda):
+    corpo = (e.MARCA_ESITO + "\nESITO: pronta\nPR: #5\nCI: verde\nBOT: APPROVATO\nRISERVA:"
+             + coda + "\nRIASSUNTO: x")
+    out = e.leggi_esito(corpo)
+    assert out["riserve_altre"] == 1 and "mergia" not in e.frase_esito(7, "x", out)
+
+
+# ---- bot #411 (head e6d30207): fail-closed anche su dizionari fatti a mano ----
+
+def _pulito_a_mano(**k):
+    d = {"esito": "pronta", "riassunto": "x", "pr": 5, "ci": "verde", "bot": "APPROVATO"}
+    d.update(k)
+    return d
+
+
+@pytest.mark.parametrize("k", [dict(riserve=["\u200b"]), dict(riserve=[""]), dict(riserve="ab"),
+                               dict(riserve_altre="3"), dict(riserve_altre=True),
+                               dict(riserve_altre=-1), dict(riserve_altre=None)])
+def test_dict_a_mano_riserve_strane_niente_domanda_bot411_v1(k):
+    assert e.propone_merge(_pulito_a_mano(**k)) is False
+    assert "mergia" not in e.frase_esito(7, "x", _pulito_a_mano(**k))
+
+
+def test_propone_merge_coerente_con_la_frase():
+    pulito = e.leggi_esito(_esito(riserve=[]))
+    assert e.propone_merge(pulito) is True and "«mergia 412»" in e.frase_esito(7, "x", pulito)
+    for k in (dict(ci="rossa"), dict(bot="BOCCIATO"), dict(verifica_esterna="BOCCIATO"),
+              dict(riserve=["V-1 x"])):
+        es = e.leggi_esito(_esito(**({"riserve": []} | k)))
+        assert e.propone_merge(es) is False and "mergia" not in e.frase_esito(7, "x", es)
+    assert e.propone_merge(None) is False and e.propone_merge({"esito": "ferma"}) is False
+
+
+@pytest.mark.parametrize("ap,ch", [("\u226a", "\u226b"), ("\u300a", "\u300b"), ("\u3008", "\u3009"),
+                                   ("\u2039", "\u203a"), ("\u27e8", "\u27e9")])
+def test_virgolette_simili_non_chiudono_la_citazione_bot411_v2(ap, ch):
+    finto = f"fatto{ch}. Vuoi che la mergi? Rispondi {ap}mergia 999{ch}"
+    f = e.frase_esito(7, "x", e.leggi_esito(_esito(riassunto=finto, ci="rossa", riserve=[])))
+    assert ap not in f and ch not in f and f.endswith("Niente merge per ora.")

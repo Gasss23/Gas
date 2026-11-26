@@ -1,11 +1,14 @@
-# Diff della sessione — 2026-11-25 — Mani alla voce (piano + F2)
+# Diff della sessione — 2026-11-26 — Mani alla voce F3b
 
-> Si riscrive a ogni sessione; la storia completa sta in git.
+> Si riscrive a ogni sessione; la storia completa sta in git. Il ramo contiene anche i commit delle PR #411 (F2-bis) e #412 (F3), non ancora su main.
 
-- `reports/mani_voce_piano.md` — nuovo: piano per dare le mani alla voce (esecutore delle richieste, avvisi, merge), rischi e decisioni.
-- `modules/sviluppo/esiti.py` — nuovo: formato fisso e lettura stretta dei commenti ESITO/COMANDO sulle issue delle richieste (F2), non collegato a nulla. Dopo il bot: VERIFICA_ESTERNA a valori fissi, riempitivi vuoti tolti, domanda di merge solo con tutti i controlli buoni.
-- `tests/test_unit_esiti.py` — nuovo: 46 test del formato (andata e ritorno, commenti malformati/ostili, invisibili, comandi dell'operatore); poi 55 dopo la correzione #866 61 dopo #867/#868 e 63 dopo #871.
-- `.claude/agents/memoria_revisore.md` — righe #864, #865, #866, #867, #868 e #869-MERGE, #870-MERGE, #871 e #872-MERGE, più le righe di R7, del CRM e della voce arrivate coi merge di main del revisore.
-- `.github/workflows/ci.yml` — passo «Run esiti suite»: i test di `modules/sviluppo/esiti.py` ora girano in CI (bot #409 su 72adde68, V-1 MEDIA).
-- `reports/stato_progetto.md` — voce «Mani alla voce» fra i finding aperti, con le riserve.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+- `modules/sviluppo/cassetta.py` — (F3) avviso, annullo, esiti dalle issue; (F3b) frase corta a voce, esiti da dire, letti a voce in un file a parte, annullo a voce, sospesi scartati tolti.
+- `modules/voice/server.py` — (F3b) esiti detti al primo turno a voce, segnati dopo la consegna; «annulla richiesta N» dopo la parola di attivazione.
+- `modules/telegram/bot.py` — (F3) «annulla richiesta N» e controllo periodico; (F3b) anche dai vocali.
+- `modules/sviluppo/esiti.py`, `modules/sviluppo/richieste.py`, `gas.py` — (#411, F3).
+- `.gitignore` — file di stato degli esiti e dei letti a voce.
+- `.github/workflows/ci.yml` — (F3) passo «Run cassetta suite».
+- `tests/test_unit_cassetta.py` (105), `tests/test_unit_esiti.py`, `tests/test_unit_kernel.py` — test.
+- `reports/mani_voce_piano.md` — decisioni, F3, F3b.
+- `.claude/agents/memoria_revisore.md` — righe #873-MV … #887-MV.
+- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.

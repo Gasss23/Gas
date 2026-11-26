@@ -591,6 +591,7 @@ def run_bot(root_dir: Optional[str] = None) -> int:
                 avvisa_firme_scadute(getattr(kernel, "memory", None))
                 invia_promemoria_crm(kernel)  # CRM (23-11): promemoria arrivati all'ora
                 _raccogli_giri()
+                _controlla_esiti_richieste(root)  # mani alla voce F3: in un thread a parte
             # allowed_updates esplicito: Telegram ricorda l'ultimo valore usato,
             # senza callback_query i bottoni di firma resterebbero muti.
             resp = _tg_post(base_url, "getUpdates",
@@ -618,6 +619,20 @@ def run_bot(root_dir: Optional[str] = None) -> int:
                 _chiudi_voce()
                 print("\n✓ gas telegram: interruzione ricevuta, uscita.")
                 return 0
+
+
+# ─────────────────────── richieste di sviluppo (mani alla voce F3) ──
+
+def _controlla_esiti_richieste(root: Path) -> None:
+    """Mani alla voce F3: lancia (al massimo ogni GAS_RICHIESTE_CONTROLLO_MIN minuti, uno alla
+    volta) il controllo degli esiti delle richieste di sviluppo. Il thread e il cronometro
+    stanno in modules/sviluppo/cassetta.py: qui nessun thread né global (guardia T78p, «un
+    click alla volta»); quel thread non vede update, firme né kernel. Fail-safe §9."""
+    try:
+        from modules.sviluppo import cassetta
+        cassetta.controllo_in_sottofondo(Path(root))
+    except Exception as e:
+        log.warning("esiti delle richieste: controllo non avviato: %s", e)
 
 
 # ─────────────────────────────── giro notturno da Telegram (R1) ──
@@ -957,6 +972,20 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
                     _send_text(base_url, chat_id, messaggio)
             return
 
+        # Mani alla voce F3: «annulla richiesta N» (al posto della firma a voce, decisione
+        # dell'operatore del 26/11). Prima del modello, come /clear: vale solo da un
+        # messaggio nuovo; risponde il codice, nessun turno.
+        from modules.sviluppo import cassetta
+        da_annullare = cassetta.comando_annulla(text)
+        if da_annullare is not None:
+            if not upd.get("message"):
+                _send_text(base_url, chat_id, "«annulla richiesta» non vale da un messaggio "
+                           "modificato: mandalo come messaggio nuovo.")
+            else:
+                root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
+                _send_text(base_url, chat_id, cassetta.annulla(da_annullare, Path(root)))
+            return
+
         # R-ve269-2: «/forte <richiesta>» anche da Telegram, mai ai gratuiti
         from brains.router import prefisso_forte
         text = togli_destinatario_forte(text)
@@ -1029,6 +1058,18 @@ def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any)
     except Exception as e:  # R-711-4: §9, l'operatore lo sa invece di non ricevere nulla
         log.warning("vocale: regole della voce non caricate (%s)", type(e).__name__)
         _send_text(base_url, chat_id, f"{eco}\n\n✗ Errore interno: non posso gestire i vocali.")
+        return
+    # Mani alla voce F3b (ve #412 V-2): «annulla richiesta N» anche da un vocale, senza turno.
+    # Bot #414 V-2: PRIMA di cervello_voce, come sul Mac («forte annulla …» non annulla).
+    try:
+        from modules.sviluppo import cassetta
+        root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
+        annullo = cassetta.annulla_parlato(trascritto, Path(root))
+    except Exception as e:  # §9: il vocale va al turno normale
+        log.warning("vocale: annullo non controllato (%s)", type(e).__name__)
+        annullo = None
+    if annullo is not None:
+        _send_text(base_url, chat_id, f"{eco}\n\n{annullo}")
         return
     cervello, richiesta = cervello_voce(trascritto, parlato=True)
     if cervello == "uso":

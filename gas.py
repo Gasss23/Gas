@@ -5261,6 +5261,25 @@ class GasKernel:
             "all'operatore parte da solo alla fine con la tua risposta: scrivi tutto lì.")
         return kernel
 
+    def _avvisa_richiesta_accodata(self, numero: int, titolo: str) -> bool:
+        """Mani alla voce F3 (26/11): al posto della firma a voce (rifiutata dall'operatore),
+        appena una richiesta di sviluppo è accodata l'operatore riceve SUBITO un avviso su
+        Telegram con il comando per annullarla. Avviso di sistema (come le firme scadute):
+        fuori dal tetto di avvisa_operatore, che resta per i messaggi scritti dal modello.
+        True se partito. Fail-safe §9."""
+        try:
+            from modules.sviluppo.cassetta import avviso_accodata
+            from modules.telegram.bot import invia_notifica
+            ok, motivo = invia_notifica(avviso_accodata(
+                numero, titolo, bool(getattr(self, "_turno_voce", False))))
+            if not ok:
+                logging.warning("richiedi_sviluppo: avviso della #%s non partito (%s)",
+                                numero, motivo)
+            return bool(ok)
+        except Exception as e:
+            logging.warning("richiedi_sviluppo: avviso non partito (%s)", type(e).__name__)
+            return False
+
     def _in_sottofondo(self, args: Dict[str, Any], firmata: bool = False) -> str:
         """Fetta 3: mette in coda il compito e avvia il processo separato. Solo nei turni
         parlati (lo strumento è offerto solo lì) e solo col cervello forte disponibile.
@@ -5471,7 +5490,8 @@ class GasKernel:
                 # codice fidato del kernel; niente FS fuori dal conto, niente shell.
                 from modules.sviluppo import crea_richiesta
                 a = args if isinstance(args, dict) else {}
-                out = crea_richiesta(a.get("titolo"), a.get("descrizione"), self.root)
+                out = crea_richiesta(a.get("titolo"), a.get("descrizione"), self.root,
+                                     avvisa=self._avvisa_richiesta_accodata)
             elif name == "in_sottofondo":
                 out = self._in_sottofondo(args if isinstance(args, dict) else {}, firmata=firmata)
             elif name == "manutenzione":
