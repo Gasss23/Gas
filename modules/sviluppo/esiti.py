@@ -11,7 +11,7 @@ e l'esecutore (sessione cloud). Due tipi di commento, ciascuno con un marcatore 
       CI: verde | rossa | in corso | assente
       BOT: APPROVATO | APPROVATO CON RISERVE | BOCCIATO | assente
       VERIFICA_ESTERNA: APPROVATO | APPROVATO CON RISERVE | BOCCIATO | assente
-      RISERVA: <una riga per finding ALTA/MEDIA; il lettore ne tiene RISERVE_MAX e conta
+      RISERVA: <una riga per finding che blocca il merge; il lettore ne tiene RISERVE_MAX e conta
                le altre>
       RIASSUNTO: <una riga: cosa è stato fatto>
 - COMANDO, scritto da Gas per conto dell'operatore:
@@ -39,7 +39,7 @@ VERIFICA = BOT  # bot #409 V-2: anche la verifica esterna a valori fissi
 # R-865-1: caratteri che si vedono vuoti ma non sono di categoria C* (riempitivi Hangul,
 # braille vuoto, selettori di variante)
 # Bot #409 su 0b039727 e 20fddc0c V-1: anche gli invisibili «Default_Ignorable» di categoria Mn
-# (U+034F, U+17B4, U+17B5, U+180B-U+180F); in più un testo libero senza nessuna lettera,
+# (U+034F, U+17B4, U+17B5, U+180B-U+180D, U+180F; U+180E è Cf e lo toglie già il filtro C*); in più un testo libero senza nessuna lettera,
 # cifra, punteggiatura o simbolo conta come vuoto (_pulisci), qualunque cosa contenga.
 _VUOTI = frozenset("\u115f\u1160\u3164\uffa0\u2800\u034f\u17b4\u17b5") | frozenset(
     chr(c) for c in [*range(0x180B, 0x1810), *range(0xFE00, 0xFE10),
@@ -70,10 +70,17 @@ def _pulisci(testo: Any, n: int = RIGA_MAX) -> str:
     return t if len(t) <= n else t[: n - 1].rstrip() + "…"
 
 
+# Bot #411 V-2: anche le virgolette che a schermo somigliano a «» (≪≫, 《》, 〈〉, ‹›, ⟨⟩, ⟪⟫)
+_SIMILI_A_CAPORALI = str.maketrans({c: '"' for c in
+                                    "\u00ab\u00bb\u226a\u226b\u300a\u300b\u3008\u3009"
+                                    "\u2039\u203a\u2329\u232a\u27e8\u27e9\u27ea\u27eb"})
+
+
 def _citato(testo: Any, n: int = RIGA_MAX) -> str:
-    """Un testo libero da mostrare all'operatore tra «»: senza le virgolette «» dentro, così
-    non può chiudere la citazione e sembrare una frase di Gas (R-864-3, bot #409 V-1)."""
-    return _pulisci(str(testo or "").replace("«", '"').replace("»", '"'), n)
+    """Un testo libero da mostrare all'operatore tra «»: senza «» (né virgolette che le
+    somigliano) dentro, così non può chiudere la citazione e sembrare una frase di Gas
+    (R-864-3, bot #409 V-1, bot #411 V-2)."""
+    return _pulisci(str(testo or "").translate(_SIMILI_A_CAPORALI), n)
 
 
 def _righe(corpo: Any, marca: str) -> Optional[List[str]]:
@@ -185,8 +192,9 @@ def frase_esito(numero_richiesta: int, titolo: str, esito: Dict[str, Any]) -> st
     PR, controlli a valori fissi), poi i testi liberi dell'esecutore tra «» con un'etichetta
     (R-864-3, bot #409 V-1: un riassunto non può imitare i controlli né la domanda). La domanda
     sul merge solo con PR valida, CI verde, bot APPROVATO o APPROVATO CON RISERVE, verifica
-    esterna non BOCCIATO e NESSUNA riga RISERVA (ve #409 V-2: le RISERVA sono i finding
-    ALTA/MEDIA). Il merge vero lo decide comunque CLAUDE.md §10."""
+    esterna non BOCCIATO e NESSUNA riga RISERVA (ve #409 V-2: le RISERVA sono i finding che
+    bloccano il merge): la regola è in propone_merge. Il merge vero lo decide comunque
+    CLAUDE.md §10."""
     try:
         try:
             n = int(numero_richiesta)
@@ -201,17 +209,20 @@ def frase_esito(numero_richiesta: int, titolo: str, esito: Dict[str, Any]) -> st
         bot = esito.get("bot") if esito.get("bot") in BOT else "assente"
         verifica_ok = esito.get("verifica_esterna", "assente") in VERIFICA  # R-867-2
         verifica = esito.get("verifica_esterna", "assente") if verifica_ok else "assente"
-        riserve = [_citato(x) for x in (esito.get("riserve") or []) if _citato(x)]
+        grezze = esito.get("riserve") or []
+        grezze = grezze if isinstance(grezze, list) else [grezze]
+        riserve = [_citato(x) for x in grezze if _citato(x)]
         altre = esito.get("riserve_altre")
         altre = altre if isinstance(altre, int) and not isinstance(altre, bool) and altre > 0 else 0
-        n_riserve = len(riserve) + altre
+        # bot #411 V-1: ogni elemento conta, anche se illeggibile (come nel lettore)
+        n_riserve = len(grezze) + altre
         stato_txt = {"pronta": "fatta", "fallita": "non riuscita",
                      "ferma": "mi sono fermato, serve te"}.get(stato, "esito non chiaro")
         fissi = [f"PR #{pr}" if pr_ok else "nessuna PR", f"CI {ci}", f"bot {bot}"]
         if verifica != "assente":
             fissi.append(f"verifica esterna {verifica}")
         if n_riserve:
-            fissi.append(f"riserve ALTA/MEDIA: {n_riserve}")
+            fissi.append(f"riserve aperte: {n_riserve}")
         testo = f"{testa}: {stato_txt}. " + ", ".join(fissi) + "."
         riassunto = _citato(esito.get("riassunto"))
         if riassunto:
@@ -221,14 +232,40 @@ def frase_esito(numero_richiesta: int, titolo: str, esito: Dict[str, Any]) -> st
             testo += (f" (+{altre} altre)." if altre else ".")
         if stato != "pronta":
             return testo
-        if (not pr_ok or ci != "verde" or bot not in ("APPROVATO", "APPROVATO CON RISERVE")
-                or not verifica_ok or verifica == "BOCCIATO" or n_riserve):
+        if not propone_merge(esito):
             return testo + " Niente merge per ora."
         return testo + f" Vuoi che la mergi? Rispondi «mergia {pr}» oppure «no {pr}»."
     except Exception:  # §9
         # R-873MV-2: niente valore grezzo nel ripiego
         n = numero_richiesta if isinstance(numero_richiesta, int) else 0
         return f"Richiesta di sviluppo #{n}: c'è un esito, guardalo sulla issue."
+
+
+def propone_merge(esito: Any) -> bool:
+    """True SOLO se la frase per l'operatore chiede il merge: esito «pronta», PR valida, CI
+    verde, bot APPROVATO o APPROVATO CON RISERVE, verifica esterna in elenco e non BOCCIATO,
+    nessuna riga RISERVA. Fail-closed anche su un dizionario fatto a mano (bot #411 V-1): un
+    elemento di riserve conta anche se illeggibile, un riserve_altre presente ma non intero
+    toglie la domanda. F3 ricorda la PR per cui la domanda è stata fatta (R-873MV-1). Mai
+    eccezioni: nel dubbio False."""
+    try:
+        if not isinstance(esito, dict) or esito.get("esito") != "pronta":
+            return False
+        pr = esito.get("pr")
+        if not (isinstance(pr, int) and not isinstance(pr, bool) and 0 < pr <= PR_MAX):
+            return False
+        if esito.get("ci") != "verde" or esito.get("bot") not in ("APPROVATO",
+                                                                 "APPROVATO CON RISERVE"):
+            return False
+        verifica = esito.get("verifica_esterna", "assente")
+        if verifica not in VERIFICA or verifica == "BOCCIATO":
+            return False
+        if esito.get("riserve") not in (None, []):
+            return False
+        altre = esito.get("riserve_altre", 0)
+        return isinstance(altre, int) and not isinstance(altre, bool) and altre == 0
+    except Exception:  # §9
+        return False
 
 
 def comando_operatore(testo: Any) -> Optional[Tuple[str, int]]:
