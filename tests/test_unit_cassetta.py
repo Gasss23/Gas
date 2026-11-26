@@ -585,7 +585,9 @@ def test_domanda_salvata_prima_dell_invio_r882mv_2(env, monkeypatch):
         return vero(root, stato) if len(scritture) == 1 else False
     monkeypatch.setattr(c, "_scrivi_stato", una_sola)
     assert c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO) == 1
-    assert c.domanda_aperta(env, 7) == 500
+    # R-883MV-1 (F4): la PR si ricorda solo con la scrittura DOPO l'invio; se quella fallisce
+    # resta la lapide: il «mergia 500» verrà rifiutato (fail-closed), mai una domanda fantasma
+    assert c.domanda_aperta(env, 7) is None
 
 
 def test_invio_fallito_non_cambia_la_domanda(env):
@@ -829,3 +831,159 @@ def test_frasi_normali_vanno_al_modello_r886mv_1(env, testo):
 
 def test_annulla_n_punto():
     assert c.comando_annulla("annulla richiesta n. 12") == 12
+
+
+# ---- F4: «mergia N» / «no N» ----
+
+class HttpCommenti(Http):
+    def __init__(self, codice_commento=201, **k):
+        super().__init__(**k)
+        self.codice_commento = codice_commento
+        self.scritti = []
+
+    def __call__(self, metodo, url, token, corpo):
+        if metodo == "POST" and url.endswith("/comments"):
+            self.scritti.append((url, corpo["body"]))
+            return self.codice_commento, {"id": 99}
+        return Http.__call__(self, metodo, url, token, corpo)
+
+
+def _con_domanda(env, pr=412):
+    h, inv = HttpCommenti(), Invia()
+    h.commenti = [_commento(1, _esito_pulito(pr=pr))]
+    _due_controlli(env, h, inv)
+    assert c.domanda_aperta(env, 7) == pr
+    return h
+
+
+def test_mergia_scrive_il_comando_sulla_issue_giusta(env):
+    h = _con_domanda(env)
+    out = c.rispondi_merge("mergia 412", env, http=h)
+    assert "mergiare la PR #412" in out and "richiesta #7" in out
+    assert h.scritti == [(f"{API}/repos/{REPO}/issues/7/comments", e.scrivi_comando("MERGIA", 412))]
+    # una volta sola: la stessa domanda non accetta un secondo comando
+    assert "già risposto" in c.rispondi_merge("mergia 412", env, http=h) and len(h.scritti) == 1
+
+
+def test_no_scrive_il_no(env):
+    h = _con_domanda(env)
+    assert "NON mergiare" in c.rispondi_merge("no 412", env, http=h)
+    assert h.scritti[0][1] == e.scrivi_comando("NO", 412)
+
+
+def test_mergia_di_una_pr_mai_chiesta_rifiutato_r873mv_1(env):
+    h = _con_domanda(env)
+    out = c.rispondi_merge("mergia 999", env, http=h)
+    assert "Non ti ho chiesto il merge della PR #999" in out and h.scritti == []
+
+
+def test_mergia_senza_domanda_vera_rifiutato(env):
+    h, inv = HttpCommenti(), Invia()
+    h.commenti = [_commento(1, _esito_pulito(pr=412, ci="rossa"))]   # niente domanda
+    _due_controlli(env, h, inv)
+    assert "Non ti ho chiesto" in c.rispondi_merge("mergia 412", env, http=h) and h.scritti == []
+
+
+def test_mergia_commento_non_scritto_lo_dice(env):
+    h = _con_domanda(env)
+    h.codice_commento = 403
+    out = c.rispondi_merge("mergia 412", env, http=h)
+    assert out.startswith("Operazione negata") and "HTTP 403" in out
+    h.codice_commento = 201  # si può riprovare: il comando non è stato ricordato
+    assert "Fatto" in c.rispondi_merge("mergia 412", env, http=h)
+
+
+def test_mergia_repo_non_privato_rifiutato(env):
+    h = _con_domanda(env)
+    h.privato = False
+    assert "non è PRIVATO" in c.rispondi_merge("mergia 412", env, http=h) and h.scritti == []
+
+
+def test_testo_qualunque_non_e_un_comando(env):
+    assert c.rispondi_merge("ciao, come va?", env) is None
+    assert c.e_comando_merge("mergia 5") and not c.e_comando_merge("mergia la mia")
+
+
+def test_esito_nuovo_dopo_il_comando_riapre_la_domanda(env):
+    h = _con_domanda(env, pr=412)
+    c.rispondi_merge("no 412", env, http=h)
+    h.commenti.append(_commento(2, _esito_pulito(pr=413), quando="2026-11-26T15:30:00Z"))
+    c.controlla_esiti(env, http=h, invia=Invia(), adesso=ADESSO)
+    assert "mergiare la PR #413" in c.rispondi_merge("mergia 413", env, http=h)
+
+
+def test_bot_mergia_da_testo_e_da_vocale(env, monkeypatch):
+    import modules.telegram.bot as bot
+    testi = []
+    monkeypatch.setattr(bot, "_send_text", lambda base, chat, t, *a, **k: testi.append(t))
+    monkeypatch.setattr(c, "rispondi_merge", lambda t, root, http=None:
+                        "risposto" if t.strip().startswith("mergia") else None)
+
+    class K:
+        root = env
+
+        def run_turn(self, *a, **k):
+            raise AssertionError("il modello non deve partire")
+    bot._handle_update("https://x", {"update_id": 1, "message": {"chat": {"id": 5},
+                                                                  "text": "mergia 412"}}, {5}, K())
+    bot._gestisci_parlato("https://x", 5, "mergia 412", K())
+    assert testi[0] == "risposto" and "risposto" in testi[1]
+    bot._handle_update("https://x", {"update_id": 2, "edited_message": {"chat": {"id": 5},
+                                                                         "text": "mergia 412"}},
+                       {5}, K())
+    assert "messaggio modificato" in testi[-1]
+
+
+def test_server_voce_merge_solo_su_telegram(env):
+    h = _handler_con_root(env)
+    assert h._annulla_richiesta("mergia 412") == c.RISPOSTA_SOLO_TELEGRAM
+
+
+def test_bot_annullo_senza_numero_anche_a_testo_bot414_v1(env, monkeypatch):
+    import modules.telegram.bot as bot
+    testi = []
+    monkeypatch.setattr(bot, "_send_text", lambda base, chat, t, *a, **k: testi.append(t))
+
+    class K:
+        root = env
+
+        def run_turn(self, *a, **k):
+            raise AssertionError("il modello non deve partire")
+    bot._handle_update("https://x", {"update_id": 1, "message": {"chat": {"id": 5},
+                                                                  "text": "annulla richiesta dodici"}},
+                       {5}, K())
+    assert "in cifre" in testi[0]
+
+
+def test_frase_voce_dice_il_verdetto_del_bot_ve414_v2():
+    con_riserve = e.leggi_esito(_esito_pulito(pr=5, bot="APPROVATO CON RISERVE"))
+    assert "bot approvato con riserve" in c.frase_voce(7, con_riserve)
+
+
+
+def test_mergia_su_richiesta_annullata_o_chiusa_rifiutato_r888mv_1(env):
+    h = _con_domanda(env)
+    h.issue[7]["labels"].append({"name": "annullata"})
+    assert "chiusa o annullata" in c.rispondi_merge("mergia 412", env, http=h) and h.scritti == []
+    h.issue[7]["labels"] = [{"name": "da-gas"}]
+    h.issue[7]["state"] = "closed"
+    assert "chiusa o annullata" in c.rispondi_merge("mergia 412", env, http=h) and h.scritti == []
+
+
+def test_elenco_comandi_illeggibile_rifiuta_r888mv_2(env):
+    h = _con_domanda(env)
+    (env / c.COMANDI_FILENAME).write_text("{rotto", encoding="utf-8")
+    out = c.rispondi_merge("mergia 412", env, http=h)
+    assert out.startswith(("Non ti ho chiesto", "Operazione negata")) and h.scritti == []
+
+
+def test_comando_prenotato_prima_del_post_r888mv_2(env, monkeypatch):
+    h = _con_domanda(env)
+    monkeypatch.setattr(c, "_scrivi_comandi", lambda root, dati: False)
+    assert "non scrivibile" in c.rispondi_merge("mergia 412", env, http=h) and h.scritti == []
+
+
+def test_pr_booleana_nello_stato_non_vale(env):
+    stato = {"since": "2026-11-26T14:58:00Z", "domande": {"7": {"pr": True, "quando": "x"}}}
+    (env / c.STATO_FILENAME).write_text(json.dumps(stato), encoding="utf-8")
+    assert c.richiesta_della_pr(env, 1) is None

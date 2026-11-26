@@ -1169,6 +1169,9 @@ class VoiceHandler(BaseHTTPRequestHandler):
             if root is None:
                 return None
             from modules.sviluppo import cassetta
+            if cassetta.e_comando_merge(prompt):
+                # F4: il merge a voce dal Mac NO (audio della stanza): solo su Telegram
+                return cassetta.RISPOSTA_SOLO_TELEGRAM
             return cassetta.annulla_parlato(prompt, root)
         except Exception as exc:
             log.warning("annullo a voce non riuscito: %s", exc)

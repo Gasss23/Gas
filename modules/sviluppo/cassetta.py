@@ -391,9 +391,11 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
             prec = voce.get("quando") if isinstance(voce, dict) else None
             vecchio = isinstance(prec, str) and bool(prec) and (not creato or creato < prec)
             domande_prima = dict(domande)
+            pr_domanda = esito["pr"] if esiti.propone_merge(esito) else None
             if not vecchio:
-                domande[str(numero)] = {"pr": esito["pr"] if esiti.propone_merge(esito) else None,
-                                        "quando": creato}
+                # R-883MV-1: prima dell'invio solo la «lapide» (pr None); la PR si ricorda DOPO
+                # l'invio riuscito, così un avviso mai partito non lascia una domanda fantasma
+                domande[str(numero)] = {"pr": None, "quando": creato}
             visti.append(cid); gia.add(cid)
             n_oggi += 1
             prima = {k: stato.get(k) for k in ("visti", "uso", "domande", "da_leggere")}
@@ -420,6 +422,8 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                 stato["da_leggere"] = prima.get("da_leggere") or []
                 break  # in ordine: questo e i successivi al prossimo controllo
             inviati += 1
+            if not vecchio and pr_domanda is not None:
+                domande[str(numero)] = {"pr": pr_domanda, "quando": creato}
             if cid in sospesi:
                 sospesi.remove(cid)
         else:
@@ -516,7 +520,8 @@ def frase_voce(numero: int, esito: Dict[str, Any]) -> str:
         pr_txt = f", PR {pr}" if isinstance(pr, int) and not isinstance(pr, bool) else ""
         if stato == "pronta":
             if esiti.propone_merge(esito):
-                coda = "controlli a posto: ti ho chiesto su Telegram se mergiarla"
+                coda = (f"CI verde, bot {str(esito.get('bot')).lower()}: ti ho chiesto su Telegram "
+                        "se mergiarla")
             else:
                 coda = "ma non è pronta per il merge, i dettagli sono su Telegram"
             return f"La richiesta di sviluppo numero {n} è fatta{pr_txt}, {coda}."
@@ -590,3 +595,126 @@ def annulla_parlato(testo: Any, root: Path) -> Optional[str]:
     except Exception as e:  # §9
         log.warning("cassetta: annullo a voce non riuscito (%s)", type(e).__name__)
         return "Operazione negata: annullo non riuscito (errore interno, dettagli nel log)."
+
+
+# ---------------------------------------------------------------- F4: «mergia N» / «no N»
+
+COMANDI_FILENAME = ".gas_richieste_comandi.json"  # scritto SOLO dal bot Telegram (thread principale)
+COMANDI_MAX = 200
+RISPOSTA_SOLO_TELEGRAM = ("Il merge me lo confermi su Telegram: scrivimi «mergia N» o «no N». "
+                          "A voce dal Mac non lo prendo.")
+
+
+def _comandi(root: Path) -> Optional[List[Dict[str, Any]]]:
+    """I comandi già dati; [] se il file non c'è; None se c'è ma non si legge (R-888MV-2: allora
+    nessun comando nuovo, così «una volta sola» non salta)."""
+    try:
+        d = json.loads((Path(root) / COMANDI_FILENAME).read_text(encoding="utf-8"))
+        if not isinstance(d, dict) or not isinstance(d.get("dati", []), list):
+            return None
+        return [x for x in d.get("dati") or [] if isinstance(x, dict)]
+    except FileNotFoundError:
+        return []
+    except Exception as e:
+        log.warning("cassetta: comandi illeggibili (%s)", type(e).__name__)
+        return None
+
+
+def _scrivi_comandi(root: Path, dati: List[Dict[str, Any]]) -> bool:
+    p = Path(root) / COMANDI_FILENAME
+    tmp = p.with_suffix(f".tmp.{os.getpid()}.{secrets.token_hex(4)}")
+    try:
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump({"dati": dati[-COMANDI_MAX:]}, f, ensure_ascii=False)
+        os.replace(tmp, p)
+        return True
+    except Exception as e:
+        log.warning("cassetta: comandi non scritti (%s)", type(e).__name__)
+        try:
+            tmp.unlink()
+        except Exception:
+            pass
+        return False
+
+
+def richiesta_della_pr(root: Path, pr: int) -> Optional[Tuple[int, str]]:
+    """La richiesta (numero, quando) per cui Gas ha chiesto davvero il merge della PR `pr`, se
+    la domanda è ancora aperta e nessun comando le ha già risposto. Mai eccezioni."""
+    try:
+        dati = _comandi(root)
+        if dati is None:
+            return None
+        risposte = {(x.get("richiesta"), x.get("quando")) for x in dati}
+        for k, v in (_leggi_stato(Path(root)).get("domande") or {}).items():
+            if (isinstance(v, dict) and isinstance(v.get("pr"), int)
+                    and not isinstance(v.get("pr"), bool) and v.get("pr") == pr and k.isdigit()
+                    and (int(k), v.get("quando")) not in risposte):
+                return int(k), str(v.get("quando") or "")
+        return None
+    except Exception:
+        return None
+
+
+def rispondi_merge(testo: Any, root: Path, http: Optional[Http] = None) -> Optional[str]:
+    """F4: «mergia N» / «no N» dall'operatore su Telegram. None se il testo non è il comando.
+    Vale SOLO se N è la PR per cui Gas ha chiesto davvero il merge (R-873MV-1, R-883MV-1) e la
+    domanda non ha già avuto risposta. Allora scrive il commento COMANDO a formato fisso sulla
+    issue: il merge vero lo fa l'esecutore (F5), che ricontrolla CLAUDE.md §10 (verdetto letto,
+    CI verde, nessun conflitto). Mai eccezioni."""
+    http = http or _http
+    try:
+        cmd = esiti.comando_operatore(testo)
+        if cmd is None:
+            return None
+        azione, pr = cmd
+        trovata = richiesta_della_pr(root, pr)
+        if trovata is None:
+            return (f"Non ti ho chiesto il merge della PR #{pr}, oppure mi hai già risposto: "
+                    "niente fatto. Guarda l'ultimo avviso su Telegram per il numero giusto.")
+        numero, quando = trovata
+        repo, token = _repo(), _token()
+        if not repo or not token:
+            return "Operazione negata: repo o token delle richieste non configurati."
+        motivo = _privato(repo, token, http)
+        if motivo:
+            return f"Operazione negata: {motivo}."
+        # R-888MV-1: la richiesta deve essere ancora una issue aperta da-gas, non annullata
+        ci, issue = http("GET", f"{API}/repos/{repo}/issues/{numero}", token, None)
+        if ci != 200 or not isinstance(issue, dict):
+            return f"Operazione negata: richiesta #{numero} non leggibile (HTTP {ci})."
+        etichette = _etichette(issue)
+        if (issue.get("pull_request") is not None or ETICHETTA not in etichette
+                or ETICHETTA_ANNULLATA in etichette or issue.get("state") != "open"):
+            return (f"Operazione negata: la richiesta #{numero} è chiusa o annullata: "
+                    "niente merge.")
+        # R-888MV-2: il comando si PRENOTA in locale prima di scriverlo su GitHub (se non si
+        # prenota non si scrive), così la stessa domanda non riceve mai due comandi
+        dati = _comandi(root)
+        if dati is None:
+            return "Operazione negata: elenco dei comandi illeggibile: controllalo nel log."
+        voce = {"richiesta": numero, "quando": quando, "pr": pr, "azione": azione,
+                "il": _iso(datetime.now(timezone.utc))}
+        if not _scrivi_comandi(root, dati + [voce]):
+            return "Operazione negata: elenco dei comandi non scrivibile: niente fatto."
+        codice, _ = http("POST", f"{API}/repos/{repo}/issues/{numero}/comments", token,
+                         {"body": esiti.scrivi_comando(azione, pr)})
+        if codice != 201:
+            if not _scrivi_comandi(root, dati):  # si toglie la prenotazione: si può riprovare
+                log.warning("cassetta: prenotazione del comando per #%s non tolta", numero)
+            return (f"Operazione negata: risposta non scritta sulla richiesta #{numero} "
+                    f"(HTTP {codice}). Riprova tra poco.")
+        if azione == "MERGIA":
+            return (f"Fatto: ho detto all'esecutore di mergiare la PR #{pr} (richiesta #{numero}). "
+                    "La mergia al prossimo giro solo se CI, bot e conflitti sono a posto; "
+                    "ti avviso quando è fatta.")
+        return (f"Fatto: ho detto all'esecutore di NON mergiare la PR #{pr} "
+                f"(richiesta #{numero}).")
+    except Exception as e:  # §9
+        log.warning("cassetta: risposta di merge non riuscita (%s)", type(e).__name__)
+        return "Operazione negata: risposta non scritta (errore interno, dettagli nel log)."
+
+
+def e_comando_merge(testo: Any) -> bool:
+    """True se il testo è «mergia N» / «no N» (per rifiutarlo dove non vale, es. a voce dal Mac)."""
+    return esiti.comando_operatore(testo) is not None

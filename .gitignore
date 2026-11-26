@@ -61,6 +61,8 @@ AGENTS.md
 .gas_richieste_esiti.tmp.*
 .gas_richieste_letti_voce.json
 .gas_richieste_letti_voce.tmp.*
+.gas_richieste_comandi.json
+.gas_richieste_comandi.tmp.*
 .gas_notifiche_uso.json
 .gas_notifiche_uso.json.*.tmp
 

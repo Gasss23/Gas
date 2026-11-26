@@ -975,15 +975,19 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
         # Mani alla voce F3: «annulla richiesta N» (al posto della firma a voce, decisione
         # dell'operatore del 26/11). Prima del modello, come /clear: vale solo da un
         # messaggio nuovo; risponde il codice, nessun turno.
+        # F4: «mergia N» / «no N» con lo stesso schema (solo da messaggio nuovo, prima del modello).
+        # Bot #414 V-1: anche a testo «annulla richiesta dodici» ha la risposta fissa.
         from modules.sviluppo import cassetta
-        da_annullare = cassetta.comando_annulla(text)
-        if da_annullare is not None:
+        root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
+        if cassetta.comando_annulla(text) is not None or cassetta.e_comando_merge(text):
             if not upd.get("message"):
-                _send_text(base_url, chat_id, "«annulla richiesta» non vale da un messaggio "
+                _send_text(base_url, chat_id, "Questo comando non vale da un messaggio "
                            "modificato: mandalo come messaggio nuovo.")
-            else:
-                root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
-                _send_text(base_url, chat_id, cassetta.annulla(da_annullare, Path(root)))
+                return
+        risposta_fissa = (cassetta.annulla_parlato(text, Path(root))
+                          or cassetta.rispondi_merge(text, Path(root)))
+        if risposta_fissa is not None:
+            _send_text(base_url, chat_id, risposta_fissa)
             return
 
         # R-ve269-2: «/forte <richiesta>» anche da Telegram, mai ai gratuiti
@@ -1064,7 +1068,8 @@ def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any)
     try:
         from modules.sviluppo import cassetta
         root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
-        annullo = cassetta.annulla_parlato(trascritto, Path(root))
+        annullo = (cassetta.annulla_parlato(trascritto, Path(root))
+                   or cassetta.rispondi_merge(trascritto, Path(root)))  # F4: dalla chat dell'operatore
     except Exception as e:  # §9: il vocale va al turno normale
         log.warning("vocale: annullo non controllato (%s)", type(e).__name__)
         annullo = None
