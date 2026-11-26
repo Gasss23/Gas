@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-26 — Mani alla voce F3b: esiti detti a voce, «annulla richiesta N» anche a voce, PR #414 (contiene anche le PR #411 e #412)
+**Sessione:** 2026-11-26 — Mani alla voce F4: «mergia N» / «no N» dall'operatore su Telegram (ramo `claude/mani-voce-f4`, contiene anche le PR #411, #412 e #414)
 
 ---
 
@@ -9,7 +9,9 @@
 1. Merge della PR #411 (https://github.com/Gasss23/Gas/pull/411), F2-bis: tutta verde, verdetto del bot APPROVATO CON RISERVE (solo note basse): decide l'operatore.
 2. Merge della PR #412 (https://github.com/Gasss23/Gas/pull/412), F3, dopo la #411: CI verde, bot neutral (tocca ci.yml), verdetto APPROVATO CON RISERVE: decide l'operatore.
 3. Merge della PR #414 (https://github.com/Gasss23/Gas/pull/414), F3b, dopo la #412. Numero e URL dall'output di `gh api repos/Gasss23/Gas/pulls -X POST` (qui `gh pr` non c'è). Revisore #885-MV APPROVATO: con un verdetto del bot pulito mergia l'agente (CLAUDE.md §10), altrimenti l'operatore.
-4. Sul Mac, dopo i merge: `GAS_RICHIESTE_AUTORI=<login GitHub di chi scrive gli esiti>` nel `.env`, poi riavvio del bot Telegram e del server voce.
+4. Merge della PR di F4 (ramo `claude/mani-voce-f4`), dopo la #414: revisore #889-MV APPROVATO CON RISERVE, quindi decide l'operatore.
+5. Da confermare (oggi così): il merge NON vale a voce dal Mac, solo da Telegram; l'annullo a voce NON chiede conferma.
+6. Sul Mac, dopo i merge: `GAS_RICHIESTE_AUTORI=<login GitHub di chi scrive gli esiti>` nel `.env`, poi riavvio del bot Telegram e del server voce.
 
 ---
 
@@ -18,31 +20,31 @@
 - **F2-bis (PR #411)**: `FATTA` — 887fcc0d, 93f7650f, 80d1e2b5; revisore #873-MV … #878-MV.
 - **F3 (PR #412)**: `FATTA` — 6fce9e43, 9f4650d6; revisore #879-MV … #883-MV.
 - **F3b — esiti a voce e annullo a voce**: `FATTA` — 28947ffc; revisore #884-MV → #885-MV APPROVATO.
-- **F4 — «mergia N» / «no N»**: `DEFERITA — prossima fetta (chiude R-883MV-1)`.
-- **F5 — esecutore nel cloud**: `DEFERITA — dopo F4`.
+- **F4 — «mergia N» / «no N»**: `FATTA` — 2863bf4c; revisore #888-MV → #889-MV APPROVATO CON RISERVE (chiude R-883MV-1).
+- **F5 — esecutore nel cloud**: `DEFERITA — prossima fetta`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  23 ++++++++++
- .github/workflows/ci.yml           |   8 ++++
- .gitignore                         |   4 ++
- gas.py                             |  22 +++++++++-
- modules/sviluppo/cassetta.py       | 592 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/sviluppo/esiti.py          | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++---------------
- modules/sviluppo/richieste.py      |  20 +++++++--
- modules/telegram/bot.py            |  41 ++++++++++++++++++
- modules/voice/server.py            |  59 ++++++++++++++++++++------
- reports/diff_sessione.md           |  21 +++++----
+ .claude/agents/memoria_revisore.md |  27 +
+ .github/workflows/ci.yml           |   8 +
+ .gitignore                         |   6 +
+ gas.py                             |  26 +-
+ modules/sviluppo/cassetta.py       | 720 +++++++++++++++++++++++++++
+ modules/sviluppo/esiti.py          | 151 ++++--
+ modules/sviluppo/richieste.py      |  20 +-
+ modules/telegram/bot.py            |  46 ++
+ modules/voice/server.py            |  62 ++-
+ reports/diff_sessione.md           |  21 +-
  reports/handoff.md                 | n/d
- reports/mani_voce_piano.md         |  78 ++++++++++++++++++++++++++--------
+ reports/mani_voce_piano.md         |  78 ++-
  reports/stato_progetto.md          |   4 +-
- reports/ultimo_report.md           |  35 ++++++---------
- tests/test_unit_cassetta.py        | 831 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_esiti.py           | 125 ++++++++++++++++++++++++++++++++++++++++++++++++------
- tests/test_unit_kernel.py          |  29 +++++++++++++
+ reports/ultimo_report.md           |  35 +-
+ tests/test_unit_cassetta.py        | 989 +++++++++++++++++++++++++++++++++++++
+ tests/test_unit_esiti.py           | 125 ++++-
+ tests/test_unit_kernel.py          |  29 ++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -50,6 +52,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2863bf4c feat(sviluppo): mani alla voce F4 — «mergia N» / «no N» dall'operatore su Telegram, solo per la PR della domanda vera
+a0a88e87 chore(revisore): memoria review #889 — APPROVATO CON RISERVE
+e8ce313f chore(revisore): memoria review #888 — APPROVATO CON RISERVE
+10bd0bd6 docs(fine-task): report e handoff dopo la correzione del bot sulla #414
 0338ed09 fix(sviluppo): test di cassetta indipendenti dalla data, annullo con lo stesso ordine sul Mac e su Telegram, frase a voce salvata con lo stato (bot #414)
 d99f9ad4 chore(revisore): memoria review #887 — APPROVATO
 46422736 chore(revisore): memoria review #886 — APPROVATO CON RISERVE
@@ -86,7 +92,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. Commit motore 28947ffc (F3b): verdetti #884-MV e #885-MV, dopo #883-MV. Commit motore 0338ed09 (dopo il bot sulla #414): verdetti #886-MV e #887-MV, dopo #885-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
+Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. Commit motore 28947ffc (F3b): verdetti #884-MV e #885-MV, dopo #883-MV. Commit motore 0338ed09 (dopo il bot sulla #414): verdetti #886-MV e #887-MV, dopo #885-MV. Commit motore 2863bf4c (F4): verdetti #888-MV (primo giro) e #889-MV (secondo giro, dopo la correzione di R-888MV-1/2 nello stesso diff staged), in fondo a questa sezione. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -530,12 +536,66 @@ Review #887-MV: rivisto tutto il diff staged sul ramo claude/mani-voce-f3b (PR #
 
 Ho aggiunto la riga #887-MV in `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata da sola (commit d99f9ad4).
 
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #888-MV. Ho esaminato il diff staged sul ramo claude/mani-voce-f4 (+259/−11, 6 file).
+
+**Elementi del diff esaminati**
+- `modules/sviluppo/cassetta.py:398` — prima dell'invio nello stato va solo la lapide (pr None). Rischio: che resti una domanda fantasma se l'avviso non parte. Esito: ok. Sull'invio fallito si torna a `domande_prima`. Se la scrittura finale fallisce resta la lapide, quindi il «mergia» viene rifiutato (il test modificato in tests/test_unit_cassetta.py:588 lo prova).
+- `modules/sviluppo/cassetta.py:425` — la PR viene ricordata solo dopo `inviati += 1`, sullo stesso dizionario `domande` che finisce in `stato["domande"]` nella scrittura finale. Rischio: perdita della PR per un `return` anticipato al giro dopo. Esito: ok, e si perde in modo sicuro (domanda rifiutata, mai inventata).
+- `modules/sviluppo/cassetta.py:663` — `richiesta_della_pr` confronta la PR con le domande vere e scarta le coppie (richiesta, quando) che hanno già una risposta. Rischio: merge di una PR mai proposta, oppure di una domanda superata da un esito più recente. Esito: ok. Una lapide (pr None) non corrisponde mai e un esito nuovo cambia «quando», quindi riapre la domanda in modo corretto. Riserva R-888MV-1 qui sotto.
+- `modules/sviluppo/cassetta.py:682` — il comando viene ricordato in locale solo dopo il POST 201; se la scrittura fallisce resta solo un warning nel log. Rischio: comando ripetuto. Esito: riserva R-888MV-2.
+- `modules/sviluppo/cassetta.py:608` — `_comandi` legge un file illeggibile come lista vuota. Rischio: è fail-open rispetto al vincolo «una volta sola». Esito: riserva R-888MV-2.
+- `modules/telegram/bot.py:988` — annullo e merge passano prima del modello, e un messaggio modificato viene rifiutato prima di qualsiasi azione. Rischio: che un messaggio modificato faccia scattare il comando. Esito: ok. Su un messaggio modificato `annulla_parlato` arriva solo al ramo senza numero, che dà la risposta fissa e non fa niente.
+- `modules/telegram/bot.py:1072` — il merge vale anche nei vocali Telegram, che passano dopo il controllo della chat ammessa. Esito: ok. Il comando si usa una volta sola, quindi un vocale rielaborato riceve «già risposto».
+- `modules/voice/server.py:1172` — al microfono del Mac «mergia/no N» riceve RISPOSTA_SOLO_TELEGRAM prima di `annulla_parlato` e non fa nessuna chiamata HTTP né scrittura. Esito: ok.
+- `gas.py:436` — la regola nel prompt di base. Il prompt di base si aggiunge sempre, anche quando gas_identity.md c'è. Rischio: rompere i test del kernel. Esito: ok, `import gas` funziona e l'unico test che legge il prompt (tests/test_unit_kernel.py:8818) cerca altre stringhe.
+- Concorrenza: `rispondi_merge` legge lo stato del bot, che il thread di controllo scrive con `os.replace` atomico, quindi non può leggere un file a metà. Il file dei comandi lo scrive solo il thread principale del bot, perché anche i vocali passano da `_handle_update`. Il server voce non lo tocca. Esito: ok.
+
+Prove: 117 passed in tests/test_unit_cassetta.py, 74 passed in tests/test_unit_telegram_voce.py, 0 caratteri invisibili nel diff.
+
+**Riserve**
+1. **R-888MV-1 BASSA** — `rispondi_merge` non controlla che la issue sia ancora aperta, con l'etichetta da-gas e senza `annullata`. Dopo «annulla richiesta 7», un «mergia 412» scrive comunque il comando MERGIA sulla issue chiusa: GitHub accetta commenti sulle issue chiuse. In più le domande non scadono mai: una domanda di mesi fa resta valida finché non arriva un esito più recente. La protezione oggi c'è solo in F5 (l'esecutore salta le annullate e ricontrolla §10). Basterebbe la stessa GET che fa `annulla` (stato open, etichette) prima del POST.
+2. **R-888MV-2 BASSA** — il vincolo «una volta sola» vive solo in `.gas_richieste_comandi.json`. Se il file è corrotto viene letto come vuoto e tutte le domande aperte tornano rispondibili; se la scrittura fallisce dopo il POST, la stessa domanda accetta un secondo comando, anche un NO dopo un MERGIA, cioè due comandi contraddittori sulla issue. Correzione possibile: rifiutare quando il file c'è ma non si legge (solo FileNotFoundError vale come vuoto). Regola per F5: vale solo il primo COMANDO dopo l'ultimo ESITO.
+
+**Note cosmetiche**: un «mergia N» mandato subito dopo l'avviso viene rifiutato finché il thread di controllo non fa la scrittura finale (si perde in modo sicuro, basta riprovare). «no 3» scritto come risposta qualunque viene intercettato con «Non ti ho chiesto il merge della PR #3». Un `pr: true` scritto a mano nello stato corrisponderebbe a «mergia 1», perché a differenza di `domanda_aperta` qui non c'è la guardia sul bool.
+
+**Rischi esclusi**: non ho lanciato le suite complete del kernel e del server voce, perché sono già in corso in background dall'agente principale; della regola nel prompt ho verificato solo l'import e il test che legge il prompt. Il comportamento vero con GitHub, cioè un POST su una issue chiusa o bloccata e la lettura dei COMANDO da parte dell'esecutore, non l'ho verificato: senza rete e senza repo delle richieste qui non si può riprodurre, e quella parte è di F5.
+
+La memoria è aggiornata (riga #888-MV più una lezione) e committata in e8ce313f.
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #889-MV, secondo giro di F4: diff staged completo sul ramo claude/mani-voce-f4 (+311/−11, 6 file). R-888MV-1 e R-888MV-2 sono chiuse e la guardia sul bool c'è. Resta un caso raro e una riserva BASSA, sotto.
+
+Risultati: 195 test passati (tests/test_unit_cassetta.py e tests/test_unit_telegram_voce.py), 0 caratteri invisibili nel diff.
+
+**Punti del diff controllati**
+- `modules/sviluppo/cassetta.py:682` — prima del POST ora c'è una GET sulla issue: deve essere aperta, con l'etichetta da-gas, senza `annullata` e non una PR. Se la GET fallisce o la issue non va bene, non parte niente. Il rischio era il «mergia» dopo un «annulla richiesta». Esito: ok, R-888MV-1 chiusa, la prova il nuovo test della richiesta annullata o chiusa.
+- `modules/sviluppo/cassetta.py:691` — il comando si prenota in locale prima del POST; se la prenotazione non si scrive non si fa niente. Un file c'è ma non si legge dà None, e allora nessun comando nuovo (`modules/sviluppo/cassetta.py:646` in `richiesta_della_pr`, ripetuto a :694). Il rischio era il doppio comando con il file corrotto o non scritto. Esito: ok, R-888MV-2 chiusa.
+- `modules/sviluppo/cassetta.py:702` — se il POST non risponde 201 la prenotazione si toglie, così l'operatore può riprovare. Il rischio è che non si sappia se il commento è stato scritto davvero. `_http` (modules/sviluppo/richieste.py:58) non solleva mai eccezioni e dà 0 su rete giù o timeout. Esito: riserva R-889MV-1.
+- `modules/sviluppo/cassetta.py:650` — un `pr` booleano nello stato non corrisponde più a «mergia 1». Esito: ok.
+- Le parti non cambiate dal giro #888 restano ok: niente merge al microfono del Mac (`modules/voice/server.py:1172`), il bot che intercetta merge e annullo prima del modello e rifiuta i messaggi modificati (`modules/telegram/bot.py:988`), la regola nel prompt (`gas.py:436`).
+- Concorrenza: invariata. Il file dei comandi lo scrive solo il thread principale del bot; lo stato del bot qui si legge soltanto, e la scrittura è atomica con `os.replace`. Esito: ok.
+
+**Riserve**
+1. R-889MV-1 BASSA: se il POST va a buon fine ma la risposta si perde (timeout, codice 0), la prenotazione viene tolta. La stessa domanda può allora ricevere un secondo comando, anche opposto (un NO dopo un MERGIA già scritto). Due rimedi possibili:
+   - regola per F5: vale solo il primo COMANDO dopo l'ultimo ESITO sulla issue;
+   - oppure tenere la prenotazione quando il codice è 0.
+
+**Note cosmetiche**: con il file dei comandi illeggibile l'operatore riceve «non ti ho chiesto / già risposto» invece di «elenco illeggibile», perché `richiesta_della_pr` esce prima. Oltre COMANDI_MAX (200) le risposte più vecchie si dimenticano, cosa irrilevante in pratica. La scelta di non dare una scadenza alle domande è accettabile: ogni esito nuovo le riapre o le chiude, e F5 ricontrolla §10.
+
+**Rischio escluso**: non ho lanciato le suite complete del kernel e del server voce, che l'agente principale ha in corso in background. Non ho verificato il comportamento reale di GitHub (commenti su issue bloccate, lettura dei COMANDO da parte dell'esecutore) perché qui non c'è il repo delle richieste: è materia di F5.
+
+Memoria aggiornata (riga #889-MV più una lezione) e committata in a0a88e87.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_esiti.py`: 63 → 101 test (PR #411 e F3; verifica esterna #414 V-1: prima avevo scritto 103).
-- `tests/test_unit_cassetta.py`: nuovo, 71 (6fce9e43) → 80 (9f4650d6) → 95 (28947ffc) → 105 (0338ed09). `python -m pytest -q tests/test_unit_cassetta.py` → `105 passed in 0.40s`.
+- `tests/test_unit_cassetta.py`: nuovo, 71 (6fce9e43) → 80 (9f4650d6) → 95 (28947ffc) → 105 (0338ed09) → 121 (2863bf4c).
 - voice_server + telegram_voce + cassetta + esiti + richieste sul commit 28947ffc: `544 passed in 293.19s`.
-- `tests/test_unit_kernel.py` (script): `=== RIEPILOGO: 1210 PASS, 0 FAIL ===` su 28947ffc (F3b non tocca il kernel).
+- `tests/test_unit_kernel.py` (script): `=== RIEPILOGO: 1210 PASS, 0 FAIL ===` su 28947ffc.
+- Su 2863bf4c (F4): voice_server + telegram_voce + cassetta + esiti + richieste `566 passed in 301.01s`; kernel rilanciato in background (F4 tocca solo il prompt di base in gas.py; `import gas` e il test che legge il prompt ok nel revisore).
 
 ## §6 STATO CI
 
@@ -543,9 +603,14 @@ Ho aggiunto la riga #887-MV in `/home/user/Gas/.claude/agents/memoria_revisore.m
 - Commit della PR #412 (fino a 179cde04): sul head 179cde04 unit-suite e handoff-check success, verifica-bot neutral (la PR tocca ci.yml).
 - 2edfc3fb, cb31b806, 28947ffc: nessuna run su questi SHA (pushati insieme a 8f6787a6).
 - 8f6787a6: handoff-check success; verifica-bot failure (BOCCIATO: test dipendenti dalla data, gravità media vera, corretta in 0338ed09).
-- 46422736, d99f9ad4, 0338ed09 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
+- 46422736, d99f9ad4, 0338ed09, 10bd0bd6: run della PR #414 (head 10bd0bd6).
+- e8ce313f, a0a88e87, 2863bf4c e il commit di fine-task: ramo nuovo, run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
 
 ## §7 RISERVE APERTE
+
+- R-889MV-1 BASSA — se la risposta del POST del comando si perde (codice 0) la prenotazione si toglie e un secondo comando, anche opposto, è possibile: regola per F5, vale solo il primo COMANDO dopo l'ultimo ESITO.
+- Cosmetiche #888/#889-MV: «mergia» subito dopo l'avviso rifiutato finché il controllo non scrive lo stato (basta riprovare); «no 3» intercettato; file dei comandi illeggibile → «non ti ho chiesto / già risposto»; COMANDI_MAX 200.
+- Chiuse da F4: R-883MV-1 (PR ricordata solo dopo l'avviso), R-873MV-1 (merge solo per la PR della domanda), R-888MV-1/2.
 
 - Limite dichiarato (verifica esterna #414 V-2): un numero sentito male a voce annulla la richiesta sbagliata, senza conferma (si riapre a mano togliendo `annullata`).
 - Verifica esterna #414 V-4 COSMETICA: gli esiti si credono sulla parola dell'autore ammesso; il merge vero lo decide §10 (F4/F5).
@@ -553,11 +618,9 @@ Ho aggiunto la riga #887-MV in `/home/user/Gas/.claude/agents/memoria_revisore.m
 - Chiuse da F3b: R-873MV-1 per la voce (frase solo con parti fisse), R-884MV-1 (file dei letti a voce con un solo scrittore), R-884MV-2 (test), ve #412 V-2 (avviso «scrivimi o dimmi», annullo dai vocali), bot #412 V-1 (sospesi scartati tolti).
 - Cosmetiche #885-MV: due richieste a voce in parallelo possono ridire un esito una volta; file dei letti illeggibile → si ridicono al massimo 5 esiti.
 
-- R-883MV-1 BASSA — domanda «fantasma» se l'avviso non parte dopo la scrittura dello stato: F4 farà confermare il numero della PR.
 - Verifica esterna #412 V-1 BASSA del bot (commento modificato non riletto): regola per F5, un ESITO è sempre un commento nuovo (nel docstring).
 - R-881MV-1 BASSA — un commento cancellato fra la lettura della pagina N e della N+1 fa perdere il primo della pagina N+1 (serve un arretrato di più pagine: raro).
 - R-881MV-2 COSMETICA — rilettura inutile con commenti multipli esatti di 100; ⪡⪢ ⋘⋙ non coperte nelle citazioni.
-- R-873MV-1 BASSA — a voce le «» non si sentono: in F4 «mergia N» varrà solo per la PR ricordata da F3 (`cassetta.domanda_aperta`).
 - R-877MV-2 COSMETICA — virgolette simili non tutte coperte (in parte chiusa da F3).
 - Bot della #411: V-1 BASSA (§0 del suo handoff fermo a #874-MV), V-2 COSMETICA (descrizione, aggiornata).
 - Classificatore del bot (`scripts/bot_esito.py` `_gravita_nel_testo`): falso rosso sulla #411 per una parola di gravità dentro una citazione; macchina del bot, decide l'operatore.

@@ -1,24 +1,26 @@
-# Ultimo report — 2026-11-26 — Mani alla voce F3b: esiti a voce, annullo a voce
+# Ultimo report — 2026-11-26 — Mani alla voce F4: «mergia N» / «no N»
 
-Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f3b` (sopra la PR #412, che sta sopra la #411; nessuna delle due ancora mergiata).
+Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f4` (sopra la PR #414, che sta sopra #412 e #411; nessuna ancora mergiata).
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge in ordine: PR #411, poi PR #412, poi la PR di questa fetta. Revisore di F3b #885-MV APPROVATO; il merge di questa PR lo fa l'agente solo con un verdetto del bot pulito, altrimenti decide l'operatore (CLAUDE.md §10).
-2. Dopo il merge della #412 (già chiesto): `GAS_RICHIESTE_AUTORI` nel `.env` del Mac e riavvio del bot Telegram. Per F3b serve anche il riavvio del server voce.
+1. Merge in ordine: #411, #412, #414, poi la PR di questa fetta (revisore APPROVATO CON RISERVE: decide l'operatore).
+2. Scelte da confermare (oggi così): il merge NON vale a voce dal Mac (solo Telegram); l'annullo a voce NON chiede conferma (un numero sentito male annulla la richiesta sbagliata, si riapre a mano).
+3. Dopo i merge, sul Mac: `GAS_RICHIESTE_AUTORI` nel `.env`, riavvio del bot Telegram e del server voce.
 
 ## Esito per fetta
 
-- **F3b — esiti detti a voce e annullo a voce**: FATTA (28947ffc).
-  - Al primo turno a voce dopo l'arrivo di un esito (anche col solo «Hey Jarvis») Gas dice una frase corta con SOLO parti fisse: numero, stato, PR, controlli, «ti ho chiesto su Telegram se mergiarla» se è pronta. Mai il testo libero dell'esecutore (R-873MV-1, che a voce non si poteva difendere con le «»). Al massimo 2 per turno, ultime 24 ore, segnati detti solo dopo la consegna.
-  - «annulla richiesta N» (anche «annulla la richiesta numero N») vale detto al microfono del Mac dopo la parola di attivazione, mai nel seguito (parlato della stanza), e da un vocale Telegram. Risponde il codice, nessun turno del modello.
-  - Avviso alla creazione: «scrivimi o dimmi «annulla richiesta N»» (ve #412 V-2).
-  - Un esito in sospeso scartato in modo definitivo esce dai sospesi (bot #412 V-1).
-  - Revisore #884-MV APPROVATO CON RISERVE (R-884MV-1 di gravità media, vera: server voce e bot scrivevano lo stesso file senza lock) → corretta con un file a parte per i letti a voce → #885-MV APPROVATO.
-- **Correzione dopo il bot sulla #414 (BOCCIATO su 8f6787a6)**: FATTA (0338ed09). Due test di cassetta dipendevano dalla data reale (dal 27/11 alle 15:00 UTC sarebbero diventati rossi su main per tutti): ora no. Annullo con lo stesso ordine sul Mac e su Telegram («forte annulla …» non annulla), numero detto in lettere → risposta fissa invece del modello, «n. 12» accettato, frase a voce salvata con lo stato prima dell'invio. 105 test di cassetta. Revisore #886-MV → #887-MV APPROVATO.
-- **F4 — «mergia N» / «no N»**: DEFERITA — prossima fetta. Deve chiudere R-883MV-1 (conferma del numero della PR).
-- **F5 — esecutore nel cloud**: DEFERITA.
+- **F4 — «mergia N» / «no N»**: FATTA (2863bf4c).
+  - Su Telegram, scritto o vocale dalla chat dell'operatore, prima del modello e solo da messaggio nuovo.
+  - Vale SOLO se N è la PR per cui Gas ha chiesto davvero il merge (R-873MV-1) e la domanda non ha già una risposta; la issue deve essere aperta, `da-gas`, non annullata; il repo privato. Il comando si prenota in locale prima di scriverlo su GitHub (una volta sola, anche con il file rotto).
+  - Gas scrive sulla issue il commento `MERGIA #N` / `NO #N` a formato fisso; il merge vero lo farà l'esecutore (F5) rispettando CLAUDE.md §10.
+  - Al microfono del Mac: «confermamelo su Telegram» (l'audio della stanza non fa mergiare).
+  - R-883MV-1 chiusa: la PR della domanda si ricorda solo dopo che l'avviso è partito.
+  - Regola nel prompt: il modello non dice mai di aver annullato, mergiato o rifiutato una richiesta.
+  - Chiuse anche le riserve della #414: «annulla richiesta dodici» anche a testo, frase a voce «CI verde, bot …».
+  - 121 test di cassetta. Revisore #888-MV → #889-MV APPROVATO CON RISERVE.
+- **F5 — esecutore nel cloud**: DEFERITA — prossima fetta (crea una scheduled task: spesa ricorrente; il via c'è dal 26/11).
 
 ## Anomalie
 
-- Riserve aperte della catena: R-883MV-1 BASSA (F4), R-881MV-1 BASSA, ve #412 V-1 BASSA (un ESITO è sempre un commento nuovo, regola per F5), cosmetiche varie (in `reports/stato_progetto.md`).
+- R-889MV-1 BASSA aperta: regola per F5.
