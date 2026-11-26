@@ -1,24 +1,24 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-26 — Mani alla voce F3: avviso subito alla richiesta, «annulla richiesta N», esiti dalle issue su Telegram, PR #412 (contiene anche la PR #411, F2-bis)
+**Sessione:** 2026-11-26 — Mani alla voce F3b: esiti detti a voce, «annulla richiesta N» anche a voce, PR #414 (contiene anche le PR #411 e #412)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #411 (https://github.com/Gasss23/Gas/pull/411), F2-bis: CI e bot verdi, verdetto del bot APPROVATO CON RISERVE (V-1 BASSA: §0 del suo handoff fermo a #874-MV, l'ultimo revisore è #878-MV APPROVATO CON RISERVE; V-2 COSMETICA: descrizione, aggiornata): decide l'operatore.
-2. Merge della PR #412 (https://github.com/Gasss23/Gas/pull/412), F3, DOPO la #411. Numero e URL dall'output di `gh api repos/Gasss23/Gas/pulls -X POST` (qui `gh pr` non c'è). Revisore #883-MV APPROVATO CON RISERVE e il bot dà neutral perché la PR tocca ci.yml: decide l'operatore (CLAUDE.md §10).
-3. Sul Mac, dopo il merge della #412: `GAS_RICHIESTE_AUTORI=<login GitHub di chi scrive gli esiti>` nel `.env`, poi riavvio del bot Telegram. Senza, Gas non legge nessun esito (fail-closed).
+1. Merge della PR #411 (https://github.com/Gasss23/Gas/pull/411), F2-bis: tutta verde, verdetto del bot APPROVATO CON RISERVE (solo note basse): decide l'operatore.
+2. Merge della PR #412 (https://github.com/Gasss23/Gas/pull/412), F3, dopo la #411: CI verde, bot neutral (tocca ci.yml), verdetto APPROVATO CON RISERVE: decide l'operatore.
+3. Merge della PR #414 (https://github.com/Gasss23/Gas/pull/414), F3b, dopo la #412. Numero e URL dall'output di `gh api repos/Gasss23/Gas/pulls -X POST` (qui `gh pr` non c'è). Revisore #885-MV APPROVATO: con un verdetto del bot pulito mergia l'agente (CLAUDE.md §10), altrimenti l'operatore.
+4. Sul Mac, dopo i merge: `GAS_RICHIESTE_AUTORI=<login GitHub di chi scrive gli esiti>` nel `.env`, poi riavvio del bot Telegram e del server voce.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **F2-bis (PR #411)**: `FATTA` — commit 887fcc0d, 93f7650f, 80d1e2b5; revisore #873-MV … #878-MV (dettaglio nel §4).
-- **F3 — avviso, annullo, esiti su Telegram**: `FATTA` — 6fce9e43; revisore #879-MV → #880-MV BOCCIATO → #881-MV APPROVATO CON RISERVE; 197 test, kernel 1210 PASS.
-- **Correzione dopo verifica esterna e bot sulla #412**: `FATTA` — 9f4650d6; revisore #882-MV → #883-MV APPROVATO CON RISERVE.
-- **F3b — esiti letti a voce**: `DEFERITA — prossima fetta`.
-- **F4 — «mergia N» / «no N» da Telegram**: `DEFERITA — dopo F3b`.
+- **F2-bis (PR #411)**: `FATTA` — 887fcc0d, 93f7650f, 80d1e2b5; revisore #873-MV … #878-MV.
+- **F3 (PR #412)**: `FATTA` — 6fce9e43, 9f4650d6; revisore #879-MV … #883-MV.
+- **F3b — esiti a voce e annullo a voce**: `FATTA` — 28947ffc; revisore #884-MV → #885-MV APPROVATO.
+- **F4 — «mergia N» / «no N»**: `DEFERITA — prossima fetta (chiude R-883MV-1)`.
 - **F5 — esecutore nel cloud**: `DEFERITA — dopo F4`.
 
 ---
@@ -26,22 +26,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  17 +++++++++++
- .github/workflows/ci.yml           |   8 +++++
- .gitignore                         |   2 ++
- gas.py                             |  22 +++++++++++++-
- modules/sviluppo/cassetta.py       | 477 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- modules/sviluppo/esiti.py          | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------
- modules/sviluppo/richieste.py      |  20 ++++++++++--
- modules/telegram/bot.py            |  29 ++++++++++++++++++
- reports/diff_sessione.md           |  22 ++++++++------
+ .claude/agents/memoria_revisore.md |  20 ++++++++++
+ .github/workflows/ci.yml           |   8 ++++
+ .gitignore                         |   4 ++
+ gas.py                             |  22 ++++++++++-
+ modules/sviluppo/cassetta.py       | 577 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/sviluppo/esiti.py          | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
+ modules/sviluppo/richieste.py      |  20 ++++++++--
+ modules/telegram/bot.py            |  40 +++++++++++++++++++
+ modules/voice/server.py            |  59 ++++++++++++++++++++++------
+ reports/diff_sessione.md           |  21 +++++-----
  reports/handoff.md                 | n/d
- reports/mani_voce_piano.md         |  71 ++++++++++++++++++++++++++++++++-----------
- reports/stato_progetto.md          |   4 +--
- reports/ultimo_report.md           |  37 ++++++++++-------------
- tests/test_unit_cassetta.py        | 595 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_esiti.py           | 125 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- tests/test_unit_kernel.py          |  29 ++++++++++++++++++
+ reports/mani_voce_piano.md         |  71 +++++++++++++++++++++++++--------
+ reports/stato_progetto.md          |   4 +-
+ reports/ultimo_report.md           |  34 +++++++---------
+ tests/test_unit_cassetta.py        | 768 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_esiti.py           | 125 +++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ tests/test_unit_kernel.py          |  29 ++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
@@ -49,6 +50,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+28947ffc feat(voce): mani alla voce F3b — esiti detti a voce (solo parti fisse), «annulla richiesta N» anche a voce
+cb31b806 chore(revisore): memoria review #885 — APPROVATO
+2edfc3fb chore(revisore): memoria review #884 — APPROVATO CON RISERVE
+179cde04 docs(fine-task): report e handoff dopo la correzione della #412
 9f4650d6 fix(sviluppo): stato scritto prima dell'invio, issue sparita non blocca, repo privato anche in lettura, domanda di merge solo da esiti più recenti (ve/bot #412)
 5b2c904a chore(revisore): memoria review #883 — APPROVATO CON RISERVE
 816716c7 chore(revisore): memoria review #882 — APPROVATO CON RISERVE
@@ -77,7 +82,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
+Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. Commit motore 28947ffc (F3b): verdetti #884-MV e #885-MV, dopo #883-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -405,21 +410,75 @@ Review #883-MV, 5° giro di F3 su claude/mani-voce-f3-avvisi. Ho guardato il dif
 
 La memoria è committata (5b2c904a, con riga contatore e una lezione nuova). Il diff staged è rimasto com'era.
 
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #884-MV sul diff staged del ramo claude/mani-voce-f3b: 4 file, +270/−14. Ho letto CLAUDE.md, la riga F3b di reports/mani_voce_piano.md, la voce «Mani alla voce» di reports/stato_progetto.md e la mia memoria. Test: cassetta + voice_server + telegram_voce danno 416 passati. Nel diff non ci sono caratteri invisibili, parole di gravità maiuscole, slicing della history né simulazione di tool.
+
+**Elementi esaminati**
+1. modules/sviluppo/cassetta.py:493 — `frase_voce` usa solo il numero (int), lo stato (confrontato, mai interpolato), la PR (int e non bool) e testi fissi. Rischio: testo libero dell'esecutore a voce (R-873MV-1). Il ramo else e l'eccezione danno frasi fisse. Esito: ok.
+2. modules/voice/server.py:986 — l'annullo è dentro `if not self._seguito():`, dopo `togli_parola_in_testa`. Rischio: annullo dal parlato della stanza. Nel seguito non è raggiungibile. `_annulla_richiesta` mette tutto in try e restituisce None, quindi il turno parte normale. La risposta passa da `_rispondi_senza_turno` senza prefisso: con `_esiti_voce` azzerato in do_POST non segna niente. Esito: ok.
+3. modules/telegram/bot.py:1070 — vocale Telegram intercettato senza turno, con try e None in caso di errore. Rischio: chat non autorizzate o messaggi modificati. Il chiamante modules/telegram/bot.py:925 accetta solo vocali nuovi, e la chat autorizzata è controllata prima della trascrizione. Esito: ok.
+4. modules/voice/server.py:1220 — segna detti gli esiti solo nei punti di consegna già esistenti (JSON, MP3, pezzi). Gli errori del kernel (risposta 500) non li segnano. L'errore della cassetta in `_compiti_finiti` è isolato e i compiti in sottofondo si dicono lo stesso. La doppia chiamata in modules/voice/server.py:1086 riscrive in modo coerente. Esito: ok.
+5. modules/sviluppo/cassetta.py:407 — `da_leggere` si aggiorna dopo un invio riuscito. Va su disco solo con la scrittura successiva. Esito: riserva (vedi R-884MV-1 e la cosmetica).
+6. modules/sviluppo/cassetta.py:336 — uno scarto definitivo esce dai sospesi (bot #412 V-1), anche per la issue sparita. Esito: ok.
+
+**Finding**
+- **R-884MV-1 MEDIA** — Due processi diversi scrivono lo stesso file `.gas_richieste_esiti.json` senza lock: `segna_letti_voce` (server voce) e `controlla_esiti` (thread del bot). Il controllo tiene lo stato in memoria per tutta la sua durata. L'ho provato con script nello scratchpad:
+  - (a) segno di lettura dato durante il GET dei commenti: la scrittura finale del controllo rimette l'esito, che si **ridice a voce**. Script: /tmp/claude-0/-home-user-Gas/bbb95bff-21f7-5fb1-9612-e74ec6e464ca/scratchpad/race.py
+  - (b) controllo che scrive in mezzo al segno: `visti` si perde e il **Telegram ripete l'avviso** dell'esito 2 (3 avvisi invece di 2). Tornano indietro anche la domanda ricordata (`domande`) e il conto del giorno. Script: /tmp/claude-0/-home-user-Gas/bbb95bff-21f7-5fb1-9612-e74ec6e464ca/scratchpad/race_b.py
+  - Le finestre sono strette: (a) dura quanto il controllo ogni 5 minuti, (b) pochi millisecondi. Però (b) riapre il «niente avvisi ripetuti» di ve #412 V-1 e tocca lo stato che userà F4.
+  - Correzione consigliata in questa fetta, che costa poco: un file a scrittore unico per i «letti», scritto solo dal server voce, con `da_leggere_voce` che filtra. In alternativa un lock condiviso.
+- **R-884MV-2 BASSA** — Nessun test prova che «annulla richiesta N» detto nel seguito vada al turno normale. Il codice è giusto, ma senza test una regressione passerebbe.
+- **COSMETICA** — Se l'invio riesce ma la scrittura finale fallisce, o c'è un crash dopo l'invio, la frase a voce si perde. L'avviso su Telegram arriva comunque.
+
+**Cosa non ho verificato**: il comportamento dal vero sul Mac (STT Groq che trascrive «annulla richiesta numero 12», client `clients/voice/ascolto.py`): non si riproduce qui. Ho solo controllato che clients/voice/ascolto.py e scripts/voce/ non siano nel diff. Non ho verificato neanche due richieste a voce in parallelo che leggono gli stessi esiti: è lo stesso limite già accettato per i compiti in sottofondo.
+
+Memoria aggiornata (riga #884-MV più una lezione) e committata: commit 2edfc3fb, file /home/user/Gas/.claude/agents/memoria_revisore.md.
+
+## VERDETTO: APPROVATO
+
+Review #885-MV, secondo giro di F3b sul diff staged del ramo claude/mani-voce-f3b (5 file, +335/−14). Le due riserve della #884-MV sono chiuse. Ho rifatto i due script della corsa e nessuno dei due riproduce più il problema. Restano solo due note cosmetiche, nessun finding numerato aperto.
+
+- `- verdetto precedente: #884-MV APPROVATO CON RISERVE (R-884MV-1 MEDIA, R-884MV-2 BASSA), ora superato.`
+
+**Elementi esaminati**
+1. modules/sviluppo/cassetta.py:548 — `segna_letti_voce` scrive solo `.gas_richieste_letti_voce.json` (permessi 0600, file temporaneo e poi `os.replace`, eccezioni prese e messe nel log), mai lo stato del bot. Rischio: la scrittura persa fra i due processi (R-884MV-1). Ogni file ha ora un solo scrittore. Esito: ok.
+2. modules/sviluppo/cassetta.py:541 — `da_leggere_voce` toglie i già detti leggendo il file dei letti, senza scrivere niente. Rischio: ripetere o perdere esiti a voce. I letti ricordati sono al massimo 100, molto più dei 5 esiti in attesa, quindi un esito in lista non viene dimenticato. Esito: ok.
+3. tests/test_unit_cassetta.py:748 — controllo statico sul codice di do_POST: esiste una sola chiamata a `_annulla_richiesta` e sta dentro `if not self._seguito():`. Rischio: annullo dal parlato della stanza (R-884MV-2). Il controllo guarda solo il ramo vero, non l'else, quindi è corretto. Esito: ok.
+4. .gitignore:62 — il file nuovo e i suoi temporanei sono ignorati. Esito: ok.
+
+**Riprove**
+- Lo script race.py ora dà 0 esiti da ridire (prima 1). Path: /tmp/claude-0/-home-user-Gas/bbb95bff-21f7-5fb1-9612-e74ec6e464ca/scratchpad/race.py
+- race_b.py non regge più: modificava `_leggi_stato`, che il segno di lettura a voce non usa più. L'ho riscritto come race_b2.py, che fa scrivere il bot nel mezzo della lettura del file dei letti. Dà 2 avvisi Telegram, cioè nessun avviso ripetuto (prima 3). Path: /tmp/claude-0/-home-user-Gas/bbb95bff-21f7-5fb1-9612-e74ec6e464ca/scratchpad/race_b2.py
+- tests/test_unit_cassetta.py: 95 passati.
+
+**Note cosmetiche** (non bloccano)
+- Due richieste a voce in parallelo sullo stesso server possono perdere un segno di lettura: quell'esito si ridice una volta.
+- Se il file dei letti è illeggibile, si ridicono al massimo 5 esiti delle ultime 24 ore. L'errore va verso la ripetizione, non verso la perdita.
+
+**Cosa non ho verificato**
+- In questo giro non ho rilanciato test_unit_voice_server.py e test_unit_telegram_voce.py (servono circa 5 minuti): le stat di modules/voice/server.py e modules/telegram/bot.py non sono cambiate e nel giro #884 passavano 416 test. Conviene rilanciarli prima del commit.
+- Il comportamento dal vero sul Mac (trascrizione Groq, client di ascolto) non si può riprodurre qui.
+
+Memoria aggiornata con la riga #885-MV e committata (cb31b806): /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_esiti.py`: 63 → 101 (PR #411) → 103 test con F3 (virgolette Pi/Pf e apostrofi).
-- `tests/test_unit_cassetta.py`: nuovo, 71 test (6fce9e43) → 80 test (9f4650d6). Comando: `python -m pytest -q tests/test_unit_cassetta.py tests/test_unit_esiti.py tests/test_unit_richieste.py` → `206 passed in 0.42s`.
-- `tests/test_unit_kernel.py` (script): T100c e T100d nuovi (round-trip §7 con l'avviso riuscito e fallito); `=== RIEPILOGO: 1210 PASS, 0 FAIL ===`.
-- CI: passo nuovo «Run cassetta suite» in `.github/workflows/ci.yml`.
+- `tests/test_unit_esiti.py`: 63 → 103 test (PR #411 e F3).
+- `tests/test_unit_cassetta.py`: nuovo, 71 (6fce9e43) → 80 (9f4650d6) → 95 (28947ffc). `python -m pytest -q tests/test_unit_cassetta.py` → `95 passed in 0.42s`.
+- voice_server + telegram_voce + cassetta + esiti + richieste: `542 passed in 295.01s` (prima degli ultimi due test di F3b); corsa completa sul commit 28947ffc in corso alla scrittura.
+- `tests/test_unit_kernel.py` (script): `=== RIEPILOGO: 1210 PASS, 0 FAIL ===` su 9f4650d6; F3b non tocca il kernel.
 
 ## §6 STATO CI
 
-- Commit della PR #411 (fino a 5af3680e): sul head 5af3680e unit-suite, handoff-check e verifica-bot success (verdetto del bot APPROVATO CON RISERVE).
-- 020059f7, f692ce6d, a518d9e5, 6fce9e43: nessuna run su questi SHA (pushati insieme a 45f739d8).
-- 45f739d8: handoff-check success, verifica-bot neutral (la PR tocca ci.yml; verdetto testuale APPROVATO CON RISERVE senza finding bloccanti); la verifica esterna ha trovato la V-1 di gravità media corretta in 9f4650d6.
-- 816716c7, 5b2c904a, 9f4650d6 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
+- Commit della PR #411 (fino a 5af3680e): sul head 5af3680e unit-suite, handoff-check e verifica-bot success.
+- Commit della PR #412 (fino a 179cde04): sul head 179cde04 unit-suite e handoff-check success, verifica-bot neutral (la PR tocca ci.yml).
+- 2edfc3fb, cb31b806, 28947ffc e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
 
 ## §7 RISERVE APERTE
+
+- Chiuse da F3b: R-873MV-1 per la voce (frase solo con parti fisse), R-884MV-1 (file dei letti a voce con un solo scrittore), R-884MV-2 (test), ve #412 V-2 (avviso «scrivimi o dimmi», annullo dai vocali), bot #412 V-1 (sospesi scartati tolti).
+- Cosmetiche #885-MV: due richieste a voce in parallelo possono ridire un esito una volta; file dei letti illeggibile → si ridicono al massimo 5 esiti.
 
 - R-883MV-1 BASSA — domanda «fantasma» se l'avviso non parte dopo la scrittura dello stato: F4 farà confermare il numero della PR.
 - Verifica esterna #412 V-1 BASSA del bot (commento modificato non riletto): regola per F5, un ESITO è sempre un commento nuovo (nel docstring).
