@@ -23,6 +23,7 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f4` 
 - **F5 — esecutore nel cloud**: DEFERITA — prossima fetta (crea una scheduled task: spesa ricorrente; il via c'è dal 26/11).
 
 - **Correzioni dopo il bot #415** (c247aba7): domanda di merge che scade dopo 7 giorni; «mergia N» mai al modello sul Mac (anche nel seguito e da testo scritto, dove ora vale anche l'annullo); test sulla regola nel prompt. Revisore #890-MV APPROVATO.
+- **Correzione dopo il bot #415 su 4991d780 (BOCCIATO)** (005f87c6): annullo e merge su Telegram solo se il mittente (from.id) è ammesso e il messaggio non è inoltrato; i vocali senza questo via sono rifiutati; domanda su disco subito dopo l'avviso. Revisore #891-MV APPROVATO.
 
 ## Anomalie
 

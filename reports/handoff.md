@@ -28,22 +28,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   29 +
+ .claude/agents/memoria_revisore.md |   31 +
  .github/workflows/ci.yml           |    8 +
  .gitignore                         |    6 +
  gas.py                             |   26 +-
- modules/sviluppo/cassetta.py       |  739 +++++++++++++++++++++++++
- modules/sviluppo/esiti.py          |  151 ++++--
+ modules/sviluppo/cassetta.py       |  745 ++++++++++++++++++++++++
+ modules/sviluppo/esiti.py          |  151 +++--
  modules/sviluppo/richieste.py      |   20 +-
- modules/telegram/bot.py            |   46 ++
+ modules/telegram/bot.py            |   78 ++-
  modules/voice/server.py            |   83 ++-
  reports/diff_sessione.md           |   23 +-
  reports/handoff.md                 | n/d
  reports/mani_voce_piano.md         |   80 ++-
  reports/stato_progetto.md          |    4 +-
- reports/ultimo_report.md           |   37 +-
- tests/test_unit_cassetta.py        | 1038 ++++++++++++++++++++++++++++++++++++
- tests/test_unit_esiti.py           |  125 ++++-
+ reports/ultimo_report.md           |   40 +-
+ tests/test_unit_cassetta.py        | 1106 ++++++++++++++++++++++++++++++++++++
+ tests/test_unit_esiti.py           |  125 +++-
  tests/test_unit_kernel.py          |   29 +
 ```
 
@@ -52,6 +52,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+005f87c6 fix(telegram): annullo e merge solo dal mittente ammesso e mai da messaggi inoltrati; domanda di merge su disco subito dopo l'avviso (bot #415 V-1, V-4)
+1d85d669 chore(revisore): memoria review #891 — APPROVATO
+4991d780 docs(fine-task): report e handoff dopo la correzione del bot sulla #415
 c247aba7 fix(sviluppo): domanda di merge che scade dopo 7 giorni, «mergia N» mai al modello sul Mac (seguito e testo scritto), test sulla regola nel prompt (bot #415)
 fa7454d4 chore(revisore): memoria review #890 — APPROVATO
 c3af7792 docs(fine-task): report e handoff — mani alla voce F4 («mergia N» / «no N»)
@@ -95,7 +98,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. Commit motore 28947ffc (F3b): verdetti #884-MV e #885-MV, dopo #883-MV. Commit motore 0338ed09 (dopo il bot sulla #414): verdetti #886-MV e #887-MV, dopo #885-MV. Commit motore 2863bf4c (F4): verdetti #888-MV (primo giro) e #889-MV (secondo giro, dopo la correzione di R-888MV-1/2 nello stesso diff staged), in fondo a questa sezione. Commit motore c247aba7 (dopo il bot e la verifica esterna sulla #415): verdetto #890-MV, dopo #889-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
+Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. Commit motore 28947ffc (F3b): verdetti #884-MV e #885-MV, dopo #883-MV. Commit motore 0338ed09 (dopo il bot sulla #414): verdetti #886-MV e #887-MV, dopo #885-MV. Commit motore 2863bf4c (F4): verdetti #888-MV (primo giro) e #889-MV (secondo giro, dopo la correzione di R-888MV-1/2 nello stesso diff staged), in fondo a questa sezione. Commit motore c247aba7 (dopo il bot e la verifica esterna sulla #415): verdetto #890-MV, dopo #889-MV. Commit motore 005f87c6 (dopo il bot sulla #415 su 4991d780, BOCCIATO per V-1): verdetto #891-MV, dopo #890-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -622,10 +625,40 @@ Rischi esclusi, cioè non verificati:
 
 Memoria aggiornata: ho aggiunto la riga contatore #890-MV e una lezione (un campo nuovo usato per la scadenza deve rifiutare anche i dati scritti dalla versione precedente) in /home/user/Gas/.claude/agents/memoria_revisore.md. Ho lanciato scripts/commit_memoria_revisore.sh, che non ha stampato niente: il commit non l'ho controllato, verificalo con `git log -1`.
 
+## VERDETTO: APPROVATO
+
+Review #891-MV. Ho esaminato il diff staged su claude/mani-voce-f4 (PR #415): 3 file, +110/−8. Prima ho letto CLAUDE.md, stato_progetto.md (in modo mirato) e la mia memoria.
+
+**Cosa ho esaminato nel diff**
+1. `modules/telegram/bot.py:1062` — `_comandi_dal_mittente` dà il via solo se `from.id` è un intero vero (`_id_intero` scarta i booleani) ed è in `allowed`, e se il messaggio non ha nessuna chiave di inoltro (basta che la chiave ci sia). Qualunque eccezione dà False. Rischio esaminato: messaggi inviati a nome di un canale o di un amministratore anonimo. Lì `from` è un bot di sistema che non sta in `allowed`, quindi il comando viene rifiutato. Esito: ok.
+2. `modules/telegram/bot.py:988` — a testo il controllo del mittente arriva dopo quello del messaggio modificato e prima di `annulla_parlato` / `rispondi_merge`. Rischio esaminato: un percorso che arrivi ad annullo o merge senza passare dal filtro. Il filtro usa gli stessi parser degli esecutori (`comando_annulla`, `e_comando_merge`, che è `esiti.comando_operatore`). Quindi ogni frase che `rispondi_merge` o `annulla` eseguirebbero passa prima dal controllo. Resta fuori solo l'aiuto «annulla richiesta» senza numero, che dà un testo fisso e non fa nessuna azione. `callback_query` va solo alla firma, e `allowed_updates` è limitato a message, edited_message e callback_query. Esito: ok.
+3. `modules/telegram/bot.py:1095` — sul vocale, con `comandi_ok=False`, un comando riconosciuto riceve la risposta fissa `_COMANDO_SOLO_TUO` e il modello non parte. Rischio esaminato: che il nuovo default rompa altri chiamanti. L'unico chiamante fuori dai test è `modules/telegram/bot.py:941`, che passa il risultato di `_comandi_dal_mittente`. `modules/voice/server.py` non chiama `_gestisci_parlato`. I test esistenti sono stati aggiornati con `comandi_ok=True`. Esito: ok.
+4. `modules/sviluppo/cassetta.py:428` — la domanda di merge va su disco subito dopo `inviati += 1`. Rischio esaminato: coerenza col ripristino a `domande_prima`. Il ripristino avviene solo nei due rami di fallimento, cioè quando lo stato non si scrive o l'avviso non parte, e tutti e due vengono prima di questo punto. Dopo un invio riuscito non si ripristina niente, quindi non c'è conflitto. Se la scrittura anticipata fallisce, la domanda resta in memoria e la scrittura finale ci riprova. Se fallisce anche quella, la domanda si perde e il merge viene rifiutato: è il comportamento fail-closed giusto. In quella scrittura il commento compare ancora tra i sospesi, ma è già tra i visti, quindi al giro dopo viene saltato e non riparte un secondo avviso (stesso comportamento della scrittura prima dell'invio). Esito: ok.
+5. `tests/test_unit_cassetta.py:1042` — test su 5 casi (altro membro, mittente assente, id booleano, `forward_origin`, `forward_date`) × 2 comandi, sul vocale senza il via e sul caso buono. `tests/test_unit_cassetta.py:1095` verifica 3 scritture e la domanda che resta su disco anche quando la scrittura finale fallisce. Ho rilanciato `tests/test_unit_cassetta.py`: 128 passed. Esito: ok.
+
+Controlli richiesti:
+- nessun carattere invisibile (categoria Cf) nel diff;
+- nessuna parola di gravità maiuscola nelle righe aggiunte;
+- niente slicing della history e niente simulazione di tool;
+- il cap di 10 iterazioni e `_get_window` non sono toccati.
+
+V-2 e V-3, bot, basse, che restano aperte: le accetto come scelte da documentare in stato_progetto.md. Per V-2 la risposta fissa è più sicura del modello. Per V-3 la guardia AST copre lo stesso punto.
+
+**Note cosmetiche, non bloccanti**
+- In una chat di gruppo ammessa, l'operatore deve avere anche il proprio user id in `allowed`, altrimenti i suoi comandi vengono rifiutati. È fail-closed, va solo detto nella documentazione.
+- Il type hint è `allowed: set` invece di `Set[int]`.
+
+**Cosa NON ho verificato**
+- Il comportamento reale di Telegram sui campi `from` e `forward_*` in gruppi, supergruppi e topic: non si riproduce in dev, mi sono basato sulla forma documentata dell'API.
+- La suite del kernel, perché è già in esecuzione in background, e le suite telegram_voce e notte: ho preso per buoni i risultati dichiarati (202 e 238 passed).
+
+**Memoria**
+Ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #891-MV e una lezione: il controllo d'autorizzazione va messo davanti agli stessi parser che eseguono il comando. È committata da `scripts/commit_memoria_revisore.sh` (1d85d669).
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_esiti.py`: 63 → 101 test (PR #411 e F3; verifica esterna #414 V-1: prima avevo scritto 103).
-- `tests/test_unit_cassetta.py`: nuovo, 71 (6fce9e43) → 80 (9f4650d6) → 95 (28947ffc) → 105 (0338ed09) → 121 (2863bf4c) → 125 (c247aba7); cassetta + telegram_voce su c247aba7: `199 passed`.
+- `tests/test_unit_cassetta.py`: nuovo, 71 (6fce9e43) → 80 (9f4650d6) → 95 (28947ffc) → 105 (0338ed09) → 121 (2863bf4c) → 125 (c247aba7) → 128 (005f87c6); cassetta + telegram_voce su 005f87c6: `202 passed`; `tests/test_unit_notte.py`: `238 passed`; voice_server + esiti + richieste su c247aba7: `375 passed`.
 - voice_server + telegram_voce + cassetta + esiti + richieste sul commit 28947ffc: `544 passed in 293.19s`.
 - `tests/test_unit_kernel.py` (script): `=== RIEPILOGO: 1210 PASS, 0 FAIL ===` su 28947ffc.
 - Su 2863bf4c (F4): voice_server + telegram_voce + cassetta + esiti + richieste `566 passed in 301.01s`; kernel `=== RIEPILOGO: 1210 PASS, 0 FAIL ===`.
@@ -638,9 +671,13 @@ Memoria aggiornata: ho aggiunto la riga contatore #890-MV e una lezione (un camp
 - 8f6787a6: handoff-check success; verifica-bot failure (BOCCIATO: test dipendenti dalla data, gravità media vera, corretta in 0338ed09).
 - 46422736, d99f9ad4, 0338ed09, 10bd0bd6: run della PR #414 (head 10bd0bd6).
 - c3af7792 (PR #415): handoff-check success, verifica-bot neutral (contiene ci.yml della #412; verdetto APPROVATO CON RISERVE, solo note basse), unit-suite in corso alla scrittura.
-- fa7454d4, c247aba7 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
+- 4991d780 (PR #415): verifica-bot failure (BOCCIATO: V-1 di gravità media, mittente non controllato; corretto in 005f87c6).
+- 1d85d669, 005f87c6 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
 
 ## §7 RISERVE APERTE
+
+- Bot #415 su 4991d780: V-1 (mittente non controllato, gravità media) CHIUSA in 005f87c6 (from.id ammesso, niente inoltri, vocali rifiutati di default); V-4 BASSA chiusa (domanda su disco subito). Aperte per scelta: V-2 BASSA («no 3» riceve la risposta fissa anche senza domanda: più sicuro del modello), V-3 BASSA (test che legge il sorgente; la guardia AST copre lo stesso punto).
+- Nota #891-MV: in una chat di gruppo ammessa anche lo user id dell'operatore deve stare in TELEGRAM_ALLOWED_IDS, altrimenti i suoi comandi vengono rifiutati (fail-closed).
 
 - Verifica esterna #415 V-1 BASSA — «mergia N» vale anche da vocale Telegram trascritto (decide l'operatore: escludere i vocali o chiedere conferma scritta). V-2 BASSA: la #415 contiene #411/#412/#414, si mergia dopo di loro. V-3 BASSA: il merge vero dipende da F5.
 - Chiuse dal bot #415: V-1 (scadenza di 7 giorni; lo stato della PR lo ricontrolla F5, regola nel piano), V-2 (merge mai al modello sul Mac, anche nel seguito e da testo scritto), V-3 (test sulla regola nel prompt).
