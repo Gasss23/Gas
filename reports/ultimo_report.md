@@ -24,7 +24,8 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f4` 
 
 - **Correzioni dopo il bot #415** (c247aba7): domanda di merge che scade dopo 7 giorni; «mergia N» mai al modello sul Mac (anche nel seguito e da testo scritto, dove ora vale anche l'annullo); test sulla regola nel prompt. Revisore #890-MV APPROVATO.
 - **Correzione dopo il bot #415 su 4991d780 (BOCCIATO)** (005f87c6): annullo e merge su Telegram solo se il mittente (from.id) è ammesso e il messaggio non è inoltrato; i vocali senza questo via sono rifiutati; domanda su disco subito dopo l'avviso. Revisore #891-MV APPROVATO.
+- **Correzione dopo il bot #415 su 99b50bc9** (a9af5afa): se GitHub non risponde o dà 5xx al comando, la prenotazione resta e non passa un secondo comando opposto (R-889MV-1, R-892MV-1). Revisore #892-MV → #893-MV APPROVATO.
 
 ## Anomalie
 
-- R-889MV-1 BASSA aperta: regola per F5.
+- R-889MV-1 chiusa (a9af5afa). Regola per F5 nel piano: si mergia solo se tutti i COMANDO dopo l'ultimo ESITO sono MERGIA.

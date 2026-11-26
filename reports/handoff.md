@@ -28,11 +28,11 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   31 +
+ .claude/agents/memoria_revisore.md |   34 ++
  .github/workflows/ci.yml           |    8 +
  .gitignore                         |    6 +
  gas.py                             |   26 +-
- modules/sviluppo/cassetta.py       |  745 ++++++++++++++++++++++++
+ modules/sviluppo/cassetta.py       |  753 ++++++++++++++++++++++++
  modules/sviluppo/esiti.py          |  151 +++--
  modules/sviluppo/richieste.py      |   20 +-
  modules/telegram/bot.py            |   78 ++-
@@ -41,8 +41,8 @@
  reports/handoff.md                 | n/d
  reports/mani_voce_piano.md         |   80 ++-
  reports/stato_progetto.md          |    4 +-
- reports/ultimo_report.md           |   40 +-
- tests/test_unit_cassetta.py        | 1106 ++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |   41 +-
+ tests/test_unit_cassetta.py        | 1120 ++++++++++++++++++++++++++++++++++++
  tests/test_unit_esiti.py           |  125 +++-
  tests/test_unit_kernel.py          |   29 +
 ```
@@ -52,6 +52,10 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile me
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a9af5afa fix(sviluppo): risposta persa o 5xx di GitHub sul comando: la prenotazione resta, niente secondo comando opposto (bot #415 su 99b50bc9, R-889MV-1, R-892MV-1)
+08356205 chore(revisore): memoria review #893 — APPROVATO
+b0c87fed chore(revisore): memoria review #892 — APPROVATO CON RISERVE
+99b50bc9 docs(fine-task): report e handoff dopo la correzione del mittente (bot #415)
 005f87c6 fix(telegram): annullo e merge solo dal mittente ammesso e mai da messaggi inoltrati; domanda di merge su disco subito dopo l'avviso (bot #415 V-1, V-4)
 1d85d669 chore(revisore): memoria review #891 — APPROVATO
 4991d780 docs(fine-task): report e handoff dopo la correzione del bot sulla #415
@@ -98,7 +102,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. Commit motore 28947ffc (F3b): verdetti #884-MV e #885-MV, dopo #883-MV. Commit motore 0338ed09 (dopo il bot sulla #414): verdetti #886-MV e #887-MV, dopo #885-MV. Commit motore 2863bf4c (F4): verdetti #888-MV (primo giro) e #889-MV (secondo giro, dopo la correzione di R-888MV-1/2 nello stesso diff staged), in fondo a questa sezione. Commit motore c247aba7 (dopo il bot e la verifica esterna sulla #415): verdetto #890-MV, dopo #889-MV. Commit motore 005f87c6 (dopo il bot sulla #415 su 4991d780, BOCCIATO per V-1): verdetto #891-MV, dopo #890-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
+Commit motore 887fcc0d: verdetti integrali #873-MV (primo giro) e #874-MV (secondo giro, dopo la correzione di R-873MV-2 nello stesso diff staged). Commit motore 93f7650f (dopo la verifica esterna #411 V-1): verdetti #875-MV e #876-MV, in fondo a questa sezione. Commit motore 80d1e2b5 (dopo il bot su e6d30207): verdetti #877-MV e #878-MV, dopo #876-MV. Commit motore 6fce9e43 (F3): verdetti #879-MV, #880-MV (BOCCIATO) e #881-MV, in fondo a questa sezione. Commit motore 9f4650d6 (dopo verifica esterna e bot sulla #412): verdetti #882-MV e #883-MV, dopo #881-MV. Commit motore 28947ffc (F3b): verdetti #884-MV e #885-MV, dopo #883-MV. Commit motore 0338ed09 (dopo il bot sulla #414): verdetti #886-MV e #887-MV, dopo #885-MV. Commit motore 2863bf4c (F4): verdetti #888-MV (primo giro) e #889-MV (secondo giro, dopo la correzione di R-888MV-1/2 nello stesso diff staged), in fondo a questa sezione. Commit motore c247aba7 (dopo il bot e la verifica esterna sulla #415): verdetto #890-MV, dopo #889-MV. Commit motore 005f87c6 (dopo il bot sulla #415 su 4991d780, BOCCIATO per V-1): verdetto #891-MV, dopo #890-MV. Commit motore a9af5afa (dopo il bot sulla #415 su 99b50bc9): verdetti #892-MV e #893-MV (secondo giro sullo stesso diff staged), dopo #891-MV. NB: nel testo di #876-MV, elemento 1, l'esempio delle riserve conteneva un carattere U+200B vero (invisibile); qui è scritto come `<U+200B>` per non far fallire il bot («controlli bidi»). È l'unica differenza dal verdetto emesso; sostanza ed esito invariati.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -655,12 +659,60 @@ V-2 e V-3, bot, basse, che restano aperte: le accetto come scelte da documentare
 **Memoria**
 Ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #891-MV e una lezione: il controllo d'autorizzazione va messo davanti agli stessi parser che eseguono il comando. È committata da `scripts/commit_memoria_revisore.sh` (1d85d669).
 
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #892-MV, diff staged sul ramo claude/mani-voce-f4 (PR #415): cassetta.py e il test, +20 righe.
+
+**Cosa ho controllato nel diff**
+- `modules/sviluppo/cassetta.py:727`: con codice 0 la funzione esce senza togliere la prenotazione e senza scrivere un secondo POST. La risposta dice «Non so se la risposta è arrivata… controlla la issue». Rischio esaminato: un «no N» dopo un MERGIA forse scritto. Esito ok: il «no» successivo trova la domanda già risposta e viene rifiutato. Questo chiude R-889MV-1 lato Mac.
+- `modules/sviluppo/richieste.py:75` (contesto, file non toccato): `_http` restituisce 0 per errori di rete, timeout e anche per un JSON illeggibile dopo un 201. Esito ok: anche un commento creato con il corpo della risposta guasto tiene la prenotazione. Il caso è coperto.
+- Codici 4xx: per le POST i redirect diventano un HTTPError 3xx, che non scrive nulla (`_NoRedirect`). 403, 404, 410, 422 e 429 sono rifiuti che non creano il commento. Esito ok: togliere la prenotazione è giusto.
+- Codici 5xx: con 502 o 504 del gateway di GitHub il commento può già essere stato creato. Il codice però toglie la prenotazione e risponde «risposta non scritta… Riprova». Esito riserva (R-892MV-1, sotto).
+- `tests/test_unit_cassetta.py:1109`: con codice 0 controlla il messaggio, poi controlla che il «no 412» successivo riceva «già risposto» e che sulla issue ci sia un solo commento, MERGIA 412. Esito ok: i tre aspetti sono provati.
+- Risultati: 129 passed in tests/test_unit_cassetta.py (rilanciato da me). Nel diff non ci sono caratteri Cf (cercati con `\p{Cf}`) né parole di gravità maiuscole.
+
+**Riserve**
+- R-892MV-1 BASSA: con un 5xx, e il commento magari già scritto, l'operatore riceve un'informazione forse falsa («non scritta») e la prenotazione cade. Il merge contro la volontà resta escluso solo grazie alla regola F5 «comandi discordanti o un NO = niente merge»:
+  - MERGIA scritto, poi un «no» → niente merge, che è l'ultima volontà.
+  - NO scritto, poi un «mergia» → niente merge, scelta prudente.
+  - Due MERGIA → nessun danno.
+
+  Oggi però quella regola sta solo nel piano, non nel codice né nel prompt fisso dell'esecutore. Correzione suggerita: trattare `codice >= 500` come lo 0, oppure scrivere la regola esplicitamente in `.claude/esecutore_richieste.md` quando si fa F5. Il 5xx va tracciato in stato_progetto.md.
+- COSMETICA (piano, fuori dal diff staged): nel piano le frasi «vale solo il PRIMO COMANDO» e «un NO qualsiasi = niente merge» si sovrappongono. Meglio una regola sola: si mergia solo se tutti i comandi dopo l'ultimo ESITO sono MERGIA per la stessa PR.
+- Nota: dopo uno 0 l'operatore non può più correggere da Telegram. Se il MERGIA era arrivato e cambia idea, gli restano «annulla richiesta N» o la issue a mano. Il messaggio lo indirizza alla issue.
+
+**Cosa non ho verificato**
+- Il comportamento reale di GitHub sui 5xx (se un 502 lascia davvero il commento): non è riproducibile in dev, quindi l'ho valutato come possibile.
+- L'esecutore F5: non esiste ancora, quindi la regola dei comandi discordanti non è verificabile nel codice.
+
+Memoria aggiornata in /home/user/Gas/.claude/agents/memoria_revisore.md: riga #892-MV più una lezione, cioè che un 5xx non prova che la scrittura non sia avvenuta e che solo i 4xx sono fallimenti certi. Ho lanciato `bash scripts/commit_memoria_revisore.sh`: non ha stampato nulla e non ho controllato con `git log` che il commit ci sia.
+
+## VERDETTO: APPROVATO
+
+Review #893-MV, secondo giro sul diff staged del ramo claude/mani-voce-f4 (PR #415), 22 righe aggiunte.
+
+**Elementi del diff esaminati**
+- `modules/sviluppo/cassetta.py:727`: `if codice == 0 or codice >= 500:` lascia la prenotazione e non scrive un secondo commento. Ho controllato che i codici sotto 500 diversi da 201 tolgano ancora la prenotazione: i 4xx (403, 404, 410, 422, 429) e i 3xx, che `_NoRedirect` trasforma in errore. Sono rifiuti senza scrittura, quindi toglierla è corretto. `codice` è sempre un intero (`modules/sviluppo/richieste.py:75` dà 0, `e.code` dà il codice HTTP). Esito ok: R-892MV-1 chiusa.
+- `tests/test_unit_cassetta.py:1109`: test parametrizzato su 0/500/502/504. Per ciascun codice controlla il messaggio, che il «no 412» successivo venga rifiutato con «già risposto», e che sulla issue ci sia un solo commento (MERGIA 412). Esito ok.
+- Piano `reports/mani_voce_piano.md` (fuori dal diff staged): ora c'è una regola sola. Si mergia SOLO se tutti i COMANDO dopo l'ultimo ESITO sono MERGIA per la stessa PR; un NO o comandi discordanti = niente merge. Il piano dice anche di scriverla nel prompt fisso `.claude/esecutore_richieste.md`. Esito ok: la cosmetica del #892 è chiusa.
+- Ho rilanciato io i test: 132 passed in tests/test_unit_cassetta.py. Nel diff non ci sono caratteri Cf né parole di gravità maiuscole.
+
+**Note cosmetiche (2)**
+- Con un 5xx il messaggio dice «nessuna risposta da GitHub», ma una risposta c'è.
+- La docstring del test cita solo il codice 0.
+
+**Cosa non ho verificato**
+- Il comportamento reale di GitHub sui 5xx: non è riproducibile in dev.
+- La regola nel prompt dell'esecutore: F5 e `.claude/esecutore_richieste.md` non esistono ancora. Va controllata quando si fa F5.
+
+**Memoria**: ho aggiunto la riga #893-MV a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata. Il git log conferma entrambi i commit: 08356205 (#893) e b0c87fed (#892). Il file non ha modifiche residue.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `tests/test_unit_esiti.py`: 63 → 101 test (PR #411 e F3; verifica esterna #414 V-1: prima avevo scritto 103).
-- `tests/test_unit_cassetta.py`: nuovo, 71 (6fce9e43) → 80 (9f4650d6) → 95 (28947ffc) → 105 (0338ed09) → 121 (2863bf4c) → 125 (c247aba7) → 128 (005f87c6); cassetta + telegram_voce su 005f87c6: `202 passed`; `tests/test_unit_notte.py`: `238 passed`; voice_server + esiti + richieste su c247aba7: `375 passed`.
+- `tests/test_unit_cassetta.py`: nuovo, 71 (6fce9e43) → 80 (9f4650d6) → 95 (28947ffc) → 105 (0338ed09) → 121 (2863bf4c) → 125 (c247aba7) → 128 (005f87c6) → 132 (a9af5afa); cassetta + telegram_voce su 005f87c6: `202 passed`; `tests/test_unit_notte.py`: `238 passed`; voice_server + esiti + richieste su c247aba7: `375 passed`.
 - voice_server + telegram_voce + cassetta + esiti + richieste sul commit 28947ffc: `544 passed in 293.19s`.
-- `tests/test_unit_kernel.py` (script): `=== RIEPILOGO: 1210 PASS, 0 FAIL ===` su 28947ffc.
+- `tests/test_unit_kernel.py` (script): `=== RIEPILOGO: 1210 PASS, 0 FAIL ===` su 28947ffc e su 005f87c6.
 - Su 2863bf4c (F4): voice_server + telegram_voce + cassetta + esiti + richieste `566 passed in 301.01s`; kernel `=== RIEPILOGO: 1210 PASS, 0 FAIL ===`.
 
 ## §6 STATO CI
@@ -672,7 +724,8 @@ Ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga conta
 - 46422736, d99f9ad4, 0338ed09, 10bd0bd6: run della PR #414 (head 10bd0bd6).
 - c3af7792 (PR #415): handoff-check success, verifica-bot neutral (contiene ci.yml della #412; verdetto APPROVATO CON RISERVE, solo note basse), unit-suite in corso alla scrittura.
 - 4991d780 (PR #415): verifica-bot failure (BOCCIATO: V-1 di gravità media, mittente non controllato; corretto in 005f87c6).
-- 1d85d669, 005f87c6 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
+- 99b50bc9 (PR #415): handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, una nota bassa: risposta persa del POST, corretta in a9af5afa).
+- b0c87fed, 08356205, a9af5afa e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (`gh run list` non è disponibile qui; si legge con `gh api`).
 
 ## §7 RISERVE APERTE
 
@@ -683,7 +736,8 @@ Ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga conta
 - Chiuse dal bot #415: V-1 (scadenza di 7 giorni; lo stato della PR lo ricontrolla F5, regola nel piano), V-2 (merge mai al modello sul Mac, anche nel seguito e da testo scritto), V-3 (test sulla regola nel prompt).
 - Cosmetiche #890-MV: domande scadute non pulite; «no 12» scritto dal Mac riceve la frase fissa; test che taglia il sorgente a stringhe.
 
-- R-889MV-1 BASSA — se la risposta del POST del comando si perde (codice 0) la prenotazione si toglie e un secondo comando, anche opposto, è possibile: regola per F5, vale solo il primo COMANDO dopo l'ultimo ESITO.
+- R-889MV-1 e R-892MV-1 CHIUSE in a9af5afa: con codice 0 o 5xx la prenotazione resta (niente secondo comando opposto). Regola per F5 nel piano: si mergia solo se tutti i COMANDO dopo l'ultimo ESITO sono MERGIA per la stessa PR (da scrivere nel prompt dell'esecutore).
+- Cosmetiche #893-MV: con un 5xx il messaggio dice «nessuna risposta»; docstring del test cita solo lo 0.
 - Cosmetiche #888/#889-MV: «mergia» subito dopo l'avviso rifiutato finché il controllo non scrive lo stato (basta riprovare); «no 3» intercettato; file dei comandi illeggibile → «non ti ho chiesto / già risposto»; COMANDI_MAX 200.
 - Chiuse da F4: R-883MV-1 (PR ricordata solo dopo l'avviso), R-873MV-1 (merge solo per la PR della domanda), R-888MV-1/2.
 
