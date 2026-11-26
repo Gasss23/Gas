@@ -147,10 +147,11 @@ def test_annulla_senza_configurazione(env, monkeypatch):
 
 # ---------------------------------------------------------------- lettura degli esiti
 
-def _due_controlli(env, h, inv):
+def _due_controlli(env, h, inv, adesso=None):
     """Il primo controllo fissa solo il punto di partenza; il secondo legge."""
-    assert c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO) == 0
-    return c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO)
+    adesso = adesso or ADESSO
+    assert c.controlla_esiti(env, http=h, invia=inv, adesso=adesso) == 0
+    return c.controlla_esiti(env, http=h, invia=inv, adesso=adesso)
 
 
 def test_primo_controllo_non_manda_niente_e_parte_da_adesso(env):
@@ -700,7 +701,7 @@ def _handler_con_root(root):
 def test_server_voce_dice_gli_esiti_e_li_segna_dopo(env):
     h0, inv = Http(), Invia()
     h0.commenti = [_commento(1, _esito_pulito())]
-    _due_controlli(env, h0, inv)
+    _due_controlli(env, h0, inv, adesso=datetime.now(timezone.utc))  # bot #414 V-1: niente data fissa
     h = _handler_con_root(env)
     frase = h._compiti_finiti()
     assert "richiesta di sviluppo numero 7" in frase
@@ -731,13 +732,13 @@ def test_server_voce_esiti_azzerati_a_ogni_richiesta(env):
 def test_letti_voce_in_file_a_parte_niente_corse_r884mv_1(env):
     h0, inv = Http(), Invia()
     h0.commenti = [_commento(1, _esito_pulito())]
-    _due_controlli(env, h0, inv)
+    _due_controlli(env, h0, inv, adesso=datetime.now(timezone.utc))  # bot #414 V-1: niente data fissa
     prima = (env / c.STATO_FILENAME).read_text()
     c.segna_letti_voce(env, c.da_leggere_voce(env))
     assert (env / c.STATO_FILENAME).read_text() == prima      # lo stato del bot non si tocca
     assert c.da_leggere_voce(env) == []
     # il bot riscrive il suo stato (come in una corsa): la lettura resta segnata
-    c.controlla_esiti(env, http=h0, invia=inv, adesso=ADESSO)
+    c.controlla_esiti(env, http=h0, invia=inv, adesso=datetime.now(timezone.utc))
     assert c.da_leggere_voce(env) == [] and len(inv.testi) == 1
     assert (env / c.LETTI_FILENAME).stat().st_mode & 0o777 == 0o600
     import subprocess
@@ -766,3 +767,65 @@ def test_annullo_a_voce_solo_fuori_dal_seguito_r884mv_2():
     assert any(trovate)  # almeno un «if» che la racchiude è «fuori dal seguito»
     assert sum(1 for n in ast.walk(albero) if isinstance(n, ast.Call)
                and getattr(n.func, "attr", "") == "_annulla_richiesta") == 1
+
+
+
+def test_test_a_voce_reggono_anche_domani(env, monkeypatch):
+    """Bot #414 V-1: la lettura a voce non dipende dal giorno in cui girano i test."""
+    domani = datetime.now(timezone.utc).replace(microsecond=0) + __import__("datetime").timedelta(days=2)
+    h0, inv = Http(), Invia()
+    for x in [_commento(1, _esito_pulito(), quando=domani.strftime("%Y-%m-%dT%H:%M:%SZ"))]:
+        h0.commenti.append(x)
+    _due_controlli(env, h0, inv, adesso=domani)
+    assert len(c.da_leggere_voce(env, adesso=domani)) == 1
+
+
+@pytest.mark.parametrize("testo", ["annulla richiesta dodici", "annulla la richiesta numero dodici",
+                                   "annulla richiesta"])
+def test_annullo_senza_numero_in_cifre_risposta_chiara_bot414_v2(env, testo):
+    out = c.annulla_parlato(testo, env)
+    assert out is not None and "in cifre" in out
+
+
+def test_vocale_telegram_annullo_prima_di_forte_bot414_v2(env, monkeypatch):
+    import modules.telegram.bot as bot
+    testi = []
+    monkeypatch.setattr(bot, "_send_text", lambda base, chat, t, *a, **k: testi.append(t))
+    monkeypatch.setattr(c, "annulla", lambda n, root, http=None: f"annullata {n}")
+
+    class K:
+        root = env
+
+        def run_turn(self, *a, **k):
+            raise AssertionError("il modello non deve partire")
+    bot._gestisci_parlato("https://x", 5, "forte annulla richiesta 7", K())
+    # come sul Mac: «forte …» non è l'annullo, va al turno: qui il turno esplode, quindi
+    # basta che l'annullo NON sia scattato
+    assert not any("annullata" in t for t in testi)
+
+
+def test_da_leggere_salvato_insieme_allo_stato_bot414_v3(env, monkeypatch):
+    h, inv = Http(), Invia()
+    h.commenti = [_commento(1, _esito_pulito())]
+    c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO)
+    vero = c._scrivi_stato
+    scritture = []
+
+    def una_sola(root, stato):
+        scritture.append(1)
+        return vero(root, stato) if len(scritture) == 1 else False
+    monkeypatch.setattr(c, "_scrivi_stato", una_sola)
+    assert c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO) == 1
+    assert len(c.da_leggere_voce(env, adesso=ADESSO)) == 1
+
+
+
+@pytest.mark.parametrize("testo", ["annulla la richiesta che ti ho fatto prima",
+                                   "Annulla la richiesta di ferie per domani mattina.",
+                                   "annulla la richiesta di prima"])
+def test_frasi_normali_vanno_al_modello_r886mv_1(env, testo):
+    assert c.annulla_parlato(testo, env) is None
+
+
+def test_annulla_n_punto():
+    assert c.comando_annulla("annulla richiesta n. 12") == 12

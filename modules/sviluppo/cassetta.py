@@ -68,7 +68,15 @@ LETTI_PER_TURNO = 2           # esiti detti a voce in un turno
 LETTI_FILENAME = ".gas_richieste_letti_voce.json"
 LETTI_MEMORIA = 100           # id ricordati come già detti
 # «annulla richiesta 12», «annulla la richiesta #12»: frase intera, solo ASCII (come «mergia N»)
-_ANNULLA_RE = re.compile(r"^\s*annulla\s+(?:la\s+)?richiesta\s+(?:numero\s+)?#?([1-9][0-9]{0,6})\s*[.!]?\s*$",
+# Bot #414 V-2: «annulla richiesta» senza un numero in cifre (es. detto in lettere): risposta
+# chiara invece di un turno del modello che potrebbe dire di aver annullato
+# R-886MV-1: solo «annulla (la) richiesta (numero) <una o due parole>» senza cifre, così
+# «annulla la richiesta di ferie per domani» va al modello come una frase normale
+_ANNULLA_SENZA_NUMERO_RE = re.compile(
+    r"^\s*annulla\s+(?:la\s+)?richiesta(?:\s+numero)?(?:\s+[a-z]+){0,2}\s*[.!]?\s*$",
+    re.IGNORECASE | re.ASCII)
+_PAROLE_NON_NUMERO = frozenset({"di", "che", "per", "del", "della", "a", "da", "su", "in", "con"})
+_ANNULLA_RE = re.compile(r"^\s*annulla\s+(?:la\s+)?richiesta\s+(?:numero\s+|n\.\s*)?#?([1-9][0-9]{0,6})\s*[.!]?\s*$",
                          re.IGNORECASE | re.ASCII)
 
 Invia = Callable[[str], Tuple[bool, str]]
@@ -388,7 +396,12 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                                         "quando": creato}
             visti.append(cid); gia.add(cid)
             n_oggi += 1
-            prima = {k: stato.get(k) for k in ("visti", "uso", "domande")}
+            prima = {k: stato.get(k) for k in ("visti", "uso", "domande", "da_leggere")}
+            # F3b e bot #414 V-3: la frase corta a voce (solo parti fisse) entra nella stessa
+            # scrittura prima dell'invio; se l'invio fallisce si toglie con il resto
+            da_voce = [x for x in stato.get("da_leggere") or [] if isinstance(x, dict)]
+            da_voce.append({"id": cid, "frase": frase_voce(numero, esito), "quando": _iso(ora)})
+            stato["da_leggere"] = da_voce[-LETTURE_MAX:]
             stato["visti"] = visti[-VISTI_MAX:]
             stato["uso"] = {"giorno": oggi, "n": n_oggi}
             stato["domande"] = domande
@@ -404,12 +417,9 @@ def controlla_esiti(root: Path, http: Optional[Http] = None, invia: Optional[Inv
                 log.warning("cassetta: avviso dell'esito %s non partito (%s): riprovo", cid, motivo)
                 visti.pop(); gia.discard(cid); n_oggi -= 1
                 domande.clear(); domande.update(domande_prima)
+                stato["da_leggere"] = prima.get("da_leggere") or []
                 break  # in ordine: questo e i successivi al prossimo controllo
             inviati += 1
-            # F3b: la frase corta a voce (solo parti fisse) per il primo turno a voce dopo
-            da_voce = [x for x in stato.get("da_leggere") or [] if isinstance(x, dict)]
-            da_voce.append({"id": cid, "frase": frase_voce(numero, esito), "quando": _iso(ora)})
-            stato["da_leggere"] = da_voce[-LETTURE_MAX:]
             if cid in sospesi:
                 sospesi.remove(cid)
         else:
@@ -570,6 +580,11 @@ def annulla_parlato(testo: Any, root: Path) -> Optional[str]:
     try:
         numero = comando_annulla(testo)
         if numero is None:
+            if (isinstance(testo, str) and len(testo) <= 60
+                    and _ANNULLA_SENZA_NUMERO_RE.match(testo)
+                    and not (set(testo.lower().split()) & _PAROLE_NON_NUMERO)):
+                return ("Per annullare una richiesta di sviluppo mi serve il numero in cifre: "
+                        "«annulla richiesta 12». Lo trovi nell'avviso su Telegram.")
             return None
         return annulla(numero, Path(root))
     except Exception as e:  # §9

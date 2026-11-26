@@ -1059,20 +1059,21 @@ def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any)
         log.warning("vocale: regole della voce non caricate (%s)", type(e).__name__)
         _send_text(base_url, chat_id, f"{eco}\n\n✗ Errore interno: non posso gestire i vocali.")
         return
-    cervello, richiesta = cervello_voce(trascritto, parlato=True)
-    if cervello == "uso":
-        _send_text(base_url, chat_id, f"{eco}\n\n{_USO_FORTE_PARLATO}")
-        return
-    # Mani alla voce F3b (ve #412 V-2): «annulla richiesta N» anche da un vocale, senza turno
+    # Mani alla voce F3b (ve #412 V-2): «annulla richiesta N» anche da un vocale, senza turno.
+    # Bot #414 V-2: PRIMA di cervello_voce, come sul Mac («forte annulla …» non annulla).
     try:
         from modules.sviluppo import cassetta
         root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
-        annullo = cassetta.annulla_parlato(richiesta, Path(root))
+        annullo = cassetta.annulla_parlato(trascritto, Path(root))
     except Exception as e:  # §9: il vocale va al turno normale
         log.warning("vocale: annullo non controllato (%s)", type(e).__name__)
         annullo = None
     if annullo is not None:
         _send_text(base_url, chat_id, f"{eco}\n\n{annullo}")
+        return
+    cervello, richiesta = cervello_voce(trascritto, parlato=True)
+    if cervello == "uso":
+        _send_text(base_url, chat_id, f"{eco}\n\n{_USO_FORTE_PARLATO}")
         return
     voce = _voce_accesa()
     extra: Dict[str, Any] = {}
