@@ -1104,3 +1104,17 @@ def test_domanda_su_disco_subito_dopo_l_invio_bot415_v4(env, monkeypatch):
     monkeypatch.setattr(c, "_scrivi_stato", due_sole)
     assert c.controlla_esiti(env, http=h, invia=inv, adesso=ADESSO) == 1
     assert c.domanda_aperta(env, 7) == 500 and len(scritture) == 3
+
+
+@pytest.mark.parametrize("codice", [0, 500, 502, 504])
+def test_risposta_persa_tiene_la_prenotazione_bot415_r889mv_1(env, codice):
+    """Codice 0 (timeout): il MERGIA forse è già sulla issue. Niente secondo comando, nemmeno
+    un NO opposto: la prenotazione resta e l'operatore controlla la issue."""
+    h = _con_domanda(env)
+    h.codice_commento = codice  # R-892MV-1: anche un 5xx può arrivare a commento già creato
+    out = c.rispondi_merge("mergia 412", env, http=h)
+    assert "Non so se la risposta è arrivata" in out and "controlla la issue" in out
+    h.codice_commento = 201
+    assert "già risposto" in c.rispondi_merge("no 412", env, http=h)
+    assert [x for x in h.scritti] == [(f"{API}/repos/{REPO}/issues/7/comments",
+                                       e.scrivi_comando("MERGIA", 412))]

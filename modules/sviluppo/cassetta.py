@@ -724,6 +724,14 @@ def rispondi_merge(testo: Any, root: Path, http: Optional[Http] = None,
             return "Operazione negata: elenco dei comandi non scrivibile: niente fatto."
         codice, _ = http("POST", f"{API}/repos/{repo}/issues/{numero}/comments", token,
                          {"body": esiti.scrivi_comando(azione, pr)})
+        if codice == 0 or codice >= 500:
+            # bot #415 V-1 su 99b50bc9 (R-889MV-1, R-892MV-1): risposta persa (timeout, rete) o
+            # errore del server (un 502/504 può arrivare a commento già creato): il commento
+            # POTREBBE essere sulla issue. La prenotazione RESTA (fail-closed): niente secondo
+            # comando, nemmeno opposto; l'operatore controlla la issue
+            return (f"Non so se la risposta è arrivata sulla richiesta #{numero} (nessuna "
+                    "risposta da GitHub). Non la riscrivo: controlla la issue. Se il comando "
+                    "non c'è, la risposta è persa: dillo a chi segue lo sviluppo.")
         if codice != 201:
             if not _scrivi_comandi(root, dati):  # si toglie la prenotazione: si può riprovare
                 log.warning("cassetta: prenotazione del comando per #%s non tolta", numero)
