@@ -591,6 +591,7 @@ def run_bot(root_dir: Optional[str] = None) -> int:
                 avvisa_firme_scadute(getattr(kernel, "memory", None))
                 invia_promemoria_crm(kernel)  # CRM (23-11): promemoria arrivati all'ora
                 _raccogli_giri()
+                _controlla_esiti_richieste(root)  # mani alla voce F3: in un thread a parte
             # allowed_updates esplicito: Telegram ricorda l'ultimo valore usato,
             # senza callback_query i bottoni di firma resterebbero muti.
             resp = _tg_post(base_url, "getUpdates",
@@ -618,6 +619,20 @@ def run_bot(root_dir: Optional[str] = None) -> int:
                 _chiudi_voce()
                 print("\n✓ gas telegram: interruzione ricevuta, uscita.")
                 return 0
+
+
+# ─────────────────────── richieste di sviluppo (mani alla voce F3) ──
+
+def _controlla_esiti_richieste(root: Path) -> None:
+    """Mani alla voce F3: lancia (al massimo ogni GAS_RICHIESTE_CONTROLLO_MIN minuti, uno alla
+    volta) il controllo degli esiti delle richieste di sviluppo. Il thread e il cronometro
+    stanno in modules/sviluppo/cassetta.py: qui nessun thread né global (guardia T78p, «un
+    click alla volta»); quel thread non vede update, firme né kernel. Fail-safe §9."""
+    try:
+        from modules.sviluppo import cassetta
+        cassetta.controllo_in_sottofondo(Path(root))
+    except Exception as e:
+        log.warning("esiti delle richieste: controllo non avviato: %s", e)
 
 
 # ─────────────────────────────── giro notturno da Telegram (R1) ──
@@ -923,7 +938,8 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
             if trascritto is None:
                 _send_text(base_url, chat_id, errore)
                 return
-            _gestisci_parlato(base_url, chat_id, trascritto, kernel)
+            _gestisci_parlato(base_url, chat_id, trascritto, kernel,
+                              comandi_ok=_comandi_dal_mittente(msg, allowed))
             return
 
         giro = comando_giro(text)
@@ -955,6 +971,27 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
                 _send_typing(base_url, chat_id)  # la riflessione può durare minuti
                 for messaggio in esegui_clear(kernel):
                     _send_text(base_url, chat_id, messaggio)
+            return
+
+        # Mani alla voce F3: «annulla richiesta N» (al posto della firma a voce, decisione
+        # dell'operatore del 26/11). Prima del modello, come /clear: vale solo da un
+        # messaggio nuovo; risponde il codice, nessun turno.
+        # F4: «mergia N» / «no N» con lo stesso schema (solo da messaggio nuovo, prima del modello).
+        # Bot #414 V-1: anche a testo «annulla richiesta dodici» ha la risposta fissa.
+        from modules.sviluppo import cassetta
+        root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
+        if cassetta.comando_annulla(text) is not None or cassetta.e_comando_merge(text):
+            if not upd.get("message"):
+                _send_text(base_url, chat_id, "Questo comando non vale da un messaggio "
+                           "modificato: mandalo come messaggio nuovo.")
+                return
+            if not _comandi_dal_mittente(msg, allowed):
+                _send_text(base_url, chat_id, _COMANDO_SOLO_TUO)
+                return
+        risposta_fissa = (cassetta.annulla_parlato(text, Path(root))
+                          or cassetta.rispondi_merge(text, Path(root)))
+        if risposta_fissa is not None:
+            _send_text(base_url, chat_id, risposta_fissa)
             return
 
         # R-ve269-2: «/forte <richiesta>» anche da Telegram, mai ai gratuiti
@@ -1018,7 +1055,27 @@ def _turno_con_finale(kernel: Any, chat_id: int, text: str,
     return testo, finale
 
 
-def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any) -> None:
+_COMANDO_SOLO_TUO = ("Questo comando vale solo da un messaggio tuo, scritto o detto da te: "
+                     "non da un messaggio inoltrato né da un altro membro della chat.")
+
+
+def _comandi_dal_mittente(msg: Dict[str, Any], allowed: set) -> bool:
+    """Bot #415 V-1: annullo e merge valgono solo se il MITTENTE (from.id, come per la firma)
+    è ammesso e il messaggio non è inoltrato. Il solo chat_id non basta (chat di gruppo).
+    Fail-closed: un dato strano dà False."""
+    try:
+        uid = (msg.get("from") or {}).get("id")
+        if not _id_intero(uid) or uid not in allowed:
+            return False
+        inoltro = ("forward_origin", "forward_from", "forward_from_chat", "forward_date",
+                   "forward_sender_name", "is_automatic_forward")
+        return not any(k in msg for k in inoltro)  # la sola presenza basta (anche vuoto)
+    except Exception:
+        return False
+
+
+def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any,
+                      comandi_ok: bool = False) -> None:
     """Il testo di un vocale va a Gas come il parlato della voce di casa: «forte …» detto
     all'inizio vale «/forte» (stessa regola del server voce, cervello_voce); i comandi
     (/clear, /notte) non valgono a voce. In cima alla risposta la trascrizione, così
@@ -1029,6 +1086,23 @@ def _gestisci_parlato(base_url: str, chat_id: int, trascritto: str, kernel: Any)
     except Exception as e:  # R-711-4: §9, l'operatore lo sa invece di non ricevere nulla
         log.warning("vocale: regole della voce non caricate (%s)", type(e).__name__)
         _send_text(base_url, chat_id, f"{eco}\n\n✗ Errore interno: non posso gestire i vocali.")
+        return
+    # Mani alla voce F3b (ve #412 V-2): «annulla richiesta N» anche da un vocale, senza turno.
+    # Bot #414 V-2: PRIMA di cervello_voce, come sul Mac («forte annulla …» non annulla).
+    try:
+        from modules.sviluppo import cassetta
+        root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
+        if not comandi_ok and (cassetta.comando_annulla(trascritto) is not None
+                               or cassetta.e_comando_merge(trascritto)):
+            annullo = _COMANDO_SOLO_TUO  # bot #415 V-1: vocale inoltrato o di un altro membro
+        else:
+            annullo = (cassetta.annulla_parlato(trascritto, Path(root))
+                       or cassetta.rispondi_merge(trascritto, Path(root)))  # F4
+    except Exception as e:  # §9: il vocale va al turno normale
+        log.warning("vocale: annullo non controllato (%s)", type(e).__name__)
+        annullo = None
+    if annullo is not None:
+        _send_text(base_url, chat_id, f"{eco}\n\n{annullo}")
         return
     cervello, richiesta = cervello_voce(trascritto, parlato=True)
     if cervello == "uso":

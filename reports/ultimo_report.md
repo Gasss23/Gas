@@ -1,31 +1,31 @@
-# Ultimo report — 2026-11-25 — Mani alla voce: piano + fetta F2
+# Ultimo report — 2026-11-26 — Mani alla voce F4: «mergia N» / «no N»
 
-Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-piano`.
+Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f4` (sopra la PR #414, che sta sopra #412 e #411; nessuna ancora mergiata).
 
 ## DECISIONI UMANE RICHIESTE
 
-1. F1: a voce `richiedi_sviluppo` passa dalla firma su Telegram? (proposta: sì; oggi al cancello è UNCERTAIN e parte senza firma).
-2. Canale dell'avviso di fine lavoro: commenti sulla issue letti da Gas sul Mac (proposta) oppure Telegram diretto dal cloud.
-3. F5 (esecutore come scheduled task cloud): frequenza e ore (proposta: ogni ora, 8-20, feriali), massimo 2 richieste al giorno, modello.
-4. Con `MERGIA #N` mergia l'esecutore (proposta) oppure resta M1.
-5. Merge della PR #409: il «mergia 409» dell'operatore è arrivato prima della modifica a `.github/workflows/ci.yml`; con il bot NEUTRAL serve la sua conferma esplicita (chiesta da M1). Non mergio finché M1 non me la gira.
+1. Merge in ordine: #411, #412, #414, poi #415 (bot e verifica esterna APPROVATO CON RISERVE: decide l'operatore).
+2bis. Se «mergia N» deve valere anche dai vocali Telegram (oggi sì; verifica esterna #415 V-1).
+2. Scelte da confermare (oggi così): il merge NON vale a voce dal Mac (solo Telegram); l'annullo a voce NON chiede conferma (un numero sentito male annulla la richiesta sbagliata, si riapre a mano).
+3. Dopo i merge, sul Mac: `GAS_RICHIESTE_AUTORI` nel `.env`, riavvio del bot Telegram e del server voce.
 
 ## Esito per fetta
 
-- **Piano** (`reports/mani_voce_piano.md`): FATTA. Cosa esiste, cosa manca, fette F1-F5, rischi (iniezioni dalla voce, commenti falsi, spesa, accesso), decisioni. Mandato in sintesi a M1.
-- **Punto 4 — compiti non di sviluppo a voce**: FATTA (verifica, nessuna modifica). Il percorso voce → `in_sottofondo` → processo separato → avviso Telegram con la risposta → lettura a voce c'è ed è coperto da `tests/test_unit_sottofondo.py` (154 test con quelli delle richieste, passati). Manca la prova sul Mac.
-- **F2 — formato fisso dei commenti ESITO/COMANDO** (`modules/sviluppo/esiti.py`, `tests/test_unit_esiti.py`, 46 test): FATTA. Revisore #864 APPROVATO CON RISERVE → corrette R-864-1 (invisibili), R-864-2 (niente domanda di merge con controlli non verdi), cosmetica 4 → #865 APPROVATO CON RISERVE.
-- **Correzione dopo bot e verifica esterna (#409)**: FATTA. Il bot era rosso per due caratteri bidi (U+202E) veri nel file di test: sostituiti con l'escape e aggiunto un test che li vieta. Inoltre VERIFICA_ESTERNA a valori fissi (niente domanda di merge se BOCCIATO), tolti i riempitivi che sembrano vuoti (R-865-1), docstring e piano corretti (`ESITO: ferma`, `MERGIATA` spostato in F5). Revisore #866: APPROVATO. 55 test.
-- **Seconda correzione dopo il bot (head 35c67d25, finding MEDIA)**: FATTA. La domanda di merge ora compare solo con PR valida, CI verde, bot APPROVATO/APPROVATO CON RISERVE e verifica esterna non BOCCIATO (prima una riga BOT mancante la lasciava passare); riserve vuote scartate, riserve in più contate («+N altre»), riserve elencate a parte. Revisore #867 APPROVATO CON RISERVE → R-867-1 e R-867-2 corrette nello stesso commit. 61 test.
-- **Merge di main (PR #402, R7 fetta 4) nel ramo**: FATTO (08875514), revisore #869-MERGE APPROVATO; 198 test di sottofondo + esiti passati. Bot sul head 0b039727: APPROVATO CON RISERVE (check success; V-1 BASSA altri invisibili Default_Ignorable come U+034F passano il filtro; V-2/V-3 COSMETICHE commenti vecchi e descrizione della PR, aggiornata). unit-suite success su 0b039727.
-- **Secondo merge di main (PR #410, scheda clienti offline)**: FATTO (dc5cb637), dopo il «mergia 409» dell'operatore via M1; revisore #870-MERGE APPROVATO CON RISERVE (R-870M-1 BASSA: numeri di review doppi fra chat). 272 test esiti + CRM passati.
-- **Terza correzione dopo il bot (head 72adde68, finding MEDIA)**: FATTA (b2e78370). I test di esiti non giravano in CI: aggiunto il passo «Run esiti suite» in `.github/workflows/ci.yml`; PR_MAX a 7 cifre come le regex; messaggio giusto per commento troppo lungo. Revisore #871 APPROVATO. 63 test. Merge fermato finché CI e bot non sono verdi.
-- **Terzo merge di main (PR #407 voce, #408 R7 notte)**: FATTO (2ef67f30), revisore #872-MERGE APPROVATO; 696 test passati. CI verde su 0dc4ccd1 (unit-suite con il passo «Run esiti suite» success); bot NEUTRAL (la PR tocca ci.yml, macchina del bot): serve il sì esplicito dell'operatore, chiesto da M1.
-- **F1, F3, F4, F5**: DEFERITE — aspettano il via dell'operatore (toccano voce, credenziali, trigger o spesa ricorrente).
+- **F4 — «mergia N» / «no N»**: FATTA (2863bf4c).
+  - Su Telegram, scritto o vocale dalla chat dell'operatore, prima del modello e solo da messaggio nuovo.
+  - Vale SOLO se N è la PR per cui Gas ha chiesto davvero il merge (R-873MV-1) e la domanda non ha già una risposta; la issue deve essere aperta, `da-gas`, non annullata; il repo privato. Il comando si prenota in locale prima di scriverlo su GitHub (una volta sola, anche con il file rotto).
+  - Gas scrive sulla issue il commento `MERGIA #N` / `NO #N` a formato fisso; il merge vero lo farà l'esecutore (F5) rispettando CLAUDE.md §10.
+  - Al microfono del Mac: «confermamelo su Telegram» (l'audio della stanza non fa mergiare).
+  - R-883MV-1 chiusa: la PR della domanda si ricorda solo dopo che l'avviso è partito.
+  - Regola nel prompt: il modello non dice mai di aver annullato, mergiato o rifiutato una richiesta.
+  - Chiuse anche le riserve della #414: «annulla richiesta dodici» anche a testo, frase a voce «CI verde, bot …».
+  - 121 test di cassetta. Revisore #888-MV → #889-MV APPROVATO CON RISERVE.
+- **F5 — esecutore nel cloud**: DEFERITA — prossima fetta (crea una scheduled task: spesa ricorrente; il via c'è dal 26/11).
+
+- **Correzioni dopo il bot #415** (c247aba7): domanda di merge che scade dopo 7 giorni; «mergia N» mai al modello sul Mac (anche nel seguito e da testo scritto, dove ora vale anche l'annullo); test sulla regola nel prompt. Revisore #890-MV APPROVATO.
+- **Correzione dopo il bot #415 su 4991d780 (BOCCIATO)** (005f87c6): annullo e merge su Telegram solo se il mittente (from.id) è ammesso e il messaggio non è inoltrato; i vocali senza questo via sono rifiutati; domanda su disco subito dopo l'avviso. Revisore #891-MV APPROVATO.
+- **Correzione dopo il bot #415 su 99b50bc9** (a9af5afa): se GitHub non risponde o dà 5xx al comando, la prenotazione resta e non passa un secondo comando opposto (R-889MV-1, R-892MV-1). Revisore #892-MV → #893-MV APPROVATO.
 
 ## Anomalie
 
-- Nel container mancavano le dipendenze (`openai`): installate con `pip install -r requirements.txt`; prima 3 test di `test_unit_sottofondo.py` fallivano per questo.
-- Riserve aperte: R-864-3 BASSA, cosmetica 5, cosmetica U+200D, verifica esterna #409 V-2 BASSA (domanda di merge anche con riserve ALTA/MEDIA, da rivedere in F4), verifica esterna #409-bis V-4 COSMETICA (spazio speciale ammesso in «mergia N»). In `reports/stato_progetto.md`.
-- Bot sul secondo head (35c67d25): failure per un finding MEDIA (riga BOT mancante → domanda di merge), corretto.
-- Verdetti: verifica esterna #409 APPROVATO CON RISERVE (solo BASSE); bot sul primo head: failure per caratteri bidi (corretto).
+- R-889MV-1 chiusa (a9af5afa). Regola per F5 nel piano: si mergia solo se tutti i COMANDO dopo l'ultimo ESITO sono MERGIA.
