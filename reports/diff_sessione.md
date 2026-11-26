@@ -1,15 +1,11 @@
-# Diff della sessione — 2026-11-25 — voce, log e nome del modello
+# Diff della sessione — 2026-11-25 — Mani alla voce (piano + F2)
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+> Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `clients/voice/ascolto.py`:
-  - log distinto per il «fine» sul primo turno;
-  - ripiego su hey_jarvis per un nome non semplice;
-  - `descrivi_modello()` per il log di avvio;
-  - nome del modello normalizzato in `main`;
-  - modelli pronti anche col nome del file;
-  - avviso di ripiego dato una volta sola.
-- `scripts/voce/LEGGIMI.md`: riga di `GAS_ASCOLTO_MODELLO` con pulizia del nome e ripiego.
-- `tests/test_unit_voce_ascolto.py`: 4 test nuovi e 2 aggiornati.
-- `.claude/agents/memoria_revisore.md`: review #864–#867.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`: report di fine task.
+- `reports/mani_voce_piano.md` — nuovo: piano per dare le mani alla voce (esecutore delle richieste, avvisi, merge), rischi e decisioni.
+- `modules/sviluppo/esiti.py` — nuovo: formato fisso e lettura stretta dei commenti ESITO/COMANDO sulle issue delle richieste (F2), non collegato a nulla. Dopo il bot: VERIFICA_ESTERNA a valori fissi, riempitivi vuoti tolti, domanda di merge solo con tutti i controlli buoni.
+- `tests/test_unit_esiti.py` — nuovo: 46 test del formato (andata e ritorno, commenti malformati/ostili, invisibili, comandi dell'operatore); poi 55 dopo la correzione #866 61 dopo #867/#868 e 63 dopo #871.
+- `.claude/agents/memoria_revisore.md` — righe #864, #865, #866, #867, #868 e #869-MERGE, #870-MERGE, #871 e #872-MERGE, più le righe di R7, del CRM e della voce arrivate coi merge di main del revisore.
+- `.github/workflows/ci.yml` — passo «Run esiti suite»: i test di `modules/sviluppo/esiti.py` ora girano in CI (bot #409 su 72adde68, V-1 MEDIA).
+- `reports/stato_progetto.md` — voce «Mani alla voce» fra i finding aperti, con le riserve.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.

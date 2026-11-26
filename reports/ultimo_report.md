@@ -1,26 +1,31 @@
-# Ultimo report — 2026-11-25 — Voce: log più chiari e nome del modello sicuro (dopo la PR #405)
+# Ultimo report — 2026-11-25 — Mani alla voce: piano + fetta F2
+
+Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-piano`.
 
 ## DECISIONI UMANE RICHIESTE
-Nessuna nuova. Merge della PR: se il bot dà APPROVATO pulito lo fa l'agente, altrimenti serve il «mergia» dell'operatore.
 
-## Esito
-- **Fetta 1 — Log del primo turno scartato**: FATTA.
-  - Prova del 25/11 sul Mac: dopo «Hey Jarvis» la richiesta era di 1,0 s, con 0,2 s di voce. Il server l'ha chiusa con «fine» perché la trascrizione era vuota.
-  - Il client scriveva «turno di seguito non rivolto a Gas» anche sul primo turno. Ora scrive «richiesta scartata dal server (trascrizione vuota o non chiara…)».
-- **Fetta 2 — Nome del modello**: FATTA.
-  - Un nome non semplice in `GAS_ASCOLTO_MODELLO` (un percorso, un nome strano) ripiega su hey_jarvis: chiude V-1 del bot #405.
-  - In `main` il nome si normalizza: «Hey Jarvis» vale hey_jarvis, filtro della voce compreso (R-864-1).
-- **Fetta 3 — Log di avvio**: FATTA. «ascolto pronto» dice il modello davvero in uso: dal file, oppure ripiego (R-855-1).
-- **Fetta 4 — Riserve del bot #407**: FATTA.
-  - I modelli pronti passano col nome esatto, anche quello del file con la versione (alexa_v0.1): chiude V-1 e R-866-1.
-  - L'avviso di ripiego compare una volta sola (R-864-2).
-  - Docstring e LEGGIMI aggiornati (V-2).
-  - Il test controlla il nome passato al rilevatore (V-3).
-- Test: `tests/test_unit_voce_ascolto.py` da 391 a 395 passed.
-- **Fetta 5 — Riserve del bot su 0d433dfc**: FATTA. Il nostro file del modello resta la prima scelta anche se ha il nome di un modello pronto; l'avviso dice il valore rifiutato.
-- Review: #864–#867 APPROVATO CON RISERVE, #869 APPROVATO.
+1. F1: a voce `richiedi_sviluppo` passa dalla firma su Telegram? (proposta: sì; oggi al cancello è UNCERTAIN e parte senza firma).
+2. Canale dell'avviso di fine lavoro: commenti sulla issue letti da Gas sul Mac (proposta) oppure Telegram diretto dal cloud.
+3. F5 (esecutore come scheduled task cloud): frequenza e ore (proposta: ogni ora, 8-20, feriali), massimo 2 richieste al giorno, modello.
+4. Con `MERGIA #N` mergia l'esecutore (proposta) oppure resta M1.
+5. Merge della PR #409: il «mergia 409» dell'operatore è arrivato prima della modifica a `.github/workflows/ci.yml`; con il bot NEUTRAL serve la sua conferma esplicita (chiesta da M1). Non mergio finché M1 non me la gira.
 
-## Riserve aperte
-- R-867-1 BASSA, che c'era già prima: un modello pronto non scaricato (es. alexa) fa uscire l'ascolto invece di ripiegare.
-- R-854-3 BASSA: interruzione col modello italiano non misurata.
-- Ripiego su hey_jarvis con la soglia 0,5: aperta, BASSA.
+## Esito per fetta
+
+- **Piano** (`reports/mani_voce_piano.md`): FATTA. Cosa esiste, cosa manca, fette F1-F5, rischi (iniezioni dalla voce, commenti falsi, spesa, accesso), decisioni. Mandato in sintesi a M1.
+- **Punto 4 — compiti non di sviluppo a voce**: FATTA (verifica, nessuna modifica). Il percorso voce → `in_sottofondo` → processo separato → avviso Telegram con la risposta → lettura a voce c'è ed è coperto da `tests/test_unit_sottofondo.py` (154 test con quelli delle richieste, passati). Manca la prova sul Mac.
+- **F2 — formato fisso dei commenti ESITO/COMANDO** (`modules/sviluppo/esiti.py`, `tests/test_unit_esiti.py`, 46 test): FATTA. Revisore #864 APPROVATO CON RISERVE → corrette R-864-1 (invisibili), R-864-2 (niente domanda di merge con controlli non verdi), cosmetica 4 → #865 APPROVATO CON RISERVE.
+- **Correzione dopo bot e verifica esterna (#409)**: FATTA. Il bot era rosso per due caratteri bidi (U+202E) veri nel file di test: sostituiti con l'escape e aggiunto un test che li vieta. Inoltre VERIFICA_ESTERNA a valori fissi (niente domanda di merge se BOCCIATO), tolti i riempitivi che sembrano vuoti (R-865-1), docstring e piano corretti (`ESITO: ferma`, `MERGIATA` spostato in F5). Revisore #866: APPROVATO. 55 test.
+- **Seconda correzione dopo il bot (head 35c67d25, finding MEDIA)**: FATTA. La domanda di merge ora compare solo con PR valida, CI verde, bot APPROVATO/APPROVATO CON RISERVE e verifica esterna non BOCCIATO (prima una riga BOT mancante la lasciava passare); riserve vuote scartate, riserve in più contate («+N altre»), riserve elencate a parte. Revisore #867 APPROVATO CON RISERVE → R-867-1 e R-867-2 corrette nello stesso commit. 61 test.
+- **Merge di main (PR #402, R7 fetta 4) nel ramo**: FATTO (08875514), revisore #869-MERGE APPROVATO; 198 test di sottofondo + esiti passati. Bot sul head 0b039727: APPROVATO CON RISERVE (check success; V-1 BASSA altri invisibili Default_Ignorable come U+034F passano il filtro; V-2/V-3 COSMETICHE commenti vecchi e descrizione della PR, aggiornata). unit-suite success su 0b039727.
+- **Secondo merge di main (PR #410, scheda clienti offline)**: FATTO (dc5cb637), dopo il «mergia 409» dell'operatore via M1; revisore #870-MERGE APPROVATO CON RISERVE (R-870M-1 BASSA: numeri di review doppi fra chat). 272 test esiti + CRM passati.
+- **Terza correzione dopo il bot (head 72adde68, finding MEDIA)**: FATTA (b2e78370). I test di esiti non giravano in CI: aggiunto il passo «Run esiti suite» in `.github/workflows/ci.yml`; PR_MAX a 7 cifre come le regex; messaggio giusto per commento troppo lungo. Revisore #871 APPROVATO. 63 test. Merge fermato finché CI e bot non sono verdi.
+- **Terzo merge di main (PR #407 voce, #408 R7 notte)**: FATTO (2ef67f30), revisore #872-MERGE APPROVATO; 696 test passati. CI verde su 0dc4ccd1 (unit-suite con il passo «Run esiti suite» success); bot NEUTRAL (la PR tocca ci.yml, macchina del bot): serve il sì esplicito dell'operatore, chiesto da M1.
+- **F1, F3, F4, F5**: DEFERITE — aspettano il via dell'operatore (toccano voce, credenziali, trigger o spesa ricorrente).
+
+## Anomalie
+
+- Nel container mancavano le dipendenze (`openai`): installate con `pip install -r requirements.txt`; prima 3 test di `test_unit_sottofondo.py` fallivano per questo.
+- Riserve aperte: R-864-3 BASSA, cosmetica 5, cosmetica U+200D, verifica esterna #409 V-2 BASSA (domanda di merge anche con riserve ALTA/MEDIA, da rivedere in F4), verifica esterna #409-bis V-4 COSMETICA (spazio speciale ammesso in «mergia N»). In `reports/stato_progetto.md`.
+- Bot sul secondo head (35c67d25): failure per un finding MEDIA (riga BOT mancante → domanda di merge), corretto.
+- Verdetti: verifica esterna #409 APPROVATO CON RISERVE (solo BASSE); bot sul primo head: failure per caratteri bidi (corretto).

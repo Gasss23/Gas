@@ -1,414 +1,359 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-11-25 — Voce: log più chiari e nome del modello sicuro (PR #407)
+**Sessione:** 2026-11-25 — Mani alla voce: piano + formato fisso dei commenti ESITO/COMANDO (F2) + due correzioni dopo bot/verifica esterna + tre merge di main, PR #409
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #407 (https://github.com/Gasss23/Gas/pull/407): «mergia» dell'operatore dato il 25/11.
-   - Con APPROVATO pulito del bot sul nuovo head la mergia l'agente.
-   - Altrimenti serve il «mergia» dell'operatore.
+1. Merge della PR #409 (https://github.com/Gasss23/Gas/pull/409): CI verde, ma il bot dà NEUTRAL perché la PR tocca `.github/workflows/ci.yml` (macchina del bot). Il «mergia 409» dell'operatore è arrivato prima di quella modifica: serve la sua conferma esplicita (CLAUDE.md §10), chiesta da M1. Non mergio finché M1 non me la gira.
+2. F1: a voce `richiedi_sviluppo` passa dalla firma su Telegram? (proposta: sì).
+3. Canale dell'avviso: commenti sulla issue letti da Gas sul Mac (proposta) oppure Telegram diretto dal cloud.
+4. F5: frequenza e ore della scheduled task (proposta: ogni ora, 8-20, feriali), massimo 2 richieste al giorno, modello.
+5. Con `MERGIA #N` mergia l'esecutore (proposta) oppure resta M1.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Log del primo turno scartato**: FATTA. Un «fine» sul primo turno ora è loggato come richiesta scartata.
-- **Fetta 2 — Nome del modello**: FATTA.
-  - Un nome non semplice ripiega su hey_jarvis (V-1 bot #405).
-  - Il nome è normalizzato in `main` (R-864-1).
-- **Fetta 3 — Log di avvio col modello in uso**: FATTA (R-855-1).
-- **Fetta 4 — Riserve del bot #407 (eaed5d8a)**: FATTA.
-  - V-1 e R-866-1: modelli pronti col nome del file, es. alexa_v0.1.
-  - V-2: docstring e LEGGIMI.
-  - V-3: il test controlla il nome passato al rilevatore.
-  - R-864-2: avviso di ripiego una volta sola.
+- **Piano (`reports/mani_voce_piano.md`)**: `FATTA` — cosa esiste, cosa manca, fette F1-F5, rischi, decisioni. Inviato in sintesi a M1.
+- **Punto 4 — compiti non di sviluppo a voce**: `FATTA` (verifica senza modifiche) — percorso coperto da `tests/test_unit_sottofondo.py`; manca la prova sul Mac.
+- **F2 — formato fisso ESITO/COMANDO**: `FATTA` — `modules/sviluppo/esiti.py` + `tests/test_unit_esiti.py` (46 test), revisore #864 → #865 APPROVATO CON RISERVE.
+- **Correzione dopo bot e verifica esterna**: `FATTA` — caratteri bidi veri tolti dai test (causa del bot rosso), VERIFICA_ESTERNA a valori fissi, riempitivi vuoti tolti (R-865-1), piano corretto; revisore #866 APPROVATO.
+- **Seconda correzione dopo il bot (finding MEDIA sul head 35c67d25)**: `FATTA` — domanda di merge solo con PR valida, CI verde, bot APPROVATO/APPROVATO CON RISERVE e verifica esterna nell'elenco e non BOCCIATO; riserve vuote scartate e in più contate; revisore #867 → #868 APPROVATO. 61 test.
+- **Merge di main (PR #402, R7 fetta 4)**: `FATTA` — conflitti solo nei report e nella memoria, risolti con la regola 3 di `reports/lavoro_parallelo.md`; revisore #869-MERGE APPROVATO.
+- **Secondo merge di main (PR #410)**: `FATTA` — conflitti solo nei report e nella memoria, regola 3; revisore #870-MERGE APPROVATO CON RISERVE (R-870M-1 BASSA).
+- **Terza correzione dopo il bot (head 72adde68)**: `FATTA` — test di esiti in CI (`.github/workflows/ci.yml`), PR_MAX a 7 cifre, messaggio per commento troppo lungo; revisore #871 APPROVATO. 63 test.
+- **Terzo merge di main (PR #407, #408)**: `FATTA` — conflitti solo nei report e nella memoria, regola 3; revisore #872-MERGE APPROVATO.
+- **F1 — firma a voce per `richiedi_sviluppo`**: `DEFERITA — aspetta il via dell'operatore`.
+- **F3 — Gas legge gli esiti dalle issue**: `DEFERITA — aspetta il via dell'operatore`.
+- **F4 — «mergia N» da Telegram**: `DEFERITA — aspetta il via dell'operatore`.
+- **F5 — esecutore come scheduled task cloud**: `DEFERITA — spesa ricorrente e credenziali, aspetta il via`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++
- clients/voice/ascolto.py           |  72 +++++++++++++++++++---
- reports/diff_sessione.md           |  19 ++++--
- reports/handoff.md | n/d
- reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  38 +++++++-----
- scripts/voce/LEGGIMI.md            |   2 +-
- tests/test_unit_voce_ascolto.py    |  70 ++++++++++++++++++++-
+ .claude/agents/memoria_revisore.md |  11 ++++++++
+ .github/workflows/ci.yml           |   8 ++++++
+ modules/sviluppo/esiti.py          | 235 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  22 +++++++--------
+ reports/handoff.md                 | n/d
+ reports/mani_voce_piano.md         | 123 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   3 ++-
+ reports/ultimo_report.md           |  49 +++++++++++++++++++---------------
+ tests/test_unit_esiti.py           | 196 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d»: il conteggio di reports/handoff.md non è misurabile mentre lo si scrive; la riga di totale è tolta.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-3fde7e08 Merge origin/main (PR #408 R7) nel ramo della PR #407 — report del ramo tenuti, memoria unita (review #871-MERGE)
-f8f1f66b docs(fine-task): handoff col merge di main (PR #410, review #870-MERGE)
-46dfb8f9 Merge origin/main (PR #410 CRM) nel ramo della PR #407 — report del ramo tenuti, stato e memoria uniti (review #870-MERGE, R-870M-1 chiusa)
-dbd0d167 docs(fine-task): report col giro sulle note del bot su 0d433dfc (review #869)
-63a28b4a fix(voce): il nostro file del modello resta la prima scelta anche col nome di un modello pronto; avviso col valore rifiutato (V-1/V-2 bot su 0d433dfc)
-bb542081 chore(revisore): memoria review #869 — APPROVATO
-0d433dfc docs(fine-task): handoff col merge di main (PR #402, review #868-MERGE)
-fb60ae2e Merge origin/main (PR #402 R7) nel ramo della PR #407 — report del ramo tenuti, memoria unita (review #868-MERGE)
-7cba139c docs(report): riserve aperte della #407 tracciate in stato_progetto con id regolari (V-1 bot su 3d12ee08)
-3d12ee08 docs(fine-task): report con le riserve del bot #407 chiuse (review #866/#867)
-434e0966 fix(voce): modelli pronti col nome del file (alexa_v0.1), avviso di ripiego una volta sola, docstring e LEGGIMI (V-1/V-2/V-3 bot #407, R-864-2, R-866-1)
-94f19a67 chore(revisore): memoria review #867 — APPROVATO CON RISERVE
-20e3ded4 chore(revisore): memoria review #866 — APPROVATO CON RISERVE
-eaed5d8a docs(fine-task): report della fetta voce log e nome del modello (review #864/#865)
-c46b0b86 fix(voce): log chiaro sul primo turno scartato, modello in uso nel log di avvio, nome del modello normalizzato e mai un percorso (V-1 bot #405, R-855-1, R-864-1)
-98ec858e chore(revisore): memoria review #865 — APPROVATO CON RISERVE
-5586236b chore(revisore): memoria review #864 — APPROVATO CON RISERVE
+2ef67f30 merge: origin/main (PR #407 voce, #408 R7 notte) in claude/mani-voce-piano
+0dc4ccd1 docs(fine-task): report e handoff dopo la terza correzione (test di esiti in CI, PR #409)
+b2e78370 fix(ci): test_unit_esiti.py nella CI; PR_MAX a 7 cifre; messaggio giusto per commento troppo lungo (bot #409 su 72adde68)
+a9291ba4 chore(revisore): memoria review #871 — APPROVATO
+72adde68 docs(fine-task): report e handoff dopo il 2° merge di main (PR #409)
+dc5cb637 merge: origin/main (PR #410, scheda clienti offline) in claude/mani-voce-piano
+3429dfa1 docs(fine-task): report e handoff dopo il merge di main (PR #409)
+08875514 merge: origin/main (PR #402, R7 fetta 4) in claude/mani-voce-piano
+0b039727 docs(fine-task): report e handoff — seconda correzione dopo il bot (PR #409)
+13eaa1a2 fix(sviluppo): domanda di merge solo con tutti i controlli buoni, riserve vuote scartate e in più contate (bot #409-bis, R-867-1/2)
+4606d48c chore(revisore): memoria review #868 — APPROVATO
+edb5de4f chore(revisore): memoria review #867 — APPROVATO CON RISERVE
+35c67d25 docs(fine-task): report e handoff aggiornati — correzione dopo bot e verifica esterna (PR #409)
+3f7a0075 fix(sviluppo): niente caratteri bidi veri nei test, VERIFICA_ESTERNA a valori fissi, riempitivi vuoti tolti (bot #409, R-865-1)
+a8ab5efd chore(revisore): memoria review #866 — APPROVATO
+ec8a1d7a docs(fine-task): report e handoff — mani alla voce, piano + F2 (PR #409)
+81c751fa feat(sviluppo): formato fisso dei commenti ESITO/COMANDO sulle issue delle richieste (mani alla voce F2)
+62a1adcc chore(revisore): memoria review #865 — APPROVATO CON RISERVE
+0656fc0d chore(revisore): memoria review #864 — APPROVATO CON RISERVE
+93090a56 docs(mani-voce): piano per dare le mani alla voce (esecutore richieste, avvisi, merge)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-I commit c46b0b86 e 434e0966 toccano `tests/test_unit_voce_ascolto.py`, che è nel perimetro. Sotto ci sono i verdetti INTEGRALI, in ordine:
-- #864: primo diff;
-- #865: R-864-1 e R-864-2;
-- #866: riserve del bot #407;
-- #867: R-866-1;
-- #869: V-1/V-2 del bot su 0d433dfc (il nostro file resta la prima scelta, avviso col valore).
+Commit motore 81c751fa: verdetto integrale del secondo giro (#865), che copre il codice di quel commit (il primo giro #864 era su una versione precedente, poi corretta). Commit motore 3f7a0075: verdetto #866, riemesso dal revisore con gli escape scritti come testo (la prima emissione conteneva un carattere U+202E vero che avrebbe fatto fallire il bot); stessa sostanza ed esito. Commit motore b2e78370 (ci.yml + esiti): verdetto #871, in fondo a questa sezione. Commit motore 13eaa1a2: verdetti #867 (APPROVATO CON RISERVE, con R-867-1 e R-867-2) e #868 (APPROVATO, dopo la correzione di quelle due riserve nello stesso diff staged). Le righe citate dai verdetti più vecchi si riferiscono al file del loro commit: dopo i commit successivi alcune sono slittate.
 
-```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #864 di fix/voce-log-e-modello, `git diff --cached` (2 file, +54/−5). Suite tests/test_unit_voce_ascolto.py rieseguita: 393 passati. Il motore (gas.py, brains/) non è toccato. Non ho usato git stash e l'indice è intatto.
+**Cosa ho rivisto.** È il secondo giro della review #864, sul diff ora in staging nel ramo claude/mani-voce-piano: 2 file, +326 righe. Le impronte (sha256) coincidono con quelle che mi hai dato:
+- diff in staging: 3f81f5d911221204ddfb7492e2b3529eedd566b94feafebb5a24a939d57a2587
+- `modules/sviluppo/esiti.py` in staging: 497c743794eea4f6fd89d5cffa27c58a750638c157756167373184a569eeaace
+- `tests/test_unit_esiti.py` in staging: 3c7d40cc36951117b2dcb6a1d9185525a456aba84cb7138e74ee99d9e5ea65dc
 
-**Elementi esaminati**
+Ho fatto girare i test su una copia esatta dei file in staging: 46 passed.
 
-1. `clients/voice/ascolto.py:1456` — un nome non semplice (percorso, maiuscole, vuoto) ora ripiega su `hey_jarvis` con un avviso nel log, invece di arrivare a openWakeWord.
-   - Rischio: un percorso preso dall'ambiente che arriva a openWakeWord, il quale controlla `os.path.exists(nome)` rispetto alla cartella corrente.
-   - Esito: ok, V-1 del bot #405 è chiusa. Il test `tests/test_unit_voce_ascolto.py:3407` lo prova con `../`, un percorso assoluto, maiuscole e la stringa vuota.
-   - Effetto collaterale: vedi R-864-1.
-2. `clients/voice/ascolto.py:773` — quando il server risponde «fine», il messaggio nel log dipende da `seguito`, il parametro di `turno` (`clients/voice/ascolto.py:749`). Sul primo turno dice «richiesta scartata dal server…». Il comportamento non cambia (`chiudi=True`, svuota, `return False`).
-   - Esito: ok. Il test `tests/test_unit_voce_ascolto.py:547` controlla anche che non ci siano bip né audio riprodotto.
-3. `clients/voice/ascolto.py:1485` — `descrivi_modello`, usata nel log «ascolto pronto» di `clients/voice/ascolto.py:1706`, distingue tre casi: nome invariato, ripiego, file nostro.
-   - Esito: ok, R-855-1 è chiusa. Il test `tests/test_unit_voce_ascolto.py:3377` copre i tre casi. Vedi R-864-2.
+**Mutanti** (piccole modifiche al codice per vedere se i test se ne accorgono): 4 su 4 presi.
+- Filtro ridotto da tutte le categorie C* ai soli caratteri di controllo (Cc): 6 test falliti.
+- «assente» tolto dalla condizione del merge: 1 fallito.
+- Controllo della CI tolto: 2 falliti.
+- Righe vuote scartate dopo il taglio a 5 invece che prima: 1 fallito.
 
-**Riserve (da tracciare in stato_progetto.md)**
+Nessun taglio della storia dei messaggi con `[-N:]` nel diff.
 
-- **R-864-1 BASSA** (`clients/voice/ascolto.py:1456`):
-  - Prima openWakeWord accettava anche nomi di modelli pronti scritti con spazi o con la versione (es. «hey mycroft», «alexa_v0.1»), perché li confrontava per pezzo di nome. Ora ripiegano su hey_jarvis, con l'avviso nel log. Per hey_jarvis il risultato è identico; per gli altri modelli pronti cambia parola in silenzio, salvo il log.
-  - `verifica_della_voce` cerca il filtro col nome grezzo: con un nome ripiegato (es. «Hey_Jarvis») un filtro hey_jarvis già addestrato non si carica.
-  - Proposta: normalizzare il nome (minuscole, spazio → `_`) prima della regex, oppure documentare che vale solo il nome esatto.
-- **R-864-2 COSMETICA** (`clients/voice/ascolto.py:1488`): `descrivi_modello` richiama `modello_della_parola`, quindi all'avvio l'avviso di ripiego compare due volte nel log. Basterebbe passarle il risultato già calcolato.
-- **Da prima, ancora aperta** (nota, non nuova): se il file di ehi_jarvis_it manca e si ripiega su hey_jarvis, resta la `GAS_ASCOLTO_SOGLIA=0.5` scritta da installa.sh per il modello italiano.
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello nuovo non è misurata.
+**Elementi del diff esaminati**
+- `modules/sviluppo/esiti.py:53` — `_pulisci` sostituisce con uno spazio ogni carattere di categoria Unicode C*, come `scripts/bot_esito.py:303`. Rischio esaminato: invisibili che nascondono testo. U+FEFF, U+2060, U+00AD, il carattere «tag» U+E0041, U+202E e U+200D vengono tolti, e U+2028 diventa spazio. Esito: ok, **R-864-1 chiusa**.
+- `modules/sviluppo/esiti.py:166` — la domanda «Vuoi che la mergi?» compare solo con CI verde e bot né BOCCIATO né assente; negli altri casi la frase dice «Controlli non verdi: niente merge per ora.». Provato: CI verde con bot BOCCIATO dà «niente merge», CI verde con bot APPROVATO fa la domanda. Esito: ok, **R-864-2 chiusa**.
+- `modules/sviluppo/esiti.py:136` — `riserve` deve essere una lista, altrimenti `ValueError`. Le righe vuote si scartano prima del taglio a 5. Esito: ok, **cosmetica 4 chiusa**.
+- `tests/test_unit_esiti.py` (parte aggiunta, test parametrizzato sui caratteri e test sul BOM e sulla chiave minuscola) — coprono U+FEFF, U+2060, U+00AD, il tag, U+202E, \x07, il BOM prima del marcatore e la chiave minuscola. Il mutante C*→Cc li fa fallire, quindi tengono davvero. Esito: ok.
 
-**Rischi esclusi**
+**Finding**
+1. **R-864-3 BASSA (resta aperta, come da piano)** — Un riassunto può contenere «rispondi mergia 999». La difesa nel codice va messa in F4/F5: MERGIA vale solo per una PR aperta dall'esecutore per quella issue.
+2. **Cosmetica 5 (resta aperta)** — I commenti scartati non lasciano traccia: la F3 dovrà scriverlo in gas_debug.log.
+3. **R-865-1 BASSA (nuova)** — Alcuni caratteri che si vedono come vuoti non sono di categoria C* e quindi passano: U+3164 (riempitivo Hangul), U+2800 (braille vuoto) e i selettori di variante. Così un riassunto può sembrare vuoto pur superando il controllo `not riassunto`. Non è un rischio di iniezione: è testo che si vede male. Correzione possibile: togliere anche questi tre casi, come i caratteri provati nella review #574 su `bot_esito`.
+4. **COSMETICA (nuova)** — Il carattere U+200D (unione fra emoji, categoria Cf) viene tolto, quindi le emoji composte nei testi liberi escono spezzate in pezzi separati da spazi.
 
-- Ho preso per buona la prova dal vero del 25/11 sul Mac (richiesta di 1,0 s, il server chiude con `X-Gas-Comando: fine`). Il log del server non è nel repo.
-- Non ho verificato che il server mandi «fine» solo per trascrizioni vuote o non chiare: modules/voice/ non è nel diff. Il nuovo messaggio dice «di solito», quindi non lo afferma come certo.
-- Comportamento con openWakeWord vero: non l'ho riprovato, qui il pacchetto non è installato nell'ambiente dei test.
+**Coerenza col progetto.** Ogni lettore ha ancora `try/except` e restituisce None (§9). Gli scrittori danno `ValueError` per scelta dichiarata. Type hints presenti. Nessuna rete, nessun file, nessuna credenziale. Il modulo non è collegato a nulla.
 
-**Memoria**: aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md la riga #864 e una lezione (una funzione che descrive per il log non deve richiamare la funzione che decide e logga, altrimenti gli avvisi si duplicano). Già committate da sole (5586236b).
+**Cosa NON ho verificato.**
+- La suite completa e la CI: ho fatto girare solo il file di test nuovo.
+- Come GitHub restituisce il corpo dei commenti via API: la F3 non esiste ancora.
 
-Il commit è consentito.
-```
+**Memoria.** Ho aggiunto la riga #865 a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata da sola (62a1adc). Anche la #864 risulta committata (0656fc0). Il diff in staging è intatto, quindi puoi lanciare `segna_review_ok.sh`. In `reports/stato_progetto.md` vanno scritte R-864-3, R-865-1 e la cosmetica 5.
 
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #865, solo il delta rispetto alla #864 su fix/voce-log-e-modello. L'indice ora vale 2 file, +68/−6. Ho rieseguito la suite tests/test_unit_voce_ascolto.py: 394 passati. Non ho usato git stash e l'indice è intatto.
-
-R-864-1 è chiusa. R-864-2 è chiusa solo in parte: l'avviso di ripiego esce ancora due volte (sotto). Non blocca il commit.
-
-**Elementi esaminati**
-
-1. `clients/voice/ascolto.py:1690` — in `main` il nome preso da `GAS_ASCOLTO_MODELLO` ora si pulisce (spazi ai lati, minuscole, spazi interni → `_`) prima di `verifica_della_voce` e del rilevatore.
-   - Rischio: aprire una strada a un percorso.
-   - Esito: ok. «/TMP/X.ONNX» diventa «/tmp/x.onnx», che la regex continua a rifiutare, quindi si ripiega comunque. Un filtro hey_jarvis già addestrato ora si carica anche con «Hey Jarvis» nel .env.
-   - R-864-1 è chiusa per spazi e maiuscole. I nomi con la versione («alexa_v0.1») restano un ripiego dichiarato nell'avviso: va bene così.
-2. `tests/test_unit_voce_ascolto.py:192` — test nuovo: «  Hey  Jarvis » produce «parola «hey_jarvis»» nel log, senza avviso di nome non valido.
-   - Esito: ok, il test copre il caso.
-   - COSMETICO: la lista `visti`, che raccoglie i nomi passati al rilevatore, non viene mai controllata. Un `assert visti == ["hey_jarvis"]` proverebbe che anche il rilevatore riceve il nome pulito. Ci sono anche 3 righe vuote prima del `@pytest.mark.parametrize` successivo.
-3. `clients/voice/ascolto.py:1485` — `descrivi_modello(modello, usato)` ora riceve il risultato già calcolato e non richiama più `modello_della_parola`.
-   - Esito: ok nella funzione.
-   - Però `main` a `clients/voice/ascolto.py:1709` chiama di nuovo `modello_della_parola(modello)`. La chiama già `rilevatore_openwakeword` a `clients/voice/ascolto.py:1538`. Quindi all'avvio, quando si ripiega, l'avviso esce ancora due volte (vedi R-864-2).
-
-**Riserve (da tracciare in stato_progetto.md)**
-
-- **R-864-2 COSMETICA, ancora aperta**: le chiamate a `modello_della_parola` all'avvio sono ancora due (`clients/voice/ascolto.py:1538` e `clients/voice/ascolto.py:1709`). Correzione semplice: calcolare `usato` una volta in `main` e passarlo al rilevatore, oppure far restituire `usato` a `rilevatore_openwakeword`.
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello italiano non è misurata.
-- Ancora aperta, da prima: se il file manca, il ripiego su hey_jarvis resta con la `GAS_ASCOLTO_SOGLIA=0.5` scritta da installa.sh.
-
-**Rischi esclusi**
-
-- Il comportamento con openWakeWord vero e sul Mac: qui il pacchetto non c'è nell'ambiente dei test.
-- La parte del diff già vista nella #864 (log del «fine» sul primo turno, ripiego per i nomi non semplici): non l'ho riesaminata.
-
-**Memoria**: aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md la riga #865, con la lezione «una correzione di una chiamata doppia va verificata contando le chiamate col grep, non leggendo solo la funzione corretta». Già committata da sola (98ec858e).
-
-Il commit è consentito.
-```
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #866 della PR #407: `git diff --cached`, 3 file (+39/−6). La suite tests/test_unit_voce_ascolto.py passa: 395 test, eseguiti anche in ordine fisso. Non ho usato git stash e l'indice è intatto.
-
-Esito in breve: R-864-2 e la V-3 del bot sono chiuse. La V-1 del bot non è chiusa davvero (R-866-1).
-
-**Elementi esaminati**
-
-1. `clients/voice/ascolto.py:1471` — un nome presente in `_modelli_pronti()` ora passa così com'è, prima della regex.
-   - Sicurezza: ok. L'elenco viene dal pacchetto, non dall'ambiente; un modello pronto con lo stesso nome di un nostro file salta il file, che è innocuo.
-   - Riserva: la V-1 non è chiusa davvero (R-866-1).
-2. `clients/voice/ascolto.py:1455` — `_avvisa_una_volta` scrive ogni avviso al massimo una volta, tramite il set di modulo `_AVVISI_DATI` (`clients/voice/ascolto.py:1452`).
-   - Rischi: il testo dell'avviso trattato come formato, e lo stato condiviso tra i test.
-   - Esito: ok. Il testo si costruisce prima ed è passato a `log.warning` senza argomenti, quindi un `%` dentro non dà problemi. Il set resta piccolo: pochi testi diversi per processo.
-   - Il test `tests/test_unit_voce_ascolto.py:3388` azzera il set con monkeypatch e conta un solo avviso su due chiamate. Nessun altro test dipende da questi avvisi: quello di `tests/test_unit_voce_ascolto.py:3568` riguarda la verifica della voce. R-864-2 è chiusa.
-3. `tests/test_unit_voce_ascolto.py:192` — il test ora controlla `visti == ["hey_jarvis"]`, cioè che anche il rilevatore riceve il nome pulito. Righe vuote sistemate.
-   - Esito: ok, V-3 del bot chiusa.
-4. `scripts/voce/LEGGIMI.md:237` e la docstring di `GAS_ASCOLTO_MODELLO`: descrivono la pulizia del nome e il ripiego.
-   - Esito: ok, coerenti col codice. Per i nomi con la versione vale però R-866-1.
-
-**Riserve (da tracciare in stato_progetto.md)**
-
-- **R-866-1 BASSA**, che di fatto è la V-1 del bot ancora aperta (`clients/voice/ascolto.py:1471`):
-  - Le chiavi vere di `openwakeword.MODELS`, lette dal pacchetto installato, sono `alexa`, `hey_mycroft`, `hey_jarvis`, `hey_rhasspy`, `timer`, `weather`: nessuna ha la versione. Quindi con openWakeWord vero «alexa_v0.1» non è in `_modelli_pronti()`, non passa la regex (per il punto) e ripiega ancora su hey_jarvis.
-  - Il test passa solo perché mette «alexa_v0.1» nell'elenco finto, e il commento «anche con la versione, es. alexa_v0.1» descrive una cosa che non succede.
-  - Le chiavi senza versione funzionavano già prima di questa modifica, quindi in pratica non cambia niente.
-  - Correzione: aggiungere a `_modelli_pronti()` anche i nomi dei file da `openwakeword.get_pretrained_model_paths()` (es. `alexa_v0.1`), e usare valori veri nel test. In alternativa, togliere il caso e dichiarare che i nomi con la versione ripiegano.
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello italiano non è misurata.
-
-**Rischi esclusi**
-
-- Non ho verificato l'elenco dei file restituito da `get_pretrained_model_paths()` sul Mac: dipende da quali modelli ha scaricato `installa.sh` (oggi solo hey_jarvis).
-- Comportamento con openWakeWord vero nell'ascolto completo: non riprodotto qui.
-
-**Memoria**: aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md la riga #866 e una lezione (un test che finge l'elenco di una libreria esterna deve usare valori presi dalla libreria vera). Già committate da sole (20e3ded4).
-
-Il commit è consentito.
-```
-
-```
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #867, solo il delta rispetto alla #866 (PR #407; l'indice ora vale 3 file, +58/−7). R-866-1 è chiusa. Resta una nota BASSA che c'era già prima (sotto). Non ho usato git stash e l'indice è intatto.
-
-**Elementi esaminati**
-
-1. `clients/voice/ascolto.py:1442` — `_modelli_pronti()` ora aggiunge anche i nomi dei file da `openwakeword.get_pretrained_model_paths("onnx")`, cioè il nome senza `.onnx`.
-   - Rischi: un'eccezione della libreria che fa crollare l'avvio, e nomi diversi da quelli veri.
-   - Esito: ok.
-     - L'elenco dei file è in un try suo: se fallisce, restano comunque le chiavi di `MODELS`.
-     - Ho chiamato il pacchetto vero del venv di prova: `['alexa_v0.1', 'hey_mycroft_v0.1', 'hey_jarvis_v0.1', 'hey_rhasspy_v0.1', 'timer_v0.1', 'weather_v0.1']`. Quindi «alexa_v0.1» ora passa davvero.
-     - L'elenco viene dal pacchetto, non dall'ambiente: nessun percorso arbitrario.
-2. `tests/test_unit_voce_ascolto.py:3431` — il test usa un modulo finto con `MODELS` e percorsi in forma reale (`/x/openwakeword/resources/models/alexa_v0.1.onnx`). Chiama la funzione vera, salvata in `tests/test_unit_voce_ascolto.py:3416`, prima di sostituirla con il finto.
-   - Rischio: un test che finge valori che la libreria non dà, il difetto trovato nella #866.
-   - Esito: ok. I valori del finto coincidono con quelli del pacchetto vero.
-   - La suite tests/test_unit_voce_ascolto.py passa: 395 test.
-
-**Riserve (da tracciare in stato_progetto.md)**
-
-- **Nota BASSA, già presente prima di questa fetta**: `get_pretrained_model_paths` elenca anche i modelli non scaricati. Nel venv di prova ne esiste 1 su 6. Con «alexa» o «alexa_v0.1» nel `.env`, senza averlo scaricato:
-  - il nome passa come modello pronto;
-  - `Model()` fallisce;
-  - `main` esce con 1, quindi l'ascolto non parte invece di ripiegare su hey_jarvis.
-
-  Era lo stesso anche prima per «alexa». Correzione possibile: contare come pronti solo i file che esistono davvero (`os.path.exists(p)`).
-- **R-854-3 BASSA**, ancora aperta: l'interruzione col modello italiano non è misurata.
-
-**Rischi esclusi**
-
-- Gli altri modelli pronti sul Mac: `installa.sh` scarica solo hey_jarvis e non l'ho verificato lì.
-- Il giro completo dell'ascolto con openWakeWord vero: non riprodotto qui.
-
-**Memoria**: aggiunta la riga #867 in /home/user/Gas/.claude/agents/memoria_revisore.md, già committata da sola (94f19a67).
-
-Il commit è consentito.
-```
-
-```
 ## VERDETTO: APPROVATO
 
-Review #869 della PR #407, dopo il bot su 0d433dfc: `git diff --cached` (2 file, +14/−5). Le due note del bot sono chiuse. La suite tests/test_unit_voce_ascolto.py passa: 395 test, rieseguiti da me. Non ho usato git stash e l'indice è intatto.
+Verdetto #866 riemesso: stessa sostanza, solo testo ASCII per gli escape e nessun carattere invisibile vero. Nell'elemento 1 il carattere è scritto come sequenza di testo: backslash, u, 202e.
 
-**Elementi esaminati**
+Ho letto: CLAUDE.md (sezioni 1, 4, 5, 8, 9, 10), la voce «Mani alla voce» di `reports/stato_progetto.md` (riga 393) e la coda di `.claude/agents/memoria_revisore.md` (#864, #865). Ho esaminato il diff staged: 2 file, +49/-14, inizio dello sha256 del diff `bcdf8ee5`. Ho lanciato i test su una copia dell'indice (cioè sui file così come sono in staging): **55 passed**.
 
-1. `clients/voice/ascolto.py:1479` — il controllo dei modelli pronti ora sta dentro il ramo dei nomi non semplici.
-   - Rischio controllato: un nostro file `.gas_voce/modelli/<nome>.onnx` ignorato perché ha lo stesso nome di un modello pronto (V-1 del bot).
-   - Esito: ok, V-1 chiusa. Per i nomi semplici si cerca di nuovo prima il file, come su main.
-   - Se il file manca, il ramo «assente → pronto» di `clients/voice/ascolto.py:1498` torna raggiungibile. «alexa_v0.1», che ha un punto, passa sempre dal ramo dei pronti.
-   - L'elenco dei modelli pronti viene dal pacchetto, mai dall'ambiente.
-2. `clients/voice/ascolto.py:1488` — l'avviso riporta il valore rifiutato come `%r` di `modello[:60]`.
-   - Rischio controllato: un valore con a capo o molto lungo scritto nel log.
-   - Esito: ok, V-2 chiusa. `%r` scrive gli a capo come `\n` e il valore è tagliato a 60 caratteri. `main` passa sempre una stringa, quindi tagliarlo è sicuro.
-3. `tests/test_unit_voce_ascolto.py:3430` — test nuovo: un nostro `hey_jarvis.onnx` fidato vince sul modello pronto. Il file viene poi rimosso, così le asserzioni che seguono non cambiano.
-   - Esito: ok.
+**Elementi del diff esaminati**
+1. `tests/test_unit_esiti.py:60` — i caratteri U+202E scritti direttamente nel file (righe 60 e 63) ora sono l'escape di testo backslash-u-202e. Rischio esaminato: il controllo del bot «controlli bidi nel testo» che risultava fallito. Ho cercato nei due file i caratteri invisibili veri (categorie Cf, Co, Cn, più i riempitivi): nessuno trovato. Esito: **ok**.
+2. `tests/test_unit_esiti.py:141` — nuovo test che fallisce se nei due file ricompare un carattere Cf vero. Rischio esaminato: che il problema torni senza che nessuno se ne accorga. Copre solo Cf e non Co/Cn, che però il bot non segnala. Esito: **ok**.
+3. `modules/sviluppo/esiti.py:116` — in lettura VERIFICA_ESTERNA accetta solo i valori fissi: un valore libero, o anche APPROVATO seguito da U+FE0F, porta a None (provato). `modules/sviluppo/esiti.py:132` — in scrittura il valore non ammesso dà ValueError, il default è «assente» e la riga viene sempre scritta. Rischio esaminato: rompere chi oggi produce o legge commenti ESITO. Nel repo nessun file .py, .sh o .yml fuori dai due file usa `scrivi_esito`, `leggi_esito` o `VERIFICA_ESTERNA`: il modulo non è collegato a nulla, quindi il cambio di formato non tocca nessuno. Esito: **ok**.
+4. `modules/sviluppo/esiti.py:176` — con verifica esterna BOCCIATO Gas non chiede più il merge. Ho provato che con APPROVATO CON RISERVE la domanda resta, ed è giusto, perché decide comunque la regola di merge di CLAUDE.md §10. Il nuovo test copre il caso BOCCIATO con bot APPROVATO, e anche il caso «assente», dove la verifica esterna non compare nella frase. Esito: **ok**.
+5. `modules/sviluppo/esiti.py:40` — R-865-1 chiusa: l'insieme `_VUOTI` contiene U+115F, U+1160, U+3164, U+FFA0, U+2800, FE00-FE0F e E0100-E01EF, ed è scritto con escape (nessun carattere letterale). Provato: `_pulisci` sulla stringa con escape di testo a, backslash-U-000E01EF, b, backslash-U-000E01F0, c, backslash-u-fe00, d, backslash-u-200d, e dà `'a b c d e'`. U+E01F0 non è assegnato (categoria Cn), quindi lo toglie già la regola sulle categorie C*. Effetto collaterale accettabile: le emoji perdono il selettore FE0F e si vedono nella forma testo. Esito: **ok**.
+6. `modules/sviluppo/esiti.py:23` — la docstring ora dice il vero: i lettori non sollevano eccezioni e restituiscono None, gli scrittori danno ValueError per un valore non ammesso. Esito: **ok**.
 
-**Note aperte (non nuove, già tracciate)**
+**Finding**
+- Nessun finding nuovo.
+- Resta aperta R-864-3, **BASSA**: un RIASSUNTO può contenere il testo «mergia 999». La difesa va fissata in F4/F5: «mergia» vale solo per la PR aperta dall'esecutore per quella issue. È già tracciata in `reports/stato_progetto.md`.
+- Resta aperta la cosmetica 5 (commenti scartati senza log), da fare in F3.
+- Va aggiornata la riga 393 di `reports/stato_progetto.md`: togliere R-865-1 dalle «Aperte».
 
-- **R-854-3 BASSA**: l'interruzione col modello italiano non è misurata.
-- **Nota BASSA della #867**: i modelli pronti non scaricati (es. «alexa») fanno fallire l'avvio invece di ripiegare su hey_jarvis.
+**Controlli del progetto**: il diff non tocca la storia dei messaggi né `_get_window()`, non simula output dei tool e non tocca il tetto di 10 iterazioni. Fail-safe §9 rispettato: i lettori restano dentro try e danno None, gli scrittori sollevano di proposito per non scrivere un commento che Gas poi ignorerebbe.
 
-**Rischi esclusi**
+**Cosa non ho verificato**: l'esito del controllo verifica-bot rifatto sul nuovo head della PR (gira su GitHub, non da qui), e la modifica a `reports/mani_voce_piano.md`, che è fuori dal perimetro di review.
 
-- Non ho provato con openWakeWord vero che un nostro `hey_jarvis.onnx` venga caricato dal percorso. Qui il pacchetto non è installato nell'ambiente dei test; la parte che passa il percorso a `Model()` è già coperta dal test della V-3 (#857).
-- Il comportamento sul Mac: non riproducibile qui.
+**Memoria**: la riga #866 è già in `/home/user/Gas/.claude/agents/memoria_revisore.md` (nessuna lezione nuova); come richiesto non l'ho toccata di nuovo.
 
-**Memoria**: riga #869 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e già committata da sola (bb542081).
-
-Il commit è consentito.
-```
-
-## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (PR #402)
-
-```
-## VERDETTO: APPROVATO
-
-Review #868-MERGE: merge di origin/main 86a23f56 (PR #402, R7 fetta 4) nel ramo fix/voce-log-e-modello (PR #407, HEAD 7cba139c). Il merge è in staging e non committato; MERGE_HEAD coincide con origin/main. Non ho usato git stash.
-
-- Nessun conflitto rimasto (`git ls-files -u` vuoto) e `--check` pulito.
-- Rispetto a HEAD entrano 4 file (+205/−1).
-- I test sottofondo più voce passano: 532 test, rieseguiti da me.
-
-**Elementi esaminati**
-
-1. `modules/sottofondo/__init__.py:17` e `tests/test_unit_sottofondo.py:1`: i file presi da main.
-   - Rischio: modifiche non volute nel codice che arriva da main.
-   - Esito: ok. `git diff --cached origin/main` su questi file è vuoto, quindi sono identici a main.
-2. `clients/voice/ascolto.py:1442`, `tests/test_unit_voce_ascolto.py:3431`, `scripts/voce/LEGGIMI.md:237`, più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` tenuti col lato del ramo (`--ours`).
-   - Rischio: un file nostro perso nel merge.
-   - Esito: ok. `git diff --cached HEAD` su questi percorsi è vuoto. Gli unici file cambiati da entrambi i lati sono memoria e stato_progetto, uniti come descritto sotto.
-3. `reports/stato_progetto.md:4` e `reports/stato_progetto.md:405`: unione automatica.
-   - Rispetto a main cambia solo la riga 393 della voce, cioè la nostra versione (+1/−1).
-   - Rispetto a HEAD entrano la riga 4 di main, con la voce R7 del 25/11 in testa, e la voce R7 alla riga 405 (+2/−1).
-   - La riga «Ultimo aggiornamento» compare una sola volta.
-   - Esito: ok.
-4. `.claude/agents/memoria_revisore.md:1`: memoria unita, nessuna riga persa né di HEAD né di main.
-   - Esito: ok.
-
-**Nota COSMETICA (viene da main, non da questo merge)**
-
-- `reports/stato_progetto.md:4` dice «PR #402 ancora aperta», ma ora è mergiata. Si può aggiornare nel prossimo giro dei report.
-
-**Rischi esclusi**
-
-- Il contenuto della R7 fetta 4 (tetto di tempo duro del sottofondo): non l'ho rivisto nel merito, perché entra identico a main dopo le review #852-R7 e #853-R7.
-- La suite completa: ho eseguito solo i test sottofondo e voce.
-
-**Memoria**: ho aggiunto la riga #868-MERGE in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree (non in staging, non committata). Va messa in staging da te prima del commit del merge.
-
-Il commit del merge è consentito.
-```
-
-## §4ter VERDETTO DEL REVISORE SUL MERGE DI MAIN (PR #410)
-
-R-870M-1 chiusa nello stesso commit del merge: entrambe le voci sono ora in stato_progetto.
-
-```
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #870-MERGE: merge di origin/main 5a0f9dbc (PR #410, scheda CRM offline) nel ramo fix/voce-log-e-modello (PR #407, HEAD dbd0d167). Il merge è in staging e non committato; MERGE_HEAD coincide con origin/main. Codice e test sono a posto. La fusione di stato_progetto ha perso due finding aperti: vanno rimessi prima di committare (R-870M-1). Non ho usato git stash.
+Review #867, la quarta sulla PR #409 dopo il bot #409-bis (head 35c67d25). Ho esaminato il diff staged in /home/user/Gas, ramo claude/mani-voce-piano: `modules/sviluppo/esiti.py` e `tests/test_unit_esiti.py`, +53/−13.
 
-Controlli generali: `git ls-files -u` vuoto e `--check` pulito. Rispetto a HEAD entrano 10 file (+799/−4). Test CRM più voce: 606 passati, rieseguiti da me.
+Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la parte di stato_progetto.md che riguarda la PR, la mia memoria e il verdetto integrale del bot (check-run 139352802811).
 
-**Elementi esaminati**
+Elementi del diff esaminati:
+1. `modules/sviluppo/esiti.py:191` — la domanda di merge compare solo con PR valida, CI «verde», bot «APPROVATO» o «APPROVATO CON RISERVE» e verifica esterna diversa da BOCCIATO. Rischio esaminato: una riga BOT o CI mancante (None) faceva comparire la domanda (V-1 MEDIA). L'ho provato sulla copia dell'indice: senza riga BOT e con bot «assente» esce «niente merge»; con pr=True esce «PR mancante» e niente «mergia». Esito: ok, V-1 chiusa.
+2. `modules/sviluppo/esiti.py:184` — `pr_ok` esclude i bool e i valori fuori da 1..PR_MAX, e senza PR la frase dice «PR mancante». Rischio esaminato: «mergia None» o «mergia True». Esito: ok.
+3. `modules/sviluppo/esiti.py:94` — in lettura la riga RISERVA prima si pulisce, poi si scarta se è vuota; dalla sesta in poi le riserve si contano in `riserve_altre`. Rischio esaminato: una riserva fatta solo di invisibili che occupa un posto. Provato con U+FEFF, U+2060 e U+3164: vengono scartate. Esito: ok, V-2 chiusa.
+4. `modules/sviluppo/esiti.py:179` — le riserve escono come «riserve: …» a parte, con «+N altre». Rischio esaminato: le riserve attaccate a «bot:». Esito: ok, V-4 chiusa.
+5. `tests/test_unit_esiti.py:148` — test parametrizzato senza BOT e senza CI, più i test «PR mancante» e «invisibili/+N altre». Sulla copia dell'indice passano tutti e 59. Ho provato 6 mutanti e i test ne fermano 5. Il sesto sopravvive: togliere `or "assente"` da ci non cambia nulla, perché l'elenco dei valori buoni scarta comunque None. Esito: ok.
+6. Contesto, file non toccato da questo giro: `modules/sviluppo/esiti.py:154` — vedi R-867-1.
 
-1. `requirements.txt:1` e `tests/conftest.py:1`, i due file che toccano tutta la suite.
-   - Rischio: una modifica fatta durante il merge che cambia l'ambiente di tutti i test.
-   - Esito: ok. `git diff --cached origin/main` è vuoto, quindi sono identici a main. Rispetto a HEAD entrano solo `pypdf>=5.1` (con il suo commento) e `monkeypatch.delenv("GAS_CRM_SCHEDA_PASSWORD", raising=False)`.
-2. `modules/crm/scheda.py:1`, `modules/crm/server.py:1`, `modules/crm/__main__.py:1`, `tests/test_unit_crm.py:1`, più `reports/crm/`.
-   - Esito: ok, identici a origin/main.
-3. I nostri file: `clients/voice/ascolto.py:1479`, `tests/test_unit_voce_ascolto.py:3430`, scripts/, più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` tenuti col lato del ramo (`--ours`).
-   - Esito: ok, `git diff --cached HEAD` su questi percorsi è vuoto. Gli unici file cambiati da entrambi i lati sono memoria e stato_progetto.
-4. `.claude/agents/memoria_revisore.md:1`: memoria unita, nessuna riga persa né di HEAD né di main.
-   - Esito: ok.
-5. `reports/stato_progetto.md:4`: la riga è identica a quella di main e c'è una sola riga «Ultimo aggiornamento».
-   - Esito: ok.
-6. `reports/stato_progetto.md:394`, voce del modello italiano.
-   - Bene: la V-3 della 2ª verifica esterna #405 (manca l'hash del modello valutato in ris/) è riportata, e c'è anche la licenza CC BY-NC-SA come decisione dell'operatore.
-   - Esito: riserva, vedi R-870M-1.
+Finding:
+- **R-867-1 (BASSA)**: V-3 è chiusa solo in lettura. Il bot diceva «in lettura e in scrittura», ma `scrivi_esito` (`modules/sviluppo/esiti.py:154`) taglia ancora a RISERVE_MAX senza avvisare. L'ho provato: 8 riserve scritte, 5 rilette, nessun `riserve_altre`. Correzione: scrivere tutte le righe RISERVA (il commento resta comunque sotto COMMENTO_MAX) e lasciarle contare al lettore. Va aggiunto un test che fa andata e ritorno con più di 5 riserve.
+- **R-867-2 (BASSA)**: in `modules/sviluppo/esiti.py:192` la verifica esterna resta controllata con l'elenco dei valori cattivi (`== "BOCCIATO"`), mentre CI e bot sono passati all'elenco dei buoni. Inoltre `riserve` e `riserve_altre` non vengono ripulite in `frase_esito`. Con un dizionario fatto a mano e verifica «boh» compare la domanda di merge (provato). Passando da `leggi_esito` non può succedere, perché lì i valori sono fissi. Correzione: `verifica not in VERIFICA or verifica == "BOCCIATO"`, oppure un elenco dei valori buoni.
 
-**Riserva da sistemare prima del commit del merge**
+Rischi esclusi, cioè non verificati:
+- Suite completa e CI sul nuovo head: ho fatto girare solo `tests/test_unit_esiti.py` sulla copia dell'indice. Il modulo non è collegato a nulla, quindi il resto del motore non è toccato.
+- Il collegamento con Telegram e la voce (F3) non esiste ancora, quindi non è verificabile.
+- La scansione byte per byte dei caratteri invisibili l'ha fatta il test anti-Cf già presente. Non l'ho ripetuta a mano.
 
-- **R-870M-1** (`reports/stato_progetto.md:394`): nella versione di main, la stessa voce elenca due finding aperti che nell'indice non ci sono più (controllato con grep su tutto il file: 0 occorrenze).
-  - **V-2 BASSA del bot su f51a58c7**: «§6 dell'handoff della #405 con esiti CI non allineati a gh run list».
-  - **V-1 BASSA del bot su 05df3ae7**: «ripiego su hey_jarvis che tiene la soglia 0,5 senza filtro». È ancora vera: il ripiego non tocca la soglia.
+Memoria: ho aggiunto la riga #867 e una lezione in /home/user/Gas/.claude/agents/memoria_revisore.md. La lezione: quando un finding dice «in lettura e in scrittura», controllare tutti e due i lati, e passare all'elenco dei valori buoni su tutti i campi della stessa condizione. Il file è committato da solo (edb5de4f). Il diff staged è rimasto intatto.
 
-  La V-1 del bot su f51a58c7 è invece giustamente data per chiusa (nomi non semplici → ripiego). Basta aggiungere le due voci nell'elenco «aperte» della riga 394. Il file è fuori dal perimetro, quindi non serve un'altra review: rimettile, metti in staging e committa.
-
-**Rischi esclusi**
-
-- Il contenuto della PR #410 (scheda PDF cifrata): non l'ho rivisto nel merito. Entra identico a main, revisionato dalla chat CRM.
-- Il comportamento di pypdf sul Mac: non verificato qui.
-- La suite completa: ho eseguito solo i test CRM e voce. conftest.py cambia per tutti solo con un `delenv`, che ha rischio nullo.
-
-**Memoria**: riga #870-MERGE aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree (non in staging, non committata). Contiene anche la lezione: quando si riscrive a mano una voce di stato durante un merge, confrontare uno per uno i finding aperti delle due versioni. Mettila in staging tu prima del commit del merge.
-```
-
-## §4quater VERDETTO DEL REVISORE SUL MERGE DI MAIN (PR #408)
-
-```
 ## VERDETTO: APPROVATO
 
-Review #871-MERGE: merge di origin/main b1b1644f (PR #408, R7 fetta 4 bis: tetto di tempo duro del giro di notte) nel ramo fix/voce-log-e-modello (PR #407, HEAD f8f1f66b). Il merge è in staging e non è stato committato; MERGE_HEAD coincide con origin/main. Non ho usato git stash.
+Review #868, il quinto giro sulla PR #409: ho rivisto per intero il diff staged su claude/mani-voce-piano, cioè `modules/sviluppo/esiti.py` e `tests/test_unit_esiti.py` (+67/−14). I 61 test passano sulla copia dell'indice. Nei due file non ci sono caratteri invisibili veri: zero caratteri di categoria C* a parte a capo e tabulazione.
 
-Controlli generali: `git ls-files -u` è vuoto e `--check` è pulito. Rispetto a HEAD entrano 4 file (+196/−1). I test notte più voce passano: 633, rieseguiti da me.
+Elementi del diff esaminati:
+1. `modules/sviluppo/esiti.py:156` — `scrivi_esito` ora scrive tutte le riserve; chi legge ne tiene 5 e conta le altre in `riserve_altre`. Rischio esaminato: riserve oltre la quinta perse senza avviso in scrittura (R-867-1). Il test a `tests/test_unit_esiti.py:173` scrive 8 riserve e rilegge 5 tenute più 3 contate. Ho anche provato 30 riserve da 300 caratteri: il commento supera COMMENTO_MAX e `scrivi_esito` solleva ValueError, quindi blocca invece di scrivere un commento rotto. Esito: ok, R-867-1 chiusa.
+2. `modules/sviluppo/esiti.py:194` — una verifica esterna con un valore fuori elenco toglie la domanda di merge. Rischio esaminato: un dizionario fatto a mano con verifica «boh» chiedeva il merge (R-867-2). Coperto dal test a `tests/test_unit_esiti.py:178`. L'ho provato: con BOCCIATO esce «niente merge», con APPROVATO esce la domanda. Esito: ok, R-867-2 chiusa.
+3. `modules/sviluppo/esiti.py:191` — restano valide le correzioni già approvate in #867: chiusi i finding del bot V-1 (riga BOT mancante, PR mancante), V-2 (riserva fatta di soli invisibili), V-3 (lato lettura) e V-4 (riserve a parte). Esito: ok.
 
-**Elementi esaminati**
+Note cosmetiche, nessuna blocca:
+- C-1: con troppe riserve il ValueError dice «manca il riassunto o la PR» (`modules/sviluppo/esiti.py:160`), un messaggio che porta fuori strada.
+- C-2: se `frase_esito` riceve un dizionario fatto a mano, `riserve` e `riserve_altre` non vengono ripulite dagli invisibili. Se il dizionario viene da `leggi_esito`, lo sono già.
 
-1. `modules/notte/notte.py:1` e `tests/test_unit_notte.py:1` — file presi da main.
-   - Rischio: una modifica introdotta durante il merge.
-   - Esito: ok, `git diff --cached origin/main` è vuoto.
-2. I nostri file — `clients/voice/ascolto.py:1479`, `tests/test_unit_voce_ascolto.py:3430`, scripts/ — più `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` tenuti col lato del ramo (`--ours`).
-   - Esito: ok, `git diff --cached HEAD` è vuoto su questi percorsi. Gli unici file cambiati da entrambi i lati sono la memoria e stato_progetto.
-3. `.claude/agents/memoria_revisore.md:1` — memoria unita.
-   - Esito: ok, nessuna riga persa né di HEAD né di main.
-4. `reports/stato_progetto.md:4` è identica a main, `reports/stato_progetto.md:394` (voce del modello italiano) è identica a HEAD, `reports/stato_progetto.md:406` è la voce R7 4 bis di main. C'è una sola riga «Ultimo aggiornamento».
-   - Esito: ok.
-5. `reports/stato_progetto.md:394` — finding aperti confrontati uno per uno, come dice la lezione della #870. I 4 elementi che compaiono solo nella versione di main sono tutti coperti:
-   - V-2 BASSA del bot su f51a58c7 (§6 dell'handoff della #405): presente nell'indice, riformulata.
-   - V-1 BASSA del bot su 05df3ae7 (ripiego che tiene `GAS_ASCOLTO_SOGLIA=0.5`): presente, «ancora aperta».
-   - V-3 della 2ª verifica esterna #405 (hash del modello): presente.
-   - V-1 BASSA del bot su f51a58c7 (nomi non semplici): data per chiusa, ed è corretto.
-   - Esito: ok, nessun finding perso. La R-870M-1 della review precedente risulta sistemata.
+Rischio escluso: non ho lanciato la suite completa né la CI sul nuovo head, solo `tests/test_unit_esiti.py`. Il modulo non è ancora collegato a nulla, quindi il resto del motore non è toccato. Il collegamento con Telegram e la voce (F3) non esiste ancora e non è verificabile.
 
-**Rischi esclusi**
+Memoria: ho aggiunto la riga #868 («nessuna lezione nuova») in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (4606d48c). Il diff staged è rimasto intatto.
 
-- Il contenuto della PR #408 (tetto duro del giro di notte): non l'ho rivisto nel merito, perché entra identico a main dopo le review #866-R7 e #867-R7.
-- La suite completa: ho eseguito solo i test notte e voce.
+## VERDETTO: APPROVATO
 
-**Memoria**: riga #871-MERGE aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, solo nel working tree: non in staging e non committata. Mettila in staging tu prima del commit del merge.
+Review #871. Riguarda il 6° giro della PR #409, cioè la correzione dopo il bot sull'head 72adde68. Il diff staged è su claude/mani-voce-piano e tocca 3 file (+26/−1). Prima della review ho letto CLAUDE.md (sez. 1, 5, 8, 10), la voce «mani alla voce» in reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md. Ho letto anche il verdetto del bot (check-run 139407757636).
 
-Il commit del merge è consentito.
-```
+Elementi del diff esaminati:
+1. `.github/workflows/ci.yml:207` — aggiunge il passo «Run esiti suite» con `if: always()`, `set -o pipefail` e il tee in `$RUNNER_TEMP/esiti_output.txt`. È identico al passo di richieste alla riga 200.
+   - Rischio esaminato: che la macchina di controllo si indebolisca o che un test fallito non faccia fallire il job.
+   - Esito: ok. Con pipefail, se pytest fallisce fallisce lo step, e quindi fallisce `unit-suite`. Nessun altro passo è toccato e non ci sono `paths-ignore`. L'output del passo non serve nel riepilogo finale: lo step «Job summary» (`.github/workflows/ci.yml:258`) è solo informativo e non legge nemmeno i file di richieste e avvisa_operatore. Lo YAML si carica senza errori.
+2. `modules/sviluppo/esiti.py:45` — `PR_MAX = 9_999_999`.
+   - Rischio esaminato: un numero di PR che lo scrittore accetta e il lettore rifiuta.
+   - Esito: ok. Il valore coincide con le regex a 7 cifre (`[1-9][0-9]{0,6}`). Lo stesso confine vale in tutti e quattro i controlli (`modules/sviluppo/esiti.py:110`, `modules/sviluppo/esiti.py:144`, `modules/sviluppo/esiti.py:188`, `modules/sviluppo/esiti.py:221`). Il test `tests/test_unit_esiti.py:184` prova il valore massimo e il valore massimo +1, sia per il comando sia per l'esito.
+3. `modules/sviluppo/esiti.py:159` — un commento oltre `COMMENTO_MAX` ora dà «commento oltre N caratteri».
+   - Rischio esaminato: confini diversi tra scrittore e lettore, oppure un controllo messo dopo `leggi_esito`.
+   - Esito: ok. Il controllo viene prima di `leggi_esito` e usa lo stesso `>` del lettore (`modules/sviluppo/esiti.py:67`). Il test `tests/test_unit_esiti.py:194` lo verifica: 40 riserve da 290 caratteri superano 8000 e restano sotto RIGA_MAX.
+
+Verifiche eseguite:
+- Ho rieseguito la suite su una copia dell'indice: 63 passed.
+- Nei tre file non ci sono caratteri di controllo o invisibili (categoria Unicode C*) a parte a capo e tab.
+
+Rischio escluso: non ho verificato l'esecuzione reale su GitHub Actions. Che il nuovo passo giri davvero e che `unit-suite` diventi rosso con un test rotto lo dirà la run CI sul nuovo head, che dal sandbox non posso riprodurre. Non ho rieseguito il bot.
+
+Finding: nessuno. I tre finding del bot sono chiusi: V-1 MEDIA, V-2 BASSA, V-3 COSMETICA.
+
+Memoria: ho scritto la riga #871 (nessuna lezione nuova) e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit a9291ba4). L'index staged del diff resta intatto. Il file è /home/user/Gas/.claude/agents/memoria_revisore.md.
+
+## §4bis VERDETTO DEL REVISORE SUL MERGE DI MAIN (08875514)
+
+Merge di origin/main (PR #402, R7 fetta 4) nel ramo: verdetto integrale #869-MERGE.
+
+## VERDETTO: APPROVATO
+
+Review #869-MERGE: merge in corso di origin/main (PR #402, R7 fetta 4) nel ramo claude/mani-voce-piano (PR #409), visto con `git diff --cached HEAD` e `git diff --cached MERGE_HEAD`.
+
+**Cosa ho controllato nel diff:**
+1. `modules/sottofondo/__init__.py:883` — `_scaduto` del tetto di tempo, arrivato da main (con `modules/sottofondo/__init__.py:815`, il Timer col tetto `TETTO_TIMER_S`, e `modules/sottofondo/__init__.py:933`, il ramo `gia_chiuso`). Rischio esaminato: una risoluzione del conflitto che altera il codice di R7. Esito: ok. Il diff contro MERGE_HEAD è vuoto, quindi il file è identico a origin/main.
+2. `tests/test_unit_sottofondo.py:1433` — test `test_tetto_scaduto_ferma_il_compito_con_avviso` (con i vicini a `tests/test_unit_sottofondo.py:1426` e `tests/test_unit_sottofondo.py:1453`). Rischio esaminato: test persi o mescolati. Esito: ok. Anche qui il diff contro MERGE_HEAD è vuoto.
+3. `.claude/agents/memoria_revisore.md:1762` — righe di main inserite dopo #863-MERGE (#852-R7 alla riga 1762, #853-R7 alla 1764, #864-MERGE-R7 alla 1766), poi le nostre #864..#868 (righe 1767-1773). Rischio esaminato: righe perse in una delle due parti. Esito: ok. Sia il diff contro HEAD sia quello contro MERGE_HEAD contengono solo aggiunte (5 righe di main, 7 nostre), nessuna riga tolta. Ci sono 5 caratteri invisibili, ma sono già presenti in entrambe le versioni (sono le citazioni delle lezioni), quindi non li ha introdotti il merge.
+4. `reports/stato_progetto.md:406` — voce R7 fetta 4 con R-852R7-1/4 dichiarate e le riserve aperte R-853R7-1, R-853R7-2 e R-853R7-3. Esito: ok. Le riserve di R7 di main sono tracciate. La voce «Mani alla voce» è alla `reports/stato_progetto.md:393`. La testata di `reports/stato_progetto.md:4` è quella di main e contiene per intero la nostra (controllato con un confronto di sottostringa).
+5. File di sessione: `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` hanno diff vuoto contro HEAD, quindi è tenuto il nostro lato come dice la regola 3 di `reports/lavoro_parallelo.md`. Esito: ok.
+
+Non c'è nessun marcatore di conflitto e `git ls-files -u` è vuoto. `python -m pytest -q tests/test_unit_sottofondo.py tests/test_unit_esiti.py` dà 198 passed.
+
+Nota COSMETICA: la testata presa da main dice «PR #402 ancora aperta», che non è più vero dopo questo merge. Conviene aggiornarla al prossimo giro dei report.
+
+**Cosa non ho verificato:** non ho rieseguito la suite completa del motore, ma solo le due suite toccate. Il codice di R7 è identico a main e lì è già stato revisionato (#852-R7, #853-R7, #864-MERGE-R7). Non ho rifatto la review di merito di `modules/sviluppo/esiti.py`, che il merge non tocca (giri #864..#868).
+
+**Memoria:** ho aggiunto la riga contatore #869-MERGE in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, senza lezioni nuove. È NON committata e NON in staging: lo stato è `MM` e va aggiunta al commit di merge.
+
+## §4ter VERDETTO DEL REVISORE SUL 2° MERGE DI MAIN (dc5cb637)
+
+Merge di origin/main (PR #410, scheda clienti offline) nel ramo: verdetto integrale #870-MERGE.
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #870-MERGE: merge in corso di origin/main (PR #410, scheda clienti del CRM da leggere offline) nel ramo claude/mani-voce-piano (PR #409). Base comune 86a23f56.
+
+Ho letto prima CLAUDE.md (sezioni 1, 5, 8 e 10), reports/stato_progetto.md (le parti che servivano) e la coda di .claude/agents/memoria_revisore.md.
+
+**Cosa ho controllato nel diff**
+- `modules/crm/scheda.py:102` — `_propria()` legge `GAS_CRM_SCHEDA_PASSWORD`, la password solo della scheda. Rischio: che il merge abbia alterato il file arrivato da main. `git diff --cached MERGE_HEAD -- modules/crm/scheda.py` è vuoto, quindi il file è uguale a quello di main. **ok**
+- `tests/conftest.py:40` — `monkeypatch.delenv("GAS_CRM_SCHEDA_PASSWORD")`. Rischio: che i test della scheda leggano un segreto vero dall'ambiente, o che la nostra parte avesse toccato conftest e ci fosse un conflitto nascosto. Il diff contro MERGE_HEAD è vuoto e contro HEAD c'è una sola riga aggiunta. **ok**
+- `requirements.txt:13` — nuova dipendenza `pypdf>=5.1`. Rischio: che manchi e i test non partano. È uguale a main e i 272 test passano con pypdf installato. **ok**
+- Anche `modules/crm/__main__.py`, `modules/crm/server.py`, `reports/crm/decisioni.md`, `reports/crm/guida.md` e `tests/test_unit_crm.py` hanno diff vuoto contro MERGE_HEAD. **ok**
+- `reports/stato_progetto.md:4` — testata. Contro MERGE_HEAD ci sono solo aggiunte: la voce «mani alla voce … PR #409» sta davanti alla testata di main, che resta intera. **ok**
+- `reports/stato_progetto.md:394` e `reports/stato_progetto.md:395` — in «Finding aperti», la nostra voce «Mani alla voce» viene subito prima di «Voce, modello italiano `ehi_jarvis_it`», che è nella versione di main. **ok**
+- `reports/stato_progetto.md:9` — voce «Scheda clienti da leggere offline». Contiene le decisioni dell'ultimo_report di main: `GAS_CRM_SCHEDA_PASSWORD`, `pip install`, «Mantieni scaricato», `scheda --forza`. Le riserve R-866-1, R-866-2 e R-864-7 sono tracciate nel file. Quindi tenere il nostro ultimo_report rispetta la regola 3 di lavoro_parallelo. **ok**
+- `reports/handoff.md`, `reports/ultimo_report.md`, `reports/diff_sessione.md`: diff contro HEAD vuoto, cioè sono il nostro lato. **ok**
+- `.claude/agents/memoria_revisore.md:1776` — unione delle due memorie. Contro HEAD e contro MERGE_HEAD ci sono solo aggiunte: prima le righe di main (#864…#867-MERGE, CRM), poi le nostre (#864…#869-MERGE). **riserva**, vedi sotto.
+
+**Altri controlli**
+- Nessun marcatore di conflitto e `git diff --cached --check` è pulito.
+- Nessun file del motore (gas.py, brains/) nel merge. `modules/sviluppo/esiti.py` è solo del nostro lato.
+- Caratteri invisibili: 0 in stato_progetto. In memoria ce ne sono 5 (righe 1001, 1014 e 1669), ma erano già presenti su entrambi i lati (5 a HEAD e 5 a MERGE_HEAD): sono lezioni che citano quei caratteri, non vengono dal merge.
+- `python -m pytest -q tests/test_unit_esiti.py tests/test_unit_crm.py`: **272 passed**.
+
+**Riserva**
+- R-870M-1 BASSA: i numeri #864, #865 e #866 compaiono due volte nella memoria, una per le review del CRM di main e una per le nostre di «mani alla voce». Il contatore non è più univoco per numero. Il problema è già noto: ci sono oltre 100 numeri doppi storici tra chat parallele, che si distinguono per ramo e descrizione. Non blocca il merge. Rimedio possibile: un suffisso di chat (-M1, -CRM) per le review fatte fuori da main.
+
+**Rischi non verificati**
+- Funzionamento vero della scheda su iCloud e iPhone e del thread che la rigenera dentro il server sul Mac: non riproducibile qui. Il codice è quello di main, già revisionato in #864–#866 lato CRM.
+- La suite completa: ho lanciato solo i due file di test indicati.
+
+**Memoria**
+Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga `#870-MERGE — 2026-11-25 — APPROVATO CON RISERVE — …` con R-870M-1 e «Nessuna lezione nuova». Il file è modificato su disco (stato `MM`), **non committato** e non messo in staging, come richiesto: va aggiunto al commit di merge.
+
+## §4quater VERDETTO DEL REVISORE SUL 3° MERGE DI MAIN (2ef67f30)
+
+Merge di origin/main (PR #407 voce, #408 R7 notte) nel ramo: verdetto integrale #872-MERGE.
+
+## VERDETTO: APPROVATO
+
+Review #872-MERGE: merge in corso di origin/main (PR #407 voce e PR #408 R7 notte) nel ramo claude/mani-voce-piano (PR #409).
+
+Elementi del diff che ho controllato:
+- `clients/voice/ascolto.py:1`, `modules/notte/notte.py:1`, `scripts/voce/LEGGIMI.md:1`, `tests/test_unit_notte.py:1`, `tests/test_unit_voce_ascolto.py:1`: sono le modifiche al motore e ai test arrivate da main. Rischio esaminato: una risoluzione che mescola i due lati. Esito ok: `git diff --cached MERGE_HEAD` è vuoto per tutti e cinque, quindi sono identici a origin/main. Il ramo non tocca questi file.
+- `reports/stato_progetto.md:394`: la voce «Mani alla voce» va in testa ai «Finding aperti», e `reports/stato_progetto.md:395` è la voce «Voce, modello italiano» nella versione aggiornata di main. Rischio esaminato: voci doppie o vecchie, il problema della lezione dei merge ripetuti. Esito ok:
+  - nel diff contro MERGE_HEAD ci sono solo due cose: la testata con «mani alla voce» davanti e la riga 394 aggiunta;
+  - il conteggio delle voci dà 1 per «Mani alla voce», 1 per «Voce, modello italiano», 1 per «R7 fetta 4 —» e 2 per «R7 fetta 4 bis», con gli stessi numeri di main.
+- `reports/ultimo_report.md:1`, `reports/handoff.md:1`, `reports/diff_sessione.md:1`: restano quelli del nostro lato (regola 3 di lavoro_parallelo). Esito ok: il diff contro HEAD è vuoto.
+  - L'ultimo_report di main dice «Nessuna nuova» decisione.
+  - Le sue riserve sono tutte nello stato alla riga 395: R-854-3, R-855-1, R-864-1/2, R-866-1 e R-867-1.
+- `.claude/agents/memoria_revisore.md:1790`: la memoria è l'unione dei due lati. Rischio esaminato: righe perse. Esito ok:
+  - contro HEAD e contro MERGE_HEAD ci sono solo aggiunte;
+  - l'ordine è giusto, prima le righe di main (da #864 a #871-MERGE) e poi le nostre (da #864 a #871).
+
+Altri controlli:
+- `git ls-files -u` è vuoto, non ci sono marcatori di conflitto e `--check` è pulito.
+- Caratteri invisibili: zero nello stato (sia nell'indice sia su main). In memoria ce ne sono 5, già presenti su entrambi i lati.
+- I test: `pytest tests/test_unit_esiti.py tests/test_unit_notte.py tests/test_unit_voce_ascolto.py` dà 696 passed.
+
+Cosa non ho verificato:
+- Le altre suite (gas.py, crm, sottofondo): il merge non tocca quei file, quindi non le ho rilanciate.
+- Il comportamento della voce sul Mac reale: non si può riprodurre qui.
+- Il codice di #407 e #408 non l'ho rivisto nel merito, perché è già stato revisionato sui suoi rami (#864–#869 e #866-R7/#867-R7). Ho controllato solo che sia identico a main.
+
+Memoria: ho aggiunto la riga contatore #872-MERGE in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` e non l'ho committata, come chiesto. Nessuna lezione nuova.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `tests/test_unit_voce_ascolto.py`: 391 → 395 passed (4 test nuovi, 2 aggiornati).
-- Suite completa: non rilanciata in questo container; la esegue la CI sul push.
-- Prova col pacchetto vero (openwakeword 0.6.0 in un venv di prova): `_modelli_pronti()` comprende alexa_v0.1, hey_jarvis_v0.1 e gli altri file; `modello_della_parola("alexa_v0.1")` restituisce "alexa_v0.1".
+- File nuovo `tests/test_unit_esiti.py`: 0 → 46 test (81c751fa) → 55 test (3f7a0075) → 61 test (13eaa1a2) → 63 test (b2e78370, ora anche in CI), tutti passati (`python -m pytest -q tests/test_unit_esiti.py` → `61 passed in 0.11s`).
+- `tests/test_unit_sottofondo.py` + `tests/test_unit_richieste.py`: `154 passed in 6.14s` (dopo `pip install -r requirements.txt`; prima 3 rossi per `openai` mancante nel container).
+- Suite completa locale, `python -m pytest -q -x tests` (lanciata prima delle correzioni):
+
+```
+FAILED tests/test_unit_web_browser.py::test_testo_scritto_dal_javascript - as...
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 3648 passed in 551.59s (0:09:11)
+```
+
+  Il FAIL è fuori scope: test del browser (JavaScript nel Chromium del container), file non toccati da questa sessione. Con `-x` la suite si è fermata lì: fa fede la CI (`unit-suite`).
 
 ## §6 STATO CI
 
-- eaed5d8a, primo head della PR:
-  - unit-suite e handoff-check: CI propria;
-  - verifica-bot: success, verdetto APPROVATO CON RISERVE (V-1 BASSA, V-2 e V-3 COSMETICHE);
-  - job «esito» in failure: GitHub ha risposto con un errore quando il bot ha pubblicato la recensione (`gh api … pulls/407/reviews` exit 1), non per un difetto della PR.
-- 434e0966, 94f19a67 e 20e3ded4: nessuna run propria, vanno col push di questo commit.
-- 3d12ee08: verifica-bot neutral (APPROVATO CON RISERVE, solo V-1 BASSA sui report, corretta in 7cba139c).
-- 0d433dfc (merge di main, review #868-MERGE APPROVATO): verifica-bot neutral, APPROVATO CON RISERVE (V-1 BASSA, V-2 COSMETICA), corrette in questo giro.
-- dbd0d167: CI verde (unit-suite e handoff-check success), verifica-bot neutral (APPROVATO CON RISERVE, una BASSA e una COSMETICA sul testo dei log, rimandate).
-- f8f1f66b (merge di main PR #410): CI verde, verifica-bot neutral (APPROVATO CON RISERVE, V-1 BASSA log grezzo = R-ve407-3, V-2 BASSA conteggi di §2, rigenerati qui).
-- Merge di main (PR #408) e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Check run per SHA (da `gh api repos/Gasss23/Gas/commits/<sha>/check-runs`; `gh run list` non è disponibile qui):
+
+```
+0b039727: verifica-bot completed success | esito completed success | verifica completed success | smista completed success | handoff-check completed success | unit-suite completed success
+35c67d25: verifica-bot completed failure | handoff-check completed success
+ec8a1d7a: unit-suite completed success | verifica-bot completed failure
+```
+
+- 93090a56: run CI success.
+- 0656fc0d, 62a1adcc: nessuna run su questo SHA (pushati insieme a 81c751fa).
+- 81c751fa: run CI avviata; esito non riletto (superata da ec8a1d7a, stesso codice motore).
+- ec8a1d7a: unit-suite success; verifica-bot failure («controlli bidi nel testo», corretto in 3f7a0075).
+- a8ab5efd, 3f7a0075: nessuna run su questi SHA (pushati insieme a 35c67d25).
+- 35c67d25: handoff-check success; verifica-bot failure (finding MEDIA, corretto in 13eaa1a2).
+- edb5de4f, 4606d48c, 13eaa1a2: nessuna run su questi SHA (pushati insieme a 0b039727).
+- 0b039727: unit-suite success, handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE).
+- 08875514: nessuna run su questo SHA (pushato insieme a 3429dfa1).
+- 3429dfa1: unit-suite success, handoff-check success, verifica-bot success (APPROVATO CON RISERVE, solo BASSE/COSMETICHE).
+- dc5cb637: nessuna run su questo SHA (pushato insieme a 72adde68).
+- 72adde68: verifica-bot failure (finding MEDIA: test di esiti non in CI; corretto in b2e78370); unit-suite non riletta.
+- a9291ba4, b2e78370: nessuna run su questi SHA (pushati insieme a 0dc4ccd1).
+- 0dc4ccd1: unit-suite success (passo «Run esiti suite» success), handoff-check success, verifica-bot NEUTRAL (PR sulla macchina del bot; verdetto testuale APPROVATO CON RISERVE senza ALTA/MEDIA).
+- 2ef67f30 (3° merge di main) e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-867-1 BASSA preesistente: un modello pronto elencato ma non scaricato (es. alexa) fa uscire l'ascolto invece di ripiegare.
-- R-854-3 BASSA: interruzione col modello italiano non misurata.
-- Ripiego su hey_jarvis con la soglia 0,5 (bot #405): BASSA, aperta.
-- Verifica esterna #407 (https://github.com/Gasss23/Gas/pull/407#issuecomment-7167530017):
-  - V-1 (§6): riscritto.
-  - V-2 (nomi con la versione): chiusa.
-  - V-3 COSMETICA: il log «chiesto «…»» riporta il valore grezzo. Aperta.
-- Chiuse anche V-1/V-2 del bot su 0d433dfc (review #869).
-- Chiuse: V-1 bot #405, R-855-1, R-864-1, R-864-2, R-866-1, V-1/V-2/V-3 bot #407.
+- R-864-3 BASSA — un riassunto può contenere «mergia 999»: in F4/F5 MERGIA deve valere solo per la PR aperta dall'esecutore per quella issue (confermata anche da verifica esterna #409 V-3).
+- Verifica esterna #409 V-2 BASSA — la domanda di merge compare anche con bot APPROVATO CON RISERVE e riserve ALTA/MEDIA: da rivedere in F4 (il merge lo decide comunque §10).
+- Verifica esterna #409-bis V-4 COSMETICA — `comando_operatore` accetta uno spazio speciale (U+00A0) fra azione e numero; innocuo.
+- Cosmetica 5 — i commenti scartati non lasciano traccia nel log (da fare in F3).
+- Cosmetica (#865) — U+200D tolto: le emoji composte escono spezzate.
+- Cosmetiche #868: C-1 messaggio di ValueError fuorviante con troppe riserve; C-2 `frase_esito` non ripulisce le riserve di un dizionario fatto a mano.
+- Bot sul head 0b039727 V-1 BASSA — altri invisibili Default_Ignorable (U+034F, U+17B4, U+17B5, U+180B-180D, U+180F) passano `_pulisci`; V-2 COSMETICA — commenti vecchi in esiti.py (righe 14 e 42); V-3 COSMETICA — descrizione della PR (aggiornata).
+- Verifica esterna #409-ter V-1 BASSA — `frase_esito` non ripulisce un dict fatto a mano; V-4 COSMETICA — doppio spazio con riassunto vuoto.
+- Revisore #869-MERGE COSMETICA — testata di stato_progetto «PR #402 ancora aperta»: corretta in questo giro.
+- R-870M-1 BASSA — numeri di review doppi fra chat parallele nella memoria del revisore (#864–#866).
+- Bot sul head 3429dfa1: V-1 BASSA testo libero (riassunto e riserve) nella stessa frase dei controlli, può imitarli (allarga R-864-3; in F3 testo libero dopo i controlli e tra virgolette, in F4/F5 CI e bot riletti dall'API); V-2 COSMETICA con esito fallita/ferma la frase non dice PR e CI; V-3 COSMETICA «46 test» storico nel §1.
+- Verifica esterna su 0dc4ccd1 V-1 BASSA — `comando_operatore` legge «mergıa 412» (i turca senza punto) come «NO 412»: direzione sicura, da correggere con re.ASCII. Bot su 0dc4ccd1 V-2 COSMETICA — commenti vecchi in esiti.py.
+- Chiuse: R-865-1, bot #409 V-1…V-4 (3f7a0075); bot #409-bis V-1 MEDIA, V-2…V-4, R-867-1, R-867-2, verifica esterna #409-bis V-1 (13eaa1a2).
+- Fuori scope: `tests/test_unit_web_browser.py::test_testo_scritto_dal_javascript` rosso nel container.
