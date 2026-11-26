@@ -4,7 +4,8 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f4` 
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge in ordine: #411, #412, #414, poi la PR di questa fetta (revisore APPROVATO CON RISERVE: decide l'operatore).
+1. Merge in ordine: #411, #412, #414, poi #415 (bot e verifica esterna APPROVATO CON RISERVE: decide l'operatore).
+2bis. Se «mergia N» deve valere anche dai vocali Telegram (oggi sì; verifica esterna #415 V-1).
 2. Scelte da confermare (oggi così): il merge NON vale a voce dal Mac (solo Telegram); l'annullo a voce NON chiede conferma (un numero sentito male annulla la richiesta sbagliata, si riapre a mano).
 3. Dopo i merge, sul Mac: `GAS_RICHIESTE_AUTORI` nel `.env`, riavvio del bot Telegram e del server voce.
 
@@ -20,6 +21,8 @@ Sotto-chat di M1 (session_01FgYcG4uNEqggobeJsbmE93), ramo `claude/mani-voce-f4` 
   - Chiuse anche le riserve della #414: «annulla richiesta dodici» anche a testo, frase a voce «CI verde, bot …».
   - 121 test di cassetta. Revisore #888-MV → #889-MV APPROVATO CON RISERVE.
 - **F5 — esecutore nel cloud**: DEFERITA — prossima fetta (crea una scheduled task: spesa ricorrente; il via c'è dal 26/11).
+
+- **Correzioni dopo il bot #415** (c247aba7): domanda di merge che scade dopo 7 giorni; «mergia N» mai al modello sul Mac (anche nel seguito e da testo scritto, dove ora vale anche l'annullo); test sulla regola nel prompt. Revisore #890-MV APPROVATO.
 
 ## Anomalie
 
